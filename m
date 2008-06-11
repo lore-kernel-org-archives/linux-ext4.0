@@ -1,56 +1,110 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: Re: [PATCH 6/6] ext4: tighten restrictions on inode flags
-Date: Wed, 11 Jun 2008 12:49:56 +0100
-Message-ID: <e9e943910806110449sbf30bf6xd98840fcd343519d@mail.gmail.com>
-References: <1213142649-32685-1-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-2-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-3-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-4-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-5-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-6-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-7-git-send-email-duaneg@dghda.com>
-	 <20080611113104.GC9008@skywalker>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data
+	buffers
+Date: Wed, 11 Jun 2008 14:35:57 +0200
+Message-ID: <20080611123556.GA8121@duck.suse.cz>
+References: <20080604111911.c1fe09c6.akpm@linux-foundation.org> <20080604212202.GA8727@mit.edu> <20080604145848.e3da6f20.akpm@linux-foundation.org> <20080604225155.GB8727@mit.edu> <20080605093536.GE27370@duck.suse.cz> <4847CF07.1020904@hitachi.com> <20080605142948.GA25477@mit.edu> <20080605092006.ba7dceef.akpm@linux-foundation.org> <20080605184941.GX2961@webber.adilger.int> <484D0155.4040701@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, "Andreas Dilger" <adilger@sun.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	sct@redhat.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, jbacik@redhat.com, cmm@us.ibm.com,
+	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.173]:25083 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752245AbYFKLt7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jun 2008 07:49:59 -0400
-Received: by wf-out-1314.google.com with SMTP id 27so3072175wfd.4
-        for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2008 04:49:56 -0700 (PDT)
-In-Reply-To: <20080611113104.GC9008@skywalker>
+Received: from styx.suse.cz ([82.119.242.94]:46768 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750850AbYFKMf7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jun 2008 08:35:59 -0400
 Content-Disposition: inline
+In-Reply-To: <484D0155.4040701@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2008/6/11 Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>:
->> +/* Mask out flags that are inappropriate for the given type of inode. */
->> +static inline __le32 ext4_mask_flags(__le16 mode, __le32 flags)
->> +{
->> +     if (S_ISDIR(mode))
->> +             return flags;
->> +     else if (S_ISREG(mode))
->> +             return flags & ~EXT4_REG_FLMASK;
->> +     else
->> +             return flags & ~EXT4_OTHER_FLMASK;
->> +}
->> +
->
-> why are the arguments __le32 ? They should be in host order.
->
-> static inline  __u32 ext4_mask_flags(umode_t mode, __u32 flags)
+On Mon 09-06-08 19:09:25, Hidehiro Kawai wrote:
+> Andreas Dilger wrote:
+> > On Jun 05, 2008  09:20 -0700, Andrew Morton wrote:
+> 
+> >>I guess we need to undo this.  And yes, propagating errors into AS_EIO
+> >>is the way.  I guess that's safe without holding lock_page(), as long
+> >>as the bh is pinned.
+> > 
+> > Something like the following instead if -EIO and journal abort:
+> > 
+> > 		if (!buffer_uptodate(bh)) {
+> > 			set_bit(AS_EIO, &bh->b_page->mapping->flags);
+> > 			SetPageError(bh->b_page);
+> > 		}
+> > 
+> > It seems end_buffer_async_write() does this already, but
+> > journal_do_submit_data() uses end_buffer_write_sync() and it does not
+> > do either of those operations.
+> 
+> Thank you for your suggestion.  I wrote an additional patch to do
+> that below.  Please apply it as the 6th patch of this patch series.
+> 
+> BTW, I'm developing a patch which makes "abort the journal if a file
+> data buffer has an error" tunable.  I'll send it in another thread
+> because it's not a bug fix patch.
+> 
+> -- 
+> Hidehiro Kawai
+> Hitachi, Systems Development Laboratory
+> Linux Technology Center
+> 
+> 
+> Subject: JBD: don't abort if flushing file data failed
+> 
+> In ordered mode, it is not appropriate behavior to abort the journal
+> when we failed to write file data.  This patch calls printk()
+> instead of aborting the journal.  Additionally, set AS_EIO into
+> the address_space object of the buffer which is written out by
+> journal_do_submit_data() and failed so that fsync() can get -EIO.
+> 
+> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+> ---
+>  fs/jbd/commit.c |   12 +++++++++---
+>  1 file changed, 9 insertions(+), 3 deletions(-)
+> 
+> Index: linux-2.6.26-rc4/fs/jbd/commit.c
+> ===================================================================
+> --- linux-2.6.26-rc4.orig/fs/jbd/commit.c
+> +++ linux-2.6.26-rc4/fs/jbd/commit.c
+> @@ -432,8 +432,11 @@ void journal_commit_transaction(journal_
+>  			wait_on_buffer(bh);
+>  			spin_lock(&journal->j_list_lock);
+>  		}
+> -		if (unlikely(!buffer_uptodate(bh)))
+> +		if (unlikely(!buffer_uptodate(bh))) {
+> +			set_bit(AS_EIO, &bh->b_page->mapping->flags);
+> +			SetPageError(bh->b_page);
+>  			err = -EIO;
+> +		}
+  Actually, you should be more careful here because if the data buffer has
+been truncated in the currently running transaction, it can happen that
+b_page->mapping is NULL. It is a question how to safely access
+page->mapping - probably you'll need page lock for that...
 
-Whoops, I was matching the fields in ex4_inode, but I should have been
-looking at ext4_inode_info. Shouldn't sparse have complained about
-that?
+>  		if (!inverted_lock(journal, bh)) {
+>  			put_bh(bh);
+>  			spin_lock(&journal->j_list_lock);
+> @@ -452,8 +455,11 @@ void journal_commit_transaction(journal_
+>  	}
+>  	spin_unlock(&journal->j_list_lock);
+>  
+> -	if (err)
+> -		journal_abort(journal, err);
+> +	if (err) {
+> +		printk(KERN_WARNING
+> +		       "JBD: Detected IO errors during flushing file data\n");
+> +		err = 0;
+> +	}
+>  
+>  	journal_write_revoke_records(journal, commit_transaction);
 
-Thanks,
-Duane.
-
+								Honza
 -- 
-"I never could learn to drink that blood and call it wine" - Bob Dylan
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
