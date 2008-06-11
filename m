@@ -1,87 +1,87 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: fix build failure if DX_DEBUG
-Date: Wed, 11 Jun 2008 11:03:39 -0500
-Message-ID: <484FF75B.8090403@redhat.com>
-References: <484F9030.2020800@cn.fujitsu.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Fix delalloc sync hang with journal lock
+	inversion
+Date: Wed, 11 Jun 2008 19:48:14 +0200
+Message-ID: <20080611174814.GK8121@duck.suse.cz>
+References: <1212154769-16486-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1212154769-16486-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080602093459.GC30613@duck.suse.cz> <20080602095956.GB9225@skywalker> <20080602102759.GG30613@duck.suse.cz> <20080605135413.GI8942@skywalker> <20080605162209.GG27370@duck.suse.cz> <20080605191909.GD4723@skywalker> <20080611124157.GB8121@duck.suse.cz> <20080611135631.GA15169@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Li Zefan <lizf@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:58014 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752488AbYFKQKJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jun 2008 12:10:09 -0400
-In-Reply-To: <484F9030.2020800@cn.fujitsu.com>
+Received: from styx.suse.cz ([82.119.242.94]:58849 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1756856AbYFKRsQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jun 2008 13:48:16 -0400
+Content-Disposition: inline
+In-Reply-To: <20080611135631.GA15169@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Li Zefan wrote:
-> I got build failure when I turned on DX_DEBUG.
->=20
-> fs/ext4/namei.c: In function =E2=80=98dx_show_leaf=E2=80=99:
-> fs/ext4/namei.c:291: error: implicit declaration of function =E2=80=98=
-ext4_next_entry=E2=80=99
-> fs/ext4/namei.c:291: warning: assignment makes pointer from integer w=
-ithout a cast
->=20
-> Move the definition of ext4_next_entry() upwards just as ext3 code.
->=20
-> Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
+> Attaching the updated patch.
+> 
+> Mingming,
+> 
+> Can you update the patchqueu with the  below attached patch ?
+> 
+> -aneesh
+> 
+> mm: Add range_cont mode for writeback.
+> 
+> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> 
+> Filesystems like ext4 needs to start a new transaction in
+> the writepages for block allocation. This happens with delayed
+> allocation and there is limit to how many credits we can request
+> from the journal layer. So we call write_cache_pages multiple
+> times with wbc->nr_to_write set to the maximum possible value
+> limitted by the max journal credits available.
+> 
+> Add a new mode to writeback that enables us to handle this
+> behaviour. In the new mode we update the wbc->range_start
+> to point to the new offset to be written. Next call to
+> call to write_cache_pages will start writeout from  specified
+> range_start offset. In the new mode we also limit writing
+> to the specified wbc->range_end.
+> 
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+  Acked-by: Jan Kara <jack@suse.cz>
 
-Thanks,  I added this to the bugfix portion of the ext4 patch queue.
-
--Eric
-
+								Honza
 > ---
->  fs/ext4/namei.c |   19 ++++++++++---------
->  1 files changed, 10 insertions(+), 9 deletions(-)
->=20
-> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-> index ab16bea..4315fd7 100644
-> --- a/fs/ext4/namei.c
-> +++ b/fs/ext4/namei.c
-> @@ -183,6 +183,16 @@ static int ext4_dx_add_entry(handle_t *handle, s=
-truct dentry *dentry,
->  			     struct inode *inode);
-> =20
+> 
+>  include/linux/writeback.h |    1 +
+>  mm/page-writeback.c       |    3 +++
+>  2 files changed, 4 insertions(+), 0 deletions(-)
+> 
+> 
+> diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+> index f462439..0d8573e 100644
+> --- a/include/linux/writeback.h
+> +++ b/include/linux/writeback.h
+> @@ -63,6 +63,7 @@ struct writeback_control {
+>  	unsigned for_writepages:1;	/* This is a writepages() call */
+>  	unsigned range_cyclic:1;	/* range_start is cyclic */
+>  	unsigned more_io:1;		/* more io to be dispatched */
+> +	unsigned range_cont:1;
+>  };
+>  
 >  /*
-> + * p is at least 6 bytes before the end of page
-> + */
-> +static inline struct ext4_dir_entry_2 *
-> +ext4_next_entry(struct ext4_dir_entry_2 *p)
-> +{
-> +	return (struct ext4_dir_entry_2 *)((char *)p +
-> +		ext4_rec_len_from_disk(p->rec_len));
-> +}
+> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+> index 789b6ad..ded57d5 100644
+> --- a/mm/page-writeback.c
+> +++ b/mm/page-writeback.c
+> @@ -956,6 +956,9 @@ int write_cache_pages(struct address_space *mapping,
+>  	}
+>  	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+>  		mapping->writeback_index = index;
 > +
-> +/*
->   * Future: use high four bits of block for coalesce-on-delete flags
->   * Mask them off for now.
->   */
-> @@ -554,15 +564,6 @@ static int ext4_htree_next_block(struct inode *d=
-ir, __u32 hash,
-> =20
-> =20
->  /*
-> - * p is at least 6 bytes before the end of page
-> - */
-> -static inline struct ext4_dir_entry_2 *ext4_next_entry(struct ext4_d=
-ir_entry_2 *p)
-> -{
-> -	return (struct ext4_dir_entry_2 *)((char *)p +
-> -		ext4_rec_len_from_disk(p->rec_len));
-> -}
-> -
-> -/*
->   * This function fills a red-black tree with information from a
->   * directory block.  It returns the number directory entries loaded
->   * into the tree.  If there is an error it is returned in err.
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> +	if (wbc->range_cont)
+> +		wbc->range_start = index << PAGE_CACHE_SHIFT;
+>  	return ret;
+>  }
+>  EXPORT_SYMBOL(write_cache_pages);
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
