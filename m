@@ -1,59 +1,67 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [PATCH] ext2: Use page_mkwrite vma_operations to get mmap
-	write notification.
-Date: Thu, 12 Jun 2008 08:22:43 -0400
-Message-ID: <1213273364.10187.281.camel@think.oraclecorp.com>
-References: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <20080605123045.445e380a.akpm@linux-foundation.org>
-	 <20080611150845.GA21910@skywalker>
-	 <20080611120749.d0c5a7de.akpm@linux-foundation.org>
-	 <20080612040643.GA5518@skywalker>
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: Re: [PATCH 1/5] jbd: strictly check for write errors on data	buffers
+Date: Thu, 12 Jun 2008 22:19:37 +0900
+Message-ID: <48512269.70504@hitachi.com>
+References: <20080604111911.c1fe09c6.akpm@linux-foundation.org>
+    <20080604212202.GA8727@mit.edu>
+    <20080604145848.e3da6f20.akpm@linux-foundation.org>
+    <20080604225155.GB8727@mit.edu> <20080605093536.GE27370@duck.suse.cz>
+    <4847CF07.1020904@hitachi.com> <20080605142948.GA25477@mit.edu>
+    <20080605092006.ba7dceef.akpm@linux-foundation.org>
+    <20080605184941.GX2961@webber.adilger.int> <484D0155.4040701@hitachi.com>
+    <20080611123556.GA8121@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, cmm@us.ibm.com,
-	jack@suse.cz, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	linux-kernel@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Andreas Dilger <adilger@sun.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@mit.edu>, sct@redhat.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jbacik@redhat.com, cmm@us.ibm.com, yumiko.sugita.yf@hitachi.com,
+	satoshi.oshima.fk@hitachi.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:14774 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760082AbYFLMac (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 08:30:32 -0400
-In-Reply-To: <20080612040643.GA5518@skywalker>
+Received: from mail7.hitachi.co.jp ([133.145.228.42]:44365 "EHLO
+	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759827AbYFLNTy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 09:19:54 -0400
+In-Reply-To: <20080611123556.GA8121@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2008-06-12 at 09:36 +0530, Aneesh Kumar K.V wrote:
-> On Wed, Jun 11, 2008 at 12:07:49PM -0700, Andrew Morton wrote:
-> > On Wed, 11 Jun 2008 20:38:45 +0530
-> > "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+Hi,
 
-> The idea is to have ext3/4_writepages. In writepages start a transaction
-> and iterate over the pages take the lock and do block allocation. With
-> that change we should be able to not do block allocation in the
-> page_mkwrite path. We may still want to do block reservation there.
+Jan Kara wrote:
+
+> On Mon 09-06-08 19:09:25, Hidehiro Kawai wrote:
+
+>>Index: linux-2.6.26-rc4/fs/jbd/commit.c
+>>===================================================================
+>>--- linux-2.6.26-rc4.orig/fs/jbd/commit.c
+>>+++ linux-2.6.26-rc4/fs/jbd/commit.c
+>>@@ -432,8 +432,11 @@ void journal_commit_transaction(journal_
+>> 			wait_on_buffer(bh);
+>> 			spin_lock(&journal->j_list_lock);
+>> 		}
+>>-		if (unlikely(!buffer_uptodate(bh)))
+>>+		if (unlikely(!buffer_uptodate(bh))) {
+>>+			set_bit(AS_EIO, &bh->b_page->mapping->flags);
+>>+			SetPageError(bh->b_page);
+>> 			err = -EIO;
+>>+		}
 > 
-> Something like.
-> 
-> ext4_writepages()
-> {
-> 	journal_start()
-> 	for_each_page()
+>   Actually, you should be more careful here because if the data buffer has
+> been truncated in the currently running transaction, it can happen that
+> b_page->mapping is NULL. It is a question how to safely access
+> page->mapping - probably you'll need page lock for that...
 
-Even with delayed allocation, the vast majority of the pages won't need
-any allocations.  You'll hit delalloc, do a big chunk with the journal
-lock held and then do simple writepages that don't need anything
-special.
+Thank you for pointing out this problem.  I confirmed that
+b_page->mapping can be NULL.  I'm making sure that the locking page
+approach works out well.
 
-I know the jbd journal_start is cheaper than the reiserfs one is, but it
-might not perform well to hold it across the long writepages loop.  At
-least reiser saw a good boost when I stopped calling journal_begin in
-writepage unless the page really needed allocations.
-
-With the loop you have in mind, it is easy enough to back out and start
-the transaction only when required.
-
--chris
-
+Thanks,
+-- 
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
 
