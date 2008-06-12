@@ -1,61 +1,73 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
-Date: Thu, 12 Jun 2008 08:41:59 -0500
-Message-ID: <485127A7.1000303@redhat.com>
-References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker> <20080605032220.GC10488@mit.edu> <20080605084329.GB8942@skywalker> <1212677741.3645.44.camel@localhost.localdomain> <20080605182455.GV2961@webber.adilger.int> <484F45C9.3030804@cn.fujitsu.com> <20080612093431.GZ3726@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: Dump extent/sindices using debugfs
+Date: Thu, 12 Jun 2008 09:46:46 -0400
+Message-ID: <20080612134646.GC18229@mit.edu>
+References: <1213179088.3298.12.camel@alpha.linsyssoft.com> <20080611104351.GA9008@skywalker> <20080612083204.GU3726@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Shen Feng <shen@cn.fujitsu.com>, Mingming Cao <cmm@us.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Girish Shilamkar <Girish.Shilamkar@sun.com>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>
 To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:50378 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760193AbYFLNn3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jun 2008 09:43:29 -0400
-In-Reply-To: <20080612093431.GZ3726@webber.adilger.int>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:43752 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754684AbYFLNqz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 09:46:55 -0400
+Content-Disposition: inline
+In-Reply-To: <20080612083204.GU3726@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Jun 11, 2008  11:26 +0800, Shen Feng wrote:
->> Andreas Dilger Wrote:
->>> On Jun 05, 2008  07:55 -0700, Mingming Cao wrote:
->>>>>  /**
->>>>> - * ext4_new_blocks_old() -- core block(s) allocation function
->>>>> + * ext4_orlov_new_blocks() -- core block(s) allocation function
->>>> what is orlov means? this is core function for non extent based without
->>>> mballoc block allocation, right? 
->>> Orlov is the name of the INODE allocator, not the block allocator.  I'm
->>> not sure there is a name for the block allocator except "old" or "bitmap".
->>> In the future I suspect we won't want to keep this version at all, using
->>> the mballoc allocator even for block-mapped files, but it is useful for
->>> now for performance comparisons.
->>>
->> Is that true?
->>
->> I got the following from the kernel ext4 documentation.
->> orlov		(*)	This enables the new Orlov block allocator. It is
->> 			enabled by default.
->>
->> oldalloc		This disables the Orlov block allocator and enables
->> 			the old block allocator.  Orlov should have better
->> 			performance - we'd like to get some feedback if it's
->> 			the contrary for you.
-> 
-> The documentation is incorrect then.  The Orlov allocator is for inodes:
+On Thu, Jun 12, 2008 at 02:32:04AM -0600, Andreas Dilger wrote:
+> > 
+> > lib/ext2fs/tst_extents (I don't know why we don't install this by
+> > default) have inode, root and ns/n command which help to iterate the
+> > extent format inode
 
-Interestingly, though, the internets are full of references to "the
-orlov block allocator for ext*" anyway.  :)  (it seems that the original
-patches all referred to it this way):
+Some of the reasons why tst_extents was created to extend debugfs,
+instead of simply adding these commands to debugfs are:
 
-http://lwn.net/Articles/14447/
+1) To demonstrate the technique for creating programs for doing
+per-module testing various new bits of the libext2 library, without
+having to replicate a lot of infrastructure already provided by
+debugfs.  (Code reuse is good; lots of testing of *any* code before
+you submit it, in either e2fsprogs or the ext4 kernel code is a very
+good thing; one of the thing that disturbs me a little is when I trip
+over bugs that indicate that obviously the code was obviously NOT
+tested before submission, such as the on-line resizing code or patches
+to the on-line resizing code, when online resizing was clearly and
+obviously busted.)
 
-Plus, some Orlov history for those interested ;)
+2) The command names, "inode", "root", "next_sibling", etc. are
+clearly inappropriate for debugfs. 
 
-http://web.archive.org/web/20070609035919/http://www.ptci.ru/gluk/dirpref/old/dirpref.html
+> The "tst_*" programs are purely for regression testing.  Having this
+> functionality built into a proper tool like debugfs is needed.
 
--Eric
+Agreed.  That being siad, Girish's patch doesn't apply against the
+latest e2fsprogs git repository.  It uses ext2fs_read_ext_block(), and
+one of the reasons why I objected to Clusterfs's extent support in
+e2fsprogs is that it exposed the low-level extent format to userspace
+(and meant that the swapfs.c also needed extreme intimate knowledge of
+the extent tree format), and that's a bad idea if we ever want to
+change the extent format in the future.  So the extents abstraction in
+the latest e2fsprogs git tree does not have ext2fs_read_ext_block().
 
+So to properly add the desired features to debugfs would require
+taking some of the code from tst_extents (really, lib/ext2fs/extents.c
+in the #ifdef DEBUG section), and moving it into debugfs.
+
+I doubt we would want to move all of the tst_extents functionality
+into debugfs, though.  Probably just enough to dump the extent tree
+and the set_bmap functionality --- and the latter should be done by
+extending debugfs.c:do_bmap() so that it can take an optional 3rd
+argument which utilizes ext2fs_bmap() to set a logical block mapping;
+that way do_bmap() will work with normal and extent-based files, since
+ext2fs_bmap/ext2fs_bmap2 have been wired to use Eric's
+ext2fs_extent_set_bmap() function automatically for extents-based
+files.
+
+Regards,
+
+						- Ted
