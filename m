@@ -1,80 +1,92 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 1/2] ext3: kill 2 useless magic numbers
-Date: Thu, 12 Jun 2008 00:38:47 -0600
-Message-ID: <20080612063847.GR3726@webber.adilger.int>
-References: <48507964.1060309@cn.fujitsu.com>
+From: Neil Brown <neilb@suse.de>
+Subject: Re: Two questions on VFS/mm
+Date: Thu, 12 Jun 2008 17:06:26 +1000
+Message-ID: <18512.51954.831279.617586@notabene.brown>
+References: <20080604163412.GL16572@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Li Zefan <lizf@cn.fujitsu.com>
+Content-Transfer-Encoding: 7bit
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:47107 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752111AbYFLGiw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 02:38:52 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m5C6cnQu017820
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2008 23:38:52 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K2C00F017S3YL00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 11 Jun 2008 23:38:49 -0700 (PDT)
-In-reply-to: <48507964.1060309@cn.fujitsu.com>
-Content-disposition: inline
+Received: from ns2.suse.de ([195.135.220.15]:43083 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753418AbYFLHHB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jun 2008 03:07:01 -0400
+In-Reply-To: message from Jan Kara on Wednesday June 4
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jun 12, 2008  09:18 +0800, Li Zefan wrote:
-> dx_root_limit() will never return 20, and I can't figure out
-> what 20 stands for. This function has never changed since htree
-> directory indexing was merged.
+On Wednesday June 4, jack@suse.cz wrote:
+>   Hi,
 > 
-> Similar for dx_node_limit() and the magic 22.
-
-This was for testing htree split code more aggressively, but can be
-removed.
-
-Acked-by: Andreas Dilger <adilger@sun.com>
-
-> Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
-> ---
->  fs/ext3/namei.c |    4 ++--
->  1 files changed, 2 insertions(+), 2 deletions(-)
+>   could some kind soul knowledgable in VFS/mm help me with the following
+> two questions? I've spotted them when testing some ext4 for patches...
+>   1) In write_cache_pages() we do:
+> ...
+> 	lock_page(page);
+> 	...
+> 	if (!wbc->range_cyclic && page->index > end) {
+>                    done = 1;
+>                    unlock_page(page);
+>                    continue;
+>         }
+> 	...
+> 	ret = (*writepage)(page, wbc, data);
 > 
-> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-> index 0b8cf80..d282ea8 100644
-> --- a/fs/ext3/namei.c
-> +++ b/fs/ext3/namei.c
-> @@ -240,13 +240,13 @@ static inline unsigned dx_root_limit (struct inode *dir, unsigned infosize)
->  {
->  	unsigned entry_space = dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(1) -
->  		EXT3_DIR_REC_LEN(2) - infosize;
-> -	return 0? 20: entry_space / sizeof(struct dx_entry);
-> +	return entry_space / sizeof(struct dx_entry);
->  }
->  
->  static inline unsigned dx_node_limit (struct inode *dir)
->  {
->  	unsigned entry_space = dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(0);
-> -	return 0? 22: entry_space / sizeof(struct dx_entry);
-> +	return entry_space / sizeof(struct dx_entry);
->  }
->  
->  /*
-> -- 
-> 1.5.4.rc3
+>   Now the problem is that if range_cyclic is set, it can happen that the
+> page we give to the filesystem is beyond the current end of file (and can
+> be already processed by invalidatepage()). Is the filesystem supposed to
+> handle this (what would it be good for to give such a page to the fs?) or
+> is it just a bug in write_cache_pages()?
+
+Maybe there is an invariant that an address_space never has a dirty
+page beyond the end-of-file??
+Certainly 'truncate' invalidates and un-dirties such pages.
+
+With typical writes, ->write_begin will extend EOF to include the
+page, and ->write_end will mark it dirty (I think).
+
+mmap writes are probably a bit different, but I suspect the same
+principle applies.
+
+If the page is not dirty, then 
+			if (PageWriteback(page) ||
+			    !clear_page_dirty_for_io(page)) {
+				unlock_page(page);
+				continue;
+			}
+
+will fire, and you never get to
+			ret = (*writepage)(page, wbc, data);
+
+
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   2) I have the following problem with page_mkwrite() when blocksize <
+> pagesize. What we want to do is to fill in a potential hole under a page
+> somebody wants to write to. But consider following scenario with a
+> filesystem with 1k blocksize:
+>   truncate("file", 1024);
+>   ptr = mmap("file");
+>   *ptr = 'a'
+>      -> page_mkwrite() is called.
+>         but "file" is only 1k large and we cannot really allocate blocks
+>         beyond end of file. So we allocate just one 1k block.
+>   truncate("file", 4096);
+>   *(ptr + 2048) = 'a'
+>      - nothing is called and later during writepage() time we are surprised
+>        we have a dirty page which is not backed by a filesystem block.
+> 
+>   How to solve this? One idea I have here is that when we handle truncate(),
+> we mark the original last page (if it is partial) as read-only again so
+> that page_mkwrite() is called on the next write to it. Is something like
+> this possible? Pointers to code doing something similar are welcome, I don't
+> really know these things ;).
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+My understanding is that memory mapping is always done in multiples of
+the page size.
+When you dirty any part of a page, you effectively dirty the whole
+page, so you need to extend the file to cover the whole page.
+i.e. the page_mkwrite() call must extend the file to a size of 4096.
 
+NeilBrown
