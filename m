@@ -1,83 +1,52 @@
-From: Shen Feng <shen@cn.fujitsu.com>
-Subject: Re: [PATCH 2/2] ext4: Make ext4_ext_find_extent fills ext_path	completely
-Date: Thu, 12 Jun 2008 08:28:23 +0800
-Message-ID: <48506DA7.1070306@cn.fujitsu.com>
-References: <484F68BE.8040203@cn.fujitsu.com> <20080611114344.GF9008@skywalker>
+From: Li Zefan <lizf@cn.fujitsu.com>
+Subject: [PATCH 1/2] ext3: kill 2 useless magic numbers
+Date: Thu, 12 Jun 2008 09:18:28 +0800
+Message-ID: <48507964.1060309@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@MIT.EDU>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:53421 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:64767 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752487AbYFLAby (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jun 2008 20:31:54 -0400
-In-Reply-To: <20080611114344.GF9008@skywalker>
+	id S1752075AbYFLBT6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jun 2008 21:19:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+dx_root_limit() will never return 20, and I can't figure out
+what 20 stands for. This function has never changed since htree
+directory indexing was merged.
 
+Similar for dx_node_limit() and the magic 22.
 
-Aneesh Kumar K.V Wrote:
-> On Wed, Jun 11, 2008 at 01:55:10PM +0800, Shen Feng wrote:
->> When pos=0 or depth, the fields of ext4_ext_path is not
->> completely filled.
->> This patch also removes some unnecessary code.
->>
->> Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
->> ---
->>  fs/ext4/extents.c |    4 ++--
->>  1 files changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
->> index d4f76d7..ff609df 100644
->> --- a/fs/ext4/extents.c
->> +++ b/fs/ext4/extents.c
->> @@ -524,6 +524,7 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
->>  		alloc = 1;
->>  	}
->>  	path[0].p_hdr = eh;
->> +	path[0].p_bh = NULL;
-> 
-> 
-> We did a kzalloc before. So do we need this ?
+Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
+---
+ fs/ext3/namei.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
-If the path is not allocated by kzalloc, we need this.
-
-> 
-> 
-> 
->>  	i = depth;
->>  	/* walk through the tree */
->> @@ -552,12 +553,11 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
->>  	}
->>
->>  	path[ppos].p_depth = i;
->> -	path[ppos].p_hdr = eh;
-> 
-> 
-> This is needed. Because we look at extent_header  in ext_binsearch.
-
-This has been done in the last while loop.
-
-> 
-> 
-> 
->> -	path[ppos].p_ext = NULL;
->>  	path[ppos].p_idx = NULL;
->>
->>  	/* find extent */
->>  	ext4_ext_binsearch(inode, path + ppos, block);
->> +	path[ppos].p_block = ext4_ext_pblock(path[ppos].p_ext);
->>
->>  	ext4_ext_show_path(inode, path);
->>
-> 
-> -aneesh
-> 
-> 
-
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 0b8cf80..d282ea8 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -240,13 +240,13 @@ static inline unsigned dx_root_limit (struct inode *dir, unsigned infosize)
+ {
+ 	unsigned entry_space = dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(1) -
+ 		EXT3_DIR_REC_LEN(2) - infosize;
+-	return 0? 20: entry_space / sizeof(struct dx_entry);
++	return entry_space / sizeof(struct dx_entry);
+ }
+ 
+ static inline unsigned dx_node_limit (struct inode *dir)
+ {
+ 	unsigned entry_space = dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(0);
+-	return 0? 22: entry_space / sizeof(struct dx_entry);
++	return entry_space / sizeof(struct dx_entry);
+ }
+ 
+ /*
+-- 
+1.5.4.rc3
 
