@@ -1,99 +1,61 @@
-From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
-Subject: Re: [PATCH v2] ext4: fix online resize group descriptors corruption
-Date: Thu, 12 Jun 2008 15:35:52 +0200
-Message-ID: <1213277752.7974.8.camel@localhost>
-References: <1213263754.6549.45.camel@localhost>
-	 <20080612105945.GB3726@webber.adilger.int>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
+Date: Thu, 12 Jun 2008 08:41:59 -0500
+Message-ID: <485127A7.1000303@redhat.com>
+References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker> <20080605032220.GC10488@mit.edu> <20080605084329.GB8942@skywalker> <1212677741.3645.44.camel@localhost.localdomain> <20080605182455.GV2961@webber.adilger.int> <484F45C9.3030804@cn.fujitsu.com> <20080612093431.GZ3726@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Shen Feng <shen@cn.fujitsu.com>, Mingming Cao <cmm@us.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:59784 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758211AbYFLNf2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 09:35:28 -0400
-In-Reply-To: <20080612105945.GB3726@webber.adilger.int>
+Received: from mx1.redhat.com ([66.187.233.31]:50378 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760193AbYFLNn3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jun 2008 09:43:29 -0400
+In-Reply-To: <20080612093431.GZ3726@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Le jeudi 12 juin 2008 =C3=A0 04:59 -0600, Andreas Dilger a =C3=A9crit :
-> On Jun 12, 2008  11:42 +0200, Fr=EF=BF=BDd=EF=BF=BDric Boh=EF=BF=BD w=
-rote:
-> > From: Frederic Bohe <frederic.bohe@bull.net>
-> >=20
-> > This is the patch for the group descriptor table corruption during
-> > online resize pointed out by Theodore Tso.
-> > The issue was due to the ext4 group descriptor which can be either
-> > 32 or 64 bytes long.
-> > Only the 64 bytes structure was taken into account.
-> >=20
-> > diff -rup a/fs/ext4/resize.c b/fs/ext4/resize.c
-> > --- a/fs/ext4/resize.c
-> > +++ b/fs/ext4/resize.c
-> > @@ -855,7 +855,8 @@ int ext4_group_add(struct super_block *s
-> >  	 */
-> > =20
-> >  	/* Update group descriptor block for new group */
-> > -	gdp =3D (struct ext4_group_desc *)primary->b_data + gdb_off;
-> > +	gdp =3D (struct ext4_group_desc *)(
-> > +	       (__u8 *)primary->b_data + gdb_off * EXT4_DESC_SIZE(sb));
->=20
-> Normally pointer arithmetic is done by casting to (char *)...
-> Otherwise, patch looks sensible, though it could be reformatted to=20
-> match the normal coding style a bit better:
->=20
-> 	gdp =3D (struct ext4_group_desc *)((char *)primary->b_data +
-> 					 gdb_off * EXT4_DESC_SIZE(sb));
->=20
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
->=20
->=20
-=EF=BB=BF
-> From: Frederic Bohe <frederic.bohe@bull.net>
-> >=20
-> > This is the patch for the group descriptor table corruption during
-> > online resize pointed out by Theodore Tso.
-> > The issue was due to the ext4 group descriptor which can be either
-> > 32 or 64 bytes long.
-> > Only the 64 bytes structure was taken into account.
->=20
-=EF=BB=BF=EF=BB=BF=EF=BB=BFFrom: Frederic Bohe <frederic.bohe@bull.net>=
-=20
+Andreas Dilger wrote:
+> On Jun 11, 2008  11:26 +0800, Shen Feng wrote:
+>> Andreas Dilger Wrote:
+>>> On Jun 05, 2008  07:55 -0700, Mingming Cao wrote:
+>>>>>  /**
+>>>>> - * ext4_new_blocks_old() -- core block(s) allocation function
+>>>>> + * ext4_orlov_new_blocks() -- core block(s) allocation function
+>>>> what is orlov means? this is core function for non extent based without
+>>>> mballoc block allocation, right? 
+>>> Orlov is the name of the INODE allocator, not the block allocator.  I'm
+>>> not sure there is a name for the block allocator except "old" or "bitmap".
+>>> In the future I suspect we won't want to keep this version at all, using
+>>> the mballoc allocator even for block-mapped files, but it is useful for
+>>> now for performance comparisons.
+>>>
+>> Is that true?
+>>
+>> I got the following from the kernel ext4 documentation.
+>> orlov		(*)	This enables the new Orlov block allocator. It is
+>> 			enabled by default.
+>>
+>> oldalloc		This disables the Orlov block allocator and enables
+>> 			the old block allocator.  Orlov should have better
+>> 			performance - we'd like to get some feedback if it's
+>> 			the contrary for you.
+> 
+> The documentation is incorrect then.  The Orlov allocator is for inodes:
 
-This is the patch for the group descriptor table corruption during
-online resize pointed out by Theodore Tso.
-The issue was due to the ext4 group descriptor which can be either
-32 or 64 bytes long.
-Only the 64 bytes structure was taken into account.=20
+Interestingly, though, the internets are full of references to "the
+orlov block allocator for ext*" anyway.  :)  (it seems that the original
+patches all referred to it this way):
 
-=EF=BB=BFSigned-off-by: Frederic Bohe <frederic.bohe@bull.net>
----
-=EF=BB=BF resize.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+http://lwn.net/Articles/14447/
 
-diff -rup a/fs/ext4/resize.c b/fs/ext4/resize.c
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -855,7 +855,8 @@ int ext4_group_add(struct super_block *s
- 	 */
-=20
- 	/* Update group descriptor block for new group */
--	gdp =3D (struct ext4_group_desc *)primary->b_data + gdb_off;
-+	gdp =3D (struct ext4_group_desc *)((char *)primary->b_data +
-+	                                 gdb_off * EXT4_DESC_SIZE(sb));
-=20
- 	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
- 	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
+Plus, some Orlov history for those interested ;)
 
+http://web.archive.org/web/20070609035919/http://www.ptci.ru/gluk/dirpref/old/dirpref.html
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Eric
+
