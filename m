@@ -1,106 +1,91 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] ext4: Fix delalloc sync hang with journal lock
-	inversion
-Date: Thu, 12 Jun 2008 16:10:47 -0700
-Message-ID: <1213312247.3698.29.camel@localhost.localdomain>
-References: <1212154769-16486-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1212154769-16486-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1212154769-16486-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <20080602093459.GC30613@duck.suse.cz> <20080602095956.GB9225@skywalker>
-	 <20080602102759.GG30613@duck.suse.cz> <20080605135413.GI8942@skywalker>
-	 <20080605162209.GG27370@duck.suse.cz> <20080605191909.GD4723@skywalker>
-	 <20080611124157.GB8121@duck.suse.cz>  <20080611135631.GA15169@skywalker>
+Subject: Re: [PATCH 1/2] ext3: kill 2 useless magic numbers
+Date: Thu, 12 Jun 2008 16:11:34 -0700
+Message-ID: <1213312294.3698.30.camel@localhost.localdomain>
+References: <48507964.1060309@cn.fujitsu.com>
+	 <20080612063847.GR3726@webber.adilger.int>
 Reply-To: cmm@us.ibm.com
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Li Zefan <lizf@cn.fujitsu.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:56313 "EHLO e5.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:38101 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756703AbYFLXKt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jun 2008 19:10:49 -0400
+	id S1756253AbYFLXLk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jun 2008 19:11:40 -0400
 Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m5CNAmSZ012970
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 19:10:48 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5CNAmEE209166
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 19:10:48 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5CNAlS8014503
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 19:10:48 -0400
-In-Reply-To: <20080611135631.GA15169@skywalker>
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m5CNBabF028419
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 19:11:36 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5CNBas0233192
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 19:11:36 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5CNBZ4A008146
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 19:11:36 -0400
+In-Reply-To: <20080612063847.GR3726@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2008-06-11 at 19:26 +0530, Aneesh Kumar K.V wrote:
+On Thu, 2008-06-12 at 00:38 -0600, Andreas Dilger wrote:
+> On Jun 12, 2008  09:18 +0800, Li Zefan wrote:
+> > dx_root_limit() will never return 20, and I can't figure out
+> > what 20 stands for. This function has never changed since htree
+> > directory indexing was merged.
+> > 
+> > Similar for dx_node_limit() and the magic 22.
+> 
+> This was for testing htree split code more aggressively, but can be
+> removed.
+> 
+> Acked-by: Andreas Dilger <adilger@sun.com>
 
-> Attaching the updated patch.
-> 
-> Mingming,
-> 
-> Can you update the patchqueu with the  below attached patch ?
-> 
-
-Sure, just did.
+I added the ext4 version to the patch queue
 
 Mingming
-> -aneesh
 > 
-> mm: Add range_cont mode for writeback.
+> > Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
+> > ---
+> >  fs/ext3/namei.c |    4 ++--
+> >  1 files changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+> > index 0b8cf80..d282ea8 100644
+> > --- a/fs/ext3/namei.c
+> > +++ b/fs/ext3/namei.c
+> > @@ -240,13 +240,13 @@ static inline unsigned dx_root_limit (struct inode *dir, unsigned infosize)
+> >  {
+> >  	unsigned entry_space = dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(1) -
+> >  		EXT3_DIR_REC_LEN(2) - infosize;
+> > -	return 0? 20: entry_space / sizeof(struct dx_entry);
+> > +	return entry_space / sizeof(struct dx_entry);
+> >  }
+> >  
+> >  static inline unsigned dx_node_limit (struct inode *dir)
+> >  {
+> >  	unsigned entry_space = dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(0);
+> > -	return 0? 22: entry_space / sizeof(struct dx_entry);
+> > +	return entry_space / sizeof(struct dx_entry);
+> >  }
+> >  
+> >  /*
+> > -- 
+> > 1.5.4.rc3
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
 > 
-> Filesystems like ext4 needs to start a new transaction in
-> the writepages for block allocation. This happens with delayed
-> allocation and there is limit to how many credits we can request
-> from the journal layer. So we call write_cache_pages multiple
-> times with wbc->nr_to_write set to the maximum possible value
-> limitted by the max journal credits available.
-> 
-> Add a new mode to writeback that enables us to handle this
-> behaviour. In the new mode we update the wbc->range_start
-> to point to the new offset to be written. Next call to
-> call to write_cache_pages will start writeout from  specified
-> range_start offset. In the new mode we also limit writing
-> to the specified wbc->range_end.
-> 
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
-> 
->  include/linux/writeback.h |    1 +
->  mm/page-writeback.c       |    3 +++
->  2 files changed, 4 insertions(+), 0 deletions(-)
-> 
-> 
-> diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-> index f462439..0d8573e 100644
-> --- a/include/linux/writeback.h
-> +++ b/include/linux/writeback.h
-> @@ -63,6 +63,7 @@ struct writeback_control {
->  	unsigned for_writepages:1;	/* This is a writepages() call */
->  	unsigned range_cyclic:1;	/* range_start is cyclic */
->  	unsigned more_io:1;		/* more io to be dispatched */
-> +	unsigned range_cont:1;
->  };
-> 
->  /*
-> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> index 789b6ad..ded57d5 100644
-> --- a/mm/page-writeback.c
-> +++ b/mm/page-writeback.c
-> @@ -956,6 +956,9 @@ int write_cache_pages(struct address_space *mapping,
->  	}
->  	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
->  		mapping->writeback_index = index;
-> +
-> +	if (wbc->range_cont)
-> +		wbc->range_start = index << PAGE_CACHE_SHIFT;
->  	return ret;
->  }
->  EXPORT_SYMBOL(write_cache_pages);
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
