@@ -1,60 +1,51 @@
-From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
-Subject: [PATCH] ext4: fix online resize group descriptors corruption
-Date: Thu, 12 Jun 2008 11:42:34 +0200
-Message-ID: <1213263754.6549.45.camel@localhost>
+From: Solofo.Ramangalahy@bull.net
+Subject: Re: Performance of ext4
+Date: Thu, 12 Jun 2008 12:58:33 +0200
+Message-ID: <18513.345.553912.449710@frecb006361.adech.frec.bull.fr>
+References: <Pine.LNX.4.64.0806110801370.19793@diagnostix.dwd.de>
+	<20080611105945.GB9008@skywalker>
+	<Pine.LNX.4.64.0806111937460.3720@diagnostix.dwd.de>
+	<18563.1213215457@alphaville.zko.hp.com>
+	<Pine.LNX.4.64.0806120855370.27806@diagnostix.dwd.de>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+Cc: Nick Dokos <nicholas.dokos@hp.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Holger Kiehl <Holger.Kiehl@dwd.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:42208 "EHLO
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:47712 "EHLO
 	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752488AbYFLJmQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 05:42:16 -0400
+	with ESMTP id S1759612AbYFLK6H (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 06:58:07 -0400
+In-Reply-To: <Pine.LNX.4.64.0806120855370.27806@diagnostix.dwd.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Frederic Bohe <frederic.bohe@bull.net>
+Hi Holger,
 
-This is the patch for the group descriptor table corruption during
-online resize pointed out by Theodore Tso.
-The issue was due to the ext4 group descriptor which can be either
-32 or 64 bytes long.
-Only the 64 bytes structure was taken into account.
+Holger Kiehl writes:
+ > That works until it comes to patch patches/ext4_ialloc-flexbg.patch when
+ > it gets lots of rejects. So how do I set this up correctly?
 
-Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
----
-URL for the discussion about this issue: http://article.gmane.org/gmane.comp.file-systems.ext4/7226
+I think your quilt is set up correctly.
 
-The patch has been tested with linux-2.6.26-rc4-ext4-1 and
-e2fsprogs-git-master-2008-06-07-365857912e27914afa8857af5adf74ee19ca9e03
-under kvm and loopback device and without mballoc.
+The rejects probably come from the patch queue being based on a
+different version than 2.6.26-rc5.
 
-It has also been tested with linux-2.6.26-rc5, 
-ext4-patch-queue-f245e945ae491e7931076706217b63d4bf0b5a1b
-and e2fsprogs-365857912e27914afa8857af5adf74ee19ca9e03
-with a physical hard disk and without mballoc
+Which patchset did you use?
 
-The patch does not correct the mballoc case (Oops in ext4_mb_release).
-There is still an issue when resizing a flex_bg filesystem.
+What I do when wanting a patch queue for a specific kernel is to
+search for commit message indicating the rebase for this version.
 
- resize.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+There is a "Rebase to linux-2.6.26-rc5" on
+http://repo.or.cz/w/ext4-patch-queue.git
+So the corresponding snapshot
+http://repo.or.cz/w/ext4-patch-queue.git?a=snapshot;h=ed6aaac3b0cc0ba47dbb2af0884306584271e5a2;sf=tgz
+patches 2.6.26-rc5 smoothly.
+(the last patchset also applies, with offset and fuzz, though)
 
-diff -rup a/fs/ext4/resize.c b/fs/ext4/resize.c
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -855,7 +855,8 @@ int ext4_group_add(struct super_block *s
- 	 */
- 
- 	/* Update group descriptor block for new group */
--	gdp = (struct ext4_group_desc *)primary->b_data + gdb_off;
-+	gdp = (struct ext4_group_desc *)(
-+	       (__u8 *)primary->b_data + gdb_off * EXT4_DESC_SIZE(sb));
- 
- 	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
- 	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
-
-
-
-
+-- 
+solofo
