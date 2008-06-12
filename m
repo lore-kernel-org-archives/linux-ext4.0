@@ -1,52 +1,53 @@
-From: Holger Kiehl <Holger.Kiehl@dwd.de>
-Subject: Re: Performance of ext4
-Date: Thu, 12 Jun 2008 19:50:35 +0000 (GMT)
-Message-ID: <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de>
-References: <Pine.LNX.4.64.0806110801370.19793@diagnostix.dwd.de>
- <20080611105945.GB9008@skywalker> <Pine.LNX.4.64.0806111937460.3720@diagnostix.dwd.de>
- <18563.1213215457@alphaville.zko.hp.com> <Pine.LNX.4.64.0806120855370.27806@diagnostix.dwd.de>
- <18513.345.553912.449710@frecb006361.adech.frec.bull.fr>
- <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de> <20080612131928.GB18229@mit.edu>
- <Pine.LNX.4.64.0806121333480.27806@diagnostix.dwd.de> <20080612180605.GD22481@skywalker>
+From: "Duane Griffin" <duaneg@dghda.com>
+Subject: Re: [PATCH 6/6] ext4: tighten restrictions on inode flags
+Date: Thu, 12 Jun 2008 21:35:25 +0100
+Message-ID: <e9e943910806121335g4bd858bga91e2d336f5b9760@mail.gmail.com>
+References: <1213142649-32685-1-git-send-email-duaneg@dghda.com>
+	 <1213142649-32685-2-git-send-email-duaneg@dghda.com>
+	 <1213142649-32685-3-git-send-email-duaneg@dghda.com>
+	 <1213142649-32685-4-git-send-email-duaneg@dghda.com>
+	 <1213142649-32685-5-git-send-email-duaneg@dghda.com>
+	 <1213142649-32685-6-git-send-email-duaneg@dghda.com>
+	 <1213142649-32685-7-git-send-email-duaneg@dghda.com>
+	 <20080611113104.GC9008@skywalker>
+	 <e9e943910806110449sbf30bf6xd98840fcd343519d@mail.gmail.com>
+	 <1213298827.6382.2.camel@norville.austin.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Theodore Tso <tytso@mit.edu>, Solofo.Ramangalahy@bull.net,
-	Nick Dokos <nicholas.dokos@hp.com>, linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	akpm@linux-foundation.org, "Andreas Dilger" <adilger@sun.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Dave Kleikamp" <shaggy@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dwdmx4.dwd.de ([141.38.3.230]:59606 "EHLO dwdmx4.dwd.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754346AbYFLTun (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jun 2008 15:50:43 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by node5.dwd.de (Postfix) with ESMTP id 46F3A3303F6
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 19:50:42 +0000 (UTC)
-Received: from localhost ([127.0.0.1])
-	by localhost (node5.csg-cluster.lan [127.0.0.1]) (amavisd-new, port 2525)
-	with SMTP id 09896-64 for <linux-ext4@vger.kernel.org>;
-	Thu, 12 Jun 2008 19:50:42 +0000 (UTC)
-In-Reply-To: <20080612180605.GD22481@skywalker>
+Received: from wf-out-1314.google.com ([209.85.200.169]:47723 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753438AbYFLUf0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 16:35:26 -0400
+Received: by wf-out-1314.google.com with SMTP id 27so3771074wfd.4
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 13:35:26 -0700 (PDT)
+In-Reply-To: <1213298827.6382.2.camel@norville.austin.ibm.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 12 Jun 2008, Aneesh Kumar K.V wrote:
-
-> On Thu, Jun 12, 2008 at 02:07:30PM +0000, Holger Kiehl wrote:
->> This time there is no OOPS and system is still up running without any
->> problem (except any process wanting to write something to this filesystem
->> gets stuck forever).
->>
->> What can I do to help find the problem? The system is still up with all those
->> process hanging in D-state.
->>
+2008/6/12 Dave Kleikamp <shaggy@linux.vnet.ibm.com>:
+>> Whoops, I was matching the fields in ex4_inode, but I should have been
+>> looking at ext4_inode_info. Shouldn't sparse have complained about
+>> that?
 >
-> if you can login to the system get the dmesg output after
+> It does, but not by default.  You need to run sparse with
+> -D__CHECK_ENDIAN__
 >
-> echo t > /proc/sysrq-trigger
->
-Unfortunately I have not set CONFIG_MAGIC_SYSRQ. Tomorrow I will try to
-reproduce this with a kernel that has CONFIG_MAGIC_SYSRQ set.
+> I use this alias:
+> make_sparse is aliased to `make C=2 CF="-D__CHECK_ENDIAN__"'
 
-Holger
+That does the trick nicely, thanks!
 
+> Shaggy
+
+Cheers,
+Duane.
+
+-- 
+"I never could learn to drink that blood and call it wine" - Bob Dylan
