@@ -1,73 +1,83 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: PATCH] ext4: Change error handling in ext4_defrag_alloc_blocks
-Date: Thu, 12 Jun 2008 10:43:31 +0900
-Message-ID: <48507F43.8080602@rs.jp.nec.com>
+From: Shen Feng <shen@cn.fujitsu.com>
+Subject: [PATCH V2] ext4: Fix the loop condition in ext4_mb_free_committed_blocks
+Date: Thu, 12 Jun 2008 10:57:05 +0800
+Message-ID: <48509081.7070103@cn.fujitsu.com>
+References: <484F4CC1.3000109@cn.fujitsu.com> <20080611142356.GL8397@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	shen@cn.fujitsu.com
-To: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
-	Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:50525 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751624AbYFLBp5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Jun 2008 21:45:57 -0400
+Received: from cn.fujitsu.com ([222.73.24.84]:56743 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753340AbYFLDAe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Jun 2008 23:00:34 -0400
+In-Reply-To: <20080611142356.GL8397@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Change error handling in ext4_defrag_alloc_blocks,
-since ext4_ext_journal_restart returns the error value.
 
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+>> Since md is freed before the do-while checks it,
+>> it's better to change it to while(1).
+> 
+> This actually isn't a bug, since there is no problem checking a
+> pointer that has been freed; its only *dereferencing* a pointer which
+> is bad.  That being said, md is never NULL at the end of the loop,
+> since in the middle of the loop is the only break condition:
+> 
+> 	if (md == NULL)
+> 		break;
+> 
+> So the patch saves a tiny amount of compiled code, but it isn't really
+> a fix in any way.
+> 
+> That being said, if we're going to make this sort of change, my
+> preference would be to use the more common C idiom:
+> 
+> 	while (1) {
+> 	      ...
+> 	}
+> 
+> as opposed to
+> 
+> 	do {
+> 	      ...
+> 	} while (1);
+> 
+> The former makes it quite clear that any exit from the loop is not
+> going to be coming from loop construct itself, but from any embedded
+> break statements inside the loop construct
+> 
+
+Yes. You are right. Revise the patch as you suggested.
+
+Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
 ---
- fs/ext4/defrag.c  |    6 ++----
- fs/ext4/ext4.h    |    2 +-
- fs/ext4/extents.c |    2 +-
- 3 files changed, 4 insertions(+), 6 deletions(-)
-diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
-index cd8b151..5187681 100644
---- a/fs/ext4/defrag.c
-+++ b/fs/ext4/defrag.c
-@@ -1386,12 +1386,10 @@ ext4_defrag_alloc_blocks(handle_t *handle, struct inode *org_inode,
- 	int err, i, credits = 0;
+ fs/ext4/mballoc.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
- 	credits = ext4_ext_calc_credits_for_insert(dest_inode, dest_path);
--	handle = ext4_ext_journal_restart(handle,
-+	err = ext4_ext_journal_restart(handle,
- 				credits + EXT4_TRANS_META_BLOCKS);
--	if (IS_ERR(handle)) {
--		err = PTR_ERR(handle);
-+	if (err)
- 		return err;
--	}
-
- 	*newblock = ext4_mb_new_blocks(handle, ar, &err);
- 	if (err)
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index eec99be..202514e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1198,7 +1198,7 @@ extern void ext4_inode_bitmap_set(struct super_block *sb,
- extern void ext4_inode_table_set(struct super_block *sb,
- 				 struct ext4_group_desc *bg, ext4_fsblk_t blk);
- /* extents.c */
--extern handle_t *ext4_ext_journal_restart(handle_t *handle, int needed);
-+extern int ext4_ext_journal_restart(handle_t *handle, int needed);
- /* defrag.c */
- extern int ext4_defrag(struct file *filp, ext4_lblk_t block_start,
- 			ext4_lblk_t defrag_size, ext4_fsblk_t goal,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 8d47490..30e011b 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -93,7 +93,7 @@ static void ext4_idx_store_pblock(struct ext4_extent_idx *ix, ext4_fsblk_t pb)
- 	ix->ei_leaf_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index c9900aa..bd6cf22 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2521,7 +2521,7 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
+ 		return;
+ 
+ 	/* there is committed blocks to be freed yet */
+-	do {
++	while (1) {
+ 		/* get next array of blocks */
+ 		md = NULL;
+ 		spin_lock(&sbi->s_md_lock);
+@@ -2561,7 +2561,7 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
+ 		kfree(md);
+ 		ext4_mb_release_desc(&e4b);
+ 
+-	} while (md);
++	}
+ 
+ 	mb_debug("freed %u blocks in %u structures\n", count, count2);
  }
-
--handle_t *ext4_ext_journal_restart(handle_t *handle, int needed)
-+int ext4_ext_journal_restart(handle_t *handle, int needed)
- {
- 	int err;
-
+-- 1.5.4.5 
