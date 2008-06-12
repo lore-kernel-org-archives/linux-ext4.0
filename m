@@ -1,131 +1,80 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext2: Use page_mkwrite vma_operations to get mmap
-	write notification.
-Date: Thu, 12 Jun 2008 09:36:43 +0530
-Message-ID: <20080612040643.GA5518@skywalker>
-References: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080605123045.445e380a.akpm@linux-foundation.org> <20080611150845.GA21910@skywalker> <20080611120749.d0c5a7de.akpm@linux-foundation.org>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 1/2] ext3: kill 2 useless magic numbers
+Date: Thu, 12 Jun 2008 00:38:47 -0600
+Message-ID: <20080612063847.GR3726@webber.adilger.int>
+References: <48507964.1060309@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, jack@suse.cz, linux-ext4@vger.kernel.org,
-	linux-mm@kvack.org, linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Transfer-Encoding: 7BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Li Zefan <lizf@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:48859 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750793AbYFLEHE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 00:07:04 -0400
-Content-Disposition: inline
-In-Reply-To: <20080611120749.d0c5a7de.akpm@linux-foundation.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:47107 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752111AbYFLGiw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 02:38:52 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m5C6cnQu017820
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Jun 2008 23:38:52 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K2C00F017S3YL00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 11 Jun 2008 23:38:49 -0700 (PDT)
+In-reply-to: <48507964.1060309@cn.fujitsu.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 11, 2008 at 12:07:49PM -0700, Andrew Morton wrote:
-> On Wed, 11 Jun 2008 20:38:45 +0530
-> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+On Jun 12, 2008  09:18 +0800, Li Zefan wrote:
+> dx_root_limit() will never return 20, and I can't figure out
+> what 20 stands for. This function has never changed since htree
+> directory indexing was merged.
 > 
-> > On Thu, Jun 05, 2008 at 12:30:45PM -0700, Andrew Morton wrote:
-> > > On Thu,  5 Jun 2008 22:35:12 +0530
-> > > "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > > 
-> > > > We would like to get notified when we are doing a write on mmap
-> > > > section.  The changes are needed to handle ENOSPC when writing to an
-> > > > mmap section of files with holes.
-> > > > 
-> > > 
-> > > Whoa.  You didn't copy anything like enough mailing lists for a change
-> > > of this magnitude.  I added some.
-> > > 
-> > > This is a large change in behaviour!
-> > > 
-> > > a) applications will now get a synchronous SIGBUS when modifying a
-> > >    page over an ENOSPC filesystem.  Whereas previously they could have
-> > >    proceeded to completion and then detected the error via an fsync().
-> > 
-> > Or not detect the error at all if we don't call fsync() right ? Isn't a
-> > synchronous SIGBUS the right behaviour ?
-> >
-> 
-> Not according to POSIX.  Or at least posix-several-years-ago, when this
-> last was discussed.  The spec doesn't have much useful to say about any
-> of this.
-> 
-> It's a significant change in the userspace interface.
-> 
-> > 
-> > > 
-> > >    It's going to take more than one skimpy little paragraph to
-> > >    justify this, and to demonstrate that it is preferable, and to
-> > >    convince us that nothing will break from this user-visible behaviour
-> > >    change.
-> > > 
-> > > b) we're now doing fs operations (and some I/O) in the pagefault
-> > >    code.  This has several implications:
-> > > 
-> > >    - performance changes
-> > > 
-> > >    - potential for deadlocks when a process takes the fault from
-> > >      within a copy_to_user() in, say, mm/filemap.c
-> > > 
-> > >    - performing additional memory allocations within that
-> > >      copy_to_user().  Possibility that these will reenter the
-> > >      filesystem.
-> > > 
-> > > And that's just ext2.
-> > > 
-> > > For ext3 things are even more complex, because we have the
-> > > journal_start/journal_end pair which is effectively another "lock" for
-> > > ranking/deadlock purposes.  And now we're taking i_alloc_sem and
-> > > lock_page and we're doing ->writepage() and its potential
-> > > journal_start(), all potentially within the context of a
-> > > copy_to_user().
-> > 
-> > One of the reason why we would need this in ext3/ext4 is that we cannot
-> > do block allocation in the writepage with the recent locking changes.
-> 
-> Perhaps those recent locking changes were wrong.
-> 
-> > The locking changes involve changing the locking order of journal_start
-> > and page_lock. With writepage we are already called with page_lock and
-> > we can't start new transaction needed for block allocation.
-> 
-> ext3_write_begin() has journal_start() nesting inside the lock_page().
-> 
+> Similar for dx_node_limit() and the magic 22.
 
-All those are changed as a part of lock inversion changes.
+This was for testing htree split code more aggressively, but can be
+removed.
 
+Acked-by: Andreas Dilger <adilger@sun.com>
 
-
-> > But if we agree that we should not do block allocation in page_mkwrite
-> > we need to add writepages and allocate blocks in writepages.
+> Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
+> ---
+>  fs/ext3/namei.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
 > 
-> I'm not sure what writepages has to do with pagefaults?
+> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+> index 0b8cf80..d282ea8 100644
+> --- a/fs/ext3/namei.c
+> +++ b/fs/ext3/namei.c
+> @@ -240,13 +240,13 @@ static inline unsigned dx_root_limit (struct inode *dir, unsigned infosize)
+>  {
+>  	unsigned entry_space = dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(1) -
+>  		EXT3_DIR_REC_LEN(2) - infosize;
+> -	return 0? 20: entry_space / sizeof(struct dx_entry);
+> +	return entry_space / sizeof(struct dx_entry);
+>  }
+>  
+>  static inline unsigned dx_node_limit (struct inode *dir)
+>  {
+>  	unsigned entry_space = dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(0);
+> -	return 0? 22: entry_space / sizeof(struct dx_entry);
+> +	return entry_space / sizeof(struct dx_entry);
+>  }
+>  
+>  /*
+> -- 
+> 1.5.4.rc3
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-The idea is to have ext3/4_writepages. In writepages start a transaction
-and iterate over the pages take the lock and do block allocation. With
-that change we should be able to not do block allocation in the
-page_mkwrite path. We may still want to do block reservation there.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-Something like.
-
-ext4_writepages()
-{
-	journal_start()
-	for_each_page()
-	lock_page
-	if (bh_unmapped()...)
-		block_alloc()
-	unlock_page
-	journal_stop()
-
-}
-
-ext4_writepage()
-{
-	for_each_buffer_head()
-		if (bh_unmapped()) {
-			redirty_page
-			unlock_page
-			return;
-		}
-}
