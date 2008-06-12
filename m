@@ -1,359 +1,115 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH] ext4: Add ordered mode support for delalloc
-Date: Thu, 12 Jun 2008 20:55:16 +0530
-Message-ID: <1213284316-22063-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext2: Use page_mkwrite vma_operations to get mmap
+	write notification.
+Date: Thu, 12 Jun 2008 18:17:06 +0200
+Message-ID: <20080612161706.GB12367@duck.suse.cz>
+References: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080605123045.445e380a.akpm@linux-foundation.org> <20080611150845.GA21910@skywalker> <20080611120749.d0c5a7de.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	cmm@us.ibm.com, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
+	linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:46340 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752428AbYFLPZb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 11:25:31 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m5CFOvmJ019737
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 01:24:57 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5CFP89L3682328
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 01:25:09 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5CFPRoo016635
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 01:25:28 +1000
+Received: from styx.suse.cz ([82.119.242.94]:39852 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750771AbYFLQRI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jun 2008 12:17:08 -0400
+Content-Disposition: inline
+In-Reply-To: <20080611120749.d0c5a7de.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/inode.c  |  169 +++++++++++++++++++++++++++++++++++++++++++++++++++--
- fs/jbd2/commit.c |   41 ++++++++++++--
- 2 files changed, 198 insertions(+), 12 deletions(-)
+On Wed 11-06-08 12:07:49, Andrew Morton wrote:
+> On Wed, 11 Jun 2008 20:38:45 +0530
+> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> 
+> > On Thu, Jun 05, 2008 at 12:30:45PM -0700, Andrew Morton wrote:
+> > > On Thu,  5 Jun 2008 22:35:12 +0530
+> > > "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > 
+> > > > We would like to get notified when we are doing a write on mmap
+> > > > section.  The changes are needed to handle ENOSPC when writing to an
+> > > > mmap section of files with holes.
+> > > > 
+> > > 
+> > > Whoa.  You didn't copy anything like enough mailing lists for a change
+> > > of this magnitude.  I added some.
+> > > 
+> > > This is a large change in behaviour!
+> > > 
+> > > a) applications will now get a synchronous SIGBUS when modifying a
+> > >    page over an ENOSPC filesystem.  Whereas previously they could have
+> > >    proceeded to completion and then detected the error via an fsync().
+> > 
+> > Or not detect the error at all if we don't call fsync() right ? Isn't a
+> > synchronous SIGBUS the right behaviour ?
+> >
+> 
+> Not according to POSIX.  Or at least posix-several-years-ago, when this
+> last was discussed.  The spec doesn't have much useful to say about any
+> of this.
+> 
+> It's a significant change in the userspace interface.
+> 
+> > 
+> > > 
+> > >    It's going to take more than one skimpy little paragraph to
+> > >    justify this, and to demonstrate that it is preferable, and to
+> > >    convince us that nothing will break from this user-visible behaviour
+> > >    change.
+> > > 
+> > > b) we're now doing fs operations (and some I/O) in the pagefault
+> > >    code.  This has several implications:
+> > > 
+> > >    - performance changes
+> > > 
+> > >    - potential for deadlocks when a process takes the fault from
+> > >      within a copy_to_user() in, say, mm/filemap.c
+> > > 
+> > >    - performing additional memory allocations within that
+> > >      copy_to_user().  Possibility that these will reenter the
+> > >      filesystem.
+> > > 
+> > > And that's just ext2.
+> > > 
+> > > For ext3 things are even more complex, because we have the
+> > > journal_start/journal_end pair which is effectively another "lock" for
+> > > ranking/deadlock purposes.  And now we're taking i_alloc_sem and
+> > > lock_page and we're doing ->writepage() and its potential
+> > > journal_start(), all potentially within the context of a
+> > > copy_to_user().
+> > 
+> > One of the reason why we would need this in ext3/ext4 is that we cannot
+> > do block allocation in the writepage with the recent locking changes.
+> 
+> Perhaps those recent locking changes were wrong.
+  Well, the locking changes are those reverting locking ordering of
+transaction start and page lock - we have them in ext4 and Aneesh seems 
+to be looking into porting them to ext3 (at least ordered mode rewrite
+needs them). I wouldn't say they are wrong in principle.
+  It's easier to use page_mkwrite() to allocate blocks so that
+later in writepage() we don't have to do block allocation which needs to
+start a transaction (because that means unlocking the page which gets
+quickly nasty to handle properly...).
+  BTW: XFS, OCFS2 or GFS2 define page_mkwrite() in this manner so they do
+return SIGBUS when you run out of space when writing to mmapped hole. So
+it's not like this change is introducing completely new behavior... I can
+understand that we might not want to change the behavior for ext2 or ext3
+but ext4 is IMO definitely free to choose.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 63355ab..7d87641 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1606,13 +1606,12 @@ static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
- 	return !buffer_mapped(bh) || buffer_delay(bh);
- }
- 
--/* FIXME!! only support data=writeback mode */
- /*
-  * get called vi ext4_da_writepages after taking page lock
-  * We may end up doing block allocation here in case
-  * mpage_da_map_blocks failed to allocate blocks.
-  */
--static int ext4_da_writepage(struct page *page,
-+static int ext4_da_writeback_writepage(struct page *page,
- 				struct writeback_control *wbc)
- {
- 	int ret = 0;
-@@ -1660,6 +1659,61 @@ static int ext4_da_writepage(struct page *page,
- 	return ret;
- }
- 
-+/*
-+ * get called vi ext4_da_writepages after taking page lock
-+ * We may end up doing block allocation here in case
-+ * mpage_da_map_blocks failed to allocate blocks.
-+ *
-+ * We also get called via journal_submit_inode_data_buffers
-+ */
-+static int ext4_da_ordered_writepage(struct page *page,
-+				struct writeback_control *wbc)
-+{
-+	int ret = 0;
-+	loff_t size;
-+	unsigned long len;
-+	handle_t *handle = NULL;
-+	struct buffer_head *page_bufs;
-+	struct inode *inode = page->mapping->host;
-+
-+	handle = ext4_journal_current_handle();
-+	if (!handle) {
-+		/*
-+		 * This can happen when we aren't called via
-+		 * ext4_da_writepages() but directly (shrink_page_list).
-+		 * We cannot easily start a transaction here so we just skip
-+		 * writing the page in case we would have to do so.
-+		 */
-+		size = i_size_read(inode);
-+
-+		page_bufs = page_buffers(page);
-+		if (page->index == size >> PAGE_CACHE_SHIFT)
-+			len = size & ~PAGE_CACHE_MASK;
-+		else
-+			len = PAGE_CACHE_SIZE;
-+
-+		if (walk_page_buffers(NULL, page_bufs, 0,
-+				len, NULL, ext4_bh_unmapped_or_delay)) {
-+			/*
-+			 * We can't do block allocation under
-+			 * page lock without a handle . So redirty
-+			 * the page and return.
-+			 * We may reach here when we do a journal commit
-+			 * via journal_submit_inode_data_buffers.
-+			 * If we don't have mapping block we just ignore
-+			 * them
-+			 *
-+			 */
-+			redirty_page_for_writepage(wbc, page);
-+			unlock_page(page);
-+			return 0;
-+		}
-+	}
-+
-+	ret = block_write_full_page(page, ext4_da_get_block_write, wbc);
-+
-+	return ret;
-+}
- 
- /*
-  * For now just follow the DIO way to estimate the max credits
-@@ -1745,19 +1799,99 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	return ret;
- }
- 
-+static int ext4_da_ordered_writepages(struct address_space *mapping,
-+				struct writeback_control *wbc)
-+{
-+	struct inode *inode = mapping->host;
-+	handle_t *handle = NULL;
-+	int needed_blocks;
-+	int ret = 0;
-+	long to_write;
-+	loff_t range_start = 0;
-+
-+
-+	/*
-+	 * No pages to write? This is mainly a kludge to avoid starting
-+	 * a transaction for special inodes like journal inode on last iput()
-+	 * because that could violate lock ordering on umount
-+	 */
-+	if (!mapping->nrpages)
-+		return 0;
-+
-+	/*
-+	 *  Estimate the worse case needed credits to write out
-+	 * EXT4_MAX_BUF_BLOCKS pages
-+	 */
-+	needed_blocks = EXT4_MAX_WRITEBACK_CREDITS;
-+
-+	to_write = wbc->nr_to_write;
-+	if (!wbc->range_cyclic) {
-+		/*
-+		 * If range_cyclic is not set force range_cont
-+		 * and save the old writeback_index
-+		 */
-+		wbc->range_cont = 1;
-+		range_start =  wbc->range_start;
-+	}
-+
-+	while (!ret && to_write) {
-+		/* start a new transaction*/
-+		handle = ext4_journal_start(inode, needed_blocks);
-+		if (IS_ERR(handle)) {
-+			ret = PTR_ERR(handle);
-+			goto out_writepages;
-+		}
-+
-+		ret = ext4_jbd2_file_inode(handle, inode);
-+		if (ret) {
-+			ext4_journal_stop(handle);
-+			goto out_writepages;
-+		}
-+		/*
-+		 * set the max dirty pages could be write at a time
-+		 * to fit into the reserved transaction credits
-+		 */
-+		if (wbc->nr_to_write > EXT4_MAX_WRITEBACK_PAGES)
-+			wbc->nr_to_write = EXT4_MAX_WRITEBACK_PAGES;
-+
-+		to_write -= wbc->nr_to_write;
-+		ret = mpage_da_writepages(mapping, wbc,
-+						ext4_da_get_block_write);
-+		ext4_journal_stop(handle);
-+		if (wbc->nr_to_write) {
-+			/*
-+			 * There is no more writeout needed
-+			 * or we requested for a noblocking writeout
-+			 * and we found the device congested
-+			 */
-+			to_write += wbc->nr_to_write;
-+			break;
-+		}
-+		wbc->nr_to_write = to_write;
-+	}
-+
-+out_writepages:
-+	wbc->nr_to_write = to_write;
-+	if (range_start)
-+		wbc->range_start = range_start;
-+	return ret;
-+}
-+
- static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 				loff_t pos, unsigned len, unsigned flags,
- 				struct page **pagep, void **fsdata)
- {
--	int ret;
-+	int ret, retries = 0;
- 	struct page *page;
- 	pgoff_t index;
- 	unsigned from, to;
-+	struct inode *inode = mapping->host;
- 
- 	index = pos >> PAGE_CACHE_SHIFT;
- 	from = pos & (PAGE_CACHE_SIZE - 1);
- 	to = from + len;
- 
-+retry:
- 	page = __grab_cache_page(mapping, index);
- 	if (!page)
- 		return -ENOMEM;
-@@ -1770,6 +1904,9 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 		page_cache_release(page);
- 	}
- 
-+	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-+		goto retry;
-+
- 	return ret;
- }
- 
-@@ -2224,10 +2361,10 @@ static int ext4_journalled_set_page_dirty(struct page *page)
- 	.releasepage	= ext4_releasepage,
- };
- 
--static const struct address_space_operations ext4_da_aops = {
-+static const struct address_space_operations ext4_da_writeback_aops = {
- 	.readpage	= ext4_readpage,
- 	.readpages	= ext4_readpages,
--	.writepage	= ext4_da_writepage,
-+	.writepage	= ext4_da_writeback_writepage,
- 	.writepages	= ext4_da_writepages,
- 	.sync_page	= block_sync_page,
- 	.write_begin	= ext4_da_write_begin,
-@@ -2239,13 +2376,31 @@ static int ext4_journalled_set_page_dirty(struct page *page)
- 	.migratepage	= buffer_migrate_page,
- };
- 
-+static const struct address_space_operations ext4_da_ordered_aops = {
-+	.readpage	= ext4_readpage,
-+	.readpages	= ext4_readpages,
-+	.writepage	= ext4_da_ordered_writepage,
-+	.writepages	= ext4_da_ordered_writepages,
-+	.sync_page	= block_sync_page,
-+	.write_begin	= ext4_da_write_begin,
-+	.write_end	= generic_write_end,
-+	.bmap		= ext4_bmap,
-+	.invalidatepage	= ext4_da_invalidatepage,
-+	.releasepage	= ext4_releasepage,
-+	.direct_IO	= ext4_direct_IO,
-+	.migratepage	= buffer_migrate_page,
-+};
-+
- void ext4_set_aops(struct inode *inode)
- {
--	if (ext4_should_order_data(inode))
-+	if (ext4_should_order_data(inode) &&
-+		test_opt(inode->i_sb, DELALLOC))
-+		inode->i_mapping->a_ops = &ext4_da_ordered_aops;
-+	else if (ext4_should_order_data(inode))
- 		inode->i_mapping->a_ops = &ext4_ordered_aops;
- 	else if (ext4_should_writeback_data(inode) &&
- 		 test_opt(inode->i_sb, DELALLOC))
--		inode->i_mapping->a_ops = &ext4_da_aops;
-+		inode->i_mapping->a_ops = &ext4_da_writeback_aops;
- 	else if (ext4_should_writeback_data(inode))
- 		inode->i_mapping->a_ops = &ext4_writeback_aops;
- 	else
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 483183d..32ca3c3 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -22,6 +22,8 @@
- #include <linux/pagemap.h>
- #include <linux/jiffies.h>
- #include <linux/crc32.h>
-+#include <linux/writeback.h>
-+#include <linux/backing-dev.h>
- 
- /*
-  * Default IO end handler for temporary BJ_IO buffer_heads.
-@@ -185,6 +187,30 @@ static int journal_wait_on_commit_record(struct buffer_head *bh)
- }
- 
- /*
-+ * write the filemap data using writepage() address_space_operations.
-+ * We don't do block allocation here even for delalloc. We don't
-+ * use writepages() because with dealyed allocation we may be doing
-+ * block allocation in writepages().
-+ */
-+static int journal_submit_inode_data_buffers(struct address_space *mapping)
-+{
-+	int ret;
-+	struct writeback_control wbc = {
-+		.sync_mode =  WB_SYNC_ALL,
-+		.nr_to_write = mapping->nrpages * 2,
-+		.range_start = 0,
-+		.range_end = i_size_read(mapping->host),
-+		.for_writepages = 1,
-+	};
-+
-+	if (!mapping_cap_writeback_dirty(mapping))
-+		return 0;
-+
-+	ret = generic_writepages(mapping, &wbc);
-+	return ret;
-+}
-+
-+/*
-  * Submit all the data buffers of inode associated with the transaction to
-  * disk.
-  *
-@@ -192,7 +218,7 @@ static int journal_wait_on_commit_record(struct buffer_head *bh)
-  * our inode list. We use JI_COMMIT_RUNNING flag to protect inode we currently
-  * operate on from being released while we write out pages.
-  */
--static int journal_submit_inode_data_buffers(journal_t *journal,
-+static int journal_submit_data_buffers(journal_t *journal,
- 		transaction_t *commit_transaction)
- {
- 	struct jbd2_inode *jinode;
-@@ -204,8 +230,13 @@ static int journal_submit_inode_data_buffers(journal_t *journal,
- 		mapping = jinode->i_vfs_inode->i_mapping;
- 		jinode->i_flags |= JI_COMMIT_RUNNING;
- 		spin_unlock(&journal->j_list_lock);
--		err = filemap_fdatawrite_range(mapping, 0,
--					i_size_read(jinode->i_vfs_inode));
-+		/*
-+		 * submit the inode data buffers. We use writepage
-+		 * instead of writepages. Because writepages can do
-+		 * block allocation  with delalloc. We need to write
-+		 * only allocated blocks here.
-+		 */
-+		err = journal_submit_inode_data_buffers(mapping);
- 		if (!ret)
- 			ret = err;
- 		spin_lock(&journal->j_list_lock);
-@@ -228,7 +259,7 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
- 	struct jbd2_inode *jinode, *next_i;
- 	int err, ret = 0;
- 
--	/* For locking, see the comment in journal_submit_inode_data_buffers() */
-+	/* For locking, see the comment in journal_submit_data_buffers() */
- 	spin_lock(&journal->j_list_lock);
- 	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
- 		jinode->i_flags |= JI_COMMIT_RUNNING;
-@@ -431,7 +462,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	 * Now start flushing things to disk, in the order they appear
- 	 * on the transaction lists.  Data blocks go first.
- 	 */
--	err = journal_submit_inode_data_buffers(journal, commit_transaction);
-+	err = journal_submit_data_buffers(journal, commit_transaction);
- 	if (err)
- 		jbd2_journal_abort(journal, err);
- 
+> > The locking changes involve changing the locking order of journal_start
+> > and page_lock. With writepage we are already called with page_lock and
+> > we can't start new transaction needed for block allocation.
+> 
+> ext3_write_begin() has journal_start() nesting inside the lock_page().
+> 
+> > But if we agree that we should not do block allocation in page_mkwrite
+> > we need to add writepages and allocate blocks in writepages.
+> 
+> I'm not sure what writepages has to do with pagefaults?
+
+								Honza
 -- 
-1.5.6.rc2.15.g457bb.dirty
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
