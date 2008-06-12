@@ -1,77 +1,99 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Performance of ext4
-Date: Thu, 12 Jun 2008 09:19:28 -0400
-Message-ID: <20080612131928.GB18229@mit.edu>
-References: <Pine.LNX.4.64.0806110801370.19793@diagnostix.dwd.de> <20080611105945.GB9008@skywalker> <Pine.LNX.4.64.0806111937460.3720@diagnostix.dwd.de> <18563.1213215457@alphaville.zko.hp.com> <Pine.LNX.4.64.0806120855370.27806@diagnostix.dwd.de> <18513.345.553912.449710@frecb006361.adech.frec.bull.fr> <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de>
+From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
+Subject: Re: [PATCH v2] ext4: fix online resize group descriptors corruption
+Date: Thu, 12 Jun 2008 15:35:52 +0200
+Message-ID: <1213277752.7974.8.camel@localhost>
+References: <1213263754.6549.45.camel@localhost>
+	 <20080612105945.GB3726@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Solofo.Ramangalahy@bull.net, Nick Dokos <nicholas.dokos@hp.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: Holger Kiehl <Holger.Kiehl@dwd.de>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:40333 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1761939AbYFLNUR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 09:20:17 -0400
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:59784 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758211AbYFLNf2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 09:35:28 -0400
+In-Reply-To: <20080612105945.GB3726@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 12, 2008 at 12:00:54PM +0000, Holger Kiehl wrote: 
-> Yes, that is the one I took. Just to make sure, I downloaded it
-> again (and the linux-2.6.26-rc5 tree) and now it works. When I
-> compare the two patchsets the one I pulled this morning had patches
-> from 7 June and this one has more and they are from 11th June.
+Le jeudi 12 juin 2008 =C3=A0 04:59 -0600, Andreas Dilger a =C3=A9crit :
+> On Jun 12, 2008  11:42 +0200, Fr=EF=BF=BDd=EF=BF=BDric Boh=EF=BF=BD w=
+rote:
+> > From: Frederic Bohe <frederic.bohe@bull.net>
+> >=20
+> > This is the patch for the group descriptor table corruption during
+> > online resize pointed out by Theodore Tso.
+> > The issue was due to the ext4 group descriptor which can be either
+> > 32 or 64 bytes long.
+> > Only the 64 bytes structure was taken into account.
+> >=20
+> > diff -rup a/fs/ext4/resize.c b/fs/ext4/resize.c
+> > --- a/fs/ext4/resize.c
+> > +++ b/fs/ext4/resize.c
+> > @@ -855,7 +855,8 @@ int ext4_group_add(struct super_block *s
+> >  	 */
+> > =20
+> >  	/* Update group descriptor block for new group */
+> > -	gdp =3D (struct ext4_group_desc *)primary->b_data + gdb_off;
+> > +	gdp =3D (struct ext4_group_desc *)(
+> > +	       (__u8 *)primary->b_data + gdb_off * EXT4_DESC_SIZE(sb));
+>=20
+> Normally pointer arithmetic is done by casting to (char *)...
+> Otherwise, patch looks sensible, though it could be reformatted to=20
+> match the normal coding style a bit better:
+>=20
+> 	gdp =3D (struct ext4_group_desc *)((char *)primary->b_data +
+> 					 gdb_off * EXT4_DESC_SIZE(sb));
+>=20
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+>=20
+>=20
+=EF=BB=BF
+> From: Frederic Bohe <frederic.bohe@bull.net>
+> >=20
+> > This is the patch for the group descriptor table corruption during
+> > online resize pointed out by Theodore Tso.
+> > The issue was due to the ext4 group descriptor which can be either
+> > 32 or 64 bytes long.
+> > Only the 64 bytes structure was taken into account.
+>=20
+=EF=BB=BF=EF=BB=BF=EF=BB=BFFrom: Frederic Bohe <frederic.bohe@bull.net>=
+=20
 
-Note that you don't have to download things from scratch, necessarily;
-the git command "git pull" will (if you havent made any changes in the
-git repository; if you have there are a few more steps you might have
-to take) pull down any newer changes and update your patch directory
-directly.
+This is the patch for the group descriptor table corruption during
+online resize pointed out by Theodore Tso.
+The issue was due to the ext4 group descriptor which can be either
+32 or 64 bytes long.
+Only the 64 bytes structure was taken into account.=20
 
-Note that after you type "git pull", you may find that the
-ext4-patch-queue has been rebased to a newer version of the kernel.
-For example, the patch queue is currently against 2.6.26-rc5.  The
-latest bleedig edge kernel as released by Linus in his git tree of the
-kernel already has these patches:
+=EF=BB=BFSigned-off-by: Frederic Bohe <frederic.bohe@bull.net>
+---
+=EF=BB=BF resize.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-ext4-fix-use-of-uninitalized-data.patch
-ext4-fix-uninit-block-group-initialization-with-FLEX_BG.patch
-ext4-fix-onine-resize-bug.patch
-fix-journal-checksum-mem-leak
-jbd2-if-a-journal-checksum-error-is-detected-propa.patch 
-show-journal-async-commit-option
-jbd2-Fix-barrier-fallback-code-to-re-lock-the-buffe.patch
-ext4-enable-barriers-by-default.patch
+diff -rup a/fs/ext4/resize.c b/fs/ext4/resize.c
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -855,7 +855,8 @@ int ext4_group_add(struct super_block *s
+ 	 */
+=20
+ 	/* Update group descriptor block for new group */
+-	gdp =3D (struct ext4_group_desc *)primary->b_data + gdb_off;
++	gdp =3D (struct ext4_group_desc *)((char *)primary->b_data +
++	                                 gdb_off * EXT4_DESC_SIZE(sb));
+=20
+ 	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
+ 	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
 
-from the patch series.  But, he hasn't released an official kernel
-release for 2.6.26-rc5 yet.  So in the near future, the ext4 patch
-queue will probably get rebased against one of the "daily snapshots",
-as found in /pub/linux/kernel/v2.6/snapshots on ftp.kernel.org.  So
-for example, 2.6.26-rc5-git6 is the sixth snapshot since -rc5 was
-released.  There is a patch against -rc5 named
-patch-2.6.26-rc5-git6.bz2 as located in the aforementioned directory
-on ftp.kernel.org, or if you are tracking Linus's kernel git tree, the
-file patch-2.6.26-rc5-git6.id proclaims that -rc5-git6 is git id
-631025b.  You will see that when you look at the first line of the
-series file in the ext4 patch queue, where it currently states:
 
-# BASE 2.6.26-rc5
-
-and where it will in the future say something like this:
-
-# BASE 2.6.26-rc5-git6
-
-That can be used by automated scripts to automatically determine which
-version of the Linux kernel should be grabbed before trying to apply
-the latest version of the ext4 patch queue.  In general we try to use
-mainly official -rc1, -rc2, etc. release points, but after Linus
-pulled down some stable bug fixes, we will sometimes use a daily git
-snapshot release such as -rc5-git6 as described above.
-
-Hope this helps,
-
-							- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
