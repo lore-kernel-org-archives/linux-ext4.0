@@ -1,83 +1,131 @@
-From: Shen Feng <shen@cn.fujitsu.com>
-Subject: [PATCH V2] ext4: Fix the loop condition in ext4_mb_free_committed_blocks
-Date: Thu, 12 Jun 2008 10:57:05 +0800
-Message-ID: <48509081.7070103@cn.fujitsu.com>
-References: <484F4CC1.3000109@cn.fujitsu.com> <20080611142356.GL8397@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext2: Use page_mkwrite vma_operations to get mmap
+	write notification.
+Date: Thu, 12 Jun 2008 09:36:43 +0530
+Message-ID: <20080612040643.GA5518@skywalker>
+References: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080605123045.445e380a.akpm@linux-foundation.org> <20080611150845.GA21910@skywalker> <20080611120749.d0c5a7de.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, jack@suse.cz, linux-ext4@vger.kernel.org,
+	linux-mm@kvack.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:56743 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753340AbYFLDAe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Jun 2008 23:00:34 -0400
-In-Reply-To: <20080611142356.GL8397@mit.edu>
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:48859 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750793AbYFLEHE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 00:07:04 -0400
+Content-Disposition: inline
+In-Reply-To: <20080611120749.d0c5a7de.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Jun 11, 2008 at 12:07:49PM -0700, Andrew Morton wrote:
+> On Wed, 11 Jun 2008 20:38:45 +0530
+> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> 
+> > On Thu, Jun 05, 2008 at 12:30:45PM -0700, Andrew Morton wrote:
+> > > On Thu,  5 Jun 2008 22:35:12 +0530
+> > > "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+> > > 
+> > > > We would like to get notified when we are doing a write on mmap
+> > > > section.  The changes are needed to handle ENOSPC when writing to an
+> > > > mmap section of files with holes.
+> > > > 
+> > > 
+> > > Whoa.  You didn't copy anything like enough mailing lists for a change
+> > > of this magnitude.  I added some.
+> > > 
+> > > This is a large change in behaviour!
+> > > 
+> > > a) applications will now get a synchronous SIGBUS when modifying a
+> > >    page over an ENOSPC filesystem.  Whereas previously they could have
+> > >    proceeded to completion and then detected the error via an fsync().
+> > 
+> > Or not detect the error at all if we don't call fsync() right ? Isn't a
+> > synchronous SIGBUS the right behaviour ?
+> >
+> 
+> Not according to POSIX.  Or at least posix-several-years-ago, when this
+> last was discussed.  The spec doesn't have much useful to say about any
+> of this.
+> 
+> It's a significant change in the userspace interface.
+> 
+> > 
+> > > 
+> > >    It's going to take more than one skimpy little paragraph to
+> > >    justify this, and to demonstrate that it is preferable, and to
+> > >    convince us that nothing will break from this user-visible behaviour
+> > >    change.
+> > > 
+> > > b) we're now doing fs operations (and some I/O) in the pagefault
+> > >    code.  This has several implications:
+> > > 
+> > >    - performance changes
+> > > 
+> > >    - potential for deadlocks when a process takes the fault from
+> > >      within a copy_to_user() in, say, mm/filemap.c
+> > > 
+> > >    - performing additional memory allocations within that
+> > >      copy_to_user().  Possibility that these will reenter the
+> > >      filesystem.
+> > > 
+> > > And that's just ext2.
+> > > 
+> > > For ext3 things are even more complex, because we have the
+> > > journal_start/journal_end pair which is effectively another "lock" for
+> > > ranking/deadlock purposes.  And now we're taking i_alloc_sem and
+> > > lock_page and we're doing ->writepage() and its potential
+> > > journal_start(), all potentially within the context of a
+> > > copy_to_user().
+> > 
+> > One of the reason why we would need this in ext3/ext4 is that we cannot
+> > do block allocation in the writepage with the recent locking changes.
+> 
+> Perhaps those recent locking changes were wrong.
+> 
+> > The locking changes involve changing the locking order of journal_start
+> > and page_lock. With writepage we are already called with page_lock and
+> > we can't start new transaction needed for block allocation.
+> 
+> ext3_write_begin() has journal_start() nesting inside the lock_page().
+> 
 
->> Since md is freed before the do-while checks it,
->> it's better to change it to while(1).
+All those are changed as a part of lock inversion changes.
+
+
+
+> > But if we agree that we should not do block allocation in page_mkwrite
+> > we need to add writepages and allocate blocks in writepages.
 > 
-> This actually isn't a bug, since there is no problem checking a
-> pointer that has been freed; its only *dereferencing* a pointer which
-> is bad.  That being said, md is never NULL at the end of the loop,
-> since in the middle of the loop is the only break condition:
-> 
-> 	if (md == NULL)
-> 		break;
-> 
-> So the patch saves a tiny amount of compiled code, but it isn't really
-> a fix in any way.
-> 
-> That being said, if we're going to make this sort of change, my
-> preference would be to use the more common C idiom:
-> 
-> 	while (1) {
-> 	      ...
-> 	}
-> 
-> as opposed to
-> 
-> 	do {
-> 	      ...
-> 	} while (1);
-> 
-> The former makes it quite clear that any exit from the loop is not
-> going to be coming from loop construct itself, but from any embedded
-> break statements inside the loop construct
+> I'm not sure what writepages has to do with pagefaults?
 > 
 
-Yes. You are right. Revise the patch as you suggested.
+The idea is to have ext3/4_writepages. In writepages start a transaction
+and iterate over the pages take the lock and do block allocation. With
+that change we should be able to not do block allocation in the
+page_mkwrite path. We may still want to do block reservation there.
 
-Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
----
- fs/ext4/mballoc.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Something like.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c9900aa..bd6cf22 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2521,7 +2521,7 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
- 		return;
- 
- 	/* there is committed blocks to be freed yet */
--	do {
-+	while (1) {
- 		/* get next array of blocks */
- 		md = NULL;
- 		spin_lock(&sbi->s_md_lock);
-@@ -2561,7 +2561,7 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
- 		kfree(md);
- 		ext4_mb_release_desc(&e4b);
- 
--	} while (md);
-+	}
- 
- 	mb_debug("freed %u blocks in %u structures\n", count, count2);
- }
--- 1.5.4.5 
+ext4_writepages()
+{
+	journal_start()
+	for_each_page()
+	lock_page
+	if (bh_unmapped()...)
+		block_alloc()
+	unlock_page
+	journal_stop()
+
+}
+
+ext4_writepage()
+{
+	for_each_buffer_head()
+		if (bh_unmapped()) {
+			redirty_page
+			unlock_page
+			return;
+		}
+}
