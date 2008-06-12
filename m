@@ -1,55 +1,50 @@
-From: Holger Kiehl <Holger.Kiehl@dwd.de>
-Subject: Re: Performance of ext4
-Date: Thu, 12 Jun 2008 09:02:35 +0000 (GMT)
-Message-ID: <Pine.LNX.4.64.0806120855370.27806@diagnostix.dwd.de>
-References: <Pine.LNX.4.64.0806110801370.19793@diagnostix.dwd.de>
- <20080611105945.GB9008@skywalker>  <Pine.LNX.4.64.0806111937460.3720@diagnostix.dwd.de>
-  <18563.1213215457@alphaville.zko.hp.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH 4/6] ext2: tighten restrictions on inode flags
+Date: Thu, 12 Jun 2008 03:06:29 -0600
+Message-ID: <20080612090629.GX3726@webber.adilger.int>
+References: <1213142649-32685-1-git-send-email-duaneg@dghda.com>
+ <1213142649-32685-2-git-send-email-duaneg@dghda.com>
+ <1213142649-32685-3-git-send-email-duaneg@dghda.com>
+ <1213142649-32685-4-git-send-email-duaneg@dghda.com>
+ <1213142649-32685-5-git-send-email-duaneg@dghda.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: Nick Dokos <nicholas.dokos@hp.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Duane Griffin <duaneg@dghda.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dwdmx4.dwd.de ([141.38.3.230]:35652 "EHLO dwdmx4.dwd.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752091AbYFLJCj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jun 2008 05:02:39 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by node7.dwd.de (Postfix) with ESMTP id 940697903A3
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 09:02:38 +0000 (UTC)
-Received: from localhost ([127.0.0.1])
-	by localhost (node7.csg-cluster.lan [127.0.0.1]) (amavisd-new, port 2525)
-	with SMTP id 24072-91 for <linux-ext4@vger.kernel.org>;
-	Thu, 12 Jun 2008 09:02:38 +0000 (UTC)
-In-Reply-To: <18563.1213215457@alphaville.zko.hp.com>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:51934 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754740AbYFLJGe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 05:06:34 -0400
+In-reply-to: <1213142649-32685-5-git-send-email-duaneg@dghda.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 11 Jun 2008, Nick Dokos wrote:
+On Jun 11, 2008  01:04 +0100, Duane Griffin wrote:
+> At the moment there are few restrictions on which flags may be set on which
+> inodes. Specifically DIRSYNC may only be set on directories and IMMUTABLE
+> and APPEND may not be set on links. Tighten that to disallow TOPDIR being
+> set on non-directories and SECRM, UNRM, COMPR, SYNC, DIRTY, COMPRBLK,
+> NOCOMP, ECOMPR, INDEX, JOURNAL_DATA and NOTAIL being set on anything but
+> regular files or directories.
+> 
+> Introduce a flags masking function which masks flags based on mode and use
+> it during inode creation and when flags are set via the ioctl to facilitate
+> future consistency.
 
-> Holger Kiehl <Holger.Kiehl@dwd.de> wrote:
->
->> Against a clean 2.6.26-rc5 the patchqueue does not apply. Lots of rejects.
->> The patchqueue also contains changes for defrag that are not in 2.6.26-rc5.
->> Or did you mean to apply those against the mm tree?
->>
->
-> Just an FYI and a data point: I was able to apply the patch queue
-> against 2.6.26-rc5 (after I set up quilt correctly) without any
-> problems.
->
-I have never used quilt, so how do I set it up correctly? I am using
-Fedora 9 and have copied all patches from ext4-patch-queue into
-2.6.26-rc5/patches. Then I always issue the following command in
-2.6.26-rc5 directory:
+This second set of patches is missing out on the presence of the
+"EXT2_FL_USER_MODIFIABLE" mask in ext2_ioctl(EXT2_IOC_SETFLAGS).  This is
+what prevents "unsettable" flags from being set from userspace.
 
-      quilt push
+I don't have any objection to additional filtering to avoid setting the
+USER_MODIFIABLE flags on special files.
 
-That works until it comes to patch patches/ext4_ialloc-flexbg.patch when
-it gets lots of rejects. So how do I set this up correctly?
-
-Thanks,
-Holger
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
