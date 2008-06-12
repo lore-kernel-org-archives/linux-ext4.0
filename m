@@ -1,151 +1,91 @@
-From: Thadeu Lima de Souza Cascardo <cascardo@minaslivre.org>
-Subject: [PATCH] Support for "gnu" extended attributes namespace for ext4
-Date: Thu, 12 Jun 2008 13:27:37 -0300
-Message-ID: <20080612162737.GC13745@vespa.holoscopio.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Fix the oldallocator block reservation accounting with delalloc.
+Date: Thu, 12 Jun 2008 22:39:53 +0530
+Message-ID: <1213290593-31424-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from liberdade.minaslivre.org ([72.232.18.203]:41845 "EHLO
-	liberdade.minaslivre.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752512AbYFLRC2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 13:02:28 -0400
-Received: from vespa.holoscopio.com (unknown [201.80.63.222])
-	by liberdade.minaslivre.org (Postfix) with ESMTP id 87B46208D71
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 13:33:15 -0300 (BRT)
-Content-Disposition: inline
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:33788 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752428AbYFLRKC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 13:10:02 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m5CH96Pb026625
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 03:09:06 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5CH9xWh272852
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 03:09:59 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5CH9wMV016722
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 03:09:58 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This support is needed for GNU Hurd, for things like active translators.
----
- fs/ext4/Makefile    |    3 +-
- fs/ext4/xattr.c     |    2 +
- fs/ext4/xattr.h     |    2 +
- fs/ext4/xattr_gnu.c |   62 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 4 files changed, 68 insertions(+), 1 deletions(-)
- create mode 100644 fs/ext4/xattr_gnu.c
+Update old block allocator to not decrement s_freeblocks_counter
+for allocated blocks with delalloc. Also account for the
+actual meta-data allocated. We should not check for freespace
+again in allocator with delalloc since we already did block
+reservation.
 
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index ac6fa8c..b148ba8 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -8,6 +8,7 @@ ext4dev-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
- 		   ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
- 		   ext4_jbd2.o migrate.o mballoc.o
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/balloc.c |   16 ++++++++++++----
+ 1 files changed, 12 insertions(+), 4 deletions(-)
+
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 4331577..eca8c0e 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1706,7 +1706,12 @@ ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 	}
  
--ext4dev-$(CONFIG_EXT4DEV_FS_XATTR)	+= xattr.o xattr_user.o xattr_trusted.o
-+ext4dev-$(CONFIG_EXT4DEV_FS_XATTR)	+= xattr.o xattr_user.o \
-+					   xattr_trusted.o xattr_gnu.o
- ext4dev-$(CONFIG_EXT4DEV_FS_POSIX_ACL)	+= acl.o
- ext4dev-$(CONFIG_EXT4DEV_FS_SECURITY)	+= xattr_security.o
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index ff08633..6c47327 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -107,6 +107,7 @@ static struct xattr_handler *ext4_xattr_handler_map[] = {
- #ifdef CONFIG_EXT4DEV_FS_SECURITY
- 	[EXT4_XATTR_INDEX_SECURITY]	     = &ext4_xattr_security_handler,
- #endif
-+	[EXT4_XATTR_INDEX_GNU]		     = &ext4_xattr_gnu_handler,
- };
- 
- struct xattr_handler *ext4_xattr_handlers[] = {
-@@ -119,6 +120,7 @@ struct xattr_handler *ext4_xattr_handlers[] = {
- #ifdef CONFIG_EXT4DEV_FS_SECURITY
- 	&ext4_xattr_security_handler,
- #endif
-+	&ext4_xattr_gnu_handler,
- 	NULL
- };
- 
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 5992fe9..bb481b4 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -21,6 +21,7 @@
- #define EXT4_XATTR_INDEX_TRUSTED		4
- #define	EXT4_XATTR_INDEX_LUSTRE			5
- #define EXT4_XATTR_INDEX_SECURITY	        6
-+#define EXT4_XATTR_INDEX_GNU			7
- 
- struct ext4_xattr_header {
- 	__le32	h_magic;	/* magic number for identification */
-@@ -70,6 +71,7 @@ extern struct xattr_handler ext4_xattr_trusted_handler;
- extern struct xattr_handler ext4_xattr_acl_access_handler;
- extern struct xattr_handler ext4_xattr_acl_default_handler;
- extern struct xattr_handler ext4_xattr_security_handler;
-+extern struct xattr_handler ext4_xattr_gnu_handler;
- 
- extern ssize_t ext4_listxattr(struct dentry *, char *, size_t);
- 
-diff --git a/fs/ext4/xattr_gnu.c b/fs/ext4/xattr_gnu.c
-new file mode 100644
-index 0000000..039f839
---- /dev/null
-+++ b/fs/ext4/xattr_gnu.c
-@@ -0,0 +1,62 @@
-+/*
-+ * linux/fs/ext4/xattr_gnu.c
-+ * Handler for gnu extended attributes.
-+ *
-+ * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
-+ * Copyright Thadeu Lima de Souza Cascardo <cascardo@minaslivre.org>
-+ */
-+
-+#include <linux/module.h>
-+#include <linux/string.h>
-+#include <linux/capability.h>
-+#include <linux/fs.h>
-+#include <linux/ext4_jbd2.h>
-+#include <linux/ext4_fs.h>
-+#include "xattr.h"
-+
-+#define XATTR_GNU_PREFIX "gnu."
-+
-+static size_t
-+ext4_xattr_gnu_list(struct inode *inode, char *list, size_t list_size,
-+			const char *name, size_t name_len)
-+{
-+	const size_t prefix_len = sizeof(XATTR_GNU_PREFIX)-1;
-+	const size_t total_len = prefix_len + name_len + 1;
-+
-+	if (!capable(CAP_SYS_ADMIN))
-+		return 0;
-+
-+	if (list && total_len <= list_size) {
-+		memcpy(list, XATTR_GNU_PREFIX, prefix_len);
-+		memcpy(list+prefix_len, name, name_len);
-+		list[prefix_len + name_len] = '\0';
+ 	sbi = EXT4_SB(sb);
+-	*count = ext4_has_free_blocks(sbi, *count);
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag) {
++		/*
++		 * With delalloc we already reserved the blocks
++		 */
++		*count = ext4_has_free_blocks(sbi, *count);
 +	}
-+	return total_len;
-+}
-+
-+static int
-+ext4_xattr_gnu_get(struct inode *inode, const char *name,
-+		       void *buffer, size_t size)
-+{
-+	if (strcmp(name, "") == 0)
-+		return -EINVAL;
-+	return ext4_xattr_get(inode, EXT4_XATTR_INDEX_GNU, name,
-+			      buffer, size);
-+}
-+
-+static int
-+ext4_xattr_gnu_set(struct inode *inode, const char *name,
-+		       const void *value, size_t size, int flags)
-+{
-+	if (strcmp(name, "") == 0)
-+		return -EINVAL;
-+	return ext4_xattr_set(inode, EXT4_XATTR_INDEX_GNU, name,
-+			      value, size, flags);
-+}
-+
-+struct xattr_handler ext4_xattr_gnu_handler = {
-+	.prefix	= XATTR_GNU_PREFIX,
-+	.list	= ext4_xattr_gnu_list,
-+	.get	= ext4_xattr_gnu_get,
-+	.set	= ext4_xattr_gnu_set,
-+};
+ 	if (*count == 0) {
+ 		*errp = -ENOSPC;
+ 		return 0;	/*return with ENOSPC error */
+@@ -1907,7 +1912,8 @@ ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+-	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
++		percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
+@@ -1957,7 +1963,8 @@ static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
+ 	ext4_fsblk_t ret;
+ 
+ 	if (!test_opt(inode->i_sb, MBALLOC)) {
+-		return ext4_old_new_blocks(handle, inode, goal, count, errp);
++		ret = ext4_old_new_blocks(handle, inode, goal, count, errp);
++		goto out;
+ 	}
+ 
+ 	memset(&ar, 0, sizeof(ar));
+@@ -1990,12 +1997,13 @@ static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
+ 
+ 	ret = ext4_mb_new_blocks(handle, &ar, errp);
+ 	*count = ar.len;
++out:
+ 	/*
+ 	 * Account for the allocated meta blocks
+ 	 */
+ 	if (!(*errp) && (flags & EXT4_META_BLOCK)) {
+ 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+-		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
++		EXT4_I(inode)->i_allocated_meta_blocks += *count;
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	}
+ 	return ret;
 -- 
-1.5.5.4
+1.5.6.rc2.15.g457bb.dirty
+
