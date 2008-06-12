@@ -1,66 +1,69 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext4: fix online resize group descriptors corruption
-Date: Thu, 12 Jun 2008 04:59:45 -0600
-Message-ID: <20080612105945.GB3726@webber.adilger.int>
-References: <1213263754.6549.45.camel@localhost>
+From: Holger Kiehl <Holger.Kiehl@dwd.de>
+Subject: Re: Performance of ext4
+Date: Thu, 12 Jun 2008 12:00:54 +0000 (GMT)
+Message-ID: <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de>
+References: <Pine.LNX.4.64.0806110801370.19793@diagnostix.dwd.de>
+ <20080611105945.GB9008@skywalker> <Pine.LNX.4.64.0806111937460.3720@diagnostix.dwd.de>
+ <18563.1213215457@alphaville.zko.hp.com> <Pine.LNX.4.64.0806120855370.27806@diagnostix.dwd.de>
+ <18513.345.553912.449710@frecb006361.adech.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: =?utf-8?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Nick Dokos <nicholas.dokos@hp.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Solofo.Ramangalahy@bull.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:50467 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756412AbYFLK7s (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 06:59:48 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m5CAxlAY022814
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 03:59:47 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K2C00801JTLC900@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 12 Jun 2008 03:59:47 -0700 (PDT)
-In-reply-to: <1213263754.6549.45.camel@localhost>
-Content-disposition: inline
+Received: from dwdmx4.dwd.de ([141.38.3.230]:56744 "EHLO dwdmx4.dwd.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752071AbYFLMBC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jun 2008 08:01:02 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by node6.dwd.de (Postfix) with ESMTP id D7C72C583DC
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 12:01:00 +0000 (UTC)
+Received: from localhost ([127.0.0.1])
+	by localhost (node6.csg-cluster.lan [127.0.0.1]) (amavisd-new, port 2525)
+	with SMTP id 15302-71 for <linux-ext4@vger.kernel.org>;
+	Thu, 12 Jun 2008 12:01:00 +0000 (UTC)
+In-Reply-To: <18513.345.553912.449710@frecb006361.adech.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jun 12, 2008  11:42 +0200, Fr=EF=BF=BDd=EF=BF=BDric Boh=EF=BF=BD wro=
-te:
-> From: Frederic Bohe <frederic.bohe@bull.net>
->=20
-> This is the patch for the group descriptor table corruption during
-> online resize pointed out by Theodore Tso.
-> The issue was due to the ext4 group descriptor which can be either
-> 32 or 64 bytes long.
-> Only the 64 bytes structure was taken into account.
->=20
-> diff -rup a/fs/ext4/resize.c b/fs/ext4/resize.c
-> --- a/fs/ext4/resize.c
-> +++ b/fs/ext4/resize.c
-> @@ -855,7 +855,8 @@ int ext4_group_add(struct super_block *s
->  	 */
-> =20
->  	/* Update group descriptor block for new group */
-> -	gdp =3D (struct ext4_group_desc *)primary->b_data + gdb_off;
-> +	gdp =3D (struct ext4_group_desc *)(
-> +	       (__u8 *)primary->b_data + gdb_off * EXT4_DESC_SIZE(sb));
+Hello Solofo
 
-Normally pointer arithmetic is done by casting to (char *)...
-Otherwise, patch looks sensible, though it could be reformatted to=20
-match the normal coding style a bit better:
+On Thu, 12 Jun 2008, Solofo.Ramangalahy@bull.net wrote:
 
-	gdp =3D (struct ext4_group_desc *)((char *)primary->b_data +
-					 gdb_off * EXT4_DESC_SIZE(sb));
+> Hi Holger,
+>
+> Holger Kiehl writes:
+> > That works until it comes to patch patches/ext4_ialloc-flexbg.patch when
+> > it gets lots of rejects. So how do I set this up correctly?
+>
+> I think your quilt is set up correctly.
+>
+> The rejects probably come from the patch queue being based on a
+> different version than 2.6.26-rc5.
+>
+> Which patchset did you use?
+>
+> What I do when wanting a patch queue for a specific kernel is to
+> search for commit message indicating the rebase for this version.
+>
+> There is a "Rebase to linux-2.6.26-rc5" on
+> http://repo.or.cz/w/ext4-patch-queue.git
+> So the corresponding snapshot
+> http://repo.or.cz/w/ext4-patch-queue.git?a=snapshot;h=ed6aaac3b0cc0ba47dbb2af0884306584271e5a2;sf=tgz
+> patches 2.6.26-rc5 smoothly.
+> (the last patchset also applies, with offset and fuzz, though)
+>
+Yes, that is the one I took. Just to make sure, I downloaded it again (and
+the linux-2.6.26-rc5 tree) and now it works. When I compare the two patchsets
+the one I pulled this morning had patches from 7 June and this one has more
+and they are from 11th June.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Thanks a lot for your help, at last I now have all the patches and can go
+on with testing.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks,
+Holger
+
