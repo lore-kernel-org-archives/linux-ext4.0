@@ -1,115 +1,152 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2: Use page_mkwrite vma_operations to get mmap
-	write notification.
-Date: Thu, 12 Jun 2008 18:17:06 +0200
-Message-ID: <20080612161706.GB12367@duck.suse.cz>
-References: <1212685513-32237-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080605123045.445e380a.akpm@linux-foundation.org> <20080611150845.GA21910@skywalker> <20080611120749.d0c5a7de.akpm@linux-foundation.org>
+From: Thadeu Lima de Souza Cascardo <cascardo@minaslivre.org>
+Subject: [PATCH] Support for "gnu" extended attributes namespace for ext3
+Date: Thu, 12 Jun 2008 13:27:12 -0300
+Message-ID: <20080612162711.GB13745@vespa.holoscopio.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, linux-ext4@vger.kernel.org, linux-mm@kvack.org,
-	linux-kernel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:39852 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750771AbYFLQRI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jun 2008 12:17:08 -0400
+Received: from liberdade.minaslivre.org ([72.232.18.203]:38690 "EHLO
+	liberdade.minaslivre.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754806AbYFLQps (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Jun 2008 12:45:48 -0400
+Received: from vespa.holoscopio.com (unknown [201.80.63.222])
+	by liberdade.minaslivre.org (Postfix) with ESMTP id 637F8208D70
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 13:32:50 -0300 (BRT)
 Content-Disposition: inline
-In-Reply-To: <20080611120749.d0c5a7de.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 11-06-08 12:07:49, Andrew Morton wrote:
-> On Wed, 11 Jun 2008 20:38:45 +0530
-> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> 
-> > On Thu, Jun 05, 2008 at 12:30:45PM -0700, Andrew Morton wrote:
-> > > On Thu,  5 Jun 2008 22:35:12 +0530
-> > > "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> > > 
-> > > > We would like to get notified when we are doing a write on mmap
-> > > > section.  The changes are needed to handle ENOSPC when writing to an
-> > > > mmap section of files with holes.
-> > > > 
-> > > 
-> > > Whoa.  You didn't copy anything like enough mailing lists for a change
-> > > of this magnitude.  I added some.
-> > > 
-> > > This is a large change in behaviour!
-> > > 
-> > > a) applications will now get a synchronous SIGBUS when modifying a
-> > >    page over an ENOSPC filesystem.  Whereas previously they could have
-> > >    proceeded to completion and then detected the error via an fsync().
-> > 
-> > Or not detect the error at all if we don't call fsync() right ? Isn't a
-> > synchronous SIGBUS the right behaviour ?
-> >
-> 
-> Not according to POSIX.  Or at least posix-several-years-ago, when this
-> last was discussed.  The spec doesn't have much useful to say about any
-> of this.
-> 
-> It's a significant change in the userspace interface.
-> 
-> > 
-> > > 
-> > >    It's going to take more than one skimpy little paragraph to
-> > >    justify this, and to demonstrate that it is preferable, and to
-> > >    convince us that nothing will break from this user-visible behaviour
-> > >    change.
-> > > 
-> > > b) we're now doing fs operations (and some I/O) in the pagefault
-> > >    code.  This has several implications:
-> > > 
-> > >    - performance changes
-> > > 
-> > >    - potential for deadlocks when a process takes the fault from
-> > >      within a copy_to_user() in, say, mm/filemap.c
-> > > 
-> > >    - performing additional memory allocations within that
-> > >      copy_to_user().  Possibility that these will reenter the
-> > >      filesystem.
-> > > 
-> > > And that's just ext2.
-> > > 
-> > > For ext3 things are even more complex, because we have the
-> > > journal_start/journal_end pair which is effectively another "lock" for
-> > > ranking/deadlock purposes.  And now we're taking i_alloc_sem and
-> > > lock_page and we're doing ->writepage() and its potential
-> > > journal_start(), all potentially within the context of a
-> > > copy_to_user().
-> > 
-> > One of the reason why we would need this in ext3/ext4 is that we cannot
-> > do block allocation in the writepage with the recent locking changes.
-> 
-> Perhaps those recent locking changes were wrong.
-  Well, the locking changes are those reverting locking ordering of
-transaction start and page lock - we have them in ext4 and Aneesh seems 
-to be looking into porting them to ext3 (at least ordered mode rewrite
-needs them). I wouldn't say they are wrong in principle.
-  It's easier to use page_mkwrite() to allocate blocks so that
-later in writepage() we don't have to do block allocation which needs to
-start a transaction (because that means unlocking the page which gets
-quickly nasty to handle properly...).
-  BTW: XFS, OCFS2 or GFS2 define page_mkwrite() in this manner so they do
-return SIGBUS when you run out of space when writing to mmapped hole. So
-it's not like this change is introducing completely new behavior... I can
-understand that we might not want to change the behavior for ext2 or ext3
-but ext4 is IMO definitely free to choose.
+This support is needed for some extended attributes used by the Hurd,
+like translators.
+---
+ fs/ext3/Makefile    |    3 +-
+ fs/ext3/xattr.c     |    2 +
+ fs/ext3/xattr.h     |    2 +
+ fs/ext3/xattr_gnu.c |   62 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 68 insertions(+), 1 deletions(-)
+ create mode 100644 fs/ext3/xattr_gnu.c
 
-> > The locking changes involve changing the locking order of journal_start
-> > and page_lock. With writepage we are already called with page_lock and
-> > we can't start new transaction needed for block allocation.
-> 
-> ext3_write_begin() has journal_start() nesting inside the lock_page().
-> 
-> > But if we agree that we should not do block allocation in page_mkwrite
-> > we need to add writepages and allocate blocks in writepages.
-> 
-> I'm not sure what writepages has to do with pagefaults?
-
-								Honza
+diff --git a/fs/ext3/Makefile b/fs/ext3/Makefile
+index e77766a..2198804 100644
+--- a/fs/ext3/Makefile
++++ b/fs/ext3/Makefile
+@@ -7,6 +7,7 @@ obj-$(CONFIG_EXT3_FS) += ext3.o
+ ext3-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
+ 	   ioctl.o namei.o super.o symlink.o hash.o resize.o ext3_jbd.o
+ 
+-ext3-$(CONFIG_EXT3_FS_XATTR)	 += xattr.o xattr_user.o xattr_trusted.o
++ext3-$(CONFIG_EXT3_FS_XATTR)	 += xattr.o xattr_user.o xattr_trusted.o \
++				    xattr_gnu.o
+ ext3-$(CONFIG_EXT3_FS_POSIX_ACL) += acl.o
+ ext3-$(CONFIG_EXT3_FS_SECURITY)	 += xattr_security.o
+diff --git a/fs/ext3/xattr.c b/fs/ext3/xattr.c
+index 175414a..1a8023a 100644
+--- a/fs/ext3/xattr.c
++++ b/fs/ext3/xattr.c
+@@ -114,6 +114,7 @@ static struct xattr_handler *ext3_xattr_handler_map[] = {
+ #ifdef CONFIG_EXT3_FS_SECURITY
+ 	[EXT3_XATTR_INDEX_SECURITY]	     = &ext3_xattr_security_handler,
+ #endif
++	[EXT3_XATTR_INDEX_GNU]		     = &ext3_xattr_gnu_handler,
+ };
+ 
+ struct xattr_handler *ext3_xattr_handlers[] = {
+@@ -126,6 +127,7 @@ struct xattr_handler *ext3_xattr_handlers[] = {
+ #ifdef CONFIG_EXT3_FS_SECURITY
+ 	&ext3_xattr_security_handler,
+ #endif
++	&ext3_xattr_gnu_handler,
+ 	NULL
+ };
+ 
+diff --git a/fs/ext3/xattr.h b/fs/ext3/xattr.h
+index 148a4df..58824d0 100644
+--- a/fs/ext3/xattr.h
++++ b/fs/ext3/xattr.h
+@@ -21,6 +21,7 @@
+ #define EXT3_XATTR_INDEX_TRUSTED		4
+ #define	EXT3_XATTR_INDEX_LUSTRE			5
+ #define EXT3_XATTR_INDEX_SECURITY	        6
++#define EXT3_XATTR_INDEX_GNU			7
+ 
+ struct ext3_xattr_header {
+ 	__le32	h_magic;	/* magic number for identification */
+@@ -63,6 +64,7 @@ extern struct xattr_handler ext3_xattr_trusted_handler;
+ extern struct xattr_handler ext3_xattr_acl_access_handler;
+ extern struct xattr_handler ext3_xattr_acl_default_handler;
+ extern struct xattr_handler ext3_xattr_security_handler;
++extern struct xattr_handler ext3_xattr_gnu_handler;
+ 
+ extern ssize_t ext3_listxattr(struct dentry *, char *, size_t);
+ 
+diff --git a/fs/ext3/xattr_gnu.c b/fs/ext3/xattr_gnu.c
+new file mode 100644
+index 0000000..c369f1e
+--- /dev/null
++++ b/fs/ext3/xattr_gnu.c
+@@ -0,0 +1,62 @@
++/*
++ * linux/fs/ext3/xattr_gnu.c
++ * Handler for GNU extended attributes.
++ *
++ * Copyright (C) 2003 by Andreas Gruenbacher, <a.gruenbacher@computer.org>
++ * Copyright 2008 Thadeu Lima de Souza Cascardo <cascardo@minaslivre.org>
++ */
++
++#include <linux/module.h>
++#include <linux/string.h>
++#include <linux/capability.h>
++#include <linux/fs.h>
++#include <linux/ext3_jbd.h>
++#include <linux/ext3_fs.h>
++#include "xattr.h"
++
++#define XATTR_GNU_PREFIX "gnu."
++
++static size_t
++ext3_xattr_gnu_list(struct inode *inode, char *list, size_t list_size,
++			const char *name, size_t name_len)
++{
++	const size_t prefix_len = sizeof(XATTR_GNU_PREFIX)-1;
++	const size_t total_len = prefix_len + name_len + 1;
++
++	if (!capable(CAP_SYS_ADMIN))
++		return 0;
++
++	if (list && total_len <= list_size) {
++		memcpy(list, XATTR_GNU_PREFIX, prefix_len);
++		memcpy(list+prefix_len, name, name_len);
++		list[prefix_len + name_len] = '\0';
++	}
++	return total_len;
++}
++
++static int
++ext3_xattr_gnu_get(struct inode *inode, const char *name,
++		       void *buffer, size_t size)
++{
++	if (strcmp(name, "") == 0)
++		return -EINVAL;
++	return ext3_xattr_get(inode, EXT3_XATTR_INDEX_GNU, name,
++			      buffer, size);
++}
++
++static int
++ext3_xattr_gnu_set(struct inode *inode, const char *name,
++		       const void *value, size_t size, int flags)
++{
++	if (strcmp(name, "") == 0)
++		return -EINVAL;
++	return ext3_xattr_set(inode, EXT3_XATTR_INDEX_GNU, name,
++			      value, size, flags);
++}
++
++struct xattr_handler ext3_xattr_gnu_handler = {
++	.prefix	= XATTR_GNU_PREFIX,
++	.list	= ext3_xattr_gnu_list,
++	.get	= ext3_xattr_gnu_get,
++	.set	= ext3_xattr_gnu_set,
++};
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.5.5.4
