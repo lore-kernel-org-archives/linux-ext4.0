@@ -1,63 +1,52 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [PATCH 6/6] ext4: tighten restrictions on inode flags
-Date: Thu, 12 Jun 2008 14:27:07 -0500
-Message-ID: <1213298827.6382.2.camel@norville.austin.ibm.com>
-References: <1213142649-32685-1-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-2-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-3-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-4-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-5-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-6-git-send-email-duaneg@dghda.com>
-	 <1213142649-32685-7-git-send-email-duaneg@dghda.com>
-	 <20080611113104.GC9008@skywalker>
-	 <e9e943910806110449sbf30bf6xd98840fcd343519d@mail.gmail.com>
+From: Holger Kiehl <Holger.Kiehl@dwd.de>
+Subject: Re: Performance of ext4
+Date: Thu, 12 Jun 2008 19:50:35 +0000 (GMT)
+Message-ID: <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de>
+References: <Pine.LNX.4.64.0806110801370.19793@diagnostix.dwd.de>
+ <20080611105945.GB9008@skywalker> <Pine.LNX.4.64.0806111937460.3720@diagnostix.dwd.de>
+ <18563.1213215457@alphaville.zko.hp.com> <Pine.LNX.4.64.0806120855370.27806@diagnostix.dwd.de>
+ <18513.345.553912.449710@frecb006361.adech.frec.bull.fr>
+ <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de> <20080612131928.GB18229@mit.edu>
+ <Pine.LNX.4.64.0806121333480.27806@diagnostix.dwd.de> <20080612180605.GD22481@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	akpm@linux-foundation.org, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Duane Griffin <duaneg@dghda.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Theodore Tso <tytso@mit.edu>, Solofo.Ramangalahy@bull.net,
+	Nick Dokos <nicholas.dokos@hp.com>, linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:47066 "EHLO e1.ny.us.ibm.com"
+Received: from dwdmx4.dwd.de ([141.38.3.230]:59606 "EHLO dwdmx4.dwd.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753900AbYFLT1N (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Jun 2008 15:27:13 -0400
-In-Reply-To: <e9e943910806110449sbf30bf6xd98840fcd343519d@mail.gmail.com>
+	id S1754346AbYFLTun (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Jun 2008 15:50:43 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by node5.dwd.de (Postfix) with ESMTP id 46F3A3303F6
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 19:50:42 +0000 (UTC)
+Received: from localhost ([127.0.0.1])
+	by localhost (node5.csg-cluster.lan [127.0.0.1]) (amavisd-new, port 2525)
+	with SMTP id 09896-64 for <linux-ext4@vger.kernel.org>;
+	Thu, 12 Jun 2008 19:50:42 +0000 (UTC)
+In-Reply-To: <20080612180605.GD22481@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, 12 Jun 2008, Aneesh Kumar K.V wrote:
 
-On Wed, 2008-06-11 at 12:49 +0100, Duane Griffin wrote:
-> 2008/6/11 Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>:
-> >> +/* Mask out flags that are inappropriate for the given type of inode. */
-> >> +static inline __le32 ext4_mask_flags(__le16 mode, __le32 flags)
-> >> +{
-> >> +     if (S_ISDIR(mode))
-> >> +             return flags;
-> >> +     else if (S_ISREG(mode))
-> >> +             return flags & ~EXT4_REG_FLMASK;
-> >> +     else
-> >> +             return flags & ~EXT4_OTHER_FLMASK;
-> >> +}
-> >> +
-> >
-> > why are the arguments __le32 ? They should be in host order.
-> >
-> > static inline  __u32 ext4_mask_flags(umode_t mode, __u32 flags)
-> 
-> Whoops, I was matching the fields in ex4_inode, but I should have been
-> looking at ext4_inode_info. Shouldn't sparse have complained about
-> that?
+> On Thu, Jun 12, 2008 at 02:07:30PM +0000, Holger Kiehl wrote:
+>> This time there is no OOPS and system is still up running without any
+>> problem (except any process wanting to write something to this filesystem
+>> gets stuck forever).
+>>
+>> What can I do to help find the problem? The system is still up with all those
+>> process hanging in D-state.
+>>
+>
+> if you can login to the system get the dmesg output after
+>
+> echo t > /proc/sysrq-trigger
+>
+Unfortunately I have not set CONFIG_MAGIC_SYSRQ. Tomorrow I will try to
+reproduce this with a kernel that has CONFIG_MAGIC_SYSRQ set.
 
-It does, but not by default.  You need to run sparse with
--D__CHECK_ENDIAN__
-
-I use this alias:
-make_sparse is aliased to `make C=2 CF="-D__CHECK_ENDIAN__"'
-
-Shaggy
--- 
-David Kleikamp
-IBM Linux Technology Center
+Holger
 
