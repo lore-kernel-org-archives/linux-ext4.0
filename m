@@ -1,54 +1,57 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH]e2fsprogs: Fix broken "make check"
-Date: Fri, 13 Jun 2008 14:04:01 -0500
-Message-ID: <20080613140401.208b6f86@rx8>
+Subject: Re: [Take2 PATCH 06/10][e2fsprogs] Add 64-bit alloc interface.
+Date: Fri, 13 Jun 2008 14:31:44 -0500
+Message-ID: <20080613143144.1679c75f@rx8>
+References: <20080521175325.18810.25160.stgit@gara>
+	<20080521175404.18810.86928.stgit@gara>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:55266 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752677AbYFMTEJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jun 2008 15:04:09 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m5DJ43S6002852
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 15:04:03 -0400
+Received: from e34.co.us.ibm.com ([32.97.110.152]:55083 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751261AbYFMTcG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jun 2008 15:32:06 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m5DJW14M030754
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 15:32:01 -0400
 Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5DJ43lQ160034
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 13:04:03 -0600
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5DJVn6W157636
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 13:31:50 -0600
 Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5DJ421A015494
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 13:04:02 -0600
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5DJVnNZ021156
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Jun 2008 13:31:49 -0600
+In-Reply-To: <20080521175404.18810.86928.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit: 51d12cebb61ca00f5455fe6e25938cd79fea15ab in pu fails to build
-"make check".
+On Wed, 21 May 2008 12:54:04 -0500
+"Jose R. Santos" <jrs@us.ibm.com> wrote:
 
-Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
----
+> From: Jose R. Santos <jrs@us.ibm.com>
+> 
+> Add 64-bit alloc interface.
+> 
+> Add new ext2fs_new_block2(), ext2fs_get_free_blocks2() and
+> ext2fs_alloc_block2() that take and return blk64_t.
+> 
+> Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+> --
+> 
+>  lib/ext2fs/alloc.c  |   59
+> +++++++++++++++++++++++++++++++++++++++++----------
+> lib/ext2fs/ext2fs.h |    8 +++++++ 2 files changed, 55 insertions(+),
+> 12 deletions(-)
 
- e2fsck/Makefile.in |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+Hi Ted,
 
-diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
-index 32743bc..0186112 100644
---- a/e2fsck/Makefile.in
-+++ b/e2fsck/Makefile.in
-@@ -143,12 +143,12 @@ tst_crc32: $(srcdir)/crc32.c $(LIBEXT2FS)
- tst_refcount: ea_refcount.c
- 	@echo "	LD $@"
- 	@$(CC) -o tst_refcount $(srcdir)/ea_refcount.c \
--		$(ALL_CFLAGS) -DTEST_PROGRAM -lcom_err
-+		$(ALL_CFLAGS) -DTEST_PROGRAM -L$(LIB) -lcom_err
- 
- tst_region: region.c
- 	@echo "	LD $@"
- 	@$(CC) -o tst_region $(srcdir)/region.c \
--		$(ALL_CFLAGS) -DTEST_PROGRAM -lcom_err
-+		$(ALL_CFLAGS) -DTEST_PROGRAM -L$(LIB) -lcom_err
- 
- check:: tst_refcount tst_region tst_crc32
- 	./tst_refcount
+This patch seems like it was added incorrectly into the pu branch.  None
+of the changes to alloc.c show up.
+
+Commit: db1856299023306583f6ca8bcb450c01735da8cb
+
+Thanks
+
+-JRS
