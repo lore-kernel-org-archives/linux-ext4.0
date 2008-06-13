@@ -1,53 +1,75 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: why not allow checksumming of file contents, too?
-Date: Thu, 12 Jun 2008 23:08:39 -0600
-Message-ID: <20080613050839.GT3726@webber.adilger.int>
-References: <loom.20080613T013006-144@post.gmane.org>
+From: Shen Feng <shen@cn.fujitsu.com>
+Subject: Re: [PATCH 2/2] ext4: Make ext4_ext_find_extent fills ext_path	completely
+Date: Fri, 13 Jun 2008 13:40:03 +0800
+Message-ID: <48520833.1080802@cn.fujitsu.com>
+References: <484F68BE.8040203@cn.fujitsu.com> <1213309672.3698.22.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: iaw4 <ivo_welch@brown.edu>
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@MIT.EDU>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:60379 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751442AbYFMFIm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jun 2008 01:08:42 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m5D58f0G020237
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Jun 2008 22:08:41 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K2D00J01Y5E0U00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 12 Jun 2008 22:08:41 -0700 (PDT)
-In-reply-to: <loom.20080613T013006-144@post.gmane.org>
-Content-disposition: inline
+Received: from cn.fujitsu.com ([222.73.24.84]:55761 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752086AbYFMFng (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Jun 2008 01:43:36 -0400
+In-Reply-To: <1213309672.3698.22.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jun 13, 2008  01:33 +0000, iaw4 wrote:
-> there is already checksumming of metadata.
-
-There is only checksumming of the metadata in the journal and for the
-group descriptor.  There is not yet checksumming of the rest of
-metadata (bitmaps, inode table, superblock, etc).
-
-> having a file-system option of
-> checksumming every file's contents upon closing the write would be very
-> convenient, too.  It would only take an extra few bytes in the file
-> descriptor, wouldn't it?  It would be nice insurance against hardware
-> corruption.  zfs has it, too, I believe.  just a suggestions from someone
-> who is just an end user...
-
-Sure, I don't think anyone objects to it, but it is a lot of work to
-implement and nobody has yet made the effort to do so.  If someone is
-looking to work on this, we've given a lot of thought to the design
-of how to implement this.
 
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Mingming Cao Wrote:
+> On Wed, 2008-06-11 at 13:55 +0800, Shen Feng wrote:
+>> When pos=0 or depth, the fields of ext4_ext_path is not
+>> completely filled.
+>> This patch also removes some unnecessary code.
+>>
+> 
+> I added this patch to the patch queue, unless somebody disagree.
+> 
+> Mingming
+>> Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
+>> ---
+>>  fs/ext4/extents.c |    4 ++--
+>>  1 files changed, 2 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+>> index d4f76d7..ff609df 100644
+>> --- a/fs/ext4/extents.c
+>> +++ b/fs/ext4/extents.c
+>> @@ -524,6 +524,7 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+>>  		alloc = 1;
+>>  	}
+>>  	path[0].p_hdr = eh;
+>> +	path[0].p_bh = NULL;
+>>
+>>  	i = depth;
+>>  	/* walk through the tree */
+>> @@ -552,12 +553,11 @@ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+>>  	}
+>>
+>>  	path[ppos].p_depth = i;
+>> -	path[ppos].p_hdr = eh;
+>> -	path[ppos].p_ext = NULL;
+>>  	path[ppos].p_idx = NULL;
+>>
+>>  	/* find extent */
+>>  	ext4_ext_binsearch(inode, path + ppos, block);
+>> +	path[ppos].p_block = ext4_ext_pblock(path[ppos].p_ext);
+
+Today I tested the patch with bonnie++ and found that sometimes
+path[ppos].p_ext may be NULL. This may cause kernel oops.
+
+This is because ext4_ext_binsearch return directly when the leaf is empty.
+
+
+
+>>
+>>  	ext4_ext_show_path(inode, path);
+>>
+> 
+> 
+> 
 
