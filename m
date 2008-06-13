@@ -1,80 +1,53 @@
-From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
-Subject: Re: [PATCH] ext4: fix online resize group descriptors corruption
-Date: Fri, 13 Jun 2008 14:33:43 +0200
-Message-ID: <1213360423.9222.41.camel@localhost>
-References: <1213263754.6549.45.camel@localhost>
-	 <20080612190427.GD18229@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: git-clone problem
+Date: Fri, 13 Jun 2008 11:43:18 -0400
+Message-ID: <20080613154318.GF24675@mit.edu>
+References: <48522544.50306@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Shen Feng <shen@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:43332 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754618AbYFMMdN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jun 2008 08:33:13 -0400
-In-Reply-To: <20080612190427.GD18229@mit.edu>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:34442 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757400AbYFMPn2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Jun 2008 11:43:28 -0400
+Content-Disposition: inline
+In-Reply-To: <48522544.50306@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-=EF=BB=BFTed,
+On Fri, Jun 13, 2008 at 03:44:04PM +0800, Shen Feng wrote:
+> Hello,
+> 
+> When I try to clone the ext4 development tree, I got the following error.
+> Is there anything wrong?
+> 
+> [fenian@localhost ~]$ git-clone http://www.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
 
-Concerning flex_bg and uninit_bg : it's currently not possible to resiz=
-e
-a filesystem with those features. It seems there are issues with
-resize2fs.
-We have also used nomballoc switch when mounting because of the oops
-when unmounting.
+Dont use the http transport; it's not very efficient, and often
+breaks.  I've fixed it for now (the hook to automatically run "git
+update-server-info" was missing), but you'll get much faster and more
+reliable results if you clone via the URL:
 
-We have tried both physical hard disk drive and loop back devices.
-We have tested several filesystem resize with few (adding 1 group) to
-many (adding 250 groups) more groups. All give correct group descriptor=
-s
-using dump2fs and no problem when writing files and unmounting
-filesystems.
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
 
-This is a typical test case:
+Actually the best thing to do is if you already have a local
+repository of the kernel, to do:
 
-mkfs.ext4 -E test_fs -O ^flex_bg /dev/sdc1 10M
-mount -t ext4dev -o nomballoc /dev/sdc1 /mnt/test
-dumpe2fs /dev/sdc1
-resize2fs /dev/sdc1 100M
-dumpe2fs /dev/sdc1
-dd if=3D/dev/urandom of=3D/mnt/test/data bs=3D95M count=3D1
-umount /mnt/test
-fsck.ext4 -f /dev/sdc1
+git clone -s my-clone-of-linus-tree ext4
 
-This test being run for several sizes of filesystem (from 10M with 1K
-blocks to 1G with 4K blocks).
+The edit the .git/config file so the url for [remote "master"] is:
 
-Let me know if we have missed something or if you want more testings.
+    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
 
-Regards
+... and do a "git pull".  This will be much more efficient since you
+limit the amount of data that you have to pull down over the network.
 
+Note that the ext4 patch queue tends to have a much more dynamic and
+bleeding-edge set of patches than the ext4 git tree.  The ext4 patch
+queue is a quilt patch series maintained at this git repository:
 
+      git://repo.or.cz/ext4-patch-queue.git
 
-
-Le jeudi 12 juin 2008 =C3=A0 15:04 -0400, Theodore Tso a =C3=A9crit :
-> On Thu, Jun 12, 2008 at 11:42:34AM +0200, Fr=C3=A9d=C3=A9ric Boh=C3=A9=
- wrote:
-> > From: Frederic Bohe <frederic.bohe@bull.net>
->=20
-> Frederic,
->=20
-> Many thanks!  How much testing have you done with the patch?  Does it
-> fix growing the filesystems from a filesystem with say, 18 block
-> groups to 32 block groups?  Have you tried with with different
-> filesystem features, including with and without flex_bg and uninit_bg=
-?
->=20
-> Regards,
->=20
-> 	   	     	       	    			- Ted
->=20
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+	      	     	     	      	       - Ted
