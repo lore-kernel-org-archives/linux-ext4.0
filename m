@@ -1,56 +1,86 @@
-From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: [PATCH] ext4: fix ext4_init_block_bitmap() for metablock block
-	group
-Date: Sun, 15 Jun 2008 23:24:56 +0900
-Message-ID: <20080615142455.GA3502@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-2022-jp
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Stephen Tweedie <sct@redhat.com>, adilger@clusterfs.com,
-	Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@MIT.EDU>
-To: linux-ext4@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Fix file system hang due to corrupt jinode values.
+Date: Sun, 15 Jun 2008 20:22:58 +0530
+Message-ID: <1213541578-1351-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.168]:64468 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757411AbYFOO0R (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Jun 2008 10:26:17 -0400
-Received: by wf-out-1314.google.com with SMTP id 27so4818735wfd.4
-        for <linux-ext4@vger.kernel.org>; Sun, 15 Jun 2008 07:26:16 -0700 (PDT)
-Content-Disposition: inline
+Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:59137 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757955AbYFOOxW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 15 Jun 2008 10:53:22 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m5FErrLq011394
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 00:53:53 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5FErKY4298334
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 00:53:20 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5FErJal029402
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 00:53:19 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When meta_bg feature is enabled and s_first_meta_bg != 0, 
-ext4_init_block_bitmap() miscalculates the number of block used by
-the group descriptor table (0 or 1 for metablock block group)
+While commiting the transaction we set the i_flags
+of jbd2_inode to JI_COMMIT_RUNNING. This is needed to ensure
+that when we are commiting the transaction we don't release
+the inode via iput. In ext4_clear_inode we wait for the
+flag to be cleared before we release the inode.
 
-This patch fix it by using ext4_bg_num_gdb()
+In ext4_new_inode we call iput for different failure cases
+before initializing the jbd2_inode. This cause the failure
+case to hang in iput as show below. Fix the same by initializing
+jbd2_inode early.
 
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Stephen Tweedie <sct@redhat.com>
-Cc: adilger@clusterfs.com
-Cc: Mingming Cao <cmm@us.ibm.com>
-Cc: Theodore Tso <tytso@MIT.EDU>
+ [<c022d20e>] ? prepare_to_wait+0x49/0x4e
+ [<c02cf430>] jbd2_journal_release_jbd_inode+0x86/0xcc
+ [<c022d0e4>] ? wake_bit_function+0x0/0x43
+ [<c02b329b>] ext4_clear_inode+0x45/0x4a
+ [<c02748f7>] clear_inode+0x5f/0xae
+ [<c0274e8f>] generic_drop_inode+0x119/0x13a
+ [<c0274071>] iput+0x4b/0x4e
+ [<c02ab200>] ext4_new_inode+0xb29/0xb7a
+ [<c0272761>] ? dput+0x19/0xdc
+ [<c02cca5f>] ? jbd2_journal_start+0x8c/0xb9
+ [<c02b1cb4>] ext4_create+0x81/0xe7
+ [<c02b1c33>] ? ext4_create+0x0/0xe7
+ [<c026aa3c>] vfs_create+0x6c/0xdb
+ [<c026cfd6>] do_filp_open+0x1a6/0x6b5
+ [<c026284e>] do_sys_open+0x40/0xb6
+ [<c0262906>] sys_open+0x1e/0x26
+ [<c0202be6>] syscall_call+0x7/0xb
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/balloc.c |    7 +------
- 1 file changed, 1 insertion(+), 6 deletions(-)
+ fs/ext4/ialloc.c |    1 -
+ fs/ext4/super.c  |    1 +
+ 2 files changed, 1 insertions(+), 1 deletions(-)
 
-Index: 2.6-git/fs/ext4/balloc.c
-===================================================================
---- 2.6-git.orig/fs/ext4/balloc.c
-+++ 2.6-git/fs/ext4/balloc.c
-@@ -121,12 +121,7 @@ unsigned ext4_init_block_bitmap(struct s
- 				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
- 		}
- 	} else { /* For META_BG_BLOCK_GROUPS */
--		int group_rel = (block_group -
--				 le32_to_cpu(sbi->s_es->s_first_meta_bg)) %
--				EXT4_DESC_PER_BLOCK(sb);
--		if (group_rel == 0 || group_rel == 1 ||
--		    (group_rel == EXT4_DESC_PER_BLOCK(sb) - 1))
--			bit_max += 1;
-+		bit_max += ext4_bg_num_gdb(sb, block_group);
- 	}
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 7823405..dc8bfc4 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -820,7 +820,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
+ 	ei->i_state = EXT4_STATE_NEW;
  
- 	if (block_group == sbi->s_groups_count - 1) {
+ 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
+-	jbd2_journal_init_jbd_inode(&ei->jinode, inode);
+ 
+ 	ret = inode;
+ 	if(DQUOT_ALLOC_INODE(inode)) {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e207555..fde1ae9 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -578,6 +578,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->i_allocated_meta_blocks = 0;
+ 	ei->i_delalloc_reserved_flag = 0;
+ 	spin_lock_init(&(ei->i_block_reservation_lock));
++	jbd2_journal_init_jbd_inode(&ei->jinode, &ei->vfs_inode);
+ 	return &ei->vfs_inode;
+ }
+ 
+-- 
+1.5.6.rc2.15.g457bb.dirty
+
