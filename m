@@ -1,82 +1,47 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: [RFC] ext4: Semantics of delalloc,data=ordered
-Date: Mon, 16 Jun 2008 21:40:58 +0200
-Message-ID: <20080616194058.GF31567@duck.suse.cz>
-References: <1213284316-22063-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080616150533.GB3279@atrey.karlin.mff.cuni.cz> <20080616185524.GR3726@webber.adilger.int>
+Date: Mon, 16 Jun 2008 21:45:49 +0200
+Message-ID: <20080616194549.GG31567@duck.suse.cz>
+References: <1213284316-22063-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080616150533.GB3279@atrey.karlin.mff.cuni.cz> <20080616160251.GA14214@skywalker> <20080616172046.GC3279@atrey.karlin.mff.cuni.cz> <20080616181152.GG14214@skywalker> <20080616191727.GD31567@duck.suse.cz> <4856BD70.4080000@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+	cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org,
+	adilger@sun.com
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:36478 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:36617 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751946AbYFPTlA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jun 2008 15:41:00 -0400
+	id S1751595AbYFPTpu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jun 2008 15:45:50 -0400
 Content-Disposition: inline
-In-Reply-To: <20080616185524.GR3726@webber.adilger.int>
+In-Reply-To: <4856BD70.4080000@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 16-06-08 12:55:24, Andreas Dilger wrote:
-> On Jun 16, 2008  17:05 +0200, Jan Kara wrote:
-> >   First, I'd like to see some short comment on what semantics
-> > delalloc,data=ordered is going to have. At least I can imagine at least
-> > two sensible approaches:
-> >   1) All we guarantee is that user is not going to see uninitialized data.
-> > We send writes to disk (and allocate blocks) whenever it fits our needs
-> > (usually when pdflush finds them).
-> >   2) We guarantee that when transaction commits, your data is on disk -
-> > i.e., we allocate actual blocks on transaction commit.
-> > 
-> >   Both these possibilities have their pros and cons. Most importantly,
-> > 1) gives better disk layout while 2) gives higher consistency
-> > guarantees. Note that with 1), it can under some circumstances happen,
-> > that after a crash you see block 1 and 3 of your 3-block-write on disk,
-> > while block 2 is still a hole. 1) is easy to implement (you mostly did
-> > it below), 2) is harder. I think there should be broader consensus on
-> > what the semantics should be (changed subject to catch more attention ;).
+On Mon 16-06-08 14:22:24, Eric Sandeen wrote:
+> Jan Kara wrote:
+> >>>   Imagine you have a file with blocks 1 and 3 allocated and block 2 is a
+> >>> hole. You write blocks 1-3. Block 2 isn't allocated because of delalloc.
+> >>> Now if inode is already in the current transaction's list, during commit
+> >>> writes to blocks 1 and 3 will land on disk but write to block 2 will
+> >>> happen only after pdflush finds it.
+> >> And that should be fine with data=ordered mode right ?. Because since
+> >> block 2 is not yet allocated we don't have associated meta-data. So
+> >> even if we crash we have meta-data pointing to 1 and 3 and not 2. The
+> >> problem is only when we write the meta-data pointing to block 2 and not
+> >> block 2 itself ?.
+> >   Yes, it is correct. I may be just surprising (we didn't do things like
+> > this in data=ordered mode before).
 > 
-> IMHO, the semantic should be (1) and not (2).  Applications don't understand
-> "when the transaction commits" so it doesn't provide any useful guarantee
-> to userspace, and if they actually need the data on disk (e.g. MTA) then
-> they need to call fsync to ensure this.
-  Well, in principle I agree with you. But let's take example of firefox /
-konqueror. They call fsync() on each modification to their "browsing
-history" file. And when I asked one Konqueror developer why do they do such
-a stupid thing, he told me that XFS used to zero-out portions of the file
-on crash (because of delalloc) and this broke the browser in funny ways.
-  Now the point I wanted to make is that if the filesystem behaves
-"reasonably" apps often do not need to call fsync (Konquerror is fine with
-how current ext3 in data=ordered mode behaves without using fsync, I'm not
-sure if it would be fine with delalloc,data=ordered of ext4).
-  So I'm not really decided whether the additional performance is worth the
-decreased data consistency guarantees...
-
-> While I agree it is theoretically possible to have the "hole in data
-> where there shouldn't be one" scenario, in real life these blocks would be
-> allocated together by delalloc+mballoc and this situation should not happen.
-> 
-> As for "sync with heavy IO causing slowness" problem of Firefox, I think
-> that delalloc will help this noticably, but I agree we can still get into
-> cases where a lot of dirty data was just allocated and now needs to be
-> flushed to disk to commit the transaction.
-> 
-> In the short term I don't think this can be completely fixed, but in the
-> long term I think it can be fixed by having mballoc do "reservations" of
-> space on disk, in which the dirty pages can be written.  Only after the
-> data is on disk does the "reservation" turn into an "allocation" in the
-> journal (i.e. filesystem buffers added to transaction and modified).
-> At that point a sync operation only has to write out the journal blocks,
-> because all of the data is on disk already.
-  Interesting idea, this seems like a viable way to fix the problem.
-
-> I don't think it is a huge difference from what we have today, but I
-> also don't think it should be in the first implementation.  We would
-> need to split up handling of the in-memory block bitmaps so that only
-> the in-memory ones are updated first, then the on-disk bitmaps are
-> later marked in use in a transaction after the data blocks are on disk.
+> Will it even be surprising?  "fill-in-hole; crash;" today may give you
+> the same thing, right?  It's just that with delalloc it might be a
+> bigger window in time for this to happen?
+  Thinking more about it, yes, it could happen even with current ordered
+mode. If the crash happens between writeback of data buffers and commit of
+transaction, block in the middle would remain to be a hole.
+  OK, so we just make the window larger. You are starting to convince me
+that 1) is really the better choice ;).
 
 									Honza
 -- 
