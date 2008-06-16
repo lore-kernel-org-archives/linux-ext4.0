@@ -1,92 +1,165 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Fix file system hang due to corrupt jinode
-	values.
-Date: Mon, 16 Jun 2008 22:00:11 +0530
-Message-ID: <20080616163011.GD14214@skywalker>
-References: <1213541578-1351-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080616134503.GA3279@atrey.karlin.mff.cuni.cz>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC] ext4: Semantics of delalloc,data=ordered
+Date: Mon, 16 Jun 2008 19:20:46 +0200
+Message-ID: <20080616172046.GC3279@atrey.karlin.mff.cuni.cz>
+References: <1213284316-22063-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080616150533.GB3279@atrey.karlin.mff.cuni.cz> <20080616160251.GA14214@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org, adilger@sun.com
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([59.145.155.4]:39195 "EHLO
-	e28esmtp04.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756939AbYFPQan (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 12:30:43 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5GGULjF007597
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 22:00:21 +0530
-Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5GGTWCT897214
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 21:59:32 +0530
-Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5GGUKWw008642
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 22:00:20 +0530
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:44655 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756585AbYFPRUr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 13:20:47 -0400
 Content-Disposition: inline
-In-Reply-To: <20080616134503.GA3279@atrey.karlin.mff.cuni.cz>
+In-Reply-To: <20080616160251.GA14214@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 16, 2008 at 03:45:03PM +0200, Jan Kara wrote:
-> > While commiting the transaction we set the i_flags
-> > of jbd2_inode to JI_COMMIT_RUNNING. This is needed to ensure
-> > that when we are commiting the transaction we don't release
-> > the inode via iput. In ext4_clear_inode we wait for the
-> > flag to be cleared before we release the inode.
+> On Mon, Jun 16, 2008 at 05:05:33PM +0200, Jan Kara wrote:
+> >   Hi Aneesh,
 > > 
-> > In ext4_new_inode we call iput for different failure cases
-> > before initializing the jbd2_inode. This cause the failure
-> > case to hang in iput as show below. Fix the same by initializing
-> > jbd2_inode early.
+> >   First, I'd like to see some short comment on what semantics
+> > delalloc,data=ordered is going to have. At least I can imagine at least
+> > two sensible approaches:
+> >   1) All we guarantee is that user is not going to see uninitialized data.
+> > We send writes to disk (and allocate blocks) whenever it fits our needs
+> > (usually when pdflush finds them).
+> >   2) We guarantee that when transaction commits, your data is on disk -
+> > i.e., we allocate actual blocks on transaction commit.
 > > 
-> >  [<c022d20e>] ? prepare_to_wait+0x49/0x4e
-> >  [<c02cf430>] jbd2_journal_release_jbd_inode+0x86/0xcc
-> >  [<c022d0e4>] ? wake_bit_function+0x0/0x43
-> >  [<c02b329b>] ext4_clear_inode+0x45/0x4a
-> >  [<c02748f7>] clear_inode+0x5f/0xae
-> >  [<c0274e8f>] generic_drop_inode+0x119/0x13a
-> >  [<c0274071>] iput+0x4b/0x4e
-> >  [<c02ab200>] ext4_new_inode+0xb29/0xb7a
-> >  [<c0272761>] ? dput+0x19/0xdc
-> >  [<c02cca5f>] ? jbd2_journal_start+0x8c/0xb9
-> >  [<c02b1cb4>] ext4_create+0x81/0xe7
-> >  [<c02b1c33>] ? ext4_create+0x0/0xe7
-> >  [<c026aa3c>] vfs_create+0x6c/0xdb
-> >  [<c026cfd6>] do_filp_open+0x1a6/0x6b5
-> >  [<c026284e>] do_sys_open+0x40/0xb6
-> >  [<c0262906>] sys_open+0x1e/0x26
-> >  [<c0202be6>] syscall_call+0x7/0xb
+> >   Both these possibilities have their pros and cons. Most importantly,
+> > 1) gives better disk layout while 2) gives higher consistency
+> > guarantees. Note that with 1), it can under some circumstances happen,
+> > that after a crash you see block 1 and 3 of your 3-block-write on disk,
+> > while block 2 is still a hole. 1) is easy to implement (you mostly did
+> > it below), 2) is harder. I think there should be broader consensus on
+> > what the semantics should be (changed subject to catch more attention
+> > ;).
 > > 
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
->   Oh yes, thanks for fixing this. I think there is place in
-> super.c which also calls jbd2_journal_init_jbd_inode() and which doesn't
-> need to call it when you do so already in alloc_inode().
+> >   A few comments to your patch are also below.
+> > 
+> > 								Honza
 > 
+> The way I was looking at ordered mode was, we only guarantee that the
+> meta-data blocks corresponding to the data block allocated get committed
+> only after the data-blocks are written to the disk. As long as we don't
+> allocate blocks corresponding to a page we don't write the  page to
+> disk. This should also speed up the "sync slowness" that lot of people
+> are reporting with ordered mode.
+  I'm not sure if it helps - tons of dirty data have to get to
+transaction at some time even with delayed alloc and at that moment any
+"interactive application" is going to be starved.
 
-Like this ?
+> Can you explain
+> "
+> 1), it can under some circumstances happen, that after a crash you see
+> block 1 and 3 of your 3-block-write on disk, while block 2 is still a hole.
+> "
+  Imagine you have a file with blocks 1 and 3 allocated and block 2 is a
+hole. You write blocks 1-3. Block 2 isn't allocated because of delalloc.
+Now if inode is already in the current transaction's list, during commit
+writes to blocks 1 and 3 will land on disk but write to block 2 will
+happen only after pdflush finds it.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index fef2574..43d67e0 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3125,7 +3125,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
- #endif
- 	ei->i_block_alloc_info = NULL;
--	jbd2_journal_init_jbd_inode(&ei->jinode, inode);
- 
- 	ret = __ext4_get_inode_loc(inode, &iloc, 0);
- 	if (ret < 0)
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 034f00f..e511b95 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2259,8 +2259,6 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 		printk(KERN_ERR "EXT4-fs: can't get new inode\n");
- 		goto err_freesgi;
- 	}
--	jbd2_journal_init_jbd_inode(&EXT4_I(sbi->s_buddy_cache)->jinode,
--				    sbi->s_buddy_cache);
- 	EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
- 
- 	metalen = sizeof(*meta_group_info) << EXT4_DESC_PER_BLOCK_BITS(sb);
+> > > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> > > ---
+> > >  fs/ext4/inode.c  |  169 +++++++++++++++++++++++++++++++++++++++++++++++++++--
+> > >  fs/jbd2/commit.c |   41 ++++++++++++--
+> > >  2 files changed, 198 insertions(+), 12 deletions(-)
+> > > 
+> > > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > > index 63355ab..7d87641 100644
+> > > --- a/fs/ext4/inode.c
+> > > +++ b/fs/ext4/inode.c
+> > > @@ -1606,13 +1606,12 @@ static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
+> > >  	return !buffer_mapped(bh) || buffer_delay(bh);
+> > >  }
+> > >  
+> > > -/* FIXME!! only support data=writeback mode */
+> > >  /*
+> > >   * get called vi ext4_da_writepages after taking page lock
+> > >   * We may end up doing block allocation here in case
+> > >   * mpage_da_map_blocks failed to allocate blocks.
+> > >   */
+> > > -static int ext4_da_writepage(struct page *page,
+> > > +static int ext4_da_writeback_writepage(struct page *page,
+> > >  				struct writeback_control *wbc)
+> > >  {
+> > >  	int ret = 0;
+> > > @@ -1660,6 +1659,61 @@ static int ext4_da_writepage(struct page *page,
+> > >  	return ret;
+> > >  }
+> > >  
+> > > +/*
+> > > + * get called vi ext4_da_writepages after taking page lock
+> > > + * We may end up doing block allocation here in case
+> > > + * mpage_da_map_blocks failed to allocate blocks.
+> > > + *
+> > > + * We also get called via journal_submit_inode_data_buffers
+> > > + */
+> > > +static int ext4_da_ordered_writepage(struct page *page,
+> > > +				struct writeback_control *wbc)
+> > > +{
+> > > +	int ret = 0;
+> > > +	loff_t size;
+> > > +	unsigned long len;
+> > > +	handle_t *handle = NULL;
+> > > +	struct buffer_head *page_bufs;
+> > > +	struct inode *inode = page->mapping->host;
+> > > +
+> > > +	handle = ext4_journal_current_handle();
+> > > +	if (!handle) {
+> > > +		/*
+> > > +		 * This can happen when we aren't called via
+> > > +		 * ext4_da_writepages() but directly (shrink_page_list).
+> > > +		 * We cannot easily start a transaction here so we just skip
+> > > +		 * writing the page in case we would have to do so.
+> > > +		 */
+> > > +		size = i_size_read(inode);
+> > > +
+> > > +		page_bufs = page_buffers(page);
+> > > +		if (page->index == size >> PAGE_CACHE_SHIFT)
+> > > +			len = size & ~PAGE_CACHE_MASK;
+> > > +		else
+> > > +			len = PAGE_CACHE_SIZE;
+> > > +
+> > > +		if (walk_page_buffers(NULL, page_bufs, 0,
+> > > +				len, NULL, ext4_bh_unmapped_or_delay)) {
+> > > +			/*
+> > > +			 * We can't do block allocation under
+> > > +			 * page lock without a handle . So redirty
+> > > +			 * the page and return.
+> > > +			 * We may reach here when we do a journal commit
+> > > +			 * via journal_submit_inode_data_buffers.
+> > > +			 * If we don't have mapping block we just ignore
+> > > +			 * them
+> > > +			 *
+> > > +			 */
+> > > +			redirty_page_for_writepage(wbc, page);
+> > > +			unlock_page(page);
+> > > +			return 0;
+> > > +		}
+> > > +	}
+> > > +
+> > > +	ret = block_write_full_page(page, ext4_da_get_block_write, wbc);
+> > > +
+> > > +	return ret;
+> > > +}
+> >   If you're going to use this writepage() implementation from commit
+> > code, you cannot simply do redirty_page_for_writepage() and bail out
+> > when there's an unmapped buffer. You must write out at least mapped
+> > buffers to satisfy ordering guarantees (think of filesystems with
+> > blocksize < page size).
+> 
+> With delalloc is it possible to have a page that have some buffer_heads
+> marked delay ?
+  I thought more about the case where some buffers are mapped and some
+aren't (because there's a hole in the middle of the page)...
+
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
