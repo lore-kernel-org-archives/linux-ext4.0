@@ -1,148 +1,115 @@
-From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: Re: [PATCH] ext4: fix ext4_init_block_bitmap() for metablock block
-	group
-Date: Mon, 16 Jun 2008 23:10:17 +0900
-Message-ID: <20080616141016.GA19080@localhost.localdomain>
-References: <20080615142455.GA3502@localhost.localdomain> <20080616051859.GK3726@webber.adilger.int>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: ext4_page_mkwrite and delalloc
+Date: Mon, 16 Jun 2008 16:11:41 +0200
+Message-ID: <20080616141141.GB31567@duck.suse.cz>
+References: <20080612181407.GE22481@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-2022-jp
-Cc: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Stephen Tweedie <sct@redhat.com>, adilger@clusterfs.com,
-	Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@MIT.EDU>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.233]:11473 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753656AbYFPOLl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 10:11:41 -0400
-Received: by rv-out-0506.google.com with SMTP id k40so3602265rvb.1
-        for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 07:11:38 -0700 (PDT)
+Received: from styx.suse.cz ([82.119.242.94]:52736 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753734AbYFPOLn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jun 2008 10:11:43 -0400
 Content-Disposition: inline
-In-Reply-To: <20080616051859.GK3726@webber.adilger.int>
+In-Reply-To: <20080612181407.GE22481@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 15, 2008 at 11:19:00PM -0600, Andreas Dilger wrote:
-> On Jun 15, 2008  23:24 +0900, Akinobu Mita wrote:
-> > When meta_bg feature is enabled and s_first_meta_bg != 0, 
-> > ext4_init_block_bitmap() miscalculates the number of block used by
-> > the group descriptor table (0 or 1 for metablock block group)
+  Hi Aneesh,
+
+On Thu 12-06-08 23:44:07, Aneesh Kumar K.V wrote:
+> With delalloc we should not do writepage in ext4_page_mkwrite. The idea
+> with delalloc is to delay the block allocation and make sure we allocate
+> chunks of blocks together at writepages. So i guess we should update
+> ext4_page_mkwrite to use write_begin and write_end instead of writepage.
+> Taking i_alloc_sem should protect against parallel truncate and the page
+> lock should protect against parallel write_begin/write_end.
 > 
-> Can you please clarify why the calculation is incorrect?  I admit that
-> I didn't test with META_BG enabled, so it could well be wrong, but looking
-> at the code I can't understand why it is incorrect.
+> How about the patch below ?
+  In principle the patch looks fine, I would only like to see two things
+checked:
+  1) Did you do some stress testing of the patch - combining mmapped writes
+with ordinary writes to the same file and truncation so that we detect
+possible bugs in locking / data corruption due to some bad locking. This
+significantly changes when write_begin / write_end can be called in ext4
+(i.e., it is now called without i_mutex - BTW: that is probably worth a
+comment before these functions).
+  2) How does this change influence CPU load for mmapped accesses - I worry
+about write_begin / write_end path being significantly heavier than just
+calling writepage. Probably just mmap a large file, write single byte
+to every page and measure using oprofile whether accumulated time spent in
+page_mkwrite didn't change to much.
 
-group_rel in the original code should be calculated by:
-
-        group_rel = block_group % EXT4_DESC_PER_BLOCK(sb);
-
-No need to subtract s_first_meta_bg from brock_group.
-It will be equivalent what ext4_bg_num_gdb_meta() does
-
-> > @@ -121,12 +121,7 @@ unsigned ext4_init_block_bitmap(struct s
->         if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
->             block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
->                           sbi->s_desc_per_block) {
->                 if (bit_max) {
->                         bit_max += ext4_bg_num_gdb(sb, block_group);
->                         bit_max +=
-> >  				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
-> >  		}
-> >  	} else { /* For META_BG_BLOCK_GROUPS */
-> > -		int group_rel = (block_group -
-> > -				 le32_to_cpu(sbi->s_es->s_first_meta_bg)) %
-> > -				EXT4_DESC_PER_BLOCK(sb);
-> > -		if (group_rel == 0 || group_rel == 1 ||
-> > -		    (group_rel == EXT4_DESC_PER_BLOCK(sb) - 1))
-> > -			bit_max += 1;
-> > +		bit_max += ext4_bg_num_gdb(sb, block_group);
-> >  	}
+  Thanks.
+									Honza
 > 
-> As you can see, the "if" checks if the block group is before s_first_meta_bg
-> to treat it as a "normal" group, and only uses the "else" once beyond the
-> start of the s_first_meta_bg limit.
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index cac132b..7f162cc 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3543,18 +3543,6 @@ int ext4_change_inode_journal_flag(struct inode *inode, int val)
+>  	return err;
+>  }
+>  
+> -static int ext4_bh_prepare_fill(handle_t *handle, struct buffer_head *bh)
+> -{
+> -	if (!buffer_mapped(bh)) {
+> -		/*
+> -		 * Mark buffer as dirty so that
+> -		 * block_write_full_page() writes it
+> -		 */
+> -		set_buffer_dirty(bh);
+> -	}
+> -	return 0;
+> -}
+> -
+>  static int ext4_bh_unmapped(handle_t *handle, struct buffer_head *bh)
+>  {
+>  	return !buffer_mapped(bh);
+> @@ -3596,24 +3584,22 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+>  		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+>  				       ext4_bh_unmapped))
+>  			goto out_unlock;
+> -		/*
+> -		 * Now mark all the  buffer head dirty so
+> -		 * that writepage can write it
+> -		 */
+> -		walk_page_buffers(NULL, page_buffers(page), 0, len,
+> -					NULL, ext4_bh_prepare_fill);
+>  	}
+>  	/*
+> -	 * OK, we need to fill the hole... Lock the page and do writepage.
+> -	 * We can't do write_begin and write_end here because we don't
+> -	 * have inode_mutex and that allow parallel write_begin, write_end call.
+> +	 * OK, we need to fill the hole... Lock the page and do write_begin
+> +	 * write_end. We are not holding inode.i__mutex here. That allow
+> +	 * parallel write_begin, write_end call.
+>  	 * (lock_page prevent this from happening on the same page though)
+>  	 */
+> -	lock_page(page);
+> -	wbc.range_start = page_offset(page);
+> -	wbc.range_end = page_offset(page) + len;
+> -	ret = mapping->a_ops->writepage(page, &wbc);
+> -	/* writepage unlocks the page */
+> +	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
+> +			len, AOP_FLAG_UNINTERRUPTIBLE, &page, NULL);
+> +	if (ret < 0)
+> +		goto out_unlock;
+> +	ret = mapping->a_ops->write_end(file, mapping, page_offset(page),
+> +			len, len, page, NULL);
+> +	if (ret < 0)
+> +		goto out_unlock;
+> +	ret = 0;
+>  out_unlock:
+>  	up_read(&inode->i_alloc_sem);
+>  	return ret;
 > 
-> It definitely is less complex to use ext4_bg_num_gdb(), and this could
-> further be simplified by using ext4_bg_gdb_meta() in the "else" clause.
-> In fact, the whole if/else could be replaced with ext4_bg_num_gdb() if
-> it weren't for s_reserved_gdt_blocks.
-> 
-> Maybe it makes sense (cleaner code, less chance for bugs) to change the
-> ext4_bg_num_gdb() function to take a parameter on whether it should
-> include the s_reserved_gdt_blocks or not:
-> 
-> static unsigned long ext4_bg_num_gdb_nometa(struct super_block *sb, int group,
-> 					    int reserved)
-> {
-> 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-> 				       EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER) &&
-> 	    !ext4_group_sparse(group))
-> 		return 0;
-> 	return EXT4_SB(sb)->s_gdb_count +
-> 		reserved ? EXT4_SB(sb)->s_reserved_gdt_blocks : 0;
-> }
-> 
-> unsigned long ext4_bg_num_gdb(struct super_block *sb, int group, int reserved)
-> {
-> 	unsigned long first_meta_bg =
-> 			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_meta_bg);
-> 	unsigned long metagroup = group / EXT4_DESC_PER_BLOCK(sb);
-> 
-> 	if (!EXT4_HAS_INCOMPAT_FEATURE(sb,EXT4_FEATURE_INCOMPAT_META_BG) ||
-> 	    metagroup < first_meta_bg)
-> 		return ext4_bg_num_gdb_nometa(sb, group, reserved);
-> 
-> 	return ext4_bg_num_gdb_meta(sb, group);
-> }
-> 
-> The fewer places in the code that need to understand META_BG, the less
-> chance of having a bug.  Now the code in ext4_init_block_bitmap() can be:
-> 
-> 	bit_max += ext4_bg_num_gdb(sb, block_group, 1);
-
-Looks good to me. But I'd like to divide into the change into simple
-bugfix and cleanup patch in order to clarify the each change.
-
-Here is a bugfix only patch.
-
-From: Akinobu Mita <akinobu.mita@gmail.com>
-Subject: ext4: fix ext4_init_block_bitmap() for metablock block group
-
-When meta_bg feature is enabled and s_first_meta_bg != 0, 
-ext4_init_block_bitmap() miscalculates the number of block used by
-the group descriptor table (0 or 1 for metablock block group)
-
-group_rel in the original code should be calculated by:
-
-        group_rel = block_group % EXT4_DESC_PER_BLOCK(sb);
-
-No need to subtract s_first_meta_bg from brock_group.
-It will be equivalent what ext4_bg_num_gdb_meta() does
-
-Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Stephen Tweedie <sct@redhat.com>
-Cc: adilger@clusterfs.com
-Cc: Mingming Cao <cmm@us.ibm.com>
-Cc: Theodore Tso <tytso@MIT.EDU>
----
- fs/ext4/balloc.c |    5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
-
-Index: 2.6-git/fs/ext4/balloc.c
-===================================================================
---- 2.6-git.orig/fs/ext4/balloc.c
-+++ 2.6-git/fs/ext4/balloc.c
-@@ -121,9 +121,8 @@ unsigned ext4_init_block_bitmap(struct s
- 				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
- 		}
- 	} else { /* For META_BG_BLOCK_GROUPS */
--		int group_rel = (block_group -
--				 le32_to_cpu(sbi->s_es->s_first_meta_bg)) %
--				EXT4_DESC_PER_BLOCK(sb);
-+		int group_rel = block_group % EXT4_DESC_PER_BLOCK(sb);
-+
- 		if (group_rel == 0 || group_rel == 1 ||
- 		    (group_rel == EXT4_DESC_PER_BLOCK(sb) - 1))
- 			bit_max += 1;
+> If we agree i will send an updated ext4_page_mkwrite.patch and other
+> related patches that needed to be updated so that the patch queue apply
+> cleanly. 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
