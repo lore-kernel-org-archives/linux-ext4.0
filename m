@@ -1,63 +1,40 @@
-From: Jan Kara <jack@suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: [RFC] ext4: Semantics of delalloc,data=ordered
-Date: Mon, 16 Jun 2008 21:22:11 +0200
-Message-ID: <20080616192211.GE31567@duck.suse.cz>
-References: <1213284316-22063-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080616150533.GB3279@atrey.karlin.mff.cuni.cz> <20080616185524.GR3726@webber.adilger.int> <4856B7F1.60301@redhat.com>
+Date: Mon, 16 Jun 2008 14:22:24 -0500
+Message-ID: <4856BD70.4080000@redhat.com>
+References: <1213284316-22063-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080616150533.GB3279@atrey.karlin.mff.cuni.cz> <20080616160251.GA14214@skywalker> <20080616172046.GC3279@atrey.karlin.mff.cuni.cz> <20080616181152.GG14214@skywalker> <20080616191727.GD31567@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org,
+	adilger@sun.com
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:36038 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753194AbYFPTWM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jun 2008 15:22:12 -0400
-Content-Disposition: inline
-In-Reply-To: <4856B7F1.60301@redhat.com>
+Received: from mx1.redhat.com ([66.187.233.31]:40709 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752257AbYFPTXj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Jun 2008 15:23:39 -0400
+In-Reply-To: <20080616191727.GD31567@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 16-06-08 13:58:57, Eric Sandeen wrote:
-> Andreas Dilger wrote:
-> > On Jun 16, 2008  17:05 +0200, Jan Kara wrote:
-> >>   First, I'd like to see some short comment on what semantics
-> >> delalloc,data=ordered is going to have. At least I can imagine at least
-> >> two sensible approaches:
-> >>   1) All we guarantee is that user is not going to see uninitialized data.
-> >> We send writes to disk (and allocate blocks) whenever it fits our needs
-> >> (usually when pdflush finds them).
-> >>   2) We guarantee that when transaction commits, your data is on disk -
-> >> i.e., we allocate actual blocks on transaction commit.
-> >>
-> >>   Both these possibilities have their pros and cons. Most importantly,
-> >> 1) gives better disk layout while 2) gives higher consistency
-> >> guarantees. Note that with 1), it can under some circumstances happen,
-> >> that after a crash you see block 1 and 3 of your 3-block-write on disk,
-> >> while block 2 is still a hole. 1) is easy to implement (you mostly did
-> >> it below), 2) is harder. I think there should be broader consensus on
-> >> what the semantics should be (changed subject to catch more attention ;).
-> > 
-> > IMHO, the semantic should be (1) and not (2).  Applications don't understand
-> > "when the transaction commits" so it doesn't provide any useful guarantee
-> > to userspace, and if they actually need the data on disk (e.g. MTA) then
-> > they need to call fsync to ensure this.
-> > 
-> > While I agree it is theoretically possible to have the "hole in data
-> > where there shouldn't be one" scenario, in real life these blocks would be
-> > allocated together by delalloc+mballoc and this situation should not happen.
-> 
-> I'm not sure that's true; filling in holes is not that uncommon.
-> 
-> But, I'm not sure that it actually leads to a problem, as the metadata
-> gets "created" for the hole-fill-in only when the block actually gets
-> allocated right?
-  From filesystem point of view everything is correct. Just application may
-get confused that only a (non-continuous) subset of it's write made it to
-disk. This didn't use to happen before in data=ordered mode.
+Jan Kara wrote:
+>>>   Imagine you have a file with blocks 1 and 3 allocated and block 2 is a
+>>> hole. You write blocks 1-3. Block 2 isn't allocated because of delalloc.
+>>> Now if inode is already in the current transaction's list, during commit
+>>> writes to blocks 1 and 3 will land on disk but write to block 2 will
+>>> happen only after pdflush finds it.
+>> And that should be fine with data=ordered mode right ?. Because since
+>> block 2 is not yet allocated we don't have associated meta-data. So
+>> even if we crash we have meta-data pointing to 1 and 3 and not 2. The
+>> problem is only when we write the meta-data pointing to block 2 and not
+>> block 2 itself ?.
+>   Yes, it is correct. I may be just surprising (we didn't do things like
+> this in data=ordered mode before).
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Will it even be surprising?  "fill-in-hole; crash;" today may give you
+the same thing, right?  It's just that with delalloc it might be a
+bigger window in time for this to happen?
+
+-Eric
