@@ -1,64 +1,92 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: ext4_page_mkwrite and delalloc
-Date: Mon, 16 Jun 2008 21:39:06 +0530
-Message-ID: <20080616160906.GB14214@skywalker>
-References: <20080612181407.GE22481@skywalker> <20080616141141.GB31567@duck.suse.cz>
+Subject: Re: [PATCH] ext4: Fix file system hang due to corrupt jinode
+	values.
+Date: Mon, 16 Jun 2008 22:00:11 +0530
+Message-ID: <20080616163011.GD14214@skywalker>
+References: <1213541578-1351-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080616134503.GA3279@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:37056 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752077AbYFPQJf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 12:09:35 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m5GG8jTG009966
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2008 02:08:45 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5GG9Xnm212120
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2008 02:09:33 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5GG9Xmg009176
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2008 02:09:33 +1000
+Received: from e28smtp04.in.ibm.com ([59.145.155.4]:39195 "EHLO
+	e28esmtp04.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756939AbYFPQan (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 12:30:43 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5GGULjF007597
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 22:00:21 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5GGTWCT897214
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 21:59:32 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5GGUKWw008642
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 22:00:20 +0530
 Content-Disposition: inline
-In-Reply-To: <20080616141141.GB31567@duck.suse.cz>
+In-Reply-To: <20080616134503.GA3279@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 16, 2008 at 04:11:41PM +0200, Jan Kara wrote:
->   Hi Aneesh,
-> 
-> On Thu 12-06-08 23:44:07, Aneesh Kumar K.V wrote:
-> > With delalloc we should not do writepage in ext4_page_mkwrite. The idea
-> > with delalloc is to delay the block allocation and make sure we allocate
-> > chunks of blocks together at writepages. So i guess we should update
-> > ext4_page_mkwrite to use write_begin and write_end instead of writepage.
-> > Taking i_alloc_sem should protect against parallel truncate and the page
-> > lock should protect against parallel write_begin/write_end.
+On Mon, Jun 16, 2008 at 03:45:03PM +0200, Jan Kara wrote:
+> > While commiting the transaction we set the i_flags
+> > of jbd2_inode to JI_COMMIT_RUNNING. This is needed to ensure
+> > that when we are commiting the transaction we don't release
+> > the inode via iput. In ext4_clear_inode we wait for the
+> > flag to be cleared before we release the inode.
 > > 
-> > How about the patch below ?
->   In principle the patch looks fine, I would only like to see two things
-> checked:
->   1) Did you do some stress testing of the patch - combining mmapped writes
-> with ordinary writes to the same file and truncation so that we detect
-> possible bugs in locking / data corruption due to some bad locking. This
-> significantly changes when write_begin / write_end can be called in ext4
-> (i.e., it is now called without i_mutex - BTW: that is probably worth a
-> comment before these functions).
->   2) How does this change influence CPU load for mmapped accesses - I worry
-> about write_begin / write_end path being significantly heavier than just
-> calling writepage. Probably just mmap a large file, write single byte
-> to every page and measure using oprofile whether accumulated time spent in
-> page_mkwrite didn't change to much.
+> > In ext4_new_inode we call iput for different failure cases
+> > before initializing the jbd2_inode. This cause the failure
+> > case to hang in iput as show below. Fix the same by initializing
+> > jbd2_inode early.
+> > 
+> >  [<c022d20e>] ? prepare_to_wait+0x49/0x4e
+> >  [<c02cf430>] jbd2_journal_release_jbd_inode+0x86/0xcc
+> >  [<c022d0e4>] ? wake_bit_function+0x0/0x43
+> >  [<c02b329b>] ext4_clear_inode+0x45/0x4a
+> >  [<c02748f7>] clear_inode+0x5f/0xae
+> >  [<c0274e8f>] generic_drop_inode+0x119/0x13a
+> >  [<c0274071>] iput+0x4b/0x4e
+> >  [<c02ab200>] ext4_new_inode+0xb29/0xb7a
+> >  [<c0272761>] ? dput+0x19/0xdc
+> >  [<c02cca5f>] ? jbd2_journal_start+0x8c/0xb9
+> >  [<c02b1cb4>] ext4_create+0x81/0xe7
+> >  [<c02b1c33>] ? ext4_create+0x0/0xe7
+> >  [<c026aa3c>] vfs_create+0x6c/0xdb
+> >  [<c026cfd6>] do_filp_open+0x1a6/0x6b5
+> >  [<c026284e>] do_sys_open+0x40/0xb6
+> >  [<c0262906>] sys_open+0x1e/0x26
+> >  [<c0202be6>] syscall_call+0x7/0xb
+> > 
+> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+>   Oh yes, thanks for fixing this. I think there is place in
+> super.c which also calls jbd2_journal_init_jbd_inode() and which doesn't
+> need to call it when you do so already in alloc_inode().
 > 
 
-We can actually get away with page_mkwrite if we agree that SIGBUS on
-ENOSPC is not the right way. We can implement writepages for different
-data mode, and allocate blocks in writepages. With those changes we don't
-allocate blocks for mmap area maping holes upon write. Instead we
-allocate block during writepages. Since we can start a transaction
-during writepages we should be ok with respect to new locking.?
+Like this ?
 
--aneesh
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index fef2574..43d67e0 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3125,7 +3125,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
+ #endif
+ 	ei->i_block_alloc_info = NULL;
+-	jbd2_journal_init_jbd_inode(&ei->jinode, inode);
+ 
+ 	ret = __ext4_get_inode_loc(inode, &iloc, 0);
+ 	if (ret < 0)
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 034f00f..e511b95 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2259,8 +2259,6 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 		printk(KERN_ERR "EXT4-fs: can't get new inode\n");
+ 		goto err_freesgi;
+ 	}
+-	jbd2_journal_init_jbd_inode(&EXT4_I(sbi->s_buddy_cache)->jinode,
+-				    sbi->s_buddy_cache);
+ 	EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
+ 
+ 	metalen = sizeof(*meta_group_info) << EXT4_DESC_PER_BLOCK_BITS(sb);
