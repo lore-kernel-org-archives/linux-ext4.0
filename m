@@ -1,147 +1,73 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Patch queue update
-Date: Mon, 16 Jun 2008 23:19:44 +0530
-Message-ID: <20080616174944.GF14214@skywalker>
-References: <20080615172136.GA7293@skywalker>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: Performance of ext4
+Date: Mon, 16 Jun 2008 19:54:08 +0200
+Message-ID: <20080616175408.GF3279@atrey.karlin.mff.cuni.cz>
+References: <Pine.LNX.4.64.0806111937460.3720@diagnostix.dwd.de> <18563.1213215457@alphaville.zko.hp.com> <Pine.LNX.4.64.0806120855370.27806@diagnostix.dwd.de> <18513.345.553912.449710@frecb006361.adech.frec.bull.fr> <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de> <20080612131928.GB18229@mit.edu> <Pine.LNX.4.64.0806121333480.27806@diagnostix.dwd.de> <20080612180605.GD22481@skywalker> <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de> <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, Solofo.Ramangalahy@bull.net,
+	Nick Dokos <nicholas.dokos@hp.com>, linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Holger Kiehl <Holger.Kiehl@dwd.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([59.145.155.4]:39293 "EHLO
-	e28esmtp04.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751940AbYFPRuV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 13:50:21 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5GHnvm3024780
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 23:19:57 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5GHnerT745632
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 23:19:40 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5GHnu3i013172
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 23:19:57 +0530
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:34037 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751366AbYFPRyK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 13:54:10 -0400
 Content-Disposition: inline
-In-Reply-To: <20080615172136.GA7293@skywalker>
+In-Reply-To: <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 15, 2008 at 10:51:36PM +0530, Aneesh Kumar K.V wrote:
-> Hi Mingming,
+> On Thu, 12 Jun 2008, Holger Kiehl wrote:
 > 
-> Attached below are new patches for the patchqueue. Some of patches
-> update already existing patches, mostly to get them apply
-> cleanly after adding new patches or to fix sparse warning. The modified
-> patches should not have any functionality change. The diff between
-> the patchqueue and updated queue is attached below. That should help
-> to look at the changes easily.  The patch queue looked at is
-> as of commit 22d4c3124d50803222c14116b3fdf08dc447a119
+> >On Thu, 12 Jun 2008, Aneesh Kumar K.V wrote:
+> >
+> >>On Thu, Jun 12, 2008 at 02:07:30PM +0000, Holger Kiehl wrote:
+> >>>This time there is no OOPS and system is still up running without any
+> >>>problem (except any process wanting to write something to this filesystem
+> >>>gets stuck forever).
+> >>>
+> >>>What can I do to help find the problem? The system is still up with all 
+> >>>those
+> >>>process hanging in D-state.
+> >>>
+> >>
+> >>if you can login to the system get the dmesg output after
+> >>
+> >>echo t > /proc/sysrq-trigger
+> >>
+> >Unfortunately I have not set CONFIG_MAGIC_SYSRQ. Tomorrow I will try to
+> >reproduce this with a kernel that has CONFIG_MAGIC_SYSRQ set.
+> >
+> After recompiling, rebooting and run afdbench first I got an OOPS and the
+> system hanged up solid. The only thing I was able to catch is this:
 > 
-> The updated series file
-> http://www.radian.org/~kvaneesh/ext4/jun-15-2008/series
-> The patches
-> http://www.radian.org/~kvaneesh/ext4/jun-15-2008/
-> The complete patchset.
-> http://www.radian.org/~kvaneesh/ext4/jun-15-2008/patches.tar.gz
+>   RIP [<ffffffff803019f9>] jbd2_journal_release_jbd_inode+0xcb/0x100
+>   RSP <ffff8101fe259c18>
 > 
+> This was copied by hand. And this I cut 'cut and past' from my terminal:
 > 
+> kernel: Code: c3 e8 31 ce f3 ff 41 fe 04 24 e8 fe 3f 16 00 4c 89 fe 48 89 
+> df e8 5f cd f3 ff eb 82 48 83 7d 00 00 74 27 48 8b 55 10 48 8b 45 18 <48> 
+> 89 42 08 48 89 10 48 c7 45 18 00 02 20 00 48 c7 45 10 00 01
+  Aneesh found cause of this oops I think... Aneesh, would you send the
+fix to Holger? Thanks.
 
+> So I rebooted run bonnie and then afdbench and I get the same problem as
+> yesterday. All process trying to write something to this filesystem hang
+> in D-state. But now I was able to do the echo t > /proc/sysrq-trigger.
+> Here the dmesg output:
+  Sadly, the output seems to be truncated (mainly, the kjournald process
+is missing, which is probably the root cause of the hang). So could you
+have a look whether /var/log/messages doesn't contain the dump of all
+processes? And if no, then could you do "echo w >/proc/sysrq-trigger"
+please? That will dump only blocked processes which should fit in the log
+buffer. You can also increase log buffer size in kernel config but that
+shouldn't be needed. Thanks.
 
-Update for 12-ext4-jinode-hang.patch after review.
-
-ext4: Fix file system hang due to corrupt jinode values.
-
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
-While commiting the transaction we set the i_flags
-of jbd2_inode to JI_COMMIT_RUNNING. This is needed to ensure
-that when we are commiting the transaction we don't release
-the inode via iput. In ext4_clear_inode we wait for the
-flag to be cleared before we release the inode.
-
-In ext4_new_inode we call iput for different failure cases
-before initializing the jbd2_inode. This cause the failure
-case to hang in iput as show below. Fix the same by initializing
-jbd2_inode early.
-
- [<c022d20e>] ? prepare_to_wait+0x49/0x4e
- [<c02cf430>] jbd2_journal_release_jbd_inode+0x86/0xcc
- [<c022d0e4>] ? wake_bit_function+0x0/0x43
- [<c02b329b>] ext4_clear_inode+0x45/0x4a
- [<c02748f7>] clear_inode+0x5f/0xae
- [<c0274e8f>] generic_drop_inode+0x119/0x13a
- [<c0274071>] iput+0x4b/0x4e
- [<c02ab200>] ext4_new_inode+0xb29/0xb7a
- [<c0272761>] ? dput+0x19/0xdc
- [<c02cca5f>] ? jbd2_journal_start+0x8c/0xb9
- [<c02b1cb4>] ext4_create+0x81/0xe7
- [<c02b1c33>] ? ext4_create+0x0/0xe7
- [<c026aa3c>] vfs_create+0x6c/0xdb
- [<c026cfd6>] do_filp_open+0x1a6/0x6b5
- [<c026284e>] do_sys_open+0x40/0xb6
- [<c0262906>] sys_open+0x1e/0x26
- [<c0202be6>] syscall_call+0x7/0xb
-
-Reported-by: Holger Kiehl <Holger.Kiehl@dwd.de>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Acked-by: Jan Kara <jack@suse.cz>
----
-
- fs/ext4/ialloc.c  |    1 -
- fs/ext4/inode.c   |    1 -
- fs/ext4/mballoc.c |    2 --
- fs/ext4/super.c   |    1 +
- 4 files changed, 1 insertions(+), 4 deletions(-)
-
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 7823405..dc8bfc4 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -820,7 +820,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
- 	ei->i_state = EXT4_STATE_NEW;
- 
- 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
--	jbd2_journal_init_jbd_inode(&ei->jinode, inode);
- 
- 	ret = inode;
- 	if(DQUOT_ALLOC_INODE(inode)) {
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index fef2574..43d67e0 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3125,7 +3125,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
- #endif
- 	ei->i_block_alloc_info = NULL;
--	jbd2_journal_init_jbd_inode(&ei->jinode, inode);
- 
- 	ret = __ext4_get_inode_loc(inode, &iloc, 0);
- 	if (ret < 0)
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 034f00f..e511b95 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2259,8 +2259,6 @@ static int ext4_mb_init_backend(struct super_block *sb)
- 		printk(KERN_ERR "EXT4-fs: can't get new inode\n");
- 		goto err_freesgi;
- 	}
--	jbd2_journal_init_jbd_inode(&EXT4_I(sbi->s_buddy_cache)->jinode,
--				    sbi->s_buddy_cache);
- 	EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
- 
- 	metalen = sizeof(*meta_group_info) << EXT4_DESC_PER_BLOCK_BITS(sb);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e207555..fde1ae9 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -578,6 +578,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	ei->i_allocated_meta_blocks = 0;
- 	ei->i_delalloc_reserved_flag = 0;
- 	spin_lock_init(&(ei->i_block_reservation_lock));
-+	jbd2_journal_init_jbd_inode(&ei->jinode, &ei->vfs_inode);
- 	return &ei->vfs_inode;
- }
- 
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
