@@ -1,93 +1,148 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Fix file system hang due to corrupt jinode values.
-Date: Mon, 16 Jun 2008 15:45:03 +0200
-Message-ID: <20080616134503.GA3279@atrey.karlin.mff.cuni.cz>
-References: <1213541578-1351-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Akinobu Mita <akinobu.mita@gmail.com>
+Subject: Re: [PATCH] ext4: fix ext4_init_block_bitmap() for metablock block
+	group
+Date: Mon, 16 Jun 2008 23:10:17 +0900
+Message-ID: <20080616141016.GA19080@localhost.localdomain>
+References: <20080615142455.GA3502@localhost.localdomain> <20080616051859.GK3726@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=iso-2022-jp
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Stephen Tweedie <sct@redhat.com>, adilger@clusterfs.com,
+	Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@MIT.EDU>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:52573 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753378AbYFPNpE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 09:45:04 -0400
+Received: from rv-out-0506.google.com ([209.85.198.233]:11473 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753656AbYFPOLl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 10:11:41 -0400
+Received: by rv-out-0506.google.com with SMTP id k40so3602265rvb.1
+        for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 07:11:38 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <1213541578-1351-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <20080616051859.GK3726@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> While commiting the transaction we set the i_flags
-> of jbd2_inode to JI_COMMIT_RUNNING. This is needed to ensure
-> that when we are commiting the transaction we don't release
-> the inode via iput. In ext4_clear_inode we wait for the
-> flag to be cleared before we release the inode.
+On Sun, Jun 15, 2008 at 11:19:00PM -0600, Andreas Dilger wrote:
+> On Jun 15, 2008  23:24 +0900, Akinobu Mita wrote:
+> > When meta_bg feature is enabled and s_first_meta_bg != 0, 
+> > ext4_init_block_bitmap() miscalculates the number of block used by
+> > the group descriptor table (0 or 1 for metablock block group)
 > 
-> In ext4_new_inode we call iput for different failure cases
-> before initializing the jbd2_inode. This cause the failure
-> case to hang in iput as show below. Fix the same by initializing
-> jbd2_inode early.
-> 
->  [<c022d20e>] ? prepare_to_wait+0x49/0x4e
->  [<c02cf430>] jbd2_journal_release_jbd_inode+0x86/0xcc
->  [<c022d0e4>] ? wake_bit_function+0x0/0x43
->  [<c02b329b>] ext4_clear_inode+0x45/0x4a
->  [<c02748f7>] clear_inode+0x5f/0xae
->  [<c0274e8f>] generic_drop_inode+0x119/0x13a
->  [<c0274071>] iput+0x4b/0x4e
->  [<c02ab200>] ext4_new_inode+0xb29/0xb7a
->  [<c0272761>] ? dput+0x19/0xdc
->  [<c02cca5f>] ? jbd2_journal_start+0x8c/0xb9
->  [<c02b1cb4>] ext4_create+0x81/0xe7
->  [<c02b1c33>] ? ext4_create+0x0/0xe7
->  [<c026aa3c>] vfs_create+0x6c/0xdb
->  [<c026cfd6>] do_filp_open+0x1a6/0x6b5
->  [<c026284e>] do_sys_open+0x40/0xb6
->  [<c0262906>] sys_open+0x1e/0x26
->  [<c0202be6>] syscall_call+0x7/0xb
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-  Oh yes, thanks for fixing this. I think there is place in
-super.c which also calls jbd2_journal_init_jbd_inode() and which doesn't
-need to call it when you do so already in alloc_inode().
+> Can you please clarify why the calculation is incorrect?  I admit that
+> I didn't test with META_BG enabled, so it could well be wrong, but looking
+> at the code I can't understand why it is incorrect.
 
-									Honza
-> ---
->  fs/ext4/ialloc.c |    1 -
->  fs/ext4/super.c  |    1 +
->  2 files changed, 1 insertions(+), 1 deletions(-)
+group_rel in the original code should be calculated by:
+
+        group_rel = block_group % EXT4_DESC_PER_BLOCK(sb);
+
+No need to subtract s_first_meta_bg from brock_group.
+It will be equivalent what ext4_bg_num_gdb_meta() does
+
+> > @@ -121,12 +121,7 @@ unsigned ext4_init_block_bitmap(struct s
+>         if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_META_BG) ||
+>             block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
+>                           sbi->s_desc_per_block) {
+>                 if (bit_max) {
+>                         bit_max += ext4_bg_num_gdb(sb, block_group);
+>                         bit_max +=
+> >  				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
+> >  		}
+> >  	} else { /* For META_BG_BLOCK_GROUPS */
+> > -		int group_rel = (block_group -
+> > -				 le32_to_cpu(sbi->s_es->s_first_meta_bg)) %
+> > -				EXT4_DESC_PER_BLOCK(sb);
+> > -		if (group_rel == 0 || group_rel == 1 ||
+> > -		    (group_rel == EXT4_DESC_PER_BLOCK(sb) - 1))
+> > -			bit_max += 1;
+> > +		bit_max += ext4_bg_num_gdb(sb, block_group);
+> >  	}
 > 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 7823405..dc8bfc4 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -820,7 +820,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
->  	ei->i_state = EXT4_STATE_NEW;
->  
->  	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
-> -	jbd2_journal_init_jbd_inode(&ei->jinode, inode);
->  
->  	ret = inode;
->  	if(DQUOT_ALLOC_INODE(inode)) {
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index e207555..fde1ae9 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -578,6 +578,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
->  	ei->i_allocated_meta_blocks = 0;
->  	ei->i_delalloc_reserved_flag = 0;
->  	spin_lock_init(&(ei->i_block_reservation_lock));
-> +	jbd2_journal_init_jbd_inode(&ei->jinode, &ei->vfs_inode);
->  	return &ei->vfs_inode;
->  }
->  
-> -- 
-> 1.5.6.rc2.15.g457bb.dirty
+> As you can see, the "if" checks if the block group is before s_first_meta_bg
+> to treat it as a "normal" group, and only uses the "else" once beyond the
+> start of the s_first_meta_bg limit.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+> It definitely is less complex to use ext4_bg_num_gdb(), and this could
+> further be simplified by using ext4_bg_gdb_meta() in the "else" clause.
+> In fact, the whole if/else could be replaced with ext4_bg_num_gdb() if
+> it weren't for s_reserved_gdt_blocks.
+> 
+> Maybe it makes sense (cleaner code, less chance for bugs) to change the
+> ext4_bg_num_gdb() function to take a parameter on whether it should
+> include the s_reserved_gdt_blocks or not:
+> 
+> static unsigned long ext4_bg_num_gdb_nometa(struct super_block *sb, int group,
+> 					    int reserved)
+> {
+> 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> 				       EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER) &&
+> 	    !ext4_group_sparse(group))
+> 		return 0;
+> 	return EXT4_SB(sb)->s_gdb_count +
+> 		reserved ? EXT4_SB(sb)->s_reserved_gdt_blocks : 0;
+> }
+> 
+> unsigned long ext4_bg_num_gdb(struct super_block *sb, int group, int reserved)
+> {
+> 	unsigned long first_meta_bg =
+> 			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_meta_bg);
+> 	unsigned long metagroup = group / EXT4_DESC_PER_BLOCK(sb);
+> 
+> 	if (!EXT4_HAS_INCOMPAT_FEATURE(sb,EXT4_FEATURE_INCOMPAT_META_BG) ||
+> 	    metagroup < first_meta_bg)
+> 		return ext4_bg_num_gdb_nometa(sb, group, reserved);
+> 
+> 	return ext4_bg_num_gdb_meta(sb, group);
+> }
+> 
+> The fewer places in the code that need to understand META_BG, the less
+> chance of having a bug.  Now the code in ext4_init_block_bitmap() can be:
+> 
+> 	bit_max += ext4_bg_num_gdb(sb, block_group, 1);
+
+Looks good to me. But I'd like to divide into the change into simple
+bugfix and cleanup patch in order to clarify the each change.
+
+Here is a bugfix only patch.
+
+From: Akinobu Mita <akinobu.mita@gmail.com>
+Subject: ext4: fix ext4_init_block_bitmap() for metablock block group
+
+When meta_bg feature is enabled and s_first_meta_bg != 0, 
+ext4_init_block_bitmap() miscalculates the number of block used by
+the group descriptor table (0 or 1 for metablock block group)
+
+group_rel in the original code should be calculated by:
+
+        group_rel = block_group % EXT4_DESC_PER_BLOCK(sb);
+
+No need to subtract s_first_meta_bg from brock_group.
+It will be equivalent what ext4_bg_num_gdb_meta() does
+
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: Stephen Tweedie <sct@redhat.com>
+Cc: adilger@clusterfs.com
+Cc: Mingming Cao <cmm@us.ibm.com>
+Cc: Theodore Tso <tytso@MIT.EDU>
+---
+ fs/ext4/balloc.c |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
+
+Index: 2.6-git/fs/ext4/balloc.c
+===================================================================
+--- 2.6-git.orig/fs/ext4/balloc.c
++++ 2.6-git/fs/ext4/balloc.c
+@@ -121,9 +121,8 @@ unsigned ext4_init_block_bitmap(struct s
+ 				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
+ 		}
+ 	} else { /* For META_BG_BLOCK_GROUPS */
+-		int group_rel = (block_group -
+-				 le32_to_cpu(sbi->s_es->s_first_meta_bg)) %
+-				EXT4_DESC_PER_BLOCK(sb);
++		int group_rel = block_group % EXT4_DESC_PER_BLOCK(sb);
++
+ 		if (group_rel == 0 || group_rel == 1 ||
+ 		    (group_rel == EXT4_DESC_PER_BLOCK(sb) - 1))
+ 			bit_max += 1;
