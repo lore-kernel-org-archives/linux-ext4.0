@@ -1,155 +1,98 @@
 From: Mingming <cmm@us.ibm.com>
-Subject: Re: Patch queue update
-Date: Mon, 16 Jun 2008 15:03:09 -0700
-Message-ID: <1213653789.27507.48.camel@BVR-FS.beaverton.ibm.com>
-References: <20080615172136.GA7293@skywalker>
-	 <20080616174944.GF14214@skywalker>
+Subject: Re: [PATCH] ext4: fix ext4_init_block_bitmap() for metablock block
+	group
+Date: Mon, 16 Jun 2008 16:57:01 -0700
+Message-ID: <1213660621.27507.50.camel@BVR-FS.beaverton.ibm.com>
+References: <20080615142455.GA3502@localhost.localdomain>
+	 <20080616051859.GK3726@webber.adilger.int>
+	 <20080616141016.GA19080@localhost.localdomain>
+	 <20080616191902.GU3726@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Akinobu Mita <akinobu.mita@gmail.com>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Stephen Tweedie <sct@redhat.com>, adilger@clusterfs.com,
+	Theodore Tso <tytso@MIT.EDU>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e6.ny.us.ibm.com ([32.97.182.146]:36354 "EHLO e6.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758546AbYFPWCk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Jun 2008 18:02:40 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e6.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m5GM4w9V031179
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 18:04:58 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5GM2eEH208434
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 18:02:40 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5GM2dCh026907
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 18:02:39 -0400
-In-Reply-To: <20080616174944.GF14214@skywalker>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:47995 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756383AbYFPX4e (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 19:56:34 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e32.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m5GNq5mo010382
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 19:52:05 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5GNuWQQ161746
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 17:56:32 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5GNuVFB015094
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Jun 2008 17:56:32 -0600
+In-Reply-To: <20080616191902.GU3726@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-On Mon, 2008-06-16 at 23:19 +0530, Aneesh Kumar K.V wrote:
-> On Sun, Jun 15, 2008 at 10:51:36PM +0530, Aneesh Kumar K.V wrote:
-> > Hi Mingming,
+On Mon, 2008-06-16 at 13:19 -0600, Andreas Dilger wrote:
+> On Jun 16, 2008  23:10 +0900, Akinobu Mita wrote:
+> > Looks good to me. But I'd like to divide into the change into simple
+> > bugfix and cleanup patch in order to clarify the each change.
 > > 
-> > Attached below are new patches for the patchqueue. Some of patches
-> > update already existing patches, mostly to get them apply
-> > cleanly after adding new patches or to fix sparse warning. The modified
-> > patches should not have any functionality change. The diff between
-> > the patchqueue and updated queue is attached below. That should help
-> > to look at the changes easily.  The patch queue looked at is
-> > as of commit 22d4c3124d50803222c14116b3fdf08dc447a119
+> > Here is a bugfix only patch.
 > > 
-> > The updated series file
-> > http://www.radian.org/~kvaneesh/ext4/jun-15-2008/series
-> > The patches
-> > http://www.radian.org/~kvaneesh/ext4/jun-15-2008/
-> > The complete patchset.
-> > http://www.radian.org/~kvaneesh/ext4/jun-15-2008/patches.tar.gz
+> > From: Akinobu Mita <akinobu.mita@gmail.com>
+> > Subject: ext4: fix ext4_init_block_bitmap() for metablock block group
 > > 
+> > When meta_bg feature is enabled and s_first_meta_bg != 0, 
+> > ext4_init_block_bitmap() miscalculates the number of block used by
+> > the group descriptor table (0 or 1 for metablock block group)
 > > 
+> > group_rel in the original code should be calculated by:
+> > 
+> >         group_rel = block_group % EXT4_DESC_PER_BLOCK(sb);
+> > 
+> > No need to subtract s_first_meta_bg from brock_group.
+> > It will be equivalent what ext4_bg_num_gdb_meta() does
+> > 
+> > Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+> > Cc: Andrew Morton <akpm@linux-foundation.org>
+> > Cc: Stephen Tweedie <sct@redhat.com>
+> > Cc: adilger@clusterfs.com
+> > Cc: Mingming Cao <cmm@us.ibm.com>
+> > Cc: Theodore Tso <tytso@MIT.EDU>
+> 
+> Acked-by: Andreas Dilger <adilger@sun.com>
 > 
 
-I have updated the patch queue with your changes, and place them in the
-right location.
+FYI, I have added this patch to patch queue
 
 Mingming
-> Update for 12-ext4-jinode-hang.patch after review.
+> > ---
+> >  fs/ext4/balloc.c |    5 ++---
+> >  1 file changed, 2 insertions(+), 3 deletions(-)
+> > 
+> > Index: 2.6-git/fs/ext4/balloc.c
+> > ===================================================================
+> > --- 2.6-git.orig/fs/ext4/balloc.c
+> > +++ 2.6-git/fs/ext4/balloc.c
+> > @@ -121,9 +121,8 @@ unsigned ext4_init_block_bitmap(struct s
+> >  				le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
+> >  		}
+> >  	} else { /* For META_BG_BLOCK_GROUPS */
+> > -		int group_rel = (block_group -
+> > -				 le32_to_cpu(sbi->s_es->s_first_meta_bg)) %
+> > -				EXT4_DESC_PER_BLOCK(sb);
+> > +		int group_rel = block_group % EXT4_DESC_PER_BLOCK(sb);
+> > +
+> >  		if (group_rel == 0 || group_rel == 1 ||
+> >  		    (group_rel == EXT4_DESC_PER_BLOCK(sb) - 1))
+> >  			bit_max += 1;
 > 
-> ext4: Fix file system hang due to corrupt jinode values.
-> 
-> From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> 
-> While commiting the transaction we set the i_flags
-> of jbd2_inode to JI_COMMIT_RUNNING. This is needed to ensure
-> that when we are commiting the transaction we don't release
-> the inode via iput. In ext4_clear_inode we wait for the
-> flag to be cleared before we release the inode.
-> 
-> In ext4_new_inode we call iput for different failure cases
-> before initializing the jbd2_inode. This cause the failure
-> case to hang in iput as show below. Fix the same by initializing
-> jbd2_inode early.
-> 
->  [<c022d20e>] ? prepare_to_wait+0x49/0x4e
->  [<c02cf430>] jbd2_journal_release_jbd_inode+0x86/0xcc
->  [<c022d0e4>] ? wake_bit_function+0x0/0x43
->  [<c02b329b>] ext4_clear_inode+0x45/0x4a
->  [<c02748f7>] clear_inode+0x5f/0xae
->  [<c0274e8f>] generic_drop_inode+0x119/0x13a
->  [<c0274071>] iput+0x4b/0x4e
->  [<c02ab200>] ext4_new_inode+0xb29/0xb7a
->  [<c0272761>] ? dput+0x19/0xdc
->  [<c02cca5f>] ? jbd2_journal_start+0x8c/0xb9
->  [<c02b1cb4>] ext4_create+0x81/0xe7
->  [<c02b1c33>] ? ext4_create+0x0/0xe7
->  [<c026aa3c>] vfs_create+0x6c/0xdb
->  [<c026cfd6>] do_filp_open+0x1a6/0x6b5
->  [<c026284e>] do_sys_open+0x40/0xb6
->  [<c0262906>] sys_open+0x1e/0x26
->  [<c0202be6>] syscall_call+0x7/0xb
-> 
-> Reported-by: Holger Kiehl <Holger.Kiehl@dwd.de>
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> Acked-by: Jan Kara <jack@suse.cz>
-> ---
-> 
->  fs/ext4/ialloc.c  |    1 -
->  fs/ext4/inode.c   |    1 -
->  fs/ext4/mballoc.c |    2 --
->  fs/ext4/super.c   |    1 +
->  4 files changed, 1 insertions(+), 4 deletions(-)
-> 
-> 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 7823405..dc8bfc4 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -820,7 +820,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
->  	ei->i_state = EXT4_STATE_NEW;
-> 
->  	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
-> -	jbd2_journal_init_jbd_inode(&ei->jinode, inode);
-> 
->  	ret = inode;
->  	if(DQUOT_ALLOC_INODE(inode)) {
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index fef2574..43d67e0 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3125,7 +3125,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->  	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
->  #endif
->  	ei->i_block_alloc_info = NULL;
-> -	jbd2_journal_init_jbd_inode(&ei->jinode, inode);
-> 
->  	ret = __ext4_get_inode_loc(inode, &iloc, 0);
->  	if (ret < 0)
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 034f00f..e511b95 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2259,8 +2259,6 @@ static int ext4_mb_init_backend(struct super_block *sb)
->  		printk(KERN_ERR "EXT4-fs: can't get new inode\n");
->  		goto err_freesgi;
->  	}
-> -	jbd2_journal_init_jbd_inode(&EXT4_I(sbi->s_buddy_cache)->jinode,
-> -				    sbi->s_buddy_cache);
->  	EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
-> 
->  	metalen = sizeof(*meta_group_info) << EXT4_DESC_PER_BLOCK_BITS(sb);
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index e207555..fde1ae9 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -578,6 +578,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
->  	ei->i_allocated_meta_blocks = 0;
->  	ei->i_delalloc_reserved_flag = 0;
->  	spin_lock_init(&(ei->i_block_reservation_lock));
-> +	jbd2_journal_init_jbd_inode(&ei->jinode, &ei->vfs_inode);
->  	return &ei->vfs_inode;
->  }
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
 > 
 
