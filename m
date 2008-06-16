@@ -1,97 +1,59 @@
 From: Shen Feng <shen@cn.fujitsu.com>
-Subject: Re: [RFC][PATCH 7/8]ext4: move victim files for the target file (-f
- mode)
-Date: Mon, 16 Jun 2008 10:42:50 +0800
-Message-ID: <4855D32A.1020000@cn.fujitsu.com>
-References: <483FE289.7050302@rs.jp.nec.com>
+Subject: Re: [PATCH -v2] ext4: Use inode preallocation with -o noextents
+Date: Mon, 16 Jun 2008 11:41:38 +0800
+Message-ID: <4855E0F2.9070207@cn.fujitsu.com>
+References: <1211229262-11012-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>	 <20080604022356.GA7094@mit.edu> <20080604040101.GA22348@skywalker>	 <20080605032220.GC10488@mit.edu>  <20080605084329.GB8942@skywalker> <1212677741.3645.44.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <483FE289.7050302@rs.jp.nec.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:59827 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751891AbYFPDpN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 15 Jun 2008 23:45:13 -0400
+In-Reply-To: <1212677741.3645.44.camel@localhost.localdomain>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 
-Akira Fujita Wrote:
-> ext4: online defrag-- Move victim files for the target file (-f mode)
-> 
-> From: Akira Fujita <a-fujita@rs.jp.nec.com>
-> 
-> Move victim files to make sufficient space and reallocates
-> the contiguous blocks for the target file.
-> 
-> Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-> Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
-> ---
->  fs/ext4/balloc.c       |   10 +-
->  fs/ext4/defrag.c       |  460 +++++++++++++++++++++++++++++++++++++++++++++---
->  fs/ext4/ext4.h         |   29 +++-
->  fs/ext4/ext4_extents.h |    5 +
->  fs/ext4/extents.c      |   54 +++++--
->  fs/ext4/ioctl.c        |    5 +-
->  fs/ext4/mballoc.c      |    5 +
->  fs/ext4/mballoc.h      |    1 +
->  8 files changed, 522 insertions(+), 47 deletions(-)
-> 
+Mingming Cao Wrote:
+> On Thu, 2008-06-05 at 14:13 +0530, Aneesh Kumar K.V wrote:
+>> On Wed, Jun 04, 2008 at 11:22:20PM -0400, Theodore Tso wrote:
+>>> when I moved this patch to the beginning of the unstable patch queue,
+>>> it didn't apply.  When I tried to look at it, my head started
+>>> spinning.  The patch applied to the wrong function, apparently,
+>>> because there is so much code duplication "patch" got confused.  I
+>>> can't blame it, though, because *I* got confused.  
+>>>
 
 ...snip...
 
+>> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+>> index 09922ae..a810a21 100644
+>> --- a/fs/ext4/mballoc.c
+>> +++ b/fs/ext4/mballoc.c
+>> @@ -4048,7 +4048,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+>>  	sbi = EXT4_SB(sb);
+>>
+>>  	if (!test_opt(sb, MBALLOC)) {
+>> -		block = ext4_new_blocks_old(handle, ar->inode, ar->goal,
+>> +		block = ext4_orlov_new_blocks(handle, ar->inode, ar->goal,
+>>  					    &(ar->len), errp);
+>>  		return block;
+>>  	}
 > 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index d0b1301..88fd100 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -94,6 +94,11 @@ struct ext4_allocation_request {
->  	unsigned long len;
->  	/* flags. see above EXT4_MB_HINT_* */
->  	unsigned long flags;
-> +	/*
-> +	 * for ext4 online defrag:
-> +	 * the block group which is excepted from allocation target
-> +	 */
-> +	long long excepted_group;
->  };
-
-Why not ext4_group_t for excepted_group here?
-
-> 
->  /*
-> @@ -303,6 +308,9 @@ struct ext4_new_group_data {
->  #define EXT4_IOC_GROUP_INFO	_IOW('f', 11, struct ext4_group_data_info)
->  #define EXT4_IOC_FREE_BLOCKS_INFO	_IOW('f', 12, struct ext4_extents_info)
->  #define EXT4_IOC_EXTENTS_INFO		_IOW('f', 13, struct ext4_extents_info)
-> +#define EXT4_IOC_RESERVE_BLOCK		_IOW('f', 14, struct ext4_extents_info)
-> +#define EXT4_IOC_MOVE_VICTIM		_IOW('f', 15, struct ext4_extents_info)
-> +#define EXT4_IOC_BLOCK_RELEASE		_IO('f', 8)
+> when we get to ext4_mb_new_blocks, don't we already tested MBALLOC is
+> turned on?
 > 
 
-...snip...
+ext4_ext_get_blocks calls ext4_mb_new_blocks. So we have to check this.
+So maybe ext4_ext_get_blocks should call ext4_new_blocks and 
+we can remove this check.
 
-> diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-> index bfe6add..1141ad5 100644
-> --- a/fs/ext4/mballoc.h
-> +++ b/fs/ext4/mballoc.h
-> @@ -205,6 +205,7 @@ struct ext4_allocation_context {
->  	struct page *ac_buddy_page;
->  	struct ext4_prealloc_space *ac_pa;
->  	struct ext4_locality_group *ac_lg;
-> +	long long ac_excepted_group;
-
-ditto
-
->  };
-> 
->  #define AC_STATUS_CONTINUE	1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+-Shen Feng
 
