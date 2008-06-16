@@ -1,71 +1,93 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [RFC][PATCH 7/8]ext4: move victim files for the target file (-f
- mode)
-Date: Mon, 16 Jun 2008 17:39:35 +0900
-Message-ID: <485626C7.2090106@rs.jp.nec.com>
-References: <483FE289.7050302@rs.jp.nec.com> <4855D32A.1020000@cn.fujitsu.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext4: Fix file system hang due to corrupt jinode values.
+Date: Mon, 16 Jun 2008 15:45:03 +0200
+Message-ID: <20080616134503.GA3279@atrey.karlin.mff.cuni.cz>
+References: <1213541578-1351-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
-To: Shen Feng <shen@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:47158 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756956AbYFPIkK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 04:40:10 -0400
-In-Reply-To: <4855D32A.1020000@cn.fujitsu.com>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:52573 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753378AbYFPNpE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Jun 2008 09:45:04 -0400
+Content-Disposition: inline
+In-Reply-To: <1213541578-1351-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Shen Feng Wrote:
+> While commiting the transaction we set the i_flags
+> of jbd2_inode to JI_COMMIT_RUNNING. This is needed to ensure
+> that when we are commiting the transaction we don't release
+> the inode via iput. In ext4_clear_inode we wait for the
+> flag to be cleared before we release the inode.
 > 
-> Akira Fujita Wrote:
->> ext4: online defrag-- Move victim files for the target file (-f mode)
->>
->> From: Akira Fujita <a-fujita@rs.jp.nec.com>
->>
->> Move victim files to make sufficient space and reallocates
->> the contiguous blocks for the target file.
->>
->> Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
->> Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
->> ---
->>  fs/ext4/balloc.c       |   10 +-
->>  fs/ext4/defrag.c       |  460 +++++++++++++++++++++++++++++++++++++++++++++---
->>  fs/ext4/ext4.h         |   29 +++-
->>  fs/ext4/ext4_extents.h |    5 +
->>  fs/ext4/extents.c      |   54 +++++--
->>  fs/ext4/ioctl.c        |    5 +-
->>  fs/ext4/mballoc.c      |    5 +
->>  fs/ext4/mballoc.h      |    1 +
->>  8 files changed, 522 insertions(+), 47 deletions(-)
->>
+> In ext4_new_inode we call iput for different failure cases
+> before initializing the jbd2_inode. This cause the failure
+> case to hang in iput as show below. Fix the same by initializing
+> jbd2_inode early.
 > 
-> ...snip...
+>  [<c022d20e>] ? prepare_to_wait+0x49/0x4e
+>  [<c02cf430>] jbd2_journal_release_jbd_inode+0x86/0xcc
+>  [<c022d0e4>] ? wake_bit_function+0x0/0x43
+>  [<c02b329b>] ext4_clear_inode+0x45/0x4a
+>  [<c02748f7>] clear_inode+0x5f/0xae
+>  [<c0274e8f>] generic_drop_inode+0x119/0x13a
+>  [<c0274071>] iput+0x4b/0x4e
+>  [<c02ab200>] ext4_new_inode+0xb29/0xb7a
+>  [<c0272761>] ? dput+0x19/0xdc
+>  [<c02cca5f>] ? jbd2_journal_start+0x8c/0xb9
+>  [<c02b1cb4>] ext4_create+0x81/0xe7
+>  [<c02b1c33>] ? ext4_create+0x0/0xe7
+>  [<c026aa3c>] vfs_create+0x6c/0xdb
+>  [<c026cfd6>] do_filp_open+0x1a6/0x6b5
+>  [<c026284e>] do_sys_open+0x40/0xb6
+>  [<c0262906>] sys_open+0x1e/0x26
+>  [<c0202be6>] syscall_call+0x7/0xb
 > 
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index d0b1301..88fd100 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
->> @@ -94,6 +94,11 @@ struct ext4_allocation_request {
->>  	unsigned long len;
->>  	/* flags. see above EXT4_MB_HINT_* */
->>  	unsigned long flags;
->> +	/*
->> +	 * for ext4 online defrag:
->> +	 * the block group which is excepted from allocation target
->> +	 */
->> +	long long excepted_group;
->>  };
-> 
-> Why not ext4_group_t for excepted_group here?
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+  Oh yes, thanks for fixing this. I think there is place in
+super.c which also calls jbd2_journal_init_jbd_inode() and which doesn't
+need to call it when you do so already in alloc_inode().
 
-ac_excepted_group has not only excepted block group number
-but also -1 (it means any block groups are accepted).
-So we should keep it as long long variable to show
-the special status correctly in large ext4.
-
-Regards,
-Akira Fujita
+									Honza
+> ---
+>  fs/ext4/ialloc.c |    1 -
+>  fs/ext4/super.c  |    1 +
+>  2 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 7823405..dc8bfc4 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -820,7 +820,6 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
+>  	ei->i_state = EXT4_STATE_NEW;
+>  
+>  	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
+> -	jbd2_journal_init_jbd_inode(&ei->jinode, inode);
+>  
+>  	ret = inode;
+>  	if(DQUOT_ALLOC_INODE(inode)) {
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index e207555..fde1ae9 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -578,6 +578,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+>  	ei->i_allocated_meta_blocks = 0;
+>  	ei->i_delalloc_reserved_flag = 0;
+>  	spin_lock_init(&(ei->i_block_reservation_lock));
+> +	jbd2_journal_init_jbd_inode(&ei->jinode, &ei->vfs_inode);
+>  	return &ei->vfs_inode;
+>  }
+>  
+> -- 
+> 1.5.6.rc2.15.g457bb.dirty
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
