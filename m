@@ -1,44 +1,63 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: e2fsprogs: Patches to resize2fs
-Date: Tue, 17 Jun 2008 02:06:29 -0400
-Message-ID: <1213682792-4878-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH] resize2fs: Prohibit the combination of flex_bg and !resize_inode
+Date: Tue, 17 Jun 2008 02:06:32 -0400
+Message-ID: <1213682792-4878-4-git-send-email-tytso@mit.edu>
+References: <1213682792-4878-1-git-send-email-tytso@mit.edu>
+ <1213682792-4878-2-git-send-email-tytso@mit.edu>
+ <1213682792-4878-3-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:33397 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:33399 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751792AbYFQGGe (ORCPT
+	with ESMTP id S1751819AbYFQGGe (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Tue, 17 Jun 2008 02:06:34 -0400
-Received: from root (helo=closure.thunk.org)
-	by thunker.thunk.org with local-esmtp   (Exim 4.50 #1 (Debian))
-	id 1K8UKu-0005H5-QO
-	for <linux-ext4@vger.kernel.org>; Tue, 17 Jun 2008 02:06:32 -0400
-Received: from tytso by closure.thunk.org with local (Exim 4.67)
-	(envelope-from <tytso@mit.edu>)
-	id 1K8UKu-0001Ib-6M
-	for linux-ext4@vger.kernel.org; Tue, 17 Jun 2008 02:06:32 -0400
+In-Reply-To: <1213682792-4878-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The following patches fix resize2fs support for uninit_bg filesystems,
-as well as a rather embarassing bug which I had introduced while
-making mke2fs -j more efficient.  The final patch prohibits resizing
-filesystems that have flex_bg enabled and do not have the resize_inode
-feature enabled, since my testing has found a nasty bug in the flex_bg
-&& !resize_inode case, and I fix isn't going to be coming right away.
+This is a potentially a difficult case for resize2fs to handle, so
+prohibit it for now.
 
-In any case, this should make e2fsprogs work much better; at this
-point resizing should be in good shape except for:
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ resize/main.c |   21 ++++++++++++++++++++-
+ 1 files changed, 20 insertions(+), 1 deletions(-)
 
-1)  flex_bg with on-line resizing
-
-and
-
-2)  flex_bg && !resize_inode with off-line resizing.
-
-There may also be problems with flex_bg && uninit_bg; more testing is
-needed there to be 100% sure there's nothing hiding in that particular
-feature set combination.
-
-						- Ted
-
+diff --git a/resize/main.c b/resize/main.c
+index d7097ad..1cb0b20 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -316,9 +316,28 @@ int main (int argc, char ** argv)
+ 			"(%s)", device_name);
+ 		exit(1);
+ 	}
++
++	/*
++	 * XXXX   The combination of flex_bg and !resize_inode causes
++	 * major problems for resize2fs, since when the group descriptors
++	 * grow in size this can potentially require multiple inode
++	 * tables to be moved aside to make room, and resize2fs chokes
++	 * rather badly in this scenario.  It's a rare combination,
++	 * except when a filesystem is expanded more than a certain
++	 * size, so for now, we'll just prohibit that combination.
++	 * This is something we should fix eventually, though.
++	 */
++	if ((fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_FLEX_BG) &&
++	    !(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_RESIZE_INODE)) {
++		com_err(program_name, 0, _("%s: The combination of flex_bg "
++					   "and\n\t!resize_inode features "
++					   "is not supported by resize2fs.\n"),
++			device_name);
++		exit(1);
++	}
+ 	
+ 	if (print_min_size) {
+-		printf("Estimated minimum size of the filesystem: %u\n",
++		printf(_("Estimated minimum size of the filesystem: %u\n"),
+ 		       calculate_minimum_resize_size(fs));
+ 		exit(0);
+ 	}
+-- 
+1.5.6.rc3.1.g36b7.dirty
 
