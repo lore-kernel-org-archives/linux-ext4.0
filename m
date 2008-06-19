@@ -1,133 +1,82 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: [PATCH] jbd: don't abort if flushing file data failed
-Date: Thu, 19 Jun 2008 15:32:34 +0900
-Message-ID: <4859FD82.1000306@hitachi.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: kerneloops.org: 2.6.26-rc possible regression in ext3
+Date: Wed, 18 Jun 2008 23:40:34 -0700 (PDT)
+Message-ID: <alpine.LFD.1.10.0806182325540.2907@woody.linux-foundation.org>
+References: <4859EFE2.2090202@linux.intel.com> <alpine.LFD.1.10.0806182242390.2907@woody.linux-foundation.org> <alpine.LFD.1.10.0806182302340.2907@woody.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: adilger@clusterfs.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Josef Bacik <jbacik@redhat.com>, Mingming Cao <cmm@us.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	sugita <yumiko.sugita.yf@hitachi.com>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Al Viro <viro@zeniv.linux.org.uk>
+To: Arjan van de Ven <arjan@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail7.hitachi.co.jp ([133.145.228.42]:37840 "EHLO
-	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753192AbYFSGc4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2008 02:32:56 -0400
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:46397 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754147AbYFSGlG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jun 2008 02:41:06 -0400
+In-Reply-To: <alpine.LFD.1.10.0806182302340.2907@woody.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ordered mode, the current jbd aborts the journal if a file data
-buffer has an error.  But this behavior is unintended, and we found
-that it has been adopted accidentally.
-
-This patch undoes it and just calls printk() instead of aborting
-the journal.  Additionally, set AS_EIO into the address_space
-object of the failed buffer which is submitted by
-journal_do_submit_data() so that fsync() can get -EIO.
-
-Missing error checkings are also added to inform errors on file
-data buffers to the user.  The following buffers are targeted.
-
-  (a) the buffer which has already been written out by pdflush
-  (b) the buffer which has been unlocked before scanned in the
-      t_locked_list loop
-
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
----
- fs/jbd/commit.c |   32 +++++++++++++++++++++++++-------
- 1 file changed, 25 insertions(+), 7 deletions(-)
-
-Index: linux-2.6.26-rc5-mm3/fs/jbd/commit.c
-===================================================================
---- linux-2.6.26-rc5-mm3.orig/fs/jbd/commit.c
-+++ linux-2.6.26-rc5-mm3/fs/jbd/commit.c
-@@ -172,7 +172,7 @@ static void journal_do_submit_data(struc
- /*
-  *  Submit all the data buffers to disk
-  */
--static void journal_submit_data_buffers(journal_t *journal,
-+static int journal_submit_data_buffers(journal_t *journal,
- 				transaction_t *commit_transaction)
- {
- 	struct journal_head *jh;
-@@ -180,6 +180,7 @@ static void journal_submit_data_buffers(
- 	int locked;
- 	int bufs = 0;
- 	struct buffer_head **wbuf = journal->j_wbuf;
-+	int err = 0;
- 
- 	/*
- 	 * Whenever we unlock the journal and sleep, things can get added
-@@ -253,6 +254,8 @@ write_out_data:
- 			put_bh(bh);
- 		} else {
- 			BUFFER_TRACE(bh, "writeout complete: unfile");
-+			if (unlikely(!buffer_uptodate(bh)))
-+				err = -EIO;
- 			__journal_unfile_buffer(jh);
- 			jbd_unlock_bh_state(bh);
- 			if (locked)
-@@ -271,6 +274,8 @@ write_out_data:
- 	}
- 	spin_unlock(&journal->j_list_lock);
- 	journal_do_submit_data(wbuf, bufs);
-+
-+	return err;
- }
- 
- /*
-@@ -410,8 +415,7 @@ void journal_commit_transaction(journal_
- 	 * Now start flushing things to disk, in the order they appear
- 	 * on the transaction lists.  Data blocks go first.
- 	 */
--	err = 0;
--	journal_submit_data_buffers(journal, commit_transaction);
-+	err = journal_submit_data_buffers(journal, commit_transaction);
- 
- 	/*
- 	 * Wait for all previously submitted IO to complete.
-@@ -426,10 +430,21 @@ void journal_commit_transaction(journal_
- 		if (buffer_locked(bh)) {
- 			spin_unlock(&journal->j_list_lock);
- 			wait_on_buffer(bh);
--			if (unlikely(!buffer_uptodate(bh)))
--				err = -EIO;
- 			spin_lock(&journal->j_list_lock);
- 		}
-+		if (unlikely(!buffer_uptodate(bh))) {
-+			if (TestSetPageLocked(bh->b_page)) {
-+				spin_unlock(&journal->j_list_lock);
-+				lock_page(bh->b_page);
-+				spin_lock(&journal->j_list_lock);
-+			}
-+			if (bh->b_page->mapping)
-+				set_bit(AS_EIO, &bh->b_page->mapping->flags);
-+
-+			unlock_page(bh->b_page);
-+			SetPageError(bh->b_page);
-+			err = -EIO;
-+		}
- 		if (!inverted_lock(journal, bh)) {
- 			put_bh(bh);
- 			spin_lock(&journal->j_list_lock);
-@@ -448,8 +463,11 @@ void journal_commit_transaction(journal_
- 	}
- 	spin_unlock(&journal->j_list_lock);
- 
--	if (err)
--		journal_abort(journal, err);
-+	if (err) {
-+		printk(KERN_WARNING
-+		       "JBD: Detected IO errors during flushing file data\n");
-+		err = 0;
-+	}
- 
- 	journal_write_revoke_records(journal, commit_transaction);
- 
 
 
+On Wed, 18 Jun 2008, Linus Torvalds wrote:
+> 
+> and that "lea" is doing an address computation of "eax+2*ebx-2". Which 
+> does *not* look like an address to a 32-bit entity, but to a 16-bit one. 
+> Yeah, it's not conclusive, but it is suggestive.
 
+I'm wrong, that's just "eax+ebx-2". The *2 was just a brainfart on my 
+part.
+
+But I think I have pinpointed where it comes from: it's the 
+
+	struct dx_map_entry *map;
+
+which is a structure like this:
+
+	struct dx_map_entry
+	{
+	        u32 hash;
+	        u16 offs;
+	        u16 size;
+	};
+
+and it does look like it's the
+
+	if (size + map[i].size/2 > blocksize/2)
+
+calculation, where "i" counts backwards from "count-1" to 0.
+
+In particular, the code
+
+  27:	8d 4c 18 fe          	lea    0xfffffffe(%eax,%ebx,1),%ecx
+  2b:*	8b 19                	mov    (%ecx),%ebx     <-- trapping instruction
+  2d:	83 e9 08             	sub    $0x8,%ecx
+  30:	89 d8                	mov    %ebx,%eax
+  32:	66 d1 e8             	shr    %ax
+  38:	8d 04 02             	lea    (%edx,%eax,1),%eax
+
+seems to be that "size + map[i].size/2" calculation, but I have a hard 
+time trying to line it up with wat _my_ compiler gives me. But the nearest 
+match I have is:
+
+        movw    6(%ecx), %bx    # <variable>.size, D.21305
+        subl    $8, %ecx        #, ivtmp.921
+        movl    -104(%ebp), %edx        # blocksize, tmp179
+        movl    %ebx, %eax      # D.21305, tmp176
+        shrw    %ax     # tmp176
+        movzwl  %ax, %eax       # tmp176, tmp177
+        leal    (%esi,%eax), %eax       #, tmp178
+
+which seems to be largely the same thing (except I have a "movw" to load 
+the size, and %ecx is offset by one 'map' entry - so the offset is 6 (in 
+the memop) instead of that "-2" (from the lea).
+
+I think I'll give up, but that's the closest match I can find. No 
+guarantees, but it seems to support the notion of "wrong 32-bit load where 
+it should have used a 16-bit one".
+
+		Linus
