@@ -1,50 +1,31 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Performance of ext4
-Date: Thu, 19 Jun 2008 07:09:47 -0400
-Message-ID: <20080619110947.GB11516@mit.edu>
-References: <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de> <20080612131928.GB18229@mit.edu> <Pine.LNX.4.64.0806121333480.27806@diagnostix.dwd.de> <20080612180605.GD22481@skywalker> <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de> <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de> <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker> <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de>
+From: Arjan van de Ven <arjan@linux.intel.com>
+Subject: Re: kerneloops.org: 2.6.26-rc possible regression in ext3
+Date: Thu, 19 Jun 2008 06:40:05 -0700
+Message-ID: <485A61B5.90003@linux.intel.com>
+References: <4859F075.2050207@linux.intel.com> <21d7e9970806182242na130e47i85839c4550b4ba03@mail.gmail.com> <20080619081146.GC17630@cs181133002.pp.htv.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Jan Kara <jack@suse.cz>, Solofo.Ramangalahy@bull.net,
-	Nick Dokos <nicholas.dokos@hp.com>, linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: Holger Kiehl <Holger.Kiehl@dwd.de>
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Dave Airlie <airlied@gmail.com>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Adrian Bunk <bunk@kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:57567 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756034AbYFSLLO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2008 07:11:14 -0400
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de>
+Received: from mga10.intel.com ([192.55.52.92]:26058 "EHLO
+	fmsmga102.fm.intel.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754994AbYFSNkT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2008 09:40:19 -0400
+In-Reply-To: <20080619081146.GC17630@cs181133002.pp.htv.fi>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 18, 2008 at 05:58:00AM +0000, Holger Kiehl wrote:
-> For afdbench: 5336.41 files per second 15.63 MiB/s
->
-> So it seems that for afdbench the ext4-patch-queue is a slowdown.
+Adrian Bunk wrote:
+> 
+> Expect a lot more of this to pop up in the future.
+> Should we #error for gcc 4.3.1?
+> 
 
-Can you remind me where afdbench can be downloaded?  And if I remember
-correctly, it creates and deletes large numbers of small files,
-correct?
-
-It would be interesting to see which new feature introduced by the
-ext4 patch queue --- probably dellayed allocation or mballoc --- is
-responsible for the slowdown.  One or the other (or both) can be
-disabled by mounting the filesystem (using a kernel with the ext4
-patch queue) with the mount options -O nomballoc or -O nodelalloc.
-
-If it turns out that nomballoc restores the speed for afdbench, for
-example, then it will tell us where we need to look more closely.
-Ideally we would not want to have one mount option needed to optimize
-filesystem operations for large amoutns of modifications to small
-files, and another mode of operation when mostly writing to large
-files.  So if you could do a round of tests using the ext4 patch queue
-kernel, with -O nomballoc and -O nodelalloc (and if both seem to
-improve things, try "-O nomballoc,nodelalloc" and see if you get back
-to the pre-ext4 patch queue speed), it would be very much appreciated.
-
-Thanks, regards,
-
-						- Ted
+it/s better to find if the gcc guys made a testcase for this bug (they normally do) and
+test based on that.
