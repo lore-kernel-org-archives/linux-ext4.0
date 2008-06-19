@@ -1,156 +1,47 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] jbd: don't abort if flushing file data failed
-Date: Thu, 19 Jun 2008 22:00:44 +0530
-Message-ID: <20080619163044.GB7874@skywalker>
-References: <4859FD82.1000306@hitachi.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Performance of ext4
+Date: Thu, 19 Jun 2008 11:41:17 -0500
+Message-ID: <485A8C2D.1090806@redhat.com>
+References: <18513.345.553912.449710@frecb006361.adech.frec.bull.fr> <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de> <20080612131928.GB18229@mit.edu> <Pine.LNX.4.64.0806121333480.27806@diagnostix.dwd.de> <20080612180605.GD22481@skywalker> <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de> <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de> <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker> <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <20080619155645.GA8582@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com,
-	adilger@clusterfs.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Josef Bacik <jbacik@redhat.com>, Mingming Cao <cmm@us.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	sugita <yumiko.sugita.yf@hitachi.com>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>, Holger Kiehl <Holger.Kiehl@dwd.de>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Jan Kara <jack@suse.cz>, Solofo.Ramangalahy@bull.net,
+	Nick Doko
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:57069 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751101AbYFSQbD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2008 12:31:03 -0400
-Content-Disposition: inline
-In-Reply-To: <4859FD82.1000306@hitachi.com>
+Received: from mx1.redhat.com ([66.187.233.31]:42064 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752089AbYFSQwE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jun 2008 12:52:04 -0400
+In-Reply-To: <20080619155645.GA8582@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 19, 2008 at 03:32:34PM +0900, Hidehiro Kawai wrote:
-> In ordered mode, the current jbd aborts the journal if a file data
-> buffer has an error.  But this behavior is unintended, and we found
-> that it has been adopted accidentally.
+Theodore Tso wrote:
+> On Tue, Jun 17, 2008 at 11:42:36AM +0000, Holger Kiehl wrote:
+>> Note how the size of file results.24033.helena.dwd.de changes from
+>> 9230 before the test to 8208 bytes after the test. Also note the
+>> date both have the same timestamp "2008-06-17 04:35". I have made a
+>> copy of results.24033.helena.dwd.de before the test and compared it
+>> with that after the test. The file is just truncated by 1022 bytes
+>> and there is no garbage.
+> 
+> So the corruption is always a truncation, correct?
+> 
+> Did you notice the problem with ext4 w/o the patch queue?  I have a
+> suspicion that the problem may have been introduced by the delayed
+> allocation code, but I don't have hard evidence.  When you rerun your
+> benchmark (which seems to be the closest thing we have to a
+> reproduction case), it would be interesting to know if the problem
+> goes away with -o nodelalloc (again, it would localize where we need
+> to look).
+> 
+> Thanks, regards,
 
-Do you have more information on this ?  Isn't ordered mode required to
-guarantee that file data hit the disk and if there are errors in sending
-data to the disk, should we not mark the file system readonly by aborting
-the journal ?
+It might be worth runninga "simple" fsx under your kernel too; last time
+I tested fsx it was still happy and it exercises fs ops (including
+truncate) at random...
 
-
-> 
-> This patch undoes it and just calls printk() instead of aborting
-> the journal.  Additionally, set AS_EIO into the address_space
-> object of the failed buffer which is submitted by
-> journal_do_submit_data() so that fsync() can get -EIO.
-> 
-> Missing error checkings are also added to inform errors on file
-> data buffers to the user.  The following buffers are targeted.
-> 
->   (a) the buffer which has already been written out by pdflush
->   (b) the buffer which has been unlocked before scanned in the
->       t_locked_list loop
-> 
-> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-
-
-We may want a similar patch for jbd2 also. IF you are doing that can you
-make sure  you do that against the patch queue at
-http://repo.or.cz/w/ext4-patch-queue.git. There are some changes in the
-same area in the patch queue.
-
-> ---
->  fs/jbd/commit.c |   32 +++++++++++++++++++++++++-------
->  1 file changed, 25 insertions(+), 7 deletions(-)
-> 
-> Index: linux-2.6.26-rc5-mm3/fs/jbd/commit.c
-> ===================================================================
-> --- linux-2.6.26-rc5-mm3.orig/fs/jbd/commit.c
-> +++ linux-2.6.26-rc5-mm3/fs/jbd/commit.c
-> @@ -172,7 +172,7 @@ static void journal_do_submit_data(struc
->  /*
->   *  Submit all the data buffers to disk
->   */
-> -static void journal_submit_data_buffers(journal_t *journal,
-> +static int journal_submit_data_buffers(journal_t *journal,
->  				transaction_t *commit_transaction)
->  {
->  	struct journal_head *jh;
-> @@ -180,6 +180,7 @@ static void journal_submit_data_buffers(
->  	int locked;
->  	int bufs = 0;
->  	struct buffer_head **wbuf = journal->j_wbuf;
-> +	int err = 0;
-> 
->  	/*
->  	 * Whenever we unlock the journal and sleep, things can get added
-> @@ -253,6 +254,8 @@ write_out_data:
->  			put_bh(bh);
->  		} else {
->  			BUFFER_TRACE(bh, "writeout complete: unfile");
-> +			if (unlikely(!buffer_uptodate(bh)))
-> +				err = -EIO;
->  			__journal_unfile_buffer(jh);
->  			jbd_unlock_bh_state(bh);
->  			if (locked)
-> @@ -271,6 +274,8 @@ write_out_data:
->  	}
->  	spin_unlock(&journal->j_list_lock);
->  	journal_do_submit_data(wbuf, bufs);
-> +
-> +	return err;
->  }
-> 
->  /*
-> @@ -410,8 +415,7 @@ void journal_commit_transaction(journal_
->  	 * Now start flushing things to disk, in the order they appear
->  	 * on the transaction lists.  Data blocks go first.
->  	 */
-> -	err = 0;
-> -	journal_submit_data_buffers(journal, commit_transaction);
-> +	err = journal_submit_data_buffers(journal, commit_transaction);
-> 
->  	/*
->  	 * Wait for all previously submitted IO to complete.
-> @@ -426,10 +430,21 @@ void journal_commit_transaction(journal_
->  		if (buffer_locked(bh)) {
->  			spin_unlock(&journal->j_list_lock);
->  			wait_on_buffer(bh);
-> -			if (unlikely(!buffer_uptodate(bh)))
-> -				err = -EIO;
->  			spin_lock(&journal->j_list_lock);
->  		}
-> +		if (unlikely(!buffer_uptodate(bh))) {
-> +			if (TestSetPageLocked(bh->b_page)) {
-> +				spin_unlock(&journal->j_list_lock);
-> +				lock_page(bh->b_page);
-> +				spin_lock(&journal->j_list_lock);
-> +			}
-> +			if (bh->b_page->mapping)
-> +				set_bit(AS_EIO, &bh->b_page->mapping->flags);
-> +
-> +			unlock_page(bh->b_page);
-> +			SetPageError(bh->b_page);
-> +			err = -EIO;
-> +		}
->  		if (!inverted_lock(journal, bh)) {
->  			put_bh(bh);
->  			spin_lock(&journal->j_list_lock);
-> @@ -448,8 +463,11 @@ void journal_commit_transaction(journal_
->  	}
->  	spin_unlock(&journal->j_list_lock);
-> 
-> -	if (err)
-> -		journal_abort(journal, err);
-> +	if (err) {
-> +		printk(KERN_WARNING
-> +		       "JBD: Detected IO errors during flushing file data\n");
-> +		err = 0;
-> +	}
-> 
->  	journal_write_revoke_records(journal, commit_transaction);
-> 
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+-Eric
