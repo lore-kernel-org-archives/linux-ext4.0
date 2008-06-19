@@ -1,104 +1,48 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Fix ext4_bmap to flush the data to the disk with
-	delalloc
-Date: Thu, 19 Jun 2008 08:59:16 +0530
-Message-ID: <20080619032916.GA7250@skywalker>
-References: <1213811531-23829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1213827985.27507.98.camel@BVR-FS.beaverton.ibm.com>
+From: Arjan van de Ven <arjan@linux.intel.com>
+Subject: kerneloops.org: 2.6.26-rc possible regression in ext3
+Date: Wed, 18 Jun 2008 22:34:26 -0700
+Message-ID: <4859EFE2.2090202@linux.intel.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, sandeen@redhat.com, adilger@sun.com,
-	linux-ext4@vger.kernel.org
-To: Mingming <cmm@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([59.145.155.5]:42702 "EHLO
-	e28esmtp05.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752673AbYFSD3Z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 18 Jun 2008 23:29:25 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5J3TKvV011777
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Jun 2008 08:59:20 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5J3SR38487462
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Jun 2008 08:58:27 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5J3TJlY023911
-	for <linux-ext4@vger.kernel.org>; Thu, 19 Jun 2008 08:59:20 +0530
-Content-Disposition: inline
-In-Reply-To: <1213827985.27507.98.camel@BVR-FS.beaverton.ibm.com>
+Received: from mga10.intel.com ([192.55.52.92]:31324 "EHLO
+	fmsmga102.fm.intel.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750736AbYFSFee (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2008 01:34:34 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 18, 2008 at 03:26:25PM -0700, Mingming wrote:
-> 
-> On Wed, 2008-06-18 at 23:22 +0530, Aneesh Kumar K.V wrote:
-> > With delalloc we don't do block allocation in the write_begin/write_end.
-> > So when using bmap we first need to flush data to the disk so that blocks
-> > get allocated and then call generic_block_bmap.
-> > 
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> > ---
-> >  fs/ext4/inode.c |   11 +++++++++++
-> >  1 files changed, 11 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 7035621..cfeb869 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -1833,6 +1833,17 @@ sector_t ext4_bmap(struct address_space *mapping, sector_t block)
-> >  	journal_t *journal;
-> >  	int err;
-> > 
-> > +	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY) &&
-> > +			test_opt(inode->i_sb, DELALLOC)) {
-> > +		/*
-> > +		 * With delalloc we want to sync the file
-> > +		 * so that we can make sure we allocate
-> > +		 * blocks for file
-> > +		 */
-> > +		filemap_fdatawrite(mapping);
-> > +		filemap_fdatawait(mapping);
-> > +	}
-> > +
-> 
-> I would use filemap_write_and_wait(), it is essentially the same as
-> above two functions, but with a little extra checking.
-> 
+In the kerneloops.org stats, a new oops is rapidly climbing the charts.
+The oops is a page fault in the ext3 "do_slit" function, and the first
+report of it was with 2.6.26-rc6-git3.
 
-Updated patch below
+It happens with various applications; the backtraces are at:
 
-ext4: Fix ext4_bmap to flush the data to the disk with delalloc
+http://www.kerneloops.org/search.php?search=do_split
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+but are generally of this pattern:
 
-With delalloc we don't do block allocation in the write_begin/write_end.
-So when using bmap we first need to flush data to the disk so that blocks
-get allocated and then call generic_block_bmap.
+*do_split
+ext3_add_entry
+ext3_rename
+vfs_rename
+... <various paths into vfs_rename> ...
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
+or
 
- fs/ext4/inode.c |   10 ++++++++++
- 1 files changed, 10 insertions(+), 0 deletions(-)
+*do_split
+? add_dirent_to_buf
+ext3_add_entry
+ext3_new_inode
+ext3_add_nondir
+ext3_create
+vfs_create
+....
 
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7035621..f1bd194 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1833,6 +1833,16 @@ sector_t ext4_bmap(struct address_space *mapping, sector_t block)
- 	journal_t *journal;
- 	int err;
- 
-+	if (mapping_tagged(mapping, PAGECACHE_TAG_DIRTY) &&
-+			test_opt(inode->i_sb, DELALLOC)) {
-+		/*
-+		 * With delalloc we want to sync the file
-+		 * so that we can make sure we allocate
-+		 * blocks for file
-+		 */
-+		filemap_write_and_wait(mapping);
-+	}
-+
- 	if (EXT4_I(inode)->i_state & EXT4_STATE_JDATA) {
- 		/*
- 		 * This is a REALLY heavyweight approach, but the use of
+did we change anything in ext3 this cycle?
