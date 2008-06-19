@@ -1,70 +1,65 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: [PATCH 2/6] ext3: don't inherit inappropriate inode flags from parent
-Date: Thu, 19 Jun 2008 16:42:01 +0100
-Message-ID: <1213890125-20186-3-git-send-email-duaneg@dghda.com>
-References: <1213890125-20186-1-git-send-email-duaneg@dghda.com>
- <1213890125-20186-2-git-send-email-duaneg@dghda.com>
-Cc: Andreas Dilger <adilger@sun.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Duane Griffin <duaneg@dghda.com>
-To: akpm@linux-foundation.org
+From: Adrian Bunk <bunk@kernel.org>
+Subject: Re: kerneloops.org: 2.6.26-rc possible regression in ext3
+Date: Thu, 19 Jun 2008 18:43:35 +0300
+Message-ID: <20080619154335.GC2721@cs181133002.pp.htv.fi>
+References: <4859F075.2050207@linux.intel.com> <21d7e9970806182242na130e47i85839c4550b4ba03@mail.gmail.com> <20080619081146.GC17630@cs181133002.pp.htv.fi> <485A61B5.90003@linux.intel.com> <20080619151016.GA2721@cs181133002.pp.htv.fi> <485A78CF.7050401@linux.intel.com> <20080619152500.GB2721@cs181133002.pp.htv.fi> <485A7AF4.4080307@linux.intel.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Cc: Dave Airlie <airlied@gmail.com>,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Arjan van de Ven <arjan@linux.intel.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:1495 "EHLO kumera.dghda.com"
+Received: from smtp4.pp.htv.fi ([213.243.153.38]:57749 "EHLO smtp4.pp.htv.fi"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758114AbYFSPmP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Jun 2008 11:42:15 -0400
-In-Reply-To: <1213890125-20186-2-git-send-email-duaneg@dghda.com>
+	id S1751559AbYFSPpL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jun 2008 11:45:11 -0400
+Content-Disposition: inline
+In-Reply-To: <485A7AF4.4080307@linux.intel.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-At present INDEX is the only flag that new ext3 inodes do NOT inherit from
-their parent. In addition prevent the flags DIRTY, ECOMPR, IMAGIC and
-TOPDIR from being inherited. List inheritable flags explicitly to prevent
-future flags from accidentally being inherited.
+On Thu, Jun 19, 2008 at 08:27:48AM -0700, Arjan van de Ven wrote:
+> Adrian Bunk wrote:
+>> On Thu, Jun 19, 2008 at 08:18:39AM -0700, Arjan van de Ven wrote:
+>>> Adrian Bunk wrote:
+>>>> On Thu, Jun 19, 2008 at 06:40:05AM -0700, Arjan van de Ven wrote:
+>>>>> Adrian Bunk wrote:
+>>>>>> Expect a lot more of this to pop up in the future.
+>>>>>> Should we #error for gcc 4.3.1?
+>>>>> it/s better to find if the gcc guys made a testcase for this bug (they normally do) and
+>>>>> test based on that.
+>>>> The gcc Bugzilla contains a testcase.
+>>>>
+>>>> But how do you plan to integrate it into a kernel build?
+>>> we already have several of these.
+>>> Just look at scripts/gcc-x86_64-has-stack-protector.sh for an example of such a beast.
+>>
+>> Checking whether gcc supports some flags is easy.
+>
+> have you actually looked at this script?
+> You didn't, since the script doesn't check if gcc supports some flag.
+> It checks very specifically for a code generation pattern...
+>
+> Please go look at the script first before responding.
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
---
+I did look, but I missed the last pipe...
 
-This is v2 with inheritable flags now explicitly specified, as per Andreas'
-request.
+Do we know for sure this bug can only trigger on 32bit x86?
 
----
- fs/ext3/ialloc.c        |    2 +-
- include/linux/ext3_fs.h |    7 +++++++
- 2 files changed, 8 insertions(+), 1 deletions(-)
+Or is there anything else I miss in gcc-x86_64-has-stack-protector.sh 
+that allows to use this approach to check for wrong code generation 
+caused by platform independent gcc bugs?
 
-diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
-index 7712682..1d9fe3f 100644
---- a/fs/ext3/ialloc.c
-+++ b/fs/ext3/ialloc.c
-@@ -559,7 +559,7 @@ got:
- 	ei->i_dir_start_lookup = 0;
- 	ei->i_disksize = 0;
- 
--	ei->i_flags = EXT3_I(dir)->i_flags & ~EXT3_INDEX_FL;
-+	ei->i_flags = EXT3_I(dir)->i_flags & EXT3_FL_INHERITED;
- 	if (S_ISLNK(mode))
- 		ei->i_flags &= ~(EXT3_IMMUTABLE_FL|EXT3_APPEND_FL);
- 	/* dirsync only applies to directories */
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 36c5403..140190d 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -178,6 +178,13 @@ struct ext3_group_desc
- #define EXT3_FL_USER_VISIBLE		0x0003DFFF /* User visible flags */
- #define EXT3_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
- 
-+/* Flags that should be inherited by new inodes from their parent. */
-+#define EXT3_FL_INHERITED (EXT3_SECRM_FL | EXT3_UNRM_FL | EXT3_COMPR_FL |\
-+			   EXT3_SYNC_FL | EXT3_IMMUTABLE_FL | EXT3_APPEND_FL |\
-+			   EXT3_NODUMP_FL | EXT3_NOATIME_FL | EXT3_COMPRBLK_FL|\
-+			   EXT3_NOCOMPR_FL | EXT3_JOURNAL_DATA_FL |\
-+			   EXT3_NOTAIL_FL | EXT3_DIRSYNC_FL)
-+
- /*
-  * Inode dynamic state flags
-  */
+cu
+Adrian
+
 -- 
-1.5.4.5
+
+       "Is there not promise of rain?" Ling Tan asked suddenly out
+        of the darkness. There had been need of rain for many days.
+       "Only a promise," Lao Er said.
+                                       Pearl S. Buck - Dragon Seed
 
