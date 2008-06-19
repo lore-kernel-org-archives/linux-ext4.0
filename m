@@ -1,39 +1,53 @@
-From: Arjan van de Ven <arjan@linux.intel.com>
-Subject: Re: kerneloops.org: 2.6.26-rc possible regression in ext3
-Date: Thu, 19 Jun 2008 00:09:22 -0700
-Message-ID: <485A0622.9060000@linux.intel.com>
-References: <4859F075.2050207@linux.intel.com> <21d7e9970806182242na130e47i85839c4550b4ba03@mail.gmail.com> <alpine.LFD.1.10.0806182341000.2907@woody.linux-foundation.org>
+From: Shen Feng <shen@cn.fujitsu.com>
+Subject: [PATCH] ext4: fix memory leak in ext4_ext_insert_extent
+Date: Thu, 19 Jun 2008 15:54:27 +0800
+Message-ID: <485A10B3.4020105@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=GB2312
 Content-Transfer-Encoding: 7bit
-Cc: Dave Airlie <airlied@gmail.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+To: linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga10.intel.com ([192.55.52.92]:5546 "EHLO
-	fmsmga102.fm.intel.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751651AbYFSHJb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2008 03:09:31 -0400
-In-Reply-To: <alpine.LFD.1.10.0806182341000.2907@woody.linux-foundation.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:58203 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753620AbYFSH6B (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Jun 2008 03:58:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Linus Torvalds wrote:
-> 
-> On Thu, 19 Jun 2008, Dave Airlie wrote:
->> This is a bug in rawhide in gcc miscompiling something...
->>
->> https://bugzilla.redhat.com/show_bug.cgi?id=451068
-> 
-> Gaah. I should read all my email instead of wasting my time trying to 
-> match up the code with what I can reproduce..
-> 
 
-unfortunately, kerneloops.org didn't pick up the link to this bug (due to the fact
-that the oops in the bug was a jpeg....)... maybe one day if I'm really bored
-I'll implement OCR into it ;)
+In ext4_ext_insert_extent, when path is assigned by
+npath, there is a memory leak and then path points to
+a freed memory after the function returns becasue
+npath and path point to the same memory address
+and npath is freed.
 
-sorry about wasting your time
+Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
+---
+ fs/ext4/extents.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 3f6be32..71a56f1 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1497,6 +1497,8 @@ repeat:
+ 		if (le16_to_cpu(eh->eh_entries) < le16_to_cpu(eh->eh_max)) {
+ 			ext_debug("next leaf isnt full(%d)\n",
+ 				  le16_to_cpu(eh->eh_entries));
++			ext4_ext_drop_refs(path);
++			kfree(path);
+ 			path = npath;
+ 			goto repeat;
+ 		}
+@@ -1578,7 +1580,7 @@ merge:
+ 	err = ext4_ext_dirty(handle, inode, path + depth);
+ 
+ cleanup:
+-	if (npath) {
++	if (npath && npath != path) {
+ 		ext4_ext_drop_refs(npath);
+ 		kfree(npath);
+ 	}
+-- 
+1.5.5.1
