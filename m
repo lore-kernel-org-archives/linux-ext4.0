@@ -1,65 +1,43 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: Re: kerneloops.org: 2.6.26-rc possible regression in ext3
-Date: Thu, 19 Jun 2008 18:43:35 +0300
-Message-ID: <20080619154335.GC2721@cs181133002.pp.htv.fi>
-References: <4859F075.2050207@linux.intel.com> <21d7e9970806182242na130e47i85839c4550b4ba03@mail.gmail.com> <20080619081146.GC17630@cs181133002.pp.htv.fi> <485A61B5.90003@linux.intel.com> <20080619151016.GA2721@cs181133002.pp.htv.fi> <485A78CF.7050401@linux.intel.com> <20080619152500.GB2721@cs181133002.pp.htv.fi> <485A7AF4.4080307@linux.intel.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Performance of ext4
+Date: Thu, 19 Jun 2008 11:56:45 -0400
+Message-ID: <20080619155645.GA8582@mit.edu>
+References: <18513.345.553912.449710@frecb006361.adech.frec.bull.fr> <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de> <20080612131928.GB18229@mit.edu> <Pine.LNX.4.64.0806121333480.27806@diagnostix.dwd.de> <20080612180605.GD22481@skywalker> <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de> <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de> <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker> <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Dave Airlie <airlied@gmail.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Arjan van de Ven <arjan@linux.intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Jan Kara <jack@suse.cz>, Solofo.Ramangalahy@bull.net,
+	Nick Dokos <nicholas.dokos@hp.com>, linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Holger Kiehl <Holger.Kiehl@dwd.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp4.pp.htv.fi ([213.243.153.38]:57749 "EHLO smtp4.pp.htv.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751559AbYFSPpL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Jun 2008 11:45:11 -0400
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:45778 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751185AbYFSP6D (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2008 11:58:03 -0400
 Content-Disposition: inline
-In-Reply-To: <485A7AF4.4080307@linux.intel.com>
+In-Reply-To: <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 19, 2008 at 08:27:48AM -0700, Arjan van de Ven wrote:
-> Adrian Bunk wrote:
->> On Thu, Jun 19, 2008 at 08:18:39AM -0700, Arjan van de Ven wrote:
->>> Adrian Bunk wrote:
->>>> On Thu, Jun 19, 2008 at 06:40:05AM -0700, Arjan van de Ven wrote:
->>>>> Adrian Bunk wrote:
->>>>>> Expect a lot more of this to pop up in the future.
->>>>>> Should we #error for gcc 4.3.1?
->>>>> it/s better to find if the gcc guys made a testcase for this bug (they normally do) and
->>>>> test based on that.
->>>> The gcc Bugzilla contains a testcase.
->>>>
->>>> But how do you plan to integrate it into a kernel build?
->>> we already have several of these.
->>> Just look at scripts/gcc-x86_64-has-stack-protector.sh for an example of such a beast.
->>
->> Checking whether gcc supports some flags is easy.
->
-> have you actually looked at this script?
-> You didn't, since the script doesn't check if gcc supports some flag.
-> It checks very specifically for a code generation pattern...
->
-> Please go look at the script first before responding.
+On Tue, Jun 17, 2008 at 11:42:36AM +0000, Holger Kiehl wrote:
+> Note how the size of file results.24033.helena.dwd.de changes from
+> 9230 before the test to 8208 bytes after the test. Also note the
+> date both have the same timestamp "2008-06-17 04:35". I have made a
+> copy of results.24033.helena.dwd.de before the test and compared it
+> with that after the test. The file is just truncated by 1022 bytes
+> and there is no garbage.
 
-I did look, but I missed the last pipe...
+So the corruption is always a truncation, correct?
 
-Do we know for sure this bug can only trigger on 32bit x86?
+Did you notice the problem with ext4 w/o the patch queue?  I have a
+suspicion that the problem may have been introduced by the delayed
+allocation code, but I don't have hard evidence.  When you rerun your
+benchmark (which seems to be the closest thing we have to a
+reproduction case), it would be interesting to know if the problem
+goes away with -o nodelalloc (again, it would localize where we need
+to look).
 
-Or is there anything else I miss in gcc-x86_64-has-stack-protector.sh 
-that allows to use this approach to check for wrong code generation 
-caused by platform independent gcc bugs?
+Thanks, regards,
 
-cu
-Adrian
-
--- 
-
-       "Is there not promise of rain?" Ling Tan asked suddenly out
-        of the darkness. There had been need of rain for many days.
-       "Only a promise," Lao Er said.
-                                       Pearl S. Buck - Dragon Seed
-
+						- Ted
