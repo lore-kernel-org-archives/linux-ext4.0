@@ -1,40 +1,50 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: Re: kerneloops.org: 2.6.26-rc possible regression in ext3
-Date: Thu, 19 Jun 2008 13:49:05 +0300
-Message-ID: <20080619104905.GA10095@cs181133002.pp.htv.fi>
-References: <4859F075.2050207@linux.intel.com> <21d7e9970806182242na130e47i85839c4550b4ba03@mail.gmail.com> <20080619081146.GC17630@cs181133002.pp.htv.fi> <18522.6552.622680.92788@harpo.it.uu.se>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Performance of ext4
+Date: Thu, 19 Jun 2008 07:09:47 -0400
+Message-ID: <20080619110947.GB11516@mit.edu>
+References: <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de> <20080612131928.GB18229@mit.edu> <Pine.LNX.4.64.0806121333480.27806@diagnostix.dwd.de> <20080612180605.GD22481@skywalker> <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de> <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de> <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker> <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: Dave Airlie <airlied@gmail.com>,
-	Arjan van de Ven <arjan@linux.intel.com>,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Mikael Pettersson <mikpe@it.uu.se>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Jan Kara <jack@suse.cz>, Solofo.Ramangalahy@bull.net,
+	Nick Dokos <nicholas.dokos@hp.com>, linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Holger Kiehl <Holger.Kiehl@dwd.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp4.pp.htv.fi ([213.243.153.38]:51952 "EHLO smtp4.pp.htv.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755812AbYFSKu4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Jun 2008 06:50:56 -0400
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:57567 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756034AbYFSLLO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2008 07:11:14 -0400
 Content-Disposition: inline
-In-Reply-To: <18522.6552.622680.92788@harpo.it.uu.se>
+In-Reply-To: <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 19, 2008 at 10:32:24AM +0200, Mikael Pettersson wrote:
->...
-> What's the gcc bugzilla number for this new 4.3.1 bug?
+On Wed, Jun 18, 2008 at 05:58:00AM +0000, Holger Kiehl wrote:
+> For afdbench: 5336.41 files per second 15.63 MiB/s
+>
+> So it seems that for afdbench the ext4-patch-queue is a slowdown.
 
-#36533
+Can you remind me where afdbench can be downloaded?  And if I remember
+correctly, it creates and deletes large numbers of small files,
+correct?
 
-cu
-Adrian
+It would be interesting to see which new feature introduced by the
+ext4 patch queue --- probably dellayed allocation or mballoc --- is
+responsible for the slowdown.  One or the other (or both) can be
+disabled by mounting the filesystem (using a kernel with the ext4
+patch queue) with the mount options -O nomballoc or -O nodelalloc.
 
--- 
+If it turns out that nomballoc restores the speed for afdbench, for
+example, then it will tell us where we need to look more closely.
+Ideally we would not want to have one mount option needed to optimize
+filesystem operations for large amoutns of modifications to small
+files, and another mode of operation when mostly writing to large
+files.  So if you could do a round of tests using the ext4 patch queue
+kernel, with -O nomballoc and -O nodelalloc (and if both seem to
+improve things, try "-O nomballoc,nodelalloc" and see if you get back
+to the pre-ext4 patch queue speed), it would be very much appreciated.
 
-       "Is there not promise of rain?" Ling Tan asked suddenly out
-        of the darkness. There had been need of rain for many days.
-       "Only a promise," Lao Er said.
-                                       Pearl S. Buck - Dragon Seed
+Thanks, regards,
 
+						- Ted
