@@ -1,47 +1,64 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: kerneloops.org: 2.6.26-rc possible regression in ext3
-Date: Thu, 19 Jun 2008 09:17:13 -0500
-Message-ID: <485A6A69.8090402@redhat.com>
-References: <4859F075.2050207@linux.intel.com> <485A668D.3050306@redhat.com> <485A680B.3020004@linux.intel.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH]e2fsprogs: Fix broken "make check"
+Date: Thu, 19 Jun 2008 10:28:43 -0400
+Message-ID: <20080619142843.GF11516@mit.edu>
+References: <20080613140401.208b6f86@rx8>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Arjan van de Ven <arjan@linux.intel.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:57639 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754689AbYFSORU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Jun 2008 10:17:20 -0400
-In-Reply-To: <485A680B.3020004@linux.intel.com>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:39892 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752076AbYFSO3O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Jun 2008 10:29:14 -0400
+Content-Disposition: inline
+In-Reply-To: <20080613140401.208b6f86@rx8>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Arjan van de Ven wrote:
-> Eric Sandeen wrote:
->> Arjan van de Ven wrote:
->>> In the kerneloops.org stats, a new oops is rapidly climbing the charts.
->>> The oops is a page fault in the ext3 "do_slit" function, and the first
->>> report of it was with 2.6.26-rc6-git3.
->>>
->>> It happens with various applications; the backtraces are at:
->>>
->>> http://www.kerneloops.org/search.php?search=do_split
->> Arjan, I was just looking at kerneloops last night, seeing the count for
->> this oops climb, and was wishing there were some way to annotate an oops
->> signature with more info.  If I could have tagged this with the RH
->> bugzilla nr. it might have saved a lot of time for folks.  Is this
->> feasible?  Or is finding the oops text in bugzilla the only way?
->>
+On Fri, Jun 13, 2008 at 02:04:01PM -0500, Jose R. Santos wrote:
+> Commit: 51d12cebb61ca00f5455fe6e25938cd79fea15ab in pu fails to build
+> "make check".
 > 
-> there's a way to add a description to oopses (you might have seen some of these
-> descriptions already); however I've not implemented an account system yet so for
-> now it's only me who can add these.
+> Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 
-Ok, that was my guess.  I'll shoot you an email next time.  :)
+Thanks for reporting this, although the cleaner and better way to fix
+this is as follows:
 
-Thanks,
--Eric
+					- Ted
+
+>From 6f2ca692ecb993c23aabfcf3bb44376a03394cc0 Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Thu, 19 Jun 2008 10:09:08 -0400
+Subject: [PATCH] Fix "make check" in e2fsck subdirectory to use the in-tree com_err library
+
+Thanks to Jose Santos for pointing this out
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ e2fsck/Makefile.in |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/e2fsck/Makefile.in b/e2fsck/Makefile.in
+index 32743bc..9b32a61 100644
+--- a/e2fsck/Makefile.in
++++ b/e2fsck/Makefile.in
+@@ -143,12 +143,12 @@ tst_crc32: $(srcdir)/crc32.c $(LIBEXT2FS)
+ tst_refcount: ea_refcount.c
+ 	@echo "	LD $@"
+ 	@$(CC) -o tst_refcount $(srcdir)/ea_refcount.c \
+-		$(ALL_CFLAGS) -DTEST_PROGRAM -lcom_err
++		$(ALL_CFLAGS) -DTEST_PROGRAM $(LIBCOM_ERR)
+ 
+ tst_region: region.c
+ 	@echo "	LD $@"
+ 	@$(CC) -o tst_region $(srcdir)/region.c \
+-		$(ALL_CFLAGS) -DTEST_PROGRAM -lcom_err
++		$(ALL_CFLAGS) -DTEST_PROGRAM $(LIBCOM_ERR)
+ 
+ check:: tst_refcount tst_region tst_crc32
+ 	./tst_refcount
+-- 
+1.5.6.rc3.1.g36b7.dirty
+
