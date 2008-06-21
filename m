@@ -1,102 +1,146 @@
 From: Mingming <cmm@us.ibm.com>
-Subject: [PATCH] delalloc: Add block reservation estimate for non-extent
-	files
-Date: Fri, 20 Jun 2008 18:11:31 -0700
-Message-ID: <1214010691.27507.223.camel@BVR-FS.beaverton.ibm.com>
+Subject: [PATCH] delalloc: add quota handling
+Date: Fri, 20 Jun 2008 18:14:38 -0700
+Message-ID: <1214010878.27507.228.camel@BVR-FS.beaverton.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:41257 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753192AbYFUBLC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Jun 2008 21:11:02 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m5L1AxFI031035
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Jun 2008 21:10:59 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5L1AujV182578
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Jun 2008 19:10:59 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5L1AuoV016913
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Jun 2008 19:10:56 -0600
+Received: from e35.co.us.ibm.com ([32.97.110.153]:39107 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753201AbYFUBOE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 20 Jun 2008 21:14:04 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m5L1E4ER015601
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Jun 2008 21:14:04 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5L1E4B3174074
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Jun 2008 19:14:04 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5L1E2iJ003029
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Jun 2008 19:14:02 -0600
 Received: from [9.47.17.71] (BVR-FS.beaverton.ibm.com [9.47.17.71])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m5L1Att5016889
-	for <linux-ext4@vger.kernel.org>; Fri, 20 Jun 2008 19:10:55 -0600
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m5L1E2un003022
+	for <linux-ext4@vger.kernel.org>; Fri, 20 Jun 2008 19:14:02 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add support for full delayed allocation over ext3 format file.
-
-This patch added a function to estimate the number of indirect blocks need
-to reserve for non-extent based (ext3) file, in order to properly
-reserve the need amount of indirect blocks for delayed allocation.
-
+Correct quota handling in delayed allocation. With this patch,
+the quota for blocks are counted at block reservation time when
+the fs free blocks counter are updated, instead of at later 
+block allocation time.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
- fs/ext4/inode.c |   34 ++++++++++++++++++++++++++++++++--
- 1 file changed, 32 insertions(+), 2 deletions(-)
+ fs/ext4/balloc.c  |    8 +++++---
+ fs/ext4/inode.c   |    5 +++++
+ fs/ext4/mballoc.c |   22 ++++++++++++----------
+ 3 files changed, 22 insertions(+), 13 deletions(-)
 
+Index: linux-2.6.26-rc6/fs/ext4/balloc.c
+===================================================================
+--- linux-2.6.26-rc6.orig/fs/ext4/balloc.c	2008-06-20 18:06:02.000000000 -0700
++++ linux-2.6.26-rc6/fs/ext4/balloc.c	2008-06-20 18:06:05.000000000 -0700
+@@ -1716,7 +1716,8 @@ ext4_fsblk_t ext4_old_new_blocks(handle_
+ 	/*
+ 	 * Check quota for allocation of this block.
+ 	 */
+-	if (DQUOT_ALLOC_BLOCK(inode, num)) {
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag &&
++	     DQUOT_ALLOC_BLOCK(inode, num)) {
+ 		*errp = -EDQUOT;
+ 		return 0;
+ 	}
+@@ -1928,7 +1929,8 @@ allocated:
+ 
+ 	*errp = 0;
+ 	brelse(bitmap_bh);
+-	DQUOT_FREE_BLOCK(inode, *count-num);
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
++		DQUOT_FREE_BLOCK(inode, *count-num);
+ 	*count = num;
+ 	return ret_block;
+ 
+@@ -1942,7 +1944,7 @@ out:
+ 	/*
+ 	 * Undo the block allocation
+ 	 */
+-	if (!performed_allocation)
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag && !performed_allocation)
+ 		DQUOT_FREE_BLOCK(inode, *count);
+ 	brelse(bitmap_bh);
+ 	return 0;
 Index: linux-2.6.26-rc6/fs/ext4/inode.c
 ===================================================================
---- linux-2.6.26-rc6.orig/fs/ext4/inode.c	2008-06-20 16:50:09.000000000 -0700
-+++ linux-2.6.26-rc6/fs/ext4/inode.c	2008-06-20 17:36:08.000000000 -0700
-@@ -1426,6 +1426,36 @@ static int ext4_journalled_write_end(str
+--- linux-2.6.26-rc6.orig/fs/ext4/inode.c	2008-06-20 18:06:02.000000000 -0700
++++ linux-2.6.26-rc6/fs/ext4/inode.c	2008-06-20 18:06:05.000000000 -0700
+@@ -1450,6 +1450,9 @@ static int ext4_da_reserve_space(struct 
+ 		return -ENOSPC;
+ 	}
  
- 	return ret ? ret : copied;
- }
-+/*
-+ * Calculate the number of metadata blocks need to reserve
-+ * to allocate @blocks for non extent file based file
-+ */
-+static int ext4_indirect_calc_metadata_amount(struct inode *inode, int blocks)
-+{
-+	int icap = EXT4_ADDR_PER_BLOCK(inode->i_sb);
-+	int ind_blks, dind_blks, tind_blks;
++	if (DQUOT_ALLOC_BLOCK(inode, total))
++		return -EDQUOT;
 +
-+	/* number of new indirect blocks needed */
-+	ind_blks = (blocks + icap - 1) / icap;
-+
-+	dind_blks = (ind_blks + icap - 1) / icap;
-+
-+	tind_blks = 1;
-+
-+	return ind_blks + dind_blks + tind_blks;
-+}
-+
-+/*
-+ * Calculate the number of metadata blocks need to reserve
-+ * to allocate given number of blocks
-+ */
-+static int ext4_calc_metadata_amount(struct inode *inode, int blocks)
-+{
-+	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)
-+		return ext4_ext_calc_metadata_amount(inode, blocks);
-+
-+	return ext4_indirect_calc_metadata_amount(inode, blocks);
-+}
+ 	/* reduce fs free blocks counter */
+ 	percpu_counter_sub(&sbi->s_freeblocks_counter, total);
  
- static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
- {
-@@ -1439,7 +1469,7 @@ static int ext4_da_reserve_space(struct 
- 	 */
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	total = EXT4_I(inode)->i_reserved_data_blocks + nrblocks;
--	mdblocks = ext4_ext_calc_metadata_amount(inode, total);
-+	mdblocks = ext4_calc_metadata_amount(inode, total);
- 	BUG_ON(mdblocks < EXT4_I(inode)->i_reserved_meta_blocks);
+@@ -1479,6 +1482,8 @@ void ext4_da_release_space(struct inode 
  
- 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
-@@ -1468,7 +1498,7 @@ void ext4_da_release_space(struct inode 
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	/* recalculate the number of metablocks still need to be reserved */
- 	total = EXT4_I(inode)->i_reserved_data_blocks - used - to_free;
--	mdb = ext4_ext_calc_metadata_amount(inode, total);
-+	mdb = ext4_calc_metadata_amount(inode, total);
+ 	release = to_free + mdb_free;
  
- 	/* figure out how many metablocks to release */
- 	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
++	DQUOT_FREE_BLOCK(inode, release);
++
+ 	/* update fs free blocks counter for truncate case */
+ 	percpu_counter_add(&sbi->s_freeblocks_counter, release);
+ 
+Index: linux-2.6.26-rc6/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.26-rc6.orig/fs/ext4/mballoc.c	2008-06-20 18:06:01.000000000 -0700
++++ linux-2.6.26-rc6/fs/ext4/mballoc.c	2008-06-20 18:06:05.000000000 -0700
+@@ -4037,7 +4037,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
+ 	struct super_block *sb;
+ 	ext4_fsblk_t block = 0;
+ 	int freed;
+-	int inquota;
++	int inquota = 0;
+ 
+ 	sb = ar->inode->i_sb;
+ 	sbi = EXT4_SB(sb);
+@@ -4059,15 +4059,17 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
+ 		return 0;
+ 	}
+ 
+-	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
+-		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
+-		ar->len--;
+-	}
+-	if (ar->len == 0) {
+-		*errp = -EDQUOT;
+-		return 0;
++	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
++		while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
++			ar->flags |= EXT4_MB_HINT_NOPREALLOC;
++			ar->len--;
++		}
++		if (ar->len == 0) {
++			*errp = -EDQUOT;
++			return 0;
++		}
++		inquota = ar->len;
+ 	}
+-	inquota = ar->len;
+ 
+ 	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
+ 		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
+@@ -4134,7 +4136,7 @@ repeat:
+ out2:
+ 	kmem_cache_free(ext4_ac_cachep, ac);
+ out1:
+-	if (ar->len < inquota)
++	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag && ar->len < inquota)
+ 		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
+ 
+ 	return block;
 
 
