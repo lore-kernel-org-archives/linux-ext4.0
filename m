@@ -1,63 +1,75 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: blkid oddities with stale devices in the cache
-Date: Fri, 20 Jun 2008 23:59:26 -0500
-Message-ID: <485C8AAE.5020005@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] delalloc: Add block reservation estimate for
+	non-extent files
+Date: Sat, 21 Jun 2008 15:55:20 +0530
+Message-ID: <20080621102520.GA9584@skywalker>
+References: <1214010691.27507.223.camel@BVR-FS.beaverton.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:59734 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750949AbYFUE73 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 21 Jun 2008 00:59:29 -0400
+Received: from e28smtp07.in.ibm.com ([59.145.155.7]:56943 "EHLO
+	e28esmtp07.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753017AbYFUKZw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Jun 2008 06:25:52 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5LAPnws027554
+	for <linux-ext4@vger.kernel.org>; Sat, 21 Jun 2008 15:55:49 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5LAOquk421976
+	for <linux-ext4@vger.kernel.org>; Sat, 21 Jun 2008 15:54:52 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5LAPmVH000617
+	for <linux-ext4@vger.kernel.org>; Sat, 21 Jun 2008 15:55:49 +0530
+Content-Disposition: inline
+In-Reply-To: <1214010691.27507.223.camel@BVR-FS.beaverton.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is w.r.t. https://bugzilla.redhat.com/show_bug.cgi?id=452333
+On Fri, Jun 20, 2008 at 06:11:31PM -0700, Mingming wrote:
+> Add support for full delayed allocation over ext3 format file.
+> 
+> This patch added a function to estimate the number of indirect blocks need
+> to reserve for non-extent based (ext3) file, in order to properly
+> reserve the need amount of indirect blocks for delayed allocation.
+> 
+> 
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> ---
+>  fs/ext4/inode.c |   34 ++++++++++++++++++++++++++++++++--
+>  1 file changed, 32 insertions(+), 2 deletions(-)
+> 
+> Index: linux-2.6.26-rc6/fs/ext4/inode.c
+> ===================================================================
+> --- linux-2.6.26-rc6.orig/fs/ext4/inode.c	2008-06-20 16:50:09.000000000 -0700
+> +++ linux-2.6.26-rc6/fs/ext4/inode.c	2008-06-20 17:36:08.000000000 -0700
+> @@ -1426,6 +1426,36 @@ static int ext4_journalled_write_end(str
+> 
+>  	return ret ? ret : copied;
+>  }
+> +/*
+> + * Calculate the number of metadata blocks need to reserve
+> + * to allocate @blocks for non extent file based file
+> + */
+> +static int ext4_indirect_calc_metadata_amount(struct inode *inode, int blocks)
+> +{
+> +	int icap = EXT4_ADDR_PER_BLOCK(inode->i_sb);
+> +	int ind_blks, dind_blks, tind_blks;
+> +
+> +	/* number of new indirect blocks needed */
+> +	ind_blks = (blocks + icap - 1) / icap;
+> +
+> +	dind_blks = (ind_blks + icap - 1) / icap;
+> +
+> +	tind_blks = 1;
+> +
+> +	return ind_blks + dind_blks + tind_blks;
+> +}
+> +
 
-Dave had a few stale entries in blkid.tab; label from a usb key showed
-up under several non-existent, stale device names.  fstab had LABEL=,
-mounting by label failed because blkid returned a stale, nonexistent device.
+With block mapped files using logical block number we should be able to
+find out the exact number of meta-data blocks we would need. I am not sure
+whether we need to be that complex is calculating the same.
 
-It seems there's a problem in blkid_verify():
-
-        if (((probe.fd = open(dev->bid_name, O_RDONLY)) < 0) ||
-            (fstat(probe.fd, &st) < 0)) {
-                if (probe.fd >= 0) close(probe.fd);
-                if ((errno != EPERM) && (errno != EACCES) &&
-                    (errno != ENOENT)) {
-                        DBG(DEBUG_PROBE,
-                            printf("blkid_verify: error %s (%d) while "
-                                   "opening %s\n", strerror(errno), errno,
-                                   dev->bid_name));
-                        blkid_free_dev(dev);
-                        return NULL;
-                }
-                /* We don't have read permission, just return cache data. */
-                DBG(DEBUG_PROBE,
-                    printf("returning unverified data for %s\n",
-                           dev->bid_name));
-                return dev;
-
-We find the bad/stale device in the cache, and stat it - if the device
-doesn't exist, we get ENOENT.  But we return the stale data for the
-nonexistent device anyway.  Eh?
-
-http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=commitdiff;h=8bcaaabb1a023af4852dbf0dba76249982c62e40
-
-did this:
-
-When a nonprivileged user uses the blkid command, we want to keep the
-cached filesystem information, and opening a device file could result
-in an EACCESS or ENOENT (if an intervening directory is mode 700).  We
-were previously testing for EPERM, which was really the wrong error
-code to be testing against.
-
-But do we really want to do this in the case of ENOENT?  It seems like
-this is going to grow a crop of missing devices in the cache, no?
-
-Thanks,
-
--Eric
+-aneesh
