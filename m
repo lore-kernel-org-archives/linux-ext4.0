@@ -1,167 +1,336 @@
-From: Holger Kiehl <Holger.Kiehl@dwd.de>
-Subject: Re: Performance of ext4
-Date: Sat, 21 Jun 2008 15:02:50 +0000 (GMT)
-Message-ID: <Pine.LNX.4.64.0806211446110.19212@diagnostix.dwd.de>
-References: <18513.345.553912.449710@frecb006361.adech.frec.bull.fr>
- <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de> <20080612131928.GB18229@mit.edu>
- <Pine.LNX.4.64.0806121333480.27806@diagnostix.dwd.de> <20080612180605.GD22481@skywalker>
- <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de>
- <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de>
- <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker>
- <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <20080619155645.GA8582@mit.edu>
- <Pine.LNX.4.64.0806200805520.3383@diagnostix.dwd.de>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Jan Kara <jack@suse.cz>, Solofo.Ramangalahy@bull.net,
-	Nick Dokos <nicholas.dokos@hp.com>, linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+From: "Duane Griffin" <duaneg@dghda.com>
+Subject: [PATCH, v2] ext3: validate directory entry data before use
+Date: Sat, 21 Jun 2008 16:54:56 +0100
+Message-ID: <1214063696-16546-1-git-send-email-duaneg@dghda.com>
+References: <1214013261-32428-1-git-send-email-duaneg@dghda.com>
+Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+	sct@redhat.com, adilger@clusterfs.com,
+	Sami Liedes <sliedes@cc.hut.fi>,
+	Duane Griffin <duaneg@dghda.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dwdmx4.dwd.de ([141.38.3.230]:55417 "EHLO dwdmx4.dwd.de"
+Received: from kumera.dghda.com ([80.68.90.171]:1736 "EHLO kumera.dghda.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751185AbYFUPCy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 21 Jun 2008 11:02:54 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by node2.dwd.de (Postfix) with ESMTP id 3E8344A46B7
-	for <linux-ext4@vger.kernel.org>; Sat, 21 Jun 2008 15:02:53 +0000 (UTC)
-Received: from localhost ([127.0.0.1])
-	by localhost (node2.csg-cluster.lan [127.0.0.1]) (amavisd-new, port 2525)
-	with SMTP id 32631-16 for <linux-ext4@vger.kernel.org>;
-	Sat, 21 Jun 2008 15:02:53 +0000 (UTC)
-In-Reply-To: <Pine.LNX.4.64.0806200805520.3383@diagnostix.dwd.de>
+	id S1751238AbYFUPzB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 21 Jun 2008 11:55:01 -0400
+In-Reply-To: <1214013261-32428-1-git-send-email-duaneg@dghda.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 20 Jun 2008, Holger Kiehl wrote:
+Various places in fs/ext3/namei.c use ext3_next_entry to loop over
+directory entries, but not all of them verify that entries are valid before
+attempting to move to the next one. In the case where rec_len == 0 this
+causes an infinite loop.
 
-> On Thu, 19 Jun 2008, Theodore Tso wrote:
->
->> I have a
->> suspicion that the problem may have been introduced by the delayed
->> allocation code, but I don't have hard evidence.  When you rerun your
->> benchmark (which seems to be the closest thing we have to a
->> reproduction case), it would be interesting to know if the problem
->> goes away with -o nodelalloc (again, it would localize where we need
->> to look).
->> 
-> Ok I will do thats soon as I have a system available.
->
-No, with nodelalloc the problem does not occur. I can now very reliably
-repoduce the problem if I run the benchmark for 5 minutes and then unmount
-the filesystem and remount it. Anything else I can do to find the problem?
+Introduce a new version of ext3_next_entry that checks the validity of the
+entry before using its data to find the next one. Rename the original
+function to __ext3_next_entry and use it in places where we already know
+the data is valid.
 
-During testing on a newly setup system (used the same kernel 2.6.26-rc5+ext4-
-patch-queue) I have hit two oopses:
+Note that the changes to empty_dir follow the original code in reporting
+the directory as empty in the presence of errors.
 
-------------[ cut here ]------------
-kernel BUG at fs/ext4/inode.c:1931!
-invalid opcode: 0000 [1] SMP 
-CPU 3 
-Modules linked in: w83627hf lm85 hwmon_vid bonding ipt_REJECT xt_tcpudp nf_conntrack_ipv4 xt_state nf_conntrack iptable_filter ip_tables x_tables binfmt_misc sg floppy ohci_hcd i2c_amd756 k8temp i2c_core button usbcore
-Pid: 242, comm: pdflush Not tainted 2.6.26-rc5 #4
-RIP: 0010:[<ffffffff802dd1c5>]  [<ffffffff802dd1c5>] ext4_normal_writepage+0x27/0xd8
-RSP: 0018:ffff81007f329c20  EFLAGS: 00010246
-RAX: 0a0000000001002d RBX: ffffe20006f658c8 RCX: 00000000ffffffe8
-RDX: 0000000000004278 RSI: ffff81007f329e50 RDI: ffffe20006f658c8
-RBP: ffff81007f329e50 R08: ffff81027ff054c0 R09: ffff81007f329b60
-R10: 0000000000000040 R11: 0000000000000040 R12: 0000000000000000
-R13: 0000000000000000 R14: 0000000000000000 R15: 0000000000000000
-FS:  00007fbc99d8b6f0(0000) GS:ffff81027ff0e000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-CR2: 00007f64c0d43488 CR3: 00000001efa65000 CR4: 00000000000006e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process pdflush (pid: 242, threadinfo ffff81007f328000, task ffff81007fbc3d30)
-Stack:  0000000000000000 ffff810149bc41d0 ffff81007f329e50 ffffffff8026179a
-  ffffe20006f658c8 ffffffff80261f57 ffff810149bc41d0 ffffffff80261790
-  ffff810149bc41d0 0000000180241154 ffff8101ff6caea0 ffffffffffffffff
-Call Trace:
-  [<ffffffff8026179a>] ? __writepage+0xa/0x27
-  [<ffffffff80261f57>] ? write_cache_pages+0x1bb/0x30d
-  [<ffffffff80261790>] ? __writepage+0x0/0x27
-  [<ffffffff802620ec>] ? do_writepages+0x27/0x2d
-  [<ffffffff8029f66e>] ? __writeback_single_inode+0x16f/0x35e
-  [<ffffffff8029fc8b>] ? sync_sb_inodes+0x283/0x3b8
-  [<ffffffff802a0014>] ? writeback_inodes+0x89/0xde
-  [<ffffffff80262620>] ? background_writeout+0x8f/0xc9
-  [<ffffffff80262c74>] ? pdflush+0x122/0x1c9
-  [<ffffffff80262591>] ? background_writeout+0x0/0xc9
-  [<ffffffff80262b52>] ? pdflush+0x0/0x1c9
-  [<ffffffff8023e3e7>] ? kthread+0x47/0x73
-  [<ffffffff8022ae3a>] ? schedule_tail+0x27/0x5c
-  [<ffffffff8020bf78>] ? child_rip+0xa/0x12
-  [<ffffffff8023e3a0>] ? kthread+0x0/0x73
-  [<ffffffff8020bf6e>] ? child_rip+0x0/0x12
+This patch fixes the first case (image hdb.25.softlockup.gz) reported in
+http://bugzilla.kernel.org/show_bug.cgi?id=10882.
 
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+--
 
-Code: 3e 8c fc ff 55 48 89 f5 53 48 89 fb 48 83 ec 08 48 8b 47 18 48 8b 00 48 8b 50 68 48 8b 07 a8 01 75 04 0f 0b eb fe f6 c4 08 75 04 <0f> 0b eb fe 48 89 d0 81 e2 ff 0f 00 00 48 8b 77 10 48 c1 f8 0c 
-RIP  [<ffffffff802dd1c5>] ext4_normal_writepage+0x27/0xd8
-  RSP <ffff81007f329c20>
----[ end trace 82357a26b61bf3d2 ]---
-------------[ cut here ]------------
-kernel BUG at fs/ext4/inode.c:1931!
-invalid opcode: 0000 [2] SMP 
-CPU 3 
-Modules linked in: w83627hf lm85 hwmon_vid bonding ipt_REJECT xt_tcpudp nf_conntrack_ipv4 xt_state nf_conntrack iptable_filter ip_tables x_tables binfmt_misc sg floppy ohci_hcd i2c_amd756 k8temp i2c_core button usbcore
-Pid: 7896, comm: dir_check Tainted: G      D   2.6.26-rc5 #4
-RIP: 0010:[<ffffffff802dd1c5>]  [<ffffffff802dd1c5>] ext4_normal_writepage+0x27/0xd8
-RSP: 0018:ffff810172ee1d78  EFLAGS: 00010246
-RAX: 0a0000000001002d RBX: ffffe200063cd890 RCX: 00000000ffffffe8
-RDX: 0000000000004278 RSI: ffff810172ee1eb8 RDI: ffffe200063cd890
-RBP: ffff810172ee1eb8 R08: ffff81027ff054c0 R09: ffff810172ee1cb8
-R10: ffff810250e6ac80 R11: ffff810250e6a080 R12: 0000000000000000
-R13: 0000000000000001 R14: 0000000000000000 R15: 0000000000000001
-FS:  00007f3778d0e6f0(0000) GS:ffff81027ff0e000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-CR2: 00007f3778d25000 CR3: 000000027ecd8000 CR4: 00000000000006e0
-DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-Process dir_check (pid: 7896, threadinfo ffff810172ee0000, task ffff81017f0fa6f0)
-Stack:  0000000000000000 ffff81024ed0c8c0 ffff810172ee1eb8 ffffffff8026179a
-  ffffe200063cd890 ffffffff80261f57 ffff81024ed0c8c0 ffffffff80261790
-  ffff81024ed0c8c0 0000000500000000 ffff8101ff6caea0 0007ffffffffffff
-Call Trace:
-  [<ffffffff8026179a>] ? __writepage+0xa/0x27
-  [<ffffffff80261f57>] ? write_cache_pages+0x1bb/0x30d
-  [<ffffffff80261790>] ? __writepage+0x0/0x27
-  [<ffffffff8028ea23>] ? fasync_helper+0x47/0xc8
-  [<ffffffff80286f15>] ? cp_new_stat+0xe9/0xfc
-  [<ffffffff802921b3>] ? __posix_lock_file+0x43d/0x44e
-  [<ffffffff802620ec>] ? do_writepages+0x27/0x2d
-  [<ffffffff8025c44f>] ? __filemap_fdatawrite_range+0x4a/0x55
-  [<ffffffff802568c8>] ? audit_syscall_exit+0x2ee/0x30c
-  [<ffffffff802a28e1>] ? do_fsync+0x2f/0x87
-  [<ffffffff80270af7>] ? sys_msync+0x107/0x178
-  [<ffffffff8020b2d2>] ? tracesys+0xd5/0xda
+This is version 2. The original patch was an earlier version causing
+warnings that I sent by mistake. This version just fixes those.
 
+Please note that I've only properly tested the originally reported failure
+case (i.e. the changes to ext3_dx_find_entry).
 
-Code: 3e 8c fc ff 55 48 89 f5 53 48 89 fb 48 83 ec 08 48 8b 47 18 48 8b 00 48 8b 50 68 48 8b 07 a8 01 75 04 0f 0b eb fe f6 c4 08 75 04 <0f> 0b eb fe 48 89 d0 81 e2 ff 0f 00 00 48 8b 77 10 48 c1 f8 0c 
-RIP  [<ffffffff802dd1c5>] ext4_normal_writepage+0x27/0xd8
-  RSP <ffff810172ee1d78>
----[ end trace 82357a26b61bf3d2 ]---
-SysRq : Show Blocked State
-   task                        PC stack   pid father
-dir_check     D ffff810181e03eb8     0  7873      1
-  ffff8101eea3dc48 0000000000000082 0000000000000096 ffff81007ec39ec0
-  ffffffff80600cc0 0000000000000000 ffff81027ff8a658 ffff8101eea21bd0
-  ffff81007f395370 ffff8101eea21e08 000000017ff8a640 ffff8101eea21e08
-Call Trace:
-  [<ffffffff80224a67>] __wake_up+0x38/0x4f
-  [<ffffffff8025b87d>] sync_page+0x0/0x41
-  [<ffffffff804660f0>] io_schedule+0x2d/0x39
-  [<ffffffff8025b8b9>] sync_page+0x3c/0x41
-  [<ffffffff804663d4>] __wait_on_bit+0x41/0x70
-  [<ffffffff8025bb32>] wait_on_page_bit+0x6b/0x71
-  [<ffffffff8023e724>] wake_bit_function+0x0/0x23
-  [<ffffffff8026940b>] do_wp_page+0x46a/0x4ba
-  [<ffffffff8026aac1>] handle_mm_fault+0x62d/0x6a3
-  [<ffffffff80299236>] mntput_no_expire+0x27/0x11e
-  [<ffffffff8021ed0c>] do_page_fault+0x435/0x825
-  [<ffffffff802921b3>] __posix_lock_file+0x43d/0x44e
-  [<ffffffff8029260e>] fcntl_setlk+0x285/0x296
-  [<ffffffff802568c8>] audit_syscall_exit+0x2ee/0x30c
-  [<ffffffff80467699>] error_exit+0x0/0x51
+Reviewers may want to pay particular attention to the changes to do_split,
+make_indexed_dir and empty_dir. I've tried to follow the original code's
+error handling conventions, as noted above for empty_dir, but I'm not sure
+this is the best way to do things.
 
-Holger
+---
 
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 0b8cf80..ea0236b 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -185,13 +185,27 @@ static int ext3_dx_add_entry(handle_t *handle, struct dentry *dentry,
+  * p is at least 6 bytes before the end of page
+  */
+ static inline struct ext3_dir_entry_2 *
+-ext3_next_entry(struct ext3_dir_entry_2 *p)
++__ext3_next_entry(struct ext3_dir_entry_2 *p)
+ {
+ 	return (struct ext3_dir_entry_2 *)((char *)p +
+ 		ext3_rec_len_from_disk(p->rec_len));
+ }
+ 
+ /*
++ * Checks the directory entry looks sane before using it to find the next one.
++ * Returns NULL and reports an error if an invalid entry is passed.
++ */
++static inline struct ext3_dir_entry_2 *
++ext3_next_entry(const char *func, struct inode *dir,
++		struct ext3_dir_entry_2 *de, struct buffer_head *bh, int offset)
++{
++	if (ext3_check_dir_entry(func, dir, de, bh, offset))
++		return __ext3_next_entry(de);
++	else
++		return NULL;
++}
++
++/*
+  * Future: use high four bits of block for coalesce-on-delete flags
+  * Mask them off for now.
+  */
+@@ -271,15 +285,17 @@ struct stats
+ 	unsigned bcount;
+ };
+ 
+-static struct stats dx_show_leaf(struct dx_hash_info *hinfo, struct ext3_dir_entry_2 *de,
+-				 int size, int show_names)
++static struct stats dx_show_leaf(struct dx_hash_info *hinfo, struct inode *dir,
++				 struct buffer_head *bh, int size,
++				 int show_names)
+ {
++	struct ext3_dir_entry_2 *de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 	unsigned names = 0, space = 0;
+ 	char *base = (char *) de;
+ 	struct dx_hash_info h = *hinfo;
+ 
+ 	printk("names: ");
+-	while ((char *) de < base + size)
++	while (de && (char *) de < base + size)
+ 	{
+ 		if (de->inode)
+ 		{
+@@ -295,7 +311,7 @@ static struct stats dx_show_leaf(struct dx_hash_info *hinfo, struct ext3_dir_ent
+ 			space += EXT3_DIR_REC_LEN(de->name_len);
+ 			names++;
+ 		}
+-		de = ext3_next_entry(de);
++		de = ext3_next_entry("dx_show_leaf", dir, de, bh, 0);
+ 	}
+ 	printk("(%i)\n", names);
+ 	return (struct stats) { names, space, 1 };
+@@ -319,7 +335,7 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
+ 		if (!(bh = ext3_bread (NULL,dir, block, 0,&err))) continue;
+ 		stats = levels?
+ 		   dx_show_entries(hinfo, dir, ((struct dx_node *) bh->b_data)->entries, levels - 1):
+-		   dx_show_leaf(hinfo, (struct ext3_dir_entry_2 *) bh->b_data, blocksize, 0);
++		   dx_show_leaf(hinfo, dir, bh, blocksize, 0);
+ 		names += stats.names;
+ 		space += stats.space;
+ 		bcount += stats.bcount;
+@@ -583,7 +599,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
+ 	top = (struct ext3_dir_entry_2 *) ((char *) de +
+ 					   dir->i_sb->s_blocksize -
+ 					   EXT3_DIR_REC_LEN(0));
+-	for (; de < top; de = ext3_next_entry(de)) {
++	for (; de < top; de = __ext3_next_entry(de)) {
+ 		if (!ext3_check_dir_entry("htree_dirblock_to_tree", dir, de, bh,
+ 					(block<<EXT3_BLOCK_SIZE_BITS(dir->i_sb))
+ 						+((char *)de - bh->b_data))) {
+@@ -658,7 +674,12 @@ int ext3_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 	}
+ 	if (start_hash < 2 || (start_hash ==2 && start_minor_hash==0)) {
+ 		de = (struct ext3_dir_entry_2 *) frames[0].bh->b_data;
+-		de = ext3_next_entry(de);
++		de = ext3_next_entry("ext3_htree_fill_tree",
++				     dir, de, frames[0].bh, 0);
++		if (de == NULL) {
++			err = -EIO;
++			goto errout;
++		}
+ 		if ((err = ext3_htree_store_dirent(dir_file, 2, 0, de)) != 0)
+ 			goto errout;
+ 		count++;
+@@ -726,8 +747,7 @@ static int dx_make_map (struct ext3_dir_entry_2 *de, int size,
+ 			count++;
+ 			cond_resched();
+ 		}
+-		/* XXX: do we need to check rec_len == 0 case? -Chris */
+-		de = ext3_next_entry(de);
++		de = __ext3_next_entry(de);
+ 	}
+ 	return count;
+ }
+@@ -991,24 +1011,28 @@ static struct buffer_head * ext3_dx_find_entry(struct dentry *dentry,
+ 		de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 		top = (struct ext3_dir_entry_2 *) ((char *) de + sb->s_blocksize -
+ 				       EXT3_DIR_REC_LEN(0));
+-		for (; de < top; de = ext3_next_entry(de))
+-		if (ext3_match (namelen, name, de)) {
++		for (; de < top; de = __ext3_next_entry(de)) {
++			int offset = (block << EXT3_BLOCK_SIZE_BITS(sb))
++				     + ((char *) de - bh->b_data);
++
+ 			if (!ext3_check_dir_entry("ext3_find_entry",
+-						  dir, de, bh,
+-				  (block<<EXT3_BLOCK_SIZE_BITS(sb))
+-					  +((char *)de - bh->b_data))) {
+-				brelse (bh);
++						  dir, de, bh, offset)) {
++				brelse(bh);
+ 				*err = ERR_BAD_DX_DIR;
+ 				goto errout;
+ 			}
+-			*res_dir = de;
+-			dx_release (frames);
+-			return bh;
++
++			if (ext3_match(namelen, name, de)) {
++				*res_dir = de;
++				dx_release(frames);
++				return bh;
++			}
+ 		}
+ 		brelse (bh);
++
+ 		/* Check to see if we should continue to search */
+-		retval = ext3_htree_next_block(dir, hash, frame,
+-					       frames, NULL);
++		retval = ext3_htree_next_block(dir, hash, frame, frames, NULL);
++
+ 		if (retval < 0) {
+ 			ext3_warning(sb, __func__,
+ 			     "error reading index page in directory #%lu",
+@@ -1141,7 +1165,7 @@ static struct ext3_dir_entry_2* dx_pack_dirents(char *base, int size)
+ 
+ 	prev = to = de;
+ 	while ((char*)de < base + size) {
+-		next = ext3_next_entry(de);
++		next = __ext3_next_entry(de);
+ 		if (de->inode && de->name_len) {
+ 			rec_len = EXT3_DIR_REC_LEN(de->name_len);
+ 			if (de > to)
+@@ -1172,9 +1196,22 @@ static struct ext3_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	struct dx_map_entry *map;
+ 	char *data1 = (*bh)->b_data, *data2;
+ 	unsigned split, move, size, i;
+-	struct ext3_dir_entry_2 *de = NULL, *de2;
++	struct ext3_dir_entry_2 *de, *de2;
+ 	int	err = 0;
+ 
++	/* Verify directory entries are sane before trying anything else. */
++	de = (struct ext3_dir_entry_2 *) data1;
++	de2 = (struct ext3_dir_entry_2 *) data1 +
++		dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(0);
++	while (de < de2) {
++		de = ext3_next_entry("do_split", dir, de, *bh, 0);
++		if (de == NULL) {
++			brelse(*bh);
++			*bh = NULL;
++			goto errout;
++		}
++	}
++
+ 	bh2 = ext3_append (handle, dir, &newblock, &err);
+ 	if (!(bh2)) {
+ 		brelse(*bh);
+@@ -1397,8 +1434,15 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	memcpy (data1, de, len);
+ 	de = (struct ext3_dir_entry_2 *) data1;
+ 	top = data1 + len;
+-	while ((char *)(de2 = ext3_next_entry(de)) < top)
++
++	while (1) {
++		de2 = ext3_next_entry("make_indexed_dir", dir, de, bh, 0);
++		if (de2 == NULL || (char *) (char *) (char *) (char *) (char *) (char *) (char *) (char *) (char *) de2 >= top) {
++			break;
++		}
+ 		de = de2;
++	}
++
+ 	de->rec_len = ext3_rec_len_to_disk(data1 + blocksize - (char *) de);
+ 	/* Initialize the root; the dot dirents already exist */
+ 	de = (struct ext3_dir_entry_2 *) (&root->dotdot);
+@@ -1655,7 +1699,7 @@ static int ext3_delete_entry (handle_t *handle,
+ 		}
+ 		i += ext3_rec_len_from_disk(de->rec_len);
+ 		pde = de;
+-		de = ext3_next_entry(de);
++		de = __ext3_next_entry(de);
+ 	}
+ 	return -ENOENT;
+ }
+@@ -1792,7 +1836,7 @@ retry:
+ 	de->rec_len = ext3_rec_len_to_disk(EXT3_DIR_REC_LEN(de->name_len));
+ 	strcpy (de->name, ".");
+ 	ext3_set_de_type(dir->i_sb, de, S_IFDIR);
+-	de = ext3_next_entry(de);
++	de = __ext3_next_entry(de);
+ 	de->inode = cpu_to_le32(dir->i_ino);
+ 	de->rec_len = ext3_rec_len_to_disk(inode->i_sb->s_blocksize -
+ 					EXT3_DIR_REC_LEN(1));
+@@ -1825,7 +1869,7 @@ out_stop:
+ /*
+  * routine to check that the specified directory is empty (for rmdir)
+  */
+-static int empty_dir (struct inode * inode)
++static int empty_dir(struct inode *dir, struct inode *inode)
+ {
+ 	unsigned long offset;
+ 	struct buffer_head * bh;
+@@ -1846,8 +1890,14 @@ static int empty_dir (struct inode * inode)
+ 				     inode->i_ino);
+ 		return 1;
+ 	}
++
+ 	de = (struct ext3_dir_entry_2 *) bh->b_data;
+-	de1 = ext3_next_entry(de);
++	de1 = ext3_next_entry("empty_dir", dir, de, bh, 0);
++	if (de1 == NULL) {
++		brelse(bh);
++		return 1;
++	}
++
+ 	if (le32_to_cpu(de->inode) != inode->i_ino ||
+ 			!le32_to_cpu(de1->inode) ||
+ 			strcmp (".", de->name) ||
+@@ -1860,8 +1910,8 @@ static int empty_dir (struct inode * inode)
+ 	}
+ 	offset = ext3_rec_len_from_disk(de->rec_len) +
+ 			ext3_rec_len_from_disk(de1->rec_len);
+-	de = ext3_next_entry(de1);
+-	while (offset < inode->i_size ) {
++	de = ext3_next_entry("empty_dir", dir, de1, bh, offset);
++	while (de && offset < inode->i_size) {
+ 		if (!bh ||
+ 			(void *) de >= (void *) (bh->b_data+sb->s_blocksize)) {
+ 			err = 0;
+@@ -1890,7 +1940,7 @@ static int empty_dir (struct inode * inode)
+ 			return 0;
+ 		}
+ 		offset += ext3_rec_len_from_disk(de->rec_len);
+-		de = ext3_next_entry(de);
++		de = __ext3_next_entry(de);
+ 	}
+ 	brelse (bh);
+ 	return 1;
+@@ -2068,7 +2121,7 @@ static int ext3_rmdir (struct inode * dir, struct dentry *dentry)
+ 		goto end_rmdir;
+ 
+ 	retval = -ENOTEMPTY;
+-	if (!empty_dir (inode))
++	if (!empty_dir(dir, inode))
+ 		goto end_rmdir;
+ 
+ 	retval = ext3_delete_entry(handle, dir, de, bh);
+@@ -2244,7 +2297,7 @@ retry:
+ }
+ 
+ #define PARENT_INO(buffer) \
+-	(ext3_next_entry((struct ext3_dir_entry_2 *)(buffer))->inode)
++	(__ext3_next_entry((struct ext3_dir_entry_2 *)(buffer))->inode)
+ 
+ /*
+  * Anybody can rename anything with this: the permission checks are left to the
+@@ -2297,7 +2350,7 @@ static int ext3_rename (struct inode * old_dir, struct dentry *old_dentry,
+ 	if (S_ISDIR(old_inode->i_mode)) {
+ 		if (new_inode) {
+ 			retval = -ENOTEMPTY;
+-			if (!empty_dir (new_inode))
++			if (!empty_dir(new_dir, new_inode))
+ 				goto end_rename;
+ 		}
+ 		retval = -EIO;
