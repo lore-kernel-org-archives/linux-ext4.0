@@ -1,98 +1,132 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: streaming read and write - test results
-Date: Mon, 23 Jun 2008 16:20:50 -0600
-Message-ID: <20080623222050.GC6239@webber.adilger.int>
-References: <4278.1214242602@alphaville.zko.hp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Nick Dokos <nicholas.dokos@hp.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:50601 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753294AbYFWWUy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jun 2008 18:20:54 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m5NMKr17021260
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Jun 2008 15:20:53 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K2X00401S44F800@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Mon, 23 Jun 2008 15:20:53 -0700 (PDT)
-In-reply-to: <4278.1214242602@alphaville.zko.hp.com>
-Content-disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: + ext3-handle-corrupted-orphan-list-at-mount.patch added to -mm tree
+Date: Mon, 23 Jun 2008 16:43:07 -0700
+Message-ID: <200806232343.m5NNh9dJ022374@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: duaneg@dghda.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Jun 23, 2008  13:36 -0400, Nick Dokos wrote:
-> o 8 MSA1000 RAID controllers, each with four back-end SCSI busses, each
-> bus with 7 300GB 15K disks. Only one bus on each controller is used for
-> the tests below (the rest are going to be used for larger filesystem
-> testing). The 7 disks are striped ("horizontally" @ 128KB stripe size) at
-> the hardware level and exported as a single 2TB LUN (that's the current
-> hardware LUN size limit).
-> 
-> o the 8 LUNs are striped ("vertically" @ 128KB also) at the LVM level to
-> produce a 16TB logical volume.
 
-With 56 disks, I'd expect on the order of 2.5GB/s of throughput...
+The patch titled
+     ext3: handle corrupted orphan list at mount
+has been added to the -mm tree.  Its filename is
+     ext3-handle-corrupted-orphan-list-at-mount.patch
 
-> o the test used was aiod (http://sourceforge.net/projects/aiod/) with the
->   following command line:
-> 
->   aiod -S -B -b4M -I -v -w 3500000 -W|-R
-> 
->   (aiod uses AIO by default, but reverts back to ordinary read/write with -S
->   - note that the documentation calls this "sync-io" but that's a
->   misnomer: there is nothing synchronous about it, it just means non-AIO;
->   aiod uses directIO by default, but reverts to buffered IO with -B;
->   -b4M makes aiod issue 4MB IOs and -w <N> makes it issue that many IOs.)
-> 
->   The test first sequentially writes a ~14TB (4MB*3500000) file,
->   unmounts the fs, remounts it and then sequentially reads the file back.
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-At a guess you are consuming a lot of CPU in copy_from_user() because of
-buffered IO instead of directIO.  Is this a single-threaded write test?
-In that case it is almost impossible to copy data fast enough from userspace
-to saturate the back-end storage.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-> top - 15:07:20 up 2 days, 20:08,  0 users,  load average: 1.12, 1.38, 1.33
-> Tasks: 189 total,   1 running, 188 sleeping,   0 stopped,   0 zombie
-> Cpu(s):  0.0%us, 13.1%sy,  0.0%ni, 84.8%id,  0.6%wa,  0.2%hi,  1.2%si,  0.0%st
-> Mem:  66114888k total, 66005660k used,   109228k free,     4196k buffers
-> Swap:  2040212k total,     3884k used,  2036328k free, 19773724k cached
-> 
->     PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND          
->   80046 root      20   0 18808 4796  564 S   86  0.0 186:21.78 aiod             
->     391 root      15  -5     0    0    0 S   10  0.0 196:19.05 kswapd1          
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-So this is pretty much pegging the single CPU, leaving 7 virtually idle...
-If you enable the per-CPU top output (number '1') this would be clear,
-instead of the misleading "13.15 system, 84.8% idle" shown above.
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-Try running 8 threads and measure the aggregate throughput.  IOZONE will
-do this, if aiod won't.
+------------------------------------------------------
+Subject: ext3: handle corrupted orphan list at mount
+From: "Duane Griffin" <duaneg@dghda.com>
 
-> PS. One additional tidbit: I ran fsck on the ext4 filesystem - it took about an
-> hour and a half (I presume uninit_bg would speed that up substantially since
-> there are only a handful of inodes in use). But I got an interesting question
-> from it:
-> 
->     # time fsck.ext4 /dev/mapper/bigvg-bigvol
->     e2fsck 1.41-WIP (17-Jun-2008)
->     /dev/mapper/bigvg-bigvol primary superblock features different from backup, check forced.
->     Pass 1: Checking inodes, blocks, and sizes
->     Inode 49153, i_size is 14680064000000, should be 14680064000000.  Fix<y>? y
->     yes
+If the orphan node list includes valid, untruncatable nodes with nlink > 0
+the ext3_orphan_cleanup loop which attempts to delete them will not do so,
+causing it to loop forever. Fix by checking for such nodes in the
+ext3_orphan_get function.
 
-This is interesting.  Can you add debugging to e2fsck to see what "bad_size"
-is being used?  I'm guessing it is just overflowing the ext2_max_sizes[]
-array, and isn't taking the HUGE_FILE flag into account.
+This patch fixes the second case (image hdb.20000009.softlockup.gz)
+reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/ialloc.c        |    9 +++++++++
+ fs/ext3/inode.c         |   15 +++++++++------
+ include/linux/ext3_fs.h |    1 +
+ 3 files changed, 19 insertions(+), 6 deletions(-)
+
+diff -puN fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount fs/ext3/ialloc.c
+--- a/fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount
++++ a/fs/ext3/ialloc.c
+@@ -669,6 +669,14 @@ struct inode *ext3_orphan_get(struct sup
+ 	if (IS_ERR(inode))
+ 		goto iget_failed;
+ 
++	/*
++	 * If the orphans has i_nlinks > 0 then it should be able to be
++	 * truncated, otherwise it won't be removed from the orphan list
++	 * during processing and an infinite loop will result.
++	 */
++	if (inode->i_nlink && !ext3_can_truncate(inode))
++		goto bad_orphan;
++
+ 	if (NEXT_ORPHAN(inode) > max_ino)
+ 		goto bad_orphan;
+ 	brelse(bitmap_bh);
+@@ -690,6 +698,7 @@ bad_orphan:
+ 		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
+ 		       NEXT_ORPHAN(inode));
+ 		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
++		printk(KERN_NOTICE "i_nlink=%lu\n", inode->i_nlink);
+ 		/* Avoid freeing blocks if we got a bad deleted inode */
+ 		if (inode->i_nlink == 0)
+ 			inode->i_blocks = 0;
+diff -puN fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount
++++ a/fs/ext3/inode.c
+@@ -2256,6 +2256,14 @@ static void ext3_free_branches(handle_t 
+ 	}
+ }
+ 
++int ext3_can_truncate(struct inode *inode)
++{
++	return (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
++		S_ISLNK(inode->i_mode)) &&
++		!ext3_inode_is_fast_symlink(inode) &&
++		!(IS_APPEND(inode) || IS_IMMUTABLE(inode));
++}
++
+ /*
+  * ext3_truncate()
+  *
+@@ -2300,12 +2308,7 @@ void ext3_truncate(struct inode *inode)
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+ 	struct page *page;
+ 
+-	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+-	    S_ISLNK(inode->i_mode)))
+-		return;
+-	if (ext3_inode_is_fast_symlink(inode))
+-		return;
+-	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
++	if (!ext3_can_truncate(inode))
+ 		return;
+ 
+ 	/*
+diff -puN include/linux/ext3_fs.h~ext3-handle-corrupted-orphan-list-at-mount include/linux/ext3_fs.h
+--- a/include/linux/ext3_fs.h~ext3-handle-corrupted-orphan-list-at-mount
++++ a/include/linux/ext3_fs.h
+@@ -832,6 +832,7 @@ extern void ext3_discard_reservation (st
+ extern void ext3_dirty_inode(struct inode *);
+ extern int ext3_change_inode_journal_flag(struct inode *, int);
+ extern int ext3_get_inode_loc(struct inode *, struct ext3_iloc *);
++extern int ext3_can_truncate(struct inode *inode);
+ extern void ext3_truncate (struct inode *);
+ extern void ext3_set_inode_flags(struct inode *);
+ extern void ext3_get_inode_flags(struct ext3_inode_info *);
+_
+
+Patches currently in -mm which might be from duaneg@dghda.com are
+
+jbd-replace-potentially-false-assertion-with-if-block.patch
+jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch
+jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch
+ext3-handle-corrupted-orphan-list-at-mount.patch
+ext3-handle-corrupted-orphan-list-at-mount-cleanup.patch
+ext3-handle-corrupted-orphan-list-at-mount-fix.patch
 
