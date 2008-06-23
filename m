@@ -1,87 +1,69 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/5] jbd: fix error handling for checkpoint io
-Date: Mon, 23 Jun 2008 14:22:40 +0200
-Message-ID: <20080623122240.GJ26743@duck.suse.cz>
-References: <4843CE15.6080506@hitachi.com> <4843CFBD.7040706@hitachi.com> <20080602124409.GL30613@duck.suse.cz> <4844CB39.6060409@hitachi.com> <20080603080219.GA17936@duck.suse.cz> <485F85AE.1010704@hitachi.com>
+Subject: Re: [RFC][PATCH] ext3: don't read inode block if the buffer has a
+	write error
+Date: Mon, 23 Jun 2008 14:31:16 +0200
+Message-ID: <20080623123116.GL26743@duck.suse.cz>
+References: <485F8822.5030205@hitachi.com> <200806232146.28379.nickpiggin@yahoo.com.au>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+Cc: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
+	akpm@linux-foundation.org, sct@redhat.com, adilger@sun.com,
 	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
-	sugita <yumiko.sugita.yf@hitachi.com>,
+	jack@suse.cz, sugita <yumiko.sugita.yf@hitachi.com>,
 	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+To: Nick Piggin <nickpiggin@yahoo.com.au>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:40382 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:40718 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753360AbYFWMWl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jun 2008 08:22:41 -0400
+	id S1753045AbYFWMbS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Jun 2008 08:31:18 -0400
 Content-Disposition: inline
-In-Reply-To: <485F85AE.1010704@hitachi.com>
+In-Reply-To: <200806232146.28379.nickpiggin@yahoo.com.au>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 23-06-08 20:14:54, Hidehiro Kawai wrote:
-> Hi,
+On Mon 23-06-08 21:46:27, Nick Piggin wrote:
+> On Monday 23 June 2008 21:25, Hidehiro Kawai wrote:
+> > A transient I/O error can corrupt inode data.  Here is the scenario:
+> >
+> > (1) update inode_A at the block_B
+> > (2) pdflush writes out new inode_A to the filesystem, but it results
+> >     in write I/O error, at this point, BH_Uptodate flag of the buffer
+> >     for block_B is cleared and BH_Write_EIO is set
+> > (3) create new inode_C which located at block_B, and
+> >     __ext3_get_inode_loc() tries to read on-disk block_B because the
+> >     buffer is not uptodate
+> > (4) if it can read on-disk block_B successfully, inode_A is
+> >     overwritten by old data
+> >
+> > This patch makes __ext3_get_inode_loc() not read the inode block if
+> > the buffer has BH_Write_EIO flag.  In this case, the buffer should
+> > have the latest information, so setting the uptodate flag to the
+> > buffer (this avoids WARN_ON_ONCE() in mark_buffer_dirty().)
+> >
+> > According to this change, we would need to test BH_Write_EIO flag for
+> > the error checking.  Currently nobody checks write I/O errors on
+> > metadata buffers, but it will be done in other patches I'm working on.
 > 
-> I noticed a problem of this patch.  Please see below.
+> IMO there is a problem with all the buffer head and pagecache error
+> handling in that uptodate gets cleared on write errors. This is not
+> only wrong (because the in-memory copy continues to contain the most
+> uptodate copy), but it will trigger assertions all over the mm and
+> buffer code AFAIKS.
 > 
-> Jan Kara wrote:
-> 
-> > On Tue 03-06-08 13:40:25, Hidehiro Kawai wrote:
-> > 
-> >>Subject: [PATCH 4/5] jbd: fix error handling for checkpoint io
-> >>
-> >>When a checkpointing IO fails, current JBD code doesn't check the
-> >>error and continue journaling.  This means latest metadata can be
-> >>lost from both the journal and filesystem.
-> >>
-> >>This patch leaves the failed metadata blocks in the journal space
-> >>and aborts journaling in the case of log_do_checkpoint().
-> >>To achieve this, we need to do:
-> >>
-> >>1. don't remove the failed buffer from the checkpoint list where in
-> >>   the case of __try_to_free_cp_buf() because it may be released or
-> >>   overwritten by a later transaction
-> >>2. log_do_checkpoint() is the last chance, remove the failed buffer
-> >>   from the checkpoint list and abort the journal
-> >>3. when checkpointing fails, don't update the journal super block to
-> >>   prevent the journaled contents from being cleaned.  For safety,
-> >>   don't update j_tail and j_tail_sequence either
-> 
-> 3. is implemented as described below.
->   (1) if log_do_checkpoint() detects an I/O error during
->       checkpointing, it calls journal_abort() to abort the journal
->   (2) if the journal has aborted, don't update s_start and s_sequence
->       in the on-disk journal superblock
-> 
-> So, if the journal aborts, journaled data will be replayed on the
-> next mount.
-> 
-> Now, please remember that some dirty metadata buffers are written
-> back to the filesystem without journaling if the journal aborted.
-> We are happy if all dirty metadata buffers are written to the disk,
-> the integrity of the filesystem will be kept.  However, replaying
-> the journaled data can overwrite the latest on-disk metadata blocks
-> partly with old data.  It would break the filesystem.
-  Yes, it would. But how do you think it can happen that a metadata buffer
-will be written back to the filesystem when it is a part of running
-transaction? Note that checkpointing code specifically checks whether the
-buffer being written back is part of a running transaction and if so, it
-waits for commit before writing back the buffer. So I don't think this can
-happen but maybe I miss something...
+> I don't know why it was done like this, or if anybody actually tested
+> any of it, but AFAIKS the best way to fix this is to simply not
+> clear any uptodate bits upon write errors.
+  That would be non-trivial effort because there are lots of places which
+do things like:
+  wait_on_buffer(bh);
+  if (!buffer_uptodate)
+    /* IO error handling */
 
-> My idea to resolve this problem is that we don't write out metadata
-> buffers which belong to uncommitted transactions if journal has
-> aborted.  Although the latest filesystem updates will be lost,
-> we can ensure the integrity.  It will also be effective for the
-> kernel panic in the middle of writing metadata buffers without
-> journaling (this would occur in the `mount -o errors=panic' case.)
-> 
-> Which integrity or latest state should we choose?
+  But what you say sounds like a reasonable thing from a logical
+perspective.
 
-								Honza
-
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
