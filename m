@@ -1,109 +1,91 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: [PATCH] ext3: handle corrupted orphan list at mount
-Date: Mon, 23 Jun 2008 22:56:40 +0100
-Message-ID: <1214258200-16623-1-git-send-email-duaneg@dghda.com>
-References: <20080607121940.8ee6044a.akpm@linux-foundation.org>
-Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-	sct@redhat.com, adilger@clusterfs.com,
-	Sami Liedes <sliedes@cc.hut.fi>,
-	Duane Griffin <duaneg@dghda.com>
-To: linux-ext4@vger.kernel.org
+From: FD Cami <francois.cami@free.fr>
+Subject: Re: [PATCH] extX: convert prink(KERN_WARNING) to extX_warning()
+Date: Tue, 24 Jun 2008 00:20:23 +0200
+Message-ID: <20080624002023.0fadc1d1@olorin>
+References: <20080622201841.669ff882@olorin>
+	<20080623203107.GD6239@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Kasper Sandberg <lkml@metanurb.dk>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Randy Dunlap <randy.dunlap@oracle.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:1344 "EHLO kumera.dghda.com"
+Received: from smtp5-g19.free.fr ([212.27.42.35]:45649 "EHLO smtp5-g19.free.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753578AbYFWV4n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jun 2008 17:56:43 -0400
-In-Reply-To: <20080607121940.8ee6044a.akpm@linux-foundation.org>
+	id S1751208AbYFWWUV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Jun 2008 18:20:21 -0400
+In-Reply-To: <20080623203107.GD6239@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the orphan node list includes valid, untruncatable nodes with nlink > 0
-the ext3_orphan_cleanup loop which attempts to delete them will not do so,
-causing it to loop forever. Fix by checking for such nodes in the
-ext3_orphan_get function.
 
-This patch fixes the second case (image hdb.20000009.softlockup.gz)
-reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+Hi,
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
---
+(Eric and Randy added as CC to keep track of this)
 
-Note that we can still end up in an infinite loop if the ext3_truncate
-errors out early (and keeps doing so). I'm not sure if we should worry
-about that. If we did want to handle it then we could change ext3_truncate
-to return success/failure and exit the ext3_orphan_cleanup.
+On Mon, 23 Jun 2008 14:31:07 -0600
+Andreas Dilger <adilger@sun.com> wrote:
 
----
+> On Jun 22, 2008  20:18 +0200, FD Cami wrote:
+> > This patch takes a shot at replacing the direct use of printk(KERN_WARNING)
+> > in extX by extX_warning. We now get the device number in the warning message :
+> > "EXT3-fs warning (device hda1): ext3_setup_super: maximal mount count reached, running e2fsck is recommended"
+> > It also adds the device information on a pair of printk(KERN_ERR) (this was
+> > first suggested by Kasper two weeks ago).
+> 
+> The one issue is that KERN_ERR != KERN_WARNING, so these errors might
+> not be visible on the console, or may not be saved to the syslog.
 
-diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
-index 7712682..bc030f4 100644
---- a/fs/ext3/ialloc.c
-+++ b/fs/ext3/ialloc.c
-@@ -669,6 +669,14 @@ struct inode *ext3_orphan_get(struct super_block *sb, unsigned long ino)
- 	if (IS_ERR(inode))
- 		goto iget_failed;
- 
-+	/*
-+	 * If the orphans has i_nlinks > 0 then it should be able to be
-+	 * truncated, otherwise it won't be removed from the orphan list
-+	 * during processing and an infinite loop will result.
-+	 */
-+	if (inode->i_nlink && !ext3_can_truncate(inode))
-+		goto bad_orphan;
-+
- 	if (NEXT_ORPHAN(inode) > max_ino)
- 		goto bad_orphan;
- 	brelse(bitmap_bh);
-@@ -690,6 +698,7 @@ bad_orphan:
- 		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
- 		       NEXT_ORPHAN(inode));
- 		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
-+		printk(KERN_NOTICE "i_nlink=%lu\n", inode->i_nlink);
- 		/* Avoid freeing blocks if we got a bad deleted inode */
- 		if (inode->i_nlink == 0)
- 			inode->i_blocks = 0;
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 6ae4ecf..7b7e234 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -2253,6 +2253,14 @@ static void ext3_free_branches(handle_t *handle, struct inode *inode,
- 	}
- }
- 
-+int ext3_can_truncate(struct inode *inode)
-+{
-+	return (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-+		S_ISLNK(inode->i_mode)) &&
-+		!ext3_inode_is_fast_symlink(inode) &&
-+		!(IS_APPEND(inode) || IS_IMMUTABLE(inode));
-+}
-+
- /*
-  * ext3_truncate()
-  *
-@@ -2297,12 +2305,7 @@ void ext3_truncate(struct inode *inode)
- 	unsigned blocksize = inode->i_sb->s_blocksize;
- 	struct page *page;
- 
--	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
--	    S_ISLNK(inode->i_mode)))
--		return;
--	if (ext3_inode_is_fast_symlink(inode))
--		return;
--	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
-+	if (!ext3_can_truncate(inode))
- 		return;
- 
- 	/*
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 36c5403..80171ee 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -832,6 +832,7 @@ extern void ext3_discard_reservation (struct inode *);
- extern void ext3_dirty_inode(struct inode *);
- extern int ext3_change_inode_journal_flag(struct inode *, int);
- extern int ext3_get_inode_loc(struct inode *, struct ext3_iloc *);
-+extern int ext3_can_truncate(struct inode *inode);
- extern void ext3_truncate (struct inode *);
- extern void ext3_set_inode_flags(struct inode *);
- extern void ext3_get_inode_flags(struct ext3_inode_info *);
+Hmmm, I did not replace any KERN_ERR by ext3_warning / KERN_WARNING, but
+made those KERN_ERR calls more verbose. Does that change anything ?
+
+For the record, I wanted to replace KERN_ERR calls by calls to a wrapper
+much like ext3_warning (but obviously calling KERN_ERR), later on.
+
+> The other minor difference is that the function name is also printed, and
+> this makes the error message very long.
+
+Ack, not pretty. Will fix that in next version.
+
+> One suggestion is to create a separate macro that passes the KERN_*
+> flag and __func__ to ext3_console_msg(), and call that from
+> ext3_warning() and a new ext3_start_error() function.  I always found
+> it annoying to have to specify __func__ as a parameter for every call.
+
+OK, will do. Thanks for the suggestion.
+
+> >  	ext3_warning(sb, __func__,
+> > -		     "updating to rev %d because of new feature flag, "
+> > -		     "running e2fsck is recommended",
+> > -		     EXT3_DYNAMIC_REV);
+> > +			"updating to rev %d because of new feature flag, "
+> > +			"running e2fsck is recommended",
+> > +			EXT3_DYNAMIC_REV);
+> 
+> Please don't change all of the indenting.  The old indending is proper
+> linux coding style (aligned with previous '('), the new one is not.
+
+Then this (old) coding style is not consistent within super.c , and not 
+consistent with the example given in Documentation/CodingStyle either.
+I will "fix" the indentation in a separate patch for the whole file, to
+be merged or not.
+
+> Note that you need to split up the patches for ext2, ext3, ext4 into
+> separate emails.  I'd suggest just sending one of them until we agree
+> on what is right, then submitting the rest afterward.
+
+OK. I did ext3/ext4 at once because of what Andrew replied to Kasper :
+"We like to keep ext3 and ext4 in sync as much as poss, please."
+http://lkml.org/lkml/2008/6/9/79
+But I can do ext3 first and then back / forward port to ext2 and ext4 as
+well, as you suggest.
+
+Thank you very much for replying.
+
+Best,
+
+Francois
