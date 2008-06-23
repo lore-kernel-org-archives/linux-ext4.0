@@ -1,170 +1,108 @@
 From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: Re: [PATCH] jbd: don't abort if flushing file data failed
-Date: Mon, 23 Jun 2008 20:06:44 +0900
-Message-ID: <485F83C4.3060704@hitachi.com>
-References: <4859FD82.1000306@hitachi.com> <20080619163044.GB7874@skywalker>
+Subject: Re: [PATCH 4/5] jbd: fix error handling for checkpoint io
+Date: Mon, 23 Jun 2008 20:14:54 +0900
+Message-ID: <485F85AE.1010704@hitachi.com>
+References: <4843CE15.6080506@hitachi.com> <4843CFBD.7040706@hitachi.com>
+    <20080602124409.GL30613@duck.suse.cz> <4844CB39.6060409@hitachi.com>
+    <20080603080219.GA17936@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com,
-	adilger@clusterfs.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Josef Bacik <jbacik@redhat.com>, Mingming Cao <cmm@us.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>,
+Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
 	sugita <yumiko.sugita.yf@hitachi.com>,
 	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail9.hitachi.co.jp ([133.145.228.44]:37320 "EHLO
-	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754440AbYFWLHA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jun 2008 07:07:00 -0400
-In-Reply-To: <20080619163044.GB7874@skywalker>
+Received: from mail7.hitachi.co.jp ([133.145.228.42]:42991 "EHLO
+	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752564AbYFWLPG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jun 2008 07:15:06 -0400
+In-Reply-To: <20080603080219.GA17936@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Hi,
 
-Aneesh Kumar K.V wrote:
-> On Thu, Jun 19, 2008 at 03:32:34PM +0900, Hidehiro Kawai wrote:
+I noticed a problem of this patch.  Please see below.
+
+Jan Kara wrote:
+
+> On Tue 03-06-08 13:40:25, Hidehiro Kawai wrote:
 > 
->>In ordered mode, the current jbd aborts the journal if a file data
->>buffer has an error.  But this behavior is unintended, and we found
->>that it has been adopted accidentally.
-> 
-> Do you have more information on this ?  Isn't ordered mode required to
-> guarantee that file data hit the disk and if there are errors in sending
-> data to the disk, should we not mark the file system readonly by aborting
-> the journal ?
-
-If we make the file system read-only on a file data write error,
-the system can be unavailable easily.  So some people need this patch.
-On the other hand, there are people (including me) who want to abort
-the journal to prevent the situation getting worse.
-To make all be happy, I'm going to send a patch to make the behavior
-on file data write error tunable.
-Please refer to the following thread for details:
-http://kerneltrap.org/mailarchive/linux-kernel/2008/6/3/2022594
-
-
->>This patch undoes it and just calls printk() instead of aborting
->>the journal.  Additionally, set AS_EIO into the address_space
->>object of the failed buffer which is submitted by
->>journal_do_submit_data() so that fsync() can get -EIO.
+>>Subject: [PATCH 4/5] jbd: fix error handling for checkpoint io
 >>
->>Missing error checkings are also added to inform errors on file
->>data buffers to the user.  The following buffers are targeted.
+>>When a checkpointing IO fails, current JBD code doesn't check the
+>>error and continue journaling.  This means latest metadata can be
+>>lost from both the journal and filesystem.
 >>
->>  (a) the buffer which has already been written out by pdflush
->>  (b) the buffer which has been unlocked before scanned in the
->>      t_locked_list loop
+>>This patch leaves the failed metadata blocks in the journal space
+>>and aborts journaling in the case of log_do_checkpoint().
+>>To achieve this, we need to do:
 >>
->>Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-> 
-> We may want a similar patch for jbd2 also. IF you are doing that can you
-> make sure  you do that against the patch queue at
-> http://repo.or.cz/w/ext4-patch-queue.git. There are some changes in the
-> same area in the patch queue.
+>>1. don't remove the failed buffer from the checkpoint list where in
+>>   the case of __try_to_free_cp_buf() because it may be released or
+>>   overwritten by a later transaction
+>>2. log_do_checkpoint() is the last chance, remove the failed buffer
+>>   from the checkpoint list and abort the journal
+>>3. when checkpointing fails, don't update the journal super block to
+>>   prevent the journaled contents from being cleaned.  For safety,
+>>   don't update j_tail and j_tail_sequence either
 
-Sure.  I'm going to port this patch to ext4/jbd2 after I finish the
-remaining ext3/jbd fixes.  But it may take time because I'm not
-familiar with ext4/jbd2.
+3. is implemented as described below.
+  (1) if log_do_checkpoint() detects an I/O error during
+      checkpointing, it calls journal_abort() to abort the journal
+  (2) if the journal has aborted, don't update s_start and s_sequence
+      in the on-disk journal superblock
 
-Thanks,
--- 
-Hidehiro Kawai
-Hitachi, Systems Development Laboratory
-Linux Technology Center
+So, if the journal aborts, journaled data will be replayed on the
+next mount.
+
+Now, please remember that some dirty metadata buffers are written
+back to the filesystem without journaling if the journal aborted.
+We are happy if all dirty metadata buffers are written to the disk,
+the integrity of the filesystem will be kept.  However, replaying
+the journaled data can overwrite the latest on-disk metadata blocks
+partly with old data.  It would break the filesystem.
+
+My idea to resolve this problem is that we don't write out metadata
+buffers which belong to uncommitted transactions if journal has
+aborted.  Although the latest filesystem updates will be lost,
+we can ensure the integrity.  It will also be effective for the
+kernel panic in the middle of writing metadata buffers without
+journaling (this would occur in the `mount -o errors=panic' case.)
+
+Which integrity or latest state should we choose?
+
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+---
+ fs/jbd/commit.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
+
+Index: linux-2.6.26-rc5-mm3/fs/jbd/commit.c
+===================================================================
+--- linux-2.6.26-rc5-mm3.orig/fs/jbd/commit.c
++++ linux-2.6.26-rc5-mm3/fs/jbd/commit.c
+@@ -486,9 +486,10 @@ void journal_commit_transaction(journal_
+ 		jh = commit_transaction->t_buffers;
  
->>---
->> fs/jbd/commit.c |   32 +++++++++++++++++++++++++-------
->> 1 file changed, 25 insertions(+), 7 deletions(-)
->>
->>Index: linux-2.6.26-rc5-mm3/fs/jbd/commit.c
->>===================================================================
->>--- linux-2.6.26-rc5-mm3.orig/fs/jbd/commit.c
->>+++ linux-2.6.26-rc5-mm3/fs/jbd/commit.c
->>@@ -172,7 +172,7 @@ static void journal_do_submit_data(struc
->> /*
->>  *  Submit all the data buffers to disk
->>  */
->>-static void journal_submit_data_buffers(journal_t *journal,
->>+static int journal_submit_data_buffers(journal_t *journal,
->> 				transaction_t *commit_transaction)
->> {
->> 	struct journal_head *jh;
->>@@ -180,6 +180,7 @@ static void journal_submit_data_buffers(
->> 	int locked;
->> 	int bufs = 0;
->> 	struct buffer_head **wbuf = journal->j_wbuf;
->>+	int err = 0;
->>
->> 	/*
->> 	 * Whenever we unlock the journal and sleep, things can get added
->>@@ -253,6 +254,8 @@ write_out_data:
->> 			put_bh(bh);
->> 		} else {
->> 			BUFFER_TRACE(bh, "writeout complete: unfile");
->>+			if (unlikely(!buffer_uptodate(bh)))
->>+				err = -EIO;
->> 			__journal_unfile_buffer(jh);
->> 			jbd_unlock_bh_state(bh);
->> 			if (locked)
->>@@ -271,6 +274,8 @@ write_out_data:
->> 	}
->> 	spin_unlock(&journal->j_list_lock);
->> 	journal_do_submit_data(wbuf, bufs);
->>+
->>+	return err;
->> }
->>
->> /*
->>@@ -410,8 +415,7 @@ void journal_commit_transaction(journal_
->> 	 * Now start flushing things to disk, in the order they appear
->> 	 * on the transaction lists.  Data blocks go first.
->> 	 */
->>-	err = 0;
->>-	journal_submit_data_buffers(journal, commit_transaction);
->>+	err = journal_submit_data_buffers(journal, commit_transaction);
->>
->> 	/*
->> 	 * Wait for all previously submitted IO to complete.
->>@@ -426,10 +430,21 @@ void journal_commit_transaction(journal_
->> 		if (buffer_locked(bh)) {
->> 			spin_unlock(&journal->j_list_lock);
->> 			wait_on_buffer(bh);
->>-			if (unlikely(!buffer_uptodate(bh)))
->>-				err = -EIO;
->> 			spin_lock(&journal->j_list_lock);
->> 		}
->>+		if (unlikely(!buffer_uptodate(bh))) {
->>+			if (TestSetPageLocked(bh->b_page)) {
->>+				spin_unlock(&journal->j_list_lock);
->>+				lock_page(bh->b_page);
->>+				spin_lock(&journal->j_list_lock);
->>+			}
->>+			if (bh->b_page->mapping)
->>+				set_bit(AS_EIO, &bh->b_page->mapping->flags);
->>+
->>+			unlock_page(bh->b_page);
->>+			SetPageError(bh->b_page);
->>+			err = -EIO;
->>+		}
->> 		if (!inverted_lock(journal, bh)) {
->> 			put_bh(bh);
->> 			spin_lock(&journal->j_list_lock);
->>@@ -448,8 +463,11 @@ void journal_commit_transaction(journal_
->> 	}
->> 	spin_unlock(&journal->j_list_lock);
->>
->>-	if (err)
->>-		journal_abort(journal, err);
->>+	if (err) {
->>+		printk(KERN_WARNING
->>+		       "JBD: Detected IO errors during flushing file data\n");
->>+		err = 0;
->>+	}
->>
->> 	journal_write_revoke_records(journal, commit_transaction);
-
+ 		/* If we're in abort mode, we just un-journal the buffer and
+-		   release it for background writing. */
++		   release it. */
+ 
+ 		if (is_journal_aborted(journal)) {
++			clear_buffer_jbddirty(jh2bh(jh));
+ 			JBUFFER_TRACE(jh, "journal is aborting: refile");
+ 			journal_refile_buffer(journal, jh);
+ 			/* If that was the last one, we need to clean up
+@@ -823,6 +824,8 @@ restart_loop:
+ 		if (buffer_jbddirty(bh)) {
+ 			JBUFFER_TRACE(jh, "add to new checkpointing trans");
+ 			__journal_insert_checkpoint(jh, commit_transaction);
++			if (is_journal_aborted(journal))
++				clear_buffer_jbddirty(bh);
+ 			JBUFFER_TRACE(jh, "refile for checkpoint writeback");
+ 			__journal_refile_buffer(jh);
+ 			jbd_unlock_bh_state(bh);
 
