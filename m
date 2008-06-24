@@ -1,46 +1,75 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [RFC][PATCH] ext3: don't read inode block if the buffer has a
- write error
-Date: Mon, 23 Jun 2008 20:42:00 -0700 (PDT)
-Message-ID: <alpine.LFD.1.10.0806232039300.2926@woody.linux-foundation.org>
-References: <485F8822.5030205@hitachi.com> <20080623191733.52c3491c.akpm@linux-foundation.org> <alpine.LFD.1.10.0806231958010.2926@woody.linux-foundation.org> <200806241317.22470.nickpiggin@yahoo.com.au>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] ext3: validate directory entry data before use
+Date: Tue, 24 Jun 2008 00:36:06 -0600
+Message-ID: <20080624063606.GE6239@webber.adilger.int>
+References: <20080607121940.8ee6044a.akpm@linux-foundation.org>
+ <1214013261-32428-1-git-send-email-duaneg@dghda.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>, sct@redhat.com,
-	adilger@sun.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, jack@suse.cz,
-	sugita <yumiko.sugita.yf@hitachi.com>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Nick Piggin <nickpiggin@yahoo.com.au>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+	Sami Liedes <sliedes@cc.hut.fi>
+To: Duane Griffin <duaneg@dghda.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:56567 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752084AbYFXDmY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jun 2008 23:42:24 -0400
-In-Reply-To: <200806241317.22470.nickpiggin@yahoo.com.au>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:41112 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751516AbYFXGgL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jun 2008 02:36:11 -0400
+In-reply-to: <1214013261-32428-1-git-send-email-duaneg@dghda.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-On Tue, 24 Jun 2008, Nick Piggin wrote:
+On Jun 21, 2008  02:54 +0100, Duane Griffin wrote:
+> Various places in fs/ext3/namei.c use ext3_next_entry to loop over
+> directory entries, but not all of them verify that entries are valid before
+> attempting to move to the next one. In the case where rec_len == 0 this
+> causes an infinite loop.
 > 
-> What you want to do is not insane, but the way it is currently being
-> done is. As I said, just clearing the uptodate bit might blow up your
-> kernel pretty quickly from assertions in the vm. It should be going
-> through the whole truncate or invalidate page machinery in order to
-> do that.
+> Introduce a new version of ext3_next_entry that checks the validity of the
+> entry before using its data to find the next one. Rename the original
+> function to __ext3_next_entry and use it in places where we already know
+> the data is valid.
+>
+> Note that the changes to empty_dir follow the original code in reporting
+> the directory as empty in the presence of errors.
+> 
+> This patch fixes the first case (image hdb.25.softlockup.gz) reported in
+> http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+> 
+> Signed-off-by: Duane Griffin <duaneg@dghda.com>
+> --
+> 
+> Please note that I've only properly tested the originally reported failure
+> case (i.e. the changes to ext3_dx_find_entry).
+> 
+> Reviewers may want to pay particular attention to the changes to do_split,
+> make_indexed_dir and empty_dir. I've tried to follow the original code's
+> error handling conventions, as noted above for empty_dir, but I'm not sure
+> this is the best way to do things.
 
-Fair enough.
+Just as a note, and not to detract from the validity of this patch -
+in the ext2 page-based directory code is somewhat more efficient in this
+area.  It checks each page a single time when it is first read from disk,
+marks the page as checked, and then never has to check the page again.
 
-I would not mind, for example, leaving the uptodate bit, but removing it 
-from the radix tree or something like that (ie turning it into an 
-anonymous page for a page-cache page, just removing it from the 
-hash-queues for a buffer_head).
+This wasn't implemented for ext3 because it never changed from buffer-
+based directories to page-based directories due to the dependence on
+buffer heads for the journaling code.
 
-Of course, that could cause other problems (eg any VM assertions that 
-shared mappings only contain non-anon pages).
+It would be possible to implement this for ext3/ext4 readdir/lookup by
+replacing use of ext3_bread() with a new ext3_bread_dir() - a copy of
+ext3_bread() that validates the buffer if it actually needs ll_rw_block()
+to read the buffer from disk.
 
-		Linus
+I also note in ext3_readdir() for non-indexed directories that the readahead
+doesn't check for !buffer_uptodate(bh) before forcing a read of the next
+block.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
