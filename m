@@ -1,7 +1,7 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: Performance of ext4
-Date: Tue, 24 Jun 2008 08:58:07 +0530
-Message-ID: <20080624032807.GC10469@skywalker>
+Date: Tue, 24 Jun 2008 09:03:49 +0530
+Message-ID: <20080624033349.GD10469@skywalker>
 References: <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <20080619155645.GA8582@mit.edu> <485A8C2D.1090806@redhat.com> <20080619174211.GB9119@mit.edu> <Pine.LNX.4.64.0806200812340.3383@diagnostix.dwd.de> <20080620085922.GH9119@mit.edu> <Pine.LNX.4.64.0806200905070.3383@diagnostix.dwd.de> <20080623174508.GA7216@skywalker> <1214267492.27507.285.camel@BVR-FS.beaverton.ibm.com> <20080624030721.GB10469@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -12,10 +12,10 @@ Cc: Holger Kiehl <Holger.Kiehl@dwd.de>, Theodore Tso <tytso@mit.edu>,
 	linux-kernel <linux-kernel@vger.kernel.org>
 To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:56907 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753077AbYFXD2g (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jun 2008 23:28:36 -0400
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:34642 "EHLO
+	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752549AbYFXDeL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Jun 2008 23:34:11 -0400
 Content-Disposition: inline
 In-Reply-To: <20080624030721.GB10469@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -73,7 +73,7 @@ On Tue, Jun 24, 2008 at 08:37:21AM +0530, Aneesh Kumar K.V wrote:
 > 
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 33f940b..0ccf7b9 100644
+index 33f940b..bc925c5 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
 @@ -1770,6 +1770,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
@@ -102,7 +102,7 @@ index 33f940b..0ccf7b9 100644
  	page = __grab_cache_page(mapping, index);
  	if (!page)
  		return -ENOMEM;
-@@ -1786,15 +1798,65 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+@@ -1786,15 +1798,63 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
  							ext4_da_get_block_prep);
  	if (ret < 0) {
  		unlock_page(page);
@@ -122,42 +122,40 @@ index 33f940b..0ccf7b9 100644
 +				loff_t pos, unsigned len, unsigned copied,
 +				struct page *page, void *fsdata)
 +{
-+	handle_t *handle = ext4_journal_current_handle();
-+	struct inode *inode = mapping->host;
++	loff_t new_i_size;
 +	unsigned from, to;
 +	int ret = 0, ret2;
++	struct inode *inode = mapping->host;
++	handle_t *handle = ext4_journal_current_handle();
 +
 +	from = pos & (PAGE_CACHE_SIZE - 1);
 +	to = from + len;
 +
-+	if (ret == 0) {
-+		/*
-+		 * generic_write_end() will run mark_inode_dirty() if i_size
-+		 * changes.  So let's piggyback the i_disksize mark_inode_dirty
-+		 * into that.
-+		 */
-+		loff_t new_i_size;
++	/*
++	 * generic_write_end() will run mark_inode_dirty() if i_size
++	 * changes.  So let's piggyback the i_disksize mark_inode_dirty
++	 * into that.
++	 */
 +
-+		new_i_size = pos + copied;
-+		if (new_i_size > EXT4_I(inode)->i_disksize)
-+			if (!walk_page_buffers(NULL, page_buffers(page),
-+					       0, len, NULL,
-+					       ext4_bh_unmapped_or_delay)) {
-+				/*
-+				 * Updating i_disksize when extending file without
-+				 * need block allocation
-+				 */
-+				if (ext4_should_order_data(inode))
-+					ret = ext4_jbd2_file_inode(handle, inode);
++	new_i_size = pos + copied;
++	if (new_i_size > EXT4_I(inode)->i_disksize)
++		if (!walk_page_buffers(NULL, page_buffers(page),
++					0, len, NULL,
++					ext4_bh_unmapped_or_delay)) {
++			/*
++			 * Updating i_disksize when extending file without
++			 * need block allocation
++			 */
++			if (ext4_should_order_data(inode))
++				ret = ext4_jbd2_file_inode(handle, inode);
 +
-+				EXT4_I(inode)->i_disksize = new_i_size;
-+			}
-+		ret2 = generic_write_end(file, mapping, pos,
-+					len, copied, page, fsdata);
-+		copied = ret2;
-+		if (ret2 < 0)
-+			ret = ret2;
-+	}
++			EXT4_I(inode)->i_disksize = new_i_size;
++		}
++	ret2 = generic_write_end(file, mapping, pos,
++			len, copied, page, fsdata);
++	copied = ret2;
++	if (ret2 < 0)
++		ret = ret2;
 +	ret2 = ext4_journal_stop(handle);
 +	if (!ret)
 +		ret = ret2;
@@ -168,7 +166,7 @@ index 33f940b..0ccf7b9 100644
  static void ext4_da_invalidatepage(struct page *page, unsigned long offset)
  {
  	/*
-@@ -2250,7 +2312,7 @@ static int ext4_journalled_set_page_dirty(struct page *page)
+@@ -2250,7 +2310,7 @@ static int ext4_journalled_set_page_dirty(struct page *page)
  	.writepages	= ext4_da_writepages,
  	.sync_page	= block_sync_page,
  	.write_begin	= ext4_da_write_begin,
