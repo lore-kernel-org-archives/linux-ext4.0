@@ -1,53 +1,61 @@
 From: Andreas Dilger <adilger@sun.com>
 Subject: Re: [PATCH] extX: convert prink(KERN_WARNING) to extX_warning()
-Date: Tue, 24 Jun 2008 00:47:07 -0600
-Message-ID: <20080624064707.GF6239@webber.adilger.int>
+Date: Tue, 24 Jun 2008 00:53:20 -0600
+Message-ID: <20080624065320.GG6239@webber.adilger.int>
 References: <20080622201841.669ff882@olorin>
- <20080623203107.GD6239@webber.adilger.int>
- <20080623133855.c00ddaa7.randy.dunlap@oracle.com>
+ <20080623203107.GD6239@webber.adilger.int> <20080624002023.0fadc1d1@olorin>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
-Cc: FD Cami <francois.cami@free.fr>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org,
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Kasper Sandberg <lkml@metanurb.dk>
-To: Randy Dunlap <randy.dunlap@oracle.com>
+	Kasper Sandberg <lkml@metanurb.dk>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Randy Dunlap <randy.dunlap@oracle.com>
+To: FD Cami <francois.cami@free.fr>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:41251 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751931AbYFXGrL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jun 2008 02:47:11 -0400
-In-reply-to: <20080623133855.c00ddaa7.randy.dunlap@oracle.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:64115 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751254AbYFXGxj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jun 2008 02:53:39 -0400
+In-reply-to: <20080624002023.0fadc1d1@olorin>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jun 23, 2008  13:38 -0700, Randy Dunlap wrote:
-> On Mon, 23 Jun 2008 14:31:07 -0600 Andreas Dilger wrote:
-> > >  	ext3_warning(sb, __func__,
-> > > -		     "updating to rev %d because of new feature flag, "
-> > > -		     "running e2fsck is recommended",
-> > > -		     EXT3_DYNAMIC_REV);
-> > > +			"updating to rev %d because of new feature flag, "
-> > > +			"running e2fsck is recommended",
-> > > +			EXT3_DYNAMIC_REV);
-> > 
-> > Please don't change all of the indenting.  The old indending is proper
-> > linux coding style (aligned with previous '('), the new one is not.
+On Jun 24, 2008  00:20 +0200, FD Cami wrote:
+> On Mon, 23 Jun 2008 14:31:07 -0600
+> Andreas Dilger <adilger@sun.com> wrote:
+> > The one issue is that KERN_ERR != KERN_WARNING, so these errors might
+> > not be visible on the console, or may not be saved to the syslog.
 > 
-> Hi,
-> I don't mind which way it's done, but I'm curious:  are you saying that
-> aligning with '(' is codified (e.g., in CodingStyle) or just that it's
-> dominant?
+> Hmmm, I did not replace any KERN_ERR by ext3_warning / KERN_WARNING, but
+> made those KERN_ERR calls more verbose. Does that change anything ?
 
-You're right - it isn't in the Linux CodingStyle...  It is the style
-that we use for Lustre that explicitly requires aligning with '('.
-The common stype definitely IS to align with the previous '(' if a line
-is a continuation.
+My apologies, when I started reading the patch I was thinking it
+replaced all of the printk's in ext3_fill_super(), which it in fact
+does not.
 
-That said, it is IMHO bad form to go and change all of the indenting of
-existing code with little reason to do so.
+> For the record, I wanted to replace KERN_ERR calls by calls to a wrapper
+> much like ext3_warning (but obviously calling KERN_ERR), later on.
+
+OK, that's in line with what I was suggesting.  Carry on :-).
+
+> > Note that you need to split up the patches for ext2, ext3, ext4 into
+> > separate emails.  I'd suggest just sending one of them until we agree
+> > on what is right, then submitting the rest afterward.
+> 
+> OK. I did ext3/ext4 at once because of what Andrew replied to Kasper :
+> "We like to keep ext3 and ext4 in sync as much as poss, please."
+> http://lkml.org/lkml/2008/6/9/79
+> But I can do ext3 first and then back / forward port to ext2 and ext4 as
+> well, as you suggest.
+
+Yes, it is definitely desirable to have patches for all of them, but
+always in separate emails.  If you feel the patches are ready to go,
+then go ahead and send all 3 at once.  I just thought it might save
+some work and list traffic if we agree on one of the patches and then
+produce the other two to match.
 
 Cheers, Andreas
 --
