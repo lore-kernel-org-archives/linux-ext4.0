@@ -1,42 +1,50 @@
-From: Solofo.Ramangalahy@bull.net
-Subject: streaming read and write - test results
-Date: Tue, 24 Jun 2008 19:18:45 +0200
-Message-ID: <18529.11381.230067.316156@frecb006361.adech.frec.bull.fr>
-References: <4278.1214242602@alphaville.zko.hp.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3: handle corrupted orphan list at mount
+Date: Tue, 24 Jun 2008 19:18:57 +0200
+Message-ID: <20080624171856.GH9959@duck.suse.cz>
+References: <20080607121940.8ee6044a.akpm@linux-foundation.org> <1214258200-16623-1-git-send-email-duaneg@dghda.com> <20080624160810.GC22586@atrey.karlin.mff.cuni.cz> <e9e943910806241016v743ce19s28bdf34177154799@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: nicholas.dokos@hp.com
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+	Sami Liedes <sliedes@cc.hut.fi>
+To: Duane Griffin <duaneg@dghda.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:49597 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751981AbYFXRSS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jun 2008 13:18:18 -0400
-In-Reply-To: <4278.1214242602@alphaville.zko.hp.com>
+Received: from styx.suse.cz ([82.119.242.94]:41430 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752674AbYFXRS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Jun 2008 13:18:58 -0400
+Content-Disposition: inline
+In-Reply-To: <e9e943910806241016v743ce19s28bdf34177154799@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Nick Dokos writes:
- > If you have suggestions for
- > improvements, I'd be very interested in hearing them.
-[...]
- > o 8 MSA1000 RAID controllers, each with four back-end SCSI busses, each
- > bus with 7 300GB 15K disks. Only one bus on each controller is used for
- > the tests below (the rest are going to be used for larger filesystem
- > testing). The 7 disks are striped ("horizontally" @ 128KB stripe size) at
- > the hardware level and exported as a single 2TB LUN (that's the current
- > hardware LUN size limit).
+On Tue 24-06-08 18:16:21, Duane Griffin wrote:
+> 2008/6/24 Jan Kara <jack@suse.cz>:
+> >> +     /*
+> >> +      * If the orphans has i_nlinks > 0 then it should be able to be
+> >> +      * truncated, otherwise it won't be removed from the orphan list
+> >> +      * during processing and an infinite loop will result.
+> >> +      */
+> >> +     if (inode->i_nlink && !ext3_can_truncate(inode))
+> >> +             goto bad_orphan;
+> >> +
+> >  Maybe I miss something but shouldn't above rather be ||?
+> 
+> No, it is correct. If i_nlink == 0 the orphan will be deleted in the
+> cleanup loop by the iput. If i_nlink > 0 then ext3_truncate is called,
+> which usually calls ext3_orphan_del on the way out, thereby removing
+> the node from the orphan list. However, if it exits too early
+> (basically if the ext3_can_truncate check fails, although there are
+> other failure conditions such as OOM that can also cause it to exit
+> early) then it doesn't, hence we end up in the infinite loop. So the
+> check here says, if this node is not going to be deleted or truncated
+> then it is invalid.
+  Ah, OK, I forgot that you want to handle also truncation without deletion
+of the inode itself. Thanks for explanation.
 
-You may want to test one LUN without filesystem,
-for example with zcav from bonnie++
-(http://www.coker.com.au/bonnie++/zcav/).
-Then the 8 together.
-
-This way you have some points of comparison (for ext4 as well as other
-filesystems) at a lower level.
+									Honza
 
 -- 
-solofo
-
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
