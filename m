@@ -1,200 +1,105 @@
-From: Holger Kiehl <Holger.Kiehl@dwd.de>
-Subject: Re: Performance of ext4
-Date: Tue, 24 Jun 2008 21:12:09 +0000 (GMT)
-Message-ID: <Pine.LNX.4.64.0806242103370.14795@diagnostix.dwd.de>
-References: <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de>
- <20080619155645.GA8582@mit.edu> <485A8C2D.1090806@redhat.com>
- <20080619174211.GB9119@mit.edu> <Pine.LNX.4.64.0806200812340.3383@diagnostix.dwd.de>
- <20080620085922.GH9119@mit.edu> <Pine.LNX.4.64.0806200905070.3383@diagnostix.dwd.de>
- <20080623174508.GA7216@skywalker> <1214267492.27507.285.camel@BVR-FS.beaverton.ibm.com>
- <20080624030721.GB10469@skywalker> <20080624033349.GD10469@skywalker>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 0/3] freeze feature ver 1.6
+Date: Tue, 24 Jun 2008 14:38:40 -0700
+Message-ID: <20080624143840.c183d0d9.akpm@linux-foundation.org>
+References: <20080624155919t-sato@mail.jp.nec.com>
+Reply-To: device-mapper development <dm-devel@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Mingming <cmm@us.ibm.com>, Theodore Tso <tytso@mit.edu>,
-	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	Solofo.Ramangalahy@bull.net, Nick Dokos <nicholas.dokos@hp.com>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dwdmx4.dwd.de ([141.38.3.230]:35537 "EHLO dwdmx4.dwd.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752683AbYFXVMT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jun 2008 17:12:19 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by node1.dwd.de (Postfix) with ESMTP id 70C831F8532
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Jun 2008 21:12:18 +0000 (UTC)
-Received: from localhost ([127.0.0.1])
-	by localhost (node1.csg-cluster.lan [127.0.0.1]) (amavisd-new, port 2525)
-	with SMTP id 29270-93 for <linux-ext4@vger.kernel.org>;
-	Tue, 24 Jun 2008 21:12:18 +0000 (UTC)
-In-Reply-To: <20080624033349.GD10469@skywalker>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: axboe@kernel.dk, mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Takashi Sato <t-sato@yk.jp.nec.com>
+Return-path: <dm-devel-bounces@redhat.com>
+In-Reply-To: <20080624155919t-sato@mail.jp.nec.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/dm-devel>
+List-Post: <mailto:dm-devel@redhat.com>
+List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=subscribe>
+Sender: dm-devel-bounces@redhat.com
+Errors-To: dm-devel-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 24 Jun 2008, Aneesh Kumar K.V wrote:
+On Tue, 24 Jun 2008 15:59:19 +0900
+Takashi Sato <t-sato@yk.jp.nec.com> wrote:
 
-> On Tue, Jun 24, 2008 at 08:37:21AM +0530, Aneesh Kumar K.V wrote:
->> On Mon, Jun 23, 2008 at 05:31:32PM -0700, Mingming wrote:
->>>
->>> On Mon, 2008-06-23 at 23:15 +0530, Aneesh Kumar K.V wrote:
->>>
->>>> I found one place where we fail to update i_disksize. Can you try this
->>>> patch ?
->>>>
->>>> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->>>> index 33f940b..9fa737f 100644
->>>> --- a/fs/ext4/inode.c
->>>> +++ b/fs/ext4/inode.c
->>>> @@ -1620,7 +1620,10 @@ static int ext4_da_writepage(struct page *page,
->>>>  	loff_t size;
->>>>  	unsigned long len;
->>>>  	handle_t *handle = NULL;
->>>> +	ext4_lblk_t block;
->>>> +	loff_t disksize;
->>>>  	struct buffer_head *page_bufs;
->>>> +	struct buffer_head *bh, *head;
->>>>  	struct inode *inode = page->mapping->host;
->>>>
->>>>  	handle = ext4_journal_current_handle();
->>>> @@ -1662,6 +1665,38 @@ static int ext4_da_writepage(struct page *page,
->>>>  	else
->>>>  		ret = block_write_full_page(page, ext4_da_get_block_write, wbc);
->>>>
->>>> +	 if (ret)
->>>> +		 return ret;
->>>> +	/*
->>>> +	 * When called via shrink_page_list and if we don't have any unmapped
->>>> +	 * buffer_head we still could have written some new content in an
->>>> +	 * already mapped buffer. That means we need to extent i_disksize here
->>>> +	 */
->>>
->>> In this case(when extend the file without need block allocation),
->>> wouldn't make sense to update the i_disksize at write_end() time? So
->>> that the window of i_size different from i_disksize could be much
->>> smaller in this case.
->>>
->>>
->>> Something like below? (untested)
->>
->> In this case you will have to start a transaction in write_begin . With
->> the below code transaction is started inside page_lock. Also I don't
->> think we need needed_blocks credit just 1 should be enough because we
->> are not doing any block allocation here. We just need to update the
->> inode block.
->>
->>
->
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 33f940b..bc925c5 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1770,6 +1770,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
-> 	struct page *page;
-> 	pgoff_t index;
-> 	unsigned from, to;
-> +	handle_t *handle;
-> 	struct inode *inode = mapping->host;
->
-> 	index = pos >> PAGE_CACHE_SHIFT;
-> @@ -1777,6 +1778,17 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
-> 	to = from + len;
->
-> retry:
-> +	/*
-> +	 * If we are writing towards the end of an already mapped
-> +	 * buffer_head, we don't do any block allocation. But we
-> +	 * need to update i_disksize.
-> +	 */
-> +	handle = ext4_journal_start(inode, 1);
-> +	if (IS_ERR(handle)) {
-> +		ret = PTR_ERR(handle);
-> +		goto out;
-> +	}
-> +
-> 	page = __grab_cache_page(mapping, index);
-> 	if (!page)
-> 		return -ENOMEM;
-> @@ -1786,15 +1798,63 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
-> 							ext4_da_get_block_prep);
-> 	if (ret < 0) {
-> 		unlock_page(page);
-> +		ext4_journal_stop(handle);
-> 		page_cache_release(page);
-> 	}
->
-> 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-> 		goto retry;
->
-> +out:
-> 	return ret;
-> }
->
-> +static int ext4_da_write_end(struct file *file,
-> +				struct address_space *mapping,
-> +				loff_t pos, unsigned len, unsigned copied,
-> +				struct page *page, void *fsdata)
-> +{
-> +	loff_t new_i_size;
-> +	unsigned from, to;
-> +	int ret = 0, ret2;
-> +	struct inode *inode = mapping->host;
-> +	handle_t *handle = ext4_journal_current_handle();
-> +
-> +	from = pos & (PAGE_CACHE_SIZE - 1);
-> +	to = from + len;
-> +
-> +	/*
-> +	 * generic_write_end() will run mark_inode_dirty() if i_size
-> +	 * changes.  So let's piggyback the i_disksize mark_inode_dirty
-> +	 * into that.
-> +	 */
-> +
-> +	new_i_size = pos + copied;
-> +	if (new_i_size > EXT4_I(inode)->i_disksize)
-> +		if (!walk_page_buffers(NULL, page_buffers(page),
-> +					0, len, NULL,
-> +					ext4_bh_unmapped_or_delay)) {
-> +			/*
-> +			 * Updating i_disksize when extending file without
-> +			 * need block allocation
-> +			 */
-> +			if (ext4_should_order_data(inode))
-> +				ret = ext4_jbd2_file_inode(handle, inode);
-> +
-> +			EXT4_I(inode)->i_disksize = new_i_size;
-> +		}
-> +	ret2 = generic_write_end(file, mapping, pos,
-> +			len, copied, page, fsdata);
-> +	copied = ret2;
-> +	if (ret2 < 0)
-> +		ret = ret2;
-> +	ret2 = ext4_journal_stop(handle);
-> +	if (!ret)
-> +		ret = ret2;
-> +
-> +	return ret ? ret : copied;
-> +}
-> +
-> static void ext4_da_invalidatepage(struct page *page, unsigned long offset)
-> {
-> 	/*
-> @@ -2250,7 +2310,7 @@ static int ext4_journalled_set_page_dirty(struct page *page)
-> 	.writepages	= ext4_da_writepages,
-> 	.sync_page	= block_sync_page,
-> 	.write_begin	= ext4_da_write_begin,
-> -	.write_end	= generic_write_end,
-> +	.write_end	= ext4_da_write_end,
-> 	.bmap		= ext4_bmap,
-> 	.invalidatepage	= ext4_da_invalidatepage,
-> 	.releasepage	= ext4_releasepage,
->
-Yes, with this patch applied on top of latest patch queue I no longer
-get truncated files, after running a short test. Tomorrow I will do some
-more thorough testing and use the patch you have send to me in a separate
-mail. The above patch did not apply but it was easy to apply by hand.
+> Hi Andrew and Alexander,
+> 
+> I have implemented the ioctls for the filesystem freeze feature
+> and discussed its implementation on the ML (linux-ext4, xfs,
+> linux-fsdevel, linux-kernel) for five months.  All of the comments are
+> addressed in my patch-set.
+> Could you consider merging it into Linux?
+> 
+> The filesystem freeze feature can suspend accesses to the filesystem
+> keeping the filesystem's consistency.  We can take the consistent backup
+> with it cooperating with the backup software.
+> 
+> The patches are re-based from linux-2.6.26-rc3 to linux-2.6.26-rc7
+> There is no functional change from the previous version.
+> The patch-set consists of the following three patches.
+> 
+> [PATCH 1/3] Implement generic freeze feature
+>   I have modified to set the suitable error number (EOPNOTSUPP)
+>   in case the filesystem doesn't support the freeze feature.
+> 
+>   The ioctls for the generic freeze feature are below.
+>   o Freeze the filesystem
+>     int ioctl(int fd, int FIFREEZE, arg)
+>       fd: The file descriptor of the mountpoint
+>       FIFREEZE: request code for the freeze
+>       arg: Ignored
+>       Return value: 0 if the operation succeeds. Otherwise, -1
+> 
+>   o Unfreeze the filesystem
+>     int ioctl(int fd, int FITHAW, arg)
+>       fd: The file descriptor of the mountpoint
+>       FITHAW: request code for unfreeze
+>       arg: Ignored
+>       Return value: 0 if the operation succeeds. Otherwise, -1
+> 
+> [PATCH 2/3] Remove XFS specific ioctl interfaces for freeze feature
+>   It removes XFS specific ioctl interfaces and request codes
+>   for freeze feature.
+>   This patch has been supplied by David Chinner.
+> 
+> [PATCH 3/3] Add timeout feature
+>   The timeout feature is added to freeze ioctl.  And new ioctl
+>   to reset the timeout period is added.
+>   o Freeze the filesystem
+>     int ioctl(int fd, int FIFREEZE, long *timeval)
+>       fd: The file descriptor of the mountpoint
+>       FIFREEZE: request code for the freeze
+>       timeval: the timeout period in seconds
+>                If it's 0 or 1, the timeout isn't set.
+>                This special case of "1" is implemented to keep
+>                the compatibility with XFS applications.
+>       Return value: 0 if the operation succeeds. Otherwise, -1
+> 
+>   o Reset the timeout period
+>     This is useful for the application to set the timeval more accurately.
+>     For example, the freezer resets the timeval to 10 seconds every 5
+>     seconds.  In this approach, even if the freezer causes a deadlock
+>     by accessing the frozen filesystem, it will be solved by the timeout
+>     in 10 seconds and the freezer can recognize that at the next reset
+>     of timeval.
+>     int ioctl(int fd, int FIFREEZE_RESET_TIMEOUT, long *timeval)
+>       fd:file descriptor of mountpoint
+>       FIFREEZE_RESET_TIMEOUT: request code for reset of timeout period
+>       timeval: new timeout period in seconds
+>       Return value: 0 if the operation succeeds. Otherwise, -1
+>       Error number: If the filesystem has already been unfrozen,
+>                     errno is set to EINVAL.
+> 
+> Any comments are very welcome.
 
-Thanks a lot for the patch!
+umm, OK, but nowhere in this patch series can I find a justification or
+reason for making these changes to Linux.  Why do we want to do this? 
+What is the benefit?  What is the motivation.  What are the use-cases,
+etc?
 
-Holger
-
+Thanks.
