@@ -1,160 +1,52 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] JBD: positively dispose the unmapped data buffers in
- journal_commit_transaction
-Date: Mon, 23 Jun 2008 19:27:31 -0700
-Message-ID: <20080623192731.baf0904a.akpm@linux-foundation.org>
-References: <485F8263.8000103@jp.fujitsu.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [RFC][PATCH] ext3: don't read inode block if the buffer has a
+ write error
+Date: Mon, 23 Jun 2008 20:01:46 -0700 (PDT)
+Message-ID: <alpine.LFD.1.10.0806231958010.2926@woody.linux-foundation.org>
+References: <485F8822.5030205@hitachi.com> <200806232146.28379.nickpiggin@yahoo.com.au> <20080623191733.52c3491c.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: sct@redhat.com, linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Nick Piggin <nickpiggin@yahoo.com.au>,
+	Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>, sct@redhat.com,
+	adilger@sun.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, jack@suse.cz,
+	sugita <yumiko.sugita.yf@hitachi.com>,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:40623 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:51693 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750789AbYFXC2W (ORCPT
+	by vger.kernel.org with ESMTP id S1752374AbYFXDCg (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Jun 2008 22:28:22 -0400
-In-Reply-To: <485F8263.8000103@jp.fujitsu.com>
+	Mon, 23 Jun 2008 23:02:36 -0400
+In-Reply-To: <20080623191733.52c3491c.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 23 Jun 2008 20:00:51 +0900 Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
 
-> Hi.
+
+On Mon, 23 Jun 2008, Andrew Morton wrote:
+> > I don't know why it was done like this, or if anybody actually tested
+> > any of it, but AFAIKS the best way to fix this is to simply not
+> > clear any uptodate bits upon write errors.
 > 
-> I found the possibility that the system has the page which has
-> buffers (are marked 'BH_Freed') without mapping. As a result,
-> the resource management software etc. might not operate correctly
-> because there is a possibility that the page which cannot be
-> estimated exists.
-> 
-> I made a patch to positively release the pages that had the buffers
-> which were marked 'BH_Freed'.
-> 
-> Please confirm it.
-> 
-> This patch is for 2.6.26-rc6.
-> ---
-> On ordered mode, before journal_commit_transaction does with
-> t_locked_list, all data buffers which are requested to dispose
-> by journal_unmap_buffer aren't disposed by JBD.
+> There's a plausible-sounding reason for this behaviour which I forgot
+> about three years ago.  Maybe Linus remembers?
 
-Why not?  What is it which prevents these buffers from being released
-in the normal fashion?
+We have to drop the data at _some_ point. Maybe some errors are transient, 
+but a whole lot aren't. Jank out your USB memory stick, and those writes 
+will continue fail. So you can't just keep things dirty - and that also 
+implies that the buffer sure as heck isn't up-to-date either.
 
-> Such all data
-> buffers are marked 'BH_Freed'. So, also pages corresponding
-> to them aren't released by JBD. The pages have data buffers
-> without mapping. Due to this fact, we cannot estimate free
-> memory correctly when there are many pages which have data
-> buffers without mapping. Therefore the resource management
-> software cannot work correctly.
-> But it is not memory leakage because the pages can be released
-> when the system has really few available memory.
-> 
-> BTW,
-> all metadata buffers on such situation are disposed at
-> 'JBD: commit phase 7' by JBD and pages corresponding to them
-> can be released on the same time.
-> 
-> Therefore, by applying the same statements as ones for disposing
-> metadata buffers (marked 'BH_Freed'), JBD in
-> journal_commit_transaction can release the pages which has data
-> buffers without mapping.
-> As a result, the page which cannot be estimated is lost.
-> 
+Yes, we could haev a "retry once or twice", but quite frankly, that has 
+always been left to the low-level driver. By the time the buffer cache or 
+page cache sees the error, it should be considered more than "transient", 
+and the data in memory is simply not _useful_ any more.
 
-Are you sure that this change cannot reintroduce the problem which the
-addition of buffer_freed() fixed?
+So clearing the uptodate bit seems to be the logical thing to do. But on 
+the other hand, it's probably not helping much either, so I don't 
+personally care if we keep it "uptodate" - as long as the dirty bit 
+doesn't get set, and as long as there is *some* way to get rid of the bad 
+buffer later.
 
-> ---
->  fs/jbd/commit.c |   45 +++++++++++++++++++++++++++++++++++----------
->  1 files changed, 35 insertions(+), 10 deletions(-)
-> --- linux-2.6.26-rc6.org/fs/jbd/commit.c	2008-06-13 06:22:24.000000000 +0900
-> +++ linux-2.6.26-rc6/fs/jbd/commit.c	2008-06-19 14:44:29.000000000 +0900
-> @@ -42,11 +42,11 @@ static void journal_end_buffer_io_sync(s
->   * by the VM, but their apparent absence upsets the VM accounting, and it makes
->   * the numbers in /proc/meminfo look odd.
->   *
-> - * So here, we have a buffer which has just come off the forget list.  Look to
-> - * see if we can strip all buffers from the backing page.
-> + * So here, we have a buffer which has just come off the list.  Confirm if we
-> + * can strip all buffers from the backing page.
->   *
-> - * Called under lock_journal(), and possibly under journal_datalist_lock.  The
-> - * caller provided us with a ref against the buffer, and we drop that here.
-> + * Called under journal->j_list_lock.  The caller provided us with a ref
-> + * against the buffer, and we drop that here.
->   */
->  static void release_buffer_page(struct buffer_head *bh)
->  {
-> @@ -231,7 +231,16 @@ write_out_data:
->  			if (locked)
->  				unlock_buffer(bh);
->  			BUFFER_TRACE(bh, "already cleaned up");
-> -			put_bh(bh);
-> +			if (buffer_freed(bh)) {
-> +				/* This bh has been marked 'BH_Feed'. */
-
-"BH_Freed".
-
-But the comment is rather unnecessary anyway.
-
-> +				clear_buffer_freed(bh);
-> +				/* Release the page if all other buffers
-> +				 * that belong to the page that has this bh
-> +				 * can be freed.
-> +				 */
-> +				release_buffer_page(bh);
-> +			} else
-> +				put_bh(bh);	
-
-Perhaps the above code snippet shold be in a function rather than
-repeated three times.
-
-The patch adds new trailing whitespace.
-
->  			continue;
->  		}
->  		if (locked && test_clear_buffer_dirty(bh)) {
-> @@ -258,10 +267,17 @@ write_out_data:
->  			if (locked)
->  				unlock_buffer(bh);
->  			journal_remove_journal_head(bh);
-> -			/* Once for our safety reference, once for
-> -			 * journal_remove_journal_head() */
-> -			put_bh(bh);
-> -			put_bh(bh);
-> +			put_bh(bh); /* for journal_remove_journal_head() */
-> +			if (buffer_freed(bh)) {
-> +				/* This bh has been marked 'BH_Feed'. */
-> +				clear_buffer_freed(bh);
-> +				/* Release the page if all other buffers
-> +				 * that belong to the page that has this bh
-> +				 * can be freed.
-> +				 */
-> +				release_buffer_page(bh);
-> +			} else
-> +				put_bh(bh);
->  		}
-> 
->  		if (need_resched() || spin_needbreak(&journal->j_list_lock)) {
-> @@ -443,7 +459,16 @@ void journal_commit_transaction(journal_
->  		} else {
->  			jbd_unlock_bh_state(bh);
->  		}
-> -		put_bh(bh);
-> +		if (buffer_freed(bh)) {
-> +			/* This bh has been marked 'BH_Feed'. */
-> +			clear_buffer_freed(bh);
-> +			/* Release the page if all other buffers
-> +			 * that belong to the page that has this bh
-> +			 * can be freed.
-> +			 */
-> +			release_buffer_page(bh);
-> +		} else
-> +			put_bh(bh);
->  		cond_resched_lock(&journal->j_list_lock);
->  	}
->  	spin_unlock(&journal->j_list_lock);
+		Linus
