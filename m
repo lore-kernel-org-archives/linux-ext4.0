@@ -1,122 +1,121 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [PATCH] JBD: positively dispose the unmapped data buffers in
- journal_commit_transaction
-Date: Tue, 24 Jun 2008 17:01:44 +0900
-Message-ID: <4860A9E8.9090103@jp.fujitsu.com>
-References: <485F8263.8000103@jp.fujitsu.com> <20080623192731.baf0904a.akpm@linux-foundation.org>
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: Re: [PATCH 4/5] jbd: fix error handling for checkpoint io
+Date: Tue, 24 Jun 2008 20:52:59 +0900
+Message-ID: <4860E01B.8010806@hitachi.com>
+References: <4843CE15.6080506@hitachi.com> <4843CFBD.7040706@hitachi.com>
+    <20080602124409.GL30613@duck.suse.cz> <4844CB39.6060409@hitachi.com>
+    <20080603080219.GA17936@duck.suse.cz> <485F85AE.1010704@hitachi.com>
+    <20080623122240.GJ26743@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: sct@redhat.com, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
+	sugita <yumiko.sugita.yf@hitachi.com>,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:41390 "EHLO
-	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752073AbYFXIEN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jun 2008 04:04:13 -0400
-In-Reply-To: <20080623192731.baf0904a.akpm@linux-foundation.org>
+Received: from mail7.hitachi.co.jp ([133.145.228.42]:44681 "EHLO
+	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760137AbYFXLxQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jun 2008 07:53:16 -0400
+In-Reply-To: <20080623122240.GJ26743@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thank you for reviewing.
+Jan Kara wrote:
 
-Andrew Morton wrote:
-> On Mon, 23 Jun 2008 20:00:51 +0900 Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
+> On Mon 23-06-08 20:14:54, Hidehiro Kawai wrote:
 > 
->> Hi.
-<SNIP>
->> On ordered mode, before journal_commit_transaction does with
->> t_locked_list, all data buffers which are requested to dispose
->> by journal_unmap_buffer aren't disposed by JBD.
-> 
-> Why not?  What is it which prevents these buffers from being released
-> in the normal fashion?
-
-When an ext3-ordered file is truncated, it is possible that many pages
-are not successfully freed, because they are attached to a committing
-transaction.
-(This description is the comment of release_buffer_page())
-
-So, journal_unmap_buffer() leaves it to journal_commit_transaction()
-to release the buffers later.
-(journal_unmap_buffer() puts the mark 'BH_Freed' to them
-so that journal_commit_transaction() can identify whether they can be
-released or not.)
-
-But journal_commit_transaction() doesn't free them if they are treated
-as data buffers because there is no code which releases the pages
-(which have the data buffers (marked 'BH_Freed')) in it.
-
-Therefore such the buffers and the pages remain by JBD.
-(They remain till try_to_free_buffers() is called by someone.
-For example, kswapd().)
-
-> 
->> Such all data
-<SNIP>
->> all metadata buffers on such situation are disposed at
->> 'JBD: commit phase 7' by JBD and pages corresponding to them
->> can be released on the same time.
+>>Hi,
 >>
->> Therefore, by applying the same statements as ones for disposing
->> metadata buffers (marked 'BH_Freed'), JBD in
->> journal_commit_transaction can release the pages which has data
->> buffers without mapping.
->> As a result, the page which cannot be estimated is lost.
+>>I noticed a problem of this patch.  Please see below.
 >>
+>>Jan Kara wrote:
+>>
+>>
+>>>On Tue 03-06-08 13:40:25, Hidehiro Kawai wrote:
+>>>
+>>>
+>>>>Subject: [PATCH 4/5] jbd: fix error handling for checkpoint io
+>>>>
+>>>>When a checkpointing IO fails, current JBD code doesn't check the
+>>>>error and continue journaling.  This means latest metadata can be
+>>>>lost from both the journal and filesystem.
+>>>>
+>>>>This patch leaves the failed metadata blocks in the journal space
+>>>>and aborts journaling in the case of log_do_checkpoint().
+>>>>To achieve this, we need to do:
+>>>>
+>>>>1. don't remove the failed buffer from the checkpoint list where in
+>>>>  the case of __try_to_free_cp_buf() because it may be released or
+>>>>  overwritten by a later transaction
+>>>>2. log_do_checkpoint() is the last chance, remove the failed buffer
+>>>>  from the checkpoint list and abort the journal
+>>>>3. when checkpointing fails, don't update the journal super block to
+>>>>  prevent the journaled contents from being cleaned.  For safety,
+>>>>  don't update j_tail and j_tail_sequence either
+>>
+>>3. is implemented as described below.
+>>  (1) if log_do_checkpoint() detects an I/O error during
+>>      checkpointing, it calls journal_abort() to abort the journal
+>>  (2) if the journal has aborted, don't update s_start and s_sequence
+>>      in the on-disk journal superblock
+>>
+>>So, if the journal aborts, journaled data will be replayed on the
+>>next mount.
+>>
+>>Now, please remember that some dirty metadata buffers are written
+>>back to the filesystem without journaling if the journal aborted.
+>>We are happy if all dirty metadata buffers are written to the disk,
+>>the integrity of the filesystem will be kept.  However, replaying
+>>the journaled data can overwrite the latest on-disk metadata blocks
+>>partly with old data.  It would break the filesystem.
 > 
-> Are you sure that this change cannot reintroduce the problem which the
-> addition of buffer_freed() fixed?
+>   Yes, it would. But how do you think it can happen that a metadata buffer
+> will be written back to the filesystem when it is a part of running
+> transaction? Note that checkpointing code specifically checks whether the
+> buffer being written back is part of a running transaction and if so, it
+> waits for commit before writing back the buffer. So I don't think this can
+> happen but maybe I miss something...
 
-I think no problem happens because I only add
-the code which releases the page (and buffer_heads) which should be
-released originally.
+Checkpointing code checks it and may call log_wait_commit(), but this
+problem is caused by transactions which have not started checkpointing.
 
-I use release_buffer_page() to release the page.
-The page can be released (try_to_free_buffers() can be executed in JBD)
-only if the following is satisfied for a data buffer:
-  - it is demanded to be released by journal_unmap_buffer()
-  - its b_count is 1
-  - the page to which it belongs has no mapping
-  - the page is unlocked
+For example, the tail transaction has an old update for block_B and
+the running transaction has a new update for block_B.  Then, the
+committing transaction fails to write the commit record, it aborts the
+journal, and new block_B will be written back to the file system without
+journaling.  Because this patch doesn't separate between normal abort
+and checkpointing related abort, the tail transaction is left in the
+journal space.  So by replaying the tail transaction, new block_B is
+overwritten with old one.
 
-And I have never experienced any problems while performing long run test.
+It can happen in the case of the checkpointing related abort.
+For example, assuming the tail transaction has an update for block_A,
+the next transaction has an old update for block_B, and the running
+transaction has a new update for block_B.
+Now, the running transaction needs more log space, and it calls
+log_do_checkpoint().  But it aborts the journal because it detected
+write error on block_A.  In this case, new block_B will be
+overwritten when the old block_B in the second transaction to the tail
+is replayed.
 
->> ---
->>  fs/jbd/commit.c |   45 +++++++++++++++++++++++++++++++++++----------
->>  1 files changed, 35 insertions(+), 10 deletions(-)
->> --- linux-2.6.26-rc6.org/fs/jbd/commit.c	2008-06-13 06:22:24.000000000 +0900
-<SNIP>
->>  			BUFFER_TRACE(bh, "already cleaned up");
->> -			put_bh(bh);
->> +			if (buffer_freed(bh)) {
->> +				/* This bh has been marked 'BH_Feed'. */
-> 
-> "BH_Freed".
-> 
-> But the comment is rather unnecessary anyway.
+Does this answer your question?
 
-I see. I remove it.
-
->> +				clear_buffer_freed(bh);
->> +				/* Release the page if all other buffers
->> +				 * that belong to the page that has this bh
->> +				 * can be freed.
->> +				 */
->> +				release_buffer_page(bh);
->> +			} else
->> +				put_bh(bh);	
-> 
-> Perhaps the above code snippet shold be in a function rather than
-> repeated three times.
-> 
-> The patch adds new trailing whitespace.
-
-OK. I will change these statements into one function.
-
-I will send revised patch ASAP.
+>>My idea to resolve this problem is that we don't write out metadata
+>>buffers which belong to uncommitted transactions if journal has
+>>aborted.  Although the latest filesystem updates will be lost,
+>>we can ensure the integrity.  It will also be effective for the
+>>kernel panic in the middle of writing metadata buffers without
+>>journaling (this would occur in the `mount -o errors=panic' case.)
+>>
+>>Which integrity or latest state should we choose?
 
 Thanks,
----
-Toshiyuki Okajima
+-- 
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
 
