@@ -1,82 +1,106 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Fw: [Bug 10976] New: Soft lockup on (intentionally) corrupted
- filesystem
-Date: Tue, 24 Jun 2008 13:04:25 -0700
-Message-ID: <20080624130425.7557e5e4.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + ext3-handle-deleting-corrupted-indirect-blocks.patch added to -mm tree
+Date: Tue, 24 Jun 2008 14:05:56 -0700
+Message-ID: <200806242105.m5OL5uRj006001@imap1.linux-foundation.org>
+Cc: duaneg@dghda.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:32958 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36354 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753239AbYFXUE5 (ORCPT
+	by vger.kernel.org with ESMTP id S1752073AbYFXVGc (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jun 2008 16:04:57 -0400
-Received: from imap1.linux-foundation.org (imap1.linux-foundation.org [140.211.169.55])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id m5OK4Pdv031316
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Jun 2008 13:04:26 -0700
-Received: from akpm.corp.google.com (localhost [127.0.0.1])
-	by imap1.linux-foundation.org (8.13.5.20060308/8.13.5/Debian-3ubuntu1.1) with SMTP id m5OK4P8n003745
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Jun 2008 13:04:25 -0700
+	Tue, 24 Jun 2008 17:06:32 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
+The patch titled
+     ext3: handle deleting corrupted indirect blocks
+has been added to the -mm tree.  Its filename is
+     ext3-handle-deleting-corrupted-indirect-blocks.patch
 
-Begin forwarded message:
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-Date: Tue, 24 Jun 2008 12:42:00 -0700 (PDT)
-From: bugme-daemon@bugzilla.kernel.org
-To: akpm@linuxfoundation.org
-Subject: [Bug 10976] New: Soft lockup on (intentionally) corrupted filesystem
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-http://bugzilla.kernel.org/show_bug.cgi?id=10976
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-           Summary: Soft lockup on (intentionally) corrupted filesystem
-           Product: File System
-           Version: 2.5
-     KernelVersion: 2.6.25.8 + patches for bug 10882 problems
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext3
-        AssignedTo: akpm@osdl.org
-        ReportedBy: sliedes@cc.hut.fi
+------------------------------------------------------
+Subject: ext3: handle deleting corrupted indirect blocks
+From: "Duane Griffin" <duaneg@dghda.com>
 
+While freeing indirect blocks we attach a journal head to the parent
+buffer head, free the blocks, then journal the parent.  If the indirect
+block list is corrupted and points to the parent the journal head will be
+detached when the block is cleared, causing an OOPS.
 
-Distribution: Debian sid (unstable)
-Hardware Environment: qemu x86
-Software Environment: Minimal Debian sid
-Problem Description:
+Check for that explicitly and handle it gracefully.
 
-Mounting one of the attached intentionally corrupted ext3 filesystems and
-accessing it causes a soft lockup. I believe they probably are the same bug
-(both happen in __log_wait_for_space()), but the backtraces vary quite a bit so
-I attach two test cases.
+This patch fixes the third case (image hdb.20000057.nullderef.gz)
+reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
 
-My kernel is 2.6.25.8 + three patches posted by Duane Griffin for #10882,
-namely (I hope I understand the git terminology right, at least you can grep
-lkml archives for these):
-  - 6ae4ecf..8019bf2
-  - 7712682..bc030f4
-  - 0b8cf80..ea0236b
+Immediately above the change, in the ext3_free_data function, we call
+ext3_clear_blocks to clear the indirect blocks in this parent block.  If
+one of those blocks happens to actually be the parent block it will clear
+b_private / BH_JBD.
 
+I did the check at the end rather than earlier as it seemed more elegant. 
+I don't think there should be much practical difference, although it is
+possible the FS may not be quite so badly corrupted if we did it the other
+way (and didn't clear the block at all).  To be honest, I'm not convinced
+there aren't other similar failure modes lurking in this code, although I
+couldn't find any with a quick review.
 
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-Steps to reproduce:
+ fs/ext3/inode.c |   15 ++++++++++++++-
+ 1 file changed, 14 insertions(+), 1 deletion(-)
 
-1. bunzip2 one of the filesystem images
-2. mount fs.img /mnt
-3. ls /mnt
+diff -puN fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks
++++ a/fs/ext3/inode.c
+@@ -2130,7 +2130,20 @@ static void ext3_free_data(handle_t *han
+ 
+ 	if (this_bh) {
+ 		BUFFER_TRACE(this_bh, "call ext3_journal_dirty_metadata");
+-		ext3_journal_dirty_metadata(handle, this_bh);
++
++		/*
++		 * The buffer head should have an attached journal head at this
++		 * point. However, if the data is corrupted and an indirect
++		 * block pointed to itself, it would have been detached when
++		 * the block was cleared. Check for this instead of OOPSing.
++		 */
++		if (bh2jh(this_bh))
++			ext3_journal_dirty_metadata(handle, this_bh);
++		else
++			ext3_error(inode->i_sb, "ext3_free_data",
++				   "circular indirect block detected, "
++				   "inode=%lu, block="E3FSBLK,
++				   inode->i_ino, this_bh->b_blocknr);
+ 	}
+ }
+ 
+_
 
+Patches currently in -mm which might be from duaneg@dghda.com are
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+jbd-replace-potentially-false-assertion-with-if-block.patch
+jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch
+jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch
+ext3-handle-corrupted-orphan-list-at-mount.patch
+ext3-handle-corrupted-orphan-list-at-mount-cleanup.patch
+ext3-handle-corrupted-orphan-list-at-mount-fix.patch
+ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix.patch
+ext3-handle-deleting-corrupted-indirect-blocks.patch
+
