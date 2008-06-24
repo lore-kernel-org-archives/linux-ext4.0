@@ -1,50 +1,50 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: handle corrupted orphan list at mount
-Date: Tue, 24 Jun 2008 19:18:57 +0200
-Message-ID: <20080624171856.GH9959@duck.suse.cz>
-References: <20080607121940.8ee6044a.akpm@linux-foundation.org> <1214258200-16623-1-git-send-email-duaneg@dghda.com> <20080624160810.GC22586@atrey.karlin.mff.cuni.cz> <e9e943910806241016v743ce19s28bdf34177154799@mail.gmail.com>
+From: Gary Hawco <ghawco@cox.net>
+Subject: Problem compiling 2.6.260rc6 with updated ext4-patch-queue
+Date: Tue, 24 Jun 2008 10:26:59
+Message-ID: <3.0.6.32.20080624102659.02429f60@pop.west.cox.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
-	Sami Liedes <sliedes@cc.hut.fi>
-To: Duane Griffin <duaneg@dghda.com>
+Content-Type: text/plain; charset="us-ascii"
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:41430 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752674AbYFXRS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Jun 2008 13:18:58 -0400
-Content-Disposition: inline
-In-Reply-To: <e9e943910806241016v743ce19s28bdf34177154799@mail.gmail.com>
+Received: from fed1rmmtao102.cox.net ([68.230.241.44]:38612 "EHLO
+	fed1rmmtao102.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751643AbYFXR1A (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Jun 2008 13:27:00 -0400
+Received: from fed1rmimpo01.cox.net ([70.169.32.71])
+          by fed1rmmtao102.cox.net
+          (InterMail vM.7.08.02.01 201-2186-121-102-20070209) with ESMTP
+          id <20080624172648.SFXX12709.fed1rmmtao102.cox.net@fed1rmimpo01.cox.net>
+          for <linux-ext4@vger.kernel.org>; Tue, 24 Jun 2008 13:26:48 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 24-06-08 18:16:21, Duane Griffin wrote:
-> 2008/6/24 Jan Kara <jack@suse.cz>:
-> >> +     /*
-> >> +      * If the orphans has i_nlinks > 0 then it should be able to be
-> >> +      * truncated, otherwise it won't be removed from the orphan list
-> >> +      * during processing and an infinite loop will result.
-> >> +      */
-> >> +     if (inode->i_nlink && !ext3_can_truncate(inode))
-> >> +             goto bad_orphan;
-> >> +
-> >  Maybe I miss something but shouldn't above rather be ||?
-> 
-> No, it is correct. If i_nlink == 0 the orphan will be deleted in the
-> cleanup loop by the iput. If i_nlink > 0 then ext3_truncate is called,
-> which usually calls ext3_orphan_del on the way out, thereby removing
-> the node from the orphan list. However, if it exits too early
-> (basically if the ext3_can_truncate check fails, although there are
-> other failure conditions such as OOM that can also cause it to exit
-> early) then it doesn't, hence we end up in the infinite loop. So the
-> check here says, if this node is not going to be deleted or truncated
-> then it is invalid.
-  Ah, OK, I forgot that you want to handle also truncation without deletion
-of the inode itself. Thanks for explanation.
+Recently pulled and updated my ext4-patch-queue. Tried to compile the
+2.6.26-rc6 after it patched cleanly. During make received the following error:
 
-									Honza
+fs/ext4/inode.c: In function 'ext4_journal_dirty_data':
+fs/ext4/inode.c:1297: error:  implicit declaration of function
+'jbd2_journal_dirty_data'
+fs/ext4/inode.c: In function 'ext4_da_writepages':
+fs/ext4/inode.c:1759: error:  implicit declaration of function
+'ext4_jbd2_file_inode'
+make[2]: *** [fs/ext4/inode.o]  Error 1
+make[1]: *** [fs/ext4] Error 2
+make:  *** [fs] Error 2
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Previously, as of the Add ext4-delalloc-bmap-support.patch by Mingming Cao
+three days ago, the 2.6.26-rc6 kernel compiled cleanly, so I would guess
+it's something in the last seven patches (listed from newest to oldest):
+
+1. Fold ext4-Use-new-framework-for-data-ordered-mode-in-JBD.patch
+2. Fix compile error in ext4_use_atomic-function-to-set-bh_stat-fix.patch
+3. Added ext4_use_atomic-function-to-set-bh_stat-fix.patch
+4. Update changelog for jbd2-Implement-data-ordered-mode-handling-via-
+inode.patch
+5. Fold ext4-delalloc-bmap-support.patch to delalloc writeback mode patch
+6. Fold delalloc-ext4-reservation-for-nonextent-files.patch to delalloc
+ENOSPC error handling patch, move it before reverse locking changes
+7. Add delalloc-ext4-reservation-for-nonextent-files.patch
+
+Gary
+
+
