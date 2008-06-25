@@ -1,10 +1,10 @@
 From: akpm@linux-foundation.org
-Subject: + ext3-validate-directory-entry-data-before-use.patch added to -mm tree
-Date: Wed, 25 Jun 2008 14:43:26 -0700
-Message-ID: <200806252143.m5PLhQFi028262@imap1.linux-foundation.org>
+Subject: + jbd-positively-dispose-the-unmapped-data-buffers-in-journal_commit_transaction.patch added to -mm tree
+Date: Wed, 25 Jun 2008 16:08:19 -0700
+Message-ID: <200806252308.m5PN8JOn031481@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
-Cc: duaneg@dghda.com, jack@suse.cz, jochen.voss@googlemail.com,
-	linux-ext4@vger.kernel.org, sliedes@cc.hut.fi
+Cc: toshi.okajima@jp.fujitsu.com, jack@suse.cz,
+	linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
 Return-path: <mm-commits-owner@vger.kernel.org>
 Sender: mm-commits-owner@vger.kernel.org
@@ -12,9 +12,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: validate directory entry data before use
+     jbd: positively dispose the unmapped data buffers in journal_commit_transaction()
 has been added to the -mm tree.  Its filename is
-     ext3-validate-directory-entry-data-before-use.patch
+     jbd-positively-dispose-the-unmapped-data-buffers-in-journal_commit_transaction.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -30,382 +30,178 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3: validate directory entry data before use
-From: "Duane Griffin" <duaneg@dghda.com>
+Subject: jbd: positively dispose the unmapped data buffers in journal_commit_transaction()
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 
-Various places in fs/ext3/namei.c use ext3_next_entry to loop over
-directory entries, but not all of them verify that entries are valid
-before attempting to move to the next one.  In the case where rec_len == 0
-this causes an infinite loop.
+After ext3-ordered files are truncated, there is a possibility that the
+pages which cannot be estimated still remain.  Remaining pages can be
+released when the system has really few memory.  So, it is not memory
+leakage.  But the resource management software etc.  may not work
+correctly.
 
-Introduce a new version of ext3_next_entry that checks the validity of the
-entry before using its data to find the next one.  Rename the original
-function to __ext3_next_entry and use it in places where we already know
-the data is valid.
+It is possible that journal_unmap_buffer() cannot release the buffers, and
+the pages to which they belong because they are attached to a commiting
+transaction and journal_unmap_buffer() cannot release them.  To release
+such the buffers and the pages later, journal_unmap_buffer() leaves it to
+journal_commit_transaction().  (journal_unmap_buffer() puts the mark
+'BH_Freed' to the buffers so that journal_commit_transaction() can
+identify whether they can be released or not.)
 
-Note that the changes to empty_dir follow the original code in reporting
-the directory as empty in the presence of errors.
+In the journalled mode and the writeback mode, jbd does with only metadata
+buffers.  But in the ordered mode, jbd does with metadata buffers and also
+data buffers.
 
-This patch fixes the first case (image hdb.25.softlockup.gz) reported in
-http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+Actually, journal_commit_transaction() releases only the metadata buffers
+of which release is demanded by journal_unmap_buffer(), and also releases
+the pages to which they belong if possible.
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Cc: Sami Liedes <sliedes@cc.hut.fi>
-Cc: <jochen.voss@googlemail.com>
+As a result, the data buffers of which release is demanded by
+journal_unmap_buffer() remain after a transaction commits.  And also the
+pages to which they belong remain.
+
+Such the remained pages don't have mapping any longer.  Due to this fact,
+there is a possibility that the pages which cannot be estimated remain.
+
+
+The metadata buffers marked 'BH_Freed' and the pages to which
+they belong can be released at 'JBD: commit phase 7'.
+
+Therefore, by applying the same code into 'JBD: commit phase 2' (where the
+data buffers are done with), journal_commit_transaction() can also release
+the data buffers marked 'BH_Freed' and the pages to which they belong.
+
+As a result, all the buffers marked 'BH_Freed' can be released, and also
+all the pages to which these buffers belong can be released at
+journal_commit_transaction().  So, the page which cannot be estimated is
+lost.
+
+<<Excerpt of code at 'JBD: commit phase 7'>>
+ >         spin_lock(&journal->j_list_lock);
+ >         while (commit_transaction->t_forget) {
+ >                 transaction_t *cp_transaction;
+ >                 struct buffer_head *bh;
+ >
+ >                 jh = commit_transaction->t_forget;
+ >...
+ >                 if (buffer_freed(bh)) {
+ >                 ^^^^^^^^^^^^^^^^^^^^^^^^
+ >                         clear_buffer_freed(bh);
+ >                        ^^^^^^^^^^^^^^^^^^^^^^^^
+ >                         clear_buffer_jbddirty(bh);
+ >                 }
+ >
+ >                 if (buffer_jbddirty(bh)) {
+ >                         JBUFFER_TRACE(jh, "add to new checkpointing trans");
+ >                         __journal_insert_checkpoint(jh, commit_transaction);
+ >                         JBUFFER_TRACE(jh, "refile for checkpoint writeback");
+ >                         __journal_refile_buffer(jh);
+ >                         jbd_unlock_bh_state(bh);
+ >                 } else {
+ >                         J_ASSERT_BH(bh, !buffer_dirty(bh));
+ > ...
+ >                         JBUFFER_TRACE(jh, "refile or unfile freed buffer");
+ >                         __journal_refile_buffer(jh);
+ >                         if (!jh->b_transaction) {
+ >                                 jbd_unlock_bh_state(bh);
+ >                                  /* needs a brelse */
+ >                                 journal_remove_journal_head(bh);
+ >                                 release_buffer_page(bh);
+ >                                 ^^^^^^^^^^^^^^^^^^^^^^^^
+ >                         } else
+ >                 }
+****************************************************************
+* Apply the code of "^^^^^^" lines into 'JBD: commit phase 2' *
+****************************************************************
+
+At journal_commit_transaction() code, there is one extra message in the
+series of jbd debug messages.  ("JBD: commit phase 2") This patch fixes
+it, too.
+
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Acked-by: Jan Kara <jack@suse.cz>
-Cc: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/dir.c   |    2 
- fs/ext3/namei.c |  128 ++++++++++++++++++++++++++++++----------------
- 2 files changed, 87 insertions(+), 43 deletions(-)
+ fs/jbd/commit.c |   29 ++++++++++++++++++++---------
+ 1 file changed, 20 insertions(+), 9 deletions(-)
 
-diff -puN fs/ext3/dir.c~ext3-validate-directory-entry-data-before-use fs/ext3/dir.c
---- a/fs/ext3/dir.c~ext3-validate-directory-entry-data-before-use
-+++ a/fs/ext3/dir.c
-@@ -187,7 +187,7 @@ revalidate:
- 		while (!error && filp->f_pos < inode->i_size
- 		       && offset < sb->s_blocksize) {
- 			de = (struct ext3_dir_entry_2 *) (bh->b_data + offset);
--			if (!ext3_check_dir_entry ("ext3_readdir", inode, de,
-+			if (!ext3_check_dir_entry (__func__, inode, de,
- 						   bh, offset)) {
- 				/* On error, skip the f_pos to the
-                                    next block. */
-diff -puN fs/ext3/namei.c~ext3-validate-directory-entry-data-before-use fs/ext3/namei.c
---- a/fs/ext3/namei.c~ext3-validate-directory-entry-data-before-use
-+++ a/fs/ext3/namei.c
-@@ -185,13 +185,27 @@ static int ext3_dx_add_entry(handle_t *h
-  * p is at least 6 bytes before the end of page
+diff -puN fs/jbd/commit.c~jbd-positively-dispose-the-unmapped-data-buffers-in-journal_commit_transaction fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-positively-dispose-the-unmapped-data-buffers-in-journal_commit_transaction
++++ a/fs/jbd/commit.c
+@@ -36,7 +36,7 @@ static void journal_end_buffer_io_sync(s
+ 
+ /*
+  * When an ext3-ordered file is truncated, it is possible that many pages are
+- * not sucessfully freed, because they are attached to a committing transaction.
++ * not successfully freed, because they are attached to a committing transaction.
+  * After the transaction commits, these pages are left on the LRU, with no
+  * ->mapping, and with attached buffers.  These pages are trivially reclaimable
+  * by the VM, but their apparent absence upsets the VM accounting, and it makes
+@@ -45,8 +45,8 @@ static void journal_end_buffer_io_sync(s
+  * So here, we have a buffer which has just come off the forget list.  Look to
+  * see if we can strip all buffers from the backing page.
+  *
+- * Called under lock_journal(), and possibly under journal_datalist_lock.  The
+- * caller provided us with a ref against the buffer, and we drop that here.
++ * Called under journal->j_list_lock.  The caller provided us with a ref
++ * against the buffer, and we drop that here.
   */
- static inline struct ext3_dir_entry_2 *
--ext3_next_entry(struct ext3_dir_entry_2 *p)
-+__ext3_next_entry(struct ext3_dir_entry_2 *p)
+ static void release_buffer_page(struct buffer_head *bh)
  {
- 	return (struct ext3_dir_entry_2 *)((char *)p +
- 		ext3_rec_len_from_disk(p->rec_len));
+@@ -78,6 +78,19 @@ nope:
  }
  
  /*
-+ * Checks the directory entry looks sane before using it to find the next one.
-+ * Returns NULL and reports an error if an invalid entry is passed.
++ * Decrement reference counter for data buffer. If it has been marked
++ * 'BH_Freed', release it and the page to which it belongs if possible.
 + */
-+static inline struct ext3_dir_entry_2 *
-+ext3_next_entry(const char *func, struct inode *dir,
-+		struct ext3_dir_entry_2 *de, struct buffer_head *bh, int offset)
++static void release_data_buffer(struct buffer_head *bh)
 +{
-+	if (ext3_check_dir_entry(func, dir, de, bh, offset))
-+		return __ext3_next_entry(de);
-+	else
-+		return NULL;
++	if (buffer_freed(bh)) {
++		clear_buffer_freed(bh);
++		release_buffer_page(bh);
++	} else
++		put_bh(bh);
 +}
 +
 +/*
-  * Future: use high four bits of block for coalesce-on-delete flags
-  * Mask them off for now.
-  */
-@@ -271,15 +285,17 @@ struct stats
- 	unsigned bcount;
- };
- 
--static struct stats dx_show_leaf(struct dx_hash_info *hinfo, struct ext3_dir_entry_2 *de,
--				 int size, int show_names)
-+static struct stats dx_show_leaf(struct dx_hash_info *hinfo, struct inode *dir,
-+				 struct buffer_head *bh, int size,
-+				 int show_names)
- {
-+	struct ext3_dir_entry_2 *de = (struct ext3_dir_entry_2 *) bh->b_data;
- 	unsigned names = 0, space = 0;
- 	char *base = (char *) de;
- 	struct dx_hash_info h = *hinfo;
- 
- 	printk("names: ");
--	while ((char *) de < base + size)
-+	while (de && (char *) de < base + size)
- 	{
- 		if (de->inode)
- 		{
-@@ -295,7 +311,7 @@ static struct stats dx_show_leaf(struct 
- 			space += EXT3_DIR_REC_LEN(de->name_len);
- 			names++;
+  * Try to acquire jbd_lock_bh_state() against the buffer, when j_list_lock is
+  * held.  For ranking reasons we must trylock.  If we lose, schedule away and
+  * return 0.  j_list_lock is dropped in this case.
+@@ -231,7 +244,7 @@ write_out_data:
+ 			if (locked)
+ 				unlock_buffer(bh);
+ 			BUFFER_TRACE(bh, "already cleaned up");
+-			put_bh(bh);
++			release_data_buffer(bh);
+ 			continue;
  		}
--		de = ext3_next_entry(de);
-+		de = ext3_next_entry(__func__, dir, de, bh, 0);
- 	}
- 	printk("(%i)\n", names);
- 	return (struct stats) { names, space, 1 };
-@@ -319,7 +335,7 @@ struct stats dx_show_entries(struct dx_h
- 		if (!(bh = ext3_bread (NULL,dir, block, 0,&err))) continue;
- 		stats = levels?
- 		   dx_show_entries(hinfo, dir, ((struct dx_node *) bh->b_data)->entries, levels - 1):
--		   dx_show_leaf(hinfo, (struct ext3_dir_entry_2 *) bh->b_data, blocksize, 0);
-+		   dx_show_leaf(hinfo, dir, bh, blocksize, 0);
- 		names += stats.names;
- 		space += stats.space;
- 		bcount += stats.bcount;
-@@ -583,8 +599,8 @@ static int htree_dirblock_to_tree(struct
- 	top = (struct ext3_dir_entry_2 *) ((char *) de +
- 					   dir->i_sb->s_blocksize -
- 					   EXT3_DIR_REC_LEN(0));
--	for (; de < top; de = ext3_next_entry(de)) {
--		if (!ext3_check_dir_entry("htree_dirblock_to_tree", dir, de, bh,
-+	for (; de < top; de = __ext3_next_entry(de)) {
-+		if (!ext3_check_dir_entry(__func__, dir, de, bh,
- 					(block<<EXT3_BLOCK_SIZE_BITS(dir->i_sb))
- 						+((char *)de - bh->b_data))) {
- 			/* On error, skip the f_pos to the next block. */
-@@ -658,7 +674,11 @@ int ext3_htree_fill_tree(struct file *di
- 	}
- 	if (start_hash < 2 || (start_hash ==2 && start_minor_hash==0)) {
- 		de = (struct ext3_dir_entry_2 *) frames[0].bh->b_data;
--		de = ext3_next_entry(de);
-+		de = ext3_next_entry(__func__, dir, de, frames[0].bh, 0);
-+		if (de == NULL) {
-+			err = -EIO;
-+			goto errout;
-+		}
- 		if ((err = ext3_htree_store_dirent(dir_file, 2, 0, de)) != 0)
- 			goto errout;
- 		count++;
-@@ -726,8 +746,7 @@ static int dx_make_map (struct ext3_dir_
- 			count++;
- 			cond_resched();
+ 		if (locked && test_clear_buffer_dirty(bh)) {
+@@ -258,10 +271,10 @@ write_out_data:
+ 			if (locked)
+ 				unlock_buffer(bh);
+ 			journal_remove_journal_head(bh);
+-			/* Once for our safety reference, once for
++			/* One for our safety reference, other for
+ 			 * journal_remove_journal_head() */
+ 			put_bh(bh);
+-			put_bh(bh);
++			release_data_buffer(bh);
  		}
--		/* XXX: do we need to check rec_len == 0 case? -Chris */
--		de = ext3_next_entry(de);
-+		de = __ext3_next_entry(de);
- 	}
- 	return count;
- }
-@@ -822,8 +841,7 @@ static inline int search_dirblock(struct
- 		if ((char *) de + namelen <= dlimit &&
- 		    ext3_match (namelen, name, de)) {
- 			/* found a match - just to be sure, do a full check */
--			if (!ext3_check_dir_entry("ext3_find_entry",
--						  dir, de, bh, offset))
-+			if (!ext3_check_dir_entry(__func__, dir, de, bh,offset))
- 				return -1;
- 			*res_dir = de;
- 			return 1;
-@@ -991,24 +1009,27 @@ static struct buffer_head * ext3_dx_find
- 		de = (struct ext3_dir_entry_2 *) bh->b_data;
- 		top = (struct ext3_dir_entry_2 *) ((char *) de + sb->s_blocksize -
- 				       EXT3_DIR_REC_LEN(0));
--		for (; de < top; de = ext3_next_entry(de))
--		if (ext3_match (namelen, name, de)) {
--			if (!ext3_check_dir_entry("ext3_find_entry",
--						  dir, de, bh,
--				  (block<<EXT3_BLOCK_SIZE_BITS(sb))
--					  +((char *)de - bh->b_data))) {
--				brelse (bh);
-+		for (; de < top; de = __ext3_next_entry(de)) {
-+			int offset = (block << EXT3_BLOCK_SIZE_BITS(sb))
-+				     + ((char *) de - bh->b_data);
-+
-+			if (!ext3_check_dir_entry(__func__, dir,de,bh,offset)) {
-+				brelse(bh);
- 				*err = ERR_BAD_DX_DIR;
- 				goto errout;
- 			}
--			*res_dir = de;
--			dx_release (frames);
--			return bh;
-+
-+			if (ext3_match(namelen, name, de)) {
-+				*res_dir = de;
-+				dx_release(frames);
-+				return bh;
-+			}
+ 
+ 		if (need_resched() || spin_needbreak(&journal->j_list_lock)) {
+@@ -443,7 +456,7 @@ void journal_commit_transaction(journal_
+ 		} else {
+ 			jbd_unlock_bh_state(bh);
  		}
- 		brelse (bh);
-+
- 		/* Check to see if we should continue to search */
--		retval = ext3_htree_next_block(dir, hash, frame,
--					       frames, NULL);
-+		retval = ext3_htree_next_block(dir, hash, frame, frames, NULL);
-+
- 		if (retval < 0) {
- 			ext3_warning(sb, __func__,
- 			     "error reading index page in directory #%lu",
-@@ -1141,7 +1162,7 @@ static struct ext3_dir_entry_2* dx_pack_
- 
- 	prev = to = de;
- 	while ((char*)de < base + size) {
--		next = ext3_next_entry(de);
-+		next = __ext3_next_entry(de);
- 		if (de->inode && de->name_len) {
- 			rec_len = EXT3_DIR_REC_LEN(de->name_len);
- 			if (de > to)
-@@ -1172,9 +1193,22 @@ static struct ext3_dir_entry_2 *do_split
- 	struct dx_map_entry *map;
- 	char *data1 = (*bh)->b_data, *data2;
- 	unsigned split, move, size, i;
--	struct ext3_dir_entry_2 *de = NULL, *de2;
-+	struct ext3_dir_entry_2 *de, *de2;
- 	int	err = 0;
- 
-+	/* Verify directory entries are sane before trying anything else. */
-+	de = (struct ext3_dir_entry_2 *) data1;
-+	de2 = (struct ext3_dir_entry_2 *) data1 +
-+		dir->i_sb->s_blocksize - EXT3_DIR_REC_LEN(0);
-+	while (de < de2) {
-+		de = ext3_next_entry(__func__, dir, de, *bh, 0);
-+		if (de == NULL) {
-+			brelse(*bh);
-+			*bh = NULL;
-+			goto errout;
-+		}
-+	}
-+
- 	bh2 = ext3_append (handle, dir, &newblock, &err);
- 	if (!(bh2)) {
- 		brelse(*bh);
-@@ -1281,8 +1315,7 @@ static int add_dirent_to_buf(handle_t *h
- 		de = (struct ext3_dir_entry_2 *)bh->b_data;
- 		top = bh->b_data + dir->i_sb->s_blocksize - reclen;
- 		while ((char *) de <= top) {
--			if (!ext3_check_dir_entry("ext3_add_entry", dir, de,
--						  bh, offset)) {
-+			if (!ext3_check_dir_entry(__func__, dir,de,bh,offset)) {
- 				brelse (bh);
- 				return -EIO;
- 			}
-@@ -1397,8 +1430,13 @@ static int make_indexed_dir(handle_t *ha
- 	memcpy (data1, de, len);
- 	de = (struct ext3_dir_entry_2 *) data1;
- 	top = data1 + len;
--	while ((char *)(de2 = ext3_next_entry(de)) < top)
-+
-+	de2 = de;
-+	while (de2 != NULL && de2 < top) {
- 		de = de2;
-+		de2 = ext3_next_entry(__func__, dir, de, bh, 0);
-+	}
-+
- 	de->rec_len = ext3_rec_len_to_disk(data1 + blocksize - (char *) de);
- 	/* Initialize the root; the dot dirents already exist */
- 	de = (struct ext3_dir_entry_2 *) (&root->dotdot);
-@@ -1637,7 +1675,7 @@ static int ext3_delete_entry (handle_t *
- 	pde = NULL;
- 	de = (struct ext3_dir_entry_2 *) bh->b_data;
- 	while (i < bh->b_size) {
--		if (!ext3_check_dir_entry("ext3_delete_entry", dir, de, bh, i))
-+		if (!ext3_check_dir_entry(__func__, dir, de, bh, i))
- 			return -EIO;
- 		if (de == de_del)  {
- 			BUFFER_TRACE(bh, "get_write_access");
-@@ -1655,7 +1693,7 @@ static int ext3_delete_entry (handle_t *
- 		}
- 		i += ext3_rec_len_from_disk(de->rec_len);
- 		pde = de;
--		de = ext3_next_entry(de);
-+		de = __ext3_next_entry(de);
+-		put_bh(bh);
++		release_data_buffer(bh);
+ 		cond_resched_lock(&journal->j_list_lock);
  	}
- 	return -ENOENT;
- }
-@@ -1792,7 +1830,7 @@ retry:
- 	de->rec_len = ext3_rec_len_to_disk(EXT3_DIR_REC_LEN(de->name_len));
- 	strcpy (de->name, ".");
- 	ext3_set_de_type(dir->i_sb, de, S_IFDIR);
--	de = ext3_next_entry(de);
-+	de = __ext3_next_entry(de);
- 	de->inode = cpu_to_le32(dir->i_ino);
- 	de->rec_len = ext3_rec_len_to_disk(inode->i_sb->s_blocksize -
- 					EXT3_DIR_REC_LEN(1));
-@@ -1825,7 +1863,7 @@ out_stop:
- /*
-  * routine to check that the specified directory is empty (for rmdir)
-  */
--static int empty_dir (struct inode * inode)
-+static int empty_dir(struct inode *dir, struct inode *inode)
- {
- 	unsigned long offset;
- 	struct buffer_head * bh;
-@@ -1846,8 +1884,14 @@ static int empty_dir (struct inode * ino
- 				     inode->i_ino);
- 		return 1;
- 	}
-+
- 	de = (struct ext3_dir_entry_2 *) bh->b_data;
--	de1 = ext3_next_entry(de);
-+	de1 = ext3_next_entry(__func__, dir, de, bh, 0);
-+	if (de1 == NULL) {
-+		brelse(bh);
-+		return 1;
-+	}
-+
- 	if (le32_to_cpu(de->inode) != inode->i_ino ||
- 			!le32_to_cpu(de1->inode) ||
- 			strcmp (".", de->name) ||
-@@ -1860,8 +1904,8 @@ static int empty_dir (struct inode * ino
- 	}
- 	offset = ext3_rec_len_from_disk(de->rec_len) +
- 			ext3_rec_len_from_disk(de1->rec_len);
--	de = ext3_next_entry(de1);
--	while (offset < inode->i_size ) {
-+	de = ext3_next_entry(__func__, dir, de1, bh, offset);
-+	while (de && offset < inode->i_size) {
- 		if (!bh ||
- 			(void *) de >= (void *) (bh->b_data+sb->s_blocksize)) {
- 			err = 0;
-@@ -1879,7 +1923,7 @@ static int empty_dir (struct inode * ino
- 			}
- 			de = (struct ext3_dir_entry_2 *) bh->b_data;
- 		}
--		if (!ext3_check_dir_entry("empty_dir", inode, de, bh, offset)) {
-+		if (!ext3_check_dir_entry(__func__, inode, de, bh, offset)) {
- 			de = (struct ext3_dir_entry_2 *)(bh->b_data +
- 							 sb->s_blocksize);
- 			offset = (offset | (sb->s_blocksize - 1)) + 1;
-@@ -1890,7 +1934,7 @@ static int empty_dir (struct inode * ino
- 			return 0;
- 		}
- 		offset += ext3_rec_len_from_disk(de->rec_len);
--		de = ext3_next_entry(de);
-+		de = __ext3_next_entry(de);
- 	}
- 	brelse (bh);
- 	return 1;
-@@ -2068,7 +2112,7 @@ static int ext3_rmdir (struct inode * di
- 		goto end_rmdir;
+ 	spin_unlock(&journal->j_list_lock);
+@@ -453,8 +466,6 @@ void journal_commit_transaction(journal_
  
- 	retval = -ENOTEMPTY;
--	if (!empty_dir (inode))
-+	if (!empty_dir(dir, inode))
- 		goto end_rmdir;
+ 	journal_write_revoke_records(journal, commit_transaction);
  
- 	retval = ext3_delete_entry(handle, dir, de, bh);
-@@ -2244,7 +2288,7 @@ retry:
- }
- 
- #define PARENT_INO(buffer) \
--	(ext3_next_entry((struct ext3_dir_entry_2 *)(buffer))->inode)
-+	(__ext3_next_entry((struct ext3_dir_entry_2 *)(buffer))->inode)
- 
- /*
-  * Anybody can rename anything with this: the permission checks are left to the
-@@ -2297,7 +2341,7 @@ static int ext3_rename (struct inode * o
- 	if (S_ISDIR(old_inode->i_mode)) {
- 		if (new_inode) {
- 			retval = -ENOTEMPTY;
--			if (!empty_dir (new_inode))
-+			if (!empty_dir(new_dir, new_inode))
- 				goto end_rename;
- 		}
- 		retval = -EIO;
-_
-
-Patches currently in -mm which might be from duaneg@dghda.com are
-
-jbd-replace-potentially-false-assertion-with-if-block.patch
-jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch
-jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch
-ext3-handle-corrupted-orphan-list-at-mount.patch
-ext3-handle-corrupted-orphan-list-at-mount-cleanup.patch
-ext3-handle-corrupted-orphan-list-at-mount-fix.patch
-ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix.patch
-ext3-handle-deleting-corrupted-indirect-blocks.patch
-ext3-validate-directory-entry-data-before-use.patch
-
+-	jbd_debug(3, "JBD: commit phase 2\n");
