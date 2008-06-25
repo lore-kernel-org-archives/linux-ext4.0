@@ -1,139 +1,208 @@
-From: "Takashi Sato" <t-sato@yk.jp.nec.com>
-Subject: Re: [PATCH 0/3] freeze feature ver 1.6
-Date: Wed, 25 Jun 2008 15:36:40 +0900
-Message-ID: <27A96BE5FB224E9A876DA3326A6A6B27@nsl.ad.nec.co.jp>
-References: <20080624155919t-sato@mail.jp.nec.com>
-	<20080624143840.c183d0d9.akpm@linux-foundation.org>
-Reply-To: device-mapper development <dm-devel@redhat.com>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: (take 2)[PATCH] JBD: positively dispose the unmapped data buffers
+ in journal_commit_transaction
+Date: Wed, 25 Jun 2008 16:33:19 +0900
+Message-ID: <4861F4BF.5060408@jp.fujitsu.com>
+References: <485F8263.8000103@jp.fujitsu.com> <20080623192731.baf0904a.akpm@linux-foundation.org> <4860A9E8.9090103@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="ISO-8859-1";
-	reply-type=original
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: "Andrew Morton" <akpm@linux-foundation.org>
-Return-path: <dm-devel-bounces@redhat.com>
-In-Reply-To: <20080624143840.c183d0d9.akpm@linux-foundation.org>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/dm-devel>
-List-Post: <mailto:dm-devel@redhat.com>
-List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=subscribe>
-Sender: dm-devel-bounces@redhat.com
-Errors-To: dm-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:36656 "EHLO
+	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751793AbYFYHeE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Jun 2008 03:34:04 -0400
+In-Reply-To: <4860A9E8.9090103@jp.fujitsu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Hi.
 
-> umm, OK, but nowhere in this patch series can I find a justification or
-> reason for making these changes to Linux.  Why do we want to do this?
-> What is the benefit?  What is the motivation.  What are the use-cases,
-> etc?
+I updated my patch and introduction article for it by reflecting
+the comment of Andrew's.
 
-Currently, ext3 in mainline Linux doesn't have the freeze feature which
-suspends write requests.  So, we cannot take a backup which keeps
-the filesystem's consistency with the storage device's features
-(snapshot and replication) while it is mounted.
-In many case, a commercial filesystem (e.g. VxFS) has
-the freeze feature and it would be used to get the consistent backup.
-If Linux's standard filesytem ext3 has the freeze feature, we can do it
-without a commercial filesystem.
+I think that this fix doesn't introduce other problems because
+I only add the code which releases the pages (and buffers) which
+should be released originally, and I have never experienced any
+problems while performing long run test.
 
-So I have implemented the ioctls of the freeze feature.
-I think we can take the consistent backup with the following steps.
-1. Freeze the filesystem with the freeze ioctl.
-2. Separate the replication volume or create the snapshot
-   with the storage device's feature.
-3. Unfreeze the filesystem with the unfreeze ioctl.
-4. Take the backup from the separated replication volume
-   or the snapshot.
+Please confirm them.
 
-Cheers, Takashi
+This patch is for 2.6.26-rc6.
+---
+[Problem]
+After ext3-ordered files are truncated, there is a possibility
+that the pages which cannot be estimated still remain. Remaining
+pages can be released when the system has really few memory.
+So, it is not memory leakage. But the resource management
+software etc. may not work correctly.
 
-> On Tue, 24 Jun 2008 15:59:19 +0900
-> Takashi Sato <t-sato@yk.jp.nec.com> wrote:
-> 
->> Hi Andrew and Alexander,
->> 
->> I have implemented the ioctls for the filesystem freeze feature
->> and discussed its implementation on the ML (linux-ext4, xfs,
->> linux-fsdevel, linux-kernel) for five months.  All of the comments are
->> addressed in my patch-set.
->> Could you consider merging it into Linux?
->> 
->> The filesystem freeze feature can suspend accesses to the filesystem
->> keeping the filesystem's consistency.  We can take the consistent backup
->> with it cooperating with the backup software.
->> 
->> The patches are re-based from linux-2.6.26-rc3 to linux-2.6.26-rc7
->> There is no functional change from the previous version.
->> The patch-set consists of the following three patches.
->> 
->> [PATCH 1/3] Implement generic freeze feature
->>   I have modified to set the suitable error number (EOPNOTSUPP)
->>   in case the filesystem doesn't support the freeze feature.
->> 
->>   The ioctls for the generic freeze feature are below.
->>   o Freeze the filesystem
->>     int ioctl(int fd, int FIFREEZE, arg)
->>       fd: The file descriptor of the mountpoint
->>       FIFREEZE: request code for the freeze
->>       arg: Ignored
->>       Return value: 0 if the operation succeeds. Otherwise, -1
->> 
->>   o Unfreeze the filesystem
->>     int ioctl(int fd, int FITHAW, arg)
->>       fd: The file descriptor of the mountpoint
->>       FITHAW: request code for unfreeze
->>       arg: Ignored
->>       Return value: 0 if the operation succeeds. Otherwise, -1
->> 
->> [PATCH 2/3] Remove XFS specific ioctl interfaces for freeze feature
->>   It removes XFS specific ioctl interfaces and request codes
->>   for freeze feature.
->>   This patch has been supplied by David Chinner.
->> 
->> [PATCH 3/3] Add timeout feature
->>   The timeout feature is added to freeze ioctl.  And new ioctl
->>   to reset the timeout period is added.
->>   o Freeze the filesystem
->>     int ioctl(int fd, int FIFREEZE, long *timeval)
->>       fd: The file descriptor of the mountpoint
->>       FIFREEZE: request code for the freeze
->>       timeval: the timeout period in seconds
->>                If it's 0 or 1, the timeout isn't set.
->>                This special case of "1" is implemented to keep
->>                the compatibility with XFS applications.
->>       Return value: 0 if the operation succeeds. Otherwise, -1
->> 
->>   o Reset the timeout period
->>     This is useful for the application to set the timeval more accurately.
->>     For example, the freezer resets the timeval to 10 seconds every 5
->>     seconds.  In this approach, even if the freezer causes a deadlock
->>     by accessing the frozen filesystem, it will be solved by the timeout
->>     in 10 seconds and the freezer can recognize that at the next reset
->>     of timeval.
->>     int ioctl(int fd, int FIFREEZE_RESET_TIMEOUT, long *timeval)
->>       fd:file descriptor of mountpoint
->>       FIFREEZE_RESET_TIMEOUT: request code for reset of timeout period
->>       timeval: new timeout period in seconds
->>       Return value: 0 if the operation succeeds. Otherwise, -1
->>       Error number: If the filesystem has already been unfrozen,
->>                     errno is set to EINVAL.
->> 
->> Any comments are very welcome.
-> 
-> umm, OK, but nowhere in this patch series can I find a justification or
-> reason for making these changes to Linux.  Why do we want to do this? 
-> What is the benefit?  What is the motivation.  What are the use-cases,
-> etc?
-> 
-> Thanks.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+[Description]
+It is possible that journal_unmap_buffer() cannot release
+the buffers, and the pages to which they belong because
+they are attached to a commiting transaction and
+journal_unmap_buffer() cannot release them.
+To release such the buffers and the pages later,
+journal_unmap_buffer() leaves it to journal_commit_transaction().
+(journal_unmap_buffer() puts the mark 'BH_Freed' to the buffers
+so that journal_commit_transaction() can identify whether they
+can be released or not.)
+
+In the journalled mode and the writeback mode, jbd does with only
+metadata buffers.  But in the ordered mode, jbd does with metadata
+buffers and also data buffers.
+
+Actually, journal_commit_transaction() releases only the metadata
+buffers of which release is demanded by journal_unmap_buffer(),
+and also releases the pages to which they belong if possible.
+
+As a result, the data buffers of which release is demanded
+by journal_unmap_buffer() remain after a transaction commits.
+And also the pages to which they belong remain.
+
+Such the remained pages don't have mapping any longer.
+Due to this fact, there is a possibility that the pages which
+cannot be estimated remain.
+
+[How to fix]
+The metadata buffers marked 'BH_Freed' and the pages to which
+they belong can be released at 'JBD: commit phase 7'.
+
+Therefore, by applying the same code into 'JBD: commit phase 2'
+(where the data buffers are done with),
+journal_commit_transaction() can also release the data buffers
+marked 'BH_Freed' and the pages to which they belong.
+
+As a result, all the buffers marked 'BH_Freed' can be released,
+and also all the pages to which these buffers belong can be
+released at journal_commit_transaction().
+So, the page which cannot be estimated is lost.
+
+<<Excerpt of code at 'JBD: commit phase 7'>>
+ >         spin_lock(&journal->j_list_lock);
+ >         while (commit_transaction->t_forget) {
+ >                 transaction_t *cp_transaction;
+ >                 struct buffer_head *bh;
+ >
+ >                 jh = commit_transaction->t_forget;
+ >...
+ >                 if (buffer_freed(bh)) {
+ >                 ^^^^^^^^^^^^^^^^^^^^^^^^
+ >                         clear_buffer_freed(bh);
+ >                        ^^^^^^^^^^^^^^^^^^^^^^^^
+ >                         clear_buffer_jbddirty(bh);
+ >                 }
+ >
+ >                 if (buffer_jbddirty(bh)) {
+ >                         JBUFFER_TRACE(jh, "add to new checkpointing trans");
+ >                         __journal_insert_checkpoint(jh, commit_transaction);
+ >                         JBUFFER_TRACE(jh, "refile for checkpoint writeback");
+ >                         __journal_refile_buffer(jh);
+ >                         jbd_unlock_bh_state(bh);
+ >                 } else {
+ >                         J_ASSERT_BH(bh, !buffer_dirty(bh));
+ > ...
+ >                         JBUFFER_TRACE(jh, "refile or unfile freed buffer");
+ >                         __journal_refile_buffer(jh);
+ >                         if (!jh->b_transaction) {
+ >                                 jbd_unlock_bh_state(bh);
+ >                                  /* needs a brelse */
+ >                                 journal_remove_journal_head(bh);
+ >                                 release_buffer_page(bh);
+ >                                 ^^^^^^^^^^^^^^^^^^^^^^^^
+ >                         } else
+ >                 }
+****************************************************************
+* Apply the code of "^^^^^^" lines into 'JBD: commit phase 2' *
+****************************************************************
+
+[Additional information]
+At journal_commit_transaction() code,
+there is one extra message in the series of jbd debug messages.
+("JBD: commit phase 2")
+This patch fixes it, too.
+
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+---
+  fs/jbd/commit.c |   29 ++++++++++++++++++++---------
+  1 file changed, 20 insertions(+), 9 deletions(-)
+--- linux-2.6.26-rc6.org/fs/jbd/commit.c	2008-06-13 06:22:24.000000000 +0900
++++ linux-2.6.26-rc6/fs/jbd/commit.c	2008-06-25 14:51:55.000000000 +0900
+@@ -36,7 +36,7 @@ static void journal_end_buffer_io_sync(s
+
+  /*
+   * When an ext3-ordered file is truncated, it is possible that many pages are
+- * not sucessfully freed, because they are attached to a committing transaction.
++ * not successfully freed, because they are attached to a committing transaction.
+   * After the transaction commits, these pages are left on the LRU, with no
+   * ->mapping, and with attached buffers.  These pages are trivially reclaimable
+   * by the VM, but their apparent absence upsets the VM accounting, and it makes
+@@ -45,8 +45,8 @@ static void journal_end_buffer_io_sync(s
+   * So here, we have a buffer which has just come off the forget list.  Look to
+   * see if we can strip all buffers from the backing page.
+   *
+- * Called under lock_journal(), and possibly under journal_datalist_lock.  The
+- * caller provided us with a ref against the buffer, and we drop that here.
++ * Called under journal->j_list_lock.  The caller provided us with a ref
++ * against the buffer, and we drop that here.
+   */
+  static void release_buffer_page(struct buffer_head *bh)
+  {
+@@ -78,6 +78,19 @@ nope:
+  }
+
+  /*
++ * Decrement reference counter for data buffer. If it has been marked
++ * 'BH_Freed', release it and the page to which it belongs if possible.
++ */
++static void release_data_buffer(struct buffer_head *bh)
++{
++	if (buffer_freed(bh)) {
++		clear_buffer_freed(bh);
++		release_buffer_page(bh);
++	} else
++		put_bh(bh);
++}
++
++/*
+   * Try to acquire jbd_lock_bh_state() against the buffer, when j_list_lock is
+   * held.  For ranking reasons we must trylock.  If we lose, schedule away and
+   * return 0.  j_list_lock is dropped in this case.
+@@ -231,7 +244,7 @@ write_out_data:
+  			if (locked)
+  				unlock_buffer(bh);
+  			BUFFER_TRACE(bh, "already cleaned up");
+-			put_bh(bh);
++			release_data_buffer(bh);
+  			continue;
+  		}
+  		if (locked && test_clear_buffer_dirty(bh)) {
+@@ -258,10 +271,10 @@ write_out_data:
+  			if (locked)
+  				unlock_buffer(bh);
+  			journal_remove_journal_head(bh);
+-			/* Once for our safety reference, once for
++			/* One for our safety reference, other for
+  			 * journal_remove_journal_head() */
+  			put_bh(bh);
+-			put_bh(bh);
++			release_data_buffer(bh);
+  		}
+
+  		if (need_resched() || spin_needbreak(&journal->j_list_lock)) {
+@@ -443,7 +456,7 @@ void journal_commit_transaction(journal_
+  		} else {
+  			jbd_unlock_bh_state(bh);
+  		}
+-		put_bh(bh);
++		release_data_buffer(bh);
+  		cond_resched_lock(&journal->j_list_lock);
+  	}
+  	spin_unlock(&journal->j_list_lock);
+@@ -453,8 +466,6 @@ void journal_commit_transaction(journal_
+
+  	journal_write_revoke_records(journal, commit_transaction);
+
+-	jbd_debug(3, "JBD: commit phase 2\n");
