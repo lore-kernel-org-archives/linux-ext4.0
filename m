@@ -1,118 +1,105 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: Performance of ext4
-Date: Fri, 27 Jun 2008 12:00:24 +0200
-Message-ID: <20080627100024.GB3602@duck.suse.cz>
-References: <20080623174508.GA7216@skywalker> <1214267492.27507.285.camel@BVR-FS.beaverton.ibm.com> <20080624030721.GB10469@skywalker> <20080624033349.GD10469@skywalker> <Pine.LNX.4.64.0806242103370.14795@diagnostix.dwd.de> <1214348318.27507.330.camel@BVR-FS.beaverton.ibm.com> <Pine.LNX.4.64.0806250856160.16081@diagnostix.dwd.de> <1214441199.27507.351.camel@BVR-FS.beaverton.ibm.com> <20080627091459.GA32723@skywalker> <20080627094913.GB32723@skywalker>
+Subject: Re: [PATCH 4/5] jbd: fix error handling for checkpoint io
+Date: Fri, 27 Jun 2008 12:24:20 +0200
+Message-ID: <20080627102419.GC3602@duck.suse.cz>
+References: <4843CE15.6080506@hitachi.com> <4843CFBD.7040706@hitachi.com> <20080602124409.GL30613@duck.suse.cz> <4844CB39.6060409@hitachi.com> <20080603080219.GA17936@duck.suse.cz> <485F85AE.1010704@hitachi.com> <20080623122240.GJ26743@duck.suse.cz> <4860E01B.8010806@hitachi.com> <20080624133309.GG9959@duck.suse.cz> <48649FA0.70303@hitachi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming <cmm@us.ibm.com>, Holger Kiehl <Holger.Kiehl@dwd.de>,
-	Theodore Tso <tytso@mit.edu>,
-	Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	Solofo.Ramangalahy@bull.net, Nick Dokos <nicholas.dokos@hp.com>,
-	linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
+	sugita <yumiko.sugita.yf@hitachi.com>,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:41411 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:42687 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752226AbYF0KA0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jun 2008 06:00:26 -0400
+	id S1750882AbYF0KYV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Jun 2008 06:24:21 -0400
 Content-Disposition: inline
-In-Reply-To: <20080627094913.GB32723@skywalker>
+In-Reply-To: <48649FA0.70303@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 27-06-08 15:19:13, Aneesh Kumar K.V wrote:
-> On Fri, Jun 27, 2008 at 02:44:59PM +0530, Aneesh Kumar K.V wrote:
-> > On Wed, Jun 25, 2008 at 05:46:39PM -0700, Mingming wrote:
-> > > 
-> > > On Wed, 2008-06-25 at 09:09 +0000, Holger Kiehl wrote:
-> > > > On Tue, 24 Jun 2008, Mingming wrote:
-> > > > 
-> > > > >
-> > > > > On Tue, 2008-06-24 at 21:12 +0000, Holger Kiehl wrote:
-> > > > >> Yes, with this patch applied on top of latest patch queue I no longer
-> > > > >> get truncated files, after running a short test. Tomorrow I will do some
-> > > > >> more thorough testing and use the patch you have send to me in a separate
-> > > > >> mail. The above patch did not apply but it was easy to apply by hand.
-> > > > >
-> > > > >
-> > > > > Thanks for quick response and test. I have updated the patch queue with
-> > > > > above patch merged. Please let me know if you still see apply issue and
-> > > > > file size update issue with current patch queue.
-> > > > >
-> > > > Thanks, it applies without any problems. However I still hit an oops. What
-> > > > I find strange is that I got the oops just as the benchmark is done and
-> > > > all process where shutting down. The same behaviour I reported here:
-> > > > http://www.ussg.iu.edu/hypermail/linux/kernel/0806.2/2113.html
-> > > > Only this time I got just one oops. This is on x86_64 system (4 Opteron CPU's
-> > > > and SW Raid 1+0). I have not seen this on my home system x86 (1 Dual Core
-> > > > and HW Raid). Anyway, here the dmesg output:
-> > > > 
-> > > > kjournald2 starting.  Commit interval 15 seconds
-> > > > EXT4 FS on md7, internal journal
-> > > > EXT4-fs: mounted filesystem with ordered data mode.
-> > > > EXT4-fs: file extents enabled
-> > > > EXT4-fs: mballoc enabled
-> > > > JBD: barrier-based sync failed on md7 - disabling barriers
-> > > > ------------[ cut here ]------------
-> > > > kernel BUG at fs/ext4/inode.c:1667!
-> > > 
-> > > Did not get a chance to look more closely today, but it's point to this
-> > > code in ext4_da_writepage()
-> > > 
-> > >  page_bufs = page_buffers(page);
-> > > 
-> > > and appearently it's BUG_ON at 
-> > >  BUG_ON(!PagePrivate(page)); in page_buffers().
-> > > 
-> > > 
-> > 
-> > Ok so we are doing the journal_commit and meanwhile shrink_page_list
-> > dropped the buffer. I guess what is happening is
-> > 
-> > 
-> > journal_submit_inode_data_buffers
-> > generic_writepages
-> > write_cache_pages
-> > pagevec_lookup_tag(..PAGECACHE_TAG_DIRTY,..)
-> > foreach(page)
-> > 							shrink_page_list
-> > 							lock_page
-> > 							ext4_releasepage
-> > 							try_to_free_buffers
-> > 							drop_buffers
-> > 							cancel_dirty_page
-> > 							unlock_page
-> > lock_page()
-> > BUG_ON(!PagePrivate(page));
-> > 
-> > 
-> > How about the below ? 
+  Hi,
+
+On Fri 27-06-08 17:06:56, Hidehiro Kawai wrote:
+> Jan Kara wrote:
 > 
-> or update write_cache_pages not to call writepage if the page is not
-> dirty ?
-  But that is already happening :) Look a few lines above your patch into
-clear_page_dirty_for_io()...
+> > On Tue 24-06-08 20:52:59, Hidehiro Kawai wrote:
+> 
+> >>>>3. is implemented as described below.
+> >>>> (1) if log_do_checkpoint() detects an I/O error during
+> >>>>     checkpointing, it calls journal_abort() to abort the journal
+> >>>> (2) if the journal has aborted, don't update s_start and s_sequence
+> >>>>     in the on-disk journal superblock
+> >>>>
+> >>>>So, if the journal aborts, journaled data will be replayed on the
+> >>>>next mount.
+> >>>>
+> >>>>Now, please remember that some dirty metadata buffers are written
+> >>>>back to the filesystem without journaling if the journal aborted.
+> >>>>We are happy if all dirty metadata buffers are written to the disk,
+> >>>>the integrity of the filesystem will be kept.  However, replaying
+> >>>>the journaled data can overwrite the latest on-disk metadata blocks
+> >>>>partly with old data.  It would break the filesystem.
+> >>>
+> >>>  Yes, it would. But how do you think it can happen that a metadata buffer
+> >>>will be written back to the filesystem when it is a part of running
+> >>>transaction? Note that checkpointing code specifically checks whether the
+> >>>buffer being written back is part of a running transaction and if so, it
+> >>>waits for commit before writing back the buffer. So I don't think this can
+> >>>happen but maybe I miss something...
+> >>
+> >>Checkpointing code checks it and may call log_wait_commit(), but this
+> >>problem is caused by transactions which have not started checkpointing.
+> >>
+> >>For example, the tail transaction has an old update for block_B and
+> >>the running transaction has a new update for block_B.  Then, the
+> >>committing transaction fails to write the commit record, it aborts the
+> >>journal, and new block_B will be written back to the file system without
+> >>journaling.  Because this patch doesn't separate between normal abort
+> >>and checkpointing related abort, the tail transaction is left in the
+> >>journal space.  So by replaying the tail transaction, new block_B is
+> >>overwritten with old one.
+> > 
+> >   Yes, and this is expected an correct. When we cannot properly finish a
+> > transaction, we have to discard everything in it. A bug would be (and I
+> > think it could currently happen) if we already checkpointed the previous
+> > transaction and then written over block_B new data from the uncommitted
+> > transaction. I think we have to avoid that - i.e., in case we abort the
+> > journal we should not mark buffers dirty when processing the forget loop.
+> 
+> Yes.
+> 
+> > But this is not too serious since fsck has to be run anyway and it will
+> > fix the problems.
+> 
+> Yes.  The filesystem should be marked with an error, so fsck will check
+> and recover the filesystem on boot.  But this means the filesystem loses
+> some latest updates even if it was cleanly unmounted (although some file
+> data has been lost.)  I'm a bit afraid that some people would think of
+> this as a regression due to this PATCH 4/5.  At least, to avoid
+> undesirable replay, we had better keep journaled data only when the
+> journal has been aborted for checkpointing related reason.
+  I don't think this makes any difference. Look: We have transaction A
+modifying block B fully committed to the journal. Now there is a running
+(or committing, it does not really matter) transaction R also modifying block
+B. Until R gets fully committed, no block modified by R is checkpointed
+to the device - checkpointing code takes care of that and it must be so
+to satisfy journaling guarantees.
+  So if we abort journal (for whatever reason) before R is fully committed,
+no change in R will be seen on the filesystem regardless whether you
+cleanup the journal or not.
+  And you cannot do much differenly - the principle of journaling is that
+either all changes in the transaction get to disk or none of them. So until
+the transaction is properly committed, you have the only way to satisfy
+this condition - take the "none of them" choice.
+  Now fsck could of course be clever and try to use updates in not fully
+committed transaction but personally I don't think it's worth the effort.
+  Please correct me if I just misunderstood your point...
 
-									Honza
-
-> diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-> index ded57d5..0a13702 100644
-> --- a/mm/page-writeback.c
-> +++ b/mm/page-writeback.c
-> @@ -929,6 +929,11 @@ int write_cache_pages(struct address_space *mapping,
->  				continue;
->  			}
->  
-> +			if (!PageDirty(page)) {
-> +				unlock_page(page);
-> +				continue;
-> +			}
-> +
->  			ret = (*writepage)(page, wbc, data);
->  
->  			if (unlikely(ret == AOP_WRITEPAGE_ACTIVATE)) {
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
