@@ -1,60 +1,60 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 3/3] Add timeout feature
-Date: Fri, 27 Jun 2008 11:57:27 -0700
-Message-ID: <20080627115727.149dcb2e.akpm@linux-foundation.org>
-References: <20080624160056t-sato@mail.jp.nec.com>
-	<20080624150925.765155f0.akpm@linux-foundation.org>
-	<7B349EFCD35842D4ADAEB402D2BDCA4E@nsl.ad.nec.co.jp>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd2: We shouldnot cap writeback when we are doing a
+	journal commit
+Date: Fri, 27 Jun 2008 23:04:39 +0200
+Message-ID: <20080627210439.GA15342@duck.suse.cz>
+References: <1214590065-26891-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <48652D4D.9010202@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: viro@ZenIV.linux.org.uk, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, dm-devel@redhat.com,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	axboe@kernel.dk, mtk.manpages@googlemail.com
-To: "Takashi Sato" <t-sato@yk.jp.nec.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	cmm@us.ibm.com, tytso@mit.edu, jack@suse.cz,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50936 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752402AbYF0S5v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jun 2008 14:57:51 -0400
-In-Reply-To: <7B349EFCD35842D4ADAEB402D2BDCA4E@nsl.ad.nec.co.jp>
+Received: from styx.suse.cz ([82.119.242.94]:44023 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1760649AbYF0VEk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Jun 2008 17:04:40 -0400
+Content-Disposition: inline
+In-Reply-To: <48652D4D.9010202@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 27 Jun 2008 20:33:58 +0900
-"Takashi Sato" <t-sato@yk.jp.nec.com> wrote:
-
-> >>  case XFS_FSOP_GOING_FLAGS_DEFAULT: {
-> >> - struct super_block *sb = freeze_bdev(mp->m_super->s_bdev);
-> >> + struct super_block *sb = freeze_bdev(mp->m_super->s_bdev, 0);
-> >
-> > Using NULL here is clearer and will, I expect, avoid a sparse warning.
+On Fri 27-06-08 13:11:25, Eric Sandeen wrote:
+> Aneesh Kumar K.V wrote:
+> > A journal commit need to make sure we submit data buffers before
+> > we submit the meta-data buffers in ordered mode. We should
+> > not be looking at BDI_CAP_NO_WRITEBACK when doing a journal commit.
+> > 
+> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 > 
-> I checked it but I couldn't find a sparse warning in xfs_fsops.c.
-> Can you tell me how to use NULL?
+> and I don't think we'll ever even see that flag set...
+> 
+> Acked-by: Eric Sandeen <sandeen@redhat.com>
+  Yes, I also don't think it really matters :). So feel free to remove that
+check.
 
-	struct super_block *sb = freeze_bdev(mp->m_super->s_bdev, NULL);
-
-:)
-
-It's much better to use NULL here rather than literal zero because the
-reader of this code can then say "ah-hah, we're passing in a pointer". 
-Whereas plain old "0" could be a pointer or a scalar.
-
-We should always use NULL to represent a null pointer in the kernel. 
-The one acceptable exception is when testing for nullness:
-
-	if (ptr1)
-		if (!ptr2)
-
-Often people will use
-
-	if (ptr1 != NULL)
-		if (ptr2 == NULL)
-
-in this case as well.  (I prefer the shorter version personally, but
-either is OK).
-
-
+								Honza
+> 
+> > ---
+> >  fs/jbd2/commit.c |    3 ---
+> >  1 files changed, 0 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> > index 32ca3c3..f8b3be8 100644
+> > --- a/fs/jbd2/commit.c
+> > +++ b/fs/jbd2/commit.c
+> > @@ -203,9 +203,6 @@ static int journal_submit_inode_data_buffers(struct address_space *mapping)
+> >  		.for_writepages = 1,
+> >  	};
+> >  
+> > -	if (!mapping_cap_writeback_dirty(mapping))
+> > -		return 0;
+> > -
+> >  	ret = generic_writepages(mapping, &wbc);
+> >  	return ret;
+> >  }
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
