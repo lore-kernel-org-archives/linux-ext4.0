@@ -1,189 +1,56 @@
-From: "Takashi Sato" <t-sato@yk.jp.nec.com>
-Subject: Re: [PATCH 3/3] Add timeout feature
-Date: Fri, 27 Jun 2008 20:33:58 +0900
-Message-ID: <7B349EFCD35842D4ADAEB402D2BDCA4E@nsl.ad.nec.co.jp>
-References: <20080624160056t-sato@mail.jp.nec.com>
-	<20080624150925.765155f0.akpm@linux-foundation.org>
-Reply-To: device-mapper development <dm-devel@redhat.com>
+From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
+Subject: Re: [PATCH] ext4: fix online resize with mballoc
+Date: Fri, 27 Jun 2008 16:36:50 +0200
+Message-ID: <1214577410.3257.24.camel@localhost>
+References: <20080626143704.642665893@bull.net>
+	 <1214492283.10187.17.camel@localhost>
+	 <20080626232659.GY6239@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="iso-8859-1";
-	reply-type=original
-Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: "Andrew Morton" <akpm@linux-foundation.org>
-Return-path: <dm-devel-bounces@redhat.com>
-In-Reply-To: <20080624150925.765155f0.akpm@linux-foundation.org>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/dm-devel>
-List-Post: <mailto:dm-devel@redhat.com>
-List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=subscribe>
-Sender: dm-devel-bounces@redhat.com
-Errors-To: dm-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:40251 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752587AbYF0OgP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Jun 2008 10:36:15 -0400
+In-Reply-To: <20080626232659.GY6239@webber.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Thanks for your feedback !
 
->> o Reset the timeout period
->>   int ioctl(int fd, int FIFREEZE_RESET_TIMEOUT, long *timeval)
->>     fd:file descriptor of mountpoint
->>     FIFREEZE_RESET_TIMEOUT: request code for reset of timeout period
->>     timeval: new timeout period in seconds
->>     Return value: 0 if the operation succeeds. Otherwise, -1
->>     Error number: If the filesystem has already been unfrozen,
->>                   errno is set to EINVAL.
->
-> Please avoid the use of the term `timeval' here.  That term is closely
-> associated with `struct timeval', and these are not being used here.  A
-> better identifier would be timeout_secs - it tells the reader what it
-> does, and it tells the reader what units it is in.  And when it comes
-> to "time", it is very useful to tell people which units are being used,
-> because there are many different ones.
+Le jeudi 26 juin 2008 =C3=A0 17:26 -0600, Andreas Dilger a =C3=A9crit :
+> On Jun 26, 2008  16:58 +0200, Fr=EF=BF=BDd=EF=BF=BDric Boh=EF=BF=BD w=
+rote:
+> > From: Frederic Bohe <frederic.bohe@bull.net>
+> > +	num_meta_group_infos_max =3D num_meta_group_infos +
+> > +				le16_to_cpu(es->s_reserved_gdt_blocks);
+>=20
+> The only drawback of NOT handling this properly is that once (eventua=
+lly)
+> we allow resizing with META_BG this code will be broken again.  It at
+> least deserves a comment like "Need to handle this properly when META=
+_BG
+> resizing is allowed" so that it will show up on any grep for META_BG.
+>=20
+> It probably also makes sense to round this up to the next power-of-tw=
+o
+> value, since kmalloc will do that internally anyways, and it gives us
+> some resizing headroom for no cost.
 
-OK.
-I will use "timeout_secs" in the next version to match the source code.
+Do you have any idea of how this headroom could be used in the future ?
 
->> -static int ioctl_freeze(struct file *filp)
->> +static int ioctl_freeze(struct file *filp, unsigned long arg)
->>  {
->> +    long timeout_sec;
->> +    long timeout_msec;
->>      struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
->> +    int error;
->>
->>      if (!capable(CAP_SYS_ADMIN))
->>          return -EPERM;
->> @@ -159,8 +163,27 @@ static int ioctl_freeze(struct file *fil
->>      if (sb->s_op->write_super_lockfs == NULL)
->>          return -EOPNOTSUPP;
->>
->> +    /* arg(sec) to tick value. */
->> +    error = get_user(timeout_sec, (long __user *) arg);>
-> uh-oh, compat problems.
->
-> A 32-bit application running under a 32-bit kernel will need to provide
-> a 32-bit quantity.
->
-> A 32-bit application running under a 64-bit kernel will need to provide
-> a 64-bit quantity.
->
-> I suggest that you go through the entire patch and redo this part of
-> the kernel ABI in terms of __u32, and avoid any mention of "long" in
-> the kernel<->userspace interface.
+Regards,
+=46red
 
-I agree.
-I will replace long with a 32bit integer type.
 
->> +    /* arg(sec) to tick value. */
->> +    error = get_user(timeout_sec, (long __user *) arg);
->> +    if (timeout_sec < 0)
->> +        return -EINVAL;
->> +    else if (timeout_sec < 2)
->> +        timeout_sec = 0;> The `else' is unneeded.
->
-> It would be clearer to code this all as:
->
-> if (timeout_sec < 0)
->     return -EINVAL;
->
-> if (timeout_sec == 1) {
->     /*
->      * If 1 is specified as the timeout period it is changed into 0
->      * to retain compatibility with XFS's xfs_freeze.
->      */
->     timeout_sec = 0;
-> }
 
-OK.
 
->> +    if (error)
->> +        return error;
->> +    timeout_msec = timeout_sec * 1000;
->> +    if (timeout_msec < 0)
->> +        return -EINVAL;
->
-> um, OK, but timeout_msec could have overflowed during the
-> multiplication and could be complete garbage.  I guess it doesn't
-> matter much, but a cleaner approach might be:
->
-> if (timeout_sec > LONG_MAX/1000)
->     return -EINVAL;
->
-> or something like that.
 
-OK.
-
-> But otoh, why do the multiplication at all?  If we're able to handle
-> the timeout down to the millisecond level, why not offer that
-> resolution to userspace?  Offer the increased time granularity to the
-> application?
-
-I think there is no case the user specifies it in millisecond,
-so the second granularity is more comfortable.
-
->> +    if (sb) {
->
-> Can this happen?
-
-I have found that sb == NULL never happen
-but sb->s_bdev == NULL can happen when we call this ioctl
-for a device file (not a directory or a regular file).
-So I will add the following check.
-if (sb->s_bdev == NULL)
-    return -EINVAL;
-
->> +    if (test_and_set_bit(BD_FREEZE_OP, &sb->s_bdev->bd_state))
->> +        return -EBUSY;
->> +    if (sb->s_frozen == SB_UNFROZEN) {
->> +        clear_bit(BD_FREEZE_OP, &sb->s_bdev->bd_state);
->> +        return -EINVAL;
->> +    }
->> +    /* setup unfreeze timer */
->> +    if (timeout_msec > 0)
->
-> What does this test do?  afacit it's special-casing the timeout_secs==0
-> case.  Was this feature documented?  What does it do?
-
-There is no special case of timeout_secs==0.
-I will remove this check.
-
->> +void add_freeze_timeout(struct block_device *bdev, long timeout_msec)
->> +{
->> +    s64 timeout_jiffies = msecs_to_jiffies(timeout_msec);
->> +
->> +    /* Set delayed work queue */
->> +    cancel_delayed_work(&bdev->bd_freeze_timeout);
->
-> Should this have used cancel_delayed_work_sync()?
-
-Exactly.
-I will replace cancel_delayed_work with cancel_delayed_work_sync.
-
->> +void del_freeze_timeout(struct block_device *bdev)
->> +{
->> + if (delayed_work_pending(&bdev->bd_freeze_timeout))
->
-> Is this test needed?
-
-It's not necessary because cancel_delayed_work_sync checks it itself.
-I will remove it.
-
->> --- linux-2.6.26-rc7-xfs/fs/xfs/xfs_fsops.c 2008-06-23 11:55:15.000000000 +0900
->> +++ linux-2.6.26-rc7-timeout/fs/xfs/xfs_fsops.c 2008-06-23 11:56:47.000000000 +0900
->> @@ -619,7 +619,7 @@ xfs_fs_goingdown(
->>  {
->>  switch (inflags) {
->>  case XFS_FSOP_GOING_FLAGS_DEFAULT: {
->> - struct super_block *sb = freeze_bdev(mp->m_super->s_bdev);
->> + struct super_block *sb = freeze_bdev(mp->m_super->s_bdev, 0);
->
-> Using NULL here is clearer and will, I expect, avoid a sparse warning.
-
-I checked it but I couldn't find a sparse warning in xfs_fsops.c.
-Can you tell me how to use NULL?
-
-Cheers, Takashi
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
