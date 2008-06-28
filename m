@@ -1,105 +1,190 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] ext4: fix online resize with mballoc
-Date: Fri, 27 Jun 2008 17:30:41 -0700
-Message-ID: <1214613041.6837.37.camel@mingming-laptop>
-References: <20080626143704.642665893@bull.net>
-	 <1214492283.10187.17.camel@localhost>
-	 <20080626232659.GY6239@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: =?utf-8?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Handle page without buffers in ext4_*_writepage()
+Date: Sat, 28 Jun 2008 15:48:55 +0530
+Message-ID: <1214648335-2706-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com, jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:42285 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756272AbYF1Aau (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Jun 2008 20:30:50 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m5S0UfHA002440
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Jun 2008 20:30:41 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5S0Uf5K207666
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Jun 2008 20:30:41 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5S0Uf2e005967
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Jun 2008 20:30:41 -0400
-In-Reply-To: <20080626232659.GY6239@webber.adilger.int>
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:46995 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754660AbYF1KTI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 28 Jun 2008 06:19:08 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m5SAImJP012420
+	for <linux-ext4@vger.kernel.org>; Sat, 28 Jun 2008 20:18:48 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5SAIbJF4747458
+	for <linux-ext4@vger.kernel.org>; Sat, 28 Jun 2008 20:18:38 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m5SAJ1Iw028328
+	for <linux-ext4@vger.kernel.org>; Sat, 28 Jun 2008 20:19:02 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Jan Kara <jack@suse.cz>
 
-On Thu, 2008-06-26 at 17:26 -0600, Andreas Dilger wrote:
-> On Jun 26, 2008  16:58 +0200, Fr=EF=BF=BDd=EF=BF=BDric Boh=EF=BF=BD w=
-rote:
-> > From: Frederic Bohe <frederic.bohe@bull.net>
+It can happen that buffers are removed from the page before it gets
+marked dirty and then is passed to writepage(). Make ext4_*_writepage()
+handle this case (basically by just skipping some checks in this case).
 
->=20
-> >  static int ext4_mb_init_backend(struct super_block *sb)
-> >  {
-> > +	/* This is the total number of blocks used by GDT including
-> > +	* the number of reserved blocks for GDT.
-> > +	* The s_group_info array is allocated with this value
-> > +	* to allow a clean online resize without a complex
-> > +	* manipulation of pointer.
-> > +	* The drawback is the unused memory when no resize
-> > +	* occurs but it's very low in terms of pages
-> > +	* (see comments below)
-> > +	*/
->=20
-> Also align comment '*' in the same columns.
->=20
-> > +	num_meta_group_infos_max =3D num_meta_group_infos +
-> > +				le16_to_cpu(es->s_reserved_gdt_blocks);
->=20
-> The only drawback of NOT handling this properly is that once (eventua=
-lly)
-> we allow resizing with META_BG this code will be broken again.  It at
-> least deserves a comment like "Need to handle this properly when META=
-_BG
-> resizing is allowed" so that it will show up on any grep for META_BG.
->=20
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/inode.c |   86 +++++++++++++++++++++++++++++++++++++++++++++---------
+ 1 files changed, 71 insertions(+), 15 deletions(-)
 
-It probably useful to document this limit in the change log too.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 10f1d5d..8bd2595 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1592,11 +1592,15 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
+ 	handle_t *handle = NULL;
+ 
+ 	handle = ext4_journal_current_handle();
+-	BUG_ON(handle == NULL);
+-	BUG_ON(create == 0);
+-
+-	ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
++	if (!handle) {
++		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
++				   bh_result, 0, 0, 0);
++		BUG_ON(!ret);
++	} else {
++		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
+ 				   bh_result, create, 0, EXT4_DELALLOC_RSVED);
++	}
++
+ 	if (ret > 0) {
+ 		bh_result->b_size = (ret << inode->i_blkbits);
+ 
+@@ -1655,7 +1659,13 @@ static int ext4_da_writepage(struct page *page,
+ 	struct inode *inode = page->mapping->host;
+ 
+ 	handle = ext4_journal_current_handle();
+-	if (!handle) {
++	/* The test for page_has_buffers() is subtle:
++	 * We know the page is dirty but it lost buffers. That means that
++	 * at some moment in time after write_begin() / write_end() has been
++	 * called all buffers have been clean and thus they must have been
++	 * written at least once. So they are all mapped and we can happily
++	 * proceed with mapping them and writing the page. */
++	if (!handle && page_has_buffers(page)) {
+ 		/*
+ 		 * This can happen when we aren't called via
+ 		 * ext4_da_writepages() but directly (shrink_page_list).
+@@ -1918,6 +1928,28 @@ static int bput_one(handle_t *handle, struct buffer_head *bh)
+ 	return 0;
+ }
+ 
++static int ext4_normal_get_block_write(struct inode *inode, sector_t iblock,
++				   struct buffer_head *bh_result, int create)
++{
++	int ret = 0;
++	handle_t *handle = ext4_journal_current_handle();
++	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
++
++	if (!handle) {
++		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
++				   bh_result, 0, 0, 0);
++		BUG_ON(!ret);
++	} else {
++		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
++				   bh_result, create, 0, EXT4_DELALLOC_RSVED);
++	}
++	if (ret > 0) {
++		bh_result->b_size = (ret << inode->i_blkbits);
++		ret = 0;
++	}
++	return ret;
++}
++
+ /*
+  * Note that we don't need to start a transaction unless we're journaling data
+  * because we should have holes filled from ext4_page_mkwrite(). We even don't
+@@ -1977,12 +2009,13 @@ static int __ext4_normal_writepage(struct page *page,
+ 	struct inode *inode = page->mapping->host;
+ 
+ 	if (test_opt(inode->i_sb, NOBH))
+-		return nobh_writepage(page, ext4_get_block, wbc);
++		return nobh_writepage(page,
++					ext4_normal_get_block_write, wbc);
+ 	else
+-		return block_write_full_page(page, ext4_get_block, wbc);
++		return block_write_full_page(page,
++					ext4_normal_get_block_write, wbc);
+ }
+ 
+-
+ static int ext4_normal_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+@@ -1991,13 +2024,24 @@ static int ext4_normal_writepage(struct page *page,
+ 	loff_t len;
+ 
+ 	J_ASSERT(PageLocked(page));
+-	J_ASSERT(page_has_buffers(page));
+ 	if (page->index == size >> PAGE_CACHE_SHIFT)
+ 		len = size & ~PAGE_CACHE_MASK;
+ 	else
+ 		len = PAGE_CACHE_SIZE;
+-	BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+-				 ext4_bh_unmapped_or_delay));
++
++	if (page_has_buffers(page)) {
++		/* if page has buffers it should all be mapped
++		 * and allocated. If there are not buffers attached
++		 * to the page we know the page is dirty but it lost
++		 * buffers. That means that at some moment in time
++		 * after write_begin() / write_end() has been called
++		 * all buffers have been clean and thus they must have been
++		 * written at least once. So they are all mapped and we can
++		 * happily proceed with mapping them and writing the page.
++		 */
++		BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
++					ext4_bh_unmapped_or_delay));
++	}
+ 
+ 	if (!ext4_journal_current_handle())
+ 		return __ext4_normal_writepage(page, wbc);
+@@ -2017,7 +2061,8 @@ static int __ext4_journalled_writepage(struct page *page,
+ 	int ret = 0;
+ 	int err;
+ 
+-	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE, ext4_get_block);
++	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
++					ext4_normal_get_block_write);
+ 	if (ret != 0)
+ 		goto out_unlock;
+ 
+@@ -2064,13 +2109,24 @@ static int ext4_journalled_writepage(struct page *page,
+ 	loff_t len;
+ 
+ 	J_ASSERT(PageLocked(page));
+-	J_ASSERT(page_has_buffers(page));
+ 	if (page->index == size >> PAGE_CACHE_SHIFT)
+ 		len = size & ~PAGE_CACHE_MASK;
+ 	else
+ 		len = PAGE_CACHE_SIZE;
+-	BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+-				 ext4_bh_unmapped_or_delay));
++
++	if (page_has_buffers(page)) {
++		/* if page has buffers it should all be mapped
++		 * and allocated. If there are not buffers attached
++		 * to the page we know the page is dirty but it lost
++		 * buffers. That means that at some moment in time
++		 * after write_begin() / write_end() has been called
++		 * all buffers have been clean and thus they must have been
++		 * written at least once. So they are all mapped and we can
++		 * happily proceed with mapping them and writing the page.
++		 */
++		BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
++					ext4_bh_unmapped_or_delay));
++	}
+ 
+ 	if (ext4_journal_current_handle())
+ 		goto no_write;
+-- 
+1.5.6.1.78.gde8d9.dirty
 
-It would be nice to do it right now since we are here, if it's not too
-complicated. The locking cost to do dynamic re-allocation of
-s_groups_info seems low to me if we use read-write lock, as the write
-path is relatively rare. But I guess there are a lot of there places we
-need to worry to enable resize to any large with FLEX_BG/META_BG, and
-could deal with that later.
-
-Mingming
-> It probably also makes sense to round this up to the next power-of-tw=
-o
-> value, since kmalloc will do that internally anyways, and it gives us
-> some resizing headroom for no cost.
->=20
-> > @@ -2276,62 +2431,15 @@ static int ext4_mb_init_backend(struct s
-> >  		sbi->s_group_info[i] =3D meta_group_info;
-> >  	}
-> > =20
-> >  	for (i =3D 0; i < sbi->s_groups_count; i++) {
-> > +		if (ext4_mb_add_groupinfo(sb, i, desc) !=3D 0)
-> > +			goto err_freebuddy;
->=20
-> This is much nicer, great.
->=20
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
