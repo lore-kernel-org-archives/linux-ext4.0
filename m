@@ -1,130 +1,315 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: Re: [PATCH 4/5] jbd: fix error handling for checkpoint io
-Date: Mon, 30 Jun 2008 14:09:09 +0900
-Message-ID: <48686A75.9010809@hitachi.com>
-References: <4843CE15.6080506@hitachi.com> <4843CFBD.7040706@hitachi.com>
-    <20080602124409.GL30613@duck.suse.cz> <4844CB39.6060409@hitachi.com>
-    <20080603080219.GA17936@duck.suse.cz> <485F85AE.1010704@hitachi.com>
-    <20080623122240.GJ26743@duck.suse.cz> <4860E01B.8010806@hitachi.com>
-    <20080624133309.GG9959@duck.suse.cz> <48649FA0.70303@hitachi.com>
-    <20080627102419.GC3602@duck.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
-	sugita <yumiko.sugita.yf@hitachi.com>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Jan Kara <jack@suse.cz>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH updated] ext4: Handle page without buffers in ext4_*_writepage()
+Date: Mon, 30 Jun 2008 15:36:14 +0530
+Message-ID: <1214820374-5464-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	Aneesh Kumar <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com, jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail7.hitachi.co.jp ([133.145.228.42]:42959 "EHLO
-	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751800AbYF3FJc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jun 2008 01:09:32 -0400
-In-Reply-To: <20080627102419.GC3602@duck.suse.cz>
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:49653 "EHLO
+	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753800AbYF3KGv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jun 2008 06:06:51 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m5UA6GxK017981
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Jun 2008 15:36:16 +0530
+Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m5UA54Es774294
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Jun 2008 15:35:05 +0530
+Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
+	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id m5UA6EJ8011456
+	for <linux-ext4@vger.kernel.org>; Mon, 30 Jun 2008 15:36:15 +0530
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+From: Aneesh Kumar <aneesh.kumar@linux.vnet.ibm.com>
 
-Jan Kara wrote:
+It can happen that buffers are removed from the page before it gets
+marked dirty and then is passed to writepage(). In writepage()
+we just initialize the buffers and check whether they are mapped and non
+delay. If they are mapped and non delay we write the page. Otherwise we
+mark then dirty. With this change we don't do block allocation at all in
+ext4_*_write_page.
 
-> On Fri 27-06-08 17:06:56, Hidehiro Kawai wrote:
-> 
->>Jan Kara wrote:
->>
->>
->>>On Tue 24-06-08 20:52:59, Hidehiro Kawai wrote:
->>
->>>>>>3. is implemented as described below.
->>>>>>(1) if log_do_checkpoint() detects an I/O error during
->>>>>>    checkpointing, it calls journal_abort() to abort the journal
->>>>>>(2) if the journal has aborted, don't update s_start and s_sequence
->>>>>>    in the on-disk journal superblock
->>>>>>
->>>>>>So, if the journal aborts, journaled data will be replayed on the
->>>>>>next mount.
->>>>>>
->>>>>>Now, please remember that some dirty metadata buffers are written
->>>>>>back to the filesystem without journaling if the journal aborted.
->>>>>>We are happy if all dirty metadata buffers are written to the disk,
->>>>>>the integrity of the filesystem will be kept.  However, replaying
->>>>>>the journaled data can overwrite the latest on-disk metadata blocks
->>>>>>partly with old data.  It would break the filesystem.
->>>>>
->>>>> Yes, it would. But how do you think it can happen that a metadata buffer
->>>>>will be written back to the filesystem when it is a part of running
->>>>>transaction? Note that checkpointing code specifically checks whether the
->>>>>buffer being written back is part of a running transaction and if so, it
->>>>>waits for commit before writing back the buffer. So I don't think this can
->>>>>happen but maybe I miss something...
->>>>
->>>>Checkpointing code checks it and may call log_wait_commit(), but this
->>>>problem is caused by transactions which have not started checkpointing.
->>>>
->>>>For example, the tail transaction has an old update for block_B and
->>>>the running transaction has a new update for block_B.  Then, the
->>>>committing transaction fails to write the commit record, it aborts the
->>>>journal, and new block_B will be written back to the file system without
->>>>journaling.  Because this patch doesn't separate between normal abort
->>>>and checkpointing related abort, the tail transaction is left in the
->>>>journal space.  So by replaying the tail transaction, new block_B is
->>>>overwritten with old one.
->>>
->>>  Yes, and this is expected an correct. When we cannot properly finish a
->>>transaction, we have to discard everything in it. A bug would be (and I
->>>think it could currently happen) if we already checkpointed the previous
->>>transaction and then written over block_B new data from the uncommitted
->>>transaction. I think we have to avoid that - i.e., in case we abort the
->>>journal we should not mark buffers dirty when processing the forget loop.
->>
->>Yes.
->>
->>
->>>But this is not too serious since fsck has to be run anyway and it will
->>>fix the problems.
->>
->>Yes.  The filesystem should be marked with an error, so fsck will check
->>and recover the filesystem on boot.  But this means the filesystem loses
->>some latest updates even if it was cleanly unmounted (although some file
->>data has been lost.)  I'm a bit afraid that some people would think of
->>this as a regression due to this PATCH 4/5.  At least, to avoid
->>undesirable replay, we had better keep journaled data only when the
->>journal has been aborted for checkpointing related reason.
-> 
->   I don't think this makes any difference. Look: We have transaction A
-> modifying block B fully committed to the journal. Now there is a running
-> (or committing, it does not really matter) transaction R also modifying block
-> B. Until R gets fully committed, no block modified by R is checkpointed
-> to the device - checkpointing code takes care of that and it must be so
-> to satisfy journaling guarantees.
->   So if we abort journal (for whatever reason) before R is fully committed,
-> no change in R will be seen on the filesystem regardless whether you
-> cleanup the journal or not.
+writepage() get called under many condition and with a locking order
+of journal_start -> lock_page we shouldnot try to allocate blocks in
+writepage() which get called after taking page lock. writepage can get
+called via shrink_page_list even with a journal handle which was created
+for doing inode update. For example when doing ext4_da_write_begin we
+create a journal handle with credit 1 expecting a i_disksize update for
+the inode. But ext4_da_write_begin can cause shrink_page_list via
+_grab_page_cache. So having a valid handle via ext4_journal_current_handle
+is not a guarantee that we can use the handle for block allocation in
+writepage. We should not be using credits which are taken for other updates.
+That would result in we running out of credits when we update inodes.
 
-No, changes in R will be seen on the filesystem.
-The metadata buffer for block B is marked as dirty when it is unfiled
-whether the journal has aborted or not.  Eventually the buffer will be
-written-back to the filesystem by pdflush.  Actually I have confirmed
-this behavior by using SystemTap.  So if both journal abort and
-system crash happen at the same time, the filesystem would become
-inconsistent state.  As I stated, replaying the journaled block B in
-transaction A may also corrupt the filesystem, because changes in
-transaction R are reflected halfway.  That is why I sent a patch to
-prevent metadata buffers from being dirtied on abort.
 
->   And you cannot do much differenly - the principle of journaling is that
-> either all changes in the transaction get to disk or none of them. So until
-> the transaction is properly committed, you have the only way to satisfy
-> this condition - take the "none of them" choice.
->   Now fsck could of course be clever and try to use updates in not fully
-> committed transaction but personally I don't think it's worth the effort.
->   Please correct me if I just misunderstood your point...
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/inode.c |  169 ++++++++++++++++++++++++++++++++++++++++---------------
+ 1 files changed, 124 insertions(+), 45 deletions(-)
 
-Thanks,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cd5c165..18af94a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1591,11 +1591,15 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
+ 	handle_t *handle = NULL;
+ 
+ 	handle = ext4_journal_current_handle();
+-	BUG_ON(handle == NULL);
+-	BUG_ON(create == 0);
+-
+-	ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
++	if (!handle) {
++		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
++				   bh_result, 0, 0, 0);
++		BUG_ON(!ret);
++	} else {
++		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
+ 				   bh_result, create, 0, EXT4_DELALLOC_RSVED);
++	}
++
+ 	if (ret > 0) {
+ 		bh_result->b_size = (ret << inode->i_blkbits);
+ 
+@@ -1633,15 +1637,37 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
+ 
+ static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
+ {
+-	return !buffer_mapped(bh) || buffer_delay(bh);
++	/*
++	 * unmapped buffer is possible for holes.
++	 * delay buffer is possible with delayed allocation
++	 */
++	return ((!buffer_mapped(bh) || buffer_delay(bh)) && buffer_dirty(bh));
++}
++
++static int ext4_normal_get_block_write(struct inode *inode, sector_t iblock,
++				   struct buffer_head *bh_result, int create)
++{
++	int ret = 0;
++	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
++
++	/*
++	 * we don't want to do block allocation in writepage
++	 * so call get_block_wrap with create = 0
++	 */
++	ret = ext4_get_blocks_wrap(NULL, inode, iblock, max_blocks,
++				   bh_result, 0, 0, 0);
++	if (ret > 0) {
++		bh_result->b_size = (ret << inode->i_blkbits);
++		ret = 0;
++	}
++	return ret;
+ }
+ 
+ /*
+- * get called vi ext4_da_writepages after taking page lock
+- * We may end up doing block allocation here in case
+- * mpage_da_map_blocks failed to allocate blocks.
+- *
+- * We also get called via journal_submit_inode_data_buffers
++ * get called vi ext4_da_writepages after taking page lock (have journal handle)
++ * get called via journal_submit_inode_data_buffers (no journal handle)
++ * get called via shrink_page_list via pdflush (no journal handle)
++ * or grab_page_cache when doing write_begin (have journal handle)
+  */
+ static int ext4_da_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+@@ -1649,37 +1675,61 @@ static int ext4_da_writepage(struct page *page,
+ 	int ret = 0;
+ 	loff_t size;
+ 	unsigned long len;
+-	handle_t *handle = NULL;
+ 	struct buffer_head *page_bufs;
+ 	struct inode *inode = page->mapping->host;
+ 
+-	handle = ext4_journal_current_handle();
+-	if (!handle) {
+-		/*
+-		 * This can happen when we aren't called via
+-		 * ext4_da_writepages() but directly (shrink_page_list).
+-		 * We cannot easily start a transaction here so we just skip
+-		 * writing the page in case we would have to do so.
+-		 * We reach here also via journal_submit_inode_data_buffers
+-		 */
+-		size = i_size_read(inode);
++	size = i_size_read(inode);
++	if (page->index == size >> PAGE_CACHE_SHIFT)
++		len = size & ~PAGE_CACHE_MASK;
++	else
++		len = PAGE_CACHE_SIZE;
+ 
++	if (page_has_buffers(page)) {
+ 		page_bufs = page_buffers(page);
+-		if (page->index == size >> PAGE_CACHE_SHIFT)
+-			len = size & ~PAGE_CACHE_MASK;
+-		else
+-			len = PAGE_CACHE_SIZE;
+-
+-		if (walk_page_buffers(NULL, page_bufs, 0,
+-				len, NULL, ext4_bh_unmapped_or_delay)) {
++		if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
++					ext4_bh_unmapped_or_delay)) {
+ 			/*
+-			 * We can't do block allocation under
+-			 * page lock without a handle . So redirty
+-			 * the page and return
++			 * We don't want to do  block allocation
++			 * So redirty the page and return
+ 			 * We may reach here when we do a journal commit
+ 			 * via journal_submit_inode_data_buffers.
+ 			 * If we don't have mapping block we just ignore
+-			 * them
++			 * them. We can also reach here via shrink_page_list
++			 */
++			redirty_page_for_writepage(wbc, page);
++			unlock_page(page);
++			return 0;
++		}
++	} else {
++		/*
++		 * The test for page_has_buffers() is subtle:
++		 * We know the page is dirty but it lost buffers. That means
++		 * that at some moment in time after write_begin()/write_end()
++		 * has been called all buffers have been clean and thus they
++		 * must have been written at least once. So they are all
++		 * mapped and we can happily proceed with mapping them
++		 * and writing the page.
++		 *
++		 * Try to initialize the buffer_heads and check whether
++		 * all are mapped and non delay. We don't want to
++		 * do block allocation here.
++		 */
++		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
++						ext4_normal_get_block_write);
++		if (!ret) {
++			page_bufs = page_buffers(page);
++			/* check whether all are mapped and non delay */
++			if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
++						ext4_bh_unmapped_or_delay)) {
++				redirty_page_for_writepage(wbc, page);
++				unlock_page(page);
++				return 0;
++			}
++		} else {
++			/*
++			 * We can't do block allocation here
++			 * so just redity the page and unlock
++			 * and return
+ 			 */
+ 			redirty_page_for_writepage(wbc, page);
+ 			unlock_page(page);
+@@ -1688,9 +1738,11 @@ static int ext4_da_writepage(struct page *page,
+ 	}
+ 
+ 	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+-		ret = nobh_writepage(page, ext4_da_get_block_write, wbc);
++		ret = nobh_writepage(page, ext4_normal_get_block_write, wbc);
+ 	else
+-		ret = block_write_full_page(page, ext4_da_get_block_write, wbc);
++		ret = block_write_full_page(page,
++						ext4_normal_get_block_write,
++						wbc);
+ 
+ 	return ret;
+ }
+@@ -2031,12 +2083,14 @@ static int __ext4_normal_writepage(struct page *page,
+ 	struct inode *inode = page->mapping->host;
+ 
+ 	if (test_opt(inode->i_sb, NOBH))
+-		return nobh_writepage(page, ext4_get_block, wbc);
++		return nobh_writepage(page,
++					ext4_normal_get_block_write, wbc);
+ 	else
+-		return block_write_full_page(page, ext4_get_block, wbc);
++		return block_write_full_page(page,
++						ext4_normal_get_block_write,
++						wbc);
+ }
+ 
+-
+ static int ext4_normal_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+@@ -2045,13 +2099,24 @@ static int ext4_normal_writepage(struct page *page,
+ 	loff_t len;
+ 
+ 	J_ASSERT(PageLocked(page));
+-	J_ASSERT(page_has_buffers(page));
+ 	if (page->index == size >> PAGE_CACHE_SHIFT)
+ 		len = size & ~PAGE_CACHE_MASK;
+ 	else
+ 		len = PAGE_CACHE_SIZE;
+-	BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+-				 ext4_bh_unmapped_or_delay));
++
++	if (page_has_buffers(page)) {
++		/* if page has buffers it should all be mapped
++		 * and allocated. If there are not buffers attached
++		 * to the page we know the page is dirty but it lost
++		 * buffers. That means that at some moment in time
++		 * after write_begin() / write_end() has been called
++		 * all buffers have been clean and thus they must have been
++		 * written at least once. So they are all mapped and we can
++		 * happily proceed with mapping them and writing the page.
++		 */
++		BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
++					ext4_bh_unmapped_or_delay));
++	}
+ 
+ 	if (!ext4_journal_current_handle())
+ 		return __ext4_normal_writepage(page, wbc);
+@@ -2071,7 +2136,8 @@ static int __ext4_journalled_writepage(struct page *page,
+ 	int ret = 0;
+ 	int err;
+ 
+-	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE, ext4_get_block);
++	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
++					ext4_normal_get_block_write);
+ 	if (ret != 0)
+ 		goto out_unlock;
+ 
+@@ -2118,13 +2184,24 @@ static int ext4_journalled_writepage(struct page *page,
+ 	loff_t len;
+ 
+ 	J_ASSERT(PageLocked(page));
+-	J_ASSERT(page_has_buffers(page));
+ 	if (page->index == size >> PAGE_CACHE_SHIFT)
+ 		len = size & ~PAGE_CACHE_MASK;
+ 	else
+ 		len = PAGE_CACHE_SIZE;
+-	BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+-				 ext4_bh_unmapped_or_delay));
++
++	if (page_has_buffers(page)) {
++		/* if page has buffers it should all be mapped
++		 * and allocated. If there are not buffers attached
++		 * to the page we know the page is dirty but it lost
++		 * buffers. That means that at some moment in time
++		 * after write_begin() / write_end() has been called
++		 * all buffers have been clean and thus they must have been
++		 * written at least once. So they are all mapped and we can
++		 * happily proceed with mapping them and writing the page.
++		 */
++		BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
++					ext4_bh_unmapped_or_delay));
++	}
+ 
+ 	if (ext4_journal_current_handle())
+ 		goto no_write;
+@@ -2142,7 +2219,9 @@ static int ext4_journalled_writepage(struct page *page,
+ 		 * really know unless we go poke around in the buffer_heads.
+ 		 * But block_write_full_page will do the right thing.
+ 		 */
+-		return block_write_full_page(page, ext4_get_block, wbc);
++		return block_write_full_page(page,
++						ext4_normal_get_block_write,
++						wbc);
+ 	}
+ no_write:
+ 	redirty_page_for_writepage(wbc, page);
 -- 
-Hidehiro Kawai
-Hitachi, Systems Development Laboratory
-Linux Technology Center
+1.5.6.1.102.g8e69d.dirty
 
