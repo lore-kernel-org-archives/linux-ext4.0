@@ -1,121 +1,58 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH updated] ext4: Handle page without buffers in
-	ext4_*_writepage()
-Date: Tue, 01 Jul 2008 15:56:12 -0700
-Message-ID: <1214952972.6940.31.camel@mingming-laptop>
-References: <1214820374-5464-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: delalloc filesystem corruption
+Date: Tue, 01 Jul 2008 16:00:35 -0700
+Message-ID: <1214953235.6940.37.camel@mingming-laptop>
+References: <3.0.6.32.20080701000046.025249e0@pop.west.cox.net>
+	 <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
+	 <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net>
+	 <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net>
+	 <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
+	 <3.0.6.32.20080701000046.025249e0@pop.west.cox.net>
+	 <3.0.6.32.20080701105417.01ce4958@pop.west.cox.net>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, sandeen@redhat.com, jack@suse.cz,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Theodore Tso <tytso@mit.edu>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Gary Hawco <ghawco@cox.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:44275 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754944AbYGAW4P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jul 2008 18:56:15 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e33.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m61MuE7P008886
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Jul 2008 18:56:14 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m61MuDNg166520
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Jul 2008 16:56:13 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m61MuCIK030270
-	for <linux-ext4@vger.kernel.org>; Tue, 1 Jul 2008 16:56:13 -0600
-In-Reply-To: <1214820374-5464-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:33282 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758331AbYGAXAq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 1 Jul 2008 19:00:46 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m61N0gMq017192
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Jul 2008 19:00:42 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m61N0aV7226146
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Jul 2008 19:00:36 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m61N0ZsT015622
+	for <linux-ext4@vger.kernel.org>; Tue, 1 Jul 2008 19:00:36 -0400
+In-Reply-To: <3.0.6.32.20080701105417.01ce4958@pop.west.cox.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-On Mon, 2008-06-30 at 15:36 +0530, Aneesh Kumar K.V wrote:
-> From: Aneesh Kumar <aneesh.kumar@linux.vnet.ibm.com>
+On Tue, 2008-07-01 at 10:54 +0000, Gary Hawco wrote:
+> Ted,
 > 
-> It can happen that buffers are removed from the page before it gets
-> marked dirty and then is passed to writepage(). In writepage()
-> we just initialize the buffers and check whether they are mapped and non
-> delay. If they are mapped and non delay we write the page. Otherwise we
-> mark then dirty. With this change we don't do block allocation at all in
-> ext4_*_write_page.
+> Thanks for your quick reply.  With the newest rc8-based snapshots I am no
+> longer getting segfaults, unless you wanted me to roll back to the
+> rc6-based snapshots to reproduce the segfaults.
 > 
-> writepage() get called under many condition and with a locking order
-> of journal_start -> lock_page we shouldnot try to allocate blocks in
-> writepage() which get called after taking page lock. writepage can get
-> called via shrink_page_list even with a journal handle which was created
-> for doing inode update. For example when doing ext4_da_write_begin we
-> create a journal handle with credit 1 expecting a i_disksize update for
-> the inode. But ext4_da_write_begin can cause shrink_page_list via
-> _grab_page_cache. So having a valid handle via ext4_journal_current_handle
-> is not a guarantee that we can use the handle for block allocation in
-> writepage. We should not be using credits which are taken for other updates.
-> That would result in we running out of credits when we update inodes.
+> Per your latest request I disabled delalloc, and voila, no more data
+> corruption! Then I enabled delalloc and disabled mballoc and file
+> corruption to /lib/rc/init.d/nettree returned. So delalloc is the culprit.
 > 
+> I hope this will help figure this out.
 > 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/inode.c |  169 ++++++++++++++++++++++++++++++++++++++++---------------
->  1 files changed, 124 insertions(+), 45 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index cd5c165..18af94a 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1591,11 +1591,15 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
->  	handle_t *handle = NULL;
-> 
->  	handle = ext4_journal_current_handle();
-> -	BUG_ON(handle == NULL);
-> -	BUG_ON(create == 0);
-> -
-> -	ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
-> +	if (!handle) {
-> +		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
-> +				   bh_result, 0, 0, 0);
-> +		BUG_ON(!ret);
-> +	} else {
-> +		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
->  				   bh_result, create, 0, EXT4_DELALLOC_RSVED);
-> +	}
-> +
->  	if (ret > 0) {
->  		bh_result->b_size = (ret << inode->i_blkbits);
-> 
-> @@ -1633,15 +1637,37 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
-> 
->  static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
->  {
-> -	return !buffer_mapped(bh) || buffer_delay(bh);
-> +	/*
-> +	 * unmapped buffer is possible for holes.
-> +	 * delay buffer is possible with delayed allocation
-> +	 */
-> +	return ((!buffer_mapped(bh) || buffer_delay(bh)) && buffer_dirty(bh));
-> +}
-> +
 
-Could you clarify why we need to add buffer_dirty check here. the
-comment about "unmapped buffer is possible for holes" seems trying to
-clarifying that, but it doesn't help me much:)
+Could you try the following patch? It fixes the problem of update
+on-disk size too early without block allocation, the problem is
+introduced unintentionally by another bug fix patch added to the patch
+queue yesterday.
 
-
-But the problem of above change, which adding buffer_dirty(bh) check
-here, will cause i_disksize updated too earliy in ext4_da_write_end(), 
-
-Ext4_da_write_end() uses ext4_bh_unmapped_or_delay() function to check
-if it extend the file size without need for allocation. But at that time
-the buffer has not being dirtied yet (done in code later in
-block_commit_write()), so it always return true and update i_disksize
-(before block allocation). we could fix that ext4_da_write_end() to not
-use this helper function, also there is another issue :
-
-The i_disksize is updated at ext4_da_write_end() time if
-writes to the end of file, and the buffers are all have
-blocks allocated. But if the page had one buffer marked
-as buffer_delay, and the write is at EOF and on a buffer has block
-already allocated, we certainly need to extend the i_disksize.
-
-patch below...
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
@@ -182,9 +119,11 @@ Index: linux-2.6.26-rc8/fs/ext4/inode.c
 
 
 
-
-
-
-
-
+> Thanks again,
+> Gary
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
