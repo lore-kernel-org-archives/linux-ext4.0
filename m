@@ -1,76 +1,57 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: [PATCH, v5] ext3: validate directory entry data before use
-Date: Mon, 30 Jun 2008 23:00:18 +0100
-Message-ID: <1214863218-14828-1-git-send-email-duaneg@dghda.com>
-References: <20080630143427.GA5473@dastardly>
-Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-	sct@redhat.com, adilger@clusterfs.com,
-	Sami Liedes <sliedes@cc.hut.fi>, jochen.voss@googlemail.com,
-	Jan Kara <jack@suse.cz>, Duane Griffin <duaneg@dghda.com>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Segmentation Faults with both 062608 snapshots
+Date: Mon, 30 Jun 2008 22:32:53 -0400
+Message-ID: <20080701023252.GA28143@mit.edu>
+References: <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net> <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net> <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Gary Hawco <ghawco@cox.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:3880 "EHLO kumera.dghda.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763702AbYF3WAX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Jun 2008 18:00:23 -0400
-In-Reply-To: <20080630143427.GA5473@dastardly>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:40637 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752966AbYGACdF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Jun 2008 22:33:05 -0400
+Content-Disposition: inline
+In-Reply-To: <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext3_dx_find_entry uses ext3_next_entry without verifying that the entry is
-valid. If its rec_len == 0 this causes an infinite loop. Refactor the loop
-to check the validity of entries before checking whether they match and
-moving onto the next one.
+On Thu, Jun 26, 2008 at 10:12:27PM +0000, Gary Hawco wrote:
+> More on my segmentation problems. Just looking at the end of each kernel
+> message, they always end with:
+> EIP [XXXXX]  jbd2_journal_data_metadata-XXX
 
-There are other uses of ext3_next_entry in this file which also look
-problematic. They should be reviewed and fixed if/when we have a test-case
-that triggers them.
+Hmm... any chance you can take a picture of the crash message with a
+digital camera and post the jpg?  (I'm assuming you haven't been able
+to capture the OOPS stack trace in /var/log/kern.log or
+/var/log/messages or some such.)
 
-This patch fixes the first case (image hdb.25.softlockup.gz) reported in
-http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+> This occurs when I try to copy data from my main partition to a backup
+> partition or make a tarball.
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
---
+I am currently using the ext4 patch queue comit id #555132eb from
+2008-06-30 13:04:35 -0400, and I can't reproduce it.  I just tried
+backing up by isync mail directory to a tar.gz file and then restored
+it, with no problems.  Both the source and backup partition are ext4
+filesystems with flex_bg, meta_bg, and uninit_bg, located on separate
+LVM logical volumes on my laptop.[1]
 
-This is version 5. It is a safer minimal version of the patch that only
-fixes the original reported problem. Other potentially dangerous uses of
-ext3_next_entry are left untouched until/unless we get test-cases for them.
+[1]  http://thunk.org/tytso/blog/2008/06/30/ext4-is-now-the-primary-filesystem-on-my-laptop/
 
----
+The partition is mounted using mount options:
 
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index 0b8cf80..8db2c38 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -991,19 +991,21 @@ static struct buffer_head * ext3_dx_find_entry(struct dentry *dentry,
- 		de = (struct ext3_dir_entry_2 *) bh->b_data;
- 		top = (struct ext3_dir_entry_2 *) ((char *) de + sb->s_blocksize -
- 				       EXT3_DIR_REC_LEN(0));
--		for (; de < top; de = ext3_next_entry(de))
--		if (ext3_match (namelen, name, de)) {
--			if (!ext3_check_dir_entry("ext3_find_entry",
--						  dir, de, bh,
--				  (block<<EXT3_BLOCK_SIZE_BITS(sb))
--					  +((char *)de - bh->b_data))) {
--				brelse (bh);
-+		for (; de < top; de = ext3_next_entry(de)) {
-+			int off = (block << EXT3_BLOCK_SIZE_BITS(sb))
-+				  + ((char *) de - bh->b_data);
-+
-+			if (!ext3_check_dir_entry(__func__, dir, de, bh, off)) {
-+				brelse(bh);
- 				*err = ERR_BAD_DX_DIR;
- 				goto errout;
- 			}
--			*res_dir = de;
--			dx_release (frames);
--			return bh;
-+
-+			if (ext3_match(namelen, name, de)) {
-+				*res_dir = de;
-+				dx_release(frames);
-+				return bh;
-+			}
- 		}
- 		brelse (bh);
- 		/* Check to see if we should continue to search */
+    noatime,errors=remount-ro,barrier=1,data=ordered
+
+according to /proc/mounts.
+
+The big difference between your mount options and mine is that I dont
+have journal_async_commit as a mount option.  Which would be largely
+moot for me since LVM doesn't support barrier operations. :-(  :-(  :-(
+
+You seem to be able to reproduce the problem at will.  Could you try
+removing te journal_sync_commit option and see if it makes the problem
+go away?  That would be very interesting if it were the case...
+
+   	       	     	     		       - Ted
