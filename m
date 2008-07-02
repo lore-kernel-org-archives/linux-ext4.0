@@ -1,68 +1,103 @@
-From: Gary Hawco <ghawco@cox.net>
-Subject: Gentoo with ext4-patch-queue snapshots
-Date: Tue, 01 Jul 2008 17:50:11
-Message-ID: <3.0.6.32.20080701175011.02437350@pop.west.cox.net>
-References: <3.0.6.32.20080701105417.01ce4958@pop.west.cox.net>
- <3.0.6.32.20080701000046.025249e0@pop.west.cox.net>
- <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
- <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net>
- <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net>
- <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
- <3.0.6.32.20080701000046.025249e0@pop.west.cox.net>
- <3.0.6.32.20080701105417.01ce4958@pop.west.cox.net> <1214953235.6940.37.camel@mingming-laptop>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-To: Mingming Cao <cmm@us.ibm.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Theodore Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fed1rmmtao105.cox.net ([68.230.241.41]:46163 "EHLO
-	fed1rmmtao105.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758684AbYGBAuM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 1 Jul 2008 20:50:12 -0400
-In-Reply-To: <1214953235.6940.37.camel@mingming-laptop>
-References: <3.0.6.32.20080701105417.01ce4958@pop.west.cox.net>
- <3.0.6.32.20080701000046.025249e0@pop.west.cox.net>
- <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
- <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net>
- <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net>
- <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
- <3.0.6.32.20080701000046.025249e0@pop.west.cox.net>
- <3.0.6.32.20080701105417.01ce4958@pop.west.cox.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: + ext3-validate-directory-entry-data-before-use-v5.patch added to -mm tree
+Date: Tue, 01 Jul 2008 20:37:17 -0700
+Message-ID: <200807020337.m623bHoF029491@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: duaneg@dghda.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Mingming,
 
-Can you post that patch somewhere for download? I access my email using
-Windows Vista, not in linux, so it would be very laborious to hand copy
-this patch and recreate it in linux.
+The patch titled
+     ext3: validate directory entry data before use
+has been added to the -mm tree.  Its filename is
+     ext3-validate-directory-entry-data-before-use-v5.patch
 
-Updated the 2.6.26-rc8 kernel with the latest snapshot from today at
-1833hrs GMT. All hell broke loose in Gentoo, The new kernel wouldn't allow
-the system to remount read/write on boot.  But it worked fine in Slackware.
-Gentoo with the experimental openrc-0.2.5 and baselayout2 apparently does
-not like ext4.
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-And for clarification, the patch you sent me is not yet in the queue?
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-So to summarize my recent (as of the last seven days of snapshots) saga
-with ext4-queue-patch in Gentoo
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
-Through 062508/0019hrs no problems (although I do not believe delalloc was
-enabled)
->From 062608/0042 - 062708/2353hrs had segfaulting when copying and tarring
-small files. No other detectable issues.
->From 063008/1704 - 063008/2219hrs --no segfaulting but data corruption in
-one initiation file causing network interfaces to have to be manually
-activated. No data corruption if delalloc disabled
-latest snapshot 070108/1833hrs --system unable to be remounted read/write
-after fsck check.  Manually booted to livecd with e2fsprogs-1.41WIP
-(17-June-2008). Efsck shows no filesystem problems.
-Rolling back to 063008/2219 snapshot fixes boot problems. No segfaulting.
-No data corruption IF delalloc disabled.
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-Thanks,
-Gary
+------------------------------------------------------
+Subject: ext3: validate directory entry data before use
+From: "Duane Griffin" <duaneg@dghda.com>
+
+ext3_dx_find_entry uses ext3_next_entry without verifying that the entry
+is valid.  If its rec_len == 0 this causes an infinite loop.  Refactor the
+loop to check the validity of entries before checking whether they match
+and moving onto the next one.
+
+There are other uses of ext3_next_entry in this file which also look
+problematic.  They should be reviewed and fixed if/when we have a
+test-case that triggers them.
+
+This patch fixes the first case (image hdb.25.softlockup.gz) reported in
+http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/namei.c |   22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
+
+diff -puN fs/ext3/namei.c~ext3-validate-directory-entry-data-before-use-v5 fs/ext3/namei.c
+--- a/fs/ext3/namei.c~ext3-validate-directory-entry-data-before-use-v5
++++ a/fs/ext3/namei.c
+@@ -991,19 +991,21 @@ static struct buffer_head * ext3_dx_find
+ 		de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 		top = (struct ext3_dir_entry_2 *) ((char *) de + sb->s_blocksize -
+ 				       EXT3_DIR_REC_LEN(0));
+-		for (; de < top; de = ext3_next_entry(de))
+-		if (ext3_match (namelen, name, de)) {
+-			if (!ext3_check_dir_entry("ext3_find_entry",
+-						  dir, de, bh,
+-				  (block<<EXT3_BLOCK_SIZE_BITS(sb))
+-					  +((char *)de - bh->b_data))) {
+-				brelse (bh);
++		for (; de < top; de = ext3_next_entry(de)) {
++			int off = (block << EXT3_BLOCK_SIZE_BITS(sb))
++				  + ((char *) de - bh->b_data);
++
++			if (!ext3_check_dir_entry(__func__, dir, de, bh, off)) {
++				brelse(bh);
+ 				*err = ERR_BAD_DX_DIR;
+ 				goto errout;
+ 			}
+-			*res_dir = de;
+-			dx_release (frames);
+-			return bh;
++
++			if (ext3_match(namelen, name, de)) {
++				*res_dir = de;
++				dx_release(frames);
++				return bh;
++			}
+ 		}
+ 		brelse (bh);
+ 		/* Check to see if we should continue to search */
+_
+
+Patches currently in -mm which might be from duaneg@dghda.com are
+
+jbd-replace-potentially-false-assertion-with-if-block.patch
+jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch
+jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch
+ext3-handle-corrupted-orphan-list-at-mount.patch
+ext3-handle-corrupted-orphan-list-at-mount-cleanup.patch
+ext3-handle-corrupted-orphan-list-at-mount-fix.patch
+ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix.patch
+ext3-handle-deleting-corrupted-indirect-blocks.patch
+ext3-validate-directory-entry-data-before-use-v5.patch
 
