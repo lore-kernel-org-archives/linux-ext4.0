@@ -1,179 +1,177 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Gentoo with ext4-patch-queue snapshots
-Date: Wed, 02 Jul 2008 10:19:54 -0700
-Message-ID: <1215019194.6788.10.camel@mingming-laptop>
-References: <3.0.6.32.20080701105417.01ce4958@pop.west.cox.net>
-	 <3.0.6.32.20080701000046.025249e0@pop.west.cox.net>
-	 <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
-	 <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net>
-	 <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net>
-	 <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
-	 <3.0.6.32.20080701000046.025249e0@pop.west.cox.net>
-	 <3.0.6.32.20080701105417.01ce4958@pop.west.cox.net>
-	 <3.0.6.32.20080701175011.02437350@pop.west.cox.net>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [PATCH] Ext4 Documentation updates.
+Date: Wed, 02 Jul 2008 12:22:00 -0500
+Message-ID: <20080702172200.14990.37737.stgit@rx8>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-ZUPYj5jLx1kBQrrAWsi4"
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Theodore Tso <tytso@mit.edu>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Gary Hawco <ghawco@cox.net>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e32.co.us.ibm.com ([32.97.110.150]:58870 "EHLO
-	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752057AbYGBRT6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 2 Jul 2008 13:19:58 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e32.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m62HEtW4016592
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 13:14:55 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m62HJuwL092214
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 11:19:56 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m62HJt2I001790
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 11:19:56 -0600
-In-Reply-To: <3.0.6.32.20080701175011.02437350@pop.west.cox.net>
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:56256 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752115AbYGBRWC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 2 Jul 2008 13:22:02 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m62HM1Yf025746
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 13:22:01 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m62HM1EN172622
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 13:22:01 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m62HM1tE027817
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 13:22:01 -0400
+Received: from [127.0.1.1] (rx8.austin.ibm.com [9.41.41.30])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m62HM1IU027759
+	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 13:22:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Jose R. Santos <jrs@us.ibm.com>
 
---=-ZUPYj5jLx1kBQrrAWsi4
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Ext4 Documentation updates.
 
+Some of the information in Documentation/filesystems/ext4.txt is out
+of date and in need of an update.
 
-On Tue, 2008-07-01 at 17:50 +0000, Gary Hawco wrote:
-> Mingming,
-> 
-> Can you post that patch somewhere for download? I access my email using
-> Windows Vista, not in linux, so it would be very laborious to hand copy
-> this patch and recreate it in linux.
-> 
-Patch attached. 
+Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
+--
 
-> Updated the 2.6.26-rc8 kernel with the latest snapshot from today at
-> 1833hrs GMT. All hell broke loose in Gentoo, The new kernel wouldn't allow
-> the system to remount read/write on boot.  But it worked fine in Slackware.
-> Gentoo with the experimental openrc-0.2.5 and baselayout2 apparently does
-> not like ext4.
-> 
+ Documentation/filesystems/ext4.txt |   83 +++++++++++++++++++++---------------
+ 1 files changed, 49 insertions(+), 34 deletions(-)
 
-The only commit made yesterday was add the 
-Add ext4-fix-online-resize-with-mballoc.patch
-
-It does not seem to impact the boot.
-
-Was the filesystem corrupted before you reboot with new kernel? If so
-the next reboot will probably refuse to remount it as it need fsck.
-
-
-> And for clarification, the patch you sent me is not yet in the queue?
-> 
-Just pushed into the queue today. Please check.
-
-> So to summarize my recent (as of the last seven days of snapshots) saga
-> with ext4-queue-patch in Gentoo
-> 
-> Through 062508/0019hrs no problems (although I do not believe delalloc was
-> enabled)
-> From 062608/0042 - 062708/2353hrs had segfaulting when copying and tarring
-> small files. No other detectable issues.
-> From 063008/1704 - 063008/2219hrs --no segfaulting but data corruption in
-> one initiation file causing network interfaces to have to be manually
-> activated. No data corruption if delalloc disabled
-> latest snapshot 070108/1833hrs --system unable to be remounted read/write
-> after fsck check.  Manually booted to livecd with e2fsprogs-1.41WIP
-> (17-June-2008). Efsck shows no filesystem problems.
-> Rolling back to 063008/2219 snapshot fixes boot problems. No segfaulting.
-> No data corruption IF delalloc disabled.
-> 
-> Thanks,
-> Gary
-> 
-
---=-ZUPYj5jLx1kBQrrAWsi4
-Content-Disposition: attachment; filename=delalloc_i_disksize_update-fix.patch
-Content-Type: text/x-patch; name=delalloc_i_disksize_update-fix.patch; charset=utf-8
-Content-Transfer-Encoding: 7bit
-
-Ext4: fix delalloc i_disksize early update issue
-
-From: Mingming Cao <cmm@us.ibm.com>
-
-Ext4_da_write_end() uses ext4_bh_unmapped_or_delay() function to check
-if it extend the file size without need for allocation. But at that time
-the buffer has not being dirtied yet (done in code later in
-block_commit_write()), so it always return true and update i_disksize
-(before block allocation). we could fix that ext4_da_write_end() to not
-use this helper function.
-
-This also fixed another issue:
-The i_disksize is updated at ext4_da_write_end() time if
-writes to the end of file, and the buffers are all have
-blocks allocated. But if the page had one buffer marked
-as buffer_delay, and the write is at EOF and on a buffer has block
-already allocated, we certainly need to extend the i_disksize.
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
- fs/ext4/inode.c |   32 ++++++++++++++++++++++++++++++--
- 1 file changed, 30 insertions(+), 2 deletions(-)
-
-Index: linux-2.6.26-rc8/fs/ext4/inode.c
-===================================================================
---- linux-2.6.26-rc8.orig/fs/ext4/inode.c	2008-07-02 09:53:42.000000000 -0700
-+++ linux-2.6.26-rc8/fs/ext4/inode.c	2008-07-02 10:01:09.000000000 -0700
-@@ -1891,6 +1891,30 @@ out:
- 	return ret;
- }
+diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+index 0c5086d..b0c3bb2 100644
+--- a/Documentation/filesystems/ext4.txt
++++ b/Documentation/filesystems/ext4.txt
+@@ -15,23 +15,32 @@ Mailing list: linux-ext4@vger.kernel.org
  
-+/*
-+ * Check if we should update i_disksize
-+ * when write to the end of file but not require block allocation
-+ */
-+static int ext4_da_should_update_i_disksize(struct page *page,
-+					 unsigned long offset)
-+{
-+	struct buffer_head *head, *bh;
-+	unsigned int curr_off = 0;
-+
-+	head = page_buffers(page);
-+	bh = head;
-+	do {
-+		unsigned int next_off = curr_off + bh->b_size;
-+
-+		if (curr_off >= offset &&
-+		   (!buffer_mapped(bh) || (buffer_delay(bh))))
-+			return 0;
-+		curr_off = next_off;
-+	} while ((bh = bh->b_this_page) != head);
-+
-+	return 1;
-+}
-+
- static int ext4_da_write_end(struct file *file,
- 				struct address_space *mapping,
- 				loff_t pos, unsigned len, unsigned copied,
-@@ -1900,6 +1924,10 @@ static int ext4_da_write_end(struct file
- 	int ret = 0, ret2;
- 	handle_t *handle = ext4_journal_current_handle();
- 	loff_t new_i_size;
-+	unsigned long start, end;
-+
-+	start = pos & (PAGE_CACHE_SIZE - 1);
-+	end = start + copied;
+   - Grab updated e2fsprogs from
+     ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs-interim/
+-    This is a patchset on top of e2fsprogs-1.39, which can be found at
+-    ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/e2fsprogs/
  
- 	/*
- 	 * generic_write_end() will run mark_inode_dirty() if i_size
-@@ -1909,8 +1937,7 @@ static int ext4_da_write_end(struct file
+-  - It's still mke2fs -j /dev/hda1
++    or grab the latest git repository from:
++    git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
++    
++  - Create a new filesystem and set the "test_fs" extended option:
  
- 	new_i_size = pos + copied;
- 	if (new_i_size > EXT4_I(inode)->i_disksize)
--		if (!walk_page_buffers(NULL, page_buffers(page),
--				       0, len, NULL, ext4_bh_unmapped_or_delay)){
-+		if (ext4_da_should_update_i_disksize(page, end)) {
- 			/*
- 			 * Updating i_disksize when extending file without
- 			 * need block allocation
-
---=-ZUPYj5jLx1kBQrrAWsi4--
+-  - mount /dev/hda1 /wherever -t ext4dev
++    	# mke2fs -j -E test_fs /dev/hda1
+ 
+-  - To enable extents,
++    Or set the test_fs flag on an existing ext3 filesystem:
+ 
+-	mount /dev/hda1 /wherever -t ext4dev -o extents
++        # debugfs -w /dev/sda5
++	debugfs 1.41-WIP (17-Jun-2008)
++	debugfs:  set_super_value s_flags 4
++	debugfs:  quit 
++
++  - Mounting:
++
++	# mount /dev/hda1 /wherever -t ext4dev
++
++  - To disable extents:
++
++	# mount /dev/hda1 /wherever -t ext4dev -o noextents
+ 
+   - The filesystem is compatible with the ext3 driver until you add a file
+     which has extents (ie: `mount -o extents', then create a file).
+ 
+-    NOTE: The "extents" mount flag is temporary.  It will soon go away and
+-    extents will be enabled by the "-o extents" flag to mke2fs or tune2fs
+-
+   - When comparing performance with other filesystems, remember that
+     ext3/4 by default offers higher data integrity guarantees than most.  So
+     when comparing with a metadata-only journalling filesystem, use `mount -o
+@@ -44,41 +53,46 @@ Mailing list: linux-ext4@vger.kernel.org
+ 
+ 2.1 Currently available
+ 
+-* ability to use filesystems > 16TB
++* ability to use filesystems > 16TB (e2fsprogs support not available yet)
+ * extent format reduces metadata overhead (RAM, IO for access, transactions)
+ * extent format more robust in face of on-disk corruption due to magics,
+ * internal redunancy in tree
++* improved file allocation (multi-block alloc, delayed alloc)
++* fix 32000 subdirectory limit
++* nsec timestamps for mtime, atime, ctime, create time
++* inode version field on disk (NFSv4, Lustre)
++* reduced e2fsck time via uninit_bg feature
++* journal checksumming for robustness, performance
++* persistent file preallocation (e.g for streaming media, databases)
++* ability to pack bitmaps and inode tables into larger virtual groups via the
++  flex_bg feature
++* large file support
+ 
+-2.1 Previously available, soon to be enabled by default by "mkefs.ext4":
++2.2 Previously available, soon to be enabled by default by "mkefs.ext4":
+ 
+ * dir_index and resize inode will be on by default
+ * large inodes will be used by default for fast EAs, nsec timestamps, etc
+ 
+-2.2 Candidate features for future inclusion
++2.3 Candidate features for future inclusion
+ 
+-There are several under discussion, whether they all make it in is
+-partly a function of how much time everyone has to work on them:
++* Online defrag (patches available but not well tested)
++* Inode allocation using large virtual block groups via flex_bg (patch
++  available; fragmentation issues due to prolong fs use still unknown)
++* reduced mke2fs time via uninit_bg feature (capability to do this is
++  available in e2fsprogs but a kernel thread to do lazy zeroing of unused
++  inode table blocks after filesystem is first mounted is required for
++  safety)
+ 
+-* improved file allocation (multi-block alloc, delayed alloc; basically done)
+-* fix 32000 subdirectory limit (patch exists, needs some e2fsck work)
+-* nsec timestamps for mtime, atime, ctime, create time (patch exists,
+-  needs some e2fsck work)
+-* inode version field on disk (NFSv4, Lustre; prototype exists)
+-* reduced mke2fs/e2fsck time via uninitialized groups (prototype exists)
+-* journal checksumming for robustness, performance (prototype exists)
+-* persistent file preallocation (e.g for streaming media, databases)
++There are several others under discussion, whether they all make it in is
++partly a function of how much time everyone has to work on them. Features like
++metadata checksumming have been discussed and planned for a bit but no patches
++exist yet so I'm not sure they're in the near-term roadmap.
+ 
+-Features like metadata checksumming have been discussed and planned for
+-a bit but no patches exist yet so I'm not sure they're in the near-term
+-roadmap.
++The big performance win will come with mballoc, delalloc and flex_bg
++grouping of bitmaps and inode tables.  Some test results available here:
+ 
+-The big performance win will come with mballoc and delalloc.  CFS has
+-been using mballoc for a few years already with Lustre, and IBM + Bull
+-did a lot of benchmarking on it.  The reason it isn't in the first set of
+-patches is partly a manageability issue, and partly because it doesn't
+-directly affect the on-disk format (outside of much better allocation)
+-so it isn't critical to get into the first round of changes.  I believe
+-Alex is working on a new set of patches right now.
++ - http://www.bullopensource.org/ext4/20080530/ffsb-write-2.6.26-rc2.html
++ - http://www.bullopensource.org/ext4/20080530/ffsb-readwrite-2.6.26-rc2.html
+ 
+ 3. Options
+ ==========
+@@ -224,7 +238,7 @@ stripe=n		Number of filesystem blocks that mballoc will try
+ 			disks *  RAID chunk size in file system blocks.
+ 
+ Data Mode
+----------
++=========
+ There are 3 different data modes:
+ 
+ * writeback mode
+@@ -256,7 +270,8 @@ kernel source:	<file:fs/ext4/>
+ 		<file:fs/jbd2/>
+ 
+ programs:	http://e2fsprogs.sourceforge.net/
+-		http://ext2resize.sourceforge.net
+ 
+ useful links:	http://fedoraproject.org/wiki/ext3-devel
+ 		http://www.bullopensource.org/ext4/
++		http://ext4.wiki.kernel.org/index.php/Main_Page
++		http://fedoraproject.org/wiki/Features/Ext4
 
