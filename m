@@ -1,83 +1,75 @@
-From: Celine Bourde <celine.bourde@bull.net>
-Subject: [PATCH][e2fsprogs][mke2fs] fix FLEX_BG offset
-Date: Thu, 03 Jul 2008 10:21:02 +0200
-Message-ID: <486C8BEE.5030200@bull.net>
+From: Alasdair G Kergon <agk@redhat.com>
+Subject: Re: Re: [PATCH 3/3] Add timeout feature
+Date: Thu, 3 Jul 2008 13:47:10 +0100
+Message-ID: <20080703124709.GI22522@agk.fab.redhat.com>
+References: <20080630212450t-sato@mail.jp.nec.com>
+	<20080701081026.GB16691@infradead.org>
+	<20080701105251.GC22522@agk.fab.redhat.com>
+	<9942A69CB65D4A41B39F36AF8EEF6F22@nsl.ad.nec.co.jp>
+Reply-To: device-mapper development <dm-devel@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------010005050104000007010305"
-Cc: SOLOFO RAMANGALAHY <Solofo.Ramangalahy@bull.net>,
-	Jean-Pierre Dion <jean-pierre.dion@bull.net>
-To: linux-ext4@vger.kernel.org, "Jose R. Santos" <jrs@us.ibm.com>,
-	cmm@us.ibm.com,
-	=?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:36380 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753854AbYGCMXP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2008 08:23:15 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: axboe@kernel.dk, mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
+	dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
+	linux-fsdevel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Takashi Sato <t-sato@yk.jp.nec.com>
+Return-path: <dm-devel-bounces@redhat.com>
+Content-Disposition: inline
+In-Reply-To: <9942A69CB65D4A41B39F36AF8EEF6F22@nsl.ad.nec.co.jp>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/dm-devel>
+List-Post: <mailto:dm-devel@redhat.com>
+List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=subscribe>
+Sender: dm-devel-bounces@redhat.com
+Errors-To: dm-devel-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-This is a multi-part message in MIME format.
---------------010005050104000007010305
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Thu, Jul 03, 2008 at 09:11:05PM +0900, Takashi Sato wrote:
+> If the freezer accesses the frozen filesystem and causes a deadlock,
+> the above ideas can't solve it
 
-This patch resolves the offset problem of the flex_bg
-option when you use mke2fs tool.
+But you could also say that if the 'freezer' process accesses the frozen
+filesystem and deadlocks then that's just a bug and that userspace code
+should be fixed and there's no need to introduce the complexity of a
+timeout parameter.
 
-For example, if you type mkfs.ext4 -I256 -O flex_bg -G32 -E test_fs <device>
-and look dumpe2fs <device> result you will see an offset problem.
-
-Group 0: (Blocks 0-32767)
-Primary superblock at 0, Group descriptors at 1-5
-Reserved GDT blocks at 6-1024
-Block bitmap at 1025 (+1025), Inode bitmap at 1058 (+1058)
-Inode table at 1090-1601 (+1090)
-0 free blocks, 8181 free inodes, 2 directories
-Free blocks:
-Free inodes: 12-8192
-
-Inode bitmap must start at 1025 + 32 = 1057
-In all flexbg groups, the block between the last block bitmap and the 
-first inode
-bitmap (metatdata) is not used, which introduced a hole.
-
-This patch corrects it.
-You have to apply it on e2fsprogs (mke2fs 1.41-WIP (17-Jun-2008)) master 
-branch.
-
-Celine Bourde.
-
---------------010005050104000007010305
-Content-Type: text/x-patch;
- name="flexbg_offset.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="flexbg_offset.patch"
-
-Signed-off-by: Bourde Celine <celine.bourde@bull.net>
-
-alloc_tables.c |    8 +++++---
-1 file changed, 5 insertions(+), 3 deletions(-)
-
-diff -rpu a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
---- a/lib/ext2fs/alloc_tables.c	2008-07-01 16:11:49.000000000 +0200
-+++ b/lib/ext2fs/alloc_tables.c	2008-07-02 16:38:22.000000000 +0200
-@@ -71,9 +71,11 @@ static blk_t flexbg_offset(ext2_filsys f
- 				   &first_free))
- 		return first_free;
+> >Similarly if a device-mapper device is involved, how should the following
+> >sequence behave - A, B or C?
+> >
+> >1. dmsetup suspend (freezes)
+> >2. FIFREEZE
+> >3. FITHAW
+> >4. dmsetup resume (thaws)
+> [...]
+> >C:
+> > 1 succeeds, freezes
+> > 2 fails, remains frozen
+> > 3 fails (because device-mapper owns the freeze/thaw), remains frozen
+> > 4 succeeds, thaws
+> 
+> I think C is appropriate and the following change makes it possible.
+> How do you think?
  
--	if (ext2fs_get_free_blocks(fs, first_free + offset, last_blk, size,
--				   bmap, &first_free))
--		return first_free;
-+	if (offset)
-+		if (ext2fs_get_free_blocks(fs, first_free + offset - 1,
-+					   last_blk, size, bmap,
-+					   &first_free))
-+			return first_free;
- 
- 	return first_free;
- }
+The point I'm trying to make here is:
+  Under what real-world circumstances might multiple concurrent freezing
+  attempts occur, and which of A, B or C (or other variations) would be
+  the most appropriate way of handling such situations?
 
---------------010005050104000007010305--
+A common example is people running xfs_freeze followed by an lvm command
+which also attempts to freeze the filesystem.
+
+I can see a case for B or C, but personally I prefer A:
+
+> > 1 succeeds, freezes
+> > 2 succeeds, remains frozen
+> > 3 succeeds, remains frozen
+> > 4 succeeds, thaws
+
+Alasdair
+-- 
+agk@redhat.com
