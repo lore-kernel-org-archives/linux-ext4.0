@@ -1,87 +1,64 @@
-From: Valdis.Kletnieks@vt.edu
-Subject: Re: [PATCH, v5] ext3: validate directory entry data before use
-Date: Thu, 03 Jul 2008 03:51:49 -0400
-Message-ID: <42526.1215071509@turing-police.cc.vt.edu>
-References: <20080630143427.GA5473@dastardly>
-            <1214863218-14828-1-git-send-email-duaneg@dghda.com>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [PATCH][e2fsprogs][mke2fs] fix FLEX_BG offset
+Date: Thu, 3 Jul 2008 06:55:53 -0500
+Message-ID: <20080703065553.53c35979@gara>
+References: <486C8BEE.5030200@bull.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==_Exmh_1215071509_4193P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
-	Sami Liedes <sliedes@cc.hut.fi>, jochen.voss@googlemail.com,
-	Jan Kara <jack@suse.cz>
-To: Duane Griffin <duaneg@dghda.com>
+Cc: linux-ext4@vger.kernel.org, cmm@us.ibm.com,
+	=?UTF-8?B?RnLDqWTDqXJpYyBC?= =?UTF-8?B?b2jDqQ==?=
+	<frederic.bohe@bull.net>,
+	SOLOFO RAMANGALAHY <Solofo.Ramangalahy@bull.net>,
+	Jean-Pierre Dion <jean-pierre.dion@bull.net>
+To: Celine Bourde <celine.bourde@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from turing-police.cc.vt.edu ([128.173.14.107]:36782 "EHLO
-	turing-police.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S937032AbYGCHwm (ORCPT
-	<RFC822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2008 03:52:42 -0400
-In-Reply-To: Your message of "Mon, 30 Jun 2008 23:00:18 BST."
-             <1214863218-14828-1-git-send-email-duaneg@dghda.com>
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:33189 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753154AbYGCLzz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 3 Jul 2008 07:55:55 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m63BtrS0027812
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Jul 2008 07:55:53 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m63BtsqL210966
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Jul 2008 07:55:54 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m63Btrqv002386
+	for <linux-ext4@vger.kernel.org>; Thu, 3 Jul 2008 07:55:53 -0400
+In-Reply-To: <486C8BEE.5030200@bull.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---==_Exmh_1215071509_4193P
-Content-Type: text/plain; charset=us-ascii
+On Thu, 03 Jul 2008 10:21:02 +0200
+Celine Bourde <celine.bourde@bull.net> wrote:
 
-On Mon, 30 Jun 2008 23:00:18 BST, Duane Griffin said:
-> ext3_dx_find_entry uses ext3_next_entry without verifying that the entry is
-> valid. If its rec_len == 0 this causes an infinite loop. Refactor the loop
-> to check the validity of entries before checking whether they match and
-> moving onto the next one.
+> This patch resolves the offset problem of the flex_bg
+> option when you use mke2fs tool.
+> 
+> For example, if you type mkfs.ext4 -I256 -O flex_bg -G32 -E test_fs <device>
+> and look dumpe2fs <device> result you will see an offset problem.
+> 
+> Group 0: (Blocks 0-32767)
+> Primary superblock at 0, Group descriptors at 1-5
+> Reserved GDT blocks at 6-1024
+> Block bitmap at 1025 (+1025), Inode bitmap at 1058 (+1058)
+> Inode table at 1090-1601 (+1090)
+> 0 free blocks, 8181 free inodes, 2 directories
+> Free blocks:
+> Free inodes: 12-8192
+> 
+> Inode bitmap must start at 1025 + 32 = 1057
+> In all flexbg groups, the block between the last block bitmap and the 
+> first inode
+> bitmap (metatdata) is not used, which introduced a hole.
+> 
+> This patch corrects it.
+> You have to apply it on e2fsprogs (mke2fs 1.41-WIP (17-Jun-2008)) master 
+> branch.
+> 
+> Celine Bourde.
 
-This may or may not be related, but I've managed to hit another interesting
-piece of ext3 damage while running 26-rc8-mmotd-0701:
+Acked-by: Jose R. Santos <jrs@us.ibm.com>
 
-% /bin/ls -l /usr/share/man/man5 | grep lvm
-/bin/ls: cannot access /usr/share/man/man5/lvm.conf.5.gz: Stale NFS file handle
--????????? ? ?    ?        ?                ? lvm.conf.5.gz
-
-Yes, that *is* on an ext3 filesystem.
-
-debugfs on /usr/share is interesting:
-
-debugfs:  stat  /man/man5/lvm.conf.5.gz
-Inode: 59918   Type: regular    Mode:  0644   Flags: 0x0
-Generation: 4228691378    Version: 0x00000000
-User:     0   Group:     0   Size: 0
-File ACL: 239201    Directory ACL: 0
-Links: 0   Blockcount: 0
-Fragment:  Address: 0    Number: 0    Size: 0
-ctime: 0x486c6c0b -- Thu Jul  3 02:04:59 2008
-atime: 0x47efcad7 -- Sun Mar 30 13:16:07 2008
-mtime: 0x486c6c0b -- Thu Jul  3 02:04:59 2008
-dtime: 0x486c6c0b -- Thu Jul  3 02:04:59 2008
-BLOCKS:
-
-Zero links, even though man/man5 references it.  and the ctime/mtime/dtime
-are suspicious as well - that file belongs to an RPM that was last updated
-back on June 20, and there's no obvious culprit processes in lastcomm that
-were running at 2:04AM, and none of the current ones look obvious either.
-
-(system was booted at 00:21, so the failure happened about 1 hours 40 mins
-after the current kernel launched).
-
-Nothing in dmesg from around 2:04AM, and nothing around when the /bin/ls is run.
-
-An 'ls -lR /usr/share' shows that the *other* 127,619 files on the filesystem
-are all OK, it's just this one.
-
-Any brilliant ideas on how to track this down further?
-
-
---==_Exmh_1215071509_4193P
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
-
-iD8DBQFIbIUVcC3lWbTT17ARAsSVAKD93xD2f3V6YfGWH2wZMEJgSEeaaQCgryy9
-Bz6jm/AzUgZS1fkC2yGkYVI=
-=ehLj
------END PGP SIGNATURE-----
-
---==_Exmh_1215071509_4193P--
+-JRS
