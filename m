@@ -1,64 +1,88 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH][e2fsprogs][mke2fs] fix FLEX_BG offset
-Date: Thu, 3 Jul 2008 06:55:53 -0500
-Message-ID: <20080703065553.53c35979@gara>
-References: <486C8BEE.5030200@bull.net>
+From: "Takashi Sato" <t-sato@yk.jp.nec.com>
+Subject: Re: Re: [PATCH 3/3] Add timeout feature
+Date: Thu, 3 Jul 2008 21:11:05 +0900
+Message-ID: <9942A69CB65D4A41B39F36AF8EEF6F22@nsl.ad.nec.co.jp>
+References: <20080630212450t-sato@mail.jp.nec.com>
+	<20080701081026.GB16691@infradead.org>
+	<20080701105251.GC22522@agk.fab.redhat.com>
+Reply-To: device-mapper development <dm-devel@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; format=flowed; charset="iso-8859-1";
+	reply-type=original
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, cmm@us.ibm.com,
-	=?UTF-8?B?RnLDqWTDqXJpYyBC?= =?UTF-8?B?b2jDqQ==?=
-	<frederic.bohe@bull.net>,
-	SOLOFO RAMANGALAHY <Solofo.Ramangalahy@bull.net>,
-	Jean-Pierre Dion <jean-pierre.dion@bull.net>
-To: Celine Bourde <celine.bourde@bull.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:33189 "EHLO e4.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753154AbYGCLzz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 3 Jul 2008 07:55:55 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m63BtrS0027812
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Jul 2008 07:55:53 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m63BtsqL210966
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Jul 2008 07:55:54 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m63Btrqv002386
-	for <linux-ext4@vger.kernel.org>; Thu, 3 Jul 2008 07:55:53 -0400
-In-Reply-To: <486C8BEE.5030200@bull.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: axboe@kernel.dk, mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org,
+	xfs@oss.sgi.com, dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
+	linux-fsdevel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: "Christoph Hellwig" <hch@infradead.org>,
+	"Alasdair G Kergon" <agk@redhat.com>
+Return-path: <dm-devel-bounces@redhat.com>
+In-Reply-To: <20080701105251.GC22522@agk.fab.redhat.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/dm-devel>
+List-Post: <mailto:dm-devel@redhat.com>
+List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=subscribe>
+Sender: dm-devel-bounces@redhat.com
+Errors-To: dm-devel-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, 03 Jul 2008 10:21:02 +0200
-Celine Bourde <celine.bourde@bull.net> wrote:
+Hi Christoph and Alasdair,
 
-> This patch resolves the offset problem of the flex_bg
-> option when you use mke2fs tool.
-> 
-> For example, if you type mkfs.ext4 -I256 -O flex_bg -G32 -E test_fs <device>
-> and look dumpe2fs <device> result you will see an offset problem.
-> 
-> Group 0: (Blocks 0-32767)
-> Primary superblock at 0, Group descriptors at 1-5
-> Reserved GDT blocks at 6-1024
-> Block bitmap at 1025 (+1025), Inode bitmap at 1058 (+1058)
-> Inode table at 1090-1601 (+1090)
-> 0 free blocks, 8181 free inodes, 2 directories
-> Free blocks:
-> Free inodes: 12-8192
-> 
-> Inode bitmap must start at 1025 + 32 = 1057
-> In all flexbg groups, the block between the last block bitmap and the 
-> first inode
-> bitmap (metatdata) is not used, which introduced a hole.
-> 
-> This patch corrects it.
-> You have to apply it on e2fsprogs (mke2fs 1.41-WIP (17-Jun-2008)) master 
-> branch.
-> 
-> Celine Bourde.
+> On Tue, Jul 01, 2008 at 04:10:26AM -0400, Christoph Hellwig wrote:
+>> I still disagree with this whole patch.
+>
+> Same here - if you want a timeout, what stops you from implementing it in a
+> userspace process?  If your concern is that the process might die without
+> thawing the filesystem, take a look at the userspace LVM/multipath code for
+> ideas - lock into memory, disable OOM killer, run from ramdisk etc.
+> In practice, those techniques seem to be good enough.
 
-Acked-by: Jose R. Santos <jrs@us.ibm.com>
+If the freezer accesses the frozen filesystem and causes a deadlock,
+the above ideas can't solve it.  The timeout is useful to solve such a deadlock.
+If you don't need the timeout, you can disable it by specifying "0" as the
+timeout period.
 
--JRS
+> Similarly if a device-mapper device is involved, how should the following
+> sequence behave - A, B or C?
+>
+> 1. dmsetup suspend (freezes)
+> 2. FIFREEZE
+> 3. FITHAW
+> 4. dmsetup resume (thaws)
+[...]
+> C:
+>  1 succeeds, freezes
+>  2 fails, remains frozen
+>  3 fails (because device-mapper owns the freeze/thaw), remains frozen
+>  4 succeeds, thaws
+
+I think C is appropriate and the following change makes it possible.
+How do you think?
+
+1. Add the new bit flag(BD_FREEZE_DM) in block_device.bd_state.
+   It means that the volume is frozen by the device-mapper.
+
+2. Operate and check this bit flag as followings.
+
+  - Bit operations in the device-mapper's freeze/thaw
+    FREEZE:
+      dm_suspend():   set BD_FREEZE_DM
+        freeze_bdev():set BD_FREEZE_OP
+
+    THAW:
+        thaw_bdev():   clear BD_FREEZE_OP
+      dm_resume():    clear BD_FREEZE_DM
+
+  -  Checks in FIFREEZE/FITHAW
+    FREEZE:
+      ioctl_freeze(): Not need to check BD_FREEZE_DM
+        freeze_bdev():set BD_FREEZE_OP
+
+    THAW:
+      ioctl_thaw():   If BD_FREEZE_DM is set, fail, otherwise, call thaw_bdev()
+        thaw_bdev():   clear BD_FREEZE_OP
+
+Cheers, Takashi
