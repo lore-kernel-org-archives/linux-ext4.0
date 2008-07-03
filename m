@@ -1,138 +1,87 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] Ext4 Documentation updates.
-Date: Wed, 02 Jul 2008 14:45:55 -0700
-Message-ID: <1215035155.6788.43.camel@mingming-laptop>
-References: <20080702172200.14990.37737.stgit@rx8>
+From: Valdis.Kletnieks@vt.edu
+Subject: Re: [PATCH, v5] ext3: validate directory entry data before use
+Date: Thu, 03 Jul 2008 03:51:49 -0400
+Message-ID: <42526.1215071509@turing-police.cc.vt.edu>
+References: <20080630143427.GA5473@dastardly>
+            <1214863218-14828-1-git-send-email-duaneg@dghda.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: multipart/signed; boundary="==_Exmh_1215071509_4193P";
+	 micalg=pgp-sha1; protocol="application/pgp-signature"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+	Sami Liedes <sliedes@cc.hut.fi>, jochen.voss@googlemail.com,
+	Jan Kara <jack@suse.cz>
+To: Duane Griffin <duaneg@dghda.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e3.ny.us.ibm.com ([32.97.182.143]:48854 "EHLO e3.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752657AbYGBVqQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 2 Jul 2008 17:46:16 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m62Lk5Bp009142
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 17:46:05 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m62Ljtlf239766
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 17:45:55 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m62LjtTr010359
-	for <linux-ext4@vger.kernel.org>; Wed, 2 Jul 2008 17:45:55 -0400
-In-Reply-To: <20080702172200.14990.37737.stgit@rx8>
+Received: from turing-police.cc.vt.edu ([128.173.14.107]:36782 "EHLO
+	turing-police.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S937032AbYGCHwm (ORCPT
+	<RFC822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2008 03:52:42 -0400
+In-Reply-To: Your message of "Mon, 30 Jun 2008 23:00:18 BST."
+             <1214863218-14828-1-git-send-email-duaneg@dghda.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+--==_Exmh_1215071509_4193P
+Content-Type: text/plain; charset=us-ascii
 
-On Wed, 2008-07-02 at 12:22 -0500, Jose R. Santos wrote:
-> From: Jose R. Santos <jrs@us.ibm.com>
-> 
-> Ext4 Documentation updates.
-> 
-> Some of the information in Documentation/filesystems/ext4.txt is out
-> of date and in need of an update.
-> 
-> Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
-> --
+On Mon, 30 Jun 2008 23:00:18 BST, Duane Griffin said:
+> ext3_dx_find_entry uses ext3_next_entry without verifying that the entry is
+> valid. If its rec_len == 0 this causes an infinite loop. Refactor the loop
+> to check the validity of entries before checking whether they match and
+> moving onto the next one.
 
-Thanks, I added it to the ext4 patch queue before the new ordered mode
-patches.
+This may or may not be related, but I've managed to hit another interesting
+piece of ext3 damage while running 26-rc8-mmotd-0701:
 
+% /bin/ls -l /usr/share/man/man5 | grep lvm
+/bin/ls: cannot access /usr/share/man/man5/lvm.conf.5.gz: Stale NFS file handle
+-????????? ? ?    ?        ?                ? lvm.conf.5.gz
 
-Here is another documentation update patch that add documentation for
-the new ordered mode and the delayed allocation, should go after the
-delayed allocation. Also added a few update
+Yes, that *is* on an ext3 filesystem.
 
----
- Documentation/filesystems/ext4.txt |   37 +++++++++++++++++++++++++++----------
- 1 file changed, 27 insertions(+), 10 deletions(-)
+debugfs on /usr/share is interesting:
 
-Index: linux-2.6.26-rc8/Documentation/filesystems/ext4.txt
-===================================================================
---- linux-2.6.26-rc8.orig/Documentation/filesystems/ext4.txt	2008-07-02 13:49:28.000000000 -0700
-+++ linux-2.6.26-rc8/Documentation/filesystems/ext4.txt	2008-07-02 14:06:34.000000000 -0700
-@@ -57,7 +57,7 @@ Mailing list: linux-ext4@vger.kernel.org
- * extent format reduces metadata overhead (RAM, IO for access, transactions)
- * extent format more robust in face of on-disk corruption due to magics,
- * internal redunancy in tree
--* improved file allocation (multi-block alloc, delayed alloc)
-+* improved file allocation (multi-block alloc)
- * fix 32000 subdirectory limit
- * nsec timestamps for mtime, atime, ctime, create time
- * inode version field on disk (NFSv4, Lustre)
-@@ -67,8 +67,15 @@ Mailing list: linux-ext4@vger.kernel.org
- * ability to pack bitmaps and inode tables into larger virtual groups via the
-   flex_bg feature
- * large file support
-+* delayed allocation
-+* large block (up to pagesize) support
-+* efficent new ordered mode in JBD2 and ext4(avoid using buffer head to force
-+  the ordering)
-+* Inode allocation using large virtual block groups via flex_bg (patch
-+  available; fragmentation issues due to prolong fs use still unknown)
-+
- 
--2.2 Previously available, soon to be enabled by default by "mkefs.ext4":
-+2.2 Previously available, now is enabled by default by "mkefs.ext4":
- 
- * dir_index and resize inode will be on by default
- * large inodes will be used by default for fast EAs, nsec timestamps, etc
-@@ -76,8 +83,6 @@ Mailing list: linux-ext4@vger.kernel.org
- 2.3 Candidate features for future inclusion
- 
- * Online defrag (patches available but not well tested)
--* Inode allocation using large virtual block groups via flex_bg (patch
--  available; fragmentation issues due to prolong fs use still unknown)
- * reduced mke2fs time via uninit_bg feature (capability to do this is
-   available in e2fsprogs but a kernel thread to do lazy zeroing of unused
-   inode table blocks after filesystem is first mounted is required for
-@@ -236,7 +241,9 @@ stripe=n		Number of filesystem blocks th
- 			to use for allocation size and alignment. For RAID5/6
- 			systems this should be the number of data
- 			disks *  RAID chunk size in file system blocks.
--
-+delalloc	(*)	Deferring block allocation until write-out time.
-+nodelalloc		Disable delayed allocation. Blocks are allocation
-+			when data is copied from user to page cache.
- Data Mode
- =========
- There are 3 different data modes:
-@@ -250,10 +257,19 @@ typically provide the best ext4 performa
- 
- * ordered mode
- In data=ordered mode, ext4 only officially journals metadata, but it logically
--groups metadata and data blocks into a single unit called a transaction.  When
--it's time to write the new metadata out to disk, the associated data blocks
--are written first.  In general, this mode performs slightly slower than
--writeback but significantly faster than journal mode.
-+groups metadata information related to data changes with the data blocks into a
-+single unit called a transaction.  When it's time to write the new metadata
-+out to disk, the associated data blocks are written first.  In general,
-+this mode performs slightly slower than writeback but significantly faster than journal mode.
-+
-+In ext4/JBD2 this ordered mode implementation is different than ext3/JBD
-+ordered mode. First it get rid of using buffer heads to enforce the ordering
-+between metadata change with the related data chage. Instead, in the new
-+ordering mode, it keeps track of per transaction journalled inode list, and
-+flush all the dirty pages for those inodes, when committing that transaction.
-+Second, the new ordered mode reverse the lock ordering of the page lock and
-+transaction lock, to fixing the locking issue in the new mode, and also provide
-+easy support for delayed allocation over the new ordered mode
- 
- * journal mode
- data=journal mode provides full data and metadata journaling.  All new data is
-@@ -261,7 +277,8 @@ written to the journal first, and then t
- In the event of a crash, the journal can be replayed, bringing both data and
- metadata into a consistent state.  This mode is the slowest except when data
- needs to be read from and written to disk at the same time where it
--outperforms all others modes.
-+outperforms all others modes. Right now this mode does not have
-+delayed allocation support.
- 
- References
- ==========
+debugfs:  stat  /man/man5/lvm.conf.5.gz
+Inode: 59918   Type: regular    Mode:  0644   Flags: 0x0
+Generation: 4228691378    Version: 0x00000000
+User:     0   Group:     0   Size: 0
+File ACL: 239201    Directory ACL: 0
+Links: 0   Blockcount: 0
+Fragment:  Address: 0    Number: 0    Size: 0
+ctime: 0x486c6c0b -- Thu Jul  3 02:04:59 2008
+atime: 0x47efcad7 -- Sun Mar 30 13:16:07 2008
+mtime: 0x486c6c0b -- Thu Jul  3 02:04:59 2008
+dtime: 0x486c6c0b -- Thu Jul  3 02:04:59 2008
+BLOCKS:
+
+Zero links, even though man/man5 references it.  and the ctime/mtime/dtime
+are suspicious as well - that file belongs to an RPM that was last updated
+back on June 20, and there's no obvious culprit processes in lastcomm that
+were running at 2:04AM, and none of the current ones look obvious either.
+
+(system was booted at 00:21, so the failure happened about 1 hours 40 mins
+after the current kernel launched).
+
+Nothing in dmesg from around 2:04AM, and nothing around when the /bin/ls is run.
+
+An 'ls -lR /usr/share' shows that the *other* 127,619 files on the filesystem
+are all OK, it's just this one.
+
+Any brilliant ideas on how to track this down further?
 
 
+--==_Exmh_1215071509_4193P
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+Comment: Exmh version 2.5 07/13/2001
+
+iD8DBQFIbIUVcC3lWbTT17ARAsSVAKD93xD2f3V6YfGWH2wZMEJgSEeaaQCgryy9
+Bz6jm/AzUgZS1fkC2yGkYVI=
+=ehLj
+-----END PGP SIGNATURE-----
+
+--==_Exmh_1215071509_4193P--
