@@ -1,144 +1,81 @@
-From: "Aneesh Kumar" <aneesh.kumar@gmail.com>
-Subject: Re: Gentoo with ext4-patch-queue snapshots
-Date: Thu, 3 Jul 2008 19:37:24 +0530
-Message-ID: <cc723f590807030707j5ec31f0p5db26bf8529c61ef@mail.gmail.com>
-References: <3.0.6.32.20080625135340.02423ed8@pop.west.cox.net>
-	 <3.0.6.32.20080626221227.0242af78@pop.west.cox.net>
-	 <3.0.6.32.20080701000046.025249e0@pop.west.cox.net>
-	 <3.0.6.32.20080701105417.01ce4958@pop.west.cox.net>
-	 <3.0.6.32.20080701175011.02437350@pop.west.cox.net>
-	 <1215019194.6788.10.camel@mingming-laptop>
-	 <1215030837.6788.37.camel@mingming-laptop>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [dm-devel] Re: [PATCH 3/3] Add timeout feature
+Date: Thu, 03 Jul 2008 09:45:48 -0500
+Message-ID: <486CE61C.50706@redhat.com>
+References: <20080630212450t-sato@mail.jp.nec.com> <20080701081026.GB16691@infradead.org> <20080701105251.GC22522@agk.fab.redhat.com> <9942A69CB65D4A41B39F36AF8EEF6F22@nsl.ad.nec.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from yx-out-2324.google.com ([74.125.44.30]:58253 "EHLO
-	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750848AbYGCOH1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2008 10:07:27 -0400
-Received: by yx-out-2324.google.com with SMTP id 8so248524yxm.1
-        for <linux-ext4@vger.kernel.org>; Thu, 03 Jul 2008 07:07:26 -0700 (PDT)
-In-Reply-To: <1215030837.6788.37.camel@mingming-laptop>
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Alasdair G Kergon <agk@redhat.com>,
+	linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-fsdevel@vger.kernel.org, viro@ZenIV.linux.org.uk,
+	dm-devel@redhat.com, xfs@oss.sgi.com, linux-kernel@vger.kernel.org,
+	mtk.manpages@googlemail.com, axboe@kernel.dk
+To: Takashi Sato <t-sato@yk.jp.nec.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <9942A69CB65D4A41B39F36AF8EEF6F22@nsl.ad.nec.co.jp>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-[sending via gmail  ]
+Takashi Sato wrote:
+> Hi Christoph and Alasdair,
+> 
+>> On Tue, Jul 01, 2008 at 04:10:26AM -0400, Christoph Hellwig wrote:
+>>> I still disagree with this whole patch.
+>> Same here - if you want a timeout, what stops you from implementing it in a
+>> userspace process?  If your concern is that the process might die without
+>> thawing the filesystem, take a look at the userspace LVM/multipath code for
+>> ideas - lock into memory, disable OOM killer, run from ramdisk etc.
+>> In practice, those techniques seem to be good enough.
+> 
+> If the freezer accesses the frozen filesystem and causes a deadlock,
+> the above ideas can't solve it.  The timeout is useful to solve such a deadlock.
+> If you don't need the timeout, you can disable it by specifying "0" as the
+> timeout period.
+> 
+>> Similarly if a device-mapper device is involved, how should the following
+>> sequence behave - A, B or C?
+>>
+>> 1. dmsetup suspend (freezes)
+>> 2. FIFREEZE
+>> 3. FITHAW
+>> 4. dmsetup resume (thaws)
+> [...]
+>> C:
+>>  1 succeeds, freezes
+>>  2 fails, remains frozen
+>>  3 fails (because device-mapper owns the freeze/thaw), remains frozen
+>>  4 succeeds, thaws
+> 
+> I think C is appropriate and the following change makes it possible.
+> How do you think?
+> 
+> 1. Add the new bit flag(BD_FREEZE_DM) in block_device.bd_state.
+>    It means that the volume is frozen by the device-mapper.
 
-On Thu, Jul 03, 2008 at 05:03:25PM +0530, Aneesh Kumar K.V wrote:
-> On Wed, Jul 02, 2008 at 10:19:54AM -0700, Mingming Cao wrote:
-> >
-> > On Tue, 2008-07-01 at 17:50 +0000, Gary Hawco wrote:
-> > > Mingming,
-> > >
-> > > Can you post that patch somewhere for download? I access my email using
-> > > Windows Vista, not in linux, so it would be very laborious to hand copy
-> > > this patch and recreate it in linux.
-> > >
-> > Patch attached.
-> >
-> > > Updated the 2.6.26-rc8 kernel with the latest snapshot from today at
-> > > 1833hrs GMT. All hell broke loose in Gentoo, The new kernel wouldn't allow
-> > > the system to remount read/write on boot.  But it worked fine in Slackware.
-> > > Gentoo with the experimental openrc-0.2.5 and baselayout2 apparently does
-> > > not like ext4.
-> > >
-> >
->
-> I think we need to protect i_disksize update with i_data_sem. Otherwise
-> a parallel writepages and write_end can cause issues. I guess that is
-> what Gary is finding. I also did some cleanup for the patch
->
+Will we add a new bit/flag for every possible subysstem that may call
+freeze/thaw?  This seems odd to me.
 
-better one moving ext4_truncate i_disksize update under i_data_sem.
-ext4_ext_truncate is already doing this.
+They are different paths to the same underlying mechanism; it should not
+matter if it is an existing freeze from DM or via FIFREEZE or via the
+xfs ioctl, or any other mechanism should it?  I don't think this generic
+interface should use any flag named *_DM, personally.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index fcaafe4..05e9790 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1893,18 +1893,29 @@ static int ext4_da_write_begin(struct file
-*file, struct address_space *mapping,
- /*
-  * Check if we should update i_disksize
-  * when write to the end of file but not require block allocation
-+ * We check only the buffer head mapping the offset.
-+ * ex: File with blocksize 1K page size 4K
-+ * block 1 and 2 are holes, block 3 is mapped and half filled
-+ * seek to block 1 and write ( marked the buffer delay )
-+ * seek to block 3 and extent the end of file with end of file still
-+ * falling within block 3. Here the writepages won't update the i_disksize
-+ * properly because it allocate only block 1. So we need to update
-+ * i_disksize in write_end checking only the offset
-+ *
-  */
--static int ext4_da_should_update_i_disksize(struct page *page,
--					 unsigned long offset)
-+static int ext4_da_should_update_i_disksize(struct address_space *mapping,
-+					struct page *page, unsigned long offset)
- {
--	struct buffer_head *bh;
--	unsigned int idx;
- 	int i;
-+	unsigned int idx;
-+	struct buffer_head *bh;
-+	struct inode *inode = mapping->host;
-+	unsigned blocksize = inode->i_sb->s_blocksize;
+It seems that nested freeze requests must be handled in a generic way
+regardless of what initiates any of the requests?
 
- 	bh = page_buffers(page);
--	idx = offset/bh->b_size;
-+	idx = (offset + blocksize - 1)/blocksize;
+Refcounting freezes as Alasdair suggests seems to make sense to me, i.e.
+freeze, freeze, thaw, thaw leads to:
 
--	for (i=0; i < idx; i++)
-+	for (i = 1; i < idx; i++)
- 		bh = bh->b_this_page;
+>> > > 1 (freeze) succeeds, freezes (frozen++)
+>> > > 2 (freeze) succeeds, remains frozen (frozen++)
+>> > > 3 (thaw) succeeds, remains frozen (frozen--)
+>> > > 4 (thaw) succeeds, thaws (frozen--)
 
- 	if (!buffer_mapped(bh) || (buffer_delay(bh)))
-@@ -1934,15 +1945,20 @@ static int ext4_da_write_end(struct file *file,
+that way each caller of freeze is guaranteed that the fs is frozen at
+least until they call thaw?
 
- 	new_i_size = pos + copied;
- 	if (new_i_size > EXT4_I(inode)->i_disksize)
--		if (ext4_da_should_update_i_disksize(page, end)) {
-+		if (ext4_da_should_update_i_disksize(mapping, page, end)) {
- 			/*
- 			 * Updating i_disksize when extending file without
- 			 * need block allocation
- 			 */
--			if (ext4_should_order_data(inode))
--				ret = ext4_jbd2_file_inode(handle, inode);
-+			down_write(&EXT4_I(inode)->i_data_sem);
-+			if (new_i_size > EXT4_I(inode)->i_disksize) {
-+				if (ext4_should_order_data(inode))
-+					ret = ext4_jbd2_file_inode(handle,
-+									inode);
-
--			EXT4_I(inode)->i_disksize = new_i_size;
-+				EXT4_I(inode)->i_disksize = new_i_size;
-+			}
-+			up_write(&EXT4_I(inode)->i_data_sem);
- 		}
- 	ret2 = generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
-@@ -2987,6 +3003,11 @@ void ext4_truncate(struct inode *inode)
- 	 */
- 	if (ext4_orphan_add(handle, inode))
- 		goto out_stop;
-+	/*
-+	 * From here we block out all ext4_get_block() callers who want to
-+	 * modify the block allocation tree.
-+	 */
-+	down_write(&ei->i_data_sem);
-
- 	/*
- 	 * The orphan list entry will now protect us from any crash which
-@@ -2997,12 +3018,6 @@ void ext4_truncate(struct inode *inode)
- 	 */
- 	ei->i_disksize = inode->i_size;
-
--	/*
--	 * From here we block out all ext4_get_block() callers who want to
--	 * modify the block allocation tree.
--	 */
--	down_write(&ei->i_data_sem);
+Thanks,
+-Eric
