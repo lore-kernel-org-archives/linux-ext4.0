@@ -1,88 +1,86 @@
-From: "Takashi Sato" <t-sato@yk.jp.nec.com>
-Subject: Re: Re: [PATCH 3/3] Add timeout feature
-Date: Thu, 3 Jul 2008 21:11:05 +0900
-Message-ID: <9942A69CB65D4A41B39F36AF8EEF6F22@nsl.ad.nec.co.jp>
-References: <20080630212450t-sato@mail.jp.nec.com>
-	<20080701081026.GB16691@infradead.org>
-	<20080701105251.GC22522@agk.fab.redhat.com>
-Reply-To: device-mapper development <dm-devel@redhat.com>
+From: "Duane Griffin" <duaneg@dghda.com>
+Subject: Re: [PATCH, v5] ext3: validate directory entry data before use
+Date: Thu, 3 Jul 2008 13:21:39 +0100
+Message-ID: <e9e943910807030521x8314b99l4aecf89bbb6f0a41@mail.gmail.com>
+References: <20080630143427.GA5473@dastardly>
+	 <1214863218-14828-1-git-send-email-duaneg@dghda.com>
+	 <42526.1215071509@turing-police.cc.vt.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="iso-8859-1";
-	reply-type=original
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
-	linux-fsdevel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: "Christoph Hellwig" <hch@infradead.org>,
-	"Alasdair G Kergon" <agk@redhat.com>
-Return-path: <dm-devel-bounces@redhat.com>
-In-Reply-To: <20080701105251.GC22522@agk.fab.redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/dm-devel>
-List-Post: <mailto:dm-devel@redhat.com>
-List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=subscribe>
-Sender: dm-devel-bounces@redhat.com
-Errors-To: dm-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
+	"Sami Liedes" <sliedes@cc.hut.fi>, jochen.voss@googlemail.com,
+	"Jan Kara" <jack@suse.cz>
+To: Valdis.Kletnieks@vt.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from yx-out-2324.google.com ([74.125.44.28]:24867 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754829AbYGCMVl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2008 08:21:41 -0400
+Received: by yx-out-2324.google.com with SMTP id 8so219709yxm.1
+        for <linux-ext4@vger.kernel.org>; Thu, 03 Jul 2008 05:21:40 -0700 (PDT)
+In-Reply-To: <42526.1215071509@turing-police.cc.vt.edu>
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Christoph and Alasdair,
-
-> On Tue, Jul 01, 2008 at 04:10:26AM -0400, Christoph Hellwig wrote:
->> I still disagree with this whole patch.
+2008/7/3  <Valdis.Kletnieks@vt.edu>:
+> This may or may not be related, but I've managed to hit another interesting
+> piece of ext3 damage while running 26-rc8-mmotd-0701:
 >
-> Same here - if you want a timeout, what stops you from implementing it in a
-> userspace process?  If your concern is that the process might die without
-> thawing the filesystem, take a look at the userspace LVM/multipath code for
-> ideas - lock into memory, disable OOM killer, run from ramdisk etc.
-> In practice, those techniques seem to be good enough.
-
-If the freezer accesses the frozen filesystem and causes a deadlock,
-the above ideas can't solve it.  The timeout is useful to solve such a deadlock.
-If you don't need the timeout, you can disable it by specifying "0" as the
-timeout period.
-
-> Similarly if a device-mapper device is involved, how should the following
-> sequence behave - A, B or C?
+> % /bin/ls -l /usr/share/man/man5 | grep lvm
+> /bin/ls: cannot access /usr/share/man/man5/lvm.conf.5.gz: Stale NFS file handle
+> -????????? ? ?    ?        ?                ? lvm.conf.5.gz
 >
-> 1. dmsetup suspend (freezes)
-> 2. FIFREEZE
-> 3. FITHAW
-> 4. dmsetup resume (thaws)
-[...]
-> C:
->  1 succeeds, freezes
->  2 fails, remains frozen
->  3 fails (because device-mapper owns the freeze/thaw), remains frozen
->  4 succeeds, thaws
+> Yes, that *is* on an ext3 filesystem.
 
-I think C is appropriate and the following change makes it possible.
-How do you think?
+That is happening because links == 0...
 
-1. Add the new bit flag(BD_FREEZE_DM) in block_device.bd_state.
-   It means that the volume is frozen by the device-mapper.
+> debugfs on /usr/share is interesting:
+>
+> debugfs:  stat  /man/man5/lvm.conf.5.gz
+> Inode: 59918   Type: regular    Mode:  0644   Flags: 0x0
+> Generation: 4228691378    Version: 0x00000000
+> User:     0   Group:     0   Size: 0
+> File ACL: 239201    Directory ACL: 0
+> Links: 0   Blockcount: 0
+> Fragment:  Address: 0    Number: 0    Size: 0
+> ctime: 0x486c6c0b -- Thu Jul  3 02:04:59 2008
+> atime: 0x47efcad7 -- Sun Mar 30 13:16:07 2008
+> mtime: 0x486c6c0b -- Thu Jul  3 02:04:59 2008
+> dtime: 0x486c6c0b -- Thu Jul  3 02:04:59 2008
+> BLOCKS:
+>
+> Zero links, even though man/man5 references it.  and the ctime/mtime/dtime
+> are suspicious as well - that file belongs to an RPM that was last updated
+> back on June 20, and there's no obvious culprit processes in lastcomm that
+> were running at 2:04AM, and none of the current ones look obvious either.
 
-2. Operate and check this bit flag as followings.
+Size and blockcount of zero as well. Delete time matching atime and
+mtime. It looks like something deleted the inode from underneath the
+directory entry. The question, of course, is why...
 
-  - Bit operations in the device-mapper's freeze/thaw
-    FREEZE:
-      dm_suspend():   set BD_FREEZE_DM
-        freeze_bdev():set BD_FREEZE_OP
+> (system was booted at 00:21, so the failure happened about 1 hours 40 mins
+> after the current kernel launched).
+>
+> Nothing in dmesg from around 2:04AM, and nothing around when the /bin/ls is run.
+>
+> An 'ls -lR /usr/share' shows that the *other* 127,619 files on the filesystem
+> are all OK, it's just this one.
+>
+> Any brilliant ideas on how to track this down further?
 
-    THAW:
-        thaw_bdev():   clear BD_FREEZE_OP
-      dm_resume():    clear BD_FREEZE_DM
+Is it possible that the filesystem still had lingering corruption from
+my earlier bad patch? I take it you ran fsck over the filesystem and
+it didn't report any errors, but did you run it with -f to force the
+check? Deletion of a spurious link to the inode (that wasn't properly
+accounted for in the link count) would cause the problem you see.
 
-  -  Checks in FIFREEZE/FITHAW
-    FREEZE:
-      ioctl_freeze(): Not need to check BD_FREEZE_DM
-        freeze_bdev():set BD_FREEZE_OP
+BTW, apologies for that bad patch, and thanks for identifying it so quickly.
 
-    THAW:
-      ioctl_thaw():   If BD_FREEZE_DM is set, fail, otherwise, call thaw_bdev()
-        thaw_bdev():   clear BD_FREEZE_OP
+Cheers,
+Duane.
 
-Cheers, Takashi
+-- 
+"I never could learn to drink that blood and call it wine" - Bob Dylan
