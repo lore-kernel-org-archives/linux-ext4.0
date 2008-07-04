@@ -1,48 +1,69 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] Ext4 Documentation updates.
-Date: Thu, 3 Jul 2008 21:30:59 -0400
-Message-ID: <20080704013059.GL30506@mit.edu>
-References: <20080702172200.14990.37737.stgit@rx8> <1215035155.6788.43.camel@mingming-laptop>
+From: "Takashi Sato" <t-sato@yk.jp.nec.com>
+Subject: Re: [dm-devel] Re: [PATCH 3/3] Add timeout feature
+Date: Fri, 4 Jul 2008 21:08:09 +0900
+Message-ID: <B7BFE816D02640B8A5EFDD83E9C23FB9@nsl.ad.nec.co.jp>
+References: <20080630212450t-sato@mail.jp.nec.com> <20080701081026.GB16691@infradead.org> <20080701105251.GC22522@agk.fab.redhat.com> <9942A69CB65D4A41B39F36AF8EEF6F22@nsl.ad.nec.co.jp> <20080703124709.GI22522@agk.fab.redhat.com> <20080703221133.GA29319@disturbed>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Jose R. Santos" <jrs@us.ibm.com>, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:59825 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757345AbYGDBbE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 3 Jul 2008 21:31:04 -0400
-Content-Disposition: inline
-In-Reply-To: <1215035155.6788.43.camel@mingming-laptop>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain;
+	format=flowed;
+	charset="ISO-8859-1";
+	reply-type=original
+Content-Transfer-Encoding: 7bit
+Cc: <dm-devel@redhat.com>, <linux-fsdevel@vger.kernel.org>,
+	"Andrew Morton" <akpm@linux-foundation.org>,
+	<viro@ZenIV.linux.org.uk>, <linux-ext4@vger.kernel.org>,
+	<xfs@oss.sgi.com>, "Christoph Hellwig" <hch@infradead.org>,
+	<linux-kernel@vger.kernel.org>, <axboe@kernel.dk>,
+	<mtk.manpages@googlemail.com>
+To: "Eric Sandeen" <sandeen@redhat.com>,
+	"Alasdair G Kergon" <agk@redhat.com>,
+	"Dave Chinner" <david@fromorbit.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20080703221133.GA29319@disturbed>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 02, 2008 at 02:45:55PM -0700, Mingming Cao wrote:
-> +In ext4/JBD2 this ordered mode implementation is different than ext3/JBD
-> +ordered mode. First it get rid of using buffer heads to enforce the ordering
-> +between metadata change with the related data chage. Instead, in the new
-> +ordering mode, it keeps track of per transaction journalled inode list, and
-> +flush all the dirty pages for those inodes, when committing that transaction.
-> +Second, the new ordered mode reverse the lock ordering of the page lock and
-> +transaction lock, to fixing the locking issue in the new mode, and also provide
-> +easy support for delayed allocation over the new ordered mode
+Hi Alasdair, Eric and Dave,
 
-This is implementation detail that doesn't belong in
-Documentation/filesystems/ext4.txt; a user won't care about this kind
-of detail.
+> On Thu, Jul 03, 2008 at 01:47:10PM +0100, Alasdair G Kergon wrote:
+>> On Thu, Jul 03, 2008 at 09:11:05PM +0900, Takashi Sato wrote:
+>> > If the freezer accesses the frozen filesystem and causes a deadlock,
+>> > the above ideas can't solve it
+>>
+>> But you could also say that if the 'freezer' process accesses the frozen
+>> filesystem and deadlocks then that's just a bug and that userspace code
+>> should be fixed and there's no need to introduce the complexity of a
+>> timeout parameter.
+>
+> Seconded - that was also my primary objection to the timeout code.
 
-However, it is *perfect* for the the (as-yet-undocumented) patch
-comment for the new ordered mode patch in the series.  I rewrote it
-for gramatical correctness and clarity thusly, for the patch
-delalloc-new-ordered-mode.patch:
+I will consider removing the timeout.
 
-    This provides a new ordered mode implementation which gets rid of using
-    buffer heads to enforce the ordering between metadata change with the
-    related data chage.  Instead, in the new ordering mode, it keeps track
-    of all of the inodes touched by each transaction on a list, and when
-    that transaction is committed, it flushes all of the dirty pages for
-    those inodes.  In addition, the new ordered mode reverses the lock
-    ordering of the page lock and transaction lock, which provides easier
-    support for delayed allocation.
+>> The point I'm trying to make here is:
+>>   Under what real-world circumstances might multiple concurrent freezing
+>>   attempts occur, and which of A, B or C (or other variations) would be
+>>   the most appropriate way of handling such situations?
+>>
+>> A common example is people running xfs_freeze followed by an lvm command
+>> which also attempts to freeze the filesystem.
+>
+> Yes, I've seen that reported a number of times.
+>
+>> I can see a case for B or C, but personally I prefer A:
+>>
+>> > > 1 succeeds, freezes
+>> > > 2 succeeds, remains frozen
+>> > > 3 succeeds, remains frozen
+>> > > 4 succeeds, thaws
+>
+> Agreed, though I'd modify the definition of that case to be "remain
+> frozen until the last thaw occurs". That has the advantage that
+> it's relatively simple to implement with just a counter...
 
-					- Ted
+I agree this idea.
+But I have one concern. When device-mapper's freeze follows FIFREEZE,
+can device-mapper freeze only device-mapper's part correctly?
+And when device-mapper's thaw follows FITHAW,
+can device-mapper thaw only device-mapper's part?
+
+Cheers, Takashi 
