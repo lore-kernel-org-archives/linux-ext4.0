@@ -1,49 +1,201 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 06/52] ext4: Fix ext4_mb_init_cache return error
-Date: Sat,  5 Jul 2008 13:35:32 -0400
-Message-ID: <1215279378-30504-7-git-send-email-tytso@mit.edu>
+Subject: [PATCH 49/52] ext4: fix delalloc i_disksize early update issue
+Date: Sat,  5 Jul 2008 13:36:15 -0400
+Message-ID: <1215279378-30504-50-git-send-email-tytso@mit.edu>
 References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-2-git-send-email-tytso@mit.edu>
  <1215279378-30504-3-git-send-email-tytso@mit.edu>
  <1215279378-30504-4-git-send-email-tytso@mit.edu>
  <1215279378-30504-5-git-send-email-tytso@mit.edu>
  <1215279378-30504-6-git-send-email-tytso@mit.edu>
-Cc: Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
+ <1215279378-30504-7-git-send-email-tytso@mit.edu>
+ <1215279378-30504-8-git-send-email-tytso@mit.edu>
+ <1215279378-30504-9-git-send-email-tytso@mit.edu>
+ <1215279378-30504-10-git-send-email-tytso@mit.edu>
+ <1215279378-30504-11-git-send-email-tytso@mit.edu>
+ <1215279378-30504-12-git-send-email-tytso@mit.edu>
+ <1215279378-30504-13-git-send-email-tytso@mit.edu>
+ <1215279378-30504-14-git-send-email-tytso@mit.edu>
+ <1215279378-30504-15-git-send-email-tytso@mit.edu>
+ <1215279378-30504-16-git-send-email-tytso@mit.edu>
+ <1215279378-30504-17-git-send-email-tytso@mit.edu>
+ <1215279378-30504-18-git-send-email-tytso@mit.edu>
+ <1215279378-30504-19-git-send-email-tytso@mit.edu>
+ <1215279378-30504-20-git-send-email-tytso@mit.edu>
+ <1215279378-30504-21-git-send-email-tytso@mit.edu>
+ <1215279378-30504-22-git-send-email-tytso@mit.edu>
+ <1215279378-30504-23-git-send-email-tytso@mit.edu>
+ <1215279378-30504-24-git-send-email-tytso@mit.edu>
+ <1215279378-30504-25-git-send-email-tytso@mit.edu>
+ <1215279378-30504-26-git-send-email-tytso@mit.edu>
+ <1215279378-30504-27-git-send-email-tytso@mit.edu>
+ <1215279378-30504-28-git-send-email-tytso@mit.edu>
+ <1215279378-30504-29-git-send-email-tytso@mit.edu>
+ <1215279378-30504-30-git-send-email-tytso@mit.edu>
+ <1215279378-30504-31-git-send-email-tytso@mit.edu>
+ <1215279378-30504-32-git-send-email-tytso@mit.edu>
+ <1215279378-30504-33-git-send-email-tytso@mit.edu>
+ <1215279378-30504-34-git-send-email-tytso@mit.edu>
+ <1215279378-30504-35-git-send-email-tytso@mit.edu>
+ <1215279378-30504-36-git-send-email-tytso@mit.edu>
+ <1215279378-30504-37-git-send-email-tytso@mit.edu>
+ <1215279378-30504-38-git-send-email-tytso@mit.edu>
+ <1215279378-30504-39-git-send-email-tytso@mit.edu>
+ <1215279378-30504-40-git-send-email-tytso@mit.edu>
+ <1215279378-30504-41-git-send-email-tytso@mit.edu>
+ <1215279378-30504-42-git-send-email-tytso@mit.edu>
+ <1215279378-30504-43-git-send-email-tytso@mit.edu>
+ <1215279378-30504-44-git-send-email-tytso@mit.edu>
+ <1215279378-30504-45-git-send-email-tytso@mit.edu>
+ <1215279378-30504-46-git-send-email-tytso@mit.edu>
+ <1215279378-30504-47-git-send-email-tytso@mit.edu>
+ <1215279378-30504-48-git-send-email-tytso@mit.edu>
+ <1215279378-30504-49-git-send-email-tytso@mit.edu>
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	Aneesh Kumar <aneesh.kumar@gmail.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33029 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33032 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754316AbYGERg2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:28 -0400
-In-Reply-To: <1215279378-30504-6-git-send-email-tytso@mit.edu>
+	with ESMTP id S1754257AbYGERg3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:29 -0400
+In-Reply-To: <1215279378-30504-49-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Mingming Cao <cmm@us.ibm.com>
 
-ext4_mb_init_cache() incorrectly always return EIO on success. This
-causes the caller of ext4_mb_init_cache() fail when it checks the return
-value.
+Ext4_da_write_end() used walk_page_buffers() with a callback function of
+ext4_bh_unmapped_or_delay() to check if it extended the file size
+without allocating any blocks (since in this case i_disksize needs to be
+updated).  However, this is didn't work proprely because the buffer head
+has not been marked dirty yet --- this is done later in
+block_commit_write() --- which caused ext4_bh_unmapped_or_delay() to
+always return false.
+
+In addition, walk_page_buffers() checks all of the buffer heads covering
+the page, and the only buffer_head that should be checked is the one
+covering the end of the write.  Otherwise, given a 1k blocksize
+filesystem and a 4k page size, the buffer head covering the first 1k
+stripe of the file could be unmapped (because it was a sparse file), and
+the second or third buffer_head covering that page could be mapped, and
+using walk_page_buffers() would fail in this case since it would stop at
+the first unmapped buffer_head and return true.
+
+The core problem is that walk_page_buffers() was intended to do work in
+a callback function, and a non-zero return value indicated a failure,
+which termined the walk of the buffer heads covering the page.  It was
+not intended to be used with a boolean function, such as
+ext4_bh_unmapped_or_delay().
+
+Add addtional fix from Aneesh to protect i_disksize update rave with truncate.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Aneesh Kumar <aneesh.kumar@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ fs/ext4/inode.c |   63 +++++++++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 47 insertions(+), 16 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7897193..27498bf 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -803,6 +803,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 		if (!buffer_uptodate(bh[i]))
- 			goto out;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 6aa0ea8..5bacf73 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1891,6 +1891,29 @@ out:
+ 	return ret;
+ }
  
-+	err = 0;
- 	first_block = page->index * blocks_per_page;
- 	for (i = 0; i < blocks_per_page; i++) {
- 		int group;
--- 
-1.5.6.rc3.1.g36b7.dirty
-
++/*
++ * Check if we should update i_disksize
++ * when write to the end of file but not require block allocation
++ */
++static int ext4_da_should_update_i_disksize(struct page *page,
++					 unsigned long offset)
++{
++	struct buffer_head *bh;
++	struct inode *inode = page->mapping->host;
++	unsigned int idx;
++	int i;
++
++	bh = page_buffers(page);
++	idx = offset >> inode->i_blkbits;
++
++	for (i=0; i < idx; i++)
++		bh = bh->b_this_page;
++
++	if (!buffer_mapped(bh) || (buffer_delay(bh)))
++		return 0;
++	return 1;
++}
++
+ static int ext4_da_write_end(struct file *file,
+ 				struct address_space *mapping,
+ 				loff_t pos, unsigned len, unsigned copied,
+@@ -1900,6 +1923,10 @@ static int ext4_da_write_end(struct file *file,
+ 	int ret = 0, ret2;
+ 	handle_t *handle = ext4_journal_current_handle();
+ 	loff_t new_i_size;
++	unsigned long start, end;
++
++	start = pos & (PAGE_CACHE_SIZE - 1);
++	end = start + copied -1;
+ 
+ 	/*
+ 	 * generic_write_end() will run mark_inode_dirty() if i_size
+@@ -1908,18 +1935,23 @@ static int ext4_da_write_end(struct file *file,
+ 	 */
+ 
+ 	new_i_size = pos + copied;
+-	if (new_i_size > EXT4_I(inode)->i_disksize)
+-		if (!walk_page_buffers(NULL, page_buffers(page),
+-				       0, len, NULL, ext4_bh_unmapped_or_delay)){
+-			/*
+-			 * Updating i_disksize when extending file without
+-			 * needing block allocation
+-			 */
+-			if (ext4_should_order_data(inode))
+-				ret = ext4_jbd2_file_inode(handle, inode);
++	if (new_i_size > EXT4_I(inode)->i_disksize) {
++		if (ext4_da_should_update_i_disksize(page, end)) {
++			down_write(&EXT4_I(inode)->i_data_sem);
++			if (new_i_size > EXT4_I(inode)->i_disksize) {
++				/*
++				 * Updating i_disksize when extending file
++				 * without needing block allocation
++				 */
++				if (ext4_should_order_data(inode))
++					ret = ext4_jbd2_file_inode(handle,
++								   inode);
+ 
+-			EXT4_I(inode)->i_disksize = new_i_size;
++				EXT4_I(inode)->i_disksize = new_i_size;
++			}
++			up_write(&EXT4_I(inode)->i_data_sem);
+ 		}
++	}
+ 	ret2 = generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
+ 	copied = ret2;
+@@ -2965,6 +2997,11 @@ void ext4_truncate(struct inode *inode)
+ 		goto out_stop;
+ 
+ 	/*
++	 * From here we block out all ext4_get_block() callers who want to
++	 * modify the block allocation tree.
++	 */
++	down_write(&ei->i_data_sem);
++	/*
+ 	 * The orphan list entry will now protect us from any crash which
+ 	 * occurs before the truncate completes, so it is now safe to propagate
+ 	 * the new, shorter inode size (held for now in i_size) into the
+@@ -2973,12 +3010,6 @@ void ext4_truncate(struct inode *inode)
+ 	 */
+ 	ei->i_disksize = inode->i_size;
+ 
+-	/*
+-	 * From here we block out all ext4_get_block() callers who want to
+-	 * modify the block allocation tree.
+-	 */
+-	down_write(&ei->i_data_sem);
