@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 50/52] ext4: Enable delalloc by default.
-Date: Sat,  5 Jul 2008 13:36:16 -0400
-Message-ID: <1215279378-30504-51-git-send-email-tytso@mit.edu>
+Subject: [PATCH 34/52] vfs: Move mark_inode_dirty() from under page lock in generic_write_end()
+Date: Sat,  5 Jul 2008 13:36:00 -0400
+Message-ID: <1215279378-30504-35-git-send-email-tytso@mit.edu>
 References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-2-git-send-email-tytso@mit.edu>
  <1215279378-30504-3-git-send-email-tytso@mit.edu>
@@ -36,121 +36,69 @@ References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-32-git-send-email-tytso@mit.edu>
  <1215279378-30504-33-git-send-email-tytso@mit.edu>
  <1215279378-30504-34-git-send-email-tytso@mit.edu>
- <1215279378-30504-35-git-send-email-tytso@mit.edu>
- <1215279378-30504-36-git-send-email-tytso@mit.edu>
- <1215279378-30504-37-git-send-email-tytso@mit.edu>
- <1215279378-30504-38-git-send-email-tytso@mit.edu>
- <1215279378-30504-39-git-send-email-tytso@mit.edu>
- <1215279378-30504-40-git-send-email-tytso@mit.edu>
- <1215279378-30504-41-git-send-email-tytso@mit.edu>
- <1215279378-30504-42-git-send-email-tytso@mit.edu>
- <1215279378-30504-43-git-send-email-tytso@mit.edu>
- <1215279378-30504-44-git-send-email-tytso@mit.edu>
- <1215279378-30504-45-git-send-email-tytso@mit.edu>
- <1215279378-30504-46-git-send-email-tytso@mit.edu>
- <1215279378-30504-47-git-send-email-tytso@mit.edu>
- <1215279378-30504-48-git-send-email-tytso@mit.edu>
- <1215279378-30504-49-git-send-email-tytso@mit.edu>
- <1215279378-30504-50-git-send-email-tytso@mit.edu>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
+Cc: Jan Kara <jack@suse.cz>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33053 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33068 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754867AbYGERga (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:30 -0400
-In-Reply-To: <1215279378-30504-50-git-send-email-tytso@mit.edu>
+	with ESMTP id S1755810AbYGERgb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:31 -0400
+In-Reply-To: <1215279378-30504-34-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: Jan Kara <jack@suse.cz>
 
-Enable delalloc by default to ensure it gets sufficient testing and
-because it makes the filesystem much more efficient.  Add a nodealalloc
-option to disable delayed allocation, and update ext4_show_options to
-show delayed allocation off if it is disabled.
+There's no need to call mark_inode_dirty() under page lock in
+generic_write_end(). It unnecessarily makes hold time of page lock longer
+and more importantly it forces locking order of page lock and transaction
+start for journaling filesystems.
 
-If the data=journal mount option is used, disable delayed allocation
-since the delalloc code doesn't support data=journal yet.
-
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
- fs/ext4/super.c |   23 ++++++++++++++++++++++-
- 1 files changed, 22 insertions(+), 1 deletions(-)
+ fs/buffer.c |   12 +++++++++++-
+ 1 files changed, 11 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 25e2f24..4e104dd 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -756,6 +756,9 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 		seq_puts(seq, ",nomballoc");
- 	if (test_opt(sb, I_VERSION))
- 		seq_puts(seq, ",i_version");
-+	if (!test_opt(sb, DELALLOC))
-+		seq_puts(seq, ",nodelalloc");
-+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index a073f3f..a413008 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2061,6 +2061,7 @@ int generic_write_end(struct file *file, struct address_space *mapping,
+ 			struct page *page, void *fsdata)
+ {
+ 	struct inode *inode = mapping->host;
++	int i_size_changed = 0;
  
- 	if (sbi->s_stripe)
- 		seq_printf(seq, ",stripe=%lu", sbi->s_stripe);
-@@ -903,7 +906,7 @@ enum {
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
- 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
- 	Opt_grpquota, Opt_extents, Opt_noextents, Opt_i_version,
--	Opt_mballoc, Opt_nomballoc, Opt_stripe, Opt_delalloc,
-+	Opt_mballoc, Opt_nomballoc, Opt_stripe, Opt_delalloc, Opt_nodelalloc,
- };
+ 	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
  
- static match_table_t tokens = {
-@@ -963,6 +966,7 @@ static match_table_t tokens = {
- 	{Opt_stripe, "stripe=%u"},
- 	{Opt_resize, "resize"},
- 	{Opt_delalloc, "delalloc"},
-+	{Opt_nodelalloc, "nodelalloc"},
- 	{Opt_err, NULL},
- };
- 
-@@ -1328,6 +1332,9 @@ set_qf_format:
- 			set_opt(sbi->s_mount_opt, I_VERSION);
- 			sb->s_flags |= MS_I_VERSION;
- 			break;
-+		case Opt_nodelalloc:
-+			clear_opt(sbi->s_mount_opt, DELALLOC);
-+			break;
- 		case Opt_mballoc:
- 			set_opt(sbi->s_mount_opt, MBALLOC);
- 			break;
-@@ -1984,6 +1991,13 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
+@@ -2073,12 +2074,21 @@ int generic_write_end(struct file *file, struct address_space *mapping,
  	 */
- 	set_opt(sbi->s_mount_opt, MBALLOC);
+ 	if (pos+copied > inode->i_size) {
+ 		i_size_write(inode, pos+copied);
+-		mark_inode_dirty(inode);
++		i_size_changed = 1;
+ 	}
+ 
+ 	unlock_page(page);
+ 	page_cache_release(page);
  
 +	/*
-+	 * enable delayed allocation by default
-+	 * Use -o nodelalloc to turn it off
++	 * Don't mark the inode dirty under page lock. First, it unnecessarily
++	 * makes the holding time of page lock longer. Second, it forces lock
++	 * ordering of page lock and transaction start for journaling
++	 * filesystems.
 +	 */
-+	set_opt(sbi->s_mount_opt, DELALLOC);
++	if (i_size_changed)
++		mark_inode_dirty(inode);
 +
-+
- 	if (!parse_options ((char *) data, sb, &journal_inum, &journal_devnum,
- 			    NULL, 0))
- 		goto failed_mount;
-@@ -2422,6 +2436,13 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
- 		test_opt(sb,DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA ? "ordered":
- 		"writeback");
- 
-+	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
-+		printk(KERN_WARNING "EXT4-fs: Ignoring delalloc option - "
-+				"requested data journaling mode\n");
-+		clear_opt(sbi->s_mount_opt, DELALLOC);
-+	} else if (test_opt(sb, DELALLOC))
-+		printk(KERN_INFO "EXT4-fs: delayed allocation enabled\n");
-+
- 	ext4_ext_init(sb);
- 	ext4_mb_init(sb, needs_recovery);
- 
+ 	return copied;
+ }
+ EXPORT_SYMBOL(generic_write_end);
 -- 
 1.5.6.rc3.1.g36b7.dirty
 
