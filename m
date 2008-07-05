@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 41/52] vfs: add basic delayed allocation support
-Date: Sat,  5 Jul 2008 13:36:07 -0400
-Message-ID: <1215279378-30504-42-git-send-email-tytso@mit.edu>
+Subject: [PATCH 26/52] ext4: call blkdev_issue_flush on fsync
+Date: Sat,  5 Jul 2008 13:35:52 -0400
+Message-ID: <1215279378-30504-27-git-send-email-tytso@mit.edu>
 References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-2-git-send-email-tytso@mit.edu>
  <1215279378-30504-3-git-send-email-tytso@mit.edu>
@@ -28,525 +28,63 @@ References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-24-git-send-email-tytso@mit.edu>
  <1215279378-30504-25-git-send-email-tytso@mit.edu>
  <1215279378-30504-26-git-send-email-tytso@mit.edu>
- <1215279378-30504-27-git-send-email-tytso@mit.edu>
- <1215279378-30504-28-git-send-email-tytso@mit.edu>
- <1215279378-30504-29-git-send-email-tytso@mit.edu>
- <1215279378-30504-30-git-send-email-tytso@mit.edu>
- <1215279378-30504-31-git-send-email-tytso@mit.edu>
- <1215279378-30504-32-git-send-email-tytso@mit.edu>
- <1215279378-30504-33-git-send-email-tytso@mit.edu>
- <1215279378-30504-34-git-send-email-tytso@mit.edu>
- <1215279378-30504-35-git-send-email-tytso@mit.edu>
- <1215279378-30504-36-git-send-email-tytso@mit.edu>
- <1215279378-30504-37-git-send-email-tytso@mit.edu>
- <1215279378-30504-38-git-send-email-tytso@mit.edu>
- <1215279378-30504-39-git-send-email-tytso@mit.edu>
- <1215279378-30504-40-git-send-email-tytso@mit.edu>
- <1215279378-30504-41-git-send-email-tytso@mit.edu>
-Cc: Alex Tomas <alex@clusterfs.com>, Mingming Cao <cmm@us.ibm.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+Cc: Eric Sandeen <sandeen@redhat.com>, Mingming Cao <cmm@us.ibm.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33158 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33123 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754900AbYGERgo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:44 -0400
-In-Reply-To: <1215279378-30504-41-git-send-email-tytso@mit.edu>
+	with ESMTP id S1756051AbYGERge (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:34 -0400
+In-Reply-To: <1215279378-30504-26-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Alex Tomas <alex@clusterfs.com>
+From: Eric Sandeen <sandeen@redhat.com>
 
-* block_prepare_write() can be passed a special ->get_block() which
-   doesn't allocate blocks, but reserve them and mark bh delayed
+To ensure that bits are truly on-disk after an fsync,
+we should call blkdev_issue_flush if barriers are supported.
 
-* a filesystem can use mpage_da_writepages() with other ->get_block()
-  which doesn't defer allocation. mpage_da_writepages() finds all
-  non-allocated blocks and try to allocate them with minimal calls
-  to ->get_block(), then submit IO using __mpage_writepage()
+Inspired by an old thread on barriers, by reiserfs & xfs
+which do the same, and by a patch SuSE ships with their kernel
 
-Updated fix from  Valerie Clement <valerie.clement@bull.net>
-fixes a filesystem corruption issue when the filesystem is
-mounted with the delalloc option and blocksize < pagesize.
-
-Updated fix from Mingming Cao <cmm@us.ibm.com> to clear
-buffer_delay in block_write_full_page() after allocation to those
-delayed buffer.
-
-Signed-off-by: Alex Tomas <alex@clusterfs.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/buffer.c           |    7 +-
- fs/mpage.c            |  405 +++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/mpage.h |    2 +
- 3 files changed, 412 insertions(+), 2 deletions(-)
+ fs/ext4/fsync.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index a413008..7a2d909 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1691,11 +1691,13 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
- 			 */
- 			clear_buffer_dirty(bh);
- 			set_buffer_uptodate(bh);
--		} else if (!buffer_mapped(bh) && buffer_dirty(bh)) {
-+		} else if ((!buffer_mapped(bh) || buffer_delay(bh))
-+			    && buffer_dirty(bh)) {
- 			WARN_ON(bh->b_size != blocksize);
- 			err = get_block(inode, block, bh, 1);
- 			if (err)
- 				goto recover;
-+			clear_buffer_delay(bh);
- 			if (buffer_new(bh)) {
- 				/* blockdev mappings never come here */
- 				clear_buffer_new(bh);
-@@ -1774,7 +1776,8 @@ recover:
- 	bh = head;
- 	/* Recovery: lock and submit the mapped buffers */
- 	do {
--		if (buffer_mapped(bh) && buffer_dirty(bh)) {
-+		if (buffer_mapped(bh) && buffer_dirty(bh)
-+			&& !buffer_delay(bh)) {
- 			lock_buffer(bh);
- 			mark_buffer_async_write(bh);
- 		} else {
-diff --git a/fs/mpage.c b/fs/mpage.c
-index 235e4d3..cde7f11 100644
---- a/fs/mpage.c
-+++ b/fs/mpage.c
-@@ -10,6 +10,8 @@
-  *		Initial version
-  * 27Jun2002	axboe@suse.de
-  *		use bio_add_page() to build bio's just the right size
-+ * 26Jul2007	alex@clusterfs.com AKA bzzz
-+ *		basic delayed allocation support
-  */
+diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
+index 1c8ba48..a45c373 100644
+--- a/fs/ext4/fsync.c
++++ b/fs/ext4/fsync.c
+@@ -27,6 +27,7 @@
+ #include <linux/sched.h>
+ #include <linux/writeback.h>
+ #include <linux/jbd2.h>
++#include <linux/blkdev.h>
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
  
- #include <linux/kernel.h>
-@@ -710,3 +712,406 @@ int mpage_writepage(struct page *page, get_block_t get_block,
+@@ -45,6 +46,7 @@
+ int ext4_sync_file(struct file * file, struct dentry *dentry, int datasync)
+ {
+ 	struct inode *inode = dentry->d_inode;
++	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
+ 	int ret = 0;
+ 
+ 	J_ASSERT(ext4_journal_current_handle() == NULL);
+@@ -85,6 +87,8 @@ int ext4_sync_file(struct file * file, struct dentry *dentry, int datasync)
+ 			.nr_to_write = 0, /* sys_fsync did this */
+ 		};
+ 		ret = sync_inode(inode, &wbc);
++		if (journal && (journal->j_flags & JBD2_BARRIER))
++			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+ 	}
+ out:
  	return ret;
- }
- EXPORT_SYMBOL(mpage_writepage);
-+
-+/*
-+ * Delayed allocation stuff
-+ */
-+
-+struct mpage_da_data {
-+	struct inode *inode;
-+	struct buffer_head lbh;			/* extent of blocks */
-+	unsigned long first_page, next_page;	/* extent of pages */
-+	get_block_t *get_block;
-+	struct writeback_control *wbc;
-+};
-+
-+
-+/*
-+ * mpage_da_submit_io - walks through extent of pages and try to write
-+ * them with __mpage_writepage()
-+ *
-+ * @mpd->inode: inode
-+ * @mpd->first_page: first page of the extent
-+ * @mpd->next_page: page after the last page of the extent
-+ * @mpd->get_block: the filesystem's block mapper function
-+ *
-+ * By the time mpage_da_submit_io() is called we expect all blocks
-+ * to be allocated. this may be wrong if allocation failed.
-+ *
-+ * As pages are already locked by write_cache_pages(), we can't use it
-+ */
-+static int mpage_da_submit_io(struct mpage_da_data *mpd)
-+{
-+	struct address_space *mapping = mpd->inode->i_mapping;
-+	struct mpage_data mpd_pp = {
-+		.bio = NULL,
-+		.last_block_in_bio = 0,
-+		.get_block = mpd->get_block,
-+		.use_writepage = 1,
-+	};
-+	int ret = 0, err, nr_pages, i;
-+	unsigned long index, end;
-+	struct pagevec pvec;
-+
-+	BUG_ON(mpd->next_page <= mpd->first_page);
-+
-+	pagevec_init(&pvec, 0);
-+	index = mpd->first_page;
-+	end = mpd->next_page - 1;
-+
-+	while (index <= end) {
-+		/* XXX: optimize tail */
-+		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
-+		if (nr_pages == 0)
-+			break;
-+		for (i = 0; i < nr_pages; i++) {
-+			struct page *page = pvec.pages[i];
-+
-+			index = page->index;
-+			if (index > end)
-+				break;
-+			index++;
-+
-+			err = __mpage_writepage(page, mpd->wbc, &mpd_pp);
-+
-+			/*
-+			 * In error case, we have to continue because
-+			 * remaining pages are still locked
-+			 * XXX: unlock and re-dirty them?
-+			 */
-+			if (ret == 0)
-+				ret = err;
-+		}
-+		pagevec_release(&pvec);
-+	}
-+	if (mpd_pp.bio)
-+		mpage_bio_submit(WRITE, mpd_pp.bio);
-+
-+	return ret;
-+}
-+
-+/*
-+ * mpage_put_bnr_to_bhs - walk blocks and assign them actual numbers
-+ *
-+ * @mpd->inode - inode to walk through
-+ * @exbh->b_blocknr - first block on a disk
-+ * @exbh->b_size - amount of space in bytes
-+ * @logical - first logical block to start assignment with
-+ *
-+ * the function goes through all passed space and put actual disk
-+ * block numbers into buffer heads, dropping BH_Delay
-+ */
-+static void mpage_put_bnr_to_bhs(struct mpage_da_data *mpd, sector_t logical,
-+				 struct buffer_head *exbh)
-+{
-+	struct inode *inode = mpd->inode;
-+	struct address_space *mapping = inode->i_mapping;
-+	int blocks = exbh->b_size >> inode->i_blkbits;
-+	sector_t pblock = exbh->b_blocknr, cur_logical;
-+	struct buffer_head *head, *bh;
-+	unsigned long index, end;
-+	struct pagevec pvec;
-+	int nr_pages, i;
-+
-+	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	end = (logical + blocks - 1) >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	cur_logical = index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+
-+	pagevec_init(&pvec, 0);
-+
-+	while (index <= end) {
-+		/* XXX: optimize tail */
-+		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
-+		if (nr_pages == 0)
-+			break;
-+		for (i = 0; i < nr_pages; i++) {
-+			struct page *page = pvec.pages[i];
-+
-+			index = page->index;
-+			if (index > end)
-+				break;
-+			index++;
-+
-+			BUG_ON(!PageLocked(page));
-+			BUG_ON(PageWriteback(page));
-+			BUG_ON(!page_has_buffers(page));
-+
-+			bh = page_buffers(page);
-+			head = bh;
-+
-+			/* skip blocks out of the range */
-+			do {
-+				if (cur_logical >= logical)
-+					break;
-+				cur_logical++;
-+			} while ((bh = bh->b_this_page) != head);
-+
-+			do {
-+				if (cur_logical >= logical + blocks)
-+					break;
-+
-+				if (buffer_delay(bh)) {
-+					bh->b_blocknr = pblock;
-+					clear_buffer_delay(bh);
-+				} else if (buffer_mapped(bh)) {
-+					BUG_ON(bh->b_blocknr != pblock);
-+				}
-+
-+				cur_logical++;
-+				pblock++;
-+			} while ((bh = bh->b_this_page) != head);
-+		}
-+		pagevec_release(&pvec);
-+	}
-+}
-+
-+
-+/*
-+ * __unmap_underlying_blocks - just a helper function to unmap
-+ * set of blocks described by @bh
-+ */
-+static inline void __unmap_underlying_blocks(struct inode *inode,
-+					     struct buffer_head *bh)
-+{
-+	struct block_device *bdev = inode->i_sb->s_bdev;
-+	int blocks, i;
-+
-+	blocks = bh->b_size >> inode->i_blkbits;
-+	for (i = 0; i < blocks; i++)
-+		unmap_underlying_metadata(bdev, bh->b_blocknr + i);
-+}
-+
-+/*
-+ * mpage_da_map_blocks - go through given space
-+ *
-+ * @mpd->lbh - bh describing space
-+ * @mpd->get_block - the filesystem's block mapper function
-+ *
-+ * The function skips space we know is already mapped to disk blocks.
-+ *
-+ * The function ignores errors ->get_block() returns, thus real
-+ * error handling is postponed to __mpage_writepage()
-+ */
-+static void mpage_da_map_blocks(struct mpage_da_data *mpd)
-+{
-+	struct buffer_head *lbh = &mpd->lbh;
-+	int err = 0, remain = lbh->b_size;
-+	sector_t next = lbh->b_blocknr;
-+	struct buffer_head new;
-+
-+	/*
-+	 * We consider only non-mapped and non-allocated blocks
-+	 */
-+	if (buffer_mapped(lbh) && !buffer_delay(lbh))
-+		return;
-+
-+	while (remain) {
-+		new.b_state = lbh->b_state;
-+		new.b_blocknr = 0;
-+		new.b_size = remain;
-+		err = mpd->get_block(mpd->inode, next, &new, 1);
-+		if (err) {
-+			/*
-+			 * Rather than implement own error handling
-+			 * here, we just leave remaining blocks
-+			 * unallocated and try again with ->writepage()
-+			 */
-+			break;
-+		}
-+		BUG_ON(new.b_size == 0);
-+
-+		if (buffer_new(&new))
-+			__unmap_underlying_blocks(mpd->inode, &new);
-+
-+		/*
-+		 * If blocks are delayed marked, we need to
-+		 * put actual blocknr and drop delayed bit
-+		 */
-+		if (buffer_delay(lbh))
-+			mpage_put_bnr_to_bhs(mpd, next, &new);
-+
-+			/* go for the remaining blocks */
-+			next += new.b_size >> mpd->inode->i_blkbits;
-+			remain -= new.b_size;
-+		}
-+}
-+
-+#define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | (1 << BH_Delay))
-+
-+/*
-+ * mpage_add_bh_to_extent - try to add one more block to extent of blocks
-+ *
-+ * @mpd->lbh - extent of blocks
-+ * @logical - logical number of the block in the file
-+ * @bh - bh of the block (used to access block's state)
-+ *
-+ * the function is used to collect contig. blocks in same state
-+ */
-+static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
-+				   sector_t logical, struct buffer_head *bh)
-+{
-+	struct buffer_head *lbh = &mpd->lbh;
-+	sector_t next;
-+
-+	next = lbh->b_blocknr + (lbh->b_size >> mpd->inode->i_blkbits);
-+
-+	/*
-+	 * First block in the extent
-+	 */
-+	if (lbh->b_size == 0) {
-+		lbh->b_blocknr = logical;
-+		lbh->b_size = bh->b_size;
-+		lbh->b_state = bh->b_state & BH_FLAGS;
-+		return;
-+	}
-+
-+	/*
-+	 * Can we merge the block to our big extent?
-+	 */
-+	if (logical == next && (bh->b_state & BH_FLAGS) == lbh->b_state) {
-+		lbh->b_size += bh->b_size;
-+		return;
-+	}
-+
-+	/*
-+	 * We couldn't merge the block to our extent, so we
-+	 * need to flush current  extent and start new one
-+	 */
-+	mpage_da_map_blocks(mpd);
-+
-+	/*
-+	 * Now start a new extent
-+	 */
-+	lbh->b_size = bh->b_size;
-+	lbh->b_state = bh->b_state & BH_FLAGS;
-+	lbh->b_blocknr = logical;
-+}
-+
-+/*
-+ * __mpage_da_writepage - finds extent of pages and blocks
-+ *
-+ * @page: page to consider
-+ * @wbc: not used, we just follow rules
-+ * @data: context
-+ *
-+ * The function finds extents of pages and scan them for all blocks.
-+ */
-+static int __mpage_da_writepage(struct page *page,
-+				struct writeback_control *wbc, void *data)
-+{
-+	struct mpage_da_data *mpd = data;
-+	struct inode *inode = mpd->inode;
-+	struct buffer_head *bh, *head, fake;
-+	sector_t logical;
-+
-+	/*
-+	 * Can we merge this page to current extent?
-+	 */
-+	if (mpd->next_page != page->index) {
-+		/*
-+		 * Nope, we can't. So, we map non-allocated blocks
-+		 * and start IO on them using __mpage_writepage()
-+		 */
-+		if (mpd->next_page != mpd->first_page) {
-+			mpage_da_map_blocks(mpd);
-+			mpage_da_submit_io(mpd);
-+		}
-+
-+		/*
-+		 * Start next extent of pages ...
-+		 */
-+		mpd->first_page = page->index;
-+
-+		/*
-+		 * ... and blocks
-+		 */
-+		mpd->lbh.b_size = 0;
-+		mpd->lbh.b_state = 0;
-+		mpd->lbh.b_blocknr = 0;
-+	}
-+
-+	mpd->next_page = page->index + 1;
-+	logical = (sector_t) page->index <<
-+		  (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+
-+	if (!page_has_buffers(page)) {
-+		/*
-+		 * There is no attached buffer heads yet (mmap?)
-+		 * we treat the page asfull of dirty blocks
-+		 */
-+		bh = &fake;
-+		bh->b_size = PAGE_CACHE_SIZE;
-+		bh->b_state = 0;
-+		set_buffer_dirty(bh);
-+		set_buffer_uptodate(bh);
-+		mpage_add_bh_to_extent(mpd, logical, bh);
-+	} else {
-+		/*
-+		 * Page with regular buffer heads, just add all dirty ones
-+		 */
-+		head = page_buffers(page);
-+		bh = head;
-+		do {
-+			BUG_ON(buffer_locked(bh));
-+			if (buffer_dirty(bh))
-+				mpage_add_bh_to_extent(mpd, logical, bh);
-+			logical++;
-+		} while ((bh = bh->b_this_page) != head);
-+	}
-+
-+	return 0;
-+}
-+
-+/*
-+ * mpage_da_writepages - walk the list of dirty pages of the given
-+ * address space, allocates non-allocated blocks, maps newly-allocated
-+ * blocks to existing bhs and issue IO them
-+ *
-+ * @mapping: address space structure to write
-+ * @wbc: subtract the number of written pages from *@wbc->nr_to_write
-+ * @get_block: the filesystem's block mapper function.
-+ *
-+ * This is a library function, which implements the writepages()
-+ * address_space_operation.
-+ *
-+ * In order to avoid duplication of logic that deals with partial pages,
-+ * multiple bio per page, etc, we find non-allocated blocks, allocate
-+ * them with minimal calls to ->get_block() and re-use __mpage_writepage()
-+ *
-+ * It's important that we call __mpage_writepage() only once for each
-+ * involved page, otherwise we'd have to implement more complicated logic
-+ * to deal with pages w/o PG_lock or w/ PG_writeback and so on.
-+ *
-+ * See comments to mpage_writepages()
-+ */
-+int mpage_da_writepages(struct address_space *mapping,
-+			struct writeback_control *wbc, get_block_t get_block)
-+{
-+	struct mpage_da_data mpd;
-+	int ret;
-+
-+	if (!get_block)
-+		return generic_writepages(mapping, wbc);
-+
-+	mpd.wbc = wbc;
-+	mpd.inode = mapping->host;
-+	mpd.lbh.b_size = 0;
-+	mpd.lbh.b_state = 0;
-+	mpd.lbh.b_blocknr = 0;
-+	mpd.first_page = 0;
-+	mpd.next_page = 0;
-+	mpd.get_block = get_block;
-+
-+	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, &mpd);
-+
-+	/*
-+	 * Handle last extent of pages
-+	 */
-+	if (mpd.next_page != mpd.first_page) {
-+		mpage_da_map_blocks(&mpd);
-+		mpage_da_submit_io(&mpd);
-+	}
-+
-+	return ret;
-+}
-+EXPORT_SYMBOL(mpage_da_writepages);
-diff --git a/include/linux/mpage.h b/include/linux/mpage.h
-index 068a0c9..1f67d34 100644
---- a/include/linux/mpage.h
-+++ b/include/linux/mpage.h
-@@ -18,6 +18,8 @@ int mpage_readpages(struct address_space *mapping, struct list_head *pages,
- int mpage_readpage(struct page *page, get_block_t get_block);
- int mpage_writepages(struct address_space *mapping,
- 		struct writeback_control *wbc, get_block_t get_block);
-+int mpage_da_writepages(struct address_space *mapping,
-+		struct writeback_control *wbc, get_block_t get_block);
- int mpage_writepage(struct page *page, get_block_t *get_block,
- 		struct writeback_control *wbc);
- 
 -- 
 1.5.6.rc3.1.g36b7.dirty
 
