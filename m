@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 13/52] ext4: New inode allocation for FLEX_BG meta-data groups.
-Date: Sat,  5 Jul 2008 13:35:39 -0400
-Message-ID: <1215279378-30504-14-git-send-email-tytso@mit.edu>
+Subject: [PATCH 35/52] ext4: Invert the locking order of page_lock and transaction start
+Date: Sat,  5 Jul 2008 13:36:01 -0400
+Message-ID: <1215279378-30504-36-git-send-email-tytso@mit.edu>
 References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-2-git-send-email-tytso@mit.edu>
  <1215279378-30504-3-git-send-email-tytso@mit.edu>
@@ -15,411 +15,623 @@ References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-11-git-send-email-tytso@mit.edu>
  <1215279378-30504-12-git-send-email-tytso@mit.edu>
  <1215279378-30504-13-git-send-email-tytso@mit.edu>
-Cc: "Jose R. Santos" <jrs@us.ibm.com>,
-	Valerie Clement <valerie.clement@bull.net>,
+ <1215279378-30504-14-git-send-email-tytso@mit.edu>
+ <1215279378-30504-15-git-send-email-tytso@mit.edu>
+ <1215279378-30504-16-git-send-email-tytso@mit.edu>
+ <1215279378-30504-17-git-send-email-tytso@mit.edu>
+ <1215279378-30504-18-git-send-email-tytso@mit.edu>
+ <1215279378-30504-19-git-send-email-tytso@mit.edu>
+ <1215279378-30504-20-git-send-email-tytso@mit.edu>
+ <1215279378-30504-21-git-send-email-tytso@mit.edu>
+ <1215279378-30504-22-git-send-email-tytso@mit.edu>
+ <1215279378-30504-23-git-send-email-tytso@mit.edu>
+ <1215279378-30504-24-git-send-email-tytso@mit.edu>
+ <1215279378-30504-25-git-send-email-tytso@mit.edu>
+ <1215279378-30504-26-git-send-email-tytso@mit.edu>
+ <1215279378-30504-27-git-send-email-tytso@mit.edu>
+ <1215279378-30504-28-git-send-email-tytso@mit.edu>
+ <1215279378-30504-29-git-send-email-tytso@mit.edu>
+ <1215279378-30504-30-git-send-email-tytso@mit.edu>
+ <1215279378-30504-31-git-send-email-tytso@mit.edu>
+ <1215279378-30504-32-git-send-email-tytso@mit.edu>
+ <1215279378-30504-33-git-send-email-tytso@mit.edu>
+ <1215279378-30504-34-git-send-email-tytso@mit.edu>
+ <1215279378-30504-35-git-send-email-tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, Mingming Cao <cmm@us.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33059 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33080 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755319AbYGERgb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:31 -0400
-In-Reply-To: <1215279378-30504-13-git-send-email-tytso@mit.edu>
+	with ESMTP id S1755873AbYGERgc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:32 -0400
+In-Reply-To: <1215279378-30504-35-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jose R. Santos <jrs@us.ibm.com>
+From: Jan Kara <jack@suse.cz>
 
-This patch mostly controls the way inode are allocated in order to
-make ialloc aware of flex_bg block group grouping.  It achieves this
-by bypassing the Orlov allocator when block group meta-data are packed
-toghether through mke2fs.  Since the impact on the block allocator is
-minimal, this patch should have little or no effect on other block
-allocation algorithms. By controlling the inode allocation, it can
-basically control where the initial search for new block begins and
-thus indirectly manipulate the block allocator.
+This changes are needed to support data=ordered mode handling via
+inodes.  This enables us to get rid of the journal heads and buffer
+heads for data buffers in the ordered mode.  With the changes, during
+tranasaction commit we writeout the inode pages using the
+writepages()/writepage(). That implies we take page lock during
+transaction commit. This can cause a deadlock with the locking order
+page_lock -> jbd2_journal_start, since the jbd2_journal_start can wait
+for the journal_commit to happen and the journal_commit now needs to
+take the page lock. To avoid this dead lock reverse the locking order.
 
-This allocator favors data and meta-data locality so the disk will
-gradually be filled from block group zero upward.  This helps improve
-performance by reducing seek time.  Since the group of inode tables
-within one flex_bg are treated as one giant inode table, uninitialized
-block groups would not need to partially initialize as many inode
-table as with Orlov which would help fsck time as the filesystem usage
-goes up.
-
-Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
-Signed-off-by: Valerie Clement <valerie.clement@bull.net>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c  |   14 ++++++++
- fs/ext4/ext4.h    |   25 +++++++++++++-
- fs/ext4/ext4_sb.h |    3 ++
- fs/ext4/ialloc.c  |   96 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/mballoc.c |   15 ++++++++
- fs/ext4/super.c   |   57 +++++++++++++++++++++++++++++++
- 6 files changed, 209 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h    |    4 +-
+ fs/ext4/extents.c |   15 +--
+ fs/ext4/inode.c   |  292 +++++++++++++++++++++++++++--------------------------
+ 3 files changed, 155 insertions(+), 156 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index ba41123..0b2b754 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -809,6 +809,13 @@ do_more:
- 	spin_unlock(sb_bgl_lock(sbi, block_group));
- 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
- 
-+	if (sbi->s_log_groups_per_flex) {
-+		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
-+		spin_lock(sb_bgl_lock(sbi, flex_group));
-+		sbi->s_flex_groups[flex_group].free_blocks += count;
-+		spin_unlock(sb_bgl_lock(sbi, flex_group));
-+	}
-+
- 	/* We dirtied the bitmap block */
- 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
- 	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
-@@ -1883,6 +1890,13 @@ allocated:
- 	spin_unlock(sb_bgl_lock(sbi, group_no));
- 	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
- 
-+	if (sbi->s_log_groups_per_flex) {
-+		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
-+		spin_lock(sb_bgl_lock(sbi, flex_group));
-+		sbi->s_flex_groups[flex_group].free_blocks -= num;
-+		spin_unlock(sb_bgl_lock(sbi, flex_group));
-+	}
-+
- 	BUFFER_TRACE(gdp_bh, "journal_dirty_metadata for group descriptor");
- 	err = ext4_journal_dirty_metadata(handle, gdp_bh);
- 	if (!fatal)
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index f8e22e4..c4aa1ce 100644
+index 16c5e3a..2c0519a 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -170,6 +170,15 @@ struct ext4_group_desc
- 	__u32	bg_reserved2[3];
- };
+@@ -1065,7 +1065,7 @@ extern void ext4_set_inode_flags(struct inode *);
+ extern void ext4_get_inode_flags(struct ext4_inode_info *);
+ extern void ext4_set_aops(struct inode *inode);
+ extern int ext4_writepage_trans_blocks(struct inode *);
+-extern int ext4_block_truncate_page(handle_t *handle, struct page *page,
++extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
  
-+/*
-+ * Structure of a flex block group info
-+ */
-+
-+struct flex_groups {
-+	__u32 free_inodes;
-+	__u32 free_blocks;
-+};
-+
- #define EXT4_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not in use */
- #define EXT4_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not in use */
- #define EXT4_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
-@@ -647,7 +656,10 @@ struct ext4_super_block {
- 	__le16  s_mmp_interval;         /* # seconds to wait in MMP checking */
- 	__le64  s_mmp_block;            /* Block for multi-mount protection */
- 	__le32  s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
--	__u32   s_reserved[163];        /* Padding to the end of the block */
-+	__u8	s_log_groups_per_flex;  /* FLEX_BG group size */
-+	__u8	s_reserved_char_pad2;
-+	__le16  s_reserved_pad;
-+	__u32   s_reserved[162];        /* Padding to the end of the block */
- };
- 
- #ifdef __KERNEL__
-@@ -1159,6 +1171,17 @@ struct ext4_group_info *ext4_get_group_info(struct super_block *sb,
+@@ -1224,7 +1224,7 @@ extern int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_lblk_t iblock,
+ 			unsigned long max_blocks, struct buffer_head *bh_result,
+ 			int create, int extend_disksize);
+-extern void ext4_ext_truncate(struct inode *, struct page *);
++extern void ext4_ext_truncate(struct inode *);
+ extern void ext4_ext_init(struct super_block *);
+ extern void ext4_ext_release(struct super_block *);
+ extern long ext4_fallocate(struct inode *inode, int mode, loff_t offset,
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index bb36a28..b722bce 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2749,7 +2749,7 @@ out2:
+ 	return err ? err : allocated;
  }
  
+-void ext4_ext_truncate(struct inode * inode, struct page *page)
++void ext4_ext_truncate(struct inode *inode)
+ {
+ 	struct address_space *mapping = inode->i_mapping;
+ 	struct super_block *sb = inode->i_sb;
+@@ -2762,18 +2762,11 @@ void ext4_ext_truncate(struct inode * inode, struct page *page)
+ 	 */
+ 	err = ext4_writepage_trans_blocks(inode) + 3;
+ 	handle = ext4_journal_start(inode, err);
+-	if (IS_ERR(handle)) {
+-		if (page) {
+-			clear_highpage(page);
+-			flush_dcache_page(page);
+-			unlock_page(page);
+-			page_cache_release(page);
+-		}
++	if (IS_ERR(handle))
+ 		return;
+-	}
  
-+static inline ext4_group_t ext4_flex_group(struct ext4_sb_info *sbi,
-+					     ext4_group_t block_group)
-+{
-+	return block_group >> sbi->s_log_groups_per_flex;
-+}
+-	if (page)
+-		ext4_block_truncate_page(handle, page, mapping, inode->i_size);
++	if (inode->i_size & (sb->s_blocksize - 1))
++		ext4_block_truncate_page(handle, mapping, inode->i_size);
+ 
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+ 	ext4_ext_invalidate_cache(inode);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 19f2d57..d698844 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1239,19 +1239,20 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+  	to = from + len;
+ 
+ retry:
+- 	page = __grab_cache_page(mapping, index);
+- 	if (!page)
+- 		return -ENOMEM;
+- 	*pagep = page;
+-
+   	handle = ext4_journal_start(inode, needed_blocks);
+   	if (IS_ERR(handle)) {
+- 		unlock_page(page);
+- 		page_cache_release(page);
+   		ret = PTR_ERR(handle);
+   		goto out;
+ 	}
+ 
++	page = __grab_cache_page(mapping, index);
++	if (!page) {
++		ext4_journal_stop(handle);
++		ret = -ENOMEM;
++		goto out;
++	}
++	*pagep = page;
 +
-+static inline unsigned int ext4_flex_bg_size(struct ext4_sb_info *sbi)
-+{
-+	return 1 << sbi->s_log_groups_per_flex;
-+}
-+
- #define ext4_std_error(sb, errno)				\
- do {								\
- 	if ((errno))						\
-diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-index 4de9a75..6300226 100644
---- a/fs/ext4/ext4_sb.h
-+++ b/fs/ext4/ext4_sb.h
-@@ -143,6 +143,9 @@ struct ext4_sb_info {
+ 	ret = block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
+ 							ext4_get_block);
  
- 	/* locality groups */
- 	struct ext4_locality_group *s_locality_groups;
-+
-+	unsigned int s_log_groups_per_flex;
-+	struct flex_groups *s_flex_groups;
- };
+@@ -1261,8 +1262,8 @@ retry:
+ 	}
  
- #endif	/* _EXT4_SB */
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index d1fc8c3..dc8bfc4 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -157,6 +157,7 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
- 	struct ext4_super_block * es;
- 	struct ext4_sb_info *sbi;
- 	int fatal = 0, err;
-+	ext4_group_t flex_group;
+ 	if (ret) {
+-		ext4_journal_stop(handle);
+  		unlock_page(page);
++		ext4_journal_stop(handle);
+  		page_cache_release(page);
+ 	}
  
- 	if (atomic_read(&inode->i_count) > 1) {
- 		printk ("ext4_free_inode: inode has count=%d\n",
-@@ -232,6 +233,12 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
- 			if (is_directory)
- 				percpu_counter_dec(&sbi->s_dirs_counter);
- 
-+			if (sbi->s_log_groups_per_flex) {
-+				flex_group = ext4_flex_group(sbi, block_group);
-+				spin_lock(sb_bgl_lock(sbi, flex_group));
-+				sbi->s_flex_groups[flex_group].free_inodes++;
-+				spin_unlock(sb_bgl_lock(sbi, flex_group));
-+			}
- 		}
- 		BUFFER_TRACE(bh2, "call ext4_journal_dirty_metadata");
- 		err = ext4_journal_dirty_metadata(handle, bh2);
-@@ -286,6 +293,80 @@ static int find_group_dir(struct super_block *sb, struct inode *parent,
- 	return ret;
+@@ -1291,29 +1292,6 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
  }
  
-+#define free_block_ratio 10
-+
-+static int find_group_flex(struct super_block *sb, struct inode *parent,
-+			   ext4_group_t *best_group)
+ /*
+- * Generic write_end handler for ordered and writeback ext4 journal modes.
+- * We can't use generic_write_end, because that unlocks the page and we need to
+- * unlock the page after ext4_journal_stop, but ext4_journal_stop must run
+- * after block_write_end.
+- */
+-static int ext4_generic_write_end(struct file *file,
+-				struct address_space *mapping,
+-				loff_t pos, unsigned len, unsigned copied,
+-				struct page *page, void *fsdata)
+-{
+-	struct inode *inode = file->f_mapping->host;
+-
+-	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+-
+-	if (pos+copied > inode->i_size) {
+-		i_size_write(inode, pos+copied);
+-		mark_inode_dirty(inode);
+-	}
+-
+-	return copied;
+-}
+-
+-/*
+  * We need to pick up the new inode size which generic_commit_write gave us
+  * `file' can be NULL - eg, when called from page_symlink().
+  *
+@@ -1326,7 +1304,7 @@ static int ext4_ordered_write_end(struct file *file,
+ 				struct page *page, void *fsdata)
+ {
+ 	handle_t *handle = ext4_journal_current_handle();
+-	struct inode *inode = file->f_mapping->host;
++	struct inode *inode = mapping->host;
+ 	unsigned from, to;
+ 	int ret = 0, ret2;
+ 
+@@ -1347,7 +1325,7 @@ static int ext4_ordered_write_end(struct file *file,
+ 		new_i_size = pos + copied;
+ 		if (new_i_size > EXT4_I(inode)->i_disksize)
+ 			EXT4_I(inode)->i_disksize = new_i_size;
+-		ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
++		ret2 = generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
+ 		copied = ret2;
+ 		if (ret2 < 0)
+@@ -1356,8 +1334,6 @@ static int ext4_ordered_write_end(struct file *file,
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	unlock_page(page);
+-	page_cache_release(page);
+ 
+ 	return ret ? ret : copied;
+ }
+@@ -1368,7 +1344,7 @@ static int ext4_writeback_write_end(struct file *file,
+ 				struct page *page, void *fsdata)
+ {
+ 	handle_t *handle = ext4_journal_current_handle();
+-	struct inode *inode = file->f_mapping->host;
++	struct inode *inode = mapping->host;
+ 	int ret = 0, ret2;
+ 	loff_t new_i_size;
+ 
+@@ -1376,7 +1352,7 @@ static int ext4_writeback_write_end(struct file *file,
+ 	if (new_i_size > EXT4_I(inode)->i_disksize)
+ 		EXT4_I(inode)->i_disksize = new_i_size;
+ 
+-	ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
++	ret2 = generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
+ 	copied = ret2;
+ 	if (ret2 < 0)
+@@ -1385,8 +1361,6 @@ static int ext4_writeback_write_end(struct file *file,
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	unlock_page(page);
+-	page_cache_release(page);
+ 
+ 	return ret ? ret : copied;
+ }
+@@ -1425,10 +1399,10 @@ static int ext4_journalled_write_end(struct file *file,
+ 			ret = ret2;
+ 	}
+ 
++	unlock_page(page);
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	unlock_page(page);
+ 	page_cache_release(page);
+ 
+ 	return ret ? ret : copied;
+@@ -1505,12 +1479,16 @@ static int jbd2_journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
+ 	return 0;
+ }
+ 
++static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_group_desc *desc;
-+	struct buffer_head *bh;
-+	struct flex_groups *flex_group = sbi->s_flex_groups;
-+	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
-+	ext4_group_t parent_fbg_group = ext4_flex_group(sbi, parent_group);
-+	ext4_group_t ngroups = sbi->s_groups_count;
-+	int flex_size = ext4_flex_bg_size(sbi);
-+	ext4_group_t best_flex = parent_fbg_group;
-+	int blocks_per_flex = sbi->s_blocks_per_group * flex_size;
-+	int flexbg_free_blocks;
-+	int flex_freeb_ratio;
-+	ext4_group_t n_fbg_groups;
-+	ext4_group_t i;
-+
-+	n_fbg_groups = (sbi->s_groups_count + flex_size - 1) >>
-+		sbi->s_log_groups_per_flex;
-+
-+find_close_to_parent:
-+	flexbg_free_blocks = flex_group[best_flex].free_blocks;
-+	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-+	if (flex_group[best_flex].free_inodes &&
-+	    flex_freeb_ratio > free_block_ratio)
-+		goto found_flexbg;
-+
-+	if (best_flex && best_flex == parent_fbg_group) {
-+		best_flex--;
-+		goto find_close_to_parent;
-+	}
-+
-+	for (i = 0; i < n_fbg_groups; i++) {
-+		if (i == parent_fbg_group || i == parent_fbg_group - 1)
-+			continue;
-+
-+		flexbg_free_blocks = flex_group[i].free_blocks;
-+		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
-+
-+		if (flex_freeb_ratio > free_block_ratio &&
-+		    flex_group[i].free_inodes) {
-+			best_flex = i;
-+			goto found_flexbg;
-+		}
-+
-+		if (best_flex < 0 ||
-+		    (flex_group[i].free_blocks >
-+		     flex_group[best_flex].free_blocks &&
-+		     flex_group[i].free_inodes))
-+			best_flex = i;
-+	}
-+
-+	if (!flex_group[best_flex].free_inodes ||
-+	    !flex_group[best_flex].free_blocks)
-+		return -1;
-+
-+found_flexbg:
-+	for (i = best_flex * flex_size; i < ngroups &&
-+		     i < (best_flex + 1) * flex_size; i++) {
-+		desc = ext4_get_group_desc(sb, i, &bh);
-+		if (le16_to_cpu(desc->bg_free_inodes_count)) {
-+			*best_group = i;
-+			goto out;
-+		}
-+	}
-+
-+	return -1;
-+out:
-+	return 0;
++	return !buffer_mapped(bh) || buffer_delay(bh);
 +}
 +
  /*
-  * Orlov's allocator for directories.
+- * Note that we always start a transaction even if we're not journalling
+- * data.  This is to preserve ordering: any hole instantiation within
+- * __block_write_full_page -> ext4_get_block() should be journalled
+- * along with the data so we don't crash and then get metadata which
+- * refers to old data.
++ * Note that we don't need to start a transaction unless we're journaling
++ * data because we should have holes filled from ext4_page_mkwrite(). If
++ * we are journaling data, we cannot start transaction directly because
++ * transaction start ranks above page lock so we have to do some magic...
   *
-@@ -501,6 +582,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
- 	struct inode *ret;
- 	ext4_group_t i;
- 	int free = 0;
-+	ext4_group_t flex_group;
+  * In all journalling modes block_write_full_page() will start the I/O.
+  *
+@@ -1554,10 +1532,8 @@ static int jbd2_journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
+  * disastrous.  Any write() or metadata operation will sync the fs for
+  * us.
+  *
+- * AKPM2: if all the page's buffers are mapped to disk and !data=journal,
+- * we don't need to open a transaction here.
+  */
+-static int ext4_ordered_writepage(struct page *page,
++static int __ext4_ordered_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+ 	struct inode *inode = page->mapping->host;
+@@ -1566,22 +1542,6 @@ static int ext4_ordered_writepage(struct page *page,
+ 	int ret = 0;
+ 	int err;
  
- 	/* Cannot create files in a deleted directory */
- 	if (!dir || !dir->i_nlink)
-@@ -514,6 +596,12 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
- 
- 	sbi = EXT4_SB(sb);
- 	es = sbi->s_es;
+-	J_ASSERT(PageLocked(page));
+-
+-	/*
+-	 * We give up here if we're reentered, because it might be for a
+-	 * different filesystem.
+-	 */
+-	if (ext4_journal_current_handle())
+-		goto out_fail;
+-
+-	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+-
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto out_fail;
+-	}
+-
+ 	if (!page_has_buffers(page)) {
+ 		create_empty_buffers(page, inode->i_sb->s_blocksize,
+ 				(1 << BH_Dirty)|(1 << BH_Uptodate));
+@@ -1605,54 +1565,135 @@ static int ext4_ordered_writepage(struct page *page,
+ 	 * and generally junk.
+ 	 */
+ 	if (ret == 0) {
+-		err = walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE,
++		handle = ext4_journal_start(inode,
++					ext4_writepage_trans_blocks(inode));
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			goto out_put;
++		}
 +
-+	if (sbi->s_log_groups_per_flex) {
-+		ret2 = find_group_flex(sb, dir, &group);
-+		goto got_group;
-+	}
++		ret = walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE,
+ 					NULL, jbd2_journal_dirty_data_fn);
++		err = ext4_journal_stop(handle);
+ 		if (!ret)
+ 			ret = err;
+ 	}
+-	walk_page_buffers(handle, page_bufs, 0,
+-			PAGE_CACHE_SIZE, NULL, bput_one);
+-	err = ext4_journal_stop(handle);
+-	if (!ret)
+-		ret = err;
++out_put:
++	walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE, NULL,
++			  bput_one);
+ 	return ret;
++}
 +
- 	if (S_ISDIR(mode)) {
- 		if (test_opt (sb, OLDALLOC))
- 			ret2 = find_group_dir(sb, dir, &group);
-@@ -522,6 +610,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
- 	} else
- 		ret2 = find_group_other(sb, dir, &group);
- 
-+got_group:
- 	err = -ENOSPC;
- 	if (ret2 == -1)
- 		goto out;
-@@ -676,6 +765,13 @@ got:
- 		percpu_counter_inc(&sbi->s_dirs_counter);
- 	sb->s_dirt = 1;
- 
-+	if (sbi->s_log_groups_per_flex) {
-+		flex_group = ext4_flex_group(sbi, group);
-+		spin_lock(sb_bgl_lock(sbi, flex_group));
-+		sbi->s_flex_groups[flex_group].free_inodes--;
-+		spin_unlock(sb_bgl_lock(sbi, flex_group));
-+	}
++static int ext4_ordered_writepage(struct page *page,
++				struct writeback_control *wbc)
++{
++	struct inode *inode = page->mapping->host;
++	loff_t size = i_size_read(inode);
++	loff_t len;
 +
- 	inode->i_uid = current->fsuid;
- 	if (test_opt (sb, GRPID))
- 		inode->i_gid = dir->i_gid;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 676fd6c..11acfe5 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2834,6 +2834,14 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	spin_unlock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
- 	percpu_counter_sub(&sbi->s_freeblocks_counter, ac->ac_b_ex.fe_len);
- 
-+	if (sbi->s_log_groups_per_flex) {
-+		ext4_group_t flex_group = ext4_flex_group(sbi,
-+							  ac->ac_b_ex.fe_group);
-+		spin_lock(sb_bgl_lock(sbi, flex_group));
-+		sbi->s_flex_groups[flex_group].free_blocks -= ac->ac_b_ex.fe_len;
-+		spin_unlock(sb_bgl_lock(sbi, flex_group));
-+	}
++	J_ASSERT(PageLocked(page));
++	J_ASSERT(page_has_buffers(page));
++	if (page->index == size >> PAGE_CACHE_SHIFT)
++		len = size & ~PAGE_CACHE_MASK;
++	else
++		len = PAGE_CACHE_SIZE;
++	BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
++				 ext4_bh_unmapped_or_delay));
 +
- 	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
- 	if (err)
- 		goto out_err;
-@@ -4337,6 +4345,13 @@ do_more:
- 	spin_unlock(sb_bgl_lock(sbi, block_group));
- 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
++	/*
++	 * We give up here if we're reentered, because it might be for a
++	 * different filesystem.
++	 */
++	if (!ext4_journal_current_handle())
++		return __ext4_ordered_writepage(page, wbc);
  
-+	if (sbi->s_log_groups_per_flex) {
-+		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
-+		spin_lock(sb_bgl_lock(sbi, flex_group));
-+		sbi->s_flex_groups[flex_group].free_blocks += count;
-+		spin_unlock(sb_bgl_lock(sbi, flex_group));
-+	}
-+
- 	ext4_mb_release_desc(&e4b);
- 
- 	*freed += count;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d9d12c1..0d560fc 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -517,6 +517,7 @@ static void ext4_put_super (struct super_block * sb)
- 	for (i = 0; i < sbi->s_gdb_count; i++)
- 		brelse(sbi->s_group_desc[i]);
- 	kfree(sbi->s_group_desc);
-+	kfree(sbi->s_flex_groups);
- 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
- 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
-@@ -1442,6 +1443,54 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
- 	return res;
+-out_fail:
+ 	redirty_page_for_writepage(wbc, page);
+ 	unlock_page(page);
+-	return ret;
++	return 0;
  }
  
-+static int ext4_fill_flex_info(struct super_block *sb)
++static int __ext4_writeback_writepage(struct page *page,
++				struct writeback_control *wbc)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_group_desc *gdp = NULL;
-+	struct buffer_head *bh;
-+	ext4_group_t flex_group_count;
-+	ext4_group_t flex_group;
-+	int groups_per_flex = 0;
-+	__u64 block_bitmap = 0;
-+	int i;
++	struct inode *inode = page->mapping->host;
 +
-+	if (!sbi->s_es->s_log_groups_per_flex) {
-+		sbi->s_log_groups_per_flex = 0;
-+		return 1;
-+	}
++	if (test_opt(inode->i_sb, NOBH))
++		return nobh_writepage(page, ext4_get_block, wbc);
++	else
++		return block_write_full_page(page, ext4_get_block, wbc);
++}
 +
-+	sbi->s_log_groups_per_flex = sbi->s_es->s_log_groups_per_flex;
-+	groups_per_flex = 1 << sbi->s_log_groups_per_flex;
 +
-+	flex_group_count = (sbi->s_groups_count + groups_per_flex - 1) /
-+		groups_per_flex;
-+	sbi->s_flex_groups = kmalloc(flex_group_count *
-+				     sizeof(struct flex_groups), GFP_KERNEL);
-+	if (sbi->s_flex_groups == NULL) {
-+		printk(KERN_ERR "EXT4-fs: not enough memory\n");
-+		goto failed;
-+	}
-+	memset(sbi->s_flex_groups, 0, flex_group_count *
-+	       sizeof(struct flex_groups));
+ static int ext4_writeback_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+ 	struct inode *inode = page->mapping->host;
++	loff_t size = i_size_read(inode);
++	loff_t len;
 +
-+	gdp = ext4_get_group_desc(sb, 1, &bh);
-+	block_bitmap = ext4_block_bitmap(sb, gdp) - 1;
++	J_ASSERT(PageLocked(page));
++	J_ASSERT(page_has_buffers(page));
++	if (page->index == size >> PAGE_CACHE_SHIFT)
++		len = size & ~PAGE_CACHE_MASK;
++	else
++		len = PAGE_CACHE_SIZE;
++	BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
++				 ext4_bh_unmapped_or_delay));
 +
-+	for (i = 0; i < sbi->s_groups_count; i++) {
-+		gdp = ext4_get_group_desc(sb, i, &bh);
++	if (!ext4_journal_current_handle())
++		return __ext4_writeback_writepage(page, wbc);
 +
-+		flex_group = ext4_flex_group(sbi, i);
-+		sbi->s_flex_groups[flex_group].free_inodes +=
-+			le16_to_cpu(gdp->bg_free_inodes_count);
-+		sbi->s_flex_groups[flex_group].free_blocks +=
-+			le16_to_cpu(gdp->bg_free_blocks_count);
-+	}
-+
-+	return 1;
-+failed:
++	redirty_page_for_writepage(wbc, page);
++	unlock_page(page);
 +	return 0;
 +}
 +
- __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 block_group,
- 			    struct ext4_group_desc *gdp)
- {
-@@ -2137,6 +2186,14 @@ static int ext4_fill_super (struct super_block *sb, void *data, int silent)
- 		printk(KERN_ERR "EXT4-fs: group descriptors corrupted!\n");
- 		goto failed_mount2;
- 	}
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
-+		if (!ext4_fill_flex_info(sb)) {
-+			printk(KERN_ERR
-+			       "EXT4-fs: unable to initialize "
-+			       "flex_bg meta info!\n");
-+			goto failed_mount2;
-+		}
++static int __ext4_journalled_writepage(struct page *page,
++				struct writeback_control *wbc)
++{
++	struct address_space *mapping = page->mapping;
++	struct inode *inode = mapping->host;
++	struct buffer_head *page_bufs;
+ 	handle_t *handle = NULL;
+ 	int ret = 0;
+ 	int err;
+ 
+-	if (ext4_journal_current_handle())
+-		goto out_fail;
++	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE, ext4_get_block);
++	if (ret != 0)
++		goto out_unlock;
 +
- 	sbi->s_gdb_count = db_count;
- 	get_random_bytes(&sbi->s_next_generation, sizeof(u32));
- 	spin_lock_init(&sbi->s_next_gen_lock);
++	page_bufs = page_buffers(page);
++	walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE, NULL,
++								bget_one);
++	/* As soon as we unlock the page, it can go away, but we have
++	 * references to buffers so we are safe */
++	unlock_page(page);
+ 
+ 	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+-		goto out_fail;
++		goto out;
+ 	}
+ 
+-	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+-		ret = nobh_writepage(page, ext4_get_block, wbc);
+-	else
+-		ret = block_write_full_page(page, ext4_get_block, wbc);
++	ret = walk_page_buffers(handle, page_bufs, 0,
++			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
+ 
++	err = walk_page_buffers(handle, page_bufs, 0,
++				PAGE_CACHE_SIZE, NULL, write_end_fn);
++	if (ret == 0)
++		ret = err;
+ 	err = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = err;
+-	return ret;
+ 
+-out_fail:
+-	redirty_page_for_writepage(wbc, page);
++	walk_page_buffers(handle, page_bufs, 0,
++				PAGE_CACHE_SIZE, NULL, bput_one);
++	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
++	goto out;
++
++out_unlock:
+ 	unlock_page(page);
++out:
+ 	return ret;
+ }
+ 
+@@ -1660,59 +1701,40 @@ static int ext4_journalled_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+ 	struct inode *inode = page->mapping->host;
+-	handle_t *handle = NULL;
+-	int ret = 0;
+-	int err;
++	loff_t size = i_size_read(inode);
++	loff_t len;
+ 
+-	if (ext4_journal_current_handle())
+-		goto no_write;
++	J_ASSERT(PageLocked(page));
++	J_ASSERT(page_has_buffers(page));
++	if (page->index == size >> PAGE_CACHE_SHIFT)
++		len = size & ~PAGE_CACHE_MASK;
++	else
++		len = PAGE_CACHE_SIZE;
++	BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
++				 ext4_bh_unmapped_or_delay));
+ 
+-	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
++	if (ext4_journal_current_handle())
+ 		goto no_write;
+-	}
+ 
+-	if (!page_has_buffers(page) || PageChecked(page)) {
++	if (PageChecked(page)) {
+ 		/*
+ 		 * It's mmapped pagecache.  Add buffers and journal it.  There
+ 		 * doesn't seem much point in redirtying the page here.
+ 		 */
+ 		ClearPageChecked(page);
+-		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
+-					ext4_get_block);
+-		if (ret != 0) {
+-			ext4_journal_stop(handle);
+-			goto out_unlock;
+-		}
+-		ret = walk_page_buffers(handle, page_buffers(page), 0,
+-			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
+-
+-		err = walk_page_buffers(handle, page_buffers(page), 0,
+-				PAGE_CACHE_SIZE, NULL, write_end_fn);
+-		if (ret == 0)
+-			ret = err;
+-		EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
+-		unlock_page(page);
++		return __ext4_journalled_writepage(page, wbc);
+ 	} else {
+ 		/*
+ 		 * It may be a page full of checkpoint-mode buffers.  We don't
+ 		 * really know unless we go poke around in the buffer_heads.
+ 		 * But block_write_full_page will do the right thing.
+ 		 */
+-		ret = block_write_full_page(page, ext4_get_block, wbc);
++		return block_write_full_page(page, ext4_get_block, wbc);
+ 	}
+-	err = ext4_journal_stop(handle);
+-	if (!ret)
+-		ret = err;
+-out:
+-	return ret;
+-
+ no_write:
+ 	redirty_page_for_writepage(wbc, page);
+-out_unlock:
+ 	unlock_page(page);
+-	goto out;
++	return 0;
+ }
+ 
+ static int ext4_readpage(struct file *file, struct page *page)
+@@ -1909,7 +1931,7 @@ void ext4_set_aops(struct inode *inode)
+  * This required during truncate. We need to physically zero the tail end
+  * of that block so it doesn't yield old data if the file is later grown.
+  */
+-int ext4_block_truncate_page(handle_t *handle, struct page *page,
++int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from)
+ {
+ 	ext4_fsblk_t index = from >> PAGE_CACHE_SHIFT;
+@@ -1918,8 +1940,13 @@ int ext4_block_truncate_page(handle_t *handle, struct page *page,
+ 	ext4_lblk_t iblock;
+ 	struct inode *inode = mapping->host;
+ 	struct buffer_head *bh;
++	struct page *page;
+ 	int err = 0;
+ 
++	page = grab_cache_page(mapping, from >> PAGE_CACHE_SHIFT);
++	if (!page)
++		return -EINVAL;
++
+ 	blocksize = inode->i_sb->s_blocksize;
+ 	length = blocksize - (offset & (blocksize - 1));
+ 	iblock = index << (PAGE_CACHE_SHIFT - inode->i_sb->s_blocksize_bits);
+@@ -2383,7 +2410,6 @@ void ext4_truncate(struct inode *inode)
+ 	int n;
+ 	ext4_lblk_t last_block;
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+-	struct page *page;
+ 
+ 	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+ 	    S_ISLNK(inode->i_mode)))
+@@ -2393,41 +2419,21 @@ void ext4_truncate(struct inode *inode)
+ 	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+ 		return;
+ 
+-	/*
+-	 * We have to lock the EOF page here, because lock_page() nests
+-	 * outside jbd2_journal_start().
+-	 */
+-	if ((inode->i_size & (blocksize - 1)) == 0) {
+-		/* Block boundary? Nothing to do */
+-		page = NULL;
+-	} else {
+-		page = grab_cache_page(mapping,
+-				inode->i_size >> PAGE_CACHE_SHIFT);
+-		if (!page)
+-			return;
+-	}
+-
+ 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
+-		ext4_ext_truncate(inode, page);
++		ext4_ext_truncate(inode);
+ 		return;
+ 	}
+ 
+ 	handle = start_transaction(inode);
+-	if (IS_ERR(handle)) {
+-		if (page) {
+-			clear_highpage(page);
+-			flush_dcache_page(page);
+-			unlock_page(page);
+-			page_cache_release(page);
+-		}
++	if (IS_ERR(handle))
+ 		return;		/* AKPM: return what? */
+-	}
+ 
+ 	last_block = (inode->i_size + blocksize-1)
+ 					>> EXT4_BLOCK_SIZE_BITS(inode->i_sb);
+ 
+-	if (page)
+-		ext4_block_truncate_page(handle, page, mapping, inode->i_size);
++	if (inode->i_size & (blocksize - 1))
++		if (ext4_block_truncate_page(handle, mapping, inode->i_size))
++			goto out_stop;
+ 
+ 	n = ext4_block_to_path(inode, last_block, offsets, NULL);
+ 	if (n == 0)
 -- 
 1.5.6.rc3.1.g36b7.dirty
 
