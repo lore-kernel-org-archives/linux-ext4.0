@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 52/52] ext4: Documention update for new ordered mode and delayed allocation
-Date: Sat,  5 Jul 2008 13:36:18 -0400
-Message-ID: <1215279378-30504-53-git-send-email-tytso@mit.edu>
+Subject: [PATCH 43/52] percpu_counter: new function percpu_counter_sum_and_set
+Date: Sat,  5 Jul 2008 13:36:09 -0400
+Message-ID: <1215279378-30504-44-git-send-email-tytso@mit.edu>
 References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-2-git-send-email-tytso@mit.edu>
  <1215279378-30504-3-git-send-email-tytso@mit.edu>
@@ -45,97 +45,112 @@ References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-41-git-send-email-tytso@mit.edu>
  <1215279378-30504-42-git-send-email-tytso@mit.edu>
  <1215279378-30504-43-git-send-email-tytso@mit.edu>
- <1215279378-30504-44-git-send-email-tytso@mit.edu>
- <1215279378-30504-45-git-send-email-tytso@mit.edu>
- <1215279378-30504-46-git-send-email-tytso@mit.edu>
- <1215279378-30504-47-git-send-email-tytso@mit.edu>
- <1215279378-30504-48-git-send-email-tytso@mit.edu>
- <1215279378-30504-49-git-send-email-tytso@mit.edu>
- <1215279378-30504-50-git-send-email-tytso@mit.edu>
- <1215279378-30504-51-git-send-email-tytso@mit.edu>
- <1215279378-30504-52-git-send-email-tytso@mit.edu>
 Cc: Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33027 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33034 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754322AbYGERg3 (ORCPT
+	with ESMTP id S1754382AbYGERg3 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:29 -0400
-In-Reply-To: <1215279378-30504-52-git-send-email-tytso@mit.edu>
+In-Reply-To: <1215279378-30504-43-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Mingming Cao <cmm@us.ibm.com>
 
-Adding some documentations for delayed allocation and new ordered mode.
+Delayed allocation need to check free blocks at every write time.
+percpu_counter_read_positive() is not quit accurate. delayed
+allocation need a more accurate accounting, but using
+percpu_counter_sum_positive() is frequently is quite expensive.
+
+This patch added a new function to update center counter when sum
+per-cpu counter, to increase the accurate rate for next
+percpu_counter_read() and require less calling expensive
+percpu_counter_sum().
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- Documentation/filesystems/ext4.txt |   21 ++++++++++++++-------
- 1 files changed, 14 insertions(+), 7 deletions(-)
+ fs/ext4/balloc.c               |    2 +-
+ include/linux/percpu_counter.h |   12 +++++++++---
+ lib/percpu_counter.c           |    7 ++++++-
+ 3 files changed, 16 insertions(+), 5 deletions(-)
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 77ed8fe..e2afb6e 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -62,7 +62,7 @@ Mailing list: linux-ext4@vger.kernel.org
- * extent format reduces metadata overhead (RAM, IO for access, transactions)
- * extent format more robust in face of on-disk corruption due to magics,
- * internal redunancy in tree
--* improved file allocation (multi-block alloc, delayed alloc)
-+* improved file allocation (multi-block alloc)
- * fix 32000 subdirectory limit
- * nsec timestamps for mtime, atime, ctime, create time
- * inode version field on disk (NFSv4, Lustre)
-@@ -73,6 +73,10 @@ Mailing list: linux-ext4@vger.kernel.org
-   flex_bg feature
- * large file support
- * Inode allocation using large virtual block groups via flex_bg
-+* delayed allocation
-+* large block (up to pagesize) support
-+* efficent new ordered mode in JBD2 and ext4(avoid using buffer head to force
-+  the ordering)
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 25f63d8..6369bac 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1621,7 +1621,7 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ #ifdef CONFIG_SMP
+ 	if (free_blocks - root_blocks < FBC_BATCH)
+ 		free_blocks =
+-			percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
++			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
+ #endif
+ 	if (free_blocks - root_blocks < nblocks)
+ 		return free_blocks - root_blocks;
+diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
+index 9007ccd..2083888 100644
+--- a/include/linux/percpu_counter.h
++++ b/include/linux/percpu_counter.h
+@@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount);
+ void percpu_counter_destroy(struct percpu_counter *fbc);
+ void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
+ void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
+-s64 __percpu_counter_sum(struct percpu_counter *fbc);
++s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
  
- 2.2 Candidate features for future inclusion
+ static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
+ {
+@@ -44,13 +44,19 @@ static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
  
-@@ -235,7 +239,9 @@ stripe=n		Number of filesystem blocks that mballoc will try
- 			to use for allocation size and alignment. For RAID5/6
- 			systems this should be the number of data
- 			disks *  RAID chunk size in file system blocks.
--
-+delalloc	(*)	Deferring block allocation until write-out time.
-+nodelalloc		Disable delayed allocation. Blocks are allocation
-+			when data is copied from user to page cache.
- Data Mode
- =========
- There are 3 different data modes:
-@@ -249,10 +255,10 @@ typically provide the best ext4 performance.
+ static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
+ {
+-	s64 ret = __percpu_counter_sum(fbc);
++	s64 ret = __percpu_counter_sum(fbc, 0);
+ 	return ret < 0 ? 0 : ret;
+ }
  
- * ordered mode
- In data=ordered mode, ext4 only officially journals metadata, but it logically
--groups metadata and data blocks into a single unit called a transaction.  When
--it's time to write the new metadata out to disk, the associated data blocks
--are written first.  In general, this mode performs slightly slower than
--writeback but significantly faster than journal mode.
-+groups metadata information related to data changes with the data blocks into a
-+single unit called a transaction.  When it's time to write the new metadata
-+out to disk, the associated data blocks are written first.  In general,
-+this mode performs slightly slower than writeback but significantly faster than journal mode.
++static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
++{
++	return __percpu_counter_sum(fbc, 1);
++}
++
++
+ static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
+ {
+-	return __percpu_counter_sum(fbc);
++	return __percpu_counter_sum(fbc, 0);
+ }
  
- * journal mode
- data=journal mode provides full data and metadata journaling.  All new data is
-@@ -260,7 +266,8 @@ written to the journal first, and then to its final location.
- In the event of a crash, the journal can be replayed, bringing both data and
- metadata into a consistent state.  This mode is the slowest except when data
- needs to be read from and written to disk at the same time where it
--outperforms all others modes.
-+outperforms all others modes.  Curently ext4 does not have delayed
-+allocation support if this data journalling mode is selected.
- 
- References
- ==========
+ static inline s64 percpu_counter_read(struct percpu_counter *fbc)
+diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
+index 1191744..4a8ba4b 100644
+--- a/lib/percpu_counter.c
++++ b/lib/percpu_counter.c
+@@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
+  * Add up all the per-cpu counts, return the result.  This is a more accurate
+  * but much slower version of percpu_counter_read_positive()
+  */
+-s64 __percpu_counter_sum(struct percpu_counter *fbc)
++s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
+ {
+ 	s64 ret;
+ 	int cpu;
+@@ -62,7 +62,12 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc)
+ 	for_each_online_cpu(cpu) {
+ 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
+ 		ret += *pcount;
++		if (set)
++			*pcount = 0;
+ 	}
++	if (set)
++		fbc->count = ret;
++
+ 	spin_unlock(&fbc->lock);
+ 	return ret;
+ }
 -- 
 1.5.6.rc3.1.g36b7.dirty
 
