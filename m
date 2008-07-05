@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 38/52] jbd2: Implement data=ordered mode handling via inodes
-Date: Sat,  5 Jul 2008 13:36:04 -0400
-Message-ID: <1215279378-30504-39-git-send-email-tytso@mit.edu>
+Subject: [PATCH 37/52] vfs: export filemap_fdatawrite_range()
+Date: Sat,  5 Jul 2008 13:36:03 -0400
+Message-ID: <1215279378-30504-38-git-send-email-tytso@mit.edu>
 References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-2-git-send-email-tytso@mit.edu>
  <1215279378-30504-3-git-send-email-tytso@mit.edu>
@@ -39,400 +39,60 @@ References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-35-git-send-email-tytso@mit.edu>
  <1215279378-30504-36-git-send-email-tytso@mit.edu>
  <1215279378-30504-37-git-send-email-tytso@mit.edu>
- <1215279378-30504-38-git-send-email-tytso@mit.edu>
 Cc: Jan Kara <jack@suse.cz>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33020 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33025 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754141AbYGERg2 (ORCPT
+	with ESMTP id S1753964AbYGERg2 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:28 -0400
-In-Reply-To: <1215279378-30504-38-git-send-email-tytso@mit.edu>
+In-Reply-To: <1215279378-30504-37-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jan Kara <jack@suse.cz>
 
-This patch adds necessary framework into JBD2 to be able to track inodes
-with each transaction and write-out their dirty data during transaction
-commit time.
-
-This new ordered mode brings all sorts of advantages such as possibility
-to get rid of journal heads and buffer heads for data buffers in ordered
-mode, better ordering of writes on transaction commit, simplification of
- some JBD code, no more anonymous pages when truncate of data being
-committed happens.  Also with this new ordered mode, delayed allocation
-on ordered mode is much simpler.
+Make filemap_fdatawrite_range() function public, so that it can later
+be used in ordered mode rewrite by JBD/JBD2.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/commit.c      |   90 +++++++++++++++++++++++++++++++++++++++++++++++++
- fs/jbd2/journal.c     |   52 ++++++++++++++++++++++++++++
- fs/jbd2/transaction.c |   86 ++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/jbd2.h  |   42 +++++++++++++++++++++++
- 4 files changed, 270 insertions(+), 0 deletions(-)
+ include/linux/fs.h |    2 ++
+ mm/filemap.c       |    3 ++-
+ 2 files changed, 4 insertions(+), 1 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 92b6ac3..3ca107b 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -355,6 +355,81 @@ write_out_data:
- 	journal_do_submit_data(wbuf, bufs);
- }
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index d490779..d06f8e2 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1741,6 +1741,8 @@ extern int wait_on_page_writeback_range(struct address_space *mapping,
+ 				pgoff_t start, pgoff_t end);
+ extern int __filemap_fdatawrite_range(struct address_space *mapping,
+ 				loff_t start, loff_t end, int sync_mode);
++extern int filemap_fdatawrite_range(struct address_space *mapping,
++				loff_t start, loff_t end);
  
-+/*
-+ * Submit all the data buffers of inode associated with the transaction to
-+ * disk.
-+ *
-+ * We are in a committing transaction. Therefore no new inode can be added to
-+ * our inode list. We use JI_COMMIT_RUNNING flag to protect inode we currently
-+ * operate on from being released while we write out pages.
-+ */
-+static int journal_submit_inode_data_buffers(journal_t *journal,
-+		transaction_t *commit_transaction)
-+{
-+	struct jbd2_inode *jinode;
-+	int err, ret = 0;
-+	struct address_space *mapping;
-+
-+	spin_lock(&journal->j_list_lock);
-+	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
-+		mapping = jinode->i_vfs_inode->i_mapping;
-+		jinode->i_flags |= JI_COMMIT_RUNNING;
-+		spin_unlock(&journal->j_list_lock);
-+		err = filemap_fdatawrite_range(mapping, 0,
-+					i_size_read(jinode->i_vfs_inode));
-+		if (!ret)
-+			ret = err;
-+		spin_lock(&journal->j_list_lock);
-+		J_ASSERT(jinode->i_transaction == commit_transaction);
-+		jinode->i_flags &= ~JI_COMMIT_RUNNING;
-+		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
-+	}
-+	spin_unlock(&journal->j_list_lock);
-+	return ret;
-+}
-+
-+/*
-+ * Wait for data submitted for writeout, refile inodes to proper
-+ * transaction if needed.
-+ *
-+ */
-+static int journal_finish_inode_data_buffers(journal_t *journal,
-+		transaction_t *commit_transaction)
-+{
-+	struct jbd2_inode *jinode, *next_i;
-+	int err, ret = 0;
-+
-+	/* For locking, see the comment in journal_submit_inode_data_buffers() */
-+	spin_lock(&journal->j_list_lock);
-+	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
-+		jinode->i_flags |= JI_COMMIT_RUNNING;
-+		spin_unlock(&journal->j_list_lock);
-+		err = filemap_fdatawait(jinode->i_vfs_inode->i_mapping);
-+		if (!ret)
-+			ret = err;
-+		spin_lock(&journal->j_list_lock);
-+		jinode->i_flags &= ~JI_COMMIT_RUNNING;
-+		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
-+	}
-+
-+	/* Now refile inode to proper lists */
-+	list_for_each_entry_safe(jinode, next_i,
-+				 &commit_transaction->t_inode_list, i_list) {
-+		list_del(&jinode->i_list);
-+		if (jinode->i_next_transaction) {
-+			jinode->i_transaction = jinode->i_next_transaction;
-+			jinode->i_next_transaction = NULL;
-+			list_add(&jinode->i_list,
-+				&jinode->i_transaction->t_inode_list);
-+		} else {
-+			jinode->i_transaction = NULL;
-+		}
-+	}
-+	spin_unlock(&journal->j_list_lock);
-+
-+	return ret;
-+}
-+
- static __u32 jbd2_checksum_data(__u32 crc32_sum, struct buffer_head *bh)
+ extern long do_fsync(struct file *file, int datasync);
+ extern void sync_supers(void);
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 1e6a7d3..65d9d9e 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -236,11 +236,12 @@ int filemap_fdatawrite(struct address_space *mapping)
+ }
+ EXPORT_SYMBOL(filemap_fdatawrite);
+ 
+-static int filemap_fdatawrite_range(struct address_space *mapping, loff_t start,
++int filemap_fdatawrite_range(struct address_space *mapping, loff_t start,
+ 				loff_t end)
  {
- 	struct page *page = bh->b_page;
-@@ -529,6 +604,9 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	 */
- 	err = 0;
- 	journal_submit_data_buffers(journal, commit_transaction);
-+	err = journal_submit_inode_data_buffers(journal, commit_transaction);
-+	if (err)
-+		jbd2_journal_abort(journal, err);
- 
- 	/*
- 	 * Wait for all previously submitted IO to complete if commit
-@@ -760,6 +838,17 @@ start_journal_io:
- 			__jbd2_journal_abort_hard(journal);
- 	}
- 
-+	/*
-+	 * This is the right place to wait for data buffers both for ASYNC
-+	 * and !ASYNC commit. If commit is ASYNC, we need to wait only after
-+	 * the commit block went to disk (which happens above). If commit is
-+	 * SYNC, we need to wait for data buffers before we start writing
-+	 * commit block, which happens below in such setting.
-+	 */
-+	err = journal_finish_inode_data_buffers(journal, commit_transaction);
-+	if (err)
-+		jbd2_journal_abort(journal, err);
-+
- 	/* Lo and behold: we have just managed to send a transaction to
-            the log.  Before we can commit it, wait for the IO so far to
-            complete.  Control buffers being written are on the
-@@ -880,6 +969,7 @@ wait_for_iobuf:
- 	jbd_debug(3, "JBD: commit phase 7\n");
- 
- 	J_ASSERT(commit_transaction->t_sync_datalist == NULL);
-+	J_ASSERT(list_empty(&commit_transaction->t_inode_list));
- 	J_ASSERT(commit_transaction->t_buffers == NULL);
- 	J_ASSERT(commit_transaction->t_checkpoint_list == NULL);
- 	J_ASSERT(commit_transaction->t_iobuf_list == NULL);
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 2e24567..78cf7bd 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -82,6 +82,10 @@ EXPORT_SYMBOL(jbd2_journal_blocks_per_page);
- EXPORT_SYMBOL(jbd2_journal_invalidatepage);
- EXPORT_SYMBOL(jbd2_journal_try_to_free_buffers);
- EXPORT_SYMBOL(jbd2_journal_force_commit);
-+EXPORT_SYMBOL(jbd2_journal_file_inode);
-+EXPORT_SYMBOL(jbd2_journal_init_jbd_inode);
-+EXPORT_SYMBOL(jbd2_journal_release_jbd_inode);
-+EXPORT_SYMBOL(jbd2_journal_begin_ordered_truncate);
- 
- static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
- static void __journal_abort_soft (journal_t *journal, int errno);
-@@ -2195,6 +2199,54 @@ void jbd2_journal_put_journal_head(struct journal_head *jh)
+ 	return __filemap_fdatawrite_range(mapping, start, end, WB_SYNC_ALL);
  }
- 
- /*
-+ * Initialize jbd inode head
-+ */
-+void jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode)
-+{
-+	jinode->i_transaction = NULL;
-+	jinode->i_next_transaction = NULL;
-+	jinode->i_vfs_inode = inode;
-+	jinode->i_flags = 0;
-+	INIT_LIST_HEAD(&jinode->i_list);
-+}
-+
-+/*
-+ * Function to be called before we start removing inode from memory (i.e.,
-+ * clear_inode() is a fine place to be called from). It removes inode from
-+ * transaction's lists.
-+ */
-+void jbd2_journal_release_jbd_inode(journal_t *journal,
-+				    struct jbd2_inode *jinode)
-+{
-+	int writeout = 0;
-+
-+	if (!journal)
-+		return;
-+restart:
-+	spin_lock(&journal->j_list_lock);
-+	/* Is commit writing out inode - we have to wait */
-+	if (jinode->i_flags & JI_COMMIT_RUNNING) {
-+		wait_queue_head_t *wq;
-+		DEFINE_WAIT_BIT(wait, &jinode->i_flags, __JI_COMMIT_RUNNING);
-+		wq = bit_waitqueue(&jinode->i_flags, __JI_COMMIT_RUNNING);
-+		prepare_to_wait(wq, &wait.wait, TASK_UNINTERRUPTIBLE);
-+		spin_unlock(&journal->j_list_lock);
-+		schedule();
-+		finish_wait(wq, &wait.wait);
-+		goto restart;
-+	}
-+
-+	/* Do we need to wait for data writeback? */
-+	if (journal->j_committing_transaction == jinode->i_transaction)
-+		writeout = 1;
-+	if (jinode->i_transaction) {
-+		list_del(&jinode->i_list);
-+		jinode->i_transaction = NULL;
-+	}
-+	spin_unlock(&journal->j_list_lock);
-+}
-+
-+/*
-  * debugfs tunables
-  */
- #ifdef CONFIG_JBD2_DEBUG
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 8525dff..3da6a6d 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -51,6 +51,7 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
- 	transaction->t_tid = journal->j_transaction_sequence++;
- 	transaction->t_expires = jiffies + journal->j_commit_interval;
- 	spin_lock_init(&transaction->t_handle_lock);
-+	INIT_LIST_HEAD(&transaction->t_inode_list);
- 
- 	/* Set up the commit timer for the new transaction. */
- 	journal->j_commit_timer.expires = round_jiffies(transaction->t_expires);
-@@ -2195,3 +2196,88 @@ void jbd2_journal_refile_buffer(journal_t *journal, struct journal_head *jh)
- 	spin_unlock(&journal->j_list_lock);
- 	__brelse(bh);
- }
-+
-+/*
-+ * File inode in the inode list of the handle's transaction
-+ */
-+int jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *jinode)
-+{
-+	transaction_t *transaction = handle->h_transaction;
-+	journal_t *journal = transaction->t_journal;
-+
-+	if (is_handle_aborted(handle))
-+		return -EIO;
-+
-+	jbd_debug(4, "Adding inode %lu, tid:%d\n", jinode->i_vfs_inode->i_ino,
-+			transaction->t_tid);
-+
-+	/*
-+	 * First check whether inode isn't already on the transaction's
-+	 * lists without taking the lock. Note that this check is safe
-+	 * without the lock as we cannot race with somebody removing inode
-+	 * from the transaction. The reason is that we remove inode from the
-+	 * transaction only in journal_release_jbd_inode() and when we commit
-+	 * the transaction. We are guarded from the first case by holding
-+	 * a reference to the inode. We are safe against the second case
-+	 * because if jinode->i_transaction == transaction, commit code
-+	 * cannot touch the transaction because we hold reference to it,
-+	 * and if jinode->i_next_transaction == transaction, commit code
-+	 * will only file the inode where we want it.
-+	 */
-+	if (jinode->i_transaction == transaction ||
-+	    jinode->i_next_transaction == transaction)
-+		return 0;
-+
-+	spin_lock(&journal->j_list_lock);
-+
-+	if (jinode->i_transaction == transaction ||
-+	    jinode->i_next_transaction == transaction)
-+		goto done;
-+
-+	/* On some different transaction's list - should be
-+	 * the committing one */
-+	if (jinode->i_transaction) {
-+		J_ASSERT(jinode->i_next_transaction == NULL);
-+		J_ASSERT(jinode->i_transaction ==
-+					journal->j_committing_transaction);
-+		jinode->i_next_transaction = transaction;
-+		goto done;
-+	}
-+	/* Not on any transaction list... */
-+	J_ASSERT(!jinode->i_next_transaction);
-+	jinode->i_transaction = transaction;
-+	list_add(&jinode->i_list, &transaction->t_inode_list);
-+done:
-+	spin_unlock(&journal->j_list_lock);
-+
-+	return 0;
-+}
-+
-+/*
-+ * This function must be called when inode is journaled in ordered mode
-+ * before truncation happens. It starts writeout of truncated part in
-+ * case it is in the committing transaction so that we stand to ordered
-+ * mode consistency guarantees.
-+ */
-+int jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode,
-+					loff_t new_size)
-+{
-+	journal_t *journal;
-+	transaction_t *commit_trans;
-+	int ret = 0;
-+
-+	if (!inode->i_transaction && !inode->i_next_transaction)
-+		goto out;
-+	journal = inode->i_transaction->t_journal;
-+	spin_lock(&journal->j_state_lock);
-+	commit_trans = journal->j_committing_transaction;
-+	spin_unlock(&journal->j_state_lock);
-+	if (inode->i_transaction == commit_trans) {
-+		ret = filemap_fdatawrite_range(inode->i_vfs_inode->i_mapping,
-+			new_size, LLONG_MAX);
-+		if (ret)
-+			jbd2_journal_abort(journal, ret);
-+	}
-+out:
-+	return ret;
-+}
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index ec9cadf..622c3d8 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -381,6 +381,38 @@ static inline void jbd_unlock_bh_journal_head(struct buffer_head *bh)
- 	bit_spin_unlock(BH_JournalHead, &bh->b_state);
- }
- 
-+/* Flags in jbd_inode->i_flags */
-+#define __JI_COMMIT_RUNNING 0
-+/* Commit of the inode data in progress. We use this flag to protect us from
-+ * concurrent deletion of inode. We cannot use reference to inode for this
-+ * since we cannot afford doing last iput() on behalf of kjournald
-+ */
-+#define JI_COMMIT_RUNNING (1 << __JI_COMMIT_RUNNING)
-+
-+/**
-+ * struct jbd_inode is the structure linking inodes in ordered mode
-+ *   present in a transaction so that we can sync them during commit.
-+ */
-+struct jbd2_inode {
-+	/* Which transaction does this inode belong to? Either the running
-+	 * transaction or the committing one. [j_list_lock] */
-+	transaction_t *i_transaction;
-+
-+	/* Pointer to the running transaction modifying inode's data in case
-+	 * there is already a committing transaction touching it. [j_list_lock] */
-+	transaction_t *i_next_transaction;
-+
-+	/* List of inodes in the i_transaction [j_list_lock] */
-+	struct list_head i_list;
-+
-+	/* VFS inode this inode belongs to [constant during the lifetime
-+	 * of the structure] */
-+	struct inode *i_vfs_inode;
-+
-+	/* Flags of inode [j_list_lock] */
-+	unsigned int i_flags;
-+};
-+
- struct jbd2_revoke_table_s;
++EXPORT_SYMBOL(filemap_fdatawrite_range);
  
  /**
-@@ -567,6 +599,12 @@ struct transaction_s
- 	struct journal_head	*t_log_list;
- 
- 	/*
-+	 * List of inodes whose data we've modified in data=ordered mode.
-+	 * [j_list_lock]
-+	 */
-+	struct list_head	t_inode_list;
-+
-+	/*
- 	 * Protects info related to handles
- 	 */
- 	spinlock_t		t_handle_lock;
-@@ -1046,6 +1084,10 @@ extern void	   jbd2_journal_ack_err    (journal_t *);
- extern int	   jbd2_journal_clear_err  (journal_t *);
- extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
- extern int	   jbd2_journal_force_commit(journal_t *);
-+extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
-+extern int	   jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode, loff_t new_size);
-+extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
-+extern void	   jbd2_journal_release_jbd_inode(journal_t *journal, struct jbd2_inode *jinode);
- 
- /*
-  * journal_head management
+  * filemap_flush - mostly a non-blocking flush
 -- 
 1.5.6.rc3.1.g36b7.dirty
 
