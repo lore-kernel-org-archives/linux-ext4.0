@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 49/52] ext4: fix delalloc i_disksize early update issue
-Date: Sat,  5 Jul 2008 13:36:15 -0400
-Message-ID: <1215279378-30504-50-git-send-email-tytso@mit.edu>
+Subject: [PATCH 52/52] ext4: Documention update for new ordered mode and delayed allocation
+Date: Sat,  5 Jul 2008 13:36:18 -0400
+Message-ID: <1215279378-30504-53-git-send-email-tytso@mit.edu>
 References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-2-git-send-email-tytso@mit.edu>
  <1215279378-30504-3-git-send-email-tytso@mit.edu>
@@ -51,151 +51,91 @@ References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-47-git-send-email-tytso@mit.edu>
  <1215279378-30504-48-git-send-email-tytso@mit.edu>
  <1215279378-30504-49-git-send-email-tytso@mit.edu>
-Cc: Mingming Cao <cmm@us.ibm.com>,
-	Aneesh Kumar <aneesh.kumar@gmail.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+ <1215279378-30504-50-git-send-email-tytso@mit.edu>
+ <1215279378-30504-51-git-send-email-tytso@mit.edu>
+ <1215279378-30504-52-git-send-email-tytso@mit.edu>
+Cc: Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33032 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33027 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754257AbYGERg3 (ORCPT
+	with ESMTP id S1754322AbYGERg3 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:29 -0400
-In-Reply-To: <1215279378-30504-49-git-send-email-tytso@mit.edu>
+In-Reply-To: <1215279378-30504-52-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Mingming Cao <cmm@us.ibm.com>
 
-Ext4_da_write_end() used walk_page_buffers() with a callback function of
-ext4_bh_unmapped_or_delay() to check if it extended the file size
-without allocating any blocks (since in this case i_disksize needs to be
-updated).  However, this is didn't work proprely because the buffer head
-has not been marked dirty yet --- this is done later in
-block_commit_write() --- which caused ext4_bh_unmapped_or_delay() to
-always return false.
-
-In addition, walk_page_buffers() checks all of the buffer heads covering
-the page, and the only buffer_head that should be checked is the one
-covering the end of the write.  Otherwise, given a 1k blocksize
-filesystem and a 4k page size, the buffer head covering the first 1k
-stripe of the file could be unmapped (because it was a sparse file), and
-the second or third buffer_head covering that page could be mapped, and
-using walk_page_buffers() would fail in this case since it would stop at
-the first unmapped buffer_head and return true.
-
-The core problem is that walk_page_buffers() was intended to do work in
-a callback function, and a non-zero return value indicated a failure,
-which termined the walk of the buffer heads covering the page.  It was
-not intended to be used with a boolean function, such as
-ext4_bh_unmapped_or_delay().
-
-Add addtional fix from Aneesh to protect i_disksize update rave with truncate.
+Adding some documentations for delayed allocation and new ordered mode.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: Aneesh Kumar <aneesh.kumar@gmail.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |   63 +++++++++++++++++++++++++++++++++++++++++--------------
- 1 files changed, 47 insertions(+), 16 deletions(-)
+ Documentation/filesystems/ext4.txt |   21 ++++++++++++++-------
+ 1 files changed, 14 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6aa0ea8..5bacf73 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1891,6 +1891,29 @@ out:
- 	return ret;
- }
+diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+index 77ed8fe..e2afb6e 100644
+--- a/Documentation/filesystems/ext4.txt
++++ b/Documentation/filesystems/ext4.txt
+@@ -62,7 +62,7 @@ Mailing list: linux-ext4@vger.kernel.org
+ * extent format reduces metadata overhead (RAM, IO for access, transactions)
+ * extent format more robust in face of on-disk corruption due to magics,
+ * internal redunancy in tree
+-* improved file allocation (multi-block alloc, delayed alloc)
++* improved file allocation (multi-block alloc)
+ * fix 32000 subdirectory limit
+ * nsec timestamps for mtime, atime, ctime, create time
+ * inode version field on disk (NFSv4, Lustre)
+@@ -73,6 +73,10 @@ Mailing list: linux-ext4@vger.kernel.org
+   flex_bg feature
+ * large file support
+ * Inode allocation using large virtual block groups via flex_bg
++* delayed allocation
++* large block (up to pagesize) support
++* efficent new ordered mode in JBD2 and ext4(avoid using buffer head to force
++  the ordering)
  
-+/*
-+ * Check if we should update i_disksize
-+ * when write to the end of file but not require block allocation
-+ */
-+static int ext4_da_should_update_i_disksize(struct page *page,
-+					 unsigned long offset)
-+{
-+	struct buffer_head *bh;
-+	struct inode *inode = page->mapping->host;
-+	unsigned int idx;
-+	int i;
-+
-+	bh = page_buffers(page);
-+	idx = offset >> inode->i_blkbits;
-+
-+	for (i=0; i < idx; i++)
-+		bh = bh->b_this_page;
-+
-+	if (!buffer_mapped(bh) || (buffer_delay(bh)))
-+		return 0;
-+	return 1;
-+}
-+
- static int ext4_da_write_end(struct file *file,
- 				struct address_space *mapping,
- 				loff_t pos, unsigned len, unsigned copied,
-@@ -1900,6 +1923,10 @@ static int ext4_da_write_end(struct file *file,
- 	int ret = 0, ret2;
- 	handle_t *handle = ext4_journal_current_handle();
- 	loff_t new_i_size;
-+	unsigned long start, end;
-+
-+	start = pos & (PAGE_CACHE_SIZE - 1);
-+	end = start + copied -1;
+ 2.2 Candidate features for future inclusion
  
- 	/*
- 	 * generic_write_end() will run mark_inode_dirty() if i_size
-@@ -1908,18 +1935,23 @@ static int ext4_da_write_end(struct file *file,
- 	 */
+@@ -235,7 +239,9 @@ stripe=n		Number of filesystem blocks that mballoc will try
+ 			to use for allocation size and alignment. For RAID5/6
+ 			systems this should be the number of data
+ 			disks *  RAID chunk size in file system blocks.
+-
++delalloc	(*)	Deferring block allocation until write-out time.
++nodelalloc		Disable delayed allocation. Blocks are allocation
++			when data is copied from user to page cache.
+ Data Mode
+ =========
+ There are 3 different data modes:
+@@ -249,10 +255,10 @@ typically provide the best ext4 performance.
  
- 	new_i_size = pos + copied;
--	if (new_i_size > EXT4_I(inode)->i_disksize)
--		if (!walk_page_buffers(NULL, page_buffers(page),
--				       0, len, NULL, ext4_bh_unmapped_or_delay)){
--			/*
--			 * Updating i_disksize when extending file without
--			 * needing block allocation
--			 */
--			if (ext4_should_order_data(inode))
--				ret = ext4_jbd2_file_inode(handle, inode);
-+	if (new_i_size > EXT4_I(inode)->i_disksize) {
-+		if (ext4_da_should_update_i_disksize(page, end)) {
-+			down_write(&EXT4_I(inode)->i_data_sem);
-+			if (new_i_size > EXT4_I(inode)->i_disksize) {
-+				/*
-+				 * Updating i_disksize when extending file
-+				 * without needing block allocation
-+				 */
-+				if (ext4_should_order_data(inode))
-+					ret = ext4_jbd2_file_inode(handle,
-+								   inode);
+ * ordered mode
+ In data=ordered mode, ext4 only officially journals metadata, but it logically
+-groups metadata and data blocks into a single unit called a transaction.  When
+-it's time to write the new metadata out to disk, the associated data blocks
+-are written first.  In general, this mode performs slightly slower than
+-writeback but significantly faster than journal mode.
++groups metadata information related to data changes with the data blocks into a
++single unit called a transaction.  When it's time to write the new metadata
++out to disk, the associated data blocks are written first.  In general,
++this mode performs slightly slower than writeback but significantly faster than journal mode.
  
--			EXT4_I(inode)->i_disksize = new_i_size;
-+				EXT4_I(inode)->i_disksize = new_i_size;
-+			}
-+			up_write(&EXT4_I(inode)->i_data_sem);
- 		}
-+	}
- 	ret2 = generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
- 	copied = ret2;
-@@ -2965,6 +2997,11 @@ void ext4_truncate(struct inode *inode)
- 		goto out_stop;
+ * journal mode
+ data=journal mode provides full data and metadata journaling.  All new data is
+@@ -260,7 +266,8 @@ written to the journal first, and then to its final location.
+ In the event of a crash, the journal can be replayed, bringing both data and
+ metadata into a consistent state.  This mode is the slowest except when data
+ needs to be read from and written to disk at the same time where it
+-outperforms all others modes.
++outperforms all others modes.  Curently ext4 does not have delayed
++allocation support if this data journalling mode is selected.
  
- 	/*
-+	 * From here we block out all ext4_get_block() callers who want to
-+	 * modify the block allocation tree.
-+	 */
-+	down_write(&ei->i_data_sem);
-+	/*
- 	 * The orphan list entry will now protect us from any crash which
- 	 * occurs before the truncate completes, so it is now safe to propagate
- 	 * the new, shorter inode size (held for now in i_size) into the
-@@ -2973,12 +3010,6 @@ void ext4_truncate(struct inode *inode)
- 	 */
- 	ei->i_disksize = inode->i_size;
- 
--	/*
--	 * From here we block out all ext4_get_block() callers who want to
--	 * modify the block allocation tree.
--	 */
--	down_write(&ei->i_data_sem);
+ References
+ ==========
+-- 
+1.5.6.rc3.1.g36b7.dirty
+
