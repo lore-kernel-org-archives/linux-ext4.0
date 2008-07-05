@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 30/52] ext4: Add missing unlock to an error path in ext4_quota_write()
-Date: Sat,  5 Jul 2008 13:35:56 -0400
-Message-ID: <1215279378-30504-31-git-send-email-tytso@mit.edu>
+Subject: [PATCH 46/52] ext4: Invert lock ordering of page_lock and transaction start in delalloc
+Date: Sat,  5 Jul 2008 13:36:12 -0400
+Message-ID: <1215279378-30504-47-git-send-email-tytso@mit.edu>
 References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-2-git-send-email-tytso@mit.edu>
  <1215279378-30504-3-git-send-email-tytso@mit.edu>
@@ -32,46 +32,375 @@ References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
  <1215279378-30504-28-git-send-email-tytso@mit.edu>
  <1215279378-30504-29-git-send-email-tytso@mit.edu>
  <1215279378-30504-30-git-send-email-tytso@mit.edu>
-Cc: Jan Kara <jack@suse.cz>, Mingming Cao <cmm@us.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+ <1215279378-30504-31-git-send-email-tytso@mit.edu>
+ <1215279378-30504-32-git-send-email-tytso@mit.edu>
+ <1215279378-30504-33-git-send-email-tytso@mit.edu>
+ <1215279378-30504-34-git-send-email-tytso@mit.edu>
+ <1215279378-30504-35-git-send-email-tytso@mit.edu>
+ <1215279378-30504-36-git-send-email-tytso@mit.edu>
+ <1215279378-30504-37-git-send-email-tytso@mit.edu>
+ <1215279378-30504-38-git-send-email-tytso@mit.edu>
+ <1215279378-30504-39-git-send-email-tytso@mit.edu>
+ <1215279378-30504-40-git-send-email-tytso@mit.edu>
+ <1215279378-30504-41-git-send-email-tytso@mit.edu>
+ <1215279378-30504-42-git-send-email-tytso@mit.edu>
+ <1215279378-30504-43-git-send-email-tytso@mit.edu>
+ <1215279378-30504-44-git-send-email-tytso@mit.edu>
+ <1215279378-30504-45-git-send-email-tytso@mit.edu>
+ <1215279378-30504-46-git-send-email-tytso@mit.edu>
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33078 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33074 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755880AbYGERgb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:31 -0400
-In-Reply-To: <1215279378-30504-30-git-send-email-tytso@mit.edu>
+	with ESMTP id S1755890AbYGERgc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:32 -0400
+In-Reply-To: <1215279378-30504-46-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+From: Mingming Cao <cmm@us.ibm.com>
 
-Add missing unlock of i_mutex in the error path of ext4_quota_write().
+With the reverse locking, we need to start a transation before taking
+the page lock, so in ext4_da_writepages() we need to break the write-out
+into chunks, and restart the journal for each chunck to ensure the
+write-out fits in a single transaction.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
+Updated patch from Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+which fixes delalloc sync hang with journal lock inversion, and address
+the performance regression issue.
+
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/super.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+ fs/ext4/extents.c |   10 ++-
+ fs/ext4/inode.c   |  189 +++++++++++++++++++++++++++++++++++++++--------------
+ fs/mpage.c        |   12 ++--
+ 3 files changed, 152 insertions(+), 59 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e239af3..1b330cd 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3390,8 +3390,10 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
- 		blk++;
- 	}
- out:
--	if (len == towrite)
-+	if (len == towrite) {
-+		mutex_unlock(&inode->i_mutex);
- 		return err;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 88e08a3..f413be9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2565,6 +2565,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	int err = 0, depth, ret;
+ 	unsigned long allocated = 0;
+ 	struct ext4_allocation_request ar;
++	loff_t disksize;
+ 
+ 	__clear_bit(BH_New, &bh_result->b_state);
+ 	ext_debug("blocks %u/%lu requested for inode %u\n",
+@@ -2755,8 +2756,13 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	newblock = ext_pblock(&newex);
+ 	allocated = ext4_ext_get_actual_len(&newex);
+ outnew:
+-	if (extend_disksize && inode->i_size > EXT4_I(inode)->i_disksize)
+-		EXT4_I(inode)->i_disksize = inode->i_size;
++	if (extend_disksize) {
++		disksize = ((loff_t) iblock + ar.len) << inode->i_blkbits;
++		if (disksize > i_size_read(inode))
++			disksize = i_size_read(inode);
++		if (disksize > EXT4_I(inode)->i_disksize)
++			EXT4_I(inode)->i_disksize = disksize;
 +	}
- 	if (inode->i_size < off+len-towrite) {
- 		i_size_write(inode, off+len-towrite);
- 		EXT4_I(inode)->i_disksize = inode->i_size;
+ 
+ 	set_buffer_new(bh_result);
+ 
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4545542..db5aee8 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -846,6 +846,7 @@ int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	int count = 0;
+ 	ext4_fsblk_t first_block = 0;
++	loff_t disksize;
+ 
+ 
+ 	J_ASSERT(!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL));
+@@ -921,8 +922,13 @@ int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
+ 	 * protect it if you're about to implement concurrent
+ 	 * ext4_get_block() -bzzz
+ 	*/
+-	if (!err && extend_disksize && inode->i_size > ei->i_disksize)
+-		ei->i_disksize = inode->i_size;
++	if (!err && extend_disksize) {
++		disksize = ((loff_t) iblock + count) << inode->i_blkbits;
++		if (disksize > i_size_read(inode))
++			disksize = i_size_read(inode);
++		if (disksize > ei->i_disksize)
++			ei->i_disksize = disksize;
++	}
+ 	if (err)
+ 		goto cleanup;
+ 
+@@ -1580,18 +1586,14 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
+ 				   struct buffer_head *bh_result, int create)
+ {
+-	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
++	int ret;
+ 	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
+ 	loff_t disksize = EXT4_I(inode)->i_disksize;
+ 	handle_t *handle = NULL;
+ 
+-	if (create) {
+-		handle = ext4_journal_start(inode, needed_blocks);
+-		if (IS_ERR(handle)) {
+-			ret = PTR_ERR(handle);
+-			goto out;
+-		}
+-	}
++	handle = ext4_journal_current_handle();
++	BUG_ON(handle == NULL);
++	BUG_ON(create == 0);
+ 
+ 	ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
+ 				   bh_result, create, 0, EXT4_DELALLOC_RSVED);
+@@ -1620,65 +1622,157 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
+ 			up_write(&EXT4_I(inode)->i_data_sem);
+ 
+ 			if (EXT4_I(inode)->i_disksize == disksize) {
+-				if (handle == NULL)
+-					handle = ext4_journal_start(inode, 1);
+-				if (!IS_ERR(handle))
+-					ext4_mark_inode_dirty(handle, inode);
++				ret = ext4_mark_inode_dirty(handle, inode);
++				return ret;
+ 			}
+ 		}
+-
+ 		ret = 0;
+ 	}
+-
+-out:
+-	if (handle && !IS_ERR(handle))
+-		ext4_journal_stop(handle);
+-
+ 	return ret;
+ }
++
++static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
++{
++	return !buffer_mapped(bh) || buffer_delay(bh);
++}
++
+ /* FIXME!! only support data=writeback mode */
++/*
++ * get called vi ext4_da_writepages after taking page lock
++ * We may end up doing block allocation here in case
++ * mpage_da_map_blocks failed to allocate blocks.
++ */
+ static int ext4_da_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+-	struct inode *inode = page->mapping->host;
+-	handle_t *handle = NULL;
+ 	int ret = 0;
+-	int err;
++	loff_t size;
++	unsigned long len;
++	handle_t *handle = NULL;
++	struct buffer_head *page_bufs;
++	struct inode *inode = page->mapping->host;
+ 
+-	if (ext4_journal_current_handle())
+-		goto out_fail;
++	handle = ext4_journal_current_handle();
++	if (!handle) {
++		/*
++		 * This can happen when we aren't called via
++		 * ext4_da_writepages() but directly (shrink_page_list).
++		 * We cannot easily start a transaction here so we just skip
++		 * writing the page in case we would have to do so.
++		 */
++		size = i_size_read(inode);
+ 
+-	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto out_fail;
++		page_bufs = page_buffers(page);
++		if (page->index == size >> PAGE_CACHE_SHIFT)
++			len = size & ~PAGE_CACHE_MASK;
++		else
++			len = PAGE_CACHE_SIZE;
++
++		if (walk_page_buffers(NULL, page_bufs, 0,
++				len, NULL, ext4_bh_unmapped_or_delay)) {
++			/*
++			 * We can't do block allocation under
++			 * page lock without a handle . So redirty
++			 * the page and return
++			 */
++			BUG_ON(wbc->sync_mode != WB_SYNC_NONE);
++			redirty_page_for_writepage(wbc, page);
++			unlock_page(page);
++			return 0;
++		}
+ 	}
+ 
+ 	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+-		ret = nobh_writepage(page, ext4_get_block, wbc);
++		ret = nobh_writepage(page, ext4_da_get_block_write, wbc);
+ 	else
+-		ret = block_write_full_page(page, ext4_get_block, wbc);
++		ret = block_write_full_page(page, ext4_da_get_block_write, wbc);
+ 
+-	if (!ret && inode->i_size > EXT4_I(inode)->i_disksize) {
+-		EXT4_I(inode)->i_disksize = inode->i_size;
+-		ext4_mark_inode_dirty(handle, inode);
+-	}
+-
+-	err = ext4_journal_stop(handle);
+-	if (!ret)
+-		ret = err;
+-	return ret;
+-
+-out_fail:
+-	redirty_page_for_writepage(wbc, page);
+-	unlock_page(page);
+ 	return ret;
+ }
+ 
++
++/*
++ * For now just follow the DIO way to estimate the max credits
++ * needed to write out EXT4_MAX_WRITEBACK_PAGES.
++ * todo: need to calculate the max credits need for
++ * extent based files, currently the DIO credits is based on
++ * indirect-blocks mapping way.
++ *
++ * Probably should have a generic way to calculate credits
++ * for DIO, writepages, and truncate
++ */
++#define EXT4_MAX_WRITEBACK_PAGES      DIO_MAX_BLOCKS
++#define EXT4_MAX_WRITEBACK_CREDITS    DIO_CREDITS
++
+ static int ext4_da_writepages(struct address_space *mapping,
+ 				struct writeback_control *wbc)
+ {
+-	return mpage_da_writepages(mapping, wbc, ext4_da_get_block_write);
++	struct inode *inode = mapping->host;
++	handle_t *handle = NULL;
++	int needed_blocks;
++	int ret = 0;
++	long to_write;
++	loff_t range_start = 0;
++
++	/*
++	 * No pages to write? This is mainly a kludge to avoid starting
++	 * a transaction for special inodes like journal inode on last iput()
++	 * because that could violate lock ordering on umount
++	 */
++	if (!mapping->nrpages)
++		return 0;
++
++	/*
++	 *  Estimate the worse case needed credits to write out
++	 * EXT4_MAX_BUF_BLOCKS pages
++	 */
++	needed_blocks = EXT4_MAX_WRITEBACK_CREDITS;
++
++	to_write = wbc->nr_to_write;
++	if (!wbc->range_cyclic) {
++		/*
++		 * If range_cyclic is not set force range_cont
++		 * and save the old writeback_index
++		 */
++		wbc->range_cont = 1;
++		range_start =  wbc->range_start;
++	}
++
++	while (!ret && to_write) {
++		/* start a new transaction*/
++		handle = ext4_journal_start(inode, needed_blocks);
++		if (IS_ERR(handle)) {
++			ret = PTR_ERR(handle);
++			goto out_writepages;
++		}
++		/*
++		 * set the max dirty pages could be write at a time
++		 * to fit into the reserved transaction credits
++		 */
++		if (wbc->nr_to_write > EXT4_MAX_WRITEBACK_PAGES)
++			wbc->nr_to_write = EXT4_MAX_WRITEBACK_PAGES;
++
++		to_write -= wbc->nr_to_write;
++		ret = mpage_da_writepages(mapping, wbc,
++						ext4_da_get_block_write);
++		ext4_journal_stop(handle);
++		if (wbc->nr_to_write) {
++			/*
++			 * There is no more writeout needed
++			 * or we requested for a noblocking writeout
++			 * and we found the device congested
++			 */
++			to_write += wbc->nr_to_write;
++			break;
++		}
++		wbc->nr_to_write = to_write;
++	}
++
++out_writepages:
++	wbc->nr_to_write = to_write;
++	if (range_start)
++		wbc->range_start = range_start;
++	return ret;
+ }
+ 
+ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+@@ -1728,11 +1822,6 @@ out:
+ 	return ret;
+ }
+ 
+-static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
+-{
+-	return !buffer_mapped(bh) || buffer_delay(bh);
+-}
+-
+ static int ext4_da_write_end(struct file *file,
+ 				struct address_space *mapping,
+ 				loff_t pos, unsigned len, unsigned copied,
+diff --git a/fs/mpage.c b/fs/mpage.c
+index cde7f11..c4376ec 100644
+--- a/fs/mpage.c
++++ b/fs/mpage.c
+@@ -849,13 +849,11 @@ static void mpage_put_bnr_to_bhs(struct mpage_da_data *mpd, sector_t logical,
+ 			do {
+ 				if (cur_logical >= logical + blocks)
+ 					break;
+-
+ 				if (buffer_delay(bh)) {
+ 					bh->b_blocknr = pblock;
+ 					clear_buffer_delay(bh);
+-				} else if (buffer_mapped(bh)) {
++				} else if (buffer_mapped(bh))
+ 					BUG_ON(bh->b_blocknr != pblock);
+-				}
+ 
+ 				cur_logical++;
+ 				pblock++;
+@@ -930,10 +928,10 @@ static void mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 		if (buffer_delay(lbh))
+ 			mpage_put_bnr_to_bhs(mpd, next, &new);
+ 
+-			/* go for the remaining blocks */
+-			next += new.b_size >> mpd->inode->i_blkbits;
+-			remain -= new.b_size;
+-		}
++		/* go for the remaining blocks */
++		next += new.b_size >> mpd->inode->i_blkbits;
++		remain -= new.b_size;
++	}
+ }
+ 
+ #define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | (1 << BH_Delay))
 -- 
 1.5.6.rc3.1.g36b7.dirty
 
