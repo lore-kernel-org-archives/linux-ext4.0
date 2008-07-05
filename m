@@ -1,67 +1,41 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 09/52] ext4: remove double definitions of xattr macros
-Date: Sat,  5 Jul 2008 13:35:35 -0400
-Message-ID: <1215279378-30504-10-git-send-email-tytso@mit.edu>
-References: <1215279378-30504-1-git-send-email-tytso@mit.edu>
- <1215279378-30504-2-git-send-email-tytso@mit.edu>
- <1215279378-30504-3-git-send-email-tytso@mit.edu>
- <1215279378-30504-4-git-send-email-tytso@mit.edu>
- <1215279378-30504-5-git-send-email-tytso@mit.edu>
- <1215279378-30504-6-git-send-email-tytso@mit.edu>
- <1215279378-30504-7-git-send-email-tytso@mit.edu>
- <1215279378-30504-8-git-send-email-tytso@mit.edu>
- <1215279378-30504-9-git-send-email-tytso@mit.edu>
-Cc: Shen Feng <shen@cn.fujitsu.com>, Mingming Cao <cmm@us.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: New ext4 patchset 2.6.26-rc8-ext4-1
+Date: Sat, 5 Jul 2008 13:50:47 -0400
+Message-ID: <20080705175047.GA11243@infradead.org>
+References: <E1KFBPc-0006yI-Gx@closure.thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33109 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755963AbYGERge (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:36:34 -0400
-In-Reply-To: <1215279378-30504-9-git-send-email-tytso@mit.edu>
+Received: from bombadil.infradead.org ([18.85.46.34]:52070 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759885AbYGERur (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 13:50:47 -0400
+Content-Disposition: inline
+In-Reply-To: <E1KFBPc-0006yI-Gx@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Shen Feng <shen@cn.fujitsu.com>
+On Sat, Jul 05, 2008 at 01:19:04PM -0400, Theodore Ts'o wrote:
+> Alex Tomas (2):
+>     * vfs: add basic delayed allocation support
+>     * ext4: Add basic delayed allocation support
 
-remove the definitions of macros XATTR_TRUSTED_PREFIX and XATTR_USER_PREFIX
-since they are defined in linux/xattr.h
+Strong NACK.  For one thing the code added to mpage.c doesn't belong
+there.  It's far inferior to the existing delalloc code we already have
+and that could be made generic easily, or the next generation code
+developed by Chris mason.  It's an ext4-specific hack and doesn't belong
+into common code.  I'm pretty sure we agreed on not having it in
+common code long ago.
 
-Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/xattr_trusted.c |    4 +---
- fs/ext4/xattr_user.c    |    4 +---
- 2 files changed, 2 insertions(+), 6 deletions(-)
+Also the code still deals with the !buffer_mapped and no buffers on page
+cases all over which isn't needed anymore with ->page_mkwrite implemented.
+Similarly the !get_block case in mpage_da_writepages doesn't make any
+sense - it's never used and if people would want to use
+generic_writepages they could trivially just call it directly.
 
-diff --git a/fs/ext4/xattr_trusted.c b/fs/ext4/xattr_trusted.c
-index fff3338..ac1a52c 100644
---- a/fs/ext4/xattr_trusted.c
-+++ b/fs/ext4/xattr_trusted.c
-@@ -13,13 +13,11 @@
- #include "ext4.h"
- #include "xattr.h"
- 
--#define XATTR_TRUSTED_PREFIX "trusted."
--
- static size_t
- ext4_xattr_trusted_list(struct inode *inode, char *list, size_t list_size,
- 			const char *name, size_t name_len)
- {
--	const size_t prefix_len = sizeof(XATTR_TRUSTED_PREFIX)-1;
-+	const size_t prefix_len = XATTR_TRUSTED_PREFIX_LEN;
- 	const size_t total_len = prefix_len + name_len + 1;
- 
- 	if (!capable(CAP_SYS_ADMIN))
-diff --git a/fs/ext4/xattr_user.c b/fs/ext4/xattr_user.c
-index 67be723..d91aa61 100644
---- a/fs/ext4/xattr_user.c
-+++ b/fs/ext4/xattr_user.c
-@@ -12,13 +12,11 @@
- #include "ext4.h"
- #include "xattr.h"
- 
--#define XATTR_USER_PREFIX "user."
+And please fix up the indentation of the new buffer_delay checks in
+fs/buffer.c, the && belongs on the end of the previous line, and the
+second line of the conditional should not be indented the same amount
+as the code inside the conditional block.
