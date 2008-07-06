@@ -1,79 +1,44 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: blkid oddities with stale devices in the cache
-Date: Sat, 05 Jul 2008 23:36:09 -0500
-Message-ID: <48704BB9.1090501@redhat.com>
-References: <485C8AAE.5020005@redhat.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: New ext4 patchset 2.6.26-rc8-ext4-1
+Date: Sun, 6 Jul 2008 05:58:23 -0400
+Message-ID: <20080706095823.GA21109@infradead.org>
+References: <E1KFBPc-0006yI-Gx@closure.thunk.org> <20080705175047.GA11243@infradead.org> <20080706024115.GH20240@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:53746 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750744AbYGFEgL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 6 Jul 2008 00:36:11 -0400
-In-Reply-To: <485C8AAE.5020005@redhat.com>
+Received: from bombadil.infradead.org ([18.85.46.34]:45653 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752322AbYGFJ6Y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Jul 2008 05:58:24 -0400
+Content-Disposition: inline
+In-Reply-To: <20080706024115.GH20240@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> This is w.r.t. https://bugzilla.redhat.com/show_bug.cgi?id=452333
+On Sat, Jul 05, 2008 at 10:41:15PM -0400, Theodore Tso wrote:
+> On Sat, Jul 05, 2008 at 01:50:47PM -0400, Christoph Hellwig wrote:
+> > Strong NACK.  For one thing the code added to mpage.c doesn't belong
+> > there.  It's far inferior to the existing delalloc code we already have
+> > and that could be made generic easily, or the next generation code
+> > developed by Chris mason.  It's an ext4-specific hack and doesn't belong
+> > into common code.  I'm pretty sure we agreed on not having it in
+> > common code long ago.
 > 
-> Dave had a few stale entries in blkid.tab; label from a usb key showed
-> up under several non-existent, stale device names.  fstab had LABEL=,
-> mounting by label failed because blkid returned a stale, nonexistent device.
+> Looking back at the mailing list history, yes, we did.  I think the
+> reason why we didn't was Andrew had expressed a vague wish that the
+> ext4 and xfs developers would get together and try to hash out a
+> common layer that all filesystems could work with.  But given that
+> nothing has happened in the many months since that discussion, you're
+> absolutely right.
+> 
+> I've reworked the vfs generic patch in the patch series to be much
+> smaller --- mainly what's left is simply exporting some mpage
+> interfaces that would be needed by ext4.  I trust this is much more to
+> your liking?
 
-Ted, ping (when you're done kernel-wrangling anyway)?  Any thoughts on
-this?  Returning cached data for a device when stat says ENOENT seems
-very weird (and wrong).
-
-Thanks,
-
--Eric
-
-> It seems there's a problem in blkid_verify():
-> 
->         if (((probe.fd = open(dev->bid_name, O_RDONLY)) < 0) ||
->             (fstat(probe.fd, &st) < 0)) {
->                 if (probe.fd >= 0) close(probe.fd);
->                 if ((errno != EPERM) && (errno != EACCES) &&
->                     (errno != ENOENT)) {
->                         DBG(DEBUG_PROBE,
->                             printf("blkid_verify: error %s (%d) while "
->                                    "opening %s\n", strerror(errno), errno,
->                                    dev->bid_name));
->                         blkid_free_dev(dev);
->                         return NULL;
->                 }
->                 /* We don't have read permission, just return cache data. */
->                 DBG(DEBUG_PROBE,
->                     printf("returning unverified data for %s\n",
->                            dev->bid_name));
->                 return dev;
-> 
-> We find the bad/stale device in the cache, and stat it - if the device
-> doesn't exist, we get ENOENT.  But we return the stale data for the
-> nonexistent device anyway.  Eh?
-> 
-> http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=commitdiff;h=8bcaaabb1a023af4852dbf0dba76249982c62e40
-> 
-> did this:
-> 
-> When a nonprivileged user uses the blkid command, we want to keep the
-> cached filesystem information, and opening a device file could result
-> in an EACCESS or ENOENT (if an intervening directory is mode 700).  We
-> were previously testing for EPERM, which was really the wrong error
-> code to be testing against.
-> 
-> But do we really want to do this in the case of ENOENT?  It seems like
-> this is going to grow a crop of missing devices in the cache, no?
-> 
-> Thanks,
-> 
-> -Eric
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes, this is much better.  But please also add kerneldoc comments for
+the newly exported functions.
 
