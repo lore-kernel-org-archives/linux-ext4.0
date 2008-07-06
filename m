@@ -1,154 +1,48 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: New ext4 patchset 2.6.26-rc8-ext4-1
-Date: Sat, 5 Jul 2008 22:41:15 -0400
-Message-ID: <20080706024115.GH20240@mit.edu>
-References: <E1KFBPc-0006yI-Gx@closure.thunk.org> <20080705175047.GA11243@infradead.org>
+Subject: Re: [PATCH] ext4: fix build failure if DX_DEBUG
+Date: Sun, 6 Jul 2008 00:07:51 -0400
+Message-ID: <20080706040751.GA21990@mit.edu>
+References: <484F9030.2020800@cn.fujitsu.com> <484FF75B.8090403@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755491AbYGFCly@vger.kernel.org>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Li Zefan <lizf@cn.fujitsu.com>, Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:37727 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750808AbYGFEIQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 6 Jul 2008 00:08:16 -0400
 Content-Disposition: inline
-In-Reply-To: <20080705175047.GA11243@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <484FF75B.8090403@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jul 05, 2008 at 01:50:47PM -0400, Christoph Hellwig wrote:
-> Strong NACK.  For one thing the code added to mpage.c doesn't belong
-> there.  It's far inferior to the existing delalloc code we already have
-> and that could be made generic easily, or the next generation code
-> developed by Chris mason.  It's an ext4-specific hack and doesn't belong
-> into common code.  I'm pretty sure we agreed on not having it in
-> common code long ago.
+On Wed, Jun 11, 2008 at 11:03:39AM -0500, Eric Sandeen wrote:
+> Li Zefan wrote:
+> > I got build failure when I turned on DX_DEBUG.
+> >=20
+> > fs/ext4/namei.c: In function =E2=80=98dx_show_leaf=E2=80=99:
+> > fs/ext4/namei.c:291: error: implicit declaration of function =E2=80=
+=98ext4_next_entry=E2=80=99
+> > fs/ext4/namei.c:291: warning: assignment makes pointer from integer=
+ without a cast
+> >=20
+> > Move the definition of ext4_next_entry() upwards just as ext3 code.
+> >=20
+> > Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
+>=20
+> Thanks,  I added this to the bugfix portion of the ext4 patch queue.
 
-Looking back at the mailing list history, yes, we did.  I think the
-reason why we didn't was Andrew had expressed a vague wish that the
-ext4 and xfs developers would get together and try to hash out a
-common layer that all filesystems could work with.  But given that
-nothing has happened in the many months since that discussion, you're
-absolutely right.
+But you forgot to edit the series file.  :-)=20
 
-I've reworked the vfs generic patch in the patch series to be much
-smaller --- mainly what's left is simply exporting some mpage
-interfaces that would be needed by ext4.  I trust this is much more to
-your liking?
+I've fixed in the patch queue, and it will be in the 2.6.26-rc9-ext4-1
+patch drop.
 
 						- Ted
-
-commit 2962918ce8fa666bdab5b189cc4ed4b3d08a33f8
-Author: Alex Tomas <alex@clusterfs.com>
-Date:   Sat Jul 5 21:25:20 2008 -0400
-
-    vfs: add hooks for ext4's delayed allocation support
-    
-    Export mpage_bio_submit() and __mpage_writepage() for the benefit of
-    ext4's delayed allocation support.   Also change __block_write_full_page
-    so that if buffers that have the BH_Delay flag set it will call
-    get_block() to get the physical block allocated, just as in the
-    !BH_Mapped case.
-    
-    Signed-off-by: Alex Tomas <alex@clusterfs.com>
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/fs/buffer.c b/fs/buffer.c
-index a413008..d2541a0 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1691,11 +1691,13 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
- 			 */
- 			clear_buffer_dirty(bh);
- 			set_buffer_uptodate(bh);
--		} else if (!buffer_mapped(bh) && buffer_dirty(bh)) {
-+		} else if ((!buffer_mapped(bh) || buffer_delay(bh)) &&
-+			   buffer_dirty(bh)) {
- 			WARN_ON(bh->b_size != blocksize);
- 			err = get_block(inode, block, bh, 1);
- 			if (err)
- 				goto recover;
-+			clear_buffer_delay(bh);
- 			if (buffer_new(bh)) {
- 				/* blockdev mappings never come here */
- 				clear_buffer_new(bh);
-@@ -1774,7 +1776,8 @@ recover:
- 	bh = head;
- 	/* Recovery: lock and submit the mapped buffers */
- 	do {
--		if (buffer_mapped(bh) && buffer_dirty(bh)) {
-+		if (buffer_mapped(bh) && buffer_dirty(bh) &&
-+		    !buffer_delay(bh)) {
- 			lock_buffer(bh);
- 			mark_buffer_async_write(bh);
- 		} else {
-diff --git a/fs/mpage.c b/fs/mpage.c
-index 235e4d3..dbcc7af 100644
---- a/fs/mpage.c
-+++ b/fs/mpage.c
-@@ -82,7 +82,7 @@ static void mpage_end_io_write(struct bio *bio, int err)
- 	bio_put(bio);
- }
- 
--static struct bio *mpage_bio_submit(int rw, struct bio *bio)
-+struct bio *mpage_bio_submit(int rw, struct bio *bio)
- {
- 	bio->bi_end_io = mpage_end_io_read;
- 	if (rw == WRITE)
-@@ -90,6 +90,7 @@ static struct bio *mpage_bio_submit(int rw, struct bio *bio)
- 	submit_bio(rw, bio);
- 	return NULL;
- }
-+EXPORT_SYMBOL(mpage_bio_submit);
- 
- static struct bio *
- mpage_alloc(struct block_device *bdev,
-@@ -435,15 +436,9 @@ EXPORT_SYMBOL(mpage_readpage);
-  * written, so it can intelligently allocate a suitably-sized BIO.  For now,
-  * just allocate full-size (16-page) BIOs.
-  */
--struct mpage_data {
--	struct bio *bio;
--	sector_t last_block_in_bio;
--	get_block_t *get_block;
--	unsigned use_writepage;
--};
- 
--static int __mpage_writepage(struct page *page, struct writeback_control *wbc,
--			     void *data)
-+int __mpage_writepage(struct page *page, struct writeback_control *wbc,
-+		      void *data)
- {
- 	struct mpage_data *mpd = data;
- 	struct bio *bio = mpd->bio;
-@@ -651,6 +646,7 @@ out:
- 	mpd->bio = bio;
- 	return ret;
- }
-+EXPORT_SYMBOL(__mpage_writepage);
- 
- /**
-  * mpage_writepages - walk the list of dirty pages of the given address space & writepage() all of them
-diff --git a/include/linux/mpage.h b/include/linux/mpage.h
-index 068a0c9..5c42821 100644
---- a/include/linux/mpage.h
-+++ b/include/linux/mpage.h
-@@ -11,11 +11,21 @@
-  */
- #ifdef CONFIG_BLOCK
- 
-+struct mpage_data {
-+	struct bio *bio;
-+	sector_t last_block_in_bio;
-+	get_block_t *get_block;
-+	unsigned use_writepage;
-+};
-+
- struct writeback_control;
- 
-+struct bio *mpage_bio_submit(int rw, struct bio *bio);
- int mpage_readpages(struct address_space *mapping, struct list_head *pages,
- 				unsigned nr_pages, get_block_t get_block);
- int mpage_readpage(struct page *page, get_block_t get_block);
-+int __mpage_writepage(struct page *page, struct writeback_control *wbc,
-+		      void *data);
- int mpage_writepages(struct address_space *mapping,
- 		struct writeback_control *wbc, get_block_t get_block);
- int mpage_writepage(struct page *page, get_block_t *get_block,
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
