@@ -1,135 +1,101 @@
-From: "Subrata Modak" <tosubrata-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>
-Subject: Re: Ext4 patches for the next merge window & Enhancements in
-	2.6.25
-Date: Sun, 6 Jul 2008 00:32:54 +0530
-Message-ID: <bb33bcf20807051202s305d2c68oae814c2c54a82697@mail.gmail.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: Ext4 patches for the next merge window & Enhancements in 2.6.25
+Date: Sat, 5 Jul 2008 22:15:23 -0400
+Message-ID: <20080706021523.GE20240@mit.edu>
+References: <bb33bcf20807051202s305d2c68oae814c2c54a82697@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="===============2132454340=="
-Cc: ltp-list <ltp-list-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>,
-	Andreas Dilger <adilger-xsfywfwIY+M@public.gmane.org>, Jan Kara <jack-AlSwsSmVLrQ@public.gmane.org>,
-	Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Valerie Clement <valerie.clement-6ktuUTfB/bM@public.gmane.org>,
-	"Jose R. Santos" <jrs-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org>,
-	Akinobu Mita <akinobu.mita-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Aneesh Kumar <aneesh.kumar-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Frederic Bohe <frederic.bohe-6ktuUTfB/bM@public.gmane.org>,
-	Dave Kleikamp <shaggy-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
-	Julia Lawall <julia-dAYI7NvHqcQ@public.gmane.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
-	Mingming Cao <cmm-r/Jw6+rmf7HQT0dZR+AlfA@public.gmane.org>,
-	Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	Ext4 Developers List <linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Alex Tomas <alex-KYPl3Ael/zSakBO8gow8eQ@public.gmane.org>,
-	Alexey Dobriyan <adobriyan-Re5JQEeQqe8AvxtiuMwx3w@public.gmane.org>,
-	Shen Feng <shen-BthXqXjhjHXQFUHtdCDX3A@public.gmane.org>
-To: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <ltp-list-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
-List-Unsubscribe: <https://lists.sourceforge.net/lists/listinfo/ltp-list>,
-	<mailto:ltp-list-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=unsubscribe>
-List-Archive: <http://sourceforge.net/mailarchive/forum.php?forum_name=ltp-list>
-List-Post: <mailto:ltp-list-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org>
-List-Help: <mailto:ltp-list-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=help>
-List-Subscribe: <https://lists.sourceforge.net/lists/listinfo/ltp-list>,
-	<mailto:ltp-list-request-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org?subject=subscribe>
-Sender: ltp-list-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
-Errors-To: ltp-list-bounces-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
-
---===============2132454340==
-Content-Type: multipart/alternative;
-	boundary="----=_Part_11191_2166332.1215284574037"
-
-------=_Part_11191_2166332.1215284574037
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	ltp-list <ltp-list@lists.sourceforge.net>,
+	Li Zefan <lizf@cn.fujitsu.com>,
+	Shen Feng <shen@cn.fujitsu.com>, Mingming Cao <cmm@us.ibm.com>,
+	Julia Lawall <julia@diku.dk>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"Jose R. Santos" <jrs@us.ibm.com>, Jan Kara <jack@suse.cz>,
+	Aneesh Kumar <aneesh.kumar@gmail.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Alexey Dobriyan <adobriyan@gmail.com>,
+	Frederic Bohe <frederic.bohe@bull.net>,
+	Valerie Clement <valerie.clement@bull.net>,
+	Andreas Dilger <adilger@sun.com>,
+	Alex Tomas <alex@clusterfs.com>,
+	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	Akinobu Mita <akinobu.mita@gmail.com>,
+	Eric Sandeen <sandeen@redhat.com>
+To: Subrata Modak <tosubrata@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:33541 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753195AbYGFCSS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 22:18:18 -0400
 Content-Disposition: inline
+In-Reply-To: <bb33bcf20807051202s305d2c68oae814c2c54a82697@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted & Others,
+On Sun, Jul 06, 2008 at 12:32:54AM +0530, Subrata Modak wrote:
+> Hi Ted & Others,
+> 
+> EXT4 has seen major enhancements in 2.6.25 and i can see few more
+> enhancements for the next stable tree. I would like to know whether EXT4
+> team has developed organized/automated test suites also to test EXT4
+> features before releasing the patches to LKML. Apart from the normal
+> fallocate() syscall test cases in LTP, we do not have any specific test case
+> for the EXT4 file system. May i know if you have some thing to offer to LTP
+> (http://ltp.sourceforge.net/) under GPL, or, any future plans to develop
+> test cases as well.
 
-EXT4 has seen major enhancements in 2.6.25 and i can see few more
-enhancements for the next stable tree. I would like to know whether EXT4
-team has developed organized/automated test suites also to test EXT4
-features before releasing the patches to LKML. Apart from the normal
-fallocate() syscall test cases in LTP, we do not have any specific test case
-for the EXT4 file system. May i know if you have some thing to offer to LTP
-(http://ltp.sourceforge.net/) under GPL, or, any future plans to develop
-test cases as well.
+We are using automated test runs via IBM's internal ABAT system; the
+main thing we are doing is using various LTP and other filesystem
+benchmarks as stress tests, so we don't have any _new_ tests suites
+per se.  The main thing which we have automated is the setup so that
+the various test suites are run in a variety of different ext4 mount
+modes and with different ext4 features enabled/disabled.
 
-Regards--
-Subrata
+My understanding is that this goes beyond the scope of what the LTP
+supports, since it tends to be very specific to the configuration of
+the System Under Test.
 
-On Sat, Jul 5, 2008 at 11:05 PM, Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org> wrote:
+This is an area where I suspect if the LTP wanted to expand into, it
+would be very useful; however, I would suggest doing it in a
+filesystem independent manner.  Essentially at an abstract level, you
+want to be able to iterate over a series of filesystem types (i.e.,
+xfs, ext4, ext3, btrfs, etc.), and for each filesystem type, it would
+supply a set of mkfs/mount options, and a script for creating and
+mounting a filesystem with that set of mkfs and mount options, and
+then LTP would run a series of generic filesystem tests and
+benchmarks, and then the filesystem would be unmounted, and the next
+set of mkfs/mount options would be used, etc.
 
-> The following set of patches are being prepared for pushing to Linus
-> during the next patch window.  Aside from a large number of cleanups
-> the big new feature in this patchset is delayed allocation support.
->
-> I've been running this patch series on my laptop for the past couple
-> of days in production, and it's been working quite well for me.
->
->                                     - Ted
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
->
+Essentially ext4 is a generic POSIX-compliant filesystem.  It has some
+extentions for acl's, extended attributes, etc. --- but these
+extensions use the same interfaces as those found in ext3 and xfs (and
+presumably btrfs as well).  Given that the bulk of the POSIX
+compliance is done in the VFS, it is highly likely that most of the
+components of a functional test of the POSIX interfaces (i.e., such as
+you might find in the LSB test suite) will pass; a few are implemented
+in a filesystem layer, so it's good to run those tests --- but that's
+not the big deal.  The big deal is doing a stress test of the
+filesystem to test for potential deadlocks, etc., when the system is
+under serious load.  So the sort of testing which will be useful for
+ext4 (or any filesystem, really) is what happens when kernbench is run
+in the background at the same time as bonnie, or postmark, or other fs
+benchmarks.
 
+Something else that would be great to automate is simulating I/O
+errors, but unfortunately this would require root privileges and
+probably kernel patches (I don't think error injection via device
+mapper is in mainline, for example).  This is something we haven't
+done yet, but it is something that we definitely need to do, in order
+to make sure the filesystem handles media errors in a graceful
+fashion.
 
+So the bottom line is that we don't have any *code* in terms of actual
+test suites to contribute to the LTP.  It would be great if the LTP
+was interested in solving the much more generic filesystem test
+framework problem, but it may be that this is out of scope of the LTP
+and it is something which should be done as a separate project.
 
--- 
-Regards & Thanks--
-Subrata
+Regards,
 
-------=_Part_11191_2166332.1215284574037
-Content-Type: text/html; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-Hi Ted &amp; Others,<br><br>EXT4 has seen major enhancements in 2.6.25 and i can see few more enhancements for the next stable tree. I would like to know whether EXT4 team has developed organized/automated test suites also to test EXT4 features before releasing the patches to LKML. Apart from the normal fallocate() syscall test cases in LTP, we do not have any specific test case for the EXT4 file system. May i know if you have some thing to offer to LTP (<a href="http://ltp.sourceforge.net/">http://ltp.sourceforge.net/</a>) under GPL, or, any future plans to develop test cases as well.<br>
-<br>Regards--<br>Subrata<br><br><div class="gmail_quote">On Sat, Jul 5, 2008 at 11:05 PM, Theodore Ts&#39;o &lt;<a href="mailto:tytso-3s7WtUTddSA@public.gmane.org">tytso-3s7WtUTddSA@public.gmane.org</a>&gt; wrote:<br><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
-The following set of patches are being prepared for pushing to Linus<br>
-during the next patch window. &nbsp;Aside from a large number of cleanups<br>
-the big new feature in this patchset is delayed allocation support.<br>
-<br>
-I&#39;ve been running this patch series on my laptop for the past couple<br>
-of days in production, and it&#39;s been working quite well for me.<br>
-<br>
- &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; - Ted<br>
-<font color="#888888"><br>
-<br>
---<br>
-To unsubscribe from this list: send the line &quot;unsubscribe linux-kernel&quot; in<br>
-the body of a message to <a href="mailto:majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org">majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org</a><br>
-More majordomo info at &nbsp;<a href="http://vger.kernel.org/majordomo-info.html" target="_blank">http://vger.kernel.org/majordomo-info.html</a><br>
-Please read the FAQ at &nbsp;<a href="http://www.tux.org/lkml/" target="_blank">http://www.tux.org/lkml/</a><br>
-</font></blockquote></div><br><br clear="all"><br>-- <br>Regards &amp; Thanks--<br>Subrata
-
-------=_Part_11191_2166332.1215284574037--
-
-
---===============2132454340==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
--------------------------------------------------------------------------
-Sponsored by: SourceForge.net Community Choice Awards: VOTE NOW!
-Studies have shown that voting for your favorite open source project,
-along with a healthy diet, reduces your potential for chronic lameness
-and boredom. Vote Now at http://www.sourceforge.net/community/cca08
---===============2132454340==
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-_______________________________________________
-Ltp-list mailing list
-Ltp-list-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org
-https://lists.sourceforge.net/lists/listinfo/ltp-list
-
---===============2132454340==--
+						- Ted
