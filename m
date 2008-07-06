@@ -1,101 +1,154 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Ext4 patches for the next merge window & Enhancements in 2.6.25
-Date: Sat, 5 Jul 2008 22:15:23 -0400
-Message-ID: <20080706021523.GE20240@mit.edu>
-References: <bb33bcf20807051202s305d2c68oae814c2c54a82697@mail.gmail.com>
+Subject: Re: New ext4 patchset 2.6.26-rc8-ext4-1
+Date: Sat, 5 Jul 2008 22:41:15 -0400
+Message-ID: <20080706024115.GH20240@mit.edu>
+References: <E1KFBPc-0006yI-Gx@closure.thunk.org> <20080705175047.GA11243@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	ltp-list <ltp-list@lists.sourceforge.net>,
-	Li Zefan <lizf@cn.fujitsu.com>,
-	Shen Feng <shen@cn.fujitsu.com>, Mingming Cao <cmm@us.ibm.com>,
-	Julia Lawall <julia@diku.dk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Jose R. Santos" <jrs@us.ibm.com>, Jan Kara <jack@suse.cz>,
-	Aneesh Kumar <aneesh.kumar@gmail.com>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Alexey Dobriyan <adobriyan@gmail.com>,
-	Frederic Bohe <frederic.bohe@bull.net>,
-	Valerie Clement <valerie.clement@bull.net>,
-	Andreas Dilger <adilger@sun.com>,
-	Alex Tomas <alex@clusterfs.com>,
-	Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	Akinobu Mita <akinobu.mita@gmail.com>,
-	Eric Sandeen <sandeen@redhat.com>
-To: Subrata Modak <tosubrata@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:33541 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753195AbYGFCSS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 5 Jul 2008 22:18:18 -0400
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755491AbYGFCly@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <bb33bcf20807051202s305d2c68oae814c2c54a82697@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080705175047.GA11243@infradead.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, Jul 06, 2008 at 12:32:54AM +0530, Subrata Modak wrote:
-> Hi Ted & Others,
-> 
-> EXT4 has seen major enhancements in 2.6.25 and i can see few more
-> enhancements for the next stable tree. I would like to know whether EXT4
-> team has developed organized/automated test suites also to test EXT4
-> features before releasing the patches to LKML. Apart from the normal
-> fallocate() syscall test cases in LTP, we do not have any specific test case
-> for the EXT4 file system. May i know if you have some thing to offer to LTP
-> (http://ltp.sourceforge.net/) under GPL, or, any future plans to develop
-> test cases as well.
+On Sat, Jul 05, 2008 at 01:50:47PM -0400, Christoph Hellwig wrote:
+> Strong NACK.  For one thing the code added to mpage.c doesn't belong
+> there.  It's far inferior to the existing delalloc code we already have
+> and that could be made generic easily, or the next generation code
+> developed by Chris mason.  It's an ext4-specific hack and doesn't belong
+> into common code.  I'm pretty sure we agreed on not having it in
+> common code long ago.
 
-We are using automated test runs via IBM's internal ABAT system; the
-main thing we are doing is using various LTP and other filesystem
-benchmarks as stress tests, so we don't have any _new_ tests suites
-per se.  The main thing which we have automated is the setup so that
-the various test suites are run in a variety of different ext4 mount
-modes and with different ext4 features enabled/disabled.
+Looking back at the mailing list history, yes, we did.  I think the
+reason why we didn't was Andrew had expressed a vague wish that the
+ext4 and xfs developers would get together and try to hash out a
+common layer that all filesystems could work with.  But given that
+nothing has happened in the many months since that discussion, you're
+absolutely right.
 
-My understanding is that this goes beyond the scope of what the LTP
-supports, since it tends to be very specific to the configuration of
-the System Under Test.
-
-This is an area where I suspect if the LTP wanted to expand into, it
-would be very useful; however, I would suggest doing it in a
-filesystem independent manner.  Essentially at an abstract level, you
-want to be able to iterate over a series of filesystem types (i.e.,
-xfs, ext4, ext3, btrfs, etc.), and for each filesystem type, it would
-supply a set of mkfs/mount options, and a script for creating and
-mounting a filesystem with that set of mkfs and mount options, and
-then LTP would run a series of generic filesystem tests and
-benchmarks, and then the filesystem would be unmounted, and the next
-set of mkfs/mount options would be used, etc.
-
-Essentially ext4 is a generic POSIX-compliant filesystem.  It has some
-extentions for acl's, extended attributes, etc. --- but these
-extensions use the same interfaces as those found in ext3 and xfs (and
-presumably btrfs as well).  Given that the bulk of the POSIX
-compliance is done in the VFS, it is highly likely that most of the
-components of a functional test of the POSIX interfaces (i.e., such as
-you might find in the LSB test suite) will pass; a few are implemented
-in a filesystem layer, so it's good to run those tests --- but that's
-not the big deal.  The big deal is doing a stress test of the
-filesystem to test for potential deadlocks, etc., when the system is
-under serious load.  So the sort of testing which will be useful for
-ext4 (or any filesystem, really) is what happens when kernbench is run
-in the background at the same time as bonnie, or postmark, or other fs
-benchmarks.
-
-Something else that would be great to automate is simulating I/O
-errors, but unfortunately this would require root privileges and
-probably kernel patches (I don't think error injection via device
-mapper is in mainline, for example).  This is something we haven't
-done yet, but it is something that we definitely need to do, in order
-to make sure the filesystem handles media errors in a graceful
-fashion.
-
-So the bottom line is that we don't have any *code* in terms of actual
-test suites to contribute to the LTP.  It would be great if the LTP
-was interested in solving the much more generic filesystem test
-framework problem, but it may be that this is out of scope of the LTP
-and it is something which should be done as a separate project.
-
-Regards,
+I've reworked the vfs generic patch in the patch series to be much
+smaller --- mainly what's left is simply exporting some mpage
+interfaces that would be needed by ext4.  I trust this is much more to
+your liking?
 
 						- Ted
+
+commit 2962918ce8fa666bdab5b189cc4ed4b3d08a33f8
+Author: Alex Tomas <alex@clusterfs.com>
+Date:   Sat Jul 5 21:25:20 2008 -0400
+
+    vfs: add hooks for ext4's delayed allocation support
+    
+    Export mpage_bio_submit() and __mpage_writepage() for the benefit of
+    ext4's delayed allocation support.   Also change __block_write_full_page
+    so that if buffers that have the BH_Delay flag set it will call
+    get_block() to get the physical block allocated, just as in the
+    !BH_Mapped case.
+    
+    Signed-off-by: Alex Tomas <alex@clusterfs.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index a413008..d2541a0 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1691,11 +1691,13 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
+ 			 */
+ 			clear_buffer_dirty(bh);
+ 			set_buffer_uptodate(bh);
+-		} else if (!buffer_mapped(bh) && buffer_dirty(bh)) {
++		} else if ((!buffer_mapped(bh) || buffer_delay(bh)) &&
++			   buffer_dirty(bh)) {
+ 			WARN_ON(bh->b_size != blocksize);
+ 			err = get_block(inode, block, bh, 1);
+ 			if (err)
+ 				goto recover;
++			clear_buffer_delay(bh);
+ 			if (buffer_new(bh)) {
+ 				/* blockdev mappings never come here */
+ 				clear_buffer_new(bh);
+@@ -1774,7 +1776,8 @@ recover:
+ 	bh = head;
+ 	/* Recovery: lock and submit the mapped buffers */
+ 	do {
+-		if (buffer_mapped(bh) && buffer_dirty(bh)) {
++		if (buffer_mapped(bh) && buffer_dirty(bh) &&
++		    !buffer_delay(bh)) {
+ 			lock_buffer(bh);
+ 			mark_buffer_async_write(bh);
+ 		} else {
+diff --git a/fs/mpage.c b/fs/mpage.c
+index 235e4d3..dbcc7af 100644
+--- a/fs/mpage.c
++++ b/fs/mpage.c
+@@ -82,7 +82,7 @@ static void mpage_end_io_write(struct bio *bio, int err)
+ 	bio_put(bio);
+ }
+ 
+-static struct bio *mpage_bio_submit(int rw, struct bio *bio)
++struct bio *mpage_bio_submit(int rw, struct bio *bio)
+ {
+ 	bio->bi_end_io = mpage_end_io_read;
+ 	if (rw == WRITE)
+@@ -90,6 +90,7 @@ static struct bio *mpage_bio_submit(int rw, struct bio *bio)
+ 	submit_bio(rw, bio);
+ 	return NULL;
+ }
++EXPORT_SYMBOL(mpage_bio_submit);
+ 
+ static struct bio *
+ mpage_alloc(struct block_device *bdev,
+@@ -435,15 +436,9 @@ EXPORT_SYMBOL(mpage_readpage);
+  * written, so it can intelligently allocate a suitably-sized BIO.  For now,
+  * just allocate full-size (16-page) BIOs.
+  */
+-struct mpage_data {
+-	struct bio *bio;
+-	sector_t last_block_in_bio;
+-	get_block_t *get_block;
+-	unsigned use_writepage;
+-};
+ 
+-static int __mpage_writepage(struct page *page, struct writeback_control *wbc,
+-			     void *data)
++int __mpage_writepage(struct page *page, struct writeback_control *wbc,
++		      void *data)
+ {
+ 	struct mpage_data *mpd = data;
+ 	struct bio *bio = mpd->bio;
+@@ -651,6 +646,7 @@ out:
+ 	mpd->bio = bio;
+ 	return ret;
+ }
++EXPORT_SYMBOL(__mpage_writepage);
+ 
+ /**
+  * mpage_writepages - walk the list of dirty pages of the given address space & writepage() all of them
+diff --git a/include/linux/mpage.h b/include/linux/mpage.h
+index 068a0c9..5c42821 100644
+--- a/include/linux/mpage.h
++++ b/include/linux/mpage.h
+@@ -11,11 +11,21 @@
+  */
+ #ifdef CONFIG_BLOCK
+ 
++struct mpage_data {
++	struct bio *bio;
++	sector_t last_block_in_bio;
++	get_block_t *get_block;
++	unsigned use_writepage;
++};
++
+ struct writeback_control;
+ 
++struct bio *mpage_bio_submit(int rw, struct bio *bio);
+ int mpage_readpages(struct address_space *mapping, struct list_head *pages,
+ 				unsigned nr_pages, get_block_t get_block);
+ int mpage_readpage(struct page *page, get_block_t get_block);
++int __mpage_writepage(struct page *page, struct writeback_control *wbc,
++		      void *data);
+ int mpage_writepages(struct address_space *mapping,
+ 		struct writeback_control *wbc, get_block_t get_block);
+ int mpage_writepage(struct page *page, get_block_t *get_block,
