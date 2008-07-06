@@ -1,52 +1,79 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: fix build failure if DX_DEBUG
-Date: Sat, 05 Jul 2008 23:10:06 -0500
-Message-ID: <4870459E.20006@redhat.com>
-References: <484F9030.2020800@cn.fujitsu.com> <484FF75B.8090403@redhat.com> <20080706040751.GA21990@mit.edu>
+Subject: Re: blkid oddities with stale devices in the cache
+Date: Sat, 05 Jul 2008 23:36:09 -0500
+Message-ID: <48704BB9.1090501@redhat.com>
+References: <485C8AAE.5020005@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Li Zefan <lizf@cn.fujitsu.com>, Mingming Cao <cmm@us.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:57753 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:53746 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750696AbYGFEKS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 6 Jul 2008 00:10:18 -0400
-In-Reply-To: <20080706040751.GA21990@mit.edu>
+	id S1750744AbYGFEgL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 6 Jul 2008 00:36:11 -0400
+In-Reply-To: <485C8AAE.5020005@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Wed, Jun 11, 2008 at 11:03:39AM -0500, Eric Sandeen wrote:
->> Li Zefan wrote:
->>> I got build failure when I turned on DX_DEBUG.
->>>
->>> fs/ext4/namei.c: In function =E2=80=98dx_show_leaf=E2=80=99:
->>> fs/ext4/namei.c:291: error: implicit declaration of function =E2=80=
-=98ext4_next_entry=E2=80=99
->>> fs/ext4/namei.c:291: warning: assignment makes pointer from integer=
- without a cast
->>>
->>> Move the definition of ext4_next_entry() upwards just as ext3 code.
->>>
->>> Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
->> Thanks,  I added this to the bugfix portion of the ext4 patch queue.
->=20
-> But you forgot to edit the series file.  :-)=20
->=20
-> I've fixed in the patch queue, and it will be in the 2.6.26-rc9-ext4-=
-1
-> patch drop.
+Eric Sandeen wrote:
+> This is w.r.t. https://bugzilla.redhat.com/show_bug.cgi?id=452333
+> 
+> Dave had a few stale entries in blkid.tab; label from a usb key showed
+> up under several non-existent, stale device names.  fstab had LABEL=,
+> mounting by label failed because blkid returned a stale, nonexistent device.
 
-*sigh*
+Ted, ping (when you're done kernel-wrangling anyway)?  Any thoughts on
+this?  Returning cached data for a device when stat says ENOENT seems
+very weird (and wrong).
 
-Thanks...
+Thanks,
 
 -Eric
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+> It seems there's a problem in blkid_verify():
+> 
+>         if (((probe.fd = open(dev->bid_name, O_RDONLY)) < 0) ||
+>             (fstat(probe.fd, &st) < 0)) {
+>                 if (probe.fd >= 0) close(probe.fd);
+>                 if ((errno != EPERM) && (errno != EACCES) &&
+>                     (errno != ENOENT)) {
+>                         DBG(DEBUG_PROBE,
+>                             printf("blkid_verify: error %s (%d) while "
+>                                    "opening %s\n", strerror(errno), errno,
+>                                    dev->bid_name));
+>                         blkid_free_dev(dev);
+>                         return NULL;
+>                 }
+>                 /* We don't have read permission, just return cache data. */
+>                 DBG(DEBUG_PROBE,
+>                     printf("returning unverified data for %s\n",
+>                            dev->bid_name));
+>                 return dev;
+> 
+> We find the bad/stale device in the cache, and stat it - if the device
+> doesn't exist, we get ENOENT.  But we return the stale data for the
+> nonexistent device anyway.  Eh?
+> 
+> http://git.kernel.org/?p=fs/ext2/e2fsprogs.git;a=commitdiff;h=8bcaaabb1a023af4852dbf0dba76249982c62e40
+> 
+> did this:
+> 
+> When a nonprivileged user uses the blkid command, we want to keep the
+> cached filesystem information, and opening a device file could result
+> in an EACCESS or ENOENT (if an intervening directory is mode 700).  We
+> were previously testing for EPERM, which was really the wrong error
+> code to be testing against.
+> 
+> But do we really want to do this in the case of ENOENT?  It seems like
+> this is going to grow a crop of missing devices in the cache, no?
+> 
+> Thanks,
+> 
+> -Eric
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
