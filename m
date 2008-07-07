@@ -1,86 +1,82 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH e2fsprogs] handle large extent-based files in pass1
-Date: Sun, 06 Jul 2008 23:02:47 -0500
-Message-ID: <48719567.1090404@redhat.com>
+From: "Stoyan Gaydarov" <stoyboyker@gmail.com>
+Subject: replace __FUNCTION__ occurrences in ext4
+Date: Sun, 6 Jul 2008 23:36:56 -0500
+Message-ID: <6d291e080807062136q4ece9368y6c747b90bd0de8e6@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Nick Dokos <nicholas.dokos@hp.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: sct@redhat.com, akpm@linux-foundation.org, adilger@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:60559 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750729AbYGGEC4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Jul 2008 00:02:56 -0400
+Received: from nf-out-0910.google.com ([64.233.182.189]:12743 "EHLO
+	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750858AbYGGEhC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jul 2008 00:37:02 -0400
+Received: by nf-out-0910.google.com with SMTP id d3so601387nfc.21
+        for <linux-ext4@vger.kernel.org>; Sun, 06 Jul 2008 21:36:56 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This:
+__FUNCTION__ is gcc-specific, use __func__ instead
 
-# /root/truncate bigfile 14680064000000
-Truncating bigfile to 14680064000000
-# e2fsck /device
-Pass 1: Checking inodes, blocks, and sizes
-Inode 49154, i_size is 14680064000000, should be 0.  Fix<y>?
+Signed-off-by: Stoyan Gaydarov <stoyboyker@gmail.com>
 
-is a bit unexpected.  It's because the size is being checked
-against the max sizes for bitmap files, not extent-based files.
+diff -uprN linux-2.6.26-rc9/fs/ext4/ext4.h devel/fs/ext4/ext4.h
+--- linux-2.6.26-rc9/fs/ext4/ext4.h     2008-07-05 17:53:22.000000000 -0500
++++ devel/fs/ext4/ext4.h        2008-07-06 23:35:08.000000000 -0500
+@@ -45,7 +45,7 @@
+ #define ext4_debug(f, a...)                                            \
+        do {                                                            \
+                printk (KERN_DEBUG "EXT4-fs DEBUG (%s, %d): %s:",       \
+-                       __FILE__, __LINE__, __FUNCTION__);              \
++                       __FILE__, __LINE__, __func__);          \
+                printk (KERN_DEBUG f, ## a);                            \
+        } while (0)
+ #else
+@@ -1162,7 +1162,7 @@ struct ext4_group_info *ext4_get_group_i
+ #define ext4_std_error(sb, errno)                              \
+ do {                                                           \
+        if ((errno))                                            \
+-               __ext4_std_error((sb), __FUNCTION__, (errno));  \
++               __ext4_std_error((sb), __func__, (errno));      \
+ } while (0)
 
-Nick saw this with his 14TB file.
+ /*
+diff -uprN linux-2.6.26-rc9/fs/ext4/ext4_jbd2.h devel/fs/ext4/ext4_jbd2.h
+--- linux-2.6.26-rc9/fs/ext4/ext4_jbd2.h        2008-07-05
+17:53:22.000000000 -0500
++++ devel/fs/ext4/ext4_jbd2.h   2008-07-06 23:35:08.000000000 -0500
+@@ -142,17 +142,17 @@ int __ext4_journal_dirty_metadata(const
+                                handle_t *handle, struct buffer_head *bh);
 
-Patch below applies different size limits to the different
-file formats.
+ #define ext4_journal_get_undo_access(handle, bh) \
+-       __ext4_journal_get_undo_access(__FUNCTION__, (handle), (bh))
++       __ext4_journal_get_undo_access(__func__, (handle), (bh))
+ #define ext4_journal_get_write_access(handle, bh) \
+-       __ext4_journal_get_write_access(__FUNCTION__, (handle), (bh))
++       __ext4_journal_get_write_access(__func__, (handle), (bh))
+ #define ext4_journal_revoke(handle, blocknr, bh) \
+-       __ext4_journal_revoke(__FUNCTION__, (handle), (blocknr), (bh))
++       __ext4_journal_revoke(__func__, (handle), (blocknr), (bh))
+ #define ext4_journal_get_create_access(handle, bh) \
+-       __ext4_journal_get_create_access(__FUNCTION__, (handle), (bh))
++       __ext4_journal_get_create_access(__func__, (handle), (bh))
+ #define ext4_journal_dirty_metadata(handle, bh) \
+-       __ext4_journal_dirty_metadata(__FUNCTION__, (handle), (bh))
++       __ext4_journal_dirty_metadata(__func__, (handle), (bh))
+ #define ext4_journal_forget(handle, bh) \
+-       __ext4_journal_forget(__FUNCTION__, (handle), (bh))
++       __ext4_journal_forget(__func__, (handle), (bh))
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
---
+ int ext4_journal_dirty_data(handle_t *handle, struct buffer_head *bh);
 
-Index: e2fsprogs/e2fsck/pass1.c
-===================================================================
---- e2fsprogs.orig/e2fsck/pass1.c	2008-06-16 11:50:08.877734863 -0500
-+++ e2fsprogs/e2fsck/pass1.c	2008-07-06 22:53:52.712291253 -0500
-@@ -1756,6 +1756,7 @@ static void check_blocks(e2fsck_t ctx, s
- 	struct ext2_inode *inode = pctx->inode;
- 	int		bad_size = 0;
- 	int		dirty_inode = 0;
-+	int		extent_fs;
- 	__u64		size;
- 	
- 	pb.ino = ino;
-@@ -1775,6 +1776,9 @@ static void check_blocks(e2fsck_t ctx, s
- 	pctx->ino = ino;
- 	pctx->errcode = 0;
- 
-+	extent_fs = (ctx->fs->super->s_feature_incompat &
-+                     EXT3_FEATURE_INCOMPAT_EXTENTS);
-+
- 	if (inode->i_flags & EXT2_COMPRBLK_FL) {
- 		if (fs->super->s_feature_incompat &
- 		    EXT2_FEATURE_INCOMPAT_COMPRESSION)
-@@ -1794,9 +1798,7 @@ static void check_blocks(e2fsck_t ctx, s
- 	}
- 
- 	if (ext2fs_inode_has_valid_blocks(inode)) {
--		if ((ctx->fs->super->s_feature_incompat &
--		     EXT3_FEATURE_INCOMPAT_EXTENTS) &&
--		    (inode->i_flags & EXT4_EXTENTS_FL))
-+		if (extent_fs && (inode->i_flags & EXT4_EXTENTS_FL))
- 			check_blocks_extents(ctx, pctx, &pb);
- 		else
- 			pctx->errcode = ext2fs_block_iterate2(fs, ino,
-@@ -1892,8 +1894,14 @@ static void check_blocks(e2fsck_t ctx, s
- 		    (pb.last_block / blkpg * blkpg != pb.last_block ||
- 		     size < (__u64)(pb.last_block & ~(blkpg-1)) *fs->blocksize))
- 			bad_size = 3;
--		else if (size > ext2_max_sizes[fs->super->s_log_block_size])
-+		else if (!(extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) &&
-+			 size > ext2_max_sizes[fs->super->s_log_block_size])
-+			/* too big for a direct/indirect-mapped file */
- 			bad_size = 4;
-+		else if ((extent_fs && (inode->i_flags & EXT4_EXTENTS_FL)) &&
-+			 size > (1LL << (32 + fs->super->s_log_block_size) - 1))
-+			/* too big for an extent-based file - 32bit ee_block */
-+			bad_size = 6;
- 	}
- 	/* i_size for symlinks is checked elsewhere */
- 	if (bad_size && !LINUX_S_ISLNK(inode->i_mode)) {
+@@ -165,7 +165,7 @@ static inline handle_t *ext4_journal_sta
+ }
 
+ #define ext4_journal_stop(handle) \
+-       __ext4_journal_stop(__FUNCTION__, (handle))
++       __ext4_journal_stop(__func__, (handle))
+
+ static inline handle_t *ext4_journal_current_handle(void)
+ {
