@@ -1,116 +1,30 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH] ext4: delayed allocation i_blocks fix for stat(2)
-Date: Mon, 07 Jul 2008 16:36:39 -0700
-Message-ID: <1215473799.6702.9.camel@mingming-laptop>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH] ext4: delayed allocation i_blocks fix for stat(2)
+Date: Mon, 7 Jul 2008 19:47:45 -0400
+Message-ID: <20080707234745.GG31490@mit.edu>
+References: <1215473799.6702.9.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:48498 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753647AbYGGXgk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Jul 2008 19:36:40 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m67Nadif001371
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 19:36:39 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m67NadBH120352
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 19:36:39 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m67NadQ0018179
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 19:36:39 -0400
-Received: from [9.47.17.115] (mingming-laptop.beaverton.ibm.com [9.47.17.115])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m67NacJe018175
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 19:36:38 -0400
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:52471 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753980AbYGGXsY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jul 2008 19:48:24 -0400
+Content-Disposition: inline
+In-Reply-To: <1215473799.6702.9.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: delayed allocation i_blocks fix for stat(2)
+On Mon, Jul 07, 2008 at 04:36:39PM -0700, Mingming Cao wrote:
+> ext4: delayed allocation i_blocks fix for stat(2)
 
-From: Mingming Cao <cmm@us.ibm.com>
+Looks good, thanks!!
 
-Right now i_blocks is not getting updated until the disks are actually
-allocaed on disk.  This means with delayed allocation, right after files
-are copied, "ls -sF" shoes the file as taking 0 blocks on disk.  "du"
-also shows the files taking zero space, which is highly confusing to the user.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Since current delayed allocation already keep track of per-inode total number
-of blocks that are subject to delayed allocation, this patch fix this by using
-that to adjust the value returned by stat(2). When real block allocation
-is done, the i_blocks will get updated. Since the reserved blocks for delayed
-allocation will be decreased, this will be keep value returned by stat(2)
-consistent.
+I'm going to do a quick test and probably push out a 2.6.26-rc9-ext4-1
+snapshot later this evening.
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-
----
- fs/ext4/ext4.h  |    2 ++
- fs/ext4/file.c  |    1 +
- fs/ext4/inode.c |   26 ++++++++++++++++++++++++++
- 3 files changed, 29 insertions(+)
-
-Index: linux-2.6.26-rc9/fs/ext4/ext4.h
-===================================================================
---- linux-2.6.26-rc9.orig/fs/ext4/ext4.h	2008-07-07 16:29:23.000000000 -0700
-+++ linux-2.6.26-rc9/fs/ext4/ext4.h	2008-07-07 16:32:54.000000000 -0700
-@@ -1059,6 +1059,8 @@ int ext4_get_blocks_handle(handle_t *han
- extern struct inode *ext4_iget(struct super_block *, unsigned long);
- extern int  ext4_write_inode (struct inode *, int);
- extern int  ext4_setattr (struct dentry *, struct iattr *);
-+extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
-+				struct kstat *stat);
- extern void ext4_delete_inode (struct inode *);
- extern int  ext4_sync_inode (handle_t *, struct inode *);
- extern void ext4_discard_reservation (struct inode *);
-Index: linux-2.6.26-rc9/fs/ext4/file.c
-===================================================================
---- linux-2.6.26-rc9.orig/fs/ext4/file.c	2008-07-07 16:29:21.000000000 -0700
-+++ linux-2.6.26-rc9/fs/ext4/file.c	2008-07-07 16:29:51.000000000 -0700
-@@ -161,6 +161,7 @@ const struct file_operations ext4_file_o
- const struct inode_operations ext4_file_inode_operations = {
- 	.truncate	= ext4_truncate,
- 	.setattr	= ext4_setattr,
-+	.getattr	= ext4_getattr,
- #ifdef CONFIG_EXT4DEV_FS_XATTR
- 	.setxattr	= generic_setxattr,
- 	.getxattr	= generic_getxattr,
-Index: linux-2.6.26-rc9/fs/ext4/inode.c
-===================================================================
---- linux-2.6.26-rc9.orig/fs/ext4/inode.c	2008-07-07 16:29:22.000000000 -0700
-+++ linux-2.6.26-rc9/fs/ext4/inode.c	2008-07-07 16:31:13.000000000 -0700
-@@ -4203,6 +4203,32 @@ err_out:
- 	return error;
- }
- 
-+int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
-+		 struct kstat *stat)
-+{
-+	struct inode *inode;
-+	unsigned long delalloc_blocks;
-+
-+	inode = dentry->d_inode;
-+	generic_fillattr(inode, stat);
-+
-+	/*
-+	 * We can't update i_blocks if the block allocation is delayed
-+	 * otherwise in the case of system crash before the real block
-+	 * allocation is done, we will have i_blocks inconsistent with
-+	 * on-disk file blocks.
-+	 * We always keep i_blocks updated together with real
-+	 * allocation. But to not confuse with user, stat
-+	 * will return the blocks that include the delayed allocation
-+	 * blocks for this file.
-+	 */
-+	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
-+	delalloc_blocks = EXT4_I(inode)->i_reserved_data_blocks;
-+	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+
-+	stat->blocks += (delalloc_blocks << inode->i_sb->s_blocksize_bits)>>9;
-+	return 0;
-+}
- 
- /*
-  * How many blocks doth make a writepage()?
-
-
+						- Ted
