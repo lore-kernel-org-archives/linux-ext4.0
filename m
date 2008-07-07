@@ -1,102 +1,102 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH][e2fsprogs][mke2fs] fix FLEX_BG offset
-Date: Mon, 7 Jul 2008 14:42:40 -0500
-Message-ID: <20080707144240.60656c76@gara>
-References: <486C8BEE.5030200@bull.net>
-	<20080703065553.53c35979@gara>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] do not set extents feature from the kernel
+Date: Mon, 07 Jul 2008 15:15:16 -0500
+Message-ID: <48727954.1080406@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Celine Bourde <celine.bourde@bull.net>, linux-ext4@vger.kernel.org,
-	cmm@us.ibm.com,
-	=?UTF-8?B?RnLDqWTDqXJpYyBCb2jDqQ==?= <frederic.bohe@bull.net>,
-	SOLOFO RAMANGALAHY <Solofo.Ramangalahy@bull.net>,
-	Jean-Pierre Dion <jean-pierre.dion@bull.net>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:35637 "EHLO e1.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:35010 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755185AbYGGTm1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Jul 2008 15:42:27 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m67JgOR1018219
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 15:42:24 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m67JgOjh236640
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 15:42:24 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m67JgNDI000597
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 15:42:24 -0400
-In-Reply-To: <20080703065553.53c35979@gara>
+	id S1755392AbYGGUP0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Jul 2008 16:15:26 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m67KFPh7023315
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 16:15:25 -0400
+Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m67KFPZS007798
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 16:15:25 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m67KFNnI003008
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 16:15:24 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 3 Jul 2008 06:55:53 -0500
-"Jose R. Santos" <jrs@us.ibm.com> wrote:
+We've talked for a while about getting rid of any feature-
+setting from the kernel; this gets rid of the code which would
+set the INCOMPAT_EXTENTS flag on the first file write when mounted
+as ext4[dev].
 
-> On Thu, 03 Jul 2008 10:21:02 +0200
-> Celine Bourde <celine.bourde@bull.net> wrote:
-> 
-> > This patch resolves the offset problem of the flex_bg
-> > option when you use mke2fs tool.
-> > 
-> > For example, if you type mkfs.ext4 -I256 -O flex_bg -G32 -E test_fs <device>
-> > and look dumpe2fs <device> result you will see an offset problem.
-> > 
-> > Group 0: (Blocks 0-32767)
-> > Primary superblock at 0, Group descriptors at 1-5
-> > Reserved GDT blocks at 6-1024
-> > Block bitmap at 1025 (+1025), Inode bitmap at 1058 (+1058)
-> > Inode table at 1090-1601 (+1090)
-> > 0 free blocks, 8181 free inodes, 2 directories
-> > Free blocks:
-> > Free inodes: 12-8192
-> > 
-> > Inode bitmap must start at 1025 + 32 = 1057
-> > In all flexbg groups, the block between the last block bitmap and the 
-> > first inode
-> > bitmap (metatdata) is not used, which introduced a hole.
-> > 
-> > This patch corrects it.
-> > You have to apply it on e2fsprogs (mke2fs 1.41-WIP (17-Jun-2008)) master 
-> > branch.
-> > 
-> > Celine Bourde.
-> 
-> Acked-by: Jose R. Santos <jrs@us.ibm.com>
+With this patch, if the extents feature is not already set on disk,
+then mounting as ext4 will fall back to noextents with a warning,
+and if -o extents is explicitly requested, the mount will fail,
+also with warning.
 
-Looks like I jumped the gun to fast acknowledging this patch.  The
-current patch doesn't run the second ext2fs_get_free_blocks() when
-doing a search for block bitmap space.
+Does this seem like a decent approach?
 
-Here is an updated patch.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-commit a58058e85240c7834cd863efa35b21688e104047
-Author: Jose R. Santos <jrs@us.ibm.com>
-Date:   Mon Jul 7 14:36:08 2008 -0500
-
-    Fix FLEX_BG offset
-    
-    The offset for both inode bitmaps and inode tables is overshot by one
-    block causing a hole between the group of bitmaps and inode tables.
-
-    Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
-
-diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
-index d87585b..7f6ac77 100644
---- a/lib/ext2fs/alloc_tables.c
-+++ b/lib/ext2fs/alloc_tables.c
-@@ -46,6 +46,8 @@ static blk_t flexbg_offset(ext2_filsys fs, dgrp_t group, blk_t start_blk,
- 	if (size > fs->super->s_blocks_per_group / 8)
- 		size = fs->super->s_blocks_per_group / 8;
+Index: linux-2.6/fs/ext4/ialloc.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/ialloc.c	2008-07-07 10:22:00.000000000 -0500
++++ linux-2.6/fs/ext4/ialloc.c	2008-07-07 12:07:02.133292077 -0500
+@@ -740,14 +740,10 @@ got:
+ 		goto fail_free_drop;
  
-+	if (offset)
-+		offset -= 1;
+ 	if (test_opt(sb, EXTENTS)) {
+-		/* set extent flag only for diretory, file and normal symlink*/
++		/* set extent flag only for directory, file and normal symlink*/
+ 		if (S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) {
+ 			EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
+ 			ext4_ext_tree_init(handle, inode);
+-			err = ext4_update_incompat_feature(handle, sb,
+-					EXT4_FEATURE_INCOMPAT_EXTENTS);
+-			if (err)
+-				goto fail_free_drop;
+ 		}
+ 	}
+ 
+Index: linux-2.6/fs/ext4/super.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/super.c	2008-07-07 10:22:19.000000000 -0500
++++ linux-2.6/fs/ext4/super.c	2008-07-07 14:08:43.684291817 -0500
+@@ -1309,6 +1309,13 @@ set_qf_format:
+ 			clear_opt(sbi->s_mount_opt, NOBH);
+ 			break;
+ 		case Opt_extents:
++			if (!EXT4_HAS_INCOMPAT_FEATURE(sb,
++					EXT4_FEATURE_INCOMPAT_EXTENTS)) {
++				ext4_warning(sb, __func__,
++					"extents feature not enabled "
++					"on this filesystem, use tune2fs\n");
++				return 0;
++			}
+ 			set_opt (sbi->s_mount_opt, EXTENTS);
+ 			break;
+ 		case Opt_noextents:
+@@ -1919,12 +1926,18 @@ static int ext4_fill_super (struct super
+ 
  	/*
- 	 * Dont do a long search if the previous block
- 	 * search is still valid.
+ 	 * turn on extents feature by default in ext4 filesystem
+-	 * User -o noextents to turn it off
++	 * only if feature flag already set by mkfs or tune2fs.
++	 * Use -o noextents to turn it off
+ 	 */
+-	set_opt(sbi->s_mount_opt, EXTENTS);
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
++		set_opt(sbi->s_mount_opt, EXTENTS);
++	else
++		ext4_warning(sb, __func__,
++			"extents feature not enabled on this filesystem, "
++			"use tune2fs.\n");
+ 	/*
+-	 * turn on mballoc feature by default in ext4 filesystem
+-	 * User -o nomballoc to turn it off
++	 * turn on mballoc code by default in ext4 filesystem
++	 * Use -o nomballoc to turn it off
+ 	 */
+ 	set_opt(sbi->s_mount_opt, MBALLOC);
+ 
 
-
-
-
--JRS
