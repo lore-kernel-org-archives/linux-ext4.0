@@ -1,102 +1,106 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] do not set extents feature from the kernel
-Date: Mon, 07 Jul 2008 15:15:16 -0500
-Message-ID: <48727954.1080406@redhat.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: What's in e2fsprogs.git (stable)
+Date: Mon, 7 Jul 2008 17:35:27 -0400
+Message-ID: <20080707213527.GV31490@mit.edu>
+References: <20080320202243.GO13719@mit.edu> <20080402000626.GB302@mit.edu> <20080407165505.GD11997@mit.edu> <20080418183935.GA25797@mit.edu> <20080421162726.GF9700@mit.edu> <20080428025302.GC30840@mit.edu> <20080524234904.GC5970@mit.edu> <20080603023955.GK23119@mit.edu> <20080608024104.GA30132@mit.edu> <20080617120511.GC12448@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:35010 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755392AbYGGUP0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Jul 2008 16:15:26 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m67KFPh7023315
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 16:15:25 -0400
-Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m67KFPZS007798
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 16:15:25 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m67KFNnI003008
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 16:15:24 -0400
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:38443 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757216AbYGGVfa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jul 2008 17:35:30 -0400
+Content-Disposition: inline
+In-Reply-To: <20080617120511.GC12448@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We've talked for a while about getting rid of any feature-
-setting from the kernel; this gets rid of the code which would
-set the INCOMPAT_EXTENTS flag on the first file write when mounted
-as ext4[dev].
+I've just released e2fsprogs 1.41-WIP-0707, which should be considered
+a release candidate release.  So please test it!!  It is available in
+the usual places.  The "master" head of the git repository, at
+sourceforge or at ftp.kernel.org (as soon as gets pushed out to the
+mirrors, in /pub/linux/kernel/people/tytso/e2fsprogs-interim).
 
-With this patch, if the extents feature is not already set on disk,
-then mounting as ext4 will fall back to noextents with a warning,
-and if -o extents is explicitly requested, the mount will fail,
-also with warning.
+							- Ted
 
-Does this seem like a decent approach?
+* The 'maint' branch has these fixes since the last announcement.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Theodore Ts'o (4):
+  libblkid: Fix marginal C code in probe_lvm2()
+  mke2fs, tune2fs, resize2fs: Use floating point to calculate
+      percentages
+  Clarify the debugfs man page regarding the default superblock
+  Update release notes, changelog, and other files for v1.40.11
+      release
 
-Index: linux-2.6/fs/ext4/ialloc.c
-===================================================================
---- linux-2.6.orig/fs/ext4/ialloc.c	2008-07-07 10:22:00.000000000 -0500
-+++ linux-2.6/fs/ext4/ialloc.c	2008-07-07 12:07:02.133292077 -0500
-@@ -740,14 +740,10 @@ got:
- 		goto fail_free_drop;
- 
- 	if (test_opt(sb, EXTENTS)) {
--		/* set extent flag only for diretory, file and normal symlink*/
-+		/* set extent flag only for directory, file and normal symlink*/
- 		if (S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) {
- 			EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
- 			ext4_ext_tree_init(handle, inode);
--			err = ext4_update_incompat_feature(handle, sb,
--					EXT4_FEATURE_INCOMPAT_EXTENTS);
--			if (err)
--				goto fail_free_drop;
- 		}
- 	}
- 
-Index: linux-2.6/fs/ext4/super.c
-===================================================================
---- linux-2.6.orig/fs/ext4/super.c	2008-07-07 10:22:19.000000000 -0500
-+++ linux-2.6/fs/ext4/super.c	2008-07-07 14:08:43.684291817 -0500
-@@ -1309,6 +1309,13 @@ set_qf_format:
- 			clear_opt(sbi->s_mount_opt, NOBH);
- 			break;
- 		case Opt_extents:
-+			if (!EXT4_HAS_INCOMPAT_FEATURE(sb,
-+					EXT4_FEATURE_INCOMPAT_EXTENTS)) {
-+				ext4_warning(sb, __func__,
-+					"extents feature not enabled "
-+					"on this filesystem, use tune2fs\n");
-+				return 0;
-+			}
- 			set_opt (sbi->s_mount_opt, EXTENTS);
- 			break;
- 		case Opt_noextents:
-@@ -1919,12 +1926,18 @@ static int ext4_fill_super (struct super
- 
- 	/*
- 	 * turn on extents feature by default in ext4 filesystem
--	 * User -o noextents to turn it off
-+	 * only if feature flag already set by mkfs or tune2fs.
-+	 * Use -o noextents to turn it off
- 	 */
--	set_opt(sbi->s_mount_opt, EXTENTS);
-+	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
-+		set_opt(sbi->s_mount_opt, EXTENTS);
-+	else
-+		ext4_warning(sb, __func__,
-+			"extents feature not enabled on this filesystem, "
-+			"use tune2fs.\n");
- 	/*
--	 * turn on mballoc feature by default in ext4 filesystem
--	 * User -o nomballoc to turn it off
-+	 * turn on mballoc code by default in ext4 filesystem
-+	 * Use -o nomballoc to turn it off
- 	 */
- 	set_opt(sbi->s_mount_opt, MBALLOC);
- 
 
+* The 'master' branch has these since the last announcement
+  in addition to the above.
+
+Benno Schulenberg (2):
+  po: update es.po (from translationproject.org)
+  po: update nl.po (from translationproject.org)
+
+Clytie Siddall (1):
+  po: update vi.po (from translationproject.org)
+
+David Planella Molas (1):
+  po: update ca.po (from translationproject.org)
+
+Eric Sandeen (5):
+  Add e2undo files to the RPM specfile template
+  blkid: fix swap tests (again)
+  blkid: use list_for_each_safe in garbage collection
+  Clean up some trivial build warnings
+  e2fsck: Fix i_size checking for large extent-based files
+
+Iustin Pop (1):
+  badblocks: fix a bug in the read throttling
+
+Jakub Bogusz (1):
+  po: update pl.po (from translationproject.org)
+
+Petr Pisar (1):
+  po: update cs.po (from translationproject.org)
+
+Philipp Thomas (1):
+  po: update de.po (from translationproject.org)
+
+Ricardo M. Correia (1):
+  Add ZFS test image to blkid test suite
+
+Samuel Thibault (1):
+  po: update fr.po (from translationproject.org)
+
+Theodore Ts'o (19):
+  Update release notes for debian experimental package
+  Update e2fsprogs.pot and POTFILES.in
+  Add a reference to e2fsck.conf(5) to the e2fsck man page
+  Fix "make check" in e2fsck subdirectory to use the in-tree com_err
+      library
+  blkid: Fix cc portability problem in probe_lvm2()
+  debian: parse /etc/adduser.conf file manually
+  libext2fs: Don't include ss/ss.h except when debugging
+  blkid: Make sure a device returned by blkid_find_dev_with_tag
+      exists
+  blkid: Eliminate stale entries that duplicate a verified device
+  badblocks: Fix crash when lots of -t patterns given
+  mke2fs: Use a fs_type of 'journal' when creating an external
+      journal
+  mke2fs: Print a better error msg when ext2fs_get_device_size()
+      returns EFBIG
+  Treat build.static as an ingored file in the source directory
+  debian: Add dbg packages which contain the stripped out debuging
+      symbols
+  debian: Create debian release tarball to obey new WIP naming
+      convention
+  libext2fs: Fix FLEX_BG offset used by ext2fs_allocate_group_table
+  debian: Update debian policy compliance to 3.8.0.0
+  Add build.static to util/subset.exclude as well.
+  Update release notes for e2fsprogs 1.41-WIP-0707 release.
+
+------
+URL's for the e2fsprogs repository:
+	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
