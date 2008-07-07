@@ -1,55 +1,116 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: error in ext4_mb_release_inode_pa
-Date: Mon, 07 Jul 2008 17:20:22 -0600
-Message-ID: <20080707232022.GX6239@webber.adilger.int>
-References: <48723646.1050101@redhat.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: [PATCH] ext4: delayed allocation i_blocks fix for stat(2)
+Date: Mon, 07 Jul 2008 16:36:39 -0700
+Message-ID: <1215473799.6702.9.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:64291 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754067AbYGGXUZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jul 2008 19:20:25 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m67NKO47011005
-	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 16:20:24 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K3N00101SP91V00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Mon, 07 Jul 2008 16:20:24 -0700 (PDT)
-In-reply-to: <48723646.1050101@redhat.com>
-Content-disposition: inline
+Received: from e1.ny.us.ibm.com ([32.97.182.141]:48498 "EHLO e1.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753647AbYGGXgk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Jul 2008 19:36:40 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m67Nadif001371
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 19:36:39 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m67NadBH120352
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 19:36:39 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m67NadQ0018179
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 19:36:39 -0400
+Received: from [9.47.17.115] (mingming-laptop.beaverton.ibm.com [9.47.17.115])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m67NacJe018175
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 19:36:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 07, 2008  10:29 -0500, Eric Sandeen wrote:
-> This was on #linuxfs last night, and I think I've seen at least one
-> other report of it:
-> 
-> [22:44]  <shehjart> any ideas why i get the following two lines on the
-> serial console when writing to ext4 over software raid0:
-> [22:44]  <shehjart> pa e00001004112d450: logic 11928, phys. 47003288,
-> len 360
-> [22:45]  <shehjart> EXT4-fs error (device md0):
-> ext4_mb_release_inode_pa: free 176, pa_free 174
+ext4: delayed allocation i_blocks fix for stat(2)
 
-The bug that I recalled from Lustre is unlikely to be the same.  It is
-https://bugzilla.lustre.org/show_bug.cgi?id=15932
+From: Mingming Cao <cmm@us.ibm.com>
 
-	"error: N blocks in bitmap, M in gd"
+Right now i_blocks is not getting updated until the disks are actually
+allocaed on disk.  This means with delayed allocation, right after files
+are copied, "ls -sF" shoes the file as taking 0 blocks on disk.  "du"
+also shows the files taking zero space, which is highly confusing to the user.
 
-There was a second bug in ext3_mb_use_best_found() hit on > 8TB filesystems:
-https://bugzilla.lustre.org/show_bug.cgi?id=16101
+Since current delayed allocation already keep track of per-inode total number
+of blocks that are subject to delayed allocation, this patch fix this by using
+that to adjust the value returned by stat(2). When real block allocation
+is done, the i_blocks will get updated. Since the reserved blocks for delayed
+allocation will be decreased, this will be keep value returned by stat(2)
+consistent.
 
-	BUG_ON(ac->ac_b_ex.fe_group != e3b->bd_group);
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 
+---
+ fs/ext4/ext4.h  |    2 ++
+ fs/ext4/file.c  |    1 +
+ fs/ext4/inode.c |   26 ++++++++++++++++++++++++++
+ 3 files changed, 29 insertions(+)
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Index: linux-2.6.26-rc9/fs/ext4/ext4.h
+===================================================================
+--- linux-2.6.26-rc9.orig/fs/ext4/ext4.h	2008-07-07 16:29:23.000000000 -0700
++++ linux-2.6.26-rc9/fs/ext4/ext4.h	2008-07-07 16:32:54.000000000 -0700
+@@ -1059,6 +1059,8 @@ int ext4_get_blocks_handle(handle_t *han
+ extern struct inode *ext4_iget(struct super_block *, unsigned long);
+ extern int  ext4_write_inode (struct inode *, int);
+ extern int  ext4_setattr (struct dentry *, struct iattr *);
++extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
++				struct kstat *stat);
+ extern void ext4_delete_inode (struct inode *);
+ extern int  ext4_sync_inode (handle_t *, struct inode *);
+ extern void ext4_discard_reservation (struct inode *);
+Index: linux-2.6.26-rc9/fs/ext4/file.c
+===================================================================
+--- linux-2.6.26-rc9.orig/fs/ext4/file.c	2008-07-07 16:29:21.000000000 -0700
++++ linux-2.6.26-rc9/fs/ext4/file.c	2008-07-07 16:29:51.000000000 -0700
+@@ -161,6 +161,7 @@ const struct file_operations ext4_file_o
+ const struct inode_operations ext4_file_inode_operations = {
+ 	.truncate	= ext4_truncate,
+ 	.setattr	= ext4_setattr,
++	.getattr	= ext4_getattr,
+ #ifdef CONFIG_EXT4DEV_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+Index: linux-2.6.26-rc9/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.26-rc9.orig/fs/ext4/inode.c	2008-07-07 16:29:22.000000000 -0700
++++ linux-2.6.26-rc9/fs/ext4/inode.c	2008-07-07 16:31:13.000000000 -0700
+@@ -4203,6 +4203,32 @@ err_out:
+ 	return error;
+ }
+ 
++int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
++		 struct kstat *stat)
++{
++	struct inode *inode;
++	unsigned long delalloc_blocks;
++
++	inode = dentry->d_inode;
++	generic_fillattr(inode, stat);
++
++	/*
++	 * We can't update i_blocks if the block allocation is delayed
++	 * otherwise in the case of system crash before the real block
++	 * allocation is done, we will have i_blocks inconsistent with
++	 * on-disk file blocks.
++	 * We always keep i_blocks updated together with real
++	 * allocation. But to not confuse with user, stat
++	 * will return the blocks that include the delayed allocation
++	 * blocks for this file.
++	 */
++	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
++	delalloc_blocks = EXT4_I(inode)->i_reserved_data_blocks;
++	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++
++	stat->blocks += (delalloc_blocks << inode->i_sb->s_blocksize_bits)>>9;
++	return 0;
++}
+ 
+ /*
+  * How many blocks doth make a writepage()?
+
 
