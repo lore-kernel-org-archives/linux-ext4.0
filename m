@@ -1,61 +1,39 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH][e2fsprogs][mke2fs] fix FLEX_BG offset
-Date: Mon, 7 Jul 2008 12:46:07 -0400
-Message-ID: <20080707164607.GO31490@mit.edu>
-References: <486C8BEE.5030200@bull.net>
+From: Girish Shilamkar <Girish.Shilamkar@Sun.COM>
+Subject: [RFC] EXT_MAX_BLOCK for >= 16TB fs
+Date: Mon, 07 Jul 2008 22:25:32 +0530
+Message-ID: <1215449732.1167.11.camel@alpha.linsyssoft.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, "Jose R. Santos" <jrs@us.ibm.com>,
-	cmm@us.ibm.com,
-	=?iso-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>,
-	SOLOFO RAMANGALAHY <Solofo.Ramangalahy@bull.net>,
-	Jean-Pierre Dion <jean-pierre.dion@bull.net>
-To: Celine Bourde <celine.bourde@bull.net>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7BIT
+Cc: adilger@Sun.COM, Theodore Tso <tytso@mit.edu>
+To: Ext4 Mailing List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:60689 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753190AbYGGQqu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jul 2008 12:46:50 -0400
-Content-Disposition: inline
-In-Reply-To: <486C8BEE.5030200@bull.net>
+Received: from sineb-mail-2.sun.com ([192.18.19.7]:33616 "EHLO
+	sineb-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753445AbYGGRaM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jul 2008 13:30:12 -0400
+Received: from fe-apac-05.sun.com (fe-apac-05.sun.com [192.18.19.176] (may be forged))
+	by sineb-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id m67HV8iB002645
+	for <linux-ext4@vger.kernel.org>; Mon, 7 Jul 2008 17:31:12 GMT
+Received: from conversion-daemon.mail-apac.sun.com by mail-apac.sun.com
+ (Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
+ id <0K3N00M01CJZMT00@mail-apac.sun.com>
+ (original mail from Girish.Shilamkar@Sun.COM) for linux-ext4@vger.kernel.org;
+ Tue, 08 Jul 2008 01:29:35 +0800 (SGT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 03, 2008 at 10:21:02AM +0200, Celine Bourde wrote:
-> This patch resolves the offset problem of the flex_bg
-> option when you use mke2fs tool.
+Hi,
+	The magic constant EXT_MAX_BLOCK = 0xffffffff in extents code is used
+in some places to return "invalid block number", and to set the extent
+length = "whole file" in other places.
+	So with >= 16 TB fs we would prefer to use it differently. We can have
+EXT_UNSET_BLOCK = 1 to indicate "invalid block number" as it will never
+be valid block for allocation. And for "whole file" usecase we can
+continue using current EXT_MAX_BLOCK
 
-Actually, I think the problem is a bigger one.  Ext2fs_get_free_blocks()
-returns a error code on failure.  So the code before the conditional
-you modified is totally bogus:
+Regards,
+Girish
 
-	/* Find the first available block */
-	if (ext2fs_get_free_blocks(fs, start_blk, last_blk, 1, bmap,
-				   &first_free))
-		return first_free;
 
-	if (ext2fs_get_free_blocks(fs, first_free + offset, last_blk, size,
-				   bmap, &first_free))
-		return first_free;
 
-	return first_free;
-
-I think this should be instead:
-
-	/* Find the first available block */
-	if (ext2fs_get_free_blocks(fs, start_blk, last_blk, 1, bmap,
-				   &first_free) == 0)
-		return first_free;
-
-	if (ext2fs_get_free_blocks(fs, first_free + offset, last_blk, size,
-				   bmap, &first_free) == 0)
-		return first_free;
-
-	/* 
-	 * Oops, we weren't able to find enough space.  We return 
-	 * first_free as a best try.
-	 */
-
-	return first_free;
-
-							- Ted
