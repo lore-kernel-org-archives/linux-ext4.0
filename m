@@ -1,119 +1,124 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 4/5] jbd: fix error handling for checkpoint io
-Date: Mon, 7 Jul 2008 12:07:05 +0200
-Message-ID: <20080707100705.GA3593@duck.suse.cz>
-References: <20080602124409.GL30613@duck.suse.cz> <4844CB39.6060409@hitachi.com> <20080603080219.GA17936@duck.suse.cz> <485F85AE.1010704@hitachi.com> <20080623122240.GJ26743@duck.suse.cz> <4860E01B.8010806@hitachi.com> <20080624133309.GG9959@duck.suse.cz> <48649FA0.70303@hitachi.com> <20080627102419.GC3602@duck.suse.cz> <48686A75.9010809@hitachi.com>
+From: Holger Kiehl <Holger.Kiehl@dwd.de>
+Subject: Re: Performance of ext4
+Date: Mon, 7 Jul 2008 13:13:42 +0000 (GMT)
+Message-ID: <Pine.LNX.4.64.0807071047430.17563@diagnostix.dwd.de>
+References: <Pine.LNX.4.64.0806121154090.27806@diagnostix.dwd.de>
+ <20080612131928.GB18229@mit.edu> <Pine.LNX.4.64.0806121333480.27806@diagnostix.dwd.de>
+ <20080612180605.GD22481@skywalker> <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de>
+ <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de>
+ <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker>
+ <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de>
+ <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de> <20080619110947.GB11516@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
-	sugita <yumiko.sugita.yf@hitachi.com>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Jan Kara <jack@suse.cz>, Solofo.Ramangalahy@bull.net,
+	Nick Dokos <nicholas.dokos@hp.com>, linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:54629 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751908AbYGGKHH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Jul 2008 06:07:07 -0400
-Content-Disposition: inline
-In-Reply-To: <48686A75.9010809@hitachi.com>
+Received: from dwdmx4.dwd.de ([141.38.3.230]:57300 "EHLO dwdmx4.dwd.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752775AbYGGNNt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Jul 2008 09:13:49 -0400
+In-Reply-To: <20080619110947.GB11516@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Thu, 19 Jun 2008, Theodore Tso wrote:
 
-On Mon 30-06-08 14:09:09, Hidehiro Kawai wrote:
-> Jan Kara wrote:
-> 
-> > On Fri 27-06-08 17:06:56, Hidehiro Kawai wrote:
-> > 
-> >>Jan Kara wrote:
-> >>
-> >>
-> >>>On Tue 24-06-08 20:52:59, Hidehiro Kawai wrote:
-> >>
-> >>>>>>3. is implemented as described below.
-> >>>>>>(1) if log_do_checkpoint() detects an I/O error during
-> >>>>>>    checkpointing, it calls journal_abort() to abort the journal
-> >>>>>>(2) if the journal has aborted, don't update s_start and s_sequence
-> >>>>>>    in the on-disk journal superblock
-> >>>>>>
-> >>>>>>So, if the journal aborts, journaled data will be replayed on the
-> >>>>>>next mount.
-> >>>>>>
-> >>>>>>Now, please remember that some dirty metadata buffers are written
-> >>>>>>back to the filesystem without journaling if the journal aborted.
-> >>>>>>We are happy if all dirty metadata buffers are written to the disk,
-> >>>>>>the integrity of the filesystem will be kept.  However, replaying
-> >>>>>>the journaled data can overwrite the latest on-disk metadata blocks
-> >>>>>>partly with old data.  It would break the filesystem.
-> >>>>>
-> >>>>> Yes, it would. But how do you think it can happen that a metadata buffer
-> >>>>>will be written back to the filesystem when it is a part of running
-> >>>>>transaction? Note that checkpointing code specifically checks whether the
-> >>>>>buffer being written back is part of a running transaction and if so, it
-> >>>>>waits for commit before writing back the buffer. So I don't think this can
-> >>>>>happen but maybe I miss something...
-> >>>>
-> >>>>Checkpointing code checks it and may call log_wait_commit(), but this
-> >>>>problem is caused by transactions which have not started checkpointing.
-> >>>>
-> >>>>For example, the tail transaction has an old update for block_B and
-> >>>>the running transaction has a new update for block_B.  Then, the
-> >>>>committing transaction fails to write the commit record, it aborts the
-> >>>>journal, and new block_B will be written back to the file system without
-> >>>>journaling.  Because this patch doesn't separate between normal abort
-> >>>>and checkpointing related abort, the tail transaction is left in the
-> >>>>journal space.  So by replaying the tail transaction, new block_B is
-> >>>>overwritten with old one.
-> >>>
-> >>>  Yes, and this is expected an correct. When we cannot properly finish a
-> >>>transaction, we have to discard everything in it. A bug would be (and I
-> >>>think it could currently happen) if we already checkpointed the previous
-> >>>transaction and then written over block_B new data from the uncommitted
-> >>>transaction. I think we have to avoid that - i.e., in case we abort the
-> >>>journal we should not mark buffers dirty when processing the forget loop.
-> >>
-> >>Yes.
-> >>
-> >>
-> >>>But this is not too serious since fsck has to be run anyway and it will
-> >>>fix the problems.
-> >>
-> >>Yes.  The filesystem should be marked with an error, so fsck will check
-> >>and recover the filesystem on boot.  But this means the filesystem loses
-> >>some latest updates even if it was cleanly unmounted (although some file
-> >>data has been lost.)  I'm a bit afraid that some people would think of
-> >>this as a regression due to this PATCH 4/5.  At least, to avoid
-> >>undesirable replay, we had better keep journaled data only when the
-> >>journal has been aborted for checkpointing related reason.
-> > 
-> >   I don't think this makes any difference. Look: We have transaction A
-> > modifying block B fully committed to the journal. Now there is a running
-> > (or committing, it does not really matter) transaction R also modifying block
-> > B. Until R gets fully committed, no block modified by R is checkpointed
-> > to the device - checkpointing code takes care of that and it must be so
-> > to satisfy journaling guarantees.
-> >   So if we abort journal (for whatever reason) before R is fully committed,
-> > no change in R will be seen on the filesystem regardless whether you
-> > cleanup the journal or not.
-> 
-> No, changes in R will be seen on the filesystem.
-> The metadata buffer for block B is marked as dirty when it is unfiled
-> whether the journal has aborted or not.  Eventually the buffer will be
-> written-back to the filesystem by pdflush.  Actually I have confirmed
-> this behavior by using SystemTap.  So if both journal abort and
-> system crash happen at the same time, the filesystem would become
-> inconsistent state.  As I stated, replaying the journaled block B in
-> transaction A may also corrupt the filesystem, because changes in
-> transaction R are reflected halfway.  That is why I sent a patch to
-> prevent metadata buffers from being dirtied on abort.
-  Ah, ok. Thanks for explanation. Yes, we should not mark buffers dirty
-when journal is aborted and we unfile them. That should fix the whole
-problem.
-								Bye
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> On Wed, Jun 18, 2008 at 05:58:00AM +0000, Holger Kiehl wrote:
+>> For afdbench: 5336.41 files per second 15.63 MiB/s
+>>
+>> So it seems that for afdbench the ext4-patch-queue is a slowdown.
+>
+> Can you remind me where afdbench can be downloaded?  And if I remember
+> correctly, it creates and deletes large numbers of small files,
+> correct?
+>
+> It would be interesting to see which new feature introduced by the
+> ext4 patch queue --- probably dellayed allocation or mballoc --- is
+> responsible for the slowdown.  One or the other (or both) can be
+> disabled by mounting the filesystem (using a kernel with the ext4
+> patch queue) with the mount options -O nomballoc or -O nodelalloc.
+>
+> If it turns out that nomballoc restores the speed for afdbench, for
+> example, then it will tell us where we need to look more closely.
+> Ideally we would not want to have one mount option needed to optimize
+> filesystem operations for large amoutns of modifications to small
+> files, and another mode of operation when mostly writing to large
+> files.  So if you could do a round of tests using the ext4 patch queue
+> kernel, with -O nomballoc and -O nodelalloc (and if both seem to
+> improve things, try "-O nomballoc,nodelalloc" and see if you get back
+> to the pre-ext4 patch queue speed), it would be very much appreciated.
+>
+Here the results:
+                                      +---------+------------+
+                                      | afdbench|   bonnie++ |
+                                      +---------+--------+---+
+                                      |file rate| block w|%CP|
+-------------------------------------+---------+--------+---+
+ext3                                 | 5536.79 | 212350 | 92|
+ext4-patch-queue                     | 5054.86 | 244384 | 50|
+ext4-patch-queue-nodelalloc          | 4943.78 | 225819 | 92|
+ext4-patch-queue-nomballoc           | 3123.49 | 244535 | 52|
+ext4-patch-queue-nomballoc-nodelalloc| 4931.09 | 231332 | 91|
+-------------------------------------+---------+--------+---+
+
+Test where done with 2.6.26-rc8 and
+ext4-patch-queue-52c8a02a8a7b7e5915b9301e9c171b4faf22b928.tar.gz,
+e2fsprogs is from git (27th April 2008). ext4 filesystem was created
+with 'mke2fs -m 0 -t ext4dev /dev/md7' and ext3 'mke2fs -m 0 -j /dev/md7'.
+Common mount options are: noatime,nodiratime,commit=15
+
+Looking at the afdbench results I also notice that when I just take
+the FTP results the results look as follows:
+
+ext3                                 : 3465.50
+ext4-patch-queue                     : 2785.58
+ext4-patch-queue-nodelalloc          : 2677.39
+ext4-patch-queue-nomballoc           :  219.12
+ext4-patch-queue-nomballoc-nodelalloc: 2566.24
+
+Now one can see the drop with ext4-patch-queue much clearer. The testing
+of afdbench is done in two parts, one where we just link lots of small
+files locally and the same test is then repeated using a network protocol
+in this case FTP. So the difference is that for the filesystem lots
+of new files get created. Further testing showed that when I increase
+the number FTP process performance decreases in all cases but much more
+for ext4-patch-queue (nearly 50% drop against ext3) as the following results
+show:
+
+ext3                                 : 2352.89
+ext4-patch-queue                     : 1226.55
+ext4-patch-queue-nodelalloc          : 1340.80
+ext4-patch-queue-nomballoc-nodelalloc: 1181.12
+
+I did not do the ext4-patch-queue-nomballoc test since there is obviously
+something wrong here when you look at the numbers above (219.12 fps).
+During that test I notice that when you try to open an existing file
+with vi it can take several minutes before it opens this file. The strange
+thing is that vi was not in D-state but it could not be killed, even root
+could not kill it with -9.
+
+There is also some corruption in filesystem during the test with
+ext4-patch-queue and ext4-patch-queue-nomballoc. It happens when after
+the test I umount the test filesystem and then mount it again the
+following message appears:
+
+root@athena:~# umount /home
+root@athena:~# mount /home
+mount: wrong fs type, bad option, bad superblock on /dev/md7,
+        missing codepage or helper program, or other error
+        In some cases useful info is found in syslog - try
+        dmesg | tail  or so
+
+EXT4-fs: ext4_check_descriptors: Inode bitmap for group 256 not in group (block 117835012)!<3>EXT4-fs: group descriptors corrupted!
+
+Using fsck this problem could be corrected. Now that one does not think I
+did those test on a corrupted file system. The filesystem was newly created
+for each of the above five test runs.
+
+Regards,
+Holger
+
