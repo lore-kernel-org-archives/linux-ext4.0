@@ -1,30 +1,49 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH] ext4: delayed allocation i_blocks fix for stat(2)
-Date: Mon, 7 Jul 2008 19:47:45 -0400
-Message-ID: <20080707234745.GG31490@mit.edu>
-References: <1215473799.6702.9.camel@mingming-laptop>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: error in ext4_mb_release_inode_pa
+Date: Mon, 07 Jul 2008 20:04:12 -0500
+Message-ID: <4872BD0C.9080404@redhat.com>
+References: <48723646.1050101@redhat.com> <20080707232022.GX6239@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:52471 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753980AbYGGXsY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jul 2008 19:48:24 -0400
-Content-Disposition: inline
-In-Reply-To: <1215473799.6702.9.camel@mingming-laptop>
+Received: from mx1.redhat.com ([66.187.233.31]:45502 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755116AbYGHBEN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 7 Jul 2008 21:04:13 -0400
+In-Reply-To: <20080707232022.GX6239@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 07, 2008 at 04:36:39PM -0700, Mingming Cao wrote:
-> ext4: delayed allocation i_blocks fix for stat(2)
+Andreas Dilger wrote:
+> On Jul 07, 2008  10:29 -0500, Eric Sandeen wrote:
+>> This was on #linuxfs last night, and I think I've seen at least one
+>> other report of it:
+>>
+>> [22:44]  <shehjart> any ideas why i get the following two lines on the
+>> serial console when writing to ext4 over software raid0:
+>> [22:44]  <shehjart> pa e00001004112d450: logic 11928, phys. 47003288,
+>> len 360
+>> [22:45]  <shehjart> EXT4-fs error (device md0):
+>> ext4_mb_release_inode_pa: free 176, pa_free 174
+> 
+> The bug that I recalled from Lustre is unlikely to be the same.  It is
+> https://bugzilla.lustre.org/show_bug.cgi?id=15932
+> 
+> 	"error: N blocks in bitmap, M in gd"
+> 
+> There was a second bug in ext3_mb_use_best_found() hit on > 8TB filesystems:
+> https://bugzilla.lustre.org/show_bug.cgi?id=16101
+> 
+> 	BUG_ON(ac->ac_b_ex.fe_group != e3b->bd_group);
+> 
 
-Looks good, thanks!!
+Thanks Andreas -
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+In an effort to not lose track of it I filed a bug:
 
-I'm going to do a quick test and probably push out a 2.6.26-rc9-ext4-1
-snapshot later this evening.
+http://bugzilla.kernel.org/show_bug.cgi?id=11053
 
-						- Ted
+-Eric
