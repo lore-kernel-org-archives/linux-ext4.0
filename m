@@ -1,120 +1,118 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: delayed allocation i_blocks fix for stat(2)
-Date: Mon, 07 Jul 2008 20:11:08 -0500
-Message-ID: <4872BEAC.7010007@redhat.com>
-References: <1215473799.6702.9.camel@mingming-laptop>
+From: "Peng tao" <bergwolf@gmail.com>
+Subject: Re: [PATCH] do not set extents feature from the kernel
+Date: Tue, 8 Jul 2008 10:23:28 +0800
+Message-ID: <6149e97b0807071923t62379bf0qc682c6cbc15e1380@mail.gmail.com>
+References: <48727954.1080406@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: "ext4 development" <linux-ext4@vger.kernel.org>
+To: "Eric Sandeen" <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:43126 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754679AbYGHBLL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 7 Jul 2008 21:11:11 -0400
-In-Reply-To: <1215473799.6702.9.camel@mingming-laptop>
+Received: from wa-out-1112.google.com ([209.85.146.180]:58986 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755408AbYGHCXf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 7 Jul 2008 22:23:35 -0400
+Received: by wa-out-1112.google.com with SMTP id j37so1505056waf.23
+        for <linux-ext4@vger.kernel.org>; Mon, 07 Jul 2008 19:23:28 -0700 (PDT)
+In-Reply-To: <48727954.1080406@redhat.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mingming Cao wrote:
-> ext4: delayed allocation i_blocks fix for stat(2)
-> 
-> From: Mingming Cao <cmm@us.ibm.com>
-> 
-> Right now i_blocks is not getting updated until the disks are actually
-> allocaed on disk.  This means with delayed allocation, right after files
-> are copied, "ls -sF" shoes the file as taking 0 blocks on disk.  "du"
-> also shows the files taking zero space, which is highly confusing to the user.
-> 
-> Since current delayed allocation already keep track of per-inode total number
-> of blocks that are subject to delayed allocation, this patch fix this by using
-> that to adjust the value returned by stat(2). When real block allocation
-> is done, the i_blocks will get updated. Since the reserved blocks for delayed
-> allocation will be decreased, this will be keep value returned by stat(2)
-> consistent.
-> 
-> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Hi, Eric
 
-Thanks Mingming, looks like just the right approach.
-
-Something about the spinlock for every stat seems heavy-handed to me but
-I'll have to give that more thought.  :)
-
--Eric
-
+On Tue, Jul 8, 2008 at 4:15 AM, Eric Sandeen <sandeen@redhat.com> wrote:
+> We've talked for a while about getting rid of any feature-
+> setting from the kernel; this gets rid of the code which would
+> set the INCOMPAT_EXTENTS flag on the first file write when mounted
+> as ext4[dev].
+>
+> With this patch, if the extents feature is not already set on disk,
+> then mounting as ext4 will fall back to noextents with a warning,
+> and if -o extents is explicitly requested, the mount will fail,
+> also with warning.
+Does this mean no more migration from ext3 to ext4?
+>
+> Does this seem like a decent approach?
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 > ---
->  fs/ext4/ext4.h  |    2 ++
->  fs/ext4/file.c  |    1 +
->  fs/ext4/inode.c |   26 ++++++++++++++++++++++++++
->  3 files changed, 29 insertions(+)
-> 
-> Index: linux-2.6.26-rc9/fs/ext4/ext4.h
+>
+> Index: linux-2.6/fs/ext4/ialloc.c
 > ===================================================================
-> --- linux-2.6.26-rc9.orig/fs/ext4/ext4.h	2008-07-07 16:29:23.000000000 -0700
-> +++ linux-2.6.26-rc9/fs/ext4/ext4.h	2008-07-07 16:32:54.000000000 -0700
-> @@ -1059,6 +1059,8 @@ int ext4_get_blocks_handle(handle_t *han
->  extern struct inode *ext4_iget(struct super_block *, unsigned long);
->  extern int  ext4_write_inode (struct inode *, int);
->  extern int  ext4_setattr (struct dentry *, struct iattr *);
-> +extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
-> +				struct kstat *stat);
->  extern void ext4_delete_inode (struct inode *);
->  extern int  ext4_sync_inode (handle_t *, struct inode *);
->  extern void ext4_discard_reservation (struct inode *);
-> Index: linux-2.6.26-rc9/fs/ext4/file.c
+> --- linux-2.6.orig/fs/ext4/ialloc.c     2008-07-07 10:22:00.000000000 -0500
+> +++ linux-2.6/fs/ext4/ialloc.c  2008-07-07 12:07:02.133292077 -0500
+> @@ -740,14 +740,10 @@ got:
+>                goto fail_free_drop;
+>
+>        if (test_opt(sb, EXTENTS)) {
+> -               /* set extent flag only for diretory, file and normal symlink*/
+> +               /* set extent flag only for directory, file and normal symlink*/
+>                if (S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) {
+>                        EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
+>                        ext4_ext_tree_init(handle, inode);
+> -                       err = ext4_update_incompat_feature(handle, sb,
+> -                                       EXT4_FEATURE_INCOMPAT_EXTENTS);
+> -                       if (err)
+> -                               goto fail_free_drop;
+>                }
+>        }
+>
+> Index: linux-2.6/fs/ext4/super.c
 > ===================================================================
-> --- linux-2.6.26-rc9.orig/fs/ext4/file.c	2008-07-07 16:29:21.000000000 -0700
-> +++ linux-2.6.26-rc9/fs/ext4/file.c	2008-07-07 16:29:51.000000000 -0700
-> @@ -161,6 +161,7 @@ const struct file_operations ext4_file_o
->  const struct inode_operations ext4_file_inode_operations = {
->  	.truncate	= ext4_truncate,
->  	.setattr	= ext4_setattr,
-> +	.getattr	= ext4_getattr,
->  #ifdef CONFIG_EXT4DEV_FS_XATTR
->  	.setxattr	= generic_setxattr,
->  	.getxattr	= generic_getxattr,
-> Index: linux-2.6.26-rc9/fs/ext4/inode.c
-> ===================================================================
-> --- linux-2.6.26-rc9.orig/fs/ext4/inode.c	2008-07-07 16:29:22.000000000 -0700
-> +++ linux-2.6.26-rc9/fs/ext4/inode.c	2008-07-07 16:31:13.000000000 -0700
-> @@ -4203,6 +4203,32 @@ err_out:
->  	return error;
->  }
->  
-> +int ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
-> +		 struct kstat *stat)
-> +{
-> +	struct inode *inode;
-> +	unsigned long delalloc_blocks;
-> +
-> +	inode = dentry->d_inode;
-> +	generic_fillattr(inode, stat);
-> +
-> +	/*
-> +	 * We can't update i_blocks if the block allocation is delayed
-> +	 * otherwise in the case of system crash before the real block
-> +	 * allocation is done, we will have i_blocks inconsistent with
-> +	 * on-disk file blocks.
-> +	 * We always keep i_blocks updated together with real
-> +	 * allocation. But to not confuse with user, stat
-> +	 * will return the blocks that include the delayed allocation
-> +	 * blocks for this file.
-> +	 */
-> +	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
-> +	delalloc_blocks = EXT4_I(inode)->i_reserved_data_blocks;
-> +	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> +
-> +	stat->blocks += (delalloc_blocks << inode->i_sb->s_blocksize_bits)>>9;
-> +	return 0;
-> +}
->  
->  /*
->   * How many blocks doth make a writepage()?
-> 
-> 
+> --- linux-2.6.orig/fs/ext4/super.c      2008-07-07 10:22:19.000000000 -0500
+> +++ linux-2.6/fs/ext4/super.c   2008-07-07 14:08:43.684291817 -0500
+> @@ -1309,6 +1309,13 @@ set_qf_format:
+>                        clear_opt(sbi->s_mount_opt, NOBH);
+>                        break;
+>                case Opt_extents:
+> +                       if (!EXT4_HAS_INCOMPAT_FEATURE(sb,
+> +                                       EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+> +                               ext4_warning(sb, __func__,
+> +                                       "extents feature not enabled "
+> +                                       "on this filesystem, use tune2fs\n");
+> +                               return 0;
+> +                       }
+>                        set_opt (sbi->s_mount_opt, EXTENTS);
+>                        break;
+>                case Opt_noextents:
+> @@ -1919,12 +1926,18 @@ static int ext4_fill_super (struct super
+>
+>        /*
+>         * turn on extents feature by default in ext4 filesystem
+> -        * User -o noextents to turn it off
+> +        * only if feature flag already set by mkfs or tune2fs.
+> +        * Use -o noextents to turn it off
+>         */
+> -       set_opt(sbi->s_mount_opt, EXTENTS);
+> +       if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
+> +               set_opt(sbi->s_mount_opt, EXTENTS);
+> +       else
+> +               ext4_warning(sb, __func__,
+> +                       "extents feature not enabled on this filesystem, "
+> +                       "use tune2fs.\n");
+>        /*
+> -        * turn on mballoc feature by default in ext4 filesystem
+> -        * User -o nomballoc to turn it off
+> +        * turn on mballoc code by default in ext4 filesystem
+> +        * Use -o nomballoc to turn it off
+>         */
+>        set_opt(sbi->s_mount_opt, MBALLOC);
+>
+>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
 
+
+
+-- 
+RGDS
+
+Bergwolf
+
+................
+Here lieth one whose name was writ on water.
