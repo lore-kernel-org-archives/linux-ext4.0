@@ -1,75 +1,40 @@
-From: Pavel Machek <pavel@suse.cz>
-Subject: Re: [PATCH 3/3] Add timeout feature
-Date: Wed, 9 Jul 2008 22:44:13 +0200
-Message-ID: <20080709204412.GG11006@ucw.cz>
-References: <20080630212450t-sato@mail.jp.nec.com> <20080701081026.GB16691@infradead.org> <20080707110730.GG5643@ucw.cz> <20080708231026.GP11558@disturbed> <20080708232031.GE18195@elf.ucw.cz> <20080709005254.GQ11558@disturbed>
+From: Gary Hawco <ghawco@cox.net>
+Subject: Segfaults--they're back!
+Date: Wed, 09 Jul 2008 15:00:04
+Message-ID: <3.0.6.32.20080709150004.01bd9858@pop.west.cox.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Christoph Hellwig <hch@infradead.org>,
-	Takashi Sato <t-sato@yk.jp.nec.com>, akpm@linux-foundation.org,
-	viro@ZenIV.linux.org.uk,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.or
+Content-Type: text/plain; charset="us-ascii"
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Theodore Tso <tytso@mit.edu>, Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gprs189-60.eurotel.cz ([160.218.189.60]:1556 "EHLO spitz.ucw.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751982AbYGIU4P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 9 Jul 2008 16:56:15 -0400
-Content-Disposition: inline
-In-Reply-To: <20080709005254.GQ11558@disturbed>
+Received: from fed1rmmtao101.cox.net ([68.230.241.45]:34731 "EHLO
+	fed1rmmtao101.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752395AbYGIWAF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 9 Jul 2008 18:00:05 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi!
+Segfaults have returned with snapshots compiled after 070908--0010hrs GMT.
 
-> > > > > I still disagree with this whole patch.  There is not reason to let
-> > > > > the freeze request timeout - an auto-unfreezing will only confuse the
-> > > > > hell out of the caller.  The only reason where the current XFS freeze
-> > > > > call can hang and this would be theoretically useful is when the
-> > > > 
-> > > > What happens when someone dirties so much data that vm swaps out
-> > > > whatever process that frozen the filesystem?
-> > > 
-> > > a) you can't dirty a frozen filesystem - by definition a frozen
-> > >    filesystem is a *clean filesystem* and *cannot be dirtied*.
-> > 
-> > Can you stop me?
-> > 
-> > mmap("/some/huge_file", MAP_SHARED);
-> > 
-> > then write to memory mapping?
-> 
-> Sure - we can put a hook in ->page_mkwrite() to prevent it.  We
-> don't right now because nobody in the real world really cares if one
-> half of a concurrent user data change is in the old snapshot or the
-> new one......
-> 
-> > > b) Swap doesn't write through the filesystem
-> > > c) you can still read from a frozen filesystem to page your
-> > >    executable?? in.
-> > 
-> > atime modification should mean dirty data, right?
-> 
-> Metadata, not data. If that's really a problem (and it never has
-> been for XFS because we always allow in memory changes to atime)
-> then touch_atime could be easily changed to avoid this...
-> 
-> > And dirty data mean
-> > memory pressure, right? 
-> 
-> If you walk enough inodes while the filesystem is frozen, it
-> theoretically could happen.  Typically a filesystem is only for a
-> few seconds at a time so in the real world this has never, ever been
-> a problem.
+That one worked fine.
 
-So we have freezing interface that does not really freeze, and
-that can break the system when filesystem is frozen for too long...
-:-(.
+The next one I tried (070908/0025hrs GMT) caused segfaults in both Gentoo &
+Slackware (a first for Slackware) when trying to untar
+linux-2.6.26-rc9.tar.bz2 tarball)
 
-Maybe you could use process freezer -- cgroup people are adding
-userspace interface to that -- to solve those... but that would mean
-stopping everyone but thread doing freezing...
+I then rolled back two snapshots to 070908/0012hrs GMT) and it segfaulted
+in both operating systems doing same untarring function.
 
-								Pavel
--- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+So, apparently, since 0010snapshot
+(ext4-patch-queue-bfb23cf4cd345552c774142cb10ac1225caf35f5.tar.gz) works fine
+
+and 0012snapshot
+(ext4-patch-queue-be66b0c5c3f4293176301c0ddcb8db95b0576cb4.tar.gz)
+segfaults, the 
+Add ext4-fix-mb_find_next_bit-return.patch must be the culprit.
+
+Thanks,
+Gary
+
+P.S. The latest snapshot from today @ 0303hrs GMT segfaults as well.
+
