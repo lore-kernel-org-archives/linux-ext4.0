@@ -1,7 +1,7 @@
-From: Miklos Szeredi <miklos@szeredi.hu>
+From: Arjan van de Ven <arjan@infradead.org>
 Subject: Re: [PATCH 3/3] Add timeout feature
-Date: Wed, 09 Jul 2008 08:48:42 +0200
-Message-ID: <E1KGTTm-0006ke-Jh@pomaz-ex.szeredi.hu>
+Date: Tue, 8 Jul 2008 23:55:02 -0700
+Message-ID: <20080708235502.1c52a586@infradead.org>
 References: <20080630212450t-sato@mail.jp.nec.com>
 	<20080701081026.GB16691@infradead.org>
 	<20080707110730.GG5643@ucw.cz>
@@ -11,36 +11,54 @@ References: <20080630212450t-sato@mail.jp.nec.com>
 	<20080709010922.GE9957@mit.edu>
 	<E1KGSvZ-0006dB-53@pomaz-ex.szeredi.hu>
 	<20080709061621.GA5260@infradead.org>
-	<E1KGT4q-0006fD-Jb@pomaz-ex.szeredi.hu> <20080708234120.5072111f@infradead.org>
-Cc: miklos@szeredi.hu, hch@infradead.org, miklos@szeredi.hu,
-	tytso@mit.edu, pavel@suse.cz, t-sato@yk.jp.nec.com,
-	akpm@linux-foundation.org, viro@ZenIV.linux.org.uk,
-	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, dm-devel@redhat.com,
+	<E1KGT4q-0006fD-Jb@pomaz-ex.szeredi.hu>
+	<20080708234120.5072111f@infradead.org>
+	<E1KGTTm-0006ke-Jh@pomaz-ex.szeredi.hu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: miklos@szeredi.hu, hch@infradead.org, tytso@mit.edu, pavel@suse.cz,
+	t-sato@yk.jp.nec.com, akpm@linux-foundation.org,
+	viro@ZenIV.linux.org.uk, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, dm-devel@redhat.com,
 	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
 	axboe@kernel.dk, mtk.manpages@googlemail.com
-To: arjan@infradead.org
+To: Miklos Szeredi <miklos@szeredi.hu>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <20080708234120.5072111f@infradead.org> (message from Arjan van
-	de Ven on Tue, 8 Jul 2008 23:41:20 -0700)
+In-Reply-To: <E1KGTTm-0006ke-Jh@pomaz-ex.szeredi.hu>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 8 Jul 2008, Arjan van de Ven wrote:
-> nah he needs to do
+On Wed, 09 Jul 2008 08:48:42 +0200
+Miklos Szeredi <miklos@szeredi.hu> wrote:
+
+> On Tue, 8 Jul 2008, Arjan van de Ven wrote:
+> > nah he needs to do
+> > 
+> > make_snapshot ; backup-command ; unref_snapshot.
+> > 
+> > freezing isn't the right solution for the backup problem ;)
 > 
-> make_snapshot ; backup-command ; unref_snapshot.
+> Confused, what's freezing _is_ for then?  Patch description says:
 > 
-> freezing isn't the right solution for the backup problem ;)
+>   Currently, ext3 in mainline Linux doesn't have the freeze feature
+> which suspends write requests.  So, we cannot take a backup which
+> keeps the filesystem's consistency with the storage device's features
+>   (snapshot and replication) while it is mounted.
 
-Confused, what's freezing _is_ for then?  Patch description says:
+I tihnk the idea there is
 
-  Currently, ext3 in mainline Linux doesn't have the freeze feature which
-  suspends write requests.  So, we cannot take a backup which keeps
-  the filesystem's consistency with the storage device's features
-  (snapshot and replication) while it is mounted.
-  In many case, a commercial filesystem (e.g. VxFS) has
-  the freeze feature and it would be used to get the consistent backup.
-  If Linux's standard filesytem ext3 has the freeze feature, we can do it
-  without a commercial filesystem.
+freeze . do the snapshot op . unfreeze . make backup of snapshot
 
-Miklos
+one can argue about the need of doing the first 3 steps via a userland
+loop; it sure sounds like one needs to be really careful to not do any
+writes to the fs from the app that does snapshots (and that includes
+doing any syscalls in the kernel that allocate memory.. just because
+that already could cause unrelated data to be written from inside the
+app. Not fun.)
+
+
+-- 
+If you want to reach me at my work email, use arjan@linux.intel.com
+For development, discussion and tips for power savings, 
+visit http://www.lesswatts.org
