@@ -1,52 +1,48 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Segfaults--they're back!
-Date: Thu, 10 Jul 2008 07:02:30 -0400
-Message-ID: <20080710110230.GA8603@mit.edu>
-References: <3.0.6.32.20080709150004.01bd9858@pop.west.cox.net> <20080710052150.GC6764@skywalker>
+Subject: Re: Revert  Fix-EXT_MAX_BLOCK.patch
+Date: Thu, 10 Jul 2008 08:22:42 -0400
+Message-ID: <20080710122242.GB8603@mit.edu>
+References: <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de> <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker> <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de> <20080619110947.GB11516@mit.edu> <Pine.LNX.4.64.0807071047430.17563@diagnostix.dwd.de> <Pine.LNX.4.64.0807100804050.16071@diagnostix.dwd.de> <20080710092425.GA16451@skywalker> <20080710092517.GB16451@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Gary Hawco <ghawco@cox.net>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Mingming <cmm@us.ibm.com>
+Cc: Holger Kiehl <Holger.Kiehl@dwd.de>,
+	Girish Shilamkar <Girish.Shilamkar@sun.com>,
+	linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44234 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:34918 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753264AbYGJLDG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2008 07:03:06 -0400
+	with ESMTP id S1752652AbYGJMX3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2008 08:23:29 -0400
 Content-Disposition: inline
-In-Reply-To: <20080710052150.GC6764@skywalker>
+In-Reply-To: <20080710092517.GB16451@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 10, 2008 at 10:51:50AM +0530, Aneesh Kumar K.V wrote:
-> On Wed, Jul 09, 2008 at 03:00:04PM +0000, Gary Hawco wrote:
-> > Segfaults have returned with snapshots compiled after 070908--0010hrs GMT.
-> > 
-> > That one worked fine.
+Aneesh, for the record, how were you able to reproduce the problem?
 
-Is this a kernel or userspace segfault?  i.e., is there a kernel oops
-message?  If so, can you send us the oops message?  It's really really
-useful to have it.  Also, can you send us a dumpe2fs of the filesystem
-which ou were writing to?  Some of the bugs which we've been finding
-are specific to a 1k block filesystem, for example, and sometimes that
-can help narrow down the bug.
+Do you have Holger's afdbench setup, or did you use some other workload?
 
-> Is your file system full when this happens ? Which user space call cause
-> the segfault ? An strace should be able to help you find that. We
-> actually have modified ext4 to give SIGBUS when we hit ENOSPC during
-> mmap write. For ex:
-> 
-> root:/ext4# /root/mmaptest ./test4  0 100
-> mmaping 0 to 100
-> Bus error (core dumped)
-> root:/ext4# 
-
-What Aneesh is talking about here is a userspace core dump which is
-normal, if the filesystem is full.  I'm not sure that's what you're
-referring to assuming that "they're back" means you're referring to a
-kernel oops.
-
-Regards,
+Thanks, regards,
 
 						- Ted
+
+On Thu, Jul 10, 2008 at 02:56:35PM +0530, Aneesh Kumar K.V wrote:
+> Sending again with different subject.
+> 
+> On Thu, Jul 10, 2008 at 02:54:25PM +0530, Aneesh Kumar K.V wrote:
+> > On Thu, Jul 10, 2008 at 08:11:15AM +0000, Holger Kiehl wrote:
+> > > On Mon, 7 Jul 2008, Holger Kiehl wrote:
+> > >
+> > >
+> > > I did try newer patch queue (ext4-patch-queue-a5d48915447f44c3af6ce8e1c91d45b452977fcf)
+> > > from today, but I immediatly hit an oops as soon as I untar a file, see below.
+> > >
+> > 
+> > I am able to reproduce this.  Revert the patch Fix-EXT_MAX_BLOCK.patch. 
+> > 
+> > -aneesh
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
