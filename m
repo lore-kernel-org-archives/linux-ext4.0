@@ -1,45 +1,52 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Revert  Fix-EXT_MAX_BLOCK.patch
-Date: Thu, 10 Jul 2008 09:02:20 -0400
-Message-ID: <20080710130220.GF8603@mit.edu>
-References: <20080616181353.GA20686@skywalker> <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de> <20080619110947.GB11516@mit.edu> <Pine.LNX.4.64.0807071047430.17563@diagnostix.dwd.de> <Pine.LNX.4.64.0807100804050.16071@diagnostix.dwd.de> <20080710092425.GA16451@skywalker> <20080710092517.GB16451@skywalker> <20080710122242.GB8603@mit.edu> <20080710123803.GC16451@skywalker>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: suspiciously good fsck times?
+Date: Thu, 10 Jul 2008 13:27:40 -0400
+Message-ID: <4876468C.2040005@redhat.com>
+References: <4876025A.80909@gmail.com> <20080710151822.GA25939@mit.edu> <48762F9F.5070308@redhat.com> <48763564.2090505@redhat.com> <20080710172117.GE10402@mit.edu>
+Reply-To: rwheeler@redhat.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Holger Kiehl <Holger.Kiehl@dwd.de>,
-	Girish Shilamkar <Girish.Shilamkar@sun.com>,
-	linux-ext4@vger.kernel.org, Gary Hawco <ghawco@cox.net>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:47521 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754065AbYGJNC0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2008 09:02:26 -0400
-Content-Disposition: inline
-In-Reply-To: <20080710123803.GC16451@skywalker>
+Received: from mx1.redhat.com ([66.187.233.31]:53834 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757464AbYGJR1m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 10 Jul 2008 13:27:42 -0400
+In-Reply-To: <20080710172117.GE10402@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 10, 2008 at 06:08:03PM +0530, Aneesh Kumar K.V wrote:
-> On Thu, Jul 10, 2008 at 08:22:42AM -0400, Theodore Tso wrote:
-> > Aneesh, for the record, how were you able to reproduce the problem?
-> > 
-> > Do you have Holger's afdbench setup, or did you use some other workload?
-> > 
-> 
-> cp -ax /usr . 
-> 
-> that will cause the BUG
+Theodore Tso wrote:
+> On Thu, Jul 10, 2008 at 11:14:28AM -0500, Eric Sandeen wrote:
+>   
+>> Val & I talked about this a little, and came to the conclusion that
+>> directory fragmentation might be a pretty big part of it.
+>>     
+>
+> Hmm, could be.  Let's see.  Ric said 46.5 million files, I don't know
+> how big the filenames were, but let's assume a directory entry size of
+> 32, so that means if we assume perfect packing, 128 directory entries
+> per 4k block.  Let's use 100 directory entries/blok just to make the
+> math easyer, so that's 465,000 blocks.  If we assume a 10ms seek time,
+> and that the blocks are totally scattered, that's 4650 seconds, or
+> 1.29 hours. So that's roughly within the ballpark that Ric measured.
+>
+>      	       	      	      	     	 	  - Ted
+>   
 
-Hmm, I wasn't able to trigger it so easily, at least, while trying to
-replicate Gary Hawco's, bug.  (Which also had Fix-EXT_MAX_BLOCK
-applied.)  I wonder if he wasn't able to trigger it while doing the
-partial rollback, and so ext4-fix-mb_find_next_bit-return.patch was
-unfairly blamed for the BUG.
+(changing cc to the real list instead of ext4 owner - sorry!)
 
-In any case, both patches have been pulled out of the patch series ,
-and I'll release a new patchset until we can figure out what happened.
+The file names are 40 bytes long, (6 initial bytes of time stamp with 24 
+random bytes at end of name. For example:
 
-(Gary, this is why its important to get the kernel BUG/oops message;
-it helps us correlate your bug reports with others.)
+451aeb61ead89~~~DYASX8LYL4NAUWK3WI187VRP
 
-						- Ted
+The 4 threads chose the target subdirectory based on the time stamp, 
+rotating into a new subdirectory every 3 minutes or so.
+
+ric
+
+
+
