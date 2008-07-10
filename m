@@ -1,43 +1,52 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Revert  Fix-EXT_MAX_BLOCK.patch
-Date: Thu, 10 Jul 2008 14:56:35 +0530
-Message-ID: <20080710092517.GB16451@skywalker>
-References: <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de> <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de> <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker> <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de> <20080619110947.GB11516@mit.edu> <Pine.LNX.4.64.0807071047430.17563@diagnostix.dwd.de> <Pine.LNX.4.64.0807100804050.16071@diagnostix.dwd.de> <20080710092425.GA16451@skywalker>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Segfaults--they're back!
+Date: Thu, 10 Jul 2008 07:02:30 -0400
+Message-ID: <20080710110230.GA8603@mit.edu>
+References: <3.0.6.32.20080709150004.01bd9858@pop.west.cox.net> <20080710052150.GC6764@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Holger Kiehl <Holger.Kiehl@dwd.de>,
-	Girish Shilamkar <Girish.Shilamkar@sun.com>
+Cc: Gary Hawco <ghawco@cox.net>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Mingming <cmm@us.ibm.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:32912 "EHLO
-	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752315AbYGJJ1M (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2008 05:27:12 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m6A9QhT2027725
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Jul 2008 14:56:43 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6A9QLlo835616
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Jul 2008 14:56:21 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m6A9QgAm011751
-	for <linux-ext4@vger.kernel.org>; Thu, 10 Jul 2008 14:56:43 +0530
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44234 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753264AbYGJLDG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2008 07:03:06 -0400
 Content-Disposition: inline
-In-Reply-To: <20080710092425.GA16451@skywalker>
+In-Reply-To: <20080710052150.GC6764@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Sending again with different subject.
+On Thu, Jul 10, 2008 at 10:51:50AM +0530, Aneesh Kumar K.V wrote:
+> On Wed, Jul 09, 2008 at 03:00:04PM +0000, Gary Hawco wrote:
+> > Segfaults have returned with snapshots compiled after 070908--0010hrs GMT.
+> > 
+> > That one worked fine.
 
-On Thu, Jul 10, 2008 at 02:54:25PM +0530, Aneesh Kumar K.V wrote:
-> On Thu, Jul 10, 2008 at 08:11:15AM +0000, Holger Kiehl wrote:
-> > On Mon, 7 Jul 2008, Holger Kiehl wrote:
-> >
-> >
-> > I did try newer patch queue (ext4-patch-queue-a5d48915447f44c3af6ce8e1c91d45b452977fcf)
-> > from today, but I immediatly hit an oops as soon as I untar a file, see below.
-> >
+Is this a kernel or userspace segfault?  i.e., is there a kernel oops
+message?  If so, can you send us the oops message?  It's really really
+useful to have it.  Also, can you send us a dumpe2fs of the filesystem
+which ou were writing to?  Some of the bugs which we've been finding
+are specific to a 1k block filesystem, for example, and sometimes that
+can help narrow down the bug.
+
+> Is your file system full when this happens ? Which user space call cause
+> the segfault ? An strace should be able to help you find that. We
+> actually have modified ext4 to give SIGBUS when we hit ENOSPC during
+> mmap write. For ex:
 > 
-> I am able to reproduce this.  Revert the patch Fix-EXT_MAX_BLOCK.patch. 
-> 
-> -aneesh
+> root:/ext4# /root/mmaptest ./test4  0 100
+> mmaping 0 to 100
+> Bus error (core dumped)
+> root:/ext4# 
+
+What Aneesh is talking about here is a userspace core dump which is
+normal, if the filesystem is full.  I'm not sure that's what you're
+referring to assuming that "they're back" means you're referring to a
+kernel oops.
+
+Regards,
+
+						- Ted
