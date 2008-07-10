@@ -1,7 +1,7 @@
 From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Revert  Fix-EXT_MAX_BLOCK.patch
-Date: Thu, 10 Jul 2008 08:22:42 -0400
-Message-ID: <20080710122242.GB8603@mit.edu>
+Date: Thu, 10 Jul 2008 08:24:37 -0400
+Message-ID: <20080710122437.GC8603@mit.edu>
 References: <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de> <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker> <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de> <20080619110947.GB11516@mit.edu> <Pine.LNX.4.64.0807071047430.17563@diagnostix.dwd.de> <Pine.LNX.4.64.0807100804050.16071@diagnostix.dwd.de> <20080710092425.GA16451@skywalker> <20080710092517.GB16451@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -10,20 +10,17 @@ Cc: Holger Kiehl <Holger.Kiehl@dwd.de>,
 	linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:34918 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:34929 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752652AbYGJMX3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2008 08:23:29 -0400
+	with ESMTP id S1752704AbYGJMYu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2008 08:24:50 -0400
 Content-Disposition: inline
 In-Reply-To: <20080710092517.GB16451@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh, for the record, how were you able to reproduce the problem?
-
-Do you have Holger's afdbench setup, or did you use some other workload?
-
-Thanks, regards,
+Ive commented out Fix-EXT_MAX_BLOCK.patch from the series file until
+we know more.
 
 						- Ted
 
