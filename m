@@ -1,70 +1,43 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: [PATCH] e2fsprogs : Fix memory leak in ext2fs_initialize.
-Date: Fri, 11 Jul 2008 16:02:06 +0530
-Message-ID: <ea11fea30807110332n459593eay3ce43cca67d5c676@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Ext4 patchqueue corrupted ?
+Date: Fri, 11 Jul 2008 08:26:17 -0400
+Message-ID: <20080711122617.GA8154@mit.edu>
+References: <20080711034606.GA779@skywalker> <20080711084715.GT10151@machine.or.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.171]:20805 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753475AbYGKKcH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jul 2008 06:32:07 -0400
-Received: by wf-out-1314.google.com with SMTP id 27so3563195wfd.4
-        for <linux-ext4@vger.kernel.org>; Fri, 11 Jul 2008 03:32:07 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Ming Ming Cao <cmm@us.ibm.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	git@vger.kernel.org
+To: Petr Baudis <pasky@suse.cz>
+Return-path: <git-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080711084715.GT10151@machine.or.cz>
+Sender: git-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-In function ext2fs_initialize(), if we fail doing
-ext2fs_allocate_block_bitmap() or ext2fs_allocate_inode_bitmap() we
-directly goto cleanup and
-don't free the memory allocated to buf. Below patch fixes it.
+On Fri, Jul 11, 2008 at 10:47:15AM +0200, Petr Baudis wrote:
+>   very puzzling; I have backed up the broken objects store, can you
+> repush, please? I'm curious about how this could have happenned;
+> repo.or.cz now uses Git from latest next, which is a rather strange
+> coincidence. ;-) Or did any of the pushers do anything special about
+> pushin to the repository recently?
 
-===========================================================
+Aneesh, did you try repushing?  It looks like the objects store is
+broken again.
 
-Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
+Pasky, in case it helps, and for the benefit of Linux-ext4 folks, I
+have a copy of my repository (which I last pushed to repo.or.cz around
+noon US/Eastern yesterday) here:
 
----
- lib/ext2fs/initialize.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+     git://git.kernel.org/pub/scm/fs/ext2/ext4-patch-queue.git
 
-diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-index 011656f..a8375d9 100644
---- a/lib/ext2fs/initialize.c
-+++ b/lib/ext2fs/initialize.c
-@@ -105,7 +105,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
- 	int		rsv_gdt;
- 	int		csum_flag;
- 	int		io_flags;
--	char		*buf;
-+	char		*buf = 0;
- 	char		c;
+My most recent HEAD is ec90e411; if anyone has something more recent,
+they can send it to me via:
 
- 	if (!param || !param->s_blocks_count)
-@@ -429,6 +429,9 @@ ipg_retry:
- 	*ret_fs = fs;
- 	return 0;
- cleanup:
-+	if (buf) {
-+	 ext2fs_free_mem(&buf);
-+	}
- 	ext2fs_free(fs);
- 	return retval;
- }
--- 
-1.5.4.3
+     git bundle create /tmp/to-send ec90e411
 
+... and then e-mailing me as an attachment the resulting binary file
+in /tmp/to-send.
 
-===========================================================
-
--- 
-Thanks & Regards,
-********************************************
-Manish Katiyar ( http://mkatiyar.googlepages.com )
-3rd Floor, Fair Winds Block
-EGL Software Park
-Off Intermediate Ring Road
-Bangalore 560071, India
-***********************************************
+						- Ted
