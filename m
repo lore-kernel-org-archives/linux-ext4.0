@@ -1,62 +1,52 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: [PATCH] e2fsprogs : Add stricter checks for blocksize in ext2fs_open
-Date: Fri, 11 Jul 2008 14:19:06 +0530
-Message-ID: <ea11fea30807110149g31065f31k5231bbebc5133587@mail.gmail.com>
+From: Holger Kiehl <Holger.Kiehl@dwd.de>
+Subject: Re: Revert  Fix-EXT_MAX_BLOCK.patch
+Date: Fri, 11 Jul 2008 09:57:47 +0000 (GMT)
+Message-ID: <Pine.LNX.4.64.0807110947290.31436@diagnostix.dwd.de>
+References: <Pine.LNX.4.64.0806121940020.2974@diagnostix.dwd.de>
+ <Pine.LNX.4.64.0806130753100.7097@diagnostix.dwd.de>
+ <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker>
+ <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de>
+ <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de> <20080619110947.GB11516@mit.edu>
+ <Pine.LNX.4.64.0807071047430.17563@diagnostix.dwd.de>
+ <Pine.LNX.4.64.0807100804050.16071@diagnostix.dwd.de> <20080710092425.GA16451@skywalker>
+ <20080710092517.GB16451@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: mkatiyar@gmail.com
-To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Girish Shilamkar <Girish.Shilamkar@sun.com>,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.185]:31865 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751344AbYGKItI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jul 2008 04:49:08 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so1713809tic.23
-        for <linux-ext4@vger.kernel.org>; Fri, 11 Jul 2008 01:49:07 -0700 (PDT)
-Content-Disposition: inline
+Received: from dwdmx4.dwd.de ([141.38.3.230]:34901 "EHLO dwdmx4.dwd.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751953AbYGKJ5v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jul 2008 05:57:51 -0400
+In-Reply-To: <20080710092517.GB16451@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Below patch adds stricter checks in ext2fs_open() so that we catch bad
-block sizes earlier than later.
+On Thu, 10 Jul 2008, Aneesh Kumar K.V wrote:
 
-============================================================================
+> Sending again with different subject.
+>
+> On Thu, Jul 10, 2008 at 02:54:25PM +0530, Aneesh Kumar K.V wrote:
+>> On Thu, Jul 10, 2008 at 08:11:15AM +0000, Holger Kiehl wrote:
+>>> On Mon, 7 Jul 2008, Holger Kiehl wrote:
+>>>
+>>>
+>>> I did try newer patch queue (ext4-patch-queue-a5d48915447f44c3af6ce8e1c91d45b452977fcf)
+>>> from today, but I immediatly hit an oops as soon as I untar a file, see below.
+>>>
+>>
+>> I am able to reproduce this.  Revert the patch Fix-EXT_MAX_BLOCK.patch.
+>>
+Thanks. Reverting that patch also fixed it for me. I was able to do my
+test however performance is down another 10% (compared to
+ext4-patch-queue-52c8a02a8a7b7e5915b9301e9c171b4faf22b928). ext4 is getting
+slower and slower :(
 
-Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
+Also the group descriptors still get corrupted.
 
----
- lib/ext2fs/openfs.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+Holger
 
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index fc54afe..670cc7c 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -233,7 +233,9 @@ errcode_t ext2fs_open2(const char *name, const
-char *io_options,
- 	}
- 	
- 	fs->blocksize = EXT2_BLOCK_SIZE(fs->super);
--	if (fs->blocksize == 0) {
-+	if ((fs->blocksize < EXT2_MIN_BLOCK_SIZE) ||
-+	    (fs->blocksize > EXT2_MAX_BLOCK_SIZE) ||
-+	    (fs->blocksize % EXT2_MIN_BLOCK_SIZE != 0)) {
- 		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
- 		goto cleanup;
- 	}
--- 
-1.5.4.3
+PS: http://repo.or.cz/w/ext4-patch-queue.git is empty, is that correct?
 
-
-============================================================================
-
--- 
-Thanks & Regards,
-********************************************
-Manish Katiyar ( http://mkatiyar.googlepages.com )
-3rd Floor, Fair Winds Block
-EGL Software Park
-Off Intermediate Ring Road
-Bangalore 560071, India
-***********************************************
