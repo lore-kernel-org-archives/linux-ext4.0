@@ -1,78 +1,93 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Revert  Fix-EXT_MAX_BLOCK.patch
-Date: Fri, 11 Jul 2008 08:43:04 -0400
-Message-ID: <20080711124304.GB8154@mit.edu>
-References: <20080616175408.GF3279@atrey.karlin.mff.cuni.cz> <20080616181353.GA20686@skywalker> <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de> <20080619110947.GB11516@mit.edu> <Pine.LNX.4.64.0807071047430.17563@diagnostix.dwd.de> <Pine.LNX.4.64.0807100804050.16071@diagnostix.dwd.de> <20080710092425.GA16451@skywalker> <20080710092517.GB16451@skywalker> <Pine.LNX.4.64.0807110947290.31436@diagnostix.dwd.de>
+Subject: Re: Ext4 patchqueue corrupted ?
+Date: Fri, 11 Jul 2008 08:47:42 -0400
+Message-ID: <20080711124742.GA20099@mit.edu>
+References: <20080711034606.GA779@skywalker> <20080711084715.GT10151@machine.or.cz> <20080711122617.GA8154@mit.edu> <20080711123109.GA14606@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Girish Shilamkar <Girish.Shilamkar@sun.com>,
-	linux-ext4@vger.kernel.org
-To: Holger Kiehl <Holger.Kiehl@dwd.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:43126 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751648AbYGKMnt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jul 2008 08:43:49 -0400
+Cc: Petr Baudis <pasky@suse.cz>, Ming Ming Cao <cmm@us.ibm.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	git@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <git-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0807110947290.31436@diagnostix.dwd.de>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080711123109.GA14606@skywalker>
+Sender: git-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 11, 2008 at 09:57:47AM +0000, Holger Kiehl wrote:
-> Thanks. Reverting that patch also fixed it for me. I was able to do my
-> test however performance is down another 10% (compared to
-> ext4-patch-queue-52c8a02a8a7b7e5915b9301e9c171b4faf22b928). ext4 is getting
-> slower and slower :(
+On Fri, Jul 11, 2008 at 06:01:09PM +0530, Aneesh Kumar K.V wrote:
+> On Fri, Jul 11, 2008 at 08:26:17AM -0400, Theodore Tso wrote:
+> > On Fri, Jul 11, 2008 at 10:47:15AM +0200, Petr Baudis wrote:
+> > >   very puzzling; I have backed up the broken objects store, can you
+> > > repush, please? I'm curious about how this could have happenned;
+> > > repo.or.cz now uses Git from latest next, which is a rather strange
+> > > coincidence. ;-) Or did any of the pushers do anything special about
+> > > pushin to the repository recently?
+> > 
+> > Aneesh, did you try repushing?  It looks like the objects store is
+> > broken again.
+> 
+> I don't have permission to push to the repo. I can only pull.
 
-How reproducible are your results?  That is, if you run the benchmarks
-multiple times, how much variance is there between different runs?
+Right, sorry, I forgot that you didn't have write access to the repo.
 
-If you are willing, this would be helpful.  In your ext4 patch
-repository, try out commit 179a876b.  (You can do this via 
-"git checkout -b rc9-rebase 179a876b"; after doing the test you can
-switch the working directory of the ext4 patch queue back to the master
-branch via "git checkout master".)   This commit is pretty much 
-identical to your previous 52c8a02a test, modulo rebasing to -rc9.
+Pasky, my attempt to push is failing:
 
-If you see the same results, you could try going to the next patch,
-via "git checkout -b i-blocks-stat ef019f0a" which also has the fix so
-that stat returns a valid i_blocks field for files that have been
-freshly written when delayed allocation is enabled.  Both of these
-revisions rae before the patches that were causing corrupion were
-added to the patch queue, so it should be fine.
+<tytso@closure> {/usr/projects/linux/ext4/.git/patches/ext4dev}  [master]
+101% git push git+ssh://repo.or.cz/srv/git/ext4-patch-queue.git master:master
+Everything up-to-date
+error: refs/tags/v2.6.20-ext4-1 does not point to a valid object!
+error: refs/tags/v2.6.20-rc5-ext4-1 does not point to a valid object!
+<tytso@closure> {/usr/projects/linux/ext4/.git/patches/ext4dev}  [master]
+102% git push git+ssh://repo.or.cz/srv/git/ext4-patch-queue.git +refs/heads/*:refs/heads/*
+error: refs/tags/v2.6.20-ext4-1 does not point to a valid object!
+error: refs/tags/v2.6.20-rc5-ext4-1 does not point to a valid object!
+Total 0 (delta 0), reused 0 (delta 0)
+error: unpack should have generated a1a5e2eaaea5292da062f6dfbed66b5e07d396d3, but I can't find it!
+error: unpack should have generated bd5803bec71c494ba3ac7b147fd4d0deed423a5b, but I can't find it!
+To git+ssh://repo.or.cz/srv/git/ext4-patch-queue.git
+ ! [remote rejected] 2.6.23-ext4-1 -> 2.6.23-ext4-1 (bad pack)
+ ! [remote rejected] origin -> origin (bad pack)
+error: failed to push some refs to 'git+ssh://repo.or.cz/srv/git/ext4-patch-queue.git'
 
-The funny thing is looking at the various recent patches, I don't see
-how they could be affecting performance of your patches so
-significantly.  I gather afdbench is very metadata intensive, with
-lots of small files, but even so, none of these patches should make
-that kind of difference.  So that's why I'm wondering how much
-variance there is between runs of afdbench, and whether that might be
-a possible explanation.
+And git ls-remote tells an even sadder tale:
 
-> Also the group descriptors still get corrupted.
+<tytso@closure> {/usr/projects/linux/ext4/.git/patches/ext4dev}  [master]
+103% git ls-remote  git+ssh://repo.or.cz/srv/git/ext4-patch-queue.git
+error: missing object referenced by 'refs/tags/2.6.23-ext4-1'
+error: missing object referenced by 'refs/tags/2.6.24-ext4-1'
+error: missing object referenced by 'refs/tags/2.6.24-ext4-rc4-1'
+error: missing object referenced by 'refs/tags/2.6.24-git12-ext4-1'
+error: missing object referenced by 'refs/tags/2.6.24-git6-ext4-1'
+error: missing object referenced by 'refs/tags/2.6.24-rc1-ext4-1'
+error: missing object referenced by 'refs/tags/2.6.24-rc8-ext4-1'
+error: missing object referenced by 'refs/tags/2.6.25-git15-ext4-1'
+error: missing object referenced by 'refs/tags/2.6.25-rc4-ext4-1'
+error: refs/tags/v2.6.20-ext4-1 does not point to a valid object!
+error: refs/tags/v2.6.20-rc5-ext4-1 does not point to a valid object!
+error: missing object referenced by 'refs/tags/v2.6.20-rc7-ext4-1'
+error: missing object referenced by 'refs/tags/v2.6.21-ext4-1'
+error: missing object referenced by 'refs/tags/v2.6.22-rc4-ext4-1'
+error: missing object referenced by 'refs/tags/v2.6.26-rc2-ext4-1'
+ec90e41198ede71d186bb7075e2edea7a6daae5a        HEAD
+ec90e41198ede71d186bb7075e2edea7a6daae5a        refs/heads/master
+346bfccb5d3af0ee5bda961d2e2fcbf1c9d71ef6        refs/tags/2.6.23-ext4-1
+47f7b357a1468e42a5d16b9f12ceb9d5c0d1da5e        refs/tags/2.6.24-ext4-1
+558ca8d2472d43341f80627da9bef266a33e29c1        refs/tags/2.6.24-ext4-rc4-1
+0f329cb9046106a0bc2ce1e8ba4a1d431e4761fe        refs/tags/2.6.24-git12-ext4-1
+fb4f7981226285b1cd9230bd584ad8c442441fd1        refs/tags/2.6.24-git6-ext4-1
+04ccbce687206f51e8e2d243505381c0da48db2b        refs/tags/2.6.24-rc1-ext4-1
+058e44f59dc308408ac3558f7d375b1c55e429fe        refs/tags/2.6.24-rc8-ext4-1
+419fe473159404c4ce0a516e3d435705271de3d8        refs/tags/2.6.25-git15-ext4-1
+fe39106438de15396a7083d11cbc1f1511006382        refs/tags/2.6.25-rc4-ext4-1
+dfc7edaaea270f4182d748de59ef83d3b679c54b        refs/tags/v2.6.20-rc7-ext4-1
+fb7f3bc312359e429a7308bf0fcffeb920ab2efc        refs/tags/v2.6.21-ext4-1
+0db80f52ee3366cae5a0c3276be2f7de1674b09b        refs/tags/v2.6.22-rc4-ext4-1
+be15cbe06b269fcacb80b8d8484ec606f5788de1        refs/tags/v2.6.26-rc2-ext4-1
 
-Hmm, can you send me the output of dumpe2fs before and after the
-benchmark run which corrupts the group descriptors?  And can you send
-me the output of "e2fsck -fy /dev/XXXXX >& /tmp/log", so I can see
-what got corrupted?
+Can you completely zap the repository replace it with a freshly 
+"git init"-ialized files, and I'll try repushing?
 
-I also note that you are using a fairly old e2fsprogs from April 27th.
-You might want to try going to the just-released e2fsprogs 1.41.0
-released yesterday, as that has some flex_bg layout changes that might
-help out performance for afdbench.  Also note that with both the April
-27th and the latest e2fsprogs 1.41.0 release, there is a mke2fs.conf
-file in misc/mke2fs.conf that should be installed in /etc/mke2fs.conf
-for best results.
-
-> PS: http://repo.or.cz/w/ext4-patch-queue.git is empty, is that correct?
-
-Nope, we're working on that.  Things seem to have gotten corrupted on
-repo.or.cz, as you may have seen on another e-mail thread.  I have
-established an git repository here:
-
-	    git://git.kernel.org/pub/scm/fs/ext2/ext4-patch-queue.git
-
-As an interim replacement.
+Thanks!!
 
 						- Ted
