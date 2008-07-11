@@ -1,52 +1,59 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Ext4 patchqueue corrupted ?
-Date: Fri, 11 Jul 2008 18:01:09 +0530
-Message-ID: <20080711123109.GA14606@skywalker>
-References: <20080711034606.GA779@skywalker> <20080711084715.GT10151@machine.or.cz> <20080711122617.GA8154@mit.edu>
+From: Peter Staubach <staubach@redhat.com>
+Subject: Re: [PATCH] e2fsprogs : Add stricter checks for blocksize in ext2fs_open
+Date: Fri, 11 Jul 2008 08:43:31 -0400
+Message-ID: <48775573.3050203@redhat.com>
+References: <ea11fea30807110149g31065f31k5231bbebc5133587@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Petr Baudis <pasky@suse.cz>, Ming Ming Cao <cmm@us.ibm.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	git@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([59.145.155.4]:59372 "EHLO
-	e28esmtp04.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751977AbYGKMbh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jul 2008 08:31:37 -0400
-Content-Disposition: inline
-In-Reply-To: <20080711122617.GA8154@mit.edu>
+Received: from mx1.redhat.com ([66.187.233.31]:39161 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751120AbYGKMnh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jul 2008 08:43:37 -0400
+In-Reply-To: <ea11fea30807110149g31065f31k5231bbebc5133587@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 11, 2008 at 08:26:17AM -0400, Theodore Tso wrote:
-> On Fri, Jul 11, 2008 at 10:47:15AM +0200, Petr Baudis wrote:
-> >   very puzzling; I have backed up the broken objects store, can you
-> > repush, please? I'm curious about how this could have happenned;
-> > repo.or.cz now uses Git from latest next, which is a rather strange
-> > coincidence. ;-) Or did any of the pushers do anything special about
-> > pushin to the repository recently?
-> 
-> Aneesh, did you try repushing?  It looks like the objects store is
-> broken again.
+Manish Katiyar wrote:
+> Below patch adds stricter checks in ext2fs_open() so that we catch bad
+> block sizes earlier than later.
+>
+> ============================================================================
+>
+> Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
+>
+> ---
+>  lib/ext2fs/openfs.c |    4 +++-
+>  1 files changed, 3 insertions(+), 1 deletions(-)
+>
+> diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+> index fc54afe..670cc7c 100644
+> --- a/lib/ext2fs/openfs.c
+> +++ b/lib/ext2fs/openfs.c
+> @@ -233,7 +233,9 @@ errcode_t ext2fs_open2(const char *name, const
+> char *io_options,
+>  	}
+>  	
+>  	fs->blocksize = EXT2_BLOCK_SIZE(fs->super);
+> -	if (fs->blocksize == 0) {
+> +	if ((fs->blocksize < EXT2_MIN_BLOCK_SIZE) ||
+> +	    (fs->blocksize > EXT2_MAX_BLOCK_SIZE) ||
+> +	    (fs->blocksize % EXT2_MIN_BLOCK_SIZE != 0)) {
+>   
 
-I don't have permission to push to the repo. I can only pull.
+It seems to me that this would read more clearly as:
 
+               ((fs->blocksize % EXT2_MIN_BLOCK_SIZE) != 0)) {
 
-> 
-> Pasky, in case it helps, and for the benefit of Linux-ext4 folks, I
-> have a copy of my repository (which I last pushed to repo.or.cz around
-> noon US/Eastern yesterday) here:
-> 
->      git://git.kernel.org/pub/scm/fs/ext2/ext4-patch-queue.git
-> 
-> My most recent HEAD is ec90e411; if anyone has something more recent,
-> they can send it to me via:
-> 
->      git bundle create /tmp/to-send ec90e411
-> 
-> ... and then e-mailing me as an attachment the resulting binary file
-> in /tmp/to-send.
-> 
+    Thanx!
 
--aneesh
+       ps
+
+>  		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
+>  		goto cleanup;
+>  	}
+>   
+
