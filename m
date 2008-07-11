@@ -1,51 +1,45 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: What's in e2fsprogs.git (stable) -- E2fsprogs 1.41.0 released!
-Date: Thu, 10 Jul 2008 18:02:34 -0400
-Message-ID: <20080710220234.GC3447@mit.edu>
-References: <20080402000626.GB302@mit.edu> <20080407165505.GD11997@mit.edu> <20080418183935.GA25797@mit.edu> <20080421162726.GF9700@mit.edu> <20080428025302.GC30840@mit.edu> <20080524234904.GC5970@mit.edu> <20080603023955.GK23119@mit.edu> <20080608024104.GA30132@mit.edu> <20080617120511.GC12448@mit.edu> <20080707213527.GV31490@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Ext4 patchqueue corrupted ?
+Date: Fri, 11 Jul 2008 09:16:06 +0530
+Message-ID: <20080711034606.GA779@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>, Ming Ming Cao <cmm@us.ibm.com>,
+	pasky@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:51572 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751582AbYGJWCi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2008 18:02:38 -0400
+Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:59252 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751609AbYGKDra (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 10 Jul 2008 23:47:30 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m6B3kYjA023850
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jul 2008 13:46:34 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6B3jjCv4747314
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jul 2008 13:45:45 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6B3kCmn008180
+	for <linux-ext4@vger.kernel.org>; Fri, 11 Jul 2008 13:46:13 +1000
 Content-Disposition: inline
-In-Reply-To: <20080707213527.GV31490@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-At long last, e2fsprogs 1.41.0 has been let loose on the world!  This
-is the first stable/production version of e2fsprogs with ext4 support.
+Hi All,
 
-    		       	       	  	    	 - Ted
+[master@ext4-patch-queue]$ git pull
+warning: no common commits
+remote: Total 0 (delta 0), reused 0 (delta 0)
+error: unable to find ec90e41198ede71d186bb7075e2edea7a6daae5a
+fatal: object ec90e41198ede71d186bb7075e2edea7a6daae5a not found
 
-* The 'master' branch has these since the last announcement
-  in addition to the above.
+kvaneesh@skywalker:/tmp$git clone git://repo.or.cz/ext4-patch-queue.git
+Initialized empty Git repository in /tmp/ext4-patch-queue/.git/
+remote: Total 0 (delta 0), reused 0 (delta 0)
+remote: aborting due to possible repository corruption on the remote side.
+error: waitpid (async) failed
+fatal: error in sideband demultiplexer
 
-Andreas Dilger (1):
-  blkid: Make regression test tolerate older versions of mkswap
+The web interface doesn't list any commits.
 
-Theodore Ts'o (13):
-  debian: Add bash-static to the list of shells recommended for
-      e2fsck-static
-  Add a comment in INSTALL regarding --disable-tls on older systems
-  mke2fs: Dumb down filesystems for GNU Hurd
-  Fix incorrect definition of stripe-width in mke2fs man page
-  badblocks: Use standard terminology for first/last block
-  Don't use thread local storage if using diet libc
-  mke2fs,tune2fs: Enable huge_file, dir_nlink, and extra_isize
-      features
-  resize2fs: Clean up the resize inode properly if necessary
-  Update release checklist to include reminder to update translation
-  Make ext2fs_check_desc() more stringent to force use of backup
-      superbocks
-  Update e2fsprogs.pot I18N translation template file
-  Update dependencies in the Makefile for lib/ext2fs
-  Update release notes, changelog, etc., for e2fsprogs 1.41 release
-
-------
-URL's for the e2fsprogs repository:
-	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+-aneesh
