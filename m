@@ -1,64 +1,65 @@
-From: Theodore Tso <tytso@mit.edu>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
 Subject: Re: [PATCH] e2fsprogs : Fix memory leak in ext2fs_initialize.
-Date: Fri, 11 Jul 2008 14:46:25 -0400
-Message-ID: <20080711184625.GC26656@mit.edu>
+Date: Sat, 12 Jul 2008 00:23:43 +0530
+Message-ID: <ea11fea30807111153s38fc01e2w291e120da947a873@mail.gmail.com>
 References: <ea11fea30807110332n459593eay3ce43cca67d5c676@mail.gmail.com>
+	 <20080711184149.GB26656@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Manish Katiyar <mkatiyar@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: "Theodore Tso" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:34581 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753505AbYGKSq1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jul 2008 14:46:27 -0400
+Received: from ti-out-0910.google.com ([209.85.142.185]:48345 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754084AbYGKSxs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jul 2008 14:53:48 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so1848444tic.23
+        for <linux-ext4@vger.kernel.org>; Fri, 11 Jul 2008 11:53:43 -0700 (PDT)
+In-Reply-To: <20080711184149.GB26656@mit.edu>
 Content-Disposition: inline
-In-Reply-To: <ea11fea30807110332n459593eay3ce43cca67d5c676@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Here's how the patch was applied; please note the style fixes I made
-in the code and in the patch comments.
+On Sat, Jul 12, 2008 at 12:11 AM, Theodore Tso <tytso@mit.edu> wrote:
+> On Fri, Jul 11, 2008 at 04:02:06PM +0530, Manish Katiyar wrote:
+>> +     if (buf) {
+>> +      ext2fs_free_mem(&buf);
+>> +     }
+>
+> I'll fix this up and apply, but in the future, please respect the
+> surrounding whitespace rules of the source code.  For e2fsprogs that
+> means (among other things) each level is indented 8 spaces, no curly
+> braces are needed for single statements, and no white space at the end
+> of lines.
 
-       	       	     	 	  	      - Ted
+Thanks a lot Ted,
+ I will keep that in mind in future. I am not sure from where did
+those white spaces came, I don't have them in my git log.....and curly
+braces for single statements were because I copied the style from
+below line in ext2fs_free() .... perhaps a bad example which I chose
+to follow :-(
 
->From adc4e77d89d9a423c3fbe6457676b020c9ad3a64 Mon Sep 17 00:00:00 2001
-From: Manish Katiyar <mkatiyar@gmail.com>
-Date: Fri, 11 Jul 2008 14:42:57 -0400
-Subject: [PATCH] libext2fs: fix potential memory leak in ext2fs_initialize()
+	if (fs->io) {
+		io_channel_close(fs->io);
+	}
 
-If we fail doing ext2fs_allocate_block_bitmap() or
-ext2fs_allocate_inode_bitmap() we directly goto cleanup and don't free
-the memory allocated to buf.
+Thanks -
 
-Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- lib/ext2fs/initialize.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/lib/ext2fs/initialize.c b/lib/ext2fs/initialize.c
-index 011656f..e9bfe49 100644
---- a/lib/ext2fs/initialize.c
-+++ b/lib/ext2fs/initialize.c
-@@ -105,7 +105,7 @@ errcode_t ext2fs_initialize(const char *name, int flags,
- 	int		rsv_gdt;
- 	int		csum_flag;
- 	int		io_flags;
--	char		*buf;
-+	char		*buf = 0;
- 	char		c;
- 
- 	if (!param || !param->s_blocks_count)
-@@ -429,6 +429,8 @@ ipg_retry:
- 	*ret_fs = fs;
- 	return 0;
- cleanup:
-+	if (buf)
-+		free(buf);
- 	ext2fs_free(fs);
- 	return retval;
- }
+>
+> Thanks,
+>
+>                                                        - Ted
+>
+
+
+
 -- 
-1.5.6.1.205.ge2c7.dirty
-
+Thanks & Regards,
+********************************************
+Manish Katiyar ( http://mkatiyar.googlepages.com )
+3rd Floor, Fair Winds Block
+EGL Software Park
+Off Intermediate Ring Road
+Bangalore 560071, India
+***********************************************
