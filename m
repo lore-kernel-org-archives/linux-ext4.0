@@ -1,56 +1,39 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs : Add stricter checks for blocksize in
-	ext2fs_open
-Date: Fri, 11 Jul 2008 08:55:06 -0400
-Message-ID: <20080711125506.GB20099@mit.edu>
-References: <ea11fea30807110149g31065f31k5231bbebc5133587@mail.gmail.com>
+From: Petr Baudis <pasky@suse.cz>
+Subject: Re: Ext4 patchqueue corrupted ?
+Date: Fri, 11 Jul 2008 15:13:38 +0200
+Message-ID: <20080711131338.GU10151@machine.or.cz>
+References: <20080711034606.GA779@skywalker> <20080711084715.GT10151@machine.or.cz> <20080711122617.GA8154@mit.edu> <20080711123109.GA14606@skywalker> <20080711124742.GA20099@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Manish Katiyar <mkatiyar@gmail.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Ming Ming Cao <cmm@us.ibm.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	git@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:41409 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752882AbYGKMzI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 11 Jul 2008 08:55:08 -0400
+Received: from w241.dkm.cz ([62.24.88.241]:48322 "EHLO machine.or.cz"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752174AbYGKNNn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 11 Jul 2008 09:13:43 -0400
 Content-Disposition: inline
-In-Reply-To: <ea11fea30807110149g31065f31k5231bbebc5133587@mail.gmail.com>
+In-Reply-To: <20080711124742.GA20099@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 11, 2008 at 02:19:06PM +0530, Manish Katiyar wrote:
-> Below patch adds stricter checks in ext2fs_open() so that we catch bad
-> block sizes earlier than later.
+  Hi,
 
-That concept seems fine; I'm curious why you found this necessary?
-Did you have a corrupted filesystem where this caused major problems?
-If so, can I have more details?
+On Fri, Jul 11, 2008 at 08:47:42AM -0400, Theodore Tso wrote:
+> Can you completely zap the repository replace it with a freshly 
+> "git init"-ialized files, and I'll try repushing?
 
->  	fs->blocksize = EXT2_BLOCK_SIZE(fs->super);
-> -	if (fs->blocksize == 0) {
-> +	if ((fs->blocksize < EXT2_MIN_BLOCK_SIZE) ||
-> +	    (fs->blocksize > EXT2_MAX_BLOCK_SIZE) ||
-> +	    (fs->blocksize % EXT2_MIN_BLOCK_SIZE != 0)) {
+  right, I have done that now. For anyone interested in the corrupted
+repository, the backed up refs and objects directories are still in the
+repository under the name *.broken, e.g. at
 
-The first and last check is not necessary, given that EXT2_bLOCK_SIZE
-is defined as:
+	http://repo.or.cz/r/ext4-patch-queue.git
 
-#define EXT2_BLOCK_SIZE(s)	 (EXT2_MIN_BLOCK_SIZE << (s)->s_log_block_size)
+I will try to analyze it myself later.
 
-So by definition, the blocksize will *always* be greater than or equal
-to MIN_BLOCK_SIZE, and it always will be a multiple of EXT2_MIN_BLOCK_SIZE.
-
-The more direct check which we could do would be something like this:
-
-	if ((fs->super->s_log_block_size < EXT2_MIN_BLOCK_LOG_SIZE) ||
-	    (fs->super->s_log_block_size > EXT2_MAX_BLOCK_LOG_SIZE))
-  		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
-  		goto cleanup;
-  	}
-
-... before setting fs->blocksize.
-
-I'm curious what problem you were worried about that might happen if
-fs->blocksize were greater than 64k, though.
-
-							- Ted
+-- 
+				Petr "Pasky" Baudis
+The last good thing written in C++ was the Pachelbel Canon. -- J. Olson
