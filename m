@@ -1,67 +1,37 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: [PATCH] libext2fs : Fix the return values for ino=0 in ext2fs_read_inode_full() if inode cache has been flushed.
-Date: Sat, 12 Jul 2008 19:27:41 +0530
-Message-ID: <ea11fea30807120657l2de0b501qefb45231edd5fac0@mail.gmail.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: replace __FUNCTION__ occurrences in ext4
+Date: Sat, 12 Jul 2008 23:25:21 -0700
+Message-ID: <20080712232521.154f853a.akpm@linux-foundation.org>
+References: <6d291e080807062136q4ece9368y6c747b90bd0de8e6@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: mkatiyar@gmail.com
-To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
+Cc: sct@redhat.com, adilger@sun.com, linux-ext4@vger.kernel.org
+To: "Stoyan Gaydarov" <stoyboyker@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.191]:52429 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752219AbYGLN5n (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 12 Jul 2008 09:57:43 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so1967227tic.23
-        for <linux-ext4@vger.kernel.org>; Sat, 12 Jul 2008 06:57:42 -0700 (PDT)
-Content-Disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36276 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752105AbYGMGZm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 13 Jul 2008 02:25:42 -0400
+In-Reply-To: <6d291e080807062136q4ece9368y6c747b90bd0de8e6@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+On Sun, 6 Jul 2008 23:36:56 -0500 "Stoyan Gaydarov" <stoyboyker@gmail.com> wrote:
 
-It looks like the right place to check for ino=0 in
-ext2fs_read_inode_full() is before creating the inode cache, otherwise
-since we set icache[i].ino = 0 in create_icache(), it will match the
-loop below and thus we return a wrong value. Below patch fixes it.
+> __FUNCTION__ is gcc-specific, use __func__ instead
+> 
+> Signed-off-by: Stoyan Gaydarov <stoyboyker@gmail.com>
+> 
+> diff -uprN linux-2.6.26-rc9/fs/ext4/ext4.h devel/fs/ext4/ext4.h
+> --- linux-2.6.26-rc9/fs/ext4/ext4.h     2008-07-05 17:53:22.000000000 -0500
+> +++ devel/fs/ext4/ext4.h        2008-07-06 23:35:08.000000000 -0500
+> @@ -45,7 +45,7 @@
+>  #define ext4_debug(f, a...)                                            \
+>         do {                                                            \
+>                 printk (KERN_DEBUG "EXT4-fs DEBUG (%s, %d): %s:",       \
+> -                       __FILE__, __LINE__, __FUNCTION__);              \
+> +                       __FILE__, __LINE__, __func__);          \
 
-==========================================================================
-
-Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
-
----
- lib/ext2fs/inode.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index 8908423..a08cb40 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -536,6 +536,8 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs,
-ext2_ino_t ino,
- 		if (retval != EXT2_ET_CALLBACK_NOTHANDLED)
- 			return retval;
- 	}
-+	if ((ino == 0) || (ino > fs->super->s_inodes_count))
-+		return EXT2_ET_BAD_INODE_NUM;
- 	/* Create inode cache if not present */
- 	if (!fs->icache) {
- 		retval = create_icache(fs);
-@@ -552,8 +554,6 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs,
-ext2_ino_t ino,
- 			}
- 		}
- 	}
--	if ((ino == 0) || (ino > fs->super->s_inodes_count))
--		return EXT2_ET_BAD_INODE_NUM;
- 	if (fs->flags & EXT2_FLAG_IMAGE_FILE) {
- 		inodes_per_block = fs->blocksize / EXT2_INODE_SIZE(fs->super);
- 		block_nr = fs->image_header->offset_inode / fs->blocksize;
--- 
-1.5.4.3
-
-
-=====================================================================
-
-Thanks -
-Manish
+Your email client replaces tabs with spaces.
