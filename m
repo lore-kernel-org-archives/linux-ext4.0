@@ -1,88 +1,52 @@
-From: akpm@linux-foundation.org
-Subject: [patch 4/4] ext4: replace __FUNCTION__ occurrences
-Date: Sat, 12 Jul 2008 23:26:21 -0700
-Message-ID: <200807130626.m6D6QMvj007916@imap1.linux-foundation.org>
-Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org,
-	akpm@linux-foundation.org, stoyboyker@gmail.com
-To: tytso@mit.edu
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:49345 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752448AbYGMGby (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 13 Jul 2008 02:31:54 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Pavel Machek <pavel@suse.cz>
+Subject: Re: [PATCH 3/3] Add timeout feature
+Date: Sun, 13 Jul 2008 14:06:02 +0200
+Message-ID: <20080713120602.GC7517@elf.ucw.cz>
+References: <E1KGSvZ-0006dB-53@pomaz-ex.szeredi.hu> <20080709061621.GA5260@infradead.org> <E1KGT4q-0006fD-Jb@pomaz-ex.szeredi.hu> <20080708234120.5072111f@infradead.org> <E1KGTTm-0006ke-Jh@pomaz-ex.szeredi.hu> <20080708235502.1c52a586@infradead.org> <20080709071346.GS11558@disturbed> <20080709110900.GI9957@mit.edu> <20080709114958.GV11558@disturbed> <4874C3E8.20804@hp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
+	Theodore Tso <tytso@mit.edu>,
+	Arjan van de Ven <arjan@infradead.org>,
+	Miklos Szeredi <miklos@szeredi.hu>, hch@infradead.org,
+	t-sato@yk.jp.nec.com, akpm@linux-foundation.org,
+	viro@ZenIV.linux.org.uk, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, dm-devel@redhat.com, linux-kernel@vger.kernel.org,
+	axboe@kernel.dk, mtk.manpages@googlemail.com
+To: jim owens <jowens@hp.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4874C3E8.20804@hp.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: "Stoyan Gaydarov" <stoyboyker@gmail.com>
+Hi!
 
-__FUNCTION__ is gcc-specific, use __func__ instead
+> NEED - provide way for SAN and hardware raid storage to do
+> its snapshot/copy function while the system was in-use and
+> get an image that could mount cleanly.  Without freeze, at
+> a minimum we usually needed filesystem metadata recovery
+> to run, worst case is completely unusable snapshits :)
+>
+> freezefs() is single-level:
+>
+>    ENOTSUPPOTED - by any other fs
+>    EOK - done
+>    EINPROGRESS
+>    EALREADY
+>
+> As implemented, freezefs only ensures the metadata is
+> consistent so the filesystem copy can mount anywhere.
+>
+> This means ONLY SOME metadata (or no metadata) is flushed and
+> then all metadata updates are stopped.  User/kernel writes
+> to already allocated file pages WILL go to a frozen disk.
 
-Signed-off-by: Stoyan Gaydarov <stoyboyker@gmail.com>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+That's the difference here. They do write file data, and thus avoid
+mmap()-writes problem.
 
- fs/ext4/ext4.h      |    4 ++--
- fs/ext4/ext4_jbd2.h |   14 +++++++-------
- 2 files changed, 9 insertions(+), 9 deletions(-)
-
-diff -puN fs/ext4/ext4.h~ext4-replace-__function__-occurrences fs/ext4/ext4.h
---- a/fs/ext4/ext4.h~ext4-replace-__function__-occurrences
-+++ a/fs/ext4/ext4.h
-@@ -45,7 +45,7 @@
- #define ext4_debug(f, a...)						\
- 	do {								\
- 		printk (KERN_DEBUG "EXT4-fs DEBUG (%s, %d): %s:",	\
--			__FILE__, __LINE__, __FUNCTION__);		\
-+			__FILE__, __LINE__, __func__);			\
- 		printk (KERN_DEBUG f, ## a);				\
- 	} while (0)
- #else
-@@ -1203,7 +1203,7 @@ static inline unsigned int ext4_flex_bg_
- #define ext4_std_error(sb, errno)				\
- do {								\
- 	if ((errno))						\
--		__ext4_std_error((sb), __FUNCTION__, (errno));	\
-+		__ext4_std_error((sb), __func__, (errno));	\
- } while (0)
- 
- /*
-diff -puN fs/ext4/ext4_jbd2.h~ext4-replace-__function__-occurrences fs/ext4/ext4_jbd2.h
---- a/fs/ext4/ext4_jbd2.h~ext4-replace-__function__-occurrences
-+++ a/fs/ext4/ext4_jbd2.h
-@@ -142,17 +142,17 @@ int __ext4_journal_dirty_metadata(const 
- 				handle_t *handle, struct buffer_head *bh);
- 
- #define ext4_journal_get_undo_access(handle, bh) \
--	__ext4_journal_get_undo_access(__FUNCTION__, (handle), (bh))
-+	__ext4_journal_get_undo_access(__func__, (handle), (bh))
- #define ext4_journal_get_write_access(handle, bh) \
--	__ext4_journal_get_write_access(__FUNCTION__, (handle), (bh))
-+	__ext4_journal_get_write_access(__func__, (handle), (bh))
- #define ext4_journal_revoke(handle, blocknr, bh) \
--	__ext4_journal_revoke(__FUNCTION__, (handle), (blocknr), (bh))
-+	__ext4_journal_revoke(__func__, (handle), (blocknr), (bh))
- #define ext4_journal_get_create_access(handle, bh) \
--	__ext4_journal_get_create_access(__FUNCTION__, (handle), (bh))
-+	__ext4_journal_get_create_access(__func__, (handle), (bh))
- #define ext4_journal_dirty_metadata(handle, bh) \
--	__ext4_journal_dirty_metadata(__FUNCTION__, (handle), (bh))
-+	__ext4_journal_dirty_metadata(__func__, (handle), (bh))
- #define ext4_journal_forget(handle, bh) \
--	__ext4_journal_forget(__FUNCTION__, (handle), (bh))
-+	__ext4_journal_forget(__func__, (handle), (bh))
- 
- handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks);
- int __ext4_journal_stop(const char *where, handle_t *handle);
-@@ -163,7 +163,7 @@ static inline handle_t *ext4_journal_sta
- }
- 
- #define ext4_journal_stop(handle) \
--	__ext4_journal_stop(__FUNCTION__, (handle))
-+	__ext4_journal_stop(__func__, (handle))
- 
- static inline handle_t *ext4_journal_current_handle(void)
- {
-_
+...and they _still_ provide auto-thaw.
+								Pavel
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
