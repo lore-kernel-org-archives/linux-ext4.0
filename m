@@ -1,63 +1,40 @@
-From: Pavel Machek <pavel@suse.cz>
-Subject: Re: [PATCH 3/3] Add timeout feature
-Date: Mon, 14 Jul 2008 08:36:17 +0200
-Message-ID: <20080714063617.GF31949@elf.ucw.cz>
-References: <E1KGT4q-0006fD-Jb@pomaz-ex.szeredi.hu> <20080708234120.5072111f@infradead.org> <E1KGTTm-0006ke-Jh@pomaz-ex.szeredi.hu> <20080708235502.1c52a586@infradead.org> <20080709071346.GS11558@disturbed> <20080709110900.GI9957@mit.edu> <20080709114958.GV11558@disturbed> <4874C3E8.20804@hp.com> <20080713120602.GC7517@elf.ucw.cz> <487A383F.50600@hp.com>
+From: "Christian Kujau" <lists@nerdbynature.de>
+Subject: Re: 5% diskspace used for ext4?
+Date: Mon, 14 Jul 2008 11:49:42 +0200 (CEST)
+Message-ID: <620f96feb01d15a6a836a1a11715ee8e.squirrel@housecafe.dyndns.org>
+References: <alpine.DEB.1.10.0807140054000.4469@sheep.housecafe.de>
+    <20080713234541.GA4633@phobos.i.cabal.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
-	Theodore Tso <tytso@mit.edu>,
-	Arjan van de Ven <arjan@infradead.org>,
-	Miklos Szeredi <miklos@szeredi.hu>, hch@infradead.org,
-	t-sato@yk.jp.nec.com, akpm@linux-foundation.org,
-	viro@ZenIV.linux.org.uk, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, dm-devel@redhat.com, linux-kernel@vger.kernel.org,
-	axboe@kernel.dk, mtk.manpages@googlemail.com
-To: jim owens <jowens@hp.com>
+Content-Type: text/plain;charset=utf-8
+Content-Transfer-Encoding: 8bit
+Cc: linux-ext4@vger.kernel.org
+To: "Kyle McMartin" <kyle@mcmartin.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gprs189-60.eurotel.cz ([160.218.189.60]:52875 "EHLO
-	gprs189-60.eurotel.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753481AbYGNGfh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jul 2008 02:35:37 -0400
-Content-Disposition: inline
-In-Reply-To: <487A383F.50600@hp.com>
+Received: from moutng.kundenserver.de ([212.227.126.177]:56176 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756311AbYGNJtu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jul 2008 05:49:50 -0400
+In-Reply-To: <20080713234541.GA4633@phobos.i.cabal.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 2008-07-13 13:15:43, jim owens wrote:
-> Pavel Machek wrote:
->
->>> This means ONLY SOME metadata (or no metadata) is flushed and
->>> then all metadata updates are stopped.  User/kernel writes
->>> to already allocated file pages WILL go to a frozen disk.
->>
->> That's the difference here. They do write file data, and thus avoid
->> mmap()-writes problem.
->>
->> ...and they _still_ provide auto-thaw.
->> 								Pavel
->
-> One of the hardest things to make people understand is that
-> stopping file data writes in the filesystem during a freeze
-> is not just dangerous, it is also __worthless__ unless you
-> have a complete "user environment freeze" mechanism.
+On Mon, July 14, 2008 01:45, Kyle McMartin wrote:
+> 5% of your space is being reserved for root. You can disable this with
+> the "-m" argument to mkfs.
 
-Eh?
+Ah, the reserve for root, of course. It did cross my mind that this was
+where the 5% came from and if I had read the mkfs printout more carefully
+I'd have seen it (thanks, Eric!). I shall use -m to specify a different
+value then.
 
-> And unless each independent component has a freeze and they
-> can all be coordinated, the data in the pipeline is never
-> stable enough to say "if you stop all writes to disk and
-> take a snapshot, this is the same as an orderly shutdown,
-> backup, restore, and startup".
+With filesystems getting bigger and bigger, values like "5% of the
+available diskspace" are actually becoming more and more visible. Although
+they shouldn't, as diskspace gets cheaper and cheaper :-)
 
-If you also freeze data writes, at least snapshot is not worse than
-_unexpected_ shutdown.
-
-And apps should already be ready for unexpected shutdowns (using fsync
-etc).
-
-								Pavel
-
+Thanks!
+Christian.
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+BOFH excuse #442:
+
+Trojan horse ran out of hay
+
