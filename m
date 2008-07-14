@@ -1,78 +1,72 @@
 From: jim owens <jowens@hp.com>
 Subject: Re: [PATCH 3/3] Add timeout feature
-Date: Mon, 14 Jul 2008 09:17:17 -0400
-Message-ID: <487B51DD.2080206@hp.com>
-References: <E1KGT4q-0006fD-Jb@pomaz-ex.szeredi.hu> <20080708234120.5072111f@infradead.org> <E1KGTTm-0006ke-Jh@pomaz-ex.szeredi.hu> <20080708235502.1c52a586@infradead.org> <20080709071346.GS11558@disturbed> <20080709110900.GI9957@mit.edu> <20080709114958.GV11558@disturbed> <4874C3E8.20804@hp.com> <20080713120602.GC7517@elf.ucw.cz> <487A383F.50600@hp.com> <20080714063617.GF31949@elf.ucw.cz>
+Date: Mon, 14 Jul 2008 10:04:30 -0400
+Message-ID: <487B5CEE.90404@hp.com>
+References: <20080709005254.GQ11558@disturbed> <20080709010922.GE9957@mit.edu> <E1KGSvZ-0006dB-53@pomaz-ex.szeredi.hu> <20080709061621.GA5260@infradead.org> <E1KGT4q-0006fD-Jb@pomaz-ex.szeredi.hu> <20080708234120.5072111f@infradead.org> <E1KGTTm-0006ke-Jh@pomaz-ex.szeredi.hu> <20080708235502.1c52a586@infradead.org> <20080709071346.GS11558@disturbed> <20080709110900.GI9957@mit.edu> <20080709114958.GV11558@disturbed> <4874C3E8.20804@hp.com> <88E7CDF01964465CB9F33DE11298271D@nsl.ad.nec.co.jp>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org, Dave Chinner <david@fromorbit.com>,
-	Theodore Tso <tytso@mit.edu>,
+Cc: mtk.manpages@googlemail.com, axboe@kernel.dk,
+	linux-kernel@vger.kernel.org, dm-devel@redhat.com, xfs@oss.sgi.com,
+	linux-ext4@vger.kernel.org, viro@ZenIV.linux.org.uk,
+	akpm@linux-foundation.org, pavel@suse.cz,
+	linux-fsdevel@vger.kernel.org, hch@infradead.org,
+	Miklos Szeredi <miklos@szeredi.hu>,
 	Arjan van de Ven <arjan@infradead.org>,
-	Miklos Szeredi <miklos@szeredi.hu>, hch@infradead.org,
-	t-sato@yk.jp.nec.com, akpm@linux-foundation.org,
-	viro@ZenIV.linux.org.uk, linux-ext4@vger.kernel.org,
-	xfs@oss.sgi.com, dm-devel@redhat.com, linux-kernel@vger.kernel.org,
-	axboe@kernel.dk, mtk.manpages@googlemail.com
-To: Pavel Machek <pavel@suse.cz>
+	Theodore Tso <tytso@mit.edu>,
+	Dave Chinner <david@fromorbit.com>
+To: Takashi Sato <t-sato@yk.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g4t0015.houston.hp.com ([15.201.24.18]:11930 "EHLO
-	g4t0015.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752673AbYGNNTF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jul 2008 09:19:05 -0400
-In-Reply-To: <20080714063617.GF31949@elf.ucw.cz>
+Received: from g1t0027.austin.hp.com ([15.216.28.34]:26026 "EHLO
+	g1t0027.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753492AbYGNOEn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jul 2008 10:04:43 -0400
+In-Reply-To: <88E7CDF01964465CB9F33DE11298271D@nsl.ad.nec.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Pavel Machek wrote:
+Takashi Sato wrote:
 
-> If you also freeze data writes, at least snapshot is not worse than
-> _unexpected_ shutdown.
+> What is the difference between the timeout and AUTO-THAW?
+> When the kernel detects a deadlock, does it occur to solve it?
 
-True.  But the key point is also that stopping file writes is
-__no better__ than an unexpected shutdown for applications.
+TIMEOUT is a user-specified limit for the freeze.  It is
+not a deadlock preventer or deadlock breaker.  The reason
+it exists is:
 
-Once kernel people accept that it is identical to an unknown
-shutdown state, they realize that as you said...
+    - middle of the night (low but not zero users)
+    - cron triggers freeze and hardware snapshot
+    - san is overloaded by tape copy traffic so
+      hardware will take 2 hours to ack snapshot done
+    - user "company president" tries to create a report
+      needed for an AM meeting with bankers
+    - with so few users, system will just patiently
+      wait for hardware to finish
+    - after 10 minutes "company president" pages
+      admin, admin's boss, and "IT vice president"
+      in a real unhappy mood
 
-> And apps should already be ready for unexpected shutdowns (using fsync
-> etc).
+AUTO-THAW is simply a name for the effect of all deadlock
+preventer and deadlock breaker code that the kernel has
+in the freeze implementation paths... if that code would
+unfreeze the filesystem.  We also implemented deadlock
+preventer code that does not thaw the freeze.
 
-The people writing the code outside the kernel are the ones
-responsible for the logic of handling "we don't know what
-application writes made it to disk".
+None of the AUTO-THAW code is there to stop a stupid
+userspace program caller of freeze.  It handles things
+like "a system in our cluster is going down so we
+must have this filesystem unfrozen or the whole
+cluster will crash".   In places where there could be
+a kernel deadlock we made it "lock-only-if-non-blocking"
+and if we could not wait to retry later, the failure
+to lock would trigger an immediate unfreeze.
 
-Remember that immediately after fsync(), the next write
-can make the file inconsistent.  For example, look at this
-simple sales processing database type sequence:
+Deadlock prevention needs code in critical paths in more
+than just filesystems.  Sometimes this is as simple as
+an "I can't wait on freeze" flag added to a vm-filesystem
+interface.
 
-    write(sale_last_name_file, "Mackek"
-    write(sale_first_name_file, "Pavel")
-    fsync(sale_last_name_file)
-    fsync(sale_first_name_file)
-       ...
-    write(sale_last_name_file, "Owens")
-    write(sale_first_name_file, "Jim")
-    fsync(sale_last_name_file)
-
-FREEZEFS [defined to NOT allow file data writes]
-
-So if we restart from that snapshot, the sales order
-thinks the customer is "Pavel Owens"... unless there
-is some mechanism such as seqence numbers that tie
-the files together.  And if they have such a mechanism
-then it doesn't matter if we allow even more writes
-such as:
-
-    write(sale_first_name_file, "Ted")
-
-There just is no way inside the kernel to know a
-freeze was triggered at a stable application point
-such that data before the freeze must be on disk
-and data after the freez must not go to disk.
-
-This issue is not unique to freeze, it is also
-present with filesystems that have snapshots and
-cow/versioning built in.
+Timers just don't work for keeping the kernel alive
+because they don't trigger on resource exhaustion.
 
 jim
