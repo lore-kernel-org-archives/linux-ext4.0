@@ -1,37 +1,41 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Revert  Fix-EXT_MAX_BLOCK.patch
-Date: Mon, 14 Jul 2008 16:28:13 -0400
-Message-ID: <20080714202813.GC3382@mit.edu>
-References: <Pine.LNX.4.64.0806171001200.6307@diagnostix.dwd.de> <Pine.LNX.4.64.0806180546370.20901@diagnostix.dwd.de> <20080619110947.GB11516@mit.edu> <Pine.LNX.4.64.0807071047430.17563@diagnostix.dwd.de> <Pine.LNX.4.64.0807100804050.16071@diagnostix.dwd.de> <20080710092425.GA16451@skywalker> <20080710092517.GB16451@skywalker> <Pine.LNX.4.64.0807110947290.31436@diagnostix.dwd.de> <20080711124304.GB8154@mit.edu> <Pine.LNX.4.64.0807141938250.28835@diagnostix.dwd.de>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: suspiciously good fsck times?
+Date: Mon, 14 Jul 2008 15:19:13 -0600
+Message-ID: <20080714211913.GQ6239@webber.adilger.int>
+References: <20080710172829.GF10402@mit.edu> <20080710175354.GA3447@mit.edu>
+ <48766D71.7050100@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Girish Shilamkar <Girish.Shilamkar@sun.com>,
-	linux-ext4@vger.kernel.org
-To: Holger Kiehl <Holger.Kiehl@dwd.de>
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Ric Wheeler <ricwheeler@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:36459 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755402AbYGNU2e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jul 2008 16:28:34 -0400
-Content-Disposition: inline
-In-Reply-To: <Pine.LNX.4.64.0807141938250.28835@diagnostix.dwd.de>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:44368 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754511AbYGNVT1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jul 2008 17:19:27 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6ELJQTB007816
+	for <linux-ext4@vger.kernel.org>; Mon, 14 Jul 2008 14:19:26 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K4000H01KL96P00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 14 Jul 2008 14:19:26 -0700 (PDT)
+In-reply-to: <48766D71.7050100@gmail.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 14, 2008 at 07:55:10PM +0000, Holger Kiehl wrote:
-> You are right. I did compare the .config of both and noticed that
-> CONFIG_FAIR_GROUP_SCHED was set in the rc9 test but not in rc8 test.
-> Doing the test without CONFIG_FAIR_GROUP_SCHED gave me back 6%.
-> Sorry.
+On Jul 10, 2008  16:13 -0400, Ric Wheeler wrote:
+> It would be interesting to rerun with the 46 million files in one  
+> directory as well (basically, for working sets that have no natural  
+> mapping into directories like some object based workloads).
 
-You may have told us already, but can you tell me the full
-configuration of your benchmark machine?  (i.e., how many CPU's, how
-much memory, etc.)  Also, what are the current mount options you are
-currently using?  And have you redone the ext3 benchmark number with
-barriers enabled?  Or was that the original number done with default
-mount options that leave barriers disabled?
+I think you'll hit a limit around 15M files in a single directory.
 
-Thanks!!
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-						- Ted
