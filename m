@@ -1,31 +1,30 @@
-From: Kyle McMartin <kyle@mcmartin.ca>
-Subject: Re: 5% diskspace used for ext4?
-Date: Sun, 13 Jul 2008 19:45:41 -0400
-Message-ID: <20080713234541.GA4633@phobos.i.cabal.ca>
-References: <alpine.DEB.1.10.0807140054000.4469@sheep.housecafe.de>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [patch 3/4]
+	jbd2-fix-race-between-jbd2_journal_try_to_free_buffers-and-jbd2-comm
+	it-transaction-cleanup
+Date: Sun, 13 Jul 2008 21:08:17 -0400
+Message-ID: <20080714010817.GC7938@mit.edu>
+References: <200807130626.m6D6QL7E007913@imap1.linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
+Cc: cmm@us.ibm.com, linux-ext4@vger.kernel.org, pbadari@us.ibm.com
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 206-248-169-182.dsl.ncf.ca ([206.248.169.182]:37830 "EHLO
-	phobos.cabal.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754386AbYGMXyp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Jul 2008 19:54:45 -0400
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:46973 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754085AbYGNBIU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 13 Jul 2008 21:08:20 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.1.10.0807140054000.4469@sheep.housecafe.de>
+In-Reply-To: <200807130626.m6D6QL7E007913@imap1.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 14, 2008 at 01:04:20AM +0200, Christian Kujau wrote:
-> Hi,
->
-> I suspect this being a FAQ already, but I could not find[0] it:
-> does ext4 really use 5% of available space for internal housekeeping?  
-> After formatting and mounting a ~917GB partition I see:
->
+On Sat, Jul 12, 2008 at 11:26:21PM -0700, akpm@linux-foundation.org wrote:
+> From: Andrew Morton <akpm@linux-foundation.org>
+> 
+> unneeded initialisation.
+> 
 
-5% of your space is being reserved for root. You can disable this with
-the "-m" argument to mkfs.
+Thanks, I've folded this into the existing patch.
 
-regards, Kyle
+							- Ted
