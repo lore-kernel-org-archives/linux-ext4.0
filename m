@@ -1,76 +1,71 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: [PATCH] libext2fs : Fix typo in function names in libext2fs.texinfo
-Date: Wed, 16 Jul 2008 00:38:40 +0530
-Message-ID: <ea11fea30807151208m419892b3md4893612aa86b6f8@mail.gmail.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: ext4 64bit (disk >16TB) question
+Date: Tue, 15 Jul 2008 14:12:19 -0600
+Message-ID: <20080715195116.GL6239@webber.adilger.int>
+References: <87bq10w8gv.fsf@frosties.localdomain>
+ <20080715132734.68c64000@ichigo>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: mkatiyar@gmail.com
-To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Goswin von Brederlow <goswin-v-b@web.de>,
+	linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.186]:7920 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758458AbYGOTIm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 15:08:42 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so2746821tic.23
-        for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:08:40 -0700 (PDT)
-Content-Disposition: inline
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:37259 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753548AbYGOUMY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 16:12:24 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6FKCMXb021280
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 13:12:23 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K4200901D9Q0300@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Tue, 15 Jul 2008 13:12:22 -0700 (PDT)
+In-reply-to: <20080715132734.68c64000@ichigo>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Fix the function names mentioned in libext2fs documentation.
+On Jul 15, 2008  13:27 -0500, Jose R. Santos wrote:
+> On Mon, 14 Jul 2008 21:50:56 +0200
+> Goswin von Brederlow <goswin-v-b@web.de> wrote:
+> > we are using lustre on a cluster of servers and raid boxes. Currently
+> > lustre is based on the ext3 code and has a limit of 8TiB for each
+> > filesystem. For us that results on having to split a servers storage
+> > into up to 4 chunks and run one fs on each which I would rather avoid.
+> > The solution for this would be to rebase the lustre patches to use
+> > ext4 instead, which should also reduce the patch set considerably.
+> > Lustre already patches a lot of ext4 features into the ext3 base.
+> > 
+> > 
+> > But before I start rebasing lustre I though I would first test out
+> > plain ext4 so I know any bugs I find will be from my rebasing and not
+> > already existing in ext4 itself. And there I run into a big problem:
+> > Current e2fsprogs (1.41) seem to be totaly unable to handle the ext4 64BIT
+> > feature, i.e. filesystems larger than 16TiB. The mkfs.ext4 always
+> > stops saying the disk exceeds the 32bit block count. And looking at
+> > the code I see a lot of blk_t (instead of blk64_t) and unsigned long
+> > (instead of unsigned long long [or even better blk64_t]) usage.
+> > 
+> > I found ext4 64bit patches for e2fsprogs 1.39 that fix at least
+> > mkfs. Does anyone know if there is an updated patch set for 1.41
+> > anywhere? And when will that be added to e2fsprogs upstream?
+> 
+> I've recently submitted a set of patches that covers most of the API
+> changes needed to support >16TB file systems (missing Ted bitmap
+> support of course).  Once the bitmap support is included, it _SHOULD_
+> be relatively painless to add mke2fs support with this series of patches.
 
-==================================================================
+Jose,
+while waiting for the "efficient bitmap" support, how hard would it be
+to implement "inefficient bitmaps" that just malloc some GB of memory
+if needed?  This would at least allow people with huge devices to test
+mke2fs/ext4/e2fsck in the meantime.
 
-Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
----
- doc/libext2fs.texinfo |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
-
-diff --git a/doc/libext2fs.texinfo b/doc/libext2fs.texinfo
-index e93a555..549d66e 100644
---- a/doc/libext2fs.texinfo
-+++ b/doc/libext2fs.texinfo
-@@ -561,7 +561,7 @@ and return to the caller.
-
- @deftypefun errcode_t ext2fs_block_iterate2 (ext2_filsys @var{fs},
-ext2_ino_t @var{ino}, int @var{flags}, char *@var{block}_buf, int
-(*func)(ext2_filsys @var{fs}, blk_t *@var{blocknr}, e2_blkcnt_t
-@var{blockcnt}, blk_t @var{ref_blk}, int  @var{ref_offset}, void
-*@var{private}), void *@var{private})
-
--This function is much like @code{ext2fs_block_iterate2}, except that the
-+This function is much like @code{ext2fs_block_iterate}, except that the
- @var{blockcnt} type is a 64-bit signed quantity, to support larger
- files, and the addition of the @var{ref_blk} and @var{ref_offset}
- arguments passed to the callback function, which identify the location
-@@ -590,7 +590,7 @@ inode structure.
- Returns 0 if @var{ino} is a directory, and @code{ENOTDIR} if it is not.
- @end deftypefun
-
--@deftypefun int ext2_inode_has_valid_blocks (struct ext2_inode *@var{inode})
-+@deftypefun int ext2fs_inode_has_valid_blocks (struct ext2_inode *@var{inode})
-
- Returns 1 if the inode's block entries actually valid block entries, and
- 0 if not.  Inodes which represent devices and fast symbolic links do not
-@@ -1186,7 +1186,7 @@ intended for debugging and testing use only.
- @deftypefun errcode_t ext2fs_check_desc (ext2_filsys @var{fs})
- @end deftypefun
-
--@deftypefun errcode_t ext2_get_num_dirs (ext2_filsys @var{fs},
-ext2_ino_t *@var{ret_num_dirs})
-+@deftypefun errcode_t ext2fs_get_num_dirs (ext2_filsys @var{fs},
-ext2_ino_t *@var{ret_num_dirs})
- @end deftypefun
-
-
--- 
-1.5.4.3
-
-
-==================================================================
-
-
-Thanks -
-Manish
