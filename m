@@ -1,7 +1,8 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH 11/15][e2fsprogs] Add 64-bit openfs interface.
-Date: Tue, 15 Jul 2008 11:51:07 -0500
-Message-ID: <20080715165107.28567.40657.stgit@ichigo>
+Subject: [PATCH 10/15][e2fsprogs] Use new ext2fs_super_and_bgd_loc2 call in
+	libext2fs.
+Date: Tue, 15 Jul 2008 11:51:01 -0500
+Message-ID: <20080715165101.28567.63362.stgit@ichigo>
 References: <20080715164332.28567.27913.stgit@ichigo>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,94 +10,153 @@ Content-Transfer-Encoding: 7bit
 To: "Jose R. Santos" <jrs@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:36771 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754846AbYGOQvS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 12:51:18 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FGpFEA017668
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:51:16 -0400
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FGp81j154920
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 10:51:11 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FGp8NK009284
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 10:51:08 -0600
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:40805 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754930AbYGOQvQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jul 2008 12:51:16 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FGpD2c019303
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:51:13 -0400
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FGp3iw198874
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:51:03 -0400
+Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
+	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FGp2oc022158
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:51:03 -0400
 In-Reply-To: <20080715164332.28567.27913.stgit@ichigo>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-Add 64-bit openfs interface.
+Use new ext2fs_super_and_bgd_loc2 call in libext2fs.
 
-Add new ext2fs_descriptor_block_loc2() routine that takes blk64_t as
-an input.
+The new ext2fs_super_and_bgd_loc2() function has some changes aside
+from just blk64_t support.  Lets make sure that the interfaces are
+sane by adding libext2fs support early to get the new API tested here.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 --
 
- lib/ext2fs/ext2fs.h |    2 ++
- lib/ext2fs/openfs.c |   12 +++++++++---
- 2 files changed, 11 insertions(+), 3 deletions(-)
+ e2fsck/pass5.c        |    7 ++++---
+ lib/ext2fs/alloc_sb.c |   23 +++++++++++++++++++----
+ lib/ext2fs/closefs.c  |    9 +++++----
+ 3 files changed, 28 insertions(+), 11 deletions(-)
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 --
 
- lib/ext2fs/ext2fs.h |    2 ++
- lib/ext2fs/openfs.c |   12 +++++++++---
- 2 files changed, 11 insertions(+), 3 deletions(-)
+ e2fsck/pass5.c        |    7 ++++---
+ lib/ext2fs/alloc_sb.c |   23 +++++++++++++++++++----
+ lib/ext2fs/closefs.c  |    9 +++++----
+ 3 files changed, 28 insertions(+), 11 deletions(-)
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 464d323..0ca978b 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -1119,6 +1119,8 @@ extern errcode_t ext2fs_open2(const char *name, const char *io_options,
- 			      int flags, int superblock, 
- 			      unsigned int block_size, io_manager manager,
- 			      ext2_filsys *ret_fs);
-+extern blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs,
-+					blk64_t group_block, dgrp_t i);
- extern blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block, 
- 					 dgrp_t i);
- errcode_t ext2fs_get_data_io(ext2_filsys fs, io_channel *old_io);
-diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 525693e..77f6442 100644
---- a/lib/ext2fs/openfs.c
-+++ b/lib/ext2fs/openfs.c
-@@ -29,11 +29,12 @@
- #include "ext2fs.h"
- #include "e2image.h"
- 
--blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block, dgrp_t i)
-+blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs, blk64_t group_block,
-+				     dgrp_t i)
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index cc17820..a729308 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -111,7 +111,8 @@ static void print_bitmap_problem(e2fsck_t ctx, int problem,
+ static void check_block_bitmaps(e2fsck_t ctx)
  {
- 	int	bg;
- 	int	has_super = 0;
--	int	ret_blk;
-+	blk64_t	ret_blk;
+ 	ext2_filsys fs = ctx->fs;
+-	blk_t	i, super;
++	blk64_t	i;
++	blk_t   super;
+ 	int	*free_array;
+ 	int	group = 0;
+ 	blk_t	blocks = 0;
+@@ -174,10 +175,10 @@ redo_counts:
+ 		actual = ext2fs_fast_test_block_bitmap(ctx->block_found_map, i);
  
- 	if (!(fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG) ||
- 	    (i < fs->super->s_first_meta_bg))
-@@ -42,7 +43,7 @@ blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block, dgrp_t i)
- 	bg = EXT2_DESC_PER_BLOCK(fs->super) * i;
- 	if (ext2fs_bg_has_super(fs, bg))
- 		has_super = 1;
--	ret_blk = ext2fs_group_first_block(fs, bg) + has_super;
-+	ret_blk = ext2fs_group_first_block2(fs, bg) + has_super;
- 	/*
- 	 * If group_block is not the normal value, we're trying to use
- 	 * the backup group descriptors and superblock --- so use the
-@@ -58,6 +59,11 @@ blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block, dgrp_t i)
- 	return ret_blk;
- }
+ 		if (skip_group) {
+-			blk_t	super_blk, old_desc_blk, new_desc_blk;
++			blk64_t	super_blk, old_desc_blk, new_desc_blk;
+ 			int	old_desc_blocks;
  
-+blk_t ext2fs_descriptor_block_loc(ext2_filsys fs, blk_t group_block, dgrp_t i)
-+{
-+	return ext2fs_descriptor_block_loc2(fs, group_block, i);
-+}
+-			ext2fs_super_and_bgd_loc(fs, group, &super_blk,
++			ext2fs_super_and_bgd_loc2(fs, group, &super_blk,
+ 					 &old_desc_blk, &new_desc_blk, 0);
+ 
+ 			if (fs->super->s_feature_incompat &
+diff --git a/lib/ext2fs/alloc_sb.c b/lib/ext2fs/alloc_sb.c
+index cdcb866..94a79c2 100644
+--- a/lib/ext2fs/alloc_sb.c
++++ b/lib/ext2fs/alloc_sb.c
+@@ -44,11 +44,12 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+ 				 dgrp_t group,
+ 				 ext2fs_block_bitmap bmap)
+ {
+-	blk_t	super_blk, old_desc_blk, new_desc_blk;
++	blk64_t	super_blk, old_desc_blk, new_desc_blk;
++	blk_t	used_blks;
+ 	int	j, old_desc_blocks, num_blocks;
+ 
+-	num_blocks = ext2fs_super_and_bgd_loc(fs, group, &super_blk, 
+-					      &old_desc_blk, &new_desc_blk, 0);
++	ext2fs_super_and_bgd_loc2(fs, group, &super_blk,
++				  &old_desc_blk, &new_desc_blk, &used_blks);
+ 
+ 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
+ 		old_desc_blocks = fs->super->s_first_meta_bg;
+@@ -57,6 +58,7 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+ 			fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
+ 
+ 	if (super_blk || (group == 0))
++		/* FIXME-64 */
+ 		ext2fs_mark_block_bitmap(bmap, super_blk);
+ 
+ 	if (old_desc_blk) {
+@@ -64,11 +66,24 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+ 			fs->group_desc[group].bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
+ 		for (j=0; j < old_desc_blocks; j++)
+ 			if (old_desc_blk + j < fs->super->s_blocks_count)
++				/* FIXME-64 */
+ 				ext2fs_mark_block_bitmap(bmap,
+ 							 old_desc_blk + j);
+ 	}
+ 	if (new_desc_blk)
++		/* FIXME-64 */
+ 		ext2fs_mark_block_bitmap(bmap, new_desc_blk);
+ 
+-	return num_blocks;
++	if (group == fs->group_desc_count-1) {
++		num_blocks = (fs->super->s_blocks_count -
++			     fs->super->s_first_data_block) %
++			fs->super->s_blocks_per_group;
++		if (!num_blocks)
++			num_blocks = fs->super->s_blocks_per_group;
++	} else
++		num_blocks = fs->super->s_blocks_per_group;
 +
- errcode_t ext2fs_open(const char *name, int flags, int superblock,
- 		      unsigned int block_size, io_manager manager, 
- 		      ext2_filsys *ret_fs)
++	num_blocks -= 2 + fs->inode_blocks_per_group + used_blks;
++
++	return num_blocks  ;
+ }
+diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+index 8231ca6..b61556e 100644
+--- a/lib/ext2fs/closefs.c
++++ b/lib/ext2fs/closefs.c
+@@ -338,11 +338,10 @@ errcode_t ext2fs_flush(ext2_filsys fs)
+ 		old_desc_blocks = fs->desc_blocks;
+ 
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+-		blk_t	super_blk, old_desc_blk, new_desc_blk;
+-		int	meta_bg;
++		blk64_t	super_blk, old_desc_blk, new_desc_blk;
+ 
+-		ext2fs_super_and_bgd_loc(fs, i, &super_blk, &old_desc_blk, 
+-					 &new_desc_blk, &meta_bg);
++		ext2fs_super_and_bgd_loc2(fs, i, &super_blk, &old_desc_blk,
++					 &new_desc_blk, 0);
+ 
+ 		if (!(fs->flags & EXT2_FLAG_MASTER_SB_ONLY) &&i && super_blk) {
+ 			retval = write_backup_super(fs, i, super_blk,
+@@ -360,6 +359,8 @@ errcode_t ext2fs_flush(ext2_filsys fs)
+ 				goto errout;
+ 		}
+ 		if (new_desc_blk) {
++			int meta_bg = i / EXT2_DESC_PER_BLOCK(fs->super);
++
+ 			retval = io_channel_write_blk(fs->io, new_desc_blk,
+ 				1, group_ptr + (meta_bg*fs->blocksize));
+ 			if (retval)
 
