@@ -1,47 +1,39 @@
-From: Goswin von Brederlow <goswin-v-b@web.de>
-Subject: Re: ext4 64bit (disk >16TB) question
-Date: Tue, 15 Jul 2008 18:13:18 +0200
-Message-ID: <87tzer9lcx.fsf@frosties.localdomain>
-References: <87bq10w8gv.fsf@frosties.localdomain>
-	<87y743vh3q.fsf@frosties.localdomain> <487CA331.8050403@redhat.com>
-	<200807151601.20881.bs@q-leap.de> <487CAF6A.8070403@redhat.com>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: [PATCH 00/15][e2fsprogs] Initial blk64_t capable API calls.
+Date: Tue, 15 Jul 2008 11:50:02 -0500
+Message-ID: <20080715164332.28567.27913.stgit@ichigo>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: rwheeler@redhat.com
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+To: "Jose R. Santos" <jrs@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fmmailgate02.web.de ([217.72.192.227]:53992 "EHLO
-	fmmailgate02.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753659AbYGOQNU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 12:13:20 -0400
-In-Reply-To: <487CAF6A.8070403@redhat.com> (Ric Wheeler's message of "Tue, 15
-	Jul 2008 10:08:42 -0400")
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:59189 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753623AbYGOQuG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jul 2008 12:50:06 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FGo3Qt007347
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:03 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FGo3Yx197098
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:03 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FGo3MJ030699
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ric Wheeler <rwheeler@redhat.com> writes:
+The following series of patches implement API call needed to handle
+64-bit block numbers.  Im concentrating mainly in providing the API
+call first and if the interfaces are sane, we can go ahead and start
+using them in the rest of libext2fs and the user space programs.
 
-> How long would you wait for something like fsck to run to completion
-> before you would need to go to back up tapes? 6 hours? 1 day? 1 week
-> ;-) ?
+It also introduces the changes needed in order to for mke2fs to
+support larger that 32-bit blocknr devices.
 
-Backup? What are backups? :))
-
-A hardware raid6 resync takes about 16h. A Software raid6 (over 6
-hardware raid6) resync takes 1-2 days.
-
-With lustre the fsck has to be done on the MDT (meta data target) to
-build a database file and on all the OST (object storage target). So
-there is some parallelization in the system.
-
-But each OST, if we get ext4 64bit working, would be 28TB. I would
-assume days for an fsck run. Weeks would not be good and less than a
-day is totaly unrealistic.
+Bitmap dependencies are commented with "/* FIXME-64 */" to make them
+easy to find and replace with the new interface.
 
 
-But a few days for an fsck of 400-800TB filesystem isn't so
-bad. Reading that amount from backup will take ages too, if you even
-have one.
-
-MfG
-        Goswin
+-JRS
