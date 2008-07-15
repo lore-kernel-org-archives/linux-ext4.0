@@ -1,95 +1,88 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: ext4 64bit (disk >16TB) question
-Date: Tue, 15 Jul 2008 16:20:03 -0500
-Message-ID: <20080715162003.061c745a@ichigo>
-References: <87bq10w8gv.fsf@frosties.localdomain>
-	<20080715132734.68c64000@ichigo>
-	<20080715195116.GL6239@webber.adilger.int>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: transaction batching performance & multi-threaded synchronous
+ writers
+Date: Tue, 15 Jul 2008 18:33:23 -0400
+Message-ID: <487D25B3.3030209@redhat.com>
+References: <487B7B9B.3020001@gmail.com> <20080715183904.GC30311@unused.rdu.redhat.com> <20080715201010.GD30311@unused.rdu.redhat.com> <20080715204356.GE30311@unused.rdu.redhat.com>
+Reply-To: rwheeler@redhat.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Goswin von Brederlow <goswin-v-b@web.de>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Cc: linux-ext4@vger.kernel.org, adilger@sun.com
+To: Josef Bacik <jbacik@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:57258 "EHLO e5.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:41639 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751196AbYGOVUV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jul 2008 17:20:21 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FLKJoF018359
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 17:20:19 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FLKCg3231288
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 17:20:12 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FLKBVh007775
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 17:20:12 -0400
-In-Reply-To: <20080715195116.GL6239@webber.adilger.int>
+	id S1763926AbYGOWdi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jul 2008 18:33:38 -0400
+In-Reply-To: <20080715204356.GE30311@unused.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 15 Jul 2008 14:12:19 -0600
-Andreas Dilger <adilger@sun.com> wrote:
+Josef Bacik wrote:
+> On Tue, Jul 15, 2008 at 04:10:10PM -0400, Josef Bacik wrote:
+>   
+>> On Tue, Jul 15, 2008 at 02:39:04PM -0400, Josef Bacik wrote:
+>>     
+>>> On Mon, Jul 14, 2008 at 12:15:23PM -0400, Ric Wheeler wrote:
+>>>       
+>>>> Here is a pointer to the older patch & some results:
+>>>>
+>>>> http://www.spinics.net/lists/linux-fsdevel/msg13121.html
+>>>>
+>>>> I will retry this on some updated kernels, but would not expect to see a 
+>>>> difference since the code has not been changed ;-)
+>>>>
+>>>>         
+>>> Ok here are the numbers with the original idea I had proposed.
+>>>
+>>> type	threads		base	patch	speedup
+>>> sata	1		17.9	17.3	0.97
+>>> sata	2		33.2	34.2	1.03
+>>> sata	4		58.4	63.6	1.09
+>>> sata	8		78.8	80.8	1.03
+>>> sata	16		94.4	97.6	1.16
+>>>
+>>> ram	1		2394.4	1878.0	0.78
+>>> ram	2		989.6	2041.1	2.06
+>>> ram	4		1466.1	3201.8	2.18
+>>> ram	8		1858.1	3362.8	1.81
+>>> ram	16		3008.0	3227.7	1.07
+>>>
+>>> I've got to find a fast disk array to test this with, but the ramdisk results
+>>> make me happy, though they were kind of irratic, so I think the fast disk array
+>>> will be a more stable measure of how well this patch does, but it definitely
+>>> doesn't hurt the slow case, and brings stability to the fast case.  Thanks much,
+>>>
+>>>       
+>> Hmm talking with ric I should just leave the single thread stuff alone.  That
+>> removes the slight speed regression seen above.  Thanks,
+>>
+>>     
+>
+> Here are the results with the single thread stuff put back in and with 250HZ
+> instead of 1000HZ from before
+>
+> type	threads		base	patch
+> sata	1		21.8	21.6
+> sata	2		26.2	34.6
+> sata	4		48.0	58.0
+> sata	8		70.4	75.2
+> sata	16		89.6	101.1
+>
+> ram	1		2505.4	2422.0
+> ram	2		463.8	3462.3
+> ram	4		330.4	3653.9
+> ram	8		995.1	3592.4
+> ram	16		1335.2	3806.5
+>
+> Thanks,
+>
+> Josef 
+>   
+These numbers are pretty impressive - we need to get a run on an array 
+backed file system as well to round out the picture and possibly an SSD 
+(anyone have one out there to play with)?
 
-> On Jul 15, 2008  13:27 -0500, Jose R. Santos wrote:
-> > On Mon, 14 Jul 2008 21:50:56 +0200
-> > Goswin von Brederlow <goswin-v-b@web.de> wrote:
-> > > we are using lustre on a cluster of servers and raid boxes. Currently
-> > > lustre is based on the ext3 code and has a limit of 8TiB for each
-> > > filesystem. For us that results on having to split a servers storage
-> > > into up to 4 chunks and run one fs on each which I would rather avoid.
-> > > The solution for this would be to rebase the lustre patches to use
-> > > ext4 instead, which should also reduce the patch set considerably.
-> > > Lustre already patches a lot of ext4 features into the ext3 base.
-> > > 
-> > > 
-> > > But before I start rebasing lustre I though I would first test out
-> > > plain ext4 so I know any bugs I find will be from my rebasing and not
-> > > already existing in ext4 itself. And there I run into a big problem:
-> > > Current e2fsprogs (1.41) seem to be totaly unable to handle the ext4 64BIT
-> > > feature, i.e. filesystems larger than 16TiB. The mkfs.ext4 always
-> > > stops saying the disk exceeds the 32bit block count. And looking at
-> > > the code I see a lot of blk_t (instead of blk64_t) and unsigned long
-> > > (instead of unsigned long long [or even better blk64_t]) usage.
-> > > 
-> > > I found ext4 64bit patches for e2fsprogs 1.39 that fix at least
-> > > mkfs. Does anyone know if there is an updated patch set for 1.41
-> > > anywhere? And when will that be added to e2fsprogs upstream?
-> > 
-> > I've recently submitted a set of patches that covers most of the API
-> > changes needed to support >16TB file systems (missing Ted bitmap
-> > support of course).  Once the bitmap support is included, it _SHOULD_
-> > be relatively painless to add mke2fs support with this series of patches.
-> 
-> Jose,
-> while waiting for the "efficient bitmap" support, how hard would it be
-> to implement "inefficient bitmaps" that just malloc some GB of memory
-> if needed?  This would at least allow people with huge devices to test
-> mke2fs/ext4/e2fsck in the meantime.
+ric
 
-As Ted mentioned already, the "efficient bitmap" support can come
-latter but the 64bit API call need to well design to able to support
-different models.  I will see how difficult it would be to create a ABI
-BREAKING patch for testing purposes but coming up with a ABI
-compatible one seems like to much work if its going to be replace
-sometime in the near future.
-
-It should be possible to test it with flexbg as well (I think) since
-all I need to make sure is that all bitmaps reside within the 32bit
-block boundary.  Dont have large disk to test on so Im playing with
-device mapper to see how I can fake one.  Our lab network is making
-thing difficult though.
-
-Im sure that I will uncover a couple of bug this way.  Like the fact
-that I forgot to set the 64bit compatibility flag or large group
-descriptors. :)
-
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
-> 
-
--JRS
