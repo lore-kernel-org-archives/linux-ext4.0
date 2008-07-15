@@ -1,49 +1,34 @@
-From: Shehjar Tikoo <shehjart@cse.unsw.edu.au>
-Subject: ext4 fallocate related crash on 2.6.26
-Date: Tue, 15 Jul 2008 14:06:21 +1000
-Message-ID: <487C223D.6060704@cse.unsw.edu.au>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [GIT PULL] ext4 bugfixes
+Date: Tue, 15 Jul 2008 00:37:18 -0400
+Message-ID: <20080715043718.GA30017@infradead.org>
+References: <E1KIbeO-0001yQ-N4@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tone.orchestra.cse.unsw.EDU.AU ([129.94.242.59]:53015 "EHLO
-	tone.orchestra.cse.unsw.EDU.AU" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751406AbYGOEUn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jul 2008 00:20:43 -0400
+Received: from bombadil.infradead.org ([18.85.46.34]:59605 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751921AbYGOEhW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 00:37:22 -0400
+Content-Disposition: inline
+In-Reply-To: <E1KIbeO-0001yQ-N4@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all
+On Mon, Jul 14, 2008 at 11:56:28PM -0400, Theodore Ts'o wrote:
+> Alex Tomas (2):
+>       vfs: add hooks for ext4's delayed allocation support
 
-I've observed the following kernel crash during tests against ext4 
-fallocate'ion support on 2.6.26.
+This is still missing kerneldoc comments for the newly exported
+functions.
 
-Stack trace is at:
-http://www.gelato.unsw.edu.au/~shehjart/docs/ext4_fallocate_test_trace_2.6.26.txt
+>       ext4: Add delayed allocation support in data=writeback mode
 
-The test involved running the following program which fallocates a 
-given length in bytes then writes to it. The above crash was seen when 
-writing to an ext4 disk, 2G file, in blocks of 64k with fallocate 
-requests of 1mb. After each 1mb of data is written to the fallocated 
-space, another 1mb is requested. This write-fallocate cycle continues 
-till the requested file size is reached. The trace is from one of the 
-crashes from the various runs(all crashed). I must emphasise that 
-after one of the runs, the test disk could not be mounted as the 
-filesystem was unrecognized. ext4dev was mounted in data=ordered mode.
+And for this one I haven't even heard back on my review comments.  None
+of them is a merge blocker so it's not critical, but I find it quite odd
+that the pull request is coming before even replying to the review
+comments.
 
-See the test code at:
-http://www.gelato.unsw.edu.au/~shehjart/docs/writefallocate.c
-
-The command line arguments are self-explanatory. Run without any 
-arguments to see the usage message. Do change the _NR_fallocate define 
-at the beginning of the file to your architecture's syscall number for 
-sys_fallocate.
-
-I can run a few more tests if more info is needed.
-
-Shehjar
-PS: I am only on linux-fsdevel. So please CC if replying from another 
-list.
