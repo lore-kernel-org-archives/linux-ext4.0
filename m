@@ -1,55 +1,47 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: Re: transaction batching performance & multi-threaded synchronous
-	writers
-Date: Tue, 15 Jul 2008 10:05:32 -0400
-Message-ID: <20080715140532.GB30311@unused.rdu.redhat.com>
-References: <487B7B9B.3020001@gmail.com> <20080714165858.GA10268@unused.rdu.redhat.com> <20080715075832.GD6239@webber.adilger.int> <20080715125127.GA30311@unused.rdu.redhat.com>
+From: Goswin von Brederlow <goswin-v-b@web.de>
+Subject: Re: ext4 64bit (disk >16TB) question
+Date: Tue, 15 Jul 2008 18:13:18 +0200
+Message-ID: <87tzer9lcx.fsf@frosties.localdomain>
+References: <87bq10w8gv.fsf@frosties.localdomain>
+	<87y743vh3q.fsf@frosties.localdomain> <487CA331.8050403@redhat.com>
+	<200807151601.20881.bs@q-leap.de> <487CAF6A.8070403@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	Ric Wheeler <ricwheeler@gmail.com>, linux-ext4@vger.kernel.org
-To: Josef Bacik <jbacik@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: rwheeler@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38029 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761747AbYGOOYb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jul 2008 10:24:31 -0400
-Content-Disposition: inline
-In-Reply-To: <20080715125127.GA30311@unused.rdu.redhat.com>
+Received: from fmmailgate02.web.de ([217.72.192.227]:53992 "EHLO
+	fmmailgate02.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753659AbYGOQNU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 12:13:20 -0400
+In-Reply-To: <487CAF6A.8070403@redhat.com> (Ric Wheeler's message of "Tue, 15
+	Jul 2008 10:08:42 -0400")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 15, 2008 at 08:51:27AM -0400, Josef Bacik wrote:
-> On Tue, Jul 15, 2008 at 01:58:32AM -0600, Andreas Dilger wrote:
-> > On Jul 14, 2008  12:58 -0400, Josef Bacik wrote:
-> > > Perhaps we track the average time a commit takes to occur, and then if
-> > > the current transaction start time is < than the avg commit time we sleep
-> > > and wait for more things to join the transaction, and then we commit.
-> > > How does that idea sound?  Thanks,
-> > 
-> > The drawback of this approach is that if the thread waits an extra "average
-> > transaction time" for the transaction to commit then this will increase the
-> > average transaction time each time, and it still won't tell you if there
-> > needs to be a wait at all.
-> >
-> 
-> I'm not talking about the average transaction life, as you say it would be
-> highly dependant on random things that have nothing to do with the transaction
-> time (waiting for locks and such).  I'm measuring the time it takes for the
-> actual commit to take place, so I record the start time in
-> journal_commit_transaction when we set running_transaction = NULL, and then the
-> end time right before the wakeup() at the end of journal_commit_transaction,
-> that way there is an idea of how long the committing of a transaction to disk
-> happens.  If we only have two threads doing work and fsyncing, its going to be a
-> constant time, because we'll only be writing a certain number of buffers each
-> time.
->  
+Ric Wheeler <rwheeler@redhat.com> writes:
 
-Hmm now that I think about it you are right, if the thread waits then the time
-the transaction was running could be greater than the commit time and this
-wouldn't help.  Though one would hope that dirtying pagecache would still be
-several times faster than writing to disk so any amount of waiting wouldn't be
-too much of a big deal, and waiting too long would hurt in our current case
-anyway.  Thanks,
+> How long would you wait for something like fsck to run to completion
+> before you would need to go to back up tapes? 6 hours? 1 day? 1 week
+> ;-) ?
 
-Josef
+Backup? What are backups? :))
+
+A hardware raid6 resync takes about 16h. A Software raid6 (over 6
+hardware raid6) resync takes 1-2 days.
+
+With lustre the fsck has to be done on the MDT (meta data target) to
+build a database file and on all the OST (object storage target). So
+there is some parallelization in the system.
+
+But each OST, if we get ext4 64bit working, would be 28TB. I would
+assume days for an fsck run. Weeks would not be good and less than a
+day is totaly unrealistic.
+
+
+But a few days for an fsck of 400-800TB filesystem isn't so
+bad. Reading that amount from backup will take ages too, if you even
+have one.
+
+MfG
+        Goswin
