@@ -1,34 +1,74 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [GIT PULL] ext4 bugfixes
-Date: Tue, 15 Jul 2008 00:37:18 -0400
-Message-ID: <20080715043718.GA30017@infradead.org>
-References: <E1KIbeO-0001yQ-N4@closure.thunk.org>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: Re: [PATCH] libext2fs : Fix the return values for ino=0 in ext2fs_read_inode_full() if inode cache has been flushed.
+Date: Tue, 15 Jul 2008 10:40:22 +0530
+Message-ID: <ea11fea30807142210w1dbc8f6aq59d3a295ab31a653@mail.gmail.com>
+References: <ea11fea30807120657l2de0b501qefb45231edd5fac0@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:59605 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751921AbYGOEhW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 00:37:22 -0400
+Received: from wf-out-1314.google.com ([209.85.200.173]:33064 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753087AbYGOFKW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 01:10:22 -0400
+Received: by wf-out-1314.google.com with SMTP id 27so5192240wfd.4
+        for <linux-ext4@vger.kernel.org>; Mon, 14 Jul 2008 22:10:22 -0700 (PDT)
+In-Reply-To: <ea11fea30807120657l2de0b501qefb45231edd5fac0@mail.gmail.com>
 Content-Disposition: inline
-In-Reply-To: <E1KIbeO-0001yQ-N4@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 14, 2008 at 11:56:28PM -0400, Theodore Ts'o wrote:
-> Alex Tomas (2):
->       vfs: add hooks for ext4's delayed allocation support
+On Sat, Jul 12, 2008 at 7:27 PM, Manish Katiyar <mkatiyar@gmail.com> wrote:
+> Hi Ted,
+>
+> It looks like the right place to check for ino=0 in
+> ext2fs_read_inode_full() is before creating the inode cache, otherwise
+> since we set icache[i].ino = 0 in create_icache(), it will match the
+> loop below and thus we return a wrong value. Below patch fixes it.
+>
+> ==========================================================================
+>
+> Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
+>
+> ---
+>  lib/ext2fs/inode.c |    4 ++--
+>  1 files changed, 2 insertions(+), 2 deletions(-)
+>
+> diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
+> index 8908423..a08cb40 100644
+> --- a/lib/ext2fs/inode.c
+> +++ b/lib/ext2fs/inode.c
+> @@ -536,6 +536,8 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs,
+> ext2_ino_t ino,
+>                if (retval != EXT2_ET_CALLBACK_NOTHANDLED)
+>                        return retval;
+>        }
+> +       if ((ino == 0) || (ino > fs->super->s_inodes_count))
+> +               return EXT2_ET_BAD_INODE_NUM;
+>        /* Create inode cache if not present */
+>        if (!fs->icache) {
+>                retval = create_icache(fs);
+> @@ -552,8 +554,6 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs,
+> ext2_ino_t ino,
+>                        }
+>                }
+>        }
+> -       if ((ino == 0) || (ino > fs->super->s_inodes_count))
+> -               return EXT2_ET_BAD_INODE_NUM;
+>        if (fs->flags & EXT2_FLAG_IMAGE_FILE) {
+>                inodes_per_block = fs->blocksize / EXT2_INODE_SIZE(fs->super);
+>                block_nr = fs->image_header->offset_inode / fs->blocksize;
+> --
+> 1.5.4.3
+>
+>
+> =====================================================================
+>
 
-This is still missing kerneldoc comments for the newly exported
-functions.
+Any ack/nack on this ?
 
->       ext4: Add delayed allocation support in data=writeback mode
 
-And for this one I haven't even heard back on my review comments.  None
-of them is a merge blocker so it's not critical, but I find it quite odd
-that the pull request is coming before even replying to the review
-comments.
-
+> Thanks -
+> Manish
+>
