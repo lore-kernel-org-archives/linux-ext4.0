@@ -1,115 +1,100 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: ext4 64bit (disk >16TB) question
-Date: Tue, 15 Jul 2008 10:08:42 -0400
-Message-ID: <487CAF6A.8070403@redhat.com>
-References: <87bq10w8gv.fsf@frosties.localdomain> <87y743vh3q.fsf@frosties.localdomain> <487CA331.8050403@redhat.com> <200807151601.20881.bs@q-leap.de>
-Reply-To: rwheeler@redhat.com
+From: Ric Wheeler <ricwheeler@gmail.com>
+Subject: Re: transaction batching performance & multi-threaded synchronous
+ writers
+Date: Tue, 15 Jul 2008 10:22:33 -0400
+Message-ID: <487CB2A9.1090201@gmail.com>
+References: <487B7B9B.3020001@gmail.com> <20080714165858.GA10268@unused.rdu.redhat.com> <20080715075832.GD6239@webber.adilger.int> <20080715125127.GA30311@unused.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Goswin von Brederlow <goswin-v-b@web.de>,
-	linux-ext4@vger.kernel.org
-To: Bernd Schubert <bs@q-leap.de>
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Josef Bacik <jbacik@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:60391 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756118AbYGOOIp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jul 2008 10:08:45 -0400
-In-Reply-To: <200807151601.20881.bs@q-leap.de>
+Received: from an-out-0708.google.com ([209.85.132.249]:5288 "EHLO
+	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1761480AbYGOOWh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 10:22:37 -0400
+Received: by an-out-0708.google.com with SMTP id d40so1024163and.103
+        for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 07:22:36 -0700 (PDT)
+In-Reply-To: <20080715125127.GA30311@unused.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Bernd Schubert wrote:
-> On Tuesday 15 July 2008 15:16:33 Ric Wheeler wrote:
+Josef Bacik wrote:
+> On Tue, Jul 15, 2008 at 01:58:32AM -0600, Andreas Dilger wrote:
 >   
->> Goswin von Brederlow wrote:
+>> On Jul 14, 2008  12:58 -0400, Josef Bacik wrote:
 >>     
->>> Theodore Tso <tytso@mit.edu> writes:
+>>> Perhaps we track the average time a commit takes to occur, and then if
+>>> the current transaction start time is < than the avg commit time we sleep
+>>> and wait for more things to join the transaction, and then we commit.
+>>> How does that idea sound?  Thanks,
 >>>       
->>>> On Mon, Jul 14, 2008 at 09:50:56PM +0200, Goswin von Brederlow wrote:
->>>>         
->>>>> I found ext4 64bit patches for e2fsprogs 1.39 that fix at least
->>>>> mkfs. Does anyone know if there is an updated patch set for 1.41
->>>>> anywhere? And when will that be added to e2fsprogs upstream?
->>>>>           
->>>> Yes, this is correct.  The 1.39 64-bit patches break the shared
->>>> library ABI, and also there were some long-term problems with having
->>>> super-large bitmaps taking huge amounts of memory without some kind of
->>>> run-length encoding or other compression technique.  I decided to
->>>> reject the 1.39 approach because it would have caused short- and
->>>> long-term maintenance issues.
->>>>         
->>> Is that a problem for the kernel or for the user space? I notices that
->>> mke2fs 1.39 used over a gigabyte memory to format a >16TiB disk. While
->>> being a lot that is not really a problem here.
->>>
->>>       
->>>> At the moment 1.41 does not support > 32 bit block numbers.  The
->>>> priority was to get something which supported all of the other ext4
->>>> features out the door, since that would allow much better testing of
->>>> the ext4 code base.  We are now working on 64-bit support in
->>>> e2fsprogs, with mke2fs coming first, and the other tools coming later.
->>>> But yeah, good quality 64-bit e2fsprogs support is going to lag for a
->>>> bit.  Sorry, we're working as fast as we can, given the resources we
->>>> have.
->>>>         
->>> Will there be filesystem changes as well? The above mentioned
->>> run-length encoding sounds a bit like a new bitmap format or is that
->>> only supposed to be the in memory format in userspace?
->>>
->>> What is the plan of how to add 64-bit support to the shared lib now?
->>> Will you introduce a do_foo64() function in parallel to do_foo() to
->>> maintain abi compatibility? Will you add versioned symbols? Or will
->>> there be an abi break at some point?
->>>
->>> The reason I ask all this is because I'm willing to spend some time
->>> patching and testing. A single >16TiB filesystem instead of multiple
->>> smaller ones would be a great benefit for us.
->>>       
->> Can you give us any details about your use case? Is it hundreds of very
->> large files, or 100 million little ones?
+>> The drawback of this approach is that if the thread waits an extra "average
+>> transaction time" for the transaction to commit then this will increase the
+>> average transaction time each time, and it still won't tell you if there
+>> needs to be a wait at all.
+>>
 >>     
 >
-> Depends on our customers. Though lustre is rather slow for small files and we 
-> try to inform our customers about that. On the other hand there also also no 
-> choices of cluster filesystem for small files.
+> I'm not talking about the average transaction life, as you say it would be
+> highly dependant on random things that have nothing to do with the transaction
+> time (waiting for locks and such).  I'm measuring the time it takes for the
+> actual commit to take place, so I record the start time in
+> journal_commit_transaction when we set running_transaction = NULL, and then the
+> end time right before the wakeup() at the end of journal_commit_transaction,
+> that way there is an idea of how long the committing of a transaction to disk
+> happens.  If we only have two threads doing work and fsyncing, its going to be a
+> constant time, because we'll only be writing a certain number of buffers each
+> time.
 >   
 
-Thanks - so this is not an internal application, but hosting for various 
-workloads? We have different scalability issues depending on the nature 
-and mix of file sizes, etc.
+I think that this is exactly the interesting measurement to capture. It 
+will change over time (depending on how loaded the target device is, etc).
 
+The single thread case that is special cased is also an important one to 
+handle since it should be a fairly common one.
+>  
 >   
->> Any interesting hardware in the mix on the storage or server side?
+>> What might be more interesting is tracking how many processes had sync
+>> handles on the previous transaction(s), and once that number of processes
+>> have done that work, or the timeout reached, the transaction is committed.
+>>
+>> While this might seem like a hack for the particular benchmark, this
+>> will also optimize real-world workloads like mailserver, NFS/fileserver,
+>> http where the number of threads running at one time is generally fixed.
+>>
+>> The best way to do that would be to keep a field in the task struct to
+>> track whether a given thread has participated in transaction "T" when
+>> it starts a new handle, and if not then increment the "number of sync
+>> threads on this transaction" counter.
+>>
+>> In journal_stop() if t_num_sync_thr >= prev num_sync_thr then
+>> the transaction can be committed earlier, and if not then it does a
+>> wait_event_interruptible_timeout(cur_num_sync_thr >= prev_num_sync_thr, 1).
+>>
+>> While the number of sync threads is growing or constant the commits will 
+>> be rapid, and any "slow" threads will block on the next transaction and
+>> increment its num_sync_thr until the thread count stabilizes (i.e. a small
+>> number of transactions at startup).  After that the wait will be exactly
+>> as long as needed for each thread to participate.  If some threads are
+>> too slow, or stop processing then there will be a single sleep and the
+>> next transaction will wait for fewer threads the next time.
+>>
 >>     
 >
-> What exactly do you want to know? Usually we have a server-pair and Infortrend 
-> Raid-units. Since lustre doesn't do any redundancy on its own, we usually 
-> also have a raid1, raid5 or raid6 of several raid units.
+> This idea is good, but I'm wondering about the normal user use case, ie where
+> syslog is the only thing that does fsync.  If we get into a position where
+> prev_num_sync_thr is always 1, we'll just bypass sleeping and waiting for other
+> stuff to join the transaction and sync whenever syslog pleases, which will
+> likely affect most normal users, especially if they are like me and have crappy
+> wireless cards that like to spit stuff into syslog constantly ;).  Thanks much,
+>
+> Josef 
 >   
 
-One thing that we have been working on/thinking about is how best to 
-automatically self tune a file system to the storage. Today, XFS is 
-probably the best normal linux file system at figuring out raid stripe 
-size, etc. Getting this enhanced in ext4 could lead to a significant 
-performance win for users who are not masters of performance tuning, etc.
+I think this syslog case is just a common example of the same thread 
+doing a sequence of IO's.
 
-How long would you wait for something like fsck to run to completion 
-before you would need to go to back up tapes? 6 hours? 1 day? 1 week ;-) ?
-
-> For ease of management and optimal performance, we need single partitions 
-> larger than 8TiB (raid1) or 16TiB (raid5 or raid6). And the present 8TiB 
-> limit strongly bites us.
->
->
-> Cheers,
-> Bernd
->   
-
-Makes sense, thanks for the information!
-
-Regards,
-
-Ric
-
+ric
 
