@@ -1,110 +1,84 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: Re: - jbd-strictly-check-for-write-errors-on-data-buffers.patch
-    removed from -mm tree
-Date: Tue, 15 Jul 2008 11:06:59 +0900
-Message-ID: <487C0643.8080907@hitachi.com>
-References: <200806092212.m59MC553010889@imap1.linux-foundation.org>
-    <484E4097.2010204@hitachi.com>
-    <20080610021746.51e5cfa8.akpm@linux-foundation.org>
-    <170fa0d20807140708k46f86ac1tfee50d3fa14e3e41@mail.gmail.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] Ext4: Fix delalloc enospace handling counter update
+	race
+Date: Tue, 15 Jul 2008 08:42:02 +0530
+Message-ID: <20080715031202.GB4624@skywalker>
+References: <200807130626.m6D6QMvj007916@imap1.linux-foundation.org> <20080714010828.GD7938@mit.edu> <1216052897.7937.1.camel@mingming-laptop> <20080714165324.GA3545@skywalker> <1216058076.6468.11.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, jack@suse.cz,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>,
-	sugita <yumiko.sugita.yf@hitachi.com>
-To: Mike Snitzer <snitzer@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail9.hitachi.co.jp ([133.145.228.44]:59982 "EHLO
-	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754957AbYGOCHK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jul 2008 22:07:10 -0400
-In-Reply-To: <170fa0d20807140708k46f86ac1tfee50d3fa14e3e41@mail.gmail.com>
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:39964 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753431AbYGODML (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 14 Jul 2008 23:12:11 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m6F3BW1u032716
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 13:11:32 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6F3C9dt2121808
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 13:12:09 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6F3C8gZ013454
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 13:12:08 +1000
+Content-Disposition: inline
+In-Reply-To: <1216058076.6468.11.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mike Snitzer wrote:
-> On Tue, Jun 10, 2008 at 5:17 AM, Andrew Morton <akpm@linux-foundation.org>
-> wrote:
-> 
-> 
->>On Tue, 10 Jun 2008 17:51:35 +0900 Hidehiro Kawai <
->>hidehiro.kawai.ez@hitachi.com> wrote:
->>
->>
->>>Hello Andrew,
->>>
->>>akpm@linux-foundation.org wrote:
->>>
->>>
->>>>The patch titled
->>>>     jbd: strictly check for write errors on data buffers
->>>>has been removed from the -mm tree.  Its filename was
->>>>     jbd-strictly-check-for-write-errors-on-data-buffers.patch
->>>>
->>>>This patch was dropped because I don't think we want to go read-only on
->>
->>file data write errors
->>
->>>>The current -mm tree may be found at
->>
->>http://userweb.kernel.org/~akpm/mmotm/<http://userweb.kernel.org/%7Eakpm/mmotm/>
->>
->>>>------------------------------------------------------
->>>>Subject: jbd: strictly check for write errors on data buffers
->>>>From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
->>>
->>>This patch series doesn't change the behavior on file data write
->>>errors as I stated before, but we found that the current behavior has
->>>been made accidentally.  So yesterday I sent an additional patch(*)
->>>which removes the invocation of journal_abort() and thus stop making
->>>the fs read-only on file data write errors, but it seems to be late
->>>for the -mm release preparation.
->>>
->>>  Patch(*) can be found at:
->>>  http://marc.info/?l=linux-kernel&m=121300618614453&w=2
->>>
->>>Anyway, as this patch series was dropped from -mm, I'm going to
->>>send a revised version.
->>>
->>>I plan to separate these pathces into three patche set.
->>>The first patch (set) corrects the current behavior in ordered
->>>writes, it means it removes the invocation of journal_abort() on file
->>>data write errors.  It is the almost same as the patch(*).
->>>The second patch set fixes error handlings for metadata writes and
->>>checkpointing.  It should be applied independently of the first
->>>patch set, and it is the same as PATCH 3/5 to 5/5.
->>>The third patch set makes "abort the journal on file data write errors"
->>>tunable for mission critical users.  Of course, this feature depends
->>>on the first patch set.
->>>
->>
->>That sounds like a good plan, thanks.
-> 
-> Hidehiro and Andrew,
-> 
-> The first patch(set) has been in -mm with the following patches:
-> jbd-dont-abort-if-flushing-file-data-failed.patch
-> jbd-dont-abort-if-flushing-file-data-failed-fix.patch
-> 
-> "PATCH 3/5 to 5/5" haven't made their way into -mm; nor has the tunable
-> "abort the journal on file data write errors".  Where do things stand on
-> this work?
-> 
-> Given the potential for corruption and the fact that -mm's series file
-> justifiably has a place-holder comment of "jbd write-error stuff: scary" I'm
-> wondering: how soon will all associated fixes be included in -mm?
+On Mon, Jul 14, 2008 at 10:54:36AM -0700, Mingming Cao wrote:
+>=20
+> =E5=9C=A8 2008-07-14=E4=B8=80=E7=9A=84 22:23 +0530=EF=BC=8CAneesh Kum=
+ar K.V=E5=86=99=E9=81=93=EF=BC=9A
+> > On Mon, Jul 14, 2008 at 09:28:17AM -0700, Mingming Cao wrote:
+> > >=20
+> > > Ext4: Fix delalloc enospace handling counter update race
+> > >=20
+> > > From: Mingming Cao <cmm@us.ibm.com>
+>=20
+> > > Also in the case of truncate, we should not clear the per-allocat=
+ion allocated
+> > > metablocks counter as that may be in-use by parallel allocation. =
+The patch
+> > > only clear the per-allocation allocated metablocks when allocatio=
+n is successfully returned.
+> > >=20
+> > >=20
+> > > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> >=20
+> > Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+>=20
+>=20
+> > > @@ -1519,7 +1529,8 @@ void ext4_da_release_space(struct inode=20
+> > >=20
+> > >  	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
+> > >  	EXT4_I(inode)->i_reserved_meta_blocks =3D mdb;
+> > > -	EXT4_I(inode)->i_allocated_meta_blocks =3D 0;
+> > > +	if (used)
+> > > +		EXT4_I(inode)->i_allocated_meta_blocks =3D 0;
+> > >  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> > >  }
+> > >=20
+>=20
+> After think again, this part of race fix may not needed, when the fir=
+st
+> part of patch is applied. Since truncate is also hold the i_data_sem,=
+ so
+> it could be assured that when truncate is releasing the page's  reser=
+ved
+> blocks, there is no parallel block allocation.
 
-Hello Mike,
+But truncate calls invalidate_page without holding i_data_sem.
 
-Sorry for my late work.  I'm going to send these two patch set soon,
-but I have a trouble, 2.6.26-rc8-mm1 doesn't boot on my box.
-So it may a bit more delay.
+vmtruncate -> truncate_inode_pages -> invalidate_page.
 
-Regards,
--- 
-Hidehiro Kawai
-Hitachi, Systems Development Laboratory
-Linux Technology Center
 
+-aneesh
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
