@@ -1,7 +1,7 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH 02/15][e2fsprogs] Add ext2_off64_t type.
-Date: Tue, 15 Jul 2008 11:50:16 -0500
-Message-ID: <20080715165016.28567.55723.stgit@ichigo>
+Subject: [PATCH 04/15][e2fsprogs] Use blk64_t for blocks in struct ext2_file.
+Date: Tue, 15 Jul 2008 11:50:27 -0500
+Message-ID: <20080715165027.28567.28170.stgit@ichigo>
 References: <20080715164332.28567.27913.stgit@ichigo>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,51 +9,78 @@ Content-Transfer-Encoding: 7bit
 To: "Jose R. Santos" <jrs@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:59515 "EHLO e2.ny.us.ibm.com"
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:58136 "EHLO e4.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754079AbYGOQuT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jul 2008 12:50:19 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FGoH8X007913
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:17 -0400
-Received: from d01av04.pok.ibm.com (d01av04.pok.ibm.com [9.56.224.64])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FGoH63222284
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:17 -0400
-Received: from d01av04.pok.ibm.com (loopback [127.0.0.1])
-	by d01av04.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FGoGnl006631
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:17 -0400
+	id S1750944AbYGOQu3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jul 2008 12:50:29 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FGoSbc029018
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:28 -0400
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FGoSeQ233954
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:28 -0400
+Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
+	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FGoSDN031821
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:28 -0400
 In-Reply-To: <20080715164332.28567.27913.stgit@ichigo>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-Add ext2_off64_t type.
+Use blk64_t for blocks in struct ext2_file.
 
-The ext2_off_t is u32.  Creating a new 64-bit ext2_off64_t for 64bit
-offsets.
+The ext2_file structure is never exposed through the libext2fs API so
+it is safe to use 64-bit blocks for blockno and physclock without
+breaking the ABI.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 --
 
- lib/ext2fs/ext2fs.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ lib/ext2fs/fileio.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 --
 
- lib/ext2fs/ext2fs.h |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+ lib/ext2fs/fileio.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 04a95a2..d9337aa 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -68,6 +68,7 @@ typedef __u32		blk_t;
- typedef __u64		blk64_t;
- typedef __u32		dgrp_t;
- typedef __u32		ext2_off_t;
-+typedef __u64		ext2_off64_t;
- typedef __s64		e2_blkcnt_t;
- typedef __u32		ext2_dirhash_t;
+diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
+index 8bf99fb..4b9e1ce 100644
+--- a/lib/ext2fs/fileio.c
++++ b/lib/ext2fs/fileio.c
+@@ -25,8 +25,8 @@ struct ext2_file {
+ 	struct ext2_inode	inode;
+ 	int 			flags;
+ 	__u64			pos;
+-	blk_t			blockno;
+-	blk_t			physblock;
++	blk64_t			blockno;
++	blk64_t			physblock;
+ 	char 			*buf;
+ };
  
+@@ -116,9 +116,9 @@ errcode_t ext2fs_file_flush(ext2_file_t file)
+ 	 * Allocate it.
+ 	 */
+ 	if (!file->physblock) {
+-		retval = ext2fs_bmap(fs, file->ino, &file->inode,
++		retval = ext2fs_bmap2(fs, file->ino, &file->inode,
+ 				     BMAP_BUFFER, file->ino ? BMAP_ALLOC : 0,
+-				     file->blockno, &file->physblock);
++				     file->blockno, 0, &file->physblock);
+ 		if (retval)
+ 			return retval;
+ 	}
+@@ -168,8 +168,8 @@ static errcode_t load_buffer(ext2_file_t file, int dontfill)
+ 	errcode_t	retval;
+ 
+ 	if (!(file->flags & EXT2_FILE_BUF_VALID)) {
+-		retval = ext2fs_bmap(fs, file->ino, &file->inode,
+-				     BMAP_BUFFER, 0, file->blockno,
++		retval = ext2fs_bmap2(fs, file->ino, &file->inode,
++				     BMAP_BUFFER, 0, file->blockno, 0,
+ 				     &file->physblock);
+ 		if (retval)
+ 			return retval;
 
