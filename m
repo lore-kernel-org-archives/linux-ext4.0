@@ -1,7 +1,7 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH 09/15][e2fsprogs] Add 64-bit closefs interface.
-Date: Tue, 15 Jul 2008 11:50:55 -0500
-Message-ID: <20080715165055.28567.87289.stgit@ichigo>
+Subject: [PATCH 03/15][e2fsprogs] Add new blk64_t handling functions
+Date: Tue, 15 Jul 2008 11:50:21 -0500
+Message-ID: <20080715165021.28567.85760.stgit@ichigo>
 References: <20080715164332.28567.27913.stgit@ichigo>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,233 +9,352 @@ Content-Transfer-Encoding: 7bit
 To: "Jose R. Santos" <jrs@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:34683 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754442AbYGOQvE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 12:51:04 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e35.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FGp3bP025820
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:51:03 -0400
-Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FGoxEQ086296
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 10:50:59 -0600
-Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FGovRF008578
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 10:50:58 -0600
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:50037 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754108AbYGOQvN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 15 Jul 2008 12:51:13 -0400
+Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FGpBfT017146
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:51:11 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FGoNID211332
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:23 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FGoMSZ017304
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:22 -0400
 In-Reply-To: <20080715164332.28567.27913.stgit@ichigo>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-Add 64-bit closefs interface.
+Add new blk64_t handling functions
 
-Add new ext2fs_super_and_bgd_loc2() that returns blk64_t pointers.
-The function now returns the number of blocks used by super block and
-group descriptors since with flex_bg, it can no longer be assumed that
-bitmaps and inode tables still resided within the block group.
+Add new blknum.c file which contains funtions to handle blk64_t and
+low/high values in super blocks and inodes.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 --
 
- lib/ext2fs/closefs.c |  120 +++++++++++++++++++++++++++++++++++---------------
- lib/ext2fs/ext2fs.h  |    6 +++
- 2 files changed, 90 insertions(+), 36 deletions(-)
+ lib/ext2fs/Makefile.in |    1
+ lib/ext2fs/blknum.c    |  214 ++++++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2fs.h    |   33 +++++--
+ 3 files changed, 237 insertions(+), 11 deletions(-)
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 --
 
- lib/ext2fs/closefs.c |  120 +++++++++++++++++++++++++++++++++++---------------
- lib/ext2fs/ext2fs.h  |    6 +++
- 2 files changed, 90 insertions(+), 36 deletions(-)
+ lib/ext2fs/Makefile.in |    1 
+ lib/ext2fs/blknum.c    |  214 ++++++++++++++++++++++++++++++++++++++++++++++++
+ lib/ext2fs/ext2fs.h    |   39 ++++++---
+ 3 files changed, 243 insertions(+), 11 deletions(-)
 
-diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
-index 206faa6..8231ca6 100644
---- a/lib/ext2fs/closefs.c
-+++ b/lib/ext2fs/closefs.c
-@@ -46,31 +46,33 @@ int ext2fs_bg_has_super(ext2_filsys fs, int group_block)
- }
- 
- /*
-- * This function returns the location of the superblock, block group
-- * descriptors for a given block group.  It currently returns the
-- * number of free blocks assuming that inode table and allocation
-- * bitmaps will be in the group.  This is not necessarily the case
-- * when the flex_bg feature is enabled, so callers should take care!
-- * It was only really intended for use by mke2fs, and even there it's
-- * not that useful.  In the future, when we redo this function for
-- * 64-bit block numbers, we should probably return the number of
-- * blocks used by the super block and group descriptors instead.
-+ * ext2fs_super_and_bgd_loc2()
-+ * @fs:			ext2 fs pointer
-+ * @group		given block group
-+ * @ret_super_blk:	if !NULL, returns super block location
-+ * @ret_old_desc_blk:	if !NULL, returns location of the old block
-+ *			group descriptor
-+ * @ret_new_desc_blk:	if !NULL, returns location of meta_bg block
-+ *			group descriptor
-+ * @ret_used_blks:	if !NULL, returns number of blocks used by
-+ *			super block and group_descriptors.
-  *
-- * See also the comment for ext2fs_reserve_super_and_bgd()
-+ * Returns errcode_t of 0
-  */
--int ext2fs_super_and_bgd_loc(ext2_filsys fs, 
--			     dgrp_t group,
--			     blk_t *ret_super_blk,
--			     blk_t *ret_old_desc_blk,
--			     blk_t *ret_new_desc_blk,
--			     int *ret_meta_bg)
-+errcode_t ext2fs_super_and_bgd_loc2(ext2_filsys fs,
-+					   dgrp_t group,
-+					   blk64_t *ret_super_blk,
-+					   blk64_t *ret_old_desc_blk,
-+					   blk64_t *ret_new_desc_blk,
-+					   blk_t *ret_used_blks)
- {
--	blk_t	group_block, super_blk = 0, old_desc_blk = 0, new_desc_blk = 0;
-+	blk64_t	group_block, super_blk = 0, old_desc_blk = 0, new_desc_blk = 0;
- 	unsigned int meta_bg, meta_bg_size;
--	blk_t	numblocks, old_desc_blocks;
-+	blk_t	numblocks = 0;
-+	blk64_t old_desc_blocks;
- 	int	has_super;
- 
--	group_block = ext2fs_group_first_block(fs, group);
-+	group_block = ext2fs_group_first_block2(fs, group);
- 
- 	if (fs->super->s_feature_incompat & EXT2_FEATURE_INCOMPAT_META_BG)
- 		old_desc_blocks = fs->super->s_first_meta_bg;
-@@ -78,20 +80,11 @@ int ext2fs_super_and_bgd_loc(ext2_filsys fs,
- 		old_desc_blocks = 
- 			fs->desc_blocks + fs->super->s_reserved_gdt_blocks;
- 
--	if (group == fs->group_desc_count-1) {
--		numblocks = (fs->super->s_blocks_count -
--			     fs->super->s_first_data_block) %
--			fs->super->s_blocks_per_group;
--		if (!numblocks)
--			numblocks = fs->super->s_blocks_per_group;
--	} else
--		numblocks = fs->super->s_blocks_per_group;
--
- 	has_super = ext2fs_bg_has_super(fs, group);
- 
- 	if (has_super) {
- 		super_blk = group_block;
--		numblocks--;
-+		numblocks++;
- 	}
- 	meta_bg_size = EXT2_DESC_PER_BLOCK(fs->super);
- 	meta_bg = group / meta_bg_size;
-@@ -100,7 +93,7 @@ int ext2fs_super_and_bgd_loc(ext2_filsys fs,
- 	    (meta_bg < fs->super->s_first_meta_bg)) {
- 		if (has_super) {
- 			old_desc_blk = group_block + 1;
--			numblocks -= old_desc_blocks;
-+			numblocks += old_desc_blocks;
- 		}
- 	} else {
- 		if (((group % meta_bg_size) == 0) ||
-@@ -109,11 +102,9 @@ int ext2fs_super_and_bgd_loc(ext2_filsys fs,
- 			if (has_super)
- 				has_super = 1;
- 			new_desc_blk = group_block + has_super;
--			numblocks--;
-+			numblocks++;
- 		}
- 	}
--		
--	numblocks -= 2 + fs->inode_blocks_per_group;
- 
- 	if (ret_super_blk)
- 		*ret_super_blk = super_blk;
-@@ -121,11 +112,68 @@ int ext2fs_super_and_bgd_loc(ext2_filsys fs,
- 		*ret_old_desc_blk = old_desc_blk;
- 	if (ret_new_desc_blk)
- 		*ret_new_desc_blk = new_desc_blk;
--	if (ret_meta_bg)
--		*ret_meta_bg = meta_bg;
--	return (numblocks);
-+	if (ret_used_blks)
-+		*ret_used_blks = numblocks;
-+
-+	return 0;
- }
- 
+diff --git a/lib/ext2fs/Makefile.in b/lib/ext2fs/Makefile.in
+index 6f0ae62..3e7cbb9 100644
+--- a/lib/ext2fs/Makefile.in
++++ b/lib/ext2fs/Makefile.in
+@@ -26,6 +26,7 @@ OBJS= $(DEBUGFS_LIB_OBJS) $(RESIZE_LIB_OBJS) $(E2IMAGE_LIB_OBJS) \
+ 	bb_inode.o \
+ 	bitmaps.o \
+ 	bitops.o \
++	blknum.o \
+ 	block.o \
+ 	bmap.o \
+ 	check_desc.o \
+diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
+new file mode 100644
+index 0000000..a09301e
+--- /dev/null
++++ b/lib/ext2fs/blknum.c
+@@ -0,0 +1,214 @@
 +/*
-+ * This function returns the location of the superblock, block group
-+ * descriptors for a given block group.  It currently returns the
-+ * number of free blocks assuming that inode table and allocation
-+ * bitmaps will be in the group.  This is not necessarily the case
-+ * when the flex_bg feature is enabled, so callers should take care!
-+ * It was only really intended for use by mke2fs, and even there it's
-+ * not that useful.
++ * blknum.c --- Functions to handle blk64_t and high/low 64-bit block
++ * number.
 + *
-+ * The ext2fs_super_and_bgd_loc2() function is 64-bit block number
-+ * capable and returns the number of blocks used by super block and
-+ * group descriptors.
++ * Copyright IBM Corporation, 2007
++ * Author Jose R. Santos <jrs@us.ibm.com>
++ *
++ * %Begin-Header%
++ * This file may be redistributed under the terms of the GNU Public
++ * License.
++ * %End-Header%
 + */
-+int ext2fs_super_and_bgd_loc(ext2_filsys fs,
-+			     dgrp_t group,
-+			     blk_t *ret_super_blk,
-+			     blk_t *ret_old_desc_blk,
-+			     blk_t *ret_new_desc_blk,
-+			     int *ret_meta_bg)
++
++#include "ext2fs.h"
++
++/*
++ * Return the group # of a block
++ */
++dgrp_t ext2fs_group_of_blk2(ext2_filsys fs, blk64_t blk)
 +{
-+	blk64_t ret_super_blk2;
-+	blk64_t ret_old_desc_blk2;
-+	blk64_t ret_new_desc_blk2;
-+	blk_t ret_used_blks;
-+	blk_t numblocks;
-+	unsigned int meta_bg_size;
++	return (blk - fs->super->s_first_data_block) /
++		fs->super->s_blocks_per_group;
++}
 +
-+	ext2fs_super_and_bgd_loc2(fs, group, &ret_super_blk2,
-+					&ret_old_desc_blk2,
-+					&ret_new_desc_blk2,
-+					&ret_used_blks);
++/*
++ * Return the first block (inclusive) in a group
++ */
++blk64_t ext2fs_group_first_block2(ext2_filsys fs, dgrp_t group)
++{
++	return fs->super->s_first_data_block +
++		(group * fs->super->s_blocks_per_group);
++}
 +
-+	if (group == fs->group_desc_count-1) {
-+		numblocks = (fs->super->s_blocks_count -
-+			     fs->super->s_first_data_block) %
-+			fs->super->s_blocks_per_group;
-+		if (!numblocks)
-+			numblocks = fs->super->s_blocks_per_group;
-+	} else
-+		numblocks = fs->super->s_blocks_per_group;
++/*
++ * Return the last block (inclusive) in a group
++ */
++blk64_t ext2fs_group_last_block2(ext2_filsys fs, dgrp_t group)
++{
++	return (group == fs->group_desc_count - 1 ?
++		ext2fs_blocks_count(fs->super) - 1 :
++		ext2fs_group_first_block2(fs, group) +
++			(fs->super->s_blocks_per_group - 1));
++}
 +
-+	if (ret_super_blk)
-+		*ret_super_blk = (blk_t)ret_super_blk2;
-+	if (ret_old_desc_blk)
-+		*ret_old_desc_blk = (blk_t)ret_old_desc_blk2;
-+	if (ret_new_desc_blk)
-+		*ret_new_desc_blk = (blk_t)ret_new_desc_blk2;
-+	if (ret_meta_bg) {
-+		meta_bg_size = EXT2_DESC_PER_BLOCK(fs->super);
-+		*ret_meta_bg = group / meta_bg_size;
++/*
++ * Return the inode data block count
++ */
++blk64_t ext2fs_inode_data_blocks2(ext2_filsys fs,
++					struct ext2_inode *inode)
++{
++	return (inode->i_blocks |
++		(fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT ?
++		(__u64)inode->osd2.linux2.l_i_blocks_hi << 32 : 0)) -
++		(inode->i_file_acl ? fs->blocksize >> 9 : 0);
++}
++
++/*
++ * Return the fs block count
++ */
++blk64_t ext2fs_blocks_count(struct ext2_super_block *super)
++{
++	return super->s_blocks_count |
++		(super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT ?
++		(__u64) super->s_blocks_count_hi << 32 : 0);
++}
++
++/*
++ * Set the fs block count
++ */
++void ext2fs_blocks_count_set(struct ext2_super_block *super, blk64_t blk)
++{
++	super->s_blocks_count = blk;
++	if (super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++		super->s_blocks_count_hi = (__u64) blk >> 32;
++}
++
++/*
++ * Return the fs reserved block count
++ */
++blk64_t ext2fs_r_blocks_count(struct ext2_super_block *super)
++{
++	return super->s_r_blocks_count |
++		(super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT ?
++		(__u64) super->s_r_blocks_count_hi << 32 : 0);
++}
++
++/*
++ * Set the fs reserved block count
++ */
++void ext2fs_r_blocks_count_set(struct ext2_super_block *super, blk64_t blk)
++{
++	super->s_r_blocks_count = blk;
++	if (super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++		super->s_r_blocks_count_hi = (__u64) blk >> 32;
++}
++
++/*
++ * Return the fs free block count
++ */
++blk64_t ext2fs_free_blocks_count(struct ext2_super_block *super)
++{
++	return super->s_free_blocks_count |
++		(super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT ?
++		(__u64) super->s_free_blocks_hi << 32 : 0);
++}
++
++/*
++ * Set the fs free block count
++ */
++void ext2fs_free_blocks_count_set(struct ext2_super_block *super, blk64_t blk)
++{
++	super->s_free_blocks_count = blk;
++	if (super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++		super->s_free_blocks_hi = (__u64) blk >> 32;
++}
++
++/*
++ * Return the block bitmap block of a group
++ */
++blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group)
++{
++	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
++		struct ext4_group_desc *gdp;
++		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
++
++		return gdp->bg_block_bitmap |
++			(fs->super->s_feature_incompat
++			 & EXT4_FEATURE_INCOMPAT_64BIT ?
++			 (__u64) gdp->bg_block_bitmap_hi << 32 : 0);
 +	}
 +
-+	numblocks -= 2 + fs->inode_blocks_per_group + ret_used_blks;
-+
-+	return numblocks;
++	return fs->group_desc[group].bg_block_bitmap;
 +}
- 
- /*
-  * This function forces out the primary superblock.  We need to only
++
++/*
++ * Set the block bitmap block of a group
++ */
++void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
++{
++	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
++		struct ext4_group_desc *gdp;
++		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
++		gdp->bg_block_bitmap = blk;
++		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++			gdp->bg_block_bitmap_hi = (__u64) blk >> 32;
++	} else
++		fs->group_desc[group].bg_block_bitmap = blk;
++}
++
++/*
++ * Return the inode bitmap block of a group
++ */
++blk64_t ext2fs_inode_bitmap_loc(ext2_filsys fs, dgrp_t group)
++{
++	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
++		struct ext4_group_desc *gdp;
++		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
++
++		return gdp->bg_inode_bitmap |
++			(fs->super->s_feature_incompat
++			 & EXT4_FEATURE_INCOMPAT_64BIT ?
++			 (__u64) gdp->bg_inode_bitmap_hi << 32 : 0);
++	}
++
++	return fs->group_desc[group].bg_inode_bitmap;
++}
++
++/*
++ * Set the inode bitmap block of a group
++ */
++void ext2fs_inode_bitmap_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
++{
++	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
++		struct ext4_group_desc *gdp;
++		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
++		gdp->bg_inode_bitmap = blk;
++		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++			gdp->bg_inode_bitmap_hi = (__u64) blk >> 32;
++	} else
++		fs->group_desc[group].bg_inode_bitmap = blk;
++}
++
++/*
++ * Return the inode table block of a group
++ */
++blk64_t ext2fs_inode_table_loc(ext2_filsys fs, dgrp_t group)
++{
++	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
++		struct ext4_group_desc *gdp;
++		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
++
++		return gdp->bg_inode_table |
++			(fs->super->s_feature_incompat
++			 & EXT4_FEATURE_INCOMPAT_64BIT ?
++			 (__u64) gdp->bg_inode_table_hi << 32 : 0);
++	}
++
++	return fs->group_desc[group].bg_inode_table;
++}
++
++/*
++ * Set the inode table block of a group
++ */
++void ext2fs_inode_table_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
++{
++	if (fs->super->s_desc_size >= EXT2_MIN_DESC_SIZE_64BIT) {
++		struct ext4_group_desc *gdp;
++		gdp = (struct ext4_group_desc *) (fs->group_desc) + group;
++		gdp->bg_inode_table = blk;
++		if (fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT)
++			gdp->bg_inode_table_hi = (__u64) blk >> 32;
++	} else
++		fs->group_desc[group].bg_inode_table = blk;
++}
 diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index d576181..464d323 100644
+index d9337aa..35cf0a3 100644
 --- a/lib/ext2fs/ext2fs.h
 +++ b/lib/ext2fs/ext2fs.h
-@@ -763,6 +763,12 @@ extern errcode_t ext2fs_check_desc(ext2_filsys fs);
- extern errcode_t ext2fs_close(ext2_filsys fs);
- extern errcode_t ext2fs_flush(ext2_filsys fs);
- extern int ext2fs_bg_has_super(ext2_filsys fs, int group_block);
-+extern errcode_t ext2fs_super_and_bgd_loc2(ext2_filsys fs,
-+				    dgrp_t group,
-+				    blk64_t *ret_super_blk,
-+				    blk64_t *ret_old_desc_blk,
-+				    blk64_t *ret_new_desc_blk,
-+				    blk_t *ret_used_blks);
- extern int ext2fs_super_and_bgd_loc(ext2_filsys fs, 
- 				    dgrp_t group,
- 				    blk_t *ret_super_blk,
+@@ -682,6 +682,30 @@ extern errcode_t ext2fs_get_block_bitmap_range(ext2fs_block_bitmap bmap,
+ 					blk_t start, unsigned int num,
+ 					void *out);
+ 
++/* blknum.c */
++extern dgrp_t ext2fs_group_of_blk2(ext2_filsys fs, blk64_t);
++extern blk64_t ext2fs_group_first_block2(ext2_filsys fs, dgrp_t group);
++extern blk64_t ext2fs_group_last_block2(ext2_filsys fs, dgrp_t group);
++extern blk64_t ext2fs_inode_data_blocks2(ext2_filsys fs,
++					 struct ext2_inode *inode);
++extern blk64_t ext2fs_blocks_count(struct ext2_super_block *super);
++extern void ext2fs_blocks_count_set(struct ext2_super_block *super,
++				    blk64_t blk);
++extern blk64_t ext2fs_r_blocks_count(struct ext2_super_block *super);
++extern void ext2fs_r_blocks_count_set(struct ext2_super_block *super,
++				      blk64_t blk);
++extern blk64_t ext2fs_free_blocks_count(struct ext2_super_block *super);
++extern void ext2fs_free_blocks_count_set(struct ext2_super_block *super,
++					 blk64_t blk);
++extern blk64_t ext2fs_block_bitmap_loc(ext2_filsys fs, dgrp_t group);
++extern void ext2fs_block_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
++					blk64_t blk);
++extern blk64_t ext2fs_inode_bitmap_loc(ext2_filsys fs, dgrp_t group);
++extern void ext2fs_inode_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
++					blk64_t blk);
++extern blk64_t ext2fs_inode_table_loc(ext2_filsys fs, dgrp_t group);
++extern void ext2fs_inode_table_loc_set(ext2_filsys fs, dgrp_t group,
++				       blk64_t blk);
+ 
+ /* block.c */
+ extern errcode_t ext2fs_block_iterate(ext2_filsys fs,
+@@ -1316,10 +1340,8 @@ _INLINE_ int ext2fs_test_bb_dirty(ext2_filsys fs)
+  */
+ _INLINE_ int ext2fs_group_of_blk(ext2_filsys fs, blk_t blk)
+ {
+-	return (blk - fs->super->s_first_data_block) /
+-		fs->super->s_blocks_per_group;
++	return ext2fs_group_of_blk2(fs, blk);
+ }
+-
+ /*
+  * Return the group # of an inode number
+  */
+@@ -1333,8 +1355,7 @@ _INLINE_ int ext2fs_group_of_ino(ext2_filsys fs, ext2_ino_t ino)
+  */
+ _INLINE_ blk_t ext2fs_group_first_block(ext2_filsys fs, dgrp_t group)
+ {
+-	return fs->super->s_first_data_block +
+-		(group * fs->super->s_blocks_per_group);
++	return ext2fs_group_first_block2(fs, group);
+ }
+ 
+ /*
+@@ -1342,17 +1363,13 @@ _INLINE_ blk_t ext2fs_group_first_block(ext2_filsys fs, dgrp_t group)
+  */
+ _INLINE_ blk_t ext2fs_group_last_block(ext2_filsys fs, dgrp_t group)
+ {
+-	return (group == fs->group_desc_count - 1 ?
+-		fs->super->s_blocks_count - 1 :
+-		ext2fs_group_first_block(fs, group) +
+-			(fs->super->s_blocks_per_group - 1));
++	return ext2fs_group_last_block2(fs, group);
+ }
+ 
+ _INLINE_ blk_t ext2fs_inode_data_blocks(ext2_filsys fs,
+ 					struct ext2_inode *inode)
+ {
+-       return inode->i_blocks -
+-              (inode->i_file_acl ? fs->blocksize >> 9 : 0);
++	return ext2fs_inode_data_blocks2(fs, inode);
+ }
+ 
+ /*
 
