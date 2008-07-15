@@ -1,7 +1,7 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH 07/15][e2fsprogs] Add 64-bit alloc interface.
-Date: Tue, 15 Jul 2008 11:50:44 -0500
-Message-ID: <20080715165044.28567.41422.stgit@ichigo>
+Subject: [PATCH 08/15][e2fsprogs] Add 64-bit ext_attr interface.
+Date: Tue, 15 Jul 2008 11:50:49 -0500
+Message-ID: <20080715165049.28567.76920.stgit@ichigo>
 References: <20080715164332.28567.27913.stgit@ichigo>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
@@ -9,207 +9,151 @@ Content-Transfer-Encoding: 7bit
 To: "Jose R. Santos" <jrs@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
 	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:60455 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753612AbYGOQuq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 15 Jul 2008 12:50:46 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FGojnc008995
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:45 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FGojS5211364
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:45 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FGoiRL032453
-	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:50:45 -0400
+Received: from e33.co.us.ibm.com ([32.97.110.151]:40806 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754560AbYGOQvF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 12:51:05 -0400
+Received: from d03relay05.boulder.ibm.com (d03relay05.boulder.ibm.com [9.17.195.107])
+	by e33.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6FGp4l2022823
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 12:51:04 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d03relay05.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6FGoomJ051354
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 10:50:53 -0600
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6FGooNO008266
+	for <linux-ext4@vger.kernel.org>; Tue, 15 Jul 2008 10:50:50 -0600
 In-Reply-To: <20080715164332.28567.27913.stgit@ichigo>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-Add 64-bit alloc interface.
+Add 64-bit ext_attr interface.
 
-Add new ext2fs_new_block2(), ext2fs_get_free_blocks2() and
-ext2fs_alloc_block2() that take and return blk64_t.
+Add ext2fs_read_ext_attr2(), ext2fs_write_ext_attr2() and
+ext2fs_adjust_ea_refcount2() that take blk64_t as an input.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 --
 
- lib/ext2fs/alloc.c  |   70 ++++++++++++++++++++++++++++++++++++++-------------
- lib/ext2fs/ext2fs.h |    8 ++++++
- 2 files changed, 60 insertions(+), 18 deletions(-)
+ lib/ext2fs/ext2fs.h   |    7 +++++++
+ lib/ext2fs/ext_attr.c |   31 ++++++++++++++++++++++++-------
+ 2 files changed, 31 insertions(+), 7 deletions(-)
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+--
 
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index f8d8a5f..411e934 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -73,10 +73,10 @@ errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir,
-  * Stupid algorithm --- we now just search forward starting from the
-  * goal.  Should put in a smarter one someday....
-  */
--errcode_t ext2fs_new_block(ext2_filsys fs, blk_t goal,
--			   ext2fs_block_bitmap map, blk_t *ret)
-+errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
-+			   ext2fs_block_bitmap map, blk64_t *ret)
- {
--	blk_t	i;
-+	blk64_t	i;
+ lib/ext2fs/ext2fs.h   |    7 +++++++
+ lib/ext2fs/ext_attr.c |   31 ++++++++++++++++++++++++-------
+ 2 files changed, 31 insertions(+), 7 deletions(-)
+
+diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
+index 66073e8..d576181 100644
+--- a/lib/ext2fs/ext2fs.h
++++ b/lib/ext2fs/ext2fs.h
+@@ -867,11 +867,18 @@ extern errcode_t ext2fs_expand_dir(ext2_filsys fs, ext2_ino_t dir);
+ extern __u32 ext2fs_ext_attr_hash_entry(struct ext2_ext_attr_entry *entry,
+ 					void *data);
+ extern errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf);
++extern errcode_t ext2fs_read_ext_attr2(ext2_filsys fs, blk64_t block,
++				       void *buf);
+ extern errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block,
+ 				       void *buf);
++extern errcode_t ext2fs_write_ext_attr2(ext2_filsys fs, blk64_t block,
++				       void *buf);
+ extern errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
+ 					   char *block_buf,
+ 					   int adjust, __u32 *newcount);
++extern errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
++					   char *block_buf,
++					   int adjust, __u32 *newcount);
  
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+ /* extent.c */
+ extern errcode_t ext2fs_extent_header_verify(void *ptr, int size);
+diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+index 3d208ec..395d4c7 100644
+--- a/lib/ext2fs/ext_attr.c
++++ b/lib/ext2fs/ext_attr.c
+@@ -60,11 +60,11 @@ __u32 ext2fs_ext_attr_hash_entry(struct ext2_ext_attr_entry *entry, void *data)
+ #undef NAME_HASH_SHIFT
+ #undef VALUE_HASH_SHIFT
  
-@@ -88,7 +88,8 @@ errcode_t ext2fs_new_block(ext2_filsys fs, blk_t goal,
- 		goal = fs->super->s_first_data_block;
- 	i = goal;
- 	do {
--		if (!ext2fs_fast_test_block_bitmap(map, i)) {
-+		/* FIXME-64 */
-+		if (!ext2fs_fast_test_block_bitmap(map, (blk_t) i)) {
- 			*ret = i;
- 			return 0;
- 		}
-@@ -99,15 +100,26 @@ errcode_t ext2fs_new_block(ext2_filsys fs, blk_t goal,
- 	return EXT2_ET_BLOCK_ALLOC_FAIL;
- }
- 
-+errcode_t ext2fs_new_block(ext2_filsys fs, blk_t goal,
-+			   ext2fs_block_bitmap map, blk_t *ret)
-+{
-+	errcode_t retval;
-+	blk64_t val;
-+	retval = ext2fs_new_block2(fs, goal, map, &val);
-+	if (!retval)
-+		*ret = (blk_t) val;
-+	return retval;
-+}
-+
- /*
-  * This function zeros out the allocated block, and updates all of the
-  * appropriate filesystem records.
-  */
--errcode_t ext2fs_alloc_block(ext2_filsys fs, blk_t goal,
--			     char *block_buf, blk_t *ret)
-+errcode_t ext2fs_alloc_block2(ext2_filsys fs, blk64_t goal,
-+			     char *block_buf, blk64_t *ret)
+-errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf)
++errcode_t ext2fs_read_ext_attr2(ext2_filsys fs, blk64_t block, void *buf)
  {
  	errcode_t	retval;
--	blk_t		block;
-+	blk64_t		block;
- 	char		*buf = 0;
  
- 	if (!block_buf) {
-@@ -119,29 +131,27 @@ errcode_t ext2fs_alloc_block(ext2_filsys fs, blk_t goal,
- 	memset(block_buf, 0, fs->blocksize);
- 
- 	if (fs->get_alloc_block) {
--		blk64_t	new;
--
--		retval = (fs->get_alloc_block)(fs, (blk64_t) goal, &new);
-+		retval = (fs->get_alloc_block)(fs, goal, &block);
- 		if (retval)
- 			goto fail;
--		block = (blk_t) new;
- 	} else {
- 		if (!fs->block_map) {
-+			/* FIXME-64 */
- 			retval = ext2fs_read_block_bitmap(fs);
- 			if (retval)
- 				goto fail;
- 		}
- 
--		retval = ext2fs_new_block(fs, goal, 0, &block);
-+		retval = ext2fs_new_block2(fs, goal, 0, &block);
- 		if (retval)
- 			goto fail;
- 	}
- 
--	retval = io_channel_write_blk(fs->io, block, 1, block_buf);
-+	retval = io_channel_write_blk64(fs->io, block, 1, block_buf);
+- 	retval = io_channel_read_blk(fs->io, block, 1, buf);
++	retval = io_channel_read_blk64(fs->io, block, 1, buf);
  	if (retval)
- 		goto fail;
- 	
--	ext2fs_block_alloc_stats(fs, block, +1);
-+	ext2fs_block_alloc_stats2(fs, block, +1);
- 	*ret = block;
+ 		return retval;
+ #ifdef WORDS_BIGENDIAN
+@@ -73,7 +73,12 @@ errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf)
+ 	return 0;
+ }
  
- fail:
-@@ -150,10 +160,21 @@ fail:
+-errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block, void *inbuf)
++errcode_t ext2fs_read_ext_attr(ext2_filsys fs, blk_t block, void *buf)
++{
++	return ext2fs_read_ext_attr2(fs, block, buf);
++}
++
++errcode_t ext2fs_write_ext_attr2(ext2_filsys fs, blk64_t block, void *inbuf)
+ {
+ 	errcode_t	retval;
+ 	char		*write_buf;
+@@ -88,7 +93,7 @@ errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block, void *inbuf)
+ #else
+ 	write_buf = (char *) inbuf;
+ #endif
+- 	retval = io_channel_write_blk(fs->io, block, 1, write_buf);
++	retval = io_channel_write_blk64(fs->io, block, 1, write_buf);
+ 	if (buf)
+ 		ext2fs_free_mem(&buf);
+ 	if (!retval)
+@@ -96,10 +101,15 @@ errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block, void *inbuf)
  	return retval;
  }
  
--errcode_t ext2fs_get_free_blocks(ext2_filsys fs, blk_t start, blk_t finish,
--				 int num, ext2fs_block_bitmap map, blk_t *ret)
-+errcode_t ext2fs_alloc_block(ext2_filsys fs, blk_t goal,
-+			     char *block_buf, blk_t *ret)
++errcode_t ext2fs_write_ext_attr(ext2_filsys fs, blk_t block, void *inbuf)
 +{
-+	errcode_t retval;
-+	blk64_t	val;
-+	retval = ext2fs_alloc_block2(fs, goal, block_buf, &val);
-+	if (!retval)
-+		*ret = (blk_t) val;
-+	return retval;
++	return ext2fs_write_ext_attr2(fs, block, inbuf);
 +}
 +
-+errcode_t ext2fs_get_free_blocks2(ext2_filsys fs, blk64_t start, blk64_t finish,
-+				 int num, ext2fs_block_bitmap map, blk64_t *ret)
+ /*
+  * This function adjusts the reference count of the EA block.
+  */
+-errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
++errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
+ 				    char *block_buf, int adjust,
+ 				    __u32 *newcount)
  {
--	blk_t	b = start;
-+	blk64_t	b = start;
+@@ -118,7 +128,7 @@ errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
+ 		block_buf = buf;
+ 	}
  
- 	EXT2_CHECK_MAGIC(fs, EXT2_ET_MAGIC_EXT2FS_FILSYS);
+-	retval = ext2fs_read_ext_attr(fs, blk, block_buf);
++	retval = ext2fs_read_ext_attr2(fs, blk, block_buf);
+ 	if (retval)
+ 		goto errout;
  
-@@ -170,7 +191,9 @@ errcode_t ext2fs_get_free_blocks(ext2_filsys fs, blk_t start, blk_t finish,
- 	do {
- 		if (b+num-1 > fs->super->s_blocks_count)
- 			b = fs->super->s_first_data_block;
--		if (ext2fs_fast_test_block_bitmap_range(map, b, num)) {
-+		/* FIXME-64 */
-+		if (ext2fs_fast_test_block_bitmap_range(map, (blk_t) b,
-+							(blk_t) num)) {
- 			*ret = b;
- 			return 0;
- 		}
-@@ -179,6 +202,17 @@ errcode_t ext2fs_get_free_blocks(ext2_filsys fs, blk_t start, blk_t finish,
- 	return EXT2_ET_BLOCK_ALLOC_FAIL;
+@@ -127,7 +137,7 @@ errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
+ 	if (newcount)
+ 		*newcount = header->h_refcount;
+ 
+-	retval = ext2fs_write_ext_attr(fs, blk, block_buf);
++	retval = ext2fs_write_ext_attr2(fs, blk, block_buf);
+ 	if (retval)
+ 		goto errout;
+ 
+@@ -136,3 +146,10 @@ errout:
+ 		ext2fs_free_mem(&buf);
+ 	return retval;
  }
- 
-+errcode_t ext2fs_get_free_blocks(ext2_filsys fs, blk_t start, blk_t finish,
-+				 int num, ext2fs_block_bitmap map, blk_t *ret)
-+{
-+	errcode_t retval;
-+	blk64_t val;
-+	retval = ext2fs_get_free_blocks2(fs, start, finish, num, map, &val);
-+	if(!retval)
-+		*ret = (blk_t) val;
-+	return retval;
-+}
 +
- void ext2fs_set_alloc_block_callback(ext2_filsys fs, 
- 				     errcode_t (*func)(ext2_filsys fs,
- 						       blk64_t goal,
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index fd5b69a..66073e8 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -555,12 +555,20 @@ extern errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir, int mode,
- 				  ext2fs_inode_bitmap map, ext2_ino_t *ret);
- extern errcode_t ext2fs_new_block(ext2_filsys fs, blk_t goal,
- 				  ext2fs_block_bitmap map, blk_t *ret);
-+extern errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
-+				   ext2fs_block_bitmap map, blk64_t *ret);
- extern errcode_t ext2fs_get_free_blocks(ext2_filsys fs, blk_t start,
- 					blk_t finish, int num,
- 					ext2fs_block_bitmap map,
- 					blk_t *ret);
-+extern errcode_t ext2fs_get_free_blocks2(ext2_filsys fs, blk64_t start,
-+					 blk64_t finish, int num,
-+					 ext2fs_block_bitmap map,
-+					 blk64_t *ret);
- extern errcode_t ext2fs_alloc_block(ext2_filsys fs, blk_t goal,
- 				    char *block_buf, blk_t *ret);
-+extern errcode_t ext2fs_alloc_block2(ext2_filsys fs, blk64_t goal,
-+				     char *block_buf, blk64_t *ret);
- extern void ext2fs_set_alloc_block_callback(ext2_filsys fs, 
- 					    errcode_t (*func)(ext2_filsys fs,
- 							      blk64_t goal,
++errcode_t ext2fs_adjust_ea_refcount(ext2_filsys fs, blk_t blk,
++					char *block_buf, int adjust,
++					__u32 *newcount)
++{
++	return ext2fs_adjust_ea_refcount(fs, blk, block_buf, adjust, newcount);
++}
 
