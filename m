@@ -1,156 +1,94 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH 15/15][e2fsprogs] 64-bit mke2fs cleanup
-Date: Wed, 16 Jul 2008 12:44:37 -0500
-Message-ID: <20080716124437.700cd00f@ichigo>
-References: <20080715164332.28567.27913.stgit@ichigo>
-	<20080715165129.28567.7837.stgit@ichigo>
-	<87fxq99810.fsf@frosties.localdomain>
+From: Theodore Tso <tytso@mit.edu>
+Subject: [PATCH, RFC] Add more intelligent handling of the mke2fs.conf
+	installation process
+Date: Wed, 16 Jul 2008 13:52:57 -0400
+Message-ID: <20080716175257.GF2167@mit.edu>
+References: <E1KITeX-0001PV-Pv@closure.thunk.org> <487BAA6B.7030001@redhat.com> <20080714195526.GA3382@mit.edu> <1216172323.8292.23.camel@mingming-laptop> <20080716023532.GO8185@mit.edu> <1216227720.6424.7.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Goswin von Brederlow <goswin-v-b@web.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:36877 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751921AbYGPRo4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 13:44:56 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6GHir7O030746
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 13:44:53 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6GHii0T075118
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 11:44:47 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6GHihTj026078
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 11:44:43 -0600
-In-Reply-To: <87fxq99810.fsf@frosties.localdomain>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:47740 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751780AbYGPRxA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 13:53:00 -0400
+Content-Disposition: inline
+In-Reply-To: <1216227720.6424.7.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 16 Jul 2008 17:13:31 +0200
-Goswin von Brederlow <goswin-v-b@web.de> wrote:
+On Wed, Jul 16, 2008 at 10:02:00AM -0700, Mingming Cao wrote:
+> I looked at misc/Makefile, it seems if the system already
+> have /etc/mke2fs.conf, it will not get updated. This is reasonable for
+> ext3.   But not good for ext4.
 
-> From: Goswin von Brederlow <goswin-v-b@web.de>
-> 
-> Bring back overflow checks in mke2fs.c and remove dead code in
-> getsize.c
-> 
-> - ext2fs_get_device_size2() no longer returns EFBIG, the code path for
->   it is dead. remove.
-> 
-> - Change code to check actual dev_size against 2^32.
-> 
-> - Check for EXT4_FEATURE_INCOMPAT_64BIT before bailing out with
->   excessive size error.
-> 
-> - Move check, only check dev_size when it is actualy used. Not when
->   overridden by command line args.
-> 
-> FIXME: check command line args for excessive size too.
-> 
-> Signed-off-by: Goswin von Brederlow <goswin-v-b@web.de>
-> --
-> 
->  lib/ext2fs/getsize.c |   15 ---------------
->  misc/mke2fs.c        |   30 +++++++++++++++---------------
->  2 files changed, 15 insertions(+), 30 deletions(-)
-> 
-> Index: e2fsprogs/misc/mke2fs.c
-> ===================================================================
-> --- e2fsprogs.orig/misc/mke2fs.c	2008-07-16 15:59:48.000000000 +0200
-> +++ e2fsprogs/misc/mke2fs.c	2008-07-16 16:57:54.000000000 +0200
-> @@ -1410,21 +1410,6 @@ static void PRS(int argc, char *argv[])
->  		retval = ext2fs_get_device_size2(device_name,
->  						EXT2_BLOCK_SIZE(&fs_param),
->  						&dev_size);
-> -		if ((retval == EFBIG) &&
-> -		    (blocksize == 0) && 
-> -		    (fs_param.s_log_block_size == 0)) {
-> -			fs_param.s_log_block_size = 2;
-> -			blocksize = 4096;
-> -			goto retry;
-> -		}
-> -	}
-> -			
-> -	if (retval == EFBIG) {
-> -		fprintf(stderr, _("%s: Size of device %s too big "
-> -				  "to be expressed in 32 bits\n\t"
-> -				  "using a blocksize of %d.\n"),
-> -			program_name, device_name, EXT2_BLOCK_SIZE(&fs_param));
-> -		exit(1);
->  	}
->  	if (retval && (retval != EXT2_ET_UNIMPLEMENTED)) {
->  		com_err(program_name, retval,
-> @@ -1451,7 +1436,22 @@ static void PRS(int argc, char *argv[])
->  				  ));
->  				exit(1);
->  			}
-> +			if ((dev_size >= 1LLU << 32) &&
-> +			    (blocksize == 0) &&
-> +			    (fs_param.s_log_block_size == 0)) {
-> +				fs_param.s_log_block_size = 2;
-> +				blocksize = 4096;
-> +				goto retry;
-> +			}
-> +			if (!(fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) && (dev_size >= 1ULL << 32)) {
-> +				fprintf(stderr, _("%s: Size of device %s too big "
-> +						  "to be expressed in 32 bits\n\t"
-> +						  "using a blocksize of %d.\n"),
-> +					program_name, device_name, EXT2_BLOCK_SIZE(&fs_param));
-> +				exit(1);
-> +			}
+Good point.  The following patch won't do anything for people building
+RPM or dpkg packages (which have their own automatic configuration
+file handling); this will provide a poor person's config handling
+machinery for people building e2fsprogs and the installing on their
+own local system.
 
-Well, EXT4_FEATURE_INCOMPAT_64BIT should be setup later in PRS() along
-with setting up large group descriptors so this piece need work.  This
-should fail if what we are making is a ext3 filesystem and if we are
-making a ext4 filesystem with > 32bit blocks, set the
-EXT4_FEATURE_INCOMPAT_64BIT flag as well as the large bgd.
+						- Ted
 
-I'll fix this on the next release.
+>From f8e42224f8cc77afd2b2372dc527428072e28519 Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Wed, 16 Jul 2008 13:39:32 -0400
+Subject: [PATCH] Add more intelligent handling of the mke2fs.conf installation process
 
->  			ext2fs_blocks_count_set(&fs_param, dev_size);
-> +fprintf(stderr, "blocks count = %llu\n", ext2fs_blocks_count(&fs_param));
->  			if (sys_page_size > EXT2_BLOCK_SIZE(&fs_param)) {
->  				blk64_t tmp = ext2fs_blocks_count(&fs_param);
->  				tmp &= ~((sys_page_size /
-> Index: e2fsprogs/lib/ext2fs/getsize.c
-> ===================================================================
-> --- e2fsprogs.orig/lib/ext2fs/getsize.c	2008-07-16 16:34:58.000000000 +0200
-> +++ e2fsprogs/lib/ext2fs/getsize.c	2008-07-16 16:49:03.000000000 +0200
-> @@ -188,11 +188,6 @@ errcode_t ext2fs_get_device_size2(const 
->  #endif
->  	if (valid_blkgetsize64 &&
->  	    ioctl(fd, BLKGETSIZE64, &size64) >= 0) {
-> -		if ((sizeof(*retblocks) < sizeof(unsigned long long)) &&
-> -		    ((size64 / blocksize) > 0xFFFFFFFF)) {
-> -			rc = EFBIG;
-> -			goto out;
-> -		}
->  		*retblocks = size64 / blocksize;
->  		goto out;
->  	}
-> @@ -253,11 +248,6 @@ errcode_t ext2fs_get_device_size2(const 
->  		if (fstat(fd, &st) == 0)
->  #endif
->  			if (S_ISREG(st.st_mode)) {
-> -				if ((sizeof(*retblocks) < sizeof(unsigned long long)) &&
-> -				    ((st.st_size / blocksize) > 0xFFFFFFFF)) {
-> -					rc = EFBIG;
-> -					goto out;
-> -				}
->  				*retblocks = st.st_size / blocksize;
->  				goto out;
->  			}
-> @@ -282,11 +272,6 @@ errcode_t ext2fs_get_device_size2(const 
->  	}
->  	valid_offset (fd, 0);
->  	size64 = low + 1;
-> -	if ((sizeof(*retblocks) < sizeof(unsigned long long))
-> -	    && ((size64 / blocksize) > 0xFFFFFFFF)) {
-> -		rc = EFBIG;
-> -		goto out;
-> -	}
->  	*retblocks = size64 / blocksize;
->  out:
->  	close(fd);
+For people who are compiling mke2fs for their own use outside of a
+package manager, we need to make sure the system /etc/mke2fs.conf is
+sufficiently up-to-date that it won't cause problems, but at the same
+time we don't want to blow away any user-specific customizations.
+
+So if /etc/mk2fs.conf exists, but does not mention ext4dev, we will
+move it aside to /etc/mke2fs.conf.e2fsprogs-old and then install the
+new mke2fs.conf.  If the /etc/mke2fs.conf file exists but does mention
+ext4dev, we install the new mke2fs.conf file as
+/etc/mke2fs.conf.e2fsprogs-new.  In both we print warning to the user
+so they can manually make any changes as needed.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ misc/Makefile.in |   25 ++++++++++++++++++++++++-
+ 1 files changed, 24 insertions(+), 1 deletions(-)
+
+diff --git a/misc/Makefile.in b/misc/Makefile.in
+index a8d1018..a81df8a 100644
+--- a/misc/Makefile.in
++++ b/misc/Makefile.in
+@@ -343,7 +343,30 @@ install: all $(SMANPAGES) $(UMANPAGES) installdirs
+ 		echo "	INSTALL_DATA $(man5dir)/$$i"; \
+ 		$(INSTALL_DATA) $$i $(DESTDIR)$(man5dir)/$$i; \
+ 	done
+-	@if ! test -f $(DESTDIR)$(root_sysconfdir)/mke2fs.conf; then \
++	@if test -f $(DESTDIR)$(root_sysconfdir)/mke2fs.conf; then \
++		if cmp -s $(DESTDIR)$(root_sysconfdir)/mke2fs.conf \
++			$(srcdir)/mke2fs.conf; then \
++			true; \
++		else \
++			if grep -q ext4dev $(DESTDIR)$(root_sysconfdir)/mke2fs.conf ; then \
++				echo "	INSTALL_DATA $(root_sysconfdir)/mke2fs.conf.e2fsprogs-new"; \
++				$(INSTALL_DATA) $(srcdir)/mke2fs.conf \
++					$(DESTDIR)$(root_sysconfdir)/mke2fs.conf.e2fsprogs-new; \
++				echo "Warning: installing mke2fs.conf in $(DESTDIR)$(root_sysconfdir)/mke2fs.conf.e2fsprogs-new"; \
++				echo "Check to see if you need to update your $(root_sysconfdir)/mke2fs.conf"; \
++			else \
++				echo "	INSTALL_DATA $(root_sysconfdir)/mke2fs.conf"; \
++				mv $(DESTDIR)$(root_sysconfdir)/mke2fs.conf \
++				   $(DESTDIR)$(root_sysconfdir)/mke2fs.conf.e2fsprogs-old; \
++				$(INSTALL_DATA) $(srcdir)/mke2fs.conf \
++					$(DESTDIR)$(root_sysconfdir)/mke2fs.conf; \
++				echo "Your mke2fs.conf is too old.  Backing up old version in"; \
++				echo "$(DESTDIR)$(root_sysconfdir)/mke2fs.conf.e2fsprogs-old.  Please check to see"; \
++				echo "if you have any local customizations that you wish to preserve."; \
++			fi; \
++			echo " "; \
++		fi; \
++	else \
+ 		echo "	INSTALL_DATA $(root_sysconfdir)/mke2fs.conf"; \
+ 		$(INSTALL_DATA) $(srcdir)/mke2fs.conf \
+ 			$(DESTDIR)$(root_sysconfdir)/mke2fs.conf; \
+-- 
+1.5.6.1.205.ge2c7.dirty
+
