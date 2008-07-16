@@ -1,54 +1,35 @@
-From: Goswin von Brederlow <goswin-v-b@web.de>
-Subject: Re: [PATCH 15/15][e2fsprogs] 64-bit mke2fs cleanup
-Date: Wed, 16 Jul 2008 14:50:14 +0200
-Message-ID: <87tzeq0z95.fsf@frosties.localdomain>
-References: <20080715164332.28567.27913.stgit@ichigo>
-	<20080715165129.28567.7837.stgit@ichigo>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 01/15][e2fsprogs] libext2fs: Add 64-bit support to the
+	undo manager
+Date: Wed, 16 Jul 2008 09:26:28 -0400
+Message-ID: <20080716132628.GS8185@mit.edu>
+References: <20080715164332.28567.27913.stgit@ichigo> <20080715165008.28567.22096.stgit@ichigo> <873ama2i51.fsf@frosties.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Cc: "Jose R. Santos" <jrs@us.ibm.com>, linux-ext4@vger.kernel.org
+To: Goswin von Brederlow <goswin-v-b@web.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fmmailgate01.web.de ([217.72.192.221]:59438 "EHLO
-	fmmailgate01.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757384AbYGPMut (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 08:50:49 -0400
-In-Reply-To: <20080715165129.28567.7837.stgit@ichigo> (Jose R. Santos's
-	message of "Tue, 15 Jul 2008 11:51:29 -0500")
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:60169 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755957AbYGPN0c (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 09:26:32 -0400
+Content-Disposition: inline
+In-Reply-To: <873ama2i51.fsf@frosties.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Jose R. Santos" <jrs@us.ibm.com> writes:
+On Wed, Jul 16, 2008 at 01:16:58PM +0200, Goswin von Brederlow wrote:
+> Why not this?
+> 
+> +static errcode_t undo_read_blk64(io_channel channel, blk64_t block,
+> +				 int count, void *data);
+> 
+> libext2fs specifically has blk_t and blk64_t types to represent a
+> block. Why not use them? It is less to type and easier to read.
 
-> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> index 7171990..817be56 100644
-> --- a/misc/mke2fs.c
-> +++ b/misc/mke2fs.c
-> @@ -1402,12 +1402,12 @@ static void PRS(int argc, char *argv[])
->  
->  	fs_param.s_log_frag_size = fs_param.s_log_block_size;
->  
-> -	if (noaction && fs_param.s_blocks_count) {
-> -		dev_size = fs_param.s_blocks_count;
-> +	if (noaction && ext2fs_blocks_count(&fs_param)) {
-> +		dev_size = ext2fs_blocks_count(&fs_param);
->  		retval = 0;
->  	} else {
->  	retry:
-> -		retval = ext2fs_get_device_size(device_name,
-> +		retval = ext2fs_get_device_size2(device_name,
->  						EXT2_BLOCK_SIZE(&fs_param),
->  						&dev_size);
->  		if ((retval == EFBIG) &&
+It's an abstraction layer thing.  blk64_t is defined in ext2fs.h, and
+the io_managers don't include it.  The I/O managers are a small amount
+of code, and it hasn't been worth it to explicitly define a type just
+for them in the header file.
 
-You should not assume that ext2fs_get_device_size2() will return EFBIG
-if the size exceed 2^32 blocks. The point of ext2fs_get_device_size2()
-was to be able to support more than 2^32 blocks and the library
-function will certainly change to return larger numbers in the future.
-
-So you need something like
-
-if ((retval == EFBIG || dev_size >= (1ULL << 32)) &&
-
-MfG
-        Goswin
+						- Ted
