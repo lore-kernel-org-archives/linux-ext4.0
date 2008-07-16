@@ -1,137 +1,49 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH, RFC] properly lock group descriptors before initializing
-Date: Wed, 16 Jul 2008 00:26:09 -0500
-Message-ID: <487D8671.2080307@redhat.com>
+Subject: Re: [PATCH, RFC] properly lock group descriptors before initializing
+Date: Wed, 16 Jul 2008 00:36:09 -0500
+Message-ID: <487D88C9.4050501@redhat.com>
+References: <487D8671.2080307@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:48453 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:50919 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751218AbYGPF0M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 16 Jul 2008 01:26:12 -0400
+	id S1751818AbYGPFgM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 16 Jul 2008 01:36:12 -0400
 Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m6G5QBhL012269
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 01:26:11 -0400
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m6G5aBZb014696
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 01:36:11 -0400
 Received: from pobox-2.corp.redhat.com (pobox-2.corp.redhat.com [10.11.255.15])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m6G5QBvX029317
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 01:26:11 -0400
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m6G5aACj000400
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 01:36:10 -0400
 Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m6G5Q9P6031162
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 01:26:10 -0400
+	by pobox-2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m6G5a9Ok032661
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 01:36:10 -0400
+In-Reply-To: <487D8671.2080307@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I noticed when filling a 1T filesystem with 4 threads using the 
-fs_mark benchmark:
+Eric Sandeen wrote:
+> I noticed when filling a 1T filesystem with 4 threads using the 
+> fs_mark benchmark:
+> 
+> fs_mark -d /mnt/test -D 256 -n 100000 -t 4 -s 20480 -F -S 0
+> 
+> that I occasionally got checksum mismatch errors:
+> 
+> EXT4-fs error (device sdb): ext4_init_inode_bitmap: Checksum bad for group 6935
+> 
+> etc.  I'd reliably get 4-5 of them during the run.
+> 
+> It appears that the problem is likely a race to init the bg's
+> when the uninit_bg feature is enabled.
+> 
+> With the patch below I was able to complete 2 runs with no errors
+> or warnings.  However, I did hit a hang on one run that I can't yet
+> explain, so maybe this bears more inspection or testing.
 
-fs_mark -d /mnt/test -D 256 -n 100000 -t 4 -s 20480 -F -S 0
+Crud hit it again, looks like it's my fault.  So hold off on this one :)
 
-that I occasionally got checksum mismatch errors:
-
-EXT4-fs error (device sdb): ext4_init_inode_bitmap: Checksum bad for group 6935
-
-etc.  I'd reliably get 4-5 of them during the run.
-
-It appears that the problem is likely a race to init the bg's
-when the uninit_bg feature is enabled.
-
-With the patch below I was able to complete 2 runs with no errors
-or warnings.  However, I did hit a hang on one run that I can't yet
-explain, so maybe this bears more inspection or testing.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-Index: linux-2.6/fs/ext4/balloc.c
-===================================================================
---- linux-2.6.orig/fs/ext4/balloc.c	2008-07-14 16:50:42.252353479 -0500
-+++ linux-2.6/fs/ext4/balloc.c	2008-07-15 22:08:29.944291399 -0500
-@@ -321,12 +321,15 @@ ext4_read_block_bitmap(struct super_bloc
- 	if (bh_uptodate_or_lock(bh))
- 		return bh;
- 
-+	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 		ext4_init_block_bitmap(sb, bh, block_group, desc);
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
-+		spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 		return bh;
- 	}
-+	spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 	if (bh_submit_read(bh) < 0) {
- 		put_bh(bh);
- 		ext4_error(sb, __func__,
-Index: linux-2.6/fs/ext4/ialloc.c
-===================================================================
---- linux-2.6.orig/fs/ext4/ialloc.c	2008-07-14 16:50:41.750354227 -0500
-+++ linux-2.6/fs/ext4/ialloc.c	2008-07-15 22:09:21.682353674 -0500
-@@ -105,6 +105,7 @@ read_inode_bitmap(struct super_block *sb
- 	desc = ext4_get_group_desc(sb, block_group, NULL);
- 	if (!desc)
- 		goto error_out;
-+	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
- 		bh = sb_getblk(sb, ext4_inode_bitmap(sb, desc));
- 		if (!buffer_uptodate(bh)) {
-@@ -119,6 +120,7 @@ read_inode_bitmap(struct super_block *sb
- 	} else {
- 		bh = sb_bread(sb, ext4_inode_bitmap(sb, desc));
- 	}
-+	spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 	if (!bh)
- 		ext4_error(sb, "read_inode_bitmap",
- 			    "Cannot read inode bitmap - "
-@@ -728,7 +730,7 @@ got:
- 
- 			/* When marking the block group with
- 			 * ~EXT4_BG_INODE_UNINIT we don't want to depend
--			 * on the value of bg_itable_unsed even though
-+			 * on the value of bg_itable_unused even though
- 			 * mke2fs could have initialized the same for us.
- 			 * Instead we calculated the value below
- 			 */
-Index: linux-2.6/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.orig/fs/ext4/mballoc.c	2008-07-14 16:50:42.326353353 -0500
-+++ linux-2.6/fs/ext4/mballoc.c	2008-07-15 22:10:06.249291399 -0500
-@@ -787,13 +787,16 @@ static int ext4_mb_init_cache(struct pag
- 		if (bh_uptodate_or_lock(bh[i]))
- 			continue;
- 
-+		spin_lock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
- 		if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 			ext4_init_block_bitmap(sb, bh[i],
- 						first_group + i, desc);
- 			set_buffer_uptodate(bh[i]);
- 			unlock_buffer(bh[i]);
-+			spin_unlock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
- 			continue;
- 		}
-+		spin_unlock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
- 		get_bh(bh[i]);
- 		bh[i]->b_end_io = end_buffer_read_sync;
- 		submit_bh(READ, bh[i]);
-Index: linux-2.6/fs/ext4/super.c
-===================================================================
---- linux-2.6.orig/fs/ext4/super.c	2008-07-14 16:50:41.775353495 -0500
-+++ linux-2.6/fs/ext4/super.c	2008-07-15 22:19:02.395291074 -0500
-@@ -1621,6 +1621,7 @@ static int ext4_check_descriptors(struct
- 			       "(block %llu)!", i, inode_table);
- 			return 0;
- 		}
-+		spin_lock(sb_bgl_lock(sbi, i));
- 		if (!ext4_group_desc_csum_verify(sbi, i, gdp)) {
- 			printk(KERN_ERR "EXT4-fs: ext4_check_descriptors: "
- 			       "Checksum for group %lu failed (%u!=%u)\n",
-@@ -1628,6 +1629,7 @@ static int ext4_check_descriptors(struct
- 			       gdp)), le16_to_cpu(gdp->bg_checksum));
- 			return 0;
- 		}
-+		spin_unlock(sb_bgl_lock(sbi, i));
- 		if (!flexbg_flag)
- 			first_block += EXT4_BLOCKS_PER_GROUP(sb);
- 	}
-
+-Eric
