@@ -1,97 +1,156 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
 Subject: Re: [PATCH 15/15][e2fsprogs] 64-bit mke2fs cleanup
-Date: Wed, 16 Jul 2008 12:26:10 -0500
-Message-ID: <20080716122610.20224ee9@ichigo>
+Date: Wed, 16 Jul 2008 12:44:37 -0500
+Message-ID: <20080716124437.700cd00f@ichigo>
 References: <20080715164332.28567.27913.stgit@ichigo>
 	<20080715165129.28567.7837.stgit@ichigo>
-	<87tzeq0z95.fsf@frosties.localdomain>
-	<20080716090931.6c8ca875@ichigo>
-	<20080716145429.GA2167@mit.edu>
-	<20080716101817.4d40a2f9@ichigo>
-	<20080716163148.GC2167@mit.edu>
+	<87fxq99810.fsf@frosties.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Goswin von Brederlow <goswin-v-b@web.de>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Goswin von Brederlow <goswin-v-b@web.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:45123 "EHLO
+Received: from e36.co.us.ibm.com ([32.97.110.154]:36877 "EHLO
 	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751490AbYGPR0V (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 13:26:21 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6GHQKAw008048
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 13:26:20 -0400
-Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6GHQBQN096462
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 11:26:12 -0600
-Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6GHQBkR006661
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 11:26:11 -0600
-In-Reply-To: <20080716163148.GC2167@mit.edu>
+	with ESMTP id S1751921AbYGPRo4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 13:44:56 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6GHir7O030746
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 13:44:53 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6GHii0T075118
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 11:44:47 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6GHihTj026078
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 11:44:43 -0600
+In-Reply-To: <87fxq99810.fsf@frosties.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 16 Jul 2008 12:31:48 -0400
-Theodore Tso <tytso@mit.edu> wrote:
+On Wed, 16 Jul 2008 17:13:31 +0200
+Goswin von Brederlow <goswin-v-b@web.de> wrote:
 
-> On Wed, Jul 16, 2008 at 10:18:17AM -0500, Jose R. Santos wrote:
-> > > It's really important when doing library design to think about future
-> > > expandability.
-> > 
-> > This would not be a API or ABI change so I don't see why another
-> > renaming function would be needed.  It also doesn't change the
-> > behavior of ext2fs_get_device_size2() since it returns EFBIG when a
-> > device is larger than what e2fsprogs currently supports, whether that
-> > 48bit or 64bits.  Putting the limit ext2fs_get_device_size2() avoid
-> > folks from abusing something that probably isn't supported. 
+> From: Goswin von Brederlow <goswin-v-b@web.de>
 > 
-> E2fsprogs utilities are somewhat entitled to assume that they will be
-> running with a version of libext2fs which is the same as the one that
-> they shipped with --- although sometimes that assumption can be false,
-> particularly when people are building a newer version of e2fsprogs
-> from source and forget to install the newer libraries or forget to set
-> LD_LIBRARY_PATH if they are building with dynamic libraries.
-
-I was mostly referring to external users of the library.
- 
-> However there may be other users of that interface, and they won't
-> know if version of that library they are calling is set to return
-> EFBIG on a 48bit or 64bit number.  Besides, there may be other
-> application users of that function where it would be useful to get the
-> size of a device which is larger than 48-bits, even if mke2fs and ext4
-> today doesn't support it.  This is just good library design not to
-> enforce limits like this in a fairly generic function.
-
-I agree and have already retracted my previous statement base on this.
-
+> Bring back overflow checks in mke2fs.c and remove dead code in
+> getsize.c
 > 
-> Finally, in many programming discplines you *do* rename the function
-> whenever you make major semantic changes to the function, not just for
-> API or ABI changes.  Otherwise a newer program might depend on
-> ext2fs_get_device_size() returning a 64-bit size, and then it might
-> get very confused or fail in unexpected ways if it is linked with an
-> older library that returns EFBIG if the number is bigger than 48 bits.
-
-While I agree that we should not put this limitation on
-ext2fs_get_device_size2(), why does EFBIG (or something equivalent when
-we implement this outside of get_size) have to means anything other
-that the size is bigger than what the current library support.  It
-could be 48bit, 64bit or 1024bit, if we hit it, the current library
-will not support it.
-
-I dont see the point in having (for example) EFBIG_48 and EFBIG_64 if
-we implement EFBIG right.
-
-> It's just a matter of how defensive you want to be in your
-> programming, and how general-purpose you want you library routines to
-> be.
+> - ext2fs_get_device_size2() no longer returns EFBIG, the code path for
+>   it is dead. remove.
 > 
-> Regards,
+> - Change code to check actual dev_size against 2^32.
 > 
-> 						- Ted
+> - Check for EXT4_FEATURE_INCOMPAT_64BIT before bailing out with
+>   excessive size error.
+> 
+> - Move check, only check dev_size when it is actualy used. Not when
+>   overridden by command line args.
+> 
+> FIXME: check command line args for excessive size too.
+> 
+> Signed-off-by: Goswin von Brederlow <goswin-v-b@web.de>
+> --
+> 
+>  lib/ext2fs/getsize.c |   15 ---------------
+>  misc/mke2fs.c        |   30 +++++++++++++++---------------
+>  2 files changed, 15 insertions(+), 30 deletions(-)
+> 
+> Index: e2fsprogs/misc/mke2fs.c
+> ===================================================================
+> --- e2fsprogs.orig/misc/mke2fs.c	2008-07-16 15:59:48.000000000 +0200
+> +++ e2fsprogs/misc/mke2fs.c	2008-07-16 16:57:54.000000000 +0200
+> @@ -1410,21 +1410,6 @@ static void PRS(int argc, char *argv[])
+>  		retval = ext2fs_get_device_size2(device_name,
+>  						EXT2_BLOCK_SIZE(&fs_param),
+>  						&dev_size);
+> -		if ((retval == EFBIG) &&
+> -		    (blocksize == 0) && 
+> -		    (fs_param.s_log_block_size == 0)) {
+> -			fs_param.s_log_block_size = 2;
+> -			blocksize = 4096;
+> -			goto retry;
+> -		}
+> -	}
+> -			
+> -	if (retval == EFBIG) {
+> -		fprintf(stderr, _("%s: Size of device %s too big "
+> -				  "to be expressed in 32 bits\n\t"
+> -				  "using a blocksize of %d.\n"),
+> -			program_name, device_name, EXT2_BLOCK_SIZE(&fs_param));
+> -		exit(1);
+>  	}
+>  	if (retval && (retval != EXT2_ET_UNIMPLEMENTED)) {
+>  		com_err(program_name, retval,
+> @@ -1451,7 +1436,22 @@ static void PRS(int argc, char *argv[])
+>  				  ));
+>  				exit(1);
+>  			}
+> +			if ((dev_size >= 1LLU << 32) &&
+> +			    (blocksize == 0) &&
+> +			    (fs_param.s_log_block_size == 0)) {
+> +				fs_param.s_log_block_size = 2;
+> +				blocksize = 4096;
+> +				goto retry;
+> +			}
+> +			if (!(fs_param.s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT) && (dev_size >= 1ULL << 32)) {
+> +				fprintf(stderr, _("%s: Size of device %s too big "
+> +						  "to be expressed in 32 bits\n\t"
+> +						  "using a blocksize of %d.\n"),
+> +					program_name, device_name, EXT2_BLOCK_SIZE(&fs_param));
+> +				exit(1);
+> +			}
 
-I think I'm just ranting here.  Feel free to ignore :)
+Well, EXT4_FEATURE_INCOMPAT_64BIT should be setup later in PRS() along
+with setting up large group descriptors so this piece need work.  This
+should fail if what we are making is a ext3 filesystem and if we are
+making a ext4 filesystem with > 32bit blocks, set the
+EXT4_FEATURE_INCOMPAT_64BIT flag as well as the large bgd.
 
--JRS
+I'll fix this on the next release.
+
+>  			ext2fs_blocks_count_set(&fs_param, dev_size);
+> +fprintf(stderr, "blocks count = %llu\n", ext2fs_blocks_count(&fs_param));
+>  			if (sys_page_size > EXT2_BLOCK_SIZE(&fs_param)) {
+>  				blk64_t tmp = ext2fs_blocks_count(&fs_param);
+>  				tmp &= ~((sys_page_size /
+> Index: e2fsprogs/lib/ext2fs/getsize.c
+> ===================================================================
+> --- e2fsprogs.orig/lib/ext2fs/getsize.c	2008-07-16 16:34:58.000000000 +0200
+> +++ e2fsprogs/lib/ext2fs/getsize.c	2008-07-16 16:49:03.000000000 +0200
+> @@ -188,11 +188,6 @@ errcode_t ext2fs_get_device_size2(const 
+>  #endif
+>  	if (valid_blkgetsize64 &&
+>  	    ioctl(fd, BLKGETSIZE64, &size64) >= 0) {
+> -		if ((sizeof(*retblocks) < sizeof(unsigned long long)) &&
+> -		    ((size64 / blocksize) > 0xFFFFFFFF)) {
+> -			rc = EFBIG;
+> -			goto out;
+> -		}
+>  		*retblocks = size64 / blocksize;
+>  		goto out;
+>  	}
+> @@ -253,11 +248,6 @@ errcode_t ext2fs_get_device_size2(const 
+>  		if (fstat(fd, &st) == 0)
+>  #endif
+>  			if (S_ISREG(st.st_mode)) {
+> -				if ((sizeof(*retblocks) < sizeof(unsigned long long)) &&
+> -				    ((st.st_size / blocksize) > 0xFFFFFFFF)) {
+> -					rc = EFBIG;
+> -					goto out;
+> -				}
+>  				*retblocks = st.st_size / blocksize;
+>  				goto out;
+>  			}
+> @@ -282,11 +272,6 @@ errcode_t ext2fs_get_device_size2(const 
+>  	}
+>  	valid_offset (fd, 0);
+>  	size64 = low + 1;
+> -	if ((sizeof(*retblocks) < sizeof(unsigned long long))
+> -	    && ((size64 / blocksize) > 0xFFFFFFFF)) {
+> -		rc = EFBIG;
+> -		goto out;
+> -	}
+>  	*retblocks = size64 / blocksize;
+>  out:
+>  	close(fd);
