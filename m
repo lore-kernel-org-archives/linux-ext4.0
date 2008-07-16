@@ -1,100 +1,70 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH 15/15][e2fsprogs] 64-bit mke2fs cleanup
-Date: Wed, 16 Jul 2008 09:18:46 -0500
-Message-ID: <20080716091846.44174452@ichigo>
-References: <20080715164332.28567.27913.stgit@ichigo>
-	<20080715165129.28567.7837.stgit@ichigo>
-	<87tzeq0z95.fsf@frosties.localdomain>
-	<87ej5ugcn2.fsf@frosties.localdomain>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Suggestions for a 64bit bitmap api
+Date: Wed, 16 Jul 2008 10:51:46 -0400
+Message-ID: <20080716145146.GZ8185@mit.edu>
+References: <87y742110t.fsf@frosties.localdomain> <20080716134124.GU8185@mit.edu> <87lk012aca.fsf@frosties.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Goswin von Brederlow <goswin-v-b@web.de>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
 To: Goswin von Brederlow <goswin-v-b@web.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e31.co.us.ibm.com ([32.97.110.149]:47560 "EHLO
-	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758836AbYGPOTF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 10:19:05 -0400
-Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
-	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6GEJ3ol023922
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 10:19:03 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6GEIuWS087726
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 08:18:59 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6GEIlCY007105
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 08:18:47 -0600
-In-Reply-To: <87ej5ugcn2.fsf@frosties.localdomain>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:50897 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756261AbYGPOvs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 10:51:48 -0400
+Content-Disposition: inline
+In-Reply-To: <87lk012aca.fsf@frosties.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 16 Jul 2008 15:52:01 +0200
-Goswin von Brederlow <goswin-v-b@web.de> wrote:
-
-> Goswin von Brederlow <goswin-v-b@web.de> writes:
+On Wed, Jul 16, 2008 at 04:05:25PM +0200, Goswin von Brederlow wrote:
+> Theodore Tso <tytso@mit.edu> writes:
 > 
-> > "Jose R. Santos" <jrs@us.ibm.com> writes:
+> > On Wed, Jul 16, 2008 at 02:12:02PM +0200, Goswin von Brederlow wrote:
+> >> 
+> >> which api would you prefer?
 > >
-> >> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-> >> index 7171990..817be56 100644
-> >> --- a/misc/mke2fs.c
-> >> +++ b/misc/mke2fs.c
-> >> @@ -1402,12 +1402,12 @@ static void PRS(int argc, char *argv[])
-> >>  
-> >>  	fs_param.s_log_frag_size = fs_param.s_log_block_size;
-> >>  
-> >> -	if (noaction && fs_param.s_blocks_count) {
-> >> -		dev_size = fs_param.s_blocks_count;
-> >> +	if (noaction && ext2fs_blocks_count(&fs_param)) {
-> >> +		dev_size = ext2fs_blocks_count(&fs_param);
-> >>  		retval = 0;
-> >>  	} else {
-> >>  	retry:
-> >> -		retval = ext2fs_get_device_size(device_name,
-> >> +		retval = ext2fs_get_device_size2(device_name,
-> >>  						EXT2_BLOCK_SIZE(&fs_param),
-> >>  						&dev_size);
-> >>  		if ((retval == EFBIG) &&
-> >
-> > You should not assume that ext2fs_get_device_size2() will return EFBIG
-> > if the size exceed 2^32 blocks. The point of ext2fs_get_device_size2()
-> > was to be able to support more than 2^32 blocks and the library
-> > function will certainly change to return larger numbers in the future.
-> >
-> > So you need something like
-> >
-> > if ((retval == EFBIG || dev_size >= (1ULL << 32)) &&
-> >
-> > MfG
-> >         Goswin
+> > There is a lot of comments about my plan for 64-bit bitmaps in the pu
+> > branch of e2fsprogs, in lib/ext2fs/gen_bitmap64.c.
 > 
-> Actualy that is already a problem. The ext2fs_get_device_size2() only
-> returns EFBIG if sizeof(dev_size) < sizeof(unsigned long long), which
-> was the case for blk_t but no longer.
-> 
-> As a result mke2fs no longer stops with the right error on devices >
-> 16TiB. My test device is exactly 32 TiB large and gives the following:
-> 
-> root@beo-13:~# LD_LIBRARY_PATH=/tmpa/ext4 /tmpa/ext4/mke2fs -T ext4dev
-> -j -m0 /dev/mapper/ext4
-> mke2fs 1.41.0 (10-Jul-2008)
-> mke2fs: inode_size (256) * inodes_count (0) too big for a
->         filesystem with 0 blocks, specify higher inode_ratio (-i)
->         or lower inode count (-N).
+> How/Where can I check out thepu branch?
 
-hehe, I put a FIXME-64 around this since I knew it was going to be a
-problem.  I just wasn't sure what was the right approach for fixing.
-You'll have to specify an inode count for now.
+How much do you know about git?
 
-The "filesystem with 0 blocks" surprise me though.  Looks like I missed
-something somewhere.
+Short version:
 
-> I'm guessing somewhere along the line it converts to 32bit choping of
-> the higher bits.
-> 
-> MfG
->         Goswin
+git checkout git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git e2fsprogs
+cd e2fsprogs
+git branch pu origin/pu
+git checkout pu
 
--JRS
+To update to a newer pu once you have done the above steps
+
+cd /path/to/checked-out-e2fsprogs-repository
+git fetch
+git checkout pu
+git reset --hard origin/pu
+
+(Note that the "git reset --hard" will blow away any local commits you
+might have made; this isn't a substitute for a full-blown git
+tutorial.  The reason for the git reset is because the pu branch is
+constantly getting rebased.)
+
+A good place to start for explaining the concepts of git (and why git
+is so great) is here:
+
+	http://utsl.gen.nz/talks/git-svn/intro.html
+
+The bits about "git svn" won't apply for e2fsprogs, but the concepts
+of git are really well explained in the above web page.  For the
+"crash course", this is pretty good:
+
+       http://git.or.cz/course/svn.html
+
+Other good starting points for git are:
+
+      http://www.kernel.org/pub/software/scm/git/docs/gittutorial.html
+      http://www.kernel.org/pub/software/scm/git/docs/everyday.html
+
+						- Ted
+
