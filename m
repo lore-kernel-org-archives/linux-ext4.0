@@ -1,70 +1,43 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH, RFC] ext4: Allow read/only mounts with corrupted block group checksums
-Date: Tue, 15 Jul 2008 19:09:33 -0400
-Message-ID: <E1KIteH-0002pP-WE@closure.thunk.org>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] libext2fs : Fix typo in function names in
+	libext2fs.texinfo
+Date: Tue, 15 Jul 2008 21:37:09 -0400
+Message-ID: <20080716013709.GN8185@mit.edu>
+References: <ea11fea30807151208m419892b3md4893612aa86b6f8@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:49830 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:45998 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753686AbYGOXJf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 19:09:35 -0400
+	with ESMTP id S1751321AbYGPBhK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 15 Jul 2008 21:37:10 -0400
+Content-Disposition: inline
+In-Reply-To: <ea11fea30807151208m419892b3md4893612aa86b6f8@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Jul 16, 2008 at 12:38:40AM +0530, Manish Katiyar wrote:
+> Fix the function names mentioned in libext2fs documentation.
 
-If the block group checksums are corrupted, still allow the mount to
-succeed, so e2fsck can have a chance to try to fix things up.  Add
-code in the remount r/w path to make sure the block group checksums
-are valid before allowing the filesystem to be remounted read/write.
+Thanks, applied.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+BTW, in the future, I'd appreciate it if you don't include a
+separating line made with equal characters between the patch
+description and the Signed-off-by:
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 1cb371d..137b649 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1626,7 +1626,8 @@ static int ext4_check_descriptors(struct super_block *sb)
- 			       "Checksum for group %lu failed (%u!=%u)\n",
- 			       i, le16_to_cpu(ext4_group_desc_csum(sbi, i,
- 			       gdp)), le16_to_cpu(gdp->bg_checksum));
--			return 0;
-+			if (!(sb->s_flags & MS_RDONLY))
-+				return 0;
- 		}
- 		if (!flexbg_flag)
- 			first_block += EXT4_BLOCKS_PER_GROUP(sb);
-@@ -2961,6 +2962,7 @@ static int ext4_remount (struct super_block * sb, int * flags, char * data)
- 	ext4_fsblk_t n_blocks_count = 0;
- 	unsigned long old_sb_flags;
- 	struct ext4_mount_options old_opts;
-+	ext4_group_t g;
- 	int err;
- #ifdef CONFIG_QUOTA
- 	int i;
-@@ -3039,6 +3041,26 @@ static int ext4_remount (struct super_block * sb, int * flags, char * data)
- 			}
- 
- 			/*
-+			 * Make sure the group descriptor checksums
-+			 * are sane.  If they aren't, refuse to
-+			 * remount r/w.
-+			 */
-+			for (g = 0; g < sbi->s_groups_count; g++) {
-+				struct ext4_group_desc *gdp = 
-+					ext4_get_group_desc(sb, g, NULL);
-+
-+				if (!ext4_group_desc_csum_verify(sbi, g, gdp)) {
-+					printk(KERN_ERR
-+	       "EXT4-fs: ext4_remount: "
-+		"Checksum for group %lu failed (%u!=%u)\n",
-+		g, le16_to_cpu(ext4_group_desc_csum(sbi, g, gdp)),
-+					       le16_to_cpu(gdp->bg_checksum));
-+					err = -EINVAL;
-+					goto restore_opts;
-+				}
-+			}
-+
-+			/*
- 			 * If we have an unprocessed orphan list hanging
- 			 * around from a previously readonly bdev mount,
- 			 * require a full umount/remount for now.
+>
+> ==================================================================
+>
+
+Also, your mail reader seems to be corrupting patches by line-wrapping
+them at around 72 colums (i.e., adding new-lines to break up long
+lines in the patch).  I had to manually fix up your patch so it would
+be accepted.
+
+Could you look into changing the settings of your mail program?
+
+Thanks for doing all of your patches!!
+
+       	   	 				- Ted
