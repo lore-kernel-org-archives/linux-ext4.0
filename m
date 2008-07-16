@@ -1,126 +1,78 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Suggestions for a 64bit bitmap api
-Date: Wed, 16 Jul 2008 09:41:24 -0400
-Message-ID: <20080716134124.GU8185@mit.edu>
-References: <87y742110t.fsf@frosties.localdomain>
+From: Goswin von Brederlow <goswin-v-b@web.de>
+Subject: Re: [PATCH 15/15][e2fsprogs] 64-bit mke2fs cleanup
+Date: Wed, 16 Jul 2008 15:52:01 +0200
+Message-ID: <87ej5ugcn2.fsf@frosties.localdomain>
+References: <20080715164332.28567.27913.stgit@ichigo>
+	<20080715165129.28567.7837.stgit@ichigo>
+	<87tzeq0z95.fsf@frosties.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: "Jose R. Santos" <jrs@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
 To: Goswin von Brederlow <goswin-v-b@web.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:39171 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756277AbYGPNlZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 09:41:25 -0400
-Content-Disposition: inline
-In-Reply-To: <87y742110t.fsf@frosties.localdomain>
+Received: from fmmailgate02.web.de ([217.72.192.227]:51638 "EHLO
+	fmmailgate02.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757023AbYGPNwF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 09:52:05 -0400
+In-Reply-To: <87tzeq0z95.fsf@frosties.localdomain> (Goswin von Brederlow's
+	message of "Wed, 16 Jul 2008 14:50:14 +0200")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 16, 2008 at 02:12:02PM +0200, Goswin von Brederlow wrote:
-> 
-> which api would you prefer?
+Goswin von Brederlow <goswin-v-b@web.de> writes:
 
-There is a lot of comments about my plan for 64-bit bitmaps in the pu
-branch of e2fsprogs, in lib/ext2fs/gen_bitmap64.c.
+> "Jose R. Santos" <jrs@us.ibm.com> writes:
+>
+>> diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+>> index 7171990..817be56 100644
+>> --- a/misc/mke2fs.c
+>> +++ b/misc/mke2fs.c
+>> @@ -1402,12 +1402,12 @@ static void PRS(int argc, char *argv[])
+>>  
+>>  	fs_param.s_log_frag_size = fs_param.s_log_block_size;
+>>  
+>> -	if (noaction && fs_param.s_blocks_count) {
+>> -		dev_size = fs_param.s_blocks_count;
+>> +	if (noaction && ext2fs_blocks_count(&fs_param)) {
+>> +		dev_size = ext2fs_blocks_count(&fs_param);
+>>  		retval = 0;
+>>  	} else {
+>>  	retry:
+>> -		retval = ext2fs_get_device_size(device_name,
+>> +		retval = ext2fs_get_device_size2(device_name,
+>>  						EXT2_BLOCK_SIZE(&fs_param),
+>>  						&dev_size);
+>>  		if ((retval == EFBIG) &&
+>
+> You should not assume that ext2fs_get_device_size2() will return EFBIG
+> if the size exceed 2^32 blocks. The point of ext2fs_get_device_size2()
+> was to be able to support more than 2^32 blocks and the library
+> function will certainly change to return larger numbers in the future.
+>
+> So you need something like
+>
+> if ((retval == EFBIG || dev_size >= (1ULL << 32)) &&
+>
+> MfG
+>         Goswin
 
-Quoting from there:
+Actualy that is already a problem. The ext2fs_get_device_size2() only
+returns EFBIG if sizeof(dev_size) < sizeof(unsigned long long), which
+was the case for blk_t but no longer.
 
-/*
- * Design of 64-bit bitmaps
- *
- * In order maintain ABI compatibility with programs that don't
- * understand about 64-bit blocks/inodes,
- * ext2fs_allocate_inode_bitmap() and ext2fs_allocate_block_bitmap()
- * will create old-style bitmaps unless the application passes the
- * flag EXT2_FLAG_NEW_BITMAPS to ext2fs_open().  If this flag is
- * passed, then we know the application has been recompiled, so we can
- * use the new-style bitmaps.  If it is not passed, we have to return
- * an error if trying to open a filesystem which needs 64-bit bitmaps.
- *
- * The new bitmaps use a new set of structure magic numbers, so that
- * both the old-style and new-style interfaces can identify which
- * version of the data structure was used.  Both the old-style and
- * new-style interfaces will support either type of bitmap, although
- * of course 64-bit operation will only be possible when both the
- * new-style interface and the new-style bitmap are used.
- *
- * For example, the new bitmap interfaces will check the structure
- * magic numbers and so will be able to detect old-stype bitmap.  If
- * they see an old-style bitmap, they will pass it to the gen_bitmap.c
- * functions for handling.  The same will be true for the old
- * interfaces as well.
- *
- * The new-style interfaces will have several different back-end
- * implementations, so we can support different encodings that are
- * appropriate for different applications.  In general the default
- * should be whatever makes sense, and what the application/library
- * will use.  However, e2fsck may need specialized implementations for
- * its own uses.  For example, when doing parent directory pointer
- * loop detections in pass 3, the bitmap will *always* be sparse, so
- * e2fsck can request an encoding which is optimized for that.
- */
+As a result mke2fs no longer stops with the right error on devices >
+16TiB. My test device is exactly 32 TiB large and gives the following:
 
-struct ext2fs_struct_generic_bitmap64 {
-	errcode_t	magic;
-	ext2_filsys 	fs;
-	struct  *	bitmap_ops;
-	int		flags;
-	__u64		start, end;
-	__u64		real_end;
-	char	*	description;
-	void	*	private;
-	errcode_t	base_error_code;
-};
+root@beo-13:~# LD_LIBRARY_PATH=/tmpa/ext4 /tmpa/ext4/mke2fs -T ext4dev
+-j -m0 /dev/mapper/ext4
+mke2fs 1.41.0 (10-Jul-2008)
+mke2fs: inode_size (256) * inodes_count (0) too big for a
+        filesystem with 0 blocks, specify higher inode_ratio (-i)
+        or lower inode count (-N).
 
-struct ext2_bitmap_ops {
-	int	type;
-	/* Generic bmap operators */
-	errcode_t (*new_bmap)(ext2_filsys fs, errcode_t magic,
-			      int type, u64 start, __u64 end,
-			      __u64 real_end,
-			      const char * description,
-			      ext2fs_generic_bitmap64 *bmap);
-	void	(*free_bmap)(ext2fs_generic_bitmap64 bitmap);
-	void	(*copy_bmap)(ext2fs_generic_bitmap64 src,
-			     ext2fs_generic_bitmap64 *dest);
-	void	(*resize_bmap)(ext2fs_generic_bitmap64 bitmap,
-			       __u64 new_end,
-			       __u64 new_real_end);
-	/* XXX still need file operators */
-	/* bit set/test operators */
-	void	(*set_bmap)(ext2fs_generic_bitmap64 bitmap, __u64 arg);
-	void	(*clear_bmap)(ext2fs_generic_bitmap64 bitmap, __u64 arg);
-	int	(*test_bmap)(ext2fs_generic_bitmap64 bitmap, __u64 arg);
-	void	(*set_bmap_range)(ext2fs_generic_bitmap64 bitmap, __u64 arg,
-				  int num);
-	void	(*clear_bmap_range)(ext2fs_generic_bitmap64 bitmap, __u64 arg,
-				    int num);
-};
+I'm guessing somewhere along the line it converts to 32bit choping of
+the higher bits.
 
-extern errcode_t ext2fs_alloc_generic_bmap(ext2_filsys fs, errcode_t magic,
-					   int type, u64 start, __u64 end,
-					   __u64 real_end,
-					   const char * description,
-					   ext2fs_generic_bitmap64 *bmap);
-
-extern void_t ext2fs_free_generic_bmap(ext2fs_generic_bitmap64 bmap);
-
-extern errcode_t ext2fs_copy_generic_bmap(ext2fs_generic_bitmap64 src,
-					  ext2fs_generic_bitmap64 *dest);
-
-extern errcode_t ext2fs_resize_generic_bmap(ext2fs_generic_bitmap bmap,
-					    __u64 new_end,
-					    __u64 new_real_end);
-
-extern void ext2fs_set_generic_bmap(ext2fs_generic_bitmap64 bitmap,
-				    __u64 arg);
-extern void ext2fs_clear_generic_bmap(ext2fs_generic_bitmap64 bitmap,
-				      __u64 arg);
-extern int ext2fs_test_generic_bmap(ext2fs_generic_bitmap64 bitmap,
-				    __u64 arg);
-extern void ext2fs_set_generic_bmap_range(ext2fs_generic_bitmap64 bitmap,
-					  __u64 arg, int num);
-extern void ext2fs_clear_generic_bmap_range(ext2fs_generic_bitmap64 bitmap,
-					    __u64 arg, int num);
-
+MfG
+        Goswin
