@@ -1,50 +1,64 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH, RFC] properly lock group descriptors before	initializing
-Date: Wed, 16 Jul 2008 03:03:42 -0600
-Message-ID: <20080716090342.GQ6239@webber.adilger.int>
-References: <487D8671.2080307@redhat.com>
+Subject: Re: Add
+	ext4__allow_read-only_mounts_with_corrupted_block_group_checksums	patch
+Date: Wed, 16 Jul 2008 03:29:14 -0600
+Message-ID: <20080716092914.GR6239@webber.adilger.int>
+References: <3.0.6.32.20080715193126.0242c9a0@pop.west.cox.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Theodore Tso <tytso@mit.edu>
+To: Gary Hawco <ghawco@cox.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:58143 "EHLO
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:58498 "EHLO
 	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758002AbYGPJDp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 05:03:45 -0400
+	with ESMTP id S1754819AbYGPJ3R (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 16 Jul 2008 05:29:17 -0400
 Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6G93ijv004347
-	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 02:03:45 -0700 (PDT)
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6G9TGcE004765
+	for <linux-ext4@vger.kernel.org>; Wed, 16 Jul 2008 02:29:16 -0700 (PDT)
 Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K4300401D57FQ00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 16 Jul 2008 02:03:44 -0700 (PDT)
-In-reply-to: <487D8671.2080307@redhat.com>
+ id <0K4300B01E9NUP00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 16 Jul 2008 02:29:16 -0700 (PDT)
+In-reply-to: <3.0.6.32.20080715193126.0242c9a0@pop.west.cox.net>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 16, 2008  00:26 -0500, Eric Sandeen wrote:
-> @@ -105,6 +105,7 @@ read_inode_bitmap(struct super_block *sb
->  	desc = ext4_get_group_desc(sb, block_group, NULL);
->  	if (!desc)
->  		goto error_out;
-> +	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
->  	if (desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
->  		bh = sb_getblk(sb, ext4_inode_bitmap(sb, desc));
->  		if (!buffer_uptodate(bh)) {
+On Jul 15, 2008  19:31 +0000, Gary Hawco wrote:
+> Just recompiled 2.6.26 with the newest snapshot (15-July 2008/2310GMT).
+> uninit_bg had been enabled.
+> 
+> To test kernel I did: tune2fs -O ^uninit_bg /dev/sda6 to remove uninit_bg
+> feature.
+> Was prompted to run e2fsck on system.
+> 
+> Rebooted and e2fsck saw errors and did a forced fsck without having to
+> reboot. All is well thus far.
 
-sb_getblk() calls __getblk(), which is might_sleep() so is a no-no.
+You shouldn't really have rebooted at that point, just run e2fsck on
+the filesystem to clear the checksums.
 
-> @@ -119,6 +120,7 @@ read_inode_bitmap(struct super_block *sb
->  	} else {
->  		bh = sb_bread(sb, ext4_inode_bitmap(sb, desc));
->  	}
-> +	spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
+> Then I did the reverse: tune2fs -O uninit_bg /dev/sda6 to renable uninit_bg
+> feature.  Again, I was prompted to run e2fsck on system.
 
-Likewise "sb_bread" is doing disk access.  I guess you don't have
-CONFIG_DEBUG_SPINLOCK_SLEEP enabled in your kernel.
+Again, you should have just run e2fsck on the filesystem without rebooting,
+in order to update the checksums.
+
+> Rebooted. This time I got a kernel panic that started with:
+> EXT4-fs: ext4_check_descriptors: Checksum for group 2 failed (10368!=32990)
+> EXT4-fs: group descriptors corrupted!
+
+The kernel thinks the filesystem is corrupted, so a full e2fsck needs to
+be run.  However, e2fsck is probably sitting on that unmountable filesystem.
+
+> I was under the impression that the newest patch would handle this or am I
+> mistaken?
+
+We probably need to allow the kernel to mount the filesystem read-only in
+this case in order to run e2fsck.
 
 Cheers, Andreas
 --
