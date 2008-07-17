@@ -1,8 +1,8 @@
 From: Josef Bacik <jbacik@redhat.com>
 Subject: Re: ext3 on latest -git: BUG: unable to handle kernel NULL pointer
 	dereference at 0000000c
-Date: Thu, 17 Jul 2008 09:40:03 -0400
-Message-ID: <20080717134003.GA14133@unused.rdu.redhat.com>
+Date: Thu, 17 Jul 2008 09:57:46 -0400
+Message-ID: <20080717135746.GB14133@unused.rdu.redhat.com>
 References: <19f34abd0807170551q4fbb862bu270297cfd76a69be@mail.gmail.com> <1b7401870807170613y747baa7by158177047cc7e28@mail.gmail.com> <19f34abd0807170620g39ab942bl592ea3fa3fa0dab@mail.gmail.com> <1b7401870807170634u14492a53k3931ddcddbd1e098@mail.gmail.com> <19f34abd0807170639p838d14blc9a13d2104313f38@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -12,10 +12,10 @@ Cc: Josef Bacik <josef@toxicpanda.com>, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
 To: Vegard Nossum <vegard.nossum@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:55346 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:43376 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754916AbYGQN72 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 17 Jul 2008 09:59:28 -0400
+	id S1756253AbYGQORl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 17 Jul 2008 10:17:41 -0400
 Content-Disposition: inline
 In-Reply-To: <19f34abd0807170639p838d14blc9a13d2104313f38@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -53,11 +53,47 @@ On Thu, Jul 17, 2008 at 03:39:24PM +0200, Vegard Nossum wrote:
 > But I don't know :-)
 > 
 > Thanks for helping out!
+> 
 >
 
-Well this is really odd, after that we call ext3_std_error which calls
-journal_abort, so when we come into journal_dirty_metadata is_handle_aborted()
-should have returned 1 and we should have just exited.  I'm going to have to
-think on this for a bit.
+Can you try this patch out and see if it fixes the problem?  I didn't compile
+test it, so you may need to tweak somethings, but it should work.  Thanks,
 
-Josef 
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
+
+ 
+Index: linux-2.6/fs/ext3/inode.c
+===================================================================
+--- linux-2.6.orig/fs/ext3/inode.c
++++ linux-2.6/fs/ext3/inode.c
+@@ -2023,13 +2023,27 @@ static void ext3_clear_blocks(handle_t *
+ 		unsigned long count, __le32 *first, __le32 *last)
+ {
+ 	__le32 *p;
++	int ret;
++
+ 	if (try_to_extend_transaction(handle, inode)) {
+ 		if (bh) {
+ 			BUFFER_TRACE(bh, "call ext3_journal_dirty_metadata");
+-			ext3_journal_dirty_metadata(handle, bh);
++			ret = ext3_journal_dirty_metadata(handle, bh);
++			if (ret) {
++				ext3_std_error(inode->i_sb, ret);
++				return;
++			}
+ 		}
+-		ext3_mark_inode_dirty(handle, inode);
+-		ext3_journal_test_restart(handle, inode);
++		ret = ext3_mark_inode_dirty(handle, inode);
++		if (ret)
++			return;
++
++		ret = ext3_journal_test_restart(handle, inode);
++		if (ret) {
++			ext3_std_error(inode->i_sb, ret);
++			return;
++		}
++
+ 		if (bh) {
+ 			BUFFER_TRACE(bh, "retaking write access");
+ 			ext3_journal_get_write_access(handle, bh);
