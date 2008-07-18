@@ -1,145 +1,42 @@
-From: "Vegard Nossum" <vegard.nossum@gmail.com>
-Subject: Re: ext3 on latest -git: BUG: unable to handle kernel NULL pointer dereference at 0000000c
-Date: Fri, 18 Jul 2008 13:32:10 +0200
-Message-ID: <19f34abd0807180432i19567dfal5d7d29bb1916b562@mail.gmail.com>
-References: <20080717135746.GB14133@unused.rdu.redhat.com>
-	 <20080717141333.GC14133@unused.rdu.redhat.com>
-	 <19f34abd0807170735p5d2cba31kec3fb65c5b8c7b3f@mail.gmail.com>
-	 <20080717141655.GD14133@unused.rdu.redhat.com>
-	 <19f34abd0807170744r79e46a78odfcfbd67687d2ceb@mail.gmail.com>
-	 <20080717143332.GE14133@unused.rdu.redhat.com>
-	 <19f34abd0807170800q13cc021dyed27c665c25ac520@mail.gmail.com>
-	 <20080717144342.GA15844@unused.rdu.redhat.com>
-	 <20080717230905.GI6239@webber.adilger.int>
-	 <20080718105152.GB15844@unused.rdu.redhat.com>
+From: Goswin von Brederlow <goswin-v-b@web.de>
+Subject: Re: [PATCH 15/15][e2fsprogs] 64-bit mke2fs cleanup [NEW Version]
+Date: Fri, 18 Jul 2008 13:35:32 +0200
+Message-ID: <87r69ro263.fsf@frosties.localdomain>
+References: <20080715164332.28567.27913.stgit@ichigo>
+	<20080715165129.28567.7837.stgit@ichigo>
+	<20080717154604.3fb8e084@ichigo>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: "Andreas Dilger" <adilger@sun.com>,
-	"Josef Bacik" <josef@toxicpanda.com>, linux-ext4@vger.kernel.org,
-	sct@redhat.com, akpm@linux-foundation.org,
-	"Johannes Weiner" <hannes@saeurebad.de>,
-	linux-kernel@vger.kernel.org
-To: "Josef Bacik" <jbacik@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1758065AbYGRLcX@vger.kernel.org>
-In-Reply-To: <20080718105152.GB15844@unused.rdu.redhat.com>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fmmailgate03.web.de ([217.72.192.234]:35572 "EHLO
+	fmmailgate03.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754844AbYGRLfi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jul 2008 07:35:38 -0400
+In-Reply-To: <20080717154604.3fb8e084@ichigo> (Jose R. Santos's message of
+	"Thu, 17 Jul 2008 15:46:04 -0500")
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 18, 2008 at 12:51 PM, Josef Bacik <jbacik@redhat.com> wrote:
-> On Thu, Jul 17, 2008 at 05:09:05PM -0600, Andreas Dilger wrote:
->> On Jul 17, 2008  10:43 -0400, Josef Bacik wrote:
->> > Yeah thats a hard to answer question, one that I will leave up to others
->> > who have been doing this much longer than I.  My thought is remount-ro
->> > is there to keep you from crashing, so if you have errors=continue then
->> > you expect to live with the consequences.  Course if that bit gets flipped
->> > via corruption thats not good either.
->>
->> It shouldn't cause the kernel to crash, but it should definitely return
->> an error to the application.  This is probably one of the code paths
->> that the Coverity folks were reporting on in FAST this year where on-disk
->> errors are not propagated to the application.
+"Jose R. Santos" <jrs@us.ibm.com> writes:
+
+> Hi folks,
 >
-> Ok, please revert the previous patch and apply this one.  On errors=continue we
-> will just abort the handle which should keep the NULL pointer dereference from
-> happening and return an error back to the application.  Please let me know how
-> this works Vegard, and thanks alot for testing all this.
+> I'm posting a new version of the 64-bit mke2fs patch since it was broken
+> in many ways (many thanks to Goswin for having a look and pointing them
+> out).  This one can actually handle large fs as runs until its time to
+> allocate table (where it barfs due bitmap issues).  To make 64bit fs, I
+> use the following command.
 >
-> Signed-off-by: Josef Bacik <jbacik@redhat.com>
+> mke2fs -T ext4dev -O64bit /dev/my_large_disk
 
-Thanks for doing the patches :-)
+Just like ext2/3 default to a 4k blocksize if it exceeds 2^32 1k
+blocks shouldn't ext4 default to 64bit if it exceeds 2^32 4k blocks?
 
-I still got this:
+> Comments welcome 
+>
+> -JRS
 
-loop0: rw=0, want=4294967298, limit=24576
-EXT3-fs error (device loop0): ext3_free_branches: Read failure,
-inode=74, block=2147483648
-EXT3-fs error (device loop0) in ext3_reserve_inode_write: Readonly filesystem
-EXT3-fs error (device loop0) in ext3_truncate: IO failure
-EXT3-fs error (device loop0) in ext3_reserve_inode_write: Readonly filesystem
-EXT3-fs error (device loop0) in ext3_orphan_del: Readonly filesystem
-EXT3-fs error (device loop0) in ext3_reserve_inode_write: Readonly filesystem
-EXT3-fs error (device loop0) in ext3_delete_inode: IO failure
-EXT3-fs unexpected failure: !jh->b_committed_data;
-inconsistent data on disk
-ext3_forget: aborting transaction: IO failure in __ext3_journal_forget
-BUG: unable to handle kernel paging request at f1e79ffc
-IP: [<c02224d6>] read_block_bitmap+0xc6/0x180
-*pde = 33cc5163 *pte = 31e79160
-Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
-Pid: 4257, comm: rm Not tainted (2.6.26-03416-g11155ca #46)
-EIP: 0060:[<c02224d6>] EFLAGS: 00210297 CPU: 1
-EIP is at read_block_bitmap+0xc6/0x180
-EAX: ffffffff EBX: f1e7a000 ECX: f3c20000 EDX: 00000001
-ESI: f5663c30 EDI: f1e7a800 EBP: f62e3cdc ESP: f62e3cac
- DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-Process rm (pid: 4257, ti=f62e2000 task=f637dfa0 task.ti=f62e2000)
-Stack: 00000400 f637e4c0 f637dfa0 f62e3cd4 00200246 00000000 f3d2c860 00000000
-       f1e7a000 f3c20098 00000000 f56c4b7c f62e3d3c c0222704 c025efd3 f637dfa0
-       c015addb f77aa050 f3d2db0c 00000031 00000000 00000032 f3d2c860 f77aa050
-Call Trace:
- [<c0222704>] ? ext3_free_blocks_sb+0xd4/0x620
- [<c025efd3>] ? journal_forget+0x213/0x220
- [<c015addb>] ? trace_hardirqs_on+0xb/0x10
- [<c0222c7a>] ? ext3_free_blocks+0x2a/0xa0
- [<c0228d85>] ? ext3_clear_blocks+0x145/0x160
- [<c0228e67>] ? ext3_free_data+0xc7/0x100
- [<c02290b3>] ? ext3_free_branches+0x213/0x220
- [<c01c9160>] ? sync_buffer+0x0/0x40
- [<c0228f4e>] ? ext3_free_branches+0xae/0x220
- [<c0228f4e>] ? ext3_free_branches+0xae/0x220
- [<c0229688>] ? ext3_truncate+0x5c8/0x940
- [<c015ad76>] ? trace_hardirqs_on_caller+0x116/0x170
- [<c02606f3>] ? journal_start+0xd3/0x110
- [<c02606d0>] ? journal_start+0xb0/0x110
- [<c0229ad7>] ? ext3_delete_inode+0xd7/0xe0
- [<c0229a00>] ? ext3_delete_inode+0x0/0xe0
- [<c01b9ba1>] ? generic_delete_inode+0x81/0x120
- [<c01b9d67>] ? generic_drop_inode+0x127/0x180
- [<c01b8be7>] ? iput+0x47/0x50
- [<c01af1bc>] ? do_unlinkat+0xec/0x170
- [<c01b185b>] ? vfs_readdir+0x6b/0xa0
- [<c01b1540>] ? filldir64+0x0/0xf0
- [<c04309a8>] ? trace_hardirqs_on_thunk+0xc/0x10
- [<c015ad76>] ? trace_hardirqs_on_caller+0x116/0x170
- [<c01af383>] ? sys_unlinkat+0x23/0x50
- [<c010407f>] ? sysenter_past_esp+0x78/0xc5
- =======================
-Code: 00 00 00 8b 45 e8 8b 1f 8b 55 e4 8b 88 ac 02 00 00 8b 41 34 0f
-af 51 10 03 50 14 89 5d ec 8b 46 18 89 45 f0 89 d8 8b 5d f0 29 d0 <0f>
-a3 03 19 c0 85 c0 74 11 8b 47 04 89 45 ec 29 d0 0f a3 03 19
-EIP: [<c02224d6>] read_block_bitmap+0xc6/0x180 SS:ESP 0068:f62e3cac
-Kernel panic - not syncing: Fatal exception
-------------[ cut here ]------------
-
-This was with error=continue.
-
-$ addr2line -e vmlinux -i c02224d6
-include/asm/bitops.h:305
-fs/ext3/balloc.c:98
-fs/ext3/balloc.c:167
-
-It looks similar to the ext2 crash which I just reported:
-http://lkml.org/lkml/2008/7/18/136
-
-Which had this EIP:
-
-$ addr2line -e vmlinux -i c026ee46
-include/asm/bitops.h:305
-fs/ext2/balloc.c:87
-fs/ext2/balloc.c:153
-
-You can see the full log at
-http://folk.uio.no/vegardno/linux/log-1216380709.txt which shows that
-it already survived a lot of failures, so I'm guessing your patch was
-correct and we just hit a different case. What do you think?
-
-
-Vegard
-
--- 
-"The animistic metaphor of the bug that maliciously sneaked in while
-the programmer was not looking is intellectually dishonest as it
-disguises that the error is the programmer's own creation."
-	-- E. W. Dijkstra, EWD1036
+MfG
+        Goswin
