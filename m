@@ -1,64 +1,143 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: Re: latest -git: A peculiar case of a stuck process (ext3/sched-related?)
-Date: Fri, 18 Jul 2008 20:59:42 +0100
-Message-ID: <e9e943910807181259w5342fd1dj3e5043400efea68e@mail.gmail.com>
-References: <19f34abd0807180245l2a633644n1a8d91cb3587d9e4@mail.gmail.com>
-	 <19f34abd0807180317g40a218a2p2bb2857c6f5aa659@mail.gmail.com>
-	 <e9e943910807180600t1e65a9b8o7f85e2751368275d@mail.gmail.com>
-	 <19f34abd0807181005m19f1770bka9d8bbac7a500d1@mail.gmail.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH] ext4: Fix data corruption when writing to prealloc area
+Date: Fri, 18 Jul 2008 13:01:29 -0700
+Message-ID: <1216411289.8232.6.camel@mingming-laptop>
+References: <1216387021-26384-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, sct@redhat.com,
-	akpm@linux-foundation.org, adilger@sun.com,
-	"Ingo Molnar" <mingo@elte.hu>,
-	"Peter Zijlstra" <a.p.zijlstra@chello.nl>,
-	"Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>
-To: "Vegard Nossum" <vegard.nossum@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ug-out-1314.google.com ([66.249.92.174]:56178 "EHLO
-	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756085AbYGRT7o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jul 2008 15:59:44 -0400
-Received: by ug-out-1314.google.com with SMTP id h2so101420ugf.16
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 12:59:42 -0700 (PDT)
-In-Reply-To: <19f34abd0807181005m19f1770bka9d8bbac7a500d1@mail.gmail.com>
-Content-Disposition: inline
+Received: from e3.ny.us.ibm.com ([32.97.182.143]:47235 "EHLO e3.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755981AbYGRUDH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Jul 2008 16:03:07 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e3.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6IK2ubi009389
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 16:02:56 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6IK1Umw195806
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 16:01:30 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6IK1UOH006349
+	for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 16:01:30 -0400
+In-Reply-To: <1216387021-26384-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2008/7/18 Vegard Nossum <vegard.nossum@gmail.com>:
-> (This patch looks much shorter than the one I found for ext2, though,
-> i.e. commit aa4f3f285643956bb614cf7b8f88e15f3a375886 from the
-> historical git repository. Does it fix all the right cases? I don't
-> mean to troll -- I just wanted to be sure you knew about it.)
 
-Ah, the historical git archive, that explains why I couldn't find it!
-Please, don't worry about being seen as trolling, I didn't know about
-that commit and I appreciate the heads-up and your attention to this
-in general.
+=E5=9C=A8 2008-07-18=E4=BA=94=E7=9A=84 18:47 +0530=EF=BC=8CAneesh Kumar=
+ K.V=E5=86=99=E9=81=93=EF=BC=9A
+> We need to recalucate the path information on extent insert
+> even if depth doesn't change.
+>=20
 
-I've just taken a look at it and where I could find the corresponding
-ext3 code it all looked OK. The only change the commit makes that I
-couldn't verify was to ext2_add_link, as I couldn't immediately spot
-where the corresponding ext3 functionality is.
+Patch has been added to ext4 patch queue
 
-Having said that, as I mentioned in the comment to that patch, there
-may well be similar problems still lurking. I tried to fix up all the
-dodgy looking cases at first, but I screwed up and just introduced
-more problems. After that it seemed safer to do a minimal fix and to
-address other similar issues as and when we got test-cases for them.
-With the sterling efforts of yourself and Sami we'll hopefully get
-them sooner or later.
+Acked-by: Mingming Cao <cmm@us.ibm.com>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/extents.c |   41 +++++++++++++++++++++++------------------
+>  1 files changed, 23 insertions(+), 18 deletions(-)
+>=20
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 7bdaeec..9c8541e 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2462,7 +2462,10 @@ static int ext4_ext_convert_to_initialized(han=
+dle_t *handle,
+>  		unsigned int newdepth;
+>  		/* If extent has less than EXT4_EXT_ZERO_LEN zerout directly */
+>  		if (allocated <=3D EXT4_EXT_ZERO_LEN) {
+> -			/* Mark first half uninitialized.
+> +			/*
+> +			 * iblock =3D=3D ee_block is handled by the zerouout
+> +			 * at the beginning.
+> +			 * Mark first half uninitialized.
+>  			 * Mark second half initialized and zero out the
+>  			 * initialized extent
+>  			 */
+> @@ -2485,7 +2488,7 @@ static int ext4_ext_convert_to_initialized(hand=
+le_t *handle,
+>  				ex->ee_len   =3D orig_ex.ee_len;
+>  				ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  				ext4_ext_dirty(handle, inode, path + depth);
+> -				/* zeroed the full extent */
+> +				/* blocks available from iblock */
+>  				return allocated;
+>=20
+>  			} else if (err)
+> @@ -2513,6 +2516,7 @@ static int ext4_ext_convert_to_initialized(hand=
+le_t *handle,
+>  					err =3D PTR_ERR(path);
+>  					return err;
+>  				}
+> +				/* get the second half extent details */
+>  				ex =3D path[depth].p_ext;
+>  				err =3D ext4_ext_get_access(handle, inode,
+>  								path + depth);
+> @@ -2542,6 +2546,7 @@ static int ext4_ext_convert_to_initialized(hand=
+le_t *handle,
+>  			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  			ext4_ext_dirty(handle, inode, path + depth);
+>  			/* zeroed the full extent */
+> +			/* blocks available from iblock */
+>  			return allocated;
+>=20
+>  		} else if (err)
+> @@ -2557,23 +2562,22 @@ static int ext4_ext_convert_to_initialized(ha=
+ndle_t *handle,
+>  		 */
+>  		orig_ex.ee_len =3D cpu_to_le16(ee_len -
+>  						ext4_ext_get_actual_len(ex3));
+> -		if (newdepth !=3D depth) {
+> -			depth =3D newdepth;
+> -			ext4_ext_drop_refs(path);
+> -			path =3D ext4_ext_find_extent(inode, iblock, path);
+> -			if (IS_ERR(path)) {
+> -				err =3D PTR_ERR(path);
+> -				goto out;
+> -			}
+> -			eh =3D path[depth].p_hdr;
+> -			ex =3D path[depth].p_ext;
+> -			if (ex2 !=3D &newex)
+> -				ex2 =3D ex;
+> -
+> -			err =3D ext4_ext_get_access(handle, inode, path + depth);
+> -			if (err)
+> -				goto out;
+> +		depth =3D newdepth;
+> +		ext4_ext_drop_refs(path);
+> +		path =3D ext4_ext_find_extent(inode, iblock, path);
+> +		if (IS_ERR(path)) {
+> +			err =3D PTR_ERR(path);
+> +			goto out;
+>  		}
+> +		eh =3D path[depth].p_hdr;
+> +		ex =3D path[depth].p_ext;
+> +		if (ex2 !=3D &newex)
+> +			ex2 =3D ex;
+> +
+> +		err =3D ext4_ext_get_access(handle, inode, path + depth);
+> +		if (err)
+> +			goto out;
+> +
+>  		allocated =3D max_blocks;
+>=20
+>  		/* If extent has less than EXT4_EXT_ZERO_LEN and we are trying
+> @@ -2591,6 +2595,7 @@ static int ext4_ext_convert_to_initialized(hand=
+le_t *handle,
+>  			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  			ext4_ext_dirty(handle, inode, path + depth);
+>  			/* zero out the first half */
+> +			/* blocks available from iblock */
+>  			return allocated;
+>  		}
+>  	}
 
-> I'll try it and report back if there's any trouble. Thanks,
-
-Thanks!
-
-> Vegard
-
-Cheers,
-Duane.
-
--- 
-"I never could learn to drink that blood and call it wine" - Bob Dylan
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
