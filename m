@@ -1,120 +1,100 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: Re: ext3 on latest -git: BUG: unable to handle kernel NULL pointer
-	dereference at 0000000c
-Date: Fri, 18 Jul 2008 06:51:52 -0400
-Message-ID: <20080718105152.GB15844@unused.rdu.redhat.com>
-References: <20080717135746.GB14133@unused.rdu.redhat.com> <19f34abd0807170725p13e81e3dq4daad32ad2a83931@mail.gmail.com> <20080717141333.GC14133@unused.rdu.redhat.com> <19f34abd0807170735p5d2cba31kec3fb65c5b8c7b3f@mail.gmail.com> <20080717141655.GD14133@unused.rdu.redhat.com> <19f34abd0807170744r79e46a78odfcfbd67687d2ceb@mail.gmail.com> <20080717143332.GE14133@unused.rdu.redhat.com> <19f34abd0807170800q13cc021dyed27c665c25ac520@mail.gmail.com> <20080717144342.GA15844@unused.rdu.redhat.com> <20080717230905.GI6239@webber.adilger.int>
+From: "Vegard Nossum" <vegard.nossum@gmail.com>
+Subject: ext2 on latest -git: BUG: unable to handle kernel paging request at f0f0fffc
+Date: Fri, 18 Jul 2008 13:19:48 +0200
+Message-ID: <19f34abd0807180419x37d4eb79y5fcecfc1066e0f9c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>,
-	Vegard Nossum <vegard.nossum@gmail.com>,
-	Josef Bacik <josef@toxicpanda.com>, linux-ext4@vger.kernel.org,
-	sct@redhat.com, akpm@linux-foundation.org,
-	Johannes Weiner <hannes@saeurebad.de>,
-	linux-kernel@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: "Josef Bacik" <jbacik@redhat.com>,
+	"Andrew Morton" <akpm@linux-foundation.org>,
+	"Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:45327 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751700AbYGRLLy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Jul 2008 07:11:54 -0400
+Received: from qb-out-0506.google.com ([72.14.204.238]:41057 "EHLO
+	qb-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751776AbYGRLTu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jul 2008 07:19:50 -0400
+Received: by qb-out-0506.google.com with SMTP id p36so1362621qba.17
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 04:19:49 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20080717230905.GI6239@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 17, 2008 at 05:09:05PM -0600, Andreas Dilger wrote:
-> On Jul 17, 2008  10:43 -0400, Josef Bacik wrote:
-> > Yeah thats a hard to answer question, one that I will leave up to others
-> > who have been doing this much longer than I.  My thought is remount-ro
-> > is there to keep you from crashing, so if you have errors=continue then
-> > you expect to live with the consequences.  Course if that bit gets flipped
-> > via corruption thats not good either.
-> 
-> It shouldn't cause the kernel to crash, but it should definitely return
-> an error to the application.  This is probably one of the code paths
-> that the Coverity folks were reporting on in FAST this year where on-disk
-> errors are not propagated to the application.
+Hi,
 
-Ok, please revert the previous patch and apply this one.  On errors=continue we
-will just abort the handle which should keep the NULL pointer dereference from
-happening and return an error back to the application.  Please let me know how
-this works Vegard, and thanks alot for testing all this.
+I got this with an intentionally corrupted filesystem image. Before
+mounting, I explicitly disabled continue-on-error, like this:
 
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
+        tune2fs -f disk -e remount-ro
+        mount -o loop disk mnt
 
-Index: linux-2.6/fs/ext3/inode.c
-===================================================================
---- linux-2.6.orig/fs/ext3/inode.c
-+++ linux-2.6/fs/ext3/inode.c
-@@ -2023,13 +2023,27 @@ static void ext3_clear_blocks(handle_t *
- 		unsigned long count, __le32 *first, __le32 *last)
- {
- 	__le32 *p;
-+	int ret;
-+
- 	if (try_to_extend_transaction(handle, inode)) {
- 		if (bh) {
- 			BUFFER_TRACE(bh, "call ext3_journal_dirty_metadata");
--			ext3_journal_dirty_metadata(handle, bh);
-+			ret = ext3_journal_dirty_metadata(handle, bh);
-+			if (ret) {
-+				ext3_std_error(inode->i_sb, ret);
-+				return;
-+			}
- 		}
--		ext3_mark_inode_dirty(handle, inode);
--		ext3_journal_test_restart(handle, inode);
-+		ret = ext3_mark_inode_dirty(handle, inode);
-+		if (ret)
-+			return;
-+
-+		ret = ext3_journal_test_restart(handle, inode);
-+		if (ret) {
-+			ext3_std_error(inode->i_sb, ret);
-+			return;
-+		}
-+
- 		if (bh) {
- 			BUFFER_TRACE(bh, "retaking write access");
- 			ext3_journal_get_write_access(handle, bh);
-Index: linux-2.6/fs/ext3/balloc.c
-===================================================================
---- linux-2.6.orig/fs/ext3/balloc.c
-+++ linux-2.6/fs/ext3/balloc.c
-@@ -498,6 +498,7 @@ void ext3_free_blocks_sb(handle_t *handl
- 		ext3_error (sb, "ext3_free_blocks",
- 			    "Freeing blocks not in datazone - "
- 			    "block = "E3FSBLK", count = %lu", block, count);
-+		err = -EIO;
- 		goto error_return;
- 	}
- 
-@@ -535,6 +536,7 @@ do_more:
- 			    "Freeing blocks in system zones - "
- 			    "Block = "E3FSBLK", count = %lu",
- 			    block, count);
-+		err = -EIO;
- 		goto error_return;
- 	}
- 
-Index: linux-2.6/fs/ext3/super.c
-===================================================================
---- linux-2.6.orig/fs/ext3/super.c
-+++ linux-2.6/fs/ext3/super.c
-@@ -167,7 +167,15 @@ static void ext3_handle_error(struct sup
- 		EXT3_SB(sb)->s_mount_opt |= EXT3_MOUNT_ABORT;
- 		if (journal)
- 			journal_abort(journal, -EIO);
-+	} else {
-+		handle_t *handle = current->journal_info;
-+		if (handle && !is_handle_aborted(handle)) {
-+			if (!handle->h_err)
-+				handle->h_err = -EIO;
-+			journal_abort_handle(handle);
-+		}
- 	}
-+
- 	if (test_opt (sb, ERRORS_RO)) {
- 		printk (KERN_CRIT "Remounting filesystem read-only\n");
- 		sb->s_flags |= MS_RDONLY;
+loop0: rw=0, want=4201400, limit=24576
+Buffer I/O error on device loop0, logical block 2100699
+attempt to access beyond end of device
+loop0: rw=0, want=4201400, limit=24576
+Buffer I/O error on device loop0, logical block 2100699
+EXT2-fs error (device loop0): ext2_free_blocks: Freeing blocks not in
+datazone - block = 131072, count = 1
+Remounting filesystem read-only
+BUG: unable to handle kernel paging request at f0f0fffc
+IP: [<c026ee46>] read_block_bitmap+0xc6/0x180
+*pde = 343bf163 *pte = 30f0f160
+Oops: 0000 [#1] PREEMPT SMP DEBUG_PAGEALLOC
+Pid: 11241, comm: rm Not tainted (2.6.26-03415-gdf3030b #45)
+EIP: 0060:[<c026ee46>] EFLAGS: 00210297 CPU: 1
+EIP is at read_block_bitmap+0xc6/0x180
+EAX: ffffffff EBX: f0f10000 ECX: f4349030 EDX: 00000001
+ESI: f3facbc8 EDI: f0f10800 EBP: f20a3d40 ESP: f20a3d10
+ DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
+Process rm (pid: 11241, ti=f20a2000 task=f207cfb0 task.ti=f20a2000)
+Stack: 00000400 c1fb0520 f20a3d24 c01831f5 00000008 00000000 f424ee10 00000000
+       f0f10000 f0f10400 05c711f5 00000003 f20a3da8 c026f01c f3f35478 f3f35d00
+       f3f351a0 f3f9ee38 00200246 f3f35000 f3eea208 00000031 00000000 00000032
+Call Trace:
+ [<c01831f5>] ? mark_page_accessed+0x45/0x60
+ [<c026f01c>] ? ext2_free_blocks+0x11c/0x320
+ [<c026efad>] ? ext2_free_blocks+0xad/0x320
+ [<c0272f52>] ? ext2_free_branches+0xc2/0x1a0
+ [<c0272fd3>] ? ext2_free_branches+0x143/0x1a0
+ [<c014b360>] ? wake_bit_function+0x0/0x60
+ [<c01c90d6>] ? __wait_on_buffer+0x26/0x30
+ [<c0272fd3>] ? ext2_free_branches+0x143/0x1a0
+ [<c0273552>] ? ext2_truncate+0x522/0x5b0
+ [<c01c89a4>] ? mark_buffer_dirty+0x44/0x80
+ [<c02726db>] ? ext2_update_inode+0x1ab/0x350
+ [<c0273f07>] ? ext2_delete_inode+0x87/0x90
+ [<c0273e80>] ? ext2_delete_inode+0x0/0x90
+ [<c01b9ba1>] ? generic_delete_inode+0x81/0x120
+ [<c01b9d67>] ? generic_drop_inode+0x127/0x180
+ [<c01b8be7>] ? iput+0x47/0x50
+ [<c01af1bc>] ? do_unlinkat+0xec/0x170
+ [<c01b185b>] ? vfs_readdir+0x6b/0xa0
+ [<c01b1540>] ? filldir64+0x0/0xf0
+ [<c0430948>] ? trace_hardirqs_on_thunk+0xc/0x10
+ [<c015ad76>] ? trace_hardirqs_on_caller+0x116/0x170
+ [<c01af383>] ? sys_unlinkat+0x23/0x50
+ [<c010407f>] ? sysenter_past_esp+0x78/0xc5
+ =======================
+Code: 00 00 00 8b 45 e8 8b 1f 8b 55 e4 8b 88 ac 02 00 00 8b 41 34 0f
+af 51 10 03 50 14 89 5d ec 8b 46 18 89 45 f0 89 d8 8b 5d f0 29 d0 <0f>
+a3 03 19 c0 85 c0 74 11 8b 47 04 89 45 ec 29 d0 0f a3 03 19
+EIP: [<c026ee46>] read_block_bitmap+0xc6/0x180 SS:ESP 0068:f20a3d10
+Kernel panic - not syncing: Fatal exception
+
+$ addr2line -e vmlinux -i c026ee46
+include/asm/bitops.h:305
+fs/ext2/balloc.c:87
+fs/ext2/balloc.c:153
+
+Is this one:
+
+        if (!ext2_test_bit(offset, bh->b_data))
+
+
+Vegard
+
+-- 
+"The animistic metaphor of the bug that maliciously sneaked in while
+the programmer was not looking is intellectually dishonest as it
+disguises that the error is the programmer's own creation."
+	-- E. W. Dijkstra, EWD1036
