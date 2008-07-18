@@ -1,60 +1,147 @@
-From: "Vegard Nossum" <vegard.nossum@gmail.com>
-Subject: Re: ext3 on latest -git: BUG: unable to handle kernel NULL pointer dereference at 0000000c
-Date: Fri, 18 Jul 2008 13:58:15 +0200
-Message-ID: <19f34abd0807180458i2749f5d0jc5c07f691931954e@mail.gmail.com>
-References: <20080717141333.GC14133@unused.rdu.redhat.com>
-	 <20080717141655.GD14133@unused.rdu.redhat.com>
-	 <19f34abd0807170744r79e46a78odfcfbd67687d2ceb@mail.gmail.com>
-	 <20080717143332.GE14133@unused.rdu.redhat.com>
-	 <19f34abd0807170800q13cc021dyed27c665c25ac520@mail.gmail.com>
-	 <20080717144342.GA15844@unused.rdu.redhat.com>
-	 <20080717230905.GI6239@webber.adilger.int>
-	 <20080718105152.GB15844@unused.rdu.redhat.com>
-	 <19f34abd0807180432i19567dfal5d7d29bb1916b562@mail.gmail.com>
-	 <20080718112003.GC15844@unused.rdu.redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: ext4 fallocate related crash on 2.6.26
+Date: Fri, 18 Jul 2008 17:30:24 +0530
+Message-ID: <20080718120024.GA23898@skywalker>
+References: <487C223D.6060704@cse.unsw.edu.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: "Andreas Dilger" <adilger@sun.com>,
-	"Josef Bacik" <josef@toxicpanda.com>, linux-ext4@vger.kernel.org,
-	sct@redhat.com, akpm@linux-foundation.org,
-	"Johannes Weiner" <hannes@saeurebad.de>,
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	linux-kernel@vger.kernel.org
-To: "Josef Bacik" <jbacik@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qb-out-0506.google.com ([72.14.204.237]:11710 "EHLO
-	qb-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751314AbYGRL6R (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jul 2008 07:58:17 -0400
-Received: by qb-out-0506.google.com with SMTP id p36so1405611qba.17
-        for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 04:58:16 -0700 (PDT)
-In-Reply-To: <20080718112003.GC15844@unused.rdu.redhat.com>
+To: Shehjar Tikoo <shehjart@cse.unsw.edu.au>,
+	Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <487C223D.6060704@cse.unsw.edu.au>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Jul 18, 2008 at 1:20 PM, Josef Bacik <jbacik@redhat.com> wrote:
->> You can see the full log at
->> http://folk.uio.no/vegardno/linux/log-1216380709.txt which shows that
->> it already survived a lot of failures, so I'm guessing your patch was
->> correct and we just hit a different case. What do you think?
->>
+On Tue, Jul 15, 2008 at 02:06:21PM +1000, Shehjar Tikoo wrote:
+> Hi all
 >
-> Yeah you are right, its like a shitty game of wack-a-mole.  Heres another patch,
-> same thing as last time, pull the other one out put this one on.  Thanks,
+> I've observed the following kernel crash during tests against ext4  
+> fallocate'ion support on 2.6.26.
+>
+> Stack trace is at:
+> http://www.gelato.unsw.edu.au/~shehjart/docs/ext4_fallocate_test_trace_2.6.26.txt
+>
+> The test involved running the following program which fallocates a given 
+> length in bytes then writes to it. The above crash was seen when writing 
+> to an ext4 disk, 2G file, in blocks of 64k with fallocate requests of 
+> 1mb. After each 1mb of data is written to the fallocated space, another 
+> 1mb is requested. This write-fallocate cycle continues till the requested 
+> file size is reached. The trace is from one of the crashes from the 
+> various runs(all crashed). I must emphasise that after one of the runs, 
+> the test disk could not be mounted as the filesystem was unrecognized. 
+> ext4dev was mounted in data=ordered mode.
+>
+> See the test code at:
+> http://www.gelato.unsw.edu.au/~shehjart/docs/writefallocate.c
+>
+> The command line arguments are self-explanatory. Run without any  
+> arguments to see the usage message. Do change the _NR_fallocate define  
+> at the beginning of the file to your architecture's syscall number for  
+> sys_fallocate.
+>
+> I can run a few more tests if more info is needed.
 
-It seems to hold up -- no stacktraces, but lots of IO failures.
 
-I would leave it in testing for a bit more, but I've got to run; I'll
-give it another go when I get home.
+Can you try this patch ?
 
-You may see the log so far: http://folk.uio.no/vegardno/linux/log-1216382128.txt
+commit 1ebfca565bb06763e14dd468ce84aa55eecb1122
+Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date:   Fri Jul 18 17:25:18 2008 +0530
 
+    falloc fix
+    
+    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Vegard
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 7bdaeec..9c8541e 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2462,7 +2462,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		unsigned int newdepth;
+ 		/* If extent has less than EXT4_EXT_ZERO_LEN zerout directly */
+ 		if (allocated <= EXT4_EXT_ZERO_LEN) {
+-			/* Mark first half uninitialized.
++			/*
++			 * iblock == ee_block is handled by the zerouout
++			 * at the beginning.
++			 * Mark first half uninitialized.
+ 			 * Mark second half initialized and zero out the
+ 			 * initialized extent
+ 			 */
+@@ -2485,7 +2488,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 				ex->ee_len   = orig_ex.ee_len;
+ 				ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+ 				ext4_ext_dirty(handle, inode, path + depth);
+-				/* zeroed the full extent */
++				/* blocks available from iblock */
+ 				return allocated;
+ 
+ 			} else if (err)
+@@ -2513,6 +2516,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 					err = PTR_ERR(path);
+ 					return err;
+ 				}
++				/* get the second half extent details */
+ 				ex = path[depth].p_ext;
+ 				err = ext4_ext_get_access(handle, inode,
+ 								path + depth);
+@@ -2542,6 +2546,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+ 			ext4_ext_dirty(handle, inode, path + depth);
+ 			/* zeroed the full extent */
++			/* blocks available from iblock */
+ 			return allocated;
+ 
+ 		} else if (err)
+@@ -2557,23 +2562,22 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 		 */
+ 		orig_ex.ee_len = cpu_to_le16(ee_len -
+ 						ext4_ext_get_actual_len(ex3));
+-		if (newdepth != depth) {
+-			depth = newdepth;
+-			ext4_ext_drop_refs(path);
+-			path = ext4_ext_find_extent(inode, iblock, path);
+-			if (IS_ERR(path)) {
+-				err = PTR_ERR(path);
+-				goto out;
+-			}
+-			eh = path[depth].p_hdr;
+-			ex = path[depth].p_ext;
+-			if (ex2 != &newex)
+-				ex2 = ex;
+-
+-			err = ext4_ext_get_access(handle, inode, path + depth);
+-			if (err)
+-				goto out;
++		depth = newdepth;
++		ext4_ext_drop_refs(path);
++		path = ext4_ext_find_extent(inode, iblock, path);
++		if (IS_ERR(path)) {
++			err = PTR_ERR(path);
++			goto out;
+ 		}
++		eh = path[depth].p_hdr;
++		ex = path[depth].p_ext;
++		if (ex2 != &newex)
++			ex2 = ex;
++
++		err = ext4_ext_get_access(handle, inode, path + depth);
++		if (err)
++			goto out;
++
+ 		allocated = max_blocks;
+ 
+ 		/* If extent has less than EXT4_EXT_ZERO_LEN and we are trying
+@@ -2591,6 +2595,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+ 			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+ 			ext4_ext_dirty(handle, inode, path + depth);
+ 			/* zero out the first half */
++			/* blocks available from iblock */
+ 			return allocated;
+ 		}
+ 	}
 
--- 
-"The animistic metaphor of the bug that maliciously sneaked in while
-the programmer was not looking is intellectually dishonest as it
-disguises that the error is the programmer's own creation."
-	-- E. W. Dijkstra, EWD1036
+-aneesh
