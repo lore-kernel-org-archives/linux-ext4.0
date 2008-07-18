@@ -1,65 +1,122 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH 15/15][e2fsprogs] 64-bit mke2fs cleanup [NEW Version]
-Date: Fri, 18 Jul 2008 10:15:18 -0500
-Message-ID: <20080718101518.0722e9e4@gara>
-References: <20080715164332.28567.27913.stgit@ichigo>
-	<20080715165129.28567.7837.stgit@ichigo>
-	<20080717154604.3fb8e084@ichigo>
-	<87r69ro263.fsf@frosties.localdomain>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Fix data corruption when writing to prealloc area
+Date: Fri, 18 Jul 2008 10:12:46 -0500
+Message-ID: <4880B2EE.8030903@redhat.com>
+References: <1216387021-26384-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Goswin von Brederlow <goswin-v-b@web.de>
+Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:56149 "EHLO e1.ny.us.ibm.com"
+Received: from mx1.redhat.com ([66.187.233.31]:58942 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754276AbYGRPOa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Jul 2008 11:14:30 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6IFERnE027580
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 11:14:27 -0400
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6IFE8uf075096
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 09:14:09 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6IFE82n019548
-	for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 09:14:08 -0600
-In-Reply-To: <87r69ro263.fsf@frosties.localdomain>
+	id S1753040AbYGRPPn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 18 Jul 2008 11:15:43 -0400
+In-Reply-To: <1216387021-26384-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 18 Jul 2008 13:35:32 +0200
-Goswin von Brederlow <goswin-v-b@web.de> wrote:
+Aneesh Kumar K.V wrote:
+> We need to recalucate the path information on extent insert
+> even if depth doesn't change.
 
-> "Jose R. Santos" <jrs@us.ibm.com> writes:
+Aneesh, do you have a compact test case for this?
+
+Thanks,
+-Eric
+
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/extents.c |   41 +++++++++++++++++++++++------------------
+>  1 files changed, 23 insertions(+), 18 deletions(-)
 > 
-> > Hi folks,
-> >
-> > I'm posting a new version of the 64-bit mke2fs patch since it was broken
-> > in many ways (many thanks to Goswin for having a look and pointing them
-> > out).  This one can actually handle large fs as runs until its time to
-> > allocate table (where it barfs due bitmap issues).  To make 64bit fs, I
-> > use the following command.
-> >
-> > mke2fs -T ext4dev -O64bit /dev/my_large_disk
-> 
-> Just like ext2/3 default to a 4k blocksize if it exceeds 2^32 1k
-> blocks shouldn't ext4 default to 64bit if it exceeds 2^32 4k blocks?
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 7bdaeec..9c8541e 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2462,7 +2462,10 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		unsigned int newdepth;
+>  		/* If extent has less than EXT4_EXT_ZERO_LEN zerout directly */
+>  		if (allocated <= EXT4_EXT_ZERO_LEN) {
+> -			/* Mark first half uninitialized.
+> +			/*
+> +			 * iblock == ee_block is handled by the zerouout
+> +			 * at the beginning.
+> +			 * Mark first half uninitialized.
+>  			 * Mark second half initialized and zero out the
+>  			 * initialized extent
+>  			 */
+> @@ -2485,7 +2488,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  				ex->ee_len   = orig_ex.ee_len;
+>  				ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  				ext4_ext_dirty(handle, inode, path + depth);
+> -				/* zeroed the full extent */
+> +				/* blocks available from iblock */
+>  				return allocated;
+>  
+>  			} else if (err)
+> @@ -2513,6 +2516,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  					err = PTR_ERR(path);
+>  					return err;
+>  				}
+> +				/* get the second half extent details */
+>  				ex = path[depth].p_ext;
+>  				err = ext4_ext_get_access(handle, inode,
+>  								path + depth);
+> @@ -2542,6 +2546,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  			ext4_ext_dirty(handle, inode, path + depth);
+>  			/* zeroed the full extent */
+> +			/* blocks available from iblock */
+>  			return allocated;
+>  
+>  		} else if (err)
+> @@ -2557,23 +2562,22 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  		 */
+>  		orig_ex.ee_len = cpu_to_le16(ee_len -
+>  						ext4_ext_get_actual_len(ex3));
+> -		if (newdepth != depth) {
+> -			depth = newdepth;
+> -			ext4_ext_drop_refs(path);
+> -			path = ext4_ext_find_extent(inode, iblock, path);
+> -			if (IS_ERR(path)) {
+> -				err = PTR_ERR(path);
+> -				goto out;
+> -			}
+> -			eh = path[depth].p_hdr;
+> -			ex = path[depth].p_ext;
+> -			if (ex2 != &newex)
+> -				ex2 = ex;
+> -
+> -			err = ext4_ext_get_access(handle, inode, path + depth);
+> -			if (err)
+> -				goto out;
+> +		depth = newdepth;
+> +		ext4_ext_drop_refs(path);
+> +		path = ext4_ext_find_extent(inode, iblock, path);
+> +		if (IS_ERR(path)) {
+> +			err = PTR_ERR(path);
+> +			goto out;
+>  		}
+> +		eh = path[depth].p_hdr;
+> +		ex = path[depth].p_ext;
+> +		if (ex2 != &newex)
+> +			ex2 = ex;
+> +
+> +		err = ext4_ext_get_access(handle, inode, path + depth);
+> +		if (err)
+> +			goto out;
+> +
+>  		allocated = max_blocks;
+>  
+>  		/* If extent has less than EXT4_EXT_ZERO_LEN and we are trying
+> @@ -2591,6 +2595,7 @@ static int ext4_ext_convert_to_initialized(handle_t *handle,
+>  			ext4_ext_store_pblock(ex, ext_pblock(&orig_ex));
+>  			ext4_ext_dirty(handle, inode, path + depth);
+>  			/* zero out the first half */
+> +			/* blocks available from iblock */
+>  			return allocated;
+>  		}
+>  	}
 
-Eventually, when the feature is stable enough, we can change the
-default in mke2fs.conf to include this feature for the ext4 fs_type.
-The problem of setting it only if the fs exceeds 2^32 blocks is that
-you will not be able to resize an fs from 32 to 64bit due to the block
-group descriptor size change.  Once the feature is stable, it should
-set as default regardless of the storage size.
- 
-> > Comments welcome 
-> >
-> > -JRS
-> 
-> MfG
->         Goswin
-
-
--JRS
