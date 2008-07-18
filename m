@@ -1,46 +1,59 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Add
-	ext4__allow_read-only_mounts_with_corrupted_block_group_checksums
-	patch
-Date: Fri, 18 Jul 2008 08:59:36 -0400
-Message-ID: <20080718125936.GG11221@mit.edu>
-References: <3.0.6.32.20080715193126.0242c9a0@pop.west.cox.net>
+From: "Duane Griffin" <duaneg@dghda.com>
+Subject: Re: latest -git: A peculiar case of a stuck process (ext3/sched-related?)
+Date: Fri, 18 Jul 2008 14:00:13 +0100
+Message-ID: <e9e943910807180600t1e65a9b8o7f85e2751368275d@mail.gmail.com>
+References: <19f34abd0807180245l2a633644n1a8d91cb3587d9e4@mail.gmail.com>
+	 <19f34abd0807180317g40a218a2p2bb2857c6f5aa659@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Gary Hawco <ghawco@cox.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, sct@redhat.com,
+	akpm@linux-foundation.org, adilger@sun.com,
+	"Ingo Molnar" <mingo@elte.hu>,
+	"Peter Zijlstra" <a.p.zijlstra@chello.nl>,
+	"Linux Kernel Mailing List" <linux-kernel@vger.kernel.org>
+To: "Vegard Nossum" <vegard.nossum@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:37728 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752155AbYGRM7i (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jul 2008 08:59:38 -0400
+Received: from yx-out-2324.google.com ([74.125.44.28]:17221 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754269AbYGRNAP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 18 Jul 2008 09:00:15 -0400
+Received: by yx-out-2324.google.com with SMTP id 8so107964yxm.1
+        for <linux-ext4@vger.kernel.org>; Fri, 18 Jul 2008 06:00:14 -0700 (PDT)
+In-Reply-To: <19f34abd0807180317g40a218a2p2bb2857c6f5aa659@mail.gmail.com>
 Content-Disposition: inline
-In-Reply-To: <3.0.6.32.20080715193126.0242c9a0@pop.west.cox.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 15, 2008 at 07:31:26PM +0000, Gary Hawco wrote:
-> 
-> Just recompiled 2.6.26 with the newest snapshot (15-July 2008/2310GMT).
-> uninit_bg had been enabled.
+2008/7/18 Vegard Nossum <vegard.nossum@gmail.com>:
+> And the ext3_find_entry() corresponds to this line:
+>
+>        for (; de < top; de = ext3_next_entry(de)) /* <--- HERE! */
+>        if (ext3_match (namelen, name, de)) {
+>                if (!ext3_check_dir_entry("ext3_find_entry",
+>                                          dir, de, bh,
+>                          (block<<EXT3_BLOCK_SIZE_BITS(sb))
+>                                  +((char *)de - bh->b_data))) {
+>                        brelse (bh);
+>                        *err = ERR_BAD_DX_DIR;
+>                        goto errout;
+>                }
+>                *res_dir = de;
+>                dx_release (frames);
+>                return bh;
+>        }
+>
+> Is it possible that this loop can get stuck with a corrupt filesystem image?
 
-I also just realized that while I had pushed the commit with the
-patch, I had forgotten to include
-ext4__allow_read-only_mounts_with_corrupted_block_group_checksums in
-the series file.  Doh!
+It certainly is. This is the same problem as the first case reported
+at http://bugzilla.kernel.org/show_bug.cgi?id=10882. There is a patch
+in -mm for it already (2fde9f7a0faabe821b31ccd982d482c21f7c503f),
+posted here: http://marc.info/?l=linux-kernel&m=121486328013470.
 
-I just pushed out a series file which includes this, although that one
-also is rebased against 2.6.26-git6 and removed all of the files from
-the stable portion of the queue (since Linus has accepted them for the
-merge window).
+Hopefully that should fix the problem for you.
 
-If you add 
+Cheers,
+Duane.
 
-   ext4__allow_read-only_mounts_with_corrupted_block_group_checksums
-
-to the end of your series file, then the patch will actually be
-applied.  :-)
-
-Oops, and sorry for not noticing this sooner.
-
-						- Ted
+-- 
+"I never could learn to drink that blood and call it wine" - Bob Dylan
