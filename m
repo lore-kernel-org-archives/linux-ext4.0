@@ -1,44 +1,33 @@
-From: Shehjar Tikoo <shehjart@cse.unsw.edu.au>
-Subject: ext4 pre-allocation performance  through nfsd
-Date: Sat, 19 Jul 2008 10:37:16 +1000
-Message-ID: <4881373C.10404@cse.unsw.edu.au>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH] e2fsprogs: Fix tst_extents output on bigendian machine.
+Date: Fri, 18 Jul 2008 21:19:21 -0400
+Message-ID: <20080719011921.GB18506@mit.edu>
+References: <1216382740-24369-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tone.orchestra.cse.unsw.EDU.AU ([129.94.242.59]:56332 "EHLO
-	tone.orchestra.cse.unsw.EDU.AU" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751742AbYGSAvu (ORCPT
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:50599 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751586AbYGSDX5 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 18 Jul 2008 20:51:50 -0400
-Received: From
-	[203.143.160.170] ([203.143.160.170] == chaos.ken.nicta.com.au) (auth-user shehjart) (cse-authentic-sender shehjart)
-	(for <linux-ext4@vger.kernel.org>) By tone With Smtp ;
-	Sat, 19 Jul 2008 10:51:47 +1000
+	Fri, 18 Jul 2008 23:23:57 -0400
+Content-Disposition: inline
+In-Reply-To: <1216382740-24369-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi All
+On Fri, Jul 18, 2008 at 05:35:40PM +0530, Aneesh Kumar K.V wrote:
+> Add type __le16, __le32, and __le64 to indicate that
+> the variables need to be byteswaped when using.
 
-FYI, I ran some performance tests for a feature that incorporates 
-pre-allocation support into linux nfsd. The patch is a 
-proof-of-concept but the measurements are still relevant for this list.
+I took out the __le16 types.  The artificial types don't really buy us
+much (a lot of work would be needed before we could use sparse on
+e2fsprogs) and for now just makes it harder to read the header file.
+I removed the __le types deliberately.
 
-1. Sequential read throughput with iozone reading a file written
-using various pre-allocation sizes through nfsd:
-http://www.gelato.unsw.edu.au/~shehjart/docs/nfsmeasurements/ext4fallocate_read.png
+I've applied the header printing portion of the patch.
 
-2. Sequential write throughput with iozone over NFS mount with the 
-nfsd writing the file contents to disk using pre-allocation.
-http://www.gelato.unsw.edu.au/~shehjart/docs/nfsmeasurements/ext4fallocate_write.png
+     	     	 		 	    - Ted
 
-Please see the following thread for more details.
-http://thread.gmane.org/gmane.linux.nfs/21365
-
- From the write throughput plot, its clear that pre-allocation would be
-highly beneficial if the pre-allocation overhead can be reduced.
-
-
-Thanks
-Shehjar
