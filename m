@@ -1,94 +1,66 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: e2fsprogs and blocks outside i_size
-Date: Sun, 20 Jul 2008 23:08:25 -0600
-Message-ID: <20080721050825.GE3370@webber.adilger.int>
-References: <20080718121130.GB23898@skywalker> <20080718123706.GE11221@mit.edu>
+Subject: Re: [PATCH 2/2] lock block groups when initializing
+Date: Sun, 20 Jul 2008 23:11:45 -0600
+Message-ID: <20080721051145.GK3370@webber.adilger.int>
+References: <4880F5D3.8080805@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:57768 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755730AbYGUFI2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jul 2008 01:08:28 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6L58R4Q025980
-	for <linux-ext4@vger.kernel.org>; Sun, 20 Jul 2008 22:08:27 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:40341 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759747AbYGUFLr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 21 Jul 2008 01:11:47 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6L5BlU3012399
+	for <linux-ext4@vger.kernel.org>; Sun, 20 Jul 2008 22:11:47 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K4C00M01BJM6S00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sun, 20 Jul 2008 22:08:27 -0700 (PDT)
-In-reply-to: <20080718123706.GE11221@mit.edu>
+ id <0K4C00F01BRE0L00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sun, 20 Jul 2008 22:11:47 -0700 (PDT)
+In-reply-to: <4880F5D3.8080805@redhat.com>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 18, 2008  08:37 -0400, Theodore Ts'o wrote:
-> On Fri, Jul 18, 2008 at 05:41:30PM +0530, Aneesh Kumar K.V wrote:
-> > With fallocate FALLOC_FL_KEEP_SIZE option, when we write to prealloc
-> > space and if we hit ENOSPC when trying to insert the extent,
-> > we actually zero out the extent. That means we can have blocks
-> > outside i_size for an inode.
-
-To clarify, doesn't FALLOC_FL_KEEP_SIZE put the extent beyond i_size,
-regardless of whether the ENOSPC problem is hit?
-
-> > I guess e2fsck currently doesn't handle this. Or should we fix kernel
-> > to update i_size to the right value if we do a zero out of the extent ?
-> > 
-> > With fallocate if the prealloc area is small we also aggressively zeroout.
-> > This was needed so that a random write pattern on falloc area doesn't
-> > results in too many extents.  That also can result in the above
-> > error on fsck.
+On Jul 18, 2008  14:58 -0500, Eric Sandeen wrote:
+> I noticed when filling a 1T filesystem with 4 threads using the 
+> fs_mark benchmark that I occasionally got checksum mismatch errors:
 > 
-> It would seem to me that e2fsck should be fixed to not complain about
-> blocks outside of i_size, *if* the blocks in question are marked as
-> being unitialized.
+> It appears that the problem is likely a race to init the bg's
+> when the uninit_bg feature is enabled.
+> 
+> With the patch below, which adds sb_bgl_locking around initialization,
+> I was able to complete several runs with no errors or warnings.
 
-Yes, I think that is the right approach.
+Thanks for finding this.
 
-> It also seems to me that updating i_size when the
-> extent is zero'ed out is also not the right thing to do.  Some
-> applications depend on i_size.
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Yes, this was my thought exactly.  Just because the fallocated extent
-is zeroed out doesn't mean the file size can suddenly change.  This
-would appear as file corruption or "data loss" to many applications.
+You can add Acked-by: Andreas Dilger <adilger@sun.com>
 
-> In the case where you hit ENOSPC when you need to grow the tree to
-> insert an extent, that's a tough one.  One approach would be to simply
+> @@ -321,12 +321,15 @@ ext4_read_block_bitmap(struct super_bloc
+>  	if (bh_uptodate_or_lock(bh))
+>  		return bh;
+>  
+> +	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
+>  	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+>  		ext4_init_block_bitmap(sb, bh, block_group, desc);
+>  		set_buffer_uptodate(bh);
+>  		unlock_buffer(bh);
+> +		spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
+>  		return bh;
+>  	}
 
-I think you misunderstand Aneesh's comments - the ext4 fallocate code
-already handles all of these cases.  If ENOSPC is hit during the
-extent split the error recovery will zero out the whole uninitialized
-extent.  Slow, but effective.
-
-> For your second case, where we aggressively zero out blocks, one of
-> the reasons why we have to do that is because the kernel isn't
-> coalescing extents aggressively.  My inclination here is to *not*
-> aggressively zero out blocks outside outside of i_size, and to split
-> the extent in that case
-
-That is only partly true.  If an application is writing every other
-block in a 64MB fallocated extent we don't want to create 64MB/4kB
-separate extents.  There is no guarantee that the application will
-fill in the rest of the unwritten extents and allow them to merge.
-
-Also, there is likely a net performance improvement by writing every
-block (half with data, the other half with zeroes) compared to doing
-write + seek over the entire file.
-
-> I suppose the other hack we could do is have e2fsck check the blocks
-> that are outside of i_size, and if they are all zero and extents are
-> involved, that it's a case of pre-allocated blocks that needed to be
-> zero'ed for some reason, as opposed to a corrupted i_size.  That seems
-> to be a really gross hack, though.
-
-Yuck, with the added problem that there is no guarantee that these
-data blocks ARE all zero.
+Since this flag will only ever change from set to unset, and will in
+many cases not be set, we should first check if it is set without the
+spin_lock(), and then if set re-check under the lock.  This avoids putting
+an extra lock in this path.  While it may seem that we are already locking
+and slow because of the locked buffer_head, the sb_bgl_lock() is hashed
+so many groups will share the same lock and we may cause contention on
+other CPUs accessing other groups needlessly.
 
 Cheers, Andreas
 --
