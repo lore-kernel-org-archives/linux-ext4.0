@@ -1,26 +1,69 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Don't allow lg prealloc list to be grow large.
-Date: Tue, 22 Jul 2008 16:40:16 +0530
-Message-ID: <1216725016-22855-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+Subject: Re: delalloc is crippling fs_mark performance
+Date: Tue, 22 Jul 2008 16:41:37 +0530
+Message-ID: <20080722111137.GA17860@skywalker>
+References: <4880C0B2.9040706@redhat.com> <4884B7CF.7060800@redhat.com> <20080721223935.GC15203@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:37022 "EHLO
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:39838 "EHLO
 	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751212AbYGVLKy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jul 2008 07:10:54 -0400
+	with ESMTP id S1751108AbYGVLNP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jul 2008 07:13:15 -0400
 Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m6MB9S0x015955
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 21:09:28 +1000
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m6MBCBTI021000
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 21:12:11 +1000
 Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6MBATKu032512
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 21:10:29 +1000
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6MBBvbS300222
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 21:11:57 +1000
 Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6MBAS1S031434
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 21:10:28 +1000
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6MBBvVh032518
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 21:11:57 +1000
+Content-Disposition: inline
+In-Reply-To: <20080721223935.GC15203@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+On Mon, Jul 21, 2008 at 04:39:35PM -0600, Andreas Dilger wrote:
+> On Jul 21, 2008  11:22 -0500, Eric Sandeen wrote:
+> > Eric Sandeen wrote:
+> > > running fs_mark like this:
+> > > 
+> > > fs_mark -d /mnt/test -D 256 -n 100000 -t 4 -s 20480 -F -S 0
+> > > 
+> > > (256 subdirs, 100000 files/iteration, 4 threads, 20k files, no sync)
+> > > 
+> > > on a 1T fs, with and without delalloc (mount option), is pretty interesting:
+> > > 
+> > > http://people.redhat.com/esandeen/ext4/fs_mark.png
+> > 
+> > I've updated this graph with another run where the group_prealloc
+> > tuneable was set to a perfect multiple of the allocation size, or 500
+> > blocks.  This way the leftover 2-block preallocations don't wind up
+> > causing the list to grow with unuseable tiny leftover preallocations.
+> > After tuning this way, it does clearly seem to be the problem here.
+> 
+> Looking at that graph it would seem that allowing 1000 PAs to accumulate
+> with Aneesh's patch adds a constant slowdown.  Compared with the "perfect"
+> case where the PA list is always empty it is noticably slower.
+> 
+> I'd guess that the right thing to do is have a few buckets for PAs of
+> different sizes, and keep them very short (e.g. <= 8) to avoid a lot of
+> list walking overhead on each access.
+> 
+> I think keeping a single PA of "each size" would likely run out if
+> different-sized allocations are being done, requiring a re-search.
+> 
+
+How about
+
+>From 049cfcf425e57fba0c3d1555e3f9f72f8104b4ed Mon Sep 17 00:00:00 2001
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date: Tue, 22 Jul 2008 16:39:07 +0530
+Subject: [PATCH] ext4: Don't allow lg prealloc list to be grow large.
 
 Currently locality group prealloc list is freed only when there is a block allocation
 failure. This can result in large number of per cpu locality group prealloc space
