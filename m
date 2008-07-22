@@ -1,64 +1,57 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Don't allow lg prealloc list to be grow large.
-Date: Tue, 22 Jul 2008 18:06:41 +0530
-Message-ID: <20080722123641.GB17860@skywalker>
-References: <1216725016-22855-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Subject: [PATCH] ext4: Convert the usage of NR_CPUS to nr_cpu_ids.
+Date: Tue, 22 Jul 2008 18:47:45 +0530
+Message-ID: <1216732665-26924-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:37280 "EHLO
-	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753475AbYGVMh0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jul 2008 08:37:26 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m6MCb6Wa008859
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 18:07:12 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6MCb0EV1413270
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 18:07:00 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m6MCasaU004309
-	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 18:06:54 +0530
-Content-Disposition: inline
-In-Reply-To: <1216725016-22855-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:46609 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754018AbYGVNRw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 22 Jul 2008 09:17:52 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m6MDHCDQ000501
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 23:17:12 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6MDHonX088858
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 23:17:50 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6MDHnLi000324
+	for <linux-ext4@vger.kernel.org>; Tue, 22 Jul 2008 23:17:49 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 22, 2008 at 04:40:16PM +0530, Aneesh Kumar K.V wrote:
-> Currently locality group prealloc list is freed only when there is a block allocation
-> failure. This can result in large number of per cpu locality group prealloc space
-> and also make the ext4_mb_use_preallocated expensive. Convert the locality group
-> prealloc list to a hash list. The hash index is the order of number of blocks
-> in the prealloc space with a max order of 9. When adding prealloc space to the
-> list we make sure total entries for each order does not exceed 8. If it is more
-> than 8 we discard few entries and make sure the we have only <= 5 entries.
-> 
-> 
+NR_CPUS can be really large. We should be using nr_cpu_ids
+instead.
 
-small update to fix the wrong usage of list APIs
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/mballoc.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index e058509..f8da1a2 100644
+index 9db0f4d..5b854b7 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -3348,7 +3348,7 @@ static void ext4_mb_use_group_pa(struct ext4_allocation_context *ac,
- 		if (!added && pa->pa_free < tmp_pa->pa_free) {
- 			/* Add to the tail of the previous entry */
- 			list_add_tail_rcu(&pa->pa_inode_list,
--					tmp_pa->pa_inode_list.prev);
-+						&tmp_pa->pa_inode_list);
- 			added = 1;
- 			/* we want to count the total
- 			 * number of entries in the list
-@@ -3357,7 +3357,7 @@ static void ext4_mb_use_group_pa(struct ext4_allocation_context *ac,
- 		lg_prealloc_count++;
- 	}
- 	if (!added)
--		list_add_tail_rcu(&pa->pa_inode_list, &tmp_pa->pa_inode_list);
-+		list_add_tail_rcu(&pa->pa_inode_list, &lg->lg_prealloc_list[order]);
+@@ -2541,7 +2541,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	sbi->s_mb_history_filter = EXT4_MB_HISTORY_DEFAULT;
+ 	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
  
- 	/* Now trim the list to be not more than 8 elements */
- 	if (lg_prealloc_count > 8) {
+-	i = sizeof(struct ext4_locality_group) * NR_CPUS;
++	i = sizeof(struct ext4_locality_group) * nr_cpu_ids;
+ 	sbi->s_locality_groups = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_locality_groups == NULL) {
+ 		clear_opt(sbi->s_mount_opt, MBALLOC);
+@@ -2549,7 +2549,7 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 		kfree(sbi->s_mb_maxs);
+ 		return -ENOMEM;
+ 	}
+-	for (i = 0; i < NR_CPUS; i++) {
++	for (i = 0; i < nr_cpu_ids; i++) {
+ 		struct ext4_locality_group *lg;
+ 		lg = &sbi->s_locality_groups[i];
+ 		mutex_init(&lg->lg_mutex);
+-- 
+1.5.6.3.439.g1e10.dirty
+
