@@ -1,33 +1,50 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: improve ext4_fill_flex_info() a bit
-Date: Thu, 24 Jul 2008 14:25:49 -0400
-Message-ID: <20080724182548.GD27129@mit.edu>
-References: <4887DB2C.1080403@cn.fujitsu.com> <20080724120938.59bd2220@ichigo>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: partially uptodate page reads
+Date: Thu, 24 Jul 2008 12:08:41 -0700
+Message-ID: <20080724120841.81c72be9.akpm@linux-foundation.org>
+References: <200807250117.11331.nickpiggin@yahoo.com.au>
+	<20080724175913.GA32117@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Li Zefan <lizf@cn.fujitsu.com>, linux-ext4@vger.kernel.org
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Nick Piggin <nickpiggin@yahoo.com.au>,
+	hifumi.hisashi@oss.ntt.co.jp, jack@ucw.cz,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	xfs@oss.sgi.com
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:46001 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751329AbYGXS1l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2008 14:27:41 -0400
-Content-Disposition: inline
-In-Reply-To: <20080724120938.59bd2220@ichigo>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36194 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752639AbYGXTJU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Jul 2008 15:09:20 -0400
+In-Reply-To: <20080724175913.GA32117@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 24, 2008 at 12:09:38PM -0500, Jose R. Santos wrote:
-> On Thu, 24 Jul 2008 09:30:20 +0800
-> Li Zefan <lizf@cn.fujitsu.com> wrote:
-> 
-> > - use kzalloc() instead of kmalloc() + memset()
-> > - improve a printk info
-> 
-> Nicer - Thanks
-> 
-> Acked-by: Jose R. Santos <jrs@us.ibm.com>
+On Thu, 24 Jul 2008 13:59:13 -0400 Christoph Hellwig <hch@infradead.org> wrote:
 
-I've already merged this into the patch queue earlier today.
+> On Fri, Jul 25, 2008 at 01:17:11AM +1000, Nick Piggin wrote:
+> > Hi, I have some questions about your patch in -mm
+> > 
+> > vfs-pagecache-usage-optimization-onpagesize=blocksize-environment.patch
+> > 
+> > I have no particular problem with something like this, but leaving the
+> > implementation details aside for the moment, can we discuss the
+> > justification for this?
+> > 
+> > Are there significant numbers of people using block size < page size in
+> > situations where performance is important and significantly improved by
+> > this patch? Can you give any performance numbers to illustrate perhaps?
+> 
+> With XFS lots of people use 4k blocksize filesystems on ia64 systems
+> with 16k pages, so an optimization like this would be useful.
 
-						- Ted
+As Nick says, we really should have some measurement results which
+confirm this theory.  Maybe we did do some but they didn't find theor
+way into the changelog.
+
+I've put the patch on hold until this confirmation data is available.
+
+> But as mentioned in one of your previous comments I'd rather prefer
+> a readpage interface chaneg to deal with this.
