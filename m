@@ -1,55 +1,59 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC]Ext4: journal credits reservation fixes for DIO,
-	fallocate and delalloc writepages
-Date: Wed, 23 Jul 2008 22:07:03 -0400
-Message-ID: <20080724020703.GG5346@webber.adilger.int>
-References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker>
- <1216774311.6505.4.camel@mingming-laptop> <20080723074226.GA15091@skywalker>
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: [PATCH 0/4] ext3/jbd: possible filesystem corruption fixes (take 3)
+Date: Thu, 24 Jul 2008 21:34:27 +0900
+Message-ID: <488876D3.80004@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Mingming Cao <cmm@us.ibm.com>, tytso <tytso@mit.edu>,
-	Shehjar Tikoo <shehjart@cse.unsw.edu.au>,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
+	adilger@clusterfs.com, snitzer@gmail.com, tglx@linutronix.de,
+	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
+To: akpm@linux-foundation.org, sct@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:37991 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751155AbYGXCHH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 23 Jul 2008 22:07:07 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6O276TA008206
-	for <linux-ext4@vger.kernel.org>; Wed, 23 Jul 2008 19:07:06 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K4H00J01N548900@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 23 Jul 2008 19:07:06 -0700 (PDT)
-In-reply-to: <20080723074226.GA15091@skywalker>
-Content-disposition: inline
+Received: from mail9.hitachi.co.jp ([133.145.228.44]:48082 "EHLO
+	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752384AbYGXMep (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2008 08:34:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 23, 2008  13:12 +0530, Aneesh Kumar wrote:
-> On Tue, Jul 22, 2008 at 05:51:51PM -0700, Mingming Cao wrote:
-> > @@ -1930,9 +1931,6 @@ int ext4_ext_calc_credits_for_insert(str
-> >  	 */
-> >  	needed += (depth * 2) + (depth * 2);
-> > 
-> > -	/* any allocation modifies superblock */
-> > -	needed += 1;
-> 
-> Why are we dropping the super block modification credit ? An insert of
-> an extent can result in super block modification also. If the goal is to
-> use ext4_writepages_trans_blocks everywhere then this change is correct.
-> But i see  many place not using ext4_writepages_trans_blocks.
+This patch set is the take 3 of fixing error handling problem in
+ext3/JBD.  The previous discussion can be found here:
+http://kerneltrap.org/mailarchive/linux-kernel/2008/6/2/2002094
 
-We used to need to update the superblock on every allocation operation
-(block or inode).  That was removed a long time ago, and we rarely
-update the superblock these days.
+Problem
+=======
+Currently some error checkings are missing, so the journal cannot abort
+correctly.  This can cause a filesystem corruption.  Missing error
+checkings are:
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+(1) error check for the metadata writes to the journal before the
+    commit (addressed by PATCH 1/4)
+(2) error check for checkpointing and replay (addressed by PATCH 2/4
+    and 3/4)
+
+PATCH 2/4 makes another problem worse; replaying old journaled
+metadata can overwrite the latest metadata on the filesystem and
+break its consistency.  This is fixed by PATCH 4/4.
+
+
+Changes since Take 2
+====================
+[PATCH x/x]
+o file data error handling fixes were separated to other patch set
+
+[PATCH 3/4]
+o fix return value handlings (trivial)
+
+[PATCH 4/4]
+o newly added to prevent unjournaled metadata buffers from being
+  written to the filesystem on abort
+
+Regards,
+-- 
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
+
 
