@@ -1,50 +1,46 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: partially uptodate page reads
-Date: Thu, 24 Jul 2008 12:08:41 -0700
-Message-ID: <20080724120841.81c72be9.akpm@linux-foundation.org>
-References: <200807250117.11331.nickpiggin@yahoo.com.au>
-	<20080724175913.GA32117@infradead.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [GIT PULL] ext4 bugfixes
+Date: Thu, 24 Jul 2008 16:03:16 -0400
+Message-ID: <20080724200316.GA11862@infradead.org>
+References: <E1KIbeO-0001yQ-N4@closure.thunk.org> <20080715043718.GA30017@infradead.org> <20080715124652.GB16704@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Nick Piggin <nickpiggin@yahoo.com.au>,
-	hifumi.hisashi@oss.ntt.co.jp, jack@ucw.cz,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>,
+	Christoph Hellwig <hch@infradead.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:36194 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752639AbYGXTJU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Jul 2008 15:09:20 -0400
-In-Reply-To: <20080724175913.GA32117@infradead.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:53877 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754546AbYGXUDu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2008 16:03:50 -0400
+Content-Disposition: inline
+In-Reply-To: <20080715124652.GB16704@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 24 Jul 2008 13:59:13 -0400 Christoph Hellwig <hch@infradead.org> wrote:
-
-> On Fri, Jul 25, 2008 at 01:17:11AM +1000, Nick Piggin wrote:
-> > Hi, I have some questions about your patch in -mm
-> > 
-> > vfs-pagecache-usage-optimization-onpagesize=blocksize-environment.patch
-> > 
-> > I have no particular problem with something like this, but leaving the
-> > implementation details aside for the moment, can we discuss the
-> > justification for this?
-> > 
-> > Are there significant numbers of people using block size < page size in
-> > situations where performance is important and significantly improved by
-> > this patch? Can you give any performance numbers to illustrate perhaps?
+On Tue, Jul 15, 2008 at 08:46:52AM -0400, Theodore Tso wrote:
+> On Tue, Jul 15, 2008 at 12:37:18AM -0400, Christoph Hellwig wrote:
+> > And for this one I haven't even heard back on my review comments.  None
+> > of them is a merge blocker so it's not critical, but I find it quite odd
+> > that the pull request is coming before even replying to the review
+> > comments.
 > 
-> With XFS lots of people use 4k blocksize filesystems on ia64 systems
-> with 16k pages, so an optimization like this would be useful.
+> Can you resend your e-mail, please?  I can't seem to find it in my
+> inbox.  Thanks!!
 
-As Nick says, we really should have some measurement results which
-confirm this theory.  Maybe we did do some but they didn't find theor
-way into the changelog.
+It was just a paragraph in the mail also commenting on the previously
+core parts:
 
-I've put the patch on hold until this confirmation data is available.
+> Also the code still deals with the !buffer_mapped and no buffers on page
+> cases all over which isn't needed anymore with ->page_mkwrite
+> implemented.
+> Similarly the !get_block case in mpage_da_writepages doesn't make any
+> sense - it's never used and if people would want to use
+> generic_writepages they could trivially just call it directly.
 
-> But as mentioned in one of your previous comments I'd rather prefer
-> a readpage interface chaneg to deal with this.
+I've got a comment from Jan that the no buffers case can still happen,
+so that can be removed.
+
+Any chance you could also look into the kerneldoc comments for the newly
+exported fs/mpage.c routines as commented on the updated patch?
