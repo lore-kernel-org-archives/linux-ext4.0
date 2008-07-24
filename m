@@ -1,66 +1,39 @@
-From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: Re: [PATCH] ext4: improve ext4_fill_flex_info() a bit
-Date: Thu, 24 Jul 2008 12:09:38 -0500
-Message-ID: <20080724120938.59bd2220@ichigo>
-References: <4887DB2C.1080403@cn.fujitsu.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: partially uptodate page reads
+Date: Thu, 24 Jul 2008 13:59:13 -0400
+Message-ID: <20080724175913.GA32117@infradead.org>
+References: <200807250117.11331.nickpiggin@yahoo.com.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Li Zefan <lizf@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: hifumi.hisashi@oss.ntt.co.jp, jack@ucw.cz,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	akpm@linux-foundation.org, xfs@oss.sgi.com
+To: Nick Piggin <nickpiggin@yahoo.com.au>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:39269 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750883AbYGXRJl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Jul 2008 13:09:41 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6OH9e08003853
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Jul 2008 13:09:40 -0400
-Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6OH9esj204056
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Jul 2008 13:09:40 -0400
-Received: from d01av03.pok.ibm.com (loopback [127.0.0.1])
-	by d01av03.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6OH9dPl008114
-	for <linux-ext4@vger.kernel.org>; Thu, 24 Jul 2008 13:09:40 -0400
-In-Reply-To: <4887DB2C.1080403@cn.fujitsu.com>
+Received: from bombadil.infradead.org ([18.85.46.34]:54219 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752190AbYGXR7S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2008 13:59:18 -0400
+Content-Disposition: inline
+In-Reply-To: <200807250117.11331.nickpiggin@yahoo.com.au>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 24 Jul 2008 09:30:20 +0800
-Li Zefan <lizf@cn.fujitsu.com> wrote:
-
-> - use kzalloc() instead of kmalloc() + memset()
-> - improve a printk info
-
-Nicer - Thanks
-
-Acked-by: Jose R. Santos <jrs@us.ibm.com>
-
+On Fri, Jul 25, 2008 at 01:17:11AM +1000, Nick Piggin wrote:
+> Hi, I have some questions about your patch in -mm
 > 
-> Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
-> ---
->  fs/ext4/super.c |    7 +++----
->  1 files changed, 3 insertions(+), 4 deletions(-)
+> vfs-pagecache-usage-optimization-onpagesize=blocksize-environment.patch
 > 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 1cb371d..33eab31 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -1506,14 +1506,13 @@ static int ext4_fill_flex_info(struct super_block *sb)
+> I have no particular problem with something like this, but leaving the
+> implementation details aside for the moment, can we discuss the
+> justification for this?
 > 
->  	flex_group_count = (sbi->s_groups_count + groups_per_flex - 1) /
->  		groups_per_flex;
-> -	sbi->s_flex_groups = kmalloc(flex_group_count *
-> +	sbi->s_flex_groups = kzalloc(flex_group_count *
->  				     sizeof(struct flex_groups), GFP_KERNEL);
->  	if (sbi->s_flex_groups == NULL) {
-> -		printk(KERN_ERR "EXT4-fs: not enough memory\n");
-> +		printk(KERN_ERR "EXT4-fs: not enough memory for "
-> +				"%lu flex groups\n", flex_group_count);
->  		goto failed;
->  	}
-> -	memset(sbi->s_flex_groups, 0, flex_group_count *
-> -	       sizeof(struct flex_groups));
-> 
->  	gdp = ext4_get_group_desc(sb, 1, &bh);
->  	block_bitmap = ext4_block_bitmap(sb, gdp) - 1;
+> Are there significant numbers of people using block size < page size in
+> situations where performance is important and significantly improved by
+> this patch? Can you give any performance numbers to illustrate perhaps?
+
+With XFS lots of people use 4k blocksize filesystems on ia64 systems
+with 16k pages, so an optimization like this would be useful.
+
+But as mentioned in one of your previous comments I'd rather prefer
+a readpage interface chaneg to deal with this.
