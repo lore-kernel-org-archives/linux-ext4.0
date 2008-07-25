@@ -1,197 +1,90 @@
 From: akpm@linux-foundation.org
-Subject: - jbd-positively-dispose-the-unmapped-data-buffers-in-journal_commit_transaction.patch removed from -mm tree
-Date: Fri, 25 Jul 2008 15:56:47 -0700
-Message-ID: <200807252256.m6PMuliw003117@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: toshi.okajima@jp.fujitsu.com, jack@suse.cz,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: - ext3-validate-directory-entry-data-before-use-v5.patch removed from -mm tree
+Date: Fri, 25 Jul 2008 15:56:54 -0700
+Message-ID: <200807252256.m6PMusZv003132@imap1.linux-foundation.org>
+To: duaneg@dghda.com, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:54371 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754854AbYGYW5Z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Jul 2008 18:57:25 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     jbd: positively dispose the unmapped data buffers in journal_commit_transaction()
+     ext3: validate directory entry data before use
 has been removed from the -mm tree.  Its filename was
-     jbd-positively-dispose-the-unmapped-data-buffers-in-journal_commit_transaction.patch
+     ext3-validate-directory-entry-data-before-use-v5.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd: positively dispose the unmapped data buffers in journal_commit_transaction()
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: ext3: validate directory entry data before use
+From: "Duane Griffin" <duaneg@dghda.com>
 
-After ext3-ordered files are truncated, there is a possibility that the
-pages which cannot be estimated still remain.  Remaining pages can be
-released when the system has really few memory.  So, it is not memory
-leakage.  But the resource management software etc.  may not work
-correctly.
+ext3_dx_find_entry uses ext3_next_entry without verifying that the entry
+is valid.  If its rec_len == 0 this causes an infinite loop.  Refactor the
+loop to check the validity of entries before checking whether they match
+and moving onto the next one.
 
-It is possible that journal_unmap_buffer() cannot release the buffers, and
-the pages to which they belong because they are attached to a commiting
-transaction and journal_unmap_buffer() cannot release them.  To release
-such the buffers and the pages later, journal_unmap_buffer() leaves it to
-journal_commit_transaction().  (journal_unmap_buffer() puts the mark
-'BH_Freed' to the buffers so that journal_commit_transaction() can
-identify whether they can be released or not.)
+There are other uses of ext3_next_entry in this file which also look
+problematic.  They should be reviewed and fixed if/when we have a
+test-case that triggers them.
 
-In the journalled mode and the writeback mode, jbd does with only metadata
-buffers.  But in the ordered mode, jbd does with metadata buffers and also
-data buffers.
+This patch fixes the first case (image hdb.25.softlockup.gz) reported in
+http://bugzilla.kernel.org/show_bug.cgi?id=10882.
 
-Actually, journal_commit_transaction() releases only the metadata buffers
-of which release is demanded by journal_unmap_buffer(), and also releases
-the pages to which they belong if possible.
-
-As a result, the data buffers of which release is demanded by
-journal_unmap_buffer() remain after a transaction commits.  And also the
-pages to which they belong remain.
-
-Such the remained pages don't have mapping any longer.  Due to this fact,
-there is a possibility that the pages which cannot be estimated remain.
-
-
-The metadata buffers marked 'BH_Freed' and the pages to which
-they belong can be released at 'JBD: commit phase 7'.
-
-Therefore, by applying the same code into 'JBD: commit phase 2' (where the
-data buffers are done with), journal_commit_transaction() can also release
-the data buffers marked 'BH_Freed' and the pages to which they belong.
-
-As a result, all the buffers marked 'BH_Freed' can be released, and also
-all the pages to which these buffers belong can be released at
-journal_commit_transaction().  So, the page which cannot be estimated is
-lost.
-
-<<Excerpt of code at 'JBD: commit phase 7'>>
- >         spin_lock(&journal->j_list_lock);
- >         while (commit_transaction->t_forget) {
- >                 transaction_t *cp_transaction;
- >                 struct buffer_head *bh;
- >
- >                 jh = commit_transaction->t_forget;
- >...
- >                 if (buffer_freed(bh)) {
- >                 ^^^^^^^^^^^^^^^^^^^^^^^^
- >                         clear_buffer_freed(bh);
- >                        ^^^^^^^^^^^^^^^^^^^^^^^^
- >                         clear_buffer_jbddirty(bh);
- >                 }
- >
- >                 if (buffer_jbddirty(bh)) {
- >                         JBUFFER_TRACE(jh, "add to new checkpointing trans");
- >                         __journal_insert_checkpoint(jh, commit_transaction);
- >                         JBUFFER_TRACE(jh, "refile for checkpoint writeback");
- >                         __journal_refile_buffer(jh);
- >                         jbd_unlock_bh_state(bh);
- >                 } else {
- >                         J_ASSERT_BH(bh, !buffer_dirty(bh));
- > ...
- >                         JBUFFER_TRACE(jh, "refile or unfile freed buffer");
- >                         __journal_refile_buffer(jh);
- >                         if (!jh->b_transaction) {
- >                                 jbd_unlock_bh_state(bh);
- >                                  /* needs a brelse */
- >                                 journal_remove_journal_head(bh);
- >                                 release_buffer_page(bh);
- >                                 ^^^^^^^^^^^^^^^^^^^^^^^^
- >                         } else
- >                 }
-****************************************************************
-* Apply the code of "^^^^^^" lines into 'JBD: commit phase 2' *
-****************************************************************
-
-At journal_commit_transaction() code, there is one extra message in the
-series of jbd debug messages.  ("JBD: commit phase 2") This patch fixes
-it, too.
-
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Acked-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/commit.c |   29 ++++++++++++++++++++---------
- 1 file changed, 20 insertions(+), 9 deletions(-)
+ fs/ext3/namei.c |   22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
 
-diff -puN fs/jbd/commit.c~jbd-positively-dispose-the-unmapped-data-buffers-in-journal_commit_transaction fs/jbd/commit.c
---- a/fs/jbd/commit.c~jbd-positively-dispose-the-unmapped-data-buffers-in-journal_commit_transaction
-+++ a/fs/jbd/commit.c
-@@ -36,7 +36,7 @@ static void journal_end_buffer_io_sync(s
- 
- /*
-  * When an ext3-ordered file is truncated, it is possible that many pages are
-- * not sucessfully freed, because they are attached to a committing transaction.
-+ * not successfully freed, because they are attached to a committing transaction.
-  * After the transaction commits, these pages are left on the LRU, with no
-  * ->mapping, and with attached buffers.  These pages are trivially reclaimable
-  * by the VM, but their apparent absence upsets the VM accounting, and it makes
-@@ -45,8 +45,8 @@ static void journal_end_buffer_io_sync(s
-  * So here, we have a buffer which has just come off the forget list.  Look to
-  * see if we can strip all buffers from the backing page.
-  *
-- * Called under lock_journal(), and possibly under journal_datalist_lock.  The
-- * caller provided us with a ref against the buffer, and we drop that here.
-+ * Called under journal->j_list_lock.  The caller provided us with a ref
-+ * against the buffer, and we drop that here.
-  */
- static void release_buffer_page(struct buffer_head *bh)
- {
-@@ -78,6 +78,19 @@ nope:
- }
- 
- /*
-+ * Decrement reference counter for data buffer. If it has been marked
-+ * 'BH_Freed', release it and the page to which it belongs if possible.
-+ */
-+static void release_data_buffer(struct buffer_head *bh)
-+{
-+	if (buffer_freed(bh)) {
-+		clear_buffer_freed(bh);
-+		release_buffer_page(bh);
-+	} else
-+		put_bh(bh);
-+}
+diff -puN fs/ext3/namei.c~ext3-validate-directory-entry-data-before-use-v5 fs/ext3/namei.c
+--- a/fs/ext3/namei.c~ext3-validate-directory-entry-data-before-use-v5
++++ a/fs/ext3/namei.c
+@@ -991,19 +991,21 @@ static struct buffer_head * ext3_dx_find
+ 		de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 		top = (struct ext3_dir_entry_2 *) ((char *) de + sb->s_blocksize -
+ 				       EXT3_DIR_REC_LEN(0));
+-		for (; de < top; de = ext3_next_entry(de))
+-		if (ext3_match (namelen, name, de)) {
+-			if (!ext3_check_dir_entry("ext3_find_entry",
+-						  dir, de, bh,
+-				  (block<<EXT3_BLOCK_SIZE_BITS(sb))
+-					  +((char *)de - bh->b_data))) {
+-				brelse (bh);
++		for (; de < top; de = ext3_next_entry(de)) {
++			int off = (block << EXT3_BLOCK_SIZE_BITS(sb))
++				  + ((char *) de - bh->b_data);
 +
-+/*
-  * Try to acquire jbd_lock_bh_state() against the buffer, when j_list_lock is
-  * held.  For ranking reasons we must trylock.  If we lose, schedule away and
-  * return 0.  j_list_lock is dropped in this case.
-@@ -231,7 +244,7 @@ write_out_data:
- 			if (locked)
- 				unlock_buffer(bh);
- 			BUFFER_TRACE(bh, "already cleaned up");
--			put_bh(bh);
-+			release_data_buffer(bh);
- 			continue;
++			if (!ext3_check_dir_entry(__func__, dir, de, bh, off)) {
++				brelse(bh);
+ 				*err = ERR_BAD_DX_DIR;
+ 				goto errout;
+ 			}
+-			*res_dir = de;
+-			dx_release (frames);
+-			return bh;
++
++			if (ext3_match(namelen, name, de)) {
++				*res_dir = de;
++				dx_release(frames);
++				return bh;
++			}
  		}
- 		if (locked && test_clear_buffer_dirty(bh)) {
-@@ -258,10 +271,10 @@ write_out_data:
- 			if (locked)
- 				unlock_buffer(bh);
- 			journal_remove_journal_head(bh);
--			/* Once for our safety reference, once for
-+			/* One for our safety reference, other for
- 			 * journal_remove_journal_head() */
- 			put_bh(bh);
--			put_bh(bh);
-+			release_data_buffer(bh);
- 		}
- 
- 		if (need_resched() || spin_needbreak(&journal->j_list_lock)) {
-@@ -443,7 +456,7 @@ void journal_commit_transaction(journal_
- 		} else {
- 			jbd_unlock_bh_state(bh);
- 		}
--		put_bh(bh);
-+		release_data_buffer(bh);
- 		cond_resched_lock(&journal->j_list_lock);
- 	}
- 	spin_unlock(&journal->j_list_lock);
-@@ -453,8 +466,6 @@ void journal_commit_transaction(journal_
- 
- 	journal_write_revoke_records(journal, commit_transaction);
- 
--	jbd_debug(3, "JBD: commit phase 2\n");
+ 		brelse (bh);
+ 		/* Check to see if we should continue to search */
+_
+
+Patches currently in -mm which might be from duaneg@dghda.com are
+
+origin.patch
+
