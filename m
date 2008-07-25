@@ -1,59 +1,61 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [RFC]Ext4: journal credits reservation fixes for DIO,
-	fallocate and delalloc writepages
-Date: Fri, 25 Jul 2008 12:38:45 -0700
-Message-ID: <1217014725.6322.32.camel@mingming-laptop>
-References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker>
-	 <1216774311.6505.4.camel@mingming-laptop>
-	 <20080723011802.GB20749@webber.adilger.int>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: ext4 compile bench is slower
+Date: Fri, 25 Jul 2008 18:00:16 -0400
+Message-ID: <20080725215901.GA3181@webber.adilger.int>
+References: <20080709165655.GB29109@skywalker>
+ <20080709215728.GD6239@webber.adilger.int> <20080710042453.GA6764@skywalker>
+ <20080714144442.GA1041@skywalker> <20080714100153.0f9756e3@ichigo>
+ <20080721222357.56471dd5@gara> <20080723005850.GF19325@webber.adilger.int>
+ <20080723083033.4bdddf08@gara>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org,
-	Shehjar Tikoo <shehjart@cse.unsw.edu.au>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Mingming Cao <cmm@us.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:44386 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751028AbYGYTjB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2008 15:39:01 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m6PJcoaB015892
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jul 2008 15:38:50 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6PJcngb027978
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jul 2008 13:38:49 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6PJcmwe005444
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jul 2008 13:38:49 -0600
-In-Reply-To: <20080723011802.GB20749@webber.adilger.int>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:36730 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751670AbYGYWAi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2008 18:00:38 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6PM0P5r010485
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Jul 2008 15:00:36 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K4L00C0113B4N00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Fri, 25 Jul 2008 15:00:25 -0700 (PDT)
+In-reply-to: <20080723083033.4bdddf08@gara>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Jul 23, 2008  08:30 -0500, Jose R. Santos wrote:
+> On Tue, 22 Jul 2008 18:58:50 -0600
+> Andreas Dilger <adilger@sun.com> wrote:
+> > Jose, do you have ext3 results on the same system
+> > for the benchmarks you ran?  That would tell us how much improvement we
+> > get from other ext4 features (e.g. extents vs. block allocation) and how
+> > much from flex_bg.
+> 
+> No I dont, I tried doing some runs yesterday but after updating the
+> kernel, the results flex_bg are about the same as without it and ext3
+> is a lot faster than ext4.  Im investigating to see if I messed up the
+> kernel build somehow or if we have a regression.
 
-=E5=9C=A8 2008-07-22=E4=BA=8C=E7=9A=84 19:18 -0600=EF=BC=8CAndreas Dilg=
-er=E5=86=99=E9=81=93=EF=BC=9A
-> On Jul 22, 2008  17:51 -0700, Mingming Cao wrote:
-> > + * Calulate the total number of credits to reserve to fit
-> > + * the modification of @num pages into a single transaction
-> > + */
-> > +int ext4_writepages_trans_blocks(struct inode *inode, int num)
-> > +{
-> > +	int bpp =3D ext4_journal_blocks_per_page(inode);
-> > +	int nrblocks =3D num * bpp;
-> > +
-> > +	if (!EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)
-> > +		return ext4_writepages_trans_blocks_old(inode, nrblocks);
->=20
-> This should be "if (!(EXT4_I(inode)->i_flags & EXT_EXTENTS_FL))",
-Thanks for catching this.
+There was another report that the current ext4 code is no longer faster
+at compilebench than ext3.
 
-Mingming
+> Valerie did a very comprehensive set of comparisons that could be
+> useful for the presentation.  I'll try to see if I can recreate this
+> once I figure out the regression im seeing but would this work for now?
+> 
+> http://www.bullopensource.org/ext4/20080530/ffsb-readwrite-2.6.26-rc2.html
 
-
+Cheers, Andreas
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
