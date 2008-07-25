@@ -1,86 +1,129 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-dont-read-inode-block-if-the-buffer-has-a-write-error.patch removed from -mm tree
-Date: Fri, 25 Jul 2008 15:56:38 -0700
-Message-ID: <200807252256.m6PMuch0003107@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: hidehiro.kawai.ez@hitachi.com, jack@ucw.cz,
-	linux-ext4@vger.kernel.org, nickpiggin@yahoo.com.au,
-	satoshi.oshima.fk@hitachi.com, yumiko.sugita.yf@hitachi.com,
+Subject: - ext3-handle-corrupted-orphan-list-at-mount.patch removed from -mm tree
+Date: Fri, 25 Jul 2008 15:56:36 -0700
+Message-ID: <200807252256.m6PMuabW003104@imap1.linux-foundation.org>
+To: duaneg@dghda.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:47332 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753517AbYGYW5K (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Jul 2008 18:57:10 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext3: don't read inode block if the buffer has a write error
+     ext3: handle corrupted orphan list at mount
 has been removed from the -mm tree.  Its filename was
-     ext3-dont-read-inode-block-if-the-buffer-has-a-write-error.patch
+     ext3-handle-corrupted-orphan-list-at-mount.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3: don't read inode block if the buffer has a write error
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: ext3: handle corrupted orphan list at mount
+From: "Duane Griffin" <duaneg@dghda.com>
 
-A transient I/O error can corrupt inode data.  Here is the scenario:
+If the orphan node list includes valid, untruncatable nodes with nlink > 0
+the ext3_orphan_cleanup loop which attempts to delete them will not do so,
+causing it to loop forever. Fix by checking for such nodes in the
+ext3_orphan_get function.
 
-(1) update inode_A at the block_B
-(2) pdflush writes out new inode_A to the filesystem, but it results
-    in write I/O error, at this point, BH_Uptodate flag of the buffer
-    for block_B is cleared and BH_Write_EIO is set
-(3) create new inode_C which located at block_B, and
-    __ext3_get_inode_loc() tries to read on-disk block_B because the
-    buffer is not uptodate
-(4) if it can read on-disk block_B successfully, inode_A is
-    overwritten by old data
+This patch fixes the second case (image hdb.20000009.softlockup.gz)
+reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
 
-This patch makes __ext3_get_inode_loc() not read the inode block if the
-buffer has BH_Write_EIO flag.  In this case, the buffer should have the
-latest information, so setting the uptodate flag to the buffer (this
-avoids WARN_ON_ONCE() in mark_buffer_dirty().)
-
-According to this change, we would need to test BH_Write_EIO flag for the
-error checking.  Currently nobody checks write I/O errors on metadata
-buffers, but it will be done in other patches I'm working on.
-
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Cc: sugita <yumiko.sugita.yf@hitachi.com>
-Cc: Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-Cc: Nick Piggin <nickpiggin@yahoo.com.au>
-Cc: Jan Kara <jack@ucw.cz>
+[akpm@linux-foundation.org: coding-style fixes]
+[akpm@linux-foundation.org: printk warning fix]
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/inode.c |   10 ++++++++++
- 1 file changed, 10 insertions(+)
+ fs/ext3/ialloc.c        |    9 +++++++++
+ fs/ext3/inode.c         |   20 ++++++++++++++------
+ include/linux/ext3_fs.h |    1 +
+ 3 files changed, 24 insertions(+), 6 deletions(-)
 
-diff -puN fs/ext3/inode.c~ext3-dont-read-inode-block-if-the-buffer-has-a-write-error fs/ext3/inode.c
---- a/fs/ext3/inode.c~ext3-dont-read-inode-block-if-the-buffer-has-a-write-error
+diff -puN fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount fs/ext3/ialloc.c
+--- a/fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount
++++ a/fs/ext3/ialloc.c
+@@ -669,6 +669,14 @@ struct inode *ext3_orphan_get(struct sup
+ 	if (IS_ERR(inode))
+ 		goto iget_failed;
+ 
++	/*
++	 * If the orphans has i_nlinks > 0 then it should be able to be
++	 * truncated, otherwise it won't be removed from the orphan list
++	 * during processing and an infinite loop will result.
++	 */
++	if (inode->i_nlink && !ext3_can_truncate(inode))
++		goto bad_orphan;
++
+ 	if (NEXT_ORPHAN(inode) > max_ino)
+ 		goto bad_orphan;
+ 	brelse(bitmap_bh);
+@@ -690,6 +698,7 @@ bad_orphan:
+ 		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
+ 		       NEXT_ORPHAN(inode));
+ 		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
++		printk(KERN_NOTICE "i_nlink=%u\n", inode->i_nlink);
+ 		/* Avoid freeing blocks if we got a bad deleted inode */
+ 		if (inode->i_nlink == 0)
+ 			inode->i_blocks = 0;
+diff -puN fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount
 +++ a/fs/ext3/inode.c
-@@ -2521,6 +2521,16 @@ static int __ext3_get_inode_loc(struct i
+@@ -2253,6 +2253,19 @@ static void ext3_free_branches(handle_t 
  	}
- 	if (!buffer_uptodate(bh)) {
- 		lock_buffer(bh);
+ }
+ 
++int ext3_can_truncate(struct inode *inode)
++{
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
++		return 0;
++	if (S_ISREG(inode->i_mode))
++		return 1;
++	if (S_ISDIR(inode->i_mode))
++		return 1;
++	if (S_ISLNK(inode->i_mode))
++		return !ext3_inode_is_fast_symlink(inode);
++	return 0;
++}
 +
-+		/*
-+		 * If the buffer has the write error flag, we have failed
-+		 * to write out another inode in the same block.  In this
-+		 * case, we don't have to read the block because we may
-+		 * read the old inode data successfully.
-+		 */
-+		if (buffer_write_io_error(bh) && !buffer_uptodate(bh))
-+			set_buffer_uptodate(bh);
-+
- 		if (buffer_uptodate(bh)) {
- 			/* someone brought it uptodate while we waited */
- 			unlock_buffer(bh);
+ /*
+  * ext3_truncate()
+  *
+@@ -2297,12 +2310,7 @@ void ext3_truncate(struct inode *inode)
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+ 	struct page *page;
+ 
+-	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+-	    S_ISLNK(inode->i_mode)))
+-		return;
+-	if (ext3_inode_is_fast_symlink(inode))
+-		return;
+-	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
++	if (!ext3_can_truncate(inode))
+ 		return;
+ 
+ 	/*
+diff -puN include/linux/ext3_fs.h~ext3-handle-corrupted-orphan-list-at-mount include/linux/ext3_fs.h
+--- a/include/linux/ext3_fs.h~ext3-handle-corrupted-orphan-list-at-mount
++++ a/include/linux/ext3_fs.h
+@@ -832,6 +832,7 @@ extern void ext3_discard_reservation (st
+ extern void ext3_dirty_inode(struct inode *);
+ extern int ext3_change_inode_journal_flag(struct inode *, int);
+ extern int ext3_get_inode_loc(struct inode *, struct ext3_iloc *);
++extern int ext3_can_truncate(struct inode *inode);
+ extern void ext3_truncate (struct inode *);
+ extern void ext3_set_inode_flags(struct inode *);
+ extern void ext3_get_inode_flags(struct ext3_inode_info *);
 _
 
-Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
+Patches currently in -mm which might be from duaneg@dghda.com are
 
 origin.patch
 
