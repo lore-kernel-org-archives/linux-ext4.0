@@ -1,52 +1,83 @@
 From: akpm@linux-foundation.org
-Subject: [patch 064/277] jbd: replace potentially false assertion with if block
-Date: Fri, 25 Jul 2008 01:46:19 -0700
-Message-ID: <200807250846.m6P8kJH5001099@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, duaneg@dghda.com,
-	linux-ext4@vger.kernel.org
+Subject: [patch 062/277] ext3: fix typos in messages and comments (journalled -> journaled)
+Date: Fri, 25 Jul 2008 01:46:17 -0700
+Message-ID: <200807250846.m6P8kH8M001091@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, jack@suse.cz, linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:51986 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:58345 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753215AbYGYJJ5 (ORCPT
+	by vger.kernel.org with ESMTP id S1753987AbYGYJKZ (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2008 05:09:57 -0400
+	Fri, 25 Jul 2008 05:10:25 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Duane Griffin" <duaneg@dghda.com>
+From: Jan Kara <jack@suse.cz>
 
-If an error occurs during jbd cache initialisation it is possible for the
-journal_head_cache to be NULL when journal_destroy_journal_head_cache is
-called.  Replace the J_ASSERT with an if block to handle the situation
-correctly.
-
-Note that even with this fix things will break badly if jbd is statically
-compiled in and cache initialisation fails.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com
 Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/journal.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ fs/ext3/super.c |   14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
 
-diff -puN fs/jbd/journal.c~jbd-replace-potentially-false-assertion-with-if-block fs/jbd/journal.c
---- a/fs/jbd/journal.c~jbd-replace-potentially-false-assertion-with-if-block
-+++ a/fs/jbd/journal.c
-@@ -1636,9 +1636,10 @@ static int journal_init_journal_head_cac
+diff -puN fs/ext3/super.c~ext3-fix-typos-in-messages-and-comments-journalled-journaled fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-fix-typos-in-messages-and-comments-journalled-journaled
++++ a/fs/ext3/super.c
+@@ -1020,7 +1020,7 @@ static int parse_options (char *options,
+ set_qf_name:
+ 			if (sb_any_quota_enabled(sb)) {
+ 				printk(KERN_ERR
+-					"EXT3-fs: Cannot change journalled "
++					"EXT3-fs: Cannot change journaled "
+ 					"quota options when quota turned on.\n");
+ 				return 0;
+ 			}
+@@ -1058,7 +1058,7 @@ set_qf_name:
+ clear_qf_name:
+ 			if (sb_any_quota_enabled(sb)) {
+ 				printk(KERN_ERR "EXT3-fs: Cannot change "
+-					"journalled quota options when "
++					"journaled quota options when "
+ 					"quota turned on.\n");
+ 				return 0;
+ 			}
+@@ -1169,14 +1169,14 @@ clear_qf_name:
+ 		}
  
- static void journal_destroy_journal_head_cache(void)
+ 		if (!sbi->s_jquota_fmt) {
+-			printk(KERN_ERR "EXT3-fs: journalled quota format "
++			printk(KERN_ERR "EXT3-fs: journaled quota format "
+ 					"not specified.\n");
+ 			return 0;
+ 		}
+ 	} else {
+ 		if (sbi->s_jquota_fmt) {
+-			printk(KERN_ERR "EXT3-fs: journalled quota format "
+-					"specified with no journalling "
++			printk(KERN_ERR "EXT3-fs: journaled quota format "
++					"specified with no journaling "
+ 					"enabled.\n");
+ 			return 0;
+ 		}
+@@ -1370,7 +1370,7 @@ static void ext3_orphan_cleanup (struct 
+ 			int ret = ext3_quota_on_mount(sb, i);
+ 			if (ret < 0)
+ 				printk(KERN_ERR
+-					"EXT3-fs: Cannot turn on journalled "
++					"EXT3-fs: Cannot turn on journaled "
+ 					"quota: error %d\n", ret);
+ 		}
+ 	}
+@@ -2712,7 +2712,7 @@ static int ext3_release_dquot(struct dqu
+ 
+ static int ext3_mark_dquot_dirty(struct dquot *dquot)
  {
--	J_ASSERT(journal_head_cache != NULL);
--	kmem_cache_destroy(journal_head_cache);
--	journal_head_cache = NULL;
-+	if (journal_head_cache) {
-+		kmem_cache_destroy(journal_head_cache);
-+		journal_head_cache = NULL;
-+	}
- }
- 
- /*
+-	/* Are we journalling quotas? */
++	/* Are we journaling quotas? */
+ 	if (EXT3_SB(dquot->dq_sb)->s_qf_names[USRQUOTA] ||
+ 	    EXT3_SB(dquot->dq_sb)->s_qf_names[GRPQUOTA]) {
+ 		dquot_mark_dquot_dirty(dquot);
 _
