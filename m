@@ -1,52 +1,51 @@
-From: Nick Piggin <nickpiggin@yahoo.com.au>
-Subject: Re: partially uptodate page reads
-Date: Fri, 25 Jul 2008 19:22:39 +1000
-Message-ID: <200807251922.40299.nickpiggin@yahoo.com.au>
-References: <200807250117.11331.nickpiggin@yahoo.com.au> <20080724175913.GA32117@infradead.org>
+From: Jan Blunck <jblunck@suse.de>
+Subject: kernel build time
+Date: Fri, 25 Jul 2008 18:23:14 +0200
+Message-ID: <20080725162314.GC4944@T61.linuxsymposium.org>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: hifumi.hisashi@oss.ntt.co.jp, jack@ucw.cz,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	akpm@linux-foundation.org, xfs@oss.sgi.com
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp118.mail.mud.yahoo.com ([209.191.84.167]:35328 "HELO
-	smtp118.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752683AbYGYJWt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2008 05:22:49 -0400
-In-Reply-To: <20080724175913.GA32117@infradead.org>
+Received: from charybdis-ext.suse.de ([195.135.221.2]:42626 "EHLO
+	emea5-mh.id5.novell.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751136AbYGYQXT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2008 12:23:19 -0400
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Friday 25 July 2008 03:59, Christoph Hellwig wrote:
-> On Fri, Jul 25, 2008 at 01:17:11AM +1000, Nick Piggin wrote:
-> > Hi, I have some questions about your patch in -mm
-> >
-> > vfs-pagecache-usage-optimization-onpagesize=blocksize-environment.patch
-> >
-> > I have no particular problem with something like this, but leaving the
-> > implementation details aside for the moment, can we discuss the
-> > justification for this?
-> >
-> > Are there significant numbers of people using block size < page size in
-> > situations where performance is important and significantly improved by
-> > this patch? Can you give any performance numbers to illustrate perhaps?
->
-> With XFS lots of people use 4k blocksize filesystems on ia64 systems
-> with 16k pages, so an optimization like this would be useful.
->
-> But as mentioned in one of your previous comments I'd rather prefer
-> a readpage interface chaneg to deal with this.
+After Andreas talk yesterday I did some tests on my T61. This is not really a
+perfect benchmark setup but Andreas said I should send the data anyway.
 
-Yeah... actually if it is a nice win I don't mind too much to go
-with this API to start with, and consolidate with readpage later.
-Readpage I am thinking about making a few other changes for it as
-well, so I am happy to look at folding in this partially-uptodate
-API with it as well.
+make clean (ext3)
+real    0m3.073s
+user    0m1.324s
+sys     0m1.444s
 
-If we just get some numbers (maybe SGI can help out?), I'm happy
-enough with this approach.
+make -j 4 (ext3)
+real    6m37.377s
+user    10m58.081s
+sys     1m38.890s
+
+make clean (ext4)
+real    0m6.443s
+user    0m1.712s
+sys     0m1.824s
+
+make -j 4 (ext4)
+real    6m42.694s
+user    10m59.593s
+sys     1m36.994s
+
+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype
+needs_recovery extent flex_bg sparse_super large_file huge_file uninit_bg
+dir_nlink extra_isize
+Filesystem flags:         signed_directory_hash test_filesystem 
+
+That is with the patch queue from
+http://www.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.26-ext4-1
+on top of 2.6.26. Both ext3 and ext4dev are running on logical volumes (no
+barrier support). I used the latest e2fsprogs available.
+
+HTH,
+Jan
