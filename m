@@ -1,54 +1,54 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-handle-deleting-corrupted-indirect-blocks-fix.patch removed from -mm tree
-Date: Thu, 24 Jul 2008 17:17:44 -0700
-Message-ID: <200807250017.m6P0Hij7013735@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: akpm@linux-foundation.org, duaneg@dghda.com,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: - jbd-dont-abort-if-flushing-file-data-failed-fix.patch removed from -mm tree
+Date: Thu, 24 Jul 2008 17:18:12 -0700
+Message-ID: <200807250018.m6P0ICPs013754@imap1.linux-foundation.org>
+To: akpm@linux-foundation.org, hidehiro.kawai.ez@hitachi.com,
+	jack@suse.cz, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36987 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752674AbYGYASS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 24 Jul 2008 20:18:18 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext3-handle-deleting-corrupted-indirect-blocks-fix
+     jbd-dont-abort-if-flushing-file-data-failed-fix
 has been removed from the -mm tree.  Its filename was
-     ext3-handle-deleting-corrupted-indirect-blocks-fix.patch
+     jbd-dont-abort-if-flushing-file-data-failed-fix.patch
 
-This patch was dropped because it was folded into ext3-handle-deleting-corrupted-indirect-blocks.patch
+This patch was dropped because it was folded into jbd-dont-abort-if-flushing-file-data-failed.patch
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3-handle-deleting-corrupted-indirect-blocks-fix
+Subject: jbd-dont-abort-if-flushing-file-data-failed-fix
 From: Andrew Morton <akpm@linux-foundation.org>
 
-fs/ext3/inode.c: In function 'ext3_free_data':
-fs/ext3/inode.c:2146: warning: format '%lu' expects type 'long unsigned int', but argument 5 has type 'sector_t'
-
 Cc: <linux-ext4@vger.kernel.org>
-Cc: Duane Griffin <duaneg@dghda.com>
+Cc: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Cc: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/inode.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/jbd/commit.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks-fix fs/ext3/inode.c
---- a/fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks-fix
-+++ a/fs/ext3/inode.c
-@@ -2142,8 +2142,9 @@ static void ext3_free_data(handle_t *han
- 		else
- 			ext3_error(inode->i_sb, "ext3_free_data",
- 				   "circular indirect block detected, "
--				   "inode=%lu, block="E3FSBLK,
--				   inode->i_ino, this_bh->b_blocknr);
-+				   "inode=%lu, block=%llu",
-+				   inode->i_ino,
-+				   (unsigned long long)this_bh->b_blocknr);
- 	}
- }
+diff -puN fs/jbd/commit.c~jbd-dont-abort-if-flushing-file-data-failed-fix fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-dont-abort-if-flushing-file-data-failed-fix
++++ a/fs/jbd/commit.c
+@@ -480,7 +480,7 @@ void journal_commit_transaction(journal_
+ 		char b[BDEVNAME_SIZE];
  
+ 		printk(KERN_WARNING
+-			"JBD: Detected IO errors during flushing file data "
++			"JBD: Detected IO errors while flushing file data "
+ 			"on %s\n", bdevname(journal->j_fs_dev, b));
+ 		err = 0;
+ 	}
 _
 
 Patches currently in -mm which might be from akpm@linux-foundation.org are
@@ -69,7 +69,7 @@ gpio-add-bt8xxgpio-driver.patch
 jbd-fix-race-between-free-buffer-and-commit-trasanction.patch
 ext3-handle-corrupted-orphan-list-at-mount.patch
 ext3-handle-deleting-corrupted-indirect-blocks.patch
-ext3-handle-deleting-corrupted-indirect-blocks-fix.patch
+jbd-dont-abort-if-flushing-file-data-failed.patch
 jbd-dont-abort-if-flushing-file-data-failed-fix.patch
 reiserfs-convert-j_flush_sem-to-mutex.patch
 reiserfs-convert-j_commit_lock-to-mutex-checkpatch-fixes.patch
