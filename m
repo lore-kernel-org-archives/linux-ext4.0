@@ -1,86 +1,113 @@
 From: akpm@linux-foundation.org
-Subject: [patch 060/283] ext3: fix synchronization of quota files in journal=data mode
-Date: Fri, 25 Jul 2008 00:01:55 -0700
-Message-ID: <200807250701.m6P71t3W028414@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, jack@suse.cz, gentuu@gmail.com,
+Subject: [patch 069/283] ext3: handle corrupted orphan list at mount
+Date: Fri, 25 Jul 2008 00:02:01 -0700
+Message-ID: <200807250702.m6P721g8028456@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, duaneg@dghda.com,
 	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50264 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59598 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750867AbYGYHCB (ORCPT
+	by vger.kernel.org with ESMTP id S1751343AbYGYHCG (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2008 03:02:01 -0400
+	Fri, 25 Jul 2008 03:02:06 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+From: "Duane Griffin" <duaneg@dghda.com>
 
-In journal=data mode, it is not enough to do write_inode_now as done in
-vfs_quota_on() to write all data to their final location (which is needed for
-quota_read to work correctly).  Calling journal_flush() does its job.
+If the orphan node list includes valid, untruncatable nodes with nlink > 0
+the ext3_orphan_cleanup loop which attempts to delete them will not do so,
+causing it to loop forever. Fix by checking for such nodes in the
+ext3_orphan_get function.
 
-Reported-by: Nick <gentuu@gmail.com>
+This patch fixes the second case (image hdb.20000009.softlockup.gz)
+reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+
+[akpm@linux-foundation.org: coding-style fixes]
+[akpm@linux-foundation.org: printk warning fix]
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/super.c |   35 +++++++++++++++++++++++++++--------
- 1 file changed, 27 insertions(+), 8 deletions(-)
+ fs/ext3/ialloc.c        |    9 +++++++++
+ fs/ext3/inode.c         |   20 ++++++++++++++------
+ include/linux/ext3_fs.h |    1 +
+ 3 files changed, 24 insertions(+), 6 deletions(-)
 
-diff -puN fs/ext3/super.c~ext3-fix-synchronization-of-quota-files-in-journal=data-mode fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-fix-synchronization-of-quota-files-in-journal=data-mode
-+++ a/fs/ext3/super.c
-@@ -2759,23 +2759,42 @@ static int ext3_quota_on(struct super_bl
+diff -puN fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount fs/ext3/ialloc.c
+--- a/fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount
++++ a/fs/ext3/ialloc.c
+@@ -669,6 +669,14 @@ struct inode *ext3_orphan_get(struct sup
+ 	if (IS_ERR(inode))
+ 		goto iget_failed;
  
- 	if (!test_opt(sb, QUOTA))
- 		return -EINVAL;
--	/* Not journalling quota or remount? */
--	if ((!EXT3_SB(sb)->s_qf_names[USRQUOTA] &&
--	    !EXT3_SB(sb)->s_qf_names[GRPQUOTA]) || remount)
-+	/* When remounting, no checks are needed and in fact, path is NULL */
-+	if (remount)
- 		return vfs_quota_on(sb, type, format_id, path, remount);
-+
- 	err = path_lookup(path, LOOKUP_FOLLOW, &nd);
- 	if (err)
- 		return err;
-+
- 	/* Quotafile not on the same filesystem? */
- 	if (nd.path.mnt->mnt_sb != sb) {
- 		path_put(&nd.path);
- 		return -EXDEV;
- 	}
--	/* Quotafile not in fs root? */
--	if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
--		printk(KERN_WARNING
--			"EXT3-fs: Quota file not on filesystem root. "
--			"Journalled quota will not work.\n");
-+	/* Journaling quota? */
-+	if (EXT3_SB(sb)->s_qf_names[type]) {
-+		/* Quotafile not of fs root? */
-+		if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
-+			printk(KERN_WARNING
-+				"EXT3-fs: Quota file not on filesystem root. "
-+				"Journaled quota will not work.\n");
-+	}
-+
 +	/*
-+	 * When we journal data on quota file, we have to flush journal to see
-+	 * all updates to the file when we bypass pagecache...
++	 * If the orphans has i_nlinks > 0 then it should be able to be
++	 * truncated, otherwise it won't be removed from the orphan list
++	 * during processing and an infinite loop will result.
 +	 */
-+	if (ext3_should_journal_data(nd.path.dentry->d_inode)) {
-+		/*
-+		 * We don't need to lock updates but journal_flush() could
-+		 * otherwise be livelocked...
-+		 */
-+		journal_lock_updates(EXT3_SB(sb)->s_journal);
-+		journal_flush(EXT3_SB(sb)->s_journal);
-+		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+	}
++	if (inode->i_nlink && !ext3_can_truncate(inode))
++		goto bad_orphan;
 +
- 	path_put(&nd.path);
- 	return vfs_quota_on(sb, type, format_id, path, remount);
+ 	if (NEXT_ORPHAN(inode) > max_ino)
+ 		goto bad_orphan;
+ 	brelse(bitmap_bh);
+@@ -690,6 +698,7 @@ bad_orphan:
+ 		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
+ 		       NEXT_ORPHAN(inode));
+ 		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
++		printk(KERN_NOTICE "i_nlink=%u\n", inode->i_nlink);
+ 		/* Avoid freeing blocks if we got a bad deleted inode */
+ 		if (inode->i_nlink == 0)
+ 			inode->i_blocks = 0;
+diff -puN fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount
++++ a/fs/ext3/inode.c
+@@ -2253,6 +2253,19 @@ static void ext3_free_branches(handle_t 
+ 	}
  }
+ 
++int ext3_can_truncate(struct inode *inode)
++{
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
++		return 0;
++	if (S_ISREG(inode->i_mode))
++		return 1;
++	if (S_ISDIR(inode->i_mode))
++		return 1;
++	if (S_ISLNK(inode->i_mode))
++		return !ext3_inode_is_fast_symlink(inode);
++	return 0;
++}
++
+ /*
+  * ext3_truncate()
+  *
+@@ -2297,12 +2310,7 @@ void ext3_truncate(struct inode *inode)
+ 	unsigned blocksize = inode->i_sb->s_blocksize;
+ 	struct page *page;
+ 
+-	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+-	    S_ISLNK(inode->i_mode)))
+-		return;
+-	if (ext3_inode_is_fast_symlink(inode))
+-		return;
+-	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
++	if (!ext3_can_truncate(inode))
+ 		return;
+ 
+ 	/*
+diff -puN include/linux/ext3_fs.h~ext3-handle-corrupted-orphan-list-at-mount include/linux/ext3_fs.h
+--- a/include/linux/ext3_fs.h~ext3-handle-corrupted-orphan-list-at-mount
++++ a/include/linux/ext3_fs.h
+@@ -832,6 +832,7 @@ extern void ext3_discard_reservation (st
+ extern void ext3_dirty_inode(struct inode *);
+ extern int ext3_change_inode_journal_flag(struct inode *, int);
+ extern int ext3_get_inode_loc(struct inode *, struct ext3_iloc *);
++extern int ext3_can_truncate(struct inode *inode);
+ extern void ext3_truncate (struct inode *);
+ extern void ext3_set_inode_flags(struct inode *);
+ extern void ext3_get_inode_flags(struct ext3_inode_info *);
 _
