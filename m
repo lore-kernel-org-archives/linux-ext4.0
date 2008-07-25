@@ -1,51 +1,81 @@
-From: Jan Blunck <jblunck@suse.de>
-Subject: kernel build time
-Date: Fri, 25 Jul 2008 18:23:14 +0200
-Message-ID: <20080725162314.GC4944@T61.linuxsymposium.org>
+From: "Mike Snitzer" <snitzer@gmail.com>
+Subject: Re: [patch 069/283] ext3: handle corrupted orphan list at mount
+Date: Fri, 25 Jul 2008 14:33:35 -0400
+Message-ID: <170fa0d20807251133y9a09dcaqcdc35de7d0ad2a4f@mail.gmail.com>
+References: <200807250702.m6P721g8028456@imap1.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: torvalds@linux-foundation.org, akpm@linux-foundation.org,
+	linux-ext4@vger.kernel.org
+To: duaneg@dghda.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from charybdis-ext.suse.de ([195.135.221.2]:42626 "EHLO
-	emea5-mh.id5.novell.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751136AbYGYQXT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2008 12:23:19 -0400
+Received: from wa-out-1112.google.com ([209.85.146.176]:23889 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751555AbYGYSdg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2008 14:33:36 -0400
+Received: by wa-out-1112.google.com with SMTP id j37so2140648waf.23
+        for <linux-ext4@vger.kernel.org>; Fri, 25 Jul 2008 11:33:35 -0700 (PDT)
+In-Reply-To: <200807250702.m6P721g8028456@imap1.linux-foundation.org>
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-After Andreas talk yesterday I did some tests on my T61. This is not really a
-perfect benchmark setup but Andreas said I should send the data anyway.
+On Fri, Jul 25, 2008 at 3:02 AM,  <akpm@linux-foundation.org> wrote:
+> From: "Duane Griffin" <duaneg@dghda.com>
+>
+> If the orphan node list includes valid, untruncatable nodes with nlink > 0
+> the ext3_orphan_cleanup loop which attempts to delete them will not do so,
+> causing it to loop forever. Fix by checking for such nodes in the
+> ext3_orphan_get function.
+>
+> This patch fixes the second case (image hdb.20000009.softlockup.gz)
+> reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+>
+> [akpm@linux-foundation.org: coding-style fixes]
+> [akpm@linux-foundation.org: printk warning fix]
+> Signed-off-by: Duane Griffin <duaneg@dghda.com>
+> Cc: <linux-ext4@vger.kernel.org>
+> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 
-make clean (ext3)
-real    0m3.073s
-user    0m1.324s
-sys     0m1.444s
+> diff -puN fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount fs/ext3/inode.c
+> --- a/fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount
+> +++ a/fs/ext3/inode.c
+> @@ -2253,6 +2253,19 @@ static void ext3_free_branches(handle_t
+>        }
+>  }
+>
+> +int ext3_can_truncate(struct inode *inode)
+> +{
+> +       if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+> +               return 0;
+> +       if (S_ISREG(inode->i_mode))
+> +               return 1;
+> +       if (S_ISDIR(inode->i_mode))
+> +               return 1;
+> +       if (S_ISLNK(inode->i_mode))
+> +               return !ext3_inode_is_fast_symlink(inode);
+> +       return 0;
+> +}
+> +
+>  /*
+>  * ext3_truncate()
+>  *
+> @@ -2297,12 +2310,7 @@ void ext3_truncate(struct inode *inode)
+>        unsigned blocksize = inode->i_sb->s_blocksize;
+>        struct page *page;
+>
+> -       if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+> -           S_ISLNK(inode->i_mode)))
+> -               return;
+> -       if (ext3_inode_is_fast_symlink(inode))
+> -               return;
+> -       if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
+> +       if (!ext3_can_truncate(inode))
+>                return;
 
-make -j 4 (ext3)
-real    6m37.377s
-user    10m58.081s
-sys     1m38.890s
+I may be missing something here but doesn't the above change the logic
+that was used in ext3_truncate for the S_ISDIR and S_ISLNK cases?
 
-make clean (ext4)
-real    0m6.443s
-user    0m1.712s
-sys     0m1.824s
-
-make -j 4 (ext4)
-real    6m42.694s
-user    10m59.593s
-sys     1m36.994s
-
-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype
-needs_recovery extent flex_bg sparse_super large_file huge_file uninit_bg
-dir_nlink extra_isize
-Filesystem flags:         signed_directory_hash test_filesystem 
-
-That is with the patch queue from
-http://www.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.26-ext4-1
-on top of 2.6.26. Both ext3 and ext4dev are running on logical volumes (no
-barrier support). I used the latest e2fsprogs available.
-
-HTH,
-Jan
+Before ext3_truncate would be short-circuited if S_ISDIR or S_ISLNK,
+now it won't... is that intended?
