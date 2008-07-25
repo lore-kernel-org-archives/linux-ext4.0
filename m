@@ -1,52 +1,76 @@
 From: akpm@linux-foundation.org
-Subject: [patch 063/283] jbd: replace potentially false assertion with if block
-Date: Fri, 25 Jul 2008 00:01:57 -0700
-Message-ID: <200807250701.m6P71vEm028426@imap1.linux-foundation.org>
+Subject: [patch 071/283] ext3: handle deleting corrupted indirect blocks
+Date: Fri, 25 Jul 2008 00:02:04 -0700
+Message-ID: <200807250702.m6P724vk028484@imap1.linux-foundation.org>
 Cc: akpm@linux-foundation.org, duaneg@dghda.com,
 	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:41119 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:48683 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750927AbYGYHCC (ORCPT
+	by vger.kernel.org with ESMTP id S1751477AbYGYHCK (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2008 03:02:02 -0400
+	Fri, 25 Jul 2008 03:02:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: "Duane Griffin" <duaneg@dghda.com>
 
-If an error occurs during jbd cache initialisation it is possible for the
-journal_head_cache to be NULL when journal_destroy_journal_head_cache is
-called.  Replace the J_ASSERT with an if block to handle the situation
-correctly.
+While freeing indirect blocks we attach a journal head to the parent
+buffer head, free the blocks, then journal the parent.  If the indirect
+block list is corrupted and points to the parent the journal head will be
+detached when the block is cleared, causing an OOPS.
 
-Note that even with this fix things will break badly if jbd is statically
-compiled in and cache initialisation fails.
+Check for that explicitly and handle it gracefully.
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com
+This patch fixes the third case (image hdb.20000057.nullderef.gz)
+reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+
+Immediately above the change, in the ext3_free_data function, we call
+ext3_clear_blocks to clear the indirect blocks in this parent block.  If
+one of those blocks happens to actually be the parent block it will clear
+b_private / BH_JBD.
+
+I did the check at the end rather than earlier as it seemed more elegant. 
+I don't think there should be much practical difference, although it is
+possible the FS may not be quite so badly corrupted if we did it the other
+way (and didn't clear the block at all).  To be honest, I'm not convinced
+there aren't other similar failure modes lurking in this code, although I
+couldn't find any with a quick review.
+
+[akpm@linux-foundation.org: fix printk warning]
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/journal.c |    7 ++++---
- 1 file changed, 4 insertions(+), 3 deletions(-)
+ fs/ext3/inode.c |   16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
-diff -puN fs/jbd/journal.c~jbd-replace-potentially-false-assertion-with-if-block fs/jbd/journal.c
---- a/fs/jbd/journal.c~jbd-replace-potentially-false-assertion-with-if-block
-+++ a/fs/jbd/journal.c
-@@ -1636,9 +1636,10 @@ static int journal_init_journal_head_cac
+diff -puN fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks
++++ a/fs/ext3/inode.c
+@@ -2127,7 +2127,21 @@ static void ext3_free_data(handle_t *han
  
- static void journal_destroy_journal_head_cache(void)
- {
--	J_ASSERT(journal_head_cache != NULL);
--	kmem_cache_destroy(journal_head_cache);
--	journal_head_cache = NULL;
-+	if (journal_head_cache) {
-+		kmem_cache_destroy(journal_head_cache);
-+		journal_head_cache = NULL;
-+	}
+ 	if (this_bh) {
+ 		BUFFER_TRACE(this_bh, "call ext3_journal_dirty_metadata");
+-		ext3_journal_dirty_metadata(handle, this_bh);
++
++		/*
++		 * The buffer head should have an attached journal head at this
++		 * point. However, if the data is corrupted and an indirect
++		 * block pointed to itself, it would have been detached when
++		 * the block was cleared. Check for this instead of OOPSing.
++		 */
++		if (bh2jh(this_bh))
++			ext3_journal_dirty_metadata(handle, this_bh);
++		else
++			ext3_error(inode->i_sb, "ext3_free_data",
++				   "circular indirect block detected, "
++				   "inode=%lu, block=%llu",
++				   inode->i_ino,
++				   (unsigned long long)this_bh->b_blocknr);
+ 	}
  }
  
- /*
 _
