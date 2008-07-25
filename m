@@ -1,186 +1,86 @@
 From: akpm@linux-foundation.org
-Subject: [patch 064/283] jbd: eliminate duplicated code in revocation table init/destroy functions
-Date: Fri, 25 Jul 2008 00:01:58 -0700
-Message-ID: <200807250701.m6P71wt8028430@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, duaneg@dghda.com,
+Subject: [patch 060/283] ext3: fix synchronization of quota files in journal=data mode
+Date: Fri, 25 Jul 2008 00:01:55 -0700
+Message-ID: <200807250701.m6P71t3W028414@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, jack@suse.cz, gentuu@gmail.com,
 	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:41777 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:50264 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750943AbYGYHCC (ORCPT
+	by vger.kernel.org with ESMTP id S1750867AbYGYHCB (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2008 03:02:02 -0400
+	Fri, 25 Jul 2008 03:02:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Duane Griffin" <duaneg@dghda.com>
+From: Jan Kara <jack@suse.cz>
 
-The revocation table initialisation/destruction code is repeated for each
-of the two revocation tables stored in the journal.  Refactoring the
-duplicated code into functions is tidier, simplifies the logic in
-initialisation in particular, and slightly reduces the code size.
+In journal=data mode, it is not enough to do write_inode_now as done in
+vfs_quota_on() to write all data to their final location (which is needed for
+quota_read to work correctly).  Calling journal_flush() does its job.
 
-There should not be any functional change.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Reported-by: Nick <gentuu@gmail.com>
 Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/revoke.c |  127 ++++++++++++++++++----------------------------
- 1 file changed, 51 insertions(+), 76 deletions(-)
+ fs/ext3/super.c |   35 +++++++++++++++++++++++++++--------
+ 1 file changed, 27 insertions(+), 8 deletions(-)
 
-diff -puN fs/jbd/revoke.c~jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions fs/jbd/revoke.c
---- a/fs/jbd/revoke.c~jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions
-+++ a/fs/jbd/revoke.c
-@@ -195,109 +195,84 @@ void journal_destroy_revoke_caches(void)
- 	revoke_table_cache = NULL;
+diff -puN fs/ext3/super.c~ext3-fix-synchronization-of-quota-files-in-journal=data-mode fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-fix-synchronization-of-quota-files-in-journal=data-mode
++++ a/fs/ext3/super.c
+@@ -2759,23 +2759,42 @@ static int ext3_quota_on(struct super_bl
+ 
+ 	if (!test_opt(sb, QUOTA))
+ 		return -EINVAL;
+-	/* Not journalling quota or remount? */
+-	if ((!EXT3_SB(sb)->s_qf_names[USRQUOTA] &&
+-	    !EXT3_SB(sb)->s_qf_names[GRPQUOTA]) || remount)
++	/* When remounting, no checks are needed and in fact, path is NULL */
++	if (remount)
+ 		return vfs_quota_on(sb, type, format_id, path, remount);
++
+ 	err = path_lookup(path, LOOKUP_FOLLOW, &nd);
+ 	if (err)
+ 		return err;
++
+ 	/* Quotafile not on the same filesystem? */
+ 	if (nd.path.mnt->mnt_sb != sb) {
+ 		path_put(&nd.path);
+ 		return -EXDEV;
+ 	}
+-	/* Quotafile not in fs root? */
+-	if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
+-		printk(KERN_WARNING
+-			"EXT3-fs: Quota file not on filesystem root. "
+-			"Journalled quota will not work.\n");
++	/* Journaling quota? */
++	if (EXT3_SB(sb)->s_qf_names[type]) {
++		/* Quotafile not of fs root? */
++		if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
++			printk(KERN_WARNING
++				"EXT3-fs: Quota file not on filesystem root. "
++				"Journaled quota will not work.\n");
++	}
++
++	/*
++	 * When we journal data on quota file, we have to flush journal to see
++	 * all updates to the file when we bypass pagecache...
++	 */
++	if (ext3_should_journal_data(nd.path.dentry->d_inode)) {
++		/*
++		 * We don't need to lock updates but journal_flush() could
++		 * otherwise be livelocked...
++		 */
++		journal_lock_updates(EXT3_SB(sb)->s_journal);
++		journal_flush(EXT3_SB(sb)->s_journal);
++		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++	}
++
+ 	path_put(&nd.path);
+ 	return vfs_quota_on(sb, type, format_id, path, remount);
  }
- 
--/* Initialise the revoke table for a given journal to a given size. */
--
--int journal_init_revoke(journal_t *journal, int hash_size)
-+static struct jbd_revoke_table_s *journal_init_revoke_table(int hash_size)
- {
--	int shift, tmp;
-+	int shift = 0;
-+	int tmp = hash_size;
-+	struct jbd_revoke_table_s *table;
- 
--	J_ASSERT (journal->j_revoke_table[0] == NULL);
-+	table = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
-+	if (!table)
-+		goto out;
- 
--	shift = 0;
--	tmp = hash_size;
- 	while((tmp >>= 1UL) != 0UL)
- 		shift++;
- 
--	journal->j_revoke_table[0] = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
--	if (!journal->j_revoke_table[0])
--		return -ENOMEM;
--	journal->j_revoke = journal->j_revoke_table[0];
--
--	/* Check that the hash_size is a power of two */
--	J_ASSERT(is_power_of_2(hash_size));
--
--	journal->j_revoke->hash_size = hash_size;
--
--	journal->j_revoke->hash_shift = shift;
--
--	journal->j_revoke->hash_table =
-+	table->hash_size = hash_size;
-+	table->hash_shift = shift;
-+	table->hash_table =
- 		kmalloc(hash_size * sizeof(struct list_head), GFP_KERNEL);
--	if (!journal->j_revoke->hash_table) {
--		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[0]);
--		journal->j_revoke = NULL;
--		return -ENOMEM;
-+	if (!table->hash_table) {
-+		kmem_cache_free(revoke_table_cache, table);
-+		table = NULL;
-+		goto out;
- 	}
- 
- 	for (tmp = 0; tmp < hash_size; tmp++)
--		INIT_LIST_HEAD(&journal->j_revoke->hash_table[tmp]);
-+		INIT_LIST_HEAD(&table->hash_table[tmp]);
-+
-+out:
-+	return table;
-+}
-+
-+static void journal_destroy_revoke_table(struct jbd_revoke_table_s *table)
-+{
-+	int i;
-+	struct list_head *hash_list;
- 
--	journal->j_revoke_table[1] = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
--	if (!journal->j_revoke_table[1]) {
--		kfree(journal->j_revoke_table[0]->hash_table);
--		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[0]);
--		return -ENOMEM;
-+	for (i = 0; i < table->hash_size; i++) {
-+		hash_list = &table->hash_table[i];
-+		J_ASSERT(list_empty(hash_list));
- 	}
- 
--	journal->j_revoke = journal->j_revoke_table[1];
-+	kfree(table->hash_table);
-+	kmem_cache_free(revoke_table_cache, table);
-+}
- 
--	/* Check that the hash_size is a power of two */
-+/* Initialise the revoke table for a given journal to a given size. */
-+int journal_init_revoke(journal_t *journal, int hash_size)
-+{
-+	J_ASSERT(journal->j_revoke_table[0] == NULL);
- 	J_ASSERT(is_power_of_2(hash_size));
- 
--	journal->j_revoke->hash_size = hash_size;
-+	journal->j_revoke_table[0] = journal_init_revoke_table(hash_size);
-+	if (!journal->j_revoke_table[0])
-+		goto fail0;
- 
--	journal->j_revoke->hash_shift = shift;
-+	journal->j_revoke_table[1] = journal_init_revoke_table(hash_size);
-+	if (!journal->j_revoke_table[1])
-+		goto fail1;
- 
--	journal->j_revoke->hash_table =
--		kmalloc(hash_size * sizeof(struct list_head), GFP_KERNEL);
--	if (!journal->j_revoke->hash_table) {
--		kfree(journal->j_revoke_table[0]->hash_table);
--		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[0]);
--		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[1]);
--		journal->j_revoke = NULL;
--		return -ENOMEM;
--	}
--
--	for (tmp = 0; tmp < hash_size; tmp++)
--		INIT_LIST_HEAD(&journal->j_revoke->hash_table[tmp]);
-+	journal->j_revoke = journal->j_revoke_table[1];
- 
- 	spin_lock_init(&journal->j_revoke_lock);
- 
- 	return 0;
--}
- 
--/* Destoy a journal's revoke table.  The table must already be empty! */
-+fail1:
-+	journal_destroy_revoke_table(journal->j_revoke_table[0]);
-+fail0:
-+	return -ENOMEM;
-+}
- 
-+/* Destroy a journal's revoke table.  The table must already be empty! */
- void journal_destroy_revoke(journal_t *journal)
- {
--	struct jbd_revoke_table_s *table;
--	struct list_head *hash_list;
--	int i;
--
--	table = journal->j_revoke_table[0];
--	if (!table)
--		return;
--
--	for (i=0; i<table->hash_size; i++) {
--		hash_list = &table->hash_table[i];
--		J_ASSERT (list_empty(hash_list));
--	}
--
--	kfree(table->hash_table);
--	kmem_cache_free(revoke_table_cache, table);
--	journal->j_revoke = NULL;
--
--	table = journal->j_revoke_table[1];
--	if (!table)
--		return;
--
--	for (i=0; i<table->hash_size; i++) {
--		hash_list = &table->hash_table[i];
--		J_ASSERT (list_empty(hash_list));
--	}
+_
