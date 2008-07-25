@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-handle-deleting-corrupted-indirect-blocks.patch removed from -mm tree
-Date: Fri, 25 Jul 2008 15:56:41 -0700
-Message-ID: <200807252256.m6PMuflC003110@imap1.linux-foundation.org>
+Subject: - jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch removed from -mm tree
+Date: Fri, 25 Jul 2008 15:56:27 -0700
+Message-ID: <200807252256.m6PMuRxr003089@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 To: duaneg@dghda.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
@@ -11,78 +11,183 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: handle deleting corrupted indirect blocks
+     jbd: eliminate duplicated code in revocation table init/destroy functions
 has been removed from the -mm tree.  Its filename was
-     ext3-handle-deleting-corrupted-indirect-blocks.patch
+     jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3: handle deleting corrupted indirect blocks
+Subject: jbd: eliminate duplicated code in revocation table init/destroy functions
 From: "Duane Griffin" <duaneg@dghda.com>
 
-While freeing indirect blocks we attach a journal head to the parent
-buffer head, free the blocks, then journal the parent.  If the indirect
-block list is corrupted and points to the parent the journal head will be
-detached when the block is cleared, causing an OOPS.
+The revocation table initialisation/destruction code is repeated for each
+of the two revocation tables stored in the journal.  Refactoring the
+duplicated code into functions is tidier, simplifies the logic in
+initialisation in particular, and slightly reduces the code size.
 
-Check for that explicitly and handle it gracefully.
+There should not be any functional change.
 
-This patch fixes the third case (image hdb.20000057.nullderef.gz)
-reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
-
-Immediately above the change, in the ext3_free_data function, we call
-ext3_clear_blocks to clear the indirect blocks in this parent block.  If
-one of those blocks happens to actually be the parent block it will clear
-b_private / BH_JBD.
-
-I did the check at the end rather than earlier as it seemed more elegant. 
-I don't think there should be much practical difference, although it is
-possible the FS may not be quite so badly corrupted if we did it the other
-way (and didn't clear the block at all).  To be honest, I'm not convinced
-there aren't other similar failure modes lurking in this code, although I
-couldn't find any with a quick review.
-
-[akpm@linux-foundation.org: fix printk warning]
 Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/inode.c |   16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+ fs/jbd/revoke.c |  127 ++++++++++++++++++----------------------------
+ 1 file changed, 51 insertions(+), 76 deletions(-)
 
-diff -puN fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks fs/ext3/inode.c
---- a/fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks
-+++ a/fs/ext3/inode.c
-@@ -2127,7 +2127,21 @@ static void ext3_free_data(handle_t *han
- 
- 	if (this_bh) {
- 		BUFFER_TRACE(this_bh, "call ext3_journal_dirty_metadata");
--		ext3_journal_dirty_metadata(handle, this_bh);
-+
-+		/*
-+		 * The buffer head should have an attached journal head at this
-+		 * point. However, if the data is corrupted and an indirect
-+		 * block pointed to itself, it would have been detached when
-+		 * the block was cleared. Check for this instead of OOPSing.
-+		 */
-+		if (bh2jh(this_bh))
-+			ext3_journal_dirty_metadata(handle, this_bh);
-+		else
-+			ext3_error(inode->i_sb, "ext3_free_data",
-+				   "circular indirect block detected, "
-+				   "inode=%lu, block=%llu",
-+				   inode->i_ino,
-+				   (unsigned long long)this_bh->b_blocknr);
- 	}
+diff -puN fs/jbd/revoke.c~jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions fs/jbd/revoke.c
+--- a/fs/jbd/revoke.c~jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions
++++ a/fs/jbd/revoke.c
+@@ -195,109 +195,84 @@ void journal_destroy_revoke_caches(void)
+ 	revoke_table_cache = NULL;
  }
  
-_
-
-Patches currently in -mm which might be from duaneg@dghda.com are
-
-origin.patch
-
+-/* Initialise the revoke table for a given journal to a given size. */
+-
+-int journal_init_revoke(journal_t *journal, int hash_size)
++static struct jbd_revoke_table_s *journal_init_revoke_table(int hash_size)
+ {
+-	int shift, tmp;
++	int shift = 0;
++	int tmp = hash_size;
++	struct jbd_revoke_table_s *table;
+ 
+-	J_ASSERT (journal->j_revoke_table[0] == NULL);
++	table = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
++	if (!table)
++		goto out;
+ 
+-	shift = 0;
+-	tmp = hash_size;
+ 	while((tmp >>= 1UL) != 0UL)
+ 		shift++;
+ 
+-	journal->j_revoke_table[0] = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
+-	if (!journal->j_revoke_table[0])
+-		return -ENOMEM;
+-	journal->j_revoke = journal->j_revoke_table[0];
+-
+-	/* Check that the hash_size is a power of two */
+-	J_ASSERT(is_power_of_2(hash_size));
+-
+-	journal->j_revoke->hash_size = hash_size;
+-
+-	journal->j_revoke->hash_shift = shift;
+-
+-	journal->j_revoke->hash_table =
++	table->hash_size = hash_size;
++	table->hash_shift = shift;
++	table->hash_table =
+ 		kmalloc(hash_size * sizeof(struct list_head), GFP_KERNEL);
+-	if (!journal->j_revoke->hash_table) {
+-		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[0]);
+-		journal->j_revoke = NULL;
+-		return -ENOMEM;
++	if (!table->hash_table) {
++		kmem_cache_free(revoke_table_cache, table);
++		table = NULL;
++		goto out;
+ 	}
+ 
+ 	for (tmp = 0; tmp < hash_size; tmp++)
+-		INIT_LIST_HEAD(&journal->j_revoke->hash_table[tmp]);
++		INIT_LIST_HEAD(&table->hash_table[tmp]);
++
++out:
++	return table;
++}
++
++static void journal_destroy_revoke_table(struct jbd_revoke_table_s *table)
++{
++	int i;
++	struct list_head *hash_list;
+ 
+-	journal->j_revoke_table[1] = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
+-	if (!journal->j_revoke_table[1]) {
+-		kfree(journal->j_revoke_table[0]->hash_table);
+-		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[0]);
+-		return -ENOMEM;
++	for (i = 0; i < table->hash_size; i++) {
++		hash_list = &table->hash_table[i];
++		J_ASSERT(list_empty(hash_list));
+ 	}
+ 
+-	journal->j_revoke = journal->j_revoke_table[1];
++	kfree(table->hash_table);
++	kmem_cache_free(revoke_table_cache, table);
++}
+ 
+-	/* Check that the hash_size is a power of two */
++/* Initialise the revoke table for a given journal to a given size. */
++int journal_init_revoke(journal_t *journal, int hash_size)
++{
++	J_ASSERT(journal->j_revoke_table[0] == NULL);
+ 	J_ASSERT(is_power_of_2(hash_size));
+ 
+-	journal->j_revoke->hash_size = hash_size;
++	journal->j_revoke_table[0] = journal_init_revoke_table(hash_size);
++	if (!journal->j_revoke_table[0])
++		goto fail0;
+ 
+-	journal->j_revoke->hash_shift = shift;
++	journal->j_revoke_table[1] = journal_init_revoke_table(hash_size);
++	if (!journal->j_revoke_table[1])
++		goto fail1;
+ 
+-	journal->j_revoke->hash_table =
+-		kmalloc(hash_size * sizeof(struct list_head), GFP_KERNEL);
+-	if (!journal->j_revoke->hash_table) {
+-		kfree(journal->j_revoke_table[0]->hash_table);
+-		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[0]);
+-		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[1]);
+-		journal->j_revoke = NULL;
+-		return -ENOMEM;
+-	}
+-
+-	for (tmp = 0; tmp < hash_size; tmp++)
+-		INIT_LIST_HEAD(&journal->j_revoke->hash_table[tmp]);
++	journal->j_revoke = journal->j_revoke_table[1];
+ 
+ 	spin_lock_init(&journal->j_revoke_lock);
+ 
+ 	return 0;
+-}
+ 
+-/* Destoy a journal's revoke table.  The table must already be empty! */
++fail1:
++	journal_destroy_revoke_table(journal->j_revoke_table[0]);
++fail0:
++	return -ENOMEM;
++}
+ 
++/* Destroy a journal's revoke table.  The table must already be empty! */
+ void journal_destroy_revoke(journal_t *journal)
+ {
+-	struct jbd_revoke_table_s *table;
+-	struct list_head *hash_list;
+-	int i;
+-
+-	table = journal->j_revoke_table[0];
+-	if (!table)
+-		return;
+-
+-	for (i=0; i<table->hash_size; i++) {
+-		hash_list = &table->hash_table[i];
+-		J_ASSERT (list_empty(hash_list));
+-	}
+-
+-	kfree(table->hash_table);
+-	kmem_cache_free(revoke_table_cache, table);
+-	journal->j_revoke = NULL;
+-
+-	table = journal->j_revoke_table[1];
+-	if (!table)
+-		return;
+-
+-	for (i=0; i<table->hash_size; i++) {
+-		hash_list = &table->hash_table[i];
+-		J_ASSERT (list_empty(hash_list));
+-	}
