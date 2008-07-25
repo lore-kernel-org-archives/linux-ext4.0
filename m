@@ -1,40 +1,74 @@
 From: akpm@linux-foundation.org
-Subject: [patch 072/283] jbd: unexport journal_update_superblock
-Date: Fri, 25 Jul 2008 00:02:04 -0700
-Message-ID: <200807250702.m6P724ae028488@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, bunk@kernel.org,
+Subject: [patch 076/283] ext3: validate directory entry data before use
+Date: Fri, 25 Jul 2008 00:02:09 -0700
+Message-ID: <200807250702.m6P729IE028507@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, duaneg@dghda.com,
 	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:52438 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:58226 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751716AbYGYHCN (ORCPT
+	by vger.kernel.org with ESMTP id S1751839AbYGYHCO (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2008 03:02:13 -0400
+	Fri, 25 Jul 2008 03:02:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Adrian Bunk <bunk@kernel.org>
+From: "Duane Griffin" <duaneg@dghda.com>
 
-Remove the unused EXPORT_SYMBOL(journal_update_superblock).
+ext3_dx_find_entry uses ext3_next_entry without verifying that the entry
+is valid.  If its rec_len == 0 this causes an infinite loop.  Refactor the
+loop to check the validity of entries before checking whether they match
+and moving onto the next one.
 
-Signed-off-by: Adrian Bunk <bunk@kernel.org>
+There are other uses of ext3_next_entry in this file which also look
+problematic.  They should be reviewed and fixed if/when we have a
+test-case that triggers them.
+
+This patch fixes the first case (image hdb.25.softlockup.gz) reported in
+http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/journal.c |    1 -
- 1 file changed, 1 deletion(-)
+ fs/ext3/namei.c |   22 ++++++++++++----------
+ 1 file changed, 12 insertions(+), 10 deletions(-)
 
-diff -puN fs/jbd/journal.c~jbd-unexport-journal_update_superblock fs/jbd/journal.c
---- a/fs/jbd/journal.c~jbd-unexport-journal_update_superblock
-+++ a/fs/jbd/journal.c
-@@ -68,7 +68,6 @@ EXPORT_SYMBOL(journal_set_features);
- EXPORT_SYMBOL(journal_create);
- EXPORT_SYMBOL(journal_load);
- EXPORT_SYMBOL(journal_destroy);
--EXPORT_SYMBOL(journal_update_superblock);
- EXPORT_SYMBOL(journal_abort);
- EXPORT_SYMBOL(journal_errno);
- EXPORT_SYMBOL(journal_ack_err);
+diff -puN fs/ext3/namei.c~ext3-validate-directory-entry-data-before-use-v5 fs/ext3/namei.c
+--- a/fs/ext3/namei.c~ext3-validate-directory-entry-data-before-use-v5
++++ a/fs/ext3/namei.c
+@@ -991,19 +991,21 @@ static struct buffer_head * ext3_dx_find
+ 		de = (struct ext3_dir_entry_2 *) bh->b_data;
+ 		top = (struct ext3_dir_entry_2 *) ((char *) de + sb->s_blocksize -
+ 				       EXT3_DIR_REC_LEN(0));
+-		for (; de < top; de = ext3_next_entry(de))
+-		if (ext3_match (namelen, name, de)) {
+-			if (!ext3_check_dir_entry("ext3_find_entry",
+-						  dir, de, bh,
+-				  (block<<EXT3_BLOCK_SIZE_BITS(sb))
+-					  +((char *)de - bh->b_data))) {
+-				brelse (bh);
++		for (; de < top; de = ext3_next_entry(de)) {
++			int off = (block << EXT3_BLOCK_SIZE_BITS(sb))
++				  + ((char *) de - bh->b_data);
++
++			if (!ext3_check_dir_entry(__func__, dir, de, bh, off)) {
++				brelse(bh);
+ 				*err = ERR_BAD_DX_DIR;
+ 				goto errout;
+ 			}
+-			*res_dir = de;
+-			dx_release (frames);
+-			return bh;
++
++			if (ext3_match(namelen, name, de)) {
++				*res_dir = de;
++				dx_release(frames);
++				return bh;
++			}
+ 		}
+ 		brelse (bh);
+ 		/* Check to see if we should continue to search */
 _
