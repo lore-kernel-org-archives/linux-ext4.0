@@ -1,9 +1,11 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-fix-synchronization-of-quota-files-in-journal=data-mode.patch removed from -mm tree
-Date: Fri, 25 Jul 2008 15:56:18 -0700
-Message-ID: <200807252256.m6PMuID7003076@imap1.linux-foundation.org>
+Subject: - ext3-dont-read-inode-block-if-the-buffer-has-a-write-error.patch removed from -mm tree
+Date: Fri, 25 Jul 2008 15:56:38 -0700
+Message-ID: <200807252256.m6PMuch0003107@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
-To: jack@suse.cz, gentuu@gmail.com, linux-ext4@vger.kernel.org,
+To: hidehiro.kawai.ez@hitachi.com, jack@ucw.cz,
+	linux-ext4@vger.kernel.org, nickpiggin@yahoo.com.au,
+	satoshi.oshima.fk@hitachi.com, yumiko.sugita.yf@hitachi.com,
 	mm-commits@vger.kernel.org
 Return-path: <mm-commits-owner@vger.kernel.org>
 Sender: mm-commits-owner@vger.kernel.org
@@ -11,88 +13,74 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3: fix synchronization of quota files in journal=data mode
+     ext3: don't read inode block if the buffer has a write error
 has been removed from the -mm tree.  Its filename was
-     ext3-fix-synchronization-of-quota-files-in-journal=data-mode.patch
+     ext3-dont-read-inode-block-if-the-buffer-has-a-write-error.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3: fix synchronization of quota files in journal=data mode
-From: Jan Kara <jack@suse.cz>
+Subject: ext3: don't read inode block if the buffer has a write error
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 
-In journal=data mode, it is not enough to do write_inode_now as done in
-vfs_quota_on() to write all data to their final location (which is needed for
-quota_read to work correctly).  Calling journal_flush() does its job.
+A transient I/O error can corrupt inode data.  Here is the scenario:
 
-Reported-by: Nick <gentuu@gmail.com>
+(1) update inode_A at the block_B
+(2) pdflush writes out new inode_A to the filesystem, but it results
+    in write I/O error, at this point, BH_Uptodate flag of the buffer
+    for block_B is cleared and BH_Write_EIO is set
+(3) create new inode_C which located at block_B, and
+    __ext3_get_inode_loc() tries to read on-disk block_B because the
+    buffer is not uptodate
+(4) if it can read on-disk block_B successfully, inode_A is
+    overwritten by old data
+
+This patch makes __ext3_get_inode_loc() not read the inode block if the
+buffer has BH_Write_EIO flag.  In this case, the buffer should have the
+latest information, so setting the uptodate flag to the buffer (this
+avoids WARN_ON_ONCE() in mark_buffer_dirty().)
+
+According to this change, we would need to test BH_Write_EIO flag for the
+error checking.  Currently nobody checks write I/O errors on metadata
+buffers, but it will be done in other patches I'm working on.
+
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Cc: sugita <yumiko.sugita.yf@hitachi.com>
+Cc: Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+Cc: Nick Piggin <nickpiggin@yahoo.com.au>
+Cc: Jan Kara <jack@ucw.cz>
 Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/super.c |   35 +++++++++++++++++++++++++++--------
- 1 file changed, 27 insertions(+), 8 deletions(-)
+ fs/ext3/inode.c |   10 ++++++++++
+ 1 file changed, 10 insertions(+)
 
-diff -puN fs/ext3/super.c~ext3-fix-synchronization-of-quota-files-in-journal=data-mode fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-fix-synchronization-of-quota-files-in-journal=data-mode
-+++ a/fs/ext3/super.c
-@@ -2759,23 +2759,42 @@ static int ext3_quota_on(struct super_bl
- 
- 	if (!test_opt(sb, QUOTA))
- 		return -EINVAL;
--	/* Not journalling quota or remount? */
--	if ((!EXT3_SB(sb)->s_qf_names[USRQUOTA] &&
--	    !EXT3_SB(sb)->s_qf_names[GRPQUOTA]) || remount)
-+	/* When remounting, no checks are needed and in fact, path is NULL */
-+	if (remount)
- 		return vfs_quota_on(sb, type, format_id, path, remount);
-+
- 	err = path_lookup(path, LOOKUP_FOLLOW, &nd);
- 	if (err)
- 		return err;
-+
- 	/* Quotafile not on the same filesystem? */
- 	if (nd.path.mnt->mnt_sb != sb) {
- 		path_put(&nd.path);
- 		return -EXDEV;
+diff -puN fs/ext3/inode.c~ext3-dont-read-inode-block-if-the-buffer-has-a-write-error fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-dont-read-inode-block-if-the-buffer-has-a-write-error
++++ a/fs/ext3/inode.c
+@@ -2521,6 +2521,16 @@ static int __ext3_get_inode_loc(struct i
  	}
--	/* Quotafile not in fs root? */
--	if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
--		printk(KERN_WARNING
--			"EXT3-fs: Quota file not on filesystem root. "
--			"Journalled quota will not work.\n");
-+	/* Journaling quota? */
-+	if (EXT3_SB(sb)->s_qf_names[type]) {
-+		/* Quotafile not of fs root? */
-+		if (nd.path.dentry->d_parent->d_inode != sb->s_root->d_inode)
-+			printk(KERN_WARNING
-+				"EXT3-fs: Quota file not on filesystem root. "
-+				"Journaled quota will not work.\n");
-+	}
+ 	if (!buffer_uptodate(bh)) {
+ 		lock_buffer(bh);
 +
-+	/*
-+	 * When we journal data on quota file, we have to flush journal to see
-+	 * all updates to the file when we bypass pagecache...
-+	 */
-+	if (ext3_should_journal_data(nd.path.dentry->d_inode)) {
 +		/*
-+		 * We don't need to lock updates but journal_flush() could
-+		 * otherwise be livelocked...
++		 * If the buffer has the write error flag, we have failed
++		 * to write out another inode in the same block.  In this
++		 * case, we don't have to read the block because we may
++		 * read the old inode data successfully.
 +		 */
-+		journal_lock_updates(EXT3_SB(sb)->s_journal);
-+		journal_flush(EXT3_SB(sb)->s_journal);
-+		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+	}
++		if (buffer_write_io_error(bh) && !buffer_uptodate(bh))
++			set_buffer_uptodate(bh);
 +
- 	path_put(&nd.path);
- 	return vfs_quota_on(sb, type, format_id, path, remount);
- }
+ 		if (buffer_uptodate(bh)) {
+ 			/* someone brought it uptodate while we waited */
+ 			unlock_buffer(bh);
 _
 
-Patches currently in -mm which might be from jack@suse.cz are
+Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
 
 origin.patch
 
