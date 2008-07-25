@@ -1,134 +1,87 @@
-From: akpm@linux-foundation.org
-Subject: [patch 075/283] jbd: don't abort if flushing file data failed
-Date: Fri, 25 Jul 2008 00:02:08 -0700
-Message-ID: <200807250702.m6P729Fv028502@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, hidehiro.kawai.ez@hitachi.com,
-	jack@suse.cz, linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: [PATCH] add HUGE_FILE_FL to lsattr
+Date: Fri, 25 Jul 2008 03:03:34 -0400
+Message-ID: <20080725070334.GT5346@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50231 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751007AbYGYHCO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2008 03:02:14 -0400
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:50172 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751275AbYGYHDi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2008 03:03:38 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6P73bYM008505
+	for <linux-ext4@vger.kernel.org>; Fri, 25 Jul 2008 00:03:37 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K4J00401VIOH300@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Fri, 25 Jul 2008 00:03:37 -0700 (PDT)
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Add flags to lsattr for HUGE_FILE_FL.
+Document both the extent and huge file flags for chattr.1.in.
 
-In ordered mode, the current jbd aborts the journal if a file data buffer
-has an error.  But this behavior is unintended, and we found that it has
-been adopted accidentally.
+Signed-off-by: Andreas Dilger <adilger@sun.com>
 
-This patch undoes it and just calls printk() instead of aborting the
-journal.  Additionally, set AS_EIO into the address_space object of the
-failed buffer which is submitted by journal_do_submit_data() so that
-fsync() can get -EIO.
+Index: e2fsprogs-cfs/lib/e2p/pf.c
+===================================================================
+--- e2fsprogs-cfs.orig/lib/e2p/pf.c
++++ e2fsprogs-cfs/lib/e2p/pf.c
+@@ -28,7 +28,6 @@ static struct flags_name flags_array[] =
+ 	{ EXT2_SECRM_FL, "s", "Secure_Deletion" },
+ 	{ EXT2_UNRM_FL, "u" , "Undelete" },
+ 	{ EXT2_SYNC_FL, "S", "Synchronous_Updates" },
+-	{ EXT2_DIRSYNC_FL, "D", "Synchronous_Directory_Updates" },
+ 	{ EXT2_IMMUTABLE_FL, "i", "Immutable" },
+ 	{ EXT2_APPEND_FL, "a", "Append_Only" },
+ 	{ EXT2_NODUMP_FL, "d", "No_Dump" },
+@@ -40,10 +39,12 @@ static struct flags_name flags_array[] =
+ 	{ EXT2_NOCOMPR_FL, "X", "Compression_Raw_Access" },
+ 	{ EXT2_ECOMPR_FL, "E", "Compression_Error" },
+ #endif
++	{ EXT2_INDEX_FL, "I", "Indexed_direcctory" },
+ 	{ EXT3_JOURNAL_DATA_FL, "j", "Journaled_Data" },
+-	{ EXT2_INDEX_FL, "I", "Indexed_direcctory" }, 
+ 	{ EXT2_NOTAIL_FL, "t", "No_Tailmerging" },
++	{ EXT2_DIRSYNC_FL, "D", "Synchronous_Directory_Updates" },
+ 	{ EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
++	{ EXT4_HUGE_FILE_FL, "H", "Huge_File" },
+ 	{ EXT4_EXTENTS_FL, "e", "Extents" },
+ 	{ 0, NULL, NULL }
+ };
+Index: e2fsprogs-cfs/misc/chattr.1.in
+===================================================================
+--- e2fsprogs-cfs.orig/misc/chattr.1.in
++++ e2fsprogs-cfs/misc/chattr.1.in
+@@ -72,6 +72,19 @@ set or reset using 
+ although it can be displayed by
+ .BR lsattr (1).
+ .PP
++The 'e' attribute indicates that the file is using extents for mapping
++the blocks on disk.  It may not be set or reset using
++.BR chattr (1),
++although it can be displayed by
++.BR lsattr (1).
++.PP
++The 'H' attribute indicates the file is storing its blocks in units of the
++filesystem blocksize instead of in units of sectors, and means that the file
++is (or at one time was) larger than 2TB.  It may not be set or reset using
++.BR chattr (1),
++although it can be displayed by
++.BR lsattr (1).
++.PP
+ The 'I' attribute is used by the htree code to indicate that a directory
+ is being indexed using hashed trees.  It may not be set or reset using 
+ .BR chattr (1),
 
-Missing error checkings are also added to inform errors on file data
-buffers to the user.  The following buffers are targeted.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-  (a) the buffer which has already been written out by pdflush
-  (b) the buffer which has been unlocked before scanned in the
-      t_locked_list loop
-
-[akpm@linux-foundation.org: improve grammar in a printk]
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Acked-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/jbd/commit.c |   35 ++++++++++++++++++++++++++++-------
- 1 file changed, 28 insertions(+), 7 deletions(-)
-
-diff -puN fs/jbd/commit.c~jbd-dont-abort-if-flushing-file-data-failed fs/jbd/commit.c
---- a/fs/jbd/commit.c~jbd-dont-abort-if-flushing-file-data-failed
-+++ a/fs/jbd/commit.c
-@@ -185,7 +185,7 @@ static void journal_do_submit_data(struc
- /*
-  *  Submit all the data buffers to disk
-  */
--static void journal_submit_data_buffers(journal_t *journal,
-+static int journal_submit_data_buffers(journal_t *journal,
- 				transaction_t *commit_transaction)
- {
- 	struct journal_head *jh;
-@@ -193,6 +193,7 @@ static void journal_submit_data_buffers(
- 	int locked;
- 	int bufs = 0;
- 	struct buffer_head **wbuf = journal->j_wbuf;
-+	int err = 0;
- 
- 	/*
- 	 * Whenever we unlock the journal and sleep, things can get added
-@@ -266,6 +267,8 @@ write_out_data:
- 			put_bh(bh);
- 		} else {
- 			BUFFER_TRACE(bh, "writeout complete: unfile");
-+			if (unlikely(!buffer_uptodate(bh)))
-+				err = -EIO;
- 			__journal_unfile_buffer(jh);
- 			jbd_unlock_bh_state(bh);
- 			if (locked)
-@@ -284,6 +287,8 @@ write_out_data:
- 	}
- 	spin_unlock(&journal->j_list_lock);
- 	journal_do_submit_data(wbuf, bufs);
-+
-+	return err;
- }
- 
- /*
-@@ -423,8 +428,7 @@ void journal_commit_transaction(journal_
- 	 * Now start flushing things to disk, in the order they appear
- 	 * on the transaction lists.  Data blocks go first.
- 	 */
--	err = 0;
--	journal_submit_data_buffers(journal, commit_transaction);
-+	err = journal_submit_data_buffers(journal, commit_transaction);
- 
- 	/*
- 	 * Wait for all previously submitted IO to complete.
-@@ -439,10 +443,21 @@ void journal_commit_transaction(journal_
- 		if (buffer_locked(bh)) {
- 			spin_unlock(&journal->j_list_lock);
- 			wait_on_buffer(bh);
--			if (unlikely(!buffer_uptodate(bh)))
--				err = -EIO;
- 			spin_lock(&journal->j_list_lock);
- 		}
-+		if (unlikely(!buffer_uptodate(bh))) {
-+			if (TestSetPageLocked(bh->b_page)) {
-+				spin_unlock(&journal->j_list_lock);
-+				lock_page(bh->b_page);
-+				spin_lock(&journal->j_list_lock);
-+			}
-+			if (bh->b_page->mapping)
-+				set_bit(AS_EIO, &bh->b_page->mapping->flags);
-+
-+			unlock_page(bh->b_page);
-+			SetPageError(bh->b_page);
-+			err = -EIO;
-+		}
- 		if (!inverted_lock(journal, bh)) {
- 			put_bh(bh);
- 			spin_lock(&journal->j_list_lock);
-@@ -461,8 +476,14 @@ void journal_commit_transaction(journal_
- 	}
- 	spin_unlock(&journal->j_list_lock);
- 
--	if (err)
--		journal_abort(journal, err);
-+	if (err) {
-+		char b[BDEVNAME_SIZE];
-+
-+		printk(KERN_WARNING
-+			"JBD: Detected IO errors while flushing file data "
-+			"on %s\n", bdevname(journal->j_fs_dev, b));
-+		err = 0;
-+	}
- 
- 	journal_write_revoke_records(journal, commit_transaction);
- 
-_
