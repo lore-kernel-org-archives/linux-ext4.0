@@ -1,66 +1,54 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-handle-corrupted-orphan-list-at-mount-cleanup.patch removed from -mm tree
-Date: Thu, 24 Jul 2008 17:16:50 -0700
-Message-ID: <200807250016.m6P0Goew013619@imap1.linux-foundation.org>
+Subject: - ext3-handle-corrupted-orphan-list-at-mount-fix.patch removed from -mm tree
+Date: Thu, 24 Jul 2008 17:16:53 -0700
+Message-ID: <200807250016.m6P0Gr6n013626@imap1.linux-foundation.org>
 To: akpm@linux-foundation.org, duaneg@dghda.com,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+	linux-ext4@vger.kernel.org, sliedes@cc.hut.fi,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:57187 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36620 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752357AbYGYAQz (ORCPT
+	by vger.kernel.org with ESMTP id S1752632AbYGYARB (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Jul 2008 20:16:55 -0400
+	Thu, 24 Jul 2008 20:17:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext3-handle-corrupted-orphan-list-at-mount-cleanup
+     ext3-handle-corrupted-orphan-list-at-mount-fix
 has been removed from the -mm tree.  Its filename was
-     ext3-handle-corrupted-orphan-list-at-mount-cleanup.patch
+     ext3-handle-corrupted-orphan-list-at-mount-fix.patch
 
 This patch was dropped because it was folded into ext3-handle-corrupted-orphan-list-at-mount.patch
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3-handle-corrupted-orphan-list-at-mount-cleanup
+Subject: ext3-handle-corrupted-orphan-list-at-mount-fix
 From: Andrew Morton <akpm@linux-foundation.org>
-
-Try to make that expression less mind-boggling.
 
 Cc: <linux-ext4@vger.kernel.org>
 Cc: Duane Griffin <duaneg@dghda.com>
+Cc: Sami Liedes <sliedes@cc.hut.fi>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/inode.c |   14 ++++++++++----
- 1 file changed, 10 insertions(+), 4 deletions(-)
+ fs/ext3/ialloc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount-cleanup fs/ext3/inode.c
---- a/fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount-cleanup
-+++ a/fs/ext3/inode.c
-@@ -2258,10 +2258,16 @@ static void ext3_free_branches(handle_t 
- 
- int ext3_can_truncate(struct inode *inode)
- {
--	return (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
--		S_ISLNK(inode->i_mode)) &&
--		!ext3_inode_is_fast_symlink(inode) &&
--		!(IS_APPEND(inode) || IS_IMMUTABLE(inode));
-+	if (S_ISREG(inode->i_mode))
-+		return 1;
-+	if (S_ISDIR(inode->i_mode))
-+		return 1;
-+	if (S_ISLNK(inode->i_mode)) {
-+		if (!ext3_inode_is_fast_symlink(inode) &&
-+				!(IS_APPEND(inode) || IS_IMMUTABLE(inode)))
-+			return 1;
-+	}
-+	return 0;
- }
- 
- /*
+diff -puN fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount-fix fs/ext3/ialloc.c
+--- a/fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount-fix
++++ a/fs/ext3/ialloc.c
+@@ -698,7 +698,7 @@ bad_orphan:
+ 		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
+ 		       NEXT_ORPHAN(inode));
+ 		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
+-		printk(KERN_NOTICE "i_nlink=%lu\n", inode->i_nlink);
++		printk(KERN_NOTICE "i_nlink=%u\n", inode->i_nlink);
+ 		/* Avoid freeing blocks if we got a bad deleted inode */
+ 		if (inode->i_nlink == 0)
+ 			inode->i_blocks = 0;
 _
 
 Patches currently in -mm which might be from akpm@linux-foundation.org are
@@ -80,7 +68,6 @@ gpio-sysfs-interface-updated.patch
 gpio-add-bt8xxgpio-driver.patch
 jbd-fix-race-between-free-buffer-and-commit-trasanction.patch
 ext3-handle-corrupted-orphan-list-at-mount.patch
-ext3-handle-corrupted-orphan-list-at-mount-cleanup.patch
 ext3-handle-corrupted-orphan-list-at-mount-fix.patch
 ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix.patch
 ext3-handle-deleting-corrupted-indirect-blocks-fix.patch
