@@ -1,54 +1,54 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-handle-corrupted-orphan-list-at-mount-fix.patch removed from -mm tree
-Date: Thu, 24 Jul 2008 17:16:53 -0700
-Message-ID: <200807250016.m6P0Gr6n013626@imap1.linux-foundation.org>
+Subject: - ext3-handle-deleting-corrupted-indirect-blocks-fix.patch removed from -mm tree
+Date: Thu, 24 Jul 2008 17:17:44 -0700
+Message-ID: <200807250017.m6P0Hij7013735@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
 To: akpm@linux-foundation.org, duaneg@dghda.com,
-	linux-ext4@vger.kernel.org, sliedes@cc.hut.fi,
-	mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:36620 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752632AbYGYARB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 24 Jul 2008 20:17:01 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext3-handle-corrupted-orphan-list-at-mount-fix
+     ext3-handle-deleting-corrupted-indirect-blocks-fix
 has been removed from the -mm tree.  Its filename was
-     ext3-handle-corrupted-orphan-list-at-mount-fix.patch
+     ext3-handle-deleting-corrupted-indirect-blocks-fix.patch
 
-This patch was dropped because it was folded into ext3-handle-corrupted-orphan-list-at-mount.patch
+This patch was dropped because it was folded into ext3-handle-deleting-corrupted-indirect-blocks.patch
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3-handle-corrupted-orphan-list-at-mount-fix
+Subject: ext3-handle-deleting-corrupted-indirect-blocks-fix
 From: Andrew Morton <akpm@linux-foundation.org>
+
+fs/ext3/inode.c: In function 'ext3_free_data':
+fs/ext3/inode.c:2146: warning: format '%lu' expects type 'long unsigned int', but argument 5 has type 'sector_t'
 
 Cc: <linux-ext4@vger.kernel.org>
 Cc: Duane Griffin <duaneg@dghda.com>
-Cc: Sami Liedes <sliedes@cc.hut.fi>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/ialloc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext3/inode.c |    5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff -puN fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount-fix fs/ext3/ialloc.c
---- a/fs/ext3/ialloc.c~ext3-handle-corrupted-orphan-list-at-mount-fix
-+++ a/fs/ext3/ialloc.c
-@@ -698,7 +698,7 @@ bad_orphan:
- 		printk(KERN_NOTICE "NEXT_ORPHAN(inode)=%u\n",
- 		       NEXT_ORPHAN(inode));
- 		printk(KERN_NOTICE "max_ino=%lu\n", max_ino);
--		printk(KERN_NOTICE "i_nlink=%lu\n", inode->i_nlink);
-+		printk(KERN_NOTICE "i_nlink=%u\n", inode->i_nlink);
- 		/* Avoid freeing blocks if we got a bad deleted inode */
- 		if (inode->i_nlink == 0)
- 			inode->i_blocks = 0;
+diff -puN fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks-fix fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks-fix
++++ a/fs/ext3/inode.c
+@@ -2142,8 +2142,9 @@ static void ext3_free_data(handle_t *han
+ 		else
+ 			ext3_error(inode->i_sb, "ext3_free_data",
+ 				   "circular indirect block detected, "
+-				   "inode=%lu, block="E3FSBLK,
+-				   inode->i_ino, this_bh->b_blocknr);
++				   "inode=%lu, block=%llu",
++				   inode->i_ino,
++				   (unsigned long long)this_bh->b_blocknr);
+ 	}
+ }
+ 
 _
 
 Patches currently in -mm which might be from akpm@linux-foundation.org are
@@ -68,8 +68,7 @@ gpio-sysfs-interface-updated.patch
 gpio-add-bt8xxgpio-driver.patch
 jbd-fix-race-between-free-buffer-and-commit-trasanction.patch
 ext3-handle-corrupted-orphan-list-at-mount.patch
-ext3-handle-corrupted-orphan-list-at-mount-fix.patch
-ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix.patch
+ext3-handle-deleting-corrupted-indirect-blocks.patch
 ext3-handle-deleting-corrupted-indirect-blocks-fix.patch
 jbd-dont-abort-if-flushing-file-data-failed-fix.patch
 reiserfs-convert-j_flush_sem-to-mutex.patch
