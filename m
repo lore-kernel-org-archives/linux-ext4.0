@@ -1,100 +1,186 @@
 From: akpm@linux-foundation.org
-Subject: [patch 062/283] ext3: correct mount option parsing to detect when quota options can be changed
-Date: Fri, 25 Jul 2008 00:01:56 -0700
-Message-ID: <200807250701.m6P71uXt028422@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, jack@suse.cz, linux-ext4@vger.kernel.org
+Subject: [patch 064/283] jbd: eliminate duplicated code in revocation table init/destroy functions
+Date: Fri, 25 Jul 2008 00:01:58 -0700
+Message-ID: <200807250701.m6P71wt8028430@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, duaneg@dghda.com,
+	linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:57748 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41777 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750779AbYGYHCB (ORCPT
+	by vger.kernel.org with ESMTP id S1750943AbYGYHCC (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2008 03:02:01 -0400
+	Fri, 25 Jul 2008 03:02:02 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+From: "Duane Griffin" <duaneg@dghda.com>
 
-We should not allow user to change quota mount options when quota is just
-suspended.  I would make mount options and internal quota state inconsistent. 
-Also we should not allow user to change quota format when quota is turned on. 
-On the other hand we can just silently ignore when some option is set to the
-value it already has (mount does this on remount).
+The revocation table initialisation/destruction code is repeated for each
+of the two revocation tables stored in the journal.  Refactoring the
+duplicated code into functions is tidier, simplifies the logic in
+initialisation in particular, and slightly reduces the code size.
 
+There should not be any functional change.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/super.c |   29 ++++++++++++++++++++++-------
- 1 file changed, 22 insertions(+), 7 deletions(-)
+ fs/jbd/revoke.c |  127 ++++++++++++++++++----------------------------
+ 1 file changed, 51 insertions(+), 76 deletions(-)
 
-diff -puN fs/ext3/super.c~ext3-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-correct-mount-option-parsing-to-detect-when-quota-options-can-be-changed
-+++ a/fs/ext3/super.c
-@@ -842,7 +842,7 @@ static int parse_options (char *options,
- 	int data_opt = 0;
- 	int option;
- #ifdef CONFIG_QUOTA
--	int qtype;
-+	int qtype, qfmt;
- 	char *qname;
- #endif
+diff -puN fs/jbd/revoke.c~jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions fs/jbd/revoke.c
+--- a/fs/jbd/revoke.c~jbd-eliminate-duplicated-code-in-revocation-table-init-destroy-functions
++++ a/fs/jbd/revoke.c
+@@ -195,109 +195,84 @@ void journal_destroy_revoke_caches(void)
+ 	revoke_table_cache = NULL;
+ }
  
-@@ -1018,7 +1018,9 @@ static int parse_options (char *options,
- 		case Opt_grpjquota:
- 			qtype = GRPQUOTA;
- set_qf_name:
--			if (sb_any_quota_enabled(sb)) {
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    !sbi->s_qf_names[qtype]) {
- 				printk(KERN_ERR
- 					"EXT3-fs: Cannot change journaled "
- 					"quota options when quota turned on.\n");
-@@ -1056,7 +1058,9 @@ set_qf_name:
- 		case Opt_offgrpjquota:
- 			qtype = GRPQUOTA;
- clear_qf_name:
--			if (sb_any_quota_enabled(sb)) {
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    sbi->s_qf_names[qtype]) {
- 				printk(KERN_ERR "EXT3-fs: Cannot change "
- 					"journaled quota options when "
- 					"quota turned on.\n");
-@@ -1069,10 +1073,20 @@ clear_qf_name:
- 			sbi->s_qf_names[qtype] = NULL;
- 			break;
- 		case Opt_jqfmt_vfsold:
--			sbi->s_jquota_fmt = QFMT_VFS_OLD;
--			break;
-+			qfmt = QFMT_VFS_OLD;
-+			goto set_qf_format;
- 		case Opt_jqfmt_vfsv0:
--			sbi->s_jquota_fmt = QFMT_VFS_V0;
-+			qfmt = QFMT_VFS_V0;
-+set_qf_format:
-+			if ((sb_any_quota_enabled(sb) ||
-+			     sb_any_quota_suspended(sb)) &&
-+			    sbi->s_jquota_fmt != qfmt) {
-+				printk(KERN_ERR "EXT3-fs: Cannot change "
-+					"journaled quota options when "
-+					"quota turned on.\n");
-+				return 0;
-+			}
-+			sbi->s_jquota_fmt = qfmt;
- 			break;
- 		case Opt_quota:
- 		case Opt_usrquota:
-@@ -1084,7 +1098,8 @@ clear_qf_name:
- 			set_opt(sbi->s_mount_opt, GRPQUOTA);
- 			break;
- 		case Opt_noquota:
--			if (sb_any_quota_enabled(sb)) {
-+			if (sb_any_quota_enabled(sb) ||
-+			    sb_any_quota_suspended(sb)) {
- 				printk(KERN_ERR "EXT3-fs: Cannot change quota "
- 					"options when quota turned on.\n");
- 				return 0;
-_
+-/* Initialise the revoke table for a given journal to a given size. */
+-
+-int journal_init_revoke(journal_t *journal, int hash_size)
++static struct jbd_revoke_table_s *journal_init_revoke_table(int hash_size)
+ {
+-	int shift, tmp;
++	int shift = 0;
++	int tmp = hash_size;
++	struct jbd_revoke_table_s *table;
+ 
+-	J_ASSERT (journal->j_revoke_table[0] == NULL);
++	table = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
++	if (!table)
++		goto out;
+ 
+-	shift = 0;
+-	tmp = hash_size;
+ 	while((tmp >>= 1UL) != 0UL)
+ 		shift++;
+ 
+-	journal->j_revoke_table[0] = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
+-	if (!journal->j_revoke_table[0])
+-		return -ENOMEM;
+-	journal->j_revoke = journal->j_revoke_table[0];
+-
+-	/* Check that the hash_size is a power of two */
+-	J_ASSERT(is_power_of_2(hash_size));
+-
+-	journal->j_revoke->hash_size = hash_size;
+-
+-	journal->j_revoke->hash_shift = shift;
+-
+-	journal->j_revoke->hash_table =
++	table->hash_size = hash_size;
++	table->hash_shift = shift;
++	table->hash_table =
+ 		kmalloc(hash_size * sizeof(struct list_head), GFP_KERNEL);
+-	if (!journal->j_revoke->hash_table) {
+-		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[0]);
+-		journal->j_revoke = NULL;
+-		return -ENOMEM;
++	if (!table->hash_table) {
++		kmem_cache_free(revoke_table_cache, table);
++		table = NULL;
++		goto out;
+ 	}
+ 
+ 	for (tmp = 0; tmp < hash_size; tmp++)
+-		INIT_LIST_HEAD(&journal->j_revoke->hash_table[tmp]);
++		INIT_LIST_HEAD(&table->hash_table[tmp]);
++
++out:
++	return table;
++}
++
++static void journal_destroy_revoke_table(struct jbd_revoke_table_s *table)
++{
++	int i;
++	struct list_head *hash_list;
+ 
+-	journal->j_revoke_table[1] = kmem_cache_alloc(revoke_table_cache, GFP_KERNEL);
+-	if (!journal->j_revoke_table[1]) {
+-		kfree(journal->j_revoke_table[0]->hash_table);
+-		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[0]);
+-		return -ENOMEM;
++	for (i = 0; i < table->hash_size; i++) {
++		hash_list = &table->hash_table[i];
++		J_ASSERT(list_empty(hash_list));
+ 	}
+ 
+-	journal->j_revoke = journal->j_revoke_table[1];
++	kfree(table->hash_table);
++	kmem_cache_free(revoke_table_cache, table);
++}
+ 
+-	/* Check that the hash_size is a power of two */
++/* Initialise the revoke table for a given journal to a given size. */
++int journal_init_revoke(journal_t *journal, int hash_size)
++{
++	J_ASSERT(journal->j_revoke_table[0] == NULL);
+ 	J_ASSERT(is_power_of_2(hash_size));
+ 
+-	journal->j_revoke->hash_size = hash_size;
++	journal->j_revoke_table[0] = journal_init_revoke_table(hash_size);
++	if (!journal->j_revoke_table[0])
++		goto fail0;
+ 
+-	journal->j_revoke->hash_shift = shift;
++	journal->j_revoke_table[1] = journal_init_revoke_table(hash_size);
++	if (!journal->j_revoke_table[1])
++		goto fail1;
+ 
+-	journal->j_revoke->hash_table =
+-		kmalloc(hash_size * sizeof(struct list_head), GFP_KERNEL);
+-	if (!journal->j_revoke->hash_table) {
+-		kfree(journal->j_revoke_table[0]->hash_table);
+-		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[0]);
+-		kmem_cache_free(revoke_table_cache, journal->j_revoke_table[1]);
+-		journal->j_revoke = NULL;
+-		return -ENOMEM;
+-	}
+-
+-	for (tmp = 0; tmp < hash_size; tmp++)
+-		INIT_LIST_HEAD(&journal->j_revoke->hash_table[tmp]);
++	journal->j_revoke = journal->j_revoke_table[1];
+ 
+ 	spin_lock_init(&journal->j_revoke_lock);
+ 
+ 	return 0;
+-}
+ 
+-/* Destoy a journal's revoke table.  The table must already be empty! */
++fail1:
++	journal_destroy_revoke_table(journal->j_revoke_table[0]);
++fail0:
++	return -ENOMEM;
++}
+ 
++/* Destroy a journal's revoke table.  The table must already be empty! */
+ void journal_destroy_revoke(journal_t *journal)
+ {
+-	struct jbd_revoke_table_s *table;
+-	struct list_head *hash_list;
+-	int i;
+-
+-	table = journal->j_revoke_table[0];
+-	if (!table)
+-		return;
+-
+-	for (i=0; i<table->hash_size; i++) {
+-		hash_list = &table->hash_table[i];
+-		J_ASSERT (list_empty(hash_list));
+-	}
+-
+-	kfree(table->hash_table);
+-	kmem_cache_free(revoke_table_cache, table);
+-	journal->j_revoke = NULL;
+-
+-	table = journal->j_revoke_table[1];
+-	if (!table)
+-		return;
+-
+-	for (i=0; i<table->hash_size; i++) {
+-		hash_list = &table->hash_table[i];
+-		J_ASSERT (list_empty(hash_list));
+-	}
