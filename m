@@ -1,87 +1,76 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: [PATCH] add HUGE_FILE_FL to lsattr
-Date: Fri, 25 Jul 2008 03:03:34 -0400
-Message-ID: <20080725070334.GT5346@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: akpm@linux-foundation.org
+Subject: [patch 072/277] ext3: handle deleting corrupted indirect blocks
+Date: Fri, 25 Jul 2008 01:46:26 -0700
+Message-ID: <200807250846.m6P8kQTS001135@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, duaneg@dghda.com,
+	linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:50172 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751275AbYGYHDi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 25 Jul 2008 03:03:38 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6P73bYM008505
-	for <linux-ext4@vger.kernel.org>; Fri, 25 Jul 2008 00:03:37 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K4J00401VIOH300@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 25 Jul 2008 00:03:37 -0700 (PDT)
-Content-disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:60556 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753133AbYGYIq7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 25 Jul 2008 04:46:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add flags to lsattr for HUGE_FILE_FL.
-Document both the extent and huge file flags for chattr.1.in.
+From: "Duane Griffin" <duaneg@dghda.com>
 
-Signed-off-by: Andreas Dilger <adilger@sun.com>
+While freeing indirect blocks we attach a journal head to the parent
+buffer head, free the blocks, then journal the parent.  If the indirect
+block list is corrupted and points to the parent the journal head will be
+detached when the block is cleared, causing an OOPS.
 
-Index: e2fsprogs-cfs/lib/e2p/pf.c
-===================================================================
---- e2fsprogs-cfs.orig/lib/e2p/pf.c
-+++ e2fsprogs-cfs/lib/e2p/pf.c
-@@ -28,7 +28,6 @@ static struct flags_name flags_array[] =
- 	{ EXT2_SECRM_FL, "s", "Secure_Deletion" },
- 	{ EXT2_UNRM_FL, "u" , "Undelete" },
- 	{ EXT2_SYNC_FL, "S", "Synchronous_Updates" },
--	{ EXT2_DIRSYNC_FL, "D", "Synchronous_Directory_Updates" },
- 	{ EXT2_IMMUTABLE_FL, "i", "Immutable" },
- 	{ EXT2_APPEND_FL, "a", "Append_Only" },
- 	{ EXT2_NODUMP_FL, "d", "No_Dump" },
-@@ -40,10 +39,12 @@ static struct flags_name flags_array[] =
- 	{ EXT2_NOCOMPR_FL, "X", "Compression_Raw_Access" },
- 	{ EXT2_ECOMPR_FL, "E", "Compression_Error" },
- #endif
-+	{ EXT2_INDEX_FL, "I", "Indexed_direcctory" },
- 	{ EXT3_JOURNAL_DATA_FL, "j", "Journaled_Data" },
--	{ EXT2_INDEX_FL, "I", "Indexed_direcctory" }, 
- 	{ EXT2_NOTAIL_FL, "t", "No_Tailmerging" },
-+	{ EXT2_DIRSYNC_FL, "D", "Synchronous_Directory_Updates" },
- 	{ EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
-+	{ EXT4_HUGE_FILE_FL, "H", "Huge_File" },
- 	{ EXT4_EXTENTS_FL, "e", "Extents" },
- 	{ 0, NULL, NULL }
- };
-Index: e2fsprogs-cfs/misc/chattr.1.in
-===================================================================
---- e2fsprogs-cfs.orig/misc/chattr.1.in
-+++ e2fsprogs-cfs/misc/chattr.1.in
-@@ -72,6 +72,19 @@ set or reset using 
- although it can be displayed by
- .BR lsattr (1).
- .PP
-+The 'e' attribute indicates that the file is using extents for mapping
-+the blocks on disk.  It may not be set or reset using
-+.BR chattr (1),
-+although it can be displayed by
-+.BR lsattr (1).
-+.PP
-+The 'H' attribute indicates the file is storing its blocks in units of the
-+filesystem blocksize instead of in units of sectors, and means that the file
-+is (or at one time was) larger than 2TB.  It may not be set or reset using
-+.BR chattr (1),
-+although it can be displayed by
-+.BR lsattr (1).
-+.PP
- The 'I' attribute is used by the htree code to indicate that a directory
- is being indexed using hashed trees.  It may not be set or reset using 
- .BR chattr (1),
+Check for that explicitly and handle it gracefully.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+This patch fixes the third case (image hdb.20000057.nullderef.gz)
+reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
 
+Immediately above the change, in the ext3_free_data function, we call
+ext3_clear_blocks to clear the indirect blocks in this parent block.  If
+one of those blocks happens to actually be the parent block it will clear
+b_private / BH_JBD.
+
+I did the check at the end rather than earlier as it seemed more elegant. 
+I don't think there should be much practical difference, although it is
+possible the FS may not be quite so badly corrupted if we did it the other
+way (and didn't clear the block at all).  To be honest, I'm not convinced
+there aren't other similar failure modes lurking in this code, although I
+couldn't find any with a quick review.
+
+[akpm@linux-foundation.org: fix printk warning]
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/inode.c |   16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
+
+diff -puN fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks
++++ a/fs/ext3/inode.c
+@@ -2127,7 +2127,21 @@ static void ext3_free_data(handle_t *han
+ 
+ 	if (this_bh) {
+ 		BUFFER_TRACE(this_bh, "call ext3_journal_dirty_metadata");
+-		ext3_journal_dirty_metadata(handle, this_bh);
++
++		/*
++		 * The buffer head should have an attached journal head at this
++		 * point. However, if the data is corrupted and an indirect
++		 * block pointed to itself, it would have been detached when
++		 * the block was cleared. Check for this instead of OOPSing.
++		 */
++		if (bh2jh(this_bh))
++			ext3_journal_dirty_metadata(handle, this_bh);
++		else
++			ext3_error(inode->i_sb, "ext3_free_data",
++				   "circular indirect block detected, "
++				   "inode=%lu, block=%llu",
++				   inode->i_ino,
++				   (unsigned long long)this_bh->b_blocknr);
+ 	}
+ }
+ 
+_
