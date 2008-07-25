@@ -1,104 +1,85 @@
 From: akpm@linux-foundation.org
-Subject: - jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch removed from -mm tree
-Date: Fri, 25 Jul 2008 15:56:28 -0700
-Message-ID: <200807252256.m6PMuSFj003092@imap1.linux-foundation.org>
+Subject: - ext3-handle-deleting-corrupted-indirect-blocks.patch removed from -mm tree
+Date: Fri, 25 Jul 2008 15:56:41 -0700
+Message-ID: <200807252256.m6PMuflC003110@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
 To: duaneg@dghda.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:41275 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754369AbYGYXGd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 25 Jul 2008 19:06:33 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     jbd: tidy up revoke cache initialisation and destruction
+     ext3: handle deleting corrupted indirect blocks
 has been removed from the -mm tree.  Its filename was
-     jbd-tidy-up-revoke-cache-initialisation-and-destruction.patch
+     ext3-handle-deleting-corrupted-indirect-blocks.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd: tidy up revoke cache initialisation and destruction
+Subject: ext3: handle deleting corrupted indirect blocks
 From: "Duane Griffin" <duaneg@dghda.com>
 
-Make revocation cache destruction safe to call if initialisation fails
-partially or entirely.  This allows it to be used to cleanup in the case
-of initialisation failure, simplifying that code slightly.
+While freeing indirect blocks we attach a journal head to the parent
+buffer head, free the blocks, then journal the parent.  If the indirect
+block list is corrupted and points to the parent the journal head will be
+detached when the block is cleared, causing an OOPS.
 
+Check for that explicitly and handle it gracefully.
+
+This patch fixes the third case (image hdb.20000057.nullderef.gz)
+reported in http://bugzilla.kernel.org/show_bug.cgi?id=10882.
+
+Immediately above the change, in the ext3_free_data function, we call
+ext3_clear_blocks to clear the indirect blocks in this parent block.  If
+one of those blocks happens to actually be the parent block it will clear
+b_private / BH_JBD.
+
+I did the check at the end rather than earlier as it seemed more elegant. 
+I don't think there should be much practical difference, although it is
+possible the FS may not be quite so badly corrupted if we did it the other
+way (and didn't clear the block at all).  To be honest, I'm not convinced
+there aren't other similar failure modes lurking in this code, although I
+couldn't find any with a quick review.
+
+[akpm@linux-foundation.org: fix printk warning]
 Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/revoke.c |   36 +++++++++++++++++++++++-------------
- 1 file changed, 23 insertions(+), 13 deletions(-)
+ fs/ext3/inode.c |   16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
-diff -puN fs/jbd/revoke.c~jbd-tidy-up-revoke-cache-initialisation-and-destruction fs/jbd/revoke.c
---- a/fs/jbd/revoke.c~jbd-tidy-up-revoke-cache-initialisation-and-destruction
-+++ a/fs/jbd/revoke.c
-@@ -166,33 +166,43 @@ static struct jbd_revoke_record_s *find_
- 	return NULL;
+diff -puN fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-handle-deleting-corrupted-indirect-blocks
++++ a/fs/ext3/inode.c
+@@ -2127,7 +2127,21 @@ static void ext3_free_data(handle_t *han
+ 
+ 	if (this_bh) {
+ 		BUFFER_TRACE(this_bh, "call ext3_journal_dirty_metadata");
+-		ext3_journal_dirty_metadata(handle, this_bh);
++
++		/*
++		 * The buffer head should have an attached journal head at this
++		 * point. However, if the data is corrupted and an indirect
++		 * block pointed to itself, it would have been detached when
++		 * the block was cleared. Check for this instead of OOPSing.
++		 */
++		if (bh2jh(this_bh))
++			ext3_journal_dirty_metadata(handle, this_bh);
++		else
++			ext3_error(inode->i_sb, "ext3_free_data",
++				   "circular indirect block detected, "
++				   "inode=%lu, block=%llu",
++				   inode->i_ino,
++				   (unsigned long long)this_bh->b_blocknr);
+ 	}
  }
  
-+void journal_destroy_revoke_caches(void)
-+{
-+	if (revoke_record_cache) {
-+		kmem_cache_destroy(revoke_record_cache);
-+		revoke_record_cache = NULL;
-+	}
-+	if (revoke_table_cache) {
-+		kmem_cache_destroy(revoke_table_cache);
-+		revoke_table_cache = NULL;
-+	}
-+}
-+
- int __init journal_init_revoke_caches(void)
- {
-+	J_ASSERT(!revoke_record_cache);
-+	J_ASSERT(!revoke_table_cache);
-+
- 	revoke_record_cache = kmem_cache_create("revoke_record",
- 					   sizeof(struct jbd_revoke_record_s),
- 					   0,
- 					   SLAB_HWCACHE_ALIGN|SLAB_TEMPORARY,
- 					   NULL);
- 	if (!revoke_record_cache)
--		return -ENOMEM;
-+		goto record_cache_failure;
- 
- 	revoke_table_cache = kmem_cache_create("revoke_table",
- 					   sizeof(struct jbd_revoke_table_s),
- 					   0, SLAB_TEMPORARY, NULL);
--	if (!revoke_table_cache) {
--		kmem_cache_destroy(revoke_record_cache);
--		revoke_record_cache = NULL;
--		return -ENOMEM;
--	}
-+	if (!revoke_table_cache)
-+		goto table_cache_failure;
-+
- 	return 0;
--}
- 
--void journal_destroy_revoke_caches(void)
--{
--	kmem_cache_destroy(revoke_record_cache);
--	revoke_record_cache = NULL;
--	kmem_cache_destroy(revoke_table_cache);
--	revoke_table_cache = NULL;
-+table_cache_failure:
-+	journal_destroy_revoke_caches();
-+record_cache_failure:
-+	return -ENOMEM;
- }
- 
- static struct jbd_revoke_table_s *journal_init_revoke_table(int hash_size)
 _
 
 Patches currently in -mm which might be from duaneg@dghda.com are
