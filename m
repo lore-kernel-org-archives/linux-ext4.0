@@ -1,46 +1,97 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [GIT PULL] ext4 bugfixes
-Date: Thu, 24 Jul 2008 16:03:16 -0400
-Message-ID: <20080724200316.GA11862@infradead.org>
-References: <E1KIbeO-0001yQ-N4@closure.thunk.org> <20080715043718.GA30017@infradead.org> <20080715124652.GB16704@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>,
-	Christoph Hellwig <hch@infradead.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:53877 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754546AbYGXUDu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 24 Jul 2008 16:03:50 -0400
-Content-Disposition: inline
-In-Reply-To: <20080715124652.GB16704@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: - ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix.patch removed from -mm tree
+Date: Thu, 24 Jul 2008 17:16:56 -0700
+Message-ID: <200807250016.m6P0Guft013629@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: akpm@linux-foundation.org, duaneg@dghda.com,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jul 15, 2008 at 08:46:52AM -0400, Theodore Tso wrote:
-> On Tue, Jul 15, 2008 at 12:37:18AM -0400, Christoph Hellwig wrote:
-> > And for this one I haven't even heard back on my review comments.  None
-> > of them is a merge blocker so it's not critical, but I find it quite odd
-> > that the pull request is coming before even replying to the review
-> > comments.
-> 
-> Can you resend your e-mail, please?  I can't seem to find it in my
-> inbox.  Thanks!!
 
-It was just a paragraph in the mail also commenting on the previously
-core parts:
+The patch titled
+     ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix
+has been removed from the -mm tree.  Its filename was
+     ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix.patch
 
-> Also the code still deals with the !buffer_mapped and no buffers on page
-> cases all over which isn't needed anymore with ->page_mkwrite
-> implemented.
-> Similarly the !get_block case in mpage_da_writepages doesn't make any
-> sense - it's never used and if people would want to use
-> generic_writepages they could trivially just call it directly.
+This patch was dropped because it was folded into ext3-handle-corrupted-orphan-list-at-mount.patch
 
-I've got a comment from Jan that the no buffers case can still happen,
-so that can be removed.
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-Any chance you could also look into the kerneldoc comments for the newly
-exported fs/mpage.c routines as commented on the updated patch?
+------------------------------------------------------
+Subject: ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix
+From: Andrew Morton <akpm@linux-foundation.org>
+
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Duane Griffin <duaneg@dghda.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/inode.c |    9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff -puN fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix
++++ a/fs/ext3/inode.c
+@@ -2258,15 +2258,14 @@ static void ext3_free_branches(handle_t 
+ 
+ int ext3_can_truncate(struct inode *inode)
+ {
++	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
++		return 0;
+ 	if (S_ISREG(inode->i_mode))
+ 		return 1;
+ 	if (S_ISDIR(inode->i_mode))
+ 		return 1;
+-	if (S_ISLNK(inode->i_mode)) {
+-		if (!ext3_inode_is_fast_symlink(inode) &&
+-				!(IS_APPEND(inode) || IS_IMMUTABLE(inode)))
+-			return 1;
+-	}
++	if (S_ISLNK(inode->i_mode))
++		return !ext3_inode_is_fast_symlink(inode);
+ 	return 0;
+ }
+ 
+_
+
+Patches currently in -mm which might be from akpm@linux-foundation.org are
+
+origin.patch
+split-the-typecheck-macros-out-of-include-linux-kernelh.patch
+locking-add-typecheck-on-irqsave-and-friends-for-correct-flags.patch
+remove-apparently-unused-fd1772h-header-file.patch
+lib-allow-memparse-to-accept-a-null-and-ignorable-second-parm.patch
+build-kernel-profileo-only-when-requested-cleanups.patch
+seq_file-fix-bug-when-seq_read-reads-nothing.patch
+exec-remove-some-includes.patch
+inflate-refactor-inflate-malloc-code.patch
+drivers-misc-hpiloc-needs-config_pci.patch
+add-a-warn-macro-this-is-warn_on-printk-arguments.patch
+gpio-sysfs-interface-updated.patch
+gpio-add-bt8xxgpio-driver.patch
+jbd-fix-race-between-free-buffer-and-commit-trasanction.patch
+ext3-handle-corrupted-orphan-list-at-mount.patch
+ext3-handle-corrupted-orphan-list-at-mount-cleanup-fix.patch
+ext3-handle-deleting-corrupted-indirect-blocks-fix.patch
+jbd-dont-abort-if-flushing-file-data-failed-fix.patch
+reiserfs-convert-j_flush_sem-to-mutex.patch
+reiserfs-convert-j_commit_lock-to-mutex-checkpatch-fixes.patch
+quota-move-function-macros-from-quotah-to-quotaopsh-jfs-fix.patch
+quota-move-function-macros-from-quotah-to-quotaopsh-jfs-fix-fix.patch
+cgroup_clone-use-pid-of-newly-created-task-for-new-cgroup-fix.patch
+cgroup_clone-use-pid-of-newly-created-task-for-new-cgroup-checkpatch-fixes.patch
+devcgroup-code-cleanup-fix.patch
+memcg-remove-refcnt-from-page_cgroup-fix-2.patch
+memcg-limit-change-shrink-usage-checkpatch-fixes.patch
+coredump-format_corename-fix-the-core_uses_pid-logic-checkpatch-fixes.patch
+workqueues-make-get_online_cpus-useable-for-work-func-fix.patch
+ipc-semc-convert-undo-structures-to-struct-list_head-checkpatch-fixes.patch
+ipc-semc-convert-sem_arraysem_pending-to-struct-list_head-checkpatch-fixes.patch
+ipc-semc-rewrite-undo-list-locking-checkpatch-fixes.patch
+fs-partition-checkc-fix-return-value-warning-v2-cleanup.patch
+block-ioctlc-and-fs-partition-checkc-checkpatch-fixes.patch
+getdelaysc-add-a-usr1-signal-handler-checkpatch-fixes.patch
+edac-mpc85xx-fix-pci-ofdev-2nd-pass-checkpatch-fixes.patch
+
