@@ -1,69 +1,58 @@
-From: Girish Shilamkar <Girish.Shilamkar@Sun.COM>
-Subject: Re: [E2fsprogs] Compile error on RHEL4/ia64
-Date: Sat, 26 Jul 2008 23:52:08 +0530
-Message-ID: <1217096528.3293.23.camel@alpha.linsyssoft.com>
-References: <1217095878.3293.22.camel@alpha.linsyssoft.com>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7BIT
-To: Ext4 Mailing List <linux-ext4@vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] jbd2: don't abort if flushing file data failed
+Date: Sat, 26 Jul 2008 20:26:54 -0400
+Message-ID: <1217118414-18636-4-git-send-email-tytso@mit.edu>
+References: <1217118414-18636-1-git-send-email-tytso@mit.edu>
+ <1217118414-18636-2-git-send-email-tytso@mit.edu>
+ <1217118414-18636-3-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sineb-mail-2.sun.com ([192.18.19.7]:39557 "EHLO
-	sineb-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753161AbYGZSVo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Jul 2008 14:21:44 -0400
-Received: from fe-apac-06.sun.com (fe-apac-06.sun.com [192.18.19.177] (may be forged))
-	by sineb-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id m6QIMreL023893
-	for <linux-ext4@vger.kernel.org>; Sat, 26 Jul 2008 18:22:54 GMT
-Received: from conversion-daemon.mail-apac.sun.com by mail-apac.sun.com
- (Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
- id <0K4M00601KXV1200@mail-apac.sun.com>
- (original mail from Girish.Shilamkar@Sun.COM) for linux-ext4@vger.kernel.org;
- Sun, 27 Jul 2008 02:19:12 +0800 (SGT)
-Received: from [192.168.1.100] ([122.163.190.21])
- by mail-apac.sun.com (Sun Java System Messaging Server 6.2-6.01 (built Apr  3
- 2006)) with ESMTPSA id <0K4M00FJ4LJYR1BW@mail-apac.sun.com> for
- linux-ext4@vger.kernel.org; Sun, 27 Jul 2008 02:19:12 +0800 (SGT)
-In-reply-to: <1217095878.3293.22.camel@alpha.linsyssoft.com>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:38617 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756239AbYG0A1F (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 26 Jul 2008 20:27:05 -0400
+In-Reply-To: <1217118414-18636-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-CC to mailing list also ...
+In ordered mode, the current jbd2 aborts the journal if a file data buffer
+has an error.  But this behavior is unintended, and we found that it has
+been adopted accidentally.
 
-On Sat, 2008-07-26 at 23:41 +0530, Girish Shilamkar wrote:
-> Hi Ted,
-> 	While building e2fsprogs on ia64/rhel4 the following compile error was
-> flagged:
-> 
-> Error messages:
-> make[4]: Leaving directory `/cache/build/BUILD/e2fsprogs-1.40.7.sun1/lib/uuid'
->         CC clear.c
->         CC compare.c
->         CC copy.c
->         CC gen_uuid.c
-> gen_uuid.c: In function `uuid__generate_time':
-> gen_uuid.c:493: internal compiler error: in ia64_expand_load_address, at
-> config/ia64/ia64.c:1184
-> Please submit a full bug report,
-> with preprocessed source if appropriate.
-> See <URL:http://bugzilla.redhat.com/bugzilla> for instructions.
-> Preprocessed source stored into /tmp/ccYkSBN6.out file, please attach this to
-> your bugreport.
-> make[3]: *** [gen_uuid.o] Error 1
-> 
-> e2fsprogs, if supported, sets TLS to appropriate TLS type, which happens to be 
-> '__thread' for Linux. And hence THREAD_LOCAL is defined as 'static __thread' in 
-> uuid_gen.c. But it seems that RHEL4 glibc is incompatible with TLS on ia64, 
-> though e2fsprogs detected that '__thread' is usable.
-> 
-> Further investigation revealed that, With '-O' option it is ok on all 
-> (rhel4, rhel5, sles9 & sles10) distros but with optimization 
-> level >=2(-O2, -O3, ...) the problem occurs on RHEL4.
-> 
-> https://bugzilla.lustre.org/show_bug.cgi?id=15514
-> has more details about the tests run to verify the above findings,
-> comments # 9 and 10.
-> 
-> Regards,
-> Girish
+This patch undoes it and just calls printk() instead of aborting the
+journal.  Unlike a similar patch submitted by Hidehiro Kawai for
+ext3/jbd, we don't need to add additional error checks and set AS_EIO,
+as ext4 uses generic_writepages() to flush out data buffers to disk.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+---
+ fs/jbd2/commit.c |   10 ++++++++--
+ 1 files changed, 8 insertions(+), 2 deletions(-)
+
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index f8b3be8..04adcc3 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -460,8 +460,14 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	 * on the transaction lists.  Data blocks go first.
+ 	 */
+ 	err = journal_submit_data_buffers(journal, commit_transaction);
+-	if (err)
+-		jbd2_journal_abort(journal, err);
++	if (err) {
++		char b[BDEVNAME_SIZE];
++
++		printk(KERN_WARNING
++			"JBD2: Detected IO errors while flushing file data "
++			"on %s\n", bdevname(journal->j_fs_dev, b));
++		err = 0;
++	}
+ 
+ 	jbd2_journal_write_revoke_records(journal, commit_transaction);
+ 
+-- 
+1.5.6.1.205.ge2c7.dirty
 
