@@ -1,48 +1,59 @@
-From: "Peter Meier" <meiepeter@gmail.com>
-Subject: Re: Trying out 2.6.26-ext4-3
-Date: Sun, 27 Jul 2008 10:58:30 +0000
-Message-ID: <c354edc90807270358g6df6b3cbib2c419ed912485fb@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [E2fsprogs] Compile error on RHEL4/ia64
+Date: Sun, 27 Jul 2008 07:00:51 -0400
+Message-ID: <20080727110050.GA8789@mit.edu>
+References: <1217095878.3293.22.camel@alpha.linsyssoft.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@Sun.COM>,
+	Ext4 Mailing List <linux-ext4@vger.kernel.org>
+To: Girish Shilamkar <Girish.Shilamkar@Sun.COM>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.173]:4476 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750791AbYG0K6b (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Jul 2008 06:58:31 -0400
-Received: by wf-out-1314.google.com with SMTP id 27so5112347wfd.4
-        for <linux-ext4@vger.kernel.org>; Sun, 27 Jul 2008 03:58:30 -0700 (PDT)
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58674 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751030AbYG0LBI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 27 Jul 2008 07:01:08 -0400
 Content-Disposition: inline
+In-Reply-To: <1217095878.3293.22.camel@alpha.linsyssoft.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi again,
+On Sat, Jul 26, 2008 at 11:41:18PM +0530, Girish Shilamkar wrote:
+> Hi Ted,
+> 	While building e2fsprogs on ia64/rhel4 the following compile error was
+> flagged:
+> 
+> Error messages:
+> make[4]: Leaving directory `/cache/build/BUILD/e2fsprogs-1.40.7.sun1/lib/uuid'
+>         CC clear.c
+>         CC compare.c
+>         CC copy.c
+>         CC gen_uuid.c
+> gen_uuid.c: In function `uuid__generate_time':
+> gen_uuid.c:493: internal compiler error: in ia64_expand_load_address, at
+> config/ia64/ia64.c:1184
+> Please submit a full bug report,
+> with preprocessed source if appropriate.
+> See <URL:http://bugzilla.redhat.com/bugzilla> for instructions.
+> Preprocessed source stored into /tmp/ccYkSBN6.out file, please attach this to
+> your bugreport.
+> make[3]: *** [gen_uuid.o] Error 1
 
-some more info:
+Well, as stated above, this is very clearly an IA64 optimizer bug in
+GCC where it's not able to handle __thread with a pretty specific
+piece of code.
 
-The x and y in the error messages used to be around 20k
-or  30k for x and 8192 for y. Googling around, it seems that's
-supposed to say that the maxium transaction size is 8192
-blocks. Further, the maximum transaction size is supposedly
-1/4 of the journal size. Assuming mke2fs -t ext4dev created
-the FS with 4096 blocks (dunno) that would mean the journal
-is 128MB, which is apparently typical. At least I have a 40GB
-ext3 here that got the same journal size.
+It's also on a relatively ancient distribution and GCC version.  You
+could try reportig the bug to Red Hat to see if they are willing to
+provide a fix.  Failing that, probably the best thing to do is just to
+use configure --disable-tls on a RHEL4/ia64 system.  The main purpose
+of the use of thread local storage is to avoid duplicate UUID's on SMP
+systems when you have multiple threads generating UUID's at a very
+high rate.
 
-So I guess the question is why a basic operation like using
-links to download a 130MB tar archive to an ext4dev file sys-
-tem or unpacking it with tar would die by way of huge trans-
-actions that don't work with a normal journal.
+Certain database-driven applications will have a problem here, but
+it's not clear it will matter for most users of Lustre.
 
-Still hoping I'll be able to continue with the installation today
-before the work week starts again ;). Kernel hackers read
-lists on Sunday, I hope :-).
+Regards,
 
-
-Greetings,
-Peter
-
-PS.: I'm writing via the shitty GMail web interface from an in-
-stall CD; here's hoping replying will work better than I fear it
-might.
+							- Ted
