@@ -1,53 +1,42 @@
-From: Nick Piggin <nickpiggin@yahoo.com.au>
-Subject: Re: partially uptodate page reads
-Date: Mon, 28 Jul 2008 17:22:39 +1000
-Message-ID: <200807281722.40100.nickpiggin@yahoo.com.au>
-References: <200807250117.11331.nickpiggin@yahoo.com.au> <200807281656.37908.nickpiggin@yahoo.com.au> <20080728000908.869c3e85.akpm@linux-foundation.org>
+From: "Dan Williams" <dan.j.williams@intel.com>
+Subject: Re: 64k Page size + ext3 errors
+Date: Mon, 28 Jul 2008 01:04:39 -0700
+Message-ID: <e9c3a7c20807280104r33da4b85l8e1bff7ba91e0335@mail.gmail.com>
+References: <576234.24141.qm@web81307.mail.mud.yahoo.com>
+	 <65201.98.240.208.105.1217209925.squirrel@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
-	Christoph Hellwig <hch@infradead.org>, jack@ucw.cz,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	xfs@oss.sgi.com
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080728000908.869c3e85.akpm@linux-foundation.org>
+Cc: "tirumalareddy marri" <tirumalareddymarri@yahoo.com>,
+	linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org
+To: sandeen@sandeen.net
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from wr-out-0506.google.com ([64.233.184.225]:53360 "EHLO
+	wr-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752349AbYG1IEk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2008 04:04:40 -0400
+Received: by wr-out-0506.google.com with SMTP id 69so3704858wri.5
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Jul 2008 01:04:39 -0700 (PDT)
+In-Reply-To: <65201.98.240.208.105.1217209925.squirrel@sandeen.net>
 Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday 28 July 2008 17:09, Andrew Morton wrote:
-> On Mon, 28 Jul 2008 16:56:37 +1000 Nick Piggin <nickpiggin@yahoo.com.au> 
-wrote:
-> > On Monday 28 July 2008 16:51, Andrew Morton wrote:
-> > > On Mon, 28 Jul 2008 13:34:12 +0900 Hisashi Hifumi
-
-> > Yeah, thanks for the numbers.
-> >
-> > > OK, thanks.  Those are pretty nice numbers for what is probably a
-> > > fairly common workload.
-> >
-> > What kind of workloads does this kind of thing?
+On Sun, Jul 27, 2008 at 6:52 PM,  <sandeen@sandeen.net> wrote:
+>> I am using HW accelerated XOR engine for RAID-5 . I am seeing EXT3-fs
+>> errors when I use 64K page size. When I use 4K page size I don't see any
+>> issue. As many of you know, we will get better performance when we store
+>> bigger files like videos.
 >
-> Various databases?  (confused).
+> Do you think it is specific to the filesystem on raid-5?  Have you tested
+> w/o md?  I'd be a little surprised if the problem is at the raid layer (so
+> cc'ing the ext3/4 list), but maybe you tested that already.
+>
+> Which arch is it, and which kernel?  How big is the filesystem?  With full
+> geometry information it might be easier for someone to reproduce & debug.
+>
 
-I guess so, I was thinking of direct IO, but I guess there are
-good open source ones which go through pagecache.
+Marri, can you post your XOR driver the problem may be there.
 
-
-> More likely pattern is 8k IOs with 16k pagesize or thereabouts.
-
-Right, but it won't be a completely random workload. Also, it would
-be interesting to know if there are any 8k database block size databases
-on 4k block size filesystems, running on 16k page size machines, which
-are very performance critical ;)
-
-But I guess it is only a small amount of code in order to get a pretty
-good speedup. So while those are probably very few installations, it is
-probably as much because we do a bad job of it as it just isn't a good
-idea in general ;)
-
-The improvement is quite significant, even if it is the artificial best
-possible case... I suppose let's just merge it then?
+Thanks,
+Dan
