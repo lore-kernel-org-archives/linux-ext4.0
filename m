@@ -1,42 +1,43 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Porting Zfs features to ext2/3
-Date: Mon, 28 Jul 2008 08:40:55 -0400
-Message-ID: <20080728124055.GD9378@mit.edu>
-References: <18674437.post@talk.nabble.com> <1217199281.6992.0.camel@telesto> <20080727233855.GB9378@mit.edu> <1217218559.28825.12.camel@telesto>
+From: "Peter Meier" <meiepeter@gmail.com>
+Subject: Re: Trying out 2.6.26-ext4-3
+Date: Mon, 28 Jul 2008 15:11:07 +0000
+Message-ID: <c354edc90807280811l57c39321lc7e6abeab2a82eb1@mail.gmail.com>
+References: <c354edc90807270328gb835f39g530dc8173e7284f8@mail.gmail.com>
+	 <20080727202302.GA7922@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: postrishi <postrishi@gmail.com>, linux-ext4@vger.kernel.org
-To: Eric Anopolsky <erpo41@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:51685 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752573AbYG1MlU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2008 08:41:20 -0400
+Received: from qb-out-0506.google.com ([72.14.204.235]:1078 "EHLO
+	qb-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753178AbYG1PLK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2008 11:11:10 -0400
+Received: by qb-out-0506.google.com with SMTP id a16so532187qbd.17
+        for <linux-ext4@vger.kernel.org>; Mon, 28 Jul 2008 08:11:08 -0700 (PDT)
+In-Reply-To: <20080727202302.GA7922@mit.edu>
 Content-Disposition: inline
-In-Reply-To: <1217218559.28825.12.camel@telesto>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jul 27, 2008 at 10:15:59PM -0600, Eric Anopolsky wrote:
-> It's true that ZFS on FUSE performance isn't all it could be right no=
-w.
-> However, ZFS on FUSE is currently not taking advantage of mechanisms
-> FUSE provides to improve performance. For an example of what can be
-> achieved, check out http://www.ntfs-3g.org/performance.html .
+Well, my installation went fine using "nodelalloc" with ext4-3,
+but then of course I killed the file system when I forgot to add
+rootflags=nodelalloc to the kernel's boot command line in the
+grub config, so it got mounted with delalloc and proceeded
+to eat itself.
 
-Yes... and take a look at the metadata operations numbers.  FUSE can
-do things to accellerate bulk read/write, but metadata-intensive
-operations will (I suspect) always be slow.  I also question whether
-the FUSE implementation will have the safety that has always been the
-Raison d'=EAtre of ZFS.  Have you or the ZFS/FUSE developers done tests
-where you are writing to the filesystem, and then someone pulls the
-plug on the fileserver while ZFS is writing?  Does the filesystem
-recovery cleanly from such a scenario?
+I'm stubborn, so I'm going to try again. I'm unsure whether to
+try with 2.6.26-ext4-4 and delalloc turned on, however, since
+ming's patch was supposed to fix crashes, and I'm not really
+looking forward to crashes during installation. So my safest
+bet still seems to be to go with nodelalloc.
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+However, I still don't know whether I can turn delalloc back on
+later on the existing FS without missing out on anything from
+not having it turned on from the beginning, as per the ques-
+tion in my last mail. If anyone could answer that, that'd be
+much appreciated.
+
+
+Greetings,
+Peter
