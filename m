@@ -1,44 +1,78 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [patch 12/17] vfs: pagecache usage optimization for
- pagesize!=blocksize
-Date: Mon, 28 Jul 2008 16:09:04 -0700
-Message-ID: <20080728160904.f644fb85.akpm@linux-foundation.org>
-References: <200807282246.m6SMkaHT032267@imap1.linux-foundation.org>
-	<20080728230031.GA22218@infradead.org>
+From: tirumalareddy marri <tirumalareddymarri@yahoo.com>
+Subject: Re: 64k Page size + ext3 errors
+Date: Mon, 28 Jul 2008 16:29:23 -0700 (PDT)
+Message-ID: <590218.14781.qm@web81301.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: torvalds@linux-foundation.org, hifumi.hisashi@oss.ntt.co.jp,
-	hch@infradead.org, jack@ucw.cz, linux-ext4@vger.kernel.org,
-	nickpiggin@yahoo.com.au
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:53252 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751160AbYG1XJK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jul 2008 19:09:10 -0400
-In-Reply-To: <20080728230031.GA22218@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org
+To: sandeen@sandeen.net
+Return-path: <linux-raid-owner@vger.kernel.org>
+Sender: linux-raid-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 28 Jul 2008 19:00:32 -0400
-Christoph Hellwig <hch@infradead.org> wrote:
+Hi Eric,
+=A0=A0=A0 This is PowerPC architecture from AMCC(I work for AMCC). I am=
+ using 2.6.25 Kernel. According your suggestion I tested with out RAID =
+I did not see any EXT-3 errors. I use "sum" command to check the data i=
+ntegrity of the files.=20
+I ported ADMA driver to do HW accelerated XOR calculations . Also pleas=
+e note that RAID-5 works with 4K Page size.
+Thanks,
+Marri
 
-> On Mon, Jul 28, 2008 at 03:46:36PM -0700, akpm@linux-foundation.org wrote:
-> > From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-> > 
-> > When we read some part of a file through pagecache, if there is a
-> > pagecache of corresponding index but this page is not uptodate, read IO is
-> > issued and this page will be uptodate.
-> 
-> I was under the impression we wanted to do this in a nicer way than 
-> the hacky method?
 
-The only description I've seen of "a nicer way" is vague two-word
-descriptions of "changing readpage".  Or something.  No indication of
-what those changes are, nor who will implement them nor when.
+----- Original Message ----
+=46rom: "sandeen@sandeen.net" <sandeen@sandeen.net>
+To: tirumalareddy marri <tirumalareddymarri@yahoo.com>
+Cc: linux-raid@vger.kernel.org; linux-ext4@vger.kernel.org
+Sent: Sunday, July 27, 2008 6:52:05 PM
+Subject: Re: 64k Page size + ext3 errors
 
-That just isn't solid enough to block a change which has significant
-performance benefits.
+> I am using HW accelerated XOR engine for RAID-5 . I am seeing EXT3-fs
+> errors when I use 64K page size. When I use 4K page size I don't see =
+any
+> issue. As many of you know, we=A0will get better performance when we =
+store
+> bigger files like videos.
 
+Do you think it is specific to the filesystem on raid-5?=A0 Have you te=
+sted
+w/o md?=A0 I'd be a little surprised if the problem is at the raid laye=
+r (so
+cc'ing the ext3/4 list), but maybe you tested that already.
+
+Which arch is it, and which kernel?=A0 How big is the filesystem?=A0 Wi=
+th full
+geometry information it might be easier for someone to reproduce & debu=
+g.
+
+Thanks,
+-Eric
+
+> When I copy 128MB size files using 64k page size no issues seen. When=
+ I
+> tried to copy 1.8 GB file with 64KB page size support I am seeing the
+> following errors. Any clue what could be wrong.
+> =A0
+> Errors 1:
+> EXT3-fs error (device md0): ext3_new_block: Allocating block in syste=
+m
+> zone - blocks from 65533, length 1
+> EXT3-fs error (device md0): ext3_new_block: Allocating block in syste=
+m
+> zone - blocks from 65534, length 1
+> =A0
+> =A0
+> Errors2:
+> EXT3-fs error (device md0): ext3_readdir: bad entry in directory #2:
+> rec_len % 4 !=3D 0 - offset=3D0, inode=3D3040
+>
+> =A0
+> Thanks in Advance,
+> Marri
+--
+To unsubscribe from this list: send the line "unsubscribe linux-raid" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
