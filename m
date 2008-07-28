@@ -1,51 +1,51 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Multiple Data Stream
-Date: Mon, 28 Jul 2008 16:15:07 -0400
-Message-ID: <20080728201506.GM9378@mit.edu>
-References: <2d08ef090807270334x4b275c21we69d0dd9fc9a460@mail.gmail.com> <20080727230455.GE7922@mit.edu> <18697577.post@talk.nabble.com>
+Subject: Re: merging of two file system
+Date: Mon, 28 Jul 2008 16:04:39 -0400
+Message-ID: <20080728200439.GL9378@mit.edu>
+References: <425904320807270905k32264faaq5c813b73000ee5c6@mail.gmail.com> <20080727225246.GD7922@mit.edu> <5feb302e0807281147y7362a227kb7d37d713be05296@mail.gmail.com> <425904320807281211y517f8847rc93cfa6a3a13aac3@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: SandeepKsinha <sandeepksinha@gmail.com>
+Cc: rishi agrawal <postrishi@gmail.com>, linux-ext4@vger.kernel.org,
+	listar@nl.linux.org
+To: Vineet Agarwal <checkout.vineet@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:46335 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:51157 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752817AbYG1UPS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2008 16:15:18 -0400
+	with ESMTP id S1751380AbYG1U3a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2008 16:29:30 -0400
 Content-Disposition: inline
-In-Reply-To: <18697577.post@talk.nabble.com>
+In-Reply-To: <425904320807281211y517f8847rc93cfa6a3a13aac3@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 28, 2008 at 12:30:23PM -0700, SandeepKsinha wrote:
-> I am a newbie into these filesystems but I can see the positive sides of
-> these Alternate Data Streams or multiple data streams too, needless to
-> mention those.
->  
-> If you look a bit more deeper into it, in my perspective and the kind of
-> implementation I look forward to, here is what I have.
+On Tue, Jul 29, 2008 at 12:41:25AM +0530, Vineet Agarwal wrote:
+> yeah i meant that we have to separate filesystems,
+> stored for example on /dev/hda1 and /dev/hda2, and we want to combine
+> the data in the two filesystems into a single filesystem /dev/hda3, or
+> combining the contents of /dev/hda2 so that it is also in /dev/hda1
+> 
+> so is there any mechanism exist to do so either online or offline . please help
 
-You've explained *how* to do it, but not *why* it would be a good
-idea.  I'm aware that it's not that difficult to do.  But it becomes a
-mess for system administrators.  Most backup tools won't know how to
-deal with alternate data streams, so they won't be backed up
-correctly.  rsync, ftp, zip, scp, etc., all don't deal with alternate
-data streams, so the potential for data loss is limitless.  
+There is no direct way to do this.
 
-> Access to the multiple data stream can be done through a file descriptor.
-> Applications can open the multiple data stream to get a file descriptor and
-> can do read(), write(), mmap().. using the file descriptor. These system
-> calls would work as if it is been operated on a regular file. 
-> The multiple data streams of a file will be stored in a hidden named data
-> stream directory inode associated with the file. The hidden directory inode
-> for the file can be accessed only through the multiple data stream API.
+How big are the filesystems involved?  The standard and easist way to
+do this would be to copy /dev/hda2 to another device, then if
+/dev/hda1 was created with on-line resizing inode, expanding /dev/hda1
+to fill the space taken by /dev/hda2, and then simply use "cp" to copy
+the contents that had previously been in /dev/hda2 into the filesystem
+on /dev/hda1.
 
-Yes, I'm aware that this is how Solaris 9 implemented alternate data
-streams.  For a good time, assuming that /var/tmp/demo_file is a file
-that contains alternate data forks owned by an unprivileged user, try
-this command as that unprivileged user: "runat /var/tmp/demo_file chmod 0 ."
+In theory it would be possible to write a program would take to
+adjacent filesystems, and map out where the blocks would be once the
+two partitions were combined, and then relocate blocks to make a
+single filesystem.  No one has done such a thing, however, for any
+filesytem.  It is definitely not a trivial thing to do, but it is not
+impossible; it's not that different from some of what an off-line
+resize2fs operations does, albeit maybe 3-4 times more complex.
 
-Now try to get access to the alternate data forks; there is no way to
-recover without root access.   Lovely, eh?
+The main thing is that no one has ever taken the time to do such a
+thing, because except for truly large filesystems, it's cheaper just
+to get an extra disk drive, and just copy the contents off, and then
+recreate the filesystem.
 
-						- Ted
+							- Ted
