@@ -1,73 +1,136 @@
-From: Eric Anopolsky <erpo41@gmail.com>
-Subject: Re: Porting Zfs features to ext2/3
-Date: Sun, 27 Jul 2008 22:15:59 -0600
-Message-ID: <1217218559.28825.12.camel@telesto>
-References: <18674437.post@talk.nabble.com>
-	 <1217199281.6992.0.camel@telesto>  <20080727233855.GB9378@mit.edu>
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Subject: Re: partially uptodate page reads
+Date: Mon, 28 Jul 2008 13:34:12 +0900
+Message-ID: <6.0.0.20.2.20080728115511.045088a8@172.19.0.2>
+References: <200807250117.11331.nickpiggin@yahoo.com.au>
+ <20080724175913.GA32117@infradead.org>
+ <20080724120841.81c72be9.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-l259mWJRmZxtFgThA/Pz"
-Cc: postrishi <postrishi@gmail.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from py-out-1112.google.com ([64.233.166.180]:48100 "EHLO
-	py-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750913AbYG1EQL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 28 Jul 2008 00:16:11 -0400
-Received: by py-out-1112.google.com with SMTP id p76so3181365pyb.10
-        for <linux-ext4@vger.kernel.org>; Sun, 27 Jul 2008 21:16:10 -0700 (PDT)
-In-Reply-To: <20080727233855.GB9378@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Nick Piggin <nickpiggin@yahoo.com.au>, jack@ucw.cz,
+        linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        xfs@oss.sgi.com
+To: Andrew Morton <akpm@linux-foundation.org>,
+        Christoph Hellwig <hch@infradead.org>
+Return-path: <xfs-bounce@oss.sgi.com>
+In-Reply-To: <20080724120841.81c72be9.akpm@linux-foundation.org>
+References: <200807250117.11331.nickpiggin@yahoo.com.au>
+ <20080724175913.GA32117@infradead.org>
+ <20080724120841.81c72be9.akpm@linux-foundation.org>
+Sender: xfs-bounce@oss.sgi.com
+Errors-to: xfs-bounce@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
+
+Hi
+
+>> > 
+>> > Are there significant numbers of people using block size < page size in
+>> > situations where performance is important and significantly improved by
+>> > this patch? Can you give any performance numbers to illustrate perhaps?
+>> 
+>> With XFS lots of people use 4k blocksize filesystems on ia64 systems
+>> with 16k pages, so an optimization like this would be useful.
+>
+>As Nick says, we really should have some measurement results which
+>confirm this theory.  Maybe we did do some but they didn't find theor
+>way into the changelog.
+>
+>I've put the patch on hold until this confirmation data is available.
+>
+
+I've got some performance number.
+I wrote a benchmark program and got result number with this program.
+This benchmark do:
+	1, mount and open a test file.
+	2, create a 512MB file.
+	3, close a file and umount.
+	4, mount and again open a test file.
+	5, pwrite randomly 300000 times on a test file. offset is aligned by IO size(1024bytes).
+	6, measure time of preading randomly 100000 times on a test file.
+
+The result was:
+	2.6.26
+        330 sec
+
+	2.6.26-patched
+        226 sec
+
+Arch:i386 
+Filesystem:ext3
+Blocksize:1024 bytes
+Memory: 1GB
+
+On ext3/4, a file is written through buffer/block. So random read/write mixed workloads
+or random read after random write workloads are optimized with this patch under 
+pagesize != blocksize environment. This test result showed this.
 
 
---=-l259mWJRmZxtFgThA/Pz
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+The benchmark program is as follows:
 
-On Sun, 2008-07-27 at 19:38 -0400, Theodore Tso wrote:
-> On Sun, Jul 27, 2008 at 04:54:41PM -0600, Eric Anopolsky wrote:
-> > On Sun, 2008-07-27 at 01:49 -0700, postrishi wrote:
-> > > Hello
-> > >=20
-> > > I want to know that has any work been done to port the Zfs features t=
-o
-> > > ext2/3
-> >=20
-> > Did you know that ZFS is available for Linux?
->=20
-> ZFS is available in a FUSE filesystem.  As a userspace filesystem, it
-> means a huge number of context switches to get data between the disk,
-> to the kernel, to the FUSE userspace, back to the kernel, and to the
-> process trying to access the ZFS file.  That's not going to be high
-> performance.  For someone who wants to migrate from Solaris to Linux,
-> it might be useful, but I'm not sure you would really want to use a
-> ZFS/FUSE implementation in production.
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/mount.h>
 
-It's true that ZFS on FUSE performance isn't all it could be right now.
-However, ZFS on FUSE is currently not taking advantage of mechanisms
-FUSE provides to improve performance. For an example of what can be
-achieved, check out http://www.ntfs-3g.org/performance.html .
+#define LEN 1024
+#define LOOP 1024*512 /* 512MB */
 
-FWIW, I am satisfied with its performance for backups of my home
-directory and for my fileserver, which is limited by a 100Mbps
-connection to the rest of the network. I do not recommend it as a root
-filesystem yet.
+main(void)
+{
+	unsigned long i, offset, filesize;
+	int fd;
+	char buf[LEN];
+	time_t t1, t2;
 
-Cheers,
-Eric
+	if (mount("/dev/sda1", "/root/test1/", "ext3", 0, 0) < 0) {
+		perror("cannot mount\n");
+		exit(1);
+	}
+	memset(buf, 0, LEN);
+	fd = open("/root/test1/testfile", O_CREAT|O_RDWR|O_TRUNC);
+	if (fd < 0) {
+		perror("cannot open file\n");
+		exit(1);
+	}
+	for (i = 0; i < LOOP; i++)
+		write(fd, buf, LEN);
+	close(fd);
+	if (umount("/root/test1/") < 0) {
+		perror("cannot umount\n");
+		exit(1);
+	}
+	if (mount("/dev/sda1", "/root/test1/", "ext3", 0, 0) < 0) {
+		perror("cannot mount\n");
+		exit(1);
+	}
+	fd = open("/root/test1/testfile", O_RDWR);
+	if (fd < 0) {
+		perror("cannot open file\n");
+		exit(1);
+	}
 
-
---=-l259mWJRmZxtFgThA/Pz
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQBIjUf/e2L37HVup3ARAvm4AKDcmwv7rFUK6ekezZiU+3/SX/nGfwCfaPa2
-4YdrxZw8cRU/MarZKNw5hOs=
-=Fdct
------END PGP SIGNATURE-----
-
---=-l259mWJRmZxtFgThA/Pz--
-
+	filesize = LEN * LOOP;
+	for (i = 0; i < 300000; i++){
+		offset = (random() % filesize) & (~(LEN - 1));
+		pwrite(fd, buf, LEN, offset);
+	}
+	printf("start test\n");
+	time(&t1);
+	for (i = 0; i < 100000; i++){
+		offset = (random() % filesize) & (~(LEN - 1));
+		pread(fd, buf, LEN, offset);
+	}
+	time(&t2);
+	printf("%ld sec\n", t2-t1);
+	close(fd);
+	if (umount("/root/test1/") < 0) {
+		perror("cannot umount\n");
+		exit(1);
+	}
+}
