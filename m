@@ -1,67 +1,48 @@
-From: tirumalareddy marri <tirumalareddymarri@yahoo.com>
-Subject: Re: 64k Page size + ext3 errors
-Date: Mon, 28 Jul 2008 16:44:15 -0700 (PDT)
-Message-ID: <802670.26931.qm@web81303.mail.mud.yahoo.com>
+From: Nick Piggin <nickpiggin@yahoo.com.au>
+Subject: Re: [patch 12/17] vfs: pagecache usage optimization for pagesize!=blocksize
+Date: Tue, 29 Jul 2008 11:11:42 +1000
+Message-ID: <200807291111.42941.nickpiggin@yahoo.com.au>
+References: <200807282246.m6SMkaHT032267@imap1.linux-foundation.org> <20080728230031.GA22218@infradead.org> <20080728160904.f644fb85.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Dan Williams <dan.j.williams@intel.com>, sandeen@sandeen.net
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch@infradead.org>,
+	torvalds@linux-foundation.org, hifumi.hisashi@oss.ntt.co.jp,
+	jack@ucw.cz, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from web81303.mail.mud.yahoo.com ([68.142.199.119]:45080 "HELO
-	web81303.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1751613AbYG1XoQ convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 28 Jul 2008 19:44:16 -0400
+Received: from smtp112.mail.mud.yahoo.com ([209.191.84.65]:27129 "HELO
+	smtp112.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1750819AbYG2BLz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 28 Jul 2008 21:11:55 -0400
+In-Reply-To: <20080728160904.f644fb85.akpm@linux-foundation.org>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dan,
-=A0 Sure=A0 I will post my driver with some cleanup done.
-Thanks,
-Marri
-
------ Original Message ----
-=46rom: Dan Williams <dan.j.williams@intel.com>
-To: sandeen@sandeen.net
-Cc: tirumalareddy marri <tirumalareddymarri@yahoo.com>; linux-raid@vger=
-=2Ekernel.org; linux-ext4@vger.kernel.org
-Sent: Monday, July 28, 2008 1:04:39 AM
-Subject: Re: 64k Page size + ext3 errors
-
-On Sun, Jul 27, 2008 at 6:52 PM,=A0 <sandeen@sandeen.net> wrote:
->> I am using HW accelerated XOR engine for RAID-5 . I am seeing EXT3-f=
-s
->> errors when I use 64K page size. When I use 4K page size I don't see=
- any
->> issue. As many of you know, we will get better performance when we s=
-tore
->> bigger files like videos.
+On Tuesday 29 July 2008 09:09, Andrew Morton wrote:
+> On Mon, 28 Jul 2008 19:00:32 -0400
 >
-> Do you think it is specific to the filesystem on raid-5?=A0 Have you =
-tested
-> w/o md?=A0 I'd be a little surprised if the problem is at the raid la=
-yer (so
-> cc'ing the ext3/4 list), but maybe you tested that already.
+> Christoph Hellwig <hch@infradead.org> wrote:
+> > On Mon, Jul 28, 2008 at 03:46:36PM -0700, akpm@linux-foundation.org wrote:
+> > > From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+> > >
+> > > When we read some part of a file through pagecache, if there is a
+> > > pagecache of corresponding index but this page is not uptodate, read IO
+> > > is issued and this page will be uptodate.
+> >
+> > I was under the impression we wanted to do this in a nicer way than
+> > the hacky method?
 >
-> Which arch is it, and which kernel?=A0 How big is the filesystem?=A0 =
-With full
-> geometry information it might be easier for someone to reproduce & de=
-bug.
+> The only description I've seen of "a nicer way" is vague two-word
+> descriptions of "changing readpage".  Or something.  No indication of
+> what those changes are, nor who will implement them nor when.
 >
+> That just isn't solid enough to block a change which has significant
+> performance benefits.
 
-Marri, can you post your XOR driver the problem may be there.
-
-Thanks,
-Dan
---
-To unsubscribe from this list: send the line "unsubscribe linux-raid" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at=A0 http://vger.kernel.org/majordomo-info.html
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yes I thought it would be nicer to do it by changing readpage, but I
+said I'm happy to try to consolidate them myself down the track. It
+is fairly low impact on core code.
