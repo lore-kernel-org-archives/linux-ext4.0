@@ -1,406 +1,80 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH v3]Ext4: journal credits reservation fixes for DIO,
-	fallocate and delalloc writepages
-Date: Wed, 30 Jul 2008 17:46:51 +0530
-Message-ID: <20080730121651.GB2932@skywalker>
-References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker> <1216774311.6505.4.camel@mingming-laptop> <20080723074226.GA15091@skywalker> <1217032947.6394.2.camel@mingming-laptop> <1217383118.27664.14.camel@mingming-laptop>
+From: Asheesh Laroia <kernel.bugzilla@asheesh.org>
+Subject: Re: [Bug 11175] New: ext3 BUG in add_dirent_to_buf+0x6c/0x269
+Date: Wed, 30 Jul 2008 08:01:11 -0700 (PDT)
+Message-ID: <alpine.DEB.1.10.0807300752390.10840@swallowtail>
+References: <bug-11175-27@http.bugzilla.kernel.org/> <20080729171207.d88728cf.akpm@linux-foundation.org> <20080730024856.GE29748@mit.edu> <488FDA0A.5020408@redhat.com> <20080730040348.GA8956@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso <tytso@mit.edu>, Shehjar Tikoo <shehjart@cse.unsw.edu.au>,
-	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, bugme-daemon@bugzilla.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:41723 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756036AbYG3MSd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2008 08:18:33 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m6UCIlUR030653
-	for <linux-ext4@vger.kernel.org>; Wed, 30 Jul 2008 22:18:47 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6UCH9IL4497604
-	for <linux-ext4@vger.kernel.org>; Wed, 30 Jul 2008 22:17:09 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m6UCH8nr002492
-	for <linux-ext4@vger.kernel.org>; Wed, 30 Jul 2008 22:17:09 +1000
-Content-Disposition: inline
-In-Reply-To: <1217383118.27664.14.camel@mingming-laptop>
+Received: from wide-rose.makesad.us ([203.178.130.147]:58588 "EHLO
+	rose.makesad.us" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1762583AbYG3O4L (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2008 10:56:11 -0400
+In-Reply-To: <20080730040348.GA8956@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Mingming,
+On Wed, 30 Jul 2008, Theodore Tso wrote:
 
-This is the patch i was working on. The patch is still not complete.
-But sending it early so that i can get some feedback.
+> On Tue, Jul 29, 2008 at 10:03:38PM -0500, Eric Sandeen wrote:
+>> Theodore Tso wrote:
+>>> Hmm... disassembling the code, it's pretty clear the problem is here
+>>> in do_split(), around line 1208:
+>>>
+>>> 	map = (struct dx_map_entry *) (data2 + blocksize);
+>>> 	count = dx_make_map ((struct ext3_dir_entry_2 *) data1,
+>>> 			     blocksize, hinfo, map);
+>>> 	map -= count;
+>>> 	dx_sort_map (map, count);
+>>> 	/* Split the existing block in the middle, size-wise */
+>>> 	size = 0;
+>>> 	move = 0;
+>>> 	for (i = count-1; i >= 0; i--) {
+>>> 		/* is more than half of this entry in 2nd half of the block? */
+>>> 		if (size + map[i].size/2 > blocksize/2)  <====
+>>
+>> You sure this isn't our old friend
+>> https://bugzilla.redhat.com/show_bug.cgi?id=451068 ?
+>>
+>> which version of gcc compiled this?
+>
+> As we discussed on IRC, I think you're theory is dead on.  %ecx is at
+> the very end of the page-2, which would correspond to
+> map[count-1].size.  And size (%esi) is zero, which rules out my scenario.
+>
+> This very much looks like a GCC bug.  Asheesh, can you confirm which
+> version of GCC you used to build your kernel?
 
-commit a4546f0034fcfb0a20991378fe4a3cf6c157ad72
-Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date:   Wed Jul 30 17:34:25 2008 +0530
+gcc --version indicates:
 
-    ext4: Rework the ext4_da_writepages
-    
-    With the below changes we reserve credit needed to insert only one extent
-    resulting from a call to single get_block. That make sure we don't take
-    too much journal credits during writeout. We also don't limit the pages
-    to write. That means we loop through the dirty pages building largest
-    possible contiguous block request. Then we issue a single get_block request.
-    We may get less block that we requested. If so we would end up not mapping
-    some of the buffer_heads. That means those buffer_heads are still marked delay.
-    Later in the writepage callback via __mpage_writepage we redirty those pages.
-    
-    
-    TODO:
-    a) Some pages are leaked without unlock. So fsstress deadlock on lock_page
-    b) range_start is not handled correctly in loop
-    
-    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+gcc (Debian 4.3.1-2) 4.3.1
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 5a394c8..23f55cf 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -41,6 +41,8 @@
- #include "acl.h"
- #include "ext4_extents.h"
- 
-+#define MPAGE_DA_EXTENT_TAIL 0x01
-+
- static inline int ext4_begin_ordered_truncate(struct inode *inode,
- 					      loff_t new_size)
- {
-@@ -1604,9 +1606,10 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
- 		.get_block = mpd->get_block,
- 		.use_writepage = 1,
- 	};
--	int ret = 0, err, nr_pages, i;
-+	int err, nr_pages, i;
- 	unsigned long index, end;
- 	struct pagevec pvec;
-+	int written_pages = 0;
- 
- 	BUG_ON(mpd->next_page <= mpd->first_page);
- 
-@@ -1628,21 +1631,20 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
- 			index++;
- 
- 			err = __mpage_writepage(page, mpd->wbc, &mpd_pp);
--
-+			if (!err)
-+				written_pages++;
- 			/*
- 			 * In error case, we have to continue because
- 			 * remaining pages are still locked
- 			 * XXX: unlock and re-dirty them?
- 			 */
--			if (ret == 0)
--				ret = err;
- 		}
- 		pagevec_release(&pvec);
- 	}
- 	if (mpd_pp.bio)
- 		mpage_bio_submit(WRITE, mpd_pp.bio);
- 
--	return ret;
-+	return written_pages;
- }
- 
- /*
-@@ -1745,10 +1747,10 @@ static inline void __unmap_underlying_blocks(struct inode *inode,
-  * The function ignores errors ->get_block() returns, thus real
-  * error handling is postponed to __mpage_writepage()
-  */
--static void mpage_da_map_blocks(struct mpage_da_data *mpd)
-+static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- {
-+	int err = 0;
- 	struct buffer_head *lbh = &mpd->lbh;
--	int err = 0, remain = lbh->b_size;
- 	sector_t next = lbh->b_blocknr;
- 	struct buffer_head new;
- 
-@@ -1756,37 +1758,33 @@ static void mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	 * We consider only non-mapped and non-allocated blocks
- 	 */
- 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
--		return;
--
--	while (remain) {
--		new.b_state = lbh->b_state;
--		new.b_blocknr = 0;
--		new.b_size = remain;
--		err = mpd->get_block(mpd->inode, next, &new, 1);
--		if (err) {
--			/*
--			 * Rather than implement own error handling
--			 * here, we just leave remaining blocks
--			 * unallocated and try again with ->writepage()
--			 */
--			break;
--		}
--		BUG_ON(new.b_size == 0);
--
--		if (buffer_new(&new))
--			__unmap_underlying_blocks(mpd->inode, &new);
-+		return 0;
- 
-+	new.b_state = lbh->b_state;
-+	new.b_blocknr = 0;
-+	new.b_size = lbh->b_size;
-+	err = mpd->get_block(mpd->inode, next, &new, 1);
-+	if (err) {
- 		/*
--		 * If blocks are delayed marked, we need to
--		 * put actual blocknr and drop delayed bit
-+		 * We failed to do block allocation. All
-+		 * the pages will be redirtied later in
-+		 * ext4_da_writepage
- 		 */
--		if (buffer_delay(lbh))
--			mpage_put_bnr_to_bhs(mpd, next, &new);
--
--		/* go for the remaining blocks */
--		next += new.b_size >> mpd->inode->i_blkbits;
--		remain -= new.b_size;
-+		return 0;
- 	}
-+	BUG_ON(new.b_size == 0);
-+
-+	if (buffer_new(&new))
-+		__unmap_underlying_blocks(mpd->inode, &new);
-+
-+	/*
-+	 * If blocks are delayed marked, we need to
-+	 * put actual blocknr and drop delayed bit
-+	 */
-+	if (buffer_delay(lbh))
-+		mpage_put_bnr_to_bhs(mpd, next, &new);
-+
-+	return new.b_size;
- }
- 
- #define BH_FLAGS ((1 << BH_Uptodate) | (1 << BH_Mapped) | (1 << BH_Delay))
-@@ -1800,7 +1798,7 @@ static void mpage_da_map_blocks(struct mpage_da_data *mpd)
-  *
-  * the function is used to collect contig. blocks in same state
-  */
--static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
-+static int mpage_add_bh_to_extent(struct mpage_da_data *mpd,
- 				   sector_t logical, struct buffer_head *bh)
- {
- 	struct buffer_head *lbh = &mpd->lbh;
-@@ -1815,7 +1813,7 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
- 		lbh->b_blocknr = logical;
- 		lbh->b_size = bh->b_size;
- 		lbh->b_state = bh->b_state & BH_FLAGS;
--		return;
-+		return 0;
- 	}
- 
- 	/*
-@@ -1823,21 +1821,14 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
- 	 */
- 	if (logical == next && (bh->b_state & BH_FLAGS) == lbh->b_state) {
- 		lbh->b_size += bh->b_size;
--		return;
-+		return 0;
- 	}
- 
- 	/*
- 	 * We couldn't merge the block to our extent, so we
- 	 * need to flush current  extent and start new one
- 	 */
--	mpage_da_map_blocks(mpd);
--
--	/*
--	 * Now start a new extent
--	 */
--	lbh->b_size = bh->b_size;
--	lbh->b_state = bh->b_state & BH_FLAGS;
--	lbh->b_blocknr = logical;
-+	return MPAGE_DA_EXTENT_TAIL;
- }
- 
- /*
-@@ -1852,6 +1843,7 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
- static int __mpage_da_writepage(struct page *page,
- 				struct writeback_control *wbc, void *data)
- {
-+	int ret = 0;
- 	struct mpage_da_data *mpd = data;
- 	struct inode *inode = mpd->inode;
- 	struct buffer_head *bh, *head, fake;
-@@ -1866,12 +1858,13 @@ static int __mpage_da_writepage(struct page *page,
- 		 * and start IO on them using __mpage_writepage()
- 		 */
- 		if (mpd->next_page != mpd->first_page) {
--			mpage_da_map_blocks(mpd);
--			mpage_da_submit_io(mpd);
-+			unlock_page(page);
-+			ret = MPAGE_DA_EXTENT_TAIL;
-+			goto finish_extent;
- 		}
- 
- 		/*
--		 * Start next extent of pages ...
-+		 * Start extent of pages ...
- 		 */
- 		mpd->first_page = page->index;
- 
-@@ -1897,7 +1890,7 @@ static int __mpage_da_writepage(struct page *page,
- 		bh->b_state = 0;
- 		set_buffer_dirty(bh);
- 		set_buffer_uptodate(bh);
--		mpage_add_bh_to_extent(mpd, logical, bh);
-+		ret = mpage_add_bh_to_extent(mpd, logical, bh);
- 	} else {
- 		/*
- 		 * Page with regular buffer heads, just add all dirty ones
-@@ -1906,13 +1899,17 @@ static int __mpage_da_writepage(struct page *page,
- 		bh = head;
- 		do {
- 			BUG_ON(buffer_locked(bh));
--			if (buffer_dirty(bh))
--				mpage_add_bh_to_extent(mpd, logical, bh);
-+			if (buffer_dirty(bh)) {
-+				ret = mpage_add_bh_to_extent(mpd, logical, bh);
-+				if (ret == MPAGE_DA_EXTENT_TAIL)
-+					goto finish_extent;
-+			}
- 			logical++;
- 		} while ((bh = bh->b_this_page) != head);
- 	}
- 
--	return 0;
-+finish_extent:
-+	return ret;
- }
- 
- /*
-@@ -1941,8 +1938,8 @@ static int mpage_da_writepages(struct address_space *mapping,
- 			       struct writeback_control *wbc,
- 			       get_block_t get_block)
- {
-+	int ret, to_write, written_pages;
- 	struct mpage_da_data mpd;
--	int ret;
- 
- 	if (!get_block)
- 		return generic_writepages(mapping, wbc);
-@@ -1956,16 +1953,20 @@ static int mpage_da_writepages(struct address_space *mapping,
- 	mpd.next_page = 0;
- 	mpd.get_block = get_block;
- 
-+	to_write = wbc->nr_to_write;
-+
- 	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, &mpd);
- 
- 	/*
--	 * Handle last extent of pages
-+	 * Allocate blocks for the dirty delayed
-+	 * pages found
- 	 */
- 	if (mpd.next_page != mpd.first_page) {
- 		mpage_da_map_blocks(&mpd);
--		mpage_da_submit_io(&mpd);
-+		written_pages =  mpage_da_submit_io(&mpd);
-+		/* update nr_to_write correctly */
-+		wbc->nr_to_write = to_write - written_pages;
- 	}
--
- 	return ret;
- }
- 
-@@ -2118,9 +2119,11 @@ static int ext4_da_writepage(struct page *page,
- 			 * If we don't have mapping block we just ignore
- 			 * them. We can also reach here via shrink_page_list
- 			 */
-+			start_pdflush = 1;
- 			redirty_page_for_writepage(wbc, page);
- 			unlock_page(page);
--			return 0;
-+			ret = 0;
-+			goto finish_ret;
- 		}
- 	} else {
- 		/*
-@@ -2143,9 +2146,11 @@ static int ext4_da_writepage(struct page *page,
- 			/* check whether all are mapped and non delay */
- 			if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
- 						ext4_bh_unmapped_or_delay)) {
-+				start_pdflush = 1;
- 				redirty_page_for_writepage(wbc, page);
- 				unlock_page(page);
--				return 0;
-+				ret = 0;
-+				goto finish_ret;
- 			}
- 		} else {
- 			/*
-@@ -2153,9 +2158,11 @@ static int ext4_da_writepage(struct page *page,
- 			 * so just redity the page and unlock
- 			 * and return
- 			 */
-+			start_pdflush = 1;
- 			redirty_page_for_writepage(wbc, page);
- 			unlock_page(page);
--			return 0;
-+			ret = 0;
-+			goto finish_ret;
- 		}
- 	}
- 
-@@ -2165,7 +2172,7 @@ static int ext4_da_writepage(struct page *page,
- 		ret = block_write_full_page(page,
- 						ext4_normal_get_block_write,
- 						wbc);
--
-+finish_ret:
- 	return ret;
- }
- 
-@@ -2201,19 +2208,14 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	}
- 
- 	while (!ret && to_write) {
--		/*
--		 * set the max dirty pages could be write at a time
--		 * to fit into the reserved transaction credits
--		 */
--		if (wbc->nr_to_write > EXT4_MAX_WRITEBACK_PAGES)
--			wbc->nr_to_write = EXT4_MAX_WRITEBACK_PAGES;
- 
- 		/*
--		 * Estimate the worse case needed credits to write out
--		 * to_write pages
-+		 * We write only a single extent in a loop.
-+		 * So allocate credit needed to write a single
-+		 * extent. journalled mode is not supported.
- 		 */
--		needed_blocks = ext4_writepages_trans_blocks(inode,
--							     wbc->nr_to_write);
-+		BUG_ON(ext4_should_journal_data(inode));
-+		needed_blocks = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
- 
- 		/* start a new transaction*/
- 		handle = ext4_journal_start(inode, needed_blocks);
-@@ -2239,7 +2241,19 @@ static int ext4_da_writepages(struct address_space *mapping,
- 		ret = mpage_da_writepages(mapping, wbc,
- 						ext4_da_get_block_write);
- 		ext4_journal_stop(handle);
--		if (wbc->nr_to_write) {
-+		if (ret == MPAGE_DA_EXTENT_TAIL) {
-+			/*
-+			 * got one extent now try with
-+			 * rest of the pages
-+			 */
-+			to_write += wbc->nr_to_write;
-+			/*
-+			 * Try to write from the start
-+			 * The pages already written will
-+			 * not be tagged dirty
-+			 */
-+			//wbc->range_start = range_start;
-+		} else if (wbc->nr_to_write) {
- 			/*
- 			 * There is no more writeout needed
- 			 * or we requested for a noblocking writeout
+dpkg -l gcc reports:
+
+ii  gcc            4:4.3.1-1      The GNU C compiler
+
+> Longer term, do_split() was coded in a very non-robust fashion.
+> Looking at do_split(), it was pretty easy to imagine corrupted
+> directory blocks that might force count to be 0 (causing the for loop
+> to do something insane, since i is unsigned), and adding some checks
+> to make sure that the split variable is neither 0 nor equal to count
+> might also be a really good idea.
+
+Thanks for the speedy replies, all.  I guess then you're not interested in 
+those e2image dumps I took, then.
+
+I'm recompiling with GCC 4.2 now; is there a straightforward(ish) test 
+you've seen that can indicate if the GCC 4.3 in Debian unstable or Debian 
+testing still has this bug?  FWIW their changelogs are at 
+http://packages.debian.org/changelogs/pool/main/g/gcc-4.3/gcc-4.3_4.3.1-8/changelog 
+.
+
+-- Asheesh.
+
+-- 
+He is a man capable of turning any colour into grey.
+ 		-- John LeCarre
