@@ -1,58 +1,91 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [Bug 11175] New: ext3 BUG in add_dirent_to_buf+0x6c/0x269
-Date: Wed, 30 Jul 2008 00:03:48 -0400
-Message-ID: <20080730040348.GA8956@mit.edu>
-References: <bug-11175-27@http.bugzilla.kernel.org/> <20080729171207.d88728cf.akpm@linux-foundation.org> <20080730024856.GE29748@mit.edu> <488FDA0A.5020408@redhat.com>
+From: Eric Anopolsky <erpo41@gmail.com>
+Subject: Re: Porting Zfs features to ext2/3
+Date: Wed, 30 Jul 2008 00:00:23 -0600
+Message-ID: <1217397623.7340.22.camel@telesto>
+References: <18674437.post@talk.nabble.com>
+	 <1217199281.6992.0.camel@telesto> <20080727233855.GB9378@mit.edu>
+	 <1217218559.28825.12.camel@telesto>  <20080728124055.GD9378@mit.edu>
+	 <1217303912.7887.20.camel@telesto>  <488F4965.6080801@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, bugme-daemon@bugzilla.kernel.org,
-	kernel.bugzilla@asheesh.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: multipart/signed; micalg=pgp-sha1; protocol="application/pgp-signature"; boundary="=-Vhi4mbxgMwZTH0htlDKK"
+Cc: Theodore Tso <tytso@mit.edu>, postrishi <postrishi@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: rwheeler@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:48211 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750732AbYG3EEb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2008 00:04:31 -0400
-Content-Disposition: inline
-In-Reply-To: <488FDA0A.5020408@redhat.com>
+Received: from ag-out-0708.google.com ([72.14.246.249]:4337 "EHLO
+	ag-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752055AbYG3GA3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2008 02:00:29 -0400
+Received: by ag-out-0708.google.com with SMTP id 31so253052agc.10
+        for <linux-ext4@vger.kernel.org>; Tue, 29 Jul 2008 23:00:27 -0700 (PDT)
+In-Reply-To: <488F4965.6080801@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 29, 2008 at 10:03:38PM -0500, Eric Sandeen wrote:
-> Theodore Tso wrote:
-> > Hmm... disassembling the code, it's pretty clear the problem is here
-> > in do_split(), around line 1208:
-> > 
-> > 	map = (struct dx_map_entry *) (data2 + blocksize);
-> > 	count = dx_make_map ((struct ext3_dir_entry_2 *) data1,
-> > 			     blocksize, hinfo, map);
-> > 	map -= count;
-> > 	dx_sort_map (map, count);
-> > 	/* Split the existing block in the middle, size-wise */
-> > 	size = 0;
-> > 	move = 0;
-> > 	for (i = count-1; i >= 0; i--) {
-> > 		/* is more than half of this entry in 2nd half of the block? */
-> > 		if (size + map[i].size/2 > blocksize/2)  <====
-> 
-> You sure this isn't our old friend
-> https://bugzilla.redhat.com/show_bug.cgi?id=451068 ?
-> 
-> which version of gcc compiled this?
 
-As we discussed on IRC, I think you're theory is dead on.  %ecx is at
-the very end of the page-2, which would correspond to
-map[count-1].size.  And size (%esi) is zero, which rules out my scenario.
+--=-Vhi4mbxgMwZTH0htlDKK
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: quoted-printable
 
-This very much looks like a GCC bug.  Asheesh, can you confirm which
-version of GCC you used to build your kernel?
+On Tue, 2008-07-29 at 12:46 -0400, Ric Wheeler wrote:
+> > I haven't personally tried pulling the plug, but I've tried holding dow=
+n
+> > the power button on my laptop until it powers off. Everything works fin=
+e
+> > and scrubs (the closest ZFS gets to fsck) don't report any checksum
+> > errors. The filesystem driver updates the on-disk filesystem atomically
+> > every five seconds (less time in special circumstances) so there's neve=
+r
+> > any point at which the filesystem would need recovery. The next time th=
+e
+> > filesystem is mounted the system sees the state the filesystem was in u=
+p
+> > to five seconds before the power went out. The FUSEness of the
+> > filesystem driver doesn't seem to affect this.
+> >
+> Does that mean you always lose the last 5 seconds of data before the=20
+> power outage?
 
-Longer term, do_split() was coded in a very non-robust fashion.
-Looking at do_split(), it was pretty easy to imagine corrupted
-directory blocks that might force count to be 0 (causing the for loop
-to do something insane, since i is unsigned), and adding some checks
-to make sure that the split variable is neither 0 nor equal to count
-might also be a really good idea.
+=EF=BB=BF> The expected behaviour should be that any fsync()'ed=20
+> files should be there (regardless of the 5 seconds) and other=20
+> non-fsync'ed files might or might not be there,=EF=BB=BF but that all fil=
+e
+> system integrity is complete.
 
-					- Ted
+fsync()s are one of the triggers that cause the filesystem driver to
+update the disk more than once every five seconds. This can also happen
+when the filesystem is very full and someone is writing to the disk.=20
+
+> We had an earlier thread where Chris had a good test for making a case=20
+> for the write barrier code being enabled by default. It would be neat to=20
+> try that on ZFS ;-)=20
+
+To my knowledge, write barriers are not available to FUSE filesystems.
+Also, the maintainer of ZFS FUSE discovered that calling fsync() on an
+open device file just plain does not work on Linux, so currently the
+driver requests write cache flushes directly from the hardware.
+
+> It would also be very interesting to try and do a drive hot pull.
+
+I've got some vacation coming up...sounds like fun! Unless someone
+specifically asks on here, I'll post the results in the ZFS on FUSE
+mailing list.
+
+Cheers,
+Eric
+
+
+--=-Vhi4mbxgMwZTH0htlDKK
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.6 (GNU/Linux)
+
+iD8DBQBIkAN3e2L37HVup3ARAuBPAJ9D1AKwRpUVGI6uI+Ce+h5bwOqrUwCbBzZe
+VXBKbIviHfB2u7okDgHZkSk=
+=nqJ+
+-----END PGP SIGNATURE-----
+
+--=-Vhi4mbxgMwZTH0htlDKK--
+
