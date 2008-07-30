@@ -1,34 +1,44 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Porting Zfs features to ext2/3
-Date: Tue, 29 Jul 2008 21:34:27 -0400
-Message-ID: <20080730013427.GD29748@mit.edu>
-References: <18674437.post@talk.nabble.com> <1217199281.6992.0.camel@telesto> <20080727233855.GB9378@mit.edu> <loom.20080729T222131-137@post.gmane.org>
+From: Asheesh Laroia <kernel.bugzilla@asheesh.org>
+Subject: Re: [Bug 11175] New: ext3 BUG in add_dirent_to_buf+0x6c/0x269
+Date: Tue, 29 Jul 2008 18:08:31 -0700 (PDT)
+Message-ID: <alpine.DEB.1.10.0807291748070.20406@alchemy.localdomain>
+References: <bug-11175-27@http.bugzilla.kernel.org/> <20080729171207.d88728cf.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Szabolcs Szakacsits <szaka@ntfs-3g.org>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, bugme-daemon@bugzilla.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:36806 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751074AbYG3BfI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 29 Jul 2008 21:35:08 -0400
-Content-Disposition: inline
-In-Reply-To: <loom.20080729T222131-137@post.gmane.org>
+Received: from wide-rose.makesad.us ([203.178.130.147]:40686 "EHLO
+	rose.makesad.us" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753717AbYG3BhX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jul 2008 21:37:23 -0400
+In-Reply-To: <20080729171207.d88728cf.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 29, 2008 at 10:52:26PM +0000, Szabolcs Szakacsits wrote:
-> I did also an in memory test on a T9300@2.5, with disk I/O completely 
-> eliminated. Results:
-> 
-> tmpfs:    975 MB/sec
-> ntfs-3g:  889 MB/sec  (note, this FUSE driver is not optimized yet)
-> ext3:     675 MB/sec
+On Tue, 29 Jul 2008, Andrew Morton wrote:
 
-Am I write in guessing that this test involved copying a single large
-file, with no seeks?  What happens if you try benchmarking unpacking a
-kernel source tar.bz2 file?  My guess is that ntfs-3g won't look as
-good.  :-)
+> (switched to email.  Please respond via emailed reply-to-all, not via the
+> bugzilla web interface).
 
-						- Ted
+Great, will do.  I've rpepared an e2image -s now that follows this chain 
+of events:
+
+* ext3 BUG()
+* reboot
+* filesystem is mounted once
+* e2image snapshots taken: both with and without -s
+
+I have not run fsck between the BUG() and the snapshots I took, so it will 
+hopefully still be useful.  I will publish the one with "-s"; I will stash 
+away the one without "-s" in case it is helpful.
+
+I then ran fsck on the filesystem so I could proceed with using the disk.
+
+The full image is uploading now; I'll let you all know when it's done in 
+2-3 days (it's ca. 1.5 gibibytes).
+
+-- Asheesh.
+
+-- 
+A Fortran compiler is the hobgoblin of little minis.
