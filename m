@@ -1,173 +1,89 @@
-From: akpm@linux-foundation.org
-Subject: + ext3-add-checks-for-errors-from-jbd.patch added to -mm tree
-Date: Tue, 29 Jul 2008 19:52:24 -0700
-Message-ID: <200807300252.m6U2qOif003320@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: hidehiro.kawai.ez@hitachi.com, jack@ucw.cz,
-	linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-
-The patch titled
-     ext3: add checks for errors from jbd
-has been added to the -mm tree.  Its filename is
-     ext3-add-checks-for-errors-from-jbd.patch
-
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
-
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
-
-See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
-out what to do about this
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext3: add checks for errors from jbd
 From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: [PATCH 2/2] jbd: ordered data integrity fix
+Date: Wed, 30 Jul 2008 12:01:33 +0900
+Message-ID: <488FD98D.3080708@hitachi.com>
+References: <488FD756.9060106@hitachi.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: adilger@clusterfs.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, jack@suse.cz, jbacik@redhat.com,
+	cmm@us.ibm.com, tytso@mit.edu, snitzer@gmail.com,
+	tglx@linutronix.de, yumiko.sugita.yf@hitachi.com,
+	satoshi.oshima.fk@hitachi.com
+To: akpm@linux-foundation.org, sct@redhat.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail7.hitachi.co.jp ([133.145.228.42]:41920 "EHLO
+	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751083AbYG3DBo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jul 2008 23:01:44 -0400
+In-Reply-To: <488FD756.9060106@hitachi.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-If the journal has aborted due to a checkpointing failure, we have to
-keep the contents of the journal space.  Otherwise, the filesystem will
-lose uncheckpointed metadata completely and become inconsistent.  To
-avoid this, we need to keep needs_recovery flag if checkpoint has
-failed.
+In ordered mode, if a file data buffer being dirtied exists in
+the committing transaction, we write the buffer to the disk, move
+it from the committing transaction to the running transaction,
+then dirty it.  But we don't have to remove the buffer from the
+committing transaction when the buffer couldn't be written out,
+otherwise it would miss the error and the committing transaction
+would not abort.
 
-With this patch, ext3_put_super() detects a checkpointing failure from
-the return value of journal_destroy(), then it invokes ext3_abort() to
-make the filesystem read only and keep needs_recovery flag.  Errors
-from journal_flush() are also handled by this patch in some places.
+This patch adds an error check before removing the buffer from the
+committing transaction.
 
 Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Cc: Jan Kara <jack@ucw.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Acked-by: Jan Kara <jack@suse.cz>
 ---
+This patch is the same as patch 2/5 of possible filesystem corruption
+fixes (take 2).  It can be found at:
+http://kerneltrap.org/mailarchive/linux-kernel/2008/6/2/2002144
 
- fs/ext3/ioctl.c |   12 ++++++++----
- fs/ext3/super.c |   23 +++++++++++++++++++----
- 2 files changed, 27 insertions(+), 8 deletions(-)
+ fs/jbd/transaction.c |   16 +++++++++++++---
+ 1 file changed, 13 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd fs/ext3/ioctl.c
---- a/fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd
-+++ a/fs/ext3/ioctl.c
-@@ -239,7 +239,7 @@ setrsvsz_out:
- 	case EXT3_IOC_GROUP_EXTEND: {
- 		ext3_fsblk_t n_blocks_count;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
+Index: linux-2.6.27-rc1/fs/jbd/transaction.c
+===================================================================
+--- linux-2.6.27-rc1.orig/fs/jbd/transaction.c
++++ linux-2.6.27-rc1/fs/jbd/transaction.c
+@@ -954,9 +954,10 @@ int journal_dirty_data(handle_t *handle,
+ 	journal_t *journal = handle->h_transaction->t_journal;
+ 	int need_brelse = 0;
+ 	struct journal_head *jh;
++	int ret = 0;
  
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -254,8 +254,10 @@ setrsvsz_out:
- 		}
- 		err = ext3_group_extend(sb, EXT3_SB(sb)->s_es, n_blocks_count);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+		if (err == 0)
-+			err = err2;
- group_extend_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return err;
-@@ -263,7 +265,7 @@ group_extend_out:
- 	case EXT3_IOC_GROUP_ADD: {
- 		struct ext3_new_group_data input;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
+ 	if (is_handle_aborted(handle))
+-		return 0;
++		return ret;
  
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -280,8 +282,10 @@ group_extend_out:
+ 	jh = journal_add_journal_head(bh);
+ 	JBUFFER_TRACE(jh, "entry");
+@@ -1067,7 +1068,16 @@ int journal_dirty_data(handle_t *handle,
+ 				   time if it is redirtied */
+ 			}
  
- 		err = ext3_group_add(sb, &input);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+		if (err == 0)
-+			err = err2;
- group_add_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return err;
-diff -puN fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd
-+++ a/fs/ext3/super.c
-@@ -393,7 +393,8 @@ static void ext3_put_super (struct super
- 	int i;
- 
- 	ext3_xattr_put_super(sb);
--	journal_destroy(sbi->s_journal);
-+	if (journal_destroy(sbi->s_journal) < 0)
-+		ext3_abort(sb, __func__, "Couldn't clean up the journal");
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
-@@ -2280,7 +2281,9 @@ static void ext3_mark_recovery_complete(
- 	journal_t *journal = EXT3_SB(sb)->s_journal;
- 
- 	journal_lock_updates(journal);
--	journal_flush(journal);
-+	if (journal_flush(journal) < 0)
-+		goto out;
+-			/* journal_clean_data_list() may have got there first */
++			/*
++			 * We cannot remove the buffer with io error from the
++			 * committing transaction, because otherwise it would
++			 * miss the error and the commit would not abort.
++			 */
++			if (unlikely(!buffer_uptodate(bh))) {
++				ret = -EIO;
++				goto no_journal;
++			}
 +
- 	lock_super(sb);
- 	if (EXT3_HAS_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER) &&
- 	    sb->s_flags & MS_RDONLY) {
-@@ -2289,6 +2292,8 @@ static void ext3_mark_recovery_complete(
- 		ext3_commit_super(sb, es, 1);
+ 			if (jh->b_transaction != NULL) {
+ 				JBUFFER_TRACE(jh, "unfile from commit");
+ 				__journal_temp_unlink_buffer(jh);
+@@ -1108,7 +1118,7 @@ no_journal:
  	}
- 	unlock_super(sb);
-+
-+out:
- 	journal_unlock_updates(journal);
+ 	JBUFFER_TRACE(jh, "exit");
+ 	journal_put_journal_head(jh);
+-	return 0;
++	return ret;
  }
  
-@@ -2388,7 +2393,13 @@ static void ext3_write_super_lockfs(stru
- 
- 		/* Now we set up the journal barrier. */
- 		journal_lock_updates(journal);
--		journal_flush(journal);
-+
-+		/*
-+		 * We don't want to clear needs_recovery flag when we failed
-+		 * to flush the journal.
-+		 */
-+		if (journal_flush(journal) < 0)
-+			return;
- 
- 		/* Journal blocked and flushed, clear needs_recovery flag. */
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
-@@ -2806,8 +2817,12 @@ static int ext3_quota_on(struct super_bl
- 		 * otherwise be livelocked...
- 		 */
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+		if (err) {
-+			path_put(&nd.path);
-+			return err;
-+		}
- 	}
- 
- 	path_put(&nd.path);
-_
+ /**
 
-Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
-
-linux-next.patch
-jbd-abort-when-failed-to-log-metadata-buffers.patch
-jbd-fix-error-handling-for-checkpoint-io.patch
-ext3-add-checks-for-errors-from-jbd.patch
-jbd-dont-dirty-original-metadata-buffer-on-abort.patch
 
