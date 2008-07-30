@@ -1,52 +1,50 @@
-From: "Mike Snitzer" <snitzer@gmail.com>
-Subject: Re: [PATCH 1/2] ext3: add an option to control error handling on file data
-Date: Wed, 30 Jul 2008 11:14:02 -0400
-Message-ID: <170fa0d20807300814o7741859eu8ad5d5b3b95e401c@mail.gmail.com>
-References: <488FD756.9060106@hitachi.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Unable to disable barriers
+Date: Wed, 30 Jul 2008 11:37:40 -0500
+Message-ID: <489098D4.7080004@redhat.com>
+References: <3.0.6.32.20080728114837.02425390@pop.west.cox.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
-	tglx@linutronix.de, yumiko.sugita.yf@hitachi.com,
-	satoshi.oshima.fk@hitachi.com
-To: "Hidehiro Kawai" <hidehiro.kawai.ez@hitachi.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1762796AbYG3POV@vger.kernel.org>
-In-Reply-To: <488FD756.9060106@hitachi.com>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Theodore Tso <tytso@mit.edu>
+To: Gary Hawco <ghawco@cox.net>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:47258 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750818AbYG3Qhu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jul 2008 12:37:50 -0400
+In-Reply-To: <3.0.6.32.20080728114837.02425390@pop.west.cox.net>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 29, 2008 at 10:52 PM, Hidehiro Kawai
-<hidehiro.kawai.ez@hitachi.com> wrote:
-> If the journal doesn't abort when it gets an IO error in file data
-> blocks, the file data corruption will spread silently.  Because
-> most of applications and commands do buffered writes without fsync(),
-> they don't notice the IO error.  It's scary for mission critical
-> systems.  On the other hand, if the journal aborts whenever it gets
-> an IO error in file data blocks, the system will easily become
-> inoperable.  So this patch introduces a filesystem option to
-> determine whether it aborts the journal or just call printk() when
-> it gets an IO error in file data.
->
-> If you mount a ext3 fs with data_err=abort option, it aborts on file
-> data write error.  If you mount it with data_err=ignore, it doesn't
-> abort, just call printk().  data_err=abort is default, because
-> people have used this error handling policy for three years.
+Gary Hawco wrote:
+> Subject pretty much says it all.
+> 
+> For testing purposes I tried to disable barriers in fstab (barriers=0).  On
+> reboot the filesystem will not mount read/write until barriers are reenabled.
 
-Hidehiro,
+What errors do you get?
 
-Thanks for making this configurable!
+> This occurs whether I use ordered data mode or data writeback mode, in both
+> Gentoo and Slackware 12.1
+> 
+> Is this behavior by design (that barriers can not be disabled)?
+> 
+> Thanks,
+> Gary
 
-But given how surprised many of us were when we found out that
-jbd/ext3 has been aborting on file data blocks isn't this our chance
-to correct that long-standing oversight?  Shouldn't the default be
-data_err=ignore?  Or would changing this behavior cause more harm than
-good?
+Hm, it's not supposed to be :)
 
-I don't feel strongly either way, having the "data_err" option makes
-this issue moot for me, but I figured I'd raise the question (in the
-interest of review).
+Perhaps you just spelled it wrong:
 
-Mike
+root@inode ~]# mount -o barriers=0 /dev/sdb2 /mnt/test
+mount: wrong fs type, bad option, bad superblock on /dev/sdb2,
+       missing codepage or helper program, or other error
+       In some cases useful info is found in syslog - try
+       dmesg | tail  or so
+
+[root@inode ~]# mount -o barrier=0 /dev/sdb2 /mnt/test
+[root@inode ~]#
+
+-Eric
