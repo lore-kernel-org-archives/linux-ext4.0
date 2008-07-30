@@ -1,89 +1,43 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: [PATCH 2/2] jbd: ordered data integrity fix
-Date: Wed, 30 Jul 2008 12:01:33 +0900
-Message-ID: <488FD98D.3080708@hitachi.com>
-References: <488FD756.9060106@hitachi.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [Bug 11175] New: ext3 BUG in add_dirent_to_buf+0x6c/0x269
+Date: Tue, 29 Jul 2008 22:03:38 -0500
+Message-ID: <488FDA0A.5020408@redhat.com>
+References: <bug-11175-27@http.bugzilla.kernel.org/> <20080729171207.d88728cf.akpm@linux-foundation.org> <20080730024856.GE29748@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: adilger@clusterfs.com, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, jack@suse.cz, jbacik@redhat.com,
-	cmm@us.ibm.com, tytso@mit.edu, snitzer@gmail.com,
-	tglx@linutronix.de, yumiko.sugita.yf@hitachi.com,
-	satoshi.oshima.fk@hitachi.com
-To: akpm@linux-foundation.org, sct@redhat.com
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, bugme-daemon@bugzilla.kernel.org,
+	kernel.bugzilla@asheesh.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail7.hitachi.co.jp ([133.145.228.42]:41920 "EHLO
-	mail7.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751083AbYG3DBo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jul 2008 23:01:44 -0400
-In-Reply-To: <488FD756.9060106@hitachi.com>
+Received: from mx1.redhat.com ([66.187.233.31]:57722 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752003AbYG3DDs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 29 Jul 2008 23:03:48 -0400
+In-Reply-To: <20080730024856.GE29748@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In ordered mode, if a file data buffer being dirtied exists in
-the committing transaction, we write the buffer to the disk, move
-it from the committing transaction to the running transaction,
-then dirty it.  But we don't have to remove the buffer from the
-committing transaction when the buffer couldn't be written out,
-otherwise it would miss the error and the committing transaction
-would not abort.
+Theodore Tso wrote:
+> Hmm... disassembling the code, it's pretty clear the problem is here
+> in do_split(), around line 1208:
+> 
+> 	map = (struct dx_map_entry *) (data2 + blocksize);
+> 	count = dx_make_map ((struct ext3_dir_entry_2 *) data1,
+> 			     blocksize, hinfo, map);
+> 	map -= count;
+> 	dx_sort_map (map, count);
+> 	/* Split the existing block in the middle, size-wise */
+> 	size = 0;
+> 	move = 0;
+> 	for (i = count-1; i >= 0; i--) {
+> 		/* is more than half of this entry in 2nd half of the block? */
+> 		if (size + map[i].size/2 > blocksize/2)  <====
 
-This patch adds an error check before removing the buffer from the
-committing transaction.
+You sure this isn't our old friend
+https://bugzilla.redhat.com/show_bug.cgi?id=451068 ?
 
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Acked-by: Jan Kara <jack@suse.cz>
----
-This patch is the same as patch 2/5 of possible filesystem corruption
-fixes (take 2).  It can be found at:
-http://kerneltrap.org/mailarchive/linux-kernel/2008/6/2/2002144
+which version of gcc compiled this?
 
- fs/jbd/transaction.c |   16 +++++++++++++---
- 1 file changed, 13 insertions(+), 3 deletions(-)
-
-Index: linux-2.6.27-rc1/fs/jbd/transaction.c
-===================================================================
---- linux-2.6.27-rc1.orig/fs/jbd/transaction.c
-+++ linux-2.6.27-rc1/fs/jbd/transaction.c
-@@ -954,9 +954,10 @@ int journal_dirty_data(handle_t *handle,
- 	journal_t *journal = handle->h_transaction->t_journal;
- 	int need_brelse = 0;
- 	struct journal_head *jh;
-+	int ret = 0;
- 
- 	if (is_handle_aborted(handle))
--		return 0;
-+		return ret;
- 
- 	jh = journal_add_journal_head(bh);
- 	JBUFFER_TRACE(jh, "entry");
-@@ -1067,7 +1068,16 @@ int journal_dirty_data(handle_t *handle,
- 				   time if it is redirtied */
- 			}
- 
--			/* journal_clean_data_list() may have got there first */
-+			/*
-+			 * We cannot remove the buffer with io error from the
-+			 * committing transaction, because otherwise it would
-+			 * miss the error and the commit would not abort.
-+			 */
-+			if (unlikely(!buffer_uptodate(bh))) {
-+				ret = -EIO;
-+				goto no_journal;
-+			}
-+
- 			if (jh->b_transaction != NULL) {
- 				JBUFFER_TRACE(jh, "unfile from commit");
- 				__journal_temp_unlink_buffer(jh);
-@@ -1108,7 +1118,7 @@ no_journal:
- 	}
- 	JBUFFER_TRACE(jh, "exit");
- 	journal_put_journal_head(jh);
--	return 0;
-+	return ret;
- }
- 
- /**
-
-
+-Eric
