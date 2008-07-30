@@ -1,168 +1,173 @@
+From: akpm@linux-foundation.org
+Subject: + ext3-add-checks-for-errors-from-jbd.patch added to -mm tree
+Date: Tue, 29 Jul 2008 19:52:24 -0700
+Message-ID: <200807300252.m6U2qOif003320@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: hidehiro.kawai.ez@hitachi.com, jack@ucw.cz,
+	linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
+
+
+The patch titled
+     ext3: add checks for errors from jbd
+has been added to the -mm tree.  Its filename is
+     ext3-add-checks-for-errors-from-jbd.patch
+
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
+
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext3: add checks for errors from jbd
 From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: [PATCH 1/2] ext3: add an option to control error handling on file
-    data
-Date: Wed, 30 Jul 2008 11:52:06 +0900
-Message-ID: <488FD756.9060106@hitachi.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
-	snitzer@gmail.com, tglx@linutronix.de,
-	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
-To: akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail4.hitachi.co.jp ([133.145.228.5]:60860 "EHLO
-	mail4.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758961AbYG3CwP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 29 Jul 2008 22:52:15 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
 
-If the journal doesn't abort when it gets an IO error in file data
-blocks, the file data corruption will spread silently.  Because
-most of applications and commands do buffered writes without fsync(),
-they don't notice the IO error.  It's scary for mission critical
-systems.  On the other hand, if the journal aborts whenever it gets
-an IO error in file data blocks, the system will easily become
-inoperable.  So this patch introduces a filesystem option to
-determine whether it aborts the journal or just call printk() when
-it gets an IO error in file data.
+If the journal has aborted due to a checkpointing failure, we have to
+keep the contents of the journal space.  Otherwise, the filesystem will
+lose uncheckpointed metadata completely and become inconsistent.  To
+avoid this, we need to keep needs_recovery flag if checkpoint has
+failed.
 
-If you mount a ext3 fs with data_err=abort option, it aborts on file
-data write error.  If you mount it with data_err=ignore, it doesn't
-abort, just call printk().  data_err=abort is default, because
-people have used this error handling policy for three years.
+With this patch, ext3_put_super() detects a checkpointing failure from
+the return value of journal_destroy(), then it invokes ext3_abort() to
+make the filesystem read only and keep needs_recovery flag.  Errors
+from journal_flush() are also handled by this patch in some places.
 
 Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Cc: Jan Kara <jack@ucw.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
- Documentation/filesystems/ext3.txt |    5 +++++
- fs/ext3/super.c                    |   18 ++++++++++++++++++
- fs/jbd/commit.c                    |    2 ++
- include/linux/ext3_fs.h            |    2 ++
- include/linux/jbd.h                |    3 +++
- 5 files changed, 30 insertions(+)
 
-Index: linux-2.6.27-rc1/Documentation/filesystems/ext3.txt
-===================================================================
---- linux-2.6.27-rc1.orig/Documentation/filesystems/ext3.txt
-+++ linux-2.6.27-rc1/Documentation/filesystems/ext3.txt
-@@ -96,6 +96,11 @@ errors=remount-ro(*)	Remount the filesys
- errors=continue		Keep going on a filesystem error.
- errors=panic		Panic and halt the machine if an error occurs.
+ fs/ext3/ioctl.c |   12 ++++++++----
+ fs/ext3/super.c |   23 +++++++++++++++++++----
+ 2 files changed, 27 insertions(+), 8 deletions(-)
+
+diff -puN fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd fs/ext3/ioctl.c
+--- a/fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd
++++ a/fs/ext3/ioctl.c
+@@ -239,7 +239,7 @@ setrsvsz_out:
+ 	case EXT3_IOC_GROUP_EXTEND: {
+ 		ext3_fsblk_t n_blocks_count;
+ 		struct super_block *sb = inode->i_sb;
+-		int err;
++		int err, err2;
  
-+data_err=abort(*)	Abort the journal if an error occurs in a file
-+			data buffer in ordered mode.
-+data_err=ignore		Just print an error message if an error occurs
-+			in a file data buffer in ordered mode.
+ 		if (!capable(CAP_SYS_RESOURCE))
+ 			return -EPERM;
+@@ -254,8 +254,10 @@ setrsvsz_out:
+ 		}
+ 		err = ext3_group_extend(sb, EXT3_SB(sb)->s_es, n_blocks_count);
+ 		journal_lock_updates(EXT3_SB(sb)->s_journal);
+-		journal_flush(EXT3_SB(sb)->s_journal);
++		err2 = journal_flush(EXT3_SB(sb)->s_journal);
+ 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++		if (err == 0)
++			err = err2;
+ group_extend_out:
+ 		mnt_drop_write(filp->f_path.mnt);
+ 		return err;
+@@ -263,7 +265,7 @@ group_extend_out:
+ 	case EXT3_IOC_GROUP_ADD: {
+ 		struct ext3_new_group_data input;
+ 		struct super_block *sb = inode->i_sb;
+-		int err;
++		int err, err2;
+ 
+ 		if (!capable(CAP_SYS_RESOURCE))
+ 			return -EPERM;
+@@ -280,8 +282,10 @@ group_extend_out:
+ 
+ 		err = ext3_group_add(sb, &input);
+ 		journal_lock_updates(EXT3_SB(sb)->s_journal);
+-		journal_flush(EXT3_SB(sb)->s_journal);
++		err2 = journal_flush(EXT3_SB(sb)->s_journal);
+ 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++		if (err == 0)
++			err = err2;
+ group_add_out:
+ 		mnt_drop_write(filp->f_path.mnt);
+ 		return err;
+diff -puN fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd
++++ a/fs/ext3/super.c
+@@ -393,7 +393,8 @@ static void ext3_put_super (struct super
+ 	int i;
+ 
+ 	ext3_xattr_put_super(sb);
+-	journal_destroy(sbi->s_journal);
++	if (journal_destroy(sbi->s_journal) < 0)
++		ext3_abort(sb, __func__, "Couldn't clean up the journal");
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+ 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+@@ -2280,7 +2281,9 @@ static void ext3_mark_recovery_complete(
+ 	journal_t *journal = EXT3_SB(sb)->s_journal;
+ 
+ 	journal_lock_updates(journal);
+-	journal_flush(journal);
++	if (journal_flush(journal) < 0)
++		goto out;
 +
- grpid			Give objects the same group ID as their creator.
- bsdgroups
- 
-Index: linux-2.6.27-rc1/fs/ext3/super.c
-===================================================================
---- linux-2.6.27-rc1.orig/fs/ext3/super.c
-+++ linux-2.6.27-rc1/fs/ext3/super.c
-@@ -625,6 +625,9 @@ static int ext3_show_options(struct seq_
- 	else if (test_opt(sb, DATA_FLAGS) == EXT3_MOUNT_WRITEBACK_DATA)
- 		seq_puts(seq, ",data=writeback");
- 
-+	if (!test_opt(sb, DATA_ERR_ABORT))
-+		seq_puts(seq, ",data_err=ignore");
+ 	lock_super(sb);
+ 	if (EXT3_HAS_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER) &&
+ 	    sb->s_flags & MS_RDONLY) {
+@@ -2289,6 +2292,8 @@ static void ext3_mark_recovery_complete(
+ 		ext3_commit_super(sb, es, 1);
+ 	}
+ 	unlock_super(sb);
 +
- 	ext3_show_quota_options(seq, sb);
- 
- 	return 0;
-@@ -754,6 +757,7 @@ enum {
- 	Opt_reservation, Opt_noreservation, Opt_noload, Opt_nobh, Opt_bh,
- 	Opt_commit, Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
- 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
-+	Opt_data_err_abort, Opt_data_err_ignore,
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
- 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
-@@ -796,6 +800,8 @@ static match_table_t tokens = {
- 	{Opt_data_journal, "data=journal"},
- 	{Opt_data_ordered, "data=ordered"},
- 	{Opt_data_writeback, "data=writeback"},
-+	{Opt_data_err_abort, "data_err=abort"},
-+	{Opt_data_err_ignore, "data_err=ignore"},
- 	{Opt_offusrjquota, "usrjquota="},
- 	{Opt_usrjquota, "usrjquota=%s"},
- 	{Opt_offgrpjquota, "grpjquota="},
-@@ -1011,6 +1017,12 @@ static int parse_options (char *options,
- 				sbi->s_mount_opt |= data_opt;
- 			}
- 			break;
-+		case Opt_data_err_abort:
-+			set_opt(sbi->s_mount_opt, DATA_ERR_ABORT);
-+			break;
-+		case Opt_data_err_ignore:
-+			clear_opt(sbi->s_mount_opt, DATA_ERR_ABORT);
-+			break;
- #ifdef CONFIG_QUOTA
- 		case Opt_usrjquota:
- 			qtype = USRQUOTA;
-@@ -1600,6 +1612,8 @@ static int ext3_fill_super (struct super
- 	else
- 		set_opt(sbi->s_mount_opt, ERRORS_RO);
- 
-+	set_opt(sbi->s_mount_opt, DATA_ERR_ABORT);
-+
- 	sbi->s_resuid = le16_to_cpu(es->s_def_resuid);
- 	sbi->s_resgid = le16_to_cpu(es->s_def_resgid);
- 
-@@ -1986,6 +2000,10 @@ static void ext3_init_journal_params(str
- 		journal->j_flags |= JFS_BARRIER;
- 	else
- 		journal->j_flags &= ~JFS_BARRIER;
-+	if (test_opt(sb, DATA_ERR_ABORT))
-+		journal->j_flags |= JFS_ABORT_ON_SYNCDATA_ERR;
-+	else
-+		journal->j_flags &= ~JFS_ABORT_ON_SYNCDATA_ERR;
- 	spin_unlock(&journal->j_state_lock);
++out:
+ 	journal_unlock_updates(journal);
  }
  
-Index: linux-2.6.27-rc1/include/linux/ext3_fs.h
-===================================================================
---- linux-2.6.27-rc1.orig/include/linux/ext3_fs.h
-+++ linux-2.6.27-rc1/include/linux/ext3_fs.h
-@@ -380,6 +380,8 @@ struct ext3_inode {
- #define EXT3_MOUNT_QUOTA		0x80000 /* Some quota option set */
- #define EXT3_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
- #define EXT3_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
-+#define EXT3_MOUNT_DATA_ERR_ABORT	0x400000 /* Abort on file data write
-+						  * error in ordered mode */
+@@ -2388,7 +2393,13 @@ static void ext3_write_super_lockfs(stru
  
- /* Compatibility, for having both ext2_fs.h and ext3_fs.h included at once */
- #ifndef _LINUX_EXT2_FS_H
-Index: linux-2.6.27-rc1/include/linux/jbd.h
-===================================================================
---- linux-2.6.27-rc1.orig/include/linux/jbd.h
-+++ linux-2.6.27-rc1/include/linux/jbd.h
-@@ -816,6 +816,9 @@ struct journal_s
- #define JFS_FLUSHED	0x008	/* The journal superblock has been flushed */
- #define JFS_LOADED	0x010	/* The journal superblock has been loaded */
- #define JFS_BARRIER	0x020	/* Use IDE barriers */
-+#define JFS_ABORT_ON_SYNCDATA_ERR	0x040  /* Abort the journal on file
-+						* data write error in ordered
-+						* mode */
+ 		/* Now we set up the journal barrier. */
+ 		journal_lock_updates(journal);
+-		journal_flush(journal);
++
++		/*
++		 * We don't want to clear needs_recovery flag when we failed
++		 * to flush the journal.
++		 */
++		if (journal_flush(journal) < 0)
++			return;
  
- /*
-  * Function declarations for the journaling transaction and buffer
-Index: linux-2.6.27-rc1/fs/jbd/commit.c
-===================================================================
---- linux-2.6.27-rc1.orig/fs/jbd/commit.c
-+++ linux-2.6.27-rc1/fs/jbd/commit.c
-@@ -482,6 +482,8 @@ void journal_commit_transaction(journal_
- 		printk(KERN_WARNING
- 			"JBD: Detected IO errors while flushing file data "
- 			"on %s\n", bdevname(journal->j_fs_dev, b));
-+		if (journal->j_flags & JFS_ABORT_ON_SYNCDATA_ERR)
-+			journal_abort(journal, err);
- 		err = 0;
+ 		/* Journal blocked and flushed, clear needs_recovery flag. */
+ 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+@@ -2806,8 +2817,12 @@ static int ext3_quota_on(struct super_bl
+ 		 * otherwise be livelocked...
+ 		 */
+ 		journal_lock_updates(EXT3_SB(sb)->s_journal);
+-		journal_flush(EXT3_SB(sb)->s_journal);
++		err = journal_flush(EXT3_SB(sb)->s_journal);
+ 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++		if (err) {
++			path_put(&nd.path);
++			return err;
++		}
  	}
  
+ 	path_put(&nd.path);
+_
 
+Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
 
+linux-next.patch
+jbd-abort-when-failed-to-log-metadata-buffers.patch
+jbd-fix-error-handling-for-checkpoint-io.patch
+ext3-add-checks-for-errors-from-jbd.patch
+jbd-dont-dirty-original-metadata-buffer-on-abort.patch
 
