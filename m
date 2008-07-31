@@ -1,65 +1,86 @@
-From: "Rohit Sharma" <imreckless@gmail.com>
-Subject: ext2_find_near
-Date: Thu, 31 Jul 2008 20:17:06 +0530
-Message-ID: <2d08ef090807310747p72716f56v6271f81aef7cb8a8@mail.gmail.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: i_size error with the latest patchqueue
+Date: Thu, 31 Jul 2008 21:40:59 +0530
+Message-ID: <20080731161058.GA20838@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.29]:42697 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752466AbYGaOrI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2008 10:47:08 -0400
-Received: by yw-out-2324.google.com with SMTP id 9so355213ywe.1
-        for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2008 07:47:07 -0700 (PDT)
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:40026 "EHLO
+	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751223AbYGaQLJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2008 12:11:09 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m6VGB6qs006580
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2008 21:41:06 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m6VGB6om1855604
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2008 21:41:06 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m6VGB5jc028377
+	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2008 21:41:06 +0530
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi all,
+Hi Ted,
 
-I was going through the function "ext2_find_near" in inode.c and could not
-interpret the meaning of the last part of this code :
+I haven't yet looked at whether it is kernel or e2fsck bug.
+But I am having this with the latest patch queue when running
+fsstress. The fsstress have falloc added as a supported operation.
+So it is mostly to do with fallocate. Architecture is x86.
 
-static ext2_fsblk_t ext2_find_near(struct inode *inode, Indirect *ind)
-{
-       struct ext2_inode_info *ei = EXT2_I(inode);
-       __le32 *start = ind->bh ? (__le32 *) ind->bh->b_data : ei->i_data;
-       __le32 *p;
-       ext2_fsblk_t bg_start;
-       ext2_fsblk_t colour;
+The tests performed are
 
-       /* Try to find previous block */
-      for (p = ind->p - 1; p >= start; p--)
-               if (*p)
-                       return le32_to_cpu(*p);
+               chown 3/39 write op
+               creat 4/39 write op
+               dread 4/39  
+           fdatasync 1/39 write op
+               fsync 1/39 write op
+            getdents 1/39  
+                link 1/39 write op
+               mkdir 2/39 write op
+               mknod 2/39 write op
+                read 1/39  
+            readlink 1/39  
+              rename 2/39 write op
+               rmdir 1/39 write op
+                stat 1/39  
+             symlink 2/39 write op
+                sync 1/39  
+            truncate 2/39 write op
+              unlink 1/39 write op
+               write 4/39 write op
+           fallocate 4/39 write op
 
-       /* No such thing, so let's try location of indirect block */
-      if (ind->bh)
-               return ind->bh->b_blocknr;
-
-       /*
-        * It is going to be refered from inode itself? OK, just put it into
-        * the same cylinder group then.
-        */
-
-       bg_start = ext2_group_first_block_no(inode->i_sb, ei->i_block_group);
-
-       / * what does the code below do?? why its is using pid of
-current process?? */
-
-       colour = (current->pid % 16) *
-                       (EXT2_BLOCKS_PER_GROUP(inode->i_sb) / 16);
-      return bg_start + colour;
-}
+seed = 1218256896
 
 
-What I understand from it is that it has something to do with reducing
-the chances of a concurrent allocation -- supposedly from a different
-PID.
+/usr/local/e2fsprogs/sbin/e2fsck -fnv /dev/sdb1
+e2fsck 1.41.0 (10-Jul-2008)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 10093, i_size is 974599, should be 999424.  Fix? no
 
-Can someone just explain a bit on this, what exactly is happening ?
+Inode 22481, i_size is 363927, should be 909312.  Fix? no
 
-Thanks,
-Rohit Sharma.
+Inode 28621, i_size is 143236, should be 159744.  Fix? no
+
+Inode 28635, i_size is 1203683, should be 1830912.  Fix? no
+
+Inode 42764, i_size is 2328377, should be 2691072.  Fix? no
+
+Inode 54630, i_size is 204182, should be 331776.  Fix? no
+
+Inode 60249, i_size is 0, should be 700416.  Fix? no
+
+Inode 67588, i_size is 1621922, should be 1810432.  Fix? no
+
+Inode 71084, i_size is 0, should be 184320.  Fix? no
+
+Inode 78764, i_size is 0, should be 151552.  Fix? no
+
+Inode 92569, i_size is 651967, should be 806912.  Fix? no
+
+
+-aneesh
