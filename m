@@ -1,56 +1,47 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext2_find_near
-Date: Thu, 31 Jul 2008 12:23:52 -0400
-Message-ID: <20080731162352.GE11632@mit.edu>
-References: <2d08ef090807310747p72716f56v6271f81aef7cb8a8@mail.gmail.com>
+Subject: Re: i_size error with the latest patchqueue
+Date: Thu, 31 Jul 2008 12:47:28 -0400
+Message-ID: <20080731164728.GF11632@mit.edu>
+References: <20080731161058.GA20838@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: ext4 <linux-ext4@vger.kernel.org>
-To: Rohit Sharma <imreckless@gmail.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:37518 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:50791 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751010AbYGaQXz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2008 12:23:55 -0400
+	with ESMTP id S1751642AbYGaQra (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2008 12:47:30 -0400
 Content-Disposition: inline
-In-Reply-To: <2d08ef090807310747p72716f56v6271f81aef7cb8a8@mail.gmail.com>
+In-Reply-To: <20080731161058.GA20838@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 31, 2008 at 08:17:06PM +0530, Rohit Sharma wrote:
-> What I understand from it is that it has something to do with reducing
-> the chances of a concurrent allocation -- supposedly from a different
-> PID.
+On Thu, Jul 31, 2008 at 09:40:59PM +0530, Aneesh Kumar K.V wrote:
+> Hi Ted,
+> 
+> I haven't yet looked at whether it is kernel or e2fsck bug.
+> But I am having this with the latest patch queue when running
+> fsstress. The fsstress have falloc added as a supported operation.
+> So it is mostly to do with fallocate. Architecture is x86.
 
-Yes, that's exactly it.  To quote from from comment above the function:
+Part of this is definitely an e2fsck bug, because e2fsck isn't
+currently checking the EXT2_EXTENT_FLAGS_UNINIT flag.  In line 1715 of
+e2fsck/pass1.c:
 
- * In the latter case we colour the starting block by the callers PID to
- * prevent it from clashing with concurrent allocations for a different inode
- * in the same block group.
+	start_block = pb->last_block = extent.e_lblk + extent.e_len - 1;
 
-In computer science, the concept of "coloring" is to spread the
-allocation across multiple (cpu's, processes, etc.) while
-concentrating accesses from a specific CPU, processes, etc., in order
-to provide better performance.  You will see references to coloring
-pages for virtual memory systems, coloring slabs in slab allocators to
-improve better cache utilization, etc.
+We shouldn't be setting pb->last_block if this is an unitialized
+extent.
 
-When people talking using coloring to increase cache utilization, the
-goal is to reduce the chances that cache collisions lead to premature
-ejection of data from the cache.  In the case of block allocation, the
-goal is that if you have two processes writing into the same directory
-(for example, if you are compiling a program using "make -j4") that
-they don't "collide" and start allocating blocks from the same
-starting point, since that might result in an interleaved allocation
-for the files.
+I suspect this is also related though to the issue you raised in the
+"e2fsprogs and blocks outside i_size" thread about two weeks ago.  So
+even after we fix this e2fsck bug, we may still have some fsstress
+failures until we decide how to deal with that particular issue.
 
-What is going on here is that code is splitting the block group into
-16 zones, and it using the low 4 bits of the process ID (i.e., pid %
-16) to determine "zone" in the block group is used as a starting point
-for the allocation.
+Do you have a quickie program that calls fallocate to preallocate
+space for a particular program easily to hand?  If not, I can write
+one in about 5-10 minutes, but if you have one written already, it'll
+save me the effort.  Thanks!!
 
-This is a hueristic, and like all hueristics, in some cases it wins,
-in other cases it is a lose.  Something like delayed allocation can do
-a much better job than this particular hueristic.
-
-					- Ted
+						- Ted
