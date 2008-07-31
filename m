@@ -1,69 +1,59 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 1/2] ext3: add an option to control error handling on	file
- data
-Date: Wed, 30 Jul 2008 15:17:03 -0600
-Message-ID: <20080730211703.GZ3342@webber.adilger.int>
-References: <488FD756.9060106@hitachi.com>
- <170fa0d20807300814o7741859eu8ad5d5b3b95e401c@mail.gmail.com>
+From: Szabolcs Szakacsits <szaka@ntfs-3g.org>
+Subject: Re: Porting Zfs features to ext2/3
+Date: Thu, 31 Jul 2008 03:50:17 +0300 (EEST)
+Message-ID: <Pine.LNX.4.62.0807310255280.32725@tamago.serverit.net>
+References: <18674437.post@talk.nabble.com> <1217199281.6992.0.camel@telesto>
+ <20080727233855.GB9378@mit.edu> <loom.20080729T222131-137@post.gmane.org>
+ <20080730013427.GD29748@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
-	akpm@linux-foundation.org, sct@redhat.com, adilger@clusterfs.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
-	tglx@linutronix.de, yumiko.sugita.yf@hitachi.com,
-	satoshi.oshima.fk@hitachi.com
-To: Mike Snitzer <snitzer@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:43281 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757155AbYG3VRR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 30 Jul 2008 17:17:17 -0400
-In-reply-to: <170fa0d20807300814o7741859eu8ad5d5b3b95e401c@mail.gmail.com>
-Content-disposition: inline
+Received: from tamago.serverit.net ([91.189.209.155]:45853 "EHLO
+	mail.hosting2.serverit.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753914AbYGaBOU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 30 Jul 2008 21:14:20 -0400
+In-Reply-To: <20080730013427.GD29748@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 30, 2008  11:14 -0400, Mike Snitzer wrote:
-> On Tue, Jul 29, 2008 at 10:52 PM, Hidehiro Kawai
-> <hidehiro.kawai.ez@hitachi.com> wrote:
-> > If the journal doesn't abort when it gets an IO error in file data
-> > blocks, the file data corruption will spread silently.  Because
-> > most of applications and commands do buffered writes without fsync(),
-> > they don't notice the IO error.  It's scary for mission critical
-> > systems.  On the other hand, if the journal aborts whenever it gets
-> > an IO error in file data blocks, the system will easily become
-> > inoperable.  So this patch introduces a filesystem option to
-> > determine whether it aborts the journal or just call printk() when
-> > it gets an IO error in file data.
-> >
-> > If you mount a ext3 fs with data_err=abort option, it aborts on file
-> > data write error.  If you mount it with data_err=ignore, it doesn't
-> > abort, just call printk().  data_err=abort is default, because
-> > people have used this error handling policy for three years.
-> 
-> Thanks for making this configurable!
-> 
-> But given how surprised many of us were when we found out that
-> jbd/ext3 has been aborting on file data blocks isn't this our chance
-> to correct that long-standing oversight?  Shouldn't the default be
-> data_err=ignore?  Or would changing this behavior cause more harm than
-> good?
-> 
-> I don't feel strongly either way, having the "data_err" option makes
-> this issue moot for me, but I figured I'd raise the question (in the
-> interest of review).
 
-Yes, good point.  I don't think any of the ext3 maintainers were aware
-that the 3-years-old patch had introduced "abort on data error" behaviour.
-The default for ext4 is only now going to errors=remount-ro from
-errors=continue (as it is on ext2/3) so I think it is inconsistent to
-have the journal abort on data errors when the filesystem itself does not.
+On Tue, 29 Jul 2008, Theodore Tso wrote:
+> On Tue, Jul 29, 2008 at 10:52:26PM +0000, Szabolcs Szakacsits wrote:
+> > I did also an in memory test on a T9300@2.5, with disk I/O completely 
+> > eliminated. Results:
+> > 
+> > tmpfs:    975 MB/sec
+> > ntfs-3g:  889 MB/sec  (note, this FUSE driver is not optimized yet)
+> > ext3:     675 MB/sec
+> 
+> Am I write in guessing that this test involved copying a single large
+> file, with no seeks?  
 
-Cheers, Andreas
+Yes, it was writing a large file on a newly created, loop mounted image 
+file.
+
+> What happens if you try benchmarking unpacking a kernel source tar.bz2 
+> file?  My guess is that ntfs-3g won't look as good.  :-)
+
+It seems the tar.bz2 number is not so bad relatively but the metadata 
+performance difference is much more visible by eliminating the compression 
+overhead. The results are in second.
+
+              ext3    ntfs-3g
+  tar.bz2      7.7      12.4
+  tar.gz       3.1       8.7
+  tar          1.4       7.6
+
+A few seconds could be improved but I think getting similar numbers will 
+need major FUSE changes and non-trivial work to get rid of most contexts 
+switches which indeed seem to be the bottleneck according to the profiling 
+data.
+
+	Szaka
+
 --
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+NTFS-3G:  http://ntfs-3g.org
 
