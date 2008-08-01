@@ -1,106 +1,87 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Rework the ext4_da_writepages
-Date: Fri, 1 Aug 2008 10:37:25 +0530
-Message-ID: <20080801050725.GC25255@skywalker>
-References: <1217525605-23000-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080731201055.GM3292@webber.adilger.int> <20080801045412.GB25255@skywalker>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH v3]Ext4: journal credits reservation fixes for DIO,
+	fallocate and delalloc writepages
+Date: Fri, 1 Aug 2008 01:49:32 -0400
+Message-ID: <20080801054932.GF8736@mit.edu>
+References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker> <1216774311.6505.4.camel@mingming-laptop> <20080723074226.GA15091@skywalker> <1217032947.6394.2.camel@mingming-laptop> <1217383118.27664.14.camel@mingming-laptop> <1217417361.3373.15.camel@localhost> <1217527631.6317.6.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Cc: =?iso-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>,
+	Shehjar Tikoo <shehjart@cse.unsw.edu.au>,
+	linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Andreas Dilger <adilger@sun.com>
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:55982 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750804AbYHAFHp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2008 01:07:45 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m71583HI023460
-	for <linux-ext4@vger.kernel.org>; Fri, 1 Aug 2008 15:08:03 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7157e9m223690
-	for <linux-ext4@vger.kernel.org>; Fri, 1 Aug 2008 15:07:40 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7157dIF016366
-	for <linux-ext4@vger.kernel.org>; Fri, 1 Aug 2008 15:07:40 +1000
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:48328 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751144AbYHAFtl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2008 01:49:41 -0400
 Content-Disposition: inline
-In-Reply-To: <20080801045412.GB25255@skywalker>
+In-Reply-To: <1217527631.6317.6.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 01, 2008 at 10:24:12AM +0530, Aneesh Kumar K.V wrote:
-> On Thu, Jul 31, 2008 at 02:10:55PM -0600, Andreas Dilger wrote:
-> > On Jul 31, 2008  23:03 +0530, Aneesh Kumar wrote:
-> > > With the below changes we reserve credit needed to insert only one extent
-> > > resulting from a call to single get_block. That make sure we don't take
-> > > too much journal credits during writeout. We also don't limit the pages
-> > > to write. That means we loop through the dirty pages building largest
-> > > possible contiguous block request. Then we issue a single get_block request.
-> > > We may get less block that we requested. If so we would end up not mapping
-> > > some of the buffer_heads. That means those buffer_heads are still marked delay.
-> > > Later in the writepage callback via __mpage_writepage we redirty those pages.
-> > 
-> > Can you please clarify this?  Does this mean we take one pass through the
-> > dirty pages, but possibly do not allocate some subset of the pages.  Then,
-> > at some later time these holes are written out separately?  This seems
-> > like it would produce fragmentation if we do not work to ensure the pages
-> > are allocated in sequence.  Maybe I'm misunderstanding your comment and
-> > the unmapped pages are immediately mapped on the next loop?
+On Thu, Jul 31, 2008 at 11:07:11AM -0700, Mingming Cao wrote:
 > 
-> We take multiple pass through the dirty pages until wbc->nr_to_write is
-> <= 0 or we don't have anything more to write. But if get_block doesn't
-> return the requested number of blocks we may possibly not writeout
-> some of the pages. Whether this can result in a disk layout worse than
-> the current, I am not sure. I haven't looked at the layout yet.
-> But these pages which are skipped are redirtied again via
-> reditry_pages_for_writepage and will be forced for writeout. Well
-> we can do better by setting  wbc->encountered_congestion = 1; even
-> though we are not really congested. That would cause most of the pdflush
-> work func to retry writeback_indoes.
-> 
-> for(;;) {
-> ...
-> wbc.pages_skipped = 0;
-> writeback_inodes(&wbc);
-> ...
-> 
-> if (wbc.nr_to_write > 0 || wbc.pages_skipped > 0) {
-> 	/* Wrote less than expected */
-> 	if (wbc.encountered_congestion || wbc.more_io)
-> 		congestion_wait(WRITE, HZ/10);
-> 	else
-> 		break;
-> }
-> 
-> }
-> 
+> Looks like a 1k blocksize ext4, I have tested 1k briefly it seems okay
+> for single test. I will try bonnie myself. The stack shows there isn't
+> enought credit to delete an file.  But the journal credit fix mostly fix
+> the code path on writepages(), so it should not affact the unlink case.
 
-like below ?
+Yep, different bug.  I think this patch should fix things.
+
+There's a larger question here which is should the extents code really
+be requesting only a tiny amount of transaction credits at a time; the
+advantage is that by doing so, it reduces the chance of provoking a
+transaction commit before its time.  On the other hand, for a very
+fragmented file with lots of extents, this will cause lots of extra
+calls jbd2_journal_extend(), which does end up taking a bit more cpu
+time as well as grabbing both the journal and the transaction spin
+locks.
+
+The original non-extents truncate code massively overestimates the
+number of credits needed to complete the truncate (to the point where
+it is probably needlessly causing transactions to close early) but it
+means many fewer calls to jbd2_journal_extend().
+
+     	       	       	     	  	       - Ted
+
+commit 0e71ff5fc4cf98c44014a1d3c8ccffed846e7ee1
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Fri Aug 1 01:40:08 2008 -0400
+
+    ext4: Fix lack of credits BUG() when deleting a badly fragmented inode
+    
+    The extents codepath for ext4_truncate() requests journal transaction
+    credits in very small chunks, requesting only what is needed.  This
+    means there may not be enough credits left on the transaction handle
+    after ext4_truncate() returns and then when ext4_delete_inode() tries
+    finish up its work, it may not have enough transaction credits,
+    causing a BUG() oops in the jbd2 core.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 53a8fc7..6fd527c 100644
+index c7fb647..6d27e78 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1773,6 +1773,14 @@ static void mpage_da_map_blocks(struct mpage_da_data *mpd)
- 		return;
- 	BUG_ON(new.b_size == 0);
- 
-+	if (new.b_size < lbh->b_size) {
-+		/*
-+		 * allocated less blocks. force writepages
-+		 * to be called again
-+		 */
-+		mpd->wbc->more_io = 1;
+@@ -215,6 +215,18 @@ void ext4_delete_inode (struct inode * inode)
+ 	inode->i_size = 0;
+ 	if (inode->i_blocks)
+ 		ext4_truncate(inode);
++
++	/*
++	 * ext4_ext_truncate() doesn't reserve any slop when it
++	 * restarts journal transactions; therefore there may not be
++	 * enough credits left in the handle to remove the inode from
++	 * the orphan list and set the dtime field.
++	 */
++	if (ext4_ext_journal_restart(handle, 3)) {
++		ext4_journal_stop(handle);
++		goto no_delete;
 +	}
 +
- 	if (buffer_new(&new))
- 		__unmap_underlying_blocks(mpd->inode, &new);
- 
-@@ -1876,6 +1884,8 @@ static int __mpage_da_writepage(struct page *page,
- 			 * skip rest of the page in the page_vec
- 			 */
- 			mpd->io_done = 1;
-+			/* We want writepages to be called again */
-+			wbc->more_io = 1;
- 			redirty_page_for_writepage(wbc, page);
- 			unlock_page(page);
- 			return MPAGE_DA_EXTENT_TAIL;
+ 	/*
+ 	 * Kill off the orphan record which ext4_truncate created.
+ 	 * AKPM: I think this can be inside the above `if'.
