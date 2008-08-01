@@ -1,44 +1,36 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: don't abort if flushing file data failed
-Date: Thu, 31 Jul 2008 22:33:59 -0400
-Message-ID: <20080801023358.GC8736@mit.edu>
-References: <1217118414-18636-1-git-send-email-tytso@mit.edu> <1217118414-18636-2-git-send-email-tytso@mit.edu> <1217118414-18636-3-git-send-email-tytso@mit.edu> <1217118414-18636-4-git-send-email-tytso@mit.edu> <488EB060.7080303@hitachi.com> <20080729123513.GG9378@mit.edu> <48915500.3050500@hitachi.com>
+Subject: Re: [PATCH] ext4: Rework the ext4_da_writepages
+Date: Thu, 31 Jul 2008 23:08:25 -0400
+Message-ID: <20080801030825.GD8736@mit.edu>
+References: <1217525605-23000-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	sugita <yumiko.sugita.yf@hitachi.com>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:36731 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:55883 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752190AbYHACeF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2008 22:34:05 -0400
+	with ESMTP id S1752890AbYHADIm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2008 23:08:42 -0400
 Content-Disposition: inline
-In-Reply-To: <48915500.3050500@hitachi.com>
+In-Reply-To: <1217525605-23000-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 31, 2008 at 03:00:32PM +0900, Hidehiro Kawai wrote:
-> I tested this patch on 2.6.27-rc1, but it didn't work properly.
-> Then, I noticed two mistakes.
-> 
-> (1) journal_submit_data_buffers() just submits I/Os, doesn't wait
->     their completion.  We have to check file data write errors
->     after calling journal_finish_inode_data_buffers()
-> (2) AS_EIO is cleared by wait_on_page_writeback_range(), so we
->     have to set it again
+On Thu, Jul 31, 2008 at 11:03:25PM +0530, Aneesh Kumar K.V wrote:
+> With the below changes we reserve credit needed to insert only one extent
+> resulting from a call to single get_block. That make sure we don't take
+> too much journal credits during writeout. We also don't limit the pages
+> to write. That means we loop through the dirty pages building largest
+> possible contiguous block request. Then we issue a single get_block request.
+> We may get less block that we requested. If so we would end up not mapping
+> some of the buffer_heads. That means those buffer_heads are still marked delay.
+> Later in the writepage callback via __mpage_writepage we redirty those pages.
 
-Thank you very much for catching these errors; you are very correct!  
+If you're only redirtying the pages in the callback, that means they
+are left clean but with the delayed flag set; is that going to be
+enough to keep the mm from dropping the pages because they are clean?
+Or is the mechanism which prevents this is that you've kept the
+refcount on the pages bumped until after the callback?
 
-> I attached the revised patch below.  journal_submit_data_buffers()
-> can return error, but it wouldn't be write I/O error AFAIK, so I
-> didn't touched.
-
-I've replaced the patch with your revised patch in the ext4 patch
-queue; thanks again for double-checking the patch and offering the
-revised version.
-
-Many thanks,
-
-						- Ted
+	    	      	     	   	     - Ted
