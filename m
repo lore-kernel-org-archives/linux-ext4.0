@@ -1,87 +1,295 @@
-From: Theodore Tso <tytso@mit.edu>
+From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
 Subject: Re: [PATCH v3]Ext4: journal credits reservation fixes for DIO,
 	fallocate and delalloc writepages
-Date: Fri, 1 Aug 2008 01:49:32 -0400
-Message-ID: <20080801054932.GF8736@mit.edu>
-References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker> <1216774311.6505.4.camel@mingming-laptop> <20080723074226.GA15091@skywalker> <1217032947.6394.2.camel@mingming-laptop> <1217383118.27664.14.camel@mingming-laptop> <1217417361.3373.15.camel@localhost> <1217527631.6317.6.camel@mingming-laptop>
+Date: Fri, 01 Aug 2008 12:51:42 +0200
+Message-ID: <1217587902.3280.10.camel@localhost>
+References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker>
+	 <1216774311.6505.4.camel@mingming-laptop>
+	 <20080723074226.GA15091@skywalker>
+	 <1217032947.6394.2.camel@mingming-laptop>
+	 <1217383118.27664.14.camel@mingming-laptop>
+	 <1217417361.3373.15.camel@localhost>
+	 <1217527631.6317.6.camel@mingming-laptop>  <20080801054932.GF8736@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: =?iso-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>,
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Mingming Cao <cmm@us.ibm.com>,
 	Shehjar Tikoo <shehjart@cse.unsw.edu.au>,
 	linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	Andreas Dilger <adilger@sun.com>
-To: Mingming Cao <cmm@us.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:48328 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751144AbYHAFtl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2008 01:49:41 -0400
-Content-Disposition: inline
-In-Reply-To: <1217527631.6317.6.camel@mingming-laptop>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:57003 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752174AbYHAIuP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2008 04:50:15 -0400
+In-Reply-To: <20080801054932.GF8736@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 31, 2008 at 11:07:11AM -0700, Mingming Cao wrote:
-> 
-> Looks like a 1k blocksize ext4, I have tested 1k briefly it seems okay
-> for single test. I will try bonnie myself. The stack shows there isn't
-> enought credit to delete an file.  But the journal credit fix mostly fix
-> the code path on writepages(), so it should not affact the unlink case.
+Le vendredi 01 ao=C3=BBt 2008 =C3=A0 01:49 -0400, Theodore Tso a =C3=A9=
+crit :
+> On Thu, Jul 31, 2008 at 11:07:11AM -0700, Mingming Cao wrote:
+> >=20
+> > Looks like a 1k blocksize ext4, I have tested 1k briefly it seems o=
+kay
+> > for single test. I will try bonnie myself. The stack shows there is=
+n't
+> > enought credit to delete an file.  But the journal credit fix mostl=
+y fix
+> > the code path on writepages(), so it should not affact the unlink c=
+ase.
+>=20
+> Yep, different bug.  I think this patch should fix things.
+>=20
+> There's a larger question here which is should the extents code reall=
+y
+> be requesting only a tiny amount of transaction credits at a time; th=
+e
+> advantage is that by doing so, it reduces the chance of provoking a
+> transaction commit before its time.  On the other hand, for a very
+> fragmented file with lots of extents, this will cause lots of extra
+> calls jbd2_journal_extend(), which does end up taking a bit more cpu
+> time as well as grabbing both the journal and the transaction spin
+> locks.
+>=20
+> The original non-extents truncate code massively overestimates the
+> number of credits needed to complete the truncate (to the point where
+> it is probably needlessly causing transactions to close early) but it
+> means many fewer calls to jbd2_journal_extend().
+>=20
+>      	       	       	     	  	       - Ted
+>=20
+> commit 0e71ff5fc4cf98c44014a1d3c8ccffed846e7ee1
+> Author: Theodore Ts'o <tytso@mit.edu>
+> Date:   Fri Aug 1 01:40:08 2008 -0400
+>=20
+>     ext4: Fix lack of credits BUG() when deleting a badly fragmented =
+inode
+>    =20
+>     The extents codepath for ext4_truncate() requests journal transac=
+tion
+>     credits in very small chunks, requesting only what is needed.  Th=
+is
+>     means there may not be enough credits left on the transaction han=
+dle
+>     after ext4_truncate() returns and then when ext4_delete_inode() t=
+ries
+>     finish up its work, it may not have enough transaction credits,
+>     causing a BUG() oops in the jbd2 core.
+>    =20
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+>=20
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c7fb647..6d27e78 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -215,6 +215,18 @@ void ext4_delete_inode (struct inode * inode)
+>  	inode->i_size =3D 0;
+>  	if (inode->i_blocks)
+>  		ext4_truncate(inode);
+> +
+> +	/*
+> +	 * ext4_ext_truncate() doesn't reserve any slop when it
+> +	 * restarts journal transactions; therefore there may not be
+> +	 * enough credits left in the handle to remove the inode from
+> +	 * the orphan list and set the dtime field.
+> +	 */
+> +	if (ext4_ext_journal_restart(handle, 3)) {
+> +		ext4_journal_stop(handle);
+> +		goto no_delete;
+> +	}
+> +
+>  	/*
+>  	 * Kill off the orphan record which ext4_truncate created.
+>  	 * AKPM: I think this can be inside the above `if'.
+>=20
 
-Yep, different bug.  I think this patch should fix things.
+Thanks Ted. With this patch, I don't have a crash anymore, but I have
+some messages :
 
-There's a larger question here which is should the extents code really
-be requesting only a tiny amount of transaction credits at a time; the
-advantage is that by doing so, it reduces the chance of provoking a
-transaction commit before its time.  On the other hand, for a very
-fragmented file with lots of extents, this will cause lots of extra
-calls jbd2_journal_extend(), which does end up taking a bit more cpu
-time as well as grabbing both the journal and the transaction spin
-locks.
+EXT4 Inode eedb4228: orphan list check failed!
+eedb4228: 0001f30a 00010004 00000000 00000000  ................
+eedb4238: 0002b001 00010000 00001800 00008000  ................
+eedb4248: 00012801 00009800 00008000 0001a801  .(..............
+eedb4258: 00011800 00008000 00022801 00080000  .........(......
+eedb4268: 00000000 00000000 00000000 00000000  ................
+eedb4278: 00000000 00000000 00000000 f7d62134  ............4!..
+eedb4288: f7d62134 00000000 00000000 0000001c  4!..............
+eedb4298: 00000000 00004747 eedb42a0 eedb42a0  ....GG...B...B..
+eedb42a8: 00000000 00000000 eedb42b0 eedb42b0  .........B...B..
+eedb42b8: eedb42b8 eedb42b8 eedb42c0 eedb42c0  .B...B...B...B..
+eedb42c8: 0000000c 00000000 00000000 00000000  ................
+eedb42d8: 00000000 00000000 00000001 00000000  ................
+eedb42e8: 00000000 00000000 00200000 4892c5f9  .......... ....H
+eedb42f8: 35f4b4f0 4892c63c 03562cad 4892c63c  ...5<..H.,V.<..H
+eedb4308: 03562cad 0000000a 0009f002 00000000  .,V.............
+eedb4318: 81a40000 00000202 00000001 00000000  ................
+eedb4328: eedb4328 eedb4328 00000000 00000000  (C..(C..........
+eedb4338: eedb4338 eedb4338 f8b85fe0 f8b85f60  8C..8C..._..`_..
+eedb4348: f70b6a00 00000000 eedb4354 eedb42a8  .j......TC...B..
+eedb4358: 00000000 00000020 00000000 00001616  .... ...........
+eedb4368: 00000000 00000000 00010001 eedb4374  ............tC..
+eedb4378: eedb4374 00000000 00000000 00000000  tC..............
+eedb4388: 00040000 f8b861a0 001200d2 f55108ec  .....a........Q.
+eedb4398: 00000000 eedb439c eedb439c 00000000  .....C...C......
+eedb43a8: eedb43a8 eedb43a8 00000000 00000000  .C...C..........
+eedb43b8: aa93f4c8 00000000 00000000 eedb43c4  .............C..
+eedb43c8: eedb43c4 00000001 00000000 eedb43d4  .C...........C..
+eedb43d8: eedb43d4 00000040 00001050 00000000  .C..@...P.......
+eedb43e8: 00000000 00000000 00000000 00000000  ................
+eedb43f8: 00100100 00200200 eedb42a8 00000000  ...... ..B......
+eedb4408: c15c754b 00000000 00000000 000fffff  Ku\.............
+eedb4418: fff00000 00000000 4892c5f9 35f4b4f0  ...........H...5
+eedb4428: eedb4428 eedb4428 00000202 00000000  (D..(D..........
+eedb4438: 00000000 00000000 00000000 0000ecec  ................
+Pid: 7092, comm: bonnie++ Not tainted 2.6.27-rc1 #6
+ [<f8b719ee>] ext4_destroy_inode+0x5e/0x70 [ext4dev]
+ [<c018f820>] destroy_inode+0x20/0x40
+ [<c018f4a4>] iput+0x44/0x50
+ [<c0186271>] do_unlinkat+0xd1/0x150
+ [<c017cdd6>] vfs_write+0x106/0x140
+ [<c02aa7b0>] tty_write+0x0/0x1e0
+ [<c017d2d1>] sys_write+0x41/0x70
+ [<c0102fc9>] sysenter_do_call+0x12/0x25
+ =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+EXT4 Inode eed70228: orphan list check failed!
+eed70228: 0001f30a 00010004 00000000 00000000  ................
+eed70238: 00012112 00010000 00000094 00000002  .!..............
+eed70248: 00012295 00000098 00000003 00012299  ."..........."..
+eed70258: 0000009c 00000002 0001229d 00080000  ........."......
+eed70268: 00000000 00000000 0000000c 00000000  ................
+eed70278: 00000000 00000000 00000000 eedb4284  .............B..
+eed70288: f7d62134 00000000 00000000 0000001c  4!..............
+eed70298: 00000000 00000707 eed702a0 eed702a0  ................
+eed702a8: 00000000 00000000 eed702b0 eed702b0  ................
+eed702b8: eed702b8 eed702b8 eed702c0 eed702c0  ................
+eed702c8: 0000000d 00000000 00000000 00000000  ................
+eed702d8: 00000000 00000000 00000001 00000000  ................
+eed702e8: 00000000 00000000 00200000 4892c5f9  .......... ....H
+eed702f8: 35f4b4f0 4892c63f 0a441733 4892c63f  ...5?..H3.D.?..H
+eed70308: 0a441733 0000000a 000752f0 00000000  3.D......R......
+eed70318: 81a40000 0000a2a2 00000001 00000000  ................
+eed70328: eed70328 eed70328 00000000 00000000  (...(...........
+eed70338: eed70338 eed70338 f8b85fe0 f8b85f60  8...8...._..`_..
+eed70348: f70b6a00 00000000 eed70354 eed702a8  .j......T.......
+eed70358: 00000000 00000020 00000000 00006464  .... .......dd..
+eed70368: 00000000 00000000 00010001 eed70374  ............t...
+eed70378: eed70374 00000000 00000000 00000000  t...............
+eed70388: 0003cea2 f8b861a0 001200d2 f55108ec  .....a........Q.
+eed70398: 00000000 eed7039c eed7039c 00000000  ................
+eed703a8: eed703a8 eed703a8 00000000 00000000  ................
+eed703b8: aa93f4c9 00000000 00000000 eed703c4  ................
+eed703c8: eed703c4 00000001 00000000 eed703d4  ................
+eed703d8: eed703d4 00000040 fffff1db 00000000  ....@...........
+eed703e8: 00000000 00000000 00000000 00000000  ................
+eed703f8: 00100100 00200200 eed702a8 00000000  ...... .........
+eed70408: c15c51c1 002101a9 00000000 000f39a8  .Q\...!......9..
+eed70418: 000000e0 00000000 4892c5f9 35f4b4f0  ...........H...5
+eed70428: eed70428 eed70428 0000d3d3 00000000  (...(...........
+eed70438: 00000000 00000000 00000000 00003e3e  ............>>..
+Pid: 7092, comm: bonnie++ Not tainted 2.6.27-rc1 #6
+ [<f8b719ee>] ext4_destroy_inode+0x5e/0x70 [ext4dev]
+ [<c018f820>] destroy_inode+0x20/0x40
+ [<c018f4a4>] iput+0x44/0x50
+ [<c0186271>] do_unlinkat+0xd1/0x150
+ [<c017ab4c>] do_sys_open+0xbc/0xe0
+ [<c0102fc9>] sysenter_do_call+0x12/0x25
+ =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+EXT4 Inode eed70450: orphan list check failed!
+eed70450: 0001f30a 00010004 00000000 00000000  ................
+eed70460: 00083001 00060000 00008000 00008000  .0..............
+eed70470: 0006a801 00010000 00008000 00072801  .............(..
+eed70480: 00018000 00008000 0007a801 00080000  ................
+eed70490: 00000000 00000000 0000000d 00000000  ................
+eed704a0: 00000000 00000000 00000000 eed70284  ................
+eed704b0: f7d62134 00000000 00000000 0000001c  4!..............
+eed704c0: 00000000 0000d8d8 eed704c8 eed704c8  ................
+eed704d0: 00000000 00000000 eed704d8 eed704d8  ................
+eed704e0: eed704e0 eed704e0 eed704e8 eed704e8  ................
+eed704f0: 0000000e 00000000 00000000 00000000  ................
+eed70500: 00000000 00000000 00000001 00000000  ................
+eed70510: 00000000 00000000 00800000 4892c6b8  ...............H
+eed70520: 36d5deb5 4892c6b9 12b32098 4892c6b9  ...6...H. .....H
+eed70530: 12b32098 0000000a 000ae002 00000000  . ..............
+eed70540: 81800000 0000ffff 00000001 0000c6c6  ................
+eed70550: eed70550 eed70550 00000000 00000000  P...P...........
+eed70560: eed70560 eed70560 f8b85fe0 f8b85f60  `...`...._..`_..
+eed70570: f70b6a00 00000000 eed7057c eed704d0  .j......|.......
+eed70580: 00000000 00000020 00000000 00005353  .... .......SS..
+eed70590: 00000000 00000000 00010001 eed7059c  ................
+eed705a0: eed7059c 00000000 00000000 00000000  ................
+eed705b0: 00040000 f8b861a0 001200d2 f55108ec  .....a........Q.
+eed705c0: 00000000 eed705c4 eed705c4 00000000  ................
+eed705d0: eed705d0 eed705d0 00000000 00000000  ................
+eed705e0: aa93f4ca 00000000 00000000 eed705ec  ................
+eed705f0: eed705ec 00000001 00000000 eed705fc  ................
+eed70600: eed705fc 00000040 00008200 00000000  ....@...........
+eed70610: 00000000 00000000 00000000 00000000  ................
+eed70620: 00100100 00200200 eed704d0 00000000  ...... .........
+eed70630: 000013d3 001a6f39 00000000 000fff38  ....9o......8...
+eed70640: 000000c8 00000000 4892c63e 3120bd63  ........>..Hc. 1
+eed70650: eed70650 eed70650 00000707 00000000  P...P...........
+eed70660: 00000000 00000000 eed70000 00000606  ................
+Pid: 7092, comm: bonnie++ Not tainted 2.6.27-rc1 #6
+ [<f8b719ee>] ext4_destroy_inode+0x5e/0x70 [ext4dev]
+ [<c018f820>] destroy_inode+0x20/0x40
+ [<c018f4a4>] iput+0x44/0x50
+ [<c0186271>] do_unlinkat+0xd1/0x150
+ [<c017cdd6>] vfs_write+0x106/0x140
+ [<c017d2d1>] sys_write+0x41/0x70
+ [<c0102fc9>] sysenter_do_call+0x12/0x25
+ =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+EXT4 Inode eb1f4000: orphan list check failed!
+eb1f4000: 0001f30a 00010004 00000000 00000000  ................
+eb1f4010: 00012113 00010000 00000058 00000028  .!......X...(...
+eb1f4020: 000121d9 00000080 000001cd 00012301  .!...........#..
+eb1f4030: 00000250 000000f1 000124d1 00080000  P........$......
+eb1f4040: 00000000 00000000 0000000e 00000000  ................
+eb1f4050: 00000000 00000000 00000000 eed704ac  ................
+eb1f4060: f7d62134 00000000 00000000 eb1f001c  4!..............
+eb1f4070: 00000000 00003c3c eb1f4078 eb1f4078  ....<<..x@..x@..
+eb1f4080: 00000000 00000000 eb1f4088 eb1f4088  .........@...@..
+eb1f4090: eb1f4090 eb1f4090 eb1f4098 eb1f4098  .@...@...@...@..
+eb1f40a0: 0000000f 00000000 00000000 00000000  ................
+eb1f40b0: 00000000 00000000 00000001 00000000  ................
+eb1f40c0: 00000000 00000000 00800000 4892c6b8  ...............H
+eb1f40d0: 36d5deb5 4892c6bc 15cc967e 4892c6bc  ...6...H~......H
+eb1f40e0: 15cc967e 0000000a 000a0002 00000000  ~...............
+eb1f40f0: 81800000 00007070 00000001 0000aeae  ....pp..........
+eb1f4100: eb1f4100 eb1f4100 00000000 00000000  .A...A..........
+eb1f4110: eb1f4110 eb1f4110 f8b85fe0 f8b85f60  .A...A..._..`_..
+eb1f4120: f70b6a00 00000000 eb1f412c eb1f4080  .j......,A...@..
+eb1f4130: 00000000 00000020 00000000 00001414  .... ...........
+eb1f4140: 00000000 00000000 00010001 eb1f414c  ............LA..
+eb1f4150: eb1f414c 00000000 00000000 00000000  LA..............
+eb1f4160: 0003dc9f f8b861a0 001200d2 f55108ec  .....a........Q.
+eb1f4170: 0000ecec eb1f4174 eb1f4174 00000000  ....tA..tA......
+eb1f4180: eb1f4180 eb1f4180 00000000 00000000  .A...A..........
+eb1f4190: aa93f4cb 00000000 00000000 eb1f419c  .............A..
+eb1f41a0: eb1f419c 00000001 00000000 eb1f41ac  .A...........A..
+eb1f41b0: eb1f41ac 00000040 00006f91 00000000  .A..@....o......
+eb1f41c0: 00000000 00000000 00000000 00000000  ................
+eb1f41d0: 00100100 00200200 eb1f4080 00000000  ...... ..@......
+eb1f41e0: 00001450 00238801 00000000 00091800  P.....#.........
+eb1f41f0: 00008000 00000000 4892c641 33832bba  ........A..H.+.3
+eb1f4200: eb1f4200 eb1f4200 00000c0c 00000000  .B...B..........
+eb1f4210: 00000000 00000000 00000000 00004747  ............GG..
+Pid: 7092, comm: bonnie++ Not tainted 2.6.27-rc1 #6
+ [<f8b719ee>] ext4_destroy_inode+0x5e/0x70 [ext4dev]
+ [<c018f820>] destroy_inode+0x20/0x40
+ [<c018f4a4>] iput+0x44/0x50
+ [<c0186271>] do_unlinkat+0xd1/0x150
+ [<c017d2d1>] sys_write+0x41/0x70
+ [<c0102fc9>] sysenter_do_call+0x12/0x25
+ =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
 
-The original non-extents truncate code massively overestimates the
-number of credits needed to complete the truncate (to the point where
-it is probably needlessly causing transactions to close early) but it
-means many fewer calls to jbd2_journal_extend().
 
-     	       	       	     	  	       - Ted
+=46red
 
-commit 0e71ff5fc4cf98c44014a1d3c8ccffed846e7ee1
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Fri Aug 1 01:40:08 2008 -0400
-
-    ext4: Fix lack of credits BUG() when deleting a badly fragmented inode
-    
-    The extents codepath for ext4_truncate() requests journal transaction
-    credits in very small chunks, requesting only what is needed.  This
-    means there may not be enough credits left on the transaction handle
-    after ext4_truncate() returns and then when ext4_delete_inode() tries
-    finish up its work, it may not have enough transaction credits,
-    causing a BUG() oops in the jbd2 core.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c7fb647..6d27e78 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -215,6 +215,18 @@ void ext4_delete_inode (struct inode * inode)
- 	inode->i_size = 0;
- 	if (inode->i_blocks)
- 		ext4_truncate(inode);
-+
-+	/*
-+	 * ext4_ext_truncate() doesn't reserve any slop when it
-+	 * restarts journal transactions; therefore there may not be
-+	 * enough credits left in the handle to remove the inode from
-+	 * the orphan list and set the dtime field.
-+	 */
-+	if (ext4_ext_journal_restart(handle, 3)) {
-+		ext4_journal_stop(handle);
-+		goto no_delete;
-+	}
-+
- 	/*
- 	 * Kill off the orphan record which ext4_truncate created.
- 	 * AKPM: I think this can be inside the above `if'.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
