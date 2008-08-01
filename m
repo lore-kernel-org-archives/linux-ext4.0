@@ -1,59 +1,44 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext4: Rework the ext4_da_writepages
-Date: Thu, 31 Jul 2008 14:10:55 -0600
-Message-ID: <20080731201055.GM3292@webber.adilger.int>
-References: <1217525605-23000-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] jbd2: don't abort if flushing file data failed
+Date: Thu, 31 Jul 2008 22:33:59 -0400
+Message-ID: <20080801023358.GC8736@mit.edu>
+References: <1217118414-18636-1-git-send-email-tytso@mit.edu> <1217118414-18636-2-git-send-email-tytso@mit.edu> <1217118414-18636-3-git-send-email-tytso@mit.edu> <1217118414-18636-4-git-send-email-tytso@mit.edu> <488EB060.7080303@hitachi.com> <20080729123513.GG9378@mit.edu> <48915500.3050500@hitachi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	sugita <yumiko.sugita.yf@hitachi.com>,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:50547 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757923AbYGaULC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2008 16:11:02 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m6VKAwfS028305
-	for <linux-ext4@vger.kernel.org>; Thu, 31 Jul 2008 13:11:00 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K4V00901ZTI1F00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 31 Jul 2008 13:10:58 -0700 (PDT)
-In-reply-to: <1217525605-23000-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Content-disposition: inline
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:36731 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752190AbYHACeF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 31 Jul 2008 22:34:05 -0400
+Content-Disposition: inline
+In-Reply-To: <48915500.3050500@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 31, 2008  23:03 +0530, Aneesh Kumar wrote:
-> With the below changes we reserve credit needed to insert only one extent
-> resulting from a call to single get_block. That make sure we don't take
-> too much journal credits during writeout. We also don't limit the pages
-> to write. That means we loop through the dirty pages building largest
-> possible contiguous block request. Then we issue a single get_block request.
-> We may get less block that we requested. If so we would end up not mapping
-> some of the buffer_heads. That means those buffer_heads are still marked delay.
-> Later in the writepage callback via __mpage_writepage we redirty those pages.
+On Thu, Jul 31, 2008 at 03:00:32PM +0900, Hidehiro Kawai wrote:
+> I tested this patch on 2.6.27-rc1, but it didn't work properly.
+> Then, I noticed two mistakes.
+> 
+> (1) journal_submit_data_buffers() just submits I/Os, doesn't wait
+>     their completion.  We have to check file data write errors
+>     after calling journal_finish_inode_data_buffers()
+> (2) AS_EIO is cleared by wait_on_page_writeback_range(), so we
+>     have to set it again
 
-Can you please clarify this?  Does this mean we take one pass through the
-dirty pages, but possibly do not allocate some subset of the pages.  Then,
-at some later time these holes are written out separately?  This seems
-like it would produce fragmentation if we do not work to ensure the pages
-are allocated in sequence.  Maybe I'm misunderstanding your comment and
-the unmapped pages are immediately mapped on the next loop?
+Thank you very much for catching these errors; you are very correct!  
 
-It is great that this will potentially allocate huge amounts of space
-(up to 128MB ideally) in a single call if the pages are contiguous.
+> I attached the revised patch below.  journal_submit_data_buffers()
+> can return error, but it wouldn't be write I/O error AFAIK, so I
+> didn't touched.
 
-The only danger I can see of having many smaller transactions instead
-of a single larger one is if this is causing many more transactions
-in the case of e.g. O_SYNC or similar, but AFAIK that is handled at
-a higher level and we should be OK.
+I've replaced the patch with your revised patch in the ext4 patch
+queue; thanks again for double-checking the patch and offering the
+revised version.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Many thanks,
 
+						- Ted
