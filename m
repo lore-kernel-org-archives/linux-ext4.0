@@ -1,43 +1,149 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH v3]Ext4: journal credits reservation fixes for DIO,
-	fallocate and delalloc writepages
-Date: Fri, 1 Aug 2008 20:22:29 -0400
-Message-ID: <20080802002228.GB8433@mit.edu>
-References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker> <1216774311.6505.4.camel@mingming-laptop> <20080723074226.GA15091@skywalker> <1217032947.6394.2.camel@mingming-laptop> <1217383118.27664.14.camel@mingming-laptop> <20080801192947.GA8789@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Shehjar Tikoo <shehjart@cse.unsw.edu.au>,
-	linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Andreas Dilger <adilger@sun.com>
-To: Mingming Cao <cmm@us.ibm.com>
+From: <gregkh@suse.de>
+Subject: patch jbd-fix-possible-journal-overflow-issues.patch added to 2.6.25-stable tree
+Date: Fri, 01 Aug 2008 20:57:16 -0700
+Message-ID: <20080802040541.A163614544DD@imap.suse.de>
+Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
+To: jbacik@redhat.com, akpm@linux-foundation.org, gregkh@suse.de,
+	jack@ucw.cz, linux-ext4@vger.kernel.org,
+	torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54950 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751208AbYHBAWe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2008 20:22:34 -0400
-Content-Disposition: inline
-In-Reply-To: <20080801192947.GA8789@mit.edu>
+Received: from mx2.suse.de ([195.135.220.15]:51750 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751226AbYHBEFo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 2 Aug 2008 00:05:44 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 01, 2008 at 03:29:47PM -0400, Theodore Tso wrote:
-> I'm noticing that when I reboot, presumably either just before or just
-> after remounting the filesystem read-only, I'm getting a whole series
-> of
-> 
-> ext4_da_writepages: Not enough credits to flush N pages
-> 
-> .. where N is mostly 1, but occasionally will be 2.
-> 
-> I'm not sure why this is happening; I did run sync before rebooting,
-> and I haven't noticed any files written just before the reboot getting
-> corrupted, but there is something strange happening here.
 
-I instrumented the check, and it is returning an error -30 --- EROFS.
+This is a note to let you know that we have just queued up the patch titled
 
-So it's not the fault journal credits patch, but I'm a bit concerned
-why ext4_da_writepages is getting called right before the system is
-rebooted, and presumably after the filesystem is remounted read/only.
+    Subject: jbd: fix possible journal overflow issues
 
-							- Ted
+to the 2.6.25-stable tree.  Its filename is
+
+    jbd-fix-possible-journal-overflow-issues.patch
+
+A git repo of this tree can be found at 
+    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
+
+
+>From 5b9a499d77e9dd39c9e6611ea10c56a31604f274 Mon Sep 17 00:00:00 2001
+From: Josef Bacik <jbacik@redhat.com>
+Date: Mon, 28 Apr 2008 02:16:12 -0700
+Subject: jbd: fix possible journal overflow issues
+
+From: Josef Bacik <jbacik@redhat.com>
+
+commit 5b9a499d77e9dd39c9e6611ea10c56a31604f274 upstream
+
+There are several cases where the running transaction can get buffers added to
+its BJ_Metadata list which it never dirtied, which makes its t_nr_buffers
+counter end up larger than its t_outstanding_credits counter.
+
+This will cause issues when starting new transactions as while we are logging
+buffers we decrement t_outstanding_buffers, so when t_outstanding_buffers goes
+negative, we will report that we need less space in the journal than we
+actually need, so transactions will be started even though there may not be
+enough room for them.  In the worst case scenario (which admittedly is almost
+impossible to reproduce) this will result in the journal running out of space.
+
+The fix is to only
+refile buffers from the committing transaction to the running transactions
+BJ_Modified list when b_modified is set on that journal, which is the only way
+to be sure if the running transaction has modified that buffer.
+
+This patch also fixes an accounting error in journal_forget, it is possible
+that we can call journal_forget on a buffer without having modified it, only
+gotten write access to it, so instead of freeing a credit, we only do so if
+the buffer was modified.  The assert will help catch if this problem occurs.
+Without these two patches I could hit this assert within minutes of running
+postmark, with them this issue no longer arises.  Thank you,
+
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+Acked-by: Jan Kara <jack@ucw.cz>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
+---
+ fs/jbd/commit.c      |    3 +++
+ fs/jbd/transaction.c |   21 ++++++++++++++++++---
+ 2 files changed, 21 insertions(+), 3 deletions(-)
+
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -472,6 +472,9 @@ void journal_commit_transaction(journal_
+ 	 */
+ 	commit_transaction->t_state = T_COMMIT;
+ 
++	J_ASSERT(commit_transaction->t_nr_buffers <=
++		 commit_transaction->t_outstanding_credits);
++
+ 	descriptor = NULL;
+ 	bufs = 0;
+ 	while (commit_transaction->t_buffers) {
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -1235,6 +1235,7 @@ int journal_forget (handle_t *handle, st
+ 	struct journal_head *jh;
+ 	int drop_reserve = 0;
+ 	int err = 0;
++	int was_modified = 0;
+ 
+ 	BUFFER_TRACE(bh, "entry");
+ 
+@@ -1253,6 +1254,9 @@ int journal_forget (handle_t *handle, st
+ 		goto not_jbd;
+ 	}
+ 
++	/* keep track of wether or not this transaction modified us */
++	was_modified = jh->b_modified;
++
+ 	/*
+ 	 * The buffer's going from the transaction, we must drop
+ 	 * all references -bzzz
+@@ -1270,7 +1274,12 @@ int journal_forget (handle_t *handle, st
+ 
+ 		JBUFFER_TRACE(jh, "belongs to current transaction: unfile");
+ 
+-		drop_reserve = 1;
++		/*
++		 * we only want to drop a reference if this transaction
++		 * modified the buffer
++		 */
++		if (was_modified)
++			drop_reserve = 1;
+ 
+ 		/*
+ 		 * We are no longer going to journal this buffer.
+@@ -1310,7 +1319,13 @@ int journal_forget (handle_t *handle, st
+ 		if (jh->b_next_transaction) {
+ 			J_ASSERT(jh->b_next_transaction == transaction);
+ 			jh->b_next_transaction = NULL;
+-			drop_reserve = 1;
++
++			/*
++			 * only drop a reference if this transaction modified
++			 * the buffer
++			 */
++			if (was_modified)
++				drop_reserve = 1;
+ 		}
+ 	}
+ 
+@@ -2135,7 +2150,7 @@ void __journal_refile_buffer(struct jour
+ 	jh->b_transaction = jh->b_next_transaction;
+ 	jh->b_next_transaction = NULL;
+ 	__journal_file_buffer(jh, jh->b_transaction,
+-				was_dirty ? BJ_Metadata : BJ_Reserved);
++				jh->b_modified ? BJ_Metadata : BJ_Reserved);
+ 	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
+ 
+ 	if (was_dirty)
+
+
+Patches currently in stable-queue which might be from jbacik@redhat.com are
+
+queue-2.6.25/jbd-fix-possible-journal-overflow-issues.patch
+queue-2.6.25/jbd-fix-the-way-the-b_modified-flag-is-cleared.patch
