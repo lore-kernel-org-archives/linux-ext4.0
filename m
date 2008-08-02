@@ -1,41 +1,41 @@
 From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH] ext4: don't assume extents can't cross block groups when truncating
-Date: Sat, 02 Aug 2008 01:28:26 -0400
-Message-ID: <E1KP9fG-0002Th-1k@closure.thunk.org>
-To: linux-ext4@vger.kernel.org
+Subject: Small change to the ext4 journal credits reservation patch
+Date: Sat, 02 Aug 2008 01:34:52 -0400
+Message-ID: <E1KP9lU-0002Ug-RL@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:47926 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:41966 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751688AbYHBF21 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Aug 2008 01:28:27 -0400
+	with ESMTP id S1751732AbYHBFey (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 Aug 2008 01:34:54 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Mingming,
 
-With the FLEX_BG layout, there is no reason why extents can't cross
-block groups, so make the truncate code reserve enough credits so we
-don't BUG if we come across such an extent.
+FYI, I checked in a minor change to the ext4 journal credits reservation
+patch into the ext4 patch queue.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index b050259..4a61ca5 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1916,9 +1916,13 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
- 			BUG_ON(b != ex_ee_block + ex_ee_len - 1);
- 		}
- 
--		/* at present, extent can't cross block group: */
--		/* leaf + bitmap + group desc + sb + inode */
--		credits = 5;
-+		/*
-+		 * 3 for leaf, sb, and inode plus 2 (bmap and group
-+		 * descriptor) for each block group; assume two block
-+		 * groups plus ex_ee_len/blocks_per_block_group for
-+		 * the worst case
-+		 */
-+		credits = 7 + 2*(ex_ee_len/EXT4_BLOCKS_PER_GROUP(inode->i_sb));
- 		if (ex == EXT_FIRST_EXTENT(eh)) {
- 			correct_index = 1;
- 			credits += (ext_depth(inode)) + 1;
+I changed a printk in ext4_da_writepgaes() from:
+
+                      printk(KERN_EMERG "%s: Not enough credits to flush %ld p
+                              wbc->nr_to_write);
+
+to this:
+
+                      printk(KERN_EMERG "ext4_da_writepages: jbd2_start: "
+                             "%ld pages, ino %d; err %d\n",
+                             wbc->nr_to_write, inode->i_ino, ret)
+
+As it turns out, the primary way this printk triggers is right after a
+filesystem is remounted read-only.  My change provides a bit more useful
+information.  
+
+I'm not sure whether the read-only remount is failing to force changes
+to disk, or the pages are erroneously left dirty; but this should help
+us figure out exactly what is going on.  As I said earlier, I don't
+think this is the fault of the journal credits patch, but it is exposing
+this potential bug in a much more visible way.
+
+						- Ted
