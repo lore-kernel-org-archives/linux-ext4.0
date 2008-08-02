@@ -1,91 +1,106 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH v3]Ext4: journal credits reservation fixes for DIO,
-	fallocate and delalloc writepages
-Date: Fri, 1 Aug 2008 20:03:05 -0400
-Message-ID: <20080802000305.GA8433@mit.edu>
-References: <20080721082010.GC8788@skywalker> <1216774311.6505.4.camel@mingming-laptop> <20080723074226.GA15091@skywalker> <1217032947.6394.2.camel@mingming-laptop> <1217383118.27664.14.camel@mingming-laptop> <1217417361.3373.15.camel@localhost> <1217527631.6317.6.camel@mingming-laptop> <20080801054932.GF8736@mit.edu> <1217613795.12413.15.camel@mingming-laptop> <20080801191015.GH8654@mit.edu>
+From: tirumalareddy marri <tirumalareddymarri@yahoo.com>
+Subject: (root cause found....may be not)64k Page size + ext3 errors
+Date: Fri, 1 Aug 2008 17:07:53 -0700 (PDT)
+Message-ID: <632622.79880.qm@web81307.mail.mud.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: =?iso-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>,
-	Shehjar Tikoo <shehjart@cse.unsw.edu.au>,
-	linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Andreas Dilger <adilger@sun.com>
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:42799 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751574AbYHBADo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 Aug 2008 20:03:44 -0400
-Content-Disposition: inline
-In-Reply-To: <20080801191015.GH8654@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-raid@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Roger Heflin <rogerheflin@gmail.com>
+Return-path: <linux-raid-owner@vger.kernel.org>
+Sender: linux-raid-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Aug 01, 2008 at 03:10:15PM -0400, Theodore Tso wrote:
-> > Currently ext4_delete_inode() uses blocks_for_truncate(inode) to
-> > calculate credits, by the time ext4_delete_inode() is called, i_blocks
-> > seems to 0 (I need to double check this). 
+After lots of debugging and dumping file system information. I found th=
+at=A0 super block is being corrupted=A0 during SATA dma transfer.=A0 I =
+am using PCI-E based SATA card to attach hard disks. Looks with 64k pag=
+e size SATA DMA seems to be stressed so much compared to 4k page size. =
+I used another SATA card which is more stable(it does not use=A0 libata=
+). It worked finw with RAID-5 and 64k page size.
+=A0 I have used a small C program to create w2GB size file and read it =
+back and check the data consistency. So far no errors found. I also use=
+d IO meter test , which worked fine too.=20
+All thank you very much for the suggestions and responses.
+Regards,
+Marri
 
-You were right; I didn't realize bonnie's create/delete files was
-doing so with zero length blocks.  So yes, there is no need to call
-truncate.  I'm still confused why we're running out of credits, given
-that we allocate EXT4_DATA_TRANS_BLOCKS(sb) credits which is:
 
-#define EXT4_DATA_TRANS_BLOCKS(sb)	(EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + \
-					 EXT4_XATTR_TRANS_BLOCKS - 2 + \
-					 2*EXT4_QUOTA_TRANS_BLOCKS(sb))
 
-EXT4_SINGLEDATA_TRANS_BLOCKS is 27 credits when extents are enabled,
-and XATTR_TRANS_BLOCKS is another 6, so we are reserving 31 credits
-with quotas disabled.  Given that bonnie++ doesn't create extended
-attributes, and the 27 credits were for 5 levels of extent tree, why
-did we run out?  
+----- Original Message ----
+=46rom: Roger Heflin <rogerheflin@gmail.com>
+To: tirumalareddy marri <tirumalareddymarri@yahoo.com>
+Cc: linux-raid@vger.kernel.org
+Sent: Monday, July 28, 2008 5:33:34 PM
+Subject: Re: 64k Page size + ext3 errors
 
-We can make ext4_delete_inode() request an extra 3 blocks (one for the
-inode bitmap, and two to update the orphaned inode linked list), but
-I'm not sure why the 31 credits wasn't enough.
+tirumalareddy marri wrote:
+> Hi Roger,
+>=A0 =A0 I did sync after I copied the 128MB data. Isn't that should gu=
+arantee data is flushed to disk ? I am using "sum" command to check if =
+data file is copied to Disk is valid or not.=20
 
-In any case, I figurd out why my patch wasn't enough.  There was a bug
-in ext4_ext_journal_restart:
+It means it will be flushed to disk, it does not mean that when you rea=
+d it back=20
+that will come off disk, if it is still in memory then it will come out=
+ of=20
+memory, and still be wrong on disk.=A0 =A0 If you won't want to to more=
+ complicated=20
+test it might be best to create the file, csum it and if it is ok umoun=
+t the=20
+device and remount it and csum it again and see, this should at least f=
+orce it=20
+to come off of disk again.
 
-int ext4_ext_journal_restart(handle_t *handle, int needed)
-{
-	int err;
+How much memory does your test machine have?
 
-	if (handle->h_buffer_credits > needed)
-		return 0;
-	err = ext4_journal_extend(handle, needed);
-	if (err)
-		return err;
-	return ext4_journal_restart(handle, needed);
-}
 
-This is buggy; ext4_journal_extend returns < 0 on an error, 0 if the
-handle was successfully extended without needing a journal restart,
-and > 0 if the ext4_journal_restart() needs to be called.  So the
-current code returns a failure and doesn't restart the journal when it
-is needed, and calls ext4_journal_restart() needlessly when it is not
-needed and the handle could be extended without closing the current
-transaction.
+> Here is more information.
+> setup: Created /dev/md0 of 30GB size , created ext3 files system. The=
+n started SAMBA server to export mountded /dev/md0 to a windows machine=
+ to run IO and copy files.
+> 4K Page size:
+> -------------------
+> 1. IO Meter Test: Works just fine.
 
-The fix is a simple one-liner:
+None of the benchmarks I am familiar with actually confirm that the dat=
+a is=20
+good, the only way one of the benchmarks will fail is if the file table=
+ gets=20
+corrupted, and they may run in cache.
 
-int ext4_ext_journal_restart(handle_t *handle, int needed)
-{
-	int ret;
+> 2. Copied 1.8 GB file and check sum is good.
+> 3. Performance is not good because of small page size.
+> 16k Page size:
+> ---------------------
+> 1. RAID-5 fails some times with " Attempt to access beyond the end of=
+ device"
+> 2. Copied 128MB and 385MB file. Checked check sum, they are matching =
+check sum.
+> 3. Copied 1.8 GB file , this failed checksum test using "sum" command=
+=2E I see "EXT3-fs errors".
+> 64K Page size:
+> ----------------------
+> 1. RAID-5 failes some times with "Attempt to access beyond the end of=
+ device"
+> 2. Able to copy 128MB data and check sum test passed.
+> 3. Copying 385MB and 1.8 GB file with EXT3-fs errors.
+> Thanks,
+> Marri
 
-	if (handle->h_buffer_credits > needed)
-		return 0;
-	err = ext4_journal_extend(handle, needed);
-	if (ret < = 0)
-		return ret;
-	return ext4_journal_restart(handle, needed);
-}
+I would write directly to the /dev/mdx a specific pattern (a stream of =
+binary=20
+numbers from 1 ... whatever works fine), and then read that back and se=
+e how=20
+things match or don't.=A0 csum *can* fail, and if you have enough memor=
+y then any=20
+corruption actually on disk *WON'T* be found until somethings causes it=
+ to be=20
+ejected from cache, and then later re-read from disk.
 
-This seems to indicate ext4_ext_journal_restart() has never been
-called in anger by the ext4_ext_truncate() code.  We may want to
-double check it with a really big, mongo extent tree and make sure it
-does the right thing one of these days.
+=A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 Roger
 
-							- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-raid" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
