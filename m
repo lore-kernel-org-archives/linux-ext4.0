@@ -1,63 +1,84 @@
-From: Szabolcs Szakacsits <szaka@ntfs-3g.org>
-Subject: Re: Porting Zfs features to ext2/3
-Date: Mon, 4 Aug 2008 23:38:13 +0300 (EEST)
-Message-ID: <Pine.LNX.4.62.0808042320290.7281@tamago.serverit.net>
-References: <18674437.post@talk.nabble.com> <1217199281.6992.0.camel@telesto>
- <20080727233855.GB9378@mit.edu> <loom.20080729T222131-137@post.gmane.org>
- <20080730013427.GD29748@mit.edu> <Pine.LNX.4.62.0807310255280.32725@tamago.serverit.net>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] jbd jbd2: fix dio write returning EIO when
+ try_to_release_page fails
+Date: Mon, 4 Aug 2008 14:50:47 -0700
+Message-ID: <20080804145047.04794bf3.akpm@linux-foundation.org>
+References: <6.0.0.20.2.20080804185338.03bcd488@172.19.0.2>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tamago.serverit.net ([91.189.209.155]:39691 "EHLO
-	mail.hosting2.serverit.net" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1762888AbYHDUiV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2008 16:38:21 -0400
-In-Reply-To: <Pine.LNX.4.62.0807310255280.32725@tamago.serverit.net>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: cmm@us.ibm.com, jack@suse.cz, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <6.0.0.20.2.20080804185338.03bcd488@172.19.0.2>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Mon, 04 Aug 2008 20:10:33 +0900
+Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp> wrote:
 
-On Thu, 31 Jul 2008, Szabolcs Szakacsits wrote:
-> On Tue, 29 Jul 2008, Theodore Tso wrote:
->
-> > What happens if you try benchmarking unpacking a kernel source tar.bz2 
-> > file?  My guess is that ntfs-3g won't look as good.  :-)
+> Hi
 > 
-> It seems the tar.bz2 number is not so bad relatively but the metadata 
-> performance difference is much more visible by eliminating the compression 
-> overhead. The results are in second.
+> Dio write returns EIO when try_to_release_page fails because bh is
+> still referenced.
+> The patch 
+> "commit 3f31fddfa26b7594b44ff2b34f9a04ba409e0f91
+> Author: Mingming Cao <cmm@us.ibm.com>
+> Date:   Fri Jul 25 01:46:22 2008 -0700
 > 
->               ext3    ntfs-3g
->   tar.bz2      7.7      12.4
->   tar.gz       3.1       8.7
->   tar          1.4       7.6
+>     jbd: fix race between free buffer and commit transaction
+> " 
+> was merged into 2.6.27-rc1, but I noticed that this patch is not enough
+> to fix the race.
+> I did fsstress test heavily to 2.6.27-rc1, and found that dio write still 
+> sometimes got EIO through this test.
+> The patch above fixed race between freeing buffer(dio) and committing 
+> transaction(jbd) but I discovered that there is another race, 
+> freeing buffer(dio) and ext3/4_ordered_writepage.
+> : background_writeout()
+>      ->write_cache_pages()
+>        ->ext3_ordered_writepage()
+>      	   walk_page_buffers() <- take a bh ref
+>  	   block_write_full_page() <- unlock_page
+> 		: <- end_page_writeback
+>                 : <- race! (dio write->try_to_release_page fails)
+>       	   walk_page_buffers() <-release a bh ref
+> 
+> ext3_ordered_writepage holds bh ref and does unlock_page remaining 
+> taking a bh ref, so this causes the race and failure of 
+> try_to_release_page.
+> 
+> Following patch fixes this race.
 
-Sorry, I didn't use the currently best performing ntfs-3g version. 
-Corrected results:
+Please don't patch both filesystems in a single patch - they go into
+the tree via different routes.
 
-               ext3    ntfs-3g
-               ----    -------
-   tar.bz2      7.7      9.9
-   tar.gz       3.1      6.0
-   tar          1.4      4.9
+> 
+> Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 
-Compilation of e2fsprogs:
+"Signed-off-by: ", please.
 
-                 ext3     ntfs-3g
-                 ----     -------
-   unpack        0.27       0.47
-   configure     8.42       9.73
-   make         21.35      23.33
-   make -j      13.21      14.09
-   make clean    0.20       0.24
+> 
+> diff -Nrup linux-2.6.27-rc1.org/fs/jbd/transaction.c linux-2.6.27-rc1/fs/jbd/transaction.c
+> --- linux-2.6.27-rc1.org/fs/jbd/transaction.c	2008-07-29 19:28:47.000000000 +0900
+> +++ linux-2.6.27-rc1/fs/jbd/transaction.c	2008-07-29 20:40:12.000000000 +0900
+> @@ -1764,6 +1764,12 @@ int journal_try_to_free_buffers(journal_
+>  	*/
+>  	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
+>  		journal_wait_for_transaction_sync_data(journal);
+> +
+> +		bh = head;
+> +		do {
+> +			while (atomic_read(&bh->b_count))
+> +				schedule();
+> +		} while ((bh = bh->b_this_page) != head);
+>  		ret = try_to_free_buffers(page);
+>  	}
 
-Please not that ntfs-3g and fuse is not yet optimized for metadata 
-operations.
+The loop is problematic.  If the scheduler decides to keep running this
+task then we have a busy loop.  If this task has realtime policy then
+it might even lock up the kernel.
 
-	Szaka
-
---
-NTFS-3G:  http://ntfs-3g.org
+Perhaps we can use wait_on_page_writeback()?
 
