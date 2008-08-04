@@ -1,23 +1,25 @@
 From: "Duane Griffin" <duaneg@dghda.com>
-Subject: [PATCH] jbd: abort instead of waiting for nonexistent transactions
-Date: Tue,  5 Aug 2008 00:51:34 +0100
-Message-ID: <1217893895-29165-1-git-send-email-duaneg@dghda.com>
+Subject: [PATCH] jbd2: abort instead of waiting for nonexistent transactions
+Date: Tue,  5 Aug 2008 00:51:35 +0100
+Message-ID: <1217893895-29165-2-git-send-email-duaneg@dghda.com>
+References: <1217893895-29165-1-git-send-email-duaneg@dghda.com>
 Cc: akpm@linux-foundation.org, sct@redhat.com,
 	linux-ext4@vger.kernel.org, Sami Liedes <sliedes@cc.hut.fi>,
 	Duane Griffin <duaneg@dghda.com>
 To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:2551 "EHLO kumera.dghda.com"
+Received: from kumera.dghda.com ([80.68.90.171]:2560 "EHLO kumera.dghda.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756364AbYHDXvj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Aug 2008 19:51:39 -0400
+	id S1757298AbYHDXvm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Aug 2008 19:51:42 -0400
+In-Reply-To: <1217893895-29165-1-git-send-email-duaneg@dghda.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The __log_wait_for_space function sits in a loop checkpointing transactions
-until there is sufficient space free in the journal. However, if there are
-no transactions to be processed (e.g. because the free space calculation is
-wrong due to a corrupted filesystem) it will never progress.
+The __jbd2_log_wait_for_space function sits in a loop checkpointing
+transactions until there is sufficient space free in the journal. However,
+if there are no transactions to be processed (e.g. because the free space
+calculation is wrong due to a corrupted filesystem) it will never progress.
 
 Check for space being required when no transactions are outstanding and
 abort the journal instead of endlessly looping.
@@ -26,13 +28,12 @@ This patch fixes the bug reported by Sami Liedes at:
 http://bugzilla.kernel.org/show_bug.cgi?id=10976
 
 Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Tested-by: Sami Liedes <sliedes@cc.hut.fi>
 ---
-diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
-index a5432bb..9fac177 100644
---- a/fs/jbd/checkpoint.c
-+++ b/fs/jbd/checkpoint.c
-@@ -126,14 +126,29 @@ void __log_wait_for_space(journal_t *journal)
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 91389c8..af4651b 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -126,14 +126,29 @@ void __jbd2_log_wait_for_space(journal_t *journal)
  
  		/*
  		 * Test again, another process may have checkpointed while we
@@ -44,18 +45,18 @@ index a5432bb..9fac177 100644
  		spin_lock(&journal->j_state_lock);
 +		spin_lock(&journal->j_list_lock);
  		nblocks = jbd_space_needed(journal);
- 		if (__log_space_left(journal) < nblocks) {
+ 		if (__jbd2_log_space_left(journal) < nblocks) {
 +			int chkpt = journal->j_checkpoint_transactions != NULL;
 +
 +			spin_unlock(&journal->j_list_lock);
  			spin_unlock(&journal->j_state_lock);
--			log_do_checkpoint(journal);
+-			jbd2_log_do_checkpoint(journal);
 +			if (chkpt) {
-+				log_do_checkpoint(journal);
++				jbd2_log_do_checkpoint(journal);
 +			} else {
 +				printk(KERN_ERR "%s: no transactions\n",
 +				       __func__);
-+				journal_abort(journal, 0);
++				jbd2_journal_abort(journal, 0);
 +			}
 +
  			spin_lock(&journal->j_state_lock);
