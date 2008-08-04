@@ -1,75 +1,57 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Problem with delayed allocation
-Date: Mon, 4 Aug 2008 08:46:52 +0530
-Message-ID: <20080804031652.GA11278@skywalker>
-References: <E1KPNNn-0003IN-0B@closure.thunk.org>
+From: Nick Piggin <nickpiggin@yahoo.com.au>
+Subject: Re: [patch 12/17] vfs: pagecache usage optimization for pagesize!=blocksize
+Date: Mon, 4 Aug 2008 17:19:42 +1000
+Message-ID: <200808041719.43293.nickpiggin@yahoo.com.au>
+References: <200807282246.m6SMkaHT032267@imap1.linux-foundation.org> <20080728230031.GA22218@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: akpm@linux-foundation.org, torvalds@linux-foundation.org,
+	hifumi.hisashi@oss.ntt.co.jp, jack@ucw.cz,
+	linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:39385 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754162AbYHDDRE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 3 Aug 2008 23:17:04 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m743GbUe014913
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Aug 2008 13:16:37 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m743GxJW4751610
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Aug 2008 13:17:00 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m743Gxi0014318
-	for <linux-ext4@vger.kernel.org>; Mon, 4 Aug 2008 13:16:59 +1000
+Received: from smtp109.mail.mud.yahoo.com ([209.191.85.219]:21284 "HELO
+	smtp109.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1755484AbYHDHTv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2008 03:19:51 -0400
+In-Reply-To: <20080728230031.GA22218@infradead.org>
 Content-Disposition: inline
-In-Reply-To: <E1KPNNn-0003IN-0B@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 02, 2008 at 04:07:19PM -0400, Theodore Ts'o wrote:
-> 
-> Apparently __fsync_super(), which is called right before remounting a
-> filesystem read-only, isn't working correctly.  To reproduce, create a
-> script which does this:
-> 
-> #!/bin/sh
-> DEVICE=/dev/closure/test
-> mke2fs -t ext4dev /dev/closure/test
-> mount $DEVICE /mnt
-> cd /mnt
-> tar xfj /var/tmp/linux-2.6.26.tar.gz  <----- or some really big file
-> du -s
-> cd ..
-> mount -o remount,ro /mnt
-> sync
-> dmesg > /tmp/dmesg.out  <----- note all of the ext4_da_writepages error messages
-> umount /mnt
-> du -s /mnt
-> sync
-> mount $DEVICE /mnt
-> du -s /mnt    <---  note that size of the unpacked hierarcy is much smaller
-> 
-> This doesn't happen if the ext4 filesystem is mounted with nodelalloc,
-> so I assume the problem is in ext4_da_writepages().
-> 
-> Aneesh, can you look at this?  I've tried going through the code paths
-> starting with __fsync_super(), going down through __sync_single_inode(),
-> and I can't see anything obvious.
-> 
-> I've checked and we've had this problem for a while.  I don't think this
-> is a recent regression.  The "sync" command does seem to force file data
-> out, but it looks like we're not properly waiting for writes to complete
-> before __fsync_super() returns.  There is a call filemap_fdatawait() in
-> __sync_single_inode(), but it's apparently not doing the right thing.
-> Aneesh, can you try to find whatever it is that I missed?  Thanks!!
-> 
+On Tuesday 29 July 2008 09:00, Christoph Hellwig wrote:
+> On Mon, Jul 28, 2008 at 03:46:36PM -0700, akpm@linux-foundation.org wrote:
+> > From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+> >
+> > When we read some part of a file through pagecache, if there is a
+> > pagecache of corresponding index but this page is not uptodate, read IO
+> > is issued and this page will be uptodate.
+>
+> I was under the impression we wanted to do this in a nicer way than
+> the hacky method?
 
-__fsync_super use filemap_fdatawait(mapping) for waiting on writeback
-pages. But all the dirty pages of the inode are not in writeback because
-we might have had block allocation failures. Also with the current code
-base I am seeing buffer_heads which are unmapped, non delay and dirty
-That means writepages won't allocate block for them and writepage cannot
-write them.
+This patch unfortunately appears like it may introduce an
+uninitialized memory leak due to a data race between one
+thread initializing a buffer then marking it uptodate, and
+the other testing buffer uptodate then reading from the
+buffer (buffer, read as: page memory covered by buffer head).
 
--aneesh
+For reference, this is basically the same class of data race
+that I fixed 0ed361dec36945f3116ee1338638ada9a8920905
 
+I should have picked up on this before it was merged, but I
+was kind of rushed to review other things before they got
+merged.
+
+I don't think this patch got quite enough justification to
+warrant just blindly putting barriers in the buffer bitops.
+The best-case numbers for it were reasonable enough when the
+downside was only an extra branch or two in a relatively slow
+path. I don't really know how best to go from here (maybe
+someone can argue it is not a problem or come up with a better
+fix?).
+
+Thanks,
+Nick
