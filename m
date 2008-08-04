@@ -1,42 +1,39 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH v3]Ext4: journal credits reservation fixes for DIO,
-	fallocate and delalloc writepages
-Date: Mon, 4 Aug 2008 09:20:15 -0400
-Message-ID: <20080804132015.GB8592@mit.edu>
-References: <20080723074226.GA15091@skywalker> <1217032947.6394.2.camel@mingming-laptop> <1217383118.27664.14.camel@mingming-laptop> <1217417361.3373.15.camel@localhost> <1217527631.6317.6.camel@mingming-laptop> <20080801054932.GF8736@mit.edu> <1217613795.12413.15.camel@mingming-laptop> <20080801191015.GH8654@mit.edu> <20080802000305.GA8433@mit.edu> <1217849033.3275.3.camel@localhost>
+Subject: Re: Problem with delayed allocation
+Date: Mon, 4 Aug 2008 10:08:54 -0400
+Message-ID: <20080804140854.GE8592@mit.edu>
+References: <E1KPNNn-0003IN-0B@closure.thunk.org> <20080804031652.GA11278@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Mingming Cao <cmm@us.ibm.com>,
-	Shehjar Tikoo <shehjart@cse.unsw.edu.au>,
-	linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Andreas Dilger <adilger@sun.com>
-To: =?iso-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:35253 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:47123 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756403AbYHDNVD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2008 09:21:03 -0400
+	with ESMTP id S1753325AbYHDOI5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2008 10:08:57 -0400
 Content-Disposition: inline
-In-Reply-To: <1217849033.3275.3.camel@localhost>
+In-Reply-To: <20080804031652.GA11278@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 04, 2008 at 01:23:53PM +0200, Fr=E9d=E9ric Boh=E9 wrote:
->=20
-> FYI, I have just tried this fix, and i don't see the "orphan list che=
-ck
-> failed" messages any more.
->=20
+On Mon, Aug 04, 2008 at 08:46:52AM +0530, Aneesh Kumar K.V wrote:
+> __fsync_super use filemap_fdatawait(mapping) for waiting on writeback
+> pages. But all the dirty pages of the inode are not in writeback because
+> we might have had block allocation failures.
 
-Thanks for checking!  I was able to reproduce the problem myself, and
-confirm that it made it go away, so the patch is already in the patch
-queue, and in fact has already been pushed to Linus.
+Yes, but that should only happen if the filesystem is full or a user's
+quota is overrun, correct?
 
-       	      	       	       	    	      - Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Also with the current code base I am seeing buffer_heads which are
+> unmapped, non delay and dirty That means writepages won't allocate
+> block for them and writepage cannot write them.
+
+I thought all writes went through the page cache?  Are you saying that
+the *pages* are clean but the buffer_heads are marked dirty?  In that
+case, ext4_da_writepages, if wbc.sync_mode is not WB_SYNC_NONE, *must*
+wait on them and not return until the buffers are safely on disk,
+since filemap_fdatawait(mapping) won't in __sync_single_inode() won't
+do the waiting for the writepages routine.
+
+							- Ted
