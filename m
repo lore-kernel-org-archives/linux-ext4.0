@@ -1,57 +1,48 @@
-From: Nick Piggin <nickpiggin@yahoo.com.au>
-Subject: Re: [patch 12/17] vfs: pagecache usage optimization for pagesize!=blocksize
-Date: Mon, 4 Aug 2008 17:19:42 +1000
-Message-ID: <200808041719.43293.nickpiggin@yahoo.com.au>
-References: <200807282246.m6SMkaHT032267@imap1.linux-foundation.org> <20080728230031.GA22218@infradead.org>
+From: Shen Feng <shen@cn.fujitsu.com>
+Subject: [PATCH] ext4: fix ext4_fill_super memory leak
+Date: Mon, 04 Aug 2008 16:50:10 +0800
+Message-ID: <4896C2C2.4010604@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, torvalds@linux-foundation.org,
-	hifumi.hisashi@oss.ntt.co.jp, jack@ucw.cz,
-	linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp109.mail.mud.yahoo.com ([209.191.85.219]:21284 "HELO
-	smtp109.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1755484AbYHDHTv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2008 03:19:51 -0400
-In-Reply-To: <20080728230031.GA22218@infradead.org>
-Content-Disposition: inline
+Received: from cn.fujitsu.com ([222.73.24.84]:60039 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752739AbYHDIxc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 Aug 2008 04:53:32 -0400
+Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
+	by song.cn.fujitsu.com (Postfix) with ESMTP id E07FE170131
+	for <linux-ext4@vger.kernel.org>; Mon,  4 Aug 2008 16:53:28 +0800 (CST)
+Received: from fnst.cn.fujitsu.com (localhost.localdomain [127.0.0.1])
+	by tang.cn.fujitsu.com (8.13.1/8.13.1) with ESMTP id m748rQOR001050
+	for <linux-ext4@vger.kernel.org>; Mon, 4 Aug 2008 16:53:27 +0800
+Received: from localhost.localdomain (unknown [10.167.141.45])
+	by fnst.cn.fujitsu.com (Postfix) with ESMTPA id 231F3D4193
+	for <linux-ext4@vger.kernel.org>; Mon,  4 Aug 2008 16:54:59 +0800 (CST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday 29 July 2008 09:00, Christoph Hellwig wrote:
-> On Mon, Jul 28, 2008 at 03:46:36PM -0700, akpm@linux-foundation.org wrote:
-> > From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-> >
-> > When we read some part of a file through pagecache, if there is a
-> > pagecache of corresponding index but this page is not uptodate, read IO
-> > is issued and this page will be uptodate.
->
-> I was under the impression we wanted to do this in a nicer way than
-> the hacky method?
 
-This patch unfortunately appears like it may introduce an
-uninitialized memory leak due to a data race between one
-thread initializing a buffer then marking it uptodate, and
-the other testing buffer uptodate then reading from the
-buffer (buffer, read as: page memory covered by buffer head).
+When ext4_fill_super fails, s_flex_groups is not freed.
+Fix it.
 
-For reference, this is basically the same class of data race
-that I fixed 0ed361dec36945f3116ee1338638ada9a8920905
+Signed-off-by: Shen Feng <shen@cn.fujitsu.com>
+---
+ fs/ext4/super.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-I should have picked up on this before it was merged, but I
-was kind of rushed to review other things before they got
-merged.
-
-I don't think this patch got quite enough justification to
-warrant just blindly putting barriers in the buffer bitops.
-The best-case numbers for it were reasonable enough when the
-downside was only an extra branch or two in a relatively slow
-path. I don't really know how best to go from here (maybe
-someone can argue it is not a problem or come up with a better
-fix?).
-
-Thanks,
-Nick
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b5479b1..6ed0e27 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2487,6 +2487,7 @@ failed_mount4:
+ 	jbd2_journal_destroy(sbi->s_journal);
+ 	sbi->s_journal = NULL;
+ failed_mount3:
++	kfree(sbi->s_flex_groups);
+ 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+-- 
+1.5.5.1
