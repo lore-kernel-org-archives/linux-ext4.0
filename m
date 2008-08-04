@@ -1,149 +1,63 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 09/33] jbd: fix possible journal overflow issues
-Date: Mon, 4 Aug 2008 13:15:02 -0700
-Message-ID: <20080804201502.GJ1139@suse.de>
-References: <20080804200515.110033151@mini.kroah.org>
+From: Szabolcs Szakacsits <szaka@ntfs-3g.org>
+Subject: Re: Porting Zfs features to ext2/3
+Date: Mon, 4 Aug 2008 23:38:13 +0300 (EEST)
+Message-ID: <Pine.LNX.4.62.0808042320290.7281@tamago.serverit.net>
+References: <18674437.post@talk.nabble.com> <1217199281.6992.0.camel@telesto>
+ <20080727233855.GB9378@mit.edu> <loom.20080729T222131-137@post.gmane.org>
+ <20080730013427.GD29748@mit.edu> <Pine.LNX.4.62.0807310255280.32725@tamago.serverit.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
-	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
-	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
-	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, Josef Bacik <jbacik@redhat.com>,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@ucw.cz>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:45588 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762764AbYHDUXP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 4 Aug 2008 16:23:15 -0400
-Content-Disposition: inline; filename="jbd-fix-possible-journal-overflow-issues.patch"
-In-Reply-To: <20080804201321.GA1139@suse.de>
+Received: from tamago.serverit.net ([91.189.209.155]:39691 "EHLO
+	mail.hosting2.serverit.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1762888AbYHDUiV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2008 16:38:21 -0400
+In-Reply-To: <Pine.LNX.4.62.0807310255280.32725@tamago.serverit.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2.6.25-stable review patch.  If anyone has any objections, please let us
-know.
 
-------------------
+On Thu, 31 Jul 2008, Szabolcs Szakacsits wrote:
+> On Tue, 29 Jul 2008, Theodore Tso wrote:
+>
+> > What happens if you try benchmarking unpacking a kernel source tar.bz2 
+> > file?  My guess is that ntfs-3g won't look as good.  :-)
+> 
+> It seems the tar.bz2 number is not so bad relatively but the metadata 
+> performance difference is much more visible by eliminating the compression 
+> overhead. The results are in second.
+> 
+>               ext3    ntfs-3g
+>   tar.bz2      7.7      12.4
+>   tar.gz       3.1       8.7
+>   tar          1.4       7.6
 
-From: Josef Bacik <jbacik@redhat.com>
+Sorry, I didn't use the currently best performing ntfs-3g version. 
+Corrected results:
 
-commit 5b9a499d77e9dd39c9e6611ea10c56a31604f274 upstream
+               ext3    ntfs-3g
+               ----    -------
+   tar.bz2      7.7      9.9
+   tar.gz       3.1      6.0
+   tar          1.4      4.9
 
-There are several cases where the running transaction can get buffers added to
-its BJ_Metadata list which it never dirtied, which makes its t_nr_buffers
-counter end up larger than its t_outstanding_credits counter.
+Compilation of e2fsprogs:
 
-This will cause issues when starting new transactions as while we are logging
-buffers we decrement t_outstanding_buffers, so when t_outstanding_buffers goes
-negative, we will report that we need less space in the journal than we
-actually need, so transactions will be started even though there may not be
-enough room for them.  In the worst case scenario (which admittedly is almost
-impossible to reproduce) this will result in the journal running out of space.
+                 ext3     ntfs-3g
+                 ----     -------
+   unpack        0.27       0.47
+   configure     8.42       9.73
+   make         21.35      23.33
+   make -j      13.21      14.09
+   make clean    0.20       0.24
 
-The fix is to only
-refile buffers from the committing transaction to the running transactions
-BJ_Modified list when b_modified is set on that journal, which is the only way
-to be sure if the running transaction has modified that buffer.
+Please not that ntfs-3g and fuse is not yet optimized for metadata 
+operations.
 
-This patch also fixes an accounting error in journal_forget, it is possible
-that we can call journal_forget on a buffer without having modified it, only
-gotten write access to it, so instead of freeing a credit, we only do so if
-the buffer was modified.  The assert will help catch if this problem occurs.
-Without these two patches I could hit this assert within minutes of running
-postmark, with them this issue no longer arises.  Thank you,
+	Szaka
 
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Acked-by: Jan Kara <jack@ucw.cz>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+--
+NTFS-3G:  http://ntfs-3g.org
 
----
- fs/jbd/commit.c      |    3 +++
- fs/jbd/transaction.c |   21 ++++++++++++++++++---
- 2 files changed, 21 insertions(+), 3 deletions(-)
-
---- a/fs/jbd/commit.c
-+++ b/fs/jbd/commit.c
-@@ -472,6 +472,9 @@ void journal_commit_transaction(journal_
- 	 */
- 	commit_transaction->t_state = T_COMMIT;
- 
-+	J_ASSERT(commit_transaction->t_nr_buffers <=
-+		 commit_transaction->t_outstanding_credits);
-+
- 	descriptor = NULL;
- 	bufs = 0;
- 	while (commit_transaction->t_buffers) {
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -1235,6 +1235,7 @@ int journal_forget (handle_t *handle, st
- 	struct journal_head *jh;
- 	int drop_reserve = 0;
- 	int err = 0;
-+	int was_modified = 0;
- 
- 	BUFFER_TRACE(bh, "entry");
- 
-@@ -1253,6 +1254,9 @@ int journal_forget (handle_t *handle, st
- 		goto not_jbd;
- 	}
- 
-+	/* keep track of wether or not this transaction modified us */
-+	was_modified = jh->b_modified;
-+
- 	/*
- 	 * The buffer's going from the transaction, we must drop
- 	 * all references -bzzz
-@@ -1270,7 +1274,12 @@ int journal_forget (handle_t *handle, st
- 
- 		JBUFFER_TRACE(jh, "belongs to current transaction: unfile");
- 
--		drop_reserve = 1;
-+		/*
-+		 * we only want to drop a reference if this transaction
-+		 * modified the buffer
-+		 */
-+		if (was_modified)
-+			drop_reserve = 1;
- 
- 		/*
- 		 * We are no longer going to journal this buffer.
-@@ -1310,7 +1319,13 @@ int journal_forget (handle_t *handle, st
- 		if (jh->b_next_transaction) {
- 			J_ASSERT(jh->b_next_transaction == transaction);
- 			jh->b_next_transaction = NULL;
--			drop_reserve = 1;
-+
-+			/*
-+			 * only drop a reference if this transaction modified
-+			 * the buffer
-+			 */
-+			if (was_modified)
-+				drop_reserve = 1;
- 		}
- 	}
- 
-@@ -2135,7 +2150,7 @@ void __journal_refile_buffer(struct jour
- 	jh->b_transaction = jh->b_next_transaction;
- 	jh->b_next_transaction = NULL;
- 	__journal_file_buffer(jh, jh->b_transaction,
--				was_dirty ? BJ_Metadata : BJ_Reserved);
-+				jh->b_modified ? BJ_Metadata : BJ_Reserved);
- 	J_ASSERT_JH(jh, jh->b_transaction->t_state == T_RUNNING);
- 
- 	if (was_dirty)
-
--- 
