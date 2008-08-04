@@ -1,87 +1,81 @@
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Subject: [PATCH] jbd jbd2: fix dio write returning EIO when
-  try_to_release_page fails
-Date: Mon, 04 Aug 2008 20:10:33 +0900
-Message-ID: <6.0.0.20.2.20080804185338.03bcd488@172.19.0.2>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: what should I do when an error occurred after write_begin()
+Date: Mon, 04 Aug 2008 21:51:33 +0900
+Message-ID: <4896FB55.60303@rs.jp.nec.com>
+References: <20080718094315m-ota@mail.jp.nec.com> <20080721050452.GB3370@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: cmm@us.ibm.com, jack@suse.cz, akpm@linux-foundation.org
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:60539 "EHLO
-	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752535AbYHDLMd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2008 07:12:33 -0400
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:59673 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752592AbYHDMvj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2008 08:51:39 -0400
+In-Reply-To: <20080721050452.GB3370@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi
+Hi Andreas,
 
-Dio write returns EIO when try_to_release_page fails because bh is
-still referenced.
-The patch 
-"commit 3f31fddfa26b7594b44ff2b34f9a04ba409e0f91
-Author: Mingming Cao <cmm@us.ibm.com>
-Date:   Fri Jul 25 01:46:22 2008 -0700
+Andreas Dilger wrote:
+ > > On Jul 18, 2008  09:43 +0900, m-ota@ys.jp.nec.com wrote:
+ >> >>  ext4 online defrag exchanges the data block in the following procedures.
+ >> >>
+ >> >>  1. Creates a temporary inode and allocates contiguous blocks.
+ >> >>  2. Read data from original file to memory page by write_begin()
+ >> >>  3. Swap the blocks between the original inode and the temporary inode.
+ >> >>     Updates the extent tree and registers the block to transaction by
+ >> >>     ext4_journal_dirty_metadata().
+ >> >>  4. Write data in memory page to new blocks by write_end().
+ >> >>
+ >> >>  In the current implementation, when the block swap failed,
+ >> >>  data could not move to the new block.
+ >> >>  So the defrag process exits without calling write_end().
+ >> >>  We try to defrag for the same file again, but the defrag process seems to stall.
+ >> >>  After defrag process stalled, all acess to the file systems like "ls" command
+ >> >>  also stall.
+ >> >>  Both processes wait for unlock j_wait_transaction_locked.
+ >> >>
+ >> >>  If the block exchange between write_begin() and write_end() failed,
+ >> >>  what should I do?
+ > >
+ > > It sounds like you are not closing the transaction correctly in the
+ > > case of the failed block swap.
+ > >
+ > > One important rule when writing ext3/ext4 code is to try and ensure
+ > > all possible failure conditions are handled BEFORE starting the journal
+ > > operation.
+ > >
+ > > It does not seem necessary to do the allocation and writing of the
+ > > temprorary inode under the same transaction as the block swapping
+ > > as long as it is in the orphan inode list with i_nlink == 0.  A first
+ > > transaction can be started to allocate the temporary inode, add it to
+ > > the orphan list, and then close the transaction.  Then, if the system
+ > > crashes during the defrag then the temporary inode will be removed at
+ > > and all allocated blocks freed at e2fsck/remount time like an
+ > > open-unlinked file would.
+ > >
 
-    jbd: fix race between free buffer and commit transaction
-" 
-was merged into 2.6.27-rc1, but I noticed that this patch is not enough
-to fix the race.
-I did fsstress test heavily to 2.6.27-rc1, and found that dio write still 
-sometimes got EIO through this test.
-The patch above fixed race between freeing buffer(dio) and committing 
-transaction(jbd) but I discovered that there is another race, 
-freeing buffer(dio) and ext3/4_ordered_writepage.
-: background_writeout()
-     ->write_cache_pages()
-       ->ext3_ordered_writepage()
-     	   walk_page_buffers() <- take a bh ref
- 	   block_write_full_page() <- unlock_page
-		: <- end_page_writeback
-                : <- race! (dio write->try_to_release_page fails)
-      	   walk_page_buffers() <-release a bh ref
+Ohta-san and I mistook in the previous mail.
+In the current(v9) implementation, defrag never fails between write_begin()
+and write_end(), because all possible failure conditions already have been
+handled before write_begin().
+So the transaction which starts in write_begin is always closed correctly
+in defrag.  Sorry for the noise.
 
-ext3_ordered_writepage holds bh ref and does unlock_page remaining 
-taking a bh ref, so this causes the race and failure of 
-try_to_release_page.
+ > > The other question I had about the defragmenter is that it would be
+ > > excellent if it is possible to "defragment" a block-mapped file into
+ > > an extent-mapped file.  This should be relatively easy so long as there
+ > > as the whole file is "defragmented" and then the i_block[] array is
+ > > swapped with the original inode and EXT4_EXTENTS_FL is set on the inode.
 
-Following patch fixes this race.
-Thanks.
+Do you mean that the combination of defrag and migration in kernel space
+not e4defrag command just calls migrate ioctl in user space to block mapped file to
+extent mapped file then defrag it?
+I'm not familiar with migration, but it sounds nice.
+I'll try to consider about it.
 
-Signed-off-by :Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-
-diff -Nrup linux-2.6.27-rc1.org/fs/jbd/transaction.c linux-2.6.27-rc1/fs/jbd/transaction.c
---- linux-2.6.27-rc1.org/fs/jbd/transaction.c	2008-07-29 19:28:47.000000000 +0900
-+++ linux-2.6.27-rc1/fs/jbd/transaction.c	2008-07-29 20:40:12.000000000 +0900
-@@ -1764,6 +1764,12 @@ int journal_try_to_free_buffers(journal_
- 	*/
- 	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
- 		journal_wait_for_transaction_sync_data(journal);
-+
-+		bh = head;
-+		do {
-+			while (atomic_read(&bh->b_count))
-+				schedule();
-+		} while ((bh = bh->b_this_page) != head);
- 		ret = try_to_free_buffers(page);
- 	}
- 
-diff -Nrup linux-2.6.27-rc1.org/fs/jbd2/transaction.c linux-2.6.27-rc1/fs/jbd2/transaction.c
---- linux-2.6.27-rc1.org/fs/jbd2/transaction.c	2008-07-29 19:28:47.000000000 +0900
-+++ linux-2.6.27-rc1/fs/jbd2/transaction.c	2008-07-29 20:56:42.000000000 +0900
-@@ -1583,6 +1583,12 @@ int jbd2_journal_try_to_free_buffers(jou
- 	*/
- 	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
- 		jbd2_journal_wait_for_transaction_sync_data(journal);
-+
-+		bh = head;
-+		do {
-+			while (atomic_read(&bh->b_count))
-+				schedule();
-+		} while ((bh = bh->b_this_page) != head);
- 		ret = try_to_free_buffers(page);
- 	}
- 
-
+Regards,
+Akira Fujita
