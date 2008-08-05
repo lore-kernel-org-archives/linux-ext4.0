@@ -1,22 +1,19 @@
 From: akpm@linux-foundation.org
-Subject: + jbd-abort-instead-of-waiting-for-nonexistent-transactions.patch added to -mm tree
-Date: Mon, 04 Aug 2008 18:43:33 -0700
-Message-ID: <200808050143.m751hXgl010695@imap1.linux-foundation.org>
+Subject: + jbd2-abort-instead-of-waiting-for-nonexistent-transactions.patch added to -mm tree
+Date: Mon, 04 Aug 2008 18:44:25 -0700
+Message-ID: <200808050144.m751iP1t010723@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
 Cc: duaneg@dghda.com, linux-ext4@vger.kernel.org, sliedes@cc.hut.fi
 To: mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:40864 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756918AbYHEBnj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 Aug 2008 21:43:39 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     jbd: abort instead of waiting for nonexistent transactions
+     jbd2: abort instead of waiting for nonexistent transactions
 has been added to the -mm tree.  Its filename is
-     jbd-abort-instead-of-waiting-for-nonexistent-transactions.patch
+     jbd2-abort-instead-of-waiting-for-nonexistent-transactions.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -32,10 +29,10 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd: abort instead of waiting for nonexistent transactions
+Subject: jbd2: abort instead of waiting for nonexistent transactions
 From: "Duane Griffin" <duaneg@dghda.com>
 
-The __log_wait_for_space function sits in a loop checkpointing
+The __jbd2_log_wait_for_space function sits in a loop checkpointing
 transactions until there is sufficient space free in the journal. 
 However, if there are no transactions to be processed (e.g.  because the
 free space calculation is wrong due to a corrupted filesystem) it will
@@ -48,18 +45,18 @@ This patch fixes the bug reported by Sami Liedes at:
 http://bugzilla.kernel.org/show_bug.cgi?id=10976
 
 Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Tested-by: Sami Liedes <sliedes@cc.hut.fi>
+Cc: Sami Liedes <sliedes@cc.hut.fi>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/checkpoint.c |   19 +++++++++++++++++--
+ fs/jbd2/checkpoint.c |   19 +++++++++++++++++--
  1 file changed, 17 insertions(+), 2 deletions(-)
 
-diff -puN fs/jbd/checkpoint.c~jbd-abort-instead-of-waiting-for-nonexistent-transactions fs/jbd/checkpoint.c
---- a/fs/jbd/checkpoint.c~jbd-abort-instead-of-waiting-for-nonexistent-transactions
-+++ a/fs/jbd/checkpoint.c
-@@ -127,14 +127,29 @@ void __log_wait_for_space(journal_t *jou
+diff -puN fs/jbd2/checkpoint.c~jbd2-abort-instead-of-waiting-for-nonexistent-transactions fs/jbd2/checkpoint.c
+--- a/fs/jbd2/checkpoint.c~jbd2-abort-instead-of-waiting-for-nonexistent-transactions
++++ a/fs/jbd2/checkpoint.c
+@@ -126,14 +126,29 @@ void __jbd2_log_wait_for_space(journal_t
  
  		/*
  		 * Test again, another process may have checkpointed while we
@@ -71,18 +68,18 @@ diff -puN fs/jbd/checkpoint.c~jbd-abort-instead-of-waiting-for-nonexistent-trans
  		spin_lock(&journal->j_state_lock);
 +		spin_lock(&journal->j_list_lock);
  		nblocks = jbd_space_needed(journal);
- 		if (__log_space_left(journal) < nblocks) {
+ 		if (__jbd2_log_space_left(journal) < nblocks) {
 +			int chkpt = journal->j_checkpoint_transactions != NULL;
 +
 +			spin_unlock(&journal->j_list_lock);
  			spin_unlock(&journal->j_state_lock);
--			log_do_checkpoint(journal);
+-			jbd2_log_do_checkpoint(journal);
 +			if (chkpt) {
-+				log_do_checkpoint(journal);
++				jbd2_log_do_checkpoint(journal);
 +			} else {
 +				printk(KERN_ERR "%s: no transactions\n",
 +				       __func__);
-+				journal_abort(journal, 0);
++				jbd2_journal_abort(journal, 0);
 +			}
 +
  			spin_lock(&journal->j_state_lock);
@@ -95,6 +92,6 @@ _
 
 Patches currently in -mm which might be from duaneg@dghda.com are
 
-jbd-abort-instead-of-waiting-for-nonexistent-transactions.patch
 jbd2-abort-instead-of-waiting-for-nonexistent-transactions.patch
+jbd-abort-instead-of-waiting-for-nonexistent-transactions.patch
 
