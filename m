@@ -1,57 +1,100 @@
 From: Josef Bacik <jbacik@redhat.com>
-Subject: [PATCH] ext4: don't try to resize if there are no reserved gdt
-	blocks left
-Date: Wed, 6 Aug 2008 12:16:56 -0400
-Message-ID: <20080806161656.GG27394@unused.rdu.redhat.com>
+Subject: [PATCH 1/2] add hrtimer_sleep_ns helper function
+Date: Wed, 6 Aug 2008 15:08:19 -0400
+Message-ID: <20080806190819.GH27394@unused.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: rwheeler@redhat.com, tglx@linutronix.de,
+	linux-fsdevel@vger.kernel.org, chris.mason@oracle.com,
+	linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:42237 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:40640 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754156AbYHFQRM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 Aug 2008 12:17:12 -0400
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m76GHBNQ016853
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Aug 2008 12:17:11 -0400
-Received: from pobox.corp.redhat.com (pobox.corp.redhat.com [10.11.255.20])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m76GHBeU004330
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Aug 2008 12:17:11 -0400
-Received: from unused (unused [10.11.231.15] (may be forged))
-	by pobox.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m76GHBB3029547
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Aug 2008 12:17:11 -0400
-Received: from unused (localhost.localdomain [127.0.0.1])
-	by unused (8.14.1/8.14.1) with ESMTP id m76GGuSN028196
-	for <linux-ext4@vger.kernel.org>; Wed, 6 Aug 2008 12:16:56 -0400
-Received: (from jwhiter@localhost)
-	by unused (8.14.1/8.14.1/Submit) id m76GGutA028195
-	for linux-ext4@vger.kernel.org; Wed, 6 Aug 2008 12:16:56 -0400
+	id S1753218AbYHFTJA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 Aug 2008 15:09:00 -0400
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Hello,
 
-When trying to resize a ext3 fs and you run out of reserved gdt blocks, you get
-an error that doesn't actually tell you what went wrong, it just says that the
-gdb it picked is not correct, which is the case since you don't have any
-reserved gdt blocks left.  This patch adds a check to make sure you have
-reserved gdt blocks to use, and if not prints out a more relevant error.  Thank
-you,
+This patch adds a function so that things within the kernel can sleep for
+nanoseconds.  This is needed for the next patch in the series.  Thank you,
 
 Signed-off-by: Josef Bacik <jbacik@redhat.com>
 
-Index: linux-2.6/fs/ext4/resize.c
+Index: linux-2.6/include/linux/hrtimer.h
 ===================================================================
---- linux-2.6.orig/fs/ext4/resize.c
-+++ linux-2.6/fs/ext4/resize.c
-@@ -773,7 +773,8 @@ int ext4_group_add(struct super_block *s
+--- linux-2.6.orig/include/linux/hrtimer.h
++++ linux-2.6/include/linux/hrtimer.h
+@@ -345,6 +345,7 @@ extern long hrtimer_nanosleep_restart(st
  
- 	if (reserved_gdb || gdb_off == 0) {
- 		if (!EXT4_HAS_COMPAT_FEATURE(sb,
--					     EXT4_FEATURE_COMPAT_RESIZE_INODE)){
-+					     EXT4_FEATURE_COMPAT_RESIZE_INODE)
-+		    || !le16_to_cpu(es->s_reserved_gdt_blocks)){
- 			ext4_warning(sb, __func__,
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
+ extern void hrtimer_init_sleeper(struct hrtimer_sleeper *sl,
+ 				 struct task_struct *tsk);
++extern int hrtimer_sleep_ns(u64 ns, int interruptible);
+ 
+ /* Soft interrupt function to run the hrtimer queues: */
+ extern void hrtimer_run_queues(void);
+Index: linux-2.6/kernel/hrtimer.c
+===================================================================
+--- linux-2.6.orig/kernel/hrtimer.c
++++ linux-2.6/kernel/hrtimer.c
+@@ -1459,12 +1459,14 @@ void hrtimer_init_sleeper(struct hrtimer
+ #endif
+ }
+ 
+-static int __sched do_nanosleep(struct hrtimer_sleeper *t, enum hrtimer_mode mode)
++static int __sched do_nanosleep(struct hrtimer_sleeper *t, enum hrtimer_mode mode,
++				int interruptible)
+ {
+ 	hrtimer_init_sleeper(t, current);
+ 
+ 	do {
+-		set_current_state(TASK_INTERRUPTIBLE);
++		set_current_state(interruptible ? TASK_INTERRUPTIBLE :
++				  TASK_UNINTERRUPTIBLE);
+ 		hrtimer_start(&t->timer, t->timer.expires, mode);
+ 		if (!hrtimer_active(&t->timer))
+ 			t->task = NULL;
+@@ -1482,6 +1484,22 @@ static int __sched do_nanosleep(struct h
+ 	return t->task == NULL;
+ }
+ 
++int hrtimer_sleep_ns(u64 ns, int interruptible)
++{
++	struct hrtimer_sleeper t;
++	int ret = 0;
++
++	hrtimer_init_on_stack(&t.timer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS);
++	t.timer.expires = ktime_add_ns(ktime_get(), ns);
++
++	ret = do_nanosleep(&t, HRTIMER_MODE_ABS, interruptible);
++
++	destroy_hrtimer_on_stack(&t.timer);
++
++	return ret;
++}
++EXPORT_SYMBOL_GPL(hrtimer_sleep_ns);
++
+ static int update_rmtp(struct hrtimer *timer, struct timespec __user *rmtp)
+ {
+ 	struct timespec rmt;
+@@ -1508,7 +1526,7 @@ long __sched hrtimer_nanosleep_restart(s
+ 				HRTIMER_MODE_ABS);
+ 	t.timer.expires.tv64 = restart->nanosleep.expires;
+ 
+-	if (do_nanosleep(&t, HRTIMER_MODE_ABS))
++	if (do_nanosleep(&t, HRTIMER_MODE_ABS, 1))
+ 		goto out;
+ 
+ 	rmtp = restart->nanosleep.rmtp;
+@@ -1534,7 +1552,7 @@ long hrtimer_nanosleep(struct timespec *
+ 
+ 	hrtimer_init_on_stack(&t.timer, clockid, mode);
+ 	t.timer.expires = timespec_to_ktime(*rqtp);
+-	if (do_nanosleep(&t, mode))
++	if (do_nanosleep(&t, mode, 1))
+ 		goto out;
+ 
+ 	/* Absolute timers do not update the rmtp value and restart: */
