@@ -1,130 +1,113 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd jbd2: fix dio write returning EIO when
-	try_to_release_page fails
-Date: Wed, 6 Aug 2008 14:47:29 +0200
-Message-ID: <20080806124728.GC9233@duck.suse.cz>
-References: <6.0.0.20.2.20080804185338.03bcd488@172.19.0.2> <1217970194.7516.13.camel@mingming-laptop>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [PATCH] jbd jbd2: fix dio write returning EIO
+	whentry_to_release_page fails
+Date: Wed, 06 Aug 2008 09:25:13 -0400
+Message-ID: <1218029114.15342.58.camel@think.oraclecorp.com>
+References: <6.0.0.20.2.20080804185338.03bcd488@172.19.0.2>
+	 <20080804145047.04794bf3.akpm@linux-foundation.org>
+	 <1217907353.7611.39.camel@think.oraclecorp.com>
+	 <6.0.0.20.2.20080805134429.044569a0@172.19.0.2>
+	 <1217953055.7899.11.camel@think.oraclecorp.com>
+	 <1217971027.7516.20.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>, jack@suse.cz,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
+Cc: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
+	Andrew Morton <akpm@linux-foundation.org>, jack@suse.cz,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1217970194.7516.13.camel@mingming-laptop>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rgminet01.oracle.com ([148.87.113.118]:24826 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753680AbYHFNmT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Aug 2008 09:42:19 -0400
+In-Reply-To: <1217971027.7516.20.camel@mingming-laptop>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
-
-On Tue 05-08-08 14:03:14, Mingming Cao wrote:
-> =E5=9C=A8 2008-08-04=E4=B8=80=E7=9A=84 20:10 +0900=EF=BC=8CHisashi Hi=
-fumi=E5=86=99=E9=81=93=EF=BC=9A
-> > Hi
+On Tue, 2008-08-05 at 14:17 -0700, Mingming Cao wrote:
+> =E5=9C=A8 2008-08-05=E4=BA=8C=E7=9A=84 12:17 -0400=EF=BC=8CChris Maso=
+n=E5=86=99=E9=81=93=EF=BC=9A
+> > On Tue, 2008-08-05 at 13:51 +0900, Hisashi Hifumi wrote:
+> > > >> >=20
+> > > >> > diff -Nrup linux-2.6.27-rc1.org/fs/jbd/transaction.c=20
+> > > >linux-2.6.27-rc1/fs/jbd/transaction.c
+> > > >> > --- linux-2.6.27-rc1.org/fs/jbd/transaction.c	2008-07-29=20
+> > > >19:28:47.000000000 +0900
+> > > >> > +++ linux-2.6.27-rc1/fs/jbd/transaction.c	2008-07-29 20:40:1=
+2.000000000 +0900
+> > > >> > @@ -1764,6 +1764,12 @@ int journal_try_to_free_buffers(journ=
+al_
+> > > >> >  	*/
+> > > >> >  	if (ret =3D=3D 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask &=
+ __GFP_FS)) {
+> > > >> >  		journal_wait_for_transaction_sync_data(journal);
+> > > >> > +
+> > > >> > +		bh =3D head;
+> > > >> > +		do {
+> > > >> > +			while (atomic_read(&bh->b_count))
+> > > >> > +				schedule();
+> > > >> > +		} while ((bh =3D bh->b_this_page) !=3D head);
+> > > >> >  		ret =3D try_to_free_buffers(page);
+> > > >> >  	}
+> > > >>=20
+> > > >> The loop is problematic.  If the scheduler decides to keep run=
+ning this
+> > > >> task then we have a busy loop.  If this task has realtime poli=
+cy then
+> > > >> it might even lock up the kernel.
+> > > >>=20
+> > > >
+> > > >ocfs2 calls journal_try_to_free_buffers too, looping on b_count =
+might
+> > > >not be the best idea there either.
+> > > >
+> > > >This code gets called from releasepage, which is used other plac=
+es than
+> > > >the O_DIRECT invalidation paths, I'd be worried about performanc=
+e
+> > > >problems here.
+> > > >
+> > >=20
+> > > try_to_release_page has gfp_mask parameter. So when try_to_releas=
+epage
+> > > is called from performance sensitive part, gfp_mask should not be=
+ set.
+> > > b_count check loop is inside of (gfp_mask & __GFP_WAIT) && (gfp_m=
+ask & __GFP_FS) check.
 > >=20
-> > Dio write returns EIO when try_to_release_page fails because bh is
-> > still referenced.
-> > The patch=20
-> > "commit 3f31fddfa26b7594b44ff2b34f9a04ba409e0f91
-> > Author: Mingming Cao <cmm@us.ibm.com>
-> > Date:   Fri Jul 25 01:46:22 2008 -0700
-> >=20
-> >     jbd: fix race between free buffer and commit transaction
-> > "=20
-> > was merged into 2.6.27-rc1, but I noticed that this patch is not en=
-ough
-> > to fix the race.
-> > I did fsstress test heavily to 2.6.27-rc1, and found that dio write=
- still=20
-> > sometimes got EIO through this test.
->=20
-> :(  thought we beat that race pretty hard already.T
->=20
-> Could you send me the fsstree command to reproduce the race?
-  It is a part of ext3-tools package Andrew has somewhere and also LTP =
-has
-it I think.
-
-> > The patch above fixed race between freeing buffer(dio) and committi=
-ng=20
-> > transaction(jbd) but I discovered that there is another race,=20
-> > freeing buffer(dio) and ext3/4_ordered_writepage.
-> > : background_writeout()
-> >      ->write_cache_pages()
-> >        ->ext3_ordered_writepage()
-> >      	   walk_page_buffers() <- take a bh ref
-> >  	   block_write_full_page() <- unlock_page
-> > 		: <- end_page_writeback
-> >                 : <- race! (dio write->try_to_release_page fails)
-> >       	   walk_page_buffers() <-release a bh ref
-> >=20
-> > ext3_ordered_writepage holds bh ref and does unlock_page remaining=20
-> > taking a bh ref, so this causes the race and failure of=20
-> > try_to_release_page.
-> >=20
->=20
-> I thought about this before, the race seems unlikely to me. Perhaps I
-> missed something, but DIO code already waiting for all the pending IO=
- to
-> finish before calling try_to_release_page which eventually called
-> journal_try_to_free_buffers(). During this call, the inode mutx is ho=
-ld
-> to prevent the new writer (buffered/DIO) to re-dirty the pages. If th=
-ere
-> is background writeout happens when DIO is kicked in, DIO will wait f=
-or
-> all the pages writeback bit clear first. here is the stack
-  Yes, but in principle, nothing assures that writeback of buffers does=
- not
-finish even before block_write_full_page() returns. So there is possibl=
-y a
-window after PageWriteback is cleared (and thus filemap_fdatawait()
-finishes) and before buffer references are dropped.
-  Now what is more likely in practice is that all buffers of the page a=
-re
-written during transaction commit. So they are clean but the page remai=
-ns
-dirty. Now background writeback happens, sees dirty page, calls:
-  ext3_ordered_writepage()
-    block_write_full_page()
-      - finds all buffers are clean -> end_page_writeback()
-- and at this point direct IO happens which happily proceeds upto a poi=
-nt
-  where try_to_release_page() fails because ext3_ordered_writepage() ha=
+> > Looks like try_to_free_pages will go into releasepage with wait & f=
 s
-  not yet dropped its references to buffers. Nasty.
-
-  So we really need some nice and effective way in which ->writepage()
-calls (and possibly others) could synchronize with try_to_release_page(=
-)
-(which has __GFP_WAIT and __GFP_FS and is thus willing to wait a bit). =
-But
-I don't have a good candidate...
-
-								Honza
-> generic_file_aio_write()
->   -> mutex_lock(&inode->i_mutex);
->   -> __generic_file_aio_write_nolock()
->      -> generic_file_direct_IO()
->         ->filemap_write_and_wait()
->            -> filemap_fdatawait()
->               -> wait_on_page_writeback_range()
->                                                 (=3D=3D=3D=3D waiting=
- for
-> pending IO to finish =3D=3D=3D=3D)
->       ->invalidate_inode_pages2_range()
->           ->invalidate_inode_pages2()
->              ->try_to_releasepage()
->                 ->ext3_releasepage()
->                     ->journal_try_to_free_buffers()
+> > both set.  This kind of change would make me very nervous.
+> >=20
 >=20
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> Hi Chris,
+>=20
+> The gfp_mask try_to_free_pages() takes from it's caller will past it
+> down to try_to_release_page().  Based on the meaning of __GFP_WAIT an=
+d
+> GFP_FS, if the upper level caller set these two flags,  I assume the
+> upper level caller expect delay and wait for fs to finish?
+>=20
+>=20
+> But I agree that using a loop in journal_try_to_free_buffers() to wai=
+t
+> for the busy bh release the counter is expensive...
+
+I rediscovered your old thread about trying to do this in a launder_pag=
+e
+call ;)
+
+Does it make more sense to fix do_launder_page to call into the FS on
+every page, and let the FS check for PageDirty on its own?  That way
+invalidate_inode_pages2_range basically gets its own private call into
+the FS that says wait around until this page is really free.
+
+-chris
+
+
 --
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
