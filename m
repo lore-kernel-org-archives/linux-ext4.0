@@ -1,84 +1,61 @@
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Subject: Re: [PATCH] jbd jbd2: fix dio write returning
-  EIOwhentry_to_release_page fails
-Date: Wed, 06 Aug 2008 11:04:38 +0900
-Message-ID: <6.0.0.20.2.20080806103946.042f31e0@172.19.0.2>
-References: <6.0.0.20.2.20080804185338.03bcd488@172.19.0.2>
- <20080804145047.04794bf3.akpm@linux-foundation.org>
- <6.0.0.20.2.20080805104519.03c9b3d8@172.19.0.2>
- <1217972154.7516.25.camel@mingming-laptop>
+From: Nick Piggin <nickpiggin@yahoo.com.au>
+Subject: Re: [patch 12/17] vfs: pagecache usage optimization for pagesize!=blocksize
+Date: Wed, 6 Aug 2008 15:36:31 +1000
+Message-ID: <200808061536.32275.nickpiggin@yahoo.com.au>
+References: <200807282246.m6SMkaHT032267@imap1.linux-foundation.org> <20080728230031.GA22218@infradead.org> <200808041719.43293.nickpiggin@yahoo.com.au>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-2022-JP"
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, jack@suse.cz,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: akpm@linux-foundation.org, torvalds@linux-foundation.org,
+	hifumi.hisashi@oss.ntt.co.jp, jack@ucw.cz,
+	linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>, linux-mm@kvack.org,
+	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:47495 "EHLO
-	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752170AbYHFCGk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 Aug 2008 22:06:40 -0400
-In-Reply-To: <1217972154.7516.25.camel@mingming-laptop>
-References: <6.0.0.20.2.20080804185338.03bcd488@172.19.0.2>
- <20080804145047.04794bf3.akpm@linux-foundation.org>
- <6.0.0.20.2.20080805104519.03c9b3d8@172.19.0.2>
- <1217972154.7516.25.camel@mingming-laptop>
+Received: from smtp105.mail.mud.yahoo.com ([209.191.85.215]:22199 "HELO
+	smtp105.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751448AbYHFFgl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 Aug 2008 01:36:41 -0400
+In-Reply-To: <200808041719.43293.nickpiggin@yahoo.com.au>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Any updates with this, please?
 
-At 06:35 08/08/06, Mingming Cao wrote:
+On Monday 04 August 2008 17:19, Nick Piggin wrote:
+> On Tuesday 29 July 2008 09:00, Christoph Hellwig wrote:
+> > On Mon, Jul 28, 2008 at 03:46:36PM -0700, akpm@linux-foundation.org wrote:
+> > > From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+> > >
+> > > When we read some part of a file through pagecache, if there is a
+> > > pagecache of corresponding index but this page is not uptodate, read IO
+> > > is issued and this page will be uptodate.
+> >
+> > I was under the impression we wanted to do this in a nicer way than
+> > the hacky method?
 >
->$Bi|%#(B 2008-08-05$Bh<8iSd(B 11:36 +0900$B~>7)(Bisashi Hifumi$BifRk!s~>S(B
->> >> 
->> >> diff -Nrup linux-2.6.27-rc1.org/fs/jbd/transaction.c 
->> >linux-2.6.27-rc1/fs/jbd/transaction.c
->> >> --- linux-2.6.27-rc1.org/fs/jbd/transaction.c	2008-07-29 
->> >19:28:47.000000000 +0900
->> >> +++ linux-2.6.27-rc1/fs/jbd/transaction.c	2008-07-29 
->20:40:12.000000000 +0900
->> >> @@ -1764,6 +1764,12 @@ int journal_try_to_free_buffers(journal_
->> >>  	*/
->> >>  	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
->> >>  		journal_wait_for_transaction_sync_data(journal);
->> >> +
->> >> +		bh = head;
->> >> +		do {
->> >> +			while (atomic_read(&bh->b_count))
->> >> +				schedule();
->> >> +		} while ((bh = bh->b_this_page) != head);
->> >>  		ret = try_to_free_buffers(page);
->> >>  	}
->> >
->> >The loop is problematic.  If the scheduler decides to keep running this
->> >task then we have a busy loop.  If this task has realtime policy then
->> >it might even lock up the kernel.
->> > 
->> >Perhaps we can use wait_on_page_writeback()?
->> >
->> 
->> We cannot use wait_on_page_writeback() to wait for releasing bh ref because
->> in ext3_ordered_writepage() bh ref is grabbed and released through 
->walk_page_buffers
->> so between both walk_page_buffers, it remains taking a bh ref even if 
->end_page_writeback
->> is performed.
->>       ->ext3_ordered_writepage()
->>      	   walk_page_buffers() <- take a bh ref
->>  	   block_write_full_page() <- unlock_page
->> 		: <- end_page_writeback
->>                 : <- race! (dio write->try_to_release_page fails): ---> 
->remains taking a bh ref
->>       	   walk_page_buffers() <-release a bh ref
->> 
+> This patch unfortunately appears like it may introduce an
+> uninitialized memory leak due to a data race between one
+> thread initializing a buffer then marking it uptodate, and
+> the other testing buffer uptodate then reading from the
+> buffer (buffer, read as: page memory covered by buffer head).
 >
->Okay, I see the race window, DIO could come in before
->walk_page_buffers() release the bh reference. So far I don't see a nicer
->way to sync between background  writeout with DIO path yet...
+> For reference, this is basically the same class of data race
+> that I fixed 0ed361dec36945f3116ee1338638ada9a8920905
 >
-
-I know that b_count check on loop is not good, but I do not have better 
-idea to fix this yet too.
-The race window is very short and rare, so I think the impact of introducing
-the loop is small even if this loop can be busy loop due to scheduler circumstances.
-
+> I should have picked up on this before it was merged, but I
+> was kind of rushed to review other things before they got
+> merged.
+>
+> I don't think this patch got quite enough justification to
+> warrant just blindly putting barriers in the buffer bitops.
+> The best-case numbers for it were reasonable enough when the
+> downside was only an extra branch or two in a relatively slow
+> path. I don't really know how best to go from here (maybe
+> someone can argue it is not a problem or come up with a better
+> fix?).
+>
+> Thanks,
+> Nick
