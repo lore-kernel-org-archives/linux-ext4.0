@@ -1,173 +1,164 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: Re: [PATCH 2/2] improve ext3 fsync batching
-Date: Wed, 6 Aug 2008 15:23:54 -0400
-Message-ID: <20080806192354.GJ27394@unused.rdu.redhat.com>
-References: <20080806190819.GH27394@unused.rdu.redhat.com> <20080806191536.GI27394@unused.rdu.redhat.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH] jbd jbd2: fix dio write returning EIO
+	whentry_to_release_page fails
+Date: Wed, 06 Aug 2008 15:57:57 -0700
+Message-ID: <1218063477.6383.41.camel@mingming-laptop>
+References: <6.0.0.20.2.20080804185338.03bcd488@172.19.0.2>
+	 <20080804145047.04794bf3.akpm@linux-foundation.org>
+	 <1217907353.7611.39.camel@think.oraclecorp.com>
+	 <6.0.0.20.2.20080805134429.044569a0@172.19.0.2>
+	 <1217953055.7899.11.camel@think.oraclecorp.com>
+	 <1217971027.7516.20.camel@mingming-laptop>
+	 <1218029114.15342.58.camel@think.oraclecorp.com>
+	 <20080806135337.GA3615@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, rwheeler@redhat.com,
-	tglx@linutronix.de, linux-fsdevel@vger.kernel.org,
-	chris.mason@oracle.com, linux-ext4@vger.kernel.org
-To: Josef Bacik <jbacik@redhat.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Chris Mason <chris.mason@oracle.com>,
+	Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20080806191536.GI27394@unused.rdu.redhat.com>
+In-Reply-To: <20080806135337.GA3615@duck.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Aug 06, 2008 at 03:15:36PM -0400, Josef Bacik wrote:
-> Hello,
-> 
-> Fsync batching in ext3 is somewhat flawed when it comes to disks that are very
-> fast.  Now we do an unconditional sleep for 1 second, which is great on slow
-> disks like SATA and such, but on fast disks this means just sitting around and
-> waiting for nothing.  This patch measures the time it takes to commit a
-> transaction to the disk, and sleeps based on the speed of the underlying disk.
-> Using the following fs_mark command to test the speeds
-> 
-> ./fs_mark -d /mnt/ext3-test -s 4096 -n 2000 -D 64 -t 2
-> 
-> I got the following results (with write cacheing turned off)
-> 
-> type	threads		with patch	without patch
-> sata	2		26.4		27.8
-> sata	4		44.6		44.4
-> sata	8		70.4		72.8
-> sata	16		75.2		89.6
-> sata	32		92.7		96.0
-> ram	1		2399.1		2398.8
-> ram	2		257.3		3603.0
-> ram	4		395.6		4827.9
-> ram	8		659.0		4721.1
-> ram	16		1326.4		4373.3
-> ram	32		1964.2		3816.3
->
 
-Err sorry about that, the with patch and without patch colums should be
-reversed.  Thanks,
+=E5=9C=A8 2008-08-06=E4=B8=89=E7=9A=84 15:53 +0200=EF=BC=8CJan Kara=E5=86=
+=99=E9=81=93=EF=BC=9A
+> On Wed 06-08-08 09:25:13, Chris Mason wrote:
+> > On Tue, 2008-08-05 at 14:17 -0700, Mingming Cao wrote:
+> > > =E5=9C=A8 2008-08-05=E4=BA=8C=E7=9A=84 12:17 -0400=EF=BC=8CChris =
+Mason=E5=86=99=E9=81=93=EF=BC=9A
+> > > > On Tue, 2008-08-05 at 13:51 +0900, Hisashi Hifumi wrote:
+> > > > > >> >=20
+> > > > > >> > diff -Nrup linux-2.6.27-rc1.org/fs/jbd/transaction.c=20
+> > > > > >linux-2.6.27-rc1/fs/jbd/transaction.c
+> > > > > >> > --- linux-2.6.27-rc1.org/fs/jbd/transaction.c	2008-07-29=
+=20
+> > > > > >19:28:47.000000000 +0900
+> > > > > >> > +++ linux-2.6.27-rc1/fs/jbd/transaction.c	2008-07-29 20:=
+40:12.000000000 +0900
+> > > > > >> > @@ -1764,6 +1764,12 @@ int journal_try_to_free_buffers(j=
+ournal_
+> > > > > >> >  	*/
+> > > > > >> >  	if (ret =3D=3D 0 && (gfp_mask & __GFP_WAIT) && (gfp_ma=
+sk & __GFP_FS)) {
+> > > > > >> >  		journal_wait_for_transaction_sync_data(journal);
+> > > > > >> > +
+> > > > > >> > +		bh =3D head;
+> > > > > >> > +		do {
+> > > > > >> > +			while (atomic_read(&bh->b_count))
+> > > > > >> > +				schedule();
+> > > > > >> > +		} while ((bh =3D bh->b_this_page) !=3D head);
+> > > > > >> >  		ret =3D try_to_free_buffers(page);
+> > > > > >> >  	}
+> > > > > >>=20
+> > > > > >> The loop is problematic.  If the scheduler decides to keep=
+ running this
+> > > > > >> task then we have a busy loop.  If this task has realtime =
+policy then
+> > > > > >> it might even lock up the kernel.
+> > > > > >>=20
+> > > > > >
+> > > > > >ocfs2 calls journal_try_to_free_buffers too, looping on b_co=
+unt might
+> > > > > >not be the best idea there either.
+> > > > > >
+> > > > > >This code gets called from releasepage, which is used other =
+places than
+> > > > > >the O_DIRECT invalidation paths, I'd be worried about perfor=
+mance
+> > > > > >problems here.
+> > > > > >
+> > > > >=20
+> > > > > try_to_release_page has gfp_mask parameter. So when try_to_re=
+leasepage
+> > > > > is called from performance sensitive part, gfp_mask should no=
+t be set.
+> > > > > b_count check loop is inside of (gfp_mask & __GFP_WAIT) && (g=
+fp_mask & __GFP_FS) check.
+> > > >=20
+> > > > Looks like try_to_free_pages will go into releasepage with wait=
+ & fs
+> > > > both set.  This kind of change would make me very nervous.
+> > > >=20
+> > >=20
+> > > Hi Chris,
+> > >=20
+> > > The gfp_mask try_to_free_pages() takes from it's caller will past=
+ it
+> > > down to try_to_release_page().  Based on the meaning of __GFP_WAI=
+T and
+> > > GFP_FS, if the upper level caller set these two flags,  I assume =
+the
+> > > upper level caller expect delay and wait for fs to finish?
+> > >=20
+> > >=20
+> > > But I agree that using a loop in journal_try_to_free_buffers() to=
+ wait
+> > > for the busy bh release the counter is expensive...
+> >=20
+> > I rediscovered your old thread about trying to do this in a launder=
+_page
+> > call ;)
+>   Yes, we thought about using launder_page() before :).
+>=20
+> > Does it make more sense to fix do_launder_page to call into the FS =
+on
+> > every page, and let the FS check for PageDirty on its own?  That wa=
+y
+> > invalidate_inode_pages2_range basically gets its own private call i=
+nto
+> > the FS that says wait around until this page is really free.
+>   That would certainly work as well. But IMHO waiting for ->writepage=
+()
+> call to finish isn't really a big deal even in try_to_release_page() =
+if
+> __GFP_FS (and __GFP_WAIT) is set. The only problem is that there is n=
+o
+> effective way to do so and so Hisashi used that "wait for b_count to =
+drop"
+> which looks really scary and I don't like it as well.
+>=20
 
-Josef
- 
-> I used a ramdisk to emulate a "fast" disk since I don't happen to have a
-> clariion sitting around.  I didn't test single thread in the sata case as it
-> should be relatively the same between the two.  Thanks,
-> 
-> Signed-off-by: Josef Bacik <jbacik@redhat.com>
-> 
-> Index: linux-2.6/fs/jbd/commit.c
-> ===================================================================
-> --- linux-2.6.orig/fs/jbd/commit.c
-> +++ linux-2.6/fs/jbd/commit.c
-> @@ -288,6 +288,8 @@ void journal_commit_transaction(journal_
->  	int flags;
->  	int err;
->  	unsigned long blocknr;
-> +	ktime_t start_time;
-> +	u64 commit_time;
->  	char *tagp = NULL;
->  	journal_header_t *header;
->  	journal_block_tag_t *tag = NULL;
-> @@ -400,6 +402,7 @@ void journal_commit_transaction(journal_
->  	commit_transaction->t_state = T_FLUSH;
->  	journal->j_committing_transaction = commit_transaction;
->  	journal->j_running_transaction = NULL;
-> +	start_time = ktime_get();
->  	commit_transaction->t_log_start = journal->j_head;
->  	wake_up(&journal->j_wait_transaction_locked);
->  	spin_unlock(&journal->j_state_lock);
-> @@ -873,6 +876,18 @@ restart_loop:
->  	J_ASSERT(commit_transaction == journal->j_committing_transaction);
->  	journal->j_commit_sequence = commit_transaction->t_tid;
->  	journal->j_committing_transaction = NULL;
-> +	commit_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
-> +
-> +	/*
-> +	 * weight the commit time higher than the average time so we don't
-> +	 * react too strongly to vast changes in commit time
-> +	 */
-> +	if (likely(journal->j_average_commit_time))
-> +		journal->j_average_commit_time = (commit_time*3 +
-> +				journal->j_average_commit_time) / 4;
-> +	else
-> +		journal->j_average_commit_time = commit_time;
-> +
->  	spin_unlock(&journal->j_state_lock);
->  
->  	if (commit_transaction->t_checkpoint_list == NULL &&
-> Index: linux-2.6/fs/jbd/transaction.c
-> ===================================================================
-> --- linux-2.6.orig/fs/jbd/transaction.c
-> +++ linux-2.6/fs/jbd/transaction.c
-> @@ -25,6 +25,7 @@
->  #include <linux/timer.h>
->  #include <linux/mm.h>
->  #include <linux/highmem.h>
-> +#include <linux/hrtimer.h>
->  
->  static void __journal_temp_unlink_buffer(struct journal_head *jh);
->  
-> @@ -49,6 +50,7 @@ get_transaction(journal_t *journal, tran
->  {
->  	transaction->t_journal = journal;
->  	transaction->t_state = T_RUNNING;
-> +	transaction->t_start_time = ktime_get();
->  	transaction->t_tid = journal->j_transaction_sequence++;
->  	transaction->t_expires = jiffies + journal->j_commit_interval;
->  	spin_lock_init(&transaction->t_handle_lock);
-> @@ -1361,7 +1363,7 @@ int journal_stop(handle_t *handle)
->  {
->  	transaction_t *transaction = handle->h_transaction;
->  	journal_t *journal = transaction->t_journal;
-> -	int old_handle_count, err;
-> +	int err;
->  	pid_t pid;
->  
->  	J_ASSERT(journal_current_handle() == handle);
-> @@ -1397,11 +1399,18 @@ int journal_stop(handle_t *handle)
->  	 */
->  	pid = current->pid;
->  	if (handle->h_sync && journal->j_last_sync_writer != pid) {
-> +		u64 commit_time, trans_time;
-> +
->  		journal->j_last_sync_writer = pid;
-> -		do {
-> -			old_handle_count = transaction->t_handle_count;
-> -			schedule_timeout_uninterruptible(1);
-> -		} while (old_handle_count != transaction->t_handle_count);
-> +
-> +		spin_lock(&journal->j_state_lock);
-> +		commit_time = journal->j_average_commit_time;
-> +		spin_unlock(&journal->j_state_lock);
-> +
-> +		trans_time = ktime_to_ns(ktime_sub(ktime_get(),
-> +						   transaction->t_start_time));
-> +		if (trans_time < commit_time)
-> +			hrtimer_sleep_ns(commit_time, 1);
->  	}
->  
->  	current->journal_info = NULL;
-> Index: linux-2.6/include/linux/jbd.h
-> ===================================================================
-> --- linux-2.6.orig/include/linux/jbd.h
-> +++ linux-2.6/include/linux/jbd.h
-> @@ -543,6 +543,11 @@ struct transaction_s
->  	unsigned long		t_expires;
->  
->  	/*
-> +	 * When this transaction started, in nanoseconds [no locking]
-> +	 */
-> +	ktime_t			t_start_time;
-> +
-> +	/*
->  	 * How many handles used this transaction? [t_handle_lock]
->  	 */
->  	int t_handle_count;
-> @@ -800,6 +805,8 @@ struct journal_s
->  
->  	pid_t			j_last_sync_writer;
->  
-> +	u64			j_average_commit_time;
-> +
->  	/*
->  	 * An opaque pointer to fs-private information.  ext3 puts its
->  	 * superblock pointer here
+I was  looking at the comment in invalidate_complete_page2(), which is
+now only called from DIO path, it saids
+
+/*
+ * This is like invalidate_complete_page(), except it ignores the page'=
+s
+ * refcount.  We do this because invalidate_inode_pages2() needs
+stronger
+ * invalidation guarantees, and cannot afford to leave pages behind
+because
+ * shrink_page_list() has a temp ref on them, or because they're
+transiently
+ * sitting in the lru_cache_add() pagevecs.
+ */
+
+
+I am wondering why we need stronger invalidate hurantees for DIO->
+invalidate_inode_pages_range(),which force the page being removed from
+page cache? In case of bh is busy due to ext3 writeout,
+journal_try_to_free_buffers() could return different error number(EBUSY=
+)
+to try_to_releasepage() (instead of EIO).  In that case,  could we just
+leave the page in the cache, clean pageuptodate() (to force later buffe=
+r
+read to read from disk) and then invalidate_complete_page2() return
+successfully? Any issue with this way?
+
+Mingming
+
+
+
+
+> 									Honza
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
