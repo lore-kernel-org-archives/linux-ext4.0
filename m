@@ -1,38 +1,38 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Bug in delayed allocation: really bad block layouts!
-Date: Mon, 11 Aug 2008 23:45:24 +0530
-Message-ID: <20080811181524.GA9769@skywalker>
-References: <E1KSEkA-00009o-CV@closure.thunk.org> <20080811143911.GA6455@skywalker>
+From: Randy Dunlap <rdunlap@xenotime.net>
+Subject: Re: Changing the timing of -gitX snapshot releases?
+Date: Mon, 11 Aug 2008 12:41:59 -0700
+Message-ID: <20080811124159.869f2630.rdunlap@xenotime.net>
+References: <20080209093933.GA5882@lst.de>
+	<20080210065222.GA22951@lst.de>
+	<20080210125432.GA21729@mit.edu>
+	<1218448874.12956.9.camel@pmac.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:33678 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751913AbYHKSPd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2008 14:15:33 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m7BIEQLC028991
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 04:14:26 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7BIFUSs244890
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 04:15:30 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7BIFUMA031514
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 04:15:30 +1000
-Content-Disposition: inline
-In-Reply-To: <20080811143911.GA6455@skywalker>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@MIT.EDU>, Christoph Hellwig <hch@lst.de>,
+	akpm@osdl.org, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
+To: David Woodhouse <dwmw2@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1218448874.12956.9.camel@pmac.infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Aug 11, 2008 at 08:09:12PM +0530, Aneesh Kumar K.V wrote:
-> Can you try this patch ? The patch make group preallocation use the goal
-> block.
+On Mon, 11 Aug 2008 11:01:14 +0100 David Woodhouse wrote:
+
+> On Sun, 2008-02-10 at 07:54 -0500, Theodore Tso wrote:
+> > <aside> it would be nice if that happend at
+> > 3am Pacific instead of midnight Pacific since very occasionally it's a
+> > little after midnight before Linus pushes his last set of changes to
+> > master.kernel.org</aside>
 > 
+> That can be done. Does anyone else really care about the timing of the
+> snapshots? TBH I've no idea how I ended up with '7,19' in my crontab...
 
-Results with and without patch.
+Go for it.  // says a git snapshot user
 
-http://www.radian.org/~kvaneesh/ext4/lg-fragmentation/
 
--aneesh
+---
+~Randy
+Linux Plumbers Conference, 17-19 September 2008, Portland, Oregon USA
+http://linuxplumbersconf.org/
