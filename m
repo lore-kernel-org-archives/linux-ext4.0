@@ -1,122 +1,42 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -v2] ext4: invalidate pages if delalloc block allocation fails.
-Date: Mon, 11 Aug 2008 15:53:08 +0530
-Message-ID: <1218450188-9643-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1218450188-9643-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1218450188-9643-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:48818 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751262AbYHKKXW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2008 06:23:22 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m7BANenP001211
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2008 20:23:40 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7BANI4B173460
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2008 20:23:19 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7BANIc5001691
-	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2008 20:23:18 +1000
-In-Reply-To: <1218450188-9643-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: Re: [BUG] 2.6.27-rc1 - Filesystem warning on ext4 with e2fsck
+Date: Mon, 11 Aug 2008 09:27:12 -0500
+Message-ID: <48A04C40.1040206@redhat.com>
+References: <48A0127E.6000505@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	kernel list <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Kernel Testers List <kernel-testers-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org, Andy Whitcroft <apw-26w3C0LaAnFg9hUCZPvPmw@public.gmane.org>
+To: Kamalesh Babulal <kamalesh-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+Return-path: <kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <48A0127E.6000505-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
+Sender: kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-We are a bit agressive in invalidating all the pages. But
-it is ok because we really don't know why the block allocation
-failed and it is better to come of the writeback path
-so that user can look for more info.
+Kamalesh Babulal wrote:
+> Hi,
+> 
+> After running the fsx linux test on the ext4 partition mounted with 
+> -o errors=panic,journal_async_commit, filesystem check is reporting
+> warning
+> 
+> # /usr/local/e2fsprogs/sbin/e2fsck -fnv /dev/sda6 
+> e2fsck 1.41.0 (10-Jul-2008)
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> /lost+found not found.  Create? no
+> 
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> 
+> /dev/sda6: ********** WARNING: Filesystem still has errors **********
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/inode.c |   63 ++++++++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 files changed, 62 insertions(+), 1 deletions(-)
+Was lost+found manually removed between mkfs & fsck?  (did you do an rm
+-rf * or similar ?)  That'd produce exactly the above warning, since you
+told e2fsck "-n" ...
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 26e30ed..e437a5b 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1761,6 +1761,39 @@ static inline void __unmap_underlying_blocks(struct inode *inode,
- 		unmap_underlying_metadata(bdev, bh->b_blocknr + i);
- }
- 
-+static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
-+					sector_t logical, long blk_cnt)
-+{
-+	int nr_pages, i;
-+	pgoff_t index, end;
-+	struct pagevec pvec;
-+	struct inode *inode = mpd->inode;
-+	struct address_space *mapping = inode->i_mapping;
-+
-+	index = logical >> (PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	end   = (logical + blk_cnt - 1) >>
-+				(PAGE_CACHE_SHIFT - inode->i_blkbits);
-+	while (index <= end) {
-+		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
-+		if (nr_pages == 0)
-+			break;
-+		for (i = 0; i < nr_pages; i++) {
-+			struct page *page = pvec.pages[i];
-+			index = page->index;
-+			if (index > end)
-+				break;
-+			index++;
-+
-+			BUG_ON(!PageLocked(page));
-+			BUG_ON(PageWriteback(page));
-+			block_invalidatepage(page, 0);
-+			ClearPageUptodate(page);
-+			unlock_page(page);
-+		}
-+	}
-+	return;
-+}
-+
- /*
-  * mpage_da_map_blocks - go through given space
-  *
-@@ -1794,8 +1827,36 @@ static void mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	if (!new.b_size)
- 		return;
- 	err = mpd->get_block(mpd->inode, next, &new, 1);
--	if (err)
-+	if (err) {
-+
-+		/* If get block returns with error
-+		 * we simply return. Later writepage
-+		 * will redirty the page and writepages
-+		 * will find the dirty page again
-+		 */
-+		if (err == -EAGAIN)
-+			return;
-+		/*
-+		 * get block failure will cause us
-+		 * to loop in writepages. Because
-+		 * a_ops->writepage won't be able to
-+		 * make progress. The page will be redirtied
-+		 * by writepage and writepages will again
-+		 * try to write the same.
-+		 */
-+		printk(KERN_EMERG "%s block allocation failed for inode %lu "
-+				  "at logical offset %llu with max blocks "
-+				  "%zd with error %d\n",
-+				  __func__, mpd->inode->i_ino,
-+				  (unsigned long long)next,
-+				  lbh->b_size >> mpd->inode->i_blkbits, err);
-+		printk(KERN_EMERG "This should not happen.!! "
-+					"Data will be lost\n");
-+		/* invlaidate all the pages */
-+		ext4_da_block_invalidatepages(mpd, next,
-+				lbh->b_size >> mpd->inode->i_blkbits);
- 		return;
-+	}
- 	BUG_ON(new.b_size == 0);
- 
- 	if (buffer_new(&new))
--- 
-1.6.0.rc0.42.g186458.dirty
-
+-Eric
