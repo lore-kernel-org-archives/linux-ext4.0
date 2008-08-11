@@ -1,38 +1,34 @@
-From: Randy Dunlap <rdunlap@xenotime.net>
-Subject: Re: Changing the timing of -gitX snapshot releases?
-Date: Mon, 11 Aug 2008 12:41:59 -0700
-Message-ID: <20080811124159.869f2630.rdunlap@xenotime.net>
-References: <20080209093933.GA5882@lst.de>
-	<20080210065222.GA22951@lst.de>
-	<20080210125432.GA21729@mit.edu>
-	<1218448874.12956.9.camel@pmac.infradead.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: tracepoints in ext4 (and/or ext3?)
+Date: Mon, 11 Aug 2008 15:18:07 -0500
+Message-ID: <48A09E7F.7060605@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@MIT.EDU>, Christoph Hellwig <hch@lst.de>,
-	akpm@osdl.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org
-To: David Woodhouse <dwmw2@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1218448874.12956.9.camel@pmac.infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:56959 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753725AbYHKUSJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Aug 2008 16:18:09 -0400
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id m7BKI9EI015656
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2008 16:18:09 -0400
+Received: from file.rdu.redhat.com (file.rdu.redhat.com [10.11.255.147])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m7BKI9MM028804
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2008 16:18:09 -0400
+Received: from Liberator.local (sebastian-int.corp.redhat.com [172.16.52.221])
+	by file.rdu.redhat.com (8.13.1/8.13.1) with ESMTP id m7BKI8a6031427
+	for <linux-ext4@vger.kernel.org>; Mon, 11 Aug 2008 16:18:08 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 11 Aug 2008 11:01:14 +0100 David Woodhouse wrote:
+As just an initial inquiry, I'm wondering how people would feel about
+putting some tracepoints (trace_mark()) into ext[34] for monitoring the
+fs behavior.
 
-> On Sun, 2008-02-10 at 07:54 -0500, Theodore Tso wrote:
-> > <aside> it would be nice if that happend at
-> > 3am Pacific instead of midnight Pacific since very occasionally it's a
-> > little after midnight before Linus pushes his last set of changes to
-> > master.kernel.org</aside>
-> 
-> That can be done. Does anyone else really care about the timing of the
-> snapshots? TBH I've no idea how I ended up with '7,19' in my crontab...
+Good/bad/indifferent?
 
-Go for it.  // says a git snapshot user
+Thanks,
 
-
----
-~Randy
-Linux Plumbers Conference, 17-19 September 2008, Portland, Oregon USA
-http://linuxplumbersconf.org/
+-Eric
