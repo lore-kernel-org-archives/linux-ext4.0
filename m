@@ -1,57 +1,38 @@
-From: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
-Subject: Re: [BUG] 2.6.27-rc1 - Filesystem warning on ext4 with e2fsck
-Date: Mon, 11 Aug 2008 21:19:29 +0530
-Message-ID: <48A05F89.4070702@linux.vnet.ibm.com>
-References: <48A0127E.6000505@linux.vnet.ibm.com> <48A04C40.1040206@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: Bug in delayed allocation: really bad block layouts!
+Date: Mon, 11 Aug 2008 23:45:24 +0530
+Message-ID: <20080811181524.GA9769@skywalker>
+References: <E1KSEkA-00009o-CV@closure.thunk.org> <20080811143911.GA6455@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Kernel Testers List <kernel-testers@vger.kernel.org>,
-	aneesh.kumar@linux.vnet.ibm.com, Andy Whitcroft <apw@shadowen.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:48076 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752688AbYHKPtf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2008 11:49:35 -0400
-In-Reply-To: <48A04C40.1040206@redhat.com>
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:33678 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751913AbYHKSPd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 Aug 2008 14:15:33 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m7BIEQLC028991
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 04:14:26 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7BIFUSs244890
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 04:15:30 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7BIFUMA031514
+	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 04:15:30 +1000
+Content-Disposition: inline
+In-Reply-To: <20080811143911.GA6455@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> Kamalesh Babulal wrote:
->> Hi,
->>
->> After running the fsx linux test on the ext4 partition mounted with 
->> -o errors=panic,journal_async_commit, filesystem check is reporting
->> warning
->>
->> # /usr/local/e2fsprogs/sbin/e2fsck -fnv /dev/sda6 
->> e2fsck 1.41.0 (10-Jul-2008)
->> Pass 1: Checking inodes, blocks, and sizes
->> Pass 2: Checking directory structure
->> Pass 3: Checking directory connectivity
->> /lost+found not found.  Create? no
->>
->> Pass 4: Checking reference counts
->> Pass 5: Checking group summary information
->>
->> /dev/sda6: ********** WARNING: Filesystem still has errors **********
+On Mon, Aug 11, 2008 at 08:09:12PM +0530, Aneesh Kumar K.V wrote:
+> Can you try this patch ? The patch make group preallocation use the goal
+> block.
 > 
-> Was lost+found manually removed between mkfs & fsck?  (did you do an rm
-> -rf * or similar ?)  That'd produce exactly the above warning, since you
-> told e2fsck "-n" ...
-> 
-> -Eric
-> --
-Hi Eric,
 
-Yes, the test program does a rm -rf * of the partition and  
-usr/local/e2fsprogs/sbin/e2fsck -fvp /dev/sda6 helps. Sorry
-for the noise.
+Results with and without patch.
 
--- 
-Thanks & Regards,
-Kamalesh Babulal.
+http://www.radian.org/~kvaneesh/ext4/lg-fragmentation/
+
+-aneesh
