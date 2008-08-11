@@ -1,19 +1,23 @@
 From: akpm@linux-foundation.org
-Subject: + ext4-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch added to -mm tree
-Date: Mon, 11 Aug 2008 14:50:50 -0700
-Message-ID: <200808112150.m7BLooOX023263@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
+Subject: + ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch added to -mm tree
+Date: Mon, 11 Aug 2008 15:08:14 -0700
+Message-ID: <200808112208.m7BM8EI0024118@imap1.linux-foundation.org>
 Cc: jbacik@redhat.com, adilger@sun.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:42434 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757904AbYHKWJB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 Aug 2008 18:09:01 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext4: don't try to resize if there are no reserved gdt blocks left
+     ext3: don't try to resize if there are no reserved gdt blocks left
 has been added to the -mm tree.  Its filename is
-     ext4-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch
+     ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -29,7 +33,7 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext4: don't try to resize if there are no reserved gdt blocks left
+Subject: ext3: don't try to resize if there are no reserved gdt blocks left
 From: Josef Bacik <jbacik@redhat.com>
 
 When trying to resize a ext3 fs and you run out of reserved gdt blocks,
@@ -45,20 +49,20 @@ Cc: Andreas Dilger <adilger@sun.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/resize.c |    3 ++-
+ fs/ext3/resize.c |    3 ++-
  1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff -puN fs/ext4/resize.c~ext4-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left fs/ext4/resize.c
---- a/fs/ext4/resize.c~ext4-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left
-+++ a/fs/ext4/resize.c
-@@ -773,7 +773,8 @@ int ext4_group_add(struct super_block *s
+diff -puN fs/ext3/resize.c~ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left fs/ext3/resize.c
+--- a/fs/ext3/resize.c~ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left
++++ a/fs/ext3/resize.c
+@@ -790,7 +790,8 @@ int ext3_group_add(struct super_block *s
  
  	if (reserved_gdb || gdb_off == 0) {
- 		if (!EXT4_HAS_COMPAT_FEATURE(sb,
--					     EXT4_FEATURE_COMPAT_RESIZE_INODE)){
-+					     EXT4_FEATURE_COMPAT_RESIZE_INODE)
+ 		if (!EXT3_HAS_COMPAT_FEATURE(sb,
+-					     EXT3_FEATURE_COMPAT_RESIZE_INODE)){
++					     EXT3_FEATURE_COMPAT_RESIZE_INODE)
 +		    || !le16_to_cpu(es->s_reserved_gdt_blocks)) {
- 			ext4_warning(sb, __func__,
+ 			ext3_warning(sb, __func__,
  				     "No reserved GDT blocks, can't resize");
  			return -EPERM;
 _
