@@ -1,208 +1,40 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 3/6 ]Ext4: journal credits reservation fixes for DIO,
-	fallocate
-Date: Tue, 12 Aug 2008 09:29:50 -0700
-Message-ID: <1218558590.6766.47.camel@mingming-laptop>
-References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker>
-	 <1216774311.6505.4.camel@mingming-laptop>
-	 <20080723074226.GA15091@skywalker>
-	 <1217032947.6394.2.camel@mingming-laptop>
-	 <1218558190.6766.37.camel@mingming-laptop>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: tracepoints in ext4 (and/or ext3?)
+Date: Tue, 12 Aug 2008 12:32:32 -0400
+Message-ID: <20080812163232.GC8857@mit.edu>
+References: <48A09E7F.7060605@redhat.com> <20080812081954.5f5eeb10@gara>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Andreas Dilger <adilger@sun.com>
-To: tytso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: "Jose R. Santos" <jrs@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:58396 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750899AbYHLQaM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Aug 2008 12:30:12 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7CGUC8T017619
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 12:30:12 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7CGUBak158334
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 10:30:11 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7CGUARt028464
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 10:30:11 -0600
-In-Reply-To: <1218558190.6766.37.camel@mingming-laptop>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:36791 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750987AbYHLQcv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Aug 2008 12:32:51 -0400
+Content-Disposition: inline
+In-Reply-To: <20080812081954.5f5eeb10@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, Aug 12, 2008 at 08:19:54AM -0500, Jose R. Santos wrote:
+> 
+> Good idea, although Im not sure if ext[34] is the best place we should
+> start putting markers though.
 
-Ext4: journal credits reservation fixes for DIO, fallocate
+I can think of ext3/4 specific markers that would be useful for people
+who are tuning our filesystems for performance.  This would include
+when we start and end tranactions, when we force a checkpoint, when we
+create and, extend, and finish using a handle in the jbd layer.
 
-From: Mingming Cao <cmm@us.ibm.com>
+In the ext4 itself, knowing when we are mapping delayed allocations
+would be useful, as well as when we freeze and unfreeze a filesystem
+(i.e., for snapshots).
 
-DIO and fallocate credit calculation is different than writepage, as
-they do start a new journal right for each call to ext4_get_blocks_wrap().
-This patch uses the helper function in DIO and fallocate case, passing
-a flag indicating that the modified data are contiguous thus could account
-less indirect/index blocks.
+There are a lot of other tracepoints that probably do make more sense
+to be put in the VFS layer, although on thing that would be *really*
+nice is some semantic sugar in Systemtap or in a Systemtap tapset so
+that we only trigger the tracepoints for a particular filesystem.
 
-This patch also fixed the journal credit reservation for direct I/O
-(DIO).  Previously the estimated credits for DIO only was calculated for
-non-extent files, which was not enough if the file is extent-based.
-
-Also fixed was fallocate double-counting credits for modifying the the
-superblock.
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
----
- fs/ext4/ext4.h    |    1 +
- fs/ext4/extents.c |    7 +++----
- fs/ext4/inode.c   |   49 ++++++++++++++++++++++++++++---------------------
- 3 files changed, 32 insertions(+), 25 deletions(-)
-
-===================================================================
-Index: linux-2.6.27-rc1/fs/ext4/extents.c
-===================================================================
---- linux-2.6.27-rc1.orig/fs/ext4/extents.c	2008-08-11 22:25:39.000000000 -0700
-+++ linux-2.6.27-rc1/fs/ext4/extents.c	2008-08-11 22:25:55.000000000 -0700
-@@ -2799,7 +2799,7 @@ void ext4_ext_truncate(struct inode *ino
- 	/*
- 	 * probably first extent we're gonna free will be last in block
- 	 */
--	err = ext4_writepage_trans_blocks(inode) + 3;
-+	err = ext4_writepage_trans_blocks(inode);
- 	handle = ext4_journal_start(inode, err);
- 	if (IS_ERR(handle))
- 		return;
-@@ -2951,10 +2951,9 @@ long ext4_fallocate(struct inode *inode,
- 	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
- 							- block;
- 	/*
--	 * credits to insert 1 extent into extent tree + buffers to be able to
--	 * modify 1 super block, 1 block bitmap and 1 group descriptor.
-+	 * credits to insert 1 extent into extent tree
- 	 */
--	credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb) + 3;
-+	credits = ext4_data_trans_blocks(inode, max_blocks);
- 	mutex_lock(&inode->i_mutex);
- retry:
- 	while (ret >= 0 && ret < max_blocks) {
-Index: linux-2.6.27-rc1/fs/ext4/inode.c
-===================================================================
---- linux-2.6.27-rc1.orig/fs/ext4/inode.c	2008-08-11 22:18:31.000000000 -0700
-+++ linux-2.6.27-rc1/fs/ext4/inode.c	2008-08-11 22:25:55.000000000 -0700
-@@ -1041,18 +1041,6 @@ static void ext4_da_update_reserve_space
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- }
- 
--/* Maximum number of blocks we map for direct IO at once. */
--#define DIO_MAX_BLOCKS 4096
--/*
-- * Number of credits we need for writing DIO_MAX_BLOCKS:
-- * We need sb + group descriptor + bitmap + inode -> 4
-- * For B blocks with A block pointers per block we need:
-- * 1 (triple ind.) + (B/A/A + 2) (doubly ind.) + (B/A + 2) (indirect).
-- * If we plug in 4096 for B and 256 for A (for 1KB block size), we get 25.
-- */
--#define DIO_CREDITS 25
--
--
- /*
-  * The ext4_get_blocks_wrap() function try to look up the requested blocks,
-  * and returns if the blocks are already mapped.
-@@ -1164,19 +1152,23 @@ int ext4_get_blocks_wrap(handle_t *handl
- 	return retval;
- }
- 
-+/* Maximum number of blocks we map for direct IO at once. */
-+#define DIO_MAX_BLOCKS 4096
-+
- static int ext4_get_block(struct inode *inode, sector_t iblock,
- 			struct buffer_head *bh_result, int create)
- {
- 	handle_t *handle = ext4_journal_current_handle();
- 	int ret = 0, started = 0;
- 	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
-+	int dio_credits;
- 
- 	if (create && !handle) {
- 		/* Direct IO write... */
- 		if (max_blocks > DIO_MAX_BLOCKS)
- 			max_blocks = DIO_MAX_BLOCKS;
--		handle = ext4_journal_start(inode, DIO_CREDITS +
--			      2 * EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb));
-+		dio_credits = ext4_data_trans_blocks(inode, max_blocks);
-+		handle = ext4_journal_start(inode, dio_credits);
- 		if (IS_ERR(handle)) {
- 			ret = PTR_ERR(handle);
- 			goto out;
-@@ -2222,7 +2214,7 @@ static int ext4_da_writepage(struct page
-  * for DIO, writepages, and truncate
-  */
- #define EXT4_MAX_WRITEBACK_PAGES      DIO_MAX_BLOCKS
--#define EXT4_MAX_WRITEBACK_CREDITS    DIO_CREDITS
-+#define EXT4_MAX_WRITEBACK_CREDITS    25
- 
- static int ext4_da_writepages(struct address_space *mapping,
- 				struct writeback_control *wbc)
-@@ -4429,7 +4421,8 @@ static int ext4_writeblocks_trans_credit
- 
- /*
-  * Calulate the total number of credits to reserve to fit
-- * the modification of a single pages into a single transaction
-+ * the modification of a single pages into a single transaction,
-+ * which may include multile chunk of block allocations.
-  *
-  * This could be called via ext4_write_begin() or later
-  * ext4_da_writepages() in delalyed allocation case.
-@@ -4437,11 +4430,6 @@ static int ext4_writeblocks_trans_credit
-  * In both case it's possible that we could allocating multiple
-  * chunks of blocks. We need to consider the worse case, when
-  * one new block per extent.
-- *
-- * For Direct IO and fallocate, the journal credits reservation
-- * is based on one single extent allocation, so they could use
-- * EXT4_DATA_TRANS_BLOCKS to get the needed credit to log a single
-- * chunk of allocation needs.
-  */
- int ext4_writepage_trans_blocks(struct inode *inode)
- {
-@@ -4451,6 +4439,25 @@ int ext4_writepage_trans_blocks(struct i
- 		return ext4_writeblocks_trans_credits_old(inode, bpp, 0);
- 	return ext4_ext_writepage_trans_blocks(inode, bpp, 0);
- }
-+
-+/*
-+ * Calculate the journal credits for a chunk of data modification.
-+ *
-+ * For Direct IO and fallocate, the journal credits reservation
-+ * is based on one single extent allocation, so they could use
-+ * this function to get the needed credit to log a single
-+ * chunk of allocation needs.
-+ *
-+ * This is called from DIO, fallocate or whoever calling
-+ * ext4_get_blocks_wrap() to map/allocate a chunk of contigous disk blocks
-+ */
-+int ext4_data_trans_blocks(struct inode *inode, int nrblocks)
-+{
-+	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
-+		return ext4_writeblocks_trans_credits_old(inode, nrblocks, 1);
-+	return ext4_ext_writepage_trans_blocks(inode, nrblocks, 1);
-+}
-+
- /*
-  * The caller must have previously called ext4_reserve_inode_write().
-  * Give this, we know that the caller already has write access to iloc->bh.
-Index: linux-2.6.27-rc1/fs/ext4/ext4.h
-===================================================================
---- linux-2.6.27-rc1.orig/fs/ext4/ext4.h	2008-08-11 22:18:31.000000000 -0700
-+++ linux-2.6.27-rc1/fs/ext4/ext4.h	2008-08-11 22:25:55.000000000 -0700
-@@ -1073,6 +1073,7 @@ extern void ext4_get_inode_flags(struct 
- extern void ext4_set_aops(struct inode *inode);
- extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_meta_trans_blocks(struct inode *, int nrblocks, int idxblocks);
-+extern int ext4_data_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
-
-
+     	     	     	 	     	   - Ted
