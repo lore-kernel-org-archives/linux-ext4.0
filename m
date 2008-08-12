@@ -1,62 +1,33 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 6/6 ]Ext4 journal credits reservation fixes for defrag
-Date: Tue, 12 Aug 2008 09:37:14 -0700
-Message-ID: <1218559034.6766.58.camel@mingming-laptop>
-References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker>
-	 <1216774311.6505.4.camel@mingming-laptop>
-	 <20080723074226.GA15091@skywalker>
-	 <1217032947.6394.2.camel@mingming-laptop>
-	 <1218558190.6766.37.camel@mingming-laptop>
+From: Zach Brown <zach.brown@oracle.com>
+Subject: Re: [PATCH] jbd jbd2: fix dio	writereturningEIOwhentry_to_release_page
+ fails
+Date: Tue, 12 Aug 2008 09:38:49 -0700
+Message-ID: <48A1BC99.1010802@oracle.com>
+References: <6.0.0.20.2.20080804185338.03bcd488@172.19.0.2>	 <20080804145047.04794bf3.akpm@linux-foundation.org>	 <1217907353.7611.39.camel@think.oraclecorp.com>	 <6.0.0.20.2.20080805134429.044569a0@172.19.0.2>	 <1217953055.7899.11.camel@think.oraclecorp.com>	 <1217971027.7516.20.camel@mingming-laptop>	 <1218029114.15342.58.camel@think.oraclecorp.com>	 <20080806135337.GA3615@duck.suse.cz>	 <1218063477.6383.41.camel@mingming-laptop>	 <6.0.0.20.2.20080807115853.03f95b78@172.19.0.2>	 <1218104494.15342.171.camel@think.oraclecorp.com>	 <6.0.0.20.2.20080808113605.04141328@172.19.0.2>	 <1218200055.15342.230.camel@think.oraclecorp.com>	 <6.0.0.20.2.20080811123405.03ec03d0@172.19.0.2> <1218547706.15342.305.camel@think.oraclecorp.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Andreas Dilger <adilger@sun.com>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>
-To: tytso <tytso@mit.edu>
+Cc: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
+	Mingming Cao <cmm@us.ibm.com>, Jan Kara <jack@suse.cz>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Chris Mason <chris.mason@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:39629 "EHLO e4.ny.us.ibm.com"
+Received: from tetsuo.zabbo.net ([207.173.201.20]:52563 "EHLO tetsuo.zabbo.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751213AbYHLQh5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Aug 2008 12:37:57 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7CGbuEX009572
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 12:37:56 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7CGbuoW227158
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 12:37:56 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7CGbtk3025578
-	for <linux-ext4@vger.kernel.org>; Tue, 12 Aug 2008 12:37:56 -0400
-In-Reply-To: <1218558190.6766.37.camel@mingming-laptop>
+	id S1751778AbYHLQiu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Aug 2008 12:38:50 -0400
+In-Reply-To: <1218547706.15342.305.camel@think.oraclecorp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-defrag part change. This patch should be merged with
-ext4-online-defrag-alloc-contiguous-blks.patch
 
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>
-Cc: Takashi Sato <t-sato@yk.jp.nec.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-Index: linux-2.6.27-rc1/fs/ext4/defrag.c
-===================================================================
---- linux-2.6.27-rc1.orig/fs/ext4/defrag.c	2008-08-11 17:15:49.000000000 -0700
-+++ linux-2.6.27-rc1/fs/ext4/defrag.c	2008-08-11 19:46:59.000000000 -0700
-@@ -186,9 +186,9 @@ ext4_defrag_alloc_blocks(handle_t *handl
- 	struct buffer_head *bh = NULL;
- 	int err, i, credits = 0;
- 
--	credits = ext4_ext_calc_credits_for_insert(dest_inode, dest_path);
--	err = ext4_ext_journal_restart(handle,
--				credits + EXT4_TRANS_META_BLOCKS);
-+	credits = ext4_ext_calc_credits_for_single_extent(dest_inode,
-+							  ar->len, dest_path);
-+	err = ext4_ext_journal_restart(handle, credits);
- 	if (err)
- 		return err;
- 
+> With that said, I don't have strong feelings against falling back to
+> buffered IO when the invalidate fails.  Maybe Zach remembers something I
+> don't?
 
+Nothing surprising is immediately coming to mind, no.  I don't have
+strong feelings against adding this case to the list of criteria that
+causes it to fall back to buffered.
 
+- z
