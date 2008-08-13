@@ -1,103 +1,85 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Bug in delayed allocation: really bad block layouts!
-Date: Tue, 12 Aug 2008 22:32:05 -0400
-Message-ID: <20080813023205.GA8232@mit.edu>
-References: <E1KSEkA-00009o-CV@closure.thunk.org> <20080811143911.GA6455@skywalker> <20080811181524.GA9769@skywalker>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] vmscan: set try_to_release_page's gfp_mask to 0
+Date: Tue, 12 Aug 2008 20:21:27 -0700
+Message-ID: <20080812202127.b88e8250.akpm@linux-foundation.org>
+References: <6.0.0.20.2.20080813111835.03d345b0@172.19.0.2>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>
+To: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:37225 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751728AbYHMCca (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Aug 2008 22:32:30 -0400
-Content-Disposition: inline
-In-Reply-To: <20080811181524.GA9769@skywalker>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:38807 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754166AbYHMDWG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 Aug 2008 23:22:06 -0400
+In-Reply-To: <6.0.0.20.2.20080813111835.03d345b0@172.19.0.2>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Aug 11, 2008 at 11:45:24PM +0530, Aneesh Kumar K.V wrote:
-> On Mon, Aug 11, 2008 at 08:09:12PM +0530, Aneesh Kumar K.V wrote:
-> > Can you try this patch ? The patch make group preallocation use the goal
-> > block.
-> > 
+On Wed, 13 Aug 2008 11:21:16 +0900 Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp> wrote:
+
+> Hi.
 > 
-> Results with and without patch.
+> shrink_page_list passes gfp_mask to try_to_release_page.
+> When shrink_page_list is called from kswapd or buddy system, gfp_mask is set
+> and (gfp_mask & __GFP_WAIT) and (gfp_mask & __GFP_FS) check is positive.
+> releasepage of jbd/jbd2(ext3/4, ocfs2) and XFS use this parameter. 
+> If try_to_free_page fails due to bh busy in jbd/jbd2, jbd/jbd2 lets a thread wait for 
+> committing transaction. I think this has big performance impacts for vmscan.
+> So I modified shrink_page_list not to pass gfp_mask to try_to_release_page
+> in ordered to improve vmscan performance.
 > 
-> http://www.radian.org/~kvaneesh/ext4/lg-fragmentation/
+> Thanks.
 > 
+> Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+> 
+> diff -Nrup linux-2.6.27-rc2.org/mm/vmscan.c linux-2.6.27-rc2.vmscan/mm/vmscan.c
+> --- linux-2.6.27-rc2.org/mm/vmscan.c	2008-08-11 14:33:24.000000000 +0900
+> +++ linux-2.6.27-rc2.vmscan/mm/vmscan.c	2008-08-12 18:57:05.000000000 +0900
+> @@ -614,7 +614,7 @@ static unsigned long shrink_page_list(st
+>  		* Otherwise, leave the page on the LRU so it is swappable.
+>  		*/
+>  		if (PagePrivate(page)) {
+> -			if (!try_to_release_page(page, sc->gfp_mask))
+> +			if (!try_to_release_page(page, 0))
+>  				goto activate_locked;
+>  			if (!mapping && page_count(page) == 1) {
+>  				unlock_page(page);
 
-My results match yours; seems to be a bit better, but it's not fixing
-the fundamental problem.  With the patch:
+I think the change makes sense.
 
- 26524: expecting 638190 actual extent phys 631960 log 1 len 1
- 26527: expecting 638191 actual extent phys 631963 log 1 len 1
- 26533: expecting 638192 actual extent phys 631976 log 1 len 5
- 26534: expecting 638193 actual extent phys 631981 log 1 len 2
- 26536: expecting 638194 actual extent phys 631984 log 1 len 6
- 26538: expecting 638195 actual extent phys 631991 log 1 len 5
- 26540: expecting 638196 actual extent phys 631997 log 1 len 2
- 26545: expecting 638197 actual extent phys 632009 log 1 len 1
- 26546: expecting 638198 actual extent phys 632010 log 1 len 6
- 26604: expecting 638199 actual extent phys 632156 log 1 len 1
+Has this change been shown to improve any workloads?  If so, please
+provide full information for the changelog.  If not, please mention
+this and explain why benefits were not demonstrable.  This information
+should _always_ be present in a "performance" patch's changelog!
 
-Useing debugfs's stat command to look at the blocks:
 
-26524: (0):638189, (1):631960
-26527: (0):638190, (1):631963
-26533: (0):638191, (1-5):631976-631980
-26534: (0):638192, (1-2):631981-631982
-26536: (0):638193, (1-6):631984-631989
-26538: (0):638194, (1-5):631991-631995
-26540: (0):638195, (1-2):631997-631998
-26545: (0):638196, (1):632009
-26546: (0):638197, (1-6):632010-632015
 
-Out of curiosity, I also probed the inode numbers that were out of
-sequence from above.  They seem to be mostly allocating out of the
-numbers used for the second extent, above.  
+Probably a better fix would be to explicitly tell
+journal_try_to_free_buffers() when it need to block on journal commit,
+rather than (mis)interpreting the gfp_t in this fashion.  I assume the
+only caller who really cares is direct-io.  That would be quite a bit
+of churn, and the asynchronous behaviour perhaps makes sense _anyway_
+when called from page reclaim.
 
-26526: (0):631961
-26526: (0):631962
-26528: (0):631964
-26529: (0):411742
-26530: (0):631965
-26531: (0-1):631966-631967
-26532: (0-7):631968-631975
-26535: (0):631983
-26537: (0):631990
-26541: (0-7):631999-632006
-26542: (0):632007
-26543: (0):632008
-26544: (0):411743
-26547: (0):632016
+otoh, there is a risk that this change will cause page reclaim to sit
+there burning huge amounts of CPU time and not achieving anything,
+because all it is doing is scanning over busy pages.  In that case,
+blocking behind a commit which would make those pages reclaimable is
+correct behaviour.  But given that the offending code in
+journal_try_to_free_buffers() has only been there for a few weeks, I
+guess this isn't a concern.
 
-Inode  Pathname
-26524  /lib/rhythmbox/plugins/lyrics/LyricsConfigureDialog.py
-26525  /lib/rhythmbox/plugins/lyrics/LyrcParser.py
-26526  /lib/rhythmbox/plugins/lyrics/LyricsParse.py
-26527  /lib/rhythmbox/plugins/lyrics/LyricsConfigureDialog.pyc
-26528  /lib/rhythmbox/plugins/lyrics/WinampcnParser.py
-26529  /lib/rhythmbox/plugins/magnatune
-26530  /lib/rhythmbox/plugins/magnatune/magnatune_logo_color_small.png
-26531  /lib/rhythmbox/plugins/magnatune/magnatune.rb-plugin
-26532  /lib/rhythmbox/plugins/magnatune/magnatune-prefs.glade
-26533  /lib/rhythmbox/plugins/magnatune/MagnatuneSource.pyc
-26534  /lib/rhythmbox/plugins/magnatune/__init__.py
-26535  /lib/rhythmbox/plugins/magnatune/BuyAlbumHandler.py
-26536  /lib/rhythmbox/plugins/magnatune/magnatune-purchase.glade
-26537  /lib/rhythmbox/plugins/magnatune/TrackListHandler.py
-26538  /lib/rhythmbox/plugins/magnatune/MagnatuneSource.py
-26539  /lib/rhythmbox/plugins/magnatune/magnatune_logo_color_tiny.png
-26540  /lib/rhythmbox/plugins/magnatune/__init__.pyc
-26541  /lib/rhythmbox/plugins/magnatune/magnatune-loading.glade
-26542  /lib/rhythmbox/plugins/magnatune/TrackListHandler.pyc
-26543  /lib/rhythmbox/plugins/magnatune/BuyAlbumHandler.pyc
-26544  /lib/rhythmbox/plugins/audioscrobbler
-26546  /lib/rhythmbox/plugins/audioscrobbler/audioscrobbler-prefs.glade
-26547  /lib/rhythmbox/plugins/audioscrobbler/audioscrobbler-ui.xml
 
-Looks like we still have some problems with the block allocator...
+Really, I think what this patch tells us is that 3f31fddf ("jbd: fix
+race between free buffer and commit transaction") was an unpleasant
+hack which had undesirable and unexpected side-effects.  I think - that
+depends upon your as-yet-undisclosed testing results?
 
-      	      	    	      	       	    	- Ted
+Perhaps we should revert 3f31fddf and have another think about how to
+fix the direct-io -EIO problem.  One option would be to hold our noses
+and add a new gfp_t flag for this specific purpose?
+
