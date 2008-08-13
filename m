@@ -1,54 +1,74 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [PATCH] jbd jbd2: fix dio
-	writereturningEIOwhentry_to_release_page fails
-Date: Wed, 13 Aug 2008 08:59:56 -0400
-Message-ID: <1218632396.15342.340.camel@think.oraclecorp.com>
-References: <1217971027.7516.20.camel@mingming-laptop>
-	 <1218029114.15342.58.camel@think.oraclecorp.com>
-	 <20080806135337.GA3615@duck.suse.cz>
-	 <1218063477.6383.41.camel@mingming-laptop>
-	 <6.0.0.20.2.20080807115853.03f95b78@172.19.0.2>
-	 <1218104494.15342.171.camel@think.oraclecorp.com>
-	 <6.0.0.20.2.20080808113605.04141328@172.19.0.2>
-	 <1218200055.15342.230.camel@think.oraclecorp.com>
-	 <6.0.0.20.2.20080811123405.03ec03d0@172.19.0.2>
-	 <1218547706.15342.305.camel@think.oraclecorp.com>
-	 <20080813101650.GA14392@duck.suse.cz>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: BUG: Reducing the lvm partition on ext4 filesystem " ( 2.6.27-rc1
+ )
+Date: Wed, 13 Aug 2008 10:17:40 -0500
+Message-ID: <48A2FB14.2040306@redhat.com>
+References: <OF80EF388C.3D9E8928-ON652574A4.0028C9C8-652574A4.0029043A@in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
-	Mingming Cao <cmm@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Zach Brown <zach.brown@oracle.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080813101650.GA14392@duck.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Rishikesh K Rajak <risrajak@in.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:59091 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755113AbYHMPSz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 Aug 2008 11:18:55 -0400
+In-Reply-To: <OF80EF388C.3D9E8928-ON652574A4.0028C9C8-652574A4.0029043A@in.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2008-08-13 at 12:16 +0200, Jan Kara wrote:
+Rishikesh K Rajak wrote:
+> Hi All,
+> 
+> I have created the lvm partition on my machine and found there is some
+> problem with reducing the size with resize2fs tool  on 2.6.27-rc1 kernel.
+> 
+> I am not sure this is an exact bug of ext4 filesystem or there is some
+> problem with e2fsprogs/resize2fs tool.
+> 
+> here is the bug link which i raised :
+> http://bugzilla.kernel.org/show_bug.cgi?id=11317
+>
 
-> > With that said, I don't have strong feelings against falling back to
-> > buffered IO when the invalidate fails.  Maybe Zach remembers something I
-> > don't?
->   I don't have a strong opinion either. Falling back to buffered writes is
-> simpler at least for ext3/ext4 because properly synchronizing against
-> writepage() call does not seem to have a nice solution either in
-> do_launder_page() or in releasepage(). OTOH is hides the fact the invalidate
-> is failing and so if we screw up something in future and it fails often, it
-> might be hard to notice / track down the performance penalty.
+I added comments to the bug, but:
 
-In general, these races don't happen often, and when they do it is
-because someone is mixing page cache and O_DIRECT io to the same file.
-That is explicitly outside the main use case of O_DIRECT.
+[root@e326 sbin]# mount
+...
+/dev/mapper/my_volg-vol01 on /mnt type ext4dev (rw)
 
-So, I'd rather see us slow down O_DIRECT in the mixed use case than have
-big impacts in complexity or speed to other parts of the kernel.  If
-falling back avoids problems in some filesystems or avoids clearing the
-uptodate bit unexpectedly, I'd much rather take the fallback patch.
+[root@e326 sbin]# umount /mnt/tmpmount/
 
--chris
+[root@e326 sbin]# df -h
+(unfortunately current size of ext4 fs is not shown)
 
+First you slice off the end of the block device:
 
+[root@e326 sbin]# lvreduce -L 4G /dev/mynew_vg/vol01
+  WARNING: Reducing active logical volume to 4.00 GB
+  THIS MAY DESTROY YOUR DATA (filesystem etc.)
+Do you really want to reduce vol01? [y/n]: y
+  Reducing logical volume vol01 to 4.00 GB
+  Logical volume vol01 successfully resized
+
+(bells should be going off here!)
+
+*then* you try to shrink the fs:
+
+[root@e326 sbin]# ./resize2fs /dev/mynew_vg/vol01
+resize2fs 1.41-WIP (17-Jun-2008)
+Please run 'e2fsck -f /dev/mynew_vg/vol01' first.
+
+and it finds that your block device is smaller than your fs:
+
+[root@e326 sbin]# ./e2fsck -f /dev/mynew_vg/vol01
+e2fsck 1.41-WIP (17-Jun-2008)
+The filesystem size (according to the superblock) is 11304960 blocks
+The physical size of the device is 4194304 blocks
+
+You need to resize the fs, then resize the block device it's on.
+
+This looks like user error to me.
+
+-Eric
