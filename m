@@ -1,81 +1,45 @@
-From: Kamalesh Babulal <kamalesh@linux.vnet.ibm.com>
-Subject: [BUG] 2.6.27-rc1 - ext4 e2fsck false prompting for fixing i_size
- of Inode
-Date: Wed, 13 Aug 2008 12:25:21 +0530
-Message-ID: <48A28559.1040904@linux.vnet.ibm.com>
+From: Rishikesh K Rajak <risrajak@in.ibm.com>
+Subject: BUG: Reducing the lvm partition on ext4 filesystem " ( 2.6.27-rc1 )
+Date: Wed, 13 Aug 2008 13:01:38 +0530
+Message-ID: <OF80EF388C.3D9E8928-ON652574A4.0028C9C8-652574A4.0029043A@in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: kernel list <linux-kernel@vger.kernel.org>,
-	aneesh.kumar@linux.vnet.ibm.com
+Content-Type: text/plain; charset=US-ASCII
+Cc: Rishikesh K Rajak <risrajak@in.ibm.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:50621 "EHLO
-	e28esmtp02.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752461AbYHMGzz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Aug 2008 02:55:55 -0400
+Received: from e28smtp07.in.ibm.com ([59.145.155.7]:50282 "EHLO
+	e28esmtp07.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751954AbYHMHbw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Aug 2008 03:31:52 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7D7VgEW016729
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2008 13:01:42 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7D7VgNe1228940
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2008 13:01:42 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7D7Vggd022192
+	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2008 13:01:42 +0530
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
 
-While running e2fsck over the partition which was ext4 mounted,
-the e2fsck suggest fixing the Inode with the same i_size value
-as the existing one.
+Hi All,
 
-The partition is of size 135GB, I created 13 files each of 10GB
-using  dd if=/dev/zero of=<filename> bs=1024 count=10485760 and
-filesystem check on the partition prompts for following fixing
+I have created the lvm partition on my machine and found there is some
+problem with reducing the size with resize2fs tool  on 2.6.27-rc1 kernel.
 
-/usr/local/e2fsprogs/sbin/e2fsck -fnv /dev/sdb5
-e2fsck 1.41.0 (10-Jul-2008)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 12, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 524289, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 655361, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 1835009, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 2490369, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 2621441, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 3801089, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 4587521, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 4587522, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 4587523, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 4587524, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 4587525, i_size is 10737418240, should be 10737418240.  Fix? no
-Inode 4587526, i_size is 10737418240, should be 10737418240.  Fix? no
+I am not sure this is an exact bug of ext4 filesystem or there is some
+problem with e2fsprogs/resize2fs tool.
 
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
+here is the bug link which i raised :
+http://bugzilla.kernel.org/show_bug.cgi?id=11317
 
-/dev/sdb5: ********** WARNING: Filesystem still has errors **********
+Warm Regards
 
+Rishi
+Linux Tech Centre
+IBM-ISTL, Manyata
+Bangalore
 
-      24 inodes used (0.00%)
-       1 non-contiguous inode (4.2%)
-         # of inodes with ind/dind/tind blocks: 13/13/13
-34689232 blocks used (96.80%)
-       0 bad blocks
-      14 large files
-
-      13 regular files
-       2 directories
-       0 character device files
-       0 block device files
-       0 fifos
-       0 links
-       0 symbolic links (0 fast symbolic links)
-       0 sockets
---------
-      15 files
-
-# /usr/local/e2fsprogs/sbin/e2fsck -V
-e2fsck 1.41.0 (10-Jul-2008)
-        Using EXT2FS Library version 1.41.0, 10-Jul-2008
-
--- 
-Thanks & Regards,
-Kamalesh Babulal,
-Linux Technology Center,
-IBM, ISTL.
