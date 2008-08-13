@@ -1,54 +1,82 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] use percpu data for lg_prealloc_list
-Date: Wed, 13 Aug 2008 14:11:54 -0500
-Message-ID: <48A331FA.6070602@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Oops with ext4 from 2.6.27-rc3
+Date: Wed, 13 Aug 2008 16:10:04 -0400
+Message-ID: <20080813201004.GJ8232@mit.edu>
+References: <47983.10.5.1.205.1218652098.squirrel@webmail.lugor.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, mail@eworm.de
+To: eworm@lugor.de
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:44765 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751436AbYHMTOL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 13 Aug 2008 15:14:11 -0400
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:39196 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751871AbYHMUKH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Aug 2008 16:10:07 -0400
+Content-Disposition: inline
+In-Reply-To: <47983.10.5.1.205.1218652098.squirrel@webmail.lugor.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-lg_prealloc_list seems to cry out for a per-cpu data structure; on a large
-smp system I think this should be better.  I've lightly tested this change
-on a 4-cpu system.  Comments welcome...
+On Wed, Aug 13, 2008 at 08:28:18PM +0200, eworm@lugor.de wrote:
+> 
+> After mounting the partitions and logging in it took half a minute to hang
+> the system (or at least freeze all applications that access the fs). The
+> log contains the following:
+> 
+> kernel BUG at fs/ext4/mballoc.c:3963!
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+This means that we tried to truncate/delete a file while there were
+still blocks on i_prealloc_list.  I think I see the problem.  And the
+reason why we haven't noticed it is that it only shows up if you have
+an indirect block-based file, and you truncate it when you have
+previously been writing to it (so i_prealloc_list is not empty).
 
-ndex: linux-2.6/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.orig/fs/ext4/mballoc.c	2008-08-04 15:30:30.000000000 -0500
-+++ linux-2.6/fs/ext4/mballoc.c	2008-08-13 13:48:33.224165751 -0500
-@@ -2540,17 +2540,16 @@ int ext4_mb_init(struct super_block *sb,
- 	sbi->s_mb_history_filter = EXT4_MB_HISTORY_DEFAULT;
- 	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
- 
--	i = sizeof(struct ext4_locality_group) * nr_cpu_ids;
--	sbi->s_locality_groups = kmalloc(i, GFP_KERNEL);
-+	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
- 	if (sbi->s_locality_groups == NULL) {
- 		clear_opt(sbi->s_mount_opt, MBALLOC);
- 		kfree(sbi->s_mb_offsets);
- 		kfree(sbi->s_mb_maxs);
- 		return -ENOMEM;
+The problem is that we call ext4_discard_reservation() too late, after
+we've started calling ext4_free_branches(), which calls
+ext4_free_blocks(), which ultimately calls
+ext4_mb_return_to_preallocation(), which is what is BUG-checking.
+
+Can you reproduce the bug?  Things are a little busy on my end, so I
+don't have time to try to create a reproducer and test the patch, at
+least not for a day or so.  The following patch passes the "It Builds,
+Ship It!" test, but not much else.  :-) 
+
+If you could report (a) whether or not you can reproduce the failure,
+and (b) whether this patch fixes things, I would be most grateful.
+
+Thanks, regards,
+
+							- Ted
+
+commit b86b40e630893e74d3259f129060cfcb115f7fb9
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Wed Aug 13 16:07:32 2008 -0400
+
+    ext4: Fix potential truncate BUG due to i_prealloc_list being non-empty
+    
+    We need to call ext4_discard_reservation() earlier in ext4_truncate(),
+    to avoid a BUG() in ext4_mb_return_to_preallocation(), which is called
+    (ultimately) by ext4_free_blocks().  So we must ditch the blocks on
+    i_prealloc_list before we start freeing the data blocks.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 368ec6b..7f7b0c5 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3512,6 +3512,9 @@ void ext4_truncate(struct inode *inode)
+ 	 * modify the block allocation tree.
+ 	 */
+ 	down_write(&ei->i_data_sem);
++
++	ext4_discard_reservation(inode);
++
+ 	/*
+ 	 * The orphan list entry will now protect us from any crash which
+ 	 * occurs before the truncate completes, so it is now safe to propagate
+@@ -3581,8 +3584,6 @@ do_indirects:
+ 		;
  	}
--	for (i = 0; i < nr_cpu_ids; i++) {
-+	for_each_possible_cpu(i) {
- 		struct ext4_locality_group *lg;
--		lg = &sbi->s_locality_groups[i];
-+		lg = per_cpu_ptr(sbi->s_locality_groups, i);
- 		mutex_init(&lg->lg_mutex);
- 		for (j = 0; j < PREALLOC_TB_SIZE; j++)
- 			INIT_LIST_HEAD(&lg->lg_prealloc_list[j]);
-@@ -2647,8 +2646,7 @@ int ext4_mb_release(struct super_block *
- 				atomic_read(&sbi->s_mb_discarded));
- 	}
  
--	kfree(sbi->s_locality_groups);
+-	ext4_discard_reservation(inode);
