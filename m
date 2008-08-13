@@ -1,206 +1,54 @@
-From: Jan Kara <jack@suse.cz>
+From: Chris Mason <chris.mason@oracle.com>
 Subject: Re: [PATCH] jbd jbd2: fix dio
 	writereturningEIOwhentry_to_release_page fails
-Date: Wed, 13 Aug 2008 12:56:04 +0200
-Message-ID: <20080813105603.GB14392@duck.suse.cz>
-References: <1218029114.15342.58.camel@think.oraclecorp.com> <20080806135337.GA3615@duck.suse.cz> <1218063477.6383.41.camel@mingming-laptop> <6.0.0.20.2.20080807115853.03f95b78@172.19.0.2> <1218104494.15342.171.camel@think.oraclecorp.com> <6.0.0.20.2.20080808113605.04141328@172.19.0.2> <1218200055.15342.230.camel@think.oraclecorp.com> <6.0.0.20.2.20080811123405.03ec03d0@172.19.0.2> <1218547706.15342.305.camel@think.oraclecorp.com> <1218571599.6423.22.camel@mingming-laptop>
+Date: Wed, 13 Aug 2008 08:59:56 -0400
+Message-ID: <1218632396.15342.340.camel@think.oraclecorp.com>
+References: <1217971027.7516.20.camel@mingming-laptop>
+	 <1218029114.15342.58.camel@think.oraclecorp.com>
+	 <20080806135337.GA3615@duck.suse.cz>
+	 <1218063477.6383.41.camel@mingming-laptop>
+	 <6.0.0.20.2.20080807115853.03f95b78@172.19.0.2>
+	 <1218104494.15342.171.camel@think.oraclecorp.com>
+	 <6.0.0.20.2.20080808113605.04141328@172.19.0.2>
+	 <1218200055.15342.230.camel@think.oraclecorp.com>
+	 <6.0.0.20.2.20080811123405.03ec03d0@172.19.0.2>
+	 <1218547706.15342.305.camel@think.oraclecorp.com>
+	 <20080813101650.GA14392@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
+	Mingming Cao <cmm@us.ibm.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
 	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	Zach Brown <zach.brown@oracle.com>
-To: Mingming Cao <cmm@us.ibm.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1218571599.6423.22.camel@mingming-laptop>
+In-Reply-To: <20080813101650.GA14392@duck.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue 12-08-08 13:06:39, Mingming Cao wrote:
-> =E5=9C=A8 2008-08-12=E4=BA=8C=E7=9A=84 09:28 -0400=EF=BC=8CChris Maso=
-n=E5=86=99=E9=81=93=EF=BC=9A=20
-> > On Mon, 2008-08-11 at 15:25 +0900, Hisashi Hifumi wrote:
-> > > >> >> >I am wondering why we need stronger invalidate hurantees f=
-or DIO->
-> > > >> >> >invalidate_inode_pages_range(),which force the page being =
-removed from
-> > > >> >> >page cache? In case of bh is busy due to ext3 writeout,
-> > > >> >> >journal_try_to_free_buffers() could return different error=
- number(EBUSY)
-> > > >> >> >to try_to_releasepage() (instead of EIO).  In that case,  =
-could we just
-> > > >> >> >leave the page in the cache, clean pageuptodate() (to forc=
-e later buffer
-> > > >> >> >read to read from disk) and then invalidate_complete_page2=
-() return
-> > > >> >> >successfully? Any issue with this way?
-> > > >> >>=20
-> > > >> >> My idea is that journal_try_to_free_buffers returns EBUSY i=
-f it fails due to
-> > > >> >> bh busy, and dio write falls back to buffered write. This i=
-s easy to fix.
-> > > >> >>=20
-> > > >> >>=20
-> > > >> >
-> > > >> >What about the invalidates done after the DIO has already run
-> > > >> >non-buffered?
-> > > >>=20
-> > > >> Dio write falls back to buffered IO when writing to a hole on =
-ext3, I=20
-> > > >think. I want to=20
-> > > >> apply this mechanism to fix this issue. When try_to_release_pa=
-ge fails on=20
-> > > >a page=20
-> > > >> due to bh busy, dio write does buffered write, sync_page_range=
-, and=20
-> > > >> wait_on_page_writeback, imvalidates page cache to preserve dio=
- semantics.=20
-> > > >> Even if page invalidation that is carried out after=20
-> > > >wait_on_page_writeback fails,=20
-> > > >> there is no inconsistency between HDD and page cache.
-> > > >>=20
-> > > >
-> > > >Sorry, I'm sure I wasn't very clear, I was referencing this code=
- from
-> > > >mm/filemap.c:
-> > > >
-> > > >        written =3D mapping->a_ops->direct_IO(WRITE, iocb, iov, =
-pos, *nr_segs);
-> > > >
-> > > >        /*
-> > > >         * Finally, try again to invalidate clean pages which mi=
-ght have been
-> > > >         * cached by non-direct readahead, or faulted in by get_=
-user_pages()
-> > > >         * if the source of the write was an mmap'ed region of t=
-he file
-> > > >         * we're writing.  Either one is a pretty crazy thing to=
- do,
-> > > >         * so we don't support it 100%.  If this invalidation
-> > > >         * fails, tough, the write still worked...
-> > > >         */
-> > > >        if (mapping->nrpages) {
-> > > >                invalidate_inode_pages2_range(mapping,
-> > > >                                              pos >> PAGE_CACHE_=
-SHIFT, end);
-> > > >        }
-> > > >
-> > > >If this second invalidate fails during a DIO write, we'll have u=
-p to
-> > > >date pages in cache that don't match the data on disk.  It is un=
-likely
-> > > >to fail because the conditions that make jbd unable to free a bu=
-ffer are
-> > > >rare, but it can still happen with the write combination of mmap=
- usage.
-> > > >
-> > > >The good news is the second invalidate doesn't make O_DIRECT ret=
-urn
-> > > >-EIO.  But, it sounds like fixing do_launder_page to always call=
- into
-> > > >the FS can fix all of these problems.  Am I missing something?
-> > > >
-> > >=20
-> > > My approach is not implementing do_launder_page for ext3.
-> > > It is needed to modify VFS.
-> > >=20
-> > > My patch is as follows:
-> >=20
-> > Sorry, I'm still not sure why the do_launder_page implementation is=
- a
-> > bad idea.  Clearly Mingming spent quite some time on it in the past=
-, but
-> > given that it could provide a hook for the FS to do expensive opera=
-tions
-> > to make the page really go away, why not do it?
-> >=20
->=20
-> > As far as I can tell, the only current users afs, nfs and fuse.  Pu=
-shing
-> > down the PageDirty check to those filesystems should be trivial.
-> >=20
-> >=20
->=20
-> I thought about your suggestion before, there should be no problem to
-> push down the pagedirty check to underlying fs.=20
->=20
->  My concern is  even if we wait for page writeback cleared  (from
-> ext3_ordered_writepage() ) in the launder_page(),  (which the wait
-> actually already done in previous DIO ->filemap_write_wait()),
-> ext3_ordered_writepage()  still possibly hold the ref to the bh and
-> later journal_try_to_free_buffers() could still fail due to that.
-  Yes, how to properly wait for writepage() to finish is a different ma=
-tter
-and doing it launder_page() does not help. The only thing is that in
-launder_page() we can do more expensive things because it is going to b=
-e
-called only before DIO, not for ordinary page freeing on memory pressur=
-e.
+On Wed, 2008-08-13 at 12:16 +0200, Jan Kara wrote:
 
-> >        ->ext3_ordered_writepage()
-> >          walk_page_buffers() <- take a bh ref
-> >          block_write_full_page() <- unlock_page
-> >               : <- end_page_writeback
-> >                 : <- race! (dio write->try_to_release_page fails)
->=20
->  here is the  window.
-> >                  walk_page_buffers() <-release a bh ref
->=20
-> And we need someway to notify DIO code from ext3_ordered_writepage() =
-to
-> indicating they are done with those buffers. That's the hard way, as =
-Jan
-> mentioned.
-  Well, we can always introduce something like a per-sb waitqueue where
-processes waiting for references to some buffer to be released would dw=
-ell.
-We would wakeup processes in this queue after writepage drops all it's
-references, we could even use the same mechanism for waiting till commi=
-t
-code releases those references... But returning EBUSY and falling back =
-to
-buffered writes is definitely easier to do (modulo what I wrote to Chri=
-s
-about hiding possible problems).
+> > With that said, I don't have strong feelings against falling back to
+> > buffered IO when the invalidate fails.  Maybe Zach remembers something I
+> > don't?
+>   I don't have a strong opinion either. Falling back to buffered writes is
+> simpler at least for ext3/ext4 because properly synchronizing against
+> writepage() call does not seem to have a nice solution either in
+> do_launder_page() or in releasepage(). OTOH is hides the fact the invalidate
+> is failing and so if we screw up something in future and it fails often, it
+> might be hard to notice / track down the performance penalty.
 
-> > With that said, I don't have strong feelings against falling back t=
-o
-> > buffered IO when the invalidate fails. =20
-> =20
-> It seems a little odd that we have to back to buffered IO in this cas=
-e.
-> The pages are all flushed,  DIO just want to make sure the
-> journaltransactions who still keep those buffers are removed from the=
-ir
-> list. It did that, the only reason to keep DIO fail is someone else
-> hasn't release the bh.
->=20
-> Current code enforce all the buffers have to be freed and pages are
-> removed from page cache, in order to force later read are from disk. =
- I
-> am not sure why can't we just leave the page in the cache, just clear=
- it
-> uptodate flag, without reduce the page ref count?   I think DIO shoul=
-d
-> proceed it's IO in this case...
-  The problem with clearing page uptodate is described in commit
-84209e02de48d72289650cc5a7ae8dd18223620f. The page may be currently in =
-the
-pipe and clearing the uptodate bit under it makes them unhappy (returni=
-ng
-errors or so). So either one has to change the pipe handling or we have=
- to
-cope without clearing page uptodate bit.
+In general, these races don't happen often, and when they do it is
+because someone is mixing page cache and O_DIRECT io to the same file.
+That is explicitly outside the main use case of O_DIRECT.
 
-								Honza
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So, I'd rather see us slow down O_DIRECT in the mixed use case than have
+big impacts in complexity or speed to other parts of the kernel.  If
+falling back avoids problems in some filesystems or avoids clearing the
+uptodate bit unexpectedly, I'd much rather take the fallback patch.
+
+-chris
+
+
