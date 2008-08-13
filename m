@@ -1,205 +1,206 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Bug in delayed allocation: really bad block layouts!
-Date: Wed, 13 Aug 2008 16:22:22 +0530
-Message-ID: <20080813105222.GG6439@skywalker>
-References: <E1KSEkA-00009o-CV@closure.thunk.org> <20080811143911.GA6455@skywalker> <20080811181524.GA9769@skywalker> <20080813023205.GA8232@mit.edu>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd jbd2: fix dio
+	writereturningEIOwhentry_to_release_page fails
+Date: Wed, 13 Aug 2008 12:56:04 +0200
+Message-ID: <20080813105603.GB14392@duck.suse.cz>
+References: <1218029114.15342.58.camel@think.oraclecorp.com> <20080806135337.GA3615@duck.suse.cz> <1218063477.6383.41.camel@mingming-laptop> <6.0.0.20.2.20080807115853.03f95b78@172.19.0.2> <1218104494.15342.171.camel@think.oraclecorp.com> <6.0.0.20.2.20080808113605.04141328@172.19.0.2> <1218200055.15342.230.camel@think.oraclecorp.com> <6.0.0.20.2.20080811123405.03ec03d0@172.19.0.2> <1218547706.15342.305.camel@think.oraclecorp.com> <1218571599.6423.22.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp01.in.ibm.com ([59.145.155.1]:45754 "EHLO
-	e28esmtp01.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752129AbYHMKw3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 Aug 2008 06:52:29 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp01.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7DAqQS7032145
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2008 16:22:26 +0530
-Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7DAqQ7B1241152
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2008 16:22:26 +0530
-Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7DAqPLR017410
-	for <linux-ext4@vger.kernel.org>; Wed, 13 Aug 2008 16:22:25 +0530
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Chris Mason <chris.mason@oracle.com>,
+	Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	Zach Brown <zach.brown@oracle.com>
+To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20080813023205.GA8232@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1218571599.6423.22.camel@mingming-laptop>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Aug 12, 2008 at 10:32:05PM -0400, Theodore Tso wrote:
-> On Mon, Aug 11, 2008 at 11:45:24PM +0530, Aneesh Kumar K.V wrote:
-> > On Mon, Aug 11, 2008 at 08:09:12PM +0530, Aneesh Kumar K.V wrote:
-> > > Can you try this patch ? The patch make group preallocation use the goal
-> > > block.
-> > > 
-> > 
-> > Results with and without patch.
-> > 
-> > http://www.radian.org/~kvaneesh/ext4/lg-fragmentation/
-> > 
-> 
-> My results match yours; seems to be a bit better, but it's not fixing
-> the fundamental problem.  With the patch:
-> 
->  26524: expecting 638190 actual extent phys 631960 log 1 len 1
->  26527: expecting 638191 actual extent phys 631963 log 1 len 1
->  26533: expecting 638192 actual extent phys 631976 log 1 len 5
->  26534: expecting 638193 actual extent phys 631981 log 1 len 2
->  26536: expecting 638194 actual extent phys 631984 log 1 len 6
->  26538: expecting 638195 actual extent phys 631991 log 1 len 5
->  26540: expecting 638196 actual extent phys 631997 log 1 len 2
->  26545: expecting 638197 actual extent phys 632009 log 1 len 1
->  26546: expecting 638198 actual extent phys 632010 log 1 len 6
->  26604: expecting 638199 actual extent phys 632156 log 1 len 1
-> 
-> Useing debugfs's stat command to look at the blocks:
-> 
-> 26524: (0):638189, (1):631960
-> 26527: (0):638190, (1):631963
-> 26533: (0):638191, (1-5):631976-631980
-> 26534: (0):638192, (1-2):631981-631982
-> 26536: (0):638193, (1-6):631984-631989
-> 26538: (0):638194, (1-5):631991-631995
-> 26540: (0):638195, (1-2):631997-631998
-> 26545: (0):638196, (1):632009
-> 26546: (0):638197, (1-6):632010-632015
+On Tue 12-08-08 13:06:39, Mingming Cao wrote:
+> =E5=9C=A8 2008-08-12=E4=BA=8C=E7=9A=84 09:28 -0400=EF=BC=8CChris Maso=
+n=E5=86=99=E9=81=93=EF=BC=9A=20
+> > On Mon, 2008-08-11 at 15:25 +0900, Hisashi Hifumi wrote:
+> > > >> >> >I am wondering why we need stronger invalidate hurantees f=
+or DIO->
+> > > >> >> >invalidate_inode_pages_range(),which force the page being =
+removed from
+> > > >> >> >page cache? In case of bh is busy due to ext3 writeout,
+> > > >> >> >journal_try_to_free_buffers() could return different error=
+ number(EBUSY)
+> > > >> >> >to try_to_releasepage() (instead of EIO).  In that case,  =
+could we just
+> > > >> >> >leave the page in the cache, clean pageuptodate() (to forc=
+e later buffer
+> > > >> >> >read to read from disk) and then invalidate_complete_page2=
+() return
+> > > >> >> >successfully? Any issue with this way?
+> > > >> >>=20
+> > > >> >> My idea is that journal_try_to_free_buffers returns EBUSY i=
+f it fails due to
+> > > >> >> bh busy, and dio write falls back to buffered write. This i=
+s easy to fix.
+> > > >> >>=20
+> > > >> >>=20
+> > > >> >
+> > > >> >What about the invalidates done after the DIO has already run
+> > > >> >non-buffered?
+> > > >>=20
+> > > >> Dio write falls back to buffered IO when writing to a hole on =
+ext3, I=20
+> > > >think. I want to=20
+> > > >> apply this mechanism to fix this issue. When try_to_release_pa=
+ge fails on=20
+> > > >a page=20
+> > > >> due to bh busy, dio write does buffered write, sync_page_range=
+, and=20
+> > > >> wait_on_page_writeback, imvalidates page cache to preserve dio=
+ semantics.=20
+> > > >> Even if page invalidation that is carried out after=20
+> > > >wait_on_page_writeback fails,=20
+> > > >> there is no inconsistency between HDD and page cache.
+> > > >>=20
+> > > >
+> > > >Sorry, I'm sure I wasn't very clear, I was referencing this code=
+ from
+> > > >mm/filemap.c:
+> > > >
+> > > >        written =3D mapping->a_ops->direct_IO(WRITE, iocb, iov, =
+pos, *nr_segs);
+> > > >
+> > > >        /*
+> > > >         * Finally, try again to invalidate clean pages which mi=
+ght have been
+> > > >         * cached by non-direct readahead, or faulted in by get_=
+user_pages()
+> > > >         * if the source of the write was an mmap'ed region of t=
+he file
+> > > >         * we're writing.  Either one is a pretty crazy thing to=
+ do,
+> > > >         * so we don't support it 100%.  If this invalidation
+> > > >         * fails, tough, the write still worked...
+> > > >         */
+> > > >        if (mapping->nrpages) {
+> > > >                invalidate_inode_pages2_range(mapping,
+> > > >                                              pos >> PAGE_CACHE_=
+SHIFT, end);
+> > > >        }
+> > > >
+> > > >If this second invalidate fails during a DIO write, we'll have u=
+p to
+> > > >date pages in cache that don't match the data on disk.  It is un=
+likely
+> > > >to fail because the conditions that make jbd unable to free a bu=
+ffer are
+> > > >rare, but it can still happen with the write combination of mmap=
+ usage.
+> > > >
+> > > >The good news is the second invalidate doesn't make O_DIRECT ret=
+urn
+> > > >-EIO.  But, it sounds like fixing do_launder_page to always call=
+ into
+> > > >the FS can fix all of these problems.  Am I missing something?
+> > > >
+> > >=20
+> > > My approach is not implementing do_launder_page for ext3.
+> > > It is needed to modify VFS.
+> > >=20
+> > > My patch is as follows:
+> >=20
+> > Sorry, I'm still not sure why the do_launder_page implementation is=
+ a
+> > bad idea.  Clearly Mingming spent quite some time on it in the past=
+, but
+> > given that it could provide a hook for the FS to do expensive opera=
+tions
+> > to make the page really go away, why not do it?
+> >=20
+>=20
+> > As far as I can tell, the only current users afs, nfs and fuse.  Pu=
+shing
+> > down the PageDirty check to those filesystems should be trivial.
+> >=20
+> >=20
+>=20
+> I thought about your suggestion before, there should be no problem to
+> push down the pagedirty check to underlying fs.=20
+>=20
+>  My concern is  even if we wait for page writeback cleared  (from
+> ext3_ordered_writepage() ) in the launder_page(),  (which the wait
+> actually already done in previous DIO ->filemap_write_wait()),
+> ext3_ordered_writepage()  still possibly hold the ref to the bh and
+> later journal_try_to_free_buffers() could still fail due to that.
+  Yes, how to properly wait for writepage() to finish is a different ma=
+tter
+and doing it launder_page() does not help. The only thing is that in
+launder_page() we can do more expensive things because it is going to b=
+e
+called only before DIO, not for ordinary page freeing on memory pressur=
+e.
 
-I am not sure why we are getting single block request for inodes
-26524 etc. With delayed alloc we should have got 2 block request.
+> >        ->ext3_ordered_writepage()
+> >          walk_page_buffers() <- take a bh ref
+> >          block_write_full_page() <- unlock_page
+> >               : <- end_page_writeback
+> >                 : <- race! (dio write->try_to_release_page fails)
+>=20
+>  here is the  window.
+> >                  walk_page_buffers() <-release a bh ref
+>=20
+> And we need someway to notify DIO code from ext3_ordered_writepage() =
+to
+> indicating they are done with those buffers. That's the hard way, as =
+Jan
+> mentioned.
+  Well, we can always introduce something like a per-sb waitqueue where
+processes waiting for references to some buffer to be released would dw=
+ell.
+We would wakeup processes in this queue after writepage drops all it's
+references, we could even use the same mechanism for waiting till commi=
+t
+code releases those references... But returning EBUSY and falling back =
+to
+buffered writes is definitely easier to do (modulo what I wrote to Chri=
+s
+about hiding possible problems).
 
-> 
-> Out of curiosity, I also probed the inode numbers that were out of
-> sequence from above.  They seem to be mostly allocating out of the
-> numbers used for the second extent, above.  
-> 
-> 26526: (0):631961
-> 26526: (0):631962
-> 26528: (0):631964
-> 26529: (0):411742
-> 26530: (0):631965
-> 26531: (0-1):631966-631967
-> 26532: (0-7):631968-631975
-> 26535: (0):631983
-> 26537: (0):631990
-> 26541: (0-7):631999-632006
-> 26542: (0):632007
-> 26543: (0):632008
-> 26544: (0):411743
-> 26547: (0):632016
-> 
-> Inode  Pathname
-> 26524  /lib/rhythmbox/plugins/lyrics/LyricsConfigureDialog.py
-> 26525  /lib/rhythmbox/plugins/lyrics/LyrcParser.py
-> 26526  /lib/rhythmbox/plugins/lyrics/LyricsParse.py
-> 26527  /lib/rhythmbox/plugins/lyrics/LyricsConfigureDialog.pyc
-> 26528  /lib/rhythmbox/plugins/lyrics/WinampcnParser.py
-> 26529  /lib/rhythmbox/plugins/magnatune
-> 26530  /lib/rhythmbox/plugins/magnatune/magnatune_logo_color_small.png
-> 26531  /lib/rhythmbox/plugins/magnatune/magnatune.rb-plugin
-> 26532  /lib/rhythmbox/plugins/magnatune/magnatune-prefs.glade
-> 26533  /lib/rhythmbox/plugins/magnatune/MagnatuneSource.pyc
-> 26534  /lib/rhythmbox/plugins/magnatune/__init__.py
-> 26535  /lib/rhythmbox/plugins/magnatune/BuyAlbumHandler.py
-> 26536  /lib/rhythmbox/plugins/magnatune/magnatune-purchase.glade
-> 26537  /lib/rhythmbox/plugins/magnatune/TrackListHandler.py
-> 26538  /lib/rhythmbox/plugins/magnatune/MagnatuneSource.py
-> 26539  /lib/rhythmbox/plugins/magnatune/magnatune_logo_color_tiny.png
-> 26540  /lib/rhythmbox/plugins/magnatune/__init__.pyc
-> 26541  /lib/rhythmbox/plugins/magnatune/magnatune-loading.glade
-> 26542  /lib/rhythmbox/plugins/magnatune/TrackListHandler.pyc
-> 26543  /lib/rhythmbox/plugins/magnatune/BuyAlbumHandler.pyc
-> 26544  /lib/rhythmbox/plugins/audioscrobbler
-> 26546  /lib/rhythmbox/plugins/audioscrobbler/audioscrobbler-prefs.glade
-> 26547  /lib/rhythmbox/plugins/audioscrobbler/audioscrobbler-ui.xml
-> 
-> Looks like we still have some problems with the block allocator...
+> > With that said, I don't have strong feelings against falling back t=
+o
+> > buffered IO when the invalidate fails. =20
+> =20
+> It seems a little odd that we have to back to buffered IO in this cas=
+e.
+> The pages are all flushed,  DIO just want to make sure the
+> journaltransactions who still keep those buffers are removed from the=
+ir
+> list. It did that, the only reason to keep DIO fail is someone else
+> hasn't release the bh.
+>=20
+> Current code enforce all the buffers have to be freed and pages are
+> removed from page cache, in order to force later read are from disk. =
+ I
+> am not sure why can't we just leave the page in the cache, just clear=
+ it
+> uptodate flag, without reduce the page ref count?   I think DIO shoul=
+d
+> proceed it's IO in this case...
+  The problem with clearing page uptodate is described in commit
+84209e02de48d72289650cc5a7ae8dd18223620f. The page may be currently in =
+the
+pipe and clearing the uptodate bit under it makes them unhappy (returni=
+ng
+errors or so). So either one has to change the pipe handling or we have=
+ to
+cope without clearing page uptodate bit.
 
-The problem is with delalloc and mballoc locality group. With delalloc
-we use pdflush to write the pages. Small file allocation use a per-cpu
-prealloc space. In my understanding using Per-CPU prealloc space is
-fine without delalloc. Because without delalloc get_block happens in the
-process context at write_begin and OS scheduler will not schedule the
-task to other CPU unless needed.
-
-With delalloc we have pdflush doing block allocation and using per-cpu
-may not really help here. So i tried a small patch as below. But that
-didn't help much. Also the patch would increase contention on the
-locality group mutex. So i guess the change is not worth. 
-
-But with delalloc we should have got multiple block request together.
-That implies we should get a single get_block request for the whole
-file. I will have to instrument the kernel to understand why it is not
-happening.
-
-Even though the files are fragmented I guess we have those blocks closer
-on disk right ?
-
-diff --git a/fs/ext4/ext4_i.h b/fs/ext4/ext4_i.h
-index ef7409f..734b6ef 100644
---- a/fs/ext4/ext4_i.h
-+++ b/fs/ext4/ext4_i.h
-@@ -163,6 +163,8 @@ struct ext4_inode_info {
- 	/* mballoc */
- 	struct list_head i_prealloc_list;
- 	spinlock_t i_prealloc_lock;
-+	/* locality group used for block allocation */
-+	struct ext4_locality_group *lg;
- 
- 	/* allocation reservation info for delalloc */
- 	unsigned long i_reserved_data_blocks;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 25fe375..293f048 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4061,9 +4061,10 @@ static inline void ext4_mb_show_ac(struct ext4_allocation_context *ac)
-  */
- static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
- {
--	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
--	int bsbits = ac->ac_sb->s_blocksize_bits;
- 	loff_t size, isize;
-+	int bsbits = ac->ac_sb->s_blocksize_bits;
-+	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
-+	struct ext4_inode_info *ei = EXT4_I(ac->ac_inode);
- 
- 	if (!(ac->ac_flags & EXT4_MB_HINT_DATA))
- 		return;
-@@ -4085,13 +4086,23 @@ static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
- 	 * per cpu locality group is to reduce the contention between block
- 	 * request from multiple CPUs.
- 	 */
--	ac->ac_lg = &sbi->s_locality_groups[get_cpu()];
--	put_cpu();
-+	if (ei->lg)
-+		ac->ac_lg = ei->lg;
-+	else {
-+		ac->ac_lg = &sbi->s_locality_groups[get_cpu()];
-+		ei->lg = ac->ac_lg;
-+		put_cpu();
-+	}
- 
- 	/* we're going to use group allocation */
- 	ac->ac_flags |= EXT4_MB_HINT_GROUP_ALLOC;
- 
--	/* serialize all allocations in the group */
-+	/*
-+	 * serialize all allocations in the group
-+	 * If we find lot of contention we may want
-+	 * to add waiters count and use other lg if
-+	 * we have large number of waiters
-+	 */
- 	mutex_lock(&ac->ac_lg->lg_mutex);
- }
- 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 09e3c56..08bdbf9 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -576,6 +576,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	ei->i_reserved_meta_blocks = 0;
- 	ei->i_allocated_meta_blocks = 0;
- 	ei->i_delalloc_reserved_flag = 0;
-+	ei->lg = NULL;
- 	spin_lock_init(&(ei->i_block_reservation_lock));
- 	return &ei->vfs_inode;
- }
+								Honza
+--=20
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
