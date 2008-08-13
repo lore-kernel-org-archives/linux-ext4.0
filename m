@@ -1,51 +1,46 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: tracepoints in ext4 (and/or ext3?)
-Date: Tue, 12 Aug 2008 20:42:36 -0500
-Message-ID: <48A23C0C.1070204@redhat.com>
-References: <48A09E7F.7060605@redhat.com> <20080812081954.5f5eeb10@gara> <20080812163232.GC8857@mit.edu>
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Subject: [PATCH] vmscan: set try_to_release_page's gfp_mask to 0
+Date: Wed, 13 Aug 2008 11:21:16 +0900
+Message-ID: <6.0.0.20.2.20080813111835.03d345b0@172.19.0.2>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: "Jose R. Santos" <jrs@us.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:38744 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752327AbYHMBqt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 Aug 2008 21:46:49 -0400
-In-Reply-To: <20080812163232.GC8857@mit.edu>
+Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:50683 "EHLO
+	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752165AbYHMCX0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 Aug 2008 22:23:26 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Tue, Aug 12, 2008 at 08:19:54AM -0500, Jose R. Santos wrote:
->> Good idea, although Im not sure if ext[34] is the best place we should
->> start putting markers though.
-> 
-> I can think of ext3/4 specific markers that would be useful for people
-> who are tuning our filesystems for performance.  This would include
-> when we start and end tranactions, when we force a checkpoint, when we
-> create and, extend, and finish using a handle in the jbd layer.
+Hi.
 
-Yep this is the kind of thing I thought of at first ...
+shrink_page_list passes gfp_mask to try_to_release_page.
+When shrink_page_list is called from kswapd or buddy system, gfp_mask is set
+and (gfp_mask & __GFP_WAIT) and (gfp_mask & __GFP_FS) check is positive.
+releasepage of jbd/jbd2(ext3/4, ocfs2) and XFS use this parameter. 
+If try_to_free_page fails due to bh busy in jbd/jbd2, jbd/jbd2 lets a thread wait for 
+committing transaction. I think this has big performance impacts for vmscan.
+So I modified shrink_page_list not to pass gfp_mask to try_to_release_page
+in ordered to improve vmscan performance.
 
-> In the ext4 itself, knowing when we are mapping delayed allocations
-> would be useful, as well as when we freeze and unfreeze a filesystem
-> (i.e., for snapshots).
+Thanks.
 
-I could imagine even things like when/where/how big each allocation is,
-also maybe some things in the lookup paths...
+Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 
-We might even be able to ditch the mballoc history in favor of
-tracepoints if desired?
-
--Eric
-
-> There are a lot of other tracepoints that probably do make more sense
-> to be put in the VFS layer, although on thing that would be *really*
-> nice is some semantic sugar in Systemtap or in a Systemtap tapset so
-> that we only trigger the tracepoints for a particular filesystem.
-> 
->      	     	     	 	     	   - Ted
+diff -Nrup linux-2.6.27-rc2.org/mm/vmscan.c linux-2.6.27-rc2.vmscan/mm/vmscan.c
+--- linux-2.6.27-rc2.org/mm/vmscan.c	2008-08-11 14:33:24.000000000 +0900
++++ linux-2.6.27-rc2.vmscan/mm/vmscan.c	2008-08-12 18:57:05.000000000 +0900
+@@ -614,7 +614,7 @@ static unsigned long shrink_page_list(st
+ 		* Otherwise, leave the page on the LRU so it is swappable.
+ 		*/
+ 		if (PagePrivate(page)) {
+-			if (!try_to_release_page(page, sc->gfp_mask))
++			if (!try_to_release_page(page, 0))
+ 				goto activate_locked;
+ 			if (!mapping && page_count(page) == 1) {
+ 				unlock_page(page);
 
