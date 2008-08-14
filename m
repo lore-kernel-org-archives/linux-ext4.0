@@ -1,79 +1,46 @@
 From: David Woodhouse <dwmw2@infradead.org>
-Subject: [EXT2] Discard unused sectors
-Date: Thu, 14 Aug 2008 09:59:39 +0100
-Message-ID: <1218704379.4620.46.camel@pmac.infradead.org>
+Subject: Re: [EXT2] Discard unused sectors
+Date: Thu, 14 Aug 2008 10:05:48 +0100
+Message-ID: <1218704748.4620.50.camel@pmac.infradead.org>
+References: <1218704379.4620.46.camel@pmac.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:33530 "EHLO
+Received: from bombadil.infradead.org ([18.85.46.34]:47255 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753041AbYHNI7l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Aug 2008 04:59:41 -0400
+	with ESMTP id S1757439AbYHNJFu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Aug 2008 05:05:50 -0400
 Received: from pmac.infradead.org ([2001:8b0:10b:1:20d:93ff:fe7a:3f2c])
 	by bombadil.infradead.org with esmtpsa (Exim 4.68 #1 (Red Hat Linux))
-	id 1KTYgH-0003vZ-3K
-	for linux-ext4@vger.kernel.org; Thu, 14 Aug 2008 08:59:41 +0000
+	id 1KTYmE-00038w-8y
+	for linux-ext4@vger.kernel.org; Thu, 14 Aug 2008 09:05:50 +0000
+In-Reply-To: <1218704379.4620.46.camel@pmac.infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When a file is deleted, tell the block device that we don't care about
-its blocks any more.
+I'm not sure how to do this for ext[34]. The sb_issue_discard() functio=
+n
+issues its requests as a soft barrier, because for na=C3=AFve callers i=
+t
+needs to ensure that the discard happens _before_ any subsequent writes
+to the same sectors (if they get reallocated immediately).
 
-Signed-off-by: David Woodhouse <David.Woodhouse@intel.com>
----
-For linux-next, where sb_issue_discard() has been implemented.
-http://git.kernel.dk/?p=linux-2.6-block.git;a=shortlog;h=refs/heads/for-next
+But ext[34] can probably do better than that, and submit the discard
+requests _without_ barriers of their own. If someone with a bit more
+clue does it, that is.
 
- fs/ext2/balloc.c |    9 ++++++---
- 1 files changed, 6 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 10bb02c..03fc2dc 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -16,6 +16,7 @@
- #include <linux/sched.h>
- #include <linux/buffer_head.h>
- #include <linux/capability.h>
-+#include <linux/blkdev.h>
- 
- /*
-  * balloc.c contains the blocks allocation and deallocation routines
-@@ -478,13 +479,13 @@ void ext2_discard_reservation(struct inode *inode)
- }
- 
- /**
-- * ext2_free_blocks_sb() -- Free given blocks and update quota and i_blocks
-+ * ext2_free_blocks() -- Free given blocks and update quota and i_blocks
-  * @inode:		inode
-  * @block:		start physcial block to free
-  * @count:		number of blocks to free
-  */
--void ext2_free_blocks (struct inode * inode, unsigned long block,
--		       unsigned long count)
-+void ext2_free_blocks(struct inode * inode, unsigned long block,
-+		      unsigned long count)
- {
- 	struct buffer_head *bitmap_bh = NULL;
- 	struct buffer_head * bh2;
-@@ -555,6 +556,8 @@ do_more:
- 		}
- 	}
- 
-+	sb_issue_discard(sb, block, count);
-+
- 	mark_buffer_dirty(bitmap_bh);
- 	if (sb->s_flags & MS_SYNCHRONOUS)
- 		sync_dirty_buffer(bitmap_bh);
--- 
-1.5.5.1
-
-
--- 
-David Woodhouse                            Open Source Technology Centre
-David.Woodhouse@intel.com                              Intel Corporation
+--=20
+David Woodhouse                            Open Source Technology Centr=
+e
+David.Woodhouse@intel.com                              Intel Corporatio=
+n
 
 
 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
