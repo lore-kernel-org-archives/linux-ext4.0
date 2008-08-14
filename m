@@ -1,162 +1,221 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: Bug in delayed allocation: really bad block layouts!
-Date: Thu, 14 Aug 2008 14:49:32 -0700
-Message-ID: <1218750572.6362.3.camel@mingming-laptop>
-References: <E1KSEkA-00009o-CV@closure.thunk.org>
-	 <20080811143911.GA6455@skywalker> <20080811181524.GA9769@skywalker>
-	 <20080813023205.GA8232@mit.edu>  <20080813105222.GG6439@skywalker>
+Subject: Re: [PATCH] ext4: Fix small file fragmentation
+Date: Thu, 14 Aug 2008 15:16:05 -0700
+Message-ID: <1218752165.6362.18.camel@mingming-laptop>
+References: <1218735880-10915-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:52864 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751332AbYHNVtf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Aug 2008 17:49:35 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7ELnYRK020534
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2008 17:49:34 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7ELnYfc107822
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2008 15:49:34 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7ELnXSh015684
-	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2008 15:49:33 -0600
-In-Reply-To: <20080813105222.GG6439@skywalker>
+Received: from e5.ny.us.ibm.com ([32.97.182.145]:44345 "EHLO e5.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751584AbYHNWQJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 Aug 2008 18:16:09 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7EMG7oW024750
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2008 18:16:07 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7EMG7kT186410
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2008 18:16:07 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7EMG6g8020339
+	for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2008 18:16:07 -0400
+In-Reply-To: <1218735880-10915-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-=E5=9C=A8 2008-08-13=E4=B8=89=E7=9A=84 16:22 +0530=EF=BC=8CAneesh Kumar=
+=E5=9C=A8 2008-08-14=E5=9B=9B=E7=9A=84 23:14 +0530=EF=BC=8CAneesh Kumar=
  K.V=E5=86=99=E9=81=93=EF=BC=9A
-> On Tue, Aug 12, 2008 at 10:32:05PM -0400, Theodore Tso wrote:
-> > On Mon, Aug 11, 2008 at 11:45:24PM +0530, Aneesh Kumar K.V wrote:
-> > > On Mon, Aug 11, 2008 at 08:09:12PM +0530, Aneesh Kumar K.V wrote:
-> > > > Can you try this patch ? The patch make group preallocation use=
- the goal
-> > > > block.
-> > > >=20
-> > >=20
-> > > Results with and without patch.
-> > >=20
-> > > http://www.radian.org/~kvaneesh/ext4/lg-fragmentation/
-> > >=20
-> >=20
-> > My results match yours; seems to be a bit better, but it's not fixi=
-ng
-> > the fundamental problem.  With the patch:
-> >=20
-> >  26524: expecting 638190 actual extent phys 631960 log 1 len 1
-> >  26527: expecting 638191 actual extent phys 631963 log 1 len 1
-> >  26533: expecting 638192 actual extent phys 631976 log 1 len 5
-> >  26534: expecting 638193 actual extent phys 631981 log 1 len 2
-> >  26536: expecting 638194 actual extent phys 631984 log 1 len 6
-> >  26538: expecting 638195 actual extent phys 631991 log 1 len 5
-> >  26540: expecting 638196 actual extent phys 631997 log 1 len 2
-> >  26545: expecting 638197 actual extent phys 632009 log 1 len 1
-> >  26546: expecting 638198 actual extent phys 632010 log 1 len 6
-> >  26604: expecting 638199 actual extent phys 632156 log 1 len 1
-> >=20
-> > Useing debugfs's stat command to look at the blocks:
-> >=20
-> > 26524: (0):638189, (1):631960
-> > 26527: (0):638190, (1):631963
-> > 26533: (0):638191, (1-5):631976-631980
-> > 26534: (0):638192, (1-2):631981-631982
-> > 26536: (0):638193, (1-6):631984-631989
-> > 26538: (0):638194, (1-5):631991-631995
-> > 26540: (0):638195, (1-2):631997-631998
-> > 26545: (0):638196, (1):632009
-> > 26546: (0):638197, (1-6):632010-632015
+> mballoc small file block allocation use per cpu prealloc
+> space. Use goal block when searching for the right prealloc
+> space. Also make sure ext4_da_writepages tries to write
+> all the pages for small files in single attempt
 >=20
-> I am not sure why we are getting single block request for inodes
-> 26524 etc. With delayed alloc we should have got 2 block request.
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/inode.c   |   21 +++++++++++++++------
+>  fs/ext4/mballoc.c |   44 +++++++++++++++++++++++++++++++++++++------=
+-
+>  fs/inode.c        |    1 +
+>  3 files changed, 53 insertions(+), 13 deletions(-)
 >=20
-> >=20
-> > Out of curiosity, I also probed the inode numbers that were out of
-> > sequence from above.  They seem to be mostly allocating out of the
-> > numbers used for the second extent, above. =20
-> >=20
-> > 26526: (0):631961
-> > 26526: (0):631962
-> > 26528: (0):631964
-> > 26529: (0):411742
-> > 26530: (0):631965
-> > 26531: (0-1):631966-631967
-> > 26532: (0-7):631968-631975
-> > 26535: (0):631983
-> > 26537: (0):631990
-> > 26541: (0-7):631999-632006
-> > 26542: (0):632007
-> > 26543: (0):632008
-> > 26544: (0):411743
-> > 26547: (0):632016
-> >=20
-> > Inode  Pathname
-> > 26524  /lib/rhythmbox/plugins/lyrics/LyricsConfigureDialog.py
-> > 26525  /lib/rhythmbox/plugins/lyrics/LyrcParser.py
-> > 26526  /lib/rhythmbox/plugins/lyrics/LyricsParse.py
-> > 26527  /lib/rhythmbox/plugins/lyrics/LyricsConfigureDialog.pyc
-> > 26528  /lib/rhythmbox/plugins/lyrics/WinampcnParser.py
-> > 26529  /lib/rhythmbox/plugins/magnatune
-> > 26530  /lib/rhythmbox/plugins/magnatune/magnatune_logo_color_small.=
-png
-> > 26531  /lib/rhythmbox/plugins/magnatune/magnatune.rb-plugin
-> > 26532  /lib/rhythmbox/plugins/magnatune/magnatune-prefs.glade
-> > 26533  /lib/rhythmbox/plugins/magnatune/MagnatuneSource.pyc
-> > 26534  /lib/rhythmbox/plugins/magnatune/__init__.py
-> > 26535  /lib/rhythmbox/plugins/magnatune/BuyAlbumHandler.py
-> > 26536  /lib/rhythmbox/plugins/magnatune/magnatune-purchase.glade
-> > 26537  /lib/rhythmbox/plugins/magnatune/TrackListHandler.py
-> > 26538  /lib/rhythmbox/plugins/magnatune/MagnatuneSource.py
-> > 26539  /lib/rhythmbox/plugins/magnatune/magnatune_logo_color_tiny.p=
-ng
-> > 26540  /lib/rhythmbox/plugins/magnatune/__init__.pyc
-> > 26541  /lib/rhythmbox/plugins/magnatune/magnatune-loading.glade
-> > 26542  /lib/rhythmbox/plugins/magnatune/TrackListHandler.pyc
-> > 26543  /lib/rhythmbox/plugins/magnatune/BuyAlbumHandler.pyc
-> > 26544  /lib/rhythmbox/plugins/audioscrobbler
-> > 26546  /lib/rhythmbox/plugins/audioscrobbler/audioscrobbler-prefs.g=
-lade
-> > 26547  /lib/rhythmbox/plugins/audioscrobbler/audioscrobbler-ui.xml
-> >=20
-> > Looks like we still have some problems with the block allocator...
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index e144896..0b34998 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2318,13 +2318,12 @@ static int ext4_writepages_trans_blocks(struc=
+t inode *inode)
+>  static int ext4_da_writepages(struct address_space *mapping,
+>                                  struct writeback_control *wbc)
+>  {
+> -	struct inode *inode =3D mapping->host;
+>  	handle_t *handle =3D NULL;
+> -	int needed_blocks;
+> -	int ret =3D 0;
+> -	long to_write;
+>  	loff_t range_start =3D 0;
+> -	long pages_skipped =3D 0;
+> +	struct inode *inode =3D mapping->host;
+> +	int needed_blocks, ret =3D 0, nr_to_writebump =3D 0;
+> +	long to_write, pages_skipped =3D 0;
+> +	struct ext4_sb_info *sbi =3D EXT4_SB(mapping->host->i_sb);
 >=20
-> The problem is with delalloc and mballoc locality group. With delallo=
-c
-> we use pdflush to write the pages. Small file allocation use a per-cp=
-u
-> prealloc space. In my understanding using Per-CPU prealloc space is
-> fine without delalloc. Because without delalloc get_block happens in =
-the
-> process context at write_begin and OS scheduler will not schedule the
-> task to other CPU unless needed.
->=20
-> With delalloc we have pdflush doing block allocation and using per-cp=
-u
-> may not really help here.=20
-
-I wonder if it still make sense for using per~cpu group locality
-allocation with delalloc, with the fact that all block allocation is
-done via pdflush?=20
-
-> So i tried a small patch as below. But that
-> didn't help much. Also the patch would increase contention on the
-> locality group mutex. So i guess the change is not worth.=20
->=20
-> But with delalloc we should have got multiple block request together.
-> That implies we should get a single get_block request for the whole
-> file. I will have to instrument the kernel to understand why it is no=
-t
-> happening.
+>  	/*
+>  	 * No pages to write? This is mainly a kludge to avoid starting
+> @@ -2333,6 +2332,16 @@ static int ext4_da_writepages(struct address_s=
+pace *mapping,
+>  	 */
+>  	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIR=
+TY))
+>  		return 0;
+> +	/*
+> +	 * Make sure nr_to_write is >=3D sbi->s_mb_stream_request
+> +	 * This make sure small files blocks are allocated in
+> +	 * single attempt. This ensure that small files
+> +	 * get less fragmented.
+> +	 */
+> +	if (wbc->nr_to_write < sbi->s_mb_stream_request) {
+> +		nr_to_writebump =3D sbi->s_mb_stream_request - wbc->nr_to_write;
+> +		wbc->nr_to_write =3D sbi->s_mb_stream_request;
+> +	}
 >=20
 
-I am courious to know this too. Why we get single block allocation
-request for delalloc?
+do_writepages() could be called with wbc with a specified range, is it
+okay  forces da writepages to flush at last 16
+pages(sbi->s_mb_stream_request) all the time, which is more than what
+the caller asked for?
 
+I assume you trying to address the fragmentation issue with small
+request for da_writepages() discussed in previous email? (A little more
+description will be helpful here:))
 
+>  	if (!wbc->range_cyclic)
+>  		/*
+> @@ -2413,7 +2422,7 @@ static int ext4_da_writepages(struct address_sp=
+ace *mapping,
+>  	}
+>=20
+>  out_writepages:
+> -	wbc->nr_to_write =3D to_write;
+> +	wbc->nr_to_write =3D to_write - nr_to_writebump;
+>  	wbc->range_start =3D range_start;
+>  	return ret;
+>  }
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index b14a7c7..1afcb11 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -3286,6 +3286,29 @@ static void ext4_mb_use_group_pa(struct ext4_a=
+llocation_context *ac,
+>  	mb_debug("use %u/%u from group pa %p\n", pa->pa_lstart-len, len, pa=
+);
+>  }
+>=20
+> +static struct ext4_prealloc_space *
+> +ext4_mb_check_group_pa(ext4_fsblk_t goal_block,
+> +			struct ext4_prealloc_space *pa,
+> +			struct ext4_prealloc_space *cpa)
+> +{
+> +	ext4_fsblk_t cur_distance, new_distance;
+> +
+> +	if (cpa =3D=3D NULL) {
+> +		atomic_inc(&pa->pa_count);
+> +		return pa;
+> +	}
+> +	cur_distance =3D abs(goal_block - cpa->pa_pstart);
+> +	new_distance =3D abs(goal_block - pa->pa_pstart);
+> +
+> +	if (cur_distance < new_distance)
+> +		return cpa;
+> +
+> +	/* drop the previous reference */
+> +	atomic_dec(&cpa->pa_count);
+> +	atomic_inc(&pa->pa_count);
+> +	return pa;
+> +}
+> +
+>  /*
+>   * search goal blocks in preallocated space
+>   */
+> @@ -3295,7 +3318,8 @@ ext4_mb_use_preallocated(struct ext4_allocation=
+_context *ac)
+>  	int order, i;
+>  	struct ext4_inode_info *ei =3D EXT4_I(ac->ac_inode);
+>  	struct ext4_locality_group *lg;
+> -	struct ext4_prealloc_space *pa;
+> +	struct ext4_prealloc_space *pa, *cpa =3D NULL;
+> +	ext4_fsblk_t goal_block;
+>=20
+>  	/* only data can be preallocated */
+>  	if (!(ac->ac_flags & EXT4_MB_HINT_DATA))
+> @@ -3338,6 +3362,10 @@ ext4_mb_use_preallocated(struct ext4_allocatio=
+n_context *ac)
+>  		/* The max size of hash table is PREALLOC_TB_SIZE */
+>  		order =3D PREALLOC_TB_SIZE - 1;
+>=20
+> +	goal_block =3D ac->ac_g_ex.fe_group * EXT4_BLOCKS_PER_GROUP(ac->ac_=
+sb) +
+> +			ac->ac_g_ex.fe_start +
+> +			le32_to_cpu(EXT4_SB(ac->ac_sb)->s_es->s_first_data_block);
+> +
+>  	for (i =3D order; i < PREALLOC_TB_SIZE; i++) {
+>  		rcu_read_lock();
+>  		list_for_each_entry_rcu(pa, &lg->lg_prealloc_list[i],
+> @@ -3345,17 +3373,19 @@ ext4_mb_use_preallocated(struct ext4_allocati=
+on_context *ac)
+>  			spin_lock(&pa->pa_lock);
+>  			if (pa->pa_deleted =3D=3D 0 &&
+>  					pa->pa_free >=3D ac->ac_o_ex.fe_len) {
+> -				atomic_inc(&pa->pa_count);
+> -				ext4_mb_use_group_pa(ac, pa);
+> -				spin_unlock(&pa->pa_lock);
+> -				ac->ac_criteria =3D 20;
+> -				rcu_read_unlock();
+> -				return 1;
+> +
+> +				cpa =3D ext4_mb_check_group_pa(goal_block,
+> +								pa, cpa);
+>  			}
+
+cpa is initalized as NULL, and I could not see where we set cpa any
+pointer before calling ext4_mb_check_group_pa().   If I understand
+right, the code above passes a  NULL pointer to
+ext4_mb_check_group_pa(), which will result in just choose the pa
+pointer directly,  and bypass the distance calculation guided by the
+goal block.  Did I miss anything?
+
+>  			spin_unlock(&pa->pa_lock);
+>  		}
+>  		rcu_read_unlock();
+>  	}
+> +	if (cpa) {
+> +		ext4_mb_use_group_pa(ac, cpa);
+> +		ac->ac_criteria =3D 20;
+> +		return 1;
+> +	}
+>  	return 0;
+>  }
+>=20
+> diff --git a/fs/inode.c b/fs/inode.c
+> index b6726f6..d77f0ee 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -163,6 +163,7 @@ static struct inode *alloc_inode(struct super_blo=
+ck *sb)
+>  		mapping->a_ops =3D &empty_aops;
+>   		mapping->host =3D inode;
+>  		mapping->flags =3D 0;
+> +		mapping->writeback_index =3D 0;
+>  		mapping_set_gfp_mask(mapping, GFP_HIGHUSER_PAGECACHE);
+>  		mapping->assoc_mapping =3D NULL;
+>  		mapping->backing_dev_info =3D &default_backing_dev_info;
+
+Could you explain what's this change for?
+
+Regards,
 Mingming
 
 --
