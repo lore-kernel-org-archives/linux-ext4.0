@@ -1,46 +1,32 @@
-From: David Woodhouse <dwmw2@infradead.org>
-Subject: Re: [EXT2] Discard unused sectors
-Date: Thu, 14 Aug 2008 10:05:48 +0100
-Message-ID: <1218704748.4620.50.camel@pmac.infradead.org>
-References: <1218704379.4620.46.camel@pmac.infradead.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: duplicate entries on ext3 when using readdir/readdir64
+Date: Thu, 14 Aug 2008 10:52:29 -0400
+Message-ID: <20080814145229.GA8256@mit.edu>
+References: <1217583820.12454.20.camel@kannnix.a2x.lan.at> <20080801121658.GG8736@mit.edu> <1217933631.14552.45.camel@kannnix.a2x.lan.at> <20080806140722.GA14109@mit.edu> <170fa0d20808131421j3e4955dcra611509f1a094547@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Thomas Trauner <tt@it-austria.net>, linux-ext4@vger.kernel.org,
+	ext3-users <ext3-users@redhat.com>
+To: Mike Snitzer <snitzer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:47255 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757439AbYHNJFu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Aug 2008 05:05:50 -0400
-Received: from pmac.infradead.org ([2001:8b0:10b:1:20d:93ff:fe7a:3f2c])
-	by bombadil.infradead.org with esmtpsa (Exim 4.68 #1 (Red Hat Linux))
-	id 1KTYmE-00038w-8y
-	for linux-ext4@vger.kernel.org; Thu, 14 Aug 2008 09:05:50 +0000
-In-Reply-To: <1218704379.4620.46.camel@pmac.infradead.org>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:34213 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750738AbYHNOwf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Aug 2008 10:52:35 -0400
+Content-Disposition: inline
+In-Reply-To: <170fa0d20808131421j3e4955dcra611509f1a094547@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I'm not sure how to do this for ext[34]. The sb_issue_discard() functio=
-n
-issues its requests as a soft barrier, because for na=C3=AFve callers i=
-t
-needs to ensure that the discard happens _before_ any subsequent writes
-to the same sectors (if they get reallocated immediately).
+On Wed, Aug 13, 2008 at 05:21:20PM -0400, Mike Snitzer wrote:
+> 
+> The attached patch has served my employer (IBRIX) well for 2.5 years.
+> It was only recently, when I re-raised this issue internally based on
+> this thread, that a co-worker recalled the fix.
+> 
 
-But ext[34] can probably do better than that, and submit the discard
-requests _without_ barriers of their own. If someone with a bit more
-clue does it, that is.
+I can confirm that this patch fixes things; I also have this patch
+ported to ext4.  I need a Signed-off-by before I can push this to
+Linus, though.
 
---=20
-David Woodhouse                            Open Source Technology Centr=
-e
-David.Woodhouse@intel.com                              Intel Corporatio=
-n
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+							- Ted
