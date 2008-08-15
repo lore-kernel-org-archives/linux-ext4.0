@@ -1,55 +1,61 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: [PATCH] libext2fs : Fix memory leaks in ext2fs_extent_open()
-Date: Sat, 16 Aug 2008 02:26:43 +0530
-Message-ID: <ea11fea30808151356g49cc399fna2457d8902926e97@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH, RFC] ext4: flex_bg ialloc, don't pick "best_flex" with 0
+ inodes
+Date: Fri, 15 Aug 2008 17:01:10 -0500
+Message-ID: <48A5FCA6.5070902@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: mkatiyar@gmail.com
-To: "Theodore Tso" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Cc: "Jose R. Santos" <jrs@us.ibm.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.189]:43757 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751767AbYHOU4o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Aug 2008 16:56:44 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so482413tic.23
-        for <linux-ext4@vger.kernel.org>; Fri, 15 Aug 2008 13:56:43 -0700 (PDT)
-Content-Disposition: inline
+Received: from mx1.redhat.com ([66.187.233.31]:60540 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753880AbYHOWBM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 Aug 2008 18:01:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Memory allocated for the ext2_extent_handle is not getting freed from
-all the return paths in case of error. Below patch fixes it.
+I've got a case where I have a 99G fs with 17G free, as well
+as 400k free inodes, and yet I cannot create a new inode.
 
-Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
+The find_group_flex() function starts with best_flex as
+the parent_fbg_group, which happens to have 0 inodes free.
 
+Some of the flex groups searched have free blocks and free 
+inodes, but the flex_freeb_ratio is < 10, so they're skipped.
+
+Then when a group is compared to the current "best" flex group,
+it does not have more free blocks than "best", so it is skipped
+as well.
+
+This continues until no flex group with free inodes is found
+which has a proper ratio or which has more free blocks than
+the "best" group, and we're left with a "best" group that has
+0 inodes free, and we return -ENOSPC.
+
+It seems like adjusting the following test is a better plan;
+for starters I do not see that best_flex can ever be < 0, so
+that test is replaced, and if the current "best" flex group
+has no inodes free, and the current one does have room,
+it is promoted to the next "best."
+
+Comments?
+
+Signed-of-by: Eric Sandeen <sandeen@redhat.com>
 ---
- lib/ext2fs/extent.c |   10 ++++++----
- 1 files changed, 6 insertions(+), 4 deletions(-)
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 44d7d9b..42a6cb9 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -222,12 +222,14 @@ extern errcode_t ext2fs_extent_open(ext2_filsys
-fs, ext2_ino_t ino,
- 		handle->inode->i_flags |= EXT4_EXTENTS_FL;
- 	}
+Index: linux-2.6/fs/ext4/ialloc.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/ialloc.c	2008-08-04 15:30:30.000000000 -0500
++++ linux-2.6/fs/ext4/ialloc.c	2008-08-15 16:12:47.366515679 -0500
+@@ -351,7 +351,7 @@ find_close_to_parent:
+ 			goto found_flexbg;
+ 		}
+ 
+-		if (best_flex < 0 ||
++		if (flex_group[best_flex].free_inodes == 0 ||
+ 		    (flex_group[i].free_blocks >
+ 		     flex_group[best_flex].free_blocks &&
+ 		     flex_group[i].free_inodes))
 
--	if (!(handle->inode->i_flags & EXT4_EXTENTS_FL))
--		return EXT2_ET_INODE_NOT_EXTENT;
-+	if (!(handle->inode->i_flags & EXT4_EXTENTS_FL)) {
-+		retval = EXT2_ET_INODE_NOT_EXTENT;
-+		goto errout;
-+	}
-
- 	retval = ext2fs_extent_header_verify(eh, sizeof(handle->inode->i_block));
--	if (retval)
--		return (retval);
-+	if (retval)
-+		goto errout;
-
- 	handle->max_depth = ext2fs_le16_to_cpu(eh->eh_depth);
- 	handle->type = ext2fs_le16_to_cpu(eh->eh_magic);
--- 
-1.5.4.3
