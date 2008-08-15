@@ -1,54 +1,57 @@
-From: "Mike Snitzer" <snitzer@gmail.com>
-Subject: Re: duplicate entries on ext3 when using readdir/readdir64
-Date: Thu, 14 Aug 2008 19:27:45 -0400
-Message-ID: <170fa0d20808141627i7f05fbcdnf043e090834940dd@mail.gmail.com>
-References: <1217583820.12454.20.camel@kannnix.a2x.lan.at>
-	 <20080801121658.GG8736@mit.edu>
-	 <1217933631.14552.45.camel@kannnix.a2x.lan.at>
-	 <20080806140722.GA14109@mit.edu>
-	 <170fa0d20808131421j3e4955dcra611509f1a094547@mail.gmail.com>
-	 <20080814025821.GA6469@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [EXT2] Discard unused sectors
+Date: Fri, 15 Aug 2008 08:02:35 -0400
+Message-ID: <20080815120235.GJ13048@mit.edu>
+References: <1218704379.4620.46.camel@pmac.infradead.org> <1218704748.4620.50.camel@pmac.infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Thomas Trauner" <tt@it-austria.net>, linux-ext4@vger.kernel.org,
-	ext3-users <ext3-users@redhat.com>, eugene@ibrix.com
-To: "Theodore Tso" <tytso@mit.edu>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: David Woodhouse <dwmw2@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.181]:1526 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751989AbYHNX1q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 Aug 2008 19:27:46 -0400
-Received: by wa-out-1112.google.com with SMTP id j37so353460waf.23
-        for <linux-ext4@vger.kernel.org>; Thu, 14 Aug 2008 16:27:45 -0700 (PDT)
-In-Reply-To: <20080814025821.GA6469@mit.edu>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:43943 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752941AbYHOMCh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Aug 2008 08:02:37 -0400
 Content-Disposition: inline
+In-Reply-To: <1218704748.4620.50.camel@pmac.infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 13, 2008 at 10:58 PM, Theodore Tso <tytso@mit.edu> wrote:
-> On Wed, Aug 13, 2008 at 05:21:20PM -0400, Mike Snitzer wrote:
->>
->> The attached patch has served my employer (IBRIX) well for 2.5 years.
->> It was only recently, when I re-raised this issue internally based on
->> this thread, that a co-worker recalled the fix.
->>
->
-> The patch looks good.  Did someone raise it 2.5 years ago, and we
-> somehow dropped the ball, or did no one think to submit the patch
-> upstream?
+On Thu, Aug 14, 2008 at 10:05:48AM +0100, David Woodhouse wrote:
+> I'm not sure how to do this for ext[34]. The sb_issue_discard() funct=
+ion
+> issues its requests as a soft barrier, because for na=EFve callers it
+> needs to ensure that the discard happens _before_ any subsequent writ=
+es
+> to the same sectors (if they get reallocated immediately).
+>=20
+> But ext[34] can probably do better than that, and submit the discard
+> requests _without_ barriers of their own. If someone with a bit more
+> clue does it, that is.
 
-We intended to push this fix upstream but doing so got inadvertently
-overlooked as we put focus to new issues.  I mentioned how long ago
-this patch was developed purely to help illustrate the stability of
-the fix.
+It's worse than this.  We can't call sb_issue_discard() until the
+transaction commits, since if we crash before the commit, the undelete
+will not have happened.  (The block/inode bitmaps, inode table,
+et. al., aren't allowed to go out to disk until the transaction
+commit, and similarly, those sectors aren't allowed to get reused
+until the commit happens, as well.) =20
 
-> Also, can I get a Signed-off-by: line for this patch?
+This is going to be true of any filesystem which is doing journaling.
+What makes life a bit more difficult for ext4 is that we are doing
+physical block journaling, so we're not keeping track which blocks are
+getting discarded.  (In contrast, systems that do logical journaling
+are keeping track of specific lists of blocks that are getting freed,
+since that's what they write to the journal.)  This means we'll have
+to keep our own in-memory list of extents for which we should call
+sb_issue_discard() when the transaction finally commits.  So this is
+something that we would have to track in the jbd/jbd2 layer, hanging
+off of the transaction structure.  If we do this right, it will also
+be what OCFS2 can use too (since it uses the jbd layer as well.)
 
-Eugene Dashevsky authored the patch; I refreshed it against 2.6.27-rc3:
-
-Signed-off-by: Eugene Dashevsky <eugene@ibrix.com>
-Signed-off-by: Mike Snitzer <msnitzer@ibrix.com>
-
-thanks,
-Mike
+   	      	      	  	    	     - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
