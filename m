@@ -1,14 +1,13 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH 3/6 V2 ]Ext4: journal credits reservation fixes for DIO,
-	fallocate
-Date: Fri, 15 Aug 2008 17:39:07 -0700
-Message-ID: <1218847147.8183.47.camel@mingming-laptop>
+Subject: [PATCH 5/6  V2]Ext4 journal credits  fixes for delalloc writepages
+Date: Fri, 15 Aug 2008 17:40:58 -0700
+Message-ID: <1218847258.8183.50.camel@mingming-laptop>
 References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker>
 	 <1216774311.6505.4.camel@mingming-laptop>
 	 <20080723074226.GA15091@skywalker>
 	 <1217032947.6394.2.camel@mingming-laptop>
 	 <1218558190.6766.37.camel@mingming-laptop>
-	 <1218558590.6766.47.camel@mingming-laptop>
+	 <1218558938.6766.55.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
@@ -17,215 +16,139 @@ Cc: linux-ext4@vger.kernel.org,
 	Andreas Dilger <adilger@sun.com>
 To: tytso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:37201 "EHLO
+Received: from e34.co.us.ibm.com ([32.97.110.152]:40652 "EHLO
 	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752713AbYHPAjL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Aug 2008 20:39:11 -0400
+	with ESMTP id S1751938AbYHPAlC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 Aug 2008 20:41:02 -0400
 Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7G0dAi3031336
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Aug 2008 20:39:10 -0400
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7G0f1tr001664
+	for <linux-ext4@vger.kernel.org>; Fri, 15 Aug 2008 20:41:01 -0400
 Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7G0dAng181512
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Aug 2008 18:39:10 -0600
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7G0f0Fe131000
+	for <linux-ext4@vger.kernel.org>; Fri, 15 Aug 2008 18:41:00 -0600
 Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7G0d9aO005399
-	for <linux-ext4@vger.kernel.org>; Fri, 15 Aug 2008 18:39:10 -0600
-In-Reply-To: <1218558590.6766.47.camel@mingming-laptop>
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7G0f0wp008256
+	for <linux-ext4@vger.kernel.org>; Fri, 15 Aug 2008 18:41:00 -0600
+In-Reply-To: <1218558938.6766.55.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ext4: journal credits reservation fixes for DIO, fallocate
+Ext4: journal credit fix the delalloc writepages
 
 From: Mingming Cao <cmm@us.ibm.com>
 
-DIO and fallocate credit calculation is different than writepage, as
-they do start a new journal right for each call to ext4_get_blocks_wrap().
-This patch uses the helper function in DIO and fallocate case, passing
-a flag indicating that the modified data are contigous thus could account
-less indirect/index blocks.
+Previous delalloc writepages implementation start a new transaction outside
+a loop call of get_block() to do the block allocation. Due to lack of
+information of how many blocks to be allocated, the estimate of the journal
+credits is very conservtive and caused many issues.
 
-This patch also fixed the journal credit reservation for direct I/O
-(DIO).  Previously the estimated credits for DIO only was calculated for
-non-extent files, which was not enough if the file is extent-based.
-
-Also fixed was fallocate double-counting credits for modifying the the
-superblock.
+With the rewored delayed allocation, a new transaction is created for
+each get_block(), thus we don't need to guess how many credits for the multiple
+chunk of allocation. Start every transaction with credits for insert a
+single exent is enough. But we still need to consider the journalled mode,
+where it need to account for the number of data blocks.  So we guess
+max number of data blocks for each allocation.  Due to the current VFS
+implementation writepages() could only flush PAGEVEC lengh of pages at a
+time, the max block allocation is limited and calculated based on
+that, and the total number of reserved delalloc datablocks, whichever
+is smaller.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
----
- fs/ext4/ext4.h    |    1 +
- fs/ext4/extents.c |   14 +++++++-------
- fs/ext4/inode.c   |   45 ++++++++++++++++++++++++---------------------
- 3 files changed, 32 insertions(+), 28 deletions(-)
+ fs/ext4/inode.c |   42 +++++++++++++++++++++++++++---------------
+ 1 file changed, 27 insertions(+), 15 deletions(-)
 
-===================================================================
-Index: linux-2.6.27-rc3/fs/ext4/extents.c
-===================================================================
---- linux-2.6.27-rc3.orig/fs/ext4/extents.c	2008-08-15 14:51:07.000000000 -0700
-+++ linux-2.6.27-rc3/fs/ext4/extents.c	2008-08-15 17:22:02.000000000 -0700
-@@ -1758,7 +1758,7 @@ int ext4_ext_calc_credits_for_single_ext
- {
- 	if (path) {
- 		int depth = ext_depth(inode);
--		int ret;
-+		int ret = 0;
- 
- 		/* probably there is space in leaf? */
- 		if (le16_to_cpu(path[depth].p_hdr->eh_entries)
-@@ -1771,14 +1771,15 @@ int ext4_ext_calc_credits_for_single_ext
- 			 *  bitmaps and block group descriptor blocks
- 			 *  and other metadat blocks still need to be
- 			 *  accounted.
-+			 */
- 			ret = (num + EXT4_BLOCKS_PER_GROUP(inode->i_sb) -1)
-                              /EXT4_BLOCKS_PER_GROUP(inode->i_sb);
- 			/* 1 one bitmap, 1 block group descriptor */
--			ret = ret*2  + EXT4_META_TRANS_BLOCKS(inode->i_sb);
-+			ret = ret* 2  + EXT4_META_TRANS_BLOCKS(inode->i_sb);
- 		}
- 	}
- 
--	return ext4_meta_trans_blocks(inode, num, 1);
-+	return ext4_chunk_trans_blocks(inode, num);
- }
- 
- /*
-@@ -2811,7 +2812,7 @@ void ext4_ext_truncate(struct inode *ino
- 	/*
- 	 * probably first extent we're gonna free will be last in block
- 	 */
--	err = ext4_writepage_trans_blocks(inode) + 3;
-+	err = ext4_writepage_trans_blocks(inode);
- 	handle = ext4_journal_start(inode, err);
- 	if (IS_ERR(handle))
- 		return;
-@@ -2924,10 +2925,9 @@ long ext4_fallocate(struct inode *inode,
- 	max_blocks = (EXT4_BLOCK_ALIGN(len + offset, blkbits) >> blkbits)
- 							- block;
- 	/*
--	 * credits to insert 1 extent into extent tree + buffers to be able to
--	 * modify 1 super block, 1 block bitmap and 1 group descriptor.
-+	 * credits to insert 1 extent into extent tree
- 	 */
--	credits = EXT4_DATA_TRANS_BLOCKS(inode->i_sb) + 3;
-+	credits = ext4_chunk_trans_blocks(inode, max_blocks);
- 	mutex_lock(&inode->i_mutex);
- retry:
- 	while (ret >= 0 && ret < max_blocks) {
 Index: linux-2.6.27-rc3/fs/ext4/inode.c
 ===================================================================
---- linux-2.6.27-rc3.orig/fs/ext4/inode.c	2008-08-15 14:43:20.000000000 -0700
-+++ linux-2.6.27-rc3/fs/ext4/inode.c	2008-08-15 17:21:04.000000000 -0700
-@@ -1044,18 +1044,6 @@ static void ext4_da_update_reserve_space
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- }
- 
--/* Maximum number of blocks we map for direct IO at once. */
--#define DIO_MAX_BLOCKS 4096
--/*
-- * Number of credits we need for writing DIO_MAX_BLOCKS:
-- * We need sb + group descriptor + bitmap + inode -> 4
-- * For B blocks with A block pointers per block we need:
-- * 1 (triple ind.) + (B/A/A + 2) (doubly ind.) + (B/A + 2) (indirect).
-- * If we plug in 4096 for B and 256 for A (for 1KB block size), we get 25.
-- */
--#define DIO_CREDITS 25
--
--
- /*
-  * The ext4_get_blocks_wrap() function try to look up the requested blocks,
-  * and returns if the blocks are already mapped.
-@@ -1167,19 +1155,23 @@ int ext4_get_blocks_wrap(handle_t *handl
- 	return retval;
- }
- 
-+/* Maximum number of blocks we map for direct IO at once. */
-+#define DIO_MAX_BLOCKS 4096
-+
- static int ext4_get_block(struct inode *inode, sector_t iblock,
- 			struct buffer_head *bh_result, int create)
+--- linux-2.6.27-rc3.orig/fs/ext4/inode.c	2008-08-15 14:51:22.000000000 -0700
++++ linux-2.6.27-rc3/fs/ext4/inode.c	2008-08-15 17:18:09.000000000 -0700
+@@ -1850,8 +1850,11 @@ static void mpage_add_bh_to_extent(struc
  {
- 	handle_t *handle = ext4_journal_current_handle();
- 	int ret = 0, started = 0;
- 	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
-+	int dio_credits;
+ 	struct buffer_head *lbh = &mpd->lbh;
+ 	sector_t next;
++	int nrblocks = lbh->b_size >> mpd->inode->i_blkbits;
  
- 	if (create && !handle) {
- 		/* Direct IO write... */
- 		if (max_blocks > DIO_MAX_BLOCKS)
- 			max_blocks = DIO_MAX_BLOCKS;
--		handle = ext4_journal_start(inode, DIO_CREDITS +
--			      2 * EXT4_QUOTA_TRANS_BLOCKS(inode->i_sb));
-+		dio_credits = ext4_chunk_trans_blocks(inode, max_blocks);
-+		handle = ext4_journal_start(inode, dio_credits);
- 		if (IS_ERR(handle)) {
- 			ret = PTR_ERR(handle);
- 			goto out;
-@@ -2243,7 +2235,7 @@ static int ext4_da_writepage(struct page
-  * for DIO, writepages, and truncate
+-	next = lbh->b_blocknr + (lbh->b_size >> mpd->inode->i_blkbits);
++	/* check if thereserved journal credits might overflow */
++	if (nrblocks >EXT4_MAX_TRANS_DATA)
++		goto flush_it;
+ 
+ 	/*
+ 	 * First block in the extent
+@@ -1863,6 +1866,7 @@ static void mpage_add_bh_to_extent(struc
+ 		return;
+ 	}
+ 
++	next = lbh->b_blocknr + nrblocks;
+ 	/*
+ 	 * Can we merge the block to our big extent?
+ 	 */
+@@ -1871,6 +1875,7 @@ static void mpage_add_bh_to_extent(struc
+ 		return;
+ 	}
+ 
++flush_it:
+ 	/*
+ 	 * We couldn't merge the block to our extent, so we
+ 	 * need to flush current  extent and start new one
+@@ -2231,17 +2236,26 @@ static int ext4_da_writepage(struct page
+ }
+ 
+ /*
+- * For now just follow the DIO way to estimate the max credits
+- * needed to write out EXT4_MAX_WRITEBACK_PAGES.
+- * todo: need to calculate the max credits need for
+- * extent based files, currently the DIO credits is based on
+- * indirect-blocks mapping way.
++ * This is called via ext4_da_writepages() to
++ * calulate the total number of credits to reserve to fit
++ * a single extent allocation into a single transaction,
++ * ext4_da_writpeages() will loop calling this before
++ * the block allocation.
+  *
+- * Probably should have a generic way to calculate credits
+- * for DIO, writepages, and truncate
++ * The page vector size limited the max number of pages could
++ * be writeout at a time. Based on this, the max blocks to pass to
++ * get_block is calculated
   */
- #define EXT4_MAX_WRITEBACK_PAGES      DIO_MAX_BLOCKS
--#define EXT4_MAX_WRITEBACK_CREDITS    DIO_CREDITS
-+#define EXT4_MAX_WRITEBACK_CREDITS    25
+-#define EXT4_MAX_WRITEBACK_PAGES      DIO_MAX_BLOCKS
+-#define EXT4_MAX_WRITEBACK_CREDITS    25
++
++static int ext4_writepages_trans_blocks(struct inode *inode)
++{
++	int max_blocks = EXT4_MAX_TRANS_DATA;
++
++	if (max_blocks > EXT4_I(inode)->i_reserved_data_blocks)
++		max_blocks =  EXT4_I(inode)->i_reserved_data_blocks;
++
++	return ext4_chunk_trans_blocks(inode, max_blocks);
++}
  
  static int ext4_da_writepages(struct address_space *mapping,
- 				struct writeback_control *wbc)
-@@ -4442,7 +4434,8 @@ int ext4_meta_trans_blocks(struct inode*
+                                 struct writeback_control *wbc)
+@@ -2283,7 +2297,7 @@ restart_loop:
+ 		 * by delalloc
+ 		 */
+ 		BUG_ON(ext4_should_journal_data(inode));
+-		needed_blocks = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
++		needed_blocks = ext4_writepages_trans_blocks(inode);
  
- /*
-  * Calulate the total number of credits to reserve to fit
-- * the modification of a single pages into a single transaction
-+ * the modification of a single pages into a single transaction,
-+ * which may include multile chunk of block allocations.
+ 		/* start a new transaction*/
+ 		handle = ext4_journal_start(inode, needed_blocks);
+@@ -4462,11 +4476,9 @@ int ext4_meta_trans_blocks(struct inode*
+  * the modification of a single pages into a single transaction,
+  * which may include multile chunk of block allocations.
   *
-  * This could be called via ext4_write_begin() or later
-  * ext4_da_writepages() in delalyed allocation case.
-@@ -4450,11 +4443,6 @@ int ext4_meta_trans_blocks(struct inode*
-  * In both case it's possible that we could allocating multiple
-  * chunks of blocks. We need to consider the worse case, when
+- * This could be called via ext4_write_begin() or later
+- * ext4_da_writepages() in delalyed allocation case.
++ * This could be called via ext4_write_begin()
+  *
+- * In both case it's possible that we could allocating multiple
+- * chunks of blocks. We need to consider the worse case, when
++ * We need to consider the worse case, when
   * one new block per extent.
-- *
-- * For Direct IO and fallocate, the journal credits reservation
-- * is based on one single extent allocation, so they could use
-- * EXT4_DATA_TRANS_BLOCKS to get the needed credit to log a single
-- * chunk of allocation needs.
   */
  int ext4_writepage_trans_blocks(struct inode *inode)
- {
-@@ -4468,6 +4456,21 @@ int ext4_writepage_trans_blocks(struct i
- 		ret += bpp;
- 	return ret;
- }
-+
-+/*
-+ * Calculate the journal credits for a chunk of data modification.
-+ *
-+ * This is called from DIO, fallocate or whoever calling
-+ * ext4_get_blocks_wrap() to map/allocate a chunk of contigous disk blocks.
-+ *
-+ * journal buffers for data blocks are not included here, as DIO
-+ * and fallocate do no need to journal data buffers.
-+ */
-+int ext4_chunk_trans_blocks(struct inode *inode, int nrblocks)
-+{
-+	return ext4_meta_trans_blocks(inode, nrblocks, 1);
-+}
-+
- /*
-  * The caller must have previously called ext4_reserve_inode_write().
-  * Give this, we know that the caller already has write access to iloc->bh.
-Index: linux-2.6.27-rc3/fs/ext4/ext4.h
-===================================================================
---- linux-2.6.27-rc3.orig/fs/ext4/ext4.h	2008-08-15 14:43:20.000000000 -0700
-+++ linux-2.6.27-rc3/fs/ext4/ext4.h	2008-08-15 14:51:20.000000000 -0700
-@@ -1073,6 +1073,7 @@ extern void ext4_get_inode_flags(struct 
- extern void ext4_set_aops(struct inode *inode);
- extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_meta_trans_blocks(struct inode *, int nrblocks, int idxblocks);
-+extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
 
 
