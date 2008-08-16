@@ -1,165 +1,123 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 5/6  V2]Ext4 journal credits  fixes for delalloc
-	writepages
-Date: Sat, 16 Aug 2008 09:53:34 +0530
-Message-ID: <20080816042334.GA6423@skywalker>
-References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker> <1216774311.6505.4.camel@mingming-laptop> <20080723074226.GA15091@skywalker> <1217032947.6394.2.camel@mingming-laptop> <1218558190.6766.37.camel@mingming-laptop> <1218558938.6766.55.camel@mingming-laptop> <1218847258.8183.50.camel@mingming-laptop>
+Subject: Re: [PATCH 2/6  V2]Ext4: journal credits reservation fixes for
+	extent file writepage
+Date: Sat, 16 Aug 2008 09:55:03 +0530
+Message-ID: <20080816042503.GB6423@skywalker>
+References: <48841077.500@cse.unsw.edu.au> <20080721082010.GC8788@skywalker> <1216774311.6505.4.camel@mingming-laptop> <20080723074226.GA15091@skywalker> <1217032947.6394.2.camel@mingming-laptop> <1218558190.6766.37.camel@mingming-laptop> <1218558473.6766.44.camel@mingming-laptop> <1218847113.8183.45.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: tytso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
 	Andreas Dilger <adilger@sun.com>
 To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:51588 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751268AbYHPEXr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Aug 2008 00:23:47 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m7G4O3UE014616
-	for <linux-ext4@vger.kernel.org>; Sat, 16 Aug 2008 14:24:03 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7G4Nh1J4657216
-	for <linux-ext4@vger.kernel.org>; Sat, 16 Aug 2008 14:23:43 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7G4Ngim027086
-	for <linux-ext4@vger.kernel.org>; Sat, 16 Aug 2008 14:23:43 +1000
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:48234 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750886AbYHPEZM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 16 Aug 2008 00:25:12 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m7G4Ok8l008208
+	for <linux-ext4@vger.kernel.org>; Sat, 16 Aug 2008 14:24:46 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7G4PATk297224
+	for <linux-ext4@vger.kernel.org>; Sat, 16 Aug 2008 14:25:10 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7G4PAKL005199
+	for <linux-ext4@vger.kernel.org>; Sat, 16 Aug 2008 14:25:10 +1000
 Content-Disposition: inline
-In-Reply-To: <1218847258.8183.50.camel@mingming-laptop>
+In-Reply-To: <1218847113.8183.45.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 15, 2008 at 05:40:58PM -0700, Mingming Cao wrote:
-> Ext4: journal credit fix the delalloc writepages
+On Fri, Aug 15, 2008 at 05:38:33PM -0700, Mingming Cao wrote:
+> 
+> Ext4: journal credits reservation fixes for extent file writepage
 > 
 > From: Mingming Cao <cmm@us.ibm.com>
 > 
-> Previous delalloc writepages implementation start a new transaction outside
-> a loop call of get_block() to do the block allocation. Due to lack of
-> information of how many blocks to be allocated, the estimate of the journal
-> credits is very conservtive and caused many issues.
+> This patch modified the writepage/write_begin credit caculation for
+> extent files, to use the credits caculation helper function. 
 > 
-> With the rewored delayed allocation, a new transaction is created for
-> each get_block(), thus we don't need to guess how many credits for the multiple
-> chunk of allocation. Start every transaction with credits for insert a
-> single exent is enough. But we still need to consider the journalled mode,
-> where it need to account for the number of data blocks.  So we guess
-> max number of data blocks for each allocation.  Due to the current VFS
-> implementation writepages() could only flush PAGEVEC lengh of pages at a
-> time, the max block allocation is limited and calculated based on
-> that, and the total number of reserved delalloc datablocks, whichever
-> is smaller.
-
-
-Need to update the comment. 
-
-
+> The current calculation of how many index/leaf blocks should be
+> accounted is too conservetive, it always consider the worse case, where
+> the tree level is 5, and in the case of multiple chunk allocation, it
+> always multiple the needed credits. This path uses the accurate depth of
+> the inode with some extras to caluate the index blocks, and also less
+> conservetive in the case of multiple allocation accounting.
 > 
 > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 > ---
->  fs/ext4/inode.c |   42 +++++++++++++++++++++++++++---------------
->  1 file changed, 27 insertions(+), 15 deletions(-)
+> ---
+>  fs/ext4/ext4_extents.h |    3 +
+>  fs/ext4/extents.c      |   88 ++++++++++++++++---------------------------------
+>  fs/ext4/migrate.c      |    3 +
+>  3 files changed, 34 insertions(+), 60 deletions(-)
 > 
-> Index: linux-2.6.27-rc3/fs/ext4/inode.c
+> Index: linux-2.6.27-rc3/fs/ext4/ext4_extents.h
 > ===================================================================
-> --- linux-2.6.27-rc3.orig/fs/ext4/inode.c	2008-08-15 14:51:22.000000000 -0700
-> +++ linux-2.6.27-rc3/fs/ext4/inode.c	2008-08-15 17:18:09.000000000 -0700
-> @@ -1850,8 +1850,11 @@ static void mpage_add_bh_to_extent(struc
->  {
->  	struct buffer_head *lbh = &mpd->lbh;
->  	sector_t next;
-> +	int nrblocks = lbh->b_size >> mpd->inode->i_blkbits;
-> 
-> -	next = lbh->b_blocknr + (lbh->b_size >> mpd->inode->i_blkbits);
-> +	/* check if thereserved journal credits might overflow */
-> +	if (nrblocks >EXT4_MAX_TRANS_DATA)
-> +		goto flush_it;
-
-Since we don't support data=journal I am not sure whether we should
-limit nrblocks. Also limiting to EXT4_MAX_TRANS_DATA = 64 blocks
-may give highly fragmented files. May be we can do this only
-for non extent files because only for no extents files we are 
-dependent on the number of blocks for calculating credits even
-if we know that we are going to insert a contiguous chunk.
-
-> 
->  	/*
->  	 * First block in the extent
-> @@ -1863,6 +1866,7 @@ static void mpage_add_bh_to_extent(struc
->  		return;
->  	}
-> 
-> +	next = lbh->b_blocknr + nrblocks;
->  	/*
->  	 * Can we merge the block to our big extent?
->  	 */
-> @@ -1871,6 +1875,7 @@ static void mpage_add_bh_to_extent(struc
->  		return;
->  	}
-> 
-> +flush_it:
->  	/*
->  	 * We couldn't merge the block to our extent, so we
->  	 * need to flush current  extent and start new one
-> @@ -2231,17 +2236,26 @@ static int ext4_da_writepage(struct page
+> --- linux-2.6.27-rc3.orig/fs/ext4/ext4_extents.h	2008-08-15 14:43:20.000000000 -0700
+> +++ linux-2.6.27-rc3/fs/ext4/ext4_extents.h	2008-08-15 14:44:15.000000000 -0700
+> @@ -216,7 +216,9 @@ extern int ext4_ext_calc_metadata_amount
+>  extern ext4_fsblk_t idx_pblock(struct ext4_extent_idx *);
+>  extern void ext4_ext_store_pblock(struct ext4_extent *, ext4_fsblk_t);
+>  extern int ext4_extent_tree_init(handle_t *, struct inode *);
+> -extern int ext4_ext_calc_credits_for_insert(struct inode *, struct ext4_ext_path *);
+> +extern int ext4_ext_calc_credits_for_single_extent(struct inode *inode,
+> +						   int num,
+> +						   struct ext4_ext_path *path);
+>  extern int ext4_ext_try_to_merge(struct inode *inode,
+>  				 struct ext4_ext_path *path,
+>  				 struct ext4_extent *);
+> Index: linux-2.6.27-rc3/fs/ext4/extents.c
+> ===================================================================
+> --- linux-2.6.27-rc3.orig/fs/ext4/extents.c	2008-08-15 14:43:20.000000000 -0700
+> +++ linux-2.6.27-rc3/fs/ext4/extents.c	2008-08-15 14:51:07.000000000 -0700
+> @@ -1747,54 +1747,62 @@ static int ext4_ext_rm_idx(handle_t *han
 >  }
 > 
 >  /*
-> - * For now just follow the DIO way to estimate the max credits
-> - * needed to write out EXT4_MAX_WRITEBACK_PAGES.
-> - * todo: need to calculate the max credits need for
-> - * extent based files, currently the DIO credits is based on
-> - * indirect-blocks mapping way.
-> + * This is called via ext4_da_writepages() to
-> + * calulate the total number of credits to reserve to fit
-> + * a single extent allocation into a single transaction,
-> + * ext4_da_writpeages() will loop calling this before
-> + * the block allocation.
->   *
-> - * Probably should have a generic way to calculate credits
-> - * for DIO, writepages, and truncate
-> + * The page vector size limited the max number of pages could
-> + * be writeout at a time. Based on this, the max blocks to pass to
-> + * get_block is calculated
+> - * ext4_ext_calc_credits_for_insert:
+> - * This routine returns max. credits that the extent tree can consume.
+> - * It should be OK for low-performance paths like ->writepage()
+> - * To allow many writing processes to fit into a single transaction,
+> - * the caller should calculate credits under i_data_sem and
+> - * pass the actual path.
+> + * ext4_ext_calc_credits_for_single_extent:
+> + * This routine returns max. credits that needed to insert an extent
+> + * to the extent tree.
+> + * When pass the actual path, the caller should calculate credits
+> + * under i_data_sem.
 >   */
-> -#define EXT4_MAX_WRITEBACK_PAGES      DIO_MAX_BLOCKS
-> -#define EXT4_MAX_WRITEBACK_CREDITS    25
+> -int ext4_ext_calc_credits_for_insert(struct inode *inode,
+> +int ext4_ext_calc_credits_for_single_extent(struct inode *inode, int num,
+>  						struct ext4_ext_path *path)
+>  {
+
+
+s/num/nrblocks/
+
+
+> -	int depth, needed;
+> -
+>  	if (path) {
+> +		int depth = ext_depth(inode);
+> +		int ret;
 > +
-> +static int ext4_writepages_trans_blocks(struct inode *inode)
-> +{
-> +	int max_blocks = EXT4_MAX_TRANS_DATA;
-> +
-> +	if (max_blocks > EXT4_I(inode)->i_reserved_data_blocks)
-> +		max_blocks =  EXT4_I(inode)->i_reserved_data_blocks;
-> +
-> +	return ext4_chunk_trans_blocks(inode, max_blocks);
-> +}
+>  		/* probably there is space in leaf? */
+> -		depth = ext_depth(inode);
+>  		if (le16_to_cpu(path[depth].p_hdr->eh_entries)
+> -				< le16_to_cpu(path[depth].p_hdr->eh_max))
+> -			return 1;
+> -	}
+> -
+> -	/*
+> -	 * given 32-bit logical block (4294967296 blocks), max. tree
+> -	 * can be 4 levels in depth -- 4 * 340^4 == 53453440000.
+> -	 * Let's also add one more level for imbalance.
+> -	 */
+> -	depth = 5;
+> +				< le16_to_cpu(path[depth].p_hdr->eh_max)) {
 > 
->  static int ext4_da_writepages(struct address_space *mapping,
->                                  struct writeback_control *wbc)
-> @@ -2283,7 +2297,7 @@ restart_loop:
->  		 * by delalloc
->  		 */
->  		BUG_ON(ext4_should_journal_data(inode));
-> -		needed_blocks = EXT4_DATA_TRANS_BLOCKS(inode->i_sb);
-> +		needed_blocks = ext4_writepages_trans_blocks(inode);
-> 
->  		/* start a new transaction*/
->  		handle = ext4_journal_start(inode, needed_blocks);
-> @@ -4462,11 +4476,9 @@ int ext4_meta_trans_blocks(struct inode*
->   * the modification of a single pages into a single transaction,
->   * which may include multile chunk of block allocations.
->   *
-> - * This could be called via ext4_write_begin() or later
-> - * ext4_da_writepages() in delalyed allocation case.
-> + * This could be called via ext4_write_begin()
->   *
-> - * In both case it's possible that we could allocating multiple
-> - * chunks of blocks. We need to consider the worse case, when
-> + * We need to consider the worse case, when
->   * one new block per extent.
->   */
->  int ext4_writepage_trans_blocks(struct inode *inode)
-> 
-> 
+> -	/* allocation of new data block(s) */
+> -	needed = 2;
 
 -aneesh
