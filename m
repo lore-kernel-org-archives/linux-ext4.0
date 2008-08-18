@@ -1,62 +1,80 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Bug in delayed allocation: really bad block layouts!
-Date: Mon, 18 Aug 2008 03:50:12 -0700
-Message-ID: <20080818105012.GP3040@webber.adilger.int>
-References: <E1KSEkA-00009o-CV@closure.thunk.org> <489F2B38.3060104@redhat.com>
- <20080810182231.GB15353@mit.edu> <489F397A.1040709@redhat.com>
- <489F49B0.6020105@redhat.com> <20080811014646.GE15353@mit.edu>
- <489FCFD4.2050602@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: ENOSPC error returned too late
+Date: Mon, 18 Aug 2008 16:21:40 +0530
+Message-ID: <20080818105140.GB7808@skywalker>
+References: <E1KUhkt-0003yw-Sf@closure.thunk.org> <20080818093026.GA7808@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Kalpak Shah <Kalpak.Shah@sun.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:40051 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750947AbYHRKuP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Aug 2008 06:50:15 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7IAoFvv020489
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 03:50:15 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K5S00H01M0D7600@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Mon, 18 Aug 2008 03:50:15 -0700 (PDT)
-In-reply-to: <489FCFD4.2050602@redhat.com>
-Content-disposition: inline
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:45460 "EHLO
+	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752040AbYHRKvt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Aug 2008 06:51:49 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7IApjts018002
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 16:21:45 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7IApjbQ1765380
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 16:21:45 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7IApjYK012130
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 16:21:45 +0530
+Content-Disposition: inline
+In-Reply-To: <20080818093026.GA7808@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 11, 2008  00:36 -0500, Eric Sandeen wrote:
-> Theodore Tso wrote:
-> > One of
-> > the things I've been meaning to do is to clean up the output of
-> > filefrag so that it's a bit easier to parse.  It's really stupid for
-> > it to print "file is in extents format" over and over again...
+On Mon, Aug 18, 2008 at 03:00:26PM +0530, Aneesh Kumar K.V wrote:
+> On Sun, Aug 17, 2008 at 08:53:11AM -0400, Theodore Ts'o wrote:
+> > 
+> > While trying to track down kernel BZ #11341 (which is really an
+> > e2fsprogs bug, not a 2.6.26 regression) I created a fresh ext4
+> > filesystem which was 5GB in length, and then filled it to ENOSPC via:
+> > 
+> > dd if=/dev/zero of=/mnt/bigfile bs=1024 count=10485760
+> > 
+> > Unfortunately, it sent the ENOSPC few blocks too late, so the following
+> > appeared in dmesg, and an attempt to umount the filesystem hung in D
+> > wait.  :-(
+> > 
+> > 						- Ted
+> > 
+> > 
+> > [63518.930337] mpage_da_map_blocks block allocation failed for inode 12 at logical offset 1254547 with max blocks 2 with error -28
+> > [63518.930337] This should not happen.!! Data will be lost
 > 
-> I'm not really even sure why it should print it at all, ever, at least
-> without -vvv or something.  (That's what I meant to filter the first
-> time ;)  If the tool is to report layout I'm not sure the trivia about
-> how the layout is tracked internally is all that interesting.  The
-> fiemap patches for filefrag that print it out more as a table format,
-> more like xfs_bmap does, should be a lot better.  But anyway...
+> I will look into this. Are we really out of free space or is it that
+> mballoc is not able to find free space ?. I am not able to reproduce
+> this here. Will try more.
+> 
+> 
 
-Actually, the FIEMAP patches for filefrag provide a much nicer format
-for the output, more like what xfs_bmap does.  For now it only does
-this if requested with the "-e" option (--extents) but if Ted is not
-adverse to changing the output format of filefrag we could make it the
-default.
+How about 
 
-The whole Lustre patchset (against 1.40.11) is at
-http://downloads.lustre.org/public/tools/e2fsprogs/latest/e2fsprogs-1.40.11-sun1-patches.tar.gz
+commit 08085a642ac6e7c3bfae0b6daf538e64a99695b2
+Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date:   Mon Aug 18 16:20:39 2008 +0530
 
-but Kalpak or I can send just the FIEMAP one again if you are interested.
+    ext4: make sure ext4_has_free_blocks return 0 for ENOSPC
+    
+    Fix ext4_has_free_blocks to return 0 when we don't have
+    enought space.
+    
+    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 27323cd..dfe2d4f 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1628,6 +1628,9 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 		free_blocks =
+ 			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
+ #endif
++	if (free_blocks <= root_blocks)
++		/* we don't have free space */
++		return 0;
+ 	if (free_blocks - root_blocks < nblocks)
+ 		return free_blocks - root_blocks;
+ 	return nblocks;
