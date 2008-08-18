@@ -1,75 +1,102 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: ENOSPC error returned too late
-Date: Mon, 18 Aug 2008 09:44:53 -0700
-Message-ID: <1219077893.8135.0.camel@mingming-laptop>
-References: <E1KUhkt-0003yw-Sf@closure.thunk.org>
-	 <20080818093026.GA7808@skywalker> <20080818105140.GB7808@skywalker>
-	 <20080818133046.GA8184@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [Bugme-new] [Bug 11266] New: unable to handle kernel paging
+	request in ext2_free_blocks
+Date: Mon, 18 Aug 2008 22:21:31 +0530
+Message-ID: <20080818165131.GC6491@skywalker>
+References: <bug-11266-10286@http.bugzilla.kernel.org/> <0K5800031SEDU2@smtp02.hut-mail> <20080807200717.GB26307@lh.kyla.fi> <20080807202840.GC26307@lh.kyla.fi> <20080818145841.GC10621@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Sami Liedes <sliedes@cc.hut.fi>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	bugme-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e1.ny.us.ibm.com ([32.97.182.141]:60957 "EHLO e1.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751418AbYHRQoz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Aug 2008 12:44:55 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e1.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7IGisd3024226
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 12:44:54 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7IGisQw202726
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 12:44:54 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7IGirxQ014115
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 12:44:53 -0400
-In-Reply-To: <20080818133046.GA8184@mit.edu>
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:48941 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753279AbYHRQvq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Aug 2008 12:51:46 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m7IGp0TQ031415
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Aug 2008 02:51:00 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7IGphpE3936334
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Aug 2008 02:51:44 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7IGphqB007555
+	for <linux-ext4@vger.kernel.org>; Tue, 19 Aug 2008 02:51:43 +1000
+Content-Disposition: inline
+In-Reply-To: <20080818145841.GC10621@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, Aug 18, 2008 at 04:58:41PM +0200, Jan Kara wrote:
+> 
+> From 06953717138efe3ad535e78343beb7204ac0d274 Mon Sep 17 00:00:00 2001
+> From: Jan Kara <jack@suse.cz>
+> Date: Mon, 18 Aug 2008 16:45:11 +0200
+> Subject: [PATCH] ext2: Check for corrupted group descriptor before using data in it
+> 
+> We have to check whether a group descriptor isn't corrupted in
+> read_block_bitmap(). Otherwise ext2_valid_block_bitmap() will try
+> to access bits outside of bitmap and Oops happens.
+> 
+> CC: Vegard Nossum <vegard.nossum@gmail.com>
+> CC: Sami Liedes <sliedes@cc.hut.fi>
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext2/balloc.c |   29 +++++++++++++++++++++++++++++
+>  1 files changed, 29 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+> index 10bb02c..9104712 100644
+> --- a/fs/ext2/balloc.c
+> +++ b/fs/ext2/balloc.c
+> @@ -113,6 +113,17 @@ err_out:
+>  	return 0;
+>  }
+> 
+> +static int ext2_block_in_group(struct super_block *sb,
+> +			unsigned int block_group, ext2_fsblk_t block)
+> +{
+> +	if (block < ext2_group_first_block_no(sb, block_group))
+> +		return 0;
+> +	if (block >= ext2_group_first_block_no(sb, block_group) +
+> +	    EXT2_BLOCKS_PER_GROUP(sb))
+> +		return 0;
+> +	return 1;
+> +}
+> +
+>  /*
+>   * Read the bitmap for a given block_group,and validate the
+>   * bits for block/inode/inode tables are set in the bitmaps
+> @@ -129,6 +140,24 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
+>  	desc = ext2_get_group_desc(sb, block_group, NULL);
+>  	if (!desc)
+>  		return NULL;
+> +	if (!ext2_block_in_group(sb, block_group,
+> +				le32_to_cpu(desc->bg_block_bitmap)) ||
+> +	    !ext2_block_in_group(sb, block_group,
+> +				le32_to_cpu(desc->bg_inode_bitmap)) ||
+> +	    !ext2_block_in_group(sb, block_group,
+> +				le32_to_cpu(desc->bg_inode_table)) ||
+> +	    !ext2_block_in_group(sb, block_group,
+> +				le32_to_cpu(desc->bg_inode_table) +
+> +				EXT2_SB(sb)->s_itb_per_group - 1)) {
+> +		ext2_error(sb, __func__, "Corrupted group descriptor - "
+> +				"block_group = %u, block_bitmap = %u, "
+> +				"inode_bitmap = %u, inode_table = %u",
+> +				block_group,
+> +				le32_to_cpu(desc->bg_block_bitmap),
+> +				le32_to_cpu(desc->bg_inode_bitmap),
+> +				le32_to_cpu(desc->bg_inode_table));
+> +		return NULL;
+> +	}
+>  	bitmap_blk = le32_to_cpu(desc->bg_block_bitmap);
+>  	bh = sb_getblk(sb, bitmap_blk);
+>  	if (unlikely(!bh)) {
 
-=E5=9C=A8 2008-08-18=E4=B8=80=E7=9A=84 09:30 -0400=EF=BC=8CTheodore Tso=
-=E5=86=99=E9=81=93=EF=BC=9A
-> On Mon, Aug 18, 2008 at 04:21:40PM +0530, Aneesh Kumar K.V wrote:
-> > --- a/fs/ext4/balloc.c
-> > +++ b/fs/ext4/balloc.c
-> > @@ -1628,6 +1628,9 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4=
-_sb_info *sbi,
-> >  		free_blocks =3D
-> >  			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
-> >  #endif
-> > +	if (free_blocks <=3D root_blocks)
-> > +		/* we don't have free space */
-> > +		return 0;
-> >  	if (free_blocks - root_blocks < nblocks)
-> >  		return free_blocks - root_blocks;
-> >  	return nblocks;
->=20
-> Thanks, I'll try it out.  Given that ext4_fsblk_t is an unsigned long
-> (BTW, this is one of the reasons why the common coding style guide
-> dislikes typedefs; it hides this kind of errors), it's obviously a
-> good patch to add regardless of whether it solves are problem, since
-> if freeblocks < root_blocks, the following condition is going to do
-> the Wrong Thing.
->=20
+Do we need to do this validation every time we do a read_block_bitmap ?
+I guess we need to move the validation where we read the desc blocks
+from the disk.
 
-Thanks for catching this Aneesh, agreed.
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->=20
-> 						- Ted
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-aneesh
