@@ -1,7 +1,7 @@
 From: Takashi Sato <t-sato@yk.jp.nec.com>
-Subject: [PATCH 0/3] freeze feature ver 1.10
-Date: Mon, 18 Aug 2008 21:28:04 +0900
-Message-ID: <20080818212804t-sato@mail.jp.nec.com>
+Subject: [PATCH 2/3] Remove XFS specific ioctl interfaces for freeze feature
+Date: Mon, 18 Aug 2008 21:28:27 +0900
+Message-ID: <20080818212827t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
@@ -15,84 +15,77 @@ Cc: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	"mtk.manpages@googlemail.com" <mtk.manpages@googlemail.com>,
 	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:33928 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753921AbYHRM3X (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Aug 2008 08:29:23 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andrew,
+It removes XFS specific ioctl interfaces and request codes
+for freeze feature.
+This patch has been supplied by David Chinner.
 
-I've addressed all of the comments (including yours) in these patches
-and re-based from linux-2.6.26 to linux-2.6.27-rc3.
-If there is no problem or objection for my patches,
-could you consider merging them into Linux?
+Signed-off-by: Dave Chinner <dgc@sgi.com>
+Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
+---
+ linux-2.6/xfs_ioctl.c   |   15 ---------------
+ linux-2.6/xfs_ioctl32.c |    2 --
+ xfs_fs.h                |    4 ++--
+ 3 files changed, 2 insertions(+), 19 deletions(-)
 
-Currently, ext3 in mainline Linux doesn't have the freeze feature which
-suspends write requests.  So, we cannot take a backup which keeps
-the filesystem's consistency with the storage device's features
-(snapshot and replication) while it is mounted.
-In many case, a commercial filesystem (e.g. VxFS) has
-the freeze feature and it would be used to get the consistent backup.
-If Linux's standard filesytem ext3 has the freeze feature, we can do it
-without a commercial filesystem.
-
-So I have implemented the ioctls of the freeze feature.
-I think we can take the consistent backup with the following steps.
-1. Freeze the filesystem with the freeze ioctl.
-2. Separate the replication volume or create the snapshot
-   with the storage device's feature.
-3. Unfreeze the filesystem with the unfreeze ioctl.
-4. Take the backup from the separated replication volume
-   or the snapshot.
-
-[PATCH 1/3] Implement generic freeze feature
-  The ioctls for the generic freeze feature are below.
-  o Freeze the filesystem
-    int ioctl(int fd, int FIFREEZE, arg)
-      fd: The file descriptor of the mountpoint
-      FIFREEZE: request code for the freeze
-      arg: Ignored
-      Return value: 0 if the operation succeeds. Otherwise, -1
-
-  o Unfreeze the filesystem
-    int ioctl(int fd, int FITHAW, arg)
-      fd: The file descriptor of the mountpoint
-      FITHAW: request code for unfreeze
-      arg: Ignored
-      Return value: 0 if the operation succeeds. Otherwise, -1
-
-[PATCH 2/3] Remove XFS specific ioctl interfaces for freeze feature
-  It removes XFS specific ioctl interfaces and request codes
-  for freeze feature.
-  This patch has been supplied by David Chinner.
-
-[PATCH 3/3] Add timeout feature
-  The timeout feature is added to freeze ioctl.  And new ioctl
-  to reset the timeout period is added.
-  o Freeze the filesystem
-    int ioctl(int fd, int FIFREEZE, long *timeout_sec)
-      fd: The file descriptor of the mountpoint
-      FIFREEZE: request code for the freeze
-      timeout_sec: the timeout period in seconds
-               If it's 0 or 1, the timeout isn't set.
-               This special case of "1" is implemented to keep
-               the compatibility with XFS applications.
-      Return value: 0 if the operation succeeds. Otherwise, -1
-
-  o Reset the timeout period
-    This is useful for the application to set the timeout_sec more accurately.
-    For example, the freezer resets the timeout_sec to 10 seconds every 5
-    seconds.  In this approach, even if the freezer causes a deadlock
-    by accessing the frozen filesystem, it will be solved by the timeout
-    in 10 seconds and the freezer can recognize that at the next reset
-    of timeout_sec.
-    int ioctl(int fd, int FIFREEZE_RESET_TIMEOUT, long *timeout_sec)
-      fd:file descriptor of mountpoint
-      FIFREEZE_RESET_TIMEOUT: request code for reset of timeout period
-      timeout_sec: new timeout period in seconds
-      Return value: 0 if the operation succeeds. Otherwise, -1
-      Error number: If the filesystem has already been unfrozen,
-                    errno is set to EINVAL.
-
-Any comments are very welcome.
-
-Cheers, Takashi
+diff -uprN -X linux-2.6.27-rc2.org/Documentation/dontdiff linux-2.6.27-rc2-freeze/fs/xfs/linux-2.6/xfs_ioctl.c linux-2.6
+.27-rc2-xfs/fs/xfs/linux-2.6/xfs_ioctl.c
+--- linux-2.6.27-rc2-freeze/fs/xfs/linux-2.6/xfs_ioctl.c	2008-08-07 08:58:45.000000000 +0900
++++ linux-2.6.27-rc2-xfs/fs/xfs/linux-2.6/xfs_ioctl.c	2008-08-07 09:01:53.000000000 +0900
+@@ -1529,21 +1529,6 @@ xfs_ioctl(
+ 		return -error;
+ 	}
+ 
+-	case XFS_IOC_FREEZE:
+-		if (!capable(CAP_SYS_ADMIN))
+-			return -EPERM;
+-
+-		if (inode->i_sb->s_frozen == SB_UNFROZEN)
+-			freeze_bdev(inode->i_sb->s_bdev);
+-		return 0;
+-
+-	case XFS_IOC_THAW:
+-		if (!capable(CAP_SYS_ADMIN))
+-			return -EPERM;
+-		if (inode->i_sb->s_frozen != SB_UNFROZEN)
+-			thaw_bdev(inode->i_sb->s_bdev, inode->i_sb);
+-		return 0;
+-
+ 	case XFS_IOC_GOINGDOWN: {
+ 		__uint32_t in;
+ 
+diff -uprN -X linux-2.6.27-rc2.org/Documentation/dontdiff linux-2.6.27-rc2-freeze/fs/xfs/linux-2.6/xfs_ioctl32.c linux-2
+.6.27-rc2-xfs/fs/xfs/linux-2.6/xfs_ioctl32.c
+--- linux-2.6.27-rc2-freeze/fs/xfs/linux-2.6/xfs_ioctl32.c	2008-08-07 08:58:45.000000000 +0900
++++ linux-2.6.27-rc2-xfs/fs/xfs/linux-2.6/xfs_ioctl32.c	2008-08-07 09:01:53.000000000 +0900
+@@ -398,8 +398,6 @@ xfs_compat_ioctl(
+ 	case XFS_IOC_FSGROWFSDATA:
+ 	case XFS_IOC_FSGROWFSLOG:
+ 	case XFS_IOC_FSGROWFSRT:
+-	case XFS_IOC_FREEZE:
+-	case XFS_IOC_THAW:
+ 	case XFS_IOC_GOINGDOWN:
+ 	case XFS_IOC_ERROR_INJECTION:
+ 	case XFS_IOC_ERROR_CLEARALL:
+diff -uprN -X linux-2.6.27-rc2.org/Documentation/dontdiff linux-2.6.27-rc2-freeze/fs/xfs/xfs_fs.h linux-2.6.27-rc2-xfs/f
+s/xfs/xfs_fs.h
+--- linux-2.6.27-rc2-freeze/fs/xfs/xfs_fs.h	2008-08-07 08:58:45.000000000 +0900
++++ linux-2.6.27-rc2-xfs/fs/xfs/xfs_fs.h	2008-08-07 09:01:53.000000000 +0900
+@@ -477,8 +477,8 @@ typedef struct xfs_handle {
+ #define XFS_IOC_ERROR_INJECTION	     _IOW ('X', 116, struct xfs_error_injection)
+ #define XFS_IOC_ERROR_CLEARALL	     _IOW ('X', 117, struct xfs_error_injection)
+ /*	XFS_IOC_ATTRCTL_BY_HANDLE -- deprecated 118	 */
+-#define XFS_IOC_FREEZE		     _IOWR('X', 119, int)
+-#define XFS_IOC_THAW		     _IOWR('X', 120, int)
++/*	XFS_IOC_FREEZE		  -- FIFREEZE   119	 */
++/*	XFS_IOC_THAW		  -- FITHAW     120	 */
+ #define XFS_IOC_FSSETDM_BY_HANDLE    _IOW ('X', 121, struct xfs_fsop_setdm_handlereq)
+ #define XFS_IOC_ATTRLIST_BY_HANDLE   _IOW ('X', 122, struct xfs_fsop_attrlist_handlereq)
+ #define XFS_IOC_ATTRMULTI_BY_HANDLE  _IOW ('X', 123, struct xfs_fsop_attrmulti_handlereq)
