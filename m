@@ -1,64 +1,62 @@
-From: Li Zefan <lizf@cn.fujitsu.com>
-Subject: Re: [PATCH 1/3] ext4: add EXT4_IOC_GETCRTIME ioctl
-Date: Mon, 18 Aug 2008 18:03:50 +0800
-Message-ID: <48A94906.8030505@cn.fujitsu.com>
-References: <48996A33.3010507@cn.fujitsu.com> <20080810022643.GC14756@mit.edu> <48A8D98B.9020701@cn.fujitsu.com> <20080818023656.GA20338@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Bug in delayed allocation: really bad block layouts!
+Date: Mon, 18 Aug 2008 03:50:12 -0700
+Message-ID: <20080818105012.GP3040@webber.adilger.int>
+References: <E1KSEkA-00009o-CV@closure.thunk.org> <489F2B38.3060104@redhat.com>
+ <20080810182231.GB15353@mit.edu> <489F397A.1040709@redhat.com>
+ <489F49B0.6020105@redhat.com> <20080811014646.GE15353@mit.edu>
+ <489FCFD4.2050602@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	Kalpak Shah <Kalpak.Shah@sun.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:54063 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751105AbYHRKFY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Aug 2008 06:05:24 -0400
-In-Reply-To: <20080818023656.GA20338@mit.edu>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:40051 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750947AbYHRKuP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Aug 2008 06:50:15 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7IAoFvv020489
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 03:50:15 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K5S00H01M0D7600@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 18 Aug 2008 03:50:15 -0700 (PDT)
+In-reply-to: <489FCFD4.2050602@redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Mon, Aug 18, 2008 at 10:08:11AM +0800, Li Zefan wrote:
->>> I'm worried about writing a struct timespec directly to user space,
->>> because the kernel's idea of what is struct timespec might not be the
->>> same as the userspace's understanding of struct timespec ---
->> We have system call nanosleep(), which copies a struct timespec directly
->> from user space.
+On Aug 11, 2008  00:36 -0500, Eric Sandeen wrote:
+> Theodore Tso wrote:
+> > One of
+> > the things I've been meaning to do is to clean up the output of
+> > filefrag so that it's a bit easier to parse.  It's really stupid for
+> > it to print "file is in extents format" over and over again...
 > 
-> The difference is that for system calls, we have a glue layer (glibc)
-> whose duties include translating between the kernel data structures
-> and the userpsace data structures --- and for various architectures
-> there are ***no*** guarantees that the interfaces shipped by glibc in
-> /usr/include match up with the data structures used by the kernel in
-> /usr/src/linux/include/linux.
-> 
-> When you use an ioctl, you bypass the glibc translation layer, so life
-> can get iffy here.  And given that struct timespec contains time_t,
-> which *can* differ from architecture to architecure in in terms of
-> being either 32 bits or 64 bits, and what is in the kernel might be
-> different from what is in the user space /usr/include, I get doubly
-> nervous.
-> 
+> I'm not really even sure why it should print it at all, ever, at least
+> without -vvv or something.  (That's what I meant to filter the first
+> time ;)  If the tool is to report layout I'm not sure the trivia about
+> how the layout is tracked internally is all that interesting.  The
+> fiemap patches for filefrag that print it out more as a table format,
+> more like xfs_bmap does, should be a lot better.  But anyway...
 
-I got the point, thanks. :)
+Actually, the FIEMAP patches for filefrag provide a much nicer format
+for the output, more like what xfs_bmap does.  For now it only does
+this if requested with the "-e" option (--extents) but if Ted is not
+adverse to changing the output format of filefrag we could make it the
+default.
 
->>> I think we would be better off explicitly defining a structure, or
->>> just returning the seconds and nanoseconds in explicit primitive
->>> types.
-> 
-> That's the quick and dirty fast answer, yes.  The long-term (but one
-> which involves much more work) is to define a new struct
-> kernel<->glibc stat interface (we already have 5 or so :-) to extend
-> it include st_crtime, and then try to get glibc to use the magic of
-> ELF symbol versioning so there is a new struct stat as defined in
-> /usr/include, and a new stat(2) call defined in glibc, which returns
-> the new struct stat which include st_crtime.  This also means we have
-> to define proper semantics for what happens if a filesystem doesn't
-> support st_crtime.
-> 
+The whole Lustre patchset (against 1.40.11) is at
+http://downloads.lustre.org/public/tools/e2fsprogs/latest/e2fsprogs-1.40.11-sun1-patches.tar.gz
 
-Yes, my first thought was if stat can report crtime.
+but Kalpak or I can send just the FIEMAP one again if you are interested.
 
-So, for now I think we can use timespec_to_ns() to convert the time to
-a s64 value and return it to the userspace.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
