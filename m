@@ -1,83 +1,38 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: [PATCH] use percpu data for lg_prealloc_list
-Date: Mon, 18 Aug 2008 10:47:40 -0500
-Message-ID: <48A9999C.6070609@redhat.com>
-References: <48A331FA.6070602@redhat.com>
+Date: Mon, 18 Aug 2008 21:26:50 +0530
+Message-ID: <20080818155650.GA6491@skywalker>
+References: <48A331FA.6070602@redhat.com> <48A9999C.6070609@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:47781 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751750AbYHRPuJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 Aug 2008 11:50:09 -0400
-In-Reply-To: <48A331FA.6070602@redhat.com>
+Received: from e28smtp01.in.ibm.com ([59.145.155.1]:43917 "EHLO
+	e28esmtp01.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752396AbYHRP46 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Aug 2008 11:56:58 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp01.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7IFutHj007034
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 21:26:55 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7IFutNw1511494
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 21:26:55 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7IFutM0008222
+	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 21:26:55 +0530
+Content-Disposition: inline
+In-Reply-To: <48A9999C.6070609@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> lg_prealloc_list seems to cry out for a per-cpu data structure; on a large
-> smp system I think this should be better.  I've lightly tested this change
-> on a 4-cpu system.  Comments welcome...
-
-Any thoughts on this?  Does this seem to be the right way to go?
-
-Thanks,
--Eric
-
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
+On Mon, Aug 18, 2008 at 10:47:40AM -0500, Eric Sandeen wrote:
+> Eric Sandeen wrote:
+> > lg_prealloc_list seems to cry out for a per-cpu data structure; on a large
+> > smp system I think this should be better.  I've lightly tested this change
+> > on a 4-cpu system.  Comments welcome...
 > 
-> ndex: linux-2.6/fs/ext4/mballoc.c
-> ===================================================================
-> --- linux-2.6.orig/fs/ext4/mballoc.c	2008-08-04 15:30:30.000000000 -0500
-> +++ linux-2.6/fs/ext4/mballoc.c	2008-08-13 13:48:33.224165751 -0500
-> @@ -2540,17 +2540,16 @@ int ext4_mb_init(struct super_block *sb,
->  	sbi->s_mb_history_filter = EXT4_MB_HISTORY_DEFAULT;
->  	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
->  
-> -	i = sizeof(struct ext4_locality_group) * nr_cpu_ids;
-> -	sbi->s_locality_groups = kmalloc(i, GFP_KERNEL);
-> +	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
->  	if (sbi->s_locality_groups == NULL) {
->  		clear_opt(sbi->s_mount_opt, MBALLOC);
->  		kfree(sbi->s_mb_offsets);
->  		kfree(sbi->s_mb_maxs);
->  		return -ENOMEM;
->  	}
-> -	for (i = 0; i < nr_cpu_ids; i++) {
-> +	for_each_possible_cpu(i) {
->  		struct ext4_locality_group *lg;
-> -		lg = &sbi->s_locality_groups[i];
-> +		lg = per_cpu_ptr(sbi->s_locality_groups, i);
->  		mutex_init(&lg->lg_mutex);
->  		for (j = 0; j < PREALLOC_TB_SIZE; j++)
->  			INIT_LIST_HEAD(&lg->lg_prealloc_list[j]);
-> @@ -2647,8 +2646,7 @@ int ext4_mb_release(struct super_block *
->  				atomic_read(&sbi->s_mb_discarded));
->  	}
->  
-> -	kfree(sbi->s_locality_groups);
-> -
-> +	free_percpu(sbi->s_locality_groups);
->  	ext4_mb_history_release(sb);
->  	ext4_mb_destroy_per_dev_proc(sb);
->  
-> @@ -4055,8 +4053,7 @@ static void ext4_mb_group_or_file(struct
->  	 * per cpu locality group is to reduce the contention between block
->  	 * request from multiple CPUs.
->  	 */
-> -	ac->ac_lg = &sbi->s_locality_groups[get_cpu()];
-> -	put_cpu();
-> +	ac->ac_lg = per_cpu_ptr(sbi->s_locality_groups, smp_processor_id());
->  
->  	/* we're going to use group allocation */
->  	ac->ac_flags |= EXT4_MB_HINT_GROUP_ALLOC;
+> Any thoughts on this?  Does this seem to be the right way to go?
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+Acked-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
