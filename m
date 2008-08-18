@@ -1,52 +1,52 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [2.6 patch] FS_MBCACHE: don't needlessly make it built-in
-Date: Sun, 17 Aug 2008 12:04:31 -0700
-Message-ID: <20080817190431.GG4199@webber.adilger.int>
-References: <20080803184325.GC7442@cs181140183.pp.htv.fi>
+From: Li Zefan <lizf@cn.fujitsu.com>
+Subject: Re: [PATCH 1/3] ext4: add EXT4_IOC_GETCRTIME ioctl
+Date: Mon, 18 Aug 2008 10:08:11 +0800
+Message-ID: <48A8D98B.9020701@cn.fujitsu.com>
+References: <48996A33.3010507@cn.fujitsu.com> <20080810022643.GC14756@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Andreas Gruenbacher <agruen@suse.de>, linux-ext4@vger.kernel.org
-To: Adrian Bunk <bunk@kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:64396 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750886AbYHQTER (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 17 Aug 2008 15:04:17 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7HJ4FJZ014352
-	for <linux-ext4@vger.kernel.org>; Sun, 17 Aug 2008 12:04:16 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K5R00J01EB1EV00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sun, 17 Aug 2008 12:04:15 -0700 (PDT)
-In-reply-to: <20080803184325.GC7442@cs181140183.pp.htv.fi>
-Content-disposition: inline
+Received: from cn.fujitsu.com ([222.73.24.84]:51141 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750858AbYHRCJp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 Aug 2008 22:09:45 -0400
+In-Reply-To: <20080810022643.GC14756@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 03, 2008  21:43 +0300, Adrian Bunk wrote:
-> Assume you have:
-> - one or more of ext2/3/4 statically built into your kernel
-> - none of these with extended attributes enabled and
-> - want to add onother one of ext2/3/4 modular and with
->   extended attributes enabled
-> 
-> then you currently have to reboot to use it since this results in 
-> CONFIG_FS_MBCACHE=y.
-> 
-> That's not a common issue, but I just ran into it and since there's no 
-> reason to get a built-in mbcache in this case this patch fixes it.
+(sorry for the so dealyed reply, I was offline last week.)
 
-To be honest, I'd like an option to disable MBCACHE entirely.  This
-code is of no use if the EAs on an inode are not identical (i.e. if
-anything other than ACLs are in use) and is also not useful if the
-xattrs fit into the large inodes in ext4 (and ext3 if the filesystem
-is formatted with this option).
+Theodore Tso wrote:
+> On Wed, Aug 06, 2008 at 05:09:07PM +0800, Li Zefan wrote:
+>> +	case EXT4_IOC_GETCRTIME:
+>> +		return put_user(ei->i_crtime, (struct timespec __user *)arg);
+>> +
+> 
+> I'm worried about writing a struct timespec directly to user space,
+> because the kernel's idea of what is struct timespec might not be the
+> same as the userspace's understanding of struct timespec ---
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+We have system call nanosleep(), which copies a struct timespec directly
+from user space.
+
+> specifically, because of the question of the width of time_t might be
+> different in the kernel and in userspace on different architectures.
+> 
+
+But timeval.tv_sec is also of type time_t. Also sys_time() writes a time_t
+directry to user space.
+
+I should not use put_user() though...
+
++		return copy_to_user((struct timespec __user *)arg,
++ 			&ei->i_crtime, sizeof(ei->i_crtime));
+
+> I think we would be better off explicitly defining a structure, or
+> just returning the seconds and nanoseconds in explicit primitive
+> types.
+> 
+
 
