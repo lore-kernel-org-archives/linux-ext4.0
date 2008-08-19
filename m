@@ -1,73 +1,79 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [Bugme-new] [Bug 11266] New: unable to handle kernel paging
-	request in ext2_free_blocks
-Date: Mon, 18 Aug 2008 21:24:10 -0600
-Message-ID: <20080819032410.GE3392@webber.adilger.int>
-References: <bug-11266-10286@http.bugzilla.kernel.org/>
- <0K5800031SEDU2@smtp02.hut-mail> <20080807200717.GB26307@lh.kyla.fi>
- <20080807202840.GC26307@lh.kyla.fi>
- <20080818145841.GC10621@atrey.karlin.mff.cuni.cz>
- <20080818165131.GC6491@skywalker>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 2/2] improve ext3 fsync batching
+Date: Mon, 18 Aug 2008 21:31:28 -0700
+Message-ID: <20080818213128.3a76d1e8.akpm@linux-foundation.org>
+References: <20080806190819.GH27394@unused.rdu.redhat.com>
+	<20080806191536.GI27394@unused.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Jan Kara <jack@suse.cz>, Sami Liedes <sliedes@cc.hut.fi>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	bugme-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, rwheeler@redhat.com,
+	tglx@linutronix.de, linux-fsdevel@vger.kernel.org,
+	chris.mason@oracle.com, linux-ext4@vger.kernel.org
+To: Josef Bacik <jbacik@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:43211 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751780AbYHSDYU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 Aug 2008 23:24:20 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7J3OFYP011205
-	for <linux-ext4@vger.kernel.org>; Mon, 18 Aug 2008 20:24:15 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K5T00001VY8PF00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Mon, 18 Aug 2008 20:24:15 -0700 (PDT)
-In-reply-to: <20080818165131.GC6491@skywalker>
-Content-disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:34257 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751752AbYHSEcL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Aug 2008 00:32:11 -0400
+In-Reply-To: <20080806191536.GI27394@unused.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 18, 2008  22:21 +0530, Aneesh Kumar wrote:
-> > +static int ext2_block_in_group(struct super_block *sb,
-> > +			unsigned int block_group, ext2_fsblk_t block)
-> > +{
-> > +	if (block < ext2_group_first_block_no(sb, block_group))
-> > +		return 0;
-> > +	if (block >= ext2_group_first_block_no(sb, block_group) +
-> > +	    EXT2_BLOCKS_PER_GROUP(sb))
-> > +		return 0;
-> > +	return 1;
-> > +}
-> > +
-> >  /*
-> >   * Read the bitmap for a given block_group,and validate the
-> >   * bits for block/inode/inode tables are set in the bitmaps
-> > @@ -129,6 +140,24 @@ read_block_bitmap(struct super_block *sb, unsigned int block_group)
-> >  	desc = ext2_get_group_desc(sb, block_group, NULL);
-> >  	if (!desc)
-> >  		return NULL;
-> > +	if (!ext2_block_in_group(sb, block_group,
-> > +				le32_to_cpu(desc->bg_block_bitmap)) ||
-> > +	    !ext2_block_in_group(sb, block_group,
-> > +				le32_to_cpu(desc->bg_inode_bitmap)) ||
-> > +	    !ext2_block_in_group(sb, block_group,
-> > +				le32_to_cpu(desc->bg_inode_table)) ||
-> > +	    !ext2_block_in_group(sb, block_group,
-> > +				le32_to_cpu(desc->bg_inode_table) +
-> > +				EXT2_SB(sb)->s_itb_per_group - 1)) {
+On Wed, 6 Aug 2008 15:15:36 -0400 Josef Bacik <jbacik@redhat.com> wrote:
 
-Isn't equivalent checking done in ext2_check_descriptors()?  It would make
-sense to abstract out the "check one group and return error" code and use
-it in both places.
+> Hello,
+> 
+> Fsync batching in ext3 is somewhat flawed when it comes to disks that are very
+> fast.  Now we do an unconditional sleep for 1 second,
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+It sleeps for one jiffy, not one second.
+
+> which is great on slow
+> disks like SATA and such, but on fast disks this means just sitting around and
+> waiting for nothing.  This patch measures the time it takes to commit a
+> transaction to the disk, and sleeps based on the speed of the underlying disk.
+> Using the following fs_mark command to test the speeds
+> 
+> ./fs_mark -d /mnt/ext3-test -s 4096 -n 2000 -D 64 -t 2
+> 
+> I got the following results (with write cacheing turned off)
+> 
+> type	threads		with patch	without patch
+> sata	2		26.4		27.8
+> sata	4		44.6		44.4
+> sata	8		70.4		72.8
+> sata	16		75.2		89.6
+> sata	32		92.7		96.0
+> ram	1		2399.1		2398.8
+> ram	2		257.3		3603.0
+> ram	4		395.6		4827.9
+> ram	8		659.0		4721.1
+> ram	16		1326.4		4373.3
+> ram	32		1964.2		3816.3
+> 
+> I used a ramdisk to emulate a "fast" disk since I don't happen to have a
+> clariion sitting around.  I didn't test single thread in the sata case as it
+> should be relatively the same between the two.  Thanks,
+
+This is all a bit mysterious.  That delay doesn't have much at all to
+do with commit times.  The code is looping around giving other
+userspace processes an opportunity to get scheduled and to run an fsync
+and to join the current transaction rather than having to start a new
+one.
+
+(that code was quite effective when I first added it, but in more
+recent testing, which was some time ago, it doesn't appear to provide
+any improvement.  This needs to be understood)
+
+Also, I'd expect that the average commit time is much longer that one
+jiffy on most disks, and perhaps even on fast disks and maybe even on
+ramdisk.  So perhaps what's happened here is that you've increased the
+sleep period and more tasks are joining particular transactions.
+
+Or you've shortened the sleep time (which wasn't really doing anything
+useful) and this causes tasks to spend less time asleep.
+
+Or something else.
 
