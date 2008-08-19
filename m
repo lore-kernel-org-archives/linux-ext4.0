@@ -1,136 +1,84 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] ext4: Code cleanups
-Date: Tue, 19 Aug 2008 11:29:18 -0700
-Message-ID: <1219170558.6416.4.camel@mingming-laptop>
-References: <1219128494-10402-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1219128494-10402-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [PATCH 2/2] improve ext3 fsync batching
+Date: Tue, 19 Aug 2008 14:43:27 -0400
+Message-ID: <48AB144F.1070606@redhat.com>
+References: <20080806190819.GH27394@unused.rdu.redhat.com>	<20080806191536.GI27394@unused.rdu.redhat.com>	<20080818213128.3a76d1e8.akpm@linux-foundation.org>	<20080819054414.GM3392@webber.adilger.int>	<48AAA7F7.5090501@redhat.com> <20080819105638.aae4086f.akpm@linux-foundation.org>
+Reply-To: rwheeler@redhat.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e5.ny.us.ibm.com ([32.97.182.145]:50215 "EHLO e5.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753095AbYHSS3h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 Aug 2008 14:29:37 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e5.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7JITWqm016856
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Aug 2008 14:29:32 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7JITKHg238864
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Aug 2008 14:29:20 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7JITJEK001673
-	for <linux-ext4@vger.kernel.org>; Tue, 19 Aug 2008 14:29:20 -0400
-In-Reply-To: <1219128494-10402-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: rwheeler@redhat.com, Andreas Dilger <adilger@sun.com>,
+	Josef Bacik <jbacik@redhat.com>, linux-kernel@vger.kernel.org,
+	tglx@linutronix.de, linux-fsdevel@vger.kernel.org,
+	chris.mason@oracle.com, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20080819105638.aae4086f.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+Andrew Morton wrote:
+> On Tue, 19 Aug 2008 07:01:11 -0400 Ric Wheeler <rwheeler@redhat.com> wrote:
+>
+>   
+>> It would be great to be able to use this batching technique for faster 
+>> devices, but we currently sleep 3-4 times longer waiting to batch for an 
+>> array than it takes to complete the transaction.
+>>     
+>
+> Obviously, tuning that delay down to the minimum necessary is a good
+> thing.  But doing it based on commit-time seems indirect at best.  What
+> happens on a slower disk when commit times are in the tens of
+> milliseconds?  When someone runs a concurrent `dd if=/dev/zero of=foo'
+> when commit times go up to seconds?
+>
+> Perhaps a better scheme would be to tune it based on how many other
+> processes are joining that transaction.  If it's "zero" then decrease
+> the timeout.  But one would need to work out how to increase it, which
+> perhaps could be done by detecting the case where process A runs an
+> fsync when a commit is currently in progress, and that commit was
+> caused by process B's fsync.
+>
+> But before doing all that I would recommend/ask that the following be
+> investigated:
+>
+> - How effective is the present code?
+>
+>   - What happens when it is simply removed?
+>
+>   - Add instrumentation (a counter and a printk) to work out how
+>     many other tasks are joining this task's transaction.
+>
+>     - If the answer is "zero" or "small", work out why.
+>
+>   - See if we can increase its effectiveness.
+>
+> Because it could be that the code broke.  There might be issues with
+> higher-level locks which are preventing the batching.  For example, if
+> all the files which the test app is syncing are in the same directory,
+> perhaps all the tasks are piling up on that directory's i_mutex?
+>   
 
-=E5=9C=A8 2008-08-19=E4=BA=8C=E7=9A=84 12:18 +0530=EF=BC=8CAneesh Kumar=
- K.V=E5=86=99=E9=81=93=EF=BC=9A
-> a) rename num to nrblocks to clearly indicate we expecting block coun=
-t as argument.
-> b) renmae ext4_writepages_trans_blocks to ext4_da_writepages_trans_bl=
-ocks to
-> indicate it is the delayed allocation writepages transaction credit.
-> c) Add some comments. remove some stale comments.
->=20
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+One other way to think about this is as a fairly normal queuing problem:
 
-Acked-by: Mingming Cao <cmm@us.ibm.com>
-> ---
->  fs/ext4/extents.c |    8 ++++----
->  fs/ext4/inode.c   |   14 ++++++++------
->  2 files changed, 12 insertions(+), 10 deletions(-)
->=20
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 73bb308..bf612a7 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -1893,7 +1893,7 @@ static int ext4_ext_rm_idx(handle_t *handle, st=
-ruct inode *inode,
->   * When pass the actual path, the caller should calculate credits
->   * under i_data_sem.
->   */
-> -int ext4_ext_calc_credits_for_single_extent(struct inode *inode, int=
- num,
-> +int ext4_ext_calc_credits_for_single_extent(struct inode *inode, int=
- nrblocks,
->  						struct ext4_ext_path *path)
->  {
->  	if (path) {
-> @@ -1912,12 +1912,12 @@ int ext4_ext_calc_credits_for_single_extent(s=
-truct inode *inode, int num,
->  			 *  and other metadat blocks still need to be
->  			 *  accounted.
->  			 */
-> -			/* 1 one bitmap, 1 block group descriptor */
-> +			/* 1 bitmap, 1 block group descriptor */
->  			ret =3D 2 + EXT4_META_TRANS_BLOCKS(inode->i_sb);
->  		}
->  	}
->=20
-> -	return ext4_chunk_trans_blocks(inode, num);
-> +	return ext4_chunk_trans_blocks(inode, nrblocks);
->  }
->=20
->  /*
-> @@ -1931,7 +1931,7 @@ int ext4_ext_calc_credits_for_single_extent(str=
-uct inode *inode, int num,
->   * If the nrblocks are discontiguous, they could cause
->   * the whole tree split more than once, but this is really rare.
->   */
-> -int ext4_ext_index_trans_blocks(struct inode *inode, int num, int ch=
-unk)
-> +int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks, i=
-nt chunk)
->  {
->  	int index;
->  	int depth =3D ext_depth(inode);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index a10f8e5..b32a723 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2321,16 +2321,18 @@ static int ext4_da_writepage(struct page *pag=
-e,
->   * a single extent allocation into a single transaction,
->   * ext4_da_writpeages() will loop calling this before
->   * the block allocation.
-> - *
-> - * The page vector size limited the max number of pages could
-> - * be writeout at a time. Based on this, the max blocks to pass to
-> - * get_block is calculated
->   */
->=20
-> -static int ext4_writepages_trans_blocks(struct inode *inode)
-> +static int ext4_da_writepages_trans_blocks(struct inode *inode)
->  {
->  	int max_blocks =3D EXT4_I(inode)->i_reserved_data_blocks;
->=20
-> +	/*
-> +	 * With noextent format the journal credit needed to
-> +	 * insert nrblocks contiguous block is dependent on
-> +	 * number of contiguous block. So we will limit
-> +	 * number of contiguous block to a sane value
-> +	 */
->  	if (!(inode->i_flags & EXT4_EXTENTS_FL) &&
->  	    (max_blocks > EXT4_MAX_TRANS_DATA))
->  		max_blocks =3D EXT4_MAX_TRANS_DATA;
-> @@ -2387,7 +2389,7 @@ static int ext4_da_writepages(struct address_sp=
-ace *mapping,
->  		 * by delalloc
->  		 */
->  		BUG_ON(ext4_should_journal_data(inode));
-> -		needed_blocks =3D ext4_writepages_trans_blocks(inode);
-> +		needed_blocks =3D ext4_da_writepages_trans_blocks(inode);
->=20
->  		/* start a new transaction*/
->  		handle =3D ext4_journal_start(inode, needed_blocks);
+    (1) arrival rate is the rate at which we see new tasks coming into 
+the code
+    (2) service time is basically the time spent committing the 
+transaction to storage
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+and we have the assumption that some number of tasks can join a 
+transaction more or less for "free."
+
+What the existing code assumes is that all devices have an equal service 
+time. That worked well as long as we only looked at devices that were 
+roughly equal (10-20 ms latencies) or used a higher HZ for the kernel 
+(1000HZ and you don't see this as much as with 100HZ).
+
+The two key issues that Josef's code tried to address are that first 
+assumption that all devices have a similar service time and the tie 
+between how long we wait and the HZ. It would seem to be generically 
+useful to be able to sleep for less than 1 jiffie, not just for file 
+systems, but maybe also in some other contexts?
+
+ric
+
