@@ -1,200 +1,98 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [PATCH 2/2] improve ext3 fsync batching
-Date: Tue, 19 Aug 2008 17:29:16 -0400
-Message-ID: <48AB3B2C.1040203@redhat.com>
-References: <20080806190819.GH27394@unused.rdu.redhat.com>	<20080806191536.GI27394@unused.rdu.redhat.com>	<20080818213128.3a76d1e8.akpm@linux-foundation.org>	<20080819054414.GM3392@webber.adilger.int>	<48AAA7F7.5090501@redhat.com>	<20080819105638.aae4086f.akpm@linux-foundation.org>	<48AB0C1F.1040104@redhat.com>	<20080819132914.6fcc9f29.akpm@linux-foundation.org>	<48AB3353.5000308@redhat.com> <20080819141831.f695dc9c.akpm@linux-foundation.org>
-Reply-To: rwheeler@redhat.com
+From: Sami Liedes <sliedes@cc.hut.fi>
+Subject: Re: [Bugme-new] [Bug 11266] New: unable to handle kernel paging
+	request in ext2_free_blocks
+Date: Wed, 20 Aug 2008 00:43:52 +0300
+Message-ID: <20080819214351.GL8997@lh.kyla.fi>
+References: <bug-11266-10286@http.bugzilla.kernel.org/> <0K5800031SEDU2@smtp02.hut-mail> <20080807200717.GB26307@lh.kyla.fi> <20080807202840.GC26307@lh.kyla.fi> <20080818145841.GC10621@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: adilger@sun.com, jbacik@redhat.com, linux-kernel@vger.kernel.org,
-	tglx@linutronix.de, linux-fsdevel@vger.kernel.org,
-	chris.mason@oracle.com, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080819141831.f695dc9c.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	bugme-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-3.hut.fi ([130.233.228.93]:44988 "EHLO smtp-3.hut.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759620AbYHSVuf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 Aug 2008 17:50:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20080818145841.GC10621@atrey.karlin.mff.cuni.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Andrew Morton wrote:
-> On Tue, 19 Aug 2008 16:55:47 -0400
-> Ric Wheeler <rwheeler@redhat.com> wrote:
->
->   
->>>   
->>>       
->>>>> Perhaps a better scheme would be to tune it based on how many other
->>>>> processes are joining that transaction.  If it's "zero" then decrease
->>>>> the timeout.  But one would need to work out how to increase it, which
->>>>> perhaps could be done by detecting the case where process A runs an
->>>>> fsync when a commit is currently in progress, and that commit was
->>>>> caused by process B's fsync.
->>>>>   
->>>>>       
->>>>>           
->>>> This is really, really a property of the device's latency at any given 
->>>> point in time. If there are no other processes running, we could do an 
->>>> optimization and not wait.
->>>>     
->>>>         
->>> well yes.  This represents yet another attempt to predict future
->>> application behaviour.  The way in which we _usually_ do that is by
->>> monitoring past application behaviour.
->>>   
->>>       
->> This whole area is very similar to the IO elevator area where some of 
->> the same device characteristics are measured.
->>
->>
->>     
->>> Only this patch didn't do that (directly) and I'm wondering why not.
->>>   
->>>       
->> The average transaction commit time is a direct measurement of the past 
->> behaviour, right?
->>     
->
-> Of commit time, yes.  Somewhat - it has obvious failures during
-> transients.
->
-> But there's an assumption here that commit time is usefully correlated
-> with "mean time between fsync()s", which might introduce further
-> inaccuracies.
->
->   
->>>   
->>>       
->>>>> But before doing all that I would recommend/ask that the following be
->>>>> investigated:
->>>>>
->>>>> - How effective is the present code?
->>>>>   
->>>>>       
->>>>>           
->>>> It causes the most expensive storage (arrays) to run 3-4 times slower 
->>>> than they should on a synchronous write workload (NFS server, mail 
->>>> server?) with more than 1 thread. For example, against a small EMC 
->>>> array, I saw single threaded write rates of 720 files/sec against ext3 
->>>> with 1 thread, 225 (if I remember correctly) with 2 ;-)
->>>>     
->>>>         
->>> Current code has:
->>>
->>> 	/*
->>> 	 * Implement synchronous transaction batching.  If the handle
->>> 	 * was synchronous, don't force a commit immediately.  Let's
->>> 	 * yield and let another thread piggyback onto this transaction.
->>> 	 * Keep doing that while new threads continue to arrive.
->>> 	 * It doesn't cost much - we're about to run a commit and sleep
->>> 	 * on IO anyway.  Speeds up many-threaded, many-dir operations
->>> 	 * by 30x or more...
->>> 	 *
->>> 	 * But don't do this if this process was the most recent one to
->>> 	 * perform a synchronous write.  We do this to detect the case where a
->>> 	 * single process is doing a stream of sync writes.  No point in waiting
->>> 	 * for joiners in that case.
->>> 	 */
->>>
->>> has the 30x been reproduced?  If not, what broke?  If so, what effect
->>> did the proposed change have upon it?
->>>   
->>>       
->> The huge gain was only in the case of a RAM disk test which I assume was 
->> not tested against the original patch early on. Against an array (with a 
->> 250HZ kernel), we saw a 2.5x speedup with the new code.
->>     
->
-> You only answered question 3/3 ;)
->
-> I am concerned that the current code is no longer working correctly. 
-> If so then apart from the obvious we-should-fix-that issue, there's
-> also the possibility that we're adding more stuff on top of the broken
-> stuff rather than fixing the broken stuff.
->   
+On Mon, Aug 18, 2008 at 04:58:41PM +0200, Jan Kara wrote:
+> From 06953717138efe3ad535e78343beb7204ac0d274 Mon Sep 17 00:00:00 2001
+> From: Jan Kara <jack@suse.cz>
+> Date: Mon, 18 Aug 2008 16:45:11 +0200
+> Subject: [PATCH] ext2: Check for corrupted group descriptor before using data in it
+> 
+> We have to check whether a group descriptor isn't corrupted in
+> read_block_bitmap(). Otherwise ext2_valid_block_bitmap() will try
+> to access bits outside of bitmap and Oops happens.
 
-I think it is still working for slow devices, our testing will try and 
-verify that.
+I think something similar is needed for ext3, or at least the
+backtrace looks similar to me (tell me if you want me to file a
+separate bug for it):
 
+------------------------------------------------------------
+[ 1303.485714] EXT3-fs unexpected failure: !jh->b_committed_data;
+[ 1303.485714] inconsistent data on disk
+[ 1303.485714] BUG: unable to handle kernel paging request at c7edfffc
+[ 1303.485714] IP: [<c02ddca9>] read_block_bitmap+0xa3/0x147
+[ 1303.485714] *pde = 00007067 *pte = 07edf160
+[ 1303.485714] Oops: 0000 [#1] DEBUG_PAGEALLOC
+[ 1303.485714]
+[ 1303.485714] Pid: 17001, comm: rm Not tainted (2.6.27-rc3 #2)
+[ 1303.485714] EIP: 0060:[<c02ddca9>] EFLAGS: 00000246 CPU: 0
+[ 1303.485714] EIP is at read_block_bitmap+0xa3/0x147
+[ 1303.485714] EAX: ffffffff EBX: c7ee0800 ECX: c7ee0000 EDX: 00000001
+[ 1303.485714] ESI: c3c40690 EDI: c7abd000 EBP: c79c4c9c ESP: c79c4c6c
+[ 1303.485714]  DS: 007b ES: 007b FS: 0000 GS: 0033 SS: 0068
+[ 1303.485714] Process rm (pid: 17001, ti=c79c4000 task=c79189a0 task.ti=c79c4000)
+[ 1303.485714] Stack: 00000246 00000001 00000246 c7abda3c c7413aa0 c5d7f800 00000000 00000000
+[ 1303.485714]        c7ee0000 00000000 00000000 c3c25064 c79c4cf4 c02dde1f c3c405b0 c79c4ccc
+[ 1303.485714]        c0317987 00000001 c0314a9b 00000029 0000002a c7abd000 c7440000 c5d7f8ac
+[ 1303.485714] Call Trace:
+[ 1303.485714]  [<c02dde1f>] ? ext3_free_blocks_sb+0x93/0x3d6
+[ 1303.485714]  [<c0317987>] ? journal_revoke+0x81/0xe3
+[ 1303.485714]  [<c0314a9b>] ? do_get_write_access+0x381/0x49c
+[ 1303.485714]  [<c02ed428>] ? __ext3_journal_revoke+0x1e/0x44
+[ 1303.485714]  [<c02de18d>] ? ext3_free_blocks+0x2b/0x7f
+[ 1303.485714]  [<c02e3694>] ? ext3_clear_blocks+0x11f/0x141
+[ 1303.485714]  [<c02e377a>] ? ext3_free_data+0xc4/0x133
+[ 1303.485714]  [<c02e3a0e>] ? ext3_free_branches+0x225/0x22d
+[ 1303.485714]  [<c02e3891>] ? ext3_free_branches+0xa8/0x22d
+[ 1303.485714]  [<c02e3891>] ? ext3_free_branches+0xa8/0x22d
+[ 1303.485714]  [<c02e407d>] ? ext3_truncate+0x667/0x8af
+[ 1303.485714]  [<c03153e2>] ? journal_start+0xb2/0x112
+[ 1303.485714]  [<c031540d>] ? journal_start+0xdd/0x112
+[ 1303.485714]  [<c03153e2>] ? journal_start+0xb2/0x112
+[ 1303.485714]  [<c02eb243>] ? ext3_journal_start_sb+0x29/0x4a
+[ 1303.485714]  [<c02e4389>] ? ext3_delete_inode+0xc4/0xdb
+[ 1303.485714]  [<c02e42c5>] ? ext3_delete_inode+0x0/0xdb
+[ 1303.485714]  [<c0276c2b>] ? generic_delete_inode+0x62/0xd5
+[ 1303.485714]  [<c0276db1>] ? generic_drop_inode+0x113/0x162
+[ 1303.485714]  [<c0275d3c>] ? iput+0x47/0x4e
+[ 1303.485714]  [<c02737a7>] ? dentry_iput+0x6b/0xb1
+[ 1303.485714]  [<c0273859>] ? d_kill+0x1d/0x37
+[ 1303.485714]  [<c027519b>] ? dput+0x58/0x10a
+[ 1303.485714]  [<c026d2a4>] ? do_rmdir+0xa4/0xc3
+[ 1303.485714]  [<c026d2f4>] ? sys_unlinkat+0x31/0x36
+[ 1303.485714]  [<c0202f3e>] ? syscall_call+0x7/0xb
+[ 1303.485714]  =======================
+[ 1303.485714] Code: 26 00 0f 88 94 00 00 00 8b 87 8c 02 00 00 89 45 e4 8b 55 e8 0f af 50 10 8b 40 34 03 50 14 8b 03 89 45 ec 8b 4e 14 89 4d f0 29 d0 <0f> a3 0
+1 19 c0 85 c0 74 11 8b 43 04 89 45 ec 29 d0 0f a3 01 19
+[ 1303.485714] EIP: [<c02ddca9>] read_block_bitmap+0xa3/0x147 SS:ESP 0068:c79c4c6c
+[ 1303.485714] ---[ end trace ba199677255b7e73 ]---
+------------------------------------------------------------
+$ addr2line -e vmlinux -i 0xc02ddca9
+include/asm/bitops.h:305
+fs/ext3/balloc.c:98
+fs/ext3/balloc.c:167
 
->   
->>>   
->>>       
->>>>>   - What happens when it is simply removed?
->>>>>   
->>>>>       
->>>>>           
->>>> If you remove the code, you will not see the throughput rise when you go 
->>>> multithreaded on existing slow devices (S-ATA/ATA for example). Faster 
->>>> devices will not see that 2 threaded drop.
->>>>     
->>>>         
->>> See above - has this been tested and confirmed?
->>>   
->>>       
->> Yes - we (back at EMC) did remove the logic and the fast devices will 
->> write at least at their starting rate (700+ files/sec).
->>     
->
-> Did you observe the effect upon slower devices?
->   
+     98         if (!ext3_test_bit(offset, bh->b_data))
+     99                 /* bad block bitmap */
+    100                 goto err_out;
+------------------------------------------------------------
 
-Slower devices were still great with this code, but that can vary with 
-high HZ kernels. Could you have tested and seen poor results with a 
-1000HZ kernel (where the slow devices don't sleep long enough?)
-
->   
->>>   
->>>       
->>>>>   - Add instrumentation (a counter and a printk) to work out how
->>>>>     many other tasks are joining this task's transaction.
->>>>>
->>>>>     - If the answer is "zero" or "small", work out why.
->>>>>
->>>>>   - See if we can increase its effectiveness.
->>>>>
->>>>> Because it could be that the code broke.  There might be issues with
->>>>> higher-level locks which are preventing the batching.  For example, if
->>>>> all the files which the test app is syncing are in the same directory,
->>>>> perhaps all the tasks are piling up on that directory's i_mutex?
->>>>>   
->>>>>       
->>>>>           
->>>> I have to admit that I don't see the down side here - we have shown a 
->>>> huge increase for arrays (embarrassingly huge  increase for RAM disks) 
->>>> and see no degradation for the S-ATA/ATA case.
->>>>
->>>> The code is not broken (having been there and done the performance 
->>>> tuning on the original code), it just did not account for the widely 
->>>> varying average response times for different classes of storage ;-)
->>>>     
->>>>         
->>> Well, as I said - last time I checked, it did seem to be broken.  By
->>> what means did you confirm that it is still effective, and what were
->>> the results?
->>>
->>>   
->>>       
->> I think Josef posted those results for S-ATA earlier in the thread and 
->> they were still working. We can repost/rerun to give more detail...
->>     
->
-> Yes please.
->   
-We should do a clean retest and repost with the types of storage we have 
-at hand. Roughly, that would include:
-
-    * RAM disk
-    * mid sized array (FC first,  iSCSI second?)
-    * S-ATA
-    * SAS
-
-It would also be interesting to test with various HZ settings (100, 250, 
-1000).
-
-Would that fill in most of the interesting spots?
-
-Not sure how much time we have to cover all of these, but we will take a 
-stab at it ;-)
-
-ric
-
+	Sami
