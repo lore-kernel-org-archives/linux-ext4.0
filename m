@@ -1,86 +1,45 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: New ext4 patchset: 2.6.27-rc3-ext4-1 and 2.6.26-ext4-7
-Date: Wed, 20 Aug 2008 01:31:56 -0400
-Message-ID: <E1KVgIW-0002ZM-Tm@closure.thunk.org>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: BUG: using smp_processor_id() in preemptible
+Date: Wed, 20 Aug 2008 11:04:38 +0530
+Message-ID: <20080820053438.GA6381@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:39309 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750766AbYHTFb7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Aug 2008 01:31:59 -0400
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:43063 "EHLO
+	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751727AbYHTFeq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Aug 2008 01:34:46 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7K5YhqY013331
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:04:43 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7K5YhIR1515646
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:04:43 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7K5YgBc023769
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:04:42 +0530
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-I've released a new ext4 patchset against the 2.6.27-rc3 kernel.  This
-has more bug fixes that have been reported by benchmarkers and early
-users of ext4.
-
-As before I've also released updated the patch set vs. the 2.6.26 stock
-kernel, for those people who don't want to play with development kernels
-but who still want to test out ext4.  The 2.6.26-ext4-7 patchset
-contains only the stable patches of ext4.
-
-As a git tree:
-
-git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.27-rc3-ext4-1
-http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.27-rc3-ext4-1
-
-As a patchset:
-
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.26-rc3-ext4-1
-
-The patch vs. 2.6.26:
-
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.26-ext4-7
-
-                                                - Ted
-
-Patches marked with '*' are in the stable queue and will be pushed to
-Linus shortly.
-
-Akira Fujita (7):
-      ext4: online defrag-- Main function of defrag and ioctl implementation
-      ext4: online defrag-- Allocate new contiguous blocks with mballoc
-      ext4: online defrag-- Read and write file data with memory page
-      ext4: online defrag-- Exchange the blocks between two inodes
-      ext4: online defrag-- Defragmentation for the relevant files (-r mode)
-      ext4: online defrag-- Check the free space fragmentation (-f mode)
-      ext4: online defrag-- Move victim files for the target file (-f mode)
-
-Aneesh Kumar K.V (7):
-    * ext4: Handle unwritten extent properly with delayed allocation
-    * ext4: Rework the ext4_da_writepages() function
-    * ext4: make sure ext4_has_free_blocks returns 0 for ENOSPC
-    * ext4: Initialize writeback_index to 0 when allocating a new inode
-    * ext4: Fix small file fragmentation
-      ext4: undo the stable boundary patch changes
-      ext4: invalidate pages if delalloc block allocation fails.
-
-Eric Sandeen (3):
-    * ext4: Fix bug where we return ENOSPC even though we have plenty of inodes
-      ext4: use percpu data structures for lg_prealloc_list
-      Hook ext4 to the vfs fiemap interface.
-
-Josef Bacik (2):
-    * ext4: don't try to resize if there are no reserved gdt blocks left
-      Any block based fs (this patch includes ext3) just has to declare its own
-
-Mingming Cao (5):
-    * ext4: Fix delalloc release block reservation for truncate
-    * ext4: journal credits calulation cleanup and fix for non-extent writepage
-    * ext4: journal credits reservation fixes for extent file writepage
-    * ext4: journal credits reservation fixes for DIO, fallocate
-    * ext4: journal credit fix for the delayed allocation's writepages() function
-
-Theodore Ts'o (9):
-    * ext4: Fix potential truncate BUG due to i_prealloc_list being non-empty
-    * ext4: Fix ext4_dx_readdir hash collision handling
-    * ext4: Use ext4_discard_reservations instead of mballoc-specific call
-    * ext4: Update documentation to remind users to update mke2fs.conf
-      ext4: Stable/Unstable boundary
-      This patch should be merged with ext4-online-defrag-alloc-contiguous-blks.patch
-      Basic vfs-level fiemap infrastructure, which sets up a new ->fiemap
-      Plug ocfs2 into ->fiemap. Some portions of ocfs2_get_clusters() had to be
-      patch ext4_fix_printk_checkpatch_issues
+BUG: using smp_processor_id() in preemptible [00000000] code:
+fsstress/20995
+caller is ext4_mb_initialize_context+0x20c/0x22c
+Pid: 20995, comm: fsstress Not tainted 2.6.27-rc3-autokern1 #1
+[<c0294a2f>] debug_smp_processor_id+0x9f/0xb8
+[<c01e523d>] ext4_mb_initialize_context+0x20c/0x22c
+[<c01ea017>] ext4_mb_new_blocks+0x17c/0x715
+[<c0136b43>] ? trace_hardirqs_on+0xb/0xd
+[<c01e23f2>] ext4_ext_get_blocks+0xbaf/0xde1
+[<c0137d20>] ? __lock_acquire+0x61e/0x674
+[<c0137d20>] ? __lock_acquire+0x61e/0x674
+[<c01d464a>] ext4_get_blocks_wrap+0xce/0x1eb
+[<c01dfaba>] ext4_fallocate+0x135/0x27d
+[<c016472d>] ? fget+0x1d/0xd3
+[<c01647aa>] ? fget+0x9a/0xd3
+[<c01623a4>] sys_fallocate+0xce/0xf3
+[<c0102bb9>] sysenter_do_call+0x12/0x35
+=======================
 
