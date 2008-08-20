@@ -1,114 +1,101 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH] clean up percpu_counter_sum_and_set() interface
-Date: Wed, 20 Aug 2008 16:44:59 -0700
-Message-ID: <1219275899.7895.58.camel@mingming-laptop>
+From: Daniel Phillips <phillips@phunq.net>
+Subject: Re: Dot and dotdot need to be physically present?
+Date: Wed, 20 Aug 2008 16:52:04 -0700
+Message-ID: <200808201652.05252.phillips@phunq.net>
+References: <200808131636.59436.phillips@phunq.net> <20080814034701.GC6469@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu
-To: LKML <linux-kernel@vger.kernel.org>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:55260 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750788AbYHTXpD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Aug 2008 19:45:03 -0400
+Received: from phunq.net ([64.81.85.152]:43606 "EHLO moonbase.phunq.net"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751508AbYHTXwI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Aug 2008 19:52:08 -0400
+In-Reply-To: <20080814034701.GC6469@mit.edu>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-percpu counter: clean up percpu_counter_sum_and_set() interface
+Hi Ted,
 
-From: Mingming Cao <cmm@us.ibm.com>
+Sorry for the lag, I was a little busy.
 
-percpu_counter_sum_and_set() and percpu_counter_sum() is the same except
-the former update the global counter after accounting.  Since we are
-taking the fbc->lock to calculate the precise value of the
-counter in percpu_counter_sum() anyway, it should simply set fbc->count
-too, as the percpu_counter_sum_and_set() dose.
+On Wednesday 13 August 2008 20:47, Theodore Tso wrote:
+> On Wed, Aug 13, 2008 at 04:36:59PM -0700, Daniel Phillips wrote:
+> > 
+> > Many years ago we had a discussion about whether or not the . and ..
+> > directory entries had to be physically present in htree, and I remember
+> > the conclusion was that they had to be, but I forget the argument and
+> > lost track of the email thread.  I think the VFS will happily supply
+> > the . and .. entries to getdents on its own.  So what was the issue?
+> > Something about telldir?
+> 
+> . and .. are needed for backwards compatibility.
 
-This patch merge these two interfaces into one.
- 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
----
- fs/ext4/balloc.c               |    2 +-
- include/linux/percpu_counter.h |   12 +++---------
- lib/percpu_counter.c           |    8 +++-----
- 3 files changed, 7 insertions(+), 15 deletions(-)
+Thankyou, I think I remember now.  We had to put . and .. in there to
+be able to fall back from indexed to linear scan on old kernels that
+know nothing about the index.  So my inclination is to leave these out
+of the dirent data proper but record them in block headers for
+redundancy as you suggest.
 
-Index: linux-2.6.27-rc3/fs/ext4/balloc.c
-===================================================================
---- linux-2.6.27-rc3.orig/fs/ext4/balloc.c	2008-08-20 16:23:26.000000000 -0700
-+++ linux-2.6.27-rc3/fs/ext4/balloc.c	2008-08-20 16:25:21.000000000 -0700
-@@ -1624,7 +1624,7 @@
- #ifdef CONFIG_SMP
- 	if (free_blocks - root_blocks < FBC_BATCH)
- 		free_blocks =
--			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
-+			percpu_counter_sum(&sbi->s_freeblocks_counter);
- #endif
- 	if (free_blocks <= root_blocks)
- 		/* we don't have free space */
-Index: linux-2.6.27-rc3/include/linux/percpu_counter.h
-===================================================================
---- linux-2.6.27-rc3.orig/include/linux/percpu_counter.h	2008-08-20 16:23:51.000000000 -0700
-+++ linux-2.6.27-rc3/include/linux/percpu_counter.h	2008-08-20 16:29:17.000000000 -0700
-@@ -35,7 +35,7 @@
- void percpu_counter_destroy(struct percpu_counter *fbc);
- void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
- void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
-+s64 __percpu_counter_sum(struct percpu_counter *fbc);
- 
- static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
- {
-@@ -44,19 +44,13 @@
- 
- static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
- {
--	s64 ret = __percpu_counter_sum(fbc, 0);
-+	s64 ret = __percpu_counter_sum(fbc);
- 	return ret < 0 ? 0 : ret;
- }
- 
--static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
--{
--	return __percpu_counter_sum(fbc, 1);
--}
--
--
- static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
- {
--	return __percpu_counter_sum(fbc, 0);
-+	return __percpu_counter_sum(fbc);
- }
- 
- static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-Index: linux-2.6.27-rc3/lib/percpu_counter.c
-===================================================================
---- linux-2.6.27-rc3.orig/lib/percpu_counter.c	2008-08-20 16:24:50.000000000 -0700
-+++ linux-2.6.27-rc3/lib/percpu_counter.c	2008-08-20 16:26:55.000000000 -0700
-@@ -52,7 +52,7 @@
-  * Add up all the per-cpu counts, return the result.  This is a more accurate
-  * but much slower version of percpu_counter_read_positive()
-  */
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
-+s64 __percpu_counter_sum(struct percpu_counter *fbc)
- {
- 	s64 ret;
- 	int cpu;
-@@ -62,11 +62,9 @@
- 	for_each_online_cpu(cpu) {
- 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
- 		ret += *pcount;
--		if (set)
--			*pcount = 0;
-+		*pcount = 0;
- 	}
--	if (set)
--		fbc->count = ret;
-+	fbc->count = ret;
- 
- 	spin_unlock(&fbc->lock);
- 	return ret;
+> If you aren't going 
+> to do backwards compatibility, then you might as well not bother
+> putting the btree in the directory nodes.  Just use physically block
+> numbers directly.
 
+Even without any backward compatibility requirement, putting the btree
+into a file is a win:
 
+  * CPU: for a terabyte volume each radix tree lookup requires 6
+    dereferences (2^6 fanout) vs 0, 1 or 2 for a modest sized directory
+    mapped logically in the page cache.  This matters because CPU is the
+    main cost and cause of latency for big directories that are small
+    enough to fit in cache.  (On page cache miss the logical mapping
+    needs one extra radix tree probe, but these are orders of magnitude
+    rare than hits.)
+
+  * Index fanout for a file-mapped btree is 2^9 while a direct mapped
+    btree is less, probably 2^8.  Less to load, less cache pressure.
+
+  * Deferred allocation is harder with physical block pointers because
+    you have to choose a physical address before you can put data in
+    the buffer cache.  With the page cache, this decision can be
+    deferred till sync time, when better information is available.
+
+  * No need to implement new physical block goal algorithms, the file
+    locality algorithms will already do the right thing (if possible!)
+
+> The other reason why '..' is useful is that it helps to knit the
+> fliesystem back together in case of corruption.  (For example, e2fsck
+> uses the '..' so we can display full pathnames which is very helpful
+> to system administrators.)
+> 
+> The '.' pointer is slightly less useful, but it is helpful as an
+> additional sanity check.
+> 
+> If I were doing things all over in a completely incompatible way, I'd
+> probably put at the beginning of the first directory block (a) a magic
+> number, (b) the current inode number (as a sanity check), (c) the
+> parent inode number (i.e., '..'), and (d) a pointer to a physical
+> block which is the root of the index tree. 
+
+Sensible, and I will do it much like that, but probably in every dirent
+block, not just the first one.  Recording the physical root of the tree
+seems like overkill since the inode number will be there, giving the
+root index block via the inode table.  That is, if a physical pointer
+design to be used.  For a logical mapping the directory index root is
+always block zero, a simplification that is not possible with physical
+pointers.
+
+The directory index itself can be reconstructed on demand, so adding
+redundancy only for fsck reconstruction does not seem like a win.  We
+just want to be able to spot the raw dirents reliably.  To that end, a
+commit sequence number might be helpful as well, to reduce the chance
+of misinterpreting stale, migrated or data blocks.
+
+Regards,
+
+Daniel
