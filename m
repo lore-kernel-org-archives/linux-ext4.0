@@ -1,93 +1,114 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: ENOSPC returned during writepages
-Date: Wed, 20 Aug 2008 17:42:08 -0600
-Message-ID: <20080820234208.GO3392@webber.adilger.int>
-References: <20080820054339.GB6381@skywalker>
- <20080820104644.GA11267@skywalker> <20080820115331.GA9965@mit.edu>
- <1219265808.7895.14.camel@mingming-laptop>
- <1219274535.7895.55.camel@mingming-laptop>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: [PATCH] clean up percpu_counter_sum_and_set() interface
+Date: Wed, 20 Aug 2008 16:44:59 -0700
+Message-ID: <1219275899.7895.58.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Theodore Tso <tytso@mit.edu>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu
+To: LKML <linux-kernel@vger.kernel.org>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:38659 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750898AbYHTXmW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Aug 2008 19:42:22 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7KNgHvC007822
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 16:42:18 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K5X00E01B2WJX00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 20 Aug 2008 16:42:17 -0700 (PDT)
-In-reply-to: <1219274535.7895.55.camel@mingming-laptop>
-Content-disposition: inline
+Received: from e2.ny.us.ibm.com ([32.97.182.142]:55260 "EHLO e2.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750788AbYHTXpD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Aug 2008 19:45:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 20, 2008  16:22 -0700, Mingming Cao wrote:
-> ext4: fall back to non delalloc mode if filesystem is almost full
-> From: Mingming Cao <cmm@us.ibm.com>
-> 
-> In the case of filesystem is close to full (free blocks is below 
-> the watermark NRCPUS *4) and there is not enough to reserve blocks for
-> delayed allocation, instead of return user back with ENOSPC error, with
-> this patch, it tries to fall back to non delayed allocation mode.
+percpu counter: clean up percpu_counter_sum_and_set() interface
 
-I don't think that making a low watermark of only 4 blocks is enough,
-because each of the per-CPU counters could be off by as much as FBC_BATCH.
-I think dropping delalloc support earlier is safer, something like
-(FBC_BATCH * NR_CPUS).
+From: Mingming Cao <cmm@us.ibm.com>
 
-> +static int ext4_write_begin_nondelalloc(struct file *file,
-> +				struct address_space *mapping,
-> +				loff_t pos, unsigned len, unsigned flags,
-> +				struct page **pagep, void **fsdata)
-> +{
-> +	struct inode *inode = mapping->host;
-> +
-> +	/* turn off delalloc for this inode*/
-> +	ext4_set_aops(inode, 0);
-> +
-> +	return mapping->a_ops->write_begin(file, mapping, pos, len,
-> +					   flags, pagep, fsdata);
-> +}
+percpu_counter_sum_and_set() and percpu_counter_sum() is the same except
+the former update the global counter after accounting.  Since we are
+taking the fbc->lock to calculate the precise value of the
+counter in percpu_counter_sum() anyway, it should simply set fbc->count
+too, as the percpu_counter_sum_and_set() dose.
 
-Hmm, I don't understand this - isn't delalloc already off here, because
-this is "ext4_write_begin_nondelalloc()"?
+This patch merge these two interfaces into one.
  
-> +void ext4_set_aops(struct inode *inode, int delalloc)
->  {
-> +	if (test_opt(inode->i_sb, DELALLOC)) {
-> +		if (ext4_has_free_blocks(EXT4_SB(inode->i_sb),
-> +			 EXT4_MIN_FREE_BLOCKS) > EXT4_MIN_FREE_BLOCKS)
-> +			delalloc = 0;
-> +
-> +		if (delalloc) {
-> +			inode->i_mapping->a_ops = &ext4_da_aops;
-> +			return;
-> +		} else
-> +			printk(KERN_INFO "filesystem is close to full, "
-> +				"delayed allocation is turned off for "
-> +				" inode %lu\n", inode->i_ino);
-> +	}
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+---
+ fs/ext4/balloc.c               |    2 +-
+ include/linux/percpu_counter.h |   12 +++---------
+ lib/percpu_counter.c           |    8 +++-----
+ 3 files changed, 7 insertions(+), 15 deletions(-)
 
-Also, if you are doing this by changing the aops on the inode, isn't
-it possible that a large write starts outside the EXT4_MIN_FREE_BLOCKS
-boundary and then still runs out of space without changing the aops?
+Index: linux-2.6.27-rc3/fs/ext4/balloc.c
+===================================================================
+--- linux-2.6.27-rc3.orig/fs/ext4/balloc.c	2008-08-20 16:23:26.000000000 -0700
++++ linux-2.6.27-rc3/fs/ext4/balloc.c	2008-08-20 16:25:21.000000000 -0700
+@@ -1624,7 +1624,7 @@
+ #ifdef CONFIG_SMP
+ 	if (free_blocks - root_blocks < FBC_BATCH)
+ 		free_blocks =
+-			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
++			percpu_counter_sum(&sbi->s_freeblocks_counter);
+ #endif
+ 	if (free_blocks <= root_blocks)
+ 		/* we don't have free space */
+Index: linux-2.6.27-rc3/include/linux/percpu_counter.h
+===================================================================
+--- linux-2.6.27-rc3.orig/include/linux/percpu_counter.h	2008-08-20 16:23:51.000000000 -0700
++++ linux-2.6.27-rc3/include/linux/percpu_counter.h	2008-08-20 16:29:17.000000000 -0700
+@@ -35,7 +35,7 @@
+ void percpu_counter_destroy(struct percpu_counter *fbc);
+ void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
+ void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
+-s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
++s64 __percpu_counter_sum(struct percpu_counter *fbc);
+ 
+ static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
+ {
+@@ -44,19 +44,13 @@
+ 
+ static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
+ {
+-	s64 ret = __percpu_counter_sum(fbc, 0);
++	s64 ret = __percpu_counter_sum(fbc);
+ 	return ret < 0 ? 0 : ret;
+ }
+ 
+-static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
+-{
+-	return __percpu_counter_sum(fbc, 1);
+-}
+-
+-
+ static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
+ {
+-	return __percpu_counter_sum(fbc, 0);
++	return __percpu_counter_sum(fbc);
+ }
+ 
+ static inline s64 percpu_counter_read(struct percpu_counter *fbc)
+Index: linux-2.6.27-rc3/lib/percpu_counter.c
+===================================================================
+--- linux-2.6.27-rc3.orig/lib/percpu_counter.c	2008-08-20 16:24:50.000000000 -0700
++++ linux-2.6.27-rc3/lib/percpu_counter.c	2008-08-20 16:26:55.000000000 -0700
+@@ -52,7 +52,7 @@
+  * Add up all the per-cpu counts, return the result.  This is a more accurate
+  * but much slower version of percpu_counter_read_positive()
+  */
+-s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
++s64 __percpu_counter_sum(struct percpu_counter *fbc)
+ {
+ 	s64 ret;
+ 	int cpu;
+@@ -62,11 +62,9 @@
+ 	for_each_online_cpu(cpu) {
+ 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
+ 		ret += *pcount;
+-		if (set)
+-			*pcount = 0;
++		*pcount = 0;
+ 	}
+-	if (set)
+-		fbc->count = ret;
++	fbc->count = ret;
+ 
+ 	spin_unlock(&fbc->lock);
+ 	return ret;
 
-Instead it is maybe better to do the check at the start of
-ext4_da_write_begin() and if it fails then call the non-delalloc
-write_begin from there?
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
 
