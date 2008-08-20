@@ -1,45 +1,48 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: BUG: using smp_processor_id() in preemptible
-Date: Wed, 20 Aug 2008 11:04:38 +0530
-Message-ID: <20080820053438.GA6381@skywalker>
+Subject: ENOSPC returned during writepages
+Date: Wed, 20 Aug 2008 11:13:39 +0530
+Message-ID: <20080820054339.GB6381@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:43063 "EHLO
-	e28esmtp06.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751727AbYHTFeq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Aug 2008 01:34:46 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7K5YhqY013331
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:04:43 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7K5YhIR1515646
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:04:43 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7K5YgBc023769
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:04:42 +0530
+Received: from e28smtp01.in.ibm.com ([59.145.155.1]:51706 "EHLO
+	e28esmtp01.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1749667AbYHTFnr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Aug 2008 01:43:47 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp01.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7K5hiD7023849
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:13:44 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7K5hirr1700086
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:13:44 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7K5hisI014445
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:13:44 +0530
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-BUG: using smp_processor_id() in preemptible [00000000] code:
-fsstress/20995
-caller is ext4_mb_initialize_context+0x20c/0x22c
-Pid: 20995, comm: fsstress Not tainted 2.6.27-rc3-autokern1 #1
-[<c0294a2f>] debug_smp_processor_id+0x9f/0xb8
-[<c01e523d>] ext4_mb_initialize_context+0x20c/0x22c
-[<c01ea017>] ext4_mb_new_blocks+0x17c/0x715
-[<c0136b43>] ? trace_hardirqs_on+0xb/0xd
-[<c01e23f2>] ext4_ext_get_blocks+0xbaf/0xde1
-[<c0137d20>] ? __lock_acquire+0x61e/0x674
-[<c0137d20>] ? __lock_acquire+0x61e/0x674
-[<c01d464a>] ext4_get_blocks_wrap+0xce/0x1eb
-[<c01dfaba>] ext4_fallocate+0x135/0x27d
-[<c016472d>] ? fget+0x1d/0xd3
-[<c01647aa>] ? fget+0x9a/0xd3
-[<c01623a4>] sys_fallocate+0xce/0xf3
-[<c0102bb9>] sysenter_do_call+0x12/0x35
-=======================
+Hi,
+
+I am getting this even with the latest patch queue. The test program is
+a modified fsstress with fallocate support.
+
+mpage_da_map_blocks block allocation failed for inode 377954 at logical
+offset 313 with max blocks 4 with error -28
+mpage_da_map_blocks block allocation failed for inode 336367 at logical
+offset 74 with max blocks 9 with error -28
+mpage_da_map_blocks block allocation failed for inode 345560 at logical
+offset 542 with max blocks 7 with error -28
+This should not happen.!! Data will be lost
+mpage_da_map_blocks block allocation failed for inode 355317 at logical
+offset 152 with max blocks 10 with error -28
+This should not happen.!! Data will be lost
+mpage_da_map_blocks block allocation failed for inode 395261 at logical
+offset 462 with max blocks 1 with error -28
+This should not happen.!! Data will be lost
+mpage_da_map_blocks block allocation failed for inode 323784 at logical
+offset 313 with max blocks 11 with error -28
+This should not happen.!! Data will be lost
 
