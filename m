@@ -1,125 +1,135 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: ENOSPC returned during writepages
-Date: Wed, 20 Aug 2008 23:57:41 +0530
-Message-ID: <20080820182741.GA6417@skywalker>
-References: <20080820054339.GB6381@skywalker> <20080820104644.GA11267@skywalker> <20080820115331.GA9965@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [Bugme-new] [Bug 11266] New: unable to handle kernel paging
+	request in ext2_free_blocks
+Date: Wed, 20 Aug 2008 13:07:06 -0600
+Message-ID: <20080820190704.GD3392@webber.adilger.int>
+References: <bug-11266-10286@http.bugzilla.kernel.org/>
+ <0K5800031SEDU2@smtp02.hut-mail> <20080807200717.GB26307@lh.kyla.fi>
+ <20080807202840.GC26307@lh.kyla.fi>
+ <20080818145841.GC10621@atrey.karlin.mff.cuni.cz>
+ <20080818165131.GC6491@skywalker> <20080819032410.GE3392@webber.adilger.int>
+ <20080819091339.GE14799@duck.suse.cz> <20080819105111.GK8997@lh.kyla.fi>
+ <20080820102533.GA5979@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Transfer-Encoding: 7BIT
+Cc: Sami Liedes <sliedes@cc.hut.fi>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	bugme-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:49842 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754840AbYHTS2G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Aug 2008 14:28:06 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m7KIRaNK017001
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Aug 2008 04:27:36 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7KIS1DV4231240
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Aug 2008 04:28:01 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7KIS1a1020049
-	for <linux-ext4@vger.kernel.org>; Thu, 21 Aug 2008 04:28:01 +1000
-Content-Disposition: inline
-In-Reply-To: <20080820115331.GA9965@mit.edu>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:50897 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755392AbYHTTHi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Aug 2008 15:07:38 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7KJ7JrQ000339
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 12:07:30 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K5W00A01Y3TEM00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 20 Aug 2008 12:07:19 -0700 (PDT)
+In-reply-to: <20080820102533.GA5979@atrey.karlin.mff.cuni.cz>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 20, 2008 at 07:53:31AM -0400, Theodore Tso wrote:
-> On Wed, Aug 20, 2008 at 04:16:44PM +0530, Aneesh Kumar K.V wrote:
-> > > mpage_da_map_blocks block allocation failed for inode 323784 at logical
-> > > offset 313 with max blocks 11 with error -28
-> > > This should not happen.!! Data will be lost
-> 
-> We don't actually lose the data if free blocks are subsequently made
-> available, correct?
-> 
-> > I tried this patch. There are still multiple ways we can get wrong free
-> > block count. The patch reduced the number of errors. So we are doing
-> > better with patch. But I guess we can't use the percpu_counter based
-> > free block accounting with delalloc. Without delalloc it is ok even if
-> > we find some wrong free blocks count . The actual block allocation will fail in
-> > that case and we handle it perfectly fine. With delalloc we cannot
-> > afford to fail the block allocation. Should we look at a free block
-> > accounting rewrite using simple ext4_fsblk_t and and a spin lock ?
-> 
-> It would be a shame if we did given that the whole point of the percpu
-> counter was to avoid a scalability bottleneck.  Perhaps we could take
-> a filesystem-level spinlock only when the number of free blocks as
-> reported by the percpu_counter falls below some critical level?
-> 
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -1543,7 +1543,14 @@ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
-> >  	}
-> >  	/* reduce fs free blocks counter */
-> >  	percpu_counter_sub(&sbi->s_freeblocks_counter, total);
-> > -
-> > +	/*
-> > +	 * Now check whether the block count has gone negative.
-> > +	 * Some other CPU could have reserved blocks in between
-> > +	 */
-> > +	if (percpu_counter_read(&sbi->s_freeblocks_counter) < 0) {
-> > +		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> > +		return -ENOSPC;
-> > +	}
-> 
-> 
-> I think you want to do the check before calling percpu_counter_sub();
-> otherwise when you return ENOSPC the free blocks counter ends up
-> getting reduced (and gets left negative).
-> 
-> Also, this is one of the places where it might help if we did
-> something like:
-> 
-> 	freeblocks = percpu_counter_read(&sbi->s_freeblocks_counter);
-> 	if (freeblocks < NR_CPUS*4)
-> 		freeblocks = percpu_counter_sum(&sbi->s_freeblocks_counter);
-> 
-> 	if (freeblocks < total) {
-> 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> 		return -ENOSPC;
-> 	}
-> 
-> BTW, I was looking at the percpu_counter interface, and I'm confused
-> why we have percpu_counter_sum_and_set() and percpu_counter_sum().  If
-> we're taking the fbc->lock to calculate the precise value of the
-> counter, why not simply set fbc->count?  
-> 
-> Also, it is singularly unfortunate that certain interfaces, such as
-> percpu_counter_sum_and_set() only exist for CONFIG_SMP.  This is
-> definitely post-2.6.27, but it seems to me that we probably want
-> something like percpu_counter_compare_lt() which does something like this:
-> 
-> static inline int percpu_counter_compare_lt(struct percpu_counter *fbc,
-> 					    s64 amount)
-> {
-> #ifdef CONFIG_SMP
-> 	if ((fbc->count - amount) < FBC_BATCH)
-> 		percpu_counter_sum_and_set(fbc);
-> #endif
-> 	return 	(fbc->count < amount);
-> }
-> 
-> ... which we would then use in ext4_has_free_blocks() and
-> ext4_da_reserve_space().
-> 
+On Aug 20, 2008  12:25 +0200, Jan Kara wrote:
+> > On Tue, Aug 19, 2008 at 11:13:39AM +0200, Jan Kara wrote:
+> > > > Isn't equivalent checking done in ext2_check_descriptors()?  It would make
+> > > > sense to abstract out the "check one group and return error" code and use
+> > > > it in both places.
+> > >   Actually yes, it is. Good point. Sami, is it the case that you have
+> > > mounted the filesystem, then intentionally corrupted it and after that
+> > > the kernel oopsed (as opposed to first corrupting the filesystem image and
+> > > mounting it after that)? That would explain how corrupted values could get
+> > > to read_block_bitmap() even though ext2_check_descriptors() checked them.
+> > 
+> > No, that's not what I do. I corrupt the fs before mounting it, then
+> > mount it, perform normal filesystem operations on it and unmount it.
 
-Let's say FBC_BATCH = 64 and fbc->count = 100 and we have four cpus and
-each cpu request for 30 blocks. each CPU does
+>   OK, thanks. Then we must somehow corrupt group descriptor block during
+> the operation.
 
-in ext4_has_free_blocks:
-free_blocks - nblocks = 100 - 30 = 70 and is > FBC_BATCH So we don't do
-percpu_counter_sum_and_set
-That means ext4_has_free_blocks return success
+Oh, interesting...  The data in the journal is probably corrupt, but all
+of the superblock/gdt sanity checks are done BEFORE the journal is replayed.
 
-Now while claiming blocks we do
-__percpu_counter_add(fbc, 30, 64)
+It would seem that the ext*_fill_super() code should do the sanity checks,
+and then recheck the superblock and group descriptors after the journal
+is replayed.  The superblock checking code can be moved out of
+ext*_fill_super() into a helper function like ext*_check_super()) and then
+calling ext*_check_super() and ext*_check_descriptors() again after journal
+replay.
 
-here  30  < 64. That means we don't do fbc->count += count.
-so fbc->count remains as 100 and we have 4  cpu successfully
-allocating 30 blocks which means we have to satisfy 120 blocks.
+Having journal checksums enabled (ext4) would also detect this problem
+before the journal replay corrupts the filesystem metadata.
 
--aneesh
+It doesn't look possible that we can do journal recovery before loading
+the GDT because ext*_load_journal()->ext*_get_journal() is doing iget()
+and this needs the GDT to read the journal inode.
+
+It might also make sense to just clean up the superblock and group descriptor
+table and goto the beginning of fill_super() because in some cases the
+superblock contents may have changed in important ways (e.g. crash after
+resize of the filesystem which is only in the journal).
+
+
+> Because I'm pretty sure it *is* corrupted - the oops
+> is: unable to handle kernel paging request at c7e95ffc. If we look into
+> registers, we see ECX has c7e96000 (which is probably bh->b_data). In
+> the second oops it's exactly the same - ECX has c11e4000, the oops is at
+> address c11e3ffc. So in both cases it is ECX-4. So somehow we managed to
+> pass negative offset into ext2_test_bit(). But as Andreas pointed out,
+> when we load descriptors into memory, we check that both bitmaps and
+> inode table is in ext2_check_descriptors()... The other possibility
+> would be that we managed to corrupts s_first_data_block in the
+> superblock. Anyway, both possibilities don't look very likely. I'll try
+> to reproduce the problem and maybe get more insight... How large is your
+> filesystem BTW?
+> 
+> > Here's the most current script I use (zzuf is the fuzzer):
+> > 
+> > ------------------------------------------------------------
+> > #!/bin/sh
+> > 
+> > if [ "`hostname`" != "fstest" ]; then
+> >    echo "This is a dangerous script."
+> >    echo "Set your hostname to \`fstest\' if you want to use it."
+> >    exit 1
+> > fi
+> > 
+> > umount /dev/hdb
+> > umount /dev/hdc
+> > /etc/init.d/sysklogd stop
+> > /etc/init.d/klogd stop
+> > /etc/init.d/cron stop
+> > mount /dev/hda / -t ext3 -o remount,ro || exit 1
+> > 
+> > #ulimit -t 20
+> > 
+> > for ((s=$1; s<1000000000; s++)); do
+> >   umount /mnt
+> >   echo '***** zzuffing *****' seed $s
+> >   zzuf -r 0:0.03 -s $s </dev/hdc >/dev/hdb || exit
+> >   mount /dev/hdb /mnt -t ext2 -o errors=continue || continue
+> >   cd /mnt || continue
+> >   timeout 30 cp -r doc doc2 >&/dev/null
+> >   timeout 30 find -xdev >&/dev/null
+> >   timeout 30 find -xdev -print0 2>/dev/null |xargs -0 touch -- 2>/dev/null
+> >   timeout 30 mkdir tmp >&/dev/null
+> >   timeout 30 echo whoah >tmp/filu 2>/dev/null
+> >   timeout 30 rm -rf /mnt/* >&/dev/null
+> >   cd /
+> > done
+> > ------------------------------------------------------------
+
+Oh, hmm, this is ext2 and not ext3, so no journal...  I guess my bug is
+still valid, but just not this one?
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
