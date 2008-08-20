@@ -1,101 +1,129 @@
-From: Daniel Phillips <phillips@phunq.net>
-Subject: Re: Dot and dotdot need to be physically present?
-Date: Wed, 20 Aug 2008 16:52:04 -0700
-Message-ID: <200808201652.05252.phillips@phunq.net>
-References: <200808131636.59436.phillips@phunq.net> <20080814034701.GC6469@mit.edu>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: ENOSPC returned during writepages
+Date: Wed, 20 Aug 2008 16:58:47 -0700
+Message-ID: <1219276727.7895.69.camel@mingming-laptop>
+References: <20080820054339.GB6381@skywalker>
+	 <20080820104644.GA11267@skywalker> <20080820115331.GA9965@mit.edu>
+	 <1219265808.7895.14.camel@mingming-laptop>
+	 <1219274535.7895.55.camel@mingming-laptop>
+	 <20080820234208.GO3392@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from phunq.net ([64.81.85.152]:43606 "EHLO moonbase.phunq.net"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751508AbYHTXwI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Aug 2008 19:52:08 -0400
-In-Reply-To: <20080814034701.GC6469@mit.edu>
-Content-Disposition: inline
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:46168 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753764AbYHTX6t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 Aug 2008 19:58:49 -0400
+Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
+	by e4.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7KNwmJc018437
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 19:58:48 -0400
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7KNwmIP199626
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 19:58:48 -0400
+Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
+	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7KNwlSq028072
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 19:58:47 -0400
+In-Reply-To: <20080820234208.GO3392@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
 
-Sorry for the lag, I was a little busy.
+=E5=9C=A8 2008-08-20=E4=B8=89=E7=9A=84 17:42 -0600=EF=BC=8CAndreas Dilg=
+er=E5=86=99=E9=81=93=EF=BC=9A
+> On Aug 20, 2008  16:22 -0700, Mingming Cao wrote:
+> > ext4: fall back to non delalloc mode if filesystem is almost full
+> > From: Mingming Cao <cmm@us.ibm.com>
+> >=20
+> > In the case of filesystem is close to full (free blocks is below=20
+> > the watermark NRCPUS *4) and there is not enough to reserve blocks =
+for
+> > delayed allocation, instead of return user back with ENOSPC error, =
+with
+> > this patch, it tries to fall back to non delayed allocation mode.
+>=20
+> I don't think that making a low watermark of only 4 blocks is enough,
+> because each of the per-CPU counters could be off by as much as FBC_B=
+ATCH.
+> I think dropping delalloc support earlier is safer, something like
+> (FBC_BATCH * NR_CPUS).
+>=20
+Okay, make sense.
 
-On Wednesday 13 August 2008 20:47, Theodore Tso wrote:
-> On Wed, Aug 13, 2008 at 04:36:59PM -0700, Daniel Phillips wrote:
-> > 
-> > Many years ago we had a discussion about whether or not the . and ..
-> > directory entries had to be physically present in htree, and I remember
-> > the conclusion was that they had to be, but I forget the argument and
-> > lost track of the email thread.  I think the VFS will happily supply
-> > the . and .. entries to getdents on its own.  So what was the issue?
-> > Something about telldir?
-> 
-> . and .. are needed for backwards compatibility.
+> > +static int ext4_write_begin_nondelalloc(struct file *file,
+> > +				struct address_space *mapping,
+> > +				loff_t pos, unsigned len, unsigned flags,
+> > +				struct page **pagep, void **fsdata)
+> > +{
+> > +	struct inode *inode =3D mapping->host;
+> > +
+> > +	/* turn off delalloc for this inode*/
+> > +	ext4_set_aops(inode, 0);
+> > +
+> > +	return mapping->a_ops->write_begin(file, mapping, pos, len,
+> > +					   flags, pagep, fsdata);
+> > +}
+>=20
+> Hmm, I don't understand this - isn't delalloc already off here, becau=
+se
+> this is "ext4_write_begin_nondelalloc()"?
+>=20
 
-Thankyou, I think I remember now.  We had to put . and .. in there to
-be able to fall back from indexed to linear scan on old kernels that
-know nothing about the index.  So my inclination is to leave these out
-of the dirent data proper but record them in block headers for
-redundancy as you suggest.
+This function probably should be called
+ext4_wb_fall_back_to_nondelalloc().  it is called when we detect ENOSPC
+and trying to fall back to non delalloc.
 
-> If you aren't going 
-> to do backwards compatibility, then you might as well not bother
-> putting the btree in the directory nodes.  Just use physically block
-> numbers directly.
+This function eventually will call nondelalloc write_begin function
+ext4_write_begin().
 
-Even without any backward compatibility requirement, putting the btree
-into a file is a win:
+> > +void ext4_set_aops(struct inode *inode, int delalloc)
+> >  {
+> > +	if (test_opt(inode->i_sb, DELALLOC)) {
+> > +		if (ext4_has_free_blocks(EXT4_SB(inode->i_sb),
+> > +			 EXT4_MIN_FREE_BLOCKS) > EXT4_MIN_FREE_BLOCKS)
+> > +			delalloc =3D 0;
+> > +
+> > +		if (delalloc) {
+> > +			inode->i_mapping->a_ops =3D &ext4_da_aops;
+> > +			return;
+> > +		} else
+> > +			printk(KERN_INFO "filesystem is close to full, "
+> > +				"delayed allocation is turned off for "
+> > +				" inode %lu\n", inode->i_ino);
+> > +	}
+>=20
+> Also, if you are doing this by changing the aops on the inode, isn't
+> it possible that a large write starts outside the EXT4_MIN_FREE_BLOCK=
+S
+> boundary and then still runs out of space without changing the aops?
+>=20
 
-  * CPU: for a terabyte volume each radix tree lookup requires 6
-    dereferences (2^6 fanout) vs 0, 1 or 2 for a modest sized directory
-    mapped logically in the page cache.  This matters because CPU is the
-    main cost and cause of latency for big directories that are small
-    enough to fit in cache.  (On page cache miss the logical mapping
-    needs one extra radix tree probe, but these are orders of magnitude
-    rare than hits.)
+> Instead it is maybe better to do the check at the start of
+> ext4_da_write_begin() and if it fails then call the non-delalloc
+> write_begin from there?
+>=20
 
-  * Index fanout for a file-mapped btree is 2^9 while a direct mapped
-    btree is less, probably 2^8.  Less to load, less cache pressure.
+Yeah that's better.
 
-  * Deferred allocation is harder with physical block pointers because
-    you have to choose a physical address before you can put data in
-    the buffer cache.  With the page cache, this decision can be
-    deferred till sync time, when better information is available.
+But I realize  a problem. Actually now I think we can't fall back to
+nondelalloc mode if the inode has any dirty pages in the page cache, as
+those pages need delalloc aops ->ext4_da_writepages() to handle delayed
+allocation writeout..
 
-  * No need to implement new physical block goal algorithms, the file
-    locality algorithms will already do the right thing (if possible!)
 
-> The other reason why '..' is useful is that it helps to knit the
-> fliesystem back together in case of corruption.  (For example, e2fsck
-> uses the '..' so we can display full pathnames which is very helpful
-> to system administrators.)
-> 
-> The '.' pointer is slightly less useful, but it is helpful as an
-> additional sanity check.
-> 
-> If I were doing things all over in a completely incompatible way, I'd
-> probably put at the beginning of the first directory block (a) a magic
-> number, (b) the current inode number (as a sanity check), (c) the
-> parent inode number (i.e., '..'), and (d) a pointer to a physical
-> block which is the root of the index tree. 
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+>=20
 
-Sensible, and I will do it much like that, but probably in every dirent
-block, not just the first one.  Recording the physical root of the tree
-seems like overkill since the inode number will be there, giving the
-root index block via the inode table.  That is, if a physical pointer
-design to be used.  For a logical mapping the directory index root is
-always block zero, a simplification that is not possible with physical
-pointers.
-
-The directory index itself can be reconstructed on demand, so adding
-redundancy only for fsck reconstruction does not seem like a win.  We
-just want to be able to spot the raw dirents reliably.  To that end, a
-commit sequence number might be helpful as well, to reduce the chance
-of misinterpreting stale, migrated or data blocks.
-
-Regards,
-
-Daniel
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
