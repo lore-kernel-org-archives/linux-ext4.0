@@ -1,100 +1,85 @@
 From: "Jose R. Santos" <jrs@us.ibm.com>
-Subject: [PATCH 06/15][e2fsprogs] Add 64-bit alloc_stats interface.
-Date: Wed, 20 Aug 2008 12:33:12 -0500
-Message-ID: <20080820173312.23412.21515.stgit@gara>
+Subject: [PATCH 04/15][e2fsprogs] Use blk64_t for blocks in struct ext2_file.
+Date: Wed, 20 Aug 2008 12:33:00 -0500
+Message-ID: <20080820173300.23412.56974.stgit@gara>
 References: <20080820173210.23412.46020.stgit@gara>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Content-Transfer-Encoding: 7bit
 To: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:37447 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752654AbYHTRcK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 Aug 2008 13:32:10 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7KHW9JE019444
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 13:32:09 -0400
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7KHW9YH185388
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 13:32:09 -0400
-Received: from d01av01.pok.ibm.com (loopback [127.0.0.1])
-	by d01av01.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7KHW9YO012919
-	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 13:32:09 -0400
+Received: from e34.co.us.ibm.com ([32.97.110.152]:35982 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751992AbYHTRb7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Aug 2008 13:31:59 -0400
+Received: from d03relay03.boulder.ibm.com (d03relay03.boulder.ibm.com [9.17.195.228])
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7KHVwfc019427
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 13:31:58 -0400
+Received: from d03av04.boulder.ibm.com (d03av04.boulder.ibm.com [9.17.195.170])
+	by d03relay03.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7KHVuGG046224
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:31:57 -0600
+Received: from d03av04.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av04.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7KHVusY011635
+	for <linux-ext4@vger.kernel.org>; Wed, 20 Aug 2008 11:31:56 -0600
 In-Reply-To: <20080820173210.23412.46020.stgit@gara>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jose R. Santos <jrs@us.ibm.com>
 
-Add 64-bit alloc_stats interface.
+Use blk64_t for blocks in struct ext2_file.
 
-Add new ext2fs_block_alloc_stats2() routine that takes blk64_t as an
-input.
+The ext2_file structure is never exposed through the libext2fs API so
+it is safe to use 64-bit blocks for blockno and physclock without
+breaking the ABI.
 
 Signed-off-by: Jose R. Santos <jrs@us.ibm.com>
 --
 
- lib/ext2fs/alloc_stats.c |   11 +++++++++--
- lib/ext2fs/ext2fs.h      |    1 +
- 2 files changed, 10 insertions(+), 2 deletions(-)
+ lib/ext2fs/fileio.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 Signed-off-by: Theodore Ts'o <tytso@mit.edu>
 --
 
- lib/ext2fs/alloc_stats.c |   13 ++++++++++---
- lib/ext2fs/ext2fs.h      |    1 +
- 2 files changed, 11 insertions(+), 3 deletions(-)
+ lib/ext2fs/fileio.c |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/lib/ext2fs/alloc_stats.c b/lib/ext2fs/alloc_stats.c
-index a8514cc..6f9720b 100644
---- a/lib/ext2fs/alloc_stats.c
-+++ b/lib/ext2fs/alloc_stats.c
-@@ -54,25 +54,32 @@ void ext2fs_inode_alloc_stats(ext2_filsys fs, ext2_ino_t ino, int inuse)
- 	ext2fs_inode_alloc_stats2(fs, ino, inuse, 0);
- }
+diff --git a/lib/ext2fs/fileio.c b/lib/ext2fs/fileio.c
+index 8bf99fb..4b9e1ce 100644
+--- a/lib/ext2fs/fileio.c
++++ b/lib/ext2fs/fileio.c
+@@ -25,8 +25,8 @@ struct ext2_file {
+ 	struct ext2_inode	inode;
+ 	int 			flags;
+ 	__u64			pos;
+-	blk_t			blockno;
+-	blk_t			physblock;
++	blk64_t			blockno;
++	blk64_t			physblock;
+ 	char 			*buf;
+ };
  
--void ext2fs_block_alloc_stats(ext2_filsys fs, blk_t blk, int inuse)
-+void ext2fs_block_alloc_stats2(ext2_filsys fs, blk64_t blk, int inuse)
- {
--	int	group = ext2fs_group_of_blk(fs, blk);
-+	int	group = ext2fs_group_of_blk2(fs, blk);
+@@ -116,9 +116,9 @@ errcode_t ext2fs_file_flush(ext2_file_t file)
+ 	 * Allocate it.
+ 	 */
+ 	if (!file->physblock) {
+-		retval = ext2fs_bmap(fs, file->ino, &file->inode,
++		retval = ext2fs_bmap2(fs, file->ino, &file->inode,
+ 				     BMAP_BUFFER, file->ino ? BMAP_ALLOC : 0,
+-				     file->blockno, &file->physblock);
++				     file->blockno, 0, &file->physblock);
+ 		if (retval)
+ 			return retval;
+ 	}
+@@ -168,8 +168,8 @@ static errcode_t load_buffer(ext2_file_t file, int dontfill)
+ 	errcode_t	retval;
  
- 	if (inuse > 0)
-+		/* FIXME-64 */
- 		ext2fs_mark_block_bitmap(fs->block_map, blk);
- 	else
-+		/* FIXME-64 */
- 		ext2fs_unmark_block_bitmap(fs->block_map, blk);
- 	fs->group_desc[group].bg_free_blocks_count -= inuse;
- 	fs->group_desc[group].bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
- 	ext2fs_group_desc_csum_set(fs, group);
- 
--	fs->super->s_free_blocks_count -= inuse;
-+	ext2fs_free_blocks_count_add(fs->super, -inuse);
- 	ext2fs_mark_super_dirty(fs);
- 	ext2fs_mark_bb_dirty(fs);
- 	if (fs->block_alloc_stats)
- 		(fs->block_alloc_stats)(fs, (blk64_t) blk, inuse);
- }
- 
-+void ext2fs_block_alloc_stats(ext2_filsys fs, blk_t blk, int inuse)
-+{
-+	ext2fs_block_alloc_stats2(fs, blk, inuse);
-+}
-+
- void ext2fs_set_block_alloc_stats_callback(ext2_filsys fs, 
- 					   void (*func)(ext2_filsys fs,
- 							blk64_t blk,
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index efd40cb..434ff02 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -586,6 +586,7 @@ void ext2fs_inode_alloc_stats(ext2_filsys fs, ext2_ino_t ino, int inuse);
- void ext2fs_inode_alloc_stats2(ext2_filsys fs, ext2_ino_t ino,
- 			       int inuse, int isdir);
- void ext2fs_block_alloc_stats(ext2_filsys fs, blk_t blk, int inuse);
-+void ext2fs_block_alloc_stats2(ext2_filsys fs, blk64_t blk, int inuse);
- 
- /* alloc_tables.c */
- extern errcode_t ext2fs_allocate_tables(ext2_filsys fs);
+ 	if (!(file->flags & EXT2_FILE_BUF_VALID)) {
+-		retval = ext2fs_bmap(fs, file->ino, &file->inode,
+-				     BMAP_BUFFER, 0, file->blockno,
++		retval = ext2fs_bmap2(fs, file->ino, &file->inode,
++				     BMAP_BUFFER, 0, file->blockno, 0,
+ 				     &file->physblock);
+ 		if (retval)
+ 			return retval;
 
