@@ -1,193 +1,86 @@
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Subject: Re: [PATCH] jbd jbd2:
-  fixdiowritereturningEIOwhentry_to_release_page fails
-Date: Wed, 20 Aug 2008 11:50:05 +0900
-Message-ID: <6.0.0.20.2.20080820105459.04243b28@172.19.0.2>
-References: <1217971027.7516.20.camel@mingming-laptop>
- <1218029114.15342.58.camel@think.oraclecorp.com>
- <20080806135337.GA3615@duck.suse.cz>
- <1218063477.6383.41.camel@mingming-laptop>
- <6.0.0.20.2.20080807115853.03f95b78@172.19.0.2>
- <1218104494.15342.171.camel@think.oraclecorp.com>
- <6.0.0.20.2.20080808113605.04141328@172.19.0.2>
- <1218200055.15342.230.camel@think.oraclecorp.com>
- <6.0.0.20.2.20080811123405.03ec03d0@172.19.0.2>
- <1218547706.15342.305.camel@think.oraclecorp.com>
- <20080813101650.GA14392@duck.suse.cz>
- <1218632396.15342.340.camel@think.oraclecorp.com>
- <6.0.0.20.2.20080819113242.03f9e8c8@172.19.0.2>
- <20080819001651.30c7620f.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Chris Mason <chris.mason@oracle.com>, Jan Kara <jack@suse.cz>,
-	MingmingCao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, Zach Brown <zach.brown@oracle.com>
-To: Andrew Morton <akpm@linux-foundation.org>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: New ext4 patchset: 2.6.27-rc3-ext4-1 and 2.6.26-ext4-7
+Date: Wed, 20 Aug 2008 01:31:56 -0400
+Message-ID: <E1KVgIW-0002ZM-Tm@closure.thunk.org>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:59716 "EHLO
-	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751780AbYHTCwX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 Aug 2008 22:52:23 -0400
-In-Reply-To: <20080819001651.30c7620f.akpm@linux-foundation.org>
-References: <1217971027.7516.20.camel@mingming-laptop>
- <1218029114.15342.58.camel@think.oraclecorp.com>
- <20080806135337.GA3615@duck.suse.cz>
- <1218063477.6383.41.camel@mingming-laptop>
- <6.0.0.20.2.20080807115853.03f95b78@172.19.0.2>
- <1218104494.15342.171.camel@think.oraclecorp.com>
- <6.0.0.20.2.20080808113605.04141328@172.19.0.2>
- <1218200055.15342.230.camel@think.oraclecorp.com>
- <6.0.0.20.2.20080811123405.03ec03d0@172.19.0.2>
- <1218547706.15342.305.camel@think.oraclecorp.com>
- <20080813101650.GA14392@duck.suse.cz>
- <1218632396.15342.340.camel@think.oraclecorp.com>
- <6.0.0.20.2.20080819113242.03f9e8c8@172.19.0.2>
- <20080819001651.30c7620f.akpm@linux-foundation.org>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:39309 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750766AbYHTFb7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 20 Aug 2008 01:31:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-At 16:16 08/08/19, Andrew Morton wrote:
->On Tue, 19 Aug 2008 16:03:45 +0900 Hisashi Hifumi 
-><hifumi.hisashi@oss.ntt.co.jp> wrote:
->
->> 
->> At 21:59 08/08/13, Chris Mason wrote:
->> >On Wed, 2008-08-13 at 12:16 +0200, Jan Kara wrote:
->> >
->> >> > With that said, I don't have strong feelings against falling back to
->> >> > buffered IO when the invalidate fails.  Maybe Zach remembers something I
->> >> > don't?
->> >>   I don't have a strong opinion either. Falling back to buffered writes is
->> >> simpler at least for ext3/ext4 because properly synchronizing against
->> >> writepage() call does not seem to have a nice solution either in
->> >> do_launder_page() or in releasepage(). OTOH is hides the fact the invalidate
->> >> is failing and so if we screw up something in future and it fails often, it
->> >> might be hard to notice / track down the performance penalty.
->> >
->> >In general, these races don't happen often, and when they do it is
->> >because someone is mixing page cache and O_DIRECT io to the same file.
->> >That is explicitly outside the main use case of O_DIRECT.
->> >
->> >So, I'd rather see us slow down O_DIRECT in the mixed use case than have
->> >big impacts in complexity or speed to other parts of the kernel.  If
->> >falling back avoids problems in some filesystems or avoids clearing the
->> >uptodate bit unexpectedly, I'd much rather take the fallback patch.
->> >
->> >-chris
->> 
->> Hi Andrew.
->> I think we don't have strong feelings against falling back to buffered 
->writes to
->> fix the direct-io -EIO problem.
->> 
->> Please review my patch.
->> 
->
->umm, what problem does it solve?
+I've released a new ext4 patchset against the 2.6.27-rc3 kernel.  This
+has more bug fixes that have been reported by benchmarkers and early
+users of ext4.
 
->
->If I recall correctly, we had a problem with pages which are pinned by
->an ext3 transaction, and those pages weren't releaseable for direct-io,
->and this caused some problem?
+As before I've also released updated the patch set vs. the 2.6.26 stock
+kernel, for those people who don't want to play with development kernels
+but who still want to test out ext4.  The 2.6.26-ext4-7 patchset
+contains only the stable patches of ext4.
 
-Sorry, I should describe about this problem.
-Yes, Dio write returns EIO when try_to_release_page fails because sometimes 
-bh is still referenced by jbd or other place.
+As a git tree:
 
-The race between freeing buffer and committing transaction(jbd) was fixed
-but I found another race. We have been discussing about this issue, and
-I proposed that falling back to buffered writes to fix this issue.
-I think we don't have strong feelings against falling back to buffered 
-writes to fix the direct-io -EIO problem.
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.27-rc3-ext4-1
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.27-rc3-ext4-1
 
->
->I think falling back to buffered writes is always a safe course, but
->it'd be nice to have a full description of the change, please.
+As a patchset:
 
-[PATCH] VFS: fix dio write returning EIO when try_to_release_page fails
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.26-rc3-ext4-1
 
-Dio write returns EIO when try_to_release_page fails because bh is
-still referenced.
-The patch 
-"commit 3f31fddfa26b7594b44ff2b34f9a04ba409e0f91
-Author: Mingming Cao <cmm@us.ibm.com>
-Date:   Fri Jul 25 01:46:22 2008 -0700
+The patch vs. 2.6.26:
 
-    jbd: fix race between free buffer and commit transaction
-" 
-was merged into 2.6.27-rc1, but I noticed that this patch is not enough
-to fix the race.
-I did fsstress test heavily to 2.6.27-rc1, and found that dio write still 
-sometimes got EIO through this test.
-The patch above fixed race between freeing buffer(dio) and committing 
-transaction(jbd) but I discovered that there is another race, 
-freeing buffer(dio) and ext3/4_ordered_writepage.
-: background_writeout()
-     ->write_cache_pages()
-       ->ext3_ordered_writepage()
-     	   walk_page_buffers() -> take a bh ref
- 	   block_write_full_page() -> unlock_page
-		: <- end_page_writeback
-                : <- race! (dio write->try_to_release_page fails)
-      	   walk_page_buffers() ->release a bh ref
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.26-ext4-7
 
-ext3_ordered_writepage holds bh ref and does unlock_page remaining 
-taking a bh ref, so this causes the race and failure of 
-try_to_release_page.
+                                                - Ted
 
-To fix this race, I used the approach of falling back to buffered writes
-if try_to_release_page fails on a page.
+Patches marked with '*' are in the stable queue and will be pushed to
+Linus shortly.
 
-Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Akira Fujita (7):
+      ext4: online defrag-- Main function of defrag and ioctl implementation
+      ext4: online defrag-- Allocate new contiguous blocks with mballoc
+      ext4: online defrag-- Read and write file data with memory page
+      ext4: online defrag-- Exchange the blocks between two inodes
+      ext4: online defrag-- Defragmentation for the relevant files (-r mode)
+      ext4: online defrag-- Check the free space fragmentation (-f mode)
+      ext4: online defrag-- Move victim files for the target file (-f mode)
 
-diff -Nrup linux-2.6.27-rc3.org/mm/filemap.c linux-2.6.27-rc3/mm/filemap.c
---- linux-2.6.27-rc3.org/mm/filemap.c	2008-08-13 13:48:47.000000000 +0900
-+++ linux-2.6.27-rc3/mm/filemap.c	2008-08-19 15:45:31.000000000 +0900
-@@ -2129,13 +2129,20 @@ generic_file_direct_write(struct kiocb *
- 	* After a write we want buffered reads to be sure to go to disk to get
- 	* the new data.  We invalidate clean cached page from the region we're
- 	* about to write.  We do this *before* the write so that we can return
--	* -EIO without clobbering -EIOCBQUEUED from ->direct_IO().
-+	* without clobbering -EIOCBQUEUED from ->direct_IO().
- 	*/
- 	if (mapping->nrpages) {
- 		written = invalidate_inode_pages2_range(mapping,
- 					pos >> PAGE_CACHE_SHIFT, end);
--		if (written)
-+		/*
-+		* If a page can not be invalidated, return 0 to fall back
-+		* to buffered write.
-+		*/
-+		if (written) {
-+			if (written == -EBUSY)
-+				return 0;
- 			goto out;
-+		}
- 	}
- 
- 	written = mapping->a_ops->direct_IO(WRITE, iocb, iov, pos, *nr_segs);
-diff -Nrup linux-2.6.27-rc3.org/mm/truncate.c linux-2.6.27-rc3/mm/truncate.c
---- linux-2.6.27-rc3.org/mm/truncate.c	2008-08-13 13:48:48.000000000 +0900
-+++ linux-2.6.27-rc3/mm/truncate.c	2008-08-19 12:10:46.000000000 +0900
-@@ -380,7 +380,7 @@ static int do_launder_page(struct addres
-  * Any pages which are found to be mapped into pagetables are unmapped prior to
-  * invalidation.
-  *
-- * Returns -EIO if any pages could not be invalidated.
-+ * Returns -EBUSY if any pages could not be invalidated.
-  */
- int invalidate_inode_pages2_range(struct address_space *mapping,
- 				  pgoff_t start, pgoff_t end)
-@@ -440,7 +440,7 @@ int invalidate_inode_pages2_range(struct
- 			ret2 = do_launder_page(mapping, page);
- 			if (ret2 == 0) {
- 				if (!invalidate_complete_page2(mapping, page))
--					ret2 = -EIO;
-+					ret2 = -EBUSY;
- 			}
- 			if (ret2 < 0)
- 				ret = ret2;
+Aneesh Kumar K.V (7):
+    * ext4: Handle unwritten extent properly with delayed allocation
+    * ext4: Rework the ext4_da_writepages() function
+    * ext4: make sure ext4_has_free_blocks returns 0 for ENOSPC
+    * ext4: Initialize writeback_index to 0 when allocating a new inode
+    * ext4: Fix small file fragmentation
+      ext4: undo the stable boundary patch changes
+      ext4: invalidate pages if delalloc block allocation fails.
 
+Eric Sandeen (3):
+    * ext4: Fix bug where we return ENOSPC even though we have plenty of inodes
+      ext4: use percpu data structures for lg_prealloc_list
+      Hook ext4 to the vfs fiemap interface.
+
+Josef Bacik (2):
+    * ext4: don't try to resize if there are no reserved gdt blocks left
+      Any block based fs (this patch includes ext3) just has to declare its own
+
+Mingming Cao (5):
+    * ext4: Fix delalloc release block reservation for truncate
+    * ext4: journal credits calulation cleanup and fix for non-extent writepage
+    * ext4: journal credits reservation fixes for extent file writepage
+    * ext4: journal credits reservation fixes for DIO, fallocate
+    * ext4: journal credit fix for the delayed allocation's writepages() function
+
+Theodore Ts'o (9):
+    * ext4: Fix potential truncate BUG due to i_prealloc_list being non-empty
+    * ext4: Fix ext4_dx_readdir hash collision handling
+    * ext4: Use ext4_discard_reservations instead of mballoc-specific call
+    * ext4: Update documentation to remind users to update mke2fs.conf
+      ext4: Stable/Unstable boundary
+      This patch should be merged with ext4-online-defrag-alloc-contiguous-blks.patch
+      Basic vfs-level fiemap infrastructure, which sets up a new ->fiemap
+      Plug ocfs2 into ->fiemap. Some portions of ocfs2_get_clusters() had to be
+      patch ext4_fix_printk_checkpatch_issues
 
