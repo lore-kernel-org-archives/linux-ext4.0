@@ -1,21 +1,24 @@
 From: Eric Sandeen <sandeen@redhat.com>
 Subject: [PATCH] s390: fix ext2_find_next_bit
-Date: Thu, 21 Aug 2008 01:15:54 -0500
-Message-ID: <48AD081A.6060200@redhat.com>
+Date: Thu, 21 Aug 2008 01:18:45 -0500
+Message-ID: <48AD08C5.204@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Jan Glauber <jglauber@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Jan Glauber <jglauber@redhat.com>,
 	"Josef 'Jeff' Sipek" <jeffpc@josefsipek.net>
-To: Martin Schwidefsky <schwidefsky@de.ibm.com>
+To: linux-s390@vger.kernel.org,
+	Martin Schwidefsky <schwidefsky@de.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:53496 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:53661 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753560AbYHUGSM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Aug 2008 02:18:12 -0400
+	id S1754014AbYHUGVA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Aug 2008 02:21:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+(oops, left off the s390 list on the first send)
 
 The following changes get ext4 on s390 up and running for me.
 
@@ -45,4 +48,6 @@ Index: linux-2.6/arch/s390/include/asm/bitops.h
  		if (set >= size)
  			return size + offset;
  		if (set < __BITOPS_WORDSIZE)
+
+
 
