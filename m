@@ -1,65 +1,80 @@
-From: akpm@linux-foundation.org
-Subject: - ext4-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch removed from -mm tree
-Date: Thu, 21 Aug 2008 11:47:28 -0700
-Message-ID: <200808211847.m7LIlShj020194@imap1.linux-foundation.org>
-To: jbacik@redhat.com, adilger@sun.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH 1/3] Implement generic freeze feature
+Date: Thu, 21 Aug 2008 12:58:41 -0700
+Message-ID: <20080821125841.a04a706f.akpm@linux-foundation.org>
+References: <20080818212819t-sato@mail.jp.nec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, dm-devel@redhat.com,
+	viro@ZenIV.linux.org.uk, linux-ext4@vger.kernel.org,
+	xfs@oss.sgi.com, hch@infradead.org, axboe@kernel.dk,
+	mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org
+To: Takashi Sato <t-sato@yk.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:46530 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:56677 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753942AbYHUSsY (ORCPT
+	by vger.kernel.org with ESMTP id S1751375AbYHUT7v (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Aug 2008 14:48:24 -0400
+	Thu, 21 Aug 2008 15:59:51 -0400
+In-Reply-To: <20080818212819t-sato@mail.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Mon, 18 Aug 2008 21:28:19 +0900
+Takashi Sato <t-sato@yk.jp.nec.com> wrote:
 
-The patch titled
-     ext4: don't try to resize if there are no reserved gdt blocks left
-has been removed from the -mm tree.  Its filename was
-     ext4-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch
+> The ioctls for the generic freeze feature are below.
+> o Freeze the filesystem
+>   int ioctl(int fd, int FIFREEZE, arg)
+>     fd: The file descriptor of the mountpoint
+>     FIFREEZE: request code for the freeze
+>     arg: Ignored
+>     Return value: 0 if the operation succeeds. Otherwise, -1
+> 
+> o Unfreeze the filesystem
+>   int ioctl(int fd, int FITHAW, arg)
+>     fd: The file descriptor of the mountpoint
+>     FITHAW: request code for unfreeze
+>     arg: Ignored
+>     Return value: 0 if the operation succeeds. Otherwise, -1
+> 
+>
+> ...
+>
+> --- linux-2.6.27-rc2.org/include/linux/fs.h	2008-08-06 13:49:54.000000000 +0900
+> +++ linux-2.6.27-rc2-freeze/include/linux/fs.h	2008-08-07 08:59:54.000000000 +0900
+> @@ -226,6 +226,8 @@ extern int dir_notify_enable;
+>  #define BMAP_IOCTL 1		/* obsolete - kept for compatibility */
+>  #define FIBMAP	   _IO(0x00,1)	/* bmap access */
+>  #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
+> +#define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
+> +#define FITHAW		_IOWR('X', 120, int)	/* Thaw */
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+FIFREEZE is 119, but a few lines above we have
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+#define BLKDISCARD _IO(0x12,119)
 
-------------------------------------------------------
-Subject: ext4: don't try to resize if there are no reserved gdt blocks left
-From: Josef Bacik <jbacik@redhat.com>
+Should we be using 120 and 121 here?
 
-When trying to resize a ext3 fs and you run out of reserved gdt blocks,
-you get an error that doesn't actually tell you what went wrong, it just
-says that the gdb it picked is not correct, which is the case since you
-don't have any reserved gdt blocks left.  This patch adds a check to make
-sure you have reserved gdt blocks to use, and if not prints out a more
-relevant error.
+>  #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
+>  #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
+> @@ -574,6 +576,10 @@ struct block_device {
+>  	 * care to not mess up bd_private for that case.
+>  	 */
+>  	unsigned long		bd_private;
+> +	/* The counter of freeze processes */
+> +	int			bd_freeze_count;
+> +	/* Semaphore for freeze */
+> +	struct semaphore	bd_freeze_sem;
 
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Andreas Dilger <adilger@sun.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+"freeze" is not an adequate description of what this protects.  I think
+it's only the modification and testing of bd_freeze_count, isn't it?
 
- fs/ext4/resize.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+If so, all this could be done more neatly by removing the lock,
+switching to atomic_t and using our (rich) atomic_t operations.
 
-diff -puN fs/ext4/resize.c~ext4-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left fs/ext4/resize.c
---- a/fs/ext4/resize.c~ext4-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left
-+++ a/fs/ext4/resize.c
-@@ -773,7 +773,8 @@ int ext4_group_add(struct super_block *s
- 
- 	if (reserved_gdb || gdb_off == 0) {
- 		if (!EXT4_HAS_COMPAT_FEATURE(sb,
--					     EXT4_FEATURE_COMPAT_RESIZE_INODE)){
-+					     EXT4_FEATURE_COMPAT_RESIZE_INODE)
-+		    || !le16_to_cpu(es->s_reserved_gdt_blocks)) {
- 			ext4_warning(sb, __func__,
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
-_
+otoh, perhaps it protects more than this, in which case the lock
+can/should be switched to a `struct mutex'?
 
-Patches currently in -mm which might be from jbacik@redhat.com are
-
-linux-next.patch
-ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch
 
