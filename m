@@ -1,46 +1,70 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: BUG: using smp_processor_id() in preemptible
-Date: Wed, 20 Aug 2008 23:17:57 -0500
-Message-ID: <48ACEC75.2030709@redhat.com>
-References: <20080820053438.GA6381@skywalker>
+Subject: Re: ENOSPC returned during writepages
+Date: Thu, 21 Aug 2008 00:06:44 -0500
+Message-ID: <48ACF7E4.6040005@redhat.com>
+References: <20080820054339.GB6381@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:48563 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:41270 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751298AbYHUEVE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 21 Aug 2008 00:21:04 -0400
-In-Reply-To: <20080820053438.GA6381@skywalker>
+	id S1752020AbYHUFLx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 21 Aug 2008 01:11:53 -0400
+In-Reply-To: <20080820054339.GB6381@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Aneesh Kumar K.V wrote:
-> BUG: using smp_processor_id() in preemptible [00000000] code:
-> fsstress/20995
-> caller is ext4_mb_initialize_context+0x20c/0x22c
-> Pid: 20995, comm: fsstress Not tainted 2.6.27-rc3-autokern1 #1
-> [<c0294a2f>] debug_smp_processor_id+0x9f/0xb8
-> [<c01e523d>] ext4_mb_initialize_context+0x20c/0x22c
-> [<c01ea017>] ext4_mb_new_blocks+0x17c/0x715
-> [<c0136b43>] ? trace_hardirqs_on+0xb/0xd
-> [<c01e23f2>] ext4_ext_get_blocks+0xbaf/0xde1
-> [<c0137d20>] ? __lock_acquire+0x61e/0x674
-> [<c0137d20>] ? __lock_acquire+0x61e/0x674
-> [<c01d464a>] ext4_get_blocks_wrap+0xce/0x1eb
-> [<c01dfaba>] ext4_fallocate+0x135/0x27d
-> [<c016472d>] ? fget+0x1d/0xd3
-> [<c01647aa>] ? fget+0x9a/0xd3
-> [<c01623a4>] sys_fallocate+0xce/0xf3
-> [<c0102bb9>] sysenter_do_call+0x12/0x35
-> =======================
+> Hi,
+> 
+> I am getting this even with the latest patch queue. The test program is
+> a modified fsstress with fallocate support.
+> 
+> mpage_da_map_blocks block allocation failed for inode 377954 at logical
+> offset 313 with max blocks 4 with error -28
+> mpage_da_map_blocks block allocation failed for inode 336367 at logical
+> offset 74 with max blocks 9 with error -28
+> mpage_da_map_blocks block allocation failed for inode 345560 at logical
+> offset 542 with max blocks 7 with error -28
+> This should not happen.!! Data will be lost
+> mpage_da_map_blocks block allocation failed for inode 355317 at logical
+> offset 152 with max blocks 10 with error -28
+> This should not happen.!! Data will be lost
+> mpage_da_map_blocks block allocation failed for inode 395261 at logical
+> offset 462 with max blocks 1 with error -28
+> This should not happen.!! Data will be lost
+> mpage_da_map_blocks block allocation failed for inode 323784 at logical
+> offset 313 with max blocks 11 with error -28
+> This should not happen.!! Data will be lost
 
-whoops, ok, I should probably convert it to use raw_smp_processor_id; I
-don't think we care if we get pre-empted and the cpu changes; we use the
-cpu id exactly once to grab it from the array, I think we don't need any
-atomicity.  I'll convert to raw_smp_processor_id() to avoid the debug
-check, unless anyone sees a problem with that ...
+So, I really need to un-bury myself and read this thread more carefully,
+but:  It may be interesting to look at what XFS did for this sort of
+problem a couple of years ago.
+
+-Eric
+
+
+From: David Chinner <dgc@sgi.com>
+Date: Tue, 14 Mar 2006 02:13:09 +0000 (+1100)
+Subject: [XFS] On machines with more than 8 cpus, when running parallel I/O
+X-Git-Tag: v2.6.17-rc1~1000^2~69
+X-Git-Url: X-Git-Url:
+http://git.kernel.org/?p=linux%2Fkernel%2Fgit%2Ftorvalds%2Flinux-2.6.git;a=commitdiff_plain;h=8d280b98cfe3c0b69c37d355218975c1c0279bb0
+
+[XFS] On machines with more than 8 cpus, when running parallel I/O
+threads, the incore superblock lock becomes the limiting factor for
+buffered write throughput. Make the contended fields in the incore
+superblock use per-cpu counters so that there is no global lock to limit
+scalability.
+
+SGI-PV: 946630
+SGI-Modid: xfs-linux-melb:xfs-kern:25106a
+
+Signed-off-by: David Chinner <dgc@sgi.com>
+Signed-off-by: Nathan Scott <nathans@sgi.com>
 
 -Eric
