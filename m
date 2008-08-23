@@ -1,52 +1,58 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: [RFC PATCH] percpu_counters: make fbc->count read atomic on 32
-	bit architecture
-Date: Fri, 22 Aug 2008 20:33:22 +0200
-Message-ID: <1219430002.21326.22.camel@lappy.programming.kicks-ass.net>
-References: <1219412074-30584-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1219429794.6306.34.camel@mingming-laptop>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: ENOSPC returned during writepages
+Date: Sat, 23 Aug 2008 05:12:33 -0600
+Message-ID: <20080823111233.GL3392@webber.adilger.int>
+References: <20080820054339.GB6381@skywalker>
+ <20080820104644.GA11267@skywalker> <20080820115331.GA9965@mit.edu>
+ <1219269325.7895.45.camel@mingming-laptop> <20080821151815.GD6509@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Mingming Cao <cmm@us.ibm.com>, Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:38463 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758193AbYHVSeM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 Aug 2008 14:34:12 -0400
-In-Reply-To: <1219429794.6306.34.camel@mingming-laptop>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:62607 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752620AbYHWLMj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Aug 2008 07:12:39 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7NBCcEj017746
+	for <linux-ext4@vger.kernel.org>; Sat, 23 Aug 2008 04:12:39 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K6100I01W6J4O00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sat, 23 Aug 2008 04:12:37 -0700 (PDT)
+In-reply-to: <20080821151815.GD6509@skywalker>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-08-22 at 11:29 -0700, Mingming Cao wrote:
-> =E5=9C=A8 2008-08-22=E4=BA=94=E7=9A=84 19:04 +0530=EF=BC=8CAneesh Kum=
-ar K.V=E5=86=99=E9=81=93=EF=BC=9A
-> > fbc->count is of type s64. The change was introduced by
-> > 0216bfcffe424a5473daa4da47440881b36c1f4 which changed the type
-> > from long to s64. Moving to s64 also means on 32 bit architectures
-> > we can get wrong values on fbc->count.
-> >=20
-> > percpu_counter_read is used within interrupt context also. So
-> > use the irq safe version of spinlock while reading
-> >=20
->=20
-> It's quit expensive to hold the lock to do percpu_counter_read  on 32
-> bit arch, the common case.
-> =20
-> The type of the global counter and local counter were explictly
-> specified using s64 and s32 The global counter is changed from long t=
-o
-> s64, while the local counter is changed from long to s32, so we could
-> avoid doing 64 bit update in most cases.  After all the percpu counte=
-r
-> read is not a accurate value.=20
+On Aug 21, 2008  20:48 +0530, Aneesh Kumar wrote:
+> On Wed, Aug 20, 2008 at 02:55:25PM -0700, Mingming Cao wrote:
+> > I have a feeling that we did not try very hard before invalidate the
+> > dirty page which fail to map to disks. Perhaps we should try a few more
+> > times before give up. Also in that case, perhaps we should turn off
+> > delalloc fs wide, so the new writers won't take the subsequently made
+> > avaible free blocks away from this unlucky delalloc da writepages.
+> 
+> How do we try hard ? The mballoc already try had to allocate blocks. So I
+> am not sure what do we achieve by requesting for block allocation again.
 
-seqlocks come to mind.
+One reason is that if blocks are being released then they cannot be
+reallocated until the transaction has committed.
 
+Running something like iozone in a loop on a filesystem that has only
+as much free space as the size of the output file can run out of space
+after a few loops because of this, so definitely retrying the allocation
+can help.
+
+Also, keeping the pages in RAM may allow them to be written again if
+the user detects the ENOSPC and deletes some files...
+
+Cheers, Andreas
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
