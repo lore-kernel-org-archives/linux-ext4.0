@@ -1,34 +1,27 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [GIT PULL] ext4 bug fixes
-Date: Sat, 23 Aug 2008 21:05:54 -0400
-Message-ID: <20080824010554.GE18169@mit.edu>
-References: <E1KWXf5-0004gv-P7@closure.thunk.org> <20080823234439.GA24760@infradead.org>
+Subject: Re: [PATCH] debugfs : Close the file handle and return in case of
+	errors.
+Date: Sat, 23 Aug 2008 23:15:51 -0400
+Message-ID: <20080824031551.GA1408@mit.edu>
+References: <ea11fea30808230911s74d94a8ancee99cfe4bc46e22@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-ext4@vger.kernel.org
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:38115 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:42785 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751941AbYHXBGG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Aug 2008 21:06:06 -0400
+	with ESMTP id S1751837AbYHXDPx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 23 Aug 2008 23:15:53 -0400
 Content-Disposition: inline
-In-Reply-To: <20080823234439.GA24760@infradead.org>
+In-Reply-To: <ea11fea30808230911s74d94a8ancee99cfe4bc46e22@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Aug 23, 2008 at 07:44:39PM -0400, Christoph Hellwig wrote:
-> >       ext4: Initialize writeback_index to 0 when allocating a new inode
-> 
-> Since commit 7d455e0030eeab820773e7786605be4d9e56a04b this is already
-> done in common code, so this changeset doesn't have any effect.
-> 
+On Sat, Aug 23, 2008 at 09:41:25PM +0530, Manish Katiyar wrote:
+> Close the filehandle and return in case if we are unable to expand the
+> directory during write.
 
-Hmm, I thought Andrew said he this was better to do in each filesystem
-rather than in the common code, so I thought he was NACK'ing that
-patch.  Still, I see his sign-off, so I guess I must have misread the
-thread.....
+Thanks, applied.
 
-						- Ted
-
+					- Ted
