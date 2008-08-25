@@ -1,194 +1,176 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH -v2] percpu_counters: make fbc->count read atomic on 32 bit architecture
-Date: Mon, 25 Aug 2008 16:50:28 +0530
-Message-ID: <1219663233-21849-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH -v2] ext4: Retry block reservation
+Date: Mon, 25 Aug 2008 16:50:30 +0530
+Message-ID: <1219663233-21849-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1219663233-21849-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219663233-21849-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>,
-	Andrew Morton <akpm@linux-foundation.org>
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp07.in.ibm.com ([59.145.155.7]:37186 "EHLO
-	e28esmtp07.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753619AbYHYLUm (ORCPT
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:41470 "EHLO
+	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753600AbYHYLUm (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Aug 2008 07:20:42 -0400
 Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7PBKdcC017399
+	by e28esmtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7PBKdwn004255
 	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2008 16:50:39 +0530
 Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7PBKb4Z639144
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7PBKbOH1585238
 	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2008 16:50:38 +0530
 Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7PBKa95014080
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7PBKaXe014087
 	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2008 16:50:37 +0530
+In-Reply-To: <1219663233-21849-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-fbc->count is of type s64. The change was introduced by
-0216bfcffe424a5473daa4da47440881b36c1f4 which changed the type
-from long to s64. Moving to s64 also means on 32 bit architectures
-we can get wrong values on fbc->count. Since fbc->count is read
-more frequently and updated rarely use seqlocks. This should
-reduce the impact of locking in the read path for 32bit arch.
-
-percpu_counter_read is used within interrupt context also. So
-use the irq safe version of seqlock while reading
+During block reservation if we don't have enough
+blocks left, retry block reservation with smaller
+block count. This make sure we try fallocate
+and DIO with smaller request size and don't fail early.
+The delayed allocation reservation cannot try with smaller
+block count. So retry block reservation to handle temporary
+disk full conditions.  Also print free blocks details if we
+fail block allocation during writepages.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-CC: Peter Zijlstra <a.p.zijlstra@chello.nl>
-CC: Andrew Morton <akpm@linux-foundation.org>
 ---
- include/linux/percpu_counter.h |   29 +++++++++++++++++++++++++----
- lib/percpu_counter.c           |   20 ++++++++++----------
- 2 files changed, 35 insertions(+), 14 deletions(-)
+ fs/ext4/balloc.c  |    8 +++++++-
+ fs/ext4/inode.c   |   33 ++++++++++++++++++++++++++++++---
+ fs/ext4/mballoc.c |    7 ++++++-
+ 3 files changed, 43 insertions(+), 5 deletions(-)
 
-diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
-index 9007ccd..36f3d2d 100644
---- a/include/linux/percpu_counter.h
-+++ b/include/linux/percpu_counter.h
-@@ -6,7 +6,7 @@
-  * WARNING: these things are HUGE.  4 kbytes per counter on 32-way P4.
-  */
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 4a53541..b7d1347 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1760,10 +1760,16 @@ ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		if (ext4_claim_free_blocks(sbi, *count)) {
++		while (*count && ext4_claim_free_blocks(sbi, *count)) {
++			/* let others to free the space */
++			yield();
++			*count = *count >> 1;
++		}
++		if (!*count) {
+ 			*errp = -ENOSPC;
+ 			return 0;	/*return with ENOSPC error */
+ 		}
++		num = *count;
+ 	}
+ 	/*
+ 	 * Check quota for allocation of this block.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d965a05..72a4a71 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1521,6 +1521,7 @@ static int ext4_journalled_write_end(struct file *file,
  
--#include <linux/spinlock.h>
-+#include <linux/seqlock.h>
- #include <linux/smp.h>
- #include <linux/list.h>
- #include <linux/threads.h>
-@@ -16,7 +16,7 @@
- #ifdef CONFIG_SMP
- 
- struct percpu_counter {
--	spinlock_t lock;
-+	seqlock_t lock;
- 	s64 count;
- #ifdef CONFIG_HOTPLUG_CPU
- 	struct list_head list;	/* All percpu_counters are on a list */
-@@ -53,10 +53,31 @@ static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
- 	return __percpu_counter_sum(fbc);
- }
- 
--static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-+#if BITS_PER_LONG == 64
-+static inline s64 fbc_count(struct percpu_counter *fbc)
+ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
  {
- 	return fbc->count;
++	int retries = 0;
+        struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+        unsigned long md_needed, mdblocks, total = 0;
+ 
+@@ -1529,6 +1530,7 @@ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
+ 	 * in order to allocate nrblocks
+ 	 * worse case is one extent per block
+ 	 */
++repeat:
+ 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	total = EXT4_I(inode)->i_reserved_data_blocks + nrblocks;
+ 	mdblocks = ext4_calc_metadata_amount(inode, total);
+@@ -1539,6 +1541,10 @@ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
+ 
+ 	if (ext4_claim_free_blocks(sbi, total)) {
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
++			yield();
++			goto repeat;
++		}
+ 		return -ENOSPC;
+ 	}
+ 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+@@ -1813,6 +1819,26 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
+ 	return;
  }
-+#else
-+/* doesn't have atomic 64 bit operation */
-+static inline s64 fbc_count(struct percpu_counter *fbc)
+ 
++static void ext4_print_free_blocks(struct super_block *sb)
 +{
-+	s64 ret;
-+	unsigned seq;
-+	unsigned long flags;
-+	do {
-+		seq = read_seqbegin_irqsave(&fbc->lock, flags);
-+		ret = fbc->count;
-+	} while(read_seqretry_irqrestore(&fbc->lock, seq, flags));
-+	return ret;
-+
-+}
++#ifdef EXT4FS_DEBUG
++	ext4_group_t i;
++	struct ext4_group_desc *gdp;
++	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
++	printk(KERN_DEBUG "Free blocks details\n");
++	for (i = 0; i < ngroups; i++) {
++		gdp = ext4_get_group_desc(sb, i, NULL);
++		if (!gdp)
++			continue;
++		printk(KERN_DEBUG "Free blocks in group %lu is %d\n",
++				i, le16_to_cpu(gdp->bg_free_blocks_count));
++	}
 +#endif
-+
-+static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-+{
-+	return fbc_count(fbc);
++	printk(KERN_CRIT "Total free blocks count %lld\n",
++			ext4_count_free_blocks(sb));
++	return;
 +}
- 
++
  /*
-  * It is possible for the percpu_counter_read() to return a small negative
-@@ -65,7 +86,7 @@ static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-  */
- static inline s64 percpu_counter_read_positive(struct percpu_counter *fbc)
+  * mpage_da_map_blocks - go through given space
+  *
+@@ -1825,20 +1851,18 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
+ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
  {
--	s64 ret = fbc->count;
-+	s64 ret = fbc_count(fbc);
+ 	int err = 0;
++	struct buffer_head new;
+ 	struct buffer_head *lbh = &mpd->lbh;
+ 	sector_t next = lbh->b_blocknr;
+-	struct buffer_head new;
  
- 	barrier();		/* Prevent reloads of fbc->count */
- 	if (ret >= 0)
-diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
-index a866389..83bb809 100644
---- a/lib/percpu_counter.c
-+++ b/lib/percpu_counter.c
-@@ -18,13 +18,13 @@ void percpu_counter_set(struct percpu_counter *fbc, s64 amount)
- {
- 	int cpu;
- 
--	spin_lock(&fbc->lock);
-+	write_seqlock(&fbc->lock);
- 	for_each_possible_cpu(cpu) {
- 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
- 		*pcount = 0;
- 	}
- 	fbc->count = amount;
--	spin_unlock(&fbc->lock);
-+	write_sequnlock(&fbc->lock);
- }
- EXPORT_SYMBOL(percpu_counter_set);
- 
-@@ -37,10 +37,10 @@ void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch)
- 	pcount = per_cpu_ptr(fbc->counters, cpu);
- 	count = *pcount + amount;
- 	if (count >= batch || count <= -batch) {
--		spin_lock(&fbc->lock);
-+		write_seqlock(&fbc->lock);
- 		fbc->count += count;
- 		*pcount = 0;
--		spin_unlock(&fbc->lock);
-+		write_sequnlock(&fbc->lock);
- 	} else {
- 		*pcount = count;
- 	}
-@@ -57,7 +57,7 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc)
- 	s64 ret;
- 	int cpu;
- 
--	spin_lock(&fbc->lock);
-+	write_seqlock(&fbc->lock);
- 	ret = fbc->count;
- 	for_each_online_cpu(cpu) {
- 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
-@@ -66,7 +66,7 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc)
- 	}
- 	fbc->count = ret;
- 
--	spin_unlock(&fbc->lock);
-+	write_sequnlock(&fbc->lock);
- 	return ret;
- }
- EXPORT_SYMBOL(__percpu_counter_sum);
-@@ -75,7 +75,7 @@ EXPORT_SYMBOL(__percpu_counter_sum);
- 
- int percpu_counter_init(struct percpu_counter *fbc, s64 amount)
- {
--	spin_lock_init(&fbc->lock);
-+	seqlock_init(&fbc->lock);
- 	fbc->count = amount;
- 	fbc->counters = alloc_percpu(s32);
- 	if (!fbc->counters)
-@@ -95,7 +95,7 @@ int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount)
- 
- 	err = percpu_counter_init(fbc, amount);
- 	if (!err)
--		lockdep_set_class(&fbc->lock, &percpu_counter_irqsafe);
-+		lockdep_set_class(&fbc->lock.lock, &percpu_counter_irqsafe);
- 	return err;
- }
- 
-@@ -130,11 +130,11 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
- 		s32 *pcount;
- 		unsigned long flags;
- 
--		spin_lock_irqsave(&fbc->lock, flags);
-+		write_seqlock_irqsave(&fbc->lock, flags);
- 		pcount = per_cpu_ptr(fbc->counters, cpu);
- 		fbc->count += *pcount;
- 		*pcount = 0;
--		spin_unlock_irqrestore(&fbc->lock, flags);
-+		write_sequnlock_irqrestore(&fbc->lock, flags);
- 	}
- 	mutex_unlock(&percpu_counters_lock);
- 	return NOTIFY_OK;
+ 	/*
+ 	 * We consider only non-mapped and non-allocated blocks
+ 	 */
+ 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
+ 		return 0;
+-
+ 	new.b_state = lbh->b_state;
+ 	new.b_blocknr = 0;
+ 	new.b_size = lbh->b_size;
+-
+ 	/*
+ 	 * If we didn't accumulate anything
+ 	 * to write simply return
+@@ -1871,6 +1895,9 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 				  lbh->b_size >> mpd->inode->i_blkbits, err);
+ 		printk(KERN_EMERG "This should not happen.!! "
+ 					"Data will be lost\n");
++		if (err == -ENOSPC) {
++			ext4_print_free_blocks(mpd->inode->i_sb);
++		}
+ 		/* invlaidate all the pages */
+ 		ext4_da_block_invalidatepages(mpd, next,
+ 				lbh->b_size >> mpd->inode->i_blkbits);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4404b46..419009f 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4397,7 +4397,12 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		if (ext4_claim_free_blocks(sbi, ar->len)) {
++		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
++			/* let others to free the space */
++			yield();
++			ar->len = ar->len >> 1;
++		}
++		if (!ar->len) {
+ 			*errp = -ENOSPC;
+ 			return 0;
+ 		}
 -- 
 1.6.0.1.90.g27a6e
 
