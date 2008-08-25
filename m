@@ -1,176 +1,135 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH -v2] ext4: Retry block reservation
-Date: Mon, 25 Aug 2008 16:50:30 +0530
-Message-ID: <1219663233-21849-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH -v2] ext4: Switch to non delalloc mode when we are low on free blocks count.
+Date: Mon, 25 Aug 2008 16:50:32 +0530
+Message-ID: <1219663233-21849-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1219663233-21849-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1219663233-21849-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219663233-21849-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219663233-21849-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:41470 "EHLO
-	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753600AbYHYLUm (ORCPT
+Received: from e28smtp05.in.ibm.com ([59.145.155.5]:39342 "EHLO
+	e28esmtp05.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753236AbYHYLUm (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Aug 2008 07:20:42 -0400
 Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28esmtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7PBKdwn004255
+	by e28esmtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7PBKdYN025753
 	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2008 16:50:39 +0530
 Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7PBKbOH1585238
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7PBKbAW426056
 	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2008 16:50:38 +0530
 Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7PBKaXe014087
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7PBKbkM014117
 	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2008 16:50:37 +0530
-In-Reply-To: <1219663233-21849-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1219663233-21849-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-During block reservation if we don't have enough
-blocks left, retry block reservation with smaller
-block count. This make sure we try fallocate
-and DIO with smaller request size and don't fail early.
-The delayed allocation reservation cannot try with smaller
-block count. So retry block reservation to handle temporary
-disk full conditions.  Also print free blocks details if we
-fail block allocation during writepages.
+delayed allocation allocate blocks during writepages. That also
+means we cannot handle block allocation failures. Switch to
+non - delalloc when we are running low on free blocks.
+Delayed allocation need to do aggressive meta-data block reservation
+considering that the requested blocks can all be discontiguous.
+Switching to non-delalloc avoids that. Also we can satisfy
+partial write in non-delalloc mode.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/balloc.c  |    8 +++++++-
- fs/ext4/inode.c   |   33 ++++++++++++++++++++++++++++++---
- fs/ext4/mballoc.c |    7 ++++++-
- 3 files changed, 43 insertions(+), 5 deletions(-)
+ fs/ext4/inode.c |   48 ++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 files changed, 46 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 4a53541..b7d1347 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -1760,10 +1760,16 @@ ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
- 		/*
- 		 * With delalloc we already reserved the blocks
- 		 */
--		if (ext4_claim_free_blocks(sbi, *count)) {
-+		while (*count && ext4_claim_free_blocks(sbi, *count)) {
-+			/* let others to free the space */
-+			yield();
-+			*count = *count >> 1;
-+		}
-+		if (!*count) {
- 			*errp = -ENOSPC;
- 			return 0;	/*return with ENOSPC error */
- 		}
-+		num = *count;
- 	}
- 	/*
- 	 * Check quota for allocation of this block.
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d965a05..72a4a71 100644
+index 3f3ecc0..d923a14 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1521,6 +1521,7 @@ static int ext4_journalled_write_end(struct file *file,
- 
- static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
- {
-+	int retries = 0;
-        struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-        unsigned long md_needed, mdblocks, total = 0;
- 
-@@ -1529,6 +1530,7 @@ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
- 	 * in order to allocate nrblocks
- 	 * worse case is one extent per block
- 	 */
-+repeat:
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	total = EXT4_I(inode)->i_reserved_data_blocks + nrblocks;
- 	mdblocks = ext4_calc_metadata_amount(inode, total);
-@@ -1539,6 +1541,10 @@ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
- 
- 	if (ext4_claim_free_blocks(sbi, total)) {
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
-+			yield();
-+			goto repeat;
-+		}
- 		return -ENOSPC;
- 	}
- 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
-@@ -1813,6 +1819,26 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
- 	return;
+@@ -2482,6 +2482,29 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	return ret;
  }
  
-+static void ext4_print_free_blocks(struct super_block *sb)
++#define FALL_BACK_TO_NONDELALLOC 1
++static int ext4_nonda_switch(struct super_block *sb)
 +{
-+#ifdef EXT4FS_DEBUG
-+	ext4_group_t i;
-+	struct ext4_group_desc *gdp;
-+	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
-+	printk(KERN_DEBUG "Free blocks details\n");
-+	for (i = 0; i < ngroups; i++) {
-+		gdp = ext4_get_group_desc(sb, i, NULL);
-+		if (!gdp)
-+			continue;
-+		printk(KERN_DEBUG "Free blocks in group %lu is %d\n",
-+				i, le16_to_cpu(gdp->bg_free_blocks_count));
++	s64 free_blocks, dirty_blocks;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++
++	/*
++	 * switch to non delalloc mode if we are running low
++	 * on free block. The free block accounting via percpu
++	 * counters can get slightly wrong with FBC_BATCH getting
++	 * accumulated on each CPU without updating global counters
++	 * Delalloc need an accurate free block accounting. So switch
++	 * to non delalloc when we are near to error range.
++	 */
++	free_blocks  = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
++	dirty_blocks = percpu_counter_read_positive(&sbi->s_dirtyblocks_counter);
++	if ( 2 * free_blocks < 3 * dirty_blocks) {
++		/* free block count is less that 150% of dirty blocks */
++		return 1;
 +	}
-+#endif
-+	printk(KERN_CRIT "Total free blocks count %lld\n",
-+			ext4_count_free_blocks(sb));
-+	return;
++	return 0;
 +}
 +
- /*
-  * mpage_da_map_blocks - go through given space
-  *
-@@ -1825,20 +1851,18 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
- static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
- {
- 	int err = 0;
-+	struct buffer_head new;
- 	struct buffer_head *lbh = &mpd->lbh;
- 	sector_t next = lbh->b_blocknr;
--	struct buffer_head new;
+ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 				loff_t pos, unsigned len, unsigned flags,
+ 				struct page **pagep, void **fsdata)
+@@ -2496,6 +2519,13 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 	index = pos >> PAGE_CACHE_SHIFT;
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+ 	to = from + len;
++
++	if (ext4_nonda_switch(inode->i_sb)) {
++		*fsdata = (void *)FALL_BACK_TO_NONDELALLOC;
++		return ext4_write_begin(file, mapping, pos,
++					len, flags, pagep, fsdata);
++	}
++	*fsdata = (void *)0;
+ retry:
+ 	/*
+ 	 * With delayed allocation, we don't log the i_disksize update
+@@ -2564,6 +2594,19 @@ static int ext4_da_write_end(struct file *file,
+ 	handle_t *handle = ext4_journal_current_handle();
+ 	loff_t new_i_size;
+ 	unsigned long start, end;
++	int write_mode = (int)fsdata;
++
++	if (write_mode == FALL_BACK_TO_NONDELALLOC) {
++		if (ext4_should_order_data(inode)) {
++			return ext4_ordered_write_end(file, mapping, pos,
++					len, copied, page, fsdata);
++		} else if (ext4_should_writeback_data(inode)) {
++			return ext4_writeback_write_end(file, mapping, pos,
++					len, copied, page, fsdata);
++		} else {
++			BUG();
++		}
++	}
  
- 	/*
- 	 * We consider only non-mapped and non-allocated blocks
+ 	start = pos & (PAGE_CACHE_SIZE - 1);
+ 	end = start + copied -1;
+@@ -4901,6 +4944,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+ 	loff_t size;
+ 	unsigned long len;
+ 	int ret = -EINVAL;
++	void *fsdata;
+ 	struct file *file = vma->vm_file;
+ 	struct inode *inode = file->f_path.dentry->d_inode;
+ 	struct address_space *mapping = inode->i_mapping;
+@@ -4939,11 +4983,11 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
+ 	 * on the same page though
  	 */
- 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
- 		return 0;
--
- 	new.b_state = lbh->b_state;
- 	new.b_blocknr = 0;
- 	new.b_size = lbh->b_size;
--
- 	/*
- 	 * If we didn't accumulate anything
- 	 * to write simply return
-@@ -1871,6 +1895,9 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
- 				  lbh->b_size >> mpd->inode->i_blkbits, err);
- 		printk(KERN_EMERG "This should not happen.!! "
- 					"Data will be lost\n");
-+		if (err == -ENOSPC) {
-+			ext4_print_free_blocks(mpd->inode->i_sb);
-+		}
- 		/* invlaidate all the pages */
- 		ext4_da_block_invalidatepages(mpd, next,
- 				lbh->b_size >> mpd->inode->i_blkbits);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 4404b46..419009f 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4397,7 +4397,12 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
- 		/*
- 		 * With delalloc we already reserved the blocks
- 		 */
--		if (ext4_claim_free_blocks(sbi, ar->len)) {
-+		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
-+			/* let others to free the space */
-+			yield();
-+			ar->len = ar->len >> 1;
-+		}
-+		if (!ar->len) {
- 			*errp = -ENOSPC;
- 			return 0;
- 		}
+ 	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
+-			len, AOP_FLAG_UNINTERRUPTIBLE, &page, NULL);
++			len, AOP_FLAG_UNINTERRUPTIBLE, &page, &fsdata);
+ 	if (ret < 0)
+ 		goto out_unlock;
+ 	ret = mapping->a_ops->write_end(file, mapping, page_offset(page),
+-			len, len, page, NULL);
++			len, len, page, fsdata);
+ 	if (ret < 0)
+ 		goto out_unlock;
+ 	ret = 0;
 -- 
 1.6.0.1.90.g27a6e
 
