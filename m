@@ -1,106 +1,274 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: [PATCH] blkid: optimize dm_device_is_leaf() usage
-Date: Mon, 25 Aug 2008 22:48:36 +0200
-Message-ID: <1219697316-5632-1-git-send-email-kzak@redhat.com>
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
-	Karel Zak <kzak@redhat.com>
-To: Theodore Tso <tytso@mit.edu>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [RFC PATCH -v2] ext4: Make sure all the block allocation paths
+	reserve blocks
+Date: Mon, 25 Aug 2008 14:00:44 -0700
+Message-ID: <1219698044.6394.6.camel@mingming-laptop>
+References: <1219663233-21849-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	 <1219663233-21849-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:34957 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753178AbYHYUsj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 Aug 2008 16:48:39 -0400
+Received: from e34.co.us.ibm.com ([32.97.110.152]:35825 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753299AbYHYVAv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 Aug 2008 17:00:51 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7PL0keC030424
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2008 17:00:46 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7PL0kFL206790
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2008 15:00:46 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7PL0j8g020489
+	for <linux-ext4@vger.kernel.org>; Mon, 25 Aug 2008 15:00:45 -0600
+In-Reply-To: <1219663233-21849-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
- * devname.c: probe_one(): call dm_device_is_leaf() with *constant*
-   devno argument in the list_for_each_safe loop does not make sense at
-   all.
 
- * devname.c: probe_one(): call dm_device_is_leaf() for already
-   checked DM devices is unnecessary. DM devices are already checked
-   in dm_probe_all(). The dm_probe_all() function never returns slave
-   devices.
+=E5=9C=A8 2008-08-25=E4=B8=80=E7=9A=84 16:50 +0530=EF=BC=8CAneesh Kumar=
+ K.V=E5=86=99=E9=81=93=EF=BC=9A
+> With delayed allocation we need to make sure block are reserved
+> before we attempt to allocate them. Otherwise we get block
+> allocation failure (ENOSPC) during writepages which cannot
+> be handled. This would mean silent data loss (We do a printk
+> stating data will be lost). This patch update the DIO
+> and fallocate code path to do block reservation before block
+> allocation.
+>=20
 
- * devname.c: dm_device_is_leaf(): stop checking for dependences when
-   a first dependence is detected.
+I like the DIO race with buffered IO case you described on IRC, it
+explains well why we need the block reservation even for DIO and
+fallocate. Could you add that in the description here?
 
-Performance test:
+> When free blocks count go below a threshold we switch to
+> a slow patch which looks at other CPU's accumulated percpu
+> counter values.
+>=20
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/balloc.c  |   72 +++++++++++++++++++++++++++++++++++++++++++=
++---------
+>  fs/ext4/ext4.h    |    2 +
+>  fs/ext4/inode.c   |    5 +---
+>  fs/ext4/mballoc.c |   23 +++++++++-------
+>  4 files changed, 76 insertions(+), 26 deletions(-)
+>=20
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index cfed283..4a53541 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -1602,6 +1602,47 @@ ext4_try_to_allocate_with_rsv(struct super_blo=
+ck *sb, handle_t *handle,
+>  	return ret;
+>  }
+>=20
+> +int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+> +						ext4_fsblk_t nblocks)
+> +{
+> +	s64 free_blocks;
+> +	ext4_fsblk_t root_blocks =3D 0;
+> +	struct percpu_counter *fbc =3D &sbi->s_freeblocks_counter;
+> +
+> +	free_blocks =3D percpu_counter_read(fbc);
+> +
+> +	if (!capable(CAP_SYS_RESOURCE) &&
+> +		sbi->s_resuid !=3D current->fsuid &&
+> +		(sbi->s_resgid =3D=3D 0 || !in_group_p(sbi->s_resgid)))
+> +		root_blocks =3D ext4_r_blocks_count(sbi->s_es);
+> +#ifdef CONFIG_SMP
+> +	/* Each CPU can accumulate FBC_BATCH blocks in their local
+> +	 * counters. So we need to make sure we have free blocks more
+> +	 * than FBC_BATCH  * nr_cpu_ids. Also add a window of 4 times.
+> +	 */
+> +	if (free_blocks - (nblocks + root_blocks) <
+> +				(4 * (FBC_BATCH * nr_cpu_ids))) {
 
-  # for i in $(seq 1 100); do dmsetup create $i --table "0 1 zero"; done
+It would be nice to define a
+#define  Ext4_FREEBLOCK_WATERMARK to hide the details of FBC_BATCH, and
+get rid of the +#ifdef CONFIG_SMP here.
 
- new version:
+> +		/*
+> +		 * We need to sum and claim under lock
+> +		 * This is the slow patch which will be
+> +		 * taken when we are very low on free blocks
+> +		 */
+> +		if (percpu_counter_sum_and_sub(fbc, nblocks + root_blocks))
+> +			return -ENOSPC;
+> +		/* add root_blocks back */
+> +		percpu_counter_add(fbc, root_blocks);
+> +		return 0;
+> +	}
+> +#endif
+> +	if (free_blocks < (root_blocks + nblocks))
+> +		/* we don't have free space */
+> +		return -ENOSPC;
+> +
+> +	/* reduce fs free blocks counter */
+> +	percpu_counter_sub(fbc, nblocks);
+> +	return 0;
+> +}
+> +
+> *
+>   * ext4_has_free_blocks()
+>   * @sbi:	in-core super block structure.
+> @@ -1624,9 +1665,15 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4_=
+sb_info *sbi,
+>  		(sbi->s_resgid =3D=3D 0 || !in_group_p(sbi->s_resgid)))
+>  		root_blocks =3D ext4_r_blocks_count(sbi->s_es);
+>  #ifdef CONFIG_SMP
+> -	if (free_blocks - root_blocks < FBC_BATCH)
+> +	/* Each CPU can accumulate FBC_BATCH blocks in their local
+> +	 * counters. So we need to make sure we have free blocks more
+> +	 * than FBC_BATCH  * nr_cpu_ids. Also add a window of 4 times.
+> +	 */
+> +	if (free_blocks - (nblocks + root_blocks) <
+> +				(4 * (FBC_BATCH * nr_cpu_ids))) {
+>  		free_blocks =3D
+>  			percpu_counter_sum(&sbi->s_freeblocks_counter);
+> +	}
+>  #endif
 
-  # blkid &> /dev/null
 
-  real    0m0.267s
-  user    0m0.047s
-  sys     0m0.212s
+Same as above.
 
- old version:
+>  /*
+>  	if (free_blocks <=3D root_blocks)
+>  		/* we don't have free space */
+> @@ -1634,7 +1681,7 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4_s=
+b_info *sbi,
+>  	if (free_blocks - root_blocks < nblocks)
+>  		return free_blocks - root_blocks;
+>  	return nblocks;
+> - }
+> +}
+>=20
+>=20
+>  /**
+> @@ -1713,14 +1760,11 @@ ext4_fsblk_t ext4_old_new_blocks(handle_t *ha=
+ndle, struct inode *inode,
+>  		/*
+>  		 * With delalloc we already reserved the blocks
+>  		 */
+> -		*count =3D ext4_has_free_blocks(sbi, *count);
+> -	}
+> -	if (*count =3D=3D 0) {
+> -		*errp =3D -ENOSPC;
+> -		return 0;	/*return with ENOSPC error */
+> +		if (ext4_claim_free_blocks(sbi, *count)) {
+> +			*errp =3D -ENOSPC;
+> +			return 0;	/*return with ENOSPC error */
+> +		}
+>  	}
+> -	num =3D *count;
+> -
+>  	/*
+>  	 * Check quota for allocation of this block.
+>  	 */
+> @@ -1915,9 +1959,13 @@ ext4_fsblk_t ext4_old_new_blocks(handle_t *han=
+dle, struct inode *inode,
+>  	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+>  	gdp->bg_checksum =3D ext4_group_desc_csum(sbi, group_no, gdp);
+>  	spin_unlock(sb_bgl_lock(sbi, group_no));
+> -	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
+> -		percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+> -
+> +	if (!EXT4_I(inode)->i_delalloc_reserved_flag && (*count !=3D num)) =
+{
+> +		/*
+> +		 * we allocated less blocks than we
+> +		 * claimed. Add the difference back.
+> +		 */
+> +		percpu_counter_add(&sbi->s_freeblocks_counter, *count - num);
+> +	}
+>  	if (sbi->s_log_groups_per_flex) {
+>  		ext4_group_t flex_group =3D ext4_flex_group(sbi, group_no);
+>  		spin_lock(sb_bgl_lock(sbi, flex_group));
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 7f11b25..3738039 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1047,6 +1047,8 @@ extern ext4_fsblk_t ext4_new_blocks(handle_t *h=
+andle, struct inode *inode,
+>  					unsigned long *count, int *errp);
+>  extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct ino=
+de *inode,
+>  			ext4_fsblk_t goal, unsigned long *count, int *errp);
+> +extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+> +						ext4_fsblk_t nblocks);
+>  extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+>  						ext4_fsblk_t nblocks);
+>  extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 1c289c1..d965a05 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1537,13 +1537,10 @@ static int ext4_da_reserve_space(struct inode=
+ *inode, int nrblocks)
+>  	md_needed =3D mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
+>  	total =3D md_needed + nrblocks;
+>=20
+> -	if (ext4_has_free_blocks(sbi, total) < total) {
+> +	if (ext4_claim_free_blocks(sbi, total)) {
+>  		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+>  		return -ENOSPC;
+>  	}
+> -	/* reduce fs free blocks counter */
+> -	percpu_counter_sub(&sbi->s_freeblocks_counter, total);
+> -
+>  	EXT4_I(inode)->i_reserved_data_blocks +=3D nrblocks;
+>  	EXT4_I(inode)->i_reserved_meta_blocks =3D mdblocks;
+>=20
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index 82dd0e4..4404b46 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2977,9 +2977,15 @@ ext4_mb_mark_diskspace_used(struct ext4_alloca=
+tion_context *ac,
+>  	 * at write_begin() time for delayed allocation
+>  	 * do not double accounting
+>  	 */
+> -	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
+> -		percpu_counter_sub(&sbi->s_freeblocks_counter,
+> -					ac->ac_b_ex.fe_len);
+> +	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED) &&
+> +			ac->ac_o_ex.fe_len !=3D ac->ac_b_ex.fe_len) {
+> +		/*
+> +		 * we allocated less blocks than we calimed
+> +		 * Add the difference back
+> +		 */
+> +		percpu_counter_add(&sbi->s_freeblocks_counter,
+> +				ac->ac_o_ex.fe_len - ac->ac_b_ex.fe_len);
+> +	}
+>=20
+>  	if (sbi->s_log_groups_per_flex) {
+>  		ext4_group_t flex_group =3D ext4_flex_group(sbi,
+> @@ -4391,14 +4397,11 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *han=
+dle,
+>  		/*
+>  		 * With delalloc we already reserved the blocks
+>  		 */
+> -		ar->len =3D ext4_has_free_blocks(sbi, ar->len);
+> -	}
+> -
+> -	if (ar->len =3D=3D 0) {
+> -		*errp =3D -ENOSPC;
+> -		return 0;
+> +		if (ext4_claim_free_blocks(sbi, ar->len)) {
+> +			*errp =3D -ENOSPC;
+> +			return 0;
+> +		}
+>  	}
+> -
+>  	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
+>  		ar->flags |=3D EXT4_MB_HINT_NOPREALLOC;
+>  		ar->len--;
 
-  # blkid &> /dev/null
-
-  real    0m2.149s
-  user    0m0.291s
-  sys     0m1.820s
-
-Signed-off-by: Karel Zak <kzak@redhat.com>
----
- lib/blkid/devname.c |   37 ++++++++++++++++++++-----------------
- 1 files changed, 20 insertions(+), 17 deletions(-)
-
-diff --git a/lib/blkid/devname.c b/lib/blkid/devname.c
-index 86fd44c..4967b96 100644
---- a/lib/blkid/devname.c
-+++ b/lib/blkid/devname.c
-@@ -133,25 +133,27 @@ static void probe_one(blkid_cache cache, const char *ptname,
- 	const char **dir;
- 	char *devname = NULL;
- 
--	/* See if we already have this device number in the cache. */
--	list_for_each_safe(p, pnext, &cache->bic_devs) {
--		blkid_dev tmp = list_entry(p, struct blkid_struct_dev,
--					   bid_devs);
- #ifdef HAVE_DEVMAPPER
--		if (!dm_device_is_leaf(devno))
--			continue;
-+	/* call dm_device_is_leaf() for non-DM device only */
-+	if (pri == BLKID_PRI_DM || dm_device_is_leaf(devno))
- #endif
--		if (tmp->bid_devno == devno) {
--			if (only_if_new && !access(tmp->bid_name, F_OK))
--				return;
--			dev = blkid_verify(cache, tmp);
--			if (dev && (dev->bid_flags & BLKID_BID_FL_VERIFIED))
--				break;
--			dev = 0;
-+	{
-+		/* See if we already have this device number in the cache. */
-+		list_for_each_safe(p, pnext, &cache->bic_devs) {
-+			blkid_dev tmp = list_entry(p, struct blkid_struct_dev,
-+						   bid_devs);
-+			if (tmp->bid_devno == devno) {
-+				if (only_if_new && !access(tmp->bid_name, F_OK))
-+					return;
-+				dev = blkid_verify(cache, tmp);
-+				if (dev && (dev->bid_flags & BLKID_BID_FL_VERIFIED))
-+					break;
-+				dev = 0;
-+			}
- 		}
-+		if (dev && dev->bid_devno == devno)
-+			goto set_pri;
- 	}
--	if (dev && dev->bid_devno == devno)
--		goto set_pri;
- 
- 	/*
- 	 * Take a quick look at /dev/ptname for the device number.  We check
-@@ -271,9 +273,10 @@ static int dm_device_is_leaf(const dev_t dev)
- 	do {
- 		names = (struct dm_names *) ((char *)names + next);
- 
--		if (dm_device_has_dep(dev, names->name))
-+		if (dm_device_has_dep(dev, names->name)) {
- 			ret = 0;
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
