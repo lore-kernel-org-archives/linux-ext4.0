@@ -1,127 +1,138 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: [PATCH] blkid: optimize dm_device_is_leaf() usage
-Date: Tue, 26 Aug 2008 22:47:37 +0200
-Message-ID: <20080826204737.GM6029@nb.net.home>
-References: <1219697316-5632-1-git-send-email-kzak@redhat.com> <20080826122405.GA8720@mit.edu> <20080826135102.GK6029@nb.net.home> <20080826144721.GD8720@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
-	mbroz@redhat.com, agk@redhat.com
-To: Theodore Tso <tytso@mit.edu>
+From: akpm@linux-foundation.org
+Subject: + percpu-counters-clean-up-percpu_counter_sum_and_set-interface.patch added to -mm tree
+Date: Tue, 26 Aug 2008 14:10:19 -0700
+Message-ID: <200808262110.m7QLAKM1027843@imap1.linux-foundation.org>
+Cc: cmm@us.ibm.com, a.p.zijlstra@chello.nl, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:49780 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751153AbYHZUrm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Aug 2008 16:47:42 -0400
-Content-Disposition: inline
-In-Reply-To: <20080826144721.GD8720@mit.edu>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:47802 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751371AbYHZVLo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 Aug 2008 17:11:44 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 26, 2008 at 10:47:21AM -0400, Theodore Tso wrote:
-> On Tue, Aug 26, 2008 at 03:51:02PM +0200, Karel Zak wrote:
-> >  Well, I see few problems:
-> > 
-> >  * /proc/partitions containing internal dm device names (e.g. dm-0).
-> >    The libdevmapper provides translation from internal to the "real"
-> >    names (e.g /dev/mapper/foo). I guess (hope:-) /sys provides the
-> >    real names too.
-> 
-> You're right.  So seaching for /dev/mapper/dm-n doesn't make any
-> sense; adding /dev/mapper to the dirlist doesn't help, and in fact is
-> a waste of time.  However, the patch actually *did* work, and the
-> reason why it does is because we are also are searching /dev/mapper by
-> device number, and so we are finding the device name that way.
 
- OK.
+The patch titled
+     percpu-counters: clean up percpu_counter_sum_and_set() interface
+has been added to the -mm tree.  Its filename is
+     percpu-counters-clean-up-percpu_counter_sum_and_set-interface.patch
 
-> I don't think you mean multipath support in terms of where there are
-> multiple paths to the same physical device ala fiber channel, but
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
- Ignore this point. You are right. The physical devices are slaves to
- the final DM device (when dm-multipath is on). BTW, I look forward to
- see multiple paths vs. udev (e.g. /dev/disk/by-* ) :-)
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-> What we don't solve is the problem where one devicemapper device is
-> used to build another device mapper device.  This could happen in a
-> number of circumstances.  You might have some wierd circumstance where
-> /dev/mapper/part1 and /dev/mapper/part2 are glued together to make
-> /dev/mapper/whole-filesystem.  Why you might do this instead of simply
-> using something like lvextend is beyond me, but that is something
-> legitimate can be done with the low-level device mapper primitives.
+See http://www.zip.com.au/~akpm/linux/patches/stuff/added-to-mm.txt to find
+out what to do about this
 
- There is worse scenario (thanks to Milan Broz from DM camp):
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
- dmsetup create x --table "0 100 linear /dev/sdb 0"
- dmsetup create y --table "0 100 linear /dev/mapper/x 0"
- dmsetup create z --table "0 100 linear /dev/mapper/y 0"
+------------------------------------------------------
+Subject: percpu-counters: clean up percpu_counter_sum_and_set() interface
+From: Mingming Cao <cmm@us.ibm.com>
 
- # dmsetup ls --tree
-  z (254:3)
-  `-y (254:2)
-    `-x (254:1)
-      `- (8:16)
+percpu_counter_sum_and_set() and percpu_counter_sum() is the same except
+the former update the global counter after accounting.  Since we are
+taking the fbc->lock to calculate the precise value of the counter in
+percpu_counter_sum() anyway, it should simply set fbc->count too, as the
+percpu_counter_sum_and_set() dose.
 
- it means all these devices are exactly same, but
+This patch merges these two interfaces into one.
 
-    mount LABEL=foo
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
- has to mount /dev/mapper/z (from top of the tree). The sdb, x and
- y should be invisible for the mount(8).
+ fs/ext4/balloc.c               |    2 +-
+ include/linux/percpu_counter.h |   12 +++---------
+ lib/percpu_counter.c           |    8 +++-----
+ 3 files changed, 7 insertions(+), 15 deletions(-)
 
-> But, #1, there are times when picking a leaf dm device over a non-leaf
-> dm device is not the right thing to do (which would be the case when
-> you make a live snapshot of a filesystem), and #2, your patch only
-> checks non-leaf dm devices for non-dm devices, probably because of #1.
-> 
-> So with both of our patches, we have the problem where we could pick
-> the wrong dm device if the user builds one dm device on top of another
+diff -puN fs/ext4/balloc.c~percpu-counters-clean-up-percpu_counter_sum_and_set-interface fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~percpu-counters-clean-up-percpu_counter_sum_and_set-interface
++++ a/fs/ext4/balloc.c
+@@ -1624,7 +1624,7 @@ ext4_fsblk_t ext4_has_free_blocks(struct
+ #ifdef CONFIG_SMP
+ 	if (free_blocks - root_blocks < FBC_BATCH)
+ 		free_blocks =
+-			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
++			percpu_counter_sum(&sbi->s_freeblocks_counter);
+ #endif
+ 	if (free_blocks <= root_blocks)
+ 		/* we don't have free space */
+diff -puN include/linux/percpu_counter.h~percpu-counters-clean-up-percpu_counter_sum_and_set-interface include/linux/percpu_counter.h
+--- a/include/linux/percpu_counter.h~percpu-counters-clean-up-percpu_counter_sum_and_set-interface
++++ a/include/linux/percpu_counter.h
+@@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percp
+ void percpu_counter_destroy(struct percpu_counter *fbc);
+ void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
+ void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
+-s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
++s64 __percpu_counter_sum(struct percpu_counter *fbc);
+ 
+ static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
+ {
+@@ -44,19 +44,13 @@ static inline void percpu_counter_add(st
+ 
+ static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
+ {
+-	s64 ret = __percpu_counter_sum(fbc, 0);
++	s64 ret = __percpu_counter_sum(fbc);
+ 	return ret < 0 ? 0 : ret;
+ }
+ 
+-static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
+-{
+-	return __percpu_counter_sum(fbc, 1);
+-}
+-
+-
+ static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
+ {
+-	return __percpu_counter_sum(fbc, 0);
++	return __percpu_counter_sum(fbc);
+ }
+ 
+ static inline s64 percpu_counter_read(struct percpu_counter *fbc)
+diff -puN lib/percpu_counter.c~percpu-counters-clean-up-percpu_counter_sum_and_set-interface lib/percpu_counter.c
+--- a/lib/percpu_counter.c~percpu-counters-clean-up-percpu_counter_sum_and_set-interface
++++ a/lib/percpu_counter.c
+@@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
+  * Add up all the per-cpu counts, return the result.  This is a more accurate
+  * but much slower version of percpu_counter_read_positive()
+  */
+-s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
++s64 __percpu_counter_sum(struct percpu_counter *fbc)
+ {
+ 	s64 ret;
+ 	int cpu;
+@@ -62,11 +62,9 @@ s64 __percpu_counter_sum(struct percpu_c
+ 	for_each_online_cpu(cpu) {
+ 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
+ 		ret += *pcount;
+-		if (set)
+-			*pcount = 0;
++		*pcount = 0;
+ 	}
+-	if (set)
+-		fbc->count = ret;
++	fbc->count = ret;
+ 
+ 	spin_unlock(&fbc->lock);
+ 	return ret;
+_
 
- I don't think so. The dm_probe_all() function never returns any
- DM device which is slave to any other device. It means it always
- returns the device from top of the hierarchy.
+Patches currently in -mm which might be from cmm@us.ibm.com are
 
- All devices from dm_probe_all() have greater priority than other
- stuff from /proc/partitions (for example dm-N devs).
+origin.patch
+vfs-fix-dio-write-returning-eio-when-try_to_release_page-fails.patch
+vmscan-set-try_to_release_pages-gfp_mask-to-0.patch
+percpu-counters-clean-up-percpu_counter_sum_and_set-interface.patch
 
- So back to your example...
-
- /dev/mapper/part1 + /dev/mapper/part2 = /dev/mapper/whole-filesystem
-
- the /dev/mapper/part1 and /dev/mapper/part2 will be visible for the
- library (e.g. blkid.tab), but with *smaller priority* than
- /dev/mapper/whole-filesystem.
-
- In your non-libdevmapper implementation you need to check
- /sys/block/dm-N/holders/ and prefer devices without holders.
-
- I think we can ignore this minor problem for now. I'll try to found a
- better solution for dependencies resolution without libdevmapper. My
- wish is to avoid libdevmapper in libfsprobe.
-
-> > > +	if (dev) {
-> > > +		if (pri)
-> > > +			dev->bid_pri = pri;
-> > > +		else if (!strncmp(dev->bid_name, "/dev/mapper/", 11))
-
- what about "if (major(devno) == DMMAJOR)" rather than strcmp()?
-
-> > > +			dev->bid_pri = BLKID_PRI_DM;
-> > 
-> >  the same problem
-> 
-> This does work, because we do find the /dev/mapper name via a
-> brute-force search of /dev looking for a matching devno when we call
-> blkid_devno_to_devname().  What I *can* do is do a special search of
-> /dev/mapper first, but instead of looking for /dev/mapper/<ptname>, to
-> do a readdir search of /dev/mapper looking for the matching devno.
-
- Not elegant, but... good enough :-)
-
- It would be nice to have /sys/block/dm-N/name where you can translate
- the internal dm-N name to the real device name. Alasdair? Milan? :-)
-
-    Karel
-
--- 
- Karel Zak  <kzak@redhat.com>
