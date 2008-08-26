@@ -1,87 +1,110 @@
-From: Karel Zak <kzak@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH] blkid: optimize dm_device_is_leaf() usage
-Date: Tue, 26 Aug 2008 15:51:02 +0200
-Message-ID: <20080826135102.GK6029@nb.net.home>
-References: <1219697316-5632-1-git-send-email-kzak@redhat.com> <20080826122405.GA8720@mit.edu>
+Date: Tue, 26 Aug 2008 10:47:21 -0400
+Message-ID: <20080826144721.GD8720@mit.edu>
+References: <1219697316-5632-1-git-send-email-kzak@redhat.com> <20080826122405.GA8720@mit.edu> <20080826135102.GK6029@nb.net.home>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
 	mbroz@redhat.com, agk@redhat.com
-To: Theodore Tso <tytso@mit.edu>
+To: Karel Zak <kzak@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:59869 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754068AbYHZNvH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 26 Aug 2008 09:51:07 -0400
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:52035 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1756372AbYHZOrX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Aug 2008 10:47:23 -0400
 Content-Disposition: inline
-In-Reply-To: <20080826122405.GA8720@mit.edu>
+In-Reply-To: <20080826135102.GK6029@nb.net.home>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Aug 26, 2008 at 08:24:05AM -0400, Theodore Tso wrote:
-> commit 3f66ecf24e896377997b909edef040be98ac76b3
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Tue Aug 26 08:13:56 2008 -0400
+On Tue, Aug 26, 2008 at 03:51:02PM +0200, Karel Zak wrote:
+>  Well, I see few problems:
 > 
->     libblkid: Optimize devicemapper support
->     
->     This commit works by removing all calls from libdevicemapper
->     altogether, and using the standard support for "normal" non-dm
->     devices.
->     
->     It depends on dm devices being placed in /dev/mapper (but the previous
->     code had this dependency anyway), and /proc/partitions containing dm
->     devices.
+>  * /proc/partitions containing internal dm device names (e.g. dm-0).
+>    The libdevmapper provides translation from internal to the "real"
+>    names (e.g /dev/mapper/foo). I guess (hope:-) /sys provides the
+>    real names too.
 
- Well, I see few problems:
+You're right.  So seaching for /dev/mapper/dm-n doesn't make any
+sense; adding /dev/mapper to the dirlist doesn't help, and in fact is
+a waste of time.  However, the patch actually *did* work, and the
+reason why it does is because we are also are searching /dev/mapper by
+device number, and so we are finding the device name that way.
 
- * /proc/partitions containing internal dm device names (e.g. dm-0).
-   The libdevmapper provides translation from internal to the "real"
-   names (e.g /dev/mapper/foo). I guess (hope:-) /sys provides the
-   real names too.
 
- * we probably need to resolve dependencies for multi-path devices
-   where the same FS is accessable by more than one physical device.
-   If I good remember it was the original purpose for DM support 
-   in libblkid.
+>  * we probably need to resolve dependencies for multi-path devices
+>    where the same FS is accessable by more than one physical device.
+>    If I good remember it was the original purpose for DM support 
+>    in libblkid.
+> 
+>         # mount LABEL=blabla /mnt
+> 
+>    has to mount the "right" device. I guess that only DM is able to
+>    answer which device is the "right" one ;-)
 
-        # mount LABEL=blabla /mnt
+I don't think you mean multipath support in terms of where there are
+multiple paths to the same physical device ala fiber channel, but
+rather where are multiple devices which are built on each other,
+right?  So where /dev/sda is used to create the LVM PV's, and so on,
+right?
 
-   has to mount the "right" device. I guess that only DM is able to
-   answer which device is the "right" one ;-)
+>    The /sys/block/<devname>/slaves/ provides information about
+>    dependencies.
+> 
+>  I see these two things as critical for fsck, mount, ...
 
-   The /sys/block/<devname>/slaves/ provides information about
-   dependencies.
+Right.  And here, we are solving the problem already in that we prefer
+the /dev/mapper/* names over names like /dev/sda and /dev/sdb.  That's
+what the priority field is all about.
 
- I see these two things as critical for fsck, mount, ...
+What we don't solve is the problem where one devicemapper device is
+used to build another device mapper device.  This could happen in a
+number of circumstances.  You might have some wierd circumstance where
+/dev/mapper/part1 and /dev/mapper/part2 are glued together to make
+/dev/mapper/whole-filesystem.  Why you might do this instead of simply
+using something like lvextend is beyond me, but that is something
+legitimate can be done with the low-level device mapper primitives.
 
->  
-> +/* Directories where we will try to search for device names */
-> +static const char *dirlist[] = { "/dev", "/dev/mapper", "/devfs", "/devices", NULL };
+But, #1, there are times when picking a leaf dm device over a non-leaf
+dm device is not the right thing to do (which would be the case when
+you make a live snapshot of a filesystem), and #2, your patch only
+checks non-leaf dm devices for non-dm devices, probably because of #1.
 
-I think "/dev/mapper" does not make any sense here, ...because the
-names from /proc/partitions are in dm-<N> format, but the names in
-/dev/mapper uses different format.
+So with both of our patches, we have the problem where we could pick
+the wrong dm device if the user builds one dm device on top of another
+dm device.  (Although for transient devices, such as temporary
+snapshots, if the permanent devices is already in /etc/blkid.tab, the
+cache makes us win since we'll prefer the device already in the cache
+file to the other.)
 
-> -	if (!pri && !strncmp(ptname, "md", 2))
-> -		pri = BLKID_PRI_MD;
-> -	if (dev)
-> -		dev->bid_pri = pri;
-> +	if (dev) {
-> +		if (pri)
-> +			dev->bid_pri = pri;
-> +		else if (!strncmp(dev->bid_name, "/dev/mapper/", 11))
-> +			dev->bid_pri = BLKID_PRI_DM;
+But in terms of making sure we pick the device mapper file over the
+raw file, which is the 99.99% common case, we do the right thing, and
+we can do the right thing without calling the devmapper library.
 
- the same problem
+> > +/* Directories where we will try to search for device names */
+> > +static const char *dirlist[] = { "/dev", "/dev/mapper", "/devfs", "/devices", NULL };
+> 
+> I think "/dev/mapper" does not make any sense here, ...because the
+> names from /proc/partitions are in dm-<N> format, but the names in
+> /dev/mapper uses different format.
 
-> +		else if (!strncmp(ptname, "md", 2))
-> +			dev->bid_pri = BLKID_PRI_MD;
-> + 	}
->  	return;
->  }
+Yep, I should remove that.
 
-    Karel
+> > +	if (dev) {
+> > +		if (pri)
+> > +			dev->bid_pri = pri;
+> > +		else if (!strncmp(dev->bid_name, "/dev/mapper/", 11))
+> > +			dev->bid_pri = BLKID_PRI_DM;
+> 
+>  the same problem
 
--- 
- Karel Zak  <kzak@redhat.com>
+This does work, because we do find the /dev/mapper name via a
+brute-force search of /dev looking for a matching devno when we call
+blkid_devno_to_devname().  What I *can* do is do a special search of
+/dev/mapper first, but instead of looking for /dev/mapper/<ptname>, to
+do a readdir search of /dev/mapper looking for the matching devno.
+That's merely an optimization, which doesn't really matter for Linux
+since stat's are so fast.  But it's probably worth doing.
+
+      	     	    	       	    	     	   - Ted
