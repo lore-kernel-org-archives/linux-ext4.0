@@ -1,101 +1,105 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] e2fsck shouln't consider superblock summaries as fatal
-Date: Tue, 26 Aug 2008 15:27:43 -0600
-Message-ID: <20080826212743.GP3392@webber.adilger.int>
-References: <20080826104502.GH3392@webber.adilger.int>
- <20080826170420.GE8720@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] blkid: optimize dm_device_is_leaf() usage
+Date: Tue, 26 Aug 2008 19:32:25 -0400
+Message-ID: <20080826233224.GB29936@mit.edu>
+References: <1219697316-5632-1-git-send-email-kzak@redhat.com> <20080826122405.GA8720@mit.edu> <20080826135102.GK6029@nb.net.home> <20080826144721.GD8720@mit.edu> <20080826204737.GM6029@nb.net.home>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	mbroz@redhat.com, agk@redhat.com
+To: Karel Zak <kzak@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:46899 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751530AbYHZV16 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Aug 2008 17:27:58 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7QLRuee013391
-	for <linux-ext4@vger.kernel.org>; Tue, 26 Aug 2008 14:27:57 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K680000188PEZ00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 26 Aug 2008 14:27:56 -0700 (PDT)
-In-reply-to: <20080826170420.GE8720@mit.edu>
-Content-disposition: inline
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:59971 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751072AbYHZXc1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Aug 2008 19:32:27 -0400
+Content-Disposition: inline
+In-Reply-To: <20080826204737.GM6029@nb.net.home>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 26, 2008  13:04 -0400, Theodore Ts'o wrote:
-> On Tue, Aug 26, 2008 at 04:45:02AM -0600, Andreas Dilger wrote:
-> > Running e2fsck on a quiescent (but mounted) filesystem fails in the
-> > common case where the superblock inode and block count summaries are
-> > wrong.  The kernel doesn't update these values except at unmount time.
-> > If there are other errors in the filesystem then they will already
-> > cause e2fsck to consider the filesystem invalid, so these minor errors
-> > should not.
+On Tue, Aug 26, 2008 at 10:47:37PM +0200, Karel Zak wrote:
+>  There is worse scenario (thanks to Milan Broz from DM camp):
 > 
-> Sure, but *when* would it ever be safe to run e2fsck without -n on a
-> mounted filesystem?  What's the scenario where this would matter?  And
-> on an unmounted filesystem, if the block counts are wrong, and the
-> user refuses to fix them the filesystem technically really isn't 100%
-> valid.
+>  dmsetup create x --table "0 100 linear /dev/sdb 0"
+>  dmsetup create y --table "0 100 linear /dev/mapper/x 0"
+>  dmsetup create z --table "0 100 linear /dev/mapper/y 0"
+> 
+>  # dmsetup ls --tree
+>   z (254:3)
+>   `-y (254:2)
+>     `-x (254:1)
+>       `- (8:16)
+> 
+>  it means all these devices are exactly same, but
+> 
+>     mount LABEL=foo
+> 
+>  has to mount /dev/mapper/z (from top of the tree). The sdb, x and
+>  y should be invisible for the mount(8).
 
-I mean that this is for "e2fsck -fn".  In that case the filesystem isn't
-changed, and is often completely clean except the superblock counters.
-Until we have block-device freeze ioctl widely available (or convince
-users to use LVM), the best we can do is quiesce Lustre IO without
-unmounting the filesystem.
+Sure, but consider what happens when you create a snapshot (either
+read-only or read-write) of an existing filesystem?  In that case,
+both the parent and the child filesystem is mountable, and if the
+child filesystem is transient, the praent one may not want to be
+transient.
 
+In fact, suppose the scenario is a virtualization scenario, where you
+create the parent, create child snapshots, then use "tune2fs -U random
+-L virt1 /dev/mapper/snap1" ; "tune2fs -U random -L virt2
+/dev/mapper/snap2" and so on, so each of the child snapshots have
+their own independent identity separate from the parent, it may very
+*well* be the case that the parent device should be visible to mount.
 
-Without patch:
+I don't think we can make the general argument that the leaf device is
+always mountable, and anything above it is *never* mountable.  Maybe
+that's the default, but it's certainly not always true.
 
-# e2fsck -fn /dev/hda3
-e2fsck 1.40.7.sun1 (28-Feb-2008)
-Warning!  /dev/hda3 is mounted.
-Warning: skipping journal recovery because doing a read-only filesystem check.
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Free blocks count wrong (213908, counted=213298).
-Fix? no
+I'm beginning the right answer is we need some assist from the device
+mapper infrastructure, where when we create the device mapper device,
+we specify whether or not it is mountable, and this information is
+made available somehow, either by trying to sneaking it into
+/proc/partitions (which will be tricky without breaking legacy
+programs), or by making it visible in /sys.
 
-Free inodes count wrong (249992, counted=249282).
-Fix? no
+>  I think we can ignore this minor problem for now. I'll try to found a
+>  better solution for dependencies resolution without libdevmapper. My
+>  wish is to avoid libdevmapper in libfsprobe.
 
-lustre-MDT0000: ********** WARNING: Filesystem still has errors **********
+Speaking of which, what is your plan for caching versus non-caching in
+libfsprobe?  It seems to me that if you are going to be caching,
+you'll just be re-inventing blkid.  If you don't cache, you'll either
+(a) have to iterate over all possible devices, which is what we did
+before blkid (it was Ric Wheeler pointed out to me this problem and I
+wrote blkid in response to his request, because it becomes a problem
+if you have hundred of LUN's getting exported by a large EMC storage
+array :-), or (b) do what vol_id does, which is depend on
+/dev/disk/by-label and /dev/disk/by-uuid, which has the charming
+Windows-like attribute of not getting updated until the next reboot
+--- which means after you create a new filesystem or swap device on an
+existing device, or change a label or UUID using tune2fs, vol_id never
+notices until the next reboot or until you physically unplug and
+reinsert the device.
 
-lustre-MDT0000: 56/250048 files (17.9% non-contiguous), 36092/250000 blocks
+Or is the answer that you expect libfsprobe to only do filesystem
+type, uuid, and label detection, and not solve the "find a device
+given a uuid/label" problem?
 
-# echo $?
-4
+> > This does work, because we do find the /dev/mapper name via a
+> > brute-force search of /dev looking for a matching devno when we call
+> > blkid_devno_to_devname().  What I *can* do is do a special search of
+> > /dev/mapper first, but instead of looking for /dev/mapper/<ptname>, to
+> > do a readdir search of /dev/mapper looking for the matching devno.
+> 
+>  Not elegant, but... good enough :-)
+> 
+>  It would be nice to have /sys/block/dm-N/name where you can translate
+>  the internal dm-N name to the real device name. Alasdair? Milan? :-)
 
-With patch:
+Or maybe the right answer is /proc/partitions should only export
+devicemapper devices that are "supposed" to be visible to mount, and
+instead of exporting dm-0, dm-1...., we export the real name via
+/proc/partitions?  Or do you not want to have the user-visible name
+get pushed into the kernel?
 
-# e2fsck -fn /dev/hda3
-e2fsck 1.40.11.sun1 (17-June-2008)
-Warning!  /dev/hda3 is mounted.
-Warning: skipping journal recovery because doing a read-only filesystem check.
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Free blocks count wrong (213908, counted=213298).
-Fix? no
-
-Free inodes count wrong (249992, counted=249282).
-Fix? no
-
-lustre-MDT0000: 56/250048 files (17.9% non-contiguous), 36092/250000 blocks
-# echo $?
-0
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+						- Ted
