@@ -1,103 +1,104 @@
 From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH] blkid: optimize dm_device_is_leaf() usage
-Date: Tue, 26 Aug 2008 21:21:21 -0400
-Message-ID: <20080827012121.GD29936@mit.edu>
-References: <1219697316-5632-1-git-send-email-kzak@redhat.com> <20080826122405.GA8720@mit.edu> <20080826135102.GK6029@nb.net.home> <20080826144721.GD8720@mit.edu> <20080826204737.GM6029@nb.net.home> <20080826233224.GB29936@mit.edu> <20080827001942.GN6029@nb.net.home>
+Date: Wed, 27 Aug 2008 00:40:54 -0400
+Message-ID: <20080827044054.GE29936@mit.edu>
+References: <1219697316-5632-1-git-send-email-kzak@redhat.com> <20080826122405.GA8720@mit.edu> <20080826135102.GK6029@nb.net.home> <20080826144721.GD8720@mit.edu> <20080826204737.GM6029@nb.net.home> <20080826233224.GB29936@mit.edu> <20080827001942.GN6029@nb.net.home> <20080827012121.GD29936@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
 	mbroz@redhat.com, agk@redhat.com
 To: Karel Zak <kzak@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:56825 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:42663 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752386AbYH0BVX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 Aug 2008 21:21:23 -0400
+	with ESMTP id S1750903AbYH0Ek5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Aug 2008 00:40:57 -0400
 Content-Disposition: inline
-In-Reply-To: <20080827001942.GN6029@nb.net.home>
+In-Reply-To: <20080827012121.GD29936@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 27, 2008 at 02:19:42AM +0200, Karel Zak wrote:
-> 
->  That's misunderstanding. I'm talking about LABEL/UUId resolution
->  where we need *priorities* for duplicate tags. I think dep-tree is
->  good enough for this purpose.
+> I think we can ignore this minor problem for now. I'll try to found a
+> better solution for dependencies resolution without libdevmapper. My
+> wish is to avoid libdevmapper in libfsprobe.
 
-OK, so what you're saying is that that a leaf dm-device is always more
-important (and should therefore have a higher priority) than a
-non-leaf device.
+Here's a patch that I've been working on which gives a priority bonus
+to dm leaf devices, without needing libdevmapper.  As I've mentioned
+before, I'm not 100% convinced this is always the right thing.  But
+it's probably a not-half-bad hueristic...
 
-But I'm not sure that is *still* not always the right thing to do.
-Suppose someone creates a snapshot of a device in order to run e2fsck,
-or to do create a coherent snapshot.  Now suppose the machine crashes
-while the snapshot still exists; even though the read-only snapshot is
-the "leaf" device, you don't want to try use that snapshot to be
-mounted as the root filesystem.
+						- Ted
 
-There are a number of solutions of course --- most of which do not
-require adding more smarts into blkid (or some other probing library).
-We could make the scripts that create the snapshots update the UUID
-and LABEL of the snapshot, although that means adding some kind
-filesystem-specific hook to lvcreate.  Or we could create the concept
-of "ephemeral snapshots" that don't survive a reboot.  Or we could try
-to mark certain LVM volumes with explicit priorities that would be
-pulled into blkid (possibly via the dm interfaces).  Or we could try
-to put a lot of that smarts into the blkid library.
-
-Personally, I like the idea of emphermal snapshots as the best
-system-wide solution, but the point is we need to think about this not
-from a single component's point of view, but what is the best solution
-from a systems perspective.
-
->  Both. I think you remember our (+ Kay Sievers) discussion about it.
->  We need a library which provides both ways. The smart way (cache,
->  dependencies, ...) for mount(8) and others standard utils, and the
->  low-level way for udev (no cache, direct FS probing, ...).
-
-Sure, but if that's the case, we already have most of the "smart way"
-from blkid.  What's the point of making fsprobe re-invent the caching
-solution?   I could just point blkid at fsprobe.
-
->
->  What about fix mkfs tools and send relevant events to udev?
-> 
-
-Well, for one, it means changing every single mkfs/mkswap/tune*fs
-program on the system; so it seems more than a bit of kludge.
-Sometimes these tools are run by an unprivileged user, so there are
-some security problems have to be carefully thought out.  Obviously
-you can't just tell udev the new label and uuid, since the source
-might be untrusted.  The userspace program send an event to udevd that
-a device has changed, but that means that you have to allow an
-unprivileged process to kick udevd and then reprobe a device, which
-means there is a possibility of a denial of service attack.  It also
-makes it easier to exploit any potential buffer overrun, since the
-attacker can now set up the buggered block device image and then
-politely ask udev to call fsprobe (possibly running with root prives)
-to access the attack image.
-
-Of course, if there is a security bug in a filesystem probing code,
-we're in deep trouble if there are user-writable devices.  A push
-model just means that the fs probing code can get triggered at a time
-of the attacker's choosing, as opposed at some point in the future.
-
-I also don't think it's realistic to assume that we can sweep through
-all of the possibile tool that creates or modifies filesystem/swap
-superblocks in order for the tool to work correctly.  If a tool sends
-a hint that to udev so that the cache and /dev/disk/* can get updated,
-that may be fine; but we shouldn't be dependent on that hint.  (And
-maybe system administrators or security officers will have policies
-not allowing non-privileged users running the tool to send that hint.)
-
-BTW, I think /dev/disk/by-label is a really nasty idea.  Suppose you
-have hundreds of LUN's and/or device mapper devices.  Now suppose we
-change the label, or become aware that the label of a device has
-changed.  Right now, if you don't know the previous label (which will
-often be the case), the only way to install the new label and remove
-the old label is to iterate over all of the symlinks in
-/dev/disk/by-label and calling readlink() on each one.  It's
-convenient and maybe it's a nice to have on disktop systems, but if
-you have a huge number of devices, it's not very scalable at all.
-
-    	     		    	  	      - Ted
+diff --git a/lib/blkid/devname.c b/lib/blkid/devname.c
+index 48a1dcc..2b3855b 100644
+--- a/lib/blkid/devname.c
++++ b/lib/blkid/devname.c
+@@ -25,6 +25,7 @@
+ #if HAVE_SYS_TYPES_H
+ #include <sys/types.h>
+ #endif
++#include <dirent.h>
+ #if HAVE_SYS_STAT_H
+ #include <sys/stat.h>
+ #endif
+@@ -117,6 +118,38 @@ blkid_dev blkid_get_dev(blkid_cache cache, const char *devname, int flags)
+ /* Directories where we will try to search for device names */
+ static const char *dirlist[] = { "/dev", "/devfs", "/devices", NULL };
+ 
++static int is_dm_leaf(const char *devname)
++{
++	struct dirent	*de, *d_de;
++	DIR		*dir, *d_dir;
++	char		path[256];
++	int		ret = 1;
++
++	if ((dir = opendir("/sys/block")) == NULL)
++		return 0;
++	while ((de = readdir(dir)) != NULL) {
++		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") ||
++		    !strcmp(de->d_name, devname) ||
++		    strncmp(de->d_name, "dm-", 3) ||
++		    strlen(de->d_name) > sizeof(path)-32)
++			continue;
++		sprintf(path, "/sys/block/%s/slaves", de->d_name);
++		if ((d_dir = opendir(path)) == NULL)
++			continue;
++		while ((d_de = readdir(d_dir)) != NULL) {
++			if (!strcmp(d_de->d_name, devname)) {
++				ret = 0;
++				break;
++			}
++		}
++		closedir(d_dir);
++		if (!ret)
++			break;
++	}
++	closedir(dir);
++	return ret;
++}
++
+ /*
+  * Probe a single block device to add to the device cache.
+  */
+@@ -180,9 +213,11 @@ set_pri:
+ 	if (dev) {
+ 		if (pri)
+ 			dev->bid_pri = pri;
+-		else if (!strncmp(dev->bid_name, "/dev/mapper/", 11))
++		else if (!strncmp(dev->bid_name, "/dev/mapper/", 11)) {
+ 			dev->bid_pri = BLKID_PRI_DM;
+-		else if (!strncmp(ptname, "md", 2))
++			if (is_dm_leaf(ptname))
++				dev->bid_pri += 5;
++		} else if (!strncmp(ptname, "md", 2))
+ 			dev->bid_pri = BLKID_PRI_MD;
+  	}
+ 	return;
+@@ -198,7 +233,6 @@ set_pri:
+  * safe thing to do?)
+  */
+ #ifdef VG_DIR
+-#include <dirent.h>
+ static dev_t lvm_get_devno(const char *lvm_device)
+ {
+ 	FILE *lvf;
