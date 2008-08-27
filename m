@@ -1,71 +1,75 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Journal file fragmentation
-Date: Wed, 27 Aug 2008 17:06:36 -0400
-Message-ID: <20080827210636.GC26987@mit.edu>
-References: <1219858567.3591.64.camel@frecb007923.frec.bull.fr>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: =?iso-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 3/4] ext2fs_block_iterate2: Add BLOCK_FLAG_APPEND support for extent-based files
+Date: Wed, 27 Aug 2008 17:14:35 -0400
+Message-ID: <1219871676-18456-3-git-send-email-tytso@mit.edu>
+References: <20080827210636.GC26987@mit.edu>
+ <1219871676-18456-1-git-send-email-tytso@mit.edu>
+ <1219871676-18456-2-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: =?utf-8?q?Fr=C3=A9d=C3=A9ric=20Boh=C3=A9?= <frederic.bohe@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:60890 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:51451 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752635AbYH0VGj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Aug 2008 17:06:39 -0400
-Content-Disposition: inline
-In-Reply-To: <1219858567.3591.64.camel@frecb007923.frec.bull.fr>
+	with ESMTP id S1752874AbYH0VOi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Aug 2008 17:14:38 -0400
+In-Reply-To: <1219871676-18456-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 27, 2008 at 07:36:07PM +0200, Fr=E9d=E9ric Boh=E9 wrote:
-> While playing with filesystems using flex bg, I noticed that the jour=
-nal
-> file may be fragmented when there are a lots of meta-data in  the fir=
-st
-> flex-group.
-> For example, with this command : mkfs.ext4 -t ext4dev -G512 /dev/sdb1
-> The journal file is reported by "stat <8>" in debugfs to be like this=
- :
+This is needed so that extent-based inodes (including a journal inode)
+can be created via block_iterate.
 
-Yeah, we really want to put the journal in the middle of the
-filesystem; that not only avoids the metadata at the very beginning of
-the filesystem, especially when flex_bg is enabled, but also because
-it eliminates the worst case seek times when the file data is at the
-end of the disk, and the journal is at the beginning of the disk, and
-we are using a very fsync-intensive workload.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ lib/ext2fs/block.c |   28 ++++++++++++++++++++++++----
+ 1 files changed, 24 insertions(+), 4 deletions(-)
 
-With the following patches the journal inode now looks like this:
+diff --git a/lib/ext2fs/block.c b/lib/ext2fs/block.c
+index 14be1ba..2fc3c4a 100644
+--- a/lib/ext2fs/block.c
++++ b/lib/ext2fs/block.c
+@@ -361,7 +361,7 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
+ 	if (inode.i_flags & EXT4_EXTENTS_FL) {
+ 		ext2_extent_handle_t	handle;
+ 		struct ext2fs_extent	extent;
+-		e2_blkcnt_t		blockcnt;
++		e2_blkcnt_t		blockcnt = 0;
+ 		blk_t			blk, new_blk;
+ 		int			op = EXT2_EXTENT_ROOT;
+ 		unsigned int		j;
+@@ -373,9 +373,29 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
+ 		while (1) {
+ 			ctx.errcode = ext2fs_extent_get(handle, op, &extent);
+ 			if (ctx.errcode) {
+-				if (ctx.errcode == EXT2_ET_EXTENT_NO_NEXT)
+-					ctx.errcode = 0;
+-				break;
++				if (ctx.errcode != EXT2_ET_EXTENT_NO_NEXT)
++					break;
++				ctx.errcode = 0;
++				if (!(flags & BLOCK_FLAG_APPEND))
++					break;
++				blk = 0;
++				r = (*ctx.func)(fs, &blk, blockcnt,
++						0, 0, priv_data);
++				ret |= r;
++				check_for_ro_violation_goto(&ctx, ret,
++							    extent_errout);
++				if (r & BLOCK_CHANGED) {
++					ctx.errcode = 
++						ext2fs_extent_set_bmap(handle,
++						       (blk64_t) blockcnt++,
++						       (blk64_t) blk, 0);
++					if (ctx.errcode)
++						goto errout;
++					continue;
++				} else {
++					ext2fs_extent_free(handle);
++					goto errout;
++				}
+ 			}
+ 
+ 			op = EXT2_EXTENT_NEXT;
+-- 
+1.5.6.1.205.ge2c7.dirty
 
-Inode: 8   Type: regular    Mode:  0600   Flags: 0x80000
-Generation: 0    Version: 0x00000000
-User:     0   Group:     0   Size: 134217728
-=46ile ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 262144
-=46ragment:  Address: 0    Number: 0    Size: 0
-ctime: 0x48b5b982 -- Wed Aug 27 16:30:58 2008
-atime: 0x00000000 -- Wed Dec 31 19:00:00 1969
-mtime: 0x48b5b982 -- Wed Aug 27 16:30:58 2008
-Size of extra inode fields: 0
-BLOCKS:
-(0-32767):2588672-2621439
-TOTAL: 32768
-
-This also creates the journal using extents, which eliminates the
-indirect block overhead, and means that the 128MB journal conveniently
-takes up a single block group:
-
-Group 79: (Blocks 2588672-2621439) [INODE_UNINIT, ITABLE_ZEROED]
-  Checksum 0x441d, unused inodes 8192
-  Block bitmap at 2097167, Inode bitmap at 2097183
-  Inode table at 2104864-2105375
-  0 free blocks, 8192 free inodes, 0 directories, 8192 unused inodes
-  Free blocks:=20
-  Free inodes:=20
-
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
