@@ -1,70 +1,84 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsck shouln't consider superblock summaries as fatal
-Date: Wed, 27 Aug 2008 09:44:25 -0400
-Message-ID: <20080827134425.GA29950@mit.edu>
-References: <20080826104502.GH3392@webber.adilger.int> <20080826170420.GE8720@mit.edu> <20080826212743.GP3392@webber.adilger.int> <20080827002516.GC29936@mit.edu> <20080827073242.GU3392@webber.adilger.int>
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 24/59] CRED: Wrap task credential accesses in the Ext3
+	filesystem
+Date: Wed, 27 Aug 2008 14:47:46 +0100
+Message-ID: <20080827134746.19980.52609.stgit@warthog.procyon.org.uk>
+References: <20080827134541.19980.61042.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-security-module@vger.kernel.org,
+	David Howells <dhowells@redhat.com>,
+	Serge Hallyn <serue@us.ibm.com>,
+	Stephen Tweedie <sct@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>, adilger@sun.com,
+	linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:52047 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753931AbYH0No3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Aug 2008 09:44:29 -0400
-Content-Disposition: inline
-In-Reply-To: <20080827073242.GU3392@webber.adilger.int>
+Received: from mx1.redhat.com ([66.187.233.31]:49179 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757089AbYH0Nsl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Aug 2008 09:48:41 -0400
+In-Reply-To: <20080827134541.19980.61042.stgit@warthog.procyon.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 27, 2008 at 01:32:42AM -0600, Andreas Dilger wrote:
-> I don't think this is the issue at all.  It isn't that the journal has the
-> right summary values either, otherwise waiting 1 commit interval would
-> be enough.  The issue is that the kernel NEVER updates the summaries
-> by itself, so the effort to replay the journal in memory would be cool,
-> but wouldn't help at all.
+Wrap access to task credentials so that they can be separated more easily from
+the task_struct during the introduction of COW creds.
 
-If you reboot and replay the journal, the summary values are right.
-So the correct values are indeed in the journal.  The problem is that
-we *never* write the superblock to disk, but only to the journal.
-Consider:
+Change most current->(|e|s|fs)[ug]id to current_(|e|s|fs)[ug]id().
 
-/*
- * Ext3 always journals updates to the superblock itself, so we don't
- * have to propagate any other updates to the superblock on disk at this
- * point.  Just start an async writeback to get the buffers on their way
- * to the disk.
- *
- * This implicitly triggers the writebehind on sync().
- */
+Change some task->e?[ug]id to task_e?[ug]id().  In some places it makes more
+sense to use RCU directly rather than a convenient wrapper; these will be
+addressed by later patches.
 
-static void ext3_write_super (struct super_block * sb)
-{
-	if (mutex_trylock(&sb->s_lock) != 0)
-		BUG();
-	sb->s_dirt = 0;
-}
+Signed-off-by: David Howells <dhowells@redhat.com>
+Reviewed-by: James Morris <jmorris@namei.org>
+Acked-by: Serge Hallyn <serue@us.ibm.com>
+Cc: Stephen Tweedie <sct@redhat.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: adilger@sun.com
+Cc: linux-ext4@vger.kernel.org
+---
 
-The comment is a little out of date, since we don't even start an
-async writeback these days.  All ext3_write_super does is mark the
-superblock as non-dirty, so we are 100% dependent on the summary
-values getting written to the journal.  Even if we call fsync on the
-filesystem, we don't actually write the superblock to its permanent
-location on disk, but only to the journal.
+ fs/ext3/balloc.c |    2 +-
+ fs/ext3/ialloc.c |    4 ++--
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-static int ext3_sync_fs(struct super_block *sb, int wait)
-{
-	tid_t target;
 
-	sb->s_dirt = 0;
-	if (journal_start_commit(EXT3_SB(sb)->s_journal, &target)) {
-		if (wait)
-			log_wait_commit(EXT3_SB(sb)->s_journal, target);
-	}
-	return 0;
-}
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index 92fd033..6f433f9 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -1422,7 +1422,7 @@ static int ext3_has_free_blocks(struct ext3_sb_info *sbi)
+ 	free_blocks = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
+ 	root_blocks = le32_to_cpu(sbi->s_es->s_r_blocks_count);
+ 	if (free_blocks < root_blocks + 1 && !capable(CAP_SYS_RESOURCE) &&
+-		sbi->s_resuid != current->fsuid &&
++		sbi->s_resuid != current_fsuid() &&
+ 		(sbi->s_resgid == 0 || !in_group_p (sbi->s_resgid))) {
+ 		return 0;
+ 	}
+diff --git a/fs/ext3/ialloc.c b/fs/ext3/ialloc.c
+index 47b678d..490bd0e 100644
+--- a/fs/ext3/ialloc.c
++++ b/fs/ext3/ialloc.c
+@@ -539,7 +539,7 @@ got:
+ 		percpu_counter_inc(&sbi->s_dirs_counter);
+ 	sb->s_dirt = 1;
+ 
+-	inode->i_uid = current->fsuid;
++	inode->i_uid = current_fsuid();
+ 	if (test_opt (sb, GRPID))
+ 		inode->i_gid = dir->i_gid;
+ 	else if (dir->i_mode & S_ISGID) {
+@@ -547,7 +547,7 @@ got:
+ 		if (S_ISDIR(mode))
+ 			mode |= S_ISGID;
+ 	} else
+-		inode->i_gid = current->fsgid;
++		inode->i_gid = current_fsgid();
+ 	inode->i_mode = mode;
+ 
+ 	inode->i_ino = ino;
 
-It's only if we unmount or freeze the filesystem that we call
-ext3_commit_super().
-
-						- Ted
