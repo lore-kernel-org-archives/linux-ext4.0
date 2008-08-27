@@ -1,72 +1,71 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [RFC PATCH -v2] ext4: request for blocks with ar.excepted_group
- = -1
-Date: Wed, 27 Aug 2008 17:30:03 +0900
-Message-ID: <48B5108B.9020809@rs.jp.nec.com>
-References: <1219663233-21849-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219663233-21849-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219663233-21849-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219663233-21849-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219663233-21849-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219663233-21849-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: [PATCH] blkid: optimize dm_device_is_leaf() usage
+Date: Wed, 27 Aug 2008 10:32:52 +0200
+Message-ID: <20080827083252.GP6029@nb.net.home>
+References: <1219697316-5632-1-git-send-email-kzak@redhat.com> <20080826122405.GA8720@mit.edu> <20080826135102.GK6029@nb.net.home> <20080826144721.GD8720@mit.edu> <20080826204737.GM6029@nb.net.home> <20080826233224.GB29936@mit.edu> <20080827001942.GN6029@nb.net.home> <20080827012121.GD29936@mit.edu> <20080827044054.GE29936@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
+	mbroz@redhat.com, agk@redhat.com
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:62783 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752248AbYH0Ibk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Aug 2008 04:31:40 -0400
-In-Reply-To: <1219663233-21849-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx1.redhat.com ([66.187.233.31]:54693 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752936AbYH0Ic6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 Aug 2008 04:32:58 -0400
+Content-Disposition: inline
+In-Reply-To: <20080827044054.GE29936@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Aneesh,
-
-Thank you for your patch.
-I will merge this change into the next version of defrag patches.
-
-Regards,
-Akira Fujita
-
-Aneesh Kumar K.V Wrote:
-> Otherwise we skip group 0 during block allocation.
-> This cause ENOSPC even if we have free blocks in
-> group 0. This should be merged with defrag. The
-> expected_group changes are introduced by defrag patches.
+On Wed, Aug 27, 2008 at 12:40:54AM -0400, Theodore Tso wrote:
+> > I think we can ignore this minor problem for now. I'll try to found a
+> > better solution for dependencies resolution without libdevmapper. My
+> > wish is to avoid libdevmapper in libfsprobe.
 > 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/balloc.c  |    1 +
->  fs/ext4/extents.c |    1 +
->  2 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 4ebe3b6..1a068f5 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -2034,6 +2034,7 @@ static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
->  	ar.goal = goal;
->  	ar.len = *count;
->  	ar.logical = iblock;
-> +	ar.excepted_group = -1;
+> Here's a patch that I've been working on which gives a priority bonus
+> to dm leaf devices, without needing libdevmapper.  As I've mentioned
+> before, I'm not 100% convinced this is always the right thing.  But
+> it's probably a not-half-bad hueristic...
+[...]
 >  
->  	if (S_ISREG(inode->i_mode) && !(flags & EXT4_META_BLOCK))
->  		/* enable in-core preallocation for data block allocation */
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index bf612a7..268e96d 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -2879,6 +2879,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
->  	ar.goal = ext4_ext_find_goal(inode, path, iblock);
->  	ar.logical = iblock;
->  	ar.len = allocated;
-> +	ar.excepted_group = -1;
->  	if (S_ISREG(inode->i_mode))
->  		ar.flags = EXT4_MB_HINT_DATA;
->  	else
+> +static int is_dm_leaf(const char *devname)
+> +{
+> +	struct dirent	*de, *d_de;
+> +	DIR		*dir, *d_dir;
+> +	char		path[256];
+> +	int		ret = 1;
+> +
+> +	if ((dir = opendir("/sys/block")) == NULL)
+> +		return 0;
+> +	while ((de = readdir(dir)) != NULL) {
+> +		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") ||
+> +		    !strcmp(de->d_name, devname) ||
+> +		    strncmp(de->d_name, "dm-", 3) ||
+> +		    strlen(de->d_name) > sizeof(path)-32)
+> +			continue;
+> +		sprintf(path, "/sys/block/%s/slaves", de->d_name);
+> +		if ((d_dir = opendir(path)) == NULL)
+> +			continue;
+> +		while ((d_de = readdir(d_dir)) != NULL) {
+> +			if (!strcmp(d_de->d_name, devname)) {
+> +				ret = 0;
+> +				break;
+> +			}
+> +		}
+> +		closedir(d_dir);
+> +		if (!ret)
+> +			break;
+> +	}
+> +	closedir(dir);
+> +	return ret;
+> +}
+
+ Seems good. This patch and the brute-force for conversion from dm-N to
+ real names is the way how replace the HAVE_DEVMAPPER crap in libblkid.
+ Thanks!
+
+    Karel
 
 -- 
-Akira Fujita <a-fujita@rs.jp.nec.com>
-
-The First Fundamental Software Development Group,
-Software Development Division,
-NEC Software Tohoku, Ltd.
+ Karel Zak  <kzak@redhat.com>
