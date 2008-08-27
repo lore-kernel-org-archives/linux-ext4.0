@@ -1,71 +1,63 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: [PATCH] blkid: optimize dm_device_is_leaf() usage
-Date: Wed, 27 Aug 2008 10:32:52 +0200
-Message-ID: <20080827083252.GP6029@nb.net.home>
-References: <1219697316-5632-1-git-send-email-kzak@redhat.com> <20080826122405.GA8720@mit.edu> <20080826135102.GK6029@nb.net.home> <20080826144721.GD8720@mit.edu> <20080826204737.GM6029@nb.net.home> <20080826233224.GB29936@mit.edu> <20080827001942.GN6029@nb.net.home> <20080827012121.GD29936@mit.edu> <20080827044054.GE29936@mit.edu>
+From: Solofo.Ramangalahy@bull.net
+Subject: Re: mke2fs and lazy_itable_init
+Date: Wed, 27 Aug 2008 11:29:13 +0200
+Message-ID: <18613.7785.128407.136911@frecb006361.adech.frec.bull.fr>
+References: <20080508224847.GR3627@webber.adilger.int>
+	<20080509021827.GA8871@mit.edu>
+	<20080509081929.GD3627@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
-	mbroz@redhat.com, agk@redhat.com
-To: Theodore Tso <tytso@mit.edu>
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:54693 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752936AbYH0Ic6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 Aug 2008 04:32:58 -0400
-Content-Disposition: inline
-In-Reply-To: <20080827044054.GE29936@mit.edu>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:51252 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751912AbYH0J3j (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Aug 2008 05:29:39 -0400
+Cc: linux-ext4@vger.kernel.org
+In-Reply-To: <20080509081929.GD3627@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Aug 27, 2008 at 12:40:54AM -0400, Theodore Tso wrote:
-> > I think we can ignore this minor problem for now. I'll try to found a
-> > better solution for dependencies resolution without libdevmapper. My
-> > wish is to avoid libdevmapper in libfsprobe.
-> 
-> Here's a patch that I've been working on which gives a priority bonus
-> to dm leaf devices, without needing libdevmapper.  As I've mentioned
-> before, I'm not 100% convinced this is always the right thing.  But
-> it's probably a not-half-bad hueristic...
-[...]
->  
-> +static int is_dm_leaf(const char *devname)
-> +{
-> +	struct dirent	*de, *d_de;
-> +	DIR		*dir, *d_dir;
-> +	char		path[256];
-> +	int		ret = 1;
-> +
-> +	if ((dir = opendir("/sys/block")) == NULL)
-> +		return 0;
-> +	while ((de = readdir(dir)) != NULL) {
-> +		if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..") ||
-> +		    !strcmp(de->d_name, devname) ||
-> +		    strncmp(de->d_name, "dm-", 3) ||
-> +		    strlen(de->d_name) > sizeof(path)-32)
-> +			continue;
-> +		sprintf(path, "/sys/block/%s/slaves", de->d_name);
-> +		if ((d_dir = opendir(path)) == NULL)
-> +			continue;
-> +		while ((d_de = readdir(d_dir)) != NULL) {
-> +			if (!strcmp(d_de->d_name, devname)) {
-> +				ret = 0;
-> +				break;
-> +			}
-> +		}
-> +		closedir(d_dir);
-> +		if (!ret)
-> +			break;
-> +	}
-> +	closedir(dir);
-> +	return ret;
-> +}
+>>>>> On Fri, 09 May 2008 02:19:30 -0600, Andreas Dilger <adilger@sun.com> said:
 
- Seems good. This patch and the brute-force for conversion from dm-N to
- real names is the way how replace the HAVE_DEVMAPPER crap in libblkid.
- Thanks!
+    Andreas> On May 08, 2008 22:18 -0400, Theodore Ts'o wrote:
+    >> On Thu, May 08, 2008 at 04:48:47PM -0600, Andreas Dilger wrote:
+    >> > I just noticed lazy_itable_init in the mke2fs.8.in man page.
+    >> I think > a warning needs to be added there that this is not
+    >> currently safe to > use, because the kernel does not yet do the
+    >> background zeroing.  There > is nothing in the man page to
+    >> indicate that this is unsafe...
+    >> 
+    >> Yeah, I was hoping we would actually get this fixed before 1.41
+    >> was released....  (i.e., implement the background zeroing).
 
-    Karel
+    Andreas> It would still be an issue for 2.6.24 and 2.6.25 kernels,
+    Andreas> so I think it at least deserves a warning until there is
+    Andreas> a specific kernel that can be referenced that has this
+    Andreas> functionality.
+
+I think this patch (from Andreas) would be good for e2fsprogs 1.41.1,
+as discussed at Monday call.
 
 -- 
- Karel Zak  <kzak@redhat.com>
+solofo
+
+Index: b/misc/mke2fs.8.in
+===================================================================
+--- a/misc/mke2fs.8.in
++++ b/misc/mke2fs.8.in
+@@ -221,6 +221,12 @@ initialization noticeably, but it requir
+ initializing the filesystem in the background when the filesystem is
+ first mounted.  If the option value is omitted, it defaults to 1 to
+ enable lazy inode table initialization.
++. BR NOTE:
++No kernels do the background zeroing of the inode table at this time,
++so this option is unsafe for production use, due to the risk of
++filesystem corruption if e2fsck has to scan the whole inode table for
++some reason (e.g. incorrect group descriptor checksum).
++
+ .TP
+ .B test_fs
+ Set a flag in the filesystem superblock indicating that it may be
