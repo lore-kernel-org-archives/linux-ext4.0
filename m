@@ -1,178 +1,202 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V3 01/11] percpu_counters: make fbc->count read atomic on 32 bit architecture
-Date: Wed, 27 Aug 2008 20:58:26 +0530
-Message-ID: <1219850916-8986-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V3 11/11] ext4: Retry block allocation if we have free blocks left
+Date: Wed, 27 Aug 2008 20:58:36 +0530
+Message-ID: <1219850916-8986-11-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1219850916-8986-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219850916-8986-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219850916-8986-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219850916-8986-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219850916-8986-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219850916-8986-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219850916-8986-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219850916-8986-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219850916-8986-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1219850916-8986-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757364AbYH0P3I@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e28smtp05.in.ibm.com ([59.145.155.5]:60864 "EHLO
+	e28esmtp05.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755590AbYH0P3T (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 Aug 2008 11:29:19 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28esmtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7RFTGvA005867
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Aug 2008 20:59:16 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7RFTGU91642736
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Aug 2008 20:59:16 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7RFTGQ0022100
+	for <linux-ext4@vger.kernel.org>; Wed, 27 Aug 2008 20:59:16 +0530
+In-Reply-To: <1219850916-8986-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-fbc->count is of type s64. The change was introduced by
-0216bfcffe424a5473daa4da47440881b36c1f4 which changed the type
-from long to s64. Moving to s64 also means on 32 bit architectures
-we can get wrong values on fbc->count. Since fbc->count is read
-more frequently and updated rarely use seqlocks. This should
-reduce the impact of locking in the read path for 32bit arch.
+When we truncate files, the meta-data blocks released
+are not reused untill we commit the truncate transaction.
+That means delayed get_block request will return ENOSPC
+even if we have free blocks left. Force a journal commit
+and retry block allocation if we get ENOSPC with free
+blocks left.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-CC: Peter Zijlstra <a.p.zijlstra@chello.nl>
-CC: Andrew Morton <akpm@linux-foundation.org>
-CC: linux-kernel@vger.kernel.org
 ---
- include/linux/percpu_counter.h |   28 ++++++++++++++++++++++++----
- lib/percpu_counter.c           |   20 ++++++++++----------
- 2 files changed, 34 insertions(+), 14 deletions(-)
+ fs/ext4/inode.c |   81 ++++++++++++++++++++++++++++++++++++++----------------
+ 1 files changed, 57 insertions(+), 24 deletions(-)
 
-diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
-index 9007ccd..1b711a1 100644
---- a/include/linux/percpu_counter.h
-+++ b/include/linux/percpu_counter.h
-@@ -6,7 +6,7 @@
-  * WARNING: these things are HUGE.  4 kbytes per counter on 32-way P4.
-  */
- 
--#include <linux/spinlock.h>
-+#include <linux/seqlock.h>
- #include <linux/smp.h>
- #include <linux/list.h>
- #include <linux/threads.h>
-@@ -16,7 +16,7 @@
- #ifdef CONFIG_SMP
- 
- struct percpu_counter {
--	spinlock_t lock;
-+	seqlock_t lock;
- 	s64 count;
- #ifdef CONFIG_HOTPLUG_CPU
- 	struct list_head list;	/* All percpu_counters are on a list */
-@@ -53,10 +53,30 @@ static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
- 	return __percpu_counter_sum(fbc);
- }
- 
--static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-+#if BITS_PER_LONG == 64
-+static inline s64 fbc_count(struct percpu_counter *fbc)
- {
- 	return fbc->count;
- }
-+#else
-+/* doesn't have atomic 64 bit operation */
-+static inline s64 fbc_count(struct percpu_counter *fbc)
-+{
-+	s64 ret;
-+	unsigned seq;
-+	do {
-+		seq = read_seqbegin(&fbc->lock);
-+		ret = fbc->count;
-+	} while (read_seqretry(&fbc->lock, seq));
-+	return ret;
-+
-+}
-+#endif
-+
-+static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-+{
-+	return fbc_count(fbc);
-+}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 24381bb..bbe7fac 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1634,6 +1634,7 @@ static void ext4_da_page_release_reservation(struct page *page,
+ 	struct writeback_control *wbc;
+ 	int io_done;
+ 	long pages_written;
++	int retval;
+ };
  
  /*
-  * It is possible for the percpu_counter_read() to return a small negative
-@@ -65,7 +85,7 @@ static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-  */
- static inline s64 percpu_counter_read_positive(struct percpu_counter *fbc)
- {
--	s64 ret = fbc->count;
-+	s64 ret = fbc_count(fbc);
- 
- 	barrier();		/* Prevent reloads of fbc->count */
- 	if (ret >= 0)
-diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
-index a866389..83bb809 100644
---- a/lib/percpu_counter.c
-+++ b/lib/percpu_counter.c
-@@ -18,13 +18,13 @@ void percpu_counter_set(struct percpu_counter *fbc, s64 amount)
- {
- 	int cpu;
- 
--	spin_lock(&fbc->lock);
-+	write_seqlock(&fbc->lock);
- 	for_each_possible_cpu(cpu) {
- 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
- 		*pcount = 0;
- 	}
- 	fbc->count = amount;
--	spin_unlock(&fbc->lock);
-+	write_sequnlock(&fbc->lock);
+@@ -1820,6 +1821,24 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
+ 	return;
  }
- EXPORT_SYMBOL(percpu_counter_set);
  
-@@ -37,10 +37,10 @@ void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch)
- 	pcount = per_cpu_ptr(fbc->counters, cpu);
- 	count = *pcount + amount;
- 	if (count >= batch || count <= -batch) {
--		spin_lock(&fbc->lock);
-+		write_seqlock(&fbc->lock);
- 		fbc->count += count;
- 		*pcount = 0;
--		spin_unlock(&fbc->lock);
-+		write_sequnlock(&fbc->lock);
- 	} else {
- 		*pcount = count;
++static void ext4_print_free_blocks(struct inode *inode)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	printk(KERN_EMERG "Total free blocks count %lld\n",
++			ext4_count_free_blocks(inode->i_sb));
++	printk(KERN_EMERG "Free/Dirty block details\n");
++	printk(KERN_EMERG "free_blocks=%lld\n",
++			percpu_counter_sum(&sbi->s_freeblocks_counter));
++	printk(KERN_EMERG "dirty_blocks=%lld\n",
++			percpu_counter_sum(&sbi->s_dirtyblocks_counter));
++	printk(KERN_EMERG "Block reservation details\n");
++	printk(KERN_EMERG "i_reserved_data_blocks=%lu\n",
++			EXT4_I(inode)->i_reserved_data_blocks);
++	printk(KERN_EMERG "i_reserved_meta_blocks=%lu\n",
++			EXT4_I(inode)->i_reserved_meta_blocks);
++	return;
++}
++
+ /*
+  * mpage_da_map_blocks - go through given space
+  *
+@@ -1834,7 +1853,7 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	int err = 0;
+ 	struct buffer_head new;
+ 	struct buffer_head *lbh = &mpd->lbh;
+-	sector_t next = lbh->b_blocknr;
++	sector_t next;
+ 
+ 	/*
+ 	 * We consider only non-mapped and non-allocated blocks
+@@ -1844,6 +1863,7 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	new.b_state = lbh->b_state;
+ 	new.b_blocknr = 0;
+ 	new.b_size = lbh->b_size;
++	next = lbh->b_blocknr;
+ 	/*
+ 	 * If we didn't accumulate anything
+ 	 * to write simply return
+@@ -1860,6 +1880,13 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 		 */
+ 		if (err == -EAGAIN)
+ 			return 0;
++
++		if (err == -ENOSPC &&
++				ext4_count_free_blocks(mpd->inode->i_sb)) {
++			mpd->retval = err;
++			return 0;
++		}
++
+ 		/*
+ 		 * get block failure will cause us
+ 		 * to loop in writepages. Because
+@@ -1877,8 +1904,7 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 		printk(KERN_EMERG "This should not happen.!! "
+ 					"Data will be lost\n");
+ 		if (err == -ENOSPC) {
+-			printk(KERN_CRIT "Total free blocks count %lld\n",
+-				ext4_count_free_blocks(mpd->inode->i_sb));
++			ext4_print_free_blocks(mpd->inode);
+ 		}
+ 		/* invlaidate all the pages */
+ 		ext4_da_block_invalidatepages(mpd, next,
+@@ -2085,39 +2111,36 @@ static int __mpage_da_writepage(struct page *page,
+  */
+ static int mpage_da_writepages(struct address_space *mapping,
+ 			       struct writeback_control *wbc,
+-			       get_block_t get_block)
++			       struct mpage_da_data *mpd)
+ {
+-	struct mpage_da_data mpd;
+ 	long to_write;
+ 	int ret;
+ 
+-	if (!get_block)
++	if (!mpd->get_block)
+ 		return generic_writepages(mapping, wbc);
+ 
+-	mpd.wbc = wbc;
+-	mpd.inode = mapping->host;
+-	mpd.lbh.b_size = 0;
+-	mpd.lbh.b_state = 0;
+-	mpd.lbh.b_blocknr = 0;
+-	mpd.first_page = 0;
+-	mpd.next_page = 0;
+-	mpd.get_block = get_block;
+-	mpd.io_done = 0;
+-	mpd.pages_written = 0;
++	mpd->lbh.b_size = 0;
++	mpd->lbh.b_state = 0;
++	mpd->lbh.b_blocknr = 0;
++	mpd->first_page = 0;
++	mpd->next_page = 0;
++	mpd->io_done = 0;
++	mpd->pages_written = 0;
++	mpd->retval = 0;
+ 
+ 	to_write = wbc->nr_to_write;
+ 
+-	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, &mpd);
++	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, mpd);
+ 
+ 	/*
+ 	 * Handle last extent of pages
+ 	 */
+-	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
+-		if (mpage_da_map_blocks(&mpd) == 0)
+-			mpage_da_submit_io(&mpd);
++	if (!mpd->io_done && mpd->next_page != mpd->first_page) {
++		if (mpage_da_map_blocks(mpd) == 0)
++			mpage_da_submit_io(mpd);
  	}
-@@ -57,7 +57,7 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc)
- 	s64 ret;
- 	int cpu;
  
--	spin_lock(&fbc->lock);
-+	write_seqlock(&fbc->lock);
- 	ret = fbc->count;
- 	for_each_online_cpu(cpu) {
- 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
-@@ -66,7 +66,7 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc)
- 	}
- 	fbc->count = ret;
- 
--	spin_unlock(&fbc->lock);
-+	write_sequnlock(&fbc->lock);
+-	wbc->nr_to_write = to_write - mpd.pages_written;
++	wbc->nr_to_write = to_write - mpd->pages_written;
  	return ret;
  }
- EXPORT_SYMBOL(__percpu_counter_sum);
-@@ -75,7 +75,7 @@ EXPORT_SYMBOL(__percpu_counter_sum);
  
- int percpu_counter_init(struct percpu_counter *fbc, s64 amount)
+@@ -2356,6 +2379,7 @@ static int ext4_da_writepages(struct address_space *mapping,
  {
--	spin_lock_init(&fbc->lock);
-+	seqlock_init(&fbc->lock);
- 	fbc->count = amount;
- 	fbc->counters = alloc_percpu(s32);
- 	if (!fbc->counters)
-@@ -95,7 +95,7 @@ int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount)
+ 	handle_t *handle = NULL;
+ 	loff_t range_start = 0;
++	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+ 	long to_write, pages_skipped = 0;
+@@ -2389,6 +2413,9 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	range_start =  wbc->range_start;
+ 	pages_skipped = wbc->pages_skipped;
  
- 	err = percpu_counter_init(fbc, amount);
- 	if (!err)
--		lockdep_set_class(&fbc->lock, &percpu_counter_irqsafe);
-+		lockdep_set_class(&fbc->lock.lock, &percpu_counter_irqsafe);
- 	return err;
- }
- 
-@@ -130,11 +130,11 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
- 		s32 *pcount;
- 		unsigned long flags;
- 
--		spin_lock_irqsave(&fbc->lock, flags);
-+		write_seqlock_irqsave(&fbc->lock, flags);
- 		pcount = per_cpu_ptr(fbc->counters, cpu);
- 		fbc->count += *pcount;
- 		*pcount = 0;
--		spin_unlock_irqrestore(&fbc->lock, flags);
-+		write_sequnlock_irqrestore(&fbc->lock, flags);
- 	}
- 	mutex_unlock(&percpu_counters_lock);
- 	return NOTIFY_OK;
--- 
-1.6.0.1.90.g27a6e
++	mpd.wbc = wbc;
++	mpd.inode = mapping->host;
++
+ restart_loop:
+ 	to_write = wbc->nr_to_write;
+ 	while (!ret && to_write > 0) {
+@@ -2412,11 +2439,17 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 			dump_stack();
+ 			goto out_writepages;
+ 		}
