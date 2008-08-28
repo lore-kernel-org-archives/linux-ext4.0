@@ -1,85 +1,52 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: ext2: Fix ext2 block reservation early ENOSPC issue
-Date: Thu, 28 Aug 2008 16:05:08 -0700
-Message-ID: <1219964708.6384.73.camel@mingming-laptop>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Do we need dump for ext4?
+Date: Thu, 28 Aug 2008 17:14:06 -0600
+Message-ID: <20080828231406.GT3392@webber.adilger.int>
+References: <48B6BD02.3080307@redhat.com> <20080828184804.GN26987@mit.edu>
+ <48B6F69C.3090700@redhat.com> <20080828200448.GQ3392@webber.adilger.int>
+ <20080828203553.GB10082@mit.edu> <20080828222348.GS3392@webber.adilger.int>
+ <20080828223454.GD10082@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:54908 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755308AbYH1XFJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Aug 2008 19:05:09 -0400
-Received: from d01relay02.pok.ibm.com (d01relay02.pok.ibm.com [9.56.227.234])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7SN58VZ013259
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 19:05:08 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay02.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7SN58fp174436
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 19:05:08 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7SN58mV018567
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 19:05:08 -0400
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:50405 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751528AbYH1XOZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 19:14:25 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7SNENp4021916
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 16:14:24 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K6C00A012GV2600@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Thu, 28 Aug 2008 16:14:23 -0700 (PDT)
+In-reply-to: <20080828223454.GD10082@mit.edu>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Mingming Cao <cmm@us.ibm.com>
+On Aug 28, 2008  18:34 -0400, Theodore Ts'o wrote:
+> It's fine, because according to POSIX it's undefined what happens to
+> files that are created or deleted after the last opendir() or
+> rewindir().  So basically, the b-tree is attached to the opendir, and
+> we discard it and re-create it if we ever seek to the beginning of the
+> directory.
 
-ext2: Fix ext2 nomballoc allocator for ENOSPC
+... presumably only if the directory has been modified in the meantime?
+It seems like this is missing from the ext3_dx_readdir() code, and could
+be easily achieved by checking inode->i_version vs. filp->f_version or
+similar.  It looks like this is checked later on, but by that time we've
+already discarded everything.
 
-We could run into ENOSPC error on ext2, even when there is free blocks
-on the filesystem.
 
-The problem is triggered in the case the goal block group has 0 free blocks
-, and the rest block groups are skipped due to the check of "free_blocks 
-< windowsz/2". Current code could fall back to non reservation allocation
-to prevent early ENOSPC after examing all the block groups with reservation on
-, but this code was  bypassed if the reservation window is turned off already,
-which is true in this case.
-
-This patch fixed two issues:
-1) We don't need to turn off block reservation if the goal block group has 
-0 free blocks left and continue search for the rest of block groups.
-
-Current code the intention is to turn off the block reservation if the
- goal allocation group has a few (some) free blocks left (not enough 
-for make the desired reservation window),to try to allocation in the
- goal block group, to get better locality. But if the goal blocks have 
-0 free blocks,  it should leave the block reservation on, and continues
-search for the next block groups,rather than turn off block reservation
-completely.
-
-2) we don't need to check the window size if the block reservation is off. 
-
-The problem was originally found and fixed in ext4.
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-
----
- fs/ext2/balloc.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-Index: linux-2.6.27-rc3/fs/ext2/balloc.c
-===================================================================
---- linux-2.6.27-rc3.orig/fs/ext2/balloc.c	2008-08-12 18:55:39.000000000 -0700
-+++ linux-2.6.27-rc3/fs/ext2/balloc.c	2008-08-28 15:51:59.000000000 -0700
-@@ -1295,6 +1295,7 @@
- 	 * turn off reservation for this allocation
- 	 */
- 	if (my_rsv && (free_blocks < windowsz)
-+		&& (free_blocks > 0)
- 		&& (rsv_is_empty(&my_rsv->rsv_window)))
- 		my_rsv = NULL;
- 
-@@ -1332,7 +1333,7 @@
- 		 * free blocks is less than half of the reservation
- 		 * window size.
- 		 */
--		if (free_blocks <= (windowsz/2))
-+		if (my_rsv && (free_blocks <= (windowsz/2)))
- 			continue;
- 
- 		brelse(bitmap_bh);
-
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
