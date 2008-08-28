@@ -1,136 +1,130 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH -V3 08/11] ext4: Signed arithematic fix
-Date: Thu, 28 Aug 2008 14:04:11 -0700
-Message-ID: <1219957451.6384.28.camel@mingming-laptop>
-References: <1219850916-8986-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1219850916-8986-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1219850916-8986-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1219850916-8986-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1219850916-8986-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1219850916-8986-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1219850916-8986-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <1219850916-8986-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
+Subject: Re: [PATCH 2/4] Create the journal in the middle of the filesystem
+Date: Thu, 28 Aug 2008 11:55:21 +0200
+Message-ID: <1219917321.3591.79.camel@frecb007923.frec.bull.fr>
+References: <20080827210636.GC26987@mit.edu>
+	 <1219871676-18456-1-git-send-email-tytso@mit.edu>
+	 <1219871676-18456-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e2.ny.us.ibm.com ([32.97.182.142]:52626 "EHLO e2.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755388AbYH1VEO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Aug 2008 17:04:14 -0400
-Received: from d01relay04.pok.ibm.com (d01relay04.pok.ibm.com [9.56.227.236])
-	by e2.ny.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7SL4BxT026328
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 17:04:11 -0400
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by d01relay04.pok.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7SL4B8Z230676
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 17:04:11 -0400
-Received: from d01av02.pok.ibm.com (loopback [127.0.0.1])
-	by d01av02.pok.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7SL4BE6016263
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 17:04:11 -0400
-In-Reply-To: <1219850916-8986-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:58192 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753018AbYH1HxX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 03:53:23 -0400
+In-Reply-To: <1219871676-18456-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-=E5=9C=A8 2008-08-27=E4=B8=89=E7=9A=84 20:58 +0530=EF=BC=8CAneesh Kumar=
- K.V=E5=86=99=E9=81=93=EF=BC=9A
-> This patch converts some usage of ext4_fsblk_t to s64
-> This is needed so that some of the sign conversion works
-> as expected in if loops.
+Le mercredi 27 ao=C3=BBt 2008 =C3=A0 17:14 -0400, Theodore Ts'o a =C3=A9=
+crit :
+> This speeds up access to the journal by eliminating worst-case seeks
+> from one end of the disk to another, which can be quite common in ver=
+y
+> fsync-intensive workloads if the file is located near the end of the
+> disk, and the journal is located the beginning of the disk.
 >=20
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
-Reviewed-by: Mingming Cao <cmm@us.ibm.com>
-Added to patch queue
+> In addition, this can help eliminate journal fragmentation when
+> flex_bg is enabled, since the first block group has a large amount of
+> metadata.
+>=20
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 > ---
->  fs/ext4/balloc.c |   19 ++++++++++---------
->  fs/ext4/ext4.h   |    4 ++--
->  2 files changed, 12 insertions(+), 11 deletions(-)
+>  lib/ext2fs/mkjournal.c |   28 +++++++++++++++++++++++-----
+>  1 files changed, 23 insertions(+), 5 deletions(-)
 >=20
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index 53fdb05..7fdc236 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -1603,10 +1603,10 @@ ext4_try_to_allocate_with_rsv(struct super_bl=
-ock *sb, handle_t *handle,
->  }
->=20
->  int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
-> -						ext4_fsblk_t nblocks)
-> +						s64 nblocks)
+> diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
+> index 3cae874..cd3df07 100644
+> --- a/lib/ext2fs/mkjournal.c
+> +++ b/lib/ext2fs/mkjournal.c
+> @@ -198,6 +198,7 @@ errcode_t ext2fs_zero_blocks(ext2_filsys fs, blk_=
+t blk, int num,
+>  struct mkjournal_struct {
+>  	int		num_blocks;
+>  	int		newblocks;
+> +	blk_t		goal;
+>  	blk_t		blk_to_zero;
+>  	int		zero_count;
+>  	char		*buf;
+> @@ -213,14 +214,13 @@ static int mkjournal_proc(ext2_filsys	fs,
 >  {
->  	s64 free_blocks, dirty_blocks;
-> -	ext4_fsblk_t root_blocks =3D 0;
-> +	s64 root_blocks =3D 0;
->  	struct percpu_counter *fbc =3D &sbi->s_freeblocks_counter;
->  	struct percpu_counter *dbc =3D &sbi->s_dirtyblocks_counter;
->=20
-> @@ -1631,7 +1631,7 @@ int ext4_claim_free_blocks(struct ext4_sb_info =
-*sbi,
->  	/* Check whether we have space after
->  	 * accounting for current dirty blocks
->  	 */
-> -	if (free_blocks < ((s64)(root_blocks + nblocks) + dirty_blocks))
-> +	if (free_blocks < ((root_blocks + nblocks) + dirty_blocks))
->  		/* we don't have free space */
->  		return -ENOSPC;
->=20
-> @@ -1650,10 +1650,10 @@ int ext4_claim_free_blocks(struct ext4_sb_inf=
-o *sbi,
->   * On success, return nblocks
->   */
->  ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
-> -						ext4_fsblk_t nblocks)
-> +						s64 nblocks)
->  {
-> -	ext4_fsblk_t free_blocks, dirty_blocks;
-> -	ext4_fsblk_t root_blocks =3D 0;
-> +	s64 free_blocks, dirty_blocks;
-> +	s64 root_blocks =3D 0;
->  	struct percpu_counter *fbc =3D &sbi->s_freeblocks_counter;
->  	struct percpu_counter *dbc =3D &sbi->s_dirtyblocks_counter;
->=20
-> @@ -1667,14 +1667,15 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4=
-_sb_info *sbi,
->=20
->  	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
->  						EXT4_FREEBLOCKS_WATERMARK) {
-> -		free_blocks  =3D percpu_counter_sum_positive(fbc);
-> -		dirty_blocks =3D percpu_counter_sum_positive(dbc);
-> +		free_blocks  =3D percpu_counter_sum(fbc);
-> +		dirty_blocks =3D percpu_counter_sum(dbc);
->  	}
->  	if (free_blocks <=3D (root_blocks + dirty_blocks))
->  		/* we don't have free space */
+>  	struct mkjournal_struct *es =3D (struct mkjournal_struct *) priv_da=
+ta;
+>  	blk_t	new_blk;
+> -	static blk_t	last_blk =3D 0;
+>  	errcode_t	retval;
+>  =09
+>  	if (*blocknr) {
+> -		last_blk =3D *blocknr;
+> +		es->goal =3D *blocknr;
 >  		return 0;
+>  	}
+> -	retval =3D ext2fs_new_block(fs, last_blk, 0, &new_blk);
+> +	retval =3D ext2fs_new_block(fs, es->goal, 0, &new_blk);
+>  	if (retval) {
+>  		es->err =3D retval;
+>  		return BLOCK_ABORT;
+> @@ -258,8 +258,7 @@ static int mkjournal_proc(ext2_filsys	fs,
+>  		es->err =3D retval;
+>  		return BLOCK_ABORT;
+>  	}
+> -	*blocknr =3D new_blk;
+> -	last_blk =3D new_blk;
+> +	*blocknr =3D es->goal =3D new_blk;
+>  	ext2fs_block_alloc_stats(fs, new_blk, +1);
+> =20
+>  	if (es->num_blocks =3D=3D 0)
+> @@ -276,6 +275,7 @@ static errcode_t write_journal_inode(ext2_filsys =
+fs, ext2_ino_t journal_ino,
+>  				     blk_t size, int flags)
+>  {
+>  	char			*buf;
+> +	dgrp_t			group, start, end, i;
+>  	errcode_t		retval;
+>  	struct ext2_inode	inode;
+>  	struct mkjournal_struct	es;
+> @@ -298,6 +298,24 @@ static errcode_t write_journal_inode(ext2_filsys=
+ fs, ext2_ino_t journal_ino,
+>  	es.err =3D 0;
+>  	es.zero_count =3D 0;
+> =20
+> +	/*
+> +	 * Set the initial goal block to be roughly at the middle of
+> +	 * the filesystem.  Pick a group that has the largest number
+> +	 * of free blocks.
+> +	 */
+> +	group =3D ext2fs_group_of_blk(fs, (fs->super->s_blocks_count -=20
+> +					 fs->super->s_first_data_block) / 2);
+> +	start =3D (group > 0) ? group-1 : group;
+> +	end =3D ((group+1) < fs->group_desc_count) ? group+1 : group;
+
+With 512 groups by flex group, meta-datas for a single flex-group are 8
+groups long ! If we have no luck and there are a bunch of groups
+occupied by meta-datas at the middle of the filesystem, we should
+slightly increase the number of groups scanned to find a completely fre=
+e
+group.
+
+> +	group =3D start;
+> +	for (i=3Dstart+1; i <=3D end; i++)
+> +		if (fs->group_desc[i].bg_free_blocks_count >
+> +		    fs->group_desc[group].bg_free_blocks_count)
+> +			group =3D i;
+
+This is ok if the journal file has the default size, but not optimal if
+it's bigger than one group.
+
 > +
->  	if (free_blocks - (root_blocks + dirty_blocks) < nblocks)
-> -		return free_blocks - root_blocks;
-> +		return free_blocks - (root_blocks + dirty_blocks);
->  	return nblocks;
->  }
->=20
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 71a4fde..13c69ed 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1048,9 +1048,9 @@ extern ext4_fsblk_t ext4_new_blocks(handle_t *h=
-andle, struct inode *inode,
->  extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct ino=
-de *inode,
->  			ext4_fsblk_t goal, unsigned long *count, int *errp);
->  extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
-> -						ext4_fsblk_t nblocks);
-> +						s64 nblocks);
->  extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
-> -						ext4_fsblk_t nblocks);
-> +						s64  nblocks);
->  extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
->  			ext4_fsblk_t block, unsigned long count, int metadata);
->  extern void ext4_free_blocks_sb (handle_t *handle, struct super_bloc=
-k *sb,
+> +	es.goal =3D (fs->super->s_blocks_per_group * group) +
+> +		fs->super->s_first_data_block;
+> +
+>  	retval =3D ext2fs_block_iterate2(fs, journal_ino, BLOCK_FLAG_APPEND=
+,
+>  				       0, mkjournal_proc, &es);
+>  	if (es.err) {
 
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
