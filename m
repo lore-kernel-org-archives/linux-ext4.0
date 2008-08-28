@@ -1,52 +1,115 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Do we need dump for ext4?
-Date: Thu, 28 Aug 2008 18:34:54 -0400
-Message-ID: <20080828223454.GD10082@mit.edu>
-References: <48B6BD02.3080307@redhat.com> <20080828184804.GN26987@mit.edu> <48B6F69C.3090700@redhat.com> <20080828200448.GQ3392@webber.adilger.int> <20080828203553.GB10082@mit.edu> <20080828222348.GS3392@webber.adilger.int>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH -V3 01/11] percpu_counters: make fbc->count read atomic
+	on 32 bit architecture
+Date: Thu, 28 Aug 2008 15:59:46 -0700
+Message-ID: <1219964386.6384.63.camel@mingming-laptop>
+References: <1219850916-8986-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	 <20080827120553.9c9d6690.akpm@linux-foundation.org>
+	 <1219870912.6395.45.camel@twins>
+	 <20080827142250.7397a1a7.akpm@linux-foundation.org>
+	 <20080828035200.GB6440@skywalker>
+	 <20080827210925.b4846037.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>, tytso@mit.edu,
+	sandeen@redhat.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:40945 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755590AbYH1We5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 18:34:57 -0400
-Content-Disposition: inline
-In-Reply-To: <20080828222348.GS3392@webber.adilger.int>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:57189 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753525AbYH1W7s (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 18:59:48 -0400
+In-Reply-To: <20080827210925.b4846037.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 28, 2008 at 04:23:48PM -0600, Andreas Dilger wrote:
-> > For small directories which could potentially get converted into htree
-> > format, we already sucking the entire directory and putting it into an
-> > rbtree.  We could just do this for all directories less than or equal
-> > to 32k, but have them returned sorted by inode instead of by hash
-> > value.  At least on my laptop, this accounts for 99.93% of the
-> > directories on my root filesystem.
-> 
-> What happens if the directory is grown at that point?  I thought the
-> reason for keeping it sorted in hash order was to deal with the
-> telldir headache?  I guess if the whole thing is in memory then it
-> can be attached to the fd and discarded once read or seeked-on
-> (and POSIX doesn't require reporting new entries after the start
-> of the read).
 
-It's fine, because according to POSIX it's undefined what happens to
-files that are created or deleted after the last opendir() or
-rewindir().  So basically, the b-tree is attached to the opendir, and
-we discard it and re-create it if we ever seek to the beginning of the
-directory.  This logic is already in the kernel, since it's exactly
-the same situation if the file is grown past the point where it
-becomes an HTREE directory.
+=E5=9C=A8 2008-08-27=E4=B8=89=E7=9A=84 21:09 -0700=EF=BC=8CAndrew Morto=
+n=E5=86=99=E9=81=93=EF=BC=9A
+> On Thu, 28 Aug 2008 09:22:00 +0530 "Aneesh Kumar K.V" <aneesh.kumar@l=
+inux.vnet.ibm.com> wrote:
+>=20
+> > On Wed, Aug 27, 2008 at 02:22:50PM -0700, Andrew Morton wrote:
+> > > On Wed, 27 Aug 2008 23:01:52 +0200
+> > > Peter Zijlstra <a.p.zijlstra@chello.nl> wrote:
+> > >=20
+> > > > >=20
+> > > > > > +static inline s64 percpu_counter_read(struct percpu_counte=
+r *fbc)
+> > > > > > +{
+> > > > > > +	return fbc_count(fbc);
+> > > > > > +}
+> > > > >=20
+> > > > > This change means that a percpu_counter_read() from interrupt=
+ context
+> > > > > on a 32-bit machine is now deadlockable, whereas it previousl=
+y was not
+> > > > > deadlockable on either 32-bit or 64-bit.
+> > > > >=20
+> > > > > This flows on to the lib/proportions.c, which uses
+> > > > > percpu_counter_read() and also does spin_lock_irqsave() inter=
+nally,
+> > > > > indicating that it is (or was) designed to be used in IRQ con=
+texts.
+> > > >=20
+> > > > percpu_counter() never was irq safe, which is why the proportio=
+n stuff
+> > > > does all the irq disabling bits by hand.
+> > >=20
+> > > percpu_counter_read() was irq-safe.  That changes here.  Needs ca=
+reful
+> > > review, changelogging and, preferably, runtime checks.  But perha=
+ps
+> > > they should be inside some CONFIG_thing which won't normally be d=
+one in
+> > > production.
+> > >=20
+> > > otoh, percpu_counter_read() is in fact a rare operation, so a bit=
+ of
+> > > overhead probably won't matter.
+> > >=20
+> > > (write-often, read-rarely is the whole point.  This patch's chang=
+elog's
+> > > assertion that "Since fbc->count is read more frequently and upda=
+ted
+> > > rarely" is probably wrong.  Most percpu_counters will have their
+> > > fbc->count modified far more frequently than having it read from)=
+=2E
+> >=20
+> > we may actually be doing percpu_counter_add. But that doesn't updat=
+e
+> > fbc->count. Only if the local percpu values cross FBC_BATCH we upda=
+te
+> > fbc->count. If we are modifying fbc->count more frequently than
+> > reading fbc->count then i guess we would be contenting of fbc->lock=
+ more.
+> >=20
+> >=20
+>=20
+> Yep.  The frequency of modification of fbc->count is of the order of =
+a
+> tenth or a hundredth of the frequency of
+> precpu_counter_<modification>() calls.
+>=20
+> But in many cases the frequency of percpu_counter_read() calls is far
+> far less than this.  For example, the percpu_counter_read() may only
+> happen when userspace polls a /proc file.
+>=20
+>=20
 
-> Doing this at the VFS level would also benefit _most_ filesystems,
-> though maybe not ones like XFS or btrfs that have their own preferred
-> order.
+The global counter is is much more frequently accessed with delalloc.:(
 
-Possibly, but it's a lot easier inside ext3/ext4 because we have most
-of the machinery in place and in use already.
+With delayed allocation, we have to do read the free blocks counter  at
+each write_begin(),  to make sure there is enough free blocks to do
+block reservation to prevent lately writepages returns ENOSPC.
 
-	              		    	      - Ted
+Mingming
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
