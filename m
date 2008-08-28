@@ -1,52 +1,39 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Do we need dump for ext4?
-Date: Thu, 28 Aug 2008 17:14:06 -0600
-Message-ID: <20080828231406.GT3392@webber.adilger.int>
-References: <48B6BD02.3080307@redhat.com> <20080828184804.GN26987@mit.edu>
- <48B6F69C.3090700@redhat.com> <20080828200448.GQ3392@webber.adilger.int>
- <20080828203553.GB10082@mit.edu> <20080828222348.GS3392@webber.adilger.int>
- <20080828223454.GD10082@mit.edu>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: ext4 weekly developer's call
+Date: Thu, 28 Aug 2008 16:24:54 -0700
+Message-ID: <1219965894.1035.3.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:50405 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751528AbYH1XOZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 19:14:25 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7SNENp4021916
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 16:14:24 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K6C00A012GV2600@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 28 Aug 2008 16:14:23 -0700 (PDT)
-In-reply-to: <20080828223454.GD10082@mit.edu>
-Content-disposition: inline
+Received: from e31.co.us.ibm.com ([32.97.110.149]:33556 "EHLO
+	e31.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753872AbYH1XYz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 19:24:55 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e31.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m7SNOsYp025860
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 19:24:54 -0400
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7SNOs6s180144
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 17:24:54 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7SNOsTp003380
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 17:24:54 -0600
+Received: from [9.47.17.115] (mingming-laptop.beaverton.ibm.com [9.47.17.115])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.12.11) with ESMTP id m7SNOrAT003355
+	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 17:24:53 -0600
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 28, 2008  18:34 -0400, Theodore Ts'o wrote:
-> It's fine, because according to POSIX it's undefined what happens to
-> files that are created or deleted after the last opendir() or
-> rewindir().  So basically, the b-tree is attached to the opendir, and
-> we discard it and re-create it if we ever seek to the beginning of the
-> directory.
+Since next Monday is a US holiday, next week's ext4 call is canceled.
 
-... presumably only if the directory has been modified in the meantime?
-It seems like this is missing from the ext3_dx_readdir() code, and could
-be easily achieved by checking inode->i_version vs. filp->f_version or
-similar.  It looks like this is checked later on, but by that time we've
-already discarded everything.
+If you are interested in joining the ext4 weekly developer's meeting in
+the future, which is  scheduled at 8:00am Pacific time on every Monday,
+please drop me a email to get the access number.
 
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Cheers,
+Mingming
+
 
