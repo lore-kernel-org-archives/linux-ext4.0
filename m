@@ -1,63 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Do we need dump for ext4?
-Date: Thu, 28 Aug 2008 09:58:10 -0500
-Message-ID: <48B6BD02.3080307@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Online resize with flex bg
+Date: Thu, 28 Aug 2008 13:11:56 -0400
+Message-ID: <20080828171156.GK26987@mit.edu>
+References: <1219934280.3591.121.camel@frecb007923.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: =?iso-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35316 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753182AbYH1O7J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Aug 2008 10:59:09 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m7SEwSHk005522
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 10:58:48 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m7SEwGiZ013052
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 10:58:17 -0400
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:51977 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752052AbYH1RL6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 13:11:58 -0400
+Content-Disposition: inline
+In-Reply-To: <1219934280.3591.121.camel@frecb007923.frec.bull.fr>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I was talking to Ric about dump benchmarks, and he was of the impression
-that dump may not be used that often anymore, at least in the
-enterprise.  (Ric, hope I'm paraphrasing correctly)
+On Thu, Aug 28, 2008 at 04:38:00PM +0200, Fr=E9d=E9ric Boh=E9 wrote:
+> with flexbg :
+> 	It works the same way but this time, meta-datas blocks for new group=
+s
+> are created inside the working filesystem (in a group containing
+> meta-datas for the whole flex group). resize2fs scans from the end of
+> the last flex_group meta-datas until it finds enough space to put the
+> new meta-datas. This is not a problem when resizing offline, but when
+> online, the blocks found for the meta-datas may be allocated by someo=
+ne
+> else before the GROUP_ADD ioctl occurs.
 
-Undaunted :) I ran off and tested an artificial backup scenario:
+Yep, that's a problem.  Probably the quick fix is to allocate the
+metadata outside of the working filesystem at least for now.  Because
+we're extending the filesystem block group by block group, the
+quick-and-dirty fix would be to just use the non-flex_bg allocation
+algorithm and allocate the block bitmap, inode bitmap, and inode table
+in the block group.
 
-* Untar a kernel tree into 128 different top level dirs
-* Make a level 0 backup
-* Untar a kernel tree into 128 MORE different top level dirs
-* Make a level 1 backup
+This we can do in the userspace code right now, since the kernel code
+is enforcing that the block and inode bitmaps be in the new block
+group at the moment anyway.  It is highly undesirable, since it would
+break the advantage of flex_bg, but at least online resizing would
+work.
 
-128 kernel trees uses about 6.5M inodes, and about 80G of space.
+To fix it right, I suspect we will need a new ioctl and do more of the
+work inside the kernel, instead of in userspace.  That's the only way
+we can do the block allocation inside the kernel efficiently.
 
-I tested ext3 with dump; ext4 with tar, and xfs with xfsdump.
-
-for ext3:
-dump -1 -u -f $DUMPDIR/dump1 $DATADIR
-
-for ext4:
-tar --atime-preserve --xattr --after-date=$DUMPDIR/dump0.tar -cf
-$DUMPDIR/dump1.tar $DATADIR
-
-for xfs:
-xfsdump -F -l 1 -f $DUMPDIR/dump0 $DATADIR
-
-DUMPDIR and DATADIR were 2 partitions on the same (fast hardware) lun.
-
-Results:
-
-	level0	level1
-        ------	------
-ext3	38m52s	42m21s
-ext4	57m55s	69m35s
-xfs	25m18s	37m44s
-
-Clearly tar on ext4, at least for my incantation, lags.  Is dump for
-ext4 anywhere on the todo list, or should it be?  Or am I just running
-tar wrong? :)
-
--Eric
+       	      	    	       	      	  	 - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
