@@ -1,76 +1,55 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext3: truncate block allocated on a failed ext3_write_begin
-Date: Thu, 28 Aug 2008 12:56:28 -0500
-Message-ID: <48B6E6CC.7030704@redhat.com>
-References: <1219944473-8770-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Do we need dump for ext4?
+Date: Thu, 28 Aug 2008 14:48:04 -0400
+Message-ID: <20080828184804.GN26987@mit.edu>
+References: <48B6BD02.3080307@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>,
+	Ric Wheeler <rwheeler@redhat.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:46207 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753222AbYH1SOA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 Aug 2008 14:14:00 -0400
-In-Reply-To: <1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:41570 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751882AbYH1SsI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 14:48:08 -0400
+Content-Disposition: inline
+In-Reply-To: <48B6BD02.3080307@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
-> For blocksize < pagesize we need to remove blocks that
-> got allocte in block_wirte_begin if we fail with ENOSPC
-> for later blocks. block_write_begin internally does
-> this if it allocated page locally. This make sure
-> we don't have blocks outisde inode.i_size during
-> ENOSPC
+On Thu, Aug 28, 2008 at 09:58:10AM -0500, Eric Sandeen wrote:
+> I was talking to Ric about dump benchmarks, and he was of the impression
+> that dump may not be used that often anymore, at least in the
+> enterprise.
 
-I think this is good; here's an easy testcase:
+Many people don't use the dump/restore any more program any more,
+that's definitely true.  Whether people use backups (as opposed to
+large amounts of RAID) in the enterprise is a different question.  I'm
+not so sure about the second question.
 
-# dd if=/dev/zero of=fsfile bs=1k count=2048
-# mkfs.ext3 -F fsfile
-# mkdir mnt
-# mount -o loop fsfile mnt/
-# dd if=/dev/zero of=mnt/1kfile bs=1k count=1
-# cd mnt/
-# dd if=/dev/zero of=bigfile bs=4k
-# cd ..
-# umount mnt
-# e2fsck -f fsfile
-e2fsck 1.39 (29-May-2006)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 13, i_size is 974848, should be 976896.  Fix<y>?
-...
+So a couple of comments.  First, it's probably not fair to use
+different backup programs for the different filesystems.  We probably
+want to do one set of comparisons where we use tar for all three.
+(Note: not all backup/dump programs are doing the right things with
+xattr's, so we're not necessarily comparing programs with completely
+identical functionality.)
 
-can you test with that, unless you already have a testcase you've used?
+Secondly, it really wouldn't be hard to update dump/restore for ext4.
+It uses libext2fs, so the real problem is that it is explicitly
+checking the feature flags.  Removing those checks may be all that is
+necessary, given that ext2_block_iterate() still works for
+extent-based files.  I just noted BTW that the dump/restore doesn't
+seem to be TOTALLY abandoned.  It was last updated in 2006, true, but
+there is support for backing up and restoring extended attributes and
+ACL's.  I wonder if they broke format compatibility with BSD 4.4
+format dump/restore backups when they did it --- and if anyone would
+still cares.  :-)
 
-Assuming it fixes it (it should) you can add:
+Finally, I suspect most of the problem with using tar is the HTREE
+dirent sorting problem.  If we modify tar to sort the directory
+entries before emitting the files, and then use that tar across all
+the filesystems, I suspect the results would be much more better for
+ext3 and ext4.
 
-Acked-by: Eric Sandeen <sandeen@redhat.com>
-
--Eric
-
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext3/inode.c |    7 +++++++
->  1 files changed, 7 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index ebfec4d..f8424ad 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -1186,6 +1186,13 @@ static int ext3_write_begin(struct file *file, struct address_space *mapping,
->  		ext3_journal_stop(handle);
->  		unlock_page(page);
->  		page_cache_release(page);
-> +		/*
-> +		 * block_write_begin may have instantiated a few blocks
-> +		 * outside i_size.  Trim these off again. Don't need
-> +		 * i_size_read because we hold i_mutex.
-> +		 */
-> +		if (pos + len > inode->i_size)
-> +			vmtruncate(inode, inode->i_size);
->  	}
->  	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
->  		goto retry;
-
+						- Ted
