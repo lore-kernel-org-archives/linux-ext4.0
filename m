@@ -1,81 +1,76 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Online resize with flex bg
-Date: Thu, 28 Aug 2008 13:36:52 -0400
-Message-ID: <20080828173652.GL26987@mit.edu>
-References: <1219934280.3591.121.camel@frecb007923.frec.bull.fr> <20080828171156.GK26987@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext3: truncate block allocated on a failed ext3_write_begin
+Date: Thu, 28 Aug 2008 12:56:28 -0500
+Message-ID: <48B6E6CC.7030704@redhat.com>
+References: <1219944473-8770-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: =?iso-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:37707 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751432AbYH1Rgy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 13:36:54 -0400
-Content-Disposition: inline
-In-Reply-To: <20080828171156.GK26987@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:46207 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753222AbYH1SOA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 Aug 2008 14:14:00 -0400
+In-Reply-To: <1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-And here's the short-term fix.  With this patch, e2fsprogs will work
-on ext4 filesystems with flex_bg.  Interested in working on the
-long-term fix, where we put all or most of the resizing logic in the
-kernel?  :-)
+Aneesh Kumar K.V wrote:
+> For blocksize < pagesize we need to remove blocks that
+> got allocte in block_wirte_begin if we fail with ENOSPC
+> for later blocks. block_write_begin internally does
+> this if it allocated page locally. This make sure
+> we don't have blocks outisde inode.i_size during
+> ENOSPC
 
-						- Ted
+I think this is good; here's an easy testcase:
 
-commit df3871a168c3f8308718d72a17062a20aa02cc01
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Thu Aug 28 13:24:12 2008 -0400
+# dd if=/dev/zero of=fsfile bs=1k count=2048
+# mkfs.ext3 -F fsfile
+# mkdir mnt
+# mount -o loop fsfile mnt/
+# dd if=/dev/zero of=mnt/1kfile bs=1k count=1
+# cd mnt/
+# dd if=/dev/zero of=bigfile bs=4k
+# cd ..
+# umount mnt
+# e2fsck -f fsfile
+e2fsck 1.39 (29-May-2006)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 13, i_size is 974848, should be 976896.  Fix<y>?
+...
 
-    resize2fs: Allow (non-optimal) on-line resizing for ext4 filesystems
-    
-    The current method of adding one block group at a time to a mounted
-    filesystem means it is impossible to accomodate the flex_bg allocation
-    method of placing the metadata together in a single block group.  For
-    now we "fix" this issue by using the traditional layout for new block
-    groups, where each block group is self-contained and contains its own
-    bitmap blocks and inode tables.  This means we don't get the layout
-    advantages of flex_bg in the new block groups, but at least it allows
-    on-line resizing to function.
-    
-    Long term, we will need to create a new ioctl which does much more of
-    the resizing work in the kernel.
-    
-    We also fix a bug in the ext3/ext4 ioctl fallback code so we stop
-    trying the ext3 ioctl for every single block group when resizing an
-    ext4 filesystem.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+can you test with that, unless you already have a testcase you've used?
 
-diff --git a/resize/online.c b/resize/online.c
-index f4d24ce..d581553 100644
---- a/resize/online.c
-+++ b/resize/online.c
-@@ -93,6 +93,17 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
- 	if (retval)
- 		return retval;
- 
-+	/* The current method of adding one block group at a time to a
-+	 * mounted filesystem means it is impossible to accomodate the
-+	 * flex_bg allocation method of placing the metadata together
-+	 * in a single block group.  For now we "fix" this issue by
-+	 * using the traditional layout for new block groups, where
-+	 * each block group is self-contained and contains its own
-+	 * bitmap blocks and inode tables.  This means we don't get
-+	 * the layout advantages of flex_bg in the new block groups,
-+	 * but at least it allows on-line resizing to function.
-+	 */
-+	new_fs->super->s_feature_incompat &= ~EXT4_FEATURE_INCOMPAT_FLEX_BG;
- 	retval = adjust_fs_info(new_fs, fs, *new_size);
- 	if (retval)
- 		return retval;
-@@ -154,7 +165,7 @@ errcode_t online_resize_fs(ext2_filsys fs, const char *mtpt,
- 		    ioctl(fd, EXT2_IOC_GROUP_ADD, &input) == 0)
- 			continue;
- 		else
--			use_old_ioctl = 1;
-+			use_old_ioctl = 0;
- 
- 		input64.group = input.group;
- 		input64.block_bitmap = input.block_bitmap;
+Assuming it fixes it (it should) you can add:
+
+Acked-by: Eric Sandeen <sandeen@redhat.com>
+
+-Eric
+
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext3/inode.c |    7 +++++++
+>  1 files changed, 7 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index ebfec4d..f8424ad 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -1186,6 +1186,13 @@ static int ext3_write_begin(struct file *file, struct address_space *mapping,
+>  		ext3_journal_stop(handle);
+>  		unlock_page(page);
+>  		page_cache_release(page);
+> +		/*
+> +		 * block_write_begin may have instantiated a few blocks
+> +		 * outside i_size.  Trim these off again. Don't need
+> +		 * i_size_read because we hold i_mutex.
+> +		 */
+> +		if (pos + len > inode->i_size)
+> +			vmtruncate(inode, inode->i_size);
+>  	}
+>  	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
+>  		goto retry;
+
