@@ -1,53 +1,45 @@
-From: Andreas Dilger <adilger@sun.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Do we need dump for ext4?
-Date: Thu, 28 Aug 2008 14:04:48 -0600
-Message-ID: <20080828200448.GQ3392@webber.adilger.int>
-References: <48B6BD02.3080307@redhat.com> <20080828184804.GN26987@mit.edu>
- <48B6F69C.3090700@redhat.com>
+Date: Thu, 28 Aug 2008 16:35:53 -0400
+Message-ID: <20080828203553.GB10082@mit.edu>
+References: <48B6BD02.3080307@redhat.com> <20080828184804.GN26987@mit.edu> <48B6F69C.3090700@redhat.com> <20080828200448.GQ3392@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	Eric Sandeen <sandeen@redhat.com>,
 	ext4 development <linux-ext4@vger.kernel.org>
-To: Ric Wheeler <rwheeler@redhat.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:38742 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755990AbYH1UFB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 16:05:01 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m7SK50aU003503
-	for <linux-ext4@vger.kernel.org>; Thu, 28 Aug 2008 13:05:00 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K6B00201U73SU00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 28 Aug 2008 13:05:00 -0700 (PDT)
-In-reply-to: <48B6F69C.3090700@redhat.com>
-Content-disposition: inline
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:43593 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754023AbYH1Uf4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 Aug 2008 16:35:56 -0400
+Content-Disposition: inline
+In-Reply-To: <20080828200448.GQ3392@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Aug 28, 2008  15:03 -0400, Ric Wheeler wrote:
->> Finally, I suspect most of the problem with using tar is the HTREE
->> dirent sorting problem.  If we modify tar to sort the directory
->> entries before emitting the files, and then use that tar across all
->> the filesystems, I suspect the results would be much more better for
->> ext3 and ext4.
->
-> Like acp ;-)
+On Thu, Aug 28, 2008 at 02:04:48PM -0600, Andreas Dilger wrote:
+> 
+> I think there is little benefit to fixing each program to do sorting.
+> Either your LD_PRELOAD library should become more standard (e.g. put
+> into glibc)
 
-I think there is little benefit to fixing each program to do sorting.
-Either your LD_PRELOAD library should become more standard (e.g. put
-into glibc), or we use something like e2scan or a modified find to
-generate filenames in inode order.
+Yeah, but that requires dealing with Ulrich and for my own mental
+health I try to avoid that as much as possible.  :-)
 
-NB: e2scan itself scans the inode table in order, but it makes no effort
-    to generate filenames in that order, since Lustre doesn't care about
-    that.  It likely gets it largely right by coincidence.
+This idea is something that has been in my "if only I had time or some
+minions to dispatch" category for quite some time.  We can actually do
+this in the kernel.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+For small directories which could potentially get converted into htree
+format, we already sucking the entire directory and putting it into an
+rbtree.  We could just do this for all directories less than or equal
+to 32k, but have them returned sorted by inode instead of by hash
+value.  At least on my laptop, this accounts for 99.93% of the
+directories on my root filesystem.
 
+There are some fancy things that would have to be done to make
+telldir/seekdir, but the basic idea is pretty simple.
+
+		     	       	       	      - Ted
