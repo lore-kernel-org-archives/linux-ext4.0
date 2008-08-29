@@ -1,90 +1,68 @@
-From: "Mike Snitzer" <snitzer@gmail.com>
-Subject: Re: ext3: Fix ext3 block reservation early ENOSPC issue
-Date: Fri, 29 Aug 2008 09:01:15 -0400
-Message-ID: <170fa0d20808290601l7af9568v7998613cc85cecaa@mail.gmail.com>
-References: <1219964631.6384.70.camel@mingming-laptop>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext3: truncate block allocated on a failed
+	ext3_write_begin
+Date: Fri, 29 Aug 2008 20:14:51 +0530
+Message-ID: <20080829144451.GA6440@skywalker>
+References: <1219944473-8770-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <48B6E6CC.7030704@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org,
-	"Andrew Morton" <akpm@linux-foundation.org>, tytso <tytso@mit.edu>
-To: "Mingming Cao" <cmm@us.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.179]:44062 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752550AbYH2NBR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Aug 2008 09:01:17 -0400
-Received: by wa-out-1112.google.com with SMTP id j37so462024waf.23
-        for <linux-ext4@vger.kernel.org>; Fri, 29 Aug 2008 06:01:16 -0700 (PDT)
-In-Reply-To: <1219964631.6384.70.camel@mingming-laptop>
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:40894 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751960AbYH2Ore (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Aug 2008 10:47:34 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m7TEkOGI008386
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Aug 2008 00:46:24 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7TEj0xm219922
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Aug 2008 00:45:00 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7TEixeu012544
+	for <linux-ext4@vger.kernel.org>; Sat, 30 Aug 2008 00:45:00 +1000
 Content-Disposition: inline
+In-Reply-To: <48B6E6CC.7030704@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 28, 2008 at 7:03 PM, Mingming Cao <cmm@us.ibm.com> wrote:
-> From: Mingming Cao <cmm@us.ibm.com>
->
-> ext3: Fix ext3 nomballoc allocator for ENOSPC
->
-> We could run into ENOSPC error on ext3, even when there is free blocks
-> on the filesystem.
->
-> The problem is triggered in the case the goal block group has 0 free blocks
-> , and the rest block groups are skipped due to the check of "free_blocks
-> < windowsz/2". Current code could fall back to non reservation allocation
-> to prevent early ENOSPC after examing all the block groups with reservation on
-> , but this code was  bypassed if the reservation window is turned off already,
-> which is true in this case.
+On Thu, Aug 28, 2008 at 12:56:28PM -0500, Eric Sandeen wrote:
+> Aneesh Kumar K.V wrote:
+> > For blocksize < pagesize we need to remove blocks that
+> > got allocte in block_wirte_begin if we fail with ENOSPC
+> > for later blocks. block_write_begin internally does
+> > this if it allocated page locally. This make sure
+> > we don't have blocks outisde inode.i_size during
+> > ENOSPC
+> 
+> I think this is good; here's an easy testcase:
+> 
+> # dd if=/dev/zero of=fsfile bs=1k count=2048
+> # mkfs.ext3 -F fsfile
+> # mkdir mnt
+> # mount -o loop fsfile mnt/
+> # dd if=/dev/zero of=mnt/1kfile bs=1k count=1
+> # cd mnt/
+> # dd if=/dev/zero of=bigfile bs=4k
+> # cd ..
+> # umount mnt
+> # e2fsck -f fsfile
+> e2fsck 1.39 (29-May-2006)
+> Pass 1: Checking inodes, blocks, and sizes
+> Inode 13, i_size is 974848, should be 976896.  Fix<y>?
+> ...
+> 
+> can you test with that, unless you already have a testcase you've used?
 
-Looks great, nice catch!
+I tested the above and it works fine. The problem appeared during
+fsstress run and I used fsstress to debug and fix.
 
-Minor nit, the patch description should reference "free_blocks <= (windowsz/2)"
 
+> 
+> Assuming it fixes it (it should) you can add:
+> 
+> Acked-by: Eric Sandeen <sandeen@redhat.com>
+> 
 
-> This patch fixed two issues:
-> 1) We don't need to turn off block reservation if the goal block group has
-> 0 free blocks left and continue search for the rest of block groups.
->
-> Current code the intention is to turn off the block reservation if the
->  goal allocation group has a few (some) free blocks left (not enough
-> for make the desired reservation window),to try to allocation in the
->  goal block group, to get better locality. But if the goal blocks have
-> 0 free blocks,  it should leave the block reservation on, and continues
-> search for the next block groups,rather than turn off block reservation
-> completely.
->
-> 2) we don't need to check the window size if the block reservation is off.
->
-> The problem was originally found and fixed in ext4.
->
-> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
->
-> ---
->  fs/ext3/balloc.c |    3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
->
-> Index: linux-2.6.27-rc3/fs/ext3/balloc.c
-> ===================================================================
-> --- linux-2.6.27-rc3.orig/fs/ext3/balloc.c      2008-08-12 18:55:39.000000000 -0700
-> +++ linux-2.6.27-rc3/fs/ext3/balloc.c   2008-08-28 15:52:09.000000000 -0700
-> @@ -1547,6 +1547,7 @@
->         * turn off reservation for this allocation
->         */
->        if (my_rsv && (free_blocks < windowsz)
-> +               && (free_blocks > 0)
->                && (rsv_is_empty(&my_rsv->rsv_window)))
->                my_rsv = NULL;
-
-Should the comment block right above this change be adjusted with
-something like?:
-
-         /*
--         * if there is not enough free blocks to make a new resevation
--         * turn off reservation for this allocation
-+         * if there is not enough free blocks to make a new reservation
-+         * turn off reservation for this allocation; if the current block
-+         * group has 0 free blocks keep reservation enabled and search
-+         * the rest of the block groups
-          */
-
-Mike
+-aneesh
