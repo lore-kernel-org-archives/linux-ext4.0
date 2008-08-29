@@ -1,81 +1,72 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext3: truncate block allocated on a failed
-	ext3_write_begin
-Date: Fri, 29 Aug 2008 15:21:15 +0530
-Message-ID: <20080829095115.GD6447@skywalker>
-References: <1219944473-8770-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <m33akoi5kb.fsf@dmon-lap.sw.ru>
+From: <tadao.uchiyama@uniadex.co.jp>
+Subject: RE: EXT3 file system with unsupported revision level can be mounted
+ in R/W mode
+Date: Fri, 29 Aug 2008 20:34:41 +0900
+Message-ID: <D457AE0D137B9143B30CDD9EB9B2F8D509FDD582@ZZ01X1MB24.ixas.unisys.co.jp>
+References: <4885AFBF.2010409@uniadex.co.jp>
+ <48A90371.6070700@uniadex.co.jp> <48A9439C.4010007@uniadex.co.jp>
+ <48B5B2BC.4050303@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Dmitri Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+Cc: <linux-ext4@vger.kernel.org>
+To: <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([59.145.155.4]:53645 "EHLO
-	e28esmtp04.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752091AbYH2JvY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Aug 2008 05:51:24 -0400
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28esmtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id m7T9pLFm010769
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Aug 2008 15:21:21 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7T9pLNA721048
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Aug 2008 15:21:21 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id m7T9pKG8023397
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Aug 2008 15:21:21 +0530
-Content-Disposition: inline
-In-Reply-To: <m33akoi5kb.fsf@dmon-lap.sw.ru>
+Received: from igw03.unisys.co.jp ([202.233.47.13]:56729 "EHLO
+	igw03.unisys.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753828AbYH2Lff convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Aug 2008 07:35:35 -0400
+In-Reply-To: <48B5B2BC.4050303@redhat.com>
+Content-Language: ja-JP
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Aug 29, 2008 at 12:33:24PM +0400, Dmitri Monakhov wrote:
-> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> writes:
-> 
-> > For blocksize < pagesize we need to remove blocks that
-> > got allocte in block_wirte_begin if we fail with ENOSPC
-> > for later blocks. block_write_begin internally does
-> > this if it allocated page locally. This make sure
-> > we don't have blocks outisde inode.i_size during
-> > ENOSPC
-> BTW why this check was moved from generic_XXX_write to fs speciffic code?
 
+> For what it's worth, ext2 and ext4 have the same problems...
 
-Not quite sure what you mean by that ? block_write_begin generic
-code already does the vmtruncate if it had allocated page locally.
-ext3/4 allocate/grab_cache_page  in write_begin and pass the page
-pointer to block_write_begin. That implies block_write_begin
-won't do the truncate. So we have to do it in filesystem write_begin.
-also we have to do it after unlocking the page.
+Thanks a lot for the first response! I really appreciate it.
 
+>> --- linux-2.6.26.2/fs/ext3/super.c.orig 2008-08-18 11:01:02.000000000 +0900
+>> +++ linux-2.6.26.2/fs/ext3/super.c      2008-08-18 11:06:29.000000000 +0900
+>> @@ -1898,7 +1898,8 @@ static int ext3_fill_super (struct super
+>>                 goto failed_mount4;
+>>         }
+>>
+>> -       ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY);
+>> +       if (ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY))
+>> +                sb->s_flags |= MS_RDONLY;
+>>         /*
+>>          * akpm: core read_super() calls in here with the superblock locked.
+>>          * That deadlocks, because orphan cleanup needs to lock the
+>> superblock @@ -2506,8 +2507,8 @@ static int ext3_remount (struct super_bl
+>>                         sbi->s_mount_state = le16_to_cpu(es->s_state);
+>>                         if ((err = ext3_group_extend(sb, es,
+>> n_blocks_count)))
 
-> >
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> > ---
-> >  fs/ext3/inode.c |    7 +++++++
-> >  1 files changed, 7 insertions(+), 0 deletions(-)
-> >
-> > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> > index ebfec4d..f8424ad 100644
-> > --- a/fs/ext3/inode.c
-> > +++ b/fs/ext3/inode.c
-> > @@ -1186,6 +1186,13 @@ static int ext3_write_begin(struct file *file, struct address_space *mapping,
-> >  		ext3_journal_stop(handle);
-> >  		unlock_page(page);
-> >  		page_cache_release(page);
-> > +		/*
-> > +		 * block_write_begin may have instantiated a few blocks
-> > +		 * outside i_size.  Trim these off again. Don't need
-> > +		 * i_size_read because we hold i_mutex.
-> > +		 */
-> > +		if (pos + len > inode->i_size)
-> > +			vmtruncate(inode, inode->i_size);
-> >  	}
-> >  	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
-> >  		goto retry;
-> > -- 
-> > 1.6.0.1.90.g27a6e
-> >
+> One other thing I worry about; we are doing group_extend before we check
+> the revision.  Is that safe?  We also still do things like replay the
+> journal and process orphan inodes before checking the revision.
+>
+> Should we even worry about this, or is the revision level never going
+> to change again, and we can almost just ignore it > > now?  (or assume
+> that for recent kernels, a too-high rev level indicates corruption and
+> fail the
+> mount?)
+>
+> -Eric
+
+I think I need more time to find an appropriate answer, but I'll be keeping busy for a while. Please wait. Could anyone give us some suggestion? Any comments would be highly appreciated.
+
+> >                                 goto restore_opts;
+> > -                       if (!ext3_setup_super (sb, es, 0))
+> > -                               sb->s_flags &= ~MS_RDONLY;
+> > +                       if (ext3_setup_super (sb, es, 0))
+> > +                               *flags &= ~MS_RDONLY;
+> >                 }
+> >         }
+> >  #ifdef CONFIG_QUOTA
+> > ----------
 > > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Thanks.
+Signed-off-by :Tadao Uchiyama <Tadao.Uchiyama@uniadex.co.jp>
