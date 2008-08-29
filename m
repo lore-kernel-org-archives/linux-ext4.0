@@ -1,68 +1,60 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V3 09/11] ext4: Fix ext4 nomballoc allocator for ENOSPC
-Date: Fri, 29 Aug 2008 13:55:00 +0530
-Message-ID: <20080829082500.GC6447@skywalker>
-References: <1219850916-8986-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219850916-8986-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219850916-8986-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219850916-8986-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219850916-8986-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219850916-8986-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219850916-8986-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219960669.6384.58.camel@mingming-laptop> <20080829034451.GA6444@skywalker> <1219986374.16004.9.camel@mingming-laptop>
+From: Dmitri Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] ext3: truncate block allocated on a failed ext3_write_begin
+Date: Fri, 29 Aug 2008 12:33:24 +0400
+Message-ID: <m33akoi5kb.fsf@dmon-lap.sw.ru>
+References: <1219944473-8770-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	<1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:42243 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752317AbYH2I0z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Aug 2008 04:26:55 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m7T8PQDW019316
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Aug 2008 18:25:26 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.0) with ESMTP id m7T8PCs54685948
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Aug 2008 18:25:12 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m7T8PBAU004859
-	for <linux-ext4@vger.kernel.org>; Fri, 29 Aug 2008 18:25:12 +1000
-Content-Disposition: inline
-In-Reply-To: <1219986374.16004.9.camel@mingming-laptop>
+Received: from mailhub.sw.ru ([195.214.232.25]:12274 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752690AbYH2Inp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Aug 2008 04:43:45 -0400
+In-Reply-To: <1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> (Aneesh Kumar K. V.'s message of "Thu\, 28 Aug 2008 22\:57\:52 +0530")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Aug 28, 2008 at 10:06:14PM -0700, Mingming Cao wrote:
->=20
-> =E5=9C=A8 2008-08-29=E4=BA=94=E7=9A=84 09:14 +0530=EF=BC=8CAneesh Kum=
-ar K.V=E5=86=99=E9=81=93=EF=BC=9A
-> > On Thu, Aug 28, 2008 at 02:57:49PM -0700, Mingming Cao wrote:
-> > >=20
-> > > From: Mingming Cao <cmm@us.ibm.com>
-> > >=20
-> > > ext4: Fix ext4 nomballoc allocator for ENOSPC
-> > >    =20
-> > > We run into ENOSPC error on nonmballoc ext4, even when there is f=
-ree blocks
-> > > on the filesystem.
-> > >=20
-> > > The problem is triggered in the case the goal block group has 0 f=
-ree blocks
-> > > , and the rest block groups are skipped due to the check of "free=
-_blocks=20
-> > > < windowsz/2".
-> >=20
-> > The goal block group had free blocks < windowsz .
-> >=20
-> Hmm, if the goal block group had free blocks, why allocation failed
-> (reservation is turned off by setting my_rsv as NULL)? I wonder if th=
-ere
-> is other threads trying to allocating in the same goal block group at
-> the same time, steal the last free blocks?
->=20
+"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> writes:
 
-We are trying block allocation with a grp_target_blk there and even if
-reservation is turned off it can return ENOSPC.
-
--aneesh
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> For blocksize < pagesize we need to remove blocks that
+> got allocte in block_wirte_begin if we fail with ENOSPC
+> for later blocks. block_write_begin internally does
+> this if it allocated page locally. This make sure
+> we don't have blocks outisde inode.i_size during
+> ENOSPC
+BTW why this check was moved from generic_XXX_write to fs speciffic code?
+>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext3/inode.c |    7 +++++++
+>  1 files changed, 7 insertions(+), 0 deletions(-)
+>
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index ebfec4d..f8424ad 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -1186,6 +1186,13 @@ static int ext3_write_begin(struct file *file, struct address_space *mapping,
+>  		ext3_journal_stop(handle);
+>  		unlock_page(page);
+>  		page_cache_release(page);
+> +		/*
+> +		 * block_write_begin may have instantiated a few blocks
+> +		 * outside i_size.  Trim these off again. Don't need
+> +		 * i_size_read because we hold i_mutex.
+> +		 */
+> +		if (pos + len > inode->i_size)
+> +			vmtruncate(inode, inode->i_size);
+>  	}
+>  	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
+>  		goto retry;
+> -- 
+> 1.6.0.1.90.g27a6e
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
