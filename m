@@ -1,60 +1,109 @@
-From: Dmitri Monakhov <dmonakhov@openvz.org>
-Subject: Re: [PATCH] ext3: truncate block allocated on a failed ext3_write_begin
-Date: Fri, 29 Aug 2008 12:33:24 +0400
-Message-ID: <m33akoi5kb.fsf@dmon-lap.sw.ru>
-References: <1219944473-8770-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Takashi Sato" <t-sato@yk.jp.nec.com>
+Subject: Re: [PATCH 1/3] Implement generic freeze feature
+Date: Fri, 29 Aug 2008 18:37:28 +0900
+Message-ID: <328724AE665B49F8A8B60D92187C4BBF@nsl.ad.nec.co.jp>
+References: <20080818212819t-sato@mail.jp.nec.com> <20080822181458.GA15469@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain;
+	format=flowed;
+	charset="iso-8859-1";
+	reply-type=original
+Content-Transfer-Encoding: 7bit
+Cc: "Andrew Morton" <akpm@linux-foundation.org>,
+	<linux-fsdevel@vger.kernel.org>, <dm-devel@redhat.com>,
+	<viro@ZenIV.linux.org.uk>, <linux-ext4@vger.kernel.org>,
+	<xfs@oss.sgi.com>, "Christoph Hellwig" <hch@infradead.org>,
+	<axboe@kernel.dk>, <mtk.manpages@googlemail.com>,
+	<linux-kernel@vger.kernel.org>
+To: "Christoph Hellwig" <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mailhub.sw.ru ([195.214.232.25]:12274 "EHLO relay.sw.ru"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752690AbYH2Inp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 29 Aug 2008 04:43:45 -0400
-In-Reply-To: <1219944473-8770-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> (Aneesh Kumar K. V.'s message of "Thu\, 28 Aug 2008 22\:57\:52 +0530")
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:63741 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753005AbYH2Jiv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Aug 2008 05:38:51 -0400
+In-Reply-To: <20080822181458.GA15469@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> writes:
+Hi,
 
-> For blocksize < pagesize we need to remove blocks that
-> got allocte in block_wirte_begin if we fail with ENOSPC
-> for later blocks. block_write_begin internally does
-> this if it allocated page locally. This make sure
-> we don't have blocks outisde inode.i_size during
-> ENOSPC
-BTW why this check was moved from generic_XXX_write to fs speciffic code?
+Christoph Hellwig wrote:
+>On Mon, Aug 18, 2008 at 09:28:19PM +0900, Takashi Sato wrote:
+>> +    down(&bdev->bd_freeze_sem);
+>> +    bdev->bd_freeze_count++;
+>> +    if (bdev->bd_freeze_count > 1) {
+>> +            sb = get_super(bdev);
+>> +            drop_super(sb);
+>> +            up(&bdev->bd_freeze_sem);
+>> +            return sb;
+>> +    }
+>> +
+>>      down(&bdev->bd_mount_sem);
 >
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext3/inode.c |    7 +++++++
->  1 files changed, 7 insertions(+), 0 deletions(-)
+>Now you have a reference counter of freezes which actually is pretty
+>sensible, but also needs some documentation.  What I don't understand
+>here at all is why you do the get_super/drop_super in the already frozen
+>case.
+
+Even if the filesystem has already been frozen, the superblock
+should be returned. Because a caller should recognize the success of
+freeze_bdev() and call thaw_bdev() to decrease the reference count. 
+But I will remove drop_super() as it should be called in thaw_bdev().
+
 >
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index ebfec4d..f8424ad 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -1186,6 +1186,13 @@ static int ext3_write_begin(struct file *file, struct address_space *mapping,
->  		ext3_journal_stop(handle);
->  		unlock_page(page);
->  		page_cache_release(page);
-> +		/*
-> +		 * block_write_begin may have instantiated a few blocks
-> +		 * outside i_size.  Trim these off again. Don't need
-> +		 * i_size_read because we hold i_mutex.
-> +		 */
-> +		if (pos + len > inode->i_size)
-> +			vmtruncate(inode, inode->i_size);
->  	}
->  	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
->  		goto retry;
-> -- 
-> 1.6.0.1.90.g27a6e
+>Now that the freeze_count has replaced one of the uses of bd_mount_sem
+>you should also replace the other use in the unmount path by simply
+>checking for the freez_count and abort if it's set.  To do so you'll
+>need to hold the bd_mount_sem over the whole unmount operation to
+>prevent new frezes from coming in.
+
+In the original implementation,
+unmount is protected by s_umount(semaphore),
+not bd_mount_sem.  So, unmount task waits for unfreeze.
+I think this original behavior shouldn't be changed, 
+so the existing s_umount lock is better.
+
 >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>As others noted it should be a mutex and not a semaphore.
+
+As you said, we should use the mutex.
+I will replace it.
+
+>
+>>  /*
+>> + * ioctl_freeze - Freeze the filesystem.
+>> + *
+>> + * @filp:   target file
+>> + *
+>> + * Call freeze_bdev() to freeze the filesystem.
+>> + */
+>> +static int ioctl_freeze(struct file *filp)
+>
+>This is not quite kerneldcoc format, which would ne a /** as commnt
+>start.  But I don't think the comment is actually needed, it's a pretty
+>obvious file scope function. (Same commnt also applies to ioctl_thaw)
+
+I will remove these comments.
+
+>
+>> +    struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
+>> +
+>> +    if (!capable(CAP_SYS_ADMIN))
+>> +            return -EPERM;
+>> +
+>> +    /* If filesystem doesn't support freeze feature, return. */
+>> +    if (sb->s_op->write_super_lockfs == NULL)
+>> +            return -EOPNOTSUPP;
+>> +
+>> +    /* If a regular file or a directory isn't specified, return. */
+>> +    if (sb->s_bdev == NULL)
+>> +            return -EINVAL;
+>
+>I don't understand this commnt.  What you are checking is that the
+>filesystem has a non-NULL s_bdev, which implies a not blockdevice-backed
+>filesystem.
+
+I will fix the comment as :
+" If a blockdevice-backed filesystem isn't specified, return."
+
+Cheers, Takashi
