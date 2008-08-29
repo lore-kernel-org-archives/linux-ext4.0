@@ -1,72 +1,77 @@
-From: <tadao.uchiyama@uniadex.co.jp>
-Subject: RE: EXT3 file system with unsupported revision level can be mounted
- in R/W mode
-Date: Fri, 29 Aug 2008 20:34:41 +0900
-Message-ID: <D457AE0D137B9143B30CDD9EB9B2F8D509FDD582@ZZ01X1MB24.ixas.unisys.co.jp>
-References: <4885AFBF.2010409@uniadex.co.jp>
- <48A90371.6070700@uniadex.co.jp> <48A9439C.4010007@uniadex.co.jp>
- <48B5B2BC.4050303@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Do we need dump for ext4?
+Date: Fri, 29 Aug 2008 07:36:16 -0500
+Message-ID: <48B7ED40.6020508@redhat.com>
+References: <48B6BD02.3080307@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 8BIT
-Cc: <linux-ext4@vger.kernel.org>
-To: <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ric Wheeler <rwheeler@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from igw03.unisys.co.jp ([202.233.47.13]:56729 "EHLO
-	igw03.unisys.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753828AbYH2Lff convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 Aug 2008 07:35:35 -0400
-In-Reply-To: <48B5B2BC.4050303@redhat.com>
-Content-Language: ja-JP
+Received: from mx2.redhat.com ([66.187.237.31]:50797 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751207AbYH2MhJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 29 Aug 2008 08:37:09 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m7TCaXYV011215
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Aug 2008 08:36:53 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m7TCaLOj025315
+	for <linux-ext4@vger.kernel.org>; Fri, 29 Aug 2008 08:36:22 -0400
+In-Reply-To: <48B6BD02.3080307@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Eric Sandeen wrote:
+> I was talking to Ric about dump benchmarks, and he was of the impression
+> that dump may not be used that often anymore, at least in the
+> enterprise.  (Ric, hope I'm paraphrasing correctly)
+> 
+> Undaunted :) I ran off and tested an artificial backup scenario:
+> 
+> * Untar a kernel tree into 128 different top level dirs
+> * Make a level 0 backup
+> * Untar a kernel tree into 128 MORE different top level dirs
+> * Make a level 1 backup
+> 
+> 128 kernel trees uses about 6.5M inodes, and about 80G of space.
+> 
+> I tested ext3 with dump; ext4 with tar, and xfs with xfsdump.
+> 
+> for ext3:
+> dump -1 -u -f $DUMPDIR/dump1 $DATADIR
+> 
+> for ext4:
+> tar --atime-preserve --xattr --after-date=$DUMPDIR/dump0.tar -cf
+> $DUMPDIR/dump1.tar $DATADIR
+> 
+> for xfs:
+> xfsdump -F -l 1 -f $DUMPDIR/dump0 $DATADIR
+> 
+> DUMPDIR and DATADIR were 2 partitions on the same (fast hardware) lun.
+> 
+> Results:
 
-> For what it's worth, ext2 and ext4 have the same problems...
+at Ric & hch's  request here is tar on the other fs's as well, re-sorted
+ by level 0 dump time.  I put acp into the mix as well.
 
-Thanks a lot for the first response! I really appreciate it.
+Oh, and this time I remembered to set the elevator to something sane
+(noop) for this storage, oops (was cfq last time)
 
->> --- linux-2.6.26.2/fs/ext3/super.c.orig 2008-08-18 11:01:02.000000000 +0900
->> +++ linux-2.6.26.2/fs/ext3/super.c      2008-08-18 11:06:29.000000000 +0900
->> @@ -1898,7 +1898,8 @@ static int ext3_fill_super (struct super
->>                 goto failed_mount4;
->>         }
->>
->> -       ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY);
->> +       if (ext3_setup_super (sb, es, sb->s_flags & MS_RDONLY))
->> +                sb->s_flags |= MS_RDONLY;
->>         /*
->>          * akpm: core read_super() calls in here with the superblock locked.
->>          * That deadlocks, because orphan cleanup needs to lock the
->> superblock @@ -2506,8 +2507,8 @@ static int ext3_remount (struct super_bl
->>                         sbi->s_mount_state = le16_to_cpu(es->s_state);
->>                         if ((err = ext3_group_extend(sb, es,
->> n_blocks_count)))
+Also, this time the dup/tar/acp was written to /dev/null rather than
+another filesystem.  Interesting how routing to /dev/null alone changed
+the ranking quite a bit.
 
-> One other thing I worry about; we are doing group_extend before we check
-> the revision.  Is that safe?  We also still do things like replay the
-> journal and process orphan inodes before checking the revision.
->
-> Should we even worry about this, or is the revision level never going
-> to change again, and we can almost just ignore it > > now?  (or assume
-> that for recent kernels, a too-high rev level indicates corruption and
-> fail the
-> mount?)
->
-> -Eric
+		level0	level1
+		======	======
+ext4-acp	12m22s	------
+ext3-acp	14m11s	------
+ext4-tar	18m24s	34m56s
+ext3-dump	19m30s	35m30s
+xfs-dump        20m07s	40m24s
+ext3-tar	21m16s	42m41s
+xfs-tar		21m19s	46m13s
+xfs-acp		29m38s	------
 
-I think I need more time to find an appropriate answer, but I'll be keeping busy for a while. Please wait. Could anyone give us some suggestion? Any comments would be highly appreciated.
-
-> >                                 goto restore_opts;
-> > -                       if (!ext3_setup_super (sb, es, 0))
-> > -                               sb->s_flags &= ~MS_RDONLY;
-> > +                       if (ext3_setup_super (sb, es, 0))
-> > +                               *flags &= ~MS_RDONLY;
-> >                 }
-> >         }
-> >  #ifdef CONFIG_QUOTA
-> > ----------
-> > --
-
-Thanks.
-Signed-off-by :Tadao Uchiyama <Tadao.Uchiyama@uniadex.co.jp>
+-Eric
