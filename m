@@ -1,100 +1,221 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [PATCH 2/4] Create the journal in the middle of the filesystem
-Date: Wed, 03 Sep 2008 10:08:04 -0400
-Message-ID: <48BE9A44.10103@redhat.com>
-References: <20080827210636.GC26987@mit.edu> <1219871676-18456-1-git-send-email-tytso@mit.edu> <1219871676-18456-2-git-send-email-tytso@mit.edu> <1219917321.3591.79.camel@frecb007923.frec.bull.fr> <20080828133449.GG26987@mit.edu> <48B6AACE.6060103@redhat.com> <20080828143648.GJ26987@mit.edu> <48B6B86F.5060106@redhat.com>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: [PATCH] badblocks : Print progress in percent complete and time elapsed in verbose mode.
+Date: Thu, 4 Sep 2008 00:32:00 +0530
+Message-ID: <ea11fea30809031202t64670083q81801bc4f0ff90b4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	=?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>,
-	linux-ext4@vger.kernel.org
-To: rwheeler@redhat.com
+Cc: mkatiyar@gmail.com
+To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51374 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756004AbYICOLj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Sep 2008 10:11:39 -0400
-In-Reply-To: <48B6B86F.5060106@redhat.com>
+Received: from ti-out-0910.google.com ([209.85.142.189]:16053 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754103AbYICTCE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Sep 2008 15:02:04 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so1733038tic.23
+        for <linux-ext4@vger.kernel.org>; Wed, 03 Sep 2008 12:02:01 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ric Wheeler wrote:
-> Theodore Tso wrote:
->> On Thu, Aug 28, 2008 at 09:40:30AM -0400, Ric Wheeler wrote:
->>  
->>> I can try and test this with my fsync() heavy fs_mark run...
->>>
->>>     
->>
->> Given [1] I have no doubt that you should see a difference between
->> mke2fs from e2fsprogs 1.41.0 (which will allocate the journal at the
->> beginning of the filesystem) and the latest tip of e2fsprogs.
->>
->> It would be interesting to see how measurable the difference is,
->> though.  I'd recommend doing "mke2fs -t ext4dev" using both versions
->> of mke2fs, and seeing how much the difference it makes.
->>
->> [1] 
->> http://www.usenix.org/events/usenix05/tech/general/full_papers/prabhakaran/prabhakaran_html/main.html#fig-journal-location-withinfs-fix 
->>
->>
->>                             - Ted
->>
->>   
->
-> I was thinking of trying this on a much larger disk (1TB) - the 
-> article reports on a 4GB partition which is pretty tiny,
->
-> ric
-Using Ted's new journal in the middle mkfs & hacking it slightly to make 
-the journal go back to block 0, I ran some quick tests to try and 
-measure an impact of the journal placement (multiple threads writing 4MB 
-files).
+Hi Ted,
 
-The results that are most clear are certainly that delayed allocation is 
-a big win, the journal placement has mostly a positive impact on the 
-write performance, but the results are quite close.
+I am trying to address debian bug# 429739 to print the progress of
+badblocks in percent and time elapsed. I have added a new option '-V'
+which instead of showing progress in blocks gives output as below.
+
+/home/mkatiyar/e2fs-git/e2fsprogs_work/sbin> ./badblocks -V myfs
+Checking blocks 0 to 2353935
+Checking for bad blocks (read-only test):    16.68% done, 14s elapsed
+
+/home/mkatiyar/e2fs-git/e2fsprogs_work/sbin> ./badblocks -V myfs
+Checking blocks 0 to 2353935
+Checking for bad blocks (read-only test):    86.79% done, 01m:04s elapsed
 
 
-Starting with a newly created file system, each pass put down 16,000 4MB 
-files:
+Appreciate your comments on the below patch.
+
+Make badblocks -v print percent complete and time elapsed. Addresses
+debian bug# 429739.
+
+Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
+
+---
+ misc/badblocks.8.in |    5 +++-
+ misc/badblocks.c    |   71 ++++++++++++++++++++++++++++++++++++++++++++++----
+ 2 files changed, 69 insertions(+), 7 deletions(-)
+
+diff --git a/misc/badblocks.8.in b/misc/badblocks.8.in
+index 5a10f8a..34e1bbd 100644
+--- a/misc/badblocks.8.in
++++ b/misc/badblocks.8.in
+@@ -5,7 +5,7 @@ badblocks \- search a device for bad blocks
+ .SH SYNOPSIS
+ .B badblocks
+ [
+-.B \-svwnf
++.B \-svVwnf
+ ]
+ [
+ .B \-b
+@@ -181,6 +181,9 @@ are checked.
+ .B \-v
+ Verbose mode.
+ .TP
++.B \-V
++Verbose mode showing progress in percent complete and time elapsed.
++.TP
+ .B \-w
+ Use write-mode test. With this option,
+ .B badblocks
+diff --git a/misc/badblocks.c b/misc/badblocks.c
+index 1d0f95a..902745e 100644
+--- a/misc/badblocks.c
++++ b/misc/badblocks.c
+@@ -56,6 +56,7 @@ extern int optind;
+ #include <sys/ioctl.h>
+ #include <sys/types.h>
+ #include <sys/time.h>
++#include <sys/resource.h>
+
+ #include "et/com_err.h"
+ #include "ext2fs/ext2_io.h"
+@@ -64,9 +65,10 @@ extern int optind;
+ #include "nls-enable.h"
+
+ const char * program_name = "badblocks";
+-const char * done_string = N_("done                                \n");
++const char * done_string = N_("done
+           \n");
+
+ static int v_flag = 0;			/* verbose */
++static int V_flag = 0;			/* verbose with percentage and time elapsed*/
+ static int w_flag = 0;			/* do r/w test: 0=no, 1=yes,
+ 					 * 2=non-destructive */
+ static int s_flag = 0;			/* show progress of test */
+@@ -78,15 +80,18 @@ static int current_O_DIRECT = 0;	/* Current status
+of O_DIRECT flag */
+ static int exclusive_ok = 0;
+ static unsigned int max_bb = 0;		/* Abort test if more than this
+number of bad blocks has been encountered */
+ static unsigned int d_flag = 0;		/* delay factor between reads */
++static struct timeval time_start;
+
+ #define T_INC 32
++#define MAX_STATUS_LEN 21
++#define SPACE_CHAR ' '
+
+ unsigned int sys_page_size = 4096;
+
+ static void usage(void)
+ {
+ 	fprintf(stderr, _(
+-"Usage: %s [-b block_size] [-i input_file] [-o output_file] [-svwnf]\n"
++"Usage: %s [-b block_size] [-i input_file] [-o output_file] [-svVwnf]\n"
+ "       [-c blocks_at_once] [-d delay_factor_between_reads] [-e
+max_bad_blocks]\n"
+ "       [-p num_passes] [-t test_pattern [-t test_pattern [...]]]\n"
+ "       device [last_block [first_block]]\n"),
+@@ -109,6 +114,32 @@ static FILE *out;
+ static blk_t next_bad = 0;
+ static ext2_badblocks_iterate bb_iter = NULL;
+
++static __inline__ void init_resource()
++{
++	gettimeofday(&time_start, 0);
++	return;
++}
++
++static __inline__ void timeval_format(struct timeval *tv1,
++			      struct timeval *tv2,char *elapsed)
++{
++     __time_t diff = (tv1->tv_sec - tv2->tv_sec);
++	char *tmp = elapsed;
++	if (diff/3600) {
++		sprintf(tmp,"%3dh:",diff/3600);
++		diff %= 3600;
++		tmp +=5;
++	}
++	if (diff/60) {
++		sprintf(tmp,"%02dm:",diff/60);
++		diff %= 60;
++		tmp +=4;
++	}
++	sprintf(tmp,"%02ds elapsed",diff);
++	tmp[11] = SPACE_CHAR;
++	return;
++}
++
+ static void *allocate_buffer(size_t size)
+ {
+ 	void	*ret = 0;
+@@ -161,11 +192,36 @@ static int bb_output (blk_t bad)
+ 	return 1;
+ }
+
++static float calc_percent(unsigned long current, unsigned long total) {
++	float percent = 0.0;
++	if (total <= 0)
++		return percent;
++	if (current >= total) {
++		percent = 100.0;
++	} else {
++		percent=(100.0*(float)current/(float)total);
++	}
++	return percent;
++}
++
+ static void print_status(void)
+ {
+-	fprintf(stderr, "%15lu/%15lu", (unsigned long) currently_testing,
+-		(unsigned long) num_blocks);
+-	fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+stderr);
++	if(V_flag) {
++		struct rusage r;
++		struct timeval time_end;
++		char elapsed[MAX_STATUS_LEN];
++		memset(elapsed,SPACE_CHAR,MAX_STATUS_LEN);
++		elapsed[MAX_STATUS_LEN] = 0;
++		gettimeofday(&time_end, 0);
++		timeval_format(&time_end,&time_start,elapsed);
++		fprintf(stderr, "  %6.2f%% done, %s", calc_percent((unsigned long)
+currently_testing,
++					(unsigned long) num_blocks),elapsed);
++		fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b""\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+stderr);
++	} else {
++		fprintf(stderr, "%15lu/%15lu", (unsigned long) currently_testing,
++				(unsigned long) num_blocks);
++		fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+stderr);
++	}
+ 	fflush (stderr);
+ }
+
+@@ -965,7 +1021,7 @@ int main (int argc, char ** argv)
+
+ 	if (argc && *argv)
+ 		program_name = *argv;
+-	while ((c = getopt (argc, argv, "b:d:e:fi:o:svwnc:p:h:t:X")) != EOF) {
++	while ((c = getopt (argc, argv, "b:d:e:fi:o:svVwnc:p:h:t:X")) != EOF) {
+ 		switch (c) {
+ 		case 'b':
+ 			block_size = parse_uint(optarg, "block size");
+@@ -987,6 +1043,9 @@ int main (int argc, char ** argv)
+ 		case 's':
+ 			s_flag = 1;
+ 			break;
++		case 'V':
++			V_flag++;
++			init_resource();
+ 		case 'v':
+ 			v_flag++;
+ 			break;
+-- 
+1.5.4.3
 
 
- Count     Files/sec - ZERO    Files/sec - Middle
- 16000         20.8                   20.8
- 32000         19.2                   18.4
- 48000         16.0                   14.4
- 64000         20.8                   20.8
- 80000         20.8                   20.8
- 96000         20.8                   20.8
-112000         20.8                   20.8
-128000         19.2                   20.8
-144000         19.2                   19.2
-160000         17.6                   19.2
-176000         16.6                   17.6
-192000         16.0                   16.0
-208000         14.4                   14.4
-224000         12.8                   14.4
 
-
-With no delayed allocation:
-
-Count     Files/sec - ZERO    Files/sec - Middle
- 16000         16.0                   16.0
- 32000         16.0                   16.0
- 48000         16.0                   16.0
- 64000         16.0                   14.8
- 80000         14.4                   14.4
- 96000         14.1                   14.4
-112000         12.8                   12.8
-128000         11.2                   11.2
-144000         11.2                   12.8
-160000         14.4                   14.4
-176000         11.3                   12.8
-192000         14.9                   12.8
-208000         16.0                   16.0
-224000         14.4                   16.0
-
-ric
-
+Thanks -
+Manish
