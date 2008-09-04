@@ -1,809 +1,411 @@
-From: Joel Becker <joel.becker@oracle.com>
-Subject: [PATCH 3/3] ocfs2: Switch over to JBD2.
-Date: Wed,  3 Sep 2008 20:03:41 -0700
-Message-ID: <1220497421-8606-4-git-send-email-joel.becker__35056.2419779182$1220517226$gmane$org@oracle.com>
-References: <1220497421-8606-1-git-send-email-joel.becker@oracle.com>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: [PATCH] resend : badblocks - Print progress in percent complete and time elapsed in verbose mode.
+Date: Thu, 4 Sep 2008 14:44:38 +0530
+Message-ID: <ea11fea30809040214r5d5d3e41ifa32118b2e93660d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: mfasheh@suse.com, linux-ext4@vger.kernel.org
-To: ocfs2-devel@oss.oracle.com
+Cc: mkatiyar@gmail.com
+To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:54821 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752491AbYIDIcW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Sep 2008 04:32:22 -0400
-Received: from agmgw1.us.oracle.com (agmgw1.us.oracle.com [152.68.180.212])
-	by agminet01.oracle.com (Switch-3.2.4/Switch-3.1.7) with ESMTP id m848WJ4J013266
-	for <linux-ext4@vger.kernel.org>; Thu, 4 Sep 2008 03:32:19 -0500
-Received: from acsmt354.oracle.com (acsmt354.oracle.com [141.146.40.154])
-	by agmgw1.us.oracle.com (Switch-3.2.0/Switch-3.2.0) with ESMTP id m841WsnN022367
-	for <linux-ext4@vger.kernel.org>; Thu, 4 Sep 2008 02:32:18 -0600
-Received: from jlbec by ca-server1.us.oracle.com with local (Exim 4.69)
-	(envelope-from <joel.becker@oracle.com>)
-	id 1KbAGE-0004Q1-8G
-	for linux-ext4@vger.kernel.org; Thu, 04 Sep 2008 01:32:14 -0700
-In-Reply-To: <1220497421-8606-1-git-send-email-joel.becker@oracle.com>
+Received: from ti-out-0910.google.com ([209.85.142.188]:1227 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752144AbYIDJOl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Sep 2008 05:14:41 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so1916449tic.23
+        for <linux-ext4@vger.kernel.org>; Thu, 04 Sep 2008 02:14:38 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ocfs2 wants JBD2 for many reasons, not the least of which is that JBD is
-limiting our maximum filesystem size.
+Previous patch that I sent had some redundant unused variables.
+Removing them and also removing the file sys/time.h which is included
+twice.
 
-It's a pretty trivial change.  Most functions are just renamed.  The
-only functional change is moving to Jan's inode-based ordered data mode.
-It's better, too.
 
-Because JBD2 reads and writes JBD journals, this is compatible with any
-existing filesystem.  It can even interact with JBD-based ocfs2 as long
-as the journal is formated for JBD.
+Make badblocks -v print percent complete and time elapsed. Addresses
+debian bug# 429739.
 
-We provide a compatibility option so that paranoid people can still use
-JBD for the time being.  This will go away shortly.
+Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
 
-Signed-off-by: Joel Becker <joel.becker@oracle.com>
 ---
- fs/Kconfig                  |   40 +++++++++++++--------
- fs/ocfs2/alloc.c            |   28 ++++++---------
- fs/ocfs2/aops.c             |   21 ++++++++---
- fs/ocfs2/file.c             |   14 +++++--
- fs/ocfs2/inode.c            |    5 +++
- fs/ocfs2/inode.h            |    1 +
- fs/ocfs2/journal.c          |   72 ++++++++++++++++++++------------------
- fs/ocfs2/journal.h          |   25 +++++++++++--
- fs/ocfs2/ocfs2.h            |    7 +++-
- fs/ocfs2/ocfs2_jbd_compat.h |   82 +++++++++++++++++++++++++++++++++++++++++++
- fs/ocfs2/super.c            |   10 +++--
- fs/ocfs2/uptodate.c         |    6 +++-
- 12 files changed, 227 insertions(+), 84 deletions(-)
- create mode 100644 fs/ocfs2/ocfs2_jbd_compat.h
+ misc/badblocks.8.in |    5 +++-
+ misc/badblocks.c    |   70 +++++++++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 67 insertions(+), 8 deletions(-)
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index abccb5d..e651a36 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -206,17 +206,16 @@ config JBD
- 	tristate
- 	help
- 	  This is a generic journalling layer for block devices.  It is
--	  currently used by the ext3 and OCFS2 file systems, but it could
--	  also be used to add journal support to other file systems or block
-+	  currently used by the ext3 file system, but it could also be
-+	  used to add journal support to other file systems or block
- 	  devices such as RAID or LVM.
- 
--	  If you are using the ext3 or OCFS2 file systems, you need to
--	  say Y here. If you are not using ext3 OCFS2 then you will probably
--	  want to say N.
-+	  If you are using the ext3 file system, you need to say Y here.
-+	  If you are not using ext3 then you will probably want to say N.
- 
- 	  To compile this device as a module, choose M here: the module will be
--	  called jbd.  If you are compiling ext3 or OCFS2 into the kernel,
--	  you cannot compile this code as a module.
-+	  called jbd.  If you are compiling ext3 into the kernel, you
-+	  cannot compile this code as a module.
- 
- config JBD_DEBUG
- 	bool "JBD (ext3) debugging support"
-@@ -240,16 +239,17 @@ config JBD2
- 	help
- 	  This is a generic journaling layer for block devices that support
- 	  both 32-bit and 64-bit block numbers.  It is currently used by
--	  the ext4dev/ext4 filesystem, but it could also be used to add
--	  journal support to other file systems or block devices such
--	  as RAID or LVM.
-+	  the ext4dev/ext4 and OCFS2 filesystems, but it could also be
-+	  used to add journal support to other file systems or block
-+	  devices such as RAID or LVM.
- 
--	  If you are using ext4dev/ext4, you need to say Y here. If you are not
--	  using ext4dev/ext4 then you will probably want to say N.
-+	  If you are using ext4dev/ext4 or OCFS2, you need to say Y here.
-+	  If you are not using ext4dev/ext4 or OCFS2 then you will
-+	  probably want to say N.
- 
- 	  To compile this device as a module, choose M here. The module will be
--	  called jbd2.  If you are compiling ext4dev/ext4 into the kernel,
--	  you cannot compile this code as a module.
-+	  called jbd2.  If you are compiling ext4dev/ext4 or OCFS2 into the
-+	  kernel, you cannot compile this code as a module.
- 
- config JBD2_DEBUG
- 	bool "JBD2 (ext4dev/ext4) debugging support"
-@@ -426,7 +426,7 @@ config OCFS2_FS
- 	tristate "OCFS2 file system support"
- 	depends on NET && SYSFS
- 	select CONFIGFS_FS
--	select JBD
-+	select JBD2
- 	select CRC32
- 	help
- 	  OCFS2 is a general purpose extent based shared disk cluster file
-@@ -497,6 +497,16 @@ config OCFS2_DEBUG_FS
- 	  this option for debugging only as it is likely to decrease
- 	  performance of the filesystem.
- 
-+config OCFS2_COMPAT_JBD
-+	bool "Use JBD for compatibility"
-+	depends on OCFS2_FS
-+	default n
-+	select JBD
-+	help
-+	  The ocfs2 filesystem now uses JBD2 for its journalling.  JBD2
-+	  is backwards compatible with JBD.  It is safe to say N here.
-+	  However, if you really want to use the original JBD, say Y here.
-+
- endif # BLOCK
- 
- config DNOTIFY
-diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
-index 10bfb46..134c56d 100644
---- a/fs/ocfs2/alloc.c
-+++ b/fs/ocfs2/alloc.c
-@@ -6008,20 +6008,13 @@ bail:
- 	return status;
- }
- 
--static int ocfs2_writeback_zero_func(handle_t *handle, struct buffer_head *bh)
-+static int ocfs2_zero_func(handle_t *handle, struct buffer_head *bh)
+diff --git a/misc/badblocks.8.in b/misc/badblocks.8.in
+index 5a10f8a..34e1bbd 100644
+--- a/misc/badblocks.8.in
++++ b/misc/badblocks.8.in
+@@ -5,7 +5,7 @@ badblocks \- search a device for bad blocks
+ .SH SYNOPSIS
+ .B badblocks
+ [
+-.B \-svwnf
++.B \-svVwnf
+ ]
+ [
+ .B \-b
+@@ -181,6 +181,9 @@ are checked.
+ .B \-v
+ Verbose mode.
+ .TP
++.B \-V
++Verbose mode showing progress in percent complete and time elapsed.
++.TP
+ .B \-w
+ Use write-mode test. With this option,
+ .B badblocks
+diff --git a/misc/badblocks.c b/misc/badblocks.c
+index 1d0f95a..59e5eee 100644
+--- a/misc/badblocks.c
++++ b/misc/badblocks.c
+@@ -55,7 +55,6 @@ extern int optind;
+ #include <sys/time.h>
+ #include <sys/ioctl.h>
+ #include <sys/types.h>
+-#include <sys/time.h>
+
+ #include "et/com_err.h"
+ #include "ext2fs/ext2_io.h"
+@@ -64,9 +63,10 @@ extern int optind;
+ #include "nls-enable.h"
+
+ const char * program_name = "badblocks";
+-const char * done_string = N_("done                                \n");
++const char * done_string = N_("done
+           \n");
+
+ static int v_flag = 0;			/* verbose */
++static int V_flag = 0;			/* verbose with percentages and time elapsed*/
+ static int w_flag = 0;			/* do r/w test: 0=no, 1=yes,
+ 					 * 2=non-destructive */
+ static int s_flag = 0;			/* show progress of test */
+@@ -78,15 +78,18 @@ static int current_O_DIRECT = 0;	/* Current status
+of O_DIRECT flag */
+ static int exclusive_ok = 0;
+ static unsigned int max_bb = 0;		/* Abort test if more than this
+number of bad blocks has been encountered */
+ static unsigned int d_flag = 0;		/* delay factor between reads */
++static struct timeval time_start;
+
+ #define T_INC 32
++#define MAX_STATUS_LEN 21
++#define SPACE_CHAR ' '
+
+ unsigned int sys_page_size = 4096;
+
+ static void usage(void)
  {
- 	set_buffer_uptodate(bh);
- 	mark_buffer_dirty(bh);
- 	return 0;
- }
- 
--static int ocfs2_ordered_zero_func(handle_t *handle, struct buffer_head *bh)
--{
--	set_buffer_uptodate(bh);
--	mark_buffer_dirty(bh);
--	return ocfs2_journal_dirty_data(handle, bh);
--}
--
- static void ocfs2_map_and_dirty_page(struct inode *inode, handle_t *handle,
- 				     unsigned int from, unsigned int to,
- 				     struct page *page, int zero, u64 *phys)
-@@ -6040,17 +6033,18 @@ static void ocfs2_map_and_dirty_page(struct inode *inode, handle_t *handle,
- 	 * here if they aren't - ocfs2_map_page_blocks()
- 	 * might've skipped some
- 	 */
--	if (ocfs2_should_order_data(inode)) {
--		ret = walk_page_buffers(handle,
--					page_buffers(page),
--					from, to, &partial,
--					ocfs2_ordered_zero_func);
--		if (ret < 0)
--			mlog_errno(ret);
--	} else {
-+	ret = walk_page_buffers(handle, page_buffers(page),
-+				from, to, &partial,
-+				ocfs2_zero_func);
-+	if (ret < 0)
-+		mlog_errno(ret);
-+	else if (ocfs2_should_order_data(inode)) {
-+		ret = ocfs2_jbd2_file_inode(handle, inode);
-+#ifdef CONFIG_OCFS2_COMPAT_JBD
- 		ret = walk_page_buffers(handle, page_buffers(page),
- 					from, to, &partial,
--					ocfs2_writeback_zero_func);
-+					ocfs2_journal_dirty_data);
-+#endif
- 		if (ret < 0)
- 			mlog_errno(ret);
- 	}
-diff --git a/fs/ocfs2/aops.c b/fs/ocfs2/aops.c
-index 506c24f..28bb7f0 100644
---- a/fs/ocfs2/aops.c
-+++ b/fs/ocfs2/aops.c
-@@ -485,11 +485,14 @@ handle_t *ocfs2_start_walk_page_trans(struct inode *inode,
- 	}
- 
- 	if (ocfs2_should_order_data(inode)) {
-+		ret = ocfs2_jbd2_file_inode(handle, inode);
-+#ifdef CONFIG_OCFS2_COMPAT_JBD
- 		ret = walk_page_buffers(handle,
- 					page_buffers(page),
- 					from, to, NULL,
- 					ocfs2_journal_dirty_data);
--		if (ret < 0) 
-+#endif
-+		if (ret < 0)
- 			mlog_errno(ret);
- 	}
- out:
-@@ -669,7 +672,7 @@ static void ocfs2_invalidatepage(struct page *page, unsigned long offset)
- {
- 	journal_t *journal = OCFS2_SB(page->mapping->host->i_sb)->journal->j_journal;
- 
--	journal_invalidatepage(journal, page, offset);
-+	jbd2_journal_invalidatepage(journal, page, offset);
- }
- 
- static int ocfs2_releasepage(struct page *page, gfp_t wait)
-@@ -678,7 +681,7 @@ static int ocfs2_releasepage(struct page *page, gfp_t wait)
- 
- 	if (!page_has_buffers(page))
- 		return 0;
--	return journal_try_to_free_buffers(journal, page, wait);
-+	return jbd2_journal_try_to_free_buffers(journal, page, wait);
- }
- 
- static ssize_t ocfs2_direct_IO(int rw,
-@@ -1074,11 +1077,15 @@ static void ocfs2_write_failure(struct inode *inode,
- 		tmppage = wc->w_pages[i];
- 
- 		if (page_has_buffers(tmppage)) {
--			if (ocfs2_should_order_data(inode))
-+			if (ocfs2_should_order_data(inode)) {
-+				ocfs2_jbd2_file_inode(wc->w_handle, inode);
-+#ifdef CONFIG_OCFS2_COMPAT_JBD
- 				walk_page_buffers(wc->w_handle,
- 						  page_buffers(tmppage),
- 						  from, to, NULL,
- 						  ocfs2_journal_dirty_data);
-+#endif
-+			}
- 
- 			block_commit_write(tmppage, from, to);
- 		}
-@@ -1905,11 +1912,15 @@ int ocfs2_write_end_nolock(struct address_space *mapping,
- 		}
- 
- 		if (page_has_buffers(tmppage)) {
--			if (ocfs2_should_order_data(inode))
-+			if (ocfs2_should_order_data(inode)) {
-+				ocfs2_jbd2_file_inode(wc->w_handle, inode);
-+#ifdef CONFIG_OCFS2_COMPAT_JBD
- 				walk_page_buffers(wc->w_handle,
- 						  page_buffers(tmppage),
- 						  from, to, NULL,
- 						  ocfs2_journal_dirty_data);
-+#endif
-+			}
- 			block_commit_write(tmppage, from, to);
- 		}
- 	}
-diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-index ec2ed15..2f2217a 100644
---- a/fs/ocfs2/file.c
-+++ b/fs/ocfs2/file.c
-@@ -184,7 +184,7 @@ static int ocfs2_sync_file(struct file *file,
- 		goto bail;
- 
- 	journal = osb->journal->j_journal;
--	err = journal_force_commit(journal);
-+	err = jbd2_journal_force_commit(journal);
- 
- bail:
- 	mlog_exit(err);
-@@ -1096,9 +1096,15 @@ int ocfs2_setattr(struct dentry *dentry, struct iattr *attr)
- 			goto bail_unlock;
- 		}
- 
--		if (i_size_read(inode) > attr->ia_size)
-+		if (i_size_read(inode) > attr->ia_size) {
-+			if (ocfs2_should_order_data(inode)) {
-+				status = ocfs2_begin_ordered_truncate(inode,
-+								      attr->ia_size);
-+				if (status)
-+					goto bail_unlock;
-+			}
- 			status = ocfs2_truncate_file(inode, bh, attr->ia_size);
--		else
-+		} else
- 			status = ocfs2_extend_file(inode, bh, attr->ia_size);
- 		if (status < 0) {
- 			if (status != -ENOSPC)
-@@ -2040,7 +2046,7 @@ out_dio:
- 		 */
- 		if (old_size != i_size_read(inode) ||
- 		    old_clusters != OCFS2_I(inode)->ip_clusters) {
--			ret = journal_force_commit(osb->journal->j_journal);
-+			ret = jbd2_journal_force_commit(osb->journal->j_journal);
- 			if (ret < 0)
- 				written = ret;
- 		}
-diff --git a/fs/ocfs2/inode.c b/fs/ocfs2/inode.c
-index 7e9e4c7..ce8ec09 100644
---- a/fs/ocfs2/inode.c
-+++ b/fs/ocfs2/inode.c
-@@ -909,6 +909,9 @@ void ocfs2_delete_inode(struct inode *inode)
- 		goto bail;
- 	}
- 
-+	if (ocfs2_should_order_data(inode))
-+		ocfs2_begin_ordered_truncate(inode, 0);
-+
- 	if (!ocfs2_inode_is_valid_to_delete(inode)) {
- 		/* It's probably not necessary to truncate_inode_pages
- 		 * here but we do it for safety anyway (it will most
-@@ -1081,6 +1084,8 @@ void ocfs2_clear_inode(struct inode *inode)
- 	oi->ip_last_trans = 0;
- 	oi->ip_dir_start_lookup = 0;
- 	oi->ip_blkno = 0ULL;
-+	jbd2_journal_release_jbd_inode(OCFS2_SB(inode->i_sb)->journal->j_journal,
-+				       &oi->ip_jinode);
- 
- bail:
- 	mlog_exit_void();
-diff --git a/fs/ocfs2/inode.h b/fs/ocfs2/inode.h
-index 390a855..3b2eb2a 100644
---- a/fs/ocfs2/inode.h
-+++ b/fs/ocfs2/inode.h
-@@ -68,6 +68,7 @@ struct ocfs2_inode_info
- 	struct ocfs2_extent_map		ip_extent_map;
- 
- 	struct inode			vfs_inode;
-+	struct jbd2_inode		ip_jinode;
- };
- 
- /*
-diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-index c47bc2a..373d943 100644
---- a/fs/ocfs2/journal.c
-+++ b/fs/ocfs2/journal.c
-@@ -215,9 +215,9 @@ static int ocfs2_commit_cache(struct ocfs2_super *osb)
- 		goto finally;
- 	}
- 
--	journal_lock_updates(journal->j_journal);
--	status = journal_flush(journal->j_journal);
--	journal_unlock_updates(journal->j_journal);
-+	jbd2_journal_lock_updates(journal->j_journal);
-+	status = jbd2_journal_flush(journal->j_journal);
-+	jbd2_journal_unlock_updates(journal->j_journal);
- 	if (status < 0) {
- 		up_write(&journal->j_trans_barrier);
- 		mlog_errno(status);
-@@ -264,7 +264,7 @@ handle_t *ocfs2_start_trans(struct ocfs2_super *osb, int max_buffs)
- 
- 	down_read(&osb->journal->j_trans_barrier);
- 
--	handle = journal_start(journal, max_buffs);
-+	handle = jbd2_journal_start(journal, max_buffs);
- 	if (IS_ERR(handle)) {
- 		up_read(&osb->journal->j_trans_barrier);
- 
-@@ -290,7 +290,7 @@ int ocfs2_commit_trans(struct ocfs2_super *osb,
- 
- 	BUG_ON(!handle);
- 
--	ret = journal_stop(handle);
-+	ret = jbd2_journal_stop(handle);
- 	if (ret < 0)
- 		mlog_errno(ret);
- 
-@@ -304,7 +304,7 @@ int ocfs2_commit_trans(struct ocfs2_super *osb,
-  * transaction. extend_trans will either extend the current handle by
-  * nblocks, or commit it and start a new one with nblocks credits.
-  *
-- * This might call journal_restart() which will commit dirty buffers
-+ * This might call jbd2_journal_restart() which will commit dirty buffers
-  * and then restart the transaction. Before calling
-  * ocfs2_extend_trans(), any changed blocks should have been
-  * dirtied. After calling it, all blocks which need to be changed must
-@@ -332,7 +332,7 @@ int ocfs2_extend_trans(handle_t *handle, int nblocks)
- #ifdef CONFIG_OCFS2_DEBUG_FS
- 	status = 1;
- #else
--	status = journal_extend(handle, nblocks);
-+	status = jbd2_journal_extend(handle, nblocks);
- 	if (status < 0) {
- 		mlog_errno(status);
- 		goto bail;
-@@ -340,8 +340,10 @@ int ocfs2_extend_trans(handle_t *handle, int nblocks)
- #endif
- 
- 	if (status > 0) {
--		mlog(0, "journal_extend failed, trying journal_restart\n");
--		status = journal_restart(handle, nblocks);
-+		mlog(0,
-+		     "jbd2_journal_extend failed, trying "
-+		     "jbd2_journal_restart\n");
-+		status = jbd2_journal_restart(handle, nblocks);
- 		if (status < 0) {
- 			mlog_errno(status);
- 			goto bail;
-@@ -393,11 +395,11 @@ int ocfs2_journal_access(handle_t *handle,
- 	switch (type) {
- 	case OCFS2_JOURNAL_ACCESS_CREATE:
- 	case OCFS2_JOURNAL_ACCESS_WRITE:
--		status = journal_get_write_access(handle, bh);
-+		status = jbd2_journal_get_write_access(handle, bh);
- 		break;
- 
- 	case OCFS2_JOURNAL_ACCESS_UNDO:
--		status = journal_get_undo_access(handle, bh);
-+		status = jbd2_journal_get_undo_access(handle, bh);
- 		break;
- 
- 	default:
-@@ -422,7 +424,7 @@ int ocfs2_journal_dirty(handle_t *handle,
- 	mlog_entry("(bh->b_blocknr=%llu)\n",
- 		   (unsigned long long)bh->b_blocknr);
- 
--	status = journal_dirty_metadata(handle, bh);
-+	status = jbd2_journal_dirty_metadata(handle, bh);
- 	if (status < 0)
- 		mlog(ML_ERROR, "Could not dirty metadata buffer. "
- 		     "(bh->b_blocknr=%llu)\n",
-@@ -432,6 +434,7 @@ int ocfs2_journal_dirty(handle_t *handle,
- 	return status;
- }
- 
-+#ifdef CONFIG_OCFS2_COMPAT_JBD
- int ocfs2_journal_dirty_data(handle_t *handle,
- 			     struct buffer_head *bh)
- {
-@@ -443,8 +446,9 @@ int ocfs2_journal_dirty_data(handle_t *handle,
- 
- 	return err;
- }
-+#endif
- 
--#define OCFS2_DEFAULT_COMMIT_INTERVAL 	(HZ * JBD_DEFAULT_MAX_COMMIT_AGE)
-+#define OCFS2_DEFAULT_COMMIT_INTERVAL	(HZ * JBD2_DEFAULT_MAX_COMMIT_AGE)
- 
- void ocfs2_set_journal_params(struct ocfs2_super *osb)
- {
-@@ -457,9 +461,9 @@ void ocfs2_set_journal_params(struct ocfs2_super *osb)
- 	spin_lock(&journal->j_state_lock);
- 	journal->j_commit_interval = commit_interval;
- 	if (osb->s_mount_opt & OCFS2_MOUNT_BARRIER)
--		journal->j_flags |= JFS_BARRIER;
-+		journal->j_flags |= JBD2_BARRIER;
- 	else
--		journal->j_flags &= ~JFS_BARRIER;
-+		journal->j_flags &= ~JBD2_BARRIER;
- 	spin_unlock(&journal->j_state_lock);
- }
- 
-@@ -524,14 +528,14 @@ int ocfs2_journal_init(struct ocfs2_journal *journal, int *dirty)
- 	mlog(0, "inode->ip_clusters = %u\n", OCFS2_I(inode)->ip_clusters);
- 
- 	/* call the kernels journal init function now */
--	j_journal = journal_init_inode(inode);
-+	j_journal = jbd2_journal_init_inode(inode);
- 	if (j_journal == NULL) {
- 		mlog(ML_ERROR, "Linux journal layer error\n");
- 		status = -EINVAL;
- 		goto done;
- 	}
- 
--	mlog(0, "Returned from journal_init_inode\n");
-+	mlog(0, "Returned from jbd2_journal_init_inode\n");
- 	mlog(0, "j_journal->j_maxlen = %u\n", j_journal->j_maxlen);
- 
- 	*dirty = (le32_to_cpu(di->id1.journal1.ij_flags) &
-@@ -639,7 +643,7 @@ void ocfs2_journal_shutdown(struct ocfs2_super *osb)
- 	if (journal->j_state != OCFS2_JOURNAL_LOADED)
- 		goto done;
- 
--	/* need to inc inode use count as journal_destroy will iput. */
-+	/* need to inc inode use count - jbd2_journal_destroy will iput. */
- 	if (!igrab(inode))
- 		BUG();
- 
-@@ -668,9 +672,9 @@ void ocfs2_journal_shutdown(struct ocfs2_super *osb)
- 	BUG_ON(atomic_read(&(osb->journal->j_num_trans)) != 0);
- 
- 	if (ocfs2_mount_local(osb)) {
--		journal_lock_updates(journal->j_journal);
--		status = journal_flush(journal->j_journal);
--		journal_unlock_updates(journal->j_journal);
-+		jbd2_journal_lock_updates(journal->j_journal);
-+		status = jbd2_journal_flush(journal->j_journal);
-+		jbd2_journal_unlock_updates(journal->j_journal);
- 		if (status < 0)
- 			mlog_errno(status);
- 	}
-@@ -686,7 +690,7 @@ void ocfs2_journal_shutdown(struct ocfs2_super *osb)
- 	}
- 
- 	/* Shutdown the kernel journal system */
--	journal_destroy(journal->j_journal);
-+	jbd2_journal_destroy(journal->j_journal);
- 
- 	OCFS2_I(inode)->ip_open_count--;
- 
-@@ -711,15 +715,15 @@ static void ocfs2_clear_journal_error(struct super_block *sb,
- {
- 	int olderr;
- 
--	olderr = journal_errno(journal);
-+	olderr = jbd2_journal_errno(journal);
- 	if (olderr) {
- 		mlog(ML_ERROR, "File system error %d recorded in "
- 		     "journal %u.\n", olderr, slot);
- 		mlog(ML_ERROR, "File system on device %s needs checking.\n",
- 		     sb->s_id);
- 
--		journal_ack_err(journal);
--		journal_clear_err(journal);
-+		jbd2_journal_ack_err(journal);
-+		jbd2_journal_clear_err(journal);
- 	}
- }
- 
-@@ -734,7 +738,7 @@ int ocfs2_journal_load(struct ocfs2_journal *journal, int local, int replayed)
- 
- 	osb = journal->j_osb;
- 
--	status = journal_load(journal->j_journal);
-+	status = jbd2_journal_load(journal->j_journal);
- 	if (status < 0) {
- 		mlog(ML_ERROR, "Failed to load journal!\n");
- 		goto done;
-@@ -778,7 +782,7 @@ int ocfs2_journal_wipe(struct ocfs2_journal *journal, int full)
- 
- 	BUG_ON(!journal);
- 
--	status = journal_wipe(journal->j_journal, full);
-+	status = jbd2_journal_wipe(journal->j_journal, full);
- 	if (status < 0) {
- 		mlog_errno(status);
- 		goto bail;
-@@ -1229,19 +1233,19 @@ static int ocfs2_replay_journal(struct ocfs2_super *osb,
- 	}
- 
- 	mlog(0, "calling journal_init_inode\n");
--	journal = journal_init_inode(inode);
-+	journal = jbd2_journal_init_inode(inode);
- 	if (journal == NULL) {
- 		mlog(ML_ERROR, "Linux journal layer error\n");
- 		status = -EIO;
- 		goto done;
- 	}
- 
--	status = journal_load(journal);
-+	status = jbd2_journal_load(journal);
- 	if (status < 0) {
- 		mlog_errno(status);
- 		if (!igrab(inode))
- 			BUG();
--		journal_destroy(journal);
-+		jbd2_journal_destroy(journal);
- 		goto done;
- 	}
- 
-@@ -1249,9 +1253,9 @@ static int ocfs2_replay_journal(struct ocfs2_super *osb,
- 
- 	/* wipe the journal */
- 	mlog(0, "flushing the journal.\n");
--	journal_lock_updates(journal);
--	status = journal_flush(journal);
--	journal_unlock_updates(journal);
-+	jbd2_journal_lock_updates(journal);
-+	status = jbd2_journal_flush(journal);
-+	jbd2_journal_unlock_updates(journal);
- 	if (status < 0)
- 		mlog_errno(status);
- 
-@@ -1272,7 +1276,7 @@ static int ocfs2_replay_journal(struct ocfs2_super *osb,
- 	if (!igrab(inode))
- 		BUG();
- 
--	journal_destroy(journal);
-+	jbd2_journal_destroy(journal);
- 
- done:
- 	/* drop the lock on this nodes journal */
-diff --git a/fs/ocfs2/journal.h b/fs/ocfs2/journal.h
-index 2178ebf..401cc65 100644
---- a/fs/ocfs2/journal.h
-+++ b/fs/ocfs2/journal.h
-@@ -27,7 +27,12 @@
- #define OCFS2_JOURNAL_H
- 
- #include <linux/fs.h>
--#include <linux/jbd.h>
-+#ifndef CONFIG_OCFS2_COMPAT_JBD
-+# include <linux/jbd2.h>
-+#else
-+# include <linux/jbd.h>
-+# include "ocfs2_jbd_compat.h"
-+#endif
- 
- enum ocfs2_journal_state {
- 	OCFS2_JOURNAL_FREE = 0,
-@@ -215,8 +220,8 @@ static inline void ocfs2_checkpoint_inode(struct inode *inode)
-  *                          buffer. Will have to call ocfs2_journal_dirty once
-  *                          we've actually dirtied it. Type is one of . or .
-  *  ocfs2_journal_dirty    - Mark a journalled buffer as having dirty data.
-- *  ocfs2_journal_dirty_data - Indicate that a data buffer should go out before
-- *                             the current handle commits.
-+ *  ocfs2_jbd2_file_inode  - Mark an inode so that its data goes out before
-+ *                           the current handle commits.
-  */
- 
- /* You must always start_trans with a number of buffs > 0, but it's
-@@ -268,8 +273,10 @@ int                  ocfs2_journal_access(handle_t *handle,
-  */
- int                  ocfs2_journal_dirty(handle_t *handle,
- 					 struct buffer_head *bh);
-+#ifdef CONFIG_OCFS2_COMPAT_JBD
- int                  ocfs2_journal_dirty_data(handle_t *handle,
- 					      struct buffer_head *bh);
-+#endif
- 
- /*
-  *  Credit Macros:
-@@ -415,4 +422,16 @@ static inline int ocfs2_calc_tree_trunc_credits(struct super_block *sb,
- 	return credits;
- }
- 
-+static inline int ocfs2_jbd2_file_inode(handle_t *handle, struct inode *inode)
+ 	fprintf(stderr, _(
+-"Usage: %s [-b block_size] [-i input_file] [-o output_file] [-svwnf]\n"
++"Usage: %s [-b block_size] [-i input_file] [-o output_file] [-svVwnf]\n"
+ "       [-c blocks_at_once] [-d delay_factor_between_reads] [-e
+max_bad_blocks]\n"
+ "       [-p num_passes] [-t test_pattern [-t test_pattern [...]]]\n"
+ "       device [last_block [first_block]]\n"),
+@@ -109,6 +112,32 @@ static FILE *out;
+ static blk_t next_bad = 0;
+ static ext2_badblocks_iterate bb_iter = NULL;
+
++static __inline__ void init_resource()
 +{
-+	return jbd2_journal_file_inode(handle, &OCFS2_I(inode)->ip_jinode);
-+}
-+
-+static inline int ocfs2_begin_ordered_truncate(struct inode *inode,
-+					       loff_t new_size)
-+{
-+	return jbd2_journal_begin_ordered_truncate(&OCFS2_I(inode)->ip_jinode,
-+						   new_size);
-+}
-+
- #endif /* OCFS2_JOURNAL_H */
-diff --git a/fs/ocfs2/ocfs2.h b/fs/ocfs2/ocfs2.h
-index ca89e65..2b13519 100644
---- a/fs/ocfs2/ocfs2.h
-+++ b/fs/ocfs2/ocfs2.h
-@@ -34,7 +34,12 @@
- #include <linux/workqueue.h>
- #include <linux/kref.h>
- #include <linux/mutex.h>
--#include <linux/jbd.h>
-+#ifndef CONFIG_OCFS2_COMPAT_JBD
-+# include <linux/jbd2.h>
-+#else
-+# include <linux/jbd.h>
-+# include "ocfs2_jbd_compat.h"
-+#endif
- 
- /* For union ocfs2_dlm_lksb */
- #include "stackglue.h"
-diff --git a/fs/ocfs2/ocfs2_jbd_compat.h b/fs/ocfs2/ocfs2_jbd_compat.h
-new file mode 100644
-index 0000000..b91c78f
---- /dev/null
-+++ b/fs/ocfs2/ocfs2_jbd_compat.h
-@@ -0,0 +1,82 @@
-+/* -*- mode: c; c-basic-offset: 8; -*-
-+ * vim: noexpandtab sw=8 ts=8 sts=0:
-+ *
-+ * ocfs2_jbd_compat.h
-+ *
-+ * Compatibility defines for JBD.
-+ *
-+ * Copyright (C) 2008 Oracle.  All rights reserved.
-+ *
-+ * This program is free software; you can redistribute it and/or
-+ * modify it under the terms of the GNU General Public
-+ * License version 2 as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-+ * General Public License for more details.
-+ */
-+
-+#ifndef OCFS2_JBD_COMPAT_H
-+#define OCFS2_JBD_COMPAT_H
-+
-+#ifndef CONFIG_OCFS2_COMPAT_JBD
-+# error Should not have been included
-+#endif
-+
-+struct jbd2_inode {
-+	unsigned int dummy;
-+};
-+
-+#define JBD2_BARRIER			JFS_BARRIER
-+#define JBD2_DEFAULT_MAX_COMMIT_AGE	JBD_DEFAULT_MAX_COMMIT_AGE
-+
-+#define jbd2_journal_ack_err			journal_ack_err
-+#define jbd2_journal_clear_err			journal_clear_err
-+#define jbd2_journal_destroy			journal_destroy
-+#define jbd2_journal_dirty_metadata		journal_dirty_metadata
-+#define jbd2_journal_errno			journal_errno
-+#define jbd2_journal_extend			journal_extend
-+#define jbd2_journal_flush			journal_flush
-+#define jbd2_journal_force_commit		journal_force_commit
-+#define jbd2_journal_get_write_access		journal_get_write_access
-+#define jbd2_journal_get_undo_access		journal_get_undo_access
-+#define jbd2_journal_init_inode			journal_init_inode
-+#define jbd2_journal_invalidatepage		journal_invalidatepage
-+#define jbd2_journal_load			journal_load
-+#define jbd2_journal_lock_updates		journal_lock_updates
-+#define jbd2_journal_restart			journal_restart
-+#define jbd2_journal_start			journal_start
-+#define jbd2_journal_start_commit		journal_start_commit
-+#define jbd2_journal_stop			journal_stop
-+#define jbd2_journal_try_to_free_buffers	journal_try_to_free_buffers
-+#define jbd2_journal_unlock_updates		journal_unlock_updates
-+#define jbd2_journal_wipe			journal_wipe
-+#define jbd2_log_wait_commit			log_wait_commit
-+
-+static inline int jbd2_journal_file_inode(handle_t *handle,
-+					  struct jbd2_inode *inode)
-+{
-+	return 0;
-+}
-+
-+static inline int jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode,
-+						      loff_t new_size)
-+{
-+	return 0;
-+}
-+
-+static inline void jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode,
-+					       struct inode *inode)
-+{
++	gettimeofday(&time_start, 0);
 +	return;
 +}
 +
-+static inline void jbd2_journal_release_jbd_inode(journal_t *journal,
-+						  struct jbd2_inode *jinode)
++static __inline__ void timeval_format(struct timeval *tv1,
++			      struct timeval *tv2,char *elapsed)
 +{
++        __time_t diff = (tv1->tv_sec - tv2->tv_sec);
++	char *tmp = elapsed;
++	if (diff/3600) {
++		sprintf(tmp,"%3dh:",diff/3600);
++		diff %= 3600;
++		tmp +=5;
++	}
++	if (diff/60) {
++		sprintf(tmp,"%02dm:",diff/60);
++		diff %= 60;
++		tmp +=4;
++	}
++	sprintf(tmp,"%02ds elapsed",diff);
++	tmp[11] = SPACE_CHAR;
 +	return;
 +}
 +
+ static void *allocate_buffer(size_t size)
+ {
+ 	void	*ret = 0;
+@@ -161,11 +190,35 @@ static int bb_output (blk_t bad)
+ 	return 1;
+ }
+
++static float calc_percent(unsigned long current, unsigned long total) {
++	float percent = 0.0;
++	if (total <= 0)
++		return percent;
++	if (current >= total) {
++		percent = 100.0;
++	} else {
++		percent=(100.0*(float)current/(float)total);
++	}
++	return percent;
++}
 +
-+#endif  /* OCFS2_JBD_COMPAT_H */
-diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
-index 260da3a..cf1fae5 100644
---- a/fs/ocfs2/super.c
-+++ b/fs/ocfs2/super.c
-@@ -207,10 +207,11 @@ static int ocfs2_sync_fs(struct super_block *sb, int wait)
- 		ocfs2_schedule_truncate_log_flush(osb, 0);
- 	}
- 
--	if (journal_start_commit(OCFS2_SB(sb)->journal->j_journal, &target)) {
-+	if (jbd2_journal_start_commit(OCFS2_SB(sb)->journal->j_journal,
-+				      &target)) {
- 		if (wait)
--			log_wait_commit(OCFS2_SB(sb)->journal->j_journal,
--					target);
-+			jbd2_log_wait_commit(OCFS2_SB(sb)->journal->j_journal,
-+					     target);
- 	}
- 	return 0;
+ static void print_status(void)
+ {
+-	fprintf(stderr, "%15lu/%15lu", (unsigned long) currently_testing,
+-		(unsigned long) num_blocks);
+-	fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+stderr);
++	if(V_flag) {
++		struct timeval time_end;
++		char elapsed[MAX_STATUS_LEN];
++		memset(elapsed,SPACE_CHAR,MAX_STATUS_LEN);
++		elapsed[MAX_STATUS_LEN] = 0;
++		gettimeofday(&time_end, 0);
++		timeval_format(&time_end,&time_start,elapsed);
++		fprintf(stderr, "  %6.2f%% done, %s", calc_percent((unsigned long)
+currently_testing,
++					(unsigned long) num_blocks),elapsed);
++		fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b""\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+stderr);
++	} else {
++		fprintf(stderr, "%15lu/%15lu", (unsigned long) currently_testing,
++				(unsigned long) num_blocks);
++		fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+stderr);
++	}
+ 	fflush (stderr);
  }
-@@ -327,6 +328,7 @@ static struct inode *ocfs2_alloc_inode(struct super_block *sb)
- 	if (!oi)
- 		return NULL;
- 
-+	jbd2_journal_init_jbd_inode(&oi->ip_jinode, &oi->vfs_inode);
- 	return &oi->vfs_inode;
- }
- 
-@@ -884,7 +886,7 @@ static int ocfs2_parse_options(struct super_block *sb,
- 			if (option < 0)
- 				return 0;
- 			if (option == 0)
--				option = JBD_DEFAULT_MAX_COMMIT_AGE;
-+				option = JBD2_DEFAULT_MAX_COMMIT_AGE;
- 			mopt->commit_interval = HZ * option;
+
+@@ -965,7 +1018,7 @@ int main (int argc, char ** argv)
+
+ 	if (argc && *argv)
+ 		program_name = *argv;
+-	while ((c = getopt (argc, argv, "b:d:e:fi:o:svwnc:p:h:t:X")) != EOF) {
++	while ((c = getopt (argc, argv, "b:d:e:fi:o:svVwnc:p:h:t:X")) != EOF) {
+ 		switch (c) {
+ 		case 'b':
+ 			block_size = parse_uint(optarg, "block size");
+@@ -987,6 +1040,9 @@ int main (int argc, char ** argv)
+ 		case 's':
+ 			s_flag = 1;
  			break;
- 		case Opt_localalloc:
-diff --git a/fs/ocfs2/uptodate.c b/fs/ocfs2/uptodate.c
-index 4da8851..fc3a078 100644
---- a/fs/ocfs2/uptodate.c
-+++ b/fs/ocfs2/uptodate.c
-@@ -53,7 +53,11 @@
- #include <linux/highmem.h>
- #include <linux/buffer_head.h>
- #include <linux/rbtree.h>
--#include <linux/jbd.h>
-+#ifndef CONFIG_OCFS2_COMPAT_JBD
-+# include <linux/jbd2.h>
-+#else
-+# include <linux/jbd.h>
-+#endif
- 
- #define MLOG_MASK_PREFIX ML_UPTODATE
- 
++		case 'V':
++			V_flag++;
++			init_resource();
+ 		case 'v':
+ 			v_flag++;
+ 			break;
 -- 
-1.5.6.3
+1.5.4.3
 
+
+Thanks -
+Manish
+
+On Thu, Sep 4, 2008 at 12:32 AM, Manish Katiyar <mkatiyar@gmail.com> wrote:
+> Hi Ted,
+>
+> I am trying to address debian bug# 429739 to print the progress of
+> badblocks in percent and time elapsed. I have added a new option '-V'
+> which instead of showing progress in blocks gives output as below.
+>
+> /home/mkatiyar/e2fs-git/e2fsprogs_work/sbin> ./badblocks -V myfs
+> Checking blocks 0 to 2353935
+> Checking for bad blocks (read-only test):    16.68% done, 14s elapsed
+>
+> /home/mkatiyar/e2fs-git/e2fsprogs_work/sbin> ./badblocks -V myfs
+> Checking blocks 0 to 2353935
+> Checking for bad blocks (read-only test):    86.79% done, 01m:04s elapsed
+>
+>
+> Appreciate your comments on the below patch.
+>
+> Make badblocks -v print percent complete and time elapsed. Addresses
+> debian bug# 429739.
+>
+> Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
+>
+> ---
+>  misc/badblocks.8.in |    5 +++-
+>  misc/badblocks.c    |   71 ++++++++++++++++++++++++++++++++++++++++++++++----
+>  2 files changed, 69 insertions(+), 7 deletions(-)
+>
+> diff --git a/misc/badblocks.8.in b/misc/badblocks.8.in
+> index 5a10f8a..34e1bbd 100644
+> --- a/misc/badblocks.8.in
+> +++ b/misc/badblocks.8.in
+> @@ -5,7 +5,7 @@ badblocks \- search a device for bad blocks
+>  .SH SYNOPSIS
+>  .B badblocks
+>  [
+> -.B \-svwnf
+> +.B \-svVwnf
+>  ]
+>  [
+>  .B \-b
+> @@ -181,6 +181,9 @@ are checked.
+>  .B \-v
+>  Verbose mode.
+>  .TP
+> +.B \-V
+> +Verbose mode showing progress in percent complete and time elapsed.
+> +.TP
+>  .B \-w
+>  Use write-mode test. With this option,
+>  .B badblocks
+> diff --git a/misc/badblocks.c b/misc/badblocks.c
+> index 1d0f95a..902745e 100644
+> --- a/misc/badblocks.c
+> +++ b/misc/badblocks.c
+> @@ -56,6 +56,7 @@ extern int optind;
+>  #include <sys/ioctl.h>
+>  #include <sys/types.h>
+>  #include <sys/time.h>
+> +#include <sys/resource.h>
+>
+>  #include "et/com_err.h"
+>  #include "ext2fs/ext2_io.h"
+> @@ -64,9 +65,10 @@ extern int optind;
+>  #include "nls-enable.h"
+>
+>  const char * program_name = "badblocks";
+> -const char * done_string = N_("done                                \n");
+> +const char * done_string = N_("done
+>           \n");
+>
+>  static int v_flag = 0;                 /* verbose */
+> +static int V_flag = 0;                 /* verbose with percentage and time elapsed*/
+>  static int w_flag = 0;                 /* do r/w test: 0=no, 1=yes,
+>                                         * 2=non-destructive */
+>  static int s_flag = 0;                 /* show progress of test */
+> @@ -78,15 +80,18 @@ static int current_O_DIRECT = 0;    /* Current status
+> of O_DIRECT flag */
+>  static int exclusive_ok = 0;
+>  static unsigned int max_bb = 0;                /* Abort test if more than this
+> number of bad blocks has been encountered */
+>  static unsigned int d_flag = 0;                /* delay factor between reads */
+> +static struct timeval time_start;
+>
+>  #define T_INC 32
+> +#define MAX_STATUS_LEN 21
+> +#define SPACE_CHAR ' '
+>
+>  unsigned int sys_page_size = 4096;
+>
+>  static void usage(void)
+>  {
+>        fprintf(stderr, _(
+> -"Usage: %s [-b block_size] [-i input_file] [-o output_file] [-svwnf]\n"
+> +"Usage: %s [-b block_size] [-i input_file] [-o output_file] [-svVwnf]\n"
+>  "       [-c blocks_at_once] [-d delay_factor_between_reads] [-e
+> max_bad_blocks]\n"
+>  "       [-p num_passes] [-t test_pattern [-t test_pattern [...]]]\n"
+>  "       device [last_block [first_block]]\n"),
+> @@ -109,6 +114,32 @@ static FILE *out;
+>  static blk_t next_bad = 0;
+>  static ext2_badblocks_iterate bb_iter = NULL;
+>
+> +static __inline__ void init_resource()
+> +{
+> +       gettimeofday(&time_start, 0);
+> +       return;
+> +}
+> +
+> +static __inline__ void timeval_format(struct timeval *tv1,
+> +                             struct timeval *tv2,char *elapsed)
+> +{
+> +     __time_t diff = (tv1->tv_sec - tv2->tv_sec);
+> +       char *tmp = elapsed;
+> +       if (diff/3600) {
+> +               sprintf(tmp,"%3dh:",diff/3600);
+> +               diff %= 3600;
+> +               tmp +=5;
+> +       }
+> +       if (diff/60) {
+> +               sprintf(tmp,"%02dm:",diff/60);
+> +               diff %= 60;
+> +               tmp +=4;
+> +       }
+> +       sprintf(tmp,"%02ds elapsed",diff);
+> +       tmp[11] = SPACE_CHAR;
+> +       return;
+> +}
+> +
+>  static void *allocate_buffer(size_t size)
+>  {
+>        void    *ret = 0;
+> @@ -161,11 +192,36 @@ static int bb_output (blk_t bad)
+>        return 1;
+>  }
+>
+> +static float calc_percent(unsigned long current, unsigned long total) {
+> +       float percent = 0.0;
+> +       if (total <= 0)
+> +               return percent;
+> +       if (current >= total) {
+> +               percent = 100.0;
+> +       } else {
+> +               percent=(100.0*(float)current/(float)total);
+> +       }
+> +       return percent;
+> +}
+> +
+>  static void print_status(void)
+>  {
+> -       fprintf(stderr, "%15lu/%15lu", (unsigned long) currently_testing,
+> -               (unsigned long) num_blocks);
+> -       fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+> stderr);
+> +       if(V_flag) {
+> +               struct rusage r;
+> +               struct timeval time_end;
+> +               char elapsed[MAX_STATUS_LEN];
+> +               memset(elapsed,SPACE_CHAR,MAX_STATUS_LEN);
+> +               elapsed[MAX_STATUS_LEN] = 0;
+> +               gettimeofday(&time_end, 0);
+> +               timeval_format(&time_end,&time_start,elapsed);
+> +               fprintf(stderr, "  %6.2f%% done, %s", calc_percent((unsigned long)
+> currently_testing,
+> +                                       (unsigned long) num_blocks),elapsed);
+> +               fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b""\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+> stderr);
+> +       } else {
+> +               fprintf(stderr, "%15lu/%15lu", (unsigned long) currently_testing,
+> +                               (unsigned long) num_blocks);
+> +               fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b",
+> stderr);
+> +       }
+>        fflush (stderr);
+>  }
+>
+> @@ -965,7 +1021,7 @@ int main (int argc, char ** argv)
+>
+>        if (argc && *argv)
+>                program_name = *argv;
+> -       while ((c = getopt (argc, argv, "b:d:e:fi:o:svwnc:p:h:t:X")) != EOF) {
+> +       while ((c = getopt (argc, argv, "b:d:e:fi:o:svVwnc:p:h:t:X")) != EOF) {
+>                switch (c) {
+>                case 'b':
+>                        block_size = parse_uint(optarg, "block size");
+> @@ -987,6 +1043,9 @@ int main (int argc, char ** argv)
+>                case 's':
+>                        s_flag = 1;
+>                        break;
+> +               case 'V':
+> +                       V_flag++;
+> +                       init_resource();
+>                case 'v':
+>                        v_flag++;
+>                        break;
+> --
+> 1.5.4.3
+>
+>
+>
+> Thanks -
+> Manish
+>
