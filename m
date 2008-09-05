@@ -1,64 +1,51 @@
-From: Alexey Dobriyan <adobriyan@gmail.com>
-Subject: [PATCH] ext4: fix #11321: create /proc/ext4/*/stats et al more
-	carefully
-Date: Sat, 6 Sep 2008 01:06:52 +0400
-Message-ID: <20080905210652.GE11569@x200.localdomain>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] Add e4migrate
+Date: Fri, 05 Sep 2008 17:44:26 -0600
+Message-ID: <20080905234426.GC3086@webber.adilger.int>
+References: <1220609506-2052-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: akpm@osdl.org, linux-ext4@vger.kernel.org
-To: ralf.hildebrandt@charite.de
+Content-Transfer-Encoding: 7BIT
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mu-out-0910.google.com ([209.85.134.185]:29683 "EHLO
-	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752403AbYIEVFJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Sep 2008 17:05:09 -0400
-Received: by mu-out-0910.google.com with SMTP id g7so452957muf.1
-        for <linux-ext4@vger.kernel.org>; Fri, 05 Sep 2008 14:05:07 -0700 (PDT)
-Content-Disposition: inline
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:45461 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750989AbYIEXo3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Sep 2008 19:44:29 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m85NiSUE015846
+	for <linux-ext4@vger.kernel.org>; Fri, 5 Sep 2008 16:44:29 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K6Q00F01XJT4300@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Fri, 05 Sep 2008 16:44:28 -0700 (PDT)
+In-reply-to: <1220609506-2052-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ralf, please confirm.
+On Sep 05, 2008  15:41 +0530, Aneesh Kumar wrote:
+> +e4migrate \- Migrate an ext3 inode to ext4 inode format
+> +.B e4migrate will migrate filename in ext3 inode format to ext4 inode format
+> +This can be used to migrate an ext3 file system to ext4 file system
 
+Can you please explain a bit more about what is done here?  Is it changing
+block mapped inodes to extent mapped?  Resising the inodes/GDT? Changing
+other things like growing large inode space for ns timestamps/version?
 
+We have an option to e2fsck (like -D for rehash directory, but instead
+"-E expand_extra_isize") to resize the "extra_isize" of an existing inode
+to ensure that enough space is in the filesystem for i_version_hi, if it
+isn't already.  This is in our patch "e2fsprogs-expand-extra-isize.patch"
+in the Lustre patchset.
 
-[PATCH] ext4: fix #11321: create /proc/ext4/*/stats more carefully
+I think it makes more sense to have options for existing tools, rather
+than having 10 new different tools, but maybe Ted has other opinions.
 
-ext4 creates per-suberblock directory in /proc/ext4/ . Name used as
-basis is taken from bdevname, which, surprise, can contain slash.
-
-However, proc while allowing to use proc_create("a/b", parent) form of
-PDE creation, assumes that parent/a was already created.
-
-bdevname in question is 'cciss/c0d0p9', directory is not created and all
-this stuff goes directly into /proc (which is real bug).
-
-Warning comes when _second_ partition is mounted.
-
-http://bugzilla.kernel.org/show_bug.cgi?id=11321
-
-Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
----
-
- fs/ext4/mballoc.c |    9 +++++++++
- 1 file changed, 9 insertions(+)
-
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2792,6 +2792,15 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 		return -EINVAL;
- 	}
- 	bdevname(sb->s_bdev, devname);
-+	{
-+		char *p = devname;
-+
-+		while (*p != '\0') {
-+			if (*p == '/')
-+				*p = '!';
-+			p++;
-+		}
-+	}
- 	sbi->s_mb_proc = proc_mkdir(devname, proc_root_ext4);
- 
- 	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
