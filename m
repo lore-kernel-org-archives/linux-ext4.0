@@ -1,127 +1,64 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: odd allocation patterns
-Date: Fri, 05 Sep 2008 13:24:00 -0500
-Message-ID: <48C17940.5040406@redhat.com>
+From: Alexey Dobriyan <adobriyan@gmail.com>
+Subject: [PATCH] ext4: fix #11321: create /proc/ext4/*/stats et al more
+	carefully
+Date: Sat, 6 Sep 2008 01:06:52 +0400
+Message-ID: <20080905210652.GE11569@x200.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@osdl.org, linux-ext4@vger.kernel.org
+To: ralf.hildebrandt@charite.de
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:47845 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750791AbYIESYs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Sep 2008 14:24:48 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m85IODZT030257
-	for <linux-ext4@vger.kernel.org>; Fri, 5 Sep 2008 14:24:33 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m85IO1NP017856
-	for <linux-ext4@vger.kernel.org>; Fri, 5 Sep 2008 14:24:02 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id m85IO0Tt014042
-	for <linux-ext4@vger.kernel.org>; Fri, 5 Sep 2008 14:24:01 -0400
+Received: from mu-out-0910.google.com ([209.85.134.185]:29683 "EHLO
+	mu-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752403AbYIEVFJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Sep 2008 17:05:09 -0400
+Received: by mu-out-0910.google.com with SMTP id g7so452957muf.1
+        for <linux-ext4@vger.kernel.org>; Fri, 05 Sep 2008 14:05:07 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I was trying some various IO patterns to see what the ext4 allocator
-might do (as I tend  to do every few months ....)  :)
+Ralf, please confirm.
 
-On the one hand there are some very interesting, and nice (at least for
-some workloads) results:
 
-If I write even, then odd, blocks, in the end it comes  out to one
-extent - even with an unmount in between:
 
-# for I in `seq 0 2 1024`; do dd if=/dev/zero of=testfile bs=4k count=1
-conv=notrunc seek=$I 2>/dev/null; done
+[PATCH] ext4: fix #11321: create /proc/ext4/*/stats more carefully
 
-(unmount, remount)
+ext4 creates per-suberblock directory in /proc/ext4/ . Name used as
+basis is taken from bdevname, which, surprise, can contain slash.
 
-# for I in `seq 1 2 1024`; do dd if=/dev/zero of=testfile bs=4k count=1
-conv=notrunc seek=$I 2>/dev/null; done
-# filefrag testfile
-File is stored in extents format
-testfile: 1 extent found
+However, proc while allowing to use proc_create("a/b", parent) form of
+PDE creation, assumes that parent/a was already created.
 
-as long as the holes eventually get filled in, this is a pretty nice
-behavior to end up with contiguous allocation (if they're not ever
-filled in, it's a little odd)
+bdevname in question is 'cciss/c0d0p9', directory is not created and all
+this stuff goes directly into /proc (which is real bug).
 
-However, sequential, synchronous writes are doing weird things:
+Warning comes when _second_ partition is mounted.
 
-# for I in `seq 1 1024`; do dd if=/dev/zero of=testfile bs=4k count=1
-conv=notrunc seek=$I oflag=sync 2>/dev/null; done
+http://bugzilla.kernel.org/show_bug.cgi?id=11321
 
-# filefrag -v testfile
-Checking testfile
-Filesystem type is: ef53
-Filesystem cylinder groups is approximately 235
-File is stored in extents format
-Blocksize of file testfile2 is 4096
-File size of testfile2 is 4198400 (1025 blocks)
-First block: 0
-Last block: 45312
-Discontinuity: Block 2 is at 44032 (was 43520)
-Discontinuity: Block 11 is at 43521 (was 44040)
-Discontinuity: Block 15 is at 43066 (was 43524)
-Discontinuity: Block 256 is at 44544 (was 43306)
-testfile: 5 extents found
+Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
+---
 
-not only is it non-contiguous, it's out of order.
+ fs/ext4/mballoc.c |    9 +++++++++
+ 1 file changed, 9 insertions(+)
 
-Ditto for direct IO:
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2792,6 +2792,15 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
+ 		return -EINVAL;
+ 	}
+ 	bdevname(sb->s_bdev, devname);
++	{
++		char *p = devname;
++
++		while (*p != '\0') {
++			if (*p == '/')
++				*p = '!';
++			p++;
++		}
++	}
+ 	sbi->s_mb_proc = proc_mkdir(devname, proc_root_ext4);
+ 
+ 	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
 
-# for I in `seq 1 1024`; do dd if=/dev/zero of=testfile bs=4k count=1
-conv=notrunc seek=$I oflag=direct 2>/dev/null; done
-
-[root@inode test2]# filefrag -v testfile
-Checking testfile
-Filesystem type is: ef53
-Filesystem cylinder groups is approximately 235
-File is stored in extents format
-Blocksize of file testfile is 4096
-File size of testfile is 4198400 (1025 blocks)
-First block: 0
-Last block: 45312
-Discontinuity: Block 2 is at 43525 (was 44041)
-Discontinuity: Block 4 is at 44042 (was 43526)
-Discontinuity: Block 5 is at 43527 (was 44042)
-Discontinuity: Block 15 is at 43306 (was 43536)
-Discontinuity: Block 16 is at 43312 (was 43306)
-Discontinuity: Block 128 is at 43136 (was 43423)
-Discontinuity: Block 256 is at 44544 (was 43263)
-testfile: 8 extents found
-
-Interestingly, a backwards synchronous write comes out exactly the same:
-
-[root@inode test2]# for I in `seq 1024 -1 0`; do dd if=/dev/zero
-of=testfile2 bs=4k count=1 conv=notrunc seek=$I oflag=sync 2>/dev/null; done
-[root@inode test2]# filefrag -v testfileChecking testfile
-Filesystem type is: ef53
-Filesystem cylinder groups is approximately 235
-File is stored in extents format
-Blocksize of file testfile is 4096
-File size of testfile is 4198400 (1025 blocks)
-First block: 0
-Last block: 45312
-Discontinuity: Block 2 is at 43525 (was 44041)
-Discontinuity: Block 4 is at 44042 (was 43526)
-Discontinuity: Block 5 is at 43527 (was 44042)
-Discontinuity: Block 15 is at 43306 (was 43536)
-Discontinuity: Block 16 is at 43312 (was 43306)
-Discontinuity: Block 128 is at 43136 (was 43423)
-Discontinuity: Block 256 is at 44544 (was 43263)
-testfile: 8 extents found
-
-It's not an artifact of filefrag; debugfs shows it as well:
-
-BLOCKS:
-(IND):43066, (1):44041, (2-3):43525-43526, (4):44042,
-(5-14):43527-43536, (15):43306, (16-127):43312-43423,
- (128-255):43136-43263, (256-1024):44544-45312
-
-not sure what's going  on here, have not started digging yet, but it's
-.... odd.  With delallloc and buffered (non-synchronous IO), these all
-come out pretty sanely.
-
--Eric
