@@ -1,161 +1,127 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: Re: [PATCH] resend : badblocks - Print progress in percent complete and time elapsed in verbose mode.
-Date: Fri, 5 Sep 2008 20:37:27 +0530
-Message-ID: <ea11fea30809050807t7b858886n719c56515291043e@mail.gmail.com>
-References: <ea11fea30809040214r5d5d3e41ifa32118b2e93660d@mail.gmail.com>
-	 <20080905130648.GG9129@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: odd allocation patterns
+Date: Fri, 05 Sep 2008 13:24:00 -0500
+Message-ID: <48C17940.5040406@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Tso" <tytso@mit.edu>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.186]:56276 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753367AbYIEPH3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Sep 2008 11:07:29 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so293279tic.23
-        for <linux-ext4@vger.kernel.org>; Fri, 05 Sep 2008 08:07:27 -0700 (PDT)
-In-Reply-To: <20080905130648.GG9129@mit.edu>
-Content-Disposition: inline
+Received: from mx2.redhat.com ([66.187.237.31]:47845 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750791AbYIESYs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Sep 2008 14:24:48 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m85IODZT030257
+	for <linux-ext4@vger.kernel.org>; Fri, 5 Sep 2008 14:24:33 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m85IO1NP017856
+	for <linux-ext4@vger.kernel.org>; Fri, 5 Sep 2008 14:24:02 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id m85IO0Tt014042
+	for <linux-ext4@vger.kernel.org>; Fri, 5 Sep 2008 14:24:01 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 5, 2008 at 6:36 PM, Theodore Tso <tytso@mit.edu> wrote:
-> On Thu, Sep 04, 2008 at 02:44:38PM +0530, Manish Katiyar wrote:
->> Make badblocks -v print percent complete and time elapsed. Addresses
->> debian bug# 429739.
->
-> There were a couple of problems with this bug.  First of all, although
-> I understand your not wanting to change what -v does, having two
-> verbose options is rather confusing.  Also, since progress information
-> is printed using backspaces and so on, it's not really practical for a
-> program to depend on the output of badblocks -v.
+I was trying some various IO patterns to see what the ext4 allocator
+might do (as I tend  to do every few months ....)  :)
 
-Thanks a lot Ted,
+On the one hand there are some very interesting, and nice (at least for
+some workloads) results:
 
-Yes, I thought that it might break backwards compatibility if there
-are any automated scripts relying on this so added a new one. I am
-still in newbie learning phase and your feedbacks/criticisms will help
-me a lot.
+If I write even, then odd, blocks, in the end it comes  out to one
+extent - even with an unmount in between:
 
-Thanks -
-Manish
+# for I in `seq 0 2 1024`; do dd if=/dev/zero of=testfile bs=4k count=1
+conv=notrunc seek=$I 2>/dev/null; done
 
+(unmount, remount)
 
+# for I in `seq 1 2 1024`; do dd if=/dev/zero of=testfile bs=4k count=1
+conv=notrunc seek=$I 2>/dev/null; done
+# filefrag testfile
+File is stored in extents format
+testfile: 1 extent found
 
->
-> Secondly, the way you formatted the elapsed time was very fragile and
-> would break if someone ever tried to change the way the elapsed time
-> was printed (or if the number of hours went ever became greater than
-> 999, which I grant is unlikely).  I noticed the problem because I
-> wasn't fond of the the "34h 45m 20s" format (it doesn't
-> internationalize well, for one thing), and tried to change it to a
-> mm:ss or hh:mm:ss format, at which point mayhem broke loose.
+as long as the holes eventually get filled in, this is a pretty nice
+behavior to end up with contiguous allocation (if they're not ever
+filled in, it's a little odd)
 
-Thanks a lot Ted,
+However, sequential, synchronous writes are doing weird things:
 
+# for I in `seq 1 1024`; do dd if=/dev/zero of=testfile bs=4k count=1
+conv=notrunc seek=$I oflag=sync 2>/dev/null; done
 
+# filefrag -v testfile
+Checking testfile
+Filesystem type is: ef53
+Filesystem cylinder groups is approximately 235
+File is stored in extents format
+Blocksize of file testfile2 is 4096
+File size of testfile2 is 4198400 (1025 blocks)
+First block: 0
+Last block: 45312
+Discontinuity: Block 2 is at 44032 (was 43520)
+Discontinuity: Block 11 is at 43521 (was 44040)
+Discontinuity: Block 15 is at 43066 (was 43524)
+Discontinuity: Block 256 is at 44544 (was 43306)
+testfile: 5 extents found
 
+not only is it non-contiguous, it's out of order.
 
->
-> So I've simplified the patch significantly, as follows.
->
->                                                - Ted
->
-> commit 504f7a2981306032fff7084c0d90beaa45872ee0
-> Author: Manish Katiyar <mkatiyar@gmail.com>
-> Date:   Thu Sep 4 14:44:38 2008 +0530
->
->    badblocks: Display time and percentage complete in verbose mode.
->
->    Addresses-Debian-Bug: #429739.
->
->    Signed-off-by: "Manish Katiyar" <mkatiyar@gmail.com>
->    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->
-> diff --git a/misc/badblocks.c b/misc/badblocks.c
-> index 1d0f95a..e7e9968 100644
-> --- a/misc/badblocks.c
-> +++ b/misc/badblocks.c
-> @@ -55,7 +55,6 @@ extern int optind;
->  #include <sys/time.h>
->  #include <sys/ioctl.h>
->  #include <sys/types.h>
-> -#include <sys/time.h>
->
->  #include "et/com_err.h"
->  #include "ext2fs/ext2_io.h"
-> @@ -78,6 +77,7 @@ static int current_O_DIRECT = 0;      /* Current status of O_DIRECT flag */
->  static int exclusive_ok = 0;
->  static unsigned int max_bb = 0;                /* Abort test if more than this number of bad blocks has been encountered */
->  static unsigned int d_flag = 0;                /* delay factor between reads */
-> +static struct timeval time_start;
->
->  #define T_INC 32
->
-> @@ -161,11 +161,52 @@ static int bb_output (blk_t bad)
->        return 1;
->  }
->
-> +static char *time_diff_format(struct timeval *tv1,
-> +                             struct timeval *tv2, char *buf)
-> +{
-> +        time_t diff = (tv1->tv_sec - tv2->tv_sec);
-> +       int     hr,min,sec;
-> +
-> +       sec = diff % 60;
-> +       diff /= 60;
-> +       min = diff % 60;
-> +       hr = diff / 60;
-> +
-> +       if (hr)
-> +               sprintf(buf, "%d:%02d:%02d", hr, min, sec);
-> +       else
-> +               sprintf(buf, "%d:%02d", min, sec);
-> +       return buf;
-> +}
-> +
-> +static float calc_percent(unsigned long current, unsigned long total) {
-> +       float percent = 0.0;
-> +       if (total <= 0)
-> +               return percent;
-> +       if (current >= total) {
-> +               percent = 100.0;
-> +       } else {
-> +               percent=(100.0*(float)current/(float)total);
-> +       }
-> +       return percent;
-> +}
-> +
->  static void print_status(void)
->  {
-> -       fprintf(stderr, "%15lu/%15lu", (unsigned long) currently_testing,
-> -               (unsigned long) num_blocks);
-> -       fputs("\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b\b", stderr);
-> +       struct timeval time_end;
-> +       char diff_buf[32], line_buf[128];
-> +       int len;
-> +
-> +       gettimeofday(&time_end, 0);
-> +       len = snprintf(line_buf, sizeof(line_buf),
-> +                      _("%6.2f%% done, %s elapsed"),
-> +                      calc_percent((unsigned long) currently_testing,
-> +                                   (unsigned long) num_blocks),
-> +                      time_diff_format(&time_end, &time_start, diff_buf));
-> +       fputs(line_buf, stderr);
-> +       memset(line_buf, '\b', len);
-> +       line_buf[len] = 0;
-> +       fputs(line_buf, stderr);
->        fflush (stderr);
->  }
->
-> @@ -989,6 +1030,7 @@ int main (int argc, char ** argv)
->                        break;
->                case 'v':
->                        v_flag++;
-> +                       gettimeofday(&time_start, 0);
->                        break;
->                case 'w':
->                        if (w_flag)
->
+Ditto for direct IO:
+
+# for I in `seq 1 1024`; do dd if=/dev/zero of=testfile bs=4k count=1
+conv=notrunc seek=$I oflag=direct 2>/dev/null; done
+
+[root@inode test2]# filefrag -v testfile
+Checking testfile
+Filesystem type is: ef53
+Filesystem cylinder groups is approximately 235
+File is stored in extents format
+Blocksize of file testfile is 4096
+File size of testfile is 4198400 (1025 blocks)
+First block: 0
+Last block: 45312
+Discontinuity: Block 2 is at 43525 (was 44041)
+Discontinuity: Block 4 is at 44042 (was 43526)
+Discontinuity: Block 5 is at 43527 (was 44042)
+Discontinuity: Block 15 is at 43306 (was 43536)
+Discontinuity: Block 16 is at 43312 (was 43306)
+Discontinuity: Block 128 is at 43136 (was 43423)
+Discontinuity: Block 256 is at 44544 (was 43263)
+testfile: 8 extents found
+
+Interestingly, a backwards synchronous write comes out exactly the same:
+
+[root@inode test2]# for I in `seq 1024 -1 0`; do dd if=/dev/zero
+of=testfile2 bs=4k count=1 conv=notrunc seek=$I oflag=sync 2>/dev/null; done
+[root@inode test2]# filefrag -v testfileChecking testfile
+Filesystem type is: ef53
+Filesystem cylinder groups is approximately 235
+File is stored in extents format
+Blocksize of file testfile is 4096
+File size of testfile is 4198400 (1025 blocks)
+First block: 0
+Last block: 45312
+Discontinuity: Block 2 is at 43525 (was 44041)
+Discontinuity: Block 4 is at 44042 (was 43526)
+Discontinuity: Block 5 is at 43527 (was 44042)
+Discontinuity: Block 15 is at 43306 (was 43536)
+Discontinuity: Block 16 is at 43312 (was 43306)
+Discontinuity: Block 128 is at 43136 (was 43423)
+Discontinuity: Block 256 is at 44544 (was 43263)
+testfile: 8 extents found
+
+It's not an artifact of filefrag; debugfs shows it as well:
+
+BLOCKS:
+(IND):43066, (1):44041, (2-3):43525-43526, (4):44042,
+(5-14):43527-43536, (15):43306, (16-127):43312-43423,
+ (128-255):43136-43263, (256-1024):44544-45312
+
+not sure what's going  on here, have not started digging yet, but it's
+.... odd.  With delallloc and buffered (non-synchronous IO), these all
+come out pretty sanely.
+
+-Eric
