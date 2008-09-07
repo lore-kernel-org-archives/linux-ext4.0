@@ -1,65 +1,54 @@
-From: Alexey Dobriyan <adobriyan@gmail.com>
+From: Ralf Hildebrandt <Ralf.Hildebrandt@charite.de>
 Subject: Re: [PATCH] ext4: fix #11321: create /proc/ext4/*/stats et al more
 	carefully
-Date: Sun, 7 Sep 2008 16:15:57 +0400
-Message-ID: <20080907121557.GA3432@x200.localdomain>
-References: <20080905210652.GE11569@x200.localdomain> <20080906075713.GM3086@webber.adilger.int>
+Date: Sun, 7 Sep 2008 18:04:14 +0200
+Message-ID: <20080907160414.GB26248@charite.de>
+References: <20080905210652.GE11569@x200.localdomain> <20080906075713.GM3086@webber.adilger.int> <20080907121557.GA3432@x200.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ralf.hildebrandt@charite.de, akpm@osdl.org,
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andreas Dilger <adilger@sun.com>, akpm@osdl.org,
 	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+To: Alexey Dobriyan <adobriyan@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.154]:3430 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753596AbYIGMON (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Sep 2008 08:14:13 -0400
-Received: by fg-out-1718.google.com with SMTP id 19so1154934fgg.17
-        for <linux-ext4@vger.kernel.org>; Sun, 07 Sep 2008 05:14:11 -0700 (PDT)
+Received: from mail-ausfall.charite.de ([193.175.70.131]:33822 "EHLO
+	mail-ausfall.charite.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752380AbYIGQKD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Sep 2008 12:10:03 -0400
 Content-Disposition: inline
-In-Reply-To: <20080906075713.GM3086@webber.adilger.int>
+In-Reply-To: <20080907121557.GA3432@x200.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 06, 2008 at 01:57:13AM -0600, Andreas Dilger wrote:
-> On Sep 06, 2008  01:06 +0400, Alexey Dobriyan wrote:
-> > [PATCH] ext4: fix #11321: create /proc/ext4/*/stats more carefully
-> > 
-> > ext4 creates per-suberblock directory in /proc/ext4/ . Name used as
-> > basis is taken from bdevname, which, surprise, can contain slash.
-> > 
-> > However, proc while allowing to use proc_create("a/b", parent) form of
-> > PDE creation, assumes that parent/a was already created.
-> > 
-> > bdevname in question is 'cciss/c0d0p9', directory is not created and all
-> > this stuff goes directly into /proc (which is real bug).
-> > 
-> > --- a/fs/ext4/mballoc.c
-> > +++ b/fs/ext4/mballoc.c
-> > @@ -2792,6 +2792,15 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
-> >  		return -EINVAL;
-> >  	}
-> >  	bdevname(sb->s_bdev, devname);
-> > +	{
-> > +		char *p = devname;
-> > +
-> > +		while (*p != '\0') {
-> > +			if (*p == '/')
-> > +				*p = '!';
-> > +			p++;
-> > +		}
-> > +	}
-> 
-> Why not use strchr(), which is normally optimized assembly:
-> 
-> 	char *p = devname;
-> 	while ((p = strchr(p, '/'))
-> 		*p = '_';
-> 
-> Using '!' as the separator makes it harder to use from shells I suspect,
-> so I'd suggest '_' instead.
+* Alexey Dobriyan <adobriyan@gmail.com>:
 
-bdevname is only 32 bytes and done once per mount, so nobody cares.
+> > Why not use strchr(), which is normally optimized assembly:
+> >=20
+> > 	char *p =3D devname;
+> > 	while ((p =3D strchr(p, '/'))
+> > 		*p =3D '_';
+> >=20
+> > Using '!' as the separator makes it harder to use from shells I sus=
+pect,
+> > so I'd suggest '_' instead.
+>=20
+> bdevname is only 32 bytes and done once per mount, so nobody cares.
+>=20
+> '!' is what other code does in this situation (reiserfs, md, ...).
 
-'!' is what other code does in this situation (reiserfs, md, ...).
+Anyway, the first patch fixes the issue. Will it go into mainline soon?
 
+--=20
+Ralf Hildebrandt (i.A. des IT-Zentrums)         Ralf.Hildebrandt@charit=
+e.de
+Charite - Universit=C3=A4tsmedizin Berlin            Tel.  +49 (0)30-45=
+0 570-155
+Gemeinsame Einrichtung von FU- und HU-Berlin    Fax.  +49 (0)30-450 570=
+-962
+IT-Zentrum Standort CBF                              I'm looking for a =
+job!
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
