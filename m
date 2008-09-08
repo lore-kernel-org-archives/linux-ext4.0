@@ -1,37 +1,41 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/3] Add timeout feature
-Date: Mon, 8 Sep 2008 13:11:19 -0400
-Message-ID: <20080908171119.GB22521@infradead.org>
-References: <20080908205337t-sato@mail.jp.nec.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH] make all feature-related printks KERN_INFO and print
+	barrier status as well
+Date: Mon, 8 Sep 2008 17:10:47 -0400
+Message-ID: <20080908211047.GN8161@mit.edu>
+References: <48C55C0E.2050809@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	Oleg Nesterov <oleg@tv-sign.ru>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"dm-devel@redhat.com" <dm-devel@redhat.com>,
-	"viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
-	"mtk.manpages@googlemail.com" <mtk.manpages@googlemail.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Takashi Sato <t-sato@yk.jp.nec.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754969AbYIHRLj@vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:62186 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753672AbYIHVLE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2008 17:11:04 -0400
 Content-Disposition: inline
-In-Reply-To: <20080908205337t-sato@mail.jp.nec.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <48C55C0E.2050809@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 08, 2008 at 08:53:37PM +0900, Takashi Sato wrote:
-> The timeout feature is added to "freeze ioctl" to solve a deadlock
-> when the freezer accesses a frozen filesystem. And new ioctl
-> to reset the timeout period is added to extend the timeout period.
-> For example, the freezer resets the timeout period to 10 seconds every 5
-> seconds.  In this approach, even if the freezer causes a deadlock by
-> accessing the frozen filesystem, it will be solved by the timeout
-> in 10 seconds and the freezer will be able to recognize that
-> at the next reset of timeout period.
+On Mon, Sep 08, 2008 at 12:08:30PM -0500, Eric Sandeen wrote:
+> A very trivial little tidy-up patch.
+> 
+> This slightly duplicates a little of
+> patches/ext4_fix_printk_checkpatch_issues but just in one hunk,
+> easily fixed up.
+> 
+> Various feature printk's come out at different levels, so for example
+> at my default logging level I see mballoc & extents messages, but
+> not delalloc, even though they are all on.
+> 
+> Also, since default barrier behavior has changed, I thought perhaps always
+> printing the barrier state might be a good idea.
 
-And as with all previous posting I still fundamentally disagree about
-the need of this functionality.  We don't need a timeout for freezing.
+Looks good to me.  Any reason not to merge it with the
+ext4_fix_printk_checkpatches_issues?  Actually what I was thinking
+about doing was to segregate out all of the printk level issues from
+everything else, just to make it easier to understand/audit the
+cleanup patch(es).
+
+							- Ted
