@@ -1,95 +1,91 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] make all feature-related printks KERN_INFO and print barrier
- status as well
-Date: Mon, 08 Sep 2008 12:08:30 -0500
-Message-ID: <48C55C0E.2050809@redhat.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/3] Implement generic freeze feature
+Date: Mon, 8 Sep 2008 13:10:26 -0400
+Message-ID: <20080908171020.GA22521@infradead.org>
+References: <20080908205245t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	Oleg Nesterov <oleg@tv-sign.ru>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"dm-devel@redhat.com" <dm-devel@redhat.com>,
+	"viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"axboe@kernel.dk" <axboe@kernel.dk>,
+	"mtk.manpages@googlemail.com" <mtk.manpages@googlemail.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Takashi Sato <t-sato@yk.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:36395 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753441AbYIHRJT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Sep 2008 13:09:19 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m88H8h3g028218
-	for <linux-ext4@vger.kernel.org>; Mon, 8 Sep 2008 13:09:04 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m88H8WUq024105
-	for <linux-ext4@vger.kernel.org>; Mon, 8 Sep 2008 13:08:32 -0400
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id m88H8VLv004194
-	for <linux-ext4@vger.kernel.org>; Mon, 8 Sep 2008 13:08:31 -0400
+Received: from bombadil.infradead.org ([18.85.46.34]:52360 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751767AbYIHRKf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2008 13:10:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20080908205245t-sato@mail.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-A very trivial little tidy-up patch.
+On Mon, Sep 08, 2008 at 08:52:45PM +0900, Takashi Sato wrote:
+> diff -uprN -X linux-2.6.27-rc5.org/Documentation/dontdiff linux-2.6.27-rc5.org/fs/block_dev.c linux-2.6.27-rc5-freeze/fs
+> /block_dev.c
+> --- linux-2.6.27-rc5.org/fs/block_dev.c	2008-08-29 07:52:02.000000000 +0900
+> +++ linux-2.6.27-rc5-freeze/fs/block_dev.c	2008-09-05 20:00:29.000000000 +0900
+> @@ -285,6 +285,8 @@ static void init_once(void *foo)
+>  	INIT_LIST_HEAD(&bdev->bd_holder_list);
+>  #endif
+>  	inode_init_once(&ei->vfs_inode);
+> +	/* Initialize mutex for freeze. */
+> +	mutex_init(&bdev->bd_fsfreeze_mutex);
 
-This slightly duplicates a little of patches/ext4_fix_printk_checkpatch_issues
-but just in one hunk, easily fixed up.
+Why not just freeze_mutex?
 
-Various feature printk's come out at different levels, so for example
-at my default logging level I see mballoc & extents messages, but
-not delalloc, even though they are all on.
 
-Also, since default barrier behavior has changed, I thought perhaps always
-printing the barrier state might be a good idea.
+>  struct super_block *freeze_bdev(struct block_device *bdev)
+>  {
+>  	struct super_block *sb;
+>  
+> +	mutex_lock(&bdev->bd_fsfreeze_mutex);
+> +	if (bdev->bd_fsfreeze_count > 0) {
+> +		bdev->bd_fsfreeze_count++;
+> +		sb = get_super(bdev);
+> +		mutex_unlock(&bdev->bd_fsfreeze_mutex);
+> +		return sb;
+> +	}
+> +	bdev->bd_fsfreeze_count++;
+> +
+>  	down(&bdev->bd_mount_sem);
 
-Seems ok?
+Note that we still have duplication with the bd_mount_sem.  I think
+you should look into getting rid of it and instead do a check of
+the freeze_count under proper freeze_mutex protection.
 
-Thanks,
--Eric
+> +int thaw_bdev(struct block_device *bdev, struct super_block *sb)
+>  {
+> +	mutex_lock(&bdev->bd_fsfreeze_mutex);
+> +	if (!bdev->bd_fsfreeze_count) {
+> +		mutex_unlock(&bdev->bd_fsfreeze_mutex);
+> +		return 0;
+> +	}
+> +
+> +	bdev->bd_fsfreeze_count--;
+> +	if (bdev->bd_fsfreeze_count > 0) {
+> +		if (sb)
+> +			drop_super(sb);
+> +		mutex_unlock(&bdev->bd_fsfreeze_mutex);
+> +		return 0;
+> +	}
+> +
+>  	if (sb) {
+>  		BUG_ON(sb->s_bdev != bdev);
+>  
+> @@ -244,6 +274,8 @@ void thaw_bdev(struct block_device *bdev
+>  	}
+>  
+>  	up(&bdev->bd_mount_sem);
+> +	mutex_unlock(&bdev->bd_fsfreeze_mutex);
+> +	return 0;
 
-------------------------
-
-Make extents, mballoc, and delalloc feature printks all at log level KERN_INFO.
-
-Also print barrier status, whether on or off, since the defaults recently changed.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-Index: linux-2.6/fs/ext4/extents.c
-===================================================================
---- linux-2.6.orig/fs/ext4/extents.c	2008-09-07 19:43:35.979702421 -0500
-+++ linux-2.6/fs/ext4/extents.c	2008-09-08 12:02:58.580702852 -0500
-@@ -2142,7 +2142,7 @@ void ext4_ext_init(struct super_block *s
- 	 */
- 
- 	if (test_opt(sb, EXTENTS)) {
--		printk("EXT4-fs: file extents enabled");
-+		printk(KERN_INFO "EXT4-fs: file extents enabled");
- #ifdef AGGRESSIVE_TEST
- 		printk(", aggressive tests");
- #endif
-Index: linux-2.6/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.orig/fs/ext4/mballoc.c	2008-09-07 19:43:36.813639634 -0500
-+++ linux-2.6/fs/ext4/mballoc.c	2008-09-08 12:03:00.807640535 -0500
-@@ -2560,7 +2560,7 @@ int ext4_mb_init(struct super_block *sb,
- 	ext4_mb_init_per_dev_proc(sb);
- 	ext4_mb_history_init(sb);
- 
--	printk("EXT4-fs: mballoc enabled\n");
-+	printk(KERN_INFO "EXT4-fs: mballoc enabled\n");
- 	return 0;
- }
- 
-Index: linux-2.6/fs/ext4/super.c
-===================================================================
---- linux-2.6.orig/fs/ext4/super.c	2008-09-07 19:43:36.603640074 -0500
-+++ linux-2.6/fs/ext4/super.c	2008-09-08 12:03:00.266640232 -0500
-@@ -2715,6 +2715,11 @@ static int ext4_load_journal(struct supe
- 			return -EINVAL;
- 	}
- 
-+	if (journal->j_flags & JBD2_BARRIER)
-+		printk(KERN_INFO "EXT4-fs: barriers enabled\n");
-+	else
-+		printk(KERN_INFO "EXT4-fs: barriers disabled\n");
-+
- 	if (!really_read_only && test_opt(sb, UPDATE_JOURNAL)) {
- 		err = jbd2_journal_update_format(journal);
- 		if (err)  {
+Why do you add a return value here if we always return 0 anyway?
 
