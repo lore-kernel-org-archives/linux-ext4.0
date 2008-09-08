@@ -1,71 +1,95 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [Bug 11506] oops during unmount - ext3? (2.6.27-rc5)
-Date: Mon, 8 Sep 2008 18:02:24 +0200
-Message-ID: <20080908160224.GA31029@atrey.karlin.mff.cuni.cz>
-References: <20080904191356.GA7799@joi> <20080907112740.GA5530@joi> <20080907114714.GB5530@joi>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] make all feature-related printks KERN_INFO and print barrier
+ status as well
+Date: Mon, 08 Sep 2008 12:08:30 -0500
+Message-ID: <48C55C0E.2050809@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	bugme-daemon@bugzilla.kernel.org
-To: Marcin Slusarz <marcin.slusarz@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:47637 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752439AbYIHQC0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2008 12:02:26 -0400
-Content-Disposition: inline
-In-Reply-To: <20080907114714.GB5530@joi>
+Received: from mx2.redhat.com ([66.187.237.31]:36395 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753441AbYIHRJT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Sep 2008 13:09:19 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m88H8h3g028218
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Sep 2008 13:09:04 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m88H8WUq024105
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Sep 2008 13:08:32 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id m88H8VLv004194
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Sep 2008 13:08:31 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Sun, Sep 07, 2008 at 01:27:40PM +0200, Marcin Slusarz wrote:
-> > Code: 8b 06 a8 01 75 04 0f 0b eb fe f6 c4 08 0f 84 2f 03 00 00 48 8b 45 b8 48 8b 40 10 c7 45 c8 01 00 00 00 48 89 45 d0 48 89 c3 31 c0 <8b> 53 20 01 c2 89 c0 48 39 45 b0 89 55 cc 48 9b 53 08 48 89 55
-> Little correction (at the end):
->   Code: 8b 06 a8 01 75 04 0f 0b eb fe f6 c4 08 0f 84 2f 03 00 00 48 8b 45 b8 48 8b 40 10 c7 45 c8 01 00 00 00 48 89 45 d0 48 89 c3 31 c0 <8b> 53 20 01 c2 89 c0 48 39 45 b0 89 55 cc 48 8b 53 08 48 89 55
-> 
-> > Output of decodecode:
-> After correction:
-> /tmp/tmp.W6DvY3Lbtg.o:     file format elf64-x86-64
-> 
-> Disassembly of section .text:
-> 
-> 0000000000000000 <.text>:
->    0:   8b 06                   mov    (%rsi),%eax
->    2:   a8 01                   test   $0x1,%al
->    4:   75 04                   jne    0xa
->    6:   0f 0b                   ud2a
->    8:   eb fe                   jmp    0x8
->    a:   f6 c4 08                test   $0x8,%ah
->    d:   0f 84 2f 03 00 00       je     0x342
->   13:   48 8b 45 b8             mov    -0x48(%rbp),%rax
->   17:   48 8b 40 10             mov    0x10(%rax),%rax
->   1b:   c7 45 c8 01 00 00 00    movl   $0x1,-0x38(%rbp)
->   22:   48 89 45 d0             mov    %rax,-0x30(%rbp)
->   26:   48 89 c3                mov    %rax,%rbx
->   29:   31 c0                   xor    %eax,%eax
-> 
-> /tmp/tmp.W6DvY3Lbtg.o:     file format elf64-x86-64
-> 
-> Disassembly of section .text:
-> 
-> 0000000000000000 <.text>:
->    0:   8b 53 20                mov    0x20(%rbx),%edx
->    3:   01 c2                   add    %eax,%edx
->    5:   89 c0                   mov    %eax,%eax
->    7:   48 39 45 b0             cmp    %rax,-0x50(%rbp)
->    b:   89 55 cc                mov    %edx,-0x34(%rbp)
->    e:   48 8b 53 08             mov    0x8(%rbx),%rdx
->   12:   48                      rex.W
->   13:   89                      .byte 0x89
->   14:   55                      push   %rbp
-  Hmm, from this disassembly it seems that somebody has overwritten our
-page->private pointer to 1000c20d02020000 and then we obviously failed
-to get bh->b_size. But I don't really see how this can happen. What also
-puzzles me a bit is that I don't see BUG_ON(!PagePrivate(page)) in the
-disassembly but it should be there because of page_buffers()
-implementation... Anyone has an idea?
+A very trivial little tidy-up patch.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+This slightly duplicates a little of patches/ext4_fix_printk_checkpatch_issues
+but just in one hunk, easily fixed up.
+
+Various feature printk's come out at different levels, so for example
+at my default logging level I see mballoc & extents messages, but
+not delalloc, even though they are all on.
+
+Also, since default barrier behavior has changed, I thought perhaps always
+printing the barrier state might be a good idea.
+
+Seems ok?
+
+Thanks,
+-Eric
+
+------------------------
+
+Make extents, mballoc, and delalloc feature printks all at log level KERN_INFO.
+
+Also print barrier status, whether on or off, since the defaults recently changed.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+Index: linux-2.6/fs/ext4/extents.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/extents.c	2008-09-07 19:43:35.979702421 -0500
++++ linux-2.6/fs/ext4/extents.c	2008-09-08 12:02:58.580702852 -0500
+@@ -2142,7 +2142,7 @@ void ext4_ext_init(struct super_block *s
+ 	 */
+ 
+ 	if (test_opt(sb, EXTENTS)) {
+-		printk("EXT4-fs: file extents enabled");
++		printk(KERN_INFO "EXT4-fs: file extents enabled");
+ #ifdef AGGRESSIVE_TEST
+ 		printk(", aggressive tests");
+ #endif
+Index: linux-2.6/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/mballoc.c	2008-09-07 19:43:36.813639634 -0500
++++ linux-2.6/fs/ext4/mballoc.c	2008-09-08 12:03:00.807640535 -0500
+@@ -2560,7 +2560,7 @@ int ext4_mb_init(struct super_block *sb,
+ 	ext4_mb_init_per_dev_proc(sb);
+ 	ext4_mb_history_init(sb);
+ 
+-	printk("EXT4-fs: mballoc enabled\n");
++	printk(KERN_INFO "EXT4-fs: mballoc enabled\n");
+ 	return 0;
+ }
+ 
+Index: linux-2.6/fs/ext4/super.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/super.c	2008-09-07 19:43:36.603640074 -0500
++++ linux-2.6/fs/ext4/super.c	2008-09-08 12:03:00.266640232 -0500
+@@ -2715,6 +2715,11 @@ static int ext4_load_journal(struct supe
+ 			return -EINVAL;
+ 	}
+ 
++	if (journal->j_flags & JBD2_BARRIER)
++		printk(KERN_INFO "EXT4-fs: barriers enabled\n");
++	else
++		printk(KERN_INFO "EXT4-fs: barriers disabled\n");
++
+ 	if (!really_read_only && test_opt(sb, UPDATE_JOURNAL)) {
+ 		err = jbd2_journal_update_format(journal);
+ 		if (err)  {
+
