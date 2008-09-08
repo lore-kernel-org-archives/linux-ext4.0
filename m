@@ -1,50 +1,93 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] make all feature-related printks KERN_INFO and print
- barrier status as well
-Date: Mon, 08 Sep 2008 16:20:58 -0500
-Message-ID: <48C5973A.8000007@redhat.com>
-References: <48C55C0E.2050809@redhat.com> <20080908211047.GN8161@mit.edu>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: [PATCH] jbd2: Create proc entry with bdevname+i_ino.
+Date: Mon, 8 Sep 2008 16:31:14 -0700
+Message-ID: <20080908233114.GD20100@mail.oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=us-ascii
+Cc: ocfs2-devel@oss.oracle.com, mfasheh@suse.com,
+	sunil.mushran@oracle.com
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:53578 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754589AbYIHVWn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Sep 2008 17:22:43 -0400
-In-Reply-To: <20080908211047.GN8161@mit.edu>
+Received: from agminet01.oracle.com ([141.146.126.228]:37281 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753437AbYIHXcP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2008 19:32:15 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Mon, Sep 08, 2008 at 12:08:30PM -0500, Eric Sandeen wrote:
->> A very trivial little tidy-up patch.
->>
->> This slightly duplicates a little of
->> patches/ext4_fix_printk_checkpatch_issues but just in one hunk,
->> easily fixed up.
->>
->> Various feature printk's come out at different levels, so for example
->> at my default logging level I see mballoc & extents messages, but
->> not delalloc, even though they are all on.
->>
->> Also, since default barrier behavior has changed, I thought perhaps always
->> printing the barrier state might be a good idea.
-> 
-> Looks good to me.  Any reason not to merge it with the
-> ext4_fix_printk_checkpatches_issues?  Actually what I was thinking
-> about doing was to segregate out all of the printk level issues from
-> everything else, just to make it easier to understand/audit the
-> cleanup patch(es).
-> 
-> 							- Ted
+jbd2 currently creates statistics files for each loaded journal in
+/proc/fs/jbd2/<bdevname>.  ocfs2 loads multiple journals when recovering
+other nodes, and the multiple journals on a given bdev collide in the
+proc namespace.
 
-Sure, it could be merged.  The patch I sent actually changed some
-behavior, and was limited to mount-time feature prints, so thought it
-might make sense on its own.
+This patch changes the location to /proc/fs/jbd2/<bdevname>-<i_ino> as
+proposed by Jan Kara.  ocfs2 can load multiple journals safely without
+collision.  There are, to my knowledge, no programmatic users, so the
+name change shouldn't (haha) cause any problems.
 
-Either way is fine by me.
+ocfs2 has 64bit inode numbers, so a collision could theoretically happen
+with inodes above 32bits, but ocfs2 journals are generally created at
+the front of the volume during mkfs(8).  In addition, ocfs2 restricts
+inodes to 32bits unless the 'inode64' option is specified.
 
--Eric
+Signed-off-by: Joel Becker <joel.becker@oracle.com>
+---
+ fs/jbd2/journal.c |   12 ++++++++----
+ 1 files changed, 8 insertions(+), 4 deletions(-)
+
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 8207a01..18d3063 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -901,9 +901,11 @@ static struct proc_dir_entry *proc_jbd2_stats;
+ 
+ static void jbd2_stats_proc_init(journal_t *journal)
+ {
+-	char name[BDEVNAME_SIZE];
++	char dname[BDEVNAME_SIZE];
++	char name[NAME_MAX];
+ 
+-	bdevname(journal->j_dev, name);
++	bdevname(journal->j_dev, dname);
++	snprintf(name, NAME_MAX, "%s-%lu", dname, journal->j_inode->i_ino);
+ 	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
+ 	if (journal->j_proc_entry) {
+ 		proc_create_data("history", S_IRUGO, journal->j_proc_entry,
+@@ -915,9 +917,11 @@ static void jbd2_stats_proc_init(journal_t *journal)
+ 
+ static void jbd2_stats_proc_exit(journal_t *journal)
+ {
+-	char name[BDEVNAME_SIZE];
++	char dname[BDEVNAME_SIZE];
++	char name[NAME_MAX];
+ 
+-	bdevname(journal->j_dev, name);
++	bdevname(journal->j_dev, dname);
++	snprintf(name, NAME_MAX, "%s-%lu", dname, journal->j_inode->i_ino);
+ 	remove_proc_entry("info", journal->j_proc_entry);
+ 	remove_proc_entry("history", journal->j_proc_entry);
+ 	remove_proc_entry(name, proc_jbd2_stats);
+-- 
+1.5.6.3
+
+
+-- 
+
+None of our men are "experts."  We have most unfortunately found
+it necessary to get rid of a man as soon as he thinks himself an
+expert -- because no one ever considers himself expert if he really
+knows his job.  A man who knows a job sees so much more to be done
+than he has done, that he is always pressing forward and never
+gives up an instant of thought to how good and how efficient he is.
+Thinking always ahead, thinking always of trying to do more, brings
+a state of mind in which nothing is impossible. The moment one gets
+into the "expert" state of mind a great number of things become
+impossible.
+	- From Henry Ford Sr., "My Life and Work"
+
+Joel Becker
+Principal Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
