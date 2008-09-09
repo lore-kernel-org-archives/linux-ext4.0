@@ -1,40 +1,92 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH] Add extent conversion support to chattr
-Date: Tue, 9 Sep 2008 10:39:15 -0400
-Message-ID: <20080909143915.GG21071@mit.edu>
-References: <1220951542-1451-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080909114647.GA14052@infradead.org> <20080909134347.GB21071@mit.edu> <20080909140929.GA5335@skywalker>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH -mm] jbd: test BH_Write_EIO to detect errors on
+	metadata buffers
+Date: Tue, 9 Sep 2008 17:52:20 +0200
+Message-ID: <20080909155219.GA16358@duck.suse.cz>
+References: <48C63701.6090700@hitachi.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>, adilger@sun.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: akpm@linux-foundation.org, sct@redhat.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
+	adilger@sun.com, yumiko.sugita.yf@hitachi.com,
+	satoshi.oshima.fk@hitachi.com, nickpiggin@yahoo.com.au
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:37596 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750837AbYIIOmJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Sep 2008 10:42:09 -0400
+Received: from styx.suse.cz ([82.119.242.94]:57296 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754603AbYIIPwW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Sep 2008 11:52:22 -0400
 Content-Disposition: inline
-In-Reply-To: <20080909140929.GA5335@skywalker>
+In-Reply-To: <48C63701.6090700@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 09, 2008 at 07:39:29PM +0530, Aneesh Kumar K.V wrote:
+On Tue 09-09-08 17:42:41, Hidehiro Kawai wrote:
+> __try_to_free_cp_buf(), __process_buffer(), and __wait_cp_io()
+> test BH_Uptodate flag to detect write I/O errors on metadata
+> buffers.  But by commit 95450f5a7e53d5752ce1a0d0b8282e10fe745ae0
+> "ext3: don't read inode block if the buffer has a write error"(*),
+> BH_Uptodate flag can be set to inode buffers with BH_Write_EIO
+> in order to avoid reading old inode data.  So now, we have to
+> test BH_Write_EIO flag of checkpointing inode buffers instead
+> of BH_Uptodate.  This patch does it.
+  Your changes look sane. Thanks for fixing this.
+You can add Acked-by: Jan Kara <jack@suse.cz>
+
+							Honza
 > 
-> Shouldn't other file system give error when we call an ioctl with
-> EXT4_IOC_MIGRATE on the fd ?
-
-Only if by some incredible bad luck the ioctl number (which is after
-all only at 16 bit number) doesn't happen to do something else random,
-like security erase the entire filesystem.  :-)
-
-> On ext3 I get the below error
-> [an/chattr@e2fsprogs-upstream-build]$ ./misc/chattr -E ./misc/e2undo
-> ./misc/chattr: Inappropriate ioctl for device while converting ./misc/e2undo to extent format
+> (*) http://lkml.org/lkml/2008/6/23/126
 > 
-
-#1, it really should be +e, since we are turning on the extent flag,
-and #2, we should give a much more user-understandable error message
-in that case.
-
-						- Ted
-
+> This patch depends on the following patch set in -mm:
+> 
+> #1 jbd: abort when failed to log metadata buffers
+>    http://lkml.org/lkml/2008/7/24/160
+> #2 jbd: fix error handling for checkpoint io
+>    http://lkml.org/lkml/2008/7/24/163
+> #3 ext3: add checks for errors from jbd
+>    http://lkml.org/lkml/2008/7/29/539
+> #4 jbd: don't dirty original metadata buffer on abort
+>    http://lkml.org/lkml/2008/7/24/168
+> 
+> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+> ---
+>  fs/jbd/checkpoint.c |    6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> Index: linux-2.6.27-rc5-mm1/fs/jbd/checkpoint.c
+> ===================================================================
+> --- linux-2.6.27-rc5-mm1.orig/fs/jbd/checkpoint.c
+> +++ linux-2.6.27-rc5-mm1/fs/jbd/checkpoint.c
+> @@ -94,7 +94,7 @@ static int __try_to_free_cp_buf(struct j
+>  	struct buffer_head *bh = jh2bh(jh);
+>  
+>  	if (jh->b_jlist == BJ_None && !buffer_locked(bh) &&
+> -	    !buffer_dirty(bh) && buffer_uptodate(bh)) {
+> +	    !buffer_dirty(bh) && !buffer_write_io_error(bh)) {
+>  		JBUFFER_TRACE(jh, "remove from checkpoint list");
+>  		ret = __journal_remove_checkpoint(jh) + 1;
+>  		jbd_unlock_bh_state(bh);
+> @@ -214,7 +214,7 @@ restart:
+>  			spin_lock(&journal->j_list_lock);
+>  			goto restart;
+>  		}
+> -		if (unlikely(!buffer_uptodate(bh)))
+> +		if (unlikely(buffer_write_io_error(bh)))
+>  			ret = -EIO;
+>  
+>  		/*
+> @@ -283,7 +283,7 @@ static int __process_buffer(journal_t *j
+>  		ret = 1;
+>  	} else if (!buffer_dirty(bh)) {
+>  		ret = 1;
+> -		if (unlikely(!buffer_uptodate(bh)))
+> +		if (unlikely(buffer_write_io_error(bh)))
+>  			ret = -EIO;
+>  		J_ASSERT_JH(jh, !buffer_jbddirty(bh));
+>  		BUFFER_TRACE(bh, "remove from checkpoint");
+> 
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
