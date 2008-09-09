@@ -1,46 +1,46 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] ext4: fix #11321: create /proc/ext4/*/stats et al more
-	carefully
-Date: Tue, 9 Sep 2008 07:51:05 -0400
-Message-ID: <20080909115105.GB14052@infradead.org>
-References: <20080905210652.GE11569@x200.localdomain>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] Add extent conversion support to chattr
+Date: Tue, 9 Sep 2008 18:06:45 +0530
+Message-ID: <20080909123645.GA5026@skywalker>
+References: <1220951542-1451-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080909114647.GA14052@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ralf.hildebrandt@charite.de, akpm@osdl.org,
-	linux-ext4@vger.kernel.org
-To: Alexey Dobriyan <adobriyan@gmail.com>
+Cc: tytso@mit.ed, adilger@sun.com, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:42261 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752744AbYIILvM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Sep 2008 07:51:12 -0400
+Received: from e28smtp02.in.ibm.com ([59.145.155.2]:57761 "EHLO
+	e28esmtp02.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750837AbYIIMhE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Sep 2008 08:37:04 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28esmtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id m89Cb1Ie025565
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Sep 2008 18:07:01 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m89Cb18w1658912
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Sep 2008 18:07:01 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m89Cb0as008916
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Sep 2008 22:37:01 +1000
 Content-Disposition: inline
-In-Reply-To: <20080905210652.GE11569@x200.localdomain>
+In-Reply-To: <20080909114647.GA14052@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 06, 2008 at 01:06:52AM +0400, Alexey Dobriyan wrote:
-> Ralf, please confirm.
+On Tue, Sep 09, 2008 at 07:46:47AM -0400, Christoph Hellwig wrote:
+> On Tue, Sep 09, 2008 at 02:42:22PM +0530, Aneesh Kumar K.V wrote:
+> > This patch adds new option, -E to chattr. The -E option
+> > is used to convert the ext3 format (non extent) file
+> > to ext4 (extent) format. This can be used to migrate
+> > the ext3 file system to ext4 file system.
 > 
+> I think this is an awkware interfac.  Chattr is supposed to set simple
+> binary flags and not a front end to complicated filesystem conversions.
 > 
-> 
-> [PATCH] ext4: fix #11321: create /proc/ext4/*/stats more carefully
-> 
-> ext4 creates per-suberblock directory in /proc/ext4/ . Name used as
-> basis is taken from bdevname, which, surprise, can contain slash.
-> 
-> However, proc while allowing to use proc_create("a/b", parent) form of
-> PDE creation, assumes that parent/a was already created.
-> 
-> bdevname in question is 'cciss/c0d0p9', directory is not created and all
-> this stuff goes directly into /proc (which is real bug).
-> 
-> Warning comes when _second_ partition is mounted.
 
-Two issues with this.  First filesystems should never call
-bdevname(sb->s_bdev, ...), but alwasy us s->s_id which has this
-pre-calculated and avoids the big on-stack array.  Second this
-conversion really isn't extN specific, so I'd rather do it in
-get_sb_bdev so one places takes care of all uses, instead of
-re-inventing it in lots of places.
+Since chattr is used to set inode flags and since migrate can be looked
+at as setting extent flags (with the side effect that we change the 
+inode format) I used chattr interface. Last patch i sent actually added a new
+command e4migrate. Let me know if you have any suggestion related to
+which command is best suited for setting extent flags.
 
+-aneesh
