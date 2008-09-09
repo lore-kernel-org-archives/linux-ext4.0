@@ -1,93 +1,71 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: [PATCH] jbd2: Create proc entry with bdevname+i_ino.
-Date: Mon, 8 Sep 2008 16:31:14 -0700
-Message-ID: <20080908233114.GD20100@mail.oracle.com>
+From: Alexey Dobriyan <adobriyan@gmail.com>
+Subject: Re: [PATCH] ext4: fix #11321: create /proc/ext4/*/stats et al more
+	carefully
+Date: Tue, 9 Sep 2008 11:06:30 +0400
+Message-ID: <20080909070630.GC5786@x200.localdomain>
+References: <20080905210652.GE11569@x200.localdomain> <20080906075713.GM3086@webber.adilger.int> <20080907121557.GA3432@x200.localdomain> <20080907160414.GB26248@charite.de> <20080905210652.GE11569@x200.localdomain> <20080906075713.GM3086@webber.adilger.int> <20080907121557.GA3432@x200.localdomain> <20080907162447.GB32429@mit.edu> <20080907164130.GA3376@x200.localdomain> <20080908143951.GH8161@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ocfs2-devel@oss.oracle.com, mfasheh@suse.com,
-	sunil.mushran@oracle.com
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+Cc: Ralf Hildebrandt <Ralf.Hildebrandt@charite.de>,
+	Andreas Dilger <adilger@sun.com>, akpm@osdl.org,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:37281 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753437AbYIHXcP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Sep 2008 19:32:15 -0400
+Received: from yx-out-2324.google.com ([74.125.44.29]:46868 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754479AbYIIHEo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Sep 2008 03:04:44 -0400
+Received: by yx-out-2324.google.com with SMTP id 8so1055236yxm.1
+        for <linux-ext4@vger.kernel.org>; Tue, 09 Sep 2008 00:04:43 -0700 (PDT)
 Content-Disposition: inline
+In-Reply-To: <20080908143951.GH8161@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jbd2 currently creates statistics files for each loaded journal in
-/proc/fs/jbd2/<bdevname>.  ocfs2 loads multiple journals when recovering
-other nodes, and the multiple journals on a given bdev collide in the
-proc namespace.
+On Mon, Sep 08, 2008 at 10:39:51AM -0400, Theodore Tso wrote:
+> Here's what I've checked into the ext4 patch queue for submission to
+> mainline at the next merge window.  I've added a bit more error
+> checking in case proc_mkdir() fails and returns NULL.
 
-This patch changes the location to /proc/fs/jbd2/<bdevname>-<i_ino> as
-proposed by Jan Kara.  ocfs2 can load multiple journals safely without
-collision.  There are, to my knowledge, no programmatic users, so the
-name change shouldn't (haha) cause any problems.
+Hopefully, Andrew, will pick up original non-broken patch.
 
-ocfs2 has 64bit inode numbers, so a collision could theoretically happen
-with inodes above 32bits, but ocfs2 journals are generally created at
-the front of the volume during mkfs(8).  In addition, ocfs2 restricts
-inodes to 32bits unless the 'inode64' option is specified.
-
-Signed-off-by: Joel Becker <joel.becker@oracle.com>
----
- fs/jbd2/journal.c |   12 ++++++++----
- 1 files changed, 8 insertions(+), 4 deletions(-)
-
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8207a01..18d3063 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -901,9 +901,11 @@ static struct proc_dir_entry *proc_jbd2_stats;
- 
- static void jbd2_stats_proc_init(journal_t *journal)
- {
--	char name[BDEVNAME_SIZE];
-+	char dname[BDEVNAME_SIZE];
-+	char name[NAME_MAX];
- 
--	bdevname(journal->j_dev, name);
-+	bdevname(journal->j_dev, dname);
-+	snprintf(name, NAME_MAX, "%s-%lu", dname, journal->j_inode->i_ino);
- 	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
- 	if (journal->j_proc_entry) {
- 		proc_create_data("history", S_IRUGO, journal->j_proc_entry,
-@@ -915,9 +917,11 @@ static void jbd2_stats_proc_init(journal_t *journal)
- 
- static void jbd2_stats_proc_exit(journal_t *journal)
- {
--	char name[BDEVNAME_SIZE];
-+	char dname[BDEVNAME_SIZE];
-+	char name[NAME_MAX];
- 
--	bdevname(journal->j_dev, name);
-+	bdevname(journal->j_dev, dname);
-+	snprintf(name, NAME_MAX, "%s-%lu", dname, journal->j_inode->i_ino);
- 	remove_proc_entry("info", journal->j_proc_entry);
- 	remove_proc_entry("history", journal->j_proc_entry);
- 	remove_proc_entry(name, proc_jbd2_stats);
--- 
-1.5.6.3
-
-
--- 
-
-None of our men are "experts."  We have most unfortunately found
-it necessary to get rid of a man as soon as he thinks himself an
-expert -- because no one ever considers himself expert if he really
-knows his job.  A man who knows a job sees so much more to be done
-than he has done, that he is always pressing forward and never
-gives up an instant of thought to how good and how efficient he is.
-Thinking always ahead, thinking always of trying to do more, brings
-a state of mind in which nothing is impossible. The moment one gets
-into the "expert" state of mind a great number of things become
-impossible.
-	- From Henry Ford Sr., "My Life and Work"
-
-Joel Becker
-Principal Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -2785,14 +2785,19 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
+>  	mode_t mode = S_IFREG | S_IRUGO | S_IWUSR;
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>  	struct proc_dir_entry *proc;
+> -	char devname[64];
+> +	char devname[64], *p;
+>  
+>  	if (proc_root_ext4 == NULL) {
+>  		sbi->s_mb_proc = NULL;
+>  		return -EINVAL;
+>  	}
+>  	bdevname(sb->s_bdev, devname);
+> +	while (p = strchr(p, '/'))
+> +		*p = '!';
+> +
+>  	sbi->s_mb_proc = proc_mkdir(devname, proc_root_ext4);
+> +	if (!sbi->s_mb_proc)
+> +		goto err_create_dir;
+>  
+>  	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
+>  	MB_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, max_to_scan);
+> @@ -2804,7 +2809,6 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
+>  	return 0;
+>  
+>  err_out:
+> -	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
+>  	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
+>  	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
+>  	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
+> @@ -2813,6 +2817,8 @@ err_out:
+>  	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_mb_proc);
+>  	remove_proc_entry(devname, proc_root_ext4);
+>  	sbi->s_mb_proc = NULL;
+> +err_create_dir:
+> +	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
+>  
+>  	return -ENOMEM;
+>  }
