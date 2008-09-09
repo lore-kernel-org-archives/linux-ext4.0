@@ -1,123 +1,55 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH] ext4: fix #11321: create /proc/ext4/*/stats et al more
-	carefully
-Date: Tue, 9 Sep 2008 09:09:00 -0400
-Message-ID: <20080909130900.GS8161@mit.edu>
-References: <20080907121557.GA3432@x200.localdomain> <20080907160414.GB26248@charite.de> <20080905210652.GE11569@x200.localdomain> <20080906075713.GM3086@webber.adilger.int> <20080907121557.GA3432@x200.localdomain> <20080907162447.GB32429@mit.edu> <20080907164130.GA3376@x200.localdomain> <20080908143951.GH8161@mit.edu> <20080909070630.GC5786@x200.localdomain> <20080909001203.7480549e.akpm@linux-foundation.org>
+Subject: Re: [PATCH] Add extent conversion support to chattr
+Date: Tue, 9 Sep 2008 09:43:47 -0400
+Message-ID: <20080909134347.GB21071@mit.edu>
+References: <1220951542-1451-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20080909114647.GA14052@infradead.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alexey Dobriyan <adobriyan@gmail.com>,
-	Ralf Hildebrandt <Ralf.Hildebrandt@charite.de>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:64677 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:45885 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751550AbYIINJQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Sep 2008 09:09:16 -0400
+	by vger.kernel.org with ESMTP id S1751847AbYIINo7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Sep 2008 09:44:59 -0400
 Content-Disposition: inline
-In-Reply-To: <20080909001203.7480549e.akpm@linux-foundation.org>
+In-Reply-To: <20080909114647.GA14052@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 09, 2008 at 12:12:03AM -0700, Andrew Morton wrote:
-> On Tue, 9 Sep 2008 11:06:30 +0400 Alexey Dobriyan <adobriyan@gmail.com> wrote:
+On Tue, Sep 09, 2008 at 07:46:47AM -0400, Christoph Hellwig wrote:
+> On Tue, Sep 09, 2008 at 02:42:22PM +0530, Aneesh Kumar K.V wrote:
+> > This patch adds new option, -E to chattr. The -E option
+> > is used to convert the ext3 format (non extent) file
+> > to ext4 (extent) format. This can be used to migrate
+> > the ext3 file system to ext4 file system.
 > 
-> > On Mon, Sep 08, 2008 at 10:39:51AM -0400, Theodore Tso wrote:
-> > > Here's what I've checked into the ext4 patch queue for submission to
-> > > mainline at the next merge window.  I've added a bit more error
-> > > checking in case proc_mkdir() fails and returns NULL.
-> > 
-> > Hopefully, Andrew, will pick up original non-broken patch.
-> 
-> What does this mean??
+> I think this is an awkware interfac.  Chattr is supposed to set simple
+> binary flags and not a front end to complicated filesystem conversions.
 
-Alexey's trying to bypass the ext4 maintainers.  :-)
+The alternate is to create an entire new program (e4migrate) just to
+trigger a single ioctl.  The reality is this is probably going to more
+used by ext4 developers than anybody else, since it's rare that you
+would want to convert a single file from using indrect blocks to using
+extents.  In general, most users/system administrators will want to
+convert the entire filesystem; eventually this will probably be done
+via some combination with the userspace program to trigger online
+defrag, but this was just a stopgap measure to allow us to more easily
+exercise the kernel code more than anything else.
 
-Alexey, both of the problems which you pointed out I noticed last
-night and have already been fixed and commited to the ext4 patch
-queue.  Please see attached.  This patch *is* better than your
-original one since using strdup is better than open coding it in C.
+So given that this is only to enable extents on a single file, "chattr
++e file" is very much in line with the rest of the chattr interface
+for setting other flags.
 
-Andrew, note that some of the patches in the upcoming ext4 patch set
-which I am preparing for -mm and linux-next submission depend on a the
-percpu cleanup patch which is in already in -mm.  I've left it in the
-ext4 series file since the patchset won't apply against mainline
-without it, but I've left comments in the series file that should make
-this clear.
-
-I'm not sure how you are managing -mm these days, but it looks like
-you are using git more, and so if you are pulling in changes in via
-linux-next, git will do the right thing and drop the duplicated patch.
-There is a similar issue with the FIEMAP patches and some ext3
-patches, but the FIEMAP patches will get dropped since Eric has
-promised to get on Mark Fasheh's case to submit for merging or to
-submit them yourself, and the ext3 patches I will submit to you
-separately.
+One of the things which we may want to do to use statfs() and checking
+f_type to make sure the file in question is located on an ext2/3/4
+filesystem before trying the ioctl, since it is true that a number of
+other filesystems have "borrowed" the chattr program and use it for
+their own purposes.  It's unlikely that the ext4 migration ioctl will
+be wired to anything on other filesystems, but it would be a good
+safety measure to add just in case.
 
 Regards,
 
 						- Ted
-
-ext4: fix #11321: create /proc/ext4/*/stats more carefully
-
-From: Alexey Dobriyan <adobriyan@gmail.com>
-
-ext4 creates per-suberblock directory in /proc/ext4/ . Name used as
-basis is taken from bdevname, which, surprise, can contain slash.
-
-However, proc while allowing to use proc_create("a/b", parent) form of
-PDE creation, assumes that parent/a was already created.
-
-bdevname in question is 'cciss/c0d0p9', directory is not created and all
-this stuff goes directly into /proc (which is real bug).
-
-Warning comes when _second_ partition is mounted.
-
-http://bugzilla.kernel.org/show_bug.cgi?id=11321
-
-Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 2721643..78d628b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2785,14 +2785,20 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	mode_t mode = S_IFREG | S_IRUGO | S_IWUSR;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct proc_dir_entry *proc;
--	char devname[64];
-+	char devname[64], *p;
- 
- 	if (proc_root_ext4 == NULL) {
- 		sbi->s_mb_proc = NULL;
- 		return -EINVAL;
- 	}
- 	bdevname(sb->s_bdev, devname);
-+	p = devname;
-+	while ((p = strchr(p, '/')))
-+		*p = '!';
-+
- 	sbi->s_mb_proc = proc_mkdir(devname, proc_root_ext4);
-+	if (!sbi->s_mb_proc)
-+		goto err_create_dir;
- 
- 	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
- 	MB_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, max_to_scan);
-@@ -2804,7 +2810,6 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	return 0;
- 
- err_out:
--	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
- 	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
-@@ -2813,6 +2818,8 @@ err_out:
- 	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_mb_proc);
- 	remove_proc_entry(devname, proc_root_ext4);
- 	sbi->s_mb_proc = NULL;
-+err_create_dir:
-+	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
- 
- 	return -ENOMEM;
- }
