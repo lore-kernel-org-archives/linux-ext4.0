@@ -1,299 +1,142 @@
-From: Mark Fasheh <mfasheh@suse.com>
-Subject: [PATCH 2/3] generic block based fiemap implementation
-Date: Wed, 10 Sep 2008 05:50:05 -0700
-Message-ID: <20080910125005.GD4563@wotan.suse.de>
-References: <20080825202250.GY3392@webber.adilger.int> <20080910124005.GA4563@wotan.suse.de>
-Reply-To: Mark Fasheh <mfasheh@suse.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [Bug 11525] New: Unable to handle paging request at
+	ext3_rmdir() and ext4_rmdir() on intentionally corrupted fs
+Date: Wed, 10 Sep 2008 08:58:02 -0400
+Message-ID: <20080910125802.GK21071@mit.edu>
+References: <bug-11525-27@http.bugzilla.kernel.org/> <20080909134627.75bd0a80.akpm@linux-foundation.org> <15802_1220997383_ZZ0K6Y00A5R7LWI2.00_20080909215531.GE21071@mit.edu> <20080910032633.GH8723@lh.kyla.fi>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, bugme-daemon@bugzilla.kernel.org
+To: Sami Liedes <sliedes@cc.hut.fi>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:52541 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752108AbYIJMuH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Sep 2008 08:50:07 -0400
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:54270 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752055AbYIJM6S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Sep 2008 08:58:18 -0400
 Content-Disposition: inline
-In-Reply-To: <20080910124005.GA4563@wotan.suse.de>
+In-Reply-To: <20080910032633.GH8723@lh.kyla.fi>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Josef Bacik <jbacik@redhat.com>
+On Wed, Sep 10, 2008 at 06:26:34AM +0300, Sami Liedes wrote:
+> 
+> Yes, I can generate those filesystems. However the problem seems to be
+> elusive in that I haven't yet been able to reproduce it twice with the
+> same filesystem (and even with random filesystems, it every occurs
+> once in a while). I'll do some more testing and try to figure out if
+> it can be reproduced more easily. Still I can give you some
+> filesystems that crashed once, if you wish. They are typically
+> something like 600 KiB compressed, and I guess that could be made less
+> by zeroing all regular files in the pristine fs before doing the
+> fuzzing.
 
-Any block based fs (this patch includes ext3) just has to declare its own
-fiemap() function and then call this generic function with its own
-get_block_t. This works well for block based filesystems that will map
-multiple contiguous blocks at one time, but will work for filesystems that
-only map one block at a time, you will just end up with an "extent" for each
-block. One gotcha is this will not play nicely where there is hole+data
-after the EOF. This function will assume its hit the end of the data as soon
-as it hits a hole after the EOF, so if there is any data past that it will
-not pick that up. AFAIK no block based fs does this anyway, but its in the
-comments of the function anyway just in case.
+One easy way of doing this is the following:
 
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Signed-off-by: Mark Fasheh <mfasheh@suse.com>
----
- fs/ext2/ext2.h          |    2 +
- fs/ext2/file.c          |    1 +
- fs/ext2/inode.c         |    8 +++
- fs/ext3/file.c          |    1 +
- fs/ext3/inode.c         |    8 +++
- fs/ioctl.c              |  119 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/ext3_fs.h |    2 +
- include/linux/fs.h      |    3 +
- 8 files changed, 144 insertions(+), 0 deletions(-)
+    e2image -r /dev/hdXX /var/tmp/hdXX.e2i
+    dd if=/var/tmp/hdXX.e2i of=/dev/hdXX
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 47d88da..bae998c 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -133,6 +133,8 @@ extern void ext2_truncate (struct inode *);
- extern int ext2_setattr (struct dentry *, struct iattr *);
- extern void ext2_set_inode_flags(struct inode *inode);
- extern void ext2_get_inode_flags(struct ext2_inode_info *);
-+extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		       u64 start, u64 len);
- int __ext2_write_begin(struct file *file, struct address_space *mapping,
- 		loff_t pos, unsigned len, unsigned flags,
- 		struct page **pagep, void **fsdata);
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 5f2fa9c..45ed071 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -86,4 +86,5 @@ const struct inode_operations ext2_file_inode_operations = {
- #endif
- 	.setattr	= ext2_setattr,
- 	.permission	= ext2_permission,
-+	.fiemap		= ext2_fiemap,
- };
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 991d6df..7658b33 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -31,6 +31,7 @@
- #include <linux/writeback.h>
- #include <linux/buffer_head.h>
- #include <linux/mpage.h>
-+#include <linux/fiemap.h>
- #include "ext2.h"
- #include "acl.h"
- #include "xip.h"
-@@ -704,6 +705,13 @@ int ext2_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_
- 
- }
- 
-+int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		u64 start, u64 len)
-+{
-+	return generic_block_fiemap(inode, fieinfo, start, len,
-+				    ext2_get_block);
-+}
-+
- static int ext2_writepage(struct page *page, struct writeback_control *wbc)
- {
- 	return block_write_full_page(page, ext2_get_block, wbc);
-diff --git a/fs/ext3/file.c b/fs/ext3/file.c
-index acc4913..3be1e06 100644
---- a/fs/ext3/file.c
-+++ b/fs/ext3/file.c
-@@ -134,5 +134,6 @@ const struct inode_operations ext3_file_inode_operations = {
- 	.removexattr	= generic_removexattr,
- #endif
- 	.permission	= ext3_permission,
-+	.fiemap		= ext3_fiemap,
- };
- 
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 507d868..ebfec4d 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -36,6 +36,7 @@
- #include <linux/mpage.h>
- #include <linux/uio.h>
- #include <linux/bio.h>
-+#include <linux/fiemap.h>
- #include "xattr.h"
- #include "acl.h"
- 
-@@ -981,6 +982,13 @@ out:
- 	return ret;
- }
- 
-+int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		u64 start, u64 len)
-+{
-+	return generic_block_fiemap(inode, fieinfo, start, len,
-+				    ext3_get_block);
-+}
-+
- /*
-  * `handle' can be NULL if create is zero
-  */
-diff --git a/fs/ioctl.c b/fs/ioctl.c
-index 8300862..bedd447 100644
---- a/fs/ioctl.c
-+++ b/fs/ioctl.c
-@@ -13,6 +13,8 @@
- #include <linux/security.h>
- #include <linux/module.h>
- #include <linux/uaccess.h>
-+#include <linux/writeback.h>
-+#include <linux/buffer_head.h>
- 
- #include <asm/ioctls.h>
- 
-@@ -227,6 +229,123 @@ static int ioctl_fiemap(struct file *filp, unsigned long arg)
- 	return error;
- }
- 
-+#define blk_to_logical(inode, blk) (blk << (inode)->i_blkbits)
-+#define logical_to_blk(inode, offset) (offset >> (inode)->i_blkbits);
-+
-+/*
-+ * @inode - the inode to map
-+ * @arg - the pointer to userspace where we copy everything to
-+ * @get_block - the fs's get_block function
-+ *
-+ * This does FIEMAP for block based inodes.  Basically it will just loop
-+ * through get_block until we hit the number of extents we want to map, or we
-+ * go past the end of the file and hit a hole.
-+ *
-+ * If it is possible to have data blocks beyond a hole past @inode->i_size, then
-+ * please do not use this function, it will stop at the first unmapped block
-+ * beyond i_size
-+ */
-+int generic_block_fiemap(struct inode *inode,
-+			 struct fiemap_extent_info *fieinfo, u64 start,
-+			 u64 len, get_block_t *get_block)
-+{
-+	struct buffer_head tmp;
-+	unsigned int start_blk;
-+	long long length = 0, map_len = 0;
-+	u64 logical = 0, phys = 0, size = 0;
-+	u32 flags = FIEMAP_EXTENT_MERGED;
-+	int ret = 0;
-+	dev_t dev = inode->i_sb->s_dev;
-+
-+	if ((ret = fiemap_check_flags(fieinfo, FIEMAP_FLAG_SYNC)))
-+		return ret;
-+
-+	start_blk = logical_to_blk(inode, start);
-+
-+	/* guard against change */
-+	mutex_lock(&inode->i_mutex);
-+
-+	length = (long long)min_t(u64, len, i_size_read(inode));
-+	map_len = length;
-+
-+	do {
-+		/*
-+		 * we set b_size to the total size we want so it will map as
-+		 * many contiguous blocks as possible at once
-+		 */
-+		memset(&tmp, 0, sizeof(struct buffer_head));
-+		tmp.b_size = map_len;
-+
-+		ret = get_block(inode, start_blk, &tmp, 0);
-+		if (ret)
-+			break;
-+
-+		/* HOLE */
-+		if (!buffer_mapped(&tmp)) {
-+			/*
-+			 * first hole after going past the EOF, this is our
-+			 * last extent
-+			 */
-+			if (length <= 0) {
-+				flags = FIEMAP_EXTENT_MERGED|FIEMAP_EXTENT_LAST;
-+				ret = fiemap_fill_next_extent(fieinfo, logical,
-+							      phys, size,
-+							      flags, dev);
-+				break;
-+			}
-+
-+			length -= blk_to_logical(inode, 1);
-+
-+			/* if we have holes up to/past EOF then we're done */
-+			if (length <= 0)
-+				break;
-+
-+			start_blk++;
-+		} else {
-+			if (length <= 0 && size) {
-+				ret = fiemap_fill_next_extent(fieinfo, logical,
-+							      phys, size,
-+							      flags, dev);
-+				if (ret)
-+					break;
-+			}
-+
-+			logical = blk_to_logical(inode, start_blk);
-+			phys = blk_to_logical(inode, tmp.b_blocknr);
-+			size = tmp.b_size;
-+			flags = FIEMAP_EXTENT_MERGED;
-+
-+			length -= tmp.b_size;
-+			start_blk += logical_to_blk(inode, size);
-+
-+			/*
-+			 * if we are past the EOF we need to loop again to see
-+			 * if there is a hole so we can mark this extent as the
-+			 * last one, and if not keep mapping things until we
-+			 * find a hole, or we run out of slots in the extent
-+			 * array
-+			 */
-+			if (length <= 0)
-+				continue;
-+
-+			ret = fiemap_fill_next_extent(fieinfo, logical, phys,
-+						      size, flags, dev);
-+			if (ret)
-+				break;
-+		}
-+		cond_resched();
-+	} while (1);
-+
-+	mutex_unlock(&inode->i_mutex);
-+
-+	/* if ret is 1 then we just hit the end of the extent array */
-+	if (ret == 1)
-+		ret = 0;
-+
-+	return ret;
-+}
-+EXPORT_SYMBOL(generic_block_fiemap);
-+
- static int file_ioctl(struct file *filp, unsigned int cmd,
- 		unsigned long arg)
- {
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 80171ee..8120fa1 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -837,6 +837,8 @@ extern void ext3_truncate (struct inode *);
- extern void ext3_set_inode_flags(struct inode *);
- extern void ext3_get_inode_flags(struct ext3_inode_info *);
- extern void ext3_set_aops(struct inode *inode);
-+extern int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		       u64 start, u64 len);
- 
- /* ioctl.c */
- extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 5964b67..d2dc493 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1998,6 +1998,9 @@ extern int vfs_fstat(unsigned int, struct kstat *);
- 
- extern int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
- 		    unsigned long arg);
-+extern int generic_block_fiemap(struct inode *inode,
-+				struct fiemap_extent_info *fieinfo, u64 start,
-+				u64 len, get_block_t *get_block);
- 
- extern void get_filesystem(struct file_system_type *fs);
- extern void put_filesystem(struct file_system_type *fs);
--- 
-1.5.4.5
+Another thing you can do is change your script to add the following
+line before the filesystem is mounted:
 
+     e2image -r /dev/hdXX - | bzip2 > /var/tmp/hdXX.e2i
+
+and then if the filesystem fails (i.e., the system oops),
+/var/tmp/hdXX.e2i.bz2 will have all of the filesystem metadata
+(including directories), such that if you decompress and write out the
+filesystem (or what I do when given one of these to examine):
+
+   bunzip2 < hdXX.e2i.bz2 | make-sparse > hdXX.e2i
+
+Said sparse file can now be checked via e2fsck, or mounted using a
+loopback mount, etc.
+
+Even if it's not reliably reproducable, if I can get a series of
+filesystems which show the problem, using "e2fsck -nf" we can see a
+pattern of how the filesystems are corrupted, and that can help narrow
+down what might be going on that causes the kernel oops.
+
+Thanks, regards,
+
+     	  	   	    	 	    	   - Ted
+
+/*
+ * make-sparse.c --- make a sparse file from stdin
+ * 
+ * Copyright 2004 by Theodore Ts'o.
+ *
+ * %Begin-Header%
+ * This file may be redistributed under the terms of the GNU Public
+ * License.
+ * %End-Header%
+ */
+
+#define _LARGEFILE_SOURCE
+#define _LARGEFILE64_SOURCE
+
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+
+int full_read(int fd, char *buf, size_t count)
+{
+	int got, total = 0;
+	int pass = 0;
+
+	while (count > 0) {
+		got = read(fd, buf, count);
+		if (got == -1) {
+			if ((errno == EINTR) || (errno == EAGAIN)) 
+				continue;
+			return total ? total : -1;
+		}
+		if (got == 0) {
+			if (pass++ >= 3)
+				return total;
+			continue;
+		}
+		pass = 0;
+		buf += got;
+		total += got;
+		count -= got;
+	}
+	return total;
+}
+
+int main(int argc, char **argv)
+{
+	int fd, got, i;
+	char buf[1024];
+
+	if (argc != 2) {
+		fprintf(stderr, "Usage: make-sparse out-file\n");
+		exit(1);
+	}
+	fd = open(argv[1], O_WRONLY|O_CREAT|O_TRUNC|O_LARGEFILE, 0777);
+	if (fd < 0) {
+		perror(argv[1]);
+		exit(1);
+	}
+	while (1) {
+		got = full_read(0, buf, sizeof(buf));
+		if (got == 0)
+			break;
+		if (got == sizeof(buf)) {
+			for (i=0; i < sizeof(buf); i++) 
+				if (buf[i])
+					break;
+			if (i == sizeof(buf)) {
+				lseek(fd, sizeof(buf), SEEK_CUR);
+				continue;
+			}
+		}
+		write(fd, buf, got);
+	}
+	return 0;
+}
+		
