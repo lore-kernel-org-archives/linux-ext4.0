@@ -1,48 +1,24 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH 0/3] Fiemap, an extent mapping ioctl
-Date: Wed, 10 Sep 2008 11:46:12 -0700
-Message-ID: <20080910114612.314978a8.akpm@linux-foundation.org>
-References: <20080825202250.GY3392@webber.adilger.int>
-	<20080910124005.GA4563@wotan.suse.de>
-	<20080910124934.GB4563@wotan.suse.de>
+From: "Rohit Sharma" <imreckless@gmail.com>
+Subject: Request queues and bio structures
+Date: Thu, 11 Sep 2008 00:19:16 +0530
+Message-ID: <2d08ef090809101149o3c8365b5x74455bb56a9e89b8@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>,
-	Eric Sandeen <esandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Mark Fasheh <mfasheh@suse.com>
+To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:55200 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751377AbYIJSqb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Sep 2008 14:46:31 -0400
-In-Reply-To: <20080910124934.GB4563@wotan.suse.de>
+Received: from wx-out-0506.google.com ([66.249.82.230]:31036 "EHLO
+	wx-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751126AbYIJStS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Sep 2008 14:49:18 -0400
+Received: by wx-out-0506.google.com with SMTP id h27so938773wxd.4
+        for <linux-ext4@vger.kernel.org>; Wed, 10 Sep 2008 11:49:16 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 10 Sep 2008 05:49:34 -0700 Mark Fasheh <mfasheh@suse.com> wrote:
-
-> Hello,
-> 
-> 	The following patches are the latest attempt at implementing a
-> fiemap ioctl, which can be used by userspace software to get extent
-> information for an inode in an efficient manner.
-
-As these are applicable to all filesystems, Cc:ing only linux-ext4 is
-not sufficient.  All filesystem developers (at least) need an
-opportunity to review and understand these changes.
-
-> 
-> ...
->
-> The fiemap ioctl is an efficient method for userspace to get file
-> extent mappings. Instead of block-by-block mapping (such as bmap), fiemap
-> returns a list of extents.
-> 
-
-The above is, afacit, the only offered rationale for the addition of
-these new feature.  I don't recall seeing anyone complain about bmap()
-inefficiency.  In fact I rarely hear of anyone using bmap() at all.
-
-This rationale needs expanding, please.  A lot.
+I was going through Block device Drivers.
+few things are not clear.
+How requests for reading blocks from device is processed?
+what is the role of mapping layer? what are the entries in device mapper.?
+How request queues and bio structures work?
