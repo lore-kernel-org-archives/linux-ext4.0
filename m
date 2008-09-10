@@ -1,79 +1,90 @@
-From: "Kirill A. Shutemov" <kirill@shutemov.name>
-Subject: Re: [PATCH] include <linux/fs.h> into linux/ext2_fs.h
-Date: Wed, 10 Sep 2008 16:47:01 +0300
-Message-ID: <20080910134700.GI3757@localhost.localdomain>
-References: <1221045726-5674-1-git-send-email-kirill@shutemov.name> <20080910112709.GA11742@infradead.org> <20080910114011.GB3757@localhost.localdomain> <20080910114042.GA15996@infradead.org> <20080910114923.GC3757@localhost.localdomain> <48C7CDF4.2020206@redhat.com>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 0/3] Fiemap, an extent mapping ioctl
+Date: Wed, 10 Sep 2008 09:47:27 -0400
+Message-ID: <20080910134727.GA17498@infradead.org>
+References: <20080825202250.GY3392@webber.adilger.int> <20080910124005.GA4563@wotan.suse.de> <20080910124934.GB4563@wotan.suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="0XMZdl/q8hSSmFeD"
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-kernel@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, David Howells <dhowells@redhat.com>,
-	Jens Axboe <axboe@kernel.dk>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752038AbYIJNqo@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <48C7CDF4.2020206@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
-
---0XMZdl/q8hSSmFeD
 Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@sun.com>,
+	Eric Sandeen <esandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Mark Fasheh <mfasheh@suse.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:58128 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751077AbYIJNrc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Sep 2008 09:47:32 -0400
 Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+In-Reply-To: <20080910124934.GB4563@wotan.suse.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 10, 2008 at 08:39:00AM -0500, Eric Sandeen wrote:
-> Kirill A. Shutemov wrote:
-> > On Wed, Sep 10, 2008 at 07:40:42AM -0400, Christoph Hellwig wrote:
-> >> On Wed, Sep 10, 2008 at 02:40:12PM +0300, Kirill A. Shutemov wrote:
-> >>> On Wed, Sep 10, 2008 at 07:27:09AM -0400, Christoph Hellwig wrote:
-> >>>> On Wed, Sep 10, 2008 at 02:22:03PM +0300, Kirill A. Shutemov wrote:
-> >>>>> linux/fs.h defines FS_IOC* needed by linux/ext2_fs.h
-> >>>> And who cares? =20
-> >=20
-> > Do you think it isn't error?
-> >=20
-> >>> It breaks building pam_mktemp at least.
-> >> pam_mktemp should not use <linux/ext2_fs.h>, but rather
-> >> <ext2fs/ext2_fs.h>.
->=20
-> That's right.
->=20
-> > Why linux/ext2_fs.h does export to userspace?
-> >=20
->=20
-> it does?
->=20
-> $ grep header-y include/linux/Kbuild | wc -l
-> 163
-> $ grep header-y include/linux/Kbuild | grep ext2
-> $
->=20
-> I think it does not.
+On Wed, Sep 10, 2008 at 05:49:34AM -0700, Mark Fasheh wrote:
+> * FIEMAP_FLAG_XATTR
+> If this flag is set, the extents returned will describe the inodes
+> extended attribute lookup tree, instead of it's data tree.
 
-It does:
+So does this actually make sense for any filesystem but XFS?  Still
+seems like a not too useful option for a highlevel generic interface.
 
-$ grep unifdef-y include/linux/Kbuild | grep ext2
-unifdef-y +=3D ext2_fs.h
+> 	__u32	fe_device;   /* device number for extent */
 
---=20
-Regards,  Kirill A. Shutemov
- + Belarus, Minsk
- + ALT Linux Team, http://www.altlinux.com/
+As sayd before please kill thise one.  It doesn't make any sense at all
+for any merged or near mainline FS.  It'd be an utterly stupid
+lustre-specific hack that still doesn't make much sense.
 
---0XMZdl/q8hSSmFeD
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
+> * FIEMAP_EXTENT_NO_BYPASS
+> Direct access to the data in this extent is illegal or will have
+> undefined results.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
+Huh?  What is direct access?  Direct access as in bypassing the
+filesystem and writing to the blockdev directly always has undefined
+results.
 
-iEYEARECAAYFAkjHz9QACgkQbWYnhzC5v6p/VwCePsvaciKrrHOdf5+ib74tgSKJ
-ptIAoIK7PquXkumnsh48ahHOHCSKZvpn
-=+dLe
------END PGP SIGNATURE-----
+> * FIEMAP_EXTENT_SECONDARY
+> The data for this extent is in secondary storage (e.g. HSM).  If the
+> data is not also in the filesystem, then FIEMAP_EXTENT_NO_BYPASS
+> should also be set.
 
---0XMZdl/q8hSSmFeD--
+No HSM in mainline, so please drop it.  We can add it once we get HSM
+support.
+
+> * FIEMAP_EXTENT_NET
+>   - This will also set FIEMAP_EXTENT_NO_BYPASS
+> The data for this extent is not stored in a locally-accessible device.
+
+Doesn't make any sense currently, please drop.
+
+> * FIEMAP_EXTENT_DATA_COMPRESSED
+>   - This will also set FIEMAP_EXTENT_NO_BYPASS
+> The data in this extent has been compressed by the file system.
+
+Add once we have users for it.
+
+> * FIEMAP_EXTENT_DATA_ENCRYPTED
+>   - This will also set FIEMAP_EXTENT_NO_BYPASS
+> The data in this extent has been encrypted by the file system.
+> 
+> * FIEMAP_EXTENT_NOT_ALIGNED
+> Extent offsets and length are not guaranteed to be block aligned.
+> 
+> * FIEMAP_EXTENT_DATA_INLINE
+>   This will also set FIEMAP_EXTENT_NOT_ALIGNED
+> Data is located within a meta data block.
+> 
+> * FIEMAP_EXTENT_DATA_TAIL
+>   This will also set FIEMAP_EXTENT_NOT_ALIGNED
+> Data is packed into a block with data from other files.
+> 
+> * FIEMAP_EXTENT_UNWRITTEN
+> Unwritten extent - the extent is allocated but it's data has not been
+> initialized.  This indicates the extent's data will be all zero if read
+> through the filesystem but the contents are undefined if read directly from
+> the device.
+> 
+> * FIEMAP_EXTENT_MERGED
+> This will be set when a file does not support extents, i.e., it uses a block
+> based addressing scheme.  Since returning an extent for each block back to
+> userspace would be highly inefficient, the kernel will try to merge most
+> adjacent blocks into 'extents'.
+
