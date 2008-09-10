@@ -1,522 +1,299 @@
 From: Mark Fasheh <mfasheh@suse.com>
-Subject: [PATCH 3/3] ocfs2: fiemap support
-Date: Wed, 10 Sep 2008 05:50:13 -0700
-Message-ID: <20080910125013.GE4563@wotan.suse.de>
+Subject: [PATCH 2/3] generic block based fiemap implementation
+Date: Wed, 10 Sep 2008 05:50:05 -0700
+Message-ID: <20080910125005.GD4563@wotan.suse.de>
 References: <20080825202250.GY3392@webber.adilger.int> <20080910124005.GA4563@wotan.suse.de>
 Reply-To: Mark Fasheh <mfasheh@suse.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ocfs2-devel@oss.oracle.com, linux-ext4@vger.kernel.org
+Cc: Josef Bacik <jbacik@redhat.com>, linux-ext4@vger.kernel.org
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:52560 "EHLO mx2.suse.de"
+Received: from ns2.suse.de ([195.135.220.15]:52541 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751767AbYIJMuQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Sep 2008 08:50:16 -0400
+	id S1752108AbYIJMuH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Sep 2008 08:50:07 -0400
 Content-Disposition: inline
 In-Reply-To: <20080910124005.GA4563@wotan.suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Plug ocfs2 into ->fiemap. Some portions of ocfs2_get_clusters() had to be
-refactored so that the extent cache can be skipped in favor of going
-directly to the on-disk records. This makes it easier for us to determine
-which extent is the last one in the btree. Also, I'm not sure we want to be
-caching fiemap lookups anyway as they're not directly related to data
-read/write.
+From: Josef Bacik <jbacik@redhat.com>
 
+Any block based fs (this patch includes ext3) just has to declare its own
+fiemap() function and then call this generic function with its own
+get_block_t. This works well for block based filesystems that will map
+multiple contiguous blocks at one time, but will work for filesystems that
+only map one block at a time, you will just end up with an "extent" for each
+block. One gotcha is this will not play nicely where there is hole+data
+after the EOF. This function will assume its hit the end of the data as soon
+as it hits a hole after the EOF, so if there is any data past that it will
+not pick that up. AFAIK no block based fs does this anyway, but its in the
+comments of the function anyway just in case.
+
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
 Signed-off-by: Mark Fasheh <mfasheh@suse.com>
 ---
- fs/ocfs2/alloc.c      |    9 --
- fs/ocfs2/alloc.h      |    9 ++
- fs/ocfs2/extent_map.c |  347 +++++++++++++++++++++++++++++++++++++++++--------
- fs/ocfs2/extent_map.h |    3 +
- fs/ocfs2/file.c       |    1 +
- 5 files changed, 307 insertions(+), 62 deletions(-)
+ fs/ext2/ext2.h          |    2 +
+ fs/ext2/file.c          |    1 +
+ fs/ext2/inode.c         |    8 +++
+ fs/ext3/file.c          |    1 +
+ fs/ext3/inode.c         |    8 +++
+ fs/ioctl.c              |  119 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/ext3_fs.h |    2 +
+ include/linux/fs.h      |    3 +
+ 8 files changed, 144 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ocfs2/alloc.c b/fs/ocfs2/alloc.c
-index 10bfb46..29ff57e 100644
---- a/fs/ocfs2/alloc.c
-+++ b/fs/ocfs2/alloc.c
-@@ -990,15 +990,6 @@ out:
- }
- 
- /*
-- * This is only valid for leaf nodes, which are the only ones that can
-- * have empty extents anyway.
-- */
--static inline int ocfs2_is_empty_extent(struct ocfs2_extent_rec *rec)
--{
--	return !rec->e_leaf_clusters;
--}
--
--/*
-  * This function will discard the rightmost extent record.
-  */
- static void ocfs2_shift_records_right(struct ocfs2_extent_list *el)
-diff --git a/fs/ocfs2/alloc.h b/fs/ocfs2/alloc.h
-index 42ff94b..60cd3d5 100644
---- a/fs/ocfs2/alloc.h
-+++ b/fs/ocfs2/alloc.h
-@@ -146,4 +146,13 @@ static inline unsigned int ocfs2_rec_clusters(struct ocfs2_extent_list *el,
- 		return le16_to_cpu(rec->e_leaf_clusters);
- }
- 
-+/*
-+ * This is only valid for leaf nodes, which are the only ones that can
-+ * have empty extents anyway.
-+ */
-+static inline int ocfs2_is_empty_extent(struct ocfs2_extent_rec *rec)
-+{
-+	return !rec->e_leaf_clusters;
-+}
-+
- #endif /* OCFS2_ALLOC_H */
-diff --git a/fs/ocfs2/extent_map.c b/fs/ocfs2/extent_map.c
-index c58668a..a4d5fc8 100644
---- a/fs/ocfs2/extent_map.c
-+++ b/fs/ocfs2/extent_map.c
-@@ -25,6 +25,7 @@
- #include <linux/fs.h>
- #include <linux/init.h>
- #include <linux/types.h>
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 47d88da..bae998c 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -133,6 +133,8 @@ extern void ext2_truncate (struct inode *);
+ extern int ext2_setattr (struct dentry *, struct iattr *);
+ extern void ext2_set_inode_flags(struct inode *inode);
+ extern void ext2_get_inode_flags(struct ext2_inode_info *);
++extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++		       u64 start, u64 len);
+ int __ext2_write_begin(struct file *file, struct address_space *mapping,
+ 		loff_t pos, unsigned len, unsigned flags,
+ 		struct page **pagep, void **fsdata);
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 5f2fa9c..45ed071 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -86,4 +86,5 @@ const struct inode_operations ext2_file_inode_operations = {
+ #endif
+ 	.setattr	= ext2_setattr,
+ 	.permission	= ext2_permission,
++	.fiemap		= ext2_fiemap,
+ };
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 991d6df..7658b33 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -31,6 +31,7 @@
+ #include <linux/writeback.h>
+ #include <linux/buffer_head.h>
+ #include <linux/mpage.h>
 +#include <linux/fiemap.h>
+ #include "ext2.h"
+ #include "acl.h"
+ #include "xip.h"
+@@ -704,6 +705,13 @@ int ext2_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_
  
- #define MLOG_MASK_PREFIX ML_EXTENT_MAP
- #include <cluster/masklog.h>
-@@ -32,6 +33,7 @@
- #include "ocfs2.h"
- 
- #include "alloc.h"
-+#include "dlmglue.h"
- #include "extent_map.h"
- #include "inode.h"
- #include "super.h"
-@@ -282,6 +284,51 @@ out:
- 		kfree(new_emi);
  }
  
-+static int ocfs2_last_eb_is_empty(struct inode *inode,
-+				  struct ocfs2_dinode *di)
++int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++		u64 start, u64 len)
 +{
-+	int ret, next_free;
-+	u64 last_eb_blk = le64_to_cpu(di->i_last_eb_blk);
-+	struct buffer_head *eb_bh = NULL;
-+	struct ocfs2_extent_block *eb;
-+	struct ocfs2_extent_list *el;
++	return generic_block_fiemap(inode, fieinfo, start, len,
++				    ext2_get_block);
++}
 +
-+	ret = ocfs2_read_block(OCFS2_SB(inode->i_sb), last_eb_blk,
-+			       &eb_bh, OCFS2_BH_CACHED, inode);
-+	if (ret) {
-+		mlog_errno(ret);
-+		goto out;
-+	}
-+
-+	eb = (struct ocfs2_extent_block *) eb_bh->b_data;
-+	el = &eb->h_list;
-+
-+	if (!OCFS2_IS_VALID_EXTENT_BLOCK(eb)) {
-+		ret = -EROFS;
-+		OCFS2_RO_ON_INVALID_EXTENT_BLOCK(inode->i_sb, eb);
-+		goto out;
-+	}
-+
-+	if (el->l_tree_depth) {
-+		ocfs2_error(inode->i_sb,
-+			    "Inode %lu has non zero tree depth in "
-+			    "leaf block %llu\n", inode->i_ino,
-+			    (unsigned long long)eb_bh->b_blocknr);
-+		ret = -EROFS;
-+		goto out;
-+	}
-+
-+	next_free = le16_to_cpu(el->l_next_free_rec);
-+
-+	if (next_free == 0 ||
-+	    (next_free == 1 && ocfs2_is_empty_extent(&el->l_recs[0])))
-+		ret = 1;
-+
-+out:
-+	brelse(eb_bh);
-+	return ret;
+ static int ext2_writepage(struct page *page, struct writeback_control *wbc)
+ {
+ 	return block_write_full_page(page, ext2_get_block, wbc);
+diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+index acc4913..3be1e06 100644
+--- a/fs/ext3/file.c
++++ b/fs/ext3/file.c
+@@ -134,5 +134,6 @@ const struct inode_operations ext3_file_inode_operations = {
+ 	.removexattr	= generic_removexattr,
+ #endif
+ 	.permission	= ext3_permission,
++	.fiemap		= ext3_fiemap,
+ };
+ 
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 507d868..ebfec4d 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -36,6 +36,7 @@
+ #include <linux/mpage.h>
+ #include <linux/uio.h>
+ #include <linux/bio.h>
++#include <linux/fiemap.h>
+ #include "xattr.h"
+ #include "acl.h"
+ 
+@@ -981,6 +982,13 @@ out:
+ 	return ret;
+ }
+ 
++int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++		u64 start, u64 len)
++{
++	return generic_block_fiemap(inode, fieinfo, start, len,
++				    ext3_get_block);
 +}
 +
  /*
-  * Return the 1st index within el which contains an extent start
-  * larger than v_cluster.
-@@ -373,42 +420,28 @@ out:
- 	return ret;
+  * `handle' can be NULL if create is zero
+  */
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index 8300862..bedd447 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -13,6 +13,8 @@
+ #include <linux/security.h>
+ #include <linux/module.h>
+ #include <linux/uaccess.h>
++#include <linux/writeback.h>
++#include <linux/buffer_head.h>
+ 
+ #include <asm/ioctls.h>
+ 
+@@ -227,6 +229,123 @@ static int ioctl_fiemap(struct file *filp, unsigned long arg)
+ 	return error;
  }
  
--int ocfs2_get_clusters(struct inode *inode, u32 v_cluster,
--		       u32 *p_cluster, u32 *num_clusters,
--		       unsigned int *extent_flags)
-+static int ocfs2_get_clusters_nocache(struct inode *inode,
-+				      struct buffer_head *di_bh,
-+				      u32 v_cluster, unsigned int *hole_len,
-+				      struct ocfs2_extent_rec *ret_rec,
-+				      unsigned int *is_last)
- {
--	int ret, i;
--	unsigned int flags = 0;
--	struct buffer_head *di_bh = NULL;
--	struct buffer_head *eb_bh = NULL;
-+	int i, ret, tree_height, len;
- 	struct ocfs2_dinode *di;
--	struct ocfs2_extent_block *eb;
-+	struct ocfs2_extent_block *uninitialized_var(eb);
- 	struct ocfs2_extent_list *el;
- 	struct ocfs2_extent_rec *rec;
--	u32 coff;
--
--	if (OCFS2_I(inode)->ip_dyn_features & OCFS2_INLINE_DATA_FL) {
--		ret = -ERANGE;
--		mlog_errno(ret);
--		goto out;
--	}
--
--	ret = ocfs2_extent_map_lookup(inode, v_cluster, p_cluster,
--				      num_clusters, extent_flags);
--	if (ret == 0)
--		goto out;
-+	struct buffer_head *eb_bh = NULL;
- 
--	ret = ocfs2_read_block(OCFS2_SB(inode->i_sb), OCFS2_I(inode)->ip_blkno,
--			       &di_bh, OCFS2_BH_CACHED, inode);
--	if (ret) {
--		mlog_errno(ret);
--		goto out;
--	}
-+	memset(ret_rec, 0, sizeof(*ret_rec));
-+	if (is_last)
-+		*is_last = 0;
- 
- 	di = (struct ocfs2_dinode *) di_bh->b_data;
- 	el = &di->id2.i_list;
-+	tree_height = le16_to_cpu(el->l_tree_depth);
- 
--	if (el->l_tree_depth) {
-+	if (tree_height > 0) {
- 		ret = ocfs2_find_leaf(inode, el, v_cluster, &eb_bh);
- 		if (ret) {
- 			mlog_errno(ret);
-@@ -431,46 +464,143 @@ int ocfs2_get_clusters(struct inode *inode, u32 v_cluster,
- 	i = ocfs2_search_extent_list(el, v_cluster);
- 	if (i == -1) {
- 		/*
--		 * A hole was found. Return some canned values that
--		 * callers can key on. If asked for, num_clusters will
--		 * be populated with the size of the hole.
-+		 * Holes can be larger than the maximum size of an
-+		 * extent, so we return their lengths in a seperate
-+		 * field.
- 		 */
--		*p_cluster = 0;
--		if (num_clusters) {
-+		if (hole_len) {
- 			ret = ocfs2_figure_hole_clusters(inode, el, eb_bh,
--							 v_cluster,
--							 num_clusters);
-+							 v_cluster, &len);
- 			if (ret) {
- 				mlog_errno(ret);
- 				goto out;
- 			}
++#define blk_to_logical(inode, blk) (blk << (inode)->i_blkbits)
++#define logical_to_blk(inode, offset) (offset >> (inode)->i_blkbits);
 +
-+			*hole_len = len;
- 		}
--	} else {
--		rec = &el->l_recs[i];
-+		goto out_hole;
-+	}
- 
--		BUG_ON(v_cluster < le32_to_cpu(rec->e_cpos));
-+	rec = &el->l_recs[i];
- 
--		if (!rec->e_blkno) {
--			ocfs2_error(inode->i_sb, "Inode %lu has bad extent "
--				    "record (%u, %u, 0)", inode->i_ino,
--				    le32_to_cpu(rec->e_cpos),
--				    ocfs2_rec_clusters(el, rec));
--			ret = -EROFS;
--			goto out;
-+	BUG_ON(v_cluster < le32_to_cpu(rec->e_cpos));
-+
-+	if (!rec->e_blkno) {
-+		ocfs2_error(inode->i_sb, "Inode %lu has bad extent "
-+			    "record (%u, %u, 0)", inode->i_ino,
-+			    le32_to_cpu(rec->e_cpos),
-+			    ocfs2_rec_clusters(el, rec));
-+		ret = -EROFS;
-+		goto out;
-+	}
-+
-+	*ret_rec = *rec;
-+
-+	/*
-+	 * Checking for last extent is potentially expensive - we
-+	 * might have to look at the next leaf over to see if it's
-+	 * empty.
-+	 *
-+	 * The first two checks are to see whether the caller even
-+	 * cares for this information, and if the extent is at least
-+	 * the last in it's list.
-+	 *
-+	 * If those hold true, then the extent is last if any of the
-+	 * additional conditions hold true:
-+	 *  - Extent list is in-inode
-+	 *  - Extent list is right-most
-+	 *  - Extent list is 2nd to rightmost, with empty right-most
-+	 */
-+	if (is_last) {
-+		if (i == (le16_to_cpu(el->l_next_free_rec) - 1)) {
-+			if (tree_height == 0)
-+				*is_last = 1;
-+			else if (eb->h_blkno == di->i_last_eb_blk)
-+				*is_last = 1;
-+			else if (eb->h_next_leaf_blk == di->i_last_eb_blk) {
-+				ret = ocfs2_last_eb_is_empty(inode, di);
-+				if (ret < 0) {
-+					mlog_errno(ret);
-+					goto out;
-+				}
-+				if (ret == 1)
-+					*is_last = 1;
-+			}
- 		}
-+	}
-+
-+out_hole:
-+	ret = 0;
-+out:
-+	brelse(eb_bh);
-+	return ret;
-+}
-+
-+static void ocfs2_relative_extent_offsets(struct super_block *sb,
-+					  u32 v_cluster,
-+					  struct ocfs2_extent_rec *rec,
-+					  u32 *p_cluster, u32 *num_clusters)
-+
++/*
++ * @inode - the inode to map
++ * @arg - the pointer to userspace where we copy everything to
++ * @get_block - the fs's get_block function
++ *
++ * This does FIEMAP for block based inodes.  Basically it will just loop
++ * through get_block until we hit the number of extents we want to map, or we
++ * go past the end of the file and hit a hole.
++ *
++ * If it is possible to have data blocks beyond a hole past @inode->i_size, then
++ * please do not use this function, it will stop at the first unmapped block
++ * beyond i_size
++ */
++int generic_block_fiemap(struct inode *inode,
++			 struct fiemap_extent_info *fieinfo, u64 start,
++			 u64 len, get_block_t *get_block)
 +{
-+	u32 coff = v_cluster - le32_to_cpu(rec->e_cpos);
++	struct buffer_head tmp;
++	unsigned int start_blk;
++	long long length = 0, map_len = 0;
++	u64 logical = 0, phys = 0, size = 0;
++	u32 flags = FIEMAP_EXTENT_MERGED;
++	int ret = 0;
++	dev_t dev = inode->i_sb->s_dev;
 +
-+	*p_cluster = ocfs2_blocks_to_clusters(sb, le64_to_cpu(rec->e_blkno));
-+	*p_cluster = *p_cluster + coff;
-+
-+	if (num_clusters)
-+		*num_clusters = le16_to_cpu(rec->e_leaf_clusters) - coff;
-+}
-+
-+int ocfs2_get_clusters(struct inode *inode, u32 v_cluster,
-+		       u32 *p_cluster, u32 *num_clusters,
-+		       unsigned int *extent_flags)
-+{
-+	int ret;
-+	unsigned int uninitialized_var(hole_len), flags = 0;
-+	struct buffer_head *di_bh = NULL;
-+	struct ocfs2_extent_rec rec;
- 
--		coff = v_cluster - le32_to_cpu(rec->e_cpos);
-+	if (OCFS2_I(inode)->ip_dyn_features & OCFS2_INLINE_DATA_FL) {
-+		ret = -ERANGE;
-+		mlog_errno(ret);
-+		goto out;
-+	}
- 
--		*p_cluster = ocfs2_blocks_to_clusters(inode->i_sb,
--						    le64_to_cpu(rec->e_blkno));
--		*p_cluster = *p_cluster + coff;
-+	ret = ocfs2_extent_map_lookup(inode, v_cluster, p_cluster,
-+				      num_clusters, extent_flags);
-+	if (ret == 0)
-+		goto out;
- 
--		if (num_clusters)
--			*num_clusters = ocfs2_rec_clusters(el, rec) - coff;
-+	ret = ocfs2_read_block(OCFS2_SB(inode->i_sb), OCFS2_I(inode)->ip_blkno,
-+			       &di_bh, OCFS2_BH_CACHED, inode);
-+	if (ret) {
-+		mlog_errno(ret);
-+		goto out;
-+	}
- 
--		flags = rec->e_flags;
-+	ret = ocfs2_get_clusters_nocache(inode, di_bh, v_cluster, &hole_len,
-+					 &rec, NULL);
-+	if (ret) {
-+		mlog_errno(ret);
-+		goto out;
-+	}
- 
--		ocfs2_extent_map_insert_rec(inode, rec);
-+	if (rec.e_blkno == 0ULL) {
-+		/*
-+		 * A hole was found. Return some canned values that
-+		 * callers can key on. If asked for, num_clusters will
-+		 * be populated with the size of the hole.
-+		 */
-+		*p_cluster = 0;
-+		if (num_clusters) {
-+			*num_clusters = hole_len;
-+		}
-+	} else {
-+		ocfs2_relative_extent_offsets(inode->i_sb, v_cluster, &rec,
-+					      p_cluster, num_clusters);
-+		flags = rec.e_flags;
-+
-+		ocfs2_extent_map_insert_rec(inode, &rec);
- 	}
- 
- 	if (extent_flags)
-@@ -478,7 +608,6 @@ int ocfs2_get_clusters(struct inode *inode, u32 v_cluster,
- 
- out:
- 	brelse(di_bh);
--	brelse(eb_bh);
- 	return ret;
- }
- 
-@@ -521,3 +650,115 @@ int ocfs2_extent_map_get_blocks(struct inode *inode, u64 v_blkno, u64 *p_blkno,
- out:
- 	return ret;
- }
-+
-+static int ocfs2_fiemap_inline(struct inode *inode, struct buffer_head *di_bh,
-+			       struct fiemap_extent_info *fieinfo,
-+			       u64 map_start)
-+{
-+	int ret;
-+	unsigned int id_count;
-+	struct ocfs2_dinode *di;
-+	u64 phys;
-+	u32 flags = FIEMAP_EXTENT_DATA_INLINE|FIEMAP_EXTENT_LAST;
-+	struct ocfs2_inode_info *oi = OCFS2_I(inode);
-+
-+	di = (struct ocfs2_dinode *)di_bh->b_data;
-+	id_count = le16_to_cpu(di->id2.i_data.id_count);
-+
-+	if (map_start < id_count) {
-+		phys = oi->ip_blkno << inode->i_sb->s_blocksize_bits;
-+		phys += offsetof(struct ocfs2_dinode, id2.i_data.id_data);
-+
-+		ret = fiemap_fill_next_extent(fieinfo, 0, phys, id_count,
-+					      flags, inode->i_sb->s_dev);
-+		if (ret < 0)
-+			return ret;
-+	}
-+
-+	return 0;
-+}
-+
-+#define OCFS2_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC)
-+
-+int ocfs2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		 u64 map_start, u64 map_len)
-+{
-+	int ret, is_last;
-+	u32 mapping_end, cpos;
-+	unsigned int hole_size;
-+	struct ocfs2_super *osb = OCFS2_SB(inode->i_sb);
-+	u64 len_bytes, phys_bytes, virt_bytes;
-+	struct buffer_head *di_bh = NULL;
-+	struct ocfs2_extent_rec rec;
-+
-+	ret = fiemap_check_flags(fieinfo, OCFS2_FIEMAP_FLAGS);
-+	if (ret)
++	if ((ret = fiemap_check_flags(fieinfo, FIEMAP_FLAG_SYNC)))
 +		return ret;
 +
-+	ret = ocfs2_inode_lock(inode, &di_bh, 0);
-+	if (ret) {
-+		mlog_errno(ret);
-+		goto out;
-+	}
++	start_blk = logical_to_blk(inode, start);
 +
-+	down_read(&OCFS2_I(inode)->ip_alloc_sem);
++	/* guard against change */
++	mutex_lock(&inode->i_mutex);
 +
-+	/*
-+	 * Handle inline-data separately.
-+	 */
-+	if (OCFS2_I(inode)->ip_dyn_features & OCFS2_INLINE_DATA_FL) {
-+		ret = ocfs2_fiemap_inline(inode, di_bh, fieinfo, map_start);
-+		goto out_unlock;
-+	}
++	length = (long long)min_t(u64, len, i_size_read(inode));
++	map_len = length;
 +
-+	cpos = map_start >> osb->s_clustersize_bits;
-+	mapping_end = ocfs2_clusters_for_bytes(inode->i_sb,
-+					       map_start + map_len);
-+	mapping_end -= cpos;
-+	is_last = 0;
-+	while (cpos < mapping_end && !is_last) {
-+		u32 fe_flags;
++	do {
++		/*
++		 * we set b_size to the total size we want so it will map as
++		 * many contiguous blocks as possible at once
++		 */
++		memset(&tmp, 0, sizeof(struct buffer_head));
++		tmp.b_size = map_len;
 +
-+		ret = ocfs2_get_clusters_nocache(inode, di_bh, cpos,
-+						 &hole_size, &rec, &is_last);
-+		if (ret) {
-+			mlog_errno(ret);
-+			goto out;
-+		}
-+
-+		if (rec.e_blkno == 0ULL) {
-+			cpos += hole_size;
-+			continue;
-+		}
-+
-+		fe_flags = 0;
-+		if (rec.e_flags & OCFS2_EXT_UNWRITTEN)
-+			fe_flags |= FIEMAP_EXTENT_UNWRITTEN;
-+		if (is_last)
-+			fe_flags |= FIEMAP_EXTENT_LAST;
-+		len_bytes = (u64)le16_to_cpu(rec.e_leaf_clusters) << osb->s_clustersize_bits;
-+		phys_bytes = le64_to_cpu(rec.e_blkno) << osb->sb->s_blocksize_bits;
-+		virt_bytes = (u64)le32_to_cpu(rec.e_cpos) << osb->s_clustersize_bits;
-+
-+		ret = fiemap_fill_next_extent(fieinfo, virt_bytes, phys_bytes,
-+					      len_bytes, fe_flags,
-+					      inode->i_sb->s_dev);
++		ret = get_block(inode, start_blk, &tmp, 0);
 +		if (ret)
 +			break;
 +
-+		cpos = le32_to_cpu(rec.e_cpos)+ le16_to_cpu(rec.e_leaf_clusters);
-+	}
++		/* HOLE */
++		if (!buffer_mapped(&tmp)) {
++			/*
++			 * first hole after going past the EOF, this is our
++			 * last extent
++			 */
++			if (length <= 0) {
++				flags = FIEMAP_EXTENT_MERGED|FIEMAP_EXTENT_LAST;
++				ret = fiemap_fill_next_extent(fieinfo, logical,
++							      phys, size,
++							      flags, dev);
++				break;
++			}
 +
-+	if (ret > 0)
++			length -= blk_to_logical(inode, 1);
++
++			/* if we have holes up to/past EOF then we're done */
++			if (length <= 0)
++				break;
++
++			start_blk++;
++		} else {
++			if (length <= 0 && size) {
++				ret = fiemap_fill_next_extent(fieinfo, logical,
++							      phys, size,
++							      flags, dev);
++				if (ret)
++					break;
++			}
++
++			logical = blk_to_logical(inode, start_blk);
++			phys = blk_to_logical(inode, tmp.b_blocknr);
++			size = tmp.b_size;
++			flags = FIEMAP_EXTENT_MERGED;
++
++			length -= tmp.b_size;
++			start_blk += logical_to_blk(inode, size);
++
++			/*
++			 * if we are past the EOF we need to loop again to see
++			 * if there is a hole so we can mark this extent as the
++			 * last one, and if not keep mapping things until we
++			 * find a hole, or we run out of slots in the extent
++			 * array
++			 */
++			if (length <= 0)
++				continue;
++
++			ret = fiemap_fill_next_extent(fieinfo, logical, phys,
++						      size, flags, dev);
++			if (ret)
++				break;
++		}
++		cond_resched();
++	} while (1);
++
++	mutex_unlock(&inode->i_mutex);
++
++	/* if ret is 1 then we just hit the end of the extent array */
++	if (ret == 1)
 +		ret = 0;
-+
-+out_unlock:
-+	brelse(di_bh);
-+
-+	up_read(&OCFS2_I(inode)->ip_alloc_sem);
-+
-+	ocfs2_inode_unlock(inode, 0);
-+out:
 +
 +	return ret;
 +}
-diff --git a/fs/ocfs2/extent_map.h b/fs/ocfs2/extent_map.h
-index de91e3e..1b97490 100644
---- a/fs/ocfs2/extent_map.h
-+++ b/fs/ocfs2/extent_map.h
-@@ -50,4 +50,7 @@ int ocfs2_get_clusters(struct inode *inode, u32 v_cluster, u32 *p_cluster,
- int ocfs2_extent_map_get_blocks(struct inode *inode, u64 v_blkno, u64 *p_blkno,
- 				u64 *ret_count, unsigned int *extent_flags);
- 
-+int ocfs2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		 u64 map_start, u64 map_len);
++EXPORT_SYMBOL(generic_block_fiemap);
 +
- #endif  /* _EXTENT_MAP_H */
-diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-index ec2ed15..ed38796 100644
---- a/fs/ocfs2/file.c
-+++ b/fs/ocfs2/file.c
-@@ -2228,6 +2228,7 @@ const struct inode_operations ocfs2_file_iops = {
- 	.getattr	= ocfs2_getattr,
- 	.permission	= ocfs2_permission,
- 	.fallocate	= ocfs2_fallocate,
-+	.fiemap		= ocfs2_fiemap,
- };
+ static int file_ioctl(struct file *filp, unsigned int cmd,
+ 		unsigned long arg)
+ {
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 80171ee..8120fa1 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -837,6 +837,8 @@ extern void ext3_truncate (struct inode *);
+ extern void ext3_set_inode_flags(struct inode *);
+ extern void ext3_get_inode_flags(struct ext3_inode_info *);
+ extern void ext3_set_aops(struct inode *inode);
++extern int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++		       u64 start, u64 len);
  
- const struct inode_operations ocfs2_special_file_iops = {
+ /* ioctl.c */
+ extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 5964b67..d2dc493 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1998,6 +1998,9 @@ extern int vfs_fstat(unsigned int, struct kstat *);
+ 
+ extern int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+ 		    unsigned long arg);
++extern int generic_block_fiemap(struct inode *inode,
++				struct fiemap_extent_info *fieinfo, u64 start,
++				u64 len, get_block_t *get_block);
+ 
+ extern void get_filesystem(struct file_system_type *fs);
+ extern void put_filesystem(struct file_system_type *fs);
 -- 
 1.5.4.5
 
