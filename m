@@ -1,64 +1,96 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 1/4] jbd: abort when failed to log metadata buffers
-Date: Thu, 11 Sep 2008 13:32:41 -0500
-Message-ID: <48C96449.4080704@redhat.com>
-References: <488876D3.80004@hitachi.com> <48887776.4080504@hitachi.com> <48C95867.5080707@redhat.com>
+Subject: Re: [PATCH -mm] jbd: test BH_Write_EIO to detect errors on metadata
+    buffers
+Date: Thu, 11 Sep 2008 13:56:15 -0500
+Message-ID: <48C969CF.2030208@redhat.com>
+References: <48C63701.6090700@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 Cc: akpm@linux-foundation.org, sct@redhat.com,
 	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
-	adilger@clusterfs.com, snitzer@gmail.com, tglx@linutronix.de,
-	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
+	adilger@sun.com, yumiko.sugita.yf@hitachi.com,
+	satoshi.oshima.fk@hitachi.com, nickpiggin@yahoo.com.au
 To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755929AbYIKSmK@vger.kernel.org>
-In-Reply-To: <48C95867.5080707@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:59899 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753399AbYIKTLh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Sep 2008 15:11:37 -0400
+In-Reply-To: <48C63701.6090700@hitachi.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> Hidehiro Kawai wrote:
->> If we failed to write metadata buffers to the journal space and
->> succeeded to write the commit record, stale data can be written
->> back to the filesystem as metadata in the recovery phase.
->>
->> To avoid this, when we failed to write out metadata buffers,
->> abort the journal before writing the commit record.
->>
->> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
->> Acked-by: Jan Kara <jack@suse.cz>
->> ---
->>  fs/jbd/commit.c |    3 +++
->>  1 file changed, 3 insertions(+)
->>
->> Index: linux-2.6.26-rc8-mm1/fs/jbd/commit.c
->> ===================================================================
->> --- linux-2.6.26-rc8-mm1.orig/fs/jbd/commit.c
->> +++ linux-2.6.26-rc8-mm1/fs/jbd/commit.c
->> @@ -762,6 +762,9 @@ wait_for_iobuf:
->>  		/* AKPM: bforget here */
->>  	}
->>  
->> +	if (err)
->> +		journal_abort(journal, err);
->> +
->>  	jbd_debug(3, "JBD: commit phase 6\n");
->>  
->>  	if (journal_write_commit_record(journal, commit_transaction))
+Hidehiro Kawai wrote:
+> __try_to_free_cp_buf(), __process_buffer(), and __wait_cp_io()
+> test BH_Uptodate flag to detect write I/O errors on metadata
+> buffers.  But by commit 95450f5a7e53d5752ce1a0d0b8282e10fe745ae0
+> "ext3: don't read inode block if the buffer has a write error"(*),
+> BH_Uptodate flag can be set to inode buffers with BH_Write_EIO
+> in order to avoid reading old inode data.  So now, we have to
+> test BH_Write_EIO flag of checkpointing inode buffers instead
+> of BH_Uptodate.  This patch does it.
 > 
-> A little late for me to chime in, but why is this a journal_abort() when
-> journal aborts before and after this call __journal_abort_hard()?
+> (*) http://lkml.org/lkml/2008/6/23/126
 > 
-> I'm just not sure what's different about this one condition that we wish
-> to update the error and the superblock here?
+> This patch depends on the following patch set in -mm:
+> 
+> #1 jbd: abort when failed to log metadata buffers
+>    http://lkml.org/lkml/2008/7/24/160
+> #2 jbd: fix error handling for checkpoint io
+>    http://lkml.org/lkml/2008/7/24/163
+> #3 ext3: add checks for errors from jbd
+>    http://lkml.org/lkml/2008/7/29/539
+> #4 jbd: don't dirty original metadata buffer on abort
+>    http://lkml.org/lkml/2008/7/24/168
+> 
+> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+> ---
+Thanks, you can add
 
+Acked-by: Eric Sandeen <sandeen@redhat.com>
 
-I take that back, was looking at an old tree, and Josef pointed out
-commit 7a266e75cf5a1efd20d084408a1b7f1a185496dd to me that changes this,
-and now it makes much more sense.  :)
+too.
 
-http://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commitdiff;h=7a266e75cf5a1efd20d084408a1b7f1a185496dd
+>  fs/jbd/checkpoint.c |    6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
+> 
+> Index: linux-2.6.27-rc5-mm1/fs/jbd/checkpoint.c
+> ===================================================================
+> --- linux-2.6.27-rc5-mm1.orig/fs/jbd/checkpoint.c
+> +++ linux-2.6.27-rc5-mm1/fs/jbd/checkpoint.c
+> @@ -94,7 +94,7 @@ static int __try_to_free_cp_buf(struct j
+>  	struct buffer_head *bh = jh2bh(jh);
+>  
+>  	if (jh->b_jlist == BJ_None && !buffer_locked(bh) &&
+> -	    !buffer_dirty(bh) && buffer_uptodate(bh)) {
+> +	    !buffer_dirty(bh) && !buffer_write_io_error(bh)) {
+>  		JBUFFER_TRACE(jh, "remove from checkpoint list");
+>  		ret = __journal_remove_checkpoint(jh) + 1;
+>  		jbd_unlock_bh_state(bh);
+> @@ -214,7 +214,7 @@ restart:
+>  			spin_lock(&journal->j_list_lock);
+>  			goto restart;
+>  		}
+> -		if (unlikely(!buffer_uptodate(bh)))
+> +		if (unlikely(buffer_write_io_error(bh)))
+>  			ret = -EIO;
+>  
+>  		/*
+> @@ -283,7 +283,7 @@ static int __process_buffer(journal_t *j
+>  		ret = 1;
+>  	} else if (!buffer_dirty(bh)) {
+>  		ret = 1;
+> -		if (unlikely(!buffer_uptodate(bh)))
+> +		if (unlikely(buffer_write_io_error(bh)))
+>  			ret = -EIO;
+>  		J_ASSERT_JH(jh, !buffer_jbddirty(bh));
+>  		BUFFER_TRACE(bh, "remove from checkpoint");
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Thanks,
--Eric
