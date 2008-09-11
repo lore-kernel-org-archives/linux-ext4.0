@@ -1,9 +1,9 @@
 From: "Takashi Sato" <t-sato@yk.jp.nec.com>
 Subject: Re: [PATCH 1/3] Implement generic freeze feature
-Date: Thu, 11 Sep 2008 19:58:08 +0900
-Message-ID: <85FB1C9FF587411A99FF66E76008D2A6@nsl.ad.nec.co.jp>
-References: <20080818212819t-sato@mail.jp.nec.com>
-	<48C012F3.3000408@redhat.com>
+Date: Thu, 11 Sep 2008 20:11:06 +0900
+Message-ID: <059C75EDB49641A49EF986D81EED4200@nsl.ad.nec.co.jp>
+References: <20080908205245t-sato@mail.jp.nec.com>
+	<20080908171020.GA22521@infradead.org>
 Reply-To: device-mapper development <dm-devel@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; format=flowed; charset="iso-8859-1";
@@ -13,10 +13,10 @@ Cc: axboe@kernel.dk, mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org,
 	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
 	dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
 	linux-fsdevel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: "Eric Sandeen" <sandeen@redhat.com>
+	linux-ext4@vger.kernel.org, Oleg Nesterov <oleg@tv-sign.ru>
+To: "Christoph Hellwig" <hch@infradead.org>
 Return-path: <dm-devel-bounces@redhat.com>
-In-Reply-To: <48C012F3.3000408@redhat.com>
+In-Reply-To: <20080908171020.GA22521@infradead.org>
 List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
 	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
 List-Archive: <https://www.redhat.com/archives/dm-devel>
@@ -30,53 +30,63 @@ List-Id: linux-ext4.vger.kernel.org
 
 Hi,
 
-Eric Sandeen:
->> +static int ioctl_freeze(struct file *filp)
->> +{
->> +     struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
+Christoph Hellwig wrote:
+>> --- linux-2.6.27-rc5.org/fs/block_dev.c 2008-08-29 07:52:02.000000000 +0900
+>> +++ linux-2.6.27-rc5-freeze/fs/block_dev.c 2008-09-05 20:00:29.000000000 +0900
+>> @@ -285,6 +285,8 @@ static void init_once(void *foo)
+>>      INIT_LIST_HEAD(&bdev->bd_holder_list);
+>>  #endif
+>>      inode_init_once(&ei->vfs_inode);
+>> +     /* Initialize mutex for freeze. */
+>> +     mutex_init(&bdev->bd_fsfreeze_mutex);
+>
+> Why not just freeze_mutex?
+
+The Linux kernel has already had the name of "freezer" in the part of
+power-management.  So I named the above mutex "fsfreeze"
+(filesystem freeze) to distinguish it from the existent "freezer".
+Andrew pointed it out.
+
+>>  struct super_block *freeze_bdev(struct block_device *bdev)
+>>  {
+>>       struct super_block *sb;
+>>
+>> +    mutex_lock(&bdev->bd_fsfreeze_mutex);
+>> +    if (bdev->bd_fsfreeze_count > 0) {
+>> +        bdev->bd_fsfreeze_count++;
+>> +        sb = get_super(bdev);
+>> +        mutex_unlock(&bdev->bd_fsfreeze_mutex);
+>> +        return sb;
+>> +    }
+>> +    bdev->bd_fsfreeze_count++;
 >> +
->> +     if (!capable(CAP_SYS_ADMIN))
->> +         return -EPERM;
->> +
->> +     /* If filesystem doesn't support freeze feature, return. */
->> +     if (sb->s_op->write_super_lockfs == NULL)
->> +         return -EOPNOTSUPP;
->> +
->> +     /* If a regular file or a directory isn't specified, return. */
->> +     if (sb->s_bdev == NULL)
->> +         return -EINVAL;
->> +
->> +     /* Freeze */
->> +     sb = freeze_bdev(sb->s_bdev);
->> +     if (IS_ERR(sb))
->> +         return PTR_ERR(sb);
+>>      down(&bdev->bd_mount_sem);
+>
+> Note that we still have duplication with the bd_mount_sem.  I think
+> you should look into getting rid of it and instead do a check of
+> the freeze_count under proper freeze_mutex protection.
+
+In the original implementation,
+while the filesystem is frozen, subsequent mounts wait for unfreeze
+with the semaphore (bd_mount_sem).
+But if we replace the semphore with the check of the freeze_count,
+subsequent mounts will abort.
+I think the original behavior shouldn't be changed, so the existing bd_mount_sem
+is better.
+
+>> @@ -244,6 +274,8 @@ void thaw_bdev(struct block_device *bdev
+>>  }
+>>
+>>        up(&bdev->bd_mount_sem);
+>> +     mutex_unlock(&bdev->bd_fsfreeze_mutex);
 >> +     return 0;
->> +}
 >
-> Not a problem with your patch exactly, but I was just wondering; you
-> check here whether the sb returned from freeze_bdev is an ERR_PTR (as
-> does lock_fs()) - but, freeze_bdev never returns an error, does it?
-> ->write_super_lockfs is a void...
->
-> It really seems that at least we should be able to handle IO errors on
-> the freeze request, and tell the user "No, your filesystem was not
-> frozen..."?
->
-> Maybe I'll whip up a patch to see about propagating freeze errors up
-> from the filesystems that implement it, unless I'm missing some reason
-> not to do so...?
+> Why do you add a return value here if we always return 0 anyway?
 
-Right.
-We should handle an IO error which occurs in write_super_lockfs.
-I will change the write_super_lockfs's type to "int" so that it can return an error.
-And I will consider returning an error of ext3_write_super_lockfs because
-journal_flush() in ext3_write_super_lockfs() doesn't handle an IO error.
-
-> Also, should this be checking for a NULL returned from freeze_bdev as
-> well?  I guess this should never happen if we have a file open on which
-> we are calling the ioctl ...
-
-I think ioctl_freeze doesn't need to check NULL because it never happen
-as you said.
+I forgot to remove the unneeded return value in above old patch.
+But I need to implement a return value in the new patch
+because thaw_bdev() needs to return an IO error which occurs
+in unlockfs().
+Eric pointed it out.
 
 Cheers, Takashi
