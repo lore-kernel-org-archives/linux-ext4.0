@@ -1,187 +1,94 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 0/3] Fiemap, an extent mapping ioctl
-Date: Wed, 10 Sep 2008 14:33:52 -0600
-Message-ID: <20080910203352.GP3086@webber.adilger.int>
-References: <20080825202250.GY3392@webber.adilger.int>
- <20080910124005.GA4563@wotan.suse.de> <20080910124934.GB4563@wotan.suse.de>
- <20080910134727.GA17498@infradead.org> <20080910140719.GQ21071@mit.edu>
- <20080910141102.GA22654@infradead.org>
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Subject: Re: [patch] fs: revert 8ab22b9a
+Date: Thu, 11 Sep 2008 14:28:06 +0900
+Message-ID: <6.0.0.20.2.20080911105017.04876640@172.19.0.2>
+References: <20080910045209.GA27092@wotan.suse.de>
+ <6.0.0.20.2.20080910170208.05de1730@172.19.0.2>
+ <20080910101932.GA17531@wotan.suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Theodore Tso <tytso@MIT.EDU>, Mark Fasheh <mfasheh@suse.com>,
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch@infradead.org>, Jan Kara <jack@ucw.cz>,
+	linux-ext4@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>,
-	Eric Sandeen <esandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+	Linus Torvalds <torvalds@linux-foundation.org>
+To: Nick Piggin <npiggin@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:46725 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752173AbYIJUef (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Sep 2008 16:34:35 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8AKYPU2000052
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Sep 2008 13:34:26 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K6Z00C01VXB2A00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 10 Sep 2008 13:34:25 -0700 (PDT)
-In-reply-to: <20080910141102.GA22654@infradead.org>
-Content-disposition: inline
+Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:42730 "EHLO
+	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751136AbYIKFbp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Sep 2008 01:31:45 -0400
+In-Reply-To: <20080910101932.GA17531@wotan.suse.de>
+References: <20080910045209.GA27092@wotan.suse.de>
+ <6.0.0.20.2.20080910170208.05de1730@172.19.0.2>
+ <20080910101932.GA17531@wotan.suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 10, 2008  10:11 -0400, Christoph Hellwig wrote:
-> On Wed, Sep 10, 2008 at 05:49:34AM -0700, Mark Fasheh wrote:
-> > * FIEMAP_FLAG_XATTR
-> > If this flag is set, the extents returned will describe the inodes
-> > extended attribute lookup tree, instead of it's data tree.
-> 
-> So does this actually make sense for any filesystem but XFS?  Still
-> seems like a not too useful option for a highlevel generic interface.
 
-You are being mislead by the use of "tree" in the description here.
-Both ext3 and ext4 can already have 2 places to store xattr data (in
-the inode and in a separate block).  It is likely that ext4 will add
-the ability to store more xattr data in the future.  Would it be better
-to just remove the use of "tree" and write:
+At 19:19 08/09/10, Nick Piggin wrote:
+>On Wed, Sep 10, 2008 at 05:47:00PM +0900, Hisashi Hifumi wrote:
+>> 
+>> At 13:52 08/09/10, Nick Piggin wrote:
+>> >
+>> >Patch 8ab22b9a, "vfs: pagecache usage optimization for pagesize!=blocksize",
+>> >introduces a data race that might cause uninitialized data to be exposed to
+>> >userland. The race is conceptually the same as the one fixed for page
+>> >uptodateness, fixed by 0ed361de.
+>> >
+>> >The problem is that a buffer_head flags will be set uptodate after the
+>> >stores to bring its pagecache data uptodate[*]. This patch introduces a
+>> >possibility to read that pagecache data if the buffer_head flag has been
+>> >found uptodate. The problem is there are no barriers or locks ordering
+>> >the store/store vs the load/load.
+>> >
+>> >To illustrate:
+>> > CPU0: write(2) (1024 bytes)           CPU1: read(2) (1024 bytes)
+>> > 1. allocate new pagecache page        A. locate page, not fully uptodate
+>> > 2. copy_from_user to part of page     B. partially uptodate? load bh flags
+>> > 3. mark that buffer uptodate          C. if yes, then copy_to_user
+>> >
+>> >So if the store 3 is allowed to execute before the store 2, and/or the
+>> >load in C is allowed to execute before the load in B, then we can wind
+>> >up loading !uptodate data.
+>> >
+>> 
+>> >
+>> >One way to solve this is to add barriers to the buffer head operations
+>> >similarly to the fix for the page issue. The problem is that, unlike the
+>> >page race, we don't actually *need* to do that if we decide not to support
+>> >this functionality. The barriers are quite heavyweight on some
+>> >architectures, and we haven't seen really compelling numbers in favour of
+>> >this patch yet (a best-case microbenchmark showed some improvement of
+>> >course, but with memory barriers we could also produce a worst-case bench
+>> >that shows some slowdown on many architectures).
+>> 
+>> I think that adding wmb/rmb to all buffer_uptodate/set_buffer_uptodate is heavy
+>> on some architectures using BUFFER_FNS macros, but it can be possible
+>> to mitigate performance slowdown by minimizing memory barrier utilization.
+>> The patch "vfs: pagecache usage optimization for pagesize!=blocksize" is now 
+>> just for ext2/3/4, so is it not sufficient to solve the above 
+>uninitialized data
+>> exposure problem that adding one rmb to block_is_partially_uptodate() 
+>> and wmb to __block_commit_write() ?
+>
+>I guess it could be... if you have audited all those filesystems to ensure
+>they don't set the buffer uptodate via any other paths.
+>
+>But still, forcing a wmb for everyone in the block path is... not so nice.
+>As I said, I think the _best_ way to solve the problem is to ensure the
+>buffer is only brought uptodate under the page lock, which will then give
+>you serialisation against block_is_partially_uptodate (which is called with
+>the page locked). If you are *sure* this is the case for ext2/3/4, then there
+>should actually be no memory ordering problem in practice. You will have to
+>document the API to say that users of it must obey that rule.
+>
 
-* FIEMAP_FLAG_XATTR
-If this flag is set, the extents returned will describe the inode's
-extended attribute data, instead of the regular file data.
-
-> > 	__u32	fe_device;   /* device number for extent */
-> 
-> As sayd before please kill thise one.  It doesn't make any sense at all
-> for any merged or near mainline FS.  It'd be an utterly stupid
-> lustre-specific hack that still doesn't make much sense.
-
-I think this is short sighted.  Lustre is only one of several filesystems
-that aggregate multiple underlying devices into a single filesystem.
-Others include XFS, NFSv4, ZFS, chunkfs.  It would even be possible to
-have FIEMAP return the underlying mapping for "normal" filesystems on
-MD/LVM devices, but there are already endless roadblocks to the current
-basic functionality that I didn't want to get that mixed in as well.
-
-Even for "normal" filesystems that don't map multiple block devices,
-having the fe_device field returned with FIEMAP makes sense for
-applications like LILO that need it.
-
-Just because we don't have (m)any filesystems using 64-bit inodes does
-that mean we shouldn't have a stat() interface that supports it?
-
-It's true that we started with FIEMAP for Lustre, and thought it would
-be helpful to Linux as a whole (better than Solaris SEEK_HOLE/SEEK_DATA,
-IMHO) and made sure we got input from many of the filesystem developers
-during the design, and now it seems you want to rip out everything
-that makes it useful to Lustre and any "future" filesystems that aren't
-plain-old block-based filesystems.
-
-> > * FIEMAP_EXTENT_NO_BYPASS
-> > Direct access to the data in this extent is illegal or will have
-> > undefined results.
-> 
-> Huh?  What is direct access?  Direct access as in bypassing the
-> filesystem and writing to the blockdev directly always has undefined
-> results.
-
-Sure, but LILO still does it, as does dump(8).  There were a bunch of
-people commenting on previous FIEMAP discussions that want to do this,
-because it is "safe" according to their environment/usage/definition
-of safe.  Just because you don't need to do it (nor do I, for that matter)
-it doesn't mean that other people do not.
-
-> > * FIEMAP_EXTENT_SECONDARY
-> > The data for this extent is in secondary storage (e.g. HSM).  If the
-> > data is not also in the filesystem, then FIEMAP_EXTENT_NO_BYPASS
-> > should also be set.
-> 
-> No HSM in mainline, so please drop it.  We can add it once we get HSM
-> support.
-
-This was added because XFS_BMAP had it, and XFS is using HSM in some
-environments as you well know.  #defining a flag that isn't used by the
-core Linux code isn't going to kill anyone, and makes life a tiny bit
-easier for Dave at zero cost to anyone else.
-
-> > * FIEMAP_EXTENT_NET
-> >   - This will also set FIEMAP_EXTENT_NO_BYPASS
-> > The data for this extent is not stored in a locally-accessible device.
-> 
-> Doesn't make any sense currently, please drop.
-
-Again, it doesn't hurt anyone to include this flag.  Filesystems like
-CRFS will likely want to use this, in addition to Lustre of course.
-It will likel also be useful for NFSv4.
-
-You seem to think that the lack of any current in-kernel users means that
-the API should be dumbed down until there is no room to grow, while I'd
-prefer to design it in a way that ensures it won't be obsolete as soon
-as someone thinks outside the "single local block device" box.
-
-> > * FIEMAP_EXTENT_DATA_COMPRESSED
-> >   - This will also set FIEMAP_EXTENT_NO_BYPASS
-> > The data in this extent has been compressed by the file system.
-> 
-> Add once we have users for it.
-
-A bunch of the cramfs/logfs/etc filesystems have compression support.
-There were ext2/3 patches for compressed filesystems, and may be in
-the future for btrfs as well.  It doesn't seem at all unreasonable to
-define this.
-
-> On Wed, Sep 10, 2008 at 10:07:19AM -0400, Theodore Tso wrote:
-> > Interface minimalism to allow for flexibility later is one thing; but
-> > taken to extremes, it it's just stupid.  For example, if we didn't
-> > have any filesystems that needed 64-bit fields in mainline, would that
-> > be a justification for making data structures to use 32-bit fields and
-> > forcing a flag data interface change in the future.  Sometimes we can
-> > look ahead just a little bit and design interfaces which are foward
-> > compatible.  And it's pretty clear that btrfs will need something like
-> > fe_device, although whether it should be a 32-bit index or something
-> > else like a 128-bit UUID admittedly might not be clear at the moment.
-> > But leaving room in the data structure for future growth is just a
-> > intelligent thing to do.
-> 
-> No, if you look at btrfs or the not public bit for mirrored allocations
-> groups in XFS you'll notice that an extent can be happily on more than
-> once device.  So to support this we'd need a list of device plus a field
-> for the algorithm how to balance it over the devices.
-
-Actually, you misunderstand how the API is designed to be used.
-
-Instead of having to return a list of devices for a single extent,
-it would return an extent per device.  That is especially important
-because the logical->physical mapping may be different for every extent.
-
-Having simple flags for "RAID1", "RAID5", "RAID6" would cover most of
-the cases, and in all cases setting NO_BYPASS for complex layouts
-would avoid non-broken applications trying to access the data directly.
-The majority of FIEMAP users will only be filefrag and other tools that
-want to know relative locations of file data and some information about
-the block layout (e.g. filesystem developers, performance tuning, etc),
-they won't be trying to read from the raw block device.
-
-
-To be honest, I don't know why there is such a huge objection to this
-patch.  First it was ext4/Lustre specific, then people said "this is
-generic stuff that should go into the VFS" and now people say "this
-is too complex to be in the VFS as-is, let's make it dumb".  People
-didn't present such an uproar when blktrace was added to the kernel,
-people didn't complain about the EXT2_GETFLAGS ioctl that migrated
-over to the VFS, even though it has flags not applicable to all
-filesystems (or even applicable to ext* like NOTAIL, which was added
-to e2fsprogs just for Reiserfs).
-
-It's just an ioctl, folks.  We've spent 1000's of collective hours arguing
-about minor changes in semantics, as if we were rewriting the whole VFS.
-Christoph, if you really hate FIEMAP that much, it can just lose the
-VFS changes entirely, and be implemented in ext4 as we like it and other
-filesystem maintainers that want e2fsprogs filefrag to provide the improved
-information can follow the implementation there if they want.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+I again investigated write() path on ext2/3/4. 
+On these filesystems set_buffer_uptodate is done through __block_prepare_write 
+or __block_commit_write(), and is inside lock_page. buffer_uptodate test in 
+block_is_partially_uptodate and set_buffer_uptodate in __block_prepare_write or 
+__block_commit_write() are done inside lock_page, so I think these bitops 
+is serialized and there is no memory ordering problem regarding 
+buffer_uptodate/set_buffer_uptodate as far as ext2/3/4 is concerned.
 
