@@ -1,92 +1,60 @@
-From: "Takashi Sato" <t-sato@yk.jp.nec.com>
-Subject: Re: [PATCH 1/3] Implement generic freeze feature
-Date: Thu, 11 Sep 2008 20:11:06 +0900
-Message-ID: <059C75EDB49641A49EF986D81EED4200@nsl.ad.nec.co.jp>
-References: <20080908205245t-sato@mail.jp.nec.com>
-	<20080908171020.GA22521@infradead.org>
-Reply-To: device-mapper development <dm-devel@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/4] jbd: abort when failed to log metadata buffers
+Date: Thu, 11 Sep 2008 12:41:59 -0500
+Message-ID: <48C95867.5080707@redhat.com>
+References: <488876D3.80004@hitachi.com> <48887776.4080504@hitachi.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset="iso-8859-1";
-	reply-type=original
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org,
-	xfs@oss.sgi.com, Christoph Hellwig <hch@infradead.org>,
-	dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
-	linux-fsdevel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, Oleg Nesterov <oleg@tv-sign.ru>
-To: "Christoph Hellwig" <hch@infradead.org>
-Return-path: <dm-devel-bounces@redhat.com>
-In-Reply-To: <20080908171020.GA22521@infradead.org>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/dm-devel>
-List-Post: <mailto:dm-devel@redhat.com>
-List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
-	<mailto:dm-devel-request@redhat.com?subject=subscribe>
-Sender: dm-devel-bounces@redhat.com
-Errors-To: dm-devel-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+Cc: akpm@linux-foundation.org, sct@redhat.com,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
+	adilger@clusterfs.com, snitzer@gmail.com, tglx@linutronix.de,
+	yumiko.sugita.yf@hitachi.com, satoshi.oshima.fk@hitachi.com
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:40923 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752722AbYIKRut (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 11 Sep 2008 13:50:49 -0400
+In-Reply-To: <48887776.4080504@hitachi.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Hidehiro Kawai wrote:
+> If we failed to write metadata buffers to the journal space and
+> succeeded to write the commit record, stale data can be written
+> back to the filesystem as metadata in the recovery phase.
+> 
+> To avoid this, when we failed to write out metadata buffers,
+> abort the journal before writing the commit record.
+> 
+> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+> Acked-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/jbd/commit.c |    3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> Index: linux-2.6.26-rc8-mm1/fs/jbd/commit.c
+> ===================================================================
+> --- linux-2.6.26-rc8-mm1.orig/fs/jbd/commit.c
+> +++ linux-2.6.26-rc8-mm1/fs/jbd/commit.c
+> @@ -762,6 +762,9 @@ wait_for_iobuf:
+>  		/* AKPM: bforget here */
+>  	}
+>  
+> +	if (err)
+> +		journal_abort(journal, err);
+> +
+>  	jbd_debug(3, "JBD: commit phase 6\n");
+>  
+>  	if (journal_write_commit_record(journal, commit_transaction))
 
-Christoph Hellwig wrote:
->> --- linux-2.6.27-rc5.org/fs/block_dev.c 2008-08-29 07:52:02.000000000 +0900
->> +++ linux-2.6.27-rc5-freeze/fs/block_dev.c 2008-09-05 20:00:29.000000000 +0900
->> @@ -285,6 +285,8 @@ static void init_once(void *foo)
->>      INIT_LIST_HEAD(&bdev->bd_holder_list);
->>  #endif
->>      inode_init_once(&ei->vfs_inode);
->> +     /* Initialize mutex for freeze. */
->> +     mutex_init(&bdev->bd_fsfreeze_mutex);
->
-> Why not just freeze_mutex?
+A little late for me to chime in, but why is this a journal_abort() when
+journal aborts before and after this call __journal_abort_hard()?
 
-The Linux kernel has already had the name of "freezer" in the part of
-power-management.  So I named the above mutex "fsfreeze"
-(filesystem freeze) to distinguish it from the existent "freezer".
-Andrew pointed it out.
+I'm just not sure what's different about this one condition that we wish
+to update the error and the superblock here?
 
->>  struct super_block *freeze_bdev(struct block_device *bdev)
->>  {
->>       struct super_block *sb;
->>
->> +    mutex_lock(&bdev->bd_fsfreeze_mutex);
->> +    if (bdev->bd_fsfreeze_count > 0) {
->> +        bdev->bd_fsfreeze_count++;
->> +        sb = get_super(bdev);
->> +        mutex_unlock(&bdev->bd_fsfreeze_mutex);
->> +        return sb;
->> +    }
->> +    bdev->bd_fsfreeze_count++;
->> +
->>      down(&bdev->bd_mount_sem);
->
-> Note that we still have duplication with the bd_mount_sem.  I think
-> you should look into getting rid of it and instead do a check of
-> the freeze_count under proper freeze_mutex protection.
-
-In the original implementation,
-while the filesystem is frozen, subsequent mounts wait for unfreeze
-with the semaphore (bd_mount_sem).
-But if we replace the semphore with the check of the freeze_count,
-subsequent mounts will abort.
-I think the original behavior shouldn't be changed, so the existing bd_mount_sem
-is better.
-
->> @@ -244,6 +274,8 @@ void thaw_bdev(struct block_device *bdev
->>  }
->>
->>        up(&bdev->bd_mount_sem);
->> +     mutex_unlock(&bdev->bd_fsfreeze_mutex);
->> +     return 0;
->
-> Why do you add a return value here if we always return 0 anyway?
-
-I forgot to remove the unneeded return value in above old patch.
-But I need to implement a return value in the new patch
-because thaw_bdev() needs to return an IO error which occurs
-in unlockfs().
-Eric pointed it out.
-
-Cheers, Takashi
+Thanks,
+-Eric
