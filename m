@@ -1,96 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -mm] jbd: test BH_Write_EIO to detect errors on metadata
-    buffers
-Date: Thu, 11 Sep 2008 13:56:15 -0500
-Message-ID: <48C969CF.2030208@redhat.com>
-References: <48C63701.6090700@hitachi.com>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: [PATCH] debugfs : Fix usage of logdump command to make consistent with man page.
+Date: Fri, 12 Sep 2008 14:09:19 +0530
+Message-ID: <ea11fea30809120139w352d97a7ha355e79658190ba1@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, sct@redhat.com,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	jack@suse.cz, jbacik@redhat.com, cmm@us.ibm.com, tytso@mit.edu,
-	adilger@sun.com, yumiko.sugita.yf@hitachi.com,
-	satoshi.oshima.fk@hitachi.com, nickpiggin@yahoo.com.au
-To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Cc: mkatiyar@gmail.com
+To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59899 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753399AbYIKTLh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 11 Sep 2008 15:11:37 -0400
-In-Reply-To: <48C63701.6090700@hitachi.com>
+Received: from ti-out-0910.google.com ([209.85.142.187]:44079 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752362AbYILIjV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Sep 2008 04:39:21 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so483351tic.23
+        for <linux-ext4@vger.kernel.org>; Fri, 12 Sep 2008 01:39:19 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hidehiro Kawai wrote:
-> __try_to_free_cp_buf(), __process_buffer(), and __wait_cp_io()
-> test BH_Uptodate flag to detect write I/O errors on metadata
-> buffers.  But by commit 95450f5a7e53d5752ce1a0d0b8282e10fe745ae0
-> "ext3: don't read inode block if the buffer has a write error"(*),
-> BH_Uptodate flag can be set to inode buffers with BH_Write_EIO
-> in order to avoid reading old inode data.  So now, we have to
-> test BH_Write_EIO flag of checkpointing inode buffers instead
-> of BH_Uptodate.  This patch does it.
-> 
-> (*) http://lkml.org/lkml/2008/6/23/126
-> 
-> This patch depends on the following patch set in -mm:
-> 
-> #1 jbd: abort when failed to log metadata buffers
->    http://lkml.org/lkml/2008/7/24/160
-> #2 jbd: fix error handling for checkpoint io
->    http://lkml.org/lkml/2008/7/24/163
-> #3 ext3: add checks for errors from jbd
->    http://lkml.org/lkml/2008/7/29/539
-> #4 jbd: don't dirty original metadata buffer on abort
->    http://lkml.org/lkml/2008/7/24/168
-> 
-> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-> ---
-Thanks, you can add
+Below path adds the missing 's' option in the usage of logdump. Also
+trivially replace "inode" with "filespec" to make consistent with man
+page.
 
-Acked-by: Eric Sandeen <sandeen@redhat.com>
 
-too.
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
 
->  fs/jbd/checkpoint.c |    6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
-> 
-> Index: linux-2.6.27-rc5-mm1/fs/jbd/checkpoint.c
-> ===================================================================
-> --- linux-2.6.27-rc5-mm1.orig/fs/jbd/checkpoint.c
-> +++ linux-2.6.27-rc5-mm1/fs/jbd/checkpoint.c
-> @@ -94,7 +94,7 @@ static int __try_to_free_cp_buf(struct j
->  	struct buffer_head *bh = jh2bh(jh);
->  
->  	if (jh->b_jlist == BJ_None && !buffer_locked(bh) &&
-> -	    !buffer_dirty(bh) && buffer_uptodate(bh)) {
-> +	    !buffer_dirty(bh) && !buffer_write_io_error(bh)) {
->  		JBUFFER_TRACE(jh, "remove from checkpoint list");
->  		ret = __journal_remove_checkpoint(jh) + 1;
->  		jbd_unlock_bh_state(bh);
-> @@ -214,7 +214,7 @@ restart:
->  			spin_lock(&journal->j_list_lock);
->  			goto restart;
->  		}
-> -		if (unlikely(!buffer_uptodate(bh)))
-> +		if (unlikely(buffer_write_io_error(bh)))
->  			ret = -EIO;
->  
->  		/*
-> @@ -283,7 +283,7 @@ static int __process_buffer(journal_t *j
->  		ret = 1;
->  	} else if (!buffer_dirty(bh)) {
->  		ret = 1;
-> -		if (unlikely(!buffer_uptodate(bh)))
-> +		if (unlikely(buffer_write_io_error(bh)))
->  			ret = -EIO;
->  		J_ASSERT_JH(jh, !buffer_jbddirty(bh));
->  		BUFFER_TRACE(bh, "remove from checkpoint");
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+---
+ debugfs/logdump.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
 
+diff --git a/debugfs/logdump.c b/debugfs/logdump.c
+index fed9838..73680de 100644
+--- a/debugfs/logdump.c
++++ b/debugfs/logdump.c
+@@ -88,7 +88,7 @@ void do_logdump(int argc, char **argv)
+ 	struct journal_source journal_source;
+ 	struct ext2_super_block *es = NULL;
+
+-	journal_source.where = 0;
++	journal_source.where = JOURNAL_IS_INTERNAL;
+ 	journal_source.fd = 0;
+ 	journal_source.file = 0;
+ 	dump_all = 0;
+@@ -264,7 +264,7 @@ errout:
+ 	return;
+
+ print_usage:
+-	fprintf(stderr, "%s: Usage: logdump [-ac] [-b<block>] [-i<inode>]\n\t"
++	fprintf(stderr, "%s: Usage: logdump [-acs] [-b<block>] [-i<filespec>]\n\t"
+ 		"[-f<journal_file>] [output_file]\n", argv[0]);
+ }
+
+-- 
+1.5.4.3
+
+
+Thanks -
+Manish
