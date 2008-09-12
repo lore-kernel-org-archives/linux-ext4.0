@@ -1,59 +1,73 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: [PATCH] debugfs : Fix usage of logdump command to make consistent with man page.
-Date: Fri, 12 Sep 2008 14:09:19 +0530
-Message-ID: <ea11fea30809120139w352d97a7ha355e79658190ba1@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: mkatiyar@gmail.com
-To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Update for patches in patch queue
+Date: Fri, 12 Sep 2008 14:32:28 +0530
+Message-ID: <1221210148-26329-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1221210148-26329-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1221210148-26329-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.187]:44079 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752362AbYILIjV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Sep 2008 04:39:21 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so483351tic.23
-        for <linux-ext4@vger.kernel.org>; Fri, 12 Sep 2008 01:39:19 -0700 (PDT)
-Content-Disposition: inline
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:52703 "EHLO
+	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752233AbYILJDe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Sep 2008 05:03:34 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28esmtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m8C93UOV026601
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Sep 2008 14:33:30 +0530
+Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m8C935551380536
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Sep 2008 14:33:30 +0530
+Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id m8C935OF002329
+	for <linux-ext4@vger.kernel.org>; Fri, 12 Sep 2008 19:03:05 +1000
+In-Reply-To: <1221210148-26329-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Below path adds the missing 's' option in the usage of logdump. Also
-trivially replace "inode" with "filespec" to make consistent with man
-page.
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
+For blocksize < pagesize we need to remove blocks that
+got allocte in block_wirte_begin if we fail with ENOSPC
+for later blocks. block_write_begin internally does
+this if it allocated page locally. This make sure
+we don't have blocks outisde inode.i_size during
+ENOSPC
 
-Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- debugfs/logdump.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c |   14 ++++++++++++++
+ 1 files changed, 14 insertions(+), 0 deletions(-)
 
-diff --git a/debugfs/logdump.c b/debugfs/logdump.c
-index fed9838..73680de 100644
---- a/debugfs/logdump.c
-+++ b/debugfs/logdump.c
-@@ -88,7 +88,7 @@ void do_logdump(int argc, char **argv)
- 	struct journal_source journal_source;
- 	struct ext2_super_block *es = NULL;
-
--	journal_source.where = 0;
-+	journal_source.where = JOURNAL_IS_INTERNAL;
- 	journal_source.fd = 0;
- 	journal_source.file = 0;
- 	dump_all = 0;
-@@ -264,7 +264,7 @@ errout:
- 	return;
-
- print_usage:
--	fprintf(stderr, "%s: Usage: logdump [-ac] [-b<block>] [-i<inode>]\n\t"
-+	fprintf(stderr, "%s: Usage: logdump [-acs] [-b<block>] [-i<filespec>]\n\t"
- 		"[-f<journal_file>] [output_file]\n", argv[0]);
- }
-
--- 
-1.5.4.3
-
-
-Thanks -
-Manish
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 48534be..e7c84e4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1391,6 +1391,13 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+  		unlock_page(page);
+ 		ext4_journal_stop(handle);
+  		page_cache_release(page);
++		/*
++		 * block_write_begin may have instantiated a few blocks
++		 * outside i_size.  Trim these off again. Don't need
++		 * i_size_read because we hold i_mutex.
++		 */
++		if (pos + len > inode->i_size)
++			vmtruncate(inode, inode->i_size);
+ 	}
+ 
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+@@ -2560,6 +2567,13 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 		unlock_page(page);
+ 		ext4_journal_stop(handle);
+ 		page_cache_release(page);
++		/*
++		 * block_write_begin may have instantiated a few blocks
++		 * outside i_size.  Trim these off again. Don't need
++		 * i_size_read because we hold i_mutex.
++		 */
++		if (pos + len > inode->i_size)
++			vmtruncate(inode, inode->i_size);
+ 	}
+ 
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
