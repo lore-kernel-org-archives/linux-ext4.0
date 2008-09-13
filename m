@@ -1,20 +1,21 @@
 From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: [PATCH 3/4] ext2: Avoid printk floods in the face of directory corruption
-Date: Sat, 13 Sep 2008 11:32:50 -0400
-Message-ID: <1221319971-29879-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH 4/4] ext3: Avoid printk floods in the face of directory corruption
+Date: Sat, 13 Sep 2008 11:32:51 -0400
+Message-ID: <1221319971-29879-4-git-send-email-tytso@mit.edu>
 References: <1221319971-29879-1-git-send-email-tytso@mit.edu>
  <1221319971-29879-2-git-send-email-tytso@mit.edu>
+ <1221319971-29879-3-git-send-email-tytso@mit.edu>
 Cc: linux-kernel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
 	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
 	Eugene Teo <eugeneteo@kernel.sg>
 To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:50946 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:50953 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752500AbYIMPdI (ORCPT
+	by vger.kernel.org with ESMTP id S1752768AbYIMPdQ (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 13 Sep 2008 11:33:08 -0400
-In-Reply-To: <1221319971-29879-2-git-send-email-tytso@mit.edu>
+	Sat, 13 Sep 2008 11:33:16 -0400
+In-Reply-To: <1221319971-29879-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -34,162 +35,37 @@ Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org
 Cc: Eugene Teo <eugeneteo@kernel.sg>
 ---
- fs/ext2/dir.c |   60 +++++++++++++++++++++++++++++++++-----------------------
- 1 files changed, 35 insertions(+), 25 deletions(-)
+ fs/ext3/dir.c |   10 +++++++---
+ 1 files changed, 7 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index a78c6b4..c53c790 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -103,7 +103,7 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
- 	return err;
- }
- 
--static void ext2_check_page(struct page *page)
-+static void ext2_check_page(struct page *page, int quiet)
- {
- 	struct inode *dir = page->mapping->host;
- 	struct super_block *sb = dir->i_sb;
-@@ -146,10 +146,10 @@ out:
- 	/* Too bad, we had an error */
- 
- Ebadsize:
--	ext2_error(sb, "ext2_check_page",
--		"size of directory #%lu is not a multiple of chunk size",
--		dir->i_ino
--	);
-+	if (!quiet)
-+		ext2_error(sb, __func__,
-+			"size of directory #%lu is not a multiple "
-+			"of chunk size", dir->i_ino);
- 	goto fail;
- Eshort:
- 	error = "rec_len is smaller than minimal";
-@@ -166,32 +166,36 @@ Espan:
- Einumber:
- 	error = "inode out of bounds";
- bad_entry:
--	ext2_error (sb, "ext2_check_page", "bad entry in directory #%lu: %s - "
--		"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
--		dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
--		(unsigned long) le32_to_cpu(p->inode),
--		rec_len, p->name_len);
-+	if (!quiet)
-+		ext2_error(sb, __func__, "bad entry in directory #%lu: : %s - "
-+			"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
-+			dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
-+			(unsigned long) le32_to_cpu(p->inode),
-+			rec_len, p->name_len);
- 	goto fail;
- Eend:
--	p = (ext2_dirent *)(kaddr + offs);
--	ext2_error (sb, "ext2_check_page",
--		"entry in directory #%lu spans the page boundary"
--		"offset=%lu, inode=%lu",
--		dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
--		(unsigned long) le32_to_cpu(p->inode));
-+	if (!quiet) {
-+		p = (ext2_dirent *)(kaddr + offs);
-+		ext2_error (sb, "ext2_check_page",
-+			"entry in directory #%lu spans the page boundary"
-+			"offset=%lu, inode=%lu",
-+			dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
-+			(unsigned long) le32_to_cpu(p->inode));
-+	}
- fail:
- 	SetPageChecked(page);
- 	SetPageError(page);
- }
- 
--static struct page * ext2_get_page(struct inode *dir, unsigned long n)
-+static struct page * ext2_get_page(struct inode *dir, unsigned long n,
-+				   int quiet)
- {
- 	struct address_space *mapping = dir->i_mapping;
- 	struct page *page = read_mapping_page(mapping, n, NULL);
- 	if (!IS_ERR(page)) {
- 		kmap(page);
- 		if (!PageChecked(page))
--			ext2_check_page(page);
-+			ext2_check_page(page, quiet);
- 		if (PageError(page))
- 			goto fail;
- 	}
-@@ -292,7 +296,7 @@ ext2_readdir (struct file * filp, void * dirent, filldir_t filldir)
- 	for ( ; n < npages; n++, offset = 0) {
- 		char *kaddr, *limit;
- 		ext2_dirent *de;
--		struct page *page = ext2_get_page(inode, n);
-+		struct page *page = ext2_get_page(inode, n, 0);
- 
- 		if (IS_ERR(page)) {
- 			ext2_error(sb, __func__,
-@@ -361,6 +365,7 @@ struct ext2_dir_entry_2 * ext2_find_entry (struct inode * dir,
- 	struct page *page = NULL;
- 	struct ext2_inode_info *ei = EXT2_I(dir);
- 	ext2_dirent * de;
+diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
+index 42c5391..283938a 100644
+--- a/fs/ext3/dir.c
++++ b/fs/ext3/dir.c
+@@ -102,6 +102,7 @@ static int ext3_readdir(struct file * filp,
+ 	int err;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+ 	int ret = 0;
 +	int dir_has_error = 0;
  
- 	if (npages == 0)
- 		goto out;
-@@ -374,7 +379,7 @@ struct ext2_dir_entry_2 * ext2_find_entry (struct inode * dir,
- 	n = start;
- 	do {
- 		char *kaddr;
--		page = ext2_get_page(dir, n);
-+		page = ext2_get_page(dir, n, dir_has_error);
- 		if (!IS_ERR(page)) {
- 			kaddr = page_address(page);
- 			de = (ext2_dirent *) kaddr;
-@@ -391,7 +396,9 @@ struct ext2_dir_entry_2 * ext2_find_entry (struct inode * dir,
- 				de = ext2_next_entry(de);
- 			}
- 			ext2_put_page(page);
--		}
-+		} else
-+			dir_has_error = 1;
-+
- 		if (++n >= npages)
- 			n = 0;
- 		/* next page is past the blocks we've got */
-@@ -414,7 +421,7 @@ found:
+ 	sb = inode->i_sb;
  
- struct ext2_dir_entry_2 * ext2_dotdot (struct inode *dir, struct page **p)
- {
--	struct page *page = ext2_get_page(dir, 0);
-+	struct page *page = ext2_get_page(dir, 0, 0);
- 	ext2_dirent *de = NULL;
- 
- 	if (!IS_ERR(page)) {
-@@ -487,7 +494,7 @@ int ext2_add_link (struct dentry *dentry, struct inode *inode)
- 	for (n = 0; n <= npages; n++) {
- 		char *dir_end;
- 
--		page = ext2_get_page(dir, n);
-+		page = ext2_get_page(dir, n, 0);
- 		err = PTR_ERR(page);
- 		if (IS_ERR(page))
- 			goto out;
-@@ -655,14 +662,17 @@ int ext2_empty_dir (struct inode * inode)
- {
- 	struct page *page = NULL;
- 	unsigned long i, npages = dir_pages(inode);
-+	int dir_has_error = 0;
- 
- 	for (i = 0; i < npages; i++) {
- 		char *kaddr;
- 		ext2_dirent * de;
--		page = ext2_get_page(inode, i);
-+		page = ext2_get_page(inode, i, dir_has_error);
- 
--		if (IS_ERR(page))
-+		if (IS_ERR(page)) {
-+			dir_has_error = 1;
- 			continue;
-+		}
- 
- 		kaddr = page_address(page);
- 		de = (ext2_dirent *)kaddr;
+@@ -148,9 +149,12 @@ static int ext3_readdir(struct file * filp,
+ 		 * of recovering data when there's a bad sector
+ 		 */
+ 		if (!bh) {
+-			ext3_error (sb, "ext3_readdir",
+-				"directory #%lu contains a hole at offset %lu",
+-				inode->i_ino, (unsigned long)filp->f_pos);
++			if (!dir_has_error) {
++				ext3_error(sb, __func__, "directory #%lu "
++					"contains a hole at offset %lld",
++					inode->i_ino, filp->f_pos);
++				dir_has_error = 1;
++			}
+ 			/* corrupt size?  Maybe no more blocks to read */
+ 			if (filp->f_pos > inode->i_blocks << 9)
+ 				break;
 -- 
 1.5.6.1.205.ge2c7.dirty
 
