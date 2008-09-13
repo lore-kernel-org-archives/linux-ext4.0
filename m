@@ -1,572 +1,280 @@
 From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: [PATCH 1/4] vfs: vfs-level fiemap interface
-Date: Sat, 13 Sep 2008 14:49:24 -0400
-Message-ID: <1221331767-16870-1-git-send-email-tytso@mit.edu>
-References: <E1Kea9F-0004L5-Ds@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org, akpm@linuxfoundation.org,
-	Mark Fasheh <mfasheh@suse.com>
-To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <E1Kea9F-0004L5-Ds@closure.thunk.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: Review of ext4-online-defrag-for-relevant-files.patch
+Date: Sat, 13 Sep 2008 15:22:14 -0400
+Message-ID: <E1KeahC-0004UU-2B@closure.thunk.org>
+Cc: Takashi Sato <t-sato@yk.jp.nec.com>, linux-ext4@vger.kernel.org
+To: a-fujita@rs.jp.nec.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:43167 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752540AbYIMTWU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 13 Sep 2008 15:22:20 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Mark Fasheh <mfasheh@suse.com>
+Hi,
 
-Basic vfs-level fiemap infrastructure, which sets up a new ->fiemap
-inode operation.
+I've been looking over the defrag patches with an eye towards getting
+them merged.  The bulk of the patch
+ext4-online-defrag-for-relevant-files.patch, seems to be an introduction
+of a new ioctl EXT4_IOC_FIBMAP, which seems to work just like the
+standard filesystem independent ioctl, FIBMAP --- except it only works
+on extent-based file, and the implementation of the same is buried deep
+inside ext4_defrag_ioctl().   
 
-Userspace can get extent information on a file via fiemap ioctl. As input,
-the fiemap ioctl takes a struct fiemap which includes an array of struct
-fiemap_extent (fm_extents). Size of the extent array is passed as
-fm_extent_count and number of extents returned will be written into
-fm_mapped_extents. Offset and length fields on the fiemap structure
-(fm_start, fm_length) describe a logical range which will be searched for
-extents. All extents returned will at least partially contain this range.
-The actual extent offsets and ranges returned will be unmodified from their
-offset and range on-disk.
+There is also no mention if this new ioctl anywhere in the patch
+commit.  Was this intentional?  If so, what is the justification for the
+new ioctl, and is it safe to simply remove the ioctl and change the
+userspace program to use the FIBMAP ioctl?
 
-The fiemap ioctl returns '0' on success. On error, -1 is returned and errno
-is set. If errno is equal to EBADR, then fm_flags will contain those flags
-which were passed in which the kernel did not understand. On all other
-errors, the contents of fm_extents is undefined.
+The patch name also doesn't make a lot of sense; I suspect the -r mode
+refers to the on-line command, but if there could be some better
+description of exactly what this patch is doing, it would be much
+appreciated.
 
-As fiemap evolved, there have been many authors of the vfs patch. As far as
-I can tell, the list includes:
-Kalpak Shah <kalpak.shah@sun.com>
-Andreas Dilger <adilger@sun.com>
-Eric Sandeen <sandeen@redhat.com>
-Mark Fasheh <mfasheh@suse.com>
+Thanks, regards,
 
-Signed-off-by: Mark Fasheh <mfasheh@suse.com>
+							- Ted
+
+
+
+
+ext4: online defrag-- Defragmentation for the relevant files (-r mode)
+
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+
+Relevant file fragmentation could be solved by moving
+the files under the specified directory close together with
+the block containing the directory data.
+
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 ---
- Documentation/filesystems/fiemap.txt |  216 ++++++++++++++++++++++++++++++++++
- fs/ioctl.c                           |  154 ++++++++++++++++++++++++
- include/linux/fiemap.h               |   62 ++++++++++
- include/linux/fs.h                   |   18 +++
- 4 files changed, 450 insertions(+), 0 deletions(-)
- create mode 100644 Documentation/filesystems/fiemap.txt
- create mode 100644 include/linux/fiemap.h
+ fs/ext4/defrag.c |   48 +++++++++++++++++++++++++++++++++++-------------
+ fs/ext4/ext4.h   |    4 +++-
+ fs/ext4/inode.c  |    2 +-
+ fs/ext4/ioctl.c  |    1 +
+ 4 files changed, 40 insertions(+), 15 deletions(-)
 
-diff --git a/Documentation/filesystems/fiemap.txt b/Documentation/filesystems/fiemap.txt
-new file mode 100644
-index 0000000..5e95e8f
---- /dev/null
-+++ b/Documentation/filesystems/fiemap.txt
-@@ -0,0 +1,216 @@
-+============
-+Fiemap Ioctl
-+============
-+
-+The fiemap ioctl is an efficient method for userspace to get file
-+extent mappings. Instead of block-by-block mapping (such as bmap), fiemap
-+returns a list of extents.
-+
-+
-+Request Basics
-+--------------
-+
-+A fiemap request is encoded within struct fiemap:
-+
-+struct fiemap {
-+	__u64	fm_start;	 /* logical offset (inclusive) at
-+				  * which to start mapping (in) */
-+	__u64	fm_length;	 /* logical length of mapping which
-+				  * userspace cares about (in) */
-+	__u32	fm_flags;	 /* FIEMAP_FLAG_* flags for request (in/out) */
-+	__u32	fm_mapped_extents; /* number of extents that were
-+				    * mapped (out) */
-+	__u32	fm_extent_count; /* size of fm_extents array (in) */
-+	__u32	fm_reserved;
-+	struct fiemap_extent fm_extents[0]; /* array of mapped extents (out) */
-+};
-+
-+
-+fm_start, and fm_length specify the logical range within the file
-+which the process would like mappings for. Extents returned mirror
-+those on disk - that is, the logical offset of the 1st returned extent
-+may start before fm_start, and the range covered by the last returned
-+extent may end after fm_length. All offsets and lengths are in bytes.
-+
-+Certain flags to modify the way in which mappings are looked up can be
-+set in fm_flags. If the kernel doesn't understand some particular
-+flags, it will return EBADR and the contents of fm_flags will contain
-+the set of flags which caused the error. If the kernel is compatible
-+with all flags passed, the contents of fm_flags will be unmodified.
-+It is up to userspace to determine whether rejection of a particular
-+flag is fatal to it's operation. This scheme is intended to allow the
-+fiemap interface to grow in the future but without losing
-+compatibility with old software.
-+
-+fm_extent_count specifies the number of elements in the fm_extents[] array
-+that can be used to return extents.  If fm_extent_count is zero, then the
-+fm_extents[] array is ignored (no extents will be returned), and the
-+fm_mapped_extents count will hold the number of extents needed in
-+fm_extents[] to hold the file's current mapping.  Note that there is
-+nothing to prevent the file from changing between calls to FIEMAP.
-+
-+Currently, there are three flags which can be set in fm_flags:
-+
-+* FIEMAP_FLAG_SYNC
-+If this flag is set, the kernel will sync the file before mapping extents.
-+
-+* FIEMAP_FLAG_XATTR
-+If this flag is set, the extents returned will describe the inodes
-+extended attribute lookup tree, instead of it's data tree.
-+
-+
-+Extent Mapping
-+--------------
-+
-+Extent information is returned within the embedded fm_extents array
-+which userspace must allocate along with the fiemap structure. The
-+number of elements in the fiemap_extents[] array should be passed via
-+fm_extent_count. The number of extents mapped by kernel will be
-+returned via fm_mapped_extents. If the number of fiemap_extents
-+allocated is less than would be required to map the requested range,
-+the maximum number of extents that can be mapped in the fm_extent[]
-+array will be returned and fm_mapped_extents will be equal to
-+fm_extent_count. In that case, the last extent in the array will not
-+complete the requested range and will not have the FIEMAP_EXTENT_LAST
-+flag set (see the next section on extent flags).
-+
-+Each extent is described by a single fiemap_extent structure as
-+returned in fm_extents.
-+
-+struct fiemap_extent {
-+	__u64	fe_logical;  /* logical offset in bytes for the start of
-+			      * the extent */
-+	__u64	fe_physical; /* physical offset in bytes for the start
-+			      * of the extent */
-+	__u64	fe_length;   /* length in bytes for the extent */
-+	__u32	fe_flags;    /* FIEMAP_EXTENT_* flags for this extent */
-+	__u32	fe_reserved;
-+};
-+
-+All offsets and lengths are in bytes and mirror those on disk.  It is valid
-+for an extents logical offset to start before the request or it's logical
-+length to extend past the request.  Unless FIEMAP_EXTENT_NOT_ALIGNED is
-+returned, fe_logical, fe_physical, and fe_length will be aligned to the
-+block size of the file system.  With the exception of extents flagged as
-+FIEMAP_EXTENT_MERGED, adjacent extents will not be merged.
-+
-+The fe_flags field contains flags which describe the extent returned.
-+A special flag, FIEMAP_EXTENT_LAST is always set on the last extent in
-+the file so that the process making fiemap calls can determine when no
-+more extents are available, without having to call the ioctl again.
-+
-+Some flags are intentionally vague and will always be set in the
-+presence of other more specific flags. This way a program looking for
-+a general property does not have to know all existing and future flags
-+which imply that property.
-+
-+For example, if FIEMAP_EXTENT_DATA_INLINE or FIEMAP_EXTENT_DATA_TAIL
-+are set, FIEMAP_EXTENT_NOT_ALIGNED will also be set. A program looking
-+for inline or tail-packed data can key on the specific flag. Software
-+which simply cares not to try operating on non-aligned extents
-+however, can just key on FIEMAP_EXTENT_NOT_ALIGNED, and not have to
-+worry about all present and future flags which might imply unaligned
-+data. Note that the opposite is not true - it would be valid for
-+FIEMAP_EXTENT_NOT_ALIGNED to appear alone.
-+
-+* FIEMAP_EXTENT_LAST
-+This is the last extent in the file. A mapping attempt past this
-+extent will return nothing.
-+
-+* FIEMAP_EXTENT_UNKNOWN
-+The location of this extent is currently unknown. This may indicate
-+the data is stored on an inaccessible volume or that no storage has
-+been allocated for the file yet.
-+
-+* FIEMAP_EXTENT_DELALLOC
-+  - This will also set FIEMAP_EXTENT_UNKNOWN.
-+Delayed allocation - while there is data for this extent, it's
-+physical location has not been allocated yet.
-+
-+* FIEMAP_EXTENT_NO_BYPASS
-+Direct access to the data in this extent is illegal or will have
-+undefined results.
-+
-+* FIEMAP_EXTENT_DATA_ENCRYPTED
-+  - This will also set FIEMAP_EXTENT_NO_BYPASS
-+The data in this extent has been encrypted by the file system.
-+
-+* FIEMAP_EXTENT_NOT_ALIGNED
-+Extent offsets and length are not guaranteed to be block aligned.
-+
-+* FIEMAP_EXTENT_DATA_INLINE
-+  This will also set FIEMAP_EXTENT_NOT_ALIGNED
-+Data is located within a meta data block.
-+
-+* FIEMAP_EXTENT_DATA_TAIL
-+  This will also set FIEMAP_EXTENT_NOT_ALIGNED
-+Data is packed into a block with data from other files.
-+
-+* FIEMAP_EXTENT_UNWRITTEN
-+Unwritten extent - the extent is allocated but it's data has not been
-+initialized.  This indicates the extent's data will be all zero if read
-+through the filesystem but the contents are undefined if read directly from
-+the device.
-+
-+* FIEMAP_EXTENT_MERGED
-+This will be set when a file does not support extents, i.e., it uses a block
-+based addressing scheme.  Since returning an extent for each block back to
-+userspace would be highly inefficient, the kernel will try to merge most
-+adjacent blocks into 'extents'.
-+
-+
-+VFS -> File System Implementation
-+---------------------------------
-+
-+File systems wishing to support fiemap must implement a ->fiemap callback on
-+their inode_operations structure. The fs ->fiemap call is responsible for
-+defining it's set of supported fiemap flags, and calling a helper function on
-+each discovered extent:
-+
-+struct inode_operations {
-+       ...
-+
-+       int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
-+                     u64 len);
-+
-+->fiemap is passed struct fiemap_extent_info which describes the
-+fiemap request:
-+
-+struct fiemap_extent_info {
-+	unsigned int fi_flags;		/* Flags as passed from user */
-+	unsigned int fi_extents_mapped;	/* Number of mapped extents */
-+	unsigned int fi_extents_max;	/* Size of fiemap_extent array */
-+	struct fiemap_extent *fi_extents_start;	/* Start of fiemap_extent array */
-+};
-+
-+It is intended that the file system should not need to access any of this
-+structure directly.
-+
-+
-+Flag checking should be done at the beginning of the ->fiemap callback via the
-+fiemap_check_flags() helper:
-+
-+int fiemap_check_flags(struct fiemap_extent_info *fieinfo, u32 fs_flags);
-+
-+The struct fieinfo should be passed in as recieved from ioctl_fiemap(). The
-+set of fiemap flags which the fs understands should be passed via fs_flags. If
-+fiemap_check_flags finds invalid user flags, it will place the bad values in
-+fieinfo->fi_flags and return -EBADR. If the file system gets -EBADR, from
-+fiemap_check_flags(), it should immediately exit, returning that error back to
-+ioctl_fiemap().
-+
-+
-+For each extent in the request range, the file system should call
-+the helper function, fiemap_fill_next_extent():
-+
-+int fiemap_fill_next_extent(struct fiemap_extent_info *info, u64 logical,
-+			    u64 phys, u64 len, u32 flags, u32 dev);
-+
-+fiemap_fill_next_extent() will use the passed values to populate the
-+next free extent in the fm_extents array. 'General' extent flags will
-+automatically be set from specific flags on behalf of the calling file
-+system so that the userspace API is not broken.
-+
-+fiemap_fill_next_extent() returns 0 on success, and 1 when the
-+user-supplied fm_extents array is full. If an error is encountered
-+while copying the extent to user memory, -EFAULT will be returned.
-diff --git a/fs/ioctl.c b/fs/ioctl.c
-index 7db32b3..274625a 100644
---- a/fs/ioctl.c
-+++ b/fs/ioctl.c
-@@ -16,6 +16,9 @@
+Index: linux-2.6.26-rc9/fs/ext4/defrag.c
+===================================================================
+--- linux-2.6.26-rc9.orig/fs/ext4/defrag.c	2008-07-11 16:05:19.000000000 -0700
++++ linux-2.6.26-rc9/fs/ext4/defrag.c	2008-07-11 16:05:19.000000000 -0700
+@@ -95,13 +95,26 @@ int ext4_defrag_ioctl(struct inode *inod
+ {
+ 	int err = 0;
  
- #include <asm/ioctls.h>
+-	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)) {
++	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL ||
++					cmd == EXT4_IOC_FIBMAP)) {
+ 		printk(KERN_ERR "ext4 defrag: ino[%lu] is not extents "
+ 					"based file\n", inode->i_ino);
+ 		return -EOPNOTSUPP;
+ 	}
  
-+/* So that the fiemap access checks can't overflow on 32 bit machines. */
-+#define FIEMAP_MAX_EXTENTS	(UINT_MAX / sizeof(struct fiemap_extent))
+-	if (cmd == EXT4_IOC_DEFRAG) {
++	if (cmd == EXT4_IOC_FIBMAP) {
++		ext4_fsblk_t __user *p = (ext4_fsblk_t __user *)arg;
++		ext4_fsblk_t block = 0;
++		struct address_space *mapping = filp->f_mapping;
 +
- /**
-  * vfs_ioctl - call filesystem specific ioctl methods
-  * @filp:	open file to invoke ioctl method on
-@@ -71,6 +74,155 @@ static int ioctl_fibmap(struct file *filp, int __user *p)
- 	return put_user(res, p);
++		if (copy_from_user(&block, (ext4_fsblk_t __user *)arg,
++					sizeof(block)))
++			return -EFAULT;
++
++		block = ext4_bmap(mapping, block);
++
++		return put_user(block, p);
++	} else if (cmd == EXT4_IOC_DEFRAG) {
+ 		struct ext4_ext_defrag_data defrag;
+ 		struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
+ 
+@@ -127,7 +140,7 @@ int ext4_defrag_ioctl(struct inode *inod
+ 		}
+ 
+ 		err = ext4_defrag(filp, defrag.start_offset,
+-				defrag.defrag_size);
++				defrag.defrag_size, defrag.goal);
+ 	}
+ 
+ 	return err;
+@@ -745,6 +758,7 @@ out:
+  * @dest_path:		indicating the temporary inode's extent
+  * @req_blocks:		contiguous blocks count we need
+  * @iblock:		target file offset
++ * @goal:		goal offset
+  *
+  */
+ static void
+@@ -752,7 +766,8 @@ ext4_defrag_fill_ar(struct inode *org_in
+ 			struct ext4_allocation_request *ar,
+ 			struct ext4_ext_path *org_path,
+ 			struct ext4_ext_path *dest_path,
+-			ext4_fsblk_t req_blocks, ext4_lblk_t iblock)
++			ext4_fsblk_t req_blocks, ext4_lblk_t iblock,
++			ext4_fsblk_t goal)
+ {
+ 	ar->inode = dest_inode;
+ 	ar->len = req_blocks;
+@@ -764,7 +779,10 @@ ext4_defrag_fill_ar(struct inode *org_in
+ 	ar->lright = 0;
+ 	ar->pright = 0;
+ 
+-	ar->goal = ext4_ext_find_goal(dest_inode, dest_path, iblock);
++	if (goal)
++		ar->goal = goal;
++	else
++		ar->goal = ext4_ext_find_goal(dest_inode, dest_path, iblock);
  }
  
-+/**
-+ * fiemap_fill_next_extent - Fiemap helper function
-+ * @fieinfo:	Fiemap context passed into ->fiemap
-+ * @logical:	Extent logical start offset, in bytes
-+ * @phys:	Extent physical start offset, in bytes
-+ * @len:	Extent length, in bytes
-+ * @flags:	FIEMAP_EXTENT flags that describe this extent
-+ *
-+ * Called from file system ->fiemap callback. Will populate extent
-+ * info as passed in via arguments and copy to user memory. On
-+ * success, extent count on fieinfo is incremented.
-+ *
-+ * Returns 0 on success, -errno on error, 1 if this was the last
-+ * extent that will fit in user array.
-+ */
-+#define SET_UNKNOWN_FLAGS	(FIEMAP_EXTENT_DELALLOC)
-+#define SET_NO_BYPASS_FLAGS	(FIEMAP_EXTENT_DATA_ENCRYPTED)
-+#define SET_NOT_ALIGNED_FLAGS	(FIEMAP_EXTENT_DATA_TAIL|FIEMAP_EXTENT_DATA_INLINE)
-+int fiemap_fill_next_extent(struct fiemap_extent_info *fieinfo, u64 logical,
-+			    u64 phys, u64 len, u32 flags)
-+{
-+	struct fiemap_extent extent;
-+	struct fiemap_extent *dest = fieinfo->fi_extents_start;
-+
-+	/* only count the extents */
-+	if (fieinfo->fi_extents_max == 0) {
-+		fieinfo->fi_extents_mapped++;
-+		return (flags & FIEMAP_EXTENT_LAST) ? 1 : 0;
-+	}
-+
-+	if (fieinfo->fi_extents_mapped >= fieinfo->fi_extents_max)
-+		return 1;
-+
-+	if (flags & SET_UNKNOWN_FLAGS)
-+		flags |= FIEMAP_EXTENT_UNKNOWN;
-+	if (flags & SET_NO_BYPASS_FLAGS)
-+		flags |= FIEMAP_EXTENT_NO_BYPASS;
-+	if (flags & SET_NOT_ALIGNED_FLAGS)
-+		flags |= FIEMAP_EXTENT_NOT_ALIGNED;
-+
-+	extent.fe_logical = logical;
-+	extent.fe_physical = phys;
-+	extent.fe_length = len;
-+	extent.fe_flags = flags;
-+
-+	dest += fieinfo->fi_extents_mapped;
-+	if (copy_to_user(dest, &extent, sizeof(extent)))
-+		return -EFAULT;
-+
-+	fieinfo->fi_extents_mapped++;
-+	if (fieinfo->fi_extents_mapped == fieinfo->fi_extents_max)
-+		return 1;
-+	return (flags & FIEMAP_EXTENT_LAST) ? 1 : 0;
-+}
-+EXPORT_SYMBOL(fiemap_fill_next_extent);
-+
-+/**
-+ * fiemap_check_flags - check validity of requested flags for fiemap
-+ * @fieinfo:	Fiemap context passed into ->fiemap
-+ * @fs_flags:	Set of fiemap flags that the file system understands
-+ *
-+ * Called from file system ->fiemap callback. This will compute the
-+ * intersection of valid fiemap flags and those that the fs supports. That
-+ * value is then compared against the user supplied flags. In case of bad user
-+ * flags, the invalid values will be written into the fieinfo structure, and
-+ * -EBADR is returned, which tells ioctl_fiemap() to return those values to
-+ * userspace. For this reason, a return code of -EBADR should be preserved.
-+ *
-+ * Returns 0 on success, -EBADR on bad flags.
-+ */
-+int fiemap_check_flags(struct fiemap_extent_info *fieinfo, u32 fs_flags)
-+{
-+	u32 incompat_flags;
-+
-+	incompat_flags = fieinfo->fi_flags & ~(FIEMAP_FLAGS_COMPAT & fs_flags);
-+	if (incompat_flags) {
-+		fieinfo->fi_flags = incompat_flags;
-+		return -EBADR;
-+	}
-+	return 0;
-+}
-+EXPORT_SYMBOL(fiemap_check_flags);
-+
-+static int fiemap_check_ranges(struct super_block *sb,
-+			       u64 start, u64 len, u64 *new_len)
-+{
-+	*new_len = len;
-+
-+	if (len == 0)
-+		return -EINVAL;
-+
-+	if (start > sb->s_maxbytes)
-+		return -EFBIG;
-+
-+	/*
-+	 * Shrink request scope to what the fs can actually handle.
-+	 */
-+	if ((len > sb->s_maxbytes) ||
-+	    (sb->s_maxbytes - len) < start)
-+		*new_len = sb->s_maxbytes - start;
-+
-+	return 0;
-+}
-+
-+static int ioctl_fiemap(struct file *filp, unsigned long arg)
-+{
-+	struct fiemap fiemap;
-+	struct fiemap_extent_info fieinfo = { 0, };
-+	struct inode *inode = filp->f_path.dentry->d_inode;
-+	struct super_block *sb = inode->i_sb;
-+	u64 len;
-+	int error;
-+
-+	if (!inode->i_op->fiemap)
-+		return -EOPNOTSUPP;
-+
-+	if (copy_from_user(&fiemap, (struct fiemap __user *)arg,
-+			   sizeof(struct fiemap)))
-+		return -EFAULT;
-+
-+	if (fiemap.fm_extent_count > FIEMAP_MAX_EXTENTS)
-+		return -EINVAL;
-+
-+	error = fiemap_check_ranges(sb, fiemap.fm_start, fiemap.fm_length,
-+				    &len);
-+	if (error)
-+		return error;
-+
-+	fieinfo.fi_flags = fiemap.fm_flags;
-+	fieinfo.fi_extents_max = fiemap.fm_extent_count;
-+	fieinfo.fi_extents_start = (struct fiemap_extent *)(arg + sizeof(fiemap));
-+
-+	if (fiemap.fm_extent_count != 0 &&
-+	    !access_ok(VERIFY_WRITE, fieinfo.fi_extents_start,
-+		       fieinfo.fi_extents_max * sizeof(struct fiemap_extent)))
-+		return -EFAULT;
-+
-+	if (fieinfo.fi_flags & FIEMAP_FLAG_SYNC)
-+		filemap_write_and_wait(inode->i_mapping);
-+
-+	error = inode->i_op->fiemap(inode, &fieinfo, fiemap.fm_start, len);
-+	fiemap.fm_flags = fieinfo.fi_flags;
-+	fiemap.fm_mapped_extents = fieinfo.fi_extents_mapped;
-+	if (copy_to_user((char *)arg, &fiemap, sizeof(fiemap)))
-+		error = -EFAULT;
-+
-+	return error;
-+}
-+
- static int file_ioctl(struct file *filp, unsigned int cmd,
- 		unsigned long arg)
+ /**
+@@ -939,6 +957,7 @@ out:
+  *			original extent tree
+  * @tar_end:		the last block number of the allocated blocks
+  * @sum_tmp:		the extents count  in the allocated blocks
++ * @goal:		block offset for allocaton
+  *
+  *
+  * This function returns the values as below.
+@@ -949,7 +968,7 @@ out:
+ static int
+ ext4_defrag_comp_ext_count(struct inode *org_inode,
+ 			struct ext4_ext_path *org_path, ext4_lblk_t tar_end,
+-			int sum_tmp)
++			int sum_tmp, ext4_fsblk_t goal)
  {
-@@ -80,6 +232,8 @@ static int file_ioctl(struct file *filp, unsigned int cmd,
- 	switch (cmd) {
- 	case FIBMAP:
- 		return ioctl_fibmap(filp, p);
-+	case FS_IOC_FIEMAP:
-+		return ioctl_fiemap(filp, arg);
- 	case FIGETBSZ:
- 		return put_user(inode->i_sb->s_blocksize, p);
- 	case FIONREAD:
-diff --git a/include/linux/fiemap.h b/include/linux/fiemap.h
-new file mode 100644
-index 0000000..29e5862
---- /dev/null
-+++ b/include/linux/fiemap.h
-@@ -0,0 +1,62 @@
-+/*
-+ * FS_IOC_FIEMAP ioctl infrastructure.
-+ *
-+ * Some portions copyright (C) 2007 Cluster File Systems, Inc
-+ *
-+ * Authors: Mark Fasheh <mfasheh@suse.com>
-+ *          Kalpak Shah <kalpak.shah@sun.com>
-+ *          Andreas Dilger <adilger@sun.com>
-+ */
-+
-+#ifndef _LINUX_FIEMAP_H
-+#define _LINUX_FIEMAP_H
-+
-+struct fiemap_extent {
-+	__u64 fe_logical;  /* logical offset in bytes for the start of
-+			    * the extent from the beginning of the file */
-+	__u64 fe_physical; /* physical offset in bytes for the start
-+			    * of the extent from the beginning of the disk */
-+	__u64 fe_length;   /* length in bytes for this extent */
-+	__u32 fe_flags;    /* FIEMAP_EXTENT_* flags for this extent */
-+	__u32 fe_reserved;
-+};
-+
-+struct fiemap {
-+	__u64 fm_start;		/* logical offset (inclusive) at
-+				 * which to start mapping (in) */
-+	__u64 fm_length;	/* logical length of mapping which
-+				 * userspace wants (in) */
-+	__u32 fm_flags;		/* FIEMAP_FLAG_* flags for request (in/out) */
-+	__u32 fm_mapped_extents;/* number of extents that were mapped (out) */
-+	__u32 fm_extent_count;  /* size of fm_extents array (in) */
-+	__u32 fm_reserved;
-+	struct fiemap_extent fm_extents[0]; /* array of mapped extents (out) */
-+};
-+
-+#define FIEMAP_MAX_OFFSET	(~0ULL)
-+
-+#define FIEMAP_FLAG_SYNC	0x00000001 /* sync file data before map */
-+#define FIEMAP_FLAG_XATTR	0x00000002 /* map extended attribute tree */
-+
-+#define FIEMAP_FLAGS_COMPAT	(FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR)
-+
-+#define FIEMAP_EXTENT_LAST		0x00000001 /* Last extent in file. */
-+#define FIEMAP_EXTENT_UNKNOWN		0x00000002 /* Data location unknown. */
-+#define FIEMAP_EXTENT_DELALLOC		0x00000004 /* Location still pending.
-+						    * Sets EXTENT_UNKNOWN. */
-+#define FIEMAP_EXTENT_NO_BYPASS		0x00000008 /* Data mapping undefined */
-+#define FIEMAP_EXTENT_DATA_ENCRYPTED	0x00000080 /* Data is encrypted by fs.
-+						    * Sets EXTENT_NO_BYPASS. */
-+#define FIEMAP_EXTENT_NOT_ALIGNED	0x00000100 /* Extent offsets may not be
-+						    * block aligned. */
-+#define FIEMAP_EXTENT_DATA_INLINE	0x00000200 /* Data mixed with metadata.
-+						    * Sets EXTENT_NOT_ALIGNED.*/
-+#define FIEMAP_EXTENT_DATA_TAIL		0x00000400 /* Multiple files in block.
-+						    * Sets EXTENT_NOT_ALIGNED.*/
-+#define FIEMAP_EXTENT_UNWRITTEN		0x00000800 /* Space allocated, but
-+						    * no data (i.e. zero). */
-+#define FIEMAP_EXTENT_MERGED		0x00001000 /* File does not natively
-+						    * support extents. Result
-+						    * merged for efficiency. */
-+
-+#endif /* _LINUX_FIEMAP_H */
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 580b513..194fb23 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -231,6 +231,7 @@ extern int dir_notify_enable;
- #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
- #define	FS_IOC_GETVERSION		_IOR('v', 1, long)
- #define	FS_IOC_SETVERSION		_IOW('v', 2, long)
-+#define FS_IOC_FIEMAP			_IOWR('f', 11, struct fiemap)
- #define FS_IOC32_GETFLAGS		_IOR('f', 1, int)
- #define FS_IOC32_SETFLAGS		_IOW('f', 2, int)
- #define FS_IOC32_GETVERSION		_IOR('v', 1, int)
-@@ -291,6 +292,7 @@ extern int dir_notify_enable;
- #include <linux/mutex.h>
- #include <linux/capability.h>
- #include <linux/semaphore.h>
-+#include <linux/fiemap.h>
+ 	struct ext4_extent *ext = NULL;
+ 	int depth = ext_depth(org_inode);
+@@ -973,7 +992,7 @@ ext4_defrag_comp_ext_count(struct inode 
+ 			 * Fail if goal is not set and the fragmentation
+ 			 * is not improved.
+ 			 */
+-			if (sum_org == sum_tmp) {
++			if (sum_org == sum_tmp && !goal) {
+ 				/* Not improved */
+ 				ret = 1;
+ 			} else if (sum_org < sum_tmp) {
+@@ -1004,6 +1023,7 @@ ext4_defrag_comp_ext_count(struct inode 
+  * @tar_start:		starting offset to allocate in blocks
+  * @tar_blocks:		the number of blocks to allocate
+  * @iblock:		file related offset
++ * @goal:		block offset for allocaton
+  *
+  *
+  * This function returns the value as below:
+@@ -1014,7 +1034,8 @@ ext4_defrag_comp_ext_count(struct inode 
+ static int
+ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+ 			struct ext4_ext_path *org_path, ext4_lblk_t tar_start,
+-			ext4_lblk_t tar_blocks, ext4_lblk_t iblock)
++			ext4_lblk_t tar_blocks, ext4_lblk_t iblock,
++			ext4_fsblk_t goal)
+ {
+ 	handle_t *handle;
+ 	struct ext4_extent_header *eh = NULL;
+@@ -1040,7 +1061,7 @@ ext4_defrag_new_extent_tree(struct inode
  
- #include <asm/atomic.h>
- #include <asm/byteorder.h>
-@@ -1179,6 +1181,20 @@ extern void dentry_unhash(struct dentry *dentry);
- extern int file_permission(struct file *, int);
+ 	/* Fill struct ext4_allocation_request with necessary info */
+ 	ext4_defrag_fill_ar(org_inode, tmp_inode, &ar, org_path,
+-				dest_path, tar_blocks, iblock);
++				dest_path, tar_blocks, iblock, goal);
+ 
+ 	handle = ext4_journal_start(tmp_inode, 0);
+ 	if (IS_ERR(handle)) {
+@@ -1072,7 +1093,7 @@ ext4_defrag_new_extent_tree(struct inode
+ 	}
+ 
+ 	ret = ext4_defrag_comp_ext_count(org_inode, org_path, tar_end,
+-					sum_tmp);
++					sum_tmp, goal);
+ 
+ out:
+ 	if (ret < 0 || ret == 1) {
+@@ -1202,13 +1223,14 @@ out:
+  * @filp:		pointer to file
+  * @block_start:	starting offset to defrag in blocks
+  * @defrag_size:	size of defrag in blocks
++ * @goal:		block offset for allocation
+  *
+  * This function returns the number of blocks if succeed, otherwise
+  * returns error value.
+  */
+ int
+ ext4_defrag(struct file *filp, ext4_lblk_t block_start,
+-		ext4_lblk_t defrag_size)
++		ext4_lblk_t defrag_size, ext4_fsblk_t goal)
+ {
+ 	struct inode *org_inode = filp->f_dentry->d_inode, *tmp_inode = NULL;
+ 	struct ext4_ext_path *org_path = NULL, *holecheck_path = NULL;
+@@ -1327,14 +1349,14 @@ ext4_defrag(struct file *filp, ext4_lblk
+ 		}
+ 
+ 		/* Found an isolated block */
+-		if (seq_extents == 1) {
++		if (seq_extents == 1 && !goal) {
+ 			seq_start = le32_to_cpu(ext_cur->ee_block);
+ 			goto CLEANUP;
+ 		}
+ 
+ 		ret = ext4_defrag_new_extent_tree(org_inode, tmp_inode,
+ 					org_path, seq_start, seq_blocks,
+-					block_start);
++					block_start, goal);
+ 
+ 		if (ret < 0) {
+ 			break;
+Index: linux-2.6.26-rc9/fs/ext4/ext4.h
+===================================================================
+--- linux-2.6.26-rc9.orig/fs/ext4/ext4.h	2008-07-11 16:05:18.000000000 -0700
++++ linux-2.6.26-rc9/fs/ext4/ext4.h	2008-07-11 16:05:19.000000000 -0700
+@@ -301,6 +301,7 @@ struct ext4_new_group_data {
+ #define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
+ #define EXT4_IOC_SETRSVSZ		_IOW('f', 6, long)
+ #define EXT4_IOC_MIGRATE		_IO('f', 7)
++#define EXT4_IOC_FIBMAP			_IOW('f', 9, ext4_fsblk_t)
+ #define EXT4_IOC_DEFRAG		_IOW('f', 10, struct ext4_ext_defrag_data)
  
  /*
-+ * VFS FS_IOC_FIEMAP helper definitions.
-+ */
-+struct fiemap_extent_info {
-+	unsigned int fi_flags;		/* Flags as passed from user */
-+	unsigned int fi_extents_mapped;	/* Number of mapped extents */
-+	unsigned int fi_extents_max;	/* Size of fiemap_extent array */
-+	struct fiemap_extent *fi_extents_start; /* Start of fiemap_extent
-+						 * array */
-+};
-+int fiemap_fill_next_extent(struct fiemap_extent_info *info, u64 logical,
-+			    u64 phys, u64 len, u32 flags);
-+int fiemap_check_flags(struct fiemap_extent_info *fieinfo, u32 fs_flags);
-+
-+/*
-  * File types
-  *
-  * NOTE! These match bits 12..15 of stat.st_mode
-@@ -1287,6 +1303,8 @@ struct inode_operations {
- 	void (*truncate_range)(struct inode *, loff_t, loff_t);
- 	long (*fallocate)(struct inode *inode, int mode, loff_t offset,
- 			  loff_t len);
-+	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
-+		      u64 len);
- };
+@@ -1021,6 +1022,7 @@ extern int ext4_htree_store_dirent(struc
+ 				    __u32 minor_hash,
+ 				    struct ext4_dir_entry_2 *dirent);
+ extern void ext4_htree_free_dir_info(struct dir_private_info *p);
++extern sector_t ext4_bmap(struct address_space *mapping, sector_t block);
  
- struct seq_file;
--- 
-1.5.6.1.205.ge2c7.dirty
-
+ /* fsync.c */
+ extern int ext4_sync_file (struct file *, struct dentry *, int);
+@@ -1144,7 +1146,7 @@ extern void ext4_inode_table_set(struct 
+ extern int ext4_ext_journal_restart(handle_t *handle, int needed);
+ /* defrag.c */
+ extern int ext4_defrag(struct file *filp, ext4_lblk_t block_start,
+-			ext4_lblk_t defrag_size);
++			ext4_lblk_t defrag_size, ext4_fsblk_t goal);
+ extern int ext4_defrag_ioctl(struct inode *, struct file *, unsigned int,
+ 				unsigned long);
+ 
+Index: linux-2.6.26-rc9/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.26-rc9.orig/fs/ext4/inode.c	2008-07-11 16:05:18.000000000 -0700
++++ linux-2.6.26-rc9/fs/ext4/inode.c	2008-07-11 16:05:19.000000000 -0700
+@@ -2396,7 +2396,7 @@ out:
+  * So, if we see any bmap calls here on a modified, data-journaled file,
+  * take extra steps to flush any blocks which might be in the cache.
+  */
+-static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
++sector_t ext4_bmap(struct address_space *mapping, sector_t block)
+ {
+ 	struct inode *inode = mapping->host;
+ 	journal_t *journal;
+Index: linux-2.6.26-rc9/fs/ext4/ioctl.c
+===================================================================
+--- linux-2.6.26-rc9.orig/fs/ext4/ioctl.c	2008-07-11 16:05:18.000000000 -0700
++++ linux-2.6.26-rc9/fs/ext4/ioctl.c	2008-07-11 16:05:19.000000000 -0700
+@@ -241,6 +241,7 @@ setversion_out:
+ 
+ 		return err;
+ 	}
++	case EXT4_IOC_FIBMAP:
+ 	case EXT4_IOC_DEFRAG: {
+ 		return ext4_defrag_ioctl(inode, filp, cmd, arg);
+ 	}
