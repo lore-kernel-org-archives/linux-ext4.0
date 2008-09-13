@@ -1,54 +1,48 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] Add extent conversion support to chattr
-Date: Fri, 12 Sep 2008 09:26:44 -0600
-Message-ID: <20080912152644.GB3086@webber.adilger.int>
-References: <1221210249-26484-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20080912091713.GY3086@webber.adilger.int> <20080912092749.GC8405@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: "Theodore Ts'o" <tytso@MIT.EDU>
+Subject: [PATCH 1/4] ext3: Fix ext3_dx_readdir hash collision handling
+Date: Sat, 13 Sep 2008 11:32:48 -0400
+Message-ID: <1221319971-29879-1-git-send-email-tytso@mit.edu>
+Cc: linux-kernel@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	Eugene Dashevsky <eugene@ibrix.com>,
+	Mike Snitzer <msnitzer@ibrix.com>, linux-ext4@vger.kernel.org
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:63003 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753030AbYILP0v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Sep 2008 11:26:51 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8CFQoiQ020379
-	for <linux-ext4@vger.kernel.org>; Fri, 12 Sep 2008 08:26:50 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K7300K019FQ8O00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 12 Sep 2008 08:26:50 -0700 (PDT)
-In-reply-to: <20080912092749.GC8405@skywalker>
-Content-disposition: inline
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:50913 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751384AbYIMPc4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 13 Sep 2008 11:32:56 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 12, 2008  14:57 +0530, Aneesh Kumar wrote:
-> On Fri, Sep 12, 2008 at 03:17:13AM -0600, Andreas Dilger wrote:
-> > Why not just try to set this flag and let the kernel decide what is
-> > possible?
-> 
-> The motivation is to give a clear message that we still don't support
-> clearing extent flags. If we pass it to the kernel we will get
-> operation not supported error which would confuse the user who does
-> chattr -de f1
+This fixes a bug where readdir() would return a directory entry twice
+if there was a hash collision in an hash tree indexed directory.
 
-The problem is that if the kernel ever does allow converting extents->
-block-mapped (or some other mapping that isn't extents), the chattr
-tool will cause this to fail even when it shouldn't.  Better to leave
-the check in a single place (the kernel, which knows best).
+Signed-off-by: Eugene Dashevsky <eugene@ibrix.com>
+Signed-off-by: Mike Snitzer <msnitzer@ibrix.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+---
+ fs/ext3/dir.c |   22 ++++++++++++++++------
+ 1 files changed, 16 insertions(+), 6 deletions(-)
 
-I don't think the user would be too confused.  You could still check
-after the call to the kernel to see if the "e" option is being removed
-and print an error if the call failed.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
+index 2eea96e..42c5391 100644
+--- a/fs/ext3/dir.c
++++ b/fs/ext3/dir.c
+@@ -410,7 +410,7 @@ static int call_filldir(struct file * filp, void * dirent,
+ 				get_dtype(sb, fname->file_type));
+ 		if (error) {
+ 			filp->f_pos = curr_pos;
+-			info->extra_fname = fname->next;
++			info->extra_fname = fname;
+ 			return error;
+ 		}
+ 		fname = fname->next;
+@@ -449,11 +449,21 @@ static int ext3_dx_readdir(struct file * filp,
+ 	 * If there are any leftover names on the hash collision
+ 	 * chain, return them first.
+ 	 */
+-	if (info->extra_fname &&
+-	    call_filldir(filp, dirent, filldir, info->extra_fname))
+-		goto finished;
