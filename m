@@ -1,280 +1,49 @@
 From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: Review of ext4-online-defrag-for-relevant-files.patch
-Date: Sat, 13 Sep 2008 15:22:14 -0400
-Message-ID: <E1KeahC-0004UU-2B@closure.thunk.org>
+Subject: Review of ext4-online-defrag-move-victim-files.patch
+Date: Sat, 13 Sep 2008 17:16:11 -0400
+Message-ID: <E1KecTT-0004nW-Oc@closure.thunk.org>
 Cc: Takashi Sato <t-sato@yk.jp.nec.com>, linux-ext4@vger.kernel.org
 To: a-fujita@rs.jp.nec.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:43167 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:54642 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752540AbYIMTWU (ORCPT
+	by vger.kernel.org with ESMTP id S1750769AbYIMVQR (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 13 Sep 2008 15:22:20 -0400
+	Sat, 13 Sep 2008 17:16:17 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Hi,
 
 I've been looking over the defrag patches with an eye towards getting
-them merged.  The bulk of the patch
-ext4-online-defrag-for-relevant-files.patch, seems to be an introduction
-of a new ioctl EXT4_IOC_FIBMAP, which seems to work just like the
-standard filesystem independent ioctl, FIBMAP --- except it only works
-on extent-based file, and the implementation of the same is buried deep
-inside ext4_defrag_ioctl().   
+them merged.  This patch concerns me for a number of reasons.  First of
+all, it is calling into a number of private functions which had
+previously been static functions in fs/ext4/balloc.c.  Specifically,
+goal_in_my_reservation(), rsv_window_remove(), rsv_is_empty(),
+alloc_new_reservation(), try_to_extend_reservation().  
 
-There is also no mention if this new ioctl anywhere in the patch
-commit.  Was this intentional?  If so, what is the justification for the
-new ioctl, and is it safe to simply remove the ioctl and change the
-userspace program to use the FIBMAP ioctl?
+This is bad for a couple of reasons.  First of all, the functions
+weren't renamed, so it results in the namespace leakage.  In general,
+non-static functions should be prefixed by ext4_ so that we know they
+came from the ext4 filesystem code.  Secondly, these were internal
+functions were intended for use in an older set of block allocation
+functions that may be removed in the future --- they had previously only
+been used by the function ext4_old_new_blocks(), which is used only when
+the mount option nomballoc is given.  Given the superiority of the new
+multi-block allocator, it's likely that this old code will be going
+away.
 
-The patch name also doesn't make a lot of sense; I suspect the -r mode
-refers to the on-line command, but if there could be some better
-description of exactly what this patch is doing, it would be much
-appreciated.
+One of the things which further worries me is that your patch seems to
+be making changes to the mballoc() code as well.  Given that the
+reservations code in fs/ext4/balloc.c was never intended to used at the
+same time as the multi-block allocator code in mballoc(), I suspect
+there will be a problem here if the goal of reserving blocks using the
+reservation code was to prevent some other inode using allocating those
+blocks, since the multi-block allocator does not honor reservations made
+by the reservations code, since normally the reservations code is not
+active when the mballoc code is active (the two are mutually exclusive).
 
-Thanks, regards,
+Best regards,
 
-							- Ted
+						- Ted
 
-
-
-
-ext4: online defrag-- Defragmentation for the relevant files (-r mode)
-
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-
-Relevant file fragmentation could be solved by moving
-the files under the specified directory close together with
-the block containing the directory data.
-
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
----
- fs/ext4/defrag.c |   48 +++++++++++++++++++++++++++++++++++-------------
- fs/ext4/ext4.h   |    4 +++-
- fs/ext4/inode.c  |    2 +-
- fs/ext4/ioctl.c  |    1 +
- 4 files changed, 40 insertions(+), 15 deletions(-)
-
-Index: linux-2.6.26-rc9/fs/ext4/defrag.c
-===================================================================
---- linux-2.6.26-rc9.orig/fs/ext4/defrag.c	2008-07-11 16:05:19.000000000 -0700
-+++ linux-2.6.26-rc9/fs/ext4/defrag.c	2008-07-11 16:05:19.000000000 -0700
-@@ -95,13 +95,26 @@ int ext4_defrag_ioctl(struct inode *inod
- {
- 	int err = 0;
- 
--	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)) {
-+	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL ||
-+					cmd == EXT4_IOC_FIBMAP)) {
- 		printk(KERN_ERR "ext4 defrag: ino[%lu] is not extents "
- 					"based file\n", inode->i_ino);
- 		return -EOPNOTSUPP;
- 	}
- 
--	if (cmd == EXT4_IOC_DEFRAG) {
-+	if (cmd == EXT4_IOC_FIBMAP) {
-+		ext4_fsblk_t __user *p = (ext4_fsblk_t __user *)arg;
-+		ext4_fsblk_t block = 0;
-+		struct address_space *mapping = filp->f_mapping;
-+
-+		if (copy_from_user(&block, (ext4_fsblk_t __user *)arg,
-+					sizeof(block)))
-+			return -EFAULT;
-+
-+		block = ext4_bmap(mapping, block);
-+
-+		return put_user(block, p);
-+	} else if (cmd == EXT4_IOC_DEFRAG) {
- 		struct ext4_ext_defrag_data defrag;
- 		struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
- 
-@@ -127,7 +140,7 @@ int ext4_defrag_ioctl(struct inode *inod
- 		}
- 
- 		err = ext4_defrag(filp, defrag.start_offset,
--				defrag.defrag_size);
-+				defrag.defrag_size, defrag.goal);
- 	}
- 
- 	return err;
-@@ -745,6 +758,7 @@ out:
-  * @dest_path:		indicating the temporary inode's extent
-  * @req_blocks:		contiguous blocks count we need
-  * @iblock:		target file offset
-+ * @goal:		goal offset
-  *
-  */
- static void
-@@ -752,7 +766,8 @@ ext4_defrag_fill_ar(struct inode *org_in
- 			struct ext4_allocation_request *ar,
- 			struct ext4_ext_path *org_path,
- 			struct ext4_ext_path *dest_path,
--			ext4_fsblk_t req_blocks, ext4_lblk_t iblock)
-+			ext4_fsblk_t req_blocks, ext4_lblk_t iblock,
-+			ext4_fsblk_t goal)
- {
- 	ar->inode = dest_inode;
- 	ar->len = req_blocks;
-@@ -764,7 +779,10 @@ ext4_defrag_fill_ar(struct inode *org_in
- 	ar->lright = 0;
- 	ar->pright = 0;
- 
--	ar->goal = ext4_ext_find_goal(dest_inode, dest_path, iblock);
-+	if (goal)
-+		ar->goal = goal;
-+	else
-+		ar->goal = ext4_ext_find_goal(dest_inode, dest_path, iblock);
- }
- 
- /**
-@@ -939,6 +957,7 @@ out:
-  *			original extent tree
-  * @tar_end:		the last block number of the allocated blocks
-  * @sum_tmp:		the extents count  in the allocated blocks
-+ * @goal:		block offset for allocaton
-  *
-  *
-  * This function returns the values as below.
-@@ -949,7 +968,7 @@ out:
- static int
- ext4_defrag_comp_ext_count(struct inode *org_inode,
- 			struct ext4_ext_path *org_path, ext4_lblk_t tar_end,
--			int sum_tmp)
-+			int sum_tmp, ext4_fsblk_t goal)
- {
- 	struct ext4_extent *ext = NULL;
- 	int depth = ext_depth(org_inode);
-@@ -973,7 +992,7 @@ ext4_defrag_comp_ext_count(struct inode 
- 			 * Fail if goal is not set and the fragmentation
- 			 * is not improved.
- 			 */
--			if (sum_org == sum_tmp) {
-+			if (sum_org == sum_tmp && !goal) {
- 				/* Not improved */
- 				ret = 1;
- 			} else if (sum_org < sum_tmp) {
-@@ -1004,6 +1023,7 @@ ext4_defrag_comp_ext_count(struct inode 
-  * @tar_start:		starting offset to allocate in blocks
-  * @tar_blocks:		the number of blocks to allocate
-  * @iblock:		file related offset
-+ * @goal:		block offset for allocaton
-  *
-  *
-  * This function returns the value as below:
-@@ -1014,7 +1034,8 @@ ext4_defrag_comp_ext_count(struct inode 
- static int
- ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
- 			struct ext4_ext_path *org_path, ext4_lblk_t tar_start,
--			ext4_lblk_t tar_blocks, ext4_lblk_t iblock)
-+			ext4_lblk_t tar_blocks, ext4_lblk_t iblock,
-+			ext4_fsblk_t goal)
- {
- 	handle_t *handle;
- 	struct ext4_extent_header *eh = NULL;
-@@ -1040,7 +1061,7 @@ ext4_defrag_new_extent_tree(struct inode
- 
- 	/* Fill struct ext4_allocation_request with necessary info */
- 	ext4_defrag_fill_ar(org_inode, tmp_inode, &ar, org_path,
--				dest_path, tar_blocks, iblock);
-+				dest_path, tar_blocks, iblock, goal);
- 
- 	handle = ext4_journal_start(tmp_inode, 0);
- 	if (IS_ERR(handle)) {
-@@ -1072,7 +1093,7 @@ ext4_defrag_new_extent_tree(struct inode
- 	}
- 
- 	ret = ext4_defrag_comp_ext_count(org_inode, org_path, tar_end,
--					sum_tmp);
-+					sum_tmp, goal);
- 
- out:
- 	if (ret < 0 || ret == 1) {
-@@ -1202,13 +1223,14 @@ out:
-  * @filp:		pointer to file
-  * @block_start:	starting offset to defrag in blocks
-  * @defrag_size:	size of defrag in blocks
-+ * @goal:		block offset for allocation
-  *
-  * This function returns the number of blocks if succeed, otherwise
-  * returns error value.
-  */
- int
- ext4_defrag(struct file *filp, ext4_lblk_t block_start,
--		ext4_lblk_t defrag_size)
-+		ext4_lblk_t defrag_size, ext4_fsblk_t goal)
- {
- 	struct inode *org_inode = filp->f_dentry->d_inode, *tmp_inode = NULL;
- 	struct ext4_ext_path *org_path = NULL, *holecheck_path = NULL;
-@@ -1327,14 +1349,14 @@ ext4_defrag(struct file *filp, ext4_lblk
- 		}
- 
- 		/* Found an isolated block */
--		if (seq_extents == 1) {
-+		if (seq_extents == 1 && !goal) {
- 			seq_start = le32_to_cpu(ext_cur->ee_block);
- 			goto CLEANUP;
- 		}
- 
- 		ret = ext4_defrag_new_extent_tree(org_inode, tmp_inode,
- 					org_path, seq_start, seq_blocks,
--					block_start);
-+					block_start, goal);
- 
- 		if (ret < 0) {
- 			break;
-Index: linux-2.6.26-rc9/fs/ext4/ext4.h
-===================================================================
---- linux-2.6.26-rc9.orig/fs/ext4/ext4.h	2008-07-11 16:05:18.000000000 -0700
-+++ linux-2.6.26-rc9/fs/ext4/ext4.h	2008-07-11 16:05:19.000000000 -0700
-@@ -301,6 +301,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
- #define EXT4_IOC_SETRSVSZ		_IOW('f', 6, long)
- #define EXT4_IOC_MIGRATE		_IO('f', 7)
-+#define EXT4_IOC_FIBMAP			_IOW('f', 9, ext4_fsblk_t)
- #define EXT4_IOC_DEFRAG		_IOW('f', 10, struct ext4_ext_defrag_data)
- 
- /*
-@@ -1021,6 +1022,7 @@ extern int ext4_htree_store_dirent(struc
- 				    __u32 minor_hash,
- 				    struct ext4_dir_entry_2 *dirent);
- extern void ext4_htree_free_dir_info(struct dir_private_info *p);
-+extern sector_t ext4_bmap(struct address_space *mapping, sector_t block);
- 
- /* fsync.c */
- extern int ext4_sync_file (struct file *, struct dentry *, int);
-@@ -1144,7 +1146,7 @@ extern void ext4_inode_table_set(struct 
- extern int ext4_ext_journal_restart(handle_t *handle, int needed);
- /* defrag.c */
- extern int ext4_defrag(struct file *filp, ext4_lblk_t block_start,
--			ext4_lblk_t defrag_size);
-+			ext4_lblk_t defrag_size, ext4_fsblk_t goal);
- extern int ext4_defrag_ioctl(struct inode *, struct file *, unsigned int,
- 				unsigned long);
- 
-Index: linux-2.6.26-rc9/fs/ext4/inode.c
-===================================================================
---- linux-2.6.26-rc9.orig/fs/ext4/inode.c	2008-07-11 16:05:18.000000000 -0700
-+++ linux-2.6.26-rc9/fs/ext4/inode.c	2008-07-11 16:05:19.000000000 -0700
-@@ -2396,7 +2396,7 @@ out:
-  * So, if we see any bmap calls here on a modified, data-journaled file,
-  * take extra steps to flush any blocks which might be in the cache.
-  */
--static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
-+sector_t ext4_bmap(struct address_space *mapping, sector_t block)
- {
- 	struct inode *inode = mapping->host;
- 	journal_t *journal;
-Index: linux-2.6.26-rc9/fs/ext4/ioctl.c
-===================================================================
---- linux-2.6.26-rc9.orig/fs/ext4/ioctl.c	2008-07-11 16:05:18.000000000 -0700
-+++ linux-2.6.26-rc9/fs/ext4/ioctl.c	2008-07-11 16:05:19.000000000 -0700
-@@ -241,6 +241,7 @@ setversion_out:
- 
- 		return err;
- 	}
-+	case EXT4_IOC_FIBMAP:
- 	case EXT4_IOC_DEFRAG: {
- 		return ext4_defrag_ioctl(inode, filp, cmd, arg);
- 	}
