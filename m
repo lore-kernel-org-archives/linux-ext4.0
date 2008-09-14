@@ -1,49 +1,44 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: [PATCH] resize2fs : Fix potential memory corruption in ext2fs_progress_init()
-Date: Sun, 14 Sep 2008 20:02:12 +0530
-Message-ID: <ea11fea30809140732i38680994na7d686835e2949cd@mail.gmail.com>
+From: Mark Fasheh <mfasheh@suse.com>
+Subject: Re: [PATCH] jbd2: Create proc entry with bdevname+i_ino.
+Date: Sun, 14 Sep 2008 07:51:11 -0700
+Message-ID: <20080914145111.GQ4563@wotan.suse.de>
+References: <20080908233114.GD20100@mail.oracle.com> <20080914084003.GP4563@wotan.suse.de> <20080914090306.GF30537@mit.edu>
+Reply-To: Mark Fasheh <mfasheh@suse.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: mkatiyar@gmail.com
-To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	ocfs2-devel@oss.oracle.com, sunil.mushran@oracle.com
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.188]:8749 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754141AbYINOcO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2008 10:32:14 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so912737tic.23
-        for <linux-ext4@vger.kernel.org>; Sun, 14 Sep 2008 07:32:12 -0700 (PDT)
+Received: from mail.suse.de ([195.135.220.2]:38035 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751952AbYINOvN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Sep 2008 10:51:13 -0400
 Content-Disposition: inline
+In-Reply-To: <20080914090306.GF30537@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since "prog" is not initialized with 0 , below check in
-ext2fs_progress_init() is wrong and may lead to corruptions.
+On Sun, Sep 14, 2008 at 05:03:06AM -0400, Theodore Tso wrote:
+> > Did this patch ever get reviewied? We'd really like it in so that Ocfs2 can
+> > use JBD2...
+> 
+> Thanks for pinging me; it fell through the cracks.  I'll make sure it
+> gets put into the queue for merging at the next merge window....
 
+Great, thanks Ted! We'll be pushing Ocfs2/JBD2 support upstream next merge
+window too, so this lines things up well for us.
 
-Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+Btw, if anyone is interested in checking out the patches,
 
----
- resize/sim_progress.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+Pull:
+git://git.kernel.org/pub/scm/linux/kernel/git/mfasheh/ocfs2.git jbd2
 
-diff --git a/resize/sim_progress.c b/resize/sim_progress.c
-index a575633..e7dba88 100644
---- a/resize/sim_progress.c
-+++ b/resize/sim_progress.c
-@@ -83,7 +83,7 @@ errcode_t ext2fs_progress_init(ext2_sim_progmeter *ret_prog,
-        errcode_t               retval;
+or via gitweb:
+http://git.kernel.org/?p=linux/kernel/git/mfasheh/ocfs2.git;a=shortlog;h=jbd2
 
-        retval = ext2fs_get_mem(sizeof(struct ext2_sim_progress), &prog);
--       if (!prog)
-+       if (retval)
-                return retval;
-        memset(prog, 0, sizeof(struct ext2_sim_progress));
+Of course, they'll also hit lkml along with the rest of our Ocfs2 features.
+	--Mark
 
--- 
-1.5.4.3
-
-
-Thanks -
-Manish
+--
+Mark Fasheh
