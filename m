@@ -1,55 +1,65 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] properly show journal checksum/async options
-Date: Sun, 14 Sep 2008 14:18:59 -0700
-Message-ID: <48CD7FC3.4050807@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: patches in queue but missing from series?
+Date: Sun, 14 Sep 2008 17:34:48 -0400
+Message-ID: <20080914213448.GB8706@mit.edu>
+References: <48CD7DEC.6080008@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:55927 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754305AbYINVT5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Sep 2008 17:19:57 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m8ELJBUv001109
-	for <linux-ext4@vger.kernel.org>; Sun, 14 Sep 2008 17:19:32 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m8ELJ0mN013720
-	for <linux-ext4@vger.kernel.org>; Sun, 14 Sep 2008 17:19:01 -0400
-Received: from Liberator.local (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id m8ELIxib001389
-	for <linux-ext4@vger.kernel.org>; Sun, 14 Sep 2008 17:18:59 -0400
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:38372 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753389AbYINVew (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2008 17:34:52 -0400
+Content-Disposition: inline
+In-Reply-To: <48CD7DEC.6080008@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The journal_checksum option is not being displayed in
-/proc/mounts ... add this to the show_options() output, but
-only if journal_async_commit is not specified, as that enables
-journal_checksum internally.
+On Sun, Sep 14, 2008 at 02:11:08PM -0700, Eric Sandeen wrote:
+> Looking at what's in the patch queue, but not in the series file:
+> 
+> ext4-fix-hang-due-to-corrupted-jinode.patch
+> ext4-new-defm-options
+> ext4-online-resize-fix-for-group-descriptor-corruption.patch
+> Fix-EXT_MAX_BLOCK.patch
+> jbd2-dio-kjournal-race-EIO.patch
+> jbd-dio-kjournal-race-EIO.patch
+> 
+> Some of these are probably intentional (I think Ted has the printk
+> throttling stuff queued up to send) but have any of these simply gotten
+> lost somehow?  Or merged upstream (or obsoleted) but not removed?
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+Well, all of the patches in the ext3 directory are non-ext4 patches
+which I sent to akpm on Friday or Saturday; I decided to check them
+into the patch queue to make sure they don't get lost.  I'll remove
+them when they are confirmed in -mm.  These would be:
 
-(Aside: this reminds me that we only show non-default options
-in show_options; has there been any discussion of whether
-these should be defaults?)
+> ext2-printk-throttling
+> ext3_dx_readdir_hash_collision_fix.patch
+> ext3-printk-throttling
+> ext3_truncate_block_allocated_on_a_failed_ext3_write_begin.patch
 
-Index: linux-2.6/fs/ext4/super.c
-===================================================================
---- linux-2.6.orig/fs/ext4/super.c	2008-09-14 16:12:54.898077064 -0500
-+++ linux-2.6/fs/ext4/super.c	2008-09-14 16:13:22.878077407 -0500
-@@ -746,8 +746,12 @@ static int ext4_show_options(struct seq_
- 	 */
- 	seq_puts(seq, ",barrier=");
- 	seq_puts(seq, test_opt(sb, BARRIER) ? "1" : "0");
-+	/* journal_async_commit enables journal_checksum internally */
- 	if (test_opt(sb, JOURNAL_ASYNC_COMMIT))
- 		seq_puts(seq, ",journal_async_commit");
-+	else if (test_opt(sb, JOURNAL_CHECKSUM))
-+		seq_puts(seq, ",journal_checksum");
-+
- 	if (test_opt(sb, NOBH))
- 		seq_puts(seq, ",nobh");
- 	if (!test_opt(sb, EXTENTS))
+Some of the patches were ones that fixed bugs introduced in other
+patches, and were folded into a parent patch.  This was the case for
+ext4-fix-hang-due-to-corrupted-jinode.patch, which was folded into the
+patch that ultimately became commit 678aaf48 in the mainline Linux
+tree.
 
+Ext4-new-defm-options was a patch I was working on that never got
+finished.  It probably shouldn't have gotten checked into the patch
+queue.
+
+Girish's Fix-EXT_MAX_BLOCK.patch caused regression failures, so it was
+dropped from the patch series.  I don't think anyone ever went back to
+figure out why it was causing the ext4 tree to blow up.
+
+As far as jbd2-dio-kjournal-race-EIO.patch and
+jbd-dio-kjournal-race-EIO.patch are concerned,
+jbd2-dio-kjournal-race-EIO.patch doesn't even apply any more.  I'm
+guess it was fixed in some other way for jbd2.  It looks the jbd patch
+could apply, but if it's still a valid fix, it should be fed through
+akpm.  Mingming, do you know what the status of these two patches are?
+
+       		    	     	      	     	- Ted
