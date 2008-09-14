@@ -1,45 +1,49 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
-Date: Sun, 14 Sep 2008 09:51:38 -0400
-Message-ID: <20080914135138.GC21746@infradead.org>
-References: <E1Kea9F-0004L5-Ds@closure.thunk.org> <1221331767-16870-1-git-send-email-tytso@mit.edu> <2EC8176B-0AFA-4B36-A2F5-E51753A576A5@cam.ac.uk> <20080913212903.GF26128@mit.edu> <29D7C671-F1D5-48BE-AEB4-07669FC3B405@cam.ac.uk>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: [PATCH] resize2fs : Fix potential memory corruption in ext2fs_progress_init()
+Date: Sun, 14 Sep 2008 20:02:12 +0530
+Message-ID: <ea11fea30809140732i38680994na7d686835e2949cd@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@MIT.EDU>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, akpm@linuxfoundation.org,
-	Mark Fasheh <mfasheh@suse.com>
-To: Anton Altaparmakov <aia21@cam.ac.uk>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: mkatiyar@gmail.com
+To: linux-ext4@vger.kernel.org, "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:59373 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754150AbYINNvk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2008 09:51:40 -0400
+Received: from ti-out-0910.google.com ([209.85.142.188]:8749 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754141AbYINOcO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2008 10:32:14 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so912737tic.23
+        for <linux-ext4@vger.kernel.org>; Sun, 14 Sep 2008 07:32:12 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <29D7C671-F1D5-48BE-AEB4-07669FC3B405@cam.ac.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 13, 2008 at 10:59:40PM +0100, Anton Altaparmakov wrote:
->> In fact, the previous version of the patch had a flag for compression,
->> but Cristoph Hellwig objected because he claimed there were no users
->> for it.
->
-> He is plain wrong then!  NTFS supports compressed files and always has  
-> done!  We only support them read-only at present but that does not  
-> matter for the purposes of FIEMAP.  And in any case one day we will have 
-> write support for compressed files, too...
+Since "prog" is not initialized with 0 , below check in
+ext2fs_progress_init() is wrong and may lead to corruptions.
 
-Note that I didn't object it because there are not user, this is just
-Ted making up BS because he's frustrated.  I said don't add it until we
-actually have users so we know their requirements.  The nice part about
-this interface is that there is no problem adding more flags once we
-need them, if it's just flags, and if we need mor information than just
-the flags we're better of discussing these bits beforehand.
 
-> We already have two file systems in the mainline kernel tree that  
-> support transparent compression/decompression: ntfs and zisofs so there 
-> is no "future" anywhere in sight...  (-;
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
 
-or cramfs.  But no one involved with this patch srries bothered actually
-looking into the requirements.
+---
+ resize/sim_progress.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
+diff --git a/resize/sim_progress.c b/resize/sim_progress.c
+index a575633..e7dba88 100644
+--- a/resize/sim_progress.c
++++ b/resize/sim_progress.c
+@@ -83,7 +83,7 @@ errcode_t ext2fs_progress_init(ext2_sim_progmeter *ret_prog,
+        errcode_t               retval;
+
+        retval = ext2fs_get_mem(sizeof(struct ext2_sim_progress), &prog);
+-       if (!prog)
++       if (retval)
+                return retval;
+        memset(prog, 0, sizeof(struct ext2_sim_progress));
+
+-- 
+1.5.4.3
+
+
+Thanks -
+Manish
