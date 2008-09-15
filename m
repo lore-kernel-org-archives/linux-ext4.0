@@ -1,79 +1,67 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: patches in queue but missing from series?
-Date: Sun, 14 Sep 2008 14:43:56 -0700
-Message-ID: <48CD859C.8070301@redhat.com>
-References: <48CD7DEC.6080008@redhat.com> <20080914213448.GB8706@mit.edu>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: [PATCH] jbd2: Create proc entry
+	with	bdevname+i_ino.
+Date: Sun, 14 Sep 2008 18:10:42 -0700
+Message-ID: <20080915011042.GA29193@mail.oracle.com>
+References: <20080908233114.GD20100@mail.oracle.com>
+	<20080914084003.GP4563@wotan.suse.de>
+	<20080914090306.GF30537@mit.edu>
+	<20080914160635.GA31958@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33274 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751777AbYINVpr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Sep 2008 17:45:47 -0400
-In-Reply-To: <20080914213448.GB8706@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Mark Fasheh <mfasheh@suse.com>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        Theodore Tso <tytso@MIT.EDU>, ocfs2-devel@oss.oracle.com
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+Content-Disposition: inline
+In-Reply-To: <20080914160635.GA31958@infradead.org>
+List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
+List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> On Sun, Sep 14, 2008 at 02:11:08PM -0700, Eric Sandeen wrote:
->> Looking at what's in the patch queue, but not in the series file:
->>
->> ext4-fix-hang-due-to-corrupted-jinode.patch
->> ext4-new-defm-options
->> ext4-online-resize-fix-for-group-descriptor-corruption.patch
->> Fix-EXT_MAX_BLOCK.patch
->> jbd2-dio-kjournal-race-EIO.patch
->> jbd-dio-kjournal-race-EIO.patch
->>
->> Some of these are probably intentional (I think Ted has the printk
->> throttling stuff queued up to send) but have any of these simply gotten
->> lost somehow?  Or merged upstream (or obsoleted) but not removed?
+On Sun, Sep 14, 2008 at 12:06:35PM -0400, Christoph Hellwig wrote:
+> On Sun, Sep 14, 2008 at 05:03:06AM -0400, Theodore Tso wrote:
+> > On Sun, Sep 14, 2008 at 01:40:03AM -0700, Mark Fasheh wrote:
+> > > On Mon, Sep 08, 2008 at 04:31:14PM -0700, Joel Becker wrote:
+> > > > jbd2 currently creates statistics files for each loaded journal in
+> > > > /proc/fs/jbd2/<bdevname>.  ocfs2 loads multiple journals when recovering
+> > > > other nodes, and the multiple journals on a given bdev collide in the
+> > > > proc namespace.
+> > > 
+> > > Did this patch ever get reviewied? We'd really like it in so that Ocfs2 can
+> > > use JBD2...
+> > 
+> > Thanks for pinging me; it fell through the cracks.  I'll make sure it
+> > gets put into the queue for merging at the next merge window....
 > 
-> Well, all of the patches in the ext3 directory are non-ext4 patches
-> which I sent to akpm on Friday or Saturday; I decided to check them
-> into the patch queue to make sure they don't get lost.  I'll remove
-> them when they are confirmed in -mm.  These would be:
-> 
->> ext2-printk-throttling
->> ext3_dx_readdir_hash_collision_fix.patch
->> ext3-printk-throttling
->> ext3_truncate_block_allocated_on_a_failed_ext3_write_begin.patch
-> 
-> Some of the patches were ones that fixed bugs introduced in other
-> patches, and were folded into a parent patch.  This was the case for
-> ext4-fix-hang-due-to-corrupted-jinode.patch, which was folded into the
-> patch that ultimately became commit 678aaf48 in the mainline Linux
-> tree.
+> Could you please do it the proper way as describe in my reply to the
+> thread?
 
-Ok that's what I thought.
+Christoph,
+	Not sure what you mean here.  Do you mean switching over
+wholesale without the JBD compat config option?  We're currently
+tracking a spinlock deadlock in JBD2, so I don't know if we're ready for
+that.
+	If you don't get this, I'll try to track you down tomorrow.
 
-> Ext4-new-defm-options was a patch I was working on that never got
-> finished.  It probably shouldn't have gotten checked into the patch
-> queue.
+Joel
 
-Ok.
+-- 
 
-> Girish's Fix-EXT_MAX_BLOCK.patch caused regression failures, so it was
-> dropped from the patch series.  I don't think anyone ever went back to
-> figure out why it was causing the ext4 tree to blow up.
+"You look in her eyes, the music begins to play.
+ Hopeless romantics, here we go again."
 
-Ok.  Maybe it'd be better for something like that to comment it out of
-the patch series, with a reason why?  *shrug*
-
-> As far as jbd2-dio-kjournal-race-EIO.patch and
-> jbd-dio-kjournal-race-EIO.patch are concerned,
-> jbd2-dio-kjournal-race-EIO.patch doesn't even apply any more.  I'm
-> guess it was fixed in some other way for jbd2.  It looks the jbd patch
-> could apply, but if it's still a valid fix, it should be fed through
-> akpm.  Mingming, do you know what the status of these two patches are?
-> 
->        		    	     	      	     	- Ted
-
-Great - owners looking over these orphaned/lost patches is probably the
-best approach.  :)
-
-Thanks,
--Eric
+Joel Becker
+Principal Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
