@@ -1,45 +1,267 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [Ocfs2-devel] [PATCH] jbd2: Create proc entry with
-	bdevname+i_ino.
-Date: Sun, 14 Sep 2008 18:19:36 -0700
-Message-ID: <20080915011936.GB29193@mail.oracle.com>
-References: <20080908233114.GD20100@mail.oracle.com> <20080914084003.GP4563@wotan.suse.de> <20080914090306.GF30537@mit.edu> <20080914163117.GA13074@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC PATCH] Filesystem Journal Notifications
+Date: Sun, 14 Sep 2008 22:39:37 -0700
+Message-ID: <20080915053937.GG4090@webber.adilger.int>
+References: <20080912220649.GB26999@apaithan-desktop.sanmateo.corp.akamai.com>
+ <20080915023126.GF4090@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mark Fasheh <mfasheh@suse.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	ocfs2-devel@oss.oracle.com
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Transfer-Encoding: 7BIT
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Abhijit Paithankar <apaithan@akamai.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:12658 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751777AbYIOBVz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Sep 2008 21:21:55 -0400
-Content-Disposition: inline
-In-Reply-To: <20080914163117.GA13074@mit.edu>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:55476 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750721AbYIOFjp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Sep 2008 01:39:45 -0400
+In-reply-to: <20080915023126.GF4090@webber.adilger.int>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 14, 2008 at 12:31:17PM -0400, Theodore Tso wrote:
-> This is what plan to push instead.  It should address ocfs2's
-> requirement.  In addition, it reduces jbd2 and ext4's stack usage,
-> removes 30 lines of code, and fixes a potential problem with pesky
-> block devices which contain '/' character in their names.  Four for
-> the price of one!
+On Sep 14, 2008  19:31 -0700, Andreas Dilger wrote:
+> We had a much more flexible journal commit notification mechanism.  The
+> caller would register a callback with the journal layer that contained
+> a caller-private callback function and callback data.  This avoided
+> exposing the journal transaction IDs outside of the filesystem, and the
+> caller could use any identifier desired.
+> 
+> There was also no limit on the number/type of callbacks registered with
+> the filesystem.  The basic data structure was a linked list of callbacks
+> registered on the transaction:
+> 
+> struct journal_callback {
+>        struct list_head jcb_list;
+>        void (*jcb_func)(struct journal_callback *jcb, int error);
+>        /* caller data goes here */
+> };
+> 
+> and in journal_commit_transaction() the callbacks are called:
+> 
+>                list_for_each_entry_safe(jcb, n, &commit_transaction->t_jcb,
+> 					jcb_list) {
+>                        list_del_init(&jcb->jcb_list);
+>                        jcb->jcb_func(jcb, error);
+>                }
 
-	I like it!  I don't have time to test it (KS/LPC), but hopefully
-Sunil can.
+Here is the patch (against 2.6.18 kernels, but I don't think anything has
+changed in this area in a long time):
 
-Joel
 
--- 
+Index: linux-2.6/include/linux/jbd.h
+===================================================================
+--- linux-2.6.orig/include/linux/jbd.h	2006-07-15 16:08:35.000000000 +0800
++++ linux-2.6/include/linux/jbd.h	2006-07-15 16:13:01.000000000 +0800
+@@ -356,6 +356,27 @@ static inline void jbd_unlock_bh_journal
+ 	bit_spin_unlock(BH_JournalHead, &bh->b_state);
+ }
+ 
++#define HAVE_JOURNAL_CALLBACK_STATUS
++/**
++ *   struct journal_callback - Base structure for callback information
++ *   @jcb_list: list information for other callbacks attached to the same handle
++ *   @jcb_func: Function to call with this callback structure
++ *
++ *   This struct is a 'seed' structure for a using with your own callback
++ *   structs. If you are using callbacks you must allocate one of these
++ *   or another struct of your own definition which has this struct 
++ *   as it's first element and pass it to journal_callback_set().
++ *
++ *   This is used internally by jbd to maintain callback information.
++ *
++ *   See journal_callback_set for more information.
++ **/
++struct journal_callback {
++	struct list_head jcb_list;		/* t_jcb_lock */
++	void (*jcb_func)(struct journal_callback *jcb, int error);
++	/* caller data goes here */
++};
++
+ struct jbd_revoke_table_s;
+ 
+ /**
+@@ -364,6 +385,7 @@ struct jbd_revoke_table_s;
+  * @h_transaction: Which compound transaction is this update a part of?
+  * @h_buffer_credits: Number of remaining buffers we are allowed to dirty.
+  * @h_ref: Reference count on this handle
++ * @h_jcb: List of application registered callbacks for this handle.
+  * @h_err: Field for caller's use to track errors through large fs operations
+  * @h_sync: flag for sync-on-close
+  * @h_jdata: flag to force data journaling
+@@ -389,6 +411,13 @@ struct handle_s 
+ 	/* operations */
+ 	int			h_err;
+ 
++	/*
++	 * List of application registered callbacks for this handle. The
++	 * function(s) will be called after the transaction that this handle is
++	 * part of has been committed to disk. [t_jcb_lock]
++	 */
++	struct list_head	h_jcb;
++
+ 	/* Flags [no locking] */
+ 	unsigned int	h_sync:		1;	/* sync-on-close */
+ 	unsigned int	h_jdata:	1;	/* force data journaling */
+@@ -430,6 +459,8 @@ struct handle_s 
+  *    j_state_lock
+  *    ->j_list_lock			(journal_unmap_buffer)
+  *
++ *    t_handle_lock
++ *    ->t_jcb_lock
+  */
+ 
+ struct transaction_s 
+@@ -559,6 +590,15 @@ struct transaction_s 
+ 	 */
+ 	int t_handle_count;
+ 
++	/*
++	 * Protects the callback list
++	 */
++	spinlock_t		t_jcb_lock;
++	/*
++	 * List of registered callback functions for this transaction.
++	 * Called when the transaction is committed. [t_jcb_lock]
++	 */
++	struct list_head	t_jcb;
+ };
+ 
+ /**
+@@ -906,6 +946,10 @@ extern void	 journal_invalidatepage(jour
+ extern int	 journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+ extern int	 journal_stop(handle_t *);
+ extern int	 journal_flush (journal_t *);
++extern void	 journal_callback_set(handle_t *handle,
++				      void (*fn)(struct journal_callback *,int),
++				      struct journal_callback *jcb);
++
+ extern void	 journal_lock_updates (journal_t *);
+ extern void	 journal_unlock_updates (journal_t *);
+ 
+Index: linux-2.6/fs/jbd/checkpoint.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/checkpoint.c	2006-07-15 16:08:36.000000000 +0800
++++ linux-2.6/fs/jbd/checkpoint.c	2006-07-15 16:13:01.000000000 +0800
+@@ -688,6 +688,7 @@ void __journal_drop_transaction(journal_
+ 	J_ASSERT(transaction->t_checkpoint_list == NULL);
+ 	J_ASSERT(transaction->t_checkpoint_io_list == NULL);
+ 	J_ASSERT(transaction->t_updates == 0);
++	J_ASSERT(list_empty(&transaction->t_jcb));
+ 	J_ASSERT(journal->j_committing_transaction != transaction);
+ 	J_ASSERT(journal->j_running_transaction != transaction);
+ 
+Index: linux-2.6/fs/jbd/commit.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/commit.c	2006-07-15 16:08:36.000000000 +0800
++++ linux-2.6/fs/jbd/commit.c	2006-07-15 16:13:01.000000000 +0800
+@@ -708,6 +708,21 @@ wait_for_iobuf:
+            transaction can be removed from any checkpoint list it was on
+            before. */
+ 
++	/* Call any callbacks that had been registered for handles in this
++	 * transaction.  It is up to the callback to free any allocated
++	 * memory.  No locking is required, since this is the only process
++	 * that is processing this transaction anymore. */
++	if (!list_empty(&commit_transaction->t_jcb)) {
++		struct journal_callback *jcb, *n;
++		int error = is_journal_aborted(journal);
++
++		list_for_each_entry_safe(jcb, n, &commit_transaction->t_jcb,
++					 jcb_list) {
++			list_del_init(&jcb->jcb_list);
++			jcb->jcb_func(jcb, error);
++		}
++	}
++
+ 	jbd_debug(3, "JBD: commit phase 7\n");
+ 
+ 	J_ASSERT(commit_transaction->t_sync_datalist == NULL);
+Index: linux-2.6/fs/jbd/journal.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/journal.c	2006-07-15 16:08:36.000000000 +0800
++++ linux-2.6/fs/jbd/journal.c	2006-07-15 16:13:01.000000000 +0800
+@@ -58,6 +58,7 @@ EXPORT_SYMBOL(journal_sync_buffer);
+ #endif
+ EXPORT_SYMBOL(journal_flush);
+ EXPORT_SYMBOL(journal_revoke);
++EXPORT_SYMBOL(journal_callback_set);
+ 
+ EXPORT_SYMBOL(journal_init_dev);
+ EXPORT_SYMBOL(journal_init_inode);
+Index: linux-2.6/fs/jbd/transaction.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/transaction.c	2006-07-15 16:08:35.000000000 +0800
++++ linux-2.6/fs/jbd/transaction.c	2006-07-15 16:13:01.000000000 +0800
+@@ -50,6 +50,8 @@ get_transaction(journal_t *journal, tran
+ 	transaction->t_state = T_RUNNING;
+ 	transaction->t_tid = journal->j_transaction_sequence++;
+ 	transaction->t_expires = jiffies + journal->j_commit_interval;
++	INIT_LIST_HEAD(&transaction->t_jcb);
++	spin_lock_init(&transaction->t_jcb_lock);
+ 	spin_lock_init(&transaction->t_handle_lock);
+ 
+ 	/* Set up the commit timer for the new transaction. */
+@@ -241,6 +243,7 @@ static handle_t *new_handle(int nblocks)
+ 	memset(handle, 0, sizeof(*handle));
+ 	handle->h_buffer_credits = nblocks;
+ 	handle->h_ref = 1;
++	INIT_LIST_HEAD(&handle->h_jcb);
+ 
+ 	return handle;
+ }
+@@ -1291,6 +1294,36 @@ drop:
+ }
+ 
+ /**
++ * void journal_callback_set() -  Register a callback function for this handle.
++ * @handle: handle to attach the callback to.
++ * @func: function to callback.
++ * @jcb:  structure with additional information required by func() , and
++ *        some space for jbd internal information.
++ * 
++ * The function will be called when the transaction that this handle is
++ * part of has been committed to disk with the original callback data
++ * struct and the error status of the journal as parameters.  There is no
++ * guarantee of ordering between handles within a single transaction, nor
++ * between callbacks registered on the same handle.
++ *
++ * The caller is responsible for allocating the journal_callback struct.
++ * This is to allow the caller to add as much extra data to the callback
++ * as needed, but reduce the overhead of multiple allocations.  The caller
++ * allocated struct must start with a struct journal_callback at offset 0,
++ * and has the caller-specific data afterwards.
++ */
++void journal_callback_set(handle_t *handle,
++			  void (*func)(struct journal_callback *jcb, int error),
++			  struct journal_callback *jcb)
++{
++	jcb->jcb_func = func;
++	spin_lock(&handle->h_transaction->t_jcb_lock);
++	list_add_tail(&jcb->jcb_list, &handle->h_jcb);
++	spin_unlock(&handle->h_transaction->t_jcb_lock);
++}
++
++/**
+  * int journal_stop() - complete a transaction
+  * @handle: tranaction to complete.
+  * 
+@@ -1363,6 +1396,11 @@ int journal_stop(handle_t *handle)
+ 			wake_up(&journal->j_wait_transaction_locked);
+ 	}
+ 
++	/* Move callbacks from the handle to the transaction. */
++	spin_lock(&transaction->t_jcb_lock);
++	list_splice(&handle->h_jcb, &transaction->t_jcb);
++	spin_unlock(&transaction->t_jcb_lock);
++
+ 	/*
+ 	 * If the handle is marked SYNC, we need to set another commit
+ 	 * going!  We also want to force a commit if the current
 
-Life's Little Instruction Book #222
 
-	"Think twice before burdening a friend with a secret."
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-Joel Becker
-Principal Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
