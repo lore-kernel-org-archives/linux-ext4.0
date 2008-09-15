@@ -1,29 +1,260 @@
-From: "Rohit Sharma" <imreckless@gmail.com>
-Subject: reading superblock
-Date: Mon, 15 Sep 2008 22:11:02 +0530
-Message-ID: <2d08ef090809150941j3dbed8fah700aa5c9e886366@mail.gmail.com>
+From: Sunil Mushran <sunil.mushran@oracle.com>
+Subject: Re: [PATCH] jbd2: Create proc entry with bdevname+i_ino.
+Date: Mon, 15 Sep 2008 10:50:26 -0700
+Message-ID: <48CEA062.1000808@oracle.com>
+References: <20080908233114.GD20100@mail.oracle.com> <20080914084003.GP4563@wotan.suse.de> <20080914090306.GF30537@mit.edu> <20080914163117.GA13074@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: Kernelnewbies <kernelnewbies@nl.linux.org>
+Cc: Mark Fasheh <mfasheh@suse.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	ocfs2-devel@oss.oracle.com
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.30]:18835 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753541AbYIOQlD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Sep 2008 12:41:03 -0400
-Received: by yw-out-2324.google.com with SMTP id 9so662960ywe.1
-        for <linux-ext4@vger.kernel.org>; Mon, 15 Sep 2008 09:41:02 -0700 (PDT)
-Content-Disposition: inline
+Received: from agminet01.oracle.com ([141.146.126.228]:54414 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752496AbYIORug (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Sep 2008 13:50:36 -0400
+In-Reply-To: <20080914163117.GA13074@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I want to read ext2 superblock and display the structure.
+Thanks.
 
-which function do i need to call for that.
-is it ext2_get_sb() or ext2_fill_super() or both ??
+So we are testing this atop Joel's jbd2 branch (after reversing the
+top patch).
 
-this is the function prototype:
-static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+http://oss.oracle.com/git/?p=jlbec/linux-2.6.git;a=shortlog;h=jbd2
 
-what are the parameters data and silent used for.
+Theodore Tso wrote:
+> This is what plan to push instead.  It should address ocfs2's
+> requirement.  In addition, it reduces jbd2 and ext4's stack usage,
+> removes 30 lines of code, and fixes a potential problem with pesky
+> block devices which contain '/' character in their names.  Four for
+> the price of one!
+>
+> Could you try this out confirm this fixes the problem for you?
+> (Currently it only passes the "It builds, ship it!" test, but it's
+> pretty straightforward; and I'm on an airplane at the moment.  :-)
+>
+> Thanks, regards,
+>
+> 						- Ted
+>
+> From 172393695ea4daea0061aa7c4f7ee0d56fbda239 Mon Sep 17 00:00:00 2001
+> From: Theodore Ts'o <tytso@mit.edu>
+> Date: Sun, 14 Sep 2008 12:22:35 -0400
+> Subject: [PATCH] jbd2: clean up how the journal device name is printed
+>
+> Calculate the journal device name once and stash it away in the
+> journal_s structure.  This avoids needing to call bdevname()
+> everywhere and reduces stack usage by not needing to allocate an
+> on-stack buffer.  In addition, we eliminate the '/' that can appear in
+> device names (e.g. "cciss/c0d0p9" --- see kernel bugzilla #11321) that
+> can cause problems when creating proc directory names, and include the
+> inode number to support ocfs2 which creates multiple journals with
+> different inode numbers.
+>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/super.c      |   12 +++---------
+>  fs/jbd2/commit.c     |   11 +++--------
+>  fs/jbd2/journal.c    |   48 ++++++++++++++++--------------------------------
+>  include/linux/jbd2.h |    3 ++-
+>  4 files changed, 24 insertions(+), 50 deletions(-)
+>
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index f58cc03..64e1c21 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1476,15 +1476,9 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+>  			EXT4_INODES_PER_GROUP(sb),
+>  			sbi->s_mount_opt);
+>  
+> -	if (EXT4_SB(sb)->s_journal->j_inode == NULL) {
+> -		char b[BDEVNAME_SIZE];
+> -
+> -		printk(KERN_INFO "EXT4 FS on %s, external journal on %s\n",
+> -		       sb->s_id, bdevname(EXT4_SB(sb)->s_journal->j_dev, b));
+> -	} else {
+> -		printk(KERN_INFO "EXT4 FS on %s, internal journal\n",
+> -		       sb->s_id);
+> -	}
+> +	printk(KERN_INFO "EXT4 FS on %s, %s journal on %s\n",
+> +	       sb->s_id, EXT4_SB(sb)->s_journal->j_inode ? "internal" :
+> +	       "external", EXT4_SB(sb)->s_journal->j_devname);
+>  	return res;
+>  }
+>  
+> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> index f2ad061..b091e53 100644
+> --- a/fs/jbd2/commit.c
+> +++ b/fs/jbd2/commit.c
+> @@ -147,12 +147,9 @@ static int journal_submit_commit_record(journal_t *journal,
+>  	 * to remember if we sent a barrier request
+>  	 */
+>  	if (ret == -EOPNOTSUPP && barrier_done) {
+> -		char b[BDEVNAME_SIZE];
+> -
+>  		printk(KERN_WARNING
+> -			"JBD: barrier-based sync failed on %s - "
+> -			"disabling barriers\n",
+> -			bdevname(journal->j_dev, b));
+> +		       "JBD: barrier-based sync failed on %s - "
+> +		       "disabling barriers\n", journal->j_devname);
+>  		spin_lock(&journal->j_state_lock);
+>  		journal->j_flags &= ~JBD2_BARRIER;
+>  		spin_unlock(&journal->j_state_lock);
+> @@ -681,11 +678,9 @@ start_journal_io:
+>  	 */
+>  	err = journal_finish_inode_data_buffers(journal, commit_transaction);
+>  	if (err) {
+> -		char b[BDEVNAME_SIZE];
+> -
+>  		printk(KERN_WARNING
+>  			"JBD2: Detected IO errors while flushing file data "
+> -			"on %s\n", bdevname(journal->j_fs_dev, b));
+> +		       "on %s\n", journal->j_devname);
+>  		err = 0;
+>  	}
+>  
+> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+> index 8207a01..0c4dcc2 100644
+> --- a/fs/jbd2/journal.c
+> +++ b/fs/jbd2/journal.c
+> @@ -597,13 +597,9 @@ int jbd2_journal_bmap(journal_t *journal, unsigned long blocknr,
+>  		if (ret)
+>  			*retp = ret;
+>  		else {
+> -			char b[BDEVNAME_SIZE];
+> -
+>  			printk(KERN_ALERT "%s: journal block not found "
+>  					"at offset %lu on %s\n",
+> -				__func__,
+> -				blocknr,
+> -				bdevname(journal->j_dev, b));
+> +			       __func__, blocknr, journal->j_devname);
+>  			err = -EIO;
+>  			__journal_abort_soft(journal, err);
+>  		}
+> @@ -901,10 +897,7 @@ static struct proc_dir_entry *proc_jbd2_stats;
+>  
+>  static void jbd2_stats_proc_init(journal_t *journal)
+>  {
+> -	char name[BDEVNAME_SIZE];
+> -
+> -	bdevname(journal->j_dev, name);
+> -	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
+> +	journal->j_proc_entry = proc_mkdir(journal->j_devname, proc_jbd2_stats);
+>  	if (journal->j_proc_entry) {
+>  		proc_create_data("history", S_IRUGO, journal->j_proc_entry,
+>  				 &jbd2_seq_history_fops, journal);
+> @@ -915,12 +908,9 @@ static void jbd2_stats_proc_init(journal_t *journal)
+>  
+>  static void jbd2_stats_proc_exit(journal_t *journal)
+>  {
+> -	char name[BDEVNAME_SIZE];
+> -
+> -	bdevname(journal->j_dev, name);
+>  	remove_proc_entry("info", journal->j_proc_entry);
+>  	remove_proc_entry("history", journal->j_proc_entry);
+> -	remove_proc_entry(name, proc_jbd2_stats);
+> +	remove_proc_entry(journal->j_devname, proc_jbd2_stats);
+>  }
+>  
+>  static void journal_init_stats(journal_t *journal)
+> @@ -1018,6 +1008,7 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
+>  {
+>  	journal_t *journal = journal_init_common();
+>  	struct buffer_head *bh;
+> +	char *p;
+>  	int n;
+>  
+>  	if (!journal)
+> @@ -1039,6 +1030,10 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
+>  	journal->j_fs_dev = fs_dev;
+>  	journal->j_blk_offset = start;
+>  	journal->j_maxlen = len;
+> +	bdevname(journal->j_dev, journal->j_devname);
+> +	p = journal->j_devname;
+> +	while ((p = strchr(p, '/')))
+> +		*p = '!';
+>  	jbd2_stats_proc_init(journal);
+>  
+>  	bh = __getblk(journal->j_dev, start, journal->j_blocksize);
+> @@ -1061,6 +1056,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
+>  {
+>  	struct buffer_head *bh;
+>  	journal_t *journal = journal_init_common();
+> +	char *p;
+>  	int err;
+>  	int n;
+>  	unsigned long long blocknr;
+> @@ -1070,6 +1066,12 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
+>  
+>  	journal->j_dev = journal->j_fs_dev = inode->i_sb->s_bdev;
+>  	journal->j_inode = inode;
+> +	bdevname(journal->j_dev, journal->j_devname);
+> +	p = journal->j_devname;
+> +	while ((p = strchr(p, '/')))
+> +		*p = '!';
+> +	p = journal->j_devname + strlen(journal->j_devname);
+> +	sprintf(p, ":%lu\n", journal->j_inode->i_ino);
+>  	jbd_debug(1,
+>  		  "journal %p: inode %s/%ld, size %Ld, bits %d, blksize %ld\n",
+>  		  journal, inode->i_sb->s_id, inode->i_ino,
+> @@ -1761,23 +1763,6 @@ int jbd2_journal_wipe(journal_t *journal, int write)
+>  }
+>  
+>  /*
+> - * journal_dev_name: format a character string to describe on what
+> - * device this journal is present.
+> - */
+> -
+> -static const char *journal_dev_name(journal_t *journal, char *buffer)
+> -{
+> -	struct block_device *bdev;
+> -
+> -	if (journal->j_inode)
+> -		bdev = journal->j_inode->i_sb->s_bdev;
+> -	else
+> -		bdev = journal->j_dev;
+> -
+> -	return bdevname(bdev, buffer);
+> -}
+> -
+> -/*
+>   * Journal abort has very specific semantics, which we describe
+>   * for journal abort.
+>   *
+> @@ -1793,13 +1778,12 @@ static const char *journal_dev_name(journal_t *journal, char *buffer)
+>  void __jbd2_journal_abort_hard(journal_t *journal)
+>  {
+>  	transaction_t *transaction;
+> -	char b[BDEVNAME_SIZE];
+>  
+>  	if (journal->j_flags & JBD2_ABORT)
+>  		return;
+>  
+>  	printk(KERN_ERR "Aborting journal on device %s.\n",
+> -		journal_dev_name(journal, b));
+> +	       journal->j_devname);
+>  
+>  	spin_lock(&journal->j_state_lock);
+>  	journal->j_flags |= JBD2_ABORT;
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index 3dd2090..66c3499 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -850,7 +850,8 @@ struct journal_s
+>  	 */
+>  	struct block_device	*j_dev;
+>  	int			j_blocksize;
+> -	unsigned long long		j_blk_offset;
+> +	unsigned long long	j_blk_offset;
+> +	char			j_devname[BDEVNAME_SIZE+24];
+>  
+>  	/*
+>  	 * Device which holds the client fs.  For internal journal this will be
+>   
+
