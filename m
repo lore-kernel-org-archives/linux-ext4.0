@@ -1,48 +1,67 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
-Date: Mon, 15 Sep 2008 23:51:26 -0700
-Message-ID: <20080916065126.GI3241@webber.adilger.int>
-References: <E1Kea9F-0004L5-Ds@closure.thunk.org>
- <1221331767-16870-1-git-send-email-tytso@mit.edu>
- <2EC8176B-0AFA-4B36-A2F5-E51753A576A5@cam.ac.uk>
- <20080913212903.GF26128@mit.edu> <20080914134859.GB21746@infradead.org>
- <20080914175810.GB13074@mit.edu> <20080915144948.GB16491@infradead.org>
- <20080915175305.GS4563@wotan.suse.de>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: Fwd: [PATCH] resize2fs : Fix potential memory corruption in ext2fs_progress_init()
+Date: Tue, 16 Sep 2008 12:52:55 +0530
+Message-ID: <ea11fea30809160022i6ba31209p7e1e7c31c166c4a4@mail.gmail.com>
+References: <ea11fea30809140732i38680994na7d686835e2949cd@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Theodore Tso <tytso@MIT.EDU>,
-	Anton Altaparmakov <aia21@cam.ac.uk>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	akpm@linuxfoundation.org
-To: Mark Fasheh <mfasheh@suse.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: "Theodore Tso" <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:46487 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751173AbYIPGvk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Sep 2008 02:51:40 -0400
-In-reply-to: <20080915175305.GS4563@wotan.suse.de>
-Content-disposition: inline
+Received: from ti-out-0910.google.com ([209.85.142.191]:52693 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752247AbYIPHW6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Sep 2008 03:22:58 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so1385022tic.23
+        for <linux-ext4@vger.kernel.org>; Tue, 16 Sep 2008 00:22:56 -0700 (PDT)
+In-Reply-To: <ea11fea30809140732i38680994na7d686835e2949cd@mail.gmail.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 15, 2008  10:53 -0700, Mark Fasheh wrote:
-> On Mon, Sep 15, 2008 at 10:49:48AM -0400, Christoph Hellwig wrote:
-> > I agree to you (or someone elses - don't remember anymore) suggestion
-> > to put in more padding so we can add fields later.  I strongly disagree
-> > putting in features now that we neither have a user, nor a usecase or
-> > testcase for.
-> 
-> So, how about another 64 bits of padding in struct fiemap_extent? That could
-> help cover future uses like compression, which might require another 64 bit
-> offset field - we only have 32 bits of reserved space there right now.
+---------- Forwarded message ----------
+From: Manish Katiyar <mkatiyar@gmail.com>
+Date: Sun, Sep 14, 2008 at 8:02 PM
+Subject: [PATCH] resize2fs : Fix potential memory corruption in
+ext2fs_progress_init()
+To: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+Cc: mkatiyar@gmail.com
 
-I'd be happy to see it.
 
-Cheers, Andreas
+Since "prog" is not initialized with 0 , below check in
+ext2fs_progress_init() is wrong and may lead to corruptions.
+
+
+Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+
+---
+ resize/sim_progress.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/resize/sim_progress.c b/resize/sim_progress.c
+index a575633..e7dba88 100644
+--- a/resize/sim_progress.c
++++ b/resize/sim_progress.c
+@@ -83,7 +83,7 @@ errcode_t ext2fs_progress_init(ext2_sim_progmeter *ret_prog,
+       errcode_t               retval;
+
+       retval = ext2fs_get_mem(sizeof(struct ext2_sim_progress), &prog);
+-       if (!prog)
++       if (retval)
+               return retval;
+       memset(prog, 0, sizeof(struct ext2_sim_progress));
+
 --
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+1.5.4.3
 
+
+Any ack/nack on this one ?? I also saw some utilities
+(debugfs,resizefs) usage don't print the options specified in man
+pages. Is it intentional ? Are they hidden options for developers ?
+
+Thanks -
+Manish
+
+
+Thanks -
+Manish
