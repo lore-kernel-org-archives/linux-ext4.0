@@ -1,49 +1,52 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: Review of	ext4-online-defrag-check-for-freespace-fragmentation.patch
-Date: Wed, 17 Sep 2008 15:46:10 +0900
-Message-ID: <48D0A7B2.7050000@rs.jp.nec.com>
-References: <E1KedQ2-0004sG-Py@closure.thunk.org> <20080914021024.GB30537@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
+Date: Tue, 16 Sep 2008 17:31:07 -0400
+Message-ID: <20080916213106.GA10562@mit.edu>
+References: <E1Kea9F-0004L5-Ds@closure.thunk.org> <1221331767-16870-1-git-send-email-tytso@mit.edu> <2EC8176B-0AFA-4B36-A2F5-E51753A576A5@cam.ac.uk> <20080913212903.GF26128@mit.edu> <20080914134859.GB21746@infradead.org> <20080914175810.GB13074@mit.edu> <20080915144948.GB16491@infradead.org> <20080915175305.GS4563@wotan.suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Takashi Sato <t-sato@yk.jp.nec.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:34600 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751426AbYIQGqe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Sep 2008 02:46:34 -0400
-In-Reply-To: <20080914021024.GB30537@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Anton Altaparmakov <aia21@cam.ac.uk>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	akpm@linuxfoundation.org
+To: Mark Fasheh <mfasheh@suse.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20080915175305.GS4563@wotan.suse.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
-
-Theodore Tso wrote:
-> On Sat, Sep 13, 2008 at 06:16:42PM -0400, Theodore Ts'o wrote:
->> Secondly, some of the ioctl numbers chosen by the defrag patches overlap
->> other, already existing patches.  This is something we will need to fix,
->> long term.  For now, folks should know that we can't count on the ioctl
->> numbers being stable, since we will probably need to move them.
+On Mon, Sep 15, 2008 at 10:53:05AM -0700, Mark Fasheh wrote:
+> On Mon, Sep 15, 2008 at 10:49:48AM -0400, Christoph Hellwig wrote:
+> > I agree to you (or someone elses - don't remember anymore) suggestion
+> > to put in more padding so we can add fields later.  I strongly disagree
+> > putting in features now that we neither have a user, nor a usecase or
+> > testcase for.
 > 
-> Note: I have done this in the version of the defrag patches in the
-> ext4 patch queue, where all of the ioctl's introduced by the defrag
-> patches have been renumbered starting at 15, to avoid conflicts with
-> other ioctls that either exist already or could be introduced in the
-> future.
-> 
-> If you don't mind, we can also merge up some of the patches that have
-> been inserted in the patch queue, and then you can start working from
-> the modified version in the patch queue.  The other way to move
-> forward is that we can start creating new ioctl's that are more
-> general and have carefully designed interfaces, and then as the
-> replacement ioctl's are created, the defrag patches can be shortened
-> and the on-line defrag command modified to use the new ioctl's.
+> So, how about another 64 bits of padding in struct fiemap_extent? That could
+> help cover future uses like compression, which might require another 64 bit
+> offset field - we only have 32 bits of reserved space there right now.
 
-I see, I will use the renumbered defrag patches in the patch queue.
-(Currently, I am working on the defrag to use FS_IOC_FIEMAP
-  instead of EXT4_IOC_EXTENTS_INFO and remove block size limitation
-  to support 1KB and 2KB block size.  I will release them soon.)
+What I'd recommend is a 56 byte structure:
 
-Thanks,
-Akira Fujita
+struct fiemap_extent {
+      __u64 fe_logical;  /* logical offset in bytes for the start of
+                          * the extent from the beginning of the file */
+      __u64 fe_physical; /* physical offset in bytes for the start
+                          * of the extent from the beginning of the disk */
+      __u64 fe_length;   /* length in bytes for this extent */
+      __u64 fe_reserved64[2];
+                                   * encoded/compressed on disk */
+      __u32 fe_flags;    /* FIEMAP_EXTENT_* flags for this extent */
+      __u32 fe_reserved[3];
+};
+
+Yeah, it's a little extra memory per extent, but filesystems seem to
+always invent new things, and it seem spretty clear that we have at
+least two extensions on deck (compression, multiple storage devices)
+both of which have at least one implementation that are either in the
+kernel or will likely enter the kernel.  So it's likely that there is
+something that we may have missed, and leaving a little extra space
+doesn't actually cost us that much.
+
+						- Ted
