@@ -1,279 +1,140 @@
-From: Sunil Mushran <sunil.mushran@oracle.com>
-Subject: Re: [Ocfs2-devel] [PATCH] jbd2: Create proc entry with bdevname+i_ino.
-Date: Tue, 16 Sep 2008 11:01:30 -0700
-Message-ID: <48CFF47A.9040805@oracle.com>
-References: <20080908233114.GD20100@mail.oracle.com>	<20080914084003.GP4563@wotan.suse.de>	<20080914090306.GF30537@mit.edu> <20080914163117.GA13074@mit.edu> <48CEA062.1000808@oracle.com>
+From: Abhijit Paithankar <apaithan@akamai.com>
+Subject: Re: [RFC PATCH] Filesystem Journal Notifications
+Date: Tue, 16 Sep 2008 16:05:52 -0700
+Message-ID: <20080916230552.GB13446@apaithan-desktop.sanmateo.corp.akamai.com>
+References: <20080912220649.GB26999@apaithan-desktop.sanmateo.corp.akamai.com> <20080915023126.GF4090@webber.adilger.int> <20080915053937.GG4090@webber.adilger.int> <20080915193648.GC31055@apaithan-desktop.sanmateo.corp.akamai.com> <20080915233740.GF3241@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Mark Fasheh <mfasheh@suse.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	ocfs2-devel@oss.oracle.com, Joel Becker <Joel.Becker@oracle.com>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Jamie Lokier <jamie@shareable.org>,
+	Dave Chinner <david@fromorbit.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:55157 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755656AbYIPSCJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Sep 2008 14:02:09 -0400
-In-Reply-To: <48CEA062.1000808@oracle.com>
+Received: from prod-mail-xrelay01.akamai.com ([72.246.2.12]:34070 "EHLO
+	prod-mail-xrelay01.akamai.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750749AbYIPXFu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Sep 2008 19:05:50 -0400
+Content-Disposition: inline
+In-Reply-To: <20080915233740.GF3241@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The newline looks like a typo here.
+Hi,
 
-@@ -1070,6 +1066,12 @@ journal_t * jbd2_journal_init_inode (struct inode 
-*inode)
-+ sprintf(p, ":%lu\n", journal->j_inode->i_ino);
+Thanks for your feedback.
+My comments are inline.
 
-Other than that, the test ran fine. Marcos successfully ran multiple
-recoveries in a 6 node cluster.
+* Andreas Dilger (adilger@sun.com) wrote:
+> On Sep 15, 2008  12:36 -0700, Abhijit Paithankar wrote:
+> > In this version of the patch I've done away with most of the file-system
+> > specific changes. The file system now only needs to send out a journal
+> > commit notification.
+> 
+> Is there a reason NOT to use the journal commit callback mechanism that
+> I posted?  This would only require registering a single callback for
+> each transaction for the inotify, but has the benefit of being completely
+> generic and can be used for other commit notifiers in the future.
+> 
 
-Sunil Mushran wrote:
-> Thanks.
->
-> So we are testing this atop Joel's jbd2 branch (after reversing the
-> top patch).
->
-> http://oss.oracle.com/git/?p=jlbec/linux-2.6.git;a=shortlog;h=jbd2
->
-> Theodore Tso wrote:
->   
->> This is what plan to push instead.  It should address ocfs2's
->> requirement.  In addition, it reduces jbd2 and ext4's stack usage,
->> removes 30 lines of code, and fixes a potential problem with pesky
->> block devices which contain '/' character in their names.  Four for
->> the price of one!
->>
->> Could you try this out confirm this fixes the problem for you?
->> (Currently it only passes the "It builds, ship it!" test, but it's
->> pretty straightforward; and I'm on an airplane at the moment.  :-)
->>
->> Thanks, regards,
->>
->> 						- Ted
->>
->> From 172393695ea4daea0061aa7c4f7ee0d56fbda239 Mon Sep 17 00:00:00 2001
->> From: Theodore Ts'o <tytso@mit.edu>
->> Date: Sun, 14 Sep 2008 12:22:35 -0400
->> Subject: [PATCH] jbd2: clean up how the journal device name is printed
->>
->> Calculate the journal device name once and stash it away in the
->> journal_s structure.  This avoids needing to call bdevname()
->> everywhere and reduces stack usage by not needing to allocate an
->> on-stack buffer.  In addition, we eliminate the '/' that can appear in
->> device names (e.g. "cciss/c0d0p9" --- see kernel bugzilla #11321) that
->> can cause problems when creating proc directory names, and include the
->> inode number to support ocfs2 which creates multiple journals with
->> different inode numbers.
->>
->> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->> ---
->>  fs/ext4/super.c      |   12 +++---------
->>  fs/jbd2/commit.c     |   11 +++--------
->>  fs/jbd2/journal.c    |   48 ++++++++++++++++--------------------------------
->>  include/linux/jbd2.h |    3 ++-
->>  4 files changed, 24 insertions(+), 50 deletions(-)
->>
->> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->> index f58cc03..64e1c21 100644
->> --- a/fs/ext4/super.c
->> +++ b/fs/ext4/super.c
->> @@ -1476,15 +1476,9 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
->>  			EXT4_INODES_PER_GROUP(sb),
->>  			sbi->s_mount_opt);
->>  
->> -	if (EXT4_SB(sb)->s_journal->j_inode == NULL) {
->> -		char b[BDEVNAME_SIZE];
->> -
->> -		printk(KERN_INFO "EXT4 FS on %s, external journal on %s\n",
->> -		       sb->s_id, bdevname(EXT4_SB(sb)->s_journal->j_dev, b));
->> -	} else {
->> -		printk(KERN_INFO "EXT4 FS on %s, internal journal\n",
->> -		       sb->s_id);
->> -	}
->> +	printk(KERN_INFO "EXT4 FS on %s, %s journal on %s\n",
->> +	       sb->s_id, EXT4_SB(sb)->s_journal->j_inode ? "internal" :
->> +	       "external", EXT4_SB(sb)->s_journal->j_devname);
->>  	return res;
->>  }
->>  
->> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
->> index f2ad061..b091e53 100644
->> --- a/fs/jbd2/commit.c
->> +++ b/fs/jbd2/commit.c
->> @@ -147,12 +147,9 @@ static int journal_submit_commit_record(journal_t *journal,
->>  	 * to remember if we sent a barrier request
->>  	 */
->>  	if (ret == -EOPNOTSUPP && barrier_done) {
->> -		char b[BDEVNAME_SIZE];
->> -
->>  		printk(KERN_WARNING
->> -			"JBD: barrier-based sync failed on %s - "
->> -			"disabling barriers\n",
->> -			bdevname(journal->j_dev, b));
->> +		       "JBD: barrier-based sync failed on %s - "
->> +		       "disabling barriers\n", journal->j_devname);
->>  		spin_lock(&journal->j_state_lock);
->>  		journal->j_flags &= ~JBD2_BARRIER;
->>  		spin_unlock(&journal->j_state_lock);
->> @@ -681,11 +678,9 @@ start_journal_io:
->>  	 */
->>  	err = journal_finish_inode_data_buffers(journal, commit_transaction);
->>  	if (err) {
->> -		char b[BDEVNAME_SIZE];
->> -
->>  		printk(KERN_WARNING
->>  			"JBD2: Detected IO errors while flushing file data "
->> -			"on %s\n", bdevname(journal->j_fs_dev, b));
->> +		       "on %s\n", journal->j_devname);
->>  		err = 0;
->>  	}
->>  
->> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
->> index 8207a01..0c4dcc2 100644
->> --- a/fs/jbd2/journal.c
->> +++ b/fs/jbd2/journal.c
->> @@ -597,13 +597,9 @@ int jbd2_journal_bmap(journal_t *journal, unsigned long blocknr,
->>  		if (ret)
->>  			*retp = ret;
->>  		else {
->> -			char b[BDEVNAME_SIZE];
->> -
->>  			printk(KERN_ALERT "%s: journal block not found "
->>  					"at offset %lu on %s\n",
->> -				__func__,
->> -				blocknr,
->> -				bdevname(journal->j_dev, b));
->> +			       __func__, blocknr, journal->j_devname);
->>  			err = -EIO;
->>  			__journal_abort_soft(journal, err);
->>  		}
->> @@ -901,10 +897,7 @@ static struct proc_dir_entry *proc_jbd2_stats;
->>  
->>  static void jbd2_stats_proc_init(journal_t *journal)
->>  {
->> -	char name[BDEVNAME_SIZE];
->> -
->> -	bdevname(journal->j_dev, name);
->> -	journal->j_proc_entry = proc_mkdir(name, proc_jbd2_stats);
->> +	journal->j_proc_entry = proc_mkdir(journal->j_devname, proc_jbd2_stats);
->>  	if (journal->j_proc_entry) {
->>  		proc_create_data("history", S_IRUGO, journal->j_proc_entry,
->>  				 &jbd2_seq_history_fops, journal);
->> @@ -915,12 +908,9 @@ static void jbd2_stats_proc_init(journal_t *journal)
->>  
->>  static void jbd2_stats_proc_exit(journal_t *journal)
->>  {
->> -	char name[BDEVNAME_SIZE];
->> -
->> -	bdevname(journal->j_dev, name);
->>  	remove_proc_entry("info", journal->j_proc_entry);
->>  	remove_proc_entry("history", journal->j_proc_entry);
->> -	remove_proc_entry(name, proc_jbd2_stats);
->> +	remove_proc_entry(journal->j_devname, proc_jbd2_stats);
->>  }
->>  
->>  static void journal_init_stats(journal_t *journal)
->> @@ -1018,6 +1008,7 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
->>  {
->>  	journal_t *journal = journal_init_common();
->>  	struct buffer_head *bh;
->> +	char *p;
->>  	int n;
->>  
->>  	if (!journal)
->> @@ -1039,6 +1030,10 @@ journal_t * jbd2_journal_init_dev(struct block_device *bdev,
->>  	journal->j_fs_dev = fs_dev;
->>  	journal->j_blk_offset = start;
->>  	journal->j_maxlen = len;
->> +	bdevname(journal->j_dev, journal->j_devname);
->> +	p = journal->j_devname;
->> +	while ((p = strchr(p, '/')))
->> +		*p = '!';
->>  	jbd2_stats_proc_init(journal);
->>  
->>  	bh = __getblk(journal->j_dev, start, journal->j_blocksize);
->> @@ -1061,6 +1056,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
->>  {
->>  	struct buffer_head *bh;
->>  	journal_t *journal = journal_init_common();
->> +	char *p;
->>  	int err;
->>  	int n;
->>  	unsigned long long blocknr;
->> @@ -1070,6 +1066,12 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
->>  
->>  	journal->j_dev = journal->j_fs_dev = inode->i_sb->s_bdev;
->>  	journal->j_inode = inode;
->> +	bdevname(journal->j_dev, journal->j_devname);
->> +	p = journal->j_devname;
->> +	while ((p = strchr(p, '/')))
->> +		*p = '!';
->> +	p = journal->j_devname + strlen(journal->j_devname);
->> +	sprintf(p, ":%lu\n", journal->j_inode->i_ino);
->>  	jbd_debug(1,
->>  		  "journal %p: inode %s/%ld, size %Ld, bits %d, blksize %ld\n",
->>  		  journal, inode->i_sb->s_id, inode->i_ino,
->> @@ -1761,23 +1763,6 @@ int jbd2_journal_wipe(journal_t *journal, int write)
->>  }
->>  
->>  /*
->> - * journal_dev_name: format a character string to describe on what
->> - * device this journal is present.
->> - */
->> -
->> -static const char *journal_dev_name(journal_t *journal, char *buffer)
->> -{
->> -	struct block_device *bdev;
->> -
->> -	if (journal->j_inode)
->> -		bdev = journal->j_inode->i_sb->s_bdev;
->> -	else
->> -		bdev = journal->j_dev;
->> -
->> -	return bdevname(bdev, buffer);
->> -}
->> -
->> -/*
->>   * Journal abort has very specific semantics, which we describe
->>   * for journal abort.
->>   *
->> @@ -1793,13 +1778,12 @@ static const char *journal_dev_name(journal_t *journal, char *buffer)
->>  void __jbd2_journal_abort_hard(journal_t *journal)
->>  {
->>  	transaction_t *transaction;
->> -	char b[BDEVNAME_SIZE];
->>  
->>  	if (journal->j_flags & JBD2_ABORT)
->>  		return;
->>  
->>  	printk(KERN_ERR "Aborting journal on device %s.\n",
->> -		journal_dev_name(journal, b));
->> +	       journal->j_devname);
->>  
->>  	spin_lock(&journal->j_state_lock);
->>  	journal->j_flags |= JBD2_ABORT;
->> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
->> index 3dd2090..66c3499 100644
->> --- a/include/linux/jbd2.h
->> +++ b/include/linux/jbd2.h
->> @@ -850,7 +850,8 @@ struct journal_s
->>  	 */
->>  	struct block_device	*j_dev;
->>  	int			j_blocksize;
->> -	unsigned long long		j_blk_offset;
->> +	unsigned long long	j_blk_offset;
->> +	char			j_devname[BDEVNAME_SIZE+24];
->>  
->>  	/*
->>  	 * Device which holds the client fs.  For internal journal this will be
->>   
->>     
->
->
-> _______________________________________________
-> Ocfs2-devel mailing list
-> Ocfs2-devel@oss.oracle.com
-> http://oss.oracle.com/mailman/listinfo/ocfs2-devel
->   
+In the current patch if two applications want to be notified on the journal
+commit event they could register for IN_JOURNAL_COMMIT on the same inode,
+which could be the root inode of the file system.
 
+There is no limit on the number of applications that could register on the
+root inode for journal commit notifications. The only limitation is that
+they all have to register on the same inode for that partition.
+
+The journal commit callback mechanism could be viable way to notify
+journal commits. However it is not clear to me how an application would
+register the callback.
+
+I suspect we need to have some other mechanism to register that for the
+application.
+
+
+> Most of the rest of my comments are related to following the Linux
+> coding style.  Please also generate your patch with "diff -up" so
+> that the context includes the function name.
+> 
+> > +void journal_notify_commit (journal_t *journal)
+> > +{
+> 
+> No space between the function name and the '(', journal_notify_commit(
+ok, will fix.
+
+> 
+> > +	struct super_block *sb = journal->j_private;
+> > +	if (sb->s_priv_inode && sb->s_journal_cookie)
+> > +		fsnotify_journal_commit(sb);
+> > +}
+> 
+> Please add an empty line between variable declarations and the code.
+ack.
+
+> 
+> > +void jbd2_journal_notify_commit (journal_t *journal)
+> > +{
+> > +	struct super_block *sb = journal->j_private;
+> > +	if (sb->s_priv_inode && sb->s_journal_cookie)
+> > +		fsnotify_journal_commit(sb);
+> > +}
+> 
+> Same comments as above.
+ack.
+
+> 
+> > +		if (journal_cookie) {
+> > +			size_t len, rem, event_size = sizeof(struct inotify_event);
+> 
+> Wrap at 80 columns, likely putting "size_t event_size = ..." on a new line.
+sure.
+
+> 
+> >  static void inotify_dev_queue_event(struct inotify_watch *w, u32 wd, u32 mask,
+> > +	if (mask & IN_JOURNAL_COMMIT) {
+> > +		if (!(w->inode) || !(w->inode->i_sb)
+> > +			|| !(w->inode->i_sb->s_priv_inode)
+> > +			|| !(w->inode->i_sb->s_journal_cookie))
+> > +			goto out;
+> > +	}
+> 
+> Operators like "||" should go at the end of the line, and the new line
+> should be aligned with the opening parenthesis:
+> 
+> 		if (!(w->inode) || !(w->inode->i_sb) ||
+> 		    !(w->inode->i_sb->s_priv_inode) ||
+> 		    !(w->inode->i_sb->s_journal_cookie))
+> 
+will do.
+
+> > +	journal_notify_commit(journal);
+> >  	jbd_debug(1, "JBD: commit %d complete, head %d\n",
+> >  		  journal->j_commit_sequence, journal->j_tail_sequence);
+> 
+> Note that this is also a "late" notification.  At phase 7 the transaction
+> is complete and committed to disk, the rest of journal_commit_transaction()
+> is just doing cleanup and background processing.
+Yes, will move it up.
+
+> 
+> > +/* This is a journal commit event for file systems. These events are sent
+> > + * from a journaling filesystem or the journal itself.
+> > + *
+> > + * IN_JOURNAL_COMMIT is special in that only one file per journaling
+> > + * filesystem partition (super-block) is allowed. Registering for this
+> > + * event with multiple files will overwrite previous registrations.
+> 
+> This is a major limitation of your implementation - what if 2 applications
+> want to be notified of this event?  Using the journal_callback_set() API
+> in the patch I sent out would allow an arbitrary number of applications
+> to monitor the commit.
+
+Any number of applications can register for the journal event as long as they
+register on the same inode.
+
+It is not clear to me how using journal_callback_set API would change that if
+we use inotify to register callbacks.
+
+Thanks!
+Abhijit
