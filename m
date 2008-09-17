@@ -1,76 +1,56 @@
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
+From: Jamie Lokier <jamie@shareable.org>
 Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
-Date: Wed, 17 Sep 2008 16:18:42 +0200
-Message-ID: <20080917141840.GB8750@logfs.org>
-References: <E1Kea9F-0004L5-Ds@closure.thunk.org> <1221331767-16870-1-git-send-email-tytso@mit.edu> <20080914134711.GA21746@infradead.org> <20080914180132.GC13074@mit.edu> <20080914180843.GA31649@infradead.org> <20080914195811.GE13074@mit.edu> <20080915144754.GA16491@infradead.org> <20080916064514.GH3241@webber.adilger.int> <20080916220346.GB10562@mit.edu>
+Date: Wed, 17 Sep 2008 16:02:12 +0100
+Message-ID: <20080917150212.GD22613@shareable.org>
+References: <E1Kea9F-0004L5-Ds@closure.thunk.org> <1221331767-16870-1-git-send-email-tytso@mit.edu> <20080914134711.GA21746@infradead.org> <20080914180132.GC13074@mit.edu> <20080914180843.GA31649@infradead.org> <20080914195811.GE13074@mit.edu> <20080915144754.GA16491@infradead.org> <20080916064514.GH3241@webber.adilger.int> <20080916220346.GB10562@mit.edu> <20080917141840.GB8750@logfs.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@sun.com>,
+Cc: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
 	Christoph Hellwig <hch@infradead.org>,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	akpm@linuxfoundation.org, Mark Fasheh <mfasheh@suse.com>,
 	mtk.manpages@gmail.com
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail2.shareable.org ([80.68.89.115]:49084 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752352AbYIQPCY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Sep 2008 11:02:24 -0400
 Content-Disposition: inline
-In-Reply-To: <20080916220346.GB10562@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20080917141840.GB8750@logfs.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 16 September 2008 18:03:46 -0400, Theodore Tso wrote:
-> On Mon, Sep 15, 2008 at 11:49:43PM -0700, Andreas Dilger wrote:
-> > The intent of this flag was a "catch-all" to indicate it isn't safe
-> > to try and read this block from disk, either because it is encrypte=
-d,
-> > compressed, on a remote system (HSM or over a network), or maybe no=
-t
-> > even written to disk yet (delalloc).
-> >=20
-> > In some cases (e.g. dump on a snapshot, or boot with LILO) it IS ok=
- to
-> > read directly from a block device underneath the filesystem, but th=
-at
-> > would completely fail for the above cases.
+J=F6rn Engel wrote:
+> Apart from the typo above, here is a more discouraging version:
 >=20
-> Indeed, I thought it was pretty clear and obvious, but let me give an
-> quick but formal definition, and a potential name: DATA_ENCODED
+>   In general, accessing the block device directly is strongly discour=
+aged.
+>   Exceptions exist mainly in the form of boot loaders like lilo and g=
+rub,
+>   at a time when the filesystem is not (cannot be) mounted.
 >=20
-> If this flag is not set, then applications that who wish to access th=
-e
-                                             ^^^^^^^^
-> file data may do so by accessing the block device at the indicated
-> offset when the filesystem is unmounted.  If the filesystem is
-> mounted, it is undefined whether accessing via the block device will
-> return valid data.  If the flag DATA_ENCODED flag is set, it is almos=
-t
-> certain that an application will never be able to access the file dat=
-a
-> via the block device.
->=20
-> Would this make people happy?
+>   If the flag DATA_ENCODED is set, however, even this exception is no
+>   longer valid.  The content is encoded in some form.  Details are
+>   unknown, it could be compressed, encrypted or something else.
 
-Apart from the typo above, here is a more discouraging version:
+I'm not clear about something from the above description.
 
-  In general, accessing the block device directly is strongly discourag=
-ed.
-  Exceptions exist mainly in the form of boot loaders like lilo and gru=
-b,
-  at a time when the filesystem is not (cannot be) mounted.
+If I were writing a journalling / tree-like filesystem, and I did
+store data in blocks without encoding, but fsync() only waits for them
+to be committed to journal, not their final destination, and also they
+might be moved around - should I set DATA_ENCODED or not?  (And should
+I return the temporary location in the long-running journal since
+that's the only place the data is committed at the time of the call?)
 
-  If the flag DATA_ENCODED is set, however, even this exception is no
-  longer valid.  The content is encoded in some form.  Details are
-  unknown, it could be compressed, encrypted or something else.
+Assume that even reading after unmounting is not 100% safe, because
+the data blocks could be relocated after calling FIEMAP (when the
+filesystem must be mounted), and before the unmount.
 
-J=C3=B6rn
-
---=20
-Man darf nicht das, was uns unwahrscheinlich und unnat=C3=BCrlich ersch=
-eint,
-mit dem verwechseln, was absolut unm=C3=B6glich ist.
--- Carl Friedrich Gau=C3=9F
+-- Jamie
 --
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
 the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
