@@ -1,42 +1,31 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
-Date: Tue, 16 Sep 2008 18:03:46 -0400
-Message-ID: <20080916220346.GB10562@mit.edu>
-References: <E1Kea9F-0004L5-Ds@closure.thunk.org> <1221331767-16870-1-git-send-email-tytso@mit.edu> <20080914134711.GA21746@infradead.org> <20080914180132.GC13074@mit.edu> <20080914180843.GA31649@infradead.org> <20080914195811.GE13074@mit.edu> <20080915144754.GA16491@infradead.org> <20080916064514.GH3241@webber.adilger.int>
+From: "Rohit Sharma" <imreckless@gmail.com>
+Subject: Reading inode..
+Date: Wed, 17 Sep 2008 19:37:06 +0530
+Message-ID: <2d08ef090809170707x1564f440k7f69c92eac04b9e7@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	akpm@linuxfoundation.org, Mark Fasheh <mfasheh@suse.com>,
-	mtk.manpages@gmail.com
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Kernelnewbies <kernelnewbies@nl.linux.org>
+To: ext4 <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-gx0-f16.google.com ([209.85.217.16]:51744 "EHLO
+	mail-gx0-f16.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752068AbYIQOHI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Sep 2008 10:07:08 -0400
+Received: by gxk9 with SMTP id 9so29574234gxk.13
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Sep 2008 07:07:06 -0700 (PDT)
 Content-Disposition: inline
-In-Reply-To: <20080916064514.GH3241@webber.adilger.int>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Sep 15, 2008 at 11:49:43PM -0700, Andreas Dilger wrote:
-> The intent of this flag was a "catch-all" to indicate it isn't safe
-> to try and read this block from disk, either because it is encrypted,
-> compressed, on a remote system (HSM or over a network), or maybe not
-> even written to disk yet (delalloc).
-> 
-> In some cases (e.g. dump on a snapshot, or boot with LILO) it IS ok to
-> read directly from a block device underneath the filesystem, but that
-> would completely fail for the above cases.
+I want to read ext2 inode.
 
-Indeed, I thought it was pretty clear and obvious, but let me give an
-quick but formal definition, and a potential name: DATA_ENCODED
+Its just like i have a inode no. say 1900..
+so from the block group we can read the group descriptor and from there we
+can identify the first block no. of the inode table.
+So we can read the required inode no.i.e. 1900 from this inode table.
+I found that there are 8176 inodes per block group using tune2fs utility,
+so if i am interested in reading 8177th inode then i have to move on
+to next block groups inode table.
 
-If this flag is not set, then applications that who wish to access the
-file data may do so by accessing the block device at the indicated
-offset when the filesystem is unmounted.  If the filesystem is
-mounted, it is undefined whether accessing via the block device will
-return valid data.  If the flag DATA_ENCODED flag is set, it is almost
-certain that an application will never be able to access the file data
-via the block device.
-
-Would this make people happy?
-
-						- Ted
+I just want to verify if i am correct on this.
