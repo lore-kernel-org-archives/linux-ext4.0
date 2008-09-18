@@ -1,113 +1,55 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: [PATCH] ocfs2: Use the new jbd_journal_set_triggers() to printk.
-Date: Wed, 17 Sep 2008 16:27:25 -0700
-Message-ID: <20080917232725.GC20752@mail.oracle.com>
-References: <20080917232629.GB20752@mail.oracle.com>
+From: "Eugene Teo" <eugeneteo@kernel.sg>
+Subject: Re: [PATCH 4/4] ext3: Avoid printk floods in the face of directory corruption
+Date: Thu, 18 Sep 2008 08:57:19 +0800
+Message-ID: <28fa9c5e0809171757p59978419p810e7d0c571e33e6@mail.gmail.com>
+References: <1221319971-29879-1-git-send-email-tytso@mit.edu>
+	 <1221319971-29879-2-git-send-email-tytso@mit.edu>
+	 <1221319971-29879-3-git-send-email-tytso@mit.edu>
+	 <1221319971-29879-4-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: ocfs2-devel@oss.oracle.com, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
+	"Eric Sandeen" <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:17179 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751221AbYIQX3H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Sep 2008 19:29:07 -0400
-Received: from agmgw2.us.oracle.com (agmgw2.us.oracle.com [152.68.180.213])
-	by rgminet01.oracle.com (Switch-3.2.4/Switch-3.1.6) with ESMTP id m8HNT3N4015549
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Sep 2008 17:29:03 -0600
+Received: from mail-gx0-f16.google.com ([209.85.217.16]:42946 "EHLO
+	mail-gx0-f16.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752800AbYIRA5V (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Sep 2008 20:57:21 -0400
+Received: by gxk9 with SMTP id 9so30619911gxk.13
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Sep 2008 17:57:20 -0700 (PDT)
+In-Reply-To: <1221319971-29879-4-git-send-email-tytso@mit.edu>
 Content-Disposition: inline
-In-Reply-To: <20080917232629.GB20752@mail.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat, Sep 13, 2008 at 11:32 PM, Theodore Ts'o <tytso@mit.edu> wrote:
+> Note: some people thinks this represents a security bug, since it
+> might make the system go away while it is printing a large number of
+> console messages, especially if a serial console is involved.  Hence,
+> it has been assigned CVE-2008-3528, but it requires that the attacker
+> either has physical access to your machine to insert a USB disk with a
+> corrupted filesystem image (at which point why not just hit the power
+> button), or is otherwise able to convince the system administrator to
+> mount an arbitrary filesystem image (at which point why not just
+> include a setuid shell or world-writable hard disk device file or some
+> such).  Me, I think they're just being silly.
 
-Just a placeholder trigger set that prints.  ocfs2 would obviously do
-more in the trigger with ot_offset.
+The description should explain what the problem is. And the last
+sentence is a little ambiguous.
 
-Signed-off-by: Joel Becker <joel.becker@oracle.com>
----
- fs/ocfs2/journal.c |   51 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 51 insertions(+), 0 deletions(-)
+This is a user-triggerable DoS. The administrator who mounted the
+filesystem image or partition might not know that the dir->i_size and
+dir->i_blocks are corrupted. A remote user just need to perform either
+a read or write operation to the mounted image or partition, and this
+could trigger the problem, resulting in a denial of service.
 
-diff --git a/fs/ocfs2/journal.c b/fs/ocfs2/journal.c
-index 373d943..d17d4a9 100644
---- a/fs/ocfs2/journal.c
-+++ b/fs/ocfs2/journal.c
-@@ -357,6 +357,51 @@ bail:
- 	return status;
- }
- 
-+struct ocfs2_triggers {
-+	struct jbd2_buffer_trigger_type	ot_triggers;
-+	int				ot_offset;
-+};
-+
-+static inline struct ocfs2_triggers *to_ocfs2_trigger(struct jbd2_buffer_trigger_type *triggers)
-+{
-+	return container_of(triggers, struct ocfs2_triggers, ot_triggers);
-+}
-+
-+static void ocfs2_commit_trigger(struct jbd2_buffer_trigger_type *triggers,
-+				 struct buffer_head *bh,
-+				 void *data, size_t size)
-+{
-+	struct ocfs2_triggers *ot = to_ocfs2_trigger(triggers);
-+
-+	mlog(ML_NOTICE, "bh = 0x%lx, data = 0x%lx, size = %u, offset = %d\n",
-+	     (unsigned long)bh, (unsigned long)data, size, ot->ot_offset);
-+}
-+
-+static void ocfs2_abort_trigger(struct jbd2_buffer_trigger_type *triggers,
-+				struct buffer_head *bh)
-+{
-+	struct ocfs2_triggers *ot = to_ocfs2_trigger(triggers);
-+
-+	mlog(ML_NOTICE, "bh = 0x%lx, offset = %d\n", (unsigned long)bh, ot->ot_offset);
-+}
-+
-+static struct ocfs2_triggers inode_triggers = {
-+	.ot_triggers = {
-+		.t_commit = ocfs2_commit_trigger,
-+		.t_abort = ocfs2_abort_trigger,
-+	},
-+	.ot_offset	= 10, /* Garbage */
-+};
-+
-+static struct ocfs2_triggers other_triggers = {
-+	.ot_triggers = {
-+		.t_commit = ocfs2_commit_trigger,
-+		.t_abort = ocfs2_abort_trigger,
-+	},
-+	.ot_offset	= 20, /* Different garbage */
-+};
-+
-+
- int ocfs2_journal_access(handle_t *handle,
- 			 struct inode *inode,
- 			 struct buffer_head *bh,
-@@ -406,6 +451,12 @@ int ocfs2_journal_access(handle_t *handle,
- 		status = -EINVAL;
- 		mlog(ML_ERROR, "Uknown access type!\n");
- 	}
-+	if (!status)
-+		jbd2_journal_set_triggers(bh,
-+					  bh->b_blocknr ==
-+					  OCFS2_I(inode)->ip_blkno ?
-+					  &inode_triggers.ot_triggers :
-+					  &other_triggers.ot_triggers);
- 	mutex_unlock(&OCFS2_I(inode)->ip_io_mutex);
- 
- 	if (status < 0)
--- 
-1.5.6.3
+Take note that another problem the test image shows is that, the
+ext2/3 (and possibly ext4) filesystem does not honour the read-only
+mode when the revision level is too high. That is, when
+le32_to_cpu(es->s_rev_level) > EXT3_MAX_SUPP_REV. Eric replied me in a
+private email that this is a different, and unrelated bug that will be
+fixed.
 
--- 
-
-"There are some experiences in life which should not be demanded
- twice from any man, and one of them is listening to the Brahms Requiem."
-        - George Bernard Shaw
-
-Joel Becker
-Principal Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+Thanks, Eugene
