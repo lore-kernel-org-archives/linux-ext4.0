@@ -1,55 +1,76 @@
-From: "Eugene Teo" <eugeneteo@kernel.sg>
-Subject: Re: [PATCH 4/4] ext3: Avoid printk floods in the face of directory corruption
-Date: Thu, 18 Sep 2008 08:57:19 +0800
-Message-ID: <28fa9c5e0809171757p59978419p810e7d0c571e33e6@mail.gmail.com>
-References: <1221319971-29879-1-git-send-email-tytso@mit.edu>
-	 <1221319971-29879-2-git-send-email-tytso@mit.edu>
-	 <1221319971-29879-3-git-send-email-tytso@mit.edu>
-	 <1221319971-29879-4-git-send-email-tytso@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 2/4] ext3: truncate block allocated on a failed
+	ext3_write_begin
+Date: Thu, 18 Sep 2008 12:33:40 +0530
+Message-ID: <20080918070340.GA7042@skywalker>
+References: <1221319971-29879-1-git-send-email-tytso@mit.edu> <1221319971-29879-2-git-send-email-tytso@mit.edu> <20080917122254.a704eff1.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-	"Eric Sandeen" <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@MIT.EDU>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Nick Piggin <nickpiggin@yahoo.com.au>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f16.google.com ([209.85.217.16]:42946 "EHLO
-	mail-gx0-f16.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752800AbYIRA5V (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Sep 2008 20:57:21 -0400
-Received: by gxk9 with SMTP id 9so30619911gxk.13
-        for <linux-ext4@vger.kernel.org>; Wed, 17 Sep 2008 17:57:20 -0700 (PDT)
-In-Reply-To: <1221319971-29879-4-git-send-email-tytso@mit.edu>
+Received: from e28smtp05.in.ibm.com ([59.145.155.5]:47419 "EHLO
+	e28esmtp05.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751210AbYIRHEx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Sep 2008 03:04:53 -0400
 Content-Disposition: inline
+In-Reply-To: <20080917122254.a704eff1.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Sep 13, 2008 at 11:32 PM, Theodore Ts'o <tytso@mit.edu> wrote:
-> Note: some people thinks this represents a security bug, since it
-> might make the system go away while it is printing a large number of
-> console messages, especially if a serial console is involved.  Hence,
-> it has been assigned CVE-2008-3528, but it requires that the attacker
-> either has physical access to your machine to insert a USB disk with a
-> corrupted filesystem image (at which point why not just hit the power
-> button), or is otherwise able to convince the system administrator to
-> mount an arbitrary filesystem image (at which point why not just
-> include a setuid shell or world-writable hard disk device file or some
-> such).  Me, I think they're just being silly.
+On Wed, Sep 17, 2008 at 12:22:54PM -0700, Andrew Morton wrote:
+> On Sat, 13 Sep 2008 11:32:49 -0400
+> "Theodore Ts'o" <tytso@MIT.EDU> wrote:
+> 
+> > From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> > 
+> > For blocksize < pagesize we need to remove blocks that got allocated in
+> > block_write_begin() if we fail with ENOSPC for later blocks.
+> > block_write_begin() internally does this if it allocated page
+> > locally. This makes sure we don't have blocks outside inode.i_size
+> > during ENOSPC.
+> > 
+> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> > Cc: linux-ext4@vger.kernel.org
+> > ---
+> >  fs/ext3/inode.c |    7 +++++++
+> >  1 files changed, 7 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> > index 507d868..bff22b9 100644
+> > --- a/fs/ext3/inode.c
+> > +++ b/fs/ext3/inode.c
+> > @@ -1178,6 +1178,13 @@ write_begin_failed:
+> >  		ext3_journal_stop(handle);
+> >  		unlock_page(page);
+> >  		page_cache_release(page);
+> > +		/*
+> > +		 * block_write_begin may have instantiated a few blocks
+> > +		 * outside i_size.  Trim these off again. Don't need
+> > +		 * i_size_read because we hold i_mutex.
+> > +		 */
+> > +		if (pos + len > inode->i_size)
+> > +			vmtruncate(inode, inode->i_size);
+> >  	}
+> >  	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
+> >  		goto retry;
+> 
+> Well we used to do this trimming in core VFS, but Nick broke it.  We
+> still do it if the fs doesn't implement ->write_begin().
 
-The description should explain what the problem is. And the last
-sentence is a little ambiguous.
+We still do it in block_write_begin if the pages are allocated by
+block_write_begin.
+> 
+> Should we do this trimming in pagecache_write_begin() in both cases?
 
-This is a user-triggerable DoS. The administrator who mounted the
-filesystem image or partition might not know that the dir->i_size and
-dir->i_blocks are corrupted. A remote user just need to perform either
-a read or write operation to the mounted image or partition, and this
-could trigger the problem, resulting in a denial of service.
 
-Take note that another problem the test image shows is that, the
-ext2/3 (and possibly ext4) filesystem does not honour the read-only
-mode when the revision level is too high. That is, when
-le32_to_cpu(es->s_rev_level) > EXT3_MAX_SUPP_REV. Eric replied me in a
-private email that this is a different, and unrelated bug that will be
-fixed.
+pagecache_write_begin is not used in the write_begin call path for
+ext3/ext4.
+generic_file_buffered_write
+	generic_perform_write
+		ext3_write_begin
+			block_write_begin
 
-Thanks, Eugene
+-aneesh
