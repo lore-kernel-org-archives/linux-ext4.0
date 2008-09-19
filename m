@@ -1,31 +1,65 @@
-From: "=?EUC-KR?B?yKu9xSBzaGluIGhvbmc=?=" <hongshin@gmail.com>
-Subject: a question for i_inode's i_size in ext2
-Date: Fri, 19 Sep 2008 16:21:44 +0900
-Message-ID: <2014bcab0809190021qbca7bect601c891c2db197cf@mail.gmail.com>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
+Date: Fri, 19 Sep 2008 10:05:03 -0400
+Message-ID: <20080919140502.GA6985@think.oraclecorp.com>
+References: <1221331767-16870-1-git-send-email-tytso@mit.edu> <20080914134711.GA21746@infradead.org> <20080914180132.GC13074@mit.edu> <20080914180843.GA31649@infradead.org> <20080914195811.GE13074@mit.edu> <20080915144754.GA16491@infradead.org> <20080916064514.GH3241@webber.adilger.int> <20080916220346.GB10562@mit.edu> <20080917141840.GB8750@logfs.org> <20080917150212.GD22613@shareable.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.225]:47017 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750709AbYISHVp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Sep 2008 03:21:45 -0400
-Received: by rv-out-0506.google.com with SMTP id k40so308520rvb.1
-        for <linux-ext4@vger.kernel.org>; Fri, 19 Sep 2008 00:21:44 -0700 (PDT)
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?iso-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>,
+	Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	akpm@linuxfoundation.org, Mark Fasheh <mfasheh@suse.com>,
+	mtk.manpages@gmail.com
+To: Jamie Lokier <jamie@shareable.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20080917150212.GD22613@shareable.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dear ext2 maintainers
+On Wed, Sep 17, 2008 at 04:02:12PM +0100, Jamie Lokier wrote:
+> J=F6rn Engel wrote:
+> > Apart from the typo above, here is a more discouraging version:
+> >=20
+> >   In general, accessing the block device directly is strongly disco=
+uraged.
+> >   Exceptions exist mainly in the form of boot loaders like lilo and=
+ grub,
+> >   at a time when the filesystem is not (cannot be) mounted.
+> >=20
+> >   If the flag DATA_ENCODED is set, however, even this exception is =
+no
+> >   longer valid.  The content is encoded in some form.  Details are
+> >   unknown, it could be compressed, encrypted or something else.
+>=20
+> I'm not clear about something from the above description.
+>=20
+> If I were writing a journalling / tree-like filesystem, and I did
+> store data in blocks without encoding, but fsync() only waits for the=
+m
+> to be committed to journal, not their final destination, and also the=
+y
+> might be moved around - should I set DATA_ENCODED or not?  (And shoul=
+d
+> I return the temporary location in the long-running journal since
+> that's the only place the data is committed at the time of the call?)
+>=20
+> Assume that even reading after unmounting is not 100% safe, because
+> the data blocks could be relocated after calling FIEMAP (when the
+> filesystem must be mounted), and before the unmount.
 
-  I have a question of inode's i_size. I found that it is hard to find
-any consistent synchronization mechanism that protects inode's i_size
-field.
-  Is there any lock or synchronization mechanism that consistently
-protects i_size fields of inode objects to avoid data race?
-  In inode's definition in /include/linux/fs.h, there is comment that
-i_lock protects i_size but it is not clear.
+=46or the journal case at least, grub can walk through the log of the F=
+S
+looking for up to date copies of things.  It does this already for
+reiserfs because the btree can't be trusted at all without a log replay=
+=2E
 
-Sincerely
-Shin Hong
+-chris
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
