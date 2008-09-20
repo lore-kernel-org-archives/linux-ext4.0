@@ -1,54 +1,129 @@
-From: Josef 'Jeff' Sipek <jeffpc@josefsipek.net>
-Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
-Date: Sat, 20 Sep 2008 12:47:59 -0400
-Message-ID: <20080920164759.GY27404@josefsipek.net>
-References: <E1Kea9F-0004L5-Ds@closure.thunk.org> <1221331767-16870-1-git-send-email-tytso@mit.edu> <2EC8176B-0AFA-4B36-A2F5-E51753A576A5@cam.ac.uk> <20080913212903.GF26128@mit.edu> <20080914134859.GB21746@infradead.org> <20080914175810.GB13074@mit.edu> <20080915144948.GB16491@infradead.org> <20080915175305.GS4563@wotan.suse.de> <20080916213106.GA10562@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mark Fasheh <mfasheh@suse.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Anton Altaparmakov <aia21@cam.ac.uk>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	akpm@linuxfoundation.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20080916213106.GA10562@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext3/jbd: Avoid WARN() messages when failing to write to the superblock
+Date: Sat, 20 Sep 2008 17:35:47 -0400
+Message-ID: <1221946547-9873-1-git-send-email-tytso@mit.edu>
+Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: akpm@linux-foundation.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:51246 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751470AbYITXKa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Sep 2008 19:10:30 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Sep 16, 2008 at 05:31:07PM -0400, Theodore Tso wrote:
-> On Mon, Sep 15, 2008 at 10:53:05AM -0700, Mark Fasheh wrote:
-> > On Mon, Sep 15, 2008 at 10:49:48AM -0400, Christoph Hellwig wrote:
-> > > I agree to you (or someone elses - don't remember anymore) suggestion
-> > > to put in more padding so we can add fields later.  I strongly disagree
-> > > putting in features now that we neither have a user, nor a usecase or
-> > > testcase for.
-> > 
-> > So, how about another 64 bits of padding in struct fiemap_extent? That could
-> > help cover future uses like compression, which might require another 64 bit
-> > offset field - we only have 32 bits of reserved space there right now.
-> 
-> What I'd recommend is a 56 byte structure:
+This fixes some very common warnings reported by kerneloops.org
 
-Why not just make it 64 bytes? Sure, that's 8 extra bytes, but I find the
-power-of-2 size (and the extra space) comforting. (AFAIK, slab allocators
-will give you 64 bytes anyway; and I expect something similar on the
-user-space side of things.)
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext3/super.c  |   23 ++++++++++++++++++++++-
+ fs/jbd/journal.c |   29 +++++++++++++++++++++++++++--
+ 2 files changed, 49 insertions(+), 3 deletions(-)
 
-...
-> Yeah, it's a little extra memory per extent, but filesystems seem to
-> always invent new things, and it seem spretty clear that we have at
-> least two extensions on deck (compression, multiple storage devices)
-> both of which have at least one implementation that are either in the
-> kernel or will likely enter the kernel.  So it's likely that there is
-> something that we may have missed, and leaving a little extra space
-> doesn't actually cost us that much.
-
-Right.
-
-Josef 'Jeff' Sipek.
-
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index f38a5af..b3f8eb8 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2259,13 +2259,34 @@ static void ext3_commit_super (struct super_block * sb,
+ 
+ 	if (!sbh)
+ 		return;
++	if (buffer_write_io_error(sbh)) {
++		/*
++		 * Oh, dear.  A previous attempt to write the
++		 * superblock failed.  This could happen because the
++		 * USB device was yanked out.  Or it could happen to
++		 * be a transient write error and maybe the block will
++		 * be remapped.  Nothing we can do but to retry the
++		 * write and hope for the best.
++		 */
++		printk(KERN_ERR "ext3: previous I/O error to "
++		       "superblock detected for %s.\n", sb->s_id);
++		clear_buffer_write_io_error(sbh);
++		set_buffer_uptodate(sbh);
++	}
+ 	es->s_wtime = cpu_to_le32(get_seconds());
+ 	es->s_free_blocks_count = cpu_to_le32(ext3_count_free_blocks(sb));
+ 	es->s_free_inodes_count = cpu_to_le32(ext3_count_free_inodes(sb));
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	mark_buffer_dirty(sbh);
+-	if (sync)
++	if (sync) {
+ 		sync_dirty_buffer(sbh);
++		if (buffer_write_io_error(sbh)) {
++			printk(KERN_ERR "ext3: I/O error while writing "
++			       "superblock for %s.\n", sb->s_id);
++			clear_buffer_write_io_error(sbh);
++			set_buffer_uptodate(sbh);
++		}
++	}
+ }
+ 
+ 
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index aa7143a..8214175 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -83,6 +83,7 @@ EXPORT_SYMBOL(journal_force_commit);
+ 
+ static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
+ static void __journal_abort_soft (journal_t *journal, int errno);
++static const char *journal_dev_name(journal_t *journal, char *buffer);
+ 
+ /*
+  * Helper function used to manage commit timeouts
+@@ -931,6 +932,7 @@ void journal_update_superblock(journal_t *journal, int wait)
+ {
+ 	journal_superblock_t *sb = journal->j_superblock;
+ 	struct buffer_head *bh = journal->j_sb_buffer;
++	char b[BDEVNAME_SIZE];
+ 
+ 	/*
+ 	 * As a special case, if the on-disk copy is already marked as needing
+@@ -948,6 +950,22 @@ void journal_update_superblock(journal_t *journal, int wait)
+ 		goto out;
+ 	}
+ 
++	if (buffer_write_io_error(bh)) {
++		/*
++		 * Oh, dear.  A previous attempt to write the journal
++		 * superblock failed.  This could happen because the
++		 * USB device was yanked out.  Or it could happen to
++		 * be a transient write error and maybe the block will
++		 * be remapped.  Nothing we can do but to retry the
++		 * write and hope for the best.
++		 */
++		printk(KERN_ERR "JBD: previous I/O error detected "
++		       "for journal superblock update for %s.\n",
++		       journal_dev_name(journal, b));
++		clear_buffer_write_io_error(bh);
++		set_buffer_uptodate(bh);
++	}
++
+ 	spin_lock(&journal->j_state_lock);
+ 	jbd_debug(1,"JBD: updating superblock (start %ld, seq %d, errno %d)\n",
+ 		  journal->j_tail, journal->j_tail_sequence, journal->j_errno);
+@@ -959,9 +977,16 @@ void journal_update_superblock(journal_t *journal, int wait)
+ 
+ 	BUFFER_TRACE(bh, "marking dirty");
+ 	mark_buffer_dirty(bh);
+-	if (wait)
++	if (wait) {
+ 		sync_dirty_buffer(bh);
+-	else
++		if (buffer_write_io_error(bh)) {
++			printk(KERN_ERR "JBD: I/O error detected "
++			       "when updating journal superblock for %s.\n",
++			       journal_dev_name(journal, b));
++			clear_buffer_write_io_error(bh);
++			set_buffer_uptodate(bh);
++		}
++	} else
+ 		ll_rw_block(SWRITE, 1, &bh);
+ 
+ out:
 -- 
-Once you have their hardware. Never give it back.
-(The First Rule of Hardware Acquisition)
+1.5.6.1.205.ge2c7.dirty
+
