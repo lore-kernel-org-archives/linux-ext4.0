@@ -1,129 +1,46 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext3/jbd: Avoid WARN() messages when failing to write to the superblock
-Date: Sat, 20 Sep 2008 17:35:47 -0400
-Message-ID: <1221946547-9873-1-git-send-email-tytso@mit.edu>
-Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
-To: akpm@linux-foundation.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] properly show journal checksum/async options
+Date: Sat, 20 Sep 2008 18:06:47 -0400
+Message-ID: <20080920220647.GA9088@mit.edu>
+References: <48CD7FC3.4050807@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:51246 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:51245 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751470AbYITXKa (ORCPT
+	with ESMTP id S1751510AbYITXKa (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Sep 2008 19:10:30 -0400
+Content-Disposition: inline
+In-Reply-To: <48CD7FC3.4050807@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This fixes some very common warnings reported by kerneloops.org
+On Sun, Sep 14, 2008 at 02:18:59PM -0700, Eric Sandeen wrote:
+> The journal_checksum option is not being displayed in
+> /proc/mounts ... add this to the show_options() output, but
+> only if journal_async_commit is not specified, as that enables
+> journal_checksum internally.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext3/super.c  |   23 ++++++++++++++++++++++-
- fs/jbd/journal.c |   29 +++++++++++++++++++++++++++--
- 2 files changed, 49 insertions(+), 3 deletions(-)
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
 
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index f38a5af..b3f8eb8 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -2259,13 +2259,34 @@ static void ext3_commit_super (struct super_block * sb,
- 
- 	if (!sbh)
- 		return;
-+	if (buffer_write_io_error(sbh)) {
-+		/*
-+		 * Oh, dear.  A previous attempt to write the
-+		 * superblock failed.  This could happen because the
-+		 * USB device was yanked out.  Or it could happen to
-+		 * be a transient write error and maybe the block will
-+		 * be remapped.  Nothing we can do but to retry the
-+		 * write and hope for the best.
-+		 */
-+		printk(KERN_ERR "ext3: previous I/O error to "
-+		       "superblock detected for %s.\n", sb->s_id);
-+		clear_buffer_write_io_error(sbh);
-+		set_buffer_uptodate(sbh);
-+	}
- 	es->s_wtime = cpu_to_le32(get_seconds());
- 	es->s_free_blocks_count = cpu_to_le32(ext3_count_free_blocks(sb));
- 	es->s_free_inodes_count = cpu_to_le32(ext3_count_free_inodes(sb));
- 	BUFFER_TRACE(sbh, "marking dirty");
- 	mark_buffer_dirty(sbh);
--	if (sync)
-+	if (sync) {
- 		sync_dirty_buffer(sbh);
-+		if (buffer_write_io_error(sbh)) {
-+			printk(KERN_ERR "ext3: I/O error while writing "
-+			       "superblock for %s.\n", sb->s_id);
-+			clear_buffer_write_io_error(sbh);
-+			set_buffer_uptodate(sbh);
-+		}
-+	}
- }
- 
- 
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index aa7143a..8214175 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -83,6 +83,7 @@ EXPORT_SYMBOL(journal_force_commit);
- 
- static int journal_convert_superblock_v1(journal_t *, journal_superblock_t *);
- static void __journal_abort_soft (journal_t *journal, int errno);
-+static const char *journal_dev_name(journal_t *journal, char *buffer);
- 
- /*
-  * Helper function used to manage commit timeouts
-@@ -931,6 +932,7 @@ void journal_update_superblock(journal_t *journal, int wait)
- {
- 	journal_superblock_t *sb = journal->j_superblock;
- 	struct buffer_head *bh = journal->j_sb_buffer;
-+	char b[BDEVNAME_SIZE];
- 
- 	/*
- 	 * As a special case, if the on-disk copy is already marked as needing
-@@ -948,6 +950,22 @@ void journal_update_superblock(journal_t *journal, int wait)
- 		goto out;
- 	}
- 
-+	if (buffer_write_io_error(bh)) {
-+		/*
-+		 * Oh, dear.  A previous attempt to write the journal
-+		 * superblock failed.  This could happen because the
-+		 * USB device was yanked out.  Or it could happen to
-+		 * be a transient write error and maybe the block will
-+		 * be remapped.  Nothing we can do but to retry the
-+		 * write and hope for the best.
-+		 */
-+		printk(KERN_ERR "JBD: previous I/O error detected "
-+		       "for journal superblock update for %s.\n",
-+		       journal_dev_name(journal, b));
-+		clear_buffer_write_io_error(bh);
-+		set_buffer_uptodate(bh);
-+	}
-+
- 	spin_lock(&journal->j_state_lock);
- 	jbd_debug(1,"JBD: updating superblock (start %ld, seq %d, errno %d)\n",
- 		  journal->j_tail, journal->j_tail_sequence, journal->j_errno);
-@@ -959,9 +977,16 @@ void journal_update_superblock(journal_t *journal, int wait)
- 
- 	BUFFER_TRACE(bh, "marking dirty");
- 	mark_buffer_dirty(bh);
--	if (wait)
-+	if (wait) {
- 		sync_dirty_buffer(bh);
--	else
-+		if (buffer_write_io_error(bh)) {
-+			printk(KERN_ERR "JBD: I/O error detected "
-+			       "when updating journal superblock for %s.\n",
-+			       journal_dev_name(journal, b));
-+			clear_buffer_write_io_error(bh);
-+			set_buffer_uptodate(bh);
-+		}
-+	} else
- 		ll_rw_block(SWRITE, 1, &bh);
- 
- out:
--- 
-1.5.6.1.205.ge2c7.dirty
+I'll add it to the patch queue, probably combined with a patch to add
+journal_sync_commit, and with a patch to make journal_async_commit the
+default.
 
+> (Aside: this reminds me that we only show non-default options
+> in show_options; has there been any discussion of whether
+> these should be defaults?)
+
+Good point, thanks for raising the question.
+
+The reason why journal_async_commit wasn't turned on by default
+originally was because e2fsck didn't have support for journal
+checksums before e2fsprogs 1.41.0.  At this point, it seems like
+turning on async_commit is the obvious (and performant) thing to do;
+any objections?
+
+	    				- Ted
