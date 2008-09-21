@@ -1,46 +1,37 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] properly show journal checksum/async options
-Date: Sat, 20 Sep 2008 18:06:47 -0400
-Message-ID: <20080920220647.GA9088@mit.edu>
-References: <48CD7FC3.4050807@redhat.com>
+From: Arjan van de Ven <arjan@infradead.org>
+Subject: Re: [PATCH] ext3/jbd: Avoid WARN() messages when failing to write
+ to the superblock
+Date: Sat, 20 Sep 2008 19:14:42 -0700
+Message-ID: <20080920191442.311c043e@infradead.org>
+References: <1221946547-9873-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: akpm@linux-foundation.org,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:51245 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751510AbYITXKa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Sep 2008 19:10:30 -0400
-Content-Disposition: inline
-In-Reply-To: <48CD7FC3.4050807@redhat.com>
+Received: from casper.infradead.org ([85.118.1.10]:43543 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752309AbYIUCOm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Sep 2008 22:14:42 -0400
+In-Reply-To: <1221946547-9873-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 14, 2008 at 02:18:59PM -0700, Eric Sandeen wrote:
-> The journal_checksum option is not being displayed in
-> /proc/mounts ... add this to the show_options() output, but
-> only if journal_async_commit is not specified, as that enables
-> journal_checksum internally.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+On Sat, 20 Sep 2008 17:35:47 -0400
+Theodore Ts'o <tytso@mit.edu> wrote:
 
-Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+> This fixes some very common warnings reported by kerneloops.org
 
-I'll add it to the patch queue, probably combined with a patch to add
-journal_sync_commit, and with a patch to make journal_async_commit the
-default.
+just to quantify "very common"; I did a quick count on the database and
+there have been 4920 reports of the WARNing fixed by this patch...
+that's quite a bit.
 
-> (Aside: this reminds me that we only show non-default options
-> in show_options; has there been any discussion of whether
-> these should be defaults?)
 
-Good point, thanks for raising the question.
-
-The reason why journal_async_commit wasn't turned on by default
-originally was because e2fsck didn't have support for journal
-checksums before e2fsprogs 1.41.0.  At this point, it seems like
-turning on async_commit is the obvious (and performant) thing to do;
-any objections?
-
-	    				- Ted
+-- 
+Arjan van de Ven 	Intel Open Source Technology Centre
+For development, discussion and tips for power savings, 
+visit http://www.lesswatts.org
