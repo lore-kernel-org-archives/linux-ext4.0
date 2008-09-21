@@ -1,75 +1,34 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH] ext4: Enable asynchronous commits by default
-Date: Sat, 20 Sep 2008 20:53:47 -0400
-Message-ID: <E1KhDCt-0004GB-KI@closure.thunk.org>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext3/jbd: Avoid WARN() messages when failing to write to the superblock
+Date: Sun, 21 Sep 2008 19:33:28 +0200
+Message-ID: <20080921173328.GB23547@atrey.karlin.mff.cuni.cz>
+References: <1221946547-9873-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: akpm@linux-foundation.org,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:40965 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752339AbYIUDPy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Sep 2008 23:15:54 -0400
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:51696 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751128AbYIURd3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Sep 2008 13:33:29 -0400
+Content-Disposition: inline
+In-Reply-To: <1221946547-9873-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+> This fixes some very common warnings reported by kerneloops.org
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+  The patch looks nice but does it really fix the warnings? I see
+at least ext3_put_super() calling mark_buffer_dirty() before calling
+ext3_commit_super(). We should just remove that mark_buffer_dirty()
+call.
+  BTW: Do you plan doing a similar fix for ext2 and ext4?
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index fb5766e..e6d5af7 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -747,8 +747,15 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 	 */
- 	seq_puts(seq, ",barrier=");
- 	seq_puts(seq, test_opt(sb, BARRIER) ? "1" : "0");
-+	/* journal_async_commit enables journal_checksum internally */
- 	if (test_opt(sb, JOURNAL_ASYNC_COMMIT))
- 		seq_puts(seq, ",journal_async_commit");
-+	else {
-+		seq_puts(seq, ",journal_sync_commit");
-+		if (test_opt(sb, JOURNAL_CHECKSUM))
-+			seq_puts(seq, ",journal_checksum");
-+	}
-+
- 	if (test_opt(sb, NOBH))
- 		seq_puts(seq, ",nobh");
- 	if (!test_opt(sb, EXTENTS))
-@@ -902,6 +909,7 @@ enum {
- 	Opt_reservation, Opt_noreservation, Opt_noload, Opt_nobh, Opt_bh,
- 	Opt_commit, Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
- 	Opt_journal_checksum, Opt_journal_async_commit,
-+	Opt_journal_sync_commit,
- 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
-@@ -944,6 +952,7 @@ static match_table_t tokens = {
- 	{Opt_journal_dev, "journal_dev=%u"},
- 	{Opt_journal_checksum, "journal_checksum"},
- 	{Opt_journal_async_commit, "journal_async_commit"},
-+	{Opt_journal_sync_commit, "journal_sync_commit"},
- 	{Opt_abort, "abort"},
- 	{Opt_data_journal, "data=journal"},
- 	{Opt_data_ordered, "data=ordered"},
-@@ -1145,7 +1154,9 @@ static int parse_options(char *options, struct super_block *sb,
- 			break;
- 		case Opt_journal_async_commit:
- 			set_opt(sbi->s_mount_opt, JOURNAL_ASYNC_COMMIT);
--			set_opt(sbi->s_mount_opt, JOURNAL_CHECKSUM);
-+			break;
-+		case Opt_journal_sync_commit:
-+			clear_opt(sbi->s_mount_opt, JOURNAL_ASYNC_COMMIT);
- 			break;
- 		case Opt_noload:
- 			set_opt(sbi->s_mount_opt, NOLOAD);
-@@ -2026,6 +2037,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	 */
- 	set_opt(sbi->s_mount_opt, DELALLOC);
- 
-+	/*
-+	 * enable async commit by default
-+	 * Use -o sync_commit to turn it off
-+	 */
-+	set_opt(sbi->s_mount_opt, JOURNAL_ASYNC_COMMIT);
- 
- 	if (!parse_options((char *) data, sb, &journal_inum, &journal_devnum,
- 			   NULL, 0))
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
