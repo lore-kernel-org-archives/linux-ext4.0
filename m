@@ -1,142 +1,275 @@
 From: Takashi Sato <t-sato@yk.jp.nec.com>
-Subject: [PATHC 2/10] ext3: Fix error handling in write_super_lockfs/unlockfs
-Date: Mon, 22 Sep 2008 19:55:48 +0900
-Message-ID: <20080922195548t-sato__49205.4553506479$1222081201$gmane$org@mail.jp.nec.com>
+Subject: [PATCH 8/10] Implement generic freeze feature
+Date: Mon, 22 Sep 2008 19:58:03 +0900
+Message-ID: <20080922195804t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>,
 	Christoph Hellwig <hch@infradead.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
-	"mtk.manpages@googlemail.c
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"dm-devel@redhat.com" <dm-devel@redh
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:50001 "EHLO
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:50143 "EHLO
 	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752471AbYIVK6A (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Sep 2008 06:58:00 -0400
+	with ESMTP id S1753582AbYIVK6Q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Sep 2008 06:58:16 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've changed write_super_lockfs/unlockfs so that they return an error
-in case of an I/O failure.
+The ioctls for the generic freeze feature are below.
+o Freeze the filesystem
+  int ioctl(int fd, int FIFREEZE, arg)
+    fd: The file descriptor of the mountpoint
+    FIFREEZE: request code for the freeze
+    arg: Ignored
+    Return value: 0 if the operation succeeds. Otherwise, -1
+
+o Unfreeze the filesystem
+  int ioctl(int fd, int FITHAW, arg)
+    fd: The file descriptor of the mountpoint
+    FITHAW: request code for unfreeze
+    arg: Ignored
+    Return value: 0 if the operation succeeds. Otherwise, -1
 
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 Signed-off-by: Masayuki Hamaguchi <m-hamaguchi@ys.jp.nec.com>
 ---
- super.c |   43 +++++++++++++++++++++++++++++--------------
- 1 file changed, 29 insertions(+), 14 deletions(-)
+ fs/block_dev.c              |    2 +
+ fs/buffer.c                 |   69 ++++++++++++++++++++++++++++++++++++++------
+ fs/ioctl.c                  |   47 +++++++++++++++++++++++++++++
+ include/linux/buffer_head.h |    2 -
+ include/linux/fs.h          |    7 ++++
 
-diff -uprN -X linux-2.6.27-rc7-lockfs-xfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs-xfs/fs/ext3/super.c linux-2.6.2
-7-rc7-lockfs-ext3/fs/ext3/super.c
---- linux-2.6.27-rc7-lockfs-xfs/fs/ext3/super.c	2008-09-22 07:29:55.000000000 +0900
-+++ linux-2.6.27-rc7-lockfs-ext3/fs/ext3/super.c	2008-09-22 10:31:56.000000000 +0900
-@@ -48,8 +48,8 @@ static int ext3_load_journal(struct supe
- 			     unsigned long journal_devnum);
- static int ext3_create_journal(struct super_block *, struct ext3_super_block *,
- 			       unsigned int);
--static void ext3_commit_super (struct super_block * sb,
--			       struct ext3_super_block * es,
-+static int ext3_commit_super(struct super_block *sb,
-+			       struct ext3_super_block *es,
- 			       int sync);
- static void ext3_mark_recovery_complete(struct super_block * sb,
- 					struct ext3_super_block * es);
-@@ -60,9 +60,9 @@ static const char *ext3_decode_error(str
- 				     char nbuf[16]);
- static int ext3_remount (struct super_block * sb, int * flags, char * data);
- static int ext3_statfs (struct dentry * dentry, struct kstatfs * buf);
--static void ext3_unlockfs(struct super_block *sb);
-+static int ext3_unlockfs(struct super_block *sb);
- static void ext3_write_super (struct super_block * sb);
--static void ext3_write_super_lockfs(struct super_block *sb);
-+static int ext3_write_super_lockfs(struct super_block *sb);
- 
- /*
-  * Wrappers for journal_start/end.
-@@ -2251,21 +2251,23 @@ static int ext3_create_journal(struct su
- 	return 0;
+diff -uprN -X linux-2.6.27-rc7-lockfs-reiserfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs-reiserfs/fs/block_dev.c li
+nux-2.6.27-rc7-freeze/fs/block_dev.c
+--- linux-2.6.27-rc7-lockfs-reiserfs/fs/block_dev.c	2008-09-22 07:29:55.000000000 +0900
++++ linux-2.6.27-rc7-freeze/fs/block_dev.c	2008-09-22 13:11:03.000000000 +0900
+@@ -285,6 +285,8 @@ static void init_once(void *foo)
+ 	INIT_LIST_HEAD(&bdev->bd_holder_list);
+ #endif
+ 	inode_init_once(&ei->vfs_inode);
++	/* Initialize mutex for freeze. */
++	mutex_init(&bdev->bd_fsfreeze_mutex);
  }
  
--static void ext3_commit_super (struct super_block * sb,
--			       struct ext3_super_block * es,
-+static int ext3_commit_super(struct super_block *sb,
-+			       struct ext3_super_block *es,
- 			       int sync)
- {
- 	struct buffer_head *sbh = EXT3_SB(sb)->s_sbh;
-+	int error = 0;
- 
- 	if (!sbh)
--		return;
-+		return error;
- 	es->s_wtime = cpu_to_le32(get_seconds());
- 	es->s_free_blocks_count = cpu_to_le32(ext3_count_free_blocks(sb));
- 	es->s_free_inodes_count = cpu_to_le32(ext3_count_free_inodes(sb));
- 	BUFFER_TRACE(sbh, "marking dirty");
- 	mark_buffer_dirty(sbh);
- 	if (sync)
--		sync_dirty_buffer(sbh);
-+		error = sync_dirty_buffer(sbh);
-+	return error;
- }
- 
- 
-@@ -2379,37 +2381,50 @@ static int ext3_sync_fs(struct super_blo
-  * LVM calls this function before a (read-only) snapshot is created.  This
-  * gives us a chance to flush the journal completely and mark the fs clean.
+ static inline void __bd_forget(struct inode *inode)
+diff -uprN -X linux-2.6.27-rc7-lockfs-reiserfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs-reiserfs/fs/buffer.c linux
+-2.6.27-rc7-freeze/fs/buffer.c
+--- linux-2.6.27-rc7-lockfs-reiserfs/fs/buffer.c	2008-09-22 07:29:55.000000000 +0900
++++ linux-2.6.27-rc7-freeze/fs/buffer.c	2008-09-22 16:30:45.000000000 +0900
+@@ -196,10 +196,25 @@ int fsync_bdev(struct block_device *bdev
+  * happen on bdev until thaw_bdev() is called.
+  * If a superblock is found on this device, we take the s_umount semaphore
+  * on it to make sure nobody unmounts until the snapshot creation is done.
++ * The reference counter (bd_fsfreeze_count) guarantees that only the last
++ * unfreeze process can unfreeze the frozen filesystem actually when multiple
++ * freeze requests arrive simultaneously. It counts up in freeze_bdev() and
++ * count down in thaw_bdev(). When it becomes 0, thaw_bdev() will unfreeze
++ * actually.
   */
--static void ext3_write_super_lockfs(struct super_block *sb)
-+static int ext3_write_super_lockfs(struct super_block *sb)
+ struct super_block *freeze_bdev(struct block_device *bdev)
  {
+ 	struct super_block *sb;
 +	int error = 0;
-+	journal_t *journal;
- 	sb->s_dirt = 0;
- 
- 	if (!(sb->s_flags & MS_RDONLY)) {
--		journal_t *journal = EXT3_SB(sb)->s_journal;
-+		journal = EXT3_SB(sb)->s_journal;
- 
- 		/* Now we set up the journal barrier. */
- 		journal_lock_updates(journal);
--		journal_flush(journal);
-+		error = journal_flush(journal);
-+		if (error)
-+			goto out;
- 
- 		/* Journal blocked and flushed, clear needs_recovery flag. */
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
--		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
-+		error = ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
-+		if (error)
-+			goto out;
- 	}
-+	return 0;
 +
-+out:
-+	journal_unlock_updates(journal);
-+	return error;
- }
++	mutex_lock(&bdev->bd_fsfreeze_mutex);
++	if (bdev->bd_fsfreeze_count > 0) {
++		bdev->bd_fsfreeze_count++;
++		sb = get_super(bdev);
++		mutex_unlock(&bdev->bd_fsfreeze_mutex);
++		return sb;
++	}
++	bdev->bd_fsfreeze_count++;
  
- /*
-  * Called by LVM after the snapshot is done.  We need to reset the RECOVER
-  * flag here, even though the filesystem is not technically dirty yet.
+ 	down(&bdev->bd_mount_sem);
+ 	sb = get_super(bdev);
+@@ -214,11 +229,24 @@ struct super_block *freeze_bdev(struct b
+ 
+ 		sync_blockdev(sb->s_bdev);
+ 
+-		if (sb->s_op->write_super_lockfs)
+-			sb->s_op->write_super_lockfs(sb);
++		if (sb->s_op->write_super_lockfs) {
++			error = sb->s_op->write_super_lockfs(sb);
++			if (error) {
++				printk(KERN_ERR
++					"VFS:Filesystem freeze failed\n");
++				sb->s_frozen = SB_UNFROZEN;
++				drop_super(sb);
++				up(&bdev->bd_mount_sem);
++				bdev->bd_fsfreeze_count--;
++				mutex_unlock(&bdev->bd_fsfreeze_mutex);
++				return ERR_PTR(error);
++			}
++		}
+ 	}
+ 
+ 	sync_blockdev(bdev);
++	mutex_unlock(&bdev->bd_fsfreeze_mutex);
++
+ 	return sb;	/* thaw_bdev releases s->s_umount and bd_mount_sem */
+ }
+ EXPORT_SYMBOL(freeze_bdev);
+@@ -230,20 +258,43 @@ EXPORT_SYMBOL(freeze_bdev);
+  *
+  * Unlocks the filesystem and marks it writeable again after freeze_bdev().
   */
--static void ext3_unlockfs(struct super_block *sb)
-+static int ext3_unlockfs(struct super_block *sb)
+-void thaw_bdev(struct block_device *bdev, struct super_block *sb)
++int thaw_bdev(struct block_device *bdev, struct super_block *sb)
  {
 +	int error = 0;
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		lock_super(sb);
- 		/* Reser the needs_recovery flag before the fs is unlocked. */
- 		EXT3_SET_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
--		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
-+		error = ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
- 		unlock_super(sb);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++
++	mutex_lock(&bdev->bd_fsfreeze_mutex);
++	if (!bdev->bd_fsfreeze_count) {
++		mutex_unlock(&bdev->bd_fsfreeze_mutex);
++		return 0;
++	}
++
++	bdev->bd_fsfreeze_count--;
++	if (bdev->bd_fsfreeze_count > 0) {
++		if (sb)
++			drop_super(sb);
++		mutex_unlock(&bdev->bd_fsfreeze_mutex);
++		return 0;
++	}
++
+ 	if (sb) {
+ 		BUG_ON(sb->s_bdev != bdev);
+-
+-		if (sb->s_op->unlockfs)
+-			sb->s_op->unlockfs(sb);
+-		sb->s_frozen = SB_UNFROZEN;
+-		smp_wmb();
+-		wake_up(&sb->s_wait_unfrozen);
++		if (!(sb->s_flags & MS_RDONLY)) {
++			if (sb->s_op->unlockfs) {
++				error = sb->s_op->unlockfs(sb);
++				if (error)
++					printk(KERN_ERR
++						"VFS:Filesystem thaw failed\n");
++			}
++			sb->s_frozen = SB_UNFROZEN;
++			smp_wmb();
++			wake_up(&sb->s_wait_unfrozen);
++		}
+ 		drop_super(sb);
  	}
+ 
+ 	up(&bdev->bd_mount_sem);
++	mutex_unlock(&bdev->bd_fsfreeze_mutex);
 +	return error;
  }
+ EXPORT_SYMBOL(thaw_bdev);
  
- static int ext3_remount (struct super_block * sb, int * flags, char * data)
+diff -uprN -X linux-2.6.27-rc7-lockfs-reiserfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs-reiserfs/fs/ioctl.c linux-
+2.6.27-rc7-freeze/fs/ioctl.c
+--- linux-2.6.27-rc7-lockfs-reiserfs/fs/ioctl.c	2008-09-22 07:29:55.000000000 +0900
++++ linux-2.6.27-rc7-freeze/fs/ioctl.c	2008-09-22 13:11:03.000000000 +0900
+@@ -13,6 +13,7 @@
+ #include <linux/security.h>
+ #include <linux/module.h>
+ #include <linux/uaccess.h>
++#include <linux/buffer_head.h>
+ 
+ #include <asm/ioctls.h>
+ 
+@@ -140,6 +141,43 @@ static int ioctl_fioasync(unsigned int f
+ 	return error;
+ }
+ 
++static int ioctl_freeze(struct file *filp)
++{
++	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
++
++	if (!capable(CAP_SYS_ADMIN))
++		return -EPERM;
++
++	/* If filesystem doesn't support freeze feature, return. */
++	if (sb->s_op->write_super_lockfs == NULL)
++		return -EOPNOTSUPP;
++
++	/* If a blockdevice-backed filesystem isn't specified, return. */
++	if (sb->s_bdev == NULL)
++		return -EINVAL;
++
++	/* Freeze */
++	sb = freeze_bdev(sb->s_bdev);
++	if (IS_ERR(sb))
++		return PTR_ERR(sb);
++	return 0;
++}
++
++static int ioctl_thaw(struct file *filp)
++{
++	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
++
++	if (!capable(CAP_SYS_ADMIN))
++		return -EPERM;
++
++	/* If a blockdevice-backed filesystem isn't specified, return EINVAL. */
++	if (sb->s_bdev == NULL)
++		return -EINVAL;
++
++	/* Thaw */
++	return thaw_bdev(sb->s_bdev, sb);
++}
++
+ /*
+  * When you add any new common ioctls to the switches above and below
+  * please update compat_sys_ioctl() too.
+@@ -181,6 +219,15 @@ int do_vfs_ioctl(struct file *filp, unsi
+ 		} else
+ 			error = -ENOTTY;
+ 		break;
++
++	case FIFREEZE:
++		error = ioctl_freeze(filp);
++		break;
++
++	case FITHAW:
++		error = ioctl_thaw(filp);
++		break;
++
+ 	default:
+ 		if (S_ISREG(filp->f_path.dentry->d_inode->i_mode))
+ 			error = file_ioctl(filp, cmd, arg);
+diff -uprN -X linux-2.6.27-rc7-lockfs-reiserfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs-reiserfs/include/linux/buf
+fer_head.h linux-2.6.27-rc7-freeze/include/linux/buffer_head.h
+--- linux-2.6.27-rc7-lockfs-reiserfs/include/linux/buffer_head.h	2008-09-22 07:29:55.000000000 +0900
++++ linux-2.6.27-rc7-freeze/include/linux/buffer_head.h	2008-09-22 13:11:03.000000000 +0900
+@@ -170,7 +170,7 @@ void __wait_on_buffer(struct buffer_head
+ wait_queue_head_t *bh_waitq_head(struct buffer_head *bh);
+ int fsync_bdev(struct block_device *);
+ struct super_block *freeze_bdev(struct block_device *);
+-void thaw_bdev(struct block_device *, struct super_block *);
++int thaw_bdev(struct block_device *, struct super_block *);
+ int fsync_super(struct super_block *);
+ int fsync_no_super(struct block_device *);
+ struct buffer_head *__find_get_block(struct block_device *bdev, sector_t block,
+diff -uprN -X linux-2.6.27-rc7-lockfs-reiserfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs-reiserfs/include/linux/fs.
+h linux-2.6.27-rc7-freeze/include/linux/fs.h
+--- linux-2.6.27-rc7-lockfs-reiserfs/include/linux/fs.h	2008-09-22 09:53:46.000000000 +0900
++++ linux-2.6.27-rc7-freeze/include/linux/fs.h	2008-09-22 13:11:03.000000000 +0900
+@@ -226,6 +226,8 @@ extern int dir_notify_enable;
+ #define BMAP_IOCTL 1		/* obsolete - kept for compatibility */
+ #define FIBMAP	   _IO(0x00,1)	/* bmap access */
+ #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
++#define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
++#define FITHAW		_IOWR('X', 120, int)	/* Thaw */
+ 
+ #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
+ #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
+@@ -574,6 +576,11 @@ struct block_device {
+ 	 * care to not mess up bd_private for that case.
+ 	 */
+ 	unsigned long		bd_private;
++
++	/* The counter of freeze processes */
++	int			bd_fsfreeze_count;
++	/* Mutex for freeze */
++	struct mutex		bd_fsfreeze_mutex;
+ };
+ 
+ /*
