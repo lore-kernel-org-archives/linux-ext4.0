@@ -1,45 +1,31 @@
-From: "Takashi Sato" <t-sato@yk.jp.nec.com>
-Subject: Re: [PATCH 1/10] VFS: Fix error handling ofwrite_super_lockfs/unlockfs
-Date: Mon, 22 Sep 2008 21:52:09 +0900
-Message-ID: <3717EAB2B3F742ACBE4FFEC94B98BEB5@nsl.ad.nec.co.jp>
-References: <20080922195526t-sato@mail.jp.nec.com> <20080922105956.GA16069@infradead.org>
+From: "Rohit Sharma" <imreckless@gmail.com>
+Subject: vfsmount
+Date: Mon, 22 Sep 2008 22:27:33 +0530
+Message-ID: <2d08ef090809220957tc397ac5j6cdf110e7cd13f5c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	format=flowed;
-	charset="iso-8859-1";
-	reply-type=original
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Andrew Morton" <akpm@linux-foundation.org>,
-	"Christoph Hellwig" <hch@infradead.org>,
-	<linux-fsdevel@vger.kernel.org>, <dm-devel@redhat.com>,
-	<viro@ZenIV.linux.org.uk>, <linux-ext4@vger.kernel.org>,
-	<xfs@oss.sgi.com>, <axboe@kernel.dk>,
-	<mtk.manpages@googlemail.com>, <linux-kernel@vger.kernel.org>
-To: "Christoph Hellwig" <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20080922105956.GA16069@infradead.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: ext4 <linux-ext4@vger.kernel.org>
+To: Kernelnewbies <kernelnewbies@nl.linux.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from yx-out-2324.google.com ([74.125.44.29]:51342 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750928AbYIVQ5e (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Sep 2008 12:57:34 -0400
+Received: by yx-out-2324.google.com with SMTP id 8so243547yxm.1
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Sep 2008 09:57:33 -0700 (PDT)
+Content-Disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+I am interested in getting the vfsmount structure of the mounted file
+system from my module.
+I used filp = get_empty_filp() (filp is file pointer)
+function to create an empty file object (as this contains pointer to
+vfsmount structure)
+file object has a field f_vfsmnt which points to the vfsmount structure
+i am storing this in my own my_vfsmnt structure of type vfsmount.
+my_vfsmnt = filp->f_vfsmnt
+but i am getting my_vfsmnt as NULL ??
 
-> On Mon, Sep 22, 2008 at 07:55:26PM +0900, Takashi Sato wrote:
->> I've changed the type of write_super_lockfs and unlockfs from "void" to
->> "int" so that they can return an error.
->
-> Returning an error from the freeze operation makes sense, but for the
-> unfreeze I don't see the point.  You must however change all existing
-> instances to actually return a value (even if it's always 0 for now)
-> to avoid breaking git bisect.
-
-I thought unlockfs should return an error because ext3_unlockfs()
-might cause I/O error in writing a super block.
-But it is an internal error and the unfreezing succeeds.
-So I will consider returning 0.
-
-> If you touch all instances anyway, it would be nice to rename them
-> to freeze / unfreze as the current names are more confusing.
-
-I will consider renaming.
-
-Cheers, Takashi
+is there any other way of getting the vfsmount structure ??
