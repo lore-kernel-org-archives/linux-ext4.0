@@ -1,7 +1,7 @@
 From: Takashi Sato <t-sato@yk.jp.nec.com>
-Subject: [PATCH 6/10] gfs2: Fix error handling in write_super_lockfs/unlockfs
-Date: Mon, 22 Sep 2008 19:57:18 +0900
-Message-ID: <20080922195718t-sato__9899.80168310485$1222081235$gmane$org@mail.jp.nec.com>
+Subject: [PATCH 5/10] reiserfs: Fix error handling in write_super_lockfs/unlockfs
+Date: Mon, 22 Sep 2008 19:57:01 +0900
+Message-ID: <20080922195701t-sato__29944.1334828318$1222081238$gmane$org@mail.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
@@ -11,10 +11,10 @@ To: Andrew Morton <akpm@linux-foundation.org>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	"dm-devel@redhat.com" <dm-devel@redh
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:37791 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753519AbYIVK6n (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Sep 2008 06:58:43 -0400
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:50116 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753544AbYIVK6M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Sep 2008 06:58:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -24,46 +24,34 @@ I've changed write_super_lockfs/unlockfs so that they always return
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 Signed-off-by: Masayuki Hamaguchi <m-hamaguchi@ys.jp.nec.com>
 ---
- ops_super.c |    8 +++++---
- 1 file changed, 5 insertions(+), 3 deletions(-)
+ super.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-diff -uprN -X linux-2.6.27-rc7-lockfs-ext4/Documentation/dontdiff linux-2.6.27-rc7-lockfs-ext4/fs/gfs2/ops_super.c linux
--2.6.27-rc7-lockfs-gfs2/fs/gfs2/ops_super.c
---- linux-2.6.27-rc7-lockfs-ext4/fs/gfs2/ops_super.c	2008-09-22 07:29:55.000000000 +0900
-+++ linux-2.6.27-rc7-lockfs-gfs2/fs/gfs2/ops_super.c	2008-09-22 10:52:16.000000000 +0900
-@@ -166,13 +166,13 @@ static int gfs2_sync_fs(struct super_blo
-  *
-  */
+diff -uprN -X linux-2.6.27-rc7-lockfs-jfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs-jfs/fs/reiserfs/super.c linux-2
+.6.27-rc7-lockfs-reiserfs/fs/reiserfs/super.c
+--- linux-2.6.27-rc7-lockfs-jfs/fs/reiserfs/super.c	2008-09-22 07:29:55.000000000 +0900
++++ linux-2.6.27-rc7-lockfs-reiserfs/fs/reiserfs/super.c	2008-09-22 11:08:04.000000000 +0900
+@@ -83,7 +83,7 @@ static void reiserfs_write_super(struct 
+ 	reiserfs_sync_fs(s, 1);
+ }
  
--static void gfs2_write_super_lockfs(struct super_block *sb)
-+static int gfs2_write_super_lockfs(struct super_block *sb)
+-static void reiserfs_write_super_lockfs(struct super_block *s)
++static int reiserfs_write_super_lockfs(struct super_block *s)
  {
- 	struct gfs2_sbd *sdp = sb->s_fs_info;
- 	int error;
- 
- 	if (test_bit(SDF_SHUTDOWN, &sdp->sd_flags))
--		return;
-+		return 0;
- 
- 	for (;;) {
- 		error = gfs2_freeze_fs(sdp);
-@@ -192,6 +192,7 @@ static void gfs2_write_super_lockfs(stru
- 		fs_err(sdp, "retrying...\n");
- 		msleep(1000);
+ 	struct reiserfs_transaction_handle th;
+ 	reiserfs_write_lock(s);
+@@ -101,11 +101,13 @@ static void reiserfs_write_super_lockfs(
  	}
+ 	s->s_dirt = 0;
+ 	reiserfs_write_unlock(s);
 +	return 0;
  }
  
- /**
-@@ -200,9 +201,10 @@ static void gfs2_write_super_lockfs(stru
-  *
-  */
- 
--static void gfs2_unlockfs(struct super_block *sb)
-+static int gfs2_unlockfs(struct super_block *sb)
+-static void reiserfs_unlockfs(struct super_block *s)
++static int reiserfs_unlockfs(struct super_block *s)
  {
- 	gfs2_unfreeze_fs(sb->s_fs_info);
+ 	reiserfs_allow_writes(s);
 +	return 0;
  }
  
- /**
+ extern const struct in_core_key MAX_IN_CORE_KEY;
