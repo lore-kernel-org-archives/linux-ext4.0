@@ -1,89 +1,68 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: jbd2-abort-instead-of-waiting-for-nonexistent-transactions.patch
-Date: Mon, 22 Sep 2008 14:08:51 -0700
-Message-ID: <20080922140851.bc3f9319.akpm@linux-foundation.org>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH 4/10] xfs: Fix error handling in
+	write_super_lockfs/unlockfs
+Date: Tue, 23 Sep 2008 09:41:20 +1000
+Message-ID: <20080922234120.GV5811@disturbed>
+References: <20080922195637t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>,
-	"Stephen C. Tweedie" <sct@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:48775 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753352AbYIVVJ4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Sep 2008 17:09:56 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"dm-devel@redhat.com" <dm-devel@redhat.com>,
+	"viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"axboe@kernel.dk" <axboe@kernel.dk>,
+	"mtk.manpages@googlemail.com" <mtk.manpages@googlemail.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Takashi Sato <t-sato@yk.jp.nec.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20080922195637t-sato@mail.jp.nec.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Mon, Sep 22, 2008 at 07:56:37PM +0900, Takashi Sato wrote:
+> I've changed write_super_lockfs/unlockfs so that they always return
+> 0 (success) to keep a current behavior.
+> 
+> Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
+> Signed-off-by: Masayuki Hamaguchi <m-hamaguchi@ys.jp.nec.com>
+> ---
+>  xfs_super.c |    3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff -uprN -X linux-2.6.27-rc7-lockfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs/fs/xfs/linux-2.6/xfs_super.c linux-
+> 2.6.27-rc7-lockfs-xfs/fs/xfs/linux-2.6/xfs_super.c
+> --- linux-2.6.27-rc7-lockfs/fs/xfs/linux-2.6/xfs_super.c	2008-09-22 07:29:55.000000000 +0900
+> +++ linux-2.6.27-rc7-lockfs-xfs/fs/xfs/linux-2.6/xfs_super.c	2008-09-22 10:13:39.000000000 +0900
+> @@ -1351,7 +1351,7 @@ xfs_fs_remount(
+>   * need to take care of themetadata. Once that's done write a dummy
+>   * record to dirty the log in case of a crash while frozen.
+>   */
+> -STATIC void
+> +STATIC int
+>  xfs_fs_lockfs(
+>  	struct super_block	*sb)
+>  {
+> @@ -1359,6 +1359,7 @@ xfs_fs_lockfs(
+>  
+>  	xfs_attr_quiesce(mp);
+>  	xfs_fs_log_dummy(mp);
+> +	return 0;
+>  }
 
-Guys, I have a note here that this might be needed in 2.6.27.
+xfs_fs_log_dummy() currently is void because it had nowhere to
+return errors to. It silently throws away errors because of this.
+Hence the correct thing to do here is to fix xfs_fs_log_dummy()
+to return the errors it currently ignores. i.e. catch the errors
+from xfs_trans_reserve() and xfs_trans_commit() calls in
+xfs_fs_log_dummy().
 
-I also have a note that Stephen had issues with it, but I
-don't recall what they were.
+Cheers,
 
-Can we get this sorted out please?
-
-
-
-From: "Duane Griffin" <duaneg@dghda.com>
-
-The __jbd2_log_wait_for_space function sits in a loop checkpointing
-transactions until there is sufficient space free in the journal. 
-However, if there are no transactions to be processed (e.g.  because the
-free space calculation is wrong due to a corrupted filesystem) it will
-never progress.
-
-Check for space being required when no transactions are outstanding and
-abort the journal instead of endlessly looping.
-
-This patch fixes the bug reported by Sami Liedes at:
-http://bugzilla.kernel.org/show_bug.cgi?id=10976
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Cc: Sami Liedes <sliedes@cc.hut.fi>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/jbd2/checkpoint.c |   19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
-
-diff -puN fs/jbd2/checkpoint.c~jbd2-abort-instead-of-waiting-for-nonexistent-transactions fs/jbd2/checkpoint.c
---- a/fs/jbd2/checkpoint.c~jbd2-abort-instead-of-waiting-for-nonexistent-transactions
-+++ a/fs/jbd2/checkpoint.c
-@@ -126,14 +126,29 @@ void __jbd2_log_wait_for_space(journal_t
- 
- 		/*
- 		 * Test again, another process may have checkpointed while we
--		 * were waiting for the checkpoint lock
-+		 * were waiting for the checkpoint lock. If there are no
-+		 * outstanding transactions there is nothing to checkpoint and
-+		 * we can't make progress. Abort the journal in this case.
- 		 */
- 		spin_lock(&journal->j_state_lock);
-+		spin_lock(&journal->j_list_lock);
- 		nblocks = jbd_space_needed(journal);
- 		if (__jbd2_log_space_left(journal) < nblocks) {
-+			int chkpt = journal->j_checkpoint_transactions != NULL;
-+
-+			spin_unlock(&journal->j_list_lock);
- 			spin_unlock(&journal->j_state_lock);
--			jbd2_log_do_checkpoint(journal);
-+			if (chkpt) {
-+				jbd2_log_do_checkpoint(journal);
-+			} else {
-+				printk(KERN_ERR "%s: no transactions\n",
-+				       __func__);
-+				jbd2_journal_abort(journal, 0);
-+			}
-+
- 			spin_lock(&journal->j_state_lock);
-+		} else {
-+			spin_unlock(&journal->j_list_lock);
- 		}
- 		mutex_unlock(&journal->j_checkpoint_mutex);
- 	}
-_
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
