@@ -1,64 +1,43 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: Re: jbd2-abort-instead-of-waiting-for-nonexistent-transactions.patch
-Date: Tue, 23 Sep 2008 17:56:27 +0100
-Message-ID: <e9e943910809230956n3f36e544hc46a80c00ff9804a@mail.gmail.com>
-References: <20080922140851.bc3f9319.akpm@linux-foundation.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: async commit & write barrier code
+Date: Tue, 23 Sep 2008 15:41:02 -0500
+Message-ID: <48D9545E.8040302@redhat.com>
+References: <48D7D3DF.70505@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	"Stephen C. Tweedie" <sct@redhat.com>, linux-ext4@vger.kernel.org
-To: "Andrew Morton" <akpm@linux-foundation.org>
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gv-out-0910.google.com ([216.239.58.185]:9751 "EHLO
-	gv-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751940AbYIWQ4a (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Sep 2008 12:56:30 -0400
-Received: by gv-out-0910.google.com with SMTP id e6so162746gvc.37
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Sep 2008 09:56:28 -0700 (PDT)
-In-Reply-To: <20080922140851.bc3f9319.akpm@linux-foundation.org>
-Content-Disposition: inline
+Received: from mx2.redhat.com ([66.187.237.31]:49517 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751573AbYIWUlH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Sep 2008 16:41:07 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m8NKf4IN003610
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Sep 2008 16:41:04 -0400
+In-Reply-To: <48D7D3DF.70505@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2008/9/22 Andrew Morton <akpm@linux-foundation.org>:
-> Guys, I have a note here that this might be needed in 2.6.27.
->
-> I also have a note that Stephen had issues with it, but I
-> don't recall what they were.
+Ric Wheeler wrote:
+> After today's call, I was poking around a bit to try and understand 
+> better how the async commit code plays with the write barrier.
+> 
+> journal_submit_commit_record seems to disable the barriers when async IO 
+> is enabled if I read the code correctly. If this is true, how can we 
+> provide any promises of on disk data integrity after an fsync()?
+> 
+> Regards,
+> 
+> Ric
 
-Stephen suggested that it would be better to sanity check the journal
-start/end pointers on mount, rather than catching the error later like
-this. I never quite convinced myself I'd worked out the right way to
-do that, sorry. Perhaps someone would like to confirm (or otherwise)
-whether or not the following is correct:
+I agree; with async commit, ext4/jbd2 is running with *no* barrier
+writes in jbd code. (FWIW, on the fsync front, fsync calls
+blkdev_issue_flush in ext4 so that part may actually be ok in the end).
 
-In journal_reset (?) check that:
+But at a minimum, I think that for data=ordered, there is now *no*
+guarantee that the associated file data actually hits disk before the
+size updates, is there?
 
-journal->j_first == 1 (this seems to be the only valid value)
-
-and
-
-journal->j_last >= JFS_MIN_JOURNAL_BLOCKS
-
-Additionally, it should be possible to check the journal->j_last more
-precisely. For internal journals it seems straight-forward, we can
-just check that journal->j_last == inode->i_size >>
-inode->i_sb->s_blocksize_bits. For external journals we'd need to load
-the device's superblock and check journal->j_last == s_blocks_count.
-
-> Can we get this sorted out please?
-
-If the above is confirmed I'll send a patch to that effect for jdb,
-jdb2 and for e2fsprogs (fsck doesn't check j_first/j_last either).
-
-Regardless, I think the original patch may be a good idea. It improves
-robustness and matches the other locations where we call
-jbd2_log_do_checkpoint. They are all in loops that test that
-journal->j_checkpoint_transactions != NULL.
-
-Cheers,
-Duane.
-
--- 
-"I never could learn to drink that blood and call it wine" - Bob Dylan
+-Eric
