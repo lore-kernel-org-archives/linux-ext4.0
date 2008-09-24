@@ -1,309 +1,337 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/3] ext4: move /proc setup and teardown out of mballoc.c
-Date: Wed, 24 Sep 2008 12:53:31 -0400
-Message-ID: <1222275213-16268-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/3] ext4: Use readahead when reading an inode from the inode table
+Date: Wed, 24 Sep 2008 12:53:33 -0400
+Message-ID: <1222275213-16268-3-git-send-email-tytso@mit.edu>
+References: <1222275213-16268-1-git-send-email-tytso@mit.edu>
+ <1222275213-16268-2-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33170 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33172 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752324AbYIXQxg (ORCPT
+	with ESMTP id S1752211AbYIXQxg (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Sep 2008 12:53:36 -0400
+In-Reply-To: <1222275213-16268-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-...and into the core setup/teardown code in fs/ext4/super.c so that
-other parts of ext4 can define tuning parameters.
+With modern hard drives, reading 64k takes roughly the same time as
+reading a 4k block.  So request readahead for adjacent inode table
+blocks to reduce the time it takes when iterating over directories
+(especially when doing this in htree sort order) in a cold cache case.
+With this patch, the time it takes to run "git status" on a kernel
+tree after flushing the caches via "echo 3 > /proc/sys/vm/drop_caches"
+is reduced by 21%.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
  fs/ext4/ext4.h    |    2 +
- fs/ext4/ext4_sb.h |    2 +-
- fs/ext4/mballoc.c |   76 +++++++++++++++-------------------------------------
- fs/ext4/mballoc.h |    1 -
- fs/ext4/super.c   |   17 ++++++++++++
- 5 files changed, 42 insertions(+), 56 deletions(-)
+ fs/ext4/ext4_sb.h |    1 +
+ fs/ext4/inode.c   |  129 ++++++++++++++++++++++++-----------------------------
+ fs/ext4/super.c   |   27 ++++++++++-
+ 4 files changed, 87 insertions(+), 72 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 50a4846..b9c9371 100644
+index 163c445..fc7ce2e 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -955,6 +955,8 @@ ext4_group_first_block_no(struct super_block *sb, ext4_group_t group_no)
- void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 			unsigned long *blockgrpp, ext4_grpblk_t *offsetp);
+@@ -790,6 +790,8 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ #define	EXT4_DEF_RESUID		0
+ #define	EXT4_DEF_RESGID		0
  
-+extern struct proc_dir_entry *ext4_proc_root;
++#define EXT4_DEF_INODE_READAHEAD_BITS	5
 +
  /*
-  * Function prototypes
+  * Default mount options
   */
 diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-index a5577e0..95e046e 100644
+index f92af01..04e1fd2 100644
 --- a/fs/ext4/ext4_sb.h
 +++ b/fs/ext4/ext4_sb.h
-@@ -61,6 +61,7 @@ struct ext4_sb_info {
- 	struct percpu_counter s_dirs_counter;
- 	struct percpu_counter s_dirtyblocks_counter;
- 	struct blockgroup_lock s_blockgroup_lock;
-+	struct proc_dir_entry *s_proc;
- 
- 	/* root of the per fs reservation window tree */
- 	spinlock_t s_rsv_window_lock;
-@@ -122,7 +123,6 @@ struct ext4_sb_info {
- 	int s_mb_history_cur;
- 	int s_mb_history_max;
- 	int s_mb_history_num;
--	struct proc_dir_entry *s_mb_proc;
- 	spinlock_t s_mb_history_lock;
- 	int s_mb_history_filter;
- 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 01a7daa..705870c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2170,9 +2170,10 @@ static void ext4_mb_history_release(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
--	remove_proc_entry("mb_groups", sbi->s_mb_proc);
--	remove_proc_entry("mb_history", sbi->s_mb_proc);
--
-+	if (sbi->s_proc != NULL) {
-+		remove_proc_entry("mb_groups", sbi->s_proc);
-+		remove_proc_entry("mb_history", sbi->s_proc);
-+	}
- 	kfree(sbi->s_mb_history);
+@@ -52,6 +52,7 @@ struct ext4_sb_info {
+ 	int s_desc_per_block_bits;
+ 	int s_inode_size;
+ 	int s_first_ino;
++	unsigned int s_inode_readahead_bits;
+ 	spinlock_t s_next_gen_lock;
+ 	u32 s_next_generation;
+ 	u32 s_hash_seed[4];
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index eed1265..5c19604 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3833,41 +3833,6 @@ out_stop:
+ 	ext4_journal_stop(handle);
  }
  
-@@ -2181,10 +2182,10 @@ static void ext4_mb_history_init(struct super_block *sb)
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	int i;
- 
--	if (sbi->s_mb_proc != NULL) {
--		proc_create_data("mb_history", S_IRUGO, sbi->s_mb_proc,
-+	if (sbi->s_proc != NULL) {
-+		proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
- 				 &ext4_mb_seq_history_fops, sb);
--		proc_create_data("mb_groups", S_IRUGO, sbi->s_mb_proc,
-+		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
- 				 &ext4_mb_seq_groups_fops, sb);
- 	}
- 
-@@ -2720,8 +2721,6 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
- #define EXT4_MB_STREAM_REQ		"stream_req"
- #define EXT4_MB_GROUP_PREALLOC		"group_prealloc"
- 
+-static ext4_fsblk_t ext4_get_inode_block(struct super_block *sb,
+-		unsigned long ino, struct ext4_iloc *iloc)
+-{
+-	ext4_group_t block_group;
+-	unsigned long offset;
+-	ext4_fsblk_t block;
+-	struct ext4_group_desc *gdp;
 -
--
- #define MB_PROC_FOPS(name)					\
- static int ext4_mb_##name##_proc_show(struct seq_file *m, void *v)	\
- {								\
-@@ -2771,7 +2770,7 @@ MB_PROC_FOPS(group_prealloc);
- 
- #define	MB_PROC_HANDLER(name, var)					\
- do {									\
--	proc = proc_create_data(name, mode, sbi->s_mb_proc,		\
-+	proc = proc_create_data(name, mode, sbi->s_proc,		\
- 				&ext4_mb_##var##_proc_fops, sbi);	\
- 	if (proc == NULL) {						\
- 		printk(KERN_ERR "EXT4-fs: can't to create %s\n", name);	\
-@@ -2784,20 +2783,9 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	mode_t mode = S_IFREG | S_IRUGO | S_IWUSR;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct proc_dir_entry *proc;
--	char devname[BDEVNAME_SIZE], *p;
- 
--	if (proc_root_ext4 == NULL) {
--		sbi->s_mb_proc = NULL;
-+	if (sbi->s_proc == NULL)
- 		return -EINVAL;
+-	if (!ext4_valid_inum(sb, ino)) {
+-		/*
+-		 * This error is already checked for in namei.c unless we are
+-		 * looking at an NFS filehandle, in which case no error
+-		 * report is needed
+-		 */
+-		return 0;
 -	}
--	bdevname(sb->s_bdev, devname);
--	p = devname;
--	while ((p = strchr(p, '/')))
--		*p = '!';
 -
--	sbi->s_mb_proc = proc_mkdir(devname, proc_root_ext4);
--	if (!sbi->s_mb_proc)
--		goto err_create_dir;
- 
- 	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
- 	MB_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, max_to_scan);
-@@ -2805,43 +2793,31 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	MB_PROC_HANDLER(EXT4_MB_ORDER2_REQ, order2_reqs);
- 	MB_PROC_HANDLER(EXT4_MB_STREAM_REQ, stream_request);
- 	MB_PROC_HANDLER(EXT4_MB_GROUP_PREALLOC, group_prealloc);
+-	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
+-	gdp = ext4_get_group_desc(sb, block_group, NULL);
+-	if (!gdp)
+-		return 0;
 -
- 	return 0;
- 
- err_out:
--	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_mb_proc);
--	remove_proc_entry(devname, proc_root_ext4);
--	sbi->s_mb_proc = NULL;
--err_create_dir:
--	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
+-	/*
+-	 * Figure out the offset within the block group inode table
+-	 */
+-	offset = ((ino - 1) % EXT4_INODES_PER_GROUP(sb)) *
+-		EXT4_INODE_SIZE(sb);
+-	block = ext4_inode_table(sb, gdp) +
+-		(offset >> EXT4_BLOCK_SIZE_BITS(sb));
 -
-+	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_proc);
- 	return -ENOMEM;
- }
- 
- static int ext4_mb_destroy_per_dev_proc(struct super_block *sb)
+-	iloc->block_group = block_group;
+-	iloc->offset = offset & (EXT4_BLOCK_SIZE(sb) - 1);
+-	return block;
+-}
+-
+ /*
+  * ext4_get_inode_loc returns with an extra refcount against the inode's
+  * underlying buffer_head on success. If 'in_mem' is true, we have all
+@@ -3877,19 +3842,35 @@ static ext4_fsblk_t ext4_get_inode_block(struct super_block *sb,
+ static int __ext4_get_inode_loc(struct inode *inode,
+ 				struct ext4_iloc *iloc, int in_mem)
  {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	char devname[BDEVNAME_SIZE], *p;
+-	ext4_fsblk_t block;
+-	struct buffer_head *bh;
++	struct ext4_group_desc	*gdp;
++	struct buffer_head	*bh;
++	struct super_block	*sb = inode->i_sb;
++	ext4_fsblk_t		block;
++	int			inodes_per_block, inode_offset;
++
++	iloc->bh = 0;
++	if (!ext4_valid_inum(sb, inode->i_ino))
++		return -EIO;
  
--	if (sbi->s_mb_proc == NULL)
-+	if (sbi->s_proc == NULL)
- 		return -EINVAL;
+-	block = ext4_get_inode_block(inode->i_sb, inode->i_ino, iloc);
+-	if (!block)
++	iloc->block_group = (inode->i_ino - 1) / EXT4_INODES_PER_GROUP(sb);
++	gdp = ext4_get_group_desc(sb, iloc->block_group, NULL);
++	if (!gdp)
+ 		return -EIO;
  
--	bdevname(sb->s_bdev, devname);
--	p = devname;
--	while ((p = strchr(p, '/')))
--		*p = '!';
--	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_mb_proc);
--	remove_proc_entry(devname, proc_root_ext4);
-+	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_proc);
- 
- 	return 0;
- }
-@@ -2863,11 +2839,6 @@ int __init init_ext4_mballoc(void)
- 		kmem_cache_destroy(ext4_pspace_cachep);
- 		return -ENOMEM;
+-	bh = sb_getblk(inode->i_sb, block);
++	/*
++	 * Figure out the offset within the block group inode table
++	 */
++	inodes_per_block = (EXT4_BLOCK_SIZE(sb) / EXT4_INODE_SIZE(sb));
++	inode_offset = ((inode->i_ino - 1) %
++			EXT4_INODES_PER_GROUP(sb));
++	block = ext4_inode_table(sb, gdp) + (inode_offset / inodes_per_block);
++	iloc->offset = (inode_offset % inodes_per_block) * EXT4_INODE_SIZE(sb);
++
++	bh = sb_getblk(sb, block);
+ 	if (!bh) {
+-		ext4_error (inode->i_sb, "ext4_get_inode_loc",
+-				"unable to read inode block - "
+-				"inode=%lu, block=%llu",
+-				 inode->i_ino, block);
++		ext4_error(sb, "ext4_get_inode_loc", "unable to read "
++			   "inode block - inode=%lu, block=%llu",
++			   inode->i_ino, block);
+ 		return -EIO;
  	}
--#ifdef CONFIG_PROC_FS
--	proc_root_ext4 = proc_mkdir("fs/ext4", NULL);
--	if (proc_root_ext4 == NULL)
--		printk(KERN_ERR "EXT4-fs: Unable to create fs/ext4\n");
--#endif
- 	return 0;
- }
+ 	if (!buffer_uptodate(bh)) {
+@@ -3917,28 +3898,12 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 		 */
+ 		if (in_mem) {
+ 			struct buffer_head *bitmap_bh;
+-			struct ext4_group_desc *desc;
+-			int inodes_per_buffer;
+-			int inode_offset, i;
+-			ext4_group_t block_group;
+-			int start;
+-
+-			block_group = (inode->i_ino - 1) /
+-					EXT4_INODES_PER_GROUP(inode->i_sb);
+-			inodes_per_buffer = bh->b_size /
+-				EXT4_INODE_SIZE(inode->i_sb);
+-			inode_offset = ((inode->i_ino - 1) %
+-					EXT4_INODES_PER_GROUP(inode->i_sb));
+-			start = inode_offset & ~(inodes_per_buffer - 1);
++			int i, start;
  
-@@ -2876,9 +2847,6 @@ void exit_ext4_mballoc(void)
- 	/* XXX: synchronize_rcu(); */
- 	kmem_cache_destroy(ext4_pspace_cachep);
- 	kmem_cache_destroy(ext4_ac_cachep);
--#ifdef CONFIG_PROC_FS
--	remove_proc_entry("fs/ext4", NULL);
--#endif
- }
+-			/* Is the inode bitmap in cache? */
+-			desc = ext4_get_group_desc(inode->i_sb,
+-						block_group, NULL);
+-			if (!desc)
+-				goto make_io;
++			start = inode_offset & ~(inodes_per_block - 1);
  
+-			bitmap_bh = sb_getblk(inode->i_sb,
+-				ext4_inode_bitmap(inode->i_sb, desc));
++			/* Is the inode bitmap in cache? */
++			bitmap_bh = sb_getblk(sb, ext4_inode_bitmap(sb, gdp));
+ 			if (!bitmap_bh)
+ 				goto make_io;
  
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index c7c9906..b3b4828 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -257,7 +257,6 @@ static void ext4_mb_store_history(struct ext4_allocation_context *ac);
+@@ -3951,14 +3916,14 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 				brelse(bitmap_bh);
+ 				goto make_io;
+ 			}
+-			for (i = start; i < start + inodes_per_buffer; i++) {
++			for (i = start; i < start + inodes_per_block; i++) {
+ 				if (i == inode_offset)
+ 					continue;
+ 				if (ext4_test_bit(i, bitmap_bh->b_data))
+ 					break;
+ 			}
+ 			brelse(bitmap_bh);
+-			if (i == start + inodes_per_buffer) {
++			if (i == start + inodes_per_block) {
+ 				/* all other inodes are free, so skip I/O */
+ 				memset(bh->b_data, 0, bh->b_size);
+ 				set_buffer_uptodate(bh);
+@@ -3969,6 +3934,31 @@ static int __ext4_get_inode_loc(struct inode *inode,
  
- #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
- 
--static struct proc_dir_entry *proc_root_ext4;
- struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
- 
- static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+ make_io:
+ 		/*
++		 * If we need to do any I/O, try to readahead up to 16
++		 * blocks from the inode table.
++		 */
++		if (EXT4_SB(sb)->s_inode_readahead_bits) {
++			ext4_fsblk_t b, end, table;
++			int ra = 1 << EXT4_SB(sb)->s_inode_readahead_bits;
++			unsigned num;
++
++			table = ext4_inode_table(sb, gdp);
++			b = block & ~(ra-1);
++			if (table > b)
++				b = table;
++			end = b + ra;
++			num = EXT4_INODES_PER_GROUP(sb);
++			if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
++				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
++				num -= le16_to_cpu(gdp->bg_itable_unused);
++			table += num / inodes_per_block;
++			if (end > table)
++				end = table;
++			while (b <= end)
++				sb_breadahead(sb, b++);
++		}
++
++		/*
+ 		 * There are other valid inodes in the buffer, this inode
+ 		 * has in-inode xattrs, or we don't have this inode in memory.
+ 		 * Read the block from disk.
+@@ -3978,10 +3968,9 @@ make_io:
+ 		submit_bh(READ_META, bh);
+ 		wait_on_buffer(bh);
+ 		if (!buffer_uptodate(bh)) {
+-			ext4_error(inode->i_sb, "ext4_get_inode_loc",
+-					"unable to read inode block - "
+-					"inode=%lu, block=%llu",
+-					inode->i_ino, block);
++			ext4_error(sb, "ext4_get_inode_loc",
++				   "unable to read inode block - inode=%lu, "
++				   "block=%llu", inode->i_ino, block);
+ 			brelse(bh);
+ 			return -EIO;
+ 		}
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c057c6b..53513cd 100644
+index 6dee26d..7263b0c 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -34,6 +34,7 @@
- #include <linux/namei.h>
- #include <linux/quotaops.h>
- #include <linux/seq_file.h>
-+#include <linux/proc_fs.h>
- #include <linux/log2.h>
- #include <linux/crc16.h>
- #include <asm/uaccess.h>
-@@ -45,6 +46,8 @@
- #include "namei.h"
- #include "group.h"
- 
-+struct proc_dir_entry *ext4_proc_root;
-+
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
- 			     unsigned long journal_devnum);
- static int ext4_create_journal(struct super_block *, struct ext4_super_block *,
-@@ -511,6 +514,8 @@ static void ext4_put_super(struct super_block *sb)
+@@ -514,8 +514,10 @@ static void ext4_put_super(struct super_block *sb)
  		BUFFER_TRACE(sbi->s_sbh, "marking dirty");
  		ext4_commit_super(sb, es, 1);
  	}
-+	if (sbi->s_proc)
-+		remove_proc_entry(sb->s_id, ext4_proc_root);
+-	if (sbi->s_proc)
++	if (sbi->s_proc) {
++		remove_proc_entry("inode_readahead_bits", sbi->s_proc);
+ 		remove_proc_entry(sb->s_id, ext4_proc_root);
++	}
  
  	for (i = 0; i < sbi->s_gdb_count; i++)
  		brelse(sbi->s_group_desc[i]);
-@@ -1915,6 +1920,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	unsigned long journal_devnum = 0;
- 	unsigned long def_mount_opts;
- 	struct inode *root;
-+	char *cp;
- 	int ret = -EINVAL;
- 	int blocksize;
- 	int db_count;
-@@ -1935,6 +1941,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+@@ -778,6 +780,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 	else if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
+ 		seq_puts(seq, ",data=writeback");
+ 
++	if (sbi->s_inode_readahead_bits != EXT4_DEF_INODE_READAHEAD_BITS)
++		seq_printf(seq, ",inode_readahead_bits=%d",
++			   sbi->s_inode_readahead_bits);
++
+ 	ext4_show_quota_options(seq, sb);
+ 	return 0;
+ }
+@@ -912,6 +918,7 @@ enum {
+ 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
+ 	Opt_grpquota, Opt_extents, Opt_noextents, Opt_i_version,
+ 	Opt_mballoc, Opt_nomballoc, Opt_stripe, Opt_delalloc, Opt_nodelalloc,
++	Opt_inode_readahead_bits
+ };
+ 
+ static match_table_t tokens = {
+@@ -972,6 +979,7 @@ static match_table_t tokens = {
+ 	{Opt_resize, "resize"},
+ 	{Opt_delalloc, "delalloc"},
+ 	{Opt_nodelalloc, "nodelalloc"},
++	{Opt_inode_readahead_bits, "inode_readahead_bits=%u"},
+ 	{Opt_err, NULL},
+ };
+ 
+@@ -1380,6 +1388,13 @@ set_qf_format:
+ 		case Opt_delalloc:
+ 			set_opt(sbi->s_mount_opt, DELALLOC);
+ 			break;
++		case Opt_inode_readahead_bits:
++			if (match_int(&args[0], &option))
++				return 0;
++			if (option < 0 || option > 31)
++				return 0;
++			sbi->s_inode_readahead_bits = option;
++			break;
+ 		default:
+ 			printk(KERN_ERR
+ 			       "EXT4-fs: Unrecognized mount option \"%s\" "
+@@ -1937,6 +1952,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_mount_opt = 0;
+ 	sbi->s_resuid = EXT4_DEF_RESUID;
+ 	sbi->s_resgid = EXT4_DEF_RESGID;
++	sbi->s_inode_readahead_bits = EXT4_DEF_INODE_READAHEAD_BITS;
+ 	sbi->s_sb_block = sb_block;
  
  	unlock_kernel();
+@@ -2233,6 +2249,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	if (ext4_proc_root)
+ 		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
  
-+	/* Cleanup superblock name */
-+	for (cp = sb->s_id; (cp = strchr(cp, '/'));)
-+		*cp = '!';
-+
- 	blocksize = sb_min_blocksize(sb, EXT4_MIN_BLOCK_SIZE);
- 	if (!blocksize) {
- 		printk(KERN_ERR "EXT4-fs: unable to set blocksize\n");
-@@ -2220,6 +2230,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
- 	}
- 
-+	if (ext4_proc_root)
-+		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
++	if (sbi->s_proc)
++		proc_create_data("inode_readahead_bits", 0644, sbi->s_proc,
++				 &ext4_ui_proc_fops,
++				 &sbi->s_inode_readahead_bits);
 +
  	bgl_lock_init(&sbi->s_blockgroup_lock);
  
  	for (i = 0; i < db_count; i++) {
-@@ -2499,6 +2512,8 @@ failed_mount2:
+@@ -2512,8 +2533,10 @@ failed_mount2:
  		brelse(sbi->s_group_desc[i]);
  	kfree(sbi->s_group_desc);
  failed_mount:
-+	if (sbi->s_proc)
-+		remove_proc_entry(sb->s_id, ext4_proc_root);
+-	if (sbi->s_proc)
++	if (sbi->s_proc) {
++		remove_proc_entry("inode_readahead_bits", sbi->s_proc);
+ 		remove_proc_entry(sb->s_id, ext4_proc_root);
++	}
  #ifdef CONFIG_QUOTA
  	for (i = 0; i < MAXQUOTAS; i++)
  		kfree(sbi->s_qf_names[i]);
-@@ -3537,6 +3552,7 @@ static int __init init_ext4_fs(void)
- {
- 	int err;
- 
-+	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
- 	err = init_ext4_mballoc();
- 	if (err)
- 		return err;
-@@ -3566,6 +3582,7 @@ static void __exit exit_ext4_fs(void)
- 	destroy_inodecache();
- 	exit_ext4_xattr();
- 	exit_ext4_mballoc();
-+	remove_proc_entry("fs/ext4", NULL);
- }
- 
- MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
 -- 
 1.5.6.1.205.ge2c7.dirty
 
