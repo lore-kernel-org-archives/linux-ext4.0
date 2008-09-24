@@ -1,222 +1,83 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] ext4: Combine proc file handling into a single set of functions
-Date: Wed, 24 Sep 2008 12:53:32 -0400
-Message-ID: <1222275213-16268-2-git-send-email-tytso@mit.edu>
-References: <1222275213-16268-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] ext4: Use preallocation when reading from the
+	inode table
+Date: Wed, 24 Sep 2008 16:35:59 -0400
+Message-ID: <20080924203559.GK9929@mit.edu>
+References: <48D8DEAE.4080309@redhat.com> <20080924013014.GA9747@mit.edu> <48DA3F56.8090806@redhat.com> <1222266034.7160.191.camel@think.oraclecorp.com> <E1KhvsB-0002Ik-Ex@closure.thunk.org> <20080923101613.58768083@lxorguk.ukuu.org.uk> <20080923115045.GI10950@webber.adilger.int> <48D8DEAE.4080309@redhat.com> <20080924013014.GA9747@mit.edu> <48DA3F56.8090806@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	Alan Cox <alan@lxorguk.ukuu.org.uk>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Ric Wheeler <rwheeler@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:33173 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44563 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752202AbYIXQxg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Sep 2008 12:53:36 -0400
-In-Reply-To: <1222275213-16268-1-git-send-email-tytso@mit.edu>
+	with ESMTP id S1752034AbYIXUgY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Sep 2008 16:36:24 -0400
+Content-Disposition: inline
+In-Reply-To: <1222266034.7160.191.camel@think.oraclecorp.com> <48DA3F56.8090806@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Previously mballoc created a separate set of functions for each proc
-file.  This combines the tunables into a single set of functions which
-gets used for all of the per-superblock proc files, saving
-approximately 2k of compiled object code.
+On Wed, Sep 24, 2008 at 09:23:34AM -0400, Ric Wheeler wrote:
+>
+> That sounds about right for modern S-ATA/SAS drives. I would expect that  
+> having this be a tunable knob might help for some types of storage (SSD  
+> might not care, but should be faster in any case?).
+>
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h    |   16 ++++++++++++
- fs/ext4/ext4_sb.h |   12 ++++----
- fs/ext4/mballoc.c |   69 ++++------------------------------------------------
- fs/ext4/super.c   |   42 ++++++++++++++++++++++++++++++++
- 4 files changed, 70 insertions(+), 69 deletions(-)
+Well, for SSD's, wouldn't seek time not matter, but then the limiting
+factor should be the overhead of the read transaction, and the I/O
+bandwidth of the SSD.  So prefetching too much might hurt even more
+for SSD's, although in comparison with spinning rust platters, it
+would probably still be faster.  :-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b9c9371..163c445 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -957,6 +957,22 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 
- extern struct proc_dir_entry *ext4_proc_root;
- 
-+#ifdef CONFIG_PROC_FS
-+extern const struct file_operations ext4_ui_proc_fops;
-+
-+#define	EXT4_PROC_HANDLER(name, var)					\
-+do {									\
-+	proc = proc_create_data(name, mode, sbi->s_proc,		\
-+				&ext4_ui_proc_fops, &sbi->s_##var);	\
-+	if (proc == NULL) {						\
-+		printk(KERN_ERR "EXT4-fs: can't create %s\n", name);	\
-+		goto err_out;						\
-+	}								\
-+} while (0)
-+#else
-+#define EXT4_PROC_HANDLER(name, var)
-+#endif
-+
- /*
-  * Function prototypes
-  */
-diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-index 95e046e..f92af01 100644
---- a/fs/ext4/ext4_sb.h
-+++ b/fs/ext4/ext4_sb.h
-@@ -108,12 +108,12 @@ struct ext4_sb_info {
- 
- 	/* tunables */
- 	unsigned long s_stripe;
--	unsigned long s_mb_stream_request;
--	unsigned long s_mb_max_to_scan;
--	unsigned long s_mb_min_to_scan;
--	unsigned long s_mb_stats;
--	unsigned long s_mb_order2_reqs;
--	unsigned long s_mb_group_prealloc;
-+	unsigned int s_mb_stream_request;
-+	unsigned int s_mb_max_to_scan;
-+	unsigned int s_mb_min_to_scan;
-+	unsigned int s_mb_stats;
-+	unsigned int s_mb_order2_reqs;
-+	unsigned int s_mb_group_prealloc;
- 	/* where last allocation was done - for stream allocation */
- 	unsigned long s_mb_last_group;
- 	unsigned long s_mb_last_start;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 705870c..3373f89 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2721,63 +2721,6 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
- #define EXT4_MB_STREAM_REQ		"stream_req"
- #define EXT4_MB_GROUP_PREALLOC		"group_prealloc"
- 
--#define MB_PROC_FOPS(name)					\
--static int ext4_mb_##name##_proc_show(struct seq_file *m, void *v)	\
--{								\
--	struct ext4_sb_info *sbi = m->private;			\
--								\
--	seq_printf(m, "%ld\n", sbi->s_mb_##name);		\
--	return 0;						\
--}								\
--								\
--static int ext4_mb_##name##_proc_open(struct inode *inode, struct file *file)\
--{								\
--	return single_open(file, ext4_mb_##name##_proc_show, PDE(inode)->data);\
--}								\
--								\
--static ssize_t ext4_mb_##name##_proc_write(struct file *file,	\
--		const char __user *buf, size_t cnt, loff_t *ppos)	\
--{								\
--	struct ext4_sb_info *sbi = PDE(file->f_path.dentry->d_inode)->data;\
--	char str[32];						\
--	long value;						\
--	if (cnt >= sizeof(str))					\
--		return -EINVAL;					\
--	if (copy_from_user(str, buf, cnt))			\
--		return -EFAULT;					\
--	value = simple_strtol(str, NULL, 0);			\
--	if (value <= 0)						\
--		return -ERANGE;					\
--	sbi->s_mb_##name = value;				\
--	return cnt;						\
--}								\
--								\
--static const struct file_operations ext4_mb_##name##_proc_fops = {	\
--	.owner		= THIS_MODULE,				\
--	.open		= ext4_mb_##name##_proc_open,		\
--	.read		= seq_read,				\
--	.llseek		= seq_lseek,				\
--	.release	= single_release,			\
--	.write		= ext4_mb_##name##_proc_write,		\
--};
--
--MB_PROC_FOPS(stats);
--MB_PROC_FOPS(max_to_scan);
--MB_PROC_FOPS(min_to_scan);
--MB_PROC_FOPS(order2_reqs);
--MB_PROC_FOPS(stream_request);
--MB_PROC_FOPS(group_prealloc);
--
--#define	MB_PROC_HANDLER(name, var)					\
--do {									\
--	proc = proc_create_data(name, mode, sbi->s_proc,		\
--				&ext4_mb_##var##_proc_fops, sbi);	\
--	if (proc == NULL) {						\
--		printk(KERN_ERR "EXT4-fs: can't to create %s\n", name);	\
--		goto err_out;						\
--	}								\
--} while (0)
--
- static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- {
- 	mode_t mode = S_IFREG | S_IRUGO | S_IWUSR;
-@@ -2787,12 +2730,12 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	if (sbi->s_proc == NULL)
- 		return -EINVAL;
- 
--	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
--	MB_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, max_to_scan);
--	MB_PROC_HANDLER(EXT4_MB_MIN_TO_SCAN_NAME, min_to_scan);
--	MB_PROC_HANDLER(EXT4_MB_ORDER2_REQ, order2_reqs);
--	MB_PROC_HANDLER(EXT4_MB_STREAM_REQ, stream_request);
--	MB_PROC_HANDLER(EXT4_MB_GROUP_PREALLOC, group_prealloc);
-+	EXT4_PROC_HANDLER(EXT4_MB_STATS_NAME, mb_stats);
-+	EXT4_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, mb_max_to_scan);
-+	EXT4_PROC_HANDLER(EXT4_MB_MIN_TO_SCAN_NAME, mb_min_to_scan);
-+	EXT4_PROC_HANDLER(EXT4_MB_ORDER2_REQ, mb_order2_reqs);
-+	EXT4_PROC_HANDLER(EXT4_MB_STREAM_REQ, mb_stream_request);
-+	EXT4_PROC_HANDLER(EXT4_MB_GROUP_PREALLOC, mb_group_prealloc);
- 	return 0;
- 
- err_out:
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 53513cd..6dee26d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3540,6 +3540,48 @@ static int ext4_get_sb(struct file_system_type *fs_type,
- 	return get_sb_bdev(fs_type, flags, dev_name, data, ext4_fill_super, mnt);
- }
- 
-+#ifdef CONFIG_PROC_FS
-+static int ext4_ui_proc_show(struct seq_file *m, void *v)
-+{
-+	unsigned int *p = m->private;
-+
-+	seq_printf(m, "%u\n", *p);
-+	return 0;
-+}
-+
-+static int ext4_ui_proc_open(struct inode *inode, struct file *file)
-+{
-+	return single_open(file, ext4_ui_proc_show, PDE(inode)->data);
-+}
-+
-+static ssize_t ext4_ui_proc_write(struct file *file, const char __user *buf,
-+			       size_t cnt, loff_t *ppos)
-+{
-+	unsigned int *p = PDE(file->f_path.dentry->d_inode)->data;
-+	char str[32];
-+	unsigned long value;
-+
-+	if (cnt >= sizeof(str))
-+		return -EINVAL;
-+	if (copy_from_user(str, buf, cnt))
-+		return -EFAULT;
-+	value = simple_strtol(str, NULL, 0);
-+	if (value < 0)
-+		return -ERANGE;
-+	*p = value;
-+	return cnt;
-+}
-+
-+const struct file_operations ext4_ui_proc_fops = {
-+	.owner		= THIS_MODULE,
-+	.open		= ext4_ui_proc_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= single_release,
-+	.write		= ext4_ui_proc_write,
-+};
-+#endif
-+
- static struct file_system_type ext4dev_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "ext4dev",
--- 
-1.5.6.1.205.ge2c7.dirty
+So I'm pretty sure that with an SSD we'll want to turn the tunable
+down, not up.
 
+On Wed, Sep 24, 2008 at 10:20:34AM -0400, Chris Mason wrote:
+>For the test runs being done here, there's a pretty high chance that all
+>of the inodes you read ahead will get used before the pages are dropped,
+>so we want to find a balance between those and the worst case workloads
+>where inode reads are basically random.  
+
+Yep, agreed.
+
+On the other hand, if we take your iop/s and translate them to
+milliseconds so we can measure the latency in the case where the
+workload is essentialy doing random reads, and then cross correlated
+it with my measurements, we get this table:
+
+i/o size iops/s  ms latency  % degredation         % improvement
+    	 	    	     of random inodes   of related inodes I/O
+   4k	  131       7.634      
+   8k	  130	    7.692	0.77%		    11.3%
+  16k	  128	    7.813	2.34%		    21.8%
+  32k	  126	    7.937	3.97%		    29.6%
+  64k	  121	    8.264	8.26%		    35.5%
+ 128k	  113	    8.850      15.93%		    40.0%
+ 256k	  100	   10.000      31.00%		    42.4%
+
+Depending on whether you believe that workloads involving random inode
+reads are more common compared to related inodes I/O, the sweet spot
+is probably somewhere between 32k and 128k.  I'm open to opinions
+(preferably backed up with more benchmarks of likely workloads) of
+whether we should use a default value of inode_readahead_bits of 4 or
+5 (i.e., 64k, my original guess, or 128k, in v2 of the patch).  But
+yes, making it tunable is definitely going to be necessary, since for
+different workloads (i.e squid vs. git repositories) will have very
+different requirements.
+
+The other thought are the one which comes to mind is whether we should
+use a similar large readahead if all we are doing writes vs. reads.
+For example, if we are just updating a single inode, and we are
+reading a block to do a read/modify write cycle, maybe we shouldn't be
+doing as much readahead.
+
+						- Ted
+
+P.S.  One caveat is that my numbers were taken from a Laptop SATA, and
+if Chris's were taken from a Desktop/Sever SATA drive the numbers
+might not be properly comparable.
