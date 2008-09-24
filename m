@@ -1,135 +1,75 @@
-From: Takashi Sato <t-sato@yk.jp.nec.com>
-Subject: Re: [PATCH 4/10] xfs: Fix error handling inwrite_super_lockfs/unlockfs
-Date: Wed, 24 Sep 2008 17:14:39 +0900
-Message-ID: <20080924171439t-sato@mail.jp.nec.com>
+From: Alex Tomas <bzzz@Sun.COM>
+Subject: [RFC] dynamic inodes
+Date: Wed, 24 Sep 2008 15:46:56 +0400
+Message-ID: <48DA28B0.2020207@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"dm-devel@redhat.com" <dm-devel@redhat.com>,
-	"viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Dave Chinner <david@fromorbit.com>
+Content-Type: text/plain; format=flowed; charset=ISO-8859-1
+Content-Transfer-Encoding: 7BIT
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:55787 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750991AbYIXIQN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Sep 2008 04:16:13 -0400
+Received: from gmp-eb-inf-1.sun.com ([192.18.6.21]:54189 "EHLO
+	gmp-eb-inf-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751151AbYIXMEl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Sep 2008 08:04:41 -0400
+Received: from fe-emea-09.sun.com (gmp-eb-lb-2-fe3.eu.sun.com [192.18.6.12])
+	by gmp-eb-inf-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8OBl5Lp016759
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Sep 2008 11:47:07 GMT
+Received: from conversion-daemon.fe-emea-09.sun.com by fe-emea-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K7P00J017APB900@fe-emea-09.sun.com> (original mail from bzzz@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 24 Sep 2008 12:47:05 +0100 (BST)
+Received: from gw.home.net ([83.237.175.61])
+ by fe-emea-09.sun.com (Sun Java System Messaging Server 6.2-8.04 (built Feb 28
+ 2007)) with ESMTPSA id <0K7P007Z67EGJFF0@fe-emea-09.sun.com> for
+ linux-ext4@vger.kernel.org; Wed, 24 Sep 2008 12:47:05 +0100 (BST)
+Received: from bzzz.home.net (gw.home.net [127.0.0.1])
+	by gw.home.net (8.14.2/8.14.2) with ESMTP id m8OBjUdt019459	for
+ <linux-ext4@vger.kernel.org>; Wed, 24 Sep 2008 15:45:30 +0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Hi,
 
-Dave Chinner wrote:
->> diff -uprN -X linux-2.6.27-rc7-lockfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs/fs/xfs/linux-2.6/xfs_super.c lin
-ux-
->> 2.6.27-rc7-lockfs-xfs/fs/xfs/linux-2.6/xfs_super.c
->> --- linux-2.6.27-rc7-lockfs/fs/xfs/linux-2.6/xfs_super.c 2008-09-22 07:29:55.000000000 +0900
->> +++ linux-2.6.27-rc7-lockfs-xfs/fs/xfs/linux-2.6/xfs_super.c 2008-09-22 10:13:39.000000000 +0900
->> @@ -1351,7 +1351,7 @@ xfs_fs_remount(
->>   * need to take care of themetadata. Once that's done write a dummy
->>   * record to dirty the log in case of a crash while frozen.
->>   */
->> -STATIC void
->> +STATIC int
->>  xfs_fs_lockfs(
->>  	struct super_block *sb)
->>  {
->> @@ -1359,6 +1359,7 @@ xfs_fs_lockfs(
->>  
->>  	xfs_attr_quiesce(mp);
->>  	xfs_fs_log_dummy(mp);
->> + 	return 0;
->>  }
-> 
-> xfs_fs_log_dummy() currently is void because it had nowhere to
-> return errors to. It silently throws away errors because of this.
-> Hence the correct thing to do here is to fix xfs_fs_log_dummy()
-> to return the errors it currently ignores. i.e. catch the errors
-> from xfs_trans_reserve() and xfs_trans_commit() calls in
-> xfs_fs_log_dummy().
+another idea how to achieve more (dynamic) inodes:
+   * new dir_entry format with 64bit inum
+   * ino space is 64bit:
+     * 2^48 phys. 4K blocks
+     * 2^5  inodes in 4K block
+     * highest bit is used to choose addressing schema: static or dynamic
+   * each block is covered by two bits: in inode (I) and block (B) bitmaps:
+     I: 0, B: 0 - block is just free
+     I: 0, B: 1 - block is used, but not contains inodes
+     I: 1, B: 0 - block is full of inodes
+     I: 1, B: 1 - block contains few inodes, has free space
 
-OK.
-I've fixed the patch for xfs as following.
-Could you review it?
-If it's OK, I will include it in new freeze patch-set.
+implementation issues:
+   * how to allocate new blocks for inodes
+     * try to find block with empty inode using bitmaps
+     * if we can't find - allocate new block and make it inode block
+     * if no free block in this group - repeat 1-2 in another groups
+   * how to release block from inodes
+     * if block has no used inodes anymore, we mark it 0 in I and 1 in B
+     * or if group has very few free inodes, leave it inode block
+   * how to find free inode in existing inode block
+     * just scan all slots
+   * how to migrate/co-exist with static inodes
+     * group is marked with DYNAMIC_INODES flag
+     * we can turn group to dynamic when it has 0 inodes (simple)
+     * we can turn group to dynamic and update bitmaps (hard)
+   * how to implement varlen inodes
+     * should be simple at allocation time
 
-Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
-Signed-off-by: Masayuki Hamaguchi <m-hamaguchi@ys.jp.nec.com>
----
-diff -uprN -X linux-2.6.27-rc7.org/Documentation/dontdiff linux-2.6.27-rc7-ext4_3/fs/xfs/linux-2.6/xfs_super.c linux-2.6
-.27-rc7-xfs_4/fs/xfs/linux-2.6/xfs_super.c
---- linux-2.6.27-rc7-ext4_3/fs/xfs/linux-2.6/xfs_super.c	2008-09-24 10:48:02.000000000 +0900
-+++ linux-2.6.27-rc7-xfs_4/fs/xfs/linux-2.6/xfs_super.c	2008-09-24 11:24:08.000000000 +0900
-@@ -1351,14 +1351,14 @@ xfs_fs_remount(
-  * need to take care of themetadata. Once that's done write a dummy
-  * record to dirty the log in case of a crash while frozen.
-  */
--STATIC void
-+STATIC int
- xfs_fs_lockfs(
- 	struct super_block	*sb)
- {
- 	struct xfs_mount	*mp = XFS_M(sb);
- 
- 	xfs_attr_quiesce(mp);
--	xfs_fs_log_dummy(mp);
-+	return -xfs_fs_log_dummy(mp);
- }
- 
- STATIC int
-diff -uprN -X linux-2.6.27-rc7.org/Documentation/dontdiff linux-2.6.27-rc7-ext4_3/fs/xfs/xfs_fsops.c linux-2.6.27-rc7-xf
-s_4/fs/xfs/xfs_fsops.c
---- linux-2.6.27-rc7-ext4_3/fs/xfs/xfs_fsops.c	2008-09-24 10:48:02.000000000 +0900
-+++ linux-2.6.27-rc7-xfs_4/fs/xfs/xfs_fsops.c	2008-09-24 11:47:08.000000000 +0900
-@@ -589,17 +589,19 @@ out:
- 	return 0;
- }
- 
--void
-+int
- xfs_fs_log_dummy(
- 	xfs_mount_t	*mp)
- {
- 	xfs_trans_t	*tp;
- 	xfs_inode_t	*ip;
-+	int		error;
- 
- 	tp = _xfs_trans_alloc(mp, XFS_TRANS_DUMMY1);
--	if (xfs_trans_reserve(tp, 0, XFS_ICHANGE_LOG_RES(mp), 0, 0, 0)) {
-+	error = xfs_trans_reserve(tp, 0, XFS_ICHANGE_LOG_RES(mp), 0, 0, 0);
-+	if (error) {
- 		xfs_trans_cancel(tp, 0);
--		return;
-+		return error;
- 	}
- 
- 	ip = mp->m_rootip;
-@@ -609,9 +611,10 @@ xfs_fs_log_dummy(
- 	xfs_trans_ihold(tp, ip);
- 	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
- 	xfs_trans_set_sync(tp);
--	xfs_trans_commit(tp, 0);
-+	error = xfs_trans_commit(tp, 0);
- 
- 	xfs_iunlock(ip, XFS_ILOCK_EXCL);
-+	return error;
- }
- 
- int
-diff -uprN -X linux-2.6.27-rc7.org/Documentation/dontdiff linux-2.6.27-rc7-ext4_3/fs/xfs/xfs_fsops.h linux-2.6.27-rc7-xf
-s_4/fs/xfs/xfs_fsops.h
---- linux-2.6.27-rc7-ext4_3/fs/xfs/xfs_fsops.h	2008-09-24 10:48:02.000000000 +0900
-+++ linux-2.6.27-rc7-xfs_4/fs/xfs/xfs_fsops.h	2008-09-24 11:36:29.000000000 +0900
-@@ -25,6 +25,6 @@ extern int xfs_fs_counts(xfs_mount_t *mp
- extern int xfs_reserve_blocks(xfs_mount_t *mp, __uint64_t *inval,
- 				xfs_fsop_resblks_t *outval);
- extern int xfs_fs_goingdown(xfs_mount_t *mp, __uint32_t inflags);
--extern void xfs_fs_log_dummy(xfs_mount_t *mp);
-+extern int xfs_fs_log_dummy(xfs_mount_t *mp);
- 
- #endif	/* __XFS_FSOPS_H__ */
+possibilities:
+   * use large inodes to store directory entries
+     (4096-128)/(4+8+8) = 198 entries
+   * use large inodes to store EAs
+   * if we introduce small header for new inode block we could use it to store tails
+
+problems:
+   * can't relocate inode w/o changing directory entry
+   * can't change inode size after creation
+   * e2fsck?
+
+comments/suggestions are very welcome.
+
+thanks, Alex
