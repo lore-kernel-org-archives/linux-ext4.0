@@ -1,99 +1,110 @@
-From: Eric Sandeen <sandeen@sandeen.net>
-Subject: Re: [PATCH 4/10] xfs: Fix error handling in	write_super_lockfs/unlockfs
-Date: Thu, 25 Sep 2008 16:22:17 -0500
-Message-ID: <48DC0109.7070608__28824.4647709236$1222377841$gmane$org@sandeen.net>
-References: <20080922195637t-sato@mail.jp.nec.com> <20080922234120.GV5811@disturbed>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC] dynamic inodes
+Date: Thu, 25 Sep 2008 16:09:36 -0600
+Message-ID: <20080925220936.GL10950@webber.adilger.int>
+References: <48DA28B0.2020207@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Takashi Sato <t-sato@yk.jp.nec.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Alex Tomas <bzzz@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59054 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752906AbYIYVWh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Sep 2008 17:22:37 -0400
-In-Reply-To: <20080922234120.GV5811@disturbed>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:50697 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753429AbYIYWKA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Sep 2008 18:10:00 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8PM9vOG013420
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Sep 2008 15:10:00 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K7R00A01UGOE600@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Thu, 25 Sep 2008 15:09:57 -0700 (PDT)
+Received: from webber.adilger.int ([68.147.167.155])
+ by fe-sfbay-09.sun.com (Sun Java System Messaging Server 6.2-8.04 (built Feb
+ 28 2007)) with ESMTPSA id <0K7R00LPXUWJZ170@fe-sfbay-09.sun.com> for
+ linux-ext4@vger.kernel.org; Thu, 25 Sep 2008 15:09:57 -0700 (PDT)
+In-reply-to: <48DA28B0.2020207@sun.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dave Chinner wrote:
+Sadly this was sitting in my outbox overnight, and might be obsolete
+already (explanation in a follow-up email), but I'm sending it as food
+for thought...
 
-> xfs_fs_log_dummy() currently is void because it had nowhere to
-> return errors to. It silently throws away errors because of this.
-> Hence the correct thing to do here is to fix xfs_fs_log_dummy()
-> to return the errors it currently ignores. i.e. catch the errors
-> from xfs_trans_reserve() and xfs_trans_commit() calls in
-> xfs_fs_log_dummy().
->
-> Cheers,
->
-> Dave.
->   
-Here's that part in case it's helpful :)  Feel free to roll it into
-your patch.
+On Sep 24, 2008  15:46 +0400, Alex Tomas wrote:
+> another idea how to achieve more (dynamic) inodes:
+>   * new dir_entry format with 64bit inum
 
--Eric
+Yes, that is a requirement in all cases.
 
-Make xfs_fs_log_dummy() return errors which can then be returned by
-xfs_fs_lockfs(), once it is capable of doing so.
+I've always thought that we should also implement inode-in-dirent when
+we need to change the dirent format and make dynamic inodes, but that
+may be too much to chew on at one time.
 
-Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+>   * ino space is 64bit:
+>     * 2^48 phys. 4K blocks
+>     * 2^5  inodes in 4K block
 
----
+The 2^5 inodes/4kB block would actually depend on the blocksize/inodesize,
+lets just call this inodes-per-block-bits (IPBB).  It will be a power-of-2
+between 0 and 8 (i.e. between 1 and 256 inodes per block), which is fine.
+For common ext4 filesystems this would be 2^4 = 16 inodes/block, because
+the default is 256-byte inodes today.
 
-Index: linux-2.6/fs/xfs/xfs_fsops.c
-===================================================================
---- linux-2.6.orig/fs/xfs/xfs_fsops.c	2008-08-04 15:30:31.000000000 -0500
-+++ linux-2.6/fs/xfs/xfs_fsops.c	2008-09-25 16:16:46.916001110 -0500
-@@ -589,17 +589,19 @@ out:
- 	return 0;
- }
- 
--void
-+int
- xfs_fs_log_dummy(
- 	xfs_mount_t	*mp)
- {
- 	xfs_trans_t	*tp;
- 	xfs_inode_t	*ip;
-+	int		error = 0;
- 
- 	tp = _xfs_trans_alloc(mp, XFS_TRANS_DUMMY1);
--	if (xfs_trans_reserve(tp, 0, XFS_ICHANGE_LOG_RES(mp), 0, 0, 0)) {
-+	error = xfs_trans_reserve(tp, 0, XFS_ICHANGE_LOG_RES(mp), 0, 0, 0);
-+	if (error) {
- 		xfs_trans_cancel(tp, 0);
--		return;
-+		return error;
- 	}
- 
- 	ip = mp->m_rootip;
-@@ -609,9 +611,10 @@ xfs_fs_log_dummy(
- 	xfs_trans_ihold(tp, ip);
- 	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
- 	xfs_trans_set_sync(tp);
--	xfs_trans_commit(tp, 0);
-+	error = xfs_trans_commit(tp, 0);
- 
- 	xfs_iunlock(ip, XFS_ILOCK_EXCL);
-+	return error;
- }
- 
- int
-Index: linux-2.6/fs/xfs/xfs_fsops.h
-===================================================================
---- linux-2.6.orig/fs/xfs/xfs_fsops.h	2008-06-05 13:44:24.000000000 -0500
-+++ linux-2.6/fs/xfs/xfs_fsops.h	2008-09-25 16:16:58.303000603 -0500
-@@ -25,6 +25,6 @@ extern int xfs_fs_counts(xfs_mount_t *mp
- extern int xfs_reserve_blocks(xfs_mount_t *mp, __uint64_t *inval,
- 				xfs_fsop_resblks_t *outval);
- extern int xfs_fs_goingdown(xfs_mount_t *mp, __uint32_t inflags);
--extern void xfs_fs_log_dummy(xfs_mount_t *mp);
-+extern int xfs_fs_log_dummy(xfs_mount_t *mp);
- 
- #endif	/* __XFS_FSOPS_H__ */
+>     * highest bit is used to choose addressing schema: static or dynamic
 
+Alternately, any inode >= 2^32 would be dynamic?  One clear benefit of
+putting the dynamic inodes at the end of the number space is that they
+will only be used if the static inodes are full, which reduces risk due
+to corruption and overhead due to dynamic allocations.
+
+>   * each block is covered by two bits: in inode (I) and block (B) bitmaps:
+>     I: 0, B: 0 - block is just free
+>     I: 0, B: 1 - block is used, but not contains inodes
+>     I: 1, B: 0 - block is full of inodes
+>     I: 1, B: 1 - block contains few inodes, has free space
+
+Storing B:0 for an in-use block seems very dangerous to me.  This also
+doesn't really address the need to be able to quickly locate free inodes,
+because it means "I:1" _might_ mean the inode is free or it might not,
+so EVERY "in-use" inode would need to be checked to see if it is free.
+
+
+We need to start with a "dynamic inode bitmap" (DIB) that is mapped from
+an "inode table file" (possibly only for the dynamic inode table blocks).
+Free inodes can be scanned using the normal ext4_find_next_zero_bit()
+in each of the bitmaps.
+
+Each such DIB block holds an array of bits indicating dynamic inode
+use, as well as an array of block numbers which map IPBB inode bits to
+dynamic inode table blocks.  The DIBB should also have a header which
+contains space for a magic, a checksum, and the count of free and total
+inodes, like a GDT has, as well as a count of in-use itable blocks.
+
+The dynamic inode table blocks (DITB) should also hold a header with
+magic, checksum, back-pointer to DIBB.  The back-pointer to the DIBB
+allows efficient clearing of in-use bit and location of the DIBB if the
+dynamic inode itself is corrupted, and possibly freeing the DITB if
+the last in-use inode is freed.
+
+For common 256-byte inodes and 4kB blocks we need 8 bytes/block for the
+block addresses, and 1 bit/inode, so
+
+4096 bytes/block / 256 bytes/inode = 16 inodes(bits)/block = 2 byte bitmap
+
+(4096 bytes - 64-byte header) / (8 byte address + 2 byte bitmap) =
+	400 itable blocks per DIBB = 400 * 16 = 6400 inodes/DIBB
+
+65536 bytes/block / 256 bytes/inode = 256 inodes(bits)/block = 8 byte bitmap
+(65536 bytes - 64-byte header) / (8 byte address + 8 byte bitmap) =
+	4092 itable blocks per DIBB = 4092 * 16 = 1048576 inodes/DIBB
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
