@@ -1,83 +1,80 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH, RFC] ext4: Use preallocation when reading from the
-	inode table
-Date: Wed, 24 Sep 2008 16:35:59 -0400
-Message-ID: <20080924203559.GK9929@mit.edu>
-References: <48D8DEAE.4080309@redhat.com> <20080924013014.GA9747@mit.edu> <48DA3F56.8090806@redhat.com> <1222266034.7160.191.camel@think.oraclecorp.com> <E1KhvsB-0002Ik-Ex@closure.thunk.org> <20080923101613.58768083@lxorguk.ukuu.org.uk> <20080923115045.GI10950@webber.adilger.int> <48D8DEAE.4080309@redhat.com> <20080924013014.GA9747@mit.edu> <48DA3F56.8090806@redhat.com>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: Re: vfsmount
+Date: Thu, 25 Sep 2008 12:13:24 +0530
+Message-ID: <ea11fea30809242343g463c6cebv868d7b0affe7e0cb@mail.gmail.com>
+References: <2d08ef090809220957tc397ac5j6cdf110e7cd13f5c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	Alan Cox <alan@lxorguk.ukuu.org.uk>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Kernelnewbies <kernelnewbies@nl.linux.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: "Rohit Sharma" <imreckless@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44563 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752034AbYIXUgY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Sep 2008 16:36:24 -0400
+Received: from ti-out-0910.google.com ([209.85.142.189]:24860 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750875AbYIYGn2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Sep 2008 02:43:28 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so172401tic.23
+        for <linux-ext4@vger.kernel.org>; Wed, 24 Sep 2008 23:43:25 -0700 (PDT)
+In-Reply-To: <2d08ef090809220957tc397ac5j6cdf110e7cd13f5c@mail.gmail.com>
 Content-Disposition: inline
-In-Reply-To: <1222266034.7160.191.camel@think.oraclecorp.com> <48DA3F56.8090806@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Sep 24, 2008 at 09:23:34AM -0400, Ric Wheeler wrote:
+On Mon, Sep 22, 2008 at 10:27 PM, Rohit Sharma <imreckless@gmail.com> wrote:
+> I am interested in getting the vfsmount structure of the mounted file
+> system from my module.
+> I used filp = get_empty_filp() (filp is file pointer)
+> function to create an empty file object (as this contains pointer to
+> vfsmount structure)
+> file object has a field f_vfsmnt which points to the vfsmount structure
+> i am storing this in my own my_vfsmnt structure of type vfsmount.
+> my_vfsmnt = filp->f_vfsmnt
+> but i am getting my_vfsmnt as NULL ??
 >
-> That sounds about right for modern S-ATA/SAS drives. I would expect that  
-> having this be a tunable knob might help for some types of storage (SSD  
-> might not care, but should be faster in any case?).
+> is there any other way of getting the vfsmount structure ??
+
+Will this help ??
+
+[root@localhost test]# insmod katiyar.ko
+err=0, Path = /
+[root@localhost test]# cat nngfs.c
+#include <linux/module.h>
+#include <linux/fs.h>
+#include <linux/mount.h>
+#include <linux/namei.h>
+
+#define MOD_AUTHOR "Manish Katiyar"
+#define MODULE_DESC "A Simple test module "
+
+static int nngfs_fs_init(void){
+        int err;
+        struct vfsmount *tmp;
+        struct nameidata nd;
+        err = path_lookup(".",LOOKUP_FOLLOW | LOOKUP_DIRECTORY,&nd);
+        tmp = nd.path.mnt;
+        printk(KERN_CRIT "err=%d, Path = %s\n",err,tmp->mnt_root->d_name.name);
+        return err;
+}
+
+static void nngfs_fs_exit(void){
+        printk(KERN_INFO "Unregistering \n");
+        return ;
+}
+
+module_init(nngfs_fs_init);
+module_exit(nngfs_fs_exit);
+
+MODULE_AUTHOR(MOD_AUTHOR);
+MODULE_LICENSE("GPL");
+MODULE_DESCRIPTION(MODULE_DESC);
+
+
+Thanks -
+Manish
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >
-
-Well, for SSD's, wouldn't seek time not matter, but then the limiting
-factor should be the overhead of the read transaction, and the I/O
-bandwidth of the SSD.  So prefetching too much might hurt even more
-for SSD's, although in comparison with spinning rust platters, it
-would probably still be faster.  :-)
-
-So I'm pretty sure that with an SSD we'll want to turn the tunable
-down, not up.
-
-On Wed, Sep 24, 2008 at 10:20:34AM -0400, Chris Mason wrote:
->For the test runs being done here, there's a pretty high chance that all
->of the inodes you read ahead will get used before the pages are dropped,
->so we want to find a balance between those and the worst case workloads
->where inode reads are basically random.  
-
-Yep, agreed.
-
-On the other hand, if we take your iop/s and translate them to
-milliseconds so we can measure the latency in the case where the
-workload is essentialy doing random reads, and then cross correlated
-it with my measurements, we get this table:
-
-i/o size iops/s  ms latency  % degredation         % improvement
-    	 	    	     of random inodes   of related inodes I/O
-   4k	  131       7.634      
-   8k	  130	    7.692	0.77%		    11.3%
-  16k	  128	    7.813	2.34%		    21.8%
-  32k	  126	    7.937	3.97%		    29.6%
-  64k	  121	    8.264	8.26%		    35.5%
- 128k	  113	    8.850      15.93%		    40.0%
- 256k	  100	   10.000      31.00%		    42.4%
-
-Depending on whether you believe that workloads involving random inode
-reads are more common compared to related inodes I/O, the sweet spot
-is probably somewhere between 32k and 128k.  I'm open to opinions
-(preferably backed up with more benchmarks of likely workloads) of
-whether we should use a default value of inode_readahead_bits of 4 or
-5 (i.e., 64k, my original guess, or 128k, in v2 of the patch).  But
-yes, making it tunable is definitely going to be necessary, since for
-different workloads (i.e squid vs. git repositories) will have very
-different requirements.
-
-The other thought are the one which comes to mind is whether we should
-use a similar large readahead if all we are doing writes vs. reads.
-For example, if we are just updating a single inode, and we are
-reading a block to do a read/modify write cycle, maybe we shouldn't be
-doing as much readahead.
-
-						- Ted
-
-P.S.  One caveat is that my numbers were taken from a Laptop SATA, and
-if Chris's were taken from a Desktop/Sever SATA drive the numbers
-might not be properly comparable.
