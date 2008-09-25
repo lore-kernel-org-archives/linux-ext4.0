@@ -1,92 +1,71 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC] dynamic inodes
-Date: Thu, 25 Sep 2008 17:29:51 -0600
-Message-ID: <20080925232951.GQ10950@webber.adilger.int>
-References: <48DA28B0.2020207@sun.com>
- <20080925220936.GL10950@webber.adilger.int> <48DC1806.90805@sun.com>
+Subject: Re: [PATCH, RFC] ext4: Use preallocation when reading from the	inode
+ table
+Date: Thu, 25 Sep 2008 17:40:04 -0600
+Message-ID: <20080925234004.GR10950@webber.adilger.int>
+References: <20080924013014.GA9747@mit.edu> <48DA3F56.8090806@redhat.com>
+ <1222266034.7160.191.camel@think.oraclecorp.com>
+ <E1KhvsB-0002Ik-Ex@closure.thunk.org>
+ <20080923101613.58768083@lxorguk.ukuu.org.uk>
+ <20080923115045.GI10950@webber.adilger.int> <48D8DEAE.4080309@redhat.com>
+ <20080924013014.GA9747@mit.edu> <48DA3F56.8090806@redhat.com>
+ <20080924203559.GK9929@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Alex Tomas <bzzz@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+To: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Alan Cox <alan@lxorguk.ukuu.org.uk>,
+	linux-ext4@vger.kernel.org, linux-kernel@vg
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:53038 "EHLO
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:53430 "EHLO
 	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752147AbYIYXaO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Sep 2008 19:30:14 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8PNUDau016934
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Sep 2008 16:30:13 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K7R00801YH3U700@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 25 Sep 2008 16:30:13 -0700 (PDT)
-Received: from webber.adilger.int ([68.147.167.155])
- by fe-sfbay-10.sun.com (Sun Java System Messaging Server 6.2-8.04 (built Feb
- 28 2007)) with ESMTPSA id <0K7R003HWYMBKRF0@fe-sfbay-10.sun.com> for
- linux-ext4@vger.kernel.org; Thu, 25 Sep 2008 16:30:12 -0700 (PDT)
-In-reply-to: <48DC1806.90805@sun.com>
+	with ESMTP id S1752705AbYIYXk0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Sep 2008 19:40:26 -0400
+In-reply-to: <20080924203559.GK9929@mit.edu>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 26, 2008  03:00 +0400, Alex Tomas wrote:
-> Andreas Dilger wrote:
->> Storing B:0 for an in-use block seems very dangerous to me.  This al=
-so
->> doesn't really address the need to be able to quickly locate free in=
-odes,
->> because it means "I:1" _might_ mean the inode is free or it might no=
-t,
->> so EVERY "in-use" inode would need to be checked to see if it is fre=
-e.
->
-> just combine I and B into single bitmap:
-> 1) when you look for free block it's any 0 bit in bitmap made by (I &=
- B)
-> 2) when you look for free inode (in current inode blocks) it's any 1 =
-bit
->    in bitmap made again by (I & B), then you read corresponded block =
-and
->    find free slot there (for example, it can be null i_mode)
->
-> looks very simple and doable?
+On Sep 24, 2008  16:35 -0400, Theodore Ts'o wrote:
+> On the other hand, if we take your iop/s and translate them to
+> milliseconds so we can measure the latency in the case where the
+> workload is essentialy doing random reads, and then cross correlated
+> it with my measurements, we get this table:
 
-It _sounds_ simple, but I think the implementation will not be what
-is expected.  Either you need to keep a 3rd bitmap for each group
-which is (I&B) used for finding either inodes or blocks first (with
-respectively find_first_bit() or find_first_zero_bit()), then check the
-"normal" inode and block bitmaps, keeping this in sync with mballoc, an=
-d
-confusion/danger on disk/e2fsck because in-use itable blocks are marked
-"0" in the block bitmap.  There will be races between updating these
-bitmaps, unless the group is locked for both block or inode allocations
-on any update because setting any bit completely changes the meaning.
+Comparing the incremental benefit of each step:
 
-Alternately, if there are only I and B bitmaps, then find_first_bit()
-and find_first_zero_bit() are not useful.  Searching for free blocks
-means looking for "B:0" and finding potentially many "B:0 I:1" blocks
-that are full of inodes.  Searching for free inodes means looking for
-"I:1" (strangely) but finding potentially many "I:1 B:0" blocks.
+> i/o size iops/s  ms latency  % degredation         % improvement
+>     	 	    	     of random inodes   of related inodes I/O
+>    4k	  131       7.634      
+>    8k	  130	    7.692	0.77%		    11.3%
+                                       1.57%              10.5%
+>   16k	  128	    7.813	2.34%		    21.8%
+                                       1.63%               7.8%
+>   32k	  126	    7.937	3.97%		    29.6%
+                                       4.29%               5.9%
+>   64k	  121	    8.264	8.26%		    35.5%
+                                       7.67%               4.5%
+>  128k	  113	    8.850      15.93%		    40.0%
+                                      16.07%               2.4%
+>  256k	  100	   10.000      31.00%		    42.4%
+> 
+> Depending on whether you believe that workloads involving random inode
+> reads are more common compared to related inodes I/O, the sweet spot
+> is probably somewhere between 32k and 128k.  I'm open to opinions
+> (preferably backed up with more benchmarks of likely workloads) of
+> whether we should use a default value of inode_readahead_bits of 4 or
+> 5 (i.e., 64k, my original guess, or 128k, in v2 of the patch).  But
+> yes, making it tunable is definitely going to be necessary, since for
+> different workloads (i.e squid vs. git repositories) will have very
+> different requirements.
 
-I much prefer the dynamic itable idea from Jos=E9 (which I embellished =
-in
-my other email), which is very simple for both the kernel and e2fsck,
-robust, and avoids the 64-bit inode problem for userspace to the maximu=
-m
-amount (i.e. a full 4B inodes must be in use before we ever need to
-use 64-bit inodes).  The lack of complexity in itable allocation also
-translates directly into increased robustness in the face of corruption=
-=2E
-
-It doesn't provide dynamic-sized inodes (which hasn't traditionally
-been a problem), nor is it perfect in terms of being able to fully
-populate a filesystem with inodes in all use cases but it could work
-in all but completely pathalogical fragmentation cases (at which point
-one wonders if it isn't better to just return -ENOSPC than to flog a
-nearly dead filesystem).  It can definitely do a good job in most likel=
-y
-uses, and also provides a big win over what is done today.
+It looks like moving from 64kB to 128kB readahead might be a loss for
+"unknown" workloads, since that increases latency by 7.67% for the random
+inode case, but we only get 4.5% improvement in the sequential inode case.
+Also recall that at large scale "htree" breaks down to random inode
+lookup so that isn't exactly a fringe case (though readahead may still
+help if the cache is large enough).
 
 Cheers, Andreas
 --
@@ -94,8 +73,3 @@ Andreas Dilger
 Sr. Staff Engineer, Lustre Group
 Sun Microsystems of Canada, Inc.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
