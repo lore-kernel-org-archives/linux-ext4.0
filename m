@@ -1,75 +1,160 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH, RFC] ext4: Use preallocation when reading from the	inode
- table
-Date: Thu, 25 Sep 2008 17:40:04 -0600
-Message-ID: <20080925234004.GR10950@webber.adilger.int>
-References: <20080924013014.GA9747@mit.edu> <48DA3F56.8090806@redhat.com>
- <1222266034.7160.191.camel@think.oraclecorp.com>
- <E1KhvsB-0002Ik-Ex@closure.thunk.org>
- <20080923101613.58768083@lxorguk.ukuu.org.uk>
- <20080923115045.GI10950@webber.adilger.int> <48D8DEAE.4080309@redhat.com>
- <20080924013014.GA9747@mit.edu> <48DA3F56.8090806@redhat.com>
- <20080924203559.GK9929@mit.edu>
+From: "Jose R. Santos" <jrs@us.ibm.com>
+Subject: Re: [RFC] dynamic inodes
+Date: Thu, 25 Sep 2008 20:10:39 -0500
+Message-ID: <20080925201039.454bf742@gara>
+References: <48DA28B0.2020207@sun.com>
+	<20080925223731.GM10950@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-To: Theodore Tso <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Alan Cox <alan@lxorguk.ukuu.org.uk>,
-	linux-ext4@vger.kernel.org, linux-kernel@vg
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Alex Tomas <bzzz@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:53430 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752705AbYIYXk0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Sep 2008 19:40:26 -0400
-In-reply-to: <20080924203559.GK9929@mit.edu>
-Content-disposition: inline
+Received: from e34.co.us.ibm.com ([32.97.110.152]:35753 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752621AbYIZBK3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Sep 2008 21:10:29 -0400
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e34.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m8Q1ASRS009556
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Sep 2008 21:10:28 -0400
+Received: from d03av03.boulder.ibm.com (d03av03.boulder.ibm.com [9.17.195.169])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m8Q1AS0X210964
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Sep 2008 19:10:28 -0600
+Received: from d03av03.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av03.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m8Q1ARwd022263
+	for <linux-ext4@vger.kernel.org>; Thu, 25 Sep 2008 19:10:27 -0600
+In-Reply-To: <20080925223731.GM10950@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 24, 2008  16:35 -0400, Theodore Ts'o wrote:
-> On the other hand, if we take your iop/s and translate them to
-> milliseconds so we can measure the latency in the case where the
-> workload is essentialy doing random reads, and then cross correlated
-> it with my measurements, we get this table:
+On Thu, 25 Sep 2008 16:37:31 -0600
+Andreas Dilger <adilger@sun.com> wrote:
 
-Comparing the incremental benefit of each step:
+> On Sep 24, 2008  15:46 +0400, Alex Tomas wrote:
+> > another idea how to achieve more (dynamic) inodes:
+>=20
+> Actually, Jos=C3=A9 propsed a _very_ simple idea that would allow dyn=
+amic
+> inodes with relatively low code complexity or risk due to dynamic
+> placement of inode tables.
+>=20
+> The basic idea is to extend the FLEX_BG feature so that (essentially)
+> "blockless groups" can be added to the filesystem when the inodes are
+> all gone.  The core idea of FLEX_BG is that the "group metadata" (ino=
+de
+> and block bitmaps, inode table) can be placed anywhere in the filesys=
+tem.
+> This implies that a "block group" is strictly just a contiguous range=
+ of
+> blocks, and somewhere in the filesystem is the metadata that describe=
+s its
+> usage.
+>=20
+> If one adds a new group (ostensibly "at the end of the filesystem") t=
+hat
+> has a flag which indicates there are no blocks available in the group=
+,
+> then what we get is the inode bitmap and inode table, with a 1-block
+> "excess baggage" of the block bitmap and a new group descriptor.  The
+> "baggage" is small considering any overhead needed to locate and desc=
+ribe
+> fully dynamic inode tables.
+>=20
+> A big plus is that there are very few changes needed to the kernel or
+> e2fsck (the "dynamic inode table" is just a group which has no space
+> for data).  Some quick checks on 10 filesystems (some local, some
+> server) shows that there is enough contiguous space in the filesystem=
+s
+> to allocate a full inode table (between 1-4MB for most filesystems), =
+and
+> mballoc can help with this.  This makes sense because the cases where
+> there is a shortage of inodes also means there is an excess of space,
+> and if the inodes were under-provisioned it also (usually) means the
+> itable is on the smaller side.
+>=20
+> Another important benefit is that the 32-bit inode space is used full=
+y
+> before there is any need to grow to 64-bit inodes.  This avoids the
+> compatibility issues with userspace to the maximum possible extent,
+> without any complex remapping of inode numbers.
+>=20
+> We could hedge our bets for finding large enough contiguous itable sp=
+ace
+> and allow the itable to be smaller than normal, and mark the end inod=
+es
+> as in-use.  e2fsck will in fact consider any blocks under the rest of
+> the inode table as "shared blocks" and do duplicate block processing =
+to
+> remap the data blocks.  We could also leverage online defrag to remap
+> the blocks before allocating the itable if there isn't enough space.
+>=20
+> Another major benefit of this approach is that the "dynamic" inode ta=
+ble
+> is actually relatively static in location, and we don't need a tree t=
+o
+> find it.  We would continue to use the "normal" group inodes first, a=
+nd
+> only add dynamic groups if there are no free inodes.  It would also b=
+e
+> possible to remove the last dynamic group if all its inodes are freed=
+=2E
+>=20
+> The itable location would be replicated to all of the group descripto=
+r
+> backups for safety, though we would need to find a way for "META_BG"
+> to store a backup of the GDT in blocks that don't exist, in the case
+> where increasing the GDT size in-place isn't possible.
 
-> i/o size iops/s  ms latency  % degredation         % improvement
->     	 	    	     of random inodes   of related inodes I/O
->    4k	  131       7.634      
->    8k	  130	    7.692	0.77%		    11.3%
-                                       1.57%              10.5%
->   16k	  128	    7.813	2.34%		    21.8%
-                                       1.63%               7.8%
->   32k	  126	    7.937	3.97%		    29.6%
-                                       4.29%               5.9%
->   64k	  121	    8.264	8.26%		    35.5%
-                                       7.67%               4.5%
->  128k	  113	    8.850      15.93%		    40.0%
-                                      16.07%               2.4%
->  256k	  100	   10.000      31.00%		    42.4%
-> 
-> Depending on whether you believe that workloads involving random inode
-> reads are more common compared to related inodes I/O, the sweet spot
-> is probably somewhere between 32k and 128k.  I'm open to opinions
-> (preferably backed up with more benchmarks of likely workloads) of
-> whether we should use a default value of inode_readahead_bits of 4 or
-> 5 (i.e., 64k, my original guess, or 128k, in v2 of the patch).  But
-> yes, making it tunable is definitely going to be necessary, since for
-> different workloads (i.e squid vs. git repositories) will have very
-> different requirements.
+One way to get around this is to implement the exact opposite of what I
+proposed earlier and have a block group with no inode tables.  If we do
+a 1:1 distribution of inode per block and don't allocate inodes tables
+for a series of block groups within a flexbg we could later on attempt
+to allocate new inode tables when we run out of inodes.  If we leave
+holes in the inode numbers for the missing inode tables, adding new
+inode tables in these block groups would not require any inode
+renumbering.  This also does not break the current inode allocator
+which would be a good thing.  This should be even simpler to implement
+than the previous proposal.  The drawbacks are that when allocating a
+new inode table, the 1:1 distribution of inode per block would mean
+that we need to find a bigger chunk on contiguous blocks to since we
+have bigger inode tables per block group.  Since the current inode
+allocator tries to keep a 10% of blocks in a flexbg free, finding
+contiguous blocks may not be a really big issue.  Another issue is 64bi=
+t
+filesystem if we use a 1:1 scheme.
 
-It looks like moving from 64kB to 128kB readahead might be a loss for
-"unknown" workloads, since that increases latency by 7.67% for the random
-inode case, but we only get 4.5% improvement in the sequential inode case.
-Also recall that at large scale "htree" breaks down to random inode
-lookup so that isn't exactly a fringe case (though readahead may still
-help if the cache is large enough).
+This would be like uninitialized inode tables with the added steps of
+finding free blocks, allocating a new inode and zeroing the newly
+created inode table.  Since we could chose to allocate a new inode
+table on a flexbg with the most free blocks, this could keep filesystem
+meta-data/data layout consistently close together to maintain
+predictable performance.  This option also has no overhead compared to
+the previous proposal.
 
-Cheers, Andreas
+>=20
+> The drawbacks of the approach is relatively coarse-grained itable
+> allocation, which would fail if the filesystem is highly fragmented,
+> but we don't _have_ to succeed either.  The coarse-grained approach i=
+s
+> also a benefit because we don't need complex data structures to find =
+the
+> itable, it reduces seeking during e2fsck, and we can keep some hyster=
+esis
+> in adding/removing dynamic groups to reduce overhead (updates of many
+> GDT backups).
+>=20
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+>=20
+> --
+
+-JRS
 --
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
