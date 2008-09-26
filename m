@@ -1,7 +1,7 @@
 From: Takashi Sato <t-sato@yk.jp.nec.com>
-Subject: [PATCH 3/10] ext4: Fix error handling in write_super_lockfs/unlockfs
-Date: Fri, 26 Sep 2008 17:57:46 +0900
-Message-ID: <20080926175746t-sato__8686.74799935452$1222419600$gmane$org@mail.jp.nec.com>
+Subject: [PATCH 5/10] gfs2: Fix error handling in write_super_lockfs/unlockfs
+Date: Fri, 26 Sep 2008 17:58:21 +0900
+Message-ID: <20080926175821t-sato__11499.9034595259$1222419662$gmane$org@mail.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
@@ -11,10 +11,10 @@ To: Andrew Morton <akpm@linux-foundation.org>,
 	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
 	"dm-devel@redhat.com" <dm-devel@redh
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:42906 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754978AbYIZI6O (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 04:58:14 -0400
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:60757 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755259AbYIZI6p (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 04:58:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -24,121 +24,65 @@ unlockfs always returns 0.
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 Signed-off-by: Masayuki Hamaguchi <m-hamaguchi@ys.jp.nec.com>
 ---
- super.c |   40 +++++++++++++++++++++++++++-------------
- 1 file changed, 27 insertions(+), 13 deletions(-)
+ ops_super.c |   16 +++++++++-------
+ 1 file changed, 9 insertions(+), 7 deletions(-)
 
-diff -uprN -X linux-2.6.27-rc7-lockfs-ext3/Documentation/dontdiff linux-2.6.27-rc7-lockfs-ext3/fs/ext4/super.c linux-2.6
-.27-rc7-lockfs-ext4/fs/ext4/super.c
---- linux-2.6.27-rc7-lockfs-ext3/fs/ext4/super.c	2008-09-26 11:44:53.000000000 +0900
-+++ linux-2.6.27-rc7-lockfs-ext4/fs/ext4/super.c	2008-09-26 16:55:57.000000000 +0900
-@@ -49,7 +49,7 @@ static int ext4_load_journal(struct supe
- 			     unsigned long journal_devnum);
- static int ext4_create_journal(struct super_block *, struct ext4_super_block *,
- 			       unsigned int);
--static void ext4_commit_super(struct super_block *sb,
-+static int ext4_commit_super(struct super_block *sb,
- 			      struct ext4_super_block *es, int sync);
- static void ext4_mark_recovery_complete(struct super_block *sb,
- 					struct ext4_super_block *es);
-@@ -60,9 +60,9 @@ static const char *ext4_decode_error(str
- 				     char nbuf[16]);
- static int ext4_remount(struct super_block *sb, int *flags, char *data);
- static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
--static void ext4_unlockfs(struct super_block *sb);
-+static int ext4_unfreeze(struct super_block *sb);
- static void ext4_write_super(struct super_block *sb);
--static void ext4_write_super_lockfs(struct super_block *sb);
-+static int ext4_freeze(struct super_block *sb);
- 
- 
- ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
-@@ -875,8 +875,8 @@ static const struct super_operations ext
- 	.put_super	= ext4_put_super,
- 	.write_super	= ext4_write_super,
- 	.sync_fs	= ext4_sync_fs,
--	.write_super_lockfs = ext4_write_super_lockfs,
--	.unlockfs	= ext4_unlockfs,
-+	.freeze_fs	= ext4_freeze,
-+	.unfreeze_fs	= ext4_unfreeze,
- 	.statfs		= ext4_statfs,
- 	.remount_fs	= ext4_remount,
- 	.clear_inode	= ext4_clear_inode,
-@@ -2792,20 +2792,22 @@ static int ext4_create_journal(struct su
- 	return 0;
+diff -uprN -X linux-2.6.27-rc7-lockfs-reiserfs/Documentation/dontdiff linux-2.6.27-rc7-lockfs-reiserfs/fs/gfs2/ops_super
+.c linux-2.6.27-rc7-lockfs-gfs2/fs/gfs2/ops_super.c
+--- linux-2.6.27-rc7-lockfs-reiserfs/fs/gfs2/ops_super.c	2008-09-26 12:24:01.000000000 +0900
++++ linux-2.6.27-rc7-lockfs-gfs2/fs/gfs2/ops_super.c	2008-09-26 17:02:06.000000000 +0900
+@@ -161,18 +161,18 @@ static int gfs2_sync_fs(struct super_blo
  }
  
--static void ext4_commit_super(struct super_block *sb,
-+static int ext4_commit_super(struct super_block *sb,
- 			      struct ext4_super_block *es, int sync)
- {
- 	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
-+	int error = 0;
+ /**
+- * gfs2_write_super_lockfs - prevent further writes to the filesystem
++ * gfs2_freeze - prevent further writes to the filesystem
+  * @sb: the VFS structure for the filesystem
+  *
+  */
  
- 	if (!sbh)
+-static void gfs2_write_super_lockfs(struct super_block *sb)
++static int gfs2_freeze(struct super_block *sb)
+ {
+ 	struct gfs2_sbd *sdp = sb->s_fs_info;
+ 	int error;
+ 
+ 	if (test_bit(SDF_SHUTDOWN, &sdp->sd_flags))
 -		return;
-+		return error;
- 	es->s_wtime = cpu_to_le32(get_seconds());
- 	ext4_free_blocks_count_set(es, ext4_count_free_blocks(sb));
- 	es->s_free_inodes_count = cpu_to_le32(ext4_count_free_inodes(sb));
- 	BUFFER_TRACE(sbh, "marking dirty");
- 	mark_buffer_dirty(sbh);
- 	if (sync)
--		sync_dirty_buffer(sbh);
-+		error = sync_dirty_buffer(sbh);
-+	return error;
- }
++		return -EINVAL;
  
- 
-@@ -2919,28 +2921,39 @@ static int ext4_sync_fs(struct super_blo
-  * LVM calls this function before a (read-only) snapshot is created.  This
-  * gives us a chance to flush the journal completely and mark the fs clean.
-  */
--static void ext4_write_super_lockfs(struct super_block *sb)
-+static int ext4_freeze(struct super_block *sb)
- {
-+	int error = 0;
-+	journal_t *journal;
- 	sb->s_dirt = 0;
- 
- 	if (!(sb->s_flags & MS_RDONLY)) {
--		journal_t *journal = EXT4_SB(sb)->s_journal;
-+		journal = EXT4_SB(sb)->s_journal;
- 
- 		/* Now we set up the journal barrier. */
- 		jbd2_journal_lock_updates(journal);
--		jbd2_journal_flush(journal);
-+		error = jbd2_journal_flush(journal);
-+		if (error)
-+			goto out;
- 
- 		/* Journal blocked and flushed, clear needs_recovery flag. */
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--		ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
-+		error = ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
-+		if (error)
-+			goto out;
- 	}
-+	return 0;
-+
-+out:
-+	jbd2_journal_unlock_updates(journal);
-+	return error;
- }
- 
- /*
-  * Called by LVM after the snapshot is done.  We need to reset the RECOVER
-  * flag here, even though the filesystem is not technically dirty yet.
-  */
--static void ext4_unlockfs(struct super_block *sb)
-+static int ext4_unfreeze(struct super_block *sb)
- {
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		lock_super(sb);
-@@ -2950,6 +2963,7 @@ static void ext4_unlockfs(struct super_b
- 		unlock_super(sb);
- 		jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	for (;;) {
+ 		error = gfs2_freeze_fs(sdp);
+@@ -192,17 +192,19 @@ static void gfs2_write_super_lockfs(stru
+ 		fs_err(sdp, "retrying...\n");
+ 		msleep(1000);
  	}
 +	return 0;
  }
  
- static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ /**
+- * gfs2_unlockfs - reallow writes to the filesystem
++ * gfs2_unfreeze - reallow writes to the filesystem
+  * @sb: the VFS structure for the filesystem
+  *
+  */
+ 
+-static void gfs2_unlockfs(struct super_block *sb)
++static int gfs2_unfreeze(struct super_block *sb)
+ {
+ 	gfs2_unfreeze_fs(sb->s_fs_info);
++	return 0;
+ }
+ 
+ /**
+@@ -505,8 +507,8 @@ const struct super_operations gfs2_super
+ 	.put_super		= gfs2_put_super,
+ 	.write_super		= gfs2_write_super,
+ 	.sync_fs		= gfs2_sync_fs,
+-	.write_super_lockfs 	= gfs2_write_super_lockfs,
+-	.unlockfs		= gfs2_unlockfs,
++	.freeze_fs 		= gfs2_freeze,
++	.unfreeze_fs		= gfs2_unfreeze,
+ 	.statfs			= gfs2_statfs,
+ 	.remount_fs		= gfs2_remount_fs,
+ 	.clear_inode		= gfs2_clear_inode,
