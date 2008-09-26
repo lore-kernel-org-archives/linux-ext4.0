@@ -1,101 +1,71 @@
-From: Valdis.Kletnieks@vt.edu
-Subject: Re: [PATCH 0/10] freeze feature ver 1.13
-Date: Fri, 26 Sep 2008 06:48:16 -0400
-Message-ID: <30536.1222426096@turing-police.cc.vt.edu>
-References: <20080926175652t-sato@mail.jp.nec.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [PATCH 3/3] Add timeout feature
+Date: Fri, 26 Sep 2008 06:58:11 -0400
+Message-ID: <48DCC043.1020207@redhat.com>
+References: <20080908205337t-sato@mail.jp.nec.com> <20080908171119.GB22521@infradead.org> <48DBFD42.6030307@redhat.com> <D0B0D91F884647D6808626CDFF81E532@nsl.ad.nec.co.jp>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="==_Exmh_1222426096_7097P";
-	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"dm-devel@redhat.com" <dm-devel@redhat.com>,
-	"viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"mtk.manpages@googlemail.com" <mtk.manpages@googlemail.com>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Oleg Nesterov <oleg@tv-sign.ru>, linux-fsdevel@vger.kernel.org,
+	dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, axboe@kernel.dk,
+	mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org
 To: Takashi Sato <t-sato@yk.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from turing-police.cc.vt.edu ([128.173.14.107]:38536 "EHLO
-	turing-police.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750875AbYIZKtc (ORCPT
-	<RFC822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 06:49:32 -0400
-In-Reply-To: Your message of "Fri, 26 Sep 2008 17:56:52 +0900."
-             <20080926175652t-sato@mail.jp.nec.com>
+Received: from mx2.redhat.com ([66.187.237.31]:34197 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751506AbYIZK62 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Sep 2008 06:58:28 -0400
+In-Reply-To: <D0B0D91F884647D6808626CDFF81E532@nsl.ad.nec.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---==_Exmh_1222426096_7097P
-Content-Type: text/plain; charset=us-ascii
+Takashi Sato wrote:
+> Hi,
+>
+> Ric Wheeler wrote:
+>> Christoph Hellwig wrote:
+>>> On Mon, Sep 08, 2008 at 08:53:37PM +0900, Takashi Sato wrote:
+>>>
+>>>> The timeout feature is added to "freeze ioctl" to solve a deadlock
+>>>> when the freezer accesses a frozen filesystem. And new ioctl
+>>>> to reset the timeout period is added to extend the timeout period.
+>>>> For example, the freezer resets the timeout period to 10 seconds 
+>>>> every 5
+>>>> seconds.  In this approach, even if the freezer causes a deadlock by
+>>>> accessing the frozen filesystem, it will be solved by the timeout
+>>>> in 10 seconds and the freezer will be able to recognize that
+>>>> at the next reset of timeout period.
+>>>>
+>>>
+>>> And as with all previous posting I still fundamentally disagree about
+>>> the need of this functionality.  We don't need a timeout for freezing.
+>>
+>> I agree with Christoph here, I think that the timeout is unneeded.
+>
+> I think that your concern is that the freezer cannot recognize the 
+> occurrence
+> of a timeout and it continues the backup process and the backup data is
+> corrupted finally.
+> If the freezer can recognize it by the unfreeze ioctl's errono, will 
+> your concern
+> be solved?
+> If so, I will implement it.
+>
+> Cheers, Takashi
+>
+I think that is certainly part a big part of my concern.
 
-On Fri, 26 Sep 2008 17:56:52 +0900, Takashi Sato said:
+Also note that the timeout seems to be quite low relative to say the 
+standard timeout for a SCSI device (30 seconds worst case).
 
-> [PATCH 1/10] VFS: Fix error handling of write_super_lockfs/unlockfs
->   Changed the type of write_super_lockfs and unlockfs from "void"
->   to "int" so that they can return an error. 
->   Rename write_super_lockfs/unlockfs of the super block operation
->   freeze_fs/unfreeze_fs to avoid a confusion.
-> 
-> [PATCH 2/10]-[PATCH 6/10] Fix error handling in write_super_lockfs/unlockfs
->                           (ext3, ext4, xfs, gfs2, jfs)
->   Changed write_super_lockfs so that it returns an error if needed.
->   unlockfs always returns 0.
-> 
-> [PATCH 7/10] reiserfs: Fix error handling in write_super_lockfs/unlockfs
->   Changed write_super_lockfs/unlockfs so that they always return
->   0 (success) to keep a current behavior.
-> 
-> [PATCH 8/10] Implement generic freeze feature
->   The ioctls for the generic freeze feature are below.
->   o Freeze the filesystem
->     int ioctl(int fd, int FIFREEZE, arg)
->       fd: The file descriptor of the mountpoint
->       FIFREEZE: request code for the freeze
->       arg: Ignored
->       Return value: 0 if the operation succeeds. Otherwise, -1
-> 
->   o Unfreeze the filesystem
->     int ioctl(int fd, int FITHAW, arg)
->       fd: The file descriptor of the mountpoint
->       FITHAW: request code for unfreeze
->       arg: Ignored
->       Return value: 0 if the operation succeeds. Otherwise, -1
-> 
-> [PATCH 9/10] Remove XFS specific ioctl interfaces for freeze feature
->   It removes XFS specific ioctl interfaces and request codes
->   for freeze feature.
->   This patch has been supplied by David Chinner.
-> 
-> [PATCH 10/10] Add timeout feature
->   The timeout feature is added to "freeze ioctl" to solve a deadlock
->   when the freezer accesses a frozen filesystem. And new ioctl
->   to reset the timeout period is added to extend the timeout period.
->   For example, the freezer resets the timeout period to 10 seconds every 5
->   seconds.  In this approach, even if the freezer causes a deadlock by
->   accessing the frozen filesystem, it will be solved by the timeout
+In general, I am quite supportive of the patch series and think that 
+this is a great addition.
 
-Would it be a good idea to merge patch 10 into patch 8?   Otherwise, there's
-two issues I can see:
+Thanks!
 
-1) A mostly theoretical problem if a bisect lands exactly on patch 9 it can
-hit the deadlock.
+Ric
 
-2) The API at patch 8 and patch 10 differs, that's going to make testing through
-a bisection of this patch series a pain.
 
---==_Exmh_1222426096_7097P
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-Comment: Exmh version 2.5 07/13/2001
-
-iD8DBQFI3L3wcC3lWbTT17ARAjrhAKC8UZHTiIM5FLH1rhQ70o1u4X66CQCfeopP
-jGYlmgzaSwfvHkgcswECSio=
-=HZAd
------END PGP SIGNATURE-----
-
---==_Exmh_1222426096_7097P--
