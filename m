@@ -1,67 +1,101 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC] dynamic inodes
-Date: Fri, 26 Sep 2008 04:36:07 -0600
-Message-ID: <20080926103607.GB10950@webber.adilger.int>
-References: <48DA28B0.2020207@sun.com>
- <20080925223731.GM10950@webber.adilger.int> <20080925201039.454bf742@gara>
+From: Valdis.Kletnieks@vt.edu
+Subject: Re: [PATCH 0/10] freeze feature ver 1.13
+Date: Fri, 26 Sep 2008 06:48:16 -0400
+Message-ID: <30536.1222426096@turing-police.cc.vt.edu>
+References: <20080926175652t-sato@mail.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Alex Tomas <bzzz@sun.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+Content-Type: multipart/signed; boundary="==_Exmh_1222426096_7097P";
+	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Christoph Hellwig <hch@infradead.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"dm-devel@redhat.com" <dm-devel@redhat.com>,
+	"viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+	"mtk.manpages@googlemail.com" <mtk.manpages@googlemail.com>,
+	"axboe@kernel.dk" <axboe@kernel.dk>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Takashi Sato <t-sato@yk.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:65318 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752982AbYIZKge (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 06:36:34 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8QAaTGd004905
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2008 03:36:29 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K7S00001TBSNK00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 26 Sep 2008 03:36:29 -0700 (PDT)
-In-reply-to: <20080925201039.454bf742@gara>
-Content-disposition: inline
+Received: from turing-police.cc.vt.edu ([128.173.14.107]:38536 "EHLO
+	turing-police.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750875AbYIZKtc (ORCPT
+	<RFC822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 06:49:32 -0400
+In-Reply-To: Your message of "Fri, 26 Sep 2008 17:56:52 +0900."
+             <20080926175652t-sato@mail.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 25, 2008  20:10 -0500, Jose R. Santos wrote:
-> One way to get around this is to implement the exact opposite of what I
-> proposed earlier and have a block group with no inode tables.  If we do
-> a 1:1 distribution of inode per block and don't allocate inodes tables
-> for a series of block groups within a flexbg we could later on attempt
-> to allocate new inode tables when we run out of inodes.  If we leave
-> holes in the inode numbers for the missing inode tables, adding new
-> inode tables in these block groups would not require any inode
-> renumbering.  This also does not break the current inode allocator
-> which would be a good thing.  This should be even simpler to implement
-> than the previous proposal.  The drawbacks are that when allocating a
-> new inode table, the 1:1 distribution of inode per block would mean
-> that we need to find a bigger chunk on contiguous blocks to since we
-> have bigger inode tables per block group.  Since the current inode
-> allocator tries to keep a 10% of blocks in a flexbg free, finding
-> contiguous blocks may not be a really big issue.  Another issue is 64bit
-> filesystem if we use a 1:1 scheme.
+--==_Exmh_1222426096_7097P
+Content-Type: text/plain; charset=us-ascii
+
+On Fri, 26 Sep 2008 17:56:52 +0900, Takashi Sato said:
+
+> [PATCH 1/10] VFS: Fix error handling of write_super_lockfs/unlockfs
+>   Changed the type of write_super_lockfs and unlockfs from "void"
+>   to "int" so that they can return an error. 
+>   Rename write_super_lockfs/unlockfs of the super block operation
+>   freeze_fs/unfreeze_fs to avoid a confusion.
 > 
-> This would be like uninitialized inode tables with the added steps of
-> finding free blocks, allocating a new inode and zeroing the newly
-> created inode table.  Since we could chose to allocate a new inode
-> table on a flexbg with the most free blocks, this could keep filesystem
-> meta-data/data layout consistently close together to maintain
-> predictable performance.  This option also has no overhead compared to
-> the previous proposal.
+> [PATCH 2/10]-[PATCH 6/10] Fix error handling in write_super_lockfs/unlockfs
+>                           (ext3, ext4, xfs, gfs2, jfs)
+>   Changed write_super_lockfs so that it returns an error if needed.
+>   unlockfs always returns 0.
+> 
+> [PATCH 7/10] reiserfs: Fix error handling in write_super_lockfs/unlockfs
+>   Changed write_super_lockfs/unlockfs so that they always return
+>   0 (success) to keep a current behavior.
+> 
+> [PATCH 8/10] Implement generic freeze feature
+>   The ioctls for the generic freeze feature are below.
+>   o Freeze the filesystem
+>     int ioctl(int fd, int FIFREEZE, arg)
+>       fd: The file descriptor of the mountpoint
+>       FIFREEZE: request code for the freeze
+>       arg: Ignored
+>       Return value: 0 if the operation succeeds. Otherwise, -1
+> 
+>   o Unfreeze the filesystem
+>     int ioctl(int fd, int FITHAW, arg)
+>       fd: The file descriptor of the mountpoint
+>       FITHAW: request code for unfreeze
+>       arg: Ignored
+>       Return value: 0 if the operation succeeds. Otherwise, -1
+> 
+> [PATCH 9/10] Remove XFS specific ioctl interfaces for freeze feature
+>   It removes XFS specific ioctl interfaces and request codes
+>   for freeze feature.
+>   This patch has been supplied by David Chinner.
+> 
+> [PATCH 10/10] Add timeout feature
+>   The timeout feature is added to "freeze ioctl" to solve a deadlock
+>   when the freezer accesses a frozen filesystem. And new ioctl
+>   to reset the timeout period is added to extend the timeout period.
+>   For example, the freezer resets the timeout period to 10 seconds every 5
+>   seconds.  In this approach, even if the freezer causes a deadlock by
+>   accessing the frozen filesystem, it will be solved by the timeout
 
-The problem with leaving gaps in the itable is that this needs the
-filesystem to be created in this manner in the first place, while adding
-them at the end can be done to any filesystem.  If we are preparing the
-filesystem in advance for this we could just reserve enough GDT space
-too (as online resize already does to some extent)..
+Would it be a good idea to merge patch 10 into patch 8?   Otherwise, there's
+two issues I can see:
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+1) A mostly theoretical problem if a bisect lands exactly on patch 9 it can
+hit the deadlock.
 
+2) The API at patch 8 and patch 10 differs, that's going to make testing through
+a bisection of this patch series a pain.
+
+--==_Exmh_1222426096_7097P
+Content-Type: application/pgp-signature
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+Comment: Exmh version 2.5 07/13/2001
+
+iD8DBQFI3L3wcC3lWbTT17ARAjrhAKC8UZHTiIM5FLH1rhQ70o1u4X66CQCfeopP
+jGYlmgzaSwfvHkgcswECSio=
+=HZAd
+-----END PGP SIGNATURE-----
+
+--==_Exmh_1222426096_7097P--
