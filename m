@@ -1,88 +1,95 @@
 From: Andreas Dilger <adilger@sun.com>
 Subject: Re: [RFC] dynamic inodes
-Date: Fri, 26 Sep 2008 14:01:45 -0600
-Message-ID: <20080926200145.GF10950@webber.adilger.int>
+Date: Fri, 26 Sep 2008 14:18:32 -0600
+Message-ID: <20080926201832.GG10950@webber.adilger.int>
 References: <48DA28B0.2020207@sun.com>
- <20080925223731.GM10950@webber.adilger.int> <20080925201039.454bf742@gara>
- <20080926103607.GB10950@webber.adilger.int> <20080926094903.08e68f5b@gara>
+ <20080925223731.GM10950@webber.adilger.int> <20080926021132.GA11413@mit.edu>
+ <20080926103322.GA10950@webber.adilger.int> <20080926143309.GC11413@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
 Cc: Alex Tomas <bzzz@sun.com>,
 	ext4 development <linux-ext4@vger.kernel.org>
-To: "Jose R. Santos" <jrs@us.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:59983 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752650AbYIZUCK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 16:02:10 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8QK28Cg006509
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2008 13:02:08 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:54714 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751604AbYIZUS4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 16:18:56 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8QKIuV2023561
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Sep 2008 13:18:56 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K7T00I01JLIQH00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 26 Sep 2008 13:02:08 -0700 (PDT)
-In-reply-to: <20080926094903.08e68f5b@gara>
+ id <0K7T00001KB40A00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Fri, 26 Sep 2008 13:18:56 -0700 (PDT)
+In-reply-to: <20080926143309.GC11413@mit.edu>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 26, 2008  09:49 -0500, Jose R. Santos wrote:
-> Agreed, but performance wise this way is more consistent with the
-> current block and inode allocators.  The block allocator will start its
-> free block search on the block group that contains the inode.  Since
-> these block groups do not contain any blocks, the block allocator will
-> have to be modify to make sure data is not being placed randomly in the
-> disk.
+On Sep 26, 2008  10:33 -0400, Theodore Ts'o wrote:
+> > We could special-case the placement of the GDT blocks in this case, and
+> > then put them into the proper META_BG location when/if the blocks are
+> > actually added to the filesystem.
+> 
+> Yes, but where do you put the GDT blocks in the case of where there is
+> no more space in the reserved gdt blocks?  Using some inode is
+> probably the best bet, since we would then know where to find the GDT
+> blocks.
 
-This is already the case today when a block group is full.  The block
-allocator needs to handle this gracefully.
+I agree that replicating a GDT inode is probably the easiest answer.
+IIRC this was proposed also in the past, before META_BG was implemented.
+To be honest, we should just deprecate META_BG at that time, I don't
+think it was every used by anything, and still isn't properly handled
+by the cross-product of filesystem features (online resize, others).
 
-> The flex_bg inode allocator would also need to be modify since
-> it currently depends on a algoright that assumes that block groups
-> contain actual blocks.  One of the things that got flex_bg added to
-> ext4 in the first place was performance the performance improvements it
-> provided.  I would like to keep that advantage if possible.
+> My suggestion of using inode numbers growing downward from the top of
+> the 2**32 number space was to avoid needing to move the GDT blocks
+> into their proper place if and when the filesystem is grown;
 
-I don't think the performance advantage was at all related to inode->block
-locality (since this is actually worse with FLEX_BG) but rather better
-metadata locality (e.g. contiguous bitmaps, itables avoiding seeking
-during metadata operations).
+How do inode numbers affect the GDT blocks?  Is it because high inode
+numbers would be in correspondingly high "groups" and resizing could
+be done "normally" without affecting the new GDT placement?
 
-> This could also be use to speed mkfs since we would not need to zero
-> out as many inode tables.  We could initialize just a couple of inode
-> tables per flex_bg group and allocate the rest dynamically.
+Once we move over to a scheme of GDT inodes, there isn't necessarily a
+"proper place" for GDT blocks, so I don't know if that makes a difference.
 
-There is already the ability to avoid zeroing ANY inode tables with
-uninit_bg, but it is unsafe to do this in production because the old
-itable data is there and e2fsck might become confused if the group
-bg_itable_unused is lost (due to gdt corruption or other inconsistency).
+I was going to object on the grounds that the GDT inodes will become too
+large and sparse, but for a "normal" ratio (8192 inodes/group) this
+only works out to be 32MB for the whole gdt to hit 2^32 inodes.
 
-> You do pay
-> a small penalty when allocating a new inode table since we first need
-> to find the blocks for that inode table as well as zeroing it afterward.
-> The penalty is less than if we do the one time background zeroing of
-> inode tables where your disk will be trashing for a while the first
-> time it is mounted.
+The other thing we should consider is the case where the inode ratio
+is too high, and it is limiting the growth of the filesystem due to
+2^32 inode limit.  With a default inode ratio of 1 inode/8192 bytes,
+this hits 2^32 inodes at 262144 groups, or only 32TB...  We may need
+to also be able to add "inodeless groups" in such systems unless we
+also implement 2^64-bit inode numbers at the same time.
 
-I don't think it is any different.  The itable zeroing is _still_ needed,
-because the flag that indicates if an itable is used or not is unreliable
-in some corruption cases, and we don't want to read garbage from disk.
-IMHO when a filesystem is first formatted and mounted it is probably
-mostly idle, and if not the zeroing (and other stuff) thread can be delayed
-(e.g. in a new distro install maybe the itables aren't zeroed until the
-second or third mount, no great loss/risk).
+This isn't impossible, though the directory format would need to change
+to handle 64-bit inode numbers, and some way to convert between the
+leaf formats.
 
-> If supporting already existing filesystems is really important we could
-> always implement both techniques since they technically should not
-> conflict with each other, though you couldn't use both of them at the
-> same time if you have a 1:1 block/inode ratio.
+> it simplifies the code needed for the on-line resizing, and it also means
+> that when you do the on-line resizing the filesystem gets more inodes
+> if the inodes are dynamically grown automatically by the filesystem,
+> maybe that's not a problem.
 
-IMHO dynamic inode tables for existing filesystems is the MAIN goal.
-Once you know you have run out of inodes it is already too late to plan
-for it, and if you need a reformat to implement this scheme you could
-just as easily reformat with enough inodes in the first place :-).
+It probably makes sense to increase the "static" inode count proportionally
+with the new blocks, since we already know the inode ratio is too small,
+so I can see a benefit from this direction.
+
+> > Alternately, we could put the GDT into the inode and replicate the whole
+> > inode several times (the data would already be present in the filesystem).
+> > We just need to select inodes from disparate parts of the filesystem to
+> > avoid corruption (I'd suggest one inode from each backup superblock
+> > group), point them at the existing GDT blocks, then allow the new GDT
+> > blocks to be added to each one.  The backup GDT-inode copies only need
+> > to be changed when new groups are added/removed.
+> 
+> Yes, that's probably the best solution, IMHO.
+> 
+> 					- Ted
 
 Cheers, Andreas
 --
