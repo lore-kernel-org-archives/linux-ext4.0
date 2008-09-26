@@ -1,57 +1,54 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC] dynamic inodes
-Date: Fri, 26 Sep 2008 10:33:09 -0400
-Message-ID: <20080926143309.GC11413@mit.edu>
-References: <48DA28B0.2020207@sun.com> <20080925223731.GM10950@webber.adilger.int> <20080926021132.GA11413@mit.edu> <20080926103322.GA10950@webber.adilger.int>
+Subject: Re: a question for i_inode's i_size in ext2
+Date: Fri, 26 Sep 2008 10:41:54 -0400
+Message-ID: <20080926144154.GD11413@mit.edu>
+References: <2014bcab0809190021qbca7bect601c891c2db197cf@mail.gmail.com> <20080920032522.GB9633@atrey.karlin.mff.cuni.cz> <20080920063502.GB12762@mit.edu> <2014bcab0809252152i6fef9babx242e821c4f0d5a7b@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alex Tomas <bzzz@sun.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: =?utf-8?B?7ZmN7Iug?= shin hong <hongshin@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:55883 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:59571 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751621AbYIZOdO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 10:33:14 -0400
+	with ESMTP id S1752258AbYIZOl6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 10:41:58 -0400
 Content-Disposition: inline
-In-Reply-To: <20080926103322.GA10950@webber.adilger.int>
+In-Reply-To: <2014bcab0809252152i6fef9babx242e821c4f0d5a7b@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 26, 2008 at 04:33:22AM -0600, Andreas Dilger wrote:
-> > This is actually the big problem; with META_BG, in order to find the
-> > group descriptor blocks, it assumes that the first group descriptor
-> > can be found at the beginning of the group descriptor block, which
-> > means it has to be found at a certain offset from the beginning of the
-> > filesystem.  And this would not be true for inode-only block groups.
-> 
-> We could special-case the placement of the GDT blocks in this case, and
-> then put them into the proper META_BG location when/if the blocks are
-> actually added to the filesystem.
+On Fri, Sep 26, 2008 at 01:52:13PM +0900, =ED=99=8D=EC=8B=A0 shin hong =
+wrote:
+>   Thank you for the answering.
+>=20
+>   In ext2, it seems to me that inode's i_size field can be accessed w=
+ithout
+> holding i_mutex
+>   nor thorugh i_size_read function.
+>=20
+>   For example, in ext2_update_inode() can be invoked without holding
+> i_mutex.
+>   However, it freely access i_size field.
+>=20
+>   Are these accesses can race with each others?
+>=20
 
-Yes, but where do you put the GDT blocks in the case of where there is
-no more space in the reserved gdt blocks?  Using some inode is
-probably the best bet, since we would then know where to find the GDT
-blocks.
+ext2_update_inode() is responsible for writing the contents of the
+inode to disk.  So it simply saves the current version of the object
+to persistent storage.  If the inode happens to be in the middle of
+being modified, the inode will be redirtied (the rule for modifying
+objects like inodes is you modify them first, *then* set the dirty bit
+after you are done modifying the object).  So if another kernel thread
+is in the middle of updating the object, it's not a big deal; the
+updated version of the inode will get written to disk later.
 
-My suggestion of using inode numbers growing downward from the top of
-the 2**32 number space was to avoid needing to move the GDT blocks
-into their proper place if and when the filesystem is grown; it
-simplifies the code needed for the on-line resizing, and it also means
-that when you do the on-line resizing the filesystem gets more inodes
-along with more blocks.  If we move the GDT blocks into their proper
-place, then the filesystem gets more blocks, but not more inodes; but
-if the inodes are dynamically grown automatically by the filesystem,
-maybe that's not a problem.
+Ext2 has no guarantees about filesystem consistency after a crash (you
+have to run fsck after a crash), so this is OK.
 
-> Alternately, we could put the GDT into the inode and replicate the whole
-> inode several times (the data would already be present in the filesystem).
-> We just need to select inodes from disparate parts of the filesystem to
-> avoid corruption (I'd suggest one inode from each backup superblock
-> group), point them at the existing GDT blocks, then allow the new GDT
-> blocks to be added to each one.  The backup GDT-inode copies only need
-> to be changed when new groups are added/removed.
-
-Yes, that's probably the best solution, IMHO.
-
-					- Ted
+     	    	       	 	    	    - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
