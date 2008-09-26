@@ -1,54 +1,64 @@
-From: Dave Kleikamp <shaggy@linux.vnet.ibm.com>
-Subject: Re: [PATCH 0/10] freeze feature ver 1.13
-Date: Fri, 26 Sep 2008 16:26:58 -0500
-Message-ID: <1222464418.27833.7.camel@norville.austin.ibm.com>
-References: <20080926175652t-sato@mail.jp.nec.com>
-	 <30536.1222426096@turing-police.cc.vt.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [RFC] dynamic inodes
+Date: Fri, 26 Sep 2008 18:26:32 -0400
+Message-ID: <20080926222632.GE8903@mit.edu>
+References: <48DA28B0.2020207@sun.com> <20080925223731.GM10950@webber.adilger.int> <20080926021132.GA11413@mit.edu> <20080926103322.GA10950@webber.adilger.int> <20080926143309.GC11413@mit.edu> <20080926201832.GG10950@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Takashi Sato <t-sato@yk.jp.nec.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Christoph Hellwig <hch@infradead.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"dm-devel@redhat.com" <dm-devel@redhat.com>,
-	"viro@ZenIV.linux.org.uk" <viro@ZenIV.linux.org.uk>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"xfs@oss.sgi.com" <xfs@oss.sgi.com>,
-	"mtk.manpages@googlemail.com" <mtk.manpages@googlemail.com>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Valdis.Kletnieks@vt.edu
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <30536.1222426096@turing-police.cc.vt.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Alex Tomas <bzzz@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:35969 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752227AbYIZW0f (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 18:26:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20080926201832.GG10950@webber.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-09-26 at 06:48 -0400, Valdis.Kletnieks@vt.edu wrote:
-> On Fri, 26 Sep 2008 17:56:52 +0900, Takashi Sato said:
+On Fri, Sep 26, 2008 at 02:18:32PM -0600, Andreas Dilger wrote:
+> I agree that replicating a GDT inode is probably the easiest answer.
+> IIRC this was proposed also in the past, before META_BG was implemented.
+> To be honest, we should just deprecate META_BG at that time, I don't
+> think it was every used by anything, and still isn't properly handled
+> by the cross-product of filesystem features (online resize, others).
 
-> Would it be a good idea to merge patch 10 into patch 8?   Otherwise, there's
-> two issues I can see:
-> 
-> 1) A mostly theoretical problem if a bisect lands exactly on patch 9 it can
-> hit the deadlock.
+Meta_BG is I think relatively well supported now, actually.  More to
+the point, the resize_inode feature doesn't work for filesystems with
+more than 2**32 blocks, since indirect blocks don't work for such
+filesystems.  The assumption had always been that we would use meta_bg
+to support online-resize for > 2*32 block filesystem, once we had
+implemented on-line resize support for it.
 
-Really, there's no deadlock until someone uses the new function, so
-that's not really an issue, is it?  However, this patchset breaks
-bisection anyway.
+> How do inode numbers affect the GDT blocks?  Is it because high inode
+> numbers would be in correspondingly high "groups" and resizing could
+> be done "normally" without affecting the new GDT placement?
 
-A bisect anywhere between patch 1 and 7 will cause some number of
-filesystems to fail to compile.  Patches 1-7 either need to be combined
-into one, or patch 1 needs to add freeze_fs and unfreeze_fs while
-leaving write_super_lockfs and unlockfs, then a patch between 7 and 8
-could remove write_super_lockfs and unlockfs.
+Yep.  So inode numbers between 1 and (num_bg*inodes_per_bg)+1 are
+"natural" inodes, and inodes above that would have to be "dynamic"
+inodes where the GDT would be found in an inode.
 
-> 2) The API at patch 8 and patch 10 differs, that's going to make testing through
-> a bisection of this patch series a pain.
+> I was going to object on the grounds that the GDT inodes will become too
+> large and sparse, but for a "normal" ratio (8192 inodes/group) this
+> only works out to be 32MB for the whole gdt to hit 2^32 inodes.
 
-There's no need to test the new interface during a bisection.  Bisection
-is important in testing regressions, but not new function.
--- 
-David Kleikamp
-IBM Linux Technology Center
+I'm not sure what you mean by "sparse".... the would be just as tighly
+packed, but just starting at 2*32-1 and growing down.
+
+> The other thing we should consider is the case where the inode ratio
+> is too high, and it is limiting the growth of the filesystem due to
+> 2^32 inode limit.  With a default inode ratio of 1 inode/8192 bytes,
+> this hits 2^32 inodes at 262144 groups, or only 32TB...  We may need
+> to also be able to add "inodeless groups" in such systems unless we
+> also implement 2^64-bit inode numbers at the same time.
+
+Yeah, good point.  The real fundamental question is whether we want to
+try to support 2**64 inodes as a long-term goal.  Past a certain
+point, we would have to have inodeless groups if we support 2**48
+physical blocks, but only 2**32 inodes, with or without dynamic
+inodes.
+
+							- Ted
 
