@@ -1,64 +1,148 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC] dynamic inodes
-Date: Fri, 26 Sep 2008 18:26:32 -0400
-Message-ID: <20080926222632.GE8903@mit.edu>
-References: <48DA28B0.2020207@sun.com> <20080925223731.GM10950@webber.adilger.int> <20080926021132.GA11413@mit.edu> <20080926103322.GA10950@webber.adilger.int> <20080926143309.GC11413@mit.edu> <20080926201832.GG10950@webber.adilger.int>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [RFC][PATCH 0/12]ext4: online defrag (ver 0.95)
+Date: Sat, 27 Sep 2008 16:26:29 +0900
+Message-ID: <48DDE025.2090207@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alex Tomas <bzzz@sun.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:35969 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752227AbYIZW0f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Sep 2008 18:26:35 -0400
-Content-Disposition: inline
-In-Reply-To: <20080926201832.GG10950@webber.adilger.int>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:57332 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751124AbYI0H0e (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Sep 2008 03:26:34 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Sep 26, 2008 at 02:18:32PM -0600, Andreas Dilger wrote:
-> I agree that replicating a GDT inode is probably the easiest answer.
-> IIRC this was proposed also in the past, before META_BG was implemented.
-> To be honest, we should just deprecate META_BG at that time, I don't
-> think it was every used by anything, and still isn't properly handled
-> by the cross-product of filesystem features (online resize, others).
+Hi,
 
-Meta_BG is I think relatively well supported now, actually.  More to
-the point, the resize_inode feature doesn't work for filesystems with
-more than 2**32 blocks, since indirect blocks don't work for such
-filesystems.  The assumption had always been that we would use meta_bg
-to support online-resize for > 2*32 block filesystem, once we had
-implemented on-line resize support for it.
+I've updated the ext4 online defragmentation patches.
+In this version, mainly there are following two changes and some fixes:
+  - Support 1KB and 2KB block size.
+  - Implement EXT4_IOC_FIEMAP_INO instead of EXT4_IOC_EXTENTS_INFO
+    to get extetns information.
 
-> How do inode numbers affect the GDT blocks?  Is it because high inode
-> numbers would be in correspondingly high "groups" and resizing could
-> be done "normally" without affecting the new GDT placement?
+Changelog:
+- 0.95(Sep. 26, 2008)
+  - Support 1KB and 2KB block size.
+  - Implement EXT4_IOC_FIEMAP_INO which calls ext4_fiemap() for specified inode number
+    instead of EXT4_IOC_EXTENTS_INFO to get extents information.
+  - Merge "JC6-defrag-alloc-contiguous-blks-credit" and
+    "ext4-request-for-blocks-with-ar.excepted_group-1.patch" in the ext4 patch queue
+    into this version.
+  - Handle s_dirtyblocks_counter correctly in defrag when delalloc enabled.
+  - Remove unneeded copy_from_user() in EXT4_IOC_GROUP_INFO ioctl.  Ted pointed this out.
+- 0.9 (May 30, 2008)
+  - Create some new functions (ext4_defrag_fill_ar(),
+    ext4_defrag_check_phase() ...) to separate block allocation function,
+    since the phase mode plug into the allocation function isn't good.
+  - Add the description of ext4_defrag() which is main function.
+  - Add the capability check.
+  - Some cleanups.
+- 0.8 (Apr. 8, 2008)
+    Fix sparse warnings and change the construction of patches.
 
-Yep.  So inode numbers between 1 and (num_bg*inodes_per_bg)+1 are
-"natural" inodes, and inodes above that would have to be "dynamic"
-inodes where the GDT would be found in an inode.
+Outline for ext4 online defragmentation:
+Ext4 online defrag has the following three functions.
 
-> I was going to object on the grounds that the GDT inodes will become too
-> large and sparse, but for a "normal" ratio (8192 inodes/group) this
-> only works out to be 32MB for the whole gdt to hit 2^32 inodes.
+ no option  Solving a single file fragmentation.
+            Single file fragmentation is solved by moving file
+            data to contiguous free blocks.
 
-I'm not sure what you mean by "sparse".... the would be just as tighly
-packed, but just starting at 2*32-1 and growing down.
+    -r      Solving a relevant file fragmentation.
+            Relevant file fragmentation could be solved by moving
+            the files under the specified directory close together with
+            the block containing the directory data.
 
-> The other thing we should consider is the case where the inode ratio
-> is too high, and it is limiting the growth of the filesystem due to
-> 2^32 inode limit.  With a default inode ratio of 1 inode/8192 bytes,
-> this hits 2^32 inodes at 262144 groups, or only 32TB...  We may need
-> to also be able to add "inodeless groups" in such systems unless we
-> also implement 2^64-bit inode numbers at the same time.
+    -f      Solving a free space fragmentation.
+            If there is no contiguous free blocks in the filesystem,
+            the other files are moved to make sufficient space to allocate
+            contiguous blocks for the target file.
 
-Yeah, good point.  The real fundamental question is whether we want to
-try to support 2**64 inodes as a long-term goal.  Past a certain
-point, we would have to have inodeless groups if we support 2**48
-physical blocks, but only 2**32 inodes, with or without dynamic
-inodes.
+Notes:
+- Ext4 online defarg needs "mballoc" and "extents" mount options.
+- "ext4-fiemap.patch" in the ext4 patch queue is necessary
+   for EXT4_IOC_FIEMAP_INO ioctl.  We have to apply fiemap patches previously
+   then apply defrag patches, so it is necessary to change
+   the order of series in the ext4 patch queue.
 
-							- Ted
+Next steps:
+1. Address the following items that Ted pointed out.
+ - Move all of the defrag ioctls from ext4_defrag_ioctl() to ext4_ioctl()
+   so that defrag does not have a double layer ioctl's dispatch.
+ - Remove the block reservation in the force defrag (-f).
+ - Remove the EXT4_IOC_FIBMAP ioctl and use the EXT4_IOC_FIEMAP instead.
+ - Get super block information with opening block device in user space
+   so that we can remove the EXT4_IOC_GROUP_INFO ioctl.
 
+Summary of patches:
+* The followings are new ext4 online defrag patches and they consist
+  of ioctl unit except 1-4.  Because the EXT4_IOC_DEFRAG is too big to review,
+  I divided it into 4 patches.
+
+[PATCH 1/12] EXT4_IOC_DEFRAG ioctl and main functions of defrag
+- Create the temporary inode and do defrag per
+  defrag_size (defalut 64MB).
+
+[PATCH 2/12] Allocate new contiguous blocks with mballoc
+- Search contiguous free blocks with mutil-block allocation
+  and allocate them for the temporary inode.
+
+[PATCH 3/12] Read and write file data with memory page
+- Read the file data from the old blocks to the page cache and
+  write the file data on the page into the new blocks.
+
+[PATCH 4/12]  Exchange the blocks between two inodes
+- Exchange the data blocks between the temporary inode and
+  the original inode.
+
+[PATCH 5/12] EXT4_IOC_FIBMAP ioctl
+- The EXT4_IOC_FIBMAP ioctl gets the physical block offset of target inode
+  with ext4_bmap().  This ioctl is used only in the relevant defrag (-r).
+
+[PATCH 6/12] EXT4_IOC_GROUP_INFO ioctl
+- The EXT4_IOC_GROUP_INFO ioctl gets the block group information
+  of target inode is located in.  This ioctl is used only in the force defrag (-f).
+
+[PATCH 7/12] EXT4_IOC_FREE_BLOCKS_INFO ioctl
+- The EXT4_IOC_FREE_BLOCKS_INFO ioctl gets free extents
+  information of the target block group.
+  This ioctl is used only in the force defrag (-f).
+
+[PATCH 8/12] EXT4_IOC_FIEMAP_INO ioctl
+- The EXT4_IOC_FIEMAP_INO is used to get extents information of
+  inode which set to ioctl.
+  The defragger uses this ioctl to check the fragment condition
+  and to get extents information in the specified block group.
+
+[PATCH 9/12] EXT4_IOC_RESERVE_BLOCK ioctl
+- The EXT4_IOC_RESERVE_BLOCK ioctl reserves the specified
+  contiguous free space with ext4 block reservation function.
+  This ioctl is used only in the force defrag (-f).
+
+[PATCH 10/12] EXT4_IOC_MOVE_VICTIM ioctl
+- The EXT4_IOC_MOVE_VICTIM moves the victim extents into other block group.
+  Therefore the contiguous free space is made in the target block group.
+  This ioctl is used only in the force defrag (-f).
+
+[PATCH 11/12] EXT4_IOC_BLOCK_RELEASE ioctl
+- The EXT4_IOC_BLOCK_RELEASE releases the reserved blocks
+  which target inode holds.
+  This ioctl is used if defrag failed and it was after the block reservation.
+
+[PATCH 12/12] Online defrag command
+- The defrag command. Usage is as follows:
+  - Defrag for a single file.
+    # e4defrag file-name
+  - Defrag for all files on ext4.
+    # e4defrag device-name
+  - Put the multiple files closer together.
+    # e4defrag -r directory-name
+  - Defrag for free space fragmentation.
+    # e4defrag -f file-name
+
+Any comments and tests are welcome.
+
+Best regards,
+Akira Fujita
