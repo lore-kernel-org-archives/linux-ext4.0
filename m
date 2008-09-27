@@ -1,7 +1,7 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 6/12]ext4: Add the EXT4_IOC_GROUP_INFO ioctl
-Date: Sat, 27 Sep 2008 16:26:55 +0900
-Message-ID: <48DDE03F.8020604@rs.jp.nec.com>
+Subject: [RFC][PATCH 5/12]ext4: Add the EXT4_IOC_FIBMAP ioctl
+Date: Sat, 27 Sep 2008 16:26:51 +0900
+Message-ID: <48DDE03B.5000505@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
@@ -11,82 +11,105 @@ Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-ext4: online defrag -- Add the EXT4_IOC_GROUP_INFO ioctl.
+ext4: online defrag -- Add the EXT4_IOC_FIBMAP ioctl.
 
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-The EXT4_IOC_GROUP_INFO ioctl gets the block group information
-of target inode is located in.  This ioctl is used only in the force defrag (-f).
+The EXT4_IOC_FIBMAP ioctl gets the physical block offset of target inode
+with ext4_bmap().  This ioctl is used only in the relevant defrag (-r).
 
-The defragger will do the same thing in user space instead of
-implement the ioctl, so this ioctl will go away in the next version.
+In the relevant defrag, in order to move the files under
+the specified directory close together with the block containing the directory data,
+defragger sets this physical block offset to the goal of block allocation.
+
+We will use the FS_IOC_FIEMAP ioctl instead of it in the next version,
+so this will go away.
 
 Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 ---
- fs/ext4/defrag.c |   11 +++++++++++
- fs/ext4/ext4.h   |    6 ++++++
- fs/ext4/ioctl.c  |    3 ++-
- 3 files changed, 19 insertions(+), 1 deletions(-)
+ fs/ext4/defrag.c |   17 +++++++++++++++--
+ fs/ext4/ext4.h   |    2 ++
+ fs/ext4/inode.c  |    2 +-
+ fs/ext4/ioctl.c  |    1 +
+ 4 files changed, 19 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
-index 49b8d49..cb7d237 100644
+index 4dd4318..49b8d49 100644
 --- a/fs/ext4/defrag.c
 +++ b/fs/ext4/defrag.c
-@@ -114,6 +114,17 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
- 		block = ext4_bmap(mapping, block);
+@@ -95,13 +95,26 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
+ {
+ 	int err = 0;
 
- 		return put_user(block, p);
-+	} else if (cmd == EXT4_IOC_GROUP_INFO) {
-+		struct ext4_group_data_info grp_data;
+-	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)) {
++	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL ||
++					cmd == EXT4_IOC_FIBMAP)) {
+ 		printk(KERN_ERR "ext4 defrag: ino[%lu] is not extents "
+ 					"based file\n", inode->i_ino);
+ 		return -EOPNOTSUPP;
+ 	}
+
+-	if (cmd == EXT4_IOC_DEFRAG) {
++	if (cmd == EXT4_IOC_FIBMAP) {
++		ext4_fsblk_t __user *p = (ext4_fsblk_t __user *)arg;
++		ext4_fsblk_t block = 0;
++		struct address_space *mapping = filp->f_mapping;
 +
-+		grp_data.s_blocks_per_group =
-+			EXT4_BLOCKS_PER_GROUP(inode->i_sb);
-+		grp_data.s_inodes_per_group =
-+			EXT4_INODES_PER_GROUP(inode->i_sb);
-+
-+		if (copy_to_user((struct ext4_group_data_info __user *)arg,
-+			&grp_data, sizeof(grp_data)))
++		if (copy_from_user(&block, (ext4_fsblk_t __user *)arg,
++					sizeof(block)))
 +			return -EFAULT;
- 	} else if (cmd == EXT4_IOC_DEFRAG) {
++
++		block = ext4_bmap(mapping, block);
++
++		return put_user(block, p);
++	} else if (cmd == EXT4_IOC_DEFRAG) {
  		struct ext4_ext_defrag_data defrag;
  		struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
+
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index db4891c..a635a76 100644
+index 556ff5e..db4891c 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -304,6 +304,7 @@ struct ext4_new_group_data {
+@@ -303,6 +303,7 @@ struct ext4_new_group_data {
+ #define EXT4_IOC_MIGRATE		_IO('f', 9)
   /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
  #define EXT4_IOC_DEFRAG			_IOW('f', 15, struct ext4_ext_defrag_data)
- #define EXT4_IOC_FIBMAP			_IOW('f', 16, ext4_fsblk_t)
-+#define EXT4_IOC_GROUP_INFO		_IOW('f', 17, struct ext4_group_data_info)
++#define EXT4_IOC_FIBMAP			_IOW('f', 16, ext4_fsblk_t)
 
  /*
   * ioctl commands in 32 bit emulation
-@@ -327,6 +328,11 @@ struct ext4_ext_defrag_data {
- 	ext4_fsblk_t goal;		/* block offset for allocation */
- };
+@@ -1017,6 +1018,7 @@ extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
+ 				    __u32 minor_hash,
+ 				    struct ext4_dir_entry_2 *dirent);
+ extern void ext4_htree_free_dir_info(struct dir_private_info *p);
++extern sector_t ext4_bmap(struct address_space *mapping, sector_t block);
 
-+struct ext4_group_data_info {
-+	int s_blocks_per_group;		/* blocks per group */
-+	int s_inodes_per_group;		/* inodes per group */
-+};
-+
- #define EXT4_TRANS_META_BLOCKS 4 /* bitmap + group desc + sb + inode */
-
- /*
+ /* fsync.c */
+ extern int ext4_sync_file(struct file *, struct dentry *, int);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 9b0117c..24d37cb 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2706,7 +2706,7 @@ out:
+  * So, if we see any bmap calls here on a modified, data-journaled file,
+  * take extra steps to flush any blocks which might be in the cache.
+  */
+-static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
++sector_t ext4_bmap(struct address_space *mapping, sector_t block)
+ {
+ 	struct inode *inode = mapping->host;
+ 	journal_t *journal;
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 5982f3e..c05502f 100644
+index 1c25e8e..5982f3e 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
-@@ -257,7 +257,8 @@ setversion_out:
+@@ -256,6 +256,7 @@ setversion_out:
+
  		return err;
  	}
- 	case EXT4_IOC_FIBMAP:
--	case EXT4_IOC_DEFRAG: {
-+	case EXT4_IOC_DEFRAG:
-+	case EXT4_IOC_GROUP_INFO: {
++	case EXT4_IOC_FIBMAP:
+ 	case EXT4_IOC_DEFRAG: {
  		return ext4_defrag_ioctl(inode, filp, cmd, arg);
  	}
- 	case EXT4_IOC_GROUP_ADD: {
 
