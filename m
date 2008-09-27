@@ -1,250 +1,227 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 7/12]ext4: Add the EXT4_IOC_FREE_BLOCKS_INFO ioctl
-Date: Sat, 27 Sep 2008 16:26:59 +0900
-Message-ID: <48DDE043.9060407@rs.jp.nec.com>
+Subject: [RFC][PATCH 8/12]ext4: Add the EXT4_IOC_FIEMAP_INO ioctl
+Date: Sat, 27 Sep 2008 16:27:02 +0900
+Message-ID: <48DDE046.6030206@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:57358 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751397AbYI0H1F (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Sep 2008 03:27:05 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: online defrag -- Add the EXT4_IOC_FREE_BLOCKS_INFO ioctl.
+ext4: online defrag -- Add the EXT4_IOC_FIEMAP_INO ioctl.
 
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-The EXT4_IOC_FREE_BLOCKS_INFO ioctl gets free extents
-information of the target block group.
-This ioctl is used only in the force defrag (-f).
+The EXT4_IOC_FIEMAP_INO is used to get extents information of
+inode which set to ioctl.
+The defragger uses this ioctl to check the fragment condition
+and to get extents information in the specified block group.
 
-Defragger calculates the victim extents (which will be moved
-into other block group in order to make contiguous free space for the target file)
-based on used/unused extents information.
+This ioctl is brand new, the EXT4_IOC_EXTENTS_INFO ioctl
+used to do the same thing in the previous version.
 
 Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 ---
- fs/ext4/balloc.c |    2 +-
- fs/ext4/defrag.c |  112 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ext4.h   |   27 +++++++++++++
- fs/ext4/ioctl.c  |    3 +-
- 4 files changed, 142 insertions(+), 2 deletions(-)
+ fs/ext4/defrag.c  |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h    |    7 ++++
+ fs/ext4/extents.c |    2 +-
+ fs/ext4/ioctl.c   |    3 +-
+ 4 files changed, 115 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 02068fa..64ec04c 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -919,7 +919,7 @@ static int ext4_test_allocatable(ext4_grpblk_t nr, struct buffer_head *bh)
-  * bitmap on disk and the last-committed copy in journal, until we find a
-  * bit free in both bitmaps.
-  */
--static ext4_grpblk_t
-+ext4_grpblk_t
- bitmap_search_next_usable_block(ext4_grpblk_t start, struct buffer_head *bh,
- 					ext4_grpblk_t maxblocks)
- {
 diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
-index cb7d237..941414b 100644
+index 941414b..f7c99de 100644
 --- a/fs/ext4/defrag.c
 +++ b/fs/ext4/defrag.c
-@@ -90,6 +90,102 @@ err:
- 	return -EIO;
+@@ -20,6 +20,8 @@
+ #include "ext4_extents.h"
+ #include "group.h"
+
++#define FIEMAP_MAX_EXTENTS	(UINT_MAX / sizeof(struct fiemap_extent))
++
+ /**
+  * ext4_defrag_next_extent - Search for the next extent and set it to "extent"
+  *
+@@ -91,6 +93,106 @@ err:
  }
 
-+/**
-+ * ext4_defrag_fblocks_distribution - Search free blocks distribution
+ /**
++ * ext4_defrag_fiemap_ino - Get extents information by inode number
 + *
-+ * @org_inode:	original inode
-+ * @ext_info:	ext4_extents_info
++ * @filp:			pointer to file
++ * @arg:			pointer to fiemap_ino
++ *  @fiemap_ino->ino:		an inode number which is used to get
++ *				extent information
++ *  @fiemap_ino->fiemap:	request for fiemap ioctl
 + *
 + * This function returns 0 if succeed, otherwise returns error value.
 + */
 +static int
-+ext4_defrag_fblocks_distribution(struct inode *org_inode,
-+			struct ext4_extents_info *ext_info)
++ext4_defrag_fiemap_ino(struct file *filp, unsigned long arg)
 +{
-+	struct buffer_head *bitmap_bh = NULL;
-+	struct super_block *sb = org_inode->i_sb;
-+	handle_t *handle;
-+	ext4_group_t group_no;
-+	ext4_grpblk_t start, end;
-+	ext4_fsblk_t start_block = 0;
-+	int i, err;
-+	int num = 0;
-+	int len = 0;
-+	int block_set = 0;
-+	int extra_block = 0;
++	struct fiemap_ino fiemap_ino;
++	struct fiemap_extent_info fieinfo = { 0, };
++	struct inode *inode;
++	struct super_block *sb = filp->f_dentry->d_inode->i_sb;
++	u64 len = 0;
++	int err = 0;
 +
-+	if (!sb) {
-+		printk(KERN_ERR "ext4 defrag: Non-existent device\n");
-+		return -ENOSPC;
-+	}
++	if (copy_from_user(&fiemap_ino, (struct fiemap_ino __user *)arg,
++			   sizeof(struct fiemap_ino)))
++		return -EFAULT;
 +
-+	group_no = (org_inode->i_ino - 1) / EXT4_INODES_PER_GROUP(sb);
-+	start = ext_info->g_offset;
-+	end = EXT4_BLOCKS_PER_GROUP(sb) - 1;
++	/* Special inodes shouldn't be choiced */
++	if (fiemap_ino.ino < EXT4_GOOD_OLD_FIRST_INO)
++		return -ENOENT;
 +
-+	/* We consider about the boot block if bs = 1k */
-+	if (sb->s_blocksize == 1024)
-+		extra_block = 1;
++	inode = ext4_iget(sb, fiemap_ino.ino);
++	if (IS_ERR(inode))
++		return PTR_ERR(inode);
 +
-+	handle = ext4_journal_start(org_inode, 1);
-+	if (IS_ERR(handle)) {
-+		err = PTR_ERR(handle);
-+		return err;
-+	}
-+
-+	bitmap_bh = ext4_read_block_bitmap(sb, group_no);
-+	if (!bitmap_bh) {
-+		err = -EIO;
++	/* Return -ENOENT if a file does not exist */
++	if (!inode->i_nlink || !S_ISREG(inode->i_mode)) {
++		err = -ENOENT;
 +		goto out;
 +	}
 +
-+	BUFFER_TRACE(bitmap_bh, "get undo access for new block");
-+	err = ext4_journal_get_undo_access(handle, bitmap_bh);
-+	if (err)
++	if (!inode->i_op->fiemap) {
++		err = -EOPNOTSUPP;
 +		goto out;
-+
-+	for (i = start; i <= end ; i++) {
-+		if (bitmap_search_next_usable_block(i, bitmap_bh, i + 1) >= 0) {
-+			len++;
-+			/*
-+			 * Reset start_block if the free block is
-+			 * the head of region.
-+			 */
-+			if (!block_set) {
-+				start_block =
-+				 i + group_no * EXT4_BLOCKS_PER_GROUP(sb) +
-+				 extra_block;
-+				block_set = 1;
-+			}
-+		} else if (len) {
-+			ext_info->ext[num].start = start_block;
-+			ext_info->ext[num].len = len;
-+			num++;
-+			len = 0;
-+			block_set = 0;
-+			if (num == ext_info->max_entries) {
-+				ext_info->g_offset = i + 1;
-+				break;
-+			}
-+		}
-+		if (i == end && len) {
-+			ext_info->ext[num].start = start_block;
-+			ext_info->ext[num].len = len;
-+			num++;
-+		}
 +	}
 +
-+	ext_info->entries = num;
++	if (fiemap_ino.fiemap.fm_extent_count > FIEMAP_MAX_EXTENTS) {
++		err = -EINVAL;
++		goto out;
++	}
++
++	if (fiemap_ino.fiemap.fm_length == 0) {
++		err = -EINVAL;
++		goto out;
++	}
++
++	if (fiemap_ino.fiemap.fm_start > sb->s_maxbytes) {
++		err = -EFBIG;
++		goto out;
++	}
++
++	/*
++	 * Check offset and length
++	 * If the specified range exceeds the max file size,
++	 * adjust the length.
++	 */
++	if ((fiemap_ino.fiemap.fm_length > sb->s_maxbytes) ||
++	    (sb->s_maxbytes - fiemap_ino.fiemap.fm_length)
++	     < fiemap_ino.fiemap.fm_start)
++		len = sb->s_maxbytes - fiemap_ino.fiemap.fm_start;
++	else
++		len = fiemap_ino.fiemap.fm_length;
++
++	fieinfo.fi_flags = fiemap_ino.fiemap.fm_flags;
++	fieinfo.fi_extents_max = fiemap_ino.fiemap.fm_extent_count;
++	fieinfo.fi_extents_start =
++		(struct fiemap_extent *)(arg + sizeof(fiemap_ino));
++
++	if (fiemap_ino.fiemap.fm_extent_count != 0 &&
++	    !access_ok(VERIFY_WRITE, fieinfo.fi_extents_start,
++		       fieinfo.fi_extents_max * sizeof(struct fiemap_extent))) {
++		err = -EFAULT;
++		goto out;
++	}
++
++	if (fieinfo.fi_flags & FIEMAP_FLAG_SYNC)
++		filemap_write_and_wait(inode->i_mapping);
++
++	err = inode->i_op->fiemap(inode, &fieinfo,
++				fiemap_ino.fiemap.fm_start, len);
++	if (!err) {
++		fiemap_ino.fiemap.fm_flags = fieinfo.fi_flags;
++		fiemap_ino.fiemap.fm_mapped_extents = fieinfo.fi_extents_mapped;
++		if (copy_to_user((char *)arg, &fiemap_ino, sizeof(fiemap_ino)))
++			err = -EFAULT;
++	}
++
 +out:
-+	ext4_journal_release_buffer(handle, bitmap_bh);
-+	brelse(bitmap_bh);
-+
-+	if (handle)
-+		ext4_journal_stop(handle);
-+
++	iput(inode);
 +	return err;
 +}
 +
- int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
- 			unsigned long arg)
- {
-@@ -125,6 +221,22 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
- 		if (copy_to_user((struct ext4_group_data_info __user *)arg,
- 			&grp_data, sizeof(grp_data)))
- 			return -EFAULT;
-+	} else if (cmd == EXT4_IOC_FREE_BLOCKS_INFO) {
-+		struct ext4_extents_info ext_info;
++/**
+  * ext4_defrag_fblocks_distribution - Search free blocks distribution
+  *
+  * @org_inode:	original inode
+@@ -237,6 +339,9 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
+ 			err = copy_to_user(
+ 				(struct ext4_extents_info __user *)arg,
+ 				&ext_info, sizeof(ext_info));
++	} else if (cmd == EXT4_IOC_FIEMAP_INO) {
 +
-+		if (copy_from_user(&ext_info,
-+			(struct ext4_extents_info __user *)arg,
-+			sizeof(ext_info)))
-+			return -EFAULT;
-+
-+		BUG_ON(ext_info.ino != inode->i_ino);
-+
-+		err = ext4_defrag_fblocks_distribution(inode, &ext_info);
-+
-+		if (!err)
-+			err = copy_to_user(
-+				(struct ext4_extents_info __user *)arg,
-+				&ext_info, sizeof(ext_info));
++		err = ext4_defrag_fiemap_ino(filp, arg);
  	} else if (cmd == EXT4_IOC_DEFRAG) {
  		struct ext4_ext_defrag_data defrag;
  		struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index a635a76..ffe687b 100644
+index ffe687b..8d008c8 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -305,6 +305,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_DEFRAG			_IOW('f', 15, struct ext4_ext_defrag_data)
+@@ -306,6 +306,7 @@ struct ext4_new_group_data {
  #define EXT4_IOC_FIBMAP			_IOW('f', 16, ext4_fsblk_t)
  #define EXT4_IOC_GROUP_INFO		_IOW('f', 17, struct ext4_group_data_info)
-+#define EXT4_IOC_FREE_BLOCKS_INFO	_IOW('f', 18, struct ext4_extents_info)
+ #define EXT4_IOC_FREE_BLOCKS_INFO	_IOW('f', 18, struct ext4_extents_info)
++#define EXT4_IOC_FIEMAP_INO		_IOW('f', 19, struct fiemap_ino)
 
  /*
   * ioctl commands in 32 bit emulation
-@@ -322,6 +323,20 @@ struct ext4_new_group_data {
- #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
- #define EXT4_IOC32_SETVERSION_OLD	FS_IOC32_SETVERSION
-
-+/*
-+ * The following four macros are used for the defrag force mode.
-+ *
-+ * DEFRAG_MAX_ENT:	the maximum number of extents for exchanging between
-+ *			kernel-space and user-space per an ioctl
-+ */
-+#define DEFRAG_MAX_ENT		32
-+
-+struct ext4_extent_data {
-+	ext4_lblk_t block;		/* start logical block number */
-+	ext4_fsblk_t start;		/* start physical block number */
-+	int len;			/* blocks count */
-+};
-+
- struct ext4_ext_defrag_data {
- 	ext4_lblk_t start_offset;	/* start offset to defrag in blocks */
- 	ext4_lblk_t defrag_size;	/* size of defrag in blocks */
-@@ -333,6 +348,16 @@ struct ext4_group_data_info {
- 	int s_inodes_per_group;		/* inodes per group */
+@@ -358,6 +359,11 @@ struct ext4_extents_info {
+ 	struct ext4_extent_data ext[DEFRAG_MAX_ENT];
  };
 
-+struct ext4_extents_info {
-+	unsigned long long ino;		/* inode number */
-+	int max_entries;		/* maximum extents count */
-+	int entries;			/* extent number/count */
-+	ext4_lblk_t f_offset;		/* file offset */
-+	ext4_grpblk_t g_offset;		/* group offset */
-+	ext4_fsblk_t goal;		/* block offset for allocation */
-+	struct ext4_extent_data ext[DEFRAG_MAX_ENT];
++struct fiemap_ino {
++	__u64 ino;
++	struct fiemap fiemap;
 +};
 +
  #define EXT4_TRANS_META_BLOCKS 4 /* bitmap + group desc + sb + inode */
 
  /*
-@@ -1015,6 +1040,8 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
- extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
- extern void ext4_init_block_alloc_info(struct inode *);
- extern void ext4_rsv_window_add(struct super_block *sb, struct ext4_reserve_window_node *rsv);
-+extern ext4_grpblk_t bitmap_search_next_usable_block(ext4_grpblk_t,
-+				struct buffer_head *, ext4_grpblk_t);
+@@ -1321,6 +1327,7 @@ extern int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode,
+ 			sector_t block, unsigned long max_blocks,
+ 			struct buffer_head *bh, int create,
+ 			int extend_disksize, int flag);
++extern int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start);
+ #endif	/* __KERNEL__ */
 
- /* dir.c */
- extern int ext4_check_dir_entry(const char *, struct inode *,
+ #endif	/* _EXT4_H */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 6e2ccb8..7fcf72d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2110,7 +2110,7 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
+ 	return 1;
+ }
+
+-static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
++int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
+ {
+ 	struct super_block *sb = inode->i_sb;
+ 	int depth = ext_depth(inode);
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index c05502f..40bc2e1 100644
+index 40bc2e1..a0e4915 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
-@@ -258,7 +258,8 @@ setversion_out:
- 	}
+@@ -259,7 +259,8 @@ setversion_out:
  	case EXT4_IOC_FIBMAP:
  	case EXT4_IOC_DEFRAG:
--	case EXT4_IOC_GROUP_INFO: {
-+	case EXT4_IOC_GROUP_INFO:
-+	case EXT4_IOC_FREE_BLOCKS_INFO: {
+ 	case EXT4_IOC_GROUP_INFO:
+-	case EXT4_IOC_FREE_BLOCKS_INFO: {
++	case EXT4_IOC_FREE_BLOCKS_INFO:
++	case EXT4_IOC_FIEMAP_INO: {
  		return ext4_defrag_ioctl(inode, filp, cmd, arg);
  	}
  	case EXT4_IOC_GROUP_ADD: {
