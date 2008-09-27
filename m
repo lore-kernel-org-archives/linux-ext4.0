@@ -1,227 +1,344 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 8/12]ext4: Add the EXT4_IOC_FIEMAP_INO ioctl
-Date: Sat, 27 Sep 2008 16:27:02 +0900
-Message-ID: <48DDE046.6030206@rs.jp.nec.com>
+Subject: [RFC][PATCH 9/12]ext4: Add the EXT4_IOC_RESERVE_BLOCK ioctl
+Date: Sat, 27 Sep 2008 16:27:12 +0900
+Message-ID: <48DDE050.6070602@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:57358 "EHLO
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:57377 "EHLO
 	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751397AbYI0H1F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Sep 2008 03:27:05 -0400
+	with ESMTP id S1752017AbYI0H1O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Sep 2008 03:27:14 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: online defrag -- Add the EXT4_IOC_FIEMAP_INO ioctl.
+ext4: online defrag -- Add the EXT4_IOC_RESERVE_BLOCK ioctl.
 
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-The EXT4_IOC_FIEMAP_INO is used to get extents information of
-inode which set to ioctl.
-The defragger uses this ioctl to check the fragment condition
-and to get extents information in the specified block group.
+The EXT4_IOC_RESERVE_BLOCK ioctl reserves the specified
+contiguous free space with ext4 block reservation function.
+This ioctl is used only in the force defrag (-f).
 
-This ioctl is brand new, the EXT4_IOC_EXTENTS_INFO ioctl
-used to do the same thing in the previous version.
+The block reservation and the multi-block allocation are
+mutually exclusive, so this ioctl will go away in the next version.
 
 Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 ---
- fs/ext4/defrag.c  |  105 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ext4.h    |    7 ++++
- fs/ext4/extents.c |    2 +-
- fs/ext4/ioctl.c   |    3 +-
- 4 files changed, 115 insertions(+), 2 deletions(-)
+ fs/ext4/balloc.c |   10 ++--
+ fs/ext4/defrag.c |  196 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h   |   10 +++
+ fs/ext4/ioctl.c  |    3 +-
+ 4 files changed, 213 insertions(+), 6 deletions(-)
 
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 64ec04c..2344a96 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -433,7 +433,7 @@ restart:
+  * If the goal block is within the reservation window, return 1;
+  * otherwise, return 0;
+  */
+-static int
++int
+ goal_in_my_reservation(struct ext4_reserve_window *rsv, ext4_grpblk_t grp_goal,
+ 			ext4_group_t group, struct super_block *sb)
+ {
+@@ -538,7 +538,7 @@ void ext4_rsv_window_add(struct super_block *sb,
+  * from the filesystem reservation window rb tree. Must be called with
+  * rsv_lock hold.
+  */
+-static void rsv_window_remove(struct super_block *sb,
++void rsv_window_remove(struct super_block *sb,
+ 			      struct ext4_reserve_window_node *rsv)
+ {
+ 	rsv->rsv_start = EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+@@ -553,7 +553,7 @@ static void rsv_window_remove(struct super_block *sb,
+  *
+  * returns 1 if the end block is EXT4_RESERVE_WINDOW_NOT_ALLOCATED.
+  */
+-static inline int rsv_is_empty(struct ext4_reserve_window *rsv)
++inline int rsv_is_empty(struct ext4_reserve_window *rsv)
+ {
+ 	/* a valid reservation end block could not be 0 */
+ 	return rsv->_rsv_end == EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+@@ -1289,7 +1289,7 @@ static int find_next_reservable_window(
+  *	@bitmap_bh: the block group block bitmap
+  *
+  */
+-static int alloc_new_reservation(struct ext4_reserve_window_node *my_rsv,
++int alloc_new_reservation(struct ext4_reserve_window_node *my_rsv,
+ 		ext4_grpblk_t grp_goal, struct super_block *sb,
+ 		ext4_group_t group, struct buffer_head *bitmap_bh)
+ {
+@@ -1433,7 +1433,7 @@ retry:
+  * expand the reservation window size if necessary on a best-effort
+  * basis before ext4_new_blocks() tries to allocate blocks,
+  */
+-static void try_to_extend_reservation(struct ext4_reserve_window_node *my_rsv,
++void try_to_extend_reservation(struct ext4_reserve_window_node *my_rsv,
+ 			struct super_block *sb, int size)
+ {
+ 	struct ext4_reserve_window_node *next_rsv;
 diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
-index 941414b..f7c99de 100644
+index f7c99de..26fb4a6 100644
 --- a/fs/ext4/defrag.c
 +++ b/fs/ext4/defrag.c
-@@ -20,6 +20,8 @@
- #include "ext4_extents.h"
- #include "group.h"
-
-+#define FIEMAP_MAX_EXTENTS	(UINT_MAX / sizeof(struct fiemap_extent))
-+
- /**
-  * ext4_defrag_next_extent - Search for the next extent and set it to "extent"
-  *
-@@ -91,6 +93,106 @@ err:
+@@ -193,6 +193,193 @@ out:
  }
 
  /**
-+ * ext4_defrag_fiemap_ino - Get extents information by inode number
++ * ext4_defrag_reserve_blocks - Reserve blocks for defrag
 + *
-+ * @filp:			pointer to file
-+ * @arg:			pointer to fiemap_ino
-+ *  @fiemap_ino->ino:		an inode number which is used to get
-+ *				extent information
-+ *  @fiemap_ino->fiemap:	request for fiemap ioctl
++ * @org_inode:	original inode
++ * @goal:	the goal offset of the block reservation
++ * @len:	blocks count we need to reserve
++ *
++ * This function returns 0 if succeed, otherwise returns error value.
++ */
++
++static int
++ext4_defrag_reserve_blocks(struct inode *org_inode, ext4_fsblk_t goal, int len)
++{
++	struct super_block *sb = NULL;
++	handle_t *handle;
++	struct buffer_head *bitmap_bh = NULL;
++	struct ext4_block_alloc_info *block_i;
++	struct ext4_reserve_window_node *my_rsv = NULL;
++	unsigned short windowsz = 0;
++	ext4_group_t group_no;
++	ext4_grpblk_t grp_target_blk;
++	int err = 0;
++
++	down_write(&EXT4_I(org_inode)->i_data_sem);
++
++	handle = ext4_journal_start(org_inode, EXT4_RESERVE_TRANS_BLOCKS);
++	if (IS_ERR(handle)) {
++		err = PTR_ERR(handle);
++		handle = NULL;
++		goto out;
++	}
++
++	if (S_ISREG(org_inode->i_mode) &&
++	    !EXT4_I(org_inode)->i_block_alloc_info) {
++		ext4_init_block_alloc_info(org_inode);
++	} else if (!S_ISREG(org_inode->i_mode)) {
++		printk(KERN_ERR "ext4 defrag: Invalid file type\n");
++		err = -EINVAL;
++		goto out;
++	}
++
++	sb = org_inode->i_sb;
++	if (!sb) {
++		printk(KERN_ERR "ext4 defrag: Non-existent device\n");
++		err = -ENXIO;
++		goto out;
++	}
++	ext4_get_group_no_and_offset(sb, goal, &group_no,
++				&grp_target_blk);
++
++	block_i = EXT4_I(org_inode)->i_block_alloc_info;
++	/* Block reservation should be enabled */
++	BUG_ON(!block_i);
++
++	windowsz = block_i->rsv_window_node.rsv_goal_size;
++	/* Goal size should be set */
++	BUG_ON(!windowsz);
++
++	my_rsv = &block_i->rsv_window_node;
++
++	bitmap_bh = ext4_read_block_bitmap(sb, group_no);
++	if (!bitmap_bh) {
++		err = -ENOSPC;
++		goto out;
++	}
++
++	BUFFER_TRACE(bitmap_bh, "get undo access for new block");
++	err = ext4_journal_get_undo_access(handle, bitmap_bh);
++	if (err)
++		goto out;
++
++	err = alloc_new_reservation(my_rsv, grp_target_blk, sb,
++						group_no, bitmap_bh);
++	if (err < 0) {
++		printk(KERN_ERR "ext4 defrag: Block reservation failed."
++			"offset [%d], bg[%lu]\n", grp_target_blk, group_no);
++		ext4_discard_reservation(org_inode);
++		goto out;
++	} else if (len > EXT4_DEFAULT_RESERVE_BLOCKS) {
++		try_to_extend_reservation(my_rsv, sb,
++			len - EXT4_DEFAULT_RESERVE_BLOCKS);
++	}
++
++out:
++	up_write(&EXT4_I(org_inode)->i_data_sem);
++	ext4_journal_release_buffer(handle, bitmap_bh);
++	brelse(bitmap_bh);
++
++	if (handle)
++		ext4_journal_stop(handle);
++
++	return err;
++}
++
++/**
++ * ext4_defrag_block_within_rsv - Is target extent reserved ?
++ *
++ * @org_inode:	original inode
++ * @ex_start:	physical block offset of the extent which already moved
++ * @ex_len:	block length of the extent
 + *
 + * This function returns 0 if succeed, otherwise returns error value.
 + */
 +static int
-+ext4_defrag_fiemap_ino(struct file *filp, unsigned long arg)
++ext4_defrag_block_within_rsv(struct inode *org_inode, ext4_fsblk_t ex_start,
++				int ex_len)
 +{
-+	struct fiemap_ino fiemap_ino;
-+	struct fiemap_extent_info fieinfo = { 0, };
-+	struct inode *inode;
-+	struct super_block *sb = filp->f_dentry->d_inode->i_sb;
-+	u64 len = 0;
-+	int err = 0;
++	struct super_block *sb = org_inode->i_sb;
++	struct ext4_block_alloc_info *block_i;
++	ext4_group_t group_no;
++	ext4_grpblk_t grp_blk;
++	struct ext4_reserve_window_node *rsv;
 +
-+	if (copy_from_user(&fiemap_ino, (struct fiemap_ino __user *)arg,
-+			   sizeof(struct fiemap_ino)))
-+		return -EFAULT;
++	block_i = EXT4_I(org_inode)->i_block_alloc_info;
++	/* Block reservation should be enabled */
++	BUG_ON(!block_i);
 +
-+	/* Special inodes shouldn't be choiced */
-+	if (fiemap_ino.ino < EXT4_GOOD_OLD_FIRST_INO)
-+		return -ENOENT;
++	/* Goal size should be set */
++	BUG_ON(!block_i->rsv_window_node.rsv_goal_size);
 +
-+	inode = ext4_iget(sb, fiemap_ino.ino);
-+	if (IS_ERR(inode))
-+		return PTR_ERR(inode);
-+
-+	/* Return -ENOENT if a file does not exist */
-+	if (!inode->i_nlink || !S_ISREG(inode->i_mode)) {
-+		err = -ENOENT;
-+		goto out;
++	rsv = &block_i->rsv_window_node;
++	if (rsv_is_empty(&rsv->rsv_window)) {
++		printk(KERN_ERR "ext4 defrag: Reservation window is empty\n");
++		return -ENOSPC;
 +	}
 +
-+	if (!inode->i_op->fiemap) {
-+		err = -EOPNOTSUPP;
-+		goto out;
++	ext4_get_group_no_and_offset(sb, ex_start, &group_no, &grp_blk);
++
++	if (!goal_in_my_reservation(&rsv->rsv_window, grp_blk, group_no, sb)
++	    || !goal_in_my_reservation(&rsv->rsv_window,
++			grp_blk + ex_len - 1, group_no, sb)){
++		/* Goal blocks are not in the reservation window */
++		printk(KERN_ERR "ext4 defrag: %d or %d in bg %lu is "
++				"not in rsv_window\n", grp_blk,
++				grp_blk + ex_len - 1, group_no);
++		return -ENOSPC;
 +	}
++	return 0;
++}
 +
-+	if (fiemap_ino.fiemap.fm_extent_count > FIEMAP_MAX_EXTENTS) {
-+		err = -EINVAL;
-+		goto out;
++/*
++ * ext4_defrag_reserve_fblocks -
++ * 		Reserve free blocks with ext4_defrag_reserve_blocks
++ *
++ * @org_inode:		original inode to get a block group number
++ * @ext_info:		freeblocks distribution which stored extent-like style
++ *  @ext_info->ext[]:	an array of struct ext4_extents_data
++ *
++ * This function returns 0 if succeed, otherwise returns error value.
++ */
++static int
++ext4_defrag_reserve_fblocks(struct inode *org_inode,
++			struct ext4_extents_info *ext_info)
++{
++	ext4_fsblk_t ex_start = 0;
++	int i, len, ret;
++
++	for (i = 0; i < ext_info->entries; i++) {
++		ex_start = ext_info->ext[i].start;
++		len = ext_info->ext[i].len;
++
++		ret = ext4_defrag_reserve_blocks(org_inode, ex_start, len);
++		if (ret < 0) {
++			printk(KERN_ERR "ext4 defrag: "
++				"Block reservation failed. offset [%llu], "
++				"length [%d]\n", ex_start, len);
++			goto err;
++		}
++
++		/* Confirm that blocks are in the reservation window */
++		ret = ext4_defrag_block_within_rsv(org_inode, ex_start, len);
++		if (ret < 0) {
++			printk(KERN_ERR "ext4 defrag: "
++				"Reservation window is not set. "
++				"offset [%llu], length [%d]\n", ex_start, len);
++			goto err;
++		}
 +	}
++	return ret;
 +
-+	if (fiemap_ino.fiemap.fm_length == 0) {
-+		err = -EINVAL;
-+		goto out;
-+	}
-+
-+	if (fiemap_ino.fiemap.fm_start > sb->s_maxbytes) {
-+		err = -EFBIG;
-+		goto out;
-+	}
-+
-+	/*
-+	 * Check offset and length
-+	 * If the specified range exceeds the max file size,
-+	 * adjust the length.
-+	 */
-+	if ((fiemap_ino.fiemap.fm_length > sb->s_maxbytes) ||
-+	    (sb->s_maxbytes - fiemap_ino.fiemap.fm_length)
-+	     < fiemap_ino.fiemap.fm_start)
-+		len = sb->s_maxbytes - fiemap_ino.fiemap.fm_start;
-+	else
-+		len = fiemap_ino.fiemap.fm_length;
-+
-+	fieinfo.fi_flags = fiemap_ino.fiemap.fm_flags;
-+	fieinfo.fi_extents_max = fiemap_ino.fiemap.fm_extent_count;
-+	fieinfo.fi_extents_start =
-+		(struct fiemap_extent *)(arg + sizeof(fiemap_ino));
-+
-+	if (fiemap_ino.fiemap.fm_extent_count != 0 &&
-+	    !access_ok(VERIFY_WRITE, fieinfo.fi_extents_start,
-+		       fieinfo.fi_extents_max * sizeof(struct fiemap_extent))) {
-+		err = -EFAULT;
-+		goto out;
-+	}
-+
-+	if (fieinfo.fi_flags & FIEMAP_FLAG_SYNC)
-+		filemap_write_and_wait(inode->i_mapping);
-+
-+	err = inode->i_op->fiemap(inode, &fieinfo,
-+				fiemap_ino.fiemap.fm_start, len);
-+	if (!err) {
-+		fiemap_ino.fiemap.fm_flags = fieinfo.fi_flags;
-+		fiemap_ino.fiemap.fm_mapped_extents = fieinfo.fi_extents_mapped;
-+		if (copy_to_user((char *)arg, &fiemap_ino, sizeof(fiemap_ino)))
-+			err = -EFAULT;
-+	}
-+
-+out:
-+	iput(inode);
-+	return err;
++err:
++	down_write(&EXT4_I(org_inode)->i_data_sem);
++	ext4_discard_reservation(org_inode);
++	up_write(&EXT4_I(org_inode)->i_data_sem);
++	return ret;
 +}
 +
 +/**
   * ext4_defrag_fblocks_distribution - Search free blocks distribution
   *
   * @org_inode:	original inode
-@@ -237,6 +339,9 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
- 			err = copy_to_user(
- 				(struct ext4_extents_info __user *)arg,
- 				&ext_info, sizeof(ext_info));
-+	} else if (cmd == EXT4_IOC_FIEMAP_INO) {
+@@ -342,6 +529,15 @@ int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
+ 	} else if (cmd == EXT4_IOC_FIEMAP_INO) {
+
+ 		err = ext4_defrag_fiemap_ino(filp, arg);
++	} else if (cmd == EXT4_IOC_RESERVE_BLOCK) {
++		struct ext4_extents_info ext_info;
 +
-+		err = ext4_defrag_fiemap_ino(filp, arg);
++		if (copy_from_user(&ext_info,
++				(struct ext4_extents_info __user *)arg,
++				sizeof(ext_info)))
++			return -EFAULT;
++
++		err = ext4_defrag_reserve_fblocks(inode, &ext_info);
  	} else if (cmd == EXT4_IOC_DEFRAG) {
  		struct ext4_ext_defrag_data defrag;
  		struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ffe687b..8d008c8 100644
+index 8d008c8..eef7885 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -306,6 +306,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_FIBMAP			_IOW('f', 16, ext4_fsblk_t)
+@@ -307,6 +307,7 @@ struct ext4_new_group_data {
  #define EXT4_IOC_GROUP_INFO		_IOW('f', 17, struct ext4_group_data_info)
  #define EXT4_IOC_FREE_BLOCKS_INFO	_IOW('f', 18, struct ext4_extents_info)
-+#define EXT4_IOC_FIEMAP_INO		_IOW('f', 19, struct fiemap_ino)
+ #define EXT4_IOC_FIEMAP_INO		_IOW('f', 19, struct fiemap_ino)
++#define EXT4_IOC_RESERVE_BLOCK		_IOW('f', 20, struct ext4_extents_info)
 
  /*
   * ioctl commands in 32 bit emulation
-@@ -358,6 +359,11 @@ struct ext4_extents_info {
- 	struct ext4_extent_data ext[DEFRAG_MAX_ENT];
- };
+@@ -1046,8 +1047,17 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+ extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
+ extern void ext4_init_block_alloc_info(struct inode *);
+ extern void ext4_rsv_window_add(struct super_block *sb, struct ext4_reserve_window_node *rsv);
++extern void try_to_extend_reservation(struct ext4_reserve_window_node *,
++					struct super_block *, int);
++extern int alloc_new_reservation(struct ext4_reserve_window_node *,
++				ext4_grpblk_t, struct super_block *,
++				ext4_group_t, struct buffer_head *);
+ extern ext4_grpblk_t bitmap_search_next_usable_block(ext4_grpblk_t,
+ 				struct buffer_head *, ext4_grpblk_t);
++extern int rsv_is_empty(struct ext4_reserve_window *rsv);
++extern int goal_in_my_reservation(struct ext4_reserve_window *rsv,
++				ext4_grpblk_t grp_goal, ext4_group_t group,
++				struct super_block *sb);
 
-+struct fiemap_ino {
-+	__u64 ino;
-+	struct fiemap fiemap;
-+};
-+
- #define EXT4_TRANS_META_BLOCKS 4 /* bitmap + group desc + sb + inode */
-
- /*
-@@ -1321,6 +1327,7 @@ extern int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode,
- 			sector_t block, unsigned long max_blocks,
- 			struct buffer_head *bh, int create,
- 			int extend_disksize, int flag);
-+extern int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start);
- #endif	/* __KERNEL__ */
-
- #endif	/* _EXT4_H */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 6e2ccb8..7fcf72d 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2110,7 +2110,7 @@ ext4_ext_more_to_rm(struct ext4_ext_path *path)
- 	return 1;
- }
-
--static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
-+int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
- {
- 	struct super_block *sb = inode->i_sb;
- 	int depth = ext_depth(inode);
+ /* dir.c */
+ extern int ext4_check_dir_entry(const char *, struct inode *,
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 40bc2e1..a0e4915 100644
+index a0e4915..9c992d8 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
-@@ -259,7 +259,8 @@ setversion_out:
- 	case EXT4_IOC_FIBMAP:
+@@ -260,7 +260,8 @@ setversion_out:
  	case EXT4_IOC_DEFRAG:
  	case EXT4_IOC_GROUP_INFO:
--	case EXT4_IOC_FREE_BLOCKS_INFO: {
-+	case EXT4_IOC_FREE_BLOCKS_INFO:
-+	case EXT4_IOC_FIEMAP_INO: {
+ 	case EXT4_IOC_FREE_BLOCKS_INFO:
+-	case EXT4_IOC_FIEMAP_INO: {
++	case EXT4_IOC_FIEMAP_INO:
++	case EXT4_IOC_RESERVE_BLOCK: {
  		return ext4_defrag_ioctl(inode, filp, cmd, arg);
  	}
  	case EXT4_IOC_GROUP_ADD: {
