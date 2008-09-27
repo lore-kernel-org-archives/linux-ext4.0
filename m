@@ -1,148 +1,628 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 0/12]ext4: online defrag (ver 0.95)
-Date: Sat, 27 Sep 2008 16:26:29 +0900
-Message-ID: <48DDE025.2090207@rs.jp.nec.com>
+Subject: [RFC][PATCH 1/12]ext4: Add the EXT4_IOC_DEFRAG  ioctl and defrag
+ main function
+Date: Sat, 27 Sep 2008 16:26:34 +0900
+Message-ID: <48DDE02A.4000703@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:57332 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751124AbYI0H0e (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Sep 2008 03:26:34 -0400
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:42326 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751598AbYI0H0h (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Sep 2008 03:26:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+ext4: online defrag -- Add the EXT4_IOC_DEFRAG ioctl and defrag main function.
 
-I've updated the ext4 online defragmentation patches.
-In this version, mainly there are following two changes and some fixes:
-  - Support 1KB and 2KB block size.
-  - Implement EXT4_IOC_FIEMAP_INO instead of EXT4_IOC_EXTENTS_INFO
-    to get extetns information.
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-Changelog:
-- 0.95(Sep. 26, 2008)
-  - Support 1KB and 2KB block size.
-  - Implement EXT4_IOC_FIEMAP_INO which calls ext4_fiemap() for specified inode number
-    instead of EXT4_IOC_EXTENTS_INFO to get extents information.
-  - Merge "JC6-defrag-alloc-contiguous-blks-credit" and
-    "ext4-request-for-blocks-with-ar.excepted_group-1.patch" in the ext4 patch queue
-    into this version.
-  - Handle s_dirtyblocks_counter correctly in defrag when delalloc enabled.
-  - Remove unneeded copy_from_user() in EXT4_IOC_GROUP_INFO ioctl.  Ted pointed this out.
-- 0.9 (May 30, 2008)
-  - Create some new functions (ext4_defrag_fill_ar(),
-    ext4_defrag_check_phase() ...) to separate block allocation function,
-    since the phase mode plug into the allocation function isn't good.
-  - Add the description of ext4_defrag() which is main function.
-  - Add the capability check.
-  - Some cleanups.
-- 0.8 (Apr. 8, 2008)
-    Fix sparse warnings and change the construction of patches.
+The EXT4_IOC_DEFRAG ioctl is the main ioctl of ext4 online defrag.
+Create the temporary inode in memory and allocate contiguous blocks to it.
+After that exchange data blocks between original inode and temporary inode.
+Lastly, remove the temporary inode which has fragmented data blocks.
+This method would be done between user space and kernel space per 64MB data size.
 
-Outline for ext4 online defragmentation:
-Ext4 online defrag has the following three functions.
+This patch is equivalent to creating/removing a temporary inode
+and common defrag functions.
 
- no option  Solving a single file fragmentation.
-            Single file fragmentation is solved by moving file
-            data to contiguous free blocks.
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
+---
+ fs/ext4/Makefile       |    2 +-
+ fs/ext4/defrag.c       |  467 ++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h         |   14 ++
+ fs/ext4/ext4_extents.h |    2 +
+ fs/ext4/extents.c      |    2 +-
+ fs/ext4/inode.c        |    2 +-
+ fs/ext4/ioctl.c        |    3 +
+ 7 files changed, 489 insertions(+), 3 deletions(-)
 
-    -r      Solving a relevant file fragmentation.
-            Relevant file fragmentation could be solved by moving
-            the files under the specified directory close together with
-            the block containing the directory data.
+diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
+index ac6fa8c..8028102 100644
+--- a/fs/ext4/Makefile
++++ b/fs/ext4/Makefile
+@@ -6,7 +6,7 @@ obj-$(CONFIG_EXT4DEV_FS) += ext4dev.o
 
-    -f      Solving a free space fragmentation.
-            If there is no contiguous free blocks in the filesystem,
-            the other files are moved to make sufficient space to allocate
-            contiguous blocks for the target file.
+ ext4dev-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
+ 		   ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
+-		   ext4_jbd2.o migrate.o mballoc.o
++		   ext4_jbd2.o migrate.o mballoc.o defrag.o
 
-Notes:
-- Ext4 online defarg needs "mballoc" and "extents" mount options.
-- "ext4-fiemap.patch" in the ext4 patch queue is necessary
-   for EXT4_IOC_FIEMAP_INO ioctl.  We have to apply fiemap patches previously
-   then apply defrag patches, so it is necessary to change
-   the order of series in the ext4 patch queue.
+ ext4dev-$(CONFIG_EXT4DEV_FS_XATTR)	+= xattr.o xattr_user.o xattr_trusted.o
+ ext4dev-$(CONFIG_EXT4DEV_FS_POSIX_ACL)	+= acl.o
+diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
+new file mode 100644
+index 0000000..1750714
+--- /dev/null
++++ b/fs/ext4/defrag.c
+@@ -0,0 +1,467 @@
++/*
++ * Copyright (c) 2008, NEC Software Tohoku, Ltd.
++ * Written by Takashi Sato <t-sato@yk.jp.nec.com>
++ *            Akira Fujita <a-fujita@rs.jp.nec.com>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of version 2.1 of the GNU Lesser General Public License
++ * as published by the Free Software Foundation.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++/* Online defragmentation for EXT4 */
++
++#include <linux/quotaops.h>
++#include "ext4_jbd2.h"
++#include "ext4_extents.h"
++#include "group.h"
++
++/**
++ * ext4_defrag_next_extent - Search for the next extent and set it to "extent"
++ *
++ * @inode:	inode which is searched
++ * @path:	this will obtain data for the next extent
++ * @extent:	pointer to the next extent we have just gotten
++ *
++ * This function returns 0 or 1(last entry) if succeed, otherwise
++ * returns -EIO.
++ */
++static int
++ext4_defrag_next_extent(struct inode *inode, struct ext4_ext_path *path,
++			struct ext4_extent **extent)
++{
++	return 0;
++}
++
++int ext4_defrag_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
++			unsigned long arg)
++{
++	int err = 0;
++
++	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL)) {
++		printk(KERN_ERR "ext4 defrag: ino[%lu] is not extents "
++					"based file\n", inode->i_ino);
++		return -EOPNOTSUPP;
++	}
++
++	if (cmd == EXT4_IOC_DEFRAG) {
++		struct ext4_ext_defrag_data defrag;
++
++		if (!capable(CAP_DAC_OVERRIDE)) {
++			if ((inode->i_mode & S_IRUSR) != S_IRUSR)
++				return -EACCES;
++			if (current->fsuid != inode->i_uid)
++				return -EACCES;
++		}
++
++		if (copy_from_user(&defrag,
++			(struct ext4_ext_defrag_data __user *)arg,
++						sizeof(defrag)))
++			return -EFAULT;
++
++		err = ext4_defrag(filp, defrag.start_offset,
++				defrag.defrag_size);
++	}
++
++	return err;
++}
++
++/**
++ * ext4_defrag_partial - Defrag a file per page
++ *
++ * @tmp_inode:			temporary inode
++ * @filp:			pointer to file
++ * @org_page_offset:		page index on original file
++ * @dest_blk_offset:		block index on temporary file
++ * @data_offset_in_page:	block index where data swapping starts
++ * @block_len_in_page:		the number of blocks to be swapped
++ *
++ * This function returns 0 if succeed, otherwise returns error value.
++ */
++static int
++ext4_defrag_partial(struct inode *tmp_inode, struct file *filp,
++			pgoff_t org_page_offset, ext4_lblk_t dest_blk_offset,
++			int data_offset_in_page, int block_len_in_page)
++{
++	return 0;
++}
++
++/**
++ * ext4_defrag_new_extent_tree - Get contiguous blocks and build an extent tree
++ *
++ * @org_inode:		original inode
++ * @tmp_inode:		temporary inode
++ * @org_path:		indicating the original inode's extent
++ * @req_start:		starting offset to allocate in blocks
++ * @req_blocks:		the number of blocks to allocate
++ * @iblock:		file related offset
++ *
++ * This function returns the value as below:
++ *	0 (succeed)
++ *	1 (not improved)
++ *	negative value (error case)
++ */
++static int
++ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
++			struct ext4_ext_path *org_path, ext4_lblk_t req_start,
++			ext4_lblk_t req_blocks, ext4_lblk_t iblock)
++{
++	return 0;
++}
++
++/**
++ * ext4_defrag_check - Check the environment whether a defrag can be done
++ *
++ * @org_inode:		original inode
++ * @defrag_size:	size of defrag in blocks
++ *
++ * This function returns 0 if succeed, otherwise returns error value.
++ */
++static int
++ext4_defrag_check(struct inode *org_inode, ext4_lblk_t defrag_size)
++{
++	/* ext4 online defrag needs mballoc mount option. */
++	if (!test_opt(org_inode->i_sb, MBALLOC)) {
++		printk(KERN_ERR "ext4 defrag: multiblock allocation "
++				"is disabled\n");
++		return -EOPNOTSUPP;
++	}
++
++	return 0;
++}
++
++/**
++ * ext4_defrag_init_tmp_inode - Create a temporary inode
++ *
++ * @org_inode:		original inode
++ *
++ * This function returns pointer to the struct inode if succeed,
++ * otherwise returns error value.
++ */
++static struct inode *
++ext4_defrag_init_tmp_inode(struct inode *org_inode)
++{
++	handle_t *handle;
++	struct inode *tmp_inode;
++
++	handle = ext4_journal_start(org_inode,
++		EXT4_DATA_TRANS_BLOCKS(org_inode->i_sb) +
++		EXT4_INDEX_EXTRA_TRANS_BLOCKS + 4 +
++		2 * EXT4_QUOTA_INIT_BLOCKS(org_inode->i_sb));
++	if (IS_ERR(handle))
++		/* Return error code */
++		return (struct inode *)handle;
++
++	tmp_inode = ext4_new_inode(handle,
++		org_inode->i_sb->s_root->d_inode, S_IFREG);
++	if (IS_ERR(tmp_inode))
++		goto out;
++
++	i_size_write(tmp_inode, i_size_read(org_inode));
++	tmp_inode->i_nlink = 0;
++	ext4_ext_tree_init(handle, tmp_inode);
++	ext4_orphan_add(handle, tmp_inode);
++
++out:
++	ext4_journal_stop(handle);
++
++	return tmp_inode;
++}
++
++/**
++ * ext4_defrag - Defrag the specified range of a file
++ *
++ * If no-option is specified, ext4_defrag() proceeds the following order.
++ * 1.ext4_defrag() calculates the block number where defrag terminates
++ *   by the start block number(defrag_start) and the size of defraged data
++ *   (defrag_size) specified as arguments.
++ *   If the defrag_start points a hole, the extent's start offset pointed by
++ *   ext_cur(current extent), holecheck_path, org_path are set after
++ *   hole behind.
++ * 2.Continue step 3 to step 5, until the holecheck_path points to last_extent
++ *   or the ext_cur exceeds the block_end which is last logical block number.
++ * 3.To get a length of continues area, call ext4_defrag_next_extent()
++ *   specified with the ext_cur(initial value is holecheck_path) re-cursive,
++ *   until find un-continuous extent, the start logical block number exceeds
++ *   the block_end or the extent points to the last extent.
++ * 4.After determining the length of continuous block,
++ *   allocates continuous blocks to a temporary inode
++ *   by ext4_defrag_new_extent_tree().
++ * 5.Exchange the original inode data with temporary inode data
++ *   from org_page_offset to seq_end_page.
++ *   The start indexes of data are specified as arguments.
++ *   That of the original inode is org_page_offset,
++ *   and that of the temporary inode is dest_block_offset
++ *   (To easily handle blocksize != pagesize case, the offset for the
++ *    temporary inode is block unit).
++ * 6.Update holecheck_path and org_path to points a next proceeding extent,
++ *   and release the temporary inode holding the original fragmented data.
++ *   Then, returns to step 2.
++ * 7.Release holecheck_path, org_path and temporary inode,
++ *    and returns the defrag_size which is the size of defraged data.
++ *    The defrag_size is used for the command to calculate the file offset
++ *    where a next defrag processing start.
++ *    (Since the defrag command calls defrag_ioctl() by 64MB unit,
++ *     a file bigger than 64MB calls defrag_ioctl many times.)
++ *
++ * @filp:		pointer to file
++ * @block_start:	starting offset to defrag in blocks
++ * @defrag_size:	size of defrag in blocks
++ *
++ * This function returns the number of blocks if succeed, otherwise
++ * returns error value.
++ */
++int
++ext4_defrag(struct file *filp, ext4_lblk_t block_start,
++		ext4_lblk_t defrag_size)
++{
++	struct inode *org_inode = filp->f_dentry->d_inode, *tmp_inode = NULL;
++	struct ext4_ext_path *org_path = NULL, *holecheck_path = NULL;
++	struct ext4_extent *ext_prev, *ext_cur, *ext_dummy;
++	ext4_lblk_t block_end, seq_start, add_blocks, file_end, seq_blocks = 0;
++	ext4_lblk_t dest_block_offset;
++	ext4_lblk_t rest_blocks;
++	pgoff_t org_page_offset, seq_end_page;
++	int ret, depth, seq_extents, last_extent = 0;
++	int blocks_per_page;
++	int data_offset_in_page;
++	int block_len_in_page;
++
++	/* Check the filesystem environment whether defrag can be done */
++	ret = ext4_defrag_check(org_inode, defrag_size);
++	if (ret < 0)
++		return ret;
++
++	blocks_per_page = PAGE_CACHE_SIZE >> org_inode->i_blkbits;
++	file_end = (org_inode->i_size - 1) >> org_inode->i_blkbits;
++	block_end = block_start + defrag_size - 1;
++	if (file_end < block_end)
++		defrag_size -= block_end - file_end;
++
++	mutex_lock(&org_inode->i_mutex);
++	down_write(&EXT4_I(org_inode)->i_data_sem);
++
++	org_path = ext4_ext_find_extent(org_inode, block_start, NULL);
++	if (IS_ERR(org_path)) {
++		ret = PTR_ERR(org_path);
++		org_path = NULL;
++		goto out;
++	}
++
++	/* Get path structure to check the hole */
++	holecheck_path = ext4_ext_find_extent(org_inode, block_start, NULL);
++	if (IS_ERR(holecheck_path)) {
++		ret = PTR_ERR(holecheck_path);
++		holecheck_path = NULL;
++		goto out;
++	}
++
++	depth = ext_depth(org_inode);
++	ext_cur = holecheck_path[depth].p_ext;
++	if (ext_cur == NULL)
++		goto out;
++
++	/*
++	 * Get proper extent whose ee_block is beyond block_start
++	 * if block_start was within the hole.
++	 */
++	if (le32_to_cpu(ext_cur->ee_block) +
++		le16_to_cpu(ext_cur->ee_len) - 1 < block_start) {
++		last_extent = ext4_defrag_next_extent(org_inode,
++					holecheck_path, &ext_cur);
++		if (last_extent < 0) {
++			ret = last_extent;
++			goto out;
++		}
++		last_extent = ext4_defrag_next_extent(org_inode, org_path,
++							&ext_dummy);
++		if (last_extent < 0) {
++			ret = last_extent;
++			goto out;
++		}
++	}
++	seq_extents = 1;
++	seq_start = le32_to_cpu(ext_cur->ee_block);
++
++	/* No blocks within the specified range. */
++	if (le32_to_cpu(ext_cur->ee_block) > block_end) {
++		printk(KERN_INFO "ext4 defrag: The specified range of file"
++				" may be the hole\n");
++		goto out;
++	}
++
++	/* Adjust start blocks */
++	add_blocks = min(le32_to_cpu(ext_cur->ee_block) +
++			 le16_to_cpu(ext_cur->ee_len), block_end + 1) -
++		     max(le32_to_cpu(ext_cur->ee_block), block_start);
++
++	while (!last_extent && le32_to_cpu(ext_cur->ee_block) <= block_end) {
++		seq_blocks += add_blocks;
++
++		/* Create a temporary inode to be exchanged data block */
++		tmp_inode = ext4_defrag_init_tmp_inode(org_inode);
++		if (IS_ERR(tmp_inode)) {
++			ret = PTR_ERR(tmp_inode);
++			tmp_inode = NULL;
++			goto out;
++		}
++
++		/* Adjust tail blocks */
++		if (seq_start + seq_blocks - 1 > block_end)
++			seq_blocks = block_end - seq_start + 1;
++
++		ext_prev = ext_cur;
++		last_extent = ext4_defrag_next_extent(org_inode,
++					holecheck_path, &ext_cur);
++		if (last_extent < 0) {
++			ret = last_extent;
++			break;
++		}
++		if (!last_extent)
++			seq_extents++;
++		add_blocks = le16_to_cpu(ext_cur->ee_len);
++
++		/*
++		 * Extend the length of contiguous block (seq_blocks)
++		 * if extents are contiguous.
++		 */
++		if (le32_to_cpu(ext_prev->ee_block) +
++				le16_to_cpu(ext_prev->ee_len) ==
++				le32_to_cpu(ext_cur->ee_block) &&
++				block_end >= le32_to_cpu(ext_cur->ee_block) &&
++				!last_extent) {
++			if (tmp_inode) {
++				iput(tmp_inode);
++				tmp_inode = NULL;
++			}
++			continue;
++		}
++
++		/* Found an isolated block */
++		if (seq_extents == 1) {
++			seq_start = le32_to_cpu(ext_cur->ee_block);
++			goto CLEANUP;
++		}
++
++		ret = ext4_defrag_new_extent_tree(org_inode, tmp_inode,
++					org_path, seq_start, seq_blocks,
++					block_start);
++
++		if (ret < 0) {
++			break;
++		} else if (ret == 1) {
++			ret = 0;
++			seq_start = le32_to_cpu(ext_cur->ee_block);
++			goto CLEANUP;
++		}
++
++		data_offset_in_page = seq_start % blocks_per_page;
++
++		/*
++		 * Calculate data blocks count that should be swapped
++		 * at the first page.
++		 */
++		if (data_offset_in_page + seq_blocks > blocks_per_page) {
++			/* Swapped blocks are across pages */
++			block_len_in_page =
++					blocks_per_page - data_offset_in_page;
++		} else {
++			/* Swapped blocks are in a page */
++			block_len_in_page = seq_blocks;
++		}
++
++		org_page_offset = seq_start >>
++				(PAGE_CACHE_SHIFT - org_inode->i_blkbits);
++		seq_end_page = (seq_start + seq_blocks - 1) >>
++				(PAGE_CACHE_SHIFT - org_inode->i_blkbits);
++		seq_start = le32_to_cpu(ext_cur->ee_block);
++		rest_blocks = seq_blocks;
++		/* Offset for the tmp_inode */
++		dest_block_offset = 0;
++
++		/*
++		 * Discard all preallocations.
++		 * This is provisional solution.
++		 * When true ext4_mb_return_to_preallocation() is
++		 * implemented, this will be removed.
++		 */
++		ext4_mb_discard_inode_preallocations(org_inode);
++
++		while (org_page_offset <= seq_end_page) {
++
++			/* Swap original branches with new branches */
++			ret = ext4_defrag_partial(tmp_inode, filp,
++						org_page_offset,
++						dest_block_offset,
++						data_offset_in_page,
++						block_len_in_page);
++			if (ret < 0)
++				goto out;
++
++			org_page_offset++;
++			dest_block_offset += block_len_in_page;
++
++			data_offset_in_page = 0;
++			rest_blocks -= block_len_in_page;
++			if (rest_blocks > blocks_per_page)
++				block_len_in_page = blocks_per_page;
++			else
++				block_len_in_page = rest_blocks;
++		}
++
++		/* Decrease buffer counter */
++		if (holecheck_path)
++			ext4_ext_drop_refs(holecheck_path);
++		holecheck_path = ext4_ext_find_extent(org_inode,
++						seq_start, holecheck_path);
++		if (IS_ERR(holecheck_path)) {
++			ret = PTR_ERR(holecheck_path);
++			holecheck_path = NULL;
++			break;
++		}
++		depth = holecheck_path->p_depth;
++
++CLEANUP:
++		/* Decrease buffer counter */
++		if (org_path)
++			ext4_ext_drop_refs(org_path);
++		org_path = ext4_ext_find_extent(org_inode, seq_start, org_path);
++		if (IS_ERR(org_path)) {
++			ret = PTR_ERR(org_path);
++			org_path = NULL;
++			break;
++		}
++
++		ext_cur = holecheck_path[depth].p_ext;
++		add_blocks = le16_to_cpu(ext_cur->ee_len);
++		seq_blocks = 0;
++		seq_extents = 1;
++
++		if (tmp_inode) {
++			iput(tmp_inode);
++			tmp_inode = NULL;
++		}
++	}
++
++out:
++	if (org_path) {
++		ext4_ext_drop_refs(org_path);
++		kfree(org_path);
++	}
++	if (holecheck_path) {
++		ext4_ext_drop_refs(holecheck_path);
++		kfree(holecheck_path);
++	}
++
++	up_write(&EXT4_I(org_inode)->i_data_sem);
++	mutex_unlock(&org_inode->i_mutex);
++
++	if (tmp_inode)
++		iput(tmp_inode);
++
++	return ret ? ret : defrag_size;
++}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c8ab668..64c61ae 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -302,6 +302,7 @@ struct ext4_new_group_data {
+ #define EXT4_IOC_GROUP_ADD		_IOW('f', 8, struct ext4_new_group_input)
+ #define EXT4_IOC_MIGRATE		_IO('f', 9)
+  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
++#define EXT4_IOC_DEFRAG			_IOW('f', 15, struct ext4_ext_defrag_data)
 
-Next steps:
-1. Address the following items that Ted pointed out.
- - Move all of the defrag ioctls from ext4_defrag_ioctl() to ext4_ioctl()
-   so that defrag does not have a double layer ioctl's dispatch.
- - Remove the block reservation in the force defrag (-f).
- - Remove the EXT4_IOC_FIBMAP ioctl and use the EXT4_IOC_FIEMAP instead.
- - Get super block information with opening block device in user space
-   so that we can remove the EXT4_IOC_GROUP_INFO ioctl.
+ /*
+  * ioctl commands in 32 bit emulation
+@@ -319,6 +320,12 @@ struct ext4_new_group_data {
+ #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
+ #define EXT4_IOC32_SETVERSION_OLD	FS_IOC32_SETVERSION
 
-Summary of patches:
-* The followings are new ext4 online defrag patches and they consist
-  of ioctl unit except 1-4.  Because the EXT4_IOC_DEFRAG is too big to review,
-  I divided it into 4 patches.
++struct ext4_ext_defrag_data {
++	ext4_lblk_t start_offset;	/* start offset to defrag in blocks */
++	ext4_lblk_t defrag_size;	/* size of defrag in blocks */
++	ext4_fsblk_t goal;		/* block offset for allocation */
++};
++
 
-[PATCH 1/12] EXT4_IOC_DEFRAG ioctl and main functions of defrag
-- Create the temporary inode and do defrag per
-  defrag_size (defalut 64MB).
+ /*
+  *  Mount options
+@@ -1081,6 +1088,8 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+ extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
++extern int ext4_get_block(struct inode *inode, sector_t iblock,
++		struct buffer_head *bh_result, int create);
 
-[PATCH 2/12] Allocate new contiguous blocks with mballoc
-- Search contiguous free blocks with mutil-block allocation
-  and allocate them for the temporary inode.
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+@@ -1128,6 +1137,11 @@ extern void ext4_inode_bitmap_set(struct super_block *sb,
+ 				  struct ext4_group_desc *bg, ext4_fsblk_t blk);
+ extern void ext4_inode_table_set(struct super_block *sb,
+ 				 struct ext4_group_desc *bg, ext4_fsblk_t blk);
++/* defrag.c */
++extern int ext4_defrag(struct file *filp, ext4_lblk_t block_start,
++			ext4_lblk_t defrag_size);
++extern int ext4_defrag_ioctl(struct inode *, struct file *, unsigned int,
++				unsigned long);
 
-[PATCH 3/12] Read and write file data with memory page
-- Read the file data from the old blocks to the page cache and
-  write the file data on the page into the new blocks.
+ static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
+ {
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index bec7ce5..0325158 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -246,5 +246,7 @@ extern int ext4_ext_search_left(struct inode *, struct ext4_ext_path *,
+ extern int ext4_ext_search_right(struct inode *, struct ext4_ext_path *,
+ 						ext4_lblk_t *, ext4_fsblk_t *);
+ extern void ext4_ext_drop_refs(struct ext4_ext_path *);
++extern ext4_fsblk_t ext_pblock(struct ext4_extent *ex);
++extern void ext4_ext_drop_refs(struct ext4_ext_path *path);
+ #endif /* _EXT4_EXTENTS */
 
-[PATCH 4/12]  Exchange the blocks between two inodes
-- Exchange the data blocks between the temporary inode and
-  the original inode.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 3094ed3..d05dfb7 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -49,7 +49,7 @@
+  * ext_pblock:
+  * combine low and high parts of physical block number into ext4_fsblk_t
+  */
+-static ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
++ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
+ {
+ 	ext4_fsblk_t block;
 
-[PATCH 5/12] EXT4_IOC_FIBMAP ioctl
-- The EXT4_IOC_FIBMAP ioctl gets the physical block offset of target inode
-  with ext4_bmap().  This ioctl is used only in the relevant defrag (-r).
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 9764b79..9b0117c 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1161,7 +1161,7 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
+ /* Maximum number of blocks we map for direct IO at once. */
+ #define DIO_MAX_BLOCKS 4096
 
-[PATCH 6/12] EXT4_IOC_GROUP_INFO ioctl
-- The EXT4_IOC_GROUP_INFO ioctl gets the block group information
-  of target inode is located in.  This ioctl is used only in the force defrag (-f).
+-static int ext4_get_block(struct inode *inode, sector_t iblock,
++int ext4_get_block(struct inode *inode, sector_t iblock,
+ 			struct buffer_head *bh_result, int create)
+ {
+ 	handle_t *handle = ext4_journal_current_handle();
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 3e14060..1c25e8e 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -256,6 +256,9 @@ setversion_out:
 
-[PATCH 7/12] EXT4_IOC_FREE_BLOCKS_INFO ioctl
-- The EXT4_IOC_FREE_BLOCKS_INFO ioctl gets free extents
-  information of the target block group.
-  This ioctl is used only in the force defrag (-f).
+ 		return err;
+ 	}
++	case EXT4_IOC_DEFRAG: {
++		return ext4_defrag_ioctl(inode, filp, cmd, arg);
++	}
+ 	case EXT4_IOC_GROUP_ADD: {
+ 		struct ext4_new_group_data input;
+ 		struct super_block *sb = inode->i_sb;
 
-[PATCH 8/12] EXT4_IOC_FIEMAP_INO ioctl
-- The EXT4_IOC_FIEMAP_INO is used to get extents information of
-  inode which set to ioctl.
-  The defragger uses this ioctl to check the fragment condition
-  and to get extents information in the specified block group.
-
-[PATCH 9/12] EXT4_IOC_RESERVE_BLOCK ioctl
-- The EXT4_IOC_RESERVE_BLOCK ioctl reserves the specified
-  contiguous free space with ext4 block reservation function.
-  This ioctl is used only in the force defrag (-f).
-
-[PATCH 10/12] EXT4_IOC_MOVE_VICTIM ioctl
-- The EXT4_IOC_MOVE_VICTIM moves the victim extents into other block group.
-  Therefore the contiguous free space is made in the target block group.
-  This ioctl is used only in the force defrag (-f).
-
-[PATCH 11/12] EXT4_IOC_BLOCK_RELEASE ioctl
-- The EXT4_IOC_BLOCK_RELEASE releases the reserved blocks
-  which target inode holds.
-  This ioctl is used if defrag failed and it was after the block reservation.
-
-[PATCH 12/12] Online defrag command
-- The defrag command. Usage is as follows:
-  - Defrag for a single file.
-    # e4defrag file-name
-  - Defrag for all files on ext4.
-    # e4defrag device-name
-  - Put the multiple files closer together.
-    # e4defrag -r directory-name
-  - Defrag for free space fragmentation.
-    # e4defrag -f file-name
-
-Any comments and tests are welcome.
-
-Best regards,
-Akira Fujita
