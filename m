@@ -1,78 +1,37 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Potential bug in mballoc --- reusing data blocks before txn commit
-Date: Sat, 27 Sep 2008 21:35:46 -0400
-Message-ID: <E1KjlCM-0002L7-SO@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org
-To: Alex Tomas <bzzz@sun.com>, Andreas Dilger <adilger@sun.com>
+From: Rusty Russell <rusty@rustcorp.com.au>
+Subject: Unusual code in mballoc.c.
+Date: Sun, 28 Sep 2008 11:56:12 +1000
+Message-ID: <200809281156.12688.rusty@rustcorp.com.au>
+Mime-Version: 1.0
+Content-Type: text/plain;
+  charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: Alex Tomas <alex@clusterfs.com>, Mike Travis <travis@sgi.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:59140 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751073AbYI1Bft (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Sep 2008 21:35:49 -0400
+Received: from ozlabs.org ([203.10.76.45]:50873 "EHLO ozlabs.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751684AbYI1B4Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 27 Sep 2008 21:56:16 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-So while I was preparing a patch to delete the old legacy block
-allocator, I came across this bit of code in balloc.c:
+Hi all,
 
-/**
- * ext4_test_allocatable()
- * @nr:                        given allocation block group
- * @bh:                        bufferhead contains the bitmap of the given bloc
- *
- * For ext4 allocations, we must not reuse any blocks which are
- * allocated in the bitmap buffer's "last committed data" copy.  This
- * prevents deletes from freeing up the page for reuse until we have
- * committed the delete transaction.
- *
- * If we didn't do this, then deleting something and reallocating it as
- * data would allow the old block to be overwritten before the
- * transaction committed (because we force data to disk before commit).
- * This would lead to corruption if we crashed between overwriting the
- * data and committing the delete.
- *
- * @@@ We may want to make this allocation behaviour conditional on
- * data-writes at some point, and disable it for metadata allocations or
- * sync-data inodes.
- */
+   A grep lead me to fs/ext4/mballoc.c:
 
-This is done by searching an old copy of the bitmap found
-jh->b_committed_data.
+Line 2551:
+	for (i = 0; i < nr_cpu_ids; i++) {
 
-So I was more than a little bit concerned when I found that mballoc.c
-wasn't referencing b_committed data *at* *all*.  When I looked a bit
-more closely, it looks like that mballoc is using a separate scheme,
-based on linked list hanging off of sbi->s_active_transaction.
-Unfortunately, it seems to only prevent released metadata blocks from
-being reused:
+This is more normally "for_each_possible_cpu(i)".
 
-	if (metadata) {
-		/* blocks being freed are metadata. these blocks shouldn't
-		 * be used until this transaction is committed */
-		ext4_mb_free_metadata(handle, &e4b, block_group, bit, count);
-	} else {
+Line 4097:
+	ac->ac_lg = &sbi->s_locality_groups[get_cpu()];
+	put_cpu();
 
-This means that if a file is deleted, but then system crashes before the
-commit, some of its data blocks could be reallocated and then written
-out.  We could fix this by running all released blocks via
-ext4_mb_free_metadata(), but since ext4_mb_free_metadata() stores blocks
-that need to be protected via a block list, this could get *quite*
-unwieldy, especially when deleting very large files (we could end up
-with a very large linked list).  Alternate solutions would involve using
-a list of extents, or the original jh->b_commited_data mechanism.
+This is presumably someone suppressing a warning.   It should be:
+	ac->ac_lg = &sbi->s_locality_groups[raw_smp_processor_id()];
 
-I'll also note that a linked list of extents that should be freed would
-also be useful for implementing the trim command for SSD's --- and that
-this would be much more cleanly implemented via a callback from the jbd2
-layer when a commit is finished, rather than the current
-ext4_mb_poll_new_transaction() mechanism.
-
-In any case, is there a reason why the mballoc.c is using its current
-scheme, and not using kj->b_commited_data as in the original balloc.c
-code?  And was there a reason why you decided that it wasn't necessary
-to protect freed data blocks from being reused until the transaction was
-committed?
-
-Regards,
-
-							- Ted
+Thanks,
+Rusty.
