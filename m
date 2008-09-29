@@ -1,34 +1,49 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
-Date: Sun, 28 Sep 2008 21:07:20 -0400
-Message-ID: <20080929010720.GH8711@mit.edu>
-References: <E1Kea9F-0004L5-Ds@closure.thunk.org> <1221331767-16870-1-git-send-email-tytso@mit.edu> <2EC8176B-0AFA-4B36-A2F5-E51753A576A5@cam.ac.uk> <20080913212903.GF26128@mit.edu> <20080914134859.GB21746@infradead.org> <20080914175810.GB13074@mit.edu> <20080915144948.GB16491@infradead.org> <20080915175305.GS4563@wotan.suse.de> <20080916213106.GA10562@mit.edu> <20080920164759.GY27404@josefsipek.net>
+Subject: Re: [PATCH] [RFC] jbd2: Add buffer triggers
+Date: Sun, 28 Sep 2008 21:25:27 -0400
+Message-ID: <20080929012527.GI8711@mit.edu>
+References: <20080917232629.GB20752@mail.oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Mark Fasheh <mfasheh@suse.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Anton Altaparmakov <aia21@cam.ac.uk>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	akpm@linuxfoun
+To: ocfs2-devel@oss.oracle.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:38113 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:40166 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751684AbYI2BHo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Sep 2008 21:07:44 -0400
+	with ESMTP id S1751073AbYI2BZ3 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Sep 2008 21:25:29 -0400
 Content-Disposition: inline
-In-Reply-To: <20080920164759.GY27404@josefsipek.net>
+In-Reply-To: <20080917232629.GB20752@mail.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mark,
+On Wed, Sep 17, 2008 at 04:26:30PM -0700, Joel Becker wrote:
+> Filesystems often to do compute intensive operation on some
+> metadata.  If this operation is repeated many times, it can be very
+> expensive.  It would be much nicer if the operation could be performed
+> once before a buffer goes to disk.
 
-Do you have time to update the fiemap patchset so we can hopefully
-come to consensus and get this pushed to Linus in time for the
-upcoming merge window?
+Sorry for the delay in reviewing this patch, but I've got a question.
+Right now you are calling the commit trigger *after* doing the escape
+data copying.  This means that if the commit trigger is going to
+modify the buffer (in the case of the checksum being stored in-line in
+the block, which I gather is the case in OCFS2, right?), if you get
+unlucky and the block begins with the four bytes JBD2_MAGIC_NUMBER,
+then the checksum will be in the value which gets written out to the
+log, but *not* to the value in the buffer head that will ultimately
+get written to the final location on disk.  In the normal case where
+the journal wraps and then truncated, it means the checksum will never
+get written to the disk.  That seems bad.  :-)
 
-If not, I can take over for you and take over the care and feeding of
-this patchset so it can get pushed to Linus ASAP; I think we are
-pretty close to consensus on this interface, and I'd rather that we
-not lose momentum.
+I believe the correct location to fire the per-buffer commit trigger
+is right after the first kmap_atomic, right before the comment "Check
+for escaping".  This also fixes the bug where if the checksum is
+stored in the first four bytes of the block, in the case where you
+have bad luck and the checksum == JBD2_MAGIC_NUMBER, you won't end up
+with a corrupted journal.
+
+Do you agree?  If so, please let me know and I can fix up the patch,
+or just submit to me an updated patch.
+
+Thanks,
 
 						- Ted
