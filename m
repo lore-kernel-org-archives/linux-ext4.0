@@ -1,130 +1,262 @@
-From: Sunil <infinite.questions@gmail.com>
-Subject: Re: inode and blocks
-Date: Mon, 29 Sep 2008 22:54:05 +0530
-Message-ID: <ef1901a00809291024u32bfabfo2961f0c63b32d267@mail.gmail.com>
-References: <2d08ef090809280319m64555696nfe1a446e010f921f@mail.gmail.com>
-	 <20080928210118.GD8711@mit.edu>
-	 <2d08ef090809290733x2a58cfbl520be9810d772063@mail.gmail.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: [PATCH] journal commit callback functions
+Date: Mon, 29 Sep 2008 14:17:52 -0600
+Message-ID: <20080929201752.GN10950@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: multipart/alternative;
-	boundary="----=_Part_38458_27317978.1222709045746"
-Cc: "Theodore Tso" <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>,
-	Kernelnewbies <kernelnewbies@nl.linux.org>
-To: "Rohit Sharma" <imreckless@gmail.com>
-Return-path: <kernelnewbies-bounce@nl.linux.org>
-In-Reply-To: <2d08ef090809290733x2a58cfbl520be9810d772063@mail.gmail.com>
-Sender: kernelnewbies-bounce@nl.linux.org
-Errors-to: kernelnewbies-bounce@nl.linux.org
-List-help: <mailto:ecartis@nl.linux.org?Subject=help>
-List-unsubscribe: <mailto:kernelnewbies-request@nl.linux.org?Subject=unsubscribe>
-List-software: Ecartis version 1.0.0
-List-subscribe: <mailto:kernelnewbies-request@nl.linux.org?Subject=subscribe>
-List-owner: <mailto:ecartis-owner@nl.linux.org>
-List-post: <mailto:kernelnewbies@nl.linux.org>
-List-archive: <http://mail.nl.linux.org/kernelnewbies/>
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:45974 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751974AbYI2USf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Sep 2008 16:18:35 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8TKIYSP014732
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Sep 2008 13:18:35 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K7Z00A0134UJV00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 29 Sep 2008 13:18:34 -0700 (PDT)
+Content-disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-------=_Part_38458_27317978.1222709045746
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+Patch adds journal commit callbacks, and is what we are using for Lustre.
+It is against 2.6.18, but applies with some small fuzz to newer kernels also.
+The only position-sensitive part is the actual calling of the callbacks in
+journal_commit_transaction(), right after the transaction is fully on disk.
 
-On Mon, Sep 29, 2008 at 8:03 PM, Rohit Sharma <imreckless@gmail.com> wrote:
+======================= jbd-jcberr-2.6.18-vanilla.patch ===================
+Implement a JBD per-transaction commit callback.  Users can attach arbitrary
+callbacks to a journal handle, which are propagated to the transaction at
+journal handle stop time.  The commit callbacks are run when the transaction
+is finished commit, and will be passed a non-zero error code if there was
+a commit error.
 
-> Not an assignment actually, but a project.
-> We are working on open hierarchical storage management, in which we
-> store files on disks according to different file placement policies.
-> For eg. if i say that all the important files, like all the employee
-> database should be in disk 1 and all the songs on disk 2, then we
-> place them accordingly in different disks.
->
->
-> On Mon, Sep 29, 2008 at 2:31 AM, Theodore Tso <tytso@mit.edu> wrote:
-> > On Sun, Sep 28, 2008 at 03:49:04PM +0530, Rohit Sharma wrote:
-> >> Suppose i have a file named abc.txt and i want to specify that
-> >> all the *.txt files must be allocated between block groups no. 100 -
-> >> 200 in ext2 fs.
-> >>
-> >> Is there a way to do this?
-> >>
-> >> can we modify function ext2_new_inode and find_group_orlov for this?
-> >
-> > You would have to modify kernel code to do this; the main question
-> > which comes to mind is *why* would you want to do something like this?
-> > It seems like an ideal problem set that a professor might give to a
-> > student, since it would force them to try to get from an inode to the
-> > pathname used to open the file.  So it seems to be one of these really
-> > pointless things that isn't particularly useful in real life, except
-> > for pedagogical purposes.
-> >
-> >                                                        - Ted
-> >
->
-> --
-> To unsubscribe from this list: send an email with
-> "unsubscribe kernelnewbies" to ecartis@nl.linux.org
-> Please read the FAQ at http://kernelnewbies.org/FAQ
->
->
-Hi Rohit,
+Signed-off-by: Andreas Dilger <adilger@sun.com>
 
-Just out of curiosity, how are you going to identify the type of file inside
-kernel ? from an extension or file format ?
-
-Thanks.
-
--- 
-Sunil.
-
-------=_Part_38458_27317978.1222709045746
-Content-Type: text/html; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
-
-<div dir="ltr"><br><br><div class="gmail_quote">On Mon, Sep 29, 2008 at 8:03 PM, Rohit Sharma <span dir="ltr">&lt;<a href="mailto:imreckless@gmail.com">imreckless@gmail.com</a>&gt;</span> wrote:<br><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
-Not an assignment actually, but a project.<br>
-We are working on open hierarchical storage management, in which we<br>
-store files on disks according to different file placement policies.<br>
-For eg. if i say that all the important files, like all the employee<br>
-database should be in disk 1 and all the songs on disk 2, then we<br>
-place them accordingly in different disks.<br>
-<div><div></div><div class="Wj3C7c"><br>
-<br>
-On Mon, Sep 29, 2008 at 2:31 AM, Theodore Tso &lt;<a href="mailto:tytso@mit.edu">tytso@mit.edu</a>&gt; wrote:<br>
-&gt; On Sun, Sep 28, 2008 at 03:49:04PM +0530, Rohit Sharma wrote:<br>
-&gt;&gt; Suppose i have a file named abc.txt and i want to specify that<br>
-&gt;&gt; all the *.txt files must be allocated between block groups no. 100 -<br>
-&gt;&gt; 200 in ext2 fs.<br>
-&gt;&gt;<br>
-&gt;&gt; Is there a way to do this?<br>
-&gt;&gt;<br>
-&gt;&gt; can we modify function ext2_new_inode and find_group_orlov for this?<br>
-&gt;<br>
-&gt; You would have to modify kernel code to do this; the main question<br>
-&gt; which comes to mind is *why* would you want to do something like this?<br>
-&gt; It seems like an ideal problem set that a professor might give to a<br>
-&gt; student, since it would force them to try to get from an inode to the<br>
-&gt; pathname used to open the file. &nbsp;So it seems to be one of these really<br>
-&gt; pointless things that isn&#39;t particularly useful in real life, except<br>
-&gt; for pedagogical purposes.<br>
-&gt;<br>
-&gt; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;- Ted<br>
-&gt;<br>
-<br>
---<br>
-To unsubscribe from this list: send an email with<br>
-&quot;unsubscribe kernelnewbies&quot; to <a href="mailto:ecartis@nl.linux.org">ecartis@nl.linux.org</a><br>
-Please read the FAQ at <a href="http://kernelnewbies.org/FAQ" target="_blank">http://kernelnewbies.org/FAQ</a><br>
-<br>
-</div></div></blockquote></div><br><span style="font-family: verdana,sans-serif;">Hi </span>Rohit<span style="font-family: verdana,sans-serif;">,</span><br style="font-family: verdana,sans-serif;"><br style="font-family: verdana,sans-serif;">
-<span style="font-family: verdana,sans-serif;">Just out of curiosity, how are you going to identify the type of file inside kernel ? from an extension or file format ?</span><br style="font-family: verdana,sans-serif;" clear="all">
-<br style="font-family: verdana,sans-serif;"><span style="font-family: verdana,sans-serif;">Thanks.</span><br style="font-family: verdana,sans-serif;"><br style="font-family: verdana,sans-serif;"><span style="font-family: verdana,sans-serif;">-- </span><br style="font-family: verdana,sans-serif;">
-Sunil<span style="font-family: verdana,sans-serif;">.</span><br>
-</div>
-
-------=_Part_38458_27317978.1222709045746--
-
+Index: linux-2.6/include/linux/jbd.h
+===================================================================
+--- linux-2.6.orig/include/linux/jbd.h	2006-07-15 16:08:35.000000000 +0800
++++ linux-2.6/include/linux/jbd.h	2006-07-15 16:13:01.000000000 +0800
+@@ -356,6 +356,28 @@ static inline void jbd_unlock_bh_journal
+ 	bit_spin_unlock(BH_JournalHead, &bh->b_state);
+ }
+ 
++#define HAVE_JOURNAL_CALLBACK_STATUS
++/**
++ *   struct journal_callback - Base structure for callback information
++ *   @jcb_list: list information for other callbacks attached to the same handle
++ *   @jcb_func: Function to call with this callback structure
++ *
++ *   This struct is a 'seed' structure for a using with your own callback
++ *   structs. If you are using callbacks you must allocate one of these,
++ *   or another struct of your own definition which has this struct 
++ *   as it's first element and pass it to journal_callback_set().
++ *
++ *   This is used internally by jbd to maintain callback information, and
++ *   avoids the need to have 2 allocation/free per callback.
++ *
++ *   See journal_callback_set for more information.
++ **/
++struct journal_callback {
++	struct list_head jcb_list;		/* t_jcb_lock */
++	void (*jcb_func)(struct journal_callback *jcb, int error);
++	/* caller data goes here */
++};
++
+ struct jbd_revoke_table_s;
+ 
+ /**
+@@ -364,6 +385,7 @@ struct jbd_revoke_table_s;
+  * @h_transaction: Which compound transaction is this update a part of?
+  * @h_buffer_credits: Number of remaining buffers we are allowed to dirty.
+  * @h_ref: Reference count on this handle
++ * @h_jcb: List of application registered callbacks for this handle.
+  * @h_err: Field for caller's use to track errors through large fs operations
+  * @h_sync: flag for sync-on-close
+  * @h_jdata: flag to force data journaling
+@@ -389,6 +411,13 @@ struct handle_s 
+ 	/* operations */
+ 	int			h_err;
+ 
++	/*
++	 * List of application registered callbacks for this handle. The
++	 * function(s) will be called after the transaction that this handle is
++	 * part of has been committed to disk. [t_jcb_lock]
++	 */
++	struct list_head	h_jcb;
++
+ 	/* Flags [no locking] */
+ 	unsigned int	h_sync:		1;	/* sync-on-close */
+ 	unsigned int	h_jdata:	1;	/* force data journaling */
+@@ -430,6 +459,8 @@ struct handle_s 
+  *    j_state_lock
+  *    ->j_list_lock			(journal_unmap_buffer)
+  *
++ *    t_handle_lock
++ *    ->t_jcb_lock
+  */
+ 
+ struct transaction_s 
+@@ -559,6 +590,15 @@ struct transaction_s 
+ 	 */
+ 	int t_handle_count;
+ 
++	/*
++	 * Protects the transaction callback list
++	 */
++	spinlock_t		t_jcb_lock;
++	/*
++	 * List of registered callback functions for this transaction.
++	 * Called when the transaction is committed. [t_jcb_lock]
++	 */
++	struct list_head	t_jcb;
+ };
+ 
+ /**
+@@ -906,6 +946,10 @@ extern void	 journal_invalidatepage(jour
+ extern int	 journal_try_to_free_buffers(journal_t *, struct page *, gfp_t);
+ extern int	 journal_stop(handle_t *);
+ extern int	 journal_flush (journal_t *);
++extern void	 journal_callback_set(handle_t *handle,
++				      void (*fn)(struct journal_callback *,int),
++				      struct journal_callback *jcb);
++
+ extern void	 journal_lock_updates (journal_t *);
+ extern void	 journal_unlock_updates (journal_t *);
+ 
+Index: linux-2.6/fs/jbd/checkpoint.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/checkpoint.c	2006-07-15 16:08:36.000000000 +0800
++++ linux-2.6/fs/jbd/checkpoint.c	2006-07-15 16:13:01.000000000 +0800
+@@ -688,6 +688,7 @@ void __journal_drop_transaction(journal_
+ 	J_ASSERT(transaction->t_checkpoint_list == NULL);
+ 	J_ASSERT(transaction->t_checkpoint_io_list == NULL);
+ 	J_ASSERT(transaction->t_updates == 0);
++	J_ASSERT(list_empty(&transaction->t_jcb));
+ 	J_ASSERT(journal->j_committing_transaction != transaction);
+ 	J_ASSERT(journal->j_running_transaction != transaction);
+ 
+Index: linux-2.6/fs/jbd/commit.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/commit.c	2006-07-15 16:08:36.000000000 +0800
++++ linux-2.6/fs/jbd/commit.c	2006-07-15 16:13:01.000000000 +0800
+@@ -708,6 +708,28 @@ wait_for_iobuf:
+            transaction can be removed from any checkpoint list it was on
+            before. */
+ 
++	/* Call any callbacks that had been registered for handles in this
++	 * transaction.  It is up to the callback to free any allocated
++	 * memory.
++	 *
++	 * Locking not strictly required, since this is the only process
++	 * touching this transaction anymore, but is done to keep code
++	 * checkers happy and has no contention in any case. */
++	spin_lock(&commit_transaction->t_jcb_lock);
++	if (!list_empty(&commit_transaction->t_jcb)) {
++		struct journal_callback *jcb, *n;
++		int error = is_journal_aborted(journal);
++
++		list_for_each_entry_safe(jcb, n, &commit_transaction->t_jcb,
++					 jcb_list) {
++			list_del_init(&jcb->jcb_list);
++			spin_unlock(&commit_transaction->t_jcb_lock);
++			jcb->jcb_func(jcb, error);
++			spin_lock(&commit_transaction->t_jcb_lock);
++		}
++	}
++	spin_unlock(&commit_transaction->t_jcb_lock);
++
+ 	jbd_debug(3, "JBD: commit phase 7\n");
+ 
+ 	J_ASSERT(commit_transaction->t_sync_datalist == NULL);
+Index: linux-2.6/fs/jbd/journal.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/journal.c	2006-07-15 16:08:36.000000000 +0800
++++ linux-2.6/fs/jbd/journal.c	2006-07-15 16:13:01.000000000 +0800
+@@ -58,6 +58,7 @@ EXPORT_SYMBOL(journal_sync_buffer);
+ #endif
+ EXPORT_SYMBOL(journal_flush);
+ EXPORT_SYMBOL(journal_revoke);
++EXPORT_SYMBOL(journal_callback_set);
+ 
+ EXPORT_SYMBOL(journal_init_dev);
+ EXPORT_SYMBOL(journal_init_inode);
+Index: linux-2.6/fs/jbd/transaction.c
+===================================================================
+--- linux-2.6.orig/fs/jbd/transaction.c	2006-07-15 16:08:35.000000000 +0800
++++ linux-2.6/fs/jbd/transaction.c	2006-07-15 16:13:01.000000000 +0800
+@@ -50,6 +50,8 @@ get_transaction(journal_t *journal, tran
+ 	transaction->t_state = T_RUNNING;
+ 	transaction->t_tid = journal->j_transaction_sequence++;
+ 	transaction->t_expires = jiffies + journal->j_commit_interval;
++	INIT_LIST_HEAD(&transaction->t_jcb);
++	spin_lock_init(&transaction->t_jcb_lock);
+ 	spin_lock_init(&transaction->t_handle_lock);
+ 
+ 	/* Set up the commit timer for the new transaction. */
+@@ -241,6 +243,7 @@ static handle_t *new_handle(int nblocks)
+ 	memset(handle, 0, sizeof(*handle));
+ 	handle->h_buffer_credits = nblocks;
+ 	handle->h_ref = 1;
++	INIT_LIST_HEAD(&handle->h_jcb);
+ 
+ 	return handle;
+ }
+@@ -1291,6 +1294,35 @@ drop:
+ }
+ 
+ /**
++ * void journal_callback_set() -  Register a callback function for this handle.
++ * @handle: handle to attach the callback to.
++ * @func: function to callback.
++ * @jcb:  structure with additional information required by func() , and
++ *        some space for jbd internal information.
++ * 
++ * The function will be called when the transaction that this handle is
++ * part of has been committed to disk with the original callback data
++ * struct and the error status of the journal as parameters.  There is no
++ * guarantee of ordering between handles within a single transaction, nor
++ * between callbacks registered on the same handle.
++ *
++ * The caller is responsible for allocating the journal_callback struct.
++ * This is to allow the caller to add as much extra data to the callback
++ * as needed, but reduce the overhead of multiple allocations.  The caller
++ * allocated struct must start with a struct journal_callback at offset 0,
++ * and has the caller-specific data afterwards.
++ */
++void journal_callback_set(handle_t *handle,
++			  void (*func)(struct journal_callback *jcb, int error),
++			  struct journal_callback *jcb)
++{
++	jcb->jcb_func = func;
++	spin_lock(&handle->h_transaction->t_jcb_lock);
++	list_add_tail(&jcb->jcb_list, &handle->h_jcb);
++	spin_unlock(&handle->h_transaction->t_jcb_lock);
++}
++
++/**
+  * int journal_stop() - complete a transaction
+  * @handle: tranaction to complete.
+  * 
+@@ -1363,6 +1396,11 @@ int journal_stop(handle_t *handle)
+ 			wake_up(&journal->j_wait_transaction_locked);
+ 	}
+ 
++	/* Move callbacks from the handle to the transaction. */
++	spin_lock(&transaction->t_jcb_lock);
++	list_splice(&handle->h_jcb, &transaction->t_jcb);
++	spin_unlock(&transaction->t_jcb_lock);
++
+ 	/*
+ 	 * If the handle is marked SYNC, we need to set another commit
+ 	 * going!  We also want to force a commit if the current
+Cheers, Andreas
 --
-To unsubscribe from this list: send an email with
-"unsubscribe kernelnewbies" to ecartis@nl.linux.org
-Please read the FAQ at http://kernelnewbies.org/FAQ
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
