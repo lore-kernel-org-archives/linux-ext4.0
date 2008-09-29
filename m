@@ -1,59 +1,69 @@
-From: vineetagarwal <checkout.vineet@gmail.com>
-Subject: Re: Block allocation
-Date: Mon, 29 Sep 2008 05:05:51 -0700 (PDT)
-Message-ID: <19722649.post@talk.nabble.com>
-References: <19703506.post@talk.nabble.com>
+From: Kalpak Shah <Kalpak.Shah@Sun.COM>
+Subject: [e2fsprogs] Failing extents tests
+Date: Mon, 29 Sep 2008 19:17:35 +0530
+Message-ID: <1222696055.3971.42.camel@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: TheodoreTso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kuber.nabble.com ([216.139.236.158]:53400 "EHLO
-	kuber.nabble.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751847AbYI2MFv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Sep 2008 08:05:51 -0400
-Received: from isper.nabble.com ([192.168.236.156])
-	by kuber.nabble.com with esmtp (Exim 4.63)
-	(envelope-from <lists@nabble.com>)
-	id 1KkHVf-0000B3-7d
-	for linux-ext4@vger.kernel.org; Mon, 29 Sep 2008 05:05:51 -0700
-In-Reply-To: <19703506.post@talk.nabble.com>
+Received: from sineb-mail-1.sun.com ([192.18.19.6]:42417 "EHLO
+	sineb-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751502AbYI2Nrk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Sep 2008 09:47:40 -0400
+Received: from fe-apac-05.sun.com (fe-apac-05.sun.com [192.18.19.176] (may be forged))
+	by sineb-mail-1.sun.com (8.13.6+Sun/8.12.9) with ESMTP id m8TDlYDZ002901
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Sep 2008 13:47:36 GMT
+Received: from conversion-daemon.mail-apac.sun.com by mail-apac.sun.com
+ (Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
+ id <0K7Y00J01M3ZZA00@mail-apac.sun.com>
+ (original mail from Kalpak.Shah@Sun.COM) for linux-ext4@vger.kernel.org; Mon,
+ 29 Sep 2008 21:47:34 +0800 (SGT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
 
-thank you for replying .
-well iam working on a project where i need to allocate few blockgroups for
-manipulation of data.
-yeah i can write the code but i was actually thinking that could i somehow
-manipulate the code at top level of allocation , so that not much changes
-are made to the good old existing code and work is done.
-if you can please provide me with some help
-thank you
+The extents support in e2fsprogs-1.41.1 doesn't pass a few of the
+regression tests that we had created. 4 tests out of 20 are failing, I
+have included some details about the failures.
+
+e2fsprogs-tests-f_extents_ee_len.patch: Corrupt ee_len is not detected. 
+e2fsprogs-tests-f_extents_ei_block.patch: Corrupt ei_block is not
+detected. In the Sun extents code, we passed the previous extent to
+ext2fs_extent_verify(), so additional sanity checks could be performed.
+Here is a snippet of that:
+
+/* Verify that a single extent @ex is valid.  If @ex_prev is passed in,
+ * then this was the previous logical extent in this block and we can
+ * do additional sanity checking (though in case of error we don't know
+ * which of the two extents is bad).  Similarly, if @ix is passed in
+ * we can check that this extent is logically part of the index that
+ * refers to it (though again we can't know which of the two is bad). */
+errcode_t ext2fs_extent_verify(ext2_filsys fs, struct ext3_extent *ex,
+                               struct ext3_extent *ex_prev,
+                               struct ext3_extent_idx *ix, int ix_len)
 
 
-vineetagarwal wrote:
-> 
-> hello everybody,
-> 
-> I want to allocate few blocks from a blockgroup in ext2 within a range of
-> offset specified by user. Is it possible of doing so if yes then can
-> someone please explain.As i know balloc.c and ialloc.c are responsible for
-> it and they work on entire file system can i somehow manipulate it for
-> ceratin ranges.
-> 
-> For Ex
-> let say i provide a range 100 - 3000. Can i allocate few blocks within
-> this range .
-> 
-> Thanking you
-> 
-> -- 
-> From :
-> Vineet Agarwal
-> 
+Similarly we also passed previous ext3_extent_idx to
+ext2fs_extent_index_verify().
 
--- 
-View this message in context: http://www.nabble.com/Block-allocation-tp19703506p19722649.html
-Sent from the linux-ext4 mailing list archive at Nabble.com.
+Maybe we can do something similar by adding ex_prev and ix_prev to
+ext2_extent_handle_t?
+
+e2fsprogs-tests-f_extents_imbalanced_tree.patch,
+e2fsprogs-tests-f_extents_eh_depth.patch: In both these cases, e2fsck
+aborts with a "Corrupt extent header on inode %i" error. Instead of
+aborting we can clear the extent header and set i_blocks to 0?
+
+I have uploaded these tests at
+http://downloads.lustre.org/public/tools/e2fsprogs/extent_tests/
+
+One problem with these tests is that, the high 16 bits of extent/index
+block are set, so these tests cannot be used as-is, but the image should
+be helpful to check if the problem is solved or not.
+
+Thanks,
+Kalpak
 
