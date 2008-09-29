@@ -1,74 +1,48 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: Potential bug in mballoc --- reusing data blocks before txn commit
-Date: Mon, 29 Sep 2008 17:04:04 -0400
-Message-ID: <48E142C4.7090809@redhat.com>
-References: <E1KjlCM-0002L7-SO@closure.thunk.org> <48E138B2.8080707@sun.com> <20080929205712.GH10831@mit.edu>
+From: Mark Fasheh <mfasheh@suse.com>
+Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
+Date: Mon, 29 Sep 2008 14:13:40 -0700
+Message-ID: <20080929211340.GF4563@wotan.suse.de>
+References: <1221331767-16870-1-git-send-email-tytso@mit.edu> <2EC8176B-0AFA-4B36-A2F5-E51753A576A5@cam.ac.uk> <20080913212903.GF26128@mit.edu> <20080914134859.GB21746@infradead.org> <20080914175810.GB13074@mit.edu> <20080915144948.GB16491@infradead.org> <20080915175305.GS4563@wotan.suse.de> <20080916213106.GA10562@mit.edu> <20080920164759.GY27404@josefsipek.net> <20080929010720.GH8711@mit.edu>
+Reply-To: Mark Fasheh <mfasheh@suse.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Alex Tomas <bzzz@sun.com>, Andreas Dilger <adilger@sun.com>,
-	linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Anton Altaparmakov <aia21@cam.ac.uk>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	akpm@linuxfoundation.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51868 "EHLO mx2.redhat.com"
+Received: from ns.suse.de ([195.135.220.2]:57171 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752566AbYI2VE2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Sep 2008 17:04:28 -0400
-In-Reply-To: <20080929205712.GH10831@mit.edu>
+	id S1752796AbYI2VNn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Sep 2008 17:13:43 -0400
+Content-Disposition: inline
+In-Reply-To: <20080929010720.GH8711@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Tue, Sep 30, 2008 at 12:21:06AM +0400, Alex Tomas wrote:
->   
->> Theodore Ts'o wrote:
->>     
->>> I'll also note that a linked list of extents that should be freed would
->>> also be useful for implementing the trim command for SSD's --- and that
->>> this would be much more cleanly implemented via a callback from the jbd2
->>> layer when a commit is finished, rather than the current
->>> ext4_mb_poll_new_transaction() mechanism.
->>>       
->> yes, polling is a hack as we lost commit callback long ago.
->>     
->
-> Yeah, I know Andrian Bunk strikes again....  but the right answer is
-> to ressurect that code and add it back.
->
->   
->>> In any case, is there a reason why the mballoc.c is using its current
->>> scheme, and not using kj->b_commited_data as in the original balloc.c
->>> code?  And was there a reason why you decided that it wasn't necessary
->>> to protect freed data blocks from being reused until the transaction was
->>> committed?
->>>       
->> I think we don't really care about data consistency much. so I tried to save
->> some memory (given amount of metadata is smaller usually).
->>     
->
-> Well, we need to keep this information for the SSD Trim command
-> anyway; so probably the right approach is to keep a red/black tree of
-> extents that need to be freed, and then when the commit callback is
-> called, we can update the appropriate mballoc data structures and call
-> the SSD trim command if necessary.
->
-> That restores the data consistency that we have with ext3, and it also
-> gives us the SSD trim functionality, which we need for both ext3 and
-> ext4.  In fact, the information we need in both cases is 100% identical.
->
-> The other thing which I should check is that if we are using this
-> scheme, I think we shouldn't need to keep the shadow copy of the block
-> bitmap buffers any more.  I would imagine we still need them for the
-> inode bitmaps, for the same reason, though.
->
->      	      	  		     	 - Ted
->
->   
+On Sun, Sep 28, 2008 at 09:07:20PM -0400, Theodore Tso wrote:
+> Do you have time to update the fiemap patchset so we can hopefully
+> come to consensus and get this pushed to Linus in time for the
+> upcoming merge window?
 
-I don't disagree with any of the above, just want to point out that TRIM 
-has a  SCSI T10 cousin that is very similar (used to implement thinly 
-provisioned luns). We should make sure as much as possible to make our 
-file system level support work for both...
+I can probably do this early next week. If that's not soon enough, I won't
+be offended if you or someone else does the update. I agree, it seems like
+we're pretty close to consensus.
 
-ric
 
+> If not, I can take over for you and take over the care and feeding of
+> this patchset so it can get pushed to Linus ASAP; I think we are
+> pretty close to consensus on this interface, and I'd rather that we
+> not lose momentum.
+
+Why not let this sit in -mm for a cycle? I know how that sounds, considering
+how long it's taken everyone to decide what color to paint the bicycle shed,
+but at the least it'd give other file systems a chance to write their own
+support patches. There's also the benefit of a little extra time for
+ext4/ocfs2 to debug their own support patches. Do we lose any momentum if
+the patches are 'complete' and in -mm with a target for 2.6.29?
+	--Mark
+
+--
+Mark Fasheh
