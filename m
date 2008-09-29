@@ -1,149 +1,130 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: Re:
-	jbd2-abort-instead-of-waiting-for-nonexistent-transactions.patch
-Date: Mon, 29 Sep 2008 17:51:13 +0100
-Message-ID: <20080929165113.GA1360@dastardly.home.dghda.com>
-References: <20080922140851.bc3f9319.akpm@linux-foundation.org> <e9e943910809230956n3f36e544hc46a80c00ff9804a@mail.gmail.com> <20080929022426.GL8711@mit.edu>
+From: Sunil <infinite.questions@gmail.com>
+Subject: Re: inode and blocks
+Date: Mon, 29 Sep 2008 22:54:05 +0530
+Message-ID: <ef1901a00809291024u32bfabfo2961f0c63b32d267@mail.gmail.com>
+References: <2d08ef090809280319m64555696nfe1a446e010f921f@mail.gmail.com>
+	 <20080928210118.GD8711@mit.edu>
+	 <2d08ef090809290733x2a58cfbl520be9810d772063@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Duane Griffin <duaneg@dghda.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Stephen C. Tweedie" <sct@redhat.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:2246 "EHLO kumera.dghda.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751897AbYI2Q6A (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Sep 2008 12:58:00 -0400
+Content-Type: multipart/alternative;
+	boundary="----=_Part_38458_27317978.1222709045746"
+Cc: "Theodore Tso" <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>,
+	Kernelnewbies <kernelnewbies@nl.linux.org>
+To: "Rohit Sharma" <imreckless@gmail.com>
+Return-path: <kernelnewbies-bounce@nl.linux.org>
+In-Reply-To: <2d08ef090809290733x2a58cfbl520be9810d772063@mail.gmail.com>
+Sender: kernelnewbies-bounce@nl.linux.org
+Errors-to: kernelnewbies-bounce@nl.linux.org
+List-help: <mailto:ecartis@nl.linux.org?Subject=help>
+List-unsubscribe: <mailto:kernelnewbies-request@nl.linux.org?Subject=unsubscribe>
+List-software: Ecartis version 1.0.0
+List-subscribe: <mailto:kernelnewbies-request@nl.linux.org?Subject=subscribe>
+List-owner: <mailto:ecartis-owner@nl.linux.org>
+List-post: <mailto:kernelnewbies@nl.linux.org>
+List-archive: <http://mail.nl.linux.org/kernelnewbies/>
+List-Id: linux-ext4.vger.kernel.org
+
+------=_Part_38458_27317978.1222709045746
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
-In-Reply-To: <20080929022426.GL8711@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 28, 2008 at 10:24:26PM -0400, Theodore Tso wrote:
-> On Tue, Sep 23, 2008 at 05:56:27PM +0100, Duane Griffin wrote:
-> > Stephen suggested that it would be better to sanity check the journal
-> > start/end pointers on mount, rather than catching the error later like
-> > this. I never quite convinced myself I'd worked out the right way to
-> > do that, sorry. Perhaps someone would like to confirm (or otherwise)
-> > whether or not the following is correct:
-> > 
-> > In journal_reset (?) check that:
-> > 
-> > journal->j_first == 1 (this seems to be the only valid value)
-> > 
-> > and
-> > 
-> > journal->j_last >= JFS_MIN_JOURNAL_BLOCKS
-> 
-> Yes, for all existing currently created, j_first will be 1.  I can't
-> think of a good reason for why we might want to reserve some space at
-> the beginning of the journal, but the safest check would be:
-> 
->     (journal->j_last - journal->j_first +1) >= JFS_MIN_JOURNAL_BLOCKS
+On Mon, Sep 29, 2008 at 8:03 PM, Rohit Sharma <imreckless@gmail.com> wrote:
 
-Fair enough.
+> Not an assignment actually, but a project.
+> We are working on open hierarchical storage management, in which we
+> store files on disks according to different file placement policies.
+> For eg. if i say that all the important files, like all the employee
+> database should be in disk 1 and all the songs on disk 2, then we
+> place them accordingly in different disks.
+>
+>
+> On Mon, Sep 29, 2008 at 2:31 AM, Theodore Tso <tytso@mit.edu> wrote:
+> > On Sun, Sep 28, 2008 at 03:49:04PM +0530, Rohit Sharma wrote:
+> >> Suppose i have a file named abc.txt and i want to specify that
+> >> all the *.txt files must be allocated between block groups no. 100 -
+> >> 200 in ext2 fs.
+> >>
+> >> Is there a way to do this?
+> >>
+> >> can we modify function ext2_new_inode and find_group_orlov for this?
+> >
+> > You would have to modify kernel code to do this; the main question
+> > which comes to mind is *why* would you want to do something like this?
+> > It seems like an ideal problem set that a professor might give to a
+> > student, since it would force them to try to get from an inode to the
+> > pathname used to open the file.  So it seems to be one of these really
+> > pointless things that isn't particularly useful in real life, except
+> > for pedagogical purposes.
+> >
+> >                                                        - Ted
+> >
+>
+> --
+> To unsubscribe from this list: send an email with
+> "unsubscribe kernelnewbies" to ecartis@nl.linux.org
+> Please read the FAQ at http://kernelnewbies.org/FAQ
+>
+>
+Hi Rohit,
 
-> > Additionally, it should be possible to check the journal->j_last more
-> > precisely. For internal journals it seems straight-forward, we can
-> > just check that journal->j_last == inode->i_size >>
-> > inode->i_sb->s_blocksize_bits. For external journals we'd need to load
-> > the device's superblock and check journal->j_last == s_blocks_count.
-> 
-> Yep, agreed.
+Just out of curiosity, how are you going to identify the type of file inside
+kernel ? from an extension or file format ?
 
-OK, great. See patch below. I'll send the ext3/jbd version once you're
-happy with it.
-
-> > Regardless, I think the original patch may be a good idea. It improves
-> > robustness and matches the other locations where we call
-> > jbd2_log_do_checkpoint. They are all in loops that test that
-> > journal->j_checkpoint_transactions != NULL.
-> 
-> Agreed.  I've included it in the ext4 patch queue, and will be soon
-> putting out a new ext4 patchset consisting of the patches I plan to
-> push during the next merge window.
-
-Great, thanks. The original patch was for ext3/jbd patch, but I'm not
-sure whether that has been accepted anywhere or not. I'll check after
-the ext3 patches are merged and resend it if needed.
-
-> 						- Ted
-
-Cheers,
-Duane.
+Thanks.
 
 -- 
+Sunil.
 
-Subject: [PATCH] jbd2: sanity check block range
+------=_Part_38458_27317978.1222709045746
+Content-Type: text/html; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-Invalid journal start/end block values can cause BUGs. Do some sanity
-checking on them when we load the journal.
+<div dir="ltr"><br><br><div class="gmail_quote">On Mon, Sep 29, 2008 at 8:03 PM, Rohit Sharma <span dir="ltr">&lt;<a href="mailto:imreckless@gmail.com">imreckless@gmail.com</a>&gt;</span> wrote:<br><blockquote class="gmail_quote" style="border-left: 1px solid rgb(204, 204, 204); margin: 0pt 0pt 0pt 0.8ex; padding-left: 1ex;">
+Not an assignment actually, but a project.<br>
+We are working on open hierarchical storage management, in which we<br>
+store files on disks according to different file placement policies.<br>
+For eg. if i say that all the important files, like all the employee<br>
+database should be in disk 1 and all the songs on disk 2, then we<br>
+place them accordingly in different disks.<br>
+<div><div></div><div class="Wj3C7c"><br>
+<br>
+On Mon, Sep 29, 2008 at 2:31 AM, Theodore Tso &lt;<a href="mailto:tytso@mit.edu">tytso@mit.edu</a>&gt; wrote:<br>
+&gt; On Sun, Sep 28, 2008 at 03:49:04PM +0530, Rohit Sharma wrote:<br>
+&gt;&gt; Suppose i have a file named abc.txt and i want to specify that<br>
+&gt;&gt; all the *.txt files must be allocated between block groups no. 100 -<br>
+&gt;&gt; 200 in ext2 fs.<br>
+&gt;&gt;<br>
+&gt;&gt; Is there a way to do this?<br>
+&gt;&gt;<br>
+&gt;&gt; can we modify function ext2_new_inode and find_group_orlov for this?<br>
+&gt;<br>
+&gt; You would have to modify kernel code to do this; the main question<br>
+&gt; which comes to mind is *why* would you want to do something like this?<br>
+&gt; It seems like an ideal problem set that a professor might give to a<br>
+&gt; student, since it would force them to try to get from an inode to the<br>
+&gt; pathname used to open the file. &nbsp;So it seems to be one of these really<br>
+&gt; pointless things that isn&#39;t particularly useful in real life, except<br>
+&gt; for pedagogical purposes.<br>
+&gt;<br>
+&gt; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp;- Ted<br>
+&gt;<br>
+<br>
+--<br>
+To unsubscribe from this list: send an email with<br>
+&quot;unsubscribe kernelnewbies&quot; to <a href="mailto:ecartis@nl.linux.org">ecartis@nl.linux.org</a><br>
+Please read the FAQ at <a href="http://kernelnewbies.org/FAQ" target="_blank">http://kernelnewbies.org/FAQ</a><br>
+<br>
+</div></div></blockquote></div><br><span style="font-family: verdana,sans-serif;">Hi </span>Rohit<span style="font-family: verdana,sans-serif;">,</span><br style="font-family: verdana,sans-serif;"><br style="font-family: verdana,sans-serif;">
+<span style="font-family: verdana,sans-serif;">Just out of curiosity, how are you going to identify the type of file inside kernel ? from an extension or file format ?</span><br style="font-family: verdana,sans-serif;" clear="all">
+<br style="font-family: verdana,sans-serif;"><span style="font-family: verdana,sans-serif;">Thanks.</span><br style="font-family: verdana,sans-serif;"><br style="font-family: verdana,sans-serif;"><span style="font-family: verdana,sans-serif;">-- </span><br style="font-family: verdana,sans-serif;">
+Sunil<span style="font-family: verdana,sans-serif;">.</span><br>
+</div>
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
----
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 8207a01..bb926e4 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -41,6 +41,8 @@
- #include <asm/uaccess.h>
- #include <asm/page.h>
- 
-+#include "../ext4/ext4.h"
-+
- EXPORT_SYMBOL(jbd2_journal_start);
- EXPORT_SYMBOL(jbd2_journal_restart);
- EXPORT_SYMBOL(jbd2_journal_extend);
-@@ -1120,6 +1122,34 @@ static void journal_fail_superblock (journal_t *journal)
- 	journal->j_sb_buffer = NULL;
- }
- 
-+static int validate_last_block(journal_t *journal, unsigned long last)
-+{
-+	if (journal->j_inode) {
-+		return last == journal->j_inode->i_size >>
-+			journal->j_inode->i_sb->s_blocksize_bits;
-+	} else {
-+		struct buffer_head *bh;
-+		struct ext4_super_block *es;
-+		ext4_fsblk_t sb_block;
-+		ext4_fsblk_t count;
-+		unsigned long offset;
-+
-+		sb_block = EXT4_MIN_BLOCK_SIZE / journal->j_blocksize;
-+		offset = EXT4_MIN_BLOCK_SIZE % journal->j_blocksize;
-+		bh = __getblk(journal->j_dev, sb_block, journal->j_blocksize);
-+		if (bh) {
-+			es = (struct ext4_super_block *) bh->b_data + offset;
-+			count = ext4_blocks_count(es);
-+			brelse(bh);
-+			return count == last;
-+		} else {
-+			printk(KERN_WARNING
-+				"JBD2: IO error reading journal's ext3 sb\n");
-+			return 0;
-+		}
-+	}
-+}
-+
- /*
-  * Given a journal_t structure, initialise the various fields for
-  * startup of a new journaling session.  We use this both when creating
-@@ -1134,6 +1164,16 @@ static int journal_reset(journal_t *journal)
- 
- 	first = be32_to_cpu(sb->s_first);
- 	last = be32_to_cpu(sb->s_maxlen);
-+	if (last - first + 1 < JBD2_MIN_JOURNAL_BLOCKS) {
-+		printk(KERN_ERR "JBD2: Bad journal block range: %llu-%llu\n",
-+			first, last);
-+		return -EIO;
-+	}
-+
-+	if (!validate_last_block(journal, last)) {
-+		printk(KERN_ERR "JBD2: Bad last journal block: %llu\n", last);
-+		return -EIO;
-+	}
- 
- 	journal->j_first = first;
- 	journal->j_last = last;
+------=_Part_38458_27317978.1222709045746--
+
+--
+To unsubscribe from this list: send an email with
+"unsubscribe kernelnewbies" to ecartis@nl.linux.org
+Please read the FAQ at http://kernelnewbies.org/FAQ
