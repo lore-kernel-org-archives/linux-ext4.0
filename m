@@ -1,48 +1,66 @@
-From: Mark Fasheh <mfasheh@suse.com>
-Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
-Date: Mon, 29 Sep 2008 14:13:40 -0700
-Message-ID: <20080929211340.GF4563@wotan.suse.de>
-References: <1221331767-16870-1-git-send-email-tytso@mit.edu> <2EC8176B-0AFA-4B36-A2F5-E51753A576A5@cam.ac.uk> <20080913212903.GF26128@mit.edu> <20080914134859.GB21746@infradead.org> <20080914175810.GB13074@mit.edu> <20080915144948.GB16491@infradead.org> <20080915175305.GS4563@wotan.suse.de> <20080916213106.GA10562@mit.edu> <20080920164759.GY27404@josefsipek.net> <20080929010720.GH8711@mit.edu>
-Reply-To: Mark Fasheh <mfasheh@suse.com>
+From: jim owens <jowens@hp.com>
+Subject: Re: [PATCH 3/3] Add timeout feature
+Date: Mon, 29 Sep 2008 18:08:55 -0400
+Message-ID: <48E151F7.5050408@hp.com>
+References: <20080908205337t-sato@mail.jp.nec.com> <20080908171119.GB22521@infradead.org> <48DBFD42.6030307@redhat.com> <D0B0D91F884647D6808626CDFF81E532@nsl.ad.nec.co.jp> <20080929141326.GA31781@infradead.org> <48E0E7D4.1090409@sandeen.net> <20080929143749.GA13286@infradead.org> <48E0EA0B.7000701@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: Christoph Hellwig <hch@infradead.org>,
-	Anton Altaparmakov <aia21@cam.ac.uk>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	akpm@linuxfoundation.org
-To: Theodore Tso <tytso@mit.edu>
+	Takashi Sato <t-sato@yk.jp.nec.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Oleg Nesterov <oleg@tv-sign.ru>, linux-fsdevel@vger.kernel.org,
+	dm-devel@redhat.com, viro@ZenIV.linux.org.uk,
+	linux-ext4@vger.kernel.org, xfs@oss.sgi.com, axboe@kernel.dk,
+	mtk.manpages@googlemail.com, linux-kernel@vger.kernel.org
+To: Eric Sandeen <sandeen@sandeen.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns.suse.de ([195.135.220.2]:57171 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752796AbYI2VNn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Sep 2008 17:13:43 -0400
-Content-Disposition: inline
-In-Reply-To: <20080929010720.GH8711@mit.edu>
+Received: from g1t0026.austin.hp.com ([15.216.28.33]:37016 "EHLO
+	g1t0026.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751377AbYI2WJC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Sep 2008 18:09:02 -0400
+In-Reply-To: <48E0EA0B.7000701@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 28, 2008 at 09:07:20PM -0400, Theodore Tso wrote:
-> Do you have time to update the fiemap patchset so we can hopefully
-> come to consensus and get this pushed to Linus in time for the
-> upcoming merge window?
+Eric Sandeen wrote:
+ > Christoph Hellwig wrote:
+ >> But why would the filesystem every unfreeze itself?  That defeats the
+ >> whole point of freezing it.
+ >
+ > I agree.  Was just trying to clarify the above point.
+ >
+ > But there have been what, 12 submissions now, with the unfreeze timeout
+ > in place so it's a persistent theme ;)
+ >
+ > Perhaps a demonstration of just how easy (or not easy) it is to deadlock
+ > a filesystem by freezing the root might be in order, at least.
+ >
+ > And even if it is relatively easy, I still maintain that it is the
+ > administrator's role to not inflict damage on the machine being
+ > administered.  There are a lot of potentially dangerous tools at root's
+ > disposal; why this particular one needs a nanny I'm still not quite sure.
 
-I can probably do this early next week. If that's not soon enough, I won't
-be offended if you or someone else does the update. I agree, it seems like
-we're pretty close to consensus.
+Since this patch hit fsdev, there have been an equal number
+of supporters and opponents of the timeout.
 
+I'm not opposed to the timeout on the API, but I don't think
+it is needed if we have a system configurable timeout (default
+is no timeout) that can be changed by an admin.
 
-> If not, I can take over for you and take over the care and feeding of
-> this patchset so it can get pushed to Linus ASAP; I think we are
-> pretty close to consensus on this interface, and I'd rather that we
-> not lose momentum.
+My experience is that a timeout is not needed protect against
+a stupid admin or against software bugs.
 
-Why not let this sit in -mm for a cycle? I know how that sounds, considering
-how long it's taken everyone to decide what color to paint the bicycle shed,
-but at the least it'd give other file systems a chance to write their own
-support patches. There's also the benefit of a little extra time for
-ext4/ocfs2 to debug their own support patches. Do we lose any momentum if
-the patches are 'complete' and in -mm with a target for 2.6.29?
-	--Mark
+The justification for a timeout as far as I am concerned
+is so the admin can log in and reset hung hardware.  If we
+think there is no chance of forcing the external device that
+went to sleep to respond so the system can continue to be used,
+then I don't think a timeout has any valid use.
 
---
-Mark Fasheh
+My timeout desire is based on some past SAN behavior and
+I'm OK if people argue those devices should just be fixed.
+But we argued the same thing and were ignored because bad
+device behavior did not stop people from buying them.
+
+jim
