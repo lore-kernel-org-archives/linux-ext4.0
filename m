@@ -1,44 +1,34 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][PATCH 0/12]ext4: online defrag (ver 0.95)
-Date: Sun, 28 Sep 2008 19:46:40 -0400
-Message-ID: <20080928234640.GF8711@mit.edu>
-References: <48DDE025.2090207@rs.jp.nec.com> <20080927144924.GA11669@mit.edu>
+Subject: Re: [PATCH 1/4] vfs: vfs-level fiemap interface
+Date: Sun, 28 Sep 2008 21:07:20 -0400
+Message-ID: <20080929010720.GH8711@mit.edu>
+References: <E1Kea9F-0004L5-Ds@closure.thunk.org> <1221331767-16870-1-git-send-email-tytso@mit.edu> <2EC8176B-0AFA-4B36-A2F5-E51753A576A5@cam.ac.uk> <20080913212903.GF26128@mit.edu> <20080914134859.GB21746@infradead.org> <20080914175810.GB13074@mit.edu> <20080915144948.GB16491@infradead.org> <20080915175305.GS4563@wotan.suse.de> <20080916213106.GA10562@mit.edu> <20080920164759.GY27404@josefsipek.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+To: Mark Fasheh <mfasheh@suse.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Anton Altaparmakov <aia21@cam.ac.uk>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	akpm@linuxfoun
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:57216 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:38113 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753580AbYI1Xqn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Sep 2008 19:46:43 -0400
+	with ESMTP id S1751684AbYI2BHo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Sep 2008 21:07:44 -0400
 Content-Disposition: inline
-In-Reply-To: <20080927144924.GA11669@mit.edu>
+In-Reply-To: <20080920164759.GY27404@josefsipek.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've added online defrag version 0.95 into the ext4 patch queue.
-Because of the recent patch I've added to remove the old legacy block
-allocator patches 7 through 11 would no longer apply, and so they are
-commented out in the patch queue.  In some cases, the patches are ones
-that would go away soon anyway.  In the case of EXT4_IOC_RESERVE_BLOCK
-ioctl, it was non-functional in the common case where mballoc was in
-use, since mballoc never used any of the legacy block reservation
-code; so any user space that depended on EXT4_IOC_RESERVE_BLOCK ioctl
-couldn't possibly have worked.
+Mark,
 
-If there are needed functions that were removed from mballoc.c that
-really are necessary, we can certainly look at adding them back ---
-but I would want to check to see if there is similar code in mballoc
-that we can use instead.  One of my concerns is that there is been
-duplicated code in balloc.c, mballoc.c, extents.c, and defrag.c and
-one of the reasons why I wanted to pull out the legacy block
-allocation code was to eliminate some of the duplicated code, and to
-hopefully expose more of this duplicated code.
+Do you have time to update the fiemap patchset so we can hopefully
+come to consensus and get this pushed to Linus in time for the
+upcoming merge window?
 
-In the end it should make all the ext4 code base and the defrag code
-more easy to understand and much more robust.
+If not, I can take over for you and take over the care and feeding of
+this patchset so it can get pushed to Linus ASAP; I think we are
+pretty close to consensus on this interface, and I'd rather that we
+not lose momentum.
 
-Regards,
-
-							- Ted
+						- Ted
