@@ -1,23 +1,23 @@
 From: vineetagarwal <checkout.vineet@gmail.com>
 Subject: Re: Block allocation
-Date: Mon, 29 Sep 2008 05:01:38 -0700 (PDT)
-Message-ID: <19722589.post@talk.nabble.com>
-References: <19703506.post@talk.nabble.com> <20080927215059.GA5025@mit.edu>
+Date: Mon, 29 Sep 2008 05:05:51 -0700 (PDT)
+Message-ID: <19722649.post@talk.nabble.com>
+References: <19703506.post@talk.nabble.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kuber.nabble.com ([216.139.236.158]:35516 "EHLO
+Received: from kuber.nabble.com ([216.139.236.158]:53400 "EHLO
 	kuber.nabble.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751748AbYI2MBj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Sep 2008 08:01:39 -0400
+	with ESMTP id S1751847AbYI2MFv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Sep 2008 08:05:51 -0400
 Received: from isper.nabble.com ([192.168.236.156])
 	by kuber.nabble.com with esmtp (Exim 4.63)
 	(envelope-from <lists@nabble.com>)
-	id 1KkHRa-0008Ez-5E
-	for linux-ext4@vger.kernel.org; Mon, 29 Sep 2008 05:01:38 -0700
-In-Reply-To: <20080927215059.GA5025@mit.edu>
+	id 1KkHVf-0000B3-7d
+	for linux-ext4@vger.kernel.org; Mon, 29 Sep 2008 05:05:51 -0700
+In-Reply-To: <19703506.post@talk.nabble.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -27,39 +27,33 @@ well iam working on a project where i need to allocate few blockgroups for
 manipulation of data.
 yeah i can write the code but i was actually thinking that could i somehow
 manipulate the code at top level of allocation , so that not much changes
+are made to the good old existing code and work is done.
+if you can please provide me with some help
+thank you
 
 
-Theodore Ts'o wrote:
+vineetagarwal wrote:
 > 
-> On Sat, Sep 27, 2008 at 08:07:06AM -0700, vineetagarwal wrote:
->> 
->> I want to allocate few blocks from a blockgroup in ext2 within a range of
->> offset specified by user. Is it possible of doing so if yes then can
->> someone
->> please explain.As i know balloc.c and ialloc.c are responsible for it and
->> they work on entire file system can i somehow manipulate it for ceratin
->> ranges.
->> 
->> For Ex
->> let say i provide a range 100 - 3000. Can i allocate few blocks within
->> this
->> range .
+> hello everybody,
 > 
-> While the filesystem mounted (and accessed through the kernel) or
-> unmounted (and accessed via libext2fs)?  Anything is possible. if you
-> are willing to write some code....
+> I want to allocate few blocks from a blockgroup in ext2 within a range of
+> offset specified by user. Is it possible of doing so if yes then can
+> someone please explain.As i know balloc.c and ialloc.c are responsible for
+> it and they work on entire file system can i somehow manipulate it for
+> ceratin ranges.
 > 
-> Why do you need to do this, and is this for some class or problem set?
+> For Ex
+> let say i provide a range 100 - 3000. Can i allocate few blocks within
+> this range .
 > 
->        	   	      	    	   	- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Thanking you
 > 
+> -- 
+> From :
+> Vineet Agarwal
 > 
 
 -- 
-View this message in context: http://www.nabble.com/Block-allocation-tp19703506p19722589.html
+View this message in context: http://www.nabble.com/Block-allocation-tp19703506p19722649.html
 Sent from the linux-ext4 mailing list archive at Nabble.com.
 
