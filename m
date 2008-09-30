@@ -1,45 +1,51 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: Potential bug in mballoc --- reusing data blocks before txn commit
-Date: Mon, 29 Sep 2008 19:05:49 -0400
-Message-ID: <48E15F4D.3000305@redhat.com>
-References: <E1KjlCM-0002L7-SO@closure.thunk.org> <48E138B2.8080707@sun.com> <20080929205712.GH10831@mit.edu> <48E142C4.7090809@redhat.com> <20080929230031.GK10831@mit.edu>
+From: Alex Tomas <bzzz@sun.com>
+Subject: Re: Potential bug in mballoc --- reusing data blocks before txn	commit
+Date: Tue, 30 Sep 2008 08:35:21 +0400
+Message-ID: <48E1AC89.6050803@sun.com>
+References: <E1KjlCM-0002L7-SO@closure.thunk.org> <48E138B2.8080707@sun.com>
+ <20080929205712.GH10831@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>, Alex Tomas <bzzz@sun.com>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; format=flowed; charset=ISO-8859-1
+Content-Transfer-Encoding: 7BIT
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:49445 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751602AbYI2XGN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Sep 2008 19:06:13 -0400
-In-Reply-To: <20080929230031.GK10831@mit.edu>
+Received: from gmp-eb-inf-1.sun.com ([192.18.6.21]:46407 "EHLO
+	gmp-eb-inf-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750871AbYI3Efj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Sep 2008 00:35:39 -0400
+Received: from fe-emea-09.sun.com (gmp-eb-lb-2-fe2.eu.sun.com [192.18.6.11])
+	by gmp-eb-inf-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8U4Zb2a024481
+	for <linux-ext4@vger.kernel.org>; Tue, 30 Sep 2008 04:35:38 GMT
+Received: from conversion-daemon.fe-emea-09.sun.com by fe-emea-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K7Z00G01R613H00@fe-emea-09.sun.com> (original mail from bzzz@sun.com)
+ for linux-ext4@vger.kernel.org; Tue, 30 Sep 2008 05:35:37 +0100 (BST)
+In-reply-to: <20080929205712.GH10831@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Theodore Tso wrote:
-> On Mon, Sep 29, 2008 at 05:04:04PM -0400, Ric Wheeler wrote:
->   
->> I don't disagree with any of the above, just want to point out that TRIM  
->> has a  SCSI T10 cousin that is very similar (used to implement thinly  
->> provisioned luns). We should make sure as much as possible to make our  
->> file system level support work for both...
->>
->>     
->
-> That's shouldn't be a problem.  David Woodhouse created a standard
-> block device interface that should be suitable both for ATA and SCSI:
->
->     int blkdev_issue_discard(struct block_device *bdev, sector_t sector,
-> 		         unsigned nr_sects, bio_end_io_t end_io);
->
-> 							- Ted
->
->   
+> Yeah, I know Andrian Bunk strikes again....  but the right answer is
+> to ressurect that code and add it back.
 
-I know, just wanted to point out to the broader audience that it is not 
-just trim ;-)
+indeed
 
-ric
+> Well, we need to keep this information for the SSD Trim command
+> anyway; so probably the right approach is to keep a red/black tree of
+> extents that need to be freed, and then when the commit callback is
+> called, we can update the appropriate mballoc data structures and call
+> the SSD trim command if necessary.
+
+why we need a tree? at least for the purpose of keeping blocks unavailable
+we'd need just a list as at commit we free them all.
+
+> The other thing which I should check is that if we are using this
+> scheme, I think we shouldn't need to keep the shadow copy of the block
+> bitmap buffers any more.  I would imagine we still need them for the
+> inode bitmaps, for the same reason, though.
+
+shadow copy holds preallocated blocks
+
+thanks, Alex
 
