@@ -1,112 +1,57 @@
-From: Alex Tomas <bzzz@sun.com>
-Subject: Re: [RFC] dynamic inodes
-Date: Tue, 30 Sep 2008 18:02:16 +0400
-Message-ID: <48E23168.2020608@sun.com>
-References: <48DA28B0.2020207@sun.com>
- <20080925220936.GL10950@webber.adilger.int> <48DC1806.90805@sun.com>
- <20080925232951.GQ10950@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Potential bug in mballoc --- reusing data blocks before txn
+	commit
+Date: Tue, 30 Sep 2008 10:15:59 -0400
+Message-ID: <20080930141559.GO10831@mit.edu>
+References: <E1KjlCM-0002L7-SO@closure.thunk.org> <48E138B2.8080707@sun.com> <20080929205712.GH10831@mit.edu> <48E1AC89.6050803@sun.com> <20080930130247.GM10831@mit.edu> <48E225AC.9090208@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Alex Tomas <bzzz@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gmp-eb-inf-1.sun.com ([192.18.6.21]:40520 "EHLO
-	gmp-eb-inf-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752561AbYI3ODH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Sep 2008 10:03:07 -0400
-Received: from fe-emea-09.sun.com (gmp-eb-lb-2-fe2.eu.sun.com [192.18.6.11])
-	by gmp-eb-inf-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m8UE35iN005680
-	for <linux-ext4@vger.kernel.org>; Tue, 30 Sep 2008 14:03:05 GMT
-Received: from conversion-daemon.fe-emea-09.sun.com by fe-emea-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K8000201HNWB100@fe-emea-09.sun.com> (original mail from bzzz@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 30 Sep 2008 15:03:05 +0100 (BST)
-Received: from gw.home.net ([91.76.47.4])
- by fe-emea-09.sun.com (Sun Java System Messaging Server 6.2-8.04 (built Feb 28
- 2007)) with ESMTPSA id <0K8000ESWHO8KRD0@fe-emea-09.sun.com> for
- linux-ext4@vger.kernel.org; Tue, 30 Sep 2008 15:02:33 +0100 (BST)
-In-reply-to: <20080925232951.GQ10950@webber.adilger.int>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:47906 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751927AbYI3OQD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Sep 2008 10:16:03 -0400
+Content-Disposition: inline
+In-Reply-To: <48E225AC.9090208@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> It _sounds_ simple, but I think the implementation will not be what
-> is expected.  Either you need to keep a 3rd bitmap for each group
-> which is (I&B) used for finding either inodes or blocks first (with
-> respectively find_first_bit() or find_first_zero_bit()), then check t=
-he
-> "normal" inode and block bitmaps, keeping this in sync with mballoc, =
-and
-> confusion/danger on disk/e2fsck because in-use itable blocks are mark=
-ed
-> "0" in the block bitmap.  There will be races between updating these
-> bitmaps, unless the group is locked for both block or inode allocatio=
-ns
-> on any update because setting any bit completely changes the meaning.
->=20
-> Alternately, if there are only I and B bitmaps, then find_first_bit()
-> and find_first_zero_bit() are not useful.  Searching for free blocks
-> means looking for "B:0" and finding potentially many "B:0 I:1" blocks
-> that are full of inodes.  Searching for free inodes means looking for
-> "I:1" (strangely) but finding potentially many "I:1 B:0" blocks.
+On Tue, Sep 30, 2008 at 05:12:12PM +0400, Alex Tomas wrote:
+>> For ext4, the only reason to use a tree would be to allow us to merge
+>> deleted extents.  This might not be worth the complexity, though, I
+>> admit it.
+>
+> strictly speaking, extents code should have merged them at allocation time.
 
-mballoc already maintains own in-core copy, so we'd have to apply anoth=
-er
-bitmap to it. as for races - I think this can be done by proper orderin=
-g,
-probably w/o locks even: free block turns used first, then becomes part
-of "fragmentary" space. anyway, the complexity would be away simpler th=
-an
-mballoc itself, for example.
+Sorry, I wasn't being clear enough.  I was thinking of the scenario
+where the user runs "rm -r" and deletes a directory hierarchy with
+lots of small files.  So the merging I was talking about was between
+blocks belonging to different files, so we can send a single large
+"trim" command to the disk.  And since we can delete a large number of
+files in 5 seconds with "rm -r", and the blocks will likely be very
+close together if the allocator is doing a good job and the filesystem
+is relatively unfragmented, it would also save memory if we can merge
+extents belonging to different files instead of keeping them
+separately on the linked list.
 
-> I much prefer the dynamic itable idea from Jos=E9 (which I embellishe=
-d in
-> my other email), which is very simple for both the kernel and e2fsck,
-> robust, and avoids the 64-bit inode problem for userspace to the maxi=
-mum
-> amount (i.e. a full 4B inodes must be in use before we ever need to
-> use 64-bit inodes).  The lack of complexity in itable allocation also
-> translates directly into increased robustness in the face of corrupti=
-on.
->=20
-> It doesn't provide dynamic-sized inodes (which hasn't traditionally
-> been a problem), nor is it perfect in terms of being able to fully
-> populate a filesystem with inodes in all use cases but it could work
-> in all but completely pathalogical fragmentation cases (at which poin=
-t
-> one wonders if it isn't better to just return -ENOSPC than to flog a
-> nearly dead filesystem).  It can definitely do a good job in most lik=
-ely
-> uses, and also provides a big win over what is done today.
+> oops. I meant in-core bitmap mballoc generates. if there is intention
+> to get rid of old allocator (balloc.c), then we don't need b_committed_data.
 
-I do understand simplicity and robustness as driving reasons much. and =
-I
-agree dynamic inodes added via empty group descriptors is an excellent =
-idea.
-but I still think that with original idea we could get much more than j=
-ust
-dynamic inodes (though it was original intention). for example, storing
-small directories (upto ~200 dir entries) within inode could be very ni=
-ce
-to avoid bunch of seeks. and tail packing could be as well. notice we d=
-on't
-really need fine structures to find free slots in that fragmentary spac=
-e -
-usually small files are generated at once (e.g. tar -xf), so to pack th=
-em
-we just need to remember few last "partial filled" blocks. if some file
-is deleted and we get free slot in corresponded block - who cares - wit=
-h
-current ext3/4 we'd waste whole block anyway.
+Yes, I sent a patch on Sunday night proposing to do exactly that, as a
+way of simplifying the code and reducing the test matrix for ext4.
 
-another reason for that design was to support >2^32 files per filesyste=
-m.
+> btw, I've just remembered why I decided don't protect data from reallocation:
+> in data=writeback one can get block with stale data easily. and many people
+> (to my knowledge) were using data=writeback as performing better.
 
-thanks, Alex
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Well, data=ordered is the default, so there would be many more people
+using data=ordered.  If we think there is a significant advantage in
+not protecting data from reallocation besides the memory utilization,
+I suppose we could make protecting data being conditional on
+data=writeback.  Perhaps having the additional data blocks available
+to the block allocator could allow it to make better decisions.  Not
+sure it's worth it, though.   Any thoughts?
+
+							- Ted
