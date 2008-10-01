@@ -1,205 +1,74 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC][PATCH 0/12]ext4: online defrag (ver 0.95)
-Date: Tue, 30 Sep 2008 17:40:54 -0700
-Message-ID: <20081001004053.GD3160@webber.adilger.int>
-References: <48DDE025.2090207@rs.jp.nec.com>
+Subject: Re: Potential bug in mballoc --- reusing data blocks before txn	commit
+Date: Wed, 01 Oct 2008 00:17:03 -0700
+Message-ID: <20081001071703.GH3160@webber.adilger.int>
+References: <E1KjlCM-0002L7-SO@closure.thunk.org> <48E138B2.8080707@sun.com>
+ <20080929205712.GH10831@mit.edu> <48E1AC89.6050803@sun.com>
+ <20080930130247.GM10831@mit.edu> <48E225AC.9090208@sun.com>
+ <20080930141559.GO10831@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-reply-to: <48DDE025.2090207@rs.jp.nec.com>
+Cc: Alex Tomas <bzzz@sun.com>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:41219 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751037AbYJAHRP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Oct 2008 03:17:15 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m917HFIi007073
+	for <linux-ext4@vger.kernel.org>; Wed, 1 Oct 2008 00:17:15 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K8100201THQ5G00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 01 Oct 2008 00:17:15 -0700 (PDT)
+In-reply-to: <20080930141559.GO10831@mit.edu>
 Content-disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sep 27, 2008  16:26 +0900, Akira Fujita wrote:
-> I've updated the ext4 online defragmentation patches.
-> In this version, mainly there are following two changes and some fixes:
->   - Support 1KB and 2KB block size.
->   - Implement EXT4_IOC_FIEMAP_INO instead of EXT4_IOC_EXTENTS_INFO
->     to get extetns information.
-> 
-> Changelog:
-> - 0.95(Sep. 26, 2008)
->   - Support 1KB and 2KB block size.
->   - Implement EXT4_IOC_FIEMAP_INO which calls ext4_fiemap() for specified inode number
+Theodore Tso wrote:
+> Yeah, I know Andrian Bunk strikes again....  but the right answer is
+> to ressurect that code and add it back.
 
-Instead of implementing an EXT4_IOC_FIEMAP_INO ioctl, what we had implemented
-is an EXT4_IOC_WRAPPER, which takes as arguments the inode number and the
-ioctl command + original ioctl data.  This allows inode ioctls to be called
-against the filesystem root for arbitrary inodes, and doesn't require new
-implementation for each ioctl:
+I submitted our patch to re-add this support yesterday.
 
-struct ll_ioctl_wrapper {
-	__u32 ioctl_cmd;
-	__u32 padding;
-	__u64 ioctl_ino;
-	char ioctl_data[0];
-};
+On Sep 30, 2008  10:15 -0400, Theodore Ts'o wrote:
+> On Tue, Sep 30, 2008 at 05:12:12PM +0400, Alex Tomas wrote:
+> >> For ext4, the only reason to use a tree would be to allow us to merge
+> >> deleted extents.  This might not be worth the complexity, though, I
+> >> admit it.
+> >
+> > strictly speaking, extents code should have merged them at allocation time.
+> 
+> Sorry, I wasn't being clear enough.  I was thinking of the scenario
+> where the user runs "rm -r" and deletes a directory hierarchy with
+> lots of small files.  So the merging I was talking about was between
+> blocks belonging to different files, so we can send a single large
+> "trim" command to the disk.
 
-int ext4_ioctl(struct inode *inode, struct file *filp, unsigned int cmd,
-	       unsigned long arg)
-:
-:
-	case EXT4_IOC_WRAPPER: {
-		struct inode *active_inode;
-		struct ll_ioctl_wrapper buf;
-		struct file_operations *fop;
+I agree that this is probably most efficient.  There would be an rbtree
+per transaction, and would mostly be sparse.
 
-		if (!capable(CAP_SYS_ADMIN))
-			return -EACCES;
+> > btw, I've just remembered why I decided don't protect data from reallocation:
+> > in data=writeback one can get block with stale data easily. and many people
+> > (to my knowledge) were using data=writeback as performing better.
+> 
+> Well, data=ordered is the default, so there would be many more people
+> using data=ordered.  If we think there is a significant advantage in
+> not protecting data from reallocation besides the memory utilization,
+> I suppose we could make protecting data being conditional on
+> data=writeback.  Perhaps having the additional data blocks available
+> to the block allocator could allow it to make better decisions.  Not
+> sure it's worth it, though.   Any thoughts?
 
-		if (copy_from_user(&buf, (struct ll_ioctl_wrapper __user *)arg,
-				   sizeof(buf)))
-			return -EFAULT;
+I think for minimum complexity we should keep the rbtree all the time.
+We would need it for the TRIM support in any case.
 
-		if (buf.ioctl_cmd == EXT4_IOC_WRAPPER)
-			return -EDEADLK;
-
-		active_inode = iget(lfs_sb, buf.ioctl_ino);
-		if (!active_inode)
-			return -EACCES;
-
-		err = -ENOTTY;
-		fop = inode->i_sb->s_root->d_inode->i_fop;
-		if (fop && fop->unlocked_ioctl)
-			err = fop->unlocked_ioctl(NULL, buf.ioctl_cmd,
-						  arg + sizeof(buf));
-		if ((!err || err != -ENOTTY))
-			goto out_dput;
-
-		if (fop && fop->ioctl)
-			err = fop->ioctl(NULL, buf.ioctl_cmd, arg +sizeof(buf));
-out_dput:
-		iput(active_dentry);
-		return err;
-	}
-
->     instead of EXT4_IOC_EXTENTS_INFO to get extents information.
->   - Merge "JC6-defrag-alloc-contiguous-blks-credit" and
->     "ext4-request-for-blocks-with-ar.excepted_group-1.patch" in the ext4 patch queue
->     into this version.
->   - Handle s_dirtyblocks_counter correctly in defrag when delalloc enabled.
->   - Remove unneeded copy_from_user() in EXT4_IOC_GROUP_INFO ioctl.  Ted pointed this out.
-> - 0.9 (May 30, 2008)
->   - Create some new functions (ext4_defrag_fill_ar(),
->     ext4_defrag_check_phase() ...) to separate block allocation function,
->     since the phase mode plug into the allocation function isn't good.
->   - Add the description of ext4_defrag() which is main function.
->   - Add the capability check.
->   - Some cleanups.
-> - 0.8 (Apr. 8, 2008)
->     Fix sparse warnings and change the construction of patches.
-> 
-> Outline for ext4 online defragmentation:
-> Ext4 online defrag has the following three functions.
-> 
->  no option  Solving a single file fragmentation.
->	     Single file fragmentation is solved by moving file
->	     data to contiguous free blocks.
-> 
->     -r      Solving a relevant file fragmentation.
->	     Relevant file fragmentation could be solved by moving
->	     the files under the specified directory close together with
->	     the block containing the directory data.
-> 
->     -f      Solving a free space fragmentation.
->	     If there is no contiguous free blocks in the filesystem,
->	     the other files are moved to make sufficient space to allocate
->	     contiguous blocks for the target file.
-> 
-> Notes:
-> - Ext4 online defarg needs "mballoc" and "extents" mount options.
-> - "ext4-fiemap.patch" in the ext4 patch queue is necessary
->    for EXT4_IOC_FIEMAP_INO ioctl.  We have to apply fiemap patches previously
->    then apply defrag patches, so it is necessary to change
->    the order of series in the ext4 patch queue.
-> 
-> Next steps:
-> 1. Address the following items that Ted pointed out.
->  - Move all of the defrag ioctls from ext4_defrag_ioctl() to ext4_ioctl()
->    so that defrag does not have a double layer ioctl's dispatch.
->  - Remove the block reservation in the force defrag (-f).
->  - Remove the EXT4_IOC_FIBMAP ioctl and use the EXT4_IOC_FIEMAP instead.
->  - Get super block information with opening block device in user space
->    so that we can remove the EXT4_IOC_GROUP_INFO ioctl.
-> 
-> Summary of patches:
-> * The followings are new ext4 online defrag patches and they consist
->   of ioctl unit except 1-4.  Because the EXT4_IOC_DEFRAG is too big to review,
->   I divided it into 4 patches.
-> 
-> [PATCH 1/12] EXT4_IOC_DEFRAG ioctl and main functions of defrag
-> - Create the temporary inode and do defrag per
->   defrag_size (defalut 64MB).
-> 
-> [PATCH 2/12] Allocate new contiguous blocks with mballoc
-> - Search contiguous free blocks with mutil-block allocation
->   and allocate them for the temporary inode.
-> 
-> [PATCH 3/12] Read and write file data with memory page
-> - Read the file data from the old blocks to the page cache and
->   write the file data on the page into the new blocks.
-> 
-> [PATCH 4/12]  Exchange the blocks between two inodes
-> - Exchange the data blocks between the temporary inode and
->   the original inode.
-> 
-> [PATCH 5/12] EXT4_IOC_FIBMAP ioctl
-> - The EXT4_IOC_FIBMAP ioctl gets the physical block offset of target inode
->   with ext4_bmap().  This ioctl is used only in the relevant defrag (-r).
-> 
-> [PATCH 6/12] EXT4_IOC_GROUP_INFO ioctl
-> - The EXT4_IOC_GROUP_INFO ioctl gets the block group information
->   of target inode is located in.  This ioctl is used only in the force defrag (-f).
-> 
-> [PATCH 7/12] EXT4_IOC_FREE_BLOCKS_INFO ioctl
-> - The EXT4_IOC_FREE_BLOCKS_INFO ioctl gets free extents
->   information of the target block group.
->   This ioctl is used only in the force defrag (-f).
-> 
-> [PATCH 8/12] EXT4_IOC_FIEMAP_INO ioctl
-> - The EXT4_IOC_FIEMAP_INO is used to get extents information of
->   inode which set to ioctl.
->   The defragger uses this ioctl to check the fragment condition
->   and to get extents information in the specified block group.
-> 
-> [PATCH 9/12] EXT4_IOC_RESERVE_BLOCK ioctl
-> - The EXT4_IOC_RESERVE_BLOCK ioctl reserves the specified
->   contiguous free space with ext4 block reservation function.
->   This ioctl is used only in the force defrag (-f).
-> 
-> [PATCH 10/12] EXT4_IOC_MOVE_VICTIM ioctl
-> - The EXT4_IOC_MOVE_VICTIM moves the victim extents into other block group.
->   Therefore the contiguous free space is made in the target block group.
->   This ioctl is used only in the force defrag (-f).
-> 
-> [PATCH 11/12] EXT4_IOC_BLOCK_RELEASE ioctl
-> - The EXT4_IOC_BLOCK_RELEASE releases the reserved blocks
->   which target inode holds.
->   This ioctl is used if defrag failed and it was after the block reservation.
-> 
-> [PATCH 12/12] Online defrag command
-> - The defrag command. Usage is as follows:
->   - Defrag for a single file.
->     # e4defrag file-name
->   - Defrag for all files on ext4.
->     # e4defrag device-name
->   - Put the multiple files closer together.
->     # e4defrag -r directory-name
->   - Defrag for free space fragmentation.
->     # e4defrag -f file-name
-> 
-> Any comments and tests are welcome.
-> 
-> Best regards,
-> Akira Fujita
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Having it enabled for ordered mode is fairly important, and I didn't
+know that this little surprise was in the mballoc code at all.  It may
+explain some rare problems we've seen in the past.
 
 Cheers, Andreas
 --
