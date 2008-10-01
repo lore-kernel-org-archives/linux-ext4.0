@@ -1,43 +1,49 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][PATCH 0/12]ext4: online defrag (ver 0.95)
-Date: Wed, 1 Oct 2008 17:20:11 -0400
-Message-ID: <20081001212011.GG10080@mit.edu>
-References: <48DDE025.2090207@rs.jp.nec.com> <20081001004053.GD3160@webber.adilger.int> <20081001184545.GA2096@infradead.org>
+Subject: Re: [PATCH 1/4] ext3: Fix ext3_dx_readdir hash collision handling
+Date: Wed, 1 Oct 2008 18:37:55 -0400
+Message-ID: <20081001223755.GL10080@mit.edu>
+References: <1221319971-29879-1-git-send-email-tytso@mit.edu> <20080917121943.904b66b6.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-kernel@vger.kernel.org, eugene@ibrix.com, msnitzer@ibrix.com,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:51920 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:47753 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751705AbYJAVUS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Oct 2008 17:20:18 -0400
+	with ESMTP id S1751767AbYJAWh7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Oct 2008 18:37:59 -0400
 Content-Disposition: inline
-In-Reply-To: <20081001184545.GA2096@infradead.org>
+In-Reply-To: <20080917121943.904b66b6.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 01, 2008 at 02:45:45PM -0400, Christoph Hellwig wrote:
-> On Tue, Sep 30, 2008 at 05:40:54PM -0700, Andreas Dilger wrote:
-> > Instead of implementing an EXT4_IOC_FIEMAP_INO ioctl, what we had implemented
-> > is an EXT4_IOC_WRAPPER, which takes as arguments the inode number and the
-> > ioctl command + original ioctl data.  This allows inode ioctls to be called
-> > against the filesystem root for arbitrary inodes, and doesn't require new
-> > implementation for each ioctl:
+On Wed, Sep 17, 2008 at 12:19:43PM -0700, Andrew Morton wrote:
+> On Sat, 13 Sep 2008 11:32:48 -0400
+> "Theodore Ts'o" <tytso@MIT.EDU> wrote:
 > 
-> Or just provide more generic open by handle functionality.  Shouldn't be
-> too much of a problem to do it in the VFS by reusing the exportfs code.
+> > This fixes a bug where readdir() would return a directory entry twice
+> > if there was a hash collision in an hash tree indexed directory.
+> 
+> That sounds like a serious problem, but given the amount of time it
+> took to turn up, I guess it's pretty rare.
+> 
+> What are your thoughts regarding a 2.6.27 merge for this?  2.6.26.x? 
+> 2.6.25.x?  ...
 > 
 
-A while back I had implemented an "open by inode" patch for a friend
-who needed it for their startup.  I never posted it because (a) even
-though it was only optionally enabled via a mount option, if you allow
-non-root users to access it, it blows a whole through traditional unix
-permissions semantics (i.e., a mode 700 directory no longer protects
-files underneath that directory), and (b) I was sure that Al Viro
-would consider the hacks that I needed to make it work to be far too
-ugly to live.   :-)
+It's not a regression, so per Linus's request that at this point we're
+too late for anything other than regression fixes, I had assumed that
+it should be pushed for 2.6.28, and then go into the various stable
+trees.  It's true that it took quite a while for people to notice,
+probably because many programs won't notice if readdir() returns a
+directory entry twice.
 
-						- Ted
+BTW, this hasn't hit -mm yet, and I've got a number of ext3 patches
+that don't appear to have hit -mm, including one that was authored by
+Linus.  Should I create a git tree or a quilt series if that would
+make things easier for you?
+
+	      	   	   	      	- Ted
+
+
