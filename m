@@ -1,78 +1,246 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Potential bug in mballoc --- reusing data blocks before txn	commit
-Date: Wed, 01 Oct 2008 00:17:03 -0700
-Message-ID: <20081001071703.GH3160@webber.adilger.int>
-References: <E1KjlCM-0002L7-SO@closure.thunk.org> <48E138B2.8080707@sun.com>
- <20080929205712.GH10831@mit.edu> <48E1AC89.6050803@sun.com>
- <20080930130247.GM10831@mit.edu> <48E225AC.9090208@sun.com>
- <20080930141559.GO10831@mit.edu>
+From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
+Subject: [PATCH] ext4: remove usage of Uptodate flag to initialize buddy
+	after an online resize
+Date: Wed, 01 Oct 2008 16:44:03 +0200
+Message-ID: <1222872243.11560.19.camel@frecb007923.frec.bull.fr>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Alex Tomas <bzzz@sun.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:41219 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751037AbYJAHRP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Oct 2008 03:17:15 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m917HFIi007073
-	for <linux-ext4@vger.kernel.org>; Wed, 1 Oct 2008 00:17:15 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K8100201THQ5G00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 01 Oct 2008 00:17:15 -0700 (PDT)
-In-reply-to: <20080930141559.GO10831@mit.edu>
-Content-disposition: inline
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:33253 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752094AbYJAOmn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Oct 2008 10:42:43 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id CD8A81A195D
+	for <linux-ext4@vger.kernel.org>; Wed,  1 Oct 2008 16:42:35 +0200 (CEST)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 12696-08 for <linux-ext4@vger.kernel.org>;
+ Wed,  1 Oct 2008 16:42:32 +0200 (CEST)
+Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 644DB1A194D
+	for <linux-ext4@vger.kernel.org>; Wed,  1 Oct 2008 16:42:27 +0200 (CEST)
+Received: from [129.183.101.223] (dhcp129183101223.frec.bull.fr [129.183.101.223])
+	by cyclope.frec.bull.fr (Postfix) with ESMTP id 88D5527291
+	for <linux-ext4@vger.kernel.org>; Wed,  1 Oct 2008 16:42:24 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> Yeah, I know Andrian Bunk strikes again....  but the right answer is
-> to ressurect that code and add it back.
+From: Frederic Bohe <frederic.bohe@bull.net>
 
-I submitted our patch to re-add this support yesterday.
+Replace Page cache's uptodate flag by ext4_group_info's
+EXT4_GROUP_INFO_NEED_INIT_BIT flags to allow extended group's buddy and
+added groups' buddy to be initialized or re-initialized after an online
+resize.
 
-On Sep 30, 2008  10:15 -0400, Theodore Ts'o wrote:
-> On Tue, Sep 30, 2008 at 05:12:12PM +0400, Alex Tomas wrote:
-> >> For ext4, the only reason to use a tree would be to allow us to merge
-> >> deleted extents.  This might not be worth the complexity, though, I
-> >> admit it.
-> >
-> > strictly speaking, extents code should have merged them at allocation time.
-> 
-> Sorry, I wasn't being clear enough.  I was thinking of the scenario
-> where the user runs "rm -r" and deletes a directory hierarchy with
-> lots of small files.  So the merging I was talking about was between
-> blocks belonging to different files, so we can send a single large
-> "trim" command to the disk.
+Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
+---
+ ext4.h    |    3 +-
+ mballoc.c |   67 ++++++++++++--------------------------------------------------
+ resize.c  |   49 +++++----------------------------------------
+ 3 files changed, 21 insertions(+), 98 deletions(-)
 
-I agree that this is probably most efficient.  There would be an rbtree
-per transaction, and would mostly be sparse.
-
-> > btw, I've just remembered why I decided don't protect data from reallocation:
-> > in data=writeback one can get block with stale data easily. and many people
-> > (to my knowledge) were using data=writeback as performing better.
-> 
-> Well, data=ordered is the default, so there would be many more people
-> using data=ordered.  If we think there is a significant advantage in
-> not protecting data from reallocation besides the memory utilization,
-> I suppose we could make protecting data being conditional on
-> data=writeback.  Perhaps having the additional data blocks available
-> to the block allocator could allow it to make better decisions.  Not
-> sure it's worth it, though.   Any thoughts?
-
-I think for minimum complexity we should keep the rbtree all the time.
-We would need it for the TRIM support in any case.
-
-Having it enabled for ordered mode is fairly important, and I didn't
-know that this little surprise was in the mballoc code at all.  It may
-explain some rare problems we've seen in the past.
-
-Cheers, Andreas
+Index: linux/fs/ext4/ext4.h
+===================================================================
+--- linux.orig/fs/ext4/ext4.h	2008-10-01 14:14:01.000000000 +0200
++++ linux/fs/ext4/ext4.h	2008-10-01 14:14:51.000000000 +0200
+@@ -1070,7 +1070,8 @@ extern int __init init_ext4_mballoc(void
+ extern void exit_ext4_mballoc(void);
+ extern void ext4_mb_free_blocks(handle_t *, struct inode *,
+ 		unsigned long, unsigned long, int, unsigned long *);
+-extern int ext4_mb_add_more_groupinfo(struct super_block *sb,
++extern void ext4_mb_set_need_init_bit(struct ext4_group_info *);
++extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+ extern void ext4_mb_update_group_info(struct ext4_group_info *grp,
+ 		ext4_grpblk_t add);
+Index: linux/fs/ext4/mballoc.c
+===================================================================
+--- linux.orig/fs/ext4/mballoc.c	2008-10-01 14:15:02.000000000 +0200
++++ linux/fs/ext4/mballoc.c	2008-10-01 15:49:32.000000000 +0200
+@@ -918,13 +918,15 @@ ext4_mb_load_buddy(struct super_block *s
+ 	/* we could use find_or_create_page(), but it locks page
+ 	 * what we'd like to avoid in fast path ... */
+ 	page = find_get_page(inode->i_mapping, pnum);
+-	if (page == NULL || !PageUptodate(page)) {
++	if (page == NULL || !PageUptodate(page) ||
++	    EXT4_MB_GRP_NEED_INIT(e4b->bd_info)) {
+ 		if (page)
+ 			page_cache_release(page);
+ 		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
+ 		if (page) {
+ 			BUG_ON(page->mapping != inode->i_mapping);
+-			if (!PageUptodate(page)) {
++			if (!PageUptodate(page) ||
++			    EXT4_MB_GRP_NEED_INIT(e4b->bd_info)) {
+ 				ret = ext4_mb_init_cache(page, NULL);
+ 				if (ret) {
+ 					unlock_page(page);
+@@ -949,13 +951,15 @@ ext4_mb_load_buddy(struct super_block *s
+ 	poff = block % blocks_per_page;
+ 
+ 	page = find_get_page(inode->i_mapping, pnum);
+-	if (page == NULL || !PageUptodate(page)) {
++	if (page == NULL || !PageUptodate(page) ||
++	    EXT4_MB_GRP_NEED_INIT(e4b->bd_info)) {
+ 		if (page)
+ 			page_cache_release(page);
+ 		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
+ 		if (page) {
+ 			BUG_ON(page->mapping != inode->i_mapping);
+-			if (!PageUptodate(page)) {
++			if (!PageUptodate(page) ||
++			    EXT4_MB_GRP_NEED_INIT(e4b->bd_info)) {
+ 				ret = ext4_mb_init_cache(page, e4b->bd_bitmap);
+ 				if (ret) {
+ 					unlock_page(page);
+@@ -2240,6 +2244,10 @@ ext4_mb_store_history(struct ext4_alloca
+ #define ext4_mb_history_init(sb)
+ #endif
+ 
++void ext4_mb_set_need_init_bit(struct ext4_group_info *grp)
++{
++	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
++}
+ 
+ /* Create and initialize ext4_group_info data for the given group. */
+ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+@@ -2284,8 +2292,7 @@ int ext4_mb_add_groupinfo(struct super_b
+ 		printk(KERN_ERR "EXT4-fs: can't allocate buddy mem\n");
+ 		goto exit_group_info;
+ 	}
+-	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT,
+-		&(meta_group_info[i]->bb_state));
++	ext4_mb_set_need_init_bit(meta_group_info[i]);
+ 
+ 	/*
+ 	 * initialize bb_free to be able to skip
+@@ -2326,54 +2333,6 @@ exit_meta_group_info:
+ } /* ext4_mb_add_groupinfo */
+ 
+ /*
+- * Add a group to the existing groups.
+- * This function is used for online resize
+- */
+-int ext4_mb_add_more_groupinfo(struct super_block *sb, ext4_group_t group,
+-			       struct ext4_group_desc *desc)
+-{
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct inode *inode = sbi->s_buddy_cache;
+-	int blocks_per_page;
+-	int block;
+-	int pnum;
+-	struct page *page;
+-	int err;
+-
+-	/* Add group based on group descriptor*/
+-	err = ext4_mb_add_groupinfo(sb, group, desc);
+-	if (err)
+-		return err;
+-
+-	/*
+-	 * Cache pages containing dynamic mb_alloc datas (buddy and bitmap
+-	 * datas) are set not up to date so that they will be re-initilaized
+-	 * during the next call to ext4_mb_load_buddy
+-	 */
+-
+-	/* Set buddy page as not up to date */
+-	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+-	block = group * 2;
+-	pnum = block / blocks_per_page;
+-	page = find_get_page(inode->i_mapping, pnum);
+-	if (page != NULL) {
+-		ClearPageUptodate(page);
+-		page_cache_release(page);
+-	}
+-
+-	/* Set bitmap page as not up to date */
+-	block++;
+-	pnum = block / blocks_per_page;
+-	page = find_get_page(inode->i_mapping, pnum);
+-	if (page != NULL) {
+-		ClearPageUptodate(page);
+-		page_cache_release(page);
+-	}
+-
+-	return 0;
+-}
+-
+-/*
+  * Update an existing group.
+  * This function is used for online resize
+  */
+Index: linux/fs/ext4/resize.c
+===================================================================
+--- linux.orig/fs/ext4/resize.c	2008-10-01 14:17:56.000000000 +0200
++++ linux/fs/ext4/resize.c	2008-10-01 14:23:42.000000000 +0200
+@@ -870,7 +870,7 @@ int ext4_group_add(struct super_block *s
+ 	 * We can allocate memory for mb_alloc based on the new group
+ 	 * descriptor
+ 	 */
+-	err = ext4_mb_add_more_groupinfo(sb, input->group, gdp);
++	err = ext4_mb_add_groupinfo(sb, input->group, gdp);
+ 	if (err)
+ 		goto exit_journal;
+ 
+@@ -1082,50 +1082,13 @@ int ext4_group_extend(struct super_block
+ 	if ((err = ext4_journal_stop(handle)))
+ 		goto exit_put;
+ 
+-	/*
+-	 * Mark mballoc pages as not up to date so that they will be updated
+-	 * next time they are loaded by ext4_mb_load_buddy.
+-	 *
+-	 * XXX Bad, Bad, BAD!!!  We should not be overloading the
+-	 * Uptodate flag, particularly on thte bitmap bh, as way of
+-	 * hinting to ext4_mb_load_buddy() that it needs to be
+-	 * overloaded.  A user could take a LVM snapshot, then do an
+-	 * on-line fsck, and clear the uptodate flag, and this would
+-	 * not be a bug in userspace, but a bug in the kernel.  FIXME!!!
+-	 */
+-	{
+-		struct ext4_sb_info *sbi = EXT4_SB(sb);
+-		struct inode *inode = sbi->s_buddy_cache;
+-		int blocks_per_page;
+-		int block;
+-		int pnum;
+-		struct page *page;
+-
+-		/* Set buddy page as not up to date */
+-		blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+-		block = group * 2;
+-		pnum = block / blocks_per_page;
+-		page = find_get_page(inode->i_mapping, pnum);
+-		if (page != NULL) {
+-			ClearPageUptodate(page);
+-			page_cache_release(page);
+-		}
+-
+-		/* Set bitmap page as not up to date */
+-		block++;
+-		pnum = block / blocks_per_page;
+-		page = find_get_page(inode->i_mapping, pnum);
+-		if (page != NULL) {
+-			ClearPageUptodate(page);
+-			page_cache_release(page);
+-		}
++	/* Get the info on the last group */
++	grp = ext4_get_group_info(sb, group);
+ 
+-		/* Get the info on the last group */
+-		grp = ext4_get_group_info(sb, group);
++	ext4_mb_set_need_init_bit(grp);
+ 
+-		/* Update free blocks in group info */
+-		ext4_mb_update_group_info(grp, add);
+-	}
++	/* Update free blocks in group info */
++	ext4_mb_update_group_info(grp, add);
+ 
+ 	if (test_opt(sb, DEBUG))
+ 		printk(KERN_DEBUG "EXT4-fs: extended group to %llu blocks\n",
 --
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+
 
