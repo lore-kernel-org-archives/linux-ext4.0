@@ -1,28 +1,28 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] resize2fs : Fix potential memory corruption in
-	ext2fs_progress_init()G
-Date: Wed, 1 Oct 2008 19:50:48 -0400
-Message-ID: <20081001235048.GN10080@mit.edu>
-References: <ea11fea30809140732i38680994na7d686835e2949cd@mail.gmail.com>
+Subject: Re: [PATCH] debugfs : Fix usage of logdump command to make
+	consistent with man page.
+Date: Wed, 1 Oct 2008 19:56:24 -0400
+Message-ID: <20081001235624.GO10080@mit.edu>
+References: <ea11fea30809120139w352d97a7ha355e79658190ba1@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:34345 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:54172 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751174AbYJAXuu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Oct 2008 19:50:50 -0400
+	with ESMTP id S1750760AbYJAX40 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Oct 2008 19:56:26 -0400
 Content-Disposition: inline
-In-Reply-To: <ea11fea30809140732i38680994na7d686835e2949cd@mail.gmail.com>
+In-Reply-To: <ea11fea30809120139w352d97a7ha355e79658190ba1@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Sep 14, 2008 at 08:02:12PM +0530, Manish Katiyar wrote:
-> Since "prog" is not initialized with 0 , below check in
-> ext2fs_progress_init() is wrong and may lead to corruptions.
+On Fri, Sep 12, 2008 at 02:09:19PM +0530, Manish Katiyar wrote:
+> Below path adds the missing 's' option in the usage of logdump. Also
+> trivially replace "inode" with "filespec" to make consistent with man
+> page.
 
-Thanks, applied. (Sorry for the delay; I've been really busy the past
-two weeks.)
+Thanks, applied.
 
-					- Ted
+						- Ted
