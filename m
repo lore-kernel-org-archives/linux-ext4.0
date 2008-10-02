@@ -1,112 +1,93 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: What's in e2fsprogs.git (stable)
-Date: Thu, 2 Oct 2008 09:41:39 -0400
-Message-ID: <20081002134139.GB25164@mit.edu>
-References: <20080428025302.GC30840@mit.edu> <20080524234904.GC5970@mit.edu> <20080603023955.GK23119@mit.edu> <20080608024104.GA30132@mit.edu> <20080617120511.GC12448@mit.edu> <20080707213527.GV31490@mit.edu> <20080710220234.GC3447@mit.edu> <20080823165127.GB18169@mit.edu> <20080828033753.GF26987@mit.edu> <20080901205727.GH13069@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] Improve buffered streaming write ordering
+Date: Thu, 2 Oct 2008 23:38:21 +0530
+Message-ID: <20081002180821.GA29613@skywalker>
+References: <1222886451.9158.34.camel@think.oraclecorp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: Chris Mason <chris.mason@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:52252 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753730AbYJBNll (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Oct 2008 09:41:41 -0400
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:48151 "EHLO
+	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753730AbYJBSIc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Oct 2008 14:08:32 -0400
 Content-Disposition: inline
-In-Reply-To: <20080901205727.GH13069@mit.edu>
+In-Reply-To: <1222886451.9158.34.camel@think.oraclecorp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I have released e2fsprogs 1.41.2.  It has a number of fixes over
-1.41.1.  Distributions that are contemplating releasing e2fsprogs
-1.41.x are strongly recommended to use e2fsprogs 1.41.2.  At the very
-least, commit 52771ab5 should be cherry-picked, as it fixes a
-regression from e2fsprogs 1.40.7 which stops "e2fsck -b 32768 /dev/XXX"
-from working.
+On Wed, Oct 01, 2008 at 02:40:51PM -0400, Chris Mason wrote:
+> Hello everyone,
+> 
+> write_cache_pages can use the address space writeback_index field to
+> try and pick up where it left off between calls.  pdflush and
+> balance_dirty_pages both enable this mode in hopes of having writeback
+> evenly walk down the file instead of just servicing pages at the
+> start of the address space.
+> 
+> But, there is no locking around this field, and concurrent callers of
+> write_cache_pages on the same inode can get some very strange results.
+> pdflush uses writeback_acquire function to make sure that only one
+> pdflush process is servicing a given backing device, but
+> balance_dirty_pages does not.
+> 
+> When there are a small number of dirty inodes in the system,
+> balance_dirty_pages is likely to run in parallel with pdflush on one or
+> two of them, leading to somewhat random updates of the writeback_index
+> field in struct address space.
+> 
+> The end result is very seeky writeback during streaming IO.  A 4 drive
+> hardware raid0 array here can do 317MB/s streaming O_DIRECT writes on
+> ext4.  This is creating a new file, so O_DIRECT is really just a way to
+> bypass write_cache_pages.
+> 
+> If I do buffered writes instead, XFS does 205MB/s, and ext4 clocks in at
+> 81.7MB/s.  Looking at the buffered IO traces for each one, we can see a
+> lot of seeks.
+> 
+> http://oss.oracle.com/~mason/bugs/writeback_ordering/ext4-nopatch.png
+> 
+> http://oss.oracle.com/~mason/bugs/writeback_ordering/xfs-nopatch.png
+> 
+> The patch below changes write_cache_pages to only use writeback_index
+> when current_is_pdflush().  The basic idea is that pdflush is the only
+> one who has concurrency control against the bdi, so it is the only one
+> who can safely use and update writeback_index.
+> 
+> The performance changes quite a bit:
+> 
+>         patched        unpatched
+> XFS     247MB/s        205MB/s
+> Ext4    246MB/s        81.7MB/s
 
-						- Ted
 
-* The 'maint' and 'master' branch have these fixes since the last annou=
-ncement.
+That is nice.
 
-Arif E. Nugroho (1):
-  po: update id.po (from translationproject.org)
+> 
+> The graphs after the patch:
+> 
+> http://oss.oracle.com/~mason/bugs/writeback_ordering/ext4-patched.png
+> 
+> http://oss.oracle.com/~mason/bugs/writeback_ordering/xfs-patched.png
+> 
+> The ext4 graph really does look strange.  What's happening there is the
+> lazy inode table init has dirtied a whole bunch of pages on the block
+> device inode.  I don't have much of an answer for why my patch makes all
+> of this writeback happen up front, other then writeback_index is no
+> longer bouncing all over the address space.
+> 
+> It is also worth noting that before the patch, filefrag shows ext4 using
+> about 4000 extents on the file.  After the patch it is around 400.  XFS
+> uses 2 extents both patched and unpatched.
+> 
 
-Benno Schulenberg (1):
-  po: update nl.po (from translationproject.org)
+Ext4 do block allocation in ext4_da_writepages. So if we are feeding the
+block allocation with different(highly bouncing) index values we may end up with larger
+number of extents. Although the new mballoc block allocator should
+perform better because it reserve space based on logical block number
+in the file.
 
-Clytie Siddall (1):
-  po: update vi.po (from translationproject.org)
-
-G=F6ran Uddeborg (1):
-  po: update sv.po (from translationproject.org)
-
-Jakub Bogusz (1):
-  po: update pl.po (from translationproject.org)
-
-Manish Katiyar (4):
-  debugfs: Fix memory leak in do_ncheck()'s error path
-  badblocks: Display time and percentage complete in verbose mode.
-  resize2fs: Fix potential memory corruption in
-      ext2fs_progress_init()
-  debugfs: Make the usage messsage of logdump consistent with man
-      page
-
-Matthias Andree (2):
-  Print size of resulting .tar.gz file.
-  Unbreak build if directory renamed from e2fsprogs.
-
-Petr Pisar (1):
-  po: update cs.po (from translationproject.org)
-
-Philipp Thomas (1):
-  po: update de.po (from translationproject.org)
-
-Samuel Thibault (1):
-  po: update fr.po (from translationproject.org)
-
-Theodore Ts'o (29):
-  Fix e2fsprogs-libs build failure due to 'subs' target
-  badblocks: Open the device with O_LARGEFILE
-  libext2fs: Remove unused ext2fs_find_{first,ext}_bit_set()
-  libext2fs: Compile ext2fs_swab64() for all platforms
-  Update debian/changefile for 1.41.1-2 debian release
-  Fix pkg-config files: use Requires.private and fix the include
-      directory
-  Fix bold font specifer in mke2fs.8 man page
-  Improve ELF shared library handling
-  Fix e2initrd_helper, blkid, and fsck from linking with unneeded
-      libraries
-  debian: Fix dependencies field in the udeb packages
-  debian: Reorder rules to build udebs to avoid Lintian warning
-  Add more historical information into the debian/*.symbols files
-  Update debian/changefile for 1.41.1-3 debian release
-  e2fsck: Don't print the PO header when printing problems with
-      PROMPT_NULL
-  Install with relative symlinks if $(root_libdir) =3D=3D $(libdir)
-  Fix various spelling mistakes in various man pages
-  libext2fs.texinfo: Add documentation for the file I/O functions
-  e2fsck: Fix e2fsck automatic blocksize detetion
-  debugfs: Add the ability to specify the hash seed to the "hash"
-      command
-  Fix compiling under diet libc
-  debian: Use dietlibc when possible for building e2fsck.static
-  libcom_err: Use sem_post/sem_init to prevent race conditions
-  debugfs: Fix ncheck to print all pathnames for the inodes
-  badblocks: Fix progress output for "badblocks -sw /dev/XXX"
-  Fix spelling mistake in e2fsck man page
-  libcom_err: Fix file descriptor leak after an exec
-  mke2fs.8: Add an explanation of how the -t and -O options interact
-  libcom_err: Add missing type declarations to clean up -Wall
-      warnings
-  Update release notes, changelog, etc., for e2fsprogs 1.41.2 release
-
-------
-URL's for the e2fsprogs repository:
-	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
-	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-aneesh
