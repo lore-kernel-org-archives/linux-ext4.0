@@ -1,93 +1,104 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: [PATCH] Improve buffered streaming write ordering
-Date: Thu, 2 Oct 2008 23:38:21 +0530
-Message-ID: <20081002180821.GA29613@skywalker>
-References: <1222886451.9158.34.camel@think.oraclecorp.com>
+Date: Thu, 2 Oct 2008 23:48:56 +0530
+Message-ID: <20081002181856.GB29613@skywalker>
+References: <1222886451.9158.34.camel@think.oraclecorp.com> <20081001215239.ee2ae63f.akpm@linux-foundation.org> <1222950054.6745.18.camel@think.oraclecorp.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	ext4 <linux-ext4@vger.kernel.org>
 To: Chris Mason <chris.mason@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:48151 "EHLO
-	e28esmtp03.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753730AbYJBSIc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Oct 2008 14:08:32 -0400
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:45759 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753666AbYJBSTS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Oct 2008 14:19:18 -0400
 Content-Disposition: inline
-In-Reply-To: <1222886451.9158.34.camel@think.oraclecorp.com>
+In-Reply-To: <1222950054.6745.18.camel@think.oraclecorp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 01, 2008 at 02:40:51PM -0400, Chris Mason wrote:
-> Hello everyone,
+On Thu, Oct 02, 2008 at 08:20:54AM -0400, Chris Mason wrote:
+> On Wed, 2008-10-01 at 21:52 -0700, Andrew Morton wrote:
+> > On Wed, 01 Oct 2008 14:40:51 -0400 Chris Mason <chris.mason@oracle.com> wrote:
+> > 
+> > > The patch below changes write_cache_pages to only use writeback_index
+> > > when current_is_pdflush().  The basic idea is that pdflush is the only
+> > > one who has concurrency control against the bdi, so it is the only one
+> > > who can safely use and update writeback_index.
+> > 
+> > Another approach would be to only update mapping->writeback_index if
+> > nobody else altered it meanwhile.
+> > 
 > 
-> write_cache_pages can use the address space writeback_index field to
-> try and pick up where it left off between calls.  pdflush and
-> balance_dirty_pages both enable this mode in hopes of having writeback
-> evenly walk down the file instead of just servicing pages at the
-> start of the address space.
+> Ok, I can give that a short.
 > 
-> But, there is no locking around this field, and concurrent callers of
-> write_cache_pages on the same inode can get some very strange results.
-> pdflush uses writeback_acquire function to make sure that only one
-> pdflush process is servicing a given backing device, but
-> balance_dirty_pages does not.
+> > That being said, I don't really see why we get lots of seekiness when
+> > two threads start their writing the file from the same offset.
 > 
-> When there are a small number of dirty inodes in the system,
-> balance_dirty_pages is likely to run in parallel with pdflush on one or
-> two of them, leading to somewhat random updates of the writeback_index
-> field in struct address space.
+> For metadata, it makes sense.  Pages get dirtied in strange order, and
+> if writeback_index is jumping around, we'll get the seeky metadata
+> writeback.
 > 
-> The end result is very seeky writeback during streaming IO.  A 4 drive
-> hardware raid0 array here can do 317MB/s streaming O_DIRECT writes on
-> ext4.  This is creating a new file, so O_DIRECT is really just a way to
-> bypass write_cache_pages.
-> 
-> If I do buffered writes instead, XFS does 205MB/s, and ext4 clocks in at
-> 81.7MB/s.  Looking at the buffered IO traces for each one, we can see a
-> lot of seeks.
-> 
-> http://oss.oracle.com/~mason/bugs/writeback_ordering/ext4-nopatch.png
-> 
-> http://oss.oracle.com/~mason/bugs/writeback_ordering/xfs-nopatch.png
-> 
-> The patch below changes write_cache_pages to only use writeback_index
-> when current_is_pdflush().  The basic idea is that pdflush is the only
-> one who has concurrency control against the bdi, so it is the only one
-> who can safely use and update writeback_index.
-> 
-> The performance changes quite a bit:
-> 
->         patched        unpatched
-> XFS     247MB/s        205MB/s
-> Ext4    246MB/s        81.7MB/s
+> Data makes less sense, especially the very high extent count from ext4.
+> An extra printk shows that ext4 is calling redirty_page_for_writepage
+> quite a bit in ext4_da_writepage.  This should be enough to make us jump
+> around in the file.
 
 
-That is nice.
+We need to do  start the journal before locking the page with jbd2.
+That prevent us from doing any block allocation in writepage() call
+back. So with ext4/jbd2 we do block allocation only in writepages()
+call back where we start the journal with credit needed to write
+a single extent. Then we look for contiguous unallocated logical
+block and request the block allocator for 'x' blocks. If we get
+less than that. The rest of the pages which we iterated in
+writepages  are redirtied so that we try to allocate them again.
+We loop inside ext4_da_writepages itself looking at wbc->pages_skipped
+
+2481         if (wbc->range_cont && (pages_skipped != wbc->pages_skipped)) {
+2482                 /* We skipped pages in this loop */
+2483                 wbc->range_start = range_start;
+2484                 wbc->nr_to_write = to_write +
+
 
 > 
-> The graphs after the patch:
-> 
-> http://oss.oracle.com/~mason/bugs/writeback_ordering/ext4-patched.png
-> 
-> http://oss.oracle.com/~mason/bugs/writeback_ordering/xfs-patched.png
-> 
-> The ext4 graph really does look strange.  What's happening there is the
-> lazy inode table init has dirtied a whole bunch of pages on the block
-> device inode.  I don't have much of an answer for why my patch makes all
-> of this writeback happen up front, other then writeback_index is no
-> longer bouncing all over the address space.
-> 
-> It is also worth noting that before the patch, filefrag shows ext4 using
-> about 4000 extents on the file.  After the patch it is around 400.  XFS
-> uses 2 extents both patched and unpatched.
+> For a 4.5GB streaming buffered write, this printk inside
+> ext4_da_writepage shows up 37,2429 times in /var/log/messages.
 > 
 
-Ext4 do block allocation in ext4_da_writepages. So if we are feeding the
-block allocation with different(highly bouncing) index values we may end up with larger
-number of extents. Although the new mballoc block allocator should
-perform better because it reserve space based on logical block number
-in the file.
+Part of that can happen due to shrink_page_list -> pageout -> writepagee
+call back with lots of unallocated buffer_heads(blocks). Also a journal
+commit with jbd2 looks at the inode and all the dirty pages, rather than
+the buffer_heads (journal_submit_data_buffers). We don't force commit
+pages that doesn't have blocks allocated with the ext4. The consistency
+is only with i_size and data.
+
+> 	if (page_has_buffers(page)) {
+> 		page_bufs = page_buffers(page);
+> 		if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+> 					ext4_bh_unmapped_or_delay)) {
+> 			/*
+> 			 * We don't want to do  block allocation
+> 			 * So redirty the page and return
+> 			 * We may reach here when we do a journal commit
+> 			 * via journal_submit_inode_data_buffers.
+> 			 * If we don't have mapping block we just ignore
+> 			 * them. We can also reach here via shrink_page_list
+> 			 */
+> 			redirty_page_for_writepage(wbc, page);
+> 
+> printk("redirty page %Lu\n", page_offset(page));
+> 
+> 			unlock_page(page);
+> 			return 0;
+> 		}
+> 	} else {
+> 
+> -chris
+> 
+> 
 
 -aneesh
