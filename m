@@ -1,92 +1,128 @@
 From: akpm@linux-foundation.org
-Subject: - jbd2-abort-instead-of-waiting-for-nonexistent-transactions.patch removed from -mm tree
-Date: Fri, 03 Oct 2008 14:29:12 -0700
-Message-ID: <200810032129.m93LTCXj016672@imap1.linux-foundation.org>
-To: duaneg@dghda.com, linux-ext4@vger.kernel.org, sct@redhat.com,
-	sliedes@cc.hut.fi, mm-commits@vger.kernel.org
+Subject: - percpu-counters-clean-up-percpu_counter_sum_and_set-interface.patch removed from -mm tree
+Date: Fri, 03 Oct 2008 14:29:15 -0700
+Message-ID: <200810032129.m93LTFBU016677@imap1.linux-foundation.org>
+To: cmm@us.ibm.com, a.p.zijlstra@chello.nl, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:56816 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:42392 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753270AbYJCV3a (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Oct 2008 17:29:30 -0400
+	by vger.kernel.org with ESMTP id S1752834AbYJCVed (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Oct 2008 17:34:33 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     jbd2: abort instead of waiting for nonexistent transactions
+     percpu-counters: clean up percpu_counter_sum_and_set() interface
 has been removed from the -mm tree.  Its filename was
-     jbd2-abort-instead-of-waiting-for-nonexistent-transactions.patch
+     percpu-counters-clean-up-percpu_counter_sum_and_set-interface.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd2: abort instead of waiting for nonexistent transactions
-From: "Duane Griffin" <duaneg@dghda.com>
+Subject: percpu-counters: clean up percpu_counter_sum_and_set() interface
+From: Mingming Cao <cmm@us.ibm.com>
 
-The __jbd2_log_wait_for_space function sits in a loop checkpointing
-transactions until there is sufficient space free in the journal. 
-However, if there are no transactions to be processed (e.g.  because the
-free space calculation is wrong due to a corrupted filesystem) it will
-never progress.
+percpu_counter_sum_and_set() and percpu_counter_sum() is the same except
+the former update the global counter after accounting.  Since we are
+taking the fbc->lock to calculate the precise value of the counter in
+percpu_counter_sum() anyway, it should simply set fbc->count too, as the
+percpu_counter_sum_and_set() dose.
 
-Check for space being required when no transactions are outstanding and
-abort the journal instead of endlessly looping.
+This patch merges these two interfaces into one.
 
-This patch fixes the bug reported by Sami Liedes at:
-http://bugzilla.kernel.org/show_bug.cgi?id=10976
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Cc: Sami Liedes <sliedes@cc.hut.fi>
-Cc: "Stephen C. Tweedie" <sct@redhat.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd2/checkpoint.c |   19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
+ fs/ext4/balloc.c               |    2 +-
+ include/linux/percpu_counter.h |   12 +++---------
+ lib/percpu_counter.c           |    8 +++-----
+ 3 files changed, 7 insertions(+), 15 deletions(-)
 
-diff -puN fs/jbd2/checkpoint.c~jbd2-abort-instead-of-waiting-for-nonexistent-transactions fs/jbd2/checkpoint.c
---- a/fs/jbd2/checkpoint.c~jbd2-abort-instead-of-waiting-for-nonexistent-transactions
-+++ a/fs/jbd2/checkpoint.c
-@@ -126,14 +126,29 @@ void __jbd2_log_wait_for_space(journal_t
+diff -puN fs/ext4/balloc.c~percpu-counters-clean-up-percpu_counter_sum_and_set-interface fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~percpu-counters-clean-up-percpu_counter_sum_and_set-interface
++++ a/fs/ext4/balloc.c
+@@ -1624,7 +1624,7 @@ ext4_fsblk_t ext4_has_free_blocks(struct
+ #ifdef CONFIG_SMP
+ 	if (free_blocks - root_blocks < FBC_BATCH)
+ 		free_blocks =
+-			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
++			percpu_counter_sum(&sbi->s_freeblocks_counter);
+ #endif
+ 	if (free_blocks <= root_blocks)
+ 		/* we don't have free space */
+diff -puN include/linux/percpu_counter.h~percpu-counters-clean-up-percpu_counter_sum_and_set-interface include/linux/percpu_counter.h
+--- a/include/linux/percpu_counter.h~percpu-counters-clean-up-percpu_counter_sum_and_set-interface
++++ a/include/linux/percpu_counter.h
+@@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percp
+ void percpu_counter_destroy(struct percpu_counter *fbc);
+ void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
+ void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
+-s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
++s64 __percpu_counter_sum(struct percpu_counter *fbc);
  
- 		/*
- 		 * Test again, another process may have checkpointed while we
--		 * were waiting for the checkpoint lock
-+		 * were waiting for the checkpoint lock. If there are no
-+		 * outstanding transactions there is nothing to checkpoint and
-+		 * we can't make progress. Abort the journal in this case.
- 		 */
- 		spin_lock(&journal->j_state_lock);
-+		spin_lock(&journal->j_list_lock);
- 		nblocks = jbd_space_needed(journal);
- 		if (__jbd2_log_space_left(journal) < nblocks) {
-+			int chkpt = journal->j_checkpoint_transactions != NULL;
-+
-+			spin_unlock(&journal->j_list_lock);
- 			spin_unlock(&journal->j_state_lock);
--			jbd2_log_do_checkpoint(journal);
-+			if (chkpt) {
-+				jbd2_log_do_checkpoint(journal);
-+			} else {
-+				printk(KERN_ERR "%s: no transactions\n",
-+				       __func__);
-+				jbd2_journal_abort(journal, 0);
-+			}
-+
- 			spin_lock(&journal->j_state_lock);
-+		} else {
-+			spin_unlock(&journal->j_list_lock);
- 		}
- 		mutex_unlock(&journal->j_checkpoint_mutex);
+ static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
+ {
+@@ -44,19 +44,13 @@ static inline void percpu_counter_add(st
+ 
+ static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
+ {
+-	s64 ret = __percpu_counter_sum(fbc, 0);
++	s64 ret = __percpu_counter_sum(fbc);
+ 	return ret < 0 ? 0 : ret;
+ }
+ 
+-static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
+-{
+-	return __percpu_counter_sum(fbc, 1);
+-}
+-
+-
+ static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
+ {
+-	return __percpu_counter_sum(fbc, 0);
++	return __percpu_counter_sum(fbc);
+ }
+ 
+ static inline s64 percpu_counter_read(struct percpu_counter *fbc)
+diff -puN lib/percpu_counter.c~percpu-counters-clean-up-percpu_counter_sum_and_set-interface lib/percpu_counter.c
+--- a/lib/percpu_counter.c~percpu-counters-clean-up-percpu_counter_sum_and_set-interface
++++ a/lib/percpu_counter.c
+@@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
+  * Add up all the per-cpu counts, return the result.  This is a more accurate
+  * but much slower version of percpu_counter_read_positive()
+  */
+-s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
++s64 __percpu_counter_sum(struct percpu_counter *fbc)
+ {
+ 	s64 ret;
+ 	int cpu;
+@@ -62,11 +62,9 @@ s64 __percpu_counter_sum(struct percpu_c
+ 	for_each_online_cpu(cpu) {
+ 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
+ 		ret += *pcount;
+-		if (set)
+-			*pcount = 0;
++		*pcount = 0;
  	}
+-	if (set)
+-		fbc->count = ret;
++	fbc->count = ret;
+ 
+ 	spin_unlock(&fbc->lock);
+ 	return ret;
 _
 
-Patches currently in -mm which might be from duaneg@dghda.com are
+Patches currently in -mm which might be from cmm@us.ibm.com are
 
 git-ext4.patch
-jbd-abort-instead-of-waiting-for-nonexistent-transactions.patch
+vmscan-set-try_to_release_pages-gfp_mask-to-0.patch
+ext2-fix-ext2-block-reservation-early-enospc-issue.patch
+ext3-fix-ext3-block-reservation-early-enospc-issue.patch
 
