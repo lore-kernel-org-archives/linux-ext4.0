@@ -1,376 +1,70 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/4] Hook ext4 to the vfs fiemap interface.
-Date: Fri,  3 Oct 2008 17:59:07 -0400
-Message-ID: <1223071147-27180-5-git-send-email-tytso@mit.edu>
-References: <1223071147-27180-1-git-send-email-tytso@mit.edu>
- <1223071147-27180-2-git-send-email-tytso@mit.edu>
- <1223071147-27180-3-git-send-email-tytso@mit.edu>
- <1223071147-27180-4-git-send-email-tytso@mit.edu>
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] [RFC] jbd2: Add buffer triggers
+Date: Fri, 3 Oct 2008 20:03:36 -0400
+Message-ID: <20081004000336.GE11442@mit.edu>
+References: <20080917232629.GB20752@mail.oracle.com> <20080929012527.GI8711@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Joel Becker <Joel.Becker@oracle.com>
+To: ocfs2-devel@oss.oracle.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:57230 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54213 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752834AbYJCV7b (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Oct 2008 17:59:31 -0400
-In-Reply-To: <1223071147-27180-4-git-send-email-tytso@mit.edu>
+	with ESMTP id S1753255AbYJDADj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Oct 2008 20:03:39 -0400
+Content-Disposition: inline
+In-Reply-To: <20080929012527.GI8711@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Sandeen <sandeen@redhat.com>
+Hey Joel,
 
-ext4_ext_walk_space() was reinstated to be used for iterating over file
-extents with a callback; it is used by the ext4 fiemap implementation.
+I'm not sure you saw this e-mail, since I think it got in a mailman
+moderation queue.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
----
- fs/ext4/ext4.h         |    2 +
- fs/ext4/ext4_extents.h |   15 +++
- fs/ext4/extents.c      |  248 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/file.c         |    4 +
- 4 files changed, 269 insertions(+), 0 deletions(-)
+I've been looking more closely at this, and I think actually using
+this commit trigger gets very tricky.  Exactly how do you plan to use
+the commit trigger?  The caller is only going to be able to easily
+check the checksum on the frozen copy of the buffer; is that what you
+intended?  When and how do you plan set the checksum for a filesystem
+which is cleanly unmounted?  And are you planning on doing this for
+just the superblock, or for other data structures?  
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6db6857..caaca1b 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1083,6 +1083,8 @@ struct buffer_head *ext4_getblk(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
- struct buffer_head *ext4_bread(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
-+int ext4_get_block(struct inode *inode, sector_t iblock,
-+				struct buffer_head *bh_result, int create);
- int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
- 				ext4_lblk_t iblock, unsigned long maxblocks,
- 				struct buffer_head *bh_result,
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index 2fc0469..6407222 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -124,6 +124,19 @@ struct ext4_ext_path {
- #define EXT4_EXT_CACHE_GAP	1
- #define EXT4_EXT_CACHE_EXTENT	2
- 
-+/*
-+ * to be called by ext4_ext_walk_space()
-+ * negative retcode - error
-+ * positive retcode - signal for ext4_ext_walk_space(), see below
-+ * callback must return valid extent (passed or newly created)
-+ */
-+typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_path *,
-+					struct ext4_ext_cache *,
-+					struct ext4_extent *, void *);
-+
-+#define EXT_CONTINUE   0
-+#define EXT_BREAK      1
-+#define EXT_REPEAT     2
- 
- #define EXT_MAX_BLOCK	0xffffffff
- 
-@@ -224,6 +237,8 @@ extern int ext4_ext_try_to_merge(struct inode *inode,
- 				 struct ext4_extent *);
- extern unsigned int ext4_ext_check_overlap(struct inode *, struct ext4_extent *, struct ext4_ext_path *);
- extern int ext4_ext_insert_extent(handle_t *, struct inode *, struct ext4_ext_path *, struct ext4_extent *);
-+extern int ext4_ext_walk_space(struct inode *, ext4_lblk_t, ext4_lblk_t,
-+							ext_prepare_callback, void *);
- extern struct ext4_ext_path *ext4_ext_find_extent(struct inode *, ext4_lblk_t,
- 							struct ext4_ext_path *);
- extern int ext4_ext_search_left(struct inode *, struct ext4_ext_path *,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index b4f0c7d..dde234f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -40,6 +40,7 @@
- #include <linux/slab.h>
- #include <linux/falloc.h>
- #include <asm/uaccess.h>
-+#include <linux/fiemap.h>
- #include "ext4_jbd2.h"
- #include "ext4_extents.h"
- 
-@@ -1626,6 +1627,113 @@ cleanup:
- 	return err;
- }
- 
-+int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
-+			ext4_lblk_t num, ext_prepare_callback func,
-+			void *cbdata)
-+{
-+	struct ext4_ext_path *path = NULL;
-+	struct ext4_ext_cache cbex;
-+	struct ext4_extent *ex;
-+	ext4_lblk_t next, start = 0, end = 0;
-+	ext4_lblk_t last = block + num;
-+	int depth, exists, err = 0;
-+
-+	BUG_ON(func == NULL);
-+	BUG_ON(inode == NULL);
-+
-+	while (block < last && block != EXT_MAX_BLOCK) {
-+		num = last - block;
-+		/* find extent for this block */
-+		path = ext4_ext_find_extent(inode, block, path);
-+		if (IS_ERR(path)) {
-+			err = PTR_ERR(path);
-+			path = NULL;
-+			break;
-+		}
-+
-+		depth = ext_depth(inode);
-+		BUG_ON(path[depth].p_hdr == NULL);
-+		ex = path[depth].p_ext;
-+		next = ext4_ext_next_allocated_block(path);
-+
-+		exists = 0;
-+		if (!ex) {
-+			/* there is no extent yet, so try to allocate
-+			 * all requested space */
-+			start = block;
-+			end = block + num;
-+		} else if (le32_to_cpu(ex->ee_block) > block) {
-+			/* need to allocate space before found extent */
-+			start = block;
-+			end = le32_to_cpu(ex->ee_block);
-+			if (block + num < end)
-+				end = block + num;
-+		} else if (block >= le32_to_cpu(ex->ee_block)
-+					+ ext4_ext_get_actual_len(ex)) {
-+			/* need to allocate space after found extent */
-+			start = block;
-+			end = block + num;
-+			if (end >= next)
-+				end = next;
-+		} else if (block >= le32_to_cpu(ex->ee_block)) {
-+			/*
-+			 * some part of requested space is covered
-+			 * by found extent
-+			 */
-+			start = block;
-+			end = le32_to_cpu(ex->ee_block)
-+				+ ext4_ext_get_actual_len(ex);
-+			if (block + num < end)
-+				end = block + num;
-+			exists = 1;
-+		} else {
-+			BUG();
-+		}
-+		BUG_ON(end <= start);
-+
-+		if (!exists) {
-+			cbex.ec_block = start;
-+			cbex.ec_len = end - start;
-+			cbex.ec_start = 0;
-+			cbex.ec_type = EXT4_EXT_CACHE_GAP;
-+		} else {
-+			cbex.ec_block = le32_to_cpu(ex->ee_block);
-+			cbex.ec_len = ext4_ext_get_actual_len(ex);
-+			cbex.ec_start = ext_pblock(ex);
-+			cbex.ec_type = EXT4_EXT_CACHE_EXTENT;
-+		}
-+
-+		BUG_ON(cbex.ec_len == 0);
-+		err = func(inode, path, &cbex, ex, cbdata);
-+		ext4_ext_drop_refs(path);
-+
-+		if (err < 0)
-+			break;
-+
-+		if (err == EXT_REPEAT)
-+			continue;
-+		else if (err == EXT_BREAK) {
-+			err = 0;
-+			break;
-+		}
-+
-+		if (ext_depth(inode) != depth) {
-+			/* depth was changed. we have to realloc path */
-+			kfree(path);
-+			path = NULL;
-+		}
-+
-+		block = cbex.ec_block + cbex.ec_len;
-+	}
-+
-+	if (path) {
-+		ext4_ext_drop_refs(path);
-+		kfree(path);
-+	}
-+
-+	return err;
-+}
-+
- static void
- ext4_ext_put_in_cache(struct inode *inode, ext4_lblk_t block,
- 			__u32 len, ext4_fsblk_t start, int type)
-@@ -2971,3 +3079,143 @@ retry:
- 	mutex_unlock(&inode->i_mutex);
- 	return ret > 0 ? ret2 : ret;
- }
-+
-+/*
-+ * Callback function called for each extent to gather FIEMAP information.
-+ */
-+int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
-+		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
-+		       void *data)
-+{
-+	struct fiemap_extent_info *fieinfo = data;
-+	unsigned long blksize_bits = inode->i_sb->s_blocksize_bits;
-+	__u64	logical;
-+	__u64	physical;
-+	__u64	length;
-+	__u32	flags = 0;
-+	int	error;
-+
-+	logical =  (__u64)newex->ec_block << blksize_bits;
-+
-+	if (newex->ec_type == EXT4_EXT_CACHE_GAP) {
-+		pgoff_t offset;
-+		struct page *page;
-+		struct buffer_head *bh = NULL;
-+
-+		offset = logical >> PAGE_SHIFT;
-+		page = find_get_page(inode->i_mapping, offset);
-+		if (!page || !page_has_buffers(page))
-+			return EXT_CONTINUE;
-+
-+		bh = page_buffers(page);
-+
-+		if (!bh)
-+			return EXT_CONTINUE;
-+
-+		if (buffer_delay(bh)) {
-+			flags |= FIEMAP_EXTENT_DELALLOC;
-+			page_cache_release(page);
-+		} else {
-+			page_cache_release(page);
-+			return EXT_CONTINUE;
-+		}
-+	}
-+
-+	physical = (__u64)newex->ec_start << blksize_bits;
-+	length =   (__u64)newex->ec_len << blksize_bits;
-+
-+	if (ex && ext4_ext_is_uninitialized(ex))
-+		flags |= FIEMAP_EXTENT_UNWRITTEN;
-+
-+	/*
-+	 * If this extent reaches EXT_MAX_BLOCK, it must be last.
-+	 *
-+	 * Or if ext4_ext_next_allocated_block is EXT_MAX_BLOCK,
-+	 * this also indicates no more allocated blocks.
-+	 *
-+	 * XXX this might miss a single-block extent at EXT_MAX_BLOCK
-+	 */
-+	if (logical + length - 1 == EXT_MAX_BLOCK ||
-+	    ext4_ext_next_allocated_block(path) == EXT_MAX_BLOCK)
-+		flags |= FIEMAP_EXTENT_LAST;
-+
-+	error = fiemap_fill_next_extent(fieinfo, logical, physical,
-+					length, flags);
-+	if (error < 0)
-+		return error;
-+	if (error == 1)
-+		return EXT_BREAK;
-+
-+	return EXT_CONTINUE;
-+}
-+
-+/* fiemap flags we can handle specified here */
-+#define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
-+
-+int ext4_xattr_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo)
-+{
-+	__u64 physical = 0;
-+	__u64 length;
-+	__u32 flags = FIEMAP_EXTENT_LAST;
-+	int blockbits = inode->i_sb->s_blocksize_bits;
-+	int error = 0;
-+
-+	/* in-inode? */
-+	if (EXT4_I(inode)->i_state & EXT4_STATE_XATTR) {
-+		struct ext4_iloc iloc;
-+		int offset;	/* offset of xattr in inode */
-+
-+		error = ext4_get_inode_loc(inode, &iloc);
-+		if (error)
-+			return error;
-+		physical = iloc.bh->b_blocknr << blockbits;
-+		offset = EXT4_GOOD_OLD_INODE_SIZE +
-+				EXT4_I(inode)->i_extra_isize;
-+		physical += offset;
-+		length = EXT4_SB(inode->i_sb)->s_inode_size - offset;
-+		flags |= FIEMAP_EXTENT_DATA_INLINE;
-+	} else { /* external block */
-+		physical = EXT4_I(inode)->i_file_acl << blockbits;
-+		length = inode->i_sb->s_blocksize;
-+	}
-+
-+	if (physical)
-+		error = fiemap_fill_next_extent(fieinfo, 0, physical,
-+						length, flags);
-+	return (error < 0 ? error : 0);
-+}
-+
-+int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		__u64 start, __u64 len)
-+{
-+	ext4_lblk_t start_blk;
-+	ext4_lblk_t len_blks;
-+	int error = 0;
-+
-+	/* fallback to generic here if not in extents fmt */
-+	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
-+		return generic_block_fiemap(inode, fieinfo, start, len,
-+			ext4_get_block);
-+
-+	if (fiemap_check_flags(fieinfo, EXT4_FIEMAP_FLAGS))
-+		return -EBADR;
-+
-+	if (fieinfo->fi_flags & FIEMAP_FLAG_XATTR) {
-+		error = ext4_xattr_fiemap(inode, fieinfo);
-+	} else {
-+		start_blk = start >> inode->i_sb->s_blocksize_bits;
-+		len_blks = len >> inode->i_sb->s_blocksize_bits;
-+
-+		/*
-+		 * Walk the extent tree gathering extent information.
-+		 * ext4_ext_fiemap_cb will push extents back to user.
-+		 */
-+		down_write(&EXT4_I(inode)->i_data_sem);
-+		error = ext4_ext_walk_space(inode, start_blk, len_blks,
-+					  ext4_ext_fiemap_cb, fieinfo);
-+		up_write(&EXT4_I(inode)->i_data_sem);
-+	}
-+
-+	return error;
-+}
-+
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 62796b7..6d5be15 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -140,6 +140,9 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
- 	return 0;
- }
- 
-+extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		__u64 start, __u64 len);
-+
- const struct file_operations ext4_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-@@ -170,5 +173,6 @@ const struct inode_operations ext4_file_inode_operations = {
- #endif
- 	.permission	= ext4_permission,
- 	.fallocate	= ext4_fallocate,
-+	.fiemap		= ext4_fiemap,
- };
- 
--- 
-1.5.6.1.205.ge2c7.dirty
+     	 	     	    	       - Ted
 
+On Sun, Sep 28, 2008 at 09:25:27PM -0400, Theodore Tso wrote:
+> On Wed, Sep 17, 2008 at 04:26:30PM -0700, Joel Becker wrote:
+> > Filesystems often to do compute intensive operation on some
+> > metadata.  If this operation is repeated many times, it can be very
+> > expensive.  It would be much nicer if the operation could be performed
+> > once before a buffer goes to disk.
+> 
+> Sorry for the delay in reviewing this patch, but I've got a question.
+> Right now you are calling the commit trigger *after* doing the escape
+> data copying.  This means that if the commit trigger is going to
+> modify the buffer (in the case of the checksum being stored in-line in
+> the block, which I gather is the case in OCFS2, right?), if you get
+> unlucky and the block begins with the four bytes JBD2_MAGIC_NUMBER,
+> then the checksum will be in the value which gets written out to the
+> log, but *not* to the value in the buffer head that will ultimately
+> get written to the final location on disk.  In the normal case where
+> the journal wraps and then truncated, it means the checksum will never
+> get written to the disk.  That seems bad.  :-)
+> 
+> I believe the correct location to fire the per-buffer commit trigger
+> is right after the first kmap_atomic, right before the comment "Check
+> for escaping".  This also fixes the bug where if the checksum is
+> stored in the first four bytes of the block, in the case where you
+> have bad luck and the checksum == JBD2_MAGIC_NUMBER, you won't end up
+> with a corrupted journal.
+> 
+> Do you agree?  If so, please let me know and I can fix up the patch,
+> or just submit to me an updated patch.
+> 
+> Thanks,
+> 
+> 						- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
