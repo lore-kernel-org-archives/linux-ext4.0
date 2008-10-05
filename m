@@ -1,123 +1,99 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: possible (ext4 related?) memory leak in kernel 2.6.26
-Date: Sun, 5 Oct 2008 08:27:52 -0400
-Message-ID: <20081005122752.GB27335@mit.edu>
-References: <20080930211854.GZ10831@mit.edu> <20080930222358.1FF30EAC415@quatramaran.ens.fr> <20081003003548.GA18138@mit.edu> <20081005091526.GA678@goelette.ens.fr>
+From: Adrian Bunk <bunk@kernel.org>
+Subject: Re: [RFC] Btrfs mainline plans
+Date: Sun, 5 Oct 2008 18:09:57 +0300
+Message-ID: <20081005150957.GC12047@cs181140183.pp.htv.fi>
+References: <1222717460.30627.56.camel@think.oraclecorp.com> <20081003001859.e30af6a5.akpm@linux-foundation.org> <20081005122405.GA12047@cs181140183.pp.htv.fi> <20081005141113.GA6132@us.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Quentin Godfroy <godfroy@clipper.ens.fr>
+Content-Type: text/plain; charset=utf-8
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+To: "Serge E. Hallyn" <serue@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:41587 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753694AbYJEM16 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Oct 2008 08:27:58 -0400
+Received: from smtp5.pp.htv.fi ([213.243.153.39]:53872 "EHLO smtp5.pp.htv.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752670AbYJEPKT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Oct 2008 11:10:19 -0400
 Content-Disposition: inline
-In-Reply-To: <20081005091526.GA678@goelette.ens.fr>
+In-Reply-To: <20081005141113.GA6132@us.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 05, 2008 at 11:15:26AM +0200, Quentin Godfroy wrote:
-> On Thu, Oct 02, 2008 at 08:35:48PM -0400, Theodore Tso wrote:
-> > On Wed, Oct 01, 2008 at 12:23:58AM +0200, Quentin wrote:
+On Sun, Oct 05, 2008 at 09:11:13AM -0500, Serge E. Hallyn wrote:
+> Quoting Adrian Bunk (bunk@kernel.org):
+> > On Fri, Oct 03, 2008 at 12:18:59AM -0700, Andrew Morton wrote:
+> > > On Mon, 29 Sep 2008 15:44:20 -0400 Chris Mason <chris.mason@oracle.com> wrote:
 > > > 
-> > > Of course. However since I unmounted and remounted /home the 'buffer' line
-> > > is now only 59megs, and they are still not dropped when a program tries to
-> > > malloc all the memory. I'll tell next time the problem shows up (it
-> > > can take ten days)
+> > > > But, the code is very actively developed, and I believe the best way to
+> > > > develop Btrfs from here is to get it into the mainline kernel (with a
+> > > > large warning label about the disk format) and attract more extensive
+> > > > review of both the disk format and underlying code.
 > > > 
+> > > For the record...  I have been encouraging Chris to get btrfs into
+> > > mainline soon.  Get it into linux-next asap and merge it into 2.6.29.
+> > > 
+> > > And do this even though the on-disk format is still changing - we emit a
+> > > loud printk at mount time and if someone comes to depend upon some
+> > > intermediate format, well, that's their tough luck.
+> > > 
+> > > My thinking here is that btrfs probably has a future, and that an early
+> > > merge will accelerate its development and will broaden its developer base. 
+> > > If it ends up failing for some reason, well, we can just delete it
+> > > again.
+> > > 
+> > > For various reasons this approach often isn't appropriate as a general
+> > > policy thing, but I do think that Linux has needed a new local
+> > > filesystem for some time, and btrfs might be The One, and hence is
+> > > worth a bit of special-case treatment.
 > > 
-> > Are you willing to patch and recompile your kernel?  If so, the
-> > following patch would be very helpful in determining what is going on.
-> > It allows us to see what buffer heads are in use for a particular
-> > block device.  Attached please the kernel patch and the user program.
+> > Let's try to learn from the past:
+> > 
+> > 6 days from today ext4 (another new local filesystem for Linux) 
+> > celebrates the second birthday of it's inclusion into Linus' tree
+> > as a similar special-case.
+> > 
+> > You claim "an early merge will accelerate its development and will 
+> > broaden its developer base" for Btrfs.
+> > 
+> > Read the timeline Ted outlined back in June 2006 for ext4 [1].
+> > When comparing with what happened in reality it kinda disproves
+> > your "acceleration" point.
 > 
-> Now that the machine is again in the 100M+ in buffers (still unreleased when
-> a program asks for all the memory), I launched the program on the devices
-> which support / and /home.
-> 
-> I also attached /proc/meminfo and /proc/slabinfo
-> 
-> In both cases it freezes solid the machine for more than a minute or so, and
-> it overflows the dmesg with messages. 
+> OTOH, maybe it's just me, but I think there is more excitement around
+> btrfs.  Myself I'm dying for snapshot support, and can't wait to try
+> btrfs on a separate data/scratch partition (where i don't mind losing
+> data).  btrfs and nilfs - yay.  Ext4?  <yawn>  That can make all the
+> difference.
 
-Can you check and see if you got more of the messages recorded in
-/var/log/messages?  Once you do, can you take the block numbers, and
-pull them out into a single command file to feed to debugfs.
+"accelerate its development and will broaden its developer base" is not 
+about users/testers but about people doing code development.
 
-So for example, given:
+For people wanting to try WIP code you don't need it in mainline.
 
-> [166632.382632] buffer dirty: block 35491 count 1
-> [166632.386827] buffer dirty: block 35493 count 3
-> [166632.391019] buffer dirty: block 35494 count 1
-> [166632.395251] buffer dirty: block 35496 count 1
-> [166632.399446] buffer dirty: block 35497 count 2
-> [166632.403644] buffer dirty: block 35498 count 3
-> [166632.407979] buffer dirty: block 35499 count 1
-> [166632.412221] buffer dirty: block 35501 count 2
+Stable kernels will anyway usually contain months old code of the
+WIP filesystem that is not usable for testing, so for any meaningful
+testing you will still have to follow the btrfs tree and not mainline.
 
-Take the column of block numbers, and tack on "icheck " at the
-beginning, like so:
+This is not meant as a statement on the quality of ext4 or btrfs, or any 
+comparison of the development times of ext4 and btrfs, but for ext4 the 
+advantages Andrew thinks would happen with an early btrfs merge do not 
+seem to have happened.
 
-icheck 35491 35493 35494 35496 35497 35498 35499 35501 ...
+I just realize that I forgot to add Ted and the ext4 mailing list into 
+the Cc of my first email. Adding them to the Cc, so if I'm talking 
+nonsense about the experiences with ext4 they can correct me.
 
-You can put a thousand or so block numbers on each line; then it's
-probably better to start a new line with "icheck " at the beginning.  
-Then take that script and run it through debugfs:
+> -serge
 
-     debugfs /dev/XXX < icheck.in > icheck.out
+cu
+Adrian
 
-That will result in a file icheck.out that looks like this:
+-- 
 
-debugfs: icheck 33347
-Block  Inode number
-33347  8193
-33348  8193
-33350  8196
-33351  8197
-  ...
+       "Is there not promise of rain?" Ling Tan asked suddenly out
+        of the darkness. There had been need of rain for many days.
+       "Only a promise," Lao Er said.
+                                       Pearl S. Buck - Dragon Seed
 
-Now you'll need to take the inode numbers returned in icheck.out, and
-create another file called ncheck.in that will take the inode numbers
-and turn them into pathnames.  (I find that using emacs's
-kill-rectangle command very handy for doing this sort of thing, but
-other people will like to use awk, and I'm sure there's some way to do
-this using vi but I don't know what it is.  :-) It's also a good idea
-to take the inode numbers and run them through "sort -u" to get rid of
-duplicates before putting them on a single line and adding ncheck to
-them.  So what you want is to create a file ncheck.in that looks like this:
-
-ncheck 8193 8196 8197 ....
-
-... and then feed that to debugfs again:
-
-debugfs /dev/XXX  < ncheck.in  > ncheck.out
-
-That will produce a file that looks like this:
-
-debugfs:  ncheck 8193
-Inode	  Pathname
-8193	  /ext4
-   ...
-
-
-The next thing I'd ask you to do is to look at the pathnames and
-eyeball them; are they all directories?  Files?  Files that you have
-modified earlier?  If you're not sure, you can look at a particular
-inode either by giving its pathname:
-
-debugfs: stat /ext4
-
-or by its inode number, in angle brackets:
-
-debugfs: stat <8193>
-
-What I'm trying to do here is to get a pattern of what might be going
-on.  I'm assuming that your filesystem is too big (and probably
-contains private information) for you to send it to me.  (Although if
-you're willing to send me a compressed raw e2image --- see the "RAW
-IMAGE FILES" section of the e2image man page ---- and the portions of
-the buffer information dummped in /var/log/messages, I can try to do
-some of the analysis for you.)
-
-						- Ted
