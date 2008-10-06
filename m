@@ -1,94 +1,67 @@
 From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [RFC] Btrfs mainline plans
-Date: Mon, 06 Oct 2008 09:40:03 -0400
-Message-ID: <1223300403.16546.45.camel@think.oraclecorp.com>
-References: <1222717460.30627.56.camel@think.oraclecorp.com>
-	 <20081003001859.e30af6a5.akpm@linux-foundation.org>
-	 <20081005122405.GA12047@cs181140183.pp.htv.fi>
-	 <20081005141113.GA6132@us.ibm.com>
-	 <20081005150957.GC12047@cs181140183.pp.htv.fi>
+Subject: Re: [PATCH] Improve buffered streaming write ordering
+Date: Mon, 06 Oct 2008 10:21:43 -0400
+Message-ID: <1223302903.16546.58.camel@think.oraclecorp.com>
+References: <1222886451.9158.34.camel@think.oraclecorp.com>
+	 <20081001215239.ee2ae63f.akpm@linux-foundation.org>
+	 <1222950054.6745.18.camel@think.oraclecorp.com>
+	 <20081002181856.GB29613@skywalker> <20081002234309.GH30001@disturbed>
+	 <1223063155.13375.64.camel@think.oraclecorp.com>
+	 <20081006101605.GA15881@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: "Serge E. Hallyn" <serue@us.ibm.com>,
+Cc: Dave Chinner <david@fromorbit.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
 	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
-To: Adrian Bunk <bunk@kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:52786 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751244AbYJFNoj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Oct 2008 09:44:39 -0400
-In-Reply-To: <20081005150957.GC12047@cs181140183.pp.htv.fi>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081006101605.GA15881@skywalker>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sun, 2008-10-05 at 18:09 +0300, Adrian Bunk wrote:
-> On Sun, Oct 05, 2008 at 09:11:13AM -0500, Serge E. Hallyn wrote:
-> > Quoting Adrian Bunk (bunk@kernel.org):
-> >
-
-[ when to merge btrfs ]
-
-> > > Let's try to learn from the past:
+On Mon, 2008-10-06 at 15:46 +0530, Aneesh Kumar K.V wrote:
+> On Fri, Oct 03, 2008 at 03:45:55PM -0400, Chris Mason wrote:
+> > On Fri, 2008-10-03 at 09:43 +1000, Dave Chinner wrote:
+> > > On Thu, Oct 02, 2008 at 11:48:56PM +0530, Aneesh Kumar K.V wrote:
+> > > > On Thu, Oct 02, 2008 at 08:20:54AM -0400, Chris Mason wrote:
+> > > > > On Wed, 2008-10-01 at 21:52 -0700, Andrew Morton wrote:
+> > > > > For a 4.5GB streaming buffered write, this printk inside
+> > > > > ext4_da_writepage shows up 37,2429 times in /var/log/messages.
+> > > > > 
+> > > > 
+> > > > Part of that can happen due to shrink_page_list -> pageout -> writepagee
+> > > > call back with lots of unallocated buffer_heads(blocks).
 > > > 
-> > > 6 days from today ext4 (another new local filesystem for Linux) 
-> > > celebrates the second birthday of it's inclusion into Linus' tree
-> > > as a similar special-case.
-> > > 
-> > > You claim "an early merge will accelerate its development and will 
-> > > broaden its developer base" for Btrfs.
-> > > 
-> > > Read the timeline Ted outlined back in June 2006 for ext4 [1].
-> > > When comparing with what happened in reality it kinda disproves
-> > > your "acceleration" point.
+> > > Quite frankly, a simple streaming buffered write should *never*
+> > > trigger writeback from the LRU in memory reclaim.
 > > 
-
-The btrfs timelines have always been aggressive, and as btrfs gets
-closer to feature complete, the testing matrix grows dramatically.  I
-can't promise my crazy timelines won't slip, but I've been hacking away
-in the basement for almost 18 months now and it's time for me to get off
-the pot and make it stable.
-
-Ext4 has always had to deal with the ghost of ext3.  Both from a
-compatibility point of view and everyone's expectations of stability.  I
-believe that most of us underestimated how difficult it would be to move
-ext4 forward.
-
-Btrfs is different for lots of reasons, and being in mainline will
-definitely increase the pressure on the btrfs developers to finish, and
-the resources available for us to finish with.
-
-> > OTOH, maybe it's just me, but I think there is more excitement around
-> > btrfs.  Myself I'm dying for snapshot support, and can't wait to try
-> > btrfs on a separate data/scratch partition (where i don't mind losing
-> > data).  btrfs and nilfs - yay.  Ext4?  <yawn>  That can make all the
-> > difference.
+> > The blktrace runs on ext4 didn't show kswapd doing any IO.  It isn't
+> > clear if this is because ext4 did the redirty trick or if kswapd didn't
+> > call writepage.
+> > 
+> > -chris
 > 
-> "accelerate its development and will broaden its developer base" is not 
-> about users/testers but about people doing code development.
+> This patch actually reduced the number of extents for the below test
+> from 564 to 171.
 > 
 
-People want btrfs for different reasons.  I want btrfs in the kernel
-because when you're in the kernel more people look at it, and when
-people look at it they send me email with the mistakes they found.
+For my array, this patch brings the number of ext4 extents down from
+over 4000 to 27.  The throughput reported by dd goes up from ~80MB/s to
+330MB/s, which means buffered IO is going as fast as O_DIRECT.
 
-For example, see the streaming write patches I sent to fsdevel last
-week.  I wouldn't test against ext4 as often if I had to hunt down
-external repos just to get something consistent with the current
-development kernels.  ext4 in mainline makes it much easier for me to
-kick the tires.
+Here's the graph:
 
-> For people wanting to try WIP code you don't need it in mainline.
-> 
-> Stable kernels will anyway usually contain months old code of the
-> WIP filesystem that is not usable for testing, so for any meaningful
-> testing you will still have to follow the btrfs tree and not mainline.
+http://oss.oracle.com/~mason/bugs/writeback_ordering/ext4-aneesh.png
 
-For ext4 at least, the mainline code is very usable.  I hope to have
-btrfs in shape for that by the 2.6.29 merge cycle.
+The strange metadata writeback for the uninit block groups is gone.
+
+Looking at the patch, I think the ext4_writepages code should just make
+its own write_cache_pages.  It's pretty hard to follow the code that is
+there for ext4 vs the code that is there to make write_cache_pages do
+what ext4 expects it to.
 
 -chris
 
