@@ -1,89 +1,52 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: "Renato S. Yamane" <yamane@diamondcut.com.br>
 Subject: Re: possible (ext4 related?) memory leak in kernel 2.6.26
-Date: Mon, 06 Oct 2008 10:30:40 -0500
-Message-ID: <48EA2F20.7020309@redhat.com>
-References: <20080930211854.GZ10831@mit.edu> <20080930222358.1FF30EAC415@quatramaran.ens.fr> <20081003003548.GA18138@mit.edu> <20081005091526.GA678@goelette.ens.fr> <20081005122752.GB27335@mit.edu> <20081005161214.GA2985@goelette.ens.fr> <20081006025006.GA9289@mit.edu>
+Date: Mon, 06 Oct 2008 12:50:31 -0300
+Message-ID: <48EA33C7.80702@diamondcut.com.br>
+References: <20080930211854.GZ10831@mit.edu> <20080930222358.1FF30EAC415@quatramaran.ens.fr> <20081003003548.GA18138@mit.edu> <20081005091526.GA678@goelette.ens.fr> <20081005122752.GB27335@mit.edu> <20081005161214.GA2985@goelette.ens.fr> <20081006025006.GA9289@mit.edu> <48EA2F20.7020309@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>,
+Cc: Theodore Tso <tytso@mit.edu>,
 	Quentin Godfroy <godfroy@clipper.ens.fr>,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35747 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752641AbYJFPbM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Oct 2008 11:31:12 -0400
-In-Reply-To: <20081006025006.GA9289@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754108AbYJFPuo@vger.kernel.org>
+In-Reply-To: <48EA2F20.7020309@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 Theodore Tso wrote:
-> On Sun, Oct 05, 2008 at 06:12:15PM +0200, Quentin Godfroy wrote:
+> Quentin Godfroy wrote:
 >> For the two fs the only inode which shows up is the inode 8 (this
 >> seems to be the journal. According to 'stat <8>' in debugfs it looks
 >> like the journal is 134Megs long. I don't remember exactly how I
 >> created the fs, but i'm sure I did not specified the journal
 >> size. Does it seem reasonable for a 6,6G fs?
-> 
+>
 > 134 Megs sounds wrong.  What does dumpe2fs -h say?  I'm guessing you
 > didn't calculate it quite correctly.
-> 
-> I did some poking around myself, and noticed that a lot of in-use
-> buffers hanging around from the journal inode.  The following patch
-> should fix that problem.  I'm still doing some more testingto make
-> sure there aren't any other buffer head leaks, but this is seems to
-> fix the worst of the problems.  Can you let me know how this works for
-> you?
-> 
-> 							- Ted
-> 
-> jbd2: Fix buffer head leak when writing the commit block
-> 
-> Also make sure the buffer heads are marked clean before submitting bh
-> for writing.  The previous code was marking the buffer head dirty,
-> which would have forced an unneeded write (and seek) to the journal
-> for no good reason.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index e91f051..c2b04cd 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -127,8 +127,7 @@ static int journal_submit_commit_record(journal_t *journal,
->  
->  	JBUFFER_TRACE(descriptor, "submit commit block");
->  	lock_buffer(bh);
-> -	get_bh(bh);
-> -	set_buffer_dirty(bh);
-> +	clear_buffer_dirty(bh);
->  	set_buffer_uptodate(bh);
->  	bh->b_end_io = journal_end_buffer_io_sync;
->  
-> @@ -157,7 +156,7 @@ static int journal_submit_commit_record(journal_t *journal,
->  
->  		/* And try again, without the barrier */
->  		lock_buffer(bh);
-> -		set_buffer_uptodate(bh);
-> +		clear_buffer_uptodate(bh);
->  		set_buffer_dirty(bh);
->  		ret = submit_bh(WRITE, bh);
->  	}
 
-Just so it doesn't get lost (discussed w/ Ted today) I think this 2nd
-hunk flipped the wrong buffer funtion; this makes much more sense to me:
+I'm running 2.6.26.2 (ext3) and dumpe2fs show me:
+Journal size: 128M
 
-@@ -157,7 +156,7 @@ static int journal_submit_commit_record(journal_t
-*journal,
+# fdisk -l
 
- 		/* And try again, without the barrier */
- 		lock_buffer(bh);
-		set_buffer_uptodate(bh);
--		set_buffer_dirty(bh);
-+		clear_buffer_dirty(bh);
- 		ret = submit_bh(WRITE, bh);
- 	}
+Disk /dev/sda: 100.0 GB, 100030242816 bytes
+255 heads, 63 sectors/track, 12161 cylinders
+Units = cilindros of 16065 * 512 = 8225280 bytes
+Disk identifier: 0xe5d80ea3
 
+Dispositivo Boot      Start         End      Blocks   Id  System
+/dev/sda1               1         889     7139328   27  Unknown
+Partition 1 does not end on cylinder boundary.
+/dev/sda2   *         889        4780    31250000    7  HPFS ou NTFS
+Partition 2 does not end on cylinder boundary.
+/dev/sda3            4781        7212    19527480   83  Linux
+Partition 3 does not end on cylinder boundary.
+/dev/sda4            7212       12161    39758040    5  Extended
+Partition 4 does not end on cylinder boundary.
+/dev/sda5            7212        7274      498928+  82  Linux swap
+/dev/sda6            7274       12161    39259048+  83  Linux
 
--Eric
-
+Regards,
+Renato
