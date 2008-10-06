@@ -1,69 +1,47 @@
 From: Joel Becker <Joel.Becker@oracle.com>
 Subject: Re: [PATCH] [RFC] jbd2: Add buffer triggers
-Date: Mon, 6 Oct 2008 14:37:55 -0700
-Message-ID: <20081006213754.GA26632@mail.oracle.com>
-References: <20080917232629.GB20752@mail.oracle.com> <20080929012527.GI8711@mit.edu> <20081004000336.GE11442@mit.edu>
+Date: Mon, 6 Oct 2008 14:42:52 -0700
+Message-ID: <20081006214251.GB26632@mail.oracle.com>
+References: <20080917232629.GB20752@mail.oracle.com> <20080929012527.GI8711@mit.edu> <20081004000336.GE11442@mit.edu> <20081006213754.GA26632@mail.oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: ocfs2-devel@oss.oracle.com, linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rgminet01.oracle.com ([148.87.113.118]:19094 "EHLO
-	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752565AbYJFViQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Oct 2008 17:38:16 -0400
+Received: from agminet01.oracle.com ([141.146.126.228]:23127 "EHLO
+	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753329AbYJFVnu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Oct 2008 17:43:50 -0400
 Content-Disposition: inline
-In-Reply-To: <20081004000336.GE11442@mit.edu>
+In-Reply-To: <20081006213754.GA26632@mail.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 03, 2008 at 08:03:36PM -0400, Theodore Tso wrote:
-> I'm not sure you saw this e-mail, since I think it got in a mailman
-> moderation queue.
+On Mon, Oct 06, 2008 at 02:37:54PM -0700, Joel Becker wrote:
+> On Fri, Oct 03, 2008 at 08:03:36PM -0400, Theodore Tso wrote:
+> 	Now, I'm sure this is the buffer that's going to the journal, I
+> think you're saying that this buffer may not be what gets checkpointed.
+> So the correct checksum hits the journal, but then an invalid one gets
+> to the real location on disk.  Is that right?  If so, I need to figure
+> out where to calculate the checksum somewhere higher, as you say.
 
-	I've flagged you as "do not moderate".  I saw the email, but I
-was in Prague for the cluster summit and didn't have time to look
-in-depth.
-
-> I've been looking more closely at this, and I think actually using
-> this commit trigger gets very tricky.  Exactly how do you plan to use
-> the commit trigger?  The caller is only going to be able to easily
-> check the checksum on the frozen copy of the buffer; is that what you
-> intended?  When and how do you plan set the checksum for a filesystem
-> which is cleanly unmounted?  And are you planning on doing this for
-> just the superblock, or for other data structures?  
-
-	Every single metadata block in ocfs2 would have the commit
-trigger set.  I intend to calculate the block checksums in the trigger.
-That way I only compute the checksum once per journal write, rather than
-every time I call journal_dirty_metadata().  That's my plan, at least.
-	You may be right that my choice is too late and that I need to
-trigger in an earlier place.  That's why I was taking time to reply: I
-wanted to re-read the jbd2 source and be sure of what you were saying
-and how I was handling it.  I haven't looked yet (just got back to the
-office today), but here's what I understand so far.
-	As far I could tell, actual writes of the buffer to the journal
-go through journal_write_metadata_buffer().  Only in
-journal_write_metadata_buffer() are you sure to have a frozen copy of
-the buffer that won't be affected by parallel processes doing
-journal_dirty_metadata().  Thus, the new_page and new_offset values are
-set to b_data or b_frozen_data as needed.  When I get past that, I have
-the right pointer.  I need to do it before the escape, of course,
-because I want to checksum the block data, not the escaped data.
-	Now, I'm sure this is the buffer that's going to the journal, I
-think you're saying that this buffer may not be what gets checkpointed.
-So the correct checksum hits the journal, but then an invalid one gets
-to the real location on disk.  Is that right?  If so, I need to figure
-out where to calculate the checksum somewhere higher, as you say.
+	Ok, looking at your first email again, you're saying to move up
+to the "Check for escaping" section.  There we might checksum b_data
+before it's copied out.  This is, indeed, safe against the problem you
+mentioned.  I also think it's safe to checksum b_frozen_data if already
+set there, as that's a frozen for commit buffer.  Can I trust that
+checksumming b_data there will not be overwritten by another process
+doing journal_dirty_metadata() before we write out our buffer?  Can I
+trust that the b_frozen_data, if already copied, will be the buffer
+committed and checkpointed?  If so, I think that change works.
 
 Joel
 
 -- 
 
-"Nobody loves me,
- Nobody seems to care.
- Troubles and worries, people,
- You know I've had my share."
+"What no boss of a programmer can ever understand is that a programmer
+ is working when he's staring out of the window"
+	- With apologies to Burton Rascoe
 
 Joel Becker
 Principal Software Developer
