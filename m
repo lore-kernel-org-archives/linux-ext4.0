@@ -1,30 +1,38 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH][2/15] e2fsprogs-config-before-cmdline.patch
-Date: Mon, 6 Oct 2008 16:49:26 -0400
-Message-ID: <20081006204926.GA8139@mit.edu>
-References: <1223289068.4007.84.camel@localhost>
+From: Andi Kleen <andi@firstfloor.org>
+Subject: [PATCH] EXT4: Avoid double dirtying of super block in ext4_put_super()
+Date: Mon, 6 Oct 2008 23:21:18 +0200
+Message-ID: <20081006212118.GA382@basil.nowhere.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Kalpak Shah <Kalpak.Shah@Sun.COM>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:37372 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754096AbYJFUt3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Oct 2008 16:49:29 -0400
+Received: from one.firstfloor.org ([213.235.205.2]:37045 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752560AbYJFVVU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Oct 2008 17:21:20 -0400
 Content-Disposition: inline
-In-Reply-To: <1223289068.4007.84.camel@localhost>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 06, 2008 at 04:01:08PM +0530, Kalpak Shah wrote:
-> The patch changes the order that the config file and command line are
-> parsed so that command line has precedence.  It also adds a check to
-> make sure only one -E option is passed on the command line as -E option
-> parsing is not cumulative.
+EXT4: Avoid double dirtying of super block in ext4_put_super()
 
-Hmm.  I wonder if we would be better off making -E option parsing
-cumulative, especially if we are going to add a way of specifying some
-extended options via the config file.  Comments?
+While reading code I noticed that ext4_put_super() dirties the 
+superblock bh twice. It is always done in ext4_commit_super()
+too. Remove the redundant dirty operation.
 
-							- Ted
+Should be a nop semantically.
+
+Signed-off-by: Andi Kleen <ak@linux.intel.com>
+
+diff -up linux-2.6.27-rc6-csum/fs/ext4/super.c-o linux-2.6.27-rc6-csum/fs/ext4/super.c
+--- linux-2.6.27-rc6-csum/fs/ext4/super.c-o	2008-08-29 10:10:08.000000000 +0200
++++ linux-2.6.27-rc6-csum/fs/ext4/super.c	2008-10-06 11:24:31.000000000 +0200
+@@ -508,8 +509,6 @@
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+ 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+-		BUFFER_TRACE(sbi->s_sbh, "marking dirty");
+-		mark_buffer_dirty(sbi->s_sbh);
+ 		ext4_commit_super(sb, es, 1);
+ 	}
+ 
