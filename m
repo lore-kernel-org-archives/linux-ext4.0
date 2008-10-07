@@ -1,42 +1,53 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH, RFC] ext4: Rename ext4dev to ext4
-Date: Tue, 07 Oct 2008 05:07:52 -0600
-Message-ID: <20081007110752.GV2009@webber.adilger.int>
-References: <1223356130-22006-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: jbd/jbd2 performance improvements
+Date: Tue, 07 Oct 2008 09:14:06 -0400
+Message-ID: <E1KnCO6-0001qG-SV@closure.thunk.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:65113 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752832AbYJGLIG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2008 07:08:06 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m97B84SV014780
-	for <linux-ext4@vger.kernel.org>; Tue, 7 Oct 2008 04:08:05 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K8D00G01833K600@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 07 Oct 2008 04:08:04 -0700 (PDT)
-In-reply-to: <1223356130-22006-1-git-send-email-tytso@mit.edu>
-Content-disposition: inline
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:35995 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752474AbYJGNOI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2008 09:14:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Oct 07, 2008  01:08 -0400, Theodore Ts'o wrote:
-> +	  This is the next generation of the ext3 filesystem.
->  
->  	  Unlike the change from ext2 filesystem to ext3 filesystem,
-> +	  the on-disk format of ext4 is not backwardscompatible with
 
-Actually, it is not _forwards_ compatible with ext2/ext3 drivers, but
-it is most certainly _backwards_ compatible with older ext3 filesystems.
+As I mentioned on the ext4 call yesterday, there was an interesting
+thread on LKML that wasn't cc'ed onto the linux-ext4 mailing list.  So
+in case folks missed it, it might be worth taking a look at this mail
+thread:
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+	[PATCH] Give kjournald a IOPRIO_CLASS_RT io priority
+
+	http://lkml.org/lkml/2008/10/1/405
+
+The main issue that got discussed was the age-old "entaglement" problem.
+The jbd/jbd2 layer is supposed to avoid this by not blocking the
+"current" transaction why the blocks from the previous "committing"
+transaction are still being written out to disk.  Apparently this was
+broken sometime in the 2.5 time-frame:
+
+	http://lkml.org/lkml/2008/10/2/41
+	http://lkml.org/lkml/2008/10/2/322
+
+Later in the thread, a major contention point in do_get_write_access()
+was identified as the problem:
+
+	http://lkml.org/lkml/2008/10/3/7
+
+... and then andrew produced the following "hacky" fix:
+
+	http://lkml.org/lkml/2008/10/3/22
+
+If someone has time to runs some benchmarks to see how this improves
+things, especially on a workload that has plenty of "engtanglements",
+that would be great.  (I bet Ric's fs_mark run should do a good job;
+fsyncs to creates lots of commits and the need to modify blocks that had
+been modified in the previous tansactions.)
+
+If we can get some quick testing done, and it shows really good results,
+this could be something that could try fast-tracking into the 2.6.28
+merge window.
+
+						- Ted
 
