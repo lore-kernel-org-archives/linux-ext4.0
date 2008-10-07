@@ -1,47 +1,42 @@
-From: Nick Piggin <nickpiggin@yahoo.com.au>
-Subject: Re: [PATCH] Improve buffered streaming write ordering
-Date: Wed, 8 Oct 2008 01:46:06 +1100
-Message-ID: <200810080146.06692.nickpiggin@yahoo.com.au>
-References: <1222950054.6745.18.camel@think.oraclecorp.com> <20081007132911.GA6905@mit.edu> <20081007133651.GA19895@infradead.org>
+From: "Peter Kukol" <pkukol@google.com>
+Subject: Re: No-journal option for ext4
+Date: Tue, 7 Oct 2008 07:59:17 -0700
+Message-ID: <929ffc5e0810070759p39310eb4m53e239e83e951079@mail.gmail.com>
+References: <929ffc5e0810061839l6d5977b4o96ea1699c8451446@mail.gmail.com>
+	 <20081007054530.GI9337@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Chris Mason <chris.mason@oracle.com>,
-	Dave Chinner <david@fromorbit.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755369AbYJGOq3@vger.kernel.org>
-In-Reply-To: <20081007133651.GA19895@infradead.org>
+Cc: linux-ext4@vger.kernel.org, "Michael Rubin" <mrubin@google.com>,
+	"Frank Mayhar" <fmayhar@google.com>
+To: "Theodore Tso" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp-out.google.com ([216.239.33.17]:25510 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752348AbYJGO71 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2008 10:59:27 -0400
+Received: from spaceape12.eur.corp.google.com (spaceape12.eur.corp.google.com [172.28.16.146])
+	by smtp-out.google.com with ESMTP id m97ExPfC020427
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Oct 2008 15:59:25 +0100
+Received: from yx-out-2324.google.com (yxj3.prod.google.com [10.190.3.67])
+	by spaceape12.eur.corp.google.com with ESMTP id m97EwuW6006266
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Oct 2008 07:59:24 -0700
+Received: by yx-out-2324.google.com with SMTP id 3so545869yxj.85
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Oct 2008 07:59:17 -0700 (PDT)
+In-Reply-To: <20081007054530.GI9337@mit.edu>
 Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wednesday 08 October 2008 00:36, Christoph Hellwig wrote:
-> On Tue, Oct 07, 2008 at 09:29:11AM -0400, Theodore Tso wrote:
-> > That's true, but there is a lot of code duplication, which means that
-> > bugs or changes in write_cache_pages() would need to be fixed in
-> > ext4_write_cache_pages().  So another approach that might be better
-> > from a long-term code maintenance point of view is to add a flag in
-> > struct writeback_control that tells write_cache_pages() not to update
-> > those fields, and avoid duplicating approximately 95 lines of code.
-> > It means a change in a core mm function, though, so if folks thinks
-> > its too ugly, we can make our own copy in fs/ext4.
+Thanks for the great suggestions - they all make perfect sense. I did
+see the "journal present" flag, BTW, but figured that it might be
+safer not to change existing behavior - e.g. when someone accidentally
+says ext4 instead of ext2 when mounting an ext2 volume, right now they
+get an error. If folks are OK with this changing to a successful
+mount, I'm happy - less code/work is good ;-).
 
-Heh, funny you should mention that. I was looking at it just the other
-day. It's riddled with bugs (some of which supposedly are by-design
-circumventing of data integrity).
+I'll rework my patch and send out an update when it's ready.
 
-http://linux.derkeiler.com/Mailing-Lists/Kernel/2008-10/msg00917.html
+Thanks again!
 
-I'm also looking (in the same thread) at doing a patch to improve fsync
-performance and ensure it doesn't get stuck behind concurrent dirtiers
-by adding another tag to the radix-tree. Mikulas is also looking at
-improving that problem with another method. It would be nice if fsdevel
-gurus would participate (I'll send out my patchset when I get it working,
-and recap the situation and competing ideas).
+PeterK
