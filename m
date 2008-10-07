@@ -1,96 +1,140 @@
-From: Li Zefan <lizf@cn.fujitsu.com>
-Subject: Re: [PATCH, RFC] ext4: Rename ext4dev to ext4
-Date: Tue, 07 Oct 2008 13:16:56 +0800
-Message-ID: <48EAF0C8.9060104@cn.fujitsu.com>
-References: <1223356130-22006-1-git-send-email-tytso@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: No-journal option for ext4
+Date: Tue, 7 Oct 2008 01:45:30 -0400
+Message-ID: <20081007054530.GI9337@mit.edu>
+References: <929ffc5e0810061839l6d5977b4o96ea1699c8451446@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Michael Rubin <mrubin@google.com>,
+	Frank Mayhar <fmayhar@google.com>
+To: Peter Kukol <pkukol@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:50429 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750846AbYJGFRT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Oct 2008 01:17:19 -0400
-In-Reply-To: <1223356130-22006-1-git-send-email-tytso@mit.edu>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:47793 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750914AbYJGFpd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2008 01:45:33 -0400
+Content-Disposition: inline
+In-Reply-To: <929ffc5e0810061839l6d5977b4o96ea1699c8451446@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> diff --git a/fs/Kconfig b/fs/Kconfig
-> index abccb5d..afb14f2 100644
-> --- a/fs/Kconfig
-> +++ b/fs/Kconfig
-> @@ -136,37 +136,37 @@ config EXT3_FS_SECURITY
->  	  If you are not using a security module that requires using
->  	  extended attributes for file security labels, say N.
->  
-> -config EXT4DEV_FS
-> -	tristate "Ext4dev/ext4 extended fs support development (EXPERIMENTAL)"
-> -	depends on EXPERIMENTAL
-> +config EXT4_FS
-> +	tristate "The Extended 4 (ext4) filesystem"
->  	select JBD2
->  	select CRC16
->  	help
-> -	  Ext4dev is a predecessor filesystem of the next generation
-> -	  extended fs ext4, based on ext3 filesystem code. It will be
-> -	  renamed ext4 fs later, once ext4dev is mature and stabilized.
-> +	  This is the next generation of the ext3 filesystem.
->  
->  	  Unlike the change from ext2 filesystem to ext3 filesystem,
-> -	  the on-disk format of ext4dev is not the same as ext3 any more:
-> -	  it is based on extent maps and it supports 48-bit physical block
-> -	  numbers. These combined on-disk format changes will allow
-> -	  ext4dev/ext4 to handle more than 16 TB filesystem volumes --
-> -	  a hard limit that ext3 cannot overcome without changing the
-> -	  on-disk format.
-> -
-> -	  Other than extent maps and 48-bit block numbers, ext4dev also is
-> -	  likely to have other new features such as persistent preallocation,
-> -	  high resolution time stamps, and larger file support etc.  These
-> -	  features will be added to ext4dev gradually.
-> +	  the on-disk format of ext4 is not backwardscompatible with
+On Mon, Oct 06, 2008 at 06:39:50PM -0700, Peter Kukol wrote:
+> Due to some interest in having an ext4 option not to use a journal at
+> all (for various reasons that I'd rather not get into right now), 
 
-s/backwardscompatible/backwards compatible
+That's OK, I think most of us know why already.  :-)
 
-> +	  ext3; it is based on extent maps and it supports 48-bit
-> +	  physical block numbers.  The ext4 filesystem also supports delayed
-> +	  allocation, persistent preallocation, high resolution time stamps,
-> +	  and a number of other features to improve performance and speed
-> +	  up fsck time.  For more information, please see the web pages at
-> +	  http://ext4.wiki.kernel.org.
-> +
-> +	  The ext4 filesystem will support mounting an ext3
-> +	  filesystem; while there will be some performance gains from
-> +	  the delayed allocation and inode table readeahad, the best
+> To start with, I added an "incompat" option to ext4 allow the journal
+> not to be present - when the right option string is given at mount
+> time, the journaling functionality is disabled. The exact naming and
+> mechanism by which this happens  actually doesn't seem terribly
+> important to the real "guts" of the making the feature work, but if
+> anyone feels strongly that it should be done in a certain way please
+> do let me know.
 
-s/readeahad/readahead
+Um, no.  You shouldn't need an mount option string, and there is
+already a compat flag which indicates that a journal is present.
+Namely, EXT4_FEATURE_COMPAT_HAS_JOURNAL; this is the feature flag
+which indicates that journal is present.  Currently, both the ext3 and
+ext4 filesystems require that this flag be set; if the flag is not
+set, indicating that a journal is not present, ext4 will fail the
+mount.
 
-> +	  performance gains will require enabling ext4 features in the
-> +	  filesystem, or formating a new filesystem as an ext4
-> +	  filesystem initially.
->  
->  	  To compile this file system support as a module, choose M here. The
->  	  module will be called ext4dev.
->  
->  	  If unsure, say N.
+So what your patches should do is to enhance the ext4 filesystem so
+that it can mount filesystems that don't have the COMPAT has_journal
+feature.  This has the nice side-effect of allowing the ext4
+filesystem code to be able to mount not only ext3 filesystems, but
+also ext2 filesystems.
 
-...
+> My first attempt at actually implementing the no-journal option was to
+> disable all of the journaling logic "early" - i.e. not create handles
+> and journal instances, and so on. This ran into a bit of trouble in
+> the handful of journaling functions that only accept handles and have
+> no obvious way of determining whether journaling is disabled or not
+> (other than the handle being NULL, which seems like a poor
+> determinant). In addition to this, I ran into a few places where tests
+> for a handle being non-NULL guard code that is needed even when
+> journaling is disabled....
 
-> diff --git a/fs/Makefile b/fs/Makefile
-> index a1482a5..de404b0 100644
-> --- a/fs/Makefile
-> +++ b/fs/Makefile
-> @@ -69,7 +69,7 @@ obj-$(CONFIG_DLM)		+= dlm/
->  # Do not add any filesystems before this line
->  obj-$(CONFIG_REISERFS_FS)	+= reiserfs/
->  obj-$(CONFIG_EXT3_FS)		+= ext3/ # Before ext2 so root fs can be ext3
-> -obj-$(CONFIG_EXT4DEV_FS)	+= ext4/ # Before ext2 so root fs can be ext4dev
-> +obj-$(CONFIG_EXT4_FS)		+= ext4/ # Before ext2 so root fs can be ext4dev
+Yeah, the problem is that in some cases a NULL handle can mean that
+there is an error.  Here's one idea:
 
-the tailing word is still ext4dev
+#define NO_HANDLE ((handle_t *) ~0)
+#define VALID_HANDLE(x) ((x != 0) && (x != NO_HANDLE))
 
->  obj-$(CONFIG_JBD)		+= jbd/
->  obj-$(CONFIG_JBD2)		+= jbd2/
->  obj-$(CONFIG_EXT2_FS)		+= ext2/
+So you can distinguish between NULL handle (which could be from an
+error) and NO_HANDLE (which means there's no journal).
+
+Yeah, it's a little gross, but this sort of game has been played
+before --- see how SIG_IGN is defined for sigaction().
+
+> So, in the end, I
+> went back to disabling journal-only functionality "early", i.e.
+> typically at the points where the ext4_ or jbd2_ functions are called
+> in ext4 code, and storing the "no-journal" bit in the superblock (not
+> the journal superblock but the "main" sb of the file system).
+
+As mentioned above, we already have a "has journal" bit in the
+superblock, but in many places, it will be much more efficient to test
+for a null s_journal field in the ext4_sb_info structure.  There is no
+error handling we need to worry about, since today, s_journal is
+assumed to ALWAYS be non-NULL, as it is how we access the core jbd2
+structure.  So simply checking for !EXT4_SB(sb)->s_journal should be
+much more easier to read, type, and more efficient to execute.
+
+So for example, ext4_force_commit() might look like this:
+
+int ext4_force_commit(struct super_block *sb)
+{
+	journal_t *journal = EXT4_SB(sb)->s_journal;;
+	int ret;
+
+	if ((sb->s_flags & MS_RDONLY) || !journal)
+	   return 0;
+
+	sb->s_dirt = 0;
+	return ext4_journal_force_commit(journal);
+}
+
+and once you set up ext4_journal_start_sb() to start like this:
+
+
+handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
+{
+	journal_t *journal = EXT4_SB(sb)->s_journal;
+
+	if (sb->s_flags & MS_RDONLY)
+	   return ERR_PTR(-EROFS);
+
+	if (!journal)
+	   return NO_HANDLE;
+
+	   ...
+}
+
+and you can just arrange to have __ext4_journal_get_write_access()
+look like this:
+
+#define ext4_journal_get_undo_access(handle, bh) \
+	if ((handle) != NO_HANDLE) __ext4_journal_get_undo_access(__func__, (handle), (bh))
+
+This should keep the patch relatively small, easier to audit, and the
+code will be much cleaner and easier to understand in the long-run.
+
+Given all of these benefits, I think the tiny grossness of casting ~0
+or 1 to a pointer is well worth it, don't you think?  :-)
+
+> The bottom line is, I'm wondering if folks are interested in having an
+> option to disable journaling in ext4 to begin with, 
+
+Yep, we're interested; especially since this allows the ext4
+filesystem to be a full functional superset of the ext2 and ext3
+filesystem code, which is quite pleasing from an aesthetic point of
+view.
+
+I hope the suggestions given above are helpful, and should hopefully
+provide for much cleaner approach.
+
+Regards,
+
+						- Ted
