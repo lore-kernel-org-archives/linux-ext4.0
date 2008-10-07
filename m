@@ -1,58 +1,103 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: [PATCH, RFC] percpu_counters: make fbc->count read atomic on
-	32 bit architecture
-Date: Tue, 07 Oct 2008 19:22:20 +0200
-Message-ID: <1223400140.26330.76.camel@lappy.programming.kicks-ass.net>
-References: <E1KmetO-00053M-5u@closure.thunk.org>
-	 <20081006232322.c383fac5.akpm@linux-foundation.org>
-	 <1223373347.26330.19.camel@lappy.programming.kicks-ass.net>
-	 <48EB97B2.3010406@rsk.demon.co.uk>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: [PATCH] logsave : Avoid unnecessary backgrounding of logsave in case of failures
+Date: Tue, 7 Oct 2008 23:14:11 +0530
+Message-ID: <ea11fea30810071044l6d8887e0udb52342f82412e4a@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: richard kennedy <richard@rsk.demon.co.uk>
+Cc: mkatiyar@gmail.com
+To: ext4 <linux-ext4@vger.kernel.org>, "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:54000 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753375AbYJGRWq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2008 13:22:46 -0400
-In-Reply-To: <48EB97B2.3010406@rsk.demon.co.uk>
+Received: from ti-out-0910.google.com ([209.85.142.190]:29704 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752961AbYJGRoN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2008 13:44:13 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so2012393tic.23
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Oct 2008 10:44:11 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2008-10-07 at 18:09 +0100, richard kennedy wrote:
-> Peter Zijlstra wrote:
-> .....
-> > +static inline int atomic64_dec_and_test(atomic64_t *v)
-> > +{
-> > +	int ret;
-> > +
-> > +	write_seqlock(&v->slock);
-> > +	v->counter--;
-> > +	ret = !v->counter;
-> > +	write_sequnlock(&v->slock);
-> > +
-> > +	return ret;
-> > +}
-> > +
-> > +static inline int atomic64_add_and_test(atomic64_t *v)
-> > +{
-> > +	int ret;
-> > +
-> > +	write_seqlock(&v->slock);
-> > +	v->counter++;
-> > +	ret = !v->counter;
-> > +	write_sequnlock(&v->slock);
-> > +
-> > +	return ret;
-> > +}
-> would it be more logical to call this atomic64_inc_and_test to match the
-> above dec_and_test ?
+Hi Ted,
 
-Yeah, I know of at least 2 other bugs in here, but I wanted some real
-early feedback :-)
+I am not sure why we wan't to background the logsave and keep retrying
+opening the fd in case of failures. But there may be situations when
+we
+will never be able to succeed and thus create unnecessary process. For
+example invoking it
 
+/home/mkatiyar/sbin> ./logsave /testfile ls
+
+as a normal user will never succeed. Below patch adds some of the
+error conditions where we can just avoid it.
+
+Signed-off-by : Manish Katiyar <mkatiyar@gmail.com>
+
+---
+ misc/logsave.c |   19 +++++++++++++++++--
+ 1 files changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/misc/logsave.c b/misc/logsave.c
+index f0011f8..77a0a16 100644
+--- a/misc/logsave.c
++++ b/misc/logsave.c
+@@ -203,6 +203,17 @@ static int copy_from_stdin(void)
+ 	return 0;
+ }
+
++static void should_background(int err, int *nobackground) {
++	switch (err) {
++		case EPERM:
++		case EACCES:
++			*nobackground = err;
++			break;
++		default :
++			*nobackground = 0;
++	}
++	return ;
++}
+
+
+ int main(int argc, char **argv)
+@@ -211,7 +222,7 @@ int main(int argc, char **argv)
+ 	char	*outfn, **cpp;
+ 	int	openflags = O_CREAT|O_WRONLY|O_TRUNC;
+ 	int	send_flag = SEND_LOG;
+-	int	do_stdin;
++	int	do_stdin, nobackground = 0;
+ 	time_t	t;
+
+ 	while ((c = getopt(argc, argv, "+asv")) != EOF) {
+@@ -237,6 +248,8 @@ int main(int argc, char **argv)
+ 	argc -= optind;
+
+ 	outfd = open(outfn, openflags, 0644);
++	if (outfd < 0)
++		should_background(errno, &nobackground);
+ 	do_stdin = !strcmp(argv[0], "-");
+
+ 	send_output("Log of ", 0, send_flag);
+@@ -263,7 +276,7 @@ int main(int argc, char **argv)
+ 	send_output(ctime(&t), 0, send_flag);
+ 	send_output("----------------\n", 0, send_flag);
+
+-	if (outbuf) {
++	if (!nobackground) {
+ 		pid = fork();
+ 		if (pid < 0) {
+ 			perror("fork");
+@@ -282,6 +295,8 @@ int main(int argc, char **argv)
+ 		}
+ 		write(outfd, outbuf, outbufsize);
+ 		free(outbuf);
++	} else {
++		printf("Unable to save log to %s : %s\n", outfn, strerror(nobackground));
+ 	}
+ 	close(outfd);
+
+-- 
+1.5.4.3
+
+
+Thanks -
+Manish
