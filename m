@@ -1,47 +1,29 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH][2/15] e2fsprogs-config-before-cmdline.patch
-Date: Tue, 07 Oct 2008 02:56:06 -0600
-Message-ID: <20081007085606.GS2009@webber.adilger.int>
-References: <1223289068.4007.84.camel@localhost> <20081006204926.GA8139@mit.edu>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH] Improve buffered streaming write ordering
+Date: Tue, 7 Oct 2008 05:05:54 -0400
+Message-ID: <20081007090554.GA23811@infradead.org>
+References: <1222886451.9158.34.camel@think.oraclecorp.com> <20081001215239.ee2ae63f.akpm@linux-foundation.org> <1222950054.6745.18.camel@think.oraclecorp.com> <20081002181856.GB29613@skywalker> <20081002234309.GH30001@disturbed> <1223063155.13375.64.camel@think.oraclecorp.com> <20081006101605.GA15881@skywalker> <1223302903.16546.58.camel@think.oraclecorp.com> <20081007084531.GB15881@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Kalpak Shah <Kalpak.Shah@sun.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:64101 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751139AbYJGI4V (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2008 04:56:21 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m978uIZD013340
-	for <linux-ext4@vger.kernel.org>; Tue, 7 Oct 2008 01:56:20 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K8D0050123MDZ00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 07 Oct 2008 01:56:18 -0700 (PDT)
-In-reply-to: <20081006204926.GA8139@mit.edu>
-Content-disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Chris Mason <chris.mason@oracle.com>,
+	Dave Chinner <david@fromorbit.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755423AbYJGJGl@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20081007084531.GB15881@skywalker>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Oct 06, 2008  16:49 -0400, Theodore Ts'o wrote:
-> On Mon, Oct 06, 2008 at 04:01:08PM +0530, Kalpak Shah wrote:
-> > The patch changes the order that the config file and command line are
-> > parsed so that command line has precedence.  It also adds a check to
-> > make sure only one -E option is passed on the command line as -E option
-> > parsing is not cumulative.
-> 
-> Hmm.  I wonder if we would be better off making -E option parsing
-> cumulative, especially if we are going to add a way of specifying some
-> extended options via the config file.  Comments?
+On Tue, Oct 07, 2008 at 02:15:31PM +0530, Aneesh Kumar K.V wrote:
+> +static int ext4_write_cache_pages(struct address_space *mapping,
+> +		      struct writeback_control *wbc, writepage_t writepage,
+> +		      void *data)
+> +{
 
-I've always thought that both -E and -O should be cumulative.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+Looking at this functions the only difference is killing the
+writeback_index and range_start updates.  If they are bad why would we
+only remove them from ext4?
