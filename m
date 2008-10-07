@@ -1,86 +1,45 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] Improve buffered streaming write ordering
-Date: Tue, 7 Oct 2008 14:15:31 +0530
-Message-ID: <20081007084531.GB15881@skywalker>
-References: <1222886451.9158.34.camel@think.oraclecorp.com> <20081001215239.ee2ae63f.akpm@linux-foundation.org> <1222950054.6745.18.camel@think.oraclecorp.com> <20081002181856.GB29613@skywalker> <20081002234309.GH30001@disturbed> <1223063155.13375.64.camel@think.oraclecorp.com> <20081006101605.GA15881@skywalker> <1223302903.16546.58.camel@think.oraclecorp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dave Chinner <david@fromorbit.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Chris Mason <chris.mason@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1223302903.16546.58.camel@think.oraclecorp.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: [PATCH] ext4: Fix file fragmentation during large file write.
+Date: Tue,  7 Oct 2008 14:17:02 +0530
+Message-ID: <1223369222-19953-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:38410 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751408AbYJGIrK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Oct 2008 04:47:10 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id m978k6kL006849
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Oct 2008 19:46:06 +1100
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m978l7nB045972
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Oct 2008 19:47:08 +1100
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m978l7ul026950
+	for <linux-ext4@vger.kernel.org>; Tue, 7 Oct 2008 19:47:07 +1100
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 06, 2008 at 10:21:43AM -0400, Chris Mason wrote:
-> On Mon, 2008-10-06 at 15:46 +0530, Aneesh Kumar K.V wrote:
-> > On Fri, Oct 03, 2008 at 03:45:55PM -0400, Chris Mason wrote:
-> > > On Fri, 2008-10-03 at 09:43 +1000, Dave Chinner wrote:
-> > > > On Thu, Oct 02, 2008 at 11:48:56PM +0530, Aneesh Kumar K.V wrote:
-> > > > > On Thu, Oct 02, 2008 at 08:20:54AM -0400, Chris Mason wrote:
-> > > > > > On Wed, 2008-10-01 at 21:52 -0700, Andrew Morton wrote:
-> > > > > > For a 4.5GB streaming buffered write, this printk inside
-> > > > > > ext4_da_writepage shows up 37,2429 times in /var/log/messages.
-> > > > > > 
-> > > > > 
-> > > > > Part of that can happen due to shrink_page_list -> pageout -> writepagee
-> > > > > call back with lots of unallocated buffer_heads(blocks).
-> > > > 
-> > > > Quite frankly, a simple streaming buffered write should *never*
-> > > > trigger writeback from the LRU in memory reclaim.
-> > > 
-> > > The blktrace runs on ext4 didn't show kswapd doing any IO.  It isn't
-> > > clear if this is because ext4 did the redirty trick or if kswapd didn't
-> > > call writepage.
-> > > 
-> > > -chris
-> > 
-> > This patch actually reduced the number of extents for the below test
-> > from 564 to 171.
-> > 
-> 
-> For my array, this patch brings the number of ext4 extents down from
-> over 4000 to 27.  The throughput reported by dd goes up from ~80MB/s to
-> 330MB/s, which means buffered IO is going as fast as O_DIRECT.
-> 
-> Here's the graph:
-> 
-> http://oss.oracle.com/~mason/bugs/writeback_ordering/ext4-aneesh.png
-> 
-> The strange metadata writeback for the uninit block groups is gone.
-> 
-> Looking at the patch, I think the ext4_writepages code should just make
-> its own write_cache_pages.  It's pretty hard to follow the code that is
-> there for ext4 vs the code that is there to make write_cache_pages do
-> what ext4 expects it to.
-> 
+The range_cyclic writeback mode use the address_space
+writeback_index as the start index for writeback. With
+delayed allocation we were updating writeback_index
+wrongly resulting in highly fragmented file. Number of
+extents reduced from 4000 to 27 for a 3GB file with
+the below patch.
 
-How about the below ? The patch is on top of ext4 patchqueue.
+The patch also cleanup the ext4 delayed allocation writepages
+by implementing write_cache_pages locally with needed changes
+for cleanup. Also it drops the range_cont writeback mode added
+for ext4 delayed allocation writeback
 
-commit 9b839065f973eb68e8e28be18e1f31d8fb6854ee
-Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date:   Tue Oct 7 12:27:52 2008 +0530
-
-    ext4: Fix file fragmentation during large file write.
-    
-    The range_cyclic writeback mode use the address_space
-    writeback_index as the start index for writeback. With
-    delayed allocation we were updating writeback_index
-    wrongly resulting in highly fragmented file. Number of
-    extents reduced from 4000 to 27 for a 3GB file with
-    the below patch.
-    
-    The patch also cleanup the ext4 delayed allocation writepages
-    by implementing write_cache_pages locally with needed changes
-    for cleanup. Also it drops the range_cont writeback mode added
-    for ext4 delayed allocation writeback
-    
-    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/inode.c           |  192 +++++++++++++++++++++++++++++++++------------
+ include/linux/writeback.h |    1 -
+ mm/page-writeback.c       |    2 -
+ 3 files changed, 143 insertions(+), 52 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
 index 21f1d3a..b6b0985 100644
@@ -402,3 +361,6 @@ index 24de8b6..718efa6 100644
  	return ret;
  }
  EXPORT_SYMBOL(write_cache_pages);
+-- 
+1.6.0.1.285.g1070
+
