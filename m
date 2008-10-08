@@ -1,74 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4 deadlocks
-Date: Wed, 08 Oct 2008 09:57:35 -0500
-Message-ID: <48ECCA5F.4070905@redhat.com>
-References: <48EBB9E9.4030105@goop.org> <48EBC6B9.7000608@sandeen.net> <20081007214637.GA2009@webber.adilger.int> <1223441351.4007.137.camel@localhost>
+From: system2@lenovodata.com
+Subject: =?utf-8?B?5pyI5LiK5rm+IOmCgOivt+S9oOWKoOWFpeiBlOaDs+e9keebmO+8jOS9oOeri+WIu+aLpeaciTVH5YWN6LS556m66Ze0LiA=?=
+Date: Wed, 8 Oct 2008 23:02:03 +0800
+Message-ID: <200810081443.24ce17805731@www.lenovodata.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@Sun.COM>,
-	Eric Sandeen <sandeen@sandeen.net>,
-	Jeremy Fitzhardinge <jeremy@goop.org>,
-	linux-ext4@vger.kernel.org,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Kalpak Shah <Kalpak.Shah@Sun.COM>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755871AbYJHO56@vger.kernel.org>
-In-Reply-To: <1223441351.4007.137.camel@localhost>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: base64
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from [59.151.105.76] ([59.151.105.76]:34597 "EHLO lenovodata.com"
+	rhost-flags-FAIL-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751182AbYJHSMV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Oct 2008 14:12:21 -0400
+Received: from Lenovolabs ([192.168.1.151])
+	by lenovodata.com (8.13.1/8.13.1) with ESMTP id m98F23oZ027122
+	for <linux-ext4@vger.kernel.org>; Wed, 8 Oct 2008 23:02:04 +0800
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Kalpak Shah wrote:
 
-> ext4_xattr_set_handle() eventually ends up calling
-> ext4_mark_inode_dirty() which tries to expand the inode by shifting the
-> EAs. This leads to the xattr_sem being downed again and leading to a
-> deadlock.
-> 
-> This patch makes sure that if ext4_xattr_set_handle() is in the
-> call-chain, ext4_mark_inode_dirty() will not expand the inode.
-> 
-> Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
 
-Yes, this fixes my testcase.  Thanks, Kalpak.
+DQpIae+8jOaIkeaYr+aciOS4iua5vu+8jOWcqOiBlOaDs+e9keebmOS4uuS9oOeUs+ivt+S6huS4
+gOWdlzVH5YWN6LS556m66Ze077yM5b+r5p2l55m76ZmG55yL55yL5ZCnDQrngrnlh7vlpoLkuIvp
+k77mjqUNCmh0dHA6Ly93d3cubGVub3ZvZGF0YS5jb20vYWNjb3VudC92YWlsZGludml0ZXIvcVUz
+Z2VNQzBvRUxZTEkwYlBENFNXd0djVzRDaGs0QW5GN2szRDY0YWE1MGNmY2JlMzkwZmFlNGY1ZmZi
+ZWM4M2JhMGIyYzJkYmQ2MjJmMjc2YWRhMjQ4YmQ2OWUzMGNlZWU1OGJhMzMyZDcwZjE5MjAwYmQ0
+YWE4MThmNzY2MWUzYWEzMzM1NjQxNjc2MjdkN2Q0NmUwOGViNmEzMjlhYTU2MDVmNDRjZjg3Yjk4
+ZWQzZDRmZGI0NTkwNGNl5bCx55m76ZmG5LqG77yM55So5oi35ZCN5ZKM5a+G56CB6YO95pivbGlu
+dXgtZXh0NEB2Z2VyLmtlcm5lbC5vcmfvvIzliKvlv5jkuobkv67mlLnlr4bnoIHlk6bvvIENCg0K
+6IGU5oOz572R55uY5Y+v5Lul5a6J5YWo55qE5a2Y5YKo5L2g55qE5paH5Lu277yM5pON5L2c6LW3
+5p2l5bCx5YOP5Zyo5pys5Zyw55S16ISR5LiA5qC35pa55L6/DQrkuIrkvKDkuIvovb3pgJ/luqbp
+g73lvojlv6sNCuS9oOWGjeS5n+S4jeeUqOWboOS4uue7meaci+WPi+S8oOi+k+Wkp+aWh+S7tuWP
+keaEgeS6hu+8jOaIkeWPquimgeeCueS4gOS4i+WFseS6q++8jOS9oOeahOaci+WPi+OAgeWQjOS6
+i+eri+WNs+aUtuWIsOS9oOWFseS6q+i/h+adpeeahOaWh+S7tuS6hu+8gQ==
 
--Eric
-
-> Index: linux-2.6.27-rc7/fs/ext4/xattr.c
-> ===================================================================
-> --- linux-2.6.27-rc7.orig/fs/ext4/xattr.c
-> +++ linux-2.6.27-rc7/fs/ext4/xattr.c
-> @@ -959,6 +959,7 @@ ext4_xattr_set_handle(handle_t *handle, 
->  	struct ext4_xattr_block_find bs = {
->  		.s = { .not_found = -ENODATA, },
->  	};
-> +	unsigned long no_expand;
->  	int error;
->  
->  	if (!name)
-> @@ -966,6 +967,9 @@ ext4_xattr_set_handle(handle_t *handle, 
->  	if (strlen(name) > 255)
->  		return -ERANGE;
->  	down_write(&EXT4_I(inode)->xattr_sem);
-> +	no_expand = EXT4_I(inode)->i_state & EXT4_STATE_NO_EXPAND;
-> +	EXT4_I(inode)->i_state |= EXT4_STATE_NO_EXPAND;
-> +
->  	error = ext4_get_inode_loc(inode, &is.iloc);
->  	if (error)
->  		goto cleanup;
-> @@ -1042,6 +1046,8 @@ ext4_xattr_set_handle(handle_t *handle, 
->  cleanup:
->  	brelse(is.iloc.bh);
->  	brelse(bs.bh);
-> +	if (no_expand == 0)
-> +		EXT4_I(inode)->i_state &= ~EXT4_STATE_NO_EXPAND;
->  	up_write(&EXT4_I(inode)->xattr_sem);
->  	return error;
->  }
-> 
-> Thanks,
-> Kalpak
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
