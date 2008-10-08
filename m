@@ -1,62 +1,42 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [Ocfs2-devel] [PATCH] [RFC] jbd2: Add buffer triggers
-Date: Wed, 8 Oct 2008 16:17:52 -0700
-Message-ID: <20081008231752.GA5310@mail.oracle.com>
-References: <20080917232629.GB20752@mail.oracle.com> <20080929012527.GI8711@mit.edu> <20081004000336.GE11442@mit.edu> <20081006213754.GA26632@mail.oracle.com> <20081006214251.GB26632@mail.oracle.com> <20081006233248.GA9337@mit.edu> <20081007010154.GE26632@mail.oracle.com>
+From: Quentin Godfroy <godfroy@clipper.ens.fr>
+Subject: Re: possible (ext4 related?) memory leak in kernel 2.6.26
+Date: Thu, 9 Oct 2008 01:52:46 +0200
+Message-ID: <200810082355.m98NtZkQ012577@goelette.ens.fr>
+References: <20081003003548.GA18138@mit.edu> <20081005091526.GA678@goelette.ens.fr> <20081005122752.GB27335@mit.edu> <20081005161214.GA2985@goelette.ens.fr> <20081006025006.GA9289@mit.edu> <48EA2F20.7020309@redhat.com> <20081006175502.GA12937@mit.edu> <20081007221256.GF15929@mit.edu> <20081008000227.GA32052@goelette.ens.fr> <20081008005338.GH15929@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, ocfs2-devel@oss.oracle.com,
-	linux-ext4@vger.kernel.org, mfasheh@suse.com
+To: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:36208 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755867AbYJHXSE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Oct 2008 19:18:04 -0400
+Received: from nef2.ens.fr ([129.199.96.40]:2161 "EHLO nef2.ens.fr"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754839AbYJHXz6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Oct 2008 19:55:58 -0400
 Content-Disposition: inline
-In-Reply-To: <20081007010154.GE26632@mail.oracle.com>
+In-Reply-To: <20081008005338.GH15929@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 06, 2008 at 06:01:54PM -0700, Joel Becker wrote:
-> On Mon, Oct 06, 2008 at 07:32:48PM -0400, Theodore Tso wrote:
-> > On Mon, Oct 06, 2008 at 02:42:52PM -0700, Joel Becker wrote:
-> > I'm not 100% sure.....  The other area that we should check very
-> > closely is jbd2_journal_commit_transaction(); in some cases, if
-> > jh->b_committed_data is NULL, the frozen data is thrown away (around
-> > line 850 in transaction.c).  I *think* this happens if b_frozen_data
-> > was only copied to escape the buffer, but I'm not certain; in any
-> > case, there's a potential that in that case you might lose the
-> > calculated checksum and the correct value wouldn't get written to the
-> > final location on disk.  
-<snip>
-> 	Looking at the checkpoint part, though, I think we're not safe.
-> The buffer is attached to the original transaction's checkpoint list
-> after the commit.  This buffer has the un-checksummed b_data.  If the
-> later transaction commits before the checkpoint happens, all is good.
-> But if the buffer lazily writes to disk while the later transaction is
-> still running, the original transaction could be considered "done",
-> updating the journal superblock.  If we crash at that moment, we have a
-> bad checksum on disk.
+On Tue, Oct 07, 2008 at 08:53:38PM -0400, Theodore Tso wrote:
+> On Wed, Oct 08, 2008 at 02:02:27AM +0200, Quentin Godfroy wrote:
+> > 
+> > I rebooted, but as I didn't know exactly how to trigger the bug except than
+> > by waiting a few days I was waiting to see.
+> > 
+> > Do you have an idea about how to trigger the bug?
+> 
+> The bug is that each time a transaction commits, if the buffer head
+> hasn't been leaked already, it will leak pinning the memory until the
+> total size of the journal is taking up memory.  If you have a 2gigs of
+> memory, and a single filesystem with 256meg journal, you might not
+> notice the problem at all.  If you less than 256 megs of memory,
+> you'll notice fairly quickly.   
 
-	I chatted with Mark some about this today.  He pointed out that,
-logically, b_data can't be checkpointed until its data isn't in the
-journal - it might be newer than the most recent transaction.  So I
-looked in the checkpoint code to see where this is handled, and the
-checkpoint code simply forces a commit new enough to encompass b_data
-when it wants to put that block to disk.
-	In other words, I think that the commit trigger is safe in all
-circumstances once moved up in journal_commit_transaction().  I'll be
-cooking that up shortly.
+Indeed after a couple of days of uptime the number of dirty blocks do not go
+further than ~50, so I think the bug is corrected as far as I am concerned.
 
-Joel
+By the way, why does the kernel not commit to memory these remaining buffers
+when the memory is scarse (say instead of firing an OOM killer)?
 
--- 
-
-To spot the expert, pick the one who predicts the job will take the
-longest and cost the most.
-
-Joel Becker
-Principal Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+Regards
+Quentin Godfroy
