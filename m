@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 09/42] ext4: Switch to non delalloc mode when we are low on free blocks count.
-Date: Thu,  9 Oct 2008 00:05:27 -0400
-Message-ID: <1223525160-9887-10-git-send-email-tytso@mit.edu>
+Subject: [PATCH 38/42] generic block based fiemap implementation
+Date: Thu,  9 Oct 2008 00:05:56 -0400
+Message-ID: <1223525160-9887-39-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -11,128 +11,320 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-7-git-send-email-tytso@mit.edu>
  <1223525160-9887-8-git-send-email-tytso@mit.edu>
  <1223525160-9887-9-git-send-email-tytso@mit.edu>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
+ <1223525160-9887-10-git-send-email-tytso@mit.edu>
+ <1223525160-9887-11-git-send-email-tytso@mit.edu>
+ <1223525160-9887-12-git-send-email-tytso@mit.edu>
+ <1223525160-9887-13-git-send-email-tytso@mit.edu>
+ <1223525160-9887-14-git-send-email-tytso@mit.edu>
+ <1223525160-9887-15-git-send-email-tytso@mit.edu>
+ <1223525160-9887-16-git-send-email-tytso@mit.edu>
+ <1223525160-9887-17-git-send-email-tytso@mit.edu>
+ <1223525160-9887-18-git-send-email-tytso@mit.edu>
+ <1223525160-9887-19-git-send-email-tytso@mit.edu>
+ <1223525160-9887-20-git-send-email-tytso@mit.edu>
+ <1223525160-9887-21-git-send-email-tytso@mit.edu>
+ <1223525160-9887-22-git-send-email-tytso@mit.edu>
+ <1223525160-9887-23-git-send-email-tytso@mit.edu>
+ <1223525160-9887-24-git-send-email-tytso@mit.edu>
+ <1223525160-9887-25-git-send-email-tytso@mit.edu>
+ <1223525160-9887-26-git-send-email-tytso@mit.edu>
+ <1223525160-9887-27-git-send-email-tytso@mit.edu>
+ <1223525160-9887-28-git-send-email-tytso@mit.edu>
+ <1223525160-9887-29-git-send-email-tytso@mit.edu>
+ <1223525160-9887-30-git-send-email-tytso@mit.edu>
+ <1223525160-9887-31-git-send-email-tytso@mit.edu>
+ <1223525160-9887-32-git-send-email-tytso@mit.edu>
+ <1223525160-9887-33-git-send-email-tytso@mit.edu>
+ <1223525160-9887-34-git-send-email-tytso@mit.edu>
+ <1223525160-9887-35-git-send-email-tytso@mit.edu>
+ <1223525160-9887-36-git-send-email-tytso@mit.edu>
+ <1223525160-9887-37-git-send-email-tytso@mit.edu>
+ <1223525160-9887-38-git-send-email-tytso@mit.edu>
+Cc: Josef Bacik <jbacik@redhat.com>, Mark Fasheh <mfasheh@suse.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54461 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757119AbYJIEGH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:07 -0400
-In-Reply-To: <1223525160-9887-9-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1223525160-9887-38-git-send-email-tytso@mit.edu>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: Josef Bacik <jbacik@redhat.com>
 
-The delayed allocation code allocates blocks during writepages(), which
-can not handle block allocation failures.  To deal with this, we switch
-away from delayed allocation mode when we are running low on free
-blocks.  This also allows us to avoid needing to reserve a large number
-of meta-data blocks in case all of the requested blocks are
-discontiguous.
+Any block based fs (this patch includes ext3) just has to declare its own
+fiemap() function and then call this generic function with its own
+get_block_t. This works well for block based filesystems that will map
+multiple contiguous blocks at one time, but will work for filesystems that
+only map one block at a time, you will just end up with an "extent" for each
+block. One gotcha is this will not play nicely where there is hole+data
+after the EOF. This function will assume its hit the end of the data as soon
+as it hits a hole after the EOF, so if there is any data past that it will
+not pick that up. AFAIK no block based fs does this anyway, but its in the
+comments of the function anyway just in case.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
+Signed-off-by: Mark Fasheh <mfasheh@suse.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-fsdevel@vger.kernel.org
 ---
- fs/ext4/inode.c |   52 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- 1 files changed, 50 insertions(+), 2 deletions(-)
+ fs/ext2/ext2.h          |    2 +
+ fs/ext2/file.c          |    1 +
+ fs/ext2/inode.c         |    8 +++
+ fs/ext3/file.c          |    1 +
+ fs/ext3/inode.c         |    8 +++
+ fs/ioctl.c              |  118 +++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/ext3_fs.h |    2 +
+ include/linux/fs.h      |    3 +
+ 8 files changed, 143 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7875a2d..b1a6a73 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2458,6 +2458,33 @@ out_writepages:
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 47d88da..bae998c 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -133,6 +133,8 @@ extern void ext2_truncate (struct inode *);
+ extern int ext2_setattr (struct dentry *, struct iattr *);
+ extern void ext2_set_inode_flags(struct inode *inode);
+ extern void ext2_get_inode_flags(struct ext2_inode_info *);
++extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++		       u64 start, u64 len);
+ int __ext2_write_begin(struct file *file, struct address_space *mapping,
+ 		loff_t pos, unsigned len, unsigned flags,
+ 		struct page **pagep, void **fsdata);
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 5f2fa9c..45ed071 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -86,4 +86,5 @@ const struct inode_operations ext2_file_inode_operations = {
+ #endif
+ 	.setattr	= ext2_setattr,
+ 	.permission	= ext2_permission,
++	.fiemap		= ext2_fiemap,
+ };
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 991d6df..7658b33 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -31,6 +31,7 @@
+ #include <linux/writeback.h>
+ #include <linux/buffer_head.h>
+ #include <linux/mpage.h>
++#include <linux/fiemap.h>
+ #include "ext2.h"
+ #include "acl.h"
+ #include "xip.h"
+@@ -704,6 +705,13 @@ int ext2_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_
+ 
+ }
+ 
++int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++		u64 start, u64 len)
++{
++	return generic_block_fiemap(inode, fieinfo, start, len,
++				    ext2_get_block);
++}
++
+ static int ext2_writepage(struct page *page, struct writeback_control *wbc)
+ {
+ 	return block_write_full_page(page, ext2_get_block, wbc);
+diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+index acc4913..3be1e06 100644
+--- a/fs/ext3/file.c
++++ b/fs/ext3/file.c
+@@ -134,5 +134,6 @@ const struct inode_operations ext3_file_inode_operations = {
+ 	.removexattr	= generic_removexattr,
+ #endif
+ 	.permission	= ext3_permission,
++	.fiemap		= ext3_fiemap,
+ };
+ 
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 507d868..ebfec4d 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -36,6 +36,7 @@
+ #include <linux/mpage.h>
+ #include <linux/uio.h>
+ #include <linux/bio.h>
++#include <linux/fiemap.h>
+ #include "xattr.h"
+ #include "acl.h"
+ 
+@@ -981,6 +982,13 @@ out:
  	return ret;
  }
  
-+#define FALL_BACK_TO_NONDELALLOC 1
-+static int ext4_nonda_switch(struct super_block *sb)
++int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++		u64 start, u64 len)
 +{
-+	s64 free_blocks, dirty_blocks;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+
-+	/*
-+	 * switch to non delalloc mode if we are running low
-+	 * on free block. The free block accounting via percpu
-+	 * counters can get slightly wrong with FBC_BATCH getting
-+	 * accumulated on each CPU without updating global counters
-+	 * Delalloc need an accurate free block accounting. So switch
-+	 * to non delalloc when we are near to error range.
-+	 */
-+	free_blocks  = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
-+	dirty_blocks = percpu_counter_read_positive(&sbi->s_dirtyblocks_counter);
-+	if (2 * free_blocks < 3 * dirty_blocks ||
-+		free_blocks < (dirty_blocks + EXT4_FREEBLOCKS_WATERMARK)) {
-+		/*
-+		 * free block count is less that 150% of dirty blocks
-+		 * or free blocks is less that watermark
-+		 */
-+		return 1;
-+	}
-+	return 0;
++	return generic_block_fiemap(inode, fieinfo, start, len,
++				    ext3_get_block);
 +}
 +
- static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 				loff_t pos, unsigned len, unsigned flags,
- 				struct page **pagep, void **fsdata)
-@@ -2472,6 +2499,13 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 	index = pos >> PAGE_CACHE_SHIFT;
- 	from = pos & (PAGE_CACHE_SIZE - 1);
- 	to = from + len;
-+
-+	if (ext4_nonda_switch(inode->i_sb)) {
-+		*fsdata = (void *)FALL_BACK_TO_NONDELALLOC;
-+		return ext4_write_begin(file, mapping, pos,
-+					len, flags, pagep, fsdata);
-+	}
-+	*fsdata = (void *)0;
- retry:
- 	/*
- 	 * With delayed allocation, we don't log the i_disksize update
-@@ -2540,6 +2574,19 @@ static int ext4_da_write_end(struct file *file,
- 	handle_t *handle = ext4_journal_current_handle();
- 	loff_t new_i_size;
- 	unsigned long start, end;
-+	int write_mode = (int)(unsigned long)fsdata;
-+
-+	if (write_mode == FALL_BACK_TO_NONDELALLOC) {
-+		if (ext4_should_order_data(inode)) {
-+			return ext4_ordered_write_end(file, mapping, pos,
-+					len, copied, page, fsdata);
-+		} else if (ext4_should_writeback_data(inode)) {
-+			return ext4_writeback_write_end(file, mapping, pos,
-+					len, copied, page, fsdata);
-+		} else {
-+			BUG();
-+		}
-+	}
+ /*
+  * `handle' can be NULL if create is zero
+  */
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index 045d960..33a6b7e 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -13,6 +13,8 @@
+ #include <linux/security.h>
+ #include <linux/module.h>
+ #include <linux/uaccess.h>
++#include <linux/writeback.h>
++#include <linux/buffer_head.h>
  
- 	start = pos & (PAGE_CACHE_SIZE - 1);
- 	end = start + copied - 1;
-@@ -4877,6 +4924,7 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
- 	loff_t size;
- 	unsigned long len;
- 	int ret = -EINVAL;
-+	void *fsdata;
- 	struct file *file = vma->vm_file;
- 	struct inode *inode = file->f_path.dentry->d_inode;
- 	struct address_space *mapping = inode->i_mapping;
-@@ -4915,11 +4963,11 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page)
- 	 * on the same page though
- 	 */
- 	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
--			len, AOP_FLAG_UNINTERRUPTIBLE, &page, NULL);
-+			len, AOP_FLAG_UNINTERRUPTIBLE, &page, &fsdata);
- 	if (ret < 0)
- 		goto out_unlock;
- 	ret = mapping->a_ops->write_end(file, mapping, page_offset(page),
--			len, len, page, NULL);
-+			len, len, page, fsdata);
- 	if (ret < 0)
- 		goto out_unlock;
- 	ret = 0;
+ #include <asm/ioctls.h>
+ 
+@@ -224,6 +226,122 @@ static int ioctl_fiemap(struct file *filp, unsigned long arg)
+ 	return error;
+ }
+ 
++#define blk_to_logical(inode, blk) (blk << (inode)->i_blkbits)
++#define logical_to_blk(inode, offset) (offset >> (inode)->i_blkbits);
++
++/*
++ * @inode - the inode to map
++ * @arg - the pointer to userspace where we copy everything to
++ * @get_block - the fs's get_block function
++ *
++ * This does FIEMAP for block based inodes.  Basically it will just loop
++ * through get_block until we hit the number of extents we want to map, or we
++ * go past the end of the file and hit a hole.
++ *
++ * If it is possible to have data blocks beyond a hole past @inode->i_size, then
++ * please do not use this function, it will stop at the first unmapped block
++ * beyond i_size
++ */
++int generic_block_fiemap(struct inode *inode,
++			 struct fiemap_extent_info *fieinfo, u64 start,
++			 u64 len, get_block_t *get_block)
++{
++	struct buffer_head tmp;
++	unsigned int start_blk;
++	long long length = 0, map_len = 0;
++	u64 logical = 0, phys = 0, size = 0;
++	u32 flags = FIEMAP_EXTENT_MERGED;
++	int ret = 0;
++
++	if ((ret = fiemap_check_flags(fieinfo, FIEMAP_FLAG_SYNC)))
++		return ret;
++
++	start_blk = logical_to_blk(inode, start);
++
++	/* guard against change */
++	mutex_lock(&inode->i_mutex);
++
++	length = (long long)min_t(u64, len, i_size_read(inode));
++	map_len = length;
++
++	do {
++		/*
++		 * we set b_size to the total size we want so it will map as
++		 * many contiguous blocks as possible at once
++		 */
++		memset(&tmp, 0, sizeof(struct buffer_head));
++		tmp.b_size = map_len;
++
++		ret = get_block(inode, start_blk, &tmp, 0);
++		if (ret)
++			break;
++
++		/* HOLE */
++		if (!buffer_mapped(&tmp)) {
++			/*
++			 * first hole after going past the EOF, this is our
++			 * last extent
++			 */
++			if (length <= 0) {
++				flags = FIEMAP_EXTENT_MERGED|FIEMAP_EXTENT_LAST;
++				ret = fiemap_fill_next_extent(fieinfo, logical,
++							      phys, size,
++							      flags);
++				break;
++			}
++
++			length -= blk_to_logical(inode, 1);
++
++			/* if we have holes up to/past EOF then we're done */
++			if (length <= 0)
++				break;
++
++			start_blk++;
++		} else {
++			if (length <= 0 && size) {
++				ret = fiemap_fill_next_extent(fieinfo, logical,
++							      phys, size,
++							      flags);
++				if (ret)
++					break;
++			}
++
++			logical = blk_to_logical(inode, start_blk);
++			phys = blk_to_logical(inode, tmp.b_blocknr);
++			size = tmp.b_size;
++			flags = FIEMAP_EXTENT_MERGED;
++
++			length -= tmp.b_size;
++			start_blk += logical_to_blk(inode, size);
++
++			/*
++			 * if we are past the EOF we need to loop again to see
++			 * if there is a hole so we can mark this extent as the
++			 * last one, and if not keep mapping things until we
++			 * find a hole, or we run out of slots in the extent
++			 * array
++			 */
++			if (length <= 0)
++				continue;
++
++			ret = fiemap_fill_next_extent(fieinfo, logical, phys,
++						      size, flags);
++			if (ret)
++				break;
++		}
++		cond_resched();
++	} while (1);
++
++	mutex_unlock(&inode->i_mutex);
++
++	/* if ret is 1 then we just hit the end of the extent array */
++	if (ret == 1)
++		ret = 0;
++
++	return ret;
++}
++EXPORT_SYMBOL(generic_block_fiemap);
++
+ static int file_ioctl(struct file *filp, unsigned int cmd,
+ 		unsigned long arg)
+ {
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 80171ee..8120fa1 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -837,6 +837,8 @@ extern void ext3_truncate (struct inode *);
+ extern void ext3_set_inode_flags(struct inode *);
+ extern void ext3_get_inode_flags(struct ext3_inode_info *);
+ extern void ext3_set_aops(struct inode *inode);
++extern int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++		       u64 start, u64 len);
+ 
+ /* ioctl.c */
+ extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 194fb23..385c9a1 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1998,6 +1998,9 @@ extern int vfs_fstat(unsigned int, struct kstat *);
+ 
+ extern int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+ 		    unsigned long arg);
++extern int generic_block_fiemap(struct inode *inode,
++				struct fiemap_extent_info *fieinfo, u64 start,
++				u64 len, get_block_t *get_block);
+ 
+ extern void get_filesystem(struct file_system_type *fs);
+ extern void put_filesystem(struct file_system_type *fs);
 -- 
 1.5.6.1.205.ge2c7.dirty
 
