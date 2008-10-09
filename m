@@ -1,124 +1,87 @@
-From: Randy Dunlap <randy.dunlap@oracle.com>
-Subject: Re: [PATCH] ext4: Improve the documentation for ext4's /proc
- tunables
-Date: Thu, 9 Oct 2008 10:14:33 -0700
-Message-ID: <20081009101433.3604e2ec.randy.dunlap@oracle.com>
-References: <E1Knyha-0004G7-S2@closure.thunk.org>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: [PATCH] debugfs : Fix printing of pathnames with ncheck if files have hardlinks in same directory.
+Date: Thu, 9 Oct 2008 23:04:45 +0530
+Message-ID: <ea11fea30810091034k56788d54ka794fdde914f6616@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Alex Tomas <bzzz@sun.com>,
-	Andreas Dilger <adilger@sun.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: mkatiyar@gmail.com
+To: ext4 <linux-ext4@vger.kernel.org>, "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:40067 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756058AbYJIRPE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 13:15:04 -0400
-In-Reply-To: <E1Knyha-0004G7-S2@closure.thunk.org>
+Received: from ti-out-0910.google.com ([209.85.142.186]:48344 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753664AbYJIRer (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 13:34:47 -0400
+Received: by ti-out-0910.google.com with SMTP id b6so52776tic.23
+        for <linux-ext4@vger.kernel.org>; Thu, 09 Oct 2008 10:34:45 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 09 Oct 2008 12:49:26 -0400 Theodore Ts'o wrote:
+Hi Ted,
 
-> >From be75f52f5e9acd376c64ff41f84314213bb761bb Mon Sep 17 00:00:00 2001
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Thu, 9 Oct 2008 12:48:49 -0400
-> Subject: [PATCH] ext4: Improve the documentation for ext4's /proc tunables
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: Alex Tomas <bzzz@sun.com>
-> Cc: Andreas Dilger <adilger@sun.com>
-> ---
->  Documentation/filesystems/proc.txt |   70 +++++++++++++++++-------------------
->  1 files changed, 33 insertions(+), 37 deletions(-)
-> 
-> diff --git a/Documentation/filesystems/proc.txt b/Documentation/filesystems/proc.txt
-> index f566ad9..bcf742d 100644
-> --- a/Documentation/filesystems/proc.txt
-> +++ b/Documentation/filesystems/proc.txt
-> @@ -923,45 +923,41 @@ CPUs.
->  The   "procs_blocked" line gives  the  number of  processes currently blocked,
->  waiting for I/O to complete.
->  
-> +
->  1.9 Ext4 file system parameters
->  ------------------------------
-> -Ext4 file system have one directory per partition under /proc/fs/ext4/
-> -# ls /proc/fs/ext4/hdc/
-> -group_prealloc  max_to_scan  mb_groups  mb_history  min_to_scan  order2_req
-> -stats  stream_req
-> -
-> -mb_groups:
-> -This file gives the details of multiblock allocator buddy cache of free blocks
-> -
-> -mb_history:
-> -Multiblock allocation history.
-> -
-> -stats:
-> -This file indicate whether the multiblock allocator should start collecting
-> -statistics. The statistics are shown during unmount
-> -
-> -group_prealloc:
-> -The multiblock allocator normalize the block allocation request to
-> -group_prealloc filesystem blocks if we don't have strip value set.
-> -The stripe value can be specified at mount time or during mke2fs.
-> -
-> -max_to_scan:
-> -How long multiblock allocator can look for a best extent (in found extents)
-> -
-> -min_to_scan:
-> -How long multiblock allocator  must look for a best extent
-> -
-> -order2_req:
-> -Multiblock allocator use  2^N search using buddies only for requests greater
-> -than or equal to order2_req. The request size is specfied in file system
-> -blocks. A value of 2 indicate only if the requests are greater than or equal
-> -to 4 blocks.
-> -
-> -stream_req:
-> -Files smaller than stream_req are served by the stream allocator, whose
-> -purpose is to pack requests as close each to other as possible to
-> -produce smooth I/O traffic. Avalue of 16 indicate that file smaller than 16
-> -filesystem block size will use group based preallocation.
-> +
-> +Information about mounted ext4 file systems can be found in
-> +/proc/fs/ext4.  Each mounted filesystem will have a directory in
-> +/proc/fs/ext4 based on its device name (i.e., /proc/fs/ext4/hdc or
-> +/proc/fs/ext4/dm-0).   The files in each per-device directory are shown
-> +in Table 1-10, below.
-> +
-> +Table 1-10: Files in /proc/fs/ext4/<devname>
-> +..............................................................................
-> + File            Content                                        
-> + mb_groups       details of multiblock allocator buddy cache of free blocks
-> + mb_history      multiblock allocation history
-> + stats           controls whether the multiblock allocator should start
-> +                 collecting statistics, which are shown during the unmount
-> + group_prealloc  the multiblock allocator will round up allocation
-> +                 requests to a multiple of this tuning parameter if the
-> +                 stripe size is not set in the ext4 superblock
-> + max_to_scan     The maximum number of extents the multiblock allocator
-> +                 will search to find the best extent
-> + min_to_scan     The minum number of extents the multiblock allocator
+Commit 03206bd introduced regression in ncheck while printing all the
+pathnames of an inode. For files which have hardlink in the same
+directory we will print the same pathname instead of all possible like
+below :-
 
-                        minimum
+debugfs:  ncheck 14
+Inode	Pathname
+14	/a/f1
+14	/a/f1
+14	/b/f3
 
-> +                 will search to find the best extent
-> + order2_req      Tuning parameter which controls the minimum size for 
-> +                 requests (as a power of 2) where the buddy cache is
-> +                 used
-> + stream_req      Files which have fewer blocks than this tunable
-> +                 parameter will have their blocks allocated out of a
-> +                 block group specific preallocation pool, so that small
-> +                 files are packed closely together.  Each large files
+where it should have printed
 
-                                                                   file
+debugfs:  ncheck 14
+Inode   Pathname
+14      /a/f1
+14      /a/f2
+14      /b/f3
 
-> +                 will have its blocks allocated out of its own unique
-> +                 preallocation pool.
-> +..............................................................................
-> +
+Below patch fixes it.
+
+Signed-off-by : Manish Katiyar <mkatiyar@gmail.com>
 
 ---
-~Randy
+ debugfs/ncheck.c |    8 +++++---
+ 1 files changed, 5 insertions(+), 3 deletions(-)
+
+diff --git a/debugfs/ncheck.c b/debugfs/ncheck.c
+index 22fa29f..c850739 100644
+--- a/debugfs/ncheck.c
++++ b/debugfs/ncheck.c
+@@ -36,14 +36,16 @@ static int ncheck_proc(struct ext2_dir_entry *dirent,
+ 	int	i;
+ 	char	*pathname;
+ 	errcode_t	retval;
++	static ext2_ino_t parent;
+
+ 	iw->position++;
++	if (iw->position == 2)
++		parent = dirent->inode;
+ 	if (iw->position <= 2)
+ 		return 0;
+ 	for (i=0; i < iw->num_inodes; i++) {
+ 		if (iw->iarray[i] == dirent->inode) {
+-			retval = ext2fs_get_pathname(current_fs, iw->parent,
+-						     iw->iarray[i],
++			retval = ext2fs_get_pathname(current_fs, parent, iw->parent,
+ 						     &pathname);
+ 			if (retval)
+ 				com_err("ncheck", retval,
+@@ -51,7 +53,7 @@ static int ncheck_proc(struct ext2_dir_entry *dirent,
+ 					"inode %d (%d)", iw->parent,
+ 					iw->iarray[i]);
+ 			else
+-				printf("%u\t%s\n", iw->iarray[i], pathname);
++				printf("%u\t%s/%s\n", iw->iarray[i], pathname, dirent->name);
+ 		}
+ 	}
+ 	if (!iw->inodes_left)
+-- 
+1.5.4.3
+
+
+Thanks -
+Manish
