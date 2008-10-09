@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 15/42] ext4: Properly update i_disksize.
-Date: Thu,  9 Oct 2008 00:05:33 -0400
-Message-ID: <1223525160-9887-16-git-send-email-tytso@mit.edu>
+Subject: [PATCH 17/42] Update flex_bg free blocks and free inodes counters when resizing.
+Date: Thu,  9 Oct 2008 00:05:35 -0400
+Message-ID: <1223525160-9887-18-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -17,186 +17,70 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-13-git-send-email-tytso@mit.edu>
  <1223525160-9887-14-git-send-email-tytso@mit.edu>
  <1223525160-9887-15-git-send-email-tytso@mit.edu>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+ <1223525160-9887-16-git-send-email-tytso@mit.edu>
+ <1223525160-9887-17-git-send-email-tytso@mit.edu>
+Cc: Frederic Bohe <frederic.bohe@bull.net>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54528 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54504 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1756043AbYJIEGN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:13 -0400
-In-Reply-To: <1223525160-9887-15-git-send-email-tytso@mit.edu>
+	with ESMTP id S1757587AbYJIEGM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:12 -0400
+In-Reply-To: <1223525160-9887-17-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: Frederic Bohe <frederic.bohe@bull.net>
 
-With delayed allocation we use i_data_sem to update i_disksize.  We need
-to update i_disksize only if the new size specified is greater than the
-current value and we need to make sure we don't race with other
-i_disksize update.  With delayed allocation we will switch to the
-write_begin function for non-delayed allocation if we are low on free
-blocks.  This means the write_begin function for non-delayed allocation
-also needs to use the same locking.
+This fixes a bug which prevented the newly created inodes after a
+resize from being used on filesystems with flex_bg.
 
-We also need to check and update i_disksize even if the new size is less
-that inode.i_size because of delayed allocation.
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |   11 ++++++++++
- fs/ext4/extents.c |    9 ++++---
- fs/ext4/inode.c   |   54 +++++++++++++++++++++++++++++-----------------------
- 3 files changed, 46 insertions(+), 28 deletions(-)
+ fs/ext4/resize.c |    9 +++++++++
+ fs/ext4/super.c  |    7 +++++--
+ 2 files changed, 14 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e13b9de..3e47b99 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1218,6 +1218,17 @@ do {								\
- #define EXT4_FREEBLOCKS_WATERMARK 0
- #endif
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 4392e3f..b60afbc 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -929,6 +929,15 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	percpu_counter_add(&sbi->s_freeinodes_counter,
+ 			   EXT4_INODES_PER_GROUP(sb));
  
-+static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
-+{
-+	/*
-+	 * XXX: replace with spinlock if seen contended -bzzz
-+	 */
-+	down_write(&EXT4_I(inode)->i_data_sem);
-+	if (newsize > EXT4_I(inode)->i_disksize)
-+		EXT4_I(inode)->i_disksize = newsize;
-+	up_write(&EXT4_I(inode)->i_data_sem);
-+	return ;
-+}
- 
- /*
-  * Inodes and files operations
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 797f060..e8758df 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2878,10 +2878,11 @@ static void ext4_falloc_update_inode(struct inode *inode,
- 	 * Update only when preallocation was requested beyond
- 	 * the file size.
- 	 */
--	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
--				new_size > i_size_read(inode)) {
--		i_size_write(inode, new_size);
--		EXT4_I(inode)->i_disksize = new_size;
-+	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
-+		if (new_size > i_size_read(inode))
-+			i_size_write(inode, new_size);
-+		if (new_size > EXT4_I(inode)->i_disksize)
-+			ext4_update_i_disksize(inode, new_size);
- 	}
- 
- }
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 634f0bc..22fcbb6 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1434,16 +1434,18 @@ static int ext4_ordered_write_end(struct file *file,
- 	ret = ext4_jbd2_file_inode(handle, inode);
- 
- 	if (ret == 0) {
--		/*
--		 * generic_write_end() will run mark_inode_dirty() if i_size
--		 * changes.  So let's piggyback the i_disksize mark_inode_dirty
--		 * into that.
--		 */
- 		loff_t new_i_size;
- 
- 		new_i_size = pos + copied;
--		if (new_i_size > EXT4_I(inode)->i_disksize)
--			EXT4_I(inode)->i_disksize = new_i_size;
-+		if (new_i_size > EXT4_I(inode)->i_disksize) {
-+			ext4_update_i_disksize(inode, new_i_size);
-+			/* We need to mark inode dirty even if
-+			 * new_i_size is less that inode->i_size
-+			 * bu greater than i_disksize.(hint delalloc)
-+			 */
-+			ext4_mark_inode_dirty(handle, inode);
-+		}
-+
- 		ret2 = generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
- 		copied = ret2;
-@@ -1468,8 +1470,14 @@ static int ext4_writeback_write_end(struct file *file,
- 	loff_t new_i_size;
- 
- 	new_i_size = pos + copied;
--	if (new_i_size > EXT4_I(inode)->i_disksize)
--		EXT4_I(inode)->i_disksize = new_i_size;
-+	if (new_i_size > EXT4_I(inode)->i_disksize) {
-+		ext4_update_i_disksize(inode, new_i_size);
-+		/* We need to mark inode dirty even if
-+		 * new_i_size is less that inode->i_size
-+		 * bu greater than i_disksize.(hint delalloc)
-+		 */
-+		ext4_mark_inode_dirty(handle, inode);
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
++		ext4_group_t flex_group;
++		flex_group = ext4_flex_group(sbi, input->group);
++		sbi->s_flex_groups[flex_group].free_blocks +=
++			input->free_blocks_count;
++		sbi->s_flex_groups[flex_group].free_inodes +=
++			EXT4_INODES_PER_GROUP(sb);
 +	}
++
+ 	ext4_journal_dirty_metadata(handle, sbi->s_sbh);
+ 	sb->s_dirt = 1;
  
- 	ret2 = generic_write_end(file, mapping, pos, len, copied,
- 							page, fsdata);
-@@ -1494,6 +1502,7 @@ static int ext4_journalled_write_end(struct file *file,
- 	int ret = 0, ret2;
- 	int partial = 0;
- 	unsigned from, to;
-+	loff_t new_i_size;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index efa40d9..f58cc03 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1507,8 +1507,11 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 	sbi->s_log_groups_per_flex = sbi->s_es->s_log_groups_per_flex;
+ 	groups_per_flex = 1 << sbi->s_log_groups_per_flex;
  
- 	from = pos & (PAGE_CACHE_SIZE - 1);
- 	to = from + len;
-@@ -1508,11 +1517,12 @@ static int ext4_journalled_write_end(struct file *file,
- 				to, &partial, write_end_fn);
- 	if (!partial)
- 		SetPageUptodate(page);
--	if (pos+copied > inode->i_size)
-+	new_i_size = pos + copied;
-+	if (new_i_size > inode->i_size)
- 		i_size_write(inode, pos+copied);
- 	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
--	if (inode->i_size > EXT4_I(inode)->i_disksize) {
--		EXT4_I(inode)->i_disksize = inode->i_size;
-+	if (new_i_size > EXT4_I(inode)->i_disksize) {
-+		ext4_update_i_disksize(inode, new_i_size);
- 		ret2 = ext4_mark_inode_dirty(handle, inode);
- 		if (!ret)
- 			ret = ret2;
-@@ -2227,18 +2237,9 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
- 		if (disksize > i_size_read(inode))
- 			disksize = i_size_read(inode);
- 		if (disksize > EXT4_I(inode)->i_disksize) {
--			/*
--			 * XXX: replace with spinlock if seen contended -bzzz
--			 */
--			down_write(&EXT4_I(inode)->i_data_sem);
--			if (disksize > EXT4_I(inode)->i_disksize)
--				EXT4_I(inode)->i_disksize = disksize;
--			up_write(&EXT4_I(inode)->i_data_sem);
--
--			if (EXT4_I(inode)->i_disksize == disksize) {
--				ret = ext4_mark_inode_dirty(handle, inode);
--				return ret;
--			}
-+			ext4_update_i_disksize(inode, disksize);
-+			ret = ext4_mark_inode_dirty(handle, inode);
-+			return ret;
- 		}
- 		ret = 0;
- 	}
-@@ -2654,6 +2655,11 @@ static int ext4_da_write_end(struct file *file,
- 				EXT4_I(inode)->i_disksize = new_i_size;
- 			}
- 			up_write(&EXT4_I(inode)->i_data_sem);
-+			/* We need to mark inode dirty even if
-+			 * new_i_size is less that inode->i_size
-+			 * bu greater than i_disksize.(hint delalloc)
-+			 */
-+			ext4_mark_inode_dirty(handle, inode);
- 		}
- 	}
- 	ret2 = generic_write_end(file, mapping, pos, len, copied,
+-	flex_group_count = (sbi->s_groups_count + groups_per_flex - 1) /
+-		groups_per_flex;
++	/* We allocate both existing and potentially added groups */
++	flex_group_count = ((sbi->s_groups_count + groups_per_flex - 1) +
++			    ((sbi->s_es->s_reserved_gdt_blocks +1 ) <<
++			      EXT4_DESC_PER_BLOCK_BITS(sb))) /
++			   groups_per_flex;
+ 	sbi->s_flex_groups = kzalloc(flex_group_count *
+ 				     sizeof(struct flex_groups), GFP_KERNEL);
+ 	if (sbi->s_flex_groups == NULL) {
 -- 
 1.5.6.1.205.ge2c7.dirty
 
