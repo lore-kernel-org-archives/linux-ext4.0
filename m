@@ -1,106 +1,128 @@
-From: Adrian Bunk <bunk@kernel.org>
-Subject: Re: [RFC] Btrfs mainline plans
-Date: Thu, 9 Oct 2008 11:22:34 +0300
-Message-ID: <20081009082234.GA17013@cs181140183.pp.htv.fi>
-References: <1222717460.30627.56.camel@think.oraclecorp.com> <20081005141113.GA6132@us.ibm.com> <20081005150957.GC12047@cs181140183.pp.htv.fi> <200810081433.32766.phillips@phunq.net>
+From: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Subject: Re: [PATCH 01/42] percpu counter: clean up
+	percpu_counter_sum_and_set()
+Date: Thu, 09 Oct 2008 10:52:52 +0200
+Message-ID: <1223542372.7382.30.camel@lappy.programming.kicks-ass.net>
+References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
+	 <1223525160-9887-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: "Serge E. Hallyn" <serue@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
-To: Daniel Phillips <phillips@phunq.net>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Mingming Cao <cmm@us.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp6.pp.htv.fi ([213.243.153.40]:34863 "EHLO smtp6.pp.htv.fi"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750933AbYJIIXP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Oct 2008 04:23:15 -0400
-Content-Disposition: inline
-In-Reply-To: <200810081433.32766.phillips@phunq.net>
+Received: from casper.infradead.org ([85.118.1.10]:34215 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752754AbYJIIyR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 04:54:17 -0400
+In-Reply-To: <1223525160-9887-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 08, 2008 at 02:33:32PM -0700, Daniel Phillips wrote:
-> On Sunday 05 October 2008 08:09, Adrian Bunk wrote:
-> > "accelerate its development and will broaden its developer base" is not 
-> > about users/testers but about people doing code development.
-> > 
-> > For people wanting to try WIP code you don't need it in mainline.
+On Thu, 2008-10-09 at 00:05 -0400, Theodore Ts'o wrote:
+> From: Mingming Cao <cmm@us.ibm.com>
 > 
-> But it saves time for the user, who does not have to run around chasing
-> links, carefully checking for a kernel match, downloading, patching,
-> building and installing a single purpose kernel, and bringing it up on
-> a machine that would probably have only required one click on the new
-> filesystem option otherwise.  The considerable time thus saved can be
-> invested profitably in running test cases and filing bug reports.
-
-Bug reports against a 3-6 months old snapshot of a filesystem being 
-under heavy development.
-
-Ted said back in August in the announcement of an ext4 patchset:
-
-"As before I've also released updated the patch set vs. the 2.6.26 stock
- kernel, for those people who don't want to play with development 
- kernels but who still want to test out ext4." [1]
-
-When running stable kernels you still have to patch, build and install
-a single purpose kernel for testing ext4 although ext4 is in mainline.
-
->...
-> > This is not meant as a statement on the quality of ext4 or btrfs, or any 
-> > comparison of the development times of ext4 and btrfs, but for ext4 the 
-> > advantages Andrew thinks would happen with an early btrfs merge do not 
-> > seem to have happened.
+> percpu_counter_sum_and_set() and percpu_counter_sum() is the same except
+> the former updates the global counter after accounting.  Since we are
+> taking the fbc->lock to calculate the precise value of the counter in
+> percpu_counter_sum() anyway, it should simply set fbc->count too, as the
+> percpu_counter_sum_and_set() does.
 > 
-> Are you sure about that?  I see 33 messages on linux-ext4 yesterday,
-> from a broad range of contributors.  Versus eight from a much narrower
-> range of contributors, Oct 4 a year ago.
+> This patch merge these two interfaces into one.
 
-There are lies, damn lies, and statistics.  ;)
+I totally missed the patch introducing this _and_set() horror, but this
+does look like a good cleanup.
 
-Single day statistics about mailing list postings are not very good
-indicators for anything.
+Thanks Mingming!
 
-And since linux-ext4 is for all of ext2/ext3/ext4 the data you gave 
-could equally be used to prove that ext3 recently became much more
-buggy or that ext2 development vastly increased...
+Acked-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
 
-> There is little question that an early merge helps both developers and
-> users employ their time more efficiently,
-
-Regarding users see my comment above.
-
-Regarding developers it would be interesting to hear some experiences 
-from ext4 developers about their experiences (or get a pointer to them 
-in case I missed that they already expressed it somewhere).
-
-> once a project is past the
-> point where we wonder about its value and/or viability.  In my opinion,
-> Btrfs clearly has both.
->...
-
-2 years ago ext4 was in a similar situation of being regarded as an 
-important future filesystem.
-
-> Regards,
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+> Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>
+> Cc: <linux-ext4@vger.kernel.org>
+> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/balloc.c               |    2 +-
+>  include/linux/percpu_counter.h |   12 +++---------
+>  lib/percpu_counter.c           |    8 +++-----
+>  3 files changed, 7 insertions(+), 15 deletions(-)
 > 
-> Daniel
-
-cu
-Adrian
-
-BTW: My comments are not in any way meant against btrfs or ext4.
-     I just question the advantages of merging them early.
-
-
-[1] http://lwn.net/Articles/294784/
-
--- 
-
-       "Is there not promise of rain?" Ling Tan asked suddenly out
-        of the darkness. There had been need of rain for many days.
-       "Only a promise," Lao Er said.
-                                       Pearl S. Buck - Dragon Seed
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index e9fa960..00a94d5 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -1624,7 +1624,7 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+>  #ifdef CONFIG_SMP
+>  	if (free_blocks - root_blocks < FBC_BATCH)
+>  		free_blocks =
+> -			percpu_counter_sum_and_set(&sbi->s_freeblocks_counter);
+> +			percpu_counter_sum(&sbi->s_freeblocks_counter);
+>  #endif
+>  	if (free_blocks <= root_blocks)
+>  		/* we don't have free space */
+> diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
+> index 2083888..9007ccd 100644
+> --- a/include/linux/percpu_counter.h
+> +++ b/include/linux/percpu_counter.h
+> @@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount);
+>  void percpu_counter_destroy(struct percpu_counter *fbc);
+>  void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
+>  void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
+> -s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
+> +s64 __percpu_counter_sum(struct percpu_counter *fbc);
+>  
+>  static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
+>  {
+> @@ -44,19 +44,13 @@ static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
+>  
+>  static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
+>  {
+> -	s64 ret = __percpu_counter_sum(fbc, 0);
+> +	s64 ret = __percpu_counter_sum(fbc);
+>  	return ret < 0 ? 0 : ret;
+>  }
+>  
+> -static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
+> -{
+> -	return __percpu_counter_sum(fbc, 1);
+> -}
+> -
+> -
+>  static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
+>  {
+> -	return __percpu_counter_sum(fbc, 0);
+> +	return __percpu_counter_sum(fbc);
+>  }
+>  
+>  static inline s64 percpu_counter_read(struct percpu_counter *fbc)
+> diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
+> index 4a8ba4b..a866389 100644
+> --- a/lib/percpu_counter.c
+> +++ b/lib/percpu_counter.c
+> @@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
+>   * Add up all the per-cpu counts, return the result.  This is a more accurate
+>   * but much slower version of percpu_counter_read_positive()
+>   */
+> -s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
+> +s64 __percpu_counter_sum(struct percpu_counter *fbc)
+>  {
+>  	s64 ret;
+>  	int cpu;
+> @@ -62,11 +62,9 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
+>  	for_each_online_cpu(cpu) {
+>  		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
+>  		ret += *pcount;
+> -		if (set)
+> -			*pcount = 0;
+> +		*pcount = 0;
+>  	}
+> -	if (set)
+> -		fbc->count = ret;
+> +	fbc->count = ret;
+>  
+>  	spin_unlock(&fbc->lock);
+>  	return ret;
 
