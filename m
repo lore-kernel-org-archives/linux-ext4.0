@@ -1,75 +1,162 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] Give kjournald a IOPRIO_CLASS_RT io priority
-Date: Wed, 8 Oct 2008 20:38:27 -0700
-Message-ID: <20081008203827.f5897459.akpm@linux-foundation.org>
-References: <20081001235501.2b7f50fe.akpm@linux-foundation.org>
-	<20081002061236.3c71c877@infradead.org>
-	<20081002132457.46ad8d05.akpm@linux-foundation.org>
-	<20081002210117.0f5062f7@infradead.org>
-	<20081002212355.621a4fb6@infradead.org>
-	<20081002214000.89420bb3.akpm@linux-foundation.org>
-	<20081002214353.30873f98@infradead.org>
-	<20081002215026.a63ba0d0.akpm@linux-foundation.org>
-	<20081002220040.7963596c@infradead.org>
-	<20081002222438.8f9f90a2.akpm@linux-foundation.org>
-	<20081009030054.GD17512@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Arjan van de Ven <arjan@infradead.org>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	linux-kernel@vger.kernel.org, Alan Cox <alan@lxorguk.ukuu.org.uk>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: New ext4 patchset: 2.6.27-rc9-ext4-1
+Date: Thu, 09 Oct 2008 00:01:41 -0400
+Message-ID: <E1Knmib-0001Ng-Q9@closure.thunk.org>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:59087 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754580AbYJIDj2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Oct 2008 23:39:28 -0400
-In-Reply-To: <20081009030054.GD17512@mit.edu>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54437 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750707AbYJIEBp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:01:45 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 8 Oct 2008 23:00:54 -0400 Theodore Tso <tytso@mit.edu> wrote:
 
-> On Thu, Oct 02, 2008 at 10:24:38PM -0700, Andrew Morton wrote:
-> > 
-> > Mount a junk partition with `-oakpm' and run some benchmarks.  If the
-> > results are "wow" then it's worth spending time on.  If the results are
-> > "meh" then we can not bother..
-> > 
-> 
-> I've ported the patch to the ext4 filesystem, and dropped it into the
-> unstable portion of the ext4 patch queue.
+As a git tree:
 
-Useful, thanks.
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.27-rc9-ext4-1
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.27-rc9
+-ext4-1
 
->  If we can get someone (hi,
-> Ric!) to run fs_mark with and without -o akpm_lock_hack, I suspect we
-> will find that it makes quite a large difference on that particular
-> benchmark, since it is fsync-heavy to force a large number of
-> transaction, and the creation of the inodes should cause multiple
-> blocks that will be entangled between the current and committing
-> transactions.
-> 
+As a patchset:
 
-fsync?  Yes, I suppose so.  Repeated modifications to the same
-inodes/directories/bitmaps blocks/etc will hurt.
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.27-rc9-ext4-
+1
 
-A quick test on other quantified workloads would be useful too.  If the
-results look promising then someone(tm) will need to work out how to
-fix this for real.
+							- Ted
 
-> 
-> ext4: akpm's locking hack to fix locking delays
-> 
-> This is a port of the following patch from Andrew Morton to ext4:
-> 
-> 	http://lkml.org/lkml/2008/10/3/22
-> 
-> This fixes a major contention problem in do_get_write_access() when a
-> buffer is modified in both the current and committing transaction.
+Akira Fujita (7):
+      ext4: online defrag: Add the EXT4_IOC_DEFRAG ioctl and defrag main function.
+      ext4: Fix compile error at defrag.c in the current ext4 patch
+      ext4: online defrag: Allocate new contiguous blocks with mballoc.
+      ext4: online defrag: Read and write file data with memory page.
+      ext4: online defrag: Exchange the blocks between two inodes.
+      ext4: online defrag: Add the EXT4_IOC_FIBMAP ioctl.
+      ext4: online defrag: Add the EXT4_IOC_GROUP_INFO ioctl.
 
-More specifically: "under checkpoint writeback in the committing
-transaction when the committing transaction requests write access".
+Alexey Dobriyan (1):
+      ext4: fix #11321: create /proc/ext4/*/stats more carefully
 
+Andi Kleen (1):
+      ext4: Avoid double dirtying of super block in ext4_put_super()
+
+Aneesh Kumar K.V (13):
+      ext4: invalidate pages if delalloc block allocation fails.
+      ext4: Retry block reservation
+      ext4: Add percpu dirty block accounting.
+      ext4: Switch to non delalloc mode when we are low on free blocks count.
+      ext4: Signed arithmetic fix
+      ext4: Fix ext4 nomballoc allocator for ENOSPC
+      ext4: Don't add the inode to journal handle until after the block is allocated
+      ext4: Retry block allocation if we have free blocks left
+      ext4: truncate block allocated on a failed ext4_write_begin
+      ext4: Properly update i_disksize.
+      ext4: elevate write count for migrate ioctl
+      ext4: hook the ext3 migration interface to the EXT4_IOC_SETFLAGS ioctl
+      ext4: undo the stable boundary patch changes
+
+Duane Griffin (1):
+      jbd2: abort instead of waiting for nonexistent transaction
+
+Eric Sandeen (2):
+      ext4: use percpu data structures for lg_prealloc_list
+      Hook ext4 to the vfs fiemap interface.
+
+Frederic Bohe (2):
+      Update flex_bg free blocks and free inodes counters when resizing.
+      ext4: fix initialization of UNINIT bitmap blocks
+
+Josef Bacik (1):
+      generic block based fiemap implementation
+
+Kalpak Shah (1):
+      ext4: fix xattr deadlock
+
+Li Zefan (1):
+      ext4: add missing unlock in ext4_check_descriptors() on error path
+
+Mark Fasheh (2):
+      vfs: vfs-level fiemap interface
+      ocfs2: fiemap support
+
+Mingming Cao (1):
+      percpu counter: clean up percpu_counter_sum_and_set()
+
+Theodore Ts'o (20):
+      ext4: Add printk priority levels to clean up checkpatch warnings
+      ext4: Fix long long checkpatch warnings
+      ext4: Fix whitespace checkpatch warnings/errors
+      ext4: Make sure all the block allocation paths reserve blocks
+      ext4: Avoid printk floods in the face of directory corruption
+      jbd2: clean up how the journal device name is printed
+      ext4: Renumber EXT4_IOC_MIGRATE
+      ext4/jbd2: Avoid WARN() messages when failing to write to the superblock
+      ext4: Don't use 'struct dentry' for internal lookups
+      ext4: move /proc setup and teardown out of mballoc.c
+      ext4: Combine proc file handling into a single set of functions
+      ext4: Use readahead when reading an inode from the inode table
+      ext4: Remove old legacy block allocator
+      ext4: Add debugging markers that can be used by systemtap
+      jbd2: Fix buffer head leak when writing the commit block
+      Update ext4 MAINTAINERS file
+      ext4: Rename ext4dev to ext4
+      ext4: Stable/Unstable boundary
+      Add a ioctl which dumps out all of the in-use buffer heads for a block device
+      ext4: akpm's locking hack to fix locking delays
+
+ Documentation/filesystems/fiemap.txt |  228 ++++++
+ MAINTAINERS                          |    5 +-
+ block/compat_ioctl.c                 |    1 +
+ block/ioctl.c                        |    5 +
+ fs/Kconfig                           |   74 +-
+ fs/Makefile                          |    2 +-
+ fs/buffer.c                          |   40 +
+ fs/ext2/ext2.h                       |    2 +
+ fs/ext2/file.c                       |    1 +
+ fs/ext2/inode.c                      |    8 +
+ fs/ext3/file.c                       |    1 +
+ fs/ext3/inode.c                      |    8 +
+ fs/ext4/Makefile                     |   12 +-
+ fs/ext4/acl.h                        |   12 +-
+ fs/ext4/balloc.c                     | 1457 ++-------------------------------
+ fs/ext4/bitmap.c                     |    6 +-
+ fs/ext4/defrag.c                     | 1495 ++++++++++++++++++++++++++++++++++
+ fs/ext4/dir.c                        |   64 +-
+ fs/ext4/ext4.h                       |  155 +++-
+ fs/ext4/ext4_extents.h               |   20 +
+ fs/ext4/ext4_i.h                     |   39 +-
+ fs/ext4/ext4_sb.h                    |   25 +-
+ fs/ext4/extents.c                    |  287 ++++++-
+ fs/ext4/file.c                       |   10 +-
+ fs/ext4/fsync.c                      |    7 +-
+ fs/ext4/hash.c                       |    8 +-
+ fs/ext4/ialloc.c                     |   71 +-
+ fs/ext4/inode.c                      |  622 +++++++++------
+ fs/ext4/ioctl.c                      |   89 +--
+ fs/ext4/mballoc.c                    |  208 ++----
+ fs/ext4/mballoc.h                    |    1 -
+ fs/ext4/migrate.c                    |   10 +-
+ fs/ext4/namei.c                      |  402 +++++-----
+ fs/ext4/resize.c                     |   33 +-
+ fs/ext4/super.c                      |  257 ++++--
+ fs/ext4/symlink.c                    |    8 +-
+ fs/ext4/xattr.c                      |   14 +-
+ fs/ext4/xattr.h                      |   12 +-
+ fs/ioctl.c                           |  273 +++++++
+ fs/jbd2/checkpoint.c                 |   22 +-
+ fs/jbd2/commit.c                     |   22 +-
+ fs/jbd2/journal.c                    |   75 +-
+ fs/jbd2/transaction.c                |   12 +-
+ fs/ocfs2/alloc.c                     |    9 -
+ fs/ocfs2/alloc.h                     |    9 +
+ fs/ocfs2/extent_map.c                |  346 +++++++--
+ fs/ocfs2/extent_map.h                |    3 +
+ fs/ocfs2/file.c                      |    1 +
+ include/linux/buffer_head.h          |    1 +
+ include/linux/ext3_fs.h              |    2 +
+ include/linux/fiemap.h               |   64 ++
+ include/linux/fs.h                   |   22 +
+ include/linux/jbd2.h                 |    4 +-
+ include/linux/percpu_counter.h       |   12 +-
+ lib/percpu_counter.c                 |    8 +-
+ 55 files changed, 4085 insertions(+), 2499 deletions(-)
