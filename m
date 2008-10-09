@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 14/42] ext4: truncate block allocated on a failed ext4_write_begin
-Date: Thu,  9 Oct 2008 00:05:32 -0400
-Message-ID: <1223525160-9887-15-git-send-email-tytso@mit.edu>
+Subject: [PATCH 10/42] ext4: Signed arithmetic fix
+Date: Thu,  9 Oct 2008 00:05:28 -0400
+Message-ID: <1223525160-9887-11-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -12,67 +12,107 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-8-git-send-email-tytso@mit.edu>
  <1223525160-9887-9-git-send-email-tytso@mit.edu>
  <1223525160-9887-10-git-send-email-tytso@mit.edu>
- <1223525160-9887-11-git-send-email-tytso@mit.edu>
- <1223525160-9887-12-git-send-email-tytso@mit.edu>
- <1223525160-9887-13-git-send-email-tytso@mit.edu>
- <1223525160-9887-14-git-send-email-tytso@mit.edu>
 Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54505 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54493 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757597AbYJIEGN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:13 -0400
-In-Reply-To: <1223525160-9887-14-git-send-email-tytso@mit.edu>
+	with ESMTP id S1757546AbYJIEGM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:12 -0400
+In-Reply-To: <1223525160-9887-10-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-For blocksize < pagesize we need to remove blocks that got allocated in
-block_write_begin() if we fail with ENOSPC for later blocks.
-block_write_begin() internally does this if it allocated pages locally.
-This makes sure we don't have blocks outside inode.i_size during ENOSPC.
+This patch converts some usage of ext4_fsblk_t to s64.  This is needed
+so that some of the sign conversion works as expected in if loops.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |   14 ++++++++++++++
- 1 files changed, 14 insertions(+), 0 deletions(-)
+ fs/ext4/balloc.c |   19 ++++++++++---------
+ fs/ext4/ext4.h   |    5 ++---
+ 2 files changed, 12 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f97b347..634f0bc 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1391,6 +1391,13 @@ retry:
- 		unlock_page(page);
- 		ext4_journal_stop(handle);
- 		page_cache_release(page);
-+		/*
-+		 * block_write_begin may have instantiated a few blocks
-+		 * outside i_size.  Trim these off again. Don't need
-+		 * i_size_read because we hold i_mutex.
-+		 */
-+		if (pos + len > inode->i_size)
-+			vmtruncate(inode, inode->i_size);
- 	}
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 87b198c..e4274aa 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1603,10 +1603,10 @@ out:
+ }
  
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-@@ -2560,6 +2567,13 @@ retry:
- 		unlock_page(page);
- 		ext4_journal_stop(handle);
- 		page_cache_release(page);
-+		/*
-+		 * block_write_begin may have instantiated a few blocks
-+		 * outside i_size.  Trim these off again. Don't need
-+		 * i_size_read because we hold i_mutex.
-+		 */
-+		if (pos + len > inode->i_size)
-+			vmtruncate(inode, inode->i_size);
- 	}
+ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+-						ext4_fsblk_t nblocks)
++						s64 nblocks)
+ {
+ 	s64 free_blocks, dirty_blocks;
+-	ext4_fsblk_t root_blocks = 0;
++	s64 root_blocks = 0;
+ 	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
+ 	struct percpu_counter *dbc = &sbi->s_dirtyblocks_counter;
  
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+@@ -1631,7 +1631,7 @@ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+ 	/* Check whether we have space after
+ 	 * accounting for current dirty blocks
+ 	 */
+-	if (free_blocks < ((s64)(root_blocks + nblocks) + dirty_blocks))
++	if (free_blocks < ((root_blocks + nblocks) + dirty_blocks))
+ 		/* we don't have free space */
+ 		return -ENOSPC;
+ 
+@@ -1650,10 +1650,10 @@ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+  * On success, return nblocks
+  */
+ ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+-						ext4_fsblk_t nblocks)
++						s64 nblocks)
+ {
+-	ext4_fsblk_t free_blocks, dirty_blocks;
+-	ext4_fsblk_t root_blocks = 0;
++	s64 free_blocks, dirty_blocks;
++	s64 root_blocks = 0;
+ 	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
+ 	struct percpu_counter *dbc = &sbi->s_dirtyblocks_counter;
+ 
+@@ -1667,14 +1667,15 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 
+ 	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
+ 						EXT4_FREEBLOCKS_WATERMARK) {
+-		free_blocks  = percpu_counter_sum_positive(fbc);
+-		dirty_blocks = percpu_counter_sum_positive(dbc);
++		free_blocks  = percpu_counter_sum(fbc);
++		dirty_blocks = percpu_counter_sum(dbc);
+ 	}
+ 	if (free_blocks <= (root_blocks + dirty_blocks))
+ 		/* we don't have free space */
+ 		return 0;
++
+ 	if (free_blocks - (root_blocks + dirty_blocks) < nblocks)
+-		return free_blocks - root_blocks;
++		return free_blocks - (root_blocks + dirty_blocks);
+ 	return nblocks;
+ }
+ 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 0154c2d..e13b9de 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -983,10 +983,9 @@ extern ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
+ 					unsigned long *count, int *errp);
+ extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, unsigned long *count, int *errp);
+-extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+-						ext4_fsblk_t nblocks);
++extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
+ extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+-						ext4_fsblk_t nblocks);
++					 s64 nblocks);
+ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t block, unsigned long count, int metadata);
+ extern void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
 -- 
 1.5.6.1.205.ge2c7.dirty
 
