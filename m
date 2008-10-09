@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 41/42] ext4: Avoid double dirtying of super block in ext4_put_super()
-Date: Thu,  9 Oct 2008 00:05:59 -0400
-Message-ID: <1223525160-9887-42-git-send-email-tytso@mit.edu>
+Subject: [PATCH 35/42] ext4: fix xattr deadlock
+Date: Thu,  9 Oct 2008 00:05:53 -0400
+Message-ID: <1223525160-9887-36-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -37,48 +37,64 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-33-git-send-email-tytso@mit.edu>
  <1223525160-9887-34-git-send-email-tytso@mit.edu>
  <1223525160-9887-35-git-send-email-tytso@mit.edu>
- <1223525160-9887-36-git-send-email-tytso@mit.edu>
- <1223525160-9887-37-git-send-email-tytso@mit.edu>
- <1223525160-9887-38-git-send-email-tytso@mit.edu>
- <1223525160-9887-39-git-send-email-tytso@mit.edu>
- <1223525160-9887-40-git-send-email-tytso@mit.edu>
- <1223525160-9887-41-git-send-email-tytso@mit.edu>
-Cc: Andi Kleen <andi@firstfloor.org>, Andi Kleen <ak@linux.intel.com>
+Cc: Kalpak Shah <kalpak.shah@sun.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54545 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54530 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757630AbYJIEGP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:15 -0400
-In-Reply-To: <1223525160-9887-41-git-send-email-tytso@mit.edu>
+	with ESMTP id S1757601AbYJIEGN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:13 -0400
+In-Reply-To: <1223525160-9887-35-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Andi Kleen <andi@firstfloor.org>
+From: Kalpak Shah <kalpak.shah@sun.com>
 
-While reading code I noticed that ext4_put_super() dirties the
-superblock bh twice. It is always done in ext4_commit_super()
-too. Remove the redundant dirty operation.
-Should be a nop semantically.
+ext4_xattr_set_handle() eventually ends up calling
+ext4_mark_inode_dirty() which tries to expand the inode by shifting
+the EAs.  This leads to the xattr_sem being downed again and leading
+to a deadlock.
 
-Signed-off-by: Andi Kleen <ak@linux.intel.com>
+This patch makes sure that if ext4_xattr_set_handle() is in the
+call-chain, ext4_mark_inode_dirty() will not expand the inode.
+
+Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/super.c |    2 --
- 1 files changed, 0 insertions(+), 2 deletions(-)
+ fs/ext4/xattr.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9c02146..7d86560 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -512,8 +512,6 @@ static void ext4_put_super(struct super_block *sb)
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
--		BUFFER_TRACE(sbi->s_sbh, "marking dirty");
--		mark_buffer_dirty(sbi->s_sbh);
- 		ext4_commit_super(sb, es, 1);
- 	}
- 	if (sbi->s_proc) {
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 8954208..362b0ed 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -959,6 +959,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	struct ext4_xattr_block_find bs = {
+ 		.s = { .not_found = -ENODATA, },
+ 	};
++	unsigned long no_expand;
+ 	int error;
+ 
+ 	if (!name)
+@@ -966,6 +967,9 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ 	if (strlen(name) > 255)
+ 		return -ERANGE;
+ 	down_write(&EXT4_I(inode)->xattr_sem);
++	no_expand = EXT4_I(inode)->i_state & EXT4_STATE_NO_EXPAND;
++	EXT4_I(inode)->i_state |= EXT4_STATE_NO_EXPAND;
++
+ 	error = ext4_get_inode_loc(inode, &is.iloc);
+ 	if (error)
+ 		goto cleanup;
+@@ -1042,6 +1046,8 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
+ cleanup:
+ 	brelse(is.iloc.bh);
+ 	brelse(bs.bh);
++	if (no_expand == 0)
++		EXT4_I(inode)->i_state &= ~EXT4_STATE_NO_EXPAND;
+ 	up_write(&EXT4_I(inode)->xattr_sem);
+ 	return error;
+ }
 -- 
 1.5.6.1.205.ge2c7.dirty
 
