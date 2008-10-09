@@ -1,91 +1,227 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 11/42] ext4: Fix ext4 nomballoc allocator for ENOSPC
-Date: Thu,  9 Oct 2008 00:05:29 -0400
-Message-ID: <1223525160-9887-12-git-send-email-tytso@mit.edu>
+Subject: [PATCH 06/42] ext4: Make sure all the block allocation paths reserve blocks
+Date: Thu,  9 Oct 2008 00:05:24 -0400
+Message-ID: <1223525160-9887-7-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
  <1223525160-9887-4-git-send-email-tytso@mit.edu>
  <1223525160-9887-5-git-send-email-tytso@mit.edu>
  <1223525160-9887-6-git-send-email-tytso@mit.edu>
- <1223525160-9887-7-git-send-email-tytso@mit.edu>
- <1223525160-9887-8-git-send-email-tytso@mit.edu>
- <1223525160-9887-9-git-send-email-tytso@mit.edu>
- <1223525160-9887-10-git-send-email-tytso@mit.edu>
- <1223525160-9887-11-git-send-email-tytso@mit.edu>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54454 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54456 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757252AbYJIEGF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:05 -0400
-In-Reply-To: <1223525160-9887-11-git-send-email-tytso@mit.edu>
+	with ESMTP id S1757294AbYJIEGG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:06 -0400
+In-Reply-To: <1223525160-9887-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+With delayed allocation we need to make sure block are reserved before
+we attempt to allocate them. Otherwise we get block allocation failure
+(ENOSPC) during writepages which cannot be handled. This would mean
+silent data loss (We do a printk stating data will be lost). This patch
+updates the DIO and fallocate code path to do block reservation before
+block allocation. This is needed to make sure parallel DIO and fallocate
+request doesn't take block out of delayed reserve space.
 
-We run into ENOSPC error on nonmballoc ext4, even when there is free blocks
-on the filesystem.
-
-The patch includes two changes:
-
-a) Set reservation to NULL if we trying to allocate near group_target_block
-from the goal group if the free block in the group is less than windows.
-This should give us a better chance to allocate near group_target_block.
-This also ensures that if we are not allocating near group_target_block
-then we don't trun off reservation. This should enable us to allocate
-with reservation from other groups that have large free blocks count.
-
-b) we don't need to check the window size if the block reservation is off.
+When free blocks count go below a threshold we switch to a slow patch
+which looks at other CPU's accumulated percpu counter values.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |   18 ++++++++++--------
- 1 files changed, 10 insertions(+), 8 deletions(-)
+ fs/ext4/balloc.c  |   58 ++++++++++++++++++++++++++++++++++++++--------------
+ fs/ext4/ext4.h    |   13 +++++++++++
+ fs/ext4/inode.c   |    5 +---
+ fs/ext4/mballoc.c |   23 +++++++++++---------
+ 4 files changed, 69 insertions(+), 30 deletions(-)
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index e4274aa..87b660b 100644
+index 58005c0..1707850 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -1804,15 +1804,17 @@ retry_alloc:
- 		goto io_error;
+@@ -1602,6 +1602,32 @@ out:
+ 	return ret;
+ }
  
- 	free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
--	/*
--	 * if there is not enough free blocks to make a new resevation
--	 * turn off reservation for this allocation
--	 */
--	if (my_rsv && (free_blocks < windowsz)
--		&& (rsv_is_empty(&my_rsv->rsv_window)))
--		my_rsv = NULL;
- 
- 	if (free_blocks > 0) {
-+		/*
-+		 * try to allocate with group target block
-+		 * in the goal group. If we have low free_blocks
-+		 * count turn off reservation
-+		 */
-+		if (my_rsv && (free_blocks < windowsz)
-+			&& (rsv_is_empty(&my_rsv->rsv_window)))
-+			my_rsv = NULL;
++int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
++						ext4_fsblk_t nblocks)
++{
++	s64 free_blocks;
++	ext4_fsblk_t root_blocks = 0;
++	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
 +
- 		bitmap_bh = ext4_read_block_bitmap(sb, group_no);
- 		if (!bitmap_bh)
- 			goto io_error;
-@@ -1845,7 +1847,7 @@ retry_alloc:
- 		 * free blocks is less than half of the reservation
- 		 * window size.
- 		 */
--		if (free_blocks <= (windowsz/2))
-+		if (my_rsv && (free_blocks <= (windowsz/2)))
- 			continue;
++	free_blocks = percpu_counter_read(fbc);
++
++	if (!capable(CAP_SYS_RESOURCE) &&
++		sbi->s_resuid != current->fsuid &&
++		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
++		root_blocks = ext4_r_blocks_count(sbi->s_es);
++
++	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
++		free_blocks = percpu_counter_sum(&sbi->s_freeblocks_counter);
++
++	if (free_blocks < (root_blocks + nblocks))
++		/* we don't have free space */
++		return -ENOSPC;
++
++	/* reduce fs free blocks counter */
++	percpu_counter_sub(fbc, nblocks);
++	return 0;
++}
++
+ /**
+  * ext4_has_free_blocks()
+  * @sbi:	in-core super block structure.
+@@ -1623,18 +1649,17 @@ ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 		sbi->s_resuid != current->fsuid &&
+ 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
+ 		root_blocks = ext4_r_blocks_count(sbi->s_es);
+-#ifdef CONFIG_SMP
+-	if (free_blocks - root_blocks < FBC_BATCH)
+-		free_blocks =
+-			percpu_counter_sum(&sbi->s_freeblocks_counter);
+-#endif
++
++	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
++		free_blocks = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
++
+ 	if (free_blocks <= root_blocks)
+ 		/* we don't have free space */
+ 		return 0;
+ 	if (free_blocks - root_blocks < nblocks)
+ 		return free_blocks - root_blocks;
+ 	return nblocks;
+- }
++}
  
- 		brelse(bitmap_bh);
--- 
-1.5.6.1.205.ge2c7.dirty
-
+ 
+ /**
+@@ -1713,14 +1738,11 @@ ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		*count = ext4_has_free_blocks(sbi, *count);
+-	}
+-	if (*count == 0) {
+-		*errp = -ENOSPC;
+-		return 0;	/*return with ENOSPC error */
++		if (ext4_claim_free_blocks(sbi, *count)) {
++			*errp = -ENOSPC;
++			return 0;	/*return with ENOSPC error */
++		}
+ 	}
+-	num = *count;
+-
+ 	/*
+ 	 * Check quota for allocation of this block.
+ 	 */
+@@ -1915,9 +1937,13 @@ allocated:
+ 	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+-	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
+-		percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+-
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag && (*count != num)) {
++		/*
++		 * we allocated less blocks than we
++		 * claimed. Add the difference back.
++		 */
++		percpu_counter_add(&sbi->s_freeblocks_counter, *count - num);
++	}
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
+ 		spin_lock(sb_bgl_lock(sbi, flex_group));
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8c70131..0154c2d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -983,6 +983,8 @@ extern ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
+ 					unsigned long *count, int *errp);
+ extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t goal, unsigned long *count, int *errp);
++extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
++						ext4_fsblk_t nblocks);
+ extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 						ext4_fsblk_t nblocks);
+ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+@@ -1207,6 +1209,17 @@ do {								\
+ 		__ext4_std_error((sb), __func__, (errno));	\
+ } while (0)
+ 
++#ifdef CONFIG_SMP
++/* Each CPU can accumulate FBC_BATCH blocks in their local
++ * counters. So we need to make sure we have free blocks more
++ * than FBC_BATCH  * nr_cpu_ids. Also add a window of 4 times.
++ */
++#define EXT4_FREEBLOCKS_WATERMARK (4 * (FBC_BATCH * nr_cpu_ids))
++#else
++#define EXT4_FREEBLOCKS_WATERMARK 0
++#endif
++
++
+ /*
+  * Inodes and files operations
+  */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index b6fa0c4..b778d5a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1537,13 +1537,10 @@ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
+ 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
+ 	total = md_needed + nrblocks;
+ 
+-	if (ext4_has_free_blocks(sbi, total) < total) {
++	if (ext4_claim_free_blocks(sbi, total)) {
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 		return -ENOSPC;
+ 	}
+-	/* reduce fs free blocks counter */
+-	percpu_counter_sub(&sbi->s_freeblocks_counter, total);
+-
+ 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+ 	EXT4_I(inode)->i_reserved_meta_blocks = mdblocks;
+ 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 0db2ccf..2c10b50 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2975,9 +2975,15 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	 * at write_begin() time for delayed allocation
+ 	 * do not double accounting
+ 	 */
+-	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
+-		percpu_counter_sub(&sbi->s_freeblocks_counter,
+-					ac->ac_b_ex.fe_len);
++	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED) &&
++			ac->ac_o_ex.fe_len != ac->ac_b_ex.fe_len) {
++		/*
++		 * we allocated less blocks than we calimed
++		 * Add the difference back
++		 */
++		percpu_counter_add(&sbi->s_freeblocks_counter,
++				ac->ac_o_ex.fe_len - ac->ac_b_ex.fe_len);
++	}
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi,
+@@ -4389,14 +4395,11 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		ar->len = ext4_has_free_blocks(sbi, ar->len);
+-	}
+-
+-	if (ar->len == 0) {
+-		*errp = -ENOSPC;
+-		return 0;
++		if (ext4_claim_free_blocks(sbi, ar->len)) {
++			*errp = -ENOSPC;
++			return 0;
++		}
+ 	}
