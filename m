@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 18/42] ext4: fix #11321: create /proc/ext4/*/stats more carefully
-Date: Thu,  9 Oct 2008 00:05:36 -0400
-Message-ID: <1223525160-9887-19-git-send-email-tytso@mit.edu>
+Subject: [PATCH 15/42] ext4: Properly update i_disksize.
+Date: Thu,  9 Oct 2008 00:05:33 -0400
+Message-ID: <1223525160-9887-16-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -17,102 +17,186 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-13-git-send-email-tytso@mit.edu>
  <1223525160-9887-14-git-send-email-tytso@mit.edu>
  <1223525160-9887-15-git-send-email-tytso@mit.edu>
- <1223525160-9887-16-git-send-email-tytso@mit.edu>
- <1223525160-9887-17-git-send-email-tytso@mit.edu>
- <1223525160-9887-18-git-send-email-tytso@mit.edu>
-Cc: Alexey Dobriyan <adobriyan@gmail.com>,
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54526 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54528 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757568AbYJIEGN (ORCPT
+	with ESMTP id S1756043AbYJIEGN (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:13 -0400
-In-Reply-To: <1223525160-9887-18-git-send-email-tytso@mit.edu>
+In-Reply-To: <1223525160-9887-15-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Alexey Dobriyan <adobriyan@gmail.com>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-ext4 creates per-suberblock directory in /proc/ext4/ . Name used as
-basis is taken from bdevname, which, surprise, can contain slash.
+With delayed allocation we use i_data_sem to update i_disksize.  We need
+to update i_disksize only if the new size specified is greater than the
+current value and we need to make sure we don't race with other
+i_disksize update.  With delayed allocation we will switch to the
+write_begin function for non-delayed allocation if we are low on free
+blocks.  This means the write_begin function for non-delayed allocation
+also needs to use the same locking.
 
-However, proc while allowing to use proc_create("a/b", parent) form of
-PDE creation, assumes that parent/a was already created.
+We also need to check and update i_disksize even if the new size is less
+that inode.i_size because of delayed allocation.
 
-bdevname in question is 'cciss/c0d0p9', directory is not created and all
-this stuff goes directly into /proc (which is real bug).
-
-Warning comes when _second_ partition is mounted.
-
-http://bugzilla.kernel.org/show_bug.cgi?id=11321
-
-Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |   16 +++++++++++++---
- 1 files changed, 13 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h    |   11 ++++++++++
+ fs/ext4/extents.c |    9 ++++---
+ fs/ext4/inode.c   |   54 +++++++++++++++++++++++++++++-----------------------
+ 3 files changed, 46 insertions(+), 28 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c7b0dea..af48548 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2786,14 +2786,20 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	mode_t mode = S_IFREG | S_IRUGO | S_IWUSR;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct proc_dir_entry *proc;
--	char devname[64];
-+	char devname[BDEVNAME_SIZE], *p;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index e13b9de..3e47b99 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1218,6 +1218,17 @@ do {								\
+ #define EXT4_FREEBLOCKS_WATERMARK 0
+ #endif
  
- 	if (proc_root_ext4 == NULL) {
- 		sbi->s_mb_proc = NULL;
- 		return -EINVAL;
++static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
++{
++	/*
++	 * XXX: replace with spinlock if seen contended -bzzz
++	 */
++	down_write(&EXT4_I(inode)->i_data_sem);
++	if (newsize > EXT4_I(inode)->i_disksize)
++		EXT4_I(inode)->i_disksize = newsize;
++	up_write(&EXT4_I(inode)->i_data_sem);
++	return ;
++}
+ 
+ /*
+  * Inodes and files operations
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 797f060..e8758df 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2878,10 +2878,11 @@ static void ext4_falloc_update_inode(struct inode *inode,
+ 	 * Update only when preallocation was requested beyond
+ 	 * the file size.
+ 	 */
+-	if (!(mode & FALLOC_FL_KEEP_SIZE) &&
+-				new_size > i_size_read(inode)) {
+-		i_size_write(inode, new_size);
+-		EXT4_I(inode)->i_disksize = new_size;
++	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
++		if (new_size > i_size_read(inode))
++			i_size_write(inode, new_size);
++		if (new_size > EXT4_I(inode)->i_disksize)
++			ext4_update_i_disksize(inode, new_size);
  	}
- 	bdevname(sb->s_bdev, devname);
-+	p = devname;
-+	while ((p = strchr(p, '/')))
-+		*p = '!';
-+
- 	sbi->s_mb_proc = proc_mkdir(devname, proc_root_ext4);
-+	if (!sbi->s_mb_proc)
-+		goto err_create_dir;
  
- 	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
- 	MB_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, max_to_scan);
-@@ -2805,7 +2811,6 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	return 0;
- 
- err_out:
--	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
- 	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
-@@ -2814,6 +2819,8 @@ err_out:
- 	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_mb_proc);
- 	remove_proc_entry(devname, proc_root_ext4);
- 	sbi->s_mb_proc = NULL;
-+err_create_dir:
-+	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
- 
- 	return -ENOMEM;
  }
-@@ -2821,12 +2828,15 @@ err_out:
- static int ext4_mb_destroy_per_dev_proc(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	char devname[64];
-+	char devname[BDEVNAME_SIZE], *p;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 634f0bc..22fcbb6 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1434,16 +1434,18 @@ static int ext4_ordered_write_end(struct file *file,
+ 	ret = ext4_jbd2_file_inode(handle, inode);
  
- 	if (sbi->s_mb_proc == NULL)
- 		return -EINVAL;
+ 	if (ret == 0) {
+-		/*
+-		 * generic_write_end() will run mark_inode_dirty() if i_size
+-		 * changes.  So let's piggyback the i_disksize mark_inode_dirty
+-		 * into that.
+-		 */
+ 		loff_t new_i_size;
  
- 	bdevname(sb->s_bdev, devname);
-+	p = devname;
-+	while ((p = strchr(p, '/')))
-+		*p = '!';
- 	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
+ 		new_i_size = pos + copied;
+-		if (new_i_size > EXT4_I(inode)->i_disksize)
+-			EXT4_I(inode)->i_disksize = new_i_size;
++		if (new_i_size > EXT4_I(inode)->i_disksize) {
++			ext4_update_i_disksize(inode, new_i_size);
++			/* We need to mark inode dirty even if
++			 * new_i_size is less that inode->i_size
++			 * bu greater than i_disksize.(hint delalloc)
++			 */
++			ext4_mark_inode_dirty(handle, inode);
++		}
++
+ 		ret2 = generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
+ 		copied = ret2;
+@@ -1468,8 +1470,14 @@ static int ext4_writeback_write_end(struct file *file,
+ 	loff_t new_i_size;
+ 
+ 	new_i_size = pos + copied;
+-	if (new_i_size > EXT4_I(inode)->i_disksize)
+-		EXT4_I(inode)->i_disksize = new_i_size;
++	if (new_i_size > EXT4_I(inode)->i_disksize) {
++		ext4_update_i_disksize(inode, new_i_size);
++		/* We need to mark inode dirty even if
++		 * new_i_size is less that inode->i_size
++		 * bu greater than i_disksize.(hint delalloc)
++		 */
++		ext4_mark_inode_dirty(handle, inode);
++	}
+ 
+ 	ret2 = generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
+@@ -1494,6 +1502,7 @@ static int ext4_journalled_write_end(struct file *file,
+ 	int ret = 0, ret2;
+ 	int partial = 0;
+ 	unsigned from, to;
++	loff_t new_i_size;
+ 
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+ 	to = from + len;
+@@ -1508,11 +1517,12 @@ static int ext4_journalled_write_end(struct file *file,
+ 				to, &partial, write_end_fn);
+ 	if (!partial)
+ 		SetPageUptodate(page);
+-	if (pos+copied > inode->i_size)
++	new_i_size = pos + copied;
++	if (new_i_size > inode->i_size)
+ 		i_size_write(inode, pos+copied);
+ 	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
+-	if (inode->i_size > EXT4_I(inode)->i_disksize) {
+-		EXT4_I(inode)->i_disksize = inode->i_size;
++	if (new_i_size > EXT4_I(inode)->i_disksize) {
++		ext4_update_i_disksize(inode, new_i_size);
+ 		ret2 = ext4_mark_inode_dirty(handle, inode);
+ 		if (!ret)
+ 			ret = ret2;
+@@ -2227,18 +2237,9 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
+ 		if (disksize > i_size_read(inode))
+ 			disksize = i_size_read(inode);
+ 		if (disksize > EXT4_I(inode)->i_disksize) {
+-			/*
+-			 * XXX: replace with spinlock if seen contended -bzzz
+-			 */
+-			down_write(&EXT4_I(inode)->i_data_sem);
+-			if (disksize > EXT4_I(inode)->i_disksize)
+-				EXT4_I(inode)->i_disksize = disksize;
+-			up_write(&EXT4_I(inode)->i_data_sem);
+-
+-			if (EXT4_I(inode)->i_disksize == disksize) {
+-				ret = ext4_mark_inode_dirty(handle, inode);
+-				return ret;
+-			}
++			ext4_update_i_disksize(inode, disksize);
++			ret = ext4_mark_inode_dirty(handle, inode);
++			return ret;
+ 		}
+ 		ret = 0;
+ 	}
+@@ -2654,6 +2655,11 @@ static int ext4_da_write_end(struct file *file,
+ 				EXT4_I(inode)->i_disksize = new_i_size;
+ 			}
+ 			up_write(&EXT4_I(inode)->i_data_sem);
++			/* We need to mark inode dirty even if
++			 * new_i_size is less that inode->i_size
++			 * bu greater than i_disksize.(hint delalloc)
++			 */
++			ext4_mark_inode_dirty(handle, inode);
+ 		}
+ 	}
+ 	ret2 = generic_write_end(file, mapping, pos, len, copied,
 -- 
 1.5.6.1.205.ge2c7.dirty
 
