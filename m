@@ -1,290 +1,355 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 26/42] ext4: Don't use 'struct dentry' for internal lookups
-Date: Thu,  9 Oct 2008 00:05:44 -0400
-Message-ID: <1223525160-9887-27-git-send-email-tytso@mit.edu>
-References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
- <1223525160-9887-2-git-send-email-tytso@mit.edu>
- <1223525160-9887-3-git-send-email-tytso@mit.edu>
- <1223525160-9887-4-git-send-email-tytso@mit.edu>
- <1223525160-9887-5-git-send-email-tytso@mit.edu>
- <1223525160-9887-6-git-send-email-tytso@mit.edu>
- <1223525160-9887-7-git-send-email-tytso@mit.edu>
- <1223525160-9887-8-git-send-email-tytso@mit.edu>
- <1223525160-9887-9-git-send-email-tytso@mit.edu>
- <1223525160-9887-10-git-send-email-tytso@mit.edu>
- <1223525160-9887-11-git-send-email-tytso@mit.edu>
- <1223525160-9887-12-git-send-email-tytso@mit.edu>
- <1223525160-9887-13-git-send-email-tytso@mit.edu>
- <1223525160-9887-14-git-send-email-tytso@mit.edu>
- <1223525160-9887-15-git-send-email-tytso@mit.edu>
- <1223525160-9887-16-git-send-email-tytso@mit.edu>
- <1223525160-9887-17-git-send-email-tytso@mit.edu>
- <1223525160-9887-18-git-send-email-tytso@mit.edu>
- <1223525160-9887-19-git-send-email-tytso@mit.edu>
- <1223525160-9887-20-git-send-email-tytso@mit.edu>
- <1223525160-9887-21-git-send-email-tytso@mit.edu>
- <1223525160-9887-22-git-send-email-tytso@mit.edu>
- <1223525160-9887-23-git-send-email-tytso@mit.edu>
- <1223525160-9887-24-git-send-email-tytso@mit.edu>
- <1223525160-9887-25-git-send-email-tytso@mit.edu>
- <1223525160-9887-26-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Linus Torvalds <torvalds@linux-foundation.org>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 29/42] ext4: Use readahead when reading an inode from
+	the inode table
+Date: Thu, 9 Oct 2008 13:48:34 +0530
+Message-ID: <20081009081834.GD9918@skywalker>
+References: <1223525160-9887-21-git-send-email-tytso@mit.edu> <1223525160-9887-22-git-send-email-tytso@mit.edu> <1223525160-9887-23-git-send-email-tytso@mit.edu> <1223525160-9887-24-git-send-email-tytso@mit.edu> <1223525160-9887-25-git-send-email-tytso@mit.edu> <1223525160-9887-26-git-send-email-tytso@mit.edu> <1223525160-9887-27-git-send-email-tytso@mit.edu> <1223525160-9887-28-git-send-email-tytso@mit.edu> <1223525160-9887-29-git-send-email-tytso@mit.edu> <1223525160-9887-30-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:44272 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757755AbYJIEaU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:30:20 -0400
-In-Reply-To: <1223525160-9887-26-git-send-email-tytso@mit.edu>
+Received: from e28smtp01.in.ibm.com ([59.145.155.1]:41232 "EHLO
+	e28esmtp01.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755890AbYJIISs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 04:18:48 -0400
+Content-Disposition: inline
+In-Reply-To: <1223525160-9887-30-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a port of a patch from Linus which fixes a 200+ byte stack
-usage problem in ext4_get_parent().
+On Thu, Oct 09, 2008 at 12:05:47AM -0400, Theodore Ts'o wrote:
+> With modern hard drives, reading 64k takes roughly the same time as
+> reading a 4k block.  So request readahead for adjacent inode table
+> blocks to reduce the time it takes when iterating over directories
+> (especially when doing this in htree sort order) in a cold cache case.
+> With this patch, the time it takes to run "git status" on a kernel
+> tree after flushing the caches via "echo 3 > /proc/sys/vm/drop_caches"
+> is reduced by 21%.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/ext4.h    |    2 +
+>  fs/ext4/ext4_sb.h |    1 +
+>  fs/ext4/inode.c   |  134 +++++++++++++++++++++++++---------------------------
+>  fs/ext4/super.c   |   27 ++++++++++-
+>  4 files changed, 92 insertions(+), 72 deletions(-)
 
-It's more efficient to pass down only the actual parts of the dentry
-that matter: the parent inode and the name, instead of allocating a
-struct dentry on the stack.
 
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/namei.c |   68 ++++++++++++++++++++++++++----------------------------
- 1 files changed, 33 insertions(+), 35 deletions(-)
+Need documentation for the new mount option and the /proc tunable.
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index a1f72d2..5295a92 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -159,7 +159,7 @@ static void dx_set_count(struct dx_entry *entries, unsigned value);
- static void dx_set_limit(struct dx_entry *entries, unsigned value);
- static unsigned dx_root_limit(struct inode *dir, unsigned infosize);
- static unsigned dx_node_limit(struct inode *dir);
--static struct dx_frame *dx_probe(struct dentry *dentry,
-+static struct dx_frame *dx_probe(const struct qstr *d_name,
- 				 struct inode *dir,
- 				 struct dx_hash_info *hinfo,
- 				 struct dx_frame *frame,
-@@ -177,8 +177,10 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
- 				 struct dx_frame *frame,
- 				 struct dx_frame *frames,
- 				 __u32 *start_hash);
--static struct buffer_head * ext4_dx_find_entry(struct dentry *dentry,
--		       struct ext4_dir_entry_2 **res_dir, int *err);
-+static struct buffer_head * ext4_dx_find_entry(struct inode *dir,
-+		const struct qstr *d_name,
-+		struct ext4_dir_entry_2 **res_dir,
-+		int *err);
- static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 			     struct inode *inode);
- 
-@@ -345,7 +347,7 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
-  * back to userspace.
-  */
- static struct dx_frame *
--dx_probe(struct dentry *dentry, struct inode *dir,
-+dx_probe(const struct qstr *d_name, struct inode *dir,
- 	 struct dx_hash_info *hinfo, struct dx_frame *frame_in, int *err)
- {
- 	unsigned count, indirect;
-@@ -356,8 +358,6 @@ dx_probe(struct dentry *dentry, struct inode *dir,
- 	u32 hash;
- 
- 	frame->bh = NULL;
--	if (dentry)
--		dir = dentry->d_parent->d_inode;
- 	if (!(bh = ext4_bread (NULL,dir, 0, 0, err)))
- 		goto fail;
- 	root = (struct dx_root *) bh->b_data;
-@@ -373,8 +373,8 @@ dx_probe(struct dentry *dentry, struct inode *dir,
- 	}
- 	hinfo->hash_version = root->info.hash_version;
- 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
--	if (dentry)
--		ext4fs_dirhash(dentry->d_name.name, dentry->d_name.len, hinfo);
-+	if (d_name)
-+		ext4fs_dirhash(d_name->name, d_name->len, hinfo);
- 	hash = hinfo->hash;
- 
- 	if (root->info.unused_flags & 1) {
-@@ -649,7 +649,7 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 	}
- 	hinfo.hash = start_hash;
- 	hinfo.minor_hash = 0;
--	frame = dx_probe(NULL, dir_file->f_path.dentry->d_inode, &hinfo, frames, &err);
-+	frame = dx_probe(NULL, dir, &hinfo, frames, &err);
- 	if (!frame)
- 		return err;
- 
-@@ -805,15 +805,15 @@ static inline int ext4_match (int len, const char * const name,
-  */
- static inline int search_dirblock(struct buffer_head *bh,
- 				  struct inode *dir,
--				  struct dentry *dentry,
-+				  const struct qstr *d_name,
- 				  unsigned long offset,
- 				  struct ext4_dir_entry_2 ** res_dir)
- {
- 	struct ext4_dir_entry_2 * de;
- 	char * dlimit;
- 	int de_len;
--	const char *name = dentry->d_name.name;
--	int namelen = dentry->d_name.len;
-+	const char *name = d_name->name;
-+	int namelen = d_name->len;
- 
- 	de = (struct ext4_dir_entry_2 *) bh->b_data;
- 	dlimit = bh->b_data + dir->i_sb->s_blocksize;
-@@ -852,7 +852,8 @@ static inline int search_dirblock(struct buffer_head *bh,
-  * The returned buffer_head has ->b_count elevated.  The caller is expected
-  * to brelse() it when appropriate.
-  */
--static struct buffer_head * ext4_find_entry (struct dentry *dentry,
-+static struct buffer_head * ext4_find_entry (struct inode *dir,
-+					const struct qstr *d_name,
- 					struct ext4_dir_entry_2 ** res_dir)
- {
- 	struct super_block *sb;
-@@ -866,16 +867,15 @@ static struct buffer_head * ext4_find_entry (struct dentry *dentry,
- 	int num = 0;
- 	ext4_lblk_t  nblocks;
- 	int i, err;
--	struct inode *dir = dentry->d_parent->d_inode;
- 	int namelen;
- 
- 	*res_dir = NULL;
- 	sb = dir->i_sb;
--	namelen = dentry->d_name.len;
-+	namelen = d_name->len;
- 	if (namelen > EXT4_NAME_LEN)
- 		return NULL;
- 	if (is_dx(dir)) {
--		bh = ext4_dx_find_entry(dentry, res_dir, &err);
-+		bh = ext4_dx_find_entry(dir, d_name, res_dir, &err);
- 		/*
- 		 * On success, or if the error was file not found,
- 		 * return.  Otherwise, fall back to doing a search the
-@@ -928,7 +928,7 @@ restart:
- 			brelse(bh);
- 			goto next;
- 		}
--		i = search_dirblock(bh, dir, dentry,
-+		i = search_dirblock(bh, dir, d_name,
- 			    block << EXT4_BLOCK_SIZE_BITS(sb), res_dir);
- 		if (i == 1) {
- 			EXT4_I(dir)->i_dir_start_lookup = block;
-@@ -962,7 +962,7 @@ cleanup_and_exit:
- 	return ret;
- }
- 
--static struct buffer_head * ext4_dx_find_entry(struct dentry *dentry,
-+static struct buffer_head * ext4_dx_find_entry(struct inode *dir, const struct qstr *d_name,
- 		       struct ext4_dir_entry_2 **res_dir, int *err)
- {
- 	struct super_block * sb;
-@@ -973,14 +973,13 @@ static struct buffer_head * ext4_dx_find_entry(struct dentry *dentry,
- 	struct buffer_head *bh;
- 	ext4_lblk_t block;
- 	int retval;
--	int namelen = dentry->d_name.len;
--	const u8 *name = dentry->d_name.name;
--	struct inode *dir = dentry->d_parent->d_inode;
-+	int namelen = d_name->len;
-+	const u8 *name = d_name->name;
- 
- 	sb = dir->i_sb;
- 	/* NFS may look up ".." - look at dx_root directory block */
- 	if (namelen > 2 || name[0] != '.'||(name[1] != '.' && name[1] != '\0')){
--		if (!(frame = dx_probe(dentry, NULL, &hinfo, frames, err)))
-+		if (!(frame = dx_probe(d_name, dir, &hinfo, frames, err)))
- 			return NULL;
- 	} else {
- 		frame = frames;
-@@ -1041,7 +1040,7 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, stru
- 	if (dentry->d_name.len > EXT4_NAME_LEN)
- 		return ERR_PTR(-ENAMETOOLONG);
- 
--	bh = ext4_find_entry(dentry, &de);
-+	bh = ext4_find_entry(dir, &dentry->d_name, &de);
- 	inode = NULL;
- 	if (bh) {
- 		unsigned long ino = le32_to_cpu(de->inode);
-@@ -1064,15 +1063,14 @@ struct dentry *ext4_get_parent(struct dentry *child)
- 	unsigned long ino;
- 	struct dentry *parent;
- 	struct inode *inode;
--	struct dentry dotdot;
-+	static const struct qstr dotdot = {
-+		.name = "..",
-+		.len = 2,
-+	};
- 	struct ext4_dir_entry_2 * de;
- 	struct buffer_head *bh;
- 
--	dotdot.d_name.name = "..";
--	dotdot.d_name.len = 2;
--	dotdot.d_parent = child; /* confusing, isn't it! */
--
--	bh = ext4_find_entry(&dotdot, &de);
-+	bh = ext4_find_entry(child->d_inode, &dotdot, &de);
- 	inode = NULL;
- 	if (!bh)
- 		return ERR_PTR(-ENOENT);
-@@ -1508,7 +1506,7 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 	struct ext4_dir_entry_2 *de;
- 	int err;
- 
--	frame = dx_probe(dentry, NULL, &hinfo, frames, &err);
-+	frame = dx_probe(&dentry->d_name, dir, &hinfo, frames, &err);
- 	if (!frame)
- 		return err;
- 	entries = frame->entries;
-@@ -2089,7 +2087,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- 		return PTR_ERR(handle);
- 
- 	retval = -ENOENT;
--	bh = ext4_find_entry(dentry, &de);
-+	bh = ext4_find_entry(dir, &dentry->d_name, &de);
- 	if (!bh)
- 		goto end_rmdir;
- 
-@@ -2151,7 +2149,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- 		handle->h_sync = 1;
- 
- 	retval = -ENOENT;
--	bh = ext4_find_entry(dentry, &de);
-+	bh = ext4_find_entry(dir, &dentry->d_name, &de);
- 	if (!bh)
- 		goto end_unlink;
- 
-@@ -2312,7 +2310,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (IS_DIRSYNC(old_dir) || IS_DIRSYNC(new_dir))
- 		handle->h_sync = 1;
- 
--	old_bh = ext4_find_entry(old_dentry, &old_de);
-+	old_bh = ext4_find_entry(old_dir, &old_dentry->d_name, &old_de);
- 	/*
- 	 *  Check for inode number is _not_ due to possible IO errors.
- 	 *  We might rmdir the source, keep it as pwd of some process
-@@ -2325,7 +2323,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		goto end_rename;
- 
- 	new_inode = new_dentry->d_inode;
--	new_bh = ext4_find_entry(new_dentry, &new_de);
-+	new_bh = ext4_find_entry(new_dir, &new_dentry->d_name, &new_de);
- 	if (new_bh) {
- 		if (!new_inode) {
- 			brelse(new_bh);
-@@ -2392,7 +2390,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		struct buffer_head *old_bh2;
- 		struct ext4_dir_entry_2 *old_de2;
- 
--		old_bh2 = ext4_find_entry(old_dentry, &old_de2);
-+		old_bh2 = ext4_find_entry(old_dir, &old_dentry->d_name, &old_de2);
- 		if (old_bh2) {
- 			retval = ext4_delete_entry(handle, old_dir,
- 						   old_de2, old_bh2);
--- 
-1.5.6.1.205.ge2c7.dirty
 
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 163c445..922d187 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -790,6 +790,8 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+>  #define	EXT4_DEF_RESUID		0
+>  #define	EXT4_DEF_RESGID		0
+> 
+> +#define EXT4_DEF_INODE_READAHEAD_BLKS	32
+> +
+>  /*
+>   * Default mount options
+>   */
+> diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
+> index f92af01..94e0757 100644
+> --- a/fs/ext4/ext4_sb.h
+> +++ b/fs/ext4/ext4_sb.h
+> @@ -52,6 +52,7 @@ struct ext4_sb_info {
+>  	int s_desc_per_block_bits;
+>  	int s_inode_size;
+>  	int s_first_ino;
+> +	unsigned int s_inode_readahead_blks;
+>  	spinlock_t s_next_gen_lock;
+>  	u32 s_next_generation;
+>  	u32 s_hash_seed[4];
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 22fcbb6..ef4ca3d 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3833,41 +3833,6 @@ out_stop:
+>  	ext4_journal_stop(handle);
+>  }
+> 
+> -static ext4_fsblk_t ext4_get_inode_block(struct super_block *sb,
+> -		unsigned long ino, struct ext4_iloc *iloc)
+> -{
+> -	ext4_group_t block_group;
+> -	unsigned long offset;
+> -	ext4_fsblk_t block;
+> -	struct ext4_group_desc *gdp;
+> -
+> -	if (!ext4_valid_inum(sb, ino)) {
+> -		/*
+> -		 * This error is already checked for in namei.c unless we are
+> -		 * looking at an NFS filehandle, in which case no error
+> -		 * report is needed
+> -		 */
+> -		return 0;
+> -	}
+> -
+> -	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
+> -	gdp = ext4_get_group_desc(sb, block_group, NULL);
+> -	if (!gdp)
+> -		return 0;
+> -
+> -	/*
+> -	 * Figure out the offset within the block group inode table
+> -	 */
+> -	offset = ((ino - 1) % EXT4_INODES_PER_GROUP(sb)) *
+> -		EXT4_INODE_SIZE(sb);
+> -	block = ext4_inode_table(sb, gdp) +
+> -		(offset >> EXT4_BLOCK_SIZE_BITS(sb));
+> -
+> -	iloc->block_group = block_group;
+> -	iloc->offset = offset & (EXT4_BLOCK_SIZE(sb) - 1);
+> -	return block;
+> -}
+> -
+>  /*
+>   * ext4_get_inode_loc returns with an extra refcount against the inode's
+>   * underlying buffer_head on success. If 'in_mem' is true, we have all
+> @@ -3877,19 +3842,35 @@ static ext4_fsblk_t ext4_get_inode_block(struct super_block *sb,
+>  static int __ext4_get_inode_loc(struct inode *inode,
+>  				struct ext4_iloc *iloc, int in_mem)
+>  {
+> -	ext4_fsblk_t block;
+> -	struct buffer_head *bh;
+> +	struct ext4_group_desc	*gdp;
+> +	struct buffer_head	*bh;
+> +	struct super_block	*sb = inode->i_sb;
+> +	ext4_fsblk_t		block;
+> +	int			inodes_per_block, inode_offset;
+> +
+> +	iloc->bh = 0;
+> +	if (!ext4_valid_inum(sb, inode->i_ino))
+> +		return -EIO;
+> 
+> -	block = ext4_get_inode_block(inode->i_sb, inode->i_ino, iloc);
+> -	if (!block)
+> +	iloc->block_group = (inode->i_ino - 1) / EXT4_INODES_PER_GROUP(sb);
+> +	gdp = ext4_get_group_desc(sb, iloc->block_group, NULL);
+> +	if (!gdp)
+>  		return -EIO;
+> 
+> -	bh = sb_getblk(inode->i_sb, block);
+> +	/*
+> +	 * Figure out the offset within the block group inode table
+> +	 */
+> +	inodes_per_block = (EXT4_BLOCK_SIZE(sb) / EXT4_INODE_SIZE(sb));
+> +	inode_offset = ((inode->i_ino - 1) %
+> +			EXT4_INODES_PER_GROUP(sb));
+> +	block = ext4_inode_table(sb, gdp) + (inode_offset / inodes_per_block);
+> +	iloc->offset = (inode_offset % inodes_per_block) * EXT4_INODE_SIZE(sb);
+> +
+> +	bh = sb_getblk(sb, block);
+>  	if (!bh) {
+> -		ext4_error (inode->i_sb, "ext4_get_inode_loc",
+> -				"unable to read inode block - "
+> -				"inode=%lu, block=%llu",
+> -				 inode->i_ino, block);
+> +		ext4_error(sb, "ext4_get_inode_loc", "unable to read "
+> +			   "inode block - inode=%lu, block=%llu",
+> +			   inode->i_ino, block);
+>  		return -EIO;
+>  	}
+>  	if (!buffer_uptodate(bh)) {
+> @@ -3917,28 +3898,12 @@ static int __ext4_get_inode_loc(struct inode *inode,
+>  		 */
+>  		if (in_mem) {
+>  			struct buffer_head *bitmap_bh;
+> -			struct ext4_group_desc *desc;
+> -			int inodes_per_buffer;
+> -			int inode_offset, i;
+> -			ext4_group_t block_group;
+> -			int start;
+> -
+> -			block_group = (inode->i_ino - 1) /
+> -					EXT4_INODES_PER_GROUP(inode->i_sb);
+> -			inodes_per_buffer = bh->b_size /
+> -				EXT4_INODE_SIZE(inode->i_sb);
+> -			inode_offset = ((inode->i_ino - 1) %
+> -					EXT4_INODES_PER_GROUP(inode->i_sb));
+> -			start = inode_offset & ~(inodes_per_buffer - 1);
+> +			int i, start;
+> 
+> -			/* Is the inode bitmap in cache? */
+> -			desc = ext4_get_group_desc(inode->i_sb,
+> -						block_group, NULL);
+> -			if (!desc)
+> -				goto make_io;
+> +			start = inode_offset & ~(inodes_per_block - 1);
+> 
+> -			bitmap_bh = sb_getblk(inode->i_sb,
+> -				ext4_inode_bitmap(inode->i_sb, desc));
+> +			/* Is the inode bitmap in cache? */
+> +			bitmap_bh = sb_getblk(sb, ext4_inode_bitmap(sb, gdp));
+>  			if (!bitmap_bh)
+>  				goto make_io;
+> 
+> @@ -3951,14 +3916,14 @@ static int __ext4_get_inode_loc(struct inode *inode,
+>  				brelse(bitmap_bh);
+>  				goto make_io;
+>  			}
+> -			for (i = start; i < start + inodes_per_buffer; i++) {
+> +			for (i = start; i < start + inodes_per_block; i++) {
+>  				if (i == inode_offset)
+>  					continue;
+>  				if (ext4_test_bit(i, bitmap_bh->b_data))
+>  					break;
+>  			}
+>  			brelse(bitmap_bh);
+> -			if (i == start + inodes_per_buffer) {
+> +			if (i == start + inodes_per_block) {
+>  				/* all other inodes are free, so skip I/O */
+>  				memset(bh->b_data, 0, bh->b_size);
+>  				set_buffer_uptodate(bh);
+> @@ -3969,6 +3934,36 @@ static int __ext4_get_inode_loc(struct inode *inode,
+> 
+>  make_io:
+>  		/*
+> +		 * If we need to do any I/O, try to pre-readahead extra
+> +		 * blocks from the inode table.
+> +		 */
+> +		if (EXT4_SB(sb)->s_inode_readahead_blks) {
+> +			ext4_fsblk_t b, end, table;
+> +			unsigned num;
+> +
+> +			table = ext4_inode_table(sb, gdp);
+> +			/* Make sure s_inode_readahead_blks is a power of 2 */
+> +			while (EXT4_SB(sb)->s_inode_readahead_blks &
+> +			       (EXT4_SB(sb)->s_inode_readahead_blks-1))
+> +				EXT4_SB(sb)->s_inode_readahead_blks = 
+> +				   (EXT4_SB(sb)->s_inode_readahead_blks &
+> +				    (EXT4_SB(sb)->s_inode_readahead_blks-1));
+> +			b = block & ~(EXT4_SB(sb)->s_inode_readahead_blks-1);
+> +			if (table > b)
+> +				b = table;
+> +			end = b + EXT4_SB(sb)->s_inode_readahead_blks;
+> +			num = EXT4_INODES_PER_GROUP(sb);
+> +			if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+> +				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
+> +				num -= le16_to_cpu(gdp->bg_itable_unused);
+> +			table += num / inodes_per_block;
+> +			if (end > table)
+> +				end = table;
+> +			while (b <= end)
+> +				sb_breadahead(sb, b++);
+> +		}
+> +
+> +		/*
+>  		 * There are other valid inodes in the buffer, this inode
+>  		 * has in-inode xattrs, or we don't have this inode in memory.
+>  		 * Read the block from disk.
+> @@ -3978,10 +3973,9 @@ make_io:
+>  		submit_bh(READ_META, bh);
+>  		wait_on_buffer(bh);
+>  		if (!buffer_uptodate(bh)) {
+> -			ext4_error(inode->i_sb, "ext4_get_inode_loc",
+> -					"unable to read inode block - "
+> -					"inode=%lu, block=%llu",
+> -					inode->i_ino, block);
+> +			ext4_error(sb, __func__,
+> +				   "unable to read inode block - inode=%lu, "
+> +				   "block=%llu", inode->i_ino, block);
+>  			brelse(bh);
+>  			return -EIO;
+>  		}
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 9f5468f..6583aee 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -515,8 +515,10 @@ static void ext4_put_super(struct super_block *sb)
+>  		mark_buffer_dirty(sbi->s_sbh);
+>  		ext4_commit_super(sb, es, 1);
+>  	}
+> -	if (sbi->s_proc)
+> +	if (sbi->s_proc) {
+> +		remove_proc_entry("inode_readahead_blks", sbi->s_proc);
+>  		remove_proc_entry(sb->s_id, ext4_proc_root);
+> +	}
+> 
+>  	for (i = 0; i < sbi->s_gdb_count; i++)
+>  		brelse(sbi->s_group_desc[i]);
+> @@ -779,6 +781,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+>  	else if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
+>  		seq_puts(seq, ",data=writeback");
+> 
+> +	if (sbi->s_inode_readahead_blks != EXT4_DEF_INODE_READAHEAD_BLKS)
+> +		seq_printf(seq, ",inode_readahead_blks=%u",
+> +			   sbi->s_inode_readahead_blks);
+> +
+>  	ext4_show_quota_options(seq, sb);
+>  	return 0;
+>  }
+> @@ -913,6 +919,7 @@ enum {
+>  	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
+>  	Opt_grpquota, Opt_extents, Opt_noextents, Opt_i_version,
+>  	Opt_mballoc, Opt_nomballoc, Opt_stripe, Opt_delalloc, Opt_nodelalloc,
+> +	Opt_inode_readahead_blks
+>  };
+> 
+>  static match_table_t tokens = {
+> @@ -973,6 +980,7 @@ static match_table_t tokens = {
+>  	{Opt_resize, "resize"},
+>  	{Opt_delalloc, "delalloc"},
+>  	{Opt_nodelalloc, "nodelalloc"},
+> +	{Opt_inode_readahead_blks, "inode_readahead_blks=%u"},
+>  	{Opt_err, NULL},
+>  };
+> 
+> @@ -1381,6 +1389,13 @@ set_qf_format:
+>  		case Opt_delalloc:
+>  			set_opt(sbi->s_mount_opt, DELALLOC);
+>  			break;
+> +		case Opt_inode_readahead_blks:
+> +			if (match_int(&args[0], &option))
+> +				return 0;
+> +			if (option < 0 || option > (1 << 30))
+> +				return 0;
+> +			sbi->s_inode_readahead_blks = option;
+> +			break;
+>  		default:
+>  			printk(KERN_ERR
+>  			       "EXT4-fs: Unrecognized mount option \"%s\" "
+> @@ -1938,6 +1953,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	sbi->s_mount_opt = 0;
+>  	sbi->s_resuid = EXT4_DEF_RESUID;
+>  	sbi->s_resgid = EXT4_DEF_RESGID;
+> +	sbi->s_inode_readahead_blks = EXT4_DEF_INODE_READAHEAD_BLKS;
+>  	sbi->s_sb_block = sb_block;
+> 
+>  	unlock_kernel();
+> @@ -2234,6 +2250,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>  	if (ext4_proc_root)
+>  		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
+> 
+> +	if (sbi->s_proc)
+> +		proc_create_data("inode_readahead_blks", 0644, sbi->s_proc,
+> +				 &ext4_ui_proc_fops,
+> +				 &sbi->s_inode_readahead_blks);
+> +
+>  	bgl_lock_init(&sbi->s_blockgroup_lock);
+> 
+>  	for (i = 0; i < db_count; i++) {
+> @@ -2513,8 +2534,10 @@ failed_mount2:
+>  		brelse(sbi->s_group_desc[i]);
+>  	kfree(sbi->s_group_desc);
+>  failed_mount:
+> -	if (sbi->s_proc)
+> +	if (sbi->s_proc) {
+> +		remove_proc_entry("inode_readahead_blks", sbi->s_proc);
+>  		remove_proc_entry(sb->s_id, ext4_proc_root);
+> +	}
+>  #ifdef CONFIG_QUOTA
+>  	for (i = 0; i < MAXQUOTAS; i++)
+>  		kfree(sbi->s_qf_names[i]);
+> -- 
+> 1.5.6.1.205.ge2c7.dirty
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
