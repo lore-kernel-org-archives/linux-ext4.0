@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 12/42] ext4: Don't add the inode to journal handle until after the block is allocated
-Date: Thu,  9 Oct 2008 00:05:30 -0400
-Message-ID: <1223525160-9887-13-git-send-email-tytso@mit.edu>
+Subject: [PATCH 24/42] ext4: use percpu data structures for lg_prealloc_list
+Date: Thu,  9 Oct 2008 00:05:42 -0400
+Message-ID: <1223525160-9887-25-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -14,102 +14,69 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-10-git-send-email-tytso@mit.edu>
  <1223525160-9887-11-git-send-email-tytso@mit.edu>
  <1223525160-9887-12-git-send-email-tytso@mit.edu>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
+ <1223525160-9887-13-git-send-email-tytso@mit.edu>
+ <1223525160-9887-14-git-send-email-tytso@mit.edu>
+ <1223525160-9887-15-git-send-email-tytso@mit.edu>
+ <1223525160-9887-16-git-send-email-tytso@mit.edu>
+ <1223525160-9887-17-git-send-email-tytso@mit.edu>
+ <1223525160-9887-18-git-send-email-tytso@mit.edu>
+ <1223525160-9887-19-git-send-email-tytso@mit.edu>
+ <1223525160-9887-20-git-send-email-tytso@mit.edu>
+ <1223525160-9887-21-git-send-email-tytso@mit.edu>
+ <1223525160-9887-22-git-send-email-tytso@mit.edu>
+ <1223525160-9887-23-git-send-email-tytso@mit.edu>
+ <1223525160-9887-24-git-send-email-tytso@mit.edu>
+Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54486 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54470 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757463AbYJIEGK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:10 -0400
-In-Reply-To: <1223525160-9887-12-git-send-email-tytso@mit.edu>
+	with ESMTP id S1757432AbYJIEGI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:08 -0400
+In-Reply-To: <1223525160-9887-24-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: Eric Sandeen <sandeen@redhat.com>
 
-Make sure we don't add the inode to the journal handle until after the
-block allocation, so that a journal commit will not include the inode in
-case of block allocation failure.
+lg_prealloc_list seems to cry out for a per-cpu data structure; on a large
+smp system I think this should be better.  I've lightly tested this change
+on a 4-cpu system.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Acked-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |    2 +-
- fs/ext4/inode.c  |   36 +++++++++++++++---------------------
- 2 files changed, 16 insertions(+), 22 deletions(-)
+ fs/ext4/mballoc.c |   13 +++++--------
+ 1 files changed, 5 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 87b660b..02068fa 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -2060,7 +2060,7 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 	/*
- 	 * Account for the allocated meta blocks
- 	 */
--	if (!(*errp)) {
-+	if (!(*errp) && EXT4_I(inode)->i_delalloc_reserved_flag) {
- 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 		EXT4_I(inode)->i_allocated_meta_blocks += *count;
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index b1a6a73..b567e71 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2170,18 +2170,24 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
- 	handle_t *handle = NULL;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index af48548..01a7daa 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2541,17 +2541,16 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	sbi->s_mb_history_filter = EXT4_MB_HISTORY_DEFAULT;
+ 	sbi->s_mb_group_prealloc = MB_DEFAULT_GROUP_PREALLOC;
  
- 	handle = ext4_journal_current_handle();
--	if (!handle) {
--		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
--				   bh_result, 0, 0, 0);
--		BUG_ON(!ret);
--	} else {
--		ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
--				   bh_result, create, 0, EXT4_DELALLOC_RSVED);
--	}
--
-+	BUG_ON(!handle);
-+	ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
-+			bh_result, create, 0, EXT4_DELALLOC_RSVED);
- 	if (ret > 0) {
-+
- 		bh_result->b_size = (ret << inode->i_blkbits);
+-	i = sizeof(struct ext4_locality_group) * nr_cpu_ids;
+-	sbi->s_locality_groups = kmalloc(i, GFP_KERNEL);
++	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+ 	if (sbi->s_locality_groups == NULL) {
+ 		clear_opt(sbi->s_mount_opt, MBALLOC);
+ 		kfree(sbi->s_mb_offsets);
+ 		kfree(sbi->s_mb_maxs);
+ 		return -ENOMEM;
+ 	}
+-	for (i = 0; i < nr_cpu_ids; i++) {
++	for_each_possible_cpu(i) {
+ 		struct ext4_locality_group *lg;
+-		lg = &sbi->s_locality_groups[i];
++		lg = per_cpu_ptr(sbi->s_locality_groups, i);
+ 		mutex_init(&lg->lg_mutex);
+ 		for (j = 0; j < PREALLOC_TB_SIZE; j++)
+ 			INIT_LIST_HEAD(&lg->lg_prealloc_list[j]);
+@@ -2648,8 +2647,7 @@ int ext4_mb_release(struct super_block *sb)
+ 				atomic_read(&sbi->s_mb_discarded));
+ 	}
  
-+		if (ext4_should_order_data(inode)) {
-+			int retval;
-+			retval = ext4_jbd2_file_inode(handle, inode);
-+			if (retval)
-+				/*
-+				 * Failed to add inode for ordered
-+				 * mode. Don't update file size
-+				 */
-+				return retval;
-+		}
-+
- 		/*
- 		 * Update on-disk size along with block allocation
- 		 * we don't use 'extend_disksize' as size may change
-@@ -2407,18 +2413,6 @@ restart_loop:
- 			dump_stack();
- 			goto out_writepages;
- 		}
--		if (ext4_should_order_data(inode)) {
--			/*
--			 * With ordered mode we need to add
--			 * the inode to the journal handl
--			 * when we do block allocation.
--			 */
--			ret = ext4_jbd2_file_inode(handle, inode);
--			if (ret) {
--				ext4_journal_stop(handle);
--				goto out_writepages;
--			}
--		}
- 
- 		to_write -= wbc->nr_to_write;
- 		ret = mpage_da_writepages(mapping, wbc,
--- 
-1.5.6.1.205.ge2c7.dirty
-
+-	kfree(sbi->s_locality_groups);
