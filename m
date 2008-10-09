@@ -1,355 +1,106 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 29/42] ext4: Use readahead when reading an inode from
-	the inode table
-Date: Thu, 9 Oct 2008 13:48:34 +0530
-Message-ID: <20081009081834.GD9918@skywalker>
-References: <1223525160-9887-21-git-send-email-tytso@mit.edu> <1223525160-9887-22-git-send-email-tytso@mit.edu> <1223525160-9887-23-git-send-email-tytso@mit.edu> <1223525160-9887-24-git-send-email-tytso@mit.edu> <1223525160-9887-25-git-send-email-tytso@mit.edu> <1223525160-9887-26-git-send-email-tytso@mit.edu> <1223525160-9887-27-git-send-email-tytso@mit.edu> <1223525160-9887-28-git-send-email-tytso@mit.edu> <1223525160-9887-29-git-send-email-tytso@mit.edu> <1223525160-9887-30-git-send-email-tytso@mit.edu>
+From: Adrian Bunk <bunk@kernel.org>
+Subject: Re: [RFC] Btrfs mainline plans
+Date: Thu, 9 Oct 2008 11:22:34 +0300
+Message-ID: <20081009082234.GA17013@cs181140183.pp.htv.fi>
+References: <1222717460.30627.56.camel@think.oraclecorp.com> <20081005141113.GA6132@us.ibm.com> <20081005150957.GC12047@cs181140183.pp.htv.fi> <200810081433.32766.phillips@phunq.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Cc: "Serge E. Hallyn" <serue@us.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Chris Mason <chris.mason@oracle.com>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+To: Daniel Phillips <phillips@phunq.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp01.in.ibm.com ([59.145.155.1]:41232 "EHLO
-	e28esmtp01.in.ibm.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755890AbYJIISs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 04:18:48 -0400
+Received: from smtp6.pp.htv.fi ([213.243.153.40]:34863 "EHLO smtp6.pp.htv.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750933AbYJIIXP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 9 Oct 2008 04:23:15 -0400
 Content-Disposition: inline
-In-Reply-To: <1223525160-9887-30-git-send-email-tytso@mit.edu>
+In-Reply-To: <200810081433.32766.phillips@phunq.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 09, 2008 at 12:05:47AM -0400, Theodore Ts'o wrote:
-> With modern hard drives, reading 64k takes roughly the same time as
-> reading a 4k block.  So request readahead for adjacent inode table
-> blocks to reduce the time it takes when iterating over directories
-> (especially when doing this in htree sort order) in a cold cache case.
-> With this patch, the time it takes to run "git status" on a kernel
-> tree after flushing the caches via "echo 3 > /proc/sys/vm/drop_caches"
-> is reduced by 21%.
+On Wed, Oct 08, 2008 at 02:33:32PM -0700, Daniel Phillips wrote:
+> On Sunday 05 October 2008 08:09, Adrian Bunk wrote:
+> > "accelerate its development and will broaden its developer base" is not 
+> > about users/testers but about people doing code development.
+> > 
+> > For people wanting to try WIP code you don't need it in mainline.
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h    |    2 +
->  fs/ext4/ext4_sb.h |    1 +
->  fs/ext4/inode.c   |  134 +++++++++++++++++++++++++---------------------------
->  fs/ext4/super.c   |   27 ++++++++++-
->  4 files changed, 92 insertions(+), 72 deletions(-)
+> But it saves time for the user, who does not have to run around chasing
+> links, carefully checking for a kernel match, downloading, patching,
+> building and installing a single purpose kernel, and bringing it up on
+> a machine that would probably have only required one click on the new
+> filesystem option otherwise.  The considerable time thus saved can be
+> invested profitably in running test cases and filing bug reports.
+
+Bug reports against a 3-6 months old snapshot of a filesystem being 
+under heavy development.
+
+Ted said back in August in the announcement of an ext4 patchset:
+
+"As before I've also released updated the patch set vs. the 2.6.26 stock
+ kernel, for those people who don't want to play with development 
+ kernels but who still want to test out ext4." [1]
+
+When running stable kernels you still have to patch, build and install
+a single purpose kernel for testing ext4 although ext4 is in mainline.
+
+>...
+> > This is not meant as a statement on the quality of ext4 or btrfs, or any 
+> > comparison of the development times of ext4 and btrfs, but for ext4 the 
+> > advantages Andrew thinks would happen with an early btrfs merge do not 
+> > seem to have happened.
+> 
+> Are you sure about that?  I see 33 messages on linux-ext4 yesterday,
+> from a broad range of contributors.  Versus eight from a much narrower
+> range of contributors, Oct 4 a year ago.
+
+There are lies, damn lies, and statistics.  ;)
+
+Single day statistics about mailing list postings are not very good
+indicators for anything.
+
+And since linux-ext4 is for all of ext2/ext3/ext4 the data you gave 
+could equally be used to prove that ext3 recently became much more
+buggy or that ext2 development vastly increased...
+
+> There is little question that an early merge helps both developers and
+> users employ their time more efficiently,
+
+Regarding users see my comment above.
+
+Regarding developers it would be interesting to hear some experiences 
+from ext4 developers about their experiences (or get a pointer to them 
+in case I missed that they already expressed it somewhere).
+
+> once a project is past the
+> point where we wonder about its value and/or viability.  In my opinion,
+> Btrfs clearly has both.
+>...
+
+2 years ago ext4 was in a similar situation of being regarded as an 
+important future filesystem.
+
+> Regards,
+> 
+> Daniel
+
+cu
+Adrian
+
+BTW: My comments are not in any way meant against btrfs or ext4.
+     I just question the advantages of merging them early.
 
 
-Need documentation for the new mount option and the /proc tunable.
+[1] http://lwn.net/Articles/294784/
 
+-- 
 
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 163c445..922d187 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -790,6 +790,8 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
->  #define	EXT4_DEF_RESUID		0
->  #define	EXT4_DEF_RESGID		0
-> 
-> +#define EXT4_DEF_INODE_READAHEAD_BLKS	32
-> +
->  /*
->   * Default mount options
->   */
-> diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-> index f92af01..94e0757 100644
-> --- a/fs/ext4/ext4_sb.h
-> +++ b/fs/ext4/ext4_sb.h
-> @@ -52,6 +52,7 @@ struct ext4_sb_info {
->  	int s_desc_per_block_bits;
->  	int s_inode_size;
->  	int s_first_ino;
-> +	unsigned int s_inode_readahead_blks;
->  	spinlock_t s_next_gen_lock;
->  	u32 s_next_generation;
->  	u32 s_hash_seed[4];
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 22fcbb6..ef4ca3d 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -3833,41 +3833,6 @@ out_stop:
->  	ext4_journal_stop(handle);
->  }
-> 
-> -static ext4_fsblk_t ext4_get_inode_block(struct super_block *sb,
-> -		unsigned long ino, struct ext4_iloc *iloc)
-> -{
-> -	ext4_group_t block_group;
-> -	unsigned long offset;
-> -	ext4_fsblk_t block;
-> -	struct ext4_group_desc *gdp;
-> -
-> -	if (!ext4_valid_inum(sb, ino)) {
-> -		/*
-> -		 * This error is already checked for in namei.c unless we are
-> -		 * looking at an NFS filehandle, in which case no error
-> -		 * report is needed
-> -		 */
-> -		return 0;
-> -	}
-> -
-> -	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
-> -	gdp = ext4_get_group_desc(sb, block_group, NULL);
-> -	if (!gdp)
-> -		return 0;
-> -
-> -	/*
-> -	 * Figure out the offset within the block group inode table
-> -	 */
-> -	offset = ((ino - 1) % EXT4_INODES_PER_GROUP(sb)) *
-> -		EXT4_INODE_SIZE(sb);
-> -	block = ext4_inode_table(sb, gdp) +
-> -		(offset >> EXT4_BLOCK_SIZE_BITS(sb));
-> -
-> -	iloc->block_group = block_group;
-> -	iloc->offset = offset & (EXT4_BLOCK_SIZE(sb) - 1);
-> -	return block;
-> -}
-> -
->  /*
->   * ext4_get_inode_loc returns with an extra refcount against the inode's
->   * underlying buffer_head on success. If 'in_mem' is true, we have all
-> @@ -3877,19 +3842,35 @@ static ext4_fsblk_t ext4_get_inode_block(struct super_block *sb,
->  static int __ext4_get_inode_loc(struct inode *inode,
->  				struct ext4_iloc *iloc, int in_mem)
->  {
-> -	ext4_fsblk_t block;
-> -	struct buffer_head *bh;
-> +	struct ext4_group_desc	*gdp;
-> +	struct buffer_head	*bh;
-> +	struct super_block	*sb = inode->i_sb;
-> +	ext4_fsblk_t		block;
-> +	int			inodes_per_block, inode_offset;
-> +
-> +	iloc->bh = 0;
-> +	if (!ext4_valid_inum(sb, inode->i_ino))
-> +		return -EIO;
-> 
-> -	block = ext4_get_inode_block(inode->i_sb, inode->i_ino, iloc);
-> -	if (!block)
-> +	iloc->block_group = (inode->i_ino - 1) / EXT4_INODES_PER_GROUP(sb);
-> +	gdp = ext4_get_group_desc(sb, iloc->block_group, NULL);
-> +	if (!gdp)
->  		return -EIO;
-> 
-> -	bh = sb_getblk(inode->i_sb, block);
-> +	/*
-> +	 * Figure out the offset within the block group inode table
-> +	 */
-> +	inodes_per_block = (EXT4_BLOCK_SIZE(sb) / EXT4_INODE_SIZE(sb));
-> +	inode_offset = ((inode->i_ino - 1) %
-> +			EXT4_INODES_PER_GROUP(sb));
-> +	block = ext4_inode_table(sb, gdp) + (inode_offset / inodes_per_block);
-> +	iloc->offset = (inode_offset % inodes_per_block) * EXT4_INODE_SIZE(sb);
-> +
-> +	bh = sb_getblk(sb, block);
->  	if (!bh) {
-> -		ext4_error (inode->i_sb, "ext4_get_inode_loc",
-> -				"unable to read inode block - "
-> -				"inode=%lu, block=%llu",
-> -				 inode->i_ino, block);
-> +		ext4_error(sb, "ext4_get_inode_loc", "unable to read "
-> +			   "inode block - inode=%lu, block=%llu",
-> +			   inode->i_ino, block);
->  		return -EIO;
->  	}
->  	if (!buffer_uptodate(bh)) {
-> @@ -3917,28 +3898,12 @@ static int __ext4_get_inode_loc(struct inode *inode,
->  		 */
->  		if (in_mem) {
->  			struct buffer_head *bitmap_bh;
-> -			struct ext4_group_desc *desc;
-> -			int inodes_per_buffer;
-> -			int inode_offset, i;
-> -			ext4_group_t block_group;
-> -			int start;
-> -
-> -			block_group = (inode->i_ino - 1) /
-> -					EXT4_INODES_PER_GROUP(inode->i_sb);
-> -			inodes_per_buffer = bh->b_size /
-> -				EXT4_INODE_SIZE(inode->i_sb);
-> -			inode_offset = ((inode->i_ino - 1) %
-> -					EXT4_INODES_PER_GROUP(inode->i_sb));
-> -			start = inode_offset & ~(inodes_per_buffer - 1);
-> +			int i, start;
-> 
-> -			/* Is the inode bitmap in cache? */
-> -			desc = ext4_get_group_desc(inode->i_sb,
-> -						block_group, NULL);
-> -			if (!desc)
-> -				goto make_io;
-> +			start = inode_offset & ~(inodes_per_block - 1);
-> 
-> -			bitmap_bh = sb_getblk(inode->i_sb,
-> -				ext4_inode_bitmap(inode->i_sb, desc));
-> +			/* Is the inode bitmap in cache? */
-> +			bitmap_bh = sb_getblk(sb, ext4_inode_bitmap(sb, gdp));
->  			if (!bitmap_bh)
->  				goto make_io;
-> 
-> @@ -3951,14 +3916,14 @@ static int __ext4_get_inode_loc(struct inode *inode,
->  				brelse(bitmap_bh);
->  				goto make_io;
->  			}
-> -			for (i = start; i < start + inodes_per_buffer; i++) {
-> +			for (i = start; i < start + inodes_per_block; i++) {
->  				if (i == inode_offset)
->  					continue;
->  				if (ext4_test_bit(i, bitmap_bh->b_data))
->  					break;
->  			}
->  			brelse(bitmap_bh);
-> -			if (i == start + inodes_per_buffer) {
-> +			if (i == start + inodes_per_block) {
->  				/* all other inodes are free, so skip I/O */
->  				memset(bh->b_data, 0, bh->b_size);
->  				set_buffer_uptodate(bh);
-> @@ -3969,6 +3934,36 @@ static int __ext4_get_inode_loc(struct inode *inode,
-> 
->  make_io:
->  		/*
-> +		 * If we need to do any I/O, try to pre-readahead extra
-> +		 * blocks from the inode table.
-> +		 */
-> +		if (EXT4_SB(sb)->s_inode_readahead_blks) {
-> +			ext4_fsblk_t b, end, table;
-> +			unsigned num;
-> +
-> +			table = ext4_inode_table(sb, gdp);
-> +			/* Make sure s_inode_readahead_blks is a power of 2 */
-> +			while (EXT4_SB(sb)->s_inode_readahead_blks &
-> +			       (EXT4_SB(sb)->s_inode_readahead_blks-1))
-> +				EXT4_SB(sb)->s_inode_readahead_blks = 
-> +				   (EXT4_SB(sb)->s_inode_readahead_blks &
-> +				    (EXT4_SB(sb)->s_inode_readahead_blks-1));
-> +			b = block & ~(EXT4_SB(sb)->s_inode_readahead_blks-1);
-> +			if (table > b)
-> +				b = table;
-> +			end = b + EXT4_SB(sb)->s_inode_readahead_blks;
-> +			num = EXT4_INODES_PER_GROUP(sb);
-> +			if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
-> +				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
-> +				num -= le16_to_cpu(gdp->bg_itable_unused);
-> +			table += num / inodes_per_block;
-> +			if (end > table)
-> +				end = table;
-> +			while (b <= end)
-> +				sb_breadahead(sb, b++);
-> +		}
-> +
-> +		/*
->  		 * There are other valid inodes in the buffer, this inode
->  		 * has in-inode xattrs, or we don't have this inode in memory.
->  		 * Read the block from disk.
-> @@ -3978,10 +3973,9 @@ make_io:
->  		submit_bh(READ_META, bh);
->  		wait_on_buffer(bh);
->  		if (!buffer_uptodate(bh)) {
-> -			ext4_error(inode->i_sb, "ext4_get_inode_loc",
-> -					"unable to read inode block - "
-> -					"inode=%lu, block=%llu",
-> -					inode->i_ino, block);
-> +			ext4_error(sb, __func__,
-> +				   "unable to read inode block - inode=%lu, "
-> +				   "block=%llu", inode->i_ino, block);
->  			brelse(bh);
->  			return -EIO;
->  		}
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index 9f5468f..6583aee 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -515,8 +515,10 @@ static void ext4_put_super(struct super_block *sb)
->  		mark_buffer_dirty(sbi->s_sbh);
->  		ext4_commit_super(sb, es, 1);
->  	}
-> -	if (sbi->s_proc)
-> +	if (sbi->s_proc) {
-> +		remove_proc_entry("inode_readahead_blks", sbi->s_proc);
->  		remove_proc_entry(sb->s_id, ext4_proc_root);
-> +	}
-> 
->  	for (i = 0; i < sbi->s_gdb_count; i++)
->  		brelse(sbi->s_group_desc[i]);
-> @@ -779,6 +781,10 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
->  	else if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_WRITEBACK_DATA)
->  		seq_puts(seq, ",data=writeback");
-> 
-> +	if (sbi->s_inode_readahead_blks != EXT4_DEF_INODE_READAHEAD_BLKS)
-> +		seq_printf(seq, ",inode_readahead_blks=%u",
-> +			   sbi->s_inode_readahead_blks);
-> +
->  	ext4_show_quota_options(seq, sb);
->  	return 0;
->  }
-> @@ -913,6 +919,7 @@ enum {
->  	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
->  	Opt_grpquota, Opt_extents, Opt_noextents, Opt_i_version,
->  	Opt_mballoc, Opt_nomballoc, Opt_stripe, Opt_delalloc, Opt_nodelalloc,
-> +	Opt_inode_readahead_blks
->  };
-> 
->  static match_table_t tokens = {
-> @@ -973,6 +980,7 @@ static match_table_t tokens = {
->  	{Opt_resize, "resize"},
->  	{Opt_delalloc, "delalloc"},
->  	{Opt_nodelalloc, "nodelalloc"},
-> +	{Opt_inode_readahead_blks, "inode_readahead_blks=%u"},
->  	{Opt_err, NULL},
->  };
-> 
-> @@ -1381,6 +1389,13 @@ set_qf_format:
->  		case Opt_delalloc:
->  			set_opt(sbi->s_mount_opt, DELALLOC);
->  			break;
-> +		case Opt_inode_readahead_blks:
-> +			if (match_int(&args[0], &option))
-> +				return 0;
-> +			if (option < 0 || option > (1 << 30))
-> +				return 0;
-> +			sbi->s_inode_readahead_blks = option;
-> +			break;
->  		default:
->  			printk(KERN_ERR
->  			       "EXT4-fs: Unrecognized mount option \"%s\" "
-> @@ -1938,6 +1953,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	sbi->s_mount_opt = 0;
->  	sbi->s_resuid = EXT4_DEF_RESUID;
->  	sbi->s_resgid = EXT4_DEF_RESGID;
-> +	sbi->s_inode_readahead_blks = EXT4_DEF_INODE_READAHEAD_BLKS;
->  	sbi->s_sb_block = sb_block;
-> 
->  	unlock_kernel();
-> @@ -2234,6 +2250,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	if (ext4_proc_root)
->  		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
-> 
-> +	if (sbi->s_proc)
-> +		proc_create_data("inode_readahead_blks", 0644, sbi->s_proc,
-> +				 &ext4_ui_proc_fops,
-> +				 &sbi->s_inode_readahead_blks);
-> +
->  	bgl_lock_init(&sbi->s_blockgroup_lock);
-> 
->  	for (i = 0; i < db_count; i++) {
-> @@ -2513,8 +2534,10 @@ failed_mount2:
->  		brelse(sbi->s_group_desc[i]);
->  	kfree(sbi->s_group_desc);
->  failed_mount:
-> -	if (sbi->s_proc)
-> +	if (sbi->s_proc) {
-> +		remove_proc_entry("inode_readahead_blks", sbi->s_proc);
->  		remove_proc_entry(sb->s_id, ext4_proc_root);
-> +	}
->  #ifdef CONFIG_QUOTA
->  	for (i = 0; i < MAXQUOTAS; i++)
->  		kfree(sbi->s_qf_names[i]);
-> -- 
-> 1.5.6.1.205.ge2c7.dirty
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+       "Is there not promise of rain?" Ling Tan asked suddenly out
+        of the darkness. There had been need of rain for many days.
+       "Only a promise," Lao Er said.
+                                       Pearl S. Buck - Dragon Seed
+
