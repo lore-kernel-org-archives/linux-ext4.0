@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 42/42] ext4: Rename ext4dev to ext4
-Date: Thu,  9 Oct 2008 00:06:00 -0400
-Message-ID: <1223525160-9887-43-git-send-email-tytso@mit.edu>
+Subject: [PATCH 13/42] ext4: Retry block allocation if we have free blocks left
+Date: Thu,  9 Oct 2008 00:05:31 -0400
+Message-ID: <1223525160-9887-14-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -15,565 +15,185 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-11-git-send-email-tytso@mit.edu>
  <1223525160-9887-12-git-send-email-tytso@mit.edu>
  <1223525160-9887-13-git-send-email-tytso@mit.edu>
- <1223525160-9887-14-git-send-email-tytso@mit.edu>
- <1223525160-9887-15-git-send-email-tytso@mit.edu>
- <1223525160-9887-16-git-send-email-tytso@mit.edu>
- <1223525160-9887-17-git-send-email-tytso@mit.edu>
- <1223525160-9887-18-git-send-email-tytso@mit.edu>
- <1223525160-9887-19-git-send-email-tytso@mit.edu>
- <1223525160-9887-20-git-send-email-tytso@mit.edu>
- <1223525160-9887-21-git-send-email-tytso@mit.edu>
- <1223525160-9887-22-git-send-email-tytso@mit.edu>
- <1223525160-9887-23-git-send-email-tytso@mit.edu>
- <1223525160-9887-24-git-send-email-tytso@mit.edu>
- <1223525160-9887-25-git-send-email-tytso@mit.edu>
- <1223525160-9887-26-git-send-email-tytso@mit.edu>
- <1223525160-9887-27-git-send-email-tytso@mit.edu>
- <1223525160-9887-28-git-send-email-tytso@mit.edu>
- <1223525160-9887-29-git-send-email-tytso@mit.edu>
- <1223525160-9887-30-git-send-email-tytso@mit.edu>
- <1223525160-9887-31-git-send-email-tytso@mit.edu>
- <1223525160-9887-32-git-send-email-tytso@mit.edu>
- <1223525160-9887-33-git-send-email-tytso@mit.edu>
- <1223525160-9887-34-git-send-email-tytso@mit.edu>
- <1223525160-9887-35-git-send-email-tytso@mit.edu>
- <1223525160-9887-36-git-send-email-tytso@mit.edu>
- <1223525160-9887-37-git-send-email-tytso@mit.edu>
- <1223525160-9887-38-git-send-email-tytso@mit.edu>
- <1223525160-9887-39-git-send-email-tytso@mit.edu>
- <1223525160-9887-40-git-send-email-tytso@mit.edu>
- <1223525160-9887-41-git-send-email-tytso@mit.edu>
- <1223525160-9887-42-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54534 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54524 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757604AbYJIEGO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:14 -0400
-In-Reply-To: <1223525160-9887-42-git-send-email-tytso@mit.edu>
+	with ESMTP id S1757610AbYJIEGN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:13 -0400
+In-Reply-To: <1223525160-9887-13-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The ext4 filesystem is getting stable enough that it's time to drop
-the "dev" prefix.  Also remove the requirement for the TEST_FILESYS
-flag.
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
+When we truncate files, the meta-data blocks released are not reused
+untill we commit the truncate transaction.  That means delayed get_block
+request will return ENOSPC even if we have free blocks left.  Force a
+journal commit and retry block allocation if we get ENOSPC with free
+blocks left.
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/Kconfig        |   74 ++++++++++++++++++++++++++--------------------------
- fs/Makefile       |    2 +-
- fs/ext4/Makefile  |   10 +++---
- fs/ext4/acl.h     |    6 ++--
- fs/ext4/ext4_i.h  |    4 +-
- fs/ext4/file.c    |    2 +-
- fs/ext4/inode.c   |    2 +-
- fs/ext4/namei.c   |    6 ++--
- fs/ext4/super.c   |   36 +++++++++----------------
- fs/ext4/symlink.c |    4 +-
- fs/ext4/xattr.c   |    8 +++---
- fs/ext4/xattr.h   |    8 +++---
- 12 files changed, 76 insertions(+), 86 deletions(-)
+ fs/ext4/inode.c |   81 ++++++++++++++++++++++++++++++++++++++----------------
+ 1 files changed, 57 insertions(+), 24 deletions(-)
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index abccb5d..6323e4f 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -136,37 +136,37 @@ config EXT3_FS_SECURITY
- 	  If you are not using a security module that requires using
- 	  extended attributes for file security labels, say N.
- 
--config EXT4DEV_FS
--	tristate "Ext4dev/ext4 extended fs support development (EXPERIMENTAL)"
--	depends on EXPERIMENTAL
-+config EXT4_FS
-+	tristate "The Extended 4 (ext4) filesystem"
- 	select JBD2
- 	select CRC16
- 	help
--	  Ext4dev is a predecessor filesystem of the next generation
--	  extended fs ext4, based on ext3 filesystem code. It will be
--	  renamed ext4 fs later, once ext4dev is mature and stabilized.
-+	  This is the next generation of the ext3 filesystem.
- 
- 	  Unlike the change from ext2 filesystem to ext3 filesystem,
--	  the on-disk format of ext4dev is not the same as ext3 any more:
--	  it is based on extent maps and it supports 48-bit physical block
--	  numbers. These combined on-disk format changes will allow
--	  ext4dev/ext4 to handle more than 16 TB filesystem volumes --
--	  a hard limit that ext3 cannot overcome without changing the
--	  on-disk format.
--
--	  Other than extent maps and 48-bit block numbers, ext4dev also is
--	  likely to have other new features such as persistent preallocation,
--	  high resolution time stamps, and larger file support etc.  These
--	  features will be added to ext4dev gradually.
-+	  the on-disk format of ext4 is not forwards compatible with
-+	  ext3; it is based on extent maps and it supports 48-bit
-+	  physical block numbers.  The ext4 filesystem also supports delayed
-+	  allocation, persistent preallocation, high resolution time stamps,
-+	  and a number of other features to improve performance and speed
-+	  up fsck time.  For more information, please see the web pages at
-+	  http://ext4.wiki.kernel.org.
-+
-+	  The ext4 filesystem will support mounting an ext3
-+	  filesystem; while there will be some performance gains from
-+	  the delayed allocation and inode table readahead, the best
-+	  performance gains will require enabling ext4 features in the
-+	  filesystem, or formating a new filesystem as an ext4
-+	  filesystem initially.
- 
- 	  To compile this file system support as a module, choose M here. The
- 	  module will be called ext4dev.
- 
- 	  If unsure, say N.
- 
--config EXT4DEV_FS_XATTR
--	bool "Ext4dev extended attributes"
--	depends on EXT4DEV_FS
-+config EXT4_FS_XATTR
-+	bool "Ext4 extended attributes"
-+	depends on EXT4_FS
- 	default y
- 	help
- 	  Extended attributes are name:value pairs associated with inodes by
-@@ -175,11 +175,11 @@ config EXT4DEV_FS_XATTR
- 
- 	  If unsure, say N.
- 
--	  You need this for POSIX ACL support on ext4dev/ext4.
-+	  You need this for POSIX ACL support on ext4.
- 
--config EXT4DEV_FS_POSIX_ACL
--	bool "Ext4dev POSIX Access Control Lists"
--	depends on EXT4DEV_FS_XATTR
-+config EXT4_FS_POSIX_ACL
-+	bool "Ext4 POSIX Access Control Lists"
-+	depends on EXT4_FS_XATTR
- 	select FS_POSIX_ACL
- 	help
- 	  POSIX Access Control Lists (ACLs) support permissions for users and
-@@ -190,14 +190,14 @@ config EXT4DEV_FS_POSIX_ACL
- 
- 	  If you don't know what Access Control Lists are, say N
- 
--config EXT4DEV_FS_SECURITY
--	bool "Ext4dev Security Labels"
--	depends on EXT4DEV_FS_XATTR
-+config EXT4_FS_SECURITY
-+	bool "Ext4 Security Labels"
-+	depends on EXT4_FS_XATTR
- 	help
- 	  Security labels support alternative access control models
- 	  implemented by security modules like SELinux.  This option
- 	  enables an extended attribute handler for file security
--	  labels in the ext4dev/ext4 filesystem.
-+	  labels in the ext4 filesystem.
- 
- 	  If you are not using a security module that requires using
- 	  extended attributes for file security labels, say N.
-@@ -240,22 +240,22 @@ config JBD2
- 	help
- 	  This is a generic journaling layer for block devices that support
- 	  both 32-bit and 64-bit block numbers.  It is currently used by
--	  the ext4dev/ext4 filesystem, but it could also be used to add
-+	  the ext4 filesystem, but it could also be used to add
- 	  journal support to other file systems or block devices such
- 	  as RAID or LVM.
- 
--	  If you are using ext4dev/ext4, you need to say Y here. If you are not
--	  using ext4dev/ext4 then you will probably want to say N.
-+	  If you are using ext4, you need to say Y here. If you are not
-+	  using ext4 then you will probably want to say N.
- 
- 	  To compile this device as a module, choose M here. The module will be
--	  called jbd2.  If you are compiling ext4dev/ext4 into the kernel,
-+	  called jbd2.  If you are compiling ext4 into the kernel,
- 	  you cannot compile this code as a module.
- 
- config JBD2_DEBUG
--	bool "JBD2 (ext4dev/ext4) debugging support"
-+	bool "JBD2 (ext4) debugging support"
- 	depends on JBD2 && DEBUG_FS
- 	help
--	  If you are using the ext4dev/ext4 journaled file system (or
-+	  If you are using the ext4 journaled file system (or
- 	  potentially any other filesystem/device using JBD2), this option
- 	  allows you to enable debugging output while the system is running,
- 	  in order to help track down any problems you are having.
-@@ -270,9 +270,9 @@ config JBD2_DEBUG
- config FS_MBCACHE
- # Meta block cache for Extended Attributes (ext2/ext3/ext4)
- 	tristate
--	depends on EXT2_FS_XATTR || EXT3_FS_XATTR || EXT4DEV_FS_XATTR
--	default y if EXT2_FS=y || EXT3_FS=y || EXT4DEV_FS=y
--	default m if EXT2_FS=m || EXT3_FS=m || EXT4DEV_FS=m
-+	depends on EXT2_FS_XATTR || EXT3_FS_XATTR || EXT4_FS_XATTR
-+	default y if EXT2_FS=y || EXT3_FS=y || EXT4_FS=y
-+	default m if EXT2_FS=m || EXT3_FS=m || EXT4_FS=m
- 
- config REISERFS_FS
- 	tristate "Reiserfs support"
-diff --git a/fs/Makefile b/fs/Makefile
-index a1482a5..de404b0 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -69,7 +69,7 @@ obj-$(CONFIG_DLM)		+= dlm/
- # Do not add any filesystems before this line
- obj-$(CONFIG_REISERFS_FS)	+= reiserfs/
- obj-$(CONFIG_EXT3_FS)		+= ext3/ # Before ext2 so root fs can be ext3
--obj-$(CONFIG_EXT4DEV_FS)	+= ext4/ # Before ext2 so root fs can be ext4dev
-+obj-$(CONFIG_EXT4_FS)		+= ext4/ # Before ext2 so root fs can be ext4dev
- obj-$(CONFIG_JBD)		+= jbd/
- obj-$(CONFIG_JBD2)		+= jbd2/
- obj-$(CONFIG_EXT2_FS)		+= ext2/
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index ac6fa8c..a8ff003 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -2,12 +2,12 @@
- # Makefile for the linux ext4-filesystem routines.
- #
- 
--obj-$(CONFIG_EXT4DEV_FS) += ext4dev.o
-+obj-$(CONFIG_EXT4_FS) += ext4.o
- 
--ext4dev-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
-+ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
- 		   ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
- 		   ext4_jbd2.o migrate.o mballoc.o
- 
--ext4dev-$(CONFIG_EXT4DEV_FS_XATTR)	+= xattr.o xattr_user.o xattr_trusted.o
--ext4dev-$(CONFIG_EXT4DEV_FS_POSIX_ACL)	+= acl.o
--ext4dev-$(CONFIG_EXT4DEV_FS_SECURITY)	+= xattr_security.o
-+ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
-+ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
-+ext4-$(CONFIG_EXT4_FS_SECURITY)		+= xattr_security.o
-diff --git a/fs/ext4/acl.h b/fs/ext4/acl.h
-index 4c9948f..cb45257 100644
---- a/fs/ext4/acl.h
-+++ b/fs/ext4/acl.h
-@@ -51,7 +51,7 @@ static inline int ext4_acl_count(size_t size)
- 	}
- }
- 
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 
- /* Value for inode->u.ext4_i.i_acl and inode->u.ext4_i.i_default_acl
-    if the ACL has not been cached */
-@@ -62,7 +62,7 @@ extern int ext4_permission(struct inode *, int);
- extern int ext4_acl_chmod(struct inode *);
- extern int ext4_init_acl(handle_t *, struct inode *, struct inode *);
- 
--#else  /* CONFIG_EXT4DEV_FS_POSIX_ACL */
-+#else  /* CONFIG_EXT4_FS_POSIX_ACL */
- #include <linux/sched.h>
- #define ext4_permission NULL
- 
-@@ -77,5 +77,5 @@ ext4_init_acl(handle_t *handle, struct inode *inode, struct inode *dir)
- {
- 	return 0;
- }
--#endif  /* CONFIG_EXT4DEV_FS_POSIX_ACL */
-+#endif  /* CONFIG_EXT4_FS_POSIX_ACL */
- 
-diff --git a/fs/ext4/ext4_i.h b/fs/ext4/ext4_i.h
-index 2875eec..5c124c0 100644
---- a/fs/ext4/ext4_i.h
-+++ b/fs/ext4/ext4_i.h
-@@ -66,7 +66,7 @@ struct ext4_inode_info {
- 	__u32	i_state;		/* Dynamic state flags for ext4 */
- 
- 	ext4_lblk_t		i_dir_start_lookup;
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	/*
- 	 * Extended attributes can be read independently of the main file
- 	 * data. Taking i_mutex even when reading would cause contention
-@@ -76,7 +76,7 @@ struct ext4_inode_info {
- 	 */
- 	struct rw_semaphore xattr_sem;
- #endif
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	struct posix_acl	*i_acl;
- 	struct posix_acl	*i_default_acl;
- #endif
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 6d5be15..6bd11fb 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -165,7 +165,7 @@ const struct inode_operations ext4_file_inode_operations = {
- 	.truncate	= ext4_truncate,
- 	.setattr	= ext4_setattr,
- 	.getattr	= ext4_getattr,
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	.setxattr	= generic_setxattr,
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a474786..9b4ec9d 100644
+index b567e71..f97b347 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -4041,7 +4041,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 		return inode;
+@@ -1634,6 +1634,7 @@ struct mpage_da_data {
+ 	struct writeback_control *wbc;
+ 	int io_done;
+ 	long pages_written;
++	int retval;
+ };
  
- 	ei = EXT4_I(inode);
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	ei->i_acl = EXT4_ACL_NOT_CACHED;
- 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
- #endif
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 5295a92..92db9e9 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1773,7 +1773,7 @@ retry:
- 	err = PTR_ERR(inode);
- 	if (!IS_ERR(inode)) {
- 		init_special_inode(inode, inode->i_mode, rdev);
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 		inode->i_op = &ext4_special_inode_operations;
- #endif
- 		err = ext4_add_nondir(handle, dentry, inode);
-@@ -2456,7 +2456,7 @@ const struct inode_operations ext4_dir_inode_operations = {
- 	.mknod		= ext4_mknod,
- 	.rename		= ext4_rename,
- 	.setattr	= ext4_setattr,
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	.setxattr	= generic_setxattr,
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
-@@ -2467,7 +2467,7 @@ const struct inode_operations ext4_dir_inode_operations = {
+ /*
+@@ -1820,6 +1821,24 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
+ 	return;
+ }
  
- const struct inode_operations ext4_special_inode_operations = {
- 	.setattr	= ext4_setattr,
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	.setxattr	= generic_setxattr,
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7d86560..67ebefb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -569,7 +569,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
- 	ei = kmem_cache_alloc(ext4_inode_cachep, GFP_NOFS);
- 	if (!ei)
- 		return NULL;
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	ei->i_acl = EXT4_ACL_NOT_CACHED;
- 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
- #endif
-@@ -605,7 +605,7 @@ static void init_once(void *foo)
- 	struct ext4_inode_info *ei = (struct ext4_inode_info *) foo;
- 
- 	INIT_LIST_HEAD(&ei->i_orphan);
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	init_rwsem(&ei->xattr_sem);
- #endif
- 	init_rwsem(&ei->i_data_sem);
-@@ -631,7 +631,7 @@ static void destroy_inodecache(void)
- 
- static void ext4_clear_inode(struct inode *inode)
- {
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	if (EXT4_I(inode)->i_acl &&
- 			EXT4_I(inode)->i_acl != EXT4_ACL_NOT_CACHED) {
- 		posix_acl_release(EXT4_I(inode)->i_acl);
-@@ -720,7 +720,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 		seq_puts(seq, ",debug");
- 	if (test_opt(sb, OLDALLOC))
- 		seq_puts(seq, ",oldalloc");
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	if (test_opt(sb, XATTR_USER) &&
- 		!(def_mount_opts & EXT4_DEFM_XATTR_USER))
- 		seq_puts(seq, ",user_xattr");
-@@ -729,7 +729,7 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
- 		seq_puts(seq, ",nouser_xattr");
- 	}
- #endif
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	if (test_opt(sb, POSIX_ACL) && !(def_mount_opts & EXT4_DEFM_ACL))
- 		seq_puts(seq, ",acl");
- 	if (!test_opt(sb, POSIX_ACL) && (def_mount_opts & EXT4_DEFM_ACL))
-@@ -1078,7 +1078,7 @@ static int parse_options(char *options, struct super_block *sb,
- 		case Opt_orlov:
- 			clear_opt(sbi->s_mount_opt, OLDALLOC);
- 			break;
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 		case Opt_user_xattr:
- 			set_opt(sbi->s_mount_opt, XATTR_USER);
- 			break;
-@@ -1092,7 +1092,7 @@ static int parse_options(char *options, struct super_block *sb,
- 			       "not supported\n");
- 			break;
- #endif
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 		case Opt_acl:
- 			set_opt(sbi->s_mount_opt, POSIX_ACL);
- 			break;
-@@ -1987,11 +1987,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		set_opt(sbi->s_mount_opt, GRPID);
- 	if (def_mount_opts & EXT4_DEFM_UID16)
- 		set_opt(sbi->s_mount_opt, NO_UID32);
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	if (def_mount_opts & EXT4_DEFM_XATTR_USER)
- 		set_opt(sbi->s_mount_opt, XATTR_USER);
- #endif
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	if (def_mount_opts & EXT4_DEFM_ACL)
- 		set_opt(sbi->s_mount_opt, POSIX_ACL);
- #endif
-@@ -2050,16 +2050,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		       "running e2fsck is recommended\n");
++static void ext4_print_free_blocks(struct inode *inode)
++{
++	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
++	printk(KERN_EMERG "Total free blocks count %lld\n",
++			ext4_count_free_blocks(inode->i_sb));
++	printk(KERN_EMERG "Free/Dirty block details\n");
++	printk(KERN_EMERG "free_blocks=%lld\n",
++			percpu_counter_sum(&sbi->s_freeblocks_counter));
++	printk(KERN_EMERG "dirty_blocks=%lld\n",
++			percpu_counter_sum(&sbi->s_dirtyblocks_counter));
++	printk(KERN_EMERG "Block reservation details\n");
++	printk(KERN_EMERG "i_reserved_data_blocks=%lu\n",
++			EXT4_I(inode)->i_reserved_data_blocks);
++	printk(KERN_EMERG "i_reserved_meta_blocks=%lu\n",
++			EXT4_I(inode)->i_reserved_meta_blocks);
++	return;
++}
++
+ /*
+  * mpage_da_map_blocks - go through given space
+  *
+@@ -1834,7 +1853,7 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	int err = 0;
+ 	struct buffer_head new;
+ 	struct buffer_head *lbh = &mpd->lbh;
+-	sector_t next = lbh->b_blocknr;
++	sector_t next;
  
  	/*
--	 * Since ext4 is still considered development code, we require
--	 * that the TEST_FILESYS flag in s->flags be set.
--	 */
--	if (!(le32_to_cpu(es->s_flags) & EXT2_FLAGS_TEST_FILESYS)) {
--		printk(KERN_WARNING "EXT4-fs: %s: not marked "
--		       "OK to use with test code.\n", sb->s_id);
--		goto failed_mount;
--	}
--
--	/*
- 	 * Check feature flags regardless of the revision level, since we
- 	 * previously didn't change the revision level when setting the flags,
- 	 * so there is a chance incompat flags are set on a rev 0 filesystem.
-@@ -3580,9 +3570,9 @@ const struct file_operations ext4_ui_proc_fops = {
- };
- #endif
- 
--static struct file_system_type ext4dev_fs_type = {
-+static struct file_system_type ext4_fs_type = {
- 	.owner		= THIS_MODULE,
--	.name		= "ext4dev",
-+	.name		= "ext4",
- 	.get_sb		= ext4_get_sb,
- 	.kill_sb	= kill_block_super,
- 	.fs_flags	= FS_REQUIRES_DEV,
-@@ -3603,7 +3593,7 @@ static int __init init_ext4_fs(void)
- 	err = init_inodecache();
- 	if (err)
- 		goto out1;
--	err = register_filesystem(&ext4dev_fs_type);
-+	err = register_filesystem(&ext4_fs_type);
- 	if (err)
- 		goto out;
- 	return 0;
-@@ -3618,7 +3608,7 @@ out2:
- 
- static void __exit exit_ext4_fs(void)
+ 	 * We consider only non-mapped and non-allocated blocks
+@@ -1844,6 +1863,7 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	new.b_state = lbh->b_state;
+ 	new.b_blocknr = 0;
+ 	new.b_size = lbh->b_size;
++	next = lbh->b_blocknr;
+ 	/*
+ 	 * If we didn't accumulate anything
+ 	 * to write simply return
+@@ -1860,6 +1880,13 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 		 */
+ 		if (err == -EAGAIN)
+ 			return 0;
++
++		if (err == -ENOSPC &&
++				ext4_count_free_blocks(mpd->inode->i_sb)) {
++			mpd->retval = err;
++			return 0;
++		}
++
+ 		/*
+ 		 * get block failure will cause us
+ 		 * to loop in writepages. Because
+@@ -1877,8 +1904,7 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 		printk(KERN_EMERG "This should not happen.!! "
+ 					"Data will be lost\n");
+ 		if (err == -ENOSPC) {
+-			printk(KERN_CRIT "Total free blocks count %lld\n",
+-				ext4_count_free_blocks(mpd->inode->i_sb));
++			ext4_print_free_blocks(mpd->inode);
+ 		}
+ 		/* invlaidate all the pages */
+ 		ext4_da_block_invalidatepages(mpd, next,
+@@ -2085,39 +2111,36 @@ static int __mpage_da_writepage(struct page *page,
+  */
+ static int mpage_da_writepages(struct address_space *mapping,
+ 			       struct writeback_control *wbc,
+-			       get_block_t get_block)
++			       struct mpage_da_data *mpd)
  {
--	unregister_filesystem(&ext4dev_fs_type);
-+	unregister_filesystem(&ext4_fs_type);
- 	destroy_inodecache();
- 	exit_ext4_xattr();
- 	exit_ext4_mballoc();
-diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
-index 0013d52..00740cb 100644
---- a/fs/ext4/symlink.c
-+++ b/fs/ext4/symlink.c
-@@ -34,7 +34,7 @@ const struct inode_operations ext4_symlink_inode_operations = {
- 	.readlink	= generic_readlink,
- 	.follow_link	= page_follow_link_light,
- 	.put_link	= page_put_link,
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	.setxattr	= generic_setxattr,
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
-@@ -45,7 +45,7 @@ const struct inode_operations ext4_symlink_inode_operations = {
- const struct inode_operations ext4_fast_symlink_inode_operations = {
- 	.readlink	= generic_readlink,
- 	.follow_link	= ext4_follow_link,
--#ifdef CONFIG_EXT4DEV_FS_XATTR
-+#ifdef CONFIG_EXT4_FS_XATTR
- 	.setxattr	= generic_setxattr,
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext4_listxattr,
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 362b0ed..80626d5 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -99,12 +99,12 @@ static struct mb_cache *ext4_xattr_cache;
+-	struct mpage_da_data mpd;
+ 	long to_write;
+ 	int ret;
  
- static struct xattr_handler *ext4_xattr_handler_map[] = {
- 	[EXT4_XATTR_INDEX_USER]		     = &ext4_xattr_user_handler,
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	[EXT4_XATTR_INDEX_POSIX_ACL_ACCESS]  = &ext4_xattr_acl_access_handler,
- 	[EXT4_XATTR_INDEX_POSIX_ACL_DEFAULT] = &ext4_xattr_acl_default_handler,
- #endif
- 	[EXT4_XATTR_INDEX_TRUSTED]	     = &ext4_xattr_trusted_handler,
--#ifdef CONFIG_EXT4DEV_FS_SECURITY
-+#ifdef CONFIG_EXT4_FS_SECURITY
- 	[EXT4_XATTR_INDEX_SECURITY]	     = &ext4_xattr_security_handler,
- #endif
- };
-@@ -112,11 +112,11 @@ static struct xattr_handler *ext4_xattr_handler_map[] = {
- struct xattr_handler *ext4_xattr_handlers[] = {
- 	&ext4_xattr_user_handler,
- 	&ext4_xattr_trusted_handler,
--#ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
- 	&ext4_xattr_acl_access_handler,
- 	&ext4_xattr_acl_default_handler,
- #endif
--#ifdef CONFIG_EXT4DEV_FS_SECURITY
-+#ifdef CONFIG_EXT4_FS_SECURITY
- 	&ext4_xattr_security_handler,
- #endif
- 	NULL
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 814ea58..8ede88b 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -63,7 +63,7 @@ struct ext4_xattr_entry {
- 		EXT4_I(inode)->i_extra_isize))
- #define IFIRST(hdr) ((struct ext4_xattr_entry *)((hdr)+1))
+-	if (!get_block)
++	if (!mpd->get_block)
+ 		return generic_writepages(mapping, wbc);
  
--# ifdef CONFIG_EXT4DEV_FS_XATTR
-+# ifdef CONFIG_EXT4_FS_XATTR
+-	mpd.wbc = wbc;
+-	mpd.inode = mapping->host;
+-	mpd.lbh.b_size = 0;
+-	mpd.lbh.b_state = 0;
+-	mpd.lbh.b_blocknr = 0;
+-	mpd.first_page = 0;
+-	mpd.next_page = 0;
+-	mpd.get_block = get_block;
+-	mpd.io_done = 0;
+-	mpd.pages_written = 0;
++	mpd->lbh.b_size = 0;
++	mpd->lbh.b_state = 0;
++	mpd->lbh.b_blocknr = 0;
++	mpd->first_page = 0;
++	mpd->next_page = 0;
++	mpd->io_done = 0;
++	mpd->pages_written = 0;
++	mpd->retval = 0;
  
- extern struct xattr_handler ext4_xattr_user_handler;
- extern struct xattr_handler ext4_xattr_trusted_handler;
-@@ -88,7 +88,7 @@ extern void exit_ext4_xattr(void);
+ 	to_write = wbc->nr_to_write;
  
- extern struct xattr_handler *ext4_xattr_handlers[];
+-	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, &mpd);
++	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, mpd);
  
--# else  /* CONFIG_EXT4DEV_FS_XATTR */
-+# else  /* CONFIG_EXT4_FS_XATTR */
+ 	/*
+ 	 * Handle last extent of pages
+ 	 */
+-	if (!mpd.io_done && mpd.next_page != mpd.first_page) {
+-		if (mpage_da_map_blocks(&mpd) == 0)
+-			mpage_da_submit_io(&mpd);
++	if (!mpd->io_done && mpd->next_page != mpd->first_page) {
++		if (mpage_da_map_blocks(mpd) == 0)
++			mpage_da_submit_io(mpd);
+ 	}
  
- static inline int
- ext4_xattr_get(struct inode *inode, int name_index, const char *name,
-@@ -141,9 +141,9 @@ ext4_expand_extra_isize_ea(struct inode *inode, int new_extra_isize,
+-	wbc->nr_to_write = to_write - mpd.pages_written;
++	wbc->nr_to_write = to_write - mpd->pages_written;
+ 	return ret;
+ }
  
- #define ext4_xattr_handlers	NULL
+@@ -2357,6 +2380,7 @@ static int ext4_da_writepages(struct address_space *mapping,
+ {
+ 	handle_t *handle = NULL;
+ 	loff_t range_start = 0;
++	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+ 	long to_write, pages_skipped = 0;
+@@ -2390,6 +2414,9 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	range_start =  wbc->range_start;
+ 	pages_skipped = wbc->pages_skipped;
  
--# endif  /* CONFIG_EXT4DEV_FS_XATTR */
-+# endif  /* CONFIG_EXT4_FS_XATTR */
- 
--#ifdef CONFIG_EXT4DEV_FS_SECURITY
-+#ifdef CONFIG_EXT4_FS_SECURITY
- extern int ext4_init_security(handle_t *handle, struct inode *inode,
- 				struct inode *dir);
- #else
--- 
-1.5.6.1.205.ge2c7.dirty
-
++	mpd.wbc = wbc;
++	mpd.inode = mapping->host;
++
+ restart_loop:
+ 	to_write = wbc->nr_to_write;
+ 	while (!ret && to_write > 0) {
+@@ -2413,11 +2440,17 @@ restart_loop:
+ 			dump_stack();
+ 			goto out_writepages;
+ 		}
