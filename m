@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 28/42] ext4: Combine proc file handling into a single set of functions
-Date: Thu,  9 Oct 2008 00:05:46 -0400
-Message-ID: <1223525160-9887-29-git-send-email-tytso@mit.edu>
+Subject: [PATCH 20/42] ext4: add missing unlock in ext4_check_descriptors() on error path
+Date: Thu,  9 Oct 2008 00:05:38 -0400
+Message-ID: <1223525160-9887-21-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -22,228 +22,45 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-18-git-send-email-tytso@mit.edu>
  <1223525160-9887-19-git-send-email-tytso@mit.edu>
  <1223525160-9887-20-git-send-email-tytso@mit.edu>
- <1223525160-9887-21-git-send-email-tytso@mit.edu>
- <1223525160-9887-22-git-send-email-tytso@mit.edu>
- <1223525160-9887-23-git-send-email-tytso@mit.edu>
- <1223525160-9887-24-git-send-email-tytso@mit.edu>
- <1223525160-9887-25-git-send-email-tytso@mit.edu>
- <1223525160-9887-26-git-send-email-tytso@mit.edu>
- <1223525160-9887-27-git-send-email-tytso@mit.edu>
- <1223525160-9887-28-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Li Zefan <lizf@cn.fujitsu.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54514 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54541 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757591AbYJIEGN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:13 -0400
-In-Reply-To: <1223525160-9887-28-git-send-email-tytso@mit.edu>
+	with ESMTP id S1757613AbYJIEGO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:14 -0400
+In-Reply-To: <1223525160-9887-20-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Previously mballoc created a separate set of functions for each proc
-file.  This combines the tunables into a single set of functions which
-gets used for all of the per-superblock proc files, saving
-approximately 2k of compiled object code.
+From: Li Zefan <lizf@cn.fujitsu.com>
 
+If there group descriptors are corrupted we need unlock the block
+group lock before returning from the function; else we will oops when
+freeing a spinlock which is still being held.
+
+Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |   16 ++++++++++++
- fs/ext4/ext4_sb.h |   12 ++++----
- fs/ext4/mballoc.c |   69 ++++------------------------------------------------
- fs/ext4/super.c   |   42 ++++++++++++++++++++++++++++++++
- 4 files changed, 70 insertions(+), 69 deletions(-)
+ fs/ext4/super.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b9c9371..163c445 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -957,6 +957,22 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 
- extern struct proc_dir_entry *ext4_proc_root;
- 
-+#ifdef CONFIG_PROC_FS
-+extern const struct file_operations ext4_ui_proc_fops;
-+
-+#define	EXT4_PROC_HANDLER(name, var)					\
-+do {									\
-+	proc = proc_create_data(name, mode, sbi->s_proc,		\
-+				&ext4_ui_proc_fops, &sbi->s_##var);	\
-+	if (proc == NULL) {						\
-+		printk(KERN_ERR "EXT4-fs: can't create %s\n", name);	\
-+		goto err_out;						\
-+	}								\
-+} while (0)
-+#else
-+#define EXT4_PROC_HANDLER(name, var)
-+#endif
-+
- /*
-  * Function prototypes
-  */
-diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-index 95e046e..f92af01 100644
---- a/fs/ext4/ext4_sb.h
-+++ b/fs/ext4/ext4_sb.h
-@@ -108,12 +108,12 @@ struct ext4_sb_info {
- 
- 	/* tunables */
- 	unsigned long s_stripe;
--	unsigned long s_mb_stream_request;
--	unsigned long s_mb_max_to_scan;
--	unsigned long s_mb_min_to_scan;
--	unsigned long s_mb_stats;
--	unsigned long s_mb_order2_reqs;
--	unsigned long s_mb_group_prealloc;
-+	unsigned int s_mb_stream_request;
-+	unsigned int s_mb_max_to_scan;
-+	unsigned int s_mb_min_to_scan;
-+	unsigned int s_mb_stats;
-+	unsigned int s_mb_order2_reqs;
-+	unsigned int s_mb_group_prealloc;
- 	/* where last allocation was done - for stream allocation */
- 	unsigned long s_mb_last_group;
- 	unsigned long s_mb_last_start;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 705870c..3373f89 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2721,63 +2721,6 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
- #define EXT4_MB_STREAM_REQ		"stream_req"
- #define EXT4_MB_GROUP_PREALLOC		"group_prealloc"
- 
--#define MB_PROC_FOPS(name)					\
--static int ext4_mb_##name##_proc_show(struct seq_file *m, void *v)	\
--{								\
--	struct ext4_sb_info *sbi = m->private;			\
--								\
--	seq_printf(m, "%ld\n", sbi->s_mb_##name);		\
--	return 0;						\
--}								\
--								\
--static int ext4_mb_##name##_proc_open(struct inode *inode, struct file *file)\
--{								\
--	return single_open(file, ext4_mb_##name##_proc_show, PDE(inode)->data);\
--}								\
--								\
--static ssize_t ext4_mb_##name##_proc_write(struct file *file,	\
--		const char __user *buf, size_t cnt, loff_t *ppos)	\
--{								\
--	struct ext4_sb_info *sbi = PDE(file->f_path.dentry->d_inode)->data;\
--	char str[32];						\
--	long value;						\
--	if (cnt >= sizeof(str))					\
--		return -EINVAL;					\
--	if (copy_from_user(str, buf, cnt))			\
--		return -EFAULT;					\
--	value = simple_strtol(str, NULL, 0);			\
--	if (value <= 0)						\
--		return -ERANGE;					\
--	sbi->s_mb_##name = value;				\
--	return cnt;						\
--}								\
--								\
--static const struct file_operations ext4_mb_##name##_proc_fops = {	\
--	.owner		= THIS_MODULE,				\
--	.open		= ext4_mb_##name##_proc_open,		\
--	.read		= seq_read,				\
--	.llseek		= seq_lseek,				\
--	.release	= single_release,			\
--	.write		= ext4_mb_##name##_proc_write,		\
--};
--
--MB_PROC_FOPS(stats);
--MB_PROC_FOPS(max_to_scan);
--MB_PROC_FOPS(min_to_scan);
--MB_PROC_FOPS(order2_reqs);
--MB_PROC_FOPS(stream_request);
--MB_PROC_FOPS(group_prealloc);
--
--#define	MB_PROC_HANDLER(name, var)					\
--do {									\
--	proc = proc_create_data(name, mode, sbi->s_proc,		\
--				&ext4_mb_##var##_proc_fops, sbi);	\
--	if (proc == NULL) {						\
--		printk(KERN_ERR "EXT4-fs: can't to create %s\n", name);	\
--		goto err_out;						\
--	}								\
--} while (0)
--
- static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- {
- 	mode_t mode = S_IFREG | S_IRUGO | S_IWUSR;
-@@ -2787,12 +2730,12 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	if (sbi->s_proc == NULL)
- 		return -EINVAL;
- 
--	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
--	MB_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, max_to_scan);
--	MB_PROC_HANDLER(EXT4_MB_MIN_TO_SCAN_NAME, min_to_scan);
--	MB_PROC_HANDLER(EXT4_MB_ORDER2_REQ, order2_reqs);
--	MB_PROC_HANDLER(EXT4_MB_STREAM_REQ, stream_request);
--	MB_PROC_HANDLER(EXT4_MB_GROUP_PREALLOC, group_prealloc);
-+	EXT4_PROC_HANDLER(EXT4_MB_STATS_NAME, mb_stats);
-+	EXT4_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, mb_max_to_scan);
-+	EXT4_PROC_HANDLER(EXT4_MB_MIN_TO_SCAN_NAME, mb_min_to_scan);
-+	EXT4_PROC_HANDLER(EXT4_MB_ORDER2_REQ, mb_order2_reqs);
-+	EXT4_PROC_HANDLER(EXT4_MB_STREAM_REQ, mb_stream_request);
-+	EXT4_PROC_HANDLER(EXT4_MB_GROUP_PREALLOC, mb_group_prealloc);
- 	return 0;
- 
- err_out:
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7feeec6..9f5468f 100644
+index 64e1c21..8175318 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3541,6 +3541,48 @@ static int ext4_get_sb(struct file_system_type *fs_type,
- 	return get_sb_bdev(fs_type, flags, dev_name, data, ext4_fill_super, mnt);
- }
- 
-+#ifdef CONFIG_PROC_FS
-+static int ext4_ui_proc_show(struct seq_file *m, void *v)
-+{
-+	unsigned int *p = m->private;
-+
-+	seq_printf(m, "%u\n", *p);
-+	return 0;
-+}
-+
-+static int ext4_ui_proc_open(struct inode *inode, struct file *file)
-+{
-+	return single_open(file, ext4_ui_proc_show, PDE(inode)->data);
-+}
-+
-+static ssize_t ext4_ui_proc_write(struct file *file, const char __user *buf,
-+			       size_t cnt, loff_t *ppos)
-+{
-+	unsigned int *p = PDE(file->f_path.dentry->d_inode)->data;
-+	char str[32];
-+	unsigned long value;
-+
-+	if (cnt >= sizeof(str))
-+		return -EINVAL;
-+	if (copy_from_user(str, buf, cnt))
-+		return -EFAULT;
-+	value = simple_strtol(str, NULL, 0);
-+	if (value < 0)
-+		return -ERANGE;
-+	*p = value;
-+	return cnt;
-+}
-+
-+const struct file_operations ext4_ui_proc_fops = {
-+	.owner		= THIS_MODULE,
-+	.open		= ext4_ui_proc_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= single_release,
-+	.write		= ext4_ui_proc_write,
-+};
-+#endif
-+
- static struct file_system_type ext4dev_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "ext4dev",
+@@ -1623,8 +1623,10 @@ static int ext4_check_descriptors(struct super_block *sb)
+ 			       "Checksum for group %lu failed (%u!=%u)\n",
+ 			       i, le16_to_cpu(ext4_group_desc_csum(sbi, i,
+ 			       gdp)), le16_to_cpu(gdp->bg_checksum));
+-			if (!(sb->s_flags & MS_RDONLY))
++			if (!(sb->s_flags & MS_RDONLY)) {
++				spin_unlock(sb_bgl_lock(sbi, i));
+ 				return 0;
++			}
+ 		}
+ 		spin_unlock(sb_bgl_lock(sbi, i));
+ 		if (!flexbg_flag)
 -- 
 1.5.6.1.205.ge2c7.dirty
 
