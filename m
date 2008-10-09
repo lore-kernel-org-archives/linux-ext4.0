@@ -1,7 +1,7 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 38/42] generic block based fiemap implementation
-Date: Thu,  9 Oct 2008 00:05:56 -0400
-Message-ID: <1223525160-9887-39-git-send-email-tytso@mit.edu>
+From: Theodore Ts'o <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: [PATCH 36/42] vfs: vfs-level fiemap interface
+Date: Thu,  9 Oct 2008 00:05:54 -0400
+Message-ID: <1223525160-9887-37-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -38,293 +38,594 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-34-git-send-email-tytso@mit.edu>
  <1223525160-9887-35-git-send-email-tytso@mit.edu>
  <1223525160-9887-36-git-send-email-tytso@mit.edu>
- <1223525160-9887-37-git-send-email-tytso@mit.edu>
- <1223525160-9887-38-git-send-email-tytso@mit.edu>
-Cc: Josef Bacik <jbacik@redhat.com>, Mark Fasheh <mfasheh@suse.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1223525160-9887-38-git-send-email-tytso@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Cc: Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>, "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>,
+	Michael Kerrisk <mtk.manpages-gM/Ye1E23mwN+BqQ9rBEUg@public.gmane.org>,
+	linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1223525160-9887-36-git-send-email-tytso-3s7WtUTddSA@public.gmane.org>
+Sender: linux-api-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Josef Bacik <jbacik@redhat.com>
+From: Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>
 
-Any block based fs (this patch includes ext3) just has to declare its own
-fiemap() function and then call this generic function with its own
-get_block_t. This works well for block based filesystems that will map
-multiple contiguous blocks at one time, but will work for filesystems that
-only map one block at a time, you will just end up with an "extent" for each
-block. One gotcha is this will not play nicely where there is hole+data
-after the EOF. This function will assume its hit the end of the data as soon
-as it hits a hole after the EOF, so if there is any data past that it will
-not pick that up. AFAIK no block based fs does this anyway, but its in the
-comments of the function anyway just in case.
+Basic vfs-level fiemap infrastructure, which sets up a new ->fiemap
+inode operation.
 
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Signed-off-by: Mark Fasheh <mfasheh@suse.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-fsdevel@vger.kernel.org
+Userspace can get extent information on a file via fiemap ioctl. As input,
+the fiemap ioctl takes a struct fiemap which includes an array of struct
+fiemap_extent (fm_extents). Size of the extent array is passed as
+fm_extent_count and number of extents returned will be written into
+fm_mapped_extents. Offset and length fields on the fiemap structure
+(fm_start, fm_length) describe a logical range which will be searched for
+extents. All extents returned will at least partially contain this range.
+The actual extent offsets and ranges returned will be unmodified from their
+offset and range on-disk.
+
+The fiemap ioctl returns '0' on success. On error, -1 is returned and errno
+is set. If errno is equal to EBADR, then fm_flags will contain those flags
+which were passed in which the kernel did not understand. On all other
+errors, the contents of fm_extents is undefined.
+
+As fiemap evolved, there have been many authors of the vfs patch. As far as
+I can tell, the list includes:
+Kalpak Shah <kalpak.shah-xsfywfwIY+M@public.gmane.org>
+Andreas Dilger <adilger-xsfywfwIY+M@public.gmane.org>
+Eric Sandeen <sandeen-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>
+
+Signed-off-by: Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>
+Signed-off-by: "Theodore Ts'o" <tytso-3s7WtUTddSA@public.gmane.org>
+Cc: Michael Kerrisk <mtk.manpages-gM/Ye1E23mwN+BqQ9rBEUg@public.gmane.org>
+Cc: linux-api-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Cc: linux-fsdevel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 ---
- fs/ext2/ext2.h          |    2 +
- fs/ext2/file.c          |    1 +
- fs/ext2/inode.c         |    8 +++
- fs/ext3/file.c          |    1 +
- fs/ext3/inode.c         |    8 +++
- fs/ioctl.c              |  118 +++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/ext3_fs.h |    2 +
- include/linux/fs.h      |    3 +
- 8 files changed, 143 insertions(+), 0 deletions(-)
+ Documentation/filesystems/fiemap.txt |  228 ++++++++++++++++++++++++++++++++++
+ fs/ioctl.c                           |  155 +++++++++++++++++++++++
+ include/linux/fiemap.h               |   64 ++++++++++
+ include/linux/fs.h                   |   18 +++
+ 4 files changed, 465 insertions(+), 0 deletions(-)
+ create mode 100644 Documentation/filesystems/fiemap.txt
+ create mode 100644 include/linux/fiemap.h
 
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 47d88da..bae998c 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -133,6 +133,8 @@ extern void ext2_truncate (struct inode *);
- extern int ext2_setattr (struct dentry *, struct iattr *);
- extern void ext2_set_inode_flags(struct inode *inode);
- extern void ext2_get_inode_flags(struct ext2_inode_info *);
-+extern int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		       u64 start, u64 len);
- int __ext2_write_begin(struct file *file, struct address_space *mapping,
- 		loff_t pos, unsigned len, unsigned flags,
- 		struct page **pagep, void **fsdata);
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 5f2fa9c..45ed071 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -86,4 +86,5 @@ const struct inode_operations ext2_file_inode_operations = {
- #endif
- 	.setattr	= ext2_setattr,
- 	.permission	= ext2_permission,
-+	.fiemap		= ext2_fiemap,
- };
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 991d6df..7658b33 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -31,6 +31,7 @@
- #include <linux/writeback.h>
- #include <linux/buffer_head.h>
- #include <linux/mpage.h>
-+#include <linux/fiemap.h>
- #include "ext2.h"
- #include "acl.h"
- #include "xip.h"
-@@ -704,6 +705,13 @@ int ext2_get_block(struct inode *inode, sector_t iblock, struct buffer_head *bh_
- 
- }
- 
-+int ext2_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		u64 start, u64 len)
-+{
-+	return generic_block_fiemap(inode, fieinfo, start, len,
-+				    ext2_get_block);
-+}
+diff --git a/Documentation/filesystems/fiemap.txt b/Documentation/filesystems/fiemap.txt
+new file mode 100644
+index 0000000..1e3defc
+--- /dev/null
++++ b/Documentation/filesystems/fiemap.txt
+@@ -0,0 +1,228 @@
++============
++Fiemap Ioctl
++============
 +
- static int ext2_writepage(struct page *page, struct writeback_control *wbc)
- {
- 	return block_write_full_page(page, ext2_get_block, wbc);
-diff --git a/fs/ext3/file.c b/fs/ext3/file.c
-index acc4913..3be1e06 100644
---- a/fs/ext3/file.c
-+++ b/fs/ext3/file.c
-@@ -134,5 +134,6 @@ const struct inode_operations ext3_file_inode_operations = {
- 	.removexattr	= generic_removexattr,
- #endif
- 	.permission	= ext3_permission,
-+	.fiemap		= ext3_fiemap,
- };
- 
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 507d868..ebfec4d 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -36,6 +36,7 @@
- #include <linux/mpage.h>
- #include <linux/uio.h>
- #include <linux/bio.h>
-+#include <linux/fiemap.h>
- #include "xattr.h"
- #include "acl.h"
- 
-@@ -981,6 +982,13 @@ out:
- 	return ret;
- }
- 
-+int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		u64 start, u64 len)
-+{
-+	return generic_block_fiemap(inode, fieinfo, start, len,
-+				    ext3_get_block);
-+}
++The fiemap ioctl is an efficient method for userspace to get file
++extent mappings. Instead of block-by-block mapping (such as bmap), fiemap
++returns a list of extents.
 +
- /*
-  * `handle' can be NULL if create is zero
-  */
++
++Request Basics
++--------------
++
++A fiemap request is encoded within struct fiemap:
++
++struct fiemap {
++	__u64	fm_start;	 /* logical offset (inclusive) at
++				  * which to start mapping (in) */
++	__u64	fm_length;	 /* logical length of mapping which
++				  * userspace cares about (in) */
++	__u32	fm_flags;	 /* FIEMAP_FLAG_* flags for request (in/out) */
++	__u32	fm_mapped_extents; /* number of extents that were
++				    * mapped (out) */
++	__u32	fm_extent_count; /* size of fm_extents array (in) */
++	__u32	fm_reserved;
++	struct fiemap_extent fm_extents[0]; /* array of mapped extents (out) */
++};
++
++
++fm_start, and fm_length specify the logical range within the file
++which the process would like mappings for. Extents returned mirror
++those on disk - that is, the logical offset of the 1st returned extent
++may start before fm_start, and the range covered by the last returned
++extent may end after fm_length. All offsets and lengths are in bytes.
++
++Certain flags to modify the way in which mappings are looked up can be
++set in fm_flags. If the kernel doesn't understand some particular
++flags, it will return EBADR and the contents of fm_flags will contain
++the set of flags which caused the error. If the kernel is compatible
++with all flags passed, the contents of fm_flags will be unmodified.
++It is up to userspace to determine whether rejection of a particular
++flag is fatal to it's operation. This scheme is intended to allow the
++fiemap interface to grow in the future but without losing
++compatibility with old software.
++
++fm_extent_count specifies the number of elements in the fm_extents[] array
++that can be used to return extents.  If fm_extent_count is zero, then the
++fm_extents[] array is ignored (no extents will be returned), and the
++fm_mapped_extents count will hold the number of extents needed in
++fm_extents[] to hold the file's current mapping.  Note that there is
++nothing to prevent the file from changing between calls to FIEMAP.
++
++The following flags can be set in fm_flags:
++
++* FIEMAP_FLAG_SYNC
++If this flag is set, the kernel will sync the file before mapping extents.
++
++* FIEMAP_FLAG_XATTR
++If this flag is set, the extents returned will describe the inodes
++extended attribute lookup tree, instead of it's data tree.
++
++
++Extent Mapping
++--------------
++
++Extent information is returned within the embedded fm_extents array
++which userspace must allocate along with the fiemap structure. The
++number of elements in the fiemap_extents[] array should be passed via
++fm_extent_count. The number of extents mapped by kernel will be
++returned via fm_mapped_extents. If the number of fiemap_extents
++allocated is less than would be required to map the requested range,
++the maximum number of extents that can be mapped in the fm_extent[]
++array will be returned and fm_mapped_extents will be equal to
++fm_extent_count. In that case, the last extent in the array will not
++complete the requested range and will not have the FIEMAP_EXTENT_LAST
++flag set (see the next section on extent flags).
++
++Each extent is described by a single fiemap_extent structure as
++returned in fm_extents.
++
++struct fiemap_extent {
++	__u64	fe_logical;  /* logical offset in bytes for the start of
++			      * the extent */
++	__u64	fe_physical; /* physical offset in bytes for the start
++			      * of the extent */
++	__u64	fe_length;   /* length in bytes for the extent */
++	__u64	fe_reserved64[2];
++	__u32	fe_flags;    /* FIEMAP_EXTENT_* flags for this extent */
++	__u32	fe_reserved[3];
++};
++
++All offsets and lengths are in bytes and mirror those on disk.  It is valid
++for an extents logical offset to start before the request or it's logical
++length to extend past the request.  Unless FIEMAP_EXTENT_NOT_ALIGNED is
++returned, fe_logical, fe_physical, and fe_length will be aligned to the
++block size of the file system.  With the exception of extents flagged as
++FIEMAP_EXTENT_MERGED, adjacent extents will not be merged.
++
++The fe_flags field contains flags which describe the extent returned.
++A special flag, FIEMAP_EXTENT_LAST is always set on the last extent in
++the file so that the process making fiemap calls can determine when no
++more extents are available, without having to call the ioctl again.
++
++Some flags are intentionally vague and will always be set in the
++presence of other more specific flags. This way a program looking for
++a general property does not have to know all existing and future flags
++which imply that property.
++
++For example, if FIEMAP_EXTENT_DATA_INLINE or FIEMAP_EXTENT_DATA_TAIL
++are set, FIEMAP_EXTENT_NOT_ALIGNED will also be set. A program looking
++for inline or tail-packed data can key on the specific flag. Software
++which simply cares not to try operating on non-aligned extents
++however, can just key on FIEMAP_EXTENT_NOT_ALIGNED, and not have to
++worry about all present and future flags which might imply unaligned
++data. Note that the opposite is not true - it would be valid for
++FIEMAP_EXTENT_NOT_ALIGNED to appear alone.
++
++* FIEMAP_EXTENT_LAST
++This is the last extent in the file. A mapping attempt past this
++extent will return nothing.
++
++* FIEMAP_EXTENT_UNKNOWN
++The location of this extent is currently unknown. This may indicate
++the data is stored on an inaccessible volume or that no storage has
++been allocated for the file yet.
++
++* FIEMAP_EXTENT_DELALLOC
++  - This will also set FIEMAP_EXTENT_UNKNOWN.
++Delayed allocation - while there is data for this extent, it's
++physical location has not been allocated yet.
++
++* FIEMAP_EXTENT_ENCODED
++This extent does not consist of plain filesystem blocks but is
++encoded (e.g. encrypted or compressed).  Reading the data in this
++extent via I/O to the block device will have undefined results.
++
++Note that it is *always* undefined to try to update the data
++in-place by writing to the indicated location without the
++assistance of the filesystem, or to access the data using the
++information returned by the FIEMAP interface while the filesystem
++is mounted.  In other words, user applications may only read the
++extent data via I/O to the block device while the filesystem is
++unmounted, and then only if the FIEMAP_EXTENT_ENCODED flag is
++clear; user applications must not try reading or writing to the
++filesystem via the block device under any other circumstances.
++
++* FIEMAP_EXTENT_DATA_ENCRYPTED
++  - This will also set FIEMAP_EXTENT_ENCODED
++The data in this extent has been encrypted by the file system.
++
++* FIEMAP_EXTENT_NOT_ALIGNED
++Extent offsets and length are not guaranteed to be block aligned.
++
++* FIEMAP_EXTENT_DATA_INLINE
++  This will also set FIEMAP_EXTENT_NOT_ALIGNED
++Data is located within a meta data block.
++
++* FIEMAP_EXTENT_DATA_TAIL
++  This will also set FIEMAP_EXTENT_NOT_ALIGNED
++Data is packed into a block with data from other files.
++
++* FIEMAP_EXTENT_UNWRITTEN
++Unwritten extent - the extent is allocated but it's data has not been
++initialized.  This indicates the extent's data will be all zero if read
++through the filesystem but the contents are undefined if read directly from
++the device.
++
++* FIEMAP_EXTENT_MERGED
++This will be set when a file does not support extents, i.e., it uses a block
++based addressing scheme.  Since returning an extent for each block back to
++userspace would be highly inefficient, the kernel will try to merge most
++adjacent blocks into 'extents'.
++
++
++VFS -> File System Implementation
++---------------------------------
++
++File systems wishing to support fiemap must implement a ->fiemap callback on
++their inode_operations structure. The fs ->fiemap call is responsible for
++defining it's set of supported fiemap flags, and calling a helper function on
++each discovered extent:
++
++struct inode_operations {
++       ...
++
++       int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
++                     u64 len);
++
++->fiemap is passed struct fiemap_extent_info which describes the
++fiemap request:
++
++struct fiemap_extent_info {
++	unsigned int fi_flags;		/* Flags as passed from user */
++	unsigned int fi_extents_mapped;	/* Number of mapped extents */
++	unsigned int fi_extents_max;	/* Size of fiemap_extent array */
++	struct fiemap_extent *fi_extents_start;	/* Start of fiemap_extent array */
++};
++
++It is intended that the file system should not need to access any of this
++structure directly.
++
++
++Flag checking should be done at the beginning of the ->fiemap callback via the
++fiemap_check_flags() helper:
++
++int fiemap_check_flags(struct fiemap_extent_info *fieinfo, u32 fs_flags);
++
++The struct fieinfo should be passed in as recieved from ioctl_fiemap(). The
++set of fiemap flags which the fs understands should be passed via fs_flags. If
++fiemap_check_flags finds invalid user flags, it will place the bad values in
++fieinfo->fi_flags and return -EBADR. If the file system gets -EBADR, from
++fiemap_check_flags(), it should immediately exit, returning that error back to
++ioctl_fiemap().
++
++
++For each extent in the request range, the file system should call
++the helper function, fiemap_fill_next_extent():
++
++int fiemap_fill_next_extent(struct fiemap_extent_info *info, u64 logical,
++			    u64 phys, u64 len, u32 flags, u32 dev);
++
++fiemap_fill_next_extent() will use the passed values to populate the
++next free extent in the fm_extents array. 'General' extent flags will
++automatically be set from specific flags on behalf of the calling file
++system so that the userspace API is not broken.
++
++fiemap_fill_next_extent() returns 0 on success, and 1 when the
++user-supplied fm_extents array is full. If an error is encountered
++while copying the extent to user memory, -EFAULT will be returned.
 diff --git a/fs/ioctl.c b/fs/ioctl.c
-index 045d960..33a6b7e 100644
+index 7db32b3..045d960 100644
 --- a/fs/ioctl.c
 +++ b/fs/ioctl.c
-@@ -13,6 +13,8 @@
- #include <linux/security.h>
- #include <linux/module.h>
- #include <linux/uaccess.h>
-+#include <linux/writeback.h>
-+#include <linux/buffer_head.h>
+@@ -16,6 +16,9 @@
  
  #include <asm/ioctls.h>
  
-@@ -224,6 +226,122 @@ static int ioctl_fiemap(struct file *filp, unsigned long arg)
- 	return error;
++/* So that the fiemap access checks can't overflow on 32 bit machines. */
++#define FIEMAP_MAX_EXTENTS	(UINT_MAX / sizeof(struct fiemap_extent))
++
+ /**
+  * vfs_ioctl - call filesystem specific ioctl methods
+  * @filp:	open file to invoke ioctl method on
+@@ -71,6 +74,156 @@ static int ioctl_fibmap(struct file *filp, int __user *p)
+ 	return put_user(res, p);
  }
  
-+#define blk_to_logical(inode, blk) (blk << (inode)->i_blkbits)
-+#define logical_to_blk(inode, offset) (offset >> (inode)->i_blkbits);
-+
-+/*
-+ * @inode - the inode to map
-+ * @arg - the pointer to userspace where we copy everything to
-+ * @get_block - the fs's get_block function
++/**
++ * fiemap_fill_next_extent - Fiemap helper function
++ * @fieinfo:	Fiemap context passed into ->fiemap
++ * @logical:	Extent logical start offset, in bytes
++ * @phys:	Extent physical start offset, in bytes
++ * @len:	Extent length, in bytes
++ * @flags:	FIEMAP_EXTENT flags that describe this extent
 + *
-+ * This does FIEMAP for block based inodes.  Basically it will just loop
-+ * through get_block until we hit the number of extents we want to map, or we
-+ * go past the end of the file and hit a hole.
++ * Called from file system ->fiemap callback. Will populate extent
++ * info as passed in via arguments and copy to user memory. On
++ * success, extent count on fieinfo is incremented.
 + *
-+ * If it is possible to have data blocks beyond a hole past @inode->i_size, then
-+ * please do not use this function, it will stop at the first unmapped block
-+ * beyond i_size
++ * Returns 0 on success, -errno on error, 1 if this was the last
++ * extent that will fit in user array.
 + */
-+int generic_block_fiemap(struct inode *inode,
-+			 struct fiemap_extent_info *fieinfo, u64 start,
-+			 u64 len, get_block_t *get_block)
++#define SET_UNKNOWN_FLAGS	(FIEMAP_EXTENT_DELALLOC)
++#define SET_NO_UNMOUNTED_IO_FLAGS	(FIEMAP_EXTENT_DATA_ENCRYPTED)
++#define SET_NOT_ALIGNED_FLAGS	(FIEMAP_EXTENT_DATA_TAIL|FIEMAP_EXTENT_DATA_INLINE)
++int fiemap_fill_next_extent(struct fiemap_extent_info *fieinfo, u64 logical,
++			    u64 phys, u64 len, u32 flags)
 +{
-+	struct buffer_head tmp;
-+	unsigned int start_blk;
-+	long long length = 0, map_len = 0;
-+	u64 logical = 0, phys = 0, size = 0;
-+	u32 flags = FIEMAP_EXTENT_MERGED;
-+	int ret = 0;
++	struct fiemap_extent extent;
++	struct fiemap_extent *dest = fieinfo->fi_extents_start;
 +
-+	if ((ret = fiemap_check_flags(fieinfo, FIEMAP_FLAG_SYNC)))
-+		return ret;
++	/* only count the extents */
++	if (fieinfo->fi_extents_max == 0) {
++		fieinfo->fi_extents_mapped++;
++		return (flags & FIEMAP_EXTENT_LAST) ? 1 : 0;
++	}
 +
-+	start_blk = logical_to_blk(inode, start);
++	if (fieinfo->fi_extents_mapped >= fieinfo->fi_extents_max)
++		return 1;
 +
-+	/* guard against change */
-+	mutex_lock(&inode->i_mutex);
++	if (flags & SET_UNKNOWN_FLAGS)
++		flags |= FIEMAP_EXTENT_UNKNOWN;
++	if (flags & SET_NO_UNMOUNTED_IO_FLAGS)
++		flags |= FIEMAP_EXTENT_ENCODED;
++	if (flags & SET_NOT_ALIGNED_FLAGS)
++		flags |= FIEMAP_EXTENT_NOT_ALIGNED;
 +
-+	length = (long long)min_t(u64, len, i_size_read(inode));
-+	map_len = length;
++	memset(&extent, 0, sizeof(extent));
++	extent.fe_logical = logical;
++	extent.fe_physical = phys;
++	extent.fe_length = len;
++	extent.fe_flags = flags;
 +
-+	do {
-+		/*
-+		 * we set b_size to the total size we want so it will map as
-+		 * many contiguous blocks as possible at once
-+		 */
-+		memset(&tmp, 0, sizeof(struct buffer_head));
-+		tmp.b_size = map_len;
++	dest += fieinfo->fi_extents_mapped;
++	if (copy_to_user(dest, &extent, sizeof(extent)))
++		return -EFAULT;
 +
-+		ret = get_block(inode, start_blk, &tmp, 0);
-+		if (ret)
-+			break;
-+
-+		/* HOLE */
-+		if (!buffer_mapped(&tmp)) {
-+			/*
-+			 * first hole after going past the EOF, this is our
-+			 * last extent
-+			 */
-+			if (length <= 0) {
-+				flags = FIEMAP_EXTENT_MERGED|FIEMAP_EXTENT_LAST;
-+				ret = fiemap_fill_next_extent(fieinfo, logical,
-+							      phys, size,
-+							      flags);
-+				break;
-+			}
-+
-+			length -= blk_to_logical(inode, 1);
-+
-+			/* if we have holes up to/past EOF then we're done */
-+			if (length <= 0)
-+				break;
-+
-+			start_blk++;
-+		} else {
-+			if (length <= 0 && size) {
-+				ret = fiemap_fill_next_extent(fieinfo, logical,
-+							      phys, size,
-+							      flags);
-+				if (ret)
-+					break;
-+			}
-+
-+			logical = blk_to_logical(inode, start_blk);
-+			phys = blk_to_logical(inode, tmp.b_blocknr);
-+			size = tmp.b_size;
-+			flags = FIEMAP_EXTENT_MERGED;
-+
-+			length -= tmp.b_size;
-+			start_blk += logical_to_blk(inode, size);
-+
-+			/*
-+			 * if we are past the EOF we need to loop again to see
-+			 * if there is a hole so we can mark this extent as the
-+			 * last one, and if not keep mapping things until we
-+			 * find a hole, or we run out of slots in the extent
-+			 * array
-+			 */
-+			if (length <= 0)
-+				continue;
-+
-+			ret = fiemap_fill_next_extent(fieinfo, logical, phys,
-+						      size, flags);
-+			if (ret)
-+				break;
-+		}
-+		cond_resched();
-+	} while (1);
-+
-+	mutex_unlock(&inode->i_mutex);
-+
-+	/* if ret is 1 then we just hit the end of the extent array */
-+	if (ret == 1)
-+		ret = 0;
-+
-+	return ret;
++	fieinfo->fi_extents_mapped++;
++	if (fieinfo->fi_extents_mapped == fieinfo->fi_extents_max)
++		return 1;
++	return (flags & FIEMAP_EXTENT_LAST) ? 1 : 0;
 +}
-+EXPORT_SYMBOL(generic_block_fiemap);
++EXPORT_SYMBOL(fiemap_fill_next_extent);
++
++/**
++ * fiemap_check_flags - check validity of requested flags for fiemap
++ * @fieinfo:	Fiemap context passed into ->fiemap
++ * @fs_flags:	Set of fiemap flags that the file system understands
++ *
++ * Called from file system ->fiemap callback. This will compute the
++ * intersection of valid fiemap flags and those that the fs supports. That
++ * value is then compared against the user supplied flags. In case of bad user
++ * flags, the invalid values will be written into the fieinfo structure, and
++ * -EBADR is returned, which tells ioctl_fiemap() to return those values to
++ * userspace. For this reason, a return code of -EBADR should be preserved.
++ *
++ * Returns 0 on success, -EBADR on bad flags.
++ */
++int fiemap_check_flags(struct fiemap_extent_info *fieinfo, u32 fs_flags)
++{
++	u32 incompat_flags;
++
++	incompat_flags = fieinfo->fi_flags & ~(FIEMAP_FLAGS_COMPAT & fs_flags);
++	if (incompat_flags) {
++		fieinfo->fi_flags = incompat_flags;
++		return -EBADR;
++	}
++	return 0;
++}
++EXPORT_SYMBOL(fiemap_check_flags);
++
++static int fiemap_check_ranges(struct super_block *sb,
++			       u64 start, u64 len, u64 *new_len)
++{
++	*new_len = len;
++
++	if (len == 0)
++		return -EINVAL;
++
++	if (start > sb->s_maxbytes)
++		return -EFBIG;
++
++	/*
++	 * Shrink request scope to what the fs can actually handle.
++	 */
++	if ((len > sb->s_maxbytes) ||
++	    (sb->s_maxbytes - len) < start)
++		*new_len = sb->s_maxbytes - start;
++
++	return 0;
++}
++
++static int ioctl_fiemap(struct file *filp, unsigned long arg)
++{
++	struct fiemap fiemap;
++	struct fiemap_extent_info fieinfo = { 0, };
++	struct inode *inode = filp->f_path.dentry->d_inode;
++	struct super_block *sb = inode->i_sb;
++	u64 len;
++	int error;
++
++	if (!inode->i_op->fiemap)
++		return -EOPNOTSUPP;
++
++	if (copy_from_user(&fiemap, (struct fiemap __user *)arg,
++			   sizeof(struct fiemap)))
++		return -EFAULT;
++
++	if (fiemap.fm_extent_count > FIEMAP_MAX_EXTENTS)
++		return -EINVAL;
++
++	error = fiemap_check_ranges(sb, fiemap.fm_start, fiemap.fm_length,
++				    &len);
++	if (error)
++		return error;
++
++	fieinfo.fi_flags = fiemap.fm_flags;
++	fieinfo.fi_extents_max = fiemap.fm_extent_count;
++	fieinfo.fi_extents_start = (struct fiemap_extent *)(arg + sizeof(fiemap));
++
++	if (fiemap.fm_extent_count != 0 &&
++	    !access_ok(VERIFY_WRITE, fieinfo.fi_extents_start,
++		       fieinfo.fi_extents_max * sizeof(struct fiemap_extent)))
++		return -EFAULT;
++
++	if (fieinfo.fi_flags & FIEMAP_FLAG_SYNC)
++		filemap_write_and_wait(inode->i_mapping);
++
++	error = inode->i_op->fiemap(inode, &fieinfo, fiemap.fm_start, len);
++	fiemap.fm_flags = fieinfo.fi_flags;
++	fiemap.fm_mapped_extents = fieinfo.fi_extents_mapped;
++	if (copy_to_user((char *)arg, &fiemap, sizeof(fiemap)))
++		error = -EFAULT;
++
++	return error;
++}
 +
  static int file_ioctl(struct file *filp, unsigned int cmd,
  		unsigned long arg)
  {
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 80171ee..8120fa1 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -837,6 +837,8 @@ extern void ext3_truncate (struct inode *);
- extern void ext3_set_inode_flags(struct inode *);
- extern void ext3_get_inode_flags(struct ext3_inode_info *);
- extern void ext3_set_aops(struct inode *inode);
-+extern int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		       u64 start, u64 len);
- 
- /* ioctl.c */
- extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
+@@ -80,6 +233,8 @@ static int file_ioctl(struct file *filp, unsigned int cmd,
+ 	switch (cmd) {
+ 	case FIBMAP:
+ 		return ioctl_fibmap(filp, p);
++	case FS_IOC_FIEMAP:
++		return ioctl_fiemap(filp, arg);
+ 	case FIGETBSZ:
+ 		return put_user(inode->i_sb->s_blocksize, p);
+ 	case FIONREAD:
+diff --git a/include/linux/fiemap.h b/include/linux/fiemap.h
+new file mode 100644
+index 0000000..671decb
+--- /dev/null
++++ b/include/linux/fiemap.h
+@@ -0,0 +1,64 @@
++/*
++ * FS_IOC_FIEMAP ioctl infrastructure.
++ *
++ * Some portions copyright (C) 2007 Cluster File Systems, Inc
++ *
++ * Authors: Mark Fasheh <mfasheh-IBi9RG/b67k@public.gmane.org>
++ *          Kalpak Shah <kalpak.shah-xsfywfwIY+M@public.gmane.org>
++ *          Andreas Dilger <adilger-xsfywfwIY+M@public.gmane.org>
++ */
++
++#ifndef _LINUX_FIEMAP_H
++#define _LINUX_FIEMAP_H
++
++struct fiemap_extent {
++	__u64 fe_logical;  /* logical offset in bytes for the start of
++			    * the extent from the beginning of the file */
++	__u64 fe_physical; /* physical offset in bytes for the start
++			    * of the extent from the beginning of the disk */
++	__u64 fe_length;   /* length in bytes for this extent */
++	__u64 fe_reserved64[2];
++	__u32 fe_flags;    /* FIEMAP_EXTENT_* flags for this extent */
++	__u32 fe_reserved[3];
++};
++
++struct fiemap {
++	__u64 fm_start;		/* logical offset (inclusive) at
++				 * which to start mapping (in) */
++	__u64 fm_length;	/* logical length of mapping which
++				 * userspace wants (in) */
++	__u32 fm_flags;		/* FIEMAP_FLAG_* flags for request (in/out) */
++	__u32 fm_mapped_extents;/* number of extents that were mapped (out) */
++	__u32 fm_extent_count;  /* size of fm_extents array (in) */
++	__u32 fm_reserved;
++	struct fiemap_extent fm_extents[0]; /* array of mapped extents (out) */
++};
++
++#define FIEMAP_MAX_OFFSET	(~0ULL)
++
++#define FIEMAP_FLAG_SYNC	0x00000001 /* sync file data before map */
++#define FIEMAP_FLAG_XATTR	0x00000002 /* map extended attribute tree */
++
++#define FIEMAP_FLAGS_COMPAT	(FIEMAP_FLAG_SYNC | FIEMAP_FLAG_XATTR)
++
++#define FIEMAP_EXTENT_LAST		0x00000001 /* Last extent in file. */
++#define FIEMAP_EXTENT_UNKNOWN		0x00000002 /* Data location unknown. */
++#define FIEMAP_EXTENT_DELALLOC		0x00000004 /* Location still pending.
++						    * Sets EXTENT_UNKNOWN. */
++#define FIEMAP_EXTENT_ENCODED		0x00000008 /* Data can not be read
++						    * while fs is unmounted */
++#define FIEMAP_EXTENT_DATA_ENCRYPTED	0x00000080 /* Data is encrypted by fs.
++						    * Sets EXTENT_NO_BYPASS. */
++#define FIEMAP_EXTENT_NOT_ALIGNED	0x00000100 /* Extent offsets may not be
++						    * block aligned. */
++#define FIEMAP_EXTENT_DATA_INLINE	0x00000200 /* Data mixed with metadata.
++						    * Sets EXTENT_NOT_ALIGNED.*/
++#define FIEMAP_EXTENT_DATA_TAIL		0x00000400 /* Multiple files in block.
++						    * Sets EXTENT_NOT_ALIGNED.*/
++#define FIEMAP_EXTENT_UNWRITTEN		0x00000800 /* Space allocated, but
++						    * no data (i.e. zero). */
++#define FIEMAP_EXTENT_MERGED		0x00001000 /* File does not natively
++						    * support extents. Result
++						    * merged for efficiency. */
++
++#endif /* _LINUX_FIEMAP_H */
 diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 194fb23..385c9a1 100644
+index 580b513..194fb23 100644
 --- a/include/linux/fs.h
 +++ b/include/linux/fs.h
-@@ -1998,6 +1998,9 @@ extern int vfs_fstat(unsigned int, struct kstat *);
+@@ -231,6 +231,7 @@ extern int dir_notify_enable;
+ #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
+ #define	FS_IOC_GETVERSION		_IOR('v', 1, long)
+ #define	FS_IOC_SETVERSION		_IOW('v', 2, long)
++#define FS_IOC_FIEMAP			_IOWR('f', 11, struct fiemap)
+ #define FS_IOC32_GETFLAGS		_IOR('f', 1, int)
+ #define FS_IOC32_SETFLAGS		_IOW('f', 2, int)
+ #define FS_IOC32_GETVERSION		_IOR('v', 1, int)
+@@ -291,6 +292,7 @@ extern int dir_notify_enable;
+ #include <linux/mutex.h>
+ #include <linux/capability.h>
+ #include <linux/semaphore.h>
++#include <linux/fiemap.h>
  
- extern int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
- 		    unsigned long arg);
-+extern int generic_block_fiemap(struct inode *inode,
-+				struct fiemap_extent_info *fieinfo, u64 start,
-+				u64 len, get_block_t *get_block);
+ #include <asm/atomic.h>
+ #include <asm/byteorder.h>
+@@ -1179,6 +1181,20 @@ extern void dentry_unhash(struct dentry *dentry);
+ extern int file_permission(struct file *, int);
  
- extern void get_filesystem(struct file_system_type *fs);
- extern void put_filesystem(struct file_system_type *fs);
+ /*
++ * VFS FS_IOC_FIEMAP helper definitions.
++ */
++struct fiemap_extent_info {
++	unsigned int fi_flags;		/* Flags as passed from user */
++	unsigned int fi_extents_mapped;	/* Number of mapped extents */
++	unsigned int fi_extents_max;	/* Size of fiemap_extent array */
++	struct fiemap_extent *fi_extents_start; /* Start of fiemap_extent
++						 * array */
++};
++int fiemap_fill_next_extent(struct fiemap_extent_info *info, u64 logical,
++			    u64 phys, u64 len, u32 flags);
++int fiemap_check_flags(struct fiemap_extent_info *fieinfo, u32 fs_flags);
++
++/*
+  * File types
+  *
+  * NOTE! These match bits 12..15 of stat.st_mode
+@@ -1287,6 +1303,8 @@ struct inode_operations {
+ 	void (*truncate_range)(struct inode *, loff_t, loff_t);
+ 	long (*fallocate)(struct inode *inode, int mode, loff_t offset,
+ 			  loff_t len);
++	int (*fiemap)(struct inode *, struct fiemap_extent_info *, u64 start,
++		      u64 len);
+ };
+ 
+ struct seq_file;
 -- 
 1.5.6.1.205.ge2c7.dirty
 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-api" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
