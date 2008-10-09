@@ -1,80 +1,129 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Do mballoc init before doing filesystem recovery
-Date: Thu,  9 Oct 2008 21:02:09 +0530
-Message-ID: <1223566329-29434-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1223566329-29434-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1223566329-29434-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH] ext4: Improve the documentation for ext4's /proc tunables
+Date: Thu, 09 Oct 2008 12:49:26 -0400
+Message-ID: <E1Knyha-0004G7-S2@closure.thunk.org>
+Cc: Alex Tomas <bzzz@sun.com>, Andreas Dilger <adilger@sun.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:60976 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753570AbYJIPc0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 11:32:26 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m99FVkip014442
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Oct 2008 02:31:46 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m99FWOSS3268664
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Oct 2008 02:32:24 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m99FWObV026818
-	for <linux-ext4@vger.kernel.org>; Fri, 10 Oct 2008 02:32:24 +1100
-In-Reply-To: <1223566329-29434-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:50470 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755475AbYJIQta (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 12:49:30 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-During filesystem recovery we may be doing a truncate
-which expects some of the mballoc data structures to
-be initialized. So do ext4_mb_init before recovery.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+When Aneesh asked me to update the /proc documentation for the new
+tunable inode_readahead_blks in /proc/fs/ext4/<devname>, it forced me to
+look at the current documentation, and some of the text caused my gorge
+to rise and my English parser to core dump.  :-(
+
+So I considered it a moral imperative to rewrite section 1.10 of
+Documentation/filesystems/proc.txt.  I *think* I got the definitions of
+the mballoc tuning parameters correct, but the original text made it
+hard to understand what exactly some of these tuning parameters meant,
+and so I was forced to go RTFS.   Alex, Andreas, could you quickly
+double check the new documentation and make sure I got things right?
+
+Thanks, regards,
+
+					- Ted
+
+>From be75f52f5e9acd376c64ff41f84314213bb761bb Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Thu, 9 Oct 2008 12:48:49 -0400
+Subject: [PATCH] ext4: Improve the documentation for ext4's /proc tunables
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Alex Tomas <bzzz@sun.com>
+Cc: Andreas Dilger <adilger@sun.com>
 ---
- fs/ext4/super.c |   30 +++++++++++++++---------------
- 1 files changed, 15 insertions(+), 15 deletions(-)
+ Documentation/filesystems/proc.txt |   70 +++++++++++++++++-------------------
+ 1 files changed, 33 insertions(+), 37 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c760818..468ff72 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2452,6 +2452,21 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			"available.\n");
- 	}
+diff --git a/Documentation/filesystems/proc.txt b/Documentation/filesystems/proc.txt
+index f566ad9..bcf742d 100644
+--- a/Documentation/filesystems/proc.txt
++++ b/Documentation/filesystems/proc.txt
+@@ -923,45 +923,41 @@ CPUs.
+ The   "procs_blocked" line gives  the  number of  processes currently blocked,
+ waiting for I/O to complete.
  
-+	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
-+		printk(KERN_WARNING "EXT4-fs: Ignoring delalloc option - "
-+				"requested data journaling mode\n");
-+		clear_opt(sbi->s_mount_opt, DELALLOC);
-+	} else if (test_opt(sb, DELALLOC))
-+		printk(KERN_INFO "EXT4-fs: delayed allocation enabled\n");
 +
-+	ext4_ext_init(sb);
-+	err = ext4_mb_init(sb, needs_recovery);
-+	if (err) {
-+		printk(KERN_ERR "EXT4-fs: failed to initalize mballoc (%d)\n",
-+		       err);
-+		goto failed_mount4;
-+	}
-+
- 	/*
- 	 * akpm: core read_super() calls in here with the superblock locked.
- 	 * That deadlocks, because orphan cleanup needs to lock the superblock
-@@ -2471,21 +2486,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	       test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA ? "ordered":
- 	       "writeback");
- 
--	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
--		printk(KERN_WARNING "EXT4-fs: Ignoring delalloc option - "
--				"requested data journaling mode\n");
--		clear_opt(sbi->s_mount_opt, DELALLOC);
--	} else if (test_opt(sb, DELALLOC))
--		printk(KERN_INFO "EXT4-fs: delayed allocation enabled\n");
+ 1.9 Ext4 file system parameters
+ ------------------------------
+-Ext4 file system have one directory per partition under /proc/fs/ext4/
+-# ls /proc/fs/ext4/hdc/
+-group_prealloc  max_to_scan  mb_groups  mb_history  min_to_scan  order2_req
+-stats  stream_req
 -
--	ext4_ext_init(sb);
--	err = ext4_mb_init(sb, needs_recovery);
--	if (err) {
--		printk(KERN_ERR "EXT4-fs: failed to initalize mballoc (%d)\n",
--		       err);
--		goto failed_mount4;
--	}
+-mb_groups:
+-This file gives the details of multiblock allocator buddy cache of free blocks
+-
+-mb_history:
+-Multiblock allocation history.
+-
+-stats:
+-This file indicate whether the multiblock allocator should start collecting
+-statistics. The statistics are shown during unmount
+-
+-group_prealloc:
+-The multiblock allocator normalize the block allocation request to
+-group_prealloc filesystem blocks if we don't have strip value set.
+-The stripe value can be specified at mount time or during mke2fs.
+-
+-max_to_scan:
+-How long multiblock allocator can look for a best extent (in found extents)
+-
+-min_to_scan:
+-How long multiblock allocator  must look for a best extent
+-
+-order2_req:
+-Multiblock allocator use  2^N search using buddies only for requests greater
+-than or equal to order2_req. The request size is specfied in file system
+-blocks. A value of 2 indicate only if the requests are greater than or equal
+-to 4 blocks.
+-
+-stream_req:
+-Files smaller than stream_req are served by the stream allocator, whose
+-purpose is to pack requests as close each to other as possible to
+-produce smooth I/O traffic. Avalue of 16 indicate that file smaller than 16
+-filesystem block size will use group based preallocation.
++
++Information about mounted ext4 file systems can be found in
++/proc/fs/ext4.  Each mounted filesystem will have a directory in
++/proc/fs/ext4 based on its device name (i.e., /proc/fs/ext4/hdc or
++/proc/fs/ext4/dm-0).   The files in each per-device directory are shown
++in Table 1-10, below.
++
++Table 1-10: Files in /proc/fs/ext4/<devname>
++..............................................................................
++ File            Content                                        
++ mb_groups       details of multiblock allocator buddy cache of free blocks
++ mb_history      multiblock allocation history
++ stats           controls whether the multiblock allocator should start
++                 collecting statistics, which are shown during the unmount
++ group_prealloc  the multiblock allocator will round up allocation
++                 requests to a multiple of this tuning parameter if the
++                 stripe size is not set in the ext4 superblock
++ max_to_scan     The maximum number of extents the multiblock allocator
++                 will search to find the best extent
++ min_to_scan     The minum number of extents the multiblock allocator
++                 will search to find the best extent
++ order2_req      Tuning parameter which controls the minimum size for 
++                 requests (as a power of 2) where the buddy cache is
++                 used
++ stream_req      Files which have fewer blocks than this tunable
++                 parameter will have their blocks allocated out of a
++                 block group specific preallocation pool, so that small
++                 files are packed closely together.  Each large files
++                 will have its blocks allocated out of its own unique
++                 preallocation pool.
++..............................................................................
++
+ 
+ ------------------------------------------------------------------------------
+ Summary
+-- 
+1.5.6.1.205.ge2c7.dirty
+
