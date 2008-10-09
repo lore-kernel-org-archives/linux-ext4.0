@@ -1,2122 +1,1995 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 04/42] ext4: Fix whitespace checkpatch warnings/errors
-Date: Thu,  9 Oct 2008 00:05:22 -0400
-Message-ID: <1223525160-9887-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 30/42] ext4: Remove old legacy block allocator
+Date: Thu,  9 Oct 2008 00:05:48 -0400
+Message-ID: <1223525160-9887-31-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
  <1223525160-9887-4-git-send-email-tytso@mit.edu>
+ <1223525160-9887-5-git-send-email-tytso@mit.edu>
+ <1223525160-9887-6-git-send-email-tytso@mit.edu>
+ <1223525160-9887-7-git-send-email-tytso@mit.edu>
+ <1223525160-9887-8-git-send-email-tytso@mit.edu>
+ <1223525160-9887-9-git-send-email-tytso@mit.edu>
+ <1223525160-9887-10-git-send-email-tytso@mit.edu>
+ <1223525160-9887-11-git-send-email-tytso@mit.edu>
+ <1223525160-9887-12-git-send-email-tytso@mit.edu>
+ <1223525160-9887-13-git-send-email-tytso@mit.edu>
+ <1223525160-9887-14-git-send-email-tytso@mit.edu>
+ <1223525160-9887-15-git-send-email-tytso@mit.edu>
+ <1223525160-9887-16-git-send-email-tytso@mit.edu>
+ <1223525160-9887-17-git-send-email-tytso@mit.edu>
+ <1223525160-9887-18-git-send-email-tytso@mit.edu>
+ <1223525160-9887-19-git-send-email-tytso@mit.edu>
+ <1223525160-9887-20-git-send-email-tytso@mit.edu>
+ <1223525160-9887-21-git-send-email-tytso@mit.edu>
+ <1223525160-9887-22-git-send-email-tytso@mit.edu>
+ <1223525160-9887-23-git-send-email-tytso@mit.edu>
+ <1223525160-9887-24-git-send-email-tytso@mit.edu>
+ <1223525160-9887-25-git-send-email-tytso@mit.edu>
+ <1223525160-9887-26-git-send-email-tytso@mit.edu>
+ <1223525160-9887-27-git-send-email-tytso@mit.edu>
+ <1223525160-9887-28-git-send-email-tytso@mit.edu>
+ <1223525160-9887-29-git-send-email-tytso@mit.edu>
+ <1223525160-9887-30-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54457 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54483 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757303AbYJIEGH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:07 -0400
-In-Reply-To: <1223525160-9887-4-git-send-email-tytso@mit.edu>
+	with ESMTP id S1757446AbYJIEGK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:10 -0400
+In-Reply-To: <1223525160-9887-30-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/acl.h     |    6 +-
- fs/ext4/balloc.c  |   70 ++++++------
- fs/ext4/bitmap.c  |    6 +-
- fs/ext4/dir.c     |   52 +++++-----
- fs/ext4/ext4.h    |   68 ++++++------
- fs/ext4/ext4_sb.h |    8 +-
- fs/ext4/extents.c |    6 +-
+ fs/ext4/balloc.c  | 1352 +----------------------------------------------------
+ fs/ext4/ext4.h    |    8 +-
+ fs/ext4/ext4_i.h  |   35 --
+ fs/ext4/ext4_sb.h |    1 -
+ fs/ext4/extents.c |    9 +-
  fs/ext4/file.c    |    2 +-
- fs/ext4/fsync.c   |    2 +-
- fs/ext4/hash.c    |    8 +-
- fs/ext4/ialloc.c  |   50 +++++-----
- fs/ext4/inode.c   |   96 +++++++++---------
- fs/ext4/ioctl.c   |    4 +-
- fs/ext4/namei.c   |  302 ++++++++++++++++++++++++++--------------------------
- fs/ext4/resize.c  |    6 +-
- fs/ext4/super.c   |    6 +-
- fs/ext4/symlink.c |    4 +-
- fs/ext4/xattr.h   |    4 +-
- 18 files changed, 350 insertions(+), 350 deletions(-)
+ fs/ext4/ialloc.c  |    1 -
+ fs/ext4/inode.c   |   33 +--
+ fs/ext4/ioctl.c   |   44 --
+ fs/ext4/mballoc.c |   22 +-
+ fs/ext4/resize.c  |   18 +-
+ fs/ext4/super.c   |   40 +--
+ 12 files changed, 40 insertions(+), 1525 deletions(-)
 
-diff --git a/fs/ext4/acl.h b/fs/ext4/acl.h
-index cd2b855..4c9948f 100644
---- a/fs/ext4/acl.h
-+++ b/fs/ext4/acl.h
-@@ -58,9 +58,9 @@ static inline int ext4_acl_count(size_t size)
- #define EXT4_ACL_NOT_CACHED ((void *)-1)
- 
- /* acl.c */
--extern int ext4_permission (struct inode *, int);
--extern int ext4_acl_chmod (struct inode *);
--extern int ext4_init_acl (handle_t *, struct inode *, struct inode *);
-+extern int ext4_permission(struct inode *, int);
-+extern int ext4_acl_chmod(struct inode *);
-+extern int ext4_init_acl(handle_t *, struct inode *, struct inode *);
- 
- #else  /* CONFIG_EXT4DEV_FS_POSIX_ACL */
- #include <linux/sched.h>
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 7aac202..58005c0 100644
+index 02068fa..59566c0 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -132,7 +132,7 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
- 		 */
- 		group_blocks = ext4_blocks_count(sbi->s_es) -
- 			le32_to_cpu(sbi->s_es->s_first_data_block) -
--			(EXT4_BLOCKS_PER_GROUP(sb) * (sbi->s_groups_count -1));
-+			(EXT4_BLOCKS_PER_GROUP(sb) * (sbi->s_groups_count - 1));
- 	} else {
- 		group_blocks = EXT4_BLOCKS_PER_GROUP(sb);
+@@ -83,6 +83,7 @@ static int ext4_group_used_meta_blocks(struct super_block *sb,
  	}
-@@ -200,20 +200,20 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
-  * @bh:			pointer to the buffer head to store the block
-  *			group descriptor
-  */
--struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
-+struct ext4_group_desc * ext4_get_group_desc(struct super_block *sb,
- 					     ext4_group_t block_group,
--					     struct buffer_head ** bh)
-+					     struct buffer_head **bh)
- {
- 	unsigned long group_desc;
- 	unsigned long offset;
--	struct ext4_group_desc * desc;
-+	struct ext4_group_desc *desc;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
- 	if (block_group >= sbi->s_groups_count) {
--		ext4_error (sb, "ext4_get_group_desc",
--			    "block_group >= groups_count - "
--			    "block_group = %lu, groups_count = %lu",
--			    block_group, sbi->s_groups_count);
-+		ext4_error(sb, "ext4_get_group_desc",
-+			   "block_group >= groups_count - "
-+			   "block_group = %lu, groups_count = %lu",
-+			   block_group, sbi->s_groups_count);
- 
- 		return NULL;
- 	}
-@@ -222,10 +222,10 @@ struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
- 	group_desc = block_group >> EXT4_DESC_PER_BLOCK_BITS(sb);
- 	offset = block_group & (EXT4_DESC_PER_BLOCK(sb) - 1);
- 	if (!sbi->s_group_desc[group_desc]) {
--		ext4_error (sb, "ext4_get_group_desc",
--			    "Group descriptor not loaded - "
--			    "block_group = %lu, group_desc = %lu, desc = %lu",
--			     block_group, group_desc, offset);
-+		ext4_error(sb, "ext4_get_group_desc",
-+			   "Group descriptor not loaded - "
-+			   "block_group = %lu, group_desc = %lu, desc = %lu",
-+			   block_group, group_desc, offset);
- 		return NULL;
- 	}
- 
-@@ -302,8 +302,8 @@ err_out:
- struct buffer_head *
- ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- {
--	struct ext4_group_desc * desc;
--	struct buffer_head * bh = NULL;
-+	struct ext4_group_desc *desc;
-+	struct buffer_head *bh = NULL;
- 	ext4_fsblk_t bitmap_blk;
- 
- 	desc = ext4_get_group_desc(sb, block_group, NULL);
-@@ -506,8 +506,8 @@ void ext4_rsv_window_add(struct super_block *sb,
- 	struct rb_node *node = &rsv->rsv_node;
- 	ext4_fsblk_t start = rsv->rsv_start;
- 
--	struct rb_node ** p = &root->rb_node;
--	struct rb_node * parent = NULL;
-+	struct rb_node **p = &root->rb_node;
-+	struct rb_node *parent = NULL;
- 	struct ext4_reserve_window_node *this;
- 
- 	while (*p)
-@@ -661,8 +661,8 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
- 	ext4_grpblk_t bit;
- 	unsigned long i;
- 	unsigned long overflow;
--	struct ext4_group_desc * desc;
--	struct ext4_super_block * es;
-+	struct ext4_group_desc *desc;
-+	struct ext4_super_block *es;
- 	struct ext4_sb_info *sbi;
- 	int err = 0, ret;
- 	ext4_grpblk_t group_freed;
-@@ -673,13 +673,13 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
- 	if (block < le32_to_cpu(es->s_first_data_block) ||
- 	    block + count < block ||
- 	    block + count > ext4_blocks_count(es)) {
--		ext4_error (sb, "ext4_free_blocks",
--			    "Freeing blocks not in datazone - "
--			    "block = %llu, count = %lu", block, count);
-+		ext4_error(sb, "ext4_free_blocks",
-+			   "Freeing blocks not in datazone - "
-+			   "block = %llu, count = %lu", block, count);
- 		goto error_return;
- 	}
- 
--	ext4_debug ("freeing block(s) %llu-%llu\n", block, block + count - 1);
-+	ext4_debug("freeing block(s) %llu-%llu\n", block, block + count - 1);
- 
- do_more:
- 	overflow = 0;
-@@ -696,7 +696,7 @@ do_more:
- 	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
- 	if (!bitmap_bh)
- 		goto error_return;
--	desc = ext4_get_group_desc (sb, block_group, &gd_bh);
-+	desc = ext4_get_group_desc(sb, block_group, &gd_bh);
- 	if (!desc)
- 		goto error_return;
- 
-@@ -705,10 +705,10 @@ do_more:
- 	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
- 	    in_range(block + count - 1, ext4_inode_table(sb, desc),
- 		     sbi->s_itb_per_group)) {
--		ext4_error (sb, "ext4_free_blocks",
--			    "Freeing blocks in system zones - "
--			    "Block = %llu, count = %lu",
--			    block, count);
-+		ext4_error(sb, "ext4_free_blocks",
-+			   "Freeing blocks in system zones - "
-+			   "Block = %llu, count = %lu",
-+			   block, count);
- 		goto error_return;
- 	}
- 
-@@ -850,7 +850,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t block, unsigned long count,
- 			int metadata)
- {
--	struct super_block * sb;
-+	struct super_block *sb;
- 	unsigned long dquot_freed_blocks;
- 
- 	/* this isn't the right place to decide whether block is metadata
-@@ -1019,7 +1019,7 @@ claim_block(spinlock_t *lock, ext4_grpblk_t block, struct buffer_head *bh)
- 	if (ext4_set_bit_atomic(lock, block, bh->b_data))
- 		return 0;
- 	jbd_lock_bh_state(bh);
--	if (jh->b_committed_data && ext4_test_bit(block,jh->b_committed_data)) {
-+	if (jh->b_committed_data && ext4_test_bit(block, jh->b_committed_data)) {
- 		ext4_clear_bit_atomic(lock, block, bh->b_data);
- 		ret = 0;
- 	} else {
-@@ -1170,7 +1170,7 @@ fail_access:
- static int find_next_reservable_window(
- 				struct ext4_reserve_window_node *search_head,
- 				struct ext4_reserve_window_node *my_rsv,
--				struct super_block * sb,
-+				struct super_block *sb,
- 				ext4_fsblk_t start_block,
- 				ext4_fsblk_t last_block)
- {
-@@ -1204,7 +1204,7 @@ static int find_next_reservable_window(
- 
- 		prev = rsv;
- 		next = rb_next(&rsv->rsv_node);
--		rsv = rb_entry(next,struct ext4_reserve_window_node,rsv_node);
-+		rsv = rb_entry(next, struct ext4_reserve_window_node, rsv_node);
- 
- 		/*
- 		 * Reached the last reservation, we can just append to the
-@@ -1342,7 +1342,7 @@ static int alloc_new_reservation(struct ext4_reserve_window_node *my_rsv,
- 			size = size * 2;
- 			if (size > EXT4_MAX_RESERVE_BLOCKS)
- 				size = EXT4_MAX_RESERVE_BLOCKS;
--			my_rsv->rsv_goal_size= size;
-+			my_rsv->rsv_goal_size = size;
- 		}
- 	}
- 
-@@ -1491,7 +1491,7 @@ static ext4_grpblk_t
- ext4_try_to_allocate_with_rsv(struct super_block *sb, handle_t *handle,
- 			ext4_group_t group, struct buffer_head *bitmap_bh,
- 			ext4_grpblk_t grp_goal,
--			struct ext4_reserve_window_node * my_rsv,
-+			struct ext4_reserve_window_node *my_rsv,
- 			unsigned long *count, int *errp)
- {
- 	ext4_fsblk_t group_first_block, group_last_block;
-@@ -1519,7 +1519,7 @@ ext4_try_to_allocate_with_rsv(struct super_block *sb, handle_t *handle,
- 	 * or the file is not a regular file
- 	 * or last attempt to allocate a block with reservation turned on failed
+ 	return used_blocks;
+ }
++
+ /* Initializes an uninitialized block bitmap if given, and returns the
+  * number of blocks free in the group. */
+ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+@@ -345,303 +346,6 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
  	 */
--	if (my_rsv == NULL ) {
-+	if (my_rsv == NULL) {
- 		ret = ext4_try_to_allocate(sb, handle, group, bitmap_bh,
- 						grp_goal, count, NULL);
- 		goto out;
-@@ -2184,7 +2184,7 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
- 
- 	if (!EXT4_HAS_INCOMPAT_FEATURE(sb,EXT4_FEATURE_INCOMPAT_META_BG) ||
- 			metagroup < first_meta_bg)
--		return ext4_bg_num_gdb_nometa(sb,group);
-+		return ext4_bg_num_gdb_nometa(sb, group);
- 
- 	return ext4_bg_num_gdb_meta(sb,group);
- 
-diff --git a/fs/ext4/bitmap.c b/fs/ext4/bitmap.c
-index d37ea67..0a7a666 100644
---- a/fs/ext4/bitmap.c
-+++ b/fs/ext4/bitmap.c
-@@ -15,17 +15,17 @@
- 
- static const int nibblemap[] = {4, 3, 3, 2, 3, 2, 2, 1, 3, 2, 2, 1, 2, 1, 1, 0};
- 
--unsigned long ext4_count_free (struct buffer_head * map, unsigned int numchars)
-+unsigned long ext4_count_free(struct buffer_head *map, unsigned int numchars)
- {
- 	unsigned int i;
- 	unsigned long sum = 0;
- 
- 	if (!map)
--		return (0);
-+		return 0;
- 	for (i = 0; i < numchars; i++)
- 		sum += nibblemap[map->b_data[i] & 0xf] +
- 			nibblemap[(map->b_data[i] >> 4) & 0xf];
--	return (sum);
-+	return sum;
+ 	return bh;
  }
+-/*
+- * The reservation window structure operations
+- * --------------------------------------------
+- * Operations include:
+- * dump, find, add, remove, is_empty, find_next_reservable_window, etc.
+- *
+- * We use a red-black tree to represent per-filesystem reservation
+- * windows.
+- *
+- */
+-
+-/**
+- * __rsv_window_dump() -- Dump the filesystem block allocation reservation map
+- * @rb_root:		root of per-filesystem reservation rb tree
+- * @verbose:		verbose mode
+- * @fn:			function which wishes to dump the reservation map
+- *
+- * If verbose is turned on, it will print the whole block reservation
+- * windows(start, end).	Otherwise, it will only print out the "bad" windows,
+- * those windows that overlap with their immediate neighbors.
+- */
+-#if 1
+-static void __rsv_window_dump(struct rb_root *root, int verbose,
+-			      const char *fn)
+-{
+-	struct rb_node *n;
+-	struct ext4_reserve_window_node *rsv, *prev;
+-	int bad;
+-
+-restart:
+-	n = rb_first(root);
+-	bad = 0;
+-	prev = NULL;
+-
+-	printk(KERN_DEBUG "Block Allocation Reservation "
+-	       "Windows Map (%s):\n", fn);
+-	while (n) {
+-		rsv = rb_entry(n, struct ext4_reserve_window_node, rsv_node);
+-		if (verbose)
+-			printk(KERN_DEBUG "reservation window 0x%p "
+-			       "start:  %llu, end:  %llu\n",
+-			       rsv, rsv->rsv_start, rsv->rsv_end);
+-		if (rsv->rsv_start && rsv->rsv_start >= rsv->rsv_end) {
+-			printk(KERN_DEBUG "Bad reservation %p (start >= end)\n",
+-			       rsv);
+-			bad = 1;
+-		}
+-		if (prev && prev->rsv_end >= rsv->rsv_start) {
+-			printk(KERN_DEBUG "Bad reservation %p "
+-			       "(prev->end >= start)\n", rsv);
+-			bad = 1;
+-		}
+-		if (bad) {
+-			if (!verbose) {
+-				printk(KERN_DEBUG "Restarting reservation "
+-				       "walk in verbose mode\n");
+-				verbose = 1;
+-				goto restart;
+-			}
+-		}
+-		n = rb_next(n);
+-		prev = rsv;
+-	}
+-	printk(KERN_DEBUG "Window map complete.\n");
+-	BUG_ON(bad);
+-}
+-#define rsv_window_dump(root, verbose) \
+-	__rsv_window_dump((root), (verbose), __func__)
+-#else
+-#define rsv_window_dump(root, verbose) do {} while (0)
+-#endif
+-
+-/**
+- * goal_in_my_reservation()
+- * @rsv:		inode's reservation window
+- * @grp_goal:		given goal block relative to the allocation block group
+- * @group:		the current allocation block group
+- * @sb:			filesystem super block
+- *
+- * Test if the given goal block (group relative) is within the file's
+- * own block reservation window range.
+- *
+- * If the reservation window is outside the goal allocation group, return 0;
+- * grp_goal (given goal block) could be -1, which means no specific
+- * goal block. In this case, always return 1.
+- * If the goal block is within the reservation window, return 1;
+- * otherwise, return 0;
+- */
+-static int
+-goal_in_my_reservation(struct ext4_reserve_window *rsv, ext4_grpblk_t grp_goal,
+-			ext4_group_t group, struct super_block *sb)
+-{
+-	ext4_fsblk_t group_first_block, group_last_block;
+-
+-	group_first_block = ext4_group_first_block_no(sb, group);
+-	group_last_block = group_first_block + (EXT4_BLOCKS_PER_GROUP(sb) - 1);
+-
+-	if ((rsv->_rsv_start > group_last_block) ||
+-	    (rsv->_rsv_end < group_first_block))
+-		return 0;
+-	if ((grp_goal >= 0) && ((grp_goal + group_first_block < rsv->_rsv_start)
+-		|| (grp_goal + group_first_block > rsv->_rsv_end)))
+-		return 0;
+-	return 1;
+-}
+-
+-/**
+- * search_reserve_window()
+- * @rb_root:		root of reservation tree
+- * @goal:		target allocation block
+- *
+- * Find the reserved window which includes the goal, or the previous one
+- * if the goal is not in any window.
+- * Returns NULL if there are no windows or if all windows start after the goal.
+- */
+-static struct ext4_reserve_window_node *
+-search_reserve_window(struct rb_root *root, ext4_fsblk_t goal)
+-{
+-	struct rb_node *n = root->rb_node;
+-	struct ext4_reserve_window_node *rsv;
+-
+-	if (!n)
+-		return NULL;
+-
+-	do {
+-		rsv = rb_entry(n, struct ext4_reserve_window_node, rsv_node);
+-
+-		if (goal < rsv->rsv_start)
+-			n = n->rb_left;
+-		else if (goal > rsv->rsv_end)
+-			n = n->rb_right;
+-		else
+-			return rsv;
+-	} while (n);
+-	/*
+-	 * We've fallen off the end of the tree: the goal wasn't inside
+-	 * any particular node.  OK, the previous node must be to one
+-	 * side of the interval containing the goal.  If it's the RHS,
+-	 * we need to back up one.
+-	 */
+-	if (rsv->rsv_start > goal) {
+-		n = rb_prev(&rsv->rsv_node);
+-		rsv = rb_entry(n, struct ext4_reserve_window_node, rsv_node);
+-	}
+-	return rsv;
+-}
+-
+-/**
+- * ext4_rsv_window_add() -- Insert a window to the block reservation rb tree.
+- * @sb:			super block
+- * @rsv:		reservation window to add
+- *
+- * Must be called with rsv_lock hold.
+- */
+-void ext4_rsv_window_add(struct super_block *sb,
+-		    struct ext4_reserve_window_node *rsv)
+-{
+-	struct rb_root *root = &EXT4_SB(sb)->s_rsv_window_root;
+-	struct rb_node *node = &rsv->rsv_node;
+-	ext4_fsblk_t start = rsv->rsv_start;
+-
+-	struct rb_node **p = &root->rb_node;
+-	struct rb_node *parent = NULL;
+-	struct ext4_reserve_window_node *this;
+-
+-	while (*p)
+-	{
+-		parent = *p;
+-		this = rb_entry(parent, struct ext4_reserve_window_node, rsv_node);
+-
+-		if (start < this->rsv_start)
+-			p = &(*p)->rb_left;
+-		else if (start > this->rsv_end)
+-			p = &(*p)->rb_right;
+-		else {
+-			rsv_window_dump(root, 1);
+-			BUG();
+-		}
+-	}
+-
+-	rb_link_node(node, parent, p);
+-	rb_insert_color(node, root);
+-}
+-
+-/**
+- * ext4_rsv_window_remove() -- unlink a window from the reservation rb tree
+- * @sb:			super block
+- * @rsv:		reservation window to remove
+- *
+- * Mark the block reservation window as not allocated, and unlink it
+- * from the filesystem reservation window rb tree. Must be called with
+- * rsv_lock hold.
+- */
+-static void rsv_window_remove(struct super_block *sb,
+-			      struct ext4_reserve_window_node *rsv)
+-{
+-	rsv->rsv_start = EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+-	rsv->rsv_end = EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+-	rsv->rsv_alloc_hit = 0;
+-	rb_erase(&rsv->rsv_node, &EXT4_SB(sb)->s_rsv_window_root);
+-}
+-
+-/*
+- * rsv_is_empty() -- Check if the reservation window is allocated.
+- * @rsv:		given reservation window to check
+- *
+- * returns 1 if the end block is EXT4_RESERVE_WINDOW_NOT_ALLOCATED.
+- */
+-static inline int rsv_is_empty(struct ext4_reserve_window *rsv)
+-{
+-	/* a valid reservation end block could not be 0 */
+-	return rsv->_rsv_end == EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+-}
+-
+-/**
+- * ext4_init_block_alloc_info()
+- * @inode:		file inode structure
+- *
+- * Allocate and initialize the	reservation window structure, and
+- * link the window to the ext4 inode structure at last
+- *
+- * The reservation window structure is only dynamically allocated
+- * and linked to ext4 inode the first time the open file
+- * needs a new block. So, before every ext4_new_block(s) call, for
+- * regular files, we should check whether the reservation window
+- * structure exists or not. In the latter case, this function is called.
+- * Fail to do so will result in block reservation being turned off for that
+- * open file.
+- *
+- * This function is called from ext4_get_blocks_handle(), also called
+- * when setting the reservation window size through ioctl before the file
+- * is open for write (needs block allocation).
+- *
+- * Needs down_write(i_data_sem) protection prior to call this function.
+- */
+-void ext4_init_block_alloc_info(struct inode *inode)
+-{
+-	struct ext4_inode_info *ei = EXT4_I(inode);
+-	struct ext4_block_alloc_info *block_i = ei->i_block_alloc_info;
+-	struct super_block *sb = inode->i_sb;
+-
+-	block_i = kmalloc(sizeof(*block_i), GFP_NOFS);
+-	if (block_i) {
+-		struct ext4_reserve_window_node *rsv = &block_i->rsv_window_node;
+-
+-		rsv->rsv_start = EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+-		rsv->rsv_end = EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+-
+-		/*
+-		 * if filesystem is mounted with NORESERVATION, the goal
+-		 * reservation window size is set to zero to indicate
+-		 * block reservation is off
+-		 */
+-		if (!test_opt(sb, RESERVATION))
+-			rsv->rsv_goal_size = 0;
+-		else
+-			rsv->rsv_goal_size = EXT4_DEFAULT_RESERVE_BLOCKS;
+-		rsv->rsv_alloc_hit = 0;
+-		block_i->last_alloc_logical_block = 0;
+-		block_i->last_alloc_physical_block = 0;
+-	}
+-	ei->i_block_alloc_info = block_i;
+-}
+-
+-/**
+- * ext4_discard_reservation()
+- * @inode:		inode
+- *
+- * Discard(free) block reservation window on last file close, or truncate
+- * or at last iput().
+- *
+- * It is being called in three cases:
+- *	ext4_release_file(): last writer close the file
+- *	ext4_clear_inode(): last iput(), when nobody link to this file.
+- *	ext4_truncate(): when the block indirect map is about to change.
+- *
+- */
+-void ext4_discard_reservation(struct inode *inode)
+-{
+-	struct ext4_inode_info *ei = EXT4_I(inode);
+-	struct ext4_block_alloc_info *block_i = ei->i_block_alloc_info;
+-	struct ext4_reserve_window_node *rsv;
+-	spinlock_t *rsv_lock = &EXT4_SB(inode->i_sb)->s_rsv_window_lock;
+-
+-	ext4_mb_discard_inode_preallocations(inode);
+-
+-	if (!block_i)
+-		return;
+-
+-	rsv = &block_i->rsv_window_node;
+-	if (!rsv_is_empty(&rsv->rsv_window)) {
+-		spin_lock(rsv_lock);
+-		if (!rsv_is_empty(&rsv->rsv_window))
+-			rsv_window_remove(inode->i_sb, rsv);
+-		spin_unlock(rsv_lock);
+-	}
+-}
  
- #endif  /*  EXT4FS_DEBUG  */
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index ac873db..d40da31 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -33,10 +33,10 @@ static unsigned char ext4_filetype_table[] = {
- };
- 
- static int ext4_readdir(struct file *, void *, filldir_t);
--static int ext4_dx_readdir(struct file * filp,
--			   void * dirent, filldir_t filldir);
--static int ext4_release_dir (struct inode * inode,
--				struct file * filp);
-+static int ext4_dx_readdir(struct file *filp,
-+			   void *dirent, filldir_t filldir);
-+static int ext4_release_dir(struct inode *inode,
-+				struct file *filp);
- 
- const struct file_operations ext4_dir_operations = {
- 	.llseek		= generic_file_llseek,
-@@ -61,12 +61,12 @@ static unsigned char get_dtype(struct super_block *sb, int filetype)
- }
- 
- 
--int ext4_check_dir_entry (const char * function, struct inode * dir,
--			  struct ext4_dir_entry_2 * de,
--			  struct buffer_head * bh,
--			  unsigned long offset)
-+int ext4_check_dir_entry(const char *function, struct inode *dir,
-+			 struct ext4_dir_entry_2 *de,
-+			 struct buffer_head *bh,
-+			 unsigned long offset)
- {
--	const char * error_msg = NULL;
-+	const char *error_msg = NULL;
- 	const int rlen = ext4_rec_len_from_disk(de->rec_len);
- 
- 	if (rlen < EXT4_DIR_REC_LEN(1))
-@@ -82,7 +82,7 @@ int ext4_check_dir_entry (const char * function, struct inode * dir,
- 		error_msg = "inode out of bounds";
- 
- 	if (error_msg != NULL)
--		ext4_error (dir->i_sb, function,
-+		ext4_error(dir->i_sb, function,
- 			"bad entry in directory #%lu: %s - "
- 			"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
- 			dir->i_ino, error_msg, offset,
-@@ -91,8 +91,8 @@ int ext4_check_dir_entry (const char * function, struct inode * dir,
- 	return error_msg == NULL ? 1 : 0;
- }
- 
--static int ext4_readdir(struct file * filp,
--			 void * dirent, filldir_t filldir)
-+static int ext4_readdir(struct file *filp,
-+			 void *dirent, filldir_t filldir)
- {
- 	int error = 0;
- 	unsigned long offset;
-@@ -148,7 +148,7 @@ static int ext4_readdir(struct file * filp,
- 		 * of recovering data when there's a bad sector
- 		 */
- 		if (!bh) {
--			ext4_error (sb, "ext4_readdir",
-+			ext4_error(sb, "ext4_readdir",
- 				"directory #%lu contains a hole at offset %lu",
- 				inode->i_ino, (unsigned long)filp->f_pos);
- 			/* corrupt size?  Maybe no more blocks to read */
-@@ -187,14 +187,14 @@ revalidate:
- 		while (!error && filp->f_pos < inode->i_size
- 		       && offset < sb->s_blocksize) {
- 			de = (struct ext4_dir_entry_2 *) (bh->b_data + offset);
--			if (!ext4_check_dir_entry ("ext4_readdir", inode, de,
--						   bh, offset)) {
-+			if (!ext4_check_dir_entry("ext4_readdir", inode, de,
-+						  bh, offset)) {
- 				/*
- 				 * On error, skip the f_pos to the next block
- 				 */
- 				filp->f_pos = (filp->f_pos |
- 						(sb->s_blocksize - 1)) + 1;
--				brelse (bh);
-+				brelse(bh);
- 				ret = stored;
- 				goto out;
- 			}
-@@ -218,12 +218,12 @@ revalidate:
- 					break;
- 				if (version != filp->f_version)
- 					goto revalidate;
--				stored ++;
-+				stored++;
- 			}
- 			filp->f_pos += ext4_rec_len_from_disk(de->rec_len);
- 		}
- 		offset = 0;
--		brelse (bh);
-+		brelse(bh);
- 	}
- out:
- 	return ret;
-@@ -290,9 +290,9 @@ static void free_rb_tree_fname(struct rb_root *root)
- 		parent = rb_parent(n);
- 		fname = rb_entry(n, struct fname, rb_hash);
- 		while (fname) {
--			struct fname * old = fname;
-+			struct fname *old = fname;
- 			fname = fname->next;
--			kfree (old);
-+			kfree(old);
- 		}
- 		if (!parent)
- 			root->rb_node = NULL;
-@@ -331,7 +331,7 @@ int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- 			     struct ext4_dir_entry_2 *dirent)
- {
- 	struct rb_node **p, *parent = NULL;
--	struct fname * fname, *new_fn;
-+	struct fname *fname, *new_fn;
- 	struct dir_private_info *info;
- 	int len;
- 
-@@ -388,13 +388,13 @@ int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
-  * for all entres on the fname linked list.  (Normally there is only
-  * one entry on the linked list, unless there are 62 bit hash collisions.)
+ /**
+  * ext4_free_blocks_sb() -- Free given blocks and update quota
+@@ -650,6 +354,13 @@ void ext4_discard_reservation(struct inode *inode)
+  * @block:			start physcial block to free
+  * @count:			number of blocks to free
+  * @pdquot_freed_blocks:	pointer to quota
++ *
++ * XXX This function is only used by the on-line resizing code, which
++ * should probably be fixed up to call the mballoc variant.  There
++ * this needs to be cleaned up later; in fact, I'm not convinced this
++ * is 100% correct in the face of the mballoc code.  The online resizing
++ * code needs to be fixed up to more tightly (and correctly) interlock
++ * with the mballoc code.
   */
--static int call_filldir(struct file * filp, void * dirent,
-+static int call_filldir(struct file *filp, void *dirent,
- 			filldir_t filldir, struct fname *fname)
- {
- 	struct dir_private_info *info = filp->private_data;
- 	loff_t	curr_pos;
- 	struct inode *inode = filp->f_path.dentry->d_inode;
--	struct super_block * sb;
-+	struct super_block *sb;
- 	int error;
+ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+ 			 ext4_fsblk_t block, unsigned long count,
+@@ -861,747 +572,13 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
  
  	sb = inode->i_sb;
-@@ -420,8 +420,8 @@ static int call_filldir(struct file * filp, void * dirent,
- 	return 0;
+ 
+-	if (!test_opt(sb, MBALLOC) || !EXT4_SB(sb)->s_group_info)
+-		ext4_free_blocks_sb(handle, sb, block, count,
+-						&dquot_freed_blocks);
+-	else
+-		ext4_mb_free_blocks(handle, inode, block, count,
+-						metadata, &dquot_freed_blocks);
++	ext4_mb_free_blocks(handle, inode, block, count,
++			    metadata, &dquot_freed_blocks);
+ 	if (dquot_freed_blocks)
+ 		DQUOT_FREE_BLOCK(inode, dquot_freed_blocks);
+ 	return;
  }
  
--static int ext4_dx_readdir(struct file * filp,
--			 void * dirent, filldir_t filldir)
-+static int ext4_dx_readdir(struct file *filp,
-+			 void *dirent, filldir_t filldir)
+-/**
+- * ext4_test_allocatable()
+- * @nr:			given allocation block group
+- * @bh:			bufferhead contains the bitmap of the given block group
+- *
+- * For ext4 allocations, we must not reuse any blocks which are
+- * allocated in the bitmap buffer's "last committed data" copy.  This
+- * prevents deletes from freeing up the page for reuse until we have
+- * committed the delete transaction.
+- *
+- * If we didn't do this, then deleting something and reallocating it as
+- * data would allow the old block to be overwritten before the
+- * transaction committed (because we force data to disk before commit).
+- * This would lead to corruption if we crashed between overwriting the
+- * data and committing the delete.
+- *
+- * @@@ We may want to make this allocation behaviour conditional on
+- * data-writes at some point, and disable it for metadata allocations or
+- * sync-data inodes.
+- */
+-static int ext4_test_allocatable(ext4_grpblk_t nr, struct buffer_head *bh)
+-{
+-	int ret;
+-	struct journal_head *jh = bh2jh(bh);
+-
+-	if (ext4_test_bit(nr, bh->b_data))
+-		return 0;
+-
+-	jbd_lock_bh_state(bh);
+-	if (!jh->b_committed_data)
+-		ret = 1;
+-	else
+-		ret = !ext4_test_bit(nr, jh->b_committed_data);
+-	jbd_unlock_bh_state(bh);
+-	return ret;
+-}
+-
+-/**
+- * bitmap_search_next_usable_block()
+- * @start:		the starting block (group relative) of the search
+- * @bh:			bufferhead contains the block group bitmap
+- * @maxblocks:		the ending block (group relative) of the reservation
+- *
+- * The bitmap search --- search forward alternately through the actual
+- * bitmap on disk and the last-committed copy in journal, until we find a
+- * bit free in both bitmaps.
+- */
+-static ext4_grpblk_t
+-bitmap_search_next_usable_block(ext4_grpblk_t start, struct buffer_head *bh,
+-					ext4_grpblk_t maxblocks)
+-{
+-	ext4_grpblk_t next;
+-	struct journal_head *jh = bh2jh(bh);
+-
+-	while (start < maxblocks) {
+-		next = ext4_find_next_zero_bit(bh->b_data, maxblocks, start);
+-		if (next >= maxblocks)
+-			return -1;
+-		if (ext4_test_allocatable(next, bh))
+-			return next;
+-		jbd_lock_bh_state(bh);
+-		if (jh->b_committed_data)
+-			start = ext4_find_next_zero_bit(jh->b_committed_data,
+-							maxblocks, next);
+-		jbd_unlock_bh_state(bh);
+-	}
+-	return -1;
+-}
+-
+-/**
+- * find_next_usable_block()
+- * @start:		the starting block (group relative) to find next
+- *			allocatable block in bitmap.
+- * @bh:			bufferhead contains the block group bitmap
+- * @maxblocks:		the ending block (group relative) for the search
+- *
+- * Find an allocatable block in a bitmap.  We honor both the bitmap and
+- * its last-committed copy (if that exists), and perform the "most
+- * appropriate allocation" algorithm of looking for a free block near
+- * the initial goal; then for a free byte somewhere in the bitmap; then
+- * for any free bit in the bitmap.
+- */
+-static ext4_grpblk_t
+-find_next_usable_block(ext4_grpblk_t start, struct buffer_head *bh,
+-			ext4_grpblk_t maxblocks)
+-{
+-	ext4_grpblk_t here, next;
+-	char *p, *r;
+-
+-	if (start > 0) {
+-		/*
+-		 * The goal was occupied; search forward for a free
+-		 * block within the next XX blocks.
+-		 *
+-		 * end_goal is more or less random, but it has to be
+-		 * less than EXT4_BLOCKS_PER_GROUP. Aligning up to the
+-		 * next 64-bit boundary is simple..
+-		 */
+-		ext4_grpblk_t end_goal = (start + 63) & ~63;
+-		if (end_goal > maxblocks)
+-			end_goal = maxblocks;
+-		here = ext4_find_next_zero_bit(bh->b_data, end_goal, start);
+-		if (here < end_goal && ext4_test_allocatable(here, bh))
+-			return here;
+-		ext4_debug("Bit not found near goal\n");
+-	}
+-
+-	here = start;
+-	if (here < 0)
+-		here = 0;
+-
+-	p = ((char *)bh->b_data) + (here >> 3);
+-	r = memscan(p, 0, ((maxblocks + 7) >> 3) - (here >> 3));
+-	next = (r - ((char *)bh->b_data)) << 3;
+-
+-	if (next < maxblocks && next >= start && ext4_test_allocatable(next, bh))
+-		return next;
+-
+-	/*
+-	 * The bitmap search --- search forward alternately through the actual
+-	 * bitmap and the last-committed copy until we find a bit free in
+-	 * both
+-	 */
+-	here = bitmap_search_next_usable_block(here, bh, maxblocks);
+-	return here;
+-}
+-
+-/**
+- * claim_block()
+- * @block:		the free block (group relative) to allocate
+- * @bh:			the bufferhead containts the block group bitmap
+- *
+- * We think we can allocate this block in this bitmap.  Try to set the bit.
+- * If that succeeds then check that nobody has allocated and then freed the
+- * block since we saw that is was not marked in b_committed_data.  If it _was_
+- * allocated and freed then clear the bit in the bitmap again and return
+- * zero (failure).
+- */
+-static inline int
+-claim_block(spinlock_t *lock, ext4_grpblk_t block, struct buffer_head *bh)
+-{
+-	struct journal_head *jh = bh2jh(bh);
+-	int ret;
+-
+-	if (ext4_set_bit_atomic(lock, block, bh->b_data))
+-		return 0;
+-	jbd_lock_bh_state(bh);
+-	if (jh->b_committed_data && ext4_test_bit(block, jh->b_committed_data)) {
+-		ext4_clear_bit_atomic(lock, block, bh->b_data);
+-		ret = 0;
+-	} else {
+-		ret = 1;
+-	}
+-	jbd_unlock_bh_state(bh);
+-	return ret;
+-}
+-
+-/**
+- * ext4_try_to_allocate()
+- * @sb:			superblock
+- * @handle:		handle to this transaction
+- * @group:		given allocation block group
+- * @bitmap_bh:		bufferhead holds the block bitmap
+- * @grp_goal:		given target block within the group
+- * @count:		target number of blocks to allocate
+- * @my_rsv:		reservation window
+- *
+- * Attempt to allocate blocks within a give range. Set the range of allocation
+- * first, then find the first free bit(s) from the bitmap (within the range),
+- * and at last, allocate the blocks by claiming the found free bit as allocated.
+- *
+- * To set the range of this allocation:
+- *	if there is a reservation window, only try to allocate block(s) from the
+- *	file's own reservation window;
+- *	Otherwise, the allocation range starts from the give goal block, ends at
+- *	the block group's last block.
+- *
+- * If we failed to allocate the desired block then we may end up crossing to a
+- * new bitmap.  In that case we must release write access to the old one via
+- * ext4_journal_release_buffer(), else we'll run out of credits.
+- */
+-static ext4_grpblk_t
+-ext4_try_to_allocate(struct super_block *sb, handle_t *handle,
+-			ext4_group_t group, struct buffer_head *bitmap_bh,
+-			ext4_grpblk_t grp_goal, unsigned long *count,
+-			struct ext4_reserve_window *my_rsv)
+-{
+-	ext4_fsblk_t group_first_block;
+-	ext4_grpblk_t start, end;
+-	unsigned long num = 0;
+-
+-	/* we do allocation within the reservation window if we have a window */
+-	if (my_rsv) {
+-		group_first_block = ext4_group_first_block_no(sb, group);
+-		if (my_rsv->_rsv_start >= group_first_block)
+-			start = my_rsv->_rsv_start - group_first_block;
+-		else
+-			/* reservation window cross group boundary */
+-			start = 0;
+-		end = my_rsv->_rsv_end - group_first_block + 1;
+-		if (end > EXT4_BLOCKS_PER_GROUP(sb))
+-			/* reservation window crosses group boundary */
+-			end = EXT4_BLOCKS_PER_GROUP(sb);
+-		if ((start <= grp_goal) && (grp_goal < end))
+-			start = grp_goal;
+-		else
+-			grp_goal = -1;
+-	} else {
+-		if (grp_goal > 0)
+-			start = grp_goal;
+-		else
+-			start = 0;
+-		end = EXT4_BLOCKS_PER_GROUP(sb);
+-	}
+-
+-	BUG_ON(start > EXT4_BLOCKS_PER_GROUP(sb));
+-
+-repeat:
+-	if (grp_goal < 0 || !ext4_test_allocatable(grp_goal, bitmap_bh)) {
+-		grp_goal = find_next_usable_block(start, bitmap_bh, end);
+-		if (grp_goal < 0)
+-			goto fail_access;
+-		if (!my_rsv) {
+-			int i;
+-
+-			for (i = 0; i < 7 && grp_goal > start &&
+-					ext4_test_allocatable(grp_goal - 1,
+-								bitmap_bh);
+-					i++, grp_goal--)
+-				;
+-		}
+-	}
+-	start = grp_goal;
+-
+-	if (!claim_block(sb_bgl_lock(EXT4_SB(sb), group),
+-		grp_goal, bitmap_bh)) {
+-		/*
+-		 * The block was allocated by another thread, or it was
+-		 * allocated and then freed by another thread
+-		 */
+-		start++;
+-		grp_goal++;
+-		if (start >= end)
+-			goto fail_access;
+-		goto repeat;
+-	}
+-	num++;
+-	grp_goal++;
+-	while (num < *count && grp_goal < end
+-		&& ext4_test_allocatable(grp_goal, bitmap_bh)
+-		&& claim_block(sb_bgl_lock(EXT4_SB(sb), group),
+-				grp_goal, bitmap_bh)) {
+-		num++;
+-		grp_goal++;
+-	}
+-	*count = num;
+-	return grp_goal - num;
+-fail_access:
+-	*count = num;
+-	return -1;
+-}
+-
+-/**
+- *	find_next_reservable_window():
+- *		find a reservable space within the given range.
+- *		It does not allocate the reservation window for now:
+- *		alloc_new_reservation() will do the work later.
+- *
+- *	@search_head: the head of the searching list;
+- *		This is not necessarily the list head of the whole filesystem
+- *
+- *		We have both head and start_block to assist the search
+- *		for the reservable space. The list starts from head,
+- *		but we will shift to the place where start_block is,
+- *		then start from there, when looking for a reservable space.
+- *
+- *	@size: the target new reservation window size
+- *
+- *	@group_first_block: the first block we consider to start
+- *			the real search from
+- *
+- *	@last_block:
+- *		the maximum block number that our goal reservable space
+- *		could start from. This is normally the last block in this
+- *		group. The search will end when we found the start of next
+- *		possible reservable space is out of this boundary.
+- *		This could handle the cross boundary reservation window
+- *		request.
+- *
+- *	basically we search from the given range, rather than the whole
+- *	reservation double linked list, (start_block, last_block)
+- *	to find a free region that is of my size and has not
+- *	been reserved.
+- *
+- */
+-static int find_next_reservable_window(
+-				struct ext4_reserve_window_node *search_head,
+-				struct ext4_reserve_window_node *my_rsv,
+-				struct super_block *sb,
+-				ext4_fsblk_t start_block,
+-				ext4_fsblk_t last_block)
+-{
+-	struct rb_node *next;
+-	struct ext4_reserve_window_node *rsv, *prev;
+-	ext4_fsblk_t cur;
+-	int size = my_rsv->rsv_goal_size;
+-
+-	/* TODO: make the start of the reservation window byte-aligned */
+-	/* cur = *start_block & ~7;*/
+-	cur = start_block;
+-	rsv = search_head;
+-	if (!rsv)
+-		return -1;
+-
+-	while (1) {
+-		if (cur <= rsv->rsv_end)
+-			cur = rsv->rsv_end + 1;
+-
+-		/* TODO?
+-		 * in the case we could not find a reservable space
+-		 * that is what is expected, during the re-search, we could
+-		 * remember what's the largest reservable space we could have
+-		 * and return that one.
+-		 *
+-		 * For now it will fail if we could not find the reservable
+-		 * space with expected-size (or more)...
+-		 */
+-		if (cur > last_block)
+-			return -1;		/* fail */
+-
+-		prev = rsv;
+-		next = rb_next(&rsv->rsv_node);
+-		rsv = rb_entry(next, struct ext4_reserve_window_node, rsv_node);
+-
+-		/*
+-		 * Reached the last reservation, we can just append to the
+-		 * previous one.
+-		 */
+-		if (!next)
+-			break;
+-
+-		if (cur + size <= rsv->rsv_start) {
+-			/*
+-			 * Found a reserveable space big enough.  We could
+-			 * have a reservation across the group boundary here
+-			 */
+-			break;
+-		}
+-	}
+-	/*
+-	 * we come here either :
+-	 * when we reach the end of the whole list,
+-	 * and there is empty reservable space after last entry in the list.
+-	 * append it to the end of the list.
+-	 *
+-	 * or we found one reservable space in the middle of the list,
+-	 * return the reservation window that we could append to.
+-	 * succeed.
+-	 */
+-
+-	if ((prev != my_rsv) && (!rsv_is_empty(&my_rsv->rsv_window)))
+-		rsv_window_remove(sb, my_rsv);
+-
+-	/*
+-	 * Let's book the whole avaliable window for now.  We will check the
+-	 * disk bitmap later and then, if there are free blocks then we adjust
+-	 * the window size if it's larger than requested.
+-	 * Otherwise, we will remove this node from the tree next time
+-	 * call find_next_reservable_window.
+-	 */
+-	my_rsv->rsv_start = cur;
+-	my_rsv->rsv_end = cur + size - 1;
+-	my_rsv->rsv_alloc_hit = 0;
+-
+-	if (prev != my_rsv)
+-		ext4_rsv_window_add(sb, my_rsv);
+-
+-	return 0;
+-}
+-
+-/**
+- *	alloc_new_reservation()--allocate a new reservation window
+- *
+- *		To make a new reservation, we search part of the filesystem
+- *		reservation list (the list that inside the group). We try to
+- *		allocate a new reservation window near the allocation goal,
+- *		or the beginning of the group, if there is no goal.
+- *
+- *		We first find a reservable space after the goal, then from
+- *		there, we check the bitmap for the first free block after
+- *		it. If there is no free block until the end of group, then the
+- *		whole group is full, we failed. Otherwise, check if the free
+- *		block is inside the expected reservable space, if so, we
+- *		succeed.
+- *		If the first free block is outside the reservable space, then
+- *		start from the first free block, we search for next available
+- *		space, and go on.
+- *
+- *	on succeed, a new reservation will be found and inserted into the list
+- *	It contains at least one free block, and it does not overlap with other
+- *	reservation windows.
+- *
+- *	failed: we failed to find a reservation window in this group
+- *
+- *	@rsv: the reservation
+- *
+- *	@grp_goal: The goal (group-relative).  It is where the search for a
+- *		free reservable space should start from.
+- *		if we have a grp_goal(grp_goal >0 ), then start from there,
+- *		no grp_goal(grp_goal = -1), we start from the first block
+- *		of the group.
+- *
+- *	@sb: the super block
+- *	@group: the group we are trying to allocate in
+- *	@bitmap_bh: the block group block bitmap
+- *
+- */
+-static int alloc_new_reservation(struct ext4_reserve_window_node *my_rsv,
+-		ext4_grpblk_t grp_goal, struct super_block *sb,
+-		ext4_group_t group, struct buffer_head *bitmap_bh)
+-{
+-	struct ext4_reserve_window_node *search_head;
+-	ext4_fsblk_t group_first_block, group_end_block, start_block;
+-	ext4_grpblk_t first_free_block;
+-	struct rb_root *fs_rsv_root = &EXT4_SB(sb)->s_rsv_window_root;
+-	unsigned long size;
+-	int ret;
+-	spinlock_t *rsv_lock = &EXT4_SB(sb)->s_rsv_window_lock;
+-
+-	group_first_block = ext4_group_first_block_no(sb, group);
+-	group_end_block = group_first_block + (EXT4_BLOCKS_PER_GROUP(sb) - 1);
+-
+-	if (grp_goal < 0)
+-		start_block = group_first_block;
+-	else
+-		start_block = grp_goal + group_first_block;
+-
+-	size = my_rsv->rsv_goal_size;
+-
+-	if (!rsv_is_empty(&my_rsv->rsv_window)) {
+-		/*
+-		 * if the old reservation is cross group boundary
+-		 * and if the goal is inside the old reservation window,
+-		 * we will come here when we just failed to allocate from
+-		 * the first part of the window. We still have another part
+-		 * that belongs to the next group. In this case, there is no
+-		 * point to discard our window and try to allocate a new one
+-		 * in this group(which will fail). we should
+-		 * keep the reservation window, just simply move on.
+-		 *
+-		 * Maybe we could shift the start block of the reservation
+-		 * window to the first block of next group.
+-		 */
+-
+-		if ((my_rsv->rsv_start <= group_end_block) &&
+-				(my_rsv->rsv_end > group_end_block) &&
+-				(start_block >= my_rsv->rsv_start))
+-			return -1;
+-
+-		if ((my_rsv->rsv_alloc_hit >
+-		     (my_rsv->rsv_end - my_rsv->rsv_start + 1) / 2)) {
+-			/*
+-			 * if the previously allocation hit ratio is
+-			 * greater than 1/2, then we double the size of
+-			 * the reservation window the next time,
+-			 * otherwise we keep the same size window
+-			 */
+-			size = size * 2;
+-			if (size > EXT4_MAX_RESERVE_BLOCKS)
+-				size = EXT4_MAX_RESERVE_BLOCKS;
+-			my_rsv->rsv_goal_size = size;
+-		}
+-	}
+-
+-	spin_lock(rsv_lock);
+-	/*
+-	 * shift the search start to the window near the goal block
+-	 */
+-	search_head = search_reserve_window(fs_rsv_root, start_block);
+-
+-	/*
+-	 * find_next_reservable_window() simply finds a reservable window
+-	 * inside the given range(start_block, group_end_block).
+-	 *
+-	 * To make sure the reservation window has a free bit inside it, we
+-	 * need to check the bitmap after we found a reservable window.
+-	 */
+-retry:
+-	ret = find_next_reservable_window(search_head, my_rsv, sb,
+-						start_block, group_end_block);
+-
+-	if (ret == -1) {
+-		if (!rsv_is_empty(&my_rsv->rsv_window))
+-			rsv_window_remove(sb, my_rsv);
+-		spin_unlock(rsv_lock);
+-		return -1;
+-	}
+-
+-	/*
+-	 * On success, find_next_reservable_window() returns the
+-	 * reservation window where there is a reservable space after it.
+-	 * Before we reserve this reservable space, we need
+-	 * to make sure there is at least a free block inside this region.
+-	 *
+-	 * searching the first free bit on the block bitmap and copy of
+-	 * last committed bitmap alternatively, until we found a allocatable
+-	 * block. Search start from the start block of the reservable space
+-	 * we just found.
+-	 */
+-	spin_unlock(rsv_lock);
+-	first_free_block = bitmap_search_next_usable_block(
+-			my_rsv->rsv_start - group_first_block,
+-			bitmap_bh, group_end_block - group_first_block + 1);
+-
+-	if (first_free_block < 0) {
+-		/*
+-		 * no free block left on the bitmap, no point
+-		 * to reserve the space. return failed.
+-		 */
+-		spin_lock(rsv_lock);
+-		if (!rsv_is_empty(&my_rsv->rsv_window))
+-			rsv_window_remove(sb, my_rsv);
+-		spin_unlock(rsv_lock);
+-		return -1;		/* failed */
+-	}
+-
+-	start_block = first_free_block + group_first_block;
+-	/*
+-	 * check if the first free block is within the
+-	 * free space we just reserved
+-	 */
+-	if (start_block >= my_rsv->rsv_start && start_block <= my_rsv->rsv_end)
+-		return 0;		/* success */
+-	/*
+-	 * if the first free bit we found is out of the reservable space
+-	 * continue search for next reservable space,
+-	 * start from where the free block is,
+-	 * we also shift the list head to where we stopped last time
+-	 */
+-	search_head = my_rsv;
+-	spin_lock(rsv_lock);
+-	goto retry;
+-}
+-
+-/**
+- * try_to_extend_reservation()
+- * @my_rsv:		given reservation window
+- * @sb:			super block
+- * @size:		the delta to extend
+- *
+- * Attempt to expand the reservation window large enough to have
+- * required number of free blocks
+- *
+- * Since ext4_try_to_allocate() will always allocate blocks within
+- * the reservation window range, if the window size is too small,
+- * multiple blocks allocation has to stop at the end of the reservation
+- * window. To make this more efficient, given the total number of
+- * blocks needed and the current size of the window, we try to
+- * expand the reservation window size if necessary on a best-effort
+- * basis before ext4_new_blocks() tries to allocate blocks,
+- */
+-static void try_to_extend_reservation(struct ext4_reserve_window_node *my_rsv,
+-			struct super_block *sb, int size)
+-{
+-	struct ext4_reserve_window_node *next_rsv;
+-	struct rb_node *next;
+-	spinlock_t *rsv_lock = &EXT4_SB(sb)->s_rsv_window_lock;
+-
+-	if (!spin_trylock(rsv_lock))
+-		return;
+-
+-	next = rb_next(&my_rsv->rsv_node);
+-
+-	if (!next)
+-		my_rsv->rsv_end += size;
+-	else {
+-		next_rsv = rb_entry(next, struct ext4_reserve_window_node, rsv_node);
+-
+-		if ((next_rsv->rsv_start - my_rsv->rsv_end - 1) >= size)
+-			my_rsv->rsv_end += size;
+-		else
+-			my_rsv->rsv_end = next_rsv->rsv_start - 1;
+-	}
+-	spin_unlock(rsv_lock);
+-}
+-
+-/**
+- * ext4_try_to_allocate_with_rsv()
+- * @sb:			superblock
+- * @handle:		handle to this transaction
+- * @group:		given allocation block group
+- * @bitmap_bh:		bufferhead holds the block bitmap
+- * @grp_goal:		given target block within the group
+- * @count:		target number of blocks to allocate
+- * @my_rsv:		reservation window
+- * @errp:		pointer to store the error code
+- *
+- * This is the main function used to allocate a new block and its reservation
+- * window.
+- *
+- * Each time when a new block allocation is need, first try to allocate from
+- * its own reservation.  If it does not have a reservation window, instead of
+- * looking for a free bit on bitmap first, then look up the reservation list to
+- * see if it is inside somebody else's reservation window, we try to allocate a
+- * reservation window for it starting from the goal first. Then do the block
+- * allocation within the reservation window.
+- *
+- * This will avoid keeping on searching the reservation list again and
+- * again when somebody is looking for a free block (without
+- * reservation), and there are lots of free blocks, but they are all
+- * being reserved.
+- *
+- * We use a red-black tree for the per-filesystem reservation list.
+- *
+- */
+-static ext4_grpblk_t
+-ext4_try_to_allocate_with_rsv(struct super_block *sb, handle_t *handle,
+-			ext4_group_t group, struct buffer_head *bitmap_bh,
+-			ext4_grpblk_t grp_goal,
+-			struct ext4_reserve_window_node *my_rsv,
+-			unsigned long *count, int *errp)
+-{
+-	ext4_fsblk_t group_first_block, group_last_block;
+-	ext4_grpblk_t ret = 0;
+-	int fatal;
+-	unsigned long num = *count;
+-
+-	*errp = 0;
+-
+-	/*
+-	 * Make sure we use undo access for the bitmap, because it is critical
+-	 * that we do the frozen_data COW on bitmap buffers in all cases even
+-	 * if the buffer is in BJ_Forget state in the committing transaction.
+-	 */
+-	BUFFER_TRACE(bitmap_bh, "get undo access for new block");
+-	fatal = ext4_journal_get_undo_access(handle, bitmap_bh);
+-	if (fatal) {
+-		*errp = fatal;
+-		return -1;
+-	}
+-
+-	/*
+-	 * we don't deal with reservation when
+-	 * filesystem is mounted without reservation
+-	 * or the file is not a regular file
+-	 * or last attempt to allocate a block with reservation turned on failed
+-	 */
+-	if (my_rsv == NULL) {
+-		ret = ext4_try_to_allocate(sb, handle, group, bitmap_bh,
+-						grp_goal, count, NULL);
+-		goto out;
+-	}
+-	/*
+-	 * grp_goal is a group relative block number (if there is a goal)
+-	 * 0 <= grp_goal < EXT4_BLOCKS_PER_GROUP(sb)
+-	 * first block is a filesystem wide block number
+-	 * first block is the block number of the first block in this group
+-	 */
+-	group_first_block = ext4_group_first_block_no(sb, group);
+-	group_last_block = group_first_block + (EXT4_BLOCKS_PER_GROUP(sb) - 1);
+-
+-	/*
+-	 * Basically we will allocate a new block from inode's reservation
+-	 * window.
+-	 *
+-	 * We need to allocate a new reservation window, if:
+-	 * a) inode does not have a reservation window; or
+-	 * b) last attempt to allocate a block from existing reservation
+-	 *    failed; or
+-	 * c) we come here with a goal and with a reservation window
+-	 *
+-	 * We do not need to allocate a new reservation window if we come here
+-	 * at the beginning with a goal and the goal is inside the window, or
+-	 * we don't have a goal but already have a reservation window.
+-	 * then we could go to allocate from the reservation window directly.
+-	 */
+-	while (1) {
+-		if (rsv_is_empty(&my_rsv->rsv_window) || (ret < 0) ||
+-			!goal_in_my_reservation(&my_rsv->rsv_window,
+-						grp_goal, group, sb)) {
+-			if (my_rsv->rsv_goal_size < *count)
+-				my_rsv->rsv_goal_size = *count;
+-			ret = alloc_new_reservation(my_rsv, grp_goal, sb,
+-							group, bitmap_bh);
+-			if (ret < 0)
+-				break;			/* failed */
+-
+-			if (!goal_in_my_reservation(&my_rsv->rsv_window,
+-							grp_goal, group, sb))
+-				grp_goal = -1;
+-		} else if (grp_goal >= 0) {
+-			int curr = my_rsv->rsv_end -
+-					(grp_goal + group_first_block) + 1;
+-
+-			if (curr < *count)
+-				try_to_extend_reservation(my_rsv, sb,
+-							*count - curr);
+-		}
+-
+-		if ((my_rsv->rsv_start > group_last_block) ||
+-				(my_rsv->rsv_end < group_first_block)) {
+-			rsv_window_dump(&EXT4_SB(sb)->s_rsv_window_root, 1);
+-			BUG();
+-		}
+-		ret = ext4_try_to_allocate(sb, handle, group, bitmap_bh,
+-					   grp_goal, &num, &my_rsv->rsv_window);
+-		if (ret >= 0) {
+-			my_rsv->rsv_alloc_hit += num;
+-			*count = num;
+-			break;				/* succeed */
+-		}
+-		num = *count;
+-	}
+-out:
+-	if (ret >= 0) {
+-		BUFFER_TRACE(bitmap_bh, "journal_dirty_metadata for "
+-					"bitmap block");
+-		fatal = ext4_journal_dirty_metadata(handle, bitmap_bh);
+-		if (fatal) {
+-			*errp = fatal;
+-			return -1;
+-		}
+-		return ret;
+-	}
+-
+-	BUFFER_TRACE(bitmap_bh, "journal_release_buffer");
+-	ext4_journal_release_buffer(handle, bitmap_bh);
+-	return ret;
+-}
+-
+ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+ 						s64 nblocks)
  {
- 	struct dir_private_info *info = filp->private_data;
- 	struct inode *inode = filp->f_path.dentry->d_inode;
-@@ -512,7 +512,7 @@ finished:
- 	return 0;
+@@ -1702,310 +679,6 @@ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+ 	return jbd2_journal_force_commit_nested(EXT4_SB(sb)->s_journal);
  }
  
--static int ext4_release_dir (struct inode * inode, struct file * filp)
-+static int ext4_release_dir(struct inode *inode, struct file *filp)
- {
- 	if (filp->private_data)
- 		ext4_htree_free_dir_info(filp->private_data);
+-/**
+- * ext4_old_new_blocks() -- core block bitmap based block allocation function
+- *
+- * @handle:		handle to this transaction
+- * @inode:		file inode
+- * @goal:		given target block(filesystem wide)
+- * @count:		target number of blocks to allocate
+- * @errp:		error code
+- *
+- * ext4_old_new_blocks uses a goal block to assist allocation and look up
+- * the block bitmap directly to do block allocation.  It tries to
+- * allocate block(s) from the block group contains the goal block first. If
+- * that fails, it will try to allocate block(s) from other block groups
+- * without any specific goal block.
+- *
+- * This function is called when -o nomballoc mount option is enabled
+- *
+- */
+-ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+-			ext4_fsblk_t goal, unsigned long *count, int *errp)
+-{
+-	struct buffer_head *bitmap_bh = NULL;
+-	struct buffer_head *gdp_bh;
+-	ext4_group_t group_no;
+-	ext4_group_t goal_group;
+-	ext4_grpblk_t grp_target_blk;	/* blockgroup relative goal block */
+-	ext4_grpblk_t grp_alloc_blk;	/* blockgroup-relative allocated block*/
+-	ext4_fsblk_t ret_block;		/* filesyetem-wide allocated block */
+-	ext4_group_t bgi;			/* blockgroup iteration index */
+-	int fatal = 0, err;
+-	int performed_allocation = 0;
+-	ext4_grpblk_t free_blocks;	/* number of free blocks in a group */
+-	struct super_block *sb;
+-	struct ext4_group_desc *gdp;
+-	struct ext4_super_block *es;
+-	struct ext4_sb_info *sbi;
+-	struct ext4_reserve_window_node *my_rsv = NULL;
+-	struct ext4_block_alloc_info *block_i;
+-	unsigned short windowsz = 0;
+-	ext4_group_t ngroups;
+-	unsigned long num = *count;
+-
+-	sb = inode->i_sb;
+-	if (!sb) {
+-		*errp = -ENODEV;
+-		printk(KERN_ERR "ext4_new_block: nonexistent superblock");
+-		return 0;
+-	}
+-
+-	sbi = EXT4_SB(sb);
+-	if (!EXT4_I(inode)->i_delalloc_reserved_flag) {
+-		/*
+-		 * With delalloc we already reserved the blocks
+-		 */
+-		while (*count && ext4_claim_free_blocks(sbi, *count)) {
+-			/* let others to free the space */
+-			yield();
+-			*count = *count >> 1;
+-		}
+-		if (!*count) {
+-			*errp = -ENOSPC;
+-			return 0;	/*return with ENOSPC error */
+-		}
+-		num = *count;
+-	}
+-	/*
+-	 * Check quota for allocation of this block.
+-	 */
+-	if (DQUOT_ALLOC_BLOCK(inode, num)) {
+-		*errp = -EDQUOT;
+-		return 0;
+-	}
+-
+-	sbi = EXT4_SB(sb);
+-	es = EXT4_SB(sb)->s_es;
+-	ext4_debug("goal=%llu.\n", goal);
+-	/*
+-	 * Allocate a block from reservation only when
+-	 * filesystem is mounted with reservation(default,-o reservation), and
+-	 * it's a regular file, and
+-	 * the desired window size is greater than 0 (One could use ioctl
+-	 * command EXT4_IOC_SETRSVSZ to set the window size to 0 to turn off
+-	 * reservation on that particular file)
+-	 */
+-	block_i = EXT4_I(inode)->i_block_alloc_info;
+-	if (block_i && ((windowsz = block_i->rsv_window_node.rsv_goal_size) > 0))
+-		my_rsv = &block_i->rsv_window_node;
+-
+-	/*
+-	 * First, test whether the goal block is free.
+-	 */
+-	if (goal < le32_to_cpu(es->s_first_data_block) ||
+-	    goal >= ext4_blocks_count(es))
+-		goal = le32_to_cpu(es->s_first_data_block);
+-	ext4_get_group_no_and_offset(sb, goal, &group_no, &grp_target_blk);
+-	goal_group = group_no;
+-retry_alloc:
+-	gdp = ext4_get_group_desc(sb, group_no, &gdp_bh);
+-	if (!gdp)
+-		goto io_error;
+-
+-	free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
+-
+-	if (free_blocks > 0) {
+-		/*
+-		 * try to allocate with group target block
+-		 * in the goal group. If we have low free_blocks
+-		 * count turn off reservation
+-		 */
+-		if (my_rsv && (free_blocks < windowsz)
+-			&& (rsv_is_empty(&my_rsv->rsv_window)))
+-			my_rsv = NULL;
+-
+-		bitmap_bh = ext4_read_block_bitmap(sb, group_no);
+-		if (!bitmap_bh)
+-			goto io_error;
+-		grp_alloc_blk = ext4_try_to_allocate_with_rsv(sb, handle,
+-					group_no, bitmap_bh, grp_target_blk,
+-					my_rsv,	&num, &fatal);
+-		if (fatal)
+-			goto out;
+-		if (grp_alloc_blk >= 0)
+-			goto allocated;
+-	}
+-
+-	ngroups = EXT4_SB(sb)->s_groups_count;
+-	smp_rmb();
+-
+-	/*
+-	 * Now search the rest of the groups.  We assume that
+-	 * group_no and gdp correctly point to the last group visited.
+-	 */
+-	for (bgi = 0; bgi < ngroups; bgi++) {
+-		group_no++;
+-		if (group_no >= ngroups)
+-			group_no = 0;
+-		gdp = ext4_get_group_desc(sb, group_no, &gdp_bh);
+-		if (!gdp)
+-			goto io_error;
+-		free_blocks = le16_to_cpu(gdp->bg_free_blocks_count);
+-		/*
+-		 * skip this group if the number of
+-		 * free blocks is less than half of the reservation
+-		 * window size.
+-		 */
+-		if (my_rsv && (free_blocks <= (windowsz/2)))
+-			continue;
+-
+-		brelse(bitmap_bh);
+-		bitmap_bh = ext4_read_block_bitmap(sb, group_no);
+-		if (!bitmap_bh)
+-			goto io_error;
+-		/*
+-		 * try to allocate block(s) from this group, without a goal(-1).
+-		 */
+-		grp_alloc_blk = ext4_try_to_allocate_with_rsv(sb, handle,
+-					group_no, bitmap_bh, -1, my_rsv,
+-					&num, &fatal);
+-		if (fatal)
+-			goto out;
+-		if (grp_alloc_blk >= 0)
+-			goto allocated;
+-	}
+-	/*
+-	 * We may end up a bogus ealier ENOSPC error due to
+-	 * filesystem is "full" of reservations, but
+-	 * there maybe indeed free blocks avaliable on disk
+-	 * In this case, we just forget about the reservations
+-	 * just do block allocation as without reservations.
+-	 */
+-	if (my_rsv) {
+-		my_rsv = NULL;
+-		windowsz = 0;
+-		group_no = goal_group;
+-		goto retry_alloc;
+-	}
+-	/* No space left on the device */
+-	*errp = -ENOSPC;
+-	goto out;
+-
+-allocated:
+-
+-	ext4_debug("using block group %lu(%d)\n",
+-			group_no, gdp->bg_free_blocks_count);
+-
+-	BUFFER_TRACE(gdp_bh, "get_write_access");
+-	fatal = ext4_journal_get_write_access(handle, gdp_bh);
+-	if (fatal)
+-		goto out;
+-
+-	ret_block = grp_alloc_blk + ext4_group_first_block_no(sb, group_no);
+-
+-	if (in_range(ext4_block_bitmap(sb, gdp), ret_block, num) ||
+-	    in_range(ext4_inode_bitmap(sb, gdp), ret_block, num) ||
+-	    in_range(ret_block, ext4_inode_table(sb, gdp),
+-		     EXT4_SB(sb)->s_itb_per_group) ||
+-	    in_range(ret_block + num - 1, ext4_inode_table(sb, gdp),
+-		     EXT4_SB(sb)->s_itb_per_group)) {
+-		ext4_error(sb, "ext4_new_block",
+-			    "Allocating block in system zone - "
+-			    "blocks from %llu, length %lu",
+-			     ret_block, num);
+-		/*
+-		 * claim_block marked the blocks we allocated
+-		 * as in use. So we may want to selectively
+-		 * mark some of the blocks as free
+-		 */
+-		goto retry_alloc;
+-	}
+-
+-	performed_allocation = 1;
+-
+-#ifdef CONFIG_JBD2_DEBUG
+-	{
+-		struct buffer_head *debug_bh;
+-
+-		/* Record bitmap buffer state in the newly allocated block */
+-		debug_bh = sb_find_get_block(sb, ret_block);
+-		if (debug_bh) {
+-			BUFFER_TRACE(debug_bh, "state when allocated");
+-			BUFFER_TRACE2(debug_bh, bitmap_bh, "bitmap state");
+-			brelse(debug_bh);
+-		}
+-	}
+-	jbd_lock_bh_state(bitmap_bh);
+-	spin_lock(sb_bgl_lock(sbi, group_no));
+-	if (buffer_jbd(bitmap_bh) && bh2jh(bitmap_bh)->b_committed_data) {
+-		int i;
+-
+-		for (i = 0; i < num; i++) {
+-			if (ext4_test_bit(grp_alloc_blk+i,
+-					bh2jh(bitmap_bh)->b_committed_data)) {
+-				printk(KERN_ERR "%s: block was unexpectedly "
+-				       "set in b_committed_data\n", __func__);
+-			}
+-		}
+-	}
+-	ext4_debug("found bit %d\n", grp_alloc_blk);
+-	spin_unlock(sb_bgl_lock(sbi, group_no));
+-	jbd_unlock_bh_state(bitmap_bh);
+-#endif
+-
+-	if (ret_block + num - 1 >= ext4_blocks_count(es)) {
+-		ext4_error(sb, "ext4_new_block",
+-			    "block(%llu) >= blocks count(%llu) - "
+-			    "block_group = %lu, es == %p ", ret_block,
+-			ext4_blocks_count(es), group_no, es);
+-		goto out;
+-	}
+-
+-	/*
+-	 * It is up to the caller to add the new buffer to a journal
+-	 * list of some description.  We don't know in advance whether
+-	 * the caller wants to use it as metadata or data.
+-	 */
+-	spin_lock(sb_bgl_lock(sbi, group_no));
+-	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))
+-		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+-	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+-	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
+-	spin_unlock(sb_bgl_lock(sbi, group_no));
+-	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
+-	/*
+-	 * Now reduce the dirty block count also. Should not go negative
+-	 */
+-	percpu_counter_sub(&sbi->s_dirtyblocks_counter, num);
+-	if (sbi->s_log_groups_per_flex) {
+-		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
+-		spin_lock(sb_bgl_lock(sbi, flex_group));
+-		sbi->s_flex_groups[flex_group].free_blocks -= num;
+-		spin_unlock(sb_bgl_lock(sbi, flex_group));
+-	}
+-
+-	BUFFER_TRACE(gdp_bh, "journal_dirty_metadata for group descriptor");
+-	err = ext4_journal_dirty_metadata(handle, gdp_bh);
+-	if (!fatal)
+-		fatal = err;
+-
+-	sb->s_dirt = 1;
+-	if (fatal)
+-		goto out;
+-
+-	*errp = 0;
+-	brelse(bitmap_bh);
+-	DQUOT_FREE_BLOCK(inode, *count-num);
+-	*count = num;
+-	return ret_block;
+-
+-io_error:
+-	*errp = -EIO;
+-out:
+-	if (fatal) {
+-		*errp = fatal;
+-		ext4_std_error(sb, fatal);
+-	}
+-	/*
+-	 * Undo the block allocation
+-	 */
+-	if (!performed_allocation)
+-		DQUOT_FREE_BLOCK(inode, *count);
+-	brelse(bitmap_bh);
+-	return 0;
+-}
+-
+ #define EXT4_META_BLOCK 0x1
+ 
+ static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
+@@ -2015,10 +688,6 @@ static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
+ 	struct ext4_allocation_request ar;
+ 	ext4_fsblk_t ret;
+ 
+-	if (!test_opt(inode->i_sb, MBALLOC)) {
+-		return ext4_old_new_blocks(handle, inode, goal, count, errp);
+-	}
+-
+ 	memset(&ar, 0, sizeof(ar));
+ 	/* Fill with neighbour allocated blocks */
+ 
+@@ -2239,3 +908,4 @@ unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
+ 	return ext4_bg_num_gdb_meta(sb,group);
+ 
+ }
++
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 2950032..8c70131 100644
+index 922d187..c50c04c 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -44,9 +44,9 @@
- #ifdef EXT4FS_DEBUG
- #define ext4_debug(f, a...)						\
- 	do {								\
--		printk (KERN_DEBUG "EXT4-fs DEBUG (%s, %d): %s:",	\
-+		printk(KERN_DEBUG "EXT4-fs DEBUG (%s, %d): %s:",	\
- 			__FILE__, __LINE__, __func__);			\
--		printk (KERN_DEBUG f, ## a);				\
-+		printk(KERN_DEBUG f, ## a);				\
- 	} while (0)
- #else
- #define ext4_debug(f, a...)	do {} while (0)
-@@ -128,7 +128,7 @@ struct ext4_allocation_request {
- #else
- # define EXT4_BLOCK_SIZE(s)		(EXT4_MIN_BLOCK_SIZE << (s)->s_log_block_size)
- #endif
--#define	EXT4_ADDR_PER_BLOCK(s)		(EXT4_BLOCK_SIZE(s) / sizeof (__u32))
-+#define	EXT4_ADDR_PER_BLOCK(s)		(EXT4_BLOCK_SIZE(s) / sizeof(__u32))
- #ifdef __KERNEL__
- # define EXT4_BLOCK_SIZE_BITS(s)	((s)->s_blocksize_bits)
- #else
-@@ -292,7 +292,7 @@ struct ext4_new_group_data {
- #define	EXT4_IOC_GETVERSION		_IOR('f', 3, long)
- #define	EXT4_IOC_SETVERSION		_IOW('f', 4, long)
- #define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
--#define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
-+#define EXT4_IOC_GROUP_ADD		_IOW('f', 8, struct ext4_new_group_input)
- #define	EXT4_IOC_GETVERSION_OLD		FS_IOC_GETVERSION
- #define	EXT4_IOC_SETVERSION_OLD		FS_IOC_SETVERSION
- #ifdef CONFIG_JBD2_DEBUG
-@@ -667,7 +667,7 @@ struct ext4_super_block {
- };
- 
- #ifdef __KERNEL__
--static inline struct ext4_sb_info * EXT4_SB(struct super_block *sb)
-+static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
- {
- 	return sb->s_fs_info;
- }
-@@ -725,11 +725,11 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
-  */
- 
- #define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
--	( EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask) )
-+	(EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask))
- #define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
--	( EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask) )
-+	(EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask))
- #define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
--	( EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask) )
-+	(EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask))
- #define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
- 	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
- #define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
-@@ -985,13 +985,13 @@ extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t goal, unsigned long *count, int *errp);
+@@ -539,7 +539,6 @@ do {									       \
+ #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+ #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
+ #define EXT4_MOUNT_I_VERSION            0x2000000 /* i_version support */
+-#define EXT4_MOUNT_MBALLOC		0x4000000 /* Buddy allocation support */
+ #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
+ /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at once */
+ #ifndef _LINUX_EXT2_FS_H
+@@ -1002,8 +1001,6 @@ extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ extern ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
+ 					ext4_lblk_t iblock, ext4_fsblk_t goal,
+ 					unsigned long *count, int *errp);
+-extern ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+-			ext4_fsblk_t goal, unsigned long *count, int *errp);
+ extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
  extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
- 						ext4_fsblk_t nblocks);
--extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
-+extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t block, unsigned long count, int metadata);
--extern void ext4_free_blocks_sb (handle_t *handle, struct super_block *sb,
--				 ext4_fsblk_t block, unsigned long count,
-+extern void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
-+				ext4_fsblk_t block, unsigned long count,
- 				unsigned long *pdquot_freed_blocks);
--extern ext4_fsblk_t ext4_count_free_blocks (struct super_block *);
--extern void ext4_check_blocks_bitmap (struct super_block *);
-+extern ext4_fsblk_t ext4_count_free_blocks(struct super_block *);
-+extern void ext4_check_blocks_bitmap(struct super_block *);
- extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+ 					 s64 nblocks);
+@@ -1018,8 +1015,6 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
  						    ext4_group_t block_group,
  						    struct buffer_head ** bh);
-@@ -1009,20 +1009,20 @@ extern int ext4_htree_store_dirent(struct file *dir_file, __u32 hash,
- extern void ext4_htree_free_dir_info(struct dir_private_info *p);
+ extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
+-extern void ext4_init_block_alloc_info(struct inode *);
+-extern void ext4_rsv_window_add(struct super_block *sb, struct ext4_reserve_window_node *rsv);
  
- /* fsync.c */
--extern int ext4_sync_file (struct file *, struct dentry *, int);
-+extern int ext4_sync_file(struct file *, struct dentry *, int);
- 
- /* hash.c */
- extern int ext4fs_dirhash(const char *name, int len, struct
- 			  dx_hash_info *hinfo);
- 
- /* ialloc.c */
--extern struct inode * ext4_new_inode (handle_t *, struct inode *, int);
--extern void ext4_free_inode (handle_t *, struct inode *);
--extern struct inode * ext4_orphan_get (struct super_block *, unsigned long);
--extern unsigned long ext4_count_free_inodes (struct super_block *);
--extern unsigned long ext4_count_dirs (struct super_block *);
--extern void ext4_check_inodes_bitmap (struct super_block *);
--extern unsigned long ext4_count_free (struct buffer_head *, unsigned);
-+extern struct inode * ext4_new_inode(handle_t *, struct inode *, int);
-+extern void ext4_free_inode(handle_t *, struct inode *);
-+extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
-+extern unsigned long ext4_count_free_inodes(struct super_block *);
-+extern unsigned long ext4_count_dirs(struct super_block *);
-+extern void ext4_check_inodes_bitmap(struct super_block *);
-+extern unsigned long ext4_count_free(struct buffer_head *, unsigned);
- 
- /* mballoc.c */
- extern long ext4_mb_stats;
-@@ -1056,18 +1056,18 @@ int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
- 				int create, int extend_disksize);
- 
- extern struct inode *ext4_iget(struct super_block *, unsigned long);
--extern int  ext4_write_inode (struct inode *, int);
--extern int  ext4_setattr (struct dentry *, struct iattr *);
-+extern int  ext4_write_inode(struct inode *, int);
-+extern int  ext4_setattr(struct dentry *, struct iattr *);
- extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
+ /* dir.c */
+ extern int ext4_check_dir_entry(const char *, struct inode *,
+@@ -1054,7 +1049,7 @@ extern int ext4_mb_release(struct super_block *);
+ extern ext4_fsblk_t ext4_mb_new_blocks(handle_t *,
+ 				struct ext4_allocation_request *, int *);
+ extern int ext4_mb_reserve_blocks(struct super_block *, int);
+-extern void ext4_mb_discard_inode_preallocations(struct inode *);
++extern void ext4_discard_preallocations(struct inode *);
+ extern int __init init_ext4_mballoc(void);
+ extern void exit_ext4_mballoc(void);
+ extern void ext4_mb_free_blocks(handle_t *, struct inode *,
+@@ -1084,7 +1079,6 @@ extern int  ext4_getattr(struct vfsmount *mnt, struct dentry *dentry,
  				struct kstat *stat);
--extern void ext4_delete_inode (struct inode *);
--extern int  ext4_sync_inode (handle_t *, struct inode *);
--extern void ext4_discard_reservation (struct inode *);
-+extern void ext4_delete_inode(struct inode *);
-+extern int  ext4_sync_inode(handle_t *, struct inode *);
-+extern void ext4_discard_reservation(struct inode *);
+ extern void ext4_delete_inode(struct inode *);
+ extern int  ext4_sync_inode(handle_t *, struct inode *);
+-extern void ext4_discard_reservation(struct inode *);
  extern void ext4_dirty_inode(struct inode *);
  extern int ext4_change_inode_journal_flag(struct inode *, int);
  extern int ext4_get_inode_loc(struct inode *, struct ext4_iloc *);
- extern int ext4_can_truncate(struct inode *inode);
--extern void ext4_truncate (struct inode *);
-+extern void ext4_truncate(struct inode *);
- extern void ext4_set_inode_flags(struct inode *);
- extern void ext4_get_inode_flags(struct ext4_inode_info *);
- extern void ext4_set_aops(struct inode *inode);
-@@ -1080,7 +1080,7 @@ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+diff --git a/fs/ext4/ext4_i.h b/fs/ext4/ext4_i.h
+index ef7409f..2875eec 100644
+--- a/fs/ext4/ext4_i.h
++++ b/fs/ext4/ext4_i.h
+@@ -33,38 +33,6 @@ typedef __u32 ext4_lblk_t;
+ /* data type for block group number */
+ typedef unsigned long ext4_group_t;
  
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
--extern long ext4_compat_ioctl (struct file *, unsigned int, unsigned long);
-+extern long ext4_compat_ioctl(struct file *, unsigned int, unsigned long);
+-struct ext4_reserve_window {
+-	ext4_fsblk_t	_rsv_start;	/* First byte reserved */
+-	ext4_fsblk_t	_rsv_end;	/* Last byte reserved or 0 */
+-};
+-
+-struct ext4_reserve_window_node {
+-	struct rb_node		rsv_node;
+-	__u32			rsv_goal_size;
+-	__u32			rsv_alloc_hit;
+-	struct ext4_reserve_window	rsv_window;
+-};
+-
+-struct ext4_block_alloc_info {
+-	/* information about reservation window */
+-	struct ext4_reserve_window_node rsv_window_node;
+-	/*
+-	 * was i_next_alloc_block in ext4_inode_info
+-	 * is the logical (file-relative) number of the
+-	 * most-recently-allocated block in this file.
+-	 * We use this for detecting linearly ascending allocation requests.
+-	 */
+-	ext4_lblk_t last_alloc_logical_block;
+-	/*
+-	 * Was i_next_alloc_goal in ext4_inode_info
+-	 * is the *physical* companion to i_next_alloc_block.
+-	 * it the physical block number of the block which was most-recentl
+-	 * allocated to this file.  This give us the goal (target) for the next
+-	 * allocation when we detect linearly ascending requests.
+-	 */
+-	ext4_fsblk_t last_alloc_physical_block;
+-};
+-
+ #define rsv_start rsv_window._rsv_start
+ #define rsv_end rsv_window._rsv_end
  
- /* migrate.c */
- extern int ext4_ext_migrate(struct inode *, struct file *, unsigned int,
-@@ -1099,14 +1099,14 @@ extern int ext4_group_extend(struct super_block *sb,
- 				ext4_fsblk_t n_blocks_count);
+@@ -97,9 +65,6 @@ struct ext4_inode_info {
+ 	ext4_group_t	i_block_group;
+ 	__u32	i_state;		/* Dynamic state flags for ext4 */
  
- /* super.c */
--extern void ext4_error (struct super_block *, const char *, const char *, ...)
-+extern void ext4_error(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
--extern void __ext4_std_error (struct super_block *, const char *, int);
--extern void ext4_abort (struct super_block *, const char *, const char *, ...)
-+extern void __ext4_std_error(struct super_block *, const char *, int);
-+extern void ext4_abort(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
--extern void ext4_warning (struct super_block *, const char *, const char *, ...)
-+extern void ext4_warning(struct super_block *, const char *, const char *, ...)
- 	__attribute__ ((format (printf, 3, 4)));
--extern void ext4_update_dynamic_rev (struct super_block *sb);
-+extern void ext4_update_dynamic_rev(struct super_block *sb);
- extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
- 					__u32 compat);
- extern int ext4_update_rocompat_feature(handle_t *handle,
-@@ -1179,7 +1179,7 @@ static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t i_size)
- 
- static inline
- struct ext4_group_info *ext4_get_group_info(struct super_block *sb,
--							ext4_group_t group)
-+					    ext4_group_t group)
- {
- 	 struct ext4_group_info ***grp_info;
- 	 long indexv, indexh;
+-	/* block reservation info */
+-	struct ext4_block_alloc_info *i_block_alloc_info;
+-
+ 	ext4_lblk_t		i_dir_start_lookup;
+ #ifdef CONFIG_EXT4DEV_FS_XATTR
+ 	/*
 diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-index 6300226..69810a2 100644
+index 94e0757..6a0b40d 100644
 --- a/fs/ext4/ext4_sb.h
 +++ b/fs/ext4/ext4_sb.h
-@@ -40,8 +40,8 @@ struct ext4_sb_info {
- 	unsigned long s_blocks_last;    /* Last seen block count */
- 	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
- 	struct buffer_head * s_sbh;	/* Buffer containing the super block */
--	struct ext4_super_block * s_es;	/* Pointer to the super block in the buffer */
--	struct buffer_head ** s_group_desc;
-+	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
-+	struct buffer_head **s_group_desc;
- 	unsigned long  s_mount_opt;
- 	ext4_fsblk_t s_sb_block;
- 	uid_t s_resuid;
-@@ -67,8 +67,8 @@ struct ext4_sb_info {
- 	struct ext4_reserve_window_node s_rsv_window_head;
+@@ -67,7 +67,6 @@ struct ext4_sb_info {
+ 	/* root of the per fs reservation window tree */
+ 	spinlock_t s_rsv_window_lock;
+ 	struct rb_root s_rsv_window_root;
+-	struct ext4_reserve_window_node s_rsv_window_head;
  
  	/* Journaling */
--	struct inode * s_journal_inode;
--	struct journal_s * s_journal;
-+	struct inode *s_journal_inode;
-+	struct journal_s *s_journal;
- 	struct list_head s_orphan;
- 	unsigned long s_commit_interval;
- 	struct block_device *journal_bdev;
+ 	struct inode *s_journal_inode;
 diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index a8db7fd..797f060 100644
+index e8758df..c8f81f2 100644
 --- a/fs/ext4/extents.c
 +++ b/fs/ext4/extents.c
-@@ -383,8 +383,8 @@ static void ext4_ext_show_leaf(struct inode *inode, struct ext4_ext_path *path)
- 	ext_debug("\n");
- }
- #else
--#define ext4_ext_show_path(inode,path)
--#define ext4_ext_show_leaf(inode,path)
-+#define ext4_ext_show_path(inode, path)
-+#define ext4_ext_show_leaf(inode, path)
- #endif
+@@ -2697,11 +2697,8 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 		goto out2;
+ 	}
+ 	/*
+-	 * Okay, we need to do block allocation.  Lazily initialize the block
+-	 * allocation info here if necessary.
++	 * Okay, we need to do block allocation.
+ 	 */
+-	if (S_ISREG(inode->i_mode) && (!EXT4_I(inode)->i_block_alloc_info))
+-		ext4_init_block_alloc_info(inode);
  
- void ext4_ext_drop_refs(struct ext4_ext_path *path)
-@@ -1476,7 +1476,7 @@ int ext4_ext_insert_extent(handle_t *handle, struct inode *inode,
- 				struct ext4_ext_path *path,
- 				struct ext4_extent *newext)
- {
--	struct ext4_extent_header * eh;
-+	struct ext4_extent_header *eh;
- 	struct ext4_extent *ex, *fex;
- 	struct ext4_extent *nearex; /* nearest extent */
- 	struct ext4_ext_path *npath = NULL;
+ 	/* find neighbour allocated blocks */
+ 	ar.lleft = iblock;
+@@ -2761,7 +2758,7 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 		/* free data blocks we just allocated */
+ 		/* not a good idea to call discard here directly,
+ 		 * but otherwise we'd need to call it every free() */
+-		ext4_mb_discard_inode_preallocations(inode);
++		ext4_discard_preallocations(inode);
+ 		ext4_free_blocks(handle, inode, ext_pblock(&newex),
+ 					ext4_ext_get_actual_len(&newex), 0);
+ 		goto out2;
+@@ -2825,7 +2822,7 @@ void ext4_ext_truncate(struct inode *inode)
+ 	down_write(&EXT4_I(inode)->i_data_sem);
+ 	ext4_ext_invalidate_cache(inode);
+ 
+-	ext4_discard_reservation(inode);
++	ext4_discard_preallocations(inode);
+ 
+ 	/*
+ 	 * TODO: optimization is possible here.
 diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 430eb79..11b289f 100644
+index 11b289f..62796b7 100644
 --- a/fs/ext4/file.c
 +++ b/fs/ext4/file.c
-@@ -31,7 +31,7 @@
-  * from ext4_file_open: open gets called at every open, but release
-  * gets called only when /all/ the files are closed.
-  */
--static int ext4_release_file (struct inode * inode, struct file * filp)
-+static int ext4_release_file(struct inode *inode, struct file *filp)
- {
- 	/* if we are the last writer on the inode, drop the block reservation */
- 	if ((filp->f_mode & FMODE_WRITE) &&
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index a45c373..c37d1e8 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -43,7 +43,7 @@
-  * inode to disk.
-  */
- 
--int ext4_sync_file(struct file * file, struct dentry *dentry, int datasync)
-+int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
- {
- 	struct inode *inode = dentry->d_inode;
- 	journal_t *journal = EXT4_SB(inode->i_sb)->s_journal;
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index 1d6329d..556ca8e 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -27,7 +27,7 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
- 		sum += DELTA;
- 		b0 += ((b1 << 4)+a) ^ (b1+sum) ^ ((b1 >> 5)+b);
- 		b1 += ((b0 << 4)+c) ^ (b0+sum) ^ ((b0 >> 5)+d);
--	} while(--n);
-+	} while (--n);
- 
- 	buf[0] += b0;
- 	buf[1] += b1;
-@@ -35,7 +35,7 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
- 
- 
- /* The old legacy hash */
--static __u32 dx_hack_hash (const char *name, int len)
-+static __u32 dx_hack_hash(const char *name, int len)
- {
- 	__u32 hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
- 	while (len--) {
-@@ -59,7 +59,7 @@ static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
- 	val = pad;
- 	if (len > num*4)
- 		len = num * 4;
--	for (i=0; i < len; i++) {
-+	for (i = 0; i < len; i++) {
- 		if ((i % 4) == 0)
- 			val = pad;
- 		val = msg[i] + (val << 8);
-@@ -104,7 +104,7 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 
- 	/* Check to see if the seed is all zero's */
- 	if (hinfo->seed) {
--		for (i=0; i < 4; i++) {
-+		for (i = 0; i < 4; i++) {
- 			if (hinfo->seed[i])
- 				break;
- 		}
+@@ -38,7 +38,7 @@ static int ext4_release_file(struct inode *inode, struct file *filp)
+ 			(atomic_read(&inode->i_writecount) == 1))
+ 	{
+ 		down_write(&EXT4_I(inode)->i_data_sem);
+-		ext4_discard_reservation(inode);
++		ext4_discard_preallocations(inode);
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+ 	}
+ 	if (is_dx(inode) && filp->private_data)
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 45c66a0..5e66a2f 100644
+index 5e66a2f..1343bf1 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -154,17 +154,17 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
-  * though), and then we'd have two inodes sharing the
-  * same inode number and space on the harddisk.
-  */
--void ext4_free_inode (handle_t *handle, struct inode * inode)
-+void ext4_free_inode(handle_t *handle, struct inode *inode)
- {
--	struct super_block * sb = inode->i_sb;
-+	struct super_block *sb = inode->i_sb;
- 	int is_directory;
- 	unsigned long ino;
- 	struct buffer_head *bitmap_bh = NULL;
- 	struct buffer_head *bh2;
- 	ext4_group_t block_group;
- 	unsigned long bit;
--	struct ext4_group_desc * gdp;
--	struct ext4_super_block * es;
-+	struct ext4_group_desc *gdp;
-+	struct ext4_super_block *es;
- 	struct ext4_sb_info *sbi;
- 	int fatal = 0, err;
- 	ext4_group_t flex_group;
-@@ -187,7 +187,7 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
- 	sbi = EXT4_SB(sb);
+@@ -817,7 +817,6 @@ got:
+ 		ei->i_flags &= ~EXT4_DIRSYNC_FL;
+ 	ei->i_file_acl = 0;
+ 	ei->i_dtime = 0;
+-	ei->i_block_alloc_info = NULL;
+ 	ei->i_block_group = group;
  
- 	ino = inode->i_ino;
--	ext4_debug ("freeing inode %lu\n", ino);
-+	ext4_debug("freeing inode %lu\n", ino);
- 
- 	/*
- 	 * Note: we must free any quota before locking the superblock,
-@@ -201,12 +201,12 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
- 	is_directory = S_ISDIR(inode->i_mode);
- 
- 	/* Do this BEFORE marking the inode not in use or returning an error */
--	clear_inode (inode);
-+	clear_inode(inode);
- 
- 	es = EXT4_SB(sb)->s_es;
- 	if (ino < EXT4_FIRST_INO(sb) || ino > le32_to_cpu(es->s_inodes_count)) {
--		ext4_error (sb, "ext4_free_inode",
--			    "reserved or nonexistent inode %lu", ino);
-+		ext4_error(sb, "ext4_free_inode",
-+			   "reserved or nonexistent inode %lu", ino);
- 		goto error_return;
- 	}
- 	block_group = (ino - 1) / EXT4_INODES_PER_GROUP(sb);
-@@ -223,10 +223,10 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
- 	/* Ok, now we can actually update the inode bitmaps.. */
- 	if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
- 					bit, bitmap_bh->b_data))
--		ext4_error (sb, "ext4_free_inode",
--			      "bit already cleared for inode %lu", ino);
-+		ext4_error(sb, "ext4_free_inode",
-+			   "bit already cleared for inode %lu", ino);
- 	else {
--		gdp = ext4_get_group_desc (sb, block_group, &bh2);
-+		gdp = ext4_get_group_desc(sb, block_group, &bh2);
- 
- 		BUFFER_TRACE(bh2, "get_write_access");
- 		fatal = ext4_journal_get_write_access(handle, bh2);
-@@ -288,7 +288,7 @@ static int find_group_dir(struct super_block *sb, struct inode *parent,
- 	avefreei = freei / ngroups;
- 
- 	for (group = 0; group < ngroups; group++) {
--		desc = ext4_get_group_desc (sb, group, NULL);
-+		desc = ext4_get_group_desc(sb, group, NULL);
- 		if (!desc || !desc->bg_free_inodes_count)
- 			continue;
- 		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
-@@ -577,16 +577,16 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
-  * For other inodes, search forward from the parent directory's block
-  * group to find a free inode.
-  */
--struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
-+struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
- {
- 	struct super_block *sb;
- 	struct buffer_head *bitmap_bh = NULL;
- 	struct buffer_head *bh2;
- 	ext4_group_t group = 0;
- 	unsigned long ino = 0;
--	struct inode * inode;
--	struct ext4_group_desc * gdp = NULL;
--	struct ext4_super_block * es;
-+	struct inode *inode;
-+	struct ext4_group_desc *gdp = NULL;
-+	struct ext4_super_block *es;
- 	struct ext4_inode_info *ei;
- 	struct ext4_sb_info *sbi;
- 	int ret2, err = 0;
-@@ -614,7 +614,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
- 	}
- 
- 	if (S_ISDIR(mode)) {
--		if (test_opt (sb, OLDALLOC))
-+		if (test_opt(sb, OLDALLOC))
- 			ret2 = find_group_dir(sb, dir, &group);
- 		else
- 			ret2 = find_group_orlov(sb, dir, &group);
-@@ -784,7 +784,7 @@ got:
- 	}
- 
- 	inode->i_uid = current->fsuid;
--	if (test_opt (sb, GRPID))
-+	if (test_opt(sb, GRPID))
- 		inode->i_gid = dir->i_gid;
- 	else if (dir->i_mode & S_ISGID) {
- 		inode->i_gid = dir->i_gid;
-@@ -833,7 +833,7 @@ got:
- 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
- 
- 	ret = inode;
--	if(DQUOT_ALLOC_INODE(inode)) {
-+	if (DQUOT_ALLOC_INODE(inode)) {
- 		err = -EDQUOT;
- 		goto fail_drop;
- 	}
-@@ -842,7 +842,7 @@ got:
- 	if (err)
- 		goto fail_free_drop;
- 
--	err = ext4_init_security(handle,inode, dir);
-+	err = ext4_init_security(handle, inode, dir);
- 	if (err)
- 		goto fail_free_drop;
- 
-@@ -960,7 +960,7 @@ error:
- 	return ERR_PTR(err);
- }
- 
--unsigned long ext4_count_free_inodes (struct super_block * sb)
-+unsigned long ext4_count_free_inodes(struct super_block *sb)
- {
- 	unsigned long desc_count;
- 	struct ext4_group_desc *gdp;
-@@ -975,7 +975,7 @@ unsigned long ext4_count_free_inodes (struct super_block * sb)
- 	bitmap_count = 0;
- 	gdp = NULL;
- 	for (i = 0; i < EXT4_SB(sb)->s_groups_count; i++) {
--		gdp = ext4_get_group_desc (sb, i, NULL);
-+		gdp = ext4_get_group_desc(sb, i, NULL);
- 		if (!gdp)
- 			continue;
- 		desc_count += le16_to_cpu(gdp->bg_free_inodes_count);
-@@ -997,7 +997,7 @@ unsigned long ext4_count_free_inodes (struct super_block * sb)
- #else
- 	desc_count = 0;
- 	for (i = 0; i < EXT4_SB(sb)->s_groups_count; i++) {
--		gdp = ext4_get_group_desc (sb, i, NULL);
-+		gdp = ext4_get_group_desc(sb, i, NULL);
- 		if (!gdp)
- 			continue;
- 		desc_count += le16_to_cpu(gdp->bg_free_inodes_count);
-@@ -1008,13 +1008,13 @@ unsigned long ext4_count_free_inodes (struct super_block * sb)
- }
- 
- /* Called at mount-time, super-block is locked */
--unsigned long ext4_count_dirs (struct super_block * sb)
-+unsigned long ext4_count_dirs(struct super_block * sb)
- {
- 	unsigned long count = 0;
- 	ext4_group_t i;
- 
- 	for (i = 0; i < EXT4_SB(sb)->s_groups_count; i++) {
--		struct ext4_group_desc *gdp = ext4_get_group_desc (sb, i, NULL);
-+		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, i, NULL);
- 		if (!gdp)
- 			continue;
- 		count += le16_to_cpu(gdp->bg_used_dirs_count);
+ 	ext4_set_inode_flags(inode);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7e91913..89c92c0 100644
+index ef4ca3d..bd770c3 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -190,7 +190,7 @@ static int ext4_journal_test_restart(handle_t *handle, struct inode *inode)
- /*
-  * Called at the last iput() if i_nlink is zero.
-  */
--void ext4_delete_inode (struct inode * inode)
-+void ext4_delete_inode(struct inode *inode)
+@@ -486,18 +486,9 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+ static ext4_fsblk_t ext4_find_goal(struct inode *inode, ext4_lblk_t block,
+ 		Indirect *partial)
  {
- 	handle_t *handle;
- 	int err;
-@@ -330,11 +330,11 @@ static int ext4_block_to_path(struct inode *inode,
- 	int final = 0;
+-	struct ext4_block_alloc_info *block_i;
+-
+-	block_i =  EXT4_I(inode)->i_block_alloc_info;
+-
+ 	/*
+-	 * try the heuristic for sequential allocation,
+-	 * failing that at least try to get decent locality.
++	 * XXX need to get goal block from mballoc's data structures
+ 	 */
+-	if (block_i && (block == block_i->last_alloc_logical_block + 1)
+-		&& (block_i->last_alloc_physical_block != 0)) {
+-		return block_i->last_alloc_physical_block + 1;
+-	}
  
- 	if (i_block < 0) {
--		ext4_warning (inode->i_sb, "ext4_block_to_path", "block < 0");
-+		ext4_warning(inode->i_sb, "ext4_block_to_path", "block < 0");
- 	} else if (i_block < direct_blocks) {
- 		offsets[n++] = i_block;
- 		final = direct_blocks;
--	} else if ( (i_block -= direct_blocks) < indirect_blocks) {
-+	} else if ((i_block -= direct_blocks) < indirect_blocks) {
- 		offsets[n++] = EXT4_IND_BLOCK;
- 		offsets[n++] = i_block;
- 		final = ptrs;
-@@ -400,14 +400,14 @@ static Indirect *ext4_get_branch(struct inode *inode, int depth,
- 
- 	*err = 0;
- 	/* i_data is not going away, no lock needed */
--	add_chain (chain, NULL, EXT4_I(inode)->i_data + *offsets);
-+	add_chain(chain, NULL, EXT4_I(inode)->i_data + *offsets);
- 	if (!p->key)
- 		goto no_block;
- 	while (--depth) {
- 		bh = sb_bread(sb, le32_to_cpu(p->key));
- 		if (!bh)
- 			goto failure;
--		add_chain(++p, bh, (__le32*)bh->b_data + *++offsets);
-+		add_chain(++p, bh, (__le32 *)bh->b_data + *++offsets);
- 		/* Reader: end */
- 		if (!p->key)
- 			goto no_block;
-@@ -443,7 +443,7 @@ no_block:
- static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
- {
- 	struct ext4_inode_info *ei = EXT4_I(inode);
--	__le32 *start = ind->bh ? (__le32*) ind->bh->b_data : ei->i_data;
-+	__le32 *start = ind->bh ? (__le32 *) ind->bh->b_data : ei->i_data;
- 	__le32 *p;
- 	ext4_fsblk_t bg_start;
- 	ext4_fsblk_t last_block;
-@@ -630,7 +630,7 @@ allocated:
- 	*err = 0;
- 	return ret;
- failed_out:
--	for (i = 0; i <index; i++)
-+	for (i = 0; i < index; i++)
- 		ext4_free_blocks(handle, inode, new_blocks[i], 1, 0);
- 	return ret;
+ 	return ext4_find_near(inode, partial);
  }
-@@ -703,7 +703,7 @@ static int ext4_alloc_branch(handle_t *handle, struct inode *inode,
- 		branch[n].p = (__le32 *) bh->b_data + offsets[n];
- 		branch[n].key = cpu_to_le32(new_blocks[n]);
- 		*branch[n].p = branch[n].key;
--		if ( n == indirect_blks) {
-+		if (n == indirect_blks) {
- 			current_block = new_blocks[n];
- 			/*
- 			 * End of chain, update the last new metablock of
-@@ -730,7 +730,7 @@ failed:
- 		BUFFER_TRACE(branch[i].bh, "call jbd2_journal_forget");
- 		ext4_journal_forget(handle, branch[i].bh);
- 	}
--	for (i = 0; i <indirect_blks; i++)
-+	for (i = 0; i < indirect_blks; i++)
- 		ext4_free_blocks(handle, inode, new_blocks[i], 1, 0);
+@@ -757,10 +748,8 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
+ {
+ 	int i;
+ 	int err = 0;
+-	struct ext4_block_alloc_info *block_i;
+ 	ext4_fsblk_t current_block;
  
- 	ext4_free_blocks(handle, inode, new_blocks[i], num, 0);
-@@ -783,7 +783,7 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
- 	if (num == 0 && blks > 1) {
- 		current_block = le32_to_cpu(where->key) + 1;
- 		for (i = 1; i < blks; i++)
--			*(where->p + i ) = cpu_to_le32(current_block++);
-+			*(where->p + i) = cpu_to_le32(current_block++);
+-	block_i = EXT4_I(inode)->i_block_alloc_info;
+ 	/*
+ 	 * If we're splicing into a [td]indirect block (as opposed to the
+ 	 * inode) then we need to get write access to the [td]indirect block
+@@ -786,17 +775,6 @@ static int ext4_splice_branch(handle_t *handle, struct inode *inode,
+ 			*(where->p + i) = cpu_to_le32(current_block++);
  	}
+ 
+-	/*
+-	 * update the most recently allocated logical & physical block
+-	 * in i_block_alloc_info, to assist find the proper goal block for next
+-	 * allocation
+-	 */
+-	if (block_i) {
+-		block_i->last_alloc_logical_block = block + blks - 1;
+-		block_i->last_alloc_physical_block =
+-				le32_to_cpu(where[num].key) + blks - 1;
+-	}
+-
+ 	/* We are done with atomic stuff, now do the rest of housekeeping */
+ 
+ 	inode->i_ctime = ext4_current_time(inode);
+@@ -914,12 +892,8 @@ int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
+ 		goto cleanup;
  
  	/*
-@@ -1241,7 +1241,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 			BUFFER_TRACE(bh, "call get_create_access");
- 			fatal = ext4_journal_get_create_access(handle, bh);
- 			if (!fatal && !buffer_uptodate(bh)) {
--				memset(bh->b_data,0,inode->i_sb->s_blocksize);
-+				memset(bh->b_data, 0, inode->i_sb->s_blocksize);
- 				set_buffer_uptodate(bh);
- 			}
- 			unlock_buffer(bh);
-@@ -1266,7 +1266,7 @@ err:
- struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- 			       ext4_lblk_t block, int create, int *err)
- {
--	struct buffer_head * bh;
-+	struct buffer_head *bh;
+-	 * Okay, we need to do block allocation.  Lazily initialize the block
+-	 * allocation info here if necessary
++	 * Okay, we need to do block allocation.
+ 	*/
+-	if (S_ISREG(inode->i_mode) && (!ei->i_block_alloc_info))
+-		ext4_init_block_alloc_info(inode);
+-
+ 	goal = ext4_find_goal(inode, iblock, partial);
  
- 	bh = ext4_getblk(handle, inode, block, create, err);
- 	if (!bh)
-@@ -1282,13 +1282,13 @@ struct buffer_head *ext4_bread(handle_t *handle, struct inode *inode,
- 	return NULL;
- }
+ 	/* the number of blocks need to allocate for [d,t]indirect blocks */
+@@ -3738,7 +3712,7 @@ void ext4_truncate(struct inode *inode)
+ 	 */
+ 	down_write(&ei->i_data_sem);
  
--static int walk_page_buffers(	handle_t *handle,
--				struct buffer_head *head,
--				unsigned from,
--				unsigned to,
--				int *partial,
--				int (*fn)(	handle_t *handle,
--						struct buffer_head *bh))
-+static int walk_page_buffers(handle_t *handle,
-+			     struct buffer_head *head,
-+			     unsigned from,
-+			     unsigned to,
-+			     int *partial,
-+			     int (*fn)(handle_t *handle,
-+				       struct buffer_head *bh))
- {
- 	struct buffer_head *bh;
- 	unsigned block_start, block_end;
-@@ -1296,9 +1296,9 @@ static int walk_page_buffers(	handle_t *handle,
- 	int err, ret = 0;
- 	struct buffer_head *next;
- 
--	for (	bh = head, block_start = 0;
--		ret == 0 && (bh != head || !block_start);
--		block_start = block_end, bh = next)
-+	for (bh = head, block_start = 0;
-+	     ret == 0 && (bh != head || !block_start);
-+	     block_start = block_end, bh = next)
- 	{
- 		next = bh->b_this_page;
- 		block_end = block_start + blocksize;
-@@ -1351,23 +1351,23 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 				loff_t pos, unsigned len, unsigned flags,
- 				struct page **pagep, void **fsdata)
- {
-- 	struct inode *inode = mapping->host;
-+	struct inode *inode = mapping->host;
- 	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
- 	handle_t *handle;
- 	int retries = 0;
-- 	struct page *page;
-+	struct page *page;
-  	pgoff_t index;
-- 	unsigned from, to;
-+	unsigned from, to;
- 
-  	index = pos >> PAGE_CACHE_SHIFT;
-- 	from = pos & (PAGE_CACHE_SIZE - 1);
-- 	to = from + len;
-+	from = pos & (PAGE_CACHE_SIZE - 1);
-+	to = from + len;
- 
- retry:
--  	handle = ext4_journal_start(inode, needed_blocks);
--  	if (IS_ERR(handle)) {
--  		ret = PTR_ERR(handle);
--  		goto out;
-+	handle = ext4_journal_start(inode, needed_blocks);
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		goto out;
- 	}
- 
- 	page = __grab_cache_page(mapping, index);
-@@ -1387,9 +1387,9 @@ retry:
- 	}
- 
- 	if (ret) {
-- 		unlock_page(page);
-+		unlock_page(page);
- 		ext4_journal_stop(handle);
-- 		page_cache_release(page);
-+		page_cache_release(page);
- 	}
- 
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
-@@ -2456,7 +2456,7 @@ static int ext4_da_should_update_i_disksize(struct page *page,
- 	bh = page_buffers(page);
- 	idx = offset >> inode->i_blkbits;
- 
--	for (i=0; i < idx; i++)
-+	for (i = 0; i < idx; i++)
- 		bh = bh->b_this_page;
- 
- 	if (!buffer_mapped(bh) || (buffer_delay(bh)))
-@@ -2476,7 +2476,7 @@ static int ext4_da_write_end(struct file *file,
- 	unsigned long start, end;
- 
- 	start = pos & (PAGE_CACHE_SIZE - 1);
--	end = start + copied -1;
-+	end = start + copied - 1;
+-	ext4_discard_reservation(inode);
++	ext4_discard_preallocations(inode);
  
  	/*
- 	 * generic_write_end() will run mark_inode_dirty() if i_size
-@@ -2591,7 +2591,7 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
- 			return 0;
- 	}
+ 	 * The orphan list entry will now protect us from any crash which
+@@ -4071,7 +4045,6 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	ei->i_acl = EXT4_ACL_NOT_CACHED;
+ 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
+ #endif
+-	ei->i_block_alloc_info = NULL;
  
--	return generic_block_bmap(mapping,block,ext4_get_block);
-+	return generic_block_bmap(mapping, block, ext4_get_block);
- }
- 
- static int bget_one(handle_t *handle, struct buffer_head *bh)
-@@ -3197,7 +3197,7 @@ static Indirect *ext4_find_shared(struct inode *inode, int depth,
- 	if (!partial->key && *partial->p)
- 		/* Writer: end */
- 		goto no_top;
--	for (p=partial; p>chain && all_zeroes((__le32*)p->bh->b_data,p->p); p--)
-+	for (p = partial; (p > chain) && all_zeroes((__le32 *) p->bh->b_data, p->p); p--)
- 		;
- 	/*
- 	 * OK, we've found the last block that must survive. The rest of our
-@@ -3216,7 +3216,7 @@ static Indirect *ext4_find_shared(struct inode *inode, int depth,
- 	}
- 	/* Writer: end */
- 
--	while(partial > p) {
-+	while (partial > p) {
- 		brelse(partial->bh);
- 		partial--;
- 	}
-@@ -3408,9 +3408,9 @@ static void ext4_free_branches(handle_t *handle, struct inode *inode,
- 			/* This zaps the entire block.  Bottom up. */
- 			BUFFER_TRACE(bh, "free child branches");
- 			ext4_free_branches(handle, inode, bh,
--					   (__le32*)bh->b_data,
--					   (__le32*)bh->b_data + addr_per_block,
--					   depth);
-+					(__le32 *) bh->b_data,
-+					(__le32 *) bh->b_data + addr_per_block,
-+					depth);
- 
- 			/*
- 			 * We've probably journalled the indirect block several
-@@ -3927,7 +3927,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 	inode->i_mode = le16_to_cpu(raw_inode->i_mode);
- 	inode->i_uid = (uid_t)le16_to_cpu(raw_inode->i_uid_low);
- 	inode->i_gid = (gid_t)le16_to_cpu(raw_inode->i_gid_low);
--	if(!(test_opt (inode->i_sb, NO_UID32))) {
-+	if (!(test_opt(inode->i_sb, NO_UID32))) {
- 		inode->i_uid |= le16_to_cpu(raw_inode->i_uid_high) << 16;
- 		inode->i_gid |= le16_to_cpu(raw_inode->i_gid_high) << 16;
- 	}
-@@ -3945,7 +3945,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 		if (inode->i_mode == 0 ||
- 		    !(EXT4_SB(inode->i_sb)->s_mount_state & EXT4_ORPHAN_FS)) {
- 			/* this inode is deleted */
--			brelse (bh);
-+			brelse(bh);
- 			ret = -ESTALE;
- 			goto bad_inode;
- 		}
-@@ -3978,7 +3978,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 		ei->i_extra_isize = le16_to_cpu(raw_inode->i_extra_isize);
- 		if (EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize >
- 		    EXT4_INODE_SIZE(inode->i_sb)) {
--			brelse (bh);
-+			brelse(bh);
- 			ret = -EIO;
- 			goto bad_inode;
- 		}
-@@ -4031,7 +4031,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 			init_special_inode(inode, inode->i_mode,
- 			   new_decode_dev(le32_to_cpu(raw_inode->i_block[1])));
- 	}
--	brelse (iloc.bh);
-+	brelse(iloc.bh);
- 	ext4_set_inode_flags(inode);
- 	unlock_new_inode(inode);
- 	return inode;
-@@ -4113,14 +4113,14 @@ static int ext4_do_update_inode(handle_t *handle,
- 
- 	ext4_get_inode_flags(ei);
- 	raw_inode->i_mode = cpu_to_le16(inode->i_mode);
--	if(!(test_opt(inode->i_sb, NO_UID32))) {
-+	if (!(test_opt(inode->i_sb, NO_UID32))) {
- 		raw_inode->i_uid_low = cpu_to_le16(low_16_bits(inode->i_uid));
- 		raw_inode->i_gid_low = cpu_to_le16(low_16_bits(inode->i_gid));
- /*
-  * Fix up interoperability with old kernels. Otherwise, old inodes get
-  * re-used with the upper 16 bits of the uid/gid intact
-  */
--		if(!ei->i_dtime) {
-+		if (!ei->i_dtime) {
- 			raw_inode->i_uid_high =
- 				cpu_to_le16(high_16_bits(inode->i_uid));
- 			raw_inode->i_gid_high =
-@@ -4208,7 +4208,7 @@ static int ext4_do_update_inode(handle_t *handle,
- 	ei->i_state &= ~EXT4_STATE_NEW;
- 
- out_brelse:
--	brelse (bh);
-+	brelse(bh);
- 	ext4_std_error(inode->i_sb, err);
- 	return err;
- }
+ 	ret = __ext4_get_inode_loc(inode, &iloc, 0);
+ 	if (ret < 0)
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 7a6c2f1..ca09dd1 100644
+index 3e14060..ea27eaa 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
-@@ -25,7 +25,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+@@ -23,7 +23,6 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ 	struct inode *inode = filp->f_dentry->d_inode;
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
  	unsigned int flags;
- 	unsigned short rsv_window_size;
+-	unsigned short rsv_window_size;
  
--	ext4_debug ("cmd = %u, arg = %lu\n", cmd, arg);
-+	ext4_debug("cmd = %u, arg = %lu\n", cmd, arg);
+ 	ext4_debug("cmd = %u, arg = %lu\n", cmd, arg);
  
- 	switch (cmd) {
- 	case EXT4_IOC_GETFLAGS:
-@@ -186,7 +186,7 @@ setversion_out:
- 	case EXT4_IOC_SETRSVSZ: {
- 		int err;
+@@ -190,49 +189,6 @@ setversion_out:
+ 			return ret;
+ 		}
+ #endif
+-	case EXT4_IOC_GETRSVSZ:
+-		if (test_opt(inode->i_sb, RESERVATION)
+-			&& S_ISREG(inode->i_mode)
+-			&& ei->i_block_alloc_info) {
+-			rsv_window_size = ei->i_block_alloc_info->rsv_window_node.rsv_goal_size;
+-			return put_user(rsv_window_size, (int __user *)arg);
+-		}
+-		return -ENOTTY;
+-	case EXT4_IOC_SETRSVSZ: {
+-		int err;
+-
+-		if (!test_opt(inode->i_sb, RESERVATION) || !S_ISREG(inode->i_mode))
+-			return -ENOTTY;
+-
+-		if (!is_owner_or_cap(inode))
+-			return -EACCES;
+-
+-		if (get_user(rsv_window_size, (int __user *)arg))
+-			return -EFAULT;
+-
+-		err = mnt_want_write(filp->f_path.mnt);
+-		if (err)
+-			return err;
+-
+-		if (rsv_window_size > EXT4_MAX_RESERVE_BLOCKS)
+-			rsv_window_size = EXT4_MAX_RESERVE_BLOCKS;
+-
+-		/*
+-		 * need to allocate reservation structure for this inode
+-		 * before set the window size
+-		 */
+-		down_write(&ei->i_data_sem);
+-		if (!ei->i_block_alloc_info)
+-			ext4_init_block_alloc_info(inode);
+-
+-		if (ei->i_block_alloc_info){
+-			struct ext4_reserve_window_node *rsv = &ei->i_block_alloc_info->rsv_window_node;
+-			rsv->rsv_goal_size = rsv_window_size;
+-		}
+-		up_write(&ei->i_data_sem);
+-		mnt_drop_write(filp->f_path.mnt);
+-		return 0;
+-	}
+ 	case EXT4_IOC_GROUP_EXTEND: {
+ 		ext4_fsblk_t n_blocks_count;
+ 		struct super_block *sb = inode->i_sb;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 3373f89..c84b68f 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -534,9 +534,6 @@ static int __mb_check_buddy(struct ext4_buddy *e4b, char *file,
+ 	void *buddy;
+ 	void *buddy2;
  
--		if (!test_opt(inode->i_sb, RESERVATION) ||!S_ISREG(inode->i_mode))
-+		if (!test_opt(inode->i_sb, RESERVATION) || !S_ISREG(inode->i_mode))
- 			return -ENOTTY;
- 
- 		if (!is_owner_or_cap(inode))
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 978b57f..a1f72d2 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -151,26 +151,26 @@ struct dx_map_entry
- 
- static inline ext4_lblk_t dx_get_block(struct dx_entry *entry);
- static void dx_set_block(struct dx_entry *entry, ext4_lblk_t value);
--static inline unsigned dx_get_hash (struct dx_entry *entry);
--static void dx_set_hash (struct dx_entry *entry, unsigned value);
--static unsigned dx_get_count (struct dx_entry *entries);
--static unsigned dx_get_limit (struct dx_entry *entries);
--static void dx_set_count (struct dx_entry *entries, unsigned value);
--static void dx_set_limit (struct dx_entry *entries, unsigned value);
--static unsigned dx_root_limit (struct inode *dir, unsigned infosize);
--static unsigned dx_node_limit (struct inode *dir);
-+static inline unsigned dx_get_hash(struct dx_entry *entry);
-+static void dx_set_hash(struct dx_entry *entry, unsigned value);
-+static unsigned dx_get_count(struct dx_entry *entries);
-+static unsigned dx_get_limit(struct dx_entry *entries);
-+static void dx_set_count(struct dx_entry *entries, unsigned value);
-+static void dx_set_limit(struct dx_entry *entries, unsigned value);
-+static unsigned dx_root_limit(struct inode *dir, unsigned infosize);
-+static unsigned dx_node_limit(struct inode *dir);
- static struct dx_frame *dx_probe(struct dentry *dentry,
- 				 struct inode *dir,
- 				 struct dx_hash_info *hinfo,
- 				 struct dx_frame *frame,
- 				 int *err);
--static void dx_release (struct dx_frame *frames);
--static int dx_make_map (struct ext4_dir_entry_2 *de, int size,
--			struct dx_hash_info *hinfo, struct dx_map_entry map[]);
-+static void dx_release(struct dx_frame *frames);
-+static int dx_make_map(struct ext4_dir_entry_2 *de, int size,
-+		       struct dx_hash_info *hinfo, struct dx_map_entry map[]);
- static void dx_sort_map(struct dx_map_entry *map, unsigned count);
--static struct ext4_dir_entry_2 *dx_move_dirents (char *from, char *to,
-+static struct ext4_dir_entry_2 *dx_move_dirents(char *from, char *to,
- 		struct dx_map_entry *offsets, int count);
--static struct ext4_dir_entry_2* dx_pack_dirents (char *base, int size);
-+static struct ext4_dir_entry_2* dx_pack_dirents(char *base, int size);
- static void dx_insert_block(struct dx_frame *frame,
- 					u32 hash, ext4_lblk_t block);
- static int ext4_htree_next_block(struct inode *dir, __u32 hash,
-@@ -207,44 +207,44 @@ static inline void dx_set_block(struct dx_entry *entry, ext4_lblk_t value)
- 	entry->block = cpu_to_le32(value);
- }
- 
--static inline unsigned dx_get_hash (struct dx_entry *entry)
-+static inline unsigned dx_get_hash(struct dx_entry *entry)
- {
- 	return le32_to_cpu(entry->hash);
- }
- 
--static inline void dx_set_hash (struct dx_entry *entry, unsigned value)
-+static inline void dx_set_hash(struct dx_entry *entry, unsigned value)
- {
- 	entry->hash = cpu_to_le32(value);
- }
- 
--static inline unsigned dx_get_count (struct dx_entry *entries)
-+static inline unsigned dx_get_count(struct dx_entry *entries)
- {
- 	return le16_to_cpu(((struct dx_countlimit *) entries)->count);
- }
- 
--static inline unsigned dx_get_limit (struct dx_entry *entries)
-+static inline unsigned dx_get_limit(struct dx_entry *entries)
- {
- 	return le16_to_cpu(((struct dx_countlimit *) entries)->limit);
- }
- 
--static inline void dx_set_count (struct dx_entry *entries, unsigned value)
-+static inline void dx_set_count(struct dx_entry *entries, unsigned value)
- {
- 	((struct dx_countlimit *) entries)->count = cpu_to_le16(value);
- }
- 
--static inline void dx_set_limit (struct dx_entry *entries, unsigned value)
-+static inline void dx_set_limit(struct dx_entry *entries, unsigned value)
- {
- 	((struct dx_countlimit *) entries)->limit = cpu_to_le16(value);
- }
- 
--static inline unsigned dx_root_limit (struct inode *dir, unsigned infosize)
-+static inline unsigned dx_root_limit(struct inode *dir, unsigned infosize)
- {
- 	unsigned entry_space = dir->i_sb->s_blocksize - EXT4_DIR_REC_LEN(1) -
- 		EXT4_DIR_REC_LEN(2) - infosize;
- 	return entry_space / sizeof(struct dx_entry);
- }
- 
--static inline unsigned dx_node_limit (struct inode *dir)
-+static inline unsigned dx_node_limit(struct inode *dir)
- {
- 	unsigned entry_space = dir->i_sb->s_blocksize - EXT4_DIR_REC_LEN(0);
- 	return entry_space / sizeof(struct dx_entry);
-@@ -306,7 +306,7 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
- 			     struct dx_entry *entries, int levels)
- {
- 	unsigned blocksize = dir->i_sb->s_blocksize;
--	unsigned count = dx_get_count (entries), names = 0, space = 0, i;
-+	unsigned count = dx_get_count(entries), names = 0, space = 0, i;
- 	unsigned bcount = 0;
- 	struct buffer_head *bh;
- 	int err;
-@@ -325,7 +325,7 @@ struct stats dx_show_entries(struct dx_hash_info *hinfo, struct inode *dir,
- 		names += stats.names;
- 		space += stats.space;
- 		bcount += stats.bcount;
--		brelse (bh);
-+		brelse(bh);
- 	}
- 	if (bcount)
- 		printk(KERN_DEBUG "%snames %u, fullness %u (%u%%)\n", 
-@@ -407,7 +407,7 @@ dx_probe(struct dentry *dentry, struct inode *dir,
- 		goto fail;
- 	}
- 
--	dxtrace (printk("Look up %x", hash));
-+	dxtrace(printk("Look up %x", hash));
- 	while (1)
+-	if (!test_opt(sb, MBALLOC))
+-		return 0;
+-
  	{
- 		count = dx_get_count(entries);
-@@ -556,7 +556,7 @@ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
- 				      0, &err)))
- 			return err; /* Failure */
- 		p++;
--		brelse (p->bh);
-+		brelse(p->bh);
- 		p->bh = bh;
- 		p->at = p->entries = ((struct dx_node *) bh->b_data)->entries;
+ 		static int mb_check_counter;
+ 		if (mb_check_counter++ % 100 != 0)
+@@ -2487,19 +2484,14 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	unsigned max;
+ 	int ret;
+ 
+-	if (!test_opt(sb, MBALLOC))
+-		return 0;
+-
+ 	i = (sb->s_blocksize_bits + 2) * sizeof(unsigned short);
+ 
+ 	sbi->s_mb_offsets = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_mb_offsets == NULL) {
+-		clear_opt(sbi->s_mount_opt, MBALLOC);
+ 		return -ENOMEM;
  	}
-@@ -594,7 +594,7 @@ static int htree_dirblock_to_tree(struct file *dir_file,
- 			/* On error, skip the f_pos to the next block. */
- 			dir_file->f_pos = (dir_file->f_pos |
- 					(dir->i_sb->s_blocksize - 1)) + 1;
--			brelse (bh);
-+			brelse(bh);
- 			return count;
- 		}
- 		ext4fs_dirhash(de->name, de->name_len, hinfo);
-@@ -803,7 +803,7 @@ static inline int ext4_match (int len, const char * const name,
- /*
-  * Returns 0 if not found, -1 on failure, and 1 on success
-  */
--static inline int search_dirblock(struct buffer_head * bh,
-+static inline int search_dirblock(struct buffer_head *bh,
- 				  struct inode *dir,
- 				  struct dentry *dentry,
- 				  unsigned long offset,
-@@ -855,9 +855,9 @@ static inline int search_dirblock(struct buffer_head * bh,
- static struct buffer_head * ext4_find_entry (struct dentry *dentry,
- 					struct ext4_dir_entry_2 ** res_dir)
- {
--	struct super_block * sb;
--	struct buffer_head * bh_use[NAMEI_RA_SIZE];
--	struct buffer_head * bh, *ret = NULL;
-+	struct super_block *sb;
-+	struct buffer_head *bh_use[NAMEI_RA_SIZE];
-+	struct buffer_head *bh, *ret = NULL;
- 	ext4_lblk_t start, block, b;
- 	int ra_max = 0;		/* Number of bh's in the readahead
- 				   buffer, bh_use[] */
-@@ -958,7 +958,7 @@ restart:
- cleanup_and_exit:
- 	/* Clean up the read-ahead blocks */
- 	for (; ra_ptr < ra_max; ra_ptr++)
--		brelse (bh_use[ra_ptr]);
-+		brelse(bh_use[ra_ptr]);
- 	return ret;
- }
- 
-@@ -1012,7 +1012,7 @@ static struct buffer_head * ext4_dx_find_entry(struct dentry *dentry,
- 				return bh;
- 			}
- 		}
--		brelse (bh);
-+		brelse(bh);
- 		/* Check to see if we should continue to search */
- 		retval = ext4_htree_next_block(dir, hash, frame,
- 					       frames, NULL);
-@@ -1032,11 +1032,11 @@ errout:
- 	return NULL;
- }
- 
--static struct dentry *ext4_lookup(struct inode * dir, struct dentry *dentry, struct nameidata *nd)
-+static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *nd)
- {
--	struct inode * inode;
--	struct ext4_dir_entry_2 * de;
--	struct buffer_head * bh;
-+	struct inode *inode;
-+	struct ext4_dir_entry_2 *de;
-+	struct buffer_head *bh;
- 
- 	if (dentry->d_name.len > EXT4_NAME_LEN)
- 		return ERR_PTR(-ENAMETOOLONG);
-@@ -1045,7 +1045,7 @@ static struct dentry *ext4_lookup(struct inode * dir, struct dentry *dentry, str
- 	inode = NULL;
- 	if (bh) {
- 		unsigned long ino = le32_to_cpu(de->inode);
--		brelse (bh);
-+		brelse(bh);
- 		if (!ext4_valid_inum(dir->i_sb, ino)) {
- 			ext4_error(dir->i_sb, "ext4_lookup",
- 				   "bad inode number: %lu", ino);
-@@ -1203,10 +1203,10 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 
- 	/* create map in the end of data2 block */
- 	map = (struct dx_map_entry *) (data2 + blocksize);
--	count = dx_make_map ((struct ext4_dir_entry_2 *) data1,
-+	count = dx_make_map((struct ext4_dir_entry_2 *) data1,
- 			     blocksize, hinfo, map);
- 	map -= count;
--	dx_sort_map (map, count);
-+	dx_sort_map(map, count);
- 	/* Split the existing block in the middle, size-wise */
- 	size = 0;
- 	move = 0;
-@@ -1227,7 +1227,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 
- 	/* Fancy dance to stay within two buffers */
- 	de2 = dx_move_dirents(data1, data2, map + split, count - split);
--	de = dx_pack_dirents(data1,blocksize);
-+	de = dx_pack_dirents(data1, blocksize);
- 	de->rec_len = ext4_rec_len_to_disk(data1 + blocksize - (char *) de);
- 	de2->rec_len = ext4_rec_len_to_disk(data2 + blocksize - (char *) de2);
- 	dxtrace(dx_show_leaf (hinfo, (struct ext4_dir_entry_2 *) data1, blocksize, 1));
-@@ -1239,15 +1239,15 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
- 		swap(*bh, bh2);
- 		de = de2;
+ 	sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_mb_maxs == NULL) {
+-		clear_opt(sbi->s_mount_opt, MBALLOC);
+ 		kfree(sbi->s_mb_maxs);
+ 		return -ENOMEM;
  	}
--	dx_insert_block (frame, hash2 + continued, newblock);
--	err = ext4_journal_dirty_metadata (handle, bh2);
-+	dx_insert_block(frame, hash2 + continued, newblock);
-+	err = ext4_journal_dirty_metadata(handle, bh2);
- 	if (err)
- 		goto journal_error;
--	err = ext4_journal_dirty_metadata (handle, frame->bh);
-+	err = ext4_journal_dirty_metadata(handle, frame->bh);
- 	if (err)
- 		goto journal_error;
--	brelse (bh2);
--	dxtrace(dx_show_index ("frame", frame->entries));
-+	brelse(bh2);
-+	dxtrace(dx_show_index("frame", frame->entries));
- 	return de;
+@@ -2522,7 +2514,6 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	/* init file for buddy data */
+ 	ret = ext4_mb_init_backend(sb);
+ 	if (ret != 0) {
+-		clear_opt(sbi->s_mount_opt, MBALLOC);
+ 		kfree(sbi->s_mb_offsets);
+ 		kfree(sbi->s_mb_maxs);
+ 		return ret;
+@@ -2544,7 +2535,6 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
  
- journal_error:
-@@ -1273,7 +1273,7 @@ errout:
+ 	sbi->s_locality_groups = alloc_percpu(struct ext4_locality_group);
+ 	if (sbi->s_locality_groups == NULL) {
+-		clear_opt(sbi->s_mount_opt, MBALLOC);
+ 		kfree(sbi->s_mb_offsets);
+ 		kfree(sbi->s_mb_maxs);
+ 		return -ENOMEM;
+@@ -2590,9 +2580,6 @@ int ext4_mb_release(struct super_block *sb)
+ 	struct ext4_group_info *grinfo;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 
+-	if (!test_opt(sb, MBALLOC))
+-		return 0;
+-
+ 	/* release freed, non-committed blocks */
+ 	spin_lock(&sbi->s_md_lock);
+ 	list_splice_init(&sbi->s_closed_transaction,
+@@ -3799,7 +3786,7 @@ out:
+  *
+  * FIXME!! Make sure it is valid at all the call sites
   */
- static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 			     struct inode *inode, struct ext4_dir_entry_2 *de,
--			     struct buffer_head * bh)
-+			     struct buffer_head *bh)
+-void ext4_mb_discard_inode_preallocations(struct inode *inode)
++void ext4_discard_preallocations(struct inode *inode)
  {
- 	struct inode	*dir = dentry->d_parent->d_inode;
- 	const char	*name = dentry->d_name.name;
-@@ -1290,11 +1290,11 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 		while ((char *) de <= top) {
- 			if (!ext4_check_dir_entry("ext4_add_entry", dir, de,
- 						  bh, offset)) {
--				brelse (bh);
-+				brelse(bh);
- 				return -EIO;
- 			}
--			if (ext4_match (namelen, name, de)) {
--				brelse (bh);
-+			if (ext4_match(namelen, name, de)) {
-+				brelse(bh);
- 				return -EEXIST;
- 			}
- 			nlen = EXT4_DIR_REC_LEN(de->name_len);
-@@ -1331,7 +1331,7 @@ static int add_dirent_to_buf(handle_t *handle, struct dentry *dentry,
- 	} else
- 		de->inode = 0;
- 	de->name_len = namelen;
--	memcpy (de->name, name, namelen);
-+	memcpy(de->name, name, namelen);
- 	/*
- 	 * XXX shouldn't update any times until successful
- 	 * completion of syscall, but too many callers depend
-@@ -1388,7 +1388,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	}
- 	root = (struct dx_root *) bh->b_data;
- 
--	bh2 = ext4_append (handle, dir, &block, &retval);
-+	bh2 = ext4_append(handle, dir, &block, &retval);
- 	if (!(bh2)) {
- 		brelse(bh);
- 		return retval;
-@@ -1414,9 +1414,9 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	root->info.info_length = sizeof(root->info);
- 	root->info.hash_version = EXT4_SB(dir->i_sb)->s_def_hash_version;
- 	entries = root->entries;
--	dx_set_block (entries, 1);
--	dx_set_count (entries, 1);
--	dx_set_limit (entries, dx_root_limit(dir, sizeof(root->info)));
-+	dx_set_block(entries, 1);
-+	dx_set_count(entries, 1);
-+	dx_set_limit(entries, dx_root_limit(dir, sizeof(root->info)));
- 
- 	/* Initialize as for dx_probe */
- 	hinfo.hash_version = root->info.hash_version;
-@@ -1445,14 +1445,14 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
-  * may not sleep between calling this and putting something into
-  * the entry, as someone else might have used it while you slept.
-  */
--static int ext4_add_entry (handle_t *handle, struct dentry *dentry,
--	struct inode *inode)
-+static int ext4_add_entry(handle_t *handle, struct dentry *dentry,
-+			  struct inode *inode)
- {
- 	struct inode *dir = dentry->d_parent->d_inode;
- 	unsigned long offset;
--	struct buffer_head * bh;
-+	struct buffer_head *bh;
- 	struct ext4_dir_entry_2 *de;
--	struct super_block * sb;
-+	struct super_block *sb;
- 	int	retval;
- 	int	dx_fallback=0;
- 	unsigned blocksize;
-@@ -1502,9 +1502,9 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 	struct dx_frame frames[2], *frame;
- 	struct dx_entry *entries, *at;
- 	struct dx_hash_info hinfo;
--	struct buffer_head * bh;
-+	struct buffer_head *bh;
- 	struct inode *dir = dentry->d_parent->d_inode;
--	struct super_block * sb = dir->i_sb;
-+	struct super_block *sb = dir->i_sb;
- 	struct ext4_dir_entry_2 *de;
+ 	struct ext4_inode_info *ei = EXT4_I(inode);
+ 	struct super_block *sb = inode->i_sb;
+@@ -3811,7 +3798,7 @@ void ext4_mb_discard_inode_preallocations(struct inode *inode)
+ 	struct ext4_buddy e4b;
  	int err;
  
-@@ -1570,11 +1570,11 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 			if (err)
- 				goto journal_error;
- 
--			memcpy ((char *) entries2, (char *) (entries + icount1),
--				icount2 * sizeof(struct dx_entry));
--			dx_set_count (entries, icount1);
--			dx_set_count (entries2, icount2);
--			dx_set_limit (entries2, dx_node_limit(dir));
-+			memcpy((char *) entries2, (char *) (entries + icount1),
-+			       icount2 * sizeof(struct dx_entry));
-+			dx_set_count(entries, icount1);
-+			dx_set_count(entries2, icount2);
-+			dx_set_limit(entries2, dx_node_limit(dir));
- 
- 			/* Which index block gets the new entry? */
- 			if (at - entries >= icount1) {
-@@ -1582,9 +1582,9 @@ static int ext4_dx_add_entry(handle_t *handle, struct dentry *dentry,
- 				frame->entries = entries = entries2;
- 				swap(frame->bh, bh2);
- 			}
--			dx_insert_block (frames + 0, hash2, newblock);
--			dxtrace(dx_show_index ("node", frames[1].entries));
--			dxtrace(dx_show_index ("node",
-+			dx_insert_block(frames + 0, hash2, newblock);
-+			dxtrace(dx_show_index("node", frames[1].entries));
-+			dxtrace(dx_show_index("node",
- 			       ((struct dx_node *) bh2->b_data)->entries));
- 			err = ext4_journal_dirty_metadata(handle, bh2);
- 			if (err)
-@@ -1634,12 +1634,12 @@ cleanup:
-  * ext4_delete_entry deletes a directory entry by merging it with the
-  * previous entry
-  */
--static int ext4_delete_entry (handle_t *handle,
--			      struct inode * dir,
--			      struct ext4_dir_entry_2 * de_del,
--			      struct buffer_head * bh)
-+static int ext4_delete_entry(handle_t *handle,
-+			     struct inode *dir,
-+			     struct ext4_dir_entry_2 *de_del,
-+			     struct buffer_head *bh)
- {
--	struct ext4_dir_entry_2 * de, * pde;
-+	struct ext4_dir_entry_2 *de, *pde;
- 	int i;
- 
- 	i = 0;
-@@ -1720,11 +1720,11 @@ static int ext4_add_nondir(handle_t *handle,
-  * If the create succeeds, we fill in the inode information
-  * with d_instantiate().
-  */
--static int ext4_create (struct inode * dir, struct dentry * dentry, int mode,
--		struct nameidata *nd)
-+static int ext4_create(struct inode *dir, struct dentry *dentry, int mode,
-+		       struct nameidata *nd)
- {
- 	handle_t *handle;
--	struct inode * inode;
-+	struct inode *inode;
- 	int err, retries = 0;
- 
- retry:
-@@ -1751,8 +1751,8 @@ retry:
- 	return err;
- }
- 
--static int ext4_mknod (struct inode * dir, struct dentry *dentry,
--			int mode, dev_t rdev)
-+static int ext4_mknod(struct inode *dir, struct dentry *dentry,
-+		      int mode, dev_t rdev)
- {
- 	handle_t *handle;
- 	struct inode *inode;
-@@ -1771,7 +1771,7 @@ retry:
- 	if (IS_DIRSYNC(dir))
- 		handle->h_sync = 1;
- 
--	inode = ext4_new_inode (handle, dir, mode);
-+	inode = ext4_new_inode(handle, dir, mode);
- 	err = PTR_ERR(inode);
- 	if (!IS_ERR(inode)) {
- 		init_special_inode(inode, inode->i_mode, rdev);
-@@ -1786,12 +1786,12 @@ retry:
- 	return err;
- }
- 
--static int ext4_mkdir(struct inode * dir, struct dentry * dentry, int mode)
-+static int ext4_mkdir(struct inode *dir, struct dentry *dentry, int mode)
- {
- 	handle_t *handle;
--	struct inode * inode;
--	struct buffer_head * dir_block;
--	struct ext4_dir_entry_2 * de;
-+	struct inode *inode;
-+	struct buffer_head *dir_block;
-+	struct ext4_dir_entry_2 *de;
- 	int err, retries = 0;
- 
- 	if (EXT4_DIR_LINK_MAX(dir))
-@@ -1807,7 +1807,7 @@ retry:
- 	if (IS_DIRSYNC(dir))
- 		handle->h_sync = 1;
- 
--	inode = ext4_new_inode (handle, dir, S_IFDIR | mode);
-+	inode = ext4_new_inode(handle, dir, S_IFDIR | mode);
- 	err = PTR_ERR(inode);
- 	if (IS_ERR(inode))
- 		goto out_stop;
-@@ -1815,7 +1815,7 @@ retry:
- 	inode->i_op = &ext4_dir_inode_operations;
- 	inode->i_fop = &ext4_dir_operations;
- 	inode->i_size = EXT4_I(inode)->i_disksize = inode->i_sb->s_blocksize;
--	dir_block = ext4_bread (handle, inode, 0, 1, &err);
-+	dir_block = ext4_bread(handle, inode, 0, 1, &err);
- 	if (!dir_block)
- 		goto out_clear_inode;
- 	BUFFER_TRACE(dir_block, "get_write_access");
-@@ -1824,26 +1824,26 @@ retry:
- 	de->inode = cpu_to_le32(inode->i_ino);
- 	de->name_len = 1;
- 	de->rec_len = ext4_rec_len_to_disk(EXT4_DIR_REC_LEN(de->name_len));
--	strcpy (de->name, ".");
-+	strcpy(de->name, ".");
- 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
- 	de = ext4_next_entry(de);
- 	de->inode = cpu_to_le32(dir->i_ino);
- 	de->rec_len = ext4_rec_len_to_disk(inode->i_sb->s_blocksize -
- 						EXT4_DIR_REC_LEN(1));
- 	de->name_len = 2;
--	strcpy (de->name, "..");
-+	strcpy(de->name, "..");
- 	ext4_set_de_type(dir->i_sb, de, S_IFDIR);
- 	inode->i_nlink = 2;
- 	BUFFER_TRACE(dir_block, "call ext4_journal_dirty_metadata");
- 	ext4_journal_dirty_metadata(handle, dir_block);
--	brelse (dir_block);
-+	brelse(dir_block);
- 	ext4_mark_inode_dirty(handle, inode);
--	err = ext4_add_entry (handle, dentry, inode);
-+	err = ext4_add_entry(handle, dentry, inode);
- 	if (err) {
- out_clear_inode:
- 		clear_nlink(inode);
- 		ext4_mark_inode_dirty(handle, inode);
--		iput (inode);
-+		iput(inode);
- 		goto out_stop;
+-	if (!test_opt(sb, MBALLOC) || !S_ISREG(inode->i_mode)) {
++	if (!S_ISREG(inode->i_mode)) {
+ 		/*BUG_ON(!list_empty(&ei->i_prealloc_list));*/
+ 		return;
  	}
- 	ext4_inc_count(handle, dir);
-@@ -1860,17 +1860,17 @@ out_stop:
- /*
-  * routine to check that the specified directory is empty (for rmdir)
-  */
--static int empty_dir (struct inode * inode)
-+static int empty_dir(struct inode *inode)
- {
- 	unsigned long offset;
--	struct buffer_head * bh;
--	struct ext4_dir_entry_2 * de, * de1;
--	struct super_block * sb;
-+	struct buffer_head *bh;
-+	struct ext4_dir_entry_2 *de, *de1;
-+	struct super_block *sb;
- 	int err = 0;
+@@ -4293,11 +4280,6 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	sb = ar->inode->i_sb;
+ 	sbi = EXT4_SB(sb);
  
- 	sb = inode->i_sb;
- 	if (inode->i_size < EXT4_DIR_REC_LEN(1) + EXT4_DIR_REC_LEN(2) ||
--	    !(bh = ext4_bread (NULL, inode, 0, 0, &err))) {
-+	    !(bh = ext4_bread(NULL, inode, 0, 0, &err))) {
- 		if (err)
- 			ext4_error(inode->i_sb, __func__,
- 				   "error %d reading directory #%lu offset 0",
-@@ -1885,23 +1885,23 @@ static int empty_dir (struct inode * inode)
- 	de1 = ext4_next_entry(de);
- 	if (le32_to_cpu(de->inode) != inode->i_ino ||
- 			!le32_to_cpu(de1->inode) ||
--			strcmp (".", de->name) ||
--			strcmp ("..", de1->name)) {
--		ext4_warning (inode->i_sb, "empty_dir",
--			      "bad directory (dir #%lu) - no `.' or `..'",
--			      inode->i_ino);
--		brelse (bh);
-+			strcmp(".", de->name) ||
-+			strcmp("..", de1->name)) {
-+		ext4_warning(inode->i_sb, "empty_dir",
-+			     "bad directory (dir #%lu) - no `.' or `..'",
-+			     inode->i_ino);
-+		brelse(bh);
- 		return 1;
- 	}
- 	offset = ext4_rec_len_from_disk(de->rec_len) +
- 		 ext4_rec_len_from_disk(de1->rec_len);
- 	de = ext4_next_entry(de1);
--	while (offset < inode->i_size ) {
-+	while (offset < inode->i_size) {
- 		if (!bh ||
- 			(void *) de >= (void *) (bh->b_data+sb->s_blocksize)) {
- 			err = 0;
--			brelse (bh);
--			bh = ext4_bread (NULL, inode,
-+			brelse(bh);
-+			bh = ext4_bread(NULL, inode,
- 				offset >> EXT4_BLOCK_SIZE_BITS(sb), 0, &err);
- 			if (!bh) {
- 				if (err)
-@@ -1921,13 +1921,13 @@ static int empty_dir (struct inode * inode)
- 			continue;
- 		}
- 		if (le32_to_cpu(de->inode)) {
--			brelse (bh);
-+			brelse(bh);
- 			return 0;
- 		}
- 		offset += ext4_rec_len_from_disk(de->rec_len);
- 		de = ext4_next_entry(de);
- 	}
--	brelse (bh);
-+	brelse(bh);
- 	return 1;
- }
- 
-@@ -1958,8 +1958,8 @@ int ext4_orphan_add(handle_t *handle, struct inode *inode)
- 	 * ->i_nlink. For, say it, character device. Not a regular file,
- 	 * not a directory, not a symlink and ->i_nlink > 0.
- 	 */
--	J_ASSERT ((S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
--		S_ISLNK(inode->i_mode)) || inode->i_nlink == 0);
-+	J_ASSERT((S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-+		  S_ISLNK(inode->i_mode)) || inode->i_nlink == 0);
- 
- 	BUFFER_TRACE(EXT4_SB(sb)->s_sbh, "get_write_access");
- 	err = ext4_journal_get_write_access(handle, EXT4_SB(sb)->s_sbh);
-@@ -2073,12 +2073,12 @@ out_brelse:
- 	goto out_err;
- }
- 
--static int ext4_rmdir (struct inode * dir, struct dentry *dentry)
-+static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
- {
- 	int retval;
--	struct inode * inode;
--	struct buffer_head * bh;
--	struct ext4_dir_entry_2 * de;
-+	struct inode *inode;
-+	struct buffer_head *bh;
-+	struct ext4_dir_entry_2 *de;
- 	handle_t *handle;
- 
- 	/* Initialize quotas before so that eventual writes go in
-@@ -2089,7 +2089,7 @@ static int ext4_rmdir (struct inode * dir, struct dentry *dentry)
- 		return PTR_ERR(handle);
- 
- 	retval = -ENOENT;
--	bh = ext4_find_entry (dentry, &de);
-+	bh = ext4_find_entry(dentry, &de);
- 	if (!bh)
- 		goto end_rmdir;
- 
-@@ -2103,16 +2103,16 @@ static int ext4_rmdir (struct inode * dir, struct dentry *dentry)
- 		goto end_rmdir;
- 
- 	retval = -ENOTEMPTY;
--	if (!empty_dir (inode))
-+	if (!empty_dir(inode))
- 		goto end_rmdir;
- 
- 	retval = ext4_delete_entry(handle, dir, de, bh);
- 	if (retval)
- 		goto end_rmdir;
- 	if (!EXT4_DIR_LINK_EMPTY(inode))
--		ext4_warning (inode->i_sb, "ext4_rmdir",
--			      "empty directory has too many links (%d)",
--			      inode->i_nlink);
-+		ext4_warning(inode->i_sb, "ext4_rmdir",
-+			     "empty directory has too many links (%d)",
-+			     inode->i_nlink);
- 	inode->i_version++;
- 	clear_nlink(inode);
- 	/* There's no need to set i_disksize: the fact that i_nlink is
-@@ -2128,16 +2128,16 @@ static int ext4_rmdir (struct inode * dir, struct dentry *dentry)
- 
- end_rmdir:
- 	ext4_journal_stop(handle);
--	brelse (bh);
-+	brelse(bh);
- 	return retval;
- }
- 
--static int ext4_unlink(struct inode * dir, struct dentry *dentry)
-+static int ext4_unlink(struct inode *dir, struct dentry *dentry)
- {
- 	int retval;
--	struct inode * inode;
--	struct buffer_head * bh;
--	struct ext4_dir_entry_2 * de;
-+	struct inode *inode;
-+	struct buffer_head *bh;
-+	struct ext4_dir_entry_2 *de;
- 	handle_t *handle;
- 
- 	/* Initialize quotas before so that eventual writes go
-@@ -2151,7 +2151,7 @@ static int ext4_unlink(struct inode * dir, struct dentry *dentry)
- 		handle->h_sync = 1;
- 
- 	retval = -ENOENT;
--	bh = ext4_find_entry (dentry, &de);
-+	bh = ext4_find_entry(dentry, &de);
- 	if (!bh)
- 		goto end_unlink;
- 
-@@ -2162,9 +2162,9 @@ static int ext4_unlink(struct inode * dir, struct dentry *dentry)
- 		goto end_unlink;
- 
- 	if (!inode->i_nlink) {
--		ext4_warning (inode->i_sb, "ext4_unlink",
--			      "Deleting nonexistent file (%lu), %d",
--			      inode->i_ino, inode->i_nlink);
-+		ext4_warning(inode->i_sb, "ext4_unlink",
-+			     "Deleting nonexistent file (%lu), %d",
-+			     inode->i_ino, inode->i_nlink);
- 		inode->i_nlink = 1;
- 	}
- 	retval = ext4_delete_entry(handle, dir, de, bh);
-@@ -2182,15 +2182,15 @@ static int ext4_unlink(struct inode * dir, struct dentry *dentry)
- 
- end_unlink:
- 	ext4_journal_stop(handle);
--	brelse (bh);
-+	brelse(bh);
- 	return retval;
- }
- 
--static int ext4_symlink (struct inode * dir,
--		struct dentry *dentry, const char * symname)
-+static int ext4_symlink(struct inode *dir,
-+			struct dentry *dentry, const char *symname)
- {
- 	handle_t *handle;
--	struct inode * inode;
-+	struct inode *inode;
- 	int l, err, retries = 0;
- 
- 	l = strlen(symname)+1;
-@@ -2207,12 +2207,12 @@ retry:
- 	if (IS_DIRSYNC(dir))
- 		handle->h_sync = 1;
- 
--	inode = ext4_new_inode (handle, dir, S_IFLNK|S_IRWXUGO);
-+	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO);
- 	err = PTR_ERR(inode);
- 	if (IS_ERR(inode))
- 		goto out_stop;
- 
--	if (l > sizeof (EXT4_I(inode)->i_data)) {
-+	if (l > sizeof(EXT4_I(inode)->i_data)) {
- 		inode->i_op = &ext4_symlink_inode_operations;
- 		ext4_set_aops(inode);
+-	if (!test_opt(sb, MBALLOC)) {
+-		block = ext4_old_new_blocks(handle, ar->inode, ar->goal,
+-					    &(ar->len), errp);
+-		return block;
+-	}
+ 	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
  		/*
-@@ -2225,14 +2225,14 @@ retry:
- 		if (err) {
- 			clear_nlink(inode);
- 			ext4_mark_inode_dirty(handle, inode);
--			iput (inode);
-+			iput(inode);
- 			goto out_stop;
- 		}
- 	} else {
- 		/* clear the extent format for fast symlink */
- 		EXT4_I(inode)->i_flags &= ~EXT4_EXTENTS_FL;
- 		inode->i_op = &ext4_fast_symlink_inode_operations;
--		memcpy((char*)&EXT4_I(inode)->i_data,symname,l);
-+		memcpy((char *)&EXT4_I(inode)->i_data, symname, l);
- 		inode->i_size = l-1;
- 	}
- 	EXT4_I(inode)->i_disksize = inode->i_size;
-@@ -2244,8 +2244,8 @@ out_stop:
- 	return err;
- }
- 
--static int ext4_link (struct dentry * old_dentry,
--		struct inode * dir, struct dentry *dentry)
-+static int ext4_link(struct dentry *old_dentry,
-+		     struct inode *dir, struct dentry *dentry)
- {
- 	handle_t *handle;
- 	struct inode *inode = old_dentry->d_inode;
-@@ -2288,13 +2288,13 @@ retry:
-  * Anybody can rename anything with this: the permission checks are left to the
-  * higher-level routines.
-  */
--static int ext4_rename (struct inode * old_dir, struct dentry *old_dentry,
--			   struct inode * new_dir,struct dentry *new_dentry)
-+static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
-+		       struct inode *new_dir, struct dentry *new_dentry)
- {
- 	handle_t *handle;
--	struct inode * old_inode, * new_inode;
--	struct buffer_head * old_bh, * new_bh, * dir_bh;
--	struct ext4_dir_entry_2 * old_de, * new_de;
-+	struct inode *old_inode, *new_inode;
-+	struct buffer_head *old_bh, *new_bh, *dir_bh;
-+	struct ext4_dir_entry_2 *old_de, *new_de;
- 	int retval;
- 
- 	old_bh = new_bh = dir_bh = NULL;
-@@ -2312,7 +2312,7 @@ static int ext4_rename (struct inode * old_dir, struct dentry *old_dentry,
- 	if (IS_DIRSYNC(old_dir) || IS_DIRSYNC(new_dir))
- 		handle->h_sync = 1;
- 
--	old_bh = ext4_find_entry (old_dentry, &old_de);
-+	old_bh = ext4_find_entry(old_dentry, &old_de);
- 	/*
- 	 *  Check for inode number is _not_ due to possible IO errors.
- 	 *  We might rmdir the source, keep it as pwd of some process
-@@ -2325,32 +2325,32 @@ static int ext4_rename (struct inode * old_dir, struct dentry *old_dentry,
- 		goto end_rename;
- 
- 	new_inode = new_dentry->d_inode;
--	new_bh = ext4_find_entry (new_dentry, &new_de);
-+	new_bh = ext4_find_entry(new_dentry, &new_de);
- 	if (new_bh) {
- 		if (!new_inode) {
--			brelse (new_bh);
-+			brelse(new_bh);
- 			new_bh = NULL;
- 		}
- 	}
- 	if (S_ISDIR(old_inode->i_mode)) {
- 		if (new_inode) {
- 			retval = -ENOTEMPTY;
--			if (!empty_dir (new_inode))
-+			if (!empty_dir(new_inode))
- 				goto end_rename;
- 		}
- 		retval = -EIO;
--		dir_bh = ext4_bread (handle, old_inode, 0, 0, &retval);
-+		dir_bh = ext4_bread(handle, old_inode, 0, 0, &retval);
- 		if (!dir_bh)
- 			goto end_rename;
- 		if (le32_to_cpu(PARENT_INO(dir_bh->b_data)) != old_dir->i_ino)
- 			goto end_rename;
- 		retval = -EMLINK;
--		if (!new_inode && new_dir!=old_dir &&
-+		if (!new_inode && new_dir != old_dir &&
- 				new_dir->i_nlink >= EXT4_LINK_MAX)
- 			goto end_rename;
- 	}
- 	if (!new_bh) {
--		retval = ext4_add_entry (handle, new_dentry, old_inode);
-+		retval = ext4_add_entry(handle, new_dentry, old_inode);
- 		if (retval)
- 			goto end_rename;
- 	} else {
-@@ -2437,9 +2437,9 @@ static int ext4_rename (struct inode * old_dir, struct dentry *old_dentry,
- 	retval = 0;
- 
- end_rename:
--	brelse (dir_bh);
--	brelse (old_bh);
--	brelse (new_bh);
-+	brelse(dir_bh);
-+	brelse(old_bh);
-+	brelse(new_bh);
- 	ext4_journal_stop(handle);
- 	return retval;
- }
+ 		 * With delalloc we already reserved the blocks
 diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index b3d3560..4392e3f 100644
+index b60afbc..b6ec184 100644
 --- a/fs/ext4/resize.c
 +++ b/fs/ext4/resize.c
-@@ -416,8 +416,8 @@ static int add_new_gdb(handle_t *handle, struct inode *inode,
- 		       "EXT4-fs: ext4_add_new_gdb: adding group block %lu\n",
- 		       gdb_num);
- 
--        /*
--         * If we are not using the primary superblock/GDT copy don't resize,
-+	/*
-+	 * If we are not using the primary superblock/GDT copy don't resize,
-          * because the user tools have no way of handling this.  Probably a
-          * bad time to do it anyways.
-          */
-@@ -964,7 +964,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 	ext4_group_t o_groups_count;
- 	ext4_grpblk_t last;
- 	ext4_grpblk_t add;
--	struct buffer_head * bh;
-+	struct buffer_head *bh;
- 	handle_t *handle;
- 	int err;
- 	unsigned long freed_blocks;
+@@ -870,11 +870,10 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	 * We can allocate memory for mb_alloc based on the new group
+ 	 * descriptor
+ 	 */
+-	if (test_opt(sb, MBALLOC)) {
+-		err = ext4_mb_add_more_groupinfo(sb, input->group, gdp);
+-		if (err)
+-			goto exit_journal;
+-	}
++	err = ext4_mb_add_more_groupinfo(sb, input->group, gdp);
++	if (err)
++		goto exit_journal;
++
+ 	/*
+ 	 * Make the new blocks and inodes valid next.  We do this before
+ 	 * increasing the group count so that once the group is enabled,
+@@ -1086,8 +1085,15 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	/*
+ 	 * Mark mballoc pages as not up to date so that they will be updated
+ 	 * next time they are loaded by ext4_mb_load_buddy.
++	 *
++	 * XXX Bad, Bad, BAD!!!  We should not be overloading the
++	 * Uptodate flag, particularly on thte bitmap bh, as way of
++	 * hinting to ext4_mb_load_buddy() that it needs to be
++	 * overloaded.  A user could take a LVM snapshot, then do an
++	 * on-line fsck, and clear the uptodate flag, and this would
++	 * not be a bug in userspace, but a bug in the kernel.  FIXME!!!
+ 	 */
+-	if (test_opt(sb, MBALLOC)) {
++	{
+ 		struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 		struct inode *inode = sbi->s_buddy_cache;
+ 		int blocks_per_page;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c10aaf7..7de6ca0 100644
+index 6583aee..dfcd41f 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -654,7 +654,7 @@ static inline void ext4_show_quota_options(struct seq_file *seq,
+@@ -574,7 +574,6 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->i_acl = EXT4_ACL_NOT_CACHED;
+ 	ei->i_default_acl = EXT4_ACL_NOT_CACHED;
+ #endif
+-	ei->i_block_alloc_info = NULL;
+ 	ei->vfs_inode.i_version = 1;
+ 	ei->vfs_inode.i_data.writeback_index = 0;
+ 	memset(&ei->i_cached_extent, 0, sizeof(struct ext4_ext_cache));
+@@ -633,7 +632,6 @@ static void destroy_inodecache(void)
  
- 	if (sbi->s_jquota_fmt)
- 		seq_printf(seq, ",jqfmt=%s",
--		(sbi->s_jquota_fmt == QFMT_VFS_OLD) ? "vfsold": "vfsv0");
-+		(sbi->s_jquota_fmt == QFMT_VFS_OLD) ? "vfsold" : "vfsv0");
- 
- 	if (sbi->s_qf_names[USRQUOTA])
- 		seq_printf(seq, ",usrjquota=%s", sbi->s_qf_names[USRQUOTA]);
-@@ -822,7 +822,7 @@ static struct dentry *ext4_fh_to_parent(struct super_block *sb, struct fid *fid,
- }
- 
- #ifdef CONFIG_QUOTA
--#define QTYPE2NAME(t) ((t) == USRQUOTA?"user":"group")
-+#define QTYPE2NAME(t) ((t) == USRQUOTA ? "user" : "group")
- #define QTYPE2MOPT(on, t) ((t) == USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
- 
- static int ext4_dquot_initialize(struct inode *inode, int type);
-@@ -1586,7 +1586,7 @@ static int ext4_check_descriptors(struct super_block *sb)
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG))
- 		flexbg_flag = 1;
- 
--	ext4_debug ("Checking group descriptors");
-+	ext4_debug("Checking group descriptors");
- 
- 	for (i = 0; i < sbi->s_groups_count; i++) {
- 		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, i, NULL);
-diff --git a/fs/ext4/symlink.c b/fs/ext4/symlink.c
-index e917864..0013d52 100644
---- a/fs/ext4/symlink.c
-+++ b/fs/ext4/symlink.c
-@@ -23,10 +23,10 @@
- #include "ext4.h"
- #include "xattr.h"
- 
--static void * ext4_follow_link(struct dentry *dentry, struct nameidata *nd)
-+static void *ext4_follow_link(struct dentry *dentry, struct nameidata *nd)
+ static void ext4_clear_inode(struct inode *inode)
  {
- 	struct ext4_inode_info *ei = EXT4_I(dentry->d_inode);
--	nd_set_link(nd, (char*)ei->i_data);
-+	nd_set_link(nd, (char *) ei->i_data);
- 	return NULL;
+-	struct ext4_block_alloc_info *rsv = EXT4_I(inode)->i_block_alloc_info;
+ #ifdef CONFIG_EXT4DEV_FS_POSIX_ACL
+ 	if (EXT4_I(inode)->i_acl &&
+ 			EXT4_I(inode)->i_acl != EXT4_ACL_NOT_CACHED) {
+@@ -646,10 +644,7 @@ static void ext4_clear_inode(struct inode *inode)
+ 		EXT4_I(inode)->i_default_acl = EXT4_ACL_NOT_CACHED;
+ 	}
+ #endif
+-	ext4_discard_reservation(inode);
+-	EXT4_I(inode)->i_block_alloc_info = NULL;
+-	if (unlikely(rsv))
+-		kfree(rsv);
++	ext4_discard_preallocations(inode);
+ 	jbd2_journal_release_jbd_inode(EXT4_SB(inode->i_sb)->s_journal,
+ 				       &EXT4_I(inode)->jinode);
  }
+@@ -760,8 +755,6 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 		seq_puts(seq, ",nobh");
+ 	if (!test_opt(sb, EXTENTS))
+ 		seq_puts(seq, ",noextents");
+-	if (!test_opt(sb, MBALLOC))
+-		seq_puts(seq, ",nomballoc");
+ 	if (test_opt(sb, I_VERSION))
+ 		seq_puts(seq, ",i_version");
+ 	if (!test_opt(sb, DELALLOC))
+@@ -1373,12 +1366,6 @@ set_qf_format:
+ 		case Opt_nodelalloc:
+ 			clear_opt(sbi->s_mount_opt, DELALLOC);
+ 			break;
+-		case Opt_mballoc:
+-			set_opt(sbi->s_mount_opt, MBALLOC);
+-			break;
+-		case Opt_nomballoc:
+-			clear_opt(sbi->s_mount_opt, MBALLOC);
+-			break;
+ 		case Opt_stripe:
+ 			if (match_int(&args[0], &option))
+ 				return 0;
+@@ -2040,11 +2027,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		ext4_warning(sb, __func__,
+ 			"extents feature not enabled on this filesystem, "
+ 			"use tune2fs.\n");
+-	/*
+-	 * turn on mballoc code by default in ext4 filesystem
+-	 * Use -o nomballoc to turn it off
+-	 */
+-	set_opt(sbi->s_mount_opt, MBALLOC);
  
-diff --git a/fs/ext4/xattr.h b/fs/ext4/xattr.h
-index 5992fe9..814ea58 100644
---- a/fs/ext4/xattr.h
-+++ b/fs/ext4/xattr.h
-@@ -51,8 +51,8 @@ struct ext4_xattr_entry {
- 	(((name_len) + EXT4_XATTR_ROUND + \
- 	sizeof(struct ext4_xattr_entry)) & ~EXT4_XATTR_ROUND)
- #define EXT4_XATTR_NEXT(entry) \
--	( (struct ext4_xattr_entry *)( \
--	  (char *)(entry) + EXT4_XATTR_LEN((entry)->e_name_len)) )
-+	((struct ext4_xattr_entry *)( \
-+	 (char *)(entry) + EXT4_XATTR_LEN((entry)->e_name_len)))
- #define EXT4_XATTR_SIZE(size) \
- 	(((size) + EXT4_XATTR_ROUND) & ~EXT4_XATTR_ROUND)
+ 	/*
+ 	 * enable delayed allocation by default
+@@ -2301,19 +2283,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount3;
+ 	}
  
--- 
-1.5.6.1.205.ge2c7.dirty
-
+-	/* per fileystem reservation list head & lock */
+-	spin_lock_init(&sbi->s_rsv_window_lock);
+-	sbi->s_rsv_window_root = RB_ROOT;
+-	/* Add a single, static dummy reservation to the start of the
+-	 * reservation window list --- it gives us a placeholder for
+-	 * append-at-start-of-list which makes the allocation logic
+-	 * _much_ simpler. */
+-	sbi->s_rsv_window_head.rsv_start = EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+-	sbi->s_rsv_window_head.rsv_end = EXT4_RESERVE_WINDOW_NOT_ALLOCATED;
+-	sbi->s_rsv_window_head.rsv_alloc_hit = 0;
+-	sbi->s_rsv_window_head.rsv_goal_size = 0;
+-	ext4_rsv_window_add(sb, &sbi->s_rsv_window_head);
