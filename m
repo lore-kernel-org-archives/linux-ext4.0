@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 27/42] ext4: move /proc setup and teardown out of mballoc.c
-Date: Thu,  9 Oct 2008 00:05:45 -0400
-Message-ID: <1223525160-9887-28-git-send-email-tytso@mit.edu>
+Subject: [PATCH 34/42] jbd2: Fix buffer head leak when writing the commit block
+Date: Thu,  9 Oct 2008 00:05:52 -0400
+Message-ID: <1223525160-9887-35-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -29,309 +29,57 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-25-git-send-email-tytso@mit.edu>
  <1223525160-9887-26-git-send-email-tytso@mit.edu>
  <1223525160-9887-27-git-send-email-tytso@mit.edu>
+ <1223525160-9887-28-git-send-email-tytso@mit.edu>
+ <1223525160-9887-29-git-send-email-tytso@mit.edu>
+ <1223525160-9887-30-git-send-email-tytso@mit.edu>
+ <1223525160-9887-31-git-send-email-tytso@mit.edu>
+ <1223525160-9887-32-git-send-email-tytso@mit.edu>
+ <1223525160-9887-33-git-send-email-tytso@mit.edu>
+ <1223525160-9887-34-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54467 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54503 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757332AbYJIEGI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:08 -0400
-In-Reply-To: <1223525160-9887-27-git-send-email-tytso@mit.edu>
+	with ESMTP id S1757589AbYJIEGM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:12 -0400
+In-Reply-To: <1223525160-9887-34-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-...and into the core setup/teardown code in fs/ext4/super.c so that
-other parts of ext4 can define tuning parameters.
+Also make sure the buffer heads are marked clean before submitting bh
+for writing.  The previous code was marking the buffer head dirty,
+which would have forced an unneeded write (and seek) to the journal
+for no good reason.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |    2 +
- fs/ext4/ext4_sb.h |    2 +-
- fs/ext4/mballoc.c |   76 +++++++++++++++-------------------------------------
- fs/ext4/mballoc.h |    1 -
- fs/ext4/super.c   |   17 ++++++++++++
- 5 files changed, 42 insertions(+), 56 deletions(-)
+ fs/jbd2/commit.c |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 50a4846..b9c9371 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -955,6 +955,8 @@ ext4_group_first_block_no(struct super_block *sb, ext4_group_t group_no)
- void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
- 			unsigned long *blockgrpp, ext4_grpblk_t *offsetp);
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index e91f051..0d3814a 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -127,8 +127,7 @@ static int journal_submit_commit_record(journal_t *journal,
  
-+extern struct proc_dir_entry *ext4_proc_root;
-+
- /*
-  * Function prototypes
-  */
-diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-index a5577e0..95e046e 100644
---- a/fs/ext4/ext4_sb.h
-+++ b/fs/ext4/ext4_sb.h
-@@ -61,6 +61,7 @@ struct ext4_sb_info {
- 	struct percpu_counter s_dirs_counter;
- 	struct percpu_counter s_dirtyblocks_counter;
- 	struct blockgroup_lock s_blockgroup_lock;
-+	struct proc_dir_entry *s_proc;
+ 	JBUFFER_TRACE(descriptor, "submit commit block");
+ 	lock_buffer(bh);
+-	get_bh(bh);
+-	set_buffer_dirty(bh);
++	clear_buffer_dirty(bh);
+ 	set_buffer_uptodate(bh);
+ 	bh->b_end_io = journal_end_buffer_io_sync;
  
- 	/* root of the per fs reservation window tree */
- 	spinlock_t s_rsv_window_lock;
-@@ -122,7 +123,6 @@ struct ext4_sb_info {
- 	int s_mb_history_cur;
- 	int s_mb_history_max;
- 	int s_mb_history_num;
--	struct proc_dir_entry *s_mb_proc;
- 	spinlock_t s_mb_history_lock;
- 	int s_mb_history_filter;
- 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 01a7daa..705870c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2170,9 +2170,10 @@ static void ext4_mb_history_release(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 
--	remove_proc_entry("mb_groups", sbi->s_mb_proc);
--	remove_proc_entry("mb_history", sbi->s_mb_proc);
--
-+	if (sbi->s_proc != NULL) {
-+		remove_proc_entry("mb_groups", sbi->s_proc);
-+		remove_proc_entry("mb_history", sbi->s_proc);
-+	}
- 	kfree(sbi->s_mb_history);
- }
- 
-@@ -2181,10 +2182,10 @@ static void ext4_mb_history_init(struct super_block *sb)
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	int i;
- 
--	if (sbi->s_mb_proc != NULL) {
--		proc_create_data("mb_history", S_IRUGO, sbi->s_mb_proc,
-+	if (sbi->s_proc != NULL) {
-+		proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
- 				 &ext4_mb_seq_history_fops, sb);
--		proc_create_data("mb_groups", S_IRUGO, sbi->s_mb_proc,
-+		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
- 				 &ext4_mb_seq_groups_fops, sb);
+@@ -158,7 +157,7 @@ static int journal_submit_commit_record(journal_t *journal,
+ 		/* And try again, without the barrier */
+ 		lock_buffer(bh);
+ 		set_buffer_uptodate(bh);
+-		set_buffer_dirty(bh);
++		clear_buffer_dirty(bh);
+ 		ret = submit_bh(WRITE, bh);
  	}
- 
-@@ -2720,8 +2721,6 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
- #define EXT4_MB_STREAM_REQ		"stream_req"
- #define EXT4_MB_GROUP_PREALLOC		"group_prealloc"
- 
--
--
- #define MB_PROC_FOPS(name)					\
- static int ext4_mb_##name##_proc_show(struct seq_file *m, void *v)	\
- {								\
-@@ -2771,7 +2770,7 @@ MB_PROC_FOPS(group_prealloc);
- 
- #define	MB_PROC_HANDLER(name, var)					\
- do {									\
--	proc = proc_create_data(name, mode, sbi->s_mb_proc,		\
-+	proc = proc_create_data(name, mode, sbi->s_proc,		\
- 				&ext4_mb_##var##_proc_fops, sbi);	\
- 	if (proc == NULL) {						\
- 		printk(KERN_ERR "EXT4-fs: can't to create %s\n", name);	\
-@@ -2784,20 +2783,9 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	mode_t mode = S_IFREG | S_IRUGO | S_IWUSR;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct proc_dir_entry *proc;
--	char devname[BDEVNAME_SIZE], *p;
- 
--	if (proc_root_ext4 == NULL) {
--		sbi->s_mb_proc = NULL;
-+	if (sbi->s_proc == NULL)
- 		return -EINVAL;
--	}
--	bdevname(sb->s_bdev, devname);
--	p = devname;
--	while ((p = strchr(p, '/')))
--		*p = '!';
--
--	sbi->s_mb_proc = proc_mkdir(devname, proc_root_ext4);
--	if (!sbi->s_mb_proc)
--		goto err_create_dir;
- 
- 	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
- 	MB_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, max_to_scan);
-@@ -2805,43 +2793,31 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	MB_PROC_HANDLER(EXT4_MB_ORDER2_REQ, order2_reqs);
- 	MB_PROC_HANDLER(EXT4_MB_STREAM_REQ, stream_request);
- 	MB_PROC_HANDLER(EXT4_MB_GROUP_PREALLOC, group_prealloc);
--
- 	return 0;
- 
- err_out:
--	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_mb_proc);
--	remove_proc_entry(devname, proc_root_ext4);
--	sbi->s_mb_proc = NULL;
--err_create_dir:
--	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
--
-+	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_proc);
- 	return -ENOMEM;
- }
- 
- static int ext4_mb_destroy_per_dev_proc(struct super_block *sb)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	char devname[BDEVNAME_SIZE], *p;
- 
--	if (sbi->s_mb_proc == NULL)
-+	if (sbi->s_proc == NULL)
- 		return -EINVAL;
- 
--	bdevname(sb->s_bdev, devname);
--	p = devname;
--	while ((p = strchr(p, '/')))
--		*p = '!';
--	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_mb_proc);
--	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_mb_proc);
--	remove_proc_entry(devname, proc_root_ext4);
-+	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_proc);
-+	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_proc);
- 
- 	return 0;
- }
-@@ -2863,11 +2839,6 @@ int __init init_ext4_mballoc(void)
- 		kmem_cache_destroy(ext4_pspace_cachep);
- 		return -ENOMEM;
- 	}
--#ifdef CONFIG_PROC_FS
--	proc_root_ext4 = proc_mkdir("fs/ext4", NULL);
--	if (proc_root_ext4 == NULL)
--		printk(KERN_ERR "EXT4-fs: Unable to create fs/ext4\n");
--#endif
- 	return 0;
- }
- 
-@@ -2876,9 +2847,6 @@ void exit_ext4_mballoc(void)
- 	/* XXX: synchronize_rcu(); */
- 	kmem_cache_destroy(ext4_pspace_cachep);
- 	kmem_cache_destroy(ext4_ac_cachep);
--#ifdef CONFIG_PROC_FS
--	remove_proc_entry("fs/ext4", NULL);
--#endif
- }
- 
- 
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index c7c9906..b3b4828 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -257,7 +257,6 @@ static void ext4_mb_store_history(struct ext4_allocation_context *ac);
- 
- #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
- 
--static struct proc_dir_entry *proc_root_ext4;
- struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
- 
- static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index fb5766e..7feeec6 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -34,6 +34,7 @@
- #include <linux/namei.h>
- #include <linux/quotaops.h>
- #include <linux/seq_file.h>
-+#include <linux/proc_fs.h>
- #include <linux/log2.h>
- #include <linux/crc16.h>
- #include <asm/uaccess.h>
-@@ -45,6 +46,8 @@
- #include "namei.h"
- #include "group.h"
- 
-+struct proc_dir_entry *ext4_proc_root;
-+
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
- 			     unsigned long journal_devnum);
- static int ext4_create_journal(struct super_block *, struct ext4_super_block *,
-@@ -512,6 +515,8 @@ static void ext4_put_super(struct super_block *sb)
- 		mark_buffer_dirty(sbi->s_sbh);
- 		ext4_commit_super(sb, es, 1);
- 	}
-+	if (sbi->s_proc)
-+		remove_proc_entry(sb->s_id, ext4_proc_root);
- 
- 	for (i = 0; i < sbi->s_gdb_count; i++)
- 		brelse(sbi->s_group_desc[i]);
-@@ -1916,6 +1921,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	unsigned long journal_devnum = 0;
- 	unsigned long def_mount_opts;
- 	struct inode *root;
-+	char *cp;
- 	int ret = -EINVAL;
- 	int blocksize;
- 	int db_count;
-@@ -1936,6 +1942,10 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 
- 	unlock_kernel();
- 
-+	/* Cleanup superblock name */
-+	for (cp = sb->s_id; (cp = strchr(cp, '/'));)
-+		*cp = '!';
-+
- 	blocksize = sb_min_blocksize(sb, EXT4_MIN_BLOCK_SIZE);
- 	if (!blocksize) {
- 		printk(KERN_ERR "EXT4-fs: unable to set blocksize\n");
-@@ -2221,6 +2231,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
- 	}
- 
-+	if (ext4_proc_root)
-+		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
-+
- 	bgl_lock_init(&sbi->s_blockgroup_lock);
- 
- 	for (i = 0; i < db_count; i++) {
-@@ -2500,6 +2513,8 @@ failed_mount2:
- 		brelse(sbi->s_group_desc[i]);
- 	kfree(sbi->s_group_desc);
- failed_mount:
-+	if (sbi->s_proc)
-+		remove_proc_entry(sb->s_id, ext4_proc_root);
- #ifdef CONFIG_QUOTA
- 	for (i = 0; i < MAXQUOTAS; i++)
- 		kfree(sbi->s_qf_names[i]);
-@@ -3538,6 +3553,7 @@ static int __init init_ext4_fs(void)
- {
- 	int err;
- 
-+	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
- 	err = init_ext4_mballoc();
- 	if (err)
- 		return err;
-@@ -3567,6 +3583,7 @@ static void __exit exit_ext4_fs(void)
- 	destroy_inodecache();
- 	exit_ext4_xattr();
- 	exit_ext4_mballoc();
-+	remove_proc_entry("fs/ext4", NULL);
- }
- 
- MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
+ 	*cbh = bh;
 -- 
 1.5.6.1.205.ge2c7.dirty
 
