@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 39/42] Hook ext4 to the vfs fiemap interface.
-Date: Thu,  9 Oct 2008 00:05:57 -0400
-Message-ID: <1223525160-9887-40-git-send-email-tytso@mit.edu>
+Subject: [PATCH 07/42] ext4: Retry block reservation
+Date: Thu,  9 Oct 2008 00:05:25 -0400
+Message-ID: <1223525160-9887-8-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -9,415 +9,140 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-5-git-send-email-tytso@mit.edu>
  <1223525160-9887-6-git-send-email-tytso@mit.edu>
  <1223525160-9887-7-git-send-email-tytso@mit.edu>
- <1223525160-9887-8-git-send-email-tytso@mit.edu>
- <1223525160-9887-9-git-send-email-tytso@mit.edu>
- <1223525160-9887-10-git-send-email-tytso@mit.edu>
- <1223525160-9887-11-git-send-email-tytso@mit.edu>
- <1223525160-9887-12-git-send-email-tytso@mit.edu>
- <1223525160-9887-13-git-send-email-tytso@mit.edu>
- <1223525160-9887-14-git-send-email-tytso@mit.edu>
- <1223525160-9887-15-git-send-email-tytso@mit.edu>
- <1223525160-9887-16-git-send-email-tytso@mit.edu>
- <1223525160-9887-17-git-send-email-tytso@mit.edu>
- <1223525160-9887-18-git-send-email-tytso@mit.edu>
- <1223525160-9887-19-git-send-email-tytso@mit.edu>
- <1223525160-9887-20-git-send-email-tytso@mit.edu>
- <1223525160-9887-21-git-send-email-tytso@mit.edu>
- <1223525160-9887-22-git-send-email-tytso@mit.edu>
- <1223525160-9887-23-git-send-email-tytso@mit.edu>
- <1223525160-9887-24-git-send-email-tytso@mit.edu>
- <1223525160-9887-25-git-send-email-tytso@mit.edu>
- <1223525160-9887-26-git-send-email-tytso@mit.edu>
- <1223525160-9887-27-git-send-email-tytso@mit.edu>
- <1223525160-9887-28-git-send-email-tytso@mit.edu>
- <1223525160-9887-29-git-send-email-tytso@mit.edu>
- <1223525160-9887-30-git-send-email-tytso@mit.edu>
- <1223525160-9887-31-git-send-email-tytso@mit.edu>
- <1223525160-9887-32-git-send-email-tytso@mit.edu>
- <1223525160-9887-33-git-send-email-tytso@mit.edu>
- <1223525160-9887-34-git-send-email-tytso@mit.edu>
- <1223525160-9887-35-git-send-email-tytso@mit.edu>
- <1223525160-9887-36-git-send-email-tytso@mit.edu>
- <1223525160-9887-37-git-send-email-tytso@mit.edu>
- <1223525160-9887-38-git-send-email-tytso@mit.edu>
- <1223525160-9887-39-git-send-email-tytso@mit.edu>
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-fsdevel@vger.kernel.org
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1223525160-9887-39-git-send-email-tytso@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54466 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757331AbYJIEGI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:08 -0400
+In-Reply-To: <1223525160-9887-7-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Eric Sandeen <sandeen@redhat.com>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-ext4_ext_walk_space() was reinstated to be used for iterating over file
-extents with a callback; it is used by the ext4 fiemap implementation.
+During block reservation if we don't have enough blocks left, retry
+block reservation with smaller block counts.  This makes sure we try
+fallocate and DIO with smaller request size and don't fail early.  The
+delayed allocation reservation cannot try with smaller block count. So
+retry block reservation to handle temporary disk full conditions.  Also
+print free blocks details if we fail block allocation during writepages.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Cc: linux-fsdevel@vger.kernel.org
 ---
- fs/ext4/ext4.h         |    2 +
- fs/ext4/ext4_extents.h |   15 +++
- fs/ext4/extents.c      |  248 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/file.c         |    4 +
- fs/ext4/inode.c        |    4 +-
- 5 files changed, 271 insertions(+), 2 deletions(-)
+ fs/ext4/balloc.c  |    8 +++++++-
+ fs/ext4/inode.c   |   14 +++++++++++---
+ fs/ext4/mballoc.c |    7 ++++++-
+ 3 files changed, 24 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c50c04c..f46a513 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1067,6 +1067,8 @@ struct buffer_head *ext4_getblk(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
- struct buffer_head *ext4_bread(handle_t *, struct inode *,
- 						ext4_lblk_t, int, int *);
-+int ext4_get_block(struct inode *inode, sector_t iblock,
-+				struct buffer_head *bh_result, int create);
- int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
- 				ext4_lblk_t iblock, unsigned long maxblocks,
- 				struct buffer_head *bh_result,
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index d33dc56..bec7ce5 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -124,6 +124,19 @@ struct ext4_ext_path {
- #define EXT4_EXT_CACHE_GAP	1
- #define EXT4_EXT_CACHE_EXTENT	2
- 
-+/*
-+ * to be called by ext4_ext_walk_space()
-+ * negative retcode - error
-+ * positive retcode - signal for ext4_ext_walk_space(), see below
-+ * callback must return valid extent (passed or newly created)
-+ */
-+typedef int (*ext_prepare_callback)(struct inode *, struct ext4_ext_path *,
-+					struct ext4_ext_cache *,
-+					struct ext4_extent *, void *);
-+
-+#define EXT_CONTINUE   0
-+#define EXT_BREAK      1
-+#define EXT_REPEAT     2
- 
- #define EXT_MAX_BLOCK	0xffffffff
- 
-@@ -224,6 +237,8 @@ extern int ext4_ext_try_to_merge(struct inode *inode,
- 				 struct ext4_extent *);
- extern unsigned int ext4_ext_check_overlap(struct inode *, struct ext4_extent *, struct ext4_ext_path *);
- extern int ext4_ext_insert_extent(handle_t *, struct inode *, struct ext4_ext_path *, struct ext4_extent *);
-+extern int ext4_ext_walk_space(struct inode *, ext4_lblk_t, ext4_lblk_t,
-+							ext_prepare_callback, void *);
- extern struct ext4_ext_path *ext4_ext_find_extent(struct inode *, ext4_lblk_t,
- 							struct ext4_ext_path *);
- extern int ext4_ext_search_left(struct inode *, struct ext4_ext_path *,
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index c8f81f2..ea2ce3c 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -40,6 +40,7 @@
- #include <linux/slab.h>
- #include <linux/falloc.h>
- #include <asm/uaccess.h>
-+#include <linux/fiemap.h>
- #include "ext4_jbd2.h"
- #include "ext4_extents.h"
- 
-@@ -1626,6 +1627,113 @@ cleanup:
- 	return err;
- }
- 
-+int ext4_ext_walk_space(struct inode *inode, ext4_lblk_t block,
-+			ext4_lblk_t num, ext_prepare_callback func,
-+			void *cbdata)
-+{
-+	struct ext4_ext_path *path = NULL;
-+	struct ext4_ext_cache cbex;
-+	struct ext4_extent *ex;
-+	ext4_lblk_t next, start = 0, end = 0;
-+	ext4_lblk_t last = block + num;
-+	int depth, exists, err = 0;
-+
-+	BUG_ON(func == NULL);
-+	BUG_ON(inode == NULL);
-+
-+	while (block < last && block != EXT_MAX_BLOCK) {
-+		num = last - block;
-+		/* find extent for this block */
-+		path = ext4_ext_find_extent(inode, block, path);
-+		if (IS_ERR(path)) {
-+			err = PTR_ERR(path);
-+			path = NULL;
-+			break;
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 1707850..5790988 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1738,10 +1738,16 @@ ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		if (ext4_claim_free_blocks(sbi, *count)) {
++		while (*count && ext4_claim_free_blocks(sbi, *count)) {
++			/* let others to free the space */
++			yield();
++			*count = *count >> 1;
 +		}
-+
-+		depth = ext_depth(inode);
-+		BUG_ON(path[depth].p_hdr == NULL);
-+		ex = path[depth].p_ext;
-+		next = ext4_ext_next_allocated_block(path);
-+
-+		exists = 0;
-+		if (!ex) {
-+			/* there is no extent yet, so try to allocate
-+			 * all requested space */
-+			start = block;
-+			end = block + num;
-+		} else if (le32_to_cpu(ex->ee_block) > block) {
-+			/* need to allocate space before found extent */
-+			start = block;
-+			end = le32_to_cpu(ex->ee_block);
-+			if (block + num < end)
-+				end = block + num;
-+		} else if (block >= le32_to_cpu(ex->ee_block)
-+					+ ext4_ext_get_actual_len(ex)) {
-+			/* need to allocate space after found extent */
-+			start = block;
-+			end = block + num;
-+			if (end >= next)
-+				end = next;
-+		} else if (block >= le32_to_cpu(ex->ee_block)) {
-+			/*
-+			 * some part of requested space is covered
-+			 * by found extent
-+			 */
-+			start = block;
-+			end = le32_to_cpu(ex->ee_block)
-+				+ ext4_ext_get_actual_len(ex);
-+			if (block + num < end)
-+				end = block + num;
-+			exists = 1;
-+		} else {
-+			BUG();
-+		}
-+		BUG_ON(end <= start);
-+
-+		if (!exists) {
-+			cbex.ec_block = start;
-+			cbex.ec_len = end - start;
-+			cbex.ec_start = 0;
-+			cbex.ec_type = EXT4_EXT_CACHE_GAP;
-+		} else {
-+			cbex.ec_block = le32_to_cpu(ex->ee_block);
-+			cbex.ec_len = ext4_ext_get_actual_len(ex);
-+			cbex.ec_start = ext_pblock(ex);
-+			cbex.ec_type = EXT4_EXT_CACHE_EXTENT;
-+		}
-+
-+		BUG_ON(cbex.ec_len == 0);
-+		err = func(inode, path, &cbex, ex, cbdata);
-+		ext4_ext_drop_refs(path);
-+
-+		if (err < 0)
-+			break;
-+
-+		if (err == EXT_REPEAT)
-+			continue;
-+		else if (err == EXT_BREAK) {
-+			err = 0;
-+			break;
-+		}
-+
-+		if (ext_depth(inode) != depth) {
-+			/* depth was changed. we have to realloc path */
-+			kfree(path);
-+			path = NULL;
-+		}
-+
-+		block = cbex.ec_block + cbex.ec_len;
-+	}
-+
-+	if (path) {
-+		ext4_ext_drop_refs(path);
-+		kfree(path);
-+	}
-+
-+	return err;
-+}
-+
- static void
- ext4_ext_put_in_cache(struct inode *inode, ext4_lblk_t block,
- 			__u32 len, ext4_fsblk_t start, int type)
-@@ -2971,3 +3079,143 @@ retry:
- 	mutex_unlock(&inode->i_mutex);
- 	return ret > 0 ? ret2 : ret;
- }
-+
-+/*
-+ * Callback function called for each extent to gather FIEMAP information.
-+ */
-+int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
-+		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
-+		       void *data)
-+{
-+	struct fiemap_extent_info *fieinfo = data;
-+	unsigned long blksize_bits = inode->i_sb->s_blocksize_bits;
-+	__u64	logical;
-+	__u64	physical;
-+	__u64	length;
-+	__u32	flags = 0;
-+	int	error;
-+
-+	logical =  (__u64)newex->ec_block << blksize_bits;
-+
-+	if (newex->ec_type == EXT4_EXT_CACHE_GAP) {
-+		pgoff_t offset;
-+		struct page *page;
-+		struct buffer_head *bh = NULL;
-+
-+		offset = logical >> PAGE_SHIFT;
-+		page = find_get_page(inode->i_mapping, offset);
-+		if (!page || !page_has_buffers(page))
-+			return EXT_CONTINUE;
-+
-+		bh = page_buffers(page);
-+
-+		if (!bh)
-+			return EXT_CONTINUE;
-+
-+		if (buffer_delay(bh)) {
-+			flags |= FIEMAP_EXTENT_DELALLOC;
-+			page_cache_release(page);
-+		} else {
-+			page_cache_release(page);
-+			return EXT_CONTINUE;
-+		}
-+	}
-+
-+	physical = (__u64)newex->ec_start << blksize_bits;
-+	length =   (__u64)newex->ec_len << blksize_bits;
-+
-+	if (ex && ext4_ext_is_uninitialized(ex))
-+		flags |= FIEMAP_EXTENT_UNWRITTEN;
-+
-+	/*
-+	 * If this extent reaches EXT_MAX_BLOCK, it must be last.
-+	 *
-+	 * Or if ext4_ext_next_allocated_block is EXT_MAX_BLOCK,
-+	 * this also indicates no more allocated blocks.
-+	 *
-+	 * XXX this might miss a single-block extent at EXT_MAX_BLOCK
-+	 */
-+	if (logical + length - 1 == EXT_MAX_BLOCK ||
-+	    ext4_ext_next_allocated_block(path) == EXT_MAX_BLOCK)
-+		flags |= FIEMAP_EXTENT_LAST;
-+
-+	error = fiemap_fill_next_extent(fieinfo, logical, physical,
-+					length, flags);
-+	if (error < 0)
-+		return error;
-+	if (error == 1)
-+		return EXT_BREAK;
-+
-+	return EXT_CONTINUE;
-+}
-+
-+/* fiemap flags we can handle specified here */
-+#define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
-+
-+int ext4_xattr_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo)
-+{
-+	__u64 physical = 0;
-+	__u64 length;
-+	__u32 flags = FIEMAP_EXTENT_LAST;
-+	int blockbits = inode->i_sb->s_blocksize_bits;
-+	int error = 0;
-+
-+	/* in-inode? */
-+	if (EXT4_I(inode)->i_state & EXT4_STATE_XATTR) {
-+		struct ext4_iloc iloc;
-+		int offset;	/* offset of xattr in inode */
-+
-+		error = ext4_get_inode_loc(inode, &iloc);
-+		if (error)
-+			return error;
-+		physical = iloc.bh->b_blocknr << blockbits;
-+		offset = EXT4_GOOD_OLD_INODE_SIZE +
-+				EXT4_I(inode)->i_extra_isize;
-+		physical += offset;
-+		length = EXT4_SB(inode->i_sb)->s_inode_size - offset;
-+		flags |= FIEMAP_EXTENT_DATA_INLINE;
-+	} else { /* external block */
-+		physical = EXT4_I(inode)->i_file_acl << blockbits;
-+		length = inode->i_sb->s_blocksize;
-+	}
-+
-+	if (physical)
-+		error = fiemap_fill_next_extent(fieinfo, 0, physical,
-+						length, flags);
-+	return (error < 0 ? error : 0);
-+}
-+
-+int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		__u64 start, __u64 len)
-+{
-+	ext4_lblk_t start_blk;
-+	ext4_lblk_t len_blks;
-+	int error = 0;
-+
-+	/* fallback to generic here if not in extents fmt */
-+	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
-+		return generic_block_fiemap(inode, fieinfo, start, len,
-+			ext4_get_block);
-+
-+	if (fiemap_check_flags(fieinfo, EXT4_FIEMAP_FLAGS))
-+		return -EBADR;
-+
-+	if (fieinfo->fi_flags & FIEMAP_FLAG_XATTR) {
-+		error = ext4_xattr_fiemap(inode, fieinfo);
-+	} else {
-+		start_blk = start >> inode->i_sb->s_blocksize_bits;
-+		len_blks = len >> inode->i_sb->s_blocksize_bits;
-+
-+		/*
-+		 * Walk the extent tree gathering extent information.
-+		 * ext4_ext_fiemap_cb will push extents back to user.
-+		 */
-+		down_write(&EXT4_I(inode)->i_data_sem);
-+		error = ext4_ext_walk_space(inode, start_blk, len_blks,
-+					  ext4_ext_fiemap_cb, fieinfo);
-+		up_write(&EXT4_I(inode)->i_data_sem);
-+	}
-+
-+	return error;
-+}
-+
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 62796b7..6d5be15 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -140,6 +140,9 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
- 	return 0;
- }
- 
-+extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		__u64 start, __u64 len);
-+
- const struct file_operations ext4_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-@@ -170,5 +173,6 @@ const struct inode_operations ext4_file_inode_operations = {
- #endif
- 	.permission	= ext4_permission,
- 	.fallocate	= ext4_fallocate,
-+	.fiemap		= ext4_fiemap,
- };
- 
++		if (!*count) {
+ 			*errp = -ENOSPC;
+ 			return 0;	/*return with ENOSPC error */
+ 		}
++		num = *count;
+ 	}
+ 	/*
+ 	 * Check quota for allocation of this block.
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index bd770c3..a474786 100644
+index b778d5a..eb9d449 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1135,8 +1135,8 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
- /* Maximum number of blocks we map for direct IO at once. */
- #define DIO_MAX_BLOCKS 4096
+@@ -1521,6 +1521,7 @@ static int ext4_journalled_write_end(struct file *file,
  
--static int ext4_get_block(struct inode *inode, sector_t iblock,
--			struct buffer_head *bh_result, int create)
-+int ext4_get_block(struct inode *inode, sector_t iblock,
-+		   struct buffer_head *bh_result, int create)
+ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
  {
- 	handle_t *handle = ext4_journal_current_handle();
- 	int ret = 0, started = 0;
++	int retries = 0;
+        struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
+        unsigned long md_needed, mdblocks, total = 0;
+ 
+@@ -1529,6 +1530,7 @@ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
+ 	 * in order to allocate nrblocks
+ 	 * worse case is one extent per block
+ 	 */
++repeat:
+ 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	total = EXT4_I(inode)->i_reserved_data_blocks + nrblocks;
+ 	mdblocks = ext4_calc_metadata_amount(inode, total);
+@@ -1539,6 +1541,10 @@ static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
+ 
+ 	if (ext4_claim_free_blocks(sbi, total)) {
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
++			yield();
++			goto repeat;
++		}
+ 		return -ENOSPC;
+ 	}
+ 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
+@@ -1825,20 +1831,18 @@ static void ext4_da_block_invalidatepages(struct mpage_da_data *mpd,
+ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ {
+ 	int err = 0;
++	struct buffer_head new;
+ 	struct buffer_head *lbh = &mpd->lbh;
+ 	sector_t next = lbh->b_blocknr;
+-	struct buffer_head new;
+ 
+ 	/*
+ 	 * We consider only non-mapped and non-allocated blocks
+ 	 */
+ 	if (buffer_mapped(lbh) && !buffer_delay(lbh))
+ 		return 0;
+-
+ 	new.b_state = lbh->b_state;
+ 	new.b_blocknr = 0;
+ 	new.b_size = lbh->b_size;
+-
+ 	/*
+ 	 * If we didn't accumulate anything
+ 	 * to write simply return
+@@ -1871,6 +1875,10 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 				  lbh->b_size >> mpd->inode->i_blkbits, err);
+ 		printk(KERN_EMERG "This should not happen.!! "
+ 					"Data will be lost\n");
++		if (err == -ENOSPC) {
++			printk(KERN_CRIT "Total free blocks count %lld\n",
++				ext4_count_free_blocks(mpd->inode->i_sb));
++		}
+ 		/* invlaidate all the pages */
+ 		ext4_da_block_invalidatepages(mpd, next,
+ 				lbh->b_size >> mpd->inode->i_blkbits);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 2c10b50..e4f30de 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4395,7 +4395,12 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+ 		 */
+-		if (ext4_claim_free_blocks(sbi, ar->len)) {
++		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
++			/* let others to free the space */
++			yield();
++			ar->len = ar->len >> 1;
++		}
++		if (!ar->len) {
+ 			*errp = -ENOSPC;
+ 			return 0;
+ 		}
 -- 
 1.5.6.1.205.ge2c7.dirty
 
