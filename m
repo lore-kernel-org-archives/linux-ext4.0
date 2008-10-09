@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 33/42] ext4: Add debugging markers that can be used by systemtap
-Date: Thu,  9 Oct 2008 00:05:51 -0400
-Message-ID: <1223525160-9887-34-git-send-email-tytso@mit.edu>
+Subject: [PATCH 31/42] ext4: fix initialization of UNINIT bitmap blocks
+Date: Thu,  9 Oct 2008 00:05:49 -0400
+Message-ID: <1223525160-9887-32-git-send-email-tytso@mit.edu>
 References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-2-git-send-email-tytso@mit.edu>
  <1223525160-9887-3-git-send-email-tytso@mit.edu>
@@ -33,125 +33,85 @@ References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
  <1223525160-9887-29-git-send-email-tytso@mit.edu>
  <1223525160-9887-30-git-send-email-tytso@mit.edu>
  <1223525160-9887-31-git-send-email-tytso@mit.edu>
- <1223525160-9887-32-git-send-email-tytso@mit.edu>
- <1223525160-9887-33-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: Frederic Bohe <frederic.bohe@bull.net>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:44268 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:44270 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1758848AbYJIEaS (ORCPT
+	with ESMTP id S1757923AbYJIEaS (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:30:18 -0400
-In-Reply-To: <1223525160-9887-33-git-send-email-tytso@mit.edu>
+In-Reply-To: <1223525160-9887-31-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This debugging markers are designed to debug problems such as the
-random filesystem latency problems reported by Arjan.
+From: Frederic Bohe <frederic.bohe@bull.net>
 
+We must always initialize uninitialized bitmap blocks even if the
+buffer head is marked uptodate, since it could have been read in by a
+userspace program.  So always initialized the bitmap block if it is
+marked uninitialzied and not dirty; it will marked initialized as soon
+as we allocate a block or inode out of that bitmap.
+
+Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/fsync.c      |    5 +++++
- fs/ext4/super.c      |    2 ++
- fs/jbd2/checkpoint.c |    3 +++
- fs/jbd2/commit.c     |    6 ++++++
- 4 files changed, 16 insertions(+), 0 deletions(-)
+ fs/ext4/balloc.c  |    4 +++-
+ fs/ext4/ialloc.c  |    4 +++-
+ fs/ext4/mballoc.c |    4 +++-
+ 3 files changed, 9 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/fsync.c b/fs/ext4/fsync.c
-index c37d1e8..5afe437 100644
---- a/fs/ext4/fsync.c
-+++ b/fs/ext4/fsync.c
-@@ -28,6 +28,7 @@
- #include <linux/writeback.h>
- #include <linux/jbd2.h>
- #include <linux/blkdev.h>
-+#include <linux/marker.h>
- #include "ext4.h"
- #include "ext4_jbd2.h"
- 
-@@ -51,6 +52,10 @@ int ext4_sync_file(struct file *file, struct dentry *dentry, int datasync)
- 
- 	J_ASSERT(ext4_journal_current_handle() == NULL);
- 
-+	trace_mark(ext4_sync_file, "dev %s datasync %d ino %ld parent %ld",
-+		   inode->i_sb->s_id, datasync, inode->i_ino,
-+		   dentry->d_parent->d_inode->i_ino);
-+
- 	/*
- 	 * data=writeback:
- 	 *  The caller's filemap_fdatawrite()/wait will sync the data.
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index dfcd41f..9c02146 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -35,6 +35,7 @@
- #include <linux/quotaops.h>
- #include <linux/seq_file.h>
- #include <linux/proc_fs.h>
-+#include <linux/marker.h>
- #include <linux/log2.h>
- #include <linux/crc16.h>
- #include <asm/uaccess.h>
-@@ -2951,6 +2952,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
- {
- 	tid_t target;
- 
-+	trace_mark(ext4_sync_fs, "dev %s wait %d", sb->s_id, wait);
- 	sb->s_dirt = 0;
- 	if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, &target)) {
- 		if (wait)
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index af4651b..42895d3 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -20,6 +20,7 @@
- #include <linux/time.h>
- #include <linux/fs.h>
- #include <linux/jbd2.h>
-+#include <linux/marker.h>
- #include <linux/errno.h>
- #include <linux/slab.h>
- 
-@@ -328,6 +329,8 @@ int jbd2_log_do_checkpoint(journal_t *journal)
- 	 * journal straight away.
- 	 */
- 	result = jbd2_cleanup_journal_tail(journal);
-+	trace_mark(jbd2_checkpoint, "dev %s need_checkpoint %d",
-+		   journal->j_devname, result);
- 	jbd_debug(1, "cleanup_journal_tail returned %d\n", result);
- 	if (result <= 0)
- 		return result;
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index b091e53..e91f051 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -16,6 +16,7 @@
- #include <linux/time.h>
- #include <linux/fs.h>
- #include <linux/jbd2.h>
-+#include <linux/marker.h>
- #include <linux/errno.h>
- #include <linux/slab.h>
- #include <linux/mm.h>
-@@ -368,6 +369,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	commit_transaction = journal->j_running_transaction;
- 	J_ASSERT(commit_transaction->t_state == T_RUNNING);
- 
-+	trace_mark(jbd2_start_commit, "dev %s transaction %d",
-+		   journal->j_devname, commit_transaction->t_tid);
- 	jbd_debug(1, "JBD: starting commit of transaction %d\n",
- 			commit_transaction->t_tid);
- 
-@@ -985,6 +988,9 @@ restart_loop:
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 59566c0..bd2ece2 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -319,9 +319,11 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 			    block_group, bitmap_blk);
+ 		return NULL;
  	}
- 	spin_unlock(&journal->j_list_lock);
+-	if (bh_uptodate_or_lock(bh))
++	if (buffer_uptodate(bh) &&
++	    !(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))
+ 		return bh;
  
-+	trace_mark(jbd2_end_commit, "dev %s transaction %d head %d",
-+		   journal->j_devname, commit_transaction->t_tid,
-+		   journal->j_tail_sequence);
- 	jbd_debug(1, "JBD: commit %d complete, head %d\n",
- 		  journal->j_commit_sequence, journal->j_tail_sequence);
++	lock_buffer(bh);
+ 	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
+ 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 		ext4_init_block_bitmap(sb, bh, block_group, desc);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 1343bf1..fe34d74 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -115,9 +115,11 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 			    block_group, bitmap_blk);
+ 		return NULL;
+ 	}
+-	if (bh_uptodate_or_lock(bh))
++	if (buffer_uptodate(bh) &&
++	    !(desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)))
+ 		return bh;
  
++	lock_buffer(bh);
+ 	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
+ 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+ 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index c84b68f..28bf8ef 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -782,9 +782,11 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 		if (bh[i] == NULL)
+ 			goto out;
+ 
+-		if (bh_uptodate_or_lock(bh[i]))
++		if (buffer_uptodate(bh[i]) &&
++		    !(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))
+ 			continue;
+ 
++		lock_buffer(bh[i]);
+ 		spin_lock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
+ 		if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 			ext4_init_block_bitmap(sb, bh[i],
 -- 
 1.5.6.1.205.ge2c7.dirty
 
