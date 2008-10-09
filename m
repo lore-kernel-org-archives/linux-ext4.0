@@ -1,142 +1,60 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 0/42] Ext4 patches queued up for the 2.6.28 merge window
-Date: Thu,  9 Oct 2008 00:05:18 -0400
-Message-ID: <1223525160-9887-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH 03/42] ext4: Fix long long checkpatch warnings
+Date: Thu,  9 Oct 2008 00:05:21 -0400
+Message-ID: <1223525160-9887-4-git-send-email-tytso@mit.edu>
+References: <1223525160-9887-1-git-send-email-tytso@mit.edu>
+ <1223525160-9887-2-git-send-email-tytso@mit.edu>
+ <1223525160-9887-3-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:54445 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:54448 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757119AbYJIEGE (ORCPT
+	with ESMTP id S1757230AbYJIEGE (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Oct 2008 00:06:04 -0400
+In-Reply-To: <1223525160-9887-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-These are the patches which we have queued up to push to Linus for the
-2.6.28 merge window.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/super.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-It includes the FIEMAP patches, for which we have (finally!) reached
-consensus on the linux-fsdevel mailing list.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ee86954..c10aaf7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1716,9 +1716,9 @@ static void ext4_orphan_cleanup(struct super_block *sb,
+ 		DQUOT_INIT(inode);
+ 		if (inode->i_nlink) {
+ 			printk(KERN_DEBUG
+-				"%s: truncating inode %lu to %Ld bytes\n",
++				"%s: truncating inode %lu to %lld bytes\n",
+ 				__func__, inode->i_ino, inode->i_size);
+-			jbd_debug(2, "truncating inode %lu to %Ld bytes\n",
++			jbd_debug(2, "truncating inode %lu to %lld bytes\n",
+ 				  inode->i_ino, inode->i_size);
+ 			ext4_truncate(inode);
+ 			nr_truncates++;
+@@ -2554,7 +2554,7 @@ static journal_t *ext4_get_journal(struct super_block *sb,
+ 		return NULL;
+ 	}
+ 
+-	jbd_debug(2, "Journal inode found at %p: %Ld bytes\n",
++	jbd_debug(2, "Journal inode found at %p: %lld bytes\n",
+ 		  journal_inode, journal_inode->i_size);
+ 	if (!S_ISREG(journal_inode->i_mode)) {
+ 		printk(KERN_ERR "EXT4-fs: invalid journal inode.\n");
+@@ -3439,7 +3439,7 @@ static ssize_t ext4_quota_write(struct super_block *sb, int type,
+ 	handle_t *handle = journal_current_handle();
+ 
+ 	if (!handle) {
+-		printk(KERN_WARNING "EXT4-fs: Quota write (off=%Lu, len=%Lu)"
++		printk(KERN_WARNING "EXT4-fs: Quota write (off=%llu, len=%llu)"
+ 			" cancelled because transaction is not started.\n",
+ 			(unsigned long long)off, (unsigned long long)len);
+ 		return -EIO;
+-- 
+1.5.6.1.205.ge2c7.dirty
 
-Patches which I believe should be -stable candidates have been marked
-with an '*' below.  Please let me know if there are other patches that
-should be considered -stable candidates, or if you disagree with a
-patch was marked.
-
-						- Ted
-
-Alexey Dobriyan (1):
-    * ext4: fix #11321: create /proc/ext4/*/stats more carefully
-
-Andi Kleen (1):
-      ext4: Avoid double dirtying of super block in ext4_put_super()
-
-Aneesh Kumar K.V (12):
-    * ext4: invalidate pages if delalloc block allocation fails.
-    * ext4: Retry block reservation
-    * ext4: Add percpu dirty block accounting.
-    * ext4: Switch to non delalloc mode when we are low on free blocks count.
-    * ext4: Signed arithmetic fix
-    * ext4: Fix ext4 nomballoc allocator for ENOSPC
-    * ext4: Don't add the inode to journal handle until after the block is allocated
-    * ext4: Retry block allocation if we have free blocks left
-      ext4: truncate block allocated on a failed ext4_write_begin
-      ext4: Properly update i_disksize.
-      ext4: elevate write count for migrate ioctl
-      ext4: hook the ext3 migrate interface to the EXT4_IOC_SETFLAGS ioctl
-
-Duane Griffin (1):
-    * jbd2: abort instead of waiting for nonexistent transaction
-
-Eric Sandeen (2):
-      ext4: use percpu data structures for lg_prealloc_list
-      Hook ext4 to the vfs fiemap interface.
-
-Frederic Bohe (2):
-      Update flex_bg free blocks and free inodes counters when resizing.
-      ext4: fix initialization of UNINIT bitmap blocks
-
-Josef Bacik (1):
-      generic block based fiemap implementation
-
-Kalpak Shah (1):
-    * ext4: fix xattr deadlock
-
-Li Zefan (1):
-    * ext4: add missing unlock in ext4_check_descriptors() on error path
-
-Mark Fasheh (2):
-      vfs: vfs-level fiemap interface
-      ocfs2: fiemap support
-
-Mingming Cao (1):
-    * percpu counter: clean up percpu_counter_sum_and_set()
-
-Theodore Ts'o (18):
-      ext4: Add printk priority levels to clean up checkpatch warnings
-      ext4: Fix long long checkpatch warnings
-      ext4: Fix whitespace checkpatch warnings/errors
-      ext4: Make sure all the block allocation paths reserve blocks
-      ext4: Avoid printk floods in the face of directory corruption
-      jbd2: clean up how the journal device name is printed
-      ext4: Renumber EXT4_IOC_MIGRATE
-      ext4/jbd2: Avoid WARN() messages when failing to write to the superblock
-      ext4: Don't use 'struct dentry' for internal lookups
-      ext4: move /proc setup and teardown out of mballoc.c
-      ext4: Combine proc file handling into a single set of functions
-      ext4: Use readahead when reading an inode from the inode table
-      ext4: Remove old legacy block allocator
-      ext4: Add debugging markers that can be used by systemtap
-    * jbd2: Fix buffer head leak when writing the commit block
-      Update ext4 MAINTAINERS file
-      ext4: Rename ext4dev to ext4
-
- Documentation/filesystems/fiemap.txt |  228 ++++++
- MAINTAINERS                          |    5 +-
- fs/Kconfig                           |   74 +-
- fs/Makefile                          |    2 +-
- fs/ext2/ext2.h                       |    2 +
- fs/ext2/file.c                       |    1 +
- fs/ext2/inode.c                      |    8 +
- fs/ext3/file.c                       |    1 +
- fs/ext3/inode.c                      |    8 +
- fs/ext4/Makefile                     |   10 +-
- fs/ext4/acl.h                        |   12 +-
- fs/ext4/balloc.c                     | 1457 +++-------------------------------
- fs/ext4/bitmap.c                     |    6 +-
- fs/ext4/dir.c                        |   64 +-
- fs/ext4/ext4.h                       |  131 ++--
- fs/ext4/ext4_extents.h               |   15 +
- fs/ext4/ext4_i.h                     |   39 +-
- fs/ext4/ext4_sb.h                    |   25 +-
- fs/ext4/extents.c                    |  281 ++++++-
- fs/ext4/file.c                       |   10 +-
- fs/ext4/fsync.c                      |    7 +-
- fs/ext4/hash.c                       |    8 +-
- fs/ext4/ialloc.c                     |   71 +-
- fs/ext4/inode.c                      |  620 +++++++++------
- fs/ext4/ioctl.c                      |   84 +--
- fs/ext4/mballoc.c                    |  208 ++----
- fs/ext4/mballoc.h                    |    1 -
- fs/ext4/migrate.c                    |   10 +-
- fs/ext4/namei.c                      |  402 +++++-----
- fs/ext4/resize.c                     |   33 +-
- fs/ext4/super.c                      |  247 ++++--
- fs/ext4/symlink.c                    |    8 +-
- fs/ext4/xattr.c                      |   14 +-
- fs/ext4/xattr.h                      |   12 +-
- fs/ioctl.c                           |  273 +++++++
- fs/jbd2/checkpoint.c                 |   22 +-
- fs/jbd2/commit.c                     |   22 +-
- fs/jbd2/journal.c                    |   75 +-
- fs/ocfs2/alloc.c                     |    9 -
- fs/ocfs2/alloc.h                     |    9 +
- fs/ocfs2/extent_map.c                |  346 +++++++--
- fs/ocfs2/extent_map.h                |    3 +
- fs/ocfs2/file.c                      |    1 +
- include/linux/ext3_fs.h              |    2 +
- include/linux/fiemap.h               |   64 ++
- include/linux/fs.h                   |   21 +
- include/linux/jbd2.h                 |    3 +-
- include/linux/percpu_counter.h       |   12 +-
- lib/percpu_counter.c                 |    8 +-
- 49 files changed, 2482 insertions(+), 2492 deletions(-)
