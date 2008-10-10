@@ -1,159 +1,333 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: [PATCH] ext4: add an option to control error handling on file data
-Date: Fri, 10 Oct 2008 18:04:09 +0900
-Message-ID: <48EF1A89.1080300@hitachi.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	akpm@linux-foundation.org, jack@suse.cz
-To: tytso@mit.edu, adilger@sun.com
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH updated] ext4: Add percpu dirty block accounting.
+Date: Fri, 10 Oct 2008 15:46:45 +0530
+Message-ID: <1223633805-6172-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail9.hitachi.co.jp ([133.145.228.44]:34027 "EHLO
-	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754150AbYJJJER (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 05:04:17 -0400
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:33957 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757087AbYJJKRv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 06:17:51 -0400
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m9AAHASq012524
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Oct 2008 21:17:10 +1100
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9AAHmDc252148
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Oct 2008 21:17:48 +1100
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9AAHlhr008851
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Oct 2008 21:17:48 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the journal doesn't abort when it gets an IO error in file data
-blocks, the file data corruption will spread silently.  Because
-most of applications and commands do buffered writes without fsync(),
-they don't notice the IO error.  It's scary for mission critical
-systems.  On the other hand, if the journal aborts whenever it gets
-an IO error in file data blocks, the system will easily become
-inoperable.  So this patch introduces a filesystem option to
-determine whether it aborts the journal or just call printk() when
-it gets an IO error in file data.
+This patch adds dirty block accounting using percpu_counters.  Delayed
+allocation block reservation is now done by updating dirty block
+counter.  In the later patch we switch to non delalloc mode if the
+filesystem free blocks is greater than 150% of total filesystem dirty
+blocks
 
-If you mount an ext4 fs with data_err=abort option, it aborts on file
-data write error.  If you mount it with data_err=ignore, it doesn't
-abort, just call printk().  data_err=ignore is the default.
-
-Here is the corresponding patch of the ext3 version:
-http://kerneltrap.org/mailarchive/linux-kernel/2008/9/9/3239374
-
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Mingming Cao<cmm@us.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- Documentation/filesystems/ext4.txt |    5 +++++
- fs/ext4/ext4.h                     |    3 +++
- fs/ext4/super.c                    |   16 ++++++++++++++++
- fs/jbd2/commit.c                   |    2 ++
- include/linux/jbd2.h               |    3 +++
- 5 files changed, 29 insertions(+)
+ fs/ext4/balloc.c  |   62 ++++++++++++++++++++++++++++++++++------------------
+ fs/ext4/ext4_sb.h |    1 +
+ fs/ext4/inode.c   |   22 +++++++++---------
+ fs/ext4/mballoc.c |   31 ++++++++++++--------------
+ fs/ext4/super.c   |    8 ++++++-
+ 5 files changed, 73 insertions(+), 51 deletions(-)
 
-Index: linux-2.6.27-rc9-ex4-1/Documentation/filesystems/ext4.txt
-===================================================================
---- linux-2.6.27-rc9-ex4-1.orig/Documentation/filesystems/ext4.txt
-+++ linux-2.6.27-rc9-ex4-1/Documentation/filesystems/ext4.txt
-@@ -218,6 +218,11 @@ errors=remount-ro(*)	Remount the filesys
- errors=continue		Keep going on a filesystem error.
- errors=panic		Panic and halt the machine if an error occurs.
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 5790988..edef002 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -1605,26 +1605,38 @@ ext4_try_to_allocate_with_rsv(struct super_block *sb, handle_t *handle,
+ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+ 						ext4_fsblk_t nblocks)
+ {
+-	s64 free_blocks;
++	s64 free_blocks, dirty_blocks;
+ 	ext4_fsblk_t root_blocks = 0;
+ 	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
++	struct percpu_counter *dbc = &sbi->s_dirtyblocks_counter;
  
-+data_err=ignore(*)	Just print an error message if an error occurs
-+			in a file data buffer in ordered mode.
-+data_err=abort		Abort the journal if an error occurs in a file
-+			data buffer in ordered mode.
-+
- grpid			Give objects the same group ID as their creator.
- bsdgroups
+-	free_blocks = percpu_counter_read(fbc);
++	free_blocks  = percpu_counter_read_positive(fbc);
++	dirty_blocks = percpu_counter_read_positive(dbc);
  
-Index: linux-2.6.27-rc9-ex4-1/fs/ext4/ext4.h
-===================================================================
---- linux-2.6.27-rc9-ex4-1.orig/fs/ext4/ext4.h
-+++ linux-2.6.27-rc9-ex4-1/fs/ext4/ext4.h
-@@ -556,6 +556,9 @@ do {									       \
- #define EXT4_MOUNT_I_VERSION            0x2000000 /* i_version support */
- #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
- #define EXT4_MOUNT_AKPM_LOCK_HACK	0x10000000 /* akpm lock hack */
-+#define EXT4_MOUNT_DATA_ERR_ABORT	0x20000000 /* Abort on file data write
-+						    * error in ordered mode */
-+
- /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at once */
- #ifndef _LINUX_EXT2_FS_H
- #define clear_opt(o, opt)		o &= ~EXT4_MOUNT_##opt
-Index: linux-2.6.27-rc9-ex4-1/fs/ext4/super.c
-===================================================================
---- linux-2.6.27-rc9-ex4-1.orig/fs/ext4/super.c
-+++ linux-2.6.27-rc9-ex4-1/fs/ext4/super.c
-@@ -779,6 +779,9 @@ static int ext4_show_options(struct seq_
- 		seq_printf(seq, ",inode_readahead_blks=%u",
- 			   sbi->s_inode_readahead_blks);
+ 	if (!capable(CAP_SYS_RESOURCE) &&
+ 		sbi->s_resuid != current->fsuid &&
+ 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
+ 		root_blocks = ext4_r_blocks_count(sbi->s_es);
  
-+	if (test_opt(sb, DATA_ERR_ABORT))
-+		seq_puts(seq, ",data_err=abort");
-+
- 	ext4_show_quota_options(seq, sb);
+-	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
+-		free_blocks = percpu_counter_sum(&sbi->s_freeblocks_counter);
+-
+-	if (free_blocks < (root_blocks + nblocks))
++	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
++						EXT4_FREEBLOCKS_WATERMARK) {
++		free_blocks  = percpu_counter_sum(fbc);
++		dirty_blocks = percpu_counter_sum(dbc);
++		if (dirty_blocks < 0) {
++			printk(KERN_CRIT "Dirty block accounting "
++					"went wrong %lld\n",
++					dirty_blocks);
++		}
++	}
++	/* Check whether we have space after
++	 * accounting for current dirty blocks
++	 */
++	if (free_blocks < ((s64)(root_blocks + nblocks) + dirty_blocks))
+ 		/* we don't have free space */
+ 		return -ENOSPC;
+ 
+-	/* reduce fs free blocks counter */
+-	percpu_counter_sub(fbc, nblocks);
++	/* Add the blocks to nblocks */
++	percpu_counter_add(dbc, nblocks);
  	return 0;
  }
-@@ -908,6 +911,7 @@ enum {
- 	Opt_commit, Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
- 	Opt_journal_checksum, Opt_journal_async_commit,
- 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
-+	Opt_data_err_abort, Opt_data_err_ignore,
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
- 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
-@@ -954,6 +958,8 @@ static match_table_t tokens = {
- 	{Opt_data_journal, "data=journal"},
- 	{Opt_data_ordered, "data=ordered"},
- 	{Opt_data_writeback, "data=writeback"},
-+	{Opt_data_err_abort, "data_err=abort"},
-+	{Opt_data_err_ignore, "data_err=ignore"},
- 	{Opt_offusrjquota, "usrjquota="},
- 	{Opt_usrjquota, "usrjquota=%s"},
- 	{Opt_offgrpjquota, "grpjquota="},
-@@ -1189,6 +1195,12 @@ static int parse_options(char *options, 
- 				sbi->s_mount_opt |= data_opt;
- 			}
- 			break;
-+		case Opt_data_err_abort:
-+			set_opt(sbi->s_mount_opt, DATA_ERR_ABORT);
-+			break;
-+		case Opt_data_err_ignore:
-+			clear_opt(sbi->s_mount_opt, DATA_ERR_ABORT);
-+			break;
- #ifdef CONFIG_QUOTA
- 		case Opt_usrjquota:
- 			qtype = USRQUOTA;
-@@ -2544,6 +2556,10 @@ static void ext4_init_journal_params(str
- 		journal->j_flags |= JBD2_LOCK_HACK;
- 	else
- 		journal->j_flags &= ~JBD2_LOCK_HACK;
-+	if (test_opt(sb, DATA_ERR_ABORT))
-+		journal->j_flags |= JBD2_ABORT_ON_SYNCDATA_ERR;
+ 
+@@ -1640,23 +1652,28 @@ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
+ ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 						ext4_fsblk_t nblocks)
+ {
+-	ext4_fsblk_t free_blocks;
++	ext4_fsblk_t free_blocks, dirty_blocks;
+ 	ext4_fsblk_t root_blocks = 0;
++	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
++	struct percpu_counter *dbc = &sbi->s_dirtyblocks_counter;
+ 
+-	free_blocks = percpu_counter_read_positive(&sbi->s_freeblocks_counter);
++	free_blocks  = percpu_counter_read_positive(fbc);
++	dirty_blocks = percpu_counter_read_positive(dbc);
+ 
+ 	if (!capable(CAP_SYS_RESOURCE) &&
+ 		sbi->s_resuid != current->fsuid &&
+ 		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
+ 		root_blocks = ext4_r_blocks_count(sbi->s_es);
+ 
+-	if (free_blocks - (nblocks + root_blocks) < EXT4_FREEBLOCKS_WATERMARK)
+-		free_blocks = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
+-
+-	if (free_blocks <= root_blocks)
++	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
++						EXT4_FREEBLOCKS_WATERMARK) {
++		free_blocks  = percpu_counter_sum_positive(fbc);
++		dirty_blocks = percpu_counter_sum_positive(dbc);
++	}
++	if (free_blocks <= (root_blocks + dirty_blocks))
+ 		/* we don't have free space */
+ 		return 0;
+-	if (free_blocks - root_blocks < nblocks)
++	if (free_blocks - (root_blocks + dirty_blocks) < nblocks)
+ 		return free_blocks - root_blocks;
+ 	return nblocks;
+ }
+@@ -1943,13 +1960,14 @@ ext4_fsblk_t ext4_old_new_blocks(handle_t *handle, struct inode *inode,
+ 	le16_add_cpu(&gdp->bg_free_blocks_count, -num);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group_no, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group_no));
+-	if (!EXT4_I(inode)->i_delalloc_reserved_flag && (*count != num)) {
+-		/*
+-		 * we allocated less blocks than we
+-		 * claimed. Add the difference back.
+-		 */
+-		percpu_counter_add(&sbi->s_freeblocks_counter, *count - num);
+-	}
++	percpu_counter_sub(&sbi->s_freeblocks_counter, num);
++	/*
++	 * Now reduce the dirty block count also. Should not go negative
++	 */
++	if (!EXT4_I(inode)->i_delalloc_reserved_flag)
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter, *count);
 +	else
-+		journal->j_flags &= ~JBD2_ABORT_ON_SYNCDATA_ERR;
- 	spin_unlock(&journal->j_state_lock);
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter, num);
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, group_no);
+ 		spin_lock(sb_bgl_lock(sbi, flex_group));
+diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
+index 69810a2..a5577e0 100644
+--- a/fs/ext4/ext4_sb.h
++++ b/fs/ext4/ext4_sb.h
+@@ -59,6 +59,7 @@ struct ext4_sb_info {
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
++	struct percpu_counter s_dirtyblocks_counter;
+ 	struct blockgroup_lock s_blockgroup_lock;
+ 
+ 	/* root of the per fs reservation window tree */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index eb9d449..7875a2d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1030,19 +1030,20 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
+ 	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
+ 	mdb_free = EXT4_I(inode)->i_reserved_meta_blocks - mdb;
+ 
+-	/* Account for allocated meta_blocks */
+-	mdb_free -= EXT4_I(inode)->i_allocated_meta_blocks;
+-
+-	/* update fs free blocks counter for truncate case */
+-	percpu_counter_add(&sbi->s_freeblocks_counter, mdb_free);
++	if (mdb_free) {
++		/* Account for allocated meta_blocks */
++		mdb_free -= EXT4_I(inode)->i_allocated_meta_blocks;
++
++		/* update fs dirty blocks counter */
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
++		EXT4_I(inode)->i_allocated_meta_blocks = 0;
++		EXT4_I(inode)->i_reserved_meta_blocks = mdb;
++	}
+ 
+ 	/* update per-inode reservations */
+ 	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
+ 	EXT4_I(inode)->i_reserved_data_blocks -= used;
+ 
+-	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
+-	EXT4_I(inode)->i_reserved_meta_blocks = mdb;
+-	EXT4_I(inode)->i_allocated_meta_blocks = 0;
+ 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
  }
  
-Index: linux-2.6.27-rc9-ex4-1/fs/jbd2/commit.c
-===================================================================
---- linux-2.6.27-rc9-ex4-1.orig/fs/jbd2/commit.c
-+++ linux-2.6.27-rc9-ex4-1/fs/jbd2/commit.c
-@@ -683,6 +683,8 @@ start_journal_io:
- 		printk(KERN_WARNING
- 			"JBD2: Detected IO errors while flushing file data "
- 		       "on %s\n", journal->j_devname);
-+		if (journal->j_flags & JBD2_ABORT_ON_SYNCDATA_ERR)
-+			jbd2_journal_abort(journal, err);
- 		err = 0;
+@@ -1588,8 +1589,8 @@ static void ext4_da_release_space(struct inode *inode, int to_free)
+ 
+ 	release = to_free + mdb_free;
+ 
+-	/* update fs free blocks counter for truncate case */
+-	percpu_counter_add(&sbi->s_freeblocks_counter, release);
++	/* update fs dirty blocks counter for truncate case */
++	percpu_counter_sub(&sbi->s_dirtyblocks_counter, release);
+ 
+ 	/* update per-inode reservations */
+ 	BUG_ON(to_free > EXT4_I(inode)->i_reserved_data_blocks);
+@@ -2471,7 +2472,6 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 	index = pos >> PAGE_CACHE_SHIFT;
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+ 	to = from + len;
+-
+ retry:
+ 	/*
+ 	 * With delayed allocation, we don't log the i_disksize update
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index e4f30de..3ab3444 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2880,7 +2880,7 @@ void exit_ext4_mballoc(void)
+  */
+ static noinline_for_stack int
+ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+-				handle_t *handle)
++				handle_t *handle, unsigned long reserv_blks)
+ {
+ 	struct buffer_head *bitmap_bh = NULL;
+ 	struct ext4_super_block *es;
+@@ -2969,21 +2969,16 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	le16_add_cpu(&gdp->bg_free_blocks_count, -ac->ac_b_ex.fe_len);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
+-
++	percpu_counter_sub(&sbi->s_freeblocks_counter, ac->ac_b_ex.fe_len);
+ 	/*
+-	 * free blocks account has already be reduced/reserved
+-	 * at write_begin() time for delayed allocation
+-	 * do not double accounting
++	 * Now reduce the dirty block count also. Should not go negative
+ 	 */
+-	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED) &&
+-			ac->ac_o_ex.fe_len != ac->ac_b_ex.fe_len) {
+-		/*
+-		 * we allocated less blocks than we calimed
+-		 * Add the difference back
+-		 */
+-		percpu_counter_add(&sbi->s_freeblocks_counter,
+-				ac->ac_o_ex.fe_len - ac->ac_b_ex.fe_len);
+-	}
++	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
++		/* release all the reserved blocks if non delalloc */
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
++	else
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
++						ac->ac_b_ex.fe_len);
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi,
+@@ -4376,12 +4371,13 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
+ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 				 struct ext4_allocation_request *ar, int *errp)
+ {
++	int freed;
+ 	struct ext4_allocation_context *ac = NULL;
+ 	struct ext4_sb_info *sbi;
+ 	struct super_block *sb;
+ 	ext4_fsblk_t block = 0;
+-	int freed;
+-	int inquota;
++	unsigned long inquota;
++	unsigned long reserv_blks = 0;
+ 
+ 	sb = ar->inode->i_sb;
+ 	sbi = EXT4_SB(sb);
+@@ -4404,6 +4400,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 			*errp = -ENOSPC;
+ 			return 0;
+ 		}
++		reserv_blks = ar->len;
+ 	}
+ 	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
+ 		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
+@@ -4450,7 +4447,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
  	}
  
-Index: linux-2.6.27-rc9-ex4-1/include/linux/jbd2.h
-===================================================================
---- linux-2.6.27-rc9-ex4-1.orig/include/linux/jbd2.h
-+++ linux-2.6.27-rc9-ex4-1/include/linux/jbd2.h
-@@ -968,6 +968,9 @@ struct journal_s
- #define JBD2_LOADED	0x010	/* The journal superblock has been loaded */
- #define JBD2_BARRIER	0x020	/* Use IDE barriers */
- #define JBD2_LOCK_HACK	0x040	/* akpm's locking hack */
-+#define JBD2_ABORT_ON_SYNCDATA_ERR	0x080	/* Abort the journal on file
-+						 * data write error in ordered
-+						 * mode */
- 
- /*
-  * Function declarations for the journaling transaction and buffer
-
-
+ 	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
+-		*errp = ext4_mb_mark_diskspace_used(ac, handle);
++		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_blks);
+ 		if (*errp ==  -EAGAIN) {
+ 			ac->ac_b_ex.fe_group = 0;
+ 			ac->ac_b_ex.fe_start = 0;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7de6ca0..efa40d9 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -520,6 +520,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
++	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
+ 	brelse(sbi->s_sbh);
+ #ifdef CONFIG_QUOTA
+ 	for (i = 0; i < MAXQUOTAS; i++)
+@@ -2259,6 +2260,9 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		err = percpu_counter_init(&sbi->s_dirs_counter,
+ 				ext4_count_dirs(sb));
+ 	}
++	if (!err) {
++		err = percpu_counter_init(&sbi->s_dirtyblocks_counter, 0);
++	}
+ 	if (err) {
+ 		printk(KERN_ERR "EXT4-fs: insufficient memory\n");
+ 		goto failed_mount3;
+@@ -2491,6 +2495,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	percpu_counter_destroy(&sbi->s_freeblocks_counter);
+ 	percpu_counter_destroy(&sbi->s_freeinodes_counter);
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
++	percpu_counter_destroy(&sbi->s_dirtyblocks_counter);
+ failed_mount2:
+ 	for (i = 0; i < db_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+@@ -3169,7 +3174,8 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 	buf->f_type = EXT4_SUPER_MAGIC;
+ 	buf->f_bsize = sb->s_blocksize;
+ 	buf->f_blocks = ext4_blocks_count(es) - sbi->s_overhead_last;
+-	buf->f_bfree = percpu_counter_sum_positive(&sbi->s_freeblocks_counter);
++	buf->f_bfree = percpu_counter_sum_positive(&sbi->s_freeblocks_counter) -
++		       percpu_counter_sum_positive(&sbi->s_dirtyblocks_counter);
+ 	ext4_free_blocks_count_set(es, buf->f_bfree);
+ 	buf->f_bavail = buf->f_bfree - ext4_r_blocks_count(es);
+ 	if (buf->f_bfree < ext4_r_blocks_count(es))
+-- 
+1.6.0.1.285.g1070
 
