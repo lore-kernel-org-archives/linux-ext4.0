@@ -1,68 +1,93 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: Re: [PATCH] logsave : Avoid unnecessary backgrounding of logsave in case of failures
-Date: Sat, 11 Oct 2008 00:18:09 +0530
-Message-ID: <ea11fea30810101148v1176734idf77a838b7401302@mail.gmail.com>
-References: <ea11fea30810071044l6d8887e0udb52342f82412e4a@mail.gmail.com>
-	 <20081010183157.GD8645@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] debugfs : Fix printing of pathnames with ncheck if
+	files have hardlinks in same directory.
+Date: Fri, 10 Oct 2008 14:57:15 -0400
+Message-ID: <20081010185715.GE8645@mit.edu>
+References: <ea11fea30810091034k56788d54ka794fdde914f6616@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: ext4 <linux-ext4@vger.kernel.org>
-To: "Theodore Tso" <tytso@mit.edu>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f16.google.com ([209.85.217.16]:62290 "EHLO
-	mail-gx0-f16.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756053AbYJJSsM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 14:48:12 -0400
-Received: by gxk9 with SMTP id 9so1151236gxk.13
-        for <linux-ext4@vger.kernel.org>; Fri, 10 Oct 2008 11:48:10 -0700 (PDT)
-In-Reply-To: <20081010183157.GD8645@mit.edu>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:48897 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1758412AbYJJS5R (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 14:57:17 -0400
 Content-Disposition: inline
+In-Reply-To: <ea11fea30810091034k56788d54ka794fdde914f6616@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 11, 2008 at 12:01 AM, Theodore Tso <tytso@mit.edu> wrote:
-> On Tue, Oct 07, 2008 at 11:14:11PM +0530, Manish Katiyar wrote:
->> Hi Ted,
->>
->> I am not sure why we wan't to background the logsave and keep retrying
->> opening the fd in case of failures.
->
-> That's one of the main reason why logsave exists; the filesystem
-> containing /var/log might not be mounted, or the root filesystem may
-> be mounted read-only, and so the log file can't be written until the
-> filesystem is remounted r/w or /var is mounted.
->
->> But there may be situations when we will never be able to succeed
->> and thus create unnecessary process. For example invoking it
->>
->> /home/mkatiyar/sbin> ./logsave /testfile ls
->
-> The main use of logsave was in init.d scripts.  So I didn't really
-> worry about the permissoin denied case.  Perhaps logsave should just
-> fail hard and not even run the command if there is a permission denied
-> error.  That would certainly be simpler...
->
->> +static void should_background(int err, int *nobackground) {
->> +     switch (err) {
->> +             case EPERM:
->> +             case EACCES:
->> +                     *nobackground = err;
->> +                     break;
->> +             default :
->> +                     *nobackground = 0;
->> +     }
->> +     return ;
->> +}
->
-> Why is this its own function?
+On Thu, Oct 09, 2008 at 11:04:45PM +0530, Manish Katiyar wrote:
+> Hi Ted,
+> 
+> Commit 03206bd introduced regression in ncheck while printing all the
+> pathnames of an inode. For files which have hardlink in the same
+> directory we will print the same pathname instead of all possible like
+> below :-
 
-I made it that way so that in future if we want to handle any more
-error numbers to bail out , we just need to add a case statement.
+This patch is a better way to fix things.  It fixes a memory leak,
+avoids the static variable, and avoids calling ext2fs_get_pathname
+multiple times for each directory.
 
-Thanks -
-Manish
+								- Ted
 
->
->                                                - Ted
->
+commit b4c36addc0279193018a4bb59871c5365db1489b
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Fri Oct 10 14:53:09 2008 -0400
+
+    debugfs: Fix ncheck when printing pathnames for multiple hardlinks in a directory
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/debugfs/ncheck.c b/debugfs/ncheck.c
+index 22fa29f..abb38a8 100644
+--- a/debugfs/ncheck.c
++++ b/debugfs/ncheck.c
+@@ -23,7 +23,7 @@ struct inode_walk_struct {
+ 	int			inodes_left;
+ 	int			num_inodes;
+ 	int			position;
+-	ext2_ino_t		parent;
++	char			*parent;
+ };
+ 
+ static int ncheck_proc(struct ext2_dir_entry *dirent,
+@@ -42,16 +42,8 @@ static int ncheck_proc(struct ext2_dir_entry *dirent,
+ 		return 0;
+ 	for (i=0; i < iw->num_inodes; i++) {
+ 		if (iw->iarray[i] == dirent->inode) {
+-			retval = ext2fs_get_pathname(current_fs, iw->parent,
+-						     iw->iarray[i], 
+-						     &pathname);
+-			if (retval)
+-				com_err("ncheck", retval,
+-					"while resolving pathname for "
+-					"inode %d (%d)", iw->parent, 
+-					iw->iarray[i]);
+-			else
+-				printf("%u\t%s\n", iw->iarray[i], pathname);
++			printf("%u\t%s/%*s\n", iw->iarray[i], iw->parent,
++			       (dirent->name_len & 0xFF), dirent->name);
+ 		}
+ 	}
+ 	if (!iw->inodes_left)
+@@ -124,10 +116,17 @@ void do_ncheck(int argc, char **argv)
+ 			goto next;
+ 
+ 		iw.position = 0;
+-		iw.parent = ino;
++
++		retval = ext2fs_get_pathname(current_fs, ino, 0, &iw.parent);
++		if (retval) {
++			com_err("ncheck", retval, 
++				"while calling ext2fs_get_pathname");
++			goto next;
++		}
+ 
+ 		retval = ext2fs_dir_iterate(current_fs, ino, 0, 0,
+ 					    ncheck_proc, &iw);
++		ext2fs_free_mem(&iw.parent);
+ 		if (retval) {
+ 			com_err("ncheck", retval,
+ 				"while calling ext2_dir_iterate");
