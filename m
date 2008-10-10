@@ -1,31 +1,33 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: fix blkid detection of ext4dev as ext4
-Date: Fri, 10 Oct 2008 13:49:19 -0400
-Message-ID: <20081010174919.GB8645@mit.edu>
-References: <48ECFD21.3080203@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH, RFC] ext4: Rename ext4dev to ext4
+Date: Fri, 10 Oct 2008 13:00:51 -0500
+Message-ID: <48EF9853.8070202@redhat.com>
+References: <1223356130-22006-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:47482 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S932091AbYJJRtV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 13:49:21 -0400
-Content-Disposition: inline
-In-Reply-To: <48ECFD21.3080203@redhat.com>
+Received: from mx2.redhat.com ([66.187.237.31]:51057 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760063AbYJJSAz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Oct 2008 14:00:55 -0400
+In-Reply-To: <1223356130-22006-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 08, 2008 at 01:34:09PM -0500, Eric Sandeen wrote:
-> If only ext4 is available (as a module or in /proc/filesystems)
-> blkid wasn't properly testing for it, because the time checks
-> were backwards and always failed.  This caused old ext4dev
-> filesystems to fail to mount as ext4.  With this patch it works
-> fine.
-> 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Theodore Ts'o wrote:
+> The ext4 filesystem is getting stable enough that it's time to drop
+> the "dev" prefix.  Also remove the requirement for the TEST_FILESYS
+> flag.
 
-thanks, applied.
+What do you think of adding a MODULE_ALIAS("ext4dev"); to this change?
 
-						- Ted
+Poor Fedora users trying to boot a kernel with this rename and ext4(dev)
+on root are failing to mount root at boot time.
+
+mkinitrd looks at the existing fstab, sees that the rootfs is "ext4dev"
+and tries to mount root as ext4dev.... this fails.
+
+-Eric
