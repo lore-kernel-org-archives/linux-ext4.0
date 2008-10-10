@@ -1,88 +1,92 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -V3 04/11] ext4: Add percpu dirty block accounting.
-Date: Thu, 09 Oct 2008 23:58:27 -0500
-Message-ID: <48EEE0F3.8060006@redhat.com>
-References: <1219850916-8986-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219850916-8986-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219850916-8986-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1219850916-8986-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <48EE6D43.7070404@redhat.com> <20081010045211.GC4301@skywalker>
+From: Dave Chinner <david@fromorbit.com>
+Subject: Re: [PATCH] Improve buffered streaming write ordering
+Date: Fri, 10 Oct 2008 16:13:39 +1100
+Message-ID: <20081010051339.GD8181@disturbed>
+References: <1222886451.9158.34.camel@think.oraclecorp.com> <20081001215239.ee2ae63f.akpm@linux-foundation.org> <1222950054.6745.18.camel@think.oraclecorp.com> <20081002181856.GB29613@skywalker> <20081002234309.GH30001@disturbed> <1223565080.14090.28.camel@think.oraclecorp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	ext4 <linux-ext4@vger.kernel.org>,
+	Christoph Hellwig <hch@infradead.org>
+To: Chris Mason <chris.mason@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37376 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751011AbYJJE6j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Oct 2008 00:58:39 -0400
-In-Reply-To: <20081010045211.GC4301@skywalker>
+Received: from ipmail05.adl2.internode.on.net ([203.16.214.145]:61557 "EHLO
+	ipmail05.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751317AbYJJFNp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Oct 2008 01:13:45 -0400
+Content-Disposition: inline
+In-Reply-To: <1223565080.14090.28.camel@think.oraclecorp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
+On Thu, Oct 09, 2008 at 11:11:20AM -0400, Chris Mason wrote:
+> On Fri, 2008-10-03 at 09:43 +1000, Dave Chinner wrote:
+> > On Thu, Oct 02, 2008 at 11:48:56PM +0530, Aneesh Kumar K.V wrote:
+> > > On Thu, Oct 02, 2008 at 08:20:54AM -0400, Chris Mason wrote:
+> > > > On Wed, 2008-10-01 at 21:52 -0700, Andrew Morton wrote:
+> > > > For a 4.5GB streaming buffered write, this printk inside
+> > > > ext4_da_writepage shows up 37,2429 times in /var/log/messages.
+> > > > 
+> > > 
+> > > Part of that can happen due to shrink_page_list -> pageout -> writepagee
+> > > call back with lots of unallocated buffer_heads(blocks).
+> > 
+> > Quite frankly, a simple streaming buffered write should *never*
+> > trigger writeback from the LRU in memory reclaim. That indicates
+> > that some feedback loop has broken down and we are not cleaning
+> > pages fast enough or perhaps in the correct order. Page reclaim in
+> > this case should be reclaiming clean pages (those that have already
+> > been written back), not writing back random dirty pages.
+> 
+> Here are some go faster stripes for the XFS buffered writeback.  This
+> patch has a lot of debatable features to it, but the idea is to show
+> which knobs are slowing us down today.
+> 
+> The first change is to avoid calling balance_dirty_pages_ratelimited on
+> every page.  When we know we're doing a largeish write it makes more
+> sense to balance things less often.  This might just mean our
+> ratelimit_pages magic value is too small.
 
-> Can you test this patch
+Ok, so how about doing something like this to reduce the
+number of balances on large writes, but causing at least one
+balance call for every write that occurs:
 
-This does fix my 10G-fallocate testcase.
+	int	nr = 0;
+	.....
+	while() {
+		....
+		if (!(nr % 256)) {
+			/* do balance */
+		}
+		nr++;
+		....
+	}
 
--Eric
+That way you get a balance on the first page on every write,
+but then hold off balancing on that write again for some
+number of pages.
 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 64eeb9a..6e81c38 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2800,7 +2800,7 @@ void exit_ext4_mballoc(void)
->   */
->  static noinline_for_stack int
->  ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
-> -				handle_t *handle)
-> +				handle_t *handle, unsigned long reserv_blks)
->  {
->  	struct buffer_head *bitmap_bh = NULL;
->  	struct ext4_super_block *es;
-> @@ -2893,7 +2893,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
->  	/*
->  	 * Now reduce the dirty block count also. Should not go negative
->  	 */
-> -	percpu_counter_sub(&sbi->s_dirtyblocks_counter, ac->ac_b_ex.fe_len);
-> +	percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
->  	if (sbi->s_log_groups_per_flex) {
->  		ext4_group_t flex_group = ext4_flex_group(sbi,
->  							  ac->ac_b_ex.fe_group);
-> @@ -4284,12 +4284,13 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
->  ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
->  				 struct ext4_allocation_request *ar, int *errp)
->  {
-> +	int freed;
->  	struct ext4_allocation_context *ac = NULL;
->  	struct ext4_sb_info *sbi;
->  	struct super_block *sb;
->  	ext4_fsblk_t block = 0;
-> -	int freed;
-> -	int inquota;
-> +	unsigned long inquota;
-> +	unsigned long reserv_blks;
->  
->  	sb = ar->inode->i_sb;
->  	sbi = EXT4_SB(sb);
-> @@ -4308,6 +4309,8 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
->  			return 0;
->  		}
->  	}
-> +	/* Number of reserv_blks for both delayed an non delayed allocation */
-> +	reserv_blks = ar->len;
->  	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
->  		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
->  		ar->len--;
-> @@ -4353,7 +4356,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
->  	}
->  
->  	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
-> -		*errp = ext4_mb_mark_diskspace_used(ac, handle);
-> +		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_blks);
->  		if (*errp ==  -EAGAIN) {
->  			ac->ac_b_ex.fe_group = 0;
->  			ac->ac_b_ex.fe_start = 0;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> The second change makes xfs bump wbc->nr_to_write (suggested by
+> Christoph), which probably makes delalloc go in bigger chunks.
 
+Hmmmm.  Reasonable theory. We used to do gigantic delalloc extents -
+we paid no attention to congestion and could allocate and write
+several GB at a time. Latency was an issue, though, so it got
+changed to be bound by nr_to_write.
+
+I guess we need to be issuing larger allocations. Can you remove
+you patches and see what effect using the allocsize mount
+option has on throughput? This changes the default delalloc EOF
+preallocation size, which means more or less allocations. The
+default is 64k and it can go as high as 1GB, IIRC.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
