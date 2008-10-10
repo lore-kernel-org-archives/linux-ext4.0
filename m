@@ -1,76 +1,31 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [patch 4/8] mm: write_cache_pages type overflow fix
-Date: Fri, 10 Oct 2008 12:34:56 -0400
-Message-ID: <20081010163456.GA7484@infradead.org>
-References: <20081009155039.139856823@suse.de> <20081009174822.516911376@suse.de> <20081009082336.GB6637@infradead.org> <20081010131030.GB16353@mit.edu> <20081010131325.GA16246@infradead.org> <20081010133719.GC16353@mit.edu> <1223646482.25004.13.camel@quoit> <20081010140535.GD16353@mit.edu> <20081010140829.GA7983@infradead.org> <20081010155447.GA14628@skywalker>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsprogs: fix blkid detection of ext4dev as ext4
+Date: Fri, 10 Oct 2008 13:49:19 -0400
+Message-ID: <20081010174919.GB8645@mit.edu>
+References: <48ECFD21.3080203@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Steven Whitehouse <steve@chygwyn.com>, npiggin@suse.de,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Mikulas Patocka <mpatocka@redhat.com>, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:37375 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756317AbYJJQiT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 12:38:19 -0400
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:47482 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S932091AbYJJRtV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 13:49:21 -0400
 Content-Disposition: inline
-In-Reply-To: <20081010155447.GA14628@skywalker>
+In-Reply-To: <48ECFD21.3080203@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 10, 2008 at 09:24:47PM +0530, Aneesh Kumar K.V wrote:
-> diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-> index bd91987..7599af2 100644
-> --- a/include/linux/writeback.h
-> +++ b/include/linux/writeback.h
-> @@ -63,6 +63,8 @@ struct writeback_control {
->  	unsigned for_writepages:1;	/* This is a writepages() call */
->  	unsigned range_cyclic:1;	/* range_start is cyclic */
->  	unsigned more_io:1;		/* more io to be dispatched */
-> +	/* flags which control the write_cache_pages behaviour */
-> +	int writeback_flags;
+On Wed, Oct 08, 2008 at 01:34:09PM -0500, Eric Sandeen wrote:
+> If only ext4 is available (as a module or in /proc/filesystems)
+> blkid wasn't properly testing for it, because the time checks
+> were backwards and always failed.  This caused old ext4dev
+> filesystems to fail to mount as ext4.  With this patch it works
+> fine.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-As Ted already said please follow the bitfields style already used.
+thanks, applied.
 
-> --- a/mm/page-writeback.c
-> +++ b/mm/page-writeback.c
-> @@ -876,11 +876,18 @@ int write_cache_pages(struct address_space *mapping,
->  	pgoff_t end;		/* Inclusive */
->  	int scanned = 0;
->  	int range_whole = 0;
-> +	int flags = wbc->writeback_flags;
-> +	long *nr_to_write, count;
->  
->  	if (wbc->nonblocking && bdi_write_congested(bdi)) {
->  		wbc->encountered_congestion = 1;
->  		return 0;
->  	}
-> +	if (flags & WB_NO_NRWRITE_UPDATE) {
-> +		count  = wbc->nr_to_write;
-> +		nr_to_write = &count;
-> +	} else
-> +		nr_to_write = &wbc->nr_to_write;
-
-I think we'd be better off always using a local variable and updating
-wbc->nr_to_write again before the exit for the !WB_NO_NRWRITE_UPDATE
-case.
-
-> -	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
-> +	if ((wbc->range_cyclic ||
-> +			(range_whole && wbc->nr_to_write > 0)) && 
-> +			(flags & ~WB_NO_INDEX_UPDATE)) {
->  		mapping->writeback_index = index;
-
-The conditional looks rather odd, what about:
-
-	if (!wbc->no_index_update &&
-	    (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
-
-Also I wonder what this is for.  Do you want what Chris did in his
-original patch in ext4 code, or is there another reason to not update
-the writeback_index sometimes?
-
+						- Ted
