@@ -1,25 +1,335 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [patch 4/8] mm: write_cache_pages type overflow fix
-Date: Fri, 10 Oct 2008 10:08:29 -0400
-Message-ID: <20081010140829.GA7983@infradead.org>
-References: <20081009155039.139856823@suse.de> <20081009174822.516911376@suse.de> <20081009082336.GB6637@infradead.org> <20081010131030.GB16353@mit.edu> <20081010131325.GA16246@infradead.org> <20081010133719.GC16353@mit.edu> <1223646482.25004.13.camel@quoit> <20081010140535.GD16353@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Steven Whitehouse <steve@chygwyn.com>,
-	Christoph Hellwig <hch@infradead.org>, npiggin@suse.de,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Mikulas Patocka <mpatocka@redhat.com>, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20081010140535.GD16353@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH updated] ext4: Use an rb tree for tracking blocks freed during transaction.
+Date: Fri, 10 Oct 2008 20:58:30 +0530
+Message-ID: <1223652510-13282-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from E23SMTP01.au.ibm.com ([202.81.18.162]:33144 "EHLO
+	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757865AbYJJP2n (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 11:28:43 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id m9AFSlge031774
+	for <linux-ext4@vger.kernel.org>; Sat, 11 Oct 2008 02:28:47 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9AFSdgH4563170
+	for <linux-ext4@vger.kernel.org>; Sat, 11 Oct 2008 02:28:39 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9AFScB0031370
+	for <linux-ext4@vger.kernel.org>; Sat, 11 Oct 2008 02:28:39 +1100
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 10, 2008 at 10:05:35AM -0400, Theodore Tso wrote:
-> 3) A version which (optionally via a flag in the wbc structure)
-> instructs write_cache_pages() to not pursue those updates.  This has
-> not been written yet.
+With this patch we track the block freed during a transaction using
+rb tree. We also make sure contiguos blocks freed are collected
+in one rb node.
 
-This one sounds best to me (although we'd have to actualy see it..)
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/mballoc.c |  170 ++++++++++++++++++++++++++++++++---------------------
+ fs/ext4/mballoc.h |   24 ++++++--
+ 2 files changed, 122 insertions(+), 72 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 1eee47a..083e91d 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2300,6 +2300,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 	}
+ 
+ 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
++	meta_group_info[i]->bb_free_root.rb_node = NULL;;
+ 
+ #ifdef DOUBLE_CHECK
+ 	{
+@@ -2647,13 +2648,11 @@ int ext4_mb_release(struct super_block *sb)
+ static noinline_for_stack void
+ ext4_mb_free_committed_blocks(struct super_block *sb)
+ {
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	int err;
+-	int i;
+-	int count = 0;
+-	int count2 = 0;
+-	struct ext4_free_metadata *md;
+ 	struct ext4_buddy e4b;
++	struct ext4_group_info *db;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int err, count = 0, count2 = 0;
++	struct ext4_free_data *entry;
+ 
+ 	if (list_empty(&sbi->s_committed_transaction))
+ 		return;
+@@ -2661,44 +2660,46 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
+ 	/* there is committed blocks to be freed yet */
+ 	do {
+ 		/* get next array of blocks */
+-		md = NULL;
++		entry = NULL;
+ 		spin_lock(&sbi->s_md_lock);
+ 		if (!list_empty(&sbi->s_committed_transaction)) {
+-			md = list_entry(sbi->s_committed_transaction.next,
+-					struct ext4_free_metadata, list);
+-			list_del(&md->list);
++			entry = list_entry(sbi->s_committed_transaction.next,
++					struct ext4_free_data, list);
++			list_del(&entry->list);
+ 		}
+ 		spin_unlock(&sbi->s_md_lock);
+ 
+-		if (md == NULL)
++		if (entry == NULL)
+ 			break;
+ 
+ 		mb_debug("gonna free %u blocks in group %lu (0x%p):",
+-				md->num, md->group, md);
++				entry->count, entry->group, entry);
+ 
+-		err = ext4_mb_load_buddy(sb, md->group, &e4b);
++		err = ext4_mb_load_buddy(sb, entry->group, &e4b);
+ 		/* we expect to find existing buddy because it's pinned */
+ 		BUG_ON(err != 0);
+ 
++		db = e4b.bd_info;
+ 		/* there are blocks to put in buddy to make them really free */
+-		count += md->num;
++		count += entry->count;
+ 		count2++;
+-		ext4_lock_group(sb, md->group);
+-		for (i = 0; i < md->num; i++) {
+-			mb_debug(" %u", md->blocks[i]);
+-			mb_free_blocks(NULL, &e4b, md->blocks[i], 1);
++		ext4_lock_group(sb, entry->group);
++		/* Take it out of per group rb tree */
++		rb_erase(&entry->node, &(db->bb_free_root));
++		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
++
++		if (!db->bb_free_root.rb_node) {
++			/* No more items in the per group rb tree
++			 * balance refcounts from ext4_mb_free_metadata()
++			 */
++			page_cache_release(e4b.bd_buddy_page);
++			page_cache_release(e4b.bd_bitmap_page);
+ 		}
+-		mb_debug("\n");
+-		ext4_unlock_group(sb, md->group);
++		ext4_unlock_group(sb, entry->group);
+ 
+-		/* balance refcounts from ext4_mb_free_metadata() */
+-		page_cache_release(e4b.bd_buddy_page);
+-		page_cache_release(e4b.bd_bitmap_page);
+-
+-		kfree(md);
++		kmem_cache_free(ext4_free_ext_cachep, entry);
+ 		ext4_mb_release_desc(&e4b);
+-
+-	} while (md);
++	} while (1);
+ 
+ 	mb_debug("freed %u blocks in %u structures\n", count, count2);
+ }
+@@ -2771,6 +2772,16 @@ int __init init_ext4_mballoc(void)
+ 		kmem_cache_destroy(ext4_pspace_cachep);
+ 		return -ENOMEM;
+ 	}
++
++	ext4_free_ext_cachep =
++		kmem_cache_create("ext4_free_block_extents",
++				     sizeof(struct ext4_free_data),
++				     0, SLAB_RECLAIM_ACCOUNT, NULL);
++	if (ext4_free_ext_cachep == NULL) {
++		kmem_cache_destroy(ext4_pspace_cachep);
++		kmem_cache_destroy(ext4_ac_cachep);
++		return -ENOMEM;
++	}
+ 	return 0;
+ }
+ 
+@@ -2779,6 +2790,7 @@ void exit_ext4_mballoc(void)
+ 	/* XXX: synchronize_rcu(); */
+ 	kmem_cache_destroy(ext4_pspace_cachep);
+ 	kmem_cache_destroy(ext4_ac_cachep);
++	kmem_cache_destroy(ext4_free_ext_cachep);
+ }
+ 
+ 
+@@ -4415,6 +4427,14 @@ static void ext4_mb_poll_new_transaction(struct super_block *sb,
+ 	ext4_mb_free_committed_blocks(sb);
+ }
+ 
++static int can_merge(struct ext4_free_data *entry1,
++			struct ext4_free_data *entry2)
++{
++	if (entry1->start_blk + entry1->count == entry2->start_blk)
++		return 1;
++	return 0;
++}
++
+ static noinline_for_stack int
+ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 			  ext4_group_t group, ext4_grpblk_t block, int count)
+@@ -4422,57 +4442,73 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	struct ext4_group_info *db = e4b->bd_info;
+ 	struct super_block *sb = e4b->bd_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_free_metadata *md;
+-	int i;
++	struct ext4_free_data *entry, *new_entry;
++	struct rb_node **n = &db->bb_free_root.rb_node, *node;
++	struct rb_node *parent = NULL, *new_node;
++
+ 
+ 	BUG_ON(e4b->bd_bitmap_page == NULL);
+ 	BUG_ON(e4b->bd_buddy_page == NULL);
+ 
++	new_entry  = kmem_cache_alloc(ext4_free_ext_cachep, GFP_NOFS);
++	new_entry->start_blk = block;
++	new_entry->group  = group;
++	new_entry->count = count;
++	new_node = &new_entry->node;
++
+ 	ext4_lock_group(sb, group);
+-	for (i = 0; i < count; i++) {
+-		md = db->bb_md_cur;
+-		if (md && db->bb_tid != handle->h_transaction->t_tid) {
+-			db->bb_md_cur = NULL;
+-			md = NULL;
++	if (!*n) {
++		/* first free block exent. We need to
++		   protect buddy cache from being freed,
++		 * otherwise we'll refresh it from
++		 * on-disk bitmap and lose not-yet-available
++		 * blocks */
++		page_cache_get(e4b->bd_buddy_page);
++		page_cache_get(e4b->bd_bitmap_page);
++	}
++	while (*n) {
++		parent = *n;
++		entry = rb_entry(parent, struct ext4_free_data, node);
++		if (block < entry->start_blk)
++			n = &(*n)->rb_left;
++		else if (block >= (entry->start_blk + entry->count))
++			n = &(*n)->rb_right;
++		else {
++			ext4_error(sb, __func__,
++			    "Double free of blocks %d (%d %d)\n",
++			    block, entry->start_blk, entry->count);
++			return 0;
+ 		}
++	}
+ 
+-		if (md == NULL) {
+-			ext4_unlock_group(sb, group);
+-			md = kmalloc(sizeof(*md), GFP_NOFS);
+-			if (md == NULL)
+-				return -ENOMEM;
+-			md->num = 0;
+-			md->group = group;
++	rb_link_node(new_node, parent, n);
++	rb_insert_color(new_node, &db->bb_free_root);
+ 
+-			ext4_lock_group(sb, group);
+-			if (db->bb_md_cur == NULL) {
+-				spin_lock(&sbi->s_md_lock);
+-				list_add(&md->list, &sbi->s_active_transaction);
+-				spin_unlock(&sbi->s_md_lock);
+-				/* protect buddy cache from being freed,
+-				 * otherwise we'll refresh it from
+-				 * on-disk bitmap and lose not-yet-available
+-				 * blocks */
+-				page_cache_get(e4b->bd_buddy_page);
+-				page_cache_get(e4b->bd_bitmap_page);
+-				db->bb_md_cur = md;
+-				db->bb_tid = handle->h_transaction->t_tid;
+-				mb_debug("new md 0x%p for group %lu\n",
+-						md, md->group);
+-			} else {
+-				kfree(md);
+-				md = db->bb_md_cur;
+-			}
++	/* Now try to see the extent can be merged to left and right */
++	node = rb_prev(new_node);
++	if (node) {
++		entry = rb_entry(node, struct ext4_free_data, node);
++		if (can_merge(entry, new_entry)) {
++			new_entry->start_blk = entry->start_blk;
++			new_entry->count += entry->count;
++			rb_erase(node, &(db->bb_free_root));
++			list_del(&entry->list);
+ 		}
++	}
+ 
+-		BUG_ON(md->num >= EXT4_BB_MAX_BLOCKS);
+-		md->blocks[md->num] = block + i;
+-		md->num++;
+-		if (md->num == EXT4_BB_MAX_BLOCKS) {
+-			/* no more space, put full container on a sb's list */
+-			db->bb_md_cur = NULL;
++	node = rb_next(new_node);
++	if (node) {
++		entry = rb_entry(node, struct ext4_free_data, node);
++		if (can_merge(new_entry, entry)) {
++			new_entry->count += entry->count;
++			rb_erase(node, &(db->bb_free_root));
++			list_del(&entry->list);
+ 		}
+ 	}
++	/* Add the extent to active_transaction list */
++	spin_lock(&sbi->s_md_lock);
++	list_add(&new_entry->list, &sbi->s_active_transaction);
++	spin_unlock(&sbi->s_md_lock);
+ 	ext4_unlock_group(sb, group);
+ 	return 0;
+ }
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index b3b4828..07dff39 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -98,23 +98,37 @@
+ 
+ static struct kmem_cache *ext4_pspace_cachep;
+ static struct kmem_cache *ext4_ac_cachep;
++static struct kmem_cache *ext4_free_ext_cachep;
+ 
+ #ifdef EXT4_BB_MAX_BLOCKS
+ #undef EXT4_BB_MAX_BLOCKS
+ #endif
+ #define EXT4_BB_MAX_BLOCKS	30
+ 
+-struct ext4_free_metadata {
++struct ext4_free_data {
++	/* this link the free block
++	 * information from group_info
++	 */
++	struct rb_node node;
++
++	/* group this free block
++	 * extent belong
++	 */
+ 	ext4_group_t group;
+-	unsigned short num;
+-	ext4_grpblk_t  blocks[EXT4_BB_MAX_BLOCKS];
++
++	/* free block extent */
++	ext4_grpblk_t start_blk;
++	ext4_grpblk_t count;
++
++	/* this link the free block
++	 * information from ext4_sb_info
++	 */
+ 	struct list_head list;
+ };
+ 
+ struct ext4_group_info {
+ 	unsigned long	bb_state;
+-	unsigned long	bb_tid;
+-	struct ext4_free_metadata *bb_md_cur;
++	struct rb_root  bb_free_root;
+ 	unsigned short	bb_first_free;
+ 	unsigned short	bb_free;
+ 	unsigned short	bb_fragments;
+-- 
+1.6.0.1.285.g1070
+
