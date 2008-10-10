@@ -1,45 +1,42 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [PATCH updated] ext4: Fix file fragmentation during large file
-	write.
-Date: Fri, 10 Oct 2008 15:15:18 -0400
-Message-ID: <1223666118.8209.23.camel@think.oraclecorp.com>
-References: <1223661776-20098-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] ext4: Rename ext4dev to ext4
+Date: Fri, 10 Oct 2008 15:46:56 -0400
+Message-ID: <20081010194656.GF8645@mit.edu>
+References: <1223356130-22006-1-git-send-email-tytso@mit.edu> <48EF9853.8070202@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	akpm@linux-foundation.org, hch@infradead.org, steve@chygwyn.com,
-	npiggin@suse.de, mpatocka@redhat.com, linux-mm@kvack.org,
-	inux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <1223661776-20098-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:53466 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1760060AbYJJTq6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 15:46:58 -0400
+Content-Disposition: inline
+In-Reply-To: <48EF9853.8070202@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-10-10 at 23:32 +0530, Aneesh Kumar K.V wrote:
-> The range_cyclic writeback mode use the address_space
-> writeback_index as the start index for writeback. With
-> delayed allocation we were updating writeback_index
-> wrongly resulting in highly fragmented file. Number of
-> extents reduced from 4000 to 27 for a 3GB file with
-> the below patch.
+On Fri, Oct 10, 2008 at 01:00:51PM -0500, Eric Sandeen wrote:
+> Theodore Ts'o wrote:
+> > The ext4 filesystem is getting stable enough that it's time to drop
+> > the "dev" prefix.  Also remove the requirement for the TEST_FILESYS
+> > flag.
 > 
-> The patch also removes the range_cont writeback mode
-> added for ext4 delayed allocation. Instead we add
-> two new flags in writeback_control which control
-> the behaviour of write_cache_pages.
+> What do you think of adding a MODULE_ALIAS("ext4dev"); to this change?
 > 
+> Poor Fedora users trying to boot a kernel with this rename and ext4(dev)
+> on root are failing to mount root at boot time.
+> 
+> mkinitrd looks at the existing fstab, sees that the rootfs is "ext4dev"
+> and tries to mount root as ext4dev.... this fails.
 
-I'm sorry, but I won't be able to test this until next wednesday.  In
-general, I like the structure of it, and I can see this being useful for
-other filesystems too.
+>From discussion on the irc channel; the MODULE_ALIAS() allows the
+filesystem to be loaded, but mount still tries to load the wrong
+filesystem, and so it fails.
 
--chris
+I guess one thing we *could* do is register both ext4dev and ext4....
+maybe with a config option for backwards compatibility?  And try to
+wean people off of it as quickly as possible.
 
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+							- Ted
