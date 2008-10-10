@@ -1,138 +1,167 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC] Btrfs mainline plans
-Date: Thu, 9 Oct 2008 23:01:31 -0400
-Message-ID: <20081010030131.GO17512@mit.edu>
-References: <1222717460.30627.56.camel@think.oraclecorp.com> <20081005141113.GA6132@us.ibm.com> <20081005150957.GC12047@cs181140183.pp.htv.fi> <200810081433.32766.phillips@phunq.net> <20081009082234.GA17013@cs181140183.pp.htv.fi>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Daniel Phillips <phillips@phunq.net>,
-	"Serge E. Hallyn" <serue@us.ibm.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Chris Mason <chris.mason@oracle.com>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Adrian Bunk <bunk@kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20081009082234.GA17013@cs181140183.pp.htv.fi>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: New ext4 patchset: 2.6.27-ext4-1
+Date: Fri, 10 Oct 2008 00:38:31 -0400
+Message-ID: <E1Ko9ln-0004sS-UM@closure.thunk.org>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:56362 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751340AbYJJEie (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 00:38:34 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-I've refrained from commenting on this thread mainly because I've been
-hugely busy between (a) Linux Foundation 2009 budget planning, (b)
-preparing for the Linux Foundation end user summit, (c) making sure
-ext4 tree was ready for the opening of the 2.6.28 merge window, and a
-million other things --- and because I think this thread is largely
-pointless.  At the end of the day, it's mostly Adrian arguing against
-early merging, and if Andrew is favor of merging btrfs this point, and
-given Linus preferences for early merging of things like device
-drivers, it's going to happen regardless of Adrian's opinions.
 
->From the point of the filesystem, it's all upside to be merged into
-the kernel mainline.  We've *always* said that we strongly discourage
-out-of-tree kernel modules, whether it's device drivers or externally
-maintained filesystems whether it's binary VxFS or ClearCase
-filesystem (which is GPL'ed and yet maintained out of tree for a
-variety of reasons).  One of the things that we do in order to
-strongly discourage out of tree drivers/filesystems is that we
-constantly make changes to the API, without regard to making life easy
-to the out-of-tree kernel module.  Most of the time the changes are
-justified --- although sometimes people have suspected that some
-changes made had benefits that were so marginal that it seemed that
-the main justification was to screw over externally maintained
-drivers/filesystems.  Whether or not that's true, the official party
-line is that we show no mercy towards externally maintained device
-drivers (even ones that are GPL'ed); the Right Answer is that they
-should be part of the mainline kernel.
+This new patchset adds better documentation for ext4 mount options and
+/proc/fs/ext4 files, and corrects the git commit authorship for a new
+patches in preparation for pushing to Linus.
 
-If that is true, there are very few justifications for keeping a
-proposed kernel module out of the tree.  The main consideration is
-whether the code will, in the long term, be maintainable.  There is
-some minimum level of quality that is needed, although there is some
-disagreement about what that level is; but probably what is more
-important is the reputation of the maintainer and how trusted that
-maintainer is to fix any problems which come up.  If we're going to be
-honest with ourselves, that's probably one of the reasons why Reiser4
-was never accepted.  Sure, there were technical problems with the
-code, but at the main day, the primary problem was that Hans didn't
-play well with others, especially those who tried to send him
-criticism and/or suggestions about how is code would be improved.  As
-a result, it drove away people who were willing to review his code,
-and no one was willing to speak up in his defense or give him the
-benefit of the doubt.
+As a git tree:
 
-As far as ext4 is concerned, being in the mainline was all upside, and
-I believe that having in the kernel *did* accelerate its progress.  It
-meant that kernel-wide API changes were applied automatically, and it
-meant that kernel developers who wanted to try out ext4 could do so
-quite easily.  Yes, in the past two releases I started maintaining
-patchsets against a stable kernel; this was mainly to support those
-users who didn't want to follow the latest git releases --- and that
-was a reflection that ext4 was mature enough that there were stable
-kernel users who were interested in using ext4.  I could have used the
--stable infrastructure, but ext4 was changing so rapidly that it was
-easier just to maintain a full patchset.  As a matter of fact,
-starting with 2.6.27, given that we'll be renaming ext4dev to ext4 in
-the 2.6.28 mergeset, the plan is that we'll be submitting patches to
-the -stable series.
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.27-ext4-1
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.27-ext4-1
 
-Yes, ext4 didn't go as quickly as I would have liked, but part of the
-problem was I personally didn't have enough time to review the patches
-being created by the various ext4 developers, and I wasn't about to
-merge patches until they were ready.  We didn't have enough senior
-developers on ext4, and it took a while for some of the developers
-assigned to the project to get up to speed.  (I was the most senior
-developer, but I've never had time assigned by my employer to work on
-ext4; it has always something I did on my own time, often late at
-night (hint: check the time this mail was sent, and when the last ext4
-patchset was sent out last night).  Fortunately, at this point a
-number of developers like Aneesh have become comfortable with the
-code, and good at writing patches that don't require major review and
-changes, and the addition of engineers hired by Red Hat, such as Eric
-and Val, have also helped immensely.
+As a patchset:
 
-As far as btrfs is concerned, one of the things that you may not know
-is that about a year ago (on November 12-13, 2007), a small group key
-filesystem developers, that included engineers employed by HP, Oracle,
-IBM, Intel, HP, and Red Hat, and whose experience included working
-with a large number of filesystems: ext2, ext4, ext4, ocfs2, lustre,
-btrfs, advfs, reiserfs, and xfs came together for a two day "next
-generation filesystem" (NGFS) workshop.  At the end of the that
-workshop, there was unaminous agreement (including from yours truly)
-that (a) Linux needed a next generation filesystem to be competitive,
-(b) Chris Mason's btrfs (with some changes/enhancements discussed
-during the workshop) was the best long-term solution for NGFS, and (c)
-because creating a new enterprise filesystem always takes longer than
-people expect, and even then, it takes a while for enterprise users to
-trust a new filesystem for their most critical data, ext4 in the next
-generation of filesystems was needed as the bridge to the NGFS.
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.27-ext4-1
 
-The reason why we made these recommendations was not to influence open
-source developers (which is why we haven't really talked about it a
-lot in venues like the LKML) but as recommendations to the management
-of the above-mentioned for assigning resources to the project.  (One
-of the recommendations we made was that a critical success factor was
-that knowledge about the filesystem must be spread throughout multiple
-vendors and distributions.)  But I think it is fair to say that btrfs
-isn't just a private a project of a single Linux kernel developer, but
-rather the design has been discussed and reviewed by a large number of
-experienced filesystem architects.  What *is* important is that Chris
-is a well-known kernel developer who is trusted to create and maintain
-quality kernel code, and his employer *has* apparently given him
-enough time that he can do a lot of personal, hands-on development.
+                                                        - Ted
 
-Given btrfs's current status, in terms of its functionality, even its
-format is not fully cast into stone yet, and given Chris's reputation
-and skills as a kernel devleoper, my personal opinion is that we would
-not be making a "special case exception" for btrfs to get it into
-mainline, but rather something which makes completely good sense.
+Akira Fujita (7):
+      ext4: online defrag: Add the EXT4_IOC_DEFRAG ioctl and defrag main function.
+      ext4: Fix compile error at defrag.c in the current ext4 patch
+      ext4: online defrag: Allocate new contiguous blocks with mballoc.
+      ext4: online defrag: Read and write file data with memory page.
+      ext4: online defrag: Exchange the blocks between two inodes.
+      ext4: online defrag: Add the EXT4_IOC_FIBMAP ioctl.
+      ext4: online defrag: Add the EXT4_IOC_GROUP_INFO ioctl.
 
-At the end of the day, though, it's not my opinion or Adrian's opinion
-that matters --- it's really Linus's call.  But if Linus were to ask
-my opinion, I would say, "Yes, absolutely --- we should merge btrfs
-into mainline."
+Alexey Dobriyan (1):
+      ext4: fix #11321: create /proc/ext4/*/stats more carefully
 
-Regards,
+Andi Kleen (1):
+      ext4: Avoid double dirtying of super block in ext4_put_super()
 
-							- Ted
+Aneesh Kumar K.V (14):
+      ext4: invalidate pages if delalloc block allocation fails.
+      ext4: Make sure all the block allocation paths reserve blocks
+      ext4: Retry block reservation
+      ext4: Add percpu dirty block accounting.
+      ext4: Switch to non delalloc mode when we are low on free blocks count.
+      ext4: Signed arithmetic fix
+      ext4: Fix ext4 nomballoc allocator for ENOSPC
+      ext4: Don't add the inode to journal handle until after the block is allocated
+      ext4: Retry block allocation if we have free blocks left
+      ext4: truncate block allocated on a failed ext4_write_begin
+      ext4: Properly update i_disksize.
+      ext4: elevate write count for migrate ioctl
+      ext4: hook the ext3 migration interface to the EXT4_IOC_SETFLAGS ioctl
+      ext4: undo the stable boundary patch changes
+
+Duane Griffin (1):
+      jbd2: abort instead of waiting for nonexistent transaction
+
+Eric Sandeen (3):
+      ext4: Avoid printk floods in the face of directory corruption
+      ext4: use percpu data structures for lg_prealloc_list
+      Hook ext4 to the vfs fiemap interface.
+
+Frederic Bohe (2):
+      Update flex_bg free blocks and free inodes counters when resizing.
+      ext4: fix initialization of UNINIT bitmap blocks
+
+Josef Bacik (1):
+      generic block based fiemap implementation
+
+Kalpak Shah (1):
+      ext4: fix xattr deadlock
+
+Li Zefan (1):
+      ext4: add missing unlock in ext4_check_descriptors() on error path
+
+Mark Fasheh (2):
+      vfs: vfs-level fiemap interface
+      ocfs2: fiemap support
+
+Mingming Cao (1):
+      percpu counter: clean up percpu_counter_sum_and_set()
+
+Theodore Ts'o (19):
+      ext4: Add printk priority levels to clean up checkpatch warnings
+      ext4: Fix long long checkpatch warnings
+      ext4: Fix whitespace checkpatch warnings/errors
+      jbd2: clean up how the journal device name is printed
+      ext4: Renumber EXT4_IOC_MIGRATE
+      ext4/jbd2: Avoid WARN() messages when failing to write to the superblock
+      ext4: Don't use 'struct dentry' for internal lookups
+      ext4: move /proc setup and teardown out of mballoc.c
+      ext4: Combine proc file handling into a single set of functions
+      ext4: Improve the documentation for ext4's /proc tunables
+      ext4: Use readahead when reading an inode from the inode table
+      ext4: Remove old legacy block allocator
+      ext4: Add debugging markers that can be used by systemtap
+      jbd2: Fix buffer head leak when writing the commit block
+      Update ext4 MAINTAINERS file
+      ext4: Rename ext4dev to ext4
+      ext4: Stable/Unstable boundary
+      Add a ioctl which dumps out all of the in-use buffer heads for a block device
+      ext4: akpm's locking hack to fix locking delays
+
+ Documentation/filesystems/ext4.txt   |    6 +
+ Documentation/filesystems/fiemap.txt |  228 ++++++
+ Documentation/filesystems/proc.txt   |   73 +-
+ MAINTAINERS                          |    5 +-
+ block/compat_ioctl.c                 |    1 +
+ block/ioctl.c                        |    5 +
+ fs/Kconfig                           |   74 +-
+ fs/Makefile                          |    2 +-
+ fs/buffer.c                          |   40 +
+ fs/ext2/ext2.h                       |    2 +
+ fs/ext2/file.c                       |    1 +
+ fs/ext2/inode.c                      |    8 +
+ fs/ext3/file.c                       |    1 +
+ fs/ext3/inode.c                      |    8 +
+ fs/ext4/Makefile                     |   12 +-
+ fs/ext4/acl.h                        |   12 +-
+ fs/ext4/balloc.c                     | 1457 ++-------------------------------
+ fs/ext4/bitmap.c                     |    6 +-
+ fs/ext4/defrag.c                     | 1495 ++++++++++++++++++++++++++++++++++
+ fs/ext4/dir.c                        |   64 +-
+ fs/ext4/ext4.h                       |  155 +++-
+ fs/ext4/ext4_extents.h               |   20 +
+ fs/ext4/ext4_i.h                     |   39 +-
+ fs/ext4/ext4_sb.h                    |   25 +-
+ fs/ext4/extents.c                    |  287 ++++++-
+ fs/ext4/file.c                       |   10 +-
+ fs/ext4/fsync.c                      |    7 +-
+ fs/ext4/hash.c                       |    8 +-
+ fs/ext4/ialloc.c                     |   71 +-
+ fs/ext4/inode.c                      |  622 +++++++++------
+ fs/ext4/ioctl.c                      |   89 +--
+ fs/ext4/mballoc.c                    |  208 ++----
+ fs/ext4/mballoc.h                    |    1 -
+ fs/ext4/migrate.c                    |   10 +-
+ fs/ext4/namei.c                      |  402 +++++-----
+ fs/ext4/resize.c                     |   33 +-
+ fs/ext4/super.c                      |  257 ++++--
+ fs/ext4/symlink.c                    |    8 +-
+ fs/ext4/xattr.c                      |   14 +-
+ fs/ext4/xattr.h                      |   12 +-
+ fs/ioctl.c                           |  273 +++++++
+ fs/jbd2/checkpoint.c                 |   22 +-
+ fs/jbd2/commit.c                     |   22 +-
+ fs/jbd2/journal.c                    |   75 +-
+ fs/jbd2/transaction.c                |   12 +-
+ fs/ocfs2/alloc.c                     |    9 -
+ fs/ocfs2/alloc.h                     |    9 +
+ fs/ocfs2/extent_map.c                |  346 +++++++--
+ fs/ocfs2/extent_map.h                |    3 +
+ fs/ocfs2/file.c                      |    1 +
+ include/linux/buffer_head.h          |    1 +
+ include/linux/ext3_fs.h              |    2 +
+ include/linux/fiemap.h               |   64 ++
+ include/linux/fs.h                   |   22 +
+ include/linux/jbd2.h                 |    4 +-
+ include/linux/percpu_counter.h       |   12 +-
+ lib/percpu_counter.c                 |    8 +-
+ 57 files changed, 4127 insertions(+), 2536 deletions(-)
