@@ -1,81 +1,56 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH][5/15] e2fsprogs-uninit-fixes.patch
-Date: Fri, 10 Oct 2008 14:26:20 -0400
-Message-ID: <20081010182619.GC8645@mit.edu>
-References: <1223289070.4007.85.camel@localhost>
+Subject: Re: [PATCH] logsave : Avoid unnecessary backgrounding of logsave
+	in case of failures
+Date: Fri, 10 Oct 2008 14:31:57 -0400
+Message-ID: <20081010183157.GD8645@mit.edu>
+References: <ea11fea30810071044l6d8887e0udb52342f82412e4a@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Kalpak Shah <Kalpak.Shah@Sun.COM>
+Cc: ext4 <linux-ext4@vger.kernel.org>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:51396 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:56473 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757709AbYJJS0X (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 14:26:23 -0400
+	with ESMTP id S1759469AbYJJSb6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Oct 2008 14:31:58 -0400
 Content-Disposition: inline
-In-Reply-To: <1223289070.4007.85.camel@localhost>
+In-Reply-To: <ea11fea30810071044l6d8887e0udb52342f82412e4a@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 06, 2008 at 04:01:10PM +0530, Kalpak Shah wrote:
-> Bug fixes for uninit_bg feature:
-> - display correct inode number during BG_INO_UNINIT and INOREF_IN_USED
-> errors
-> - restart e2fsck only once in case of above errors
-> - initialize bitmaps properly considering whether block group is uninit
-> or not (needed for e2freefrag)
+On Tue, Oct 07, 2008 at 11:14:11PM +0530, Manish Katiyar wrote:
+> Hi Ted,
 > 
-> Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
+> I am not sure why we wan't to background the logsave and keep retrying
+> opening the fd in case of failures. 
 
-> Bug fixes for uninit_bg feature:
-> - display correct inode number during BG_INO_UNINIT and INOREF_IN_USED errors
-> - restart e2fsck only once in case of above errors
-> - initialize bitmaps properly considering uninit or not (needed for e2freefrag)
+That's one of the main reason why logsave exists; the filesystem
+containing /var/log might not be mounted, or the root filesystem may
+be mounted read-only, and so the log file can't be written until the
+filesystem is remounted r/w or /var is mounted.
+
+> But there may be situations when we will never be able to succeed
+> and thus create unnecessary process. For example invoking it
 > 
-> Index: e2fsprogs-1.41.1/debugfs/set_fields.c
-> ===================================================================
-> --- e2fsprogs-1.41.1.orig/debugfs/set_fields.c
-> +++ e2fsprogs-1.41.1/debugfs/set_fields.c
-> @@ -566,6 +566,7 @@ void do_set_block_group_descriptor(int a
->  	}
->  
->  	set_gd = current_fs->group_desc[set_bg];
-> +	set_sb = *current_fs->super;
->  
->  	if (ss->func(ss, argv[3]) == 0) {
->  		current_fs->group_desc[set_bg] = set_gd;
+> /home/mkatiyar/sbin> ./logsave /testfile ls
 
-Why is this needed?  None of the table entries used by
-set_block_group_descriptor requires set_sb to be set?
+The main use of logsave was in init.d scripts.  So I didn't really
+worry about the permissoin denied case.  Perhaps logsave should just
+fail hard and not even run the command if there is a permission denied
+error.  That would certainly be simpler...
 
+> +static void should_background(int err, int *nobackground) {
+> +	switch (err) {
+> +		case EPERM:
+> +		case EACCES:
+> +			*nobackground = err;
+> +			break;
+> +		default :
+> +			*nobackground = 0;
+> +	}
+> +	return ;
+> +}
 
-> Index: e2fsprogs-1.41.1/e2fsck/problem.c
-> ===================================================================
-> --- e2fsprogs-1.41.1.orig/e2fsck/problem.c
-> +++ e2fsprogs-1.41.1/e2fsck/problem.c
-> @@ -1301,12 +1301,12 @@ static struct e2fsck_problem problem_tab
->  
->  	/* Inode found in group where _INODE_UNINIT is set */
->  	{ PR_2_INOREF_BG_INO_UNINIT,
-> -	  N_("@i %i found in @g %g where _INODE_UNINIT is set.  "),
-> +	  N_("@i %N found in @g %g where _INODE_UNINIT is set.  "),
->  	  PROMPT_FIX, PR_PREEN_OK },
->  
->  	/* Inode found in group unused inodes area */
->  	{ PR_2_INOREF_IN_UNUSED,
-> -	  N_("@i %i found in @g %g unused inodes area.  "),
-> +	  N_("@i %N found in @g %g unused inodes area.  "),
->  	  PROMPT_FIX, PR_PREEN_OK },
->  
+Why is this its own function?
 
-This doesn't look right.  %N prints pctx.num, which is set to the
-directory entry's offset.  It looks like %Di is the correct expansion,
-and maybe something like this:
-
-    @E references @i %Di in @g %g where _INODE_UNINIT is set.\n
-
-and
-
-    @E references @i %Di in @g %g unused inods area.\n
-
-							- Ted
+						- Ted
