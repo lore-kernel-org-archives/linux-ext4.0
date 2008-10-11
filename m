@@ -1,50 +1,51 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH -V3 04/11] ext4: Add percpu dirty block accounting.
-Date: Sat, 11 Oct 2008 15:10:07 -0600
-Message-ID: <20081011211007.GB2009@webber.adilger.int>
-References: <1219850916-8986-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1219850916-8986-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1219850916-8986-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1219850916-8986-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <48EE6D43.7070404@redhat.com>
+From: Alexander Beregalov <a.beregalov@gmail.com>
+Subject: [PATCH] ext4/super: fix build failure without procfs
+Date: Sun, 12 Oct 2008 01:52:16 +0400
+Message-ID: <20081011215216.GB25563@orion>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org,
-	Alex Zhuravlev <Alex.Zhuravlev@sun.com>
-To: Eric Sandeen <sandeen@redhat.com>
+To: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:60886 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760262AbYJKVKW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 17:10:22 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m9BLAJNa009296
-	for <linux-ext4@vger.kernel.org>; Sat, 11 Oct 2008 14:10:20 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0K8L00J01ET09D00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 11 Oct 2008 14:10:19 -0700 (PDT)
-In-reply-to: <48EE6D43.7070404@redhat.com>
-Content-disposition: inline
+Received: from fg-out-1718.google.com ([72.14.220.156]:29358 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753556AbYJKVwZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 17:52:25 -0400
+Received: by fg-out-1718.google.com with SMTP id 19so742149fgg.17
+        for <linux-ext4@vger.kernel.org>; Sat, 11 Oct 2008 14:52:23 -0700 (PDT)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Oct 09, 2008  15:44 -0500, Eric Sandeen wrote:
-> Somehow, though, we seem to be allocating only 2048 blocks at a time
-> (haven't worked out why, yet - this also seems problematic) - but at any
-> rate, losing (32767-2048) blocks in each loop from fallocate seems to be
-> causing this space loss and eventual ENOSPC.
+fs/ext4/super.c: In function 'ext4_fill_super':
+fs/ext4/super.c:2226: error: 'ext4_ui_proc_fops' undeclared (first use
+in this function)
+fs/ext4/super.c:2226: error: (Each undeclared identifier is reported
+only once
+fs/ext4/super.c:2226: error: for each function it appears in.)
 
-I believe the 2048-block (8MB) allocation limit is imposed by mballoc to
-avoid scanning the whole filesystem looking for huge chunks of free disk.
-That said, it would be nice if there IS lots of free space that this is
-allocated optimistically if possible.
+Signed-off-by: Alexander Beregalov <a.beregalov@gmail.com>
+---
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+ fs/ext4/super.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 0e661c5..29823d4 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2218,6 +2218,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 	}
+ 
++#ifdef CONFIG_PROC_FS
+ 	if (ext4_proc_root)
+ 		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
+ 
+@@ -2225,6 +2226,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 		proc_create_data("inode_readahead_blks", 0644, sbi->s_proc,
+ 				 &ext4_ui_proc_fops,
+ 				 &sbi->s_inode_readahead_blks);
++#endif
+ 
+ 	bgl_lock_init(&sbi->s_blockgroup_lock);
+ 
