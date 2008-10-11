@@ -1,64 +1,45 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH][5/15] e2fsprogs-uninit-fixes.patch
-Date: Sat, 11 Oct 2008 09:43:03 -0400
-Message-ID: <20081011134302.GC12662@mit.edu>
-References: <1223289070.4007.85.camel@localhost>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: Use an rb tree for tracking blocks freed during
+	transaction.
+Date: Sat, 11 Oct 2008 23:38:00 +0530
+Message-ID: <20081011180800.GA9662@skywalker>
+References: <1223566329-29434-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081011042738.GC8145@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Kalpak Shah <Kalpak.Shah@Sun.COM>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:50278 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752942AbYJKNnG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 09:43:06 -0400
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:43787 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932639AbYJKSIS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 14:08:18 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m9BI7MA4020645
+	for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2008 05:07:22 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9BI8G124309020
+	for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2008 05:08:16 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9BI8GZN020582
+	for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2008 05:08:16 +1100
 Content-Disposition: inline
-In-Reply-To: <1223289070.4007.85.camel@localhost>
+In-Reply-To: <20081011042738.GC8145@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 06, 2008 at 04:01:10PM +0530, Kalpak Shah wrote:
-> Bug fixes for uninit_bg feature:
-> - display correct inode number during BG_INO_UNINIT and INOREF_IN_USED
-> errors
-> - restart e2fsck only once in case of above errors
-> - initialize bitmaps properly considering whether block group is uninit
-> or not (needed for e2freefrag)
+On Sat, Oct 11, 2008 at 12:27:38AM -0400, Theodore Tso wrote:
+> On Thu, Oct 09, 2008 at 09:02:07PM +0530, Aneesh Kumar K.V wrote:
+> > With this patch we track the block freed during a transaction using
+> > rb tree. We also make sure contiguos blocks freed are collected
+> > in one rb node.
 > 
-> Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
-
-> Bug fixes for uninit_bg feature:
-> - display correct inode number during BG_INO_UNINIT and INOREF_IN_USED errors
-> - restart e2fsck only once in case of above errors
-> - initialize bitmaps properly considering uninit or not (needed for e2freefrag)
+> Thanks, I've added your recent set of patches to the ext4 patch queue.
+> I'm pretty sure I grabbed the correct (most recent) patches from the
+> mailing list, but please double check for me.
 > 
 
-Note: While I really do very much appreciate your diffs against the
-luster e2fsprogs tree, in the future, it would be *really* helpful if
-you could separate out patches so that each patch does only one thing.
-It makes it much easier to audit patches, and then if I end up taking
-some parts of a patch, but not all of it, it becomes easier on your
-end to match up what I've taken from what I haven't taken.  There are
-some hunks of this patch I which I will probably never take, such as
-the debugfs/set_fields.c patch, which as far as I can tell serves no
-purpose, and the addition of ext2fs_super_and_bgd_loc2() in
-lib/ext2fs/closefs.c (which as near as I can tell was taken from an
-earlier version of jose's 64-bit patches):
+I verified the patch queue. It looks fine. I also tested the latest
+patchqueue (I commented out the defrag patch because they were giving
+error during apply) on ABAT and all the tests PASSED.
 
-> + * XXX: Remove this when we upgrade our e2fsprogs patches. Also blk64_t has been
-> + * changed to blk_t here since this version does not have 64-bit support.
-> + */
-> +errcode_t ext2fs_super_and_bgd_loc2(ext2_filsys fs,
-
-
-If this had been separated into a second patch, it becomes easier to
-drop that one patch hunk from the patch.
-
-Anyway, just a suggestion....
-
-I will be trying to separate out a few of the bug fixes for the maint
-branch for an e2fsprogs 1.41.3 release, but most of this is going to
-be reserved for later in the master branch, after quite a bit of
-refinement.
-
-						- Ted
+-aneesh
