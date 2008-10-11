@@ -1,76 +1,81 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH updated] ext4: Fix file fragmentation during large file
-	write.
-Date: Sun, 12 Oct 2008 00:37:13 +0530
-Message-ID: <20081011190713.GC9662@skywalker>
-References: <1223661776-20098-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081011105152.GB29681@wotan.suse.de> <20081011181426.GB9662@skywalker>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] ext4: Improve the documentation for ext4's /proc	tunables
+Date: Sat, 11 Oct 2008 14:42:33 -0600
+Message-ID: <20081011204233.GX2009@webber.adilger.int>
+References: <E1Knyha-0004G7-S2@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	chris.mason@oracle.com, akpm@linux-foundation.org,
-	hch@infradead.org, steve@chygwyn.com, mpatocka@redhat.com,
-	linux-mm@kvack.org, inux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Nick Piggin <npiggin@suse.de>
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, Alex Tomas <bzzz@sun.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:60555 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759469AbYJKTHc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 15:07:32 -0400
-Content-Disposition: inline
-In-Reply-To: <20081011181426.GB9662@skywalker>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:60558 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752646AbYJKUm4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 16:42:56 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id m9BKgjj8008923
+	for <linux-ext4@vger.kernel.org>; Sat, 11 Oct 2008 13:42:55 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K8L00C01DG8QN00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sat, 11 Oct 2008 13:42:45 -0700 (PDT)
+In-reply-to: <E1Knyha-0004G7-S2@closure.thunk.org>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 11, 2008 at 11:44:26PM +0530, Aneesh Kumar K.V wrote:
-> On Sat, Oct 11, 2008 at 12:51:52PM +0200, Nick Piggin wrote:
-> > On Fri, Oct 10, 2008 at 11:32:56PM +0530, Aneesh Kumar K.V wrote:
-> > > The range_cyclic writeback mode use the address_space
-> > > writeback_index as the start index for writeback. With
-> > > delayed allocation we were updating writeback_index
-> > > wrongly resulting in highly fragmented file. Number of
-> > > extents reduced from 4000 to 27 for a 3GB file with
-> > > the below patch.
-> > > 
-> > > The patch also removes the range_cont writeback mode
-> > > added for ext4 delayed allocation. Instead we add
-> > > two new flags in writeback_control which control
-> > > the behaviour of write_cache_pages.
-> > 
-> > The mm/page-writeback.c changes look OK, although it loks like you've
-> > got rid of range_cont? Should we do a patch to get rid of it entirely
-> > from the tree first?
-> > 
-> > I don't mind rediffing my patchset on top of this, but this seems smaller
-> > and not strictly a bugfix so I would prefer to go the other way if you
-> > agree.
-> > 
-> > Seems like it could be broken up into several patches (eg. pagevec_lookup).
-> > 
-> > The results look very nice.
-> 
-> I actually tried to do that. But to do that and also achieve a working
-> bisect kernel, I will have to do the patches in below way
-> 
-> a) Introduce ext4_write_cache_pages
-> b) remove range_cont from write_cache_pages
-> c) Introduce the new flags to writeback_control
-> d) switch ext4 to use write_cache_pages.
-> 
-> I thought that involved lot of code which are later getting removed.
-> So i went for a single patch.
-> 
+On Oct 09, 2008  12:49 -0400, Theodore Ts'o wrote:
+> So I considered it a moral imperative to rewrite section 1.10 of
+> Documentation/filesystems/proc.txt.  I *think* I got the definitions of
+> the mballoc tuning parameters correct, but the original text made it
+> hard to understand what exactly some of these tuning parameters meant,
+> and so I was forced to go RTFS.   Alex, Andreas, could you quickly
+> double check the new documentation and make sure I got things right?
 
-Ok I did the split as below.
+Yes, looks reasonable.  A detailed description of mb_history is in the
+Lustre user manual section 20.7 (URL below) and your description matches
+the remaining manual entries pretty well:
+http://manual.lustre.org/manual/LustreManual16_HTML/LustreProc.html#50642991_pgfId-1290686
 
-a) ext4: Use tag dirty lookup during mpage_da_submit_io
-b) vfs: Remove the range_cont writeback mode.
-c) vfs: Add no_nrwrite_update and no_index_update writeback control flags
-d) ext4: Fix file fragmentation during large file write.
+Parameter	Description
 
-I have sent the updated patches to ext4 list and also to you. Let me
-know what you think. The final change is same as the old patch. So
-no new changes added
+pid		Process that made the allocation.
 
--aneesh
+inode		inode number allocated blocks
+
+goal		Initial request that came to mballoc
+		(group/block-in-group/number-of-blocks)
+
+result		What mballoc actually found for this request.
+
+found		Number of free chunks mballoc found and measured before
+		the final decision.
+
+grps		Number of groups mballoc scanned to satisfy the request.
+
+cr		Stage at which mballoc found the result:
+		0 - best in terms of resource allocation. The request was
+		    1MB or larger and was satisfied directly via the kernel
+		    buddy allocator.
+		1 - regular stage (good at resource consumption)
+		2 - fs is quite fragmented (not bad at resource consumption) 
+		3 - fs is very fragmented (worst at resource consumption)
+
+queue		Total bytes in active/queued sends.
+
+merge		Whether the request hit the goal. This is good as extents
+		code can now merge new blocks to existing extent, eliminating
+		the need for extents tree growth.
+
+tail		Number of blocks left free after the allocation breaks large
+		free chunks.
+
+broken		How large the broken chunk was. 
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
