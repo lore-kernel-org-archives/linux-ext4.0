@@ -1,45 +1,62 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Use an rb tree for tracking blocks freed during
-	transaction.
-Date: Sat, 11 Oct 2008 23:38:00 +0530
-Message-ID: <20081011180800.GA9662@skywalker>
-References: <1223566329-29434-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081011042738.GC8145@mit.edu>
+Subject: Re: [PATCH updated] ext4: Fix file fragmentation during large file
+	write.
+Date: Sat, 11 Oct 2008 23:44:26 +0530
+Message-ID: <20081011181426.GB9662@skywalker>
+References: <1223661776-20098-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081011105152.GB29681@wotan.suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	chris.mason@oracle.com, akpm@linux-foundation.org,
+	hch@infradead.org, steve@chygwyn.com, mpatocka@redhat.com,
+	linux-mm@kvack.org, inux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Nick Piggin <npiggin@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:43787 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932639AbYJKSIS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 14:08:18 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id m9BI7MA4020645
-	for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2008 05:07:22 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9BI8G124309020
-	for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2008 05:08:16 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9BI8GZN020582
-	for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2008 05:08:16 +1100
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:40340 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762327AbYJKSOw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 14:14:52 -0400
 Content-Disposition: inline
-In-Reply-To: <20081011042738.GC8145@mit.edu>
+In-Reply-To: <20081011105152.GB29681@wotan.suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 11, 2008 at 12:27:38AM -0400, Theodore Tso wrote:
-> On Thu, Oct 09, 2008 at 09:02:07PM +0530, Aneesh Kumar K.V wrote:
-> > With this patch we track the block freed during a transaction using
-> > rb tree. We also make sure contiguos blocks freed are collected
-> > in one rb node.
+On Sat, Oct 11, 2008 at 12:51:52PM +0200, Nick Piggin wrote:
+> On Fri, Oct 10, 2008 at 11:32:56PM +0530, Aneesh Kumar K.V wrote:
+> > The range_cyclic writeback mode use the address_space
+> > writeback_index as the start index for writeback. With
+> > delayed allocation we were updating writeback_index
+> > wrongly resulting in highly fragmented file. Number of
+> > extents reduced from 4000 to 27 for a 3GB file with
+> > the below patch.
+> > 
+> > The patch also removes the range_cont writeback mode
+> > added for ext4 delayed allocation. Instead we add
+> > two new flags in writeback_control which control
+> > the behaviour of write_cache_pages.
 > 
-> Thanks, I've added your recent set of patches to the ext4 patch queue.
-> I'm pretty sure I grabbed the correct (most recent) patches from the
-> mailing list, but please double check for me.
+> The mm/page-writeback.c changes look OK, although it loks like you've
+> got rid of range_cont? Should we do a patch to get rid of it entirely
+> from the tree first?
 > 
+> I don't mind rediffing my patchset on top of this, but this seems smaller
+> and not strictly a bugfix so I would prefer to go the other way if you
+> agree.
+> 
+> Seems like it could be broken up into several patches (eg. pagevec_lookup).
+> 
+> The results look very nice.
 
-I verified the patch queue. It looks fine. I also tested the latest
-patchqueue (I commented out the defrag patch because they were giving
-error during apply) on ABAT and all the tests PASSED.
+I actually tried to do that. But to do that and also achieve a working
+bisect kernel, I will have to do the patches in below way
+
+a) Introduce ext4_write_cache_pages
+b) remove range_cont from write_cache_pages
+c) Introduce the new flags to writeback_control
+d) switch ext4 to use write_cache_pages.
+
+I thought that involved lot of code which are later getting removed.
+So i went for a single patch.
 
 -aneesh
