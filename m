@@ -1,51 +1,36 @@
-From: Alexander Beregalov <a.beregalov@gmail.com>
-Subject: [PATCH] ext4/super: fix build failure without procfs
-Date: Sun, 12 Oct 2008 01:52:16 +0400
-Message-ID: <20081011215216.GB25563@orion>
+From: Jeremy Fitzhardinge <jeremy@goop.org>
+Subject: Re: [PATCH 42/42] ext4: Rename ext4dev to ext4
+Date: Sat, 11 Oct 2008 15:04:44 -0700
+Message-ID: <48F122FC.6040107@goop.org>
+References: <1223525160-9887-1-git-send-email-tytso@mit.edu> <1223525160-9887-26-git-send-email-tytso@mit.edu> <1223525160-9887-27-git-send-email-tytso@mit.edu> <1223525160-9887-28-git-send-email-tytso@mit.edu> <1223525160-9887-29-git-send-email-tytso@mit.edu> <1223525160-9887-30-git-send-email-tytso@mit.edu> <1223525160-9887-31-git-send-email-tytso@mit.edu> <1223525160-9887-32-git-send-email-tytso@mit.edu> <1223525160-9887-33-git-send-email-tytso@mit.edu> <1223525160-9887-34-git-send-email-tytso@mit.edu> <1223525160-9887-35-git-send-email-tytso@mit.edu> <1223525160-9887-36-git-send-email-tytso@mit.edu> <1223525160-9887-37-git-send-email-tytso@mit.edu> <1223525160-9887-38-git-send-email-tytso@mit.edu> <1223525160-9887-39-git-send-email-tytso@mit.edu> <1223525160-9887-40-git-send-email-tyts
+ o@mit.edu> <1223525160-9887-41-git-send-email-tytso@mit.edu> <1223525160-9887-42-git-send-email-tytso@mit.edu> <1223525160-9887-43-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.156]:29358 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753556AbYJKVwZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 17:52:25 -0400
-Received: by fg-out-1718.google.com with SMTP id 19so742149fgg.17
-        for <linux-ext4@vger.kernel.org>; Sat, 11 Oct 2008 14:52:23 -0700 (PDT)
-Content-Disposition: inline
+Received: from gw.goop.org ([64.81.55.164]:40712 "EHLO mail.goop.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755338AbYJKWEr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Oct 2008 18:04:47 -0400
+In-Reply-To: <1223525160-9887-43-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-fs/ext4/super.c: In function 'ext4_fill_super':
-fs/ext4/super.c:2226: error: 'ext4_ui_proc_fops' undeclared (first use
-in this function)
-fs/ext4/super.c:2226: error: (Each undeclared identifier is reported
-only once
-fs/ext4/super.c:2226: error: for each function it appears in.)
+Theodore Ts'o wrote:
+> The ext4 filesystem is getting stable enough that it's time to drop
+> the "dev" prefix.  Also remove the requirement for the TEST_FILESYS
+> flag.
+>   
 
-Signed-off-by: Alexander Beregalov <a.beregalov@gmail.com>
----
+Shouldn't you still register "ext4dev" as a filesystem type, so that old 
+setups won't suddenly break?  I just had this happen to me; I had to 
+work out why /home didn't mount.
 
- fs/ext4/super.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+> +obj-$(CONFIG_EXT4_FS)		+= ext4/ # Before ext2 so root fs can be ext4dev
+>   
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0e661c5..29823d4 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2218,6 +2218,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		goto failed_mount;
- 	}
- 
-+#ifdef CONFIG_PROC_FS
- 	if (ext4_proc_root)
- 		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
- 
-@@ -2225,6 +2226,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		proc_create_data("inode_readahead_blks", 0644, sbi->s_proc,
- 				 &ext4_ui_proc_fops,
- 				 &sbi->s_inode_readahead_blks);
-+#endif
- 
- 	bgl_lock_init(&sbi->s_blockgroup_lock);
- 
+s/ext4dev/ext4/
+
+    J
