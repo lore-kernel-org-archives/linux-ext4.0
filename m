@@ -1,62 +1,111 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH updated] ext4: Fix file fragmentation during large file
-	write.
-Date: Sat, 11 Oct 2008 23:44:26 +0530
-Message-ID: <20081011181426.GB9662@skywalker>
-References: <1223661776-20098-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081011105152.GB29681@wotan.suse.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	chris.mason@oracle.com, akpm@linux-foundation.org,
-	hch@infradead.org, steve@chygwyn.com, mpatocka@redhat.com,
-	linux-mm@kvack.org, inux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Nick Piggin <npiggin@suse.de>
+Subject: [PATCH 1/4] ext4: Use tag dirty lookup during mpage_da_submit_io
+Date: Sun, 12 Oct 2008 00:34:37 +0530
+Message-ID: <1223751880-16325-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com, npiggin@suse.de
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:40340 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762327AbYJKSOw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 14:14:52 -0400
-Content-Disposition: inline
-In-Reply-To: <20081011105152.GB29681@wotan.suse.de>
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:58017 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759591AbYJKTEs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 11 Oct 2008 15:04:48 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id m9BJ3VST015766
+	for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2008 06:03:31 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9BJ4kdw4366426
+	for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2008 06:04:46 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9BJ4jJW003822
+	for <linux-ext4@vger.kernel.org>; Sun, 12 Oct 2008 06:04:46 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 11, 2008 at 12:51:52PM +0200, Nick Piggin wrote:
-> On Fri, Oct 10, 2008 at 11:32:56PM +0530, Aneesh Kumar K.V wrote:
-> > The range_cyclic writeback mode use the address_space
-> > writeback_index as the start index for writeback. With
-> > delayed allocation we were updating writeback_index
-> > wrongly resulting in highly fragmented file. Number of
-> > extents reduced from 4000 to 27 for a 3GB file with
-> > the below patch.
-> > 
-> > The patch also removes the range_cont writeback mode
-> > added for ext4 delayed allocation. Instead we add
-> > two new flags in writeback_control which control
-> > the behaviour of write_cache_pages.
-> 
-> The mm/page-writeback.c changes look OK, although it loks like you've
-> got rid of range_cont? Should we do a patch to get rid of it entirely
-> from the tree first?
-> 
-> I don't mind rediffing my patchset on top of this, but this seems smaller
-> and not strictly a bugfix so I would prefer to go the other way if you
-> agree.
-> 
-> Seems like it could be broken up into several patches (eg. pagevec_lookup).
-> 
-> The results look very nice.
+This enables us to drop the range_cont writeback mode
+use from ext4_da_writepages.
 
-I actually tried to do that. But to do that and also achieve a working
-bisect kernel, I will have to do the patches in below way
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/inode.c |   30 +++++++++++++-----------------
+ 1 files changed, 13 insertions(+), 17 deletions(-)
 
-a) Introduce ext4_write_cache_pages
-b) remove range_cont from write_cache_pages
-c) Introduce the new flags to writeback_control
-d) switch ext4 to use write_cache_pages.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7c2820e..cba7960 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1656,17 +1656,23 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
+ 
+ 	while (index <= end) {
+ 		/* XXX: optimize tail */
+-		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
++		/*
++		 * We can use PAGECACHE_TAG_DIRTY lookup here because
++		 * even though we have cleared the dirty flag on the page
++		 * We still keep the page in the radix tree with tag
++		 * PAGECACHE_TAG_DIRTY. See clear_page_dirty_for_io.
++		 * The PAGECACHE_TAG_DIRTY is cleared in set_page_writeback
++		 * which is called via the below writepage callback.
++		 */
++		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
++					PAGECACHE_TAG_DIRTY,
++					min(end - index,
++					(pgoff_t)PAGEVEC_SIZE-1) + 1);
+ 		if (nr_pages == 0)
+ 			break;
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
+ 
+-			index = page->index;
+-			if (index > end)
+-				break;
+-			index++;
+-
+ 			err = mapping->a_ops->writepage(page, mpd->wbc);
+ 			if (!err)
+ 				mpd->pages_written++;
+@@ -2361,7 +2367,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 			      struct writeback_control *wbc)
+ {
+ 	handle_t *handle = NULL;
+-	loff_t range_start = 0;
+ 	struct mpage_da_data mpd;
+ 	struct inode *inode = mapping->host;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+@@ -2386,14 +2391,7 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 		wbc->nr_to_write = sbi->s_mb_stream_request;
+ 	}
+ 
+-	if (!wbc->range_cyclic)
+-		/*
+-		 * If range_cyclic is not set force range_cont
+-		 * and save the old writeback_index
+-		 */
+-		wbc->range_cont = 1;
+ 
+-	range_start =  wbc->range_start;
+ 	pages_skipped = wbc->pages_skipped;
+ 
+ 	mpd.wbc = wbc;
+@@ -2452,9 +2450,8 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 		wbc->nr_to_write = to_write;
+ 	}
+ 
+-	if (wbc->range_cont && (pages_skipped != wbc->pages_skipped)) {
++	if (!wbc->range_cyclic && (pages_skipped != wbc->pages_skipped)) {
+ 		/* We skipped pages in this loop */
+-		wbc->range_start = range_start;
+ 		wbc->nr_to_write = to_write +
+ 				wbc->pages_skipped - pages_skipped;
+ 		wbc->pages_skipped = pages_skipped;
+@@ -2463,7 +2460,6 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 
+ out_writepages:
+ 	wbc->nr_to_write = to_write - nr_to_writebump;
+-	wbc->range_start = range_start;
+ 	return ret;
+ }
+ 
+-- 
+1.6.0.2.514.g23abd3
 
-I thought that involved lot of code which are later getting removed.
-So i went for a single patch.
-
--aneesh
