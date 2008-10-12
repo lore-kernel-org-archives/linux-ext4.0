@@ -1,33 +1,53 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Don't reuse released data blocks untill
-	transaction commits
-Date: Sun, 12 Oct 2008 16:33:27 -0400
-Message-ID: <20081012203327.GG12662@mit.edu>
-References: <1223566329-29434-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1223566329-29434-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 updates for 2.6.27-git2
+Date: Sun, 12 Oct 2008 18:16:53 -0400
+Message-ID: <E1Kp9F7-0000Dd-RC@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:53640 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:39774 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753374AbYJLUeH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Oct 2008 16:34:07 -0400
-Content-Disposition: inline
-In-Reply-To: <1223566329-29434-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	with ESMTP id S1753398AbYJLWQ6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Oct 2008 18:16:58 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 09, 2008 at 09:02:08PM +0530, Aneesh Kumar K.V wrote:
-> We need to make sure we don't reuse the data blocks released
-> during the transaction untill the transaction commits. We force
-> this mode only for ordered and journalled mode. Writeback mode
-> already don't provided data consistency.
+Hi Linus,
 
-It might be a good idea in ext4_free_mb_metadata() to add a comment
-that the name of the function is a little bit of a misnomer...
+Please pull:
 
-BTW, you may want to check what I put in the patch queue, because
-iirc, I fixed up a few spelling/grammar in the patch comments.
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-      	      	       			       - Ted
+This fixes a typo in fs/Kconfig, a build problem when CONFIG_PROC_FS is
+not defined, and some patches that address error handling for disk write
+failures that had been forward ported from ext3 by Hidehiro-san that I
+hadn't time to audit before my last pull.
+
+Thanks!!
+
+                                                - Ted
+
+Alexander Beregalov (1):
+      ext4: fix build failure without procfs
+
+Hidehiro Kawai (5):
+      jbd2: abort when failed to log metadata buffers
+      jbd2: fix error handling for checkpoint io
+      ext4: add checks for errors from jbd2
+      jbd2: don't dirty original metadata buffer on abort
+      ext4: add an option to control error handling on file data
+
+Jan Engelhardt (1):
+      ext4: fix kconfig typo and extra whitespace
+
+ Documentation/filesystems/ext4.txt |    5 +++
+ fs/Kconfig                         |    4 +-
+ fs/ext4/ext4.h                     |    2 +
+ fs/ext4/ioctl.c                    |   12 ++++++---
+ fs/ext4/super.c                    |   41 +++++++++++++++++++++++++++---
+ fs/jbd2/checkpoint.c               |   49 +++++++++++++++++++++++++++---------
+ fs/jbd2/commit.c                   |   10 ++++++-
+ fs/jbd2/journal.c                  |   28 ++++++++++++++++----
+ fs/jbd2/recovery.c                 |    7 +++-
+ include/linux/jbd2.h               |    5 +++-
+ 10 files changed, 131 insertions(+), 32 deletions(-)
