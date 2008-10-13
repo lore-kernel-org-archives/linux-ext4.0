@@ -1,41 +1,26 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4 : Fix Kconfig typo for ext4dev
-Date: Mon, 13 Oct 2008 12:36:34 -0400
-Message-ID: <20081013163634.GB17792@mit.edu>
-References: <ea11fea30810130600w1883334ag8af2fd424906799@mail.gmail.com>
+Subject: Re: [PATCH] ext4: Free ext4_prealloc_space using kmem_cache_free
+Date: Mon, 13 Oct 2008 12:41:32 -0400
+Message-ID: <20081013164132.GC17792@mit.edu>
+References: <1223914443-25000-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 <linux-ext4@vger.kernel.org>
-To: Manish Katiyar <mkatiyar@gmail.com>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:41322 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:59754 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755741AbYJMQgh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Oct 2008 12:36:37 -0400
+	with ESMTP id S1755134AbYJMQls (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Oct 2008 12:41:48 -0400
 Content-Disposition: inline
-In-Reply-To: <ea11fea30810130600w1883334ag8af2fd424906799@mail.gmail.com>
+In-Reply-To: <1223914443-25000-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 13, 2008 at 06:30:57PM +0530, Manish Katiyar wrote:
-> Hi Ted,
-> 
-> Looks like there is one more instance where ext4dev should be changed
-> to ext4 because the module name will be "ext4" unless EXT4DEV_COMPAT
-> is selected.
-> 
+On Mon, Oct 13, 2008 at 09:44:03PM +0530, Aneesh Kumar K.V wrote:
+> We should use kmem_cache_free to free memory allocated
+> via kmem_cache_alloc
 
 Thanks, queued.
 
-FYI, I normally fix it up manually, but it would be preferred if you
-omitted the space before the colon, i.e.:
-
-Subject: [PATCH] ext4: Fix Kconfig typo for ext4dev
-
-instead of:
-
-Subject: [PATCH] ext4 : Fix Kconfig typo for ext4dev
-
-Thanks!!
-
-							- Ted
+						- Ted
