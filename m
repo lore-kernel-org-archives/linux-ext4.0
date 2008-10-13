@@ -1,343 +1,288 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] -V3 ext4: Use an rbtree for tracking blocks freed during transaction.
-Date: Mon, 13 Oct 2008 15:16:50 +0530
-Message-ID: <1223891210-18547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+Subject: Re: [PATCH 4/4] ext4: Fix file fragmentation during large file
+	write.
+Date: Mon, 13 Oct 2008 15:22:40 +0530
+Message-ID: <20081013095240.GB7819@skywalker>
+References: <1223751880-16325-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1223751880-16325-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1223751880-16325-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1223751880-16325-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <m31vyly2q8.fsf@dmon-lap.sw.ru>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com, npiggin@suse.de,
+	linux-ext4@vger.kernel.org
+To: Dmitri Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:59500 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761409AbYJMJrD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Oct 2008 05:47:03 -0400
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id m9D9kKoo027359
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Oct 2008 20:46:20 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9D9kxmE297224
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Oct 2008 20:46:59 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9D9kwKw021650
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Oct 2008 20:46:59 +1100
+Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:58859 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1762468AbYJMJxD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Oct 2008 05:53:03 -0400
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id m9D9pggj000309
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Oct 2008 20:51:42 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9D9r0Hu4829238
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Oct 2008 20:53:00 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9D9qxnd006957
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Oct 2008 20:52:59 +1100
+Content-Disposition: inline
+In-Reply-To: <m31vyly2q8.fsf@dmon-lap.sw.ru>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With this patch we track the block freed during a transaction using
-rb tree. We also make sure contiguous blocks freed are collected
-in one rb node.
+On Mon, Oct 13, 2008 at 12:31:43AM +0400, Dmitri Monakhov wrote:
+> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> writes:
+> 
+> > The range_cyclic writeback mode uses the address_space writeback_index
+> > as the start index for writeback.  With delayed allocation we were
+> > updating writeback_index wrongly resulting in highly fragmented file.
+> > Number of extents reduced from 4000 to 27 for a 3GB file with the below
+> > patch.
+> Hi i've played with fragmentation patches with following result:
+> I've had several crash and deadlocks
+> for example objects wasn't freed on umount:
+>  EXT4-fs: mballoc: 12800 blocks 13 reqs (6 success)
+>  EXT4-fs: mballoc: 7 extents scanned, 12 goal hits, 1 2^N hits, 0 breaks, 0 lost
+>  EXT4-fs: mballoc: 1 generated and it took 3024
+>  EXT4-fs: mballoc: 7608 preallocated, 1536 discarded
+>  slab error in kmem_cache_destroy(): cache `ext4_prealloc_space': Can't free all objects
+>  Pid: 7703, comm: rmmod Not tainted 2.6.27-rc8 #3
+> 
+>  Call Trace:
+>   [<ffffffff8028b011>] kmem_cache_destroy+0x7d/0xc0
+>   [<ffffffffa03ca057>] exit_ext4_mballoc+0x10/0x1e [ext4dev]
+>   [<ffffffffa03d35b3>] exit_ext4_fs+0x1f/0x2f [ext4dev]
+>   [<ffffffff80250dff>] sys_delete_module+0x199/0x1f3
+>   [<ffffffff8025d06e>] audit_syscall_entry+0x12d/0x160
+>   [<ffffffff8020be0b>] system_call_fastpath+0x16/0x1b
+> Some times sync has stuck.
+> I'm not shure is it because of current patch set, but where is at least one
+> brand new bug. See later.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
----
- fs/ext4/mballoc.c |  176 +++++++++++++++++++++++++++++++++--------------------
- fs/ext4/mballoc.h |   24 ++++++--
- 2 files changed, 128 insertions(+), 72 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index b580714..2f38754 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2300,6 +2300,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 	}
- 
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
-+	meta_group_info[i]->bb_free_root.rb_node = NULL;;
- 
- #ifdef DOUBLE_CHECK
- 	{
-@@ -2647,13 +2648,11 @@ int ext4_mb_release(struct super_block *sb)
- static noinline_for_stack void
- ext4_mb_free_committed_blocks(struct super_block *sb)
- {
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	int err;
--	int i;
--	int count = 0;
--	int count2 = 0;
--	struct ext4_free_metadata *md;
- 	struct ext4_buddy e4b;
-+	struct ext4_group_info *db;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	int err, count = 0, count2 = 0;
-+	struct ext4_free_data *entry;
- 
- 	if (list_empty(&sbi->s_committed_transaction))
- 		return;
-@@ -2661,44 +2660,46 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
- 	/* there is committed blocks to be freed yet */
- 	do {
- 		/* get next array of blocks */
--		md = NULL;
-+		entry = NULL;
- 		spin_lock(&sbi->s_md_lock);
- 		if (!list_empty(&sbi->s_committed_transaction)) {
--			md = list_entry(sbi->s_committed_transaction.next,
--					struct ext4_free_metadata, list);
--			list_del(&md->list);
-+			entry = list_entry(sbi->s_committed_transaction.next,
-+					struct ext4_free_data, list);
-+			list_del(&entry->list);
- 		}
- 		spin_unlock(&sbi->s_md_lock);
- 
--		if (md == NULL)
-+		if (entry == NULL)
- 			break;
- 
- 		mb_debug("gonna free %u blocks in group %lu (0x%p):",
--				md->num, md->group, md);
-+				entry->count, entry->group, entry);
- 
--		err = ext4_mb_load_buddy(sb, md->group, &e4b);
-+		err = ext4_mb_load_buddy(sb, entry->group, &e4b);
- 		/* we expect to find existing buddy because it's pinned */
- 		BUG_ON(err != 0);
- 
-+		db = e4b.bd_info;
- 		/* there are blocks to put in buddy to make them really free */
--		count += md->num;
-+		count += entry->count;
- 		count2++;
--		ext4_lock_group(sb, md->group);
--		for (i = 0; i < md->num; i++) {
--			mb_debug(" %u", md->blocks[i]);
--			mb_free_blocks(NULL, &e4b, md->blocks[i], 1);
-+		ext4_lock_group(sb, entry->group);
-+		/* Take it out of per group rb tree */
-+		rb_erase(&entry->node, &(db->bb_free_root));
-+		mb_free_blocks(NULL, &e4b, entry->start_blk, entry->count);
-+
-+		if (!db->bb_free_root.rb_node) {
-+			/* No more items in the per group rb tree
-+			 * balance refcounts from ext4_mb_free_metadata()
-+			 */
-+			page_cache_release(e4b.bd_buddy_page);
-+			page_cache_release(e4b.bd_bitmap_page);
- 		}
--		mb_debug("\n");
--		ext4_unlock_group(sb, md->group);
-+		ext4_unlock_group(sb, entry->group);
- 
--		/* balance refcounts from ext4_mb_free_metadata() */
--		page_cache_release(e4b.bd_buddy_page);
--		page_cache_release(e4b.bd_bitmap_page);
--
--		kfree(md);
-+		kmem_cache_free(ext4_free_ext_cachep, entry);
- 		ext4_mb_release_desc(&e4b);
--
--	} while (md);
-+	} while (1);
- 
- 	mb_debug("freed %u blocks in %u structures\n", count, count2);
- }
-@@ -2771,6 +2772,16 @@ int __init init_ext4_mballoc(void)
- 		kmem_cache_destroy(ext4_pspace_cachep);
- 		return -ENOMEM;
- 	}
-+
-+	ext4_free_ext_cachep =
-+		kmem_cache_create("ext4_free_block_extents",
-+				     sizeof(struct ext4_free_data),
-+				     0, SLAB_RECLAIM_ACCOUNT, NULL);
-+	if (ext4_free_ext_cachep == NULL) {
-+		kmem_cache_destroy(ext4_pspace_cachep);
-+		kmem_cache_destroy(ext4_ac_cachep);
-+		return -ENOMEM;
-+	}
- 	return 0;
- }
- 
-@@ -2779,6 +2790,7 @@ void exit_ext4_mballoc(void)
- 	/* XXX: synchronize_rcu(); */
- 	kmem_cache_destroy(ext4_pspace_cachep);
- 	kmem_cache_destroy(ext4_ac_cachep);
-+	kmem_cache_destroy(ext4_free_ext_cachep);
- }
- 
- 
-@@ -4415,6 +4427,14 @@ static void ext4_mb_poll_new_transaction(struct super_block *sb,
- 	ext4_mb_free_committed_blocks(sb);
- }
- 
-+static int can_merge(struct ext4_free_data *entry1,
-+			struct ext4_free_data *entry2)
-+{
-+	if (entry1->start_blk + entry1->count == entry2->start_blk)
-+		return 1;
-+	return 0;
-+}
-+
- static noinline_for_stack int
- ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 			  ext4_group_t group, ext4_grpblk_t block, int count)
-@@ -4422,57 +4442,79 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 	struct ext4_group_info *db = e4b->bd_info;
- 	struct super_block *sb = e4b->bd_sb;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct ext4_free_metadata *md;
--	int i;
-+	struct ext4_free_data *entry, *new_entry;
-+	struct rb_node **n = &db->bb_free_root.rb_node, *node;
-+	struct rb_node *parent = NULL, *new_node;
-+
- 
- 	BUG_ON(e4b->bd_bitmap_page == NULL);
- 	BUG_ON(e4b->bd_buddy_page == NULL);
- 
-+	new_entry  = kmem_cache_alloc(ext4_free_ext_cachep, GFP_NOFS);
-+	new_entry->start_blk = block;
-+	new_entry->group  = group;
-+	new_entry->count = count;
-+	new_node = &new_entry->node;
-+
- 	ext4_lock_group(sb, group);
--	for (i = 0; i < count; i++) {
--		md = db->bb_md_cur;
--		if (md && db->bb_tid != handle->h_transaction->t_tid) {
--			db->bb_md_cur = NULL;
--			md = NULL;
-+	if (!*n) {
-+		/* first free block exent. We need to
-+		   protect buddy cache from being freed,
-+		 * otherwise we'll refresh it from
-+		 * on-disk bitmap and lose not-yet-available
-+		 * blocks */
-+		page_cache_get(e4b->bd_buddy_page);
-+		page_cache_get(e4b->bd_bitmap_page);
-+	}
-+	while (*n) {
-+		parent = *n;
-+		entry = rb_entry(parent, struct ext4_free_data, node);
-+		if (block < entry->start_blk)
-+			n = &(*n)->rb_left;
-+		else if (block >= (entry->start_blk + entry->count))
-+			n = &(*n)->rb_right;
-+		else {
-+			ext4_error(sb, __func__,
-+			    "Double free of blocks %d (%d %d)\n",
-+			    block, entry->start_blk, entry->count);
-+			return 0;
- 		}
-+	}
- 
--		if (md == NULL) {
--			ext4_unlock_group(sb, group);
--			md = kmalloc(sizeof(*md), GFP_NOFS);
--			if (md == NULL)
--				return -ENOMEM;
--			md->num = 0;
--			md->group = group;
--
--			ext4_lock_group(sb, group);
--			if (db->bb_md_cur == NULL) {
--				spin_lock(&sbi->s_md_lock);
--				list_add(&md->list, &sbi->s_active_transaction);
--				spin_unlock(&sbi->s_md_lock);
--				/* protect buddy cache from being freed,
--				 * otherwise we'll refresh it from
--				 * on-disk bitmap and lose not-yet-available
--				 * blocks */
--				page_cache_get(e4b->bd_buddy_page);
--				page_cache_get(e4b->bd_bitmap_page);
--				db->bb_md_cur = md;
--				db->bb_tid = handle->h_transaction->t_tid;
--				mb_debug("new md 0x%p for group %lu\n",
--						md, md->group);
--			} else {
--				kfree(md);
--				md = db->bb_md_cur;
--			}
-+	rb_link_node(new_node, parent, n);
-+	rb_insert_color(new_node, &db->bb_free_root);
-+
-+	/* Now try to see the extent can be merged to left and right */
-+	node = rb_prev(new_node);
-+	if (node) {
-+		entry = rb_entry(node, struct ext4_free_data, node);
-+		if (can_merge(entry, new_entry)) {
-+			new_entry->start_blk = entry->start_blk;
-+			new_entry->count += entry->count;
-+			rb_erase(node, &(db->bb_free_root));
-+			spin_lock(&sbi->s_md_lock);
-+			list_del(&entry->list);
-+			spin_unlock(&sbi->s_md_lock);
-+			kmem_cache_free(ext4_free_ext_cachep, entry);
- 		}
-+	}
- 
--		BUG_ON(md->num >= EXT4_BB_MAX_BLOCKS);
--		md->blocks[md->num] = block + i;
--		md->num++;
--		if (md->num == EXT4_BB_MAX_BLOCKS) {
--			/* no more space, put full container on a sb's list */
--			db->bb_md_cur = NULL;
-+	node = rb_next(new_node);
-+	if (node) {
-+		entry = rb_entry(node, struct ext4_free_data, node);
-+		if (can_merge(new_entry, entry)) {
-+			new_entry->count += entry->count;
-+			rb_erase(node, &(db->bb_free_root));
-+			spin_lock(&sbi->s_md_lock);
-+			list_del(&entry->list);
-+			spin_unlock(&sbi->s_md_lock);
-+			kmem_cache_free(ext4_free_ext_cachep, entry);
- 		}
- 	}
-+	/* Add the extent to active_transaction list */
-+	spin_lock(&sbi->s_md_lock);
-+	list_add(&new_entry->list, &sbi->s_active_transaction);
-+	spin_unlock(&sbi->s_md_lock);
- 	ext4_unlock_group(sb, group);
- 	return 0;
- }
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index b3b4828..07dff39 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -98,23 +98,37 @@
- 
- static struct kmem_cache *ext4_pspace_cachep;
- static struct kmem_cache *ext4_ac_cachep;
-+static struct kmem_cache *ext4_free_ext_cachep;
- 
- #ifdef EXT4_BB_MAX_BLOCKS
- #undef EXT4_BB_MAX_BLOCKS
- #endif
- #define EXT4_BB_MAX_BLOCKS	30
- 
--struct ext4_free_metadata {
-+struct ext4_free_data {
-+	/* this link the free block
-+	 * information from group_info
-+	 */
-+	struct rb_node node;
-+
-+	/* group this free block
-+	 * extent belong
-+	 */
- 	ext4_group_t group;
--	unsigned short num;
--	ext4_grpblk_t  blocks[EXT4_BB_MAX_BLOCKS];
-+
-+	/* free block extent */
-+	ext4_grpblk_t start_blk;
-+	ext4_grpblk_t count;
-+
-+	/* this link the free block
-+	 * information from ext4_sb_info
-+	 */
- 	struct list_head list;
- };
- 
- struct ext4_group_info {
- 	unsigned long	bb_state;
--	unsigned long	bb_tid;
--	struct ext4_free_metadata *bb_md_cur;
-+	struct rb_root  bb_free_root;
- 	unsigned short	bb_first_free;
- 	unsigned short	bb_free;
- 	unsigned short	bb_fragments;
--- 
-1.6.0.2.514.g23abd3
+I can't reproduce this. I build ext as a module and tried to unload the
+module. Actually the umount should have released all the objects in
+slab. Can you get the /proc/slabinfo output when this happens ?
 
+
+> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> > Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+> > ---
+> >  fs/ext4/inode.c |   83 +++++++++++++++++++++++++++++++++----------------------
+> >  1 files changed, 50 insertions(+), 33 deletions(-)
+> >
+> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> > index cba7960..844c136 100644
+> > --- a/fs/ext4/inode.c
+> > +++ b/fs/ext4/inode.c
+> > @@ -1648,6 +1648,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
+> >  	int ret = 0, err, nr_pages, i;
+> >  	unsigned long index, end;
+> >  	struct pagevec pvec;
+> > +	long pages_skipped;
+> >  
+> >  	BUG_ON(mpd->next_page <= mpd->first_page);
+> >  	pagevec_init(&pvec, 0);
+> > @@ -1655,7 +1656,6 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
+> >  	end = mpd->next_page - 1;
+> [1] In fact mpd->next_page may be bigger whan (index + wbc->nr_to_write)
+> this result in incorrect math while exit from mpage_da_writepages()
+> Probably we have bound end_index here. 
+
+write_cache_pages also will write more than requested. The
+pagevec_lookup_tag can return more than nr_to_write page which
+implies wbc->nr_to_write can go negative.
+
+
+>        end = min(mpd->next_page, index +wbc->nr_to_write) -1;
+> >  
+> >  	while (index <= end) {
+> > -		/* XXX: optimize tail */
+> >  		/*
+> >  		 * We can use PAGECACHE_TAG_DIRTY lookup here because
+> >  		 * even though we have cleared the dirty flag on the page
+> > @@ -1673,8 +1673,13 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
+> >  		for (i = 0; i < nr_pages; i++) {
+> >  			struct page *page = pvec.pages[i];
+> >  
+> > +			pages_skipped = mpd->wbc->pages_skipped;
+> >  			err = mapping->a_ops->writepage(page, mpd->wbc);
+> > -			if (!err)
+> > +			if (!err && (pages_skipped == mpd->wbc->pages_skipped))
+> > +				/*
+> > +				 * have successfully written the page
+> > +				 * without skipping the same
+> > +				 */
+> >  				mpd->pages_written++;
+> >  			/*
+> >  			 * In error case, we have to continue because
+> > @@ -2110,7 +2115,6 @@ static int mpage_da_writepages(struct address_space *mapping,
+> >  			       struct writeback_control *wbc,
+> >  			       struct mpage_da_data *mpd)
+> >  {
+> > -	long to_write;
+> >  	int ret;
+> >  
+> >  	if (!mpd->get_block)
+> > @@ -2125,10 +2129,7 @@ static int mpage_da_writepages(struct address_space *mapping,
+> >  	mpd->pages_written = 0;
+> >  	mpd->retval = 0;
+> >  
+> > -	to_write = wbc->nr_to_write;
+> > -
+> >  	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, mpd);
+> > -
+> >  	/*
+> >  	 * Handle last extent of pages
+> >  	 */
+> > @@ -2137,7 +2138,7 @@ static int mpage_da_writepages(struct address_space *mapping,
+> >  			mpage_da_submit_io(mpd);
+> >  	}
+> >  
+> > -	wbc->nr_to_write = to_write - mpd->pages_written;
+> > +	wbc->nr_to_write -= mpd->pages_written;
+> due to [1] wbc->nr_write becomes negative here
+
+
+wbc->nr_ti_write can go negative right ?
+
+
+
+> >  	return ret;
+> >  }
+> >  
+> > @@ -2366,11 +2367,14 @@ static int ext4_da_writepages_trans_blocks(struct inode *inode)
+> >  static int ext4_da_writepages(struct address_space *mapping,
+> >  			      struct writeback_control *wbc)
+> >  {
+> > +	pgoff_t	index;
+> > +	int range_whole = 0;
+> >  	handle_t *handle = NULL;
+> > +	long pages_written = 0;
+> >  	struct mpage_da_data mpd;
+> >  	struct inode *inode = mapping->host;
+> > +	int no_nrwrite_update, no_index_update;
+> >  	int needed_blocks, ret = 0, nr_to_writebump = 0;
+> > -	long to_write, pages_skipped = 0;
+> >  	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
+> >  
+> >  	/*
+> > @@ -2390,16 +2394,27 @@ static int ext4_da_writepages(struct address_space *mapping,
+> >  		nr_to_writebump = sbi->s_mb_stream_request - wbc->nr_to_write;
+> >  		wbc->nr_to_write = sbi->s_mb_stream_request;
+> >  	}
+> > +	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
+> > +		range_whole = 1;
+> >  
+> > -
+> > -	pages_skipped = wbc->pages_skipped;
+> > +	if (wbc->range_cyclic)
+> > +		index = mapping->writeback_index;
+> > +	else
+> > +		index = wbc->range_start >> PAGE_CACHE_SHIFT;
+> >  
+> >  	mpd.wbc = wbc;
+> >  	mpd.inode = mapping->host;
+> >  
+> > -restart_loop:
+> > -	to_write = wbc->nr_to_write;
+> > -	while (!ret && to_write > 0) {
+> > +	/*
+> > +	 * we don't want write_cache_pages to update
+> > +	 * nr_to_write and writeback_index
+> > +	 */
+> > +	no_nrwrite_update = wbc->no_nrwrite_update;
+> > +	wbc->no_nrwrite_update = 1;
+> > +	no_index_update = wbc->no_index_update;
+> > +	wbc->no_index_update   = 1;
+> > +
+> > +	while (!ret && wbc->nr_to_write > 0) {
+> >  
+> >  		/*
+> >  		 * we  insert one extent at a time. So we need
+> > @@ -2420,46 +2435,48 @@ static int ext4_da_writepages(struct address_space *mapping,
+> >  			dump_stack();
+> >  			goto out_writepages;
+> >  		}
+> > -		to_write -= wbc->nr_to_write;
+> > -
+> >  		mpd.get_block = ext4_da_get_block_write;
+> >  		ret = mpage_da_writepages(mapping, wbc, &mpd);
+> >  
+> >  		ext4_journal_stop(handle);
+> >  
+> > -		if (mpd.retval == -ENOSPC)
+> > +		if (mpd.retval == -ENOSPC) {
+> > +			/* commit the transaction which would
+> > +			 * free blocks released in the transaction
+> > +			 * and try again
+> > +			 */
+> >  			jbd2_journal_force_commit_nested(sbi->s_journal);
+> > -
+> > -		/* reset the retry count */
+> > -		if (ret == MPAGE_DA_EXTENT_TAIL) {
+> > +			ret = 0;
+> > +		} else if (ret == MPAGE_DA_EXTENT_TAIL) {
+> >  			/*
+> >  			 * got one extent now try with
+> >  			 * rest of the pages
+> >  			 */
+> > -			to_write += wbc->nr_to_write;
+> > +			pages_written += mpd.pages_written;
+> >  			ret = 0;
+> > -		} else if (wbc->nr_to_write) {
+> > +		} else if (wbc->nr_to_write)
+> >  			/*
+> >  			 * There is no more writeout needed
+> >  			 * or we requested for a noblocking writeout
+> >  			 * and we found the device congested
+> >  			 */
+> > -			to_write += wbc->nr_to_write;
+> >  			break;
+> > -		}
+> > -		wbc->nr_to_write = to_write;
+> > -	}
+> > -
+> > -	if (!wbc->range_cyclic && (pages_skipped != wbc->pages_skipped)) {
+> > -		/* We skipped pages in this loop */
+> > -		wbc->nr_to_write = to_write +
+> > -				wbc->pages_skipped - pages_skipped;
+> > -		wbc->pages_skipped = pages_skipped;
+> > -		goto restart_loop;
+> >  	}
+> > +	/* Update index */
+> > +	index += pages_written;
+> > +	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+> > +		/*
+> > +		 * set the writeback_index so that range_cyclic
+> > +		 * mode will write it back later
+> > +		 */
+> > +		mapping->writeback_index = index;
+> >  
+> >  out_writepages:
+> > -	wbc->nr_to_write = to_write - nr_to_writebump;
+> > +	if (!no_nrwrite_update)
+> > +		wbc->no_nrwrite_update = 0;
+> > +	if (!no_index_update)
+> > +		wbc->no_index_update   = 0;
+> > +	wbc->nr_to_write -= nr_to_writebump;
+> >  	return ret;
+> >  }
+> BTW: please add following cleanup fix.
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 6efa4ca..c248cbc 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2603,7 +2603,7 @@ static int ext4_da_write_end(struct file *file,
+>  	handle_t *handle = ext4_journal_current_handle();
+>  	loff_t new_i_size;
+>  	unsigned long start, end;
+> -	int write_mode = (int)fsdata;
+> +	int write_mode = (int)(unsigned long)fsdata;
+> 
+>  	if (write_mode == FALL_BACK_TO_NONDELALLOC) {
+>  		if (ext4_should_order_data(inode)) {
+> 
+
+Eric Sandeen already fixed it in the pathqueue.I can also
+see mainline having the fix. Which kernel are you trying ?
+
+-aneesh
