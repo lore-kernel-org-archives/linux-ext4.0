@@ -1,53 +1,48 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 updates for 2.6.27-git2
-Date: Sun, 12 Oct 2008 18:16:53 -0400
-Message-ID: <E1Kp9F7-0000Dd-RC@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: What's in e2fsprogs.git (stable)
+Date: Mon, 13 Oct 2008 00:09:27 -0400
+Message-ID: <20081013040927.GK12662@mit.edu>
+References: <20080524234904.GC5970@mit.edu> <20080603023955.GK23119@mit.edu> <20080608024104.GA30132@mit.edu> <20080617120511.GC12448@mit.edu> <20080707213527.GV31490@mit.edu> <20080710220234.GC3447@mit.edu> <20080823165127.GB18169@mit.edu> <20080828033753.GF26987@mit.edu> <20080901205727.GH13069@mit.edu> <20081002134139.GB25164@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:39774 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:60630 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753398AbYJLWQ6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Oct 2008 18:16:58 -0400
+	with ESMTP id S1751619AbYJMEJa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Oct 2008 00:09:30 -0400
+Content-Disposition: inline
+In-Reply-To: <20081002134139.GB25164@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+I've just released e2fsprogs 1.41.3 to fix a few more bug fixes, and
+to smooth the transition from ext4dev to ext4, which will occur in
+2.6.28.  Distributions that are contemplating releasing e2fsprogs
+1.41.x are strongly recommended to use e2fsprogs 1.41.3.
 
-Please pull:
+* The 'maint' and 'master' branches have these fixes since the last
+  announcement:
 
-        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+Eric Sandeen (4):
+  e2fsprogs: fix blkid detection of ext4dev as ext4
+  unix_io: check for read-only devices when opening R/W
+  resize2fs: check for bogus new_size
+  e2fsck: exit from preenhalt if IO errors were encountered
 
-This fixes a typo in fs/Kconfig, a build problem when CONFIG_PROC_FS is
-not defined, and some patches that address error handling for disk write
-failures that had been forward ported from ext3 by Hidehiro-san that I
-hadn't time to audit before my last pull.
+Theodore Ts'o (8):
+  Update Makefile depend information for crc16.o
+  Fix parallel build problem with util/subst
+  debugfs: Fix ncheck when printing pathnames for multiple hardlinks
+      in a directory
+  libblkid: Fix file descriptor leak when checking for a module
+  e2fsck: Print the correct inode number for uninit-bg related
+      problem reports
+  e2fsck: Offer to clear the test_fs flag if ext4 is available
+  Update e2fsprogs translation template file
+  Update release notes, changelog, etc., for e2fsprogs 1.41.3 release
 
-Thanks!!
-
-                                                - Ted
-
-Alexander Beregalov (1):
-      ext4: fix build failure without procfs
-
-Hidehiro Kawai (5):
-      jbd2: abort when failed to log metadata buffers
-      jbd2: fix error handling for checkpoint io
-      ext4: add checks for errors from jbd2
-      jbd2: don't dirty original metadata buffer on abort
-      ext4: add an option to control error handling on file data
-
-Jan Engelhardt (1):
-      ext4: fix kconfig typo and extra whitespace
-
- Documentation/filesystems/ext4.txt |    5 +++
- fs/Kconfig                         |    4 +-
- fs/ext4/ext4.h                     |    2 +
- fs/ext4/ioctl.c                    |   12 ++++++---
- fs/ext4/super.c                    |   41 +++++++++++++++++++++++++++---
- fs/jbd2/checkpoint.c               |   49 +++++++++++++++++++++++++++---------
- fs/jbd2/commit.c                   |   10 ++++++-
- fs/jbd2/journal.c                  |   28 ++++++++++++++++----
- fs/jbd2/recovery.c                 |    7 +++-
- include/linux/jbd2.h               |    5 +++-
- 10 files changed, 131 insertions(+), 32 deletions(-)
+------
+URL's for the e2fsprogs repository:
+	git://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
+	http://www.kernel.org/pub/scm/fs/ext2/e2fsprogs.git
