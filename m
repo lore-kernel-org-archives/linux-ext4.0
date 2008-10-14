@@ -1,54 +1,83 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] vfs: Remove the range_cont writeback mode.
-Date: Tue, 14 Oct 2008 12:03:25 +0530
-Message-ID: <1223966008-6656-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] vfs: Add no_nrwrite_update and no_index_update writeback control flags
+Date: Tue, 14 Oct 2008 12:03:26 +0530
+Message-ID: <1223966008-6656-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1223966008-6656-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1223966008-6656-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1223966008-6656-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1223966008-6656-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 To: aneesh.kumar@linux.vnet.ibm.com, cmm@us.ibm.com, tytso@mit.edu,
 	sandeen@redhat.com
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1223966008-6656-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1223966008-6656-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Ext4 was the only user of range_cont writeback mode
-and ext4 switched to a different method. So remove
-the range_cont mode which is not used in the kernel.
+If no_nrwrite_update is set we don't update nr_to_write in
+write_cache_pages. Similarly if no_index_update is we don't
+update address space writeback_index. These changes enable a
+file system to skip these updates in write_cache_pages and do
+them in the writepages() callback. This patch will be followed
+by an ext4 patch that make use of these new flags.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 CC: linux-fsdevel@vger.kernel.org
 ---
- include/linux/writeback.h |    1 -
- mm/page-writeback.c       |    2 --
- 2 files changed, 0 insertions(+), 3 deletions(-)
+ include/linux/writeback.h |    4 ++++
+ mm/page-writeback.c       |    9 +++++++--
+ 2 files changed, 11 insertions(+), 2 deletions(-)
 
 diff --git a/include/linux/writeback.h b/include/linux/writeback.h
-index 12b15c5..bd91987 100644
+index bd91987..b04287e 100644
 --- a/include/linux/writeback.h
 +++ b/include/linux/writeback.h
-@@ -63,7 +63,6 @@ struct writeback_control {
+@@ -63,6 +63,10 @@ struct writeback_control {
  	unsigned for_writepages:1;	/* This is a writepages() call */
  	unsigned range_cyclic:1;	/* range_start is cyclic */
  	unsigned more_io:1;		/* more io to be dispatched */
--	unsigned range_cont:1;
++
++	/* write_cache_pages() control */
++	unsigned no_nrwrite_update:1;	/* don't update nr_to_write */
++	unsigned no_index_update:1;	/* don't update writeback_index */
  };
  
  /*
 diff --git a/mm/page-writeback.c b/mm/page-writeback.c
-index 24de8b6..718efa6 100644
+index 718efa6..4f359f4 100644
 --- a/mm/page-writeback.c
 +++ b/mm/page-writeback.c
-@@ -961,8 +961,6 @@ int write_cache_pages(struct address_space *mapping,
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
- 		mapping->writeback_index = index;
+@@ -876,6 +876,7 @@ int write_cache_pages(struct address_space *mapping,
+ 	pgoff_t end;		/* Inclusive */
+ 	int scanned = 0;
+ 	int range_whole = 0;
++	long nr_to_write = wbc->nr_to_write;
  
--	if (wbc->range_cont)
--		wbc->range_start = index << PAGE_CACHE_SHIFT;
+ 	if (wbc->nonblocking && bdi_write_congested(bdi)) {
+ 		wbc->encountered_congestion = 1;
+@@ -939,7 +940,7 @@ int write_cache_pages(struct address_space *mapping,
+ 				unlock_page(page);
+ 				ret = 0;
+ 			}
+-			if (ret || (--(wbc->nr_to_write) <= 0))
++			if (ret || (--nr_to_write <= 0))
+ 				done = 1;
+ 			if (wbc->nonblocking && bdi_write_congested(bdi)) {
+ 				wbc->encountered_congestion = 1;
+@@ -958,8 +959,12 @@ int write_cache_pages(struct address_space *mapping,
+ 		index = 0;
+ 		goto retry;
+ 	}
+-	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
++	if (!wbc->no_index_update &&
++		(wbc->range_cyclic || (range_whole && nr_to_write > 0))) {
+ 		mapping->writeback_index = index;
++	}
++	if (!wbc->no_nrwrite_update)
++		wbc->nr_to_write = nr_to_write;
+ 
  	return ret;
  }
- EXPORT_SYMBOL(write_cache_pages);
 -- 
 1.6.0.2.526.g5c283
 
