@@ -1,46 +1,57 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext3: sreadahead hooks
-Date: Tue, 14 Oct 2008 10:51:18 -0500
-Message-ID: <48F4BFF6.8060404@redhat.com>
-References: <20081014101735.04107779@infradead.org> <20081014151329.GA17926@infradead.org>
+Subject: [PATCH] blkid: recognize ext3 with test_fs set as ext3
+Date: Tue, 14 Oct 2008 12:27:15 -0500
+Message-ID: <48F4D673.8020202@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Arjan van de Ven <arjan@infradead.org>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
-To: Christoph Hellwig <hch@infradead.org>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39071 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:43874 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751046AbYJNPvo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Oct 2008 11:51:44 -0400
-In-Reply-To: <20081014151329.GA17926@infradead.org>
+	id S1751435AbYJNR1S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Oct 2008 13:27:18 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m9EHRHfc015288
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Oct 2008 13:27:17 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id m9EHRGVC003554
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Oct 2008 13:27:17 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id m9EHRF0i031361
+	for <linux-ext4@vger.kernel.org>; Tue, 14 Oct 2008 13:27:16 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Christoph Hellwig wrote:
-> On Tue, Oct 14, 2008 at 10:17:35AM -0400, Arjan van de Ven wrote:
->> >From 3d7a0ca0ee8a755251251bd9ddca0866c25acdc2 Mon Sep 17 00:00:00 2001
->> From: Arjan van de Ven <arjan@linux.intel.com>
->> Date: Tue, 14 Oct 2008 10:12:08 -0400
->> Subject: [PATCH] ext3: sreadahead hooks
->>
->> The sreadahead program, used to make the OS boot faster, needs to know in
->> the approximate order in files are used during the boot process. This patch
->> adds the ext3 hook for this functionality, basically it stores "jiffies"
->> into the inode at allocation time, and exposes it via an EXT3 ioctl (yes I
->> know but ioctl seems fitting for this).
-> 
-> Even if it's an ioctl there's absolutely no point in making this
-> fileystem specific.  Also the name is rather dumb and non-descriptive.
+It seems that if we have the test_filesystem flag set on an ext3
+filesystem(!) on a system which provides ext4, blkid gets confused.
 
-I have to agree, both the ioctl name and the new field are not very
-descriptive - created_when sounds an awful lot like ctime but it's not.
+According to the current logic:
 
-and INODE_JIFFIES really doesn't mean anything at all w/o extra context.
- But I'm trying to think of some nice names.  :)
+* It's not an ext4dev filesystem, because the system provides ext4.
+* It's not an ext4 filesystem, because it has no ext4 features.
+* It's not an ext3 filesystem, because the test flag is set.
 
-What about making a new struct inode field and doing this update in
-new_inode(), and making it a generic ioctl.  Are we ready to go that far?
+In the end, it's nothing.
 
--Eric
+blkid should return *something* that is mountable... I'm inclined to
+think that ext3 should be the right answer, if no ext4-specific features
+are set.
+
+This would mean just dropping the EXT2_FLAGS_TEST_FILESYS test in
+probe_ext3(), because ext4 & ext4dev probes have come first already.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+Index: e2fsprogs/lib/blkid/probe.c
+===================================================================
+--- e2fsprogs.orig/lib/blkid/probe.c
++++ e2fsprogs/lib/blkid/probe.c
+@@ -353,10 +353,6 @@ static int probe_ext3(struct blkid_probe
+ 	struct ext2_super_block *es;
+ 	es = (struct ext2_super_block *)buf;
+
+-	/* Distinguish from ext4dev */
+-	if (blkid_le32(es->s_flags) & EXT2_FLAGS_TEST_FILESYS)
+-		return -BLKID_ERR_PARAM;
