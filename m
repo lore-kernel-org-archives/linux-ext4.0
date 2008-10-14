@@ -1,27 +1,32 @@
-From: OXFAM <albertrodriguez1@cox.net>
-Subject: (unknown)
-Date: Mon, 13 Oct 2008 19:11:46 -0400
-Message-ID: <20081013191147.I8BOP.63147.imail@eastrmwml10>
-Reply-To: terrywilliams78@jmail.co.za
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 4/4] jbd2: don't dirty original metadata buffer on abort
+Date: Mon, 13 Oct 2008 22:58:14 -0400
+Message-ID: <20081014025814.GB9332@mit.edu>
+References: <48EF168A.4000705@hitachi.com> <48EF1A11.9090303@hitachi.com> <20081013203641.GA6469@mail.oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>, adilger@sun.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	akpm@linux-foundation.org, jack@suse.cz
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from eastrmmtai106.cox.net ([68.230.240.13]:37002 "EHLO
-	eastrmmtai106.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755766AbYJMXyJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Oct 2008 19:54:09 -0400
-Subject: 
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:44033 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755262AbYJNC6U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Oct 2008 22:58:20 -0400
+Content-Disposition: inline
+In-Reply-To: <20081013203641.GA6469@mail.oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Congratulation you have been awarded =C3=82=C2=A3850,000 from the OXFAM=
- GB - UK the cash/grant donation Promo Contac Dr.Terry Williams.Email (=
-terrywilliams78@jmail.co.za)Mr.Andrew Patrick Online Co-coordinator Qua=
-lification Number(OG/N231/E101/BDB)
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Mon, Oct 13, 2008 at 01:36:42PM -0700, Joel Becker wrote:
+> > This patch prevents original metadata buffers from being dirtied
+> > on abort by clearing BH_JBDDirty flag from those buffers.  Thus,
+> > no metadata buffers are written to the filesystem without journaling.
+> 
+> 	It's not my place to Ack such patches, but I noticed this bug
+> during Plumbers, and Eric and Andreas pointed me to this patch, which
+> fixes it quite nicely.  Just $0.02 :-)
+
+Already pushed to Linus, and in mainline.  :-)
+
+							- Ted
