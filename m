@@ -1,49 +1,96 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] vfs: Add no_nrwrite_update and no_index_update
-	writeback control flags
-Date: Tue, 14 Oct 2008 09:22:39 -0400
-Message-ID: <20081014132239.GA13960@infradead.org>
-References: <1223966008-6656-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1223966008-6656-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1223966008-6656-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1223966008-6656-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1223966008-6656-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Arjan van de Ven <arjan@infradead.org>
+Subject: [PATCH] ext3: sreadahead hooks
+Date: Tue, 14 Oct 2008 10:17:35 -0400
+Message-ID: <20081014101735.04107779@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 8BIT
+Cc: tytso@mit.edu
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:55594 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750789AbYJNNW5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Oct 2008 09:22:57 -0400
-Content-Disposition: inline
-In-Reply-To: <1223966008-6656-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from casper.infradead.org ([85.118.1.10]:47210 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750892AbYJNORg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 14 Oct 2008 10:17:36 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Oct 14, 2008 at 12:03:26PM +0530, Aneesh Kumar K.V wrote:
-> If no_nrwrite_update is set we don't update nr_to_write in
-> write_cache_pages. Similarly if no_index_update is we don't
-> update address space writeback_index. These changes enable a
-> file system to skip these updates in write_cache_pages and do
-> them in the writepages() callback. This patch will be followed
-> by an ext4 patch that make use of these new flags.
 
-I looked over this and discussed it a little with Ted and it looks good
-to me.
+>From 3d7a0ca0ee8a755251251bd9ddca0866c25acdc2 Mon Sep 17 00:00:00 2001
+From: Arjan van de Ven <arjan@linux.intel.com>
+Date: Tue, 14 Oct 2008 10:12:08 -0400
+Subject: [PATCH] ext3: sreadahead hooks
 
-> +	/* write_cache_pages() control */
-> +	unsigned no_nrwrite_update:1;	/* don't update nr_to_write */
-> +	unsigned no_index_update:1;	/* don't update writeback_index */
+The sreadahead program, used to make the OS boot faster, needs to know in
+the approximate order in files are used during the boot process. This patch
+adds the ext3 hook for this functionality, basically it stores "jiffies"
+into the inode at allocation time, and exposes it via an EXT3 ioctl (yes I
+know but ioctl seems fitting for this).
 
-But thinking about it I suspect we don't want to different flags for
-this, but just one.   This is done because the writepage callback may
-write back more pages than the one requested, nad becase of that both
-indices don't need to be updated.  Adding this rational to the flag
-description might also be rally helpful.
+Signed-off-by: Arjan van de Ven <arjan@linux.intel.com>
+---
+ fs/ext3/ioctl.c           |    3 +++
+ fs/ext3/super.c           |    1 +
+ include/linux/ext3_fs.h   |    1 +
+ include/linux/ext3_fs_i.h |    2 ++
+ 4 files changed, 7 insertions(+), 0 deletions(-)
 
-> +	if (!wbc->no_index_update &&
-> +		(wbc->range_cyclic || (range_whole && nr_to_write > 0))) {
+diff --git a/fs/ext3/ioctl.c b/fs/ext3/ioctl.c
+index 0d0c701..b196f71 100644
+--- a/fs/ext3/ioctl.c
++++ b/fs/ext3/ioctl.c
+@@ -286,6 +286,9 @@ group_add_out:
+ 		mnt_drop_write(filp->f_path.mnt);
+ 		return err;
+ 	}
++	case EXT3_IOC_INODE_JIFFIES: {
++		return ei->created_when;
++	}
+ 
+ 
+ 	default:
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index f38a5af..c2c83dd 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -456,6 +456,7 @@ static struct inode *ext3_alloc_inode(struct super_block *sb)
+ #endif
+ 	ei->i_block_alloc_info = NULL;
+ 	ei->vfs_inode.i_version = 1;
++	ei->created_when = jiffies;
+ 	return &ei->vfs_inode;
+ }
+ 
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 8120fa1..d1ba6b8 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -225,6 +225,7 @@ struct ext3_new_group_data {
+ #endif
+ #define EXT3_IOC_GETRSVSZ		_IOR('f', 5, long)
+ #define EXT3_IOC_SETRSVSZ		_IOW('f', 6, long)
++#define EXT3_IOC_INODE_JIFFIES		_IOR('f', 19, long)
+ 
+ /*
+  * ioctl commands in 32 bit emulation
+diff --git a/include/linux/ext3_fs_i.h b/include/linux/ext3_fs_i.h
+index 7894dd0..87d512a 100644
+--- a/include/linux/ext3_fs_i.h
++++ b/include/linux/ext3_fs_i.h
+@@ -141,6 +141,8 @@ struct ext3_inode_info {
+ 	 * by other means, so we have truncate_mutex.
+ 	 */
+ 	struct mutex truncate_mutex;
++	unsigned long		created_when; /* jiffies of creation time */	
++
+ 	struct inode vfs_inode;
+ };
+ 
+-- 
+1.5.5.1
 
-Might be a little too nitpicky, but can you follow normal indentation?
-Shouldn't matter anyway if the two flags are merged into one and this is
-split into two nested if conditions.
 
+-- 
+Arjan van de Ven 	Intel Open Source Technology Centre
+For development, discussion and tips for power savings, 
+visit http://www.lesswatts.org
