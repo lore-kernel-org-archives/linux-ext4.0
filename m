@@ -1,98 +1,69 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] vmscan: set try_to_release_page's gfp_mask to 0
-Date: Wed, 15 Oct 2008 15:36:41 -0700
-Message-ID: <20081015153641.afcc94e5.akpm@linux-foundation.org>
-References: <6.0.0.20.2.20080813111835.03d345b0@172.19.0.2>
-	<20080812202127.b88e8250.akpm@linux-foundation.org>
-	<6.0.0.20.2.20080813150454.03b13e30@172.19.0.2>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [PATCH updated] ext4: Fix file fragmentation during large file
+	write.
+Date: Wed, 15 Oct 2008 19:51:32 -0400
+Message-ID: <1224114692.6938.48.camel@think.oraclecorp.com>
+References: <1223661776-20098-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	 <1224103260.6938.45.camel@think.oraclecorp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, cmm@us.ibm.com
-To: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:52440 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753179AbYJOWgx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Oct 2008 18:36:53 -0400
-In-Reply-To: <6.0.0.20.2.20080813150454.03b13e30@172.19.0.2>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	akpm@linux-foundation.org, hch@infradead.org, steve@chygwyn.com,
+	npiggin@suse.de, mpatocka@redhat.com, linux-mm@kvack.org,
+	inux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <owner-linux-mm@kvack.org>
+In-Reply-To: <1224103260.6938.45.camel@think.oraclecorp.com>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 13 Aug 2008 15:24:40 +0900
-Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp> wrote:
-
-> At 12:21 08/08/13, Andrew Morton wrote:
-> >On Wed, 13 Aug 2008 11:21:16 +0900 Hisashi Hifumi 
-> ><hifumi.hisashi@oss.ntt.co.jp> wrote:
-> >
-> >> Hi.
-> >> 
-> >> shrink_page_list passes gfp_mask to try_to_release_page.
-> >> When shrink_page_list is called from kswapd or buddy system, gfp_mask is set
-> >> and (gfp_mask & __GFP_WAIT) and (gfp_mask & __GFP_FS) check is positive.
-> >> releasepage of jbd/jbd2(ext3/4, ocfs2) and XFS use this parameter. 
-> >> If try_to_free_page fails due to bh busy in jbd/jbd2, jbd/jbd2 lets a 
-> >thread wait for 
-> >> committing transaction. I think this has big performance impacts for vmscan.
-> >> So I modified shrink_page_list not to pass gfp_mask to try_to_release_page
-> >> in ordered to improve vmscan performance.
-> >> 
-> >> Thanks.
-> >> 
-> >> Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-> >> 
-> >> diff -Nrup linux-2.6.27-rc2.org/mm/vmscan.c linux-2.6.27-rc2.vmscan/mm/vmscan.c
-> >> --- linux-2.6.27-rc2.org/mm/vmscan.c	2008-08-11 14:33:24.000000000 +0900
-> >> +++ linux-2.6.27-rc2.vmscan/mm/vmscan.c	2008-08-12 18:57:05.000000000 +0900
-> >> @@ -614,7 +614,7 @@ static unsigned long shrink_page_list(st
-> >>  		* Otherwise, leave the page on the LRU so it is swappable.
-> >>  		*/
-> >>  		if (PagePrivate(page)) {
-> >> -			if (!try_to_release_page(page, sc->gfp_mask))
-> >> +			if (!try_to_release_page(page, 0))
-> >>  				goto activate_locked;
-> >>  			if (!mapping && page_count(page) == 1) {
-> >>  				unlock_page(page);
-> >
-> >I think the change makes sense.
-> >
-> >Has this change been shown to improve any workloads?  If so, please
-> >provide full information for the changelog.  If not, please mention
-> >this and explain why benefits were not demonstrable.  This information
-> >should _always_ be present in a "performance" patch's changelog!
+On Wed, 2008-10-15 at 16:41 -0400, Chris Mason wrote:
+> On Fri, 2008-10-10 at 23:32 +0530, Aneesh Kumar K.V wrote:
+> > The range_cyclic writeback mode use the address_space
+> > writeback_index as the start index for writeback. With
+> > delayed allocation we were updating writeback_index
+> > wrongly resulting in highly fragmented file. Number of
+> > extents reduced from 4000 to 27 for a 3GB file with
+> > the below patch.
+> > 
 > 
-> Sorry, I do not have performance number yet. I'll try this.
+> I tested the ext4 patch queue from today on top of 2.6.27, and this
+> includes Aneesh's latest patches.
 > 
+> Things are going at disk speed for streaming writes, with the number of
+> extents generated for a 32GB file down to 27.  So, this is definitely an
+> improvement for ext4.
 
-This patch remains in a stalled state...
+Just FYI, I ran this with compilebench -i 20 --makej and my log is full
+of these:
 
-And then there's this:
+ext4_da_writepages: jbd2_start: 1024 pages, ino 520417; err -30
+Pid: 4072, comm: pdflush Not tainted 2.6.27 #2
 
-: Probably a better fix would be to explicitly tell
-: journal_try_to_free_buffers() when it need to block on journal commit,
-: rather than (mis)interpreting the gfp_t in this fashion.  I assume the
-: only caller who really cares is direct-io.  That would be quite a bit
-: of churn, and the asynchronous behaviour perhaps makes sense _anyway_
-: when called from page reclaim.
-: 
-: otoh, there is a risk that this change will cause page reclaim to sit
-: there burning huge amounts of CPU time and not achieving anything,
-: because all it is doing is scanning over busy pages.  In that case,
-: blocking behind a commit which would make those pages reclaimable is
-: correct behaviour.  But given that the offending code in
-: journal_try_to_free_buffers() has only been there for a few weeks, I
-: guess this isn't a concern.
-: 
-: 
-: Really, I think what this patch tells us is that 3f31fddf ("jbd: fix
-: race between free buffer and commit transaction") was an unpleasant
-: hack which had undesirable and unexpected side-effects.  I think - that
-: depends upon your as-yet-undisclosed testing results?
-: 
-: Perhaps we should revert 3f31fddf and have another think about how to
-: fix the direct-io -EIO problem.  One option would be to hold our noses
-: and add a new gfp_t flag for this specific purpose?
-:
+Call Trace:
+ [<ffffffffa0048493>] ext4_da_writepages+0x171/0x2d3 [ext4]
+ [<ffffffff802336be>] ? pick_next_task_fair+0x80/0x91
+ [<ffffffff80228fa8>] ? source_load+0x2a/0x58
+ [<ffffffff8038e499>] ? __next_cpu+0x19/0x26
+ [<ffffffff8026748f>] do_writepages+0x28/0x37
+ [<ffffffff802a6b39>] __writeback_single_inode+0x14f/0x26d
+ [<ffffffff802a6fb7>] generic_sync_sb_inodes+0x1c1/0x2a2
+ [<ffffffff802a70a1>] sync_sb_inodes+0x9/0xb
+ [<ffffffff802a73dc>] writeback_inodes+0x64/0xad
+ [<ffffffff802675db>] wb_kupdate+0x9a/0x10c
+ [<ffffffff80267fd1>] ? pdflush+0x0/0x1e9
+ [<ffffffff80267fd1>] ? pdflush+0x0/0x1e9
+ [<ffffffff8026810e>] pdflush+0x13d/0x1e9
+ [<ffffffff80267541>] ? wb_kupdate+0x0/0x10c
+ [<ffffffff80248222>] kthread+0x49/0x77
+ [<ffffffff8020c5e9>] child_rip+0xa/0x11
+ [<ffffffff802481d9>] ? kthread+0x0/0x77
+ [<ffffffff8020c5df>] ? child_rip+0x0/0x11
+
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
