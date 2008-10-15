@@ -1,69 +1,62 @@
-From: Andrey Borzenkov <arvidjaar@mail.ru>
-Subject: Possible ext3 corruption with 1K block size
-Date: Wed, 15 Oct 2008 07:24:38 +0400
-Message-ID: <200810150724.42180.arvidjaar@mail.ru>
+From: Nick Piggin <npiggin@suse.de>
+Subject: Re: minix/ext2 + rd problem
+Date: Wed, 15 Oct 2008 06:16:44 +0200
+Message-ID: <20081015041644.GA24613@wotan.suse.de>
+References: <alpine.DEB.1.10.0810141631130.30331@krichy.tvnetwork.hu>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart1438259.lRcpkbiL6Y";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753200AbYJODY5@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
-
---nextPart1438259.lRcpkbiL6Y
-Content-Type: text/plain;
-  charset="us-ascii"
-Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Richard Kojedzinszky <krichy@tvnetwork.hu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.suse.de ([195.135.220.15]:53962 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750860AbYJOEQp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Oct 2008 00:16:45 -0400
 Content-Disposition: inline
+In-Reply-To: <alpine.DEB.1.10.0810141631130.30331@krichy.tvnetwork.hu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-There is long standing open bug report on Mandriva which is currently
-beieved to have root cause in file system corruption. It shows itself
-in RPM DB corruption (at least, there is no other known method to trigger
-it). So far all reported cases happened on filesystem with 1K block size
-and stopped when RPM DB was moved to FS with 4K block size.
+Hi, 
+Thanks for reporting this.
 
-There are also similar RH reports as well.
+On Tue, Oct 14, 2008 at 04:43:55PM +0200, Richard Kojedzinszky wrote:
+> dear all,
+> 
+> I got an embedded system, where I use ramdisk, minix on it as a filesystem 
+> for /etc. With kernels 2.4 and with 2.6.19 kernels also, the following 
+> code did exactly what i wanted, creating an image of the /etc without 
+> unmounting it:
+> 
+> # mount -o remount,ro /etc
+> # cat /dev/ram0 > /tmp/image
+> # mount -o remount,rw /etc
+> 
+> And then I had a consistent image from /etc in /tmp/image.
+> 
+> This worked still with kernel version 2.6.23.14, but nowadays i upgraded 
+> to 2.6.26.2, and noticed that the little code didnt work anymore. I wrote 
+> a simple test script for checking, and reproducing the issue, which is 
+> also attached. Unfortunately this does not work with ext2 also.
+> 
+> my linux version is:
+> Linux version 2.6.26 (root@krichy.tvnetwork.hu) (gcc version 4.2.4 (Debian 
+> 4.2.4-3)) #27 SMP PREEMPT Tue Oct 14 15:19:30 CEST 2008
+> 
+> i use debian lenny/sid.
+> 
+> Were there any intended change that made this behaviour change or was it 
+> by an accident?
 
-Here are references:
+That shouldn't have been changed on purpose, unless it is doing something
+funny that worked by accident before.
 
-https://qa.mandriva.com/show_bug.cgi?id=3D32547
+/dev/ram will behave much more like any other block device now (with brd)
+wheras previously it was probably more coherent between filesystem and
+block device node. Hmm, does all the filesystems cache get written back
+before remount ro return?
 
-This one is rather long. Interesting bits are probably around
+Could you try sticking a sync after remount,ro?
 
-https://qa.mandriva.com/show_bug.cgi?id=3D32547#c177
-https://qa.mandriva.com/show_bug.cgi?id=3D32547#c148 (many users reporting
-dumpe2fs)
-
-https://bugzilla.redhat.com/show_bug.cgi?id=3D230362
-https://bugzilla.redhat.com/show_bug.cgi?id=3D375931
-https://bugzilla.redhat.com/show_bug.cgi?id=3D305301
-
-The Mandriva bugzilla also mentions this mail from Stephen Tweedie=20
-http://lkml.org/lkml/2007/9/18/232
-
-which indicates some issues with 1K blocks, but according to last comment:
-https://qa.mandriva.com/show_bug.cgi?id=3D32547#c300
-
-it is still present in 2.6.27 (at least was present on -rc6)
-
-There was a kernel bug report http://bugzilla.kernel.org/show_bug.cgi?id=3D=
-11564,
-but in this case it was identified as hardware issue.
-
---nextPart1438259.lRcpkbiL6Y
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkj1YncACgkQR6LMutpd94yKZQCfa1EfoFpFlUCfkND+fIF8k0+c
-dooAn1R5yzAuphJgowlnuh3M2WSrc696
-=u7/1
------END PGP SIGNATURE-----
-
---nextPart1438259.lRcpkbiL6Y--
+Thanks,
+Nick
