@@ -1,65 +1,31 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: jbd/jbd2 performance improvements
-Date: Wed, 15 Oct 2008 13:29:55 -0400
-Message-ID: <48F62893.9060606@redhat.com>
-References: <E1KnCO6-0001qG-SV@closure.thunk.org>
+From: Matthew Wilcox <matthew@wil.cx>
+Subject: Re: minix/ext2 + rd problem
+Date: Wed, 15 Oct 2008 13:22:54 -0600
+Message-ID: <20081015192254.GL15064@parisc-linux.org>
+References: <alpine.DEB.1.10.0810141631130.30331@krichy.tvnetwork.hu> <20081015041644.GA24613@wotan.suse.de> <alpine.DEB.1.10.0810150943350.3259@krichy.tvnetwork.hu> <20081015140523.GA30641@wotan.suse.de> <alpine.DEB.1.10.0810151609230.21953@krichy.tvnetwork.hu> <20081015143425.GA2316@wotan.suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37978 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752068AbYJOR35 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Oct 2008 13:29:57 -0400
-In-Reply-To: <E1KnCO6-0001qG-SV@closure.thunk.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Richard Kojedzinszky <krichy@tvnetwork.hu>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Nick Piggin <npiggin@suse.de>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20081015143425.GA2316@wotan.suse.de>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Theodore Ts'o wrote:
-> As I mentioned on the ext4 call yesterday, there was an interesting
-> thread on LKML that wasn't cc'ed onto the linux-ext4 mailing list.  So
-> in case folks missed it, it might be worth taking a look at this mail
-> thread:
->
-> 	[PATCH] Give kjournald a IOPRIO_CLASS_RT io priority
->
-> 	http://lkml.org/lkml/2008/10/1/405
->
-> The main issue that got discussed was the age-old "entaglement" problem.
-> The jbd/jbd2 layer is supposed to avoid this by not blocking the
-> "current" transaction why the blocks from the previous "committing"
-> transaction are still being written out to disk.  Apparently this was
-> broken sometime in the 2.5 time-frame:
->
-> 	http://lkml.org/lkml/2008/10/2/41
-> 	http://lkml.org/lkml/2008/10/2/322
->
-> Later in the thread, a major contention point in do_get_write_access()
-> was identified as the problem:
->
-> 	http://lkml.org/lkml/2008/10/3/7
->
-> ... and then andrew produced the following "hacky" fix:
->
-> 	http://lkml.org/lkml/2008/10/3/22
->
-> If someone has time to runs some benchmarks to see how this improves
-> things, especially on a workload that has plenty of "engtanglements",
-> that would be great.  (I bet Ric's fs_mark run should do a good job;
-> fsyncs to creates lots of commits and the need to modify blocks that had
-> been modified in the previous tansactions.)
->
-> If we can get some quick testing done, and it shows really good results,
-> this could be something that could try fast-tracking into the 2.6.28
-> merge window.
->
-> 						- Ted
->   
+On Wed, Oct 15, 2008 at 04:34:25PM +0200, Nick Piggin wrote:
+> You can flush and invalidate the blockdev with the --flushbufs argument
+> to blockdev command. However you can't use this with ramdisk devices:
+> someone thought it would be a good idea to save on precious ioctl space
+> and implemented totally different semantics on that device with the
+> same ioctl (it throws away the underlying data as well as the cache).
 
-We are going to try and poke at this - do you suspect a single or 
-multi-threaded test would work best?
+What happens if we declare that a bug and fix it (and add a new ioctl to
+actually throw away the data ... oh, wait, we have one, it's BLKDISCARD)?
 
-Ric
-
+-- 
+Matthew Wilcox				Intel Open Source Technology Centre
+"Bill, look, we understand that you're interested in selling us this
+operating system, but compare it to ours.  We can't possibly take such
+a retrograde step."
