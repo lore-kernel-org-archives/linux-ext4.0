@@ -1,77 +1,83 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@gmail.com>
-Subject: Re: [PATCH updated] ext4: Fix file fragmentation during large file
-	write.
-Date: Thu, 16 Oct 2008 16:43:53 +0530
-Message-ID: <20081016111353.GB3354@skywalker>
-References: <1223661776-20098-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1224103260.6938.45.camel@think.oraclecorp.com> <1224114692.6938.48.camel@think.oraclecorp.com> <20081016091015.GA3354@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	akpm@linux-foundation.org, hch@infradead.org, steve@chygwyn.com,
-	npiggin@suse.de, mpatocka@redhat.com, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Chris Mason <chris.mason@oracle.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V3] vfs: Add no_nrwrite_index_update writeback control flags
+Date: Thu, 16 Oct 2008 16:50:25 +0530
+Message-ID: <1224156026-11095-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: aneesh.kumar@linux.vnet.ibm.com, cmm@us.ibm.com, tytso@mit.edu,
+	sandeen@redhat.com, chris.mason@oracle.com
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20081016091015.GA3354@skywalker>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Oct 16, 2008 at 02:40:15PM +0530, Aneesh Kumar K.V wrote:
-> On Wed, Oct 15, 2008 at 07:51:32PM -0400, Chris Mason wrote:
-> > On Wed, 2008-10-15 at 16:41 -0400, Chris Mason wrote:
-> > > On Fri, 2008-10-10 at 23:32 +0530, Aneesh Kumar K.V wrote:
-> > > > The range_cyclic writeback mode use the address_space
-> > > > writeback_index as the start index for writeback. With
-> > > > delayed allocation we were updating writeback_index
-> > > > wrongly resulting in highly fragmented file. Number of
-> > > > extents reduced from 4000 to 27 for a 3GB file with
-> > > > the below patch.
-> > > > 
-> > > 
-> > > I tested the ext4 patch queue from today on top of 2.6.27, and this
-> > > includes Aneesh's latest patches.
-> > > 
-> > > Things are going at disk speed for streaming writes, with the number of
-> > > extents generated for a 32GB file down to 27.  So, this is definitely an
-> > > improvement for ext4.
-> > 
-> > Just FYI, I ran this with compilebench -i 20 --makej and my log is full
-> > of these:
-> > 
-> > ext4_da_writepages: jbd2_start: 1024 pages, ino 520417; err -30
-> > Pid: 4072, comm: pdflush Not tainted 2.6.27 #2
-> > 
-> 
+If no_nrwrite_index_update is set we don't update nr_to_write
+and address space writeback_index in write_cache_pages.
+This change enable a file system to skip these updates
+in write_cache_pages and do them in the writepages()
+callback.  This patch will be followed by an ext4 patch
+that make use of these new flags.
 
-compilebench numbers
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+CC: linux-fsdevel@vger.kernel.org
+---
+ include/linux/writeback.h |    9 +++++++++
+ mm/page-writeback.c       |   10 +++++++---
+ 2 files changed, 16 insertions(+), 3 deletions(-)
 
-ext4
-==========================================================================
-intial create total runs 20 avg 30.25 MB/s (user 0.74s sys 2.40s)
-no runs for create
-no runs for patch
-compile total runs 20 avg 39.79 MB/s (user 0.17s sys 2.55s)
-no runs for clean
-no runs for read tree
-read compiled tree total runs 3 avg 19.83 MB/s (user 0.97s sys 4.08s)
-no runs for delete tree
-delete compiled tree total runs 20 avg 4.42 seconds (user 0.58s sys 1.79s)
-no runs for stat tree
+diff --git a/include/linux/writeback.h b/include/linux/writeback.h
+index bd91987..4de3941 100644
+--- a/include/linux/writeback.h
++++ b/include/linux/writeback.h
+@@ -63,6 +63,15 @@ struct writeback_control {
+ 	unsigned for_writepages:1;	/* This is a writepages() call */
+ 	unsigned range_cyclic:1;	/* range_start is cyclic */
+ 	unsigned more_io:1;		/* more io to be dispatched */
++	/*
++	 * write_cache_pages won't update wbc->nr_to_write and
++	 * mapping->writeback_index if no_nrwrite_index_update
++	 * is set. write_cache_pages may write more than we
++	 * requested and we want to make sure nr_to_write and
++	 * writeback_index are updated in a consistent manner
++	 * so we use a single control to update them
++	 */
++	unsigned no_nrwrite_index_update:1;
+ };
+ 
+ /*
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 718efa6..b6d66d3 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -876,6 +876,7 @@ int write_cache_pages(struct address_space *mapping,
+ 	pgoff_t end;		/* Inclusive */
+ 	int scanned = 0;
+ 	int range_whole = 0;
++	long nr_to_write = wbc->nr_to_write;
+ 
+ 	if (wbc->nonblocking && bdi_write_congested(bdi)) {
+ 		wbc->encountered_congestion = 1;
+@@ -939,7 +940,7 @@ int write_cache_pages(struct address_space *mapping,
+ 				unlock_page(page);
+ 				ret = 0;
+ 			}
+-			if (ret || (--(wbc->nr_to_write) <= 0))
++			if (ret || (--nr_to_write <= 0))
+ 				done = 1;
+ 			if (wbc->nonblocking && bdi_write_congested(bdi)) {
+ 				wbc->encountered_congestion = 1;
+@@ -958,8 +959,11 @@ int write_cache_pages(struct address_space *mapping,
+ 		index = 0;
+ 		goto retry;
+ 	}
+-	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+-		mapping->writeback_index = index;
++	if (!wbc->no_nrwrite_index_update) {
++		if (wbc->range_cyclic || (range_whole && nr_to_write > 0))
++			mapping->writeback_index = index;
++		wbc->nr_to_write = nr_to_write;
++	}
+ 
+ 	return ret;
+ }
+-- 
+1.6.0.2.526.g5c283
 
-ext3
-======================
-intial create total runs 20 avg 27.96 MB/s (user 0.73s sys 2.57s)
-no runs for create
-no runs for patch
-compile total runs 20 avg 28.84 MB/s (user 0.17s sys 4.03s)
-no runs for clean
-no runs for read tree
-read compiled tree total runs 3 avg 19.46 MB/s (user 0.97s sys 4.13s)
-no runs for delete tree
-delete compiled tree total runs 20 avg 18.09 seconds (user 0.58s sys 1.61s)
-no runs for stat tree
-no runs for stat compiled tree
-
--aneesh
