@@ -1,72 +1,72 @@
-From: Pascal Terjan <pterjan@mandriva.com>
-Subject: Re: Possible ext3 corruption with 1K block size
-Date: Thu, 16 Oct 2008 15:47:40 +0200
-Message-ID: <1224164860.11578.14.camel@plop>
-References: <200810150724.42180.arvidjaar@mail.ru>
-	 <48F5E6D4.8080603@redhat.com> <200810151824.36119.arvidjaar@mail.ru>
-	 <48F601A5.1050405@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andrey Borzenkov <arvidjaar@mail.ru>, pterjan@mandriva.org,
-	linux-ext4@vger.kernel.org,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753493AbYJPNsL@vger.kernel.org>
-In-Reply-To: <48F601A5.1050405@redhat.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH, RFC] ext4: let the block device know when unused blocks can be discarded
+Date: Thu, 16 Oct 2008 09:49:11 -0400
+Message-ID: <1224164951-10719-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>,
+	David Woodhouse <David.Woodhouse@intel.com>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:54548 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752187AbYJPNtP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Oct 2008 09:49:15 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Le mercredi 15 octobre 2008 =E0 09:43 -0500, Eric Sandeen a =E9crit :
-> Andrey Borzenkov wrote:
-> > On Wednesday 15 October 2008, Eric Sandeen wrote:
->=20
->=20
-> >> My kingdom for a testcase... does anyone have simple steps to repr=
-oduce
-> >> this?  Or do they all start with "install mandriva on a 1k block s=
-ize
-> >> system?"  :)
-> >>
-> >=20
-> > May be RH will do? :)
->=20
-> I did try a 1k-block root fs Fedora install, and didn't see any probl=
-ems...
->=20
-> > As indicated by last comment, Pascal has some ways to trigger it; I
-> > forgot to Cc to him initially; doing it now.
->=20
-> Ok, good deal.
->=20
+Let the block device know when unused blocks can be discarded, using
+the new sb_issue_discard() interface.
 
-On my test machine I reproduce it easily : rpm --rebuilddb and if the d=
-b
-is not detected to be corrupted yet it will be after installing a few
-packages (tested again with 2.6.27).
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: David Woodhouse <David.Woodhouse@intel.com>
+---
 
-If I do the rebuilddb on a 2.6.17 and then reboot on a recent kernel,
-then I can install/uninstall thousands of packages without any
-corruption.
+This patch depends on the use-rbtree patch by Aneesh which is in the
+ext4 patch queue.  I'm using systemtap and a trace marker to test this
+patch because my test system uses LVM, and device mapper isn't passing
+BARRIER_DISCARD, so I can't use blktrace.
 
-I wanted to try a few things including copying the partition to a file
-and trying to reproduce in a vm.
+ fs/ext4/mballoc.c |    7 +++++++
+ fs/ext4/mballoc.h |    2 ++
+ 2 files changed, 9 insertions(+), 0 deletions(-)
 
-Given how I can reproduce and repair it i can even write a bisecting
-script which would basically be an initscript which would do
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index c22b904..e86f88b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2653,6 +2653,7 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	int err, count = 0, count2 = 0;
+ 	struct ext4_free_data *entry;
++	ext4_fsblk_t discard_block;
+ 
+ 	if (list_empty(&sbi->s_committed_transaction))
+ 		return;
+@@ -2696,6 +2697,12 @@ ext4_mb_free_committed_blocks(struct super_block *sb)
+ 			page_cache_release(e4b.bd_bitmap_page);
+ 		}
+ 		ext4_unlock_group(sb, entry->group);
++		discard_block = (ext4_fsblk_t) entry->group * EXT4_BLOCKS_PER_GROUP(sb)
++			+ entry->start_blk
++			+ le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
++		trace_mark(ext4_discard_blocks, "dev %s blk %llu count %u", sb->s_id,
++			   (unsigned long long) discard_block, entry->count);
++		sb_issue_discard(sb, discard_block, entry->count);
+ 
+ 		kmem_cache_free(ext4_free_ext_cachep, entry);
+ 		ext4_mb_release_desc(&e4b);
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index 9e815c4..94cb7b9 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -18,6 +18,8 @@
+ #include <linux/pagemap.h>
+ #include <linux/seq_file.h>
+ #include <linux/version.h>
++#include <linux/blkdev.h>
++#include <linux/marker.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+ #include "group.h"
+-- 
+1.5.6.1.205.ge2c7.dirty
 
-if on test kernel
-- rebuild the db
-- install 10 rpm
-- remove the 10 rpm
-- check the db
-- do the good/bad
-- reboot onto 2.6.17
-else if on 2.6.17
-- rebuild the db
-- build the kernel
-- reboot on test kernel
-
-and let it run :)
-
-All I need is to find some time with nothing more urgent...
