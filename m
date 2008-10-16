@@ -1,40 +1,62 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: panic on boot at ext4_mb_poll_new_transaction
-Date: Thu, 16 Oct 2008 09:36:20 -0500
-Message-ID: <48F75164.20500@redhat.com>
-References: <20081016070735.GA28486@csclub.uwaterloo.ca> <20081016143035.GA10825@mit.edu>
+Subject: Re: Possible ext3 corruption with 1K block size
+Date: Thu, 16 Oct 2008 09:38:33 -0500
+Message-ID: <48F751E9.8070705@redhat.com>
+References: <200810150724.42180.arvidjaar@mail.ru>	 <48F5E6D4.8080603@redhat.com> <200810151824.36119.arvidjaar@mail.ru>	 <48F601A5.1050405@redhat.com> <1224164860.11578.14.camel@plop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Michael Spang <mspang@csclub.uwaterloo.ca>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-15
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrey Borzenkov <arvidjaar@mail.ru>, pterjan@mandriva.org,
+	linux-ext4@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Pascal Terjan <pterjan@mandriva.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:58497 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:58560 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751721AbYJPOgr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Oct 2008 10:36:47 -0400
-In-Reply-To: <20081016143035.GA10825@mit.edu>
+	id S1753893AbYJPOip (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Oct 2008 10:38:45 -0400
+In-Reply-To: <1224164860.11578.14.camel@plop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Thu, Oct 16, 2008 at 03:07:35AM -0400, Michael Spang wrote:
->> I switched my laptop over to ext4 yesterday. Then I used tune2fs to
->> enable the features from mke2fs.conf's defaults for ext4 (some failed).
+Pascal Terjan wrote:
+> Le mercredi 15 octobre 2008 =E0 09:43 -0500, Eric Sandeen a =E9crit :
+>> Andrey Borzenkov wrote:
+>>> On Wednesday 15 October 2008, Eric Sandeen wrote:
 >>
->> It worked fine initially but today I am getting a panic when the machine
->> boots: http://csclub.uwaterloo.ca/~mspang/panic.jpg .
+>>>> My kingdom for a testcase... does anyone have simple steps to repr=
+oduce
+>>>> this?  Or do they all start with "install mandriva on a 1k block s=
+ize
+>>>> system?"  :)
+>>>>
+>>> May be RH will do? :)
+>> I did try a 1k-block root fs Fedora install, and didn't see any prob=
+lems...
 >>
->> Let me know if there's anything I can do to rescue it. Otherwise I'll
->> just reinstall.
-> 
-> What version of the kernel are you using, and what patches (if any)
-> have you installed?  Are you using a distribution kernel?
+>>> As indicated by last comment, Pascal has some ways to trigger it; I
+>>> forgot to Cc to him initially; doing it now.
+>> Ok, good deal.
+>>
+>=20
+> On my test machine I reproduce it easily : rpm --rebuilddb and if the=
+ db
+> is not detected to be corrupted yet it will be after installing a few
+> packages (tested again with 2.6.27).
+>=20
+> If I do the rebuilddb on a 2.6.17 and then reboot on a recent kernel,
+> then I can install/uninstall thousands of packages without any
+> corruption.
 
-Looks similar to https://bugzilla.redhat.com/show_bug.cgi?id=467161,
-which I was just alerted to, and I'm looking into it.
+so it seems to be the database rebuilding, under a recent kernel, which
+causes the problem?  installing under a recent kernel is ok, as long as
+the db was created on an older kernel?
+
+Ok that's a good clue...
 
 -Eric
-
-> 							- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
