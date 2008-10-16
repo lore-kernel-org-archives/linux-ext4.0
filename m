@@ -1,44 +1,58 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: panic on boot at ext4_mb_poll_new_transaction
-Date: Thu, 16 Oct 2008 12:47:16 +0530
-Message-ID: <20081016071716.GB19480@skywalker>
-References: <20081016070735.GA28486@csclub.uwaterloo.ca>
+From: Eric Sesterhenn <snakebyte@gmx.de>
+Subject: [PATCH] ext4 missing newlines
+Date: Thu, 16 Oct 2008 09:26:14 +0200
+Message-ID: <20081016072614.GA23730@alice>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
 Cc: linux-ext4@vger.kernel.org
-To: Michael Spang <mspang@csclub.uwaterloo.ca>
+To: tytso@mit.edu, adilger@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:32885 "EHLO
-	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751730AbYJPHYF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Oct 2008 03:24:05 -0400
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id m9G7URPu181138
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Oct 2008 18:30:28 +1100
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9G7HUnd3293196
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Oct 2008 18:17:30 +1100
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9G7HTZ6017819
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Oct 2008 18:17:30 +1100
+Received: from mail.gmx.net ([213.165.64.20]:32829 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1752455AbYJPH0S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Oct 2008 03:26:18 -0400
 Content-Disposition: inline
-In-Reply-To: <20081016070735.GA28486@csclub.uwaterloo.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 16, 2008 at 03:07:35AM -0400, Michael Spang wrote:
-> I switched my laptop over to ext4 yesterday. Then I used tune2fs to
-> enable the features from mke2fs.conf's defaults for ext4 (some failed).
-> 
-> It worked fine initially but today I am getting a panic when the machine
-> boots: http://csclub.uwaterloo.ca/~mspang/panic.jpg .
-> 
-> Let me know if there's anything I can do to rescue it. Otherwise I'll
-> just reinstall.
+hi,
 
-Which version of the kernel ? Did you try ext4 patchqueu at
-http://repo.or.cz/w/ext4-patch-queue.git . I have a patch queued
-for fixing a crash I found. I am not sure whether it is same one
-http://repo.or.cz/w/ext4-patch-queue.git?a=blob;f=do_mballoc_init_before_doing_filesystem_recovery;h=426bb0dab5fc5279e077a542cd4068d13f945dff;hb=HEAD
+there are some newlines missing in ext4_check_descriptors, which
+cause the printk level to be printed out when the next printk call
+is made:
 
--aneesh
+[  778.847265] EXT4-fs: ext4_check_descriptors: Block bitmap for group 0
+not in group (block 1509949442)!<3>EXT4-fs: group descriptors corrupted!
+[  802.646630] EXT4-fs: ext4_check_descriptors: Inode bitmap for group 0
+not in group (block 9043971)!<3>EXT4-fs: group descriptors corrupted!
+
+Signed-off-by: Eric Sesterhenn <snakebyte@gmx.de>
+
+--- linux/fs/ext4/super.c.orig	2008-10-16 09:19:19.000000000 +0200
++++ linux/fs/ext4/super.c	2008-10-16 09:19:50.000000000 +0200
+@@ -1618,14 +1618,14 @@ static int ext4_check_descriptors(struct
+ 		if (block_bitmap < first_block || block_bitmap > last_block) {
+ 			printk(KERN_ERR "EXT4-fs: ext4_check_descriptors: "
+ 			       "Block bitmap for group %lu not in group "
+-			       "(block %llu)!", i, block_bitmap);
++			       "(block %llu)!\n", i, block_bitmap);
+ 			return 0;
+ 		}
+ 		inode_bitmap = ext4_inode_bitmap(sb, gdp);
+ 		if (inode_bitmap < first_block || inode_bitmap > last_block) {
+ 			printk(KERN_ERR "EXT4-fs: ext4_check_descriptors: "
+ 			       "Inode bitmap for group %lu not in group "
+-			       "(block %llu)!", i, inode_bitmap);
++			       "(block %llu)!\n", i, inode_bitmap);
+ 			return 0;
+ 		}
+ 		inode_table = ext4_inode_table(sb, gdp);
+@@ -1633,7 +1633,7 @@ static int ext4_check_descriptors(struct
+ 		    inode_table + sbi->s_itb_per_group - 1 > last_block) {
+ 			printk(KERN_ERR "EXT4-fs: ext4_check_descriptors: "
+ 			       "Inode table for group %lu not in group "
+-			       "(block %llu)!", i, inode_table);
++			       "(block %llu)!\n", i, inode_table);
+ 			return 0;
+ 		}
+ 		spin_lock(sb_bgl_lock(sbi, i));
