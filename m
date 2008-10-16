@@ -1,115 +1,44 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@gmail.com>
-Subject: Re: [PATCH updated] ext4: Fix file fragmentation during large file
-	write.
-Date: Thu, 16 Oct 2008 14:40:15 +0530
-Message-ID: <20081016091015.GA3354@skywalker>
-References: <1223661776-20098-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1224103260.6938.45.camel@think.oraclecorp.com> <1224114692.6938.48.camel@think.oraclecorp.com>
+From: Mark Brown <broonie@sirena.org.uk>
+Subject: Re: powerpc allmodconfig
+Date: Thu, 16 Oct 2008 10:34:23 +0100
+Message-ID: <20081016093422.GB3539@sirena.org.uk>
+References: <20081015213337.a99a9595.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	akpm@linux-foundation.org, hch@infradead.org, steve@chygwyn.com,
-	npiggin@suse.de, mpatocka@redhat.com, linux-mm@kvack.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Chris Mason <chris.mason@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Dan Williams <dan.j.williams@intel.com>,
+	Takashi Iwai <tiwai@suse.de>, linux-ext4@vger.kernel.org,
+	netdev@vger.kernel.org, linux-ide@vger.kernel.org,
+	Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>,
+	marek.vasut@gmail.com, David Woodhouse <dwmw2@infradead.org>,
+	Mark Fasheh <mark.fasheh@oracle.com>,
+	Ralf Baechle <ralf@linux-mips.org>,
+	Mauro Carvalho Chehab <mchehab@infradead.org>,
+	linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxppc-dev@ozlabs.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cassiel.sirena.org.uk ([80.68.93.111]:1644 "EHLO
+	cassiel.sirena.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752549AbYJPJf2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Oct 2008 05:35:28 -0400
 Content-Disposition: inline
-In-Reply-To: <1224114692.6938.48.camel@think.oraclecorp.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20081015213337.a99a9595.akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 15, 2008 at 07:51:32PM -0400, Chris Mason wrote:
-> On Wed, 2008-10-15 at 16:41 -0400, Chris Mason wrote:
-> > On Fri, 2008-10-10 at 23:32 +0530, Aneesh Kumar K.V wrote:
-> > > The range_cyclic writeback mode use the address_space
-> > > writeback_index as the start index for writeback. With
-> > > delayed allocation we were updating writeback_index
-> > > wrongly resulting in highly fragmented file. Number of
-> > > extents reduced from 4000 to 27 for a 3GB file with
-> > > the below patch.
-> > > 
-> > 
-> > I tested the ext4 patch queue from today on top of 2.6.27, and this
-> > includes Aneesh's latest patches.
-> > 
-> > Things are going at disk speed for streaming writes, with the number of
-> > extents generated for a 32GB file down to 27.  So, this is definitely an
-> > improvement for ext4.
-> 
-> Just FYI, I ran this with compilebench -i 20 --makej and my log is full
-> of these:
-> 
-> ext4_da_writepages: jbd2_start: 1024 pages, ino 520417; err -30
-> Pid: 4072, comm: pdflush Not tainted 2.6.27 #2
-> 
+On Wed, Oct 15, 2008 at 09:33:37PM -0700, Andrew Morton wrote:
 
-last patch I sent didn't solve the problem. The below patch
-fixes it for me. The problem is not introduced by the file fragmentation
-fixes. Full diff below. The first hunk is the important change. I also
-kept the rest of the changes because I think they are fine. Also I added
-a printk to figure out whether we ever exit from ext4_da_writepages with
-increasing pages_skipped value
+> sound/soc/soc-dapm.c:1029: warning: 'snd_soc_dapm_connect_input' is deprecated (declared at sound/soc/soc-dapm.c:1026)
+> sound/soc/soc-dapm.c:1029: warning: 'snd_soc_dapm_connect_input' is deprecated (declared at sound/soc/soc-dapm.c:1026)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 3c4b9b4..b6768eb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2136,6 +2136,9 @@ static int mpage_da_writepages(struct address_space *mapping,
- 	if (!mpd->io_done && mpd->next_page != mpd->first_page) {
- 		if (mpage_da_map_blocks(mpd) == 0)
- 			mpage_da_submit_io(mpd);
-+
-+		mpd->io_done = 1;
-+		ret = MPAGE_DA_EXTENT_TAIL;
- 	}
- 
- 	wbc->nr_to_write -= mpd->pages_written;
-@@ -2370,10 +2373,10 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	pgoff_t	index;
- 	int range_whole = 0;
- 	handle_t *handle = NULL;
--	long pages_written = 0;
- 	struct mpage_da_data mpd;
- 	struct inode *inode = mapping->host;
- 	int no_nrwrite_index_update;
-+	long pages_written = 0, pages_skipped;
- 	int needed_blocks, ret = 0, nr_to_writebump = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
- 
-@@ -2411,6 +2414,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	 */
- 	no_nrwrite_index_update = wbc->no_nrwrite_index_update;
- 	wbc->no_nrwrite_index_update = 1;
-+	pages_skipped = wbc->pages_skipped;
- 
- 	while (!ret && wbc->nr_to_write > 0) {
- 
-@@ -2444,6 +2448,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 			 * and try again
- 			 */
- 			jbd2_journal_force_commit_nested(sbi->s_journal);
-+			wbc->pages_skipped = pages_skipped;
- 			ret = 0;
- 		} else if (ret == MPAGE_DA_EXTENT_TAIL) {
- 			/*
-@@ -2451,6 +2456,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 			 * rest of the pages
- 			 */
- 			pages_written += mpd.pages_written;
-+			wbc->pages_skipped = pages_skipped;
- 			ret = 0;
- 		} else if (wbc->nr_to_write)
- 			/*
-@@ -2460,6 +2466,11 @@ static int ext4_da_writepages(struct address_space *mapping,
- 			 */
- 			break;
- 	}
-+	if (pages_skipped != wbc->pages_skipped)
-+		printk(KERN_EMERG "This should not happen leaving %s "
-+				"with nr_to_write %ld ret = %d\n",
-+				__func__, wbc->nr_to_write, ret);
-+
- 	/* Update index */
- 	index += pages_written;
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+I should submit the patch to remove this now that 2.6.27 is out - the
+warnings are generated by EXPORT_SYMBOL_GPL() - I couldn't see a way to
+mark the function as deprecated without removing the export.
 
+> sound/soc/codecs/tlv320aic23.c: In function 'tlv320aic23_write':
+> sound/soc/codecs/tlv320aic23.c:104: warning: passing argument 2 of 'codec->hw_write' makes pointer from integer without a cast
+> sound/soc/codecs/tlv320aic23.c: In function 'tlv320aic23_set_dai_sysclk':
+> sound/soc/codecs/tlv320aic23.c:424: warning: unused variable 'codec'
+
+The author already provided a patch to fix these.  Takashi has sent a
+pull request to Linus including that already, IIRC.
