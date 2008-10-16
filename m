@@ -1,64 +1,28 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: powerpc allmodconfig
-Date: Wed, 15 Oct 2008 23:58:44 -0700 (PDT)
-Message-ID: <20081015.235844.206136521.davem@davemloft.net>
-References: <20081015.220247.262683261.davem@davemloft.net>
-	<1224137292.26782.5.camel@dwillia2-linux.ch.intel.com>
-	<48F6E54C.5010207@myri.com>
+From: mspang@csclub.uwaterloo.ca (Michael Spang)
+Subject: panic on boot at ext4_mb_poll_new_transaction
+Date: Thu, 16 Oct 2008 03:07:35 -0400
+Message-ID: <20081016070735.GA28486@csclub.uwaterloo.ca>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: dan.j.williams@intel.com, akpm@linux-foundation.org, tiwai@suse.de,
-	linux-ext4@vger.kernel.org, netdev@vger.kernel.org,
-	linux-ide@vger.kernel.org, bzolnier@gmail.com,
-	marek.vasut@gmail.com, dwmw2@infradead.org, mark.fasheh@oracle.com,
-	ralf@linux-mips.org, mchehab@infradead.org,
-	linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linuxppc-dev@ozlabs.org, jesse.brandeburg@intel.com
-To: brice@myri.com
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 74-93-104-97-Washington.hfc.comcastbusiness.net ([74.93.104.97]:46283
-	"EHLO sunset.davemloft.net" rhost-flags-OK-FAIL-OK-OK)
-	by vger.kernel.org with ESMTP id S1751606AbYJPG7L (ORCPT
+Received: from caffeine.csclub.uwaterloo.ca ([129.97.134.17]:56399 "EHLO
+	caffeine.csclub.uwaterloo.ca" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752501AbYJPHHg (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Oct 2008 02:59:11 -0400
-In-Reply-To: <48F6E54C.5010207@myri.com>
+	Thu, 16 Oct 2008 03:07:36 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Brice Goglin <brice@myri.com>
-Date: Thu, 16 Oct 2008 08:55:08 +0200
+I switched my laptop over to ext4 yesterday. Then I used tune2fs to
+enable the features from mke2fs.conf's defaults for ext4 (some failed).
 
-> Dan Williams wrote:
-> > On Wed, 2008-10-15 at 22:02 -0700, David Miller wrote:
-> >   
-> >>> drivers/dma/ioat_dca.c: In function 'dca_enabled_in_bios':
-> >>> drivers/dma/ioat_dca.c:81: error: implicit declaration of function 'cpuid_eax'
-> >>> drivers/dma/ioat_dca.c: In function 'system_has_dca_enabled':
-> >>> drivers/dma/ioat_dca.c:91: error: implicit declaration of function 'boot_cpu_has'
-> >>> drivers/dma/ioat_dca.c:91: error: 'X86_FEATURE_DCA' undeclared (first use in this function)
-> >>> drivers/dma/ioat_dca.c:91: error: (Each undeclared identifier is reported only once
-> >>> drivers/dma/ioat_dca.c:91: error: for each function it appears in.)
-> >>> drivers/dma/ioat_dca.c: In function 'ioat_dca_get_tag':
-> >>> drivers/dma/ioat_dca.c:190: error: implicit declaration of function 'cpu_physical_id'
-> >>>       
-> >> Known issue.  I tried to ping Jeff Garzik about doing a driver bug fix run in
-> >> order to fix this, but he hasn't shown any signs of life.
-> >>
-> >> So I'll do it myself later tonight. :-/
-> >>
-> >>     
-> > The following seems to fix this up...
-> >
-> > ---snip--->
-> > ixgbe, myri10ge: INTEL_IOATDMA can only be selected when X86=y
-> >   
-> 
-> There's already a completely different fix queued in netdev patchworks
-> (for myri10ge only right now, to be duplicated for Intel drivers). The
-> idea is to stop having almost-unrelated drivers select each other
-> directly, let people select which drivers they really want, and have
-> Kconfig handle modules/builtin-stuff correctly. See
-> http://patchwork.ozlabs.org/patch/4506/
+It worked fine initially but today I am getting a panic when the machine
+boots: http://csclub.uwaterloo.ca/~mspang/panic.jpg .
 
-Right, my plan was to duplicate this for the other drivers.
+Let me know if there's anything I can do to rescue it. Otherwise I'll
+just reinstall.
+
+Thanks.
+Michael Spang
