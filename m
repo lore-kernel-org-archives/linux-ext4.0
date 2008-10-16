@@ -1,35 +1,44 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Joel Becker <Joel.Becker@oracle.com>
 Subject: Re: [Ocfs2-devel] [PATCH] [RFC] jbd2: Add buffer triggers
-Date: Thu, 16 Oct 2008 13:42:41 -0400
-Message-ID: <20081016174241.GH12962@mit.edu>
-References: <20080917232629.GB20752@mail.oracle.com> <20080929012527.GI8711@mit.edu> <20081004000336.GE11442@mit.edu> <20081006213754.GA26632@mail.oracle.com> <20081006214251.GB26632@mail.oracle.com> <20081006233248.GA9337@mit.edu> <20081007010154.GE26632@mail.oracle.com> <20081008231752.GA5310@mail.oracle.com>
+Date: Thu, 16 Oct 2008 12:40:11 -0700
+Message-ID: <20081016194011.GA4748@mail.oracle.com>
+References: <20080917232629.GB20752@mail.oracle.com> <20080929012527.GI8711@mit.edu> <20081004000336.GE11442@mit.edu> <20081006213754.GA26632@mail.oracle.com> <20081006214251.GB26632@mail.oracle.com> <20081006233248.GA9337@mit.edu> <20081007010154.GE26632@mail.oracle.com> <20081008231752.GA5310@mail.oracle.com> <20081016174241.GH12962@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: ocfs2-devel@oss.oracle.com, linux-ext4@vger.kernel.org,
+Cc: ocfs2-devel@oss.oracle.com, linux-ext4@vger.kernel.org,
 	mfasheh@suse.com
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:42583 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752194AbYJPRmo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Oct 2008 13:42:44 -0400
+Received: from rgminet01.oracle.com ([148.87.113.118]:18381 "EHLO
+	rgminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755319AbYJPTlM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Oct 2008 15:41:12 -0400
 Content-Disposition: inline
-In-Reply-To: <20081008231752.GA5310@mail.oracle.com>
+In-Reply-To: <20081016174241.GH12962@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 08, 2008 at 04:17:52PM -0700, Joel Becker wrote:
-> 	In other words, I think that the commit trigger is safe in all
-> circumstances once moved up in journal_commit_transaction().  I'll be
-> cooking that up shortly.
+On Thu, Oct 16, 2008 at 01:42:41PM -0400, Theodore Tso wrote:
+> On Wed, Oct 08, 2008 at 04:17:52PM -0700, Joel Becker wrote:
+> > 	In other words, I think that the commit trigger is safe in all
+> > circumstances once moved up in journal_commit_transaction().  I'll be
+> > cooking that up shortly.
+> 
+> Have you had a chance to look at this?  Here's something which hasn't
+> been compile-tested yet, but it didn't take me long...
 
-Have you had a chance to look at this?  Here's something which hasn't
-been compile-tested yet, but it didn't take me long...
+	Actually, I've had the fixed up patch for a week, tested even.
+You caught me this morning as I was rebasing against Linus.  Sorry I
+didn't send it out sooner.   The only difference from your version, that
+I can tell, is that I unconditionally call the commit trigger function -
+it handles checking for empty b_trigger, etc.
 
-     		    	     	       	       - Ted
+Joel
 
-jbd2: Add buffer triggers
-
-From: Joel Becker <Joel.Becker@oracle.com>
+>From 342869b6588791e62c45f239041f419772ca92ba Mon Sep 17 00:00:00 2001
+From: Joel Becker <joel.becker@oracle.com>
+Date: Thu, 11 Sep 2008 15:35:47 -0700
+Subject: [PATCH] jbd2: Add buffer triggers
 
 Filesystems often to do compute intensive operation on some
 metadata.  If this operation is repeated many times, it can be very
@@ -62,6 +71,14 @@ perspective.  ocfs2 will just have one trigger set per block type,
 setting the same set on every bh of the same type.
 
 Signed-off-by: Joel Becker <joel.becker@oracle.com>
+---
+ fs/jbd2/commit.c             |    1 +
+ fs/jbd2/journal.c            |    8 ++++++++
+ fs/jbd2/transaction.c        |   42 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h         |   29 +++++++++++++++++++++++++++++
+ include/linux/journal-head.h |    5 +++++
+ 5 files changed, 85 insertions(+), 0 deletions(-)
+
 diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
 index 0abe02c..6a38e8e 100644
 --- a/fs/jbd2/commit.c
@@ -75,7 +92,7 @@ index 0abe02c..6a38e8e 100644
  			/* If that was the last one, we need to clean up
  			 * any descriptor buffers which may have been
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 783de11..78dcbb3 100644
+index 783de11..90e03f1 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
 @@ -50,6 +50,7 @@ EXPORT_SYMBOL(jbd2_journal_unlock_updates);
@@ -86,18 +103,20 @@ index 783de11..78dcbb3 100644
  EXPORT_SYMBOL(jbd2_journal_dirty_metadata);
  EXPORT_SYMBOL(jbd2_journal_release_buffer);
  EXPORT_SYMBOL(jbd2_journal_forget);
-@@ -320,6 +321,11 @@ repeat:
- 	}
+@@ -321,6 +322,13 @@ repeat:
  
  	mapped_data = kmap_atomic(new_page, KM_USER0);
-+
-+	/* We have the actual buffer to go out, fire any commit trigger */
-+	if (jh_in->b_triggers && jh_in->b_triggers->t_commit)
-+		jbd2_buffer_commit_trigger(jh_in, mapped_data + new_offset);
-+
  	/*
++	 * Fire any commit trigger.  Do this before checking for escaping,
++	 * as the trigger may modify the magic offset.  If a copy-out
++	 * happens afterwards, it will have the correct data in the buffer.
++	 */
++	jbd2_buffer_commit_trigger(jh_in, mapped_data + new_offset);
++
++	/*
  	 * Check for escaping
  	 */
+ 	if (*((__be32 *)(mapped_data + new_offset)) ==
 diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
 index e5d5405..e975afa 100644
 --- a/fs/jbd2/transaction.c
@@ -199,24 +218,38 @@ index d2e91ea..c71d809 100644
  extern void	 jbd2_journal_release_buffer (handle_t *, struct buffer_head *);
  extern int	 jbd2_journal_forget (handle_t *, struct buffer_head *);
 diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
-index 8a62d1e..2151e4f 100644
+index 8a62d1e..087a1c2 100644
 --- a/include/linux/journal-head.h
 +++ b/include/linux/journal-head.h
-@@ -12,6 +12,7 @@
+@@ -12,6 +12,8 @@
  
  typedef unsigned int		tid_t;		/* Unique transaction ID */
  typedef struct transaction_s	transaction_t;	/* Compound transaction type */
 +
++
  struct buffer_head;
  
  struct journal_head {
-@@ -87,6 +88,9 @@ struct journal_head {
+@@ -87,6 +89,9 @@ struct journal_head {
  	 * [j_list_lock]
  	 */
  	struct journal_head *b_cpnext, *b_cpprev;
 +
-+	/* Trigger type -- only used for jbd2 */
++	/* Trigger type */
 +	struct jbd2_buffer_trigger_type *b_triggers;
  };
  
  #endif		/* JOURNAL_HEAD_H_INCLUDED */
+-- 
+1.5.6.5
+
+-- 
+
+"Anything that is too stupid to be spoken is sung."  
+        - Voltaire
+
+Joel Becker
+Principal Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
