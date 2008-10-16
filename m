@@ -1,82 +1,37 @@
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Subject: Re: [PATCH] vmscan: set try_to_release_page's gfp_mask to 0
-Date: Thu, 16 Oct 2008 12:06:09 +0900
-Message-ID: <6.0.0.20.2.20081016120032.046ec3a0@172.19.0.2>
-References: <6.0.0.20.2.20080813111835.03d345b0@172.19.0.2>
- <20080812202127.b88e8250.akpm@linux-foundation.org>
- <6.0.0.20.2.20080813150454.03b13e30@172.19.0.2>
- <20081015153641.afcc94e5.akpm@linux-foundation.org>
- <6.0.0.20.2.20081016112735.04a68e70@172.19.0.2>
- <20081015195458.cc203dd5.akpm@linux-foundation.org>
+From: Nick Piggin <npiggin@suse.de>
+Subject: Re: minix/ext2 + rd problem
+Date: Thu, 16 Oct 2008 05:48:12 +0200
+Message-ID: <20081016034812.GA10371@wotan.suse.de>
+References: <alpine.DEB.1.10.0810141631130.30331@krichy.tvnetwork.hu> <20081015041644.GA24613@wotan.suse.de> <alpine.DEB.1.10.0810150943350.3259@krichy.tvnetwork.hu> <20081015140523.GA30641@wotan.suse.de> <alpine.DEB.1.10.0810151609230.21953@krichy.tvnetwork.hu> <20081015143425.GA2316@wotan.suse.de> <20081015192254.GL15064@parisc-linux.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-mm@kvack.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, cmm@us.ibm.com
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Richard Kojedzinszky <krichy@tvnetwork.hu>,
+	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: Matthew Wilcox <matthew@wil.cx>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:41467 "EHLO
-	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752046AbYJPDJK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Oct 2008 23:09:10 -0400
-In-Reply-To: <20081015195458.cc203dd5.akpm@linux-foundation.org>
-References: <6.0.0.20.2.20080813111835.03d345b0@172.19.0.2>
- <20080812202127.b88e8250.akpm@linux-foundation.org>
- <6.0.0.20.2.20080813150454.03b13e30@172.19.0.2>
- <20081015153641.afcc94e5.akpm@linux-foundation.org>
- <6.0.0.20.2.20081016112735.04a68e70@172.19.0.2>
- <20081015195458.cc203dd5.akpm@linux-foundation.org>
+Received: from mail.suse.de ([195.135.220.2]:42893 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752548AbYJPDs1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Oct 2008 23:48:27 -0400
+Content-Disposition: inline
+In-Reply-To: <20081015192254.GL15064@parisc-linux.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Oct 15, 2008 at 01:22:54PM -0600, Matthew Wilcox wrote:
+> On Wed, Oct 15, 2008 at 04:34:25PM +0200, Nick Piggin wrote:
+> > You can flush and invalidate the blockdev with the --flushbufs argument
+> > to blockdev command. However you can't use this with ramdisk devices:
+> > someone thought it would be a good idea to save on precious ioctl space
+> > and implemented totally different semantics on that device with the
+> > same ioctl (it throws away the underlying data as well as the cache).
+> 
+> What happens if we declare that a bug and fix it (and add a new ioctl to
+> actually throw away the data ... oh, wait, we have one, it's BLKDISCARD)?
 
-At 11:54 08/10/16, Andrew Morton wrote:
->On Thu, 16 Oct 2008 11:44:39 +0900 Hisashi Hifumi 
-><hifumi.hisashi@oss.ntt.co.jp> wrote:
->
->> 
->> Unfortunately, I did not succeed to get good performance number that
->> prove this patch had some benefit.
->
->OK, thanks, I dropped it.
->
->> >This patch remains in a stalled state...
->> >
->> >And then there's this:
->> >
->> 
->> >: 
->> >: Really, I think what this patch tells us is that 3f31fddf ("jbd: fix
->> >: race between free buffer and commit transaction") was an unpleasant
->> >: hack which had undesirable and unexpected side-effects.  I think - that
->> >: depends upon your as-yet-undisclosed testing results?
->> >: 
->> >: Perhaps we should revert 3f31fddf and have another think about how to
->> >: fix the direct-io -EIO problem.  One option would be to hold our noses
->> >: and add a new gfp_t flag for this specific purpose?
->> >:
->> 
->> direct-io -EIO problem was already fixed by following patch.
->> 
->> commit 6ccfa806a9cfbbf1cd43d5b6aa47ef2c0eb518fd
->> Author: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
->> Date:   Tue Sep 2 14:35:40 2008 -0700
->> 
->>     VFS: fix dio write returning EIO when try_to_release_page fails
->> 
->> Dio falls back to buffered write when dio write gets EIO due to failure 
->of try_to_release_page
->> by above patch. So I think just reverting the patch 3f31fddf ("jbd: fix 
->race between 
->> free buffer and commit transaction") is good approach.
->
->Fair enough.  Could I ask that you (or someone) send a suitable patch
->sometime?
+Well... that's a good point. We probably could, because the worst someone
+will see is their backing store memory does not get freed. It won't munch
+someone's data.
 
-Yes, sometimes I send you some bug fixing or performance improvement
-patch.
-
->
->I could generate the patch, but I'd never get around to testing it. 
->Too busy fixing rejects and compile errors :(
-
+I'd love to do this, OTOH we've had the old behaviour, apparently documented
+and used by someone at some point, for a long time :(
