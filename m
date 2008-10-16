@@ -1,53 +1,72 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: jbd/jbd2 performance improvements
-Date: Thu, 16 Oct 2008 07:39:04 -0500
-Message-ID: <48F735E8.7060803@redhat.com>
-References: <E1KnCO6-0001qG-SV@closure.thunk.org>	<48F62893.9060606@redhat.com> <18678.55651.556822.187508@frecb006361.adech.frec.bull.fr> <48F72E5F.2050409@redhat.com>
+From: Pascal Terjan <pterjan@mandriva.com>
+Subject: Re: Possible ext3 corruption with 1K block size
+Date: Thu, 16 Oct 2008 15:47:40 +0200
+Message-ID: <1224164860.11578.14.camel@plop>
+References: <200810150724.42180.arvidjaar@mail.ru>
+	 <48F5E6D4.8080603@redhat.com> <200810151824.36119.arvidjaar@mail.ru>
+	 <48F601A5.1050405@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Solofo.Ramangalahy@bull.net, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Ric Wheeler <rwheeler@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:44480 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752293AbYJPMkA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Oct 2008 08:40:00 -0400
-In-Reply-To: <48F72E5F.2050409@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-15
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrey Borzenkov <arvidjaar@mail.ru>, pterjan@mandriva.org,
+	linux-ext4@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753493AbYJPNsL@vger.kernel.org>
+In-Reply-To: <48F601A5.1050405@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Ric Wheeler wrote:
-> Solofo.Ramangalahy@bull.net wrote:
->> Hi Ric,
->>
->>   
->>>>>>> On Wed, 15 Oct 2008 13:29:55 -0400, Ric Wheeler <rwheeler@redhat.com> said:
->>>>>>>             
->>     Ric> We are going to try and poke at this - do you suspect a single or 
->>     Ric> multi-threaded test would work best?
->>
->> I've performed some tests:
->> http://www.bullopensource.org/ext4/20081013-2.6.27-rc9-ext4-1-akpm-fix-run6/
->> http://www.bullopensource.org/ext4/20081013-2.6.27-rc9-ext4-1-akpm-fix-run6/results_sorted.txt.html
->>
->> I now realize that the results may not be valid since I used kvm, but
->> they do show variation wrt. the number of threads.
->>
->> So you may want to test both single and multi-threaded.
->>
->>   
-> A very thorough test, but the results don't seem to point to a 
-> consistent winner.
-> 
-> I agree that running without KVM in the picture might be very 
-> interesting. Eric has some similar tests underway, I think that his 
-> results were also inconclusive so far...
+Le mercredi 15 octobre 2008 =E0 09:43 -0500, Eric Sandeen a =E9crit :
+> Andrey Borzenkov wrote:
+> > On Wednesday 15 October 2008, Eric Sandeen wrote:
+>=20
+>=20
+> >> My kingdom for a testcase... does anyone have simple steps to repr=
+oduce
+> >> this?  Or do they all start with "install mandriva on a 1k block s=
+ize
+> >> system?"  :)
+> >>
+> >=20
+> > May be RH will do? :)
+>=20
+> I did try a 1k-block root fs Fedora install, and didn't see any probl=
+ems...
+>=20
+> > As indicated by last comment, Pascal has some ways to trigger it; I
+> > forgot to Cc to him initially; doing it now.
+>=20
+> Ok, good deal.
+>=20
 
-Yep, I've yet to find an fs_mark invocation, at least, which shows a
-clear winner.  I also ran w/ akpm's suggested io_schedule watcher patch
-and never see us waiting on this lock (I did set it to 1s though, which
-is probably too long for my storage).
+On my test machine I reproduce it easily : rpm --rebuilddb and if the d=
+b
+is not detected to be corrupted yet it will be after installing a few
+packages (tested again with 2.6.27).
 
--Eric
+If I do the rebuilddb on a 2.6.17 and then reboot on a recent kernel,
+then I can install/uninstall thousands of packages without any
+corruption.
+
+I wanted to try a few things including copying the partition to a file
+and trying to reproduce in a vm.
+
+Given how I can reproduce and repair it i can even write a bisecting
+script which would basically be an initscript which would do
+
+if on test kernel
+- rebuild the db
+- install 10 rpm
+- remove the 10 rpm
+- check the db
+- do the good/bad
+- reboot onto 2.6.17
+else if on 2.6.17
+- rebuild the db
+- build the kernel
+- reboot on test kernel
+
+and let it run :)
+
+All I need is to find some time with nothing more urgent...
