@@ -1,38 +1,44 @@
-From: Theodore Tso <tytso@mit.edu>
+From: mspang@csclub.uwaterloo.ca (Michael Spang)
 Subject: Re: panic on boot at ext4_mb_poll_new_transaction
-Date: Thu, 16 Oct 2008 11:21:34 -0400
-Message-ID: <20081016152134.GC12962@mit.edu>
-References: <20081016070735.GA28486@csclub.uwaterloo.ca> <20081016143035.GA10825@mit.edu> <48F75164.20500@redhat.com>
+Date: Thu, 16 Oct 2008 11:33:00 -0400
+Message-ID: <20081016153300.GA15313@csclub.uwaterloo.ca>
+References: <20081016070735.GA28486@csclub.uwaterloo.ca> <20081016143035.GA10825@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Michael Spang <mspang@csclub.uwaterloo.ca>,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:40420 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752306AbYJPPVh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Oct 2008 11:21:37 -0400
+Received: from caffeine.csclub.uwaterloo.ca ([129.97.134.17]:39797 "EHLO
+	caffeine.csclub.uwaterloo.ca" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751485AbYJPPdB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Oct 2008 11:33:01 -0400
 Content-Disposition: inline
-In-Reply-To: <48F75164.20500@redhat.com>
+In-Reply-To: <20081016143035.GA10825@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Oct 16, 2008 at 09:36:20AM -0500, Eric Sandeen wrote:
-> >> Let me know if there's anything I can do to rescue it. Otherwise I'll
-> >> just reinstall.
+On Thu, Oct 16, 2008 at 10:30:35AM -0400, Theodore Tso wrote:
+> On Thu, Oct 16, 2008 at 03:07:35AM -0400, Michael Spang wrote:
+> > I switched my laptop over to ext4 yesterday. Then I used tune2fs to
+> > enable the features from mke2fs.conf's defaults for ext4 (some failed).
+> > 
+> > It worked fine initially but today I am getting a panic when the machine
+> > boots: http://csclub.uwaterloo.ca/~mspang/panic.jpg .
+> > 
+> > Let me know if there's anything I can do to rescue it. Otherwise I'll
+> > just reinstall.
+> 
+> What version of the kernel are you using, and what patches (if any)
+> have you installed?  Are you using a distribution kernel?
+> 
+> 							- Ted
 
-Michael,
+Linus' head as of 2 days ago, at
+278429cff8809958d25415ba0ed32b59866ab1a8. I looked at your
+tree yesterday and saw that nothing had been applied since.
 
-Do you have a rescue CD with e2fsprogs 1.41.0 or later?  If it's the
-problem Aneesh thinks it is (and I agree), running e2fsck in preen
-mode should fix the problem.
+Merging the patch queue a moment ago made no interesting changes.
 
-> Looks similar to https://bugzilla.redhat.com/show_bug.cgi?id=467161,
-> which I was just alerted to, and I'm looking into it.
-
-Eric, I suspect this patch in the ext4 patch queue should fix things.
-
-      do_mballoc_init_before_doing_filesystem_recovery
-
-							- Ted
+Thanks,
+Michael Spang
