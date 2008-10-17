@@ -1,88 +1,61 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Remove unused mount options: nomballoc, mballoc, nocheck
-Date: Fri, 17 Oct 2008 09:27:40 -0400
-Message-ID: <1224250060-31979-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Lars =?UTF-8?B?VMOkdWJlcg==?= <taeuber@bbaw.de>
+Subject: Re: undelete still opened file
+Date: Fri, 17 Oct 2008 15:39:57 +0200
+Message-ID: <20081017153957.28a4dd67.taeuber@bbaw.de>
+References: <20081017120852.1f04dc36.taeuber@bbaw.de>
+	<ea11fea30810170333n4ba9a681l7b64862834899aac@mail.gmail.com>
+	<20081017143311.52d50a23.taeuber@bbaw.de>
+	<20081017132443.GA8755@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Manish Katiyar <mkatiyar@gmail.com>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:34875 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753986AbYJQN1m (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2008 09:27:42 -0400
+Received: from mail.bbaw.de ([194.95.188.6]:47511 "EHLO mail.bbaw.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755414AbYJQNio convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2008 09:38:44 -0400
+In-Reply-To: <20081017132443.GA8755@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-These mount options don't actually do anything any more, so remove
-them.
+Hi Theodore,
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h  |    1 -
- fs/ext4/super.c |   11 ++---------
- 2 files changed, 2 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 6690a41..4880cc3 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -511,7 +511,6 @@ do {									       \
- /*
-  * Mount flags
-  */
--#define EXT4_MOUNT_CHECK		0x00001	/* Do mount-time checks */
- #define EXT4_MOUNT_OLDALLOC		0x00002  /* Don't use the new Orlov allocator */
- #define EXT4_MOUNT_GRPID		0x00004	/* Create files with directory's group */
- #define EXT4_MOUNT_DEBUG		0x00008	/* Some debugging messages */
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a97e9eb..95127f0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -904,7 +904,7 @@ static const struct export_operations ext4_export_ops = {
- enum {
- 	Opt_bsd_df, Opt_minix_df, Opt_grpid, Opt_nogrpid,
- 	Opt_resgid, Opt_resuid, Opt_sb, Opt_err_cont, Opt_err_panic, Opt_err_ro,
--	Opt_nouid32, Opt_nocheck, Opt_debug, Opt_oldalloc, Opt_orlov,
-+	Opt_nouid32, Opt_debug, Opt_oldalloc, Opt_orlov,
- 	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
- 	Opt_reservation, Opt_noreservation, Opt_noload, Opt_nobh, Opt_bh,
- 	Opt_commit, Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
-@@ -915,7 +915,7 @@ enum {
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
- 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
- 	Opt_grpquota, Opt_extents, Opt_noextents, Opt_i_version,
--	Opt_mballoc, Opt_nomballoc, Opt_stripe, Opt_delalloc, Opt_nodelalloc,
-+	Opt_stripe, Opt_delalloc, Opt_nodelalloc,
- 	Opt_inode_readahead_blks
- };
- 
-@@ -933,8 +933,6 @@ static const match_table_t tokens = {
- 	{Opt_err_panic, "errors=panic"},
- 	{Opt_err_ro, "errors=remount-ro"},
- 	{Opt_nouid32, "nouid32"},
--	{Opt_nocheck, "nocheck"},
--	{Opt_nocheck, "check=none"},
- 	{Opt_debug, "debug"},
- 	{Opt_oldalloc, "oldalloc"},
- 	{Opt_orlov, "orlov"},
-@@ -973,8 +971,6 @@ static const match_table_t tokens = {
- 	{Opt_extents, "extents"},
- 	{Opt_noextents, "noextents"},
- 	{Opt_i_version, "i_version"},
--	{Opt_mballoc, "mballoc"},
--	{Opt_nomballoc, "nomballoc"},
- 	{Opt_stripe, "stripe=%u"},
- 	{Opt_resize, "resize"},
- 	{Opt_delalloc, "delalloc"},
-@@ -1073,9 +1069,6 @@ static int parse_options(char *options, struct super_block *sb,
- 		case Opt_nouid32:
- 			set_opt(sbi->s_mount_opt, NO_UID32);
- 			break;
--		case Opt_nocheck:
--			clear_opt(sbi->s_mount_opt, CHECK);
--			break;
- 		case Opt_debug:
- 			set_opt(sbi->s_mount_opt, DEBUG);
- 			break;
--- 
-1.5.6.1.205.ge2c7.dirty
+Theodore Tso <tytso@mit.edu> schrieb:
+> On Fri, Oct 17, 2008 at 02:33:11PM +0200, Lars T=C3=A4uber wrote:
+> > Is the space of the file on the underlying block device already
+> > marked as free? Or does this happen after all processes have closed
+> > all file descriptors pointing to the file?
+>=20
+> No, the space on the file is not yet marked as free.  *However* for
+> ext3 and ext4, the inode has been placed on the orphaned inode list,
+> so that if the system crashes, part of the journal recovery process
+> will at that point free the blocks.
 
+not that it is a way I would go, but theoretically: I could provoke a c=
+rash and mount the ext3 filesystem as ext2 and restore the file?
+
+> > I really want to undo the deletion. (get a link/name connected to
+> > the root inode of the file again) Is there a way to do this?
+>=20
+> Not currently using ext3/ext4, no.  There would have to be an entirel=
+y
+> new system call or other userspace interface for something like this.
+
+Is this planned?
+
+But a solution should be independent of the real filesystem. Because th=
+e file is still somewhere in the ram and represented in linux vfs, isn'=
+t it?
+It only needs to be copied/recreated on to a (different) filesystem som=
+ehow.
+
+Regards
+Lars
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
