@@ -1,84 +1,96 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: Re: undelete still opened file
-Date: Fri, 17 Oct 2008 16:03:11 +0530
-Message-ID: <ea11fea30810170333n4ba9a681l7b64862834899aac@mail.gmail.com>
-References: <20081017120852.1f04dc36.taeuber@bbaw.de>
+From: Ingo Molnar <mingo@elte.hu>
+Subject: Re: powerpc allmodconfig
+Date: Fri, 17 Oct 2008 13:09:45 +0200
+Message-ID: <20081017110945.GA32364@elte.hu>
+References: <20081015213337.a99a9595.akpm@linux-foundation.org> <20081015.220247.262683261.davem@davemloft.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: "=?ISO-8859-1?Q?Lars_T=E4uber?=" <taeuber@bbaw.de>
+Cc: akpm@linux-foundation.org, dan.j.williams@intel.com, tiwai@suse.de,
+	linux-ext4@vger.kernel.org, netdev@vger.kernel.org,
+	linux-ide@vger.kernel.org, bzolnier@gmail.com,
+	marek.vasut@gmail.com, dwmw2@infradead.org, mark.fasheh@oracle.com,
+	ralf@linux-mips.org, mchehab@infradead.org,
+	linux-wireless@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linuxppc-dev@ozlabs.org
+To: David Miller <davem@davemloft.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.188]:3444 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754640AbYJQKdN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2008 06:33:13 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so247709tic.23
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Oct 2008 03:33:12 -0700 (PDT)
-In-Reply-To: <20081017120852.1f04dc36.taeuber@bbaw.de>
+Received: from mx3.mail.elte.hu ([157.181.1.138]:55848 "EHLO mx3.mail.elte.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752197AbYJQLKQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Oct 2008 07:10:16 -0400
 Content-Disposition: inline
+In-Reply-To: <20081015.220247.262683261.davem@davemloft.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 17, 2008 at 3:38 PM, Lars T=E4uber <taeuber@bbaw.de> wrote:
-> Hi there!
->
-> If this should be the wrong mailing list please excuse me but I didn'=
-t find any better suiting.
-> I just subscribed after unsuccessfully searching on the net for an an=
-swer to my question.
->
-> Is it possible to undelete an accidentally deleted file that is still=
- opened by a process?
-> As far as I know the file is not really deleted as long there is a fi=
-le descriptor connected to the file.
-> I thought about something in connection with /proc/####/fd/# .
-> Is there any chance to get the file back to normal?
 
-To some extent yes......
+* David Miller <davem@davemloft.net> wrote:
 
->
-> - Linux 2.6.[12]x
-> - ext3 or nfs (should be independent of fs, wouldn't it?)
+> > net/dccp/options.c: In function 'dccp_parse_options':=20
+> > net/dccp/options.c:67: warning: 'value' may be used uninitialized i=
+n=20
+> > this function
+>=20
+> Known issue, not trivial to fix, gcc is just being incredibly silly=20
+> here as it can't see all of the control flow.
 
-It is tightly coupled with the filesystem. So depending on your
-filesystem you may or may not get it.
+i just ran into this - do you have any objection against the patch=20
+below?
 
-LOGFS (or any log structured file system) : They generally have
-snapshots or some kind of file versioning. So you can retreive it from
-there.
+Should we have a cleaner annotation perhaps instead of=20
+uninitialized_var()? Something like:
 
-ext2 : After deletion ext2 doesn't zero the block pointers. So it is
-possible to get it from there using debugfs.
+ #define __used          __attribute__((used))
 
-ext3 : Search google for "Carlo wood + ext3grep"
+?
 
-ext4 : I don't know of any method ...
+	Ingo
 
-You can try the /proc/****/fd/** approach . It has worked for me in
-past......but that was for a running binary. I am not sure about
-shellscript kind of thing. There are some other tools too to recover ,
-unfortunately I don't remember the name but google should be good
-enough.
+---------->
+=46rom d917af0bd043eab40d57f79cba9cf7a7b265a205 Mon Sep 17 00:00:00 200=
+1
+=46rom: Ingo Molnar <mingo@elte.hu>
+Date: Fri, 17 Oct 2008 12:41:30 +0200
+Subject: [PATCH] fix warning in net/dccp/options.c
+MIME-Version: 1.0
+Content-Type: text/plain; charset=3Dutf-8
+Content-Transfer-Encoding: 8bit
 
-Thanks -
-Manish
+fix this warning:
 
+  net/dccp/options.c: In function =E2=80=98dccp_parse_options=E2=80=99:
+  net/dccp/options.c:67: warning: =E2=80=98value=E2=80=99 may be used u=
+ninitialized in this function
 
+This is a bogus GCC warning. The compiler does not recognize the relati=
+on
+between "value" and "mandatory" variables: the code flow can ever reach
+the "out_invalid_option:" label if 'mandatory' is set to 1, and when
+'mandatory' is non-zero, we'll always have 'value' initialized.
 
->
->
-> Thanks and best regards.
-> Lars
->
->
-> PS: Sorry for my english.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+Help out the compiler by annotating the variable.
+
+Signed-off-by: Ingo Molnar <mingo@elte.hu>
+---
+ net/dccp/options.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/net/dccp/options.c b/net/dccp/options.c
+index 0809b63..18dcfb9 100644
+--- a/net/dccp/options.c
++++ b/net/dccp/options.c
+@@ -64,7 +64,7 @@ int dccp_parse_options(struct sock *sk, struct dccp_r=
+equest_sock *dreq,
+ 					(dh->dccph_doff * 4);
+ 	struct dccp_options_received *opt_recv =3D &dp->dccps_options_receive=
+d;
+ 	unsigned char opt, len;
+-	unsigned char *value;
++	unsigned char *uninitialized_var(value);
+ 	u32 elapsed_time;
+ 	__be32 opt_val;
+ 	int rc;
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
