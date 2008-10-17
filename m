@@ -1,33 +1,44 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH, RFC] ext4: Replace hackish
-	ext4_mb_poll_new_transaction with commit callback
-Date: Fri, 17 Oct 2008 06:02:14 -0400
-Message-ID: <20081017100214.GB11557@mit.edu>
-References: <1224201763-9637-1-git-send-email-tytso@mit.edu> <20081017060424.GA26192@skywalker>
+From: Lars =?UTF-8?B?VMOkdWJlcg==?= <taeuber@bbaw.de>
+Subject: undelete still opened file
+Date: Fri, 17 Oct 2008 12:08:52 +0200
+Message-ID: <20081017120852.1f04dc36.taeuber@bbaw.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:35057 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752036AbYJQKCS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2008 06:02:18 -0400
-Content-Disposition: inline
-In-Reply-To: <20081017060424.GA26192@skywalker>
+Received: from mail.bbaw.de ([194.95.188.6]:58907 "EHLO mail.bbaw.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753493AbYJQK0D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Oct 2008 06:26:03 -0400
+Received: from mailhub.bbaw.de (unknown [192.168.4.1])
+	by mail.bbaw.de (Postfix) with ESMTP id BE8B04A8059
+	for <linux-ext4@vger.kernel.org>; Fri, 17 Oct 2008 12:07:37 +0200 (CEST)
+Received: from localhost (localhost [127.0.0.1])
+	by mailhub.bbaw.de (Postfix) with ESMTP id 0A36593794
+	for <linux-ext4@vger.kernel.org>; Fri, 17 Oct 2008 12:07:38 +0200 (CEST)
+Received: from taeuber.bbaw.de (taeuber.bbaw.de [192.168.1.148])
+	by mailhub.bbaw.de (Postfix) with SMTP id EBC2D9378F
+	for <linux-ext4@vger.kernel.org>; Fri, 17 Oct 2008 12:07:37 +0200 (CEST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 17, 2008 at 11:34:25AM +0530, Aneesh Kumar K.V wrote:
-> 
-> Why not use journal commit callback patch from andreas 
-> (MID:20080929201752.GN10950@webber.adilger.int
-> http://article.gmane.org/gmane.comp.file-systems.ext4/9148)
-> 
-> The patch you sent will allows only one call back to be registered.
-> 
+Hi there!
 
-Thanks for reminding me about that; I had completely forgotten about
-Andreas' patch.  Sure, I'll respin the patch to use his extension.
+If this should be the wrong mailing list please excuse me but I didn't find any better suiting.
+I just subscribed after unsuccessfully searching on the net for an answer to my question.
 
-	 	       	    	       	     	- Ted
+Is it possible to undelete an accidentally deleted file that is still opened by a process?
+As far as I know the file is not really deleted as long there is a file descriptor connected to the file.
+I thought about something in connection with /proc/####/fd/# .
+Is there any chance to get the file back to normal?
+
+- Linux 2.6.[12]x
+- ext3 or nfs (should be independent of fs, wouldn't it?)
+
+
+Thanks and best regards.
+Lars
+
+
+PS: Sorry for my english.
