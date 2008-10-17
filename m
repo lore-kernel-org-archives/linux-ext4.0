@@ -1,60 +1,82 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [PATCH, RFC] ext4: Replace hackish
-	ext4_mb_poll_new_transaction with commit callback
-Date: Fri, 17 Oct 2008 13:27:21 -0700
-Message-ID: <20081017202721.GE5633@mail.oracle.com>
-References: <1224201763-9637-1-git-send-email-tytso@mit.edu> <20081017060424.GA26192@skywalker> <20081017100214.GB11557@mit.edu> <20081017122552.GC21503@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] additional ext4 updates for 2.6.28
+Date: Fri, 17 Oct 2008 16:36:14 -0400
+Message-ID: <E1Kqw3S-0004f6-Jm@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from agminet01.oracle.com ([141.146.126.228]:26189 "EHLO
-	agminet01.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751090AbYJQU3l (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2008 16:29:41 -0400
-Content-Disposition: inline
-In-Reply-To: <20081017122552.GC21503@mit.edu>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:60323 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751483AbYJQUgR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2008 16:36:17 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 17, 2008 at 08:25:52AM -0400, Theodore Tso wrote:
-> On Fri, Oct 17, 2008 at 06:02:14AM -0400, Theodore Tso wrote:
-> > Thanks for reminding me about that; I had completely forgotten about
-> > Andreas' patch.  Sure, I'll respin the patch to use his extension.
-> 
-> I looked more closely at Andreas' patch, and it's really not a good
-> fit for what we want to do.  The problem is that it is designed to
-> attach arbitrary callbacks on a per transaction basis.  Each time you
-> add a callback you need to allocate a stucture, and then it gets
-> chained onto a inked list.
+Hi Linus,
 
-	Yeah, I looked at a similar scheme for the buffer commit
-callbacks, and I realized that it would be a total pain.  So I went with
-a static callback.
+Please pull from:
 
-> What I added was a dead-simple per-journal commit callback, with no
-> additional memory allocations (and requirement to do error handling if
-> the memory allocation fails), no need to take a spinlock before
-> manually adding the call back to each transaction handle, no need to
-> search the linked list to see if we have an entry on the linked list
-> already, etc.
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-	And this simple callback can used by a jbd2 client to build
-the machinery for per-transaction callbacks if they want.
+This patch set set contains contains bug fixes which could crashes,
+performance enhancements especially for large streaming writes (thanks
+to Chris Mason for pointing this out), blkdev discard support (for trim
+commands for SSD's), and updates to documentation.
 
-Joel
+Note; the changes to mm/page-writeback have been reviewed by
+linux-fsdevel and by Christoph Hellwig specifically.  Christoph believes
+(and I agree) that we probably can get rid of the new control flag
+(no_nrwrite_index_update) and make the changes in behavior of
+write_cached_pages() conditionally, but that would require auditing and
+updating all of the other filesystems that use that function.  So for
+now we just make the change for ext4, which increases streaming write
+speed to large files by a factor of five or more, so that a write to 3GB
+file now proceeds at raw disk speeds.
 
--- 
+						- Ted
 
-"We will have to repent in this generation not merely for the
- vitriolic words and actions of the bad people, but for the 
- appalling silence of the good people."
-	- Rev. Dr. Martin Luther King, Jr.
+Aneesh Kumar K.V (8):
+      ext4: Free ext4_prealloc_space using kmem_cache_free
+      ext4: Do mballoc init before doing filesystem recovery
+      ext4: Use an rbtree for tracking blocks freed during transaction.
+      ext4: Don't reuse released data blocks until transaction commits
+      ext4: Use tag dirty lookup during mpage_da_submit_io
+      vfs: Remove the range_cont writeback mode.
+      vfs: Add no_nrwrite_index_update writeback control flag
+      ext4: Fix file fragmentation during large file write.
 
-Joel Becker
-Principal Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+Diego Calleja (1):
+      ext4: Update Documentation/filesystems/ext4.txt
+
+Eric Sesterhenn (1):
+      ext4: Add missing newlines to printk messages
+
+Manish Katiyar (2):
+      ext4: Fix Kconfig typo for ext4dev
+      ext4: Remove compile warnings when building w/o CONFIG_PROC_FS
+
+Martin Michlmayr (1):
+      ext4: Remove an old reference to ext4dev in Makefile comment
+
+Theodore Ts'o (4):
+      ext4: let the block device know when unused blocks can be discarded
+      ext4: Remove unused mount options: nomballoc, mballoc, nocheck
+      ext4: Replace hackish ext4_mb_poll_new_transaction with commit callback
+      ext4: Remove automatic enabling of the HUGE_FILE feature flag
+
+ Documentation/filesystems/ext4.txt |   32 ++---
+ fs/Kconfig                         |    2 +-
+ fs/Makefile                        |    2 +-
+ fs/ext4/balloc.c                   |   12 ++-
+ fs/ext4/ext4.h                     |    1 -
+ fs/ext4/ext4_sb.h                  |    3 -
+ fs/ext4/inode.c                    |  143 +++++++++++---------
+ fs/ext4/mballoc.c                  |  263 ++++++++++++++++++-----------------
+ fs/ext4/mballoc.h                  |   31 +++--
+ fs/ext4/super.c                    |  132 +++++-------------
+ fs/jbd2/commit.c                   |    3 +
+ fs/jbd2/transaction.c              |    1 +
+ include/linux/jbd2.h               |    9 ++
+ include/linux/writeback.h          |   10 ++-
+ mm/page-writeback.c                |   12 +-
+ 15 files changed, 320 insertions(+), 336 deletions(-)
