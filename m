@@ -1,91 +1,59 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: undelete still opened file
-Date: Fri, 17 Oct 2008 19:32:50 +0530
-Message-ID: <ea11fea30810170702t295fe37dw43e33e0105cbe73@mail.gmail.com>
-References: <20081017120852.1f04dc36.taeuber@bbaw.de>
-	 <ea11fea30810170333n4ba9a681l7b64862834899aac@mail.gmail.com>
-	 <20081017143311.52d50a23.taeuber@bbaw.de>
-	 <20081017132443.GA8755@mit.edu>
-	 <20081017153957.28a4dd67.taeuber@bbaw.de>
+Date: Fri, 17 Oct 2008 12:14:32 -0400
+Message-ID: <20081017161432.GB8755@mit.edu>
+References: <20081017120852.1f04dc36.taeuber@bbaw.de> <ea11fea30810170333n4ba9a681l7b64862834899aac@mail.gmail.com> <20081017143311.52d50a23.taeuber@bbaw.de> <20081017132443.GA8755@mit.edu> <20081017153957.28a4dd67.taeuber@bbaw.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Tso" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: "=?ISO-8859-1?Q?Lars_T=E4uber?=" <taeuber@bbaw.de>
+Cc: Manish Katiyar <mkatiyar@gmail.com>, linux-ext4@vger.kernel.org
+To: Lars =?iso-8859-1?Q?T=E4uber?= <taeuber@bbaw.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.188]:26695 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753747AbYJQOCx convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2008 10:02:53 -0400
-Received: by ti-out-0910.google.com with SMTP id b6so298188tic.23
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Oct 2008 07:02:50 -0700 (PDT)
-In-Reply-To: <20081017153957.28a4dd67.taeuber@bbaw.de>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:49451 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755164AbYJQQOg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Oct 2008 12:14:36 -0400
 Content-Disposition: inline
+In-Reply-To: <20081017153957.28a4dd67.taeuber@bbaw.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 17, 2008 at 7:09 PM, Lars T=E4uber <taeuber@bbaw.de> wrote:
-> Hi Theodore,
->
->
-> Theodore Tso <tytso@mit.edu> schrieb:
->> On Fri, Oct 17, 2008 at 02:33:11PM +0200, Lars T=E4uber wrote:
->> > Is the space of the file on the underlying block device already
->> > marked as free? Or does this happen after all processes have close=
-d
->> > all file descriptors pointing to the file?
->>
->> No, the space on the file is not yet marked as free.  *However* for
->> ext3 and ext4, the inode has been placed on the orphaned inode list,
->> so that if the system crashes, part of the journal recovery process
->> will at that point free the blocks.
->
-> not that it is a way I would go, but theoretically: I could provoke a=
- crash and mount the ext3 filesystem as ext2 and restore the file?
+On Fri, Oct 17, 2008 at 03:39:57PM +0200, Lars T=E4uber wrote:
+>=20
+> not that it is a way I would go, but theoretically: I could provoke
+> a crash and mount the ext3 filesystem as ext2 and restore the file?
+>=20
 
-Errr.... If I read the code correctly, once deleted the inode is added
-to the orphan list and on recovery this orphan list is traversed and
-iput will be called on each of the inodes. So even a crash will not
-restore your inode on the contrary *it will make sure that the inode
-is deleted*.
+Unless you then manually modify the orphan list to remove the inode
+from the orphan list, the next time you mount the filesystem as ext3
+the blocks will be released and the filesystem will be corrupted.
+Also, if you provoke a crash, the filesystem will be marked as "needs
+recovery" and ext2 will refuse to mount the filesystem.
 
+The much simpler way would be to kill -STOP the process that owns the
+file, copy it via "cat /proc/$pid/fd/$fd > rescue-file". and then kill
+-9 the process if you don't want it to make any further changes.
 
->
->> > I really want to undo the deletion. (get a link/name connected to
->> > the root inode of the file again) Is there a way to do this?
->>
->> Not currently using ext3/ext4, no.
-
-Isn't it possible to some extent using ext3grep for ext3 ????
-
-
-  There would have to be an entirely
->> new system call or other userspace interface for something like this=
-=2E
->
+> > Not currently using ext3/ext4, no.  There would have to be an entir=
+ely
+> > new system call or other userspace interface for something like thi=
+s.
+>=20
 > Is this planned?
->
-> But a solution should be independent of the real filesystem.
 
-No as I said...depending on the nature of filesystem it may be write
-in place or it might write to a new block every time like logfs.  So
-it is very much filesystem dependant.
+No, this is not planned.   "rm is forever".=20
 
+> But a solution should be independent of the real filesystem. Because
+> the file is still somewhere in the ram and represented in linux vfs,
+> isn't it?  It only needs to be copied/recreated on to a (different)
+> filesystem somehow.
 
-Thanks -
-Manish
+No, it's not necessarily in RAM.  It's on disk, in the filesystem, but
+marked in such a way that if the system crashes or when the file
+descriptor is closed, the inode and its contents are marked as freed
+for allocation.
 
->Because the file is still somewhere in the ram and represented in linu=
-x vfs, isn't it?
-
-
-
-> It only needs to be copied/recreated on to a (different) filesystem s=
-omehow.
->
-> Regards
-> Lars
->
+							- Ted
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
