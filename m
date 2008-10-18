@@ -1,36 +1,46 @@
-From: Diego Calleja <diegocg@gmail.com>
-Subject: GRUB support status?
-Date: Sat, 18 Oct 2008 18:48:21 +0200
-Message-ID: <20081018184821.4fea2215@diego-desktop>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [stable] Stable patches for ext4
+Date: Sat, 18 Oct 2008 10:03:05 -0700
+Message-ID: <20081018170305.GB20305@kroah.com>
+References: <E1KrCdX-0006L5-2q@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, stable@kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ey-out-2122.google.com ([74.125.78.24]:32975 "EHLO
-	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750824AbYJRQr6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Oct 2008 12:47:58 -0400
-Received: by ey-out-2122.google.com with SMTP id 6so371259eyi.37
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Oct 2008 09:47:56 -0700 (PDT)
+Received: from kroah.org ([198.145.64.141]:59333 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751552AbYJRRG3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 18 Oct 2008 13:06:29 -0400
+Content-Disposition: inline
+In-Reply-To: <E1KrCdX-0006L5-2q@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-What's the status of GRUB ext4 support? SVN says[1] that GRUB2 -which is
-a development project with no stable version- has ext4 support, but the
-only commit I could find[2] only seems to add extent support. Will that
-be enought?
+On Sat, Oct 18, 2008 at 10:18:35AM -0400, Theodore Ts'o wrote:
+> 
+> 
+> I'm a bit concerned about asking Greg or Chris to take the delayed
+> allocation ENOSPC patches, although they really are critical for someone
+> considering using ext4 in production (and granted, they would probably
+> be better waiting until 2.6.28).
 
-There's also a parallel GSoC project[3] from opensuse that seems to have
-added[4] ext4 support to Grub (the Grub "legacy" versions which most of
-the distros are using).
+Heh, you do realize that hundreds of thousands of users are going to be
+using 2.6.27.x "for production" as at least 3 distros are being based
+off of it?
 
-Which one is prefered? Or it's better to keep using ext3 on /boot until
-grub support improves? (PD: I've modified the ext4 HOWTO wiki page adding
-some information about all this)
+So, either you send these patches to us if you want to have a sane idea
+of what the distros are using, or you rely on the distros themselves to
+get it right in cherry-picking from upstream here.  I know one distro
+already has done this, and I'm sure others have as well.
 
+It comes down to who you trust, a random distro engineer, or you and
+your group of engineers :)
 
-[1]: http://svn.savannah.gnu.org/viewvc/trunk/grub2/NEWS?root=grub&view=diff&r1=1794&r2=1795
-[2]: http://svn.savannah.gnu.org/viewvc?view=rev&root=grub&revision=1699
-[3]: http://code.google.com/soc/2008/suse/appinfo.html?csaid=91DC4C762E7EE6D7
-[4]: http://code.google.com/p/grub4ext4/
+If you feel the second tree is something that you can support, and you
+feel is necessary for users if they want to use ext4 on this kernel
+release, I'd be glad to review them for inclusion.
+
+thanks,
+
+greg k-h
