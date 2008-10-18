@@ -1,36 +1,26 @@
-From: roel kluin <roel.kluin@gmail.com>
-Subject: [PATCH] ext4: simple_strtol returns signed.
-Date: Sat, 18 Oct 2008 16:21:44 -0400
-Message-ID: <48FA4558.2020603@gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: simple_strtol returns signed.
+Date: Sat, 18 Oct 2008 10:36:10 -0400
+Message-ID: <20081018143610.GA8383@mit.edu>
+References: <48FA4558.2020603@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: tytso@mit.edu, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: roel kluin <roel.kluin@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from nf-out-0910.google.com ([64.233.182.189]:39566 "EHLO
-	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751399AbYJROVl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Oct 2008 10:21:41 -0400
-Received: by nf-out-0910.google.com with SMTP id d3so533961nfc.21
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Oct 2008 07:21:39 -0700 (PDT)
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:43014 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750994AbYJROgM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Oct 2008 10:36:12 -0400
+Content-Disposition: inline
+In-Reply-To: <48FA4558.2020603@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-simple_strtol returns signed.
+On Sat, Oct 18, 2008 at 04:21:44PM -0400, roel kluin wrote:
+> simple_strtol returns signed.
 
-Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
----
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 9b2b2bc..1789dec 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3516,7 +3516,7 @@ static ssize_t ext4_ui_proc_write(struct file *file, const char __user *buf,
- {
- 	unsigned int *p = PDE(file->f_path.dentry->d_inode)->data;
- 	char str[32];
--	unsigned long value;
-+	long value;
- 
- 	if (cnt >= sizeof(str))
- 		return -EINVAL;
+Actually the better fix is probably to change the use of
+simple_strtol() to simple_strtoul().
 
+						- Ted
