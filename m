@@ -1,48 +1,47 @@
-From: akpm@linux-foundation.org
-Subject: [patch 090/148] ext3: don't try to resize if there are no reserved gdt blocks left
-Date: Sat, 18 Oct 2008 20:27:55 -0700
-Message-ID: <200810190327.m9J3Rt6h032710@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, jbacik@redhat.com, adilger@sun.com,
-	linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: GRUB support status?
+Date: Sat, 18 Oct 2008 23:11:45 -0500
+Message-ID: <48FAB381.4070500@redhat.com>
+References: <20081018184821.4fea2215@diego-desktop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Diego Calleja <diegocg@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:60223 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751017AbYJSDeL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Oct 2008 23:34:11 -0400
+Received: from mx2.redhat.com ([66.187.237.31]:48841 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750698AbYJSELt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 19 Oct 2008 00:11:49 -0400
+In-Reply-To: <20081018184821.4fea2215@diego-desktop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Josef Bacik <jbacik@redhat.com>
+Diego Calleja wrote:
+> What's the status of GRUB ext4 support? SVN says[1] that GRUB2 -which is
+> a development project with no stable version- has ext4 support, but the
+> only commit I could find[2] only seems to add extent support. Will that
+> be enought?
+> 
+> There's also a parallel GSoC project[3] from opensuse that seems to have
+> added[4] ext4 support to Grub (the Grub "legacy" versions which most of
+> the distros are using).
+> 
+> Which one is prefered? Or it's better to keep using ext3 on /boot until
+> grub support improves? (PD: I've modified the ext4 HOWTO wiki page adding
+> some information about all this)
 
-When trying to resize a ext3 fs and you run out of reserved gdt blocks,
-you get an error that doesn't actually tell you what went wrong, it just
-says that the gdb it picked is not correct, which is the case since you
-don't have any reserved gdt blocks left.  This patch adds a check to make
-sure you have reserved gdt blocks to use, and if not prints out a more
-relevant error.
+For now I'd probably keep /boot on ext3.
 
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Andreas Dilger <adilger@sun.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+Fedora will probably eventually merge the GSoC patch for our "legacy"
+grub at some point, but TBH I've not even tested it yet, much less
+looked  over the patch ...
 
- fs/ext3/resize.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+-Eric
 
-diff -puN fs/ext3/resize.c~ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left fs/ext3/resize.c
---- a/fs/ext3/resize.c~ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left
-+++ a/fs/ext3/resize.c
-@@ -790,7 +790,8 @@ int ext3_group_add(struct super_block *s
- 
- 	if (reserved_gdb || gdb_off == 0) {
- 		if (!EXT3_HAS_COMPAT_FEATURE(sb,
--					     EXT3_FEATURE_COMPAT_RESIZE_INODE)){
-+					     EXT3_FEATURE_COMPAT_RESIZE_INODE)
-+		    || !le16_to_cpu(es->s_reserved_gdt_blocks)) {
- 			ext3_warning(sb, __func__,
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
-_
+> 
+> [1]: http://svn.savannah.gnu.org/viewvc/trunk/grub2/NEWS?root=grub&view=diff&r1=1794&r2=1795
+> [2]: http://svn.savannah.gnu.org/viewvc?view=rev&root=grub&revision=1699
+> [3]: http://code.google.com/soc/2008/suse/appinfo.html?csaid=91DC4C762E7EE6D7
+> [4]: http://code.google.com/p/grub4ext4/
+
