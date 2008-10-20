@@ -1,39 +1,67 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: [patch 146/148] fs/Kconfig: move ext2, ext3, ext4, JBD, JBD2
- out
-Date: Mon, 20 Oct 2008 08:49:47 -0700 (PDT)
-Message-ID: <alpine.LFD.2.00.0810200847310.8651@nehalem.linux-foundation.org>
-References: <200810190328.m9J3Snvw000579@imap1.linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: adobriyan@gmail.com, linux-ext4@vger.kernel.org
-To: akpm@linux-foundation.org
+From: akpm@linux-foundation.org
+Subject: - jbd-abort-when-failed-to-log-metadata-buffers.patch removed from -mm tree
+Date: Mon, 20 Oct 2008 13:35:48 -0700
+Message-ID: <200810202035.m9KKZmDF011224@imap1.linux-foundation.org>
+To: hidehiro.kawai.ez@hitachi.com, jack@suse.cz,
+	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50195 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36870 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750776AbYJTPuS (ORCPT
+	by vger.kernel.org with ESMTP id S1753616AbYJTUg1 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Oct 2008 11:50:18 -0400
-In-Reply-To: <200810190328.m9J3Snvw000579@imap1.linux-foundation.org>
+	Mon, 20 Oct 2008 16:36:27 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
+The patch titled
+     jbd: abort when failed to log metadata buffers
+has been removed from the -mm tree.  Its filename was
+     jbd-abort-when-failed-to-log-metadata-buffers.patch
 
-On Sat, 18 Oct 2008, akpm@linux-foundation.org wrote:
-> 
-> Use fs/*/Kconfig more, which is good because everything related to one
-> filesystem is in one place and fs/Kconfig is quite fat.
+This patch was dropped because it was merged into mainline or a subsystem tree
 
-Umm.
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-This removes the EXT2 things from fs/Kconfig, but leaves everything else. 
-So now EXT3/EXT4 and JDB/JDB2 symbols are done twice! Well, JDB/JDB2 
-aren't actually wired up, because there's no "source fs/jdb[2]/Kconfig 
-added.
+------------------------------------------------------
+Subject: jbd: abort when failed to log metadata buffers
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 
-Whaa?
+If we failed to write metadata buffers to the journal space and succeeded
+to write the commit record, stale data can be written back to the
+filesystem as metadata in the recovery phase.
 
-Not applied. Please fix, or explain why the obvious bug was intentional.
+To avoid this, when we failed to write out metadata buffers, abort the
+journal before writing the commit record.
 
-		Linus
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Acked-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/jbd/commit.c |    3 +++
+ 1 file changed, 3 insertions(+)
+
+diff -puN fs/jbd/commit.c~jbd-abort-when-failed-to-log-metadata-buffers fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-abort-when-failed-to-log-metadata-buffers
++++ a/fs/jbd/commit.c
+@@ -762,6 +762,9 @@ wait_for_iobuf:
+ 		/* AKPM: bforget here */
+ 	}
+ 
++	if (err)
++		journal_abort(journal, err);
++
+ 	jbd_debug(3, "JBD: commit phase 6\n");
+ 
+ 	if (journal_write_commit_record(journal, commit_transaction))
+_
+
+Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
+
+origin.patch
+jbd-fix-error-handling-for-checkpoint-io.patch
+ext3-add-checks-for-errors-from-jbd.patch
+jbd-test-bh_write_eio-to-detect-errors-on-metadata-buffers.patch
+
