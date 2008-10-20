@@ -1,49 +1,50 @@
-From: Richard Kojedzinszky <krichy@tvnetwork.hu>
-Subject: linux 2.6.26/minix fs
-Date: Mon, 20 Oct 2008 09:45:48 +0200 (CEST)
-Message-ID: <alpine.DEB.1.10.0810200938380.24043@krichy.tvnetwork.hu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: status of the ext3/jbd error handling enhancement patches
+Date: Mon, 20 Oct 2008 08:41:45 -0400
+Message-ID: <20081020124145.GB10698@mit.edu>
+References: <48FC081D.60306@hitachi.com> <20081019221331.ddf6b8c2.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	adilger@sun.com, jack@suse.cz, sandeen@redhat.com
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from krichy.tvnetwork.hu ([80.95.68.194]:34420 "HELO
-	krichy.tvnetwork.hu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1752221AbYJTHpw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Oct 2008 03:45:52 -0400
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:34253 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750985AbYJTMlx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Oct 2008 08:41:53 -0400
+Content-Disposition: inline
+In-Reply-To: <20081019221331.ddf6b8c2.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dear developers,
+On Sun, Oct 19, 2008 at 10:13:31PM -0700, Andrew Morton wrote:
+> >   #jbd-fix-error-handling-for-checkpoint-io.patch: double-check this
+> >   jbd-fix-error-handling-for-checkpoint-io.patch
+> >   ext3-add-checks-for-errors-from-jbd.patch
+> >   jbd-test-bh_write_eio-to-detect-errors-on-metadata-buffers.patch
+> > 
+> > They improve filesystem corruption problem and it is needed by
+> > mission critical systems.
+> > 
+> > Could you tell me what is your concern (you commented, "double-check
+> > this") ?  Are there something that I can help?  For example, I can
+> > provide some SystemTap scripts to help tests.
+> 
+> I forget my reasons for that - would need to go back and review the
+> discussions when the patch was first merged.
+> 
+> One of the above patches (I forget which) breaks the build because it
+> expects the presence of Al Viro's VFS tree, and that hasn't been merged
+> yet.  I need to wait and see if that merge will be happening (seems
+> unlikely) and if not, rework the patch against mainline.
 
-I did not found the maintainers of the minix fs in the kernel, so I send 
-this mail to you, please forward it to the appropriate people.
-Anyway, my problem is that something went wrong in minix fs, as 
-illustrated below:
+Strange; I don't recall any of the ext4 variants of the error handling
+patches requiring Al's VFS tree.  And I thought all of them have been
+merged into Linus's tree at this point.
 
-krichy:~# mkfs.minix -v /dev/ram0
-1376 inodes
-4096 blocks
-Firstdatazone=90 (90)
-Zonesize=1024
-Maxsize=2147483647
+Kawai-san, could you double check and see if I processed all of your
+patches and pushed them to Linus?  I was pretty sure I had...
 
-krichy:~# mount /dev/ram0 /mnt
-krichy:~# cd /mnt
-krichy:/mnt# for i in `seq 1 200`; do touch $i ; done
-krichy:/mnt# ls -l | wc -l
-127
-krichy:/mnt# ls -l 200
--rw-r--r-- 1 root root 0 2008-10-20 09:42 200
-krichy:/mnt# ls -l 194
--rw-r--r-- 1 root root 0 2008-10-20 09:42 194
-krichy:/mnt# ls -l | grep 194
-krichy:/mnt#
-
-Any help appreciated.
-
-Regards,
-Kojedzinszky Richard
-TvNetWork Nyrt.
-E-mail: krichy (at) tvnetwork [dot] hu
-PGP: 0x24E79141
-   Fingerprint = 6847 ECFF EF58 0C09 18A5  16CF 270F 0C6F 24E7 9141
+		    	   	   	     - Ted
