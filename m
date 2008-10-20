@@ -1,50 +1,39 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: status of the ext3/jbd error handling enhancement patches
-Date: Sun, 19 Oct 2008 22:13:31 -0700
-Message-ID: <20081019221331.ddf6b8c2.akpm@linux-foundation.org>
-References: <48FC081D.60306@hitachi.com>
+From: Lars =?UTF-8?B?VMOkdWJlcg==?= <taeuber@bbaw.de>
+Subject: Re: undelete still opened file
+Date: Mon, 20 Oct 2008 09:23:32 +0200
+Message-ID: <20081020092332.69555985.taeuber@bbaw.de>
+References: <20081017120852.1f04dc36.taeuber@bbaw.de>
+	<ea11fea30810170333n4ba9a681l7b64862834899aac@mail.gmail.com>
+	<20081017143311.52d50a23.taeuber@bbaw.de>
+	<20081017132443.GA8755@mit.edu>
+	<20081017153957.28a4dd67.taeuber@bbaw.de>
+	<20081017161432.GB8755@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, jack@suse.cz, sandeen@redhat.com
-To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:34927 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751735AbYJTFON (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Oct 2008 01:14:13 -0400
-In-Reply-To: <48FC081D.60306@hitachi.com>
+Received: from mail.bbaw.de ([194.95.188.6]:44550 "EHLO mail.bbaw.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750991AbYJTHWM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Oct 2008 03:22:12 -0400
+Received: from mailhub.bbaw.de (unknown [192.168.4.1])
+	by mail.bbaw.de (Postfix) with ESMTP id BA50F4A804B
+	for <linux-ext4@vger.kernel.org>; Mon, 20 Oct 2008 09:22:10 +0200 (CEST)
+Received: from localhost (localhost [127.0.0.1])
+	by mailhub.bbaw.de (Postfix) with ESMTP id 3629B93753
+	for <linux-ext4@vger.kernel.org>; Mon, 20 Oct 2008 09:22:10 +0200 (CEST)
+Received: from taeuber.bbaw.de (taeuber.bbaw.de [192.168.1.148])
+	by mailhub.bbaw.de (Postfix) with SMTP id 01FF69372B
+	for <linux-ext4@vger.kernel.org>; Mon, 20 Oct 2008 09:22:09 +0200 (CEST)
+In-Reply-To: <20081017161432.GB8755@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 20 Oct 2008 13:25:01 +0900 Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com> wrote:
-
-> Hi Andrew,
+Theodore Tso <tytso@mit.edu> schrieb:
+> > Is this planned?
 > 
-> Thank you for pushing my ext3/jbd to Linus.  But some of patches
-> in -mm (following three patches) haven't been sent to Linus.
-> 
->   #jbd-fix-error-handling-for-checkpoint-io.patch: double-check this
->   jbd-fix-error-handling-for-checkpoint-io.patch
->   ext3-add-checks-for-errors-from-jbd.patch
->   jbd-test-bh_write_eio-to-detect-errors-on-metadata-buffers.patch
-> 
-> They improve filesystem corruption problem and it is needed by
-> mission critical systems.
-> 
-> Could you tell me what is your concern (you commented, "double-check
-> this") ?  Are there something that I can help?  For example, I can
-> provide some SystemTap scripts to help tests.
+> No, this is not planned.   "rm is forever". 
 
-I forget my reasons for that - would need to go back and review the
-discussions when the patch was first merged.
-
-One of the above patches (I forget which) breaks the build because it
-expects the presence of Al Viro's VFS tree, and that hasn't been merged
-yet.  I need to wait and see if that merge will be happening (seems
-unlikely) and if not, rework the patch against mainline.
-
-Quie a few patches (5%?) tend to get delayed like this due to missing
-dependencies.
+Ok, Thanks anyway.
+Lars
