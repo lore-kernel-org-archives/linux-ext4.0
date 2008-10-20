@@ -1,86 +1,60 @@
 From: akpm@linux-foundation.org
-Subject: - jbd-dont-dirty-original-metadata-buffer-on-abort.patch removed from -mm tree
-Date: Mon, 20 Oct 2008 13:35:49 -0700
-Message-ID: <200810202035.m9KKZnXw011227@imap1.linux-foundation.org>
-To: hidehiro.kawai.ez@hitachi.com, jack@suse.cz,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:40106 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754091AbYJTUqr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Oct 2008 16:46:47 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: - ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch removed from -mm tree
+Date: Mon, 20 Oct 2008 13:35:52 -0700
+Message-ID: <200810202035.m9KKZqHW011238@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: jbacik@redhat.com, adilger@sun.com, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     jbd: don't dirty original metadata buffer on abort
+     ext3: don't try to resize if there are no reserved gdt blocks left
 has been removed from the -mm tree.  Its filename was
-     jbd-dont-dirty-original-metadata-buffer-on-abort.patch
+     ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd: don't dirty original metadata buffer on abort
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: ext3: don't try to resize if there are no reserved gdt blocks left
+From: Josef Bacik <jbacik@redhat.com>
 
-Currently, original metadata buffers are dirtied when they are unfiled
-whether the journal has aborted or not.  Eventually these buffers will be
-written-back to the filesystem by pdflush.  This means some metadata
-buffers are written to the filesystem without journaling if the journal
-aborts.  So if both journal abort and system crash happen at the same
-time, the filesystem would become inconsistent state.  Additionally,
-replaying journaled metadata can overwrite the latest metadata on the
-filesystem partly.  Because, if the journal aborts, journaled metadata are
-preserved and replayed during the next mount not to lose uncheckpointed
-metadata.  This would also break the consistency of the filesystem.
+When trying to resize a ext3 fs and you run out of reserved gdt blocks,
+you get an error that doesn't actually tell you what went wrong, it just
+says that the gdb it picked is not correct, which is the case since you
+don't have any reserved gdt blocks left.  This patch adds a check to make
+sure you have reserved gdt blocks to use, and if not prints out a more
+relevant error.
 
-This patch prevents original metadata buffers from being dirtied on abort
-by clearing BH_JBDDirty flag from those buffers.  Thus, no metadata
-buffers are written to the filesystem without journaling.
-
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Acked-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
 Cc: <linux-ext4@vger.kernel.org>
+Cc: Andreas Dilger <adilger@sun.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/commit.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/ext3/resize.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-diff -puN fs/jbd/commit.c~jbd-dont-dirty-original-metadata-buffer-on-abort fs/jbd/commit.c
---- a/fs/jbd/commit.c~jbd-dont-dirty-original-metadata-buffer-on-abort
-+++ a/fs/jbd/commit.c
-@@ -518,9 +518,10 @@ void journal_commit_transaction(journal_
- 		jh = commit_transaction->t_buffers;
+diff -puN fs/ext3/resize.c~ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left fs/ext3/resize.c
+--- a/fs/ext3/resize.c~ext3-dont-try-to-resize-if-there-are-no-reserved-gdt-blocks-left
++++ a/fs/ext3/resize.c
+@@ -790,7 +790,8 @@ int ext3_group_add(struct super_block *s
  
- 		/* If we're in abort mode, we just un-journal the buffer and
--		   release it for background writing. */
-+		   release it. */
- 
- 		if (is_journal_aborted(journal)) {
-+			clear_buffer_jbddirty(jh2bh(jh));
- 			JBUFFER_TRACE(jh, "journal is aborting: refile");
- 			journal_refile_buffer(journal, jh);
- 			/* If that was the last one, we need to clean up
-@@ -855,6 +856,8 @@ restart_loop:
- 		if (buffer_jbddirty(bh)) {
- 			JBUFFER_TRACE(jh, "add to new checkpointing trans");
- 			__journal_insert_checkpoint(jh, commit_transaction);
-+			if (is_journal_aborted(journal))
-+				clear_buffer_jbddirty(bh);
- 			JBUFFER_TRACE(jh, "refile for checkpoint writeback");
- 			__journal_refile_buffer(jh);
- 			jbd_unlock_bh_state(bh);
+ 	if (reserved_gdb || gdb_off == 0) {
+ 		if (!EXT3_HAS_COMPAT_FEATURE(sb,
+-					     EXT3_FEATURE_COMPAT_RESIZE_INODE)){
++					     EXT3_FEATURE_COMPAT_RESIZE_INODE)
++		    || !le16_to_cpu(es->s_reserved_gdt_blocks)) {
+ 			ext3_warning(sb, __func__,
+ 				     "No reserved GDT blocks, can't resize");
+ 			return -EPERM;
 _
 
-Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
+Patches currently in -mm which might be from jbacik@redhat.com are
 
 origin.patch
-jbd-fix-error-handling-for-checkpoint-io.patch
-ext3-add-checks-for-errors-from-jbd.patch
-jbd-test-bh_write_eio-to-detect-errors-on-metadata-buffers.patch
 
