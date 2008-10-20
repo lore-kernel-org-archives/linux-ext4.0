@@ -1,50 +1,39 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: status of the ext3/jbd error handling enhancement patches
-Date: Mon, 20 Oct 2008 08:41:45 -0400
-Message-ID: <20081020124145.GB10698@mit.edu>
-References: <48FC081D.60306@hitachi.com> <20081019221331.ddf6b8c2.akpm@linux-foundation.org>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [patch 146/148] fs/Kconfig: move ext2, ext3, ext4, JBD, JBD2
+ out
+Date: Mon, 20 Oct 2008 08:49:47 -0700 (PDT)
+Message-ID: <alpine.LFD.2.00.0810200847310.8651@nehalem.linux-foundation.org>
+References: <200810190328.m9J3Snvw000579@imap1.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	adilger@sun.com, jack@suse.cz, sandeen@redhat.com
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: adobriyan@gmail.com, linux-ext4@vger.kernel.org
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:34253 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750985AbYJTMlx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Oct 2008 08:41:53 -0400
-Content-Disposition: inline
-In-Reply-To: <20081019221331.ddf6b8c2.akpm@linux-foundation.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:50195 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750776AbYJTPuS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Oct 2008 11:50:18 -0400
+In-Reply-To: <200810190328.m9J3Snvw000579@imap1.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 19, 2008 at 10:13:31PM -0700, Andrew Morton wrote:
-> >   #jbd-fix-error-handling-for-checkpoint-io.patch: double-check this
-> >   jbd-fix-error-handling-for-checkpoint-io.patch
-> >   ext3-add-checks-for-errors-from-jbd.patch
-> >   jbd-test-bh_write_eio-to-detect-errors-on-metadata-buffers.patch
-> > 
-> > They improve filesystem corruption problem and it is needed by
-> > mission critical systems.
-> > 
-> > Could you tell me what is your concern (you commented, "double-check
-> > this") ?  Are there something that I can help?  For example, I can
-> > provide some SystemTap scripts to help tests.
+
+
+On Sat, 18 Oct 2008, akpm@linux-foundation.org wrote:
 > 
-> I forget my reasons for that - would need to go back and review the
-> discussions when the patch was first merged.
-> 
-> One of the above patches (I forget which) breaks the build because it
-> expects the presence of Al Viro's VFS tree, and that hasn't been merged
-> yet.  I need to wait and see if that merge will be happening (seems
-> unlikely) and if not, rework the patch against mainline.
+> Use fs/*/Kconfig more, which is good because everything related to one
+> filesystem is in one place and fs/Kconfig is quite fat.
 
-Strange; I don't recall any of the ext4 variants of the error handling
-patches requiring Al's VFS tree.  And I thought all of them have been
-merged into Linus's tree at this point.
+Umm.
 
-Kawai-san, could you double check and see if I processed all of your
-patches and pushed them to Linus?  I was pretty sure I had...
+This removes the EXT2 things from fs/Kconfig, but leaves everything else. 
+So now EXT3/EXT4 and JDB/JDB2 symbols are done twice! Well, JDB/JDB2 
+aren't actually wired up, because there's no "source fs/jdb[2]/Kconfig 
+added.
 
-		    	   	   	     - Ted
+Whaa?
+
+Not applied. Please fix, or explain why the obvious bug was intentional.
+
+		Linus
