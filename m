@@ -1,87 +1,260 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [RFC][PATCH] JBD: release checkpoint journal heads through try_to_release_page
- when the memory is exhausted
-Date: Tue, 21 Oct 2008 11:49:15 +0900
-Message-ID: <48FD432B.80006@jp.fujitsu.com>
-References: <20081017.223716.147444348.00960188@stratos.soft.fujitsu.com> <20081020160249.ff41f762.akpm@linux-foundation.org>
-Reply-To: toshi.okajima@jp.fujitsu.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, sct@redhat.com
-To: Andrew Morton <akpm@linux-foundation.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH,RFC] ext3: Add support for non-native signed/unsigned htree hash algorithms
+Date: Mon, 20 Oct 2008 23:43:44 -0400
+Message-ID: <1224560624-9691-2-git-send-email-tytso@mit.edu>
+References: <1224560624-9691-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, akpm@linux-foundation.org,
+	linux-kernel@vger.kernel.org
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:45842 "EHLO
-	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751213AbYJUCtV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Oct 2008 22:49:21 -0400
-Received: from m2.gw.fujitsu.co.jp ([10.0.50.72])
-	by fgwmail6.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id m9L2nJq3031207
-	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
-	Tue, 21 Oct 2008 11:49:20 +0900
-Received: from smail (m2 [127.0.0.1])
-	by outgoing.m2.gw.fujitsu.co.jp (Postfix) with ESMTP id ADE4F1B801E
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Oct 2008 11:49:19 +0900 (JST)
-Received: from s3.gw.fujitsu.co.jp (s3.gw.fujitsu.co.jp [10.0.50.93])
-	by m2.gw.fujitsu.co.jp (Postfix) with ESMTP id 598612DC01F
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Oct 2008 11:49:19 +0900 (JST)
-Received: from s3.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
-	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id 3B26F1DB8037
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Oct 2008 11:49:19 +0900 (JST)
-Received: from ml11.s.css.fujitsu.com (ml11.s.css.fujitsu.com [10.249.87.101])
-	by s3.gw.fujitsu.co.jp (Postfix) with ESMTP id E23E21DB803A
-	for <linux-ext4@vger.kernel.org>; Tue, 21 Oct 2008 11:49:18 +0900 (JST)
-In-Reply-To: <20081020160249.ff41f762.akpm@linux-foundation.org>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:49104 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751872AbYJUFTZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Oct 2008 01:19:25 -0400
+In-Reply-To: <1224560624-9691-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andrew.
-Thank you for your comment.
+The original ext3 hash algorithms assumed that variables of type char
+were signed, as God and K&R intended.  Unfortunately, this assumption
+is not true on some architectures.  Userspace support for marking
+filesystems with non-native signed/unsigned chars was added two years
+ago, but the kernel-side support was never added (until now).
 
-Andrew Morton wrote:
-> On Fri, 17 Oct 2008 22:37:16 +0900 (JST)
-> Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
-> 
->> Hi.
->>
->> I found the situation where OOM-Killer happens easily.
->> I will inform you of it. 
->> I tried to fix this problem to make OOM-Killer not happen easily as much as 
->> possible.
-<SNIP>
-> OK.
-> 
->> ---
->>  fs/buffer.c                 |   23 ++++++++++++++++++++++-
->>  fs/jbd/journal.c            |    7 +++++++
->>  fs/jbd/transaction.c        |   39 +++++++++++++++++++++++++++++++++++++++
->>  include/linux/buffer_head.h |    7 +++++++
->>  include/linux/jbd.h         |    1 +
->>  5 files changed, 76 insertions(+), 1 deletion(-) 
-> 
-> The patch is fairly complex, and increasing the buffer_head size can be
-Yes.
-Applying this fix causes the buffer_head size to increase.
-The increase of the buffer_head size changes into 60 bytes from 56 bytes
-on x86 system.
-As a result, the maximum number of buffer heads of one slab changes
-into 63 from 64.
-(The increase of the size is less than 2%.)
-Therefore I think this change influences system performance hardly.
-And I rather want to add a new member because I think it is useful for
-not only this fix but also the future.
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: akpm@linux-foundation.org
+Cc: linux-kernel@vger.kernel.org
+---
+ fs/ext3/hash.c             |   42 +++++++++++++++++++++++++++++++++---------
+ fs/ext3/namei.c            |    7 +++++++
+ fs/ext3/super.c            |   15 +++++++++++++++
+ include/linux/ext3_fs.h    |   28 +++++++++++++++++++++++++++-
+ include/linux/ext3_fs_sb.h |    1 +
+ 5 files changed, 83 insertions(+), 10 deletions(-)
 
-> rather costly.  An alternative might be to implement a shrinker
-> callback function for the journal_head slab cache.  Did you consider
-> this?
-Yes.
-But the unused-list and counters are required by managing the shrink targets
-("journal head") if we implement a shrinker.
-I thought that comparatively big code changes were necessary for jbd
-to accomplish it.
-
-However I will try it.
-
-Best Regards,
-Toshiyuki Okajima
+diff --git a/fs/ext3/hash.c b/fs/ext3/hash.c
+index c30e149..855eacb 100644
+--- a/fs/ext3/hash.c
++++ b/fs/ext3/hash.c
+@@ -35,11 +35,20 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
+ 
+ 
+ /* The old legacy hash */
+-static __u32 dx_hack_hash (const char *name, int len)
++static __u32 dx_hack_hash (const char *name, int len, int unsigned_flag)
+ {
+-	__u32 hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++ 	const unsigned char *ucp = (const unsigned char *) name;
++	const signed char *scp = (const signed char *) name;
++	int c;
++
+ 	while (len--) {
+-		__u32 hash = hash1 + (hash0 ^ (*name++ * 7152373));
++		if (unsigned_flag)
++			c = (int) *ucp++;
++		else
++			c = (int) *scp++;
++
++		hash = hash1 + (hash0 ^ (c * 7152373));
+ 
+ 		if (hash & 0x80000000) hash -= 0x7fffffff;
+ 		hash1 = hash0;
+@@ -48,10 +57,13 @@ static __u32 dx_hack_hash (const char *name, int len)
+ 	return (hash0 << 1);
+ }
+ 
+-static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
++static void str2hashbuf(const char *msg, int len, __u32 *buf, int num,
++			int unsigned_flag)
+ {
+ 	__u32	pad, val;
+-	int	i;
++	int	i, c;
++	const unsigned char *ucp = (const unsigned char *) msg;
++	const signed char *scp = (const signed char *) msg;
+ 
+ 	pad = (__u32)len | ((__u32)len << 8);
+ 	pad |= pad << 16;
+@@ -62,7 +74,12 @@ static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
+ 	for (i=0; i < len; i++) {
+ 		if ((i % 4) == 0)
+ 			val = pad;
+-		val = msg[i] + (val << 8);
++		if (unsigned_flag)
++			c = (int) ucp[i];
++		else
++			c = (int) scp[i];
++
++		val = c + (val << 8);
+ 		if ((i % 4) == 3) {
+ 			*buf++ = val;
+ 			val = pad;
+@@ -95,6 +112,7 @@ int ext3fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 	const char	*p;
+ 	int		i;
+ 	__u32		in[8], buf[4];
++	int		unsigned_flag = 0;
+ 
+ 	/* Initialize the default seed for the hash checksum functions */
+ 	buf[0] = 0x67452301;
+@@ -113,13 +131,17 @@ int ext3fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 	}
+ 
+ 	switch (hinfo->hash_version) {
++	case DX_HASH_LEGACY_UNSIGNED:
++		unsigned_flag++;
+ 	case DX_HASH_LEGACY:
+-		hash = dx_hack_hash(name, len);
++		hash = dx_hack_hash(name, len, unsigned_flag);
+ 		break;
++	case DX_HASH_HALF_MD4_UNSIGNED:
++		unsigned_flag++;
+ 	case DX_HASH_HALF_MD4:
+ 		p = name;
+ 		while (len > 0) {
+-			str2hashbuf(p, len, in, 8);
++			str2hashbuf(p, len, in, 8, unsigned_flag);
+ 			half_md4_transform(buf, in);
+ 			len -= 32;
+ 			p += 32;
+@@ -127,10 +149,12 @@ int ext3fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 		minor_hash = buf[2];
+ 		hash = buf[1];
+ 		break;
++	case DX_HASH_TEA_UNSIGNED:
++		unsigned_flag++;
+ 	case DX_HASH_TEA:
+ 		p = name;
+ 		while (len > 0) {
+-			str2hashbuf(p, len, in, 4);
++			str2hashbuf(p, len, in, 4, unsigned_flag);
+ 			TEA_transform(buf, in);
+ 			len -= 16;
+ 			p += 16;
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index de13e91..a688a47 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -369,6 +369,8 @@ dx_probe(struct dentry *dentry, struct inode *dir,
+ 		goto fail;
+ 	}
+ 	hinfo->hash_version = root->info.hash_version;
++	if (hinfo->hash_version <= DX_HASH_TEA)
++		hinfo->hash_version += EXT3_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo->seed = EXT3_SB(dir->i_sb)->s_hash_seed;
+ 	if (dentry)
+ 		ext3fs_dirhash(dentry->d_name.name, dentry->d_name.len, hinfo);
+@@ -637,6 +639,9 @@ int ext3_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 	dir = dir_file->f_path.dentry->d_inode;
+ 	if (!(EXT3_I(dir)->i_flags & EXT3_INDEX_FL)) {
+ 		hinfo.hash_version = EXT3_SB(dir->i_sb)->s_def_hash_version;
++		if (hinfo.hash_version <= DX_HASH_TEA)
++			hinfo.hash_version +=
++				EXT3_SB(dir->i_sb)->s_hash_unsigned;
+ 		hinfo.seed = EXT3_SB(dir->i_sb)->s_hash_seed;
+ 		count = htree_dirblock_to_tree(dir_file, dir, 0, &hinfo,
+ 					       start_hash, start_minor_hash);
+@@ -1415,6 +1420,8 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 
+ 	/* Initialize as for dx_probe */
+ 	hinfo.hash_version = root->info.hash_version;
++	if (hinfo.hash_version <= DX_HASH_TEA)
++		hinfo.hash_version += EXT3_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo.seed = EXT3_SB(dir->i_sb)->s_hash_seed;
+ 	ext3fs_dirhash(name, namelen, &hinfo);
+ 	frame = frames;
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index f38a5af..fa706ea 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -1727,6 +1727,21 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ 	for (i=0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
++	i = le32_to_cpu(es->s_flags);
++	if (i & EXT2_FLAGS_UNSIGNED_HASH)
++		sbi->s_hash_unsigned = 3;
++	else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
++		char	c;
++
++		c = (char) 255;
++		if (((int) c) == -1) {
++			es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
++		} else {
++			es->s_flags |= cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
++			sbi->s_hash_unsigned = 3;
++		}
++		sb->s_dirt = 1;
++	}
+ 
+ 	if (sbi->s_blocks_per_group > blocksize * 8) {
+ 		printk (KERN_ERR
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 8120fa1..57420c8 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -354,6 +354,13 @@ struct ext3_inode {
+ #define	EXT3_ORPHAN_FS			0x0004	/* Orphans being recovered */
+ 
+ /*
++ * Misc. filesystem flags
++ */
++#define EXT2_FLAGS_SIGNED_HASH		0x0001  /* Signed dirhash in use */
++#define EXT2_FLAGS_UNSIGNED_HASH	0x0002  /* Unsigned dirhash in use */
++#define EXT2_FLAGS_TEST_FILESYS		0x0004	/* to test development code */
++
++/*
+  * Mount flags
+  */
+ #define EXT3_MOUNT_CHECK		0x00001	/* Do mount-time checks */
+@@ -487,7 +494,23 @@ struct ext3_super_block {
+ 	__u16	s_reserved_word_pad;
+ 	__le32	s_default_mount_opts;
+ 	__le32	s_first_meta_bg;	/* First metablock block group */
+-	__u32	s_reserved[190];	/* Padding to the end of the block */
++	__le32	s_mkfs_time;		/* When the filesystem was created */
++	__le32	s_jnl_blocks[17];	/* Backup of the journal inode */
++	/* 64bit support valid if EXT4_FEATURE_COMPAT_64BIT */
++/*150*/	__le32	s_blocks_count_hi;	/* Blocks count */
++	__le32	s_r_blocks_count_hi;	/* Reserved blocks count */
++	__le32	s_free_blocks_count_hi;	/* Free blocks count */
++	__le16	s_min_extra_isize;	/* All inodes have at least # bytes */
++	__le16	s_want_extra_isize; 	/* New inodes should reserve # bytes */
++	__le32	s_flags;		/* Miscellaneous flags */
++	__le16  s_raid_stride;		/* RAID stride */
++	__le16  s_mmp_interval;         /* # seconds to wait in MMP checking */
++	__le64  s_mmp_block;            /* Block for multi-mount protection */
++	__le32  s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
++	__u8	s_log_groups_per_flex;  /* FLEX_BG group size */
++	__u8	s_reserved_char_pad2;
++	__le16  s_reserved_pad;
++	__u32   s_reserved[162];        /* Padding to the end of the block */
+ };
+ 
+ #ifdef __KERNEL__
+@@ -692,6 +715,9 @@ static inline __le16 ext3_rec_len_to_disk(unsigned len)
+ #define DX_HASH_LEGACY		0
+ #define DX_HASH_HALF_MD4	1
+ #define DX_HASH_TEA		2
++#define DX_HASH_LEGACY_UNSIGNED	3
++#define DX_HASH_HALF_MD4_UNSIGNED	4
++#define DX_HASH_TEA_UNSIGNED		5
+ 
+ #ifdef __KERNEL__
+ 
+diff --git a/include/linux/ext3_fs_sb.h b/include/linux/ext3_fs_sb.h
+index b65f028..50dc80a 100644
+--- a/include/linux/ext3_fs_sb.h
++++ b/include/linux/ext3_fs_sb.h
+@@ -57,6 +57,7 @@ struct ext3_sb_info {
+ 	u32 s_next_generation;
+ 	u32 s_hash_seed[4];
+ 	int s_def_hash_version;
++	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+-- 
+1.5.6.1.205.ge2c7.dirty
 
