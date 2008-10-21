@@ -1,216 +1,69 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH,RFC] ext4: Add support for non-native signed/unsigned htree hash algorithms
-Date: Mon, 20 Oct 2008 23:43:43 -0400
-Message-ID: <1224560624-9691-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: Re: status of the ext3/jbd error handling enhancement patches
+Date: Tue, 21 Oct 2008 15:24:47 +0900
+Message-ID: <48FD75AF.6080507@hitachi.com>
+References: <48FC081D.60306@hitachi.com>
+    <20081019221331.ddf6b8c2.akpm@linux-foundation.org>
+    <20081020124145.GB10698@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	adilger@sun.com, jack@suse.cz, sandeen@redhat.com
+To: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:49099 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751521AbYJUFTY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Oct 2008 01:19:24 -0400
+Received: from mail9.hitachi.co.jp ([133.145.228.44]:59967 "EHLO
+	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751167AbYJUGY4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Oct 2008 02:24:56 -0400
+In-Reply-To: <20081020124145.GB10698@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The original ext3 hash algorithms assumed that variables of type char
-were signed, as God and K&R intended.  Unfortunately, this assumption
-is not true on some architectures.  Userspace support for marking
-filesystems with non-native signed/unsigned chars was added two years
-ago, but the kernel-side support was never added (until now).
+Theodore Tso wrote:
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h    |    3 +++
- fs/ext4/ext4_sb.h |    1 +
- fs/ext4/hash.c    |   42 +++++++++++++++++++++++++++++++++---------
- fs/ext4/namei.c   |    7 +++++++
- fs/ext4/super.c   |   15 +++++++++++++++
- 5 files changed, 59 insertions(+), 9 deletions(-)
+> On Sun, Oct 19, 2008 at 10:13:31PM -0700, Andrew Morton wrote:
+> 
+>>>  #jbd-fix-error-handling-for-checkpoint-io.patch: double-check this
+>>>  jbd-fix-error-handling-for-checkpoint-io.patch
+>>>  ext3-add-checks-for-errors-from-jbd.patch
+>>>  jbd-test-bh_write_eio-to-detect-errors-on-metadata-buffers.patch
+>>>
+>>>They improve filesystem corruption problem and it is needed by
+>>>mission critical systems.
+>>>
+>>>Could you tell me what is your concern (you commented, "double-check
+>>>this") ?  Are there something that I can help?  For example, I can
+>>>provide some SystemTap scripts to help tests.
+>>
+>>I forget my reasons for that - would need to go back and review the
+>>discussions when the patch was first merged.
+>>
+>>One of the above patches (I forget which) breaks the build because it
+>>expects the presence of Al Viro's VFS tree, and that hasn't been merged
+>>yet.  I need to wait and see if that merge will be happening (seems
+>>unlikely) and if not, rework the patch against mainline.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4880cc3..22cb2a4 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -891,6 +891,9 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len)
- #define DX_HASH_LEGACY		0
- #define DX_HASH_HALF_MD4	1
- #define DX_HASH_TEA		2
-+#define DX_HASH_LEGACY_UNSIGNED	3
-+#define DX_HASH_HALF_MD4_UNSIGNED	4
-+#define DX_HASH_TEA_UNSIGNED		5
- 
- #ifdef __KERNEL__
- 
-diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-index 445fde6..2f3b8b1 100644
---- a/fs/ext4/ext4_sb.h
-+++ b/fs/ext4/ext4_sb.h
-@@ -57,6 +57,7 @@ struct ext4_sb_info {
- 	u32 s_next_generation;
- 	u32 s_hash_seed[4];
- 	int s_def_hash_version;
-+	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
- 	struct percpu_counter s_freeblocks_counter;
- 	struct percpu_counter s_freeinodes_counter;
- 	struct percpu_counter s_dirs_counter;
-diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
-index 556ca8e..d8fd725 100644
---- a/fs/ext4/hash.c
-+++ b/fs/ext4/hash.c
-@@ -35,11 +35,20 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
- 
- 
- /* The old legacy hash */
--static __u32 dx_hack_hash(const char *name, int len)
-+static __u32 dx_hack_hash(const char *name, int len, int unsigned_flag)
- {
--	__u32 hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
-+	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
-+	const unsigned char *ucp = (const unsigned char *) name;
-+	const signed char *scp = (const signed char *) name;
-+	int c;
-+
- 	while (len--) {
--		__u32 hash = hash1 + (hash0 ^ (*name++ * 7152373));
-+		if (unsigned_flag)
-+			c = (int) *ucp++;
-+		else
-+			c = (int) *scp++;
-+
-+		hash = hash1 + (hash0 ^ (c * 7152373));
- 
- 		if (hash & 0x80000000) hash -= 0x7fffffff;
- 		hash1 = hash0;
-@@ -48,10 +57,13 @@ static __u32 dx_hack_hash(const char *name, int len)
- 	return (hash0 << 1);
- }
- 
--static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
-+static void str2hashbuf(const char *msg, int len, __u32 *buf, int num,
-+			int unsigned_flag)
- {
- 	__u32	pad, val;
--	int	i;
-+	int	i, c;
-+	const unsigned char *ucp = (const unsigned char *) msg;
-+	const signed char *scp = (const signed char *) msg;
- 
- 	pad = (__u32)len | ((__u32)len << 8);
- 	pad |= pad << 16;
-@@ -62,7 +74,12 @@ static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
- 	for (i = 0; i < len; i++) {
- 		if ((i % 4) == 0)
- 			val = pad;
--		val = msg[i] + (val << 8);
-+		if (unsigned_flag)
-+			c = (int) ucp[i];
-+		else
-+			c = (int) scp[i];
-+
-+		val = c + (val << 8);
- 		if ((i % 4) == 3) {
- 			*buf++ = val;
- 			val = pad;
-@@ -95,6 +112,7 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 	const char	*p;
- 	int		i;
- 	__u32		in[8], buf[4];
-+	int		unsigned_flag = 0;
- 
- 	/* Initialize the default seed for the hash checksum functions */
- 	buf[0] = 0x67452301;
-@@ -113,13 +131,17 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 	}
- 
- 	switch (hinfo->hash_version) {
-+	case DX_HASH_LEGACY_UNSIGNED:
-+		unsigned_flag++;
- 	case DX_HASH_LEGACY:
--		hash = dx_hack_hash(name, len);
-+		hash = dx_hack_hash(name, len, unsigned_flag);
- 		break;
-+	case DX_HASH_HALF_MD4_UNSIGNED:
-+		unsigned_flag++;
- 	case DX_HASH_HALF_MD4:
- 		p = name;
- 		while (len > 0) {
--			str2hashbuf(p, len, in, 8);
-+			str2hashbuf(p, len, in, 8, unsigned_flag);
- 			half_md4_transform(buf, in);
- 			len -= 32;
- 			p += 32;
-@@ -127,10 +149,12 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 		minor_hash = buf[2];
- 		hash = buf[1];
- 		break;
-+	case DX_HASH_TEA_UNSIGNED:
-+		unsigned_flag++;
- 	case DX_HASH_TEA:
- 		p = name;
- 		while (len > 0) {
--			str2hashbuf(p, len, in, 4);
-+			str2hashbuf(p, len, in, 4, unsigned_flag);
- 			TEA_transform(buf, in);
- 			len -= 16;
- 			p += 16;
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 92db9e9..80f59bf 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -372,6 +372,8 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
- 		goto fail;
- 	}
- 	hinfo->hash_version = root->info.hash_version;
-+	if (hinfo->hash_version <= DX_HASH_TEA)
-+		hinfo->hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
- 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
- 	if (d_name)
- 		ext4fs_dirhash(d_name->name, d_name->len, hinfo);
-@@ -641,6 +643,9 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 	dir = dir_file->f_path.dentry->d_inode;
- 	if (!(EXT4_I(dir)->i_flags & EXT4_INDEX_FL)) {
- 		hinfo.hash_version = EXT4_SB(dir->i_sb)->s_def_hash_version;
-+		if (hinfo.hash_version <= DX_HASH_TEA)
-+			hinfo.hash_version +=
-+				EXT4_SB(dir->i_sb)->s_hash_unsigned;
- 		hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
- 		count = htree_dirblock_to_tree(dir_file, dir, 0, &hinfo,
- 					       start_hash, start_minor_hash);
-@@ -1418,6 +1423,8 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 
- 	/* Initialize as for dx_probe */
- 	hinfo.hash_version = root->info.hash_version;
-+	if (hinfo.hash_version <= DX_HASH_TEA)
-+		hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
- 	hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
- 	ext4fs_dirhash(name, namelen, &hinfo);
- 	frame = frames;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0ef4a1a..e191ce6 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2116,6 +2116,21 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	for (i = 0; i < 4; i++)
- 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
- 	sbi->s_def_hash_version = es->s_def_hash_version;
-+	i = le32_to_cpu(es->s_flags);
-+	if (i & EXT2_FLAGS_UNSIGNED_HASH)
-+		sbi->s_hash_unsigned = 3;
-+	else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
-+		char	c;
-+
-+		c = (char) 255;
-+		if (((int) c) == -1) {
-+			es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
-+		} else {
-+			es->s_flags |= cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
-+			sbi->s_hash_unsigned = 3;
-+		}
-+		sb->s_dirt = 1;
-+	}
- 
- 	if (sbi->s_blocks_per_group > blocksize * 8) {
- 		printk(KERN_ERR
+I see.  Thank you for your work.
+
+> Strange; I don't recall any of the ext4 variants of the error handling
+> patches requiring Al's VFS tree.  And I thought all of them have been
+> merged into Linus's tree at this point.
+
+I checked Al's VFS tree and I found commit
+6ac465f99b29f74ca5a62bc32a8772985d9a071b changes codes near where
+one of my patch changes (in ext3/ext4_quota_on()), but not the same code.
+
+> Kawai-san, could you double check and see if I processed all of your
+> patches and pushed them to Linus?  I was pretty sure I had...
+
+I confirmed that all of my ext4/jbd2 patches have been merged into
+mainline.  Thank you very much!
+
+Regards,
 -- 
-1.5.6.1.205.ge2c7.dirty
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
 
