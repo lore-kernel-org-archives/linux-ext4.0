@@ -1,33 +1,54 @@
-From: Daniel Phillips <phillips@phunq.net>
-Subject: Re: [PATCH,RFC] ext3: Add support for non-native signed/unsigned htree hash algorithms
-Date: Tue, 21 Oct 2008 14:53:11 -0700
-Message-ID: <200810211453.11194.phillips@phunq.net>
-References: <1224560624-9691-1-git-send-email-tytso@mit.edu> <1224560624-9691-2-git-send-email-tytso@mit.edu> <200810211450.59184.phillips@phunq.net>
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Subject: Re: status of the ext3/jbd error handling enhancement patches
+Date: Wed, 22 Oct 2008 13:54:26 +0900
+Message-ID: <48FEB202.2090704@hitachi.com>
+References: <48FC081D.60306@hitachi.com> <20081020171712.GA22653@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	akpm@linux-foundation.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Simon Kirby <sim@netnation.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from phunq.net ([64.81.85.152]:42813 "EHLO moonbase.phunq.net"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750966AbYJUVxT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Oct 2008 17:53:19 -0400
-In-Reply-To: <200810211450.59184.phillips@phunq.net>
-Content-Disposition: inline
+Received: from mail4.hitachi.co.jp ([133.145.228.5]:57187 "EHLO
+	mail4.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750746AbYJVEyn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Oct 2008 00:54:43 -0400
+Received: from mlsv1.hitachi.co.jp (unknown [133.144.234.166])
+	by mail4.hitachi.co.jp (Postfix) with ESMTP id 4A2DE33CC4
+	for <linux-ext4@vger.kernel.org>; Wed, 22 Oct 2008 13:54:42 +0900 (JST)
+In-Reply-To: <20081020171712.GA22653@hostway.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Excuse me,
+Hi Simon,
 
-> +static __u32 uchar_hack_hash (const char *name, int len)
+Simon Kirby wrote:
 
-I meant:
+> Hi Hidehiro,
+> 
+> It seems you have been looking the code behind the problems I reported
+> (see linux-ext4 post "EXT3 way too happy with write errors", October
+> 14th).
+> 
+> Are you aware of any patches that look at failed writes outside of JBD
+> also not noticing write errors?  It seems that not all write errors are
+> causing EXT3 to take the action of aborting the journal, which seems to
+> be a very bad idea (an example in my previous posting, testing with fault
+> injection).
 
-+static __u32 uchar_hack_hash(const unsigned char *name, int len)
+Which kernel did you use for testing?  If you use the latest -mm kernel
+(2.6.27-rc5-mm1) with a patch at http://userweb.kernel.org/~akpm/mmotm/
+broken-out/jbd-test-bh_write_eio-to-detect-errors-on-metadata-buffers.patch,
+most of this kind of problems may be solved.  But some additional works are
+still needed; nobody checks I/O error on updating a journal super block.
+ 
+> Anyway, I would be very happy to test out any patches in this area, and
+> if none exist, I will try to track down why it is ignoring some of these
+> errors.
 
-Regards
+Thanks,
+-- 
+Hidehiro Kawai
+Hitachi, Systems Development Laboratory
+Linux Technology Center
 
-Daniel
