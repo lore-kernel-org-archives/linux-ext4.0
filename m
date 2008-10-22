@@ -1,72 +1,257 @@
-From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
-Subject: Re: [PATCH -v2] ext4: remove usage of Uptodate flag to initialize
-	buddy after an online resize
-Date: Wed, 22 Oct 2008 09:56:45 +0200
-Message-ID: <1224662205.3569.44.camel@frecb007923.frec.bull.fr>
-References: <1222872243.11560.19.camel@frecb007923.frec.bull.fr>
-	 <1223036515.4075.11.camel@frecb007923.frec.bull.fr>
-	 <1224602191.3569.25.camel@frecb007923.frec.bull.fr>
-	 <20081021155228.GE15685@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] stable - ext[234]: Avoid printk floods in the face of directory
+ corruption (CVE-2008-3528)
+Date: Wed, 22 Oct 2008 10:11:52 -0500
+Message-ID: <48FF42B8.3030606@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:47552 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750874AbYJVHzJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Oct 2008 03:55:09 -0400
-In-Reply-To: <20081021155228.GE15685@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:51735 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751169AbYJVPL5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Oct 2008 11:11:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Le mardi 21 octobre 2008 =C3=A0 11:52 -0400, Theodore Tso a =C3=A9crit =
-:
-> Hi Frederic,
->=20
-> Thanks for posting the update to your patch; I take it you've solved
-> the race condition?  I haven't take a look at your updated patch yet,
-> but one thought that might make the potential race conditions much
-> simpler to analyze and prevent.
+This is a trivial backport of the following upstream commits:
 
-Yes the race condition I found is solved with this patch. The issue
-happened when concurrent threads try to write to blocks in groups which
-had been added by the resizing. As I briefly explained in the patch, it
-was a matter of mballocator's datas which were wrongly initialized
-several times.
+- bd39597cbd42a784105a04010100e27267481c67 (ext2)
+- cdbf6dba28e8e6268c8420857696309470009fd9 (ext3)
+- 9d9f177572d9e4eba0f2e18523b44f90dd51fe74 (ext4)
 
-> At the moment, the resize code, just before it calls to fix up the
-> mballoc data structures, calls ext4_free_blocks_sb() to mark the bloc=
-k
-> bitmap as being freed.  That call should really go away, as
-> ext4_free_blocs_sb() is a remnant from the legacy block allocator, an=
-d
-> in fact does a lot of extra stuff that is not needed by mballoc().
-> Perhaps the right answer is that we should have one function that
-> updates the block bitmap, as well as initializing the mballoc() data
-> structures, and it would *only* be called from the resize code.  If
+This addresses CVE-2008-3528
 
-OK, I will take a look at this function and see if I can update/clean
-it.
+ext[234]: Avoid printk floods in the face of directory corruption
 
-> the concern is protecting against multiple resizers running at the
-> same time, then let's either (a) not call unlock_super() until the
-> mballoc data structures are initialized, or (b) create a new mutex
-> that is explicit for use by the online resize code.
->=20
+Note: some people thinks this represents a security bug, since it
+might make the system go away while it is printing a large number of
+console messages, especially if a serial console is involved.  Hence,
+it has been assigned CVE-2008-3528, but it requires that the attacker
+either has physical access to your machine to insert a USB disk with a
+corrupted filesystem image (at which point why not just hit the power
+button), or is otherwise able to convince the system administrator to
+mount an arbitrary filesystem image (at which point why not just
+include a setuid shell or world-writable hard disk device file or some
+such).  Me, I think they're just being silly. --tytso
 
-In fact, I have never tested with multiple resizers til now because I
-never managed to run several instance of resize2fs concurrently: if a
-resize2fs is running, the second one simply fails with a "device busy"
-error.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Cc: Eugene Teo <eugeneteo@kernel.sg>
+---
 
-=46rederic
+Index: linux-2.6/fs/ext2/dir.c
+===================================================================
+--- linux-2.6.orig/fs/ext2/dir.c	2008-10-22 09:49:34.147001360 -0500
++++ linux-2.6/fs/ext2/dir.c	2008-10-22 09:59:12.242063845 -0500
+@@ -103,7 +103,7 @@ static int ext2_commit_chunk(struct page
+ 	return err;
+ }
+ 
+-static void ext2_check_page(struct page *page)
++static void ext2_check_page(struct page *page, int quiet)
+ {
+ 	struct inode *dir = page->mapping->host;
+ 	struct super_block *sb = dir->i_sb;
+@@ -146,10 +146,10 @@ out:
+ 	/* Too bad, we had an error */
+ 
+ Ebadsize:
+-	ext2_error(sb, "ext2_check_page",
+-		"size of directory #%lu is not a multiple of chunk size",
+-		dir->i_ino
+-	);
++	if (!quiet)
++		ext2_error(sb, __func__,
++			"size of directory #%lu is not a multiple "
++			"of chunk size", dir->i_ino);
+ 	goto fail;
+ Eshort:
+ 	error = "rec_len is smaller than minimal";
+@@ -166,32 +166,36 @@ Espan:
+ Einumber:
+ 	error = "inode out of bounds";
+ bad_entry:
+-	ext2_error (sb, "ext2_check_page", "bad entry in directory #%lu: %s - "
+-		"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
+-		dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
+-		(unsigned long) le32_to_cpu(p->inode),
+-		rec_len, p->name_len);
++	if (!quiet)
++		ext2_error(sb, __func__, "bad entry in directory #%lu: : %s - "
++			"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
++			dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
++			(unsigned long) le32_to_cpu(p->inode),
++			rec_len, p->name_len);
+ 	goto fail;
+ Eend:
+-	p = (ext2_dirent *)(kaddr + offs);
+-	ext2_error (sb, "ext2_check_page",
+-		"entry in directory #%lu spans the page boundary"
+-		"offset=%lu, inode=%lu",
+-		dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
+-		(unsigned long) le32_to_cpu(p->inode));
++	if (!quiet) {
++		p = (ext2_dirent *)(kaddr + offs);
++		ext2_error(sb, "ext2_check_page",
++			"entry in directory #%lu spans the page boundary"
++			"offset=%lu, inode=%lu",
++			dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
++			(unsigned long) le32_to_cpu(p->inode));
++	}
+ fail:
+ 	SetPageChecked(page);
+ 	SetPageError(page);
+ }
+ 
+-static struct page * ext2_get_page(struct inode *dir, unsigned long n)
++static struct page * ext2_get_page(struct inode *dir, unsigned long n,
++				   int quiet)
+ {
+ 	struct address_space *mapping = dir->i_mapping;
+ 	struct page *page = read_mapping_page(mapping, n, NULL);
+ 	if (!IS_ERR(page)) {
+ 		kmap(page);
+ 		if (!PageChecked(page))
+-			ext2_check_page(page);
++			ext2_check_page(page, quiet);
+ 		if (PageError(page))
+ 			goto fail;
+ 	}
+@@ -292,7 +296,7 @@ ext2_readdir (struct file * filp, void *
+ 	for ( ; n < npages; n++, offset = 0) {
+ 		char *kaddr, *limit;
+ 		ext2_dirent *de;
+-		struct page *page = ext2_get_page(inode, n);
++		struct page *page = ext2_get_page(inode, n, 0);
+ 
+ 		if (IS_ERR(page)) {
+ 			ext2_error(sb, __func__,
+@@ -361,6 +365,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
+ 	struct page *page = NULL;
+ 	struct ext2_inode_info *ei = EXT2_I(dir);
+ 	ext2_dirent * de;
++	int dir_has_error = 0;
+ 
+ 	if (npages == 0)
+ 		goto out;
+@@ -374,7 +379,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
+ 	n = start;
+ 	do {
+ 		char *kaddr;
+-		page = ext2_get_page(dir, n);
++		page = ext2_get_page(dir, n, dir_has_error);
+ 		if (!IS_ERR(page)) {
+ 			kaddr = page_address(page);
+ 			de = (ext2_dirent *) kaddr;
+@@ -391,7 +396,9 @@ struct ext2_dir_entry_2 * ext2_find_entr
+ 				de = ext2_next_entry(de);
+ 			}
+ 			ext2_put_page(page);
+-		}
++		} else
++			dir_has_error = 1;
++
+ 		if (++n >= npages)
+ 			n = 0;
+ 		/* next page is past the blocks we've got */
+@@ -414,7 +421,7 @@ found:
+ 
+ struct ext2_dir_entry_2 * ext2_dotdot (struct inode *dir, struct page **p)
+ {
+-	struct page *page = ext2_get_page(dir, 0);
++	struct page *page = ext2_get_page(dir, 0, 0);
+ 	ext2_dirent *de = NULL;
+ 
+ 	if (!IS_ERR(page)) {
+@@ -487,7 +494,7 @@ int ext2_add_link (struct dentry *dentry
+ 	for (n = 0; n <= npages; n++) {
+ 		char *dir_end;
+ 
+-		page = ext2_get_page(dir, n);
++		page = ext2_get_page(dir, n, 0);
+ 		err = PTR_ERR(page);
+ 		if (IS_ERR(page))
+ 			goto out;
+@@ -655,14 +662,17 @@ int ext2_empty_dir (struct inode * inode
+ {
+ 	struct page *page = NULL;
+ 	unsigned long i, npages = dir_pages(inode);
++	int dir_has_error = 0;
+ 
+ 	for (i = 0; i < npages; i++) {
+ 		char *kaddr;
+ 		ext2_dirent * de;
+-		page = ext2_get_page(inode, i);
++		page = ext2_get_page(inode, i, dir_has_error);
+ 
+-		if (IS_ERR(page))
++		if (IS_ERR(page)) {
++			dir_has_error = 1;
+ 			continue;
++		}
+ 
+ 		kaddr = page_address(page);
+ 		de = (ext2_dirent *)kaddr;
+Index: linux-2.6/fs/ext3/dir.c
+===================================================================
+--- linux-2.6.orig/fs/ext3/dir.c	2008-10-22 09:49:34.198580960 -0500
++++ linux-2.6/fs/ext3/dir.c	2008-10-22 09:59:27.385064161 -0500
+@@ -102,6 +102,7 @@ static int ext3_readdir(struct file * fi
+ 	int err;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+ 	int ret = 0;
++	int dir_has_error = 0;
+ 
+ 	sb = inode->i_sb;
+ 
+@@ -148,9 +149,12 @@ static int ext3_readdir(struct file * fi
+ 		 * of recovering data when there's a bad sector
+ 		 */
+ 		if (!bh) {
+-			ext3_error (sb, "ext3_readdir",
+-				"directory #%lu contains a hole at offset %lu",
+-				inode->i_ino, (unsigned long)filp->f_pos);
++			if (!dir_has_error) {
++				ext3_error(sb, __func__, "directory #%lu "
++					"contains a hole at offset %lld",
++					inode->i_ino, filp->f_pos);
++				dir_has_error = 1;
++			}
+ 			/* corrupt size?  Maybe no more blocks to read */
+ 			if (filp->f_pos > inode->i_blocks << 9)
+ 				break;
+Index: linux-2.6/fs/ext4/dir.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/dir.c	2008-10-22 10:02:03.639064037 -0500
++++ linux-2.6/fs/ext4/dir.c	2008-10-22 10:02:45.235001297 -0500
+@@ -102,6 +102,7 @@ static int ext4_readdir(struct file * fi
+ 	int err;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+ 	int ret = 0;
++	int dir_has_error = 0;
+ 
+ 	sb = inode->i_sb;
+ 
+@@ -148,9 +149,13 @@ static int ext4_readdir(struct file * fi
+ 		 * of recovering data when there's a bad sector
+ 		 */
+ 		if (!bh) {
+-			ext4_error (sb, "ext4_readdir",
+-				"directory #%lu contains a hole at offset %lu",
+-				inode->i_ino, (unsigned long)filp->f_pos);
++			if (!dir_has_error) {
++				ext4_error(sb, __func__, "directory #%lu "
++					   "contains a hole at offset %Lu",
++					   inode->i_ino,
++					   (unsigned long long) filp->f_pos);
++				dir_has_error = 1;
++			}
+ 			/* corrupt size?  Maybe no more blocks to read */
+ 			if (filp->f_pos > inode->i_blocks << 9)
+ 				break;
 
 
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
