@@ -1,63 +1,82 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] [PATCH] stable - ext[234]: Avoid printk floods in the
-	face of directory corruption (CVE-2008-3528)
-Date: Wed, 22 Oct 2008 10:37:52 -0700
-Message-ID: <20081022173752.GA10587@kroah.com>
-References: <48FF42B8.3030606@redhat.com> <20081022161433.GB29489@kroah.com> <48FF52F4.10702@redhat.com> <20081022163421.GA28836@kroah.com> <48FF644A.50801@redhat.com>
+From: Matt Mackall <mpm@selenic.com>
+Subject: Re: [PATCH,RFC] ext3: Add support for non-native signed/unsigned
+	htree hash algorithms
+Date: Wed, 22 Oct 2008 11:30:08 -0500
+Message-ID: <1224693008.4323.134.camel@calx>
+References: <1224560624-9691-1-git-send-email-tytso@mit.edu>
+	 <1224560624-9691-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: stable@kernel.org, ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	akpm@linux-foundation.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:49737 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757888AbYJVRnh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Oct 2008 13:43:37 -0400
-Content-Disposition: inline
-In-Reply-To: <48FF644A.50801@redhat.com>
+Received: from waste.org ([66.93.16.53]:52414 "EHLO waste.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752705AbYJVSsU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Oct 2008 14:48:20 -0400
+In-Reply-To: <1224560624-9691-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Oct 22, 2008 at 12:35:06PM -0500, Eric Sandeen wrote:
-> Greg KH wrote:
-> > On Wed, Oct 22, 2008 at 11:21:08AM -0500, Eric Sandeen wrote:
-> >> Greg KH wrote:
-> >>> On Wed, Oct 22, 2008 at 10:11:52AM -0500, Eric Sandeen wrote:
-> >>>> This is a trivial backport of the following upstream commits:
-> >>>>
-> >>>> - bd39597cbd42a784105a04010100e27267481c67 (ext2)
-> >>>> - cdbf6dba28e8e6268c8420857696309470009fd9 (ext3)
-> >>>> - 9d9f177572d9e4eba0f2e18523b44f90dd51fe74 (ext4)
-> >>>>
-> >>>> This addresses CVE-2008-3528
-> >>>>
-> >>>> ext[234]: Avoid printk floods in the face of directory corruption
-> >>> For what kernel releases is this applicable?  .27? .26? .25?  Earlier?
-> >> Sorry.. it is applicable to pretty much any kernel in the past :)  .27
-> >> certainly (that's what the patch is against), .26, .25.... yes.
-> >>
-> >> It's not a particularly dangerous condition - you have to somehow get
-> >> the administrator to mount the filesystem before you can trigger the
-> >> "exploit" (which is a DoS, essentially) - so, I don't know if it's worth
-> >> porting back to the dawn of time...
-> > 
-> > Well, I will not port it back to older kernels than .25, so that's not a
-> > big deal.
-> > 
-> > As for the "admin mount a filesystem", you could put an ext2/3 fs on a
-> > usb stick and plug it into a box.  It will be mounted automatically, no
-> > admin rights required, and the DoS would happen, right?
+On Mon, 2008-10-20 at 23:43 -0400, Theodore Ts'o wrote:
+> The original ext3 hash algorithms assumed that variables of type char
+> were signed, as God and K&R intended.  Unfortunately, this assumption
+> is not true on some architectures.  Userspace support for marking
+> filesystems with non-native signed/unsigned chars was added two years
+> ago, but the kernel-side support was never added (until now).
 > 
-> If I wanted to DoS a box sitting in front of me, I'd just pull the plug.
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: akpm@linux-foundation.org
+> Cc: linux-kernel@vger.kernel.org
+> ---
+>  fs/ext3/hash.c             |   42 +++++++++++++++++++++++++++++++++---------
+>  fs/ext3/namei.c            |    7 +++++++
+>  fs/ext3/super.c            |   15 +++++++++++++++
+>  include/linux/ext3_fs.h    |   28 +++++++++++++++++++++++++++-
+>  include/linux/ext3_fs_sb.h |    1 +
+>  5 files changed, 83 insertions(+), 10 deletions(-)
+> 
+> diff --git a/fs/ext3/hash.c b/fs/ext3/hash.c
+> index c30e149..855eacb 100644
+> --- a/fs/ext3/hash.c
+> +++ b/fs/ext3/hash.c
+> @@ -35,11 +35,20 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
+>  
+> 
+>  /* The old legacy hash */
+> -static __u32 dx_hack_hash (const char *name, int len)
+> +static __u32 dx_hack_hash (const char *name, int len, int unsigned_flag)
+>  {
+> -	__u32 hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
+> +	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
+> + 	const unsigned char *ucp = (const unsigned char *) name;
+> +	const signed char *scp = (const signed char *) name;
+> +	int c;
+> +
+>  	while (len--) {
+> -		__u32 hash = hash1 + (hash0 ^ (*name++ * 7152373));
+> +		if (unsigned_flag)
+> +			c = (int) *ucp++;
+> +		else
+> +			c = (int) *scp++;
 
-Yes, the fun "physical access" issue, right?
+Branch in the inner loop? Space after typecast?
 
-But for some, who run Linux in a "kiosk" mode, or in semi-secured places
-like university labs, something like this would matter, so you might
-want to notify the distros of this issue through vendor-sec and let them
-make up their minds if they wish to backport the fixes to their
-supported releases.
+>  	for (i=0; i < len; i++) {
+>  		if ((i % 4) == 0)
+>  			val = pad;
+> -		val = msg[i] + (val << 8);
+> +		if (unsigned_flag)
+> +			c = (int) ucp[i];
+> +		else
+> +			c = (int) scp[i];
+> +
+> +		val = c + (val << 8);
 
-thanks,
+And here.
 
-greg k-h
+-- 
+Mathematics is the supreme nostalgia of our time.
+
