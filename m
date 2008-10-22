@@ -1,150 +1,331 @@
 From: akpm@linux-foundation.org
-Subject: [patch 4/7] ext3: add checks for errors from jbd
-Date: Wed, 22 Oct 2008 14:15:01 -0700
-Message-ID: <200810222115.m9MLF176026382@imap1.linux-foundation.org>
+Subject: [patch 3/7] jbd: fix error handling for checkpoint io
+Date: Wed, 22 Oct 2008 14:15:00 -0700
+Message-ID: <200810222115.m9MLF0p9026377@imap1.linux-foundation.org>
 Cc: akpm@linux-foundation.org, hidehiro.kawai.ez@hitachi.com,
-	jack@ucw.cz, linux-ext4@vger.kernel.org, sfr@canb.auug.org.au,
-	viro@zeniv.linux.org.uk
+	jack@suse.cz, linux-ext4@vger.kernel.org
 To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:57988 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:54432 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755841AbYJVVPN (ORCPT
+	by vger.kernel.org with ESMTP id S1759641AbYJVVPI (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Oct 2008 17:15:13 -0400
+	Wed, 22 Oct 2008 17:15:08 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 
-If the journal has aborted due to a checkpointing failure, we have to
-keep the contents of the journal space.  Otherwise, the filesystem will
-lose uncheckpointed metadata completely and become inconsistent.  To
-avoid this, we need to keep needs_recovery flag if checkpoint has
-failed.
+When a checkpointing IO fails, current JBD code doesn't check the error
+and continue journaling.  This means latest metadata can be lost from both
+the journal and filesystem.
 
-With this patch, ext3_put_super() detects a checkpointing failure from
-the return value of journal_destroy(), then it invokes ext3_abort() to
-make the filesystem read only and keep needs_recovery flag.  Errors
-from journal_flush() are also handled by this patch in some places.
+This patch leaves the failed metadata blocks in the journal space and
+aborts journaling in the case of log_do_checkpoint().  To achieve this, we
+need to do:
+
+1. don't remove the failed buffer from the checkpoint list where in
+   the case of __try_to_free_cp_buf() because it may be released or
+   overwritten by a later transaction
+2. log_do_checkpoint() is the last chance, remove the failed buffer
+   from the checkpoint list and abort the journal
+3. when checkpointing fails, don't update the journal super block to
+   prevent the journaled contents from being cleaned.  For safety,
+   don't update j_tail and j_tail_sequence either
+4. when checkpointing fails, notify this error to the ext3 layer so
+   that ext3 don't clear the needs_recovery flag, otherwise the
+   journaled contents are ignored and cleaned in the recovery phase
+5. if the recovery fails, keep the needs_recovery flag
+6. prevent cleanup_journal_tail() from being called between
+   __journal_drop_transaction() and journal_abort() (a race issue
+   between journal_flush() and __log_wait_for_space()
 
 Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Cc: Jan Kara <jack@ucw.cz>
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
+Acked-by: Jan Kara <jack@suse.cz>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/ioctl.c |   12 ++++++++----
- fs/ext3/super.c |   23 +++++++++++++++++++----
- 2 files changed, 27 insertions(+), 8 deletions(-)
+ fs/jbd/checkpoint.c |   49 +++++++++++++++++++++++++++++++-----------
+ fs/jbd/journal.c    |   28 ++++++++++++++++++------
+ fs/jbd/recovery.c   |    7 ++++--
+ include/linux/jbd.h |    2 -
+ 4 files changed, 65 insertions(+), 21 deletions(-)
 
-diff -puN fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd fs/ext3/ioctl.c
---- a/fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd
-+++ a/fs/ext3/ioctl.c
-@@ -239,7 +239,7 @@ setrsvsz_out:
- 	case EXT3_IOC_GROUP_EXTEND: {
- 		ext3_fsblk_t n_blocks_count;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
+diff -puN fs/jbd/checkpoint.c~jbd-fix-error-handling-for-checkpoint-io fs/jbd/checkpoint.c
+--- a/fs/jbd/checkpoint.c~jbd-fix-error-handling-for-checkpoint-io
++++ a/fs/jbd/checkpoint.c
+@@ -93,7 +93,8 @@ static int __try_to_free_cp_buf(struct j
+ 	int ret = 0;
+ 	struct buffer_head *bh = jh2bh(jh);
  
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -254,8 +254,10 @@ setrsvsz_out:
+-	if (jh->b_jlist == BJ_None && !buffer_locked(bh) && !buffer_dirty(bh)) {
++	if (jh->b_jlist == BJ_None && !buffer_locked(bh) &&
++	    !buffer_dirty(bh) && buffer_uptodate(bh)) {
+ 		JBUFFER_TRACE(jh, "remove from checkpoint list");
+ 		ret = __journal_remove_checkpoint(jh) + 1;
+ 		jbd_unlock_bh_state(bh);
+@@ -160,21 +161,25 @@ static void jbd_sync_bh(journal_t *journ
+  * buffers. Note that we take the buffers in the opposite ordering
+  * from the one in which they were submitted for IO.
+  *
++ * Return 0 on success, and return <0 if some buffers have failed
++ * to be written out.
++ *
+  * Called with j_list_lock held.
+  */
+-static void __wait_cp_io(journal_t *journal, transaction_t *transaction)
++static int __wait_cp_io(journal_t *journal, transaction_t *transaction)
+ {
+ 	struct journal_head *jh;
+ 	struct buffer_head *bh;
+ 	tid_t this_tid;
+ 	int released = 0;
++	int ret = 0;
+ 
+ 	this_tid = transaction->t_tid;
+ restart:
+ 	/* Did somebody clean up the transaction in the meanwhile? */
+ 	if (journal->j_checkpoint_transactions != transaction ||
+ 			transaction->t_tid != this_tid)
+-		return;
++		return ret;
+ 	while (!released && transaction->t_checkpoint_io_list) {
+ 		jh = transaction->t_checkpoint_io_list;
+ 		bh = jh2bh(jh);
+@@ -194,6 +199,9 @@ restart:
+ 			spin_lock(&journal->j_list_lock);
+ 			goto restart;
  		}
- 		err = ext3_group_extend(sb, EXT3_SB(sb)->s_es, n_blocks_count);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+		if (err == 0)
-+			err = err2;
- group_extend_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return err;
-@@ -263,7 +265,7 @@ group_extend_out:
- 	case EXT3_IOC_GROUP_ADD: {
- 		struct ext3_new_group_data input;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
- 
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -280,8 +282,10 @@ group_extend_out:
- 
- 		err = ext3_group_add(sb, &input);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+		if (err == 0)
-+			err = err2;
- group_add_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return err;
-diff -puN fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd
-+++ a/fs/ext3/super.c
-@@ -393,7 +393,8 @@ static void ext3_put_super (struct super
- 	int i;
- 
- 	ext3_xattr_put_super(sb);
--	journal_destroy(sbi->s_journal);
-+	if (journal_destroy(sbi->s_journal) < 0)
-+		ext3_abort(sb, __func__, "Couldn't clean up the journal");
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
-@@ -2296,7 +2297,9 @@ static void ext3_mark_recovery_complete(
- 	journal_t *journal = EXT3_SB(sb)->s_journal;
- 
- 	journal_lock_updates(journal);
--	journal_flush(journal);
-+	if (journal_flush(journal) < 0)
-+		goto out;
++		if (unlikely(!buffer_uptodate(bh)))
++			ret = -EIO;
 +
- 	lock_super(sb);
- 	if (EXT3_HAS_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER) &&
- 	    sb->s_flags & MS_RDONLY) {
-@@ -2305,6 +2308,8 @@ static void ext3_mark_recovery_complete(
- 		ext3_commit_super(sb, es, 1);
+ 		/*
+ 		 * Now in whatever state the buffer currently is, we know that
+ 		 * it has been written out and so we can drop it from the list
+@@ -203,6 +211,8 @@ restart:
+ 		journal_remove_journal_head(bh);
+ 		__brelse(bh);
  	}
- 	unlock_super(sb);
 +
-+out:
- 	journal_unlock_updates(journal);
++	return ret;
  }
  
-@@ -2404,7 +2409,13 @@ static void ext3_write_super_lockfs(stru
+ #define NR_BATCH	64
+@@ -226,7 +236,8 @@ __flush_batch(journal_t *journal, struct
+  * Try to flush one buffer from the checkpoint list to disk.
+  *
+  * Return 1 if something happened which requires us to abort the current
+- * scan of the checkpoint list.
++ * scan of the checkpoint list.  Return <0 if the buffer has failed to
++ * be written out.
+  *
+  * Called with j_list_lock held and drops it if 1 is returned
+  * Called under jbd_lock_bh_state(jh2bh(jh)), and drops it
+@@ -256,6 +267,9 @@ static int __process_buffer(journal_t *j
+ 		log_wait_commit(journal, tid);
+ 		ret = 1;
+ 	} else if (!buffer_dirty(bh)) {
++		ret = 1;
++		if (unlikely(!buffer_uptodate(bh)))
++			ret = -EIO;
+ 		J_ASSERT_JH(jh, !buffer_jbddirty(bh));
+ 		BUFFER_TRACE(bh, "remove from checkpoint");
+ 		__journal_remove_checkpoint(jh);
+@@ -263,7 +277,6 @@ static int __process_buffer(journal_t *j
+ 		jbd_unlock_bh_state(bh);
+ 		journal_remove_journal_head(bh);
+ 		__brelse(bh);
+-		ret = 1;
+ 	} else {
+ 		/*
+ 		 * Important: we are about to write the buffer, and
+@@ -295,6 +308,7 @@ static int __process_buffer(journal_t *j
+  * to disk. We submit larger chunks of data at once.
+  *
+  * The journal should be locked before calling this function.
++ * Called with j_checkpoint_mutex held.
+  */
+ int log_do_checkpoint(journal_t *journal)
+ {
+@@ -318,6 +332,7 @@ int log_do_checkpoint(journal_t *journal
+ 	 * OK, we need to start writing disk blocks.  Take one transaction
+ 	 * and write it.
+ 	 */
++	result = 0;
+ 	spin_lock(&journal->j_list_lock);
+ 	if (!journal->j_checkpoint_transactions)
+ 		goto out;
+@@ -334,7 +349,7 @@ restart:
+ 		int batch_count = 0;
+ 		struct buffer_head *bhs[NR_BATCH];
+ 		struct journal_head *jh;
+-		int retry = 0;
++		int retry = 0, err;
  
- 		/* Now we set up the journal barrier. */
- 		journal_lock_updates(journal);
--		journal_flush(journal);
-+
-+		/*
-+		 * We don't want to clear needs_recovery flag when we failed
-+		 * to flush the journal.
-+		 */
-+		if (journal_flush(journal) < 0)
-+			return;
- 
- 		/* Journal blocked and flushed, clear needs_recovery flag. */
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
-@@ -2822,8 +2833,12 @@ static int ext3_quota_on(struct super_bl
- 		 * otherwise be livelocked...
+ 		while (!retry && transaction->t_checkpoint_list) {
+ 			struct buffer_head *bh;
+@@ -347,6 +362,8 @@ restart:
+ 				break;
+ 			}
+ 			retry = __process_buffer(journal, jh, bhs,&batch_count);
++			if (retry < 0 && !result)
++				result = retry;
+ 			if (!retry && (need_resched() ||
+ 				spin_needbreak(&journal->j_list_lock))) {
+ 				spin_unlock(&journal->j_list_lock);
+@@ -371,14 +388,18 @@ restart:
+ 		 * Now we have cleaned up the first transaction's checkpoint
+ 		 * list. Let's clean up the second one
  		 */
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+		if (err) {
-+			path_put(&nd.path);
-+			return err;
+-		__wait_cp_io(journal, transaction);
++		err = __wait_cp_io(journal, transaction);
++		if (!result)
++			result = err;
+ 	}
+ out:
+ 	spin_unlock(&journal->j_list_lock);
+-	result = cleanup_journal_tail(journal);
+ 	if (result < 0)
+-		return result;
+-	return 0;
++		journal_abort(journal, result);
++	else
++		result = cleanup_journal_tail(journal);
++
++	return (result < 0) ? result : 0;
+ }
+ 
+ /*
+@@ -394,8 +415,9 @@ out:
+  * This is the only part of the journaling code which really needs to be
+  * aware of transaction aborts.  Checkpointing involves writing to the
+  * main filesystem area rather than to the journal, so it can proceed
+- * even in abort state, but we must not update the journal superblock if
+- * we have an abort error outstanding.
++ * even in abort state, but we must not update the super block if
++ * checkpointing may have failed.  Otherwise, we would lose some metadata
++ * buffers which should be written-back to the filesystem.
+  */
+ 
+ int cleanup_journal_tail(journal_t *journal)
+@@ -404,6 +426,9 @@ int cleanup_journal_tail(journal_t *jour
+ 	tid_t		first_tid;
+ 	unsigned long	blocknr, freed;
+ 
++	if (is_journal_aborted(journal))
++		return 1;
++
+ 	/* OK, work out the oldest transaction remaining in the log, and
+ 	 * the log block it starts at.
+ 	 *
+diff -puN fs/jbd/journal.c~jbd-fix-error-handling-for-checkpoint-io fs/jbd/journal.c
+--- a/fs/jbd/journal.c~jbd-fix-error-handling-for-checkpoint-io
++++ a/fs/jbd/journal.c
+@@ -1121,9 +1121,12 @@ recovery_error:
+  *
+  * Release a journal_t structure once it is no longer in use by the
+  * journaled object.
++ * Return <0 if we couldn't clean up the journal.
+  */
+-void journal_destroy(journal_t *journal)
++int journal_destroy(journal_t *journal)
+ {
++	int err = 0;
++
+ 	/* Wait for the commit thread to wake up and die. */
+ 	journal_kill_thread(journal);
+ 
+@@ -1146,11 +1149,16 @@ void journal_destroy(journal_t *journal)
+ 	J_ASSERT(journal->j_checkpoint_transactions == NULL);
+ 	spin_unlock(&journal->j_list_lock);
+ 
+-	/* We can now mark the journal as empty. */
+-	journal->j_tail = 0;
+-	journal->j_tail_sequence = ++journal->j_transaction_sequence;
+ 	if (journal->j_sb_buffer) {
+-		journal_update_superblock(journal, 1);
++		if (!is_journal_aborted(journal)) {
++			/* We can now mark the journal as empty. */
++			journal->j_tail = 0;
++			journal->j_tail_sequence =
++				++journal->j_transaction_sequence;
++			journal_update_superblock(journal, 1);
++		} else {
++			err = -EIO;
 +		}
+ 		brelse(journal->j_sb_buffer);
  	}
  
- 	err = vfs_quota_on_path(sb, type, format_id, &nd.path);
+@@ -1160,6 +1168,8 @@ void journal_destroy(journal_t *journal)
+ 		journal_destroy_revoke(journal);
+ 	kfree(journal->j_wbuf);
+ 	kfree(journal);
++
++	return err;
+ }
+ 
+ 
+@@ -1359,10 +1369,16 @@ int journal_flush(journal_t *journal)
+ 	spin_lock(&journal->j_list_lock);
+ 	while (!err && journal->j_checkpoint_transactions != NULL) {
+ 		spin_unlock(&journal->j_list_lock);
++		mutex_lock(&journal->j_checkpoint_mutex);
+ 		err = log_do_checkpoint(journal);
++		mutex_unlock(&journal->j_checkpoint_mutex);
+ 		spin_lock(&journal->j_list_lock);
+ 	}
+ 	spin_unlock(&journal->j_list_lock);
++
++	if (is_journal_aborted(journal))
++		return -EIO;
++
+ 	cleanup_journal_tail(journal);
+ 
+ 	/* Finally, mark the journal as really needing no recovery.
+@@ -1384,7 +1400,7 @@ int journal_flush(journal_t *journal)
+ 	J_ASSERT(journal->j_head == journal->j_tail);
+ 	J_ASSERT(journal->j_tail_sequence == journal->j_transaction_sequence);
+ 	spin_unlock(&journal->j_state_lock);
+-	return err;
++	return 0;
+ }
+ 
+ /**
+diff -puN fs/jbd/recovery.c~jbd-fix-error-handling-for-checkpoint-io fs/jbd/recovery.c
+--- a/fs/jbd/recovery.c~jbd-fix-error-handling-for-checkpoint-io
++++ a/fs/jbd/recovery.c
+@@ -223,7 +223,7 @@ do {									\
+  */
+ int journal_recover(journal_t *journal)
+ {
+-	int			err;
++	int			err, err2;
+ 	journal_superblock_t *	sb;
+ 
+ 	struct recovery_info	info;
+@@ -261,7 +261,10 @@ int journal_recover(journal_t *journal)
+ 	journal->j_transaction_sequence = ++info.end_transaction;
+ 
+ 	journal_clear_revoke(journal);
+-	sync_blockdev(journal->j_fs_dev);
++	err2 = sync_blockdev(journal->j_fs_dev);
++	if (!err)
++		err = err2;
++
+ 	return err;
+ }
+ 
+diff -puN include/linux/jbd.h~jbd-fix-error-handling-for-checkpoint-io include/linux/jbd.h
+--- a/include/linux/jbd.h~jbd-fix-error-handling-for-checkpoint-io
++++ a/include/linux/jbd.h
+@@ -911,7 +911,7 @@ extern int	   journal_set_features
+ 		   (journal_t *, unsigned long, unsigned long, unsigned long);
+ extern int	   journal_create     (journal_t *);
+ extern int	   journal_load       (journal_t *journal);
+-extern void	   journal_destroy    (journal_t *);
++extern int	   journal_destroy    (journal_t *);
+ extern int	   journal_recover    (journal_t *journal);
+ extern int	   journal_wipe       (journal_t *, int);
+ extern int	   journal_skip_recovery	(journal_t *);
 _
