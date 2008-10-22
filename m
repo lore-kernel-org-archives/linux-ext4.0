@@ -1,54 +1,72 @@
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Subject: Re: status of the ext3/jbd error handling enhancement patches
-Date: Wed, 22 Oct 2008 13:54:26 +0900
-Message-ID: <48FEB202.2090704@hitachi.com>
-References: <48FC081D.60306@hitachi.com> <20081020171712.GA22653@hostway.ca>
+From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
+Subject: Re: [PATCH -v2] ext4: remove usage of Uptodate flag to initialize
+	buddy after an online resize
+Date: Wed, 22 Oct 2008 09:56:45 +0200
+Message-ID: <1224662205.3569.44.camel@frecb007923.frec.bull.fr>
+References: <1222872243.11560.19.camel@frecb007923.frec.bull.fr>
+	 <1223036515.4075.11.camel@frecb007923.frec.bull.fr>
+	 <1224602191.3569.25.camel@frecb007923.frec.bull.fr>
+	 <20081021155228.GE15685@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Simon Kirby <sim@netnation.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail4.hitachi.co.jp ([133.145.228.5]:57187 "EHLO
-	mail4.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750746AbYJVEyn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Oct 2008 00:54:43 -0400
-Received: from mlsv1.hitachi.co.jp (unknown [133.144.234.166])
-	by mail4.hitachi.co.jp (Postfix) with ESMTP id 4A2DE33CC4
-	for <linux-ext4@vger.kernel.org>; Wed, 22 Oct 2008 13:54:42 +0900 (JST)
-In-Reply-To: <20081020171712.GA22653@hostway.ca>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:47552 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750874AbYJVHzJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 22 Oct 2008 03:55:09 -0400
+In-Reply-To: <20081021155228.GE15685@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Simon,
+Le mardi 21 octobre 2008 =C3=A0 11:52 -0400, Theodore Tso a =C3=A9crit =
+:
+> Hi Frederic,
+>=20
+> Thanks for posting the update to your patch; I take it you've solved
+> the race condition?  I haven't take a look at your updated patch yet,
+> but one thought that might make the potential race conditions much
+> simpler to analyze and prevent.
 
-Simon Kirby wrote:
+Yes the race condition I found is solved with this patch. The issue
+happened when concurrent threads try to write to blocks in groups which
+had been added by the resizing. As I briefly explained in the patch, it
+was a matter of mballocator's datas which were wrongly initialized
+several times.
 
-> Hi Hidehiro,
-> 
-> It seems you have been looking the code behind the problems I reported
-> (see linux-ext4 post "EXT3 way too happy with write errors", October
-> 14th).
-> 
-> Are you aware of any patches that look at failed writes outside of JBD
-> also not noticing write errors?  It seems that not all write errors are
-> causing EXT3 to take the action of aborting the journal, which seems to
-> be a very bad idea (an example in my previous posting, testing with fault
-> injection).
+> At the moment, the resize code, just before it calls to fix up the
+> mballoc data structures, calls ext4_free_blocks_sb() to mark the bloc=
+k
+> bitmap as being freed.  That call should really go away, as
+> ext4_free_blocs_sb() is a remnant from the legacy block allocator, an=
+d
+> in fact does a lot of extra stuff that is not needed by mballoc().
+> Perhaps the right answer is that we should have one function that
+> updates the block bitmap, as well as initializing the mballoc() data
+> structures, and it would *only* be called from the resize code.  If
 
-Which kernel did you use for testing?  If you use the latest -mm kernel
-(2.6.27-rc5-mm1) with a patch at http://userweb.kernel.org/~akpm/mmotm/
-broken-out/jbd-test-bh_write_eio-to-detect-errors-on-metadata-buffers.patch,
-most of this kind of problems may be solved.  But some additional works are
-still needed; nobody checks I/O error on updating a journal super block.
- 
-> Anyway, I would be very happy to test out any patches in this area, and
-> if none exist, I will try to track down why it is ignoring some of these
-> errors.
+OK, I will take a look at this function and see if I can update/clean
+it.
 
-Thanks,
--- 
-Hidehiro Kawai
-Hitachi, Systems Development Laboratory
-Linux Technology Center
+> the concern is protecting against multiple resizers running at the
+> same time, then let's either (a) not call unlock_super() until the
+> mballoc data structures are initialized, or (b) create a new mutex
+> that is explicit for use by the online resize code.
+>=20
 
+In fact, I have never tested with multiple resizers til now because I
+never managed to run several instance of resize2fs concurrently: if a
+resize2fs is running, the second one simply fails with a "device busy"
+error.
+
+=46rederic
+
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
