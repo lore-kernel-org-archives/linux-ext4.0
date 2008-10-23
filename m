@@ -1,16 +1,16 @@
 From: <gregkh@suse.de>
-Subject: patch ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch added to 2.6.25-stable tree
-Date: Thu, 23 Oct 2008 14:04:23 -0700
-Message-ID: <20081023211555.4CD5148CDC@coco.kroah.org>
+Subject: patch ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch added to 2.6.26-stable tree
+Date: Thu, 23 Oct 2008 14:12:26 -0700
+Message-ID: <20081023211604.49FB848D16@coco.kroah.org>
 References: <48FF42B8.3030606@redhat.com>
 Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
 To: sandeen@redhat.com, eugeneteo@kernel.sg, gregkh@suse.de,
 	linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:48680 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:48696 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753586AbYJWVP5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Oct 2008 17:15:57 -0400
+	id S1753734AbYJWVQF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Oct 2008 17:16:05 -0400
 In-Reply-To: <48FF42B8.3030606@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -20,7 +20,7 @@ This is a note to let you know that we have just queued up the patch titled
 
     Subject: ext[234]: Avoid printk floods in the face of directory corruption (CVE-2008-3528)
 
-to the 2.6.25-stable tree.  Its filename is
+to the 2.6.26-stable tree.  Its filename is
 
     ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch
 
@@ -155,7 +155,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 +		struct page *page = ext2_get_page(inode, n, 0);
  
  		if (IS_ERR(page)) {
- 			ext2_error(sb, __FUNCTION__,
+ 			ext2_error(sb, __func__,
 @@ -361,6 +365,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
  	struct page *page = NULL;
  	struct ext2_inode_info *ei = EXT2_I(dir);
@@ -279,4 +279,4 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 Patches currently in stable-queue which might be from sandeen@redhat.com are
 
-queue-2.6.25/ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch
+queue-2.6.26/ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch
