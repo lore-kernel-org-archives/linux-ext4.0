@@ -1,99 +1,282 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] Stable patches for ext4
-Date: Thu, 23 Oct 2008 13:50:33 -0700
-Message-ID: <20081023205033.GD17600@kroah.com>
-References: <E1KrCdX-0006L5-2q@closure.thunk.org> <20081018170305.GB20305@kroah.com> <20081018192856.GB8383@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, stable@kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: <gregkh@suse.de>
+Subject: patch ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch added to 2.6.27-stable tree
+Date: Thu, 23 Oct 2008 13:52:40 -0700
+Message-ID: <20081023210254.05A1648D16@coco.kroah.org>
+References: <48FF42B8.3030606@redhat.com>
+Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
+To: sandeen@redhat.com, eugeneteo@kernel.sg, gregkh@suse.de,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:51424 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:34461 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751122AbYJWUyI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Oct 2008 16:54:08 -0400
-Content-Disposition: inline
-In-Reply-To: <20081018192856.GB8383@mit.edu>
+	id S1753366AbYJWVCz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Oct 2008 17:02:55 -0400
+In-Reply-To: <48FF42B8.3030606@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Oct 18, 2008 at 03:28:56PM -0400, Theodore Tso wrote:
-> On Sat, Oct 18, 2008 at 10:03:05AM -0700, Greg KH wrote:
-> > 
-> > Heh, you do realize that hundreds of thousands of users are going to be
-> > using 2.6.27.x "for production" as at least 3 distros are being based
-> > off of it?
-> > 
-> > So, either you send these patches to us if you want to have a sane idea
-> > of what the distros are using, or you rely on the distros themselves to
-> > get it right in cherry-picking from upstream here.  I know one distro
-> > already has done this, and I'm sure others have as well.
-> > 
-> > It comes down to who you trust, a random distro engineer, or you and
-> > your group of engineers :)
-> 
-> Heh**2.  What Fedora 10 at least is going to be doing is grabbing the
-> equivalent of ext4-stable.  If it were completely up to me, and Eric
-> Sandeen from Red Hat has made the same wish (although I suspectly
-> somewhat in jest) on #ext4, it would be great if we could pour all of
-> ext4-stable (i.e., what we got added into the malinline during the
-> 2.6.28 merge window) into 2.6.27.x.  That would be easier for me to
-> support as well.  Only problem is that it rather blatently violates
-> the criteria as set forth in Documentation/stable_kernel_rules.txt.
-> (i.e., there are factor-of-five performance enhacements, code
-> cleanups, ext4dev gets renamed to ext4, etc.)
-> 
-> Regardless what goes into 2.6.27.x, I'll probably have to maintain a
-> patchset of everything else "left over" for those distributions that
-> want to be aggressive about letting users starting to play with ext4.  
 
-Fair enough, want to send us the patches you know you want us to take
-for 2.6.27 right now?
+This is a note to let you know that we have just queued up the patch titled
 
-> > If you feel the second tree is something that you can support, and you
-> > feel is necessary for users if they want to use ext4 on this kernel
-> > release, I'd be glad to review them for inclusion.
-> 
-> If distribution users are going to use ext4 for real, then ENOSPC
-> issues are a real problem, and they should be solved.  But there are a
-> large number of patches involved here, and many of them go over 100
-> lines (although granted the wc -l listed below includes the commit
-> comments):
-> 
->   161 /tmp/p/0015-ext4-invalidate-pages-if-delalloc-block-allocation.patch
->   211 /tmp/p/0016-ext4-Make-sure-all-the-block-allocation-paths-reser.patch
->   123 /tmp/p/0017-ext4-Retry-block-reservation.patch
->   307 /tmp/p/0018-ext4-Add-percpu-dirty-block-accounting.patch
->   113 /tmp/p/0019-ext4-Switch-to-non-delalloc-mode-when-we-are-low-on.patch
->    93 /tmp/p/0020-ext4-Signed-arithmetic-fix.patch
->    64 /tmp/p/0021-ext4-Fix-ext4-nomballoc-allocator-for-ENOSPC.patch
->    86 /tmp/p/0022-ext4-Don-t-add-the-inode-to-journal-handle-until-af.patch
->   190 /tmp/p/0023-ext4-Retry-block-allocation-if-we-have-free-blocks.patch
->    50 /tmp/p/0024-ext4-truncate-block-allocated-on-a-failed-ext4_writ.patch
->   169 /tmp/p/0025-ext4-Properly-update-i_disksize.patch
-> 
-> I am very confident about these patches, since they hit the ext4 tree
-> sometime in 2.6.27-rc2 or -rc3, so they've gotten quite a bit of
-> testing.  I just put them at the end of the for-stable-enospc branch
-> because they do technically violate the -stable rules.
-> 
-> So it's ultimately to you and Chris.  I'm happy to support any one of
-> for-stable, for-stable-enospc, or ext4-stable in 2.6.27.x.  The last
-> is less work for me since I won't have to create "this-is-in-mainline-
-> please-consider-this-for-your-distro" patch sets.  The real question
-> is what you're willing to review, and whether other -stable reviewers
-> will end up complaining and sending NACK's because they violate the
-> -stable rules.  (To be fair, if some other subsystem did this and I
-> saw such patches, with my stable reviewer hat on I'd at least send up
-> a red flag.)
+    Subject: ext[234]: Avoid printk floods in the face of directory corruption (CVE-2008-3528)
 
-I'm still undecided about this.  For now, I'm thinking we should hold
-off, but as 2.6.27 gets a bit more "stable", I might be willing to
-reconsider just because of what it is being used as (for a base for a
-wide range of distros/users.)
+to the 2.6.27-stable tree.  Its filename is
 
-Sound fair?
+    ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch
 
-thanks,
+A git repo of this tree can be found at 
+    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
 
-greg k-h
+
+>From sandeen@redhat.com  Thu Oct 23 13:13:44 2008
+From: Eric Sandeen <sandeen@redhat.com>
+Date: Wed, 22 Oct 2008 10:11:52 -0500
+Subject: ext[234]: Avoid printk floods in the face of directory corruption (CVE-2008-3528)
+To: stable@kernel.org
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+Message-ID: <48FF42B8.3030606@redhat.com>
+
+From: Eric Sandeen <sandeen@redhat.com>
+
+This is a trivial backport of the following upstream commits:
+
+- bd39597cbd42a784105a04010100e27267481c67 (ext2)
+- cdbf6dba28e8e6268c8420857696309470009fd9 (ext3)
+- 9d9f177572d9e4eba0f2e18523b44f90dd51fe74 (ext4)
+
+This addresses CVE-2008-3528
+
+ext[234]: Avoid printk floods in the face of directory corruption
+
+Note: some people thinks this represents a security bug, since it
+might make the system go away while it is printing a large number of
+console messages, especially if a serial console is involved.  Hence,
+it has been assigned CVE-2008-3528, but it requires that the attacker
+either has physical access to your machine to insert a USB disk with a
+corrupted filesystem image (at which point why not just hit the power
+button), or is otherwise able to convince the system administrator to
+mount an arbitrary filesystem image (at which point why not just
+include a setuid shell or world-writable hard disk device file or some
+such).  Me, I think they're just being silly. --tytso
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+Cc: Eugene Teo <eugeneteo@kernel.sg>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
+---
+ fs/ext2/dir.c |   60 +++++++++++++++++++++++++++++++++-------------------------
+ fs/ext3/dir.c |   10 ++++++---
+ fs/ext4/dir.c |   11 +++++++---
+ 3 files changed, 50 insertions(+), 31 deletions(-)
+
+--- a/fs/ext2/dir.c
++++ b/fs/ext2/dir.c
+@@ -103,7 +103,7 @@ static int ext2_commit_chunk(struct page
+ 	return err;
+ }
+ 
+-static void ext2_check_page(struct page *page)
++static void ext2_check_page(struct page *page, int quiet)
+ {
+ 	struct inode *dir = page->mapping->host;
+ 	struct super_block *sb = dir->i_sb;
+@@ -146,10 +146,10 @@ out:
+ 	/* Too bad, we had an error */
+ 
+ Ebadsize:
+-	ext2_error(sb, "ext2_check_page",
+-		"size of directory #%lu is not a multiple of chunk size",
+-		dir->i_ino
+-	);
++	if (!quiet)
++		ext2_error(sb, __func__,
++			"size of directory #%lu is not a multiple "
++			"of chunk size", dir->i_ino);
+ 	goto fail;
+ Eshort:
+ 	error = "rec_len is smaller than minimal";
+@@ -166,32 +166,36 @@ Espan:
+ Einumber:
+ 	error = "inode out of bounds";
+ bad_entry:
+-	ext2_error (sb, "ext2_check_page", "bad entry in directory #%lu: %s - "
+-		"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
+-		dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
+-		(unsigned long) le32_to_cpu(p->inode),
+-		rec_len, p->name_len);
++	if (!quiet)
++		ext2_error(sb, __func__, "bad entry in directory #%lu: : %s - "
++			"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
++			dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
++			(unsigned long) le32_to_cpu(p->inode),
++			rec_len, p->name_len);
+ 	goto fail;
+ Eend:
+-	p = (ext2_dirent *)(kaddr + offs);
+-	ext2_error (sb, "ext2_check_page",
+-		"entry in directory #%lu spans the page boundary"
+-		"offset=%lu, inode=%lu",
+-		dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
+-		(unsigned long) le32_to_cpu(p->inode));
++	if (!quiet) {
++		p = (ext2_dirent *)(kaddr + offs);
++		ext2_error(sb, "ext2_check_page",
++			"entry in directory #%lu spans the page boundary"
++			"offset=%lu, inode=%lu",
++			dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
++			(unsigned long) le32_to_cpu(p->inode));
++	}
+ fail:
+ 	SetPageChecked(page);
+ 	SetPageError(page);
+ }
+ 
+-static struct page * ext2_get_page(struct inode *dir, unsigned long n)
++static struct page * ext2_get_page(struct inode *dir, unsigned long n,
++				   int quiet)
+ {
+ 	struct address_space *mapping = dir->i_mapping;
+ 	struct page *page = read_mapping_page(mapping, n, NULL);
+ 	if (!IS_ERR(page)) {
+ 		kmap(page);
+ 		if (!PageChecked(page))
+-			ext2_check_page(page);
++			ext2_check_page(page, quiet);
+ 		if (PageError(page))
+ 			goto fail;
+ 	}
+@@ -292,7 +296,7 @@ ext2_readdir (struct file * filp, void *
+ 	for ( ; n < npages; n++, offset = 0) {
+ 		char *kaddr, *limit;
+ 		ext2_dirent *de;
+-		struct page *page = ext2_get_page(inode, n);
++		struct page *page = ext2_get_page(inode, n, 0);
+ 
+ 		if (IS_ERR(page)) {
+ 			ext2_error(sb, __func__,
+@@ -361,6 +365,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
+ 	struct page *page = NULL;
+ 	struct ext2_inode_info *ei = EXT2_I(dir);
+ 	ext2_dirent * de;
++	int dir_has_error = 0;
+ 
+ 	if (npages == 0)
+ 		goto out;
+@@ -374,7 +379,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
+ 	n = start;
+ 	do {
+ 		char *kaddr;
+-		page = ext2_get_page(dir, n);
++		page = ext2_get_page(dir, n, dir_has_error);
+ 		if (!IS_ERR(page)) {
+ 			kaddr = page_address(page);
+ 			de = (ext2_dirent *) kaddr;
+@@ -391,7 +396,9 @@ struct ext2_dir_entry_2 * ext2_find_entr
+ 				de = ext2_next_entry(de);
+ 			}
+ 			ext2_put_page(page);
+-		}
++		} else
++			dir_has_error = 1;
++
+ 		if (++n >= npages)
+ 			n = 0;
+ 		/* next page is past the blocks we've got */
+@@ -414,7 +421,7 @@ found:
+ 
+ struct ext2_dir_entry_2 * ext2_dotdot (struct inode *dir, struct page **p)
+ {
+-	struct page *page = ext2_get_page(dir, 0);
++	struct page *page = ext2_get_page(dir, 0, 0);
+ 	ext2_dirent *de = NULL;
+ 
+ 	if (!IS_ERR(page)) {
+@@ -487,7 +494,7 @@ int ext2_add_link (struct dentry *dentry
+ 	for (n = 0; n <= npages; n++) {
+ 		char *dir_end;
+ 
+-		page = ext2_get_page(dir, n);
++		page = ext2_get_page(dir, n, 0);
+ 		err = PTR_ERR(page);
+ 		if (IS_ERR(page))
+ 			goto out;
+@@ -655,14 +662,17 @@ int ext2_empty_dir (struct inode * inode
+ {
+ 	struct page *page = NULL;
+ 	unsigned long i, npages = dir_pages(inode);
++	int dir_has_error = 0;
+ 
+ 	for (i = 0; i < npages; i++) {
+ 		char *kaddr;
+ 		ext2_dirent * de;
+-		page = ext2_get_page(inode, i);
++		page = ext2_get_page(inode, i, dir_has_error);
+ 
+-		if (IS_ERR(page))
++		if (IS_ERR(page)) {
++			dir_has_error = 1;
+ 			continue;
++		}
+ 
+ 		kaddr = page_address(page);
+ 		de = (ext2_dirent *)kaddr;
+--- a/fs/ext3/dir.c
++++ b/fs/ext3/dir.c
+@@ -102,6 +102,7 @@ static int ext3_readdir(struct file * fi
+ 	int err;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+ 	int ret = 0;
++	int dir_has_error = 0;
+ 
+ 	sb = inode->i_sb;
+ 
+@@ -148,9 +149,12 @@ static int ext3_readdir(struct file * fi
+ 		 * of recovering data when there's a bad sector
+ 		 */
+ 		if (!bh) {
+-			ext3_error (sb, "ext3_readdir",
+-				"directory #%lu contains a hole at offset %lu",
+-				inode->i_ino, (unsigned long)filp->f_pos);
++			if (!dir_has_error) {
++				ext3_error(sb, __func__, "directory #%lu "
++					"contains a hole at offset %lld",
++					inode->i_ino, filp->f_pos);
++				dir_has_error = 1;
++			}
+ 			/* corrupt size?  Maybe no more blocks to read */
+ 			if (filp->f_pos > inode->i_blocks << 9)
+ 				break;
+--- a/fs/ext4/dir.c
++++ b/fs/ext4/dir.c
+@@ -102,6 +102,7 @@ static int ext4_readdir(struct file * fi
+ 	int err;
+ 	struct inode *inode = filp->f_path.dentry->d_inode;
+ 	int ret = 0;
++	int dir_has_error = 0;
+ 
+ 	sb = inode->i_sb;
+ 
+@@ -148,9 +149,13 @@ static int ext4_readdir(struct file * fi
+ 		 * of recovering data when there's a bad sector
+ 		 */
+ 		if (!bh) {
+-			ext4_error (sb, "ext4_readdir",
+-				"directory #%lu contains a hole at offset %lu",
+-				inode->i_ino, (unsigned long)filp->f_pos);
++			if (!dir_has_error) {
++				ext4_error(sb, __func__, "directory #%lu "
++					   "contains a hole at offset %Lu",
++					   inode->i_ino,
++					   (unsigned long long) filp->f_pos);
++				dir_has_error = 1;
++			}
+ 			/* corrupt size?  Maybe no more blocks to read */
+ 			if (filp->f_pos > inode->i_blocks << 9)
+ 				break;
+
+
+Patches currently in stable-queue which might be from sandeen@redhat.com are
+
+queue-2.6.27/ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch
