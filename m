@@ -1,281 +1,186 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 15/27] ext: Avoid printk floods in the face of directory
-	corruption (CVE-2008-3528)
-Date: Thu, 23 Oct 2008 21:34:37 -0700
-Message-ID: <20081024043437.GP30828@kroah.com>
-References: <20081024042023.054190751@mini.kroah.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
-	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
-	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
-	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Eugene Teo <eugeneteo@kernel.sg>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH 1/3] ext4: Add blocks added during resize to bitmap
+Date: Fri, 24 Oct 2008 12:04:25 +0530
+Message-ID: <1224830067-22963-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, frederic.bohe@bull.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:51795 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752822AbYJXEjV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Oct 2008 00:39:21 -0400
-Content-Disposition: inline; filename="ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch"
-In-Reply-To: <20081024043303.GA30828@kroah.com>
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:44591 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751040AbYJXGei (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Oct 2008 02:34:38 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m9O6YUos002212
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 12:04:30 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9O6YTaE593996
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 12:04:29 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m9O6YSr7004896
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 17:34:29 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2.6.27-stable review patch.  If anyone has any objections, please let us 
-know.
+With this change new blocks added during resize
+are marked as free in the block bitmap and the
+group is flagged with EXT4_GROUP_INFO_NEED_INIT_BIT
+flag. This make sure when mballoc tries to allocate
+blocks from the new group we would reload the
+buddy information using the bitmap present in the disk.
 
-------------------
-From: Eric Sandeen <sandeen@redhat.com>
-
-This is a trivial backport of the following upstream commits:
-
-- bd39597cbd42a784105a04010100e27267481c67 (ext2)
-- cdbf6dba28e8e6268c8420857696309470009fd9 (ext3)
-- 9d9f177572d9e4eba0f2e18523b44f90dd51fe74 (ext4)
-
-This addresses CVE-2008-3528
-
-ext[234]: Avoid printk floods in the face of directory corruption
-
-Note: some people thinks this represents a security bug, since it
-might make the system go away while it is printing a large number of
-console messages, especially if a serial console is involved.  Hence,
-it has been assigned CVE-2008-3528, but it requires that the attacker
-either has physical access to your machine to insert a USB disk with a
-corrupted filesystem image (at which point why not just hit the power
-button), or is otherwise able to convince the system administrator to
-mount an arbitrary filesystem image (at which point why not just
-include a setuid shell or world-writable hard disk device file or some
-such).  Me, I think they're just being silly. --tytso
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Cc: Eugene Teo <eugeneteo@kernel.sg>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext2/dir.c |   60 +++++++++++++++++++++++++++++++++-------------------------
- fs/ext3/dir.c |   10 ++++++---
- fs/ext4/dir.c |   11 +++++++---
- 3 files changed, 50 insertions(+), 31 deletions(-)
+ fs/ext4/balloc.c |   52 +++++++++++++++-------------------------------------
+ fs/ext4/ext4.h   |    2 +-
+ fs/ext4/resize.c |   10 ++--------
+ 3 files changed, 18 insertions(+), 46 deletions(-)
 
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -103,7 +103,7 @@ static int ext2_commit_chunk(struct page
- 	return err;
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index b9821be..b67f1ff 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -20,6 +20,7 @@
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+ #include "group.h"
++#include "mballoc.h"
+ 
+ /*
+  * balloc.c contains the blocks allocation and deallocation routines
+@@ -350,21 +351,18 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
  }
  
--static void ext2_check_page(struct page *page)
-+static void ext2_check_page(struct page *page, int quiet)
+ /**
+- * ext4_free_blocks_sb() -- Free given blocks and update quota
++ * ext4_add_groupblocks() -- Add given blocks to an existing group and update quota
+  * @handle:			handle to this transaction
+  * @sb:				super block
+  * @block:			start physcial block to free
+  * @count:			number of blocks to free
+  * @pdquot_freed_blocks:	pointer to quota
+  *
+- * XXX This function is only used by the on-line resizing code, which
+- * should probably be fixed up to call the mballoc variant.  There
+- * this needs to be cleaned up later; in fact, I'm not convinced this
+- * is 100% correct in the face of the mballoc code.  The online resizing
+- * code needs to be fixed up to more tightly (and correctly) interlock
+- * with the mballoc code.
++ * This marks the blocks as free in the bitmap. We ask the
++ * mballoc to reload the buddy after this by setting group
++ * EXT4_GROUP_INFO_NEED_INIT_BIT flag
+  */
+-void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
++void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 			 ext4_fsblk_t block, unsigned long count,
+ 			 unsigned long *pdquot_freed_blocks)
  {
- 	struct inode *dir = page->mapping->host;
- 	struct super_block *sb = dir->i_sb;
-@@ -146,10 +146,10 @@ out:
- 	/* Too bad, we had an error */
+@@ -379,6 +377,7 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+ 	struct ext4_sb_info *sbi;
+ 	int err = 0, ret;
+ 	ext4_grpblk_t group_freed;
++	struct ext4_group_info *grp;
  
- Ebadsize:
--	ext2_error(sb, "ext2_check_page",
--		"size of directory #%lu is not a multiple of chunk size",
--		dir->i_ino
--	);
-+	if (!quiet)
-+		ext2_error(sb, __func__,
-+			"size of directory #%lu is not a multiple "
-+			"of chunk size", dir->i_ino);
- 	goto fail;
- Eshort:
- 	error = "rec_len is smaller than minimal";
-@@ -166,32 +166,36 @@ Espan:
- Einumber:
- 	error = "inode out of bounds";
- bad_entry:
--	ext2_error (sb, "ext2_check_page", "bad entry in directory #%lu: %s - "
--		"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
--		dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
--		(unsigned long) le32_to_cpu(p->inode),
--		rec_len, p->name_len);
-+	if (!quiet)
-+		ext2_error(sb, __func__, "bad entry in directory #%lu: : %s - "
-+			"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
-+			dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
-+			(unsigned long) le32_to_cpu(p->inode),
-+			rec_len, p->name_len);
- 	goto fail;
- Eend:
--	p = (ext2_dirent *)(kaddr + offs);
--	ext2_error (sb, "ext2_check_page",
--		"entry in directory #%lu spans the page boundary"
--		"offset=%lu, inode=%lu",
--		dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
--		(unsigned long) le32_to_cpu(p->inode));
-+	if (!quiet) {
-+		p = (ext2_dirent *)(kaddr + offs);
-+		ext2_error(sb, "ext2_check_page",
-+			"entry in directory #%lu spans the page boundary"
-+			"offset=%lu, inode=%lu",
-+			dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
-+			(unsigned long) le32_to_cpu(p->inode));
-+	}
- fail:
- 	SetPageChecked(page);
- 	SetPageError(page);
- }
+ 	*pdquot_freed_blocks = 0;
+ 	sbi = EXT4_SB(sb);
+@@ -419,7 +418,7 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+ 	    in_range(block + count - 1, ext4_inode_table(sb, desc),
+ 		     sbi->s_itb_per_group)) {
+ 		ext4_error(sb, "ext4_free_blocks",
+-			   "Freeing blocks in system zones - "
++			   "Adding blocks in system zones - "
+ 			   "Block = %llu, count = %lu",
+ 			   block, count);
+ 		goto error_return;
+@@ -472,35 +471,7 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+ 			cond_resched();
+ 			jbd_lock_bh_state(bitmap_bh);
+ 		}
+-		/* @@@ This prevents newly-allocated data from being
+-		 * freed and then reallocated within the same
+-		 * transaction.
+-		 *
+-		 * Ideally we would want to allow that to happen, but to
+-		 * do so requires making jbd2_journal_forget() capable of
+-		 * revoking the queued write of a data block, which
+-		 * implies blocking on the journal lock.  *forget()
+-		 * cannot block due to truncate races.
+-		 *
+-		 * Eventually we can fix this by making jbd2_journal_forget()
+-		 * return a status indicating whether or not it was able
+-		 * to revoke the buffer.  On successful revoke, it is
+-		 * safe not to set the allocation bit in the committed
+-		 * bitmap, because we know that there is no outstanding
+-		 * activity on the buffer any more and so it is safe to
+-		 * reallocate it.
+-		 */
+-		BUFFER_TRACE(bitmap_bh, "set in b_committed_data");
+-		J_ASSERT_BH(bitmap_bh,
+-				bh2jh(bitmap_bh)->b_committed_data != NULL);
+-		ext4_set_bit_atomic(sb_bgl_lock(sbi, block_group), bit + i,
+-				bh2jh(bitmap_bh)->b_committed_data);
  
--static struct page * ext2_get_page(struct inode *dir, unsigned long n)
-+static struct page * ext2_get_page(struct inode *dir, unsigned long n,
-+				   int quiet)
- {
- 	struct address_space *mapping = dir->i_mapping;
- 	struct page *page = read_mapping_page(mapping, n, NULL);
- 	if (!IS_ERR(page)) {
- 		kmap(page);
- 		if (!PageChecked(page))
--			ext2_check_page(page);
-+			ext2_check_page(page, quiet);
- 		if (PageError(page))
- 			goto fail;
+-		/*
+-		 * We clear the bit in the bitmap after setting the committed
+-		 * data bit, because this is the reverse order to that which
+-		 * the allocator uses.
+-		 */
+ 		BUFFER_TRACE(bitmap_bh, "clear bit");
+ 		if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
+ 						bit + i, bitmap_bh->b_data)) {
+@@ -545,6 +516,13 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+ 		goto do_more;
  	}
-@@ -292,7 +296,7 @@ ext2_readdir (struct file * filp, void *
- 	for ( ; n < npages; n++, offset = 0) {
- 		char *kaddr, *limit;
- 		ext2_dirent *de;
--		struct page *page = ext2_get_page(inode, n);
-+		struct page *page = ext2_get_page(inode, n, 0);
- 
- 		if (IS_ERR(page)) {
- 			ext2_error(sb, __func__,
-@@ -361,6 +365,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
- 	struct page *page = NULL;
- 	struct ext2_inode_info *ei = EXT2_I(dir);
- 	ext2_dirent * de;
-+	int dir_has_error = 0;
- 
- 	if (npages == 0)
- 		goto out;
-@@ -374,7 +379,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
- 	n = start;
- 	do {
- 		char *kaddr;
--		page = ext2_get_page(dir, n);
-+		page = ext2_get_page(dir, n, dir_has_error);
- 		if (!IS_ERR(page)) {
- 			kaddr = page_address(page);
- 			de = (ext2_dirent *) kaddr;
-@@ -391,7 +396,9 @@ struct ext2_dir_entry_2 * ext2_find_entr
- 				de = ext2_next_entry(de);
- 			}
- 			ext2_put_page(page);
--		}
-+		} else
-+			dir_has_error = 1;
-+
- 		if (++n >= npages)
- 			n = 0;
- 		/* next page is past the blocks we've got */
-@@ -414,7 +421,7 @@ found:
- 
- struct ext2_dir_entry_2 * ext2_dotdot (struct inode *dir, struct page **p)
- {
--	struct page *page = ext2_get_page(dir, 0);
-+	struct page *page = ext2_get_page(dir, 0, 0);
- 	ext2_dirent *de = NULL;
- 
- 	if (!IS_ERR(page)) {
-@@ -487,7 +494,7 @@ int ext2_add_link (struct dentry *dentry
- 	for (n = 0; n <= npages; n++) {
- 		char *dir_end;
- 
--		page = ext2_get_page(dir, n);
-+		page = ext2_get_page(dir, n, 0);
- 		err = PTR_ERR(page);
- 		if (IS_ERR(page))
- 			goto out;
-@@ -655,14 +662,17 @@ int ext2_empty_dir (struct inode * inode
- {
- 	struct page *page = NULL;
- 	unsigned long i, npages = dir_pages(inode);
-+	int dir_has_error = 0;
- 
- 	for (i = 0; i < npages; i++) {
- 		char *kaddr;
- 		ext2_dirent * de;
--		page = ext2_get_page(inode, i);
-+		page = ext2_get_page(inode, i, dir_has_error);
- 
--		if (IS_ERR(page))
-+		if (IS_ERR(page)) {
-+			dir_has_error = 1;
- 			continue;
-+		}
- 
- 		kaddr = page_address(page);
- 		de = (ext2_dirent *)kaddr;
---- a/fs/ext3/dir.c
-+++ b/fs/ext3/dir.c
-@@ -102,6 +102,7 @@ static int ext3_readdir(struct file * fi
+ 	sb->s_dirt = 1;
++	/*
++	 * request to reload the buddy with the
++	 * new bitmap information
++	 */
++	grp = ext4_get_group_info(sb, block_group);
++	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
++	ext4_mb_update_group_info(grp, count);
+ error_return:
+ 	brelse(bitmap_bh);
+ 	ext4_std_error(sb, err);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 3882a6c..ca915d5 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1024,7 +1024,7 @@ extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 					 s64 nblocks);
+ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t block, unsigned long count, int metadata);
+-extern void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
++extern void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 				ext4_fsblk_t block, unsigned long count,
+ 				unsigned long *pdquot_freed_blocks);
+ extern ext4_fsblk_t ext4_count_free_blocks(struct super_block *);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index b6ec184..a8403a8 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -977,7 +977,6 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
  	int err;
- 	struct inode *inode = filp->f_path.dentry->d_inode;
- 	int ret = 0;
-+	int dir_has_error = 0;
+ 	unsigned long freed_blocks;
+ 	ext4_group_t group;
+-	struct ext4_group_info *grp;
  
- 	sb = inode->i_sb;
- 
-@@ -148,9 +149,12 @@ static int ext3_readdir(struct file * fi
- 		 * of recovering data when there's a bad sector
- 		 */
- 		if (!bh) {
--			ext3_error (sb, "ext3_readdir",
--				"directory #%lu contains a hole at offset %lu",
--				inode->i_ino, (unsigned long)filp->f_pos);
-+			if (!dir_has_error) {
-+				ext3_error(sb, __func__, "directory #%lu "
-+					"contains a hole at offset %lld",
-+					inode->i_ino, filp->f_pos);
-+				dir_has_error = 1;
-+			}
- 			/* corrupt size?  Maybe no more blocks to read */
- 			if (filp->f_pos > inode->i_blocks << 9)
- 				break;
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -102,6 +102,7 @@ static int ext4_readdir(struct file * fi
- 	int err;
- 	struct inode *inode = filp->f_path.dentry->d_inode;
- 	int ret = 0;
-+	int dir_has_error = 0;
- 
- 	sb = inode->i_sb;
- 
-@@ -148,9 +149,13 @@ static int ext4_readdir(struct file * fi
- 		 * of recovering data when there's a bad sector
- 		 */
- 		if (!bh) {
--			ext4_error (sb, "ext4_readdir",
--				"directory #%lu contains a hole at offset %lu",
--				inode->i_ino, (unsigned long)filp->f_pos);
-+			if (!dir_has_error) {
-+				ext4_error(sb, __func__, "directory #%lu "
-+					   "contains a hole at offset %Lu",
-+					   inode->i_ino,
-+					   (unsigned long long) filp->f_pos);
-+				dir_has_error = 1;
-+			}
- 			/* corrupt size?  Maybe no more blocks to read */
- 			if (filp->f_pos > inode->i_blocks << 9)
- 				break;
-
--- 
+ 	/* We don't need to worry about locking wrt other resizers just
+ 	 * yet: we're going to revalidate es->s_blocks_count after
+@@ -1076,7 +1075,8 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	unlock_super(sb);
+ 	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+-	ext4_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
++	/* We add the blocks to the bitmap and set the group need init bit */
++	ext4_add_groupblocks(handle, sb, o_blocks_count, add, &freed_blocks);
+ 	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+ 	if ((err = ext4_journal_stop(handle)))
+@@ -1119,12 +1119,6 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 			ClearPageUptodate(page);
+ 			page_cache_release(page);
+ 		}
+-
+-		/* Get the info on the last group */
+-		grp = ext4_get_group_info(sb, group);
