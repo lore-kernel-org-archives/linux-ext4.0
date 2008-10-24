@@ -1,64 +1,38 @@
-From: Stephen Smalley <sds@tycho.nsa.gov>
-Subject: Re: ext4_has_free_blocks always checks cap_sys_resource and makes
-	SELinux unhappy
-Date: Fri, 24 Oct 2008 13:38:42 -0400
-Message-ID: <1224869922.9353.11.camel@moss-spartans.epoch.ncsc.mil>
-References: <1224860735.3404.74.camel@localhost.localdomain>
-	 <1224860899.9353.6.camel@moss-spartans.epoch.ncsc.mil>
-	 <1224869312.3404.80.camel@localhost.localdomain>
+From: Jeremy Fitzhardinge <jeremy@goop.org>
+Subject: Re: [PATCH,RFC] ext3: Add support for non-native signed/unsigned
+ htree hash algorithms
+Date: Fri, 24 Oct 2008 11:25:29 -0700
+Message-ID: <49021319.4050302@goop.org>
+References: <1224560624-9691-1-git-send-email-tytso@mit.edu> <1224560624-9691-2-git-send-email-tytso@mit.edu> <20081022172221.c1a8c5b5.akpm@linux-foundation.org> <20081023025646.GD10369@mit.edu> <20081023192618.GS3184@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, selinux@tycho.nsa.gov,
-	esandeen@redhat.com, tytso@mit.edu, dwalsh@redhat.com,
-	linux-security-module@vger.kernel.org
-To: Eric Paris <eparis@redhat.com>
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zombie2.ncsc.mil ([144.51.88.133]:53157 "EHLO zombie2.ncsc.mil"
+Received: from gw.goop.org ([64.81.55.164]:54061 "EHLO mail.goop.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753509AbYJXRj7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Oct 2008 13:39:59 -0400
-In-Reply-To: <1224869312.3404.80.camel@localhost.localdomain>
+	id S1752729AbYJXSZa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Oct 2008 14:25:30 -0400
+In-Reply-To: <20081023192618.GS3184@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-10-24 at 13:28 -0400, Eric Paris wrote:
-> On Fri, 2008-10-24 at 11:08 -0400, Stephen Smalley wrote:
-> > On Fri, 2008-10-24 at 11:05 -0400, Eric Paris wrote:
-> 
-> > > Do others have thoughts?
-> > 
-> > Seems similar to the vm_enough_memory() case, where we likewise
-> > introduced a separate security hook that internally checks without
-> > auditing.
-> > 
-> > The OOM killer likewise ought to be using a non-auditing form of
-> > capability checks.
-> 
-> So would you suggest a generic non-auditing capability checking
-> mechanism or a specific hook for "things to use"
-> 
-> * capable_noaudit(current, cap)
-> * security_capable_noaudit(current, cap)
-> * security_cap_sys_resource(current)
-> 
-> Looks like oom also checks CAP_SYS_ADMIN so maybe a generic cap
-> interface would be best.
+Andreas Dilger wrote:
+>
+>> Hmm..... is it considered safe to depend on the userspace limits.h
+>> header file?  I guess if we trust that header file to be correct we
+>> could check the value of CHAR_MIN and/or CHAR_MAX as defined by
+>> limits.h.
+>>     
+>
+> That would likely fail on cross-compiled environments, right?
+>   
 
-In the vm_enough_memory() case, I think it was Alan Cox's idea to take
-the entire policy logic into a distinct security hook so that you could
-ultimately support policy-based resource constraints.  Versus only
-introducing a non-auditing variant of the capable check.  If we wanted
-to be consistent, we'd likewise introduce distinct hooks for these cases
-and take more of the logic into them, not just the capability check.
-I'm open to either approach though.
+/usr/include/limits.h uses #include_next to pick up gcc's private 
+limits.h, so it should be safe to use in a kernel cross-build 
+environment.  (Picking up the compiler's limits.h directly would be better.)
 
-> esandeen: I still think it would be a good idea to simplify
-> ext4_claim_free_blocks() and ext4_has_free_blocks() which seems to have
-> a lot of code duplication and both have the unconditional capable
-> calls...
-
--- 
-Stephen Smalley
-National Security Agency
-
+    J
