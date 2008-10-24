@@ -1,20 +1,22 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH 1/2] merge ext4_claim_free_blocks & ext4_has_free_blocks
-Date: Fri, 24 Oct 2008 15:27:31 -0500
-Message-ID: <49022FB3.7080002@redhat.com>
+Subject: [PATCH 1/2 v2] merge ext4_claim_free_blocks & ext4_has_free_blocks
+Date: Fri, 24 Oct 2008 15:40:24 -0500
+Message-ID: <490232B8.1040706@redhat.com>
+References: <49022FB3.7080002@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: Eric Paris <eparis@redhat.com>
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:43429 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:40911 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754787AbYJXU1f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Oct 2008 16:27:35 -0400
+	id S1753327AbYJXUk0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Oct 2008 16:40:26 -0400
 Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m9OKRY03025823
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 16:27:34 -0400
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m9OKePDH027909
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 16:40:25 -0400
+In-Reply-To: <49022FB3.7080002@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -24,10 +26,12 @@ are largely cut & pasted; they can be collapsed/merged as follows.
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
+(whoops, forgot a quilt refresh before sending the last one...)
+
 Index: linux-2.6/fs/ext4/balloc.c
 ===================================================================
---- linux-2.6.orig/fs/ext4/balloc.c	2008-10-24 15:04:51.672001367 -0500
-+++ linux-2.6/fs/ext4/balloc.c	2008-10-24 15:07:28.369001684 -0500
+--- linux-2.6.orig/fs/ext4/balloc.c	2008-10-24 15:32:33.301001639 -0500
++++ linux-2.6/fs/ext4/balloc.c	2008-10-24 15:32:36.076063815 -0500
 @@ -589,8 +589,15 @@ void ext4_free_blocks(handle_t *handle, 
  	return;
  }
