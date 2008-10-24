@@ -1,56 +1,48 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Eric Paris <eparis@redhat.com>
 Subject: Re: ext4_has_free_blocks always checks cap_sys_resource and makes
  SELinux unhappy
-Date: Fri, 24 Oct 2008 11:56:09 -0500
-Message-ID: <4901FE29.3090600@redhat.com>
+Date: Fri, 24 Oct 2008 13:28:32 -0400
+Message-ID: <1224869312.3404.80.camel@localhost.localdomain>
 References: <1224860735.3404.74.camel@localhost.localdomain>
+	 <1224860899.9353.6.camel@moss-spartans.epoch.ncsc.mil>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, selinux@tycho.nsa.gov,
-	sds@tycho.nsa.gov, esandeen@redhat.com, tytso@mit.edu,
-	dwalsh@redhat.com, linux-security-module@vger.kernel.org
-To: Eric Paris <eparis@redhat.com>
+	esandeen@redhat.com, tytso@mit.edu, dwalsh@redhat.com,
+	linux-security-module@vger.kernel.org
+To: Stephen Smalley <sds@tycho.nsa.gov>
 Return-path: <linux-security-module-owner@vger.kernel.org>
-In-Reply-To: <1224860735.3404.74.camel@localhost.localdomain>
+In-Reply-To: <1224860899.9353.6.camel@moss-spartans.epoch.ncsc.mil>
 Sender: linux-security-module-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Eric Paris wrote:
-> I'm running an ext4 root filesystem and regularly get SELinux denials
-> like:
-> 
-> Oct 16 08:32:55 localhost kernel: type=1400 audit(1224160369.076:5):
-> avc: denied  { sys_resource } for  pid=1624 comm="dbus-daemon"
-> capability=24 scontext=system_u:system_r:system_dbusd_t:s0
-> tcontext=system_u:system_r:system_dbusd_t:s0 tclass=capability
-> 
-> https://bugzilla.redhat.com/show_bug.cgi?id=467216
-> 
-> Since this doesn't happen with people who have ext3 filesystems but
-> everything else the same it lead me to look at ext4.  I see that
-> ext?_has_free_blocks() has changed since ext3 and now we always check
-> for capable(CAP_SYS_RESOUCE).  If a process actually has the capability
-> in pE (as many root processes would) but doesn't have the capability in
-> SELinux policy we will get a denial.
-> 
-> I can think of a couple ways to fix this:
-> 
-> the first (and one I like) is to change ext4 to stop checking
-> CAP_SYS_RESOURCE all the time.  It's not really 'pretty' but I think you
-> would actually get a better performing function.  Just always calculate
-> root_blocks and if we don't have enough room then then do the whole
-> check to see if are root and recalculate without root_blocks.  I'd guess
-> that a great majority of the time operations will succeed even with a
-> non-zero root_blocks and I would guess that most process aren't going to
-> be root processes and so we would be calculating root_blocks anyway.
-> This would (like ext3) only cause these denials when it was filled up.
-> We've been living with that forever, so I don't see a problem there...
+On Fri, 2008-10-24 at 11:08 -0400, Stephen Smalley wrote:
+> On Fri, 2008-10-24 at 11:05 -0400, Eric Paris wrote:
 
-Thanks Eric, I'll look into this.  It seems that ext4_has_free_blocks is
-now overly complex; it used to return how many blocks are available, if
-that number is < nblocks, but the single caller now only checks
-success/failure for having nblocks free.  I'll see if I can simplify it
-and delay the cap check as you suggest.
+> > Do others have thoughts?
+> 
+> Seems similar to the vm_enough_memory() case, where we likewise
+> introduced a separate security hook that internally checks without
+> auditing.
+> 
+> The OOM killer likewise ought to be using a non-auditing form of
+> capability checks.
+
+So would you suggest a generic non-auditing capability checking
+mechanism or a specific hook for "things to use"
+
+* capable_noaudit(current, cap)
+* security_capable_noaudit(current, cap)
+* security_cap_sys_resource(current)
+
+Looks like oom also checks CAP_SYS_ADMIN so maybe a generic cap
+interface would be best.
+
+esandeen: I still think it would be a good idea to simplify
+ext4_claim_free_blocks() and ext4_has_free_blocks() which seems to have
+a lot of code duplication and both have the unconditional capable
+calls...
 
 -Eric
+
