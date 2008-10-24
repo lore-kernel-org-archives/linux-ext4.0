@@ -1,408 +1,155 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH 2/3] ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
-Date: Fri, 24 Oct 2008 12:04:26 +0530
-Message-ID: <1224830067-22963-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1224830067-22963-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, frederic.bohe@bull.net
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [RFC][PATCH 0/9]ext4: online defrag (ver 0.97)
+Date: Fri, 24 Oct 2008 19:09:30 +0900
+Message-ID: <49019EDA.2080400@rs.jp.nec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org
+To: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
+	Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp03.in.ibm.com ([59.145.155.3]:44607 "EHLO
-	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751646AbYJXGel (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Oct 2008 02:34:41 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id m9O6YVKm002238
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 12:04:31 +0530
-Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9O6YThC1134754
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 12:04:29 +0530
-Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id m9O6YSFm004899
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 17:34:29 +1100
-In-Reply-To: <1224830067-22963-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:41778 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752864AbYJXKJ7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Oct 2008 06:09:59 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The new groups added during resize are flagged as
-need_init group. Make sure we properly initialize these
-groups. When we have block size < page size and we are adding
-new groups the page may still be marked uptodate even though
-we haven't initialized the group.
+Hello,
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/ext4.h    |    2 +-
- fs/ext4/mballoc.c |  192 ++++++++++++++++++++++++++++++++++++++---------------
- fs/ext4/mballoc.h |    3 +
- fs/ext4/resize.c  |   41 +-----------
- 4 files changed, 143 insertions(+), 95 deletions(-)
+I've updated ext4 online defrag patches.
+Changes are as followings (Ted pointed 1-4 out before).
+ 1. Remove unneeded ioctls and related functions.
+   - EXT4_IOC_FIBMAP
+   - EXT4_IOC_GROUP_INFO
+   - EXT4_IOC_RESERVE_BLOCK
+   - EXT4_IOC_BLOCK_RELEASE
+ 2. Implement new ioctl (EXT4_IOC_SUPER_INFO) which gets ext4_super_block.
+ 3. Remove ext4_defrag_ioctl() not to have a double layer of ioctl's dispatch.
+ 4. Fix defrag not to use block reservation in force defrag mode (-f),
+    because the legacy block allocator have been removed from ext4.
+ 5. Add permission check to ext4_defrag_fiemap_ino and ext4_defag_move_victim.
+    Because non-permitted file should not be selected as victim file
+    in force defrag mode (-f).
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ca915d5..157d11e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1073,7 +1073,7 @@ extern int __init init_ext4_mballoc(void);
- extern void exit_ext4_mballoc(void);
- extern void ext4_mb_free_blocks(handle_t *, struct inode *,
- 		unsigned long, unsigned long, int, unsigned long *);
--extern int ext4_mb_add_more_groupinfo(struct super_block *sb,
-+extern int ext4_mb_add_groupinfo(struct super_block *sb,
- 		ext4_group_t i, struct ext4_group_desc *desc);
- extern void ext4_mb_update_group_info(struct ext4_group_info *grp,
- 		ext4_grpblk_t add);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c08df26..a614e36 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -886,18 +886,20 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 					struct ext4_buddy *e4b)
- {
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct inode *inode = sbi->s_buddy_cache;
- 	int blocks_per_page;
- 	int block;
- 	int pnum;
- 	int poff;
- 	struct page *page;
- 	int ret;
-+	struct ext4_group_info *grp;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct inode *inode = sbi->s_buddy_cache;
- 
- 	mb_debug("load group %lu\n", group);
- 
- 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-+	grp = ext4_get_group_info(sb, group);
- 
- 	e4b->bd_blkbits = sb->s_blocksize_bits;
- 	e4b->bd_info = ext4_get_group_info(sb, group);
-@@ -905,6 +907,15 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 	e4b->bd_group = group;
- 	e4b->bd_buddy_page = NULL;
- 	e4b->bd_bitmap_page = NULL;
-+	e4b->alloc_semp = &grp->alloc_sem;
-+
-+	/* Take the read lock on the group alloc
-+	 * sem. This would make sure a parallel
-+	 * ext4_mb_init_group happening on other
-+	 * groups mapped by the page is blocked
-+	 * till we are done with allocation
-+	 */
-+	down_read(e4b->alloc_semp);
- 
- 	/*
- 	 * the buddy cache inode stores the block bitmap
-@@ -919,8 +930,15 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 	 * what we'd like to avoid in fast path ... */
- 	page = find_get_page(inode->i_mapping, pnum);
- 	if (page == NULL || !PageUptodate(page)) {
--		if (page)
-+		if (page) {
-+			/* If the page is not uptodate
-+			 * that would imply nobody is using
-+			 * it. So we should be able to drop
-+			 * page_cache without being worried
-+			 * about other group allocation
-+			 */
- 			page_cache_release(page);
-+		}
- 		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
- 		if (page) {
- 			BUG_ON(page->mapping != inode->i_mapping);
-@@ -994,6 +1012,8 @@ static void ext4_mb_release_desc(struct ext4_buddy *e4b)
- 		page_cache_release(e4b->bd_bitmap_page);
- 	if (e4b->bd_buddy_page)
- 		page_cache_release(e4b->bd_buddy_page);
-+	/* Done with the buddy cache */
-+	up_read(e4b->alloc_semp);
- }
- 
- 
-@@ -1692,6 +1712,118 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
- 	return 0;
- }
- 
-+static int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
-+{
-+
-+	int i, ret;
-+	void *bitmap;
-+	int blocks_per_page;
-+	int groups_per_page;
-+	int block, pnum, poff;
-+	ext4_group_t first_group;
-+	struct ext4_group_info *grp, *this_grp;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct inode *inode = sbi->s_buddy_cache;
-+	struct page *page = NULL, *bitmap_page = NULL;
-+
-+	mb_debug("init group %lu\n", group);
-+	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-+	/*
-+	 * the buddy cache inode stores the block bitmap
-+	 * and buddy information in consecutive blocks.
-+	 * So for each group we need two blocks.
-+	 */
-+	block = group * 2;
-+	pnum = block / blocks_per_page;
-+	poff = block % blocks_per_page;
-+	first_group = pnum * blocks_per_page / 2;
-+	this_grp = ext4_get_group_info(sb, group);
-+
-+	groups_per_page = blocks_per_page >> 1;
-+	if (groups_per_page == 0)
-+		groups_per_page = 1;
-+
-+	/* read all groups the page covers into the cache */
-+	for (i = 0; i < groups_per_page; i++) {
-+		grp = ext4_get_group_info(sb, first_group + i);
-+		/* take all groups write allocation
-+		 * semaphore. This make sure there is
-+		 * no block allocation going on in any
-+		 * of that groups
-+		 */
-+		down_write(&grp->alloc_sem);
-+	}
-+	if (!EXT4_MB_GRP_NEED_INIT(this_grp)) {
-+		/*
-+		 * somebody initialized the group
-+		 * return without doing anything
-+		 */
-+		ret = 0;
-+		goto err;
-+	}
-+
-+	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+	if (page) {
-+		BUG_ON(page->mapping != inode->i_mapping);
-+		ret = ext4_mb_init_cache(page, NULL);
-+		if (ret) {
-+			unlock_page(page);
-+			goto err;
-+		}
-+		unlock_page(page);
-+	}
-+	if (page == NULL || !PageUptodate(page)) {
-+		ret = -EIO;
-+		goto err;
-+	}
-+	mark_page_accessed(page);
-+	bitmap_page = page;
-+	bitmap = page_address(page) + (poff * sb->s_blocksize);
-+
-+	/* init buddy cache */
-+	block++;
-+	pnum = block / blocks_per_page;
-+	poff = block % blocks_per_page;
-+	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+	if (page == bitmap_page) {
-+		/*
-+		 * If both the bitmap and buddy are in
-+		 * the same page we don't need to force
-+		 * init the buddy
-+		 */
-+		unlock_page(page);
-+	} else if (page) {
-+		BUG_ON(page->mapping != inode->i_mapping);
-+		ret = ext4_mb_init_cache(page, bitmap);
-+		if (ret) {
-+			unlock_page(page);
-+			goto err;
-+		}
-+		unlock_page(page);
-+	}
-+	if (page == NULL || !PageUptodate(page)) {
-+		ret = -EIO;
-+		goto err;
-+	}
-+	mark_page_accessed(page);
-+err:
-+	/* release locks on all the groups */
-+	for (i = 0; i < groups_per_page; i++) {
-+		grp = ext4_get_group_info(sb, first_group + i);
-+		/* take all groups write allocation
-+		 * semaphore. This make sure there is
-+		 * no block allocation going on in any
-+		 * of that groups
-+		 */
-+		up_write(&grp->alloc_sem);
-+	}
-+	if (bitmap_page)
-+		page_cache_release(bitmap_page);
-+	if (page)
-+		page_cache_release(page);
-+	return ret;
-+}
-+
- static noinline_for_stack int
- ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- {
-@@ -1775,7 +1907,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 				group = 0;
- 
- 			/* quick check to skip empty groups */
--			grp = ext4_get_group_info(ac->ac_sb, group);
-+			grp = ext4_get_group_info(sb, group);
- 			if (grp->bb_free == 0)
- 				continue;
- 
-@@ -1788,10 +1920,9 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 				 * we need full data about the group
- 				 * to make a good selection
- 				 */
--				err = ext4_mb_load_buddy(sb, group, &e4b);
-+				err = ext4_mb_init_group(sb, group);
- 				if (err)
- 					goto out;
--				ext4_mb_release_desc(&e4b);
- 			}
- 
- 			/*
-@@ -2300,6 +2431,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 	}
- 
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
-+	init_rwsem(&meta_group_info[i]->alloc_sem);
- 	meta_group_info[i]->bb_free_root.rb_node = NULL;;
- 
- #ifdef DOUBLE_CHECK
-@@ -2327,54 +2459,6 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- } /* ext4_mb_add_groupinfo */
- 
- /*
-- * Add a group to the existing groups.
-- * This function is used for online resize
-- */
--int ext4_mb_add_more_groupinfo(struct super_block *sb, ext4_group_t group,
--			       struct ext4_group_desc *desc)
--{
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct inode *inode = sbi->s_buddy_cache;
--	int blocks_per_page;
--	int block;
--	int pnum;
--	struct page *page;
--	int err;
--
--	/* Add group based on group descriptor*/
--	err = ext4_mb_add_groupinfo(sb, group, desc);
--	if (err)
--		return err;
--
--	/*
--	 * Cache pages containing dynamic mb_alloc datas (buddy and bitmap
--	 * datas) are set not up to date so that they will be re-initilaized
--	 * during the next call to ext4_mb_load_buddy
--	 */
--
--	/* Set buddy page as not up to date */
--	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
--	block = group * 2;
--	pnum = block / blocks_per_page;
--	page = find_get_page(inode->i_mapping, pnum);
--	if (page != NULL) {
--		ClearPageUptodate(page);
--		page_cache_release(page);
--	}
--
--	/* Set bitmap page as not up to date */
--	block++;
--	pnum = block / blocks_per_page;
--	page = find_get_page(inode->i_mapping, pnum);
--	if (page != NULL) {
--		ClearPageUptodate(page);
--		page_cache_release(page);
--	}
--
--	return 0;
--}
--
--/*
-  * Update an existing group.
-  * This function is used for online resize
-  */
-diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
-index 9e815c4..317730a 100644
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -18,6 +18,7 @@
- #include <linux/pagemap.h>
- #include <linux/seq_file.h>
- #include <linux/version.h>
-+#include <linux/mutex.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
- #include "group.h"
-@@ -128,6 +129,7 @@ struct ext4_group_info {
- #ifdef DOUBLE_CHECK
- 	void		*bb_bitmap;
- #endif
-+	struct rw_semaphore alloc_sem;
- 	unsigned short	bb_counters[];
- };
- 
-@@ -248,6 +250,7 @@ struct ext4_buddy {
- 	struct super_block *bd_sb;
- 	__u16 bd_blkbits;
- 	ext4_group_t bd_group;
-+	struct rw_semaphore *alloc_semp;
- };
- #define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
- #define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index a8403a8..65dea15 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -870,7 +870,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	 * We can allocate memory for mb_alloc based on the new group
- 	 * descriptor
- 	 */
--	err = ext4_mb_add_more_groupinfo(sb, input->group, gdp);
-+	err = ext4_mb_add_groupinfo(sb, input->group, gdp);
- 	if (err)
- 		goto exit_journal;
- 
-@@ -1082,45 +1082,6 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 	if ((err = ext4_journal_stop(handle)))
- 		goto exit_put;
- 
--	/*
--	 * Mark mballoc pages as not up to date so that they will be updated
--	 * next time they are loaded by ext4_mb_load_buddy.
--	 *
--	 * XXX Bad, Bad, BAD!!!  We should not be overloading the
--	 * Uptodate flag, particularly on thte bitmap bh, as way of
--	 * hinting to ext4_mb_load_buddy() that it needs to be
--	 * overloaded.  A user could take a LVM snapshot, then do an
--	 * on-line fsck, and clear the uptodate flag, and this would
--	 * not be a bug in userspace, but a bug in the kernel.  FIXME!!!
--	 */
--	{
--		struct ext4_sb_info *sbi = EXT4_SB(sb);
--		struct inode *inode = sbi->s_buddy_cache;
--		int blocks_per_page;
--		int block;
--		int pnum;
--		struct page *page;
--
--		/* Set buddy page as not up to date */
--		blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
--		block = group * 2;
--		pnum = block / blocks_per_page;
--		page = find_get_page(inode->i_mapping, pnum);
--		if (page != NULL) {
--			ClearPageUptodate(page);
--			page_cache_release(page);
--		}
--
--		/* Set bitmap page as not up to date */
--		block++;
--		pnum = block / blocks_per_page;
--		page = find_get_page(inode->i_mapping, pnum);
--		if (page != NULL) {
--			ClearPageUptodate(page);
--			page_cache_release(page);
--		}
--	}
+Changelog:
+- 0.97(Oct. 24, 2008)
+  - Remove unneeded ioctls.
+  - Add EXT4_IOC_SUPER_INFO which gets ext4_super_block.
+  - Fix defrag not to use block reservation in force defrag mode (-f).
+  - Remove ext4_defrag_ioctl() not to have a double layer of ioctl's dispatch.
+  - Some cleanups.
+- 0.95(Sep. 26, 2008)
+  - Support 1KB and 2KB block size.
+  - Implement EXT4_IOC_FIEMAP_INO which calls ext4_fiemap() for specified inode number
+    instead of EXT4_IOC_EXTENTS_INFO to get extents information.
+  - Merge "JC6-defrag-alloc-contiguous-blks-credit" and
+    "ext4-request-for-blocks-with-ar.excepted_group-1.patch" in the ext4 patch queue
+    into this version.
+  - Handle s_dirtyblocks_counter correctly in defrag when delalloc enabled.
+  - Remove unneeded copy_from_user() in EXT4_IOC_GROUP_INFO ioctl.  Ted pointed this out.
+- 0.9 (May 30, 2008)
+  - Create some new functions (ext4_defrag_fill_ar(),
+    ext4_defrag_check_phase() ...) to separate block allocation function,
+    since the phase mode plug into the allocation function isn't good.
+  - Add the description of ext4_defrag() which is main function.
+  - Add the capability check.
+  - Some cleanups.
+
+Outline for ext4 online defragmentation:
+Ext4 online defrag has the following three functions.
+
+ no option  Solving a single file fragmentation.
+            Single file fragmentation is solved by moving file
+            data to contiguous free blocks.
+
+    -r      Solving a relevant file fragmentation.
+            Relevant file fragmentation could be solved by moving
+            the files under the specified directory close together with
+            the block containing the directory data.
+
+    -f      Solving a free space fragmentation.
+            If there is no contiguous free blocks in the filesystem,
+            the other files are moved to make sufficient space to allocate
+            contiguous blocks for the target file.
+
+Next step:
+ - Support flex_bg.
+ Address the following items that Ted pointed out before.
+ These are no functional impact.
+ - Rebuild defrag patches construction.
+   (low-level functions will be first)
+ - Move the defrag functions that are related to extents or mballoc
+   to the appropriate files.
+ - Add more descriptions each of defrag functions.
+
+Summary of patches:
+* The followings are new ext4 online defrag patches and they consist
+  of ioctl unit except 1-4.  Because the EXT4_IOC_DEFRAG is too big for reviewing,
+  I divided it into 4 patches (I'll consider about appropriate construction
+  of defrag patches later).
+
+[PATCH 1/9] EXT4_IOC_DEFRAG ioctl and  defrag main function
+- Create the temporary inode and do defrag per
+  defrag_size (defalut 64MB).
+
+[PATCH 2/9] Allocate new contiguous blocks with mballoc
+- Search contiguous free blocks with mutil-block allocation
+  and allocate them for the temporary inode.
+
+[PATCH 3/9]  Exchange the extents between two inodes
+- For each page, exchange the extents between the temporary inode
+  and the original inode, and then write them.
+
+[PATCH 4/9] Inside extents management and relevant defrag
+- Merge extents of target inode which is increased by defragmentation.
+- For relevant defrag, add the goal argument to related functions
+  to allocate data block to the specified offset.
+
+[PATCH 5/9] EXT4_IOC_SUPER_INFO ioctl
+- EXT4_IOC_SUPER_INFO gets super block information on disk.
+
+  Super block information is necessary for relevant (-r) and force (-f) defrag.
+  Non-root user can't get this information by opening the block device directly,
+  so implement this ioctl newly.
+
+[PATCH 6/9] EXT4_IOC_FREE_BLOCKS_INFO ioctl
+- The EXT4_IOC_FREE_BLOCKS_INFO ioctl gets free extents
+  information of the target block group.
+  This ioctl is used only in the force defrag (-f).
+
+  ext4_defrag_fblocks_distribution() was renamed as ext4_mb_search_free_extents()
+  and moved into mballoc.c.  Because it uses ext4_buddy structure.
+
+[PATCH 7/9] EXT4_IOC_FIEMAP_INO ioctl
+- The EXT4_IOC_FIEMAP_INO is used to get extents information of
+  inode which set to ioctl.
+  The defragger uses this ioctl to check the fragment condition
+  and to get extents information in the specified block group.
+
+  Andreas Dilger suggested that implement EXT4_IOC_WRAPPER to call fiemap
+  for arbitrary inodes instead of this ioctl.
+  But there is a matter for consideration to use EXT4_IOC_WRAPPER,
+  so I passed up it in this time.
+
+[PATCH 8/9] EXT4_IOC_MOVE_VICTIM ioctl
+- The EXT4_IOC_MOVE_VICTIM moves the victim extents into other block group.
+  Therefore the contiguous free space is made in the target block group.
+  This ioctl is used only in the force defrag (-f).
+
+[PATCH 9/9] Online defrag command
+- The defrag command. Usage is as follows:
+  - Defrag for a single file.
+    # e4defrag file-name
+  - Defrag for all files on ext4.
+    # e4defrag device-name
+  - Put the multiple files closer together.
+    # e4defrag -r directory-name
+  - Defrag for free space fragmentation.
+    # e4defrag -f file-name
+
+Any comments are welcome.
+
+Best regards,
+Akira Fujita
