@@ -1,165 +1,88 @@
-From: akpm@linux-foundation.org
-Subject: - ext3-add-checks-for-errors-from-jbd.patch removed from -mm tree
-Date: Fri, 24 Oct 2008 12:40:33 -0700
-Message-ID: <200810241940.m9OJeX4O000921@imap1.linux-foundation.org>
-To: hidehiro.kawai.ez@hitachi.com, jack@ucw.cz,
-	linux-ext4@vger.kernel.org, sfr@canb.auug.org.au,
-	viro@zeniv.linux.org.uk, mm-commits@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH 2/2] delay capable() check in ext4_has_free_blocks(
+Date: Fri, 24 Oct 2008 15:27:35 -0500
+Message-ID: <49022FB7.9050608@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Eric Paris <eparis@redhat.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:49203 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752107AbYJXTkt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Oct 2008 15:40:49 -0400
+Received: from mx2.redhat.com ([66.187.237.31]:43430 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754794AbYJXU1h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Oct 2008 16:27:37 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id m9OKRb54025829
+	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 16:27:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+As reported by Eric Paris, the capable() check in ext4_has_free_blocks()
+sometimes causes SELinux denials.
 
-The patch titled
-     ext3: add checks for errors from jbd
-has been removed from the -mm tree.  Its filename was
-     ext3-add-checks-for-errors-from-jbd.patch
+We can rearrange the logic so that we only try to use the root-reserved
+blocks when necessary, and even then we can move the capable() test
+to last, to avoid the check most of the time.
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+--
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext3: add checks for errors from jbd
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-
-If the journal has aborted due to a checkpointing failure, we have to
-keep the contents of the journal space.  Otherwise, the filesystem will
-lose uncheckpointed metadata completely and become inconsistent.  To
-avoid this, we need to keep needs_recovery flag if checkpoint has
-failed.
-
-With this patch, ext3_put_super() detects a checkpointing failure from
-the return value of journal_destroy(), then it invokes ext3_abort() to
-make the filesystem read only and keep needs_recovery flag.  Errors
-from journal_flush() are also handled by this patch in some places.
-
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Cc: Jan Kara <jack@ucw.cz>
-Cc: Stephen Rothwell <sfr@canb.auug.org.au>
-Cc: Al Viro <viro@zeniv.linux.org.uk>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext3/ioctl.c |   12 ++++++++----
- fs/ext3/super.c |   23 +++++++++++++++++++----
- 2 files changed, 27 insertions(+), 8 deletions(-)
-
-diff -puN fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd fs/ext3/ioctl.c
---- a/fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd
-+++ a/fs/ext3/ioctl.c
-@@ -239,7 +239,7 @@ setrsvsz_out:
- 	case EXT3_IOC_GROUP_EXTEND: {
- 		ext3_fsblk_t n_blocks_count;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
+Index: linux-2.6/fs/ext4/balloc.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/balloc.c	2008-10-24 14:43:11.103063953 -0500
++++ linux-2.6/fs/ext4/balloc.c	2008-10-24 14:43:18.082063765 -0500
+@@ -596,23 +596,19 @@ void ext4_free_blocks(handle_t *handle, 
+  *
+  * Check if filesystem has free blocks available for allocation.
+  * Return the number of blocks avaible for allocation for this request
+- * On success, return nblocks
++ * On success, return 1, on failure, return 0.
+  */
+ int ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ 						s64 nblocks)
+ {
+-	s64 free_blocks, dirty_blocks;
+-	s64 root_blocks = 0;
++	s64 free_blocks, dirty_blocks, root_blocks;
+ 	struct percpu_counter *fbc = &sbi->s_freeblocks_counter;
+ 	struct percpu_counter *dbc = &sbi->s_dirtyblocks_counter;
  
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -254,8 +254,10 @@ setrsvsz_out:
+ 	free_blocks  = percpu_counter_read_positive(fbc);
+ 	dirty_blocks = percpu_counter_read_positive(dbc);
++	root_blocks = ext4_r_blocks_count(sbi->s_es);
+ 
+-	if (!capable(CAP_SYS_RESOURCE) &&
+-		sbi->s_resuid != current->fsuid &&
+-		(sbi->s_resgid == 0 || !in_group_p(sbi->s_resgid)))
+-		root_blocks = ext4_r_blocks_count(sbi->s_es);
+ 
+ 	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
+ 						EXT4_FREEBLOCKS_WATERMARK) {
+@@ -625,13 +621,20 @@ int ext4_has_free_blocks(struct ext4_sb_
  		}
- 		err = ext3_group_extend(sb, EXT3_SB(sb)->s_es, n_blocks_count);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+		if (err == 0)
-+			err = err2;
- group_extend_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return err;
-@@ -263,7 +265,7 @@ group_extend_out:
- 	case EXT3_IOC_GROUP_ADD: {
- 		struct ext3_new_group_data input;
- 		struct super_block *sb = inode->i_sb;
--		int err;
-+		int err, err2;
- 
- 		if (!capable(CAP_SYS_RESOURCE))
- 			return -EPERM;
-@@ -280,8 +282,10 @@ group_extend_out:
- 
- 		err = ext3_group_add(sb, &input);
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err2 = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+		if (err == 0)
-+			err = err2;
- group_add_out:
- 		mnt_drop_write(filp->f_path.mnt);
- 		return err;
-diff -puN fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd
-+++ a/fs/ext3/super.c
-@@ -393,7 +393,8 @@ static void ext3_put_super (struct super
- 	int i;
- 
- 	ext3_xattr_put_super(sb);
--	journal_destroy(sbi->s_journal);
-+	if (journal_destroy(sbi->s_journal) < 0)
-+		ext3_abort(sb, __func__, "Couldn't clean up the journal");
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
-@@ -2296,7 +2297,9 @@ static void ext3_mark_recovery_complete(
- 	journal_t *journal = EXT3_SB(sb)->s_journal;
- 
- 	journal_lock_updates(journal);
--	journal_flush(journal);
-+	if (journal_flush(journal) < 0)
-+		goto out;
-+
- 	lock_super(sb);
- 	if (EXT3_HAS_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER) &&
- 	    sb->s_flags & MS_RDONLY) {
-@@ -2305,6 +2308,8 @@ static void ext3_mark_recovery_complete(
- 		ext3_commit_super(sb, es, 1);
  	}
- 	unlock_super(sb);
+ 	/* Check whether we have space after
+-	 * accounting for current dirty blocks
++	 * accounting for current dirty blocks & root reserved blocks.
+ 	 */
+-	if (free_blocks < ((root_blocks + nblocks) + dirty_blocks))
+-		/* we don't have free space */
+-		return 0;
++	if (free_blocks >= ((root_blocks + nblocks) + dirty_blocks))
++		return 1;
+ 
+-	return 1;
++	/* Hm, nope.  Are (enough) root reserved blocks available? */
++	if (sbi->s_resuid == current->fsuid ||
++	    ((sbi->s_resgid != 0) && in_group_p(sbi->s_resgid)) ||
++	    capable(CAP_SYS_RESOURCE)) {
++		if (free_blocks >= (nblocks + dirty_blocks))
++			return 1;
++	}
 +
-+out:
- 	journal_unlock_updates(journal);
++	return 0;
  }
  
-@@ -2404,7 +2409,13 @@ static void ext3_write_super_lockfs(stru
- 
- 		/* Now we set up the journal barrier. */
- 		journal_lock_updates(journal);
--		journal_flush(journal);
-+
-+		/*
-+		 * We don't want to clear needs_recovery flag when we failed
-+		 * to flush the journal.
-+		 */
-+		if (journal_flush(journal) < 0)
-+			return;
- 
- 		/* Journal blocked and flushed, clear needs_recovery flag. */
- 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
-@@ -2822,8 +2833,12 @@ static int ext3_quota_on(struct super_bl
- 		 * otherwise be livelocked...
- 		 */
- 		journal_lock_updates(EXT3_SB(sb)->s_journal);
--		journal_flush(EXT3_SB(sb)->s_journal);
-+		err = journal_flush(EXT3_SB(sb)->s_journal);
- 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
-+		if (err) {
-+			path_put(&nd.path);
-+			return err;
-+		}
- 	}
- 
- 	err = vfs_quota_on_path(sb, type, format_id, &nd.path);
-_
-
-Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
-
+ int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
 
