@@ -1,86 +1,165 @@
 From: akpm@linux-foundation.org
-Subject: - jbd-abort-instead-of-waiting-for-nonexistent-transactions.patch removed from -mm tree
-Date: Fri, 24 Oct 2008 12:40:38 -0700
-Message-ID: <200810241940.m9OJecrG000949@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: duaneg@dghda.com, linux-ext4@vger.kernel.org, sliedes@cc.hut.fi,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Subject: - ext3-add-checks-for-errors-from-jbd.patch removed from -mm tree
+Date: Fri, 24 Oct 2008 12:40:33 -0700
+Message-ID: <200810241940.m9OJeX4O000921@imap1.linux-foundation.org>
+To: hidehiro.kawai.ez@hitachi.com, jack@ucw.cz,
+	linux-ext4@vger.kernel.org, sfr@canb.auug.org.au,
+	viro@zeniv.linux.org.uk, mm-commits@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:49203 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752107AbYJXTkt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Oct 2008 15:40:49 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     jbd: abort instead of waiting for nonexistent transactions
+     ext3: add checks for errors from jbd
 has been removed from the -mm tree.  Its filename was
-     jbd-abort-instead-of-waiting-for-nonexistent-transactions.patch
+     ext3-add-checks-for-errors-from-jbd.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: jbd: abort instead of waiting for nonexistent transactions
-From: "Duane Griffin" <duaneg@dghda.com>
+Subject: ext3: add checks for errors from jbd
+From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 
-The __log_wait_for_space function sits in a loop checkpointing
-transactions until there is sufficient space free in the journal. 
-However, if there are no transactions to be processed (e.g.  because the
-free space calculation is wrong due to a corrupted filesystem) it will
-never progress.
+If the journal has aborted due to a checkpointing failure, we have to
+keep the contents of the journal space.  Otherwise, the filesystem will
+lose uncheckpointed metadata completely and become inconsistent.  To
+avoid this, we need to keep needs_recovery flag if checkpoint has
+failed.
 
-Check for space being required when no transactions are outstanding and
-abort the journal instead of endlessly looping.
+With this patch, ext3_put_super() detects a checkpointing failure from
+the return value of journal_destroy(), then it invokes ext3_abort() to
+make the filesystem read only and keep needs_recovery flag.  Errors
+from journal_flush() are also handled by this patch in some places.
 
-This patch fixes the bug reported by Sami Liedes at:
-http://bugzilla.kernel.org/show_bug.cgi?id=10976
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Tested-by: Sami Liedes <sliedes@cc.hut.fi>
+Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Cc: Jan Kara <jack@ucw.cz>
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/jbd/checkpoint.c |   19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
+ fs/ext3/ioctl.c |   12 ++++++++----
+ fs/ext3/super.c |   23 +++++++++++++++++++----
+ 2 files changed, 27 insertions(+), 8 deletions(-)
 
-diff -puN fs/jbd/checkpoint.c~jbd-abort-instead-of-waiting-for-nonexistent-transactions fs/jbd/checkpoint.c
---- a/fs/jbd/checkpoint.c~jbd-abort-instead-of-waiting-for-nonexistent-transactions
-+++ a/fs/jbd/checkpoint.c
-@@ -127,14 +127,29 @@ void __log_wait_for_space(journal_t *jou
+diff -puN fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd fs/ext3/ioctl.c
+--- a/fs/ext3/ioctl.c~ext3-add-checks-for-errors-from-jbd
++++ a/fs/ext3/ioctl.c
+@@ -239,7 +239,7 @@ setrsvsz_out:
+ 	case EXT3_IOC_GROUP_EXTEND: {
+ 		ext3_fsblk_t n_blocks_count;
+ 		struct super_block *sb = inode->i_sb;
+-		int err;
++		int err, err2;
  
- 		/*
- 		 * Test again, another process may have checkpointed while we
--		 * were waiting for the checkpoint lock
-+		 * were waiting for the checkpoint lock. If there are no
-+		 * outstanding transactions there is nothing to checkpoint and
-+		 * we can't make progress. Abort the journal in this case.
- 		 */
- 		spin_lock(&journal->j_state_lock);
-+		spin_lock(&journal->j_list_lock);
- 		nblocks = jbd_space_needed(journal);
- 		if (__log_space_left(journal) < nblocks) {
-+			int chkpt = journal->j_checkpoint_transactions != NULL;
-+
-+			spin_unlock(&journal->j_list_lock);
- 			spin_unlock(&journal->j_state_lock);
--			log_do_checkpoint(journal);
-+			if (chkpt) {
-+				log_do_checkpoint(journal);
-+			} else {
-+				printk(KERN_ERR "%s: no transactions\n",
-+				       __func__);
-+				journal_abort(journal, 0);
-+			}
-+
- 			spin_lock(&journal->j_state_lock);
-+		} else {
-+			spin_unlock(&journal->j_list_lock);
+ 		if (!capable(CAP_SYS_RESOURCE))
+ 			return -EPERM;
+@@ -254,8 +254,10 @@ setrsvsz_out:
  		}
- 		mutex_unlock(&journal->j_checkpoint_mutex);
+ 		err = ext3_group_extend(sb, EXT3_SB(sb)->s_es, n_blocks_count);
+ 		journal_lock_updates(EXT3_SB(sb)->s_journal);
+-		journal_flush(EXT3_SB(sb)->s_journal);
++		err2 = journal_flush(EXT3_SB(sb)->s_journal);
+ 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++		if (err == 0)
++			err = err2;
+ group_extend_out:
+ 		mnt_drop_write(filp->f_path.mnt);
+ 		return err;
+@@ -263,7 +265,7 @@ group_extend_out:
+ 	case EXT3_IOC_GROUP_ADD: {
+ 		struct ext3_new_group_data input;
+ 		struct super_block *sb = inode->i_sb;
+-		int err;
++		int err, err2;
+ 
+ 		if (!capable(CAP_SYS_RESOURCE))
+ 			return -EPERM;
+@@ -280,8 +282,10 @@ group_extend_out:
+ 
+ 		err = ext3_group_add(sb, &input);
+ 		journal_lock_updates(EXT3_SB(sb)->s_journal);
+-		journal_flush(EXT3_SB(sb)->s_journal);
++		err2 = journal_flush(EXT3_SB(sb)->s_journal);
+ 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++		if (err == 0)
++			err = err2;
+ group_add_out:
+ 		mnt_drop_write(filp->f_path.mnt);
+ 		return err;
+diff -puN fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-add-checks-for-errors-from-jbd
++++ a/fs/ext3/super.c
+@@ -393,7 +393,8 @@ static void ext3_put_super (struct super
+ 	int i;
+ 
+ 	ext3_xattr_put_super(sb);
+-	journal_destroy(sbi->s_journal);
++	if (journal_destroy(sbi->s_journal) < 0)
++		ext3_abort(sb, __func__, "Couldn't clean up the journal");
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+ 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+@@ -2296,7 +2297,9 @@ static void ext3_mark_recovery_complete(
+ 	journal_t *journal = EXT3_SB(sb)->s_journal;
+ 
+ 	journal_lock_updates(journal);
+-	journal_flush(journal);
++	if (journal_flush(journal) < 0)
++		goto out;
++
+ 	lock_super(sb);
+ 	if (EXT3_HAS_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER) &&
+ 	    sb->s_flags & MS_RDONLY) {
+@@ -2305,6 +2308,8 @@ static void ext3_mark_recovery_complete(
+ 		ext3_commit_super(sb, es, 1);
  	}
+ 	unlock_super(sb);
++
++out:
+ 	journal_unlock_updates(journal);
+ }
+ 
+@@ -2404,7 +2409,13 @@ static void ext3_write_super_lockfs(stru
+ 
+ 		/* Now we set up the journal barrier. */
+ 		journal_lock_updates(journal);
+-		journal_flush(journal);
++
++		/*
++		 * We don't want to clear needs_recovery flag when we failed
++		 * to flush the journal.
++		 */
++		if (journal_flush(journal) < 0)
++			return;
+ 
+ 		/* Journal blocked and flushed, clear needs_recovery flag. */
+ 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+@@ -2822,8 +2833,12 @@ static int ext3_quota_on(struct super_bl
+ 		 * otherwise be livelocked...
+ 		 */
+ 		journal_lock_updates(EXT3_SB(sb)->s_journal);
+-		journal_flush(EXT3_SB(sb)->s_journal);
++		err = journal_flush(EXT3_SB(sb)->s_journal);
+ 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
++		if (err) {
++			path_put(&nd.path);
++			return err;
++		}
+ 	}
+ 
+ 	err = vfs_quota_on_path(sb, type, format_id, &nd.path);
 _
 
-Patches currently in -mm which might be from duaneg@dghda.com are
+Patches currently in -mm which might be from hidehiro.kawai.ez@hitachi.com are
 
 
