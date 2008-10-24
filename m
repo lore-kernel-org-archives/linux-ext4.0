@@ -1,8 +1,7 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 1/9]ext4: Add the EXT4_IOC_DEFRAG ioctl and defrag main
- function
-Date: Fri, 24 Oct 2008 19:09:36 +0900
-Message-ID: <49019EE0.4040602@rs.jp.nec.com>
+Subject: [RFC][PATCH 3/9]ext4: Exchange the extents between two inodes
+Date: Fri, 24 Oct 2008 19:09:44 +0900
+Message-ID: <49019EE8.7070905@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
@@ -10,535 +9,373 @@ Cc: linux-fsdevel@vger.kernel.org
 To: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
 	Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:63813 "EHLO
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:63816 "EHLO
 	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753210AbYJXKKK (ORCPT
+	with ESMTP id S1753115AbYJXKKK (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Oct 2008 06:10:10 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: online defrag: Add the EXT4_IOC_DEFRAG ioctl and defrag main function.
+ext4: online defrag -- Exchange the extents between two inodes
 
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-The EXT4_IOC_DEFRAG ioctl is the main ioctl of ext4 online defrag.
-Create the temporary inode in memory and allocate contiguous blocks to it.
-After that exchange data blocks between original inode and temporary inode.
-Lastly, remove the temporary inode which has fragmented data blocks.
-This method would be done between user space and kernel space per 64MB data size.
-
-This patch is equivalent to creating/removing a temporary inode
-and common defrag functions.
+For each page, exchange the extents between the temporary inode
+and the original inode, and then write them.
 
 Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 ---
- fs/ext4/Makefile       |    2 +-
- fs/ext4/defrag.c       |  499 ++++++++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ext4.h         |   10 +
- fs/ext4/ext4_extents.h |    2 +
- fs/ext4/extents.c      |    2 +-
- fs/ext4/ioctl.c        |   22 ++
- 6 files changed, 535 insertions(+), 2 deletions(-)
+ fs/ext4/defrag.c |  477 +++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 files changed, 476 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index a8ff003..e7fd8ba 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -6,7 +6,7 @@ obj-$(CONFIG_EXT4_FS) += ext4.o
-
- ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
- 		   ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
--		   ext4_jbd2.o migrate.o mballoc.o
-+		   ext4_jbd2.o migrate.o mballoc.o defrag.o
-
- ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
- ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
 diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
-new file mode 100644
-index 0000000..1e36193
---- /dev/null
+index 729f001..0b90d4d 100644
+--- a/fs/ext4/defrag.c
 +++ b/fs/ext4/defrag.c
-@@ -0,0 +1,499 @@
-+/*
-+ * Copyright (c) 2008, NEC Software Tohoku, Ltd.
-+ * Written by Takashi Sato <t-sato@yk.jp.nec.com>
-+ *            Akira Fujita <a-fujita@rs.jp.nec.com>
+@@ -91,6 +91,361 @@ err:
+ }
+
+ /**
++ * ext4_defrag_merge_extents - Merge new extent
 + *
-+ * This program is free software; you can redistribute it and/or modify it
-+ * under the terms of version 2.1 of the GNU Lesser General Public License
-+ * as published by the Free Software Foundation.
-+ *
-+ * This program is distributed in the hope that it will be useful,
-+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
-+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-+ * GNU General Public License for more details.
-+ */
-+
-+/* Online defragmentation for EXT4 */
-+
-+#include <linux/quotaops.h>
-+#include "ext4_jbd2.h"
-+#include "ext4_extents.h"
-+#include "group.h"
-+
-+/**
-+ * ext4_defrag_next_extent - Search for the next extent and set it to "extent"
-+ *
-+ * @inode:	inode which is searched
-+ * @path:	this will obtain data for the next extent
-+ * @extent:	pointer to the next extent we have just gotten
-+ *
-+ * This function returns 0 or 1(last entry) if succeed, otherwise
-+ * returns -EIO.
-+ */
-+static int
-+ext4_defrag_next_extent(struct inode *inode, struct ext4_ext_path *path,
-+			struct ext4_extent **extent)
-+{
-+	int ppos, leaf_ppos = path->p_depth;
-+
-+	ppos = leaf_ppos;
-+	if (EXT_LAST_EXTENT(path[ppos].p_hdr) > path[ppos].p_ext) {
-+		/* leaf block */
-+		*extent = ++path[ppos].p_ext;
-+		return 0;
-+	}
-+
-+	while (--ppos >= 0) {
-+		if (EXT_LAST_INDEX(path[ppos].p_hdr) >
-+		    path[ppos].p_idx) {
-+			int cur_ppos = ppos;
-+
-+			/* index block */
-+			path[ppos].p_idx++;
-+			path[ppos].p_block = idx_pblock(path[ppos].p_idx);
-+			if (path[ppos+1].p_bh)
-+				brelse(path[ppos+1].p_bh);
-+			path[ppos+1].p_bh =
-+				sb_bread(inode->i_sb, path[ppos].p_block);
-+			if (!path[ppos+1].p_bh)
-+				goto err;
-+			path[ppos+1].p_hdr =
-+				ext_block_hdr(path[ppos+1].p_bh);
-+
-+			/* Halfway index block */
-+			while (++cur_ppos < leaf_ppos) {
-+				path[cur_ppos].p_idx =
-+					EXT_FIRST_INDEX(path[cur_ppos].p_hdr);
-+				path[cur_ppos].p_block =
-+					idx_pblock(path[cur_ppos].p_idx);
-+				if (path[cur_ppos+1].p_bh)
-+					brelse(path[cur_ppos+1].p_bh);
-+				path[cur_ppos+1].p_bh = sb_bread(inode->i_sb,
-+					path[cur_ppos].p_block);
-+				if (!path[cur_ppos+1].p_bh)
-+					goto err;
-+				path[cur_ppos+1].p_hdr =
-+					ext_block_hdr(path[cur_ppos+1].p_bh);
-+			}
-+
-+			/* leaf block */
-+			path[leaf_ppos].p_ext = *extent =
-+				EXT_FIRST_EXTENT(path[leaf_ppos].p_hdr);
-+			return 0;
-+		}
-+	}
-+	/* We found the last extent */
-+	return 1;
-+err:
-+	if (path)
-+		ext4_ext_drop_refs(path);
-+	return -EIO;
-+}
-+
-+/**
-+ * ext4_defrag_partial - Defrag a file per page
-+ *
-+ * @tmp_inode:			temporary inode
-+ * @filp:			pointer to file
-+ * @org_page_offset:		page index on original file
-+ * @dest_blk_offset:		block index on temporary file
-+ * @data_offset_in_page:	block index where data swapping starts
-+ * @block_len_in_page:		the number of blocks to be swapped
++ * @handle:	journal handle
++ * @org_inode:	original inode
++ * @org_path:	path indicates first extent to be defraged
++ * @o_start:	first original extent to be defraged
++ * @o_end:	last original extent to be defraged
++ * @start_ext:	first new extent to be merged
++ * @new_ext:	middle of new extent to be merged
++ * @end_ext:	last new extent to be merged
++ * @replaced:	the number of blocks which will be replaced with new_ext
 + *
 + * This function returns 0 if succeed, otherwise returns error value.
 + */
 +static int
-+ext4_defrag_partial(struct inode *tmp_inode, struct file *filp,
-+			pgoff_t org_page_offset, ext4_lblk_t dest_blk_offset,
-+			int data_offset_in_page, int block_len_in_page)
++ext4_defrag_merge_extents(handle_t *handle, struct inode *org_inode,
++		struct ext4_ext_path *org_path,
++		struct ext4_extent *o_start, struct ext4_extent *o_end,
++		struct ext4_extent *start_ext, struct ext4_extent *new_ext,
++		struct ext4_extent *end_ext, ext4_fsblk_t replaced)
 +{
 +	return 0;
 +}
 +
 +/**
-+ * ext4_defrag_new_extent_tree - Get contiguous blocks and build an extent tree
++ * ext4_defrag_leaf_block - Defragmentation for one leaf extent block
 + *
++ * @handle:		journal handle
 + * @org_inode:		original inode
-+ * @tmp_inode:		temporary inode
-+ * @org_path:		indicating the original inode's extent
-+ * @req_start:		starting offset to allocate in blocks
-+ * @req_blocks:		the number of blocks to allocate
-+ * @iblock:		file related offset
-+ *
-+ * This function returns the value as below:
-+ *	0 (succeed)
-+ *	1 (not improved)
-+ *	negative value (error case)
-+ */
-+static int
-+ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
-+			struct ext4_ext_path *org_path, ext4_lblk_t req_start,
-+			ext4_lblk_t req_blocks, ext4_lblk_t iblock)
-+{
-+	return 0;
-+}
-+
-+/**
-+ * ext4_defrag_check - Check the environment whether a defrag can be done
-+ *
-+ * @org_inode:		original inode
-+ * @defrag_size:	size of defrag in blocks
++ * @org_path:		path indicates first extent to be defraged
++ * @dext:		destination extent
++ * @from:		start offset on the target file
 + *
 + * This function returns 0 if succeed, otherwise returns error value.
 + */
 +static int
-+ext4_defrag_check(struct inode *org_inode, ext4_lblk_t defrag_size)
++ext4_defrag_leaf_block(handle_t *handle, struct inode *org_inode,
++		struct ext4_ext_path *org_path, struct ext4_extent *dext,
++		ext4_lblk_t *from)
 +{
++	struct ext4_extent *oext, *o_start = NULL, *o_end = NULL, *prev_ext;
++	struct ext4_extent new_ext, start_ext, end_ext;
++	ext4_fsblk_t replaced = 0;
++	ext4_lblk_t new_end, lblock;
++	unsigned long depth;
++	unsigned short len;
++	ext4_fsblk_t new_phys_end;
++	int	ret;
 +
-+	/* Ext4 online defrag supports only extent based file */
-+	if (!(EXT4_I(org_inode)->i_flags & EXT4_EXTENTS_FL)) {
-+		printk(KERN_ERR "ext4 defrag: ino[%lu] is not extents "
-+					"based file\n", org_inode->i_ino);
-+		return -EOPNOTSUPP;
-+	}
++	depth = ext_depth(org_inode);
++	start_ext.ee_len = end_ext.ee_len = 0;
++	o_start = o_end = oext = org_path[depth].p_ext;
++	ext4_ext_store_pblock(&new_ext, ext_pblock(dext));
++	new_ext.ee_len = dext->ee_len;
++	len = le16_to_cpu(new_ext.ee_len);
++	new_ext.ee_block = cpu_to_le32(*from);
++	lblock = le32_to_cpu(oext->ee_block);
++	new_end = le32_to_cpu(new_ext.ee_block)
++		+ le16_to_cpu(new_ext.ee_len) - 1;
++	new_phys_end = ext_pblock(&new_ext)
++		+ le16_to_cpu(new_ext.ee_len) - 1;
 +
 +	/*
-+	 * Will go away.
-+	 * Now ext4 online defrag does not support flex_bg feature.
++	 * First original extent
++	 * dest	 |---------------|
++	 * org  |---------------|
 +	 */
-+	if (EXT4_HAS_INCOMPAT_FEATURE(org_inode->i_sb,
-+					EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
-+		printk(KERN_ERR "ext4 defrag: online defrag does not support "
-+				"flex_bg feature.\n");
-+		return -EOPNOTSUPP;
++	if (le32_to_cpu(new_ext.ee_block) >
++		le32_to_cpu(oext->ee_block) &&
++		le32_to_cpu(new_ext.ee_block) <
++		le32_to_cpu(oext->ee_block)
++		+ le16_to_cpu(oext->ee_len)) {
++		start_ext.ee_len = cpu_to_le16(le32_to_cpu(new_ext.ee_block)
++					- le32_to_cpu(oext->ee_block));
++		replaced += le16_to_cpu(oext->ee_len)
++					- le16_to_cpu(start_ext.ee_len);
++	} else if (oext > EXT_FIRST_EXTENT(org_path[depth].p_hdr)) {
++		/* We can merge previous extent. */
++		prev_ext = oext - 1;
++		if (((ext_pblock(prev_ext) + le16_to_cpu(prev_ext->ee_len))
++				 == ext_pblock(&new_ext))
++		 && (le32_to_cpu(prev_ext->ee_block)
++			+ le16_to_cpu(prev_ext->ee_len)
++				 == le32_to_cpu(new_ext.ee_block))) {
++			o_start = prev_ext;
++			start_ext.ee_len = cpu_to_le16(
++					le16_to_cpu(prev_ext->ee_len)
++					+ le16_to_cpu(new_ext.ee_len));
++			new_ext.ee_len = 0;
++		}
 +	}
 +
-+	return 0;
++	for (;;) {
++		/* The extent for destination must be found. */
++		BUG_ON(!oext || lblock != le32_to_cpu(oext->ee_block));
++		lblock += le16_to_cpu(oext->ee_len);
++
++		/*
++		 * Middle of original extent
++		 * dest |-------------------|
++		 * org   |-----------------|
++		 */
++		if (le32_to_cpu(new_ext.ee_block) <=
++			le32_to_cpu(oext->ee_block) &&
++			new_end >= le32_to_cpu(oext->ee_block)
++			+ le16_to_cpu(oext->ee_len) - 1)
++			replaced += le16_to_cpu(oext->ee_len);
++
++		/*
++		 * Last original extent
++		 * dest |----------------|
++		 * org	  |---------------|
++		 */
++		if (new_end >= le32_to_cpu(oext->ee_block) &&
++			new_end < le32_to_cpu(oext->ee_block)
++				+ le16_to_cpu(oext->ee_len) - 1) {
++			end_ext.ee_len
++				= cpu_to_le16(le32_to_cpu(oext->ee_block)
++				+ le16_to_cpu(oext->ee_len) - 1 - new_end);
++			ext4_ext_store_pblock(&end_ext, (ext_pblock(o_end)
++				+ le16_to_cpu(oext->ee_len)
++				- le16_to_cpu(end_ext.ee_len)));
++			end_ext.ee_block
++				= cpu_to_le32(le32_to_cpu(o_end->ee_block)
++				+ le16_to_cpu(oext->ee_len)
++				- le16_to_cpu(end_ext.ee_len));
++			replaced += le16_to_cpu(oext->ee_len)
++				- le16_to_cpu(end_ext.ee_len);
++		}
++
++		/*
++		 * Detected the block end, reached the number of replaced
++		 * blocks to dext->ee_len. Then merge the extent.
++		 */
++		if (oext == EXT_LAST_EXTENT(org_path[depth].p_hdr) ||
++			new_end <= le32_to_cpu(oext->ee_block)
++				+ le16_to_cpu(oext->ee_len) - 1) {
++			ret = ext4_defrag_merge_extents(handle, org_inode,
++					org_path, o_start, o_end, &start_ext,
++					&new_ext, &end_ext, replaced);
++			if (ret < 0)
++				return ret;
++
++			/* All expected blocks are replaced */
++			if (le16_to_cpu(new_ext.ee_len) <= 0)
++				return 0;
++
++			/* Re-calculate new_ext */
++			le16_add_cpu(&new_ext.ee_len, -replaced);
++			le32_add_cpu(&new_ext.ee_block, replaced);
++			ext4_ext_store_pblock(&new_ext, ext_pblock(&new_ext)
++					+ replaced);
++			replaced = 0;
++			start_ext.ee_len = end_ext.ee_len = 0;
++			o_start = NULL;
++
++			/* All expected blocks are replaced. */
++			if (le16_to_cpu(new_ext.ee_len) <= 0)
++				return 0;
++		}
++
++		/* Get the next extent for original. */
++		if (org_path)
++			ext4_ext_drop_refs(org_path);
++		org_path = ext4_ext_find_extent(org_inode, lblock, org_path);
++		if (IS_ERR(org_path)) {
++			ret = PTR_ERR(org_path);
++			org_path = NULL;
++			return ret;
++		}
++		depth = ext_depth(org_inode);
++		oext = org_path[depth].p_ext;
++		if (le32_to_cpu(oext->ee_block) + le16_to_cpu(oext->ee_len)
++			<= lblock)
++			return -ENOENT;
++
++		o_end = oext;
++		if (!o_start)
++			o_start = oext;
++	}
 +}
 +
 +/**
-+ * ext4_defrag_init_tmp_inode - Create a temporary inode
++ * ext4_defrag_replace_branches - Replace original extents with new extents
 + *
++ * @handle:		journal handle
 + * @org_inode:		original inode
++ * @dest_inode:		temporary inode
++ * @from:		block offset of org_inode
++ * @dest_off:		block offset of dest_inode
++ * @count:		block count to be replaced
 + *
-+ * This function returns pointer to the struct inode if succeed,
-+ * otherwise returns error value.
++ * This function returns 0 if succeed, otherwise returns error value.
++ * Replace extents for blocks from "from" to "from + count - 1".
 + */
-+static struct inode *
-+ext4_defrag_init_tmp_inode(struct inode *org_inode)
++static int
++ext4_defrag_replace_branches(handle_t *handle, struct inode *org_inode,
++			struct inode *dest_inode, ext4_lblk_t from,
++			ext4_lblk_t dest_off, ext4_lblk_t count)
 +{
-+	handle_t *handle;
-+	struct inode *tmp_inode;
++	struct ext4_ext_path *org_path = NULL;
++	struct ext4_ext_path *dest_path = NULL;
++	struct ext4_extent *oext, *dext, *swap_ext;
++	struct ext4_extent tmp_ext, tmp_ext2;
++	ext4_lblk_t diff, org_diff;
++	int err = 0;
++	int depth;
++	int replaced_count = 0;
 +
-+	handle = ext4_journal_start(org_inode,
-+		EXT4_DATA_TRANS_BLOCKS(org_inode->i_sb) +
-+		EXT4_INDEX_EXTRA_TRANS_BLOCKS + 4 +
-+		2 * EXT4_QUOTA_INIT_BLOCKS(org_inode->i_sb));
-+	if (IS_ERR(handle))
-+		/* Return error code */
-+		return (struct inode *)handle;
-+
-+	tmp_inode = ext4_new_inode(handle,
-+		org_inode->i_sb->s_root->d_inode, S_IFREG);
-+	if (IS_ERR(tmp_inode))
-+		goto out;
-+
-+	i_size_write(tmp_inode, i_size_read(org_inode));
-+	tmp_inode->i_nlink = 0;
-+	ext4_ext_tree_init(handle, tmp_inode);
-+	ext4_orphan_add(handle, tmp_inode);
-+
-+out:
-+	ext4_journal_stop(handle);
-+
-+	return tmp_inode;
-+}
-+
-+/**
-+ * ext4_defrag - Defrag the specified range of a file
-+ *
-+ * If no-option is specified, ext4_defrag() proceeds the following order.
-+ * 1.ext4_defrag() calculates the block number where defrag terminates
-+ *   by the start block number(defrag_start) and the size of defraged data
-+ *   (defrag_size) specified as arguments.
-+ *   If the defrag_start points a hole, the extent's start offset pointed by
-+ *   ext_cur(current extent), holecheck_path, org_path are set after
-+ *   hole behind.
-+ * 2.Continue step 3 to step 5, until the holecheck_path points to last_extent
-+ *   or the ext_cur exceeds the block_end which is last logical block number.
-+ * 3.To get a length of continues area, call ext4_defrag_next_extent()
-+ *   specified with the ext_cur(initial value is holecheck_path) re-cursive,
-+ *   until find un-continuous extent, the start logical block number exceeds
-+ *   the block_end or the extent points to the last extent.
-+ * 4.After determining the length of continuous block,
-+ *   allocates continuous blocks to a temporary inode
-+ *   by ext4_defrag_new_extent_tree().
-+ * 5.Exchange the original inode data with temporary inode data
-+ *   from org_page_offset to seq_end_page.
-+ *   The start indexes of data are specified as arguments.
-+ *   That of the original inode is org_page_offset,
-+ *   and that of the temporary inode is dest_block_offset
-+ *   (To easily handle blocksize != pagesize case, the offset for the
-+ *   temporary inode is block unit).
-+ * 6.Update holecheck_path and org_path to points a next proceeding extent,
-+ *   and release the temporary inode holding the original fragmented data.
-+ *   Then, returns to step 2.
-+ * 7.Release holecheck_path, org_path and temporary inode,
-+ *   and returns the defrag_size which is the size of defraged data.
-+ *   The defrag_size is used for the command to calculate the file offset
-+ *   where a next defrag processing start.
-+ *   (Since the defrag command calls defrag_ioctl() by 64MB unit,
-+ *   a file bigger than 64MB calls defrag_ioctl many times.)
-+ *
-+ * @filp:		pointer to file
-+ * @block_start:	starting offset to defrag in blocks
-+ * @defrag_size:	size of defrag in blocks
-+ *
-+ * This function returns the number of blocks if succeed, otherwise
-+ * returns error value.
-+ */
-+int
-+ext4_defrag(struct file *filp, ext4_lblk_t block_start,
-+		ext4_lblk_t defrag_size)
-+{
-+	struct inode *org_inode = filp->f_dentry->d_inode, *tmp_inode = NULL;
-+	struct ext4_ext_path *org_path = NULL, *holecheck_path = NULL;
-+	struct ext4_extent *ext_prev, *ext_cur, *ext_dummy;
-+	ext4_lblk_t block_end, seq_start, add_blocks, file_end, seq_blocks = 0;
-+	ext4_lblk_t dest_block_offset;
-+	ext4_lblk_t rest_blocks;
-+	pgoff_t org_page_offset, seq_end_page;
-+	int ret, depth, seq_extents, last_extent = 0;
-+	int blocks_per_page;
-+	int data_offset_in_page;
-+	int block_len_in_page;
-+
-+	/* Check the filesystem environment whether defrag can be done */
-+	ret = ext4_defrag_check(org_inode, defrag_size);
-+	if (ret < 0)
-+		return ret;
-+
-+	blocks_per_page = PAGE_CACHE_SIZE >> org_inode->i_blkbits;
-+	file_end = (org_inode->i_size - 1) >> org_inode->i_blkbits;
-+	block_end = block_start + defrag_size - 1;
-+	if (file_end < block_end)
-+		defrag_size -= block_end - file_end;
-+
-+	mutex_lock(&org_inode->i_mutex);
-+	down_write(&EXT4_I(org_inode)->i_data_sem);
-+
-+	org_path = ext4_ext_find_extent(org_inode, block_start, NULL);
++	/* Get the original extent for the block "from" */
++	org_path = ext4_ext_find_extent(org_inode, from, NULL);
 +	if (IS_ERR(org_path)) {
-+		ret = PTR_ERR(org_path);
++		err = PTR_ERR(org_path);
 +		org_path = NULL;
 +		goto out;
 +	}
 +
-+	/* Get path structure to check the hole */
-+	holecheck_path = ext4_ext_find_extent(org_inode, block_start, NULL);
-+	if (IS_ERR(holecheck_path)) {
-+		ret = PTR_ERR(holecheck_path);
-+		holecheck_path = NULL;
++	/* Get the destination extent for the head */
++	dest_path = ext4_ext_find_extent(dest_inode, dest_off, NULL);
++	if (IS_ERR(dest_path)) {
++		err = PTR_ERR(dest_path);
++		dest_path = NULL;
 +		goto out;
 +	}
++	depth = ext_depth(dest_inode);
++	dext = dest_path[depth].p_ext;
++	/* When dext is too large, pick up the target range. */
++	diff = dest_off - le32_to_cpu(dext->ee_block);
++	ext4_ext_store_pblock(&tmp_ext, ext_pblock(dext) + diff);
++	tmp_ext.ee_block = cpu_to_le32(le32_to_cpu(dext->ee_block) + diff);
++	tmp_ext.ee_len = cpu_to_le16(le16_to_cpu(dext->ee_len) - diff);
++	if (count < le16_to_cpu(tmp_ext.ee_len))
++		tmp_ext.ee_len = cpu_to_le16(count);
++	dext = &tmp_ext;
 +
 +	depth = ext_depth(org_inode);
-+	ext_cur = holecheck_path[depth].p_ext;
-+	if (ext_cur == NULL)
-+		goto out;
++	oext = org_path[depth].p_ext;
++	org_diff = from - le32_to_cpu(oext->ee_block);
++	ext4_ext_store_pblock(&tmp_ext2, ext_pblock(oext) + org_diff);
++	tmp_ext2.ee_block = tmp_ext.ee_block;
 +
-+	/*
-+	 * Get proper extent whose ee_block is beyond block_start
-+	 * if block_start was within the hole.
-+	 */
-+	if (le32_to_cpu(ext_cur->ee_block) +
-+		le16_to_cpu(ext_cur->ee_len) - 1 < block_start) {
-+		last_extent = ext4_defrag_next_extent(org_inode,
-+					holecheck_path, &ext_cur);
-+		if (last_extent < 0) {
-+			ret = last_extent;
-+			goto out;
-+		}
-+		last_extent = ext4_defrag_next_extent(org_inode, org_path,
-+							&ext_dummy);
-+		if (last_extent < 0) {
-+			ret = last_extent;
-+			goto out;
-+		}
++	/* Adjust extent length when blocksize != pagesize */
++	if (le16_to_cpu(tmp_ext.ee_len) <=
++		le16_to_cpu(oext->ee_len) - org_diff) {
++		tmp_ext2.ee_len = tmp_ext.ee_len;
++	} else {
++		tmp_ext2.ee_len = cpu_to_le16(le16_to_cpu(oext->ee_len)
++						- org_diff);
++		tmp_ext.ee_len = tmp_ext2.ee_len;
 +	}
-+	seq_extents = 1;
-+	seq_start = le32_to_cpu(ext_cur->ee_block);
++	swap_ext = &tmp_ext2;
 +
-+	/* No blocks within the specified range. */
-+	if (le32_to_cpu(ext_cur->ee_block) > block_end) {
-+		printk(KERN_INFO "ext4 defrag: The specified range of file"
-+				" may be the hole\n");
-+		goto out;
-+	}
++	/* Loop for the destination extents */
++	while (1) {
++		/* The extent for destination must be found. */
++		BUG_ON(!dext || dest_off != le32_to_cpu(dext->ee_block));
 +
-+	/* Adjust start blocks */
-+	add_blocks = min(le32_to_cpu(ext_cur->ee_block) +
-+			 le16_to_cpu(ext_cur->ee_len), block_end + 1) -
-+		     max(le32_to_cpu(ext_cur->ee_block), block_start);
-+
-+	while (!last_extent && le32_to_cpu(ext_cur->ee_block) <= block_end) {
-+		seq_blocks += add_blocks;
-+
-+		/* Create a temporary inode to be exchanged data block */
-+		tmp_inode = ext4_defrag_init_tmp_inode(org_inode);
-+		if (IS_ERR(tmp_inode)) {
-+			ret = PTR_ERR(tmp_inode);
-+			tmp_inode = NULL;
++		/* Loop for the original extent blocks */
++		err = ext4_defrag_leaf_block(handle, org_inode,
++						org_path, dext, &from);
++		if (err < 0)
 +			goto out;
-+		}
-+
-+		/* Adjust tail blocks */
-+		if (seq_start + seq_blocks - 1 > block_end)
-+			seq_blocks = block_end - seq_start + 1;
-+
-+		ext_prev = ext_cur;
-+		last_extent = ext4_defrag_next_extent(org_inode,
-+					holecheck_path, &ext_cur);
-+		if (last_extent < 0) {
-+			ret = last_extent;
-+			break;
-+		}
-+		if (!last_extent)
-+			seq_extents++;
-+		add_blocks = le16_to_cpu(ext_cur->ee_len);
 +
 +		/*
-+		 * Extend the length of contiguous block (seq_blocks)
-+		 * if extents are contiguous.
++		 * We need the function which fixes extent information for
++		 * inserting.
++		 * e.g. ext4_defrag_merge_extents()
 +		 */
-+		if (le32_to_cpu(ext_prev->ee_block) +
-+				le16_to_cpu(ext_prev->ee_len) ==
-+				le32_to_cpu(ext_cur->ee_block) &&
-+				block_end >= le32_to_cpu(ext_cur->ee_block) &&
-+				!last_extent) {
-+			if (tmp_inode) {
-+				iput(tmp_inode);
-+				tmp_inode = NULL;
-+			}
-+			continue;
-+		}
++		err = ext4_defrag_leaf_block(handle, dest_inode,
++					dest_path, swap_ext, &dest_off);
++		if (err < 0)
++			goto out;
 +
-+		/* Found an isolated block */
-+		if (seq_extents == 1) {
-+			seq_start = le32_to_cpu(ext_cur->ee_block);
-+			goto CLEANUP;
-+		}
++		replaced_count += le16_to_cpu(dext->ee_len);
++		dest_off += le16_to_cpu(dext->ee_len);
++		from += le16_to_cpu(dext->ee_len);
 +
-+		ret = ext4_defrag_new_extent_tree(org_inode, tmp_inode,
-+					org_path, seq_start, seq_blocks,
-+					block_start);
-+
-+		if (ret < 0) {
++		/* Already moved the expected blocks */
++		if (replaced_count >= count)
 +			break;
-+		} else if (ret == 1) {
-+			ret = 0;
-+			seq_start = le32_to_cpu(ext_cur->ee_block);
-+			goto CLEANUP;
-+		}
 +
-+		data_offset_in_page = seq_start % blocks_per_page;
-+
-+		/*
-+		 * Calculate data blocks count that should be swapped
-+		 * at the first page.
-+		 */
-+		if (data_offset_in_page + seq_blocks > blocks_per_page) {
-+			/* Swapped blocks are across pages */
-+			block_len_in_page =
-+					blocks_per_page - data_offset_in_page;
-+		} else {
-+			/* Swapped blocks are in a page */
-+			block_len_in_page = seq_blocks;
-+		}
-+
-+		org_page_offset = seq_start >>
-+				(PAGE_CACHE_SHIFT - org_inode->i_blkbits);
-+		seq_end_page = (seq_start + seq_blocks - 1) >>
-+				(PAGE_CACHE_SHIFT - org_inode->i_blkbits);
-+		seq_start = le32_to_cpu(ext_cur->ee_block);
-+		rest_blocks = seq_blocks;
-+		/* Offset for the tmp_inode */
-+		dest_block_offset = 0;
-+
-+		/*
-+		 * Discard all preallocations.
-+		 * This is provisional solution.
-+		 * When true ext4_mb_return_to_preallocation() is
-+		 * implemented, this will be removed.
-+		 */
-+		ext4_discard_preallocations(org_inode);
-+
-+		while (org_page_offset <= seq_end_page) {
-+
-+			/* Swap original branches with new branches */
-+			ret = ext4_defrag_partial(tmp_inode, filp,
-+						org_page_offset,
-+						dest_block_offset,
-+						data_offset_in_page,
-+						block_len_in_page);
-+			if (ret < 0)
-+				goto out;
-+
-+			org_page_offset++;
-+			dest_block_offset += block_len_in_page;
-+
-+			data_offset_in_page = 0;
-+			rest_blocks -= block_len_in_page;
-+			if (rest_blocks > blocks_per_page)
-+				block_len_in_page = blocks_per_page;
-+			else
-+				block_len_in_page = rest_blocks;
-+		}
-+
-+		/* Decrease buffer counter */
-+		if (holecheck_path)
-+			ext4_ext_drop_refs(holecheck_path);
-+		holecheck_path = ext4_ext_find_extent(org_inode,
-+						seq_start, holecheck_path);
-+		if (IS_ERR(holecheck_path)) {
-+			ret = PTR_ERR(holecheck_path);
-+			holecheck_path = NULL;
-+			break;
-+		}
-+		depth = holecheck_path->p_depth;
-+
-+CLEANUP:
-+		/* Decrease buffer counter */
 +		if (org_path)
 +			ext4_ext_drop_refs(org_path);
-+		org_path = ext4_ext_find_extent(org_inode, seq_start, org_path);
++		org_path = ext4_ext_find_extent(org_inode, from, NULL);
 +		if (IS_ERR(org_path)) {
-+			ret = PTR_ERR(org_path);
++			err = PTR_ERR(org_path);
 +			org_path = NULL;
-+			break;
++			goto out;
++		}
++		depth = ext_depth(org_inode);
++		oext = org_path[depth].p_ext;
++		if (le32_to_cpu(oext->ee_block) + le16_to_cpu(oext->ee_len)
++			<= from) {
++			err = 0;
++			goto out;
 +		}
 +
-+		ext_cur = holecheck_path[depth].p_ext;
-+		add_blocks = le16_to_cpu(ext_cur->ee_len);
-+		seq_blocks = 0;
-+		seq_extents = 1;
-+
-+		if (tmp_inode) {
-+			iput(tmp_inode);
-+			tmp_inode = NULL;
++		if (dest_path)
++			ext4_ext_drop_refs(dest_path);
++		dest_path = ext4_ext_find_extent(dest_inode, dest_off, NULL);
++		if (IS_ERR(dest_path)) {
++			err = PTR_ERR(dest_path);
++			dest_path = NULL;
++			goto out;
 +		}
++		depth = ext_depth(dest_inode);
++		dext = dest_path[depth].p_ext;
++		if (le32_to_cpu(dext->ee_block) + le16_to_cpu(dext->ee_len)
++			<= dest_off) {
++			err = 0;
++			goto out;
++		}
++
++		/* When dext is too large, pick up the target range. */
++		diff = dest_off - le32_to_cpu(dext->ee_block);
++		ext4_ext_store_pblock(&tmp_ext, ext_pblock(dext) + diff);
++		tmp_ext.ee_block =
++			cpu_to_le32(le32_to_cpu(dext->ee_block) + diff);
++		tmp_ext.ee_len = cpu_to_le16(le16_to_cpu(dext->ee_len) - diff);
++
++		if (count - replaced_count < le16_to_cpu(tmp_ext.ee_len))
++			tmp_ext.ee_len = cpu_to_le16(count - replaced_count);
++
++		dext = &tmp_ext;
++
++		org_diff = from - le32_to_cpu(oext->ee_block);
++		ext4_ext_store_pblock(&tmp_ext2, ext_pblock(oext) + org_diff);
++		tmp_ext2.ee_block = tmp_ext.ee_block;
++
++		/* Adjust extent length when blocksize != pagesize */
++		if (le16_to_cpu(tmp_ext.ee_len) <=
++			le16_to_cpu(oext->ee_len) - org_diff) {
++			tmp_ext2.ee_len = tmp_ext.ee_len;
++		} else {
++			tmp_ext2.ee_len = cpu_to_le16(le16_to_cpu(oext->ee_len)
++							- org_diff);
++			tmp_ext.ee_len = tmp_ext2.ee_len;
++		}
++		swap_ext = &tmp_ext2;
 +	}
 +
 +out:
@@ -546,110 +383,144 @@ index 0000000..1e36193
 +		ext4_ext_drop_refs(org_path);
 +		kfree(org_path);
 +	}
-+	if (holecheck_path) {
-+		ext4_ext_drop_refs(holecheck_path);
-+		kfree(holecheck_path);
++	if (dest_path) {
++		ext4_ext_drop_refs(dest_path);
++		kfree(dest_path);
++	}
++
++	return err;
++}
++
++/**
+  * ext4_defrag_fill_ar - Prepare to multiple block allocate for tmp inode
+  *
+  * @org_inode:		original inode
+@@ -185,7 +540,127 @@ ext4_defrag_partial(struct inode *tmp_inode, struct file *filp,
+ 			pgoff_t org_page_offset, ext4_lblk_t dest_blk_offset,
+ 			int data_offset_in_page, int block_len_in_page)
+ {
+-	return 0;
++	struct inode *org_inode = filp->f_dentry->d_inode;
++	struct address_space *mapping = org_inode->i_mapping;
++	struct buffer_head *bh;
++	struct page *page = NULL;
++	const struct address_space_operations *a_ops = mapping->a_ops;
++	handle_t *handle;
++	ext4_lblk_t org_blk_offset;
++	long long offs = org_page_offset << PAGE_CACHE_SHIFT;
++	unsigned long blocksize = org_inode->i_sb->s_blocksize;
++	unsigned int w_flags = 0;
++	unsigned int tmp_data_len;
++	unsigned data_len;
++	void *fsdata;
++	int ret, i, jblocks;
++	int blocks_per_page = PAGE_CACHE_SIZE >> org_inode->i_blkbits;
++
++	/*
++	 * It needs twice the amount of ordinary journal buffers because
++	 * inode and tmp_inode may change each different metadata blocks.
++	 */
++	jblocks = ext4_writepage_trans_blocks(org_inode) * 2;
++	handle = ext4_journal_start(org_inode, jblocks);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		return ret;
++	}
++
++	if (segment_eq(get_fs(), KERNEL_DS))
++		w_flags |= AOP_FLAG_UNINTERRUPTIBLE;
++
++	org_blk_offset = org_page_offset * blocks_per_page +
++							data_offset_in_page;
++	offs = (long long)org_blk_offset << org_inode->i_blkbits;
++
++	/* Calculate data_len */
++	if ((org_blk_offset + block_len_in_page - 1) ==
++			((org_inode->i_size - 1) >> org_inode->i_blkbits)) {
++		/* the case which we replace the last block */
++		tmp_data_len = org_inode->i_size & (blocksize - 1);
++		/*
++		 * If data_len equal zero, it shows data_len is multiples of
++		 * blocksize. So we set appropriate value.
++		 */
++		if (tmp_data_len == 0)
++			tmp_data_len = blocksize;
++
++		data_len = tmp_data_len +
++			((block_len_in_page - 1) << org_inode->i_blkbits);
++	} else {
++		data_len = block_len_in_page << org_inode->i_blkbits;
 +	}
 +
 +	up_write(&EXT4_I(org_inode)->i_data_sem);
-+	mutex_unlock(&org_inode->i_mutex);
++	ret = a_ops->write_begin(filp, mapping, offs, data_len, w_flags, &page,
++								&fsdata);
++	down_write(&EXT4_I(org_inode)->i_data_sem);
 +
-+	if (tmp_inode)
-+		iput(tmp_inode);
++	if (unlikely(ret < 0))
++		goto out;
 +
-+	return ret ? ret : defrag_size;
-+}
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index b1cdd8d..30e3195 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -302,6 +302,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_GROUP_ADD		_IOW('f', 8, struct ext4_new_group_input)
- #define EXT4_IOC_MIGRATE		_IO('f', 9)
-  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
-+#define EXT4_IOC_DEFRAG			_IOW('f', 15, struct ext4_ext_defrag_data)
-
- /*
-  * ioctl commands in 32 bit emulation
-@@ -319,6 +320,12 @@ struct ext4_new_group_data {
- #define EXT4_IOC32_GETVERSION_OLD	FS_IOC32_GETVERSION
- #define EXT4_IOC32_SETVERSION_OLD	FS_IOC32_SETVERSION
-
-+struct ext4_ext_defrag_data {
-+	ext4_lblk_t start_offset;	/* start offset to defrag in blocks */
-+	ext4_lblk_t defrag_size;	/* size of defrag in blocks */
-+	ext4_fsblk_t goal;		/* block offset for allocation */
-+};
-+
-
- /*
-  *  Mount options
-@@ -1144,6 +1151,9 @@ extern void ext4_inode_bitmap_set(struct super_block *sb,
- 				  struct ext4_group_desc *bg, ext4_fsblk_t blk);
- extern void ext4_inode_table_set(struct super_block *sb,
- 				 struct ext4_group_desc *bg, ext4_fsblk_t blk);
-+/* defrag.c */
-+extern int ext4_defrag(struct file *filp, ext4_lblk_t block_start,
-+			ext4_lblk_t defrag_size);
-
- static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
- {
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index bec7ce5..a28d8d2 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -246,5 +246,7 @@ extern int ext4_ext_search_left(struct inode *, struct ext4_ext_path *,
- extern int ext4_ext_search_right(struct inode *, struct ext4_ext_path *,
- 						ext4_lblk_t *, ext4_fsblk_t *);
- extern void ext4_ext_drop_refs(struct ext4_ext_path *);
-+extern ext4_fsblk_t ext_pblock(struct ext4_extent *ex);
-+
- #endif /* _EXT4_EXTENTS */
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ea2ce3c..406cab9 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -49,7 +49,7 @@
-  * ext_pblock:
-  * combine low and high parts of physical block number into ext4_fsblk_t
-  */
--static ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
-+ext4_fsblk_t ext_pblock(struct ext4_extent *ex)
- {
- 	ext4_fsblk_t block;
-
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index dc99b47..78d9174 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -214,6 +214,28 @@ setversion_out:
-
- 		return err;
- 	}
-+
-+	case EXT4_IOC_DEFRAG: {
-+		struct ext4_ext_defrag_data defrag;
-+		int err;
-+
-+		if (!capable(CAP_DAC_OVERRIDE)) {
-+			if ((inode->i_mode & S_IRUSR) != S_IRUSR)
-+				return -EACCES;
-+			if (current->fsuid != inode->i_uid)
-+				return -EACCES;
-+		}
-+
-+		if (copy_from_user(&defrag,
-+			(struct ext4_ext_defrag_data __user *)arg,
-+							sizeof(defrag)))
-+			return -EFAULT;
-+
-+		err = ext4_defrag(filp, defrag.start_offset,
-+			defrag.defrag_size);
-+		return err;
++	if (!PageUptodate(page)) {
++		up_write(&EXT4_I(org_inode)->i_data_sem);
++		mapping->a_ops->readpage(filp, page);
++		down_write(&EXT4_I(org_inode)->i_data_sem);
++		lock_page(page);
 +	}
 +
- 	case EXT4_IOC_GROUP_ADD: {
- 		struct ext4_new_group_data input;
- 		struct super_block *sb = inode->i_sb;
++	/*
++	 * try_to_release_page() doesn't call releasepage in writeback mode.
++	 * We should care about the order of writing to the same file
++	 * by multiple defrag processes.
++	 * It needs to call wait_on_page_writeback() to wait for the
++	 * writeback of the page.
++	 */
++	if (PageWriteback(page))
++		wait_on_page_writeback(page);
++
++	/* Release old bh and drop refs */
++	try_to_release_page(page, 0);
++	ret = ext4_defrag_replace_branches(handle, org_inode, tmp_inode,
++						org_blk_offset, dest_blk_offset,
++						block_len_in_page);
++	if (ret < 0)
++		goto out;
++
++	/* Clear the inode cache not to refer to the old data */
++	ext4_ext_invalidate_cache(org_inode);
++
++	if (!page_has_buffers(page))
++		create_empty_buffers(page, 1 << org_inode->i_blkbits, 0);
++
++	bh = page_buffers(page);
++	for (i = 0; i < data_offset_in_page; i++)
++		bh = bh->b_this_page;
++
++	for (i = 0; i < block_len_in_page; i++) {
++		up_write(&EXT4_I(org_inode)->i_data_sem);
++		ret = ext4_get_block(org_inode, (sector_t)(org_blk_offset + i),
++									bh, 0);
++		down_write(&EXT4_I(org_inode)->i_data_sem);
++
++		if (ret < 0)
++			goto out;
++
++		if (bh->b_this_page != NULL)
++			bh = bh->b_this_page;
++	}
++
++	ret = a_ops->write_end(filp, mapping, offs, data_len, data_len, page,
++									fsdata);
++	page = NULL;
++
++out:
++	if (unlikely(page)) {
++		if (PageLocked(page))
++			unlock_page(page);
++		page_cache_release(page);
++	}
++	ext4_journal_stop(handle);
++
++	return ret < 0 ? ret : 0;
+ }
 
+ /**
