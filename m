@@ -1,7 +1,7 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 0/9]ext4: online defrag (ver 0.97)
-Date: Fri, 24 Oct 2008 19:09:30 +0900
-Message-ID: <49019EDA.2080400@rs.jp.nec.com>
+Subject: [RFC][PATCH 2/9]ext4: allocate new contiguous blocks with mballoc
+Date: Fri, 24 Oct 2008 19:09:39 +0900
+Message-ID: <49019EE3.9050709@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
@@ -9,147 +9,332 @@ Cc: linux-fsdevel@vger.kernel.org
 To: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
 	Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:41778 "EHLO
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:41826 "EHLO
 	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752864AbYJXKJ7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Oct 2008 06:09:59 -0400
+	with ESMTP id S1753041AbYJXKKH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Oct 2008 06:10:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+ext4: online defrag -- Allocate new contiguous blocks with mballoc.
 
-I've updated ext4 online defrag patches.
-Changes are as followings (Ted pointed 1-4 out before).
- 1. Remove unneeded ioctls and related functions.
-   - EXT4_IOC_FIBMAP
-   - EXT4_IOC_GROUP_INFO
-   - EXT4_IOC_RESERVE_BLOCK
-   - EXT4_IOC_BLOCK_RELEASE
- 2. Implement new ioctl (EXT4_IOC_SUPER_INFO) which gets ext4_super_block.
- 3. Remove ext4_defrag_ioctl() not to have a double layer of ioctl's dispatch.
- 4. Fix defrag not to use block reservation in force defrag mode (-f),
-    because the legacy block allocator have been removed from ext4.
- 5. Add permission check to ext4_defrag_fiemap_ino and ext4_defag_move_victim.
-    Because non-permitted file should not be selected as victim file
-    in force defrag mode (-f).
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-Changelog:
-- 0.97(Oct. 24, 2008)
-  - Remove unneeded ioctls.
-  - Add EXT4_IOC_SUPER_INFO which gets ext4_super_block.
-  - Fix defrag not to use block reservation in force defrag mode (-f).
-  - Remove ext4_defrag_ioctl() not to have a double layer of ioctl's dispatch.
-  - Some cleanups.
-- 0.95(Sep. 26, 2008)
-  - Support 1KB and 2KB block size.
-  - Implement EXT4_IOC_FIEMAP_INO which calls ext4_fiemap() for specified inode number
-    instead of EXT4_IOC_EXTENTS_INFO to get extents information.
-  - Merge "JC6-defrag-alloc-contiguous-blks-credit" and
-    "ext4-request-for-blocks-with-ar.excepted_group-1.patch" in the ext4 patch queue
-    into this version.
-  - Handle s_dirtyblocks_counter correctly in defrag when delalloc enabled.
-  - Remove unneeded copy_from_user() in EXT4_IOC_GROUP_INFO ioctl.  Ted pointed this out.
-- 0.9 (May 30, 2008)
-  - Create some new functions (ext4_defrag_fill_ar(),
-    ext4_defrag_check_phase() ...) to separate block allocation function,
-    since the phase mode plug into the allocation function isn't good.
-  - Add the description of ext4_defrag() which is main function.
-  - Add the capability check.
-  - Some cleanups.
+Search contiguous free blocks with multi-block allocation
+and allocate them for the temporary inode.
 
-Outline for ext4 online defragmentation:
-Ext4 online defrag has the following three functions.
+Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
+---
+ fs/ext4/defrag.c       |  224 +++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/ext4.h         |    3 +
+ fs/ext4/ext4_extents.h |    3 +
+ fs/ext4/extents.c      |    4 +-
+ 4 files changed, 231 insertions(+), 3 deletions(-)
 
- no option  Solving a single file fragmentation.
-            Single file fragmentation is solved by moving file
-            data to contiguous free blocks.
+diff --git a/fs/ext4/defrag.c b/fs/ext4/defrag.c
+index 1e36193..729f001 100644
+--- a/fs/ext4/defrag.c
++++ b/fs/ext4/defrag.c
+@@ -91,6 +91,84 @@ err:
+ }
 
-    -r      Solving a relevant file fragmentation.
-            Relevant file fragmentation could be solved by moving
-            the files under the specified directory close together with
-            the block containing the directory data.
+ /**
++ * ext4_defrag_fill_ar - Prepare to multiple block allocate for tmp inode
++ *
++ * @org_inode:		original inode
++ * @dest_inode:		temporary inode
++ * @ar:			allocation request for multiple block allocation
++ * @org_path:		indicating the original inode's extent
++ * @dest_path:		indicating the temporary inode's extent
++ * @req_blocks:		contiguous blocks count we need
++ * @iblock:		target file offset
++ *
++ */
++static void
++ext4_defrag_fill_ar(struct inode *org_inode, struct inode *dest_inode,
++			struct ext4_allocation_request *ar,
++			struct ext4_ext_path *org_path,
++			struct ext4_ext_path *dest_path,
++			ext4_fsblk_t req_blocks, ext4_lblk_t iblock)
++{
++	ar->inode = dest_inode;
++	ar->len = req_blocks;
++	ar->logical = iblock;
++	ar->flags = EXT4_MB_HINT_DATA | EXT4_MB_HINT_RESERVED
++		| EXT4_MB_HINT_NOPREALLOC;
++	ar->lleft = 0;
++	ar->pleft = 0;
++	ar->lright = 0;
++	ar->pright = 0;
++
++	ar->goal = ext4_ext_find_goal(dest_inode, dest_path, iblock);
++}
++
++/**
++ * ext4_defrag_alloc_blocks - Allocate contiguous blocks to temporary inode
++ *
++ * @handle:		journal handle
++ * @org_inode:		original inode
++ * @dest_inode:		temporary inode for multiple block allocation
++ * @ar:			allocation request for multiple block allocation
++ * @dest_path:		indicating the temporary inode's extent
++ * @newblock:		start offset of contiguous blocks
++ *
++ * This function returns 0 if succeed, otherwise returns error value.
++ */
++static int
++ext4_defrag_alloc_blocks(handle_t *handle, struct inode *org_inode,
++		struct inode *dest_inode, struct ext4_allocation_request *ar,
++		struct ext4_ext_path *dest_path, ext4_fsblk_t *newblock)
++{
++	struct super_block *sb = org_inode->i_sb;
++	struct buffer_head *bh = NULL;
++	int err, i, credits = 0;
++
++	credits = ext4_ext_calc_credits_for_single_extent(dest_inode,
++							  ar->len, dest_path);
++	err = ext4_ext_journal_restart(handle, credits);
++	if (err)
++		return err;
++
++	*newblock = ext4_mb_new_blocks(handle, ar, &err);
++	if (err)
++		return err;
++
++	/*
++	 * Dirty buffer_head causes the overwriting
++	 * if ext4_mb_new_blocks() allocates the block
++	 * which used to be the metadata block.
++	 * We should call unmap_underlying_metadata()
++	 * to clear the dirty flag.
++	 */
++	for (i = 0; i < ar->len; i++) {
++		bh = sb_find_get_block(sb, *newblock + i);
++		unmap_underlying_metadata(sb->s_bdev, *newblock + i);
++	}
++
++	return err;
++}
++
++/**
+  * ext4_defrag_partial - Defrag a file per page
+  *
+  * @tmp_inode:			temporary inode
+@@ -111,6 +189,69 @@ ext4_defrag_partial(struct inode *tmp_inode, struct file *filp,
+ }
 
-    -f      Solving a free space fragmentation.
-            If there is no contiguous free blocks in the filesystem,
-            the other files are moved to make sufficient space to allocate
-            contiguous blocks for the target file.
+ /**
++ * ext4_defrag_comp_ext_count- Check whether fragments are improved or not
++ *
++ * @org_inode:		original inode
++ * @path:		the structure holding some info about
++ *			original extent tree
++ * @tar_end:		the last block number of the allocated blocks
++ * @sum_tmp:		the extents count  in the allocated blocks
++ *
++ * This function returns the values as below.
++ *	0 (improved)
++ *	1 (not improved)
++ *	negative value (error case)
++ */
++static int
++ext4_defrag_comp_ext_count(struct inode *org_inode,
++			struct ext4_ext_path *org_path, ext4_lblk_t tar_end,
++			int sum_tmp)
++{
++	struct ext4_extent *ext = NULL;
++	int depth = ext_depth(org_inode);
++	int last_extent = 0;
++	int sum_org = 0;
++	int ret = 0;
++
++	ext = org_path[depth].p_ext;
++
++	/*
++	 * Compare the number of the newly allocated extents to
++	 * that of existing one.
++	 */
++	while (1) {
++		if (!last_extent)
++			++sum_org;
++		if (tar_end <= (le32_to_cpu(ext->ee_block) +
++			       le16_to_cpu(ext->ee_len) - 1) ||
++			       last_extent) {
++			/*
++			 * If the goal has not been set and the fragmentation
++			 * is not improved any more, defrag fails.
++			 */
++			if (sum_org == sum_tmp) {
++				/* Not improved */
++				ret = 1;
++			} else if (sum_org < sum_tmp) {
++				/* Fragment increased */
++				ret = -ENOSPC;
++				printk(KERN_ERR "ext4 defrag: "
++					"Insufficient free blocks\n");
++			}
++			break;
++		}
++		last_extent =
++			ext4_defrag_next_extent(org_inode, org_path, &ext);
++		if (last_extent < 0) {
++			ret = last_extent;
++			break;
++		}
++	}
++
++	return ret;
++}
++
++/**
+  * ext4_defrag_new_extent_tree - Get contiguous blocks and build an extent tree
+  *
+  * @org_inode:		original inode
+@@ -130,7 +271,88 @@ ext4_defrag_new_extent_tree(struct inode *org_inode, struct inode *tmp_inode,
+ 			struct ext4_ext_path *org_path, ext4_lblk_t req_start,
+ 			ext4_lblk_t req_blocks, ext4_lblk_t iblock)
+ {
+-	return 0;
++	handle_t *handle;
++	struct ext4_sb_info *sbi = EXT4_SB(org_inode->i_sb);
++	struct ext4_extent_header *eh = NULL;
++	struct ext4_allocation_request ar;
++	struct ext4_ext_path *dest_path = NULL;
++	struct ext4_extent newex;
++	ext4_fsblk_t alloc_total = 0;
++	ext4_fsblk_t newblock = 0;
++	ext4_lblk_t req_end = req_start + req_blocks - 1;
++	ext4_lblk_t rest_blocks = 0;
++	int sum_tmp = 0;
++	int metadata = 1;
++	int ret;
++
++	eh = ext_inode_hdr(tmp_inode);
++	eh->eh_depth = 0;
++
++	dest_path = ext4_ext_find_extent(tmp_inode, iblock, NULL);
++	if (IS_ERR(dest_path)) {
++		ret = PTR_ERR(dest_path);
++		dest_path = NULL;
++		goto out2;
++	}
++
++	/* Fill struct ext4_allocation_request with necessary info */
++	ext4_defrag_fill_ar(org_inode, tmp_inode, &ar, org_path,
++				dest_path, req_blocks, iblock);
++
++	handle = ext4_journal_start(tmp_inode, 0);
++	if (IS_ERR(handle)) {
++		ret = PTR_ERR(handle);
++		goto out2;
++	}
++
++	while (alloc_total != req_blocks) {
++		/* Allocate blocks */
++		ret = ext4_defrag_alloc_blocks(handle, org_inode, tmp_inode,
++						&ar, dest_path, &newblock);
++		if (ret < 0)
++			goto out;
++		/* Claimed blocks are already reserved */
++		EXT4_I(ar.inode)->i_delalloc_reserved_flag = 1;
++
++		alloc_total += ar.len;
++		rest_blocks = req_blocks - alloc_total;
++
++		newex.ee_block = cpu_to_le32(alloc_total - ar.len);
++		ext4_ext_store_pblock(&newex, newblock);
++		newex.ee_len = cpu_to_le16(ar.len);
++
++		ret = ext4_ext_insert_extent(handle, tmp_inode,
++						dest_path, &newex);
++		if (ret < 0)
++			goto out;
++
++		ar.goal = newblock + ar.len;
++		ar.len = req_blocks - alloc_total;
++		sum_tmp++;
++	}
++
++	ret = ext4_defrag_comp_ext_count(org_inode, org_path, req_end,
++					sum_tmp);
++
++out:
++	if (ret < 0 && ar.len)
++		ext4_free_blocks(handle, tmp_inode, newblock, ar.len, metadata);
++	/*
++	 * Update dirty-blocks counter if we cannot allocate the all of
++	 * requested blocks.
++	 */
++	if (rest_blocks)
++		percpu_counter_sub(&sbi->s_dirtyblocks_counter, rest_blocks);
++
++	ext4_journal_stop(handle);
++
++out2:
++	if (dest_path) {
++		ext4_ext_drop_refs(dest_path);
++		kfree(dest_path);
++	}
++
++	return ret;
+ }
 
-Next step:
- - Support flex_bg.
- Address the following items that Ted pointed out before.
- These are no functional impact.
- - Rebuild defrag patches construction.
-   (low-level functions will be first)
- - Move the defrag functions that are related to extents or mballoc
-   to the appropriate files.
- - Add more descriptions each of defrag functions.
+ /**
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 30e3195..aa3b639 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -326,6 +326,7 @@ struct ext4_ext_defrag_data {
+ 	ext4_fsblk_t goal;		/* block offset for allocation */
+ };
 
-Summary of patches:
-* The followings are new ext4 online defrag patches and they consist
-  of ioctl unit except 1-4.  Because the EXT4_IOC_DEFRAG is too big for reviewing,
-  I divided it into 4 patches (I'll consider about appropriate construction
-  of defrag patches later).
++#define EXT4_TRANS_META_BLOCKS 4 /* bitmap + group desc + sb + inode */
 
-[PATCH 1/9] EXT4_IOC_DEFRAG ioctl and  defrag main function
-- Create the temporary inode and do defrag per
-  defrag_size (defalut 64MB).
+ /*
+  *  Mount options
+@@ -1151,6 +1152,8 @@ extern void ext4_inode_bitmap_set(struct super_block *sb,
+ 				  struct ext4_group_desc *bg, ext4_fsblk_t blk);
+ extern void ext4_inode_table_set(struct super_block *sb,
+ 				 struct ext4_group_desc *bg, ext4_fsblk_t blk);
++/* extents.c */
++extern int ext4_ext_journal_restart(handle_t *handle, int needed);
+ /* defrag.c */
+ extern int ext4_defrag(struct file *filp, ext4_lblk_t block_start,
+ 			ext4_lblk_t defrag_size);
+diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
+index a28d8d2..39e043b 100644
+--- a/fs/ext4/ext4_extents.h
++++ b/fs/ext4/ext4_extents.h
+@@ -247,6 +247,9 @@ extern int ext4_ext_search_right(struct inode *, struct ext4_ext_path *,
+ 						ext4_lblk_t *, ext4_fsblk_t *);
+ extern void ext4_ext_drop_refs(struct ext4_ext_path *);
+ extern ext4_fsblk_t ext_pblock(struct ext4_extent *ex);
++extern ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
++					struct ext4_ext_path *path,
++					ext4_lblk_t block);
 
-[PATCH 2/9] Allocate new contiguous blocks with mballoc
-- Search contiguous free blocks with mutil-block allocation
-  and allocate them for the temporary inode.
+ #endif /* _EXT4_EXTENTS */
 
-[PATCH 3/9]  Exchange the extents between two inodes
-- For each page, exchange the extents between the temporary inode
-  and the original inode, and then write them.
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 406cab9..dde234f 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -93,7 +93,7 @@ static void ext4_idx_store_pblock(struct ext4_extent_idx *ix, ext4_fsblk_t pb)
+ 	ix->ei_leaf_hi = cpu_to_le16((unsigned long) ((pb >> 31) >> 1) & 0xffff);
+ }
 
-[PATCH 4/9] Inside extents management and relevant defrag
-- Merge extents of target inode which is increased by defragmentation.
-- For relevant defrag, add the goal argument to related functions
-  to allocate data block to the specified offset.
+-static int ext4_ext_journal_restart(handle_t *handle, int needed)
++int ext4_ext_journal_restart(handle_t *handle, int needed)
+ {
+ 	int err;
 
-[PATCH 5/9] EXT4_IOC_SUPER_INFO ioctl
-- EXT4_IOC_SUPER_INFO gets super block information on disk.
+@@ -142,7 +142,7 @@ static int ext4_ext_dirty(handle_t *handle, struct inode *inode,
+ 	return err;
+ }
 
-  Super block information is necessary for relevant (-r) and force (-f) defrag.
-  Non-root user can't get this information by opening the block device directly,
-  so implement this ioctl newly.
-
-[PATCH 6/9] EXT4_IOC_FREE_BLOCKS_INFO ioctl
-- The EXT4_IOC_FREE_BLOCKS_INFO ioctl gets free extents
-  information of the target block group.
-  This ioctl is used only in the force defrag (-f).
-
-  ext4_defrag_fblocks_distribution() was renamed as ext4_mb_search_free_extents()
-  and moved into mballoc.c.  Because it uses ext4_buddy structure.
-
-[PATCH 7/9] EXT4_IOC_FIEMAP_INO ioctl
-- The EXT4_IOC_FIEMAP_INO is used to get extents information of
-  inode which set to ioctl.
-  The defragger uses this ioctl to check the fragment condition
-  and to get extents information in the specified block group.
-
-  Andreas Dilger suggested that implement EXT4_IOC_WRAPPER to call fiemap
-  for arbitrary inodes instead of this ioctl.
-  But there is a matter for consideration to use EXT4_IOC_WRAPPER,
-  so I passed up it in this time.
-
-[PATCH 8/9] EXT4_IOC_MOVE_VICTIM ioctl
-- The EXT4_IOC_MOVE_VICTIM moves the victim extents into other block group.
-  Therefore the contiguous free space is made in the target block group.
-  This ioctl is used only in the force defrag (-f).
-
-[PATCH 9/9] Online defrag command
-- The defrag command. Usage is as follows:
-  - Defrag for a single file.
-    # e4defrag file-name
-  - Defrag for all files on ext4.
-    # e4defrag device-name
-  - Put the multiple files closer together.
-    # e4defrag -r directory-name
-  - Defrag for free space fragmentation.
-    # e4defrag -f file-name
-
-Any comments are welcome.
-
-Best regards,
-Akira Fujita
+-static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
++ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+ 			      struct ext4_ext_path *path,
+ 			      ext4_lblk_t block)
+ {
