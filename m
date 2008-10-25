@@ -1,119 +1,40 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 2/2] delay capable() check in ext4_has_free_blocks(
-Date: Fri, 24 Oct 2008 13:48:01 -0700
-Message-ID: <1224881281.6379.8.camel@mingming-laptop>
-References: <49022FB7.9050608@redhat.com>
+From: Gary Hawco <ghawco@cox.net>
+Subject: ext4 patch-queue patching issues
+Date: Fri, 24 Oct 2008 16:51:39
+Message-ID: <3.0.6.32.20081024165139.024a3ee0@pop.west.cox.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Eric Paris <eparis@redhat.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
+To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:35443 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752845AbYJXUsD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Oct 2008 16:48:03 -0400
-Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
-	by e36.co.us.ibm.com (8.13.8/8.13.8) with ESMTP id m9OKm2QX031991
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 16:48:02 -0400
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id m9OKm2Lr148974
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 14:48:02 -0600
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id m9OKlW5r005318
-	for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 14:47:32 -0600
-In-Reply-To: <49022FB7.9050608@redhat.com>
+Received: from fed1rmpop109.cox.net ([68.230.241.13]:43041 "EHLO
+	fed1rmpop109.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751131AbYJYAOU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Oct 2008 20:14:20 -0400
+Received: from fed1rmimpo03.cox.net ([70.169.32.75])
+          by fed1rmmtao102.cox.net
+          (InterMail vM.7.08.02.01 201-2186-121-102-20070209) with ESMTP
+          id <20081024235139.MRGS6684.fed1rmmtao102.cox.net@fed1rmimpo03.cox.net>
+          for <linux-ext4@vger.kernel.org>; Fri, 24 Oct 2008 19:51:39 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+What specific kernel are the latest ext4 queue patches for?  I can't get
+any patches (from 16 Oct 2008 @0151hrs to today's latest -- 24Oct 2008 @
+2151hrs) to work against any 2.6.27.XX source. The most recent patch I have
+been successful with was 15 Oct @ 1302hrs against 2.6.27 kernel.
 
-=E5=9C=A8 2008-10-24=E4=BA=94=E7=9A=84 15:27 -0500=EF=BC=8CEric Sandeen=
-=E5=86=99=E9=81=93=EF=BC=9A
-> As reported by Eric Paris, the capable() check in ext4_has_free_block=
-s()
-> sometimes causes SELinux denials.
->=20
-> We can rearrange the logic so that we only try to use the root-reserv=
-ed
-> blocks when necessary, and even then we can move the capable() test
-> to last, to avoid the check most of the time.
->=20
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+The notation from 16 Oct. 2008 @0151 says "Rebase to 2.6.26-git5" which
+seems to be a typo. 
 
-Reviewed-by: Mingming Cao <cmm@us.ibm.com>
-> --
->=20
-> Index: linux-2.6/fs/ext4/balloc.c
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> --- linux-2.6.orig/fs/ext4/balloc.c	2008-10-24 14:43:11.103063953 -05=
-00
-> +++ linux-2.6/fs/ext4/balloc.c	2008-10-24 14:43:18.082063765 -0500
-> @@ -596,23 +596,19 @@ void ext4_free_blocks(handle_t *handle,=20
->   *
->   * Check if filesystem has free blocks available for allocation.
->   * Return the number of blocks avaible for allocation for this reque=
-st
-> - * On success, return nblocks
-> + * On success, return 1, on failure, return 0.
->   */
->  int ext4_has_free_blocks(struct ext4_sb_info *sbi,
->  						s64 nblocks)
->  {
-> -	s64 free_blocks, dirty_blocks;
-> -	s64 root_blocks =3D 0;
-> +	s64 free_blocks, dirty_blocks, root_blocks;
->  	struct percpu_counter *fbc =3D &sbi->s_freeblocks_counter;
->  	struct percpu_counter *dbc =3D &sbi->s_dirtyblocks_counter;
->=20
->  	free_blocks  =3D percpu_counter_read_positive(fbc);
->  	dirty_blocks =3D percpu_counter_read_positive(dbc);
-> +	root_blocks =3D ext4_r_blocks_count(sbi->s_es);
->=20
-> -	if (!capable(CAP_SYS_RESOURCE) &&
-> -		sbi->s_resuid !=3D current->fsuid &&
-> -		(sbi->s_resgid =3D=3D 0 || !in_group_p(sbi->s_resgid)))
-> -		root_blocks =3D ext4_r_blocks_count(sbi->s_es);
->=20
->  	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
->  						EXT4_FREEBLOCKS_WATERMARK) {
-> @@ -625,13 +621,20 @@ int ext4_has_free_blocks(struct ext4_sb_
->  		}
->  	}
->  	/* Check whether we have space after
-> -	 * accounting for current dirty blocks
-> +	 * accounting for current dirty blocks & root reserved blocks.
->  	 */
-> -	if (free_blocks < ((root_blocks + nblocks) + dirty_blocks))
-> -		/* we don't have free space */
-> -		return 0;
-> +	if (free_blocks >=3D ((root_blocks + nblocks) + dirty_blocks))
-> +		return 1;
->=20
-> -	return 1;
-> +	/* Hm, nope.  Are (enough) root reserved blocks available? */
-> +	if (sbi->s_resuid =3D=3D current->fsuid ||
-> +	    ((sbi->s_resgid !=3D 0) && in_group_p(sbi->s_resgid)) ||
-> +	    capable(CAP_SYS_RESOURCE)) {
-> +		if (free_blocks >=3D (nblocks + dirty_blocks))
-> +			return 1;
-> +	}
-> +
-> +	return 0;
->  }
->=20
->  int ext4_claim_free_blocks(struct ext4_sb_info *sbi,
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Looking at the snapshots from another portion of the ext4 tree:
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=summary
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+with the newest being from 16 Oct 2008 @ 2311hrs. it says they are based
+against 2.6.27-git7, which again, is which kernel?  Kernel archives are at
+2.6.27.3 stable with 2.6.28-rc1  prepatch being released today, 24 Oct.
+
+Help!!
+
+Thanks,
+Gary
+
