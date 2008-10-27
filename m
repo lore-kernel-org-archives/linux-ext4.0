@@ -1,47 +1,25 @@
-From: Ingo Molnar <mingo@elte.hu>
-Subject: Re: [PATCH 2/2] ext4: fix a bug accessing freed memory in
-	ext4_abort
-Date: Mon, 27 Oct 2008 11:43:25 +0100
-Message-ID: <20081027104325.GA13641@elte.hu>
-References: <19f34abd0810250422t17990222x78fcf0fad2e6f04b@mail.gmail.com> <49056D29.2010700@hitachi.com> <49056FA5.7070202@hitachi.com>
+From: "Manuel Mazzuola" <origin.of@gmail.com>
+Subject: Mount with user permissions
+Date: Mon, 27 Oct 2008 12:23:26 +0100
+Message-ID: <b36664d00810270423x18ff11c3l55b849f99698a3f2@mail.gmail.com>
+References: <b36664d00810270421j46be8814t83ab4af7c83c68ab@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Vegard Nossum <vegard.nossum@gmail.com>,
-	Jan Kara <jack@ucw.cz>,
-	Stephen Rothwell <sfr@canb.auug.org.au>,
-	Al Viro <viro@zeniv.linux.org.uk>, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"Rafael J. Wysocki" <rjw@sisk.pl>,
-	Pekka Enberg <penberg@cs.helsinki.fi>,
-	linux-kernel@vger.kernel.org,
-	sugita <yumiko.sugita.yf@hitachi.com>,
-	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
-To: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3.mail.elte.hu ([157.181.1.138]:51095 "EHLO mx3.mail.elte.hu"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751328AbYJ0Knm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Oct 2008 06:43:42 -0400
+Received: from nf-out-0910.google.com ([64.233.182.189]:34408 "EHLO
+	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751541AbYJ0LX2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Oct 2008 07:23:28 -0400
+Received: by nf-out-0910.google.com with SMTP id d3so643698nfc.21
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Oct 2008 04:23:26 -0700 (PDT)
+In-Reply-To: <b36664d00810270421j46be8814t83ab4af7c83c68ab@mail.gmail.com>
 Content-Disposition: inline
-In-Reply-To: <49056FA5.7070202@hitachi.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hy everybody, Is possibile to mount ext4 partitions with user permissions ??
 
-* Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com> wrote:
-
-> Vegard Nossum reported a bug which accesses freed memory.  When
-> journal has been aborted, ext4_put_super() calls ext4_abort() after
-> freeing the journal_t object, and then ext4_abort() accesses it.
-> This patch fix it.
-> 
-> Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-
-could you please put the word "kmemcheck" into the commit log? ("found 
-via kmemcheck" or so) We want to have an easily git-greppable track 
-record of upstream kernel bugs that were found via kmemcheck. (and 
-there's already a long list)
-
-	Ingo
+--
+Manuel Mazzuola
