@@ -1,26 +1,39 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [RFC][PATCH 7/9]ext4: Add the EXT4_IOC_FIEMAP_INO ioctl
-Date: Sun, 26 Oct 2008 04:49:58 -0400
-Message-ID: <20081026084958.GB9270@infradead.org>
-References: <49019EF6.4000706@rs.jp.nec.com> <20081026084048.GF3184@webber.adilger.int> <20081026084848.GA9270@infradead.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: ext4_has_free_blocks always checks cap_sys_resource and makes
+ SELinux unhappy
+Date: Sun, 26 Oct 2008 20:39:47 -0500
+Message-ID: <49051BE3.4080807@redhat.com>
+References: <1224860735.3404.74.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, linux-ext4@vger.kernel.org,
-	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, selinux@tycho.nsa.gov,
+	sds@tycho.nsa.gov, esandeen@redhat.com, tytso@mit.edu,
+	dwalsh@redhat.com, linux-security-module@vger.kernel.org
+To: Eric Paris <eparis@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:37922 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751935AbYJZIt7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 26 Oct 2008 04:49:59 -0400
-Content-Disposition: inline
-In-Reply-To: <20081026084848.GA9270@infradead.org>
+Received: from mx2.redhat.com ([66.187.237.31]:55452 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750713AbYJ0BkQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 26 Oct 2008 21:40:16 -0400
+In-Reply-To: <1224860735.3404.74.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Oct 26, 2008 at 04:48:48AM -0400, Christoph Hellwig wrote:
-> Btw, any reason the XFS approach of passing in filehandles for both
-> the inode to be defragmented and the "donor" inode doesn't work for you?
+Eric Paris wrote:
+> I'm running an ext4 root filesystem and regularly get SELinux denials
+> like:
+> 
+> Oct 16 08:32:55 localhost kernel: type=1400 audit(1224160369.076:5):
+> avc: denied  { sys_resource } for  pid=1624 comm="dbus-daemon"
+> capability=24 scontext=system_u:system_r:system_dbusd_t:s0
+> tcontext=system_u:system_r:system_dbusd_t:s0 tclass=capability
+> 
+> https://bugzilla.redhat.com/show_bug.cgi?id=467216
 
-Sorry should be file descriptor and not filehandle above.
+For the record, I've put a couple patches into the ext4 patch queue that
+should do Eric's first suggestion of deferring the capable() check until
+it's really needed.  Details are in the bug  above.
 
+Thanks,
+-Eric
