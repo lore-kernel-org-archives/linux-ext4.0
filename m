@@ -1,7 +1,7 @@
 From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
 Subject: [PATCH 1/2] ext3: fix a bug accessing freed memory in ext3_abort
-Date: Mon, 27 Oct 2008 16:26:33 +0900
-Message-ID: <49056D29.2010700@hitachi.com>
+Date: Mon, 27 Oct 2008 16:31:31 +0900
+Message-ID: <49056E53.9050601@hitachi.com>
 References: <19f34abd0810250422t17990222x78fcf0fad2e6f04b@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii"
@@ -13,13 +13,15 @@ Cc: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@ucw.cz>,
 	Linus Torvalds <torvalds@linux-foundation.org>,
 	"Rafael J. Wysocki" <rjw@sisk.pl>, Ingo Molnar <mingo@elte.hu>,
 	Pekka Enberg <penberg@cs.helsinki.fi>,
-	linux-kernel@vger.kernel.org
+	linux-kernel@vger.kernel.org,
+	sugita <yumiko.sugita.yf@hitachi.com>,
+	Satoshi OSHIMA <satoshi.oshima.fk@hitachi.com>
 To: Vegard Nossum <vegard.nossum@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail9.hitachi.co.jp ([133.145.228.44]:32827 "EHLO
+Received: from mail9.hitachi.co.jp ([133.145.228.44]:33974 "EHLO
 	mail9.hitachi.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751591AbYJ0H0s (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Oct 2008 03:26:48 -0400
+	with ESMTP id S1751591AbYJ0Hbs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Oct 2008 03:31:48 -0400
 In-Reply-To: <19f34abd0810250422t17990222x78fcf0fad2e6f04b@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -85,5 +87,7 @@ Index: linux-2.6.28-rc2/fs/ext3/super.c
  	if (!(sb->s_flags & MS_RDONLY)) {
  		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
  		es->s_state = cpu_to_le16(sbi->s_mount_state);
+
+
 
 
