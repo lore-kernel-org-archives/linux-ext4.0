@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: + filesystem-freeze-implement-generic-freeze-feature.patch added to -mm tree
-Date: Mon, 27 Oct 2008 23:15:54 -0700
-Message-ID: <200810280615.m9S6FslE020091@imap1.linux-foundation.org>
+Subject: + filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs.patch added to -mm tree
+Date: Mon, 27 Oct 2008 23:15:50 -0700
+Message-ID: <200810280615.m9S6FoFi020068@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 Cc: t-sato@yk.jp.nec.com, agk@redhat.com, david@fromorbit.com,
 	hch@lst.de, linux-ext4@vger.kernel.org, m-hamaguchi@ys.jp.nec.com,
@@ -14,9 +14,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     filesystem freeze: implement generic freeze feature
+     filesystem freeze: add error handling of write_super_lockfs/unlockfs
 has been added to the -mm tree.  Its filename is
-     filesystem-freeze-implement-generic-freeze-feature.patch
+     filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -32,25 +32,46 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: filesystem freeze: implement generic freeze feature
+Subject: filesystem freeze: add error handling of write_super_lockfs/unlockfs
 From: Takashi Sato <t-sato@yk.jp.nec.com>
 
-The ioctls for the generic freeze feature are below.
-o Freeze the filesystem
-  int ioctl(int fd, int FIFREEZE, arg)
-    fd: The file descriptor of the mountpoint
-    FIFREEZE: request code for the freeze
-    arg: Ignored
-    Return value: 0 if the operation succeeds. Otherwise, -1
+Currently, ext3 in mainline Linux doesn't have the freeze feature which
+suspends write requests.  So, we cannot take a backup which keeps the
+filesystem's consistency with the storage device's features (snapshot and
+replication) while it is mounted.
 
-o Unfreeze the filesystem
-  int ioctl(int fd, int FITHAW, arg)
-    fd: The file descriptor of the mountpoint
-    FITHAW: request code for unfreeze
-    arg: Ignored
-    Return value: 0 if the operation succeeds. Otherwise, -1
-    Error number: If the filesystem has already been unfrozen,
-                  errno is set to EINVAL.
+In many case, a commercial filesystem (e.g.  VxFS) has the freeze feature
+and it would be used to get the consistent backup.
+
+If Linux's standard filesystem ext3 has the freeze feature, we can do it
+without a commercial filesystem.
+
+So I have implemented the ioctls of the freeze feature.
+I think we can take the consistent backup with the following steps.
+1. Freeze the filesystem with the freeze ioctl.
+2. Separate the replication volume or create the snapshot
+   with the storage device's feature.
+3. Unfreeze the filesystem with the unfreeze ioctl.
+4. Take the backup from the separated replication volume
+   or the snapshot.
+
+
+This patch:
+
+VFS:
+Changed the type of write_super_lockfs and unlockfs from "void"
+to "int" so that they can return an error.
+Rename write_super_lockfs and unlockfs of the super block operation
+freeze_fs and unfreeze_fs to avoid a confusion.
+
+ext3, ext4, xfs, gfs2, jfs:
+Changed the type of write_super_lockfs and unlockfs from "void"
+to "int" so that write_super_lockfs returns an error if needed,
+and unlockfs always returns 0.
+
+reiserfs:
+Changed the type of write_super_lockfs and unlockfs from "void"
+to "int" so that they always return 0 (success) to keep a current behavior.
 
 Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
 Signed-off-by: Masayuki Hamaguchi <m-hamaguchi@ys.jp.nec.com>
@@ -64,236 +85,585 @@ Cc: Al Viro <viro@zeniv.linux.org.uk>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/block_dev.c              |    2 
- fs/buffer.c                 |   74 +++++++++++++++++++++++++++++-----
- fs/ioctl.c                  |   46 +++++++++++++++++++++
- include/linux/buffer_head.h |    2 
- include/linux/fs.h          |    7 +++
- 5 files changed, 121 insertions(+), 10 deletions(-)
+ Documentation/filesystems/Locking |    8 ++--
+ Documentation/filesystems/vfs.txt |    8 ++--
+ fs/buffer.c                       |    8 ++--
+ fs/ext3/super.c                   |   45 +++++++++++++++++---------
+ fs/ext4/super.c                   |   47 +++++++++++++++++++---------
+ fs/gfs2/ops_super.c               |   16 +++++----
+ fs/jfs/super.c                    |   10 +++--
+ fs/reiserfs/super.c               |   10 +++--
+ fs/xfs/linux-2.6/xfs_super.c      |    8 ++--
+ fs/xfs/xfs_fsops.c                |   11 ++++--
+ fs/xfs/xfs_fsops.h                |    2 -
+ include/linux/fs.h                |    4 +-
+ 12 files changed, 108 insertions(+), 69 deletions(-)
 
-diff -puN fs/block_dev.c~filesystem-freeze-implement-generic-freeze-feature fs/block_dev.c
---- a/fs/block_dev.c~filesystem-freeze-implement-generic-freeze-feature
-+++ a/fs/block_dev.c
-@@ -285,6 +285,8 @@ static void init_once(void *foo)
- 	INIT_LIST_HEAD(&bdev->bd_holder_list);
- #endif
- 	inode_init_once(&ei->vfs_inode);
-+	/* Initialize mutex for freeze. */
-+	mutex_init(&bdev->bd_fsfreeze_mutex);
- }
+diff -puN Documentation/filesystems/Locking~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs Documentation/filesystems/Locking
+--- a/Documentation/filesystems/Locking~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/Documentation/filesystems/Locking
+@@ -97,8 +97,8 @@ prototypes:
+ 	void (*put_super) (struct super_block *);
+ 	void (*write_super) (struct super_block *);
+ 	int (*sync_fs)(struct super_block *sb, int wait);
+-	void (*write_super_lockfs) (struct super_block *);
+-	void (*unlockfs) (struct super_block *);
++	int (*freeze_fs) (struct super_block *);
++	int (*unfreeze_fs) (struct super_block *);
+ 	int (*statfs) (struct dentry *, struct kstatfs *);
+ 	int (*remount_fs) (struct super_block *, int *, char *);
+ 	void (*clear_inode) (struct inode *);
+@@ -119,8 +119,8 @@ delete_inode:		no
+ put_super:		yes	yes	no
+ write_super:		no	yes	read
+ sync_fs:		no	no	read
+-write_super_lockfs:	?
+-unlockfs:		?
++freeze_fs:		?
++unfreeze_fs:		?
+ statfs:			no	no	no
+ remount_fs:		yes	yes	maybe		(see below)
+ clear_inode:		no
+diff -puN Documentation/filesystems/vfs.txt~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs Documentation/filesystems/vfs.txt
+--- a/Documentation/filesystems/vfs.txt~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/Documentation/filesystems/vfs.txt
+@@ -210,8 +210,8 @@ struct super_operations {
+         void (*put_super) (struct super_block *);
+         void (*write_super) (struct super_block *);
+         int (*sync_fs)(struct super_block *sb, int wait);
+-        void (*write_super_lockfs) (struct super_block *);
+-        void (*unlockfs) (struct super_block *);
++        int (*freeze_fs) (struct super_block *);
++        int (*unfreeze_fs) (struct super_block *);
+         int (*statfs) (struct dentry *, struct kstatfs *);
+         int (*remount_fs) (struct super_block *, int *, char *);
+         void (*clear_inode) (struct inode *);
+@@ -270,11 +270,11 @@ or bottom half).
+   	a superblock. The second parameter indicates whether the method
+ 	should wait until the write out has been completed. Optional.
  
- static inline void __bd_forget(struct inode *inode)
-diff -puN fs/buffer.c~filesystem-freeze-implement-generic-freeze-feature fs/buffer.c
---- a/fs/buffer.c~filesystem-freeze-implement-generic-freeze-feature
+-  write_super_lockfs: called when VFS is locking a filesystem and
++  freeze_fs: called when VFS is locking a filesystem and
+   	forcing it into a consistent state.  This method is currently
+   	used by the Logical Volume Manager (LVM).
+ 
+-  unlockfs: called when VFS is unlocking a filesystem and making it writable
++  unfreeze_fs: called when VFS is unlocking a filesystem and making it writable
+   	again.
+ 
+   statfs: called when the VFS needs to get filesystem statistics. This
+diff -puN fs/buffer.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs fs/buffer.c
+--- a/fs/buffer.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
 +++ a/fs/buffer.c
-@@ -195,10 +195,25 @@ int fsync_bdev(struct block_device *bdev
-  * happen on bdev until thaw_bdev() is called.
-  * If a superblock is found on this device, we take the s_umount semaphore
-  * on it to make sure nobody unmounts until the snapshot creation is done.
-+ * The reference counter (bd_fsfreeze_count) guarantees that only the last
-+ * unfreeze process can unfreeze the frozen filesystem actually when multiple
-+ * freeze requests arrive simultaneously. It counts up in freeze_bdev() and
-+ * count down in thaw_bdev(). When it becomes 0, thaw_bdev() will unfreeze
-+ * actually.
-  */
- struct super_block *freeze_bdev(struct block_device *bdev)
- {
- 	struct super_block *sb;
-+	int error = 0;
-+
-+	mutex_lock(&bdev->bd_fsfreeze_mutex);
-+	if (bdev->bd_fsfreeze_count > 0) {
-+		bdev->bd_fsfreeze_count++;
-+		sb = get_super(bdev);
-+		mutex_unlock(&bdev->bd_fsfreeze_mutex);
-+		return sb;
-+	}
-+	bdev->bd_fsfreeze_count++;
- 
- 	down(&bdev->bd_mount_sem);
- 	sb = get_super(bdev);
-@@ -213,11 +228,24 @@ struct super_block *freeze_bdev(struct b
+@@ -213,8 +213,8 @@ struct super_block *freeze_bdev(struct b
  
  		sync_blockdev(sb->s_bdev);
  
--		if (sb->s_op->freeze_fs)
--			sb->s_op->freeze_fs(sb);
-+		if (sb->s_op->freeze_fs) {
-+			error = sb->s_op->freeze_fs(sb);
-+			if (error) {
-+				printk(KERN_ERR
-+					"VFS:Filesystem freeze failed\n");
-+				sb->s_frozen = SB_UNFROZEN;
-+				drop_super(sb);
-+				up(&bdev->bd_mount_sem);
-+				bdev->bd_fsfreeze_count--;
-+				mutex_unlock(&bdev->bd_fsfreeze_mutex);
-+				return ERR_PTR(error);
-+			}
-+		}
+-		if (sb->s_op->write_super_lockfs)
+-			sb->s_op->write_super_lockfs(sb);
++		if (sb->s_op->freeze_fs)
++			sb->s_op->freeze_fs(sb);
  	}
  
  	sync_blockdev(bdev);
-+	mutex_unlock(&bdev->bd_fsfreeze_mutex);
-+
- 	return sb;	/* thaw_bdev releases s->s_umount and bd_mount_sem */
- }
- EXPORT_SYMBOL(freeze_bdev);
-@@ -229,20 +257,48 @@ EXPORT_SYMBOL(freeze_bdev);
-  *
-  * Unlocks the filesystem and marks it writeable again after freeze_bdev().
-  */
--void thaw_bdev(struct block_device *bdev, struct super_block *sb)
-+int thaw_bdev(struct block_device *bdev, struct super_block *sb)
- {
-+	int error = 0;
-+
-+	mutex_lock(&bdev->bd_fsfreeze_mutex);
-+	if (!bdev->bd_fsfreeze_count) {
-+		mutex_unlock(&bdev->bd_fsfreeze_mutex);
-+		return -EINVAL;
-+	}
-+
-+	bdev->bd_fsfreeze_count--;
-+	if (bdev->bd_fsfreeze_count > 0) {
-+		if (sb)
-+			drop_super(sb);
-+		mutex_unlock(&bdev->bd_fsfreeze_mutex);
-+		return 0;
-+	}
-+
+@@ -234,8 +234,8 @@ void thaw_bdev(struct block_device *bdev
  	if (sb) {
  		BUG_ON(sb->s_bdev != bdev);
--
--		if (sb->s_op->unfreeze_fs)
--			sb->s_op->unfreeze_fs(sb);
--		sb->s_frozen = SB_UNFROZEN;
--		smp_wmb();
--		wake_up(&sb->s_wait_unfrozen);
-+		if (!(sb->s_flags & MS_RDONLY)) {
-+			if (sb->s_op->unfreeze_fs) {
-+				error = sb->s_op->unfreeze_fs(sb);
-+				if (error) {
-+					printk(KERN_ERR
-+						"VFS:Filesystem thaw failed\n");
-+					sb->s_frozen = SB_FREEZE_TRANS;
-+					bdev->bd_fsfreeze_count++;
-+					mutex_unlock(&bdev->bd_fsfreeze_mutex);
-+					return error;
-+				}
-+			}
-+			sb->s_frozen = SB_UNFROZEN;
-+			smp_wmb();
-+			wake_up(&sb->s_wait_unfrozen);
-+		}
- 		drop_super(sb);
+ 
+-		if (sb->s_op->unlockfs)
+-			sb->s_op->unlockfs(sb);
++		if (sb->s_op->unfreeze_fs)
++			sb->s_op->unfreeze_fs(sb);
+ 		sb->s_frozen = SB_UNFROZEN;
+ 		smp_wmb();
+ 		wake_up(&sb->s_wait_unfrozen);
+diff -puN fs/ext3/super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs fs/ext3/super.c
+--- a/fs/ext3/super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/fs/ext3/super.c
+@@ -48,8 +48,8 @@ static int ext3_load_journal(struct supe
+ 			     unsigned long journal_devnum);
+ static int ext3_create_journal(struct super_block *, struct ext3_super_block *,
+ 			       unsigned int);
+-static void ext3_commit_super (struct super_block * sb,
+-			       struct ext3_super_block * es,
++static int ext3_commit_super(struct super_block *sb,
++			       struct ext3_super_block *es,
+ 			       int sync);
+ static void ext3_mark_recovery_complete(struct super_block * sb,
+ 					struct ext3_super_block * es);
+@@ -60,9 +60,9 @@ static const char *ext3_decode_error(str
+ 				     char nbuf[16]);
+ static int ext3_remount (struct super_block * sb, int * flags, char * data);
+ static int ext3_statfs (struct dentry * dentry, struct kstatfs * buf);
+-static void ext3_unlockfs(struct super_block *sb);
++static int ext3_unfreeze(struct super_block *sb);
+ static void ext3_write_super (struct super_block * sb);
+-static void ext3_write_super_lockfs(struct super_block *sb);
++static int ext3_freeze(struct super_block *sb);
+ 
+ /*
+  * Wrappers for journal_start/end.
+@@ -736,8 +736,8 @@ static const struct super_operations ext
+ 	.put_super	= ext3_put_super,
+ 	.write_super	= ext3_write_super,
+ 	.sync_fs	= ext3_sync_fs,
+-	.write_super_lockfs = ext3_write_super_lockfs,
+-	.unlockfs	= ext3_unlockfs,
++	.freeze_fs	= ext3_freeze,
++	.unfreeze_fs	= ext3_unfreeze,
+ 	.statfs		= ext3_statfs,
+ 	.remount_fs	= ext3_remount,
+ 	.clear_inode	= ext3_clear_inode,
+@@ -2283,21 +2283,23 @@ static int ext3_create_journal(struct su
+ 	return 0;
+ }
+ 
+-static void ext3_commit_super (struct super_block * sb,
+-			       struct ext3_super_block * es,
++static int ext3_commit_super(struct super_block *sb,
++			       struct ext3_super_block *es,
+ 			       int sync)
+ {
+ 	struct buffer_head *sbh = EXT3_SB(sb)->s_sbh;
++	int error = 0;
+ 
+ 	if (!sbh)
+-		return;
++		return error;
+ 	es->s_wtime = cpu_to_le32(get_seconds());
+ 	es->s_free_blocks_count = cpu_to_le32(ext3_count_free_blocks(sb));
+ 	es->s_free_inodes_count = cpu_to_le32(ext3_count_free_inodes(sb));
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	mark_buffer_dirty(sbh);
+ 	if (sync)
+-		sync_dirty_buffer(sbh);
++		error = sync_dirty_buffer(sbh);
++	return error;
+ }
+ 
+ 
+@@ -2415,12 +2417,14 @@ static int ext3_sync_fs(struct super_blo
+  * LVM calls this function before a (read-only) snapshot is created.  This
+  * gives us a chance to flush the journal completely and mark the fs clean.
+  */
+-static void ext3_write_super_lockfs(struct super_block *sb)
++static int ext3_freeze(struct super_block *sb)
+ {
++	int error = 0;
++	journal_t *journal;
+ 	sb->s_dirt = 0;
+ 
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+-		journal_t *journal = EXT3_SB(sb)->s_journal;
++		journal = EXT3_SB(sb)->s_journal;
+ 
+ 		/* Now we set up the journal barrier. */
+ 		journal_lock_updates(journal);
+@@ -2429,20 +2433,28 @@ static void ext3_write_super_lockfs(stru
+ 		 * We don't want to clear needs_recovery flag when we failed
+ 		 * to flush the journal.
+ 		 */
+-		if (journal_flush(journal) < 0)
+-			return;
++		error = journal_flush(journal);
++		if (error < 0)
++			goto out;
+ 
+ 		/* Journal blocked and flushed, clear needs_recovery flag. */
+ 		EXT3_CLEAR_INCOMPAT_FEATURE(sb, EXT3_FEATURE_INCOMPAT_RECOVER);
+-		ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
++		error = ext3_commit_super(sb, EXT3_SB(sb)->s_es, 1);
++		if (error)
++			goto out;
+ 	}
++	return 0;
++
++out:
++	journal_unlock_updates(journal);
++	return error;
+ }
+ 
+ /*
+  * Called by LVM after the snapshot is done.  We need to reset the RECOVER
+  * flag here, even though the filesystem is not technically dirty yet.
+  */
+-static void ext3_unlockfs(struct super_block *sb)
++static int ext3_unfreeze(struct super_block *sb)
+ {
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+ 		lock_super(sb);
+@@ -2452,6 +2464,7 @@ static void ext3_unlockfs(struct super_b
+ 		unlock_super(sb);
+ 		journal_unlock_updates(EXT3_SB(sb)->s_journal);
+ 	}
++	return 0;
+ }
+ 
+ static int ext3_remount (struct super_block * sb, int * flags, char * data)
+diff -puN fs/ext4/super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs fs/ext4/super.c
+--- a/fs/ext4/super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/fs/ext4/super.c
+@@ -53,7 +53,7 @@ static int ext4_load_journal(struct supe
+ 			     unsigned long journal_devnum);
+ static int ext4_create_journal(struct super_block *, struct ext4_super_block *,
+ 			       unsigned int);
+-static void ext4_commit_super(struct super_block *sb,
++static int ext4_commit_super(struct super_block *sb,
+ 			      struct ext4_super_block *es, int sync);
+ static void ext4_mark_recovery_complete(struct super_block *sb,
+ 					struct ext4_super_block *es);
+@@ -64,9 +64,9 @@ static const char *ext4_decode_error(str
+ 				     char nbuf[16]);
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
+-static void ext4_unlockfs(struct super_block *sb);
++static int ext4_unfreeze(struct super_block *sb);
+ static void ext4_write_super(struct super_block *sb);
+-static void ext4_write_super_lockfs(struct super_block *sb);
++static int ext4_freeze(struct super_block *sb);
+ 
+ 
+ ext4_fsblk_t ext4_block_bitmap(struct super_block *sb,
+@@ -826,8 +826,8 @@ static const struct super_operations ext
+ 	.put_super	= ext4_put_super,
+ 	.write_super	= ext4_write_super,
+ 	.sync_fs	= ext4_sync_fs,
+-	.write_super_lockfs = ext4_write_super_lockfs,
+-	.unlockfs	= ext4_unlockfs,
++	.freeze_fs	= ext4_freeze,
++	.unfreeze_fs	= ext4_unfreeze,
+ 	.statfs		= ext4_statfs,
+ 	.remount_fs	= ext4_remount,
+ 	.clear_inode	= ext4_clear_inode,
+@@ -2759,13 +2759,14 @@ static int ext4_create_journal(struct su
+ 	return 0;
+ }
+ 
+-static void ext4_commit_super(struct super_block *sb,
++static int ext4_commit_super(struct super_block *sb,
+ 			      struct ext4_super_block *es, int sync)
+ {
+ 	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
++	int error = 0;
+ 
+ 	if (!sbh)
+-		return;
++		return error;
+ 	if (buffer_write_io_error(sbh)) {
+ 		/*
+ 		 * Oh, dear.  A previous attempt to write the
+@@ -2786,14 +2787,19 @@ static void ext4_commit_super(struct sup
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	mark_buffer_dirty(sbh);
+ 	if (sync) {
+-		sync_dirty_buffer(sbh);
+-		if (buffer_write_io_error(sbh)) {
++		error = sync_dirty_buffer(sbh);
++		if (error)
++			return error;
++
++		error = buffer_write_io_error(sbh);
++		if (error) {
+ 			printk(KERN_ERR "ext4: I/O error while writing "
+ 			       "superblock for %s.\n", sb->s_id);
+ 			clear_buffer_write_io_error(sbh);
+ 			set_buffer_uptodate(sbh);
+ 		}
+ 	}
++	return error;
+ }
+ 
+ 
+@@ -2912,12 +2918,14 @@ static int ext4_sync_fs(struct super_blo
+  * LVM calls this function before a (read-only) snapshot is created.  This
+  * gives us a chance to flush the journal completely and mark the fs clean.
+  */
+-static void ext4_write_super_lockfs(struct super_block *sb)
++static int ext4_freeze(struct super_block *sb)
+ {
++	int error = 0;
++	journal_t *journal;
+ 	sb->s_dirt = 0;
+ 
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+-		journal_t *journal = EXT4_SB(sb)->s_journal;
++		journal = EXT4_SB(sb)->s_journal;
+ 
+ 		/* Now we set up the journal barrier. */
+ 		jbd2_journal_lock_updates(journal);
+@@ -2926,20 +2934,28 @@ static void ext4_write_super_lockfs(stru
+ 		 * We don't want to clear needs_recovery flag when we failed
+ 		 * to flush the journal.
+ 		 */
+-		if (jbd2_journal_flush(journal) < 0)
+-			return;
++		error = jbd2_journal_flush(journal);
++		if (error < 0)
++			goto out;
+ 
+ 		/* Journal blocked and flushed, clear needs_recovery flag. */
+ 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-		ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
++		error = ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
++		if (error)
++			goto out;
+ 	}
++	return 0;
++
++out:
++	jbd2_journal_unlock_updates(journal);
++	return error;
+ }
+ 
+ /*
+  * Called by LVM after the snapshot is done.  We need to reset the RECOVER
+  * flag here, even though the filesystem is not technically dirty yet.
+  */
+-static void ext4_unlockfs(struct super_block *sb)
++static int ext4_unfreeze(struct super_block *sb)
+ {
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+ 		lock_super(sb);
+@@ -2949,6 +2965,7 @@ static void ext4_unlockfs(struct super_b
+ 		unlock_super(sb);
+ 		jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	}
++	return 0;
+ }
+ 
+ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+diff -puN fs/gfs2/ops_super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs fs/gfs2/ops_super.c
+--- a/fs/gfs2/ops_super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/fs/gfs2/ops_super.c
+@@ -214,18 +214,18 @@ static int gfs2_sync_fs(struct super_blo
+ }
+ 
+ /**
+- * gfs2_write_super_lockfs - prevent further writes to the filesystem
++ * gfs2_freeze - prevent further writes to the filesystem
+  * @sb: the VFS structure for the filesystem
+  *
+  */
+ 
+-static void gfs2_write_super_lockfs(struct super_block *sb)
++static int gfs2_freeze(struct super_block *sb)
+ {
+ 	struct gfs2_sbd *sdp = sb->s_fs_info;
+ 	int error;
+ 
+ 	if (test_bit(SDF_SHUTDOWN, &sdp->sd_flags))
+-		return;
++		return -EINVAL;
+ 
+ 	for (;;) {
+ 		error = gfs2_freeze_fs(sdp);
+@@ -245,17 +245,19 @@ static void gfs2_write_super_lockfs(stru
+ 		fs_err(sdp, "retrying...\n");
+ 		msleep(1000);
+ 	}
++	return 0;
+ }
+ 
+ /**
+- * gfs2_unlockfs - reallow writes to the filesystem
++ * gfs2_unfreeze - reallow writes to the filesystem
+  * @sb: the VFS structure for the filesystem
+  *
+  */
+ 
+-static void gfs2_unlockfs(struct super_block *sb)
++static int gfs2_unfreeze(struct super_block *sb)
+ {
+ 	gfs2_unfreeze_fs(sb->s_fs_info);
++	return 0;
+ }
+ 
+ /**
+@@ -563,8 +565,8 @@ const struct super_operations gfs2_super
+ 	.put_super		= gfs2_put_super,
+ 	.write_super		= gfs2_write_super,
+ 	.sync_fs		= gfs2_sync_fs,
+-	.write_super_lockfs 	= gfs2_write_super_lockfs,
+-	.unlockfs		= gfs2_unlockfs,
++	.freeze_fs 		= gfs2_freeze,
++	.unfreeze_fs		= gfs2_unfreeze,
+ 	.statfs			= gfs2_statfs,
+ 	.remount_fs		= gfs2_remount_fs,
+ 	.clear_inode		= gfs2_clear_inode,
+diff -puN fs/jfs/super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs fs/jfs/super.c
+--- a/fs/jfs/super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/fs/jfs/super.c
+@@ -543,7 +543,7 @@ out_kfree:
+ 	return ret;
+ }
+ 
+-static void jfs_write_super_lockfs(struct super_block *sb)
++static int jfs_freeze(struct super_block *sb)
+ {
+ 	struct jfs_sb_info *sbi = JFS_SBI(sb);
+ 	struct jfs_log *log = sbi->log;
+@@ -553,9 +553,10 @@ static void jfs_write_super_lockfs(struc
+ 		lmLogShutdown(log);
+ 		updateSuper(sb, FM_CLEAN);
+ 	}
++	return 0;
+ }
+ 
+-static void jfs_unlockfs(struct super_block *sb)
++static int jfs_unfreeze(struct super_block *sb)
+ {
+ 	struct jfs_sb_info *sbi = JFS_SBI(sb);
+ 	struct jfs_log *log = sbi->log;
+@@ -568,6 +569,7 @@ static void jfs_unlockfs(struct super_bl
+ 		else
+ 			txResume(sb);
+ 	}
++	return 0;
+ }
+ 
+ static int jfs_get_sb(struct file_system_type *fs_type,
+@@ -735,8 +737,8 @@ static const struct super_operations jfs
+ 	.delete_inode	= jfs_delete_inode,
+ 	.put_super	= jfs_put_super,
+ 	.sync_fs	= jfs_sync_fs,
+-	.write_super_lockfs = jfs_write_super_lockfs,
+-	.unlockfs       = jfs_unlockfs,
++	.freeze_fs	= jfs_freeze,
++	.unfreeze_fs	= jfs_unfreeze,
+ 	.statfs		= jfs_statfs,
+ 	.remount_fs	= jfs_remount,
+ 	.show_options	= jfs_show_options,
+diff -puN fs/reiserfs/super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs fs/reiserfs/super.c
+--- a/fs/reiserfs/super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/fs/reiserfs/super.c
+@@ -83,7 +83,7 @@ static void reiserfs_write_super(struct 
+ 	reiserfs_sync_fs(s, 1);
+ }
+ 
+-static void reiserfs_write_super_lockfs(struct super_block *s)
++static int reiserfs_freeze(struct super_block *s)
+ {
+ 	struct reiserfs_transaction_handle th;
+ 	reiserfs_write_lock(s);
+@@ -101,11 +101,13 @@ static void reiserfs_write_super_lockfs(
+ 	}
+ 	s->s_dirt = 0;
+ 	reiserfs_write_unlock(s);
++	return 0;
+ }
+ 
+-static void reiserfs_unlockfs(struct super_block *s)
++static int reiserfs_unfreeze(struct super_block *s)
+ {
+ 	reiserfs_allow_writes(s);
++	return 0;
+ }
+ 
+ extern const struct in_core_key MAX_IN_CORE_KEY;
+@@ -613,8 +615,8 @@ static const struct super_operations rei
+ 	.put_super = reiserfs_put_super,
+ 	.write_super = reiserfs_write_super,
+ 	.sync_fs = reiserfs_sync_fs,
+-	.write_super_lockfs = reiserfs_write_super_lockfs,
+-	.unlockfs = reiserfs_unlockfs,
++	.freeze_fs = reiserfs_freeze,
++	.unfreeze_fs = reiserfs_unfreeze,
+ 	.statfs = reiserfs_statfs,
+ 	.remount_fs = reiserfs_remount,
+ 	.show_options = generic_show_options,
+diff -puN fs/xfs/linux-2.6/xfs_super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs fs/xfs/linux-2.6/xfs_super.c
+--- a/fs/xfs/linux-2.6/xfs_super.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/fs/xfs/linux-2.6/xfs_super.c
+@@ -1269,14 +1269,14 @@ xfs_fs_remount(
+  * need to take care of the metadata. Once that's done write a dummy
+  * record to dirty the log in case of a crash while frozen.
+  */
+-STATIC void
+-xfs_fs_lockfs(
++STATIC int
++xfs_fs_freeze(
+ 	struct super_block	*sb)
+ {
+ 	struct xfs_mount	*mp = XFS_M(sb);
+ 
+ 	xfs_quiesce_attr(mp);
+-	xfs_fs_log_dummy(mp);
++	return -xfs_fs_log_dummy(mp);
+ }
+ 
+ STATIC int
+@@ -1597,7 +1597,7 @@ static struct super_operations xfs_super
+ 	.put_super		= xfs_fs_put_super,
+ 	.write_super		= xfs_fs_write_super,
+ 	.sync_fs		= xfs_fs_sync_super,
+-	.write_super_lockfs	= xfs_fs_lockfs,
++	.freeze_fs		= xfs_fs_freeze,
+ 	.statfs			= xfs_fs_statfs,
+ 	.remount_fs		= xfs_fs_remount,
+ 	.show_options		= xfs_fs_show_options,
+diff -puN fs/xfs/xfs_fsops.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs fs/xfs/xfs_fsops.c
+--- a/fs/xfs/xfs_fsops.c~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/fs/xfs/xfs_fsops.c
+@@ -589,17 +589,19 @@ out:
+ 	return 0;
+ }
+ 
+-void
++int
+ xfs_fs_log_dummy(
+ 	xfs_mount_t	*mp)
+ {
+ 	xfs_trans_t	*tp;
+ 	xfs_inode_t	*ip;
++	int		error;
+ 
+ 	tp = _xfs_trans_alloc(mp, XFS_TRANS_DUMMY1);
+-	if (xfs_trans_reserve(tp, 0, XFS_ICHANGE_LOG_RES(mp), 0, 0, 0)) {
++	error = xfs_trans_reserve(tp, 0, XFS_ICHANGE_LOG_RES(mp), 0, 0, 0);
++	if (error) {
+ 		xfs_trans_cancel(tp, 0);
+-		return;
++		return error;
  	}
  
- 	up(&bdev->bd_mount_sem);
-+	mutex_unlock(&bdev->bd_fsfreeze_mutex);
-+	return 0;
- }
- EXPORT_SYMBOL(thaw_bdev);
+ 	ip = mp->m_rootip;
+@@ -609,9 +611,10 @@ xfs_fs_log_dummy(
+ 	xfs_trans_ihold(tp, ip);
+ 	xfs_trans_log_inode(tp, ip, XFS_ILOG_CORE);
+ 	xfs_trans_set_sync(tp);
+-	xfs_trans_commit(tp, 0);
++	error = xfs_trans_commit(tp, 0);
  
-diff -puN fs/ioctl.c~filesystem-freeze-implement-generic-freeze-feature fs/ioctl.c
---- a/fs/ioctl.c~filesystem-freeze-implement-generic-freeze-feature
-+++ a/fs/ioctl.c
-@@ -441,6 +441,43 @@ static int ioctl_fioasync(unsigned int f
- 	return error;
+ 	xfs_iunlock(ip, XFS_ILOCK_EXCL);
++	return error;
  }
  
-+static int ioctl_fsfreeze(struct file *filp)
-+{
-+	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
-+
-+	if (!capable(CAP_SYS_ADMIN))
-+		return -EPERM;
-+
-+	/* If filesystem doesn't support freeze feature, return. */
-+	if (sb->s_op->freeze_fs == NULL)
-+		return -EOPNOTSUPP;
-+
-+	/* If a blockdevice-backed filesystem isn't specified, return. */
-+	if (sb->s_bdev == NULL)
-+		return -EINVAL;
-+
-+	/* Freeze */
-+	sb = freeze_bdev(sb->s_bdev);
-+	if (IS_ERR(sb))
-+		return PTR_ERR(sb);
-+	return 0;
-+}
-+
-+static int ioctl_fsthaw(struct file *filp)
-+{
-+	struct super_block *sb = filp->f_path.dentry->d_inode->i_sb;
-+
-+	if (!capable(CAP_SYS_ADMIN))
-+		return -EPERM;
-+
-+	/* If a blockdevice-backed filesystem isn't specified, return EINVAL. */
-+	if (sb->s_bdev == NULL)
-+		return -EINVAL;
-+
-+	/* Thaw */
-+	return thaw_bdev(sb->s_bdev, sb);
-+}
-+
- /*
-  * When you add any new common ioctls to the switches above and below
-  * please update compat_sys_ioctl() too.
-@@ -482,6 +519,15 @@ int do_vfs_ioctl(struct file *filp, unsi
- 		} else
- 			error = -ENOTTY;
- 		break;
-+
-+	case FIFREEZE:
-+		error = ioctl_fsfreeze(filp);
-+		break;
-+
-+	case FITHAW:
-+		error = ioctl_fsthaw(filp);
-+		break;
-+
- 	default:
- 		if (S_ISREG(filp->f_path.dentry->d_inode->i_mode))
- 			error = file_ioctl(filp, cmd, arg);
-diff -puN include/linux/buffer_head.h~filesystem-freeze-implement-generic-freeze-feature include/linux/buffer_head.h
---- a/include/linux/buffer_head.h~filesystem-freeze-implement-generic-freeze-feature
-+++ a/include/linux/buffer_head.h
-@@ -170,7 +170,7 @@ void __wait_on_buffer(struct buffer_head
- wait_queue_head_t *bh_waitq_head(struct buffer_head *bh);
- int fsync_bdev(struct block_device *);
- struct super_block *freeze_bdev(struct block_device *);
--void thaw_bdev(struct block_device *, struct super_block *);
-+int thaw_bdev(struct block_device *, struct super_block *);
- int fsync_super(struct super_block *);
- int fsync_no_super(struct block_device *);
- struct buffer_head *__find_get_block(struct block_device *bdev, sector_t block,
-diff -puN include/linux/fs.h~filesystem-freeze-implement-generic-freeze-feature include/linux/fs.h
---- a/include/linux/fs.h~filesystem-freeze-implement-generic-freeze-feature
+ int
+diff -puN fs/xfs/xfs_fsops.h~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs fs/xfs/xfs_fsops.h
+--- a/fs/xfs/xfs_fsops.h~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
++++ a/fs/xfs/xfs_fsops.h
+@@ -25,6 +25,6 @@ extern int xfs_fs_counts(xfs_mount_t *mp
+ extern int xfs_reserve_blocks(xfs_mount_t *mp, __uint64_t *inval,
+ 				xfs_fsop_resblks_t *outval);
+ extern int xfs_fs_goingdown(xfs_mount_t *mp, __uint32_t inflags);
+-extern void xfs_fs_log_dummy(xfs_mount_t *mp);
++extern int xfs_fs_log_dummy(xfs_mount_t *mp);
+ 
+ #endif	/* __XFS_FSOPS_H__ */
+diff -puN include/linux/fs.h~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs include/linux/fs.h
+--- a/include/linux/fs.h~filesystem-freeze-add-error-handling-of-write_super_lockfs-unlockfs
 +++ a/include/linux/fs.h
-@@ -225,6 +225,8 @@ struct inodes_stat_t {
- #define BMAP_IOCTL 1		/* obsolete - kept for compatibility */
- #define FIBMAP	   _IO(0x00,1)	/* bmap access */
- #define FIGETBSZ   _IO(0x00,2)	/* get the block size used for bmap */
-+#define FIFREEZE	_IOWR('X', 119, int)	/* Freeze */
-+#define FITHAW		_IOWR('X', 120, int)	/* Thaw */
- 
- #define	FS_IOC_GETFLAGS			_IOR('f', 1, long)
- #define	FS_IOC_SETFLAGS			_IOW('f', 2, long)
-@@ -578,6 +580,11 @@ struct block_device {
- 	 * care to not mess up bd_private for that case.
- 	 */
- 	unsigned long		bd_private;
-+
-+	/* The counter of freeze processes */
-+	int			bd_fsfreeze_count;
-+	/* Mutex for freeze */
-+	struct mutex		bd_fsfreeze_mutex;
- };
- 
- /*
+@@ -1362,8 +1362,8 @@ struct super_operations {
+ 	void (*put_super) (struct super_block *);
+ 	void (*write_super) (struct super_block *);
+ 	int (*sync_fs)(struct super_block *sb, int wait);
+-	void (*write_super_lockfs) (struct super_block *);
+-	void (*unlockfs) (struct super_block *);
++	int (*freeze_fs) (struct super_block *);
++	int (*unfreeze_fs) (struct super_block *);
+ 	int (*statfs) (struct dentry *, struct kstatfs *);
+ 	int (*remount_fs) (struct super_block *, int *, char *);
+ 	void (*clear_inode) (struct inode *);
 _
 
 Patches currently in -mm which might be from t-sato@yk.jp.nec.com are
