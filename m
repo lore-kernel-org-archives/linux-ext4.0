@@ -1,71 +1,75 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH, RFC] jbd2: Call the commit callback before the transaction
- could get dropped
-Date: Mon, 27 Oct 2008 21:41:36 -0500
-Message-ID: <49067BE0.8090904@redhat.com>
-References: <1224612181.19719.20.camel@paris-laptop> <20081027181928.GB23111@mit.edu> <49064027.9010509@redhat.com> <20081027232843.GA9797@mit.edu> <49065805.1080303@redhat.com> <20081028015228.GA8320@mit.edu> <20081028022838.GA8869@mit.edu>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [RFC][PATCH] JBD: release checkpoint journal heads through try_to_release_page
+ when the memory is exhausted
+Date: Tue, 28 Oct 2008 11:46:27 +0900
+Message-ID: <49067D03.6080609@jp.fujitsu.com>
+References: <20081017.223716.147444348.00960188@stratos.soft.fujitsu.com>	<20081020160249.ff41f762.akpm@linux-foundation.org>	<20081023174101.85b59177.toshi.okajima@jp.fujitsu.com> <20081027142657.2120aa3f.akpm@linux-foundation.org>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Eric Paris <eparis@redhat.com>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35145 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751233AbYJ1CmA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Oct 2008 22:42:00 -0400
-In-Reply-To: <20081028022838.GA8869@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: linux-ext4@vger.kernel.org, sct@redhat.com,
+	linux-fsdevel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081027142657.2120aa3f.akpm@linux-foundation.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
-> This is what I plan to send to Linus to fix the problem.
-> 
-> commit 6fecbc3c7d27800e90a5f5fbca2fb2847e2c2854
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date:   Mon Oct 27 22:11:39 2008 -0400
-> 
->     jbd2: Call the commit callback before the transaction could get dropped
->     
->     The transaction can potentially get dropped if there are no buffers
->     that need to be written.  Make sure we call the commit callback before
->     potentially deciding to drop the transaction.  Also avoid
->     dereferencing the commit_transaction pointer in the marker for the
->     same reason.
->     
->     This patch fixes the bug reported by Eric Paris at:
->     http://bugzilla.kernel.org/show_bug.cgi?id=11838
->     
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Hi Andrew.
+Thank you for your useful comment.
 
-Acked-by: Eric Sandeen <sandeen@redhat.com>
+Andrew Morton wrote:
+ > (added linux-fsdevel)
+ >
+ > On Thu, 23 Oct 2008 17:41:01 +0900
+ > Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
+<SNIP>
+ > > I managed to build a shrinker callback function for the journal_head slab cache.
+ > > > This code size is less than before but the logic of it seems to be more complex
+ > > >  than before.
+ > > > However, I haven't got any troubles while I am testing some easy load operations
+ > > > on the fixed kernel.
+ > > > But I think a system may hang up if concurrently several journal_head shrinker
+ > > > are executed.
+ > > > So, I will retry to build more appropriate fix.
+ >
+ > yeah, that's not very pretty either, is it?
+Yes...
+I realized fixing only within buffer_head or jbd needs a more complex code.
 
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 8b119e1..ebc667b 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -974,6 +974,9 @@ restart_loop:
->  	journal->j_committing_transaction = NULL;
->  	spin_unlock(&journal->j_state_lock);
->  
-> +	if (journal->j_commit_callback)
-> +		journal->j_commit_callback(journal, commit_transaction);
-> +
->  	if (commit_transaction->t_checkpoint_list == NULL &&
->  	    commit_transaction->t_checkpoint_io_list == NULL) {
->  		__jbd2_journal_drop_transaction(journal, commit_transaction);
-> @@ -995,11 +998,8 @@ restart_loop:
->  	}
->  	spin_unlock(&journal->j_list_lock);
->  
-> -	if (journal->j_commit_callback)
-> -		journal->j_commit_callback(journal, commit_transaction);
-> -
->  	trace_mark(jbd2_end_commit, "dev %s transaction %d head %d",
-> -		   journal->j_devname, commit_transaction->t_tid,
-> +		   journal->j_devname, journal->j_commit_sequence,
->  		   journal->j_tail_sequence);
->  	jbd_debug(1, "JBD: commit %d complete, head %d\n",
->  		  journal->j_commit_sequence, journal->j_tail_sequence);
+ > > > Please give me comments if you have a nicer idea.
+ > Stepping back a bit...
+ >
+ > The basic problem is, I believe, that some client of the blockdev
+ > (ext3) is adding metadata to the blockdev's data structures
+ > (buffer_heads) but we have no means by which the blockdev code can call
+ > back into that client requesting that the metadata be released, yes?
+Yes.
+
+ > We can fix the problem which you've identified by adding a means for
+ > the blockdev code (def_blk_aops.releasepage()) to call back into ext3,
+ > yes?
+Yes.
+
+At first, I tried to fix by using only filesystem approach.
+  - ver.1: fixing in buffer_head
+  - ver.2: adding shrinker of journal_head (for releasing buffer_head)
+But these approaches become complex code.
+So, we should fix the essence of the problem.
+
+ > If so, how do we do that?
+ >
+ > I seem to recall that there's code somewhere in the tree which does
+ > things like taking a copy of bdev->address_space_operations and
+ > reinstalling that, and overwriting selected fields, and then arranging
+ > somehow for the old value to be reinstalled when the client releases
+ > the blockdev.  That's plain nasty.
+uh-huh.
+
+I try to fix this problem again by using your approach,
+blkdev_register_releasepage/blkdev_unregister_releasepage().
+
+Best Regards,
+Toshiyuki Okajima
 
