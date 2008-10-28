@@ -1,71 +1,50 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH,RFC] ext3: Add support for non-native signed/unsigned
-	htree hash algorithms
-Date: Tue, 28 Oct 2008 10:24:58 -0400
-Message-ID: <20081028142458.GC8869@mit.edu>
-References: <1224560624-9691-1-git-send-email-tytso@mit.edu> <1224560624-9691-2-git-send-email-tytso@mit.edu> <20081022172221.c1a8c5b5.akpm@linux-foundation.org> <20081023025646.GD10369@mit.edu> <20081023192618.GS3184@webber.adilger.int>
+From: Eric Paris <eparis@redhat.com>
+Subject: Re: [PATCH, RFC] jbd2: Call the commit callback before the
+ transaction could get dropped
+Date: Tue, 28 Oct 2008 09:46:05 -0400
+Message-ID: <1225201565.7743.2.camel@localhost.localdomain>
+References: <1224612181.19719.20.camel@paris-laptop>
+	 <20081027181928.GB23111@mit.edu> <49064027.9010509@redhat.com>
+	 <20081027232843.GA9797@mit.edu> <49065805.1080303@redhat.com>
+	 <20081028015228.GA8320@mit.edu> <20081028022838.GA8869@mit.edu>
+	 <49067BE0.8090904@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	tony.luck@intel.com
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58401 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751341AbYJ1OZD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Oct 2008 10:25:03 -0400
-Content-Disposition: inline
-In-Reply-To: <20081023192618.GS3184@webber.adilger.int>
+Received: from mx2.redhat.com ([66.187.237.31]:33769 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752557AbYJ1O3u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Oct 2008 10:29:50 -0400
+In-Reply-To: <49067BE0.8090904@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've added Tony Luck to the CC list since as the Itanium maintainer,
-he's most likely to be able to speak to both cross compilation issues
-especially as it relates to the Intel Compiler....
+On Mon, 2008-10-27 at 21:41 -0500, Eric Sandeen wrote:
+> Theodore Tso wrote:
+> > This is what I plan to send to Linus to fix the problem.
+> > 
+> > commit 6fecbc3c7d27800e90a5f5fbca2fb2847e2c2854
+> > Author: Theodore Ts'o <tytso@mit.edu>
+> > Date:   Mon Oct 27 22:11:39 2008 -0400
+> > 
+> >     jbd2: Call the commit callback before the transaction could get dropped
+> >     
+> >     The transaction can potentially get dropped if there are no buffers
+> >     that need to be written.  Make sure we call the commit callback before
+> >     potentially deciding to drop the transaction.  Also avoid
+> >     dereferencing the commit_transaction pointer in the marker for the
+> >     same reason.
+> >     
+> >     This patch fixes the bug reported by Eric Paris at:
+> >     http://bugzilla.kernel.org/show_bug.cgi?id=11838
+> >     
+> >     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
+> Acked-by: Eric Sandeen <sandeen@redhat.com>
 
-Tony, Andrew has requested I clean up this compile-time test to
-determine whether variables of type char are signed or unsigned:
+Tested-by: Eric Paris <eparis@redhat.com>
 
-	char c;
-	...
-	c = (char) 255;
-	if (((int) c) == -1) {
-		...
-	}
-
-... since it results in this annoying gcc warning:
-
-> fs/ext3/super.c:1750: warning: comparison is always false due to limited range of data type
-
-Two possible solutions which come to mind is to use the C preprocessor
-macros CHAR_MIN/CHAR_MAX as defined in limits.h, or to use
-__CHAR_UNSIGNED__ which is defined by gcc on platforms where char's
-are unsigned (or if the gcc option --funsigned-char is given).  
-
-I believe at this point, it's settled that either of the above
-solutions should do the right thing for gcc, either in
-cross-compilation environments, or natively.  (I prefer
-__CHAR_UNSIGNED__ since it doesn't depend on the userspace header
-files, which might be screwy on some distributions, and depending on a
-macro set by gcc seems much more robust in cross-compilation
-environments.)
-
-The question is whether this solution is likely to work on the Intel C
-compiler.  My understanding is that a kernel compiled with gcc is
-pathetically slow on the Itanic (not to mention taking aeons to
-compile), and so there has always been a desire to make sure that the
-Linux Kernel will compile on the Intel C compiler, at least for the
-Intanium platform.  Do you know if icc will do the right thing as far
-as defining __CHAR_UNSIGNED__ if necessary?  
-
-I don't even know if the Itanium is one of those wierd-sh*t platforms
-that tried to make char's unsigned, one of those really horrific
-design decisions perpetrated by the Arm and PowerPC platforms since it
-tends to break compatibility with K&R C which doesn't even have a
-signed keyword (and for which char's were always signed).  If it's one
-of the sane platforms, then this might not matter so much.
-
-Thanks,
-
-							- Ted
