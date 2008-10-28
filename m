@@ -1,36 +1,80 @@
-From: Theodore Tso <tytso@mit.edu>
+From: "Mike Snitzer" <snitzer@gmail.com>
 Subject: Re: why unlikely(rsv) in ext3_clear_inode()?
-Date: Mon, 27 Oct 2008 20:13:40 -0400
-Message-ID: <20081028001340.GB9797@mit.edu>
-References: <170fa0d20810271529g3c64ae89me29ed8b65a9c3b5e@mail.gmail.com> <alpine.DEB.1.10.0810271918390.19731@gandalf.stny.rr.com>
+Date: Mon, 27 Oct 2008 20:14:18 -0400
+Message-ID: <170fa0d20810271714l1a51a462o65bdf1fee255d952@mail.gmail.com>
+References: <170fa0d20810271529g3c64ae89me29ed8b65a9c3b5e@mail.gmail.com>
+	 <alpine.DEB.1.10.0810271918390.19731@gandalf.stny.rr.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mike Snitzer <snitzer@gmail.com>, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Steven Rostedt <rostedt@goodmis.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org,
+	"Andrew Morton" <akpm@linux-foundation.org>
+To: "Steven Rostedt" <rostedt@goodmis.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:57905 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751912AbYJ1ANn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Oct 2008 20:13:43 -0400
-Content-Disposition: inline
+Received: from ik-out-1112.google.com ([66.249.90.178]:55503 "EHLO
+	ik-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751977AbYJ1AOU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Oct 2008 20:14:20 -0400
+Received: by ik-out-1112.google.com with SMTP id c29so578742ika.5
+        for <linux-ext4@vger.kernel.org>; Mon, 27 Oct 2008 17:14:18 -0700 (PDT)
 In-Reply-To: <alpine.DEB.1.10.0810271918390.19731@gandalf.stny.rr.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Oct 27, 2008 at 07:32:11PM -0400, Steven Rostedt wrote:
+On Mon, Oct 27, 2008 at 7:32 PM, Steven Rostedt <rostedt@goodmis.org> wrote:
+>
+> On Mon, 27 Oct 2008, Mike Snitzer wrote:
+>
+>> Please see: e6022603b9aa7d61d20b392e69edcdbbc1789969
+>>
+>> Having a look at the LKML archives this was raised back in 2006:
+>> http://lkml.org/lkml/2006/6/23/337
+>>
+>> I'm not interested in whether unlikely() actually helps here.
+>>
+>> I'm still missing _why_ rsv is mostly NULL at this callsite, as Andrew
+>> asserted here:
+>> http://lkml.org/lkml/2006/6/23/400
+>>
+>> And then Steve here: http://lkml.org/lkml/2006/6/24/76
+>> Where he said:
+>> "The problem is that in these cases the pointer is NULL several thousands
+>> of times for every time it is not NULL (if ever).  The non-NULL case is
+>> where an error occurred or something very special.  So I don't see how
+>> the if here is a problem?"
+>>
+>> I'm missing which error or what "something very special" is the
+>> unlikely() reason for having rsv be NULL.
+>>
+>> Looking at the code; ext3_clear_inode() is _the_ place where the
+>> i_block_alloc_info is cleaned up.  In my testing the rsv is _never_
+>> NULL if the file was open for writing.  Are we saying that reads are
+>> much more common than writes?  May be a reasonable assumption but
+>> saying as much is very different than what Steve seemed to be eluding
+>> to...
+>>
+>> Anyway, I'd appreciate some clarification here.
+>
 > Attached is a patch that I used for counting.
-> 
+>
 > Here's my results:
-> # cat /debug/tracing/ftrace_null 
+> # cat /debug/tracing/ftrace_null
 > 45
-> # cat /debug/tracing/ftrace_nonnull 
+> # cat /debug/tracing/ftrace_nonnull
 > 7
-> 
-> Ah, seems that there is cases where it is nonnull more often. Anyway, it 
-> obviously is not a fast path (total of 52). Even if it was all null, it is 
+>
+> Ah, seems that there is cases where it is nonnull more often. Anyway, it
+> obviously is not a fast path (total of 52). Even if it was all null, it is
 > not big enough to call for the confusion.
 
-Silly question --- what was your test workload?
+What was your workload that resulted in this break-down?  AFAIK you'd
+have 100% in ftrace_nonnull if you simply opened new files and wrote
+to them.
 
-							- Ted
+> I'd suggest removing the if conditional, and just calling kfree.
+
+Yes, probably.
+
+thanks,
+Mike
