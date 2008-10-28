@@ -1,75 +1,112 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [RFC][PATCH] JBD: release checkpoint journal heads through try_to_release_page
- when the memory is exhausted
-Date: Tue, 28 Oct 2008 11:46:27 +0900
-Message-ID: <49067D03.6080609@jp.fujitsu.com>
-References: <20081017.223716.147444348.00960188@stratos.soft.fujitsu.com>	<20081020160249.ff41f762.akpm@linux-foundation.org>	<20081023174101.85b59177.toshi.okajima@jp.fujitsu.com> <20081027142657.2120aa3f.akpm@linux-foundation.org>
-Reply-To: toshi.okajima@jp.fujitsu.com
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, sct@redhat.com,
-	linux-fsdevel@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20081027142657.2120aa3f.akpm@linux-foundation.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + ext3-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled.patch added to -mm tree
+Date: Mon, 27 Oct 2008 22:56:06 -0700
+Message-ID: <200810280556.m9S5u6Cb013416@imap1.linux-foundation.org>
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:33144 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752392AbYJ1F4k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Oct 2008 01:56:40 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andrew.
-Thank you for your useful comment.
 
-Andrew Morton wrote:
- > (added linux-fsdevel)
- >
- > On Thu, 23 Oct 2008 17:41:01 +0900
- > Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com> wrote:
-<SNIP>
- > > I managed to build a shrinker callback function for the journal_head slab cache.
- > > > This code size is less than before but the logic of it seems to be more complex
- > > >  than before.
- > > > However, I haven't got any troubles while I am testing some easy load operations
- > > > on the fixed kernel.
- > > > But I think a system may hang up if concurrently several journal_head shrinker
- > > > are executed.
- > > > So, I will retry to build more appropriate fix.
- >
- > yeah, that's not very pretty either, is it?
-Yes...
-I realized fixing only within buffer_head or jbd needs a more complex code.
+The patch titled
+     ext3: use sb_any_quota_loaded() instead of sb_any_quota_enabled()
+has been added to the -mm tree.  Its filename is
+     ext3-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled.patch
 
- > > > Please give me comments if you have a nicer idea.
- > Stepping back a bit...
- >
- > The basic problem is, I believe, that some client of the blockdev
- > (ext3) is adding metadata to the blockdev's data structures
- > (buffer_heads) but we have no means by which the blockdev code can call
- > back into that client requesting that the metadata be released, yes?
-Yes.
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
- > We can fix the problem which you've identified by adding a means for
- > the blockdev code (def_blk_aops.releasepage()) to call back into ext3,
- > yes?
-Yes.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-At first, I tried to fix by using only filesystem approach.
-  - ver.1: fixing in buffer_head
-  - ver.2: adding shrinker of journal_head (for releasing buffer_head)
-But these approaches become complex code.
-So, we should fix the essence of the problem.
+See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
+out what to do about this
 
- > If so, how do we do that?
- >
- > I seem to recall that there's code somewhere in the tree which does
- > things like taking a copy of bdev->address_space_operations and
- > reinstalling that, and overwriting selected fields, and then arranging
- > somehow for the old value to be reinstalled when the client releases
- > the blockdev.  That's plain nasty.
-uh-huh.
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-I try to fix this problem again by using your approach,
-blkdev_register_releasepage/blkdev_unregister_releasepage().
+------------------------------------------------------
+Subject: ext3: use sb_any_quota_loaded() instead of sb_any_quota_enabled()
+From: Jan Kara <jack@suse.cz>
 
-Best Regards,
-Toshiyuki Okajima
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/super.c |   12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
+
+diff -puN fs/ext3/super.c~ext3-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled
++++ a/fs/ext3/super.c
+@@ -1035,8 +1035,7 @@ static int parse_options (char *options,
+ 		case Opt_grpjquota:
+ 			qtype = GRPQUOTA;
+ set_qf_name:
+-			if ((sb_any_quota_enabled(sb) ||
+-			     sb_any_quota_suspended(sb)) &&
++			if (sb_any_quota_loaded(sb) &&
+ 			    !sbi->s_qf_names[qtype]) {
+ 				printk(KERN_ERR
+ 					"EXT3-fs: Cannot change journaled "
+@@ -1075,8 +1074,7 @@ set_qf_name:
+ 		case Opt_offgrpjquota:
+ 			qtype = GRPQUOTA;
+ clear_qf_name:
+-			if ((sb_any_quota_enabled(sb) ||
+-			     sb_any_quota_suspended(sb)) &&
++			if (sb_any_quota_loaded(sb) &&
+ 			    sbi->s_qf_names[qtype]) {
+ 				printk(KERN_ERR "EXT3-fs: Cannot change "
+ 					"journaled quota options when "
+@@ -1095,8 +1093,7 @@ clear_qf_name:
+ 		case Opt_jqfmt_vfsv0:
+ 			qfmt = QFMT_VFS_V0;
+ set_qf_format:
+-			if ((sb_any_quota_enabled(sb) ||
+-			     sb_any_quota_suspended(sb)) &&
++			if (sb_any_quota_loaded(sb) &&
+ 			    sbi->s_jquota_fmt != qfmt) {
+ 				printk(KERN_ERR "EXT3-fs: Cannot change "
+ 					"journaled quota options when "
+@@ -1115,8 +1112,7 @@ set_qf_format:
+ 			set_opt(sbi->s_mount_opt, GRPQUOTA);
+ 			break;
+ 		case Opt_noquota:
+-			if (sb_any_quota_enabled(sb) ||
+-			    sb_any_quota_suspended(sb)) {
++			if (sb_any_quota_loaded(sb)) {
+ 				printk(KERN_ERR "EXT3-fs: Cannot change quota "
+ 					"options when quota turned on.\n");
+ 				return 0;
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+linux-next.patch
+ext4-fix-a-bug-accessing-freed-memory-in-ext4_abort.patch
+ext3-fix-a-bug-accessing-freed-memory-in-ext3_abort.patch
+quota-add-callbacks-for-allocating-and-destroying-dquot-structures.patch
+quota-increase-size-of-variables-for-limits-and-inode-usage.patch
+quota-remove-bogus-optimization-in-check_idq-and-check_bdq.patch
+quota-make-_suspended-just-a-flag.patch
+quota-permit-separately-enabling-quota-accounting-and-enforcing-limits.patch
+ext3-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled.patch
+ext4-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled.patch
+reiserfs-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled.patch
+quota-remove-compatibility-function-sb_any_quota_enabled.patch
+quota-introduce-dquot_quota_sys_file-flag.patch
+quota-move-quotaio_vh-from-include-linux-to-fs.patch
+quota-split-off-quota-tree-handling-into-a-separate-file.patch
+quota-convert-union-in-mem_dqinfo-to-a-pointer.patch
+quota-convert-union-in-mem_dqinfo-to-a-pointer-cleanup.patch
+quota-support-64-bit-quota-format.patch
 
