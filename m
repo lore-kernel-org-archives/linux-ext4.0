@@ -1,98 +1,250 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Bugme-new] [Bug 11873] New: unable to mount ext3 root
- filesystem due to htree_dirblock_to_tree
-Date: Tue, 28 Oct 2008 10:31:22 -0700
-Message-ID: <20081028103122.728aa427.akpm@linux-foundation.org>
-References: <bug-11873-10286@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: bugme-daemon@bugzilla.kernel.org, Jimmy.Jazz@gmx.net
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH V2 2/2] ext4: Add support for non-native signed/unsigned htree hash algorithms
+Date: Tue, 28 Oct 2008 13:40:16 -0400
+Message-ID: <1225215616-6069-2-git-send-email-tytso@mit.edu>
+References: <1225215616-6069-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:48241 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754085AbYJ1Rb4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Oct 2008 13:31:56 -0400
-In-Reply-To: <bug-11873-10286@http.bugzilla.kernel.org/>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:46246 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752418AbYJ1RkS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Oct 2008 13:40:18 -0400
+In-Reply-To: <1225215616-6069-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+The original ext3 hash algorithms assumed that variables of type char
+were signed, as God and K&R intended.  Unfortunately, this assumption
+is not true on some architectures.  Userspace support for marking
+filesystems with non-native signed/unsigned chars was added two years
+ago, but the kernel-side support was never added (until now).
 
-(switched to email.  Please respond via emailed reply-to-all, not via the
-bugzilla web interface).
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h    |    3 ++
+ fs/ext4/ext4_sb.h |    1 +
+ fs/ext4/hash.c    |   77 ++++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/ext4/namei.c   |    7 +++++
+ fs/ext4/super.c   |   12 ++++++++
+ 5 files changed, 90 insertions(+), 10 deletions(-)
 
-On Tue, 28 Oct 2008 05:09:25 -0700 (PDT) bugme-daemon@bugzilla.kernel.org wrote:
-
-> http://bugzilla.kernel.org/show_bug.cgi?id=11873
-> 
->            Summary: unable to mount ext3 root filesystem due to
->                     htree_dirblock_to_tree
->            Product: File System
->            Version: 2.5
->      KernelVersion: 2.6.28 rcx git and vanilla trees
->           Platform: All
->         OS/Version: Linux
->               Tree: Mainline
->             Status: NEW
->           Severity: normal
->           Priority: P1
->          Component: ext3
->         AssignedTo: akpm@osdl.org
->         ReportedBy: Jimmy.Jazz@gmx.net
->                 CC: Jimmy.Jazz@gmx.net
-> 
-> 
-> Latest working kernel version:2.6.27.3
-> Earliest failing kernel version:2.6.28 rc1 git1
-> Distribution: gentoo
-> Hardware Environment: x86_64 amd
-> Software Environment: kernel + initramfs
-> Problem Description:
-> 
-> Since 2.6.28 mount command (busybox) is unable to mount the root file system.
-> The error returned is,
-> 
-> EXT3-fs error (device md_d0p2): htree_dirblock_to_tree: bad entry in directory
-> #2: rec_len % 4 != 0 - offset=0, inode=2109536318, rec_len=16058, name_len=111
-> 
-> (The figures could change)
-> 
-> 
-> To make it work, I need first to mount the file system as an ext2 file system,
-> unmount it and recall mount command with the -t ext3 option.
-> 
-> step 1:
-> mount -o ro /dev/md/d0p2 /new-root
-> (mount ok with flags ro,errors=continue)
-> ls /new-root
-> (ls without error)
-> umount /new-root
-> 
-> and then
-> 
-> step 2:
-> mount -t ext3 -o ro /dev/md/d0p2 /new-root
-> (mount ok with flags ro,errors=continue,data=ordered)
-> ls /new-root
-> (ls without error)
-> 
-> ext2,jbd,ext3,mbcache,crc32 are modules and are loaded from an initramfs file
-> system.
-> 
-> IMHO, it is a problem in mbcache or jbd.
-> 
-> Also, there is an other problem with that kernel. After creating the /dev node,
-> loading md_mod and raid1, mdassemble start as usual the md device, but the
-> mount command doesn't recognize the /dev node as valid and abort. 
-> I need to stop the md device that has been created earlier and reapply
-> mdassemble or mdadm --assemble --scan from initramfs file system. Afterwards
-> mount command is able to mount the file system but... like an ext2 file system.
-> I'm on step 2 again.
-> 
-> 
-> Steps to reproduce: reboot the kernel, load the initramfs file system and open
-> a shell just after the mount command has aborted.
-> 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b0537c8..8370ffd 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -891,6 +891,9 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len)
+ #define DX_HASH_LEGACY		0
+ #define DX_HASH_HALF_MD4	1
+ #define DX_HASH_TEA		2
++#define DX_HASH_LEGACY_UNSIGNED	3
++#define DX_HASH_HALF_MD4_UNSIGNED	4
++#define DX_HASH_TEA_UNSIGNED		5
+ 
+ #ifdef __KERNEL__
+ 
+diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
+index 445fde6..2f3b8b1 100644
+--- a/fs/ext4/ext4_sb.h
++++ b/fs/ext4/ext4_sb.h
+@@ -57,6 +57,7 @@ struct ext4_sb_info {
+ 	u32 s_next_generation;
+ 	u32 s_hash_seed[4];
+ 	int s_def_hash_version;
++	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index 556ca8e..ac8f168 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -35,23 +35,71 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
+ 
+ 
+ /* The old legacy hash */
+-static __u32 dx_hack_hash(const char *name, int len)
++static __u32 dx_hack_hash_unsigned(const char *name, int len)
+ {
+-	__u32 hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	const unsigned char *ucp = (const unsigned char *) name;
++
++	while (len--) {
++		hash = hash1 + (hash0 ^ (((int) *ucp++) * 7152373));
++
++		if (hash & 0x80000000)
++			hash -= 0x7fffffff;
++		hash1 = hash0;
++		hash0 = hash;
++	}
++	return hash0 << 1;
++}
++
++static __u32 dx_hack_hash_signed(const char *name, int len)
++{
++	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	const signed char *scp = (const signed char *) name;
++
+ 	while (len--) {
+-		__u32 hash = hash1 + (hash0 ^ (*name++ * 7152373));
++		hash = hash1 + (hash0 ^ (((int) *scp++) * 7152373));
+ 
+-		if (hash & 0x80000000) hash -= 0x7fffffff;
++		if (hash & 0x80000000)
++			hash -= 0x7fffffff;
+ 		hash1 = hash0;
+ 		hash0 = hash;
+ 	}
+-	return (hash0 << 1);
++	return hash0 << 1;
++}
++
++static void str2hashbuf_signed(const char *msg, int len, __u32 *buf, int num)
++{
++	__u32	pad, val;
++	int	i;
++	const signed char *scp = (const signed char *) msg;
++
++	pad = (__u32)len | ((__u32)len << 8);
++	pad |= pad << 16;
++
++	val = pad;
++	if (len > num*4)
++		len = num * 4;
++	for (i = 0; i < len; i++) {
++		if ((i % 4) == 0)
++			val = pad;
++		val = ((int) scp[i]) + (val << 8);
++		if ((i % 4) == 3) {
++			*buf++ = val;
++			val = pad;
++			num--;
++		}
++	}
++	if (--num >= 0)
++		*buf++ = val;
++	while (--num >= 0)
++		*buf++ = pad;
+ }
+ 
+-static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
++static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
+ {
+ 	__u32	pad, val;
+ 	int	i;
++	const unsigned char *ucp = (const unsigned char *) msg;
+ 
+ 	pad = (__u32)len | ((__u32)len << 8);
+ 	pad |= pad << 16;
+@@ -62,7 +110,7 @@ static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
+ 	for (i = 0; i < len; i++) {
+ 		if ((i % 4) == 0)
+ 			val = pad;
+-		val = msg[i] + (val << 8);
++		val = ((int) ucp[i]) + (val << 8);
+ 		if ((i % 4) == 3) {
+ 			*buf++ = val;
+ 			val = pad;
+@@ -95,6 +143,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 	const char	*p;
+ 	int		i;
+ 	__u32		in[8], buf[4];
++	void		(*str2hashbuf)(const char *, int, __u32 *, int) =
++				str2hashbuf_signed;
+ 
+ 	/* Initialize the default seed for the hash checksum functions */
+ 	buf[0] = 0x67452301;
+@@ -113,13 +163,18 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 	}
+ 
+ 	switch (hinfo->hash_version) {
++	case DX_HASH_LEGACY_UNSIGNED:
++		hash = dx_hack_hash_unsigned(name, len);
++		break;
+ 	case DX_HASH_LEGACY:
+-		hash = dx_hack_hash(name, len);
++		hash = dx_hack_hash_signed(name, len);
+ 		break;
++	case DX_HASH_HALF_MD4_UNSIGNED:
++		str2hashbuf = str2hashbuf_unsigned;
+ 	case DX_HASH_HALF_MD4:
+ 		p = name;
+ 		while (len > 0) {
+-			str2hashbuf(p, len, in, 8);
++			(*str2hashbuf)(p, len, in, 8);
+ 			half_md4_transform(buf, in);
+ 			len -= 32;
+ 			p += 32;
+@@ -127,10 +182,12 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 		minor_hash = buf[2];
+ 		hash = buf[1];
+ 		break;
++	case DX_HASH_TEA_UNSIGNED:
++		str2hashbuf = str2hashbuf_unsigned;
+ 	case DX_HASH_TEA:
+ 		p = name;
+ 		while (len > 0) {
+-			str2hashbuf(p, len, in, 4);
++			(*str2hashbuf)(p, len, in, 4);
+ 			TEA_transform(buf, in);
+ 			len -= 16;
+ 			p += 16;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 63adcb7..56afe7d 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -372,6 +372,8 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+ 		goto fail;
+ 	}
+ 	hinfo->hash_version = root->info.hash_version;
++	if (hinfo->hash_version <= DX_HASH_TEA)
++		hinfo->hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 	if (d_name)
+ 		ext4fs_dirhash(d_name->name, d_name->len, hinfo);
+@@ -641,6 +643,9 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 	dir = dir_file->f_path.dentry->d_inode;
+ 	if (!(EXT4_I(dir)->i_flags & EXT4_INDEX_FL)) {
+ 		hinfo.hash_version = EXT4_SB(dir->i_sb)->s_def_hash_version;
++		if (hinfo.hash_version <= DX_HASH_TEA)
++			hinfo.hash_version +=
++				EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 		hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 		count = htree_dirblock_to_tree(dir_file, dir, 0, &hinfo,
+ 					       start_hash, start_minor_hash);
+@@ -1408,6 +1413,8 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 
+ 	/* Initialize as for dx_probe */
+ 	hinfo.hash_version = root->info.hash_version;
++	if (hinfo.hash_version <= DX_HASH_TEA)
++		hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 	ext4fs_dirhash(name, namelen, &hinfo);
+ 	frame = frames;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 994859d..46d2c2e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2119,6 +2119,18 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	for (i = 0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
++	i = le32_to_cpu(es->s_flags);
++	if (i & EXT2_FLAGS_UNSIGNED_HASH)
++		sbi->s_hash_unsigned = 3;
++	else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
++#ifdef __CHAR_UNSIGNED__
++		es->s_flags |= cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
++		sbi->s_hash_unsigned = 3;
++#else
++		es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
++#endif
++		sb->s_dirt = 1;
++	}
+ 
+ 	if (sbi->s_blocks_per_group > blocksize * 8) {
+ 		printk(KERN_ERR
+-- 
+1.5.6.1.205.ge2c7.dirty
 
