@@ -1,96 +1,98 @@
-From: tony.luck@intel.com
-Subject: Re: [PATCH,RFC] ext3: Add support for non-native signed/unsigned htree hash algorithms
-Date: Tue, 28 Oct 2008 10:30:57 -0700
-Message-ID: <200810281730.m9SHUvD9002143@agluck-lia64.sc.intel.com>
-References: <20081028142458.GC8869@mit.edu>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	tony.luck@intel.com
-To: Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [Bugme-new] [Bug 11873] New: unable to mount ext3 root
+ filesystem due to htree_dirblock_to_tree
+Date: Tue, 28 Oct 2008 10:31:22 -0700
+Message-ID: <20081028103122.728aa427.akpm@linux-foundation.org>
+References: <bug-11873-10286@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: bugme-daemon@bugzilla.kernel.org, Jimmy.Jazz@gmx.net
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:4970 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751092AbYJ1Ra6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Oct 2008 13:30:58 -0400
-In-Reply-To: <20081028142458.GC8869@mit.edu>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:48241 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754085AbYJ1Rb4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Oct 2008 13:31:56 -0400
+In-Reply-To: <bug-11873-10286@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> I've added Tony Luck to the CC list since as the Itanium maintainer,
-> he's most likely to be able to speak to both cross compilation issues
-> especially as it relates to the Intel Compiler....
 
-Sorry to disappoint ... but I'm not an expert on cross compilation (I
-run all my builds natively) or on the Intel compiler (I just use gcc).
+(switched to email.  Please respond via emailed reply-to-all, not via the
+bugzilla web interface).
 
-> Tony, Andrew has requested I clean up this compile-time test to
-> determine whether variables of type char are signed or unsigned:
+On Tue, 28 Oct 2008 05:09:25 -0700 (PDT) bugme-daemon@bugzilla.kernel.org wrote:
 
-> 	char c;
-> 	...
-> 	c = (char) 255;
-> 	if (((int) c) == -1) {
-> 		...
-> 	}
+> http://bugzilla.kernel.org/show_bug.cgi?id=11873
+> 
+>            Summary: unable to mount ext3 root filesystem due to
+>                     htree_dirblock_to_tree
+>            Product: File System
+>            Version: 2.5
+>      KernelVersion: 2.6.28 rcx git and vanilla trees
+>           Platform: All
+>         OS/Version: Linux
+>               Tree: Mainline
+>             Status: NEW
+>           Severity: normal
+>           Priority: P1
+>          Component: ext3
+>         AssignedTo: akpm@osdl.org
+>         ReportedBy: Jimmy.Jazz@gmx.net
+>                 CC: Jimmy.Jazz@gmx.net
+> 
+> 
+> Latest working kernel version:2.6.27.3
+> Earliest failing kernel version:2.6.28 rc1 git1
+> Distribution: gentoo
+> Hardware Environment: x86_64 amd
+> Software Environment: kernel + initramfs
+> Problem Description:
+> 
+> Since 2.6.28 mount command (busybox) is unable to mount the root file system.
+> The error returned is,
+> 
+> EXT3-fs error (device md_d0p2): htree_dirblock_to_tree: bad entry in directory
+> #2: rec_len % 4 != 0 - offset=0, inode=2109536318, rec_len=16058, name_len=111
+> 
+> (The figures could change)
+> 
+> 
+> To make it work, I need first to mount the file system as an ext2 file system,
+> unmount it and recall mount command with the -t ext3 option.
+> 
+> step 1:
+> mount -o ro /dev/md/d0p2 /new-root
+> (mount ok with flags ro,errors=continue)
+> ls /new-root
+> (ls without error)
+> umount /new-root
+> 
+> and then
+> 
+> step 2:
+> mount -t ext3 -o ro /dev/md/d0p2 /new-root
+> (mount ok with flags ro,errors=continue,data=ordered)
+> ls /new-root
+> (ls without error)
+> 
+> ext2,jbd,ext3,mbcache,crc32 are modules and are loaded from an initramfs file
+> system.
+> 
+> IMHO, it is a problem in mbcache or jbd.
+> 
+> Also, there is an other problem with that kernel. After creating the /dev node,
+> loading md_mod and raid1, mdassemble start as usual the md device, but the
+> mount command doesn't recognize the /dev node as valid and abort. 
+> I need to stop the md device that has been created earlier and reapply
+> mdassemble or mdadm --assemble --scan from initramfs file system. Afterwards
+> mount command is able to mount the file system but... like an ext2 file system.
+> I'm on step 2 again.
+> 
+> 
+> Steps to reproduce: reboot the kernel, load the initramfs file system and open
+> a shell just after the mount command has aborted.
+> 
 
-> ... since it results in this annoying gcc warning:
-
-> > fs/ext3/super.c:1750: warning: comparison is always false due to limited range of data type
-
-I don't see any code like this near line 1750 of fs/ext3/super.c so
-I guess the offending lines have been moved up or down by recent
-changes.
-
-> Two possible solutions which come to mind is to use the C preprocessor
-> macros CHAR_MIN/CHAR_MAX as defined in limits.h, or to use
-> __CHAR_UNSIGNED__ which is defined by gcc on platforms where char's
-> are unsigned (or if the gcc option --funsigned-char is given).  
-
-> I believe at this point, it's settled that either of the above
-> solutions should do the right thing for gcc, either in
-> cross-compilation environments, or natively.  (I prefer
-> __CHAR_UNSIGNED__ since it doesn't depend on the userspace header
-> files, which might be screwy on some distributions, and depending on a
-> macro set by gcc seems much more robust in cross-compilation
-> environments.)
-
-Either option seems OK to me. char is signed on Itanium, so
-the Intel compiler doesn't need to provide __CHAR_UNSIGNED__.
-
-> The question is whether this solution is likely to work on the Intel C
-> compiler.  My understanding is that a kernel compiled with gcc is
-> pathetically slow on the Itanic (not to mention taking aeons to
-> compile), and so there has always been a desire to make sure that the
-> Linux Kernel will compile on the Intel C compiler, at least for the
-> Intanium platform.  Do you know if icc will do the right thing as far
-> as defining __CHAR_UNSIGNED__ if necessary?  
-
-The Linux kernel doesn't benefit hugely from being compiled by the
-Intel compiler ... there just aren't that many loops that run
-for many iterations, no floating point code, and little else that
-can benefit.  I challenge the "aeons to compile" claim too.  Most
-of the config files I build take about 2 minutes each (and this is
-on a basic 4-socket machine ... not on a giant SGI box). Not
-great by the "5 seconds to build" that Linus mentioned at KS,
-but hardly "aeons".
-
-> I don't even know if the Itanium is one of those wierd-sh*t platforms
-> that tried to make char's unsigned, one of those really horrific
-> design decisions perpetrated by the Arm and PowerPC platforms since it
-
-"char" defaults to signed on Itanium (so in this respect at least it is
-a "sane" architecture :-)
-
-> tends to break compatibility with K&R C which doesn't even have a
-> signed keyword (and for which char's were always signed).  If it's one
-> of the sane platforms, then this might not matter so much.
-
-This is incorrect.  K&R (first edition, (c) 1978) says (p. 183):
- "6.1 Characters and integers
-	...
-  Whether or not sign-extension occurs for characters is machine
-  dependent, but it is guaranteed that a member of the standard
-  character set is non-negative.  Of the machines treated by this
-  manual, only the PDP-11 sign-extends."
-
--Tony
