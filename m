@@ -1,290 +1,202 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH V2 1/2] ext3: Add support for non-native signed/unsigned htree hash algorithms
-Date: Tue, 28 Oct 2008 13:40:15 -0400
-Message-ID: <1225215616-6069-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, akpm@linux-foundation.org,
-	linux-kernel@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:46252 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751041AbYJ1Rkj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Oct 2008 13:40:39 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: [PATCH] improve jbd fsync batching
+Date: Tue, 28 Oct 2008 16:16:15 -0400
+Message-ID: <20081028201614.GA21600@unused.rdu.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	rwheeler@redhat.com
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-The original ext3 hash algorithms assumed that variables of type char
-were signed, as God and K&R intended.  Unfortunately, this assumption
-is not true on some architectures.  Userspace support for marking
-filesystems with non-native signed/unsigned chars was added two years
-ago, but the kernel-side support was never added (until now).
+Hello,
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: akpm@linux-foundation.org
-Cc: linux-kernel@vger.kernel.org
----
- fs/ext3/hash.c             |   77 ++++++++++++++++++++++++++++++++++++++------
- fs/ext3/namei.c            |    7 ++++
- fs/ext3/super.c            |   12 +++++++
- include/linux/ext3_fs.h    |   28 +++++++++++++++-
- include/linux/ext3_fs_sb.h |    1 +
- 5 files changed, 114 insertions(+), 11 deletions(-)
+This is a rework of the patch I did a few months ago, taking into account some
+comments from Andrew and using the new schedule_hrtimeout function (thanks
+Arjan!).
 
-diff --git a/fs/ext3/hash.c b/fs/ext3/hash.c
-index c30e149..7d215b4 100644
---- a/fs/ext3/hash.c
-+++ b/fs/ext3/hash.c
-@@ -35,23 +35,71 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
+There is a flaw with the way jbd handles fsync batching.  If we fsync() a file
+and we were not the last person to run fsync() on this fs then we automatically
+sleep for 1 jiffie in order to wait for new writers to join into the transaction
+before forcing the commit.  The problem with this is that with really fast
+storage (ie a Clariion) the time it takes to commit a transaction to disk is way
+faster than 1 jiffie in most cases, so sleeping means waiting longer with
+nothing to do than if we just committed the transaction and kept going.  Ric
+Wheeler noticed this when using fs_mark with more than 1 thread, the throughput
+would plummet as he added more threads.
+
+This patch attempts to fix this problem by recording the average time in
+nanoseconds that it takes to commit a transaction to disk, and what time we
+started the transaction.  If we run an fsync() and we have been running for less
+time than it takes to commit the transaction to disk, we sleep for the delta
+amount of time and then commit to disk.  We acheive sub-jiffie sleeping using
+schedule_hrtimeout.  This means that the wait time is auto-tuned to the speed of
+the underlying disk, instead of having this static timeout.  I weighted the
+average according to somebody's comments (Andreas Dilger I think) in order to
+help normalize random outliers where we take way longer or way less time to
+commit than the average.  I also have a min() check in there to make sure we
+don't sleep longer than a jiffie in case our storage is super slow, this was
+requested by Andrew.
+
+I unfortunately do not have access to a Clariion, so I had to use a ramdisk to
+represent a super fast array.  I tested with a SATA drive with barrier=1 to make
+sure there was no regression with local disks, I tested with a 4 way multipathed
+Apple Xserve RAID array and of course the ramdisk.  I ran the following command
+
+fs_mark -d /mnt/ext3-test -s 4096 -n 2000 -D 64 -t $i
+
+where $i was 2, 4, 8, 16 and 32.  I mkfs'ed the fs each time.  Here are my
+results
+
+type	threads		with patch	without patch
+sata	2		24.6		26.3
+sata	4		49.2		48.1
+sata	8		70.1		67.0
+sata	16		104.0		94.1
+sata	32		153.6		142.7
+
+xserve	2		246.4		222.0
+xserve	4		480.0		440.8
+xserve	8		829.5		730.8
+xserve	16		1172.7		1026.9
+xserve	32		1816.3		1650.5
+
+ramdisk	2		2538.3		1745.6
+ramdisk	4		2942.3		661.9
+ramdisk	8		2882.5		999.8
+ramdisk	16		2738.7		1801.9
+ramdisk	32		2541.9		2394.0
+
+All comments are welcome.  Thank you,
+
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
+
+
+diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+index 25719d9..3fbffb1 100644
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -306,6 +306,8 @@ void journal_commit_transaction(journal_t *journal)
+ 	int flags;
+ 	int err;
+ 	unsigned long blocknr;
++	ktime_t start_time;
++	u64 commit_time;
+ 	char *tagp = NULL;
+ 	journal_header_t *header;
+ 	journal_block_tag_t *tag = NULL;
+@@ -418,6 +420,7 @@ void journal_commit_transaction(journal_t *journal)
+ 	commit_transaction->t_state = T_FLUSH;
+ 	journal->j_committing_transaction = commit_transaction;
+ 	journal->j_running_transaction = NULL;
++	start_time = ktime_get();
+ 	commit_transaction->t_log_start = journal->j_head;
+ 	wake_up(&journal->j_wait_transaction_locked);
+ 	spin_unlock(&journal->j_state_lock);
+@@ -913,6 +916,18 @@ restart_loop:
+ 	J_ASSERT(commit_transaction == journal->j_committing_transaction);
+ 	journal->j_commit_sequence = commit_transaction->t_tid;
+ 	journal->j_committing_transaction = NULL;
++	commit_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
++
++	/*
++	 * weight the commit time higher than the average time so we don't
++	 * react too strongly to vast changes in commit time
++	 */
++	if (likely(journal->j_average_commit_time))
++		journal->j_average_commit_time = (commit_time*3 +
++				journal->j_average_commit_time) / 4;
++	else
++		journal->j_average_commit_time = commit_time;
++
+ 	spin_unlock(&journal->j_state_lock);
  
+ 	if (commit_transaction->t_checkpoint_list == NULL &&
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index d15cd6e..59dd181 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -25,6 +25,7 @@
+ #include <linux/timer.h>
+ #include <linux/mm.h>
+ #include <linux/highmem.h>
++#include <linux/hrtimer.h>
  
- /* The old legacy hash */
--static __u32 dx_hack_hash (const char *name, int len)
-+static __u32 dx_hack_hash_unsigned(const char *name, int len)
+ static void __journal_temp_unlink_buffer(struct journal_head *jh);
+ 
+@@ -49,6 +50,7 @@ get_transaction(journal_t *journal, transaction_t *transaction)
  {
--	__u32 hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
-+	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
-+	const unsigned char *ucp = (const unsigned char *) name;
-+
-+	while (len--) {
-+		hash = hash1 + (hash0 ^ (((int) *ucp++) * 7152373));
-+
-+		if (hash & 0x80000000)
-+			hash -= 0x7fffffff;
-+		hash1 = hash0;
-+		hash0 = hash;
-+	}
-+	return hash0 << 1;
-+}
-+
-+static __u32 dx_hack_hash_signed(const char *name, int len)
-+{
-+	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
-+	const signed char *scp = (const signed char *) name;
-+
- 	while (len--) {
--		__u32 hash = hash1 + (hash0 ^ (*name++ * 7152373));
-+		hash = hash1 + (hash0 ^ (((int) *scp++) * 7152373));
- 
--		if (hash & 0x80000000) hash -= 0x7fffffff;
-+		if (hash & 0x80000000)
-+			hash -= 0x7fffffff;
- 		hash1 = hash0;
- 		hash0 = hash;
- 	}
--	return (hash0 << 1);
-+	return hash0 << 1;
- }
- 
--static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
-+static void str2hashbuf_signed(const char *msg, int len, __u32 *buf, int num)
+ 	transaction->t_journal = journal;
+ 	transaction->t_state = T_RUNNING;
++	transaction->t_start_time = ktime_get();
+ 	transaction->t_tid = journal->j_transaction_sequence++;
+ 	transaction->t_expires = jiffies + journal->j_commit_interval;
+ 	spin_lock_init(&transaction->t_handle_lock);
+@@ -1371,7 +1373,7 @@ int journal_stop(handle_t *handle)
  {
- 	__u32	pad, val;
- 	int	i;
-+	const signed char *scp = (const signed char *) msg;
+ 	transaction_t *transaction = handle->h_transaction;
+ 	journal_t *journal = transaction->t_journal;
+-	int old_handle_count, err;
++	int err;
+ 	pid_t pid;
+ 
+ 	J_ASSERT(journal_current_handle() == handle);
+@@ -1407,11 +1409,26 @@ int journal_stop(handle_t *handle)
+ 	 */
+ 	pid = current->pid;
+ 	if (handle->h_sync && journal->j_last_sync_writer != pid) {
++		u64 commit_time, trans_time;
 +
-+	pad = (__u32)len | ((__u32)len << 8);
-+	pad |= pad << 16;
+ 		journal->j_last_sync_writer = pid;
+-		do {
+-			old_handle_count = transaction->t_handle_count;
+-			schedule_timeout_uninterruptible(1);
+-		} while (old_handle_count != transaction->t_handle_count);
 +
-+	val = pad;
-+	if (len > num*4)
-+		len = num * 4;
-+	for (i = 0; i < len; i++) {
-+		if ((i % 4) == 0)
-+			val = pad;
-+		val = ((int) scp[i]) + (val << 8);
-+		if ((i % 4) == 3) {
-+			*buf++ = val;
-+			val = pad;
-+			num--;
++		spin_lock(&journal->j_state_lock);
++		commit_time = journal->j_average_commit_time;
++		spin_unlock(&journal->j_state_lock);
++
++		trans_time = ktime_to_ns(ktime_sub(ktime_get(),
++						   transaction->t_start_time));
++
++		commit_time = min_t(u64, commit_time,
++				    1000*jiffies_to_usecs(1));
++
++		if (trans_time < commit_time) {
++			ktime_t expires = ktime_add_ns(ktime_get(),
++						       commit_time);
++			set_current_state(TASK_UNINTERRUPTIBLE);
++			schedule_hrtimeout(&expires, HRTIMER_MODE_ABS);
 +		}
-+	}
-+	if (--num >= 0)
-+		*buf++ = val;
-+	while (--num >= 0)
-+		*buf++ = pad;
-+}
-+
-+static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
-+{
-+	__u32	pad, val;
-+	int	i;
-+	const unsigned char *ucp = (const unsigned char *) msg;
- 
- 	pad = (__u32)len | ((__u32)len << 8);
- 	pad |= pad << 16;
-@@ -62,7 +110,7 @@ static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
- 	for (i=0; i < len; i++) {
- 		if ((i % 4) == 0)
- 			val = pad;
--		val = msg[i] + (val << 8);
-+		val = ((int) ucp[i]) + (val << 8);
- 		if ((i % 4) == 3) {
- 			*buf++ = val;
- 			val = pad;
-@@ -95,6 +143,8 @@ int ext3fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 	const char	*p;
- 	int		i;
- 	__u32		in[8], buf[4];
-+	void		(*str2hashbuf)(const char *, int, __u32 *, int) =
-+				str2hashbuf_signed;
- 
- 	/* Initialize the default seed for the hash checksum functions */
- 	buf[0] = 0x67452301;
-@@ -113,13 +163,18 @@ int ext3fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
  	}
  
- 	switch (hinfo->hash_version) {
-+	case DX_HASH_LEGACY_UNSIGNED:
-+		hash = dx_hack_hash_unsigned(name, len);
-+		break;
- 	case DX_HASH_LEGACY:
--		hash = dx_hack_hash(name, len);
-+		hash = dx_hack_hash_signed(name, len);
- 		break;
-+	case DX_HASH_HALF_MD4_UNSIGNED:
-+		str2hashbuf = str2hashbuf_unsigned;
- 	case DX_HASH_HALF_MD4:
- 		p = name;
- 		while (len > 0) {
--			str2hashbuf(p, len, in, 8);
-+			(*str2hashbuf)(p, len, in, 8);
- 			half_md4_transform(buf, in);
- 			len -= 32;
- 			p += 32;
-@@ -127,10 +182,12 @@ int ext3fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
- 		minor_hash = buf[2];
- 		hash = buf[1];
- 		break;
-+	case DX_HASH_TEA_UNSIGNED:
-+		str2hashbuf = str2hashbuf_unsigned;
- 	case DX_HASH_TEA:
- 		p = name;
- 		while (len > 0) {
--			str2hashbuf(p, len, in, 4);
-+			(*str2hashbuf)(p, len, in, 4);
- 			TEA_transform(buf, in);
- 			len -= 16;
- 			p += 16;
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index 3e5edc9..4fb0493 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -368,6 +368,8 @@ dx_probe(struct qstr *entry, struct inode *dir,
- 		goto fail;
- 	}
- 	hinfo->hash_version = root->info.hash_version;
-+	if (hinfo->hash_version <= DX_HASH_TEA)
-+		hinfo->hash_version += EXT3_SB(dir->i_sb)->s_hash_unsigned;
- 	hinfo->seed = EXT3_SB(dir->i_sb)->s_hash_seed;
- 	if (entry)
- 		ext3fs_dirhash(entry->name, entry->len, hinfo);
-@@ -636,6 +638,9 @@ int ext3_htree_fill_tree(struct file *dir_file, __u32 start_hash,
- 	dir = dir_file->f_path.dentry->d_inode;
- 	if (!(EXT3_I(dir)->i_flags & EXT3_INDEX_FL)) {
- 		hinfo.hash_version = EXT3_SB(dir->i_sb)->s_def_hash_version;
-+		if (hinfo.hash_version <= DX_HASH_TEA)
-+			hinfo.hash_version +=
-+				EXT3_SB(dir->i_sb)->s_hash_unsigned;
- 		hinfo.seed = EXT3_SB(dir->i_sb)->s_hash_seed;
- 		count = htree_dirblock_to_tree(dir_file, dir, 0, &hinfo,
- 					       start_hash, start_minor_hash);
-@@ -1398,6 +1403,8 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	current->journal_info = NULL;
+diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+index 346e2b8..d842230 100644
+--- a/include/linux/jbd.h
++++ b/include/linux/jbd.h
+@@ -543,6 +543,11 @@ struct transaction_s
+ 	unsigned long		t_expires;
  
- 	/* Initialize as for dx_probe */
- 	hinfo.hash_version = root->info.hash_version;
-+	if (hinfo.hash_version <= DX_HASH_TEA)
-+		hinfo.hash_version += EXT3_SB(dir->i_sb)->s_hash_unsigned;
- 	hinfo.seed = EXT3_SB(dir->i_sb)->s_hash_seed;
- 	ext3fs_dirhash(name, namelen, &hinfo);
- 	frame = frames;
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index e5717a4..f175396 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -1744,6 +1744,18 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
- 	for (i=0; i < 4; i++)
- 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
- 	sbi->s_def_hash_version = es->s_def_hash_version;
-+	i = le32_to_cpu(es->s_flags);
-+	if (i & EXT2_FLAGS_UNSIGNED_HASH)
-+		sbi->s_hash_unsigned = 3;
-+	else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
-+#ifdef __CHAR_UNSIGNED__
-+		es->s_flags |= cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
-+		sbi->s_hash_unsigned = 3;
-+#else
-+		es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
-+#endif
-+		sb->s_dirt = 1;
-+	}
- 
- 	if (sbi->s_blocks_per_group > blocksize * 8) {
- 		printk (KERN_ERR
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index d14f029..9004794 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -354,6 +354,13 @@ struct ext3_inode {
- #define	EXT3_ORPHAN_FS			0x0004	/* Orphans being recovered */
- 
- /*
-+ * Misc. filesystem flags
-+ */
-+#define EXT2_FLAGS_SIGNED_HASH		0x0001  /* Signed dirhash in use */
-+#define EXT2_FLAGS_UNSIGNED_HASH	0x0002  /* Unsigned dirhash in use */
-+#define EXT2_FLAGS_TEST_FILESYS		0x0004	/* to test development code */
+ 	/*
++	 * When this transaction started, in nanoseconds [no locking]
++	 */
++	ktime_t			t_start_time;
 +
-+/*
-  * Mount flags
-  */
- #define EXT3_MOUNT_CHECK		0x00001	/* Do mount-time checks */
-@@ -489,7 +496,23 @@ struct ext3_super_block {
- 	__u16	s_reserved_word_pad;
- 	__le32	s_default_mount_opts;
- 	__le32	s_first_meta_bg;	/* First metablock block group */
--	__u32	s_reserved[190];	/* Padding to the end of the block */
-+	__le32	s_mkfs_time;		/* When the filesystem was created */
-+	__le32	s_jnl_blocks[17];	/* Backup of the journal inode */
-+	/* 64bit support valid if EXT4_FEATURE_COMPAT_64BIT */
-+/*150*/	__le32	s_blocks_count_hi;	/* Blocks count */
-+	__le32	s_r_blocks_count_hi;	/* Reserved blocks count */
-+	__le32	s_free_blocks_count_hi;	/* Free blocks count */
-+	__le16	s_min_extra_isize;	/* All inodes have at least # bytes */
-+	__le16	s_want_extra_isize; 	/* New inodes should reserve # bytes */
-+	__le32	s_flags;		/* Miscellaneous flags */
-+	__le16  s_raid_stride;		/* RAID stride */
-+	__le16  s_mmp_interval;         /* # seconds to wait in MMP checking */
-+	__le64  s_mmp_block;            /* Block for multi-mount protection */
-+	__le32  s_raid_stripe_width;    /* blocks on all data disks (N*stride)*/
-+	__u8	s_log_groups_per_flex;  /* FLEX_BG group size */
-+	__u8	s_reserved_char_pad2;
-+	__le16  s_reserved_pad;
-+	__u32   s_reserved[162];        /* Padding to the end of the block */
- };
++	/*
+ 	 * How many handles used this transaction? [t_handle_lock]
+ 	 */
+ 	int t_handle_count;
+@@ -800,6 +805,8 @@ struct journal_s
  
- #ifdef __KERNEL__
-@@ -694,6 +717,9 @@ static inline __le16 ext3_rec_len_to_disk(unsigned len)
- #define DX_HASH_LEGACY		0
- #define DX_HASH_HALF_MD4	1
- #define DX_HASH_TEA		2
-+#define DX_HASH_LEGACY_UNSIGNED	3
-+#define DX_HASH_HALF_MD4_UNSIGNED	4
-+#define DX_HASH_TEA_UNSIGNED		5
+ 	pid_t			j_last_sync_writer;
  
- #ifdef __KERNEL__
- 
-diff --git a/include/linux/ext3_fs_sb.h b/include/linux/ext3_fs_sb.h
-index b65f028..50dc80a 100644
---- a/include/linux/ext3_fs_sb.h
-+++ b/include/linux/ext3_fs_sb.h
-@@ -57,6 +57,7 @@ struct ext3_sb_info {
- 	u32 s_next_generation;
- 	u32 s_hash_seed[4];
- 	int s_def_hash_version;
-+	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
- 	struct percpu_counter s_freeblocks_counter;
- 	struct percpu_counter s_freeinodes_counter;
- 	struct percpu_counter s_dirs_counter;
--- 
-1.5.6.1.205.ge2c7.dirty
-
++	u64			j_average_commit_time;
++
+ 	/*
+ 	 * An opaque pointer to fs-private information.  ext3 puts its
+ 	 * superblock pointer here
