@@ -1,46 +1,72 @@
-From: Steven Rostedt <rostedt@goodmis.org>
-Subject: Re: why unlikely(rsv) in ext3_clear_inode()?
-Date: Mon, 27 Oct 2008 20:21:58 -0400 (EDT)
-Message-ID: <alpine.DEB.1.10.0810272021010.20353@gandalf.stny.rr.com>
-References: <170fa0d20810271529g3c64ae89me29ed8b65a9c3b5e@mail.gmail.com> <alpine.DEB.1.10.0810271918390.19731@gandalf.stny.rr.com> <20081028001340.GB9797@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: general protection fault:  from release_blocks_on_commit
+Date: Mon, 27 Oct 2008 21:52:28 -0400
+Message-ID: <20081028015228.GA8320@mit.edu>
+References: <1224612181.19719.20.camel@paris-laptop> <20081027181928.GB23111@mit.edu> <49064027.9010509@redhat.com> <20081027232843.GA9797@mit.edu> <49065805.1080303@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Mike Snitzer <snitzer@gmail.com>, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hrndva-omtalb.mail.rr.com ([71.74.56.122]:36167 "EHLO
-	hrndva-omtalb.mail.rr.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750842AbYJ1AWs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Oct 2008 20:22:48 -0400
-In-Reply-To: <20081028001340.GB9797@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Paris <eparis@redhat.com>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752280AbYJ1Bwq@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <49065805.1080303@redhat.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-
-On Mon, 27 Oct 2008, Theodore Tso wrote:
-
-> On Mon, Oct 27, 2008 at 07:32:11PM -0400, Steven Rostedt wrote:
-> > Attached is a patch that I used for counting.
+On Mon, Oct 27, 2008 at 07:08:37PM -0500, Eric Sandeen wrote:
+> Theodore Tso wrote:
+> > On Mon, Oct 27, 2008 at 05:26:47PM -0500, Eric Sandeen wrote:
+> >> Ted, you probably need some slab debugging on to hit it.
 > > 
-> > Here's my results:
-> > # cat /debug/tracing/ftrace_null 
-> > 45
-> > # cat /debug/tracing/ftrace_nonnull 
-> > 7
+> > I had slab debugging enabled, but haven't been able to replicate it
+> > yet.  I'll do some more work to try to replicate it.
 > > 
-> > Ah, seems that there is cases where it is nonnull more often. Anyway, it 
-> > obviously is not a fast path (total of 52). Even if it was all null, it is 
-> > not big enough to call for the confusion.
+> >> I think the problem is that jbd2_journal_commit_transaction may call
+> >> __jbd2_journal_drop_transaction(journal, commit_transaction) if the
+> >> checkpoint lists are NULL, and this frees the commit_transaction.
+> > 
+> > I think you're right.  I would probably change the patch around so
+> > that after calling __jbd2_jurnal_drop_transaction(), we set
+> > commit_transaction to NULL, and then adding an "if
+> > (commit_transaction)" to the lines in questions; that way we keep the
+> > commit callback outside of the j_list_lock() spinlock.
 > 
-> Silly question --- what was your test workload?
+> Ok, I thought about that; sounds good.  will resend.
 
+I looked at this some more, and at least in theory it could happen
+that we could not have any buffers that need to be checkpointed (so
+t_checkpoint_list and t_checkpoint_io_list are NULL), but there are
+still blocks to be released (or some other users of the jbd2 layer
+still wants to have the callback be called).  So I'm currently testing
+this patch (see below).
 
-Hehe, I just booted the box. The counting started right away, so I just 
-looked at the work load.
+							- Ted
 
-Anyway, I'm writing a generic "unlikely" profiler that should make Andrew 
-happy. And this will also catch this case as well.
-
--- Steve
-
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 8b119e1..ebc667b 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -974,6 +974,9 @@ restart_loop:
+ 	journal->j_committing_transaction = NULL;
+ 	spin_unlock(&journal->j_state_lock);
+ 
++	if (journal->j_commit_callback)
++		journal->j_commit_callback(journal, commit_transaction);
++
+ 	if (commit_transaction->t_checkpoint_list == NULL &&
+ 	    commit_transaction->t_checkpoint_io_list == NULL) {
+ 		__jbd2_journal_drop_transaction(journal, commit_transaction);
+@@ -995,11 +998,8 @@ restart_loop:
+ 	}
+ 	spin_unlock(&journal->j_list_lock);
+ 
+-	if (journal->j_commit_callback)
+-		journal->j_commit_callback(journal, commit_transaction);
+-
+ 	trace_mark(jbd2_end_commit, "dev %s transaction %d head %d",
+-		   journal->j_devname, commit_transaction->t_tid,
++		   journal->j_devname, journal->j_commit_sequence,
+ 		   journal->j_tail_sequence);
+ 	jbd_debug(1, "JBD: commit %d complete, head %d\n",
+ 		  journal->j_commit_sequence, journal->j_tail_sequence);
