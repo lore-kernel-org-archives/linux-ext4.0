@@ -1,46 +1,36 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [PATCH] improve jbd fsync batching
-Date: Tue, 28 Oct 2008 17:56:39 -0400
-Message-ID: <49078A97.8020003@redhat.com>
-References: <20081028201614.GA21600@unused.rdu.redhat.com>	<20081028213805.GC3184@webber.adilger.int> <20081028144401.07b7546d@infradead.org>
+From: "Mike Snitzer" <snitzer@gmail.com>
+Subject: potential regression in ext[34] call to __page_symlink()?
+Date: Tue, 28 Oct 2008 20:11:48 -0400
+Message-ID: <170fa0d20810281711s2a508ed2o1af0db30733e8d2d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, Josef Bacik <jbacik@redhat.com>,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Arjan van de Ven <arjan@infradead.org>
+Cc: "Nick Piggin" <npiggin@suse.de>, "Kirill Korotaev" <dev@openvz.org>
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20081028144401.07b7546d@infradead.org>
+Content-Disposition: inline
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Arjan van de Ven wrote:
-> On Tue, 28 Oct 2008 15:38:05 -0600
-> Andreas Dilger <adilger@sun.com> wrote:
->
->   
->> On Oct 28, 2008  16:16 -0400, Josef Bacik wrote:
->>     
->>> I also have a min() check in there to make sure we don't sleep
->>> longer than a jiffie in case our storage is super slow, this was
->>> requested by Andrew.
->>>       
->> Is there a particular reason why 1 jiffie is considered the "right
->> amount" of time to sleep, given this is a kernel config parameter and
->> has nothing to do with the storage?  Considering a seek time in the
->> range of ~10ms this would only be right for HZ=100 and the wait would
->>     
->
-> well... my disk does a 50 usec seek time or so.. so I don't mind ;-)
->
-> in fact it sounds awefully long to me.
->   
+The gfp_mask that is passed to __page_symlink() is being completely
+dropped on the floor.  Historically this mask was at least used by
+ext3 and ext4 to avoid recursing back into the FS from within a
+journal transaction; Kirill fixed that issue with this commit:
+0adb25d2e71ab047423d6fc63d5d184590d0a66f
 
-For small writes as well as reads?
+I'm quite naive when it comes to Nick's relatively new (>= 2.6.24) AOP
+pagecache_write_{begin,end} code that motivated __page_symlink to
+change with this commit:
+afddba49d18f346e5cc2938b6ed7c512db18ca68
 
-If so, it would be great to test Josef's patch against your shiny new 
-SSD  :-)
+Nick's change clearly did away with using the explicitly passed
+gfp_mask in __page_symlink().
+So at a minimum it would seem __page_symlink() now has an unused
+parameter that should be removed.
 
-ric
+But a more serious concern would be: have ext[34]_symlink() regressed
+to being susceptible to the bug that Kirill fixed some time ago?
 
+Please advise, thanks.
+Mike
