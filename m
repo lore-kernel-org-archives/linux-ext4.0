@@ -1,71 +1,40 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
+From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [RFC][PATCH 7/9]ext4: Add the EXT4_IOC_FIEMAP_INO ioctl
-Date: Fri, 31 Oct 2008 18:46:12 +0900
-Message-ID: <490AD3E4.1010908@rs.jp.nec.com>
-References: <49019EF6.4000706@rs.jp.nec.com> <20081026084048.GF3184@webber.adilger.int> <49059633.8080600@rs.jp.nec.com> <20081027195524.GN3184@webber.adilger.int>
+Date: Fri, 31 Oct 2008 06:05:47 -0400
+Message-ID: <20081031100547.GA22093@infradead.org>
+References: <49019EF6.4000706@rs.jp.nec.com> <20081026084048.GF3184@webber.adilger.int> <20081026084848.GA9270@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
-	Mingming Cao <cmm@us.ibm.com>, hch@infradead.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, linux-ext4@vger.kernel.org,
+	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
 To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:62801 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751269AbYJaJqq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Oct 2008 05:46:46 -0400
-In-Reply-To: <20081027195524.GN3184@webber.adilger.int>
+Received: from bombadil.infradead.org ([18.85.46.34]:52626 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750846AbYJaKFt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Oct 2008 06:05:49 -0400
+Content-Disposition: inline
+In-Reply-To: <20081026084848.GA9270@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Akira, can you please comment on these issues before going on?
+I think the generation issue is a particularly important one if you
+want to allow defrag by normal users.
 
-Andreas Dilger Wrote:
-> On Oct 27, 2008  19:21 +0900, Akira Fujita wrote:
->> Andreas Dilger wrote:
->>> On Oct 24, 2008  19:09 +0900, Akira Fujita wrote:
->>>> The EXT4_IOC_FIEMAP_INO is used to get extents information of
->>>> inode which set to ioctl.
->>>> The defragger uses this ioctl to check the fragment condition
->>>> and to get extents information in the specified block group.
->>> Instead of having a separate IOC number for each such ioctl, instead
->>> we implemented EXT4_IOC_WRAPPER, which is an root-specific ioctl that
->>> passes in an inode number and a second IOC number so that arbitrary file
->>> ioctls can be run on any inode by root.
->> The EXT4_IOC_WRAPPER ioctl seems to be usuful for many situations.
->> But the EXT4_IOC_FIEMAP_INO ioctl is used not only root user but also
->> non-root user to call fiemap,
->> so we cannot use the current EXT4_IOC_WRAPPER ioctl for defrag.
+On Sun, Oct 26, 2008 at 04:48:48AM -0400, Christoph Hellwig wrote:
+> On Sun, Oct 26, 2008 at 02:40:48AM -0600, Andreas Dilger wrote:
+> > This was mentioned last time these patches were posted, but there was
+> > no reply from you.  Christoph suggested a more generic VFS open-by-inum,
+> > which isn't impossible to do but would cause a lot of controversy I
+> > think, while the EXT4_IOC_WRAPPER is at least contained within ext4,
+> > but is more generically useful than EXT4_IOC_FIEMAP_INO.
 > 
-> Why does a regular user need to do the ioctl on a file that it may not
-> have read permission to access?  I can see this is useful for root
-> doing a defrag of the whole filesystem instead of opening and closing
-> all of the files, but for regular users we need to validate via the
-> full path to ensure they can even access the file before defragmenting it.
-
-The FIEMAP_INO ioctl just passes a inode number belongs to
-the target block group from user space to kernel space
-and then the owner check is done in the kernel space.
-If the regular user (defrag -f excecutant) is owner of a file,
-defrag handles this file as the candidate of victim file which would be moved
-to the other block group to make free space.
-
-So I think the full path check is unneeded because the owner check
-is done in the kernel space (I'm not sure it's good enough).
-If it's not good in the security point of view,
-I will make defrag -f mode be done only by root user.
-
->>> This was mentioned last time these patches were posted, but there was
->>> no reply from you.  Christoph suggested a more generic VFS open-by-inum,
->>> which isn't impossible to do but would cause a lot of controversy I
->>> think, while the EXT4_IOC_WRAPPER is at least contained within ext4,
->>> but is more generically useful than EXT4_IOC_FIEMAP_INO.
->> Do you plan to add EXT4_IOC_WRAPPER into the ext4 patch queue?
+> I'll hack up a generic open_by_handle and then we can gather the
+> reaction - it shouldn't be more than about one or two hundred lines of
+> code.  Note that you really want an open by handle and not just inum for
+> a defragmentation tool - without the generation you can easily run into
+> races.
 > 
-> If there is interest, yes.
-
-How do the other ext4 developers think about
-implementing EXT4_IOC_WRAPPER?
-Will it be used only for defrag so far?
-
-Regards,
-Akira Fujita
+> Btw, any reason the XFS approach of passing in *file descriptors* for both
+> the inode to be defragmented and the "donor" inode doesn't work for you?
