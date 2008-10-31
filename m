@@ -1,28 +1,26 @@
-From: "Peter Teoh" <htmldeveloper@gmail.com>
-Subject: ext4 migration howto
-Date: Fri, 31 Oct 2008 22:56:13 +0800
-Message-ID: <804dabb00810310756o6c1a27c1h10690d34ec47d0cf@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+From: David Howells <dhowells@redhat.com>
+Subject: Re: Wrapping Ext4 credential accesses
+Date: Fri, 31 Oct 2008 15:08:33 +0000
+Message-ID: <13981.1225465713@redhat.com>
+References: <20081031141046.GB17651@mit.edu> <11242.1225450036@redhat.com>
+Cc: dhowells@redhat.com, adilger@sun.com, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.153]:17061 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751196AbYJaO4Q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 31 Oct 2008 10:56:16 -0400
-Received: by fg-out-1718.google.com with SMTP id 19so998732fgg.17
-        for <linux-ext4@vger.kernel.org>; Fri, 31 Oct 2008 07:56:13 -0700 (PDT)
-Content-Disposition: inline
+Received: from mx2.redhat.com ([66.187.237.31]:48269 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753376AbYJaPI7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 31 Oct 2008 11:08:59 -0400
+In-Reply-To: <20081031141046.GB17651@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Does anybody know of the most authoritative writeup HOWTO on migrating
-from ext3 as root fs to ext4, for Ubuntu and Fedora Core at this point
-in time?
+Theodore Tso <tytso@mit.edu> wrote:
 
-Thanks
+> Sure!  You're not looking for this to be merged before the next merge
+> window, correct?  So it will be Ok if I carry this patch and push this
+> at the next merge window?
 
--- 
-Regards,
-Peter Teoh
+That's fine.  It's mainly to make Stephen's life easier.
+
+Thanks,
+David
