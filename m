@@ -1,46 +1,64 @@
-From: Nick Piggin <nickpiggin@yahoo.com.au>
-Subject: Re: ext3: slow symlink corruption on umount...
-Date: Fri, 31 Oct 2008 20:47:20 +1100
-Message-ID: <200810312047.20306.nickpiggin@yahoo.com.au>
-References: <20081024183733.GA25797@ajones-laptop.nbttech.com> <20081029210949.GA27274@mit.edu> <4909B8D6.7070206@redhat.com>
+From: "Michael B. Trausch" <mike@trausch.us>
+Subject: "tune2fs -I 256" runtime---can it be interrupted safely?
+Date: Sat, 1 Nov 2008 15:10:02 -0400
+Message-ID: <20081101151002.4ed9be99@zest>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Arthur Jones <ajones@riverbed.com>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	sct@redhat.com, akpm@linux-foundation.org,
-	linux-kernel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754622AbYKCDEk@vger.kernel.org>
-In-Reply-To: <4909B8D6.7070206@redhat.com>
-Content-Disposition: inline
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/signed; boundary="Sig_/LOi8.4M=k8WFEX4fvu+6H_H";
+ protocol="application/pgp-signature"; micalg=PGP-RIPEMD160
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from qw-out-2122.google.com ([74.125.92.24]:24323 "EHLO
+	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752047AbYKATKI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Nov 2008 15:10:08 -0400
+Received: by qw-out-2122.google.com with SMTP id 3so802232qwe.37
+        for <linux-ext4@vger.kernel.org>; Sat, 01 Nov 2008 12:10:07 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Friday 31 October 2008 00:38, Eric Sandeen wrote:
-> Theodore Tso wrote:
-> > On Wed, Oct 29, 2008 at 03:36:33PM -0500, Eric Sandeen wrote:
-> >> Sorry for the silence, this is a nice bug you've found :)
-> >>
-> >> I'll look into it ...
-> >
-> > You may want to take a quick look at this thread:
-> >
-> >     http://lkml.org/lkml/2008/10/28/413
-> >
-> > 					- Ted
->
-> I thought about that, but at least at first glance I don't see how the
-> gfp mask change would cause this behavior...?  At least, I don't think
-> we're seeing recursion back into the filesystem... but I'll ponder that.
+--Sig_/LOi8.4M=k8WFEX4fvu+6H_H
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-That's definitely a bug which I'll have to fix for 2.6.28, but
-I agree it's unlikely to recurse frequently like this (would only
-happen under high memory pressure, and only when writeout from
-page reclaim happens).
+Hello,
 
+I have a drive (a 250 GB external USB hard drive) which I wanted to
+convert to 256 byte inodes and start using as an ext4 drive (currently
+I use it as ext3).  However, I started the tune2fs operation on 01 Nov
+2008 02:27:34 -0400, and it is currently nearly 13 hours later, and the
+operation is _still_ going at 100% of one core and operating on the
+drive.
 
-> (Also, Arthur reports seeing this as long ago as 2.6.9...)
+Three questions:
 
-OK, well that would confirm it.
+  * Is this normal?
+  * How long can I expect this process to continue?
+  * Can it be (safely) interrupted if it will continue for a long time?
+
+I converted my home directory to ext4 without issue and so I (stupidly,
+I admit) did not take a backup of this 250 GB drive's contents before I
+started the conversion process.  Oops.  Lesson learned.  My thinking at
+this point is that it would take _far_ less time to interrupt, backup,
+and just use mkfs.ext4 on the drive and then restore (about 2 hours
+instead of an unknown quantity which is already nearing 13 hours).
+
+	Thanks,
+	Mike Trausch
+
+--=20
+My sigfile ran away and is on hiatus.
+http://www.trausch.us/
+
+--Sig_/LOi8.4M=k8WFEX4fvu+6H_H
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEAREDAAYFAkkMqYoACgkQ0kE/IBnFmjCpZACfS4CdNheBPu/H2Hi5E57u43+B
+7+0AnRM3S7YLa2p77EwsvQQoXNyp4o1/
+=uYnI
+-----END PGP SIGNATURE-----
+
+--Sig_/LOi8.4M=k8WFEX4fvu+6H_H--
