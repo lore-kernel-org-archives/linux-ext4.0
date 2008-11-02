@@ -1,130 +1,125 @@
-From: "Michael B. Trausch" <mike@trausch.us>
-Subject: Re: "tune2fs -I 256" runtime---can it be interrupted safely?
-Date: Sat, 1 Nov 2008 19:46:17 -0400
-Message-ID: <20081101194617.0dc131c3@zest>
-References: <20081101151002.4ed9be99@zest>
+From: Sami Liedes <sliedes@cc.hut.fi>
+Subject: Re: [Bugme-new] [Bug 11266] New: unable to handle kernel paging
+	request in ext2_free_blocks
+Date: Sun, 2 Nov 2008 07:27:27 +0200
+Message-ID: <20081102052727.GK5994@lh.kyla.fi>
+References: <0K5800031SEDU2@smtp02.hut-mail> <20080807200717.GB26307@lh.kyla.fi> <20080807202840.GC26307@lh.kyla.fi> <20080818145841.GC10621@atrey.karlin.mff.cuni.cz> <20080818165131.GC6491@skywalker> <20080819032410.GE3392@webber.adilger.int> <20080819091339.GE14799@duck.suse.cz> <20080819105111.GK8997@lh.kyla.fi> <20080820102533.GA5979@atrey.karlin.mff.cuni.cz> <20080820190704.GD3392@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="Sig_/Kj=AVJuy5oqBAzCfRXnyK0g";
- protocol="application/pgp-signature"; micalg=PGP-RIPEMD160
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	bugme-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.30]:63312 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752034AbYKAXqz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 1 Nov 2008 19:46:55 -0400
-Received: by yw-out-2324.google.com with SMTP id 9so780318ywe.1
-        for <linux-ext4@vger.kernel.org>; Sat, 01 Nov 2008 16:46:53 -0700 (PDT)
-In-Reply-To: <20081101151002.4ed9be99@zest>
+Received: from smtp-3.hut.fi ([130.233.228.93]:38093 "EHLO smtp-3.hut.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751866AbYKBFsf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 2 Nov 2008 01:48:35 -0400
+Content-Disposition: inline
+In-Reply-To: <20080820190704.GD3392@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---Sig_/Kj=AVJuy5oqBAzCfRXnyK0g
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+[Sorry for duplicates, forgot to use email instead of bugzilla web
+interface.]
 
-On Sat, 1 Nov 2008 15:10:02 -0400
-"Michael B. Trausch" <mike@trausch.us> wrote:
->
-> I converted my home directory to ext4 without issue and so I
-> (stupidly, I admit) did not take a backup of this 250 GB drive's
-> contents before I started the conversion process.  Oops.  Lesson
-> learned.  My thinking at this point is that it would take _far_ less
-> time to interrupt, backup, and just use mkfs.ext4 on the drive and
-> then restore (about 2 hours instead of an unknown quantity which is
-> already nearing 13 hours).
->=20
+I now have found an ext3 filesystem for which this bug happens pretty
+reproducibly on 2.6.27.4. Increasing commit interval seems to help it happen,
+otherwise the journal can be aborted and then the bug no longer happens. I do
+realize that this report is for the ext2 bug, but I hope finding a similar bug
+on ext3 might help (and even if this is a separate bug, this information should
+help resolve it).
 
-At 18:01:34 (after 15 hours and change) I decided to give it up and
-sent tune2fs a SIGINT.  It happily aborted, and fsck appears to have
-fixed whatever inconsistencies were introduced during the tune2fs run
-and the files on the volume appear to be perfectly intact.
+Here's how to do it:
 
-Am going to go the route of simply pulling the data off and using
-mkfs.ext4 to create a new filesystem on the device.  But, I am still
-curious as to why this would run for so long.  Some volume statistics,
-in case they may be of help in trying to determine why this process was
-running for so long; I don't even know how much longer it would have
-run for.
+1. bunzip2 the attached filesystem image hdb.10000097.bz2
 
-Stats from fsck:
-  651384 inodes used (4.27%)
-     788 non-contiguous inodes (0.1%)
-         # of inodes with ind/dind/tind blocks: 27974/1745/8
-28464107 blocks used (46.62%)
-       0 bad blocks
-      14 large files
+(I did the following inside qemu, hence /dev/hdb)
 
-  553474 regular files
-   90764 directories
-       0 character device files
-       0 block device files
-       0 fifos
-       3 links
-    7136 symbolic links (7093 fast symbolic links)
-       1 socket
---------
-  651378 files
+2. mount /dev/hdb /mnt -t ext3 -o errors=continue,commit=300
+3. cd /mnt
+4. timeout 30 cp -r doc doc2 >&/dev/null (or manually break cp after 30
+seconds, it's jammed anyway)
+6. find -xdev -print0 2>/dev/null |xargs -0 touch -- 2>/dev/null
+7. mkdir tmp >&/dev/null
+8. echo whoah >tmp/filu 2>/dev/null
+9. rm -rf /mnt/* >&/dev/null
+10. while completing rm -rf, the following oops occurs:
 
-Stats from dumpe2fs:
-Filesystem volume name:   <none>
-Last mounted on:          <not available>
-Filesystem UUID:          95904edb-b501-4c3c-9bec-b9f046b04e3b
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal ext_attr resize_inode dir_index
-filetype needs_recovery sparse_super large_file Filesystem
-flags:         signed_directory_hash
-Default mount options:    (none)
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              15269888
-Block count:              61049596
-Reserved block count:     3052479
-Free blocks:              32585489
-Free inodes:              14618504
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Reserved GDT blocks:      1009
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         8192
-Inode blocks per group:   256
-Filesystem created:       Mon Jul  7 23:09:06 2008
-Last mount time:          Sat Nov  1 18:20:45 2008
-Last write time:          Sat Nov  1 18:20:45 2008
-Mount count:              1
-Maximum mount count:      27
-Last checked:             Sat Nov  1 18:18:24 2008
-Check interval:           15552000 (6 months)
-Next check after:         Thu Apr 30 18:18:24 2009
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:               128
-Journal inode:            8
-Default directory hash:   tea
-Directory Hash Seed:      52aba0f3-6da7-4e1a-b4b3-e8c51e8168fc
-Journal backup:           inode blocks
-Journal size:             128M
+------------------------------------------------------------
+EXT3-fs error (device hdb): ext3_free_blocks: Freeing blocks not in datazone -
+block = 4294967295, count = 1
+EXT3-fs error (device hdb): ext3_free_blocks: Freeing blocks not in datazone -
+block = 4294967295, count = 1
+EXT3-fs error (device hdb): ext3_free_blocks: Freeing blocks not in datazone -
+block = 4294967295, count = 1
+EXT3-fs error (device hdb): ext3_free_blocks: Freeing blocks not in datazone -
+block = 4294967295, count = 1
+EXT3-fs error (device hdb): ext3_free_blocks: Freeing blocks not in datazone -
+block = 4294967295, count = 1
+EXT3-fs unexpected failure: !jh->b_committed_data;
+inconsistent data on disk
+EXT3-fs error (device hdb): ext3_free_blocks: Freeing blocks in system zones -
+Block = 8234, count = 1
+EXT3-fs unexpected failure: !jh->b_committed_data;
+inconsistent data on disk
+ext3_forget: aborting transaction: IO failure in __ext3_journal_forget
+EXT3-fs error (device hdb): ext3_free_blocks: Freeing blocks in system zones -
+Block = 42, count = 3
+EXT3-fs error (device hdb): ext3_free_blocks: Freeing blocks not in datazone -
+block = 25630524, count = 1
+EXT3-fs error (device hdb) in ext3_free_blocks_sb: Readonly filesystem
+EXT3-fs unexpected failure: !jh->b_committed_data;
+inconsistent data on disk
+BUG: unable to handle kernel paging request at c13fbbfc
+IP: [<c02de4f9>] read_block_bitmap+0xa3/0x147
+*pde = 07886163 *pte = 013fb160
+Oops: 0000 [#1] DEBUG_PAGEALLOC
 
-	--- Mike
+Pid: 817, comm: rm Not tainted (2.6.27.4 #1)
+EIP: 0060:[<c02de4f9>] EFLAGS: 00000206 CPU: 0
+EIP is at read_block_bitmap+0xa3/0x147
+EAX: ffffdfff EBX: c13fc820 ECX: c13fc000 EDX: 00002001
+ESI: c74b15b0 EDI: c7aae400 EBP: c7b7acd0 ESP: c7b7aca0
+ DS: 007b ES: 007b FS: 0000 GS: 0033 SS: 0068
+Process rm (pid: 817, ti=c7b7a000 task=c78a1ce0 task.ti=c7b7a000)
+Stack: 00000001 00000000 00000000 c7aaf1c0 00000246 c79cdc00 00000001 00000000
+       c13fc000 00000000 00000001 c163b37c c7b7ad28 c02de66f c0315003 c740aadc
+       c7b7ad10 c7440000 c7aaf1c0 00000029 0000202a c7aae400 c7440000 c79cdcac
+Call Trace:
+ [<c02de66f>] ? ext3_free_blocks_sb+0x93/0x3d6
+ [<c0315003>] ? journal_forget+0xff/0x1aa
+ [<c02edd83>] ? __ext3_journal_forget+0x19/0x3f
+ [<c02de9dd>] ? ext3_free_blocks+0x2b/0x7f
+ [<c02e3f8c>] ? ext3_clear_blocks+0x137/0x159
+ [<c02e4072>] ? ext3_free_data+0xc4/0x133
+ [<c02e4320>] ? ext3_free_branches+0x23f/0x247
+ [<c02e4189>] ? ext3_free_branches+0xa8/0x247
+ [<c02e4189>] ? ext3_free_branches+0xa8/0x247
+ [<c02e498d>] ? ext3_truncate+0x665/0x8ad
+ [<c0316062>] ? journal_start+0xb2/0x112
+ [<c031608d>] ? journal_start+0xdd/0x112
+ [<c0316062>] ? journal_start+0xb2/0x112
+ [<c02ebb53>] ? ext3_journal_start_sb+0x29/0x4a
+ [<c02e4ca4>] ? ext3_delete_inode+0xcf/0xdb
+ [<c02e4bd5>] ? ext3_delete_inode+0x0/0xdb
+ [<c02774b3>] ? generic_delete_inode+0x62/0xd5
+ [<c0277639>] ? generic_drop_inode+0x113/0x16a
+ [<c02765ac>] ? iput+0x47/0x4e
+ [<c026d9f4>] ? do_unlinkat+0xc3/0x13d
+ [<c054484f>] ? mutex_unlock+0x8/0xa
+ [<c026fb0b>] ? vfs_readdir+0x60/0x85
+ [<c026f84c>] ? filldir64+0x0/0xd7
+ [<c026fbc7>] ? sys_getdents64+0x97/0xa1
+ [<c026db66>] ? sys_unlinkat+0x23/0x36
+ [<c0202f1e>] ? syscall_call+0x7/0xb
+ =======================
+Code: 26 00 0f 88 94 00 00 00 8b 87 8c 02 00 00 89 45 e4 8b 55 e8 0f af 50 10
+8b 40 34 03 50 14 8b 03 89 45 ec 8b 4e 14 89 4d f0 29 d0 <0f> a3 01 19 c0 85 c0
+74 11 8b 43 04 89 45 ec 29 d0 0f a3 01 19
+EIP: [<c02de4f9>] read_block_bitmap+0xa3/0x147 SS:ESP 0068:c7b7aca0
+---[ end trace 780108b88e07a03e ]---
+------------------------------------------------------------
 
---=20
-My sigfile ran away and is on hiatus.
-http://www.trausch.us/
-
---Sig_/Kj=AVJuy5oqBAzCfRXnyK0g
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEAREDAAYFAkkM6kkACgkQ0kE/IBnFmjAViACfcvy5sSIuwWPej6xXT6Z9ECCf
-2NsAoIMUXbAlR5Jz1r10P01sxl7TLPew
-=LiV/
------END PGP SIGNATURE-----
-
---Sig_/Kj=AVJuy5oqBAzCfRXnyK0g--
+	Sami
