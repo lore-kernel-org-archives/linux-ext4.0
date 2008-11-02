@@ -1,48 +1,51 @@
-From: =?ISO-8859-1?Q?Fran=E7ois_Valenduc?=
-	<francois.valenduc@tvcablenet.be>
-Subject: Wrong calculation of space remaining on a 32 bit system.
-Date: Sun, 02 Nov 2008 15:40:25 +0100
-Message-ID: <490DBBD9.9040300@tvcablenet.be>
+From: Sami Liedes <sliedes@cc.hut.fi>
+Subject: [PATCH] jbd2: deregister proc on failure in jbd2_journal_init_inode
+Date: Sun, 2 Nov 2008 21:58:57 +0200
+Message-ID: <20081102195857.GM5994@lh.kyla.fi>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: sct@redhat.com, akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mirapoint3.brutele.be ([212.68.199.148]:20800 "EHLO
-	mirapoint3.brutele.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753425AbYKBOpc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Nov 2008 09:45:32 -0500
+Received: from smtp-1.hut.fi ([130.233.228.91]:59928 "EHLO smtp-1.hut.fi"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753722AbYKBUAP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 2 Nov 2008 15:00:15 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello everybody,
+jbd2_journal_init_inode() does not call jbd2_stats_proc_exit() on all
+failure paths after calling jbd2_stats_proc_init(). This leaves
+dangling references to the fs in proc.
 
-I try to use ext4 but I encounter an annoying problem. It seems that
-only one third of the filesystem can be used. I have a LVM volume for
-the /usr/src directory which currently is formatted as reiserfs. So I
-made a compressed tar file of the content. When I uncompress it after
-having formatted this volume as ext4, the decompression stops when
-appreoximately 600 Mb of space is used. At this time, it's no more
-possible to write anything on this volume even if there are 1.4 Gb of
-free space remaining.
-What seems even stranger is that I encounter this problem only on a 32
-bits system. On another computer having an Intel Core 2 Duo and running
-a 64 system, the problem doesn't occur.
-I have already filed a bug report (see
-http://bugzilla.kernel.org/show_bug.cgi?id=3D11840) but unfortunately,
-nobody seems to care about it.
+This patch fixes bug #11493.
 
-I tried the 2.6.28-rc3 or 2.6.27 patched with the ext4-2 patchset but i=
-t
- gives the same problem.
+Signed-off-by: Sami Liedes <sliedes@cc.hut.fi>
 
-Can anybody explains what's happening ?
+---
 
-Thanks in advance for your help.
+I hope this is correct. I don't understand the code very well, but I
+did test my patch and it seems to fix the problem. Please don't hit me
+too hard, this is the first kernel patch I have ever submitted.
 
-=46ran=E7ois Valenduc
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 783de11..e70d657 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1089,6 +1089,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
+ 	if (!journal->j_wbuf) {
+ 		printk(KERN_ERR "%s: Cant allocate bhs for commit thread\n",
+ 			__func__);
++		jbd2_stats_proc_exit(journal);
+ 		kfree(journal);
+ 		return NULL;
+ 	}
+@@ -1098,6 +1099,7 @@ journal_t * jbd2_journal_init_inode (struct inode *inode)
+ 	if (err) {
+ 		printk(KERN_ERR "%s: Cannnot locate journal superblock\n",
+ 		       __func__);
++		jbd2_stats_proc_exit(journal);
+ 		kfree(journal);
+ 		return NULL;
+ 	}
