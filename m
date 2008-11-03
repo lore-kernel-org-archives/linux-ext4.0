@@ -1,36 +1,42 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: The default assignee for the ext4 component goes nowhere
-Date: Mon, 3 Nov 2008 08:26:23 -0500
-Message-ID: <20081103132623.GD29102@mit.edu>
-References: <E1Kwkhw-0007O5-Mr@closure.thunk.org> <20081102134803.28c12d8b.akpm@linux-foundation.org> <20081102230806.GN8134@mit.edu> <20081102193226.df026896.akpm@linux-foundation.org> <8f3aa8d60811022301tc784cc1saea84719aa20d7a4@mail.gmail.com>
+Subject: Re: data corruption with ext4 (from 2.6.27.4) exposed by rtorrent
+Date: Mon, 3 Nov 2008 08:40:08 -0500
+Message-ID: <20081103134008.GE29102@mit.edu>
+References: <3d3ce57e0811030442o377cf2bet212eefba79d714bb@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	bugme-admin@linux-foundation.org, linux-ext4@vger.kernel.org,
-	Sami Liedes <sliedes@cc.hut.fi>,
-	Francois Valenduc <francois.valenduc@tvcablenet.be>
-To: Martin Bligh <mbligh@mbligh.org>
+Cc: Cryptooctoploid <cryptooctoploid@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: Roc Valles <vallesroc@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:58260 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:58873 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755351AbYKCN01 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 08:26:27 -0500
+	with ESMTP id S1754285AbYKCNkK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 08:40:10 -0500
 Content-Disposition: inline
-In-Reply-To: <8f3aa8d60811022301tc784cc1saea84719aa20d7a4@mail.gmail.com>
+In-Reply-To: <3d3ce57e0811030442o377cf2bet212eefba79d714bb@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 02, 2008 at 11:01:47PM -0800, Martin Bligh wrote:
-> >>   But for the ext3 component was set to assign bugs to you
-> >> by default, as opposed to creating a fs_ext3 pseudo-user?
-> >
-> > Ah.  We'll need to change that.  You don't want all my bugzilla traffic
-> > landing on linux-ext4 :)
-> 
-> You want me to create another pseudo user? is easy to do.
+On Mon, Nov 03, 2008 at 12:42:11PM +0000, Roc Valles wrote:
+> Some person already reported this. I'm having the same problem.
+> http://marc.info/?l=linux-ext4&m=122557056518246&w=2
+>
+> rtorrent is a bittorrent client that makes heavy use of mmap instead
+> of read/write to avoid needless duplication of data. It has exposed
+> other bugs in the past (mmap bug in 2.6.19).
+> http://libtorrent.rakshasa.no
+> Downloading a big torrent (>2GB) with rtorrent triggers it more times
+> than not. The bigger the torrent, the higher the likeliness of
+> failure. When the torrent is finished, if a hash check is forced by
+> pressing control-r on the torrent, some blocks will fail.
 
-OK, could you please add a pseudo user for the ext3 category.  That
-way we can have both akpm and linux-ext4 watch that category.
-Thanks!!
+Can both of you send the output of "dumpe2fs -h /dev/<disk device>" of
+the filesystem in question?  The thing which I'm most interested in is
+whether the extents feature was enabled or not.  (i.e., was this a
+freshly made ext4 filesystem, or a ext3 filesystem mounted under ext4,
+and with which features eanbled?)
+
+Thanks,
 
 						- Ted
