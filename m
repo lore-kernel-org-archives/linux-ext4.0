@@ -1,148 +1,103 @@
-From: =?ISO-8859-1?Q?Fran=E7ois_Valenduc?=
-	<francois.valenduc@tvcablenet.be>
-Subject: Re: Wrong calculation of space remaining on a 32 bit system.
-Date: Mon, 03 Nov 2008 19:28:34 +0100
-Message-ID: <490F42D2.8080200@tvcablenet.be>
-References: <490DBBD9.9040300@tvcablenet.be> <20081102204352.GJ8134@mit.edu> <490E1FB1.8020100@tvcablenet.be> <87fxm9bxps.fsf@newton.gmurray.org.uk> <490E289F.4010907@tvcablenet.be> <20081102230135.GM8134@mit.edu>
+From: Arthur Jones <ajones@riverbed.com>
+Subject: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
+Date: Mon, 3 Nov 2008 10:44:26 -0800
+Message-ID: <20081103184426.GA31894@ajones-laptop.nbttech.com>
+References: <4908C951.2000309@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------020902070607060300020809"
-Cc: Graham Murray <graham@gmurray.org.uk>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="us-ascii"
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"sct@redhat.com" <sct@redhat.com>,
+	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mirapoint3.brutele.be ([212.68.199.148]:16107 "EHLO
-	mirapoint3.brutele.be" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752055AbYKCS3K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 13:29:10 -0500
-In-Reply-To: <20081102230135.GM8134@mit.edu>
+Received: from smtp1.riverbed.com ([206.169.144.12]:39566 "EHLO
+	smtp1.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751393AbYKCSo2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 13:44:28 -0500
+Content-Disposition: inline
+In-Reply-To: <4908C951.2000309@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------020902070607060300020809
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 8bit
+Hi Eric,   This patch fixes the problem for me, and
+seems to put the buffers on the dirty list at the
+place where they are put on the list during the working
+case.  Despite having rooted around in the innards of
+ext3 for the last few days, I cannot say that I have
+any sense of whether this patch will cause problems
+elsewhere or even if this is the best place to
+intercede.
 
-Theodore Tso a écrit :
-> On Sun, Nov 02, 2008 at 11:24:31PM +0100, François Valenduc wrote:
->> How can I know if I ran out of inodes ? I already tried 128 and 256
->> inode sizes but the problem occurs in both cases. 
-> 
-> By using the command "df -i".  It will list the number of inodes that
-> are in use.
-> 
-> The tuning parameters for mke2fs is -i (the inode ratio), or -N
-> (number of inodes).  The number of inodes is normally calculated as a
-> ratio to the disk size.  The normal inode ratio is 16384, which allows
-> for an average inode size of 16k.  If you have a huge number of small
-> files, or small directories, or a huge number of symbolic links or
-> device nodes in the filesystem, you can run out of inodes.  You can
-> change this either by specifying a a smaller inode ratio, or by
-> explicitly specifying the number of inodes you want created using the
-> -N option.
-> 
->> As I said in my bug
->> report, I found a patch dated from november 2007 which seems to adress
->> the problem (see
->> http://osdir.com/ml/file-systems.ext4/2007-11/msg00200.htm).  Off course,
->> I can't apply it any more now.
-> 
-> You can't apply it because it's already been applied; it's been in
-> mainline for quite a while.
-> 
->>  But it seems this kind of problem still
->> exists. I have no problem to use ext4 on a 64 bit systems with logical
->> volumes having approximately the same size.
-> 
-> That seems very strange.  Maybe you have a different version of
-> mke2fs, or a different mke2fs.conf file?  (The default inode size can
-> be controlled by the mke2fs.conf file.)
-> 
-> Can you send the output of "dumpe2fs -h" on a filesystem where you are
-> having this problem, and on a filesystem from the 64-bit system where
-> it is working correctly?
-> 
-> 					- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+I post the complete patch not because I think it
+should be committed as is, but rather to try
+to explain the logic that brought it about.  At the
+very least, this should be reviewed by the experts
+here to make sure there is no collateral damage.
 
-I indeed ran out of inode and this probably has nothing to do with 32 or
-64 bit systems. The df -i output looks like this:
-/dev/mapper/system-portage      45K     45K       0  100% /usr/portage
+Arthur
 
-As you may have guessed, I created a logical volume for the portage tree
- of gentoo. It indeeds contains a lot of small files with all the
-ebuilds. I use XFS for the portage tree on the 64 bits computer. Maybe
-ext4 is not appropriate for this case. Maybe I would have the same
-problem also on the 64 bits computer.
+-------------------
+In ext3_sync_fs, we only wait for a commit to
+finish if we started it, but there may be one
+already in progress which will not be synced.
 
-I am also attaching the dump2efs output. I finally managed to use ext4
-on this computer. I created a logical volume for the /usr/src directory
-and I managed to copy 2 sources of linux kernel and a clone of    the
-git tree on it. The df -i output is the following:
-/dev/mapper/system-src   120K     96K     25K   80% /usr/src
+In the case of a data=ordered umount with pending long
+symlinks which are delayed due to a long list
+of other I/O on the backing block device, this
+causes the buffer associated with the long symlinks
+to not be moved to the inode dirty list in the second
+phase of fsync_super.  Then, before they can be dirtied
+again, kjournald exits, seeing the UMOUNT flag and the
+dirty pages are never written to the backing block device,
+causing long symlink corruption and exposing new or
+previously freed block data to userspace.
 
-I checked the mke2fs.conf files on both computer and the default inode
-ratio is set to 16384 on the 2 systems.
+This can be reproduced with a script created
+by Eric Sandeen <sandeen@redhat.com>:
 
-François
+	#!/bin/bash
 
+	umount /mnt/test2
+	mount /dev/sdb4 /mnt/test2
+	rm -f /mnt/test2/*
+	dd if=/dev/zero of=/mnt/test2/bigfile bs=1M count=512
+	touch
+	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
+	ln -s
+	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
+	/mnt/test2/link
+	umount /mnt/test2
+	mount /dev/sdb4 /mnt/test2
+	ls /mnt/test2/
+	umount /mnt/test2
 
---------------020902070607060300020809
-Content-Type: text/plain;
- name="dump-prob"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="dump-prob"
+To ensure all commits are synced, we flush
+all journal commits now when sync_fs'ing ext3.
 
-Filesystem volume name:   <none>
-Last mounted on:          <not available>
-Filesystem UUID:          f0c32b27-a50f-40ea-999f-bea17ac620d9
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal ext_attr resize_inode dir_index filetype needs_recovery extent flex_bg sparse_super large_file uninit_bg dir_nlink extra_isize
-Filesystem flags:         signed_directory_hash 
-Default mount options:    (none)
-Filesystem state:         clean
-Errors behavior:          Continue
-Filesystem OS type:       Linux
-Inode count:              45120
-Block count:              180224
-Reserved block count:     9011
-Free blocks:              173110
-Free inodes:              45109
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Reserved GDT blocks:      43
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         7520
-Inode blocks per group:   470
-Flex block group size:    16
-Filesystem created:       Mon Nov  3 00:35:25 2008
-Last mount time:          Mon Nov  3 00:35:31 2008
-Last write time:          Mon Nov  3 00:35:31 2008
-Mount count:              1
-Maximum mount count:      27
-Last checked:             Mon Nov  3 00:35:25 2008
-Check interval:           15552000 (6 months)
-Next check after:         Sat May  2 01:35:25 2009
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:	          256
-Required extra isize:     28
-Desired extra isize:      28
-Journal inode:            8
-Default directory hash:   half_md4
-Directory Hash Seed:      c29d076b-7903-4f63-bc67-fcf72f753cf7
-Journal backup:           inode blocks
-Journal size:             16M
+Signed-off-by: Arthur Jones <ajones@riverbed.com>
+---
+ fs/ext3/super.c |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
 
-
---------------020902070607060300020809--
-
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 18eaa78..053659a 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2392,7 +2392,13 @@ static int ext3_sync_fs(struct super_block *sb, int wait)
+ 	if (journal_start_commit(EXT3_SB(sb)->s_journal, &target)) {
+ 		if (wait)
+ 			log_wait_commit(EXT3_SB(sb)->s_journal, target);
+-	}
++	} else if (wait)
++		/*
++		 * We may have a commit in progress, clear it out
++		 * before we go on...
++		 */
++		ext3_force_commit(sb);
++
+ 	return 0;
+ }
+ 
+-- 
+1.5.4.3
