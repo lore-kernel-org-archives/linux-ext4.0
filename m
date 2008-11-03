@@ -1,23 +1,42 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: Your Bugzilla password.
-Date: Mon,  3 Nov 2008 09:39:10 -0800 (PST)
-Message-ID: <20081103173910.4372C108043@picon.linux-foundation.org>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: The default assignee for the ext4 component goes nowhere
+Date: Mon, 3 Nov 2008 13:23:00 -0500
+Message-ID: <20081103182300.GF29102@mit.edu>
+References: <E1Kwkhw-0007O5-Mr@closure.thunk.org> <20081102134803.28c12d8b.akpm@linux-foundation.org> <20081102230806.GN8134@mit.edu> <20081102193226.df026896.akpm@linux-foundation.org> <8f3aa8d60811022301tc784cc1saea84719aa20d7a4@mail.gmail.com> <490F2DC4.9010909@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Martin Bligh <mbligh@mbligh.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	bugme-admin@linux-foundation.org, linux-ext4@vger.kernel.org,
+	Sami Liedes <sliedes@cc.hut.fi>,
+	Francois Valenduc <francois.valenduc@tvcablenet.be>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:44903 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751686AbYKCRjM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 12:39:12 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mA3HdAn6015165
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Nov 2008 09:39:11 -0800
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:49630 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751396AbYKCSXN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 13:23:13 -0500
+Content-Disposition: inline
+In-Reply-To: <490F2DC4.9010909@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-To use the wonders of Bugzilla, you can use the following:
+On Mon, Nov 03, 2008 at 10:58:44AM -0600, Eric Sandeen wrote:
+> Martin Bligh wrote:
+> > A (very) few people have requested mailing lists get cc'ed on some
+> > categories, for which we've set up mailing list users, and had them
+> > watch the categories too.
+> 
+> I think this makes sense for ext4 (I think xfs was one of those few;
+> bugs go to xfs-masters@oss.sgi.com for that category IIRC) so at least
+> people see them.
+> 
+> Would anyone on linux-ext4 disagree with setting up the list to watch
+> the ext3 & ext4 categories?
 
- E-mail address: linux-ext4@vger.kernel.org
-       Password: rbSuWv0aTP
+On the theory that it is easier to ask forgiveness than to get
+permission :-), I've subscribed linux-ext4@vger.ekernel org to the
+ext2, ext3, and ext4 categories.  If this result in too much e-mail,
+folks can complain and we can cut things back.
 
- To change your password, go to:
- http://bugzilla.kernel.org/userprefs.cgi
+						- Ted
