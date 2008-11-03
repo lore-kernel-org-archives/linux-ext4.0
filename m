@@ -1,47 +1,51 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V2 1/2] ext4: unlock group before returning on error
-Date: Mon,  3 Nov 2008 13:32:14 +0530
-Message-ID: <1225699335-28813-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+From: Andrey Borzenkov <arvidjaar@mail.ru>
+Subject: 2.6.28-rc3: ext4_ext_search_right: =?utf-8?q?=E2=80=98ix=E2=80=99_may_be_used?= uninitialized
+Date: Mon, 3 Nov 2008 11:12:59 +0300
+Message-ID: <200811031113.01297.arvidjaar@mail.ru>
+Mime-Version: 1.0
+Content-Type: multipart/signed;
+  boundary="nextPart1574675.CcO6eUx3RS";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
+Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([59.145.155.4]:38647 "EHLO
-	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754572AbYKCICT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 03:02:19 -0500
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id mA382GqN015371
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Nov 2008 13:32:16 +0530
-Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA382GEM1945680
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Nov 2008 13:32:16 +0530
-Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id mA382Fdc029551
-	for <linux-ext4@vger.kernel.org>; Mon, 3 Nov 2008 19:02:16 +1100
+Received: from pusher.mail.ru ([194.67.23.231]:7102 "EHLO mx48.mail.ru"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1753238AbYKCINH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Nov 2008 03:13:07 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-with errors=continue we need to make sure we need
-to unlock the group before returning.
+--nextPart1574675.CcO6eUx3RS
+Content-Type: text/plain;
+  charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/mballoc.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+  CC [M]  fs/ext4/extents.o
+/home/bor/src/linux-git/fs/ext4/extents.c: In function =E2=80=98ext4_ext_se=
+arch_right=E2=80=99:
+/home/bor/src/linux-git/fs/ext4/extents.c:1120: warning: =E2=80=98ix=E2=80=
+=99 may be used uninitialized in this function
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d523e42..0643f9c 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4446,6 +4446,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 		else if (block >= (entry->start_blk + entry->count))
- 			n = &(*n)->rb_right;
- 		else {
-+			ext4_unlock_group(sb, group);
- 			ext4_error(sb, __func__,
- 			    "Double free of blocks %d (%d %d)\n",
- 			    block, entry->start_blk, entry->count);
--- 
-1.6.0.3.514.g2f91b
+{pts/1}% rpm -q gcc
+gcc-4.3.2-3mnb2
+{pts/1}%      =20
 
+on Mandriva cooker
+
+--nextPart1574675.CcO6eUx3RS
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAkkOso0ACgkQR6LMutpd94z+9QCgxclE6QaQ98NCiVVXy0dMIHz3
+0roAoJ/+IUfJftcC9fVlUZrSBzkMGJjs
+=4FO/
+-----END PGP SIGNATURE-----
+
+--nextPart1574675.CcO6eUx3RS--
