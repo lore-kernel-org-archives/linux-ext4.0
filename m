@@ -1,48 +1,49 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: The default assignee for the ext4 component goes nowhere
-Date: Sun, 2 Nov 2008 19:32:26 -0800
-Message-ID: <20081102193226.df026896.akpm@linux-foundation.org>
-References: <E1Kwkhw-0007O5-Mr@closure.thunk.org>
-	<20081102134803.28c12d8b.akpm@linux-foundation.org>
-	<20081102230806.GN8134@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: JBD2/ext4 error
+Date: Sun, 2 Nov 2008 22:39:20 -0500
+Message-ID: <20081103033920.GC29102@mit.edu>
+References: <20081103004827.GA2766@nineveh.local>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: bugme-admin@linux-foundation.org, linux-ext4@vger.kernel.org,
-	Sami Liedes <sliedes@cc.hut.fi>,
-	Francois Valenduc <francois.valenduc@tvcablenet.be>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Mingming Cao <cmm@us.ibm.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:55431 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754374AbYKCDdM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Nov 2008 22:33:12 -0500
-In-Reply-To: <20081102230806.GN8134@mit.edu>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:56523 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1754430AbYKCDjW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Nov 2008 22:39:22 -0500
+Content-Disposition: inline
+In-Reply-To: <20081103004827.GA2766@nineveh.local>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, 2 Nov 2008 18:08:06 -0500 Theodore Tso <tytso@mit.edu> wrote:
-
-> On Sun, Nov 02, 2008 at 01:48:03PM -0800, Andrew Morton wrote:
-> > 
-> > I think the normal way of doing this is to create an account at bugzilla
-> > called linux-ext4@vger.kernel.org then you can log in using that account
-> > and add it to various assignees using the "users to watch" feature.
+On Sun, Nov 02, 2008 at 07:48:27PM -0500, Joseph Fannin wrote:
+> Hi,
 > 
-> Ah, so the fs_ext4@kernel-bugs.osdl.org is really a bugzilla
-> pseudo-user?
+> I'm hitting what's probably a bug in ext4 on one of my boxes. It
+> always happens on the boot partition, which is extentless, since it
+> seems likely GRUB will choke on extents.
 
-I guess so.
+Yeah, this looks like a 2.6.27 regression, introduced by commit a02908f1.
 
->   But for the ext3 component was set to assign bugs to you
-> by default, as opposed to creating a fs_ext3 pseudo-user?
+Mingming, can you check this:  I think in the function (in fs/ext4/inode.c):
 
-Ah.  We'll need to change that.  You don't want all my bugzilla traffic
-landing on linux-ext4 :)
+static int ext4_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
+{
+	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
+		return ext4_indirect_trans_blocks(inode, nrblocks, 0);
+	return ext4_ext_index_trans_blocks(inode, nrblocks, 0);
+}
 
-> I'm just trying to figure out how the bugzilla system is supposed to
-> be working...
+... the last argument to ext4_indirect_trans_blocks and
+ext4_ext_index_trans_blocks should be chunk, not 0.  
 
-I'm far from a definitive source on that matter.
+As result of this bug, we are massively overestimately the amount of
+credits needed in the non-extent case, and with small journals, this
+causes a failure.
 
-I'm not sure who's reading bugme-admin at present.
+We probably should do more testing with minimally sized journals to
+make sure there aren't other problems which only show up with small
+journals.
+
+						- Ted
