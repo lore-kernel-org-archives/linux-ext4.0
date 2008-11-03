@@ -1,63 +1,35 @@
-From: Jindrich Makovicka <makovick@gmail.com>
-Subject: Re: data corruption with ext4 (from 2.6.27.4) exposed by rtorrent
-Date: Mon, 3 Nov 2008 16:51:44 +0100
-Message-ID: <20081103165144.6514f003@starbug.prg01.itonis.net>
-References: <3d3ce57e0811030442o377cf2bet212eefba79d714bb@mail.gmail.com>
-	<20081103134008.GE29102@mit.edu>
-	<319012f0811030734s6d14b2b3t13c32a41ac48e852@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: The default assignee for the ext4 component goes nowhere
+Date: Mon, 03 Nov 2008 10:58:44 -0600
+Message-ID: <490F2DC4.9010909@redhat.com>
+References: <E1Kwkhw-0007O5-Mr@closure.thunk.org>	 <20081102134803.28c12d8b.akpm@linux-foundation.org>	 <20081102230806.GN8134@mit.edu>	 <20081102193226.df026896.akpm@linux-foundation.org> <8f3aa8d60811022301tc784cc1saea84719aa20d7a4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@mit.edu>, bugme-admin@linux-foundation.org,
+	linux-ext4@vger.kernel.org, Sami Liedes <sliedes@cc.hut.fi>,
+	Francois Valenduc <francois.valenduc@tvcablenet.be>
+To: Martin Bligh <mbligh@mbligh.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:59399 "EHLO ciao.gmane.org"
+Received: from mx2.redhat.com ([66.187.237.31]:33763 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755517AbYKCQAG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Nov 2008 11:00:06 -0500
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1Kx1qV-00082h-57
-	for linux-ext4@vger.kernel.org; Mon, 03 Nov 2008 16:00:03 +0000
-Received: from 193.239.0.25 ([193.239.0.25])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Mon, 03 Nov 2008 16:00:03 +0000
-Received: from makovick by 193.239.0.25 with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Mon, 03 Nov 2008 16:00:03 +0000
+	id S1755909AbYKCQ7x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 3 Nov 2008 11:59:53 -0500
+In-Reply-To: <8f3aa8d60811022301tc784cc1saea84719aa20d7a4@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 3 Nov 2008 16:34:10 +0100
-Cryptooctoploid <cryptooctoploid@gmail.com> wrote:
+Martin Bligh wrote:
+> A (very) few people have requested mailing lists get cc'ed on some
+> categories, for which we've set up mailing list users, and had them
+> watch the categories too.
 
-> On Mon, Nov 3, 2008 at 2:40 PM, Theodore Tso <tytso@mit.edu> wrote:
-> > On Mon, Nov 03, 2008 at 12:42:11PM +0000, Roc Valles wrote:
-> >> Some person already reported this. I'm having the same problem.
-> >> http://marc.info/?l=linux-ext4&m=122557056518246&w=2
-> >>
-> >> rtorrent is a bittorrent client that makes heavy use of mmap
-> >> instead of read/write to avoid needless duplication of data. It
-> >> has exposed other bugs in the past (mmap bug in 2.6.19).
-> >> http://libtorrent.rakshasa.no
-> >> Downloading a big torrent (>2GB) with rtorrent triggers it more
-> >> times than not. The bigger the torrent, the higher the likeliness
-> >> of failure. When the torrent is finished, if a hash check is
-> >> forced by pressing control-r on the torrent, some blocks will fail.
-> 
-> I have set up a debug torrent at:
-> http://www.demonoid.com/files/details/1676328/?rel=1225725960
-> 
-> It contains four identical files that were generated with:
-> dd if=/dev/zero of=zero.test0 count=1M
-> 
-> My upload speed is limited (512 kbit/s), but I hope this may help.
+I think this makes sense for ext4 (I think xfs was one of those few;
+bugs go to xfs-masters@oss.sgi.com for that category IIRC) so at least
+people see them.
 
-The following testcase was used to trigger the infamous MAP_SHARED
-dirty flag bug. Maybe it could be of some help here too:
+Would anyone on linux-ext4 disagree with setting up the list to watch
+the ext3 & ext4 categories?
 
-http://lkml.org/lkml/2006/12/27/180
-
--- 
-Jindrich Makovicka
-
-
+-Eric
