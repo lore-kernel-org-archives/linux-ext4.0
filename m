@@ -1,36 +1,38 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] improve jbd fsync batching
-Date: Mon, 3 Nov 2008 12:55:09 -0800
-Message-ID: <20081103125509.41e55529.akpm@linux-foundation.org>
-References: <20081028201614.GA21600@unused.rdu.redhat.com>
-	<20081103122729.60582692.akpm@linux-foundation.org>
-	<20081103202442.GA25736@unused.rdu.redhat.com>
+From: Arthur Jones <ajones@riverbed.com>
+Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
+Date: Mon, 3 Nov 2008 12:58:54 -0800
+Message-ID: <20081103205854.GC30565@ajones-laptop.nbttech.com>
+References: <4908C951.2000309@redhat.com> <20081103184426.GA31894@ajones-laptop.nbttech.com> <20081103113318.35b0c266.akpm@linux-foundation.org> <20081103201428.GB30565@ajones-laptop.nbttech.com> <20081103123750.67c96224.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: jbacik@redhat.com, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	rwheeler@redhat.com
-To: Josef Bacik <jbacik@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20081103202442.GA25736@unused.rdu.redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="us-ascii"
+Cc: "sandeen@redhat.com" <sandeen@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"sct@redhat.com" <sct@redhat.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp2.riverbed.com ([206.169.144.7]:29352 "EHLO
+	smtp2.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754453AbYKCU6z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 15:58:55 -0500
+Content-Disposition: inline
+In-Reply-To: <20081103123750.67c96224.akpm@linux-foundation.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 3 Nov 2008 15:24:43 -0500
-Josef Bacik <jbacik@redhat.com> wrote:
+Hi Andrew, ...
 
-> > please fix.
+On Mon, Nov 03, 2008 at 12:37:50PM -0800, Andrew Morton wrote:
+> [...]
+> OK.  But still, questions remain.
 > 
-> I see you already pulled this into -mm, would you like me to repost with the
-> same changelog and the patch updated, or just reply to this with the updated
-> patch?  Thanks,
+> - should we clear s_dirt if log_wait_commit() didn't work?
+> 
+> - ext3_force_commit() clears s_dirt also
+> 
+> - should ext3_sync_fs() be dropping the ext3_force_commit() return
+>   value on the floor?
 
-Either works for me at this stage.  If it's a replacement then I'll turn
-it into an incremental so I can see what changed, which takes me about 2.15
-seconds.
+- does ext4 have a similar issue (ext4_sync_fs looks the same)?
 
-If it had been a large patch or if it had been under test in someone's
-tree for a while then a replacement patch would be unwelcome.  But for a
-small, fresh patch like this one it's no big deal either way.
-
+Arthur
