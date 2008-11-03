@@ -1,56 +1,53 @@
-From: Olaf Weber <olaf@infovore.xs4all.nl>
-Subject: Re: [PATCH,RFC] ext3: Add support for non-native signed/unsigned htree hash algorithms
-Date: Mon, 03 Nov 2008 08:33:34 +0100
-Message-ID: <87zlkhb6wh.fsf@infovore.xs4all.nl>
-References: <1224560624-9691-1-git-send-email-tytso@mit.edu>
-	<1224560624-9691-2-git-send-email-tytso@mit.edu>
-	<20081022172221.c1a8c5b5.akpm@linux-foundation.org>
-	<20081023025646.GD10369@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2 2/2] ext4: Convert to host order before using the values.
+Date: Mon,  3 Nov 2008 13:32:15 +0530
+Message-ID: <1225699335-28813-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1225699335-28813-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-vbr6.xs4all.nl ([194.109.24.26]:1233 "EHLO
-	smtp-vbr6.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754691AbYKCHmg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 02:42:36 -0500
-In-Reply-To: <20081023025646.GD10369@mit.edu> (Theodore Tso's message of "Wed, 22 Oct 2008 22:56:47 -0400")
+Received: from e28smtp02.in.ibm.com ([59.145.155.2]:51853 "EHLO
+	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754536AbYKCICT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 03:02:19 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id mA382GZF004222
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Nov 2008 13:32:16 +0530
+Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA382DRT1917170
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Nov 2008 13:32:13 +0530
+Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id mA382FLO029554
+	for <linux-ext4@vger.kernel.org>; Mon, 3 Nov 2008 19:02:16 +1100
+In-Reply-To: <1225699335-28813-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso writes:
-> On Wed, Oct 22, 2008 at 05:22:21PM -0700, Andrew Morton wrote:
+Use le16_to_cpu to read the s_reserved_gdt_blocks values
+from super block.
 
->> > +		if (((int) c) == -1) {
->> 
->> arm says
->> 
->> fs/ext3/super.c: In function `ext3_fill_super':
->> fs/ext3/super.c:1750: warning: comparison is always false due to limited range of data type
->> 
->> Also, is there any way in which this new code can be, umm, cleaned up?
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/super.c |    5 ++---
+ 1 files changed, 2 insertions(+), 3 deletions(-)
 
-> Hmm..... is it considered safe to depend on the userspace limits.h
-> header file?  I guess if we trust that header file to be correct we
-> could check the value of CHAR_MIN and/or CHAR_MAX as defined by
-> limits.h.
-
-> Alternatively we could do an #ifdef __CHAR_UNSIGNED__, which is
-> defined by gcc.  The manual for gcc tells us not to depend on it, but
-> to depend on limits.h instead.
-
-> Any thoughts, or comments?  Does anyone know if the Intel compiler
-> will DTRT with either of these approaches?
-
-Why not write the test like this?
-
-	if ((char)-1 > 0) {
-		/* char is unsigned */
-	} else {
-		/* char is signed */
-	}
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 87ac84b..5bfc235 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1464,9 +1464,8 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 
+ 	/* We allocate both existing and potentially added groups */
+ 	flex_group_count = ((sbi->s_groups_count + groups_per_flex - 1) +
+-			    ((sbi->s_es->s_reserved_gdt_blocks +1 ) <<
+-			      EXT4_DESC_PER_BLOCK_BITS(sb))) /
+-			   groups_per_flex;
++			((le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) + 1) <<
++			      EXT4_DESC_PER_BLOCK_BITS(sb))) / groups_per_flex;
+ 	sbi->s_flex_groups = kzalloc(flex_group_count *
+ 				     sizeof(struct flex_groups), GFP_KERNEL);
+ 	if (sbi->s_flex_groups == NULL) {
 -- 
-Olaf Weber
+1.6.0.3.514.g2f91b
+
