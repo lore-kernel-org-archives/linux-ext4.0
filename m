@@ -1,39 +1,36 @@
-From: "Roc Valles" <vallesroc@gmail.com>
-Subject: data corruption with ext4 (from 2.6.27.4) exposed by rtorrent
-Date: Mon, 3 Nov 2008 12:42:11 +0000
-Message-ID: <3d3ce57e0811030442o377cf2bet212eefba79d714bb@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: The default assignee for the ext4 component goes nowhere
+Date: Mon, 3 Nov 2008 08:26:23 -0500
+Message-ID: <20081103132623.GD29102@mit.edu>
+References: <E1Kwkhw-0007O5-Mr@closure.thunk.org> <20081102134803.28c12d8b.akpm@linux-foundation.org> <20081102230806.GN8134@mit.edu> <20081102193226.df026896.akpm@linux-foundation.org> <8f3aa8d60811022301tc784cc1saea84719aa20d7a4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	bugme-admin@linux-foundation.org, linux-ext4@vger.kernel.org,
+	Sami Liedes <sliedes@cc.hut.fi>,
+	Francois Valenduc <francois.valenduc@tvcablenet.be>
+To: Martin Bligh <mbligh@mbligh.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.158]:49415 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753983AbYKCMmM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 07:42:12 -0500
-Received: by fg-out-1718.google.com with SMTP id 19so2209341fgg.17
-        for <linux-ext4@vger.kernel.org>; Mon, 03 Nov 2008 04:42:11 -0800 (PST)
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:58260 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1755351AbYKCN01 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 08:26:27 -0500
 Content-Disposition: inline
+In-Reply-To: <8f3aa8d60811022301tc784cc1saea84719aa20d7a4@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Some person already reported this. I'm having the same problem.
-http://marc.info/?l=linux-ext4&m=122557056518246&w=2
-rtorrent is a bittorrent client that makes heavy use of mmap instead
-of read/write to avoid needless duplication of data. It has exposed
-other bugs in the past (mmap bug in 2.6.19).
-http://libtorrent.rakshasa.no
-Downloading a big torrent (>2GB) with rtorrent triggers it more times
-than not. The bigger the torrent, the higher the likeliness of
-failure. When the torrent is finished, if a hash check is forced by
-pressing control-r on the torrent, some blocks will fail.
-The torrent doesn't need to be a single file, but can be a series of
-small files that add up enough.
-Downloading on ext3 or XFS instead is 100% fine.
-I've discarded posix fallocate as the culprit by building rtorrent
-without the patch that adds that (and doing a du just in case,
-definitively not preallocating).
-Filesystem is ~1.4TB. I've also reproduced it on a 200GB partition.
-The system is: Linux kaguya 2.6.27.4 #1 SMP Mon Oct 27 14:43:19 UTC
-2008 x86_64 Intel(R) Atom(TM) CPU 330 @ 1.60GHz GenuineIntel GNU/Linux
-No kernel patches were applied.
+On Sun, Nov 02, 2008 at 11:01:47PM -0800, Martin Bligh wrote:
+> >>   But for the ext3 component was set to assign bugs to you
+> >> by default, as opposed to creating a fs_ext3 pseudo-user?
+> >
+> > Ah.  We'll need to change that.  You don't want all my bugzilla traffic
+> > landing on linux-ext4 :)
+> 
+> You want me to create another pseudo user? is easy to do.
+
+OK, could you please add a pseudo user for the ext3 category.  That
+way we can have both akpm and linux-ext4 watch that category.
+Thanks!!
+
+						- Ted
