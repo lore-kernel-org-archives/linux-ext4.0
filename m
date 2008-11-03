@@ -1,139 +1,90 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: Re: [PATCH] improve jbd fsync batching
-Date: Mon, 3 Nov 2008 15:24:43 -0500
-Message-ID: <20081103202442.GA25736@unused.rdu.redhat.com>
-References: <20081028201614.GA21600@unused.rdu.redhat.com> <20081103122729.60582692.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	rwheeler@redhat.com
-To: Andrew Morton <akpm@linux-foundation.org>
+From: akpm@linux-foundation.org
+Subject: + ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch added to -mm tree
+Date: Mon, 03 Nov 2008 12:37:56 -0800
+Message-ID: <200811032037.mA3Kbud5019550@imap1.linux-foundation.org>
+Cc: ajones@riverbed.com, linux-ext4@vger.kernel.org,
+	sandeen@redhat.com, stable@kernel.org
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39115 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752675AbYKCUhf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Nov 2008 15:37:35 -0500
-Content-Disposition: inline
-In-Reply-To: <20081103122729.60582692.akpm@linux-foundation.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:50994 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754198AbYKCUkB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 15:40:01 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 03, 2008 at 12:27:29PM -0800, Andrew Morton wrote:
-> On Tue, 28 Oct 2008 16:16:15 -0400
-> Josef Bacik <jbacik@redhat.com> wrote:
-> 
-> > Hello,
-> > 
-> > This is a rework of the patch I did a few months ago, taking into account some
-> > comments from Andrew and using the new schedule_hrtimeout function (thanks
-> > Arjan!).
-> > 
-> > There is a flaw with the way jbd handles fsync batching.  If we fsync() a file
-> > and we were not the last person to run fsync() on this fs then we automatically
-> > sleep for 1 jiffie in order to wait for new writers to join into the transaction
-> > before forcing the commit.  The problem with this is that with really fast
-> > storage (ie a Clariion) the time it takes to commit a transaction to disk is way
-> > faster than 1 jiffie in most cases, so sleeping means waiting longer with
-> > nothing to do than if we just committed the transaction and kept going.  Ric
-> > Wheeler noticed this when using fs_mark with more than 1 thread, the throughput
-> > would plummet as he added more threads.
-> > 
-> > ...
-> >
-> > ...
-> >  
-> > @@ -49,6 +50,7 @@ get_transaction(journal_t *journal, transaction_t *transaction)
-> >  {
-> >  	transaction->t_journal = journal;
-> >  	transaction->t_state = T_RUNNING;
-> > +	transaction->t_start_time = ktime_get();
-> >  	transaction->t_tid = journal->j_transaction_sequence++;
-> >  	transaction->t_expires = jiffies + journal->j_commit_interval;
-> >  	spin_lock_init(&transaction->t_handle_lock);
-> > @@ -1371,7 +1373,7 @@ int journal_stop(handle_t *handle)
-> >  {
-> >  	transaction_t *transaction = handle->h_transaction;
-> >  	journal_t *journal = transaction->t_journal;
-> > -	int old_handle_count, err;
-> > +	int err;
-> >  	pid_t pid;
-> >  
-> >  	J_ASSERT(journal_current_handle() == handle);
-> > @@ -1407,11 +1409,26 @@ int journal_stop(handle_t *handle)
-> >  	 */
-> >  	pid = current->pid;
-> >  	if (handle->h_sync && journal->j_last_sync_writer != pid) {
-> 
-> It would be nice to have a comment here explaining the overall design. 
-> it's a bit opaque working that out from the raw implementation.
-> 
-> > +		u64 commit_time, trans_time;
-> > +
-> >  		journal->j_last_sync_writer = pid;
-> > -		do {
-> > -			old_handle_count = transaction->t_handle_count;
-> > -			schedule_timeout_uninterruptible(1);
-> > -		} while (old_handle_count != transaction->t_handle_count);
-> > +
-> > +		spin_lock(&journal->j_state_lock);
-> > +		commit_time = journal->j_average_commit_time;
-> > +		spin_unlock(&journal->j_state_lock);
-> 
-> OK, the lock is needed on 32-bit machines, I guess.
-> 
-> 
-> > +		trans_time = ktime_to_ns(ktime_sub(ktime_get(),
-> > +						   transaction->t_start_time));
-> > +
-> > +		commit_time = min_t(u64, commit_time,
-> > +				    1000*jiffies_to_usecs(1));
-> 
-> OK.  The multiplication of an unsigned by 1000 could overflow, but only
-> if HZ is less than 0.25.  I don't think we need worry about that ;)
-> 
-> 
-> > +		if (trans_time < commit_time) {
-> > +			ktime_t expires = ktime_add_ns(ktime_get(),
-> > +						       commit_time);
-> > +			set_current_state(TASK_UNINTERRUPTIBLE);
-> > +			schedule_hrtimeout(&expires, HRTIMER_MODE_ABS);
-> 
-> We should have schedule_hrtimeout_uninterruptible(), but we don't.
-> 
-> > +		}
-> >  	}
-> >  
-> >  	current->journal_info = NULL;
-> > diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-> > index 346e2b8..d842230 100644
-> > --- a/include/linux/jbd.h
-> > +++ b/include/linux/jbd.h
-> > @@ -543,6 +543,11 @@ struct transaction_s
-> >  	unsigned long		t_expires;
-> >  
-> >  	/*
-> > +	 * When this transaction started, in nanoseconds [no locking]
-> > +	 */
-> > +	ktime_t			t_start_time;
-> > +
-> > +	/*
-> >  	 * How many handles used this transaction? [t_handle_lock]
-> >  	 */
-> >  	int t_handle_count;
-> > @@ -800,6 +805,8 @@ struct journal_s
-> >  
-> >  	pid_t			j_last_sync_writer;
-> >  
-> > +	u64			j_average_commit_time;
-> 
-> Every field in that structure is carefully documented (except for
-> j_last_sync_writer - what vandal did that?)
-> 
-> please fix.
 
-I see you already pulled this into -mm, would you like me to repost with the
-same changelog and the patch updated, or just reply to this with the updated
-patch?  Thanks,
+The patch titled
+     ext3: wait on all pending commits in ext3_sync_fs
+has been added to the -mm tree.  Its filename is
+     ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch
 
-Josef
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
+
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext3: wait on all pending commits in ext3_sync_fs
+From: Arthur Jones <ajones@riverbed.com>
+
+In ext3_sync_fs, we only wait for a commit to finish if we started it, but
+there may be one already in progress which will not be synced.
+
+In the case of a data=ordered umount with pending long symlinks which are
+delayed due to a long list of other I/O on the backing block device, this
+causes the buffer associated with the long symlinks to not be moved to the
+inode dirty list in the second phase of fsync_super.  Then, before they
+can be dirtied again, kjournald exits, seeing the UMOUNT flag and the
+dirty pages are never written to the backing block device, causing long
+symlink corruption and exposing new or previously freed block data to
+userspace.
+
+This can be reproduced with a script created
+by Eric Sandeen <sandeen@redhat.com>:
+
+	#!/bin/bash
+
+	umount /mnt/test2
+	mount /dev/sdb4 /mnt/test2
+	rm -f /mnt/test2/*
+	dd if=/dev/zero of=/mnt/test2/bigfile bs=1M count=512
+	touch
+	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
+	ln -s
+	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
+	/mnt/test2/link
+	umount /mnt/test2
+	mount /dev/sdb4 /mnt/test2
+	ls /mnt/test2/
+	umount /mnt/test2
+
+To ensure all commits are synced, we flush all journal commits now when
+sync_fs'ing ext3.
+
+Signed-off-by: Arthur Jones <ajones@riverbed.com>
+Eric Sandeen <sandeen@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: <stable@kernel.org>		[2.6.everything]
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/super.c |   11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff -puN fs/ext3/super.c~ext3-wait-on-all-pending-commits-in-ext3_sync_fs fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-wait-on-all-pending-commits-in-ext3_sync_fs
++++ a/fs/ext3/super.c
+@@ -2390,13 +2390,12 @@ static void ext3_write_super (struct sup
+ 
+ static int ext3_sync_fs(struct super_block *sb, int wait)
+ {
+-	tid_t target;
