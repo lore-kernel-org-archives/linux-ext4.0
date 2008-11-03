@@ -1,49 +1,68 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: JBD2/ext4 error
-Date: Sun, 2 Nov 2008 22:39:20 -0500
-Message-ID: <20081103033920.GC29102@mit.edu>
-References: <20081103004827.GA2766@nineveh.local>
+From: "Martin Bligh" <mbligh@mbligh.org>
+Subject: Re: The default assignee for the ext4 component goes nowhere
+Date: Sun, 2 Nov 2008 23:01:47 -0800
+Message-ID: <8f3aa8d60811022301tc784cc1saea84719aa20d7a4@mail.gmail.com>
+References: <E1Kwkhw-0007O5-Mr@closure.thunk.org>
+	 <20081102134803.28c12d8b.akpm@linux-foundation.org>
+	 <20081102230806.GN8134@mit.edu>
+	 <20081102193226.df026896.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Tso" <tytso@mit.edu>, bugme-admin@linux-foundation.org,
+	linux-ext4@vger.kernel.org, "Sami Liedes" <sliedes@cc.hut.fi>,
+	"Francois Valenduc" <francois.valenduc@tvcablenet.be>
+To: "Andrew Morton" <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:56523 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754430AbYKCDjW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 2 Nov 2008 22:39:22 -0500
+Received: from fg-out-1718.google.com ([72.14.220.154]:61366 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751938AbYKCHBt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 02:01:49 -0500
+Received: by fg-out-1718.google.com with SMTP id 19so2079787fgg.17
+        for <linux-ext4@vger.kernel.org>; Sun, 02 Nov 2008 23:01:47 -0800 (PST)
+In-Reply-To: <20081102193226.df026896.akpm@linux-foundation.org>
 Content-Disposition: inline
-In-Reply-To: <20081103004827.GA2766@nineveh.local>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 02, 2008 at 07:48:27PM -0500, Joseph Fannin wrote:
-> Hi,
-> 
-> I'm hitting what's probably a bug in ext4 on one of my boxes. It
-> always happens on the boot partition, which is extentless, since it
-> seems likely GRUB will choke on extents.
+On Sun, Nov 2, 2008 at 7:32 PM, Andrew Morton <akpm@linux-foundation.org> wrote:
+> On Sun, 2 Nov 2008 18:08:06 -0500 Theodore Tso <tytso@mit.edu> wrote:
+>
+>> On Sun, Nov 02, 2008 at 01:48:03PM -0800, Andrew Morton wrote:
+>> >
+>> > I think the normal way of doing this is to create an account at bugzilla
+>> > called linux-ext4@vger.kernel.org then you can log in using that account
+>> > and add it to various assignees using the "users to watch" feature.
+>>
+>> Ah, so the fs_ext4@kernel-bugs.osdl.org is really a bugzilla
+>> pseudo-user?
+>
+> I guess so.
 
-Yeah, this looks like a 2.6.27 regression, introduced by commit a02908f1.
+It is. That way we can have multiple people administer a category, etc.
 
-Mingming, can you check this:  I think in the function (in fs/ext4/inode.c):
+>>   But for the ext3 component was set to assign bugs to you
+>> by default, as opposed to creating a fs_ext3 pseudo-user?
+>
+> Ah.  We'll need to change that.  You don't want all my bugzilla traffic
+> landing on linux-ext4 :)
 
-static int ext4_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
-{
-	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
-		return ext4_indirect_trans_blocks(inode, nrblocks, 0);
-	return ext4_ext_index_trans_blocks(inode, nrblocks, 0);
-}
+You want me to create another pseudo user? is easy to do.
 
-... the last argument to ext4_indirect_trans_blocks and
-ext4_ext_index_trans_blocks should be chunk, not 0.  
+>> I'm just trying to figure out how the bugzilla system is supposed to
+>> be working...
+>
+> I'm far from a definitive source on that matter.
+>
+> I'm not sure who's reading bugme-admin at present.
 
-As result of this bug, we are massively overestimately the amount of
-credits needed in the non-extent case, and with small journals, this
-causes a failure.
+The planned way of doing things is basically to have a pseudo-user for
+each category. Then anyone who is interested can just set up an email
+watch on that psuedo user (go under "Prefs" then select email preferences
+tab).
 
-We probably should do more testing with minimally sized journals to
-make sure there aren't other problems which only show up with small
-journals.
+Some "legacy" ones are set up to still go directly to one user.
 
-						- Ted
+A (very) few people have requested mailing lists get cc'ed on some
+categories, for which we've set up mailing list users, and had them
+watch the categories too.
