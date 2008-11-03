@@ -1,80 +1,131 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Wrong calculation of space remaining on a 32 bit system.
-Date: Mon, 3 Nov 2008 15:24:40 -0500
-Message-ID: <20081103202440.GG29102@mit.edu>
-References: <490DBBD9.9040300@tvcablenet.be> <20081102204352.GJ8134@mit.edu> <490E1FB1.8020100@tvcablenet.be> <87fxm9bxps.fsf@newton.gmurray.org.uk> <490E289F.4010907@tvcablenet.be> <20081102230135.GM8134@mit.edu> <490F42D2.8080200@tvcablenet.be>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] improve jbd fsync batching
+Date: Mon, 3 Nov 2008 12:27:29 -0800
+Message-ID: <20081103122729.60582692.akpm@linux-foundation.org>
+References: <20081028201614.GA21600@unused.rdu.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Graham Murray <graham@gmurray.org.uk>, linux-ext4@vger.kernel.org
-To: =?iso-8859-1?Q?Fran=E7ois?= Valenduc
-	<francois.valenduc@tvcablenet.be>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, rwheeler@redhat.com
+To: Josef Bacik <jbacik@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:49867 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1754316AbYKCUYr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 15:24:47 -0500
-Content-Disposition: inline
-In-Reply-To: <490F42D2.8080200@tvcablenet.be>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:50473 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754126AbYKCU2M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 15:28:12 -0500
+In-Reply-To: <20081028201614.GA21600@unused.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 03, 2008 at 07:28:34PM +0100, Fran=E7ois Valenduc wrote:
->=20
-> As you may have guessed, I created a logical volume for the portage t=
-ree
->  of gentoo. It indeeds contains a lot of small files with all the
-> ebuilds. I use XFS for the portage tree on the 64 bits computer. Mayb=
-e
-> ext4 is not appropriate for this case. Maybe I would have the same
-> problem also on the 64 bits computer.
+On Tue, 28 Oct 2008 16:16:15 -0400
+Josef Bacik <jbacik@redhat.com> wrote:
 
-There's nothing wrong with using ext4 for this case; it's just that
-you do need to specify the appropriate average inode size.  An average
-inode size of 16k works fine for most applications, but not for this
-one.  You could calculate an appropriate inode ratio by figuring the
-average size of the files used on your system, which I would guess is
-somewhere between 4k and 8k, and then this wouldn't be a problem.
+> Hello,
+> 
+> This is a rework of the patch I did a few months ago, taking into account some
+> comments from Andrew and using the new schedule_hrtimeout function (thanks
+> Arjan!).
+> 
+> There is a flaw with the way jbd handles fsync batching.  If we fsync() a file
+> and we were not the last person to run fsync() on this fs then we automatically
+> sleep for 1 jiffie in order to wait for new writers to join into the transaction
+> before forcing the commit.  The problem with this is that with really fast
+> storage (ie a Clariion) the time it takes to commit a transaction to disk is way
+> faster than 1 jiffie in most cases, so sleeping means waiting longer with
+> nothing to do than if we just committed the transaction and kept going.  Ric
+> Wheeler noticed this when using fs_mark with more than 1 thread, the throughput
+> would plummet as he added more threads.
+> 
+> ...
+>
+> ...
+>  
+> @@ -49,6 +50,7 @@ get_transaction(journal_t *journal, transaction_t *transaction)
+>  {
+>  	transaction->t_journal = journal;
+>  	transaction->t_state = T_RUNNING;
+> +	transaction->t_start_time = ktime_get();
+>  	transaction->t_tid = journal->j_transaction_sequence++;
+>  	transaction->t_expires = jiffies + journal->j_commit_interval;
+>  	spin_lock_init(&transaction->t_handle_lock);
+> @@ -1371,7 +1373,7 @@ int journal_stop(handle_t *handle)
+>  {
+>  	transaction_t *transaction = handle->h_transaction;
+>  	journal_t *journal = transaction->t_journal;
+> -	int old_handle_count, err;
+> +	int err;
+>  	pid_t pid;
+>  
+>  	J_ASSERT(journal_current_handle() == handle);
+> @@ -1407,11 +1409,26 @@ int journal_stop(handle_t *handle)
+>  	 */
+>  	pid = current->pid;
+>  	if (handle->h_sync && journal->j_last_sync_writer != pid) {
 
-I don't know a whole lot about Gentoo's ebuilds, and why it creates so
-many small files but if it is common, we could create an entry in
-/etc/mke2fs.conf, i.e., like this:
+It would be nice to have a comment here explaining the overall design. 
+it's a bit opaque working that out from the raw implementation.
 
-[fs_types]
-	portage =3D {
-		inode_ratio =3D 8192
-	}
+> +		u64 commit_time, trans_time;
+> +
+>  		journal->j_last_sync_writer = pid;
+> -		do {
+> -			old_handle_count = transaction->t_handle_count;
+> -			schedule_timeout_uninterruptible(1);
+> -		} while (old_handle_count != transaction->t_handle_count);
+> +
+> +		spin_lock(&journal->j_state_lock);
+> +		commit_time = journal->j_average_commit_time;
+> +		spin_unlock(&journal->j_state_lock);
 
-Now if you run "mke2fs -t portage", it would automatically create a
-filesystem with an inode ratio of 8k. =20
+OK, the lock is needed on 32-bit machines, I guess.
 
-As another example, suppose a spy agency needed to create filesystem
-where they stored the results of "pen registers", which record the
-time, date, source and destination of phone calls[1].  And suppose
-they decide to store each intercept as a separate file, and each file
-on average is less than 1k.  (No kidding, I was once at a "next
-generation filesystem" requirements session at Sandia National Labs
-some 9 years ago where they asked for something very similar to this
---- the ability to write huge numbers of itsy-bitsy files very
-quickly, in contrast to the a-bomb simulation folks, who wanted the
-ability to write a few really big files very quickly.)  Then they
-might want to do something like this:
 
-[fs_types]
-	nsa =3D {
-	    inode_ratio =3D 1024
-	    blocksize =3D 1024
-	}
+> +		trans_time = ktime_to_ns(ktime_sub(ktime_get(),
+> +						   transaction->t_start_time));
+> +
+> +		commit_time = min_t(u64, commit_time,
+> +				    1000*jiffies_to_usecs(1));
 
-(Alternatively, they might want to consider storing their intercepts
-in something *other* than a filesystem, like say a database instead.  :=
--)
+OK.  The multiplication of an unsigned by 1000 could overflow, but only
+if HZ is less than 0.25.  I don't think we need worry about that ;)
 
-[1] http://www.capsteps.com/sounds/nsa-glory.mp3
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> +		if (trans_time < commit_time) {
+> +			ktime_t expires = ktime_add_ns(ktime_get(),
+> +						       commit_time);
+> +			set_current_state(TASK_UNINTERRUPTIBLE);
+> +			schedule_hrtimeout(&expires, HRTIMER_MODE_ABS);
+
+We should have schedule_hrtimeout_uninterruptible(), but we don't.
+
+> +		}
+>  	}
+>  
+>  	current->journal_info = NULL;
+> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+> index 346e2b8..d842230 100644
+> --- a/include/linux/jbd.h
+> +++ b/include/linux/jbd.h
+> @@ -543,6 +543,11 @@ struct transaction_s
+>  	unsigned long		t_expires;
+>  
+>  	/*
+> +	 * When this transaction started, in nanoseconds [no locking]
+> +	 */
+> +	ktime_t			t_start_time;
+> +
+> +	/*
+>  	 * How many handles used this transaction? [t_handle_lock]
+>  	 */
+>  	int t_handle_count;
+> @@ -800,6 +805,8 @@ struct journal_s
+>  
+>  	pid_t			j_last_sync_writer;
+>  
+> +	u64			j_average_commit_time;
+
+Every field in that structure is carefully documented (except for
+j_last_sync_writer - what vandal did that?)
+
+please fix.
