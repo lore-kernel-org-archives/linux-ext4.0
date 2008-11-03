@@ -1,103 +1,79 @@
-From: Arthur Jones <ajones@riverbed.com>
-Subject: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
-Date: Mon, 3 Nov 2008 10:44:26 -0800
-Message-ID: <20081103184426.GA31894@ajones-laptop.nbttech.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
+Date: Mon, 3 Nov 2008 11:33:18 -0800
+Message-ID: <20081103113318.35b0c266.akpm@linux-foundation.org>
 References: <4908C951.2000309@redhat.com>
+	<20081103184426.GA31894@ajones-laptop.nbttech.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"sct@redhat.com" <sct@redhat.com>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org, sct@redhat.com,
+	linux-kernel@vger.kernel.org
+To: Arthur Jones <ajones@riverbed.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.riverbed.com ([206.169.144.12]:39566 "EHLO
-	smtp1.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751393AbYKCSo2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 13:44:28 -0500
-Content-Disposition: inline
-In-Reply-To: <4908C951.2000309@redhat.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36909 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753838AbYKCTeJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 14:34:09 -0500
+In-Reply-To: <20081103184426.GA31894@ajones-laptop.nbttech.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Eric,   This patch fixes the problem for me, and
-seems to put the buffers on the dirty list at the
-place where they are put on the list during the working
-case.  Despite having rooted around in the innards of
-ext3 for the last few days, I cannot say that I have
-any sense of whether this patch will cause problems
-elsewhere or even if this is the best place to
-intercede.
+On Mon, 3 Nov 2008 10:44:26 -0800
+Arthur Jones <ajones@riverbed.com> wrote:
 
-I post the complete patch not because I think it
-should be committed as is, but rather to try
-to explain the logic that brought it about.  At the
-very least, this should be reviewed by the experts
-here to make sure there is no collateral damage.
+> Hi Eric,   This patch fixes the problem for me, and
+> seems to put the buffers on the dirty list at the
+> place where they are put on the list during the working
+> case.  Despite having rooted around in the innards of
+> ext3 for the last few days, I cannot say that I have
+> any sense of whether this patch will cause problems
+> elsewhere or even if this is the best place to
+> intercede.
+> 
+> I post the complete patch not because I think it
+> should be committed as is, but rather to try
+> to explain the logic that brought it about.  At the
+> very least, this should be reviewed by the experts
+> here to make sure there is no collateral damage.
+> 
+> Arthur
+> 
+> -------------------
+> In ext3_sync_fs, we only wait for a commit to
+> finish if we started it, but there may be one
+> already in progress which will not be synced.
 
-Arthur
+argh.
 
--------------------
-In ext3_sync_fs, we only wait for a commit to
-finish if we started it, but there may be one
-already in progress which will not be synced.
+> --- a/fs/ext3/super.c
+> +++ b/fs/ext3/super.c
+> @@ -2392,7 +2392,13 @@ static int ext3_sync_fs(struct super_block *sb, int wait)
+>  	if (journal_start_commit(EXT3_SB(sb)->s_journal, &target)) {
+>  		if (wait)
+>  			log_wait_commit(EXT3_SB(sb)->s_journal, target);
+> -	}
+> +	} else if (wait)
+> +		/*
+> +		 * We may have a commit in progress, clear it out
+> +		 * before we go on...
+> +		 */
+> +		ext3_force_commit(sb);
+> +
+>  	return 0;
+>  }
 
-In the case of a data=ordered umount with pending long
-symlinks which are delayed due to a long list
-of other I/O on the backing block device, this
-causes the buffer associated with the long symlinks
-to not be moved to the inode dirty list in the second
-phase of fsync_super.  Then, before they can be dirtied
-again, kjournald exits, seeing the UMOUNT flag and the
-dirty pages are never written to the backing block device,
-causing long symlink corruption and exposing new or
-previously freed block data to userspace.
+Can we do
 
-This can be reproduced with a script created
-by Eric Sandeen <sandeen@redhat.com>:
+	sb->s_dirt = 0;
+	if (wait)
+		ext3_force_commit(...);
+	else
+		journal_start_commit(...);
 
-	#!/bin/bash
+?
 
-	umount /mnt/test2
-	mount /dev/sdb4 /mnt/test2
-	rm -f /mnt/test2/*
-	dd if=/dev/zero of=/mnt/test2/bigfile bs=1M count=512
-	touch
-	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-	ln -s
-	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-	/mnt/test2/link
-	umount /mnt/test2
-	mount /dev/sdb4 /mnt/test2
-	ls /mnt/test2/
-	umount /mnt/test2
 
-To ensure all commits are synced, we flush
-all journal commits now when sync_fs'ing ext3.
+Also, I wonder if that `sb->s_dirt = 0' is correct if
+journal_start_commit() didn't start a commit?
 
-Signed-off-by: Arthur Jones <ajones@riverbed.com>
----
- fs/ext3/super.c |    8 +++++++-
- 1 files changed, 7 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 18eaa78..053659a 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -2392,7 +2392,13 @@ static int ext3_sync_fs(struct super_block *sb, int wait)
- 	if (journal_start_commit(EXT3_SB(sb)->s_journal, &target)) {
- 		if (wait)
- 			log_wait_commit(EXT3_SB(sb)->s_journal, target);
--	}
-+	} else if (wait)
-+		/*
-+		 * We may have a commit in progress, clear it out
-+		 * before we go on...
-+		 */
-+		ext3_force_commit(sb);
-+
- 	return 0;
- }
- 
--- 
-1.5.4.3
