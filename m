@@ -1,51 +1,39 @@
-From: Andrey Borzenkov <arvidjaar@mail.ru>
-Subject: 2.6.28-rc3: ext4_ext_search_right: =?utf-8?q?=E2=80=98ix=E2=80=99_may_be_used?= uninitialized
-Date: Mon, 3 Nov 2008 11:12:59 +0300
-Message-ID: <200811031113.01297.arvidjaar@mail.ru>
+From: "Roc Valles" <vallesroc@gmail.com>
+Subject: data corruption with ext4 (from 2.6.27.4) exposed by rtorrent
+Date: Mon, 3 Nov 2008 12:42:11 +0000
+Message-ID: <3d3ce57e0811030442o377cf2bet212eefba79d714bb@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart1574675.CcO6eUx3RS";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-Cc: Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from pusher.mail.ru ([194.67.23.231]:7102 "EHLO mx48.mail.ru"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1753238AbYKCINH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 3 Nov 2008 03:13:07 -0500
+Received: from fg-out-1718.google.com ([72.14.220.158]:49415 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753983AbYKCMmM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 07:42:12 -0500
+Received: by fg-out-1718.google.com with SMTP id 19so2209341fgg.17
+        for <linux-ext4@vger.kernel.org>; Mon, 03 Nov 2008 04:42:11 -0800 (PST)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---nextPart1574675.CcO6eUx3RS
-Content-Type: text/plain;
-  charset="utf-8"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
-
-  CC [M]  fs/ext4/extents.o
-/home/bor/src/linux-git/fs/ext4/extents.c: In function =E2=80=98ext4_ext_se=
-arch_right=E2=80=99:
-/home/bor/src/linux-git/fs/ext4/extents.c:1120: warning: =E2=80=98ix=E2=80=
-=99 may be used uninitialized in this function
-
-{pts/1}% rpm -q gcc
-gcc-4.3.2-3mnb2
-{pts/1}%      =20
-
-on Mandriva cooker
-
---nextPart1574675.CcO6eUx3RS
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkkOso0ACgkQR6LMutpd94z+9QCgxclE6QaQ98NCiVVXy0dMIHz3
-0roAoJ/+IUfJftcC9fVlUZrSBzkMGJjs
-=4FO/
------END PGP SIGNATURE-----
-
---nextPart1574675.CcO6eUx3RS--
+Some person already reported this. I'm having the same problem.
+http://marc.info/?l=linux-ext4&m=122557056518246&w=2
+rtorrent is a bittorrent client that makes heavy use of mmap instead
+of read/write to avoid needless duplication of data. It has exposed
+other bugs in the past (mmap bug in 2.6.19).
+http://libtorrent.rakshasa.no
+Downloading a big torrent (>2GB) with rtorrent triggers it more times
+than not. The bigger the torrent, the higher the likeliness of
+failure. When the torrent is finished, if a hash check is forced by
+pressing control-r on the torrent, some blocks will fail.
+The torrent doesn't need to be a single file, but can be a series of
+small files that add up enough.
+Downloading on ext3 or XFS instead is 100% fine.
+I've discarded posix fallocate as the culprit by building rtorrent
+without the patch that adds that (and doing a du just in case,
+definitively not preallocating).
+Filesystem is ~1.4TB. I've also reproduced it on a 200GB partition.
+The system is: Linux kaguya 2.6.27.4 #1 SMP Mon Oct 27 14:43:19 UTC
+2008 x86_64 Intel(R) Atom(TM) CPU 330 @ 1.60GHz GenuineIntel GNU/Linux
+No kernel patches were applied.
