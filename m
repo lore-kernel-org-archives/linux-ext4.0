@@ -1,66 +1,314 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH -v2 9/9] ext4: Fix lockdep recursive locking warning
-Date: Mon,  3 Nov 2008 23:06:09 +0530
-Message-ID: <1225733769-23734-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH -v2 2/9] ext4: Add blocks added during resize to bitmap
+Date: Mon,  3 Nov 2008 23:06:02 +0530
+Message-ID: <1225733769-23734-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1225733769-23734-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1225733769-23734-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1225733769-23734-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1225733769-23734-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1225733769-23734-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1225733769-23734-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1225733769-23734-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1225733769-23734-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:52881 "EHLO
+Received: from E23SMTP04.au.ibm.com ([202.81.18.173]:53689 "EHLO
 	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751618AbYKCRgs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 12:36:48 -0500
+	with ESMTP id S1751626AbYKCRhh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 3 Nov 2008 12:37:37 -0500
 Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id mA3HZO6F019013
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Nov 2008 04:35:24 +1100
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id mA3HaBAv020016
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Nov 2008 04:36:11 +1100
 Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA3HakiZ283244
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Nov 2008 04:36:46 +1100
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA3HaJwT311696
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Nov 2008 04:36:19 +1100
 Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA3Haj29014094
-	for <linux-ext4@vger.kernel.org>; Tue, 4 Nov 2008 04:36:46 +1100
-In-Reply-To: <1225733769-23734-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA3HaIRV013631
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Nov 2008 04:36:19 +1100
+In-Reply-To: <1225733769-23734-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Indicate that the group locks can be taken in loop.
+With this change new blocks added during resize
+are marked as free in the block bitmap and the
+group is flagged with EXT4_GROUP_INFO_NEED_INIT_BIT
+flag. This make sure when mballoc tries to allocate
+blocks from the new group we would reload the
+buddy information using the bitmap present in the disk.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/mballoc.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+ fs/ext4/balloc.c |  136 ++++++++++++------------------------------------------
+ fs/ext4/ext4.h   |    5 +-
+ fs/ext4/resize.c |   11 +----
+ 3 files changed, 34 insertions(+), 118 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c169256..5a5f9e1 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2418,6 +2418,7 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
- #define ext4_mb_history_init(sb)
- #endif
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 4397274..d598fd6 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -20,6 +20,7 @@
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+ #include "group.h"
++#include "mballoc.h"
  
-+static struct lock_class_key alloc_sem_key[NR_BG_LOCKS];
+ /*
+  * balloc.c contains the blocks allocation and deallocation routines
+@@ -350,62 +351,43 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+ }
  
- /* Create and initialize ext4_group_info data for the given group. */
- int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
-@@ -2478,7 +2479,9 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ /**
+- * ext4_free_blocks_sb() -- Free given blocks and update quota
++ * ext4_add_groupblocks() -- Add given blocks to an existing group
+  * @handle:			handle to this transaction
+  * @sb:				super block
+- * @block:			start physcial block to free
++ * @block:			start physcial block to add to the block group
+  * @count:			number of blocks to free
+- * @pdquot_freed_blocks:	pointer to quota
+  *
+- * XXX This function is only used by the on-line resizing code, which
+- * should probably be fixed up to call the mballoc variant.  There
+- * this needs to be cleaned up later; in fact, I'm not convinced this
+- * is 100% correct in the face of the mballoc code.  The online resizing
+- * code needs to be fixed up to more tightly (and correctly) interlock
+- * with the mballoc code.
++ * This marks the blocks as free in the bitmap. We ask the
++ * mballoc to reload the buddy after this by setting group
++ * EXT4_GROUP_INFO_NEED_INIT_BIT flag
+  */
+-void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+-			 ext4_fsblk_t block, unsigned long count,
+-			 unsigned long *pdquot_freed_blocks)
++void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
++			 ext4_fsblk_t block, unsigned long count)
+ {
+ 	struct buffer_head *bitmap_bh = NULL;
+ 	struct buffer_head *gd_bh;
+ 	ext4_group_t block_group;
+ 	ext4_grpblk_t bit;
+ 	unsigned long i;
+-	unsigned long overflow;
+ 	struct ext4_group_desc *desc;
+ 	struct ext4_super_block *es;
+ 	struct ext4_sb_info *sbi;
+ 	int err = 0, ret;
+-	ext4_grpblk_t group_freed;
++	ext4_grpblk_t blocks_freed;
++	struct ext4_group_info *grp;
+ 
+-	*pdquot_freed_blocks = 0;
+ 	sbi = EXT4_SB(sb);
+ 	es = sbi->s_es;
+-	if (block < le32_to_cpu(es->s_first_data_block) ||
+-	    block + count < block ||
+-	    block + count > ext4_blocks_count(es)) {
+-		ext4_error(sb, "ext4_free_blocks",
+-			   "Freeing blocks not in datazone - "
+-			   "block = %llu, count = %lu", block, count);
+-		goto error_return;
+-	}
+-
+-	ext4_debug("freeing block(s) %llu-%llu\n", block, block + count - 1);
++	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
+ 
+-do_more:
+-	overflow = 0;
+ 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
+ 	/*
+ 	 * Check to see if we are freeing blocks across a group
+ 	 * boundary.
+ 	 */
+ 	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb)) {
+-		overflow = bit + count - EXT4_BLOCKS_PER_GROUP(sb);
+-		count -= overflow;
++		goto error_return;
+ 	}
+-	brelse(bitmap_bh);
+ 	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
+ 	if (!bitmap_bh)
+ 		goto error_return;
+@@ -418,18 +400,17 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+ 	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
+ 	    in_range(block + count - 1, ext4_inode_table(sb, desc),
+ 		     sbi->s_itb_per_group)) {
+-		ext4_error(sb, "ext4_free_blocks",
+-			   "Freeing blocks in system zones - "
++		ext4_error(sb, __func__,
++			   "Adding blocks in system zones - "
+ 			   "Block = %llu, count = %lu",
+ 			   block, count);
+ 		goto error_return;
  	}
  
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
--	init_rwsem(&meta_group_info[i]->alloc_sem);
-+	__init_rwsem(&meta_group_info[i]->alloc_sem,
-+			"&meta_group_info[i]->alloc_sem",
-+			&alloc_sem_key[i]);
- 	meta_group_info[i]->bb_free_root.rb_node = NULL;;
+ 	/*
+-	 * We are about to start releasing blocks in the bitmap,
++	 * We are about to add blocks to the bitmap,
+ 	 * so we need undo access.
+ 	 */
+-	/* @@@ check errors */
+ 	BUFFER_TRACE(bitmap_bh, "getting undo access");
+ 	err = ext4_journal_get_undo_access(handle, bitmap_bh);
+ 	if (err)
+@@ -445,87 +426,28 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+ 	if (err)
+ 		goto error_return;
  
- #ifdef DOUBLE_CHECK
--- 
-1.6.0.3.514.g2f91b
-
+-	jbd_lock_bh_state(bitmap_bh);
+-
+-	for (i = 0, group_freed = 0; i < count; i++) {
+-		/*
+-		 * An HJ special.  This is expensive...
+-		 */
+-#ifdef CONFIG_JBD2_DEBUG
+-		jbd_unlock_bh_state(bitmap_bh);
+-		{
+-			struct buffer_head *debug_bh;
+-			debug_bh = sb_find_get_block(sb, block + i);
+-			if (debug_bh) {
+-				BUFFER_TRACE(debug_bh, "Deleted!");
+-				if (!bh2jh(bitmap_bh)->b_committed_data)
+-					BUFFER_TRACE(debug_bh,
+-						"No commited data in bitmap");
+-				BUFFER_TRACE2(debug_bh, bitmap_bh, "bitmap");
+-				__brelse(debug_bh);
+-			}
+-		}
+-		jbd_lock_bh_state(bitmap_bh);
+-#endif
+-		if (need_resched()) {
+-			jbd_unlock_bh_state(bitmap_bh);
+-			cond_resched();
+-			jbd_lock_bh_state(bitmap_bh);
+-		}
+-		/* @@@ This prevents newly-allocated data from being
+-		 * freed and then reallocated within the same
+-		 * transaction.
+-		 *
+-		 * Ideally we would want to allow that to happen, but to
+-		 * do so requires making jbd2_journal_forget() capable of
+-		 * revoking the queued write of a data block, which
+-		 * implies blocking on the journal lock.  *forget()
+-		 * cannot block due to truncate races.
+-		 *
+-		 * Eventually we can fix this by making jbd2_journal_forget()
+-		 * return a status indicating whether or not it was able
+-		 * to revoke the buffer.  On successful revoke, it is
+-		 * safe not to set the allocation bit in the committed
+-		 * bitmap, because we know that there is no outstanding
+-		 * activity on the buffer any more and so it is safe to
+-		 * reallocate it.
+-		 */
+-		BUFFER_TRACE(bitmap_bh, "set in b_committed_data");
+-		J_ASSERT_BH(bitmap_bh,
+-				bh2jh(bitmap_bh)->b_committed_data != NULL);
+-		ext4_set_bit_atomic(sb_bgl_lock(sbi, block_group), bit + i,
+-				bh2jh(bitmap_bh)->b_committed_data);
+-
+-		/*
+-		 * We clear the bit in the bitmap after setting the committed
+-		 * data bit, because this is the reverse order to that which
+-		 * the allocator uses.
+-		 */
++	for (i = 0, blocks_freed = 0; i < count; i++) {
+ 		BUFFER_TRACE(bitmap_bh, "clear bit");
+ 		if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
+ 						bit + i, bitmap_bh->b_data)) {
+-			jbd_unlock_bh_state(bitmap_bh);
+ 			ext4_error(sb, __func__,
+ 				   "bit already cleared for block %llu",
+ 				   (ext4_fsblk_t)(block + i));
+-			jbd_lock_bh_state(bitmap_bh);
+ 			BUFFER_TRACE(bitmap_bh, "bit already cleared");
+ 		} else {
+-			group_freed++;
++			blocks_freed++;
+ 		}
+ 	}
+-	jbd_unlock_bh_state(bitmap_bh);
+-
+ 	spin_lock(sb_bgl_lock(sbi, block_group));
+-	le16_add_cpu(&desc->bg_free_blocks_count, group_freed);
++	le16_add_cpu(&desc->bg_free_blocks_count, blocks_freed);
+ 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
+ 	spin_unlock(sb_bgl_lock(sbi, block_group));
+-	percpu_counter_add(&sbi->s_freeblocks_counter, count);
++	percpu_counter_add(&sbi->s_freeblocks_counter, blocks_freed);
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
+ 		spin_lock(sb_bgl_lock(sbi, flex_group));
+-		sbi->s_flex_groups[flex_group].free_blocks += count;
++		sbi->s_flex_groups[flex_group].free_blocks += blocks_freed;
+ 		spin_unlock(sb_bgl_lock(sbi, flex_group));
+ 	}
+ 
+@@ -536,15 +458,17 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+ 	/* And the group descriptor block */
+ 	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
+ 	ret = ext4_journal_dirty_metadata(handle, gd_bh);
+-	if (!err) err = ret;
+-	*pdquot_freed_blocks += group_freed;
+-
+-	if (overflow && !err) {
+-		block += count;
+-		count = overflow;
+-		goto do_more;
+-	}
++	if (!err)
++		err = ret;
+ 	sb->s_dirt = 1;
++	/*
++	 * request to reload the buddy with the
++	 * new bitmap information
++	 */
++	grp = ext4_get_group_info(sb, block_group);
++	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
++	ext4_mb_update_group_info(grp, blocks_freed);
++
+ error_return:
+ 	brelse(bitmap_bh);
+ 	ext4_std_error(sb, err);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index fee616d..004dd25 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1062,9 +1062,8 @@ extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
+ extern int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
+ extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t block, unsigned long count, int metadata);
+-extern void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
+-				ext4_fsblk_t block, unsigned long count,
+-				unsigned long *pdquot_freed_blocks);
++extern void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
++				ext4_fsblk_t block, unsigned long count);
+ extern ext4_fsblk_t ext4_count_free_blocks(struct super_block *);
+ extern void ext4_check_blocks_bitmap(struct super_block *);
+ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index b6ec184..ecaacbb 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -975,9 +975,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	struct buffer_head *bh;
+ 	handle_t *handle;
+ 	int err;
+-	unsigned long freed_blocks;
+ 	ext4_group_t group;
+-	struct ext4_group_info *grp;
+ 
+ 	/* We don't need to worry about locking wrt other resizers just
+ 	 * yet: we're going to revalidate es->s_blocks_count after
+@@ -1076,7 +1074,8 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	unlock_super(sb);
+ 	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+-	ext4_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
++	/* We add the blocks to the bitmap and set the group need init bit */
++	ext4_add_groupblocks(handle, sb, o_blocks_count, add);
+ 	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+ 	if ((err = ext4_journal_stop(handle)))
+@@ -1119,12 +1118,6 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 			ClearPageUptodate(page);
+ 			page_cache_release(page);
+ 		}
+-
+-		/* Get the info on the last group */
+-		grp = ext4_get_group_info(sb, group);
