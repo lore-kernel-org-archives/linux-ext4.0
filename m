@@ -1,190 +1,33 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: [PATCH] imporve jbd2 fsync batching
-Date: Tue, 4 Nov 2008 11:10:25 -0500
-Message-ID: <20081104161024.GC28058@unused.rdu.redhat.com>
+From: Arthur Jones <ajones@riverbed.com>
+Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
+Date: Tue, 4 Nov 2008 08:26:08 -0800
+Message-ID: <20081104162608.GD3371@ajones-laptop.nbttech.com>
+References: <20081103123750.67c96224.akpm@linux-foundation.org> <20081103205854.GC30565@ajones-laptop.nbttech.com> <20081103131313.e9ae2f93.akpm@linux-foundation.org> <20081103211929.GA18117@mit.edu> <20081103132735.9e63a3d0.akpm@linux-foundation.org> <20081103220144.GD18117@mit.edu> <20081103142706.92e3a2ae.akpm@linux-foundation.org> <20081103225544.GH18117@mit.edu> <20081103230104.GC3371@ajones-laptop.nbttech.com> <20081103231209.GA29964@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset="us-ascii"
+To: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org, sct@redhat.com,
+	linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35872 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753691AbYKDQWr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Nov 2008 11:22:47 -0500
+Received: from smtp1.riverbed.com ([206.169.144.12]:31816 "EHLO
+	smtp1.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753718AbYKDQ0J (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Nov 2008 11:26:09 -0500
 Content-Disposition: inline
+In-Reply-To: <20081103231209.GA29964@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello,
+Hi Ted, ...
 
-This is the jbd2 version of the jbd fsync batching patch.
+On Mon, Nov 03, 2008 at 03:12:09PM -0800, Theodore Tso wrote:
+> [...]
+> BTW, did you ever open a bugzilla entry for this the symlink
+> corruption problem that we should reference in the commit log?
 
-This patch removes the static sleep time in favor of a more self optimizing
-approach where we measure the average amount of time it takes to commit a
-transaction to disk and the ammount of time a transaction has been running.  If
-somebody does a sync write or an fsync() traditionally we would sleep for 1
-jiffies, which depending on the value of HZ could be a significant amount of
-time compared to how long it takes to commit a transaction to the underlying
-storage.  With this patch instead of sleeping for a jiffie, we check to see if
-the amount of time this transaction has been running is less than the average
-commit time, and if it is we sleep for the delta using schedule_hrtimeout to
-give us a higher precision sleep time.  This greatly benefits high end storage
-where you could end up sleeping for longer than it takes to commit the
-transaction and therefore sitting idle instead of allowing the transaction to be
-committed by keeping the sleep time to a minimum so you are sure to always be
-doing something.  Thank you,
+Nope...
 
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
+Patch looks good now -- thanks for looking into this...
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 8b119e1..3169db9 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -332,6 +332,8 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	int flags;
- 	int err;
- 	unsigned long long blocknr;
-+	ktime_t start_time;
-+	u64 commit_time;
- 	char *tagp = NULL;
- 	journal_header_t *header;
- 	journal_block_tag_t *tag = NULL;
-@@ -458,6 +460,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	commit_transaction->t_state = T_FLUSH;
- 	journal->j_committing_transaction = commit_transaction;
- 	journal->j_running_transaction = NULL;
-+	start_time = ktime_get();
- 	commit_transaction->t_log_start = journal->j_head;
- 	wake_up(&journal->j_wait_transaction_locked);
- 	spin_unlock(&journal->j_state_lock);
-@@ -972,6 +975,17 @@ restart_loop:
- 	J_ASSERT(commit_transaction == journal->j_committing_transaction);
- 	journal->j_commit_sequence = commit_transaction->t_tid;
- 	journal->j_committing_transaction = NULL;
-+	commit_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
-+
-+	/*
-+	 * weight the commit time higher than the average time so we don't
-+	 * react too strongly to vast changes in the commit time
-+	 */
-+	if (likely(journal->j_average_commit_time))
-+		journal->j_average_commit_time = (commit_time*3 +
-+				journal->j_average_commit_time) / 4;
-+	else
-+		journal->j_average_commit_time = commit_time;
- 	spin_unlock(&journal->j_state_lock);
- 
- 	if (commit_transaction->t_checkpoint_list == NULL &&
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 39b7805..ef705f9 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -25,6 +25,7 @@
- #include <linux/timer.h>
- #include <linux/mm.h>
- #include <linux/highmem.h>
-+#include <linux/hrtimer.h>
- 
- static void __jbd2_journal_temp_unlink_buffer(struct journal_head *jh);
- 
-@@ -48,6 +49,7 @@ jbd2_get_transaction(journal_t *journal, transaction_t *transaction)
- {
- 	transaction->t_journal = journal;
- 	transaction->t_state = T_RUNNING;
-+	transaction->t_start_time = ktime_get();
- 	transaction->t_tid = journal->j_transaction_sequence++;
- 	transaction->t_expires = jiffies + journal->j_commit_interval;
- 	spin_lock_init(&transaction->t_handle_lock);
-@@ -1193,7 +1195,7 @@ int jbd2_journal_stop(handle_t *handle)
- {
- 	transaction_t *transaction = handle->h_transaction;
- 	journal_t *journal = transaction->t_journal;
--	int old_handle_count, err;
-+	int err;
- 	pid_t pid;
- 
- 	J_ASSERT(journal_current_handle() == handle);
-@@ -1222,6 +1224,17 @@ int jbd2_journal_stop(handle_t *handle)
- 	 * on IO anyway.  Speeds up many-threaded, many-dir operations
- 	 * by 30x or more...
- 	 *
-+	 * We try and optimize the sleep time against what the underlying disk
-+	 * can do, instead of having a static sleep time.  This is usefull for
-+	 * the case where our storage is so fast that it is more optimal to go
-+	 * ahead and force a flush and wait for the transaction to be committed
-+	 * than it is to wait for an arbitrary amount of time for new writers to
-+	 * join the transaction.  We acheive this by measuring how long it takes
-+	 * to commit a transaction, and compare it with how long this
-+	 * transaction has been running, and if run time < commit time then we
-+	 * sleep for the delta and commit.  This greatly helps super fast disks
-+	 * that would see slowdowns as more threads started doing fsyncs.
-+	 *
- 	 * But don't do this if this process was the most recent one to
- 	 * perform a synchronous write.  We do this to detect the case where a
- 	 * single process is doing a stream of sync writes.  No point in waiting
-@@ -1229,11 +1242,26 @@ int jbd2_journal_stop(handle_t *handle)
- 	 */
- 	pid = current->pid;
- 	if (handle->h_sync && journal->j_last_sync_writer != pid) {
-+		u64 commit_time, trans_time;
-+
- 		journal->j_last_sync_writer = pid;
--		do {
--			old_handle_count = transaction->t_handle_count;
--			schedule_timeout_uninterruptible(1);
--		} while (old_handle_count != transaction->t_handle_count);
-+
-+		spin_lock(&journal->j_state_lock);
-+		commit_time = journal->j_average_commit_time;
-+		spin_unlock(&journal->j_state_lock);
-+
-+		trans_time = ktime_to_ns(ktime_sub(ktime_get(),
-+						   transaction->t_start_time));
-+
-+		commit_time = min_t(u64, commit_time,
-+				    1000*jiffies_to_usecs(1));
-+
-+		if (trans_time < commit_time) {
-+			ktime_t expires = ktime_add_ns(ktime_get(),
-+						       commit_time);
-+			set_current_state(TASK_UNINTERRUPTIBLE);
-+			schedule_hrtimeout(&expires, HRTIMER_MODE_ABS);
-+		}
- 	}
- 
- 	current->journal_info = NULL;
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index c7d106e..b8b8744 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -637,6 +637,11 @@ struct transaction_s
- 	unsigned long		t_expires;
- 
- 	/*
-+	 * When this transaction started, in nanoseconds [no locking]
-+	 */
-+	ktime_t			t_start_time;
-+
-+	/*
- 	 * How many handles used this transaction? [t_handle_lock]
- 	 */
- 	int t_handle_count;
-@@ -938,8 +943,18 @@ struct journal_s
- 	struct buffer_head	**j_wbuf;
- 	int			j_wbufsize;
- 
-+	/*
-+	 * this is the pid of hte last person to run a synchronous operation
-+	 * through the journal
-+	 */
- 	pid_t			j_last_sync_writer;
- 
-+	/*
-+	 * the average amount of time in nanoseconds it takes to commit a
-+	 * transaction to disk. [j_state_lock]
-+	 */
-+	u64			j_average_commit_time;
-+
- 	/* This function is called when a transaction is closed */
- 	void			(*j_commit_callback)(journal_t *,
- 						     transaction_t *);
+Arthur
