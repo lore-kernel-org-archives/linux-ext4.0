@@ -1,45 +1,40 @@
-From: Andreas Dilger <adilger@sun.com>
+From: Andrew Morton <akpm@linux-foundation.org>
 Subject: Re: [PATCH] improve jbd fsync batching
-Date: Mon, 03 Nov 2008 22:24:28 -0700
-Message-ID: <20081104052428.GP3184@webber.adilger.int>
+Date: Tue, 4 Nov 2008 01:12:42 -0800
+Message-ID: <20081104011242.cc767dba.akpm@linux-foundation.org>
 References: <20081028201614.GA21600@unused.rdu.redhat.com>
- <20081103122729.60582692.akpm@linux-foundation.org>
+	<20081103122729.60582692.akpm@linux-foundation.org>
+	<20081104052428.GP3184@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Cc: Josef Bacik <jbacik@redhat.com>, linux-kernel@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 	rwheeler@redhat.com
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:59580 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751102AbYKDFYb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Nov 2008 00:24:31 -0500
-In-reply-to: <20081103122729.60582692.akpm@linux-foundation.org>
-Content-disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081104052428.GP3184@webber.adilger.int>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Nov 03, 2008  12:27 -0800, Andrew Morton wrote:
-> On Tue, 28 Oct 2008 16:16:15 -0400
-> Josef Bacik <jbacik@redhat.com> wrote:
-> > +		spin_lock(&journal->j_state_lock);
-> > +		commit_time = journal->j_average_commit_time;
-> > +		spin_unlock(&journal->j_state_lock);
+On Mon, 03 Nov 2008 22:24:28 -0700 Andreas Dilger <adilger@sun.com> wrote:
+
+> On Nov 03, 2008  12:27 -0800, Andrew Morton wrote:
+> > On Tue, 28 Oct 2008 16:16:15 -0400
+> > Josef Bacik <jbacik@redhat.com> wrote:
+> > > +		spin_lock(&journal->j_state_lock);
+> > > +		commit_time = journal->j_average_commit_time;
+> > > +		spin_unlock(&journal->j_state_lock);
+> > 
+> > OK, the lock is needed on 32-bit machines, I guess.
 > 
-> OK, the lock is needed on 32-bit machines, I guess.
+> Should we pessimize the 64-bit performance in that case, for 32-bit
+> increasingly rare 32-bit platforms?
 
-Should we pessimize the 64-bit performance in that case, for 32-bit
-increasingly rare 32-bit platforms?
+In general no.
 
-It might be useful to have a spin_{,un}lock_64bit_word() helper that
-evaluates to a no-op on plaforms that don't need a hammer to do an atomic
-64-bit update.
+But spinlocks also do memory ordering stuff on both 32- and 64-bit
+machines.  Introducing differences there needs thinking about.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+In this case it's fsync which is going to be monster slow anyway.
 
