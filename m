@@ -1,42 +1,37 @@
-From: Leroy van Logchem <leroy.vanlogchem@gmail.com>
-Subject: Re: [PATCH] imporve jbd2 fsync batching
-Date: Tue, 4 Nov 2008 22:15:35 +0000 (UTC)
-Message-ID: <loom.20081104T221319-284@post.gmane.org>
-References: <20081104161024.GC28058@unused.rdu.redhat.com> <20081104205223.GW30291@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 11950] Early boot failure for 2.6.28-rc[123]: NULL pointer deref stemming from scheduler_tick
+Date: Tue,  4 Nov 2008 14:49:44 -0800 (PST)
+Message-ID: <20081104224944.4EA72108048@picon.linux-foundation.org>
+References: <bug-11950-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:54622 "EHLO ciao.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753731AbYKDWUH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 4 Nov 2008 17:20:07 -0500
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1KxUFn-0005W2-8f
-	for linux-ext4@vger.kernel.org; Tue, 04 Nov 2008 22:20:03 +0000
-Received: from 212-123-148-116.ip.telfort.nl ([212.123.148.116])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Tue, 04 Nov 2008 22:20:03 +0000
-Received: from leroy.vanlogchem by 212-123-148-116.ip.telfort.nl with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Tue, 04 Nov 2008 22:20:03 +0000
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:52334 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755555AbYKDWuR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Nov 2008 17:50:17 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mA4Mnird027862
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Nov 2008 14:49:45 -0800
+In-Reply-To: <bug-11950-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=11950
 
-> > +	 * can do, instead of having a static sleep time.  This is usefull for
-> 
-> s/usefull/useful/
 
-and:
+rjw@sisk.pl changed:
 
-+	 * join the transaction.  We acheive this by measuring how long it takes
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |rjw@sisk.pl
+OtherBugsDependingO|                            |11808
+              nThis|                            |
+         Regression|0                           |1
 
-s/acheive/achieve/
+
+
 
 -- 
-Leroy
-
-
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You reported the bug, or are watching the reporter.
