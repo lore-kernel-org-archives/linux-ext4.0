@@ -1,74 +1,80 @@
-From: Frank Mayhar <fmayhar@google.com>
-Subject: Re: [RFC PATCH 1/1] Allow ext4 to run without a journal.
-Date: Tue, 04 Nov 2008 13:21:41 -0800
-Message-ID: <1225833701.7133.17.camel@bobble.smo.corp.google.com>
-References: <1225397281.19114.13.camel@bobble.smo.corp.google.com>
-	 <20081030234037.GU3184@webber.adilger.int>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC][PATCH 7/9]ext4: Add the EXT4_IOC_FIEMAP_INO ioctl
+Date: Tue, 04 Nov 2008 14:42:50 -0700
+Message-ID: <20081104214250.GX3184@webber.adilger.int>
+References: <49019EF6.4000706@rs.jp.nec.com>
+ <20081026084048.GF3184@webber.adilger.int> <49059633.8080600@rs.jp.nec.com>
+ <20081027195524.GN3184@webber.adilger.int> <490AD3E4.1010908@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Michael Rubin <mrubin@google.com>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
+	Mingming Cao <cmm@us.ibm.com>, hch@infradead.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:33749 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754651AbYKDVVu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Nov 2008 16:21:50 -0500
-In-Reply-To: <20081030234037.GU3184@webber.adilger.int>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:35870 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754302AbYKDVnR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Nov 2008 16:43:17 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mA4LhDw7016494
+	for <linux-ext4@vger.kernel.org>; Tue, 4 Nov 2008 13:43:13 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K9T00601W6GXM00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Tue, 04 Nov 2008 13:43:13 -0800 (PST)
+In-reply-to: <490AD3E4.1010908@rs.jp.nec.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 2008-10-30 at 17:40 -0600, Andreas Dilger wrote:
-> >  void ext4_dirty_inode(struct inode *inode)
-> >  {
-> > +	handle_t *current_handle = ext4_journal_current_handle(inode->i_sb);
-> > +	if (!current_handle) {
-> > +	handle_t *current_handle = ext4_journal_current_handle(inode->i_sb);
-> 
-> Wouldn't ext4_journal_current_handle() just return NULL always for an
-> unjournalled ext4 filesystem?  Unfortunately, I can't see what "sb" is
-> used for because your patch doesn't include the ext4_journal_current_handle()
-> code.
+On Oct 31, 2008  18:46 +0900, Akira Fujita wrote:
+>> Why does a regular user need to do the ioctl on a file that it may not
+>> have read permission to access?  I can see this is useful for root
+>> doing a defrag of the whole filesystem instead of opening and closing
+>> all of the files, but for regular users we need to validate via the
+>> full path to ensure they can even access the file before defragmenting it.
+>
+> The FIEMAP_INO ioctl just passes a inode number belongs to
+> the target block group from user space to kernel space
+> and then the owner check is done in the kernel space.
+>
+> If the regular user (defrag -f excecutant) is owner of a file,
+> defrag handles this file as the candidate of victim file which would
+> be moved to the other block group to make free space.
+>
+> So I think the full path check is unneeded because the owner check
+> is done in the kernel space (I'm not sure it's good enough).
+> If it's not good in the security point of view,
+> I will make defrag -f mode be done only by root user.
 
-Sorry about that, I'm doing the work in a p4 repository and somehow that
-file didn't get p4 opened so it didn't generate the diff.  The short
-version is that it was checking the COMPAT_HAS_JOURNAL flag.
+If the defrag operation is limited to the owner of the file (or root
+via CAP_DAC_OVERRIDE) then this is probably OK also.  The data never
+gets to userspace so there is relatively little risk to this operation.
 
-> One option is to start with a wrapper like "ext4_handle_valid(handle)"
-> instead of checking "handle == NULL" everywhere.  Then, we could put
-> a magic value into "handle" and current->journal_info (maybe the
-> the ext3_sb_info pointer).  Put a magic value at the start of ext4_sb_info
-> that can be validated as never belonging to a journal handle, and then you
-> don't need to pass "sb" everywhere.  It also allows you to distinguish
-> between the "no handle was ever started" case and "running unjournalled".
+>>>> This was mentioned last time these patches were posted, but there was
+>>>> no reply from you.  Christoph suggested a more generic VFS open-by-inum,
+>>>> which isn't impossible to do but would cause a lot of controversy I
+>>>> think, while the EXT4_IOC_WRAPPER is at least contained within ext4,
+>>>> but is more generically useful than EXT4_IOC_FIEMAP_INO.
+>
+> How do the other ext4 developers think about
+> implementing EXT4_IOC_WRAPPER?
+> Will it be used only for defrag so far?
 
-Okay, yeah, this sounds like the way to go.  I had seen the previous
-handle==NULL case but had put it aside to get a proof-of-concept
-implementation going as quickly as possible.  Your explanation here
-clears things up.
+I expect the initial users of this ioctl will be FIEMAP and DEFRAG, but
+it might also be useful for other ioctls in the future.
 
-My suggestion is, for the non-journalling flag, set the first field
-(which in the handle is a pointer to the transaction) to NULL to
-distinguish it from a real handle.  As far as I can tell from browsing
-the code the h_transaction pointer in a real handle should never be
-NULL.  Please let me know if this is not the case.  And maybe offer
-another suggestion...?
+I haven't really asked other ext4 developers about it yet, and nobody
+else has commented the last time I posted the patch.
 
-(As an aside, this particular situation is one of the reasons a friend
-of mine, Tom Van Vleck, strongly insists on putting magic numbers and
-versions into structures.  I'm not as insistent about it as he is but it
-certainly would have helped here.)
+I don't have an objection to Christoph's open-by-FH API, if there is
+acceptance of this from other kernel developers (Al Viro in particular),
+but that exposes a lot more security issues than just the ioctl wrapper.
 
-> In any case, I'm not sure if this code is completely correct, since the
-> previous code allowed calling ext4_dirty_inode() without first starting
-> a journal handle, and now it would just silently do nothing and cause
-> filesystem corruption for the journalled case.
-
-So now handle==NULL will only refer to this case, correct?  And I infer
-from your comment that handle != NULL refers to a started handle, that
-is, a handle that has a non-NULL h_transaction pointer (for my
-purposes).
--- 
-Frank Mayhar <fmayhar@google.com>
-Google, Inc.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
