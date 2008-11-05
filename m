@@ -1,7 +1,7 @@
 From: akpm@linux-foundation.org
-Subject: + quota-add-quota-claim-and-release-reserved-quota-blocks-operations-checkpatch-fixes.patch added to -mm tree
-Date: Tue, 04 Nov 2008 17:33:44 -0800
-Message-ID: <200811050133.mA51Xius018685@imap1.linux-foundation.org>
+Subject: + quota-add-reservation-support-for-delayed-block-allocation-checkpatch-fixes.patch added to -mm tree
+Date: Tue, 04 Nov 2008 17:33:39 -0800
+Message-ID: <200811050133.mA51XdGK018615@imap1.linux-foundation.org>
 Reply-To: linux-kernel@vger.kernel.org
 Cc: akpm@linux-foundation.org, cmm@us.ibm.com, jack@ucw.cz,
 	linux-ext4@vger.kernel.org
@@ -12,9 +12,9 @@ List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     quota-add-quota-claim-and-release-reserved-quota-blocks-operations-checkpatch-fixes
+     quota-add-reservation-support-for-delayed-block-allocation-checkpatch-fixes
 has been added to the -mm tree.  Its filename is
-     quota-add-quota-claim-and-release-reserved-quota-blocks-operations-checkpatch-fixes.patch
+     quota-add-reservation-support-for-delayed-block-allocation-checkpatch-fixes.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -30,53 +30,28 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: quota-add-quota-claim-and-release-reserved-quota-blocks-operations-checkpatch-fixes
+Subject: quota-add-reservation-support-for-delayed-block-allocation-checkpatch-fixes
 From: Andrew Morton <akpm@linux-foundation.org>
 
-WARNING: line over 80 characters
-#68: FILE: include/linux/quota.h:296:
-+	int (*claim_space) (struct inode *, qsize_t); /* claim reserved quota for delayed block allocation */
+ERROR: code indent should use tabs where possible
+#193: FILE: fs/dquot.c:1279:
++         * re-enter the quota code and are already holding the mutex$
 
-WARNING: line over 80 characters
-#69: FILE: include/linux/quota.h:297:
-+	void (*release_rsv) (struct inode *, qsize_t); /* release reserved quota for delayed block allocation */
-
-ERROR: space required before the open brace '{'
-#98: FILE: include/linux/quotaops.h:209:
-+	if (sb_any_quota_active(inode->i_sb)){
-
-ERROR: else should follow close brace '}'
-#102: FILE: include/linux/quotaops.h:213:
-+	}
-+	else
-
-WARNING: line over 80 characters
-#112: FILE: include/linux/quotaops.h:223:
-+static inline void vfs_dq_release_reservation_space(struct inode *inode, qsize_t nr)
-
-WARNING: line over 80 characters
-#130: FILE: include/linux/quotaops.h:380:
-+static inline int vfs_dq_release_reservation_space(struct inode *inode, qsize_t nr)
-
-WARNING: line over 80 characters
-#150: FILE: include/linux/quotaops.h:437:
-+	vfs_dq_release_reservation_space(inode, nr << inode->i_sb->s_blocksize_bits);
-
-WARNING: printk() should include KERN_ facility level
-#180: FILE: fs/dquot.c:856:
-+		printk("WARNING: reserved quota %llu is not enough for"
+ERROR: code indent should use tabs where possible
+#194: FILE: fs/dquot.c:1280:
++         */$
 
 WARNING: EXPORT_SYMBOL(foo); should immediately follow its function/variable
-#270: FILE: fs/dquot.c:2436:
-+EXPORT_SYMBOL(dquot_claim_space);
+#254: FILE: fs/dquot.c:2352:
++EXPORT_SYMBOL(dquot_reserve_space);
 
-WARNING: EXPORT_SYMBOL(foo); should immediately follow its function/variable
-#271: FILE: fs/dquot.c:2437:
-+EXPORT_SYMBOL(dquot_release_reserved_space);
+WARNING: line over 80 characters
+#274: FILE: include/linux/quota.h:295:
++	int (*reserve_space) (struct inode *, qsize_t, int); /* reserve quota for delayed block allocation */
 
-total: 2 errors, 8 warnings, 194 lines checked
+total: 2 errors, 2 warnings, 244 lines checked
 
-./patches/quota-add-quota-claim-and-release-reserved-quota-blocks-operations.patch has style problems, please review.  If any of these errors
+./patches/quota-add-reservation-support-for-delayed-block-allocation.patch has style problems, please review.  If any of these errors
 are false positives report them to the maintainer, see
 CHECKPATCH in MAINTAINERS.
 
@@ -88,26 +63,23 @@ Cc: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- include/linux/quotaops.h |    5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+ fs/dquot.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff -puN include/linux/quotaops.h~quota-add-quota-claim-and-release-reserved-quota-blocks-operations-checkpatch-fixes include/linux/quotaops.h
---- a/include/linux/quotaops.h~quota-add-quota-claim-and-release-reserved-quota-blocks-operations-checkpatch-fixes
-+++ a/include/linux/quotaops.h
-@@ -206,11 +206,10 @@ static inline int vfs_dq_alloc_inode(str
-  */
- static inline int vfs_dq_claim_space(struct inode *inode, qsize_t nr)
- {
--	if (sb_any_quota_active(inode->i_sb)){
-+	if (sb_any_quota_active(inode->i_sb)) {
- 		if (inode->i_sb->dq_op->claim_space(inode, nr) == NO_QUOTA)
- 			return 1;
--	}
--	else
-+	} else
- 		inode_add_bytes(inode, nr);
+diff -puN fs/dquot.c~quota-add-reservation-support-for-delayed-block-allocation-checkpatch-fixes fs/dquot.c
+--- a/fs/dquot.c~quota-add-reservation-support-for-delayed-block-allocation-checkpatch-fixes
++++ a/fs/dquot.c
+@@ -1276,8 +1276,8 @@ int dquot_alloc_space(struct inode *inod
  
- 	mark_inode_dirty(inode);
+ 	/*
+ 	 * First test before acquiring mutex - solves deadlocks when we
+-         * re-enter the quota code and are already holding the mutex
+-         */
++	 * re-enter the quota code and are already holding the mutex
++	 */
+ 	if (IS_NOQUOTA(inode)) {
+ 		inode_add_bytes(inode, number);
+ 		return ret;
 _
 
 Patches currently in -mm which might be from akpm@linux-foundation.org are
