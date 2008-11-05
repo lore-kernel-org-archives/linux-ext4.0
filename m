@@ -1,19 +1,23 @@
 From: akpm@linux-foundation.org
-Subject: + ext4-quota-handling-for-delayed-allocation.patch added to -mm tree
-Date: Tue, 04 Nov 2008 17:33:46 -0800
-Message-ID: <200811050133.mA51XlQS018692@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: cmm@us.ibm.com, jack@ucw.cz, linux-ext4@vger.kernel.org
+Subject: + ext4-quota-handling-for-delayed-allocation-checkpatch-fixes.patch added to -mm tree
+Date: Tue, 04 Nov 2008 17:33:48 -0800
+Message-ID: <200811050133.mA51XmYd018696@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, cmm@us.ibm.com, jack@ucw.cz,
+	linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:34848 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754077AbYKEBeX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Nov 2008 20:34:23 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext4: quota handling for delayed allocation
+     ext4-quota-handling-for-delayed-allocation-checkpatch-fixes
 has been added to the -mm tree.  Its filename is
-     ext4-quota-handling-for-delayed-allocation.patch
+     ext4-quota-handling-for-delayed-allocation-checkpatch-fixes.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -29,216 +33,100 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext4: quota handling for delayed allocation
-From: Mingming Cao <cmm@us.ibm.com>
+Subject: ext4-quota-handling-for-delayed-allocation-checkpatch-fixes
+From: Andrew Morton <akpm@linux-foundation.org>
 
-Use quota reservation/claim/release to handle quota properly for delayed
-allocation in three steps:
+ERROR: space required after that ',' (ctx:VxV)
+#134: FILE: fs/ext4/inode.c:1560:
++		DQUOT_RELEASE_RSV_BLOCK(inode,total);
+ 		                             ^
 
-1) quotas are reserved when data is being copied to cache when block
-   allocation is defered
+total: 1 errors, 0 warnings, 157 lines checked
 
-2) when new blocks are allocated, reserved quotas are converted to the
-   real allocated quota
+./patches/ext4-quota-handling-for-delayed-allocation.patch has style problems, please review.  If any of these errors
+are false positives report them to the maintainer, see
+CHECKPATCH in MAINTAINERS.
 
-3) over-booked quotas for metadata blocks are released back.
+Please run checkpatch prior to sending patches
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-Cc: Jan Kara <jack@ucw.cz>
 Cc: <linux-ext4@vger.kernel.org>
+Cc: Jan Kara <jack@ucw.cz>
+Cc: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/inode.c   |   29 ++++++++++++++++++++++++++---
- fs/ext4/mballoc.c |   42 +++++++++++++++++++++++++-----------------
- fs/ext4/super.c   |    3 +++
- 3 files changed, 54 insertions(+), 20 deletions(-)
+ fs/ext4/inode.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff -puN fs/ext4/inode.c~ext4-quota-handling-for-delayed-allocation fs/ext4/inode.c
---- a/fs/ext4/inode.c~ext4-quota-handling-for-delayed-allocation
+diff -puN fs/ext4/inode.c~ext4-quota-handling-for-delayed-allocation-checkpatch-fixes fs/ext4/inode.c
+--- a/fs/ext4/inode.c~ext4-quota-handling-for-delayed-allocation-checkpatch-fixes
 +++ a/fs/ext4/inode.c
-@@ -994,7 +994,9 @@ static void ext4_da_update_reserve_space
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
- 	int total, mdb, mdb_free;
-+	int claim_quota, free_quota = 0;
- 
-+	claim_quota = used;
- 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	/* recalculate the number of metablocks still need to be reserved */
- 	total = EXT4_I(inode)->i_reserved_data_blocks - used;
-@@ -1007,6 +1009,8 @@ static void ext4_da_update_reserve_space
- 	if (mdb_free) {
- 		/* Account for allocated meta_blocks */
- 		mdb_free -= EXT4_I(inode)->i_allocated_meta_blocks;
-+		free_quota = mdb_free;
-+		claim_quota += EXT4_I(inode)->i_allocated_meta_blocks;
- 
- 		/* update fs dirty blocks counter */
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
-@@ -1017,8 +1021,14 @@ static void ext4_da_update_reserve_space
- 	/* update per-inode reservations */
- 	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
- 	EXT4_I(inode)->i_reserved_data_blocks -= used;
--
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+
-+	/*
-+	 * free those over-booking quota for metadata blocks
-+	 */
-+
-+	if (free_quota)
-+		DQUOT_RELEASE_RSV_BLOCK(inode, free_quota);
- }
- 
- /*
-@@ -1514,8 +1524,8 @@ static int ext4_journalled_write_end(str
- static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
- {
- 	int retries = 0;
--       struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--       unsigned long md_needed, mdblocks, total = 0;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	unsigned long md_needed, mdblocks, total = 0;
- 
- 	/*
- 	 * recalculate the amount of metadata blocks to reserve
-@@ -1531,12 +1541,23 @@ repeat:
- 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
- 	total = md_needed + nrblocks;
- 
-+	/*
-+	 * Make quota reservation here, to prevent quota overflow
-+	 * later.Real quota accounting is done at pages writeout
-+	 * time
-+	 */
-+	 if (DQUOT_RESERVE_BLOCK(inode, total)) {
-+		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+		return -EDQUOT;
-+	}
-+
- 	if (ext4_claim_free_blocks(sbi, total)) {
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
+@@ -1557,7 +1557,7 @@ repeat:
  			yield();
  			goto repeat;
  		}
-+		DQUOT_RELEASE_RSV_BLOCK(inode,total);
+-		DQUOT_RELEASE_RSV_BLOCK(inode,total);
++		DQUOT_RELEASE_RSV_BLOCK(inode, total);
  		return -ENOSPC;
  	}
  	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
-@@ -1590,6 +1611,8 @@ static void ext4_da_release_space(struct
- 	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
- 	EXT4_I(inode)->i_reserved_meta_blocks = mdb;
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+
-+	DQUOT_RELEASE_RSV_BLOCK(inode, release);
- }
- 
- static void ext4_da_page_release_reservation(struct page *page,
-diff -puN fs/ext4/mballoc.c~ext4-quota-handling-for-delayed-allocation fs/ext4/mballoc.c
---- a/fs/ext4/mballoc.c~ext4-quota-handling-for-delayed-allocation
-+++ a/fs/ext4/mballoc.c
-@@ -2887,9 +2887,11 @@ ext4_mb_mark_diskspace_used(struct ext4_
- 	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
- 		/* release all the reserved blocks if non delalloc */
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
--	else
-+	else {
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
- 						ac->ac_b_ex.fe_len);
-+		DQUOT_CLAIM_BLOCK(ac->ac_inode, ac->ac_b_ex.fe_len);
-+	}
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi,
-@@ -4286,15 +4288,24 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 	struct ext4_sb_info *sbi;
- 	struct super_block *sb;
- 	ext4_fsblk_t block = 0;
--	unsigned long inquota;
-+	unsigned long inquota = 0;
- 	unsigned long reserv_blks = 0;
- 
- 	sb = ar->inode->i_sb;
- 	sbi = EXT4_SB(sb);
- 
--	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
-+	/*
-+	 * For delayed allocation, we could skip the ENOSPC and
-+	 * EDQUOT check, as blocks and quotas have been already
-+	 * reserved when data being copied to cache
-+	 */
-+	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
-+		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
-+	else {
- 		/*
--		 * With delalloc we already reserved the blocks
-+		 * Without delayed allocation we need to verify
-+		 * there is enough free blocks to do block allocation
-+		 * and under the quota limits
- 		 */
- 		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
- 			/* let others to free the space */
-@@ -4306,19 +4317,16 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 			return 0;
- 		}
- 		reserv_blks = ar->len;
-+		while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
-+			ar->flags |= EXT4_MB_HINT_NOPREALLOC;
-+			ar->len--;
-+		}
-+		if (ar->len == 0) {
-+			*errp = -EDQUOT;
-+			return 0;
-+		}
-+		inquota = ar->len;
- 	}
--	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
--		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
--		ar->len--;
--	}
--	if (ar->len == 0) {
--		*errp = -EDQUOT;
--		return 0;
--	}
--	inquota = ar->len;
--
--	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
--		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
- 
- 	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
- 	if (!ac) {
-@@ -4380,7 +4388,7 @@ repeat:
- out2:
- 	kmem_cache_free(ext4_ac_cachep, ac);
- out1:
--	if (ar->len < inquota)
-+	if (inquota && ar->len < inquota)
- 		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
- 
- 	return block;
-diff -puN fs/ext4/super.c~ext4-quota-handling-for-delayed-allocation fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-quota-handling-for-delayed-allocation
-+++ a/fs/ext4/super.c
-@@ -803,6 +803,9 @@ static struct dquot_operations ext4_quot
- 	.initialize	= ext4_dquot_initialize,
- 	.drop		= ext4_dquot_drop,
- 	.alloc_space	= dquot_alloc_space,
-+	.reserve_space	= dquot_reserve_space,
-+	.claim_space	= dquot_claim_space,
-+	.release_rsv	= dquot_release_reserved_space,
- 	.alloc_inode	= dquot_alloc_inode,
- 	.free_space	= dquot_free_space,
- 	.free_inode	= dquot_free_inode,
 _
 
-Patches currently in -mm which might be from cmm@us.ibm.com are
+Patches currently in -mm which might be from akpm@linux-foundation.org are
 
-quota-add-reservation-support-for-delayed-block-allocation.patch
+autofs4-collect-version-check-return-checkpatch-fixes.patch
+maintainers-make-ioat-easier-to-find.patch
+mm-remove-the-might_sleep-from-lock_page.patch
+linux-next.patch
+next-remove-localversion.patch
+arch-x86-kernel-setupc-omit-dmi_low_memory_corruption-when-it-is-unneeded.patch
+tick-schedc-suppress-needless-timer-reprogramming.patch
+linux-timexh-cleanup-for-userspace.patch
+drivers-input-touchscreen-ucb1400_tsc-needs-gpio.patch
+pci-uninline-pci_ioremap_bar.patch
+pcie-add-option-to-passively-listen-for-pcie-hotplug-events-checkpatch-fixes.patch
+cpusets-update-mems-allowed-in-page-allocator-fix.patch
+scsi-dpt_i2o-is-bust-on-ia64.patch
+mm-invoke-oom-killer-from-page-fault-fix.patch
+mm-invoke-oom-killer-from-page-fault-fix-fix-2.patch
+mm-write_cache_pages-more-terminate-quickly.patch
+init-properly-placing-noinline-keyword.patch
+spi_gpio-driver-cleanups.patch
+rtc-rtc-wm8350-add-support-for-wm8350-rtc.patch
+rtc-basic-implementation-of-epson-rx-8581-i2c-real-time-clock-fix.patch
+quota-permit-separately-enabling-quota-accounting-and-enforcing-limits-fix.patch
+quota-move-quotaio_vh-from-include-linux-to-fs-fix.patch
+quota-move-quotaio_vh-from-include-linux-to-fs-fix-2.patch
+quota-convert-union-in-mem_dqinfo-to-a-pointer-cleanup.patch
+quota-support-64-bit-quota-format-fix.patch
+quota-support-64-bit-quota-format-fix-2.patch
 quota-add-reservation-support-for-delayed-block-allocation-checkpatch-fixes.patch
-quota-add-quota-claim-and-release-reserved-quota-blocks-operations.patch
 quota-add-quota-claim-and-release-reserved-quota-blocks-operations-checkpatch-fixes.patch
-ext4-quota-handling-for-delayed-allocation.patch
 ext4-quota-handling-for-delayed-allocation-checkpatch-fixes.patch
+memcg-introduce-charge-commit-cancel-style-of-functions-fix.patch
+edac-struct-device-replace-bus_id-with-dev_name-dev_set_name-checkpatch-fixes.patch
+w1-export-w1_read_8-function-checkpatch-fixes.patch
+filesystem-freeze-implement-generic-freeze-feature-fix.patch
+nilfs2-inode-operations-fix.patch
+nilfs2-pathname-operations-fix.patch
+nilfs2-super-block-operations-fix.patch
+reiser4.patch
+reiser4-tree_lock-fixes.patch
+reiser4-tree_lock-fixes-fix.patch
+reiser4-semaphore-fix.patch
+slb-drop-kmem-cache-argument-from-constructor-reiser4.patch
+reiser4-suid.patch
+reiser4-track-upstream-changes.patch
+reiser4-broke.patch
+nr_blockdev_pages-in_interrupt-warning.patch
+slab-leaks3-default-y.patch
+put_bh-debug.patch
+shrink_slab-handle-bad-shrinkers.patch
+getblk-handle-2tb-devices.patch
+getblk-handle-2tb-devices-fix.patch
+undeprecate-pci_find_device.patch
+notify_change-callers-must-hold-i_mutex.patch
+profile-likely-unlikely-macros.patch
+drivers-net-bonding-bond_sysfsc-suppress-uninitialized-var-warning.patch
+w1-build-fix.patch
 
