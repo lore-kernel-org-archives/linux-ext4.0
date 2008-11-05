@@ -1,76 +1,66 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: data corruption with ext4 (from 2.6.27.4) exposed by rtorrent
-Date: Wed, 05 Nov 2008 10:16:49 -0600
-Message-ID: <4911C6F1.5090107@redhat.com>
-References: <3d3ce57e0811030442o377cf2bet212eefba79d714bb@mail.gmail.com>	 <20081103134008.GE29102@mit.edu> <319012f0811050534i27b7dce1t8120b3a343844adc@mail.gmail.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: Patch collision: 64-bit quota changes and ext4 delalloc quota
+ changs
+Date: Wed, 5 Nov 2008 08:43:03 -0800
+Message-ID: <20081105084303.ed0c53d5.akpm@linux-foundation.org>
+References: <E1Kxkwt-0007Np-O4@closure.thunk.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Roc Valles <vallesroc@gmail.com>,
+Cc: Jan Kara <jack@suse.cz>, Mingming Cao <cmm@us.ibm.com>,
 	linux-ext4@vger.kernel.org
-To: Cryptooctoploid <cryptooctoploid@gmail.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:49827 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751528AbYKEQRP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 5 Nov 2008 11:17:15 -0500
-In-Reply-To: <319012f0811050534i27b7dce1t8120b3a343844adc@mail.gmail.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:43825 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751866AbYKEQnp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Nov 2008 11:43:45 -0500
+In-Reply-To: <E1Kxkwt-0007Np-O4@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Cryptooctoploid wrote:
-> On Mon, Nov 3, 2008 at 2:40 PM, Theodore Tso <tytso@mit.edu> wrote:
->> On Mon, Nov 03, 2008 at 12:42:11PM +0000, Roc Valles wrote:
->>> Some person already reported this. I'm having the same problem.
->>> http://marc.info/?l=linux-ext4&m=122557056518246&w=2
->>>
->>> rtorrent is a bittorrent client that makes heavy use of mmap instead
->>> of read/write to avoid needless duplication of data. It has exposed
->>> other bugs in the past (mmap bug in 2.6.19).
->>> http://libtorrent.rakshasa.no
->>> Downloading a big torrent (>2GB) with rtorrent triggers it more times
->>> than not. The bigger the torrent, the higher the likeliness of
->>> failure. When the torrent is finished, if a hash check is forced by
->>> pressing control-r on the torrent, some blocks will fail.
->> Can both of you send the output of "dumpe2fs -h /dev/<disk device>" of
->> the filesystem in question?  The thing which I'm most interested in is
->> whether the extents feature was enabled or not.  (i.e., was this a
->> freshly made ext4 filesystem, or a ext3 filesystem mounted under ext4,
->> and with which features eanbled?)
->>
+On Wed, 05 Nov 2008 11:09:39 -0500 "Theodore Ts'o" <tytso@mit.edu> wrote:
+
+> Hi,
 > 
-> I tested this further and it turned out that this bug is not extents
-> related. I get the same hash failures on a partition formatted with:
-> -O "^extent".
+> Mingming has been working on some changes to support better support
+> quotas when ext4's delayed allocation is enabled.  Unfortunately, they
+> conflict with Jan's 64-bit quota changes.  The first two patches in
+> mingming's series change core quota handling code; the last one is ext4
+> specific.
+> 
+> Andrew has commented on the patches and I assume Mingming will be
+> addressing his comments.  In the meantime, there is the question of
+> where the patches should live while they cook.
+> 
+> Mingming has dropped her patches, followed by Jan's 64-bit quota
+> patches, into the ext4 patch queue tree.  This was for her convenience,
+> and also so she could modify Jan's patches so they would apply after
+> making the changes she needed.  That makes sense, but it means that we
+> have the quota patches in the ext4 tree, which isn't so great,
+> especially if Jan wants/needs/plans to make any further changes.
+> 
+> Andrew has I see sucked up the Mingming's quota changes into the mm
+> tree.  Given that 2 out of the 3 patches affect core code, that also
+> makes sense, although the last patch is ext4 specific, and some changes
+> to that patch might be needed as we make other changes to ext4.  (For
+> example, my latest patch to reduce stack space on x86_64 systems by
+> fixing inappropriate use of "unsigned long" required some minor fix ups
+> to Mingming's last patch.
+> 
+> So what to do...  I *think* the thing which makes the most sense is for
+> me to drop all of the quota related changes from the ext4 patch queue,
+> since in reality 95% of the changes are are all outside of the ext4
+> tree, and let Andrew carry the changes in -mm.  Mingming, if you like we
+> can save the patches off to a subdirectory in the ext4 patch queue, and
+> make it easier for you to do your development.
+> 
+> Does that make sense to everyone?
+> 
 
-Thanks, that's good information.
+It works for me.  I really need to get off my butt and get -mm into
+linux-next.
 
-> Besides the torrent failures,  ext4 also managed to corrupt two
-> dspam sqlite3 databases on my system. (After the corruption I
-> get the following error:
-> *** glibc detected *** dspam: free(): invalid pointer: 0x0000000001e71c58 ***
-> ======= Backtrace: =========
-> /lib/libc.so.6[0x7fcd1f941af6]
-> /lib/libc.so.6(cfree+0xbd)[0x7fcd1f942f3d]
-> /usr/lib64/dspam/libsqlite3_drv.so(_ds_setall_spamrecords+0x395)[0x7fcd1ea03075]
-> /usr/lib/libdspam.so.7(_ds_operate+0x400)[0x7fcd1fc3c710]
-> /usr/lib/libdspam.so.7(dspam_process+0x1d9)[0x7fcd1fc3cf49]
-> dspam(process_message+0xb49)[0x408579]
-> dspam(process_users+0x57d)[0x40902d]
-> dspam(main+0x2c2)[0x409832]
-> /lib/libc.so.6(__libc_start_main+0xfd)[0x7fcd1f8e848d]
-> dspam[0x402f79
-> and the only solution is to restore the database from ext3 backup)
-
-I think this would more likely indicate a userspace bug, though, not
-something related to ext4.
-
--Eric
-
-> My conclusion is that ext4 is not yet ready for prime time.
-> I moved all my data back to ext3.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I can merge ext4-quota-handling-for-delayed-allocation.patch if you
+like, or you can merge it once te quota changes have gone in.
 
