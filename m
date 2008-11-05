@@ -1,44 +1,47 @@
-From: Solofo.Ramangalahy@bull.net
+From: Cryptooctoploid <cryptooctoploid@gmail.com>
 Subject: Re: data corruption with ext4 (from 2.6.27.4) exposed by rtorrent
-Date: Wed, 5 Nov 2008 21:09:46 +0100
-Message-ID: <18705.64906.497902.219660@frecb006361.adech.frec.bull.fr>
+Date: Wed, 5 Nov 2008 21:13:30 +0100
+Message-ID: <319012f0811051213g1f2ed31blf2b4bede3dd9535@mail.gmail.com>
 References: <3d3ce57e0811030442o377cf2bet212eefba79d714bb@mail.gmail.com>
-	<20081103134008.GE29102@mit.edu>
-	<319012f0811030734s6d14b2b3t13c32a41ac48e852@mail.gmail.com>
-	<20081103165144.6514f003@starbug.prg01.itonis.net>
-	<18705.63392.489856.682976@frecb006361.adech.frec.bull.fr>
-	<20081105195713.GB9266@mit.edu>
+	 <20081103134008.GE29102@mit.edu>
+	 <319012f0811050534i27b7dce1t8120b3a343844adc@mail.gmail.com>
+	 <20081105172553.GA29880@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Solofo.Ramangalahy@bull.net,
-	Jindrich Makovicka <makovick@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: "Roc Valles" <vallesroc@gmail.com>, linux-ext4@vger.kernel.org
+To: "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:52605 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755518AbYKEUJy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Nov 2008 15:09:54 -0500
-In-Reply-To: <20081105195713.GB9266@mit.edu>
+Received: from wf-out-1314.google.com ([209.85.200.170]:23367 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752127AbYKEUNa (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Nov 2008 15:13:30 -0500
+Received: by wf-out-1314.google.com with SMTP id 27so187412wfd.4
+        for <linux-ext4@vger.kernel.org>; Wed, 05 Nov 2008 12:13:30 -0800 (PST)
+In-Reply-To: <20081105172553.GA29880@mit.edu>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso writes:
- > How much memory did you have on your system,
+On Wed, Nov 5, 2008 at 6:25 PM, Theodore Tso <tytso@mit.edu> wrote:
+> Cryptooctoploid,
+>
+> Based on some reflection and further discussion on #ext4, I have a
+> theory which we need to try to prove/disprove that it may be related
+> to memory pressure combined with the delayed allocation code.
+>
+> If you've already dismantled your ext4 setup, maybe you can't test
+> this, but it would be interesting to know mounting with the -o
+> nodelalloc makes the problem go away.
 
-128MB (it is under kvm).
+Yes, -o nodelalloc resolves the issue here.
 
- > and how much memory was
- > free when you ran the test case?
+>Also, how much memory do you
+> have in your system and is your system often under memory pressure?
+> (i.e., your system often uses swap, and where the amount of free
+> memory is often near the low water mark where it is trying to evict
+> memory either by dropping clean pages or writing dirty pages back to
+> the filesystem and/or swap).
 
-I don't know.
-
- > The next question is whether the problem is more easily triggerred
- > when under memory pressure.
-
-I was currently testing other kernels, but, right, I will retest with more memory.
-
--- 
-solofo
-
+I have 2GB of memory and my machine is not under any kind of
+memory pressure normally.
