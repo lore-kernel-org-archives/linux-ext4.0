@@ -1,78 +1,116 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [PATCH, RFC] ext4: Remove i_ext_generation from ext4_inode_info structure
-Date: Tue, 04 Nov 2008 18:47:57 -0500
-Message-ID: <E1KxVcr-0005hL-Qy@closure.thunk.org>
-To: linux-ext4@vger.kernel.org
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH V2 1/3] quota: Add reservation support for delayed block
+ allocation
+Date: Tue, 4 Nov 2008 17:14:51 -0800
+Message-ID: <20081104171451.816d92d0.akpm@linux-foundation.org>
+References: <1225488442.7600.12.camel@mingming-laptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:40114 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1759249AbYKDXsA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Nov 2008 18:48:00 -0500
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59530 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753215AbYKEBPW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 4 Nov 2008 20:15:22 -0500
+In-Reply-To: <1225488442.7600.12.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, 31 Oct 2008 14:27:22 -0700
+Mingming Cao <cmm@us.ibm.com> wrote:
 
-ext4_inode_info.i_ext_generation isn't used by anything.  Was there an
-intent to use it for something in the future?
+> +int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
+> +{
+> +	int cnt, ret = QUOTA_OK;
+> +
+> +	/*
+> +	 * First test before acquiring mutex - solves deadlocks when we
+> +         * re-enter the quota code and are already holding the mutex
+> +         */
+> +	if (IS_NOQUOTA(inode)) {
+> +		inode_add_bytes(inode, number);
+> +		return ret;
+> +	}
+> +
+> +	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +	if (IS_NOQUOTA(inode))	{
+> +		/* Now we can do reliable test... */
+> +		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +		inode_add_bytes(inode, number);
+> +		return ret;
+> +	}
+> +
+> +	ret = __dquot_alloc_space(inode, number, warn, 0);
+> +	if (ret == NO_QUOTA) {
+> +		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +		return ret;
+> +	}
+> +
+> +	/* Dirtify all the dquots - this can block when journalling */
+> +	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+> +		if (inode->i_dquot[cnt])
+> +			mark_dquot_dirty(inode->i_dquot[cnt]);
+> +	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +	inode_add_bytes(inode, number);
+> +	return ret;
+> +}
 
-       	      	     	       	      - Ted
+I'm going to have to call "ug" on that code.
 
-commit 51972792db1397cddd97e1ab9c8d2604453f5b4c
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Tue Nov 4 18:46:03 2008 -0500
+Multiple return points per function really is a maintenance problem. 
+It's a great source of code duplication, locking errors and resource
+leaks as the code evolves.
 
-    ext4: Remove i_ext_generation from ext4_inode_info structure
-    
-    The i_ext_generation was incremented, but never used.  Remove it to
-    slim down the ext4_inode_info structure.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Can we please rework this code (and any other similar code here) to use
+the usual `goto out' pattern?
 
-diff --git a/fs/ext4/ext4_extents.h b/fs/ext4/ext4_extents.h
-index bec7ce5..18cb67b 100644
---- a/fs/ext4/ext4_extents.h
-+++ b/fs/ext4/ext4_extents.h
-@@ -194,11 +194,6 @@ static inline unsigned short ext_depth(struct inode *inode)
- 	return le16_to_cpu(ext_inode_hdr(inode)->eh_depth);
- }
- 
--static inline void ext4_ext_tree_changed(struct inode *inode)
--{
--	EXT4_I(inode)->i_ext_generation++;
--}
--
- static inline void
- ext4_ext_invalidate_cache(struct inode *inode)
- {
-diff --git a/fs/ext4/ext4_i.h b/fs/ext4/ext4_i.h
-index 5c124c0..acc0b72 100644
---- a/fs/ext4/ext4_i.h
-+++ b/fs/ext4/ext4_i.h
-@@ -117,7 +117,6 @@ struct ext4_inode_info {
- 	struct inode vfs_inode;
- 	struct jbd2_inode jinode;
- 
--	unsigned long i_ext_generation;
- 	struct ext4_ext_cache i_cached_extent;
- 	/*
- 	 * File creation time. Its function is same as that of
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ea2ce3c..501952f 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1622,7 +1622,6 @@ cleanup:
- 		ext4_ext_drop_refs(npath);
- 		kfree(npath);
- 	}
--	ext4_ext_tree_changed(inode);
- 	ext4_ext_invalidate_cache(inode);
- 	return err;
- }
-@@ -2233,7 +2232,6 @@ static int ext4_ext_remove_space(struct inode *inode, ext4_lblk_t start)
- 		}
- 	}
- out:
--	ext4_ext_tree_changed(inode);
- 	ext4_ext_drop_refs(path);
- 	kfree(path);
- 	ext4_journal_stop(handle);
+
+int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
+{
+	int cnt, ret = QUOTA_OK;
+
+	/*
+	 * First test before acquiring mutex - solves deadlocks when we
+         * re-enter the quota code and are already holding the mutex
+         */
+	if (IS_NOQUOTA(inode))
+		goto out;
+
+	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+	if (IS_NOQUOTA(inode))	/* Now we can do reliable test... */
+		goto out_unlock;
+
+	ret = __dquot_alloc_space(inode, number, warn, 0);
+
+	if (ret == NO_QUOTA) {
+		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+		return ret;
+	}
+
+<<
+
+I don't know what to do here - did we really want to skip the
+inode_add_bytes?  If so, we could do
+
+	number = 0;
+	goto out_unlock;
+
+>>
+
+	/* Dirtify all the dquots - this can block when journalling */
+	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+		if (inode->i_dquot[cnt])
+			mark_dquot_dirty(inode->i_dquot[cnt]);
+out_unlock:
+	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+out:
+	inode_add_bytes(inode, number);
+	return ret;
+}
+
+or something like that.
+
+
