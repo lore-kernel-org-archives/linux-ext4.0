@@ -1,85 +1,63 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] jbd: don't give up looking for space so easily in __log_wait_for_space
-Date: Wed,  5 Nov 2008 09:05:07 -0500
-Message-ID: <1225893908-2086-1-git-send-email-tytso@mit.edu>
-References: <20081105135349.GA22998@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, Duane Griffin <duaneg@dghda.com>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: [PATCH, RFC] ext4: tone down ext4_da_writepages warnings
+Date: Wed,  5 Nov 2008 09:23:24 -0500
+Message-ID: <1225895004-4937-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:48259 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:48472 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751154AbYKEOFK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Nov 2008 09:05:10 -0500
-In-Reply-To: <20081105135349.GA22998@mit.edu>
+	with ESMTP id S1750806AbYKEOX0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Nov 2008 09:23:26 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit be07c4ed introducd a regression because it assumed that if
-there were no transactions ready to be checkpointed, that no progress
-could be made on making space available in the journal, and so the
-journal should be aborted.  This assumption is false; it could be the
-case that simply calling cleanup_journal_tail() will recover the
-necessary space, or, for small journals, the currently committing
-transaction could be responsible for chewing up the required space in
-the log, so we need to wait for the currently committing transaction
-to finish before trying to force a checkpoint operation.
-
-This patch fixes the bug reported by Meelis Roos at:
-http://bugzilla.kernel.org/show_bug.cgi?id=11937
+If the filesystem has errors, ext4_da_writepages() will return a *lot*
+of errors, including lots and lots of stack dumps.  While it's true
+that we are dropping user data on the floor, which is unfortunate, the
+stack dumps aren't helpful, and they tend to obscure the true original
+root cause of the problem.  So in the case where the filesystem has
+aborted, return an EROFS right away.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Duane Griffin <duaneg@dghda.com>
-Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 ---
- fs/jbd/checkpoint.c |   27 ++++++++++++++++++++++-----
- 1 files changed, 22 insertions(+), 5 deletions(-)
+ fs/ext4/inode.c |   16 +++++++++++++++-
+ 1 files changed, 15 insertions(+), 1 deletions(-)
 
-diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
-index 1bd8d4a..5e856de 100644
---- a/fs/jbd/checkpoint.c
-+++ b/fs/jbd/checkpoint.c
-@@ -128,25 +128,42 @@ void __log_wait_for_space(journal_t *journal)
- 		/*
- 		 * Test again, another process may have checkpointed while we
- 		 * were waiting for the checkpoint lock. If there are no
--		 * outstanding transactions there is nothing to checkpoint and
--		 * we can't make progress. Abort the journal in this case.
-+		 * transactions ready to be checkpointed, try to recover
-+		 * journal space by calling cleanup_journal_tail(), and if
-+		 * that doesn't work, by waiting for the currently committing
-+		 * transaction to complete.  If there is absolutely no way
-+		 * to make progress, this is either a BUG or corrupted
-+		 * filesystem, so abort the journal and leave a stack
-+		 * trace for forensic evidence.
- 		 */
- 		spin_lock(&journal->j_state_lock);
- 		spin_lock(&journal->j_list_lock);
- 		nblocks = jbd_space_needed(journal);
- 		if (__log_space_left(journal) < nblocks) {
- 			int chkpt = journal->j_checkpoint_transactions != NULL;
-+			int tid = 0;
- 
-+			if (journal->j_committing_transaction)
-+				tid = journal->j_committing_transaction->t_tid;
- 			spin_unlock(&journal->j_list_lock);
- 			spin_unlock(&journal->j_state_lock);
- 			if (chkpt) {
- 				log_do_checkpoint(journal);
-+			} else if (cleanup_journal_tail(journal) == 0) {
-+				/* We were able to recover space; yay! */
-+				;
-+			} else if (tid) {
-+				log_wait_commit(journal, tid);
- 			} else {
--				printk(KERN_ERR "%s: no transactions\n",
--				       __func__);
-+				printk(KERN_ERR "%s: needed %d blocks and "
-+				       "only had %d space available\n",
-+				       __func__, nblocks,
-+				       __log_space_left(journal));
-+				printk(KERN_ERR "%s: no way to get more "
-+				       "journal space\n", __func__);
-+				WARN_ON(1);
- 				journal_abort(journal, 0);
- 			}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 15d191b..e1ba323 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2386,6 +2386,20 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	 */
+ 	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
+ 		return 0;
++
++	/*
++	 * If the filesystem has aborted, it is read-only, so return
++	 * right away instead of dumping stack traces later on that
++	 * will obscure the real source of the problem.  We test
++	 * EXT4_MOUNT_ABORT instead of sb->s_flag's MS_RDONLY because
++	 * the latter could be true if the filesystem is mounted
++	 * read-only, and in that case, ext4_da_writepages should
++	 * *never* be called, so if that ever happens, we would want
++	 * the stack trace.
++	 */
++	if (unlikely(sbi->s_mount_opt & EXT4_MOUNT_ABORT))
++		return -EROFS;
++
+ 	/*
+ 	 * Make sure nr_to_write is >= sbi->s_mb_stream_request
+ 	 * This make sure small files blocks are allocated in
+@@ -2430,7 +2444,7 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 		handle = ext4_journal_start(inode, needed_blocks);
+ 		if (IS_ERR(handle)) {
+ 			ret = PTR_ERR(handle);
+-			printk(KERN_EMERG "%s: jbd2_start: "
++			printk(KERN_CRIT "%s: jbd2_start: "
+ 			       "%ld pages, ino %lu; err %d\n", __func__,
+ 				wbc->nr_to_write, inode->i_ino, ret);
+ 			dump_stack();
+-- 
+1.5.6.1.205.ge2c7.dirty
+
