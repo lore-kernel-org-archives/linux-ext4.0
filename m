@@ -1,38 +1,41 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: Patch collision: 64-bit quota changes and ext4 delalloc quota
- changs
-Date: Wed, 5 Nov 2008 11:16:04 -0800
-Message-ID: <20081105111604.2ed6d354.akpm@linux-foundation.org>
-References: <E1Kxkwt-0007Np-O4@closure.thunk.org>
-	<20081105084303.ed0c53d5.akpm@linux-foundation.org>
-	<20081105174026.GB29880@mit.edu>
-	<1225911578.6333.7.camel@mingming-laptop>
+From: Solofo.Ramangalahy@bull.net
+Subject: Re: data corruption with ext4 (from 2.6.27.4) exposed by rtorrent
+Date: Wed, 5 Nov 2008 20:44:32 +0100
+Message-ID: <18705.63392.489856.682976@frecb006361.adech.frec.bull.fr>
+References: <3d3ce57e0811030442o377cf2bet212eefba79d714bb@mail.gmail.com>
+	<20081103134008.GE29102@mit.edu>
+	<319012f0811030734s6d14b2b3t13c32a41ac48e852@mail.gmail.com>
+	<20081103165144.6514f003@starbug.prg01.itonis.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, jack@suse.cz, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jindrich Makovicka <makovick@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:34119 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754985AbYKETQj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Nov 2008 14:16:39 -0500
-In-Reply-To: <1225911578.6333.7.camel@mingming-laptop>
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:50089 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753412AbYKETok (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 5 Nov 2008 14:44:40 -0500
+In-Reply-To: <20081103165144.6514f003@starbug.prg01.itonis.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 05 Nov 2008 10:59:38 -0800
-Mingming Cao <cmm@us.ibm.com> wrote:
+Hi Jindrich,
 
-> > If you are willing to carry the
-> > ext4-quota-handling-for-delayed-allocation.patch, that would be great.
-> > 
-> 
-> I saw Andrew already picked up the ext4 quota changes. I will address
-> Andrew's comments soon. I assume I will working on incremental fixes to
-> address the comments? Or should I send new version of the series?
+Jindrich Makovicka writes:
+ > The following testcase was used to trigger the infamous MAP_SHARED
+ > dirty flag bug. Maybe it could be of some help here too:
+ > 
+ > http://lkml.org/lkml/2006/12/27/180
 
-A new series would probably be easier for reviewers.  I'd turn them
-into incrementals here so I can eyeball what changed, but that's pretty
-quick.
+Thanks for remembering!
 
+The test case triggers corruption with 2.6.28-rc3 + ext4 patch queue:
+. bunch of errors like
+  Chunk 71637 corrupted (0-1339)  (2756-4095)
+  Expected 213, got 0
+  with default mount.
+. nodelalloc is ok.
+
+-- 
+solofo
