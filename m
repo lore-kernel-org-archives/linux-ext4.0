@@ -1,183 +1,528 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH -V3 1/9] ext4: sparse fixes
-Date: Fri,  7 Nov 2008 00:19:26 +0530
-Message-ID: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH -V3 3/9] ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
+Date: Fri,  7 Nov 2008 00:19:28 +0530
+Message-ID: <1225997374-10846-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1225997374-10846-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp06.au.ibm.com ([202.81.18.155]:41964 "EHLO
-	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750774AbYKFS50 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 13:57:26 -0500
+Received: from ausmtp04.au.ibm.com ([202.81.18.152]:59818 "EHLO
+	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751225AbYKFS52 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 13:57:28 -0500
 Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id mA6ItlBg4403420
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:55:48 +1100
+	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id mA6J57T8185034
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 06:05:07 +1100
 Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA6InkkM4775998
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:49:49 +1100
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA6InuCr1953932
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:49:56 +1100
 Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA6InfGu022329
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:49:41 +1100
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA6Inp0f022465
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:49:52 +1100
+In-Reply-To: <1225997374-10846-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/ext4.h    |    9 ++++++---
- fs/ext4/extents.c |    4 ++--
- fs/ext4/file.c    |    3 ---
- fs/ext4/inode.c   |    2 +-
- fs/ext4/mballoc.c |    4 +++-
- fs/ext4/super.c   |   10 +++++-----
- 6 files changed, 17 insertions(+), 15 deletions(-)
+The new groups added during resize are flagged as
+need_init group. Make sure we properly initialize these
+groups. When we have block size < page size and we are adding
+new groups the page may still be marked uptodate even though
+we haven't initialized the group. While forcing the init
+of buddy cache we need to make sure other groups part of the
+same page of buddy cache is not using the cache.
+group_info->alloc_sem is added to ensure the same.
 
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/balloc.c  |   21 +++--
+ fs/ext4/ext4.h    |    2 +-
+ fs/ext4/mballoc.c |  218 ++++++++++++++++++++++++++++++++++++++---------------
+ fs/ext4/mballoc.h |    3 +
+ fs/ext4/resize.c  |   41 +----------
+ 5 files changed, 176 insertions(+), 109 deletions(-)
+
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index fa69cb3..39df492 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -381,6 +381,7 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
+ 
+ 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
++	grp = ext4_get_group_info(sb, block_group);
+ 	/*
+ 	 * Check to see if we are freeing blocks across a group
+ 	 * boundary.
+@@ -425,7 +426,11 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	err = ext4_journal_get_write_access(handle, gd_bh);
+ 	if (err)
+ 		goto error_return;
+-
++	/*
++	 * make sure we don't allow a parallel init on other groups in the
++	 * same buddy cache
++	 */
++	down_write(&grp->alloc_sem);
+ 	for (i = 0, blocks_freed = 0; i < count; i++) {
+ 		BUFFER_TRACE(bitmap_bh, "clear bit");
+ 		if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
+@@ -450,6 +455,13 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 		sbi->s_flex_groups[flex_group].free_blocks += blocks_freed;
+ 		spin_unlock(sb_bgl_lock(sbi, flex_group));
+ 	}
++	/*
++	 * request to reload the buddy with the
++	 * new bitmap information
++	 */
++	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
++	ext4_mb_update_group_info(grp, blocks_freed);
++	up_write(&grp->alloc_sem);
+ 
+ 	/* We dirtied the bitmap block */
+ 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+@@ -461,13 +473,6 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	if (!err)
+ 		err = ret;
+ 	sb->s_dirt = 1;
+-	/*
+-	 * request to reload the buddy with the
+-	 * new bitmap information
+-	 */
+-	grp = ext4_get_group_info(sb, block_group);
+-	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
+-	ext4_mb_update_group_info(grp, blocks_freed);
+ 
+ error_return:
+ 	brelse(bitmap_bh);
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9415a1a..c05d639 100644
+index 4514fa5..c21da63 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -726,11 +726,11 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
-  */
+@@ -1058,7 +1058,7 @@ extern int __init init_ext4_mballoc(void);
+ extern void exit_ext4_mballoc(void);
+ extern void ext4_mb_free_blocks(handle_t *, struct inode *,
+ 		unsigned long, unsigned long, int, unsigned long *);
+-extern int ext4_mb_add_more_groupinfo(struct super_block *sb,
++extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+ extern void ext4_mb_update_group_info(struct ext4_group_info *grp,
+ 		ext4_grpblk_t add);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 9cc93af..ade9d5e 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -886,18 +886,20 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 					struct ext4_buddy *e4b)
+ {
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct inode *inode = sbi->s_buddy_cache;
+ 	int blocks_per_page;
+ 	int block;
+ 	int pnum;
+ 	int poff;
+ 	struct page *page;
+ 	int ret;
++	struct ext4_group_info *grp;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct inode *inode = sbi->s_buddy_cache;
  
- #define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
--	(EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask))
-+	(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_compat) & mask)
- #define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
--	(EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask))
-+	(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_ro_compat) & mask)
- #define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
--	(EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask))
-+	(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_incompat) & mask)
- #define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
- 	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
- #define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
-@@ -1284,6 +1284,9 @@ extern int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode,
- 			sector_t block, unsigned int max_blocks,
- 			struct buffer_head *bh, int create,
- 			int extend_disksize, int flag);
-+extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+		__u64 start, __u64 len);
+ 	mb_debug("load group %u\n", group);
+ 
+ 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
++	grp = ext4_get_group_info(sb, group);
+ 
+ 	e4b->bd_blkbits = sb->s_blocksize_bits;
+ 	e4b->bd_info = ext4_get_group_info(sb, group);
+@@ -905,6 +907,15 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 	e4b->bd_group = group;
+ 	e4b->bd_buddy_page = NULL;
+ 	e4b->bd_bitmap_page = NULL;
++	e4b->alloc_semp = &grp->alloc_sem;
 +
- #endif	/* __KERNEL__ */
++	/* Take the read lock on the group alloc
++	 * sem. This would make sure a parallel
++	 * ext4_mb_init_group happening on other
++	 * groups mapped by the page is blocked
++	 * till we are done with allocation
++	 */
++	down_read(e4b->alloc_semp);
  
- #endif	/* _EXT4_H */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 6b8c687..228261e 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3081,7 +3081,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
- /*
-  * Callback function called for each extent to gather FIEMAP information.
-  */
--int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
-+static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
- 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
- 		       void *data)
- {
-@@ -3150,7 +3150,7 @@ int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
- /* fiemap flags we can handle specified here */
- #define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
+ 	/*
+ 	 * the buddy cache inode stores the block bitmap
+@@ -919,8 +930,15 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 	 * what we'd like to avoid in fast path ... */
+ 	page = find_get_page(inode->i_mapping, pnum);
+ 	if (page == NULL || !PageUptodate(page)) {
+-		if (page)
++		if (page) {
++			/* If the page is not uptodate
++			 * that would imply nobody is using
++			 * it. So we should be able to drop
++			 * page_cache without being worried
++			 * about other group allocation
++			 */
+ 			page_cache_release(page);
++		}
+ 		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
+ 		if (page) {
+ 			BUG_ON(page->mapping != inode->i_mapping);
+@@ -985,6 +1003,9 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 		page_cache_release(e4b->bd_buddy_page);
+ 	e4b->bd_buddy = NULL;
+ 	e4b->bd_bitmap = NULL;
++
++	/* Done with the buddy cache */
++	up_read(e4b->alloc_semp);
+ 	return ret;
+ }
  
--int ext4_xattr_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo)
-+static int ext4_xattr_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo)
- {
- 	__u64 physical = 0;
- 	__u64 length;
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 6bd11fb..f731cb5 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -140,9 +140,6 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+@@ -994,6 +1015,8 @@ static void ext4_mb_release_desc(struct ext4_buddy *e4b)
+ 		page_cache_release(e4b->bd_bitmap_page);
+ 	if (e4b->bd_buddy_page)
+ 		page_cache_release(e4b->bd_buddy_page);
++	/* Done with the buddy cache */
++	up_read(e4b->alloc_semp);
+ }
+ 
+ 
+@@ -1694,6 +1717,129 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
  	return 0;
  }
  
--extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
--		__u64 start, __u64 len);
--
- const struct file_operations ext4_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 810a862..b46bcb7 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3842,7 +3842,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
- 	ext4_fsblk_t		block;
- 	int			inodes_per_block, inode_offset;
- 
--	iloc->bh = 0;
-+	iloc->bh = NULL;
- 	if (!ext4_valid_inum(sb, inode->i_ino))
- 		return -EIO;
- 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 59151c1..9cc93af 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1056,6 +1056,8 @@ static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
- 
- static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 			  int first, int count)
-+__releases(bitlock)
-+__acquires(bitlock)
++static int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
++{
++
++	int i, ret;
++	void *bitmap;
++	int blocks_per_page;
++	int groups_per_page;
++	int block, pnum, poff;
++	int num_grp_locked = 0;
++	ext4_group_t first_group;
++	struct ext4_group_info *grp, *this_grp;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct inode *inode = sbi->s_buddy_cache;
++	struct page *page = NULL, *bitmap_page = NULL;
++
++	mb_debug("init group %lu\n", group);
++	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
++	/*
++	 * the buddy cache inode stores the block bitmap
++	 * and buddy information in consecutive blocks.
++	 * So for each group we need two blocks.
++	 */
++	block = group * 2;
++	pnum = block / blocks_per_page;
++	poff = block % blocks_per_page;
++	first_group = pnum * blocks_per_page / 2;
++	this_grp = ext4_get_group_info(sb, group);
++
++	groups_per_page = blocks_per_page >> 1;
++	if (groups_per_page == 0)
++		groups_per_page = 1;
++
++	/* read all groups the page covers into the cache */
++	for (i = 0; i < groups_per_page; i++) {
++
++		if ((first_group + i) >= EXT4_SB(sb)->s_groups_count)
++			break;
++		grp = ext4_get_group_info(sb, first_group + i);
++		/* take all groups write allocation
++		 * semaphore. This make sure there is
++		 * no block allocation going on in any
++		 * of that groups
++		 */
++		down_write(&grp->alloc_sem);
++	}
++	/*
++	 * make sure we look at only those groups
++	 * that are locked. A resize can add more
++	 * groups while this happen
++	 */
++	num_grp_locked = i;
++	if (!EXT4_MB_GRP_NEED_INIT(this_grp)) {
++		/*
++		 * somebody initialized the group
++		 * return without doing anything
++		 */
++		ret = 0;
++		goto err;
++	}
++
++	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++	if (page) {
++		BUG_ON(page->mapping != inode->i_mapping);
++		ret = ext4_mb_init_cache(page, NULL);
++		if (ret) {
++			unlock_page(page);
++			goto err;
++		}
++		unlock_page(page);
++	}
++	if (page == NULL || !PageUptodate(page)) {
++		ret = -EIO;
++		goto err;
++	}
++	mark_page_accessed(page);
++	bitmap_page = page;
++	bitmap = page_address(page) + (poff * sb->s_blocksize);
++
++	/* init buddy cache */
++	block++;
++	pnum = block / blocks_per_page;
++	poff = block % blocks_per_page;
++	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++	if (page == bitmap_page) {
++		/*
++		 * If both the bitmap and buddy are in
++		 * the same page we don't need to force
++		 * init the buddy
++		 */
++		unlock_page(page);
++	} else if (page) {
++		BUG_ON(page->mapping != inode->i_mapping);
++		ret = ext4_mb_init_cache(page, bitmap);
++		if (ret) {
++			unlock_page(page);
++			goto err;
++		}
++		unlock_page(page);
++	}
++	if (page == NULL || !PageUptodate(page)) {
++		ret = -EIO;
++		goto err;
++	}
++	mark_page_accessed(page);
++err:
++	/* release locks on all the groups */
++	for (i = 0; i < num_grp_locked; i++) {
++
++		grp = ext4_get_group_info(sb, first_group + i);
++		/* take all groups write allocation
++		 * semaphore. This make sure there is
++		 * no block allocation going on in any
++		 * of that groups
++		 */
++		up_write(&grp->alloc_sem);
++	}
++	if (bitmap_page)
++		page_cache_release(bitmap_page);
++	if (page)
++		page_cache_release(page);
++	return ret;
++}
++
+ static noinline_for_stack int
+ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
  {
- 	int block = 0;
- 	int max = 0;
-@@ -2242,7 +2244,7 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
+@@ -1777,7 +1923,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 				group = 0;
+ 
+ 			/* quick check to skip empty groups */
+-			grp = ext4_get_group_info(ac->ac_sb, group);
++			grp = ext4_get_group_info(sb, group);
+ 			if (grp->bb_free == 0)
+ 				continue;
+ 
+@@ -1790,10 +1936,9 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 				 * we need full data about the group
+ 				 * to make a good selection
+ 				 */
+-				err = ext4_mb_load_buddy(sb, group, &e4b);
++				err = ext4_mb_init_group(sb, group);
+ 				if (err)
+ 					goto out;
+-				ext4_mb_release_desc(&e4b);
+ 			}
+ 
+ 			/*
+@@ -2244,7 +2389,7 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
  
  
  /* Create and initialize ext4_group_info data for the given group. */
--int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
-+static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+-static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
++int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
  			  struct ext4_group_desc *desc)
  {
  	int i, len;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d4c84f4..6bec662 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1876,7 +1876,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	int db_count;
- 	int i;
- 	int needs_recovery, has_huge_files;
--	__le32 features;
-+	int features;
- 	__u64 blocks_count;
- 	int err;
+@@ -2302,6 +2447,7 @@ static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 	}
  
-@@ -2006,14 +2006,14 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	if (features) {
- 		printk(KERN_ERR "EXT4-fs: %s: couldn't mount because of "
- 		       "unsupported optional features (%x).\n",
--		       sb->s_id, le32_to_cpu(features));
-+		       sb->s_id, features);
- 		goto failed_mount;
+ 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
++	init_rwsem(&meta_group_info[i]->alloc_sem);
+ 	meta_group_info[i]->bb_free_root.rb_node = NULL;;
+ 
+ #ifdef DOUBLE_CHECK
+@@ -2329,54 +2475,6 @@ static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ } /* ext4_mb_add_groupinfo */
+ 
+ /*
+- * Add a group to the existing groups.
+- * This function is used for online resize
+- */
+-int ext4_mb_add_more_groupinfo(struct super_block *sb, ext4_group_t group,
+-			       struct ext4_group_desc *desc)
+-{
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct inode *inode = sbi->s_buddy_cache;
+-	int blocks_per_page;
+-	int block;
+-	int pnum;
+-	struct page *page;
+-	int err;
+-
+-	/* Add group based on group descriptor*/
+-	err = ext4_mb_add_groupinfo(sb, group, desc);
+-	if (err)
+-		return err;
+-
+-	/*
+-	 * Cache pages containing dynamic mb_alloc datas (buddy and bitmap
+-	 * datas) are set not up to date so that they will be re-initilaized
+-	 * during the next call to ext4_mb_load_buddy
+-	 */
+-
+-	/* Set buddy page as not up to date */
+-	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+-	block = group * 2;
+-	pnum = block / blocks_per_page;
+-	page = find_get_page(inode->i_mapping, pnum);
+-	if (page != NULL) {
+-		ClearPageUptodate(page);
+-		page_cache_release(page);
+-	}
+-
+-	/* Set bitmap page as not up to date */
+-	block++;
+-	pnum = block / blocks_per_page;
+-	page = find_get_page(inode->i_mapping, pnum);
+-	if (page != NULL) {
+-		ClearPageUptodate(page);
+-		page_cache_release(page);
+-	}
+-
+-	return 0;
+-}
+-
+-/*
+  * Update an existing group.
+  * This function is used for online resize
+  */
+@@ -4583,11 +4681,6 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 	err = ext4_journal_get_write_access(handle, gd_bh);
+ 	if (err)
+ 		goto error_return;
+-
+-	err = ext4_mb_load_buddy(sb, block_group, &e4b);
+-	if (err)
+-		goto error_return;
+-
+ #ifdef AGGRESSIVE_CHECK
+ 	{
+ 		int i;
+@@ -4601,6 +4694,8 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 	/* We dirtied the bitmap block */
+ 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+ 	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
++	if (err)
++		goto error_return;
+ 
+ 	if (ac) {
+ 		ac->ac_b_ex.fe_group = block_group;
+@@ -4609,6 +4704,9 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 		ext4_mb_store_history(ac);
  	}
- 	features = EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT4_FEATURE_RO_COMPAT_SUPP);
- 	if (!(sb->s_flags & MS_RDONLY) && features) {
- 		printk(KERN_ERR "EXT4-fs: %s: couldn't mount RDWR because of "
- 		       "unsupported optional features (%x).\n",
--		       sb->s_id, le32_to_cpu(features));
-+		       sb->s_id, features);
- 		goto failed_mount;
- 	}
- 	has_huge_files = EXT4_HAS_RO_COMPAT_FEATURE(sb,
-@@ -3036,13 +3036,13 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 			ext4_mark_recovery_complete(sb, es);
- 			lock_super(sb);
- 		} else {
--			__le32 ret;
-+			int ret;
- 			if ((ret = EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 					~EXT4_FEATURE_RO_COMPAT_SUPP))) {
- 				printk(KERN_WARNING "EXT4-fs: %s: couldn't "
- 				       "remount RDWR because of unsupported "
- 				       "optional features (%x).\n",
--				       sb->s_id, le32_to_cpu(ret));
-+				       sb->s_id, ret);
- 				err = -EROFS;
- 				goto restore_opts;
- 			}
--- 
-1.6.0.3.514.g2f91b
-
+ 
++	err = ext4_mb_load_buddy(sb, block_group, &e4b);
++	if (err)
++		goto error_return;
+ 	if (metadata) {
+ 		/* blocks being freed are metadata. these blocks shouldn't
+ 		 * be used until this transaction is committed */
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index b5dff1f..a931b6b 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -20,6 +20,7 @@
+ #include <linux/version.h>
+ #include <linux/blkdev.h>
+ #include <linux/marker.h>
++#include <linux/mutex.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+ #include "group.h"
+@@ -130,6 +131,7 @@ struct ext4_group_info {
+ #ifdef DOUBLE_CHECK
+ 	void		*bb_bitmap;
+ #endif
++	struct rw_semaphore alloc_sem;
+ 	unsigned short	bb_counters[];
+ };
+ 
+@@ -250,6 +252,7 @@ struct ext4_buddy {
+ 	struct super_block *bd_sb;
+ 	__u16 bd_blkbits;
+ 	ext4_group_t bd_group;
++	struct rw_semaphore *alloc_semp;
+ };
+ #define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
+ #define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index b6a0609..939cf26 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -870,7 +870,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	 * We can allocate memory for mb_alloc based on the new group
+ 	 * descriptor
+ 	 */
+-	err = ext4_mb_add_more_groupinfo(sb, input->group, gdp);
++	err = ext4_mb_add_groupinfo(sb, input->group, gdp);
+ 	if (err)
+ 		goto exit_journal;
+ 
+@@ -1081,45 +1081,6 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	if ((err = ext4_journal_stop(handle)))
+ 		goto exit_put;
+ 
+-	/*
+-	 * Mark mballoc pages as not up to date so that they will be updated
+-	 * next time they are loaded by ext4_mb_load_buddy.
+-	 *
+-	 * XXX Bad, Bad, BAD!!!  We should not be overloading the
+-	 * Uptodate flag, particularly on thte bitmap bh, as way of
+-	 * hinting to ext4_mb_load_buddy() that it needs to be
+-	 * overloaded.  A user could take a LVM snapshot, then do an
+-	 * on-line fsck, and clear the uptodate flag, and this would
+-	 * not be a bug in userspace, but a bug in the kernel.  FIXME!!!
+-	 */
+-	{
+-		struct ext4_sb_info *sbi = EXT4_SB(sb);
+-		struct inode *inode = sbi->s_buddy_cache;
+-		int blocks_per_page;
+-		int block;
+-		int pnum;
+-		struct page *page;
+-
+-		/* Set buddy page as not up to date */
+-		blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+-		block = group * 2;
+-		pnum = block / blocks_per_page;
+-		page = find_get_page(inode->i_mapping, pnum);
+-		if (page != NULL) {
+-			ClearPageUptodate(page);
+-			page_cache_release(page);
+-		}
+-
+-		/* Set bitmap page as not up to date */
+-		block++;
+-		pnum = block / blocks_per_page;
+-		page = find_get_page(inode->i_mapping, pnum);
+-		if (page != NULL) {
+-			ClearPageUptodate(page);
+-			page_cache_release(page);
+-		}
+-	}
