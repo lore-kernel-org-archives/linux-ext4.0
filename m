@@ -1,26 +1,34 @@
-From: Simone <simo91.linux@gmail.com>
-Subject: Ext4 Journaling
-Date: Thu, 06 Nov 2008 21:22:44 +0100
-Message-ID: <49135214.5050803@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-15
-Content-Transfer-Encoding: 7bit
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 11688] Oops while writing on a newly ext4 formated 1TB partition on a external USB drive
+Date: Thu,  6 Nov 2008 12:27:45 -0800 (PST)
+Message-ID: <20081106202745.60C2B108043@picon.linux-foundation.org>
+References: <bug-11688-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ug-out-1314.google.com ([66.249.92.168]:7773 "EHLO
-	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750964AbYKFUWs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 15:22:48 -0500
-Received: by ug-out-1314.google.com with SMTP id 39so978513ugf.37
-        for <linux-ext4@vger.kernel.org>; Thu, 06 Nov 2008 12:22:46 -0800 (PST)
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:50559 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750733AbYKFU2O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 15:28:14 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mA6KRjGN001376
+	for <linux-ext4@vger.kernel.org>; Thu, 6 Nov 2008 12:27:46 -0800
+In-Reply-To: <bug-11688-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Good evening! I would like to ask you a thing about this File System.
+http://bugzilla.kernel.org/show_bug.cgi?id=11688
 
-I have got a Solid State Disk formatted in ext3 and I don't use its
-journaling, then I added the data=writeback mount option in /etc/fstab.
-Now I am going to use ext4 and I don't know if it uses the same mount
-option.. may you help me?
 
-Thank you very much!
+
+
+
+------- Comment #2 from tytso@mit.edu  2008-11-06 12:27 -------
+Can you replicate this on a newer kernel?  This looks like a failure in
+ext3/jbd code, actually, triggered when the kernel was trying to free pages to
+get back some memory.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
