@@ -1,123 +1,222 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH -V3 6/9] jbd2: Call journal commit callback without holding j_list_lock
-Date: Fri,  7 Nov 2008 00:19:31 +0530
-Message-ID: <1225997374-10846-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH -V3 8/9] ext4: Fix double free of blocks
+Date: Fri,  7 Nov 2008 00:19:33 +0530
+Message-ID: <1225997374-10846-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1225997374-10846-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1225997374-10846-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1225997374-10846-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1225997374-10846-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1225997374-10846-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1225997374-10846-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp06.au.ibm.com ([202.81.18.155]:42062 "EHLO
+Received: from ausmtp06.au.ibm.com ([202.81.18.155]:42125 "EHLO
 	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751413AbYKFS5f (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 13:57:35 -0500
+	with ESMTP id S1752035AbYKFS5n (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 13:57:43 -0500
 Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id mA6Iu2uF4505700
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:56:02 +1100
+	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id mA6IuAbc4608186
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:56:10 +1100
 Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA6Io3vX264066
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:50:03 +1100
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA6IoBAp117744
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:50:11 +1100
 Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA6Io2sl022645
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:50:03 +1100
-In-Reply-To: <1225997374-10846-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA6IoA2x022837
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:50:11 +1100
+In-Reply-To: <1225997374-10846-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Avoid freeing the transaction in __jbd2_journal_drop_transaction() so
-the journal commit callback can run without holding j_list_lock, to
-avoid lock contention on this spinlock.
+Blocks freed but not yet committed will be marked free in disk bitmap.
+We need to consider them as used when releasing inode prealloc
+space. Otherwise we would double free them via mb_free_blocks
+ext4_mb_release_inode_pa looks at the block bitmap and mark the
+block found free in the bitmap withing the inode prealloc space
+as unused. If we have blocks allocated out of a prealloc space
+and later freed we would have called ext4_mb_free_blocks on them
+That would mark blocks as free in bitmap and later on journal commit
+we would call mb_free_blocks on them, thus resuling in double free
+
+ext4_lock_group is used to make sure nothing gets added to the free
+list when we are doing a release_inode_pa
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/jbd2/checkpoint.c |    2 +-
- fs/jbd2/commit.c     |   13 ++++++++-----
- include/linux/jbd2.h |    4 ++--
- 3 files changed, 11 insertions(+), 8 deletions(-)
+ fs/ext4/mballoc.c |   75 ++++++++++++++++++++++++++++++++++-------------------
+ 1 files changed, 48 insertions(+), 27 deletions(-)
 
-diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
-index 1c10ce5..ad1d2d9 100644
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -682,6 +682,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
- 	   safely remove this transaction from the log */
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 7293209..f58de20 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3725,19 +3725,19 @@ static int ext4_mb_new_preallocation(struct ext4_allocation_context *ac)
+  * TODO: optimize the case when there are no in-core structures yet
+  */
+ static noinline_for_stack int
+-ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
+-			struct ext4_prealloc_space *pa,
+-			struct ext4_allocation_context *ac)
++ext4_mb_release_inode_pa(struct ext4_buddy *e4b, void *bitmap,
++			 struct ext4_prealloc_space *pa,
++			 struct ext4_allocation_context *ac)
+ {
+-	struct super_block *sb = e4b->bd_sb;
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	int err = 0;
++	int free = 0;
++	sector_t start;
+ 	unsigned int end;
+ 	unsigned int next;
+ 	ext4_group_t group;
+ 	ext4_grpblk_t bit;
+-	sector_t start;
+-	int err = 0;
+-	int free = 0;
++	struct super_block *sb = e4b->bd_sb;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
  
- 	__jbd2_journal_drop_transaction(journal, transaction);
-+	kfree(transaction);
- 
- 	/* Just in case anybody was waiting for more transactions to be
-            checkpointed... */
-@@ -756,5 +757,4 @@ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transact
- 	J_ASSERT(journal->j_running_transaction != transaction);
- 
- 	jbd_debug(1, "Dropping transaction %d, all done\n", transaction->t_tid);
--	kfree(transaction);
- }
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index b3bcb26..5befb2d 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -340,7 +340,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	int space_left = 0;
- 	int first_tag = 0;
- 	int tag_flag;
--	int i;
-+	int i, to_free = 0;
- 	int tag_bytes = journal_tag_bytes(journal);
- 	struct buffer_head *cbh = NULL; /* For transactional checksums */
- 	__u32 crc32_sum = ~0;
-@@ -988,12 +988,10 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 		journal->j_average_commit_time = commit_time;
- 	spin_unlock(&journal->j_state_lock);
- 
--	if (journal->j_commit_callback)
--		journal->j_commit_callback(journal, commit_transaction);
--
- 	if (commit_transaction->t_checkpoint_list == NULL &&
- 	    commit_transaction->t_checkpoint_io_list == NULL) {
- 		__jbd2_journal_drop_transaction(journal, commit_transaction);
-+		to_free = 1;
- 	} else {
- 		if (journal->j_checkpoint_transactions == NULL) {
- 			journal->j_checkpoint_transactions = commit_transaction;
-@@ -1012,11 +1010,16 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	BUG_ON(pa->pa_deleted == 0);
+ 	ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, &bit);
+@@ -3749,12 +3749,11 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
+ 		ac->ac_inode = pa->pa_inode;
+ 		ac->ac_op = EXT4_MB_HISTORY_DISCARD;
  	}
- 	spin_unlock(&journal->j_list_lock);
+-
+ 	while (bit < end) {
+-		bit = mb_find_next_zero_bit(bitmap_bh->b_data, end, bit);
++		bit = mb_find_next_zero_bit(bitmap, end, bit);
+ 		if (bit >= end)
+ 			break;
+-		next = mb_find_next_bit(bitmap_bh->b_data, end, bit);
++		next = mb_find_next_bit(bitmap, end, bit);
+ 		start = group * EXT4_BLOCKS_PER_GROUP(sb) + bit +
+ 				le32_to_cpu(sbi->s_es->s_first_data_block);
+ 		mb_debug("    free preallocated %u/%u in group %u\n",
+@@ -3773,18 +3772,12 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
+ 		mb_free_blocks(pa->pa_inode, e4b, bit, next - bit);
+ 		bit = next + 1;
+ 	}
+-	if (free != pa->pa_free) {
+-		printk(KERN_CRIT "pa %p: logic %lu, phys. %lu, len %lu\n",
+-			pa, (unsigned long) pa->pa_lstart,
+-			(unsigned long) pa->pa_pstart,
+-			(unsigned long) pa->pa_len);
+-		ext4_error(sb, __func__, "free %u, pa_free %u\n",
+-						free, pa->pa_free);
+-		/*
+-		 * pa is already deleted so we use the value obtained
+-		 * from the bitmap and continue.
+-		 */
+-	}
++	/*
++	 * The blocks allocated and later freed from this pa
++	 * can result in pa_free being different from the
++	 * bitmap free block count. This is because we don't
++	 * update pa_len on releasing blocks.
++	 */
+ 	atomic_add(free, &sbi->s_mb_discarded);
  
-+	if (journal->j_commit_callback)
-+		journal->j_commit_callback(journal, commit_transaction);
-+
- 	trace_mark(jbd2_end_commit, "dev %s transaction %d head %d",
--		   journal->j_devname, journal->j_commit_sequence,
-+		   journal->j_devname, commit_transaction->t_tid,
- 		   journal->j_tail_sequence);
- 	jbd_debug(1, "JBD: commit %d complete, head %d\n",
- 		  journal->j_commit_sequence, journal->j_tail_sequence);
-+	if (to_free)
-+		kfree(commit_transaction);
+ 	return err;
+@@ -3840,6 +3833,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 	struct ext4_allocation_context *ac;
+ 	struct list_head list;
+ 	struct ext4_buddy e4b;
++	void *bitmap;
+ 	int err;
+ 	int busy = 0;
+ 	int free = 0;
+@@ -3855,12 +3849,21 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 				"bitmap for %u\n", group);
+ 		return 0;
+ 	}
+-
++	/*
++	 * Blocks freed but not yet committed will be marked free in
++	 * disk bitmap.  We need to consider them as used when
++	 * releasing inode pa.  Otherwise we would double free them via
++	 * mb_free_blocks
++	 */
++	bitmap = kmalloc(sb->s_blocksize, GFP_NOFS);
++	if (!bitmap)
++		return 0;
+ 	err = ext4_mb_load_buddy(sb, group, &e4b);
+ 	if (err) {
+ 		__release(e4b->alloc_semp);
+ 		ext4_error(sb, __func__, "Error in loading buddy "
+ 				"information for %u\n", group);
++		kfree(bitmap);
+ 		put_bh(bitmap_bh);
+ 		return 0;
+ 	}
+@@ -3915,6 +3918,8 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 		goto out;
+ 	}
  
- 	wake_up(&journal->j_wait_done_commit);
++	memcpy(bitmap, bitmap_bh->b_data, sb->s_blocksize);
++	ext4_mb_generate_from_freelist(sb, bitmap, group);
+ 	/* now free all selected PAs */
+ 	list_for_each_entry_safe(pa, tmp, &list, u.pa_tmp_list) {
+ 
+@@ -3926,7 +3931,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 		if (pa->pa_linear)
+ 			ext4_mb_release_group_pa(&e4b, pa, ac);
+ 		else
+-			ext4_mb_release_inode_pa(&e4b, bitmap_bh, pa, ac);
++			ext4_mb_release_inode_pa(&e4b, bitmap, pa, ac);
+ 
+ 		list_del(&pa->u.pa_tmp_list);
+ 		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
+@@ -3937,6 +3942,7 @@ ext4_mb_discard_group_preallocations(struct super_block *sb,
+ 	if (ac)
+ 		kmem_cache_free(ext4_ac_cachep, ac);
+ 	ext4_mb_release_desc(&e4b);
++	kfree(bitmap);
+ 	put_bh(bitmap_bh);
+ 	return free;
  }
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index fdbd0bf..4932b34 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1170,8 +1170,8 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
- int jbd2_log_do_checkpoint(journal_t *journal);
+@@ -3961,6 +3967,7 @@ void ext4_discard_preallocations(struct inode *inode)
+ 	struct list_head list;
+ 	struct ext4_buddy e4b;
+ 	int err;
++	void *bitmap;
  
- void __jbd2_log_wait_for_space(journal_t *journal);
--extern void	__jbd2_journal_drop_transaction(journal_t *, transaction_t *);
--extern int	jbd2_cleanup_journal_tail(journal_t *);
-+extern void __jbd2_journal_drop_transaction(journal_t *, transaction_t *);
-+extern int jbd2_cleanup_journal_tail(journal_t *);
+ 	if (!S_ISREG(inode->i_mode)) {
+ 		/*BUG_ON(!list_empty(&ei->i_prealloc_list));*/
+@@ -4039,14 +4046,28 @@ void ext4_discard_preallocations(struct inode *inode)
+ 			ext4_mb_release_desc(&e4b);
+ 			continue;
+ 		}
+-
++		/* blocks freed but not yet committed will
++		 * be marked free in disk bitmap. We need to
++		 * consider them as used when releasing inode
++		 * pa. Otherwise we would double free them
++		 * via mb_free_blocks
++		 */
++		bitmap = kmalloc(sb->s_blocksize, GFP_NOFS);
++		if (!bitmap) {
++			ext4_mb_release_desc(&e4b);
++			put_bh(bitmap_bh);
++			continue;
++		}
++		memcpy(bitmap, bitmap_bh->b_data, sb->s_blocksize);
+ 		ext4_lock_group(sb, group);
++		ext4_mb_generate_from_freelist(sb, bitmap, group);
+ 		list_del(&pa->pa_group_list);
+-		ext4_mb_release_inode_pa(&e4b, bitmap_bh, pa, ac);
++		ext4_mb_release_inode_pa(&e4b, bitmap, pa, ac);
+ 		ext4_unlock_group(sb, group);
  
- /* Debugging code only: */
+ 		ext4_mb_release_desc(&e4b);
+ 		put_bh(bitmap_bh);
++		kfree(bitmap);
  
+ 		list_del(&pa->u.pa_tmp_list);
+ 		call_rcu(&(pa)->u.pa_rcu, ext4_mb_pa_callback);
 -- 
 1.6.0.3.514.g2f91b
 
