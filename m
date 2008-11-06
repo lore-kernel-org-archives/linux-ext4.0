@@ -1,32 +1,74 @@
-From: Christian Borntraeger <borntraeger@de.ibm.com>
-Subject: Re: [PATCH]: ext4: fix big endian
-Date: Thu, 6 Nov 2008 18:11:44 +0100
-Message-ID: <200811061811.44802.borntraeger@de.ibm.com>
-References: <200811061600.54264.borntraeger@de.ibm.com> <49131601.50407@redhat.com> <20081106163846.GA1381@infradead.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext3: kernel BUG at fs/jbd/journal.c:412!
+Date: Thu, 6 Nov 2008 12:13:22 -0500
+Message-ID: <20081106171322.GD18939@mit.edu>
+References: <20081106155025.GE25194@skywalker> <20081106161227.GA9254@ajones-laptop.nbttech.com>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Peter Staubach <staubach@redhat.com>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20081106163846.GA1381@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Arthur Jones <ajones@riverbed.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:51674 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750816AbYKFRN1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 12:13:27 -0500
 Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20081106161227.GA9254@ajones-laptop.nbttech.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Am Donnerstag, 6. November 2008 schrieb Christoph Hellwig:
-> > I suspect that you want to do the le16_to_cpu() and _then_
-> > add the 1.  Otherwise, adding 1 to a different byte order
-> > value won't do quite what is expected or hoped for...
+On Thu, Nov 06, 2008 at 08:12:27AM -0800, Arthur Jones wrote:
+> Hi Aneesh, ...
 > 
-> Yes.  And if someone ran sparse over the code both the initial error
-> and this varaint would be trivial to spot..
+> On Thu, Nov 06, 2008 at 07:50:25AM -0800, Aneesh Kumar K.V wrote:
+> > I get this with ext4-patchqueue. I guess we have some ext3 patches queued there.
+> 
+> This could be related to a patch I just posted.
+> 
+> See the thread on linux-ext4 called "ext3: slow symlink corruption
+> on umount" for details on how this patch came about...
 
-I think the problem is, that sparse now requires
-__CHECK_ENDIAN__
-to check for endianess problems. Seems that lots of people are not aware of 
-this.
+No this is the other ext3 patch we have in the patch tree.  I see the
+problem, we're calling __log_space_left in a diagnostic printk after
+we've released the j_state_lock.  Here's the incremental fix:
 
-Christian
+diff --git a/fs/jbd/checkpoint.c b/fs/jbd/checkpoint.c
+index 5e856de..18e5137 100644
+--- a/fs/jbd/checkpoint.c
++++ b/fs/jbd/checkpoint.c
+@@ -115,7 +115,7 @@ static int __try_to_free_cp_buf(struct journal_head *jh)
+  */
+ void __log_wait_for_space(journal_t *journal)
+ {
+-	int nblocks;
++	int nblocks, space_left;
+ 	assert_spin_locked(&journal->j_state_lock);
+ 
+ 	nblocks = jbd_space_needed(journal);
+@@ -139,7 +139,8 @@ void __log_wait_for_space(journal_t *journal)
+ 		spin_lock(&journal->j_state_lock);
+ 		spin_lock(&journal->j_list_lock);
+ 		nblocks = jbd_space_needed(journal);
+-		if (__log_space_left(journal) < nblocks) {
++		space_left = __log_space_left(journal);
++		if (space_left < nblocks) {
+ 			int chkpt = journal->j_checkpoint_transactions != NULL;
+ 			int tid = 0;
+ 
+@@ -157,8 +158,7 @@ void __log_wait_for_space(journal_t *journal)
+ 			} else {
+ 				printk(KERN_ERR "%s: needed %d blocks and "
+ 				       "only had %d space available\n",
+-				       __func__, nblocks,
+-				       __log_space_left(journal));
++				       __func__, nblocks, space_left);
+ 				printk(KERN_ERR "%s: no way to get more "
+ 				       "journal space\n", __func__);
+ 				WARN_ON(1);
+
+
+This is in a "should never happen path", though.  What were you doing
+to trigger it?
+
+						- Ted
