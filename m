@@ -1,52 +1,26 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: calculate journal credits correctly
-Date: Thu,  6 Nov 2008 14:51:15 -0500
-Message-ID: <1226001075-16457-1-git-send-email-tytso@mit.edu>
-References: <20081103033920.GC29102@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Simone <simo91.linux@gmail.com>
+Subject: Ext4 Journaling
+Date: Thu, 06 Nov 2008 21:22:44 +0100
+Message-ID: <49135214.5050803@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-15
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:51722 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751007AbYKFTvT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 14:51:19 -0500
-In-Reply-To: <20081103033920.GC29102@mit.edu>
+Received: from ug-out-1314.google.com ([66.249.92.168]:7773 "EHLO
+	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750964AbYKFUWs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 15:22:48 -0500
+Received: by ug-out-1314.google.com with SMTP id 39so978513ugf.37
+        for <linux-ext4@vger.kernel.org>; Thu, 06 Nov 2008 12:22:46 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This fixes a 2.6.27 regression which was introduced in commit a02908f1.
+Good evening! I would like to ask you a thing about this File System.
 
-We weren't passing the chunk parameter down to the two subections,
-ext4_indirect_trans_blocks() and ext4_ext_index_trans_blocks(), with
-the result that massively overestimate the amount of credits needed by
-ext4_da_writepages, especially in the non-extents case.  This causes
-failures especially on /boot partitions, which tend to be small and
-non-extent using since GRUB doesn't handle extents.
+I have got a Solid State Disk formatted in ext3 and I don't use its
+journaling, then I added the data=writeback mount option in /etc/fstab.
+Now I am going to use ext4 and I don't know if it uses the same mount
+option.. may you help me?
 
-Thanks to Joseph Fannin for reporting this bug.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8dbf695..5a130b5 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4580,9 +4580,10 @@ static int ext4_indirect_trans_blocks(struct inode *inode, int nrblocks,
- static int ext4_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
- {
- 	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
--		return ext4_indirect_trans_blocks(inode, nrblocks, 0);
--	return ext4_ext_index_trans_blocks(inode, nrblocks, 0);
-+		return ext4_indirect_trans_blocks(inode, nrblocks, chunk);
-+	return ext4_ext_index_trans_blocks(inode, nrblocks, chunk);
- }
-+
- /*
-  * Account for index blocks, block groups bitmaps and block group
-  * descriptor blocks if modify datablocks and index blocks
--- 
-1.5.6.1.205.ge2c7.dirty
-
+Thank you very much!
