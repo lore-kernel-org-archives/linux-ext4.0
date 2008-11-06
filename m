@@ -1,353 +1,305 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH V2 3/3] ext4: quota handling for delayed allocation
-Date: Thu, 06 Nov 2008 15:28:24 -0800
-Message-ID: <1226014104.6430.53.camel@mingming-laptop>
-References: <1225488451.7600.14.camel@mingming-laptop>
-	 <20081104173215.92ac3585.akpm@linux-foundation.org>
+Subject: [PATCH V3 1/3] quota: Add reservation support for delayed block
+	allocation
+Date: Thu, 06 Nov 2008 15:34:35 -0800
+Message-ID: <1226014475.6430.57.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: jack@suse.cz, tytso@mit.edu, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
+Cc: jack@suse.cz, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e34.co.us.ibm.com ([32.97.110.152]:50541 "EHLO
-	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752557AbYKFX2Z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 18:28:25 -0500
-In-Reply-To: <20081104173215.92ac3585.akpm@linux-foundation.org>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:48747 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752055AbYKFXeg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 18:34:36 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Quota: Add quota reservation support
 
-On Tue, 2008-11-04 at 17:32 -0800, Andrew Morton wrote:
-> On Fri, 31 Oct 2008 14:27:31 -0700
-> Mingming Cao <cmm@us.ibm.com> wrote:
-> 
-> > ext4: quota reservation for delayed allocation
-> > 
-> > Uses quota reservation/claim/release to handle quota properly for delayed
-> > allocation in the three steps: 1) quotas are reserved when data being copied
-> > to cache when block allocation is defered 2) when new blocks are allocated.
-> > reserved quotas are converted to the real allocated quota, 2) over-booked
-> > quotas for metadata blocks are released back.
-> > 
-> > 
-> > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> > ---
-> >  fs/ext4/inode.c   |   25 ++++++++++++++++++++++++-
-> >  fs/ext4/mballoc.c |   18 +++++++++---------
-> >  fs/ext4/super.c   |    2 ++
-> >  3 files changed, 35 insertions(+), 10 deletions(-)
-> > 
-> > Index: linux-2.6.28-rc2/fs/ext4/inode.c
-> > ===================================================================
-> > --- linux-2.6.28-rc2.orig/fs/ext4/inode.c	2008-10-29 13:26:55.000000000 -0700
-> > +++ linux-2.6.28-rc2/fs/ext4/inode.c	2008-10-30 14:25:47.000000000 -0700
-> > @@ -994,7 +994,9 @@ static void ext4_da_update_reserve_space
-> >  {
-> >  	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> >  	int total, mdb, mdb_free;
-> > +	int claim_quota, free_quota = 0;
-> >  
-> > +	claim_quota = used;
-> >  	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
-> >  	/* recalculate the number of metablocks still need to be reserved */
-> >  	total = EXT4_I(inode)->i_reserved_data_blocks - used;
-> > @@ -1007,6 +1009,8 @@ static void ext4_da_update_reserve_space
-> >  	if (mdb_free) {
-> >  		/* Account for allocated meta_blocks */
-> >  		mdb_free -= EXT4_I(inode)->i_allocated_meta_blocks;
-> > +		free_quota = mdb_free;
-> > +		claim_quota += EXT4_I(inode)->i_allocated_meta_blocks;
-> >  
-> >  		/* update fs dirty blocks counter */
-> >  		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
-> > @@ -1017,8 +1021,14 @@ static void ext4_da_update_reserve_space
-> >  	/* update per-inode reservations */
-> >  	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
-> >  	EXT4_I(inode)->i_reserved_data_blocks -= used;
-> > -
-> >  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> > +
-> > +	/*
-> > +	 * free those over-booking quota for metadata blocks
-> > +	 */
-> > +
-> > +	if (free_quota)
-> > +		DQUOT_RELEASE_RSV_BLOCK(inode, free_quota);
-> >  }
-> >  
-> >  /*
-> > @@ -1514,8 +1524,8 @@ static int ext4_journalled_write_end(str
-> >  static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
-> >  {
-> >  	int retries = 0;
-> > -       struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> > -       unsigned long md_needed, mdblocks, total = 0;
-> > +	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-> > +	unsigned long md_needed, mdblocks, total = 0;
-> >  
-> >  	/*
-> >  	 * recalculate the amount of metadata blocks to reserve
-> > @@ -1531,12 +1541,23 @@ repeat:
-> >  	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
-> >  	total = md_needed + nrblocks;
-> >  
-> > +	/*
-> > +	 * Make quota reservation here, to prevent quota overflow
-> > +	 * later.Real quota accounting is done at pages writeout
-> > +	 * time
-> 
-> "Make the quota reservation here to prevent quota overflow later.  Real
-> quota accounting is performed and page writeout time."
-> 
-> 
-Okay.
+Delayed allocation defers the block allocation at the dirty pages
+flush-out time, doing quota charge/check at that time is too late.
+But we can't charge the quota blocks until blocks are really allocated,
+otherwise users could get overcharged after reboot from system crash.
 
-> > +	 */
-> > +	 if (DQUOT_RESERVE_BLOCK(inode, total)) {
-> > +		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> > +		return -EDQUOT;
-> > +	}
-> 
-> Mangled whitespace.  checkpatch seems to miss this (but you didn't run
-> checkpatch anyway.  Please do so?)
-> 
+This patch adds quota reservation for delayed allocation. Quota blocks
+are reserved in memory, inode and quota won't gets dirtied until later
+block allocation time.
 
-Attached fixes should fix it. 
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 
-> >  	if (ext4_claim_free_blocks(sbi, total)) {
-> >  		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> >  		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
-> >  			yield();
-> >  			goto repeat;
-> >  		}
-> > +		DQUOT_RELEASE_RSV_BLOCK(inode,total);
-> >  		return -ENOSPC;
-> >  	}
-> >  	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
-> > @@ -1590,6 +1611,8 @@ static void ext4_da_release_space(struct
-> >  	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
-> >  	EXT4_I(inode)->i_reserved_meta_blocks = mdb;
-> >  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> > +
-> > +	DQUOT_RELEASE_RSV_BLOCK(inode, release);
-> >  }
-> 
-> DQUOT_RESERVE_BLOCK needs i_block_reservation_lock?  And
-> DQUOT_RELEASE_RSV_BLOCK does not?  Seems peculiar.
-> 
-
-We need the i_block_reservation_lock to get and calculate the amount of
-data/metadata blocks to reserve (freeblocks and quota blocks). 
-The quota blocks check/reservation is performed in the middle of
-checking-and-update per-inode reserved block counters for delayed
-allocation(those data are protected by i_block_reservation_lock), so
-that if the request is beyond the quota limits, it will returns without
-perform the free blocks reservation. We can't drop the
-i_block_reservation_lock before doing quota check/reservation, otherwise
-when we get back from the quota check, the free blocks reserved could be
-different.
-
-Release the reserved quota blocks  could be performed after the free
-blocks reservation is finished, so it doesn't require the lock to be
-hold.
-
-> Please see if we can avoid the bad multiple-return-statements?
-> 
-> This function evaluates EXT4_I(inode) many times.  I'd suggest that you
-> look at caching the result of that expression in a local variable, see
-> if that results in improved code generation on common architectures.
-> 
-
-Ok, I will see if I could put together two cleanup patches.
-> >  static void ext4_da_page_release_reservation(struct page *page,
-> > Index: linux-2.6.28-rc2/fs/ext4/super.c
-> > ===================================================================
-> > --- linux-2.6.28-rc2.orig/fs/ext4/super.c	2008-10-29 13:26:55.000000000 -0700
-> > +++ linux-2.6.28-rc2/fs/ext4/super.c	2008-10-29 14:00:27.000000000 -0700
-> > @@ -795,6 +795,9 @@ static struct dquot_operations ext4_quot
-> >  	.initialize	= ext4_dquot_initialize,
-> >  	.drop		= ext4_dquot_drop,
-> >  	.alloc_space	= dquot_alloc_space,
-> > +	.reserve_space	= dquot_reserve_space,
-> > +	.claim_space	= dquot_claim_space,
-> > +	.release_rsv	= dquot_release_reserved_space,
-> >  	.alloc_inode	= dquot_alloc_inode,
-> >  	.free_space	= dquot_free_space,
-> >  	.free_inode	= dquot_free_inode,
-> > Index: linux-2.6.28-rc2/fs/ext4/mballoc.c
-> > ===================================================================
-> > --- linux-2.6.28-rc2.orig/fs/ext4/mballoc.c	2008-10-29 13:26:55.000000000 -0700
-> > +++ linux-2.6.28-rc2/fs/ext4/mballoc.c	2008-10-30 14:30:39.000000000 -0700
-> > @@ -2887,9 +2887,11 @@ ext4_mb_mark_diskspace_used(struct ext4_
-> >  	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
-> >  		/* release all the reserved blocks if non delalloc */
-> >  		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
-> > -	else
-> > +	else {
-> >  		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
-> >  						ac->ac_b_ex.fe_len);
-> > +		DQUOT_CLAIM_BLOCK(ac->ac_inode, ac->ac_b_ex.fe_len);
-> > +	}
-> >  
-> >  	if (sbi->s_log_groups_per_flex) {
-> >  		ext4_group_t flex_group = ext4_flex_group(sbi,
-> > @@ -4286,15 +4288,24 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
-> >  	struct ext4_sb_info *sbi;
-> >  	struct super_block *sb;
-> >  	ext4_fsblk_t block = 0;
-> > -	unsigned long inquota;
-> > +	unsigned long inquota = 0;
-> >  	unsigned long reserv_blks = 0;
-> >  
-> >  	sb = ar->inode->i_sb;
-> >  	sbi = EXT4_SB(sb);
-> >  
-> > -	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
-> > +	/*
-> > +	 * For delayed allocation, we could skip the ENOSPC and
-> > +	 * EDQUOT check, as blocks and quotas have been already
-> > +	 * reserved when data being copied to cache
-> 
-> "when data was copied into pagecache"?
-> 
-Sure.
-
-> > +	 */
-> > +	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
-> > +		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
-> > +	else {
-> >  		/*
-> > -		 * With delalloc we already reserved the blocks
-> > +		 * Without delayed allocation we need to verify
-> > +		 * there is enough free blocks to do block allocation
-> > +		 * and under the quota limits
-> 
-> I don't understand the "and under the quota limits" bit.  What is this
-> referring to?
-> 
-
-Sorry, better to be "and verify allocation is under the quota limits"
-
-> The comment needs a bit of attention.
-
-> >  		 */
-> >  		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
-> >  			/* let others to free the space */
-> > @@ -4306,19 +4317,16 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
-> >  			return 0;
-> >  		}
-> >  		reserv_blks = ar->len;
-> > +		while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
-> > +			ar->flags |= EXT4_MB_HINT_NOPREALLOC;
-> > +			ar->len--;
-> > +		}
-> 
-> What's this doing?  Trying increasingly small quota allocations until
-> one of them succeeds?  This sounds like a good way to burn up a large
-> number of cycles.
-> 
-> Isn't there some way we can be smarter about this?  Surely the quota
-> layer knows exactly how many blocks we can reserve.
-
-Yep, you are right, there is a sb operation get_dqblk() fs could use to
-get the quota disk usage out. I will optimize it in a separete patch.
-
-> 
-> > +		if (ar->len == 0) {
-> > +			*errp = -EDQUOT;
-> > +			return 0;
-> > +		}
-> > +		inquota = ar->len;
-> >  	}
-> > -	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
-> > -		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
-> > -		ar->len--;
-> > -	}
-> 
-> Oh, it already sucked :)
-> 
-> > -	if (ar->len == 0) {
-> > -		*errp = -EDQUOT;
-> > -		return 0;
-> > -	}
-> > -	inquota = ar->len;
-> > -
-> > -	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
-> > -		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
-> >  
-> >  	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
-> >  	if (!ac) {
-> > @@ -4380,7 +4388,7 @@ repeat:
-> >  out2:
-> >  	kmem_cache_free(ext4_ac_cachep, ac);
-> >  out1:
-> > -	if (ar->len < inquota)
-> > +	if (inquota && ar->len < inquota)
-> >  		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
-> >  
-> >  	return block;
-> > 
-
-Thanks for your comments, here is the incremental fix
 
 ---
- fs/ext4/inode.c   |   10 +++++-----
- fs/ext4/mballoc.c |    4 ++--
- 2 files changed, 7 insertions(+), 7 deletions(-)
+ fs/dquot.c               |  105 ++++++++++++++++++++++++++++++++++-------------
+ include/linux/quota.h    |    2 
+ include/linux/quotaops.h |   23 ++++++++++
+ 3 files changed, 101 insertions(+), 29 deletions(-)
 
-Index: linux-2.6.28-rc2/fs/ext4/inode.c
+Index: linux-2.6.28-rc2/fs/dquot.c
 ===================================================================
---- linux-2.6.28-rc2.orig/fs/ext4/inode.c	2008-11-06 14:02:57.000000000 -0800
-+++ linux-2.6.28-rc2/fs/ext4/inode.c	2008-11-06 14:03:01.000000000 -0800
-@@ -1542,11 +1542,11 @@ repeat:
- 	total = md_needed + nrblocks;
+--- linux-2.6.28-rc2.orig/fs/dquot.c	2008-11-06 13:36:21.000000000 -0800
++++ linux-2.6.28-rc2/fs/dquot.c	2008-11-06 14:04:10.000000000 -0800
+@@ -841,6 +841,11 @@ static inline void dquot_incr_space(stru
+ 	dquot->dq_dqb.dqb_curspace += number;
+ }
  
- 	/*
--	 * Make quota reservation here, to prevent quota overflow
--	 * later.Real quota accounting is done at pages writeout
--	 * time
-+	 * Make quota reservation here to prevent quota overflow
-+	 * later. Real quota accounting is done at pages writeout
-+	 * time.
- 	 */
--	 if (DQUOT_RESERVE_BLOCK(inode, total)) {
-+	if (DQUOT_RESERVE_BLOCK(inode, total)) {
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		return -EDQUOT;
++static inline void dquot_resv_space(struct dquot *dquot, qsize_t number)
++{
++	dquot->dq_dqb.dqb_rsvspace += number;
++}
++
+ static inline void dquot_decr_inodes(struct dquot *dquot, qsize_t number)
+ {
+ 	if (dquot->dq_dqb.dqb_curinodes > number)
+@@ -1069,13 +1074,18 @@ static int check_idq(struct dquot *dquot
+ /* needs dq_data_lock */
+ static int check_bdq(struct dquot *dquot, qsize_t space, int prealloc, char *warntype)
+ {
++	qsize_t tspace;
++
+ 	*warntype = QUOTA_NL_NOWARN;
+ 	if (!sb_has_quota_limits_enabled(dquot->dq_sb, dquot->dq_type) ||
+ 	    test_bit(DQ_FAKE_B, &dquot->dq_flags))
+ 		return QUOTA_OK;
+ 
++	tspace = dquot->dq_dqb.dqb_curspace + dquot->dq_dqb.dqb_rsvspace
++		+ space;
++
+ 	if (dquot->dq_dqb.dqb_bhardlimit &&
+-	    dquot->dq_dqb.dqb_curspace + space > dquot->dq_dqb.dqb_bhardlimit &&
++	    tspace > dquot->dq_dqb.dqb_bhardlimit &&
+             !ignore_hardlimit(dquot)) {
+ 		if (!prealloc)
+ 			*warntype = QUOTA_NL_BHARDWARN;
+@@ -1083,7 +1093,7 @@ static int check_bdq(struct dquot *dquot
  	}
-@@ -1557,7 +1557,7 @@ repeat:
- 			yield();
- 			goto repeat;
- 		}
--		DQUOT_RELEASE_RSV_BLOCK(inode,total);
-+		DQUOT_RELEASE_RSV_BLOCK(inode, total);
- 		return -ENOSPC;
+ 
+ 	if (dquot->dq_dqb.dqb_bsoftlimit &&
+-	    dquot->dq_dqb.dqb_curspace + space > dquot->dq_dqb.dqb_bsoftlimit &&
++	    tspace > dquot->dq_dqb.dqb_bsoftlimit &&
+ 	    dquot->dq_dqb.dqb_btime && get_seconds() >= dquot->dq_dqb.dqb_btime &&
+             !ignore_hardlimit(dquot)) {
+ 		if (!prealloc)
+@@ -1092,7 +1102,7 @@ static int check_bdq(struct dquot *dquot
  	}
- 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
-Index: linux-2.6.28-rc2/fs/ext4/mballoc.c
+ 
+ 	if (dquot->dq_dqb.dqb_bsoftlimit &&
+-	    dquot->dq_dqb.dqb_curspace + space > dquot->dq_dqb.dqb_bsoftlimit &&
++	    tspace > dquot->dq_dqb.dqb_bsoftlimit &&
+ 	    dquot->dq_dqb.dqb_btime == 0) {
+ 		if (!prealloc) {
+ 			*warntype = QUOTA_NL_BSOFTWARN;
+@@ -1227,49 +1237,85 @@ void vfs_dq_drop(struct inode *inode)
+ /*
+  * This operation can block, but only after everything is updated
+  */
+-int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
++int __dquot_alloc_space(struct inode *inode, qsize_t number,
++			int warn, int reserve)
+ {
+-	int cnt, ret = NO_QUOTA;
++	int cnt, ret = QUOTA_OK;
+ 	char warntype[MAXQUOTAS];
+ 
+-	/* First test before acquiring mutex - solves deadlocks when we
+-         * re-enter the quota code and are already holding the mutex */
+-	if (IS_NOQUOTA(inode)) {
+-out_add:
+-		inode_add_bytes(inode, number);
+-		return QUOTA_OK;
+-	}
+ 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+ 		warntype[cnt] = QUOTA_NL_NOWARN;
+ 
+-	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+-	if (IS_NOQUOTA(inode)) {	/* Now we can do reliable test... */
+-		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+-		goto out_add;
+-	}
+ 	spin_lock(&dq_data_lock);
+ 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+ 		if (inode->i_dquot[cnt] == NODQUOT)
+ 			continue;
+-		if (check_bdq(inode->i_dquot[cnt], number, warn, warntype+cnt) == NO_QUOTA)
+-			goto warn_put_all;
++		if (check_bdq(inode->i_dquot[cnt], number, warn, warntype+cnt)
++		    == NO_QUOTA) {
++			ret = NO_QUOTA;
++			goto out_unlock;
++		}
+ 	}
+ 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+ 		if (inode->i_dquot[cnt] == NODQUOT)
+ 			continue;
+-		dquot_incr_space(inode->i_dquot[cnt], number);
++		if (reserve)
++			dquot_resv_space(inode->i_dquot[cnt], number);
++		else
++			dquot_incr_space(inode->i_dquot[cnt], number);
+ 	}
+-	inode_add_bytes(inode, number);
+-	ret = QUOTA_OK;
+-warn_put_all:
++out_unlock:
++	flush_warnings(inode->i_dquot, warntype);
+ 	spin_unlock(&dq_data_lock);
++	return ret;
++}
++
++int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
++{
++	int cnt, ret = QUOTA_OK;
++
++	/*
++	 * First test before acquiring mutex - solves deadlocks when we
++	 * re-enter the quota code and are already holding the mutex
++	 */
++	if (IS_NOQUOTA(inode))
++		goto out;
++
++	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++	if (IS_NOQUOTA(inode))
++		goto out_unlock;
++
++	ret = __dquot_alloc_space(inode, number, warn, 0);
++	if (ret == NO_QUOTA)
++		goto out_unlock;
++
++	/* Dirtify all the dquots - this can block when journalling */
++	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
++		if (inode->i_dquot[cnt])
++			mark_dquot_dirty(inode->i_dquot[cnt]);
++out_unlock:
++	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++out:
+ 	if (ret == QUOTA_OK)
+-		/* Dirtify all the dquots - this can block when journalling */
+-		for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+-			if (inode->i_dquot[cnt])
+-				mark_dquot_dirty(inode->i_dquot[cnt]);
+-	flush_warnings(inode->i_dquot, warntype);
++		inode_add_bytes(inode, number);
++	return ret;
++}
++
++int dquot_reserve_space(struct inode *inode, qsize_t number, int warn)
++{
++	int ret = QUOTA_OK;
++
++	if (IS_NOQUOTA(inode))
++		goto out;
++
++	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++	if (IS_NOQUOTA(inode))
++		goto out_unlock;
++
++	ret = __dquot_alloc_space(inode, number, warn, 1);
++out_unlock:
+ 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++out:
+ 	return ret;
+ }
+ 
+@@ -1958,7 +2004,7 @@ static void do_get_dqblk(struct dquot *d
+ 	spin_lock(&dq_data_lock);
+ 	di->dqb_bhardlimit = stoqb(dm->dqb_bhardlimit);
+ 	di->dqb_bsoftlimit = stoqb(dm->dqb_bsoftlimit);
+-	di->dqb_curspace = dm->dqb_curspace;
++	di->dqb_curspace = dm->dqb_curspace + dm->dqb_rsvspace;
+ 	di->dqb_ihardlimit = dm->dqb_ihardlimit;
+ 	di->dqb_isoftlimit = dm->dqb_isoftlimit;
+ 	di->dqb_curinodes = dm->dqb_curinodes;
+@@ -2297,6 +2343,7 @@ EXPORT_SYMBOL(dquot_alloc_space);
+ EXPORT_SYMBOL(dquot_alloc_inode);
+ EXPORT_SYMBOL(dquot_free_space);
+ EXPORT_SYMBOL(dquot_free_inode);
++EXPORT_SYMBOL(dquot_reserve_space);
+ EXPORT_SYMBOL(dquot_transfer);
+ EXPORT_SYMBOL(vfs_dq_transfer);
+ EXPORT_SYMBOL(vfs_dq_quota_on_remount);
+Index: linux-2.6.28-rc2/include/linux/quota.h
 ===================================================================
---- linux-2.6.28-rc2.orig/fs/ext4/mballoc.c	2008-11-06 14:02:57.000000000 -0800
-+++ linux-2.6.28-rc2/fs/ext4/mballoc.c	2008-11-06 14:03:01.000000000 -0800
-@@ -4297,7 +4297,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 	/*
- 	 * For delayed allocation, we could skip the ENOSPC and
- 	 * EDQUOT check, as blocks and quotas have been already
--	 * reserved when data being copied to cache
-+	 * reserved when data being copied into pagecache.
- 	 */
- 	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
- 		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
-@@ -4305,7 +4305,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 		/*
- 		 * Without delayed allocation we need to verify
- 		 * there is enough free blocks to do block allocation
--		 * and under the quota limits
-+		 * and verify allocation doesn't exceed the quota limits.
- 		 */
- 		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
- 			/* let others to free the space */
+--- linux-2.6.28-rc2.orig/include/linux/quota.h	2008-11-06 13:36:21.000000000 -0800
++++ linux-2.6.28-rc2/include/linux/quota.h	2008-11-06 14:04:01.000000000 -0800
+@@ -186,6 +186,7 @@ struct mem_dqblk {
+ 	qsize_t dqb_bhardlimit;	/* absolute limit on disk blks alloc */
+ 	qsize_t dqb_bsoftlimit;	/* preferred limit on disk blks */
+ 	qsize_t dqb_curspace;	/* current used space */
++	qsize_t dqb_rsvspace;   /* current reserved space for delalloc*/
+ 	qsize_t dqb_ihardlimit;	/* absolute limit on allocated inodes */
+ 	qsize_t dqb_isoftlimit;	/* preferred inode limit */
+ 	qsize_t dqb_curinodes;	/* current # allocated inodes */
+@@ -291,6 +292,7 @@ struct dquot_operations {
+ 	int (*release_dquot) (struct dquot *);		/* Quota is going to be deleted from disk */
+ 	int (*mark_dirty) (struct dquot *);		/* Dquot is marked dirty */
+ 	int (*write_info) (struct super_block *, int);	/* Write of quota "superblock" */
++	int (*reserve_space) (struct inode *, qsize_t, int); /* reserve quota for delayed block allocation */
+ };
+ 
+ /* Operations handling requests from userspace */
+Index: linux-2.6.28-rc2/include/linux/quotaops.h
+===================================================================
+--- linux-2.6.28-rc2.orig/include/linux/quotaops.h	2008-11-06 13:36:21.000000000 -0800
++++ linux-2.6.28-rc2/include/linux/quotaops.h	2008-11-06 14:04:10.000000000 -0800
+@@ -176,6 +176,16 @@ static inline int vfs_dq_alloc_space(str
+ 	return ret;
+ }
+ 
++static inline int vfs_dq_reserve_space(struct inode *inode, qsize_t nr)
++{
++	if (sb_any_quota_active(inode->i_sb)) {
++		/* Used space is updated in alloc_space() */
++		if (inode->i_sb->dq_op->reserve_space(inode, nr, 0) == NO_QUOTA)
++			return 1;
++	}
++	return 0;
++}
++
+ static inline int vfs_dq_alloc_inode(struct inode *inode)
+ {
+ 	if (sb_any_quota_active(inode->i_sb)) {
+@@ -327,6 +337,11 @@ static inline int vfs_dq_alloc_space(str
+ 	return 0;
+ }
+ 
++static inline int vfs_dq_reserve_space(struct inode *inode, qsize_t nr)
++{
++	return 0;
++}
++
+ static inline void vfs_dq_free_space_nodirty(struct inode *inode, qsize_t nr)
+ {
+ 	inode_sub_bytes(inode, nr);
+@@ -358,12 +373,19 @@ static inline int vfs_dq_alloc_block_nod
+ 			nr << inode->i_sb->s_blocksize_bits);
+ }
+ 
++
+ static inline int vfs_dq_alloc_block(struct inode *inode, qsize_t nr)
+ {
+ 	return vfs_dq_alloc_space(inode,
+ 			nr << inode->i_sb->s_blocksize_bits);
+ }
+ 
++static inline int vfs_dq_reserve_block(struct inode *inode, qsize_t nr)
++{
++	return vfs_dq_reserve_space(inode,
++			nr << inode->i_blkbits);
++}
++
+ static inline void vfs_dq_free_block_nodirty(struct inode *inode, qsize_t nr)
+ {
+ 	vfs_dq_free_space_nodirty(inode, nr << inode->i_sb->s_blocksize_bits);
+@@ -392,6 +414,7 @@ static inline void vfs_dq_free_block(str
+ #define DQUOT_ALLOC_BLOCK_NODIRTY(inode, nr) \
+ 				vfs_dq_alloc_block_nodirty(inode, nr)
+ #define DQUOT_ALLOC_BLOCK(inode, nr) vfs_dq_alloc_block(inode, nr)
++#define DQUOT_RESERVE_BLOCK(inode, nr) vfs_dq_reserve_block(inode, nr)
+ #define DQUOT_ALLOC_INODE(inode) vfs_dq_alloc_inode(inode)
+ #define DQUOT_FREE_SPACE_NODIRTY(inode, nr) \
+ 				vfs_dq_free_space_nodirty(inode, nr)
 
 
