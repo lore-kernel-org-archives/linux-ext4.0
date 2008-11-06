@@ -1,44 +1,44 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [patch 24/51] ext3: wait on all pending commits in ext3_sync_fs
-Date: Thu, 6 Nov 2008 17:42:02 -0500
-Message-ID: <20081106224202.GA29038@mit.edu>
-References: <200811062053.mA6KratV013440@imap1.linux-foundation.org> <20081106214431.GL18939@mit.edu> <20081106142020.b64dee83.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 fixes
+Date: Thu, 06 Nov 2008 18:06:16 -0500
+Message-ID: <E1KyDvc-0007hT-I6@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:52633 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:46228 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751065AbYKFWmF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 17:42:05 -0500
-Content-Disposition: inline
-In-Reply-To: <20081106142020.b64dee83.akpm@linux-foundation.org>
+	with ESMTP id S1751175AbYKFXGS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 18:06:18 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 06, 2008 at 02:20:20PM -0800, Andrew Morton wrote:
-> On Thu, 6 Nov 2008 16:44:31 -0500
-> Theodore Tso <tytso@mit.edu> wrote:
-> 
-> > My version of this patch also cleaned up the following comment, which
-> > has been wrong since 2.5.70 or thereabouts...
-> 
-> oh, I didn't spot that.
-> 
-> I looked at the version in linux-next and saw that it was propagating
-> the error value back to the VFS as well.  Or maybe that was done in a
-> separate patch, dunno.  But while that's a good change, I felt that we
-> should separate it from this bugfix.  I meant to mention it but I
-> forgot, sorry.
+Hi Linus,
 
-Fair enough.  Propagating the return value to the VFS is also a
-cleanup, although given that the VFS drops return value on the floor,
-I considered it a risk-free change and included it in the ext4 version
-of the patch.  But yeah, I can see why separating could be argued to
-be the right thing.
+Please pull from:
 
-So that means we'll need two cleanup patches for ext3; one to fix the
-comment, and another to propagate the error code back to the VFS.
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-	     	     		      	    	 - Ted
+to grab some bug fixes and regressions for ext4.  Thanks!!
+
+                                                - Ted
+
+Aneesh Kumar K.V (2):
+      ext4: fix missing ext4_unlock_group in error path
+      ext4: Convert to host order before using the values.
+
+Sami Liedes (1):
+      jbd2: deregister proc on failure in jbd2_journal_init_inode
+
+Theodore Ts'o (4):
+      jbd: don't give up looking for space so easily in __log_wait_for_space
+      jbd2: don't give up looking for space so easily in __jbd2_log_wait_for_space
+      ext4: wait on all pending commits in ext4_sync_fs()
+      ext4: calculate journal credits correctly
+
+ fs/ext4/inode.c      |    5 +++--
+ fs/ext4/mballoc.c    |    1 +
+ fs/ext4/super.c      |   24 ++++++++++--------------
+ fs/jbd/checkpoint.c  |   31 ++++++++++++++++++++++++-------
+ fs/jbd2/checkpoint.c |   32 +++++++++++++++++++++++++-------
+ fs/jbd2/journal.c    |    2 ++
+ 6 files changed, 65 insertions(+), 30 deletions(-)
