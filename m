@@ -1,315 +1,123 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH -V3 2/9] ext4: Add blocks added during resize to bitmap
-Date: Fri,  7 Nov 2008 00:19:27 +0530
-Message-ID: <1225997374-10846-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH -V3 6/9] jbd2: Call journal commit callback without holding j_list_lock
+Date: Fri,  7 Nov 2008 00:19:31 +0530
+Message-ID: <1225997374-10846-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1225997374-10846-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1225997374-10846-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1225997374-10846-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1225997374-10846-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp06.au.ibm.com ([202.81.18.155]:41969 "EHLO
+Received: from ausmtp06.au.ibm.com ([202.81.18.155]:42062 "EHLO
 	ausmtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750861AbYKFS50 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 13:57:26 -0500
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id mA6Itnn35345412
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:55:49 +1100
+	with ESMTP id S1751413AbYKFS5f (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 13:57:35 -0500
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by ausmtp06.au.ibm.com (8.13.8/8.13.8) with ESMTP id mA6Iu2uF4505700
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:56:02 +1100
 Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA6Inp8V4776000
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:49:51 +1100
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA6Io3vX264066
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:50:03 +1100
 Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA6InkCn022410
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:49:46 +1100
-In-Reply-To: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA6Io2sl022645
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 05:50:03 +1100
+In-Reply-To: <1225997374-10846-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With this change new blocks added during resize
-are marked as free in the block bitmap and the
-group is flagged with EXT4_GROUP_INFO_NEED_INIT_BIT
-flag. This make sure when mballoc tries to allocate
-blocks from the new group we would reload the
-buddy information using the bitmap present in the disk.
+Avoid freeing the transaction in __jbd2_journal_drop_transaction() so
+the journal commit callback can run without holding j_list_lock, to
+avoid lock contention on this spinlock.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |  136 ++++++++++++------------------------------------------
- fs/ext4/ext4.h   |    5 +-
- fs/ext4/resize.c |   11 +----
- 3 files changed, 34 insertions(+), 118 deletions(-)
+ fs/jbd2/checkpoint.c |    2 +-
+ fs/jbd2/commit.c     |   13 ++++++++-----
+ include/linux/jbd2.h |    4 ++--
+ 3 files changed, 11 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 2295f3e..fa69cb3 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -20,6 +20,7 @@
- #include "ext4.h"
- #include "ext4_jbd2.h"
- #include "group.h"
-+#include "mballoc.h"
+diff --git a/fs/jbd2/checkpoint.c b/fs/jbd2/checkpoint.c
+index 1c10ce5..ad1d2d9 100644
+--- a/fs/jbd2/checkpoint.c
++++ b/fs/jbd2/checkpoint.c
+@@ -682,6 +682,7 @@ int __jbd2_journal_remove_checkpoint(struct journal_head *jh)
+ 	   safely remove this transaction from the log */
  
- /*
-  * balloc.c contains the blocks allocation and deallocation routines
-@@ -350,62 +351,43 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 	__jbd2_journal_drop_transaction(journal, transaction);
++	kfree(transaction);
+ 
+ 	/* Just in case anybody was waiting for more transactions to be
+            checkpointed... */
+@@ -756,5 +757,4 @@ void __jbd2_journal_drop_transaction(journal_t *journal, transaction_t *transact
+ 	J_ASSERT(journal->j_running_transaction != transaction);
+ 
+ 	jbd_debug(1, "Dropping transaction %d, all done\n", transaction->t_tid);
+-	kfree(transaction);
  }
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index b3bcb26..5befb2d 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -340,7 +340,7 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 	int space_left = 0;
+ 	int first_tag = 0;
+ 	int tag_flag;
+-	int i;
++	int i, to_free = 0;
+ 	int tag_bytes = journal_tag_bytes(journal);
+ 	struct buffer_head *cbh = NULL; /* For transactional checksums */
+ 	__u32 crc32_sum = ~0;
+@@ -988,12 +988,10 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		journal->j_average_commit_time = commit_time;
+ 	spin_unlock(&journal->j_state_lock);
  
- /**
-- * ext4_free_blocks_sb() -- Free given blocks and update quota
-+ * ext4_add_groupblocks() -- Add given blocks to an existing group
-  * @handle:			handle to this transaction
-  * @sb:				super block
-- * @block:			start physcial block to free
-+ * @block:			start physcial block to add to the block group
-  * @count:			number of blocks to free
-- * @pdquot_freed_blocks:	pointer to quota
-  *
-- * XXX This function is only used by the on-line resizing code, which
-- * should probably be fixed up to call the mballoc variant.  There
-- * this needs to be cleaned up later; in fact, I'm not convinced this
-- * is 100% correct in the face of the mballoc code.  The online resizing
-- * code needs to be fixed up to more tightly (and correctly) interlock
-- * with the mballoc code.
-+ * This marks the blocks as free in the bitmap. We ask the
-+ * mballoc to reload the buddy after this by setting group
-+ * EXT4_GROUP_INFO_NEED_INIT_BIT flag
-  */
--void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
--			 ext4_fsblk_t block, unsigned long count,
--			 unsigned long *pdquot_freed_blocks)
-+void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
-+			 ext4_fsblk_t block, unsigned long count)
- {
- 	struct buffer_head *bitmap_bh = NULL;
- 	struct buffer_head *gd_bh;
- 	ext4_group_t block_group;
- 	ext4_grpblk_t bit;
- 	unsigned int i;
--	unsigned int overflow;
- 	struct ext4_group_desc *desc;
- 	struct ext4_super_block *es;
- 	struct ext4_sb_info *sbi;
- 	int err = 0, ret;
--	ext4_grpblk_t group_freed;
-+	ext4_grpblk_t blocks_freed;
-+	struct ext4_group_info *grp;
- 
--	*pdquot_freed_blocks = 0;
- 	sbi = EXT4_SB(sb);
- 	es = sbi->s_es;
--	if (block < le32_to_cpu(es->s_first_data_block) ||
--	    block + count < block ||
--	    block + count > ext4_blocks_count(es)) {
--		ext4_error(sb, "ext4_free_blocks",
--			   "Freeing blocks not in datazone - "
--			   "block = %llu, count = %lu", block, count);
--		goto error_return;
--	}
+-	if (journal->j_commit_callback)
+-		journal->j_commit_callback(journal, commit_transaction);
 -
--	ext4_debug("freeing block(s) %llu-%llu\n", block, block + count - 1);
-+	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
- 
--do_more:
--	overflow = 0;
- 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
- 	/*
- 	 * Check to see if we are freeing blocks across a group
- 	 * boundary.
- 	 */
- 	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb)) {
--		overflow = bit + count - EXT4_BLOCKS_PER_GROUP(sb);
--		count -= overflow;
-+		goto error_return;
+ 	if (commit_transaction->t_checkpoint_list == NULL &&
+ 	    commit_transaction->t_checkpoint_io_list == NULL) {
+ 		__jbd2_journal_drop_transaction(journal, commit_transaction);
++		to_free = 1;
+ 	} else {
+ 		if (journal->j_checkpoint_transactions == NULL) {
+ 			journal->j_checkpoint_transactions = commit_transaction;
+@@ -1012,11 +1010,16 @@ void jbd2_journal_commit_transaction(journal_t *journal)
  	}
--	brelse(bitmap_bh);
- 	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
- 	if (!bitmap_bh)
- 		goto error_return;
-@@ -418,18 +400,17 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
- 	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
- 	    in_range(block + count - 1, ext4_inode_table(sb, desc),
- 		     sbi->s_itb_per_group)) {
--		ext4_error(sb, "ext4_free_blocks",
--			   "Freeing blocks in system zones - "
-+		ext4_error(sb, __func__,
-+			   "Adding blocks in system zones - "
- 			   "Block = %llu, count = %lu",
- 			   block, count);
- 		goto error_return;
- 	}
+ 	spin_unlock(&journal->j_list_lock);
  
- 	/*
--	 * We are about to start releasing blocks in the bitmap,
-+	 * We are about to add blocks to the bitmap,
- 	 * so we need undo access.
- 	 */
--	/* @@@ check errors */
- 	BUFFER_TRACE(bitmap_bh, "getting undo access");
- 	err = ext4_journal_get_undo_access(handle, bitmap_bh);
- 	if (err)
-@@ -445,87 +426,28 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
- 	if (err)
- 		goto error_return;
- 
--	jbd_lock_bh_state(bitmap_bh);
--
--	for (i = 0, group_freed = 0; i < count; i++) {
--		/*
--		 * An HJ special.  This is expensive...
--		 */
--#ifdef CONFIG_JBD2_DEBUG
--		jbd_unlock_bh_state(bitmap_bh);
--		{
--			struct buffer_head *debug_bh;
--			debug_bh = sb_find_get_block(sb, block + i);
--			if (debug_bh) {
--				BUFFER_TRACE(debug_bh, "Deleted!");
--				if (!bh2jh(bitmap_bh)->b_committed_data)
--					BUFFER_TRACE(debug_bh,
--						"No commited data in bitmap");
--				BUFFER_TRACE2(debug_bh, bitmap_bh, "bitmap");
--				__brelse(debug_bh);
--			}
--		}
--		jbd_lock_bh_state(bitmap_bh);
--#endif
--		if (need_resched()) {
--			jbd_unlock_bh_state(bitmap_bh);
--			cond_resched();
--			jbd_lock_bh_state(bitmap_bh);
--		}
--		/* @@@ This prevents newly-allocated data from being
--		 * freed and then reallocated within the same
--		 * transaction.
--		 *
--		 * Ideally we would want to allow that to happen, but to
--		 * do so requires making jbd2_journal_forget() capable of
--		 * revoking the queued write of a data block, which
--		 * implies blocking on the journal lock.  *forget()
--		 * cannot block due to truncate races.
--		 *
--		 * Eventually we can fix this by making jbd2_journal_forget()
--		 * return a status indicating whether or not it was able
--		 * to revoke the buffer.  On successful revoke, it is
--		 * safe not to set the allocation bit in the committed
--		 * bitmap, because we know that there is no outstanding
--		 * activity on the buffer any more and so it is safe to
--		 * reallocate it.
--		 */
--		BUFFER_TRACE(bitmap_bh, "set in b_committed_data");
--		J_ASSERT_BH(bitmap_bh,
--				bh2jh(bitmap_bh)->b_committed_data != NULL);
--		ext4_set_bit_atomic(sb_bgl_lock(sbi, block_group), bit + i,
--				bh2jh(bitmap_bh)->b_committed_data);
--
--		/*
--		 * We clear the bit in the bitmap after setting the committed
--		 * data bit, because this is the reverse order to that which
--		 * the allocator uses.
--		 */
-+	for (i = 0, blocks_freed = 0; i < count; i++) {
- 		BUFFER_TRACE(bitmap_bh, "clear bit");
- 		if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
- 						bit + i, bitmap_bh->b_data)) {
--			jbd_unlock_bh_state(bitmap_bh);
- 			ext4_error(sb, __func__,
- 				   "bit already cleared for block %llu",
- 				   (ext4_fsblk_t)(block + i));
--			jbd_lock_bh_state(bitmap_bh);
- 			BUFFER_TRACE(bitmap_bh, "bit already cleared");
- 		} else {
--			group_freed++;
-+			blocks_freed++;
- 		}
- 	}
--	jbd_unlock_bh_state(bitmap_bh);
--
- 	spin_lock(sb_bgl_lock(sbi, block_group));
--	le16_add_cpu(&desc->bg_free_blocks_count, group_freed);
-+	le16_add_cpu(&desc->bg_free_blocks_count, blocks_freed);
- 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
- 	spin_unlock(sb_bgl_lock(sbi, block_group));
--	percpu_counter_add(&sbi->s_freeblocks_counter, count);
-+	percpu_counter_add(&sbi->s_freeblocks_counter, blocks_freed);
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
- 		spin_lock(sb_bgl_lock(sbi, flex_group));
--		sbi->s_flex_groups[flex_group].free_blocks += count;
-+		sbi->s_flex_groups[flex_group].free_blocks += blocks_freed;
- 		spin_unlock(sb_bgl_lock(sbi, flex_group));
- 	}
- 
-@@ -536,15 +458,17 @@ void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
- 	/* And the group descriptor block */
- 	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
- 	ret = ext4_journal_dirty_metadata(handle, gd_bh);
--	if (!err) err = ret;
--	*pdquot_freed_blocks += group_freed;
--
--	if (overflow && !err) {
--		block += count;
--		count = overflow;
--		goto do_more;
--	}
-+	if (!err)
-+		err = ret;
- 	sb->s_dirt = 1;
-+	/*
-+	 * request to reload the buddy with the
-+	 * new bitmap information
-+	 */
-+	grp = ext4_get_group_info(sb, block_group);
-+	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
-+	ext4_mb_update_group_info(grp, blocks_freed);
++	if (journal->j_commit_callback)
++		journal->j_commit_callback(journal, commit_transaction);
 +
- error_return:
- 	brelse(bitmap_bh);
- 	ext4_std_error(sb, err);
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index c05d639..4514fa5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1012,9 +1012,8 @@ extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
- extern int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
- extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t block, unsigned long count, int metadata);
--extern void ext4_free_blocks_sb(handle_t *handle, struct super_block *sb,
--				ext4_fsblk_t block, unsigned long count,
--				unsigned long *pdquot_freed_blocks);
-+extern void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
-+				ext4_fsblk_t block, unsigned long count);
- extern ext4_fsblk_t ext4_count_free_blocks(struct super_block *);
- extern void ext4_check_blocks_bitmap(struct super_block *);
- extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index 498ccbc..b6a0609 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -975,9 +975,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 	struct buffer_head *bh;
- 	handle_t *handle;
- 	int err;
--	unsigned long freed_blocks;
- 	ext4_group_t group;
--	struct ext4_group_info *grp;
+ 	trace_mark(jbd2_end_commit, "dev %s transaction %d head %d",
+-		   journal->j_devname, journal->j_commit_sequence,
++		   journal->j_devname, commit_transaction->t_tid,
+ 		   journal->j_tail_sequence);
+ 	jbd_debug(1, "JBD: commit %d complete, head %d\n",
+ 		  journal->j_commit_sequence, journal->j_tail_sequence);
++	if (to_free)
++		kfree(commit_transaction);
  
- 	/* We don't need to worry about locking wrt other resizers just
- 	 * yet: we're going to revalidate es->s_blocks_count after
-@@ -1076,7 +1074,8 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 	unlock_super(sb);
- 	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
- 		   o_blocks_count + add);
--	ext4_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
-+	/* We add the blocks to the bitmap and set the group need init bit */
-+	ext4_add_groupblocks(handle, sb, o_blocks_count, add);
- 	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
- 		   o_blocks_count + add);
- 	if ((err = ext4_journal_stop(handle)))
-@@ -1119,12 +1118,6 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
- 			ClearPageUptodate(page);
- 			page_cache_release(page);
- 		}
--
--		/* Get the info on the last group */
--		grp = ext4_get_group_info(sb, group);
+ 	wake_up(&journal->j_wait_done_commit);
+ }
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index fdbd0bf..4932b34 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1170,8 +1170,8 @@ int jbd2_log_wait_commit(journal_t *journal, tid_t tid);
+ int jbd2_log_do_checkpoint(journal_t *journal);
+ 
+ void __jbd2_log_wait_for_space(journal_t *journal);
+-extern void	__jbd2_journal_drop_transaction(journal_t *, transaction_t *);
+-extern int	jbd2_cleanup_journal_tail(journal_t *);
++extern void __jbd2_journal_drop_transaction(journal_t *, transaction_t *);
++extern int jbd2_cleanup_journal_tail(journal_t *);
+ 
+ /* Debugging code only: */
+ 
+-- 
+1.6.0.3.514.g2f91b
+
