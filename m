@@ -1,91 +1,65 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][PATCH 7/9]ext4: Add the EXT4_IOC_FIEMAP_INO ioctl
-Date: Thu, 6 Nov 2008 11:15:59 -0500
-Message-ID: <20081106161559.GA18939@mit.edu>
-References: <49019EF6.4000706@rs.jp.nec.com> <20081026084048.GF3184@webber.adilger.int> <20081026084848.GA9270@infradead.org> <20081031100547.GA22093@infradead.org>
+From: Christian Borntraeger <borntraeger@de.ibm.com>
+Subject: Re: [PATCH]: ext4: fix big endian
+Date: Thu, 6 Nov 2008 17:15:53 +0100
+Message-ID: <200811061715.53593.borntraeger@de.ibm.com>
+References: <200811061600.54264.borntraeger@de.ibm.com> <200811061651.49602.borntraeger@de.ibm.com> <49131601.50407@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>,
-	linux-ext4@vger.kernel.org, Mingming Cao <cmm@us.ibm.com>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Peter Staubach <staubach@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:36020 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752772AbYKFQQG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 11:16:06 -0500
+Received: from mtagate8.uk.ibm.com ([195.212.29.141]:53443 "EHLO
+	mtagate8.uk.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752603AbYKFQRD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 6 Nov 2008 11:17:03 -0500
+In-Reply-To: <49131601.50407@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <20081031100547.GA22093@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Oct 31, 2008 at 06:05:47AM -0400, Christoph Hellwig wrote:
-> > I'll hack up a generic open_by_handle and then we can gather the
-> > reaction - it shouldn't be more than about one or two hundred lines of
-> > code.  Note that you really want an open by handle and not just inum for
-> > a defragmentation tool - without the generation you can easily run into
-> > races.
+Am Donnerstag, 6. November 2008 schrieb Peter Staubach:
+> >  	/* We allocate both existing and potentially added groups */
+> >  	flex_group_count = ((sbi->s_groups_count + groups_per_flex - 1) +
+> > -			    ((sbi->s_es->s_reserved_gdt_blocks +1 ) <<
+> > +			    (le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks + 1) <<
+> >   
+> 
+> I suspect that you want to do the le16_to_cpu() and _then_
+> add the 1.  Otherwise, adding 1 to a different byte order
+> value won't do quite what is expected or hoped for...
 
-I think having a generic open_by_handle is a Good Thing, but it
-actually isn't quite enough for defrag, because that brings up the
-question of how defrag can create the handle in the first place.  
+errm. Right.
+Something like this maybe?
 
-In the case of Aryan's desire to get the list of files that were read
-during boot, it's pretty obvious how we can define an interface which
-would make available a set of file handles corresponding to the files
-that were opened during the boot process, and then that list of file
-handles can be saved to a file and used on the subsequent boot to do
-the readahead.   Fairly straight forward.
+[PATCH]: ext4: fix big endian access for flex groups
 
-In the case of the defrag situation, though, we need to step back and
-figure out what we are trying to do.  What the userspace program is
-apparently trying to do is to get the block extent maps used by all of
-the inodes in the block group.  The problem is we aren't opening the
-inodes by pathname, so we couldn't create a handle in the first place
-(since in order to create a handle, we need the containing directory).
+On big endianess plattforms newly created ext4 file systems cannot be mounted
+and show messages like:
+[6923911.715968] EXT4-fs: not enough memory for 522250 flex groups
+[6923911.715973] EXT4-fs: unable to initialize flex_bg meta info!
 
-The bigger question is whether the defrag code is asking the right
-question in the first place.  The issue is that is that it currently
-assumes that in order to find the owner of a particular block (or more
-generally, extent), you should search the inodes in the block's
-blockgroup.  The problem is that for a very fragmented filesystem,
-most of the blocks' owners might not be in their block group.  In
-fact, over time, if you use defrag -f frequently, it will move blocks
-belonging to inodes in one block group to other block groups, which
-will make defrag -f's job even harder, and eventually impossible, for
-inodes belonging to other block groups.
+We have to access s_reserved_gdb_blocks with le16_to_cpu.
 
-> Akira, can you please comment on these issues before going on?
-> I think the generation issue is a particularly important one if you
-> want to allow defrag by normal users.
+Signed-off-by: Christian Borntraeger <borntraeger@de.ibm.com>
+---
+ fs/ext4/super.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-I'm not at all sure that it makes sense to allow "defrag -f" to be
-used by normal users.  The problem here is we're fighting multiple
-constraints.  First of all, we want to keep policy in the kernel to an
-absolute minimum, since debugging kernel code is a mess, and I don't
-think we want the complexity of a full-fledge defragger in the kernel.
-Secondly, though, if we are going to do this in userspace, we need to
-push a huge amount of information to the userspace defrag program,
-that immediately raises some very serious security issues, because we
-don't want to leak information unduly to random userspace programs.
-
-> > Btw, any reason the XFS approach of passing in *file descriptors* for both
-> > the inode to be defragmented and the "donor" inode doesn't work for you?
-
-I agree this is probably the better approach; it would certainly
-reduce the amount of new code that needs to be added to the kernel.
-Right now the "donor"/temporary inode is created and allocated in the
-kernel, and then the kernel decides whether or not the temporary inode
-is an improvement.  If we make the userspace code responsible for
-creating the temporary inode and then using fallocate() to allocate
-the new blocks, then userspace can call FIEMAP and decide whether it
-is an improvement.
-
-							- Ted
-
-P.S. I've been looking at ext4_defrag_partial(), and the page locking
-looks wrong.  The page is only locked if it it hasn't been read into
-memory yet?   And at the end of the function, we do this?   
-
-       	      if (PageLocked(page))
-			unlock_page(page);
+Index: kvm/fs/ext4/super.c
+===================================================================
+--- kvm.orig/fs/ext4/super.c
++++ kvm/fs/ext4/super.c
+@@ -1455,8 +1455,8 @@ static int ext4_fill_flex_info(struct su
+ 
+ 	/* We allocate both existing and potentially added groups */
+ 	flex_group_count = ((sbi->s_groups_count + groups_per_flex - 1) +
+-			    ((sbi->s_es->s_reserved_gdt_blocks +1 ) <<
+-			      EXT4_DESC_PER_BLOCK_BITS(sb))) /
++			    ((le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) +
++			      1) << EXT4_DESC_PER_BLOCK_BITS(sb))) /
+ 			   groups_per_flex;
+ 	sbi->s_flex_groups = kzalloc(flex_group_count *
+ 				     sizeof(struct flex_groups), GFP_KERNEL);
