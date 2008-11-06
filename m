@@ -1,48 +1,96 @@
-From: Josef Bacik <jbacik@redhat.com>
-Subject: Re: [PATCH] imporve jbd2 fsync batching
-Date: Thu, 6 Nov 2008 09:35:01 -0500
-Message-ID: <20081106143459.GC18270@unused.rdu.redhat.com>
-References: <20081104161024.GC28058@unused.rdu.redhat.com> <20081105231012.GJ3184@webber.adilger.int>
+From: Christian Borntraeger <borntraeger@de.ibm.com>
+Subject: EXT4-fs: not enough memory for 522250 flex groups
+Date: Thu, 6 Nov 2008 16:00:54 +0100
+Message-ID: <200811061600.54264.borntraeger@de.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>, tytso@mit.edu,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33057 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750940AbYKFOfi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 6 Nov 2008 09:35:38 -0500
+Content-Type: text/plain;
+  charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20081105231012.GJ3184@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Nov 05, 2008 at 04:10:12PM -0700, Andreas Dilger wrote:
-> On Nov 04, 2008  11:10 -0500, Josef Bacik wrote:
-> > somebody does a sync write or an fsync() traditionally we would sleep for 1
-> > jiffies, which depending on the value of HZ could be a significant amount of
-> > time compared to how long it takes to commit a transaction to the underlying
-> > storage.  With this patch instead of sleeping for a jiffie, we check to see if
-> > the amount of time this transaction has been running is less than the average
-> > commit time, and if it is we sleep for the delta using schedule_hrtimeout to
-> > give us a higher precision sleep time.  This greatly benefits high end storage
-> > where you could end up sleeping for longer than it takes to commit the
-> > transaction and therefore sitting idle instead of allowing the transaction to
-> > be committed by keeping the sleep time to a minimum so you are sure to always
-> > be doing something.
-> 
-> There was no reply to my previous comments about making the maximum sleep
-> time be a fixed value (e.g. 15ms) instead of having it arbitrarily based
-> on the jiffies value, which may change between 1ms and 10ms.
-> 
-> I don't object to this being included in ext4, but I suspect it could do
-> even better, or at least be more consistent than depending on the HZ value.
->
+Hello,
 
-Sorry I missed that comment.  The reason I set the top to be 1 jiffies was
-because thats what it used to be, so in an effort to try and keep regressions
-from happening I just left it as the max.  I'm fine with setting the max to some
-other more constant value.  Thanks,
+I tried to use ext4 on my s390 system. Converting the old ext3 file systems 
+(tune2fs -O extents) worked fine. When I tried to create a new ext4 file 
+system on a logical volume I got the "EXT4-fs: not enough memory for 522250 
+flex groups" error messageduring mount:
 
-Josef 
+
+# mke2fs -t ext4 /dev/mapper/space-test
+mke2fs 1.41.3 (12-Oct-2008)
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+262144 inodes, 1048576 blocks
+52428 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=1073741824
+32 block groups
+32768 blocks per group, 32768 fragments per group
+8192 inodes per group
+Superblock backups stored on blocks:
+        32768, 98304, 163840, 229376, 294912, 819200, 884736
+Writing inode tables: done
+Creating journal (32768 blocks): done
+Writing superblocks and filesystem accounting information: done
+This filesystem will be automatically checked every 22 mounts or
+180 days, whichever comes first.  Use tune2fs -c or -i to override.
+
+
+# mount -t ext4 /dev/mapper/space-test /mnt/
+mount: wrong fs type, bad option, bad superblock on /dev/mapper/space-test,
+       missing codepage or helper program, or other error
+       In some cases useful info is found in syslog - try
+       dmesg | tail  or so
+
+
+
+# dmesg
+[...]
+[6923911.715968] EXT4-fs: not enough memory for 522250 flex groups
+[6923911.715973] EXT4-fs: unable to initialize flex_bg meta info!
+
+
+
+# lvdisplay
+  --- Logical volume ---
+  LV Name                /dev/space/test
+  VG Name                space
+  LV UUID                FPhFLU-1xTK-XtG4-STmI-u3D5-KhCR-FmlcCO
+  LV Write Access        read/write
+  LV Status              available
+  # open                 0
+  LV Size                4.00 GB
+  Current LE             1024
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:54
+
+
+
+# free
+             total       used       free     shared    buffers     cached
+Mem:       3081168     822972    2258196          0     154784     445420
+-/+ buffers/cache:     222768    2858400
+Swap:      9615904          0    9615904
+
+
+# uname -a
+Linux 2.6.28-rc2 #64 SMP Thu Nov 6 15:22:04 CET 2008 s390x s390x s390x 
+GNU/Linux
+
+
+
+# git describe
+kvm-78-2-g6e6c459
+
+
+Any ideas?
