@@ -1,71 +1,78 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: a suspected data race bug in Ext4 file system
-Date: Fri, 07 Nov 2008 10:56:54 -0800
-Message-ID: <1226084214.10191.10.camel@mingming-laptop>
-References: <2014bcab0811061809vca13befn813440a32dda3914@mail.gmail.com>
-	 <20081106185109.ce8be9b8.akpm@linux-foundation.org>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: "tune2fs -I 256" runtime---can it be interrupted safely?
+Date: Fri, 07 Nov 2008 14:16:43 -0700
+Message-ID: <20081107211643.GB3184@webber.adilger.int>
+References: <20081101151002.4ed9be99@zest> <20081101194617.0dc131c3@zest>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: hongshin@gmail.com, adilger@sun.com, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: "Michael B. Trausch" <mike@trausch.us>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e36.co.us.ibm.com ([32.97.110.154]:35639 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751768AbYKGS5F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 13:57:05 -0500
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e36.co.us.ibm.com (8.13.1/8.13.1) with ESMTP id mA7IuWxf015251
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 11:56:32 -0700
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA7Iutuw067538
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 11:56:56 -0700
-Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA7IuQZ6012871
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 11:56:26 -0700
-In-Reply-To: <20081106185109.ce8be9b8.akpm@linux-foundation.org>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:41824 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751447AbYKGVQv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 16:16:51 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mA7LGj1S028560
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 13:16:45 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0K9Z00701F3O1C00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Fri, 07 Nov 2008 13:16:45 -0800 (PST)
+In-reply-to: <20081101194617.0dc131c3@zest>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-On Thu, 2008-11-06 at 18:51 -0800, Andrew Morton wrote:
-> On Fri, 7 Nov 2008 11:09:49 +0900 "______ shin hong" <hongshin@gmail.com> wrote:
+On Nov 01, 2008  19:46 -0400, Michael B. Trausch wrote:
+> On Sat, 1 Nov 2008 15:10:02 -0400
+> "Michael B. Trausch" <mike@trausch.us> wrote:
+> > I converted my home directory to ext4 without issue and so I
+> > (stupidly, I admit) did not take a backup of this 250 GB drive's
+> > contents before I started the conversion process.  Oops.  Lesson
+> > learned.  My thinking at this point is that it would take _far_ less
+> > time to interrupt, backup, and just use mkfs.ext4 on the drive and
+> > then restore (about 2 hours instead of an unknown quantity which is
+> > already nearing 13 hours).
 > 
-> > Dear Ext4 maintainer,
-> > 
-> > I found a suspected data race bug at ext4_release_file() in ext4/file.c .
-> > 
-> > Is it necessary to re-check whether the if-statement's
-> > condition(atomic_read(&inode->i_writecount) == 1) is satisifed after
-> > semaphore down operation?
-> > 
-> > It seems to use "test and test and set" pattern(double-checking)
-> >  but the second "test" seems to be missed.
-> > 
-> > Please examine this function. Thank you.
-> > 
-> > p.s. I sent the same report to sct@redhat.com. But I did not received
-> > any reply.
-> >        I think my mail was discarded so I am sending the same again.
-> > 
-> 
-> An appropriate way to report this possible bug is to Cc: the ext4 mailing
-> list, which I have cc'ed here.
+> At 18:01:34 (after 15 hours and change) I decided to give it up and
+> sent tune2fs a SIGINT.  It happily aborted, and fsck appears to have
+> fixed whatever inconsistencies were introduced during the tune2fs run
+> and the files on the volume appear to be perfectly intact.
 
-I guess we could add the check after grab the i_data_sem, but not sure
-how useful is that, there is always a window that during the process of
-freeing preallocation, another new writer to the same inode. The
-i_data_sem semaphore is hold to prevent race between discard
-preallocation and use of preallocation, not to protect i_writecount.
+That is good news.  I would have worried that interrupting this operation
+isn't very safe, because it is moving some core filesystem data around.
 
-The check of inode's i_writecount is to avoid doing discard for every
-file close, the idea is only try to discard the preallocation for the
-last writer of the file. But the i_writecount could be >1 at the time of
-discard preallocation. If a new writer comes in after i_data_sem is hold
-then the preallocation is freed, then by the time the new writer comes
-in and need block allocation, the preallocate gets build up
-atomatically.
+> Am going to go the route of simply pulling the data off and using
+> mkfs.ext4 to create a new filesystem on the device.  But, I am still
+> curious as to why this would run for so long.  Some volume statistics,
+> in case they may be of help in trying to determine why this process was
+> running for so long; I don't even know how much longer it would have
+> run for.
 
- 
-Mingming
+> Inode size:               128
+
+It looks like it did not finish the inode resize operation, for whatever
+reason.
+
+If you have time, after the backup is done could you please re-try the
+"tune2fs -I 256" operation and let it go for a while, then "ltrace -p {pid}"
+on the process from another window to see what it is doing (if anything).
+You may need to have the "e2fsprogs-debuginfo" RPM installed to get useful
+data there.
+
+After grabbing some of the data with ltrace, also run "strace -p {pid}"
+to get disk IO information, and finally "gdb -p {pid}" and grab a
+stack trace with "bt", let it continue for a few seconds with "c", and
+then CTRL-C again and grab another stack trace with "bt".
+
+I'm assuming the code shouldn't actually have taken 13h to complete, but
+is instead confused about something in the filesystem and is looping.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
