@@ -1,136 +1,91 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH -V3 8/9] ext4: Fix double free of blocks
-Date: Fri, 7 Nov 2008 21:31:24 +0530
-Message-ID: <20081107160124.GM25194@skywalker>
-References: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081106223702.GN18939@mit.edu>
+Subject: Re: [RFC PATCH -V3 9/9] ext4: Fix lockdep recursive locking warning
+Date: Fri, 7 Nov 2008 21:52:11 +0530
+Message-ID: <20081107162211.GN25194@skywalker>
+References: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4913F698.30309@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: Li Zefan <lizf@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp07.in.ibm.com ([59.145.155.7]:36904 "EHLO
-	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751760AbYKGQBh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 11:01:37 -0500
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id mA7G1Y5I008276
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 21:31:34 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA7G1YOk3326052
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 21:31:34 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id mA7G1XbV003513
-	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 21:31:33 +0530
+Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:52593 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750917AbYKGQ0J (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 11:26:09 -0500
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id mA7GP6QJ024931
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 03:25:06 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA7GMLql243990
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 03:22:22 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA7GML6i019814
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 03:22:21 +1100
 Content-Disposition: inline
-In-Reply-To: <20081106223702.GN18939@mit.edu>
+In-Reply-To: <4913F698.30309@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 06, 2008 at 05:37:02PM -0500, Theodore Tso wrote:
-> On Fri, Nov 07, 2008 at 12:19:33AM +0530, Aneesh Kumar K.V wrote:
-> > Blocks freed but not yet committed will be marked free in disk bitmap.
-> 
-> That should probably read, "marked free in the on-disk block
-> allocation bitmap".
-> 
-> And I'm having real trouble parsing this below
-> 
-> > ext4_mb_release_inode_pa looks at the block bitmap and mark the
-> > block found free in the bitmap withing the inode prealloc space
-> 
-> "the block"  should that be plural?   Which block is it?
-> 
-> "found free in the bitmap"?  which bitmap?  The block allocation
-> bitmap?
-> 
-> "withing"?  Is that supposed to be within?
-> 
-> "withing the prealloc space"?  What is that supposed to be modifying?
-> It is cloest to "the bitmap", but that doesn't make any sense; is this
-> phrase supposed to be modifying "the block"?
-> 
-> > as unused. If we have blocks allocated out of a prealloc space
-> 
-> "mark as unused" Mark as unused where?  In the block allocation
-> bitmap?  But I thought these were "blocks found free in the bitmap",
-> so aren't they already unused?
-> 
-> It's better to try to explain things at a higher level.  What what
-> you've said on the conference call, I *think* what happens is that the
-> preallocation range is range of blocks which is reserved for
-> allocation for that particular inode.  To support this, the blocks in
-> question are made to appear as though they are not available in the
-> mballoc's in-memory buddy bitmap, which is what mballoc consults when
-> making allocations.
+On Fri, Nov 07, 2008 at 04:04:40PM +0800, Li Zefan wrote:
+> I got compile error on IA64:
+>=20
+> fs/ext4/mballoc.c: In function =E2=80=98ext4_mb_add_groupinfo=E2=80=99=
+:
+> fs/ext4/mballoc.c:2482: error: implicit declaration of function =E2=80=
+=98__init_rwsem=E2=80=99
+>=20
+>=20
 
+Can you try this patch. I guess IA64 doesn't support lockdep
 
-Yes. That is correct
+ext4: Fix lockdep recursive locking warning
 
-> 
-> For some strange reason which I don't understand, when blocks are
-> served out of the preallocation area and allocated to the inode, they
-> are not removed from the preallocation area.  (This seems like the
-> real bug, but whatever...) 
+=46rom: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-This happens for inode prealloc space. Because i node prealloc space
-is mapped using the logical block number. Ie if we have a prealloc space
-of contiguous 'x' blocks starting at physical block 'p'.  When creating
-this prealloc space we would have been requesting for blocks for logical
-block 'l'. ie 
+Indicate that the group locks can be taken in loop.
 
-[ p .........(p+k).............p+x]
-  l
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/mballoc.c |   11 ++++++++++-
+ 1 files changed, 10 insertions(+), 1 deletions(-)
 
-Now request for 2 blocks at logical file block 'l' get allocated
-from above prealloc space. Again request for 3 blocks at logical block
-'l+k' get allocated from the above prealloc space. Also request for 
-3 blocks at logical block 'p+x+1' WON't use the above prealloc space.
-Inshort inode prealloc space use logical block number to find which
-prealloc space to use. We also don't reduce the pa_len of the prealloc
-space. But we reduce pa_free. Now when we discard this prealloc space
-we need to look at on-block bitmap and find out how many blocks actually
-got allocated out of the prealloc space. So we start with the first zero
-block on the block bitmap starting from physical block 'p'. We search
-for next set bit. All the blocks in that range are free.  We them mark
-them free in the buddy bitmap.
-
-
->So when we release a preallocation area
-> for an inode, for each block in the inode's preallocation area, we
-> check and see if the block is marked as free according to the on-disk
-> disk allocation bitmap, and if so we make it look available in
-> mballoc's in-memory buddy bitmap.
-> 
-> Unfortunately, if the disk blocks in question are freed before the
-> commit transmit, the blocks would look free in the on-disk block
-> allocation bitmap, and so there would be an attempt to mark them as
-> available twice in mballoc's buddy bitmap. 
-
-exactly.
-
-> 
-> To get around this problem, the patch allocates a temporary bitmap
-> which also includes the blocks in the "release on commit" linked list.
-> 
-> Did I get this right?  If so, we should put an abbreviated version of
-> the above in the commit, and more of this needs to be explicitly
-> documented in comments in mballoc.c
-
-I am tempted to add your mail above as it is :)
-
-> 
-> So ---- stupid question.  Instead of creating the temporary bitmap,
-> which I fear will be very expensive --- why not remove the block from
-> the inode's preallocation area when it is served up? 
-
-We can't do that because inode prealloc space look at logical block
-of the file.
-
-
->Then, it becomes
-> easier when releasing the inode preallocation area; we wouldn't need
-> to consult the on-disk block allocation bitmap at all, and merely just
-> iterate over all of the blocks in the inode preallocation space, and
-> mark them as available in the mballoc buddy bitmap?
-
--aneesh
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index f58de20..cb0ccbe 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2413,6 +2413,9 @@ ext4_mb_store_history(struct ext4_allocation_cont=
+ext *ac)
+ #define ext4_mb_history_init(sb)
+ #endif
+=20
++#ifdef CONFIG_LOCKDEP
++static struct lock_class_key alloc_sem_key[NR_BG_LOCKS];
++#endif
+=20
+ /* Create and initialize ext4_group_info data for the given group. */
+ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+@@ -2473,8 +2476,14 @@ int ext4_mb_add_groupinfo(struct super_block *sb=
+, ext4_group_t group,
+ 	}
+=20
+ 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
+-	init_rwsem(&meta_group_info[i]->alloc_sem);
++#ifdef CONFIG_LOCKDEP
++	__init_rwsem(&meta_group_info[i]->alloc_sem,
++			"&meta_group_info[i]->alloc_sem",
++			&alloc_sem_key[i]);
+ 	meta_group_info[i]->bb_free_root.rb_node =3D NULL;;
++#else
++	init_rwsem(&meta_group_info[i]->alloc_sem);
++#endif
+=20
+ #ifdef DOUBLE_CHECK
+ 	{
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
