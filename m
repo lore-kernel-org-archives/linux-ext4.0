@@ -1,9 +1,9 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 02/23] ext: Avoid printk floods in the face of directory
+Subject: [patch 02/16] ext: Avoid printk floods in the face of directory
 	corruption (CVE-2008-3528)
-Date: Fri, 7 Nov 2008 15:15:16 -0800
-Message-ID: <20081107231516.GC1108@kroah.com>
-References: <20081107224818.593212310@mini.kroah.org>
+Date: Fri, 7 Nov 2008 15:26:01 -0800
+Message-ID: <20081107232601.GC4282@kroah.com>
+References: <20081107231848.995297975@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
@@ -25,16 +25,16 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Eugene Teo <eugeneteo@kernel.sg>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:59150 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:47487 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752665AbYKGXWv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Nov 2008 18:22:51 -0500
+	id S1754430AbYKGX0n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Nov 2008 18:26:43 -0500
 Content-Disposition: inline; filename="ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch"
-In-Reply-To: <20081107231457.GA1108@kroah.com>
+In-Reply-To: <20081107232544.GA4282@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2.6.26-stable review patch.  If anyone has any objections, please let us know.
+2.6.25-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
@@ -157,7 +157,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 +		struct page *page = ext2_get_page(inode, n, 0);
  
  		if (IS_ERR(page)) {
- 			ext2_error(sb, __func__,
+ 			ext2_error(sb, __FUNCTION__,
 @@ -361,6 +365,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
  	struct page *page = NULL;
  	struct ext2_inode_info *ei = EXT2_I(dir);
