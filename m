@@ -1,64 +1,58 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [GIT PULL] ext4 fixes
-Date: Fri, 7 Nov 2008 09:34:40 -0500
-Message-ID: <20081107143440.GC9543@mit.edu>
-References: <E1KyDvc-0007hT-I6@closure.thunk.org> <alpine.LFD.2.00.0811061647130.3451@nehalem.linux-foundation.org> <20081107033315.GB29038@mit.edu>
+Subject: Re: [PATCH] ext4: add checksum calculation when clearing UNINIT
+	flag
+Date: Fri, 7 Nov 2008 09:38:06 -0500
+Message-ID: <20081107143806.GD9543@mit.edu>
+References: <1226053376.3542.8.camel@frecb007923.frec.bull.fr> <20081107135222.GB9543@mit.edu> <20081107142718.GL25194@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Linus Torvalds <torvalds@linux-foundation.org>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: =?iso-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:36283 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:37011 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751760AbYKGOen (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 09:34:43 -0500
+	with ESMTP id S1752058AbYKGOiM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 09:38:12 -0500
 Content-Disposition: inline
-In-Reply-To: <20081107033315.GB29038@mit.edu>
+In-Reply-To: <20081107142718.GL25194@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 06, 2008 at 10:33:15PM -0500, Theodore Tso wrote:
-> > 
-> > Nothing there. Forgot to push out?
-> 
-> Whoops, sorry.  Just pushed to master.
-> 
+On Fri, Nov 07, 2008 at 07:57:18PM +0530, Aneesh Kumar K.V wrote:
+> On Fri, Nov 07, 2008 at 08:52:22AM -0500, Theodore Tso wrote:
+> > On Fri, Nov 07, 2008 at 11:22:56AM +0100, Fr=E9d=E9ric Boh=E9 wrote=
+:
+> > > From: Frederic Bohe <frederic.bohe@bull.net>
+> > >=20
+> > > Block group's checksum need to be re-calculated during the
+> > > initialization of an UNINIT'd group. This fix a race when several
+> > > threads try to allocate a new inode in an UNINIT'd group.
+> >=20
+> > This patch looks sane, and so I'll accept it, but there's a higher
+> > order hiding here ---- why are we initializing the block bitmap in
+> > ext4_new_inode()?  Sure, *most* of the time where we create a new
+> > inode, we'll be needing to allocate a new block, but sometimes we
+> > won't (i.e., when creating a symlink, device file, socket, or a
+> > zero-length regular file). =20
+>=20
+> Because when we clear the uninitt_bg flag the kernel expect the block=
+=20
+> bitmap to be correctly indicate blocks containing block
+> bitmap and inode bitmap as used. If mke2fs didn't do that we would
+> need to do the same when we remove the uninit_bg flag.
 
-I see you haven't pulled from it the ext4 tree yet.  In the meantime,
-two more bug fixes, one which fixes a rather nasty mmap corruption bug
-in low memory situations have come in, so I've updated the repository
-to include two more patches.  So for_linus has two more patches than
-it does previously.
+We have separate flags inidicating whether the block allocation bitmap
+and inode allocation bitmaps are initialized or not,
+EXT4_BG_BLOCK_UNINIT, and EXT4_BG_INODE_UNINIT, respectively.  So what
+I am proposing is to not initialize the block bitmap in
+ext4_new_inode(), and not to clear the EXT4_BG_BLOCK_UNINIT flag, eithe=
+r.
 
-If you've already pulled from the for_linus branch, by the time read
-this, please pull again to get the two commits marked with an '*':
-
-	git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
-
-						- Ted
-
-Aneesh Kumar K.V (3):
-      ext4: fix missing ext4_unlock_group in error path
-      ext4: Convert to host order before using the values.
-    * ext4: Mark the buffer_heads as dirty and uptodate after prepare_write
-
-Frederic Bohe (1):
-    * ext4: add checksum calculation when clearing UNINIT flag in ext4_new_inode
-
-Sami Liedes (1):
-      jbd2: deregister proc on failure in jbd2_journal_init_inode
-
-Theodore Ts'o (4):
-      jbd: don't give up looking for space so easily in __log_wait_for_space
-      jbd2: don't give up looking for space so easily in __jbd2_log_wait_for_space
-      ext4: wait on all pending commits in ext4_sync_fs()
-      ext4: calculate journal credits correctly
-
- fs/ext4/ialloc.c     |    2 ++
- fs/ext4/inode.c      |    7 +++++--
- fs/ext4/mballoc.c    |    1 +
- fs/ext4/super.c      |   24 ++++++++++--------------
- fs/jbd/checkpoint.c  |   31 ++++++++++++++++++++++++-------
- fs/jbd2/checkpoint.c |   32 +++++++++++++++++++++++++-------
- fs/jbd2/journal.c    |    2 ++
- 7 files changed, 69 insertions(+), 30 deletions(-)
+		  		      	     	       - Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
