@@ -1,56 +1,57 @@
-From: =?ISO-8859-1?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>
-Subject: [PATCH] ext4: add checksum calculation when clearing UNINIT flag
-Date: Fri, 07 Nov 2008 11:22:56 +0100
-Message-ID: <1226053376.3542.8.camel@frecb007923.frec.bull.fr>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2] ext4: Mark the buffer_heads as dirty and uptodate after prepare_write
+Date: Fri,  7 Nov 2008 18:42:43 +0530
+Message-ID: <1226063563-16220-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	vallesroc@gmail.com, Solofo.Ramangalahy@bull.net,
+	cryptooctoploid@gmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ecfrec.frec.bull.fr ([129.183.4.8]:47734 "EHLO
-	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751007AbYKGKVX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 05:21:23 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 66C2A1A18DB
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Nov 2008 11:21:19 +0100 (CET)
-Received: from ecfrec.frec.bull.fr ([127.0.0.1])
- by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
- with ESMTP id 14658-09 for <linux-ext4@vger.kernel.org>;
- Fri,  7 Nov 2008 11:21:16 +0100 (CET)
-Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
-	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 4DE2D1A18B2
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Nov 2008 11:21:16 +0100 (CET)
-Received: from [129.183.101.223] (dhcp129183101223.frec.bull.fr [129.183.101.223])
-	by cyclope.frec.bull.fr (Postfix) with ESMTP id F3AE627289
-	for <linux-ext4@vger.kernel.org>; Fri,  7 Nov 2008 11:21:12 +0100 (CET)
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:54595 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751864AbYKGNMx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 08:12:53 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id mA7DC6Tc005867
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 00:12:06 +1100
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA7DCuOV4882546
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 00:12:56 +1100
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA7DCox4031555
+	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 00:12:51 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Frederic Bohe <frederic.bohe@bull.net>
+We need to make sure we mark the buffer_heads as dirty and uptodate
+so that block_write_full_page write them correctly.
 
-Block group's checksum need to be re-calculated during the
-initialization of an UNINIT'd group. This fix a race when several
-threads try to allocate a new inode in an UNINIT'd group.
-
-Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- ialloc.c |    2 ++
- 1 file changed, 2 insertions(+)
+ fs/ext4/inode.c |    9 +++++++++
+ 1 files changed, 9 insertions(+), 0 deletions(-)
 
-Index: linux/fs/ext4/ialloc.c
-===================================================================
---- linux.orig/fs/ext4/ialloc.c	2008-11-06 17:22:14.000000000 +0100
-+++ linux/fs/ext4/ialloc.c	2008-11-07 10:43:41.000000000 +0100
-@@ -718,6 +718,8 @@ got:
- 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
- 			free = ext4_free_blocks_after_init(sb, group, gdp);
- 			gdp->bg_free_blocks_count = cpu_to_le16(free);
-+			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
-+								gdp);
- 		}
- 		spin_unlock(sb_bgl_lock(sbi, group));
---
- 
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 95d0d12..f9461d7 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2333,6 +2333,15 @@ static int ext4_da_writepage(struct page *page,
+ 		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
+ 						ext4_normal_get_block_write);
+ 		if (!ret) {
++			/*
++			 * We mark the buffer_head dirty and uptodate even
++			 * if we are not doing a block_write_full_page. This
++			 * make sure when writeback see the page again with
++			 * buffer_head present the buffer_head would have
++			 * the right flags
++			 */
++			block_commit_write(page, 0, PAGE_CACHE_SIZE);
++
+ 			page_bufs = page_buffers(page);
+ 			/* check whether all are mapped and non delay */
+ 			if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+-- 
+1.6.0.3.640.g6331a
 
