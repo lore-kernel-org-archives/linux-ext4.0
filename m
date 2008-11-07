@@ -1,57 +1,33 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V2] ext4: Mark the buffer_heads as dirty and uptodate after prepare_write
-Date: Fri,  7 Nov 2008 18:42:43 +0530
-Message-ID: <1226063563-16220-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	vallesroc@gmail.com, Solofo.Ramangalahy@bull.net,
-	cryptooctoploid@gmail.com
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH -V2] ext4: Mark the buffer_heads as dirty and uptodate
+	after prepare_write
+Date: Fri, 7 Nov 2008 08:33:03 -0500
+Message-ID: <20081107133303.GA9543@mit.edu>
+References: <1226063563-16220-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, sandeen@redhat.com, vallesroc@gmail.com,
+	Solofo.Ramangalahy@bull.net, cryptooctoploid@gmail.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:54595 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751864AbYKGNMx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 08:12:53 -0500
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id mA7DC6Tc005867
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 00:12:06 +1100
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA7DCuOV4882546
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 00:12:56 +1100
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA7DCox4031555
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 00:12:51 +1100
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:50559 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750903AbYKGNdW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 08:33:22 -0500
+Content-Disposition: inline
+In-Reply-To: <1226063563-16220-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We need to make sure we mark the buffer_heads as dirty and uptodate
-so that block_write_full_page write them correctly.
+Per discussion on IRC, we've Aneesh and I have concluded that the V1
+patch is correct, and in fact calling block_commit_write() when we
+will be redirtying the page (a) can cause problems if one or more
+buffer heads on the page is marked for delayed allocation and so
+bh->block_nr is 0, and (b) wastes disk bandwidth since the page
+contents will be potentially written out twice.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/inode.c |    9 +++++++++
- 1 files changed, 9 insertions(+), 0 deletions(-)
+So we'll be going with the V1 version of the patch, and pushing it to
+Linus ASAP.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 95d0d12..f9461d7 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2333,6 +2333,15 @@ static int ext4_da_writepage(struct page *page,
- 		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
- 						ext4_normal_get_block_write);
- 		if (!ret) {
-+			/*
-+			 * We mark the buffer_head dirty and uptodate even
-+			 * if we are not doing a block_write_full_page. This
-+			 * make sure when writeback see the page again with
-+			 * buffer_head present the buffer_head would have
-+			 * the right flags
-+			 */
-+			block_commit_write(page, 0, PAGE_CACHE_SIZE);
-+
- 			page_bufs = page_buffers(page);
- 			/* check whether all are mapped and non delay */
- 			if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
--- 
-1.6.0.3.640.g6331a
-
+						- Ted
