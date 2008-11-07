@@ -1,34 +1,54 @@
-From: Arthur Jones <ajones@riverbed.com>
-Subject: Re: [patch 24/51] ext3: wait on all pending commits in ext3_sync_fs
-Date: Fri, 7 Nov 2008 06:58:09 -0800
-Message-ID: <20081107145809.GC9254@ajones-laptop.nbttech.com>
-References: <200811062053.mA6KratV013440@imap1.linux-foundation.org> <20081106214431.GL18939@mit.edu> <20081106142020.b64dee83.akpm@linux-foundation.org> <20081106224202.GA29038@mit.edu>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [RFC PATCH -V3 1/9] ext4: sparse fixes
+Date: Fri, 7 Nov 2008 10:07:56 -0500
+Message-ID: <20081107150756.GA18444@infradead.org>
+References: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081106220954.GM18939@mit.edu> <20081107142022.GK25194@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>, cmm@us.ibm.com, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.riverbed.com ([206.169.144.7]:50632 "EHLO
-	smtp2.riverbed.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752566AbYKGO6K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 09:58:10 -0500
+Received: from bombadil.infradead.org ([18.85.46.34]:37485 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751760AbYKGPIU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 10:08:20 -0500
 Content-Disposition: inline
-In-Reply-To: <20081106224202.GA29038@mit.edu>
+In-Reply-To: <20081107142022.GK25194@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted, ...
+On Fri, Nov 07, 2008 at 07:50:22PM +0530, Aneesh Kumar K.V wrote:
+> On Thu, Nov 06, 2008 at 05:09:54PM -0500, Theodore Tso wrote:
+> > On Fri, Nov 07, 2008 at 12:19:26AM +0530, Aneesh Kumar K.V wrote:
+> > >  #define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
+> > > -	(EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask))
+> > > +	(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_compat) & mask)
+> > >  #define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
+> > > -	(EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask))
+> > > +	(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_ro_compat) & mask)
+> > >  #define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
+> > > -	(EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask))
+> > > +	(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_incompat) & mask)
+> > 
+> > This is going to force a byte-swap instruction on every single
+> > big-endian system out there, which could potentially be costly, or at
+> > least undeed given that all of the times that these functions are
+> > called, the result gets used only as a booelan.
+> > 
+> > Can we shut up sparse by using a explicit cast to an unsigned int?
+> 
+> I did it that way first But found the error path needing conversion.
+> But i guess it is ok since it happen in the error path printk.
 
-On Thu, Nov 06, 2008 at 02:42:02PM -0800, Theodore Tso wrote:
-> [...]
-> So that means we'll need two cleanup patches for ext3; one to fix the
-> comment, and another to propagate the error code back to the VFS.
 
-A trivial patch for this is in the linux-ext4
-mailing list:
+>  #define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
+> -	(EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask))
+> +	(__force __u32)(EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask))
 
-http://marc.info/?l=linux-kernel&m=122574905024321&w=2
+Umm, no.  You're not returning a __u32 here, but a flag.
 
-Arthur
+	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
+
+should do the right thing.
 
