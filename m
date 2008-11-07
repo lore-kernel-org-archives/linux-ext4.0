@@ -1,91 +1,71 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH -V3 9/9] ext4: Fix lockdep recursive locking warning
-Date: Fri, 7 Nov 2008 21:52:11 +0530
-Message-ID: <20081107162211.GN25194@skywalker>
-References: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4913F698.30309@cn.fujitsu.com>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: a suspected data race bug in Ext4 file system
+Date: Fri, 07 Nov 2008 10:56:54 -0800
+Message-ID: <1226084214.10191.10.camel@mingming-laptop>
+References: <2014bcab0811061809vca13befn813440a32dda3914@mail.gmail.com>
+	 <20081106185109.ce8be9b8.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Li Zefan <lizf@cn.fujitsu.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: hongshin@gmail.com, adilger@sun.com, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:52593 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750917AbYKGQ0J (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 11:26:09 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id mA7GP6QJ024931
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 03:25:06 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA7GMLql243990
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 03:22:22 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA7GML6i019814
-	for <linux-ext4@vger.kernel.org>; Sat, 8 Nov 2008 03:22:21 +1100
-Content-Disposition: inline
-In-Reply-To: <4913F698.30309@cn.fujitsu.com>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:35639 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751768AbYKGS5F (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 7 Nov 2008 13:57:05 -0500
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e36.co.us.ibm.com (8.13.1/8.13.1) with ESMTP id mA7IuWxf015251
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 11:56:32 -0700
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mA7Iutuw067538
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 11:56:56 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mA7IuQZ6012871
+	for <linux-ext4@vger.kernel.org>; Fri, 7 Nov 2008 11:56:26 -0700
+In-Reply-To: <20081106185109.ce8be9b8.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 07, 2008 at 04:04:40PM +0800, Li Zefan wrote:
-> I got compile error on IA64:
->=20
-> fs/ext4/mballoc.c: In function =E2=80=98ext4_mb_add_groupinfo=E2=80=99=
-:
-> fs/ext4/mballoc.c:2482: error: implicit declaration of function =E2=80=
-=98__init_rwsem=E2=80=99
->=20
->=20
 
-Can you try this patch. I guess IA64 doesn't support lockdep
+On Thu, 2008-11-06 at 18:51 -0800, Andrew Morton wrote:
+> On Fri, 7 Nov 2008 11:09:49 +0900 "______ shin hong" <hongshin@gmail.com> wrote:
+> 
+> > Dear Ext4 maintainer,
+> > 
+> > I found a suspected data race bug at ext4_release_file() in ext4/file.c .
+> > 
+> > Is it necessary to re-check whether the if-statement's
+> > condition(atomic_read(&inode->i_writecount) == 1) is satisifed after
+> > semaphore down operation?
+> > 
+> > It seems to use "test and test and set" pattern(double-checking)
+> >  but the second "test" seems to be missed.
+> > 
+> > Please examine this function. Thank you.
+> > 
+> > p.s. I sent the same report to sct@redhat.com. But I did not received
+> > any reply.
+> >        I think my mail was discarded so I am sending the same again.
+> > 
+> 
+> An appropriate way to report this possible bug is to Cc: the ext4 mailing
+> list, which I have cc'ed here.
 
-ext4: Fix lockdep recursive locking warning
+I guess we could add the check after grab the i_data_sem, but not sure
+how useful is that, there is always a window that during the process of
+freeing preallocation, another new writer to the same inode. The
+i_data_sem semaphore is hold to prevent race between discard
+preallocation and use of preallocation, not to protect i_writecount.
 
-=46rom: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+The check of inode's i_writecount is to avoid doing discard for every
+file close, the idea is only try to discard the preallocation for the
+last writer of the file. But the i_writecount could be >1 at the time of
+discard preallocation. If a new writer comes in after i_data_sem is hold
+then the preallocation is freed, then by the time the new writer comes
+in and need block allocation, the preallocate gets build up
+atomatically.
 
-Indicate that the group locks can be taken in loop.
+ 
+Mingming
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/mballoc.c |   11 ++++++++++-
- 1 files changed, 10 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index f58de20..cb0ccbe 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2413,6 +2413,9 @@ ext4_mb_store_history(struct ext4_allocation_cont=
-ext *ac)
- #define ext4_mb_history_init(sb)
- #endif
-=20
-+#ifdef CONFIG_LOCKDEP
-+static struct lock_class_key alloc_sem_key[NR_BG_LOCKS];
-+#endif
-=20
- /* Create and initialize ext4_group_info data for the given group. */
- int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
-@@ -2473,8 +2476,14 @@ int ext4_mb_add_groupinfo(struct super_block *sb=
-, ext4_group_t group,
- 	}
-=20
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
--	init_rwsem(&meta_group_info[i]->alloc_sem);
-+#ifdef CONFIG_LOCKDEP
-+	__init_rwsem(&meta_group_info[i]->alloc_sem,
-+			"&meta_group_info[i]->alloc_sem",
-+			&alloc_sem_key[i]);
- 	meta_group_info[i]->bb_free_root.rb_node =3D NULL;;
-+#else
-+	init_rwsem(&meta_group_info[i]->alloc_sem);
-+#endif
-=20
- #ifdef DOUBLE_CHECK
- 	{
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
