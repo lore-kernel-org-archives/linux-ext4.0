@@ -1,53 +1,43 @@
-From: "Roc Valles" <vallesroc@gmail.com>
-Subject: Re: EXT4-fs error (device sda3): ext4_mb_generate_buddy: EXT4-fs: group 923: 18046 blocks in bitmap, 32768 in gd
-Date: Sat, 8 Nov 2008 19:30:02 +0000
-Message-ID: <3d3ce57e0811081130r3101b721m548d18c7da9f4bbb@mail.gmail.com>
-References: <3d3ce57e0811080637k3de96b09q28abeb4ebea0463c@mail.gmail.com>
-	 <20081108164300.GA8458@mit.edu>
+From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
+Subject: Re: [PATCH]: ext4: fix big endian
+Date: Sat, 8 Nov 2008 23:35:07 +0100
+Message-ID: <20081108223504.GA1301@logfs.org>
+References: <200811061600.54264.borntraeger@de.ibm.com> <200811061651.49602.borntraeger@de.ibm.com> <49131601.50407@redhat.com> <20081106163846.GA1381@infradead.org> <20081106173327.GF18939@mit.edu> <20081106173944.GA23398@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Tso" <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>, Peter Staubach <staubach@redhat.com>,
+	Christian Borntraeger <borntraeger@de.ibm.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.158]:23303 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750921AbYKHTaE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Nov 2008 14:30:04 -0500
-Received: by fg-out-1718.google.com with SMTP id 19so1589133fgg.17
-        for <linux-ext4@vger.kernel.org>; Sat, 08 Nov 2008 11:30:02 -0800 (PST)
-In-Reply-To: <20081108164300.GA8458@mit.edu>
+Received: from lazybastard.de ([212.112.238.170]:46147 "EHLO
+	longford.logfs.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752993AbYKHWgJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 8 Nov 2008 17:36:09 -0500
 Content-Disposition: inline
+In-Reply-To: <20081106173944.GA23398@infradead.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> Hmm... is there any chance that a rtorrent was in the middle of
-> downloading a file at the time when you shutdown the system?  If so,
-> try killing all processes which might be writing to the filesystem
-> (especially any rtorrent processes) before shutting down the
-> filesystem.
-Zero. I carefully quit rtorrent everytime I reboot, including this
-one. If I ever forget to, I'll notice right away the moment I start
-it, because it'd rehash everything.
+On Thu, 6 November 2008 12:39:44 -0500, Christoph Hellwig wrote:
+>=20
+> Heh, okay.  We really should try to find some annotations that run
+> sparse with endian checking by default for those parts of the tree
+> where it makes sense..
 
-I forgot to menction something that might be key, which is that a few
-reboots ago, I couldn't reboot (reboot wouldn't finish) until I forced
-it with with -f and another parameter which makes reboot not sync
-before rebooting. Doing a sync in another terminal never finished, so
-the FS got stuck somehow. The error might have started appearing
-immediatly after that.
+#define __CHECK_ENDIAN__ in some ext4 header.  Made life much easier fo=
+r
+me.
 
-> Another question is whether mounting -o nodelalloc (on the previous
-> boot session) makes the problem go away.  These last two tries are
-> based on the assumption that the filesystem is somehow really getting
-> corrupted on shutdown, and since you have errors=continue, it's
-> getting silently fixed up in mballoc.c, and so it doesn't show up when
-> you unmount the filesystem and run e2fsck.  If this assumption is
-> true, that bogus free blocks in the superblock should show up in the
-> dumpe2fs, and it should also show up when you reboot via a rescue disk
-> and run "e2fsck -nfv /dev/sda3".
+J=C3=B6rn
 
-I'll do the later at next opportunity, also the other thing we discussed on irc.
-
->                                                        - Ted
->
+--=20
+A surrounded army must be given a way out.
+-- Sun Tzu
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
