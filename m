@@ -1,281 +1,47 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 02/16] ext: Avoid printk floods in the face of directory
-	corruption (CVE-2008-3528)
-Date: Fri, 7 Nov 2008 15:26:01 -0800
-Message-ID: <20081107232601.GC4282@kroah.com>
-References: <20081107231848.995297975@mini.kroah.org>
+From: Li Zefan <lizf@cn.fujitsu.com>
+Subject: Re: [RFC PATCH -V3 9/9] ext4: Fix lockdep recursive locking warning
+Date: Sat, 08 Nov 2008 09:21:58 +0800
+Message-ID: <4914E9B6.8030109@cn.fujitsu.com>
+References: <1225997374-10846-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1225997374-10846-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4913F698.30309@cn.fujitsu.com> <20081107162211.GN25194@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
-	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
-	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
-	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Eugene Teo <eugeneteo@kernel.sg>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:47487 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754430AbYKGX0n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 7 Nov 2008 18:26:43 -0500
-Content-Disposition: inline; filename="ext-avoid-printk-floods-in-the-face-of-directory-corruption.patch"
-In-Reply-To: <20081107232544.GA4282@kroah.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:65398 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752082AbYKHBYk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 7 Nov 2008 20:24:40 -0500
+In-Reply-To: <20081107162211.GN25194@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2.6.25-stable review patch.  If anyone has any objections, please let us know.
+Aneesh Kumar K.V wrote:
+> On Fri, Nov 07, 2008 at 04:04:40PM +0800, Li Zefan wrote:
+>> I got compile error on IA64:
+>>
+>> fs/ext4/mballoc.c: In function =E2=80=98ext4_mb_add_groupinfo=E2=80=99=
+:
+>> fs/ext4/mballoc.c:2482: error: implicit declaration of function =E2=80=
+=98__init_rwsem=E2=80=99
+>>
+>>
+>=20
+> Can you try this patch. I guess IA64 doesn't support lockdep
+>=20
 
-------------------
+Yes, it's not supported on IA64.
 
-From: Eric Sandeen <sandeen@redhat.com>
+> ext4: Fix lockdep recursive locking warning
+>=20
 
-This is a trivial backport of the following upstream commits:
+I manually did the same as this patch yesterday, and I've confirmed the
+patch past compile.
 
-- bd39597cbd42a784105a04010100e27267481c67 (ext2)
-- cdbf6dba28e8e6268c8420857696309470009fd9 (ext3)
-- 9d9f177572d9e4eba0f2e18523b44f90dd51fe74 (ext4)
-
-This addresses CVE-2008-3528
-
-ext[234]: Avoid printk floods in the face of directory corruption
-
-Note: some people thinks this represents a security bug, since it
-might make the system go away while it is printing a large number of
-console messages, especially if a serial console is involved.  Hence,
-it has been assigned CVE-2008-3528, but it requires that the attacker
-either has physical access to your machine to insert a USB disk with a
-corrupted filesystem image (at which point why not just hit the power
-button), or is otherwise able to convince the system administrator to
-mount an arbitrary filesystem image (at which point why not just
-include a setuid shell or world-writable hard disk device file or some
-such).  Me, I think they're just being silly. --tytso
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
-Cc: Eugene Teo <eugeneteo@kernel.sg>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- fs/ext2/dir.c |   60 +++++++++++++++++++++++++++++++++-------------------------
- fs/ext3/dir.c |   10 ++++++---
- fs/ext4/dir.c |   11 +++++++---
- 3 files changed, 50 insertions(+), 31 deletions(-)
-
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -103,7 +103,7 @@ static int ext2_commit_chunk(struct page
- 	return err;
- }
- 
--static void ext2_check_page(struct page *page)
-+static void ext2_check_page(struct page *page, int quiet)
- {
- 	struct inode *dir = page->mapping->host;
- 	struct super_block *sb = dir->i_sb;
-@@ -146,10 +146,10 @@ out:
- 	/* Too bad, we had an error */
- 
- Ebadsize:
--	ext2_error(sb, "ext2_check_page",
--		"size of directory #%lu is not a multiple of chunk size",
--		dir->i_ino
--	);
-+	if (!quiet)
-+		ext2_error(sb, __func__,
-+			"size of directory #%lu is not a multiple "
-+			"of chunk size", dir->i_ino);
- 	goto fail;
- Eshort:
- 	error = "rec_len is smaller than minimal";
-@@ -166,32 +166,36 @@ Espan:
- Einumber:
- 	error = "inode out of bounds";
- bad_entry:
--	ext2_error (sb, "ext2_check_page", "bad entry in directory #%lu: %s - "
--		"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
--		dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
--		(unsigned long) le32_to_cpu(p->inode),
--		rec_len, p->name_len);
-+	if (!quiet)
-+		ext2_error(sb, __func__, "bad entry in directory #%lu: : %s - "
-+			"offset=%lu, inode=%lu, rec_len=%d, name_len=%d",
-+			dir->i_ino, error, (page->index<<PAGE_CACHE_SHIFT)+offs,
-+			(unsigned long) le32_to_cpu(p->inode),
-+			rec_len, p->name_len);
- 	goto fail;
- Eend:
--	p = (ext2_dirent *)(kaddr + offs);
--	ext2_error (sb, "ext2_check_page",
--		"entry in directory #%lu spans the page boundary"
--		"offset=%lu, inode=%lu",
--		dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
--		(unsigned long) le32_to_cpu(p->inode));
-+	if (!quiet) {
-+		p = (ext2_dirent *)(kaddr + offs);
-+		ext2_error(sb, "ext2_check_page",
-+			"entry in directory #%lu spans the page boundary"
-+			"offset=%lu, inode=%lu",
-+			dir->i_ino, (page->index<<PAGE_CACHE_SHIFT)+offs,
-+			(unsigned long) le32_to_cpu(p->inode));
-+	}
- fail:
- 	SetPageChecked(page);
- 	SetPageError(page);
- }
- 
--static struct page * ext2_get_page(struct inode *dir, unsigned long n)
-+static struct page * ext2_get_page(struct inode *dir, unsigned long n,
-+				   int quiet)
- {
- 	struct address_space *mapping = dir->i_mapping;
- 	struct page *page = read_mapping_page(mapping, n, NULL);
- 	if (!IS_ERR(page)) {
- 		kmap(page);
- 		if (!PageChecked(page))
--			ext2_check_page(page);
-+			ext2_check_page(page, quiet);
- 		if (PageError(page))
- 			goto fail;
- 	}
-@@ -292,7 +296,7 @@ ext2_readdir (struct file * filp, void *
- 	for ( ; n < npages; n++, offset = 0) {
- 		char *kaddr, *limit;
- 		ext2_dirent *de;
--		struct page *page = ext2_get_page(inode, n);
-+		struct page *page = ext2_get_page(inode, n, 0);
- 
- 		if (IS_ERR(page)) {
- 			ext2_error(sb, __FUNCTION__,
-@@ -361,6 +365,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
- 	struct page *page = NULL;
- 	struct ext2_inode_info *ei = EXT2_I(dir);
- 	ext2_dirent * de;
-+	int dir_has_error = 0;
- 
- 	if (npages == 0)
- 		goto out;
-@@ -374,7 +379,7 @@ struct ext2_dir_entry_2 * ext2_find_entr
- 	n = start;
- 	do {
- 		char *kaddr;
--		page = ext2_get_page(dir, n);
-+		page = ext2_get_page(dir, n, dir_has_error);
- 		if (!IS_ERR(page)) {
- 			kaddr = page_address(page);
- 			de = (ext2_dirent *) kaddr;
-@@ -391,7 +396,9 @@ struct ext2_dir_entry_2 * ext2_find_entr
- 				de = ext2_next_entry(de);
- 			}
- 			ext2_put_page(page);
--		}
-+		} else
-+			dir_has_error = 1;
-+
- 		if (++n >= npages)
- 			n = 0;
- 		/* next page is past the blocks we've got */
-@@ -414,7 +421,7 @@ found:
- 
- struct ext2_dir_entry_2 * ext2_dotdot (struct inode *dir, struct page **p)
- {
--	struct page *page = ext2_get_page(dir, 0);
-+	struct page *page = ext2_get_page(dir, 0, 0);
- 	ext2_dirent *de = NULL;
- 
- 	if (!IS_ERR(page)) {
-@@ -487,7 +494,7 @@ int ext2_add_link (struct dentry *dentry
- 	for (n = 0; n <= npages; n++) {
- 		char *dir_end;
- 
--		page = ext2_get_page(dir, n);
-+		page = ext2_get_page(dir, n, 0);
- 		err = PTR_ERR(page);
- 		if (IS_ERR(page))
- 			goto out;
-@@ -655,14 +662,17 @@ int ext2_empty_dir (struct inode * inode
- {
- 	struct page *page = NULL;
- 	unsigned long i, npages = dir_pages(inode);
-+	int dir_has_error = 0;
- 
- 	for (i = 0; i < npages; i++) {
- 		char *kaddr;
- 		ext2_dirent * de;
--		page = ext2_get_page(inode, i);
-+		page = ext2_get_page(inode, i, dir_has_error);
- 
--		if (IS_ERR(page))
-+		if (IS_ERR(page)) {
-+			dir_has_error = 1;
- 			continue;
-+		}
- 
- 		kaddr = page_address(page);
- 		de = (ext2_dirent *)kaddr;
---- a/fs/ext3/dir.c
-+++ b/fs/ext3/dir.c
-@@ -102,6 +102,7 @@ static int ext3_readdir(struct file * fi
- 	int err;
- 	struct inode *inode = filp->f_path.dentry->d_inode;
- 	int ret = 0;
-+	int dir_has_error = 0;
- 
- 	sb = inode->i_sb;
- 
-@@ -148,9 +149,12 @@ static int ext3_readdir(struct file * fi
- 		 * of recovering data when there's a bad sector
- 		 */
- 		if (!bh) {
--			ext3_error (sb, "ext3_readdir",
--				"directory #%lu contains a hole at offset %lu",
--				inode->i_ino, (unsigned long)filp->f_pos);
-+			if (!dir_has_error) {
-+				ext3_error(sb, __func__, "directory #%lu "
-+					"contains a hole at offset %lld",
-+					inode->i_ino, filp->f_pos);
-+				dir_has_error = 1;
-+			}
- 			/* corrupt size?  Maybe no more blocks to read */
- 			if (filp->f_pos > inode->i_blocks << 9)
- 				break;
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -102,6 +102,7 @@ static int ext4_readdir(struct file * fi
- 	int err;
- 	struct inode *inode = filp->f_path.dentry->d_inode;
- 	int ret = 0;
-+	int dir_has_error = 0;
- 
- 	sb = inode->i_sb;
- 
-@@ -147,9 +148,13 @@ static int ext4_readdir(struct file * fi
- 		 * of recovering data when there's a bad sector
- 		 */
- 		if (!bh) {
--			ext4_error (sb, "ext4_readdir",
--				"directory #%lu contains a hole at offset %lu",
--				inode->i_ino, (unsigned long)filp->f_pos);
-+			if (!dir_has_error) {
-+				ext4_error(sb, __func__, "directory #%lu "
-+					   "contains a hole at offset %Lu",
-+					   inode->i_ino,
-+					   (unsigned long long) filp->f_pos);
-+				dir_has_error = 1;
-+			}
- 			/* corrupt size?  Maybe no more blocks to read */
- 			if (filp->f_pos > inode->i_blocks << 9)
- 				break;
-
--- 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
