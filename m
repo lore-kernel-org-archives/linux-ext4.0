@@ -1,48 +1,79 @@
-From: =?utf-8?B?SsO2cm4=?= Engel <joern@logfs.org>
-Subject: Re: [PATCH]: ext4: fix big endian
-Date: Mon, 10 Nov 2008 20:31:36 +0100
-Message-ID: <20081110193135.GA18378@logfs.org>
-References: <200811061600.54264.borntraeger@de.ibm.com> <200811061651.49602.borntraeger@de.ibm.com> <49131601.50407@redhat.com> <20081106163846.GA1381@infradead.org> <20081106173327.GF18939@mit.edu> <20081106173944.GA23398@infradead.org> <20081108223504.GA1301@logfs.org> <1226340578.22742.4.camel@brick>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Peter Staubach <staubach@redhat.com>,
-	Christian Borntraeger <borntraeger@de.ibm.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Harvey Harrison <harvey.harrison@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lazybastard.de ([212.112.238.170]:37238 "EHLO
-	longford.logfs.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750989AbYKJTcL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Nov 2008 14:32:11 -0500
-Content-Disposition: inline
-In-Reply-To: <1226340578.22742.4.camel@brick>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: - ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch removed from -mm tree
+Date: Mon, 10 Nov 2008 12:32:44 -0800
+Message-ID: <200811102032.mAAKWi9j024095@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: ajones@riverbed.com, linux-ext4@vger.kernel.org,
+	sandeen@redhat.com, stable@kernel.org, tytso@mit.edu,
+	mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 10 November 2008 10:09:38 -0800, Harvey Harrison wrote:
->=20
-> I'd say that it's getting close to just being able to turn it on by
-> default.  A lot of the really verbose offenders have been annotated
-> now, drivers/ieee1394, drivers/scsi, drivers/message and some of the
-> older areas of drivers/net will get noisy, I was going to send an RFC
-> for 2.6.29 and continue to chip away at the output.
 
-My argument for the define is that it doesn't hurt much if endian check=
-s
-are enabled globally, but helps a lot if they are not.  So until it is
-clear that endian checks will be enabled, it may still be a good idea.
+The patch titled
+     ext3: wait on all pending commits in ext3_sync_fs
+has been removed from the -mm tree.  Its filename was
+     ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch
 
-J=C3=B6rn
+This patch was dropped because it was merged into mainline or a subsystem tree
 
---=20
-It's not whether you win or lose, it's how you place the blame.
--- unknown
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext3: wait on all pending commits in ext3_sync_fs
+From: Arthur Jones <ajones@riverbed.com>
+
+In ext3_sync_fs, we only wait for a commit to finish if we started it, but
+there may be one already in progress which will not be synced.
+
+In the case of a data=ordered umount with pending long symlinks which are
+delayed due to a long list of other I/O on the backing block device, this
+causes the buffer associated with the long symlinks to not be moved to the
+inode dirty list in the second phase of fsync_super.  Then, before they
+can be dirtied again, kjournald exits, seeing the UMOUNT flag and the
+dirty pages are never written to the backing block device, causing long
+symlink corruption and exposing new or previously freed block data to
+userspace.
+
+This can be reproduced with a script created
+by Eric Sandeen <sandeen@redhat.com>:
+
+	#!/bin/bash
+
+	umount /mnt/test2
+	mount /dev/sdb4 /mnt/test2
+	rm -f /mnt/test2/*
+	dd if=/dev/zero of=/mnt/test2/bigfile bs=1M count=512
+	touch
+	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
+	ln -s
+	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
+	/mnt/test2/link
+	umount /mnt/test2
+	mount /dev/sdb4 /mnt/test2
+	ls /mnt/test2/
+	umount /mnt/test2
+
+To ensure all commits are synced, we flush all journal commits now when
+sync_fs'ing ext3.
+
+Signed-off-by: Arthur Jones <ajones@riverbed.com>
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: <stable@kernel.org>		[2.6.everything]
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/super.c |   11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
+
+diff -puN fs/ext3/super.c~ext3-wait-on-all-pending-commits-in-ext3_sync_fs fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-wait-on-all-pending-commits-in-ext3_sync_fs
++++ a/fs/ext3/super.c
+@@ -2390,13 +2390,12 @@ static void ext3_write_super (struct sup
+ 
+ static int ext3_sync_fs(struct super_block *sb, int wait)
+ {
+-	tid_t target;
