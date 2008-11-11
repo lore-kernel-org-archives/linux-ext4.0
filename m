@@ -1,28 +1,44 @@
-From: akpm@linux-foundation.org
-Subject: - ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch removed from -mm tree
-Date: Mon, 10 Nov 2008 12:32:44 -0800
-Message-ID: <200811102032.mAAKWi9j024095@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: ajones@riverbed.com, linux-ext4@vger.kernel.org,
-	sandeen@redhat.com, stable@kernel.org, tytso@mit.edu,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: <gregkh@suse.de>
+Subject: patch ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch added to 2.6.27-stable tree
+Date: Mon, 10 Nov 2008 16:06:25 -0800
+Message-ID: <20081111000645.5F79848D65@coco.kroah.org>
+References: <200811070005.mA705Htq002320@hera.kernel.org>
+Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
+To: ajones@riverbed.com, akpm@linux-foundation.org, gregkh@suse.de,
+	linux-ext4@vger.kernel.org, sandeen@redhat.com,
+	torvalds@linux-foundation.org, tytso@mit.edu
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from kroah.org ([198.145.64.141]:43112 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752429AbYKKAGq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 10 Nov 2008 19:06:46 -0500
+In-Reply-To: <200811070005.mA705Htq002320@hera.kernel.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
-The patch titled
-     ext3: wait on all pending commits in ext3_sync_fs
-has been removed from the -mm tree.  Its filename was
-     ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch
+This is a note to let you know that we have just queued up the patch titled
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+    Subject: ext3: wait on all pending commits in ext3_sync_fs
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+to the 2.6.27-stable tree.  Its filename is
 
-------------------------------------------------------
-Subject: ext3: wait on all pending commits in ext3_sync_fs
+    ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch
+
+A git repo of this tree can be found at 
+    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
+
+
+>From jejb@kernel.org  Mon Nov 10 15:08:55 2008
 From: Arthur Jones <ajones@riverbed.com>
+Date: Fri, 7 Nov 2008 00:05:17 GMT
+Subject: ext3: wait on all pending commits in ext3_sync_fs
+To: stable@kernel.org
+Message-ID: <200811070005.mA705Htq002320@hera.kernel.org>
+
+From: Arthur Jones <ajones@riverbed.com>
+
+commit c87591b719737b4e91eb1a9fa8fd55a4ff1886d6 upstream
 
 In ext3_sync_fs, we only wait for a commit to finish if we started it, but
 there may be one already in progress which will not be synced.
@@ -62,17 +78,17 @@ Signed-off-by: Arthur Jones <ajones@riverbed.com>
 Cc: Eric Sandeen <sandeen@redhat.com>
 Cc: Theodore Ts'o <tytso@mit.edu>
 Cc: <linux-ext4@vger.kernel.org>
-Cc: <stable@kernel.org>		[2.6.everything]
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
+---
  fs/ext3/super.c |   11 +++++------
  1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff -puN fs/ext3/super.c~ext3-wait-on-all-pending-commits-in-ext3_sync_fs fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-wait-on-all-pending-commits-in-ext3_sync_fs
-+++ a/fs/ext3/super.c
-@@ -2390,13 +2390,12 @@ static void ext3_write_super (struct sup
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2365,13 +2365,12 @@ static void ext3_write_super (struct sup
  
  static int ext3_sync_fs(struct super_block *sb, int wait)
  {
