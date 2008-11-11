@@ -1,95 +1,56 @@
-From: <gregkh@suse.de>
-Subject: patch ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch added to 2.6.27-stable tree
-Date: Mon, 10 Nov 2008 16:06:25 -0800
-Message-ID: <20081111000645.5F79848D65@coco.kroah.org>
-References: <200811070005.mA705Htq002320@hera.kernel.org>
-Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
-To: ajones@riverbed.com, akpm@linux-foundation.org, gregkh@suse.de,
-	linux-ext4@vger.kernel.org, sandeen@redhat.com,
-	torvalds@linux-foundation.org, tytso@mit.edu
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] ext4: add checksum calculation when clearing UNINIT flag
+Date: Mon, 10 Nov 2008 18:23:49 -0700
+Message-ID: <20081111012349.GS32755@webber.adilger.int>
+References: <1226053376.3542.8.camel@frecb007923.frec.bull.fr>
+ <20081107135222.GB9543@mit.edu> <20081107142718.GL25194@skywalker>
+ <20081107143806.GD9543@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	=?utf-8?Q?Fr=E9d=E9ric_Boh=E9?= <frederic.bohe@bull.net>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:43112 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752429AbYKKAGq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 10 Nov 2008 19:06:46 -0500
-In-Reply-To: <200811070005.mA705Htq002320@hera.kernel.org>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:63402 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754097AbYKKBYE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 10 Nov 2008 20:24:04 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAB1Nqjc003287
+	for <linux-ext4@vger.kernel.org>; Mon, 10 Nov 2008 17:24:02 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KA500D01AGPGQ00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 10 Nov 2008 17:23:52 -0800 (PST)
+In-reply-to: <20081107143806.GD9543@mit.edu>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Nov 07, 2008  09:38 -0500, Theodore Ts'o wrote:
+> On Fri, Nov 07, 2008 at 07:57:18PM +0530, Aneesh Kumar K.V wrote:
+> > Because when we clear the uninitt_bg flag the kernel expect the block 
+> > bitmap to be correctly indicate blocks containing block
+> > bitmap and inode bitmap as used. If mke2fs didn't do that we would
+> > need to do the same when we remove the uninit_bg flag.
+> 
+> We have separate flags inidicating whether the block allocation bitmap
+> and inode allocation bitmaps are initialized or not,
+> EXT4_BG_BLOCK_UNINIT, and EXT4_BG_INODE_UNINIT, respectively.  So what
+> I am proposing is to not initialize the block bitmap in
+> ext4_new_inode(), and not to clear the EXT4_BG_BLOCK_UNINIT flag, either.
 
-This is a note to let you know that we have just queued up the patch titled
+That would be dangerous, because the block group _would_ be in use due
+to the fact that one of the inode table blocks is in use.  That isn't
+to say we couldn't adopt sematics as you suggest (e.g. that INODE_UNINIT
+not being set implies that the inode table blocks are in use regardless
+of whether or not BLOCK_UNINIT is set, but it needs careful consideration.
 
-    Subject: ext3: wait on all pending commits in ext3_sync_fs
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-to the 2.6.27-stable tree.  Its filename is
-
-    ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch
-
-A git repo of this tree can be found at 
-    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
-
-
->From jejb@kernel.org  Mon Nov 10 15:08:55 2008
-From: Arthur Jones <ajones@riverbed.com>
-Date: Fri, 7 Nov 2008 00:05:17 GMT
-Subject: ext3: wait on all pending commits in ext3_sync_fs
-To: stable@kernel.org
-Message-ID: <200811070005.mA705Htq002320@hera.kernel.org>
-
-From: Arthur Jones <ajones@riverbed.com>
-
-commit c87591b719737b4e91eb1a9fa8fd55a4ff1886d6 upstream
-
-In ext3_sync_fs, we only wait for a commit to finish if we started it, but
-there may be one already in progress which will not be synced.
-
-In the case of a data=ordered umount with pending long symlinks which are
-delayed due to a long list of other I/O on the backing block device, this
-causes the buffer associated with the long symlinks to not be moved to the
-inode dirty list in the second phase of fsync_super.  Then, before they
-can be dirtied again, kjournald exits, seeing the UMOUNT flag and the
-dirty pages are never written to the backing block device, causing long
-symlink corruption and exposing new or previously freed block data to
-userspace.
-
-This can be reproduced with a script created
-by Eric Sandeen <sandeen@redhat.com>:
-
-	#!/bin/bash
-
-	umount /mnt/test2
-	mount /dev/sdb4 /mnt/test2
-	rm -f /mnt/test2/*
-	dd if=/dev/zero of=/mnt/test2/bigfile bs=1M count=512
-	touch
-	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-	ln -s
-	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-	/mnt/test2/link
-	umount /mnt/test2
-	mount /dev/sdb4 /mnt/test2
-	ls /mnt/test2/
-	umount /mnt/test2
-
-To ensure all commits are synced, we flush all journal commits now when
-sync_fs'ing ext3.
-
-Signed-off-by: Arthur Jones <ajones@riverbed.com>
-Cc: Eric Sandeen <sandeen@redhat.com>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- fs/ext3/super.c |   11 +++++------
- 1 file changed, 5 insertions(+), 6 deletions(-)
-
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -2365,13 +2365,12 @@ static void ext3_write_super (struct sup
- 
- static int ext3_sync_fs(struct super_block *sb, int wait)
- {
--	tid_t target;
