@@ -1,55 +1,47 @@
-From: Valerie Aurora Henson <vaurora@redhat.com>
-Subject: Re: 64-bit dblists
-Date: Wed, 12 Nov 2008 11:48:36 -0500
-Message-ID: <20081112164836.GF29956@shell>
-References: <20081027205910.GD20992@shell> <20081103030936.GB29102@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC,PATCH] 64-bit support for e2fsprogs
+Date: Wed, 12 Nov 2008 13:25:38 -0700
+Message-ID: <20081112202538.GN16005@webber.adilger.int>
+References: <1226461390-5502-1-git-send-email-vaurora@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, "Jose R. Santos" <jrs@us.ibm.com>
-To: Theodore Tso <tytso@mit.edu>
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org,
+	Valerie Aurora Henson <vaurora@redhat.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:47303 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750763AbYKLQsj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 12 Nov 2008 11:48:39 -0500
-Content-Disposition: inline
-In-Reply-To: <20081103030936.GB29102@mit.edu>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:36210 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752303AbYKLU0B (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Nov 2008 15:26:01 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mACKPj7b004160
+	for <linux-ext4@vger.kernel.org>; Wed, 12 Nov 2008 12:25:55 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KA800801LTVQQ00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 12 Nov 2008 12:25:45 -0800 (PST)
+In-reply-to: <1226461390-5502-1-git-send-email-vaurora@redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Nov 02, 2008 at 10:09:36PM -0500, Theodore Tso wrote:
-> On Mon, Oct 27, 2008 at 04:59:10PM -0400, Valerie Aurora Henson wrote:
-> > Hi all,
-> > 
-> > In my continuing quest to finish the 64-bit conversion of e2fsprogs, I
-> > ran into this structure exported in ext2fs.h:
-> > 
-> > struct ext2_db_entry {
-> >         ext2_ino_t      ino;
-> >         blk_t   blk;
-> >         int     blockcnt;
-> > };
-> > 
-> > The "blk_t" is the problem here - we need a blk64_t.  A pointer to
-> > this structure is passed to the user-provided directory block iterator
-> > in ext2fs_dblist_iterate().
-> > 
-> > Assuming the goal is to preserve the ext2fs_dblist ABI, I can see two
-> > ways of doing this:
-> > 
-> > 1. Define ext2_db_entry2, ext2_dblist2, and ext2fs_dblist_*2() and do
-> > the usual translation/conversion function business.
+On Nov 11, 2008  19:42 -0800, Valerie Aurora Henson wrote:
+> Use the following mke2fs command to produce a file system with more
+> than 2^32 blocks:
 > 
-> The dblist.c and dblist_dir.c functions are so small that it's
-> probably not worth it to do translaction/conversation functions; it's
-> basically just a linked list convenience function implementation.
-> 
-> My suggestion is to just create a dblist2.c and dblist_dir2.c, and
-> just make a 64-bit version of the directory block list abstraction.
-> My guess that size of the conversaion functions would be bigger than a
-> new 64-bit version of the abstraction.  (The object size of dblist.o
-> and dblist_dir.o combined is only about 1.5k)
+> $ mke2fs -t ext4 -O 64bit -b 4096 -N 200000 <device>
 
-Thanks!  This is what I'm doing currently.
+Ted, this actually exposes a bug in mke2fs, in that the device size to
+"type" detection code is broken.  Val was reporting that running on a
+16TB device would pick the "floppy" type and try to use 1024-byte blocks
+and 1 inode per 1024 bytes, which would exceed the 2^32 inode limit.
+Hence the current requirement to specify a 4096-byte blocksize and a
+hard limit on the number of inodes.
 
--VAL
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
