@@ -1,7 +1,7 @@
 From: Valerie Aurora Henson <vaurora@redhat.com>
-Subject: [RFC PATCH 14/17] super->s_*_blocks_count -> ext2fs_*_blocks_count()
-Date: Tue, 11 Nov 2008 19:43:07 -0800
-Message-ID: <1226461390-5502-15-git-send-email-vaurora@redhat.com>
+Subject: [RFC PATCH 17/17] Convert to 64-bit IO
+Date: Tue, 11 Nov 2008 19:43:10 -0800
+Message-ID: <1226461390-5502-18-git-send-email-vaurora@redhat.com>
 References: <1226461390-5502-1-git-send-email-vaurora@redhat.com>
  <1226461390-5502-2-git-send-email-vaurora@redhat.com>
  <1226461390-5502-3-git-send-email-vaurora@redhat.com>
@@ -16,666 +16,451 @@ References: <1226461390-5502-1-git-send-email-vaurora@redhat.com>
  <1226461390-5502-12-git-send-email-vaurora@redhat.com>
  <1226461390-5502-13-git-send-email-vaurora@redhat.com>
  <1226461390-5502-14-git-send-email-vaurora@redhat.com>
+ <1226461390-5502-15-git-send-email-vaurora@redhat.com>
+ <1226461390-5502-16-git-send-email-vaurora@redhat.com>
+ <1226461390-5502-17-git-send-email-vaurora@redhat.com>
 Cc: Valerie Aurora Henson <vaurora@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:42475 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:42478 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752069AbYKLDoF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Nov 2008 22:44:05 -0500
+	id S1752127AbYKLDoJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Nov 2008 22:44:09 -0500
 Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id mAC3i5HP007471
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Nov 2008 22:44:05 -0500
-In-Reply-To: <1226461390-5502-14-git-send-email-vaurora@redhat.com>
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id mAC3i9qc007483
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Nov 2008 22:44:09 -0500
+In-Reply-To: <1226461390-5502-17-git-send-email-vaurora@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: Valerie Aurora Henson <vaurora@redhat.com>
 ---
- e2fsck/journal.c           |    4 ++--
- e2fsck/pass1.c             |   22 +++++++++++-----------
- e2fsck/pass2.c             |    4 ++--
- e2fsck/pass5.c             |   20 ++++++++++----------
- e2fsck/super.c             |   24 ++++++++++++------------
- e2fsck/unix.c              |   13 +++++++------
- lib/ext2fs/alloc.c         |    6 +++---
- lib/ext2fs/alloc_sb.c      |    4 ++--
- lib/ext2fs/block.c         |    6 +++---
- lib/ext2fs/bmove.c         |    2 +-
- lib/ext2fs/check_desc.c    |    4 ++--
- lib/ext2fs/closefs.c       |    6 +++---
- lib/ext2fs/ext_attr.c      |    2 +-
- lib/ext2fs/icount.c        |    2 +-
- lib/ext2fs/mkjournal.c     |    2 +-
- lib/ext2fs/openfs.c        |    8 ++++----
- lib/ext2fs/rw_bitmaps.c    |    6 +++---
- lib/ext2fs/tst_badblocks.c |    2 +-
- lib/ext2fs/tst_csum.c      |    2 +-
- misc/mke2fs.c              |   10 +++++-----
- 20 files changed, 75 insertions(+), 74 deletions(-)
+ e2fsck/ehandler.c       |    6 +++---
+ e2fsck/journal.c        |    4 ++--
+ e2fsck/pass1.c          |    8 ++++----
+ e2fsck/pass1b.c         |    4 ++--
+ e2fsck/pass3.c          |    2 +-
+ e2fsck/super.c          |    6 +++---
+ e2fsck/util.c           |    4 ++--
+ lib/ext2fs/bmove.c      |    2 +-
+ lib/ext2fs/closefs.c    |    8 ++++----
+ lib/ext2fs/dirblock.c   |    2 +-
+ lib/ext2fs/extent.c     |    7 ++++---
+ lib/ext2fs/inode.c      |    8 ++++----
+ lib/ext2fs/mkjournal.c  |    7 ++++---
+ lib/ext2fs/openfs.c     |    2 +-
+ lib/ext2fs/rw_bitmaps.c |   10 +++++-----
+ 15 files changed, 41 insertions(+), 39 deletions(-)
 
+diff --git a/e2fsck/ehandler.c b/e2fsck/ehandler.c
+index 7bae4ab..8add25f 100644
+--- a/e2fsck/ehandler.c
++++ b/e2fsck/ehandler.c
+@@ -42,7 +42,7 @@ static errcode_t e2fsck_handle_read_error(io_channel channel,
+ 	if (count > 1) {
+ 		p = (char *) data;
+ 		for (i=0; i < count; i++, p += channel->block_size, block++) {
+-			error = io_channel_read_blk(channel, block,
++			error = io_channel_read_blk64(channel, block,
+ 						    1, p);
+ 			if (error)
+ 				return error;
+@@ -58,7 +58,7 @@ static errcode_t e2fsck_handle_read_error(io_channel channel,
+ 	preenhalt(ctx);
+ 	if (ask(ctx, _("Ignore error"), 1)) {
+ 		if (ask(ctx, _("Force rewrite"), 1))
+-			io_channel_write_blk(channel, block, 1, data);
++			io_channel_write_blk64(channel, block, 1, data);
+ 		return 0;
+ 	}
+ 
+@@ -88,7 +88,7 @@ static errcode_t e2fsck_handle_write_error(io_channel channel,
+ 	if (count > 1) {
+ 		p = (const char *) data;
+ 		for (i=0; i < count; i++, p += channel->block_size, block++) {
+-			error = io_channel_write_blk(channel, block,
++			error = io_channel_write_blk64(channel, block,
+ 						     1, p);
+ 			if (error)
+ 				return error;
 diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 4dc8278..660b6ca 100644
+index 660b6ca..9897ee2 100644
 --- a/e2fsck/journal.c
 +++ b/e2fsck/journal.c
-@@ -213,7 +213,7 @@ static int process_journal_block(ext2_filsys fs,
- 	p = (struct process_block_struct *) priv_data;
- 
- 	if (blk < fs->super->s_first_data_block ||
--	    blk >= fs->super->s_blocks_count)
-+	    blk >= ext2fs_blocks_count(fs->super))
- 		return BLOCK_ABORT;
- 
- 	if (blockcnt >= 0)
-@@ -407,7 +407,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
- 			goto errout;
- 		}
- 
--		journal->j_maxlen = jsuper.s_blocks_count;
-+		journal->j_maxlen = ext2fs_blocks_count(&jsuper);
- 		start++;
- 	}
- 
+@@ -113,7 +113,7 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhp[])
+ 		if (rw == READ && !bh->b_uptodate) {
+ 			jfs_debug(3, "reading block %lu/%p\n",
+ 				  (unsigned long) bh->b_blocknr, (void *) bh);
+-			retval = io_channel_read_blk(bh->b_io,
++			retval = io_channel_read_blk64(bh->b_io,
+ 						     bh->b_blocknr,
+ 						     1, bh->b_data);
+ 			if (retval) {
+@@ -127,7 +127,7 @@ void ll_rw_block(int rw, int nr, struct buffer_head *bhp[])
+ 		} else if (rw == WRITE && bh->b_dirty) {
+ 			jfs_debug(3, "writing block %lu/%p\n",
+ 				  (unsigned long) bh->b_blocknr, (void *) bh);
+-			retval = io_channel_write_blk(bh->b_io,
++			retval = io_channel_write_blk64(bh->b_io,
+ 						      bh->b_blocknr,
+ 						      1, bh->b_data);
+ 			if (retval) {
 diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index ee658d5..ef8b421 100644
+index 2d29988..4f69d46 100644
 --- a/e2fsck/pass1.c
 +++ b/e2fsck/pass1.c
-@@ -191,7 +191,7 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
- 		    (extent.e_lblk != 0) ||
- 		    (extent.e_len != 1) ||
- 		    (extent.e_pblk < fs->super->s_first_data_block) ||
--		    (extent.e_pblk >= fs->super->s_blocks_count))
-+		    (extent.e_pblk >= ext2fs_blocks_count(fs->super)))
- 			goto exit_extent;
- 		i = 1;
- 	exit_extent:
-@@ -204,7 +204,7 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
- 		if ((inode->i_size >= fs->blocksize) ||
- 		    (blocks != fs->blocksize >> 9) ||
- 		    (inode->i_block[0] < fs->super->s_first_data_block) ||
--		    (inode->i_block[0] >= fs->super->s_blocks_count))
-+		    (inode->i_block[0] >= ext2fs_blocks_count(fs->super)))
+@@ -211,7 +211,7 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
+ 			if (inode->i_block[i])
+ 				return 0;
+ 
+-		if (io_channel_read_blk(fs->io, inode->i_block[0], 1, buf))
++		if (io_channel_read_blk64(fs->io, inode->i_block[0], 1, buf))
  			return 0;
  
- 		for (i = 1; i < EXT2_N_BLOCKS; i++)
-@@ -418,7 +418,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
- 			not_device++;
- 
- 		if (blk < ctx->fs->super->s_first_data_block ||
--		    blk >= ctx->fs->super->s_blocks_count ||
-+		    blk >= ext2fs_blocks_count(ctx->fs->super) ||
- 		    ext2fs_fast_test_block_bitmap2(ctx->block_found_map, blk))
- 			return;	/* Invalid block, can't be dir */
+ 		len = strnlen(buf, fs->blocksize);
+@@ -1564,7 +1564,7 @@ static int handle_htree(e2fsck_t ctx, struct problem_context *pctx,
+ 			return 0;
  	}
-@@ -1381,7 +1381,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
- 	 */
- 	if (!(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR) ||
- 	    (blk < fs->super->s_first_data_block) ||
--	    (blk >= fs->super->s_blocks_count)) {
-+	    (blk >= ext2fs_blocks_count(fs->super))) {
- 		mark_inode_bad(ctx, ino);
- 		return 0;
- 	}
-@@ -1557,7 +1557,7 @@ static int handle_htree(e2fsck_t ctx, struct problem_context *pctx,
- 	if ((pctx->errcode) ||
- 	    (blk == 0) ||
- 	    (blk < fs->super->s_first_data_block) ||
--	    (blk >= fs->super->s_blocks_count)) {
-+	    (blk >= ext2fs_blocks_count(fs->super))) {
- 		if (fix_problem(ctx, PR_1_HTREE_BADROOT, pctx))
- 			return 1;
- 		else
-@@ -1644,13 +1644,13 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
  
- 		problem = 0;
- 		if (extent.e_pblk < ctx->fs->super->s_first_data_block ||
--		    extent.e_pblk >= ctx->fs->super->s_blocks_count)
-+		    extent.e_pblk >= ext2fs_blocks_count(ctx->fs->super))
- 			problem = PR_1_EXTENT_BAD_START_BLK;
- 		else if (extent.e_lblk < start_block)
- 			problem = PR_1_OUT_OF_ORDER_EXTENTS;
- 		else if (is_leaf &&
- 			 (extent.e_pblk + extent.e_len) >
--			 ctx->fs->super->s_blocks_count)
-+			 ext2fs_blocks_count(ctx->fs->super))
- 			problem = PR_1_EXTENT_ENDS_BEYOND;
+-	retval = io_channel_read_blk(fs->io, blk, 1, block_buf);
++	retval = io_channel_read_blk64(fs->io, blk, 1, block_buf);
+ 	if (retval && fix_problem(ctx, PR_1_HTREE_BADROOT, pctx))
+ 		return 1;
  
- 		if (problem) {
-@@ -1988,8 +1988,8 @@ static char *describe_illegal_block(ext2_filsys fs, blk_t block)
- 	if (block < super) {
- 		sprintf(problem, "< FIRSTBLOCK (%u)", super);
- 		return(problem);
--	} else if (block >= fs->super->s_blocks_count) {
--		sprintf(problem, "> BLOCKS (%u)", fs->super->s_blocks_count);
-+	} else if (block >= ext2fs_blocks_count(fs->super)) {
-+		sprintf(problem, "> BLOCKS (%u)", ext2fs_blocks_count(fs->super));
- 		return(problem);
- 	}
- 	for (i = 0; i < fs->group_desc_count; i++) {
-@@ -2124,7 +2124,7 @@ static int process_block(ext2_filsys fs,
- 		problem = PR_1_TOOBIG_SYMLINK;
+@@ -2386,7 +2386,7 @@ static void new_table_block(e2fsck_t ctx, blk64_t first_block, int group,
+ 		pctx.blk = i;
+ 		ext2fs_mark_block_bitmap2(ctx->block_found_map, (*new_block)+i);
+ 		if (old_block) {
+-			pctx.errcode = io_channel_read_blk(fs->io,
++			pctx.errcode = io_channel_read_blk64(fs->io,
+ 				   old_block + i, 1, buf);
+ 			if (pctx.errcode)
+ 				fix_problem(ctx, PR_1_RELOC_READ_ERR, &pctx);
+@@ -2394,7 +2394,7 @@ static void new_table_block(e2fsck_t ctx, blk64_t first_block, int group,
+ 			memset(buf, 0, fs->blocksize);
  
- 	if (blk < fs->super->s_first_data_block ||
--	    blk >= fs->super->s_blocks_count)
-+	    blk >= ext2fs_blocks_count(fs->super))
- 		problem = PR_1_ILLEGAL_BLOCK_NUM;
- 
- 	if (problem) {
-@@ -2212,7 +2212,7 @@ static int process_bad_block(ext2_filsys fs,
- 	pctx->blkcount = blockcnt;
- 
- 	if ((blk < fs->super->s_first_data_block) ||
--	    (blk >= fs->super->s_blocks_count)) {
-+	    (blk >= ext2fs_blocks_count(fs->super))) {
- 		if (fix_problem(ctx, PR_1_BB_ILLEGAL_BLOCK_NUM, pctx)) {
- 			*block_nr = 0;
- 			return BLOCK_CHANGED;
-diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index 2ee000e..da868a8 100644
---- a/e2fsck/pass2.c
-+++ b/e2fsck/pass2.c
-@@ -1168,7 +1168,7 @@ static int deallocate_inode_block(ext2_filsys fs,
- 	if (HOLE_BLKADDR(*block_nr))
- 		return 0;
- 	if ((*block_nr < fs->super->s_first_data_block) ||
--	    (*block_nr >= fs->super->s_blocks_count))
-+	    (*block_nr >= ext2fs_blocks_count(fs->super)))
- 		return 0;
- 	ext2fs_unmark_block_bitmap2(ctx->block_found_map, *block_nr);
- 	ext2fs_block_alloc_stats(fs, *block_nr, -1);
-@@ -1357,7 +1357,7 @@ extern int e2fsck_process_bad_inode(e2fsck_t ctx, ext2_ino_t dir,
- 
- 	if (ext2fs_file_acl_block(&inode) &&
- 	    ((ext2fs_file_acl_block(&inode) < fs->super->s_first_data_block) ||
--	     (ext2fs_file_acl_block(&inode) >= fs->super->s_blocks_count))) {
-+	     (ext2fs_file_acl_block(&inode) >= ext2fs_blocks_count(fs->super)))) {
- 		if (fix_problem(ctx, PR_2_FILE_ACL_BAD, &pctx)) {
- 			ext2fs_file_acl_block_set(&inode, 0);
- 			inode_modified++;
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index 811fb2a..23dd5a4 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -131,11 +131,11 @@ static void check_block_bitmaps(e2fsck_t ctx)
- 
- 	if ((fs->super->s_first_data_block <
- 	     ext2fs_get_block_bitmap_start2(ctx->block_found_map)) ||
--	    (fs->super->s_blocks_count-1 >
-+	    (ext2fs_blocks_count(fs->super)-1 >
- 	     ext2fs_get_block_bitmap_end2(ctx->block_found_map))) {
- 		pctx.num = 1;
- 		pctx.blk = fs->super->s_first_data_block;
--		pctx.blk2 = fs->super->s_blocks_count -1;
-+		pctx.blk2 = ext2fs_blocks_count(fs->super) -1;
- 		pctx.ino = ext2fs_get_block_bitmap_start2(ctx->block_found_map);
- 		pctx.ino2 = ext2fs_get_block_bitmap_end2(ctx->block_found_map);
- 		fix_problem(ctx, PR_5_BMAP_ENDPOINTS, &pctx);
-@@ -146,11 +146,11 @@ static void check_block_bitmaps(e2fsck_t ctx)
- 
- 	if ((fs->super->s_first_data_block <
- 	     ext2fs_get_block_bitmap_start2(fs->block_map)) ||
--	    (fs->super->s_blocks_count-1 >
-+	    (ext2fs_blocks_count(fs->super)-1 >
- 	     ext2fs_get_block_bitmap_end2(fs->block_map))) {
- 		pctx.num = 2;
- 		pctx.blk = fs->super->s_first_data_block;
--		pctx.blk2 = fs->super->s_blocks_count -1;
-+		pctx.blk2 = ext2fs_blocks_count(fs->super) -1;
- 		pctx.ino = ext2fs_get_block_bitmap_start2(fs->block_map);
- 		pctx.ino2 = ext2fs_get_block_bitmap_end2(fs->block_map);
- 		fix_problem(ctx, PR_5_BMAP_ENDPOINTS, &pctx);
-@@ -170,7 +170,7 @@ redo_counts:
- 		skip_group++;
- 	super = fs->super->s_first_data_block;
- 	for (i = fs->super->s_first_data_block;
--	     i < fs->super->s_blocks_count;
-+	     i < ext2fs_blocks_count(fs->super);
- 	     i++) {
- 		actual = ext2fs_fast_test_block_bitmap2(ctx->block_found_map, i);
- 
-@@ -258,7 +258,7 @@ redo_counts:
+ 		pctx.blk = (*new_block) + i;
+-		pctx.errcode = io_channel_write_blk(fs->io, pctx.blk,
++		pctx.errcode = io_channel_write_blk64(fs->io, pctx.blk,
+ 					      1, buf);
+ 		if (pctx.errcode)
+ 			fix_problem(ctx, PR_1_RELOC_WRITE_ERR, &pctx);
+diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
+index 8fbdfcd..0d5ce5d 100644
+--- a/e2fsck/pass1b.c
++++ b/e2fsck/pass1b.c
+@@ -684,13 +684,13 @@ static int clone_file_block(ext2_filsys fs,
+ 			printf("Cloning block %u to %u\n", *block_nr,
+ 			       new_block);
+ #endif
+-			retval = io_channel_read_blk(fs->io, *block_nr, 1,
++			retval = io_channel_read_blk64(fs->io, *block_nr, 1,
+ 						     cs->buf);
+ 			if (retval) {
+ 				cs->errcode = retval;
+ 				return BLOCK_ABORT;
+ 			}
+-			retval = io_channel_write_blk(fs->io, new_block, 1,
++			retval = io_channel_write_blk64(fs->io, new_block, 1,
+ 						      cs->buf);
+ 			if (retval) {
+ 				cs->errcode = retval;
+diff --git a/e2fsck/pass3.c b/e2fsck/pass3.c
+index e81575f..5929430 100644
+--- a/e2fsck/pass3.c
++++ b/e2fsck/pass3.c
+@@ -743,7 +743,7 @@ static int expand_dir_proc(ext2_filsys fs,
+ 			return BLOCK_ABORT;
  		}
- 		blocks ++;
- 		if ((blocks == fs->super->s_blocks_per_group) ||
--		    (i == fs->super->s_blocks_count-1)) {
-+		    (i == ext2fs_blocks_count(fs->super)-1)) {
- 			free_array[group] = group_free;
- 			group ++;
- 			blocks = 0;
-@@ -270,7 +270,7 @@ redo_counts:
- 						    fs->group_desc_count*2))
- 					goto errout;
- 			if (csum_flag &&
--			    (i != fs->super->s_blocks_count-1) &&
-+			    (i != ext2fs_blocks_count(fs->super)-1) &&
- 			    (fs->group_desc[group].bg_flags &
- 			     EXT2_BG_BLOCK_UNINIT))
- 				skip_group++;
-@@ -319,13 +319,13 @@ redo_counts:
- 				ext2fs_unmark_valid(fs);
- 		}
+ 		memset(block, 0, fs->blocksize);
+-		retval = io_channel_write_blk(fs->io, new_blk, 1, block);
++		retval = io_channel_write_blk64(fs->io, new_blk, 1, block);
  	}
--	if (free_blocks != fs->super->s_free_blocks_count) {
-+	if (free_blocks != ext2fs_free_blocks_count(fs->super)) {
- 		pctx.group = 0;
--		pctx.blk = fs->super->s_free_blocks_count;
-+		pctx.blk = ext2fs_free_blocks_count(fs->super);
- 		pctx.blk2 = free_blocks;
- 
- 		if (fix_problem(ctx, PR_5_FREE_BLOCK_COUNT, &pctx)) {
--			fs->super->s_free_blocks_count = free_blocks;
-+			ext2fs_free_blocks_count_set(fs->super, free_blocks);
- 			ext2fs_mark_super_dirty(fs);
- 		} else
- 			ext2fs_unmark_valid(fs);
+ 	if (retval) {
+ 		es->err = retval;
 diff --git a/e2fsck/super.c b/e2fsck/super.c
-index 40a5882..cfa9a13 100644
+index b7415e4..ff102eb 100644
 --- a/e2fsck/super.c
 +++ b/e2fsck/super.c
-@@ -77,7 +77,7 @@ static int release_inode_block(ext2_filsys fs,
- 		return 0;
+@@ -103,7 +103,7 @@ static int release_inode_block(ext2_filsys fs,
+ 			int	i, limit;
+ 			blk_t	*bp;
  
- 	if ((blk < fs->super->s_first_data_block) ||
--	    (blk >= fs->super->s_blocks_count)) {
-+	    (blk >= ext2fs_blocks_count(fs->super))) {
- 		fix_problem(ctx, PR_0_ORPHAN_ILLEGAL_BLOCK_NUM, pctx);
- 	return_abort:
- 		pb->abort = 1;
-@@ -376,7 +376,7 @@ static void check_resize_inode(e2fsck_t ctx)
- 	if ((i < EXT2_N_BLOCKS) || !blk || !inode.i_links_count ||
- 	    !(inode.i_mode & LINUX_S_IFREG) ||
- 	    (blk < fs->super->s_first_data_block ||
--	     blk >= fs->super->s_blocks_count)) {
-+	     blk >= ext2fs_blocks_count(fs->super))) {
- 	resize_inode_invalid:
- 		if (fix_problem(ctx, PR_0_RESIZE_INODE_INVALID, &pctx)) {
- 			memset(&inode, 0, sizeof(inode));
-@@ -494,10 +494,10 @@ void check_super_block(e2fsck_t ctx)
- 	 */
- 	check_super_value(ctx, "inodes_count", sb->s_inodes_count,
- 			  MIN_CHECK, 1, 0);
--	check_super_value(ctx, "blocks_count", sb->s_blocks_count,
-+	check_super_value(ctx, "blocks_count", ext2fs_blocks_count(sb),
- 			  MIN_CHECK, 1, 0);
- 	check_super_value(ctx, "first_data_block", sb->s_first_data_block,
--			  MAX_CHECK, 0, sb->s_blocks_count);
-+			  MAX_CHECK, 0, ext2fs_blocks_count(sb));
- 	check_super_value(ctx, "log_block_size", sb->s_log_block_size,
- 			  MIN_CHECK | MAX_CHECK, 0,
- 			  EXT2_MAX_BLOCK_LOG_SIZE - EXT2_MIN_BLOCK_LOG_SIZE);
-@@ -510,8 +510,8 @@ void check_super_block(e2fsck_t ctx)
- 			  MIN_CHECK | MAX_CHECK, 8, bpg_max);
- 	check_super_value(ctx, "inodes_per_group", sb->s_inodes_per_group,
- 			  MIN_CHECK | MAX_CHECK, inodes_per_block, ipg_max);
--	check_super_value(ctx, "r_blocks_count", sb->s_r_blocks_count,
--			  MAX_CHECK, 0, sb->s_blocks_count / 2);
-+	check_super_value(ctx, "r_blocks_count", ext2fs_r_blocks_count(sb),
-+			  MAX_CHECK, 0, ext2fs_blocks_count(sb) / 2);
- 	check_super_value(ctx, "reserved_gdt_blocks",
- 			  sb->s_reserved_gdt_blocks, MAX_CHECK, 0,
- 			  fs->blocksize/4);
-@@ -528,8 +528,8 @@ void check_super_block(e2fsck_t ctx)
- 	}
- 
- 	if ((ctx->flags & E2F_FLAG_GOT_DEVSIZE) &&
--	    (ctx->num_blocks < sb->s_blocks_count)) {
--		pctx.blk = sb->s_blocks_count;
-+	    (ctx->num_blocks < ext2fs_blocks_count(sb))) {
-+		pctx.blk = ext2fs_blocks_count(sb);
- 		pctx.blk2 = ctx->num_blocks;
- 		if (fix_problem(ctx, PR_0_FS_SIZE_WRONG, &pctx)) {
- 			ctx->flags |= E2F_FLAG_ABORT;
-@@ -578,7 +578,7 @@ void check_super_block(e2fsck_t ctx)
- 	 * Verify the group descriptors....
- 	 */
- 	first_block = sb->s_first_data_block;
--	last_block = sb->s_blocks_count-1;
-+	last_block = ext2fs_blocks_count(sb)-1;
- 
- 	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
- 					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
-@@ -693,18 +693,18 @@ void check_super_block(e2fsck_t ctx)
- 	 * inodes; if the filesystem is not unmounted cleanly, the
- 	 * global counts may not be accurate.
- 	 */
--	if ((free_blocks != sb->s_free_blocks_count) ||
-+	if ((free_blocks != ext2fs_free_blocks_count(sb)) ||
- 	    (free_inodes != sb->s_free_inodes_count)) {
- 		if (ctx->options & E2F_OPT_READONLY)
- 			ext2fs_unmark_valid(fs);
- 		else {
--			sb->s_free_blocks_count = free_blocks;
-+			ext2fs_free_blocks_count_set(sb, free_blocks);
- 			sb->s_free_inodes_count = free_inodes;
- 			ext2fs_mark_super_dirty(fs);
- 		}
- 	}
- 
--	if ((sb->s_free_blocks_count > sb->s_blocks_count) ||
-+	if ((ext2fs_free_blocks_count(sb) > ext2fs_blocks_count(sb)) ||
- 	    (sb->s_free_inodes_count > sb->s_inodes_count))
- 		ext2fs_unmark_valid(fs);
- 
-diff --git a/e2fsck/unix.c b/e2fsck/unix.c
-index bb379f3..ae14460 100644
---- a/e2fsck/unix.c
-+++ b/e2fsck/unix.c
-@@ -113,9 +113,9 @@ static void show_stats(e2fsck_t	ctx)
- 	inodes = fs->super->s_inodes_count;
- 	inodes_used = (fs->super->s_inodes_count -
- 		       fs->super->s_free_inodes_count);
--	blocks = fs->super->s_blocks_count;
--	blocks_used = (fs->super->s_blocks_count -
--		       fs->super->s_free_blocks_count);
-+	blocks = ext2fs_blocks_count(fs->super);
-+	blocks_used = (ext2fs_blocks_count(fs->super) -
-+		       ext2fs_free_blocks_count(fs->super));
- 
- 	frag_percent = (10000 * ctx->fs_fragmented) / inodes_used;
- 	frag_percent = (frag_percent + 5) / 10;
-@@ -328,8 +328,9 @@ static void check_if_skip(e2fsck_t ctx)
- 	printf(_("%s: clean, %u/%u files, %u/%u blocks"), ctx->device_name,
- 	       fs->super->s_inodes_count - fs->super->s_free_inodes_count,
- 	       fs->super->s_inodes_count,
--	       fs->super->s_blocks_count - fs->super->s_free_blocks_count,
--	       fs->super->s_blocks_count);
-+	       ext2fs_blocks_count(fs->super) -
-+	       ext2fs_free_blocks_count(fs->super),
-+	       ext2fs_blocks_count(fs->super));
- 	next_check = 100000;
- 	if (fs->super->s_max_mnt_count > 0) {
- 		next_check = fs->super->s_max_mnt_count - fs->super->s_mnt_count;
-@@ -1278,7 +1279,7 @@ print_unsupp_features:
- 	if (ctx->flags & E2F_FLAG_JOURNAL_INODE) {
- 		if (fix_problem(ctx, PR_6_RECREATE_JOURNAL, &pctx)) {
- 			if (journal_size < 1024)
--				journal_size = ext2fs_default_journal_size(fs->super->s_blocks_count);
-+				journal_size = ext2fs_default_journal_size(ext2fs_blocks_count(fs->super));
- 			if (journal_size < 0) {
- 				fs->super->s_feature_compat &=
- 					~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index 90599b8..2ceab96 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -156,7 +156,7 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
- 		map = fs->block_map;
- 	if (!map)
- 		return EXT2_ET_NO_BLOCK_BITMAP;
--	if (!goal || (goal >= fs->super->s_blocks_count))
-+	if (!goal || (goal >= ext2fs_blocks_count(fs->super)))
- 		goal = fs->super->s_first_data_block;
- 	i = goal;
- 	check_block_uninit(fs, map,
-@@ -174,7 +174,7 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
- 			return 0;
- 		}
- 		i++;
--		if (i >= fs->super->s_blocks_count)
-+		if (i >= ext2fs_blocks_count(fs->super))
- 			i = fs->super->s_first_data_block;
- 	} while (i != goal);
- 	return EXT2_ET_BLOCK_ALLOC_FAIL;
-@@ -269,7 +269,7 @@ errcode_t ext2fs_get_free_blocks2(ext2_filsys fs, blk64_t start, blk64_t finish,
- 	if (!num)
- 		num = 1;
- 	do {
--		if (b+num-1 > fs->super->s_blocks_count)
-+		if (b+num-1 > ext2fs_blocks_count(fs->super))
- 			b = fs->super->s_first_data_block;
- 		if (ext2fs_fast_test_block_bitmap_range2(map, (blk_t) b,
- 							(blk_t) num)) {
-diff --git a/lib/ext2fs/alloc_sb.c b/lib/ext2fs/alloc_sb.c
-index ddf4644..14c8a25 100644
---- a/lib/ext2fs/alloc_sb.c
-+++ b/lib/ext2fs/alloc_sb.c
-@@ -64,7 +64,7 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
- 		if (fs->super->s_reserved_gdt_blocks && fs->block_map == bmap)
- 			fs->group_desc[group].bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
- 		for (j=0; j < old_desc_blocks; j++)
--			if (old_desc_blk + j < fs->super->s_blocks_count)
-+			if (old_desc_blk + j < ext2fs_blocks_count(fs->super))
- 				ext2fs_mark_block_bitmap2(bmap,
- 							 old_desc_blk + j);
- 	}
-@@ -72,7 +72,7 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
- 		ext2fs_mark_block_bitmap2(bmap, new_desc_blk);
- 
- 	if (group == fs->group_desc_count-1) {
--		num_blocks = (fs->super->s_blocks_count -
-+		num_blocks = (ext2fs_blocks_count(fs->super) -
- 			     fs->super->s_first_data_block) %
- 			fs->super->s_blocks_per_group;
- 		if (!num_blocks)
-diff --git a/lib/ext2fs/block.c b/lib/ext2fs/block.c
-index eafb4cb..686a036 100644
---- a/lib/ext2fs/block.c
-+++ b/lib/ext2fs/block.c
-@@ -78,7 +78,7 @@ static int block_iterate_ind(blk_t *ind_block, blk_t ref_block,
- 		ctx->bcount += limit;
- 		return ret;
- 	}
--	if (*ind_block >= ctx->fs->super->s_blocks_count ||
-+	if (*ind_block >= ext2fs_blocks_count(ctx->fs->super) ||
- 	    *ind_block < ctx->fs->super->s_first_data_block) {
- 		ctx->errcode = EXT2_ET_BAD_IND_BLOCK;
- 		ret |= BLOCK_ERROR;
-@@ -166,7 +166,7 @@ static int block_iterate_dind(blk_t *dind_block, blk_t ref_block,
- 		ctx->bcount += limit*limit;
- 		return ret;
- 	}
--	if (*dind_block >= ctx->fs->super->s_blocks_count ||
-+	if (*dind_block >= ext2fs_blocks_count(ctx->fs->super) ||
- 	    *dind_block < ctx->fs->super->s_first_data_block) {
- 		ctx->errcode = EXT2_ET_BAD_DIND_BLOCK;
- 		ret |= BLOCK_ERROR;
-@@ -252,7 +252,7 @@ static int block_iterate_tind(blk_t *tind_block, blk_t ref_block,
- 		ctx->bcount += limit*limit*limit;
- 		return ret;
- 	}
--	if (*tind_block >= ctx->fs->super->s_blocks_count ||
-+	if (*tind_block >= ext2fs_blocks_count(ctx->fs->super) ||
- 	    *tind_block < ctx->fs->super->s_first_data_block) {
- 		ctx->errcode = EXT2_ET_BAD_TIND_BLOCK;
- 		ret |= BLOCK_ERROR;
+-			pb->errcode = io_channel_read_blk(fs->io, blk, 1,
++			pb->errcode = io_channel_read_blk64(fs->io, blk, 1,
+ 							pb->buf);
+ 			if (pb->errcode)
+ 				goto return_abort;
+@@ -125,13 +125,13 @@ static int release_inode_block(ext2_filsys fs,
+ 		 * it here.
+ 		 */
+ 		if ((blockcnt == pb->truncate_block) && pb->truncate_offset) {
+-			pb->errcode = io_channel_read_blk(fs->io, blk, 1,
++			pb->errcode = io_channel_read_blk64(fs->io, blk, 1,
+ 							pb->buf);
+ 			if (pb->errcode)
+ 				goto return_abort;
+ 			memset(pb->buf + pb->truncate_offset, 0,
+ 			       fs->blocksize - pb->truncate_offset);
+-			pb->errcode = io_channel_write_blk(fs->io, blk, 1,
++			pb->errcode = io_channel_write_blk64(fs->io, blk, 1,
+ 							 pb->buf);
+ 			if (pb->errcode)
+ 				goto return_abort;
+diff --git a/e2fsck/util.c b/e2fsck/util.c
+index 256100c..be46fd3 100644
+--- a/e2fsck/util.c
++++ b/e2fsck/util.c
+@@ -482,7 +482,7 @@ blk_t get_backup_sb(e2fsck_t ctx, ext2_filsys fs, const char *name,
+ 		if (blocksize == 1024)
+ 			superblock++;
+ 		io_channel_set_blksize(io, blocksize);
+-		if (io_channel_read_blk(io, superblock,
++		if (io_channel_read_blk64(io, superblock,
+ 					-SUPERBLOCK_SIZE, buf))
+ 			continue;
+ #ifdef WORDS_BIGENDIAN
+@@ -582,7 +582,7 @@ errcode_t e2fsck_zero_blocks(ext2_filsys fs, blk_t blk, int num,
+ 		count = num - j;
+ 		if (count > STRIDE_LENGTH)
+ 			count = STRIDE_LENGTH;
+-		retval = io_channel_write_blk(fs->io, blk, count, buf);
++		retval = io_channel_write_blk64(fs->io, blk, count, buf);
+ 		if (retval) {
+ 			if (ret_count)
+ 				*ret_count = count;
 diff --git a/lib/ext2fs/bmove.c b/lib/ext2fs/bmove.c
-index f685f9d..32fbbcb 100644
+index 32fbbcb..61629ea 100644
 --- a/lib/ext2fs/bmove.c
 +++ b/lib/ext2fs/bmove.c
-@@ -50,7 +50,7 @@ static int process_block(ext2_filsys fs, blk_t	*block_nr,
- 	 */
- 	if (ext2fs_test_block_bitmap2(pb->reserve, block)) {
- 		do {
--			if (++block >= fs->super->s_blocks_count)
-+			if (++block >= ext2fs_blocks_count(fs->super))
- 				block = fs->super->s_first_data_block;
- 			if (block == orig) {
- 				pb->error = EXT2_ET_BLOCK_ALLOC_FAIL;
-diff --git a/lib/ext2fs/check_desc.c b/lib/ext2fs/check_desc.c
-index f863c77..c3f0f7a 100644
---- a/lib/ext2fs/check_desc.c
-+++ b/lib/ext2fs/check_desc.c
-@@ -35,7 +35,7 @@ errcode_t ext2fs_check_desc(ext2_filsys fs)
- 	errcode_t retval;
- 	dgrp_t i;
- 	blk_t first_block = fs->super->s_first_data_block;
--	blk_t last_block = fs->super->s_blocks_count-1;
-+	blk_t last_block = ext2fs_blocks_count(fs->super)-1;
- 	blk_t blk, b;
- 	int j;
+@@ -59,7 +59,7 @@ static int process_block(ext2_filsys fs, blk_t	*block_nr,
+ 		} while (ext2fs_test_block_bitmap2(pb->reserve, block) ||
+ 			 ext2fs_test_block_bitmap2(pb->alloc_map, block));
  
-@@ -54,7 +54,7 @@ errcode_t ext2fs_check_desc(ext2_filsys fs)
- 			first_block = ext2fs_group_first_block(fs, i);
- 			last_block = ext2fs_group_last_block(fs, i);
- 			if (i == (fs->group_desc_count - 1))
--				last_block = fs->super->s_blocks_count-1;
-+				last_block = ext2fs_blocks_count(fs->super)-1;
- 		}
- 
- 		/*
+-		retval = io_channel_read_blk(fs->io, orig, 1, pb->buf);
++		retval = io_channel_read_blk64(fs->io, orig, 1, pb->buf);
+ 		if (retval) {
+ 			pb->error = retval;
+ 			return BLOCK_ABORT;
 diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
-index 226d04e..b5b32b2 100644
+index b5b32b2..2cf38ee 100644
 --- a/lib/ext2fs/closefs.c
 +++ b/lib/ext2fs/closefs.c
-@@ -151,9 +151,9 @@ int ext2fs_super_and_bgd_loc(ext2_filsys fs,
- 					&ret_used_blks);
+@@ -194,7 +194,7 @@ static errcode_t write_primary_superblock(ext2_filsys fs,
  
- 	if (group == fs->group_desc_count-1) {
--		numblocks = (fs->super->s_blocks_count -
--			     fs->super->s_first_data_block) %
--			fs->super->s_blocks_per_group;
-+		numblocks = (ext2fs_blocks_count(fs->super) -
-+			     (blk64_t) fs->super->s_first_data_block) %
-+			(blk64_t) fs->super->s_blocks_per_group;
- 		if (!numblocks)
- 			numblocks = fs->super->s_blocks_per_group;
- 	} else
-diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
-index b1025e2..9ba37b2 100644
---- a/lib/ext2fs/ext_attr.c
-+++ b/lib/ext2fs/ext_attr.c
-@@ -117,7 +117,7 @@ errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
- 	struct ext2_ext_attr_header *header;
- 	char	*buf = 0;
+ 	if (!fs->io->manager->write_byte || !fs->orig_super) {
+ 		io_channel_set_blksize(fs->io, SUPERBLOCK_OFFSET);
+-		retval = io_channel_write_blk(fs->io, 1, -SUPERBLOCK_SIZE,
++		retval = io_channel_write_blk64(fs->io, 1, -SUPERBLOCK_SIZE,
+ 					      super);
+ 		io_channel_set_blksize(fs->io, fs->blocksize);
+ 		return retval;
+@@ -257,7 +257,7 @@ static errcode_t write_backup_super(ext2_filsys fs, dgrp_t group,
+ 	fs->super->s_block_group_nr = sgrp;
+ #endif
  
--	if ((blk >= fs->super->s_blocks_count) ||
-+	if ((blk >= ext2fs_blocks_count(fs->super)) ||
- 	    (blk < fs->super->s_first_data_block))
- 		return EXT2_ET_BAD_EA_BLOCK_NUM;
+-	return io_channel_write_blk(fs->io, group_block, -SUPERBLOCK_SIZE,
++	return io_channel_write_blk64(fs->io, group_block, -SUPERBLOCK_SIZE,
+ 				    super_shadow);
+ }
  
-diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
-index fe24e56..465f183 100644
---- a/lib/ext2fs/icount.c
-+++ b/lib/ext2fs/icount.c
-@@ -744,7 +744,7 @@ static void setup(void)
- 	initialize_ext2_error_table();
+@@ -353,7 +353,7 @@ errcode_t ext2fs_flush(ext2_filsys fs)
+ 			continue;
+ 		if ((old_desc_blk) &&
+ 		    (!(fs->flags & EXT2_FLAG_MASTER_SB_ONLY) || (i == 0))) {
+-			retval = io_channel_write_blk(fs->io,
++			retval = io_channel_write_blk64(fs->io,
+ 			      old_desc_blk, old_desc_blocks, group_ptr);
+ 			if (retval)
+ 				goto errout;
+@@ -361,7 +361,7 @@ errcode_t ext2fs_flush(ext2_filsys fs)
+ 		if (new_desc_blk) {
+ 			int meta_bg = i / EXT2_DESC_PER_BLOCK(fs->super);
  
- 	memset(&param, 0, sizeof(param));
--	param.s_blocks_count = 12000;
-+	ext2fs_blocks_count_set(&param, 12000);
+-			retval = io_channel_write_blk(fs->io, new_desc_blk,
++			retval = io_channel_write_blk64(fs->io, new_desc_blk,
+ 				1, group_ptr + (meta_bg*fs->blocksize));
+ 			if (retval)
+ 				goto errout;
+diff --git a/lib/ext2fs/dirblock.c b/lib/ext2fs/dirblock.c
+index c81d7fd..888cf45 100644
+--- a/lib/ext2fs/dirblock.c
++++ b/lib/ext2fs/dirblock.c
+@@ -108,7 +108,7 @@ errcode_t ext2fs_write_dir_block3(ext2_filsys fs, blk64_t block,
+ 	ext2fs_free_mem(&buf);
+ 	return retval;
+ #else
+- 	return io_channel_write_blk(fs->io, block, 1, (char *) inbuf);
++	return io_channel_write_blk64(fs->io, block, 1, (char *) inbuf);
+ #endif
+ }
  
- 	retval = ext2fs_initialize("test fs", EXT2_FLAG_NEW_BITMAPS, &param,
- 				   test_io_manager, &test_fs);
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 929e5cd..63b752f 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -431,7 +431,7 @@ retry:
+ 		    (handle->fs->io != handle->fs->image_io))
+ 			memset(newpath->buf, 0, handle->fs->blocksize);
+ 		else {
+-			retval = io_channel_read_blk(handle->fs->io,
++			retval = io_channel_read_blk64(handle->fs->io,
+ 						     blk, 1, newpath->buf);
+ 			if (retval)
+ 				return retval;
+@@ -539,7 +539,7 @@ static errcode_t update_path(ext2_extent_handle_t handle)
+ 		blk = ext2fs_le32_to_cpu(ix->ei_leaf) +
+ 			((__u64) ext2fs_le16_to_cpu(ix->ei_leaf_hi) << 32);
+ 
+-		retval = io_channel_write_blk(handle->fs->io,
++		retval = io_channel_write_blk64(handle->fs->io,
+ 				      blk, 1, handle->path[handle->level].buf);
+ 	}
+ 	return retval;
+@@ -929,7 +929,8 @@ static errcode_t extent_node_split(ext2_extent_handle_t handle)
+ 	new_node_start = ext2fs_le32_to_cpu(EXT_FIRST_INDEX(neweh)->ei_block);
+ 
+ 	/* ...and write the new node block out to disk. */
+-	retval = io_channel_write_blk(handle->fs->io, new_node_pblk, 1, block_buf);
++	retval = io_channel_write_blk64(handle->fs->io, new_node_pblk, 1,
++					block_buf);
+ 
+ 	if (retval)
+ 		goto done;
+diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
+index cdfa19b..f963159 100644
+--- a/lib/ext2fs/inode.c
++++ b/lib/ext2fs/inode.c
+@@ -365,7 +365,7 @@ static errcode_t get_next_blocks(ext2_inode_scan scan)
+ 		memset(scan->inode_buffer, 0,
+ 		       (size_t) num_blocks * scan->fs->blocksize);
+ 	} else {
+-		retval = io_channel_read_blk(scan->fs->io,
++		retval = io_channel_read_blk64(scan->fs->io,
+ 					     scan->current_block,
+ 					     (int) num_blocks,
+ 					     scan->inode_buffer);
+@@ -586,7 +586,7 @@ errcode_t ext2fs_read_inode_full(ext2_filsys fs, ext2_ino_t ino,
+ 			clen = fs->blocksize - offset;
+ 
+ 		if (block_nr != fs->icache->buffer_blk) {
+-			retval = io_channel_read_blk(io, block_nr, 1,
++			retval = io_channel_read_blk64(io, block_nr, 1,
+ 						     fs->icache->buffer);
+ 			if (retval)
+ 				return retval;
+@@ -706,7 +706,7 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
+ 			clen = fs->blocksize - offset;
+ 
+ 		if (fs->icache->buffer_blk != block_nr) {
+-			retval = io_channel_read_blk(fs->io, block_nr, 1,
++			retval = io_channel_read_blk64(fs->io, block_nr, 1,
+ 						     fs->icache->buffer);
+ 			if (retval)
+ 				goto errout;
+@@ -717,7 +717,7 @@ errcode_t ext2fs_write_inode_full(ext2_filsys fs, ext2_ino_t ino,
+ 		memcpy((char *) fs->icache->buffer + (unsigned) offset,
+ 		       ptr, clen);
+ 
+-		retval = io_channel_write_blk(fs->io, block_nr, 1,
++		retval = io_channel_write_blk64(fs->io, block_nr, 1,
+ 					      fs->icache->buffer);
+ 		if (retval)
+ 			goto errout;
 diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
-index 10dac51..5222fd1 100644
+index 5222fd1..19b099a 100644
 --- a/lib/ext2fs/mkjournal.c
 +++ b/lib/ext2fs/mkjournal.c
-@@ -321,7 +321,7 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
- 	 * the filesystem.  Pick a group that has the largest number
- 	 * of free blocks.
- 	 */
--	group = ext2fs_group_of_blk(fs, (fs->super->s_blocks_count -
-+	group = ext2fs_group_of_blk(fs, (ext2fs_blocks_count(fs->super) -
- 					 fs->super->s_first_data_block) / 2);
- 	log_flex = 1 << fs->super->s_log_groups_per_flex;
- 	if (fs->super->s_log_groups_per_flex && (group > log_flex)) {
+@@ -243,7 +243,7 @@ static int mkjournal_proc(ext2_filsys	fs,
+ 	es->newblocks++;
+ 	retval = 0;
+ 	if (blockcnt <= 0)
+-		retval = io_channel_write_blk(fs->io, new_blk, 1, es->buf);
++		retval = io_channel_write_blk64(fs->io, new_blk, 1, es->buf);
+ 	else {
+ 		if (es->zero_count) {
+ 			if ((es->blk_to_zero + es->zero_count == new_blk) &&
+@@ -423,7 +423,8 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
+ 	start = 1;
+ 	if (journal_dev->blocksize == 1024)
+ 		start++;
+-	if ((retval = io_channel_read_blk(journal_dev->io, start, -1024, buf)))
++	if ((retval = io_channel_read_blk64(journal_dev->io, start, -1024,
++					    buf)))
+ 		return retval;
+ 
+ 	jsb = (journal_superblock_t *) buf;
+@@ -448,7 +449,7 @@ errcode_t ext2fs_add_journal_device(ext2_filsys fs, ext2_filsys journal_dev)
+ 	}
+ 
+ 	/* Writeback the journal superblock */
+-	if ((retval = io_channel_write_blk(journal_dev->io, start, -1024, buf)))
++	if ((retval = io_channel_write_blk64(journal_dev->io, start, -1024, buf)))
+ 		return retval;
+ 
+ 	fs->super->s_journal_inum = 0;
 diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
-index 9607cde..c1617f3 100644
+index c1617f3..b00380a 100644
 --- a/lib/ext2fs/openfs.c
 +++ b/lib/ext2fs/openfs.c
-@@ -54,7 +54,7 @@ blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs, blk64_t group_block,
- 	 */
- 	if (group_block != fs->super->s_first_data_block &&
- 	    ((ret_blk + fs->super->s_blocks_per_group) <
--	     fs->super->s_blocks_count))
-+	     ext2fs_blocks_count(fs->super)))
- 		ret_blk += fs->super->s_blocks_per_group;
- 	return ret_blk;
- }
-@@ -285,9 +285,9 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
- 		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
- 		goto cleanup;
- 	}
--	fs->group_desc_count = ext2fs_div_ceil(fs->super->s_blocks_count -
--					       fs->super->s_first_data_block,
--					       blocks_per_group);
-+	fs->group_desc_count = ext2fs_div64_ceil(ext2fs_blocks_count(fs->super) -
-+						 fs->super->s_first_data_block,
-+						 blocks_per_group);
- 	fs->desc_blocks = ext2fs_div_ceil(fs->group_desc_count,
- 					  EXT2_DESC_PER_BLOCK(fs->super));
- 	retval = ext2fs_get_array(fs->desc_blocks, fs->blocksize,
+@@ -300,7 +300,7 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 	groups_per_block = EXT2_DESC_PER_BLOCK(fs->super);
+ 	for (i=0 ; i < fs->desc_blocks; i++) {
+ 		blk = ext2fs_descriptor_block_loc(fs, group_block, i);
+-		retval = io_channel_read_blk(fs->io, blk, 1, dest);
++		retval = io_channel_read_blk64(fs->io, blk, 1, dest);
+ 		if (retval)
+ 			goto cleanup;
+ #ifdef WORDS_BIGENDIAN
 diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
-index c859cca..d994fe3 100644
+index ff56dcd..a7c4c25 100644
 --- a/lib/ext2fs/rw_bitmaps.c
 +++ b/lib/ext2fs/rw_bitmaps.c
-@@ -81,9 +81,9 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+@@ -113,7 +113,7 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
  
- 		if (i == fs->group_desc_count - 1) {
- 			/* Force bitmap padding for the last group */
--			nbits = ((fs->super->s_blocks_count
--				  - fs->super->s_first_data_block)
--				 % EXT2_BLOCKS_PER_GROUP(fs->super));
-+			nbits = ((ext2fs_blocks_count(fs->super)
-+				  - (__u64) fs->super->s_first_data_block)
-+				 % (__u64) EXT2_BLOCKS_PER_GROUP(fs->super));
- 			if (nbits)
- 				for (j = nbits; j < fs->blocksize * 8; j++)
- 					ext2fs_set_bit(j, block_buf);
-diff --git a/lib/ext2fs/tst_badblocks.c b/lib/ext2fs/tst_badblocks.c
-index 358da20..72b14b7 100644
---- a/lib/ext2fs/tst_badblocks.c
-+++ b/lib/ext2fs/tst_badblocks.c
-@@ -227,7 +227,7 @@ int file_test_invalid(badblocks_list bb)
- 	fs->super = malloc(SUPERBLOCK_SIZE);
- 	memset(fs->super, 0, SUPERBLOCK_SIZE);
- 	fs->super->s_first_data_block = 1;
--	fs->super->s_blocks_count = 100;
-+	ext2fs_blocks_count_set(fs->super, 100);
- 
- 	f = tmpfile();
- 	if (!f) {
-diff --git a/lib/ext2fs/tst_csum.c b/lib/ext2fs/tst_csum.c
-index 0ffd92b..56148b8 100644
---- a/lib/ext2fs/tst_csum.c
-+++ b/lib/ext2fs/tst_csum.c
-@@ -57,7 +57,7 @@ int main(int argc, char **argv)
- 	__u16 csum1, csum2, csum_known = 0xd3a4;
- 
- 	memset(&param, 0, sizeof(param));
--	param.s_blocks_count = 32768;
-+	ext2fs_blocks_count_set(&param, 32768);
- 
- 	retval = ext2fs_initialize("test fs", EXT2_FLAG_NEW_BITMAPS, &param,
- 				   test_io_manager, &fs);
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index a3388f6..9870cfd 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -199,9 +199,9 @@ static void test_disk(ext2_filsys fs, badblocks_list *bb_list)
- 	errcode_t	retval;
- 	char		buf[1024];
- 
--	sprintf(buf, "badblocks -b %d -X %s%s%s %u", fs->blocksize,
-+	sprintf(buf, "badblocks -b %d -X %s%s%s %llu", fs->blocksize,
- 		quiet ? "" : "-s ", (cflag > 1) ? "-w " : "",
--		fs->device_name, fs->super->s_blocks_count-1);
-+		fs->device_name, ext2fs_blocks_count(fs->super)-1);
- 	if (verbose)
- 		printf(_("Running command: %s\n"), buf);
- 	f = popen(buf, "r");
-@@ -544,7 +544,7 @@ static void create_journal_dev(ext2_filsys fs)
- 	int			c, count, err_count;
- 
- 	retval = ext2fs_create_journal_superblock(fs,
--				  fs->super->s_blocks_count, 0, &buf);
-+				  ext2fs_blocks_count(fs->super), 0, &buf);
- 	if (retval) {
- 		com_err("create_journal_dev", retval,
- 			_("while initializing journal superblock"));
-@@ -554,10 +554,10 @@ static void create_journal_dev(ext2_filsys fs)
- 		memset(&progress, 0, sizeof(progress));
- 	else
- 		progress_init(&progress, _("Zeroing journal device: "),
--			      fs->super->s_blocks_count);
-+			      ext2fs_blocks_count(fs->super));
- 
- 	blk = 0;
--	count = fs->super->s_blocks_count;
-+	count = ext2fs_blocks_count(fs->super);
- 	while (count > 0) {
- 		if (count > 1024)
- 			c = 1024;
+ 		blk = ext2fs_inode_bitmap_loc(fs, i);
+ 		if (blk) {
+-			retval = io_channel_write_blk(fs->io, blk, 1,
++			retval = io_channel_write_blk64(fs->io, blk, 1,
+ 						      inode_buf);
+ 			if (retval)
+ 				return EXT2_ET_INODE_BITMAP_WRITE;
+@@ -195,7 +195,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 		blk = (fs->image_header->offset_inodemap / fs->blocksize);
+ 		ino_cnt = fs->super->s_inodes_count;
+ 		while (inode_nbytes > 0) {
+-			retval = io_channel_read_blk(fs->image_io, blk++,
++			retval = io_channel_read_blk64(fs->image_io, blk++,
+ 						     1, inode_bitmap);
+ 			if (retval)
+ 				goto cleanup;
+@@ -215,7 +215,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 		blk_cnt = EXT2_BLOCKS_PER_GROUP(fs->super) *
+ 			fs->group_desc_count;
+ 		while (block_nbytes > 0) {
+-			retval = io_channel_read_blk(fs->image_io, blk++,
++			retval = io_channel_read_blk64(fs->image_io, blk++,
+ 						     1, block_bitmap);
+ 			if (retval)
+ 				goto cleanup;
+@@ -241,7 +241,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 			    ext2fs_group_desc_csum_verify(fs, i))
+ 				blk = 0;
+ 			if (blk) {
+-				retval = io_channel_read_blk(fs->io, blk,
++				retval = io_channel_read_blk64(fs->io, blk,
+ 					     -block_nbytes, block_bitmap);
+ 				if (retval) {
+ 					retval = EXT2_ET_BLOCK_BITMAP_READ;
+@@ -263,7 +263,7 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 			    ext2fs_group_desc_csum_verify(fs, i))
+ 				blk = 0;
+ 			if (blk) {
+-				retval = io_channel_read_blk(fs->io, blk,
++				retval = io_channel_read_blk64(fs->io, blk,
+ 					     -inode_nbytes, inode_bitmap);
+ 				if (retval) {
+ 					retval = EXT2_ET_INODE_BITMAP_READ;
 -- 
 1.5.6.5
 
