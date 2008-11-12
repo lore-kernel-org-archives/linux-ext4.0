@@ -1,8 +1,8 @@
 From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: [PATCH 1/3][RFC] vfs: release block-device-mapping buffer_heads
+Subject: [PATCH 2/3][RFC]  ext3: release block-device-mapping buffer_heads
  which have the filesystem private data for avoiding oom-killer
-Date: Wed, 12 Nov 2008 16:51:54 +0900
-Message-ID: <20081112165154.61625b15.toshi.okajima@jp.fujitsu.com>
+Date: Wed, 12 Nov 2008 16:53:17 +0900
+Message-ID: <20081112165317.f0c86284.toshi.okajima@jp.fujitsu.com>
 References: <20081017.223716.147444348.00960188@stratos.soft.fujitsu.com>
 	<20081020160249.ff41f762.akpm@linux-foundation.org>
 	<20081023174101.85b59177.toshi.okajima@jp.fujitsu.com>
@@ -17,184 +17,84 @@ Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
 To: akpm@linux-foundation.org, tytso@mit.edu, viro@zeniv.linux.org.uk,
 	sct@redhat.com, adilger@sun.com
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:50961 "EHLO
+	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751161AbYKLICs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Nov 2008 03:02:48 -0500
 In-Reply-To: <4913B35A.8080203@jp.fujitsu.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-[PATCH 1/3] vfs: release block-device-mapping buffer_heads which have the filesystem 
+[PATCH 2/3] ext3: release block-device-mapping buffer_heads which have the filesystem 
 private data for avoiding oom-killer
 
-Implement blkdev_releasepage() to release the buffer_heads and page after we 
-release private data which are a client's. One of the clients is a filesystem.
+Implement releasepage() of a client of a block device to release its private 
+data (journal_heads) and the page. The client is an ext3 filesystem.
 
-blkdev_releasepage() can call the client's releasepage() which is registered 
-by blkdev_register_client_releasepage() to release its private data.
+This function is called from releasepage() of the block-device mapping, 
+blkdev_releasepage().
 
 Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 ---
- fs/block_dev.c     |   62 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/super.c         |   22 ++++++++++++++++++
- include/linux/fs.h |    9 +++++++
- 3 files changed, 93 insertions(+)
+ fs/ext3/inode.c         |   16 ++++++++++++++++
+ fs/ext3/super.c         |    2 ++
+ include/linux/ext3_fs.h |    2 ++
+ 3 files changed, 20 insertions(+)
 
-diff -Nurp linux-2.6.28-rc4.orig/fs/block_dev.c linux-2.6.28-rc4/fs/block_dev.c
---- linux-2.6.28-rc4.orig/fs/block_dev.c	2008-11-10 09:36:15.000000000 +0900
-+++ linux-2.6.28-rc4/fs/block_dev.c	2008-11-10 18:33:52.000000000 +0900
-@@ -29,6 +29,9 @@
- 
- struct bdev_inode {
- 	struct block_device bdev;
-+	void *client;
-+	int (*client_releasepage)(void*, struct page*, gfp_t);
-+	rwlock_t client_lock;
- 	struct inode vfs_inode;
- };
- 
-@@ -260,6 +263,9 @@ static struct inode *bdev_alloc_inode(st
- 	struct bdev_inode *ei = kmem_cache_alloc(bdev_cachep, GFP_KERNEL);
- 	if (!ei)
- 		return NULL;
-+	ei->client = NULL;
-+	ei->client_releasepage = NULL;
-+	rwlock_init(&ei->client_lock);
- 	return &ei->vfs_inode;
+diff -Nurp linux-2.6.28-rc4.orig/fs/ext3/inode.c linux-2.6.28-rc4/fs/ext3/inode.c
+--- linux-2.6.28-rc4.orig/fs/ext3/inode.c	2008-11-10 09:36:15.000000000 +0900
++++ linux-2.6.28-rc4/fs/ext3/inode.c	2008-11-11 09:31:13.000000000 +0900
+@@ -1680,6 +1680,28 @@ static int ext3_releasepage(struct page 
  }
  
-@@ -1208,6 +1214,61 @@ static long block_ioctl(struct file *fil
- 	return blkdev_ioctl(bdev, mode, cmd, arg);
- }
- 
-+/*
-+ * blkdev_releasepage: execute ei->client_releasepage() if it exists.
-+ * Otherwise, execute try_to_free_buffers().
-+ * ei->client_releasepage() releases private client's page if possible.
-+ * Because a buffer_head's using counter is bigger than 0 if a client has
-+ * a page for private usage. If so, try_to_free_buffers() cannot release it.
-+ * Therefore a client must try to release a page itself.
+ /*
++ * ext3_release_metadata: try to release own page.
++ * The mapping of this page is block device's. Therefore try_to_free_buffers()
++ * cannot release it. As a result, a function which releases own page is
++ * required.
 + */
-+static int blkdev_releasepage(struct page *page, gfp_t wait)
++int ext3_release_metadata(void *client, struct page *page, gfp_t wait)
 +{
-+	struct bdev_inode *ei = BDEV_I(page->mapping->host);
-+	int ret;
++	struct super_block *sb = (struct super_block*)client;
++	journal_t *journal;
 +
-+	read_lock(&ei->client_lock);
-+	if (ei->client_releasepage != NULL)
-+		ret = (*ei->client_releasepage)(ei->client, page, wait);
++	WARN_ON(PageChecked(page));
++	if (!page_has_buffers(page))
++		return 0;
++	BUG_ON(EXT3_SB(sb) == NULL);
++	journal = EXT3_SB(sb)->s_journal;
++	if (journal != NULL)
++		return journal_try_to_free_buffers(journal, page, wait);
 +	else
-+		ret = try_to_free_buffers(page);
-+	read_unlock(&ei->client_lock);
-+	return ret;
++		return try_to_free_buffers(page);
 +}
 +
 +/*
-+ * blkdev_register_client_releasepage: register client_releasepage.
-+ */
-+int blkdev_register_client_releasepage(struct block_device *bdev,
-+	void *client, int (*releasepage)(void*, struct page*, gfp_t))
-+{
-+	struct bdev_inode *ei = BDEV_I(bdev->bd_inode);
-+	int ret = 1;
-+
-+	write_lock(&ei->client_lock);
-+	if (ei->client == NULL && ei->client_releasepage == NULL) {
-+		ei->client = client;
-+		ei->client_releasepage = releasepage;
-+	} else if (ei->client != client 
-+			|| ei->client_releasepage != releasepage)
-+		ret = 0;
-+	write_unlock(&ei->client_lock);
-+	return ret;
-+}
-+
-+/*
-+ * blkdev_unregister_client_releasepage: unregister client_releasepage.
-+ */
-+void blkdev_unregister_client_releasepage(struct block_device *bdev)
-+{
-+	struct bdev_inode *ei = BDEV_I(bdev->bd_inode);
-+
-+	write_lock(&ei->client_lock);
-+	ei->client = NULL;
-+	ei->client_releasepage = NULL;
-+	write_unlock(&ei->client_lock);
-+}
-+
- static const struct address_space_operations def_blk_aops = {
- 	.readpage	= blkdev_readpage,
- 	.writepage	= blkdev_writepage,
-@@ -1215,6 +1276,7 @@ static const struct address_space_operat
- 	.write_begin	= blkdev_write_begin,
- 	.write_end	= blkdev_write_end,
- 	.writepages	= generic_writepages,
-+	.releasepage	= blkdev_releasepage,
- 	.direct_IO	= blkdev_direct_IO,
+  * If the O_DIRECT write will extend the file then add this inode to the
+  * orphan list.  So recovery will truncate it back to the original size
+  * if the machine crashes during the write.
+diff -Nurp linux-2.6.28-rc4.orig/fs/ext3/super.c linux-2.6.28-rc4/fs/ext3/super.c
+--- linux-2.6.28-rc4.orig/fs/ext3/super.c	2008-11-10 09:36:15.000000000 +0900
++++ linux-2.6.28-rc4/fs/ext3/super.c	2008-11-11 09:01:53.000000000 +0900
+@@ -2972,6 +2972,8 @@ static struct file_system_type ext3_fs_t
+ 	.name		= "ext3",
+ 	.get_sb		= ext3_get_sb,
+ 	.kill_sb	= kill_block_super,
++	.release_metadata 
++			= ext3_release_metadata,
+ 	.fs_flags	= FS_REQUIRES_DEV,
  };
  
-diff -Nurp linux-2.6.28-rc4.orig/fs/super.c linux-2.6.28-rc4/fs/super.c
---- linux-2.6.28-rc4.orig/fs/super.c	2008-11-10 09:36:15.000000000 +0900
-+++ linux-2.6.28-rc4/fs/super.c	2008-11-11 09:25:04.000000000 +0900
-@@ -801,6 +801,18 @@ int get_sb_bdev(struct file_system_type 
+diff -Nurp linux-2.6.28-rc4.orig/include/linux/ext3_fs.h linux-2.6.28-rc4/include/linux/ext3_fs.h
+--- linux-2.6.28-rc4.orig/include/linux/ext3_fs.h	2008-11-10 09:36:15.000000000 +0900
++++ linux-2.6.28-rc4/include/linux/ext3_fs.h	2008-11-10 18:33:52.000000000 +0900
+@@ -841,6 +841,8 @@ extern void ext3_get_inode_flags(struct 
+ extern void ext3_set_aops(struct inode *inode);
+ extern int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		       u64 start, u64 len);
++extern int ext3_release_metadata(void *client, struct page *page, 
++			gfp_t wait);
  
- 		s->s_flags |= MS_ACTIVE;
- 	}
-+	/*
-+	 * register a client function which releases a page whose mapping is
-+	 * block device 
-+	 */
-+	if (fs_type->release_metadata != NULL
-+		&& !blkdev_register_client_releasepage(bdev, s,
-+			fs_type->release_metadata)) {
-+		up_write(&s->s_umount);
-+		deactivate_super(s);
-+		error = -EBUSY;
-+		goto error_bdev;
-+	}
- 
- 	return simple_set_mnt(mnt, s);
- 
-@@ -819,6 +831,16 @@ void kill_block_super(struct super_block
- 	struct block_device *bdev = sb->s_bdev;
- 	fmode_t mode = sb->s_mode;
- 
-+	/*
-+	 * unregister a client function which releases a page whose mapping is
-+	 * block device
-+	 *
-+	 * This is sure to be unmounting here, and it releases all own data
-+	 * itself. Therefore the filesystem's function which is owned by the
-+	 * block device, which releases its data is not needed any more.
-+	 */
-+	if (sb->s_type->release_metadata != NULL)
-+		blkdev_unregister_client_releasepage(bdev);
- 	generic_shutdown_super(sb);
- 	sync_blockdev(bdev);
- 	close_bdev_exclusive(bdev, mode);
-diff -Nurp linux-2.6.28-rc4.orig/include/linux/fs.h linux-2.6.28-rc4/include/linux/fs.h
---- linux-2.6.28-rc4.orig/include/linux/fs.h	2008-11-10 09:36:15.000000000 +0900
-+++ linux-2.6.28-rc4/include/linux/fs.h	2008-11-11 09:01:12.000000000 +0900
-@@ -1538,6 +1538,7 @@ struct file_system_type {
- 	int (*get_sb) (struct file_system_type *, int,
- 		       const char *, void *, struct vfsmount *);
- 	void (*kill_sb) (struct super_block *);
-+	int (*release_metadata)(void*, struct page*, gfp_t);
- 	struct module *owner;
- 	struct file_system_type * next;
- 	struct list_head fs_supers;
-@@ -1699,8 +1700,16 @@ extern void bd_set_size(struct block_dev
- extern void bd_forget(struct inode *inode);
- extern void bdput(struct block_device *);
- extern struct block_device *open_by_devnum(dev_t, fmode_t);
-+extern int blkdev_register_client_releasepage(struct block_device *,
-+	void *, int (*releasepage)(void *, struct page*, gfp_t));
-+extern void blkdev_unregister_client_releasepage(struct block_device *);
- #else
- static inline void bd_forget(struct inode *inode) {}
-+static inline int blkdev_register_client_releasepage(struct block_device *,
-+	void *, int (*releasepage)(void *, struct page*, gfp_t))
-+{ return 1; }
-+static inline void blkdev_unregister_client_releasepage(struct block_device *)
-+{}
- #endif
- extern const struct file_operations def_blk_fops;
- extern const struct file_operations def_chr_fops;
+ /* ioctl.c */
+ extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
