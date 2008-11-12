@@ -1,7 +1,7 @@
 From: Valerie Aurora Henson <vaurora@redhat.com>
-Subject: [RFC PATCH 13/17] Support 48-bit file acl blocks
-Date: Tue, 11 Nov 2008 19:43:06 -0800
-Message-ID: <1226461390-5502-14-git-send-email-vaurora@redhat.com>
+Subject: [RFC PATCH 14/17] super->s_*_blocks_count -> ext2fs_*_blocks_count()
+Date: Tue, 11 Nov 2008 19:43:07 -0800
+Message-ID: <1226461390-5502-15-git-send-email-vaurora@redhat.com>
 References: <1226461390-5502-1-git-send-email-vaurora@redhat.com>
  <1226461390-5502-2-git-send-email-vaurora@redhat.com>
  <1226461390-5502-3-git-send-email-vaurora@redhat.com>
@@ -15,497 +15,667 @@ References: <1226461390-5502-1-git-send-email-vaurora@redhat.com>
  <1226461390-5502-11-git-send-email-vaurora@redhat.com>
  <1226461390-5502-12-git-send-email-vaurora@redhat.com>
  <1226461390-5502-13-git-send-email-vaurora@redhat.com>
+ <1226461390-5502-14-git-send-email-vaurora@redhat.com>
 Cc: Valerie Aurora Henson <vaurora@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:42474 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:42475 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752099AbYKLDoE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Nov 2008 22:44:04 -0500
+	id S1752069AbYKLDoF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Nov 2008 22:44:05 -0500
 Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id mAC3i3sG007467
-	for <linux-ext4@vger.kernel.org>; Tue, 11 Nov 2008 22:44:03 -0500
-In-Reply-To: <1226461390-5502-13-git-send-email-vaurora@redhat.com>
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id mAC3i5HP007471
+	for <linux-ext4@vger.kernel.org>; Tue, 11 Nov 2008 22:44:05 -0500
+In-Reply-To: <1226461390-5502-14-git-send-email-vaurora@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Signed-off-by: Valerie Aurora Henson <vaurora@redhat.com>
 ---
- e2fsck/message.c                        |    2 +-
- e2fsck/pass1.c                          |   14 ++++---
- e2fsck/pass1b.c                         |   62 ++++++++++++++++++-------------
- e2fsck/pass2.c                          |   24 ++++++------
- e2fsck/super.c                          |   10 +++--
- lib/ext2fs/blknum.c                     |   23 +++++++++++
- lib/ext2fs/ext2_fs.h                    |    6 +-
- lib/ext2fs/ext2fs.h                     |    2 +
- lib/ext2fs/valid_blk.c                  |    2 +-
- tests/f_bad_disconnected_inode/expect.1 |    4 +-
- 10 files changed, 94 insertions(+), 55 deletions(-)
+ e2fsck/journal.c           |    4 ++--
+ e2fsck/pass1.c             |   22 +++++++++++-----------
+ e2fsck/pass2.c             |    4 ++--
+ e2fsck/pass5.c             |   20 ++++++++++----------
+ e2fsck/super.c             |   24 ++++++++++++------------
+ e2fsck/unix.c              |   13 +++++++------
+ lib/ext2fs/alloc.c         |    6 +++---
+ lib/ext2fs/alloc_sb.c      |    4 ++--
+ lib/ext2fs/block.c         |    6 +++---
+ lib/ext2fs/bmove.c         |    2 +-
+ lib/ext2fs/check_desc.c    |    4 ++--
+ lib/ext2fs/closefs.c       |    6 +++---
+ lib/ext2fs/ext_attr.c      |    2 +-
+ lib/ext2fs/icount.c        |    2 +-
+ lib/ext2fs/mkjournal.c     |    2 +-
+ lib/ext2fs/openfs.c        |    8 ++++----
+ lib/ext2fs/rw_bitmaps.c    |    6 +++---
+ lib/ext2fs/tst_badblocks.c |    2 +-
+ lib/ext2fs/tst_csum.c      |    2 +-
+ misc/mke2fs.c              |   10 +++++-----
+ 20 files changed, 75 insertions(+), 74 deletions(-)
 
-diff --git a/e2fsck/message.c b/e2fsck/message.c
-index f79b73c..be84d89 100644
---- a/e2fsck/message.c
-+++ b/e2fsck/message.c
-@@ -304,7 +304,7 @@ static _INLINE_ void expand_inode_expression(char ch,
- 		printf("%u", inode->i_faddr);
- 		break;
- 	case 'f':
--		printf("%u", inode->i_file_acl);
-+		printf("%llu", ext2fs_file_acl_block(inode));
- 		break;
- 	case 'd':
- 		printf("%u", (LINUX_S_ISDIR(inode->i_mode) ?
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 605c474..ee658d5 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -1022,7 +1022,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 		    (inode->i_block[EXT2_IND_BLOCK] ||
- 		     inode->i_block[EXT2_DIND_BLOCK] ||
- 		     inode->i_block[EXT2_TIND_BLOCK] ||
--		     inode->i_file_acl)) {
-+		     ext2fs_file_acl_block(inode))) {
- 			inodes_to_process[process_inode_count].ino = ino;
- 			inodes_to_process[process_inode_count].inode = *inode;
- 			process_inode_count++;
-@@ -1205,7 +1205,8 @@ static EXT2_QSORT_TYPE process_inode_cmp(const void *a, const void *b)
- 	ret = (ib_a->inode.i_block[EXT2_IND_BLOCK] -
- 	       ib_b->inode.i_block[EXT2_IND_BLOCK]);
- 	if (ret == 0)
--		ret = ib_a->inode.i_file_acl - ib_b->inode.i_file_acl;
-+		ret = ext2fs_file_acl_block(&(ib_a->inode)) -
-+			ext2fs_file_acl_block(&ib_b->inode);
- 	return ret;
- }
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index 4dc8278..660b6ca 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -213,7 +213,7 @@ static int process_journal_block(ext2_filsys fs,
+ 	p = (struct process_block_struct *) priv_data;
  
-@@ -1367,7 +1368,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
- 	int		count;
- 	region_t	region = 0;
+ 	if (blk < fs->super->s_first_data_block ||
+-	    blk >= fs->super->s_blocks_count)
++	    blk >= ext2fs_blocks_count(fs->super))
+ 		return BLOCK_ABORT;
  
--	blk = inode->i_file_acl;
-+	blk = ext2fs_file_acl_block(inode);
- 	if (blk == 0)
- 		return 0;
- 
-@@ -1442,7 +1443,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
- 	if (pctx->errcode && fix_problem(ctx, PR_1_READ_EA_BLOCK, pctx))
- 		goto clear_extattr;
- 	header = (struct ext2_ext_attr_header *) block_buf;
--	pctx->blk = inode->i_file_acl;
-+	pctx->blk = ext2fs_file_acl_block(inode);
- 	if (((ctx->ext_attr_ver == 1) &&
- 	     (header->h_magic != EXT2_EXT_ATTR_MAGIC_v1)) ||
- 	    ((ctx->ext_attr_ver == 2) &&
-@@ -1530,7 +1531,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
- clear_extattr:
- 	if (region)
- 		region_free(region);
--	inode->i_file_acl = 0;
-+	ext2fs_file_acl_block_set(inode, 0);
- 	e2fsck_write_inode(ctx, ino, inode, "check_ext_attr");
- 	return 0;
- }
-@@ -1824,7 +1825,8 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		}
- 	}
- 
--	if (inode->i_file_acl && check_ext_attr(ctx, pctx, block_buf)) {
-+	if (ext2fs_file_acl_block(inode) &&
-+	    check_ext_attr(ctx, pctx, block_buf)) {
- 		if (ctx->flags & E2F_FLAG_SIGNAL_MASK)
- 			goto out;
- 		pb.num_blocks++;
-diff --git a/e2fsck/pass1b.c b/e2fsck/pass1b.c
-index 922cbcf..fc2bb7e 100644
---- a/e2fsck/pass1b.c
-+++ b/e2fsck/pass1b.c
-@@ -82,8 +82,8 @@ struct dup_inode {
- 	struct block_el		*block_list;
- };
- 
--static int process_pass1b_block(ext2_filsys fs, blk_t	*blocknr,
--				e2_blkcnt_t blockcnt, blk_t ref_blk,
-+static int process_pass1b_block(ext2_filsys fs, blk64_t	*blocknr,
-+				e2_blkcnt_t blockcnt, blk64_t ref_blk,
- 				int ref_offset, void *priv_data);
- static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
- 			struct dup_inode *dp, char *block_buf);
-@@ -293,12 +293,15 @@ static void pass1b(e2fsck_t ctx, char *block_buf)
- 
- 		if (ext2fs_inode_has_valid_blocks(&inode) ||
- 		    (ino == EXT2_BAD_INO))
--			pctx.errcode = ext2fs_block_iterate2(fs, ino,
-+			pctx.errcode = ext2fs_block_iterate3(fs, ino,
- 					     BLOCK_FLAG_READ_ONLY, block_buf,
- 					     process_pass1b_block, &pb);
--		if (inode.i_file_acl)
--			process_pass1b_block(fs, &inode.i_file_acl,
-+		if (ext2fs_file_acl_block(&inode)) {
-+			blk64_t blk = ext2fs_file_acl_block(&inode);
-+			process_pass1b_block(fs, &blk,
- 					     BLOCK_COUNT_EXTATTR, 0, 0, &pb);
-+			ext2fs_file_acl_block_set(&inode, blk);
-+			}
- 		if (pb.dup_blocks) {
- 			end_problem_latch(ctx, PR_LATCH_DBLOCK);
- 			if (ino >= EXT2_FIRST_INODE(fs->super) ||
-@@ -313,9 +316,9 @@ static void pass1b(e2fsck_t ctx, char *block_buf)
- }
- 
- static int process_pass1b_block(ext2_filsys fs EXT2FS_ATTR((unused)),
--				blk_t	*block_nr,
-+				blk64_t	*block_nr,
- 				e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
--				blk_t ref_blk EXT2FS_ATTR((unused)),
-+				blk64_t ref_blk EXT2FS_ATTR((unused)),
- 				int ref_offset EXT2FS_ATTR((unused)),
- 				void *priv_data)
- {
-@@ -540,9 +543,9 @@ static void decrement_badcount(e2fsck_t ctx, blk_t block, struct dup_block *p)
- }
- 
- static int delete_file_block(ext2_filsys fs,
--			     blk_t	*block_nr,
-+			     blk64_t	*block_nr,
- 			     e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
--			     blk_t ref_block EXT2FS_ATTR((unused)),
-+			     blk64_t ref_block EXT2FS_ATTR((unused)),
- 			     int ref_offset EXT2FS_ATTR((unused)),
- 			     void *priv_data)
- {
-@@ -564,7 +567,7 @@ static int delete_file_block(ext2_filsys fs,
- 			decrement_badcount(ctx, *block_nr, p);
- 		} else
- 			com_err("delete_file_block", 0,
--			    _("internal error: can't find dup_blk for %u\n"),
-+			    _("internal error: can't find dup_blk for %llu\n"),
- 				*block_nr);
- 	} else {
- 		ext2fs_unmark_block_bitmap2(ctx->block_found_map, *block_nr);
-@@ -591,7 +594,7 @@ static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
- 
- 	e2fsck_read_inode(ctx, ino, &inode, "delete_file");
- 	if (ext2fs_inode_has_valid_blocks(&inode))
--		pctx.errcode = ext2fs_block_iterate2(fs, ino, BLOCK_FLAG_READ_ONLY,
-+		pctx.errcode = ext2fs_block_iterate3(fs, ino, BLOCK_FLAG_READ_ONLY,
- 						     block_buf, delete_file_block, &pb);
- 	if (pctx.errcode)
- 		fix_problem(ctx, PR_1B_BLOCK_ITERATE, &pctx);
-@@ -602,17 +605,18 @@ static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
- 	/* Inode may have changed by block_iterate, so reread it */
- 	e2fsck_read_inode(ctx, ino, &inode, "delete_file");
- 	e2fsck_clear_inode(ctx, ino, &inode, 0, "delete_file");
--	if (inode.i_file_acl &&
-+	if (ext2fs_file_acl_block(&inode) &&
- 	    (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR)) {
- 		count = 1;
--		pctx.errcode = ext2fs_adjust_ea_refcount(fs, inode.i_file_acl,
-+		pctx.errcode = ext2fs_adjust_ea_refcount(fs,
-+						   ext2fs_file_acl_block(&inode),
- 						   block_buf, -1, &count);
- 		if (pctx.errcode == EXT2_ET_BAD_EA_BLOCK_NUM) {
- 			pctx.errcode = 0;
- 			count = 1;
- 		}
- 		if (pctx.errcode) {
--			pctx.blk = inode.i_file_acl;
-+			pctx.blk = ext2fs_file_acl_block(&inode);
- 			fix_problem(ctx, PR_1B_ADJ_EA_REFCOUNT, &pctx);
- 		}
- 		/*
-@@ -623,9 +627,12 @@ static void delete_file(e2fsck_t ctx, ext2_ino_t ino,
- 		 */
- 		if ((count == 0) ||
- 		    ext2fs_test_block_bitmap2(ctx->block_dup_map,
--					     inode.i_file_acl))
--			delete_file_block(fs, &inode.i_file_acl,
-+					      ext2fs_file_acl_block(&inode))) {
-+			blk64_t blk = ext2fs_file_acl_block(&inode);
-+			delete_file_block(fs, &blk,
- 					  BLOCK_COUNT_EXTATTR, 0, 0, &pb);
-+			ext2fs_file_acl_block_set(&inode, blk);
-+		}
- 	}
- }
- 
-@@ -637,9 +644,9 @@ struct clone_struct {
- };
- 
- static int clone_file_block(ext2_filsys fs,
--			    blk_t	*block_nr,
-+			    blk64_t	*block_nr,
- 			    e2_blkcnt_t blockcnt,
--			    blk_t ref_block EXT2FS_ATTR((unused)),
-+			    blk64_t ref_block EXT2FS_ATTR((unused)),
- 			    int ref_offset EXT2FS_ATTR((unused)),
- 			    void *priv_data)
- {
-@@ -697,7 +704,7 @@ static int clone_file_block(ext2_filsys fs,
- 			return BLOCK_CHANGED;
- 		} else
- 			com_err("clone_file_block", 0,
--			    _("internal error: can't find dup_blk for %u\n"),
-+			    _("internal error: can't find dup_blk for %llu\n"),
- 				*block_nr);
- 	}
- 	return 0;
-@@ -710,7 +717,7 @@ static int clone_file(e2fsck_t ctx, ext2_ino_t ino,
- 	errcode_t	retval;
- 	struct clone_struct cs;
- 	struct problem_context	pctx;
--	blk_t		blk;
-+	blk64_t		blk, new_blk;
- 	dnode_t		*n;
- 	struct inode_el	*ino_el;
- 	struct dup_block	*db;
-@@ -730,7 +737,7 @@ static int clone_file(e2fsck_t ctx, ext2_ino_t ino,
- 	pctx.ino = ino;
- 	pctx.str = "clone_file";
- 	if (ext2fs_inode_has_valid_blocks(&dp->inode))
--		pctx.errcode = ext2fs_block_iterate2(fs, ino, 0, block_buf,
-+		pctx.errcode = ext2fs_block_iterate3(fs, ino, 0, block_buf,
- 						     clone_file_block, &cs);
- 	ext2fs_mark_bb_dirty(fs);
- 	if (pctx.errcode) {
-@@ -746,10 +753,12 @@ static int clone_file(e2fsck_t ctx, ext2_ino_t ino,
- 	}
- 	/* The inode may have changed on disk, so we have to re-read it */
- 	e2fsck_read_inode(ctx, ino, &dp->inode, "clone file EA");
--	blk = dp->inode.i_file_acl;
--	if (blk && (clone_file_block(fs, &dp->inode.i_file_acl,
-+	blk = ext2fs_file_acl_block(&dp->inode);
-+	new_blk = blk;
-+	if (blk && (clone_file_block(fs, &new_blk,
- 				     BLOCK_COUNT_EXTATTR, 0, 0, &cs) ==
- 		    BLOCK_CHANGED)) {
-+		ext2fs_file_acl_block_set(&dp->inode, new_blk);
- 		e2fsck_write_inode(ctx, ino, &dp->inode, "clone file EA");
- 		/*
- 		 * If we cloned the EA block, find all other inodes
-@@ -760,7 +769,7 @@ static int clone_file(e2fsck_t ctx, ext2_ino_t ino,
- 		if (!n) {
- 			com_err("clone_file", 0,
- 				_("internal error: couldn't lookup EA "
--				  "block record for %u"), blk);
-+				  "block record for %llu"), blk);
- 			retval = 0; /* OK to stumble on... */
+ 	if (blockcnt >= 0)
+@@ -407,7 +407,7 @@ static errcode_t e2fsck_get_journal(e2fsck_t ctx, journal_t **ret_journal)
  			goto errout;
  		}
-@@ -778,8 +787,9 @@ static int clone_file(e2fsck_t ctx, ext2_ino_t ino,
- 				goto errout;
- 			}
- 			di = (struct dup_inode *) dnode_get(n);
--			if (di->inode.i_file_acl == blk) {
--				di->inode.i_file_acl = dp->inode.i_file_acl;
-+			if (ext2fs_file_acl_block(&di->inode) == blk) {
-+				ext2fs_file_acl_block_set(&di->inode,
-+					  ext2fs_file_acl_block(&dp->inode));
- 				e2fsck_write_inode(ctx, ino_el->inode,
- 					   &di->inode, "clone file EA");
- 				decrement_badcount(ctx, blk, db);
+ 
+-		journal->j_maxlen = jsuper.s_blocks_count;
++		journal->j_maxlen = ext2fs_blocks_count(&jsuper);
+ 		start++;
+ 	}
+ 
+diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
+index ee658d5..ef8b421 100644
+--- a/e2fsck/pass1.c
++++ b/e2fsck/pass1.c
+@@ -191,7 +191,7 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
+ 		    (extent.e_lblk != 0) ||
+ 		    (extent.e_len != 1) ||
+ 		    (extent.e_pblk < fs->super->s_first_data_block) ||
+-		    (extent.e_pblk >= fs->super->s_blocks_count))
++		    (extent.e_pblk >= ext2fs_blocks_count(fs->super)))
+ 			goto exit_extent;
+ 		i = 1;
+ 	exit_extent:
+@@ -204,7 +204,7 @@ int e2fsck_pass1_check_symlink(ext2_filsys fs, ext2_ino_t ino,
+ 		if ((inode->i_size >= fs->blocksize) ||
+ 		    (blocks != fs->blocksize >> 9) ||
+ 		    (inode->i_block[0] < fs->super->s_first_data_block) ||
+-		    (inode->i_block[0] >= fs->super->s_blocks_count))
++		    (inode->i_block[0] >= ext2fs_blocks_count(fs->super)))
+ 			return 0;
+ 
+ 		for (i = 1; i < EXT2_N_BLOCKS; i++)
+@@ -418,7 +418,7 @@ static void check_is_really_dir(e2fsck_t ctx, struct problem_context *pctx,
+ 			not_device++;
+ 
+ 		if (blk < ctx->fs->super->s_first_data_block ||
+-		    blk >= ctx->fs->super->s_blocks_count ||
++		    blk >= ext2fs_blocks_count(ctx->fs->super) ||
+ 		    ext2fs_fast_test_block_bitmap2(ctx->block_found_map, blk))
+ 			return;	/* Invalid block, can't be dir */
+ 	}
+@@ -1381,7 +1381,7 @@ static int check_ext_attr(e2fsck_t ctx, struct problem_context *pctx,
+ 	 */
+ 	if (!(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR) ||
+ 	    (blk < fs->super->s_first_data_block) ||
+-	    (blk >= fs->super->s_blocks_count)) {
++	    (blk >= ext2fs_blocks_count(fs->super))) {
+ 		mark_inode_bad(ctx, ino);
+ 		return 0;
+ 	}
+@@ -1557,7 +1557,7 @@ static int handle_htree(e2fsck_t ctx, struct problem_context *pctx,
+ 	if ((pctx->errcode) ||
+ 	    (blk == 0) ||
+ 	    (blk < fs->super->s_first_data_block) ||
+-	    (blk >= fs->super->s_blocks_count)) {
++	    (blk >= ext2fs_blocks_count(fs->super))) {
+ 		if (fix_problem(ctx, PR_1_HTREE_BADROOT, pctx))
+ 			return 1;
+ 		else
+@@ -1644,13 +1644,13 @@ static void scan_extent_node(e2fsck_t ctx, struct problem_context *pctx,
+ 
+ 		problem = 0;
+ 		if (extent.e_pblk < ctx->fs->super->s_first_data_block ||
+-		    extent.e_pblk >= ctx->fs->super->s_blocks_count)
++		    extent.e_pblk >= ext2fs_blocks_count(ctx->fs->super))
+ 			problem = PR_1_EXTENT_BAD_START_BLK;
+ 		else if (extent.e_lblk < start_block)
+ 			problem = PR_1_OUT_OF_ORDER_EXTENTS;
+ 		else if (is_leaf &&
+ 			 (extent.e_pblk + extent.e_len) >
+-			 ctx->fs->super->s_blocks_count)
++			 ext2fs_blocks_count(ctx->fs->super))
+ 			problem = PR_1_EXTENT_ENDS_BEYOND;
+ 
+ 		if (problem) {
+@@ -1988,8 +1988,8 @@ static char *describe_illegal_block(ext2_filsys fs, blk_t block)
+ 	if (block < super) {
+ 		sprintf(problem, "< FIRSTBLOCK (%u)", super);
+ 		return(problem);
+-	} else if (block >= fs->super->s_blocks_count) {
+-		sprintf(problem, "> BLOCKS (%u)", fs->super->s_blocks_count);
++	} else if (block >= ext2fs_blocks_count(fs->super)) {
++		sprintf(problem, "> BLOCKS (%u)", ext2fs_blocks_count(fs->super));
+ 		return(problem);
+ 	}
+ 	for (i = 0; i < fs->group_desc_count; i++) {
+@@ -2124,7 +2124,7 @@ static int process_block(ext2_filsys fs,
+ 		problem = PR_1_TOOBIG_SYMLINK;
+ 
+ 	if (blk < fs->super->s_first_data_block ||
+-	    blk >= fs->super->s_blocks_count)
++	    blk >= ext2fs_blocks_count(fs->super))
+ 		problem = PR_1_ILLEGAL_BLOCK_NUM;
+ 
+ 	if (problem) {
+@@ -2212,7 +2212,7 @@ static int process_bad_block(ext2_filsys fs,
+ 	pctx->blkcount = blockcnt;
+ 
+ 	if ((blk < fs->super->s_first_data_block) ||
+-	    (blk >= fs->super->s_blocks_count)) {
++	    (blk >= ext2fs_blocks_count(fs->super))) {
+ 		if (fix_problem(ctx, PR_1_BB_ILLEGAL_BLOCK_NUM, pctx)) {
+ 			*block_nr = 0;
+ 			return BLOCK_CHANGED;
 diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
-index afe4be9..2ee000e 100644
+index 2ee000e..da868a8 100644
 --- a/e2fsck/pass2.c
 +++ b/e2fsck/pass2.c
-@@ -1196,26 +1196,26 @@ static void deallocate_inode(e2fsck_t ctx, ext2_ino_t ino, char* block_buf)
- 	e2fsck_read_bitmaps(ctx);
- 	ext2fs_inode_alloc_stats2(fs, ino, -1, LINUX_S_ISDIR(inode.i_mode));
+@@ -1168,7 +1168,7 @@ static int deallocate_inode_block(ext2_filsys fs,
+ 	if (HOLE_BLKADDR(*block_nr))
+ 		return 0;
+ 	if ((*block_nr < fs->super->s_first_data_block) ||
+-	    (*block_nr >= fs->super->s_blocks_count))
++	    (*block_nr >= ext2fs_blocks_count(fs->super)))
+ 		return 0;
+ 	ext2fs_unmark_block_bitmap2(ctx->block_found_map, *block_nr);
+ 	ext2fs_block_alloc_stats(fs, *block_nr, -1);
+@@ -1357,7 +1357,7 @@ extern int e2fsck_process_bad_inode(e2fsck_t ctx, ext2_ino_t dir,
  
--	if (inode.i_file_acl &&
-+	if (ext2fs_file_acl_block(&inode) &&
- 	    (fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR)) {
--		pctx.errcode = ext2fs_adjust_ea_refcount(fs, inode.i_file_acl,
-+		pctx.errcode = ext2fs_adjust_ea_refcount(fs, ext2fs_file_acl_block(&inode),
- 						   block_buf, -1, &count);
- 		if (pctx.errcode == EXT2_ET_BAD_EA_BLOCK_NUM) {
- 			pctx.errcode = 0;
- 			count = 1;
- 		}
- 		if (pctx.errcode) {
--			pctx.blk = inode.i_file_acl;
-+			pctx.blk = ext2fs_file_acl_block(&inode);
- 			fix_problem(ctx, PR_2_ADJ_EA_REFCOUNT, &pctx);
- 			ctx->flags |= E2F_FLAG_ABORT;
- 			return;
- 		}
- 		if (count == 0) {
- 			ext2fs_unmark_block_bitmap2(ctx->block_found_map,
--						   inode.i_file_acl);
--			ext2fs_block_alloc_stats(fs, inode.i_file_acl, -1);
-+						   ext2fs_file_acl_block(&inode));
-+			ext2fs_block_alloc_stats(fs, ext2fs_file_acl_block(&inode), -1);
- 		}
--		inode.i_file_acl = 0;
-+		ext2fs_file_acl_block_set(&inode, 0);
- 	}
- 
- 	if (!ext2fs_inode_has_valid_blocks(&inode))
-@@ -1267,10 +1267,10 @@ extern int e2fsck_process_bad_inode(e2fsck_t ctx, ext2_ino_t dir,
- 	pctx.dir = dir;
- 	pctx.inode = &inode;
- 
--	if (inode.i_file_acl &&
-+	if (ext2fs_file_acl_block(&inode) &&
- 	    !(fs->super->s_feature_compat & EXT2_FEATURE_COMPAT_EXT_ATTR)) {
- 		if (fix_problem(ctx, PR_2_FILE_ACL_ZERO, &pctx)) {
--			inode.i_file_acl = 0;
-+			ext2fs_file_acl_block_set(&inode, 0);
- 			inode_modified++;
- 		} else
- 			not_fixed++;
-@@ -1355,11 +1355,11 @@ extern int e2fsck_process_bad_inode(e2fsck_t ctx, ext2_ino_t dir,
- 		}
- 	}
- 
--	if (inode.i_file_acl &&
--	    ((inode.i_file_acl < fs->super->s_first_data_block) ||
--	     (inode.i_file_acl >= fs->super->s_blocks_count))) {
-+	if (ext2fs_file_acl_block(&inode) &&
-+	    ((ext2fs_file_acl_block(&inode) < fs->super->s_first_data_block) ||
-+	     (ext2fs_file_acl_block(&inode) >= fs->super->s_blocks_count))) {
+ 	if (ext2fs_file_acl_block(&inode) &&
+ 	    ((ext2fs_file_acl_block(&inode) < fs->super->s_first_data_block) ||
+-	     (ext2fs_file_acl_block(&inode) >= fs->super->s_blocks_count))) {
++	     (ext2fs_file_acl_block(&inode) >= ext2fs_blocks_count(fs->super)))) {
  		if (fix_problem(ctx, PR_2_FILE_ACL_BAD, &pctx)) {
--			inode.i_file_acl = 0;
-+			ext2fs_file_acl_block_set(&inode, 0);
+ 			ext2fs_file_acl_block_set(&inode, 0);
  			inode_modified++;
+diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
+index 811fb2a..23dd5a4 100644
+--- a/e2fsck/pass5.c
++++ b/e2fsck/pass5.c
+@@ -131,11 +131,11 @@ static void check_block_bitmaps(e2fsck_t ctx)
+ 
+ 	if ((fs->super->s_first_data_block <
+ 	     ext2fs_get_block_bitmap_start2(ctx->block_found_map)) ||
+-	    (fs->super->s_blocks_count-1 >
++	    (ext2fs_blocks_count(fs->super)-1 >
+ 	     ext2fs_get_block_bitmap_end2(ctx->block_found_map))) {
+ 		pctx.num = 1;
+ 		pctx.blk = fs->super->s_first_data_block;
+-		pctx.blk2 = fs->super->s_blocks_count -1;
++		pctx.blk2 = ext2fs_blocks_count(fs->super) -1;
+ 		pctx.ino = ext2fs_get_block_bitmap_start2(ctx->block_found_map);
+ 		pctx.ino2 = ext2fs_get_block_bitmap_end2(ctx->block_found_map);
+ 		fix_problem(ctx, PR_5_BMAP_ENDPOINTS, &pctx);
+@@ -146,11 +146,11 @@ static void check_block_bitmaps(e2fsck_t ctx)
+ 
+ 	if ((fs->super->s_first_data_block <
+ 	     ext2fs_get_block_bitmap_start2(fs->block_map)) ||
+-	    (fs->super->s_blocks_count-1 >
++	    (ext2fs_blocks_count(fs->super)-1 >
+ 	     ext2fs_get_block_bitmap_end2(fs->block_map))) {
+ 		pctx.num = 2;
+ 		pctx.blk = fs->super->s_first_data_block;
+-		pctx.blk2 = fs->super->s_blocks_count -1;
++		pctx.blk2 = ext2fs_blocks_count(fs->super) -1;
+ 		pctx.ino = ext2fs_get_block_bitmap_start2(fs->block_map);
+ 		pctx.ino2 = ext2fs_get_block_bitmap_end2(fs->block_map);
+ 		fix_problem(ctx, PR_5_BMAP_ENDPOINTS, &pctx);
+@@ -170,7 +170,7 @@ redo_counts:
+ 		skip_group++;
+ 	super = fs->super->s_first_data_block;
+ 	for (i = fs->super->s_first_data_block;
+-	     i < fs->super->s_blocks_count;
++	     i < ext2fs_blocks_count(fs->super);
+ 	     i++) {
+ 		actual = ext2fs_fast_test_block_bitmap2(ctx->block_found_map, i);
+ 
+@@ -258,7 +258,7 @@ redo_counts:
+ 		}
+ 		blocks ++;
+ 		if ((blocks == fs->super->s_blocks_per_group) ||
+-		    (i == fs->super->s_blocks_count-1)) {
++		    (i == ext2fs_blocks_count(fs->super)-1)) {
+ 			free_array[group] = group_free;
+ 			group ++;
+ 			blocks = 0;
+@@ -270,7 +270,7 @@ redo_counts:
+ 						    fs->group_desc_count*2))
+ 					goto errout;
+ 			if (csum_flag &&
+-			    (i != fs->super->s_blocks_count-1) &&
++			    (i != ext2fs_blocks_count(fs->super)-1) &&
+ 			    (fs->group_desc[group].bg_flags &
+ 			     EXT2_BG_BLOCK_UNINIT))
+ 				skip_group++;
+@@ -319,13 +319,13 @@ redo_counts:
+ 				ext2fs_unmark_valid(fs);
+ 		}
+ 	}
+-	if (free_blocks != fs->super->s_free_blocks_count) {
++	if (free_blocks != ext2fs_free_blocks_count(fs->super)) {
+ 		pctx.group = 0;
+-		pctx.blk = fs->super->s_free_blocks_count;
++		pctx.blk = ext2fs_free_blocks_count(fs->super);
+ 		pctx.blk2 = free_blocks;
+ 
+ 		if (fix_problem(ctx, PR_5_FREE_BLOCK_COUNT, &pctx)) {
+-			fs->super->s_free_blocks_count = free_blocks;
++			ext2fs_free_blocks_count_set(fs->super, free_blocks);
+ 			ext2fs_mark_super_dirty(fs);
  		} else
- 			not_fixed++;
+ 			ext2fs_unmark_valid(fs);
 diff --git a/e2fsck/super.c b/e2fsck/super.c
-index 0b55809..40a5882 100644
+index 40a5882..cfa9a13 100644
 --- a/e2fsck/super.c
 +++ b/e2fsck/super.c
-@@ -197,8 +197,8 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
- 	if (pb.truncated_blocks)
- 		ext2fs_iblk_sub_blocks(fs, inode, pb.truncated_blocks);
+@@ -77,7 +77,7 @@ static int release_inode_block(ext2_filsys fs,
+ 		return 0;
  
--	if (inode->i_file_acl) {
--		retval = ext2fs_adjust_ea_refcount(fs, inode->i_file_acl,
-+	if (ext2fs_file_acl_block(inode)) {
-+		retval = ext2fs_adjust_ea_refcount(fs, ext2fs_file_acl_block(inode),
- 						   block_buf, -1, &count);
- 		if (retval == EXT2_ET_BAD_EA_BLOCK_NUM) {
- 			retval = 0;
-@@ -211,8 +211,10 @@ static int release_inode_blocks(e2fsck_t ctx, ext2_ino_t ino,
- 			return 1;
- 		}
- 		if (count == 0)
--			ext2fs_block_alloc_stats(fs, inode->i_file_acl, -1);
--		inode->i_file_acl = 0;
-+			ext2fs_block_alloc_stats(fs,
-+						 ext2fs_file_acl_block(inode),
-+						 -1);
-+		ext2fs_file_acl_block_set(inode, 0);
- 	}
- 	return 0;
- }
-diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
-index 8c8057d..dc264a1 100644
---- a/lib/ext2fs/blknum.c
-+++ b/lib/ext2fs/blknum.c
-@@ -242,3 +242,26 @@ void ext2fs_inode_table_loc_set(ext2_filsys fs, dgrp_t group, blk64_t blk)
- 	} else
- 		fs->group_desc[group].bg_inode_table = blk;
- }
-+
-+/*
-+ * Get the acl block of a file
-+ *
-+ * XXX Ignoring 64-bit file system flag - most places where this is
-+ * called don't have access to the fs struct, and the high bits should
-+ * be 0 in the non-64-bit case anyway.
-+ */
-+blk64_t ext2fs_file_acl_block(const struct ext2_inode *inode)
-+{
-+	return (inode->i_file_acl |
-+		(__u64) inode->osd2.linux2.l_i_file_acl_high << 32);
-+}
-+
-+/*
-+ * Set the acl block of a file
-+ */
-+void ext2fs_file_acl_block_set(struct ext2_inode *inode, blk64_t blk)
-+{
-+	inode->i_file_acl = blk;
-+	inode->osd2.linux2.l_i_file_acl_high = (__u64) blk >> 32;
-+}
-+
-diff --git a/lib/ext2fs/ext2_fs.h b/lib/ext2fs/ext2_fs.h
-index d7d7bdb..3fa7555 100644
---- a/lib/ext2fs/ext2_fs.h
-+++ b/lib/ext2fs/ext2_fs.h
-@@ -343,7 +343,7 @@ struct ext2_inode {
- 	__u32	i_block[EXT2_N_BLOCKS];/* Pointers to blocks */
- 	__u32	i_generation;	/* File version (for NFS) */
- 	__u32	i_file_acl;	/* File ACL */
--	__u32	i_dir_acl;	/* Directory ACL */
-+	__u32	i_size_high;	/* Formerly i_dir_acl, directory ACL */
- 	__u32	i_faddr;	/* Fragment address */
- 	union {
- 		struct {
-@@ -390,7 +390,7 @@ struct ext2_inode_large {
- 	__u32	i_block[EXT2_N_BLOCKS];/* Pointers to blocks */
- 	__u32	i_generation;	/* File version (for NFS) */
- 	__u32	i_file_acl;	/* File ACL */
--	__u32	i_dir_acl;	/* Directory ACL */
-+	__u32	i_size_high;	/* Formerly i_dir_acl, directory ACL */
- 	__u32	i_faddr;	/* Fragment address */
- 	union {
- 		struct {
-@@ -419,7 +419,7 @@ struct ext2_inode_large {
- 	__u32	i_version_hi;	/* high 32 bits for 64-bit version */
- };
- 
--#define i_size_high	i_dir_acl
-+#define i_dir_acl	i_size_high
- 
- #if defined(__KERNEL__) || defined(__linux__)
- #define i_reserved1	osd1.linux1.l_i_reserved1
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index cb44186..bfa162a 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -748,6 +748,8 @@ extern void ext2fs_inode_bitmap_loc_set(ext2_filsys fs, dgrp_t group,
- extern blk64_t ext2fs_inode_table_loc(ext2_filsys fs, dgrp_t group);
- extern void ext2fs_inode_table_loc_set(ext2_filsys fs, dgrp_t group,
- 				       blk64_t blk);
-+extern blk64_t ext2fs_file_acl_block(const struct ext2_inode *inode);
-+extern void ext2fs_file_acl_block_set(struct ext2_inode *inode, blk64_t blk);
- 
- /* block.c */
- extern errcode_t ext2fs_block_iterate(ext2_filsys fs,
-diff --git a/lib/ext2fs/valid_blk.c b/lib/ext2fs/valid_blk.c
-index d0367e7..6a2aa47 100644
---- a/lib/ext2fs/valid_blk.c
-+++ b/lib/ext2fs/valid_blk.c
-@@ -39,7 +39,7 @@ int ext2fs_inode_has_valid_blocks(struct ext2_inode *inode)
- 	 * target is stored in the block entries.
+ 	if ((blk < fs->super->s_first_data_block) ||
+-	    (blk >= fs->super->s_blocks_count)) {
++	    (blk >= ext2fs_blocks_count(fs->super))) {
+ 		fix_problem(ctx, PR_0_ORPHAN_ILLEGAL_BLOCK_NUM, pctx);
+ 	return_abort:
+ 		pb->abort = 1;
+@@ -376,7 +376,7 @@ static void check_resize_inode(e2fsck_t ctx)
+ 	if ((i < EXT2_N_BLOCKS) || !blk || !inode.i_links_count ||
+ 	    !(inode.i_mode & LINUX_S_IFREG) ||
+ 	    (blk < fs->super->s_first_data_block ||
+-	     blk >= fs->super->s_blocks_count)) {
++	     blk >= ext2fs_blocks_count(fs->super))) {
+ 	resize_inode_invalid:
+ 		if (fix_problem(ctx, PR_0_RESIZE_INODE_INVALID, &pctx)) {
+ 			memset(&inode, 0, sizeof(inode));
+@@ -494,10 +494,10 @@ void check_super_block(e2fsck_t ctx)
  	 */
- 	if (LINUX_S_ISLNK (inode->i_mode)) {
--		if (inode->i_file_acl == 0) {
-+		if (ext2fs_file_acl_block(inode) == 0) {
- 			/* With no EA block, we can rely on i_blocks */
- 			if (inode->i_blocks == 0)
- 				return 0;
-diff --git a/tests/f_bad_disconnected_inode/expect.1 b/tests/f_bad_disconnected_inode/expect.1
-index 11862f6..1b233e7 100644
---- a/tests/f_bad_disconnected_inode/expect.1
-+++ b/tests/f_bad_disconnected_inode/expect.1
-@@ -15,13 +15,13 @@ Pass 3: Checking directory connectivity
- Pass 4: Checking reference counts
- Inode 2 ref count is 4, should be 3.  Fix? yes
+ 	check_super_value(ctx, "inodes_count", sb->s_inodes_count,
+ 			  MIN_CHECK, 1, 0);
+-	check_super_value(ctx, "blocks_count", sb->s_blocks_count,
++	check_super_value(ctx, "blocks_count", ext2fs_blocks_count(sb),
+ 			  MIN_CHECK, 1, 0);
+ 	check_super_value(ctx, "first_data_block", sb->s_first_data_block,
+-			  MAX_CHECK, 0, sb->s_blocks_count);
++			  MAX_CHECK, 0, ext2fs_blocks_count(sb));
+ 	check_super_value(ctx, "log_block_size", sb->s_log_block_size,
+ 			  MIN_CHECK | MAX_CHECK, 0,
+ 			  EXT2_MAX_BLOCK_LOG_SIZE - EXT2_MIN_BLOCK_LOG_SIZE);
+@@ -510,8 +510,8 @@ void check_super_block(e2fsck_t ctx)
+ 			  MIN_CHECK | MAX_CHECK, 8, bpg_max);
+ 	check_super_value(ctx, "inodes_per_group", sb->s_inodes_per_group,
+ 			  MIN_CHECK | MAX_CHECK, inodes_per_block, ipg_max);
+-	check_super_value(ctx, "r_blocks_count", sb->s_r_blocks_count,
+-			  MAX_CHECK, 0, sb->s_blocks_count / 2);
++	check_super_value(ctx, "r_blocks_count", ext2fs_r_blocks_count(sb),
++			  MAX_CHECK, 0, ext2fs_blocks_count(sb) / 2);
+ 	check_super_value(ctx, "reserved_gdt_blocks",
+ 			  sb->s_reserved_gdt_blocks, MAX_CHECK, 0,
+ 			  fs->blocksize/4);
+@@ -528,8 +528,8 @@ void check_super_block(e2fsck_t ctx)
+ 	}
  
--i_file_acl for inode 13 (...) is 4218798225, should be zero.
-+i_file_acl for inode 13 (...) is 239964041625745, should be zero.
- Clear? yes
+ 	if ((ctx->flags & E2F_FLAG_GOT_DEVSIZE) &&
+-	    (ctx->num_blocks < sb->s_blocks_count)) {
+-		pctx.blk = sb->s_blocks_count;
++	    (ctx->num_blocks < ext2fs_blocks_count(sb))) {
++		pctx.blk = ext2fs_blocks_count(sb);
+ 		pctx.blk2 = ctx->num_blocks;
+ 		if (fix_problem(ctx, PR_0_FS_SIZE_WRONG, &pctx)) {
+ 			ctx->flags |= E2F_FLAG_ABORT;
+@@ -578,7 +578,7 @@ void check_super_block(e2fsck_t ctx)
+ 	 * Verify the group descriptors....
+ 	 */
+ 	first_block = sb->s_first_data_block;
+-	last_block = sb->s_blocks_count-1;
++	last_block = ext2fs_blocks_count(sb)-1;
  
- Inode 13 (...) has invalid mode (0117003).
- Clear? yes
+ 	csum_flag = EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
+ 					       EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
+@@ -693,18 +693,18 @@ void check_super_block(e2fsck_t ctx)
+ 	 * inodes; if the filesystem is not unmounted cleanly, the
+ 	 * global counts may not be accurate.
+ 	 */
+-	if ((free_blocks != sb->s_free_blocks_count) ||
++	if ((free_blocks != ext2fs_free_blocks_count(sb)) ||
+ 	    (free_inodes != sb->s_free_inodes_count)) {
+ 		if (ctx->options & E2F_OPT_READONLY)
+ 			ext2fs_unmark_valid(fs);
+ 		else {
+-			sb->s_free_blocks_count = free_blocks;
++			ext2fs_free_blocks_count_set(sb, free_blocks);
+ 			sb->s_free_inodes_count = free_inodes;
+ 			ext2fs_mark_super_dirty(fs);
+ 		}
+ 	}
  
--i_file_acl for inode 14 (...) is 2892851642, should be zero.
-+i_file_acl for inode 14 (...) is 178759431711162, should be zero.
- Clear? yes
+-	if ((sb->s_free_blocks_count > sb->s_blocks_count) ||
++	if ((ext2fs_free_blocks_count(sb) > ext2fs_blocks_count(sb)) ||
+ 	    (sb->s_free_inodes_count > sb->s_inodes_count))
+ 		ext2fs_unmark_valid(fs);
  
- Inode 14 (...) has invalid mode (0154247).
+diff --git a/e2fsck/unix.c b/e2fsck/unix.c
+index bb379f3..ae14460 100644
+--- a/e2fsck/unix.c
++++ b/e2fsck/unix.c
+@@ -113,9 +113,9 @@ static void show_stats(e2fsck_t	ctx)
+ 	inodes = fs->super->s_inodes_count;
+ 	inodes_used = (fs->super->s_inodes_count -
+ 		       fs->super->s_free_inodes_count);
+-	blocks = fs->super->s_blocks_count;
+-	blocks_used = (fs->super->s_blocks_count -
+-		       fs->super->s_free_blocks_count);
++	blocks = ext2fs_blocks_count(fs->super);
++	blocks_used = (ext2fs_blocks_count(fs->super) -
++		       ext2fs_free_blocks_count(fs->super));
+ 
+ 	frag_percent = (10000 * ctx->fs_fragmented) / inodes_used;
+ 	frag_percent = (frag_percent + 5) / 10;
+@@ -328,8 +328,9 @@ static void check_if_skip(e2fsck_t ctx)
+ 	printf(_("%s: clean, %u/%u files, %u/%u blocks"), ctx->device_name,
+ 	       fs->super->s_inodes_count - fs->super->s_free_inodes_count,
+ 	       fs->super->s_inodes_count,
+-	       fs->super->s_blocks_count - fs->super->s_free_blocks_count,
+-	       fs->super->s_blocks_count);
++	       ext2fs_blocks_count(fs->super) -
++	       ext2fs_free_blocks_count(fs->super),
++	       ext2fs_blocks_count(fs->super));
+ 	next_check = 100000;
+ 	if (fs->super->s_max_mnt_count > 0) {
+ 		next_check = fs->super->s_max_mnt_count - fs->super->s_mnt_count;
+@@ -1278,7 +1279,7 @@ print_unsupp_features:
+ 	if (ctx->flags & E2F_FLAG_JOURNAL_INODE) {
+ 		if (fix_problem(ctx, PR_6_RECREATE_JOURNAL, &pctx)) {
+ 			if (journal_size < 1024)
+-				journal_size = ext2fs_default_journal_size(fs->super->s_blocks_count);
++				journal_size = ext2fs_default_journal_size(ext2fs_blocks_count(fs->super));
+ 			if (journal_size < 0) {
+ 				fs->super->s_feature_compat &=
+ 					~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index 90599b8..2ceab96 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -156,7 +156,7 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
+ 		map = fs->block_map;
+ 	if (!map)
+ 		return EXT2_ET_NO_BLOCK_BITMAP;
+-	if (!goal || (goal >= fs->super->s_blocks_count))
++	if (!goal || (goal >= ext2fs_blocks_count(fs->super)))
+ 		goal = fs->super->s_first_data_block;
+ 	i = goal;
+ 	check_block_uninit(fs, map,
+@@ -174,7 +174,7 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
+ 			return 0;
+ 		}
+ 		i++;
+-		if (i >= fs->super->s_blocks_count)
++		if (i >= ext2fs_blocks_count(fs->super))
+ 			i = fs->super->s_first_data_block;
+ 	} while (i != goal);
+ 	return EXT2_ET_BLOCK_ALLOC_FAIL;
+@@ -269,7 +269,7 @@ errcode_t ext2fs_get_free_blocks2(ext2_filsys fs, blk64_t start, blk64_t finish,
+ 	if (!num)
+ 		num = 1;
+ 	do {
+-		if (b+num-1 > fs->super->s_blocks_count)
++		if (b+num-1 > ext2fs_blocks_count(fs->super))
+ 			b = fs->super->s_first_data_block;
+ 		if (ext2fs_fast_test_block_bitmap_range2(map, (blk_t) b,
+ 							(blk_t) num)) {
+diff --git a/lib/ext2fs/alloc_sb.c b/lib/ext2fs/alloc_sb.c
+index ddf4644..14c8a25 100644
+--- a/lib/ext2fs/alloc_sb.c
++++ b/lib/ext2fs/alloc_sb.c
+@@ -64,7 +64,7 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+ 		if (fs->super->s_reserved_gdt_blocks && fs->block_map == bmap)
+ 			fs->group_desc[group].bg_flags &= ~EXT2_BG_BLOCK_UNINIT;
+ 		for (j=0; j < old_desc_blocks; j++)
+-			if (old_desc_blk + j < fs->super->s_blocks_count)
++			if (old_desc_blk + j < ext2fs_blocks_count(fs->super))
+ 				ext2fs_mark_block_bitmap2(bmap,
+ 							 old_desc_blk + j);
+ 	}
+@@ -72,7 +72,7 @@ int ext2fs_reserve_super_and_bgd(ext2_filsys fs,
+ 		ext2fs_mark_block_bitmap2(bmap, new_desc_blk);
+ 
+ 	if (group == fs->group_desc_count-1) {
+-		num_blocks = (fs->super->s_blocks_count -
++		num_blocks = (ext2fs_blocks_count(fs->super) -
+ 			     fs->super->s_first_data_block) %
+ 			fs->super->s_blocks_per_group;
+ 		if (!num_blocks)
+diff --git a/lib/ext2fs/block.c b/lib/ext2fs/block.c
+index eafb4cb..686a036 100644
+--- a/lib/ext2fs/block.c
++++ b/lib/ext2fs/block.c
+@@ -78,7 +78,7 @@ static int block_iterate_ind(blk_t *ind_block, blk_t ref_block,
+ 		ctx->bcount += limit;
+ 		return ret;
+ 	}
+-	if (*ind_block >= ctx->fs->super->s_blocks_count ||
++	if (*ind_block >= ext2fs_blocks_count(ctx->fs->super) ||
+ 	    *ind_block < ctx->fs->super->s_first_data_block) {
+ 		ctx->errcode = EXT2_ET_BAD_IND_BLOCK;
+ 		ret |= BLOCK_ERROR;
+@@ -166,7 +166,7 @@ static int block_iterate_dind(blk_t *dind_block, blk_t ref_block,
+ 		ctx->bcount += limit*limit;
+ 		return ret;
+ 	}
+-	if (*dind_block >= ctx->fs->super->s_blocks_count ||
++	if (*dind_block >= ext2fs_blocks_count(ctx->fs->super) ||
+ 	    *dind_block < ctx->fs->super->s_first_data_block) {
+ 		ctx->errcode = EXT2_ET_BAD_DIND_BLOCK;
+ 		ret |= BLOCK_ERROR;
+@@ -252,7 +252,7 @@ static int block_iterate_tind(blk_t *tind_block, blk_t ref_block,
+ 		ctx->bcount += limit*limit*limit;
+ 		return ret;
+ 	}
+-	if (*tind_block >= ctx->fs->super->s_blocks_count ||
++	if (*tind_block >= ext2fs_blocks_count(ctx->fs->super) ||
+ 	    *tind_block < ctx->fs->super->s_first_data_block) {
+ 		ctx->errcode = EXT2_ET_BAD_TIND_BLOCK;
+ 		ret |= BLOCK_ERROR;
+diff --git a/lib/ext2fs/bmove.c b/lib/ext2fs/bmove.c
+index f685f9d..32fbbcb 100644
+--- a/lib/ext2fs/bmove.c
++++ b/lib/ext2fs/bmove.c
+@@ -50,7 +50,7 @@ static int process_block(ext2_filsys fs, blk_t	*block_nr,
+ 	 */
+ 	if (ext2fs_test_block_bitmap2(pb->reserve, block)) {
+ 		do {
+-			if (++block >= fs->super->s_blocks_count)
++			if (++block >= ext2fs_blocks_count(fs->super))
+ 				block = fs->super->s_first_data_block;
+ 			if (block == orig) {
+ 				pb->error = EXT2_ET_BLOCK_ALLOC_FAIL;
+diff --git a/lib/ext2fs/check_desc.c b/lib/ext2fs/check_desc.c
+index f863c77..c3f0f7a 100644
+--- a/lib/ext2fs/check_desc.c
++++ b/lib/ext2fs/check_desc.c
+@@ -35,7 +35,7 @@ errcode_t ext2fs_check_desc(ext2_filsys fs)
+ 	errcode_t retval;
+ 	dgrp_t i;
+ 	blk_t first_block = fs->super->s_first_data_block;
+-	blk_t last_block = fs->super->s_blocks_count-1;
++	blk_t last_block = ext2fs_blocks_count(fs->super)-1;
+ 	blk_t blk, b;
+ 	int j;
+ 
+@@ -54,7 +54,7 @@ errcode_t ext2fs_check_desc(ext2_filsys fs)
+ 			first_block = ext2fs_group_first_block(fs, i);
+ 			last_block = ext2fs_group_last_block(fs, i);
+ 			if (i == (fs->group_desc_count - 1))
+-				last_block = fs->super->s_blocks_count-1;
++				last_block = ext2fs_blocks_count(fs->super)-1;
+ 		}
+ 
+ 		/*
+diff --git a/lib/ext2fs/closefs.c b/lib/ext2fs/closefs.c
+index 226d04e..b5b32b2 100644
+--- a/lib/ext2fs/closefs.c
++++ b/lib/ext2fs/closefs.c
+@@ -151,9 +151,9 @@ int ext2fs_super_and_bgd_loc(ext2_filsys fs,
+ 					&ret_used_blks);
+ 
+ 	if (group == fs->group_desc_count-1) {
+-		numblocks = (fs->super->s_blocks_count -
+-			     fs->super->s_first_data_block) %
+-			fs->super->s_blocks_per_group;
++		numblocks = (ext2fs_blocks_count(fs->super) -
++			     (blk64_t) fs->super->s_first_data_block) %
++			(blk64_t) fs->super->s_blocks_per_group;
+ 		if (!numblocks)
+ 			numblocks = fs->super->s_blocks_per_group;
+ 	} else
+diff --git a/lib/ext2fs/ext_attr.c b/lib/ext2fs/ext_attr.c
+index b1025e2..9ba37b2 100644
+--- a/lib/ext2fs/ext_attr.c
++++ b/lib/ext2fs/ext_attr.c
+@@ -117,7 +117,7 @@ errcode_t ext2fs_adjust_ea_refcount2(ext2_filsys fs, blk64_t blk,
+ 	struct ext2_ext_attr_header *header;
+ 	char	*buf = 0;
+ 
+-	if ((blk >= fs->super->s_blocks_count) ||
++	if ((blk >= ext2fs_blocks_count(fs->super)) ||
+ 	    (blk < fs->super->s_first_data_block))
+ 		return EXT2_ET_BAD_EA_BLOCK_NUM;
+ 
+diff --git a/lib/ext2fs/icount.c b/lib/ext2fs/icount.c
+index fe24e56..465f183 100644
+--- a/lib/ext2fs/icount.c
++++ b/lib/ext2fs/icount.c
+@@ -744,7 +744,7 @@ static void setup(void)
+ 	initialize_ext2_error_table();
+ 
+ 	memset(&param, 0, sizeof(param));
+-	param.s_blocks_count = 12000;
++	ext2fs_blocks_count_set(&param, 12000);
+ 
+ 	retval = ext2fs_initialize("test fs", EXT2_FLAG_NEW_BITMAPS, &param,
+ 				   test_io_manager, &test_fs);
+diff --git a/lib/ext2fs/mkjournal.c b/lib/ext2fs/mkjournal.c
+index 10dac51..5222fd1 100644
+--- a/lib/ext2fs/mkjournal.c
++++ b/lib/ext2fs/mkjournal.c
+@@ -321,7 +321,7 @@ static errcode_t write_journal_inode(ext2_filsys fs, ext2_ino_t journal_ino,
+ 	 * the filesystem.  Pick a group that has the largest number
+ 	 * of free blocks.
+ 	 */
+-	group = ext2fs_group_of_blk(fs, (fs->super->s_blocks_count -
++	group = ext2fs_group_of_blk(fs, (ext2fs_blocks_count(fs->super) -
+ 					 fs->super->s_first_data_block) / 2);
+ 	log_flex = 1 << fs->super->s_log_groups_per_flex;
+ 	if (fs->super->s_log_groups_per_flex && (group > log_flex)) {
+diff --git a/lib/ext2fs/openfs.c b/lib/ext2fs/openfs.c
+index 9607cde..c1617f3 100644
+--- a/lib/ext2fs/openfs.c
++++ b/lib/ext2fs/openfs.c
+@@ -54,7 +54,7 @@ blk64_t ext2fs_descriptor_block_loc2(ext2_filsys fs, blk64_t group_block,
+ 	 */
+ 	if (group_block != fs->super->s_first_data_block &&
+ 	    ((ret_blk + fs->super->s_blocks_per_group) <
+-	     fs->super->s_blocks_count))
++	     ext2fs_blocks_count(fs->super)))
+ 		ret_blk += fs->super->s_blocks_per_group;
+ 	return ret_blk;
+ }
+@@ -285,9 +285,9 @@ errcode_t ext2fs_open2(const char *name, const char *io_options,
+ 		retval = EXT2_ET_CORRUPT_SUPERBLOCK;
+ 		goto cleanup;
+ 	}
+-	fs->group_desc_count = ext2fs_div_ceil(fs->super->s_blocks_count -
+-					       fs->super->s_first_data_block,
+-					       blocks_per_group);
++	fs->group_desc_count = ext2fs_div64_ceil(ext2fs_blocks_count(fs->super) -
++						 fs->super->s_first_data_block,
++						 blocks_per_group);
+ 	fs->desc_blocks = ext2fs_div_ceil(fs->group_desc_count,
+ 					  EXT2_DESC_PER_BLOCK(fs->super));
+ 	retval = ext2fs_get_array(fs->desc_blocks, fs->blocksize,
+diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
+index c859cca..d994fe3 100644
+--- a/lib/ext2fs/rw_bitmaps.c
++++ b/lib/ext2fs/rw_bitmaps.c
+@@ -81,9 +81,9 @@ static errcode_t write_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+ 
+ 		if (i == fs->group_desc_count - 1) {
+ 			/* Force bitmap padding for the last group */
+-			nbits = ((fs->super->s_blocks_count
+-				  - fs->super->s_first_data_block)
+-				 % EXT2_BLOCKS_PER_GROUP(fs->super));
++			nbits = ((ext2fs_blocks_count(fs->super)
++				  - (__u64) fs->super->s_first_data_block)
++				 % (__u64) EXT2_BLOCKS_PER_GROUP(fs->super));
+ 			if (nbits)
+ 				for (j = nbits; j < fs->blocksize * 8; j++)
+ 					ext2fs_set_bit(j, block_buf);
+diff --git a/lib/ext2fs/tst_badblocks.c b/lib/ext2fs/tst_badblocks.c
+index 358da20..72b14b7 100644
+--- a/lib/ext2fs/tst_badblocks.c
++++ b/lib/ext2fs/tst_badblocks.c
+@@ -227,7 +227,7 @@ int file_test_invalid(badblocks_list bb)
+ 	fs->super = malloc(SUPERBLOCK_SIZE);
+ 	memset(fs->super, 0, SUPERBLOCK_SIZE);
+ 	fs->super->s_first_data_block = 1;
+-	fs->super->s_blocks_count = 100;
++	ext2fs_blocks_count_set(fs->super, 100);
+ 
+ 	f = tmpfile();
+ 	if (!f) {
+diff --git a/lib/ext2fs/tst_csum.c b/lib/ext2fs/tst_csum.c
+index 0ffd92b..56148b8 100644
+--- a/lib/ext2fs/tst_csum.c
++++ b/lib/ext2fs/tst_csum.c
+@@ -57,7 +57,7 @@ int main(int argc, char **argv)
+ 	__u16 csum1, csum2, csum_known = 0xd3a4;
+ 
+ 	memset(&param, 0, sizeof(param));
+-	param.s_blocks_count = 32768;
++	ext2fs_blocks_count_set(&param, 32768);
+ 
+ 	retval = ext2fs_initialize("test fs", EXT2_FLAG_NEW_BITMAPS, &param,
+ 				   test_io_manager, &fs);
+diff --git a/misc/mke2fs.c b/misc/mke2fs.c
+index a3388f6..9870cfd 100644
+--- a/misc/mke2fs.c
++++ b/misc/mke2fs.c
+@@ -199,9 +199,9 @@ static void test_disk(ext2_filsys fs, badblocks_list *bb_list)
+ 	errcode_t	retval;
+ 	char		buf[1024];
+ 
+-	sprintf(buf, "badblocks -b %d -X %s%s%s %u", fs->blocksize,
++	sprintf(buf, "badblocks -b %d -X %s%s%s %llu", fs->blocksize,
+ 		quiet ? "" : "-s ", (cflag > 1) ? "-w " : "",
+-		fs->device_name, fs->super->s_blocks_count-1);
++		fs->device_name, ext2fs_blocks_count(fs->super)-1);
+ 	if (verbose)
+ 		printf(_("Running command: %s\n"), buf);
+ 	f = popen(buf, "r");
+@@ -544,7 +544,7 @@ static void create_journal_dev(ext2_filsys fs)
+ 	int			c, count, err_count;
+ 
+ 	retval = ext2fs_create_journal_superblock(fs,
+-				  fs->super->s_blocks_count, 0, &buf);
++				  ext2fs_blocks_count(fs->super), 0, &buf);
+ 	if (retval) {
+ 		com_err("create_journal_dev", retval,
+ 			_("while initializing journal superblock"));
+@@ -554,10 +554,10 @@ static void create_journal_dev(ext2_filsys fs)
+ 		memset(&progress, 0, sizeof(progress));
+ 	else
+ 		progress_init(&progress, _("Zeroing journal device: "),
+-			      fs->super->s_blocks_count);
++			      ext2fs_blocks_count(fs->super));
+ 
+ 	blk = 0;
+-	count = fs->super->s_blocks_count;
++	count = ext2fs_blocks_count(fs->super);
+ 	while (count > 0) {
+ 		if (count > 1024)
+ 			c = 1024;
 -- 
 1.5.6.5
 
