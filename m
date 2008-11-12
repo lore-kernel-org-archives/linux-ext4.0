@@ -1,8 +1,8 @@
 From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: [PATCH 0/3][RFC] release block-device-mapping buffer_heads which
- have the filesystem private data for avoiding oom-killer
-Date: Wed, 12 Nov 2008 16:49:32 +0900
-Message-ID: <20081112164932.a4220c21.toshi.okajima@jp.fujitsu.com>
+Subject: [PATCH 1/3][RFC] vfs: release block-device-mapping buffer_heads
+ which have the filesystem private data for avoiding oom-killer
+Date: Wed, 12 Nov 2008 16:51:54 +0900
+Message-ID: <20081112165154.61625b15.toshi.okajima@jp.fujitsu.com>
 References: <20081017.223716.147444348.00960188@stratos.soft.fujitsu.com>
 	<20081020160249.ff41f762.akpm@linux-foundation.org>
 	<20081023174101.85b59177.toshi.okajima@jp.fujitsu.com>
@@ -22,76 +22,179 @@ In-Reply-To: <4913B35A.8080203@jp.fujitsu.com>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi.
+[PATCH 1/3] vfs: release block-device-mapping buffer_heads which have the filesystem 
+private data for avoiding oom-killer
 
-I found it possible that even if a lot of pages can be logically released, 
-they cannot be released by try_to_release_page, and then they keep remaining.
+Implement blkdev_releasepage() to release the buffer_heads and page after we 
+release private data which are a client's. One of the clients is a filesystem.
 
-This case enables an oom-killer to happen easily.
+blkdev_releasepage() can call the client's releasepage() which is registered 
+by blkdev_register_client_releasepage() to release its private data.
 
-Details of the root cause and my patch which fixes it are shown below.
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 ---
-The direct data blocks can be released by the member function, releasepage()
-of their mapping of the filesystem i-node.
-(If an ext3 has the i-node, ext3_releasepage() is used as releasepage().) 
+ fs/block_dev.c     |   62 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/super.c         |   22 ++++++++++++++++++
+ include/linux/fs.h |    9 +++++++
+ 3 files changed, 93 insertions(+)
 
-On the other hand, the indirect data blocks (ext3) are attempted to be released
-by try_to_free_buffers(). (And other metadata are also done by it.)
-Because a block device has its mapping, and doesn't have own member function 
-to release a page. 
-
-But try_to_free_buffers() is a generic function which releases buffer_heads
-(and a page), and no buffer_head can be released if a buffer_head has private 
-data (like journal_head) because the buffer_head's reference counter is bigger
-than 0. Therefore, try_to_free_buffers() cannot release a buffer_head even if
-it is possible to release its private data.
-
-As a result, oom-killer may happen when a system memory is exhausted even if 
-it is possible to release a lot of private data and their pages, because 
-try_to_free_buffers() doesn't release such pages.
-
-In order to solve this situation, we add a member function into a block device
- to release private data and then the page. 
-This member function is:
-- registered at a filesystem initialization time (get_sb_bdev()) 
-- unregistered at a filesystem unmount time (kill_block_super())
-
-This member function's pointer is located in a bdev_inode structure.
-Besides, a client which registers it is also added into this structure. 
-A client for a filesystem is its superblock. 
-
-If we use an ext3, this additional member function can do equal processing to
-ext3_releasepage() by using the superblock. And a block device's releasepage() 
-is necessary to call this additional member function. Therefore we need a 
-member function, 'releasepage' of the mapping of a block device.
-
-Changing like them becomes possible to release private data and then the page
-via try_to_release_page().
-Therefore it becomes difficult for oom-killer to happen than before.
-Because this patch enables journal_heads to be released more efficiently
-in case of ext3.
-
-I will post patches to solve it (ext3/ext4 version):
-(1) [patch 1/3] vfs: release block-device-mapping buffer_heads which have the 
-               filesystem private data for avoiding oom-killer
-(2) [patch 2/3] ext3: release block-device-mapping buffer_heads which have the
-               filesystem private data for avoiding oom-killer
-(3) [patch 3/3] ext4: release block-device-mapping buffer_heads which have the
-               filesystem private data for avoiding oom-killer
-
-[Additional information]
-I have confirmed that JBD on 2.6.28-rc4 to which my patch was applied could keep 
-running for long time without oom-killer under the heavy loads.
-(Of course, JBD without the patch cannot keep running for long time
-under the same situation.)
-* This patch needs Ted's fix which was posted at "Wed, 5 Nov 2008 09:05:07 -0500"
-* as "[PATCH] jbd: don't give up looking for space so easily in 
-* __log_wait_for_space". 
-* Because "no transactions" error happens easily by releasing journal_heads 
-* efficiently with my patch.
-* But linux-2.6.28-rc4 includes his patch. Therefore I don't care about this.
-
-Any comments are welcome.
-
-Best Regards,
-Toshiyuki Okajima
+diff -Nurp linux-2.6.28-rc4.orig/fs/block_dev.c linux-2.6.28-rc4/fs/block_dev.c
+--- linux-2.6.28-rc4.orig/fs/block_dev.c	2008-11-10 09:36:15.000000000 +0900
++++ linux-2.6.28-rc4/fs/block_dev.c	2008-11-10 18:33:52.000000000 +0900
+@@ -29,6 +29,9 @@
+ 
+ struct bdev_inode {
+ 	struct block_device bdev;
++	void *client;
++	int (*client_releasepage)(void*, struct page*, gfp_t);
++	rwlock_t client_lock;
+ 	struct inode vfs_inode;
+ };
+ 
+@@ -260,6 +263,9 @@ static struct inode *bdev_alloc_inode(st
+ 	struct bdev_inode *ei = kmem_cache_alloc(bdev_cachep, GFP_KERNEL);
+ 	if (!ei)
+ 		return NULL;
++	ei->client = NULL;
++	ei->client_releasepage = NULL;
++	rwlock_init(&ei->client_lock);
+ 	return &ei->vfs_inode;
+ }
+ 
+@@ -1208,6 +1214,61 @@ static long block_ioctl(struct file *fil
+ 	return blkdev_ioctl(bdev, mode, cmd, arg);
+ }
+ 
++/*
++ * blkdev_releasepage: execute ei->client_releasepage() if it exists.
++ * Otherwise, execute try_to_free_buffers().
++ * ei->client_releasepage() releases private client's page if possible.
++ * Because a buffer_head's using counter is bigger than 0 if a client has
++ * a page for private usage. If so, try_to_free_buffers() cannot release it.
++ * Therefore a client must try to release a page itself.
++ */
++static int blkdev_releasepage(struct page *page, gfp_t wait)
++{
++	struct bdev_inode *ei = BDEV_I(page->mapping->host);
++	int ret;
++
++	read_lock(&ei->client_lock);
++	if (ei->client_releasepage != NULL)
++		ret = (*ei->client_releasepage)(ei->client, page, wait);
++	else
++		ret = try_to_free_buffers(page);
++	read_unlock(&ei->client_lock);
++	return ret;
++}
++
++/*
++ * blkdev_register_client_releasepage: register client_releasepage.
++ */
++int blkdev_register_client_releasepage(struct block_device *bdev,
++	void *client, int (*releasepage)(void*, struct page*, gfp_t))
++{
++	struct bdev_inode *ei = BDEV_I(bdev->bd_inode);
++	int ret = 1;
++
++	write_lock(&ei->client_lock);
++	if (ei->client == NULL && ei->client_releasepage == NULL) {
++		ei->client = client;
++		ei->client_releasepage = releasepage;
++	} else if (ei->client != client 
++			|| ei->client_releasepage != releasepage)
++		ret = 0;
++	write_unlock(&ei->client_lock);
++	return ret;
++}
++
++/*
++ * blkdev_unregister_client_releasepage: unregister client_releasepage.
++ */
++void blkdev_unregister_client_releasepage(struct block_device *bdev)
++{
++	struct bdev_inode *ei = BDEV_I(bdev->bd_inode);
++
++	write_lock(&ei->client_lock);
++	ei->client = NULL;
++	ei->client_releasepage = NULL;
++	write_unlock(&ei->client_lock);
++}
++
+ static const struct address_space_operations def_blk_aops = {
+ 	.readpage	= blkdev_readpage,
+ 	.writepage	= blkdev_writepage,
+@@ -1215,6 +1276,7 @@ static const struct address_space_operat
+ 	.write_begin	= blkdev_write_begin,
+ 	.write_end	= blkdev_write_end,
+ 	.writepages	= generic_writepages,
++	.releasepage	= blkdev_releasepage,
+ 	.direct_IO	= blkdev_direct_IO,
+ };
+ 
+diff -Nurp linux-2.6.28-rc4.orig/fs/super.c linux-2.6.28-rc4/fs/super.c
+--- linux-2.6.28-rc4.orig/fs/super.c	2008-11-10 09:36:15.000000000 +0900
++++ linux-2.6.28-rc4/fs/super.c	2008-11-11 09:25:04.000000000 +0900
+@@ -801,6 +801,18 @@ int get_sb_bdev(struct file_system_type 
+ 
+ 		s->s_flags |= MS_ACTIVE;
+ 	}
++	/*
++	 * register a client function which releases a page whose mapping is
++	 * block device 
++	 */
++	if (fs_type->release_metadata != NULL
++		&& !blkdev_register_client_releasepage(bdev, s,
++			fs_type->release_metadata)) {
++		up_write(&s->s_umount);
++		deactivate_super(s);
++		error = -EBUSY;
++		goto error_bdev;
++	}
+ 
+ 	return simple_set_mnt(mnt, s);
+ 
+@@ -819,6 +831,16 @@ void kill_block_super(struct super_block
+ 	struct block_device *bdev = sb->s_bdev;
+ 	fmode_t mode = sb->s_mode;
+ 
++	/*
++	 * unregister a client function which releases a page whose mapping is
++	 * block device
++	 *
++	 * This is sure to be unmounting here, and it releases all own data
++	 * itself. Therefore the filesystem's function which is owned by the
++	 * block device, which releases its data is not needed any more.
++	 */
++	if (sb->s_type->release_metadata != NULL)
++		blkdev_unregister_client_releasepage(bdev);
+ 	generic_shutdown_super(sb);
+ 	sync_blockdev(bdev);
+ 	close_bdev_exclusive(bdev, mode);
+diff -Nurp linux-2.6.28-rc4.orig/include/linux/fs.h linux-2.6.28-rc4/include/linux/fs.h
+--- linux-2.6.28-rc4.orig/include/linux/fs.h	2008-11-10 09:36:15.000000000 +0900
++++ linux-2.6.28-rc4/include/linux/fs.h	2008-11-11 09:01:12.000000000 +0900
+@@ -1538,6 +1538,7 @@ struct file_system_type {
+ 	int (*get_sb) (struct file_system_type *, int,
+ 		       const char *, void *, struct vfsmount *);
+ 	void (*kill_sb) (struct super_block *);
++	int (*release_metadata)(void*, struct page*, gfp_t);
+ 	struct module *owner;
+ 	struct file_system_type * next;
+ 	struct list_head fs_supers;
+@@ -1699,8 +1700,16 @@ extern void bd_set_size(struct block_dev
+ extern void bd_forget(struct inode *inode);
+ extern void bdput(struct block_device *);
+ extern struct block_device *open_by_devnum(dev_t, fmode_t);
++extern int blkdev_register_client_releasepage(struct block_device *,
++	void *, int (*releasepage)(void *, struct page*, gfp_t));
++extern void blkdev_unregister_client_releasepage(struct block_device *);
+ #else
+ static inline void bd_forget(struct inode *inode) {}
++static inline int blkdev_register_client_releasepage(struct block_device *,
++	void *, int (*releasepage)(void *, struct page*, gfp_t))
++{ return 1; }
++static inline void blkdev_unregister_client_releasepage(struct block_device *)
++{}
+ #endif
+ extern const struct file_operations def_blk_fops;
+ extern const struct file_operations def_chr_fops;
