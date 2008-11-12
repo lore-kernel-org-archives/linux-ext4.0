@@ -1,71 +1,94 @@
-From: Stephen Rothwell <sfr@canb.auug.org.au>
-Subject: [PATCH] ext4: fix some s64 printing warnings
-Date: Wed, 12 Nov 2008 11:10:49 +1100
-Message-ID: <20081112111049.68c604ff.sfr@canb.auug.org.au>
+From: Greg KH <gregkh@suse.de>
+Subject: [patch 01/49] ext3: wait on all pending commits in ext3_sync_fs
+Date: Tue, 11 Nov 2008 16:22:53 -0800
+Message-ID: <20081112002253.GB10989@kroah.com>
+References: <20081112001401.926965113@mini.kroah.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: <linux-ext4@vger.kernel.org>, LKML <linux-kernel@vger.kernel.org>,
-	ppc-dev <linuxppc-dev@ozlabs.org>
-To: "Theodore Ts'o" <tytso@mit.edu>, <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>,
+	Michael Krufky <mkrufky@linuxtv.org>,
+	Chuck Ebbert <cebbert@redhat.com>,
+	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
+	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
+	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
+	torvalds@linux-foundation.org, akpm@linux-foundation.org,
+	alan@lxorguk.ukuu.org.uk, Arthur Jones <ajones@riverbed.com>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from chilli.pcug.org.au ([203.10.76.44]:43048 "EHLO smtps.tip.net.au"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751984AbYKLAK7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 11 Nov 2008 19:10:59 -0500
+Received: from kroah.org ([198.145.64.141]:42026 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752203AbYKLAZ7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 11 Nov 2008 19:25:59 -0500
+Content-Disposition: inline; filename="ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch"
+In-Reply-To: <20081112002215.GA10989@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-A powerpc ppc64_defconfig build of Linus' current tree produces these
-warnings:
+2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
-fs/ext4/balloc.c: In function 'ext4_has_free_blocks':
-fs/ext4/balloc.c:617: warning: format '%lld' expects type 'long long int', but argument 2 has type 's64'
-fs/ext4/inode.c: In function 'ext4_print_free_blocks':
-fs/ext4/inode.c:1833: warning: format '%lld' expects type 'long long int', but argument 2 has type 's64'
-fs/ext4/inode.c:1835: warning: format '%lld' expects type 'long long int', but argument 2 has type 's64'
+------------------
 
-Fix them up with the usual casts.
+From: Arthur Jones <ajones@riverbed.com>
 
-Signed-off-by: Stephen Rothwell <sfr@canb.auug.org.au>
+commit c87591b719737b4e91eb1a9fa8fd55a4ff1886d6 upstream
+
+In ext3_sync_fs, we only wait for a commit to finish if we started it, but
+there may be one already in progress which will not be synced.
+
+In the case of a data=ordered umount with pending long symlinks which are
+delayed due to a long list of other I/O on the backing block device, this
+causes the buffer associated with the long symlinks to not be moved to the
+inode dirty list in the second phase of fsync_super.  Then, before they
+can be dirtied again, kjournald exits, seeing the UMOUNT flag and the
+dirty pages are never written to the backing block device, causing long
+symlink corruption and exposing new or previously freed block data to
+userspace.
+
+This can be reproduced with a script created
+by Eric Sandeen <sandeen@redhat.com>:
+
+	#!/bin/bash
+
+	umount /mnt/test2
+	mount /dev/sdb4 /mnt/test2
+	rm -f /mnt/test2/*
+	dd if=/dev/zero of=/mnt/test2/bigfile bs=1M count=512
+	touch
+	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
+	ln -s
+	/mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
+	/mnt/test2/link
+	umount /mnt/test2
+	mount /dev/sdb4 /mnt/test2
+	ls /mnt/test2/
+	umount /mnt/test2
+
+To ensure all commits are synced, we flush all journal commits now when
+sync_fs'ing ext3.
+
+Signed-off-by: Arthur Jones <ajones@riverbed.com>
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: Theodore Ts'o <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
 ---
- fs/ext4/balloc.c |    2 +-
- fs/ext4/inode.c  |    4 ++--
- 2 files changed, 3 insertions(+), 3 deletions(-)
+ fs/ext3/super.c |   11 +++++------
+ 1 file changed, 5 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index d2003cd..9ce2fcd 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -614,7 +614,7 @@ int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks)
- 		if (dirty_blocks < 0) {
- 			printk(KERN_CRIT "Dirty block accounting "
- 					"went wrong %lld\n",
--					dirty_blocks);
-+					(long long)dirty_blocks);
- 		}
- 	}
- 	/* Check whether we have space after
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index be21a5a..2a3804e 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1830,9 +1830,9 @@ static void ext4_print_free_blocks(struct inode *inode)
- 			ext4_count_free_blocks(inode->i_sb));
- 	printk(KERN_EMERG "Free/Dirty block details\n");
- 	printk(KERN_EMERG "free_blocks=%lld\n",
--			percpu_counter_sum(&sbi->s_freeblocks_counter));
-+			(long long)percpu_counter_sum(&sbi->s_freeblocks_counter));
- 	printk(KERN_EMERG "dirty_blocks=%lld\n",
--			percpu_counter_sum(&sbi->s_dirtyblocks_counter));
-+			(long long)percpu_counter_sum(&sbi->s_dirtyblocks_counter));
- 	printk(KERN_EMERG "Block reservation details\n");
- 	printk(KERN_EMERG "i_reserved_data_blocks=%lu\n",
- 			EXT4_I(inode)->i_reserved_data_blocks);
--- 
-1.5.6.5
-
--- 
-Cheers,
-Stephen Rothwell                    sfr@canb.auug.org.au
-http://www.canb.auug.org.au/~sfr/
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2365,13 +2365,12 @@ static void ext3_write_super (struct sup
+ 
+ static int ext3_sync_fs(struct super_block *sb, int wait)
+ {
+-	tid_t target;
