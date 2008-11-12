@@ -1,109 +1,55 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: [PATCH 3/3][RFC] ext4: release block-device-mapping buffer_heads
- which have the filesystem private data for avoiding oom-killer
-Date: Wed, 12 Nov 2008 16:55:59 +0900
-Message-ID: <20081112165559.c6664449.toshi.okajima@jp.fujitsu.com>
-References: <20081017.223716.147444348.00960188@stratos.soft.fujitsu.com>
-	<20081020160249.ff41f762.akpm@linux-foundation.org>
-	<20081023174101.85b59177.toshi.okajima@jp.fujitsu.com>
-	<20081027142657.2120aa3f.akpm@linux-foundation.org>
-	<49067D03.6080609@jp.fujitsu.com>
-	<20081105131140.7689f048.toshi.okajima@jp.fujitsu.com>
-	<20081105135349.GA22998@mit.edu>
-	<4913B35A.8080203@jp.fujitsu.com>
+From: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: Re: 64-bit dblists
+Date: Wed, 12 Nov 2008 11:48:36 -0500
+Message-ID: <20081112164836.GF29956@shell>
+References: <20081027205910.GD20992@shell> <20081103030936.GB29102@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: akpm@linux-foundation.org, tytso@mit.edu, viro@zeniv.linux.org.uk,
-	sct@redhat.com, adilger@sun.com
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, "Jose R. Santos" <jrs@us.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:51098 "EHLO
-	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751078AbYKLIFa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Nov 2008 03:05:30 -0500
-In-Reply-To: <4913B35A.8080203@jp.fujitsu.com>
+Received: from mx1.redhat.com ([66.187.233.31]:47303 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750763AbYKLQsj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 12 Nov 2008 11:48:39 -0500
+Content-Disposition: inline
+In-Reply-To: <20081103030936.GB29102@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[PATCH 3/3] ext4: release block-device-mapping buffer_heads which have the filesystem
-private data for avoiding oom-killer
+On Sun, Nov 02, 2008 at 10:09:36PM -0500, Theodore Tso wrote:
+> On Mon, Oct 27, 2008 at 04:59:10PM -0400, Valerie Aurora Henson wrote:
+> > Hi all,
+> > 
+> > In my continuing quest to finish the 64-bit conversion of e2fsprogs, I
+> > ran into this structure exported in ext2fs.h:
+> > 
+> > struct ext2_db_entry {
+> >         ext2_ino_t      ino;
+> >         blk_t   blk;
+> >         int     blockcnt;
+> > };
+> > 
+> > The "blk_t" is the problem here - we need a blk64_t.  A pointer to
+> > this structure is passed to the user-provided directory block iterator
+> > in ext2fs_dblist_iterate().
+> > 
+> > Assuming the goal is to preserve the ext2fs_dblist ABI, I can see two
+> > ways of doing this:
+> > 
+> > 1. Define ext2_db_entry2, ext2_dblist2, and ext2fs_dblist_*2() and do
+> > the usual translation/conversion function business.
+> 
+> The dblist.c and dblist_dir.c functions are so small that it's
+> probably not worth it to do translaction/conversation functions; it's
+> basically just a linked list convenience function implementation.
+> 
+> My suggestion is to just create a dblist2.c and dblist_dir2.c, and
+> just make a 64-bit version of the directory block list abstraction.
+> My guess that size of the conversaion functions would be bigger than a
+> new 64-bit version of the abstraction.  (The object size of dblist.o
+> and dblist_dir.o combined is only about 1.5k)
 
-Implement releasepage() of a client of a block device to release its private 
-data (journal_heads) and the page. The client is an ext4 filesystem.
+Thanks!  This is what I'm doing currently.
 
-This function is called from releasepage() of the block-device mapping, 
-blkdev_releasepage().
-
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
----
- fs/ext4/ext4.h  |    2 ++
- fs/ext4/inode.c |   22 ++++++++++++++++++++++
- fs/ext4/super.c |    4 ++++
- 3 files changed, 28 insertions(+)
-
-diff -Nurp linux-2.6.28-rc4.orig/fs/ext4/ext4.h linux-2.6.28-rc4/fs/ext4/ext4.h
---- linux-2.6.28-rc4.orig/fs/ext4/ext4.h	2008-11-10 09:36:15.000000000 +0900
-+++ linux-2.6.28-rc4/fs/ext4/ext4.h	2008-11-12 10:44:25.000000000 +0900
-@@ -1095,6 +1095,8 @@ extern int ext4_chunk_trans_blocks(struc
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
-+extern int ext4_release_metadata(void *client, struct page *page,
-+		gfp_t wait);
- 
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
-diff -Nurp linux-2.6.28-rc4.orig/fs/ext4/inode.c linux-2.6.28-rc4/fs/ext4/inode.c
---- linux-2.6.28-rc4.orig/fs/ext4/inode.c	2008-11-10 09:36:15.000000000 +0900
-+++ linux-2.6.28-rc4/fs/ext4/inode.c	2008-11-12 10:42:55.000000000 +0900
-@@ -3002,6 +3002,28 @@ static int ext4_releasepage(struct page 
- }
- 
- /*
-+ * ext4_release_metadata: try to release own page.
-+ * The mapping of this page is block device's. Therefore try_to_free_buffers()
-+ * cannot release it. As a result, a function which releases own page is
-+ * required.
-+ */
-+int ext4_release_metadata(void *client, struct page *page, gfp_t wait)
-+{
-+	struct super_block *sb = (struct super_block*)client;
-+	journal_t *journal;
-+
-+	WARN_ON(PageChecked(page));
-+	if (!page_has_buffers(page))
-+		return 0;
-+	BUG_ON(EXT4_SB(sb) == NULL);
-+	journal = EXT4_SB(sb)->s_journal;
-+	if (journal != NULL)
-+		return jbd2_journal_try_to_free_buffers(journal, page, wait);
-+        else
-+		return try_to_free_buffers(page);
-+}
-+
-+/*
-  * If the O_DIRECT write will extend the file then add this inode to the
-  * orphan list.  So recovery will truncate it back to the original size
-  * if the machine crashes during the write.
-diff -Nurp linux-2.6.28-rc4.orig/fs/ext4/super.c linux-2.6.28-rc4/fs/ext4/super.c
---- linux-2.6.28-rc4.orig/fs/ext4/super.c	2008-11-10 09:36:15.000000000 +0900
-+++ linux-2.6.28-rc4/fs/ext4/super.c	2008-11-12 12:04:58.000000000 +0900
-@@ -3543,6 +3543,8 @@ static struct file_system_type ext4_fs_t
- 	.name		= "ext4",
- 	.get_sb		= ext4_get_sb,
- 	.kill_sb	= kill_block_super,
-+	.release_metadata
-+			= ext4_release_metadata,
- 	.fs_flags	= FS_REQUIRES_DEV,
- };
- 
-@@ -3562,6 +3564,8 @@ static struct file_system_type ext4dev_f
- 	.name		= "ext4dev",
- 	.get_sb		= ext4dev_get_sb,
- 	.kill_sb	= kill_block_super,
-+	.release_metadata
-+			= ext4_release_metadata,
- 	.fs_flags	= FS_REQUIRES_DEV,
- };
- MODULE_ALIAS("ext4dev");
+-VAL
