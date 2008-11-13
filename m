@@ -1,50 +1,59 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC PATCH 15/17] Convert to inode/block/bitmap/table
-	loc()/loc_set() functions
-Date: Thu, 13 Nov 2008 13:26:42 -0700
-Message-ID: <20081113202642.GZ16005@webber.adilger.int>
-References: <1226461390-5502-7-git-send-email-vaurora@redhat.com>
- <1226461390-5502-8-git-send-email-vaurora@redhat.com>
- <1226461390-5502-9-git-send-email-vaurora@redhat.com>
- <1226461390-5502-10-git-send-email-vaurora@redhat.com>
- <1226461390-5502-11-git-send-email-vaurora@redhat.com>
- <1226461390-5502-12-git-send-email-vaurora@redhat.com>
- <1226461390-5502-13-git-send-email-vaurora@redhat.com>
- <1226461390-5502-14-git-send-email-vaurora@redhat.com>
- <1226461390-5502-15-git-send-email-vaurora@redhat.com>
- <1226461390-5502-16-git-send-email-vaurora@redhat.com>
+From: Bruce Guenter <lists-linux-ext4@bruce-guenter.dyndns.org>
+Subject: Re: ext4 unlink performance
+Date: Thu, 13 Nov 2008 14:27:33 -0600
+Message-ID: <20081113202733.GA11746@untroubled.org>
+References: <20081113185712.GB11204@untroubled.org> <20081113194628.GB21652@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Valerie Aurora Henson <vaurora@redhat.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="1yeeQ81UyVL57Vl7"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:49073 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751598AbYKMU05 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Nov 2008 15:26:57 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mADKQuJH006064
-	for <linux-ext4@vger.kernel.org>; Thu, 13 Nov 2008 12:26:56 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KAA00A01G5E0H00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 13 Nov 2008 12:26:56 -0800 (PST)
-In-reply-to: <1226461390-5502-16-git-send-email-vaurora@redhat.com>
-Content-disposition: inline
+Received: from zak.futurequest.net ([69.5.6.152]:55289 "HELO
+	zak.futurequest.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751840AbYKMU1i (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Nov 2008 15:27:38 -0500
+Content-Disposition: inline
+In-Reply-To: <20081113194628.GB21652@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Nov 11, 2008  19:43 -0800, Valerie Aurora Henson wrote:
-> -		if (block == fs->group_desc[i].bg_block_bitmap) {
-> +		if (block == ext2fs_block_bitmap_loc(fs, i)) {
 
-Similarly, renaming bg_block_bitmap to bg_block_bitmap_lo (et. al.)
-would catch tools that are broken on 64-bit filesystems.
+--1yeeQ81UyVL57Vl7
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+On Thu, Nov 13, 2008 at 02:46:28PM -0500, Theodore Tso wrote:
+> I'm assuming that ext3 filesystem was created with htree enabled
+> (possibly not true on older versions of e2fsprogs), but if you're
+> creating ext4 filesystems, I'm assuming that you have been using an
+> 1.41.x version of e2fsprogs.
 
+All filesystems are new filesystems, created with e2fsprogs 1.41.2, all
+with the default options except for ^huge_file and the inode size.
+
+> If this the the case, the most likely explanation is that that ext4
+> defaults to barriers enabled, and ext3 defaults to barriers disabled.
+> So try mounting ext3 with "-o barriers=3D1", or ext4 with "-o
+> barriers=3D0", so that the comparison is between apples and apples.
+
+The indication from dmesg is that ext4 is already running with barriers
+disabled due to running over dm, but I will re-run with barriers forced
+off to double check.
+
+--=20
+Bruce Guenter <bruce@untroubled.org>                http://untroubled.org/
+
+--1yeeQ81UyVL57Vl7
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.9 (GNU/Linux)
+
+iD8DBQFJHI216W+y3GmZgOgRAgAXAKCagyJMym499Tz9OPNOw1hC4ut6hwCdH+rI
+E0FxWEZGbb1e8UMHkMtbpII=
+=Lina
+-----END PGP SIGNATURE-----
+
+--1yeeQ81UyVL57Vl7--
