@@ -1,170 +1,115 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12018] New: oops when using ext4 on soft raid on IA64 with 65536 block size
-Date: Thu, 13 Nov 2008 00:06:49 -0800 (PST)
-Message-ID: <bug-12018-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [RFC][PATCH 7/9]ext4: Add the EXT4_IOC_FIEMAP_INO ioctl
+Date: Thu, 13 Nov 2008 20:34:30 +0900
+Message-ID: <491C10C6.2040107@rs.jp.nec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: Christoph Hellwig <hch@infradead.org>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org,
+	Mingming Cao <cmm@us.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:43019 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751557AbYKMIGw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Nov 2008 03:06:52 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mAD86nOt026079
-	for <linux-ext4@vger.kernel.org>; Thu, 13 Nov 2008 00:06:50 -0800
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:59580 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751712AbYKMLfG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Nov 2008 06:35:06 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12018
+Hi Ted,
 
-           Summary: oops when using ext4 on soft raid on IA64 with 65536
-                    block size
-           Product: File System
-           Version: 2.5
-     KernelVersion: 2.6.28-rc3-git4
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: high
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: lizf@cn.fujitsu.com
+Theodore Tso wrote:
+> On Fri, Oct 31, 2008 at 06:05:47AM -0400, Christoph Hellwig wrote:
+>>> I'll hack up a generic open_by_handle and then we can gather the
+>>> reaction - it shouldn't be more than about one or two hundred lines of
+>>> code.  Note that you really want an open by handle and not just inum for
+>>> a defragmentation tool - without the generation you can easily run into
+>>> races.
+>
+> I think having a generic open_by_handle is a Good Thing, but it
+> actually isn't quite enough for defrag, because that brings up the
+> question of how defrag can create the handle in the first place.
+>
+> In the case of Aryan's desire to get the list of files that were read
+> during boot, it's pretty obvious how we can define an interface which
+> would make available a set of file handles corresponding to the files
+> that were opened during the boot process, and then that list of file
+> handles can be saved to a file and used on the subsequent boot to do
+> the readahead.   Fairly straight forward.
+>
+> In the case of the defrag situation, though, we need to step back and
+> figure out what we are trying to do.  What the userspace program is
+> apparently trying to do is to get the block extent maps used by all of
+> the inodes in the block group.  The problem is we aren't opening the
+> inodes by pathname, so we couldn't create a handle in the first place
+> (since in order to create a handle, we need the containing directory).
+>
+> The bigger question is whether the defrag code is asking the right
+> question in the first place.  The issue is that is that it currently
+> assumes that in order to find the owner of a particular block (or more
+> generally, extent), you should search the inodes in the block's
+> blockgroup.  The problem is that for a very fragmented filesystem,
+> most of the blocks' owners might not be in their block group.  In
+> fact, over time, if you use defrag -f frequently, it will move blocks
+> belonging to inodes in one block group to other block groups, which
+> will make defrag -f's job even harder, and eventually impossible, for
+> inodes belonging to other block groups.
+>
+>> Akira, can you please comment on these issues before going on?
+>> I think the generation issue is a particularly important one if you
+>> want to allow defrag by normal users.
+>
+> I'm not at all sure that it makes sense to allow "defrag -f" to be
+> used by normal users.  The problem here is we're fighting multiple
+> constraints.  First of all, we want to keep policy in the kernel to an
+> absolute minimum, since debugging kernel code is a mess, and I don't
+> think we want the complexity of a full-fledge defragger in the kernel.
+> Secondly, though, if we are going to do this in userspace, we need to
+> push a huge amount of information to the userspace defrag program,
+> that immediately raises some very serious security issues, because we
+> don't want to leak information unduly to random userspace programs.
 
+All right.
+I will change "defrag -f" to admit only root user.
 
-Latest working kernel version: ?
-Failing kernel version: 2.6.28-rc3-git4
-Distribution: Fedora
-Hardware Environment: four 881.0GB hard disks
-Software Environment: latest-git e2fsprogs
+>>> Btw, any reason the XFS approach of passing in *file descriptors* for both
+>>> the inode to be defragmented and the "donor" inode doesn't work for you?
+>
+> I agree this is probably the better approach; it would certainly
+> reduce the amount of new code that needs to be added to the kernel.
+> Right now the "donor"/temporary inode is created and allocated in the
+> kernel, and then the kernel decides whether or not the temporary inode
+> is an improvement.  If we make the userspace code responsible for
+> creating the temporary inode and then using fallocate() to allocate
+> the new blocks, then userspace can call FIEMAP and decide whether it
+> is an improvement.
 
-Problem Description and Steps to reproduce:
+There is no problem if it is only for normal defrag,
+but I think fallocate is not enough for the other defrag mode (-r and -f)
+because we can't specify physical block offset.
+For example, in defrag -r, physical block offset of parent directory is
+set to the goal for mballoc.
+Also in defrag -f, physical block offset is used to allocate specified
+range as well.
 
-I used soft raid on IA64 and got the following oops.
+Do you mean that defrag -r and -f are unnecessary?
+I think these options are advantages
+if we compare ext4 defrag with other FS's defrag feature.
 
-# fdisk -l
+>
+> P.S. I've been looking at ext4_defrag_partial(), and the page locking
+> looks wrong.  The page is only locked if it it hasn't been read into
+> memory yet?   And at the end of the function, we do this?
+>
+>        	      if (PageLocked(page))
+> 			unlock_page(page);
 
-Disk /dev/sdc: 881.0 GB, 881005166592 bytes
-255 heads, 63 sectors/track, 107109 cylinders
-Units = cylinders of 16065 * 512 = 8225280 bytes
-Disk identifier: 0x0000544c
+In case defrag failed between write_begin() and write_end(),
+we have to call unlock_page() because we've already have the page lock
+with write_begin().
+So unlock_page() is called in the end of ext4_defrag_partial() as error case.
+Is there something wrong?
 
-   Device Boot      Start         End      Blocks   Id  System
-/dev/sdc1               1      107109   860353011   fd  Linux raid autodetect
-...
-   Device Boot      Start         End      Blocks   Id  System
-/dev/sdd1               1      107109   860353011   fd  Linux raid autodetect
-...
-   Device Boot      Start         End      Blocks   Id  System
-/dev/sde1               1      107109   860353011   fd  Linux raid autodetect
-...
-   Device Boot      Start         End      Blocks   Id  System
-/dev/sdf1               1      107109   860353011   fd  Linux raid autodetect
-
-# mdadm --create /dev/md0 --level=0 --raid-devices=4 /dev/sdc1 /dev/sdd1
-/dev/sde1 /dev/sdf1
-# mkfs.ext4 -b 65536 /dev/md0
-# mount -t ext4 /dev/md0 /mnt
-# cd /mnt
-# dd if=/dev/zero of=tmp_file bs=1M count=700
-(stuck)
-
-(another console)
-EXT4-fs: barriers enabled
-kjournald2 starting.  Commit interval 5 seconds
-EXT4 FS on md0, internal journal on md0:8
-EXT4-fs: delayed allocation enabled
-EXT4-fs: file extents enabled
-EXT4-fs: mballoc enabled
-EXT4-fs: mounted filesystem with ordered data mode.
-JBD: barrier-based sync failed on md0:8 - disabling barriers
-kernel BUG at fs/ext4/mballoc.c:1240!
-pdflush[12068]: bugcheck! 0 [1]
-Modules linked in: ext4 jbd2 crc16 raid0 nfsd lockd nfs_acl auth_rpcgss
-exportfs autofs4 sunrpc ipmi_watchdog mptctl ipmi_devintf ipmi_si
-ipmi_msghandler vfat fat dm_mirror dm_region_hash dm_log dm_multipath dm_mod
-e100 mii rng_core iTCO_wdt iTCO_vendor_support lpfc tg3 scsi_transport_fc
-libphy button sg usb_storage shpchp mptspi mptscsih mptbase scsi_transport_spi
-sd_mod scsi_mod ext3 jbd mbcache uhci_hcd ohci_hcd ehci_hcd [last unloaded:
-ipmi_watchdog]
-
-Pid: 12068, CPU 0, comm:              pdflush
-psr : 0000101008526030 ifs : 8000000000000814 ip  : [<a000000207dde590>]    Not
-tainted (2.6.28-rc3-git4)
-ip is at ext4_mb_use_best_found+0xd0/0xb00 [ext4]
-unat: 0000000000000000 pfs : 0000000000000814 rsc : 0000000000000003
-rnat: 0000000000000000 bsps: 0000000000000000 pr  : 0000000000001941
-ldrs: 0000000000000000 ccv : 0000000000000000 fpsr: 0009804c8a70433f
-csd : 0000000000000000 ssd : 0000000000000000
-b0  : a000000207dde590 b6  : a000000100039260 b7  : a00000010000bb00
-f6  : 000000000000000000000 f7  : 1003e0000000000000020
-f8  : 1003ee0000040878b0000 f9  : 1003e0000000000000000
-f10 : 1003ee0000040a19c0000 f11 : 1003e0000000000000000
-r1  : a000000100e24b80 r2  : a000000100bc5210 r3  : 0000000000004000
-r8  : 0000000000000029 r9  : 0000000000000001 r10 : a000000100a50000
-r11 : ffffffffffff0420 r12 : e00000005bfbfa40 r13 : e00000005bfb0000
-r14 : a000000100bc5218 r15 : e00001200ac5fe18 r16 : ffffffffffff6fd0
-r17 : a000000100c3f7c8 r18 : 000000000000000a r19 : 0000000000000026
-r20 : 0000000000020000 r21 : a000000100c3cb78 r22 : a000000100c3cb74
-r23 : a000000100c3cb88 r24 : a000000100c3f7a0 r25 : a000000100c2dba0
-r26 : a000000100c3cb74 r27 : 0000001008522030 r28 : 0000000000000034
-r29 : a0000001012ce0e3 r30 : 0000000000000000 r31 : a000000100bef7d8
-
-Call Trace:
- [<a000000100015ca0>] show_stack+0x40/0xa0
-                                sp=e00000005bfbf610 bsp=e00000005bfb1618
- [<a0000001000165b0>] show_regs+0x850/0x8a0
-                                sp=e00000005bfbf7e0 bsp=e00000005bfb15b8
- [<a000000100039970>] die+0x1b0/0x2c0
-                                sp=e00000005bfbf7e0 bsp=e00000005bfb1570
- [<a000000100039ad0>] die_if_kernel+0x50/0x80
-                                sp=e00000005bfbf7e0 bsp=e00000005bfb1540
- [<a00000010066a010>] ia64_bad_break+0x230/0x460
-                                sp=e00000005bfbf7e0 bsp=e00000005bfb1518
- [<a00000010000c300>] ia64_native_leave_kernel+0x0/0x270
-                                sp=e00000005bfbf870 bsp=e00000005bfb1518
- [<a000000207dde590>] ext4_mb_use_best_found+0xd0/0xb00 [ext4]
-                                sp=e00000005bfbfa40 bsp=e00000005bfb1478
- [<a000000207ddf130>] ext4_mb_check_limits+0x170/0x1a0 [ext4]
-                                sp=e00000005bfbfa50 bsp=e00000005bfb1440
- [<a000000207de8e90>] ext4_mb_regular_allocator+0x1910/0x1f20 [ext4]
-                                sp=e00000005bfbfa70 bsp=e00000005bfb13a8
- [<a000000207dec6d0>] ext4_mb_new_blocks+0x3b0/0x1400 [ext4]
-                                sp=e00000005bfbfad0 bsp=e00000005bfb1328
- [<a000000207dda050>] ext4_ext_get_blocks+0x16d0/0x1b40 [ext4]
-                                sp=e00000005bfbfae0 bsp=e00000005bfb1248
- [<a000000207dae570>] ext4_get_blocks_wrap+0x1d0/0x4c0 [ext4]
-                                sp=e00000005bfbfb50 bsp=e00000005bfb11d0
- [<a000000207db6c70>] ext4_da_get_block_write+0xd0/0x300 [ext4]
-                                sp=e00000005bfbfb50 bsp=e00000005bfb1180
- [<a000000207dabc10>] mpage_da_map_blocks+0xf0/0xce0 [ext4]
-                                sp=e00000005bfbfb50 bsp=e00000005bfb1118
- [<a000000207db4240>] ext4_da_writepages+0x4a0/0x780 [ext4]
-                                sp=e00000005bfbfc40 bsp=e00000005bfb1088
- [<a000000100126c90>] do_writepages+0xb0/0x120
-                                sp=e00000005bfbfcf0 bsp=e00000005bfb1060
- [<a0000001001d1070>] __writeback_single_inode+0x370/0x6e0
-                                sp=e00000005bfbfcf0 bsp=e00000005bfb1018
- [<a0000001001d1cb0>] generic_sync_sb_inodes+0x4b0/0x7a0
-                                sp=e00000005bfbfd30 bsp=e00000005bfb0fc8
- [<a0000001001d1fd0>] sync_sb_inodes+0x30/0x60
-                                sp=e00000005bfbfd30 bsp=e00000005bfb0fa0
- [<a0000001001d28f0>] writeback_inodes+0x130/0x260
-                                sp=e00000005bfbfd30 bsp=e00000005bfb0f70
- [<a0000001001283a0>] background_writeout+0x140/0x1e0
-                                sp=e00000005bfbfd30 bsp=e00000005bfb0f38
- [<a000000100129460>] pdflush+0x2e0/0x4e0
-                                sp=e00000005bfbfd80 bsp=e00000005bfb0f18
- [<a0000001000b8ba0>] kthread+0xa0/0x120
-                                sp=e00000005bfbfe30 bsp=e00000005bfb0ee8
- [<a000000100014430>] kernel_thread_helper+0x30/0x60
-                                sp=e00000005bfbfe30 bsp=e00000005bfb0ec0
- [<a00000010000a0c0>] start_kernel_thread+0x20/0x40
-                                sp=e00000005bfbfe30 bsp=e00000005bfb0ec0
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Regards,
+Akira Fujita
