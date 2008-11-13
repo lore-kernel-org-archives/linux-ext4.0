@@ -1,35 +1,51 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4 unlink performance
-Date: Thu, 13 Nov 2008 15:42:40 -0500
-Message-ID: <20081113204240.GF21652@mit.edu>
-References: <20081113185712.GB11204@untroubled.org> <20081113191000.GA11516@untroubled.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: - ext3-clean-up-outdated-and-incorrect-comment-for-ext3_write_super.patch removed from -mm tree
+Date: Thu, 13 Nov 2008 13:27:15 -0800
+Message-ID: <200811132127.mADLRFUn027802@imap1.linux-foundation.org>
+To: tytso@mit.edu, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:36260 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750852AbYKMUmm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Nov 2008 15:42:42 -0500
-Content-Disposition: inline
-In-Reply-To: <20081113191000.GA11516@untroubled.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:47027 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753064AbYKMV1j (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Nov 2008 16:27:39 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 13, 2008 at 01:10:00PM -0600, Bruce Guenter wrote:
-> On Thu, Nov 13, 2008 at 12:57:12PM -0600, Bruce Guenter wrote:
-> > Ouch.  Why is ext4 so much slower than ext3 here,
-> 
-> I forgot to mention one important detail.  I started running 'vmstat 5'
-> during one of the unlink runs, and noticed that there were intervals of
-> 15 or 20 seconds where no blocks were being read or written, and minimal
-> CPU was being used.  I do not observe the same stalls when using ext3.
 
-Hmm... how very strange.  Can you run the command:
+The patch titled
+     ext3: Clean up outdated and incorrect comment for ext3_write_super()
+has been removed from the -mm tree.  Its filename was
+     ext3-clean-up-outdated-and-incorrect-comment-for-ext3_write_super.patch
 
-       ps -eo pid,tid,class,rtprio,ni,pri,psr,pcpu,stat,wchan:16,comm
+This patch was dropped because it was merged into mainline or a subsystem tree
 
-during one of the quiescent periods, and see what is in the WCHAN
-field for the unlink command?
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-						- Ted
+------------------------------------------------------
+Subject: ext3: Clean up outdated and incorrect comment for ext3_write_super()
+From: Theodore Tso <tytso@mit.edu>
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/super.c |    7 ++-----
+ 1 file changed, 2 insertions(+), 5 deletions(-)
+
+diff -puN fs/ext3/super.c~ext3-clean-up-outdated-and-incorrect-comment-for-ext3_write_super fs/ext3/super.c
+--- a/fs/ext3/super.c~ext3-clean-up-outdated-and-incorrect-comment-for-ext3_write_super
++++ a/fs/ext3/super.c
+@@ -2375,12 +2375,9 @@ int ext3_force_commit(struct super_block
+ /*
+  * Ext3 always journals updates to the superblock itself, so we don't
+  * have to propagate any other updates to the superblock on disk at this
+- * point.  Just start an async writeback to get the buffers on their way
+- * to the disk.
+- *
+- * This implicitly triggers the writebehind on sync().
++ * point.  (We can probably nuke this function altogether, and remove
++ * any mention to sb->s_dirt in all of fs/ext3; eventual cleanup...)
+  */
