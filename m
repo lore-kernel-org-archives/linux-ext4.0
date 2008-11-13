@@ -1,184 +1,170 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH] filesystems: use has_capability_noaudit interface for
-	reserved blocks checks
-Date: Wed, 12 Nov 2008 16:19:18 -0800
-Message-ID: <1226535558.12488.30.camel@mingming-laptop>
-References: <1226430769.3353.5.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, sct@redhat.com,
-	akpm@linux-foundation.org, adilger@sun.com, tytso@mit.edu,
-	linux-ext4@vger.kernel.org, dedekind@infradead.org,
-	ext-adrian.hunter@nokia.com, linux-mtd@lists.infradead.org,
-	dushistov@mail.ru, jmorris@namei.org
-To: Eric Paris <eparis@redhat.com>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12018] New: oops when using ext4 on soft raid on IA64 with 65536 block size
+Date: Thu, 13 Nov 2008 00:06:49 -0800 (PST)
+Message-ID: <bug-12018-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e35.co.us.ibm.com ([32.97.110.153]:54948 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752064AbYKMATW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 12 Nov 2008 19:19:22 -0500
-In-Reply-To: <1226430769.3353.5.camel@localhost.localdomain>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:43019 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751557AbYKMIGw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 13 Nov 2008 03:06:52 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mAD86nOt026079
+	for <linux-ext4@vger.kernel.org>; Thu, 13 Nov 2008 00:06:50 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12018
 
-=E5=9C=A8 2008-11-11=E4=BA=8C=E7=9A=84 14:12 -0500=EF=BC=8CEric Paris=E5=
-=86=99=E9=81=93=EF=BC=9A
-> ext[2,3,4], ufs, and ubifs all check for  CAP_SYS_RESOURCE to determi=
-ne
-> if they should allow reserved blocks to be used.  A process not havin=
-g
-> this capability is not failing some security decision and should not =
-be
-> audited.  Thus move to using has_capability_noaudit.
->=20
-Looks fine to me.
+           Summary: oops when using ext4 on soft raid on IA64 with 65536
+                    block size
+           Product: File System
+           Version: 2.5
+     KernelVersion: 2.6.28-rc3-git4
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: lizf@cn.fujitsu.com
 
-Eric Sandeen has  mentioned earlier about the security audit issue with
-ext4. We fixed it in ext4, with this it is even better.
+
+Latest working kernel version: ?
+Failing kernel version: 2.6.28-rc3-git4
+Distribution: Fedora
+Hardware Environment: four 881.0GB hard disks
+Software Environment: latest-git e2fsprogs
+
+Problem Description and Steps to reproduce:
+
+I used soft raid on IA64 and got the following oops.
+
+# fdisk -l
+
+Disk /dev/sdc: 881.0 GB, 881005166592 bytes
+255 heads, 63 sectors/track, 107109 cylinders
+Units = cylinders of 16065 * 512 = 8225280 bytes
+Disk identifier: 0x0000544c
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sdc1               1      107109   860353011   fd  Linux raid autodetect
+...
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sdd1               1      107109   860353011   fd  Linux raid autodetect
+...
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sde1               1      107109   860353011   fd  Linux raid autodetect
+...
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sdf1               1      107109   860353011   fd  Linux raid autodetect
+
+# mdadm --create /dev/md0 --level=0 --raid-devices=4 /dev/sdc1 /dev/sdd1
+/dev/sde1 /dev/sdf1
+# mkfs.ext4 -b 65536 /dev/md0
+# mount -t ext4 /dev/md0 /mnt
+# cd /mnt
+# dd if=/dev/zero of=tmp_file bs=1M count=700
+(stuck)
+
+(another console)
+EXT4-fs: barriers enabled
+kjournald2 starting.  Commit interval 5 seconds
+EXT4 FS on md0, internal journal on md0:8
+EXT4-fs: delayed allocation enabled
+EXT4-fs: file extents enabled
+EXT4-fs: mballoc enabled
+EXT4-fs: mounted filesystem with ordered data mode.
+JBD: barrier-based sync failed on md0:8 - disabling barriers
+kernel BUG at fs/ext4/mballoc.c:1240!
+pdflush[12068]: bugcheck! 0 [1]
+Modules linked in: ext4 jbd2 crc16 raid0 nfsd lockd nfs_acl auth_rpcgss
+exportfs autofs4 sunrpc ipmi_watchdog mptctl ipmi_devintf ipmi_si
+ipmi_msghandler vfat fat dm_mirror dm_region_hash dm_log dm_multipath dm_mod
+e100 mii rng_core iTCO_wdt iTCO_vendor_support lpfc tg3 scsi_transport_fc
+libphy button sg usb_storage shpchp mptspi mptscsih mptbase scsi_transport_spi
+sd_mod scsi_mod ext3 jbd mbcache uhci_hcd ohci_hcd ehci_hcd [last unloaded:
+ipmi_watchdog]
+
+Pid: 12068, CPU 0, comm:              pdflush
+psr : 0000101008526030 ifs : 8000000000000814 ip  : [<a000000207dde590>]    Not
+tainted (2.6.28-rc3-git4)
+ip is at ext4_mb_use_best_found+0xd0/0xb00 [ext4]
+unat: 0000000000000000 pfs : 0000000000000814 rsc : 0000000000000003
+rnat: 0000000000000000 bsps: 0000000000000000 pr  : 0000000000001941
+ldrs: 0000000000000000 ccv : 0000000000000000 fpsr: 0009804c8a70433f
+csd : 0000000000000000 ssd : 0000000000000000
+b0  : a000000207dde590 b6  : a000000100039260 b7  : a00000010000bb00
+f6  : 000000000000000000000 f7  : 1003e0000000000000020
+f8  : 1003ee0000040878b0000 f9  : 1003e0000000000000000
+f10 : 1003ee0000040a19c0000 f11 : 1003e0000000000000000
+r1  : a000000100e24b80 r2  : a000000100bc5210 r3  : 0000000000004000
+r8  : 0000000000000029 r9  : 0000000000000001 r10 : a000000100a50000
+r11 : ffffffffffff0420 r12 : e00000005bfbfa40 r13 : e00000005bfb0000
+r14 : a000000100bc5218 r15 : e00001200ac5fe18 r16 : ffffffffffff6fd0
+r17 : a000000100c3f7c8 r18 : 000000000000000a r19 : 0000000000000026
+r20 : 0000000000020000 r21 : a000000100c3cb78 r22 : a000000100c3cb74
+r23 : a000000100c3cb88 r24 : a000000100c3f7a0 r25 : a000000100c2dba0
+r26 : a000000100c3cb74 r27 : 0000001008522030 r28 : 0000000000000034
+r29 : a0000001012ce0e3 r30 : 0000000000000000 r31 : a000000100bef7d8
+
+Call Trace:
+ [<a000000100015ca0>] show_stack+0x40/0xa0
+                                sp=e00000005bfbf610 bsp=e00000005bfb1618
+ [<a0000001000165b0>] show_regs+0x850/0x8a0
+                                sp=e00000005bfbf7e0 bsp=e00000005bfb15b8
+ [<a000000100039970>] die+0x1b0/0x2c0
+                                sp=e00000005bfbf7e0 bsp=e00000005bfb1570
+ [<a000000100039ad0>] die_if_kernel+0x50/0x80
+                                sp=e00000005bfbf7e0 bsp=e00000005bfb1540
+ [<a00000010066a010>] ia64_bad_break+0x230/0x460
+                                sp=e00000005bfbf7e0 bsp=e00000005bfb1518
+ [<a00000010000c300>] ia64_native_leave_kernel+0x0/0x270
+                                sp=e00000005bfbf870 bsp=e00000005bfb1518
+ [<a000000207dde590>] ext4_mb_use_best_found+0xd0/0xb00 [ext4]
+                                sp=e00000005bfbfa40 bsp=e00000005bfb1478
+ [<a000000207ddf130>] ext4_mb_check_limits+0x170/0x1a0 [ext4]
+                                sp=e00000005bfbfa50 bsp=e00000005bfb1440
+ [<a000000207de8e90>] ext4_mb_regular_allocator+0x1910/0x1f20 [ext4]
+                                sp=e00000005bfbfa70 bsp=e00000005bfb13a8
+ [<a000000207dec6d0>] ext4_mb_new_blocks+0x3b0/0x1400 [ext4]
+                                sp=e00000005bfbfad0 bsp=e00000005bfb1328
+ [<a000000207dda050>] ext4_ext_get_blocks+0x16d0/0x1b40 [ext4]
+                                sp=e00000005bfbfae0 bsp=e00000005bfb1248
+ [<a000000207dae570>] ext4_get_blocks_wrap+0x1d0/0x4c0 [ext4]
+                                sp=e00000005bfbfb50 bsp=e00000005bfb11d0
+ [<a000000207db6c70>] ext4_da_get_block_write+0xd0/0x300 [ext4]
+                                sp=e00000005bfbfb50 bsp=e00000005bfb1180
+ [<a000000207dabc10>] mpage_da_map_blocks+0xf0/0xce0 [ext4]
+                                sp=e00000005bfbfb50 bsp=e00000005bfb1118
+ [<a000000207db4240>] ext4_da_writepages+0x4a0/0x780 [ext4]
+                                sp=e00000005bfbfc40 bsp=e00000005bfb1088
+ [<a000000100126c90>] do_writepages+0xb0/0x120
+                                sp=e00000005bfbfcf0 bsp=e00000005bfb1060
+ [<a0000001001d1070>] __writeback_single_inode+0x370/0x6e0
+                                sp=e00000005bfbfcf0 bsp=e00000005bfb1018
+ [<a0000001001d1cb0>] generic_sync_sb_inodes+0x4b0/0x7a0
+                                sp=e00000005bfbfd30 bsp=e00000005bfb0fc8
+ [<a0000001001d1fd0>] sync_sb_inodes+0x30/0x60
+                                sp=e00000005bfbfd30 bsp=e00000005bfb0fa0
+ [<a0000001001d28f0>] writeback_inodes+0x130/0x260
+                                sp=e00000005bfbfd30 bsp=e00000005bfb0f70
+ [<a0000001001283a0>] background_writeout+0x140/0x1e0
+                                sp=e00000005bfbfd30 bsp=e00000005bfb0f38
+ [<a000000100129460>] pdflush+0x2e0/0x4e0
+                                sp=e00000005bfbfd80 bsp=e00000005bfb0f18
+ [<a0000001000b8ba0>] kthread+0xa0/0x120
+                                sp=e00000005bfbfe30 bsp=e00000005bfb0ee8
+ [<a000000100014430>] kernel_thread_helper+0x30/0x60
+                                sp=e00000005bfbfe30 bsp=e00000005bfb0ec0
+ [<a00000010000a0c0>] start_kernel_thread+0x20/0x40
+                                sp=e00000005bfbfe30 bsp=e00000005bfb0ec0
 
 
-Reviewed-by: Mingming Cao <cmm@us.ibm.com>
-> Signed-off-by: Eric Paris <eparis@redhat.com>
-> ---
->=20
-> I would like to push this patch through the security tree (since that=
-'s
-> the only place the new cap_noaudit interface exists), but I'd like to
-> get an ACK from each subsystem maintainer.
->=20
->  fs/ext2/balloc.c     |    2 +-
->  fs/ext3/balloc.c     |    2 +-
->  fs/ext4/balloc.c     |    2 +-
->  fs/ubifs/budget.c    |    3 ++-
->  fs/ufs/balloc.c      |    2 +-
->  security/commoncap.c |    1 +
->  security/security.c  |    1 +
->  7 files changed, 8 insertions(+), 5 deletions(-)
->=20
->=20
-> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-> index 6dac7ba..e06d96d 100644
-> --- a/fs/ext2/balloc.c
-> +++ b/fs/ext2/balloc.c
-> @@ -1192,7 +1192,7 @@ static int ext2_has_free_blocks(struct ext2_sb_=
-info *sbi)
->=20
->  	free_blocks =3D percpu_counter_read_positive(&sbi->s_freeblocks_cou=
-nter);
->  	root_blocks =3D le32_to_cpu(sbi->s_es->s_r_blocks_count);
-> -	if (free_blocks < root_blocks + 1 && !capable(CAP_SYS_RESOURCE) &&
-> +	if (free_blocks < root_blocks + 1 && !has_capability_noaudit(curren=
-t, CAP_SYS_RESOURCE) &&
->  		sbi->s_resuid !=3D current->fsuid &&
->  		(sbi->s_resgid =3D=3D 0 || !in_group_p (sbi->s_resgid))) {
->  		return 0;
-> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-> index f5b57a2..f224ee4 100644
-> --- a/fs/ext3/balloc.c
-> +++ b/fs/ext3/balloc.c
-> @@ -1421,7 +1421,7 @@ static int ext3_has_free_blocks(struct ext3_sb_=
-info *sbi)
->=20
->  	free_blocks =3D percpu_counter_read_positive(&sbi->s_freeblocks_cou=
-nter);
->  	root_blocks =3D le32_to_cpu(sbi->s_es->s_r_blocks_count);
-> -	if (free_blocks < root_blocks + 1 && !capable(CAP_SYS_RESOURCE) &&
-> +	if (free_blocks < root_blocks + 1 && !has_capability_noaudit(curren=
-t, CAP_SYS_RESOURCE) &&
->  		sbi->s_resuid !=3D current->fsuid &&
->  		(sbi->s_resgid =3D=3D 0 || !in_group_p (sbi->s_resgid))) {
->  		return 0;
-> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-> index d2003cd..a7c7c52 100644
-> --- a/fs/ext4/balloc.c
-> +++ b/fs/ext4/balloc.c
-> @@ -626,7 +626,7 @@ int ext4_has_free_blocks(struct ext4_sb_info *sbi=
-, s64 nblocks)
->  	/* Hm, nope.  Are (enough) root reserved blocks available? */
->  	if (sbi->s_resuid =3D=3D current->fsuid ||
->  	    ((sbi->s_resgid !=3D 0) && in_group_p(sbi->s_resgid)) ||
-> -	    capable(CAP_SYS_RESOURCE)) {
-> +	    has_capability_noaudit(current, CAP_SYS_RESOURCE)) {
->  		if (free_blocks >=3D (nblocks + dirty_blocks))
->  			return 1;
->  	}
-> diff --git a/fs/ubifs/budget.c b/fs/ubifs/budget.c
-> index 1a4973e..d17b8b4 100644
-> --- a/fs/ubifs/budget.c
-> +++ b/fs/ubifs/budget.c
-> @@ -32,6 +32,7 @@
->=20
->  #include "ubifs.h"
->  #include <linux/writeback.h>
-> +#include <linux/capability.h>
->  #include <asm/div64.h>
->=20
->  /*
-> @@ -363,7 +364,7 @@ long long ubifs_calc_available(const struct ubifs=
-_info *c, int min_idx_lebs)
->   */
->  static int can_use_rp(struct ubifs_info *c)
->  {
-> -	if (current->fsuid =3D=3D c->rp_uid || capable(CAP_SYS_RESOURCE) ||
-> +	if (current->fsuid =3D=3D c->rp_uid || has_capability_noaudit(curre=
-nt, CAP_SYS_RESOURCE) ||
->  	    (c->rp_gid !=3D 0 && in_group_p(c->rp_gid)))
->  		return 1;
->  	return 0;
-> diff --git a/fs/ufs/balloc.c b/fs/ufs/balloc.c
-> index 0d9ada1..ad4398b 100644
-> --- a/fs/ufs/balloc.c
-> +++ b/fs/ufs/balloc.c
-> @@ -411,7 +411,7 @@ u64 ufs_new_fragments(struct inode *inode, void *=
-p, u64 fragment,
->  	/*
->  	 * There is not enough space for user on the device
->  	 */
-> -	if (!capable(CAP_SYS_RESOURCE) && ufs_freespace(uspi, UFS_MINFREE) =
-<=3D 0) {
-> +	if (!has_capability_noaudit(current, CAP_SYS_RESOURCE) && ufs_frees=
-pace(uspi, UFS_MINFREE) <=3D 0) {
->  		unlock_super (sb);
->  		UFSD("EXIT (FAILED)\n");
->  		return 0;
-> diff --git a/security/commoncap.c b/security/commoncap.c
-> index 73999f6..5401e77 100644
-> --- a/security/commoncap.c
-> +++ b/security/commoncap.c
-> @@ -55,6 +55,7 @@ int cap_capable(struct task_struct *tsk, int cap, i=
-nt audit)
->  		return 0;
->  	return -EPERM;
->  }
-> +EXPORT_SYMBOL(cap_capable);
->=20
->  int cap_settime(struct timespec *ts, struct timezone *tz)
->  {
-> diff --git a/security/security.c b/security/security.c
-> index 346f21e..d061eb1 100644
-> --- a/security/security.c
-> +++ b/security/security.c
-> @@ -170,6 +170,7 @@ int security_capable_noaudit(struct task_struct *=
-tsk, int cap)
->  {
->  	return security_ops->capable(tsk, cap, SECURITY_CAP_NOAUDIT);
->  }
-> +EXPORT_SYMBOL(security_capable_noaudit);
->=20
->  int security_acct(struct file *file)
->  {
->=20
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
