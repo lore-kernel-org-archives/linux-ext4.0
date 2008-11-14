@@ -1,69 +1,156 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: "tune2fs -I 256" runtime---can it be interrupted safely?
-Date: Fri, 14 Nov 2008 01:30:00 -0700
-Message-ID: <20081114082819.GM16005@webber.adilger.int>
-References: <20081101151002.4ed9be99@zest> <20081101194617.0dc131c3@zest>
- <20081107211643.GB3184@webber.adilger.int> <20081111110910.4a6f7941@zest>
+From: Pekka J Enberg <penberg@cs.helsinki.fi>
+Subject: [PATCH] ext2/ext3: allocate ->s_blockgroup_lock separately to avoid
+ wasting space
+Date: Fri, 14 Nov 2008 11:17:54 +0200 (EET)
+Message-ID: <Pine.LNX.4.64.0811141115100.29826@melkki.cs.Helsinki.FI>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: "Michael B. Trausch" <mike@trausch.us>
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	cl@linux-foundation.org, mpm@selenic.com,
+	eduard.munteanu@linux360.ro
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:37477 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750744AbYKNIaT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2008 03:30:19 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAE8U7cf018700
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Nov 2008 00:30:08 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KAB00I01E5S7Y00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 14 Nov 2008 00:30:07 -0800 (PST)
-In-reply-to: <20081111110910.4a6f7941@zest>
-Content-disposition: inline
+Received: from courier.cs.helsinki.fi ([128.214.9.1]:35104 "EHLO
+	mail.cs.helsinki.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751126AbYKNJR4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2008 04:17:56 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Nov 11, 2008  11:09 -0500, Michael B. Trausch wrote:
-> I do have an ltrace up and online at:
-> 
->   http://fd0man.theunixplace.com/tune2fs.ltrace.bz2
-> 
-> The bzip2 file is 44 MB, and the uncompressed text is _huge_ (about 3
-> GB).  This is a two hour run of "tune2fs -I 256 /dev/sdb" on an
-> external 250 GB (235 GiB) drive formatted with the ext3 filesystem.
-> I aborted the tune2fs run after 2 hours, though I am sure it would have
-> run for far longer.  Hopefully, this will give some insight as to what
-> the problem might be.
+From: Pekka Enberg <penberg@cs.helsinki.fi>
 
-It looks like the code is just spending hours looking at the bitmaps,
-but I have no idea why:
+As spotted by kmemtrace, struct ext2_sb_info is 17024 bytes and ext3_sb_info is
+17152 bytes on 64-bit which makes them a very bad fit for SLAB allocators. In
+fact, both allocations are round up to the next available page size of 
+order 3 which is 32 KB.
 
-ext2fs_test_generic_bitmap(0x1f3d020, 0xfa31e1, 1, 0, 0x1f418b0) = 0
-ext2fs_test_generic_bitmap(0x1f3d020, 0xfa31e2, 2, 1, 0x1f418b0) = 0
-ext2fs_test_generic_bitmap(0x1f3d020, 0xfa31e3, 4, 2, 0x1f418b0) = 0
-ext2fs_test_generic_bitmap(0x1f3d020, 0xfa31e4, 8, 3, 0x1f418b0) = 0
-ext2fs_test_generic_bitmap(0x1f3d020, 0xfa31e5, 16, 4, 0x1f418b0) = 0
-ext2fs_test_generic_bitmap(0x1f3d020, 0xfa31e6, 32, 5, 0x1f418b0) = 0
-ext2fs_test_generic_bitmap(0x1f3d020, 0xfa31e7, 64, 6, 0x1f418b0) = 0
-ext2fs_test_generic_bitmap(0x1f3d020, 0xfa31e8, 128, 7, 0x1f418b0) = 0
+The culprit if the wasted memory is the ->s_blockgroup_lock which can be as big
+as 16 KB when CONFIG_NR_CPUS is set to 32. As struct blockgroup_lock is a
+perfect fit for order 2 page in the worst case, allocate ->s_blockgroup_lock
+separately to avoid wasting space.
 
+The change shrinks struct ext2_sb_info to 592 bytes and struct ext3_sb_info to
+640 bytes which fits into a 1024 byte slab cache so now we allocate 16 KB + 1
+KB instead of 32 KB saving 15 KB of memory!
 
-Possibly the code is very inefficient and is scanning every bit in
-the bitmap individually to see if an inode is in use, instead of doing
-something fast like just checking an entire bitmap word == 0 and
-skipping it.
+Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
+---
+ fs/ext2/super.c                 |   10 +++++++++-
+ fs/ext3/super.c                 |   10 +++++++++-
+ include/linux/blockgroup_lock.h |    2 +-
+ include/linux/ext2_fs_sb.h      |    2 +-
+ include/linux/ext3_fs_sb.h      |    2 +-
+ 5 files changed, 21 insertions(+), 5 deletions(-)
 
-Unfortunately, ltrace doesn't show what is calling this code, so
-a stack trace is needed from GDB.
-
-
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 647cd88..da8bdea 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -132,6 +132,7 @@ static void ext2_put_super (struct super_block * sb)
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	brelse (sbi->s_sbh);
+ 	sb->s_fs_info = NULL;
++	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
+ 
+ 	return;
+@@ -756,6 +757,13 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+ 	if (!sbi)
+ 		return -ENOMEM;
++
++	sbi->s_blockgroup_lock =
++		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
++	if (!sbi->s_blockgroup_lock) {
++		kfree(sbi);
++		return -ENOMEM;
++	}
+ 	sb->s_fs_info = sbi;
+ 	sbi->s_sb_block = sb_block;
+ 
+@@ -983,7 +991,7 @@ static int ext2_fill_super(struct super_block *sb, void *data, int silent)
+ 		printk ("EXT2-fs: not enough memory\n");
+ 		goto failed_mount;
+ 	}
+-	bgl_lock_init(&sbi->s_blockgroup_lock);
++	bgl_lock_init(sbi->s_blockgroup_lock);
+ 	sbi->s_debts = kcalloc(sbi->s_groups_count, sizeof(*sbi->s_debts), GFP_KERNEL);
+ 	if (!sbi->s_debts) {
+ 		printk ("EXT2-fs: not enough memory\n");
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index f6c94f2..f41df22 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -439,6 +439,7 @@ static void ext3_put_super (struct super_block * sb)
+ 		ext3_blkdev_remove(sbi);
+ 	}
+ 	sb->s_fs_info = NULL;
++	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
+ 	return;
+ }
+@@ -1548,6 +1549,13 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+ 	if (!sbi)
+ 		return -ENOMEM;
++
++	sbi->s_blockgroup_lock =
++		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
++	if (!sbi->s_blockgroup_lock) {
++		kfree(sbi);
++		return -ENOMEM;
++	}
+ 	sb->s_fs_info = sbi;
+ 	sbi->s_mount_opt = 0;
+ 	sbi->s_resuid = EXT3_DEF_RESUID;
+@@ -1788,7 +1796,7 @@ static int ext3_fill_super (struct super_block *sb, void *data, int silent)
+ 		goto failed_mount;
+ 	}
+ 
+-	bgl_lock_init(&sbi->s_blockgroup_lock);
++	bgl_lock_init(sbi->s_blockgroup_lock);
+ 
+ 	for (i = 0; i < db_count; i++) {
+ 		block = descriptor_loc(sb, logic_sb_block, i);
+diff --git a/include/linux/blockgroup_lock.h b/include/linux/blockgroup_lock.h
+index 8607312..d6d4787 100644
+--- a/include/linux/blockgroup_lock.h
++++ b/include/linux/blockgroup_lock.h
+@@ -54,6 +54,6 @@ static inline void bgl_lock_init(struct blockgroup_lock *bgl)
+  * superblock types
+  */
+ #define sb_bgl_lock(sb, block_group) \
+-	(&(sb)->s_blockgroup_lock.locks[(block_group) & (NR_BG_LOCKS-1)].lock)
++	(&(sb)->s_blockgroup_lock->locks[(block_group) & (NR_BG_LOCKS-1)].lock)
+ 
+ #endif
+diff --git a/include/linux/ext2_fs_sb.h b/include/linux/ext2_fs_sb.h
+index f273415..7e61de9 100644
+--- a/include/linux/ext2_fs_sb.h
++++ b/include/linux/ext2_fs_sb.h
+@@ -101,7 +101,7 @@ struct ext2_sb_info {
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+-	struct blockgroup_lock s_blockgroup_lock;
++	struct blockgroup_lock *s_blockgroup_lock;
+ 	/* root of the per fs reservation window tree */
+ 	spinlock_t s_rsv_window_lock;
+ 	struct rb_root s_rsv_window_root;
+diff --git a/include/linux/ext3_fs_sb.h b/include/linux/ext3_fs_sb.h
+index b65f028..ec10d96 100644
+--- a/include/linux/ext3_fs_sb.h
++++ b/include/linux/ext3_fs_sb.h
+@@ -60,7 +60,7 @@ struct ext3_sb_info {
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+-	struct blockgroup_lock s_blockgroup_lock;
++	struct blockgroup_lock *s_blockgroup_lock;
+ 
+ 	/* root of the per fs reservation window tree */
+ 	spinlock_t s_rsv_window_lock;
+-- 
+1.5.4.3
 
