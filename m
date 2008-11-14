@@ -1,61 +1,88 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC PATCH 10/17] signed int -> blk64_t to fix bugs at 2^31 -
- 2^32 blocks
-Date: Thu, 13 Nov 2008 22:04:58 -0600
-Message-ID: <491CF8EA.3080007@redhat.com>
-References: <1226461390-5502-5-git-send-email-vaurora@redhat.com> <1226461390-5502-6-git-send-email-vaurora@redhat.com> <1226461390-5502-7-git-send-email-vaurora@redhat.com> <1226461390-5502-8-git-send-email-vaurora@redhat.com> <1226461390-5502-9-git-send-email-vaurora@redhat.com> <1226461390-5502-10-git-send-email-vaurora@redhat.com> <1226461390-5502-11-git-send-email-vaurora@redhat.com> <20081113195742.GV16005@webber.adilger.int> <20081114023812.GD20637@shell> <491CF3BC.80305@redhat.com> <20081114035456.GJ20637@shell>
+From: Bruce Guenter <lists-linux-ext4@bruce-guenter.dyndns.org>
+Subject: Re: ext4 unlink performance
+Date: Thu, 13 Nov 2008 22:11:21 -0600
+Message-ID: <20081114041121.GB11746@untroubled.org>
+References: <20081113185712.GB11204@untroubled.org> <20081113191000.GA11516@untroubled.org> <20081113204240.GF21652@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Valerie Aurora Henson <vaurora@redhat.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="rS8CxjVDS/+yyDmU"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:40294 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750777AbYKNEFE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 13 Nov 2008 23:05:04 -0500
-In-Reply-To: <20081114035456.GJ20637@shell>
+Received: from zak.futurequest.net ([69.5.6.152]:34838 "HELO
+	zak.futurequest.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751123AbYKNELZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 13 Nov 2008 23:11:25 -0500
+Content-Disposition: inline
+In-Reply-To: <20081113204240.GF21652@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Valerie Aurora Henson wrote:
-> On Thu, Nov 13, 2008 at 09:42:52PM -0600, Eric Sandeen wrote:
->> Valerie Aurora Henson wrote:
->>> On Thu, Nov 13, 2008 at 12:57:42PM -0700, Andreas Dilger wrote:
->>>> On Nov 11, 2008  19:43 -0800, Valerie Aurora Henson wrote:
->>>>> diff --git a/lib/ext2fs/alloc_tables.c b/lib/ext2fs/alloc_tables.c
->>>>> index 7235f7d..71ad445 100644
->>>>> --- a/lib/ext2fs/alloc_tables.c
->>>>> +++ b/lib/ext2fs/alloc_tables.c
->>>>> @@ -147,7 +147,7 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
->>>>> -		int prev_block = 0;
->>>>> +		blk64_t prev_block = 0;
->>>>> @@ -178,7 +178,7 @@ errcode_t ext2fs_allocate_group_table(ext2_filsys fs, dgrp_t group,
->>>>>  	if (flexbg_size) {
->>>>> -		int prev_block = 0;
->>>>> +		blk64_t prev_block = 0;
->>>> These appear to be defects in the base code and should be landed ASAP
->>>> (as int -> blk_t) independently of this patch series.
->>> Agreed.  Ted, is this a good format for you or do you want me to
->>> regenerate against something?
->> Is it?
->>
->>         if (flexbg_size) {
->>                 int prev_block = 0;
->>                 if (group && fs->group_desc[group-1].bg_block_bitmap)
->>                         prev_block =
->> fs->group_desc[group-1].bg_block_bitmap;
->>                 start_blk = flexbg_offset(fs, group, prev_block, bmap,
->>                                                  0, rem_grps, 1);
->>                 last_blk = ext2fs_group_last_block(fs, last_grp);
->>         }
->>
->> bg_block_bitmap is only a __u32, and that's what we assign to prev_block.
-> 
-> It's a signed/unsigned bug (int vs. blk_t) - it shows up at > 2^31
-> blocks.
 
-oh, sigh, I was thinking of blk_t as a 64 bit here already :)
+--rS8CxjVDS/+yyDmU
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
--Eric
+On Thu, Nov 13, 2008 at 03:42:40PM -0500, Theodore Tso wrote:
+> Hmm... how very strange.  Can you run the command:
+>=20
+>        ps -eo pid,tid,class,rtprio,ni,pri,psr,pcpu,stat,wchan:16,comm
+>=20
+> during one of the quiescent periods, and see what is in the WCHAN
+> field for the unlink command?
+
+Mostly I see this:
+
+  PID   TID CLS RTPRIO  NI PRI PSR %CPU STAT WCHAN            COMMAND
+ 5932  5932 TS       -   0  19   0  2.4 D+   sync_buffer      rm
+
+I had been running these benchmarks over dm-crypt (which is the target
+environment for which I was testing).  So I re-ran the tests both bare
+and with dm-crypt to compare.  The stalls reported by vmstat did not
+show up when running the test bare.
+
+I also sat and watched the drive LED while the unlink test was running.
+The drive LED showed the occasional 1/2 second stall, but at the same
+time vmstat was showing 5-20 second stalls, so there that would seem to
+point to some kind of reporting problem.
+
+For completeness, I re-ran the benchmark both with and without dm-crypt
+to see if it was the cause of the problem, all times mounting with
+barrier=3D0.  As expected, it did slow down the process, but the problem
+remains:
+
+ext4  128  plain  unlink:  665.523   elapsed  0.276  user  34.882  sys  5.2=
+8%
+ext4  128  crypt  unlink:  907.934   elapsed  0.356  user  34.698  sys  3.8=
+6%
+ext4  256  plain  unlink:  1435.964  elapsed  0.248  user  40.319  sys  2.8=
+2%
+ext4  256  crypt  unlink:  1504.660  elapsed  0.304  user  35.186  sys  2.3=
+5%
+ext3  128  plain  unlink:  133.863   elapsed  0.248  user  24.618  sys  18.=
+57%
+ext3  128  crypt  unlink:  133.092   elapsed  0.280  user  23.661  sys  17.=
+98%
+ext3  256  plain  unlink:  309.635   elapsed  0.296  user  27.362  sys  8.9=
+3%
+ext3  256  crypt  unlink:  319.819   elapsed  0.268  user  23.713  sys  7.4=
+9%
+
+Is there anything else I can try to see what's happening?
+
+--=20
+Bruce Guenter <bruce@untroubled.org>                http://untroubled.org/
+
+--rS8CxjVDS/+yyDmU
+Content-Type: application/pgp-signature
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.9 (GNU/Linux)
+
+iD8DBQFJHPpp6W+y3GmZgOgRAoG3AKCggl/+H5hsLkMyXEqjo89Z4ncUdwCeN+1O
+PQoHoWEnorTKSgc5pIi0ebc=
+=749f
+-----END PGP SIGNATURE-----
+
+--rS8CxjVDS/+yyDmU--
