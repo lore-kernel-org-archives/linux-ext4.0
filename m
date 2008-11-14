@@ -1,75 +1,56 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Call traces on console from a test machine
-Date: Fri, 14 Nov 2008 03:36:02 -0700
-Message-ID: <20081114103602.GU16005@webber.adilger.int>
-References: <491CC6E3.7070808@hq.newdream.net>
- <491CDF90.8070802@hq.newdream.net>
+From: Andreas Schultz <aschultz@warp10.net>
+Subject: Re: "tune2fs -I 256" runtime---can it be interrupted safely?
+Date: Fri, 14 Nov 2008 13:49:32 +0100
+Message-ID: <200811141349.39160.aschultz@warp10.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Kelly Kane <kelly@hq.newdream.net>
+Content-Type: multipart/signed;
+  boundary="nextPart1926371.xCqVI767Fu";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:36366 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751040AbYKNKgF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2008 05:36:05 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAEAa4qT011082
-	for <linux-ext4@vger.kernel.org>; Fri, 14 Nov 2008 02:36:04 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KAB00H01K1FFK00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 14 Nov 2008 02:36:04 -0800 (PST)
-In-reply-to: <491CDF90.8070802@hq.newdream.net>
-Content-disposition: inline
+Received: from mail.tpip.net ([213.187.84.201]:36947 "EHLO mail.tpip.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754020AbYKNNJY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 14 Nov 2008 08:09:24 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Nov 13, 2008  18:16 -0800, Kelly Kane wrote:
-> In the mean time, fsck.ext4 is not liking our filesystem.
->
-> Group descriptor 353 checksum is invalid.  Fix? yes
-> Pass 2: CheckingEntry 'spice-and-wolf-si-tendra-segunda-temporada' in
->
- 
-> /liamsito1234/cibercomics.com/wp-content/cache/supercache/www.cibercomics.com/2008/10/05 
-> (2152305) references inode
->                2901322 in group 354 where _INODE_UNINIT is set.
-> Entry 'spice-and-wolf-si-tendra-segunda-temporada' in
->
- 
-> /liamsito1234/cibercomics.com/wp-content/cache/supercache/www.cibercomics.com/2008/10/05 
-> (2152305) has
->                deleted/unused inode 2901322.  Clear? yes
-> /dev/sdb1: e2fsck canceled.
-> e2fsck: aborted
->
-> Same block group each run through, different inode.
->
-> I ran e2image and produced the following file:
->
-> http://ext4dev.dreamhosters.com/watanabe-home-2008-11-13-1712.e2image.bz2
->
-> Unfortunately I cannot mount the filesystem right now due to:
->
-> EXT4-fs: ext4_check_descriptors: Checksum for group 353 failed  
-> (23397!=52411)
-> EXT4-fs: group descriptors corrupted!
-> mount: wrong fs type, bad option, bad superblock on /dev/sdb1,
->        missing codepage or other error       In some cases useful info  
-> is found in syslog - try
->        dmesg | tail  or so
->
-> Is there any hope for recovery of any of this data?
+--nextPart1926371.xCqVI767Fu
+Content-Type: text/plain;
+  charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline
 
-You can run "tune2fs -O ^uninit_bg /dev/XXX" to disable the group
-descriptor checksums (and, unfortunately, the fast fsck benefits),
-but at least it will allow you to mount the filesystem.
+Hi,
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+[...]
 
+> Unfortunately, ltrace doesn't show what is calling this code, so
+> a stack trace is needed from GDB.
+
+Got the same problem, here is a GDB backtrace done on Ubuntu Intrepid, e2fsprogs 1.41.3:
+
+(gdb) bt
+#0  0x00007fa619228bcc in ext2fs_new_block (fs=0x1fea860, goal=263012, map=0x1feaa30, ret=0x7fff21668cac) at /build/buildd/e2fsprogs-1.41.3/lib/ext2fs/alloc.c:166
+#1  0x000000000040408d in resize_inode (fs=0x1fea860, new_size=<value optimized out>) at /build/buildd/e2fsprogs-1.41.3/misc/tune2fs.c:1020
+#2  0x0000000000404d83 in main (argc=<value optimized out>, argv=<value optimized out>) at /build/buildd/e2fsprogs-1.41.3/misc/tune2fs.c:1638
+
+Cheers
+Andreas
+
+--nextPart1926371.xCqVI767Fu
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAkkdc90ACgkQ9wB/4yf/y7ewBgCeMv3lbZBx9ANgjbSoUleJXKNb
+dAAAoL/XCVfP+vuehN/t1jYeFnZ8swus
+=+pVy
+-----END PGP SIGNATURE-----
+
+--nextPart1926371.xCqVI767Fu--
