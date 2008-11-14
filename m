@@ -1,57 +1,81 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Kelly Kane <kelly@hq.newdream.net>
 Subject: Re: Call traces on console from a test machine
-Date: Fri, 14 Nov 2008 12:09:30 -0500
-Message-ID: <20081114170930.GI25117@mit.edu>
-References: <491CC6E3.7070808@hq.newdream.net> <491CDF90.8070802@hq.newdream.net>
+Date: Fri, 14 Nov 2008 12:29:23 -0800
+Message-ID: <491DDFA3.2060605@hq.newdream.net>
+References: <491CC6E3.7070808@hq.newdream.net> <491CDF90.8070802@hq.newdream.net> <20081114170930.GI25117@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Kelly Kane <kelly@hq.newdream.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, adilger@sun.com
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:34498 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751159AbYKNRJe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2008 12:09:34 -0500
-Content-Disposition: inline
-In-Reply-To: <491CDF90.8070802@hq.newdream.net>
+Received: from mail.hq.newdream.net ([66.33.206.127]:33190 "EHLO
+	mail.hq.newdream.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750936AbYKNUaF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2008 15:30:05 -0500
+In-Reply-To: <20081114170930.GI25117@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 13, 2008 at 06:16:48PM -0800, Kelly Kane wrote:
-> /liamsito1234/cibercomics.com/wp-content/cache/supercache/www.cibercomics.com/2008/10/05 
-> (2152305) has
->                deleted/unused inode 2901322.  Clear? yes
-> /dev/sdb1: e2fsck canceled.
-> e2fsck: aborted
->
-> Same block group each run through, different inode.
+Andreas Dilger wrote:
 
-That's very strange...  and it's also strange that it would be
-constantly changing.  What version of e2fsprogs are you using?
+ >
+ > You can run "tune2fs -O ^uninit_bg /dev/XXX" to disable the group
+ > descriptor checksums (and, unfortunately, the fast fsck benefits),
+ > but at least it will allow you to mount the filesystem.
 
-> I ran e2image and produced the following file:
->
-> http://ext4dev.dreamhosters.com/watanabe-home-2008-11-13-1712.e2image.bz2
+Thank you, we'll keep that in mind in case there is a next time. (Knock 
+on wood.)
 
-Unfortunately, I need a raw image dump in order to be able to debug
-this.  Can you create it using:
+Theodore Tso wrote:
+> On Thu, Nov 13, 2008 at 06:16:48PM -0800, Kelly Kane wrote:
+>> Same block group each run through, different inode.
+> 
+> That's very strange...  and it's also strange that it would be
+> constantly changing.  What version of e2fsprogs are you using?
 
-e2image -r /dev/sdXX -  | bzip2 > /tmp/sdXX.e2i.bz2
+It eventually started picking the same file each time. After about 5 
+runs through I thought I saw a trend. We are using e2fsprogs 1.41.3 
+compiled from source.
 
-... and send it to me?
+>> I ran e2image and produced the following file:
+>>
+>> http://ext4dev.dreamhosters.com/watanabe-home-2008-11-13-1712.e2image.bz2
+> 
+> Unfortunately, I need a raw image dump in order to be able to debug
+> this.  Can you create it using:
+> 
+> e2image -r /dev/sdXX -  | bzip2 > /tmp/sdXX.e2i.bz2
+> 
+> ... and send it to me?
 
-What's the underlying hardware for this filesystem, and I hate to ask
-it, but are you sure it's not a hardware problem?
+Sure. Once we finish restoring the data off the old partition I can do 
+this. If that file is of no use I will delete the source files. The 
+filesystem has been more heavily modified since the above image was 
+created, details below.
 
-One thing you can do is to use e2image to create a sparse file on
-another filesystem:
+> What's the underlying hardware for this filesystem, and I hate to ask
+> it, but are you sure it's not a hardware problem?
+> 
+> One thing you can do is to use e2image to create a sparse file on
+> another filesystem:
+> 
+> e2image -r /dev/sdXX /u2/sdXX.e2i
 
-e2image -r /dev/sdXX /u2/sdXX.e2i
+We have of course not ruled anything out. We will put the hardware 
+through its paces before wiping it. I'll give this a go later as well.
 
-And then try to use e2fsck to check the raw e2image file.  If it is
-successful, then but yet you keep getting failures with different
-block groups and different inodes, it may be a hardware problem.
+The server is an intel xeon server on a supermicro board with a 3ware 
+9690SE-8LPML w/ BBU, using Seagate 1tb 7200.11 disks. (ST31000340AS) We 
+have an identical test server setup called `ext4dev` for use in 
+troubleshooting this stuff. Sandeen has direct access to this machine, 
+more accounts can be provided by him or myself via private email. It has 
+a copy of our kernel source tree, sudo access, etc.
 
-Regards,
+I eventually got the filesystem mounted by answering "yes" to fix the 
+block group checksum error, "no" to all of the Pass 2 inode errors, and 
+"yes" to the pass 5 "fix bitmap inconsistency" (or something) error. It 
+does not cleanly fsck, still, but I can read data off it.
 
-					- Ted
+Thanks again,
+Kelly
