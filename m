@@ -1,82 +1,143 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext2/ext3: allocate ->s_blockgroup_lock separately to
-	avoid wasting space
-Date: Fri, 14 Nov 2008 14:26:06 -0700
-Message-ID: <20081114212606.GA16005@webber.adilger.int>
-References: <Pine.LNX.4.64.0811141115100.29826@melkki.cs.Helsinki.FI>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: "tune2fs -I 256" runtime---can it be interrupted safely?
+Date: Sat, 15 Nov 2008 00:50:17 -0500
+Message-ID: <20081115055017.GO25117@mit.edu>
+References: <200811141349.39160.aschultz@warp10.net> <20081114210612.GZ16005@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, cl@linux-foundation.org,
-	mpm@selenic.com, eduard.munteanu@linux360.ro
-To: Pekka J Enberg <penberg@cs.helsinki.fi>
+Cc: Andreas Schultz <aschultz@warp10.net>, linux-ext4@vger.kernel.org,
+	Aneesh Kumar <aneesh.kumar@linux.vnet.ibm.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:61813 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751416AbYKNV02 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 14 Nov 2008 16:26:28 -0500
-In-reply-to: <Pine.LNX.4.64.0811141115100.29826@melkki.cs.Helsinki.FI>
-Content-disposition: inline
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:36492 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751711AbYKOFuY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 15 Nov 2008 00:50:24 -0500
+Content-Disposition: inline
+In-Reply-To: <20081114210612.GZ16005@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Nov 14, 2008  11:17 +0200, Pekka J Enberg wrote:
-> As spotted by kmemtrace, struct ext2_sb_info is 17024 bytes and ext3_sb_info is
-> 17152 bytes on 64-bit which makes them a very bad fit for SLAB allocators. In
-> fact, both allocations are round up to the next available page size of 
-> order 3 which is 32 KB.
+On Fri, Nov 14, 2008 at 02:06:12PM -0700, Andreas Dilger wrote:
 > 
-> The culprit if the wasted memory is the ->s_blockgroup_lock which can be as
-> big as 16 KB when CONFIG_NR_CPUS is set to 32. As struct blockgroup_lock is a
-> perfect fit for order 2 page in the worst case, allocate ->s_blockgroup_lock
-> separately to avoid wasting space.
-> 
-> The change shrinks struct ext2_sb_info to 592 bytes and struct ext3_sb_info to
-> 640 bytes which fits into a 1024 byte slab cache so now we allocate 16 KB + 1
-> KB instead of 32 KB saving 15 KB of memory!
-> 
-> Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
+> Ah, it is trying to find free blocks, but the e2fsprogs allocator is very
+> inefficient, IIRC, doing a linear scan of the filesystem.  We probably
+> would be far better off to generate an RB tree of the block maps so that
+> it is easier to work with lists of blocks that need to be moved or marked
+> in use for the resized inode table.
 
-This looks very reasonable, with some minor comments below.
-Could you please also include a patch for ext4.  Also, Andrew prefers that
-the patches for ext2/ext3/ext4 are in separate emails.
+We eventually could use a more sophisticated block allocator in the
+ext2fs userspace library, but there's a quick fix should do the job
+without having to do something more complicated.  The problem is that
+the goal block is always reset to blk, which makes this an O(n**2)
+operation in the number of in-use blocks in the filesystem.  This
+following patch makes it be O(n), which should make it be a marked
+improvement.
 
-> --- a/include/linux/blockgroup_lock.h
-> +++ b/include/linux/blockgroup_lock.h
->  #define sb_bgl_lock(sb, block_group) \
-> -	(&(sb)->s_blockgroup_lock.locks[(block_group) & (NR_BG_LOCKS-1)].lock)
-> +	(&(sb)->s_blockgroup_lock->locks[(block_group) & (NR_BG_LOCKS-1)].lock)
+Running a profile analysis on tune2fs, there's another O(n*m)
+operation in transalate_block() (yes, the function name is mispelled),
+where n is the number of blocks that needs to be moved, and m is the
+number of in-use blocks in the filesystems.
 
-How the struct is allocated seems like an implementation detail that doesn't
-belong in blockgroup_lock.h at all, because "sb" is not "struct superblock"
-but rather "struct ext[23]_sb_info".  In fact, changing this without also
-patching ext4 would cause ext4 to break.
+Fixing both of these should remove most of the user-space time that's
+being burned by tune2fs -I 256.  There is still some CPU burned by the
+undo file, and indeed we can probably speed this up some more by
+omitting creating an undo entry when we're copying a data block to a
+previously unused block.  But hopefully this should be enough to speed
+up "tune2fs -I 256" for most people.
 
-I would suggest to change this to take the s_blockgroup_lock as a parameter,
+							- Ted
 
-#define bgl_lock_ptr(bgl, block_group)
-	(bgl->locks[(block_group) & (NR_BG_LOCKS - 1)].lock)
+commit 27c6de45a4187a348ec0960472d4a113ee6ea425
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Sat Nov 15 00:32:39 2008 -0500
 
-and then in ext[234]_fs_sb.h add a new helper in the same (first) patch:
+    tune2fs: Fix inefficient O(n**2) algorithms when expanding the inode size
+    
+    When running "tune2fs -I 256" on moderate to large filesystems, the
+    time required to run tune2fs can take many hours (20+ before some
+    users gave up in disgust).  This was due to some O(n**2) and O(n*m)
+    algorithms in move_block() and inode_scan_and_fix(), respectively.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-#define sb_bgl_lock(sbi, block_group)
-	bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group)
-
-and remove sb_bgl_lock() from blockgroup_lock.h entirely.  As part of the
-later patches to change the s_blockgroup_lock allocations for each of
-ext[234] this changes in ext[234]_fs_sb.h to:
-
-#define sb_bgl_lock(sbi, block_group)
-	bgl_lock_ptr(sbi->s_blockgroup_lock, block_group)
-
-
-This allows each of the later patches to be landed separately without
-breaking the build.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+diff --git a/misc/tune2fs.c b/misc/tune2fs.c
+index b29b344..e72518a 100644
+--- a/misc/tune2fs.c
++++ b/misc/tune2fs.c
+@@ -1011,13 +1011,13 @@ static int move_block(ext2_filsys fs, ext2fs_block_bitmap bmap)
+ 	if (retval)
+ 		return retval;
+ 
+-	for (blk = fs->super->s_first_data_block;
+-			blk < fs->super->s_blocks_count; blk++) {
++	for (new_blk = blk = fs->super->s_first_data_block;
++	     blk < fs->super->s_blocks_count; blk++) {
+ 
+ 		if (!ext2fs_test_block_bitmap(bmap, blk))
+ 			continue;
+ 
+-		retval = ext2fs_new_block(fs, blk, NULL, &new_blk);
++		retval = ext2fs_new_block(fs, new_blk, NULL, &new_blk);
+ 		if (retval)
+ 			goto err_out;
+ 
+@@ -1068,12 +1068,14 @@ static int process_block(ext2_filsys fs EXT2FS_ATTR((unused)),
+ 			 e2_blkcnt_t blockcnt EXT2FS_ATTR((unused)),
+ 			 blk_t ref_block EXT2FS_ATTR((unused)),
+ 			 int ref_offset EXT2FS_ATTR((unused)),
+-			 void *priv_data EXT2FS_ATTR((unused)))
++			 void *priv_data)
+ {
+ 	int ret = 0;
+ 	blk_t new_blk;
++	ext2fs_block_bitmap bmap = (ext2fs_block_bitmap) priv_data;
+ 
+-
++	if (!ext2fs_test_block_bitmap(bmap, *block_nr))
++		return 0;
+ 	new_blk = transalate_block(*block_nr);
+ 	if (new_blk) {
+ 		*block_nr = new_blk;
+@@ -1086,7 +1088,7 @@ static int process_block(ext2_filsys fs EXT2FS_ATTR((unused)),
+ 	return ret;
+ }
+ 
+-static int inode_scan_and_fix(ext2_filsys fs)
++static int inode_scan_and_fix(ext2_filsys fs, ext2fs_block_bitmap bmap)
+ {
+ 	errcode_t retval = 0;
+ 	ext2_ino_t ino;
+@@ -1122,8 +1124,8 @@ static int inode_scan_and_fix(ext2_filsys fs)
+ 		 * Do we need to fix this ??
+ 		 */
+ 
+-		if (inode.i_file_acl) {
+-
++		if (inode.i_file_acl &&
++		    ext2fs_test_block_bitmap(bmap, inode.i_file_acl)) {
+ 			blk = transalate_block(inode.i_file_acl);
+ 			if (!blk)
+ 				continue;
+@@ -1142,9 +1144,8 @@ static int inode_scan_and_fix(ext2_filsys fs)
+ 		if (!ext2fs_inode_has_valid_blocks(&inode))
+ 			continue;
+ 
+-		retval = ext2fs_block_iterate2(fs, ino, 0,
+-						block_buf, process_block,
+-						0);
++		retval = ext2fs_block_iterate2(fs, ino, 0, block_buf,
++					       process_block, bmap);
+ 		if (retval)
+ 			goto err_out;
+ 
+@@ -1344,7 +1345,7 @@ static int resize_inode(ext2_filsys fs, unsigned long new_size)
+ 	if (retval)
+ 		goto err_out;
+ 
+-	retval = inode_scan_and_fix(fs);
++	retval = inode_scan_and_fix(fs, bmap);
+ 	if (retval)
+ 		goto err_out;
+ 
 
