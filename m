@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [FOR-STABLE 20/20] ext4: add checksum calculation when clearing UNINIT flag in ext4_new_inode
-Date: Sun, 16 Nov 2008 11:05:40 -0500
-Message-ID: <1226851540-8032-21-git-send-email-tytso@mit.edu>
+Subject: [FOR-STABLE 17/20] ext4: wait on all pending commits in ext4_sync_fs()
+Date: Sun, 16 Nov 2008 11:05:37 -0500
+Message-ID: <1226851540-8032-18-git-send-email-tytso@mit.edu>
 References: <1226851540-8032-1-git-send-email-tytso@mit.edu>
  <1226851540-8032-2-git-send-email-tytso@mit.edu>
  <1226851540-8032-3-git-send-email-tytso@mit.edu>
@@ -19,52 +19,86 @@ References: <1226851540-8032-1-git-send-email-tytso@mit.edu>
  <1226851540-8032-15-git-send-email-tytso@mit.edu>
  <1226851540-8032-16-git-send-email-tytso@mit.edu>
  <1226851540-8032-17-git-send-email-tytso@mit.edu>
- <1226851540-8032-18-git-send-email-tytso@mit.edu>
- <1226851540-8032-19-git-send-email-tytso@mit.edu>
- <1226851540-8032-20-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Frederic Bohe <frederic.bohe@bull.net>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	Theodore Ts'o <tytso@mit.edu>,
+	Arthur Jones <ajones@riverbed.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Eric Sandeen <sandeen@redhat.com>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58996 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:59022 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753422AbYKPQXh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:23:37 -0500
-In-Reply-To: <1226851540-8032-20-git-send-email-tytso@mit.edu>
+	with ESMTP id S1753538AbYKPQXn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:23:43 -0500
+In-Reply-To: <1226851540-8032-17-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Frederic Bohe <frederic.bohe@bull.net>
+In ext4_sync_fs, we only wait for a commit to finish if we started it,
+but there may be one already in progress which will not be synced.
 
-When initializing an uninitialized block group in ext4_new_inode(),
-its block group checksum must be re-calculated.  This fixes a race
-when several threads try to allocate a new inode in an UNINIT'd group.
+In the case of a data=ordered umount with pending long symlinks which
+are delayed due to a long list of other I/O on the backing block
+device, this causes the buffer associated with the long symlinks to
+not be moved to the inode dirty list in the second phase of
+fsync_super.  Then, before they can be dirtied again, kjournald exits,
+seeing the UMOUNT flag and the dirty pages are never written to the
+backing block device, causing long symlink corruption and exposing new
+or previously freed block data to userspace.
 
-There is some question whether we need to be initializing the block
-bitmap in ext4_new_inode() at all, but for now, if we are going to
-init the block group, let's eliminate the race.
+To ensure all commits are synced, we flush all journal commits now
+when sync_fs'ing ext4.
 
-Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
+Signed-off-by: Arthur Jones <ajones@riverbed.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit 23712a9c28b9f80a8cf70c8490358d5f562d2465)
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+(cherry picked from commit 14ce0cb411c88681ab8f3a4c9caa7f42e97a3184)
 ---
- fs/ext4/ialloc.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ fs/ext4/super.c |   19 ++++++++-----------
+ 1 files changed, 8 insertions(+), 11 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 84e5bbf..13efb5f 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -717,6 +717,8 @@ got:
- 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
- 			free = ext4_free_blocks_after_init(sb, group, gdp);
- 			gdp->bg_free_blocks_count = cpu_to_le16(free);
-+			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
-+								gdp);
- 		}
- 		spin_unlock(sb_bgl_lock(sbi, group));
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b6fdc2b..7726e8e 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2920,12 +2920,9 @@ int ext4_force_commit(struct super_block *sb)
+ /*
+  * Ext4 always journals updates to the superblock itself, so we don't
+  * have to propagate any other updates to the superblock on disk at this
+- * point.  Just start an async writeback to get the buffers on their way
+- * to the disk.
+- *
+- * This implicitly triggers the writebehind on sync().
++ * point.  (We can probably nuke this function altogether, and remove
++ * any mention to sb->s_dirt in all of fs/ext4; eventual cleanup...)
+  */
+-
+ static void ext4_write_super(struct super_block *sb)
+ {
+ 	if (mutex_trylock(&sb->s_lock) != 0)
+@@ -2935,14 +2932,14 @@ static void ext4_write_super(struct super_block *sb)
  
+ static int ext4_sync_fs(struct super_block *sb, int wait)
+ {
+-	tid_t target;
++	int ret = 0;
+ 
+ 	sb->s_dirt = 0;
+-	if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, &target)) {
+-		if (wait)
+-			jbd2_log_wait_commit(EXT4_SB(sb)->s_journal, target);
+-	}
+-	return 0;
++	if (wait)
++		ret = ext4_force_commit(sb);
++	else
++		jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, NULL);
++	return ret;
+ }
+ 
+ /*
 -- 
 1.6.0.4.8.g36f27.dirty
 
