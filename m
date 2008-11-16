@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [FOR-STABLE 18/20] ext4: calculate journal credits correctly
-Date: Sun, 16 Nov 2008 11:05:38 -0500
-Message-ID: <1226851540-8032-19-git-send-email-tytso@mit.edu>
+Subject: [FOR-STABLE 20/20] ext4: add checksum calculation when clearing UNINIT flag in ext4_new_inode
+Date: Sun, 16 Nov 2008 11:05:40 -0500
+Message-ID: <1226851540-8032-21-git-send-email-tytso@mit.edu>
 References: <1226851540-8032-1-git-send-email-tytso@mit.edu>
  <1226851540-8032-2-git-send-email-tytso@mit.edu>
  <1226851540-8032-3-git-send-email-tytso@mit.edu>
@@ -20,53 +20,51 @@ References: <1226851540-8032-1-git-send-email-tytso@mit.edu>
  <1226851540-8032-16-git-send-email-tytso@mit.edu>
  <1226851540-8032-17-git-send-email-tytso@mit.edu>
  <1226851540-8032-18-git-send-email-tytso@mit.edu>
+ <1226851540-8032-19-git-send-email-tytso@mit.edu>
+ <1226851540-8032-20-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
+	Frederic Bohe <frederic.bohe@bull.net>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58998 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58996 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753252AbYKPQXh (ORCPT
+	with ESMTP id S1753422AbYKPQXh (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:23:37 -0500
-In-Reply-To: <1226851540-8032-18-git-send-email-tytso@mit.edu>
+In-Reply-To: <1226851540-8032-20-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This fixes a 2.6.27 regression which was introduced in commit a02908f1.
+From: Frederic Bohe <frederic.bohe@bull.net>
 
-We weren't passing the chunk parameter down to the two subections,
-ext4_indirect_trans_blocks() and ext4_ext_index_trans_blocks(), with
-the result that massively overestimate the amount of credits needed by
-ext4_da_writepages, especially in the non-extents case.  This causes
-failures especially on /boot partitions, which tend to be small and
-non-extent using since GRUB doesn't handle extents.
+When initializing an uninitialized block group in ext4_new_inode(),
+its block group checksum must be re-calculated.  This fixes a race
+when several threads try to allocate a new inode in an UNINIT'd group.
 
-This patch fixes the bug reported by Joseph Fannin at:
-http://bugzilla.kernel.org/show_bug.cgi?id=11964
+There is some question whether we need to be initializing the block
+bitmap in ext4_new_inode() at all, but for now, if we are going to
+init the block group, let's eliminate the race.
 
+Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit ac51d83705c2a38c71f39cde99708b14e6212a60)
+(cherry picked from commit 23712a9c28b9f80a8cf70c8490358d5f562d2465)
 ---
- fs/ext4/inode.c |    5 +++--
- 1 files changed, 3 insertions(+), 2 deletions(-)
+ fs/ext4/ialloc.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7e91913..4ec89d3 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4444,9 +4444,10 @@ static int ext4_indirect_trans_blocks(struct inode *inode, int nrblocks,
- static int ext4_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
- {
- 	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
--		return ext4_indirect_trans_blocks(inode, nrblocks, 0);
--	return ext4_ext_index_trans_blocks(inode, nrblocks, 0);
-+		return ext4_indirect_trans_blocks(inode, nrblocks, chunk);
-+	return ext4_ext_index_trans_blocks(inode, nrblocks, chunk);
- }
-+
- /*
-  * Account for index blocks, block groups bitmaps and block group
-  * descriptor blocks if modify datablocks and index blocks
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 84e5bbf..13efb5f 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -717,6 +717,8 @@ got:
+ 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+ 			free = ext4_free_blocks_after_init(sb, group, gdp);
+ 			gdp->bg_free_blocks_count = cpu_to_le16(free);
++			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
++								gdp);
+ 		}
+ 		spin_unlock(sb_bgl_lock(sbi, group));
+ 
 -- 
 1.6.0.4.8.g36f27.dirty
 
