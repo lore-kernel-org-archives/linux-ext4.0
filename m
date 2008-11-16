@@ -1,104 +1,120 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [FOR-STABLE 02/20] ext4: fix #11321: create /proc/ext4/*/stats more carefully
-Date: Sun, 16 Nov 2008 11:05:22 -0500
-Message-ID: <1226851540-8032-3-git-send-email-tytso@mit.edu>
+Subject: [FOR-STABLE 05/20] ext4: elevate write count for migrate ioctl
+Date: Sun, 16 Nov 2008 11:05:25 -0500
+Message-ID: <1226851540-8032-6-git-send-email-tytso@mit.edu>
 References: <1226851540-8032-1-git-send-email-tytso@mit.edu>
  <1226851540-8032-2-git-send-email-tytso@mit.edu>
+ <1226851540-8032-3-git-send-email-tytso@mit.edu>
+ <1226851540-8032-4-git-send-email-tytso@mit.edu>
+ <1226851540-8032-5-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Alexey Dobriyan <adobriyan@gmail.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44753 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44747 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753022AbYKPQii (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:38:38 -0500
-In-Reply-To: <1226851540-8032-2-git-send-email-tytso@mit.edu>
+	with ESMTP id S1753123AbYKPQiU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:38:20 -0500
+In-Reply-To: <1226851540-8032-5-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Alexey Dobriyan <adobriyan@gmail.com>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-ext4 creates per-suberblock directory in /proc/ext4/ . Name used as
-basis is taken from bdevname, which, surprise, can contain slash.
+The migrate ioctl writes to the filsystem, so we need to elevate the
+write count.
 
-However, proc while allowing to use proc_create("a/b", parent) form of
-PDE creation, assumes that parent/a was already created.
-
-bdevname in question is 'cciss/c0d0p9', directory is not created and all
-this stuff goes directly into /proc (which is real bug).
-
-Warning comes when _second_ partition is mounted.
-
-http://bugzilla.kernel.org/show_bug.cgi?id=11321
-
-Signed-off-by: Alexey Dobriyan <adobriyan@gmail.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit 899fc1a4cf404747de2666534d508804597ee22f)
+(cherry picked from commit 2a43a878001cc5cb7c3c7be2e8dad0a1aeb939b0)
 ---
- fs/ext4/mballoc.c |   16 +++++++++++++---
- 1 files changed, 13 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h    |    3 +--
+ fs/ext4/ioctl.c   |   21 ++++++++++++++++++++-
+ fs/ext4/migrate.c |   10 +---------
+ 3 files changed, 22 insertions(+), 12 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index e0e3a5e..0d51106 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2785,14 +2785,20 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	mode_t mode = S_IFREG | S_IRUGO | S_IWUSR;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
- 	struct proc_dir_entry *proc;
--	char devname[64];
-+	char devname[BDEVNAME_SIZE], *p;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 2950032..9f62743 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1083,8 +1083,7 @@ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+ extern long ext4_compat_ioctl (struct file *, unsigned int, unsigned long);
  
- 	if (proc_root_ext4 == NULL) {
- 		sbi->s_mb_proc = NULL;
- 		return -EINVAL;
+ /* migrate.c */
+-extern int ext4_ext_migrate(struct inode *, struct file *, unsigned int,
+-		       unsigned long);
++extern int ext4_ext_migrate(struct inode *);
+ /* namei.c */
+ extern int ext4_orphan_add(handle_t *, struct inode *);
+ extern int ext4_orphan_del(handle_t *, struct inode *);
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 7a6c2f1..306bfd4 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -267,7 +267,26 @@ setversion_out:
  	}
- 	bdevname(sb->s_bdev, devname);
-+	p = devname;
-+	while ((p = strchr(p, '/')))
-+		*p = '!';
+ 
+ 	case EXT4_IOC_MIGRATE:
+-		return ext4_ext_migrate(inode, filp, cmd, arg);
++	{
++		int err;
++		if (!is_owner_or_cap(inode))
++			return -EACCES;
 +
- 	sbi->s_mb_proc = proc_mkdir(devname, proc_root_ext4);
-+	if (!sbi->s_mb_proc)
-+		goto err_create_dir;
++		err = mnt_want_write(filp->f_path.mnt);
++		if (err)
++			return err;
++		/*
++		 * inode_mutex prevent write and truncate on the file.
++		 * Read still goes through. We take i_data_sem in
++		 * ext4_ext_swap_inode_data before we switch the
++		 * inode format to prevent read.
++		 */
++		mutex_lock(&(inode->i_mutex));
++		err = ext4_ext_migrate(inode);
++		mutex_unlock(&(inode->i_mutex));
++		mnt_drop_write(filp->f_path.mnt);
++		return err;
++	}
  
- 	MB_PROC_HANDLER(EXT4_MB_STATS_NAME, stats);
- 	MB_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, max_to_scan);
-@@ -2804,7 +2810,6 @@ static int ext4_mb_init_per_dev_proc(struct super_block *sb)
- 	return 0;
+ 	default:
+ 		return -ENOTTY;
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index 46fc0b5..f2a9cf4 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -447,8 +447,7 @@ static int free_ext_block(handle_t *handle, struct inode *inode)
  
- err_out:
--	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
- 	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
-@@ -2813,6 +2818,8 @@ err_out:
- 	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_mb_proc);
- 	remove_proc_entry(devname, proc_root_ext4);
- 	sbi->s_mb_proc = NULL;
-+err_create_dir:
-+	printk(KERN_ERR "EXT4-fs: Unable to create %s\n", devname);
- 
- 	return -ENOMEM;
  }
-@@ -2820,12 +2827,15 @@ err_out:
- static int ext4_mb_destroy_per_dev_proc(struct super_block *sb)
+ 
+-int ext4_ext_migrate(struct inode *inode, struct file *filp,
+-				unsigned int cmd, unsigned long arg)
++int ext4_ext_migrate(struct inode *inode)
  {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	char devname[64];
-+	char devname[BDEVNAME_SIZE], *p;
+ 	handle_t *handle;
+ 	int retval = 0, i;
+@@ -516,12 +515,6 @@ int ext4_ext_migrate(struct inode *inode, struct file *filp,
+ 	 * when we add extents we extent the journal
+ 	 */
+ 	/*
+-	 * inode_mutex prevent write and truncate on the file. Read still goes
+-	 * through. We take i_data_sem in ext4_ext_swap_inode_data before we
+-	 * switch the inode format to prevent read.
+-	 */
+-	mutex_lock(&(inode->i_mutex));
+-	/*
+ 	 * Even though we take i_mutex we can still cause block allocation
+ 	 * via mmap write to holes. If we have allocated new blocks we fail
+ 	 * migrate.  New block allocation will clear EXT4_EXT_MIGRATE flag.
+@@ -623,7 +616,6 @@ err_out:
+ 	tmp_inode->i_nlink = 0;
  
- 	if (sbi->s_mb_proc == NULL)
- 		return -EINVAL;
+ 	ext4_journal_stop(handle);
+-	mutex_unlock(&(inode->i_mutex));
  
- 	bdevname(sb->s_bdev, devname);
-+	p = devname;
-+	while ((p = strchr(p, '/')))
-+		*p = '!';
- 	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_mb_proc);
- 	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_mb_proc);
+ 	if (tmp_inode)
+ 		iput(tmp_inode);
 -- 
 1.6.0.4.8.g36f27.dirty
 
