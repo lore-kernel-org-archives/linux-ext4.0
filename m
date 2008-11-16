@@ -1,52 +1,64 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [FOR-STABLE 04/20] ext4: add missing unlock in ext4_check_descriptors() on error path
-Date: Sun, 16 Nov 2008 11:05:24 -0500
-Message-ID: <1226851540-8032-5-git-send-email-tytso@mit.edu>
+Subject: [FOR-STABLE 06/20] ext4: Renumber EXT4_IOC_MIGRATE
+Date: Sun, 16 Nov 2008 11:05:26 -0500
+Message-ID: <1226851540-8032-7-git-send-email-tytso@mit.edu>
 References: <1226851540-8032-1-git-send-email-tytso@mit.edu>
  <1226851540-8032-2-git-send-email-tytso@mit.edu>
  <1226851540-8032-3-git-send-email-tytso@mit.edu>
  <1226851540-8032-4-git-send-email-tytso@mit.edu>
+ <1226851540-8032-5-git-send-email-tytso@mit.edu>
+ <1226851540-8032-6-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Li Zefan <lizf@cn.fujitsu.com>, "Theodore Ts'o" <tytso@mit.edu>
+	Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44685 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44692 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752768AbYKPQfj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:35:39 -0500
-In-Reply-To: <1226851540-8032-4-git-send-email-tytso@mit.edu>
+	with ESMTP id S1753412AbYKPQfr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:35:47 -0500
+In-Reply-To: <1226851540-8032-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Li Zefan <lizf@cn.fujitsu.com>
+Pick an ioctl number for EXT4_IOC_MIGRATE that won't conflict with
+other ext4 ioctl's.  Since there haven't been any major userspace
+users of this ioctl, we can afford to change this now, to avoid
+potential problems later.
 
-If there group descriptors are corrupted we need unlock the block
-group lock before returning from the function; else we will oops when
-freeing a spinlock which is still being held.
+Also, reorder the ioctl numbers in ext4.h to avoid this sort of
+mistake in the future.
 
-Signed-off-by: Li Zefan <lizf@cn.fujitsu.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit 7ee1ec4ca30c6df8e989615cdaacb75f2af4fa6b)
+(cherry picked from commit 8eea80d52b9d87cfd771055534bd2c24f73704d7)
 ---
- fs/ext4/super.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h |    7 ++++---
+ 1 files changed, 4 insertions(+), 3 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 062b7c5..f98f9bb 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1626,8 +1626,10 @@ static int ext4_check_descriptors(struct super_block *sb)
- 			       "Checksum for group %lu failed (%u!=%u)\n",
- 			       i, le16_to_cpu(ext4_group_desc_csum(sbi, i,
- 			       gdp)), le16_to_cpu(gdp->bg_checksum));
--			if (!(sb->s_flags & MS_RDONLY))
-+			if (!(sb->s_flags & MS_RDONLY)) {
-+				spin_unlock(sb_bgl_lock(sbi, i));
- 				return 0;
-+			}
- 		}
- 		spin_unlock(sb_bgl_lock(sbi, i));
- 		if (!flexbg_flag)
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9f62743..4829dac 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -291,8 +291,6 @@ struct ext4_new_group_data {
+ #define	EXT4_IOC_SETFLAGS		FS_IOC_SETFLAGS
+ #define	EXT4_IOC_GETVERSION		_IOR('f', 3, long)
+ #define	EXT4_IOC_SETVERSION		_IOW('f', 4, long)
+-#define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
+-#define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
+ #define	EXT4_IOC_GETVERSION_OLD		FS_IOC_GETVERSION
+ #define	EXT4_IOC_SETVERSION_OLD		FS_IOC_SETVERSION
+ #ifdef CONFIG_JBD2_DEBUG
+@@ -300,7 +298,10 @@ struct ext4_new_group_data {
+ #endif
+ #define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
+ #define EXT4_IOC_SETRSVSZ		_IOW('f', 6, long)
+-#define EXT4_IOC_MIGRATE		_IO('f', 7)
++#define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
++#define EXT4_IOC_GROUP_ADD		_IOW('f', 8, struct ext4_new_group_input)
++#define EXT4_IOC_MIGRATE		_IO('f', 9)
++ /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
+ 
+ /*
+  * ioctl commands in 32 bit emulation
 -- 
 1.6.0.4.8.g36f27.dirty
 
