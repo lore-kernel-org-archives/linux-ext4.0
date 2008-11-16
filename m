@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [FOR-STABLE 11/20] ext4: fix xattr deadlock
-Date: Sun, 16 Nov 2008 11:05:31 -0500
-Message-ID: <1226851540-8032-12-git-send-email-tytso@mit.edu>
+Subject: [FOR-STABLE 13/20] ext4: Do mballoc init before doing filesystem recovery
+Date: Sun, 16 Nov 2008 11:05:33 -0500
+Message-ID: <1226851540-8032-14-git-send-email-tytso@mit.edu>
 References: <1226851540-8032-1-git-send-email-tytso@mit.edu>
  <1226851540-8032-2-git-send-email-tytso@mit.edu>
  <1226851540-8032-3-git-send-email-tytso@mit.edu>
@@ -13,67 +13,70 @@ References: <1226851540-8032-1-git-send-email-tytso@mit.edu>
  <1226851540-8032-9-git-send-email-tytso@mit.edu>
  <1226851540-8032-10-git-send-email-tytso@mit.edu>
  <1226851540-8032-11-git-send-email-tytso@mit.edu>
+ <1226851540-8032-12-git-send-email-tytso@mit.edu>
+ <1226851540-8032-13-git-send-email-tytso@mit.edu>
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Kalpak Shah <kalpak.shah@sun.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44721 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:44713 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753421AbYKPQhC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:37:02 -0500
-In-Reply-To: <1226851540-8032-11-git-send-email-tytso@mit.edu>
+	with ESMTP id S1751910AbYKPQgs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:36:48 -0500
+In-Reply-To: <1226851540-8032-13-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Kalpak Shah <kalpak.shah@sun.com>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-ext4_xattr_set_handle() eventually ends up calling
-ext4_mark_inode_dirty() which tries to expand the inode by shifting
-the EAs.  This leads to the xattr_sem being downed again and leading
-to a deadlock.
+During filesystem recovery we may be doing a truncate
+which expects some of the mballoc data structures to
+be initialized. So do ext4_mb_init before recovery.
 
-This patch makes sure that if ext4_xattr_set_handle() is in the
-call-chain, ext4_mark_inode_dirty() will not expand the inode.
-
-Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit 4d20c685fa365766a8f13584b4c8178a15ab7103)
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+(cherry picked from commit c2774d84fd6cab2bfa2a2fae0b1ca8d8ebde48a2)
 ---
- fs/ext4/xattr.c |    6 ++++++
- 1 files changed, 6 insertions(+), 0 deletions(-)
+ fs/ext4/super.c |   25 +++++++++++++++----------
+ 1 files changed, 15 insertions(+), 10 deletions(-)
 
-diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
-index 8954208..362b0ed 100644
---- a/fs/ext4/xattr.c
-+++ b/fs/ext4/xattr.c
-@@ -959,6 +959,7 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 	struct ext4_xattr_block_find bs = {
- 		.s = { .not_found = -ENODATA, },
- 	};
-+	unsigned long no_expand;
- 	int error;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bf0d58c..e1255cc 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2449,6 +2449,21 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			"available.\n");
+ 	}
  
- 	if (!name)
-@@ -966,6 +967,9 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- 	if (strlen(name) > 255)
- 		return -ERANGE;
- 	down_write(&EXT4_I(inode)->xattr_sem);
-+	no_expand = EXT4_I(inode)->i_state & EXT4_STATE_NO_EXPAND;
-+	EXT4_I(inode)->i_state |= EXT4_STATE_NO_EXPAND;
++	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
++		printk(KERN_WARNING "EXT4-fs: Ignoring delalloc option - "
++				"requested data journaling mode\n");
++		clear_opt(sbi->s_mount_opt, DELALLOC);
++	} else if (test_opt(sb, DELALLOC))
++		printk(KERN_INFO "EXT4-fs: delayed allocation enabled\n");
 +
- 	error = ext4_get_inode_loc(inode, &is.iloc);
- 	if (error)
- 		goto cleanup;
-@@ -1042,6 +1046,8 @@ ext4_xattr_set_handle(handle_t *handle, struct inode *inode, int name_index,
- cleanup:
- 	brelse(is.iloc.bh);
- 	brelse(bs.bh);
-+	if (no_expand == 0)
-+		EXT4_I(inode)->i_state &= ~EXT4_STATE_NO_EXPAND;
- 	up_write(&EXT4_I(inode)->xattr_sem);
- 	return error;
- }
--- 
-1.6.0.4.8.g36f27.dirty
-
++	ext4_ext_init(sb);
++	err = ext4_mb_init(sb, needs_recovery);
++	if (err) {
++		printk(KERN_ERR "EXT4-fs: failed to initalize mballoc (%d)\n",
++		       err);
++		goto failed_mount4;
++	}
++
+ 	/*
+ 	 * akpm: core read_super() calls in here with the superblock locked.
+ 	 * That deadlocks, because orphan cleanup needs to lock the superblock
+@@ -2468,16 +2483,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	       test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA ? "ordered":
+ 	       "writeback");
+ 
+-	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
+-		printk(KERN_WARNING "EXT4-fs: Ignoring delalloc option - "
+-				"requested data journaling mode\n");
+-		clear_opt(sbi->s_mount_opt, DELALLOC);
+-	} else if (test_opt(sb, DELALLOC))
+-		printk(KERN_INFO "EXT4-fs: delayed allocation enabled\n");
+-
+-	ext4_ext_init(sb);
+-	ext4_mb_init(sb, needs_recovery);
