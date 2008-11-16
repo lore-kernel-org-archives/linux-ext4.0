@@ -1,38 +1,66 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: [PATCH] ext2/ext3: allocate ->s_blockgroup_lock separately to
-	avoid wasting space
-Date: Sun, 16 Nov 2008 13:58:09 +0100
-Message-ID: <1226840289.8172.8.camel@lappy.programming.kicks-ass.net>
-References: <Pine.LNX.4.64.0811141115100.29826@melkki.cs.Helsinki.FI>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: akpm@linux-foundation.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, cl@linux-foundation.org,
-	mpm@selenic.com, eduard.munteanu@linux360.ro
-To: Pekka J Enberg <penberg@cs.helsinki.fi>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [FOR-STABLE 19/20] ext4: Mark the buffer_heads as dirty and uptodate after prepare_write
+Date: Sun, 16 Nov 2008 11:05:39 -0500
+Message-ID: <1226851540-8032-20-git-send-email-tytso@mit.edu>
+References: <1226851540-8032-1-git-send-email-tytso@mit.edu>
+ <1226851540-8032-2-git-send-email-tytso@mit.edu>
+ <1226851540-8032-3-git-send-email-tytso@mit.edu>
+ <1226851540-8032-4-git-send-email-tytso@mit.edu>
+ <1226851540-8032-5-git-send-email-tytso@mit.edu>
+ <1226851540-8032-6-git-send-email-tytso@mit.edu>
+ <1226851540-8032-7-git-send-email-tytso@mit.edu>
+ <1226851540-8032-8-git-send-email-tytso@mit.edu>
+ <1226851540-8032-9-git-send-email-tytso@mit.edu>
+ <1226851540-8032-10-git-send-email-tytso@mit.edu>
+ <1226851540-8032-11-git-send-email-tytso@mit.edu>
+ <1226851540-8032-12-git-send-email-tytso@mit.edu>
+ <1226851540-8032-13-git-send-email-tytso@mit.edu>
+ <1226851540-8032-14-git-send-email-tytso@mit.edu>
+ <1226851540-8032-15-git-send-email-tytso@mit.edu>
+ <1226851540-8032-16-git-send-email-tytso@mit.edu>
+ <1226851540-8032-17-git-send-email-tytso@mit.edu>
+ <1226851540-8032-18-git-send-email-tytso@mit.edu>
+ <1226851540-8032-19-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:55528 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751888AbYKPM6c (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 07:58:32 -0500
-In-Reply-To: <Pine.LNX.4.64.0811141115100.29826@melkki.cs.Helsinki.FI>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:59000 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1753484AbYKPQXi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 16 Nov 2008 11:23:38 -0500
+In-Reply-To: <1226851540-8032-19-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-11-14 at 11:17 +0200, Pekka J Enberg wrote:
-> From: Pekka Enberg <penberg@cs.helsinki.fi>
-> 
-> As spotted by kmemtrace, struct ext2_sb_info is 17024 bytes and ext3_sb_info is
-> 17152 bytes on 64-bit which makes them a very bad fit for SLAB allocators. In
-> fact, both allocations are round up to the next available page size of 
-> order 3 which is 32 KB.
-> 
-> The culprit if the wasted memory is the ->s_blockgroup_lock which can be as big
-> as 16 KB when CONFIG_NR_CPUS is set to 32. As struct blockgroup_lock is a
-> perfect fit for order 2 page in the worst case, allocate ->s_blockgroup_lock
-> separately to avoid wasting space.
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-And here I was thinking that NR_CPUS=4096 is currently our worst
-case ;-)
+We need to make sure we mark the buffer_heads as dirty and uptodate
+so that block_write_full_page write them correctly.
+
+This fixes mmap corruptions that can occur in low memory situations.
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+(cherry picked from commit ed9b3e3379731e9f9d2f73f3d7fd9e7d2ce3df4a)
+---
+ fs/ext4/inode.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 4ec89d3..846a790 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2242,6 +2242,8 @@ static int ext4_da_writepage(struct page *page,
+ 			unlock_page(page);
+ 			return 0;
+ 		}
++		/* now mark the buffer_heads as dirty and uptodate */
++		block_commit_write(page, 0, PAGE_CACHE_SIZE);
+ 	}
+ 
+ 	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
+-- 
+1.6.0.4.8.g36f27.dirty
 
