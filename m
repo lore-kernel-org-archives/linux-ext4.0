@@ -1,374 +1,706 @@
 From: Kalpak Shah <Kalpak.Shah@Sun.COM>
-Subject: [PATCH 2/2 e2fsprogs]  regression test for large EAs
-Date: Tue, 18 Nov 2008 02:06:24 +0530
-Message-ID: <1226954184.3972.73.camel@localhost>
+Subject: [PATCH 1/2 e2fsprogs] support for large EAs
+Date: Tue, 18 Nov 2008 02:06:19 +0530
+Message-ID: <1226954180.3972.72.camel@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_iogQ8EwLek4bzNLHfhDL1w)"
+Content-Type: multipart/mixed; boundary="Boundary_(ID_NiA00lpwhxkyOJKfl6ehcw)"
 Cc: TheodoreTso <tytso@mit.edu>, Andreas Dilger <adilger@Sun.COM>
 To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
 Received: from sineb-mail-2.sun.com ([192.18.19.7]:36684 "EHLO
 	sineb-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752141AbYKQUqE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Nov 2008 15:46:04 -0500
+	with ESMTP id S1752066AbYKQUqI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Nov 2008 15:46:08 -0500
 Received: from fe-apac-05.sun.com (fe-apac-05.sun.com [192.18.19.176] (may be forged))
-	by sineb-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id mAHKZpVF015661
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Nov 2008 20:35:51 GMT
+	by sineb-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id mAHKZhkP015658
+	for <linux-ext4@vger.kernel.org>; Mon, 17 Nov 2008 20:35:43 GMT
 Received: from conversion-daemon.mail-apac.sun.com by mail-apac.sun.com
  (Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
  id <0KAH00H01VU6YJ00@mail-apac.sun.com>
  (original mail from Kalpak.Shah@Sun.COM) for linux-ext4@vger.kernel.org; Tue,
- 18 Nov 2008 04:35:51 +0800 (SGT)
+ 18 Nov 2008 04:35:43 +0800 (SGT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Boundary_(ID_iogQ8EwLek4bzNLHfhDL1w)
+--Boundary_(ID_NiA00lpwhxkyOJKfl6ehcw)
 Content-type: text/plain
 Content-transfer-encoding: 7BIT
 
-This is the regression test for large EAs. The test image contains a
-valid large EA, large EA without EXT4_EA_INODE_FL flag, an EA inode
-whose back-pointer(generation and mtime) does not match with the EA
-entry and an EA entry pointing to a inode which is not an EA inode.
+Hi,
+
+This patch adds large EA support for e2fsprogs.
+
+- add EXT4_FEATURE_INCOMPAT_EA_INODE feature
+- inode_ea_map bitmap is added for tracking non-orphan EA inodes. Orphan EA inodes get linked to lost+found.
+- xattr handling is needed for deleting corrupt EA entries
+
+Ted, this patch is actually based on top of the e2fsprogs-expand-extra-isize.patch I had sent about a month back. If you are satisfied with the approach, I can send a patch series which applies to the tip of the e2fsprogs tree.
 
 Signed-off-by: Andreas Dilger <adilger@sun.com>
 Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
 
- expect.1 |   27 +++++++++++++++++++++++++++
- expect.2 |    7 +++++++
- image.gz |    5 +++++
- name     |    1 +
- 4 files changed, 40 insertions(+)
+ e2fsck/e2fsck.h            |    1 
+ e2fsck/pass1.c             |  199 ++++++++++++++++++++++++++++++++++++---------
+ e2fsck/pass4.c             |   17 +++
+ e2fsck/problem.c           |   24 +++++
+ e2fsck/problem.h           |   13 ++
+ lib/blkid/probe.h          |    1 
+ lib/e2p/feature.c          |    2 
+ lib/ext2fs/ext2_ext_attr.h |    5 -
+ lib/ext2fs/ext2_fs.h       |    5 -
+ lib/ext2fs/ext2fs.h        |    6 -
+ lib/ext2fs/ext_attr.c      |   27 ++++--
+ lib/ext2fs/swapfs.c        |    2 
+ misc/mke2fs.c              |    3 
+ misc/tune2fs.c             |    6 +
+ 14 files changed, 259 insertions(+), 52 deletions(-)
 
 Thanks,
 Kalpak
 
---Boundary_(ID_iogQ8EwLek4bzNLHfhDL1w)
-Content-type: text/x-patch; charset=UTF-8;
- name=e2fsprogs-tests-f_large_eas.patch
-Content-transfer-encoding: BASE64
-Content-disposition: attachment; filename=e2fsprogs-tests-f_large_eas.patch
+--Boundary_(ID_NiA00lpwhxkyOJKfl6ehcw)
+Content-type: text/x-patch; charset=UTF-8; name=e2fsprogs-large-xattrs.patch
+Content-transfer-encoding: 7BIT
+Content-disposition: attachment; filename=e2fsprogs-large-xattrs.patch
 
-SW5kZXg6IGUyZnNwcm9ncy0xLjQxLjEvdGVzdHMvZl9sYXJnZV9lYXMvZXhwZWN0
-LjENCj09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT0NCi0tLSAvZGV2L251bGwNCisrKyBlMmZz
-cHJvZ3MtMS40MS4xL3Rlc3RzL2ZfbGFyZ2VfZWFzL2V4cGVjdC4xDQpAQCAtMCww
-ICsxLDI3IEBADQorUGFzcyAxOiBDaGVja2luZyBpbm9kZXMsIGJsb2NrcywgYW5k
-IHNpemVzDQorUGFyZW50IGlub2RlIDEyIGhhcyBpbGxlZ2FsIEVBIGVudHJ5LiBF
-QSBpbm9kZSA3OSBkb2VzIG5vdCBoYXZlIEVYVDRfRUFfSU5PREVfRkwgZmxhZy4g
-RGVsZXRlIEVBIGVudHJ5Pw0KK0ZpeD8geWVzDQorDQorSWxsZWdhbCBiYWNrcG9p
-bnRlciBmcm9tIEVBIGlub2RlIDE5IHRvIHBhcmVudCBpbm9kZSAxMy4gRGVsZXRl
-IEVBIGlub2RlPw0KK0ZpeD8geWVzDQorDQorUGFyZW50IGlub2RlIDE0IGhhcyBp
-bGxlZ2FsIEVBIGVudHJ5LiBFQSBpbm9kZSAyMCBkb2VzIG5vdCBoYXZlIEVYVDRf
-RUFfSU5PREVfRkwgZmxhZy4gRGVsZXRlIEVBIGVudHJ5Pw0KK0ZpeD8geWVzDQor
-DQorUGFzcyAyOiBDaGVja2luZyBkaXJlY3Rvcnkgc3RydWN0dXJlDQorUGFzcyAz
-OiBDaGVja2luZyBkaXJlY3RvcnkgY29ubmVjdGl2aXR5DQorUGFzcyA0OiBDaGVj
-a2luZyByZWZlcmVuY2UgY291bnRzDQorVW5hdHRhY2hlZCBpbm9kZSAxNg0KK0Nv
-bm5lY3QgdG8gL2xvc3QrZm91bmQ/IHllcw0KKw0KK1VuYXR0YWNoZWQgaW5vZGUg
-MTcNCitDb25uZWN0IHRvIC9sb3N0K2ZvdW5kPyB5ZXMNCisNCitVbmF0dGFjaGVk
-IGlub2RlIDE4DQorQ29ubmVjdCB0byAvbG9zdCtmb3VuZD8geWVzDQorDQorUGFz
-cyA1OiBDaGVja2luZyBncm91cCBzdW1tYXJ5IGluZm9ybWF0aW9uDQorDQordGVz
-dF9maWxlc3lzOiAqKioqKiBGSUxFIFNZU1RFTSBXQVMgTU9ESUZJRUQgKioqKioN
-Cit0ZXN0X2ZpbGVzeXM6IDIwLzI1NiBmaWxlcyAoNDAuMCUgbm9uLWNvbnRpZ3Vv
-dXMpLCAxMzY4LzgxOTIgYmxvY2tzDQorRXhpdCBzdGF0dXMgaXMgMQ0KSW5kZXg6
-IGUyZnNwcm9ncy0xLjQxLjEvdGVzdHMvZl9sYXJnZV9lYXMvZXhwZWN0LjINCj09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT0NCi0tLSAvZGV2L251bGwNCisrKyBlMmZzcHJvZ3Mt
-MS40MS4xL3Rlc3RzL2ZfbGFyZ2VfZWFzL2V4cGVjdC4yDQpAQCAtMCwwICsxLDcg
-QEANCitQYXNzIDE6IENoZWNraW5nIGlub2RlcywgYmxvY2tzLCBhbmQgc2l6ZXMN
-CitQYXNzIDI6IENoZWNraW5nIGRpcmVjdG9yeSBzdHJ1Y3R1cmUNCitQYXNzIDM6
-IENoZWNraW5nIGRpcmVjdG9yeSBjb25uZWN0aXZpdHkNCitQYXNzIDQ6IENoZWNr
-aW5nIHJlZmVyZW5jZSBjb3VudHMNCitQYXNzIDU6IENoZWNraW5nIGdyb3VwIHN1
-bW1hcnkgaW5mb3JtYXRpb24NCit0ZXN0X2ZpbGVzeXM6IDIwLzI1NiBmaWxlcyAo
-NDAuMCUgbm9uLWNvbnRpZ3VvdXMpLCAxMzY4LzgxOTIgYmxvY2tzDQorRXhpdCBz
-dGF0dXMgaXMgMA0KSW5kZXg6IGUyZnNwcm9ncy0xLjQxLjEvdGVzdHMvZl9sYXJn
-ZV9lYXMvbmFtZQ0KPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PQ0KLS0tIC9kZXYvbnVsbA0K
-KysrIGUyZnNwcm9ncy0xLjQxLjEvdGVzdHMvZl9sYXJnZV9lYXMvbmFtZQ0KQEAg
-LTAsMCArMSBAQA0KK2xhcmdlIEVBcw0KLS0tIC9kZXYvbnVsbAkyMDA4LTExLTEz
-IDIwOjMzOjQ5LjIxNzc3OTQ3MCAtMDUwMA0KKysrIGUyZnNwcm9ncy0xLjQxLjEv
-dGVzdHMvZl9sYXJnZV9lYXMvaW1hZ2UuZ3oJMjAwOC0xMS0xNCAxMDo1NDoyMy4w
-MDAwMDAwMDAgLTA1MDANCkBAIC0wLDAgKzEsNSBAQA0KKx+LCAjqvxlJAgNpbWFn
-ZQDs3Qmc1HX9x/Hf7C4Lcq7itYiieFGaYqVlVqh54X3fiuSiYrhbKJpkCUkpZmXZ
-oWm3lpWVlR1iGWlhaXfaXXR4JILmUakd/N+z+10ucwH/EiDP5+Px4rPsb+DLzM7v
-N7PzY6CqgDVWLW1aVVdkXjOkquaWTy2waSmfnLFr6+jbUkO1bnXYQ7XOy508qnV0
-deC8Bb9VXb80Jb087d7U9fnelz3R//ad9tvqkkP23Obxi699YsVcmWFP+UyfRT6e
-vf/GW933qgOuu+K0XtsOvun0mbVFrmj9ehyaeVg6PB2RjkxHpaPTMenYdFw6Pp2Q
-TkxjFruxWv7rzQurquFp87RFVd//51YNVZMbBQAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAIA1zvxV36il/vmH+Tqymu5/56/U5afMnz9odT8+AM9Q935+8qjW
-0d39Lw9A83bLD01d69+8a1ddWxqrhnKZXmkPDxWsiAfAqflhZFPTU+//tWrX/+fv
-fciyrl+1LLYPdq/ft8/Cyx2aDkuHpyPSkemodHQ6Jh2bjkvHpxPSiWlMzdd3aWbW
-jz8j/9vxr6HacJHL7Zn2SnunfVL9Qvum/dL+6YB0YDooHbwc6189tWtOzLqz0sRF
-vv5dx78+Vf3L2PfRzsPkMzJhRssDM5p6Xn9SWX/SDQorWP+MrD93KetPLutPXgHr
-t2f9i5ay/rSsOztNWwHrd2T9TXr1tP/Xqlnl+g9csKVWTemcI8r6DYutX3/WXmvu
-mjvUjwVNPV//no8/C9fvvxzrtyyy/vSmnu9/y7r+gOW5/kMXrn9TU8/3v6WtP7t8
-/Qctx/rDFrn+85p6/vovbf/vfu6z8PlP98H7/3//23HWte2O9AAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAy6f+fxz3r2oN2y34uKFhu/ykXz5et+rbMKHjzLO2
-OaVjUntbfVv9c/1rk9onnTmubcz49o62cQM6P9evds7EjvZTuz5VDSyfa+8YM25s
-+Vz9/8ndsBpYO3vshPFtCz+dy1XVlMbG2ikdHb4Y8D/Wb4n9/7HGrv0fWEM0uQnA
-/g/Y/wH7P2D/B+z/gP0fsP8D9n/A/g/Y/4HVRWM5BPRKzal36pPWSn2r7vcIVFX9
-vT719/bU38vTktZO66TBVdf7eNZL66cNqvp7faqqNQ1JG6WhaeO0SRqWNk2buelh
-pZq5y86XL3wG0NT9Ya3s8k/R+7In+t++035bXXLInts8fvG1T5TLAqvv/l8rD/Wb
-P83FGkpblblFmXuUXweshubPH7SU7cBz1fDyoF9/QL9myNw8qHsxENYUU6Z2fbs/
-a1Tr6HoLv+mvVVM654iubw4eXfzI0PkaYHPX3CFN7+GwMWFGywPLuv6A5Vi/NnTh
-+jf1sP4Zy7D+7Kxdb9ByrD9skes/r4f1O3pY/+qpXfPmXVtHd9e9fpc+Zf1nfppm
-x1nXtrun05OTc9/v7n+57rzdul5yrK+7+P2/sfMFhrpe5YUGWCGPfyObmp56/69V
-u/4/f+9Dlvnxt2WxfbB7/b59Fl7u0HRYOjwdkY5MR6Wj0zHp2HRcOj6dkE5MY5bh
-lXn//h+sucrr//Vdf5lfxx/duuut2191z0fdevCc2P9rVddfA1ra+b8tK+f/4Dlj
-/qilbAfWiPN/n9roEef/gDXn+5/6+YeR/+38R0Pnexi67Zn2SnunfeqvgaR9035p
-/3RAOjAdlA5ejvW7z/9NzLrddX3m2Tv/N2EZzj9OyrrdPdvrn7EM60/Out092+u3
-97D+mm5MOimNTa9OJ6e2NC6dkk5Np6Xx6fT0mvr9qf41rd+uqf6q/WvT6+r34XRm
-Oqt+f0pnp3PS69O59a9xekM6L70xvSmdn6ak+t3gzemCNC29Jb01XZguStPTxelt
-6ZL09vSO9M50aXpXene6LL0nvTe9L70/1V/guCJ9IF2ZrkofTB9KH04fSfUXMz+W
-Pl6/T6Zr0ifSJ9O19edG6dPpM+m69Nn0ufT5dH36Qvpi+lK6IX05fSV9NX0t3Zhm
-pJvS19M30s3pm/VjUPpWuiXdmr6dvpNmpdvSd9P30u3pjvT99IP0w/Sj9OP0k/TT
-9LN0Z7or/Tz9Iv0y/Sr9Ov0m/Tb9Lv0+zU5/SH9Mf0p/Tnene9K96b70l3R/mpPq
-O9LcNC89mB5Kf00Pp0dSdtPqsfS39Pf0j/R4qr9R5Mn0z/Sv9O/0n/r3l2VXr6WG
-1JiaUq/UnHqnPmmt1Df1S/3TgDQwDUotae20Thqc1k3rpfXTBmnD1JqGpI3S0LRx
-2iQNS5umzdLwtHnaIm2ZtkpbpxHpeen5aZu0bXpB2i5tn0amHdIL04vSi9OOaaf0
-kvTStHN6WdolvTy9Ir0yjUq7pt3S7ulVaY+0Z9or7Z32SaPTvmm/tH86IB2YDkoH
-p0PSoemwdHg6Ih2ZjkpHp2PSsem4dHw6IZ24yPnBVeH8/+LH/4Xn/xsr5/9ZMZz/
-XzHn/69rXPz8P7ANCit+/7vw/H/jsv6a0a2jzt/uliuvc+vBc2L/r3U9C3f+H9Yk
-889fynZgDTn//7Dz/8Ca8/2P8/+d1tTz/93rT8u63T3b63esBn//YFU4/7f47b/w
-/F9T5fwfK4bzf/+79/9e3vjU9/8CK/H578Lzf8v89GZ066jp2+395PVuPXhO7P/1
-Zw0KK/V/ZmdZz/8N75r1v6HZOcv25sYym8rsVWZzmb3L7FPmWmX2LbNfmf3LHFDm
-wDIHdc2mo8o8usxjyjy2zOPKPL7ME8o8scwxZZ5U5tgyX13myWW2lTmuzFPKPLXM
-08ocX+bpZb6mzAllnlFme5kdZb62zNeVObHMM8s8q8xJZZ5d5jllvr7Mc8ucXOYb
-yjyvzDeW+aYyzy9zSplTy3xzmReUOa3Mt5T51jIvLPOiarF/F7q5pcy1y1ynzMFl
-rlvmemWuX+YGZW5YZmuZQ8rcqMyhZdb/KwnnnZ8F8+fXlrIdWBPO/2290UPO/wFr
-zvc/q9D5v1lLnP/rOv/x7Jz/m9HU8/qrwvm/WUuc/3u2rn/9/N9FS7n+K+v835L/
-/vXABVuW4d+/XuTfnz6qqefrv5o9v1/m9yLksqMcxeAZmXIuAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAARFU1zKlVVVXvrv6Dn6iW0C8bWjo/qnVub+8YM27smPHtHW3jKmD1NmVq1749
-a1Tr6Hr9F2ypVVM654jOY0PfRxuqpkV+3aDU0tw1d0jTm55+jQkzWh5wS8OqxzMg
-AAAAAAAAAAAAAAAAAFj1zNxl58vL2/97VVXzJv/9XYJN0/NDQ+bFZb6tzEvKfHuZ
-7yjznWVeWua7ynx3mZeV+Z4y31vm+8p8f5mXl3lFmR8o88oyryrzg2V+qMwPl/mR
-Mj9a5sfK/HiZV5d5TZmfKPOTZV5b5qfK/HSZnynzujI/W+bnyvx8mdeX+YUyv1jm
-l8q8ocwvl/mVMr9a5tfKvLHMGfW3YnvXKt7/CwAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDqrKoa5tSqqqp350mXXlAtoX82
-rN35Ua1z+6T2SWeOaxszvr2jbVwFrNZm7rLz5RkNqdey/prRraNmrT37ot3cevCc
-2P/rD//NafOnuVhDaasyh3fNobUyy/ahjWU2ldmrzOYye5fZp8y1yuxbZr8y+5c5
-oMyBZQ7qmk03lfn1Mr9R5s1lfrPMmWV+q8xbyry1zG+X+Z0yZ5V5W5nfLfN7Zd5e
-5h1lfr/MH5T5wzJ/VOaPy/xJmT8t82dl3lnmXWX+vMxflPnLMn9V5q/L/E2Zvy3z
-d2X+vszZZf6hzD+W+acy/1zm3WXeU+a9Zd5X5l/KvL/MOWU+UO4HW5afz83sa29a
-/cyf37iU7cBz1fDyoL9FunfIgzmYNzkowhpiytSu1/ZmjWodXa//gi21akrnHNH5
-zUHfRxc/MtSfiLc0d80d0vQeDhsTZrQ8sKzrD1iO9WtDF65/Uw/rn9HD+rBmP/9f
-hQ1apj//KF9FVtv97/yV+/DvDCgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB11Rpu5m75YWRVnTyq
-dXR3XVsaqg0Xudyeaa+0d9on1S+0b9ov7Z8OSAemg9LBy7H+1VO75sSsOytNXLB+
-LX+Cuj75qKr6PlpVTc/wOk6Y0fLAjKae159U1p+0AtY/I+vPXcr6k8v6k1fA+u1Z
-/6KlrD8t63bXvX71LK3fkfWfbtuUqV1rzSrXf+CCLbVqSuccUdZvWGz9QfVLNHfN
-HdJRTT1f/6ff2jCnVq7tJVed9ZTjQb9sWKf8eerbz5nY0X7qmPHtHW3jKmA1f/zb
-ZefLOx/sqqp5WX/N6NZRd2x//3m93HrwnNj/6w//vdPmT/ckobRVmcO7ZvOwMjct
-c7Myu7dvXuYWZW5ZZvl9mrcuc0SZzyvz+WVuU+a2Zb6gazbNK/PBMh8q869lPlzm
-I2U+WuZjZf6tzL+X+Y8yHy/ziTKfLPOfZf6rzH+X+Z8y53fNXuW26lUrs9xuvRrL
-bCqzV5nNZfYus0+Za5XZt8x+ZfYvc0CZA8scVGZLmWuXuU6Zg8tct8z1yly/zA3K
-3LDM1jKHlLlRmUPL3LjcD8rXs9cm9aeo9qbVz/z5vZeyHXiuGl4e9OsP0NcMmVc1
-PONXOYDVzZKvP/ZfjtcfWxZ5/XF6U8+vPy/r+gOW5/XPoQvXv6mp59efl7b+7Kxd
-b9ByrD9skes/r+mZvf4LK/f5/ypv1FL//MN8HVlN97/zV+7Dv78BAQAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAudVKuqsQ1V9epG/xc7rGnGZv9/dTo5taVx
-6ZR0ajotjU+np9ekCemM1J460mvT69LEdGY6K01KZ6dz0uvTuWlyekM6L70xvSmd
-n6akqenN6YI0Lb0lvTVdmC5K09PF6W3pkvT29I70znRpeld6d7osvSe9N70vvT9d
-nq5IH0hXpqvSB9OH0ofTR9JH08fSx9PV6Zr0ifTJdG36VPp0+ky6Ln02fS59Pl2f
-vpC+mL6UbkhfTl9JX01fSzemGemm9PX0jXRz+maamb6Vbkm3pm+n76RZ6bb03fS9
-dHu6I30//SD9MP0o/Tj9JP00/Szdme5KP0+/SL9Mv0q/Tr9Jv02/S79Ps9Mf0h/T
-n9Kf093pnnRvui/9Jd2f5qQH0tw0Lz2YHkp/TQ+nR9Kj6bH0t/T39I/0eHoiPZn+
-mf6V/p3+k+anKo87tdSQGlNT6pWaU+/UJ62V+qZ+qX8akAamQaklrZ3WSYPTumm9
-tH7aIG2YWtOQtFEamjZOm6RhadO0WRqeNk9bpC3TVmnrNCI9Lz0/bZO2TS9I26Xt
-08i0Q3phelF6cdox7ZRekl6adk4vS7ukl6dXpFemUWnXtFvaPb0q7ZH2THulvdM+
-aXTaN+2X9k8HpAPTQengdEg6NB2WDk9HpCPTUenodEw6Nh2Xjk8npBPTmHRS8gwI
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA1WbWGm7lbfhhZVSePah3d
-XdeWhmrDRS63Z9or7Z32SfUL7Zv2S/unA9KB6aB08HKsf/XUrjkx685KExesX8uf
-oK5PPqqqvo9WVdMzvI4TZrQ8MKOp5/UnlfUnrYD1z8j6c5ey/uSy/uQVsH571r9o
-KetPy7qz07QVsH5H1t+k13/fNmVq11qzyvUfuGBLrZrSOUeU9RsWW39Q/RLNXXOH
-dFRTz9f/6bc2zKl1rlZVN8yfeOOSW/tlw+Dy56lvP3vshPFtY8a3d7SNq4DV/PFv
-l50v73ywq6rey/prRreOunvkKY3XufUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AIA1yasbqurk1JbGpVPSqem0ND6dnl6TJqQzUnvqSK9Nr0sT05nprDQpnZ3OSa9P
-56bJ6Q3pvPTG9KZ0fpqSpqY3pwvStPSW9NZ0YbooTU8Xp7elS9Lb0zvSO9Ol6V3p
-3emy9J703vS+9P50eboifSBdma5KH0wfSh9OH0kfTR9LH09Xp2vSJ9In07XpU+nT
-6TPpuvTZ9Ln0+XR9+kL6YvpSuiF9OX0lfTV9Ld2YZqSb0tfTN9LN6ZtpZvpWuiXd
-mr6dvpNmpdvSd9P30u3pjvT99IP0w/Sj9OP0k/TT9LN0Z7or/Tz9Iv0y/Sr9Ov0m
-/Tb9Lv0+zU5/SH9Mf0p/Tnene9K96b70l3R/mpMeSHPTvPRgeij9NT2cHkmPpsfS
-39Lf0z/S4+mJ9GT6Z/pX+nf6T5qfqsaqqqWG1JiaUq/UnHqnPmmt1Df1S/3TgDQw
-DUotae20Thqc1k3rpfXTBmnD1JqGpI3S0LRx2iQNS5umzdLwtHnaIm2ZtkpbpxHp
-een5aZu0bXpB2i5tn0amHdIL04vSi9OOaaf0kvTStHN6WdolvTy9Ir0yjUq7pt3S
-7ulVaY+0Z9or7Z32SaPTvmm/tH86IB2YDkoHp0PSoemwdHg6Ih2ZjkpHp2PSsem4
-dHw6IZ2YxqST0thGxz8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4KlObqyqtjQunZJOTael8en09Jo0
-IZ2R2lNHem16XZqYzkxnpUnp7HROen06N01Ob0jnpTemN6Xz05Q0Nb05XZCmpbek
-t6YL00Vpero4vS1dkt6e3pHemS5N70rvTpel96T3pvel96fL0xXpA+nKdFX6YPpQ
-+nD6SPpo+lj6eLo6XZM+kT6Zrk2fSp9On0nXpc+mz6XPp+vTF9IX05fSDenL6Svp
-q+lr6cY0I92Uvp6+kW5O30wz07fSLenW9O30nTQr3Za+m76Xbk93pO+nH6Qfph+l
-H6efpJ+mn6U7013p5+kX6ZfpV+nX6Tfpt+l36fdpdvpD+mP6U/pzujvdk+5N96W/
-pPvTnPRAmpvmpQfTQ+mv6eH0SHo0PZb+lv6e/pEeT0+kJ9M/07/Sv9N/0vxUNVVV
-LTWkxtSUeqXm1Dv1SWulvqlf6p8GpIFpUGpJa6d10uC0blovrZ82SBum1jQkbZSG
-po3TJmlY2jRtloanzdMWacu0Vdo6jUjPS89P26Rt0wvSdmn7NDLtkF6YXpRenHZM
-O6WXpJemndPL0i7p5ekV6ZVpVNo17ZZ2T69Ke6Q9015p77RPGp32Tful/dMB6cB0
-UDo4HZIOTYelw9MR6cgmxzMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAYNV3LgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAKxEVdUwp1ZVVb27+g9+olpCv2xYt/OjWuf2
-9o4x48aOGd/e0TauAlZvjoAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAACsTFXVMKdWVVW9O0+69IJqCf2z4aDOj2qd2ye1Tzpz
-XNuY8e0dbeMqYLXmCAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAMDKVFUNc2pVVdW75Kqz8vPF9cuGwZ0f1Tq3nzOxo/3UMePb
-O9rGVcDqzREQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAACAlamqGubUqqqqd8P8iTdWS+iXDYM7P6p1bj977ITxbWPGt3e0jasA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABWZ+cCAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMAqrAIAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAgOeAcwEAAAAAAAAAAAAAAAAAgFWGd0ADAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP/XHhyQAAAAAAj6/7odgQ0KKwAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwF3iSpRUA
-AIAADQpcIE5vIG5ld2xpbmUgYXQgZW5kIG9mIGZpbGUNCg==
+Index: e2fsprogs-1.41.1/lib/blkid/probe.h
+===================================================================
+--- e2fsprogs-1.41.1.orig/lib/blkid/probe.h
++++ e2fsprogs-1.41.1/lib/blkid/probe.h
+@@ -119,6 +119,7 @@ struct ext2_super_block {
+ #define EXT4_FEATURE_INCOMPAT_64BIT		0x0080
+ #define EXT4_FEATURE_INCOMPAT_MMP		0x0100
+ #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
++#define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400
+ 
+ #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
+Index: e2fsprogs-1.41.1/lib/e2p/feature.c
+===================================================================
+--- e2fsprogs-1.41.1.orig/lib/e2p/feature.c
++++ e2fsprogs-1.41.1/lib/e2p/feature.c
+@@ -75,6 +75,8 @@ static struct feature feature_list[] = {
+ 			"flex_bg"},
+ 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_MMP,
+ 			"mmp" },
++	{	E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_EA_INODE,
++			"large_xattr" },
+ 	{	0, 0, 0 },
+ };
+ 
+Index: e2fsprogs-1.41.1/lib/ext2fs/ext2_fs.h
+===================================================================
+--- e2fsprogs-1.41.1.orig/lib/ext2fs/ext2_fs.h
++++ e2fsprogs-1.41.1/lib/ext2fs/ext2_fs.h
+@@ -273,6 +273,7 @@ struct ext2_dx_countlimit {
+ #define EXT2_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
+ #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
+ #define EXT4_EXTENTS_FL 		0x00080000 /* Inode uses extents */
++#define EXT4_EA_INODE_FL		0x00200000 /* Inode used for large EA */
+ #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
+ 
+ #define EXT2_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
+@@ -649,11 +650,13 @@ struct ext2_super_block {
+ #define EXT4_FEATURE_INCOMPAT_64BIT		0x0080
+ #define EXT4_FEATURE_INCOMPAT_MMP		0x0100
+ #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
++#define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400
+ 
+ 
+ #define EXT2_FEATURE_COMPAT_SUPP	0
+ #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
+-				       EXT4_FEATURE_INCOMPAT_MMP)
++				       EXT4_FEATURE_INCOMPAT_MMP| \
++				       EXT4_FEATURE_INCOMPAT_EA_INODE)
+ #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
+Index: e2fsprogs-1.41.1/misc/mke2fs.c
+===================================================================
+--- e2fsprogs-1.41.1.orig/misc/mke2fs.c
++++ e2fsprogs-1.41.1/misc/mke2fs.c
+@@ -841,7 +841,8 @@ static __u32 ok_features[3] = {
+ 		EXT3_FEATURE_INCOMPAT_JOURNAL_DEV|
+ 		EXT2_FEATURE_INCOMPAT_META_BG|
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG|
+-		EXT4_FEATURE_INCOMPAT_MMP,
++		EXT4_FEATURE_INCOMPAT_MMP|
++		EXT4_FEATURE_INCOMPAT_EA_INODE,
+ 	/* R/O compat */
+ 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
+ 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
+Index: e2fsprogs-1.41.1/misc/tune2fs.c
+===================================================================
+--- e2fsprogs-1.41.1.orig/misc/tune2fs.c
++++ e2fsprogs-1.41.1/misc/tune2fs.c
+@@ -122,7 +122,8 @@ static __u32 ok_features[3] = {
+ 	EXT2_FEATURE_INCOMPAT_FILETYPE |
+ 		EXT3_FEATURE_INCOMPAT_EXTENTS |
+ 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
+-		EXT4_FEATURE_INCOMPAT_MMP,
++		EXT4_FEATURE_INCOMPAT_MMP |
++		EXT4_FEATURE_INCOMPAT_EA_INODE,
+ 	/* R/O compat */
+ 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
+ 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
+@@ -477,6 +478,9 @@ mmp_error:
+ 			ext2fs_free_mem(&buf);
+ 	}
+ 
++	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_EA_INODE))
++		sb->s_feature_incompat |= EXT4_FEATURE_INCOMPAT_EA_INODE;
++
+ 	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
+ 		/*
+ 		 * If adding a journal flag, let the create journal
+Index: e2fsprogs-1.41.1/e2fsck/pass1.c
+===================================================================
+--- e2fsprogs-1.41.1.orig/e2fsck/pass1.c
++++ e2fsprogs-1.41.1/e2fsck/pass1.c
+@@ -28,6 +28,7 @@
+  * 	- A bitmap of which blocks are in use.		(block_found_map)
+  * 	- A bitmap of which blocks are in use by two inodes	(block_dup_map)
+  * 	- The data blocks of the directory inodes.	(dir_map)
++ *	- A bitmap of EA inodes.			(inode_ea_map)
+  *
+  * Pass 1 is designed to stash away enough information so that the
+  * other passes should not need to read in the inode information
+@@ -269,6 +270,125 @@ static void check_size(e2fsck_t ctx, str
+ 	e2fsck_write_inode(ctx, pctx->ino, pctx->inode, "pass1");
+ }
+ 
++extern char *ext2_attr_index_prefix[];
++
++static void e2fsck_block_alloc_stats(ext2_filsys fs, blk64_t blk, int inuse)
++{
++	e2fsck_t ctx = (e2fsck_t) fs->priv_data;
++
++	if (ctx->block_found_map) {
++		if (inuse > 0)
++			ext2fs_mark_block_bitmap(ctx->block_found_map,
++						 (blk_t) blk);
++		else
++			ext2fs_unmark_block_bitmap(ctx->block_found_map,
++						   (blk_t) blk);
++	}
++}
++
++static void mark_inode_ea_map(e2fsck_t ctx, struct problem_context *pctx,
++			      ext2_ino_t ino)
++{
++	if (!ctx->inode_ea_map) {
++		pctx->errcode = ext2fs_allocate_inode_bitmap(ctx->fs,
++					 _("EA inode map"),
++					 &ctx->inode_ea_map);
++		if (pctx->errcode) {
++			fix_problem(ctx, PR_1_ALLOCATE_IBITMAP_ERROR,
++				    pctx);
++			exit(1);
++		}
++	}
++
++	ext2fs_mark_inode_bitmap(ctx->inode_ea_map, ino);
++}
++
++/*
++ * Delete an EA entry. If this is the last entry to be deleted, then i_file_acl
++ * must have been freed, so we must update e2fsck block statistics and set
++ * i_file_acl_deleted.
++ * When we delete the entry successfully, this function returns 0, else
++ * non-zero value.
++ */
++static int e2fsck_ea_entry_delete(e2fsck_t ctx, struct ext2_ext_attr_entry *entry,
++				  struct problem_context *pctx,
++				  int *i_file_acl_deleted, problem_t prob)
++{
++	blk_t i_file_acl = pctx->inode->i_file_acl;
++	int err = 1;
++
++	pctx->num = entry->e_value_inum;
++
++	if (fix_problem(ctx, prob, pctx)) {
++		/* Delete corrupt EA entry */
++		err = ext2fs_attr_set(ctx->fs, pctx->ino, pctx->inode,
++				      entry->e_name_index, entry->e_name,
++				      0, 0, 0);
++		if (err == 0) {
++			if (i_file_acl && pctx->inode->i_file_acl == 0) {
++				e2fsck_block_alloc_stats(ctx->fs, i_file_acl, -1);
++				*i_file_acl_deleted = 1;
++			}
++			return 0;
++		}
++	}
++
++	return err;
++}
++
++/*
++ * Check validity of EA inode. Return 0 if EA inode is valid, nonzero otherwise.
++ */
++static int check_large_ea_inode(e2fsck_t ctx, struct ext2_ext_attr_entry *entry,
++				struct problem_context *pctx,
++				int *i_file_acl_deleted)
++{
++	struct ext2_inode inode;
++	int ret;
++
++	/* Check if inode is within valid range */
++	if ((entry->e_value_inum < EXT2_FIRST_INODE(ctx->fs->super)) ||
++	    (entry->e_value_inum > ctx->fs->super->s_inodes_count)) {
++		ret = e2fsck_ea_entry_delete(ctx, entry, pctx,
++					     i_file_acl_deleted,
++					     PR_1_ATTR_VALUE_EA_INODE);
++		/* If user refuses to delete this entry, caller may try to set
++		 * the bit for this out-of-bound inode in inode_ea_map, so
++		 * always return failure */
++		return 1;
++	}
++
++	e2fsck_read_inode(ctx, entry->e_value_inum, &inode, "pass1");
++	if (!(inode.i_flags & EXT4_EA_INODE_FL)) {
++		/* If EXT4_EA_INODE_FL flag is not present but back-pointer
++		 * matches then we should set this flag */
++		if (inode.i_mtime == pctx->ino &&
++		    inode.i_generation == pctx->inode->i_generation &&
++		    fix_problem(ctx, PR_1_ATTR_SET_EA_INODE_FL, pctx)) {
++			inode.i_flags |= EXT4_EA_INODE_FL;
++			ext2fs_write_inode(ctx->fs, entry->e_value_inum, &inode);
++
++			return 0;
++		}
++
++		ret = e2fsck_ea_entry_delete(ctx, entry, pctx,
++					     i_file_acl_deleted,
++					     PR_1_ATTR_NO_EA_INODE_FL);
++		return ret;
++	}
++
++	/* Validate the inode back-pointer */
++	if (inode.i_mtime != pctx->ino ||
++	    inode.i_generation != pctx->inode->i_generation) {
++		ret = e2fsck_ea_entry_delete(ctx, entry, pctx,
++					     i_file_acl_deleted,
++					     PR_1_ATTR_INVAL_EA_INODE);
++		return ret;
++	}
++
++	return 0;
++}
++
+ static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
+ {
+ 	struct ext2_super_block *sb = ctx->fs->super;
+@@ -307,18 +427,25 @@ static void check_ea_in_inode(e2fsck_t c
+ 		/* attribute len eats this space */
+ 		remain -= EXT2_EXT_ATTR_SIZE(entry->e_name_len);
+ 
+-		/* check value size */
+-		if (entry->e_value_size == 0 || entry->e_value_size > remain) {
++		if (entry->e_value_size == 0) {
+ 			pctx->num = entry->e_value_size;
+ 			problem = PR_1_ATTR_VALUE_SIZE;
+ 			goto fix;
+ 		}
+ 
+-		/* e_value_block must be 0 in inode's ea */
+-		if (entry->e_value_block != 0) {
+-			pctx->num = entry->e_value_block;
+-			problem = PR_1_ATTR_VALUE_BLOCK;
+-			goto fix;
++		if (entry->e_value_inum == 0) {
++			/* check value size */
++			if (entry->e_value_size > remain) {
++				pctx->num = entry->e_value_size;
++				problem = PR_1_ATTR_VALUE_SIZE;
++				goto fix;
++			}
++		} else {
++			int ret, tmp;
++
++			ret = check_large_ea_inode(ctx, entry, pctx, &tmp);
++			if (ret == 0)
++				mark_inode_ea_map(ctx, pctx, entry->e_value_inum);
+ 		}
+ 
+ 		hash = ext2fs_ext_attr_hash_entry(entry,
+@@ -331,7 +458,10 @@ static void check_ea_in_inode(e2fsck_t c
+ 			goto fix;
+ 		}
+ 
+-		remain -= entry->e_value_size;
++		/* If EA value is stored in external inode then it does not
++		 * consume space here */
++		if (entry->e_value_inum == 0)
++			remain -= entry->e_value_size;
+ 
+ 		entry = EXT2_EXT_ATTR_NEXT(entry);
+ 	}
+@@ -510,8 +640,6 @@ extern void e2fsck_setup_tdb_icount(e2fs
+ 		*ret = 0;
+ }
+ 
+-extern char *ext2_attr_index_prefix[];
+-
+ int e2fsck_pass1_delete_attr(e2fsck_t ctx, struct ext2_inode_large *inode,
+ 			     struct problem_context *pctx, int needed_size)
+ {
+@@ -568,7 +696,7 @@ int e2fsck_pass1_delete_attr(e2fsck_t ct
+ 		if (EXT2_EXT_IS_LAST_ENTRY(entry)) {
+ 			if (in_inode) {
+ 				entry = entry_blk;
+-			        len = sizeof(entry->e_name);
++				len = sizeof(entry->e_name);
+ 				entry_size = ext2fs_attr_get_next_attr(entry,
+ 							index, name, len, 1);
+ 				in_inode = 0;
+@@ -1609,6 +1737,7 @@ static int check_ext_attr(e2fsck_t ctx, 
+ 	struct ext2_ext_attr_entry *entry;
+ 	int		count;
+ 	region_t	region = 0;
++	int ret;
+ 
+ 	blk = inode->i_file_acl;
+ 	if (blk == 0)
+@@ -1730,19 +1859,27 @@ static int check_ext_attr(e2fsck_t ctx, 
+ 				goto clear_extattr;
+ 			break;
+ 		}
+-		if (entry->e_value_block != 0) {
+-			if (fix_problem(ctx, PR_1_EA_BAD_VALUE, pctx))
+-				goto clear_extattr;
+-		}
+-		if (entry->e_value_offs + entry->e_value_size > fs->blocksize) {
+-			if (fix_problem(ctx, PR_1_EA_BAD_VALUE, pctx))
+-				goto clear_extattr;
+-			break;
+-		}
+-		if (entry->e_value_size &&
+-		    region_allocate(region, entry->e_value_offs,
+-				    EXT2_EXT_ATTR_SIZE(entry->e_value_size))) {
+-			if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
++		if (entry->e_value_inum == 0) {
++			if (entry->e_value_offs + entry->e_value_size > fs->blocksize) {
++				if (fix_problem(ctx, PR_1_EA_BAD_VALUE, pctx))
++					goto clear_extattr;
++				break;
++			}
++			if (entry->e_value_size &&
++			    region_allocate(region, entry->e_value_offs,
++					    EXT2_EXT_ATTR_SIZE(entry->e_value_size))) {
++				if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
++					goto clear_extattr;
++			}
++		} else {
++			int i_file_acl_deleted = 0;
++
++			ret = check_large_ea_inode(ctx, entry, pctx,
++						   &i_file_acl_deleted);
++			if (ret == 0)
++				mark_inode_ea_map(ctx, pctx, entry->e_value_inum);
++
++			if (i_file_acl_deleted)
+ 				goto clear_extattr;
+ 		}
+ 
+@@ -2883,20 +3020,6 @@ static errcode_t e2fsck_get_alloc_block(
+ 	return (0);
+ }
+ 
+-static void e2fsck_block_alloc_stats(ext2_filsys fs, blk64_t blk, int inuse)
+-{
+-	e2fsck_t ctx = (e2fsck_t) fs->priv_data;
+-
+-	if (ctx->block_found_map) {
+-		if (inuse > 0)
+-			ext2fs_mark_block_bitmap(ctx->block_found_map,
+-						 (blk_t) blk);
+-		else
+-			ext2fs_unmark_block_bitmap(ctx->block_found_map,
+-						   (blk_t) blk);
+-	}
+-}
+-
+ void e2fsck_use_inode_shortcuts(e2fsck_t ctx, int bool)
+ {
+ 	ext2_filsys fs = ctx->fs;
+Index: e2fsprogs-1.41.1/e2fsck/problem.c
+===================================================================
+--- e2fsprogs-1.41.1.orig/e2fsck/problem.c
++++ e2fsprogs-1.41.1/e2fsck/problem.c
+@@ -928,6 +928,30 @@ static struct e2fsck_problem problem_tab
+ 	     "without deletion of an EA.\n"),
+ 	  PROMPT_FIX, 0 },
+ 
++	/* Inode has illegal EA value inode */
++	{ PR_1_ATTR_VALUE_EA_INODE,
++	  N_("@i %i has @I EA @i %N.\n"),
++	  PROMPT_FIX, PR_PREEN_OK },
++
++	/* Invalid back-pointer from EA-inode to parent inode */
++	{ PR_1_ATTR_INVAL_EA_INODE,
++	  N_("@I backpointer from EA @i %N to parent @i %i. "
++	     "Delete EA inode?\n"),
++	  PROMPT_FIX, PR_PREEN_OK },
++
++	/* Parent inode has invalid EA entry. EA inode does not have
++	 * EXT4_EA_INODE_FL flag */
++	{ PR_1_ATTR_NO_EA_INODE_FL,
++	  N_("Parent @i %i has @I EA entry. EA @i %N does not have "
++	     "EXT4_EA_INODE_FL flag. Delete EA entry?\n"),
++	  PROMPT_FIX, PR_PREEN_OK },
++
++	/* EA inode for parent inode does not have EXT4_EA_INODE_FL flag */
++	{ PR_1_ATTR_SET_EA_INODE_FL,
++	  N_("EA @i %N for parent @i %i does not have EXT4_EA_INODE_FL flag. "
++	     "Set the flag?\n"),
++	  PROMPT_FIX, PR_PREEN_OK },
++
+ 
+ 	/* Pass 1b errors */
+ 
+Index: e2fsprogs-1.41.1/e2fsck/problem.h
+===================================================================
+--- e2fsprogs-1.41.1.orig/e2fsck/problem.h
++++ e2fsprogs-1.41.1/e2fsck/problem.h
+@@ -548,6 +548,19 @@ struct problem_context {
+  */
+ #define PR_1_CLEAR_EXTRA_ISIZE		0x01006C
+ 
++/* Inode has illegal EA value inode */
++#define PR_1_ATTR_VALUE_EA_INODE	0x01006D
++
++/* Invalid back-pointer from EA-inode to parent inode */
++#define PR_1_ATTR_INVAL_EA_INODE	0x01006E
++
++/* Parent inode has invalid EA entry. EA inode does not have
++ * EXT4_EA_INODE_FL flag */
++#define PR_1_ATTR_NO_EA_INODE_FL	0x01006F
++
++/* EA inode for parent inode does not have EXT4_EA_INODE_FL flag */
++#define PR_1_ATTR_SET_EA_INODE_FL	0x010070
++
+ /*
+  * Pass 1b errors
+  */
+Index: e2fsprogs-1.41.1/lib/ext2fs/ext2_ext_attr.h
+===================================================================
+--- e2fsprogs-1.41.1.orig/lib/ext2fs/ext2_ext_attr.h
++++ e2fsprogs-1.41.1/lib/ext2fs/ext2_ext_attr.h
+@@ -30,7 +30,7 @@ struct ext2_ext_attr_entry {
+ 	__u8	e_name_len;	/* length of name */
+ 	__u8	e_name_index;	/* attribute name index */
+ 	__u16	e_value_offs;	/* offset in disk block of value */
+-	__u32	e_value_block;	/* disk block attribute is stored on (n/i) */
++	__u32	e_value_inum;	/* inode in which the value is stored */
+ 	__u32	e_value_size;	/* size of attribute value */
+ 	__u32	e_hash;		/* hash value of name and value */
+ #if 1
+@@ -38,6 +38,9 @@ struct ext2_ext_attr_entry {
+ #endif
+ };
+ 
++#define	EXT4_XATTR_MIN_LARGE_EA_SIZE(b) ((b) >> 1)
++#define	EXT4_XATTR_MAX_LARGE_EA_SIZE	(1024 * 1024)
++
+ #define BHDR(block) ((struct ext2_ext_attr_header *) block)
+ #define IHDR(inode)			   	\
+ 	((__u32 *) ((char *)inode +	     	\
+Index: e2fsprogs-1.41.1/lib/ext2fs/ext_attr.c
+===================================================================
+--- e2fsprogs-1.41.1.orig/lib/ext2fs/ext_attr.c
++++ e2fsprogs-1.41.1/lib/ext2fs/ext_attr.c
+@@ -45,7 +45,7 @@ __u32 ext2fs_ext_attr_hash_entry(struct 
+ 	}
+ 
+ 	/* The hash needs to be calculated on the data in little-endian. */
+-	if (entry->e_value_block == 0 && entry->e_value_size != 0) {
++	if (entry->e_value_inum == 0 && entry->e_value_size != 0) {
+ 		__u32 *value = (__u32 *)data;
+ 		for (n = (entry->e_value_size + EXT2_EXT_ATTR_ROUND) >>
+ 			 EXT2_EXT_ATTR_PAD_BITS; n; n--) {
+@@ -190,6 +190,7 @@ struct ext2_attr_ibody_find {
+ };
+ 
+ struct ext2_attr_block_find {
++	ext2_ino_t ino;
+ 	struct ext2_attr_search s;
+ 	char *block;
+ };
+@@ -202,7 +203,7 @@ void ext2fs_attr_shift_entries(struct ex
+ 
+ 	/* Adjust the value offsets of the entries */
+ 	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
+-		if (!last->e_value_block && last->e_value_size) {
++		if (last->e_value_inum == 0 && last->e_value_size) {
+ 			last->e_value_offs = last->e_value_offs +
+ 							value_offs_shift;
+ 		}
+@@ -221,7 +222,7 @@ int ext2fs_attr_free_space(struct ext2_e
+ {
+ 	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
+ 		*total += EXT2_EXT_ATTR_LEN(last->e_name_len);
+-		if (!last->e_value_block && last->e_value_size) {
++		if (last->e_value_inum == 0 && last->e_value_size) {
+ 			int offs = last->e_value_offs;
+ 			if (offs < *min_offs)
+ 				*min_offs = offs;
+@@ -360,7 +361,7 @@ static errcode_t ext2fs_attr_set_entry(e
+ 	/* Compute min_offs and last. */
+ 	for (last = s->first; !EXT2_EXT_IS_LAST_ENTRY(last);
+ 	     last = EXT2_EXT_ATTR_NEXT(last)) {
+-		if (!last->e_value_block && last->e_value_size) {
++		if (last->e_value_inum == 0 && last->e_value_size) {
+ 			int offs = last->e_value_offs;
+ 
+ 			if (offs < min_offs)
+@@ -370,7 +371,7 @@ static errcode_t ext2fs_attr_set_entry(e
+ 	free = min_offs - ((char *)last - s->base) - sizeof(__u32);
+ 
+ 	if (!s->not_found) {
+-		if (!s->here->e_value_block && s->here->e_value_size) {
++		if (s->here->e_value_inum == 0 && s->here->e_value_size) {
+ 			int size = s->here->e_value_size;
+ 			free += EXT2_EXT_ATTR_SIZE(size);
+ 		}
+@@ -393,7 +394,7 @@ static errcode_t ext2fs_attr_set_entry(e
+ 		s->here->e_name_len = name_len;
+ 		memcpy(s->here->e_name, i->name, name_len);
+ 	} else {
+-		if (!s->here->e_value_block && s->here->e_value_size) {
++		if (s->here->e_value_inum == 0 && s->here->e_value_size) {
+ 			char *first_val = s->base + min_offs;
+ 			int offs = s->here->e_value_offs;
+ 			char *val = s->base + offs;
+@@ -422,7 +423,7 @@ static errcode_t ext2fs_attr_set_entry(e
+ 			while (!EXT2_EXT_IS_LAST_ENTRY(last)) {
+ 				int o = last->e_value_offs;
+ 
+-				if (!last->e_value_block &&
++				if (last->e_value_inum == 0 &&
+ 				    last->e_value_size && o < offs)
+ 					last->e_value_offs = o + size;
+ 				last = EXT2_EXT_ATTR_NEXT(last);
+@@ -540,9 +541,20 @@ static errcode_t ext2fs_attr_block_set(e
+ 	/* Update the i_blocks if we added a new EA block */
+ 	if (!inode->i_file_acl && new_buf)
+ 		inode->i_blocks += fs->blocksize / 512;
++
++	/* Drop the previous xattr block. */
++	if (!new_buf) {
++		if (!fs->block_map)
++			ext2fs_read_block_bitmap(fs);
++		ext2fs_block_alloc_stats(fs, inode->i_file_acl, -1);
++		inode->i_blocks -= fs->blocksize / 512;
++	}
++
+ 	/* Update the inode. */
+ 	inode->i_file_acl = new_buf ? blk : 0;
+ 
++	ext2fs_write_inode(fs, bs->ino, inode);
++
+ cleanup:
+ 	if (clear_flag)
+ 		ext2fs_free_mem(&s->base);
+@@ -829,6 +841,7 @@ errcode_t ext2fs_expand_extra_isize(ext2
+ 		.s = { .not_found = EXT2_ET_EA_NO_SPACE, },
+ 	};
+ 	struct ext2_attr_block_find bs = {
++		.ino = ino,
+ 		.s = { .not_found = EXT2_ET_EA_NO_SPACE, },
+ 	};
+ 	char *start, *end, *block_buf = NULL, *buffer =NULL, *b_entry_name=NULL;
+Index: e2fsprogs-1.41.1/lib/ext2fs/swapfs.c
+===================================================================
+--- e2fsprogs-1.41.1.orig/lib/ext2fs/swapfs.c
++++ e2fsprogs-1.41.1/lib/ext2fs/swapfs.c
+@@ -110,7 +110,7 @@ void ext2fs_swap_ext_attr_entry(struct e
+ 				struct ext2_ext_attr_entry *from_entry)
+ {
+ 	to_entry->e_value_offs  = ext2fs_swab16(from_entry->e_value_offs);
+-	to_entry->e_value_block = ext2fs_swab32(from_entry->e_value_block);
++	to_entry->e_value_inum  = ext2fs_swab32(from_entry->e_value_inum);
+ 	to_entry->e_value_size  = ext2fs_swab32(from_entry->e_value_size);
+ 	to_entry->e_hash	= ext2fs_swab32(from_entry->e_hash);
+ }
+Index: e2fsprogs-1.41.1/e2fsck/pass4.c
+===================================================================
+--- e2fsprogs-1.41.1.orig/e2fsck/pass4.c
++++ e2fsprogs-1.41.1/e2fsck/pass4.c
+@@ -11,6 +11,7 @@
+  * Pass 4 frees the following data structures:
+  * 	- A bitmap of which inodes are in bad blocks.	(inode_bb_map)
+  * 	- A bitmap of which inodes are imagic inodes.	(inode_imagic_map)
++ *	- A bitmap of EA inodes.			(inode_ea_map)
+  */
+ 
+ #include "e2fsck.h"
+@@ -39,6 +40,20 @@ static int disconnect_inode(e2fsck_t ctx
+ 	} else {
+ 		e2fsck_read_inode(ctx, i, inode, "pass4: disconnect_inode");
+ 	}
++
++	if (inode->i_flags & EXT4_EA_INODE_FL) {
++		if (ext2fs_test_inode_bitmap(ctx->inode_ea_map, i)) {
++			ext2fs_icount_store(ctx->inode_count, i, 1);
++			return 0;
++		} else {
++			/* Zero the link count so that when inode is linked to
++			 * lost+found it has correct link count */
++			inode->i_links_count = 0;
++			e2fsck_write_inode(ctx, i, inode, "disconnect_inode");
++			ext2fs_icount_store(ctx->inode_link_info, i, 0);
++		}
++	}
++
+ 	clear_problem_context(&pctx);
+ 	pctx.ino = i;
+ 	pctx.inode = inode;
+@@ -182,6 +197,8 @@ void e2fsck_pass4(e2fsck_t ctx)
+ 	ext2fs_free_icount(ctx->inode_link_info); ctx->inode_link_info = 0;
+ 	ext2fs_free_icount(ctx->inode_count); ctx->inode_count = 0;
+ 	ext2fs_free_icount(ctx->inode_badness); ctx->inode_badness = 0;
++	ext2fs_free_inode_bitmap(ctx->inode_ea_map);
++	ctx->inode_ea_map = 0;
+ 	ext2fs_free_inode_bitmap(ctx->inode_bb_map);
+ 	ctx->inode_bb_map = 0;
+ 	ext2fs_free_inode_bitmap(ctx->inode_imagic_map);
+Index: e2fsprogs-1.41.1/lib/ext2fs/ext2fs.h
+===================================================================
+--- e2fsprogs-1.41.1.orig/lib/ext2fs/ext2fs.h
++++ e2fsprogs-1.41.1/lib/ext2fs/ext2fs.h
+@@ -550,7 +550,8 @@ typedef struct ext2_icount *ext2_icount_
+ 					 EXT3_FEATURE_INCOMPAT_RECOVER|\
+ 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
+-					 EXT4_FEATURE_INCOMPAT_MMP)
++					 EXT4_FEATURE_INCOMPAT_MMP|\
++					 EXT4_FEATURE_INCOMPAT_EA_INODE)
+ #else
+ #define EXT2_LIB_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE|\
+ 					 EXT3_FEATURE_INCOMPAT_JOURNAL_DEV|\
+@@ -558,7 +559,8 @@ typedef struct ext2_icount *ext2_icount_
+ 					 EXT3_FEATURE_INCOMPAT_RECOVER|\
+ 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
+ 					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
+-					 EXT4_FEATURE_INCOMPAT_MMP)
++					 EXT4_FEATURE_INCOMPAT_MMP|\
++					 EXT4_FEATURE_INCOMPAT_EA_INODE)
+ #endif
+ #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
+ 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
+Index: e2fsprogs-1.41.1/e2fsck/e2fsck.h
+===================================================================
+--- e2fsprogs-1.41.1.orig/e2fsck/e2fsck.h
++++ e2fsprogs-1.41.1/e2fsck/e2fsck.h
+@@ -251,6 +251,7 @@ struct e2fsck_struct {
+ 	ext2fs_inode_bitmap inode_bb_map; /* Inodes which are in bad blocks */
+ 	ext2fs_inode_bitmap inode_imagic_map; /* AFS inodes */
+ 	ext2fs_inode_bitmap inode_reg_map; /* Inodes which are regular files*/
++	ext2fs_inode_bitmap inode_ea_map; /* EA inodes which are non-orphan */
+ 
+ 	ext2fs_block_bitmap block_found_map; /* Blocks which are in use */
+ 	ext2fs_block_bitmap block_dup_map; /* Blks referenced more than once */
 
---Boundary_(ID_iogQ8EwLek4bzNLHfhDL1w)--
+--Boundary_(ID_NiA00lpwhxkyOJKfl6ehcw)--
