@@ -1,706 +1,768 @@
 From: Kalpak Shah <Kalpak.Shah@Sun.COM>
-Subject: [PATCH 1/2 e2fsprogs] support for large EAs
-Date: Tue, 18 Nov 2008 02:06:19 +0530
-Message-ID: <1226954180.3972.72.camel@localhost>
+Subject: [PATCH 2/2] Large EAs
+Date: Tue, 18 Nov 2008 02:06:13 +0530
+Message-ID: <1226954173.3972.70.camel@localhost>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_NiA00lpwhxkyOJKfl6ehcw)"
-Cc: TheodoreTso <tytso@mit.edu>, Andreas Dilger <adilger@Sun.COM>
+Content-Type: multipart/mixed; boundary="Boundary_(ID_HVHeWB1RxV8wxUSzEIpXrQ)"
+Cc: TheodoreTso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
+	Andreas Dilger <adilger@Sun.COM>
 To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sineb-mail-2.sun.com ([192.18.19.7]:36684 "EHLO
-	sineb-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752066AbYKQUqI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Nov 2008 15:46:08 -0500
-Received: from fe-apac-05.sun.com (fe-apac-05.sun.com [192.18.19.176] (may be forged))
-	by sineb-mail-2.sun.com (8.13.6+Sun/8.12.9) with ESMTP id mAHKZhkP015658
-	for <linux-ext4@vger.kernel.org>; Mon, 17 Nov 2008 20:35:43 GMT
+Received: from sineb-mail-1.sun.com ([192.18.19.6]:44160 "EHLO
+	sineb-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751620AbYKQUzV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 17 Nov 2008 15:55:21 -0500
+Received: from fe-apac-06.sun.com (fe-apac-06.sun.com [192.18.19.177] (may be forged))
+	by sineb-mail-1.sun.com (8.13.6+Sun/8.12.9) with ESMTP id mAHKZWCs000178
+	for <linux-ext4@vger.kernel.org>; Mon, 17 Nov 2008 20:35:32 GMT
 Received: from conversion-daemon.mail-apac.sun.com by mail-apac.sun.com
  (Sun Java System Messaging Server 6.2-6.01 (built Apr  3 2006))
- id <0KAH00H01VU6YJ00@mail-apac.sun.com>
+ id <0KAH00701VT6D500@mail-apac.sun.com>
  (original mail from Kalpak.Shah@Sun.COM) for linux-ext4@vger.kernel.org; Tue,
- 18 Nov 2008 04:35:43 +0800 (SGT)
+ 18 Nov 2008 04:35:32 +0800 (SGT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---Boundary_(ID_NiA00lpwhxkyOJKfl6ehcw)
+--Boundary_(ID_HVHeWB1RxV8wxUSzEIpXrQ)
 Content-type: text/plain
 Content-transfer-encoding: 7BIT
 
-Hi,
+This is the implementation for large EA support in ext4. Note that this also helps to have a larger number of EAs since large EAs get written out to a new inode instead of the EA block.
 
-This patch adds large EA support for e2fsprogs.
+If value of an attribute is greater than 1/2 the blocksize, the value is not saved in the external EA block, instead it is saved in an inode. The EA entry saves the inode number in e_value_inum field (earlier this was
+e_value_block that was unused). The EA inode has the same generation as the parent inode and the mtime of the EA inode is set to the inode number of the parent. A new EXT4_FEATURE_INCOMPAT_EA_INODE feature has been added for this.
 
-- add EXT4_FEATURE_INCOMPAT_EA_INODE feature
-- inode_ea_map bitmap is added for tracking non-orphan EA inodes. Orphan EA inodes get linked to lost+found.
-- xattr handling is needed for deleting corrupt EA entries
-
-Ted, this patch is actually based on top of the e2fsprogs-expand-extra-isize.patch I had sent about a month back. If you are satisfied with the approach, I can send a patch series which applies to the tip of the e2fsprogs tree.
+This "large_xattr" feature is not enabled automatically and needs to be enabled by mkfs or using tune2fs. 
 
 Signed-off-by: Andreas Dilger <adilger@sun.com>
 Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
 
- e2fsck/e2fsck.h            |    1 
- e2fsck/pass1.c             |  199 ++++++++++++++++++++++++++++++++++++---------
- e2fsck/pass4.c             |   17 +++
- e2fsck/problem.c           |   24 +++++
- e2fsck/problem.h           |   13 ++
- lib/blkid/probe.h          |    1 
- lib/e2p/feature.c          |    2 
- lib/ext2fs/ext2_ext_attr.h |    5 -
- lib/ext2fs/ext2_fs.h       |    5 -
- lib/ext2fs/ext2fs.h        |    6 -
- lib/ext2fs/ext_attr.c      |   27 ++++--
- lib/ext2fs/swapfs.c        |    2 
- misc/mke2fs.c              |    3 
- misc/tune2fs.c             |    6 +
- 14 files changed, 259 insertions(+), 52 deletions(-)
+ ext4.h  |    7 -
+ xattr.c |  413 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+ xattr.h |   11 +
+ 3 files changed, 386 insertions(+), 45 deletions(-)
 
 Thanks,
 Kalpak
 
---Boundary_(ID_NiA00lpwhxkyOJKfl6ehcw)
-Content-type: text/x-patch; charset=UTF-8; name=e2fsprogs-large-xattrs.patch
+--Boundary_(ID_HVHeWB1RxV8wxUSzEIpXrQ)
+Content-type: text/x-patch; charset=UTF-8; name=ext4-large-eas.patch
 Content-transfer-encoding: 7BIT
-Content-disposition: attachment; filename=e2fsprogs-large-xattrs.patch
+Content-disposition: attachment; filename=ext4-large-eas.patch
 
-Index: e2fsprogs-1.41.1/lib/blkid/probe.h
+Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
+Signed-off-by: Andreas Dilger <adilger@sun.com>
+
+Index: linux-2.6.27/fs/ext4/xattr.c
 ===================================================================
---- e2fsprogs-1.41.1.orig/lib/blkid/probe.h
-+++ e2fsprogs-1.41.1/lib/blkid/probe.h
-@@ -119,6 +119,7 @@ struct ext2_super_block {
- #define EXT4_FEATURE_INCOMPAT_64BIT		0x0080
- #define EXT4_FEATURE_INCOMPAT_MMP		0x0100
- #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
-+#define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400
- 
- #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
-Index: e2fsprogs-1.41.1/lib/e2p/feature.c
-===================================================================
---- e2fsprogs-1.41.1.orig/lib/e2p/feature.c
-+++ e2fsprogs-1.41.1/lib/e2p/feature.c
-@@ -75,6 +75,8 @@ static struct feature feature_list[] = {
- 			"flex_bg"},
- 	{       E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_MMP,
- 			"mmp" },
-+	{	E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_EA_INODE,
-+			"large_xattr" },
- 	{	0, 0, 0 },
- };
- 
-Index: e2fsprogs-1.41.1/lib/ext2fs/ext2_fs.h
-===================================================================
---- e2fsprogs-1.41.1.orig/lib/ext2fs/ext2_fs.h
-+++ e2fsprogs-1.41.1/lib/ext2fs/ext2_fs.h
-@@ -273,6 +273,7 @@ struct ext2_dx_countlimit {
- #define EXT2_TOPDIR_FL			0x00020000 /* Top of directory hierarchies*/
- #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
- #define EXT4_EXTENTS_FL 		0x00080000 /* Inode uses extents */
-+#define EXT4_EA_INODE_FL		0x00200000 /* Inode used for large EA */
- #define EXT2_RESERVED_FL		0x80000000 /* reserved for ext2 lib */
- 
- #define EXT2_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
-@@ -649,11 +650,13 @@ struct ext2_super_block {
- #define EXT4_FEATURE_INCOMPAT_64BIT		0x0080
- #define EXT4_FEATURE_INCOMPAT_MMP		0x0100
- #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
-+#define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400
- 
- 
- #define EXT2_FEATURE_COMPAT_SUPP	0
- #define EXT2_FEATURE_INCOMPAT_SUPP    (EXT2_FEATURE_INCOMPAT_FILETYPE| \
--				       EXT4_FEATURE_INCOMPAT_MMP)
-+				       EXT4_FEATURE_INCOMPAT_MMP| \
-+				       EXT4_FEATURE_INCOMPAT_EA_INODE)
- #define EXT2_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER| \
- 					 EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
- 					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK| \
-Index: e2fsprogs-1.41.1/misc/mke2fs.c
-===================================================================
---- e2fsprogs-1.41.1.orig/misc/mke2fs.c
-+++ e2fsprogs-1.41.1/misc/mke2fs.c
-@@ -841,7 +841,8 @@ static __u32 ok_features[3] = {
- 		EXT3_FEATURE_INCOMPAT_JOURNAL_DEV|
- 		EXT2_FEATURE_INCOMPAT_META_BG|
- 		EXT4_FEATURE_INCOMPAT_FLEX_BG|
--		EXT4_FEATURE_INCOMPAT_MMP,
-+		EXT4_FEATURE_INCOMPAT_MMP|
-+		EXT4_FEATURE_INCOMPAT_EA_INODE,
- 	/* R/O compat */
- 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE|
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-Index: e2fsprogs-1.41.1/misc/tune2fs.c
-===================================================================
---- e2fsprogs-1.41.1.orig/misc/tune2fs.c
-+++ e2fsprogs-1.41.1/misc/tune2fs.c
-@@ -122,7 +122,8 @@ static __u32 ok_features[3] = {
- 	EXT2_FEATURE_INCOMPAT_FILETYPE |
- 		EXT3_FEATURE_INCOMPAT_EXTENTS |
- 		EXT4_FEATURE_INCOMPAT_FLEX_BG |
--		EXT4_FEATURE_INCOMPAT_MMP,
-+		EXT4_FEATURE_INCOMPAT_MMP |
-+		EXT4_FEATURE_INCOMPAT_EA_INODE,
- 	/* R/O compat */
- 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-@@ -477,6 +478,9 @@ mmp_error:
- 			ext2fs_free_mem(&buf);
- 	}
- 
-+	if (FEATURE_ON(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_EA_INODE))
-+		sb->s_feature_incompat |= EXT4_FEATURE_INCOMPAT_EA_INODE;
-+
- 	if (FEATURE_ON(E2P_FEATURE_COMPAT, EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
- 		/*
- 		 * If adding a journal flag, let the create journal
-Index: e2fsprogs-1.41.1/e2fsck/pass1.c
-===================================================================
---- e2fsprogs-1.41.1.orig/e2fsck/pass1.c
-+++ e2fsprogs-1.41.1/e2fsck/pass1.c
-@@ -28,6 +28,7 @@
-  * 	- A bitmap of which blocks are in use.		(block_found_map)
-  * 	- A bitmap of which blocks are in use by two inodes	(block_dup_map)
-  * 	- The data blocks of the directory inodes.	(dir_map)
-+ *	- A bitmap of EA inodes.			(inode_ea_map)
-  *
-  * Pass 1 is designed to stash away enough information so that the
-  * other passes should not need to read in the inode information
-@@ -269,6 +270,125 @@ static void check_size(e2fsck_t ctx, str
- 	e2fsck_write_inode(ctx, pctx->ino, pctx->inode, "pass1");
+--- linux-2.6.27.orig/fs/ext4/xattr.c
++++ linux-2.6.27/fs/ext4/xattr.c
+@@ -168,19 +168,27 @@ ext4_xattr_check_block(struct buffer_hea
  }
  
-+extern char *ext2_attr_index_prefix[];
-+
-+static void e2fsck_block_alloc_stats(ext2_filsys fs, blk64_t blk, int inuse)
-+{
-+	e2fsck_t ctx = (e2fsck_t) fs->priv_data;
-+
-+	if (ctx->block_found_map) {
-+		if (inuse > 0)
-+			ext2fs_mark_block_bitmap(ctx->block_found_map,
-+						 (blk_t) blk);
-+		else
-+			ext2fs_unmark_block_bitmap(ctx->block_found_map,
-+						   (blk_t) blk);
-+	}
-+}
-+
-+static void mark_inode_ea_map(e2fsck_t ctx, struct problem_context *pctx,
-+			      ext2_ino_t ino)
-+{
-+	if (!ctx->inode_ea_map) {
-+		pctx->errcode = ext2fs_allocate_inode_bitmap(ctx->fs,
-+					 _("EA inode map"),
-+					 &ctx->inode_ea_map);
-+		if (pctx->errcode) {
-+			fix_problem(ctx, PR_1_ALLOCATE_IBITMAP_ERROR,
-+				    pctx);
-+			exit(1);
-+		}
-+	}
-+
-+	ext2fs_mark_inode_bitmap(ctx->inode_ea_map, ino);
-+}
-+
+ static inline int
+-ext4_xattr_check_entry(struct ext4_xattr_entry *entry, size_t size)
++ext4_xattr_check_entry(struct ext4_xattr_entry *entry, size_t size,
++		       struct inode *inode)
+ {
+ 	size_t value_size = le32_to_cpu(entry->e_value_size);
+ 
+-	if (entry->e_value_block != 0 || value_size > size ||
+-	    le16_to_cpu(entry->e_value_offs) + value_size > size)
++	if ((entry->e_value_inum == 0) &&
++	    (value_size > size ||
++	     le16_to_cpu(entry->e_value_offs) + value_size > size))
++		return -EIO;
++	if (entry->e_value_inum &&
++	    (entry->e_value_inum < le32_to_cpu(EXT4_FIRST_INO(inode->i_sb)) ||
++	     entry->e_value_inum > le32_to_cpu(EXT4_SB(inode->i_sb)->
++							s_es->s_inodes_count)))
+ 		return -EIO;
+ 	return 0;
+ }
+ 
+ static int
+ ext4_xattr_find_entry(struct ext4_xattr_entry **pentry, int name_index,
+-		      const char *name, size_t size, int sorted)
++		      const char *name, size_t size, int sorted,
++		      struct inode *inode)
+ {
+ 	struct ext4_xattr_entry *entry;
+ 	size_t name_len;
+@@ -200,11 +208,103 @@ ext4_xattr_find_entry(struct ext4_xattr_
+ 			break;
+ 	}
+ 	*pentry = entry;
+-	if (!cmp && ext4_xattr_check_entry(entry, size))
++	if (!cmp && ext4_xattr_check_entry(entry, size, inode))
+ 			return -EIO;
+ 	return cmp ? -ENODATA : 0;
+ }
+ 
 +/*
-+ * Delete an EA entry. If this is the last entry to be deleted, then i_file_acl
-+ * must have been freed, so we must update e2fsck block statistics and set
-+ * i_file_acl_deleted.
-+ * When we delete the entry successfully, this function returns 0, else
-+ * non-zero value.
++ * Read the EA value from an inode.
 + */
-+static int e2fsck_ea_entry_delete(e2fsck_t ctx, struct ext2_ext_attr_entry *entry,
-+				  struct problem_context *pctx,
-+				  int *i_file_acl_deleted, problem_t prob)
++static int
++ext4_xattr_inode_read(struct inode *ea_inode, void *buf, size_t *size)
 +{
-+	blk_t i_file_acl = pctx->inode->i_file_acl;
-+	int err = 1;
++	unsigned long block = 0;
++	struct buffer_head *bh = NULL;
++	int err, blocksize;
++	size_t csize, ret_size = 0;
 +
-+	pctx->num = entry->e_value_inum;
++	if (*size == 0 && ea_inode->i_size == 0)
++		return 0;
 +
-+	if (fix_problem(ctx, prob, pctx)) {
-+		/* Delete corrupt EA entry */
-+		err = ext2fs_attr_set(ctx->fs, pctx->ino, pctx->inode,
-+				      entry->e_name_index, entry->e_name,
-+				      0, 0, 0);
-+		if (err == 0) {
-+			if (i_file_acl && pctx->inode->i_file_acl == 0) {
-+				e2fsck_block_alloc_stats(ctx->fs, i_file_acl, -1);
-+				*i_file_acl_deleted = 1;
-+			}
-+			return 0;
-+		}
++	blocksize = ea_inode->i_sb->s_blocksize;
++
++	while (ret_size < *size) {
++		csize = (*size - ret_size) > blocksize ? blocksize :
++							*size - ret_size;
++		bh = ext4_bread(NULL, ea_inode, block, 0, &err);
++		if (!bh)
++			return err;
++
++		memcpy(buf, bh->b_data, csize);
++		brelse(bh);
++
++		buf += csize;
++		block += 1;
++		ret_size += csize;
 +	}
++
++	*size = ret_size;
 +
 +	return err;
 +}
 +
-+/*
-+ * Check validity of EA inode. Return 0 if EA inode is valid, nonzero otherwise.
-+ */
-+static int check_large_ea_inode(e2fsck_t ctx, struct ext2_ext_attr_entry *entry,
-+				struct problem_context *pctx,
-+				int *i_file_acl_deleted)
++struct inode *ext4_xattr_inode_iget(struct inode *parent, int ea_ino, int *err)
 +{
-+	struct ext2_inode inode;
-+	int ret;
++	struct inode *ea_inode = NULL;
 +
-+	/* Check if inode is within valid range */
-+	if ((entry->e_value_inum < EXT2_FIRST_INODE(ctx->fs->super)) ||
-+	    (entry->e_value_inum > ctx->fs->super->s_inodes_count)) {
-+		ret = e2fsck_ea_entry_delete(ctx, entry, pctx,
-+					     i_file_acl_deleted,
-+					     PR_1_ATTR_VALUE_EA_INODE);
-+		/* If user refuses to delete this entry, caller may try to set
-+		 * the bit for this out-of-bound inode in inode_ea_map, so
-+		 * always return failure */
-+		return 1;
++	ea_inode = ext4_iget(parent->i_sb, ea_ino);
++	if (ea_inode == NULL || is_bad_inode(ea_inode)) {
++		ext4_error(parent->i_sb, __func__,
++			   "error while reading EA inode %d", ea_ino);
++		*err = -EIO;
++		return NULL;
 +	}
 +
-+	e2fsck_read_inode(ctx, entry->e_value_inum, &inode, "pass1");
-+	if (!(inode.i_flags & EXT4_EA_INODE_FL)) {
-+		/* If EXT4_EA_INODE_FL flag is not present but back-pointer
-+		 * matches then we should set this flag */
-+		if (inode.i_mtime == pctx->ino &&
-+		    inode.i_generation == pctx->inode->i_generation &&
-+		    fix_problem(ctx, PR_1_ATTR_SET_EA_INODE_FL, pctx)) {
-+			inode.i_flags |= EXT4_EA_INODE_FL;
-+			ext2fs_write_inode(ctx->fs, entry->e_value_inum, &inode);
++	if (ea_inode->i_xattr_inode_parent != parent->i_ino ||
++	    ea_inode->i_generation != parent->i_generation) {
++		ext4_error(parent->i_sb, __func__,
++			   "Backpointer from EA inode %d to parent invalid.",
++			   ea_ino);
++		*err = -EINVAL;
++		goto error;
++	}
 +
-+			return 0;
++	if (!(EXT4_I(ea_inode)->i_flags & EXT4_EA_INODE_FL)) {
++		ext4_error(parent->i_sb, __func__, "EA inode %d does not "
++			   "have EXT4_EA_INODE_FL flag set.\n", ea_ino);
++		*err = -EINVAL;
++		goto error;
++	}
++
++	*err = 0;
++	return ea_inode;
++
++error:
++	iput(ea_inode);
++	return NULL;
++}
++
++/*
++ * Read the value from the EA inode.
++ */
++static int
++ext4_xattr_inode_get(struct inode *inode, int ea_ino, void *buffer,
++		     size_t *size)
++{
++	struct inode *ea_inode = NULL;
++	int err;
++
++	ea_inode = ext4_xattr_inode_iget(inode, ea_ino, &err);
++	if (err)
++		return err;
++
++	err = ext4_xattr_inode_read(ea_inode, buffer, size);
++	iput(ea_inode);
++
++	return err;
++}
++
+ static int
+ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
+ 		     void *buffer, size_t buffer_size)
+@@ -235,7 +335,8 @@ bad_block:	ext4_error(inode->i_sb, __fun
+ 	}
+ 	ext4_xattr_cache_insert(bh);
+ 	entry = BFIRST(bh);
+-	error = ext4_xattr_find_entry(&entry, name_index, name, bh->b_size, 1);
++	error = ext4_xattr_find_entry(&entry, name_index, name, bh->b_size, 1,
++				      inode);
+ 	if (error == -EIO)
+ 		goto bad_block;
+ 	if (error)
+@@ -245,8 +346,16 @@ bad_block:	ext4_error(inode->i_sb, __fun
+ 		error = -ERANGE;
+ 		if (size > buffer_size)
+ 			goto cleanup;
+-		memcpy(buffer, bh->b_data + le16_to_cpu(entry->e_value_offs),
+-		       size);
++		if (entry->e_value_inum) {
++			error = ext4_xattr_inode_get(inode,
++					     le32_to_cpu(entry->e_value_inum),
++					     buffer, &size);
++			if (error)
++				goto cleanup;
++		} else {
++			memcpy(buffer, bh->b_data +
++			       le16_to_cpu(entry->e_value_offs), size);
 +		}
+ 	}
+ 	error = size;
+ 
+@@ -280,7 +389,7 @@ ext4_xattr_ibody_get(struct inode *inode
+ 	if (error)
+ 		goto cleanup;
+ 	error = ext4_xattr_find_entry(&entry, name_index, name,
+-				      end - (void *)entry, 0);
++				      end - (void *)entry, 0, inode);
+ 	if (error)
+ 		goto cleanup;
+ 	size = le32_to_cpu(entry->e_value_size);
+@@ -288,8 +397,16 @@ ext4_xattr_ibody_get(struct inode *inode
+ 		error = -ERANGE;
+ 		if (size > buffer_size)
+ 			goto cleanup;
+-		memcpy(buffer, (void *)IFIRST(header) +
+-		       le16_to_cpu(entry->e_value_offs), size);
++		if (entry->e_value_inum) {
++			error = ext4_xattr_inode_get(inode,
++					     le32_to_cpu(entry->e_value_inum),
++					     buffer, &size);
++			if (error)
++				goto cleanup;
++		} else {
++			memcpy(buffer, (void *)IFIRST(header) +
++			       le16_to_cpu(entry->e_value_offs), size);
++		}
+ 	}
+ 	error = size;
+ 
+@@ -511,7 +628,7 @@ static size_t ext4_xattr_free_space(stru
+ {
+ 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
+ 		*total += EXT4_XATTR_LEN(last->e_name_len);
+-		if (!last->e_value_block && last->e_value_size) {
++		if (!last->e_value_inum && last->e_value_size) {
+ 			size_t offs = le16_to_cpu(last->e_value_offs);
+ 			if (offs < *min_offs)
+ 				*min_offs = offs;
+@@ -520,6 +637,149 @@ static size_t ext4_xattr_free_space(stru
+ 	return (*min_offs - ((void *)last - base) - sizeof(__u32));
+ }
+ 
++/*
++ * Write the value of the EA in an inode.
++ */
++static int
++ext4_xattr_inode_write(handle_t *handle, struct inode *ea_inode,
++		       const void *buf, int bufsize)
++{
++	struct buffer_head *bh = NULL, dummy;
++	unsigned long block = 0;
++	unsigned blocksize = ea_inode->i_sb->s_blocksize;
++	unsigned max_blocks = (bufsize + blocksize - 1) >> ea_inode->i_blkbits;
++	int csize, wsize = 0;
++	int ret = 0;
++	int retries = 0;
 +
-+		ret = e2fsck_ea_entry_delete(ctx, entry, pctx,
-+					     i_file_acl_deleted,
-+					     PR_1_ATTR_NO_EA_INODE_FL);
-+		return ret;
++retry:
++	while (ret >= 0 && ret < max_blocks) {
++		block += ret;
++		max_blocks -= ret;
++
++		ret = ext4_get_blocks_wrap(handle, ea_inode, block, max_blocks,
++					   &dummy, 1, 1, 0);
++		if (ret <= 0) {
++			ext4_mark_inode_dirty(handle, ea_inode);
++			if (ret == -ENOSPC &&
++			    ext4_should_retry_alloc(ea_inode->i_sb, &retries)) {
++				ret = 0;
++				goto retry;
++			}
++			break;
++		}
 +	}
 +
-+	/* Validate the inode back-pointer */
-+	if (inode.i_mtime != pctx->ino ||
-+	    inode.i_generation != pctx->inode->i_generation) {
-+		ret = e2fsck_ea_entry_delete(ctx, entry, pctx,
-+					     i_file_acl_deleted,
-+					     PR_1_ATTR_INVAL_EA_INODE);
-+		return ret;
++	block = 0;
++	while (wsize < bufsize) {
++		if (bh != NULL)
++			brelse(bh);
++		csize = (bufsize - wsize) > blocksize ? blocksize :
++								bufsize - wsize;
++		bh = ext4_getblk(handle, ea_inode, block, 0, &ret);
++		if (!bh)
++			goto out;
++		ret = ext4_journal_get_write_access(handle, bh);
++		if (ret)
++			goto out;
++
++		memcpy(bh->b_data, buf, csize);
++		set_buffer_uptodate(bh);
++		ext4_journal_dirty_metadata(handle, bh);
++
++		buf += csize;
++		wsize += csize;
++		block += 1;
 +	}
++
++	i_size_write(ea_inode, wsize);
++	ext4_update_i_disksize(ea_inode, wsize);
++
++	ext4_mark_inode_dirty(handle, ea_inode);
++
++out:
++	brelse(bh);
++
++	return ret;
++}
++
++/*
++ * Create an inode to store the value of a large EA.
++ */
++static struct inode *
++ext4_xattr_inode_create(handle_t *handle, struct inode *inode)
++{
++	struct inode *ea_inode = NULL;
++
++	/*
++	 * Let the next inode be the goal, so we try and allocate the EA inode
++	 * in the same group, or nearby one.
++	 */
++	ea_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
++				  S_IFREG|0600, inode->i_ino + 1);
++
++	if (!IS_ERR(ea_inode)) {
++		ea_inode->i_op = &ext4_file_inode_operations;
++		ea_inode->i_fop = &ext4_file_operations;
++		ext4_set_aops(inode);
++		ea_inode->i_generation = inode->i_generation;
++		EXT4_I(ea_inode)->i_flags |= EXT4_EA_INODE_FL;
++
++		/*
++		 * A back-pointer from EA inode to parent inode will be useful
++		 * for e2fsck.
++		 */
++		ea_inode->i_xattr_inode_parent = inode->i_ino;
++	}
++
++	return ea_inode;
++}
++
++/*
++ * Unlink the inode storing the value of the EA.
++ */
++static int
++ext4_xattr_inode_unlink(struct inode *inode, int ea_ino)
++{
++	struct inode *ea_inode = NULL;
++	int err;
++
++	ea_inode = ext4_xattr_inode_iget(inode, ea_ino, &err);
++	if (err)
++		return err;
++
++	ea_inode->i_nlink = 0;
++	iput(ea_inode);
 +
 +	return 0;
 +}
 +
- static void check_ea_in_inode(e2fsck_t ctx, struct problem_context *pctx)
- {
- 	struct ext2_super_block *sb = ctx->fs->super;
-@@ -307,18 +427,25 @@ static void check_ea_in_inode(e2fsck_t c
- 		/* attribute len eats this space */
- 		remain -= EXT2_EXT_ATTR_SIZE(entry->e_name_len);
- 
--		/* check value size */
--		if (entry->e_value_size == 0 || entry->e_value_size > remain) {
-+		if (entry->e_value_size == 0) {
- 			pctx->num = entry->e_value_size;
- 			problem = PR_1_ATTR_VALUE_SIZE;
- 			goto fix;
- 		}
- 
--		/* e_value_block must be 0 in inode's ea */
--		if (entry->e_value_block != 0) {
--			pctx->num = entry->e_value_block;
--			problem = PR_1_ATTR_VALUE_BLOCK;
--			goto fix;
-+		if (entry->e_value_inum == 0) {
-+			/* check value size */
-+			if (entry->e_value_size > remain) {
-+				pctx->num = entry->e_value_size;
-+				problem = PR_1_ATTR_VALUE_SIZE;
-+				goto fix;
-+			}
-+		} else {
-+			int ret, tmp;
++/*
++ * Add value of the EA in an inode.
++ */
++static int
++ext4_xattr_inode_set(handle_t *handle, struct inode *inode, int *ea_ino,
++		     const void *value, size_t value_len)
++{
++	struct inode *ea_inode = NULL;
++	int err;
 +
-+			ret = check_large_ea_inode(ctx, entry, pctx, &tmp);
-+			if (ret == 0)
-+				mark_inode_ea_map(ctx, pctx, entry->e_value_inum);
- 		}
- 
- 		hash = ext2fs_ext_attr_hash_entry(entry,
-@@ -331,7 +458,10 @@ static void check_ea_in_inode(e2fsck_t c
- 			goto fix;
- 		}
- 
--		remain -= entry->e_value_size;
-+		/* If EA value is stored in external inode then it does not
-+		 * consume space here */
-+		if (entry->e_value_inum == 0)
-+			remain -= entry->e_value_size;
- 
- 		entry = EXT2_EXT_ATTR_NEXT(entry);
- 	}
-@@ -510,8 +640,6 @@ extern void e2fsck_setup_tdb_icount(e2fs
- 		*ret = 0;
- }
- 
--extern char *ext2_attr_index_prefix[];
--
- int e2fsck_pass1_delete_attr(e2fsck_t ctx, struct ext2_inode_large *inode,
- 			     struct problem_context *pctx, int needed_size)
- {
-@@ -568,7 +696,7 @@ int e2fsck_pass1_delete_attr(e2fsck_t ct
- 		if (EXT2_EXT_IS_LAST_ENTRY(entry)) {
- 			if (in_inode) {
- 				entry = entry_blk;
--			        len = sizeof(entry->e_name);
-+				len = sizeof(entry->e_name);
- 				entry_size = ext2fs_attr_get_next_attr(entry,
- 							index, name, len, 1);
- 				in_inode = 0;
-@@ -1609,6 +1737,7 @@ static int check_ext_attr(e2fsck_t ctx, 
- 	struct ext2_ext_attr_entry *entry;
- 	int		count;
- 	region_t	region = 0;
-+	int ret;
- 
- 	blk = inode->i_file_acl;
- 	if (blk == 0)
-@@ -1730,19 +1859,27 @@ static int check_ext_attr(e2fsck_t ctx, 
- 				goto clear_extattr;
- 			break;
- 		}
--		if (entry->e_value_block != 0) {
--			if (fix_problem(ctx, PR_1_EA_BAD_VALUE, pctx))
--				goto clear_extattr;
--		}
--		if (entry->e_value_offs + entry->e_value_size > fs->blocksize) {
--			if (fix_problem(ctx, PR_1_EA_BAD_VALUE, pctx))
--				goto clear_extattr;
--			break;
--		}
--		if (entry->e_value_size &&
--		    region_allocate(region, entry->e_value_offs,
--				    EXT2_EXT_ATTR_SIZE(entry->e_value_size))) {
--			if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
-+		if (entry->e_value_inum == 0) {
-+			if (entry->e_value_offs + entry->e_value_size > fs->blocksize) {
-+				if (fix_problem(ctx, PR_1_EA_BAD_VALUE, pctx))
-+					goto clear_extattr;
-+				break;
-+			}
-+			if (entry->e_value_size &&
-+			    region_allocate(region, entry->e_value_offs,
-+					    EXT2_EXT_ATTR_SIZE(entry->e_value_size))) {
-+				if (fix_problem(ctx, PR_1_EA_ALLOC_COLLISION, pctx))
-+					goto clear_extattr;
-+			}
-+		} else {
-+			int i_file_acl_deleted = 0;
++	/* Create an inode for the EA value */
++	ea_inode = ext4_xattr_inode_create(handle, inode);
++	if (IS_ERR(ea_inode))
++		return -1;
 +
-+			ret = check_large_ea_inode(ctx, entry, pctx,
-+						   &i_file_acl_deleted);
-+			if (ret == 0)
-+				mark_inode_ea_map(ctx, pctx, entry->e_value_inum);
++	err = ext4_xattr_inode_write(handle, ea_inode, value, value_len);
++	if (err)
++		ea_inode->i_nlink = 0;
++	else
++		*ea_ino = ea_inode->i_ino;
 +
-+			if (i_file_acl_deleted)
- 				goto clear_extattr;
- 		}
- 
-@@ -2883,20 +3020,6 @@ static errcode_t e2fsck_get_alloc_block(
- 	return (0);
- }
- 
--static void e2fsck_block_alloc_stats(ext2_filsys fs, blk64_t blk, int inuse)
--{
--	e2fsck_t ctx = (e2fsck_t) fs->priv_data;
--
--	if (ctx->block_found_map) {
--		if (inuse > 0)
--			ext2fs_mark_block_bitmap(ctx->block_found_map,
--						 (blk_t) blk);
--		else
--			ext2fs_unmark_block_bitmap(ctx->block_found_map,
--						   (blk_t) blk);
--	}
--}
--
- void e2fsck_use_inode_shortcuts(e2fsck_t ctx, int bool)
- {
- 	ext2_filsys fs = ctx->fs;
-Index: e2fsprogs-1.41.1/e2fsck/problem.c
-===================================================================
---- e2fsprogs-1.41.1.orig/e2fsck/problem.c
-+++ e2fsprogs-1.41.1/e2fsck/problem.c
-@@ -928,6 +928,30 @@ static struct e2fsck_problem problem_tab
- 	     "without deletion of an EA.\n"),
- 	  PROMPT_FIX, 0 },
- 
-+	/* Inode has illegal EA value inode */
-+	{ PR_1_ATTR_VALUE_EA_INODE,
-+	  N_("@i %i has @I EA @i %N.\n"),
-+	  PROMPT_FIX, PR_PREEN_OK },
++	iput(ea_inode);
 +
-+	/* Invalid back-pointer from EA-inode to parent inode */
-+	{ PR_1_ATTR_INVAL_EA_INODE,
-+	  N_("@I backpointer from EA @i %N to parent @i %i. "
-+	     "Delete EA inode?\n"),
-+	  PROMPT_FIX, PR_PREEN_OK },
++	return err;
++}
 +
-+	/* Parent inode has invalid EA entry. EA inode does not have
-+	 * EXT4_EA_INODE_FL flag */
-+	{ PR_1_ATTR_NO_EA_INODE_FL,
-+	  N_("Parent @i %i has @I EA entry. EA @i %N does not have "
-+	     "EXT4_EA_INODE_FL flag. Delete EA entry?\n"),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
-+	/* EA inode for parent inode does not have EXT4_EA_INODE_FL flag */
-+	{ PR_1_ATTR_SET_EA_INODE_FL,
-+	  N_("EA @i %N for parent @i %i does not have EXT4_EA_INODE_FL flag. "
-+	     "Set the flag?\n"),
-+	  PROMPT_FIX, PR_PREEN_OK },
-+
- 
- 	/* Pass 1b errors */
- 
-Index: e2fsprogs-1.41.1/e2fsck/problem.h
-===================================================================
---- e2fsprogs-1.41.1.orig/e2fsck/problem.h
-+++ e2fsprogs-1.41.1/e2fsck/problem.h
-@@ -548,6 +548,19 @@ struct problem_context {
-  */
- #define PR_1_CLEAR_EXTRA_ISIZE		0x01006C
- 
-+/* Inode has illegal EA value inode */
-+#define PR_1_ATTR_VALUE_EA_INODE	0x01006D
-+
-+/* Invalid back-pointer from EA-inode to parent inode */
-+#define PR_1_ATTR_INVAL_EA_INODE	0x01006E
-+
-+/* Parent inode has invalid EA entry. EA inode does not have
-+ * EXT4_EA_INODE_FL flag */
-+#define PR_1_ATTR_NO_EA_INODE_FL	0x01006F
-+
-+/* EA inode for parent inode does not have EXT4_EA_INODE_FL flag */
-+#define PR_1_ATTR_SET_EA_INODE_FL	0x010070
-+
- /*
-  * Pass 1b errors
-  */
-Index: e2fsprogs-1.41.1/lib/ext2fs/ext2_ext_attr.h
-===================================================================
---- e2fsprogs-1.41.1.orig/lib/ext2fs/ext2_ext_attr.h
-+++ e2fsprogs-1.41.1/lib/ext2fs/ext2_ext_attr.h
-@@ -30,7 +30,7 @@ struct ext2_ext_attr_entry {
- 	__u8	e_name_len;	/* length of name */
- 	__u8	e_name_index;	/* attribute name index */
- 	__u16	e_value_offs;	/* offset in disk block of value */
--	__u32	e_value_block;	/* disk block attribute is stored on (n/i) */
-+	__u32	e_value_inum;	/* inode in which the value is stored */
- 	__u32	e_value_size;	/* size of attribute value */
- 	__u32	e_hash;		/* hash value of name and value */
- #if 1
-@@ -38,6 +38,9 @@ struct ext2_ext_attr_entry {
- #endif
+ struct ext4_xattr_info {
+ 	int name_index;
+ 	const char *name;
+@@ -536,15 +796,23 @@ struct ext4_xattr_search {
  };
  
-+#define	EXT4_XATTR_MIN_LARGE_EA_SIZE(b) ((b) >> 1)
-+#define	EXT4_XATTR_MAX_LARGE_EA_SIZE	(1024 * 1024)
-+
- #define BHDR(block) ((struct ext2_ext_attr_header *) block)
- #define IHDR(inode)			   	\
- 	((__u32 *) ((char *)inode +	     	\
-Index: e2fsprogs-1.41.1/lib/ext2fs/ext_attr.c
-===================================================================
---- e2fsprogs-1.41.1.orig/lib/ext2fs/ext_attr.c
-+++ e2fsprogs-1.41.1/lib/ext2fs/ext_attr.c
-@@ -45,7 +45,7 @@ __u32 ext2fs_ext_attr_hash_entry(struct 
- 	}
- 
- 	/* The hash needs to be calculated on the data in little-endian. */
--	if (entry->e_value_block == 0 && entry->e_value_size != 0) {
-+	if (entry->e_value_inum == 0 && entry->e_value_size != 0) {
- 		__u32 *value = (__u32 *)data;
- 		for (n = (entry->e_value_size + EXT2_EXT_ATTR_ROUND) >>
- 			 EXT2_EXT_ATTR_PAD_BITS; n; n--) {
-@@ -190,6 +190,7 @@ struct ext2_attr_ibody_find {
- };
- 
- struct ext2_attr_block_find {
-+	ext2_ino_t ino;
- 	struct ext2_attr_search s;
- 	char *block;
- };
-@@ -202,7 +203,7 @@ void ext2fs_attr_shift_entries(struct ex
- 
- 	/* Adjust the value offsets of the entries */
- 	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
--		if (!last->e_value_block && last->e_value_size) {
-+		if (last->e_value_inum == 0 && last->e_value_size) {
- 			last->e_value_offs = last->e_value_offs +
- 							value_offs_shift;
- 		}
-@@ -221,7 +222,7 @@ int ext2fs_attr_free_space(struct ext2_e
+ static int
+-ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s)
++ext4_xattr_set_entry(struct ext4_xattr_info *i, struct ext4_xattr_search *s,
++		     handle_t *handle, struct inode *inode)
  {
- 	for (; !EXT2_EXT_IS_LAST_ENTRY(last); last = EXT2_EXT_ATTR_NEXT(last)) {
- 		*total += EXT2_EXT_ATTR_LEN(last->e_name_len);
--		if (!last->e_value_block && last->e_value_size) {
-+		if (last->e_value_inum == 0 && last->e_value_size) {
- 			int offs = last->e_value_offs;
- 			if (offs < *min_offs)
- 				*min_offs = offs;
-@@ -360,7 +361,7 @@ static errcode_t ext2fs_attr_set_entry(e
+ 	struct ext4_xattr_entry *last;
+ 	size_t free, min_offs = s->end - s->base, name_len = strlen(i->name);
++	int in_inode = 0;
++
++	if ((EXT4_SB(inode->i_sb)->s_es->s_feature_incompat &
++	     EXT4_FEATURE_INCOMPAT_EA_INODE) &&
++	    (EXT4_XATTR_SIZE(i->value_len) >
++	     EXT4_XATTR_MIN_LARGE_EA_SIZE(inode->i_sb->s_blocksize)))
++		in_inode++;
+ 
  	/* Compute min_offs and last. */
- 	for (last = s->first; !EXT2_EXT_IS_LAST_ENTRY(last);
- 	     last = EXT2_EXT_ATTR_NEXT(last)) {
+ 	last = s->first;
+ 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
 -		if (!last->e_value_block && last->e_value_size) {
-+		if (last->e_value_inum == 0 && last->e_value_size) {
- 			int offs = last->e_value_offs;
- 
++		if (!last->e_value_inum && last->e_value_size) {
+ 			size_t offs = le16_to_cpu(last->e_value_offs);
  			if (offs < min_offs)
-@@ -370,7 +371,7 @@ static errcode_t ext2fs_attr_set_entry(e
- 	free = min_offs - ((char *)last - s->base) - sizeof(__u32);
- 
+ 				min_offs = offs;
+@@ -552,16 +820,21 @@ ext4_xattr_set_entry(struct ext4_xattr_i
+ 	}
+ 	free = min_offs - ((void *)last - s->base) - sizeof(__u32);
  	if (!s->not_found) {
 -		if (!s->here->e_value_block && s->here->e_value_size) {
-+		if (s->here->e_value_inum == 0 && s->here->e_value_size) {
- 			int size = s->here->e_value_size;
- 			free += EXT2_EXT_ATTR_SIZE(size);
++		if (in_inode == 0 && !s->here->e_value_inum &&
++		    s->here->e_value_size) {
+ 			size_t size = le32_to_cpu(s->here->e_value_size);
+ 			free += EXT4_XATTR_SIZE(size);
  		}
-@@ -393,7 +394,7 @@ static errcode_t ext2fs_attr_set_entry(e
+ 		free += EXT4_XATTR_LEN(name_len);
+ 	}
+ 	if (i->value) {
+-		if (free < EXT4_XATTR_SIZE(i->value_len) ||
+-		    free < EXT4_XATTR_LEN(name_len) +
+-			   EXT4_XATTR_SIZE(i->value_len))
++		size_t value_len = EXT4_XATTR_SIZE(i->value_len);
++
++		if (in_inode)
++			value_len = 0;
++
++		if (free < value_len ||
++		    free < EXT4_XATTR_LEN(name_len) + value_len)
+ 			return -ENOSPC;
+ 	}
+ 
+@@ -575,7 +848,8 @@ ext4_xattr_set_entry(struct ext4_xattr_i
  		s->here->e_name_len = name_len;
  		memcpy(s->here->e_name, i->name, name_len);
  	} else {
 -		if (!s->here->e_value_block && s->here->e_value_size) {
-+		if (s->here->e_value_inum == 0 && s->here->e_value_size) {
- 			char *first_val = s->base + min_offs;
- 			int offs = s->here->e_value_offs;
- 			char *val = s->base + offs;
-@@ -422,7 +423,7 @@ static errcode_t ext2fs_attr_set_entry(e
- 			while (!EXT2_EXT_IS_LAST_ENTRY(last)) {
- 				int o = last->e_value_offs;
- 
++		if (s->here->e_value_offs && !s->here->e_value_inum &&
++		    s->here->e_value_size) {
+ 			void *first_val = s->base + min_offs;
+ 			size_t offs = le16_to_cpu(s->here->e_value_offs);
+ 			void *val = s->base + offs;
+@@ -604,13 +878,16 @@ ext4_xattr_set_entry(struct ext4_xattr_i
+ 			last = s->first;
+ 			while (!IS_LAST_ENTRY(last)) {
+ 				size_t o = le16_to_cpu(last->e_value_offs);
 -				if (!last->e_value_block &&
-+				if (last->e_value_inum == 0 &&
- 				    last->e_value_size && o < offs)
- 					last->e_value_offs = o + size;
- 				last = EXT2_EXT_ATTR_NEXT(last);
-@@ -540,9 +541,20 @@ static errcode_t ext2fs_attr_block_set(e
- 	/* Update the i_blocks if we added a new EA block */
- 	if (!inode->i_file_acl && new_buf)
- 		inode->i_blocks += fs->blocksize / 512;
+-				    last->e_value_size && o < offs)
++				if (last->e_value_size && o < offs)
+ 					last->e_value_offs =
+ 						cpu_to_le16(o + size);
+ 				last = EXT4_XATTR_NEXT(last);
+ 			}
+ 		}
++		if (s->here->e_value_inum) {
++			ext4_xattr_inode_unlink(inode, s->here->e_value_inum);
++			s->here->e_value_inum = 0;
++		}
+ 		if (!i->value) {
+ 			/* Remove the old name. */
+ 			size_t size = EXT4_XATTR_LEN(name_len);
+@@ -624,13 +901,24 @@ ext4_xattr_set_entry(struct ext4_xattr_i
+ 	if (i->value) {
+ 		/* Insert the new value. */
+ 		s->here->e_value_size = cpu_to_le32(i->value_len);
+-		if (i->value_len) {
+-			size_t size = EXT4_XATTR_SIZE(i->value_len);
+-			void *val = s->base + min_offs - size;
+-			s->here->e_value_offs = cpu_to_le16(min_offs - size);
+-			memset(val + size - EXT4_XATTR_PAD, 0,
+-			       EXT4_XATTR_PAD); /* Clear the pad bytes. */
+-			memcpy(val, i->value, i->value_len);
++		if (in_inode) {
++			int ea_ino = s->here->e_value_inum;
++			ext4_xattr_inode_set(handle, inode, &ea_ino, i->value,
++					     i->value_len);
++			s->here->e_value_inum = ea_ino;
++			s->here->e_value_offs = 0;
++		} else {
++			if (i->value_len) {
++				size_t size = EXT4_XATTR_SIZE(i->value_len);
++				void *val = s->base + min_offs - size;
++				s->here->e_value_offs = cpu_to_le16(min_offs -
++								    size);
++				s->here->e_value_inum = 0;
++				/* Clear the pad bytes */
++				memset(val + size - EXT4_XATTR_PAD, 0,
++				       EXT4_XATTR_PAD);
++				memcpy(val, i->value, i->value_len);
++			}
+ 		}
+ 	}
+ 	return 0;
+@@ -673,7 +961,7 @@ ext4_xattr_block_find(struct inode *inod
+ 		bs->s.end = bs->bh->b_data + bs->bh->b_size;
+ 		bs->s.here = bs->s.first;
+ 		error = ext4_xattr_find_entry(&bs->s.here, i->name_index,
+-					      i->name, bs->bh->b_size, 1);
++					     i->name, bs->bh->b_size, 1, inode);
+ 		if (error && error != -ENODATA)
+ 			goto cleanup;
+ 		bs->s.not_found = error;
+@@ -697,8 +985,6 @@ ext4_xattr_block_set(handle_t *handle, s
+ 
+ #define header(x) ((struct ext4_xattr_header *)(x))
+ 
+-	if (i->value && i->value_len > sb->s_blocksize)
+-		return -ENOSPC;
+ 	if (s->base) {
+ 		ce = mb_cache_entry_get(ext4_xattr_cache, bs->bh->b_bdev,
+ 					bs->bh->b_blocknr);
+@@ -713,7 +999,7 @@ ext4_xattr_block_set(handle_t *handle, s
+ 				ce = NULL;
+ 			}
+ 			ea_bdebug(bs->bh, "modifying in-place");
+-			error = ext4_xattr_set_entry(i, s);
++			error = ext4_xattr_set_entry(i, s, handle, inode);
+ 			if (!error) {
+ 				if (!IS_LAST_ENTRY(s->first))
+ 					ext4_xattr_rehash(header(s->base),
+@@ -764,7 +1050,7 @@ ext4_xattr_block_set(handle_t *handle, s
+ 		s->end = s->base + sb->s_blocksize;
+ 	}
+ 
+-	error = ext4_xattr_set_entry(i, s);
++	error = ext4_xattr_set_entry(i, s, handle, inode);
+ 	if (error == -EIO)
+ 		goto bad_block;
+ 	if (error)
+@@ -896,7 +1182,7 @@ ext4_xattr_ibody_find(struct inode *inod
+ 		/* Find the named attribute. */
+ 		error = ext4_xattr_find_entry(&is->s.here, i->name_index,
+ 					      i->name, is->s.end -
+-					      (void *)is->s.base, 0);
++					      (void *)is->s.base, 0, inode);
+ 		if (error && error != -ENODATA)
+ 			return error;
+ 		is->s.not_found = error;
+@@ -915,7 +1201,7 @@ ext4_xattr_ibody_set(handle_t *handle, s
+ 
+ 	if (EXT4_I(inode)->i_extra_isize == 0)
+ 		return -ENOSPC;
+-	error = ext4_xattr_set_entry(i, s);
++	error = ext4_xattr_set_entry(i, s, handle, inode);
+ 	if (error)
+ 		return error;
+ 	header = IHDR(inode, ext4_raw_inode(&is->iloc));
+@@ -1065,10 +1351,26 @@ ext4_xattr_set(struct inode *inode, int 
+ 	       const void *value, size_t value_len, int flags)
+ {
+ 	handle_t *handle;
++	struct super_block *sb = inode->i_sb;
++	int buffer_credits;
+ 	int error, retries = 0;
+ 
++	buffer_credits = EXT4_DATA_TRANS_BLOCKS(sb);
++	if ((value_len >= EXT4_XATTR_MIN_LARGE_EA_SIZE(sb->s_blocksize)) &&
++	    (EXT4_SB(sb)->s_es->s_feature_incompat &
++	     EXT4_FEATURE_INCOMPAT_EA_INODE)) {
++		int nrblocks = (value_len + sb->s_blocksize - 1) /
++								sb->s_blocksize;
 +
-+	/* Drop the previous xattr block. */
-+	if (!new_buf) {
-+		if (!fs->block_map)
-+			ext2fs_read_block_bitmap(fs);
-+		ext2fs_block_alloc_stats(fs, inode->i_file_acl, -1);
-+		inode->i_blocks -= fs->blocksize / 512;
++		/* For new inode */
++		buffer_credits += EXT4_SINGLEDATA_TRANS_BLOCKS(sb) + 3;
++
++		/* For data blocks of EA inode */
++		buffer_credits += ext4_meta_trans_blocks(inode, nrblocks, 0);
 +	}
 +
- 	/* Update the inode. */
- 	inode->i_file_acl = new_buf ? blk : 0;
- 
-+	ext2fs_write_inode(fs, bs->ino, inode);
-+
- cleanup:
- 	if (clear_flag)
- 		ext2fs_free_mem(&s->base);
-@@ -829,6 +841,7 @@ errcode_t ext2fs_expand_extra_isize(ext2
- 		.s = { .not_found = EXT2_ET_EA_NO_SPACE, },
- 	};
- 	struct ext2_attr_block_find bs = {
-+		.ino = ino,
- 		.s = { .not_found = EXT2_ET_EA_NO_SPACE, },
- 	};
- 	char *start, *end, *block_buf = NULL, *buffer =NULL, *b_entry_name=NULL;
-Index: e2fsprogs-1.41.1/lib/ext2fs/swapfs.c
-===================================================================
---- e2fsprogs-1.41.1.orig/lib/ext2fs/swapfs.c
-+++ e2fsprogs-1.41.1/lib/ext2fs/swapfs.c
-@@ -110,7 +110,7 @@ void ext2fs_swap_ext_attr_entry(struct e
- 				struct ext2_ext_attr_entry *from_entry)
- {
- 	to_entry->e_value_offs  = ext2fs_swab16(from_entry->e_value_offs);
--	to_entry->e_value_block = ext2fs_swab32(from_entry->e_value_block);
-+	to_entry->e_value_inum  = ext2fs_swab32(from_entry->e_value_inum);
- 	to_entry->e_value_size  = ext2fs_swab32(from_entry->e_value_size);
- 	to_entry->e_hash	= ext2fs_swab32(from_entry->e_hash);
- }
-Index: e2fsprogs-1.41.1/e2fsck/pass4.c
-===================================================================
---- e2fsprogs-1.41.1.orig/e2fsck/pass4.c
-+++ e2fsprogs-1.41.1/e2fsck/pass4.c
-@@ -11,6 +11,7 @@
-  * Pass 4 frees the following data structures:
-  * 	- A bitmap of which inodes are in bad blocks.	(inode_bb_map)
-  * 	- A bitmap of which inodes are imagic inodes.	(inode_imagic_map)
-+ *	- A bitmap of EA inodes.			(inode_ea_map)
-  */
- 
- #include "e2fsck.h"
-@@ -39,6 +40,20 @@ static int disconnect_inode(e2fsck_t ctx
+ retry:
+-	handle = ext4_journal_start(inode, EXT4_DATA_TRANS_BLOCKS(inode->i_sb));
++	handle = ext4_journal_start(inode, buffer_credits);
+ 	if (IS_ERR(handle)) {
+ 		error = PTR_ERR(handle);
  	} else {
- 		e2fsck_read_inode(ctx, i, inode, "pass4: disconnect_inode");
+@@ -1078,7 +1380,7 @@ retry:
+ 					      value, value_len, flags);
+ 		error2 = ext4_journal_stop(handle);
+ 		if (error == -ENOSPC &&
+-		    ext4_should_retry_alloc(inode->i_sb, &retries))
++		    ext4_should_retry_alloc(sb, &retries))
+ 			goto retry;
+ 		if (error == 0)
+ 			error = error2;
+@@ -1100,7 +1402,7 @@ static void ext4_xattr_shift_entries(str
+ 
+ 	/* Adjust the value offsets of the entries */
+ 	for (; !IS_LAST_ENTRY(last); last = EXT4_XATTR_NEXT(last)) {
+-		if (!last->e_value_block && last->e_value_size) {
++		if (!last->e_value_inum && last->e_value_size) {
+ 			new_offs = le16_to_cpu(last->e_value_offs) +
+ 							value_offs_shift;
+ 			BUG_ON(new_offs + le32_to_cpu(last->e_value_size)
+@@ -1337,7 +1639,8 @@ cleanup:
+ /*
+  * ext4_xattr_delete_inode()
+  *
+- * Free extended attribute resources associated with this inode. This
++ * Free extended attribute resources associated with this inode. Traverse
++ * all the entries and unlink any EA-inodes associated with this inode. This
+  * is called immediately before an inode is freed. We have exclusive
+  * access to the inode.
+  */
+@@ -1345,7 +1648,29 @@ void
+ ext4_xattr_delete_inode(handle_t *handle, struct inode *inode)
+ {
+ 	struct buffer_head *bh = NULL;
++	struct ext4_xattr_ibody_header *header;
++	struct ext4_inode *raw_inode;
++	struct ext4_iloc iloc;
++	struct ext4_xattr_entry *entry;
++	int error;
++
++	if (!(EXT4_I(inode)->i_state & EXT4_STATE_XATTR))
++		goto delete_external_ea;
++
++	error = ext4_get_inode_loc(inode, &iloc);
++	if (error)
++		goto cleanup;
++	raw_inode = ext4_raw_inode(&iloc);
++	header = IHDR(inode, raw_inode);
++	entry = IFIRST(header);
++	for (; !IS_LAST_ENTRY(entry); entry = EXT4_XATTR_NEXT(entry)) {
++		if (entry->e_value_inum) {
++			ext4_xattr_inode_unlink(inode, entry->e_value_inum);
++			entry->e_value_inum = 0;
++		}
++	}
+ 
++delete_external_ea:
+ 	if (!EXT4_I(inode)->i_file_acl)
+ 		goto cleanup;
+ 	bh = sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl);
+@@ -1362,6 +1687,15 @@ ext4_xattr_delete_inode(handle_t *handle
+ 			EXT4_I(inode)->i_file_acl);
+ 		goto cleanup;
  	}
 +
-+	if (inode->i_flags & EXT4_EA_INODE_FL) {
-+		if (ext2fs_test_inode_bitmap(ctx->inode_ea_map, i)) {
-+			ext2fs_icount_store(ctx->inode_count, i, 1);
-+			return 0;
-+		} else {
-+			/* Zero the link count so that when inode is linked to
-+			 * lost+found it has correct link count */
-+			inode->i_links_count = 0;
-+			e2fsck_write_inode(ctx, i, inode, "disconnect_inode");
-+			ext2fs_icount_store(ctx->inode_link_info, i, 0);
++	entry = BFIRST(bh);
++	for (; !IS_LAST_ENTRY(entry); entry = EXT4_XATTR_NEXT(entry)) {
++		if (entry->e_value_inum) {
++			ext4_xattr_inode_unlink(inode, entry->e_value_inum);
++			entry->e_value_inum = 0;
 +		}
 +	}
 +
- 	clear_problem_context(&pctx);
- 	pctx.ino = i;
- 	pctx.inode = inode;
-@@ -182,6 +197,8 @@ void e2fsck_pass4(e2fsck_t ctx)
- 	ext2fs_free_icount(ctx->inode_link_info); ctx->inode_link_info = 0;
- 	ext2fs_free_icount(ctx->inode_count); ctx->inode_count = 0;
- 	ext2fs_free_icount(ctx->inode_badness); ctx->inode_badness = 0;
-+	ext2fs_free_inode_bitmap(ctx->inode_ea_map);
-+	ctx->inode_ea_map = 0;
- 	ext2fs_free_inode_bitmap(ctx->inode_bb_map);
- 	ctx->inode_bb_map = 0;
- 	ext2fs_free_inode_bitmap(ctx->inode_imagic_map);
-Index: e2fsprogs-1.41.1/lib/ext2fs/ext2fs.h
-===================================================================
---- e2fsprogs-1.41.1.orig/lib/ext2fs/ext2fs.h
-+++ e2fsprogs-1.41.1/lib/ext2fs/ext2fs.h
-@@ -550,7 +550,8 @@ typedef struct ext2_icount *ext2_icount_
- 					 EXT3_FEATURE_INCOMPAT_RECOVER|\
- 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
- 					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
--					 EXT4_FEATURE_INCOMPAT_MMP)
-+					 EXT4_FEATURE_INCOMPAT_MMP|\
-+					 EXT4_FEATURE_INCOMPAT_EA_INODE)
- #else
- #define EXT2_LIB_FEATURE_INCOMPAT_SUPP	(EXT2_FEATURE_INCOMPAT_FILETYPE|\
- 					 EXT3_FEATURE_INCOMPAT_JOURNAL_DEV|\
-@@ -558,7 +559,8 @@ typedef struct ext2_icount *ext2_icount_
- 					 EXT3_FEATURE_INCOMPAT_RECOVER|\
- 					 EXT3_FEATURE_INCOMPAT_EXTENTS|\
- 					 EXT4_FEATURE_INCOMPAT_FLEX_BG|\
--					 EXT4_FEATURE_INCOMPAT_MMP)
-+					 EXT4_FEATURE_INCOMPAT_MMP|\
-+					 EXT4_FEATURE_INCOMPAT_EA_INODE)
- #endif
- #define EXT2_LIB_FEATURE_RO_COMPAT_SUPP	(EXT2_FEATURE_RO_COMPAT_SPARSE_SUPER|\
- 					 EXT4_FEATURE_RO_COMPAT_HUGE_FILE|\
-Index: e2fsprogs-1.41.1/e2fsck/e2fsck.h
-===================================================================
---- e2fsprogs-1.41.1.orig/e2fsck/e2fsck.h
-+++ e2fsprogs-1.41.1/e2fsck/e2fsck.h
-@@ -251,6 +251,7 @@ struct e2fsck_struct {
- 	ext2fs_inode_bitmap inode_bb_map; /* Inodes which are in bad blocks */
- 	ext2fs_inode_bitmap inode_imagic_map; /* AFS inodes */
- 	ext2fs_inode_bitmap inode_reg_map; /* Inodes which are regular files*/
-+	ext2fs_inode_bitmap inode_ea_map; /* EA inodes which are non-orphan */
+ 	ext4_xattr_release_block(handle, inode, bh);
+ 	EXT4_I(inode)->i_file_acl = 0;
  
- 	ext2fs_block_bitmap block_found_map; /* Blocks which are in use */
- 	ext2fs_block_bitmap block_dup_map; /* Blks referenced more than once */
+@@ -1436,10 +1770,9 @@ ext4_xattr_cmp(struct ext4_xattr_header 
+ 		    entry1->e_name_index != entry2->e_name_index ||
+ 		    entry1->e_name_len != entry2->e_name_len ||
+ 		    entry1->e_value_size != entry2->e_value_size ||
++		    entry1->e_value_inum != entry2->e_value_inum ||
+ 		    memcmp(entry1->e_name, entry2->e_name, entry1->e_name_len))
+ 			return 1;
+-		if (entry1->e_value_block != 0 || entry2->e_value_block != 0)
+-			return -EIO;
+ 		if (memcmp((char *)header1 + le16_to_cpu(entry1->e_value_offs),
+ 			   (char *)header2 + le16_to_cpu(entry2->e_value_offs),
+ 			   le32_to_cpu(entry1->e_value_size)))
+@@ -1524,7 +1857,7 @@ static inline void ext4_xattr_hash_entry
+ 		       *name++;
+ 	}
+ 
+-	if (entry->e_value_block == 0 && entry->e_value_size != 0) {
++	if (entry->e_value_inum == 0 && entry->e_value_size != 0) {
+ 		__le32 *value = (__le32 *)((char *)header +
+ 			le16_to_cpu(entry->e_value_offs));
+ 		for (n = (le32_to_cpu(entry->e_value_size) +
+Index: linux-2.6.27/fs/ext4/xattr.h
+===================================================================
+--- linux-2.6.27.orig/fs/ext4/xattr.h
++++ linux-2.6.27/fs/ext4/xattr.h
+@@ -38,7 +38,7 @@ struct ext4_xattr_entry {
+ 	__u8	e_name_len;	/* length of name */
+ 	__u8	e_name_index;	/* attribute name index */
+ 	__le16	e_value_offs;	/* offset in disk block of value */
+-	__le32	e_value_block;	/* disk block attribute is stored on (n/i) */
++	__le32	e_value_inum;	/* inode in which the value is stored */
+ 	__le32	e_value_size;	/* size of attribute value */
+ 	__le32	e_hash;		/* hash value of name and value */
+ 	char	e_name[0];	/* attribute name */
+@@ -63,6 +63,15 @@ struct ext4_xattr_entry {
+ 		EXT4_I(inode)->i_extra_isize))
+ #define IFIRST(hdr) ((struct ext4_xattr_entry *)((hdr)+1))
+ 
++#define i_xattr_inode_parent i_mtime.tv_sec
++
++/*
++ * The minimum size of EA value when you start storing it in an external inode
++ * should be half the blocksize.
++ */
++#define EXT4_XATTR_MIN_LARGE_EA_SIZE(b)	((b) >> 1)
++#define EXT4_XATTR_MAX_LARGE_EA_SIZE	(1024 * 1024)
++
+ # ifdef CONFIG_EXT4_FS_XATTR
+ 
+ extern struct xattr_handler ext4_xattr_user_handler;
+Index: linux-2.6.27/fs/ext4/ext4.h
+===================================================================
+--- linux-2.6.27.orig/fs/ext4/ext4.h
++++ linux-2.6.27/fs/ext4/ext4.h
+@@ -242,9 +242,10 @@ struct flex_groups {
+ #define EXT4_HUGE_FILE_FL               0x00040000 /* Set to each huge file */
+ #define EXT4_EXTENTS_FL			0x00080000 /* Inode uses extents */
+ #define EXT4_EXT_MIGRATE		0x00100000 /* Inode is migrating */
++#define EXT4_EA_INODE_FL		0x00200000 /* Inode used for large EA */
+ #define EXT4_RESERVED_FL		0x80000000 /* reserved for ext4 lib */
+ 
+-#define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
++#define EXT4_FL_USER_VISIBLE		0x002BDFFF /* User visible flags */
+ #define EXT4_FL_USER_MODIFIABLE		0x000B80FF /* User modifiable flags */
+ 
+ /*
+@@ -768,6 +769,7 @@ static inline int ext4_valid_inum(struct
+ #define EXT4_FEATURE_INCOMPAT_64BIT		0x0080
+ #define EXT4_FEATURE_INCOMPAT_MMP               0x0100
+ #define EXT4_FEATURE_INCOMPAT_FLEX_BG		0x0200
++#define EXT4_FEATURE_INCOMPAT_EA_INODE		0x0400
+ 
+ #define EXT4_FEATURE_COMPAT_SUPP	EXT2_FEATURE_COMPAT_EXT_ATTR
+ #define EXT4_FEATURE_INCOMPAT_SUPP	(EXT4_FEATURE_INCOMPAT_FILETYPE| \
+@@ -775,7 +777,8 @@ static inline int ext4_valid_inum(struct
+ 					 EXT4_FEATURE_INCOMPAT_META_BG| \
+ 					 EXT4_FEATURE_INCOMPAT_EXTENTS| \
+ 					 EXT4_FEATURE_INCOMPAT_64BIT| \
+-					 EXT4_FEATURE_INCOMPAT_FLEX_BG)
++					 EXT4_FEATURE_INCOMPAT_FLEX_BG| \
++					 EXT4_FEATURE_INCOMPAT_EA_INODE)
+ #define EXT4_FEATURE_RO_COMPAT_SUPP	(EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER| \
+ 					 EXT4_FEATURE_RO_COMPAT_LARGE_FILE| \
+ 					 EXT4_FEATURE_RO_COMPAT_GDT_CSUM| \
 
---Boundary_(ID_NiA00lpwhxkyOJKfl6ehcw)--
+--Boundary_(ID_HVHeWB1RxV8wxUSzEIpXrQ)--
