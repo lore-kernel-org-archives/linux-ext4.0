@@ -1,68 +1,46 @@
-From: Li Zefan <lizf@cn.fujitsu.com>
-Subject: bugs of Online Defragmentation
-Date: Tue, 18 Nov 2008 09:38:28 +0800
-Message-ID: <49221C94.3010500@cn.fujitsu.com>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: Call traces on console from a test machine
+Date: Mon, 17 Nov 2008 21:24:18 -0500
+Message-ID: <20081118022418.GA29975@mit.edu>
+References: <491CC6E3.7070808@hq.newdream.net> <491CDF90.8070802@hq.newdream.net> <20081114170930.GI25117@mit.edu> <4921BEE2.1090700@hq.newdream.net> <20081117203001.GH14523@mit.edu> <4921E004.7040000@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Kelly Kane <kelly@hq.newdream.net>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:59128 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752705AbYKRBiu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Nov 2008 20:38:50 -0500
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:54373 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751716AbYKRC0Z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 17 Nov 2008 21:26:25 -0500
+Content-Disposition: inline
+In-Reply-To: <4921E004.7040000@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I tested Online Defrag, and seems this feature is still
-very unstable.
+On Mon, Nov 17, 2008 at 03:20:04PM -0600, Eric Sandeen wrote:
+> 
+> Ted, what do you think about putting make-sparse.c into e2fsprogs?
+> Might be handy for this sort of thing, rather than searching the
+> innertubes for it each time I need it ;)
 
-1)
+I've checked it into the e2fsprogs git tree, in the contrib directory.
 
-# mkfs.ext4 -m 0 -b 1024 -O ^flex_bg /dev/sdb7
-# mount -t ext4 -o nodelalloc /dev/sdb7 mnt_point
-# (age /dev/sdb7 using ffsb)
-...
-# df
-Filesystem           1K-blocks      Used Available Use% Mounted on
-...
-/dev/sdb7              5159829   5118866     40963 100% ...
+Long-term, what I'm thinking we need to do is to steal qemu's block
+device driver files (using a scheme similar to what I did with tdb),
+and create a single an I/O manager function which supports qemu qcow2
+volumes.  This could be used as a much more efficient way of storing
+raw e2image files (since it doesn't require sparse file support as
+well as supporting in-line zlib compression), and also as a much more
+efficient way of supporting "undo" functionality (by storing the
+original version of the file as a cow snapshot).  If we were to
+implement it as an I/O manager, then we could even run fsck on virtual
+filesystems used by KVM directly from the host OS (since KVM uses qemu
+and therefore the qemu block device drivers as well).
 
-sdb7 has 40M free space left. And I ran e4defrag on a directory full
-of small files (most < 1M), but all failed, and dmesg didn't tell
-me the reasion.
+If some Quarumnet^H^H^H^H^H^H^H^H^H Red Hat engineers has some free
+time, that would be a great project for someone looking to get
+involved in a filesystme project.  Otherwise, it's on my TODO queue,
+and I'll get to it one of these days....
 
-# e4defrag mnt_point/data0/
-...
-[62/1562]/../mnt_point/data0/fillfile1420:        0%    [ NG ]
-[63/1562]/../mnt_point/data0/fillfile188:         0%    [ NG ]
-...
-        Success:                        [ 0/1562 ]
-        Failure:                        [ 1562/1562 ]
-
-# df
-Filesystem           1K-blocks      Used Available Use% Mounted on
-...
-/dev/sdb7              5159829   5159807        22 100% ...
-
-Though all failed, but now the 40M free space was occupied, why?
-
-If delalloc is turned on, things are somewhat different, most files can
-be defraged, and dmesg told me not enough free blocks for the failure
-cases.
-
-2)
-
-I sometimes got panic after defrag a directory:
-
-Dirty block accounting went wrong -8977
-Dirty block accounting went wrong -9279
-Dirty block accounting went wrong -9718
-Dirty block accounting went wrong -10258
-...
-...
-Dirty block accounting went wrong -157352
-Dirty block accounting went wrong -157700
-EXT4-fs error(device sdb7): ext_mb_free_metadata: Double free of blocks 985 (984 2)
-
+						- Ted
