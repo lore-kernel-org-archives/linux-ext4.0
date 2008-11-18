@@ -1,46 +1,57 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Call traces on console from a test machine
-Date: Mon, 17 Nov 2008 21:24:18 -0500
-Message-ID: <20081118022418.GA29975@mit.edu>
-References: <491CC6E3.7070808@hq.newdream.net> <491CDF90.8070802@hq.newdream.net> <20081114170930.GI25117@mit.edu> <4921BEE2.1090700@hq.newdream.net> <20081117203001.GH14523@mit.edu> <4921E004.7040000@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Errors with 1024 block size
+Date: Tue, 18 Nov 2008 16:54:20 +0530
+Message-ID: <20081118112420.GB9345@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Kelly Kane <kelly@hq.newdream.net>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:54373 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751716AbYKRC0Z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 17 Nov 2008 21:26:25 -0500
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:50582 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751250AbYKRLYj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 18 Nov 2008 06:24:39 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id mAIBNnqW016554
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Nov 2008 22:23:49 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mAIBOoUd4677816
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Nov 2008 22:24:50 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mAIBOaDD024830
+	for <linux-ext4@vger.kernel.org>; Tue, 18 Nov 2008 22:24:37 +1100
 Content-Disposition: inline
-In-Reply-To: <4921E004.7040000@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Nov 17, 2008 at 03:20:04PM -0600, Eric Sandeen wrote:
-> 
-> Ted, what do you think about putting make-sparse.c into e2fsprogs?
-> Might be handy for this sort of thing, rather than searching the
-> innertubes for it each time I need it ;)
+Hi,
 
-I've checked it into the e2fsprogs git tree, in the contrib directory.
+With block size 1024 on x86 i am getting different errors listed below
+I can't reproduce them always.
 
-Long-term, what I'm thinking we need to do is to steal qemu's block
-device driver files (using a scheme similar to what I did with tdb),
-and create a single an I/O manager function which supports qemu qcow2
-volumes.  This could be used as a much more efficient way of storing
-raw e2image files (since it doesn't require sparse file support as
-well as supporting in-line zlib compression), and also as a much more
-efficient way of supporting "undo" functionality (by storing the
-original version of the file as a cow snapshot).  If we were to
-implement it as an I/O manager, then we could even run fsck on virtual
-filesystems used by KVM directly from the host OS (since KVM uses qemu
-and therefore the qemu block device drivers as well).
 
-If some Quarumnet^H^H^H^H^H^H^H^H^H Red Hat engineers has some free
-time, that would be a great project for someone looking to get
-involved in a filesystme project.  Otherwise, it's on my TODO queue,
-and I'll get to it one of these days....
 
-						- Ted
+[root@llm19 tmp]# ls -al /mnt/tmp/f/p369/d3/d6/d39/db2/dee/d10f/d3f/l71
+ls: /mnt/tmp/f/p369/d3/d6/d39/db2/dee/d10f/d3f/l71: Stale NFS file handle
+[root@llm19 tmp]# ls -al /mnt/tmp/f/p369/d3/d6/d39/db2/dee/d10f/d3f/
+total 411
+drwxrwxrwx 3 689933 root    1024 Nov 18 05:59 .
+drwxrwxrwx 3   8391 root    1024 Nov 18 05:59 ..
+drwxrwxrwx 2 root   root    1024 Nov 18 05:33 d83
+-rw-rw-rw- 1 root   root       0 Nov 18 05:06 fb4
+-rw-rw-rw- 1 root   root 3350138 Nov 18 05:33 fb9
+?--------- ? ?      ?          ?            ? l71
+lrwxrwxrwx 1 root   root     509 Nov 18 05:23 ld9 -> xxxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxxx/xxxxxxxx
+[root@llm19 tmp]# 
+
+dmesg gives:
+
+EXT4-fs error (device sdb1): ext4_free_inode: bit already cleared for inode 168449
+
+
+Some other message i got before. But i didn't capture the info fully 
+
+a) "Deleting nonexistent file ..." warning in ext4_unlink
+
+b) "Empty directory has too many links..." in ext4_rmdir
+
