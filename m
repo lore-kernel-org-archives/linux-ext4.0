@@ -1,19 +1,23 @@
 From: akpm@linux-foundation.org
-Subject: + fs-introduce-bgl_lock_ptr.patch added to -mm tree
-Date: Tue, 18 Nov 2008 21:28:00 -0800
-Message-ID: <200811190528.mAJ5S0v3015636@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
+Subject: + ext2-allocate-s_blockgroup_lock-separately.patch added to -mm tree
+Date: Tue, 18 Nov 2008 21:28:59 -0800
+Message-ID: <200811190528.mAJ5SxKR016141@imap1.linux-foundation.org>
 Cc: penberg@cs.helsinki.fi, adilger@sun.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36569 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750747AbYKSF3G (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Nov 2008 00:29:06 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     fs: introduce bgl_lock_ptr()
+     ext2: allocate ->s_blockgroup_lock separately
 has been added to the -mm tree.  Its filename is
-     fs-introduce-bgl_lock_ptr.patch
+     ext2-allocate-s_blockgroup_lock-separately.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -29,14 +33,18 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: fs: introduce bgl_lock_ptr()
-From: Pekka Enberg <penberg@cs.helsinki.fi>
+Subject: ext2: allocate ->s_blockgroup_lock separately
+From: Pekka J Enberg <penberg@cs.helsinki.fi>
 
-As suggested by Andreas Dilger, introduce a bgl_lock_ptr() helper in
-<linux/blockgroup_lock.h> and add separate sb_bgl_lock() helpers to filesystem
-specific header files to break the hidden dependency to struct
-ext[234]_sb_info. Also, while at it, convert the macros to static inlines to
-try make up for all the times I broke Andrew Morton's tree.
+As spotted by kmemtrace, struct ext2_sb_info is 17024 bytes on 64-bit
+which makes it a very bad fit for SLAB allocators.  The culprit of the
+wasted memory is ->s_blockgroup_lock which can be as big as 16 KB when
+NR_CPUS >= 32.
+
+To fix that, allocate ->s_blockgroup_lock, which fits nicely in a order 2
+page in the worst case, separately.  This shinks down struct ext2_sb_info
+enough to fit a 1 KB slab cache so now we allocate 16 KB + 1 KB instead of
+32 KB saving 15 KB of memory.
 
 Cc: Andreas Dilger <adilger@sun.com>
 Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
@@ -44,70 +52,65 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/ext4_sb.h               |    6 ++++++
- include/linux/blockgroup_lock.h |    7 +++++--
- include/linux/ext2_fs_sb.h      |    6 ++++++
- include/linux/ext3_fs_sb.h      |    6 ++++++
- 4 files changed, 23 insertions(+), 2 deletions(-)
+ fs/ext2/super.c            |   10 +++++++++-
+ include/linux/ext2_fs_sb.h |    4 ++--
+ 2 files changed, 11 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext4/ext4_sb.h~fs-introduce-bgl_lock_ptr fs/ext4/ext4_sb.h
---- a/fs/ext4/ext4_sb.h~fs-introduce-bgl_lock_ptr
-+++ a/fs/ext4/ext4_sb.h
-@@ -146,4 +146,10 @@ struct ext4_sb_info {
- 	struct flex_groups *s_flex_groups;
- };
+diff -puN fs/ext2/super.c~ext2-allocate-s_blockgroup_lock-separately fs/ext2/super.c
+--- a/fs/ext2/super.c~ext2-allocate-s_blockgroup_lock-separately
++++ a/fs/ext2/super.c
+@@ -132,6 +132,7 @@ static void ext2_put_super (struct super
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	brelse (sbi->s_sbh);
+ 	sb->s_fs_info = NULL;
++	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
  
-+static inline spinlock_t *
-+sb_bgl_lock(struct ext4_sb_info *sbi, unsigned int block_group)
-+{
-+	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+}
+ 	return;
+@@ -765,6 +766,13 @@ static int ext2_fill_super(struct super_
+ 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+ 	if (!sbi)
+ 		return -ENOMEM;
 +
- #endif	/* _EXT4_SB */
-diff -puN include/linux/blockgroup_lock.h~fs-introduce-bgl_lock_ptr include/linux/blockgroup_lock.h
---- a/include/linux/blockgroup_lock.h~fs-introduce-bgl_lock_ptr
-+++ a/include/linux/blockgroup_lock.h
-@@ -53,7 +53,10 @@ static inline void bgl_lock_init(struct 
-  * The accessor is a macro so we can embed a blockgroup_lock into different
-  * superblock types
-  */
--#define sb_bgl_lock(sb, block_group) \
--	(&(sb)->s_blockgroup_lock.locks[(block_group) & (NR_BG_LOCKS-1)].lock)
-+static inline spinlock_t *
-+bgl_lock_ptr(struct blockgroup_lock *bgl, unsigned int block_group)
-+{
-+	return &bgl->locks[(block_group) & (NR_BG_LOCKS-1)].lock;
-+}
++	sbi->s_blockgroup_lock =
++		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
++	if (!sbi->s_blockgroup_lock) {
++		kfree(sbi);
++		return -ENOMEM;
++	}
+ 	sb->s_fs_info = sbi;
+ 	sbi->s_sb_block = sb_block;
  
- #endif
-diff -puN include/linux/ext2_fs_sb.h~fs-introduce-bgl_lock_ptr include/linux/ext2_fs_sb.h
---- a/include/linux/ext2_fs_sb.h~fs-introduce-bgl_lock_ptr
+@@ -992,7 +1000,7 @@ static int ext2_fill_super(struct super_
+ 		printk ("EXT2-fs: not enough memory\n");
+ 		goto failed_mount;
+ 	}
+-	bgl_lock_init(&sbi->s_blockgroup_lock);
++	bgl_lock_init(sbi->s_blockgroup_lock);
+ 	sbi->s_debts = kcalloc(sbi->s_groups_count, sizeof(*sbi->s_debts), GFP_KERNEL);
+ 	if (!sbi->s_debts) {
+ 		printk ("EXT2-fs: not enough memory\n");
+diff -puN include/linux/ext2_fs_sb.h~ext2-allocate-s_blockgroup_lock-separately include/linux/ext2_fs_sb.h
+--- a/include/linux/ext2_fs_sb.h~ext2-allocate-s_blockgroup_lock-separately
 +++ a/include/linux/ext2_fs_sb.h
-@@ -108,4 +108,10 @@ struct ext2_sb_info {
- 	struct ext2_reserve_window_node s_rsv_window_head;
- };
+@@ -101,7 +101,7 @@ struct ext2_sb_info {
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+-	struct blockgroup_lock s_blockgroup_lock;
++	struct blockgroup_lock *s_blockgroup_lock;
+ 	/* root of the per fs reservation window tree */
+ 	spinlock_t s_rsv_window_lock;
+ 	struct rb_root s_rsv_window_root;
+@@ -111,7 +111,7 @@ struct ext2_sb_info {
+ static inline spinlock_t *
+ sb_bgl_lock(struct ext2_sb_info *sbi, unsigned int block_group)
+ {
+-	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
++	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
+ }
  
-+static inline spinlock_t *
-+sb_bgl_lock(struct ext2_sb_info *sbi, unsigned int block_group)
-+{
-+	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+}
-+
  #endif	/* _LINUX_EXT2_FS_SB */
-diff -puN include/linux/ext3_fs_sb.h~fs-introduce-bgl_lock_ptr include/linux/ext3_fs_sb.h
---- a/include/linux/ext3_fs_sb.h~fs-introduce-bgl_lock_ptr
-+++ a/include/linux/ext3_fs_sb.h
-@@ -83,4 +83,10 @@ struct ext3_sb_info {
- #endif
- };
- 
-+static inline spinlock_t *
-+sb_bgl_lock(struct ext3_sb_info *sbi, unsigned int block_group)
-+{
-+	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+}
-+
- #endif	/* _LINUX_EXT3_FS_SB */
 _
 
 Patches currently in -mm which might be from penberg@cs.helsinki.fi are
