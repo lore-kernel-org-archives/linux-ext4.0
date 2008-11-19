@@ -1,110 +1,88 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: ext4 unlink performance
-Date: Wed, 19 Nov 2008 12:10:01 -0600
-Message-ID: <20081119181000.GD3186@webber.adilger.int>
-References: <20081113185712.GB11204@untroubled.org>
- <20081113191000.GA11516@untroubled.org> <20081113204240.GF21652@mit.edu>
- <20081114041121.GB11746@untroubled.org> <20081114145914.GE25117@mit.edu>
- <20081115204423.GA4671@untroubled.org> <20081116005610.GI22948@mit.edu>
- <20081117004330.GC3436@webber.adilger.int> <20081119024021.GA10185@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Conversion to ext4 renders a filesystem unbootable
+Date: Wed, 19 Nov 2008 12:12:18 -0600
+Message-ID: <49245702.1070406@redhat.com>
+References: <491ec8f2.h+/NctvgrQETYou26OH9qFQ1@Brain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Bruce Jerrick <bmj001@ippimail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:63177 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752543AbYKSSKi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Nov 2008 13:10:38 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAJIAZAQ002429
-	for <linux-ext4@vger.kernel.org>; Wed, 19 Nov 2008 10:10:37 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KAL00E01CHWYB00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 19 Nov 2008 10:10:32 -0800 (PST)
-In-reply-to: <20081119024021.GA10185@mit.edu>
-Content-disposition: inline
+Received: from mx2.redhat.com ([66.187.237.31]:39779 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752906AbYKSSMY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 19 Nov 2008 13:12:24 -0500
+In-Reply-To: <491ec8f2.h+/NctvgrQETYou26OH9qFQ1@Brain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Nov 18, 2008  21:40 -0500, Theodore Ts'o wrote:
-> Looking at the blkparse profiles, doing an rm -rf given the ext4
-> produced layout required 5130 megabytes.  The exact same directory
-> hierarchy, as laied out by ext3, required only 1294 megabytes.
-> Looking at a few selected inode allocation bitmaps, we see that ext4
-> will often need to write (and thus journal) the same block allocation
-> bitmap block 4 or 5 times:
+Bruce Jerrick wrote:
+> Despite ext4[dev] support in Fedora 9 and 10, conversion of an ext3 filesystem
+> to ext4 will render it permanently unbootable (read on; there's a "yes, I know"
+> down there).
 > 
-> 254,7    0      352     0.166492349  9376  C   R 8216 + 8 [0]
-> 254,7    0   348788   212.885545554     0  C   W 8216 + 8 [0]
-> 254,7    0   461448   309.533613765     0  C   W 8216 + 8 [0]
-> 254,7    0   827687   558.781690434     0  C   W 8216 + 8 [0]
-> 254,7    0  1210492   760.738217014     0  C   W 8216 + 8 [0]
+> I'm not looking for a rescue (this was all done to an expendable system), and
+> it appears to be a known "issue", but additional warnings in 'man tune2fs'
+> (or even in the executable) seem to be warranted.
 > 
-> However, the same block allocation block bitmap is only written once
-> or twice.
+> The scenario was:
 > 
-> 254,8    0     3119     9.535331283     0  C   R 524288 + 8 [0]
-> 254,8    0    24504    45.253431031     0  C   W 524288 + 8 [0]
-> 254,8    0    85476   144.455205555 23903  C   W 524288 + 8 [0]
+> On a multi-boot machine with my main system being Fedora 8 (with
+> kernel-2.6.26.6-49.fc8 and e2fsprogs-1.41.3-2.fc9, so it has ext4dev support),
+> I "converted" an ext3 filesystem by setting 'test_fs' with tune2fs, then
+> mounting it (successfully) under the F8 system as type ext4dev.
+> 
+> The converted filesystem contained an F10 installation all on one filesystem,
+> i.e., no separate /boot .  (I had overlooked the fact that the anaconda
+> installer doesn't support ext4 on a bootable partition; the goal was just to
+> make sure I can access F10 ext4 filesystems from the F8 system.)  Later I
+> discovered that the F10 system wouldn't boot, with a message about
+> "unsupported features".
 
-Looking at the seekwatcher graphs, it is clear that the ext4 layout
-is doing fewer seeks, and packing the data into a smaller part of
-the filesystem, which is counter-intuitive to the performance result.
+Yep, afraid grub doesn't support it yet.  See below (or Peng's email)
 
-Even though the IO bandwidth is ostensibly higher (usually a good thing
-on metadata benchmarks) that isn't any good if we are doing more writes.
+> Presumably this was because it now uses extents instead of indirect blocks
+> (after it was ext4, I modified a file on it, so I assume it started
+> using extents).  The really bad news is that this conversion seems to
+> be irreversible.  So there should probably be warnings in 'man tune2fs'
+> similar to those in 'man mkfs.ext4' (and also a warning about rendering a
+> partition permanently unbootable).
 
+Warnings might be in order, although tune2fs warning that some other
+applications may not yet grok ext4 seems above & beyond the call of
+duty; Fedora release notes might have been a good place for it ...
 
-It isn't immediately clear that _just_ the case of rewriting the same
-block multiple times is a culprit in itself, because in the ext3 case
-there would be more block bitmaps affeted that would _each_ be written
-out 1 or 2 times, while the closer packing of ext4 allocations results
-in fewer total bimaps being used.
+It's sorta-reversible; see below.
 
-One would think in the case of more sharing of a block bitmap would
-result in a performance _increase_ because there is more chance that
-it will be re-used within the same transaction.
+> BTW, there's a minor inconsistency in F10 'man mke2fs' (and its hardlink
+> clones).  In the OPTIONS section, "-O" has "extent" listed, but the example
+> after "-t fs-type" uses "-O extents" (granted, either form seems to be
+> accepted).
+> 
+> Similarly, 'tune2fs -l' reports "extent" (in Filesystem features), but
+> /etc/mke2fs.conf uses "extents" (as a features value).
 
-> ext4:
->  Reads Completed:    59947,   239788KiB
->  Writes Completed:     1282K,     5130MiB
->
-> ext3:
->  Reads Completed:    64856,   259424KiB
->  Writes Completed:   323582,     1294MiB
+Yeah, I've noticed those too.
 
-The reads look the about same, writes are 4x higher.  What would be
-useful to examine is the inode number grouping of files in the same
-subdirectory, along with the blocks they are allocating.  It seems
-like the inodes are being packed more closely together, but the
-blocks (and hence block bitmap writes) are spread further apart.
+> -- Bruce Jerrick
+> 
+> PS.  If feasible, a two-way ext3 <-> ext4 converter would be nice.
 
-That may be a side-effect of the mballoc per-CPU cache again, where
-files being written in the same subdirectory are spread apart because
-of the write thread being rescheduled to different cores.
+You can do it manually by mounting w/o extents (-o noextents) and then
+for each extent-based file, cp $FILE $FILE.bak; mv $FILE.bak $FILE, and
+when that is all done, remove the extents flag.
 
-I discussed this in the past with Eric, in the case of a file doing
-small writes+fsync and the blocks being fragmented needlessly between
-different parts of the filesystem.  The proposed solution in that case
-(that Aneesh could probably fix quickly) is to attach an inode to the
-per-CPU preallocation group on the first write (for small files).  If it
-doesn't get any more writes that is fine, but if it does then the same
-PA would be used for further allocations regardless of what CPU is doing
-the IO.
+> PPS.  Are bootable ext4 partitions in the cards?  (I assume yes.)
 
-Another solution for that case, and (as I speculate) this case, is to
-attach the PA to the parent directory and have all small files in the
-same directory use that PA.  This would ensure that blocks allocated to
-small inodes in the same directory are kept together.  The drawback is
-that this could hurt performance for multiple threads writing to the
-same directory.
+Yep, as Peng Tao said, there is a patch, and I've sent it to our grub
+maintainer; filing a fedora bug/rfe might kick that along a bit :)
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+> PPPS.  Why am I still using F8?  <flame> Because gnome-session/gnome-terminal
+>  save/restore is (repairably) broken in F9 and gone entirely in F10. </flame>
+
+Filed a bug?
+
+-Eric
+
 
