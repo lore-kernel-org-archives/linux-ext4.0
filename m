@@ -1,88 +1,47 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Conversion to ext4 renders a filesystem unbootable
-Date: Wed, 19 Nov 2008 12:12:18 -0600
-Message-ID: <49245702.1070406@redhat.com>
-References: <491ec8f2.h+/NctvgrQETYou26OH9qFQ1@Brain>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext4 unlink performance
+Date: Wed, 19 Nov 2008 16:18:40 -0500
+Message-ID: <20081119211840.GA8021@mit.edu>
+References: <20081113185712.GB11204@untroubled.org> <20081113191000.GA11516@untroubled.org> <20081113204240.GF21652@mit.edu> <20081114041121.GB11746@untroubled.org> <20081114145914.GE25117@mit.edu> <20081115204423.GA4671@untroubled.org> <20081116005610.GI22948@mit.edu> <20081117004330.GC3436@webber.adilger.int> <20081119024021.GA10185@mit.edu> <20081119181000.GD3186@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Bruce Jerrick <bmj001@ippimail.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39779 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752906AbYKSSMY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Nov 2008 13:12:24 -0500
-In-Reply-To: <491ec8f2.h+/NctvgrQETYou26OH9qFQ1@Brain>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:48434 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752743AbYKSVS5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Nov 2008 16:18:57 -0500
+Content-Disposition: inline
+In-Reply-To: <20081119181000.GD3186@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Bruce Jerrick wrote:
-> Despite ext4[dev] support in Fedora 9 and 10, conversion of an ext3 filesystem
-> to ext4 will render it permanently unbootable (read on; there's a "yes, I know"
-> down there).
+On Wed, Nov 19, 2008 at 12:10:01PM -0600, Andreas Dilger wrote:
 > 
-> I'm not looking for a rescue (this was all done to an expendable system), and
-> it appears to be a known "issue", but additional warnings in 'man tune2fs'
-> (or even in the executable) seem to be warranted.
+> That may be a side-effect of the mballoc per-CPU cache again, where
+> files being written in the same subdirectory are spread apart because
+> of the write thread being rescheduled to different cores.
 > 
-> The scenario was:
-> 
-> On a multi-boot machine with my main system being Fedora 8 (with
-> kernel-2.6.26.6-49.fc8 and e2fsprogs-1.41.3-2.fc9, so it has ext4dev support),
-> I "converted" an ext3 filesystem by setting 'test_fs' with tune2fs, then
-> mounting it (successfully) under the F8 system as type ext4dev.
-> 
-> The converted filesystem contained an F10 installation all on one filesystem,
-> i.e., no separate /boot .  (I had overlooked the fact that the anaconda
-> installer doesn't support ext4 on a bootable partition; the goal was just to
-> make sure I can access F10 ext4 filesystems from the F8 system.)  Later I
-> discovered that the F10 system wouldn't boot, with a message about
-> "unsupported features".
 
-Yep, afraid grub doesn't support it yet.  See below (or Peng's email)
+It would be good for us to get confirmation one way or another about
+this theory.  Bruce, if you have multiple CPU's (or cores on your
+system --- i.e., cat /proc/cpuinfo reports multiple processors), can
+you try unpacking your tarball on a test ext4 filesystem using
+something like:
 
-> Presumably this was because it now uses extents instead of indirect blocks
-> (after it was ext4, I modified a file on it, so I assume it started
-> using extents).  The really bad news is that this conversion seems to
-> be irreversible.  So there should probably be warnings in 'man tune2fs'
-> similar to those in 'man mkfs.ext4' (and also a warning about rendering a
-> partition permanently unbootable).
+    taskset 1 tar xjf /path/to/my/tarball.tar.bz2
 
-Warnings might be in order, although tune2fs warning that some other
-applications may not yet grok ext4 seems above & beyond the call of
-duty; Fedora release notes might have been a good place for it ...
+The "taskset 1" will bind the tar process to only run on a single
+processors.  If that significantly changes the time to do run rm -rf,
+can you save a raw e2image using that workload?  That would be very
+useful indeed.
 
-It's sorta-reversible; see below.
+Alternatively, if you don't have the taskset command handy, you can
+also add maxcpus=1 to the kernel boot command-line, which will force
+the system to only use one cpu.  Using taskset is much more
+convenient, though.
 
-> BTW, there's a minor inconsistency in F10 'man mke2fs' (and its hardlink
-> clones).  In the OPTIONS section, "-O" has "extent" listed, but the example
-> after "-t fs-type" uses "-O extents" (granted, either form seems to be
-> accepted).
-> 
-> Similarly, 'tune2fs -l' reports "extent" (in Filesystem features), but
-> /etc/mke2fs.conf uses "extents" (as a features value).
+Thanks!!
 
-Yeah, I've noticed those too.
-
-> -- Bruce Jerrick
-> 
-> PS.  If feasible, a two-way ext3 <-> ext4 converter would be nice.
-
-You can do it manually by mounting w/o extents (-o noextents) and then
-for each extent-based file, cp $FILE $FILE.bak; mv $FILE.bak $FILE, and
-when that is all done, remove the extents flag.
-
-> PPS.  Are bootable ext4 partitions in the cards?  (I assume yes.)
-
-Yep, as Peng Tao said, there is a patch, and I've sent it to our grub
-maintainer; filing a fedora bug/rfe might kick that along a bit :)
-
-> PPPS.  Why am I still using F8?  <flame> Because gnome-session/gnome-terminal
->  save/restore is (repairably) broken in F9 and gone entirely in F10. </flame>
-
-Filed a bug?
-
--Eric
-
-
+						- Ted
