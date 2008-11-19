@@ -1,496 +1,110 @@
-From: Peng Tao <bergwolf@gmail.com>
-Subject: Re: Conversion to ext4 renders a filesystem unbootable
-Date: Wed, 19 Nov 2008 15:21:10 +0800
-Message-ID: <4923BE66.5060107@gmail.com>
-References: <491ec8f2.h+/NctvgrQETYou26OH9qFQ1@Brain>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: ext4 unlink performance
+Date: Wed, 19 Nov 2008 12:10:01 -0600
+Message-ID: <20081119181000.GD3186@webber.adilger.int>
+References: <20081113185712.GB11204@untroubled.org>
+ <20081113191000.GA11516@untroubled.org> <20081113204240.GF21652@mit.edu>
+ <20081114041121.GB11746@untroubled.org> <20081114145914.GE25117@mit.edu>
+ <20081115204423.GA4671@untroubled.org> <20081116005610.GI22948@mit.edu>
+ <20081117004330.GC3436@webber.adilger.int> <20081119024021.GA10185@mit.edu>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enigB9F4CD1FDCCD58D4483D846E"
-Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Bruce Jerrick <bmj001@ippimail.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.186]:20224 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751408AbYKSHVk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Nov 2008 02:21:40 -0500
-Received: by ti-out-0910.google.com with SMTP id b6so2115726tic.23
-        for <linux-ext4@vger.kernel.org>; Tue, 18 Nov 2008 23:21:38 -0800 (PST)
-In-Reply-To: <491ec8f2.h+/NctvgrQETYou26OH9qFQ1@Brain>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:63177 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752543AbYKSSKi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Nov 2008 13:10:38 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAJIAZAQ002429
+	for <linux-ext4@vger.kernel.org>; Wed, 19 Nov 2008 10:10:37 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KAL00E01CHWYB00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 19 Nov 2008 10:10:32 -0800 (PST)
+In-reply-to: <20081119024021.GA10185@mit.edu>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enigB9F4CD1FDCCD58D4483D846E
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+On Nov 18, 2008  21:40 -0500, Theodore Ts'o wrote:
+> Looking at the blkparse profiles, doing an rm -rf given the ext4
+> produced layout required 5130 megabytes.  The exact same directory
+> hierarchy, as laied out by ext3, required only 1294 megabytes.
+> Looking at a few selected inode allocation bitmaps, we see that ext4
+> will often need to write (and thus journal) the same block allocation
+> bitmap block 4 or 5 times:
+> 
+> 254,7    0      352     0.166492349  9376  C   R 8216 + 8 [0]
+> 254,7    0   348788   212.885545554     0  C   W 8216 + 8 [0]
+> 254,7    0   461448   309.533613765     0  C   W 8216 + 8 [0]
+> 254,7    0   827687   558.781690434     0  C   W 8216 + 8 [0]
+> 254,7    0  1210492   760.738217014     0  C   W 8216 + 8 [0]
+> 
+> However, the same block allocation block bitmap is only written once
+> or twice.
+> 
+> 254,8    0     3119     9.535331283     0  C   R 524288 + 8 [0]
+> 254,8    0    24504    45.253431031     0  C   W 524288 + 8 [0]
+> 254,8    0    85476   144.455205555 23903  C   W 524288 + 8 [0]
 
-Hi, Bruce
+Looking at the seekwatcher graphs, it is clear that the ext4 layout
+is doing fewer seeks, and packing the data into a smaller part of
+the filesystem, which is counter-intuitive to the performance result.
 
-I guess that Fedora 9 and 10 don't support booting from ext4 partitions y=
-et.
-The following patch is from the Google Summer of Code project that I was
-doing this summer. It enables grub legacy to boot ext4 partitions. The
-patch is originally for openSUSE(my mentoring organization) grub legacy.
-I made some small changes so that it applies to fedora grub.
-
-Besides, to use ext4 as your root partition, you also need to include
-ext4dev module in your initrd or ramfs.
-
-diff --git a/stage2/fsys_ext2fs.c b/stage2/fsys_ext2fs.c
-index 1c07035..c0b1eae 100644
---- a/stage2/fsys_ext2fs.c
-+++ b/stage2/fsys_ext2fs.c
-@@ -119,7 +119,7 @@ struct ext2_super_block
-     __u32 s_hash_seed[4];	/* HTREE hash seed */
-     __u8  s_def_hash_version;	/* Default hash version to use */
-     __u8  s_jnl_backup_type; 	/* Default type of journal backup */
--    __u16 s_reserved_word_pad;
-+    __u16 s_desc_size;    /* size of group descriptor */
-     __u32 s_default_mount_opts;
-     __u32 s_first_meta_bg;	/* First metablock group */
-     __u32 s_mkfs_time;		/* When the filesystem was created */
-@@ -135,8 +135,18 @@ struct ext2_group_desc
-     __u16 bg_free_blocks_count;	/* Free blocks count */
-     __u16 bg_free_inodes_count;	/* Free inodes count */
-     __u16 bg_used_dirs_count;	/* Directories count */
--    __u16 bg_pad;
--    __u32 bg_reserved[3];
-+    __u16 bg_flags;            /* EXT4_BG_flags (INODE_UNINIT, etc) */
-+    __u32 bg_reserved[2];              /* Likely block/inode bitmap
-checksum */
-+    __u16 bg_itable_unused;    /* Unused inodes count */
-+    __u16 bg_checksum;         /* crc16(sb_uuid+group+desc) */
-+    __u32 bg_block_bitmap_hi;  /* Blocks bitmap block MSB */
-+    __u32 bg_inode_bitmap_hi;  /* Inodes bitmap block MSB */
-+    __u32 bg_inode_table_hi;   /* Inodes table block MSB */
-+    __u16 bg_free_blocks_count_hi;/* Free blocks count MSB */
-+    __u16 bg_free_inodes_count_hi;/* Free inodes count MSB */
-+    __u16 bg_used_dirs_count_hi;       /* Directories count MSB */
-+    __u16 bg_itable_unused_hi; /* Unused inodes count MSB */
-+    __u32 bg_reserved2[3];
-   };
-
- struct ext2_inode
-@@ -174,7 +184,7 @@ struct ext2_inode
-     __u32 i_block[EXT2_N_BLOCKS];	/* 40: Pointers to blocks */
-     __u32 i_version;		/* File version (for NFS) */
-     __u32 i_file_acl;		/* File ACL */
--    __u32 i_dir_acl;		/* Directory ACL */
-+    __u32 i_size_high;
-     __u32 i_faddr;		/* Fragment address */
-     union
-       {
-@@ -206,8 +216,29 @@ struct ext2_inode
- 	masix2;
-       }
-     osd2;			/* OS dependent 2 */
-+       __u16  i_extra_isize;
-+       __u16  i_pad1;
-+       __u32  i_ctime_extra;  /* extra Change time      (nsec << 2 |
-epoch) */
-+       __u32  i_mtime_extra;  /* extra Modification time(nsec << 2 |
-epoch) */
-+       __u32  i_atime_extra;  /* extra Access time      (nsec << 2 |
-epoch) */
-+       __u32  i_crtime;       /* File Creation time */
-+       __u32  i_crtime_extra; /* extra FileCreationtime (nsec << 2 |
-epoch) */
-+       __u32  i_version_hi;    /* high 32 bits for 64-bit version */
-   };
-
-+#define EXT4_FEATURE_INCOMPAT_EXTENTS          0x0040 /* extents support=
- */
-+#define EXT4_FEATURE_INCOMPAT_64BIT                    0x0080 /* grub
-not supported*/
-+#define EXT4_FEATURE_INCOMPAT_MMP           0x0100
-+#define EXT4_FEATURE_INCOMPAT_FLEX_BG          0x0200
-+
-+#define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)                     \
-+       ( sb->s_feature_incompat & mask )
-+
-+#define EXT4_EXTENTS_FL                0x00080000 /* Inode uses extents =
-*/
-+#define EXT4_HUGE_FILE_FL      0x00040000 /* Set to each huge file */
-+
-+#define EXT4_MIN_DESC_SIZE                     32
-+
- /* linux/limits.h */
- #define NAME_MAX         255	/* # chars in a file name */
-
-@@ -225,6 +256,55 @@ struct ext2_dir_entry
-     char name[EXT2_NAME_LEN];	/* File name */
-   };
-
-+/* linux/ext4_fs_extents.h */
-+/* This is the extent on-disk structure.
-+ * It's used at the bottom of the tree.
-+ */
-+struct ext4_extent
-+  {
-+       __u32  ee_block;   /* first logical block extent covers */
-+       __u16  ee_len;     /* number of blocks covered by extent */
-+       __u16  ee_start_hi;    /* high 16 bits of physical block */
-+       __u32  ee_start_lo;    /* low 32 bits of physical block */
-+  };
-+
-+/*
-+ * This is index on-disk structure.
-+ * It's used at all the levels except the bottom.
-+ */
-+struct ext4_extent_idx
-+  {
-+    __u32  ei_block;   /* index covers logical blocks from 'block' */
-+    __u32  ei_leaf_lo; /* pointer to the physical block of the next *
-+                            * level. leaf or next index could be there *=
-/
-+    __u16  ei_leaf_hi; /* high 16 bits of physical block */
-+    __u16  ei_unused;
-+  };
-+
-+/*
-+ * Each block (leaves and indexes), even inode-stored has header.
-+ */
-+struct ext4_extent_header
-+  {
-+    __u16  eh_magic;   /* probably will support different formats */
-+    __u16  eh_entries; /* number of valid entries */
-+    __u16  eh_max;     /* capacity of store in entries */
-+    __u16  eh_depth;   /* has tree real underlying blocks? */
-+    __u32  eh_generation;  /* generation of the tree */
-+  };
-+
-+#define EXT4_EXT_MAGIC      (0xf30a)
-+#define EXT_FIRST_EXTENT(__hdr__) \
-+    ((struct ext4_extent *) (((char *) (__hdr__)) +     \
-+                 sizeof(struct ext4_extent_header)))
-+#define EXT_FIRST_INDEX(__hdr__) \
-+    ((struct ext4_extent_idx *) (((char *) (__hdr__)) + \
-+                 sizeof(struct ext4_extent_header)))
-+#define EXT_LAST_EXTENT(__hdr__) \
-+    (EXT_FIRST_EXTENT((__hdr__)) + (__u16)((__hdr__)->eh_entries) - 1)
-+#define EXT_LAST_INDEX(__hdr__) \
-+    (EXT_FIRST_INDEX((__hdr__)) + (__u16)((__hdr__)->eh_entries) - 1)
-+
- /* linux/ext2fs.h */
- /*
-  * EXT2_DIR_PAD defines the directory entries boundaries
-@@ -271,8 +351,17 @@ struct ext2_dir_entry
- /* kind of from ext2/super.c */
- #define EXT2_BLOCK_SIZE(s)	(1 << EXT2_BLOCK_SIZE_BITS(s))
- /* linux/ext2fs.h */
-+/* sizeof(struct ext2_group_desc) is changed in ext4
-+ * in kernel code, ext2/3 uses sizeof(struct ext2_group_desc) to calcula=
-te
-+ * number of desc per block, while ext4 uses superblock->s_desc_size in
-stead
-+ * superblock->s_desc_size is not available in ext2/3
-+ * */
-+#define EXT2_DESC_SIZE(s) \
-+       (EXT4_HAS_INCOMPAT_FEATURE(s,EXT4_FEATURE_INCOMPAT_64BIT)? \
-+       s->s_desc_size : EXT4_MIN_DESC_SIZE)
- #define EXT2_DESC_PER_BLOCK(s) \
--     (EXT2_BLOCK_SIZE(s) / sizeof (struct ext2_group_desc))
-+    (EXT2_BLOCK_SIZE(s) / EXT2_DESC_SIZE(s))
-+
- /* linux/stat.h */
- #define S_IFMT  00170000
- #define S_IFLNK  0120000
-@@ -434,6 +523,120 @@ ext2fs_block_map (int logical_block)
-     [logical_block & (EXT2_ADDR_PER_BLOCK (SUPERBLOCK) - 1)];
- }
-
-+/* extent binary search index
-+ * find closest index in the current level extent tree
-+ * kind of from ext4_ext_binsearch_idx in ext4/extents.c
-+ */
-+static struct ext4_extent_idx*
-+ext4_ext_binsearch_idx(struct ext4_extent_header* eh, int logical_block)=
-
-+{
-+  struct ext4_extent_idx *r, *l, *m;
-+  l =3D EXT_FIRST_INDEX(eh) + 1;
-+  r =3D EXT_LAST_INDEX(eh);
-+  while (l <=3D r)
-+    {
-+         m =3D l + (r - l) / 2;
-+         if (logical_block < m->ei_block)
-+                 r =3D m - 1;
-+         else
-+                 l =3D m + 1;
-+       }
-+  return (struct ext4_extent_idx*)(l - 1);
-+}
-+
-+/* extent binary search
-+ * find closest extent in the leaf level
-+ * kind of from ext4_ext_binsearch in ext4/extents.c
-+ */
-+static struct ext4_extent*
-+ext4_ext_binsearch(struct ext4_extent_header* eh, int logical_block)
-+{
-+  struct ext4_extent *r, *l, *m;
-+  l =3D EXT_FIRST_EXTENT(eh) + 1;
-+  r =3D EXT_LAST_EXTENT(eh);
-+  while (l <=3D r)
-+    {
-+         m =3D l + (r - l) / 2;
-+         if (logical_block < m->ee_block)
-+                 r =3D m - 1;
-+         else
-+                 l =3D m + 1;
-+       }
-+  return (struct ext4_extent*)(l - 1);
-+}
-+
-+/* Maps extents enabled logical block into physical block via an inode.
-+ * EXT4_HUGE_FILE_FL should be checked before calling this.
-+ */
-+static int
-+ext4fs_block_map (int logical_block)
-+{
-+  struct ext4_extent_header *eh;
-+  struct ext4_extent *ex;
-+  struct ext4_extent_idx *ei;
-+  int depth;
-+
-+#ifdef E2DEBUG
-+  unsigned char *i;
-+  for (i =3D (unsigned char *) INODE;
-+       i < ((unsigned char *) INODE + sizeof (struct ext2_inode));
-+       i++)
-+    {
-+      printf ("%c", "0123456789abcdef"[*i >> 4]);
-+      printf ("%c", "0123456789abcdef"[*i % 16]);
-+      if (!((i + 1 - (unsigned char *) INODE) % 16))
-+       {
-+         printf ("\n");
-+       }
-+      else
-+       {
-+         printf (" ");
-+       }
-+    }
-+  printf ("logical block %d\n", logical_block);
-+#endif /* E2DEBUG */
-+  eh =3D (struct ext4_extent_header*)INODE->i_block;
-+  if (eh->eh_magic !=3D EXT4_EXT_MAGIC)
-+  {
-+          errnum =3D ERR_FSYS_CORRUPT;
-+          return -1;
-+  }
-+  while((depth =3D eh->eh_depth) !=3D 0)
-+       { /* extent index */
-+         if (eh->eh_magic !=3D EXT4_EXT_MAGIC)
-+         {
-+                 errnum =3D ERR_FSYS_CORRUPT;
-+                 return -1;
-+         }
-+         ei =3D ext4_ext_binsearch_idx(eh, logical_block);
-+         if (ei->ei_leaf_hi)
-+       {/* 64bit physical block number not supported */
-+         errnum =3D ERR_FILELENGTH;
-+         return -1;
-+       }
-+         if (!ext2_rdfsb(ei->ei_leaf_lo, DATABLOCK1))
-+       {
-+         errnum =3D ERR_FSYS_CORRUPT;
-+         return -1;
-+       }
-+         eh =3D (struct ext4_extent_header*)DATABLOCK1;
-+       }
-+
-+  /* depth=3D=3D0, we come to the leaf */
-+  ex =3D ext4_ext_binsearch(eh, logical_block);
-+  if (ex->ee_start_hi)
-+       {/* 64bit physical block number not supported */
-+         errnum =3D ERR_FILELENGTH;
-+         return -1;
-+       }
-+  if ((ex->ee_block + ex->ee_len) < logical_block)
-+       {
-+         errnum =3D ERR_FSYS_CORRUPT;
-+         return -1;
-+       }
-+  return ex->ee_start_lo + logical_block - ex->ee_block;
-+}
-+
- /* preconditions: all preconds of ext2fs_block_map */
- int
- ext2fs_read (char *buf, int len)
-@@ -468,7 +671,12 @@ ext2fs_read (char *buf, int len)
-       /* find the (logical) block component of our location */
-       logical_block =3D filepos >> EXT2_BLOCK_SIZE_BITS (SUPERBLOCK);
-       offset =3D filepos & (EXT2_BLOCK_SIZE (SUPERBLOCK) - 1);
--      map =3D ext2fs_block_map (logical_block);
-+      /* map extents enabled logical block number to physical fs
-on-dick block number */
-+      if
-(EXT4_HAS_INCOMPAT_FEATURE(SUPERBLOCK,EXT4_FEATURE_INCOMPAT_EXTENTS)
-+                    && INODE->i_flags & EXT4_EXTENTS_FL)
-+          map =3D ext4fs_block_map (logical_block);
-+      else
-+          map =3D ext2fs_block_map (logical_block);
- #ifdef E2DEBUG
-       printf ("map=3D%d\n", map);
- #endif /* E2DEBUG */
-@@ -598,8 +806,15 @@ ext2fs_dir (char *dirname)
- 	{
- 	  return 0;
- 	}
--      gdp =3D GROUP_DESC;
--      ino_blk =3D gdp[desc].bg_inode_table +
-+    gdp =3D (struct ext2_group_desc *)( (__u8*)GROUP_DESC +
-+                                  desc * EXT2_DESC_SIZE(SUPERBLOCK));
-+    if (EXT4_HAS_INCOMPAT_FEATURE(SUPERBLOCK, EXT4_FEATURE_INCOMPAT_64BI=
-T)
-+          && (! gdp->bg_inode_table_hi))
-+    {/* 64bit itable not supported */
-+         errnum =3D ERR_FILELENGTH;
-+         return -1;
-+    }
-+    ino_blk =3D gdp->bg_inode_table +
- 	(((current_ino - 1) % (SUPERBLOCK->s_inodes_per_group))
- 	 >> log2 (EXT2_INODES_PER_BLOCK (SUPERBLOCK)));
- #ifdef E2DEBUG
-@@ -721,6 +936,12 @@ ext2fs_dir (char *dirname)
- 	      errnum =3D ERR_BAD_FILETYPE;
- 	      return 0;
- 	    }
-+      /* if file is too large, just stop and report an error*/
-+      if ( (INODE->i_flags & EXT4_HUGE_FILE_FL) && !(INODE->i_size_high)=
-)
-+        {/* file too large, stop reading */
-+          errnum =3D ERR_FILELENGTH;
-+          return 0;
-+        }
-
- 	  filemax =3D (INODE->i_size);
- 	  return 1;
-@@ -780,12 +1001,22 @@ ext2fs_dir (char *dirname)
- 	  /* we know which logical block of the directory entry we are looking
- 	     for, now we have to translate that to the physical (fs) block on
- 	     the disk */
--	  map =3D ext2fs_block_map (blk);
-+      /* map extents enabled logical block number to physical fs
-on-dick block number */
-+      if
-(EXT4_HAS_INCOMPAT_FEATURE(SUPERBLOCK,EXT4_FEATURE_INCOMPAT_EXTENTS)
-+                     && INODE->i_flags & EXT4_EXTENTS_FL)
-+           map =3D ext4fs_block_map (blk);
-+      else
-+          map =3D ext2fs_block_map (blk);
- #ifdef E2DEBUG
- 	  printf ("fs block=3D%d\n", map);
- #endif /* E2DEBUG */
- 	  mapblock2 =3D -1;
--	  if ((map < 0) || !ext2_rdfsb (map, DATABLOCK2))
-+      if (map < 0)
-+        {
-+          *rest =3D ch;
-+          return 0;
-+        }
-+      if (!ext2_rdfsb (map, DATABLOCK2))
- 	    {
- 	      errnum =3D ERR_FSYS_CORRUPT;
- 	      *rest =3D ch;
+Even though the IO bandwidth is ostensibly higher (usually a good thing
+on metadata benchmarks) that isn't any good if we are doing more writes.
 
 
-Bruce Jerrick wrote:
-> Despite ext4[dev] support in Fedora 9 and 10, conversion of an ext3 fil=
-esystem
-> to ext4 will render it permanently unbootable (read on; there's a "yes,=
- I know"
-> down there).
->=20
-> I'm not looking for a rescue (this was all done to an expendable system=
-), and
-> it appears to be a known "issue", but additional warnings in 'man tune2=
-fs'
-> (or even in the executable) seem to be warranted.
->=20
-> The scenario was:
->=20
-> On a multi-boot machine with my main system being Fedora 8 (with
-> kernel-2.6.26.6-49.fc8 and e2fsprogs-1.41.3-2.fc9, so it has ext4dev su=
-pport),
-> I "converted" an ext3 filesystem by setting 'test_fs' with tune2fs, the=
-n
-> mounting it (successfully) under the F8 system as type ext4dev.
->=20
-> The converted filesystem contained an F10 installation all on one files=
-ystem,
-> i.e., no separate /boot .  (I had overlooked the fact that the anaconda=
+It isn't immediately clear that _just_ the case of rewriting the same
+block multiple times is a culprit in itself, because in the ext3 case
+there would be more block bitmaps affeted that would _each_ be written
+out 1 or 2 times, while the closer packing of ext4 allocations results
+in fewer total bimaps being used.
 
-> installer doesn't support ext4 on a bootable partition; the goal was ju=
-st to
-> make sure I can access F10 ext4 filesystems from the F8 system.)  Later=
- I
-> discovered that the F10 system wouldn't boot, with a message about
-> "unsupported features".
->=20
-> Presumably this was because it now uses extents instead of indirect blo=
-cks
-> (after it was ext4, I modified a file on it, so I assume it started
-> using extents).  The really bad news is that this conversion seems to
-> be irreversible.  So there should probably be warnings in 'man tune2fs'=
+One would think in the case of more sharing of a block bitmap would
+result in a performance _increase_ because there is more chance that
+it will be re-used within the same transaction.
 
-> similar to those in 'man mkfs.ext4' (and also a warning about rendering=
- a
-> partition permanently unbootable).
-In fact this is reversible.
-you can unmark the extent feature with debugfs.
-Changes after the first conversion(ext3 -> ext4) are gone. But all other
-files back in ext3.
->=20
-> BTW, there's a minor inconsistency in F10 'man mke2fs' (and its hardlin=
-k
-> clones).  In the OPTIONS section, "-O" has "extent" listed, but the exa=
-mple
-> after "-t fs-type" uses "-O extents" (granted, either form seems to be
-> accepted).
->=20
-> Similarly, 'tune2fs -l' reports "extent" (in Filesystem features), but
-> /etc/mke2fs.conf uses "extents" (as a features value).
->=20
-> -- Bruce Jerrick
->=20
-> PS.  If feasible, a two-way ext3 <-> ext4 converter would be nice.
-ext3 -> ext4 is easy
-but ext4 -> ext3, enable ext3 to read extents?
-> PPS.  Are bootable ext4 partitions in the cards?  (I assume yes.)
-> PPPS.  Why am I still using F8?  <flame> Because gnome-session/gnome-te=
-rminal
->  save/restore is (repairably) broken in F9 and gone entirely in F10. </=
-flame>
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->=20
+> ext4:
+>  Reads Completed:    59947,   239788KiB
+>  Writes Completed:     1282K,     5130MiB
+>
+> ext3:
+>  Reads Completed:    64856,   259424KiB
+>  Writes Completed:   323582,     1294MiB
 
---=20
-Cheers,
+The reads look the about same, writes are 4x higher.  What would be
+useful to examine is the inode number grouping of files in the same
+subdirectory, along with the blocks they are allocating.  It seems
+like the inodes are being packed more closely together, but the
+blocks (and hence block bitmap writes) are spread further apart.
 
-Bergwolf
+That may be a side-effect of the mballoc per-CPU cache again, where
+files being written in the same subdirectory are spread apart because
+of the write thread being rescheduled to different cores.
 
-Here lieth one whose name was writ on water.
+I discussed this in the past with Eric, in the case of a file doing
+small writes+fsync and the blocks being fragmented needlessly between
+different parts of the filesystem.  The proposed solution in that case
+(that Aneesh could probably fix quickly) is to attach an inode to the
+per-CPU preallocation group on the first write (for small files).  If it
+doesn't get any more writes that is fine, but if it does then the same
+PA would be used for further allocations regardless of what CPU is doing
+the IO.
 
+Another solution for that case, and (as I speculate) this case, is to
+attach the PA to the parent directory and have all small files in the
+same directory use that PA.  This would ensure that blocks allocated to
+small inodes in the same directory are kept together.  The drawback is
+that this could hurt performance for multiple threads writing to the
+same directory.
 
---------------enigB9F4CD1FDCCD58D4483D846E
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
-
-iEYEARECAAYFAkkjvmkACgkQEyny3P47hFGThQCfd+RSxW43XmH78zoqP5BOozlK
-CpkAmwYJVmocI5G0tCUtLmGft8A4w7lD
-=O5fs
------END PGP SIGNATURE-----
-
---------------enigB9F4CD1FDCCD58D4483D846E--
