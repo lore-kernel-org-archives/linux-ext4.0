@@ -1,23 +1,23 @@
 From: akpm@linux-foundation.org
-Subject: + ext3-allocate-s_blockgroup_lock-separately.patch added to -mm tree
-Date: Tue, 18 Nov 2008 21:29:16 -0800
-Message-ID: <200811190529.mAJ5TGbD016262@imap1.linux-foundation.org>
+Subject: + ext4-allocate-s_blockgroup_lock-separately.patch added to -mm tree
+Date: Tue, 18 Nov 2008 21:29:42 -0800
+Message-ID: <200811190529.mAJ5TgKc016488@imap1.linux-foundation.org>
 Cc: penberg@cs.helsinki.fi, adilger@sun.com, linux-ext4@vger.kernel.org
 To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50564 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:55988 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750716AbYKSF3V (ORCPT
+	by vger.kernel.org with ESMTP id S1750747AbYKSF3r (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 19 Nov 2008 00:29:21 -0500
+	Wed, 19 Nov 2008 00:29:47 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext3: allocate ->s_blockgroup_lock separately
+     ext4: allocate ->s_blockgroup_lock separately
 has been added to the -mm tree.  Its filename is
-     ext3-allocate-s_blockgroup_lock-separately.patch
+     ext4-allocate-s_blockgroup_lock-separately.patch
 
 Before you just go and hit "reply", please:
    a) Consider who else should be cc'ed
@@ -33,18 +33,18 @@ out what to do about this
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3: allocate ->s_blockgroup_lock separately
+Subject: ext4: allocate ->s_blockgroup_lock separately
 From: Pekka Enberg <penberg@cs.helsinki.fi>
 
-As spotted by kmemtrace, struct ext3_sb_info is 17152 bytes on 64-bit
+As spotted by kmemtrace, struct ext4_sb_info is 17664 bytes on 64-bit
 which makes it a very bad fit for SLAB allocators.  The culprit of the
 wasted memory is ->s_blockgroup_lock which can be as big as 16 KB when
 NR_CPUS >= 32.
 
 To fix that, allocate ->s_blockgroup_lock, which fits nicely in a order 2
-page in the worst case, separately.  This shinks down struct ext3_sb_info
-enough to fit a 1 KB slab cache so now we allocate 16 KB + 1 KB instead of
-32 KB saving 15 KB of memory.
+page in the worst case, separately.  This shinks down struct ext4_sb_info
+enough to fit a 2 KB slab cache so now we allocate 16 KB + 2 KB instead of
+32 KB saving 14 KB of memory.
 
 Cc: Andreas Dilger <adilger@sun.com>
 Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
@@ -52,22 +52,43 @@ Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/super.c            |   10 +++++++++-
- include/linux/ext3_fs_sb.h |    4 ++--
+ fs/ext4/ext4_sb.h |    4 ++--
+ fs/ext4/super.c   |   10 +++++++++-
  2 files changed, 11 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext3/super.c~ext3-allocate-s_blockgroup_lock-separately fs/ext3/super.c
---- a/fs/ext3/super.c~ext3-allocate-s_blockgroup_lock-separately
-+++ a/fs/ext3/super.c
-@@ -439,6 +439,7 @@ static void ext3_put_super (struct super
- 		ext3_blkdev_remove(sbi);
+diff -puN fs/ext4/ext4_sb.h~ext4-allocate-s_blockgroup_lock-separately fs/ext4/ext4_sb.h
+--- a/fs/ext4/ext4_sb.h~ext4-allocate-s_blockgroup_lock-separately
++++ a/fs/ext4/ext4_sb.h
+@@ -62,7 +62,7 @@ struct ext4_sb_info {
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+ 	struct percpu_counter s_dirtyblocks_counter;
+-	struct blockgroup_lock s_blockgroup_lock;
++	struct blockgroup_lock *s_blockgroup_lock;
+ 	struct proc_dir_entry *s_proc;
+ 
+ 	/* root of the per fs reservation window tree */
+@@ -150,7 +150,7 @@ struct ext4_sb_info {
+ static inline spinlock_t *
+ sb_bgl_lock(struct ext4_sb_info *sbi, unsigned int block_group)
+ {
+-	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
++	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
+ }
+ 
+ #endif	/* _EXT4_SB */
+diff -puN fs/ext4/super.c~ext4-allocate-s_blockgroup_lock-separately fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-allocate-s_blockgroup_lock-separately
++++ a/fs/ext4/super.c
+@@ -497,6 +497,7 @@ static void ext4_put_super(struct super_
+ 		ext4_blkdev_remove(sbi);
  	}
  	sb->s_fs_info = NULL;
 +	kfree(sbi->s_blockgroup_lock);
  	kfree(sbi);
  	return;
  }
-@@ -1556,6 +1557,13 @@ static int ext3_fill_super (struct super
+@@ -1891,6 +1892,13 @@ static int ext4_fill_super(struct super_
  	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
  	if (!sbi)
  		return -ENOMEM;
@@ -80,37 +101,16 @@ diff -puN fs/ext3/super.c~ext3-allocate-s_blockgroup_lock-separately fs/ext3/sup
 +	}
  	sb->s_fs_info = sbi;
  	sbi->s_mount_opt = 0;
- 	sbi->s_resuid = EXT3_DEF_RESUID;
-@@ -1808,7 +1816,7 @@ static int ext3_fill_super (struct super
- 		goto failed_mount;
- 	}
+ 	sbi->s_resuid = EXT4_DEF_RESUID;
+@@ -2199,7 +2207,7 @@ static int ext4_fill_super(struct super_
+ 				 &sbi->s_inode_readahead_blks);
+ #endif
  
 -	bgl_lock_init(&sbi->s_blockgroup_lock);
 +	bgl_lock_init(sbi->s_blockgroup_lock);
  
  	for (i = 0; i < db_count; i++) {
- 		block = descriptor_loc(sb, logic_sb_block, i);
-diff -puN include/linux/ext3_fs_sb.h~ext3-allocate-s_blockgroup_lock-separately include/linux/ext3_fs_sb.h
---- a/include/linux/ext3_fs_sb.h~ext3-allocate-s_blockgroup_lock-separately
-+++ a/include/linux/ext3_fs_sb.h
-@@ -61,7 +61,7 @@ struct ext3_sb_info {
- 	struct percpu_counter s_freeblocks_counter;
- 	struct percpu_counter s_freeinodes_counter;
- 	struct percpu_counter s_dirs_counter;
--	struct blockgroup_lock s_blockgroup_lock;
-+	struct blockgroup_lock *s_blockgroup_lock;
- 
- 	/* root of the per fs reservation window tree */
- 	spinlock_t s_rsv_window_lock;
-@@ -87,7 +87,7 @@ struct ext3_sb_info {
- static inline spinlock_t *
- sb_bgl_lock(struct ext3_sb_info *sbi, unsigned int block_group)
- {
--	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
- }
- 
- #endif	/* _LINUX_EXT3_FS_SB */
+ 		block = descriptor_loc(sb, logical_sb_block, i);
 _
 
 Patches currently in -mm which might be from penberg@cs.helsinki.fi are
