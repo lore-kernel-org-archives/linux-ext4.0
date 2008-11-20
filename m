@@ -1,82 +1,48 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/5] ext4: unlock group before ext4_error
-Date: Thu, 20 Nov 2008 17:38:52 -0500
-Message-ID: <20081120223852.GD14212@mit.edu>
-References: <1227205580-27596-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Bruce Guenter <lists-linux-ext4@bruce-guenter.dyndns.org>
+Subject: Re: ext4 unlink performance
+Date: Thu, 20 Nov 2008 16:49:03 -0600
+Message-ID: <20081120224903.GA25280@untroubled.org>
+References: <20081113191000.GA11516@untroubled.org> <20081113204240.GF21652@mit.edu> <20081114041121.GB11746@untroubled.org> <20081114145914.GE25117@mit.edu> <20081115204423.GA4671@untroubled.org> <20081116005610.GI22948@mit.edu> <20081117004330.GC3436@webber.adilger.int> <20081119024021.GA10185@mit.edu> <20081119181000.GD3186@webber.adilger.int> <20081119211840.GA8021@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="6TrnltStXW4iwmi0"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:35155 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751395AbYKTWjL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Nov 2008 17:39:11 -0500
+Received: from zak.futurequest.net ([69.5.6.152]:58813 "HELO
+	zak.futurequest.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1752642AbYKTWtJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Nov 2008 17:49:09 -0500
 Content-Disposition: inline
-In-Reply-To: <1227205580-27596-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <20081119211840.GA8021@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 20, 2008 at 11:56:18PM +0530, Aneesh Kumar K.V wrote:
-> Otherwise ext4_error will cause BUG because of
-> scheduling in atomic context.
 
-Granted that it isn't necessarily safe as it is when errors-behaviour
-is set to continue, that is the default on a large number of
-filesystems.  And unlocking the group, calling the ext4_error(), and
-then relocking the group can't possibly be safe; after all, we're
-holding the lock for a reason!  
+--6TrnltStXW4iwmi0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-In the errors=continue case, we don't actually need to unlock and
-relock the group, since all we need to do is to printk a message to
-the console.  In the errors=panic case, we'll never return; and in the
-errors=remount-ro case, relocking is kind of pointless but harmless,
-since once the journal is aborted, there's no way the allocation is
-going to succeed anyway, and a subsequent call will return an error.
+On Wed, Nov 19, 2008 at 04:18:40PM -0500, Theodore Tso wrote:
+> It would be good for us to get confirmation one way or another about
+> this theory.  Bruce, if you have multiple CPU's (or cores on your
+> system --- i.e., cat /proc/cpuinfo reports multiple processors),
 
-This gets ugly to get right.  Since the situation where we need to
-call ext4_error() while holding a spinlock which should be preserved
-in the errors=continue case seems to be unique to mballoc, maybe
-something like this?
+The test system has only a single core CPU.
 
-static int ext4_grp_locked_error(struct super_block *sb, ext4_group_t grp,
-       	    		          const char *function,
-            		          const char *fmt, ...)
-{
+--=20
+Bruce Guenter <bruce@untroubled.org>                http://untroubled.org/
 
-	va_start(args, fmt);
-	printk(KERN_CRIT "EXT4-fs error (device %s): %s: ", sb->s_id, function);
-	vprintk(fmt, args);
-	printk("\n");
-	va_end(args);
+--6TrnltStXW4iwmi0
+Content-Type: application/pgp-signature
+Content-Disposition: inline
 
-	if (test_opt(sb, ERROR_CONT)) {
-		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
-		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
-		ext4_commit_super(sb, es, 0);
-		return 0;
-	}
-	ext4_unlock_group(sb, grp);
-	ext4_handle_error(sb);
-	/* 
-	 * We only get here in the ERRORS_RO case; relocking the group
-	 * may be dangerous, but nothing bad will happen since the
-	 * filesystem will have already been marked read/only and the
-	 * journal has been aborted.  We return 1 as a hint to callers
-	 * who might what to use the return value from
-	 * ext4_grp_locked_error() to distinguish beween the
-	 * ERRORS_CONT and ERRORS_RO case, and perhaps return more
-	 * aggressively from the ext4 function in question, with a
-	 * more appropriate error code.
-	 */
-	ext4_lock_group(sb, grp);
-}
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.9 (GNU/Linux)
 
-This requires access to two static functions in fs/ext4/super.c, so
-probably the best thing to do is to put this function in
-fs/ext4/super.c, and move the definition of ext4_[un]lock_group from
-mballoc.h to ext4.h.
+iD8DBQFJJelf6W+y3GmZgOgRAjmFAJ9nUtFA8AwzZ8wjprdaT9Hc3VR/kgCeO/gl
+JjX0jE47kOeTc1bEbPmrzh0=
+=8D71
+-----END PGP SIGNATURE-----
 
-Comments?
-
-						- Ted
+--6TrnltStXW4iwmi0--
