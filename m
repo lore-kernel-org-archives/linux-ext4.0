@@ -1,34 +1,531 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix some s64 printing warnings
-Date: Thu, 20 Nov 2008 01:11:17 -0500
-Message-ID: <20081120061117.GA8610@mit.edu>
-References: <20081112111049.68c604ff.sfr@canb.auug.org.au>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: adilger@sun.com, linux-ext4@vger.kernel.org,
-	LKML <linux-kernel@vger.kernel.org>,
-	ppc-dev <linuxppc-dev@ozlabs.org>
-To: Stephen Rothwell <sfr@canb.auug.org.au>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 4/5] ext4: Use both hi and lo bits of the group desc values.
+Date: Thu, 20 Nov 2008 23:56:20 +0530
+Message-ID: <1227205580-27596-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1227205580-27596-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227205580-27596-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58827 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751971AbYKTGL1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Nov 2008 01:11:27 -0500
-Content-Disposition: inline
-In-Reply-To: <20081112111049.68c604ff.sfr@canb.auug.org.au>
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:54291 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751187AbYKTS3T (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Nov 2008 13:29:19 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id mAKISSAi017670
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 05:28:28 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mAKIR15H3977266
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 05:27:01 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mAKIQiPr016042
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 05:26:45 +1100
+In-Reply-To: <1227205580-27596-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 12, 2008 at 11:10:49AM +1100, Stephen Rothwell wrote:
-> A powerpc ppc64_defconfig build of Linus' current tree produces these
-> warnings:
+Rename the lower bits with suffix _lo and add helper
+to access the values. Also rename bg_itable_unused_hi
+to bg_pad as in e2fsprogs. bg_itable_unused_hi is never
+used before
 
-Hi Stephen,
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/balloc.c  |   11 ++++---
+ fs/ext4/ext4.h    |   24 +++++++++++++--
+ fs/ext4/ialloc.c  |   83 ++++++++++++++++++++++++++++-------------------------
+ fs/ext4/inode.c   |    2 +-
+ fs/ext4/mballoc.c |   15 +++++----
+ fs/ext4/resize.c  |    4 +-
+ fs/ext4/super.c   |   64 +++++++++++++++++++++++++++++++++++++++-
+ 7 files changed, 143 insertions(+), 60 deletions(-)
 
-Thanks for submitting the patch!  As it turns out, a patch that was
-pretty much identical to yours was submitted by Alexander Beregalov
-and was merged into mainline as of 2.6.28-rc5, as commit ID ba8292e2.
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index d268f5f..efe68d9 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -102,9 +102,9 @@ unsigned ext4_init_block_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 		if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+ 			ext4_error(sb, __func__,
+ 				  "Checksum bad for group %u\n", block_group);
+-			gdp->bg_free_blocks_count = 0;
+-			gdp->bg_free_inodes_count = 0;
+-			gdp->bg_itable_unused = 0;
++			ext4_free_blks_set(sb, gdp, 0);
++			ext4_free_inodes_set(sb, gdp, 0);
++			ext4_itable_unused_set(sb, gdp, 0);
+ 			memset(bh->b_data, 0xff, sb->s_blocksize);
+ 			return 0;
+ 		}
+@@ -444,7 +444,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 		}
+ 	}
+ 	spin_lock(sb_bgl_lock(sbi, block_group));
+-	le16_add_cpu(&desc->bg_free_blocks_count, blocks_freed);
++	blocks_freed += ext4_free_blks_count(sb, desc);
++	ext4_free_blks_set(sb, desc, blocks_freed);
+ 	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
+ 	spin_unlock(sb_bgl_lock(sbi, block_group));
+ 	percpu_counter_add(&sbi->s_freeblocks_counter, blocks_freed);
+@@ -742,7 +743,7 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
+ 		gdp = ext4_get_group_desc(sb, i, NULL);
+ 		if (!gdp)
+ 			continue;
+-		desc_count += le16_to_cpu(gdp->bg_free_blocks_count);
++		desc_count += ext4_free_blks_count(sb, gdp);
+ 	}
+ 
+ 	return desc_count;
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 03aba86..2570883 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -161,9 +161,9 @@ struct ext4_group_desc
+ 	__le32	bg_block_bitmap_lo;	/* Blocks bitmap block */
+ 	__le32	bg_inode_bitmap_lo;	/* Inodes bitmap block */
+ 	__le32	bg_inode_table_lo;	/* Inodes table block */
+-	__le16	bg_free_blocks_count;	/* Free blocks count */
+-	__le16	bg_free_inodes_count;	/* Free inodes count */
+-	__le16	bg_used_dirs_count;	/* Directories count */
++	__le16	bg_free_blocks_count_lo;/* Free blocks count */
++	__le16	bg_free_inodes_count_lo;/* Free inodes count */
++	__le16	bg_used_dirs_count_lo;	/* Directories count */
+ 	__le16	bg_flags;		/* EXT4_BG_flags (INODE_UNINIT, etc) */
+ 	__u32	bg_reserved[2];		/* Likely block/inode bitmap checksum */
+ 	__le16  bg_itable_unused;	/* Unused inodes count */
+@@ -174,7 +174,7 @@ struct ext4_group_desc
+ 	__le16	bg_free_blocks_count_hi;/* Free blocks count MSB */
+ 	__le16	bg_free_inodes_count_hi;/* Free inodes count MSB */
+ 	__le16	bg_used_dirs_count_hi;	/* Directories count MSB */
+-	__le16	bg_itable_unused_hi;	/* Unused inodes count MSB */
++	__le16  bg_pad;
+ 	__u32	bg_reserved2[3];
+ };
+ 
+@@ -1194,12 +1194,28 @@ extern ext4_fsblk_t ext4_inode_bitmap(struct super_block *sb,
+ 				      struct ext4_group_desc *bg);
+ extern ext4_fsblk_t ext4_inode_table(struct super_block *sb,
+ 				     struct ext4_group_desc *bg);
++extern __u32 ext4_free_blks_count(struct super_block *sb,
++				struct ext4_group_desc *bg);
++extern __u32 ext4_free_inodes_count(struct super_block *sb,
++				 struct ext4_group_desc *bg);
++extern __u32 ext4_used_dirs_count(struct super_block *sb,
++				struct ext4_group_desc *bg);
++extern __u16 ext4_itable_unused_count(struct super_block *sb,
++				   struct ext4_group_desc *bg);
+ extern void ext4_block_bitmap_set(struct super_block *sb,
+ 				  struct ext4_group_desc *bg, ext4_fsblk_t blk);
+ extern void ext4_inode_bitmap_set(struct super_block *sb,
+ 				  struct ext4_group_desc *bg, ext4_fsblk_t blk);
+ extern void ext4_inode_table_set(struct super_block *sb,
+ 				 struct ext4_group_desc *bg, ext4_fsblk_t blk);
++extern void ext4_free_blks_set(struct super_block *sb,
++			       struct ext4_group_desc *bg, __u32 count);
++extern void ext4_free_inodes_set(struct super_block *sb,
++				struct ext4_group_desc *bg, __u32 count);
++extern void ext4_used_dirs_set(struct super_block *sb,
++				struct ext4_group_desc *bg, __u32 count);
++extern void ext4_itable_unused_set(struct super_block *sb,
++				   struct ext4_group_desc *bg, __u16 count);
+ /* extents.c */
+ extern int ext4_ext_journal_restart(handle_t *handle, int needed);
+ /* defrag.c */
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 4039af6..84f060b 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -76,9 +76,9 @@ unsigned ext4_init_inode_bitmap(struct super_block *sb, struct buffer_head *bh,
+ 	if (!ext4_group_desc_csum_verify(sbi, block_group, gdp)) {
+ 		ext4_error(sb, __func__, "Checksum bad for group %u\n",
+ 			   block_group);
+-		gdp->bg_free_blocks_count = 0;
+-		gdp->bg_free_inodes_count = 0;
+-		gdp->bg_itable_unused = 0;
++		ext4_free_blks_set(sb, gdp, 0);
++		ext4_free_inodes_set(sb, gdp, 0);
++		ext4_itable_unused_set(sb, gdp, 0);
+ 		memset(bh->b_data, 0xff, sb->s_blocksize);
+ 		return 0;
+ 	}
+@@ -168,7 +168,7 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 	struct ext4_group_desc *gdp;
+ 	struct ext4_super_block *es;
+ 	struct ext4_sb_info *sbi;
+-	int fatal = 0, err;
++	int fatal = 0, err, count;
+ 	ext4_group_t flex_group;
+ 
+ 	if (atomic_read(&inode->i_count) > 1) {
+@@ -236,9 +236,12 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 
+ 		if (gdp) {
+ 			spin_lock(sb_bgl_lock(sbi, block_group));
+-			le16_add_cpu(&gdp->bg_free_inodes_count, 1);
+-			if (is_directory)
+-				le16_add_cpu(&gdp->bg_used_dirs_count, -1);
++			count = ext4_free_inodes_count(sb, gdp) + 1;
++			ext4_free_inodes_set(sb, gdp, count);
++			if (is_directory) {
++				count = ext4_used_dirs_count(sb, gdp) - 1;
++				ext4_used_dirs_set(sb, gdp, count);
++			}
+ 			gdp->bg_checksum = ext4_group_desc_csum(sbi,
+ 							block_group, gdp);
+ 			spin_unlock(sb_bgl_lock(sbi, block_group));
+@@ -291,13 +294,13 @@ static int find_group_dir(struct super_block *sb, struct inode *parent,
+ 
+ 	for (group = 0; group < ngroups; group++) {
+ 		desc = ext4_get_group_desc(sb, group, NULL);
+-		if (!desc || !desc->bg_free_inodes_count)
++		if (!desc || !ext4_free_inodes_count(sb, desc))
+ 			continue;
+-		if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
++		if (ext4_free_inodes_count(sb, desc) < avefreei)
+ 			continue;
+ 		if (!best_desc ||
+-		    (le16_to_cpu(desc->bg_free_blocks_count) >
+-		     le16_to_cpu(best_desc->bg_free_blocks_count))) {
++		    (ext4_free_blks_count(sb, desc) >
++		     ext4_free_blks_count(sb, best_desc))) {
+ 			*best_group = group;
+ 			best_desc = desc;
+ 			ret = 0;
+@@ -369,7 +372,7 @@ static int find_group_flex(struct super_block *sb, struct inode *parent,
+ 	for (i = best_flex * flex_size; i < ngroups &&
+ 		     i < (best_flex + 1) * flex_size; i++) {
+ 		desc = ext4_get_group_desc(sb, i, &bh);
+-		if (le16_to_cpu(desc->bg_free_inodes_count)) {
++		if (ext4_free_inodes_count(sb, desc)) {
+ 			*best_group = i;
+ 			goto out;
+ 		}
+@@ -443,17 +446,17 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 		for (i = 0; i < ngroups; i++) {
+ 			grp = (parent_group + i) % ngroups;
+ 			desc = ext4_get_group_desc(sb, grp, NULL);
+-			if (!desc || !desc->bg_free_inodes_count)
++			if (!desc || !ext4_free_inodes_count(sb, desc))
+ 				continue;
+-			if (le16_to_cpu(desc->bg_used_dirs_count) >= best_ndir)
++			if (ext4_used_dirs_count(sb, desc) >= best_ndir)
+ 				continue;
+-			if (le16_to_cpu(desc->bg_free_inodes_count) < avefreei)
++			if (ext4_free_inodes_count(sb, desc) < avefreei)
+ 				continue;
+-			if (le16_to_cpu(desc->bg_free_blocks_count) < avefreeb)
++			if (ext4_free_blks_count(sb, desc) < avefreeb)
+ 				continue;
+ 			*group = grp;
+ 			ret = 0;
+-			best_ndir = le16_to_cpu(desc->bg_used_dirs_count);
++			best_ndir = ext4_used_dirs_count(sb, desc);
+ 		}
+ 		if (ret == 0)
+ 			return ret;
+@@ -479,13 +482,13 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 	for (i = 0; i < ngroups; i++) {
+ 		*group = (parent_group + i) % ngroups;
+ 		desc = ext4_get_group_desc(sb, *group, NULL);
+-		if (!desc || !desc->bg_free_inodes_count)
++		if (!desc || !ext4_free_inodes_count(sb, desc))
+ 			continue;
+-		if (le16_to_cpu(desc->bg_used_dirs_count) >= max_dirs)
++		if (ext4_used_dirs_count(sb, desc) >= max_dirs)
+ 			continue;
+-		if (le16_to_cpu(desc->bg_free_inodes_count) < min_inodes)
++		if (ext4_free_inodes_count(sb, desc) < min_inodes)
+ 			continue;
+-		if (le16_to_cpu(desc->bg_free_blocks_count) < min_blocks)
++		if (ext4_free_blks_count(sb, desc) < min_blocks)
+ 			continue;
+ 		return 0;
+ 	}
+@@ -494,8 +497,8 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 	for (i = 0; i < ngroups; i++) {
+ 		*group = (parent_group + i) % ngroups;
+ 		desc = ext4_get_group_desc(sb, *group, NULL);
+-		if (desc && desc->bg_free_inodes_count &&
+-			le16_to_cpu(desc->bg_free_inodes_count) >= avefreei)
++		if (desc && ext4_free_inodes_count(sb, desc) &&
++			ext4_free_inodes_count(sb, desc) >= avefreei)
+ 			return 0;
+ 	}
+ 
+@@ -524,8 +527,8 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ 	 */
+ 	*group = parent_group;
+ 	desc = ext4_get_group_desc(sb, *group, NULL);
+-	if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+-			le16_to_cpu(desc->bg_free_blocks_count))
++	if (desc && ext4_free_inodes_count(sb, desc) &&
++			ext4_free_blks_count(sb, desc))
+ 		return 0;
+ 
+ 	/*
+@@ -548,8 +551,8 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ 		if (*group >= ngroups)
+ 			*group -= ngroups;
+ 		desc = ext4_get_group_desc(sb, *group, NULL);
+-		if (desc && le16_to_cpu(desc->bg_free_inodes_count) &&
+-				le16_to_cpu(desc->bg_free_blocks_count))
++		if (desc && ext4_free_inodes_count(sb, desc) &&
++				ext4_free_blks_count(sb, desc))
+ 			return 0;
+ 	}
+ 
+@@ -562,7 +565,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ 		if (++*group >= ngroups)
+ 			*group = 0;
+ 		desc = ext4_get_group_desc(sb, *group, NULL);
+-		if (desc && le16_to_cpu(desc->bg_free_inodes_count))
++		if (desc && ext4_free_inodes_count(sb, desc))
+ 			return 0;
+ 	}
+ 
+@@ -591,7 +594,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 	struct ext4_super_block *es;
+ 	struct ext4_inode_info *ei;
+ 	struct ext4_sb_info *sbi;
+-	int ret2, err = 0;
++	int ret2, err = 0, count;
+ 	struct inode *ret;
+ 	ext4_group_t i;
+ 	int free = 0;
+@@ -717,7 +720,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+ 			free = ext4_free_blocks_after_init(sb, group, gdp);
+-			gdp->bg_free_blocks_count = cpu_to_le16(free);
++			ext4_free_blks_set(sb, gdp, free);
+ 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
+ 								gdp);
+ 		}
+@@ -751,7 +754,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 			free = 0;
+ 		} else {
+ 			free = EXT4_INODES_PER_GROUP(sb) -
+-				le16_to_cpu(gdp->bg_itable_unused);
++				ext4_itable_unused_count(sb, gdp);
+ 		}
+ 
+ 		/*
+@@ -761,13 +764,15 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 		 *
+ 		 */
+ 		if (ino > free)
+-			gdp->bg_itable_unused =
+-				cpu_to_le16(EXT4_INODES_PER_GROUP(sb) - ino);
++			ext4_itable_unused_set(sb, gdp,
++					(EXT4_INODES_PER_GROUP(sb) - ino));
+ 	}
+ 
+-	le16_add_cpu(&gdp->bg_free_inodes_count, -1);
++	count = ext4_free_inodes_count(sb, gdp) - 1;
++	ext4_free_inodes_set(sb, gdp, count);
+ 	if (S_ISDIR(mode)) {
+-		le16_add_cpu(&gdp->bg_used_dirs_count, 1);
++		count = ext4_used_dirs_count(sb, gdp) + 1;
++		ext4_used_dirs_set(sb, gdp, count);
+ 	}
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, group));
+@@ -981,7 +986,7 @@ unsigned long ext4_count_free_inodes(struct super_block *sb)
+ 		gdp = ext4_get_group_desc(sb, i, NULL);
+ 		if (!gdp)
+ 			continue;
+-		desc_count += le16_to_cpu(gdp->bg_free_inodes_count);
++		desc_count += ext4_free_inodes_count(sb, gdp);
+ 		brelse(bitmap_bh);
+ 		bitmap_bh = ext4_read_inode_bitmap(sb, i);
+ 		if (!bitmap_bh)
+@@ -989,7 +994,7 @@ unsigned long ext4_count_free_inodes(struct super_block *sb)
+ 
+ 		x = ext4_count_free(bitmap_bh, EXT4_INODES_PER_GROUP(sb) / 8);
+ 		printk(KERN_DEBUG "group %lu: stored = %d, counted = %lu\n",
+-			i, le16_to_cpu(gdp->bg_free_inodes_count), x);
++			i, ext4_free_inodes_count(sb, gdp), x);
+ 		bitmap_count += x;
+ 	}
+ 	brelse(bitmap_bh);
+@@ -1003,7 +1008,7 @@ unsigned long ext4_count_free_inodes(struct super_block *sb)
+ 		gdp = ext4_get_group_desc(sb, i, NULL);
+ 		if (!gdp)
+ 			continue;
+-		desc_count += le16_to_cpu(gdp->bg_free_inodes_count);
++		desc_count += ext4_free_inodes_count(sb, gdp);
+ 		cond_resched();
+ 	}
+ 	return desc_count;
+@@ -1020,7 +1025,7 @@ unsigned long ext4_count_dirs(struct super_block * sb)
+ 		struct ext4_group_desc *gdp = ext4_get_group_desc(sb, i, NULL);
+ 		if (!gdp)
+ 			continue;
+-		count += le16_to_cpu(gdp->bg_used_dirs_count);
++		count += ext4_used_dirs_count(sb, gdp);
+ 	}
+ 	return count;
+ }
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 76b1d3a..2d31597 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3987,7 +3987,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 			num = EXT4_INODES_PER_GROUP(sb);
+ 			if (EXT4_HAS_RO_COMPAT_FEATURE(sb,
+ 				       EXT4_FEATURE_RO_COMPAT_GDT_CSUM))
+-				num -= le16_to_cpu(gdp->bg_itable_unused);
++				num -= ext4_itable_unused_count(sb, gdp);
+ 			table += num / inodes_per_block;
+ 			if (end > table)
+ 				end = table;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 6155c94..685c483 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2494,7 +2494,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 			ext4_free_blocks_after_init(sb, group, desc);
+ 	} else {
+ 		meta_group_info[i]->bb_free =
+-			le16_to_cpu(desc->bg_free_blocks_count);
++			ext4_free_blks_count(sb, desc);
+ 	}
+ 
+ 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
+@@ -3066,12 +3066,12 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 				ac->ac_b_ex.fe_start, ac->ac_b_ex.fe_len);
+ 	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 		gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+-		gdp->bg_free_blocks_count =
+-			cpu_to_le16(ext4_free_blocks_after_init(sb,
+-						ac->ac_b_ex.fe_group,
+-						gdp));
++		ext4_free_blks_set(sb, gdp,
++					ext4_free_blocks_after_init(sb,
++					ac->ac_b_ex.fe_group, gdp));
+ 	}
+-	le16_add_cpu(&gdp->bg_free_blocks_count, -ac->ac_b_ex.fe_len);
++	len = ext4_free_blks_count(sb, gdp) - ac->ac_b_ex.fe_len;
++	ext4_free_blks_set(sb, gdp, len);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, ac->ac_b_ex.fe_group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
+ 	percpu_counter_sub(&sbi->s_freeblocks_counter, ac->ac_b_ex.fe_len);
+@@ -4863,7 +4863,8 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 	}
+ 
+ 	spin_lock(sb_bgl_lock(sbi, block_group));
+-	le16_add_cpu(&gdp->bg_free_blocks_count, count);
++	ret = ext4_free_blks_count(sb, gdp) + count;
++	ext4_free_blks_set(sb, gdp, ret);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, block_group, gdp);
+ 	spin_unlock(sb_bgl_lock(sbi, block_group));
+ 	percpu_counter_add(&sbi->s_freeblocks_counter, count);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 939cf26..6e61613 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -862,8 +862,8 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
+ 	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
+ 	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
+-	gdp->bg_free_blocks_count = cpu_to_le16(input->free_blocks_count);
+-	gdp->bg_free_inodes_count = cpu_to_le16(EXT4_INODES_PER_GROUP(sb));
++	ext4_free_blks_set(sb, gdp, input->free_blocks_count);
++	ext4_free_inodes_set(sb, gdp, EXT4_INODES_PER_GROUP(sb));
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
+ 
+ 	/*
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ddfa29b..3e62e09 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -93,6 +93,36 @@ ext4_fsblk_t ext4_inode_table(struct super_block *sb,
+ 		(ext4_fsblk_t)le32_to_cpu(bg->bg_inode_table_hi) << 32 : 0);
+ }
+ 
++__u32 ext4_free_blks_count(struct super_block *sb,
++			      struct ext4_group_desc *bg)
++{
++	return le16_to_cpu(bg->bg_free_blocks_count_lo) |
++		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
++		(__u32)le16_to_cpu(bg->bg_free_blocks_count_hi) << 16 : 0);
++}
++
++__u32 ext4_free_inodes_count(struct super_block *sb,
++			      struct ext4_group_desc *bg)
++{
++	return le16_to_cpu(bg->bg_free_inodes_count_lo) |
++		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
++		(__u32)le16_to_cpu(bg->bg_free_inodes_count_hi) << 16 : 0);
++}
++
++__u32 ext4_used_dirs_count(struct super_block *sb,
++			      struct ext4_group_desc *bg)
++{
++	return le16_to_cpu(bg->bg_used_dirs_count_lo) |
++		(EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT ?
++		(__u32)le16_to_cpu(bg->bg_used_dirs_count_hi) << 16 : 0);
++}
++
++__u16 ext4_itable_unused_count(struct super_block *sb,
++			      struct ext4_group_desc *bg)
++{
++	return le16_to_cpu(bg->bg_itable_unused);
++}
++
+ void ext4_block_bitmap_set(struct super_block *sb,
+ 			   struct ext4_group_desc *bg, ext4_fsblk_t blk)
+ {
+@@ -117,6 +147,36 @@ void ext4_inode_table_set(struct super_block *sb,
+ 		bg->bg_inode_table_hi = cpu_to_le32(blk >> 32);
+ }
+ 
++void ext4_free_blks_set(struct super_block *sb,
++			  struct ext4_group_desc *bg, __u32 count)
++{
++	bg->bg_free_blocks_count_lo = cpu_to_le16((__u16)count);
++	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
++		bg->bg_free_blocks_count_hi = cpu_to_le16(count >> 16);
++}
++
++void ext4_free_inodes_set(struct super_block *sb,
++			  struct ext4_group_desc *bg, __u32 count)
++{
++	bg->bg_free_inodes_count_lo = cpu_to_le16((__u16)count);
++	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
++		bg->bg_free_inodes_count_hi = cpu_to_le16(count >> 16);
++}
++
++void ext4_used_dirs_set(struct super_block *sb,
++			  struct ext4_group_desc *bg, __u32 count)
++{
++	bg->bg_used_dirs_count_lo = cpu_to_le16((__u16)count);
++	if (EXT4_DESC_SIZE(sb) >= EXT4_MIN_DESC_SIZE_64BIT)
++		bg->bg_used_dirs_count_hi = cpu_to_le16(count >> 16);
++}
++
++void ext4_itable_unused_set(struct super_block *sb,
++			  struct ext4_group_desc *bg, __u16 count)
++{
++	bg->bg_itable_unused = cpu_to_le16((__u16)count);
++}
++
+ /*
+  * Wrappers for jbd2_journal_start/end.
+  *
+@@ -1478,9 +1538,9 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 
+ 		flex_group = ext4_flex_group(sbi, i);
+ 		sbi->s_flex_groups[flex_group].free_inodes +=
+-			le16_to_cpu(gdp->bg_free_inodes_count);
++			ext4_free_inodes_count(sb, gdp);
+ 		sbi->s_flex_groups[flex_group].free_blocks +=
+-			le16_to_cpu(gdp->bg_free_blocks_count);
++			ext4_free_blks_count(sb, gdp);
+ 	}
+ 
+ 	return 1;
+-- 
+1.6.0.4.735.gea4f
 
-Regards,
-
-						- Ted
