@@ -1,47 +1,92 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4 unlink performance
-Date: Wed, 19 Nov 2008 16:18:40 -0500
-Message-ID: <20081119211840.GA8021@mit.edu>
-References: <20081113185712.GB11204@untroubled.org> <20081113191000.GA11516@untroubled.org> <20081113204240.GF21652@mit.edu> <20081114041121.GB11746@untroubled.org> <20081114145914.GE25117@mit.edu> <20081115204423.GA4671@untroubled.org> <20081116005610.GI22948@mit.edu> <20081117004330.GC3436@webber.adilger.int> <20081119024021.GA10185@mit.edu> <20081119181000.GD3186@webber.adilger.int>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: [RESEND][PATCH 0/3 BUG,RFC] release block-device-mapping
+ buffer_heads which have the filesystem private data for avoiding oom-killer
+Date: Thu, 20 Nov 2008 09:27:11 +0900
+Message-ID: <20081120092711.231c69bf.toshi.okajima@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
+To: akpm@linux-foundation.org, tytso@mit.edu, viro@zeniv.linux.org.uk,
+	sct@redhat.com, adilger@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:48434 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752743AbYKSVS5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Nov 2008 16:18:57 -0500
-Content-Disposition: inline
-In-Reply-To: <20081119181000.GD3186@webber.adilger.int>
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:45343 "EHLO
+	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752250AbYKTAip (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 19 Nov 2008 19:38:45 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 19, 2008 at 12:10:01PM -0600, Andreas Dilger wrote:
-> 
-> That may be a side-effect of the mballoc per-CPU cache again, where
-> files being written in the same subdirectory are spread apart because
-> of the write thread being rescheduled to different cores.
-> 
+Hi.
 
-It would be good for us to get confirmation one way or another about
-this theory.  Bruce, if you have multiple CPU's (or cores on your
-system --- i.e., cat /proc/cpuinfo reports multiple processors), can
-you try unpacking your tarball on a test ext4 filesystem using
-something like:
+I found it possible that even if a lot of pages can be logically released, 
+they cannot be released by try_to_release_page, and then they keep remaining.
 
-    taskset 1 tar xjf /path/to/my/tarball.tar.bz2
+This case enables an oom-killer to happen easily.
 
-The "taskset 1" will bind the tar process to only run on a single
-processors.  If that significantly changes the time to do run rm -rf,
-can you save a raw e2image using that workload?  That would be very
-useful indeed.
+Details of the root cause and my patch which fixes it are shown below.
+---
+The direct data blocks can be released by the member function, releasepage()
+of their mapping of the filesystem i-node.
+(If an ext3 has the i-node, ext3_releasepage() is used as releasepage().) 
 
-Alternatively, if you don't have the taskset command handy, you can
-also add maxcpus=1 to the kernel boot command-line, which will force
-the system to only use one cpu.  Using taskset is much more
-convenient, though.
+On the other hand, the indirect data blocks (ext3) are attempted to be released
+by try_to_free_buffers(). (And other metadata are also done by it.)
+Because a block device has its mapping, and doesn't have own member function 
+to release a page. 
 
-Thanks!!
+But try_to_free_buffers() is a generic function which releases buffer_heads
+(and a page), and no buffer_head can be released if a buffer_head has private 
+data (like journal_head) because the buffer_head's reference counter is bigger
+than 0. Therefore, try_to_free_buffers() cannot release a buffer_head even if
+it is possible to release its private data.
 
-						- Ted
+As a result, oom-killer may happen when a system memory is exhausted even if 
+it is possible to release a lot of private data and their pages, because 
+try_to_free_buffers() doesn't release such pages.
+
+In order to solve this situation, we add a member function into a block device
+ to release private data and then the page. 
+This member function is:
+- registered at a filesystem initialization time (get_sb_bdev()) 
+- unregistered at a filesystem unmount time (kill_block_super())
+
+This member function's pointer is located in a bdev_inode structure.
+Besides, a client which registers it is also added into this structure. 
+A client for a filesystem is its superblock. 
+
+If we use an ext3, this additional member function can do equal processing to
+ext3_releasepage() by using the superblock. And a block device's releasepage() 
+is necessary to call this additional member function. Therefore we need a 
+member function, 'releasepage' of the mapping of a block device.
+
+Changing like them becomes possible to release private data and then the page
+via try_to_release_page().
+Therefore it becomes difficult for oom-killer to happen than before.
+Because this patch enables journal_heads to be released more efficiently
+in case of ext3.
+
+I will post patches to solve it (ext3/ext4 version):
+(1) [patch 1/3] vfs: release block-device-mapping buffer_heads which have the 
+               filesystem private data for avoiding oom-killer
+(2) [patch 2/3] ext3: release block-device-mapping buffer_heads which have the
+               filesystem private data for avoiding oom-killer
+(3) [patch 3/3] ext4: release block-device-mapping buffer_heads which have the
+               filesystem private data for avoiding oom-killer
+
+[Additional information]
+I have confirmed that JBD on 2.6.28-rc4 to which my patch was applied could keep 
+running for long time without oom-killer under the heavy loads.
+(Of course, JBD without the patch cannot keep running for long time
+under the same situation.)
+* This patch needs Ted's fix which was posted at "Wed, 5 Nov 2008 09:05:07 -0500"
+* as "[PATCH] jbd: don't give up looking for space so easily in 
+* __log_wait_for_space". 
+* Because "no transactions" error happens easily by releasing journal_heads 
+* efficiently with my patch.
+* But linux-2.6.28-rc4 includes his patch. Therefore I don't care about this.
+
+Any comments are welcome.
+
+Best Regards,
+Toshiyuki Okajima
