@@ -1,71 +1,82 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH 1/5] ext4: unlock group before ext4_error
-Date: Fri, 21 Nov 2008 00:17:46 +0530
-Message-ID: <20081120184746.GC11212@skywalker>
-References: <1227205580-27596-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4925ADDF.10103@redhat.com>
+Date: Thu, 20 Nov 2008 17:38:52 -0500
+Message-ID: <20081120223852.GD14212@mit.edu>
+References: <1227205580-27596-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Peter Staubach <staubach@redhat.com>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:59838 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753752AbYKTStP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Nov 2008 13:49:15 -0500
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id mAKImPfi008217
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 05:48:25 +1100
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mAKImDjT3825856
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 05:48:13 +1100
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mAKIlv3P026717
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 05:47:58 +1100
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:35155 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751395AbYKTWjL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 20 Nov 2008 17:39:11 -0500
 Content-Disposition: inline
-In-Reply-To: <4925ADDF.10103@redhat.com>
+In-Reply-To: <1227205580-27596-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Nov 20, 2008 at 01:35:11PM -0500, Peter Staubach wrote:
->> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->> index 772e05b..039a5a6 100644
->> --- a/fs/ext4/mballoc.c
->> +++ b/fs/ext4/mballoc.c
->> @@ -460,10 +460,12 @@ static void mb_free_blocks_double(struct inode *inode, struct ext4_buddy *e4b,
->>  			blocknr +=
->>  			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
->>  +			ext4_unlock_group(sb, e4b->bd_group);
->>  			ext4_error(sb, __func__, "double-free of inode"
->>  				   " %lu's block %llu(bit %u in group %u)\n",
->>  				   inode ? inode->i_ino : 0, blocknr,
->>  				   first + i, e4b->bd_group);
->> +			ext4_unlock_group(sb, e4b->bd_group);
->>   
->
-> This should be ext4_lock_group(sb, e4b->bd_group); shouldn't it?
+On Thu, Nov 20, 2008 at 11:56:18PM +0530, Aneesh Kumar K.V wrote:
+> Otherwise ext4_error will cause BUG because of
+> scheduling in atomic context.
 
-Yes, I need to update at two place
+Granted that it isn't necessarily safe as it is when errors-behaviour
+is set to continue, that is the default on a large number of
+filesystems.  And unlocking the group, calling the ext4_error(), and
+then relocking the group can't possibly be safe; after all, we're
+holding the lock for a reason!  
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 039a5a6..728221e 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -465,7 +465,7 @@ static void mb_free_blocks_double(struct inode *inode, struct ext4_buddy *e4b,
- 				   " %lu's block %llu(bit %u in group %u)\n",
- 				   inode ? inode->i_ino : 0, blocknr,
- 				   first + i, e4b->bd_group);
--			ext4_unlock_group(sb, e4b->bd_group);
-+			ext4_lock_group(sb, e4b->bd_group);
- 		}
- 		mb_clear_bit(first + i, e4b->bd_info->bb_bitmap);
- 	}
-@@ -4621,7 +4621,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
- 			ext4_error(sb, __func__,
- 			    "Double free of blocks %d (%d %d)\n",
- 			    block, entry->start_blk, entry->count);
--			ext4_unlock_group(sb, e4b->bd_group);
-+			ext4_lock_group(sb, e4b->bd_group);
- 			return 0;
- 		}
- 	}
+In the errors=continue case, we don't actually need to unlock and
+relock the group, since all we need to do is to printk a message to
+the console.  In the errors=panic case, we'll never return; and in the
+errors=remount-ro case, relocking is kind of pointless but harmless,
+since once the journal is aborted, there's no way the allocation is
+going to succeed anyway, and a subsequent call will return an error.
+
+This gets ugly to get right.  Since the situation where we need to
+call ext4_error() while holding a spinlock which should be preserved
+in the errors=continue case seems to be unique to mballoc, maybe
+something like this?
+
+static int ext4_grp_locked_error(struct super_block *sb, ext4_group_t grp,
+       	    		          const char *function,
+            		          const char *fmt, ...)
+{
+
+	va_start(args, fmt);
+	printk(KERN_CRIT "EXT4-fs error (device %s): %s: ", sb->s_id, function);
+	vprintk(fmt, args);
+	printk("\n");
+	va_end(args);
+
+	if (test_opt(sb, ERROR_CONT)) {
+		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
+		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+		ext4_commit_super(sb, es, 0);
+		return 0;
+	}
+	ext4_unlock_group(sb, grp);
+	ext4_handle_error(sb);
+	/* 
+	 * We only get here in the ERRORS_RO case; relocking the group
+	 * may be dangerous, but nothing bad will happen since the
+	 * filesystem will have already been marked read/only and the
+	 * journal has been aborted.  We return 1 as a hint to callers
+	 * who might what to use the return value from
+	 * ext4_grp_locked_error() to distinguish beween the
+	 * ERRORS_CONT and ERRORS_RO case, and perhaps return more
+	 * aggressively from the ext4 function in question, with a
+	 * more appropriate error code.
+	 */
+	ext4_lock_group(sb, grp);
+}
+
+This requires access to two static functions in fs/ext4/super.c, so
+probably the best thing to do is to put this function in
+fs/ext4/super.c, and move the definition of ext4_[un]lock_group from
+mballoc.h to ext4.h.
+
+Comments?
+
+						- Ted
