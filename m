@@ -1,65 +1,312 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V4] ext4: Fix lockdep recursive locking warning
-Date: Fri, 21 Nov 2008 22:10:46 +0530
-Message-ID: <1227285646-16263-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2 2/5] ext4: unlock group before ext4_error
+Date: Fri, 21 Nov 2008 22:14:32 +0530
+Message-ID: <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1227285875-18011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([59.145.155.5]:52501 "EHLO
-	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757173AbYKUQl2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 11:41:28 -0500
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id mALGf0uo001249
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:11:10 +0530
-Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mALGeoHc3838084
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:10:50 +0530
-Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id mALGensU015613
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 03:40:49 +1100
+Received: from e28smtp03.in.ibm.com ([59.145.155.3]:32998 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757502AbYKUQoo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 11:44:44 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp03.in.ibm.com (8.13.1/8.13.1) with ESMTP id mALGif1W004238
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:14:41 +0530
+Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mALGiBSD3981338
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:14:11 +0530
+Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id mALGieFa015318
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 03:44:41 +1100
+In-Reply-To: <1227285875-18011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Indicate that the group locks can be taken in loop.
+Otherwise ext4_error will cause BUG because of
+scheduling in atomic context.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/mballoc.c |   11 ++++++++++-
- 1 files changed, 10 insertions(+), 1 deletions(-)
+ fs/ext4/ext4.h    |   47 +++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/mballoc.c |   30 +++++++++++++++---------------
+ fs/ext4/mballoc.h |   47 -----------------------------------------------
+ fs/ext4/super.c   |   38 ++++++++++++++++++++++++++++++++++++++
+ 4 files changed, 100 insertions(+), 62 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 774762e..ca88bd1 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1184,6 +1184,9 @@ extern void ext4_abort(struct super_block *, const char *, const char *, ...)
+ 	__attribute__ ((format (printf, 3, 4)));
+ extern void ext4_warning(struct super_block *, const char *, const char *, ...)
+ 	__attribute__ ((format (printf, 3, 4)));
++extern void ext4_grp_locked_error(struct super_block *, ext4_group_t,
++				const char *, const char *, ...)
++	__attribute__ ((format (printf, 4, 5)));
+ extern void ext4_update_dynamic_rev(struct super_block *sb);
+ extern int ext4_update_compat_feature(handle_t *handle, struct super_block *sb,
+ 					__u32 compat);
+@@ -1316,6 +1319,50 @@ static inline void ext4_update_i_disksize(struct inode *inode, loff_t newsize)
+ 	return ;
+ }
+ 
++struct ext4_group_info {
++	unsigned long   bb_state;
++	struct rb_root  bb_free_root;
++	unsigned short  bb_first_free;
++	unsigned short  bb_free;
++	unsigned short  bb_fragments;
++	struct          list_head bb_prealloc_list;
++#ifdef DOUBLE_CHECK
++	void            *bb_bitmap;
++#endif
++	struct rw_semaphore alloc_sem;
++	unsigned short  bb_counters[];
++};
++
++#define EXT4_GROUP_INFO_NEED_INIT_BIT	0
++#define EXT4_GROUP_INFO_LOCKED_BIT	1
++
++#define EXT4_MB_GRP_NEED_INIT(grp)	\
++	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
++
++static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
++{
++	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
++
++	bit_spin_lock(EXT4_GROUP_INFO_LOCKED_BIT, &(grinfo->bb_state));
++}
++
++static inline void ext4_unlock_group(struct super_block *sb,
++					ext4_group_t group)
++{
++	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
++
++	bit_spin_unlock(EXT4_GROUP_INFO_LOCKED_BIT, &(grinfo->bb_state));
++}
++
++static inline int ext4_is_group_locked(struct super_block *sb,
++					ext4_group_t group)
++{
++	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
++
++	return bit_spin_is_locked(EXT4_GROUP_INFO_LOCKED_BIT,
++						&(grinfo->bb_state));
++}
++
+ /*
+  * Inodes and files operations
+  */
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7293209..1fa311c 100644
+index e648283..c5dcdf0 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2413,6 +2413,9 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
- #define ext4_mb_history_init(sb)
- #endif
+@@ -457,8 +457,8 @@ static void mb_free_blocks_double(struct inode *inode, struct ext4_buddy *e4b,
+ 			blocknr += first + i;
+ 			blocknr +=
+ 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+-
+-			ext4_error(sb, __func__, "double-free of inode"
++			ext4_grp_locked_error(sb, e4b->bd_group,
++				   __func__, "double-free of inode"
+ 				   " %lu's block %llu(bit %u in group %u)\n",
+ 				   inode ? inode->i_ino : 0, blocknr,
+ 				   first + i, e4b->bd_group);
+@@ -702,7 +702,7 @@ static void ext4_mb_generate_buddy(struct super_block *sb,
+ 	grp->bb_fragments = fragments;
  
-+#ifdef CONFIG_LOCKDEP
-+static struct lock_class_key alloc_sem_key[NR_BG_LOCKS];
-+#endif
+ 	if (free != grp->bb_free) {
+-		ext4_error(sb, __func__,
++		ext4_grp_locked_error(sb, group,  __func__,
+ 			"EXT4-fs: group %u: %u blocks in bitmap, %u in gd\n",
+ 			group, free, grp->bb_free);
+ 		/*
+@@ -1098,8 +1098,6 @@ static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
  
- /* Create and initialize ext4_group_info data for the given group. */
- int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
-@@ -2473,8 +2476,14 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 			  int first, int count)
+-__releases(bitlock)
+-__acquires(bitlock)
+ {
+ 	int block = 0;
+ 	int max = 0;
+@@ -1138,12 +1136,11 @@ __acquires(bitlock)
+ 			blocknr += block;
+ 			blocknr +=
+ 			    le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+-			ext4_unlock_group(sb, e4b->bd_group);
+-			ext4_error(sb, __func__, "double-free of inode"
++			ext4_grp_locked_error(sb, e4b->bd_group,
++				   __func__, "double-free of inode"
+ 				   " %lu's block %llu(bit %u in group %u)\n",
+ 				   inode ? inode->i_ino : 0, blocknr, block,
+ 				   e4b->bd_group);
+-			ext4_lock_group(sb, e4b->bd_group);
+ 		}
+ 		mb_clear_bit(block, EXT4_MB_BITMAP(e4b));
+ 		e4b->bd_info->bb_counters[order]++;
+@@ -1623,7 +1620,8 @@ static void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 			 * free blocks even though group info says we
+ 			 * we have free blocks
+ 			 */
+-			ext4_error(sb, __func__, "%d free blocks as per "
++			ext4_grp_locked_error(sb, e4b->bd_group,
++					__func__, "%d free blocks as per "
+ 					"group info. But bitmap says 0\n",
+ 					free);
+ 			break;
+@@ -1632,7 +1630,8 @@ static void ext4_mb_complex_scan_group(struct ext4_allocation_context *ac,
+ 		mb_find_extent(e4b, 0, i, ac->ac_g_ex.fe_len, &ex);
+ 		BUG_ON(ex.fe_len <= 0);
+ 		if (free < ex.fe_len) {
+-			ext4_error(sb, __func__, "%d free blocks as per "
++			ext4_grp_locked_error(sb, e4b->bd_group,
++					__func__, "%d free blocks as per "
+ 					"group info. But got %d blocks\n",
+ 					free, ex.fe_len);
+ 			/*
+@@ -3791,8 +3790,9 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
+ 			pa, (unsigned long) pa->pa_lstart,
+ 			(unsigned long) pa->pa_pstart,
+ 			(unsigned long) pa->pa_len);
+-		ext4_error(sb, __func__, "free %u, pa_free %u\n",
+-						free, pa->pa_free);
++		ext4_grp_locked_error(sb, group,
++					__func__, "free %u, pa_free %u\n",
++					free, pa->pa_free);
+ 		/*
+ 		 * pa is already deleted so we use the value obtained
+ 		 * from the bitmap and continue.
+@@ -4605,9 +4605,9 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 		else if (block >= (entry->start_blk + entry->count))
+ 			n = &(*n)->rb_right;
+ 		else {
+-			ext4_error(sb, __func__,
+-			    "Double free of blocks %d (%d %d)\n",
+-			    block, entry->start_blk, entry->count);
++			ext4_grp_locked_error(sb, e4b->bd_group, __func__,
++					"Double free of blocks %d (%d %d)\n",
++					block, entry->start_blk, entry->count);
+ 			return 0;
+ 		}
  	}
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index 407b39a..efb20b5 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -118,27 +118,6 @@ struct ext4_free_data {
+ 	tid_t	t_tid;
+ };
  
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
--	init_rwsem(&meta_group_info[i]->alloc_sem);
-+#ifdef CONFIG_LOCKDEP
-+	__init_rwsem(&meta_group_info[i]->alloc_sem,
-+			"&meta_group_info[i]->alloc_sem",
-+			&alloc_sem_key[i]);
- 	meta_group_info[i]->bb_free_root.rb_node = NULL;;
-+#else
-+	init_rwsem(&meta_group_info[i]->alloc_sem);
-+#endif
+-struct ext4_group_info {
+-	unsigned long	bb_state;
+-	struct rb_root  bb_free_root;
+-	unsigned short	bb_first_free;
+-	unsigned short	bb_free;
+-	unsigned short	bb_fragments;
+-	struct		list_head bb_prealloc_list;
+-#ifdef DOUBLE_CHECK
+-	void		*bb_bitmap;
+-#endif
+-	struct rw_semaphore alloc_sem;
+-	unsigned short	bb_counters[];
+-};
+-
+-#define EXT4_GROUP_INFO_NEED_INIT_BIT	0
+-#define EXT4_GROUP_INFO_LOCKED_BIT	1
+-
+-#define EXT4_MB_GRP_NEED_INIT(grp)	\
+-	(test_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &((grp)->bb_state)))
+-
+-
+ struct ext4_prealloc_space {
+ 	struct list_head	pa_inode_list;
+ 	struct list_head	pa_group_list;
+@@ -265,32 +244,6 @@ static inline void ext4_mb_store_history(struct ext4_allocation_context *ac)
+ #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
  
- #ifdef DOUBLE_CHECK
- 	{
+ struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
+-
+-
+-static inline void ext4_lock_group(struct super_block *sb, ext4_group_t group)
+-{
+-	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
+-
+-	bit_spin_lock(EXT4_GROUP_INFO_LOCKED_BIT, &(grinfo->bb_state));
+-}
+-
+-static inline void ext4_unlock_group(struct super_block *sb,
+-					ext4_group_t group)
+-{
+-	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
+-
+-	bit_spin_unlock(EXT4_GROUP_INFO_LOCKED_BIT, &(grinfo->bb_state));
+-}
+-
+-static inline int ext4_is_group_locked(struct super_block *sb,
+-					ext4_group_t group)
+-{
+-	struct ext4_group_info *grinfo = ext4_get_group_info(sb, group);
+-
+-	return bit_spin_is_locked(EXT4_GROUP_INFO_LOCKED_BIT,
+-						&(grinfo->bb_state));
+-}
+-
+ static inline ext4_fsblk_t ext4_grp_offs_to_block(struct super_block *sb,
+ 					struct ext4_free_extent *fex)
+ {
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index b5c7658..42597b7 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -350,6 +350,44 @@ void ext4_warning(struct super_block *sb, const char *function,
+ 	va_end(args);
+ }
+ 
++void ext4_grp_locked_error(struct super_block *sb, ext4_group_t grp,
++				const char *function, const char *fmt, ...)
++__releases(bitlock)
++__acquires(bitlock)
++{
++	va_list args;
++	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
++
++	va_start(args, fmt);
++	printk(KERN_CRIT "EXT4-fs error (device %s): %s: ", sb->s_id, function);
++	vprintk(fmt, args);
++	printk("\n");
++	va_end(args);
++
++	if (test_opt(sb, ERRORS_CONT)) {
++		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
++		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
++		ext4_commit_super(sb, es, 0);
++		return;
++	}
++	ext4_unlock_group(sb, grp);
++	ext4_handle_error(sb);
++	/*
++	 * We only get here in the ERRORS_RO case; relocking the group
++	 * may be dangerous, but nothing bad will happen since the
++	 * filesystem will have already been marked read/only and the
++	 * journal has been aborted.  We return 1 as a hint to callers
++	 * who might what to use the return value from
++	 * ext4_grp_locked_error() to distinguish beween the
++	 * ERRORS_CONT and ERRORS_RO case, and perhaps return more
++	 * aggressively from the ext4 function in question, with a
++	 * more appropriate error code.
++	 */
++	ext4_lock_group(sb, grp);
++	return;
++}
++
++
+ void ext4_update_dynamic_rev(struct super_block *sb)
+ {
+ 	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
 -- 
 1.6.0.4.735.gea4f
 
