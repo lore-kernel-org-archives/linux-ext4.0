@@ -1,192 +1,116 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V5] ext4: sparse fixes
-Date: Fri, 21 Nov 2008 23:30:52 +0530
-Message-ID: <1227290452-24063-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	hch@infradead.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Maximum filename length
+Date: Fri, 21 Nov 2008 17:32:48 -0500
+Message-ID: <20081121223248.GA22671@mit.edu>
+References: <87a8dc10811210451p3ec1e3dar371a3ebffcedcdc@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Alexey Salmin <alexey.salmin@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([59.145.155.5]:42488 "EHLO
-	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752692AbYKUSBf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 13:01:35 -0500
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id mALI16CN009518
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 23:31:16 +0530
-Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mALI0vGQ2125942
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 23:30:57 +0530
-Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id mALI0tV0028875
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 05:00:56 +1100
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:49039 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751395AbYKUWdG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 17:33:06 -0500
+Content-Disposition: inline
+In-Reply-To: <87a8dc10811210451p3ec1e3dar371a3ebffcedcdc@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/ext4.h    |    9 ++++++---
- fs/ext4/extents.c |    5 +++--
- fs/ext4/file.c    |    3 ---
- fs/ext4/inode.c   |    2 +-
- fs/ext4/mballoc.c |    4 +++-
- fs/ext4/super.c   |   19 +++++++++++--------
- 6 files changed, 24 insertions(+), 18 deletions(-)
+On Fri, Nov 21, 2008 at 06:51:23PM +0600, Alexey Salmin wrote:
+> But there is one limitation looking tiny against these Tera-
+> and Exbi-bytes: maximum filename length is 255 bytes. Is 255
+> characters enough? I think it's enough for the vast majority of users.
+> But there is one problem: 255 bytes and 255 characters are no longer
+> equal. Multibyte encodings are spreading fast and it should be taken
+> into account. For a long time I was using the simple koi8-r encoding
+> and it was enough. Even when my favorite debian distribution moved to
+> utf8 I was still keeping it.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9415a1a..00afb78 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -726,11 +726,11 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
-  */
- 
- #define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
--	(EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask))
-+	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
- #define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
--	(EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask))
-+	((EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask)) != 0)
- #define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
--	(EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask))
-+	((EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask)) != 0)
- #define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
- 	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
- #define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
-@@ -1284,6 +1284,9 @@ extern int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode,
- 			sector_t block, unsigned int max_blocks,
- 			struct buffer_head *bh, int create,
- 			int extend_disksize, int flag);
-+extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
-+			__u64 start, __u64 len);
-+
- #endif	/* __KERNEL__ */
- 
- #endif	/* _EXT4_H */
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 6b8c687..373a006 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3081,7 +3081,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
- /*
-  * Callback function called for each extent to gather FIEMAP information.
-  */
--int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
-+static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
- 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
- 		       void *data)
- {
-@@ -3150,7 +3150,8 @@ int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
- /* fiemap flags we can handle specified here */
- #define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
- 
--int ext4_xattr_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo)
-+static int ext4_xattr_fiemap(struct inode *inode,
-+				struct fiemap_extent_info *fieinfo)
- {
- 	__u64 physical = 0;
- 	__u64 length;
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index 6bd11fb..f731cb5 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -140,9 +140,6 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
- 	return 0;
- }
- 
--extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
--		__u64 start, __u64 len);
--
- const struct file_operations ext4_file_operations = {
- 	.llseek		= generic_file_llseek,
- 	.read		= do_sync_read,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2a67431..76b1d3a 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3880,7 +3880,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
- 	ext4_fsblk_t		block;
- 	int			inodes_per_block, inode_offset;
- 
--	iloc->bh = 0;
-+	iloc->bh = NULL;
- 	if (!ext4_valid_inum(sb, inode->i_ino))
- 		return -EIO;
- 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 59151c1..9cc93af 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1056,6 +1056,8 @@ static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
- 
- static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 			  int first, int count)
-+__releases(bitlock)
-+__acquires(bitlock)
- {
- 	int block = 0;
- 	int max = 0;
-@@ -2242,7 +2244,7 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
- 
- 
- /* Create and initialize ext4_group_info data for the given group. */
--int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
-+static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
- 			  struct ext4_group_desc *desc)
- {
- 	int i, len;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d4c84f4..8e302b5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1876,7 +1876,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	int db_count;
- 	int i;
- 	int needs_recovery, has_huge_files;
--	__le32 features;
-+	int features;
- 	__u64 blocks_count;
- 	int err;
- 
-@@ -2005,15 +2005,17 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	features = EXT4_HAS_INCOMPAT_FEATURE(sb, ~EXT4_FEATURE_INCOMPAT_SUPP);
- 	if (features) {
- 		printk(KERN_ERR "EXT4-fs: %s: couldn't mount because of "
--		       "unsupported optional features (%x).\n",
--		       sb->s_id, le32_to_cpu(features));
-+		       "unsupported optional features (%x).\n", sb->s_id,
-+			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_incompat) &
-+			~EXT4_FEATURE_INCOMPAT_SUPP));
- 		goto failed_mount;
- 	}
- 	features = EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT4_FEATURE_RO_COMPAT_SUPP);
- 	if (!(sb->s_flags & MS_RDONLY) && features) {
- 		printk(KERN_ERR "EXT4-fs: %s: couldn't mount RDWR because of "
--		       "unsupported optional features (%x).\n",
--		       sb->s_id, le32_to_cpu(features));
-+		       "unsupported optional features (%x).\n", sb->s_id,
-+			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_ro_compat) &
-+			~EXT4_FEATURE_RO_COMPAT_SUPP));
- 		goto failed_mount;
- 	}
- 	has_huge_files = EXT4_HAS_RO_COMPAT_FEATURE(sb,
-@@ -3036,13 +3038,14 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 			ext4_mark_recovery_complete(sb, es);
- 			lock_super(sb);
- 		} else {
--			__le32 ret;
-+			int ret;
- 			if ((ret = EXT4_HAS_RO_COMPAT_FEATURE(sb,
- 					~EXT4_FEATURE_RO_COMPAT_SUPP))) {
- 				printk(KERN_WARNING "EXT4-fs: %s: couldn't "
- 				       "remount RDWR because of unsupported "
--				       "optional features (%x).\n",
--				       sb->s_id, le32_to_cpu(ret));
-+				       "optional features (%x).\n", sb->s_id,
-+				(le32_to_cpu(sbi->s_es->s_feature_ro_compat) &
-+					~EXT4_FEATURE_RO_COMPAT_SUPP));
- 				err = -EROFS;
- 				goto restore_opts;
- 			}
--- 
-1.6.0.4.735.gea4f
+Yeah, unfortunately Unicode and UTF-8 is unfortunate for the Cyrillic
+and Greek alphabets, since they are non-Latin alphabets where multiple
+characters form a word.  For most writing systems, they either use a
+single glyph to represent a word (such as the CJK, or
+Chinese-Japanese-Korean characters), or they are based on the Latin
+alphabet, so in those writing systems, only a few characters in
+practice require glyphs that are encoded using two bytes, and most
+require only one byte.
 
+> Actually I'm lucky having only two bytes per character,
+> utf8-character can contain up to 4 bytes which reduces the limit to 63
+> characters. Really I see no reasons for keeping such a terrible
+
+In practice the bulk of the characters which require 3 bytes to encode
+are used to denote a word (which in most other languages might be
+encoded in 3 to 20 letters).  There are a few writing systems that
+have letters encoded above U+0800, and so require 3 bytes per letter,
+but they tend to be "niche" languages that are rarely used in
+computing.  For example, the Buhid script, which is spoken by the
+indigenous people Mangyans, which lives in the province of Mindoro in
+the Phillipines, and which has about 8,000 speakers in the world,
+utilize Unicode characters U+1740 through U+175F, and so require 3
+bytes per character.  The Native American Cherokee language, which has
+about 10,000 speakers in the world, uses Unicode symbols U+13A0
+through U+13F4, and similarly needs 3 bytes per character.
+
+Characters that require 4 bytes to encode are needed to encode Unicode
+symbols above U+10000, which are used primarily by dead languages
+(i.e., no one alive speaks it as their primary language --- and in
+some cases, no one alive has any idea how to speak it).  For example
+the Linear B script, which was used in Mycenaean civilization sometime
+around the 13th and 14th century BC (i.e., over 3 millennia ago) is
+assigned Unicode characters U+10000 through U+100FF, and so would
+require 4 bytes per Linear B glyph to encode.  However, aside from
+researchers in ancient languages, it is doubtful anyone would actually
+be using it, and it's even less likely anyone would be trying to
+catalog books or mp3 filenames using Linear B glyphs.  :-)
+
+
+So in practice, in terms of the common languages that are likely to be
+used in computing that are based on phomemes (i.e., such as most
+European, Russian, Greeek writing systems) as opposed to ideographs
+(i.e., the CJK writing systems) Russian, Greek, Hewbrew, and Arabic
+are the unlucky ones that are not based on a Latin-1 alphabet, and
+have this problem where 2 bytes are required.  Curiously enough, its
+generally people using the Cyrillic alphabet that tend to complain; I
+suspect that it has the largest number of users who are likely to use
+those letters in computing.  (In practice, not many people complain
+about Hewbrew writing systems, and I suspect that it's partially
+because of the relative difference in the number of people using the
+Hewbrew writing system as compared to the Cyrillic, and also that most
+Israeli computer folk I know tend to do most of the computing work in
+English, and not in Hewbrew.)
+
+> Really I see no reasons for keeping such a terrible
+> limitation. Ext4 branch was created because there were to many things
+> to change compared to ext3. And it's very sad that such a simple
+> improvement was forgotten :(
+
+It wouldn't be _that_ hard to add an extension to ext4 to support
+longer filenames (it would mean a new directory entry format, and a
+way of marking a directory inode as to whether the old or new
+directory format was being used).  Unfortunately, the 255 byte limit
+is encoded not only in the filesystem, but also in the kernel.
+Changing it in the kernel is not just a matter of a #define constant,
+but also fixing places which put filename[NAME_MAX] on the stack, and
+where increasing NAME_MAX might cause kernel functions to blow the
+limited stack space available to kernel code.  In addition, there are
+numerous userspace and in some cases, protocol limitations which
+assume that the total overall length of a pathname is no more than
+1024 bytes.  (I suspect there is at least userspace code that also
+would blow up if an individual pathname exceeded NAME_MAX, or 256
+bytes.)
+
+So the problem is that even if we were to add that enhancement to
+ext4, there are lots of other things, both in and outside of the
+kernel, that would likely need to be changed in order to support this.
+I will say personally that its rare for me to use filenames longer
+than 50-60 characters, just because they are a pain in the *ss to
+type.  However, I can see how someone using a graphical interface
+might be happy with filenames in the 100-120 character range.  The
+question though is whether it is worth trying to fix this by
+increasing the filename length beyond 255 bytes or not, given the
+amount of effort that would be required in the kernel, libc,
+userspace, etc.
+
+					- Ted
