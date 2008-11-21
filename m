@@ -1,46 +1,192 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V4] ext4: sparse fixes
-Date: Fri, 21 Nov 2008 23:25:34 +0530
-Message-ID: <20081121175534.GI11212@skywalker>
-References: <1227285636-16221-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081121175110.GA12412@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Christoph Hellwig <hch@infradead.org>
+Subject: [PATCH -V5] ext4: sparse fixes
+Date: Fri, 21 Nov 2008 23:30:52 +0530
+Message-ID: <1227290452-24063-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	hch@infradead.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp07.in.ibm.com ([59.145.155.7]:43937 "EHLO
-	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757063AbYKURzo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 12:55:44 -0500
+Received: from e28smtp05.in.ibm.com ([59.145.155.5]:42488 "EHLO
+	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752692AbYKUSBf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 13:01:35 -0500
 Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id mALHtfGb026524
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 23:25:41 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mALHtgMx3027022
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 23:25:42 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id mALHteQa021896
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 04:55:41 +1100
-Content-Disposition: inline
-In-Reply-To: <20081121175110.GA12412@infradead.org>
+	by e28smtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id mALI16CN009518
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 23:31:16 +0530
+Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mALI0vGQ2125942
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 23:30:57 +0530
+Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id mALI0tV0028875
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 05:00:56 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 21, 2008 at 12:51:10PM -0500, Christoph Hellwig wrote:
-> On Fri, Nov 21, 2008 at 10:10:36PM +0530, Aneesh Kumar K.V wrote:
-> >  #define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
-> > -	(EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask))
-> > +	(__force __u32)!!(EXT4_SB(sb)->s_es->s_feature_compat &	\
-> > +					cpu_to_le32(mask))
-> 
-> As mentioned before please don't abuse __force here.
-> 
-> 	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
-> 
-> does the right things and is a lote more readable.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/ext4.h    |    9 ++++++---
+ fs/ext4/extents.c |    5 +++--
+ fs/ext4/file.c    |    3 ---
+ fs/ext4/inode.c   |    2 +-
+ fs/ext4/mballoc.c |    4 +++-
+ fs/ext4/super.c   |   19 +++++++++++--------
+ 6 files changed, 24 insertions(+), 18 deletions(-)
 
-I thought your comment was on returning value that had multiple flag bit
-set. I didn't look at the __force usage as bad. I will send an updated patch.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9415a1a..00afb78 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -726,11 +726,11 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+  */
+ 
+ #define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
+-	(EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask))
++	((EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask)) != 0)
+ #define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
+-	(EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask))
++	((EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask)) != 0)
+ #define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
+-	(EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask))
++	((EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask)) != 0)
+ #define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
+ 	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
+ #define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
+@@ -1284,6 +1284,9 @@ extern int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode,
+ 			sector_t block, unsigned int max_blocks,
+ 			struct buffer_head *bh, int create,
+ 			int extend_disksize, int flag);
++extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++			__u64 start, __u64 len);
++
+ #endif	/* __KERNEL__ */
+ 
+ #endif	/* _EXT4_H */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 6b8c687..373a006 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3081,7 +3081,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+ /*
+  * Callback function called for each extent to gather FIEMAP information.
+  */
+-int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
++static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+ 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
+ 		       void *data)
+ {
+@@ -3150,7 +3150,8 @@ int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+ /* fiemap flags we can handle specified here */
+ #define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
+ 
+-int ext4_xattr_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo)
++static int ext4_xattr_fiemap(struct inode *inode,
++				struct fiemap_extent_info *fieinfo)
+ {
+ 	__u64 physical = 0;
+ 	__u64 length;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 6bd11fb..f731cb5 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -140,9 +140,6 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+ 	return 0;
+ }
+ 
+-extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+-		__u64 start, __u64 len);
+-
+ const struct file_operations ext4_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2a67431..76b1d3a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3880,7 +3880,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 	ext4_fsblk_t		block;
+ 	int			inodes_per_block, inode_offset;
+ 
+-	iloc->bh = 0;
++	iloc->bh = NULL;
+ 	if (!ext4_valid_inum(sb, inode->i_ino))
+ 		return -EIO;
+ 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 59151c1..9cc93af 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1056,6 +1056,8 @@ static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
+ 
+ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 			  int first, int count)
++__releases(bitlock)
++__acquires(bitlock)
+ {
+ 	int block = 0;
+ 	int max = 0;
+@@ -2242,7 +2244,7 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
+ 
+ 
+ /* Create and initialize ext4_group_info data for the given group. */
+-int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
++static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 			  struct ext4_group_desc *desc)
+ {
+ 	int i, len;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d4c84f4..8e302b5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1876,7 +1876,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	int db_count;
+ 	int i;
+ 	int needs_recovery, has_huge_files;
+-	__le32 features;
++	int features;
+ 	__u64 blocks_count;
+ 	int err;
+ 
+@@ -2005,15 +2005,17 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	features = EXT4_HAS_INCOMPAT_FEATURE(sb, ~EXT4_FEATURE_INCOMPAT_SUPP);
+ 	if (features) {
+ 		printk(KERN_ERR "EXT4-fs: %s: couldn't mount because of "
+-		       "unsupported optional features (%x).\n",
+-		       sb->s_id, le32_to_cpu(features));
++		       "unsupported optional features (%x).\n", sb->s_id,
++			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_incompat) &
++			~EXT4_FEATURE_INCOMPAT_SUPP));
+ 		goto failed_mount;
+ 	}
+ 	features = EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT4_FEATURE_RO_COMPAT_SUPP);
+ 	if (!(sb->s_flags & MS_RDONLY) && features) {
+ 		printk(KERN_ERR "EXT4-fs: %s: couldn't mount RDWR because of "
+-		       "unsupported optional features (%x).\n",
+-		       sb->s_id, le32_to_cpu(features));
++		       "unsupported optional features (%x).\n", sb->s_id,
++			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_ro_compat) &
++			~EXT4_FEATURE_RO_COMPAT_SUPP));
+ 		goto failed_mount;
+ 	}
+ 	has_huge_files = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+@@ -3036,13 +3038,14 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 			ext4_mark_recovery_complete(sb, es);
+ 			lock_super(sb);
+ 		} else {
+-			__le32 ret;
++			int ret;
+ 			if ((ret = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+ 					~EXT4_FEATURE_RO_COMPAT_SUPP))) {
+ 				printk(KERN_WARNING "EXT4-fs: %s: couldn't "
+ 				       "remount RDWR because of unsupported "
+-				       "optional features (%x).\n",
+-				       sb->s_id, le32_to_cpu(ret));
++				       "optional features (%x).\n", sb->s_id,
++				(le32_to_cpu(sbi->s_es->s_feature_ro_compat) &
++					~EXT4_FEATURE_RO_COMPAT_SUPP));
+ 				err = -EROFS;
+ 				goto restore_opts;
+ 			}
+-- 
+1.6.0.4.735.gea4f
 
--aneesh
