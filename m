@@ -1,56 +1,93 @@
-From: Eric Sesterhenn <snakebyte@gmx.de>
-Subject: Mounting corrupted ext3 image results in infinite loop
-Date: Fri, 21 Nov 2008 10:32:06 +0100
-Message-ID: <20081121093206.GA2672@alice>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Cc: linux-ext4@vger.kernel.org
-To: sct@redhat.com, akpm@linux-foundation.org, adilger@sun.com
+From: <Solofo.Ramangalahy@bull.net>
+Subject: [RFC 0/2] ext4: zero uninitialized inode tables
+Date: Fri, 21 Nov 2008 11:23:09 +0100
+Message-ID: <20081121102309.182113793@bull.net>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:51097 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1751883AbYKUJcL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 21 Nov 2008 04:32:11 -0500
-Content-Disposition: inline
+Received: from ecfrec.frec.bull.fr ([129.183.4.8]:57577 "EHLO
+	ecfrec.frec.bull.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755373AbYKUKjT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 05:39:19 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id 6A98E1A1C30
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 11:39:18 +0100 (CET)
+Received: from ecfrec.frec.bull.fr ([127.0.0.1])
+ by localhost (ecfrec.frec.bull.fr [127.0.0.1]) (amavisd-new, port 10024)
+ with ESMTP id 05275-09 for <linux-ext4@vger.kernel.org>;
+ Fri, 21 Nov 2008 11:39:14 +0100 (CET)
+Received: from cyclope.frec.bull.fr (cyclope.frec.bull.fr [129.183.4.9])
+	by ecfrec.frec.bull.fr (Postfix) with ESMTP id D57901A1C23
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 11:39:14 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-hi,
+The time to format a filesystem is mostly linear with filesystem size.
 
-mounting an intentionally corrupted ext3 image results in
-an infinite loop during the mount.
+Exact time spent on formating depends on hardware and software, but
+this is mainly explained by the zeroing of some blocks (inode, block
+bitmaps and inodes tables).
+While the mkfs time can be considered negligible (for example compared
+to RAID formatting of disk arrays), it is significant compared
+to the formating time of others filesystems.
+This is noticeable when conducting performance comparison tests, or
+testing involving multiple formatting of the same device.
+This may become prohibitive for large disks (arrays).
 
-The compressed image can be found here:
-http://www.cccmz.de/~snakebyte/ext3.57.img.bz2
+For some measurements, see:
+http://www.bullopensource.org/ext4/20080909-mkfs-speed-lazy_itable_init/
+http://www.bullopensource.org/ext4/20080911-mkfs-speed-lazy_itable_init/
+http://www.bullopensource.org/ext4/20080912-mkfs-speed-lazy_itable_init/
+so far it is under one hour, further measurements would be needed,
+like for 16TB filesystems.
 
+It is possible to skip the initialization of the inode tables blocks
+with the mkfs option "lazy_itable_init" (mkfs.ext4(8)).
+However, this option is not safe with respect to fsck, as there is no
+way to distinguish between an unitialized block filled with old bits
+and a corrupted one.
+(The use of lazy_itable_init could be considered safe in the case where
+the blocks of the disk, in particular those used by the inode tables,
+are prefilled with zeros.)
 
-mount ./cfs/ext3.57.img /media/test -t ext3 -o debug,data=journal -o
-loop
+These patches (try to) initialize the inode tables after mount via a
+kernel thread launched by module loading. The goal is to find a
+tradeoff between speed and safety.
 
-gives the following dmesg output
+Apart from use in testing, another use case could be a distribution
+installation: since device size rises faster than system size, the
+percentage of the formating time during the installation will
+increase. Since the system will use a fragment of the full device (say
+10GB for system installation on a 1TB disk), it would not be strictly
+necessary to initialize all the inode tables before starting the
+installation, for example for the home partition.
 
-[  159.477815] EXT3-fs error (device loop0): ext3_free_branches: Read
-failure, inode=8, block=2147483648
-[  159.488844] Aborting journal on device loop0.
-[  159.492602] Remounting filesystem read-only
-[  159.492987] EXT3-fs error (device loop0): ext3_free_branches: Read
-failure, inode=8, block=1048576
-[  159.499747] EXT3-fs error (device loop0): ext3_free_branches: Read
-failure, inode=8, block=134217792
-[  159.516484] EXT3-fs error (device loop0) in ext3_reserve_inode_write:
-Journal has aborted
-[  159.516757] EXT3-fs error (device loop0) in ext3_reserve_inode_write:
-Journal has aborted
-[  159.516972] EXT3-fs error (device loop0) in ext3_orphan_del: Journal
-has aborted
-[  181.628434] ext3_orphan_cleanup: truncating inode 8 to 1049088 bytes
-[  181.628643] ext3_orphan_cleanup: truncating inode 8 to 1049088 bytes
-[  181.628815] ext3_orphan_cleanup: truncating inode 8 to 1049088 bytes
-[  181.628999] ext3_orphan_cleanup: truncating inode 8 to 1049088 bytes
-[  181.629215] ext3_orphan_cleanup: truncating inode 8 to 1049088 bytes
-[  181.629383] ext3_orphan_cleanup: truncating inode 8 to 1049088 bytes
-[  181.629567] ext3_orphan_cleanup: truncating inode 8 to 1049088 bytes
+So far, I've only been able to initialize some small filesystems with
+this code (using 2.6.28-rc4).
+For example, like this:
 
-the ext3_orphan_cleanup message is then repeated forever.
+. dd if=/dev/zero of=/tmp/ext4fs.img bs=1M count=1024
+. losetup /dev/loop0 /tmp/ext4fs.img
+. mkfs.ext4 -O^resize_inode -Elazy_itable_init /dev/loop0
+. mount /dev/loop0 /mnt/test-ext4
+. [dumpe2fs /dev/loop0]
+. modprobe ext4_itable_init
+. [dumpe2fs /dev/loop0  # here check the ITABLE_ZEROED]
+. umount /mnt/test-ext4
+. [dumpe2fs /dev/loop0]
+. [fsck /dev/loop0]
 
-Greetings, Eric
+But I also hitted several bugs and managed to somehow screw up my
+machine. So be _extremly_ careful if ever you try the code!
+
+TODO:
+. fix the resize inode case
+. fix the observed soft lockup
+. decide whether to keep it a module.
+  If not, decide how/when run the kernel thread
+. initialize some blocks (for example the non-empty ones) at mount
+  time, or somewhere else.
+. non-empty group case
+. feature interactions? (for example inode zeroing vs. resize)
+. multiple threads (based on cpu/disks)
+. other ?
+
