@@ -1,87 +1,194 @@
-From: Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH][e2fsprogs]tune2fs: refuse to unmark flex_bg via clear_ok_features
-Date: Fri, 21 Nov 2008 21:36:34 +0800
-Message-ID: <4926B962.8010306@gmail.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
- protocol="application/pgp-signature";
- boundary="------------enigA12C96A7A5975A70D4E65548"
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V4] ext4: sparse fixes
+Date: Fri, 21 Nov 2008 22:10:36 +0530
+Message-ID: <1227285636-16221-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.187]:46785 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752809AbYKUNgt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 08:36:49 -0500
-Received: by ti-out-0910.google.com with SMTP id b6so635691tic.23
-        for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 05:36:47 -0800 (PST)
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:42888 "EHLO
+	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756001AbYKUQko (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 11:40:44 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id mALGee7j010807
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:10:40 +0530
+Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mALGeAcu2023576
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:10:10 +0530
+Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
+	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id mALGedrO009645
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 03:40:40 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is an OpenPGP/MIME signed message (RFC 2440 and 3156)
---------------enigA12C96A7A5975A70D4E65548
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/ext4.h    |   12 +++++++++---
+ fs/ext4/extents.c |    5 +++--
+ fs/ext4/file.c    |    3 ---
+ fs/ext4/inode.c   |    2 +-
+ fs/ext4/mballoc.c |    4 +++-
+ fs/ext4/super.c   |   19 +++++++++++--------
+ 6 files changed, 27 insertions(+), 18 deletions(-)
 
-IIUC, clear_ok_features is the gateway for all features that can be
-cleared by tune2fs. So refuse to unmark flex_bg via clear_ok_features
-instead of dealing with it alone. Having flex_bg in clear_ok_features is
-quite misleading.
-
-Signed-off-by: Peng Tao <bergwolf@gmail.com>
-
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index e72518a..c1876d1 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -136,8 +136,7 @@ static __u32 clear_ok_features[3] =3D {
- 		EXT2_FEATURE_COMPAT_RESIZE_INODE |
- 		EXT2_FEATURE_COMPAT_DIR_INDEX,
- 	/* Incompat */
--	EXT2_FEATURE_INCOMPAT_FILETYPE |
--		EXT4_FEATURE_INCOMPAT_FLEX_BG,
-+	EXT2_FEATURE_INCOMPAT_FILETYPE,
- 	/* R/O compat */
- 	EXT2_FEATURE_RO_COMPAT_LARGE_FILE |
- 		EXT4_FEATURE_RO_COMPAT_HUGE_FILE|
-@@ -407,15 +406,6 @@ static void update_feature_set(ext2_filsys fs, char
-*features)
- 			uuid_generate((unsigned char *) sb->s_hash_seed);
- 	}
-
--	if (FEATURE_OFF(E2P_FEATURE_INCOMPAT, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {=
-
--		if (ext2fs_check_desc(fs)) {
--			fputs(_("Clearing the flex_bg flag would "
--				"cause the the filesystem to be\n"
--				"inconsistent.\n"), stderr);
--			exit(1);
--		}
--	}
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9415a1a..ba0a875 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -726,11 +726,14 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+  */
+ 
+ #define EXT4_HAS_COMPAT_FEATURE(sb,mask)			\
+-	(EXT4_SB(sb)->s_es->s_feature_compat & cpu_to_le32(mask))
++	(__force __u32)!!(EXT4_SB(sb)->s_es->s_feature_compat &	\
++					cpu_to_le32(mask))
+ #define EXT4_HAS_RO_COMPAT_FEATURE(sb,mask)			\
+-	(EXT4_SB(sb)->s_es->s_feature_ro_compat & cpu_to_le32(mask))
++	(__force __u32)!!(EXT4_SB(sb)->s_es->s_feature_ro_compat & \
++					cpu_to_le32(mask))
+ #define EXT4_HAS_INCOMPAT_FEATURE(sb,mask)			\
+-	(EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(mask))
++	(__force __u32)!!(EXT4_SB(sb)->s_es->s_feature_incompat & \
++					cpu_to_le32(mask))
+ #define EXT4_SET_COMPAT_FEATURE(sb,mask)			\
+ 	EXT4_SB(sb)->s_es->s_feature_compat |= cpu_to_le32(mask)
+ #define EXT4_SET_RO_COMPAT_FEATURE(sb,mask)			\
+@@ -1284,6 +1287,9 @@ extern int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode,
+ 			sector_t block, unsigned int max_blocks,
+ 			struct buffer_head *bh, int create,
+ 			int extend_disksize, int flag);
++extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
++			__u64 start, __u64 len);
++
+ #endif	/* __KERNEL__ */
+ 
+ #endif	/* _EXT4_H */
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 6b8c687..373a006 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3081,7 +3081,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
+ /*
+  * Callback function called for each extent to gather FIEMAP information.
+  */
+-int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
++static int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+ 		       struct ext4_ext_cache *newex, struct ext4_extent *ex,
+ 		       void *data)
+ {
+@@ -3150,7 +3150,8 @@ int ext4_ext_fiemap_cb(struct inode *inode, struct ext4_ext_path *path,
+ /* fiemap flags we can handle specified here */
+ #define EXT4_FIEMAP_FLAGS	(FIEMAP_FLAG_SYNC|FIEMAP_FLAG_XATTR)
+ 
+-int ext4_xattr_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo)
++static int ext4_xattr_fiemap(struct inode *inode,
++				struct fiemap_extent_info *fieinfo)
+ {
+ 	__u64 physical = 0;
+ 	__u64 length;
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 6bd11fb..f731cb5 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -140,9 +140,6 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
+ 	return 0;
+ }
+ 
+-extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+-		__u64 start, __u64 len);
 -
- 	if (FEATURE_OFF(E2P_FEATURE_RO_INCOMPAT,
- 			    EXT4_FEATURE_RO_COMPAT_HUGE_FILE)) {
- 		if ((mount_flags & EXT2_MF_MOUNTED) &&
+ const struct file_operations ext4_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2a67431..76b1d3a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3880,7 +3880,7 @@ static int __ext4_get_inode_loc(struct inode *inode,
+ 	ext4_fsblk_t		block;
+ 	int			inodes_per_block, inode_offset;
+ 
+-	iloc->bh = 0;
++	iloc->bh = NULL;
+ 	if (!ext4_valid_inum(sb, inode->i_ino))
+ 		return -EIO;
+ 
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 59151c1..9cc93af 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1056,6 +1056,8 @@ static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
+ 
+ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
+ 			  int first, int count)
++__releases(bitlock)
++__acquires(bitlock)
+ {
+ 	int block = 0;
+ 	int max = 0;
+@@ -2242,7 +2244,7 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
+ 
+ 
+ /* Create and initialize ext4_group_info data for the given group. */
+-int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
++static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 			  struct ext4_group_desc *desc)
+ {
+ 	int i, len;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index d4c84f4..8e302b5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1876,7 +1876,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	int db_count;
+ 	int i;
+ 	int needs_recovery, has_huge_files;
+-	__le32 features;
++	int features;
+ 	__u64 blocks_count;
+ 	int err;
+ 
+@@ -2005,15 +2005,17 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	features = EXT4_HAS_INCOMPAT_FEATURE(sb, ~EXT4_FEATURE_INCOMPAT_SUPP);
+ 	if (features) {
+ 		printk(KERN_ERR "EXT4-fs: %s: couldn't mount because of "
+-		       "unsupported optional features (%x).\n",
+-		       sb->s_id, le32_to_cpu(features));
++		       "unsupported optional features (%x).\n", sb->s_id,
++			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_incompat) &
++			~EXT4_FEATURE_INCOMPAT_SUPP));
+ 		goto failed_mount;
+ 	}
+ 	features = EXT4_HAS_RO_COMPAT_FEATURE(sb, ~EXT4_FEATURE_RO_COMPAT_SUPP);
+ 	if (!(sb->s_flags & MS_RDONLY) && features) {
+ 		printk(KERN_ERR "EXT4-fs: %s: couldn't mount RDWR because of "
+-		       "unsupported optional features (%x).\n",
+-		       sb->s_id, le32_to_cpu(features));
++		       "unsupported optional features (%x).\n", sb->s_id,
++			(le32_to_cpu(EXT4_SB(sb)->s_es->s_feature_ro_compat) &
++			~EXT4_FEATURE_RO_COMPAT_SUPP));
+ 		goto failed_mount;
+ 	}
+ 	has_huge_files = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+@@ -3036,13 +3038,14 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 			ext4_mark_recovery_complete(sb, es);
+ 			lock_super(sb);
+ 		} else {
+-			__le32 ret;
++			int ret;
+ 			if ((ret = EXT4_HAS_RO_COMPAT_FEATURE(sb,
+ 					~EXT4_FEATURE_RO_COMPAT_SUPP))) {
+ 				printk(KERN_WARNING "EXT4-fs: %s: couldn't "
+ 				       "remount RDWR because of unsupported "
+-				       "optional features (%x).\n",
+-				       sb->s_id, le32_to_cpu(ret));
++				       "optional features (%x).\n", sb->s_id,
++				(le32_to_cpu(sbi->s_es->s_feature_ro_compat) &
++					~EXT4_FEATURE_RO_COMPAT_SUPP));
+ 				err = -EROFS;
+ 				goto restore_opts;
+ 			}
+-- 
+1.6.0.4.735.gea4f
 
---=20
-Cheers,
-
-Bergwolf
-
-Here lieth one whose name was writ on water.
-
-
---------------enigA12C96A7A5975A70D4E65548
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: OpenPGP digital signature
-Content-Disposition: attachment; filename="signature.asc"
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-Comment: Using GnuPG with Mozilla - http://enigmail.mozdev.org
-
-iEYEARECAAYFAkkmuWcACgkQEyny3P47hFF0ZwCeKi3Jl9sxMmo/1iYgY04czQql
-uFIAmgNIINDMULrL3vysbr/sEuNi8FyI
-=Qceo
------END PGP SIGNATURE-----
-
---------------enigA12C96A7A5975A70D4E65548--
