@@ -1,92 +1,372 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V2 3/5] ext4: Fix the race between read_block_bitmap and mark_diskspace_used
-Date: Fri, 21 Nov 2008 22:14:33 +0530
-Message-ID: <1227285875-18011-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2 5/5] ext4: Fix the race between read_inode_bitmap and ext4_new_inode
+Date: Fri, 21 Nov 2008 22:14:35 +0530
+Message-ID: <1227285875-18011-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1227285875-18011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227285875-18011-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227285875-18011-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp07.in.ibm.com ([59.145.155.7]:50661 "EHLO
-	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757564AbYKUQou (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 11:44:50 -0500
+Received: from e28smtp01.in.ibm.com ([59.145.155.1]:39591 "EHLO
+	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754602AbYKUQot (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 11:44:49 -0500
 Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id mALGii53006227
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:14:44 +0530
+	by e28smtp01.in.ibm.com (8.13.1/8.13.1) with ESMTP id mALGikhP008488
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:14:46 +0530
 Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mALGihZH4350068
-	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:14:44 +0530
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mALGilq93838162
+	for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 22:14:47 +0530
 Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id mALGigwE015337
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 03:44:42 +1100
-In-Reply-To: <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id mALGijqm015387
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 03:44:46 +1100
+In-Reply-To: <1227285875-18011-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We need to make sure we update the block bitmap and clear
-EXT4_BG_BLOCK_UNINIT flag with sb_bgl_lock held. We look
-at EXT4_BG_BLOCK_UNINIT and reinit the block bitmap each
-time in ext4_read_block_bitmap (introduced by
+We need to make sure we update the inode bitmap and clear
+EXT4_BG_INODE_UNINIT flag with sb_bgl_lock held. We look
+at EXT4_BG_INODE_UNINIT and reinit the inode bitmap each
+time in ext4_read_inode_bitmap (introduced by
 c806e68f5647109350ec546fee5b526962970fd2 )
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/ext4/mballoc.c |   17 ++++++++++++-----
- 1 files changed, 12 insertions(+), 5 deletions(-)
+ fs/ext4/balloc.c  |    2 +-
+ fs/ext4/ialloc.c  |  191 ++++++++++++++++++++++++++++++-----------------------
+ fs/ext4/mballoc.c |    2 +-
+ 3 files changed, 109 insertions(+), 86 deletions(-)
 
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index f2de3da..2189d3b 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -329,8 +329,8 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 		ext4_init_block_bitmap(sb, bh, block_group, desc);
+ 		set_buffer_uptodate(bh);
+-		unlock_buffer(bh);
+ 		spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
++		unlock_buffer(bh);
+ 		return bh;
+ 	}
+ 	spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 84f060b..752fea2 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -124,8 +124,8 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
+ 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+ 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
+ 		set_buffer_uptodate(bh);
+-		unlock_buffer(bh);
+ 		spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
++		unlock_buffer(bh);
+ 		return bh;
+ 	}
+ 	spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
+@@ -572,6 +572,71 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ 	return -1;
+ }
+ 
++static int ext4_claim_inode(struct super_block *sb,
++			struct buffer_head *inode_bitmap_bh,
++			unsigned long ino, ext4_group_t group, int mode)
++{
++	int free = 0, retval = 0, count;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group, NULL);
++
++	spin_lock(sb_bgl_lock(sbi, group));
++	if (ext4_set_bit(ino, inode_bitmap_bh->b_data)) {
++		/* not a free inode */
++		retval = 1;
++		goto err_ret;
++	}
++	ino++;
++	if ((group == 0 && ino < EXT4_FIRST_INO(sb)) ||
++			ino > EXT4_INODES_PER_GROUP(sb)) {
++		spin_unlock(sb_bgl_lock(sbi, group));
++		ext4_error(sb, __func__,
++			   "reserved inode or inode > inodes count - "
++			   "block_group = %u, inode=%lu", group,
++			   ino + group * EXT4_INODES_PER_GROUP(sb));
++		return 1;
++	}
++	/* If we didn't allocate from within the initialized part of the inode
++	 * table then we need to initialize up to this inode. */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++
++		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
++			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
++			/* When marking the block group with
++			 * ~EXT4_BG_INODE_UNINIT we don't want to depend
++			 * on the value of bg_itable_unused even though
++			 * mke2fs could have initialized the same for us.
++			 * Instead we calculated the value below
++			 */
++
++			free = 0;
++		} else {
++			free = EXT4_INODES_PER_GROUP(sb) -
++				ext4_itable_unused_count(sb, gdp);
++		}
++
++		/*
++		 * Check the relative inode number against the last used
++		 * relative inode number in this group. if it is greater
++		 * we need to  update the bg_itable_unused count
++		 *
++		 */
++		if (ino > free)
++			ext4_itable_unused_set(sb, gdp,
++					(EXT4_INODES_PER_GROUP(sb) - ino));
++	}
++	count = ext4_free_inodes_count(sb, gdp) - 1;
++	ext4_free_inodes_set(sb, gdp, count);
++	if (S_ISDIR(mode)) {
++		count = ext4_used_dirs_count(sb, gdp) + 1;
++		ext4_used_dirs_set(sb, gdp, count);
++	}
++	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
++err_ret:
++	spin_unlock(sb_bgl_lock(sbi, group));
++	return retval;
++}
++
+ /*
+  * There are two policies for allocating an inode.  If the new inode is
+  * a directory, then a forward search is made for a block group with both
+@@ -585,8 +650,8 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ {
+ 	struct super_block *sb;
+-	struct buffer_head *bitmap_bh = NULL;
+-	struct buffer_head *bh2;
++	struct buffer_head *inode_bitmap_bh = NULL;
++	struct buffer_head *group_desc_bh;
+ 	ext4_group_t group = 0;
+ 	unsigned long ino = 0;
+ 	struct inode *inode;
+@@ -594,7 +659,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 	struct ext4_super_block *es;
+ 	struct ext4_inode_info *ei;
+ 	struct ext4_sb_info *sbi;
+-	int ret2, err = 0, count;
++	int ret2, err = 0;
+ 	struct inode *ret;
+ 	ext4_group_t i;
+ 	int free = 0;
+@@ -634,40 +699,50 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 	for (i = 0; i < sbi->s_groups_count; i++) {
+ 		err = -EIO;
+ 
+-		gdp = ext4_get_group_desc(sb, group, &bh2);
++		gdp = ext4_get_group_desc(sb, group, &group_desc_bh);
+ 		if (!gdp)
+ 			goto fail;
+ 
+-		brelse(bitmap_bh);
+-		bitmap_bh = ext4_read_inode_bitmap(sb, group);
+-		if (!bitmap_bh)
++		brelse(inode_bitmap_bh);
++		inode_bitmap_bh = ext4_read_inode_bitmap(sb, group);
++		if (!inode_bitmap_bh)
+ 			goto fail;
+ 
+ 		ino = 0;
+ 
+ repeat_in_this_group:
+ 		ino = ext4_find_next_zero_bit((unsigned long *)
+-				bitmap_bh->b_data, EXT4_INODES_PER_GROUP(sb), ino);
++					inode_bitmap_bh->b_data,
++					EXT4_INODES_PER_GROUP(sb), ino);
+ 		if (ino < EXT4_INODES_PER_GROUP(sb)) {
+ 
+-			BUFFER_TRACE(bitmap_bh, "get_write_access");
+-			err = ext4_journal_get_write_access(handle, bitmap_bh);
++			BUFFER_TRACE(inode_bitmap_bh, "get_write_access");
++			err = ext4_journal_get_write_access(handle,
++							    inode_bitmap_bh);
+ 			if (err)
+ 				goto fail;
+ 
+-			if (!ext4_set_bit_atomic(sb_bgl_lock(sbi, group),
+-						ino, bitmap_bh->b_data)) {
++			BUFFER_TRACE(group_desc_bh, "get_write_access");
++			err = ext4_journal_get_write_access(handle,
++								group_desc_bh);
++			if (err)
++				goto fail;
++			if (!ext4_claim_inode(sb, inode_bitmap_bh,
++						ino, group, mode)) {
+ 				/* we won it */
+-				BUFFER_TRACE(bitmap_bh,
++				BUFFER_TRACE(inode_bitmap_bh,
+ 					"call ext4_journal_dirty_metadata");
+ 				err = ext4_journal_dirty_metadata(handle,
+-								bitmap_bh);
++							inode_bitmap_bh);
+ 				if (err)
+ 					goto fail;
++				/* zero bit is inode number 1*/
++				ino++;
+ 				goto got;
+ 			}
+ 			/* we lost it */
+-			jbd2_journal_release_buffer(handle, bitmap_bh);
++			jbd2_journal_release_buffer(handle, inode_bitmap_bh);
++			jbd2_journal_release_buffer(handle, group_desc_bh);
+ 
+ 			if (++ino < EXT4_INODES_PER_GROUP(sb))
+ 				goto repeat_in_this_group;
+@@ -687,30 +762,16 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 	goto out;
+ 
+ got:
+-	ino++;
+-	if ((group == 0 && ino < EXT4_FIRST_INO(sb)) ||
+-	    ino > EXT4_INODES_PER_GROUP(sb)) {
+-		ext4_error(sb, __func__,
+-			   "reserved inode or inode > inodes count - "
+-			   "block_group = %u, inode=%lu", group,
+-			   ino + group * EXT4_INODES_PER_GROUP(sb));
+-		err = -EIO;
+-		goto fail;
+-	}
+-
+-	BUFFER_TRACE(bh2, "get_write_access");
+-	err = ext4_journal_get_write_access(handle, bh2);
+-	if (err) goto fail;
+-
+ 	/* We may have to initialize the block bitmap if it isn't already */
+ 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
+ 	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+-		struct buffer_head *block_bh = ext4_read_block_bitmap(sb, group);
++		struct buffer_head *block_bitmap_bh;
+ 
+-		BUFFER_TRACE(block_bh, "get block bitmap access");
+-		err = ext4_journal_get_write_access(handle, block_bh);
++		block_bitmap_bh = ext4_read_block_bitmap(sb, group);
++		BUFFER_TRACE(block_bitmap_bh, "get block bitmap access");
++		err = ext4_journal_get_write_access(handle, block_bitmap_bh);
+ 		if (err) {
+-			brelse(block_bh);
++			brelse(block_bitmap_bh);
+ 			goto fail;
+ 		}
+ 
+@@ -718,8 +779,8 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 		spin_lock(sb_bgl_lock(sbi, group));
+ 		/* recheck and clear flag under lock if we still need to */
+ 		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+-			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+ 			free = ext4_free_blocks_after_init(sb, group, gdp);
++			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
+ 			ext4_free_blks_set(sb, gdp, free);
+ 			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
+ 								gdp);
+@@ -728,57 +789,19 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 
+ 		/* Don't need to dirty bitmap block if we didn't change it */
+ 		if (free) {
+-			BUFFER_TRACE(block_bh, "dirty block bitmap");
+-			err = ext4_journal_dirty_metadata(handle, block_bh);
++			BUFFER_TRACE(block_bitmap_bh, "dirty block bitmap");
++			err = ext4_journal_dirty_metadata(handle,
++							block_bitmap_bh);
+ 		}
+ 
+-		brelse(block_bh);
++		brelse(block_bitmap_bh);
+ 		if (err)
+ 			goto fail;
+ 	}
+-
+-	spin_lock(sb_bgl_lock(sbi, group));
+-	/* If we didn't allocate from within the initialized part of the inode
+-	 * table then we need to initialize up to this inode. */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+-		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+-			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
+-
+-			/* When marking the block group with
+-			 * ~EXT4_BG_INODE_UNINIT we don't want to depend
+-			 * on the value of bg_itable_unused even though
+-			 * mke2fs could have initialized the same for us.
+-			 * Instead we calculated the value below
+-			 */
+-
+-			free = 0;
+-		} else {
+-			free = EXT4_INODES_PER_GROUP(sb) -
+-				ext4_itable_unused_count(sb, gdp);
+-		}
+-
+-		/*
+-		 * Check the relative inode number against the last used
+-		 * relative inode number in this group. if it is greater
+-		 * we need to  update the bg_itable_unused count
+-		 *
+-		 */
+-		if (ino > free)
+-			ext4_itable_unused_set(sb, gdp,
+-					(EXT4_INODES_PER_GROUP(sb) - ino));
+-	}
+-
+-	count = ext4_free_inodes_count(sb, gdp) - 1;
+-	ext4_free_inodes_set(sb, gdp, count);
+-	if (S_ISDIR(mode)) {
+-		count = ext4_used_dirs_count(sb, gdp) + 1;
+-		ext4_used_dirs_set(sb, gdp, count);
+-	}
+-	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
+-	spin_unlock(sb_bgl_lock(sbi, group));
+-	BUFFER_TRACE(bh2, "call ext4_journal_dirty_metadata");
+-	err = ext4_journal_dirty_metadata(handle, bh2);
+-	if (err) goto fail;
++	BUFFER_TRACE(group_desc_bh, "call ext4_journal_dirty_metadata");
++	err = ext4_journal_dirty_metadata(handle, group_desc_bh);
++	if (err)
++		goto fail;
+ 
+ 	percpu_counter_dec(&sbi->s_freeinodes_counter);
+ 	if (S_ISDIR(mode))
+@@ -876,7 +899,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 	iput(inode);
+ 	ret = ERR_PTR(err);
+ really_out:
+-	brelse(bitmap_bh);
++	brelse(inode_bitmap_bh);
+ 	return ret;
+ 
+ fail_free_drop:
+@@ -887,7 +910,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 	inode->i_flags |= S_NOQUOTA;
+ 	inode->i_nlink = 0;
+ 	iput(inode);
+-	brelse(bitmap_bh);
++	brelse(inode_bitmap_bh);
+ 	return ERR_PTR(err);
+ }
+ 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index c5dcdf0..1ed949c 100644
+index cbba8f4..93df76a 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -1065,6 +1065,8 @@ static void mb_clear_bits(spinlock_t *lock, void *bm, int cur, int len)
- 	__u32 *addr;
- 
- 	len = cur + len;
-+	if (lock)
-+		spin_lock(lock);			\
- 	while (cur < len) {
- 		if ((cur & 31) == 0 && (len - cur) >= 32) {
- 			/* fast path: clear whole word at once */
-@@ -1073,9 +1075,11 @@ static void mb_clear_bits(spinlock_t *lock, void *bm, int cur, int len)
- 			cur += 32;
+@@ -804,8 +804,8 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 			ext4_init_block_bitmap(sb, bh[i],
+ 						first_group + i, desc);
+ 			set_buffer_uptodate(bh[i]);
+-			unlock_buffer(bh[i]);
+ 			spin_unlock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
++			unlock_buffer(bh[i]);
  			continue;
  		}
--		mb_clear_bit_atomic(lock, cur, bm);
-+		mb_clear_bit(cur, bm);
- 		cur++;
- 	}
-+	if (lock)
-+		spin_unlock(lock);			\
- }
- 
- static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
-@@ -1083,6 +1087,8 @@ static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
- 	__u32 *addr;
- 
- 	len = cur + len;
-+	if (lock)
-+		spin_lock(lock);			\
- 	while (cur < len) {
- 		if ((cur & 31) == 0 && (len - cur) >= 32) {
- 			/* fast path: set whole word at once */
-@@ -1091,9 +1097,11 @@ static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
- 			cur += 32;
- 			continue;
- 		}
--		mb_set_bit_atomic(lock, cur, bm);
-+		mb_set_bit(cur, bm);
- 		cur++;
- 	}
-+	if (lock)
-+		spin_unlock(lock);			\
- }
- 
- static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
-@@ -3004,10 +3012,9 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 		}
- 	}
- #endif
--	mb_set_bits(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group), bitmap_bh->b_data,
--				ac->ac_b_ex.fe_start, ac->ac_b_ex.fe_len);
+ 		spin_unlock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
+-- 
+1.6.0.4.735.gea4f
+
