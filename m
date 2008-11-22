@@ -1,75 +1,75 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] e2fsck: ignore differing NEEDS_RECOVERY flag on backup	sbs
-Date: Sat, 22 Nov 2008 11:36:54 -0600
-Message-ID: <20081122173654.GE3186@webber.adilger.int>
-References: <49281F18.7080404@redhat.com>
+Subject: Re: [PATCH 23/45] CacheFiles: Be consistent about the use of	mapping
+ vs file->f_mapping in Ext3 [ver #41]
+Date: Sat, 22 Nov 2008 11:38:39 -0600
+Message-ID: <20081122173839.GJ3186@webber.adilger.int>
+References: <20081120144139.10667.75519.stgit@warthog.procyon.org.uk>
+ <20081120144338.10667.55564.stgit@warthog.procyon.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:54456 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759177AbYKVRhB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Nov 2008 12:37:01 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAMHav2Q011742
-	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 09:36:57 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KAQ00101WQXMP00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Sat, 22 Nov 2008 09:36:57 -0800 (PST)
-In-reply-to: <49281F18.7080404@redhat.com>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: David Howells <dhowells@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-reply-to: <20081120144338.10667.55564.stgit@warthog.procyon.org.uk>
 Content-disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Nov 22, 2008  09:02 -0600, Eric Sandeen wrote:
-> This is for RH bugzilla 471925 -  Complete scan of filesystems expanded online
+On Nov 20, 2008  14:43 +0000, David Howells wrote:
+> Change all the usages of file->f_mapping in ext3_*write_end() functions to use
+> the mapping argument directly.  This has two consequences:
 > 
-> When we resize online, the primary superblock gets copied to all
-> the backups, and of course since we're mounted the NEEDS_RECOVERY
-> flag is set.  A subsequent fsck will find the backups have the
-> NEEDS_RECOVERY flag set while the primary does not, and this
-> forces a full fsck pass.
+>  (*) Consistency.  Without this patch sometimes one is used and sometimes the
+>      other is.
 > 
-> I think this flag can be safely ignored in the flag comparisons.
+>  (*) A NULL file pointer can be passed.  This feature is then made use of by
+>      the generic hook in the next patch, which is used by CacheFiles to write
+>      pages to a file without setting up a file struct.
 
-Should we also mask out this flag from the backup superblock copies
-when they are made, or is there an equal chance that the superblock
-has NEEDS_RECOVERY and the backups do not?
+The same patch is needed for ext4.
 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> Signed-off-by: David Howells <dhowells@redhat.com>
 > ---
 > 
-> Index: e2fsprogs/e2fsck/super.c
-> ===================================================================
-> --- e2fsprogs.orig/e2fsck/super.c	2008-11-22 07:54:47.000000000 -0600
-> +++ e2fsprogs/e2fsck/super.c	2008-11-22 08:59:45.953060973 -0600
-> @@ -860,7 +860,8 @@ void check_super_block(e2fsck_t ctx)
->   * try to discourage it in the future.  In particular, for the newer
->   * ext4 files, especially EXT4_FEATURE_RO_COMPAT_DIR_NLINK and
->   * EXT3_FEATURE_INCOMPAT_EXTENTS.  So some of these may go away in the
-> - * future.
-> + * future.  EXT3_FEATURE_INCOMPAT_RECOVER may also get set when
-> + * copying the primary superblock during online resize.
->   *
->   * The kernel will set EXT2_FEATURE_COMPAT_EXT_ATTR, but
->   * unfortunately, we shouldn't ignore it since if it's not set in the
-> @@ -869,7 +870,8 @@ void check_super_block(e2fsck_t ctx)
->   */
->  #define FEATURE_RO_COMPAT_IGNORE	(EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
->  					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK)
-> -#define FEATURE_INCOMPAT_IGNORE		(EXT3_FEATURE_INCOMPAT_EXTENTS)
-> +#define FEATURE_INCOMPAT_IGNORE		(EXT3_FEATURE_INCOMPAT_EXTENTS| \
-> +					 EXT3_FEATURE_INCOMPAT_RECOVER)
->  
->  int check_backup_super_block(e2fsck_t ctx)
+>  fs/ext3/inode.c |    6 +++---
+>  1 files changed, 3 insertions(+), 3 deletions(-)
+> 
+> 
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index f8424ad..10c4c19 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -1230,7 +1230,7 @@ static int ext3_generic_write_end(struct file *file,
+>  				loff_t pos, unsigned len, unsigned copied,
+>  				struct page *page, void *fsdata)
 >  {
+> -	struct inode *inode = file->f_mapping->host;
+> +	struct inode *inode = mapping->host;
+>  
+>  	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+>  
+> @@ -1255,7 +1255,7 @@ static int ext3_ordered_write_end(struct file *file,
+>  				struct page *page, void *fsdata)
+>  {
+>  	handle_t *handle = ext3_journal_current_handle();
+> -	struct inode *inode = file->f_mapping->host;
+> +	struct inode *inode = mapping->host;
+>  	unsigned from, to;
+>  	int ret = 0, ret2;
+>  
+> @@ -1297,7 +1297,7 @@ static int ext3_writeback_write_end(struct file *file,
+>  				struct page *page, void *fsdata)
+>  {
+>  	handle_t *handle = ext3_journal_current_handle();
+> -	struct inode *inode = file->f_mapping->host;
+> +	struct inode *inode = mapping->host;
+>  	int ret = 0, ret2;
+>  	loff_t new_i_size;
+>  
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
