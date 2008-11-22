@@ -1,45 +1,64 @@
-From: toni iptdal <toni@dm.net.lb>
-Subject: RE
-Date: Sat, 22 Nov 2008 00:00:38 +0100
-Message-ID: <fbe29b336bbd.49274ba6@idm.net.lb>
-Reply-To: nationaltrustp@aim.com
+From: "rae l" <crquan@gmail.com>
+Subject: Re: Maximum filename length
+Date: Sat, 22 Nov 2008 10:50:25 +0800
+Message-ID: <91b13c310811211850s74cb9ec4x6b311612ed31664c@mail.gmail.com>
+References: <87a8dc10811210451p3ec1e3dar371a3ebffcedcdc@mail.gmail.com>
+	 <20081121223248.GA22671@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: base64
+Cc: "Alexey Salmin" <alexey.salmin@gmail.com>,
+	linux-ext4@vger.kernel.org
+To: "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.idm.net.lb ([194.126.4.133]:62702 "EHLO kopis.idm.net.lb"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753586AbYKVAEZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 19:04:25 -0500
-Content-disposition: inline
-Received: from idm.net.lb ([127.0.0.1])
- by kopis.idm.net.lb (Sun Java(tm) System Messaging Server 6.3-5.02 (built Oct
- 12 2007; 32bit)) with ESMTP id <0KAP003YYH92SJ60@kopis.idm.net.lb> for
- linux-ext4@vger.kernel.org; Sat, 22 Nov 2008 01:00:41 +0200 (EET)
-Content-language: en
+Received: from nf-out-0910.google.com ([64.233.182.184]:2698 "EHLO
+	nf-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752511AbYKVCu1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 21 Nov 2008 21:50:27 -0500
+Received: by nf-out-0910.google.com with SMTP id d3so610361nfc.21
+        for <linux-ext4@vger.kernel.org>; Fri, 21 Nov 2008 18:50:25 -0800 (PST)
+In-Reply-To: <20081121223248.GA22671@mit.edu>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-=E8=A5=BF=E7=8F=AD=E7=89=99=E5=9C=8B=E5=AE=B6=E6=A9=9F=E6=A7=8B=20
-Dr.Pauly=E7=83=8F=E7=88=BE=E9=87=8C=E5=B8=8C=20
-=E5=9C=B0=E5=9D=80=EF=BC=9A Avda =E3=80=82=E5=BE=B7=E7=88=BE=E7=9F=B3=E6=
-=B2=B9222=20
-Polig=E8=A5=BF=E7=8F=AD=E7=89=99=E9=A6=AC=E5=BE=B7=E9=87=8C=E3=80=82=20
-
-http://www.euromillions.com/=20
-
-=E6=82=A8=E7=9A=84=E9=9B=BB=E5=AD=90=E9=83=B5=E4=BB=B6=E8=A2=AB=E9=81=B8=
-=E7=82=BA=E7=8D=B2=E7=8D=8E=E8=80=85=E7=9A=841000000.00 =EF=BC=88 100=E8=
-=90=AC=E6=AD=90=E5=85=83=EF=BC=89 =EF=BC=8C=E7=82=BA=20
-=E4=B8=BB=E5=BC=B5=20
-=E8=81=AF=E7=B9=ABMr.Paul=E7=B6=A0=E8=89=B2=E9=80=9A=E9=81=8E=20
-=E9=9B=BB=E8=A9=B1=EF=BC=9A +34 660 972 184=20
-=E9=9B=BB=E5=AD=90=E9=83=B5=E4=BB=B6=EF=BC=9A nationaltrustp@aim.com
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+T24gU2F0LCBOb3YgMjIsIDIwMDggYXQgNjozMiBBTSwgVGhlb2RvcmUgVHNvIDx0eXRzb0BtaXQu
+ZWR1PiB3cm90ZToKPiBTbyB0aGUgcHJvYmxlbSBpcyB0aGF0IGV2ZW4gaWYgd2Ugd2VyZSB0byBh
+ZGQgdGhhdCBlbmhhbmNlbWVudCB0bwo+IGV4dDQsIHRoZXJlIGFyZSBsb3RzIG9mIG90aGVyIHRo
+aW5ncywgYm90aCBpbiBhbmQgb3V0c2lkZSBvZiB0aGUKPiBrZXJuZWwsIHRoYXQgd291bGQgbGlr
+ZWx5IG5lZWQgdG8gYmUgY2hhbmdlZCBpbiBvcmRlciB0byBzdXBwb3J0IHRoaXMuCj4gSSB3aWxs
+IHNheSBwZXJzb25hbGx5IHRoYXQgaXRzIHJhcmUgZm9yIG1lIHRvIHVzZSBmaWxlbmFtZXMgbG9u
+Z2VyCj4gdGhhbiA1MC02MCBjaGFyYWN0ZXJzLCBqdXN0IGJlY2F1c2UgdGhleSBhcmUgYSBwYWlu
+IGluIHRoZSAqc3MgdG8KPiB0eXBlLiAgSG93ZXZlciwgSSBjYW4gc2VlIGhvdyBzb21lb25lIHVz
+aW5nIGEgZ3JhcGhpY2FsIGludGVyZmFjZQo+IG1pZ2h0IGJlIGhhcHB5IHdpdGggZmlsZW5hbWVz
+IGluIHRoZSAxMDAtMTIwIGNoYXJhY3RlciByYW5nZS4gIFRoZQo+IHF1ZXN0aW9uIHRob3VnaCBp
+cyB3aGV0aGVyIGl0IGlzIHdvcnRoIHRyeWluZyB0byBmaXggdGhpcyBieQo+IGluY3JlYXNpbmcg
+dGhlIGZpbGVuYW1lIGxlbmd0aCBiZXlvbmQgMjU1IGJ5dGVzIG9yIG5vdCwgZ2l2ZW4gdGhlCj4g
+YW1vdW50IG9mIGVmZm9ydCB0aGF0IHdvdWxkIGJlIHJlcXVpcmVkIGluIHRoZSBrZXJuZWwsIGxp
+YmMsCj4gdXNlcnNwYWNlLCBldGMuCgpJbiBDaGluYSwgdGhlcmUncyBhbHNvIGEgdHJlbmQgbW92
+aW5nIGFoZWFkIGZyb20gMmJ5dGVzIGNoYXJzZXRzCihHQjIzMTIvR0JLL0dCMTgwMzAvQklHNSkg
+dG8gVVRGLTgsIHNvIGFsbCBDaGluZXNlIGNoYXJhY3RlcnMgd2lsbApuZWVkIDMgYnl0ZXMgZm9y
+IGVhY2ggdG8gZWFjaCBpbnN0ZWFkIG9mIDIgZnJvbSB0aGVuIG9uLiBUaGUgMjU1CmZpbGVuYW1l
+IGxlbmd0aCBsaW1pdCB0aGUgQ2hpbmVzZSBmaWxlbmFtZSB0byA4NSBjaGFyYWN0ZXJzOgoKbm93
+IHRyeSB0byB0b3VjaCBhIGZpbGUgd2l0aCA4NiBDaGluZXNlIGNoYXJhY3RlcnM6CgpnZWt0b3BA
+dHV4IH4vdG1wIDAgJCB0b3VjaArkuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3k
+uK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3k
+uK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3k
+uK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3k
+uK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3kuK3lm70KdG91Y2g6
+IGNhbm5vdCB0b3VjaApg5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit
+5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit
+5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit
+5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit
+5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Lit5Zu9JzoKRmlsZSBuYW1l
+IHRvbyBsb25nCgoKSXQncyB2ZXJ5IGRpZmZpY3VsdCB0byBzb2x2ZSBhbGwgdGhlc2UgcHJvYmxl
+bXMgaW4gdGhlIGtlcm5lbCwgbGliYywKdXNlcnNwYWNlLCBJIGtub3csIGJ1dCBJIHRoaW5rIHdl
+IHNob3VsZCBrZWVwIHRoZSBvcHRpb24gdG8gZml4IHRoZW0KaW4gdGhlIGZ1dHVyZS4gTWF5YmUg
+aW4gdGhlIG5leHQgUE9TSVggc3RhbmRhcmQsIHdlIHNob3VsZCBjaGFuZ2UKTkFNRV9NQVggdG8g
+WzI1NSAqIG1heF9ieXRlc19wZXJfY2hhcmFjdGVyXSA/CgoKUmVnYXJkcywKCj4KPiAgICAgICAg
+ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAtIFRlZAo+IC0tCj4gVG8gdW5zdWJzY3Jp
+YmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LWV4dDQi
+IGluCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcK
+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9t
+by1pbmZvLmh0bWwKPgoKCgotLSAKQ2hlbmcgUmVucXVhbiwgU2hlbnpoZW4sIENoaW5hCllvZ2kg
+QmVycmEgIC0gIkkgbmV2ZXIgc2FpZCBtb3N0IG9mIHRoZSB0aGluZ3MgSSBzYWlkLiIK
