@@ -1,43 +1,48 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsck: ignore differing NEEDS_RECOVERY flag on backup
- sbs
-Date: Sat, 22 Nov 2008 21:29:07 -0600
-Message-ID: <4928CE03.8010003@redhat.com>
-References: <49281F18.7080404@redhat.com> <20081122173654.GE3186@webber.adilger.int>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH -V2 4/5] ext4: Use both hi and lo bits of the group desc
+	values.
+Date: Sat, 22 Nov 2008 22:09:39 -0600
+Message-ID: <20081123040939.GU3186@webber.adilger.int>
+References: <1227285875-18011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227285875-18011-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227285875-18011-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <4926F00D.6030403@redhat.com> <20081121174110.GH11212@skywalker>
+ <4926F599.5040605@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Coly Li <coyli@suse.de>, cmm@us.ibm.com, tytso@mit.edu,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:45104 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755360AbYKWD3L (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 22 Nov 2008 22:29:11 -0500
-In-Reply-To: <20081122173654.GE3186@webber.adilger.int>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:62295 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753502AbYKWEJr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 22 Nov 2008 23:09:47 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAN49g1V003533
+	for <linux-ext4@vger.kernel.org>; Sat, 22 Nov 2008 20:09:42 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KAR00J01Q2RWL00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Sat, 22 Nov 2008 20:09:42 -0800 (PST)
+In-reply-to: <4926F599.5040605@redhat.com>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Nov 22, 2008  09:02 -0600, Eric Sandeen wrote:
->> This is for RH bugzilla 471925 -  Complete scan of filesystems expanded online
->>
->> When we resize online, the primary superblock gets copied to all
->> the backups, and of course since we're mounted the NEEDS_RECOVERY
->> flag is set.  A subsequent fsck will find the backups have the
->> NEEDS_RECOVERY flag set while the primary does not, and this
->> forces a full fsck pass.
->>
->> I think this flag can be safely ignored in the flag comparisons.
-> 
-> Should we also mask out this flag from the backup superblock copies
-> when they are made, or is there an equal chance that the superblock
-> has NEEDS_RECOVERY and the backups do not?
+On Nov 21, 2008  11:53 -0600, Eric Sandeen wrote:
+> Ok, and for the rest?  (free_blocks, free_inodes) - I guess these are
+> only needed for > 2^32 block filesystems?
 
-I think it might be a good idea (to mask at growfs time) for
-completeness.  Is there *ever* any valid reason for a backup superblock
-to have this flag set?  Near as I can tell, online growfs is the only
-thing that ever sets it, and this "flag match" check is the only thing
-that ever tests it.
+Actually, since this is a per-group number, I'm not sure why this is
+needed at all.  I don't object to keeping the helper functions though.
 
--Eric
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
