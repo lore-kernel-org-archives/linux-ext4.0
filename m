@@ -1,30 +1,43 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH -V2 5/5] ext4: Fix the race between read_inode_bitmap
-	and ext4_new_inode
-Date: Sun, 23 Nov 2008 14:26:11 -0500
-Message-ID: <20081123192611.GF26473@mit.edu>
-References: <1227285875-18011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Andi Kleen <andi@firstfloor.org>
+Subject: Re: Maximum filename length
+Date: Sun, 23 Nov 2008 23:15:35 +0100
+Message-ID: <87abbqhywo.fsf@basil.nowhere.org>
+References: <87a8dc10811210451p3ec1e3dar371a3ebffcedcdc@mail.gmail.com>
+	<20081121223248.GA22671@mit.edu>
+	<87a8dc10811221048t27b0c6dx253bed61418389e8@mail.gmail.com>
+	<20081122233618.GR3186@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Alexey Salmin <alexey.salmin@gmail.com>,
+	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:34913 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752229AbYKWT2S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 23 Nov 2008 14:28:18 -0500
-Content-Disposition: inline
-In-Reply-To: <1227285875-18011-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from one.firstfloor.org ([213.235.205.2]:56236 "EHLO
+	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751062AbYKWWPc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Nov 2008 17:15:32 -0500
+In-Reply-To: <20081122233618.GR3186@webber.adilger.int> (Andreas Dilger's message of "Sat, 22 Nov 2008 17:36:18 -0600")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-It's a lot easier to review patches if you explain why new functions
-(such as ext4_claim_inode(), in this case) are required, and to add a
-comment at the beginning of the new function explaining what it does,
-what its return code it needs, whether it needs to be called with any
-locks held, whether it exits with locks taken or released, etc.
+Andreas Dilger <adilger@sun.com> writes:
+>
+> #define EXT4_FT_ENTRY_3 0x80			/* file_type for dir_entry_3 */
+> #define EXT4_FT_MASK    0x0f			/* EXT4_FT_* mask */
+> #define EXT4_INODE_MASK 0x00ffffffffffffff	/* 48-bit inode number mask */
+> #define EXT4_NAME_LEN3  1012
+>
+> struct ext4_dir_entry_3 {
+> 	__le64 inode;		/* High byte holds file_type */
+> 	__le16 rec_len;
+> 	__le16 name_len;
 
-Thanks,
+The new format should also reserve space for a checksum. Adding that
+would be actually a reasonable practical improvement for everyone.
 
-      	    	       	     	  	      - Ted
+> 	char   name[EXT4_NAME_LEN3];
+
+-Andi
+
+-- 
+ak@linux.intel.com
