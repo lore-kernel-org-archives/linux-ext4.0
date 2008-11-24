@@ -1,54 +1,113 @@
-From: Alex Zhuravlev <Alex.Zhuravlev@Sun.COM>
-Subject: Re: [PATCH -V2 3/5] ext4: Fix the race between read_block_bitmap and
- mark_diskspace_used
-Date: Mon, 24 Nov 2008 21:28:01 +0300
-Message-ID: <492AF231.1070104@sun.com>
-References: <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1227285875-18011-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20081123140038.GC26473@mit.edu> <492A5453.9030801@sun.com>
- <20081124113323.GC8462@skywalker> <492AD821.9030506@sun.com>
- <20081124164300.GD8462@skywalker> <492AEC69.40202@sun.com>
- <20081124181252.GE8462@skywalker> <492AEFD1.4060701@sun.com>
- <20081124182132.GF8462@skywalker>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Re: rm: cannot remove `???': No such file or directory
+Date: Mon, 24 Nov 2008 10:29:46 -0800
+Message-ID: <6601abe90811241029v558a8c45yb9afee4bb18f433e@mail.gmail.com>
+References: <492AB6C5.1050609@cerberis.soften.ktu.lt>
+	 <492AF1BD.5080604@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; format=flowed; charset=ISO-8859-1
-Content-Transfer-Encoding: 7BIT
-Cc: Theodore Tso <tytso@MIT.EDU>, cmm@us.ibm.com, sandeen@redhat.com,
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Arturas K <arturas@cerberis.soften.ktu.lt>,
 	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gmp-eb-inf-2.sun.com ([192.18.6.24]:37797 "EHLO
-	gmp-eb-inf-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751191AbYKXS2P (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Nov 2008 13:28:15 -0500
-Received: from fe-emea-10.sun.com (gmp-eb-lb-2-fe2.eu.sun.com [192.18.6.11])
-	by gmp-eb-inf-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAOISDUd011127
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2008 18:28:13 GMT
-Received: from conversion-daemon.fe-emea-10.sun.com by fe-emea-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KAU00301OE7L700@fe-emea-10.sun.com>
- (original mail from Alex.Zhuravlev@Sun.COM) for linux-ext4@vger.kernel.org;
- Mon, 24 Nov 2008 18:28:13 +0000 (GMT)
-In-reply-to: <20081124182132.GF8462@skywalker>
+Received: from smtp-out.google.com ([216.239.45.13]:28955 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751452AbYKXS3u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Nov 2008 13:29:50 -0500
+Received: from wpaz24.hot.corp.google.com (wpaz24.hot.corp.google.com [172.24.198.88])
+	by smtp-out.google.com with ESMTP id mAOITmRQ016023
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2008 10:29:48 -0800
+Received: from rv-out-0506.google.com (rvbk40.prod.google.com [10.140.87.40])
+	by wpaz24.hot.corp.google.com with ESMTP id mAOISeCN003054
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2008 10:29:46 -0800
+Received: by rv-out-0506.google.com with SMTP id k40so1952420rvb.15
+        for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2008 10:29:46 -0800 (PST)
+In-Reply-To: <492AF1BD.5080604@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-strange ... I'd expect the code to check "uptodate" once buffer is locked. you?
+I was thinking the same, but wasn't able to test it first...
 
-thanks, Alex
+Curt
 
-Aneesh Kumar K.V wrote:
-> @@ -319,9 +319,11 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
->  			    block_group, bitmap_blk);
->  		return NULL;
->  	}
-> -	if (bh_uptodate_or_lock(bh))
-> +	if (buffer_uptodate(bh) &&
-> +	    !(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))
->  		return bh;
->  
-> +	lock_buffer(bh);
->  	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
->  	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
->  		ext4_init_block_bitmap(sb, bh, block_group, desc);
-
+On Mon, Nov 24, 2008 at 10:26 AM, Eric Sandeen <sandeen@redhat.com> wrote:
+> Arturas K wrote:
+>> hello,
+>>
+>> I did a simple/dirty benchmark on multiple file systems, and ext4dev
+>> encounters some problems recursively removing linux tree... tested with
+>> default and multiple altered option sets of mkfs.ext4dev and/or mount
+>> options - the same story :(
+>>
+>> I guess there are locks on files where modification is committed to fs,
+>> but not yet flushed to disk or something like this. anyway this behavior
+>> is fatal for any temporary file operations...
+>
+> This might be fixed by the patch that just showed up on the list today :)
+>
+> --- fwd ---
+>
+> PATCH ext4: fix to call_filldir
+>
+> I happened to find a bug running bonnie++-1.03a on an ext4 filesystem,
+> when it complained about not being able to remove a file.
+>
+> Further investigation showed a problem with call_filldir(), which is not
+> quite correct with respect to the same function in fs/ext3/dir.c.  The
+> patch below fixes this problem.
+>
+> ---
+>
+> -Eric
+>
+>> --- test output ---
+>>
+>>> ~# ( cd /srv ; time ( tar xf /tmp/linux-2.6.26.tar && sync ) ) && ( cd /srv/linux-2.6.26 ; time ( cat /tmp/patch-2.6.27 | patch -p1 > ./log && sync ) ) && ( cd /srv ; time ( rm -R linux-2.6.26 && sync ) )
+>>>
+>>> real 0m9.515s
+>>> user 0m0.112s
+>>> sys  0m1.536s
+>>>
+>>> real 0m11.752s
+>>> user 0m2.680s
+>>> sys  0m2.868s
+>>> rm: cannot remove `linux-2.6.26/arch/powerpc/include/asm/bug.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/arch/alpha/include/asm/fb.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/arch/s390/include/asm/irq_regs.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/arch/sparc/include/asm/mmu.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/arch/sparc/include/asm/openprom_32.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/arch/arm/configs/ateb9200_defconfig': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/arch/m68knommu/include/asm/scatterlist.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/include/asm-um/irq_vectors.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/include/asm-m68k/virtconvert.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/include/linux/hrtimer.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/include/linux/hardirq.h': No such file or directory
+>>> rm: cannot remove `linux-2.6.26/include/linux/crc32c.h': No such file or directory
+>>>
+>>> real 0m0.721s
+>>> user 0m0.012s
+>>> sys  0m0.708s
+>>
+>> --- system ---
+>>
+>> ubuntu 8.10 amd64
+>>
+>>  > ~# dpkg -l | grep linux-image-2.6.27
+>>  > ii  linux-image-2.6.27-7-generic 2.6.27-7.16
+>>  > ~# dpkg -l | grep e2fs
+>>  > ii  e2fslibs 1.41.3-1ubuntu1
+>>  > ii  e2fsprogs 1.41.3-1ubuntu1
+>>
+>> ---
+>> ArturasK.
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
