@@ -1,54 +1,54 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [RESEND][PATCH 2/3 BUG,RFC] ext3: release block-device-mapping
-	buffer_heads which have the filesystem private data for avoiding
-	oom-killer
-Date: Mon, 24 Nov 2008 00:51:33 -0500
-Message-ID: <20081124055133.GB20928@mit.edu>
-References: <20081120093450.c87b39ef.toshi.okajima@jp.fujitsu.com>
+From: Alex Zhuravlev <Alex.Zhuravlev@Sun.COM>
+Subject: Re: [PATCH -V2 3/5] ext4: Fix the race between read_block_bitmap and
+ mark_diskspace_used
+Date: Mon, 24 Nov 2008 10:14:27 +0300
+Message-ID: <492A5453.9030801@sun.com>
+References: <1227285875-18011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227285875-18011-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <20081123140038.GC26473@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, viro@zeniv.linux.org.uk, sct@redhat.com,
-	adilger@sun.com, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20081120093450.c87b39ef.toshi.okajima@jp.fujitsu.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; format=flowed; charset=ISO-8859-1
+Content-Transfer-Encoding: 7BIT
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from gmp-eb-inf-1.sun.com ([192.18.6.21]:64422 "EHLO
+	gmp-eb-inf-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751029AbYKXGPV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Nov 2008 01:15:21 -0500
+Received: from fe-emea-10.sun.com (gmp-eb-lb-1-fe3.eu.sun.com [192.18.6.10])
+	by gmp-eb-inf-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAO6FFWg005932
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2008 06:15:19 GMT
+Received: from conversion-daemon.fe-emea-10.sun.com by fe-emea-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KAT00G01QLFFC00@fe-emea-10.sun.com>
+ (original mail from Alex.Zhuravlev@Sun.COM) for linux-ext4@vger.kernel.org;
+ Mon, 24 Nov 2008 06:15:15 +0000 (GMT)
+In-reply-to: <20081123140038.GC26473@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Toshijuki,
+Theodore Tso wrote:
+> My bigger concern is given that we are playing games like *this*:
+> 
+> 		if ((cur & 31) == 0 && (len - cur) >= 32) {
+> 			/* fast path: set whole word at once */
+> 			addr = bm + (cur >> 3);
+> 			*addr = 0xffffffff;
+> 			cur += 32;
+> 			continue;
+> 		}
 
-My apologizes for not getting back to you sooner.  My travel schedule
-has been a little crazy lately, including being in Japan last week
-speaking at the Japan Linux Symposium.
+this is to avoid expensive LOCK prefix in some cases.
 
-Your patch series looks good, but I have one comment, for the ext3 and
-ext4 patches:
+> without taking a lock, I'm a little surprised we haven't been
+> seriously burned by other race conditions.  What's the point of
+> calling mb_set_bit_atomic() and passing in a spinlock if we are doing
+> this kind of check without the protection of the same spinlock?!?
 
-> +	if (journal != NULL)
-> +		return journal_try_to_free_buffers(journal, page, wait);
-> +	else
-> +		return try_to_free_buffers(page);
+why would we need a lock for a whole word bitop ?
 
-According to the documentation for journal_try_to_free_buffers():
+thanks, Alex
 
- * This function returns non-zero if we wish try_to_free_buffers()
- * to be called. We do this if the page is releasable by try_to_free_buffers().
- * We also do it if the page has locked or dirty buffers and the caller wants
- * us to perform sync or async writeout.
-
-So I think the last conditional in ext3_release_metadata() needs to be
-changed to be like this:
-
-+	if ((journal != NULL) && 
-+	    (journal_try_to_free_buffers(journal, page, wait) == 0))
-+		return 0;
-+	return try_to_free_buffers(page);
-
-A similar change should be made in the ext4 version of the patch.
-Does that sound OK to you?
-
-Regards,
-
-						- Ted
