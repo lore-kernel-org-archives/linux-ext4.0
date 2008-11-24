@@ -1,43 +1,42 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: Re: Maximum filename length
-Date: Sun, 23 Nov 2008 23:15:35 +0100
-Message-ID: <87abbqhywo.fsf@basil.nowhere.org>
-References: <87a8dc10811210451p3ec1e3dar371a3ebffcedcdc@mail.gmail.com>
-	<20081121223248.GA22671@mit.edu>
-	<87a8dc10811221048t27b0c6dx253bed61418389e8@mail.gmail.com>
-	<20081122233618.GR3186@webber.adilger.int>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH -V2 4/5] ext4: Use both hi and lo bits of the group
+	desc values.
+Date: Sun, 23 Nov 2008 20:21:13 -0500
+Message-ID: <20081124012113.GA2163@mit.edu>
+References: <1227285875-18011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4926F00D.6030403@redhat.com> <20081121174110.GH11212@skywalker> <4926F599.5040605@redhat.com> <20081123040939.GU3186@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alexey Salmin <alexey.salmin@gmail.com>,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Coly Li <coyli@suse.de>, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org
 To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:56236 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751062AbYKWWPc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 23 Nov 2008 17:15:32 -0500
-In-Reply-To: <20081122233618.GR3186@webber.adilger.int> (Andreas Dilger's message of "Sat, 22 Nov 2008 17:36:18 -0600")
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:40694 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751075AbYKXB03 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 23 Nov 2008 20:26:29 -0500
+Content-Disposition: inline
+In-Reply-To: <20081123040939.GU3186@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger <adilger@sun.com> writes:
->
-> #define EXT4_FT_ENTRY_3 0x80			/* file_type for dir_entry_3 */
-> #define EXT4_FT_MASK    0x0f			/* EXT4_FT_* mask */
-> #define EXT4_INODE_MASK 0x00ffffffffffffff	/* 48-bit inode number mask */
-> #define EXT4_NAME_LEN3  1012
->
-> struct ext4_dir_entry_3 {
-> 	__le64 inode;		/* High byte holds file_type */
-> 	__le16 rec_len;
-> 	__le16 name_len;
+On Sat, Nov 22, 2008 at 10:09:39PM -0600, Andreas Dilger wrote:
+> On Nov 21, 2008  11:53 -0600, Eric Sandeen wrote:
+> > Ok, and for the rest?  (free_blocks, free_inodes) - I guess these are
+> > only needed for > 2^32 block filesystems?
+> 
+> Actually, since this is a per-group number, I'm not sure why this is
+> needed at all.  I don't object to keeping the helper functions though.
 
-The new format should also reserve space for a checksum. Adding that
-would be actually a reasonable practical improvement for everyone.
+For most systems, it wn't be needed at all.  However, for filesystems
+with block sizes >= 8k, we run into a limit where the maximum number
+of blocks and inodes we can support per block group is 65528 (we can't
+support 65536 since that would cause bg_free_blocks_count and/or
+bg_free_blocks_count, which are both __u16 types, to overflow).  So on
+systems with a page size > 4k, or if Christoph's patch to support fs
+block sizes > page size ever makes it into mainline, this support
+could be useful.
 
-> 	char   name[EXT4_NAME_LEN3];
-
--Andi
-
--- 
-ak@linux.intel.com
+						- Ted
