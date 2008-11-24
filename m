@@ -1,72 +1,44 @@
-From: Arturas K <arturas@cerberis.soften.ktu.lt>
-Subject: rm: cannot remove `???': No such file or directory
-Date: Mon, 24 Nov 2008 16:14:29 +0200
-Message-ID: <492AB6C5.1050609@cerberis.soften.ktu.lt>
+From: Alex Zhuravlev <Alex.Zhuravlev@Sun.COM>
+Subject: Re: [PATCH -V2 3/5] ext4: Fix the race between read_block_bitmap and
+ mark_diskspace_used
+Date: Mon, 24 Nov 2008 19:36:49 +0300
+Message-ID: <492AD821.9030506@sun.com>
+References: <1227285875-18011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1227285875-18011-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <20081123140038.GC26473@mit.edu> <492A5453.9030801@sun.com>
+ <20081124113323.GC8462@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; format=flowed; charset=ISO-8859-1
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@MIT.EDU>, cmm@us.ibm.com, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cerberis.soften.ktu.lt ([193.219.33.193]:49895 "EHLO
-	cerberis.soften.ktu.lt" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752575AbYKXOkj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Nov 2008 09:40:39 -0500
-Received: from [172.16.6.95] (unknown [193.219.160.108])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by cerberis.soften.ktu.lt (Postfix) with ESMTP id 7EC1F160004B8
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2008 16:15:40 +0200 (EET)
+Received: from gmp-eb-inf-2.sun.com ([192.18.6.24]:65021 "EHLO
+	gmp-eb-inf-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753556AbYKXQg7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Nov 2008 11:36:59 -0500
+Received: from fe-emea-10.sun.com (gmp-eb-lb-1-fe3.eu.sun.com [192.18.6.10])
+	by gmp-eb-inf-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAOGav92027345
+	for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2008 16:36:57 GMT
+Received: from conversion-daemon.fe-emea-10.sun.com by fe-emea-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KAU00H01J2GNT00@fe-emea-10.sun.com>
+ (original mail from Alex.Zhuravlev@Sun.COM) for linux-ext4@vger.kernel.org;
+ Mon, 24 Nov 2008 16:36:57 +0000 (GMT)
+In-reply-to: <20081124113323.GC8462@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-hello,
+Aneesh Kumar K.V wrote:
+> Ok the changes was not done for this purpose. I need to make sure we
+> update bitmap and clear group_desc uninit flag after taking sb_bgl_lock
+> That means when we claim blocks we can't use mb_set_bits with
+> sb_bgl_lock because we would already be holding it. How about the below
+> change
 
-I did a simple/dirty benchmark on multiple file systems, and ext4dev 
-encounters some problems recursively removing linux tree... tested with 
-default and multiple altered option sets of mkfs.ext4dev and/or mount 
-options - the same story :(
+may I have a look at the original patch?
 
-I guess there are locks on files where modification is committed to fs, 
-but not yet flushed to disk or something like this. anyway this behavior 
-is fatal for any temporary file operations...
+thanks, Alex
 
---- test output ---
-
-> ~# ( cd /srv ; time ( tar xf /tmp/linux-2.6.26.tar && sync ) ) && ( cd /srv/linux-2.6.26 ; time ( cat /tmp/patch-2.6.27 | patch -p1 > ./log && sync ) ) && ( cd /srv ; time ( rm -R linux-2.6.26 && sync ) )
-> 
-> real	0m9.515s
-> user	0m0.112s
-> sys	0m1.536s
-> 
-> real	0m11.752s
-> user	0m2.680s
-> sys	0m2.868s
-> rm: cannot remove `linux-2.6.26/arch/powerpc/include/asm/bug.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/arch/alpha/include/asm/fb.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/arch/s390/include/asm/irq_regs.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/arch/sparc/include/asm/mmu.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/arch/sparc/include/asm/openprom_32.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/arch/arm/configs/ateb9200_defconfig': No such file or directory
-> rm: cannot remove `linux-2.6.26/arch/m68knommu/include/asm/scatterlist.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/include/asm-um/irq_vectors.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/include/asm-m68k/virtconvert.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/include/linux/hrtimer.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/include/linux/hardirq.h': No such file or directory
-> rm: cannot remove `linux-2.6.26/include/linux/crc32c.h': No such file or directory
-> 
-> real	0m0.721s
-> user	0m0.012s
-> sys	0m0.708s
-
---- system ---
-
-ubuntu 8.10 amd64
-
- > ~# dpkg -l | grep linux-image-2.6.27
- > ii  linux-image-2.6.27-7-generic 2.6.27-7.16
- > ~# dpkg -l | grep e2fs
- > ii  e2fslibs 1.41.3-1ubuntu1
- > ii  e2fsprogs 1.41.3-1ubuntu1
-
----
-ArturasK.
