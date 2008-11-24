@@ -1,47 +1,47 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: [PATCH -V2 5/5] ext4: Fix the race between read_inode_bitmap
-	and ext4_new_inode
-Date: Sun, 23 Nov 2008 23:05:24 -0500
-Message-ID: <20081124040524.GD2163@mit.edu>
-References: <1227285875-18011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1227285875-18011-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH -V4] ext4: Fix lockdep recursive locking warning
+Date: Mon, 24 Nov 2008 00:02:40 -0500
+Message-ID: <20081124050240.GA20928@mit.edu>
+References: <1227285646-16263-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081122204625.GF9150@mit.edu> <20081123024911.GG9150@mit.edu> <20081123163349.GB17002@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:60613 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:33133 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750862AbYKXEKf (ORCPT
+	by vger.kernel.org with ESMTP id S1750855AbYKXFFi (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 23 Nov 2008 23:10:35 -0500
+	Mon, 24 Nov 2008 00:05:38 -0500
 Content-Disposition: inline
-In-Reply-To: <1227285875-18011-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <20081123163349.GB17002@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 21, 2008 at 10:14:35PM +0530, Aneesh Kumar K.V wrote:
-> We need to make sure we update the inode bitmap and clear
-> EXT4_BG_INODE_UNINIT flag with sb_bgl_lock held. We look
-> at EXT4_BG_INODE_UNINIT and reinit the inode bitmap each
-> time in ext4_read_inode_bitmap (introduced by
-> c806e68f5647109350ec546fee5b526962970fd2 )
+I've added your patch to the patch queue, using the following commit
+comment, and using it to replace
+aneesh-9-fix-lockdeep-recursive-locking-warning in the patch queue.
 
-OK, I believe I've checked in all of your patches in this series into
-the ext4 patch queue
+Please note that commit description explains what was the problem you
+were trying to solve, some notes about why this works, what the
+limitations might be with the approach.  This is the kind of commit
+logs we should strive for.  We've been complemented for the clarity of
+our commit logs, and much of that is because I've been rewriting the
+changelog messages.  If everyone who submits patches could strive to
+meet similar standards, I'd greatly appreciated.
 
-Some of them have comments that still need to be cleared; this one in
-particular needs a better commit comment, and ideally a comment for
-the new function ext4_claim_inode().
+						- Ted
 
-Also, please don't rename variables unnecessarily; if you really think
-it's needed, please do so in a separate patch.  The renaming of
-variables makes it much harder to review the patch, since it bloats
-the patch, and obscures the true changes happening in the patch.
-Please explain why you are making some of the changes you made in the
-patch.  In particular, why does it matter the order in which you
-unlock the bh and sb_bgl_lock in balloc.c, mballoc.c and inode.c?
+ext4: Fix lockdep recursive locking warning
 
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 
-Thanks,
-
-					- Ted
+In ext4_mb_init_group(), if the filesystem block size is less than
+PAGE_SIZE/2, the code tries to grab alloc_sem for multiple block
+groups in a loop.  We need to allow for this by using
+down_write_nested() and passing in the loop index as a lock subclass
+number.  This works because no other code path needs to take multiple
+alloc_sem's.  Note that lockdep will fail for filesystem blocksize
+smaller than to PAGE_SIZE/16k.  (e.g., a 1k filesystem blocksize with
+a 32k page size, or a 2k filesystem blocksize with a 64k blocksize,
+etc.)
