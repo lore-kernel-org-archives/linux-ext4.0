@@ -1,29 +1,30 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH -V4 1/2] ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during
-	resize
-Date: Tue, 25 Nov 2008 15:16:35 -0500
-Message-ID: <20081125201635.GE525@mit.edu>
-References: <1227641145-26775-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081125192734.GA26883@skywalker>
+Subject: Re: rm: cannot remove `???': No such file or directory
+Date: Tue, 25 Nov 2008 15:28:41 -0500
+Message-ID: <20081125202841.GF525@mit.edu>
+References: <492AB6C5.1050609@cerberis.soften.ktu.lt> <20081125063558.GG20928@mit.edu> <492BCA76.50308@cerberis.soften.ktu.lt>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Arturas K <arturas@cerberis.soften.ktu.lt>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:35534 "EHLO
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:49954 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752008AbYKYUQi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 15:16:38 -0500
+	with ESMTP id S1751550AbYKYU2o (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 15:28:44 -0500
 Content-Disposition: inline
-In-Reply-To: <20081125192734.GA26883@skywalker>
+In-Reply-To: <492BCA76.50308@cerberis.soften.ktu.lt>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 26, 2008 at 12:57:34AM +0530, Aneesh Kumar K.V wrote:
-> 
-> The two patches only have comments updated after a really nice irc
-> discussion with Alex.
-> 
+On Tue, Nov 25, 2008 at 11:50:46AM +0200, Arturas K wrote:
+> as I written before:
 
-Thanks, patch queue updated.
+Sorry I missed that before.  Yeah, known problem, fixed in git commit
+3c37fc86 in the 2.6.28-rc development cycle.  The patch has been
+queued to the stable kernel maintainers for inclusion in an upcoming
+2.6.27.y release, but it hasn't made it out yet.  I can file a request
+to include a set of patches into a future Ubuntu kernel update, but I
+don't know how quickly Ubuntu will push out a new kernel.
 
-					- Ted
+      	       	       	      	   	    - Ted
