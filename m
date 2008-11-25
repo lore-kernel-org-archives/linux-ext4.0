@@ -1,67 +1,73 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC 1/2] ext4 resize: Mark the added group with
-	EXT4_BG_INODE_ZEROED flag
-Date: Mon, 24 Nov 2008 16:25:48 -0700
-Message-ID: <20081124232548.GG3186@webber.adilger.int>
-References: <20081121102309.182113793@bull.net>
- <20081121102309.507553245@bull.net>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [RESEND][PATCH 2/3 BUG,RFC] ext3: release block-device-mapping
+ buffer_heads which have the filesystem private data for avoiding	oom-killer
+Date: Tue, 25 Nov 2008 10:00:56 +0900
+Message-ID: <492B4E48.3080000@jp.fujitsu.com>
+References: <20081120093450.c87b39ef.toshi.okajima@jp.fujitsu.com> <20081124055133.GB20928@mit.edu>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Solofo.Ramangalahy@bull.net
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: akpm@linux-foundation.org, viro@zeniv.linux.org.uk, sct@redhat.com,
+	adilger@sun.com, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Theodore Tso <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:49999 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751911AbYKXX0E (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Nov 2008 18:26:04 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAONPp2k014721
-	for <linux-ext4@vger.kernel.org>; Mon, 24 Nov 2008 15:26:02 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KAV00B0122B9F00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Mon, 24 Nov 2008 15:25:51 -0800 (PST)
-In-reply-to: <20081121102309.507553245@bull.net>
-Content-disposition: inline
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:36968 "EHLO
+	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755497AbYKYBBI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 24 Nov 2008 20:01:08 -0500
+In-Reply-To: <20081124055133.GB20928@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Nov 21, 2008  11:23 +0100, Solofo.Ramangalahy@bull.net wrote:
-> The inode table has been zeroed in setup_new_group_blocks().
-> Mark it as such in ext4_group_add().
-> 
-> As a side note, online resize and inode zeroing are "dual".
-> 
-> In order to obtain a filesystem with faster formating times one can
-> do:
-> . either format a smaller fs and then resize it,
-> . or format the fs with lazy_itable_init
+Hi Ted,
+Thanks for your comments.
 
-As discussed on the concall, it probably makes more sense to have the
-resize code work by marking the inode tables UNINIT (if GDT_CSUM feature
-is enabled) and then start the "itable zeroing" thread, if it isn't
-already running, to do the zeroing of the itable.
+ > Hi Toshijuki,
+ >
+ > My apologizes for not getting back to you sooner.  My travel schedule
+Never mind.
 
-If GDT_CSUM isn't set then the below fix is the right solution.
+ > has been a little crazy lately, including being in Japan last week
+ > speaking at the Japan Linux Symposium.
+ >
+ > Your patch series looks good, but I have one comment, for the ext3 and
+ > ext4 patches:
+ >
+ > > +	if (journal != NULL)
+ > > +		return journal_try_to_free_buffers(journal, page, wait);
+ > > +	else
+ > > +		return try_to_free_buffers(page);
+ >
+ > According to the documentation for journal_try_to_free_buffers():
+ >
+ >  * This function returns non-zero if we wish try_to_free_buffers()
+ >  * to be called. We do this if the page is releasable by try_to_free_buffers().
+ >  * We also do it if the page has locked or dirty buffers and the caller wants
+ >  * us to perform sync or async writeout.
+I forgot reading it.
 
-> Index: linux-2.6.28-rc4-itable_init/fs/ext4/resize.c
-> ===================================================================
-> --- linux-2.6.28-rc4-itable_init.orig/fs/ext4/resize.c
-> +++ linux-2.6.28-rc4-itable_init/fs/ext4/resize.c
-> @@ -865,7 +865,7 @@ int ext4_group_add(struct super_block *s
->  	gdp->bg_free_blocks_count = cpu_to_le16(input->free_blocks_count);
->  	gdp->bg_free_inodes_count = cpu_to_le16(EXT4_INODES_PER_GROUP(sb));
->  	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
-> -
-> +	gdp->bg_flags |= cpu_to_le16(EXT4_BG_INODE_ZEROED);
->  	/*
->  	 * We can allocate memory for mb_alloc based on the new group
->  	 * descriptor
+ >
+ > So I think the last conditional in ext3_release_metadata() needs to be
+ > changed to be like this:
+ >
+ > +	if ((journal != NULL) &&
+ > +	    (journal_try_to_free_buffers(journal, page, wait) == 0))
+ > +		return 0;
+ > +	return try_to_free_buffers(page);
+ >
+ > A similar change should be made in the ext4 version of the patch.
+ > Does that sound OK to you?
+Yes.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+I will make and repost a revised patch which reflects your comments later.
+
+ >
+ > Regards,
+ >
+ > 						- Ted
+
+Thanks again,
+Toshiyuki Okajima
 
