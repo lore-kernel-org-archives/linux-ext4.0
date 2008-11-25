@@ -1,105 +1,525 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC 0/2] ext4: zero uninitialized inode tables
-Date: Tue, 25 Nov 2008 13:52:54 -0500
-Message-ID: <20081125185254.GB525@mit.edu>
-References: <20081121102309.182113793@bull.net> <20081125053226.GE20928@mit.edu> <18731.61311.620237.554814@frecb006361.adech.frec.bull.fr>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Solofo.Ramangalahy@bull.net
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V4 1/2] ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
+Date: Wed, 26 Nov 2008 00:55:44 +0530
+Message-ID: <1227641145-26775-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:45607 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753975AbYKYSw5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 13:52:57 -0500
-Content-Disposition: inline
-In-Reply-To: <18731.61311.620237.554814@frecb006361.adech.frec.bull.fr>
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:45829 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750963AbYKYT1M (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 14:27:12 -0500
+Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id mAPJQKdG015167
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Nov 2008 06:26:20 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mAPJQEDd1515714
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Nov 2008 06:26:14 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mAPJPrsp019485
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Nov 2008 06:25:54 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 25, 2008 at 01:28:47PM +0100, Solofo.Ramangalahy@bull.net wrote:
->   * This could probably be made into a module, because it is not often in use.
->   and this sentence from the OLS'02 paper
->   "Since the online resizing code is only used very rarely, it would
->   be possible to put the bulk of this code into a separate module that
->   is only loaded when a resize operation is done."
->   Inode zeroing is done only once in a filesystem lifetime (and each
->   time it is resized).
+The new groups added during resize are flagged as
+need_init group. Make sure we properly initialize these
+groups. When we have block size < page size and we are adding
+new groups the page may still be marked uptodate even though
+we haven't initialized the group. While forcing the init
+of buddy cache we need to make sure other groups part of the
+same page of buddy cache is not using the cache.
+group_info->alloc_sem is added to ensure the same.
 
-Sure, but (a) zeroing the inode table should not be much code;
-especially since we need to zero contiguous block ranges in extents.c
-to deal with uninitialized extents.  Also (b) modules have their own
-cost; they waste on average PAGE_SIZE/2 worth of memory per module due
-to internal fragmentation, and cause extra entries in the TLB cache
-(on an x86, the entire kernel uses a single TLB entry, but each 4k
-page used by a module burns a separate TLB entry), and (c) loading
-modules is slow and serializes the kernel at boot time.  In addition,
-(d) some users simply prohibit modules for policy reasons.
+FILENAME: aneesh-3-use_EXT4_GROUP_INFO_NEED_INIT_BIT-during-resize
 
-So I could imagine adding module support, but it has to work built
-into the kernel is critical, and this will probably the primary way it
-will be compiled.  And you need to make sure the kernel tries to
-automatically load the module when a resize or a new filesystem is
-mounted, if it is compiled as a module.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/balloc.c  |   21 +++--
+ fs/ext4/ext4.h    |    2 +-
+ fs/ext4/mballoc.c |  217 ++++++++++++++++++++++++++++++++++++++--------------
+ fs/ext4/mballoc.h |    3 +
+ fs/ext4/resize.c  |   41 +----------
+ 5 files changed, 176 insertions(+), 108 deletions(-)
 
-> I was also thinking that there may be other places to do it. For
-> example, zeroing the inode table where the inode bitmap is initialized
-> (ext4_init_inode_bitmap() called only once in
-> ext4_read_inode_bitmap()).
-
-When we first allocate an inode in the inode table and when we need to
-zero it is largely unrelated.  The problem is that e2fsck doesn't want
-to trust the inode bitmap as being accurate; nor can it necessarily
-trust the bg_inodes_unused field --- note particularly that this is
-not updated in the backup group descriptors.  Hence the window of
-vulnerability has nothing to do with whether or not we have started
-using a particular part of the inode table, but because the inode
-table has not been initialized.
-
-So we want to get the inode table fully initialized as soon as
-possible, although we have to balance this with not impacting the
-system's performance.
-
-> The reasoning would have been to zero as soon as it is known to be
-> needed:
-> . without deferring it to the threads,
-> . decreasing the probability of zeroing competing with other code
-
-A block group's inode table can be 2-4 megabytes; and zeroing out that
-many disk blocks can take a noticeable amount of time, so doing it
-synchronously with an inode creation doesn't seem like a great idea to
-me.....
-
->  > > . fix the resize inode case
->  > 
->  > Not sure what problem you were having here?
-> 
-> With resize inode, the obtained filesystem is corrupted, fsck says
-> "Resize inode not valid.  Recreate?"
-> as well as: 
-> "Free blocks count wrong for group #0 (6788, counted=6789)."
-
-Something really bogus must be happening; the resize inode is in block
-group 0, which always has some inodes (and therefore would never be
-touched by your patch, which only initializes completely empty inode
-tables).  So if it managed to corrupt the resize inode, that's
-especially worrisome.
-
-> Appart from the data structures change you mentionned, these changes
-> were discussed:
-> . a mount option to disable the threads when doing testing/performance
->   benchmarking
-
-Yes, this makes sense.  The administrator can always remount the filesystem
-with a mount option to re-enable itable initialization if the
-sysadmin wants to zero the inode table later on.
-
-> . a flag in s_flags field of struct ext4_super_block to indicate that
->   the zeroing has been done on all the groups. Possibly reset with
->   resize.
-
-This doesn't make that much sense to me.  It's not that hard to
-iterate through all of the block groups descriptors checking for the
-EXT4_BG_INODE_ZEROED flag.
-
-							- Ted
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index fa69cb3..39df492 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -381,6 +381,7 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
+ 
+ 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
++	grp = ext4_get_group_info(sb, block_group);
+ 	/*
+ 	 * Check to see if we are freeing blocks across a group
+ 	 * boundary.
+@@ -425,7 +426,11 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	err = ext4_journal_get_write_access(handle, gd_bh);
+ 	if (err)
+ 		goto error_return;
+-
++	/*
++	 * make sure we don't allow a parallel init on other groups in the
++	 * same buddy cache
++	 */
++	down_write(&grp->alloc_sem);
+ 	for (i = 0, blocks_freed = 0; i < count; i++) {
+ 		BUFFER_TRACE(bitmap_bh, "clear bit");
+ 		if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
+@@ -450,6 +455,13 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 		sbi->s_flex_groups[flex_group].free_blocks += blocks_freed;
+ 		spin_unlock(sb_bgl_lock(sbi, flex_group));
+ 	}
++	/*
++	 * request to reload the buddy with the
++	 * new bitmap information
++	 */
++	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
++	ext4_mb_update_group_info(grp, blocks_freed);
++	up_write(&grp->alloc_sem);
+ 
+ 	/* We dirtied the bitmap block */
+ 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+@@ -461,13 +473,6 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 	if (!err)
+ 		err = ret;
+ 	sb->s_dirt = 1;
+-	/*
+-	 * request to reload the buddy with the
+-	 * new bitmap information
+-	 */
+-	grp = ext4_get_group_info(sb, block_group);
+-	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
+-	ext4_mb_update_group_info(grp, blocks_freed);
+ 
+ error_return:
+ 	brelse(bitmap_bh);
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 49b46e7..bc13445 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1058,7 +1058,7 @@ extern int __init init_ext4_mballoc(void);
+ extern void exit_ext4_mballoc(void);
+ extern void ext4_mb_free_blocks(handle_t *, struct inode *,
+ 		unsigned long, unsigned long, int, unsigned long *);
+-extern int ext4_mb_add_more_groupinfo(struct super_block *sb,
++extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+ extern void ext4_mb_update_group_info(struct ext4_group_info *grp,
+ 		ext4_grpblk_t add);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 9cc93af..11fd4b9 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -886,18 +886,20 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 					struct ext4_buddy *e4b)
+ {
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct inode *inode = sbi->s_buddy_cache;
+ 	int blocks_per_page;
+ 	int block;
+ 	int pnum;
+ 	int poff;
+ 	struct page *page;
+ 	int ret;
++	struct ext4_group_info *grp;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct inode *inode = sbi->s_buddy_cache;
+ 
+ 	mb_debug("load group %u\n", group);
+ 
+ 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
++	grp = ext4_get_group_info(sb, group);
+ 
+ 	e4b->bd_blkbits = sb->s_blocksize_bits;
+ 	e4b->bd_info = ext4_get_group_info(sb, group);
+@@ -905,6 +907,15 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 	e4b->bd_group = group;
+ 	e4b->bd_buddy_page = NULL;
+ 	e4b->bd_bitmap_page = NULL;
++	e4b->alloc_semp = &grp->alloc_sem;
++
++	/* Take the read lock on the group alloc
++	 * sem. This would make sure a parallel
++	 * ext4_mb_init_group happening on other
++	 * groups mapped by the page is blocked
++	 * till we are done with allocation
++	 */
++	down_read(e4b->alloc_semp);
+ 
+ 	/*
+ 	 * the buddy cache inode stores the block bitmap
+@@ -920,6 +931,14 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 	page = find_get_page(inode->i_mapping, pnum);
+ 	if (page == NULL || !PageUptodate(page)) {
+ 		if (page)
++			/*
++			 * drop the page reference and try
++			 * to get the page with lock. If we
++			 * are not uptodate that implies
++			 * somebody just created the page but
++			 * is yet to initialize the same. So
++			 * wait for it to initialize.
++			 */
+ 			page_cache_release(page);
+ 		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
+ 		if (page) {
+@@ -985,6 +1004,9 @@ ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
+ 		page_cache_release(e4b->bd_buddy_page);
+ 	e4b->bd_buddy = NULL;
+ 	e4b->bd_bitmap = NULL;
++
++	/* Done with the buddy cache */
++	up_read(e4b->alloc_semp);
+ 	return ret;
+ }
+ 
+@@ -994,6 +1016,8 @@ static void ext4_mb_release_desc(struct ext4_buddy *e4b)
+ 		page_cache_release(e4b->bd_bitmap_page);
+ 	if (e4b->bd_buddy_page)
+ 		page_cache_release(e4b->bd_buddy_page);
++	/* Done with the buddy cache */
++	up_read(e4b->alloc_semp);
+ }
+ 
+ 
+@@ -1694,6 +1718,129 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+ 	return 0;
+ }
+ 
++static int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
++{
++
++	int i, ret;
++	void *bitmap;
++	int blocks_per_page;
++	int groups_per_page;
++	int block, pnum, poff;
++	int num_grp_locked = 0;
++	ext4_group_t first_group;
++	struct ext4_group_info *grp, *this_grp;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct inode *inode = sbi->s_buddy_cache;
++	struct page *page = NULL, *bitmap_page = NULL;
++
++	mb_debug("init group %lu\n", group);
++	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
++	/*
++	 * the buddy cache inode stores the block bitmap
++	 * and buddy information in consecutive blocks.
++	 * So for each group we need two blocks.
++	 */
++	block = group * 2;
++	pnum = block / blocks_per_page;
++	poff = block % blocks_per_page;
++	first_group = pnum * blocks_per_page / 2;
++	this_grp = ext4_get_group_info(sb, group);
++
++	groups_per_page = blocks_per_page >> 1;
++	if (groups_per_page == 0)
++		groups_per_page = 1;
++
++	/* read all groups the page covers into the cache */
++	for (i = 0; i < groups_per_page; i++) {
++
++		if ((first_group + i) >= EXT4_SB(sb)->s_groups_count)
++			break;
++		grp = ext4_get_group_info(sb, first_group + i);
++		/* take all groups write allocation
++		 * semaphore. This make sure there is
++		 * no block allocation going on in any
++		 * of that groups
++		 */
++		down_write(&grp->alloc_sem);
++	}
++	/*
++	 * make sure we look at only those groups
++	 * that are locked. A resize can add more
++	 * groups while this happen
++	 */
++	num_grp_locked = i;
++	if (!EXT4_MB_GRP_NEED_INIT(this_grp)) {
++		/*
++		 * somebody initialized the group
++		 * return without doing anything
++		 */
++		ret = 0;
++		goto err;
++	}
++
++	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++	if (page) {
++		BUG_ON(page->mapping != inode->i_mapping);
++		ret = ext4_mb_init_cache(page, NULL);
++		if (ret) {
++			unlock_page(page);
++			goto err;
++		}
++		unlock_page(page);
++	}
++	if (page == NULL || !PageUptodate(page)) {
++		ret = -EIO;
++		goto err;
++	}
++	mark_page_accessed(page);
++	bitmap_page = page;
++	bitmap = page_address(page) + (poff * sb->s_blocksize);
++
++	/* init buddy cache */
++	block++;
++	pnum = block / blocks_per_page;
++	poff = block % blocks_per_page;
++	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
++	if (page == bitmap_page) {
++		/*
++		 * If both the bitmap and buddy are in
++		 * the same page we don't need to force
++		 * init the buddy
++		 */
++		unlock_page(page);
++	} else if (page) {
++		BUG_ON(page->mapping != inode->i_mapping);
++		ret = ext4_mb_init_cache(page, bitmap);
++		if (ret) {
++			unlock_page(page);
++			goto err;
++		}
++		unlock_page(page);
++	}
++	if (page == NULL || !PageUptodate(page)) {
++		ret = -EIO;
++		goto err;
++	}
++	mark_page_accessed(page);
++err:
++	/* release locks on all the groups */
++	for (i = 0; i < num_grp_locked; i++) {
++
++		grp = ext4_get_group_info(sb, first_group + i);
++		/* take all groups write allocation
++		 * semaphore. This make sure there is
++		 * no block allocation going on in any
++		 * of that groups
++		 */
++		up_write(&grp->alloc_sem);
++	}
++	if (bitmap_page)
++		page_cache_release(bitmap_page);
++	if (page)
++		page_cache_release(page);
++	return ret;
++}
++
+ static noinline_for_stack int
+ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ {
+@@ -1777,7 +1924,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 				group = 0;
+ 
+ 			/* quick check to skip empty groups */
+-			grp = ext4_get_group_info(ac->ac_sb, group);
++			grp = ext4_get_group_info(sb, group);
+ 			if (grp->bb_free == 0)
+ 				continue;
+ 
+@@ -1790,10 +1937,9 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
+ 				 * we need full data about the group
+ 				 * to make a good selection
+ 				 */
+-				err = ext4_mb_load_buddy(sb, group, &e4b);
++				err = ext4_mb_init_group(sb, group);
+ 				if (err)
+ 					goto out;
+-				ext4_mb_release_desc(&e4b);
+ 			}
+ 
+ 			/*
+@@ -2244,7 +2390,7 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
+ 
+ 
+ /* Create and initialize ext4_group_info data for the given group. */
+-static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
++int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 			  struct ext4_group_desc *desc)
+ {
+ 	int i, len;
+@@ -2302,6 +2448,7 @@ static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 	}
+ 
+ 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
++	init_rwsem(&meta_group_info[i]->alloc_sem);
+ 	meta_group_info[i]->bb_free_root.rb_node = NULL;;
+ 
+ #ifdef DOUBLE_CHECK
+@@ -2329,54 +2476,6 @@ static int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ } /* ext4_mb_add_groupinfo */
+ 
+ /*
+- * Add a group to the existing groups.
+- * This function is used for online resize
+- */
+-int ext4_mb_add_more_groupinfo(struct super_block *sb, ext4_group_t group,
+-			       struct ext4_group_desc *desc)
+-{
+-	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct inode *inode = sbi->s_buddy_cache;
+-	int blocks_per_page;
+-	int block;
+-	int pnum;
+-	struct page *page;
+-	int err;
+-
+-	/* Add group based on group descriptor*/
+-	err = ext4_mb_add_groupinfo(sb, group, desc);
+-	if (err)
+-		return err;
+-
+-	/*
+-	 * Cache pages containing dynamic mb_alloc datas (buddy and bitmap
+-	 * datas) are set not up to date so that they will be re-initilaized
+-	 * during the next call to ext4_mb_load_buddy
+-	 */
+-
+-	/* Set buddy page as not up to date */
+-	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+-	block = group * 2;
+-	pnum = block / blocks_per_page;
+-	page = find_get_page(inode->i_mapping, pnum);
+-	if (page != NULL) {
+-		ClearPageUptodate(page);
+-		page_cache_release(page);
+-	}
+-
+-	/* Set bitmap page as not up to date */
+-	block++;
+-	pnum = block / blocks_per_page;
+-	page = find_get_page(inode->i_mapping, pnum);
+-	if (page != NULL) {
+-		ClearPageUptodate(page);
+-		page_cache_release(page);
+-	}
+-
+-	return 0;
+-}
+-
+-/*
+  * Update an existing group.
+  * This function is used for online resize
+  */
+@@ -4583,11 +4682,6 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 	err = ext4_journal_get_write_access(handle, gd_bh);
+ 	if (err)
+ 		goto error_return;
+-
+-	err = ext4_mb_load_buddy(sb, block_group, &e4b);
+-	if (err)
+-		goto error_return;
+-
+ #ifdef AGGRESSIVE_CHECK
+ 	{
+ 		int i;
+@@ -4601,6 +4695,8 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 	/* We dirtied the bitmap block */
+ 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+ 	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
++	if (err)
++		goto error_return;
+ 
+ 	if (ac) {
+ 		ac->ac_b_ex.fe_group = block_group;
+@@ -4609,6 +4705,9 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 		ext4_mb_store_history(ac);
+ 	}
+ 
++	err = ext4_mb_load_buddy(sb, block_group, &e4b);
++	if (err)
++		goto error_return;
+ 	if (metadata) {
+ 		/* blocks being freed are metadata. these blocks shouldn't
+ 		 * be used until this transaction is committed */
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index b5dff1f..a931b6b 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -20,6 +20,7 @@
+ #include <linux/version.h>
+ #include <linux/blkdev.h>
+ #include <linux/marker.h>
++#include <linux/mutex.h>
+ #include "ext4_jbd2.h"
+ #include "ext4.h"
+ #include "group.h"
+@@ -130,6 +131,7 @@ struct ext4_group_info {
+ #ifdef DOUBLE_CHECK
+ 	void		*bb_bitmap;
+ #endif
++	struct rw_semaphore alloc_sem;
+ 	unsigned short	bb_counters[];
+ };
+ 
+@@ -250,6 +252,7 @@ struct ext4_buddy {
+ 	struct super_block *bd_sb;
+ 	__u16 bd_blkbits;
+ 	ext4_group_t bd_group;
++	struct rw_semaphore *alloc_semp;
+ };
+ #define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
+ #define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index b6a0609..939cf26 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -870,7 +870,7 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	 * We can allocate memory for mb_alloc based on the new group
+ 	 * descriptor
+ 	 */
+-	err = ext4_mb_add_more_groupinfo(sb, input->group, gdp);
++	err = ext4_mb_add_groupinfo(sb, input->group, gdp);
+ 	if (err)
+ 		goto exit_journal;
+ 
+@@ -1081,45 +1081,6 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	if ((err = ext4_journal_stop(handle)))
+ 		goto exit_put;
+ 
+-	/*
+-	 * Mark mballoc pages as not up to date so that they will be updated
+-	 * next time they are loaded by ext4_mb_load_buddy.
+-	 *
+-	 * XXX Bad, Bad, BAD!!!  We should not be overloading the
+-	 * Uptodate flag, particularly on thte bitmap bh, as way of
+-	 * hinting to ext4_mb_load_buddy() that it needs to be
+-	 * overloaded.  A user could take a LVM snapshot, then do an
+-	 * on-line fsck, and clear the uptodate flag, and this would
+-	 * not be a bug in userspace, but a bug in the kernel.  FIXME!!!
+-	 */
+-	{
+-		struct ext4_sb_info *sbi = EXT4_SB(sb);
+-		struct inode *inode = sbi->s_buddy_cache;
+-		int blocks_per_page;
+-		int block;
+-		int pnum;
+-		struct page *page;
+-
+-		/* Set buddy page as not up to date */
+-		blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+-		block = group * 2;
+-		pnum = block / blocks_per_page;
+-		page = find_get_page(inode->i_mapping, pnum);
+-		if (page != NULL) {
+-			ClearPageUptodate(page);
+-			page_cache_release(page);
+-		}
+-
+-		/* Set bitmap page as not up to date */
+-		block++;
+-		pnum = block / blocks_per_page;
+-		page = find_get_page(inode->i_mapping, pnum);
+-		if (page != NULL) {
+-			ClearPageUptodate(page);
+-			page_cache_release(page);
+-		}
+-	}
