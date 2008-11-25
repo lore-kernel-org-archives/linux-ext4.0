@@ -1,53 +1,79 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC 0/2] ext4: zero uninitialized inode tables
-Date: Tue, 25 Nov 2008 14:10:43 -0700
-Message-ID: <20081125211043.GT3186@webber.adilger.int>
+Subject: Re: [RFC 1/2] ext4 resize: Mark the added group with
+	EXT4_BG_INODE_ZEROED flag
+Date: Tue, 25 Nov 2008 14:18:44 -0700
+Message-ID: <20081125211844.GU3186@webber.adilger.int>
 References: <20081121102309.182113793@bull.net>
- <20081125053226.GE20928@mit.edu>
- <18731.61311.620237.554814@frecb006361.adech.frec.bull.fr>
+ <20081121102309.507553245@bull.net> <20081124232548.GG3186@webber.adilger.int>
+ <18731.57605.633119.670974@frecb006361.adech.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
-Cc: Theodore Tso <tytso@MIT.EDU>, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
 To: Solofo.Ramangalahy@bull.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:42083 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752008AbYKYVLA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 16:11:00 -0500
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:60437 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752008AbYKYVSs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 16:18:48 -0500
 Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAPLAqqE000764
-	for <linux-ext4@vger.kernel.org>; Tue, 25 Nov 2008 13:10:52 -0800 (PST)
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAPLIlpI019976
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Nov 2008 13:18:47 -0800 (PST)
 Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KAW00G01QHQFT00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 25 Nov 2008 13:10:52 -0800 (PST)
-In-reply-to: <18731.61311.620237.554814@frecb006361.adech.frec.bull.fr>
+ id <0KAW00H01QWHRZ00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Tue, 25 Nov 2008 13:18:47 -0800 (PST)
+In-reply-to: <18731.57605.633119.670974@frecb006361.adech.frec.bull.fr>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Nov 25, 2008  13:28 +0100, Solofo.Ramangalahy@bull.net wrote:
-> Appart from the data structures change you mentionned, these changes
-> were discussed:
-> . a mount option to disable the threads when doing testing/performance
->   benchmarking
+On Nov 25, 2008  12:27 +0100, Solofo.Ramangalahy@bull.net wrote:
+> Andreas Dilger writes:
+>  > As discussed on the concall, it probably makes more sense to have the
+>  > resize code work by marking the inode tables UNINIT (if GDT_CSUM feature
+>  > is enabled)
+> 
+> If I understand correctly, this is already the case:
+> #define EXT4_BG_INODE_UNINIT    0x0001 /* Inode table/bitmap not in use */
+> #define EXT4_BG_BLOCK_UNINIT    0x0002 /* Block bitmap not in use */
+> #define EXT4_BG_INODE_ZEROED    0x0004 /* On-disk itable initialized to zero */
 
-Sure.
+> As the EXT4_BG_INODE_ZEROED is not present, the inode table is UNINIT.
 
-> . a flag in s_flags field of struct ext4_super_block to indicate that
->   the zeroing has been done on all the groups. Possibly reset with
->   resize.
+Ah, I suppose you are correct.
 
-I was thinking that it makes sense to have this same thread do checking
-of all the block group metadata as it traverses the filesystem.  That
-includes validating the GDT checksums, checking the existing block and
-inode bitmaps (and possibly checksums for them, when that is implemented),
-along with zeroing the inode table.
+> By the way, is there any reason the #defines are like this, instead of:
+> #define EXT4_BG_INODE_UNINIT    0x0001 /* Inode table/bitmap not in use */
+> #define EXT4_BG_BLOCK_UNINIT    0x0002 /* Block bitmap not in use */
+> #define EXT4_BG_ITABLE_UNINIT   0x0004 /* On-disk itable not initialized */
+> ?
 
-The only requirement is that there only be a single such thread running
-on the filesystem at one time, and that if the filesystem is unmounted
-that the thread be killed before the unmount is completed.
+No particular reason, that is just how the implementation was done.  In
+hindsight that probably would make more sense...
+
+> While working on this, I noted this checkpatch error 
+> "ERROR: do not use assignment in if condition"
+> (but I am not sure of the exact justification).
+
+I'm not sure what you are asking.  The reason not to use "assignment in if"
+is because of possible coding error like:
+
+	if (x = 6) {
+		/* do something if x is 6 */
+	}
+
+when coder actually meant to write:
+
+	if (x == 6) {
+		/* do something if x is 6 */
+	}
+
+The first one will now generate a warning in GCC unless written as:
+
+	if ((x = 6)) {
+		/* do something if x is 6 */
+	}
 
 Cheers, Andreas
 --
