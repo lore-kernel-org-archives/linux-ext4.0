@@ -1,30 +1,57 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: rm: cannot remove `???': No such file or directory
-Date: Tue, 25 Nov 2008 15:28:41 -0500
-Message-ID: <20081125202841.GF525@mit.edu>
-References: <492AB6C5.1050609@cerberis.soften.ktu.lt> <20081125063558.GG20928@mit.edu> <492BCA76.50308@cerberis.soften.ktu.lt>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC 0/2] ext4: zero uninitialized inode tables
+Date: Tue, 25 Nov 2008 14:10:43 -0700
+Message-ID: <20081125211043.GT3186@webber.adilger.int>
+References: <20081121102309.182113793@bull.net>
+ <20081125053226.GE20928@mit.edu>
+ <18731.61311.620237.554814@frecb006361.adech.frec.bull.fr>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Arturas K <arturas@cerberis.soften.ktu.lt>
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@MIT.EDU>, linux-ext4@vger.kernel.org
+To: Solofo.Ramangalahy@bull.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:49954 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751550AbYKYU2o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 15:28:44 -0500
-Content-Disposition: inline
-In-Reply-To: <492BCA76.50308@cerberis.soften.ktu.lt>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:42083 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752008AbYKYVLA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 16:11:00 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mAPLAqqE000764
+	for <linux-ext4@vger.kernel.org>; Tue, 25 Nov 2008 13:10:52 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KAW00G01QHQFT00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Tue, 25 Nov 2008 13:10:52 -0800 (PST)
+In-reply-to: <18731.61311.620237.554814@frecb006361.adech.frec.bull.fr>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Nov 25, 2008 at 11:50:46AM +0200, Arturas K wrote:
-> as I written before:
+On Nov 25, 2008  13:28 +0100, Solofo.Ramangalahy@bull.net wrote:
+> Appart from the data structures change you mentionned, these changes
+> were discussed:
+> . a mount option to disable the threads when doing testing/performance
+>   benchmarking
 
-Sorry I missed that before.  Yeah, known problem, fixed in git commit
-3c37fc86 in the 2.6.28-rc development cycle.  The patch has been
-queued to the stable kernel maintainers for inclusion in an upcoming
-2.6.27.y release, but it hasn't made it out yet.  I can file a request
-to include a set of patches into a future Ubuntu kernel update, but I
-don't know how quickly Ubuntu will push out a new kernel.
+Sure.
 
-      	       	       	      	   	    - Ted
+> . a flag in s_flags field of struct ext4_super_block to indicate that
+>   the zeroing has been done on all the groups. Possibly reset with
+>   resize.
+
+I was thinking that it makes sense to have this same thread do checking
+of all the block group metadata as it traverses the filesystem.  That
+includes validating the GDT checksums, checking the existing block and
+inode bitmaps (and possibly checksums for them, when that is implemented),
+along with zeroing the inode table.
+
+The only requirement is that there only be a single such thread running
+on the filesystem at one time, and that if the filesystem is unmounted
+that the thread be killed before the unmount is completed.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
