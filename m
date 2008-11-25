@@ -1,46 +1,131 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V4 1/2] ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during
-	resize
-Date: Wed, 26 Nov 2008 00:57:34 +0530
-Message-ID: <20081125192734.GA26883@skywalker>
+Subject: [PATCH -V4 2/2] ext4: cleanup mballoc header files
+Date: Wed, 26 Nov 2008 00:55:45 +0530
+Message-ID: <1227641145-26775-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1227641145-26775-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:45907 "EHLO
+Received: from E23SMTP02.au.ibm.com ([202.81.18.163]:46555 "EHLO
 	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752812AbYKYT1r (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 14:27:47 -0500
-Received: from d23relay03.au.ibm.com (d23relay03.au.ibm.com [202.81.18.234])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id mAPJQus9015797
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Nov 2008 06:26:56 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay03.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mAPJS5Wg1540230
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Nov 2008 06:28:05 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mAPJRjib025664
-	for <linux-ext4@vger.kernel.org>; Wed, 26 Nov 2008 06:27:45 +1100
-Content-Disposition: inline
+	with ESMTP id S1750816AbYKYTbB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 25 Nov 2008 14:31:01 -0500
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id mAPJU90M019546
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Nov 2008 06:30:09 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mAPJPxs9282190
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Nov 2008 06:25:59 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mAPJPwid019518
+	for <linux-ext4@vger.kernel.org>; Wed, 26 Nov 2008 06:25:58 +1100
 In-Reply-To: <1227641145-26775-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 26, 2008 at 12:55:44AM +0530, Aneesh Kumar K.V wrote:
-> The new groups added during resize are flagged as
-> need_init group. Make sure we properly initialize these
-> groups. When we have block size < page size and we are adding
-> new groups the page may still be marked uptodate even though
-> we haven't initialized the group. While forcing the init
-> of buddy cache we need to make sure other groups part of the
-> same page of buddy cache is not using the cache.
-> group_info->alloc_sem is added to ensure the same.
-> 
-> FILENAME: aneesh-3-use_EXT4_GROUP_INFO_NEED_INIT_BIT-during-resize
-> 
+Move some of the forward declaration of the static functions
+to mballoc.c where they are used. This enables us to include
+mballoc.h in other .c files. Also correct the buddy cache
+documentation.
 
-The two patches only have comments updated after a really nice irc
-discussion with Alex.
+FILENAME: aneesh-4-cleanup-mballoc-header-files
 
--aneesh
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/mballoc.c |   23 +++++++++++++++++++----
+ fs/ext4/mballoc.h |   18 +-----------------
+ 2 files changed, 20 insertions(+), 21 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 11fd4b9..598b418 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -100,7 +100,7 @@
+  * inode as:
+  *
+  *  {                        page                        }
+- *  [ group 0 buddy][ group 0 bitmap] [group 1][ group 1]...
++ *  [ group 0 bitmap][ group 0 buddy] [group 1][ group 1]...
+  *
+  *
+  * one block each for bitmap and buddy information.  So for each group we
+@@ -330,6 +330,16 @@
+  *        object
+  *
+  */
++static struct kmem_cache *ext4_pspace_cachep;
++static struct kmem_cache *ext4_ac_cachep;
++static struct kmem_cache *ext4_free_ext_cachep;
++static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
++					ext4_group_t group);
++static int ext4_mb_init_per_dev_proc(struct super_block *sb);
++static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
++static void release_blocks_on_commit(journal_t *journal, transaction_t *txn);
++
++
+ 
+ static inline void *mb_correct_addr_and_bit(int *bit, void *addr)
+ {
+@@ -716,7 +726,7 @@ static void ext4_mb_generate_buddy(struct super_block *sb,
+  * stored in the inode as
+  *
+  * {                        page                        }
+- * [ group 0 buddy][ group 0 bitmap] [group 1][ group 1]...
++ * [ group 0 bitmap][ group 0 buddy] [group 1][ group 1]...
+  *
+  *
+  * one block each for bitmap and buddy information.
+@@ -1322,8 +1332,13 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
+ 	ac->ac_tail = ret & 0xffff;
+ 	ac->ac_buddy = ret >> 16;
+ 
+-	/* XXXXXXX: SUCH A HORRIBLE **CK */
+-	/*FIXME!! Why ? */
++	/*
++	 * take the page reference. We want the page to be pinned
++	 * so that we don't get a ext4_mb_init_cache_call for this
++	 * group untill we update the bitmap. That would mean we
++	 * double allocate blocks. The reference is dropped
++	 * in ext4_mb_release_context
++	 */
+ 	ac->ac_bitmap_page = e4b->bd_bitmap_page;
+ 	get_page(ac->ac_bitmap_page);
+ 	ac->ac_buddy_page = e4b->bd_buddy_page;
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index a931b6b..997f78f 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -99,9 +99,6 @@
+  */
+ #define MB_DEFAULT_GROUP_PREALLOC	512
+ 
+-static struct kmem_cache *ext4_pspace_cachep;
+-static struct kmem_cache *ext4_ac_cachep;
+-static struct kmem_cache *ext4_free_ext_cachep;
+ 
+ struct ext4_free_data {
+ 	/* this links the free block information from group_info */
+@@ -262,25 +259,12 @@ static inline void ext4_mb_store_history(struct ext4_allocation_context *ac)
+ {
+ 	return;
+ }
+-#else
+-static void ext4_mb_store_history(struct ext4_allocation_context *ac);
+ #endif
+ 
+ #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
+ 
+ struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
+ 
+-static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+-					ext4_group_t group);
+-static void ext4_mb_return_to_preallocation(struct inode *inode,
+-					struct ext4_buddy *e4b, sector_t block,
+-					int count);
+-static void ext4_mb_put_pa(struct ext4_allocation_context *,
+-			struct super_block *, struct ext4_prealloc_space *pa);
+-static int ext4_mb_init_per_dev_proc(struct super_block *sb);
+-static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
+-static void release_blocks_on_commit(journal_t *journal, transaction_t *txn);
