@@ -1,41 +1,83 @@
-From: Arturas K <arturas@cerberis.soften.ktu.lt>
-Subject: Re: rm: cannot remove `???': No such file or directory
-Date: Wed, 26 Nov 2008 11:47:50 +0200
-Message-ID: <492D1B46.8020204@cerberis.soften.ktu.lt>
-References: <492AB6C5.1050609@cerberis.soften.ktu.lt> <20081125063558.GG20928@mit.edu> <492BCA76.50308@cerberis.soften.ktu.lt> <20081125202841.GF525@mit.edu>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: bugs of Online Defragmentation
+Date: Wed, 26 Nov 2008 20:11:18 +0900
+Message-ID: <492D2ED6.3050500@rs.jp.nec.com>
+References: <49221C94.3010500@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Li Zefan <lizf@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cerberis.soften.ktu.lt ([193.219.33.193]:33298 "EHLO
-	cerberis.soften.ktu.lt" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751364AbYKZJr6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Nov 2008 04:47:58 -0500
-In-Reply-To: <20081125202841.GF525@mit.edu>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:36048 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751741AbYKZLLY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Nov 2008 06:11:24 -0500
+In-Reply-To: <49221C94.3010500@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Tue, Nov 25, 2008 at 11:50:46AM +0200, Arturas K wrote:
->> as I written before:
+Hi Li,
+
+Thank you for testing and sorry for delay reply.
+I am looking into this problem now,
+It seems to take a little time to fix.
+
+(In my look, s_dirty_blocks goes wrong so that free blocks
+on memory decreases.  Maybe delalloc handling isn't good)
+
+Thanks,
+Akira Fujita
+
+Li Zefan wrote:
+> I tested Online Defrag, and seems this feature is still
+> very unstable.
 > 
-> Sorry I missed that before.  Yeah, known problem, fixed in git commit
-> 3c37fc86 in the 2.6.28-rc development cycle.  The patch has been
-> queued to the stable kernel maintainers for inclusion in an upcoming
-> 2.6.27.y release, but it hasn't made it out yet.  I can file a request
-> to include a set of patches into a future Ubuntu kernel update, but I
-> don't know how quickly Ubuntu will push out a new kernel.
+> 1)
 > 
->       	       	       	      	   	    - Ted
-
-hello,
-
-I tested 2.6.28-rc6 - problem gone :D
-
-it would be grate if you filed appropriate bug for ubuntu. updated 
-ubuntu kernel will follow at worst than more bugs acumulate
-
----
-ArturasK.
+> # mkfs.ext4 -m 0 -b 1024 -O ^flex_bg /dev/sdb7
+> # mount -t ext4 -o nodelalloc /dev/sdb7 mnt_point
+> # (age /dev/sdb7 using ffsb)
+> ...
+> # df
+> Filesystem           1K-blocks      Used Available Use% Mounted on
+> ...
+> /dev/sdb7              5159829   5118866     40963 100% ...
+> 
+> sdb7 has 40M free space left. And I ran e4defrag on a directory full
+> of small files (most < 1M), but all failed, and dmesg didn't tell
+> me the reasion.
+> 
+> # e4defrag mnt_point/data0/
+> ...
+> [62/1562]/../mnt_point/data0/fillfile1420:        0%    [ NG ]
+> [63/1562]/../mnt_point/data0/fillfile188:         0%    [ NG ]
+> ...
+>         Success:                        [ 0/1562 ]
+>         Failure:                        [ 1562/1562 ]
+> 
+> # df
+> Filesystem           1K-blocks      Used Available Use% Mounted on
+> ...
+> /dev/sdb7              5159829   5159807        22 100% ...
+> 
+> Though all failed, but now the 40M free space was occupied, why?
+> 
+> If delalloc is turned on, things are somewhat different, most files can
+> be defraged, and dmesg told me not enough free blocks for the failure
+> cases.
+> 
+> 2)
+> 
+> I sometimes got panic after defrag a directory:
+> 
+> Dirty block accounting went wrong -8977
+> Dirty block accounting went wrong -9279
+> Dirty block accounting went wrong -9718
+> Dirty block accounting went wrong -10258
+> ...
+> ...
+> Dirty block accounting went wrong -157352
+> Dirty block accounting went wrong -157700
+> EXT4-fs error(device sdb7): ext_mb_free_metadata: Double free of blocks 985 (984 2)
+> 
