@@ -1,55 +1,97 @@
-From: Mark Fasheh <mfasheh@suse.com>
-Subject: Re: [PATCH -V1] ext4: Use new buffer_head flag to check uninit group bitmaps initialization
-Date: Wed, 26 Nov 2008 08:22:06 -0800
-Message-ID: <20081126162206.GE8378@wotan.suse.de>
-References: <1227711250-13934-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081126155643.GA8741@mit.edu>
-Reply-To: Mark Fasheh <mfasheh@suse.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, sandeen@redhat.com, Alex.Zhuravlev@Sun.COM,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: akpm@linux-foundation.org
+Subject: - ext4-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled.patch removed from -mm tree
+Date: Wed, 26 Nov 2008 12:27:17 -0800
+Message-ID: <200811262027.mAQKRHuX000398@imap1.linux-foundation.org>
+To: jack@suse.cz, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.suse.de ([195.135.220.2]:39006 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752023AbYKZQWH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 26 Nov 2008 11:22:07 -0500
-Content-Disposition: inline
-In-Reply-To: <20081126155643.GA8741@mit.edu>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:50107 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752549AbYKZU1x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Nov 2008 15:27:53 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Nov 26, 2008 at 10:56:43AM -0500, Theodore Tso wrote:
-> On Wed, Nov 26, 2008 at 08:24:10PM +0530, Aneesh Kumar K.V wrote:
-> > diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> > index 4932b34..6694561 100644
-> > --- a/include/linux/jbd2.h
-> > +++ b/include/linux/jbd2.h
-> > @@ -329,6 +329,7 @@ enum jbd_state_bits {
-> >  	BH_State,		/* Pins most journal_head state */
-> >  	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
-> >  	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
-> > +	BH_JBD_State_bits_End,
-> >  };
-> >  
-> >  BUFFER_FNS(JBD, jbd)
-> 
-> Note: this conflicts with a patch by Mark Fasheh which does something
-> very similar, since OCFS2 also needs some private BH flags.  He used
-> the name BH_JBDPrivateStart, though.
-> 
-> Originally the plan was going to be that Mark was going to send this
-> to Linus, but given that we need it as well, I suggest that we drop it
-> into both the OCFS2 and ext4 trees, and whichever one hits Linus's
-> tree first will win, and in the other case the magic of git's merge
-> algorithms should make the right thing happen in the second.  (Or the
-> other team can drop the patch before they merge; either will do the
-> right thing.)
 
-Yeah, that's fine with me. We'll both carry it for now and the merge window
-will just get sorted out :)
-	--Mark
+The patch titled
+     ext4: use sb_any_quota_loaded() instead of sb_any_quota_enabled()
+has been removed from the -mm tree.  Its filename was
+     ext4-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled.patch
 
---
-Mark Fasheh
+This patch was dropped because an updated version will be merged
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext4: use sb_any_quota_loaded() instead of sb_any_quota_enabled()
+From: Jan Kara <jack@suse.cz>
+
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext4/super.c |   11 ++++-------
+ 1 file changed, 4 insertions(+), 7 deletions(-)
+
+diff -puN fs/ext4/super.c~ext4-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled
++++ a/fs/ext4/super.c
+@@ -1142,8 +1142,7 @@ static int parse_options(char *options, 
+ 		case Opt_grpjquota:
+ 			qtype = GRPQUOTA;
+ set_qf_name:
+-			if ((sb_any_quota_enabled(sb) ||
+-			     sb_any_quota_suspended(sb)) &&
++			if (sb_any_quota_loaded(sb) &&
+ 			    !sbi->s_qf_names[qtype]) {
+ 				printk(KERN_ERR
+ 				       "EXT4-fs: Cannot change journaled "
+@@ -1182,8 +1181,7 @@ set_qf_name:
+ 		case Opt_offgrpjquota:
+ 			qtype = GRPQUOTA;
+ clear_qf_name:
+-			if ((sb_any_quota_enabled(sb) ||
+-			     sb_any_quota_suspended(sb)) &&
++			if (sb_any_quota_loaded(sb) &&
+ 			    sbi->s_qf_names[qtype]) {
+ 				printk(KERN_ERR "EXT4-fs: Cannot change "
+ 					"journaled quota options when "
+@@ -1202,8 +1200,7 @@ clear_qf_name:
+ 		case Opt_jqfmt_vfsv0:
+ 			qfmt = QFMT_VFS_V0;
+ set_qf_format:
+-			if ((sb_any_quota_enabled(sb) ||
+-			     sb_any_quota_suspended(sb)) &&
++			if (sb_any_quota_loaded(sb) &&
+ 			    sbi->s_jquota_fmt != qfmt) {
+ 				printk(KERN_ERR "EXT4-fs: Cannot change "
+ 					"journaled quota options when "
+@@ -1222,7 +1219,7 @@ set_qf_format:
+ 			set_opt(sbi->s_mount_opt, GRPQUOTA);
+ 			break;
+ 		case Opt_noquota:
+-			if (sb_any_quota_enabled(sb)) {
++			if (sb_any_quota_loaded(sb)) {
+ 				printk(KERN_ERR "EXT4-fs: Cannot change quota "
+ 					"options when quota turned on.\n");
+ 				return 0;
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+linux-next.patch
+ext4-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled.patch
+reiserfs-use-sb_any_quota_loaded-instead-of-sb_any_quota_enabled.patch
+quota-remove-compatibility-function-sb_any_quota_enabled.patch
+quota-introduce-dquot_quota_sys_file-flag.patch
+quota-move-quotaio_vh-from-include-linux-to-fs.patch
+quota-move-quotaio_vh-from-include-linux-to-fs-fix.patch
+quota-split-off-quota-tree-handling-into-a-separate-file.patch
+quota-convert-union-in-mem_dqinfo-to-a-pointer.patch
+quota-convert-union-in-mem_dqinfo-to-a-pointer-cleanup.patch
+quota-support-64-bit-quota-format.patch
+quota-support-64-bit-quota-format-fix.patch
+quota-support-64-bit-quota-format-fix-2.patch
+
