@@ -1,46 +1,65 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] ext4: Fix the delalloc writepages to allocate
-	blocks at the right offset.
-Date: Wed, 26 Nov 2008 00:53:21 -0500
-Message-ID: <20081126055321.GF1410@mit.edu>
-References: <1226050948-32221-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Kalpak Shah" <kalpak.shah@gmail.com>
+Subject: Re: [PATCH 2/2] Large EAs
+Date: Wed, 26 Nov 2008 11:30:32 +0530
+Message-ID: <460220570811252200t5d9e4aaax95f73843b8f3e482@mail.gmail.com>
+References: <1226954173.3972.70.camel@localhost>
+	 <20081126044138.GD1410@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, vallesroc@gmail.com,
-	Solofo.Ramangalahy@bull.net, cryptooctoploid@gmail.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Kalpak Shah" <Kalpak.Shah@sun.com>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	"Mingming Cao" <cmm@us.ibm.com>, "Andreas Dilger" <adilger@sun.com>
+To: "Theodore Tso" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:49914 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752148AbYKZFxh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Nov 2008 00:53:37 -0500
+Received: from wf-out-1314.google.com ([209.85.200.172]:10158 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752239AbYKZGAd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Nov 2008 01:00:33 -0500
+Received: by wf-out-1314.google.com with SMTP id 27so328407wfd.4
+        for <linux-ext4@vger.kernel.org>; Tue, 25 Nov 2008 22:00:32 -0800 (PST)
+In-Reply-To: <20081126044138.GD1410@mit.edu>
 Content-Disposition: inline
-In-Reply-To: <1226050948-32221-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Nov 07, 2008 at 03:12:27PM +0530, Aneesh Kumar K.V wrote:
-> When iterating through the pages with all mapped buffer_heads
-> we failed to update the b_state value. This result in allocating
-> blocks at logical offset 0.
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+On Wed, Nov 26, 2008 at 10:11 AM, Theodore Tso <tytso@mit.edu> wrote:
+> Sorry for not reviewing this patch earlier, but looking at the disk
+> format, I wonder if it's really necessary to allocate an inode for
+> each EA.  Given that we have a fixed inode table, if the user creates
+> a large number of 2k EA's (on a 4k filesystem) or 512 byte EA's (on a
+> 1k) filesystem, this could easily burn a huge number of inodes,
+> causing users to run out.
+>
+> We don't actually *need* to use an inode;
 
-Hey Aneesh,
+One of the reasons we need to use an inode is that orphan EA inodes
+can be linked into lost+found. If we just use an extent tree, I am not
+sure how e2fsck can find out orphan EAs.
 
-I've been going through patches in the patch queue and I noticed that
-the subsequent patch 
+> what if we make use
+> e_value_block and e_hash to be a 64-bit block number, and use
+> e_value_offs (if 0) to indicate whether the 64-bit block number
+> contains data, or (if 1) contains the root of an extent tree.  This
+> adds a bit of complexity to the hash calculation if we want to support
+> sharing the EA block that contains pointers to Large EA's, but from
+> what I can tell the proposed patch doesn't support this anyway (and it
+> seems highly unlikely that multiple files with large EA's could be
+> able to be shared anyway).
 
-[PATCH 2/2] ext4: Mark the buffer_heads as dirty and uptodate after prepare_write
+We shouldn't worry about sharing EA blocks once we have large EAs as
+it will be too inefficient getting all the EA values (from EA inodes
+or extent trees) and calculating a hash of all the data and when an EA
+block cannot be shared we will need to create copies of all EA
+inodes......
 
-has been merged to mainline, but this one wasn't.  From looking at the
-e-mail record, you said that the second one fixed the rtorrent
-corruption --- but looking at this patch and its description, it looks
-like this one should perhaps get pushed to Linus ASAP as well.  Do you
-remember if both patches were needed to fix the rtorrent corruption
-problem, or only the second one?
+> The upsides of this patch (not needing to use inodes) seems to be
+> worth the downsides (slightly more complexity, and not being able to
+> share EA blocks).
+>
+> What do folks think?
+>
+>                                                - Ted
 
 Thanks,
-
-						- Ted
+Kalpak
