@@ -1,83 +1,59 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: bugs of Online Defragmentation
-Date: Wed, 26 Nov 2008 20:11:18 +0900
-Message-ID: <492D2ED6.3050500@rs.jp.nec.com>
-References: <49221C94.3010500@cn.fujitsu.com>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: Re: [PATCH] imporve jbd2 fsync batching
+Date: Wed, 26 Nov 2008 08:18:06 -0500
+Message-ID: <20081126131806.GE587@unused.rdu.redhat.com>
+References: <20081104161024.GC28058@unused.rdu.redhat.com> <20081125102335.GB9882@mit.edu> <20081125224115.GW3186@webber.adilger.int> <20081126051057.GE1410@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Li Zefan <lizf@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>, Josef Bacik <jbacik@redhat.com>,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:36048 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751741AbYKZLLY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 26 Nov 2008 06:11:24 -0500
-In-Reply-To: <49221C94.3010500@cn.fujitsu.com>
+Received: from mx2.redhat.com ([66.187.237.31]:49182 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752339AbYKZNW7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 26 Nov 2008 08:22:59 -0500
+Content-Disposition: inline
+In-Reply-To: <20081126051057.GE1410@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Li,
+On Wed, Nov 26, 2008 at 12:10:57AM -0500, Theodore Tso wrote:
+> On Tue, Nov 25, 2008 at 03:41:15PM -0700, Andreas Dilger wrote:
+> > > Stupid question... if the goal is to not have the average commit time
+> > > not react too strongly to sudden and vast changes to the commit time,
+> > > would it be better to do this instead:
+> > > 
+> > > > +		journal->j_average_commit_time = (commit_time +
+> > > > +				journal->j_average_commit_time*3) / 4;
+> > 
+> > Actually, yes.  That is my fault, I'd suggested the original change to
+> > Josef.
+> 
+> BTW, I've added a patch to display the average commit time it does
+> vary wildly, especially on a laptop hard drive.  While the system is
+> idle, and the occasional commits need to wait for the hard drive to
+> wake up, leads to a average commit time of around 80-140ms.  If the
+> disk is just getting lightly tickled, such that it never has a chance
+> to go to sleep, the average commit time can drop down to around
+> 20-25ms.  If the hard drive is really busy, then the average commit
+> time can go up to 40-50ms.
+> 
+> Increasing the weight as described below will slow down the move to
+> these long-term averages, but at least for laptop or Green Star drives
+> with power savings enabled, the average commit time does seem to vary
+> in some non-inintuitive ways.  Of course, if we are capping the max
+> transaction time at 15ms, most of this will never be visible, but it
+> would probably be interesting to test out this patch on a fast SSD or
+> an expensive enterprise array to see whether are similar surprising
+> variations in the average commit time.
+>
 
-Thank you for testing and sorry for delay reply.
-I am looking into this problem now,
-It seems to take a little time to fix.
+I was printing out the commit time when I was testing this and with high end
+storage the commit time didn't vary all that much.  With my SATA drive on a
+normal running box it didn't vary all that much either, it would drop down to
+like 1ms because of syslog, but other than that it would ramp up when there was
+load and it would slowly come back down as the load went away.  Also do you
+want a new patch with that fix, or will you just fix it up?  Thanks,
 
-(In my look, s_dirty_blocks goes wrong so that free blocks
-on memory decreases.  Maybe delalloc handling isn't good)
-
-Thanks,
-Akira Fujita
-
-Li Zefan wrote:
-> I tested Online Defrag, and seems this feature is still
-> very unstable.
-> 
-> 1)
-> 
-> # mkfs.ext4 -m 0 -b 1024 -O ^flex_bg /dev/sdb7
-> # mount -t ext4 -o nodelalloc /dev/sdb7 mnt_point
-> # (age /dev/sdb7 using ffsb)
-> ...
-> # df
-> Filesystem           1K-blocks      Used Available Use% Mounted on
-> ...
-> /dev/sdb7              5159829   5118866     40963 100% ...
-> 
-> sdb7 has 40M free space left. And I ran e4defrag on a directory full
-> of small files (most < 1M), but all failed, and dmesg didn't tell
-> me the reasion.
-> 
-> # e4defrag mnt_point/data0/
-> ...
-> [62/1562]/../mnt_point/data0/fillfile1420:        0%    [ NG ]
-> [63/1562]/../mnt_point/data0/fillfile188:         0%    [ NG ]
-> ...
->         Success:                        [ 0/1562 ]
->         Failure:                        [ 1562/1562 ]
-> 
-> # df
-> Filesystem           1K-blocks      Used Available Use% Mounted on
-> ...
-> /dev/sdb7              5159829   5159807        22 100% ...
-> 
-> Though all failed, but now the 40M free space was occupied, why?
-> 
-> If delalloc is turned on, things are somewhat different, most files can
-> be defraged, and dmesg told me not enough free blocks for the failure
-> cases.
-> 
-> 2)
-> 
-> I sometimes got panic after defrag a directory:
-> 
-> Dirty block accounting went wrong -8977
-> Dirty block accounting went wrong -9279
-> Dirty block accounting went wrong -9718
-> Dirty block accounting went wrong -10258
-> ...
-> ...
-> Dirty block accounting went wrong -157352
-> Dirty block accounting went wrong -157700
-> EXT4-fs error(device sdb7): ext_mb_free_metadata: Double free of blocks 985 (984 2)
-> 
+Josef 
