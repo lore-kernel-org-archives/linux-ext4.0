@@ -1,57 +1,52 @@
-From: Andres Freund <andres@anarazel.de>
-Subject: Re: EXT4 ENOSPC Bug
-Date: Sat, 29 Nov 2008 22:31:29 +0100
-Message-ID: <200811292231.33799.andres@anarazel.de>
-References: <200811291418.24672.andres@anarazel.de> <20081129211533.GG3372@mit.edu>
+From: Bill Davidsen <davidsen@tmr.com>
+Subject: Re: [PATCH] ext4: fix loop in do_split()
+Date: Sat, 29 Nov 2008 19:36:52 -0500
+Message-ID: <4931E024.2010500@tmr.com>
+References: <49310D34.1000205@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart1439713.8OiprKbeP5";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: adilger@sun.com, LKML <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: roel kluin <roel.kluin@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.anarazel.de ([217.115.131.40]:49123 "EHLO smtp.anarazel.de"
+Received: from mail.tmr.com ([64.65.253.246]:57243 "EHLO partygirl.tmr.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752643AbYK2Vbh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 29 Nov 2008 16:31:37 -0500
-In-Reply-To: <20081129211533.GG3372@mit.edu>
+	id S1755590AbYK3AhW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 29 Nov 2008 19:37:22 -0500
+In-Reply-To: <49310D34.1000205@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---nextPart1439713.8OiprKbeP5
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+roel kluin wrote:
+> unsigned i >= 0 is always true
+> 
+> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+> ---
+> diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+> index 63adcb7..389cf60 100644
+> --- a/fs/ext4/namei.c
+> +++ b/fs/ext4/namei.c
+> @@ -1198,7 +1198,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+>  	/* Split the existing block in the middle, size-wise */
+>  	size = 0;
+>  	move = 0;
+> -	for (i = count-1; i >= 0; i--) {
+> +	for (i = count-1; i < count; i--) {
+>  		/* is more than half of this entry in 2nd half of the block? */
+>  		if (size + map[i].size/2 > blocksize/2)
+>  			break;
+> 
+While this unsigned wrap method is technically valid, it certainly isn't 
+obvious, and making code readable should be a goal as well as making it correct. 
+  After all, code which is hard to read is hard to understand, making it hard to 
+maintain. I therefore suggest the simpler form:
+	for (i = count; i--; ) {
+which gives the same i values inside the loop, but does assume that the reader 
+remembers that i is unsigned, and intuitively understand wraparound while 
+passing zero.
 
-On Saturday 29 November 2008 22:15:33 Theodore Tso wrote:
-> On Sat, Nov 29, 2008 at 02:18:19PM +0100, Andres Freund wrote:
-> > On a testsystem (spare laptop) with ext4 as root filesystem sometimes t=
-he
-> > system starts to return ENOSPC to all write/create syscalls.
-> > Sometimes the system runs without problems, at other times it starts
-> > having problems soon after boot.
-> Hmm.... Is there anything interesting log messages relating to ext4 or
-> jbd2 showing up in /var/log/messages or in dmesg?
-Nothing else than telling that barriers are not used (I am using dm-crypt..=
-=2E),=20
-but that shouldnt be related.
-
-Andres
-
---nextPart1439713.8OiprKbeP5
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkkxtLIACgkQporPraT14igADwCfc5S8z5HUe+cNFzwAHQthKfyJ
-sgMAniaE+RdaZalu3MYbSHSQEHSao4HI
-=bUZF
------END PGP SIGNATURE-----
-
---nextPart1439713.8OiprKbeP5--
+-- 
+Bill Davidsen <davidsen@tmr.com>
+   "We have more to fear from the bungling of the incompetent than from
+the machinations of the wicked."  - from Slashdot
