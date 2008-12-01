@@ -1,43 +1,45 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [ext4] Documentation patch
-Date: Mon, 01 Dec 2008 11:58:52 -0600
-Message-ID: <493425DC.1010008@redhat.com>
-References: <8763m3u9kv.fsf@basilikum.skogtun.org> <20081201165700.GA26680@infradead.org>
+From: roel kluin <roel.kluin@gmail.com>
+Subject: [PATCH v2] ext3, ext4: do_split() fix loop, with obvious unsigned
+ wrap
+Date: Mon, 01 Dec 2008 14:28:25 -0500
+Message-ID: <49343AD9.4020606@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Harald Arnesen <skogtun.harald@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:56188 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752327AbYLAR7f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 1 Dec 2008 12:59:35 -0500
-In-Reply-To: <20081201165700.GA26680@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: tytso@mit.edu, adilger@sun.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: davidsen@tmr.com
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753853AbYLAT2r@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Christoph Hellwig wrote:
-> On Mon, Dec 01, 2008 at 05:46:56PM +0100, Harald Arnesen wrote:
->>      So when comparing with a metadata-only journalling filesystem, such
->> -    as ext3, use `mount -o data=writeback'.  And you might as well use
->> +    as jfs or xfs, use `mount -o data=writeback'.  And you might as well use
-> 
-> data=ordered comes closest to what xfs does for quite a long time..
+Fix loop, with obvious unsigned wrap
 
-Agreed; that whole bit which mentions other filesystem comparisons
-should probably be stricken, unless it can be
-proven/demonstrated/substantiated that ext3 really does "offer higher
-data integrity guarantees than most" at this point.
-
-data=ordered ensures that stale data won't be exposed on a crash; xfs
-won't do this (it'd be a security bug) and I'd be surprised if jfs or
-reiserfs do either.    And it probably *should* be mentioned that
-data=writeback bears this risk.
-
-And until ext3 turns on barriers by default, I don't think it's fair to
-talk too much about integrity guarantees.  :)
-
--Eric
+Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
+---
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 3e5edc9..b0dcfb3 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -1188,7 +1188,7 @@ static struct ext3_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	/* Split the existing block in the middle, size-wise */
+ 	size = 0;
+ 	move = 0;
+-	for (i = count-1; i >= 0; i--) {
++	for (i = count; i--; ) {
+ 		/* is more than half of this entry in 2nd half of the block? */
+ 		if (size + map[i].size/2 > blocksize/2)
+ 			break;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 63adcb7..34232c6 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1198,7 +1198,7 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	/* Split the existing block in the middle, size-wise */
+ 	size = 0;
+ 	move = 0;
+-	for (i = count-1; i >= 0; i--) {
++	for (i = count; i--; ) {
+ 		/* is more than half of this entry in 2nd half of the block? */
+ 		if (size + map[i].size/2 > blocksize/2)
+ 			break;
