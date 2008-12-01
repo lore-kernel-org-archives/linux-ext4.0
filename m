@@ -1,59 +1,93 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [ext4] Documentation patch
-Date: Mon, 1 Dec 2008 15:58:28 -0500
-Message-ID: <20081201205828.GA20069@mit.edu>
-References: <8763m3u9kv.fsf@basilikum.skogtun.org> <20081201165700.GA26680@infradead.org> <493425DC.1010008@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Harald Arnesen <skogtun.harald@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+From: akpm@linux-foundation.org
+Subject: [patch 1/1] ext4: allocate ->s_blockgroup_lock separately
+Date: Mon, 01 Dec 2008 14:27:04 -0800
+Message-ID: <200812012227.mB1MR4ot016548@imap1.linux-foundation.org>
+Cc: linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
+	penberg@cs.helsinki.fi, adilger@sun.com
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:58113 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751352AbYLAU6o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Dec 2008 15:58:44 -0500
-Content-Disposition: inline
-In-Reply-To: <493425DC.1010008@redhat.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:40991 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751388AbYLAW15 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 1 Dec 2008 17:27:57 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 01, 2008 at 11:58:52AM -0600, Eric Sandeen wrote:
-> Christoph Hellwig wrote:
-> > On Mon, Dec 01, 2008 at 05:46:56PM +0100, Harald Arnesen wrote:
-> >>      So when comparing with a metadata-only journalling filesystem, such
-> >> -    as ext3, use `mount -o data=writeback'.  And you might as well use
-> >> +    as jfs or xfs, use `mount -o data=writeback'.  And you might as well use
-> > 
-> > data=ordered comes closest to what xfs does for quite a long time..
-> 
-> Agreed; that whole bit which mentions other filesystem comparisons
-> should probably be stricken, unless it can be
-> proven/demonstrated/substantiated that ext3 really does "offer higher
-> data integrity guarantees than most" at this point.
-> 
-> data=ordered ensures that stale data won't be exposed on a crash; xfs
-> won't do this (it'd be a security bug) and I'd be surprised if jfs or
-> reiserfs do either.    And it probably *should* be mentioned that
-> data=writeback bears this risk.
+From: Pekka Enberg <penberg@cs.helsinki.fi>
 
-Well, the original text was written by David Kleikamp, so it might be
-the case that jfs doesn't handle the stale data block case well.  I
-haven't checked.  However, the sense of that paragraph got mangled
-badly in commit 93e3270c, and what's there clearly doesn't make any
-sense.
+As spotted by kmemtrace, struct ext4_sb_info is 17664 bytes on 64-bit
+which makes it a very bad fit for SLAB allocators.  The culprit of the
+wasted memory is ->s_blockgroup_lock which can be as big as 16 KB when
+NR_CPUS >= 32.
 
-I agree the best thing to do is to nuke that whole paragraph.  The one
-thing that's worth mentioning (as a replacement paragraph) is that
-ext4 (and many other filesystems) has barreiers on by default, and
-ext3 has barriers off by default, so that's something that should be
-taken into account when doing head-to-head comparisons.
+To fix that, allocate ->s_blockgroup_lock, which fits nicely in a order 2
+page in the worst case, separately.  This shinks down struct ext4_sb_info
+enough to fit a 2 KB slab cache so now we allocate 16 KB + 2 KB instead of
+32 KB saving 14 KB of memory.
 
-							- Ted
+Acked-by: Andreas Dilger <adilger@sun.com>
+Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-P.S.  Speaking of barriers, there was a rumor floating around that
-someone was working on patches so at least in the case of RAID 0 and
-RAID 1, that the LVM and MD stack would actually pass barier requests
-down to the block device layer.  Whatever happened to that?  Is that
-bug in the LVM layer going to get fixed any time soon?
+ fs/ext4/ext4_sb.h |    4 ++--
+ fs/ext4/super.c   |   10 +++++++++-
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+
+diff -puN fs/ext4/ext4_sb.h~ext4-allocate-s_blockgroup_lock-separately fs/ext4/ext4_sb.h
+--- a/fs/ext4/ext4_sb.h~ext4-allocate-s_blockgroup_lock-separately
++++ a/fs/ext4/ext4_sb.h
+@@ -62,7 +62,7 @@ struct ext4_sb_info {
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+ 	struct percpu_counter s_dirtyblocks_counter;
+-	struct blockgroup_lock s_blockgroup_lock;
++	struct blockgroup_lock *s_blockgroup_lock;
+ 	struct proc_dir_entry *s_proc;
+ 
+ 	/* root of the per fs reservation window tree */
+@@ -150,7 +150,7 @@ struct ext4_sb_info {
+ static inline spinlock_t *
+ sb_bgl_lock(struct ext4_sb_info *sbi, unsigned int block_group)
+ {
+-	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
++	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
+ }
+ 
+ #endif	/* _EXT4_SB */
+diff -puN fs/ext4/super.c~ext4-allocate-s_blockgroup_lock-separately fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-allocate-s_blockgroup_lock-separately
++++ a/fs/ext4/super.c
+@@ -497,6 +497,7 @@ static void ext4_put_super(struct super_
+ 		ext4_blkdev_remove(sbi);
+ 	}
+ 	sb->s_fs_info = NULL;
++	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
+ 	return;
+ }
+@@ -1886,6 +1887,13 @@ static int ext4_fill_super(struct super_
+ 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+ 	if (!sbi)
+ 		return -ENOMEM;
++
++	sbi->s_blockgroup_lock =
++		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
++	if (!sbi->s_blockgroup_lock) {
++		kfree(sbi);
++		return -ENOMEM;
++	}
+ 	sb->s_fs_info = sbi;
+ 	sbi->s_mount_opt = 0;
+ 	sbi->s_resuid = EXT4_DEF_RESUID;
+@@ -2194,7 +2202,7 @@ static int ext4_fill_super(struct super_
+ 				 &sbi->s_inode_readahead_blks);
+ #endif
+ 
+-	bgl_lock_init(&sbi->s_blockgroup_lock);
++	bgl_lock_init(sbi->s_blockgroup_lock);
+ 
+ 	for (i = 0; i < db_count; i++) {
+ 		block = descriptor_loc(sb, logical_sb_block, i);
+_
