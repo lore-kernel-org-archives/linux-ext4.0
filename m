@@ -1,90 +1,97 @@
-From: Andres Freund <andres@anarazel.de>
-Subject: Re: EXT4 ENOSPC Bug
-Date: Tue, 2 Dec 2008 18:47:24 +0100
-Message-ID: <200812021847.35771.andres@anarazel.de>
-References: <200811291418.24672.andres@anarazel.de> <200812021559.05103.andres@anarazel.de> <20081202164709.GC18162@mit.edu>
+From: Roel Kluin <roel.kluin@gmail.com>
+Subject: Re: [PATCH v2] ext3, ext4: do_split() fix loop, with obvious	unsigned
+ wrap
+Date: Tue, 02 Dec 2008 20:47:38 +0100
+Message-ID: <493590DA.1090504@gmail.com>
+References: <49343AD9.4020606@gmail.com> <20081202132441.GC16172@mit.edu> <49356B96.7070900@tmr.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart1405010.FDNW2tE0uM";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Theodore Tso <tytso@mit.edu>, adilger@sun.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Bill Davidsen <davidsen@tmr.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.anarazel.de ([217.115.131.40]:44666 "EHLO smtp.anarazel.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754727AbYLBRrk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Dec 2008 12:47:40 -0500
-In-Reply-To: <20081202164709.GC18162@mit.edu>
+Received: from ug-out-1314.google.com ([66.249.92.168]:16715 "EHLO
+	ug-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754478AbYLBTrj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Dec 2008 14:47:39 -0500
+Received: by ug-out-1314.google.com with SMTP id 39so3163100ugf.37
+        for <linux-ext4@vger.kernel.org>; Tue, 02 Dec 2008 11:47:37 -0800 (PST)
+In-Reply-To: <49356B96.7070900@tmr.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---nextPart1405010.FDNW2tE0uM
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+Bill Davidsen wrote:
 
-Hi,
+> the value inside the loop is
+> correct (or at least is the same as the original patch).
 
-On Tuesday 02 December 2008 17:47:09 Theodore Tso wrote:
-> You say you are using Postgres, right?  Something you might try to see
-> if it triggers the problem it is creating a new database and then
-> restoring some database dump/backup into that new database.  Some
-> databases expand into a new table space (or whatever terminology
-> Postgres uses) by random writes into a sparse portion of the file.
-> This could be triggering the problem, or at least trigger the problem
-> more quickly.
-I tried that - I have seen no problems so far. But it is not the first time=
- I=20
-did not see the problem for some time.
+I agree, this can be shown with:
 
-Btw, postgres just creates the database by copying over a default database.
+#include <stdio.h>
 
-=46or an easy test with sparse files, I created a big one, set it up as a l=
-oop=20
-device, created a filesystem and ran some stuff in it.
-No Problem so far.
+int main()
+{
+	unsigned int i, count = 10;
 
-> The other thing I wanted to ask is whether "df" was showing the 37%
-> in-use statistic at the time, or was that after you rebooted.=20
-It definitely was before a reboot. And there were plenty of both, inodes an=
-d=20
-blocks.
+	printf ("The original loop:\n");
+        for (i = count-1; i >= 0; i--) {
+		printf ("%u, ", i);
+		if (i == -1) {
+			printf ("which is wrong.\n");
+			break;
+		}
+	}
 
-I think that I have seen the problem on metadata only changes (find /tmp -t=
-ype=20
-f|xargs touch) as well, but sometimes metadata changes were possible while =
-file=20
-creation was not.
+        printf ("As suggested by Bill:\n");
+	for (i = count; i--; )
+		printf ("%u, ", i);
+	printf ("...After the loop i=%u\n");
 
-Another Datapoint: File deletion sometimes made it possible to create more=
-=20
-files, but by far not as much as the space freed.
+	printf ("Your suggestion:\n");
+	i = count;
+	while (i--)
+		printf ("%u, ", i);
+	printf ("...After the loop i=%u\n");
 
-> And although I hate to ask it, you're sure this isn't the standard "delete
-> an in-use file but not get the space back" Unix trap, right?
-There were over 200GB free, so I doubt that. I don't know what could have=20
-caused an allocation of so much space unnoticed in an idle system multiple=
-=20
-times.
-But I do understand the reason for the question ;-)
+	return 0;
+}
+> Theodore Tso wrote:
+>> probably
+>> the best way of handling this is to recast it not as a for loop, but
+>> as a while loop.
 
+Ok, with me. As also shown this will give the same results:
+-----------8<--------------->8-------------
+Fix loop, with obvious unsigned wrap
 
-Andres
-
---nextPart1405010.FDNW2tE0uM
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkk1dK4ACgkQporPraT14ihacQCdHkIhXaNgYpTgrQ5Fk22PbXGu
-i2UAniRSW0lFNCVxCmwEUs1CqO4C6349
-=Nt6t
------END PGP SIGNATURE-----
-
---nextPart1405010.FDNW2tE0uM--
+Signed-off-by: Roel Kluin <roel.kluin@gmail.com> 
+---
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 3e5edc9..0e574d4 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -1188,7 +1188,8 @@ static struct ext3_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	/* Split the existing block in the middle, size-wise */
+ 	size = 0;
+ 	move = 0;
+-	for (i = count-1; i >= 0; i--) {
++	i = count;
++	while (i--) {
+ 		/* is more than half of this entry in 2nd half of the block? */
+ 		if (size + map[i].size/2 > blocksize/2)
+ 			break;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 63adcb7..b8903d4 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1198,7 +1198,8 @@ static struct ext4_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+ 	/* Split the existing block in the middle, size-wise */
+ 	size = 0;
+ 	move = 0;
+-	for (i = count-1; i >= 0; i--) {
++	i = count;
++	while (i--) {
+ 		/* is more than half of this entry in 2nd half of the block? */
+ 		if (size + map[i].size/2 > blocksize/2)
+ 			break;
