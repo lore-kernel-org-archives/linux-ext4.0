@@ -1,48 +1,42 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: EXT4 ENOSPC Bug
-Date: Tue, 2 Dec 2008 15:33:15 -0500
-Message-ID: <20081202203315.GA20858@mit.edu>
-References: <200811291418.24672.andres@anarazel.de> <200812021559.05103.andres@anarazel.de> <20081202164709.GC18162@mit.edu> <200812021847.35771.andres@anarazel.de>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext3: also fix loop in do_split()
+Date: Tue, 02 Dec 2008 14:29:35 -0600
+Message-ID: <49359AAF.6010803@redhat.com>
+References: <49310E1A.60105@gmail.com> <20081202120751.8b0226ca.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Andres Freund <andres@anarazel.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: roel kluin <roel.kluin@gmail.com>, sct@redhat.com, adilger@sun.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:37728 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751018AbYLBUdV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Dec 2008 15:33:21 -0500
-Content-Disposition: inline
-In-Reply-To: <200812021847.35771.andres@anarazel.de>
+Received: from mx2.redhat.com ([66.187.237.31]:49458 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751644AbYLBUfI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Dec 2008 15:35:08 -0500
+In-Reply-To: <20081202120751.8b0226ca.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 02, 2008 at 06:47:24PM +0100, Andres Freund wrote:
+Andrew Morton wrote:
+
+> A local variable called `i' should always have signed type.  In fact,
+> it should have `int' type.  Doing
 > 
-> I think that I have seen the problem on metadata only changes (find
-> /tmp -type f|xargs touch) as well, but sometimes metadata changes
-> were possible while file creation was not.
+> 	unsigned i;
+> 
+> is an act of insane vandalism, punishable by spending five additional
+> years coding in fortran.
+> 
+> I suggest you fix this by giving `i' the type God intended, or by
+> making it unsigned and then renaming it to something which is not
+> intended to trick programmers and reviewers.
+> 
+> Sheesh.
 
-Hmm...  really?  Was the error message ENOSPC, or something else?
+/me hangs head in shame, and points feebly but only halfheartedly at the
+other people who reviewed the change when it originally went in... I
+have no idea what I was thinking.  Sorry.  Please don't make me go back
+to Fortran.
 
-The only way I can see that it might be ENOSPC would be if we got an
-error in the jbd2 layer, in start_this_handle(), but that would have
-resulted in a kernel printk:
-
-	if (nblocks > journal->j_max_transaction_buffers) {
-		printk(KERN_ERR "JBD: %s wants too many credits (%d > %d)\n",
-		       current->comm, nblocks,
-		       journal->j_max_transaction_buffers);
-		ret = -ENOSPC;
-		goto out;
-	}
-
-
-If that wasn't too long ago, you might want to search your old system
-log files in /var/log for any "JBD" or "ext4" messages.  That might be
-an important clue, although that seems rather unlikely to me.  Or in
-the case where metadata changes were failing, perhaps they were doing
-so with some other error that ENOSPC?
-
-   	   					- Ted
+-Eric
