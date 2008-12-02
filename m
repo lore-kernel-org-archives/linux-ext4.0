@@ -1,54 +1,48 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] ext3: also fix loop in do_split()
-Date: Tue, 2 Dec 2008 12:07:51 -0800
-Message-ID: <20081202120751.8b0226ca.akpm@linux-foundation.org>
-References: <49310E1A.60105@gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: EXT4 ENOSPC Bug
+Date: Tue, 2 Dec 2008 15:33:15 -0500
+Message-ID: <20081202203315.GA20858@mit.edu>
+References: <200811291418.24672.andres@anarazel.de> <200812021559.05103.andres@anarazel.de> <20081202164709.GC18162@mit.edu> <200812021847.35771.andres@anarazel.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: sct@redhat.com, adilger@sun.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: roel kluin <roel.kluin@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Andres Freund <andres@anarazel.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:44975 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750852AbYLBUJ2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Dec 2008 15:09:28 -0500
-In-Reply-To: <49310E1A.60105@gmail.com>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:37728 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751018AbYLBUdV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 2 Dec 2008 15:33:21 -0500
+Content-Disposition: inline
+In-Reply-To: <200812021847.35771.andres@anarazel.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 29 Nov 2008 04:40:42 -0500
-roel kluin <roel.kluin@gmail.com> wrote:
-
-> unsigned i >= 0 is always true
+On Tue, Dec 02, 2008 at 06:47:24PM +0100, Andres Freund wrote:
 > 
-> Signed-off-by: Roel Kluin <roel.kluin@gmail.com>
-> ---
-> diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-> index 3e5edc9..8f5e15d 100644
-> --- a/fs/ext3/namei.c
-> +++ b/fs/ext3/namei.c
-> @@ -1188,7 +1188,7 @@ static struct ext3_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
->  	/* Split the existing block in the middle, size-wise */
->  	size = 0;
->  	move = 0;
-> -	for (i = count-1; i >= 0; i--) {
-> +	for (i = count-1; i < count; i--) {
->  		/* is more than half of this entry in 2nd half of the block? */
->  		if (size + map[i].size/2 > blocksize/2)
->  			break;
+> I think that I have seen the problem on metadata only changes (find
+> /tmp -type f|xargs touch) as well, but sometimes metadata changes
+> were possible while file creation was not.
 
-A local variable called `i' should always have signed type.  In fact,
-it should have `int' type.  Doing
+Hmm...  really?  Was the error message ENOSPC, or something else?
 
-	unsigned i;
+The only way I can see that it might be ENOSPC would be if we got an
+error in the jbd2 layer, in start_this_handle(), but that would have
+resulted in a kernel printk:
 
-is an act of insane vandalism, punishable by spending five additional
-years coding in fortran.
+	if (nblocks > journal->j_max_transaction_buffers) {
+		printk(KERN_ERR "JBD: %s wants too many credits (%d > %d)\n",
+		       current->comm, nblocks,
+		       journal->j_max_transaction_buffers);
+		ret = -ENOSPC;
+		goto out;
+	}
 
-I suggest you fix this by giving `i' the type God intended, or by
-making it unsigned and then renaming it to something which is not
-intended to trick programmers and reviewers.
 
-Sheesh.
+If that wasn't too long ago, you might want to search your old system
+log files in /var/log for any "JBD" or "ext4" messages.  That might be
+an important clue, although that seems rather unlikely to me.  Or in
+the case where metadata changes were failing, perhaps they were doing
+so with some other error that ENOSPC?
+
+   	   					- Ted
