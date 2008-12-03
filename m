@@ -1,102 +1,330 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: EXT4 ENOSPC Bug
-Date: Wed, 3 Dec 2008 12:23:09 -0500
-Message-ID: <20081203172309.GB30610@mit.edu>
-References: <200811291418.24672.andres@anarazel.de> <200812021559.05103.andres@anarazel.de> <20081202164709.GC18162@mit.edu> <200812021847.35771.andres@anarazel.de> <20081202203315.GA20858@mit.edu> <4935D4C0.7050601@x2a.org> <20081203153441.GD9481@skywalker>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH V3 1/3] quota: Add reservation support for delayed
+	block allocation
+Date: Wed, 3 Dec 2008 18:33:30 +0100
+Message-ID: <20081203172833.GB12803@duck.suse.cz>
+References: <1226014475.6430.57.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="ReaqsoxgOBHFXBhH"
-Cc: Jonathan Bastien-Filiatrault <joe@x2a.org>,
-	Andres Freund <andres@anarazel.de>,
-	Andreas Dilger <adilger@sun.com>,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:51865 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753959AbYLCRXS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Dec 2008 12:23:18 -0500
+Received: from styx.suse.cz ([82.119.242.94]:46719 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751453AbYLCRdc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 12:33:32 -0500
 Content-Disposition: inline
-In-Reply-To: <20081203153441.GD9481@skywalker>
+In-Reply-To: <1226014475.6430.57.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+  Hi Mingming,
 
---ReaqsoxgOBHFXBhH
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Wed, Dec 03, 2008 at 09:04:41PM +0530, Aneesh Kumar K.V wrote:
+On Thu 06-11-08 15:34:35, Mingming Cao wrote:
+> Quota: Add quota reservation support
 > 
-> Can you make sure you have the below patch in the kernel.
+> Delayed allocation defers the block allocation at the dirty pages
+> flush-out time, doing quota charge/check at that time is too late.
+> But we can't charge the quota blocks until blocks are really allocated,
+> otherwise users could get overcharged after reboot from system crash.
 > 
-> c001077f4003fa75793bb62979baa6241dd8eb19
+> This patch adds quota reservation for delayed allocation. Quota blocks
+> are reserved in memory, inode and quota won't gets dirtied until later
+> block allocation time.
 > 
-> commit c001077f4003fa75793bb62979baa6241dd8eb19
-> Author: Eric Sandeen <sandeen@redhat.com>
-> Date:   Tue Aug 19 22:19:50 2008 -0400
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+  I've finally got to reading your patches (I hope this is the last version
+- at least it's the latest version I have ;). Sorry it took so long.
+Here are some comments:
+
+> Index: linux-2.6.28-rc2/fs/dquot.c
+> ===================================================================
+> --- linux-2.6.28-rc2.orig/fs/dquot.c	2008-11-06 13:36:21.000000000 -0800
+> +++ linux-2.6.28-rc2/fs/dquot.c	2008-11-06 14:04:10.000000000 -0800
+> @@ -841,6 +841,11 @@ static inline void dquot_incr_space(stru
+>  	dquot->dq_dqb.dqb_curspace += number;
+>  }
+>  
+> +static inline void dquot_resv_space(struct dquot *dquot, qsize_t number)
+> +{
+> +	dquot->dq_dqb.dqb_rsvspace += number;
+> +}
+> +
+>  static inline void dquot_decr_inodes(struct dquot *dquot, qsize_t number)
+>  {
+>  	if (dquot->dq_dqb.dqb_curinodes > number)
+> @@ -1069,13 +1074,18 @@ static int check_idq(struct dquot *dquot
+>  /* needs dq_data_lock */
+>  static int check_bdq(struct dquot *dquot, qsize_t space, int prealloc, char *warntype)
+>  {
+> +	qsize_t tspace;
+> +
+>  	*warntype = QUOTA_NL_NOWARN;
+>  	if (!sb_has_quota_limits_enabled(dquot->dq_sb, dquot->dq_type) ||
+>  	    test_bit(DQ_FAKE_B, &dquot->dq_flags))
+>  		return QUOTA_OK;
+>  
+> +	tspace = dquot->dq_dqb.dqb_curspace + dquot->dq_dqb.dqb_rsvspace
+> +		+ space;
+> +
+>  	if (dquot->dq_dqb.dqb_bhardlimit &&
+> -	    dquot->dq_dqb.dqb_curspace + space > dquot->dq_dqb.dqb_bhardlimit &&
+> +	    tspace > dquot->dq_dqb.dqb_bhardlimit &&
+>              !ignore_hardlimit(dquot)) {
+>  		if (!prealloc)
+>  			*warntype = QUOTA_NL_BHARDWARN;
+> @@ -1083,7 +1093,7 @@ static int check_bdq(struct dquot *dquot
+>  	}
+>  
+>  	if (dquot->dq_dqb.dqb_bsoftlimit &&
+> -	    dquot->dq_dqb.dqb_curspace + space > dquot->dq_dqb.dqb_bsoftlimit &&
+> +	    tspace > dquot->dq_dqb.dqb_bsoftlimit &&
+>  	    dquot->dq_dqb.dqb_btime && get_seconds() >= dquot->dq_dqb.dqb_btime &&
+>              !ignore_hardlimit(dquot)) {
+>  		if (!prealloc)
+> @@ -1092,7 +1102,7 @@ static int check_bdq(struct dquot *dquot
+>  	}
+>  
+>  	if (dquot->dq_dqb.dqb_bsoftlimit &&
+> -	    dquot->dq_dqb.dqb_curspace + space > dquot->dq_dqb.dqb_bsoftlimit &&
+> +	    tspace > dquot->dq_dqb.dqb_bsoftlimit &&
+>  	    dquot->dq_dqb.dqb_btime == 0) {
+>  		if (!prealloc) {
+>  			*warntype = QUOTA_NL_BSOFTWARN;
+> @@ -1227,49 +1237,85 @@ void vfs_dq_drop(struct inode *inode)
+>  /*
+>   * This operation can block, but only after everything is updated
+>   */
+> -int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
+> +int __dquot_alloc_space(struct inode *inode, qsize_t number,
+> +			int warn, int reserve)
+>  {
+> -	int cnt, ret = NO_QUOTA;
+> +	int cnt, ret = QUOTA_OK;
+>  	char warntype[MAXQUOTAS];
+>  
+> -	/* First test before acquiring mutex - solves deadlocks when we
+> -         * re-enter the quota code and are already holding the mutex */
+> -	if (IS_NOQUOTA(inode)) {
+> -out_add:
+> -		inode_add_bytes(inode, number);
+> -		return QUOTA_OK;
+> -	}
+>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+>  		warntype[cnt] = QUOTA_NL_NOWARN;
+>  
+> -	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> -	if (IS_NOQUOTA(inode)) {	/* Now we can do reliable test... */
+> -		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> -		goto out_add;
+> -	}
+>  	spin_lock(&dq_data_lock);
+>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+>  		if (inode->i_dquot[cnt] == NODQUOT)
+>  			continue;
+> -		if (check_bdq(inode->i_dquot[cnt], number, warn, warntype+cnt) == NO_QUOTA)
+> -			goto warn_put_all;
+> +		if (check_bdq(inode->i_dquot[cnt], number, warn, warntype+cnt)
+> +		    == NO_QUOTA) {
+> +			ret = NO_QUOTA;
+> +			goto out_unlock;
+> +		}
+>  	}
+>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+>  		if (inode->i_dquot[cnt] == NODQUOT)
+>  			continue;
+> -		dquot_incr_space(inode->i_dquot[cnt], number);
+> +		if (reserve)
+> +			dquot_resv_space(inode->i_dquot[cnt], number);
+> +		else
+> +			dquot_incr_space(inode->i_dquot[cnt], number);
+>  	}
+> -	inode_add_bytes(inode, number);
+> -	ret = QUOTA_OK;
+> -warn_put_all:
+> +out_unlock:
+> +	flush_warnings(inode->i_dquot, warntype);
+>  	spin_unlock(&dq_data_lock);
+> +	return ret;
+> +}
+> +
+> +int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
+> +{
+> +	int cnt, ret = QUOTA_OK;
+> +
+> +	/*
+> +	 * First test before acquiring mutex - solves deadlocks when we
+> +	 * re-enter the quota code and are already holding the mutex
+> +	 */
+> +	if (IS_NOQUOTA(inode))
+> +		goto out;
+> +
+> +	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +	if (IS_NOQUOTA(inode))
+> +		goto out_unlock;
+> +
+> +	ret = __dquot_alloc_space(inode, number, warn, 0);
+> +	if (ret == NO_QUOTA)
+> +		goto out_unlock;
+> +
+> +	/* Dirtify all the dquots - this can block when journalling */
+> +	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+> +		if (inode->i_dquot[cnt])
+> +			mark_dquot_dirty(inode->i_dquot[cnt]);
+> +out_unlock:
+> +	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +out:
+>  	if (ret == QUOTA_OK)
+> -		/* Dirtify all the dquots - this can block when journalling */
+> -		for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+> -			if (inode->i_dquot[cnt])
+> -				mark_dquot_dirty(inode->i_dquot[cnt]);
+> -	flush_warnings(inode->i_dquot, warntype);
+> +		inode_add_bytes(inode, number);
+> +	return ret;
+> +}
+  Doing inode_add_bytes() here can cause some trouble - we have to make
+sure that the amount of space quota knows (in dqb_space) about and the amount
+of space in i_blocks is always the same. We have to keep this invariant
+because of concurrent write() and chown/chgrp() calls. So we use dq_data_lock
+and make both the change to quota usage and i_blocks under that spinlock.
+And you've moved the change of i_blocks outside of dq_data_lock. In
+practice this need not be a problem since other locks (i_mutex) might
+provide enough synchronization but I'd rather see inode_add_bytes() inside
+the dq_data_lock together with the quota usage change.
+
+> +
+> +int dquot_reserve_space(struct inode *inode, qsize_t number, int warn)
+> +{
+> +	int ret = QUOTA_OK;
+> +
+> +	if (IS_NOQUOTA(inode))
+> +		goto out;
+> +
+> +	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +	if (IS_NOQUOTA(inode))
+> +		goto out_unlock;
+> +
+> +	ret = __dquot_alloc_space(inode, number, warn, 1);
+> +out_unlock:
+>  	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +out:
+>  	return ret;
+>  }
+>  
+> @@ -1958,7 +2004,7 @@ static void do_get_dqblk(struct dquot *d
+>  	spin_lock(&dq_data_lock);
+>  	di->dqb_bhardlimit = stoqb(dm->dqb_bhardlimit);
+>  	di->dqb_bsoftlimit = stoqb(dm->dqb_bsoftlimit);
+> -	di->dqb_curspace = dm->dqb_curspace;
+> +	di->dqb_curspace = dm->dqb_curspace + dm->dqb_rsvspace;
+>  	di->dqb_ihardlimit = dm->dqb_ihardlimit;
+>  	di->dqb_isoftlimit = dm->dqb_isoftlimit;
+>  	di->dqb_curinodes = dm->dqb_curinodes;
+  OK, but you should probably subtract dqb_rsvspace from the amount
+provided by userspace in do_set_dqblk(). Setting usage is inherently
+dangerous thing if fs is used and admin should know what he's doing but
+I think setting it so that "total used space" is what admin meant is the
+way of the least surprise.
+
+> @@ -2297,6 +2343,7 @@ EXPORT_SYMBOL(dquot_alloc_space);
+>  EXPORT_SYMBOL(dquot_alloc_inode);
+>  EXPORT_SYMBOL(dquot_free_space);
+>  EXPORT_SYMBOL(dquot_free_inode);
+> +EXPORT_SYMBOL(dquot_reserve_space);
+>  EXPORT_SYMBOL(dquot_transfer);
+>  EXPORT_SYMBOL(vfs_dq_transfer);
+>  EXPORT_SYMBOL(vfs_dq_quota_on_remount);
+> Index: linux-2.6.28-rc2/include/linux/quota.h
+> ===================================================================
+> --- linux-2.6.28-rc2.orig/include/linux/quota.h	2008-11-06 13:36:21.000000000 -0800
+> +++ linux-2.6.28-rc2/include/linux/quota.h	2008-11-06 14:04:01.000000000 -0800
+> @@ -186,6 +186,7 @@ struct mem_dqblk {
+>  	qsize_t dqb_bhardlimit;	/* absolute limit on disk blks alloc */
+>  	qsize_t dqb_bsoftlimit;	/* preferred limit on disk blks */
+>  	qsize_t dqb_curspace;	/* current used space */
+> +	qsize_t dqb_rsvspace;   /* current reserved space for delalloc*/
+>  	qsize_t dqb_ihardlimit;	/* absolute limit on allocated inodes */
+>  	qsize_t dqb_isoftlimit;	/* preferred inode limit */
+>  	qsize_t dqb_curinodes;	/* current # allocated inodes */
+> @@ -291,6 +292,7 @@ struct dquot_operations {
+>  	int (*release_dquot) (struct dquot *);		/* Quota is going to be deleted from disk */
+>  	int (*mark_dirty) (struct dquot *);		/* Dquot is marked dirty */
+>  	int (*write_info) (struct super_block *, int);	/* Write of quota "superblock" */
+> +	int (*reserve_space) (struct inode *, qsize_t, int); /* reserve quota for delayed block allocation */
+>  };
+>  
+>  /* Operations handling requests from userspace */
+> Index: linux-2.6.28-rc2/include/linux/quotaops.h
+> ===================================================================
+> --- linux-2.6.28-rc2.orig/include/linux/quotaops.h	2008-11-06 13:36:21.000000000 -0800
+> +++ linux-2.6.28-rc2/include/linux/quotaops.h	2008-11-06 14:04:10.000000000 -0800
+> @@ -176,6 +176,16 @@ static inline int vfs_dq_alloc_space(str
+>  	return ret;
+>  }
+>  
+> +static inline int vfs_dq_reserve_space(struct inode *inode, qsize_t nr)
+> +{
+> +	if (sb_any_quota_active(inode->i_sb)) {
+> +		/* Used space is updated in alloc_space() */
+> +		if (inode->i_sb->dq_op->reserve_space(inode, nr, 0) == NO_QUOTA)
+> +			return 1;
+> +	}
+> +	return 0;
+> +}
+> +
+>  static inline int vfs_dq_alloc_inode(struct inode *inode)
+>  {
+>  	if (sb_any_quota_active(inode->i_sb)) {
+> @@ -327,6 +337,11 @@ static inline int vfs_dq_alloc_space(str
+>  	return 0;
+>  }
+>  
+> +static inline int vfs_dq_reserve_space(struct inode *inode, qsize_t nr)
+> +{
+> +	return 0;
+> +}
+> +
+>  static inline void vfs_dq_free_space_nodirty(struct inode *inode, qsize_t nr)
+>  {
+>  	inode_sub_bytes(inode, nr);
+> @@ -358,12 +373,19 @@ static inline int vfs_dq_alloc_block_nod
+>  			nr << inode->i_sb->s_blocksize_bits);
+>  }
+>  
+> +
+>  static inline int vfs_dq_alloc_block(struct inode *inode, qsize_t nr)
+>  {
+>  	return vfs_dq_alloc_space(inode,
+>  			nr << inode->i_sb->s_blocksize_bits);
+>  }
+>  
+> +static inline int vfs_dq_reserve_block(struct inode *inode, qsize_t nr)
+> +{
+> +	return vfs_dq_reserve_space(inode,
+> +			nr << inode->i_blkbits);
+> +}
+> +
+>  static inline void vfs_dq_free_block_nodirty(struct inode *inode, qsize_t nr)
+>  {
+>  	vfs_dq_free_space_nodirty(inode, nr << inode->i_sb->s_blocksize_bits);
+> @@ -392,6 +414,7 @@ static inline void vfs_dq_free_block(str
+>  #define DQUOT_ALLOC_BLOCK_NODIRTY(inode, nr) \
+>  				vfs_dq_alloc_block_nodirty(inode, nr)
+>  #define DQUOT_ALLOC_BLOCK(inode, nr) vfs_dq_alloc_block(inode, nr)
+> +#define DQUOT_RESERVE_BLOCK(inode, nr) vfs_dq_reserve_block(inode, nr)
+  These defines should go away as soon as I get to grepping all the
+filesystems and converting them to new lowercase function names. So there's
+no need of adding this one.
+
+>  #define DQUOT_ALLOC_INODE(inode) vfs_dq_alloc_inode(inode)
+>  #define DQUOT_FREE_SPACE_NODIRTY(inode, nr) \
+>  				vfs_dq_free_space_nodirty(inode, nr)
 > 
-> ext4: Fix bug where we return ENOSPC even though we have plenty of inodes
-> 
 
-Mmmm, good point, thanks.  I had been assuming this was caused by some
-failure in the delayed allocation code with block accounting, but we
-also had a bug fix that was causing a problem with inode allocation.
-
-That doesn't explain a report of an ENOSPC error with metadata only
-changes were failing (i.e., touching a file that already exists),
-although I don't think we've gotten a lot of information about that
-scenario and it feels a little unconfirmed to me still...
-
-So, yes, this patch may solve the issue for you.
-
-							- Ted
-
---ReaqsoxgOBHFXBhH
-Content-Type: text/x-diff; charset=us-ascii
-Content-Disposition: attachment; filename="0001-ext4-Fix-bug-where-we-return-ENOSPC-even-though-we.patch"
-
->From c001077f4003fa75793bb62979baa6241dd8eb19 Mon Sep 17 00:00:00 2001
-From: Eric Sandeen <sandeen@redhat.com>
-Date: Tue, 19 Aug 2008 22:19:50 -0400
-Subject: [PATCH] ext4: Fix bug where we return ENOSPC even though we have plenty of inodes
-
-The find_group_flex() function starts with best_flex as the
-parent_fbg_group, which happens to have 0 inodes free.  Some of the
-flex groups searched have free blocks and free inodes, but the
-flex_freeb_ratio is < 10, so they're skipped.  Then when a group is
-compared to the current "best" flex group, it does not have more free
-blocks than "best", so it is skipped as well.
-
-This continues until no flex group with free inodes is found which has
-a proper ratio or which has more free blocks than the "best" group,
-and we're left with a "best" group that has 0 inodes free, and we
-return -ENOSPC.
-
-We fix this by changing the logic so that if the current "best" flex
-group has no inodes free, and the current one does have room, it is
-promoted to the next "best."
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ialloc.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 655e760..f344834 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -351,7 +351,7 @@ find_close_to_parent:
- 			goto found_flexbg;
- 		}
- 
--		if (best_flex < 0 ||
-+		if (flex_group[best_flex].free_inodes == 0 ||
- 		    (flex_group[i].free_blocks >
- 		     flex_group[best_flex].free_blocks &&
- 		     flex_group[i].free_inodes))
+									Honza
 -- 
-1.6.0.4.8.g36f27.dirty
-
-
---ReaqsoxgOBHFXBhH--
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
