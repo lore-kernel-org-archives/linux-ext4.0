@@ -1,8 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 101/104] ext3: dont try to resize if there are no reserved
-	gdt blocks left
-Date: Wed, 3 Dec 2008 11:56:53 -0800
-Message-ID: <20081203195653.GX8950@kroah.com>
+Subject: [patch 086/104] ext4: fix initialization of UNINIT bitmap blocks
+Date: Wed, 3 Dec 2008 11:56:18 -0800
+Message-ID: <20081203195618.GI8950@kroah.com>
 References: <20081203193901.715896543@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -19,15 +18,15 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, Josef Bacik <jbacik@redhat.com>,
-	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>
+	alan@lxorguk.ukuu.org.uk, Frederic Bohe <frederic.bohe@bull.net>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56827 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56634 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754559AbYLCT6J (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Dec 2008 14:58:09 -0500
-Content-Disposition: inline; filename="ext3-don-t-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch"
+	id S1751662AbYLCT5u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 14:57:50 -0500
+Content-Disposition: inline; filename="ext4-fix-initialization-of-uninit-bitmap-blocks.patch"
 In-Reply-To: <20081203194725.GA8950@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -35,39 +34,82 @@ List-ID: <linux-ext4.vger.kernel.org>
 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
-From: Josef Bacik <jbacik@redhat.com>
+From: Frederic Bohe <frederic.bohe@bull.net>
 
-commit 972fbf779832e5ad15effa7712789aeff9224c37 upstream.
+(cherry picked from commit c806e68f5647109350ec546fee5b526962970fd2)
 
-When trying to resize a ext3 fs and you run out of reserved gdt blocks,
-you get an error that doesn't actually tell you what went wrong, it just
-says that the gdb it picked is not correct, which is the case since you
-don't have any reserved gdt blocks left.  This patch adds a check to make
-sure you have reserved gdt blocks to use, and if not prints out a more
-relevant error.
+This fixes a bug which caused on-line resizing of filesystems with a
+1k blocksize to fail.  The root cause of this bug was the fact that if
+an uninitalized bitmap block gets read in by userspace (which
+e2fsprogs does try to avoid, but can happen when the blocksize is less
+than the pagesize and an adjacent blocks is read into memory)
+ext4_read_block_bitmap() was erroneously depending on the buffer
+uptodate flag to decide whether it needed to initialize the bitmap
+block in memory --- i.e., to set the standard set of blocks in use by
+a block group (superblock, bitmaps, inode table, etc.).  Essentially,
+ext4_read_block_bitmap() assumed it was the only routine that might
+try to read a block containing a block bitmap, which is simply not
+true.
 
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: Andreas Dilger <adilger@sun.com>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: Willy Tarreau <w@1wt.eu>
+To fix this, ext4_read_block_bitmap() and ext4_read_inode_bitmap()
+must always initialize uninitialized bitmap blocks.  Once a block or
+inode is allocated out of that bitmap, it will be marked as
+initialized in the block group descriptor, so in general this won't
+result any extra unnecessary work.
+
+Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext3/resize.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/ext4/balloc.c  |    4 +++-
+ fs/ext4/ialloc.c  |    4 +++-
+ fs/ext4/mballoc.c |    4 +++-
+ 3 files changed, 9 insertions(+), 3 deletions(-)
 
---- a/fs/ext3/resize.c
-+++ b/fs/ext3/resize.c
-@@ -790,7 +790,8 @@ int ext3_group_add(struct super_block *s
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -318,9 +318,11 @@ ext4_read_block_bitmap(struct super_bloc
+ 			    block_group, bitmap_blk);
+ 		return NULL;
+ 	}
+-	if (bh_uptodate_or_lock(bh))
++	if (buffer_uptodate(bh) &&
++	    !(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))
+ 		return bh;
  
- 	if (reserved_gdb || gdb_off == 0) {
- 		if (!EXT3_HAS_COMPAT_FEATURE(sb,
--					     EXT3_FEATURE_COMPAT_RESIZE_INODE)){
-+					     EXT3_FEATURE_COMPAT_RESIZE_INODE)
-+		    || !le16_to_cpu(es->s_reserved_gdt_blocks)) {
- 			ext3_warning(sb, __func__,
- 				     "No reserved GDT blocks, can't resize");
- 			return -EPERM;
++	lock_buffer(bh);
+ 	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
+ 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 		ext4_init_block_bitmap(sb, bh, block_group, desc);
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -115,9 +115,11 @@ ext4_read_inode_bitmap(struct super_bloc
+ 			    block_group, bitmap_blk);
+ 		return NULL;
+ 	}
+-	if (bh_uptodate_or_lock(bh))
++	if (buffer_uptodate(bh) &&
++	    !(desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)))
+ 		return bh;
+ 
++	lock_buffer(bh);
+ 	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
+ 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+ 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -784,9 +784,11 @@ static int ext4_mb_init_cache(struct pag
+ 		if (bh[i] == NULL)
+ 			goto out;
+ 
+-		if (bh_uptodate_or_lock(bh[i]))
++		if (buffer_uptodate(bh[i]) &&
++		    !(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))
+ 			continue;
+ 
++		lock_buffer(bh[i]);
+ 		spin_lock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
+ 		if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+ 			ext4_init_block_bitmap(sb, bh[i],
 
