@@ -1,8 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 090/104] ext4: Free ext4_prealloc_space using
-	kmem_cache_free
-Date: Wed, 3 Dec 2008 11:56:28 -0800
-Message-ID: <20081203195628.GM8950@kroah.com>
+Subject: [patch 084/104] ext4: Renumber EXT4_IOC_MIGRATE
+Date: Wed, 3 Dec 2008 11:56:14 -0800
+Message-ID: <20081203195614.GG8950@kroah.com>
 References: <20081203193901.715896543@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -20,15 +19,14 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
 	alan@lxorguk.ukuu.org.uk,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56691 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56610 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754369AbYLCT5z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Dec 2008 14:57:55 -0500
-Content-Disposition: inline; filename="ext4-free-ext4_prealloc_space-using-kmem_cache_free.patch"
+	id S1754134AbYLCT5r (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 14:57:47 -0500
+Content-Disposition: inline; filename="ext4-renumber-ext4_ioc_migrate.patch"
 In-Reply-To: <20081203194725.GA8950@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -36,30 +34,46 @@ List-ID: <linux-ext4.vger.kernel.org>
 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 688f05a01983711a4e715b1d6e15a89a89c96a66)
+(cherry picked from commit 8eea80d52b9d87cfd771055534bd2c24f73704d7)
 
-We should use kmem_cache_free to free memory allocated
-via kmem_cache_alloc
+Pick an ioctl number for EXT4_IOC_MIGRATE that won't conflict with
+other ext4 ioctl's.  Since there haven't been any major userspace
+users of this ioctl, we can afford to change this now, to avoid
+potential problems later.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Also, reorder the ioctl numbers in ext4.h to avoid this sort of
+mistake in the future.
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/mballoc.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+ fs/ext4/ext4.h |    7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2577,7 +2577,7 @@ static void ext4_mb_cleanup_pa(struct ex
- 		pa = list_entry(cur, struct ext4_prealloc_space, pa_group_list);
- 		list_del(&pa->pa_group_list);
- 		count++;
--		kfree(pa);
-+		kmem_cache_free(ext4_pspace_cachep, pa);
- 	}
- 	if (count)
- 		mb_debug("mballoc: %u PAs left\n", count);
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -291,8 +291,6 @@ struct ext4_new_group_data {
+ #define	EXT4_IOC_SETFLAGS		FS_IOC_SETFLAGS
+ #define	EXT4_IOC_GETVERSION		_IOR('f', 3, long)
+ #define	EXT4_IOC_SETVERSION		_IOW('f', 4, long)
+-#define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
+-#define EXT4_IOC_GROUP_ADD		_IOW('f', 8,struct ext4_new_group_input)
+ #define	EXT4_IOC_GETVERSION_OLD		FS_IOC_GETVERSION
+ #define	EXT4_IOC_SETVERSION_OLD		FS_IOC_SETVERSION
+ #ifdef CONFIG_JBD2_DEBUG
+@@ -300,7 +298,10 @@ struct ext4_new_group_data {
+ #endif
+ #define EXT4_IOC_GETRSVSZ		_IOR('f', 5, long)
+ #define EXT4_IOC_SETRSVSZ		_IOW('f', 6, long)
+-#define EXT4_IOC_MIGRATE		_IO('f', 7)
++#define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
++#define EXT4_IOC_GROUP_ADD		_IOW('f', 8, struct ext4_new_group_input)
++#define EXT4_IOC_MIGRATE		_IO('f', 9)
++ /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
+ 
+ /*
+  * ioctl commands in 32 bit emulation
 
