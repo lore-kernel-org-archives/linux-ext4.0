@@ -1,69 +1,67 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 098/104] ext4: add checksum calculation when clearing
-	UNINIT flag in ext4_new_inode
-Date: Wed, 3 Dec 2008 11:56:46 -0800
-Message-ID: <20081203195646.GU8950@kroah.com>
-References: <20081203193901.715896543@mini.kroah.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
-	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
-	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
-	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, Frederic Bohe <frederic.bohe@bull.net>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
+From: "Duane Griffin" <duaneg@dghda.com>
+Subject: [PATCH 1/6] ext2: don't inherit inappropriate inode flags from parent
+Date: Wed,  3 Dec 2008 19:54:58 +0000
+Message-ID: <1228334103-15948-2-git-send-email-duaneg@dghda.com>
+References: <1228334103-15948-1-git-send-email-duaneg@dghda.com>
+Cc: Andreas Dilger <adilger@sun.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	Duane Griffin <duaneg@dghda.com>
+To: akpm@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56795 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752709AbYLCT6F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Dec 2008 14:58:05 -0500
-Content-Disposition: inline; filename="ext4-add-checksum-calculation-when-clearing-uninit-flag-in-ext4_new_inode.patch"
-In-Reply-To: <20081203194725.GA8950@kroah.com>
+Received: from kumera.dghda.com ([80.68.90.171]:2864 "EHLO kumera.dghda.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756722AbYLCUBx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 15:01:53 -0500
+In-Reply-To: <1228334103-15948-1-git-send-email-duaneg@dghda.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2.6.27-stable review patch.  If anyone has any objections, please let us know.
+At present BTREE/INDEX is the only flag that new ext2 inodes do NOT
+inherit from their parent. In addition prevent the flags DIRTY, ECOMPR,
+INDEX, IMAGIC and TOPDIR from being inherited. List inheritable flags
+explicitly to prevent future flags from accidentally being inherited.
 
-------------------
-From: Frederic Bohe <frederic.bohe@bull.net>
+This fixes the TOPDIR flag inheritance bug reported at
+http://bugzilla.kernel.org/show_bug.cgi?id=9866.
 
-(cherry picked from commit 23712a9c28b9f80a8cf70c8490358d5f562d2465)
-
-When initializing an uninitialized block group in ext4_new_inode(),
-its block group checksum must be re-calculated.  This fixes a race
-when several threads try to allocate a new inode in an UNINIT'd group.
-
-There is some question whether we need to be initializing the block
-bitmap in ext4_new_inode() at all, but for now, if we are going to
-init the block group, let's eliminate the race.
-
-Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
 ---
- fs/ext4/ialloc.c |    2 ++
- 1 file changed, 2 insertions(+)
+ fs/ext2/ialloc.c        |    2 +-
+ include/linux/ext2_fs.h |    7 +++++++
+ 2 files changed, 8 insertions(+), 1 deletions(-)
 
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -717,6 +717,8 @@ got:
- 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
- 			free = ext4_free_blocks_after_init(sb, group, gdp);
- 			gdp->bg_free_blocks_count = cpu_to_le16(free);
-+			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
-+								gdp);
- 		}
- 		spin_unlock(sb_bgl_lock(sbi, group));
+diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
+index 8d0add6..8c1897e 100644
+--- a/fs/ext2/ialloc.c
++++ b/fs/ext2/ialloc.c
+@@ -565,7 +565,7 @@ got:
+ 	inode->i_blocks = 0;
+ 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
+ 	memset(ei->i_data, 0, sizeof(ei->i_data));
+-	ei->i_flags = EXT2_I(dir)->i_flags & ~EXT2_BTREE_FL;
++	ei->i_flags = EXT2_I(dir)->i_flags & EXT2_FL_INHERITED;
+ 	if (S_ISLNK(mode))
+ 		ei->i_flags &= ~(EXT2_IMMUTABLE_FL|EXT2_APPEND_FL);
+ 	/* dirsync is only applied to directories */
+diff --git a/include/linux/ext2_fs.h b/include/linux/ext2_fs.h
+index 78c775a..c3a0518 100644
+--- a/include/linux/ext2_fs.h
++++ b/include/linux/ext2_fs.h
+@@ -194,6 +194,13 @@ struct ext2_group_desc
+ #define EXT2_FL_USER_VISIBLE		FS_FL_USER_VISIBLE	/* User visible flags */
+ #define EXT2_FL_USER_MODIFIABLE		FS_FL_USER_MODIFIABLE	/* User modifiable flags */
  
++/* Flags that should be inherited by new inodes from their parent. */
++#define EXT2_FL_INHERITED (EXT2_SECRM_FL | EXT2_UNRM_FL | EXT2_COMPR_FL |\
++			   EXT2_SYNC_FL | EXT2_IMMUTABLE_FL | EXT2_APPEND_FL |\
++			   EXT2_NODUMP_FL | EXT2_NOATIME_FL | EXT2_COMPRBLK_FL|\
++			   EXT2_NOCOMP_FL | EXT2_JOURNAL_DATA_FL |\
++			   EXT2_NOTAIL_FL | EXT2_DIRSYNC_FL)
++
+ /*
+  * ioctl commands
+  */
+-- 
+1.5.6.4
 
