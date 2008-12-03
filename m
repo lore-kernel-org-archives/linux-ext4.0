@@ -1,7 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 096/104] ext4: calculate journal credits correctly
-Date: Wed, 3 Dec 2008 11:56:42 -0800
-Message-ID: <20081203195642.GS8950@kroah.com>
+Subject: [patch 085/104] ext4/jbd2: Avoid WARN() messages when failing to
+	write to the superblock
+Date: Wed, 3 Dec 2008 11:56:16 -0800
+Message-ID: <20081203195616.GH8950@kroah.com>
 References: <20081203193901.715896543@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -22,11 +23,11 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56771 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56624 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755241AbYLCT6D (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Dec 2008 14:58:03 -0500
-Content-Disposition: inline; filename="ext4-calculate-journal-credits-correctly.patch"
+	id S1756095AbYLCT5t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 14:57:49 -0500
+Content-Disposition: inline; filename="ext4-jbd2-avoid-warn-messages-when-failing-to-write-to-the-superblock.patch"
 In-Reply-To: <20081203194725.GA8950@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -36,40 +37,98 @@ List-ID: <linux-ext4.vger.kernel.org>
 ------------------
 From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit ac51d83705c2a38c71f39cde99708b14e6212a60)
+(cherry picked from commit 914258bf2cb22bf4336a1b1d90c551b4b11ca5aa)
 
-This fixes a 2.6.27 regression which was introduced in commit a02908f1.
-
-We weren't passing the chunk parameter down to the two subections,
-ext4_indirect_trans_blocks() and ext4_ext_index_trans_blocks(), with
-the result that massively overestimate the amount of credits needed by
-ext4_da_writepages, especially in the non-extents case.  This causes
-failures especially on /boot partitions, which tend to be small and
-non-extent using since GRUB doesn't handle extents.
-
-This patch fixes the bug reported by Joseph Fannin at:
-http://bugzilla.kernel.org/show_bug.cgi?id=11964
+This fixes some very common warnings reported by kerneloops.org
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/inode.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+ fs/ext4/super.c   |   23 ++++++++++++++++++++++-
+ fs/jbd2/journal.c |   27 +++++++++++++++++++++++++--
+ 2 files changed, 47 insertions(+), 3 deletions(-)
 
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4444,9 +4444,10 @@ static int ext4_indirect_trans_blocks(st
- static int ext4_index_trans_blocks(struct inode *inode, int nrblocks, int chunk)
- {
- 	if (!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
--		return ext4_indirect_trans_blocks(inode, nrblocks, 0);
--	return ext4_ext_index_trans_blocks(inode, nrblocks, 0);
-+		return ext4_indirect_trans_blocks(inode, nrblocks, chunk);
-+	return ext4_ext_index_trans_blocks(inode, nrblocks, chunk);
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2804,13 +2804,34 @@ static void ext4_commit_super(struct sup
+ 
+ 	if (!sbh)
+ 		return;
++	if (buffer_write_io_error(sbh)) {
++		/*
++		 * Oh, dear.  A previous attempt to write the
++		 * superblock failed.  This could happen because the
++		 * USB device was yanked out.  Or it could happen to
++		 * be a transient write error and maybe the block will
++		 * be remapped.  Nothing we can do but to retry the
++		 * write and hope for the best.
++		 */
++		printk(KERN_ERR "ext4: previous I/O error to "
++		       "superblock detected for %s.\n", sb->s_id);
++		clear_buffer_write_io_error(sbh);
++		set_buffer_uptodate(sbh);
++	}
+ 	es->s_wtime = cpu_to_le32(get_seconds());
+ 	ext4_free_blocks_count_set(es, ext4_count_free_blocks(sb));
+ 	es->s_free_inodes_count = cpu_to_le32(ext4_count_free_inodes(sb));
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	mark_buffer_dirty(sbh);
+-	if (sync)
++	if (sync) {
+ 		sync_dirty_buffer(sbh);
++		if (buffer_write_io_error(sbh)) {
++			printk(KERN_ERR "ext4: I/O error while writing "
++			       "superblock for %s.\n", sb->s_id);
++			clear_buffer_write_io_error(sbh);
++			set_buffer_uptodate(sbh);
++		}
++	}
  }
+ 
+ 
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -1259,6 +1259,22 @@ void jbd2_journal_update_superblock(jour
+ 		goto out;
+ 	}
+ 
++	if (buffer_write_io_error(bh)) {
++		/*
++		 * Oh, dear.  A previous attempt to write the journal
++		 * superblock failed.  This could happen because the
++		 * USB device was yanked out.  Or it could happen to
++		 * be a transient write error and maybe the block will
++		 * be remapped.  Nothing we can do but to retry the
++		 * write and hope for the best.
++		 */
++		printk(KERN_ERR "JBD2: previous I/O error detected "
++		       "for journal superblock update for %s.\n",
++		       journal->j_devname);
++		clear_buffer_write_io_error(bh);
++		set_buffer_uptodate(bh);
++	}
 +
- /*
-  * Account for index blocks, block groups bitmaps and block group
-  * descriptor blocks if modify datablocks and index blocks
+ 	spin_lock(&journal->j_state_lock);
+ 	jbd_debug(1,"JBD: updating superblock (start %ld, seq %d, errno %d)\n",
+ 		  journal->j_tail, journal->j_tail_sequence, journal->j_errno);
+@@ -1270,9 +1286,16 @@ void jbd2_journal_update_superblock(jour
+ 
+ 	BUFFER_TRACE(bh, "marking dirty");
+ 	mark_buffer_dirty(bh);
+-	if (wait)
++	if (wait) {
+ 		sync_dirty_buffer(bh);
+-	else
++		if (buffer_write_io_error(bh)) {
++			printk(KERN_ERR "JBD2: I/O error detected "
++			       "when updating journal superblock for %s.\n",
++			       journal->j_devname);
++			clear_buffer_write_io_error(bh);
++			set_buffer_uptodate(bh);
++		}
++	} else
+ 		ll_rw_block(SWRITE, 1, &bh);
+ 
+ out:
 
