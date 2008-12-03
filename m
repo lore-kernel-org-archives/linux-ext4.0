@@ -1,76 +1,74 @@
 From: <gregkh@suse.de>
-Subject: patch ext4-add-checksum-calculation-when-clearing-uninit-flag-in-ext4_new_inode.patch added to 2.6.27-stable tree
-Date: Wed, 03 Dec 2008 10:55:46 -0800
-Message-ID: <20081203185911.7EBED48D80@coco.kroah.org>
-References: <1226851540-8032-21-git-send-email-tytso@mit.edu>
+Subject: patch ext3-don-t-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch added to 2.6.27-stable tree
+Date: Wed, 03 Dec 2008 10:55:41 -0800
+Message-ID: <20081203185906.72B7748D02@coco.kroah.org>
 Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
-To: frederic.bohe@bull.net, gregkh@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
+To: jbacik@redhat.com, adilger@sun.com, akpm@linux-foundation.org,
+	gregkh@suse.de, linux-ext4@vger.kernel.org,
+	torvalds@linux-foundation.org, w@1wt.eu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:60890 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:60865 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751349AbYLCS7M (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Dec 2008 13:59:12 -0500
-In-Reply-To: <1226851540-8032-21-git-send-email-tytso@mit.edu>
+	id S1751264AbYLCS7H (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 13:59:07 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 This is a note to let you know that we have just queued up the patch titled
 
-    Subject: ext4: add checksum calculation when clearing UNINIT flag in ext4_new_inode
+    Subject: ext3: don't try to resize if there are no reserved gdt blocks left
 
 to the 2.6.27-stable tree.  Its filename is
 
-    ext4-add-checksum-calculation-when-clearing-uninit-flag-in-ext4_new_inode.patch
+    ext3-don-t-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch
 
 A git repo of this tree can be found at 
     http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
 
 
->From tytso@mit.edu  Wed Dec  3 10:45:18 2008
-From: Frederic Bohe <frederic.bohe@bull.net>
-Date: Sun, 16 Nov 2008 11:05:40 -0500
-Subject: ext4: add checksum calculation when clearing UNINIT flag in ext4_new_inode
-To: stable@kernel.org
-Cc: Frederic Bohe <frederic.bohe@bull.net>, Ext4 Developers List <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>
-Message-ID: <1226851540-8032-21-git-send-email-tytso@mit.edu>
+>From 972fbf779832e5ad15effa7712789aeff9224c37 Mon Sep 17 00:00:00 2001
+From: Josef Bacik <jbacik@redhat.com>
+Date: Sat, 18 Oct 2008 20:27:55 -0700
+Subject: ext3: don't try to resize if there are no reserved gdt blocks left
 
-From: Frederic Bohe <frederic.bohe@bull.net>
+From: Josef Bacik <jbacik@redhat.com>
 
-(cherry picked from commit 23712a9c28b9f80a8cf70c8490358d5f562d2465)
+commit 972fbf779832e5ad15effa7712789aeff9224c37 upstream.
 
-When initializing an uninitialized block group in ext4_new_inode(),
-its block group checksum must be re-calculated.  This fixes a race
-when several threads try to allocate a new inode in an UNINIT'd group.
+When trying to resize a ext3 fs and you run out of reserved gdt blocks,
+you get an error that doesn't actually tell you what went wrong, it just
+says that the gdb it picked is not correct, which is the case since you
+don't have any reserved gdt blocks left.  This patch adds a check to make
+sure you have reserved gdt blocks to use, and if not prints out a more
+relevant error.
 
-There is some question whether we need to be initializing the block
-bitmap in ext4_new_inode() at all, but for now, if we are going to
-init the block group, let's eliminate the race.
-
-Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Andreas Dilger <adilger@sun.com>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Willy Tarreau <w@1wt.eu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/ialloc.c |    2 ++
- 1 file changed, 2 insertions(+)
+ fs/ext3/resize.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -717,6 +717,8 @@ got:
- 			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
- 			free = ext4_free_blocks_after_init(sb, group, gdp);
- 			gdp->bg_free_blocks_count = cpu_to_le16(free);
-+			gdp->bg_checksum = ext4_group_desc_csum(sbi, group,
-+								gdp);
- 		}
- 		spin_unlock(sb_bgl_lock(sbi, group));
+--- a/fs/ext3/resize.c
++++ b/fs/ext3/resize.c
+@@ -790,7 +790,8 @@ int ext3_group_add(struct super_block *s
  
+ 	if (reserved_gdb || gdb_off == 0) {
+ 		if (!EXT3_HAS_COMPAT_FEATURE(sb,
+-					     EXT3_FEATURE_COMPAT_RESIZE_INODE)){
++					     EXT3_FEATURE_COMPAT_RESIZE_INODE)
++		    || !le16_to_cpu(es->s_reserved_gdt_blocks)) {
+ 			ext3_warning(sb, __func__,
+ 				     "No reserved GDT blocks, can't resize");
+ 			return -EPERM;
 
 
-Patches currently in stable-queue which might be from frederic.bohe@bull.net are
+Patches currently in stable-queue which might be from jbacik@redhat.com are
 
-queue-2.6.27/ext4-update-flex_bg-free-blocks-and-free-inodes-counters-when-resizing.patch
-queue-2.6.27/ext4-fix-initialization-of-uninit-bitmap-blocks.patch
-queue-2.6.27/ext4-add-checksum-calculation-when-clearing-uninit-flag-in-ext4_new_inode.patch
+queue-2.6.27/ext3-don-t-try-to-resize-if-there-are-no-reserved-gdt-blocks-left.patch
