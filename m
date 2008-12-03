@@ -1,55 +1,42 @@
-From: Bill Davidsen <davidsen@tmr.com>
-Subject: Re: [PATCH v2] ext3, ext4: do_split() fix loop, with obvious	unsigned
- wrap
-Date: Tue, 02 Dec 2008 18:17:45 -0500
-Message-ID: <4935C219.3070006@tmr.com>
-References: <49343AD9.4020606@gmail.com> <20081202132441.GC16172@mit.edu> <49356B96.7070900@tmr.com> <20081202215758.GE20858@mit.edu>
+From: Jonathan Bastien-Filiatrault <joe@x2a.org>
+Subject: Re: EXT4 ENOSPC Bug
+Date: Tue, 02 Dec 2008 19:37:20 -0500
+Message-ID: <4935D4C0.7050601@x2a.org>
+References: <200811291418.24672.andres@anarazel.de> <200812021559.05103.andres@anarazel.de> <20081202164709.GC18162@mit.edu> <200812021847.35771.andres@anarazel.de> <20081202203315.GA20858@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, Bill Davidsen <davidsen@tmr.com>,
-	roel kluin <roel.kluin@gmail.com>, adilger@sun.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>, Andres Freund <andres@anarazel.de>,
+	Andreas Dilger <adilger@sun.com>,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.tmr.com ([64.65.253.246]:43946 "EHLO partygirl.tmr.com"
+Received: from metal.x2a.org ([206.248.189.157]:41359 "EHLO metal.x2a.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750980AbYLBXSL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Dec 2008 18:18:11 -0500
-In-Reply-To: <20081202215758.GE20858@mit.edu>
+	id S1752775AbYLCAhZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Dec 2008 19:37:25 -0500
+In-Reply-To: <20081202203315.GA20858@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Theodore Tso wrote:
-> On Tue, Dec 02, 2008 at 12:08:38PM -0500, Bill Davidsen wrote:
->   
->> Sorry, you are reading it wrong, the i values inside the loop are  
->> identical to those in the original. The value of i starts at count, and  
->> the test comes *before* the value is used inside the loop. The values of  
->> i inside the loop start at count-1 and go to zero, just as it did in the  
->> original. That's why the "i--" is there, the test is on the  
->> unincremented value range count to one, but the value inside the loop is  
->> correct (or at least is the same as the original patch).
->>     
+
+> Hmm...  really?  Was the error message ENOSPC, or something else?
 >
-> You're right; my bad.  But with something like this:
->
->   
->>>> +	for (i = count; i--; ) {
->>>>         
->
-> ...where there is no third part of the for loop, and a decrement in
-> the second part of the loop, just for clarity's sake, it's much better
-> to write it as a while loop.
->   
+I can confirm I get a ENOSPC on open/creat. Here is the relevant output
+from strace touch test:
 
-I seriously disagree on that, writing it as a for makes it totally clear 
-that the index initialization is part of the loop.
-I know, looks funny, not the way we have always done it, not invented 
-here...
+open("test", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666) = -1 ENOSPC (No
+space left on device)
 
--- 
-Bill Davidsen <davidsen@tmr.com>
-  "Woe unto the statesman who makes war without a reason that will still
-  be valid when the war is over..." Otto von Bismark 
+And the df -h output (first filesystem in list):
 
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/mapper/vg0-root   88G   60G   25G  71% /
+tmpfs                 1.6G   12K  1.6G   1% /lib/init/rw
+udev                   10M  112K  9.9M   2% /dev
+tmpfs                 1.6G     0  1.6G   0% /dev/shm
+/dev/sda1              92M   19M   69M  22% /boot
+none                  1.6G  3.3M  1.6G   1% /tmp
 
+Cheers,
+Jonathan
