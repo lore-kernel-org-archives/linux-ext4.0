@@ -1,35 +1,55 @@
 From: Bill Davidsen <davidsen@tmr.com>
-Subject: Re: [PATCH v2] ext3, ext4: do_split() fix loop, with obvious	unsigned
+Subject: Re: [PATCH v2] ext3, ext4: do_split() fix loop, with obvious unsigned
  wrap
-Date: Wed, 03 Dec 2008 09:25:46 -0500
-Message-ID: <493696EA.5060900@tmr.com>
-References: <49343AD9.4020606@gmail.com> <20081202132441.GC16172@mit.edu> <49356B96.7070900@tmr.com> <20081202215758.GE20858@mit.edu> <4935C219.3070006@tmr.com>
+Date: Wed, 03 Dec 2008 09:32:18 -0500
+Message-ID: <49369872.20406@tmr.com>
+References: <49343AD9.4020606@gmail.com> <20081202220510.ddef1115.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, Bill Davidsen <davidsen@tmr.com>,
-	roel kluin <roel.kluin@gmail.com>, adilger@sun.com,
+Cc: roel kluin <roel.kluin@gmail.com>, tytso@mit.edu, adilger@sun.com,
 	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.tmr.com ([64.65.253.246]:52141 "EHLO partygirl.tmr.com"
+Received: from mail.tmr.com ([64.65.253.246]:55219 "EHLO partygirl.tmr.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750876AbYLCO0U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Dec 2008 09:26:20 -0500
-In-Reply-To: <4935C219.3070006@tmr.com>
+	id S1750845AbYLCOdX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 09:33:23 -0500
+In-Reply-To: <20081202220510.ddef1115.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Bill Davidsen wrote:
-> I seriously disagree on that, writing it as a for makes it totally 
-> clear that the index initialization is part of the loop.
-> I know, looks funny, not the way we have always done it, not invented 
-> here...
+Andrew Morton wrote:
+> On Mon, 01 Dec 2008 14:28:25 -0500 roel kluin <roel.kluin@gmail.com> wrote:
 >
-Just to be clear, I didn't mean that in any bad way, just that sometimes 
-a new format, even if correct and unambiguous, looks strange to the eye 
-and is not used just because it jars. I still think putting 
-initialization for a loop in the start of the for is defensive 
-programming, perhaps I've had too many bumblers inherit my code.
+>   
+>> Fix loop, with obvious unsigned wrap
+>>
+>>     
+>
+> Please raise separate patches for ext3 and ext4 - their paths into the
+> tree are different.
+>
+>   
+>> --- a/fs/ext3/namei.c
+>> +++ b/fs/ext3/namei.c
+>> @@ -1188,7 +1188,7 @@ static struct ext3_dir_entry_2 *do_split(handle_t *handle, struct inode *dir,
+>>  	/* Split the existing block in the middle, size-wise */
+>>  	size = 0;
+>>  	move = 0;
+>> -	for (i = count-1; i >= 0; i--) {
+>> +	for (i = count; i--; ) {
+>>     
+>
+> So we're replacing an accidental for(;;) with something which can
+> really terminate.  This is potentially a functional change, and it's
+> perhaps telling us that we should replace it with a real for (;;) loop
+> anyway.
+>   
+It's not a "for (;;)" loop, because the index value does change, but 
+clearly in the current implementation the termination condition won't be 
+met by any index value. You still need to bail on index value, and the 
+index is used in the loop.
 
 -- 
 Bill Davidsen <davidsen@tmr.com>
