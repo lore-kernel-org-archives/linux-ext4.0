@@ -1,91 +1,76 @@
 From: <gregkh@suse.de>
-Subject: patch ext4-do-mballoc-init-before-doing-filesystem-recovery.patch added to 2.6.27-stable tree
-Date: Wed, 03 Dec 2008 10:55:51 -0800
-Message-ID: <20081203185916.4B74949043@coco.kroah.org>
-References: <1226851540-8032-14-git-send-email-tytso@mit.edu>
+Subject: patch ext4-convert-to-host-order-before-using-the-values.patch added to 2.6.27-stable tree
+Date: Wed, 03 Dec 2008 10:55:50 -0800
+Message-ID: <20081203185915.1EE4C49042@coco.kroah.org>
+References: <1226851540-8032-17-git-send-email-tytso@mit.edu>
 Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
 To: aneesh.kumar@linux.vnet.ibm.com, gregkh@suse.de,
 	linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:60905 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:60903 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751659AbYLCS7R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Dec 2008 13:59:17 -0500
-In-Reply-To: <1226851540-8032-14-git-send-email-tytso@mit.edu>
+	id S1751822AbYLCS7P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 13:59:15 -0500
+In-Reply-To: <1226851540-8032-17-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 This is a note to let you know that we have just queued up the patch titled
 
-    Subject: ext4: Do mballoc init before doing filesystem recovery
+    Subject: ext4: Convert to host order before using the values.
 
 to the 2.6.27-stable tree.  Its filename is
 
-    ext4-do-mballoc-init-before-doing-filesystem-recovery.patch
+    ext4-convert-to-host-order-before-using-the-values.patch
 
 A git repo of this tree can be found at 
     http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
 
 
->From tytso@mit.edu  Wed Dec  3 10:42:48 2008
+>From tytso@mit.edu  Wed Dec  3 10:43:46 2008
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date: Sun, 16 Nov 2008 11:05:33 -0500
-Subject: ext4: Do mballoc init before doing filesystem recovery
+Date: Sun, 16 Nov 2008 11:05:36 -0500
+Subject: ext4: Convert to host order before using the values.
 To: stable@kernel.org
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Message-ID: <1226851540-8032-14-git-send-email-tytso@mit.edu>
+Message-ID: <1226851540-8032-17-git-send-email-tytso@mit.edu>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-(cherry picked from commit c2774d84fd6cab2bfa2a2fae0b1ca8d8ebde48a2)
+(cherry picked from commit d94e99a64c3beece22dbfb2b335771a59184eb0a)
 
-During filesystem recovery we may be doing a truncate
-which expects some of the mballoc data structures to
-be initialized. So do ext4_mb_init before recovery.
+Use le16_to_cpu to read the s_reserved_gdt_blocks values
+from super block.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/super.c |   25 +++++++++++++++----------
- 1 file changed, 15 insertions(+), 10 deletions(-)
+ fs/ext4/super.c |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -2449,6 +2449,21 @@ static int ext4_fill_super(struct super_
- 			"available.\n");
- 	}
+@@ -1506,9 +1506,8 @@ static int ext4_fill_flex_info(struct su
  
-+	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
-+		printk(KERN_WARNING "EXT4-fs: Ignoring delalloc option - "
-+				"requested data journaling mode\n");
-+		clear_opt(sbi->s_mount_opt, DELALLOC);
-+	} else if (test_opt(sb, DELALLOC))
-+		printk(KERN_INFO "EXT4-fs: delayed allocation enabled\n");
-+
-+	ext4_ext_init(sb);
-+	err = ext4_mb_init(sb, needs_recovery);
-+	if (err) {
-+		printk(KERN_ERR "EXT4-fs: failed to initalize mballoc (%d)\n",
-+		       err);
-+		goto failed_mount4;
-+	}
-+
- 	/*
- 	 * akpm: core read_super() calls in here with the superblock locked.
- 	 * That deadlocks, because orphan cleanup needs to lock the superblock
-@@ -2468,16 +2483,6 @@ static int ext4_fill_super(struct super_
- 	       test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_ORDERED_DATA ? "ordered":
- 	       "writeback");
- 
--	if (test_opt(sb, DATA_FLAGS) == EXT4_MOUNT_JOURNAL_DATA) {
--		printk(KERN_WARNING "EXT4-fs: Ignoring delalloc option - "
--				"requested data journaling mode\n");
--		clear_opt(sbi->s_mount_opt, DELALLOC);
--	} else if (test_opt(sb, DELALLOC))
--		printk(KERN_INFO "EXT4-fs: delayed allocation enabled\n");
--
--	ext4_ext_init(sb);
--	ext4_mb_init(sb, needs_recovery);
+ 	/* We allocate both existing and potentially added groups */
+ 	flex_group_count = ((sbi->s_groups_count + groups_per_flex - 1) +
+-			    ((sbi->s_es->s_reserved_gdt_blocks +1 ) <<
+-			      EXT4_DESC_PER_BLOCK_BITS(sb))) /
+-			   groups_per_flex;
++			((le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) + 1) <<
++			      EXT4_DESC_PER_BLOCK_BITS(sb))) / groups_per_flex;
+ 	sbi->s_flex_groups = kzalloc(flex_group_count *
+ 				     sizeof(struct flex_groups), GFP_KERNEL);
+ 	if (sbi->s_flex_groups == NULL) {
+
+
+Patches currently in stable-queue which might be from aneesh.kumar@linux.vnet.ibm.com are
+
+queue-2.6.27/ext4-elevate-write-count-for-migrate-ioctl.patch
+queue-2.6.27/ext4-free-ext4_prealloc_space-using-kmem_cache_free.patch
+queue-2.6.27/ext4-do-mballoc-init-before-doing-filesystem-recovery.patch
+queue-2.6.27/ext4-convert-to-host-order-before-using-the-values.patch
+queue-2.6.27/ext4-mark-the-buffer_heads-as-dirty-and-uptodate-after-prepare_write.patch
