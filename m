@@ -1,8 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 087/104] jbd2: abort instead of waiting for nonexistent
-	transaction
-Date: Wed, 3 Dec 2008 11:56:20 -0800
-Message-ID: <20081203195620.GJ8950@kroah.com>
+Subject: [patch 088/104] jbd2: Fix buffer head leak when writing the commit
+	block
+Date: Wed, 3 Dec 2008 11:56:22 -0800
+Message-ID: <20081203195622.GK8950@kroah.com>
 References: <20081203193901.715896543@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -20,83 +20,56 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
 	alan@lxorguk.ukuu.org.uk,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Sami Liedes <sliedes@cc.hut.fi>,
-	Duane Griffin <duaneg@dghda.com>
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56649 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56659 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754953AbYLCT5v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Dec 2008 14:57:51 -0500
-Content-Disposition: inline; filename="jbd2-abort-instead-of-waiting-for-nonexistent-transaction.patch"
+	id S1755237AbYLCT5w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 14:57:52 -0500
+Content-Disposition: inline; filename="jbd2-fix-buffer-head-leak-when-writing-the-commit-block.patch"
 In-Reply-To: <20081203194725.GA8950@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
-From: Duane Griffin <duaneg@dghda.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 23f8b79eae8a74e42a006ffa7c456e295c7e1c0d)
+(cherry picked from commit 45a90bfd90c1215bf824c0f705b409723f52361b)
 
-The __jbd2_log_wait_for_space function sits in a loop checkpointing
-transactions until there is sufficient space free in the journal.
-However, if there are no transactions to be processed (e.g.  because the
-free space calculation is wrong due to a corrupted filesystem) it will
-never progress.
+Also make sure the buffer heads are marked clean before submitting bh
+for writing.  The previous code was marking the buffer head dirty,
+which would have forced an unneeded write (and seek) to the journal
+for no good reason.
 
-Check for space being required when no transactions are outstanding and
-abort the journal instead of endlessly looping.
-
-This patch fixes the bug reported by Sami Liedes at:
-http://bugzilla.kernel.org/show_bug.cgi?id=10976
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Cc: Sami Liedes <sliedes@cc.hut.fi>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/jbd2/checkpoint.c |   19 +++++++++++++++++--
- 1 file changed, 17 insertions(+), 2 deletions(-)
+ fs/jbd2/commit.c |    5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
---- a/fs/jbd2/checkpoint.c
-+++ b/fs/jbd2/checkpoint.c
-@@ -126,14 +126,29 @@ void __jbd2_log_wait_for_space(journal_t
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -126,8 +126,7 @@ static int journal_submit_commit_record(
  
- 		/*
- 		 * Test again, another process may have checkpointed while we
--		 * were waiting for the checkpoint lock
-+		 * were waiting for the checkpoint lock. If there are no
-+		 * outstanding transactions there is nothing to checkpoint and
-+		 * we can't make progress. Abort the journal in this case.
- 		 */
- 		spin_lock(&journal->j_state_lock);
-+		spin_lock(&journal->j_list_lock);
- 		nblocks = jbd_space_needed(journal);
- 		if (__jbd2_log_space_left(journal) < nblocks) {
-+			int chkpt = journal->j_checkpoint_transactions != NULL;
-+
-+			spin_unlock(&journal->j_list_lock);
- 			spin_unlock(&journal->j_state_lock);
--			jbd2_log_do_checkpoint(journal);
-+			if (chkpt) {
-+				jbd2_log_do_checkpoint(journal);
-+			} else {
-+				printk(KERN_ERR "%s: no transactions\n",
-+				       __func__);
-+				jbd2_journal_abort(journal, 0);
-+			}
-+
- 			spin_lock(&journal->j_state_lock);
-+		} else {
-+			spin_unlock(&journal->j_list_lock);
- 		}
- 		mutex_unlock(&journal->j_checkpoint_mutex);
+ 	JBUFFER_TRACE(descriptor, "submit commit block");
+ 	lock_buffer(bh);
+-	get_bh(bh);
+-	set_buffer_dirty(bh);
++	clear_buffer_dirty(bh);
+ 	set_buffer_uptodate(bh);
+ 	bh->b_end_io = journal_end_buffer_io_sync;
+ 
+@@ -160,7 +159,7 @@ static int journal_submit_commit_record(
+ 		/* And try again, without the barrier */
+ 		lock_buffer(bh);
+ 		set_buffer_uptodate(bh);
+-		set_buffer_dirty(bh);
++		clear_buffer_dirty(bh);
+ 		ret = submit_bh(WRITE, bh);
  	}
+ 	*cbh = bh;
 
