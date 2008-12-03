@@ -1,123 +1,139 @@
 From: <gregkh@suse.de>
-Subject: patch ext4-fix-initialization-of-uninit-bitmap-blocks.patch added to 2.6.27-stable tree
-Date: Wed, 03 Dec 2008 10:55:56 -0800
-Message-ID: <20081203185921.DD0A649047@coco.kroah.org>
-References: <1226851540-8032-9-git-send-email-tytso@mit.edu>
+Subject: patch ext4-elevate-write-count-for-migrate-ioctl.patch added to 2.6.27-stable tree
+Date: Wed, 03 Dec 2008 10:55:52 -0800
+Message-ID: <20081203185917.95F8B49044@coco.kroah.org>
+References: <1226851540-8032-6-git-send-email-tytso@mit.edu>
 Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
-To: frederic.bohe@bull.net, gregkh@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu
+To: aneesh.kumar@linux.vnet.ibm.com, gregkh@suse.de,
+	linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:60925 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:60910 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751844AbYLCS7X (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Dec 2008 13:59:23 -0500
-In-Reply-To: <1226851540-8032-9-git-send-email-tytso@mit.edu>
+	id S1751459AbYLCS7S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Dec 2008 13:59:18 -0500
+In-Reply-To: <1226851540-8032-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 This is a note to let you know that we have just queued up the patch titled
 
-    Subject: ext4: fix initialization of UNINIT bitmap blocks
+    Subject: ext4: elevate write count for migrate ioctl
 
 to the 2.6.27-stable tree.  Its filename is
 
-    ext4-fix-initialization-of-uninit-bitmap-blocks.patch
+    ext4-elevate-write-count-for-migrate-ioctl.patch
 
 A git repo of this tree can be found at 
     http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
 
 
->From tytso@mit.edu  Wed Dec  3 10:03:38 2008
-From: Frederic Bohe <frederic.bohe@bull.net>
-Date: Sun, 16 Nov 2008 11:05:28 -0500
-Subject: ext4: fix initialization of UNINIT bitmap blocks
+>From tytso@mit.edu  Wed Dec  3 09:58:51 2008
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date: Sun, 16 Nov 2008 11:05:25 -0500
+Subject: ext4: elevate write count for migrate ioctl
 To: stable@kernel.org
-Cc: Frederic Bohe <frederic.bohe@bull.net>, Ext4 Developers List <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>
-Message-ID: <1226851540-8032-9-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>, "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Message-ID: <1226851540-8032-6-git-send-email-tytso@mit.edu>
 
-From: Frederic Bohe <frederic.bohe@bull.net>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-(cherry picked from commit c806e68f5647109350ec546fee5b526962970fd2)
+(cherry picked from commit 2a43a878001cc5cb7c3c7be2e8dad0a1aeb939b0)
 
-This fixes a bug which caused on-line resizing of filesystems with a
-1k blocksize to fail.  The root cause of this bug was the fact that if
-an uninitalized bitmap block gets read in by userspace (which
-e2fsprogs does try to avoid, but can happen when the blocksize is less
-than the pagesize and an adjacent blocks is read into memory)
-ext4_read_block_bitmap() was erroneously depending on the buffer
-uptodate flag to decide whether it needed to initialize the bitmap
-block in memory --- i.e., to set the standard set of blocks in use by
-a block group (superblock, bitmaps, inode table, etc.).  Essentially,
-ext4_read_block_bitmap() assumed it was the only routine that might
-try to read a block containing a block bitmap, which is simply not
-true.
+The migrate ioctl writes to the filsystem, so we need to elevate the
+write count.
 
-To fix this, ext4_read_block_bitmap() and ext4_read_inode_bitmap()
-must always initialize uninitialized bitmap blocks.  Once a block or
-inode is allocated out of that bitmap, it will be marked as
-initialized in the block group descriptor, so in general this won't
-result any extra unnecessary work.
-
-Signed-off-by: Frederic Bohe <frederic.bohe@bull.net>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/balloc.c  |    4 +++-
- fs/ext4/ialloc.c  |    4 +++-
- fs/ext4/mballoc.c |    4 +++-
- 3 files changed, 9 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h    |    3 +--
+ fs/ext4/ioctl.c   |   21 ++++++++++++++++++++-
+ fs/ext4/migrate.c |   10 +---------
+ 3 files changed, 22 insertions(+), 12 deletions(-)
 
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -318,9 +318,11 @@ ext4_read_block_bitmap(struct super_bloc
- 			    block_group, bitmap_blk);
- 		return NULL;
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1083,8 +1083,7 @@ extern long ext4_ioctl(struct file *, un
+ extern long ext4_compat_ioctl (struct file *, unsigned int, unsigned long);
+ 
+ /* migrate.c */
+-extern int ext4_ext_migrate(struct inode *, struct file *, unsigned int,
+-		       unsigned long);
++extern int ext4_ext_migrate(struct inode *);
+ /* namei.c */
+ extern int ext4_orphan_add(handle_t *, struct inode *);
+ extern int ext4_orphan_del(handle_t *, struct inode *);
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -267,7 +267,26 @@ setversion_out:
  	}
--	if (bh_uptodate_or_lock(bh))
-+	if (buffer_uptodate(bh) &&
-+	    !(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))
- 		return bh;
  
-+	lock_buffer(bh);
- 	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 		ext4_init_block_bitmap(sb, bh, block_group, desc);
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -115,9 +115,11 @@ ext4_read_inode_bitmap(struct super_bloc
- 			    block_group, bitmap_blk);
- 		return NULL;
- 	}
--	if (bh_uptodate_or_lock(bh))
-+	if (buffer_uptodate(bh) &&
-+	    !(desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)))
- 		return bh;
+ 	case EXT4_IOC_MIGRATE:
+-		return ext4_ext_migrate(inode, filp, cmd, arg);
++	{
++		int err;
++		if (!is_owner_or_cap(inode))
++			return -EACCES;
++
++		err = mnt_want_write(filp->f_path.mnt);
++		if (err)
++			return err;
++		/*
++		 * inode_mutex prevent write and truncate on the file.
++		 * Read still goes through. We take i_data_sem in
++		 * ext4_ext_swap_inode_data before we switch the
++		 * inode format to prevent read.
++		 */
++		mutex_lock(&(inode->i_mutex));
++		err = ext4_ext_migrate(inode);
++		mutex_unlock(&(inode->i_mutex));
++		mnt_drop_write(filp->f_path.mnt);
++		return err;
++	}
  
-+	lock_buffer(bh);
- 	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
- 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -784,9 +784,11 @@ static int ext4_mb_init_cache(struct pag
- 		if (bh[i] == NULL)
- 			goto out;
+ 	default:
+ 		return -ENOTTY;
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -447,8 +447,7 @@ static int free_ext_block(handle_t *hand
  
--		if (bh_uptodate_or_lock(bh[i]))
-+		if (buffer_uptodate(bh[i]) &&
-+		    !(desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)))
- 			continue;
+ }
  
-+		lock_buffer(bh[i]);
- 		spin_lock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
- 		if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 			ext4_init_block_bitmap(sb, bh[i],
+-int ext4_ext_migrate(struct inode *inode, struct file *filp,
+-				unsigned int cmd, unsigned long arg)
++int ext4_ext_migrate(struct inode *inode)
+ {
+ 	handle_t *handle;
+ 	int retval = 0, i;
+@@ -516,12 +515,6 @@ int ext4_ext_migrate(struct inode *inode
+ 	 * when we add extents we extent the journal
+ 	 */
+ 	/*
+-	 * inode_mutex prevent write and truncate on the file. Read still goes
+-	 * through. We take i_data_sem in ext4_ext_swap_inode_data before we
+-	 * switch the inode format to prevent read.
+-	 */
+-	mutex_lock(&(inode->i_mutex));
+-	/*
+ 	 * Even though we take i_mutex we can still cause block allocation
+ 	 * via mmap write to holes. If we have allocated new blocks we fail
+ 	 * migrate.  New block allocation will clear EXT4_EXT_MIGRATE flag.
+@@ -623,7 +616,6 @@ err_out:
+ 	tmp_inode->i_nlink = 0;
+ 
+ 	ext4_journal_stop(handle);
+-	mutex_unlock(&(inode->i_mutex));
+ 
+ 	if (tmp_inode)
+ 		iput(tmp_inode);
 
 
-Patches currently in stable-queue which might be from frederic.bohe@bull.net are
+Patches currently in stable-queue which might be from aneesh.kumar@linux.vnet.ibm.com are
 
-queue-2.6.27/ext4-update-flex_bg-free-blocks-and-free-inodes-counters-when-resizing.patch
-queue-2.6.27/ext4-fix-initialization-of-uninit-bitmap-blocks.patch
-queue-2.6.27/ext4-add-checksum-calculation-when-clearing-uninit-flag-in-ext4_new_inode.patch
+queue-2.6.27/ext4-elevate-write-count-for-migrate-ioctl.patch
+queue-2.6.27/ext4-free-ext4_prealloc_space-using-kmem_cache_free.patch
+queue-2.6.27/ext4-do-mballoc-init-before-doing-filesystem-recovery.patch
+queue-2.6.27/ext4-convert-to-host-order-before-using-the-values.patch
+queue-2.6.27/ext4-mark-the-buffer_heads-as-dirty-and-uptodate-after-prepare_write.patch
