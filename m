@@ -1,53 +1,51 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [PATCH]ext4: fix s_dirty_blocks_counter if block allocation	failed
- with nodelalloc
-Date: Thu, 04 Dec 2008 10:27:25 +0900
-Message-ID: <493731FD.5040809@rs.jp.nec.com>
-References: <4933BAC2.6080004@rs.jp.nec.com> <20081201103641.GA13242@skywalker>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [patch 086/104] ext4: fix initialization of UNINIT bitmap
+	blocks
+Date: Wed, 3 Dec 2008 23:10:16 -0500
+Message-ID: <20081204041016.GA13887@mit.edu>
+References: <20081203193901.715896543@mini.kroah.org> <20081203195618.GI8950@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Li Zefan <lizf@cn.fujitsu.com>,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, stable@kernel.org,
+	Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>,
+	Michael Krufky <mkrufky@linuxtv.org>,
+	Chuck Ebbert <cebbert@redhat.com>,
+	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
+	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
+	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
+	torvalds@linux-foundation.org, akpm@linux-foundation.org,
+	alan@lxorguk.ukuu.org.uk, Frederic Bohe <frederic.bohe@bull.net>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Greg KH <gregkh@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:58440 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752635AbYLDB2D (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Dec 2008 20:28:03 -0500
-In-Reply-To: <20081201103641.GA13242@skywalker>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:49285 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750758AbYLDEMd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Dec 2008 23:12:33 -0500
+Content-Disposition: inline
+In-Reply-To: <20081203195618.GI8950@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Dec 03, 2008 at 11:56:18AM -0800, Greg KH wrote:
+> 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
-Hi Aneesh,
-Aneesh Kumar K.V wrote:
-> On Mon, Dec 01, 2008 at 07:21:54PM +0900, Akira Fujita wrote:
->> ext4: Fix s_dirty_blocks_counter if block allocation failed with nodelalloc
->>
->> From: Akira Fujita <a-fujita@rs.jp.nec.com>
->>
->> If block allocation failed after marking claimed blocks as dirty blocks
->> with nodelalloc, we have to subtract these blocks from
->> s_dirty_blocks_counter in error handling.
->> Otherwise s_dirty_blocks_counter goes wrong so that
->> filesystem's free blocks decreases incorrectly.
-> 
-> Why did the block allocation fail ? With delayed allocation ENOSPC
-> should not happen during block allocation. That would mean we did
-> something wrong in block reservation.
+Turns out this patch introduces a worse regression than it fixes.  The
+bug that the patches fixes is that on-line resizes of filesystems with
+a 1k blocksize will usually fail.  The regression is that when a
+filesystem with 1k blocksize is stressed, the filesystem can get
+corrupted.  On balance, on-line resizing failing is less of a disaster
+than corrupting the filesystem when its stressed.  Fortunately, it's
+only an issue when the filesystem blocksize is less than the page
+size, which isn't the common case at least for the x86.  
 
-My case was *nodelalloc* and FS was almost full.
-This problem occurs in multiple defrag running in short time.
-Usually defrag releases temporary inode's blocks with iput,
-then FS free blocks are recover but contiguous blocks do not recover
-until next journal commit.
-so we can not re-use contiguous blocks immediately.
-There are enough free blocks in FS so that
-ext4_claim_free_blocks marks claimed blocks as dirty,
-but ext4_regular_allocator can not find enough blocks,
-so mb_new_blocks returns ENOSPC without decreasing dirty blocks.
+There are patches queued up to address this, but they haven't hit
+mainline yet.  Probably best to pull this from the stable tree for
+now.
 
-Regards,
-Akira Fujita
-
+						- Ted
