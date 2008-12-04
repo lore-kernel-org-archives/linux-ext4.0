@@ -1,262 +1,159 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12151] New: Unexplained fsck errors on a ext4 filesystem
-Date: Wed,  3 Dec 2008 13:38:32 -0800 (PST)
-Message-ID: <bug-12151-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Problems with checking corrupted large ext3 file system
+Date: Wed, 03 Dec 2008 17:09:36 -0700
+Message-ID: <20081204000936.GE3186@webber.adilger.int>
+References: <20081203101100.GO17966@skl-net.de>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: Andre Noll <maan@systemlinux.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:60239 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751568AbYLCViy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Dec 2008 16:38:54 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mB3LcW6u031517
-	for <linux-ext4@vger.kernel.org>; Wed, 3 Dec 2008 13:38:33 -0800
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:38151 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759318AbYLDAJx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Dec 2008 19:09:53 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mB409pfo020429
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Dec 2008 16:09:51 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KBB00L01S2XVN00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Wed, 03 Dec 2008 16:09:51 -0800 (PST)
+In-reply-to: <20081203101100.GO17966@skl-net.de>
+Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12151
+On Dec 03, 2008  11:11 +0100, Andre Noll wrote:
+> I've some trouble checking a corrupted 9T large ext3 fs which resides
+> on a logical volume. The underlying physical volumes are three hardware
+> raid systems, one of which started to crash frequently. I was able
+> to pvmove away the data from the buggy system, so everything is fine
+> now on the hardware side.
 
-           Summary: Unexplained fsck errors on a ext4 filesystem
-           Product: File System
-           Version: 2.5
-     KernelVersion: kernel-2.6.27.5-117.fc10.x86_64
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: kernel-bugzilla@cygnusx-1.org
+A big question is what kernel you are running on.  Anything less than
+2.6.18-rhel5 (not sure what vanilla kernel) has bugs with ext3 > 8TB.
 
+The other question is whether there is any expectation that the data
+moved from the bad RAID arrays was corrupted.
 
-Distribution: Fedora 10
-Hardware Environment: 
+> However, the crashes left me with a seriously corrupted file system
+> from which I'm trying to recover as much as possible. First step was
+> to unmount the file system after users reported I/O errors when trying
+> to open files. The system log contained many messages like
+> 
+> 	[102445.420125] EXT3-fs error (device dm-2): ext3_free_blocks_sb: bit already cleared for block 544108393                                              
+> 
+> and some of the form
+> 
+> 	[160301.277477] EXT3-fs error (device dm-2): htree_dirblock_to_tree: bad entry in directory #153542738: rec_len % 4 != 0 - offset=0, inode=1381653864, +rec_len=26709, name_len=79
+> 
+> So I compiled the master branch of the e2fsprogs git repo as of
+> Dec 1 (tip: 8680b4) and executed
+> 
+> 	./e2fsck -y -C0 /dev/mapper/abel-abt6_projects
+> 
+> This ran for a while and then started to output a couple of these:
+> 
+> 	Inode table for group 68217 is not in group.  (block 825373744)
+> 	WARNING: SEVERE DATA LOSS POSSIBLE.
+> 
+> along with many lines of the form
+> 
+> 	Illegal block #3036172 (4233778405) in inode 115335438.
+>         CLEARED.
 
-Processor:
-Q6600 2.4ghz
+Running "e2fsck -y" vs. "e2fsck -p" will sometimes do "bad" things because
+the "-y" forces it to continue on no matter what.  It looks like there
+was some serious filesystem corruption beyond the 8TB boundary, and the
+inode table for at one or more groups (depending on how many of the
+"SEVERE DATA LOSS POSSIBLE" messages were printed) is completely lost.
 
-Memory:
-4gb
+> But then it continued just fine without printing further
+> messsages. After about 4 hours it completed but decided to re-run from
+> the beginning and this is where the real trouble seems to start. The
+> next day I found thousands of lines like this on the console:
+> 
+>         /backup/data/solexa_analysis/ATH/MA/MA-30-29/run_30/4/length_42/reads_0.fl (inode #145326082, mod time Tue Jan 22 05:09:36 2008)
+> followed by
+> 
+> 	Clone multiply-claimed blocks? yes
 
-dmidecode:
-Manufacturer: ASUSTeK Computer INC.
-Product Name: P5B-Deluxe
+This is likely fallout from the original corruption above.  The bad news
+is that these "multiply-claimed blocks" are really bogus because of the
+garbage in the missing inode tables...  e2fsck has turned random garbage
+into inodes, and it results in what you are seeing now.
 
-lspci:
-00:00.0 Host bridge: Intel Corporation 82P965/G965 Memory Controller Hub (rev
-02)
-00:01.0 PCI bridge: Intel Corporation 82P965/G965 PCI Express Root Port (rev
-02)
-00:1a.0 USB Controller: Intel Corporation 82801H (ICH8 Family) USB UHCI
-Controller #4 (rev 02)
-00:1a.1 USB Controller: Intel Corporation 82801H (ICH8 Family) USB UHCI
-Controller #5 (rev 02)
-00:1a.7 USB Controller: Intel Corporation 82801H (ICH8 Family) USB2 EHCI
-Controller #2 (rev 02)
-00:1c.0 PCI bridge: Intel Corporation 82801H (ICH8 Family) PCI Express Port 1
-(rev 02)
-00:1c.2 PCI bridge: Intel Corporation 82801H (ICH8 Family) PCI Express Port 3
-(rev 02)
-00:1c.4 PCI bridge: Intel Corporation 82801H (ICH8 Family) PCI Express Port 5
-(rev 02)
-00:1c.5 PCI bridge: Intel Corporation 82801H (ICH8 Family) PCI Express Port 6
-(rev 02)
-00:1d.0 USB Controller: Intel Corporation 82801H (ICH8 Family) USB UHCI
-Controller #1 (rev 02)
-00:1d.1 USB Controller: Intel Corporation 82801H (ICH8 Family) USB UHCI
-Controller #2 (rev 02)
-00:1d.2 USB Controller: Intel Corporation 82801H (ICH8 Family) USB UHCI
-Controller #3 (rev 02)
-00:1d.7 USB Controller: Intel Corporation 82801H (ICH8 Family) USB2 EHCI
-Controller #1 (rev 02)
-00:1e.0 PCI bridge: Intel Corporation 82801 PCI Bridge (rev f2)
-00:1f.0 ISA bridge: Intel Corporation 82801HB/HR (ICH8/R) LPC Interface
-Controller (rev 02)
-00:1f.2 SATA controller: Intel Corporation 82801HR/HO/HH (ICH8R/DO/DH) 6 port
-SATA AHCI Controller (rev 02)
-00:1f.3 SMBus: Intel Corporation 82801H (ICH8 Family) SMBus Controller (rev 02)
-02:00.0 Ethernet controller: Marvell Technology Group Ltd. 88E8056 PCI-E
-Gigabit Ethernet Controller (rev 12)
-03:00.0 SATA controller: JMicron Technologies, Inc. JMicron 20360/20363 AHCI
-Controller (rev 02)
-03:00.1 IDE interface: JMicron Technologies, Inc. JMicron 20360/20363 AHCI
-Controller (rev 02)
-04:00.0 Ethernet controller: Intel Corporation 82572EI Gigabit Ethernet
-Controller (Copper) (rev 06)
-06:01.0 Multimedia audio controller: Creative Labs SB Audigy (rev 04)
-06:01.1 Input device controller: Creative Labs SB Audigy Game Port (rev 04)
-06:01.2 FireWire (IEEE 1394): Creative Labs SB Audigy FireWire Port (rev 04)
-06:02.0 Ethernet controller: Lite-On Communications Inc LNE100TX (rev 20)
-06:03.0 FireWire (IEEE 1394): Texas Instruments TSB43AB22/A IEEE-1394a-2000
-Controller (PHY/Link)
-06:04.0 Ethernet controller: Marvell Technology Group Ltd. 88E8001 Gigabit
-Ethernet Controller (rev 14)
+> At this point the fsck seems to hang. No further messages, no progress
+> bar for at least 17 hours.
 
+The pass1b (clone multiply-claimed blocks) code is very slow, because it
+involves an O(n^2) operation to find all of the duplicate blocks, read
+them from disk, then write them to some new spot on disk, and the e2fsck
+allocator is very slow also.
 
-Software Environment:
-e2fsprogs-1.41.3-2.fc10.x86_64
-rsync-3.0.4-0.fc10.x86_64
+> The lights on the raid system aren't
+> flashing but there seems to be a bit of I/O going on as stracing the
+> e2fsck process yields
+> 
+> 	lseek(3, 6206310776832, SEEK_SET)       = 6206310776832
+> 	read(3, "002107740635\tD\t2\t169\t35\t0\thhhhhh"..., 4096) = 4096
+> 	lseek(3, 1263113973760, SEEK_SET)       = 1263113973760
+> 	write(3, "B9K@=?4C=L-F77F4:CGGK\n3\t14221118"..., 4096) = 4096
+> 	lseek(3, 5861641846784, SEEK_SET)       = 5861641846784
+> 	read(3, "hhhhhh\tIIIIIIIIIIIIIIIIIIIIIIIII"..., 4096) = 4096
+> 	lseek(3, 1263113977856, SEEK_SET)       = 1263113977856
+> 	write(3, "\t1.00\t0.46\t19\t4\t2\t0\t1\tA\t33\t31\t0\t"..., 4096) = 4096
+> 
+> There's about only one read per second, so the fsck might take rather
+> long if it continues to run at this speed ;)
+> 
+> It's running for 34 hours now and I don't know what to do, so here are
+> a couple of questions for you ext3 gurus:
+> 
+> 	Is there any hope this will ever complete?
 
-Problem Description:
-I rebooted and received the errors below from fsck. The nature of the errors
-suggest to me a race condition or off by one bug. In all but one case the
-problem is the count being off by one. In the one exception the count is off by
-two.
+Depends on how many inodes are duplicated, but it could be days :-(.
 
-I didn't receive complaints from fsck on previous reboots after the creation of
-the filesystem. The shutdown before the startup that resulted in these errors
-seemed to have gone normally.
+> 	Should I abort the fsck and restart?
 
-I do remember rsync complaining about at least mpc1211 during the rsync that
-copied the data across the network from another system. I don't remember the
-complaint.
+Restarting won't fix anything because it will just get you back to the
+same spot 34h from now.
 
-Most of the files on the filesystem are video files in the 100mb+ range. There
-are also other large files like isos, virtualization images, etc. All the files
-complained about are really small files.
+> 	Do things get even worse if I abort it and mount the file
+> 	system r/o so that I can see whether important files are
+> 	still there?
 
-The underlying layers are Linux software raid5 running on 6 1tb hard drives.
-Other arrays using the same drives are raid1 and raid10.
+I would suggest as a starter to run "debugfs -c {devicename}" and
+use this to explore the filesystem a bit.  This can be done while
+e2fsck is running, and will give you an idea of what data is still
+there.  If you think that a majority of your file data (or even just
+the important bits) are available, then I would suggest killing e2fsck,
+mounting the filesystem read-only, and copying as much as possible.
 
-mkfs command used to make the filesystem:
-mkfs.ext4 -j -b 4096 -i 524288 -m 0 -E stride=256 -O extents /dev/md3
+The kernel should be largely forgiving of errors it finds on disk.
 
-Other messages that may relate:
+> 	Are there any magic e2fsck command line options I should try?
 
-EXT4-fs: barriers enabled
-EXT4-fs: barriers enabled
-EXT4-fs: barriers enabled
-JBD: barrier-based sync failed on md1:8 - disabling barriers
-JBD: barrier-based sync failed on md2:8 - disabling barriers
-JBD: barrier-based sync failed on md3:8 - disabling barriers
+One option is to use the Lustre e2fsprogs which has a patch that tries
+to detect such "garbage" inodes and wipe them clean, instead of trying
+to continue using them.
 
-df -h output:
-/dev/md1               32G  5.3G   25G  18% /
-/dev/md0              198M   14M  174M   8% /boot
-/dev/md2              288G   60G  229G  21% /home
-/dev/md3              4.1T  2.3T  1.8T  56% /home/data
+	http://downloads.lustre.org/public/tools/e2fsprogs/latest/
 
+That said, it may be too late to help because the previous e2fsck run
+will have done a lot of work to "clean up" the garbage inodes and they
+may no longer be above the "bad inode threshold".
 
-
-An automatic fsck check on boot started, and saw errors.
-
-Group descriptor 374 has invalid unused inodes count 1
-Group descriptor 375 has invalid unused inodes count 1
-Group descriptor 588 has invalid unused inodes count 1
-Group descriptor 940 has invalid unused inodes count 1
-Group descriptor 1230 has invalid unused inodes count 1
-Group descriptor 1486 has invalid unused inodes count 1
-Group descriptor 1834 has invalid unused inodes count 1
-Group descriptor 2444 has invalid unused inodes count 1
-Group descriptor 2854 has invalid unused inodes count 1
-Group descriptor 3066 has invalid unused inodes count 1
-Group descriptor 3210 has invalid unused inodes count 1
-Group descriptor 3933 has invalid unused inodes count 1
-Group descriptor 4656 has invalid unused inodes count 1
-Extended attribute block 12255232 has reference count 3 should be 1
-
-Pass 1
-Extended attribute block 12255232 has reference count 3 should be 1
-
-Pass 2
-Entry '..' in ??? (314882) has incorrent filetype (was 2, should be 1).
-Entry 'txdps.tex' in
-/backup/home/backup/11-26-2006/home/backup/12-3-2005/usr/share/texmf/tex/generic/texdraw
-(453383) has incorrect filetype (was 1, should be 2).
-Entry 'mpc1211' in
-/backup/home/backup/11-26/2006/home/backup/12-3-2005/usr/src/kernels/2.6.14-1.1637_FC4-x86_64/arch/sh/boards
-(469489) is a link to directory /home/backup/home/backup/11-26-2006/home/backup
-/12-3-2005/usr/share/texmf/tex/generic/texdraw/txdps.tex (469505).
-Entry 'gencfg.c' in /backup/home/builder/mozilla/nsprpub/pr/include (995609)
-has an incorrect filetype (was 1, should be 2).
-Entry 'CVS' in
-/backup/home/builder/mozilla/toolkit/themes/pinstripe/mozapps/extentions
-(1006847) in a link to directory
-/backup/home/builder/mozilla/nsprpub/pr/include/gencfg.c (1006849).
-Entry 'lost+found' in /video/movies (181) has incorrect filetype (was 2, should
-be 1).
-Entry 'text_italic.png' in
-/backup/home/backup/11-26-2006/usr/share/icons/crystalsvg/16x16/actions
-(613940) has incorrect filetype (was 1, should be 2).
-Entry 'ko' in /backup/home/backup/11-26-2006/usr/share/local (621673) is a link
-to directory
-/backup/home/backup/11-26-2006/usr/share/icons/crystalsvg/16x16/actions/text_italic.png
-(625665).
-
-Pass 3
-Unconnected directory inode 314882 (???)
-'..' in
-/backup/home/backup/11-26-2006/home/backup/12-3-2005/usr/share/texmf/tex/generic/texdraw/txdps.tex
-(469505) is
-/backup/home/backup/11-26-2006/home/backup/12-3-2005/usr/src/kernels/2.6.14-1.1637_FC4-x
-86_64/arch/sh/boards (469489), should be
-/backup/home/backup/11-26-2006/home/backup/12-3-2005/usr/share/texmf/tex/generic/texdraw
-(453383).
-'..' in
-/backup/home/backup/11-26-2006/usr/share/icons/crystalsvg/16x16/actions/text_italic.png
-(625665) is /backup/home/backup/11-26-2006/usr/share/locale (621673), should be
-/backup/home/backup/11-26-2006/
-usr/share/icons/crystalsvg/16x16/actions (613940).
-'..' in /backup/home/builder/mozilla/nsprpub/pr/include/gencfg.c (1006849) is
-/backup/home/builder/mozilla/toolkit/themes/pinstripe/mozapps/extensions
-(1006847), should be /backup/home/builder/mozilla/nsprpu
-b/pr/include (995609).
-
-Pass 4
-Inode 181 ref count is 12, should be 11.
-Inode 82141 ref is 1, should be 2.
-Inode 95745 ref count is 1, should be 2.
-Inode 96001 ref count is 1, should be 2.
-Inode 150529 ref count is 1, should be 2.
-Inode 240641 ref count is 1, should be 2.
-Inode 314016 ref count is 347, should be 346.
-Inode 314881 ref count is 0, should be 2.
-Inode 314882 ref count is 3, should be 2.
-Inode 380416 ref count is 4, should be 3.
-Inode 380417 ref count is 1, should be 2.
-Inode 730596 ref count is 14, should be 13.
-Inode 730625 ref count is 1, should be 2.
-Inode 730723 ref count is 284, should be 283.
-Inode 784897 ref count is 1, should be 2.
-Inode 821761 ref count is 1, should be 2.
-Inode 1191927 ref count is 7, should be 6.
-Inode 1191937 ref count is 1, should be 2.
-
-Pass 5
-Block bitmap differences: -40304640 -48693248 -59540393 -79796520 -93519872
--105185280 -(128714059--128714061) -152568096
-Free blocks count wrong for group #1230 (1845, counted=1846).
-Free blocks count wrong for group #1486 (1851, counted=1852).
-Free blocks count wrong for group #1817 (910, counted=911).
-Free blocks count wrong for group #2454 (1149, counted=1150)
-Free blocks count wrong for group #3210 (1845, counted=1846).
-Free blocks count wrong for group #3928 (31706, counted=31709).
-Free blocks count wrong for group #4656 (1540, counted=1541).
-Free blocks count wrong (494216298, counted=494216308).
-Free inodes count wrong for group #374 (0, counted=1).
-Free inodes count wrong for group #375 (0, counted=1).
-Free inodes count wrong for group #588 (0, counted=1).
-Free inodes count wrong for group #940 (0, counted=1).
-Free inodes count wrong for group #1230 (0, counted=1).
-Directories count wrong for group #1230 (194, counted=193).
-Free inodes count wrong for group #1486 (0, counted=1).
-Directories count wrong for group #1486 (197, counted=196).
-Free inodes count wrong for group #1834 (0, counted=1).
-Free inodes count wrong for group #2444 (0, counted=1).
-Free inodes count wrong for group #2854 (0, counted=1).
-Directories count wrong for group #2854 (67, counted=66).
-Free inodes count wrong for group #3066 (0, counted=1).
-Free inodes count wrong for group #3210 (0, counted=1).
-Directories count wrong for group #3210 (201, counted=200).
-Free inodes count wrong for group #3933 (0, counted=1).
-Free inodes count wrong for group #4656 (0, counted=1).
-Directories count wrong for group #4656 (104, counted=103).
-Free inodes count wrong (6899829, counted=6899842).
+You could try this after copying the data elsewhere, to avoid the need
+to restore the filesystem and get a bit more data back, but at that
+point it might also be faster to just reformat and restore the data.
 
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
