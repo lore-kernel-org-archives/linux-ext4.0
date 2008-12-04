@@ -1,92 +1,66 @@
-From: Li Zefan <lizf@cn.fujitsu.com>
-Subject: Re: [PATCH]ext4: fix s_dirty_blocks_counter if block allocation	failed
- with nodelalloc
-Date: Thu, 04 Dec 2008 16:38:04 +0800
-Message-ID: <493796EC.10404@cn.fujitsu.com>
-References: <4933BAC2.6080004@rs.jp.nec.com> <20081201103641.GA13242@skywalker> <493731FD.5040809@rs.jp.nec.com> <20081204050745.GC10787@skywalker> <493795BA.4010507@rs.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Fix s_dirty_blocks_counter if block allocation failed with nodelalloc
+Date: Thu,  4 Dec 2008 19:34:25 +0530
+Message-ID: <1228399465-6749-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:62475 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751543AbYLDIjp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Dec 2008 03:39:45 -0500
-In-Reply-To: <493795BA.4010507@rs.jp.nec.com>
+Received: from e28smtp02.in.ibm.com ([59.145.155.2]:33168 "EHLO
+	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757273AbYLDOEf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Dec 2008 09:04:35 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id mB4E4VK7021418
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Dec 2008 19:34:31 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mB4E3fYJ4448480
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Dec 2008 19:33:41 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id mB4E4T2q012265
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Dec 2008 19:34:30 +0530
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Akira Fujita wrote:
-> 
-> Aneesh Kumar K.V wrote:
->> On Thu, Dec 04, 2008 at 10:27:25AM +0900, Akira Fujita wrote:
->>> Hi Aneesh,
->>> Aneesh Kumar K.V wrote:
->>>> On Mon, Dec 01, 2008 at 07:21:54PM +0900, Akira Fujita wrote:
->>>>> ext4: Fix s_dirty_blocks_counter if block allocation failed with
->>>>> nodelalloc
->>>>>
->>>>> From: Akira Fujita <a-fujita@rs.jp.nec.com>
->>>>>
->>>>> If block allocation failed after marking claimed blocks as dirty
->>>>> blocks
->>>>> with nodelalloc, we have to subtract these blocks from
->>>>> s_dirty_blocks_counter in error handling.
->>>>> Otherwise s_dirty_blocks_counter goes wrong so that
->>>>> filesystem's free blocks decreases incorrectly.
->>>> Why did the block allocation fail ? With delayed allocation ENOSPC
->>>> should not happen during block allocation. That would mean we did
->>>> something wrong in block reservation.
->>> My case was *nodelalloc* and FS was almost full.
->>> This problem occurs in multiple defrag running in short time.
->>> Usually defrag releases temporary inode's blocks with iput,
->>> then FS free blocks are recover but contiguous blocks do not recover
->>> until next journal commit.
->>> so we can not re-use contiguous blocks immediately.
->>> There are enough free blocks in FS so that
->>> ext4_claim_free_blocks marks claimed blocks as dirty,
->>> but ext4_regular_allocator can not find enough blocks,
->>> so mb_new_blocks returns ENOSPC without decreasing dirty blocks.
->>>
->> ok how about doing the check once in ext4_mb_new_blocks.
-> 
-> It works fine.  Thank you.
-> Tested-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-> 
+With nodelalloc option we need to update the dirty block counter on
+block allocation failure. This is needed because we increment the
+dirty block counter early in the block allocation phase. Without
+the patch s_dirty_blocks_counter goes wrong so that filesystem's
+free blocks decreases incorrectly.
 
-I'll test it when I'm free and have access to the test machine. :)
+Tested-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext4/mballoc.c |    9 ++++++++-
+ 1 files changed, 8 insertions(+), 1 deletions(-)
 
-But not this week..
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index bacc2f4..22d31c3 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4550,7 +4550,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	}
+ 	if (ar->len == 0) {
+ 		*errp = -EDQUOT;
+-		return 0;
++		goto out3;
+ 	}
+ 	inquota = ar->len;
+ 
+@@ -4623,6 +4623,13 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ out1:
+ 	if (ar->len < inquota)
+ 		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
++out3:
++	if (!ar->len) {
++		if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag)
++			/* release all the reserved blocks if non delalloc */
++			percpu_counter_sub(&sbi->s_dirtyblocks_counter,
++						reserv_blks);
++	}
+ 
+ 	return block;
+ }
+-- 
+1.6.1.rc1
 
->> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
->> index bacc2f4..22d31c3 100644
->> --- a/fs/ext4/mballoc.c
->> +++ b/fs/ext4/mballoc.c
->> @@ -4550,7 +4550,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
->>      }
->>      if (ar->len == 0) {
->>          *errp = -EDQUOT;
->> -        return 0;
->> +        goto out3;
->>      }
->>      inquota = ar->len;
->>  
->> @@ -4623,6 +4623,13 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
->>  out1:
->>      if (ar->len < inquota)
->>          DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
->> +out3:
->> +    if (!ar->len) {
->> +        if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag)
->> +            /* release all the reserved blocks if non delalloc */
->> +            percpu_counter_sub(&sbi->s_dirtyblocks_counter,
->> +                        reserv_blks);
->> +    }
->>  
->>      return block;
->>  }
-> 
-> 
