@@ -1,108 +1,68 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Problems with checking corrupted large ext3 file system
-Date: Thu, 4 Dec 2008 14:51:38 -0500
-Message-ID: <20081204195138.GA1323@mit.edu>
-References: <20081203101100.GO17966@skl-net.de> <20081204000936.GE3186@webber.adilger.int> <20081204163759.GR17966@skl-net.de>
+From: Valdis.Kletnieks@vt.edu
+Subject: Re: [patch 101/104] ext3: dont try to resize if there are no reserved gdt blocks left
+Date: Thu, 04 Dec 2008 17:07:55 -0500
+Message-ID: <80912.1228428475@turing-police.cc.vt.edu>
+References: <20081203193901.715896543@mini.kroah.org>
+            <20081203195653.GX8950@kroah.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Andre Noll <maan@systemlinux.org>
+Content-Type: multipart/signed; boundary="==_Exmh_1228428475_3727P";
+	 micalg=pgp-sha1; protocol="application/pgp-signature"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, stable@kernel.org,
+	Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>,
+	Michael Krufky <mkrufky@linuxtv.org>,
+	Chuck Ebbert <cebbert@redhat.com>,
+	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
+	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
+	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
+	torvalds@linux-foundation.org, akpm@linux-foundation.org,
+	alan@lxorguk.ukuu.org.uk, Josef Bacik <jbacik@redhat.com>,
+	linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>
+To: Greg KH <gregkh@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:53936 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750763AbYLDTvn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Dec 2008 14:51:43 -0500
-Content-Disposition: inline
-In-Reply-To: <20081204163759.GR17966@skl-net.de>
+Received: from turing-police.cc.vt.edu ([128.173.14.107]:38843 "EHLO
+	turing-police.cc.vt.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758363AbYLDWK0 (ORCPT
+	<RFC822;linux-ext4@vger.kernel.org>); Thu, 4 Dec 2008 17:10:26 -0500
+In-Reply-To: Your message of "Wed, 03 Dec 2008 11:56:53 PST."
+             <20081203195653.GX8950@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 04, 2008 at 05:37:59PM +0100, Andre Noll wrote:
-> OK, so I guess I would like to run e2fsck again without cloning those
-> blocks.
+--==_Exmh_1228428475_3727P
+Content-Type: text/plain; charset=us-ascii
 
-Actually, what you should probably do is to take a look at the inodes
-which were listed in the pass1b, and if they don't make sense, to
-clear them out.  An individual inode can be cleared by using the
-debugfs clri command.  i.e., to zero out inode 12345, you do this:
+On Wed, 03 Dec 2008 11:56:53 PST, Greg KH said:
 
-debugfs -w /dev/mapper/thunk-closure
-debugfs: clri <12345>
-debugfs: quit
+>  	if (reserved_gdb || gdb_off == 0) {
+>  		if (!EXT3_HAS_COMPAT_FEATURE(sb,
+> -					     EXT3_FEATURE_COMPAT_RESIZE_INODE))
+{
+> +					     EXT3_FEATURE_COMPAT_RESIZE_INODE)
+> +		    || !le16_to_cpu(es->s_reserved_gdt_blocks)) {
+>  			ext3_warning(sb, __func__,
+>  				     "No reserved GDT blocks, can't resize");
+>  			return -EPERM;
 
-This doesn't work very easily if there is a large number of inodes
-that contain garbage, though.  I don't have tools that deal well with
-wholeslae corruption of large portions of the inode table, mostly
-because those tools, if misused, could actually cause a lot more harm
-than good, and so designing the proper safety mechanism so they are
-safe to use in the hands of system administrators that are not
-filesystem experts and tend to use commands like "fsck -y" is very
-difficult to get right.  It's also a failure mode which happens
-rarely, so it's never been a high priority to figure out how create
-tools that can safely handle this problem in the general case.
+What's the codepath if the compat_feature part trips, but the le16_to_cpu
+doesn't?  Looks to me like it will then skip over the 'return -EPERM'?
 
-If you're convinced that all of the inode tables greater than 4TB have
-been corrupted, or blocks from a particular physical volume are *all*
-toast, onesolution is to zero out all of the damaged blocks, on the
-theory that there's nothing to save anyway, and e2fsck is trying hard
-to save all possible data --- and if you know there's nothing to save
-there, clearing the parts of the inode table that ar eknown to be bad,
-will make e2fsck run more cleanly.
+--==_Exmh_1228428475_3727P
+Content-Type: application/pgp-signature
 
-In the long run, I can imagine enhancements to ext4 where we reserve 4
-bytes in each inode which are used to collectively to store
-information to assure ourselves an inode table block really contains
-valid data and not random garbage.  The first inode in an inode table
-block would use the 4 byte field to store the first inode number in
-the itable block.  The second inode in the inode table block would
-store the block number for the current itable block.  Each subsequent
-inode, for up to 32 inodes, would use the 4 byte field to store
-successive 4 bytes of the filesystem UUID.  This would allow e2fsck to
-validate whether a particular inode table block read in from disk
-really was valid or not.  (I'm deliberately not including an actual
-checksum since that would complicate matters, and if we are going to
-store a checksum, we should have one set of fields which indicates
-that this block belongs to filesystem XYZ's inode table starting at
-position A, and another set of fields that indicates whether a one or
-more bits in the itable block have gotten flipped.  The two are
-different concepts and how we react may differ depending on what know
-is incorrect.)
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+Comment: Exmh version 2.5 07/13/2001
 
-> > One option is to use the Lustre e2fsprogs which has a patch that tries
-> > to detect such "garbage" inodes and wipe them clean, instead of trying
-> > to continue using them.
-> > 
-> > 	http://downloads.lustre.org/public/tools/e2fsprogs/latest/
-> > 
-> > That said, it may be too late to help because the previous e2fsck run
-> > will have done a lot of work to "clean up" the garbage inodes and they
-> > may no longer be above the "bad inode threshold".
-> 
-> I would love to give it a try if it gets me an intact file system
-> within hours rather than days or even weeks because it avoids the
-> lengthy algorithm that clones the multiply-claimed blocks.
+iD8DBQFJOFS7cC3lWbTT17ARAsHNAKC/zstxmr8vsP3AAE86P9tTrnkY8wCcC8w8
+G4ZMM1J9NwNGBaFSiDov2t4=
+=4uNx
+-----END PGP SIGNATURE-----
 
-Well, it's still worth a shot.
-
-
-> As the box is running a Ubuntu, I could not install the rpm directly.
-> So I compiled the source from e2fsprogs-1.40.11.sun1.tar.gz which is
-> contained in e2fsprogs-1.40.11.sun1-0redhat.src.rpm. gcc complained
-> about unsafe format strings but produced the e2fsck executable.
-> 
-> Do I need to use any command line option to the patched e2fsck? And
-> is there anything else I should consider before killing the currently
-> running e2fsck?
-
-Nope, try it and let us know whether it seems to work.  It might be
-possible to augment the hueristics to detect the bad inodes (i.e.,
-check to see if the modtimes/ctimes are totally looks reflect times
-that are totally outside of what might be considered "normal" times as
-an indication of itable block's sanity.
-
-But long-term (although it probably won't help you), we should
-seriously think about adding some inode sanity-check fields whose
-primary purpose is to tell us whether a itable block is likely to be
-valid or garbage.
-
-						- Ted
+--==_Exmh_1228428475_3727P--
