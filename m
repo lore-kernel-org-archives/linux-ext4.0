@@ -1,127 +1,82 @@
-From: Andre Noll <maan@systemlinux.org>
-Subject: Re: Problems with checking corrupted large ext3 file system
-Date: Thu, 4 Dec 2008 17:37:59 +0100
-Message-ID: <20081204163759.GR17966@skl-net.de>
-References: <20081203101100.GO17966@skl-net.de> <20081204000936.GE3186@webber.adilger.int>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [PATCH] ext4: Fix s_dirty_blocks_counter if block allocation
+	failed with nodelalloc
+Date: Thu, 04 Dec 2008 10:19:29 -0800
+Message-ID: <1228414769.7319.5.camel@mingming-laptop>
+References: <1228399465-6749-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="EguBBKnZWdUQS9Kz"
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from systemlinux.org ([83.151.29.59]:53957 "EHLO m18s25.vlinux.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752264AbYLDQxQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Dec 2008 11:53:16 -0500
-Content-Disposition: inline
-In-Reply-To: <20081204000936.GE3186@webber.adilger.int>
+Received: from e33.co.us.ibm.com ([32.97.110.151]:46449 "EHLO
+	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754797AbYLDSTk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Dec 2008 13:19:40 -0500
+Received: from d03relay02.boulder.ibm.com (d03relay02.boulder.ibm.com [9.17.195.227])
+	by e33.co.us.ibm.com (8.13.1/8.13.1) with ESMTP id mB4IJ2X3017971
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Dec 2008 11:19:02 -0700
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay02.boulder.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mB4IJd7c191398
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Dec 2008 11:19:39 -0700
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mB4IJU16017523
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Dec 2008 11:19:37 -0700
+In-Reply-To: <1228399465-6749-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
---EguBBKnZWdUQS9Kz
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
-
-On 17:09, Andreas Dilger wrote:
-> On Dec 03, 2008  11:11 +0100, Andre Noll wrote:
-> > I've some trouble checking a corrupted 9T large ext3 fs which resides
-> > on a logical volume. The underlying physical volumes are three hardware
-> > raid systems, one of which started to crash frequently. I was able
-> > to pvmove away the data from the buggy system, so everything is fine
-> > now on the hardware side.
+=E5=9C=A8 2008-12-04=E5=9B=9B=E7=9A=84 19:34 +0530=EF=BC=8CAneesh Kumar=
+ K.V=E5=86=99=E9=81=93=EF=BC=9A
+> With nodelalloc option we need to update the dirty block counter on
+> block allocation failure. This is needed because we increment the
+> dirty block counter early in the block allocation phase. Without
+> the patch s_dirty_blocks_counter goes wrong so that filesystem's
+> free blocks decreases incorrectly.
 >=20
-> A big question is what kernel you are running on.  Anything less than
-> 2.6.18-rhel5 (not sure what vanilla kernel) has bugs with ext3 > 8TB.
 
-The box is currently running 2.6.25.20 and was never running a kernel
-older than 2.6.23.x. So we should be safe regarding those bugs.
+Reviewed by: Mingming Cao <cmm@us.ibm.com>
 
-> The other question is whether there is any expectation that the data
-> moved from the bad RAID arrays was corrupted.
-
-I can't say for sure but I'd guess the data was already corrupted when
-I started the pvmove.
-
-> Running "e2fsck -y" vs. "e2fsck -p" will sometimes do "bad" things because
-> the "-y" forces it to continue on no matter what.
-
-True. But running with -p would abort and ask me to run without -p
-anyway.
-
-> >         /backup/data/solexa_analysis/ATH/MA/MA-30-29/run_30/4/length_42=
-/reads_0.fl (inode #145326082, mod time Tue Jan 22 05:09:36 2008)
-> > followed by
-> >=20
-> > 	Clone multiply-claimed blocks? yes
+> Tested-by: Akira Fujita <a-fujita@rs.jp.nec.com>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/mballoc.c |    9 ++++++++-
+>  1 files changed, 8 insertions(+), 1 deletions(-)
 >=20
-> This is likely fallout from the original corruption above.  The bad news
-> is that these "multiply-claimed blocks" are really bogus because of the
-> garbage in the missing inode tables...  e2fsck has turned random garbage
-> into inodes, and it results in what you are seeing now.
-
-OK, so I guess I would like to run e2fsck again without cloning those
-blocks.
-
-> I would suggest as a starter to run "debugfs -c {devicename}" and
-> use this to explore the filesystem a bit.  This can be done while
-> e2fsck is running, and will give you an idea of what data is still
-> there.
-
-Very good idea, thanks. We just did this and the important files
-seem to be there but some of them, in particular those which were
-mentioned in the fsck output, contain garbage or data from other files
-in the middle.  So the expensive O(n^2) algorithm indeed seems to be
-of little use for our particular case.
-
-> If you think that a majority of your file data (or even just the
-> important bits) are available, then I would suggest killing e2fsck,
-> mounting the filesystem read-only, and copying as much as possible.
-
-We are considering this, but it also means we have to quickly get 9T
-of additional disk space which could turn out to be difficult given the
-fact we already borrowed 16T from another department for the pvmove :)
-
-> One option is to use the Lustre e2fsprogs which has a patch that tries
-> to detect such "garbage" inodes and wipe them clean, instead of trying
-> to continue using them.
+> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+> index bacc2f4..22d31c3 100644
+> --- a/fs/ext4/mballoc.c
+> +++ b/fs/ext4/mballoc.c
+> @@ -4550,7 +4550,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handl=
+e,
+>  	}
+>  	if (ar->len =3D=3D 0) {
+>  		*errp =3D -EDQUOT;
+> -		return 0;
+> +		goto out3;
+>  	}
+>  	inquota =3D ar->len;
 >=20
-> 	http://downloads.lustre.org/public/tools/e2fsprogs/latest/
+> @@ -4623,6 +4623,13 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *hand=
+le,
+>  out1:
+>  	if (ar->len < inquota)
+>  		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
+> +out3:
+> +	if (!ar->len) {
+> +		if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag)
+> +			/* release all the reserved blocks if non delalloc */
+> +			percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+> +						reserv_blks);
+> +	}
 >=20
-> That said, it may be too late to help because the previous e2fsck run
-> will have done a lot of work to "clean up" the garbage inodes and they
-> may no longer be above the "bad inode threshold".
+>  	return block;
+>  }
 
-I would love to give it a try if it gets me an intact file system
-within hours rather than days or even weeks because it avoids the
-lengthy algorithm that clones the multiply-claimed blocks.
-
-As the box is running a Ubuntu, I could not install the rpm directly.
-So I compiled the source from e2fsprogs-1.40.11.sun1.tar.gz which is
-contained in e2fsprogs-1.40.11.sun1-0redhat.src.rpm. gcc complained
-about unsafe format strings but produced the e2fsck executable.
-
-Do I need to use any command line option to the patched e2fsck? And
-is there anything else I should consider before killing the currently
-running e2fsck?
-
-Thanks a lot for your help.
-Andre
---=20
-The only person who always got his work done by Friday was Robinson Crusoe
-
---EguBBKnZWdUQS9Kz
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.1 (GNU/Linux)
-
-iD8DBQFJOAdnWto1QDEAkw8RAjqOAJ0SiOmoZJ65SyKLdl2wSy6QjQtpcACfflpP
-9+URZ7CH+fHmRzYBWLbjZgw=
-=zbP0
------END PGP SIGNATURE-----
-
---EguBBKnZWdUQS9Kz--
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
