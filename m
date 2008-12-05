@@ -1,51 +1,102 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH v4] ext3, ext4: make i signed in do_split()
-Date: Fri, 5 Dec 2008 11:32:01 -0500
-Message-ID: <20081205163201.GG1323@mit.edu>
-References: <49310E1A.60105@gmail.com> <20081202120751.8b0226ca.akpm@linux-foundation.org> <4935A21A.60509@gmail.com>
+From: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Subject: Re: [PATCH] percpu_counter: FBC_BATCH might be too big
+Date: Fri, 05 Dec 2008 17:40:43 +0100
+Message-ID: <1228495243.24126.1.camel@twins>
+References: <4939513C.3090101@cosmosbay.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, sct@redhat.com,
-	adilger@sun.com, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Roel Kluin <roel.kluin@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:50317 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752198AbYLEQci (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Dec 2008 11:32:38 -0500
-Content-Disposition: inline
-In-Reply-To: <4935A21A.60509@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Mike Travis <travis@sgi.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	linux kernel <linux-kernel@vger.kernel.org>,
+	Christoph Lameter <cl@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Eric Dumazet <dada1@cosmosbay.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752252AbYLEQlB@vger.kernel.org>
+In-Reply-To: <4939513C.3090101@cosmosbay.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 02, 2008 at 10:01:14PM +0100, Roel Kluin wrote:
-> Andrew Morton wrote:
-> > On Sat, 29 Nov 2008 04:40:42 -0500
-> > roel kluin <roel.kluin@gmail.com> wrote:
-> > 
-> >> unsigned i >= 0 is always true
+On Fri, 2008-12-05 at 17:05 +0100, Eric Dumazet wrote:
+> For NR_CPUS >= 16 values, FBC_BATCH is 2*NR_CPUS
 > 
-> >> -	for (i = count-1; i >= 0; i--) {
-> >> +	for (i = count-1; i < count; i--) {
-> 			break;
+> Considering more and more distros are using high NR_CPUS values,
+> it makes sense to use a more sensible value for FBC_BATCH.
 > 
-> > A local variable called `i' should always have signed type.  In fact,
-> > it should have `int' type.
+> A sensible value is 2*num_online_cpus(), with a minimum value of 32
+> (This minimum value helps branch prediction in __percpu_counter_add())
 > 
-> You are right. although count is unsigned, dx_make_map() returns int, which is
-> assigned to count, so this should fit in an int. (If you ack this, make sure to
-> get this patch, and not one of the others.)
+> We already have a hotcpu notifier, so we can adjust FBC_BATCH dynamically.
 
-ACK.  I'll take care of getting this into the patch queue.  I'll
-include both the ext3 and ext4 variants, since this one is simple
-enough that it's highly unlikely to conflict with anything Andrew
-might have in the -mm tree.  This is also much more of a cleanup than
-anything else, so I don't think we need to push it until the merge
-window.  (I *think* it might be possible for a 2k filesystems and
-*very* long filenames we might possibly be able to trigger a
-failure but it would be very hard to do, and it's been around for a
-very long time without anyone complaining about an actual real-life
-problem getting trigger.)
+Agreed, that is one of the reasons the proportion code doesn't use the
+FBC_BATCH stuff.
 
-						- Ted
+Acked-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+
+> Signed-off-by: Eric Dumazet <dada1@cosmosbay.com>
+> ---
+>  include/linux/percpu_counter.h |    6 +-----
+>  lib/percpu_counter.c           |   14 +++++++++++++-
+>  2 files changed, 14 insertions(+), 6 deletions(-)
+> 
+> diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
+> index 9007ccd..c42a184 100644
+> --- a/include/linux/percpu_counter.h
+> +++ b/include/linux/percpu_counter.h
+> @@ -24,11 +24,7 @@ struct percpu_counter {
+>  	s32 *counters;
+>  };
+>  
+> -#if NR_CPUS >= 16
+> -#define FBC_BATCH	(NR_CPUS*2)
+> -#else
+> -#define FBC_BATCH	(NR_CPUS*4)
+> -#endif
+> +extern int FBC_BATCH;
+>  
+>  int percpu_counter_init(struct percpu_counter *fbc, s64 amount);
+>  int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount);
+> diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
+> index a866389..2fcf943 100644
+> --- a/lib/percpu_counter.c
+> +++ b/lib/percpu_counter.c
+> @@ -114,6 +114,16 @@ void percpu_counter_destroy(struct percpu_counter *fbc)
+>  }
+>  EXPORT_SYMBOL(percpu_counter_destroy);
+>  
+> +int FBC_BATCH __read_mostly = 32;
+> +EXPORT_SYMBOL(FBC_BATCH);
+> +
+> +static void compute_batch_value(void)
+> +{
+> +	int nr = num_online_cpus();
+> +
+> +	FBC_BATCH = max(32, nr*2);
+> +}
+> +
+>  #ifdef CONFIG_HOTPLUG_CPU
+>  static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+>  					unsigned long action, void *hcpu)
+> @@ -121,6 +131,7 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+>  	unsigned int cpu;
+>  	struct percpu_counter *fbc;
+>  
+> +	compute_batch_value();
+>  	if (action != CPU_DEAD)
+>  		return NOTIFY_OK;
+>  
+> @@ -139,11 +150,12 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+>  	mutex_unlock(&percpu_counters_lock);
+>  	return NOTIFY_OK;
+>  }
+> +#endif
+>  
+>  static int __init percpu_counter_startup(void)
+>  {
+> +	compute_batch_value();
+>  	hotcpu_notifier(percpu_counter_hotcpu_callback, 0);
+>  	return 0;
+>  }
+>  module_init(percpu_counter_startup);
+> -#endif
