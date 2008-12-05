@@ -1,102 +1,42 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: [PATCH] percpu_counter: FBC_BATCH might be too big
-Date: Fri, 05 Dec 2008 17:40:43 +0100
-Message-ID: <1228495243.24126.1.camel@twins>
-References: <4939513C.3090101@cosmosbay.com>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [stable] [patch 086/104] ext4: fix initialization of UNINIT
+	bitmap blocks
+Date: Fri, 5 Dec 2008 10:36:13 -0800
+Message-ID: <20081205183613.GB2144@kroah.com>
+References: <20081203193901.715896543@mini.kroah.org> <20081203195618.GI8950@kroah.com> <20081204041016.GA13887@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Mike Travis <travis@sgi.com>,
-	"David S. Miller" <davem@davemloft.net>,
-	linux kernel <linux-kernel@vger.kernel.org>,
-	Christoph Lameter <cl@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Eric Dumazet <dada1@cosmosbay.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752252AbYLEQlB@vger.kernel.org>
-In-Reply-To: <4939513C.3090101@cosmosbay.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>, Greg KH <gregkh@suse.de>,
+	linux-kernel@vger.kernel.org, stable@kernel.org,
+	Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from kroah.org ([198.145.64.141]:49013 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752198AbYLESip (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Dec 2008 13:38:45 -0500
+Content-Disposition: inline
+In-Reply-To: <20081204041016.GA13887@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2008-12-05 at 17:05 +0100, Eric Dumazet wrote:
-> For NR_CPUS >= 16 values, FBC_BATCH is 2*NR_CPUS
+On Wed, Dec 03, 2008 at 11:10:16PM -0500, Theodore Tso wrote:
+> On Wed, Dec 03, 2008 at 11:56:18AM -0800, Greg KH wrote:
+> > 2.6.27-stable review patch.  If anyone has any objections, please let us know.
 > 
-> Considering more and more distros are using high NR_CPUS values,
-> it makes sense to use a more sensible value for FBC_BATCH.
+> Turns out this patch introduces a worse regression than it fixes.  The
+> bug that the patches fixes is that on-line resizes of filesystems with
+> a 1k blocksize will usually fail.  The regression is that when a
+> filesystem with 1k blocksize is stressed, the filesystem can get
+> corrupted.  On balance, on-line resizing failing is less of a disaster
+> than corrupting the filesystem when its stressed.  Fortunately, it's
+> only an issue when the filesystem blocksize is less than the page
+> size, which isn't the common case at least for the x86.  
 > 
-> A sensible value is 2*num_online_cpus(), with a minimum value of 32
-> (This minimum value helps branch prediction in __percpu_counter_add())
-> 
-> We already have a hotcpu notifier, so we can adjust FBC_BATCH dynamically.
+> There are patches queued up to address this, but they haven't hit
+> mainline yet.  Probably best to pull this from the stable tree for
+> now.
 
-Agreed, that is one of the reasons the proportion code doesn't use the
-FBC_BATCH stuff.
+Thanks for letting me know, I've now dropped it from this release.
 
-Acked-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-
-> Signed-off-by: Eric Dumazet <dada1@cosmosbay.com>
-> ---
->  include/linux/percpu_counter.h |    6 +-----
->  lib/percpu_counter.c           |   14 +++++++++++++-
->  2 files changed, 14 insertions(+), 6 deletions(-)
-> 
-> diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
-> index 9007ccd..c42a184 100644
-> --- a/include/linux/percpu_counter.h
-> +++ b/include/linux/percpu_counter.h
-> @@ -24,11 +24,7 @@ struct percpu_counter {
->  	s32 *counters;
->  };
->  
-> -#if NR_CPUS >= 16
-> -#define FBC_BATCH	(NR_CPUS*2)
-> -#else
-> -#define FBC_BATCH	(NR_CPUS*4)
-> -#endif
-> +extern int FBC_BATCH;
->  
->  int percpu_counter_init(struct percpu_counter *fbc, s64 amount);
->  int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount);
-> diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
-> index a866389..2fcf943 100644
-> --- a/lib/percpu_counter.c
-> +++ b/lib/percpu_counter.c
-> @@ -114,6 +114,16 @@ void percpu_counter_destroy(struct percpu_counter *fbc)
->  }
->  EXPORT_SYMBOL(percpu_counter_destroy);
->  
-> +int FBC_BATCH __read_mostly = 32;
-> +EXPORT_SYMBOL(FBC_BATCH);
-> +
-> +static void compute_batch_value(void)
-> +{
-> +	int nr = num_online_cpus();
-> +
-> +	FBC_BATCH = max(32, nr*2);
-> +}
-> +
->  #ifdef CONFIG_HOTPLUG_CPU
->  static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
->  					unsigned long action, void *hcpu)
-> @@ -121,6 +131,7 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
->  	unsigned int cpu;
->  	struct percpu_counter *fbc;
->  
-> +	compute_batch_value();
->  	if (action != CPU_DEAD)
->  		return NOTIFY_OK;
->  
-> @@ -139,11 +150,12 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
->  	mutex_unlock(&percpu_counters_lock);
->  	return NOTIFY_OK;
->  }
-> +#endif
->  
->  static int __init percpu_counter_startup(void)
->  {
-> +	compute_batch_value();
->  	hotcpu_notifier(percpu_counter_hotcpu_callback, 0);
->  	return 0;
->  }
->  module_init(percpu_counter_startup);
-> -#endif
+greg k-h
