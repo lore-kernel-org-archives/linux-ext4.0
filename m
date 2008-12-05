@@ -1,58 +1,117 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: tune2fs -I seems dangerous
-Date: Thu, 04 Dec 2008 21:08:18 -0600
-Message-ID: <49389B22.9050700@redhat.com>
-References: <49385927.9070003@redhat.com> <20081205012430.GC1323@mit.edu>
+From: "Duane Griffin" <duaneg@dghda.com>
+Subject: Checking link targets are NULL-terminated
+Date: Fri, 5 Dec 2008 14:48:10 +0000
+Message-ID: <20081205144810.GA25585@dastardly.home.dghda.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:50861 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752177AbYLEDIm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 4 Dec 2008 22:08:42 -0500
-In-Reply-To: <20081205012430.GC1323@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: linux-kernel <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756090AbYLEOs1@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Theodore Tso wrote:
+Hi folks,
 
-> I think is fair, though, to say that tune2fs -I code was written by
-> someone who wasn't sufficiently paranoid to think through all of the
-> failure cases.  There is in fact a FIXME!! comment for case #2, but at
-> the very least what should have happend is that the move_block should
-> keep track of how many blocks were moved, and if it wasn't equal to
-> needed blocks, it should have signalled an error because it would have
-> indicated either a programming bug or a hardware bug or a filesystem
-> corruption bug.  Either way, it shouldn't move forward because there
-> is the risk that users' files might get destroyed.
+I am looking at a report of an intermittent BUG caused by an
+intentionally corrupted ext2 filesystem:
+http://bugzilla.kernel.org/show_bug.cgi?id=11412
 
-So for kicks, when I try ext3:
+What I think is happening is generic_readlink gets the name via
+i_ops->follow_link and passes it into vfs_readlink, without it
+necessarily being validating anywhere. If the name is not
+NULL-terminated the strlen call in vfs_readlink may run off past the end
+of the page. I think this is potentially happening in
+page_follow_link_light, as well as ext2_follow_link, so it isn't just
+ext* that is affected.
 
-mkfs.ext3 -F -I 128 -N 16384 fsfile
-mount -o loop fsfile mnt
-for I in `seq 1 16384`; do echo $I > mnt/file.$I; done
-umount mnt
-tune2fs -I 256 fsfile
+Does this sound correct, or have I missed something?
 
-tune2fs 1.41.3 (12-Oct-2008)
-Error in resizing the inode size.
-Run e2undo to undo the file system changes.
+Assuming this is a real problem, does anyone have a better solution than
+scanning the name for a \0 (in ext2_follow_link and
+page_follow_link_light) and returning -ENAMETOOLONG if we can't find
+one? I.e. something like this:
 
-e2undo
-Usage: e2undo <transaction file> <filesystem>
+diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
+index 4e2426e..9b01af2 100644
+--- a/fs/ext2/symlink.c
++++ b/fs/ext2/symlink.c
+@@ -24,8 +24,14 @@
+ static void *ext2_follow_link(struct dentry *dentry, struct nameidata *nd)
+ {
+ 	struct ext2_inode_info *ei = EXT2_I(dentry->d_inode);
+-	nd_set_link(nd, (char *)ei->i_data);
+-	return NULL;
++	void *err = NULL;
++
++	if (memchr(ei->i_data, 0, sizeof(ei->i_data)) == NULL)
++		err = ERR_PTR(-ENAMETOOLONG);
++	else
++		nd_set_link(nd, (char *)ei->i_data);
++
++	return err;
+ }
+ 
+ const struct inode_operations ext2_symlink_inode_operations = {
+diff --git a/fs/namei.c b/fs/namei.c
+index d34e0f9..f20e94b 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2750,29 +2750,49 @@ static char *page_getlink(struct dentry * dentry, struct page **ppage)
+ {
+ 	struct page * page;
+ 	struct address_space *mapping = dentry->d_inode->i_mapping;
++	char *kaddr;
++
+ 	page = read_mapping_page(mapping, 0, NULL);
+ 	if (IS_ERR(page))
+ 		return (char*)page;
++
++	kaddr = kmap(page);
++	if (memchr(kaddr, 0, PAGE_SIZE) == NULL) {
++		kunmap(kaddr);
++		page_cache_release(page);
++		return ERR_PTR(-ENAMETOOLONG);
++	}
++
+ 	*ppage = page;
+-	return kmap(page);
++	return kaddr;
+ }
+ 
+ int page_readlink(struct dentry *dentry, char __user *buffer, int buflen)
+ {
++	int res;
+ 	struct page *page = NULL;
+ 	char *s = page_getlink(dentry, &page);
+-	int res = vfs_readlink(dentry,buffer,buflen,s);
++
++	if (IS_ERR(s))
++		return PTR_ERR(s);
++
++	res = vfs_readlink(dentry, buffer, buflen, s);
+ 	if (page) {
+ 		kunmap(page);
+ 		page_cache_release(page);
+ 	}
++
+ 	return res;
+ }
+ 
+ void *page_follow_link_light(struct dentry *dentry, struct nameidata *nd)
+ {
+ 	struct page *page = NULL;
+-	nd_set_link(nd, page_getlink(dentry, &page));
++	char *name = page_getlink(dentry, &page);
++	if (IS_ERR(name))
++		return name;
++
++	nd_set_link(nd, name);
+ 	return page;
+ }
+ 
+Cheers,
+Duane.
 
-it seems to me that a) it'd be nice to know what the error was (likely
-no room for the larger inodes?) and maybe not even begin if you know
-you'll hit an error due to free space, and b) maybe e2undo (or the
-previous command) should give you a hint about where the e2undo
-transaction file is?
-
-It's no my intent to pick on anyone who wrote the code, but it seems
-like maybe this should be disabled in the next release unless these
-issues get ironed out...
-
-Thanks,
--Eric
+-- 
+"I never could learn to drink that blood and call it wine" - Bob Dylan
