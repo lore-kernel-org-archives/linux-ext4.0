@@ -1,33 +1,58 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
 Subject: Re: tune2fs -I seems dangerous
-Date: Thu, 4 Dec 2008 20:25:23 -0500
-Message-ID: <20081205012523.GD1323@mit.edu>
-References: <49385927.9070003@redhat.com> <4938645C.5010601@x2a.org>
+Date: Thu, 04 Dec 2008 21:08:18 -0600
+Message-ID: <49389B22.9050700@redhat.com>
+References: <49385927.9070003@redhat.com> <20081205012430.GC1323@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Jonathan Bastien-Filiatrault <joe@x2a.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:50770 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752022AbYLEBZh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Dec 2008 20:25:37 -0500
-Content-Disposition: inline
-In-Reply-To: <4938645C.5010601@x2a.org>
+Received: from mx2.redhat.com ([66.187.237.31]:50861 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752177AbYLEDIm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 4 Dec 2008 22:08:42 -0500
+In-Reply-To: <20081205012430.GC1323@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 04, 2008 at 06:14:36PM -0500, Jonathan Bastien-Filiatrault wrote:
-> I have had a similar experience converting from 128 to 256 bytes inodes.
-> After a while, tune2fs -I would simply stop doing IO and using a lot of
-> CPU with a few IO bursts every half-hour or so. This is on a recent/fast
-> x86-64 computer. I had to cancel the thing after leaving it running for
-> over 24 hours.
+Theodore Tso wrote:
 
-The speed problems have been reported and mostly addressed in the
-e2fsprogs git repository.  There's one more patch that should
-completely solve the tune2fs -I performance problem, but I haven't had
-time to audit the patch just yet.  It is on my to do list.
+> I think is fair, though, to say that tune2fs -I code was written by
+> someone who wasn't sufficiently paranoid to think through all of the
+> failure cases.  There is in fact a FIXME!! comment for case #2, but at
+> the very least what should have happend is that the move_block should
+> keep track of how many blocks were moved, and if it wasn't equal to
+> needed blocks, it should have signalled an error because it would have
+> indicated either a programming bug or a hardware bug or a filesystem
+> corruption bug.  Either way, it shouldn't move forward because there
+> is the risk that users' files might get destroyed.
 
-     	      	  	     	      	       	  - Ted
+So for kicks, when I try ext3:
+
+mkfs.ext3 -F -I 128 -N 16384 fsfile
+mount -o loop fsfile mnt
+for I in `seq 1 16384`; do echo $I > mnt/file.$I; done
+umount mnt
+tune2fs -I 256 fsfile
+
+tune2fs 1.41.3 (12-Oct-2008)
+Error in resizing the inode size.
+Run e2undo to undo the file system changes.
+
+e2undo
+Usage: e2undo <transaction file> <filesystem>
+
+it seems to me that a) it'd be nice to know what the error was (likely
+no room for the larger inodes?) and maybe not even begin if you know
+you'll hit an error due to free space, and b) maybe e2undo (or the
+previous command) should give you a hint about where the e2undo
+transaction file is?
+
+It's no my intent to pick on anyone who wrote the code, but it seems
+like maybe this should be disabled in the next release unless these
+issues get ironed out...
+
+Thanks,
+-Eric
