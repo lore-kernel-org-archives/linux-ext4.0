@@ -1,117 +1,94 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: Checking link targets are NULL-terminated
-Date: Fri, 5 Dec 2008 14:48:10 +0000
-Message-ID: <20081205144810.GA25585@dastardly.home.dghda.com>
+From: Eric Dumazet <dada1@cosmosbay.com>
+Subject: [PATCH] percpu_counter: FBC_BATCH might be too big
+Date: Fri, 05 Dec 2008 17:05:16 +0100
+Message-ID: <4939513C.3090101@cosmosbay.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: linux-kernel <linux-kernel@vger.kernel.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1756090AbYLEOs1@vger.kernel.org>
-Content-Disposition: inline
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	Mike Travis <travis@sgi.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	linux kernel <linux-kernel@vger.kernel.org>,
+	Christoph Lameter <cl@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755253AbYLEQGQ@vger.kernel.org>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-Hi folks,
+For NR_CPUS >= 16 values, FBC_BATCH is 2*NR_CPUS
 
-I am looking at a report of an intermittent BUG caused by an
-intentionally corrupted ext2 filesystem:
-http://bugzilla.kernel.org/show_bug.cgi?id=11412
+Considering more and more distros are using high NR_CPUS values,
+it makes sense to use a more sensible value for FBC_BATCH.
 
-What I think is happening is generic_readlink gets the name via
-i_ops->follow_link and passes it into vfs_readlink, without it
-necessarily being validating anywhere. If the name is not
-NULL-terminated the strlen call in vfs_readlink may run off past the end
-of the page. I think this is potentially happening in
-page_follow_link_light, as well as ext2_follow_link, so it isn't just
-ext* that is affected.
+A sensible value is 2*num_online_cpus(), with a minimum value of 32
+(This minimum value helps branch prediction in __percpu_counter_add())
 
-Does this sound correct, or have I missed something?
+We already have a hotcpu notifier, so we can adjust FBC_BATCH dynamically.
 
-Assuming this is a real problem, does anyone have a better solution than
-scanning the name for a \0 (in ext2_follow_link and
-page_follow_link_light) and returning -ENAMETOOLONG if we can't find
-one? I.e. something like this:
+Signed-off-by: Eric Dumazet <dada1@cosmosbay.com>
+---
+ include/linux/percpu_counter.h |    6 +-----
+ lib/percpu_counter.c           |   14 +++++++++++++-
+ 2 files changed, 14 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
-index 4e2426e..9b01af2 100644
---- a/fs/ext2/symlink.c
-+++ b/fs/ext2/symlink.c
-@@ -24,8 +24,14 @@
- static void *ext2_follow_link(struct dentry *dentry, struct nameidata *nd)
- {
- 	struct ext2_inode_info *ei = EXT2_I(dentry->d_inode);
--	nd_set_link(nd, (char *)ei->i_data);
--	return NULL;
-+	void *err = NULL;
-+
-+	if (memchr(ei->i_data, 0, sizeof(ei->i_data)) == NULL)
-+		err = ERR_PTR(-ENAMETOOLONG);
-+	else
-+		nd_set_link(nd, (char *)ei->i_data);
-+
-+	return err;
- }
+diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
+index 9007ccd..c42a184 100644
+--- a/include/linux/percpu_counter.h
++++ b/include/linux/percpu_counter.h
+@@ -24,11 +24,7 @@ struct percpu_counter {
+ 	s32 *counters;
+ };
  
- const struct inode_operations ext2_symlink_inode_operations = {
-diff --git a/fs/namei.c b/fs/namei.c
-index d34e0f9..f20e94b 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -2750,29 +2750,49 @@ static char *page_getlink(struct dentry * dentry, struct page **ppage)
- {
- 	struct page * page;
- 	struct address_space *mapping = dentry->d_inode->i_mapping;
-+	char *kaddr;
-+
- 	page = read_mapping_page(mapping, 0, NULL);
- 	if (IS_ERR(page))
- 		return (char*)page;
-+
-+	kaddr = kmap(page);
-+	if (memchr(kaddr, 0, PAGE_SIZE) == NULL) {
-+		kunmap(kaddr);
-+		page_cache_release(page);
-+		return ERR_PTR(-ENAMETOOLONG);
-+	}
-+
- 	*ppage = page;
--	return kmap(page);
-+	return kaddr;
- }
+-#if NR_CPUS >= 16
+-#define FBC_BATCH	(NR_CPUS*2)
+-#else
+-#define FBC_BATCH	(NR_CPUS*4)
+-#endif
++extern int FBC_BATCH;
  
- int page_readlink(struct dentry *dentry, char __user *buffer, int buflen)
- {
-+	int res;
- 	struct page *page = NULL;
- 	char *s = page_getlink(dentry, &page);
--	int res = vfs_readlink(dentry,buffer,buflen,s);
-+
-+	if (IS_ERR(s))
-+		return PTR_ERR(s);
-+
-+	res = vfs_readlink(dentry, buffer, buflen, s);
- 	if (page) {
- 		kunmap(page);
- 		page_cache_release(page);
- 	}
-+
- 	return res;
+ int percpu_counter_init(struct percpu_counter *fbc, s64 amount);
+ int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount);
+diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
+index a866389..2fcf943 100644
+--- a/lib/percpu_counter.c
++++ b/lib/percpu_counter.c
+@@ -114,6 +114,16 @@ void percpu_counter_destroy(struct percpu_counter *fbc)
  }
+ EXPORT_SYMBOL(percpu_counter_destroy);
  
- void *page_follow_link_light(struct dentry *dentry, struct nameidata *nd)
- {
- 	struct page *page = NULL;
--	nd_set_link(nd, page_getlink(dentry, &page));
-+	char *name = page_getlink(dentry, &page);
-+	if (IS_ERR(name))
-+		return name;
++int FBC_BATCH __read_mostly = 32;
++EXPORT_SYMBOL(FBC_BATCH);
 +
-+	nd_set_link(nd, name);
- 	return page;
- }
++static void compute_batch_value(void)
++{
++	int nr = num_online_cpus();
++
++	FBC_BATCH = max(32, nr*2);
++}
++
+ #ifdef CONFIG_HOTPLUG_CPU
+ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+ 					unsigned long action, void *hcpu)
+@@ -121,6 +131,7 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+ 	unsigned int cpu;
+ 	struct percpu_counter *fbc;
  
-Cheers,
-Duane.
-
--- 
-"I never could learn to drink that blood and call it wine" - Bob Dylan
++	compute_batch_value();
+ 	if (action != CPU_DEAD)
+ 		return NOTIFY_OK;
+ 
+@@ -139,11 +150,12 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+ 	mutex_unlock(&percpu_counters_lock);
+ 	return NOTIFY_OK;
+ }
++#endif
+ 
+ static int __init percpu_counter_startup(void)
+ {
++	compute_batch_value();
+ 	hotcpu_notifier(percpu_counter_hotcpu_callback, 0);
+ 	return 0;
+ }
+ module_init(percpu_counter_startup);
+-#endif
