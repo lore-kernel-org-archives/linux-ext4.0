@@ -1,231 +1,129 @@
-From: Eric Dumazet <dada1@cosmosbay.com>
-Subject: Re: [PATCH] percpu_counter: Fix __percpu_counter_sum()
-Date: Sun, 07 Dec 2008 14:28:00 +0100
-Message-ID: <493BCF60.1080409@cosmosbay.com>
-References: <4936D287.6090206@cosmosbay.com>	<4936EB04.8000609@cosmosbay.com> <20081206202233.3b74febc.akpm@linux-foundation.org>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH, take2] percpu_counter: FBC_BATCH might be too big
+Date: Sun, 7 Dec 2008 09:09:18 -0800
+Message-ID: <20081207090918.595627b2.akpm@linux-foundation.org>
+References: <4939513C.3090101@cosmosbay.com>
+	<493B9699.8080603@cosmosbay.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux kernel <linux-kernel@vger.kernel.org>,
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	Mike Travis <travis@sgi.com>,
 	"David S. Miller" <davem@davemloft.net>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>,
-	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux kernel <linux-kernel@vger.kernel.org>,
+	Christoph Lameter <cl@linux-foundation.org>,
 	linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+To: Eric Dumazet <dada1@cosmosbay.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gw1.cosmosbay.com ([86.65.150.130]:43910 "EHLO
-	gw1.cosmosbay.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753493AbYLGN2h convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Dec 2008 08:28:37 -0500
-In-Reply-To: <20081206202233.3b74febc.akpm@linux-foundation.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:48520 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754172AbYLGRKD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Dec 2008 12:10:03 -0500
+In-Reply-To: <493B9699.8080603@cosmosbay.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andrew Morton a =E9crit :
-> On Wed, 03 Dec 2008 21:24:36 +0100 Eric Dumazet <dada1@cosmosbay.com>=
- wrote:
->=20
->> Eric Dumazet a __crit :
->>
->> 1) __percpu_counter_sum() is buggy, it should not write
->> on per_cpu_ptr(fbc->counters, cpu), or another cpu
->> could get its changes lost.
->>
->> __percpu_counter_sum should be read only (const struct percpu_counte=
-r *fbc),
->> and no locking needed.
->=20
-> No, we can't do this - it will break ext4.
->=20
-> Take a closer look at 1f7c14c62ce63805f9574664a6c6de3633d4a354 and at
-> e8ced39d5e8911c662d4d69a342b9d053eaaac4e.
->=20
-> I suggest that what we do is to revert both those changes.  We can
-> worry about the possibly-unneeded spin_lock later, in a separate patc=
-h.
->=20
-> It should have been a separate patch anyway.  It's conceptually
-> unrelated and is not a bugfix, but it was mixed in with a bugfix.
->=20
-> Mingming, this needs urgent consideration, please.  Note that I had t=
-o
-> make additional changes to ext4 due to the subsequent introduction of
-> the dirty_blocks counter.
->=20
->=20
-> Please read the below changelogs carefully and check that I have got =
-my
-> head around this correctly - I may not have done.
->=20
+On Sun, 07 Dec 2008 10:25:45 +0100 Eric Dumazet <dada1@cosmosbay.com> wrote:
 
+> In this second version I guarded hotcpu_notifier() call by
+> a #ifdef CONFIG_HOTPLUG_CPU
+> 
+> I wonder why hotcpu_notifier() is not a null op if !CONFIG_HOTPLUG_CPU
+> 
+> Thank you
+> 
+> [PATCH] percpu_counter: FBC_BATCH might be too big
+> 
+> For NR_CPUS >= 16 values, FBC_BATCH is 2*NR_CPUS
+> 
+> Considering more and more distros are using high NR_CPUS values,
+> it makes sense to use a more sensible value for FBC_BATCH.
+> 
+> A sensible value is 2*num_online_cpus(), with a minimum value of 32
+> (This minimum value helps branch prediction in __percpu_counter_add())
+> 
+> We already have a hotcpu notifier, so we can adjust FBC_BATCH dynamically.
 
-Hum... e8ced39d5e8911c662d4d69a342b9d053eaaac4e is probably following
-the wrong path, but I see the intent. Even in the 'nr_files' case, it c=
-ould
-help to reduce excessive calls to percpu_counter_sum()
+Yup, anything using NR_CPUS is probably wrong.
 
-What we can do is to use two s64 counters (only in SMP):
+> diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
+> index 9007ccd..c42a184 100644
+> --- a/include/linux/percpu_counter.h
+> +++ b/include/linux/percpu_counter.h
+> @@ -24,11 +24,7 @@ struct percpu_counter {
+>  	s32 *counters;
+>  };
+>  
+> -#if NR_CPUS >= 16
+> -#define FBC_BATCH	(NR_CPUS*2)
+> -#else
+> -#define FBC_BATCH	(NR_CPUS*4)
+> -#endif
+> +extern int FBC_BATCH;
 
-s64 reference_count
-s64 shadow_count
+y:/usr/src/linux-2.6.28-rc7> grep -r FBC_BATCH . | wc -l
+7
 
-One that is guaranteed to be touched with appropriate locking
-in __percpu_counter_add()
+Can we fix this properly please?  It should now become lower case, and
+it was a pretty dopey name anyway - now would be a good time to improve
+it. `percpu_counter_batch'?
 
-Another one that might be changed by percpu_counter_sum(), without
-any locking, acting as a shadow.
+>  int percpu_counter_init(struct percpu_counter *fbc, s64 amount);
+>  int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount);
+> diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
+> index a866389..e21ce7c 100644
+> --- a/lib/percpu_counter.c
+> +++ b/lib/percpu_counter.c
+> @@ -114,6 +114,16 @@ void percpu_counter_destroy(struct percpu_counter *fbc)
+>  }
+>  EXPORT_SYMBOL(percpu_counter_destroy);
+>  
+> +int FBC_BATCH __read_mostly = 32;
+> +EXPORT_SYMBOL(FBC_BATCH);
+> +
+> +static void compute_batch_value(void)
+> +{
+> +	int nr = num_online_cpus();
+> +
+> +	FBC_BATCH = max(32, nr*2);
+> +}
+> +
+>  #ifdef CONFIG_HOTPLUG_CPU
+>  static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+>  					unsigned long action, void *hcpu)
+> @@ -121,6 +131,7 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+>  	unsigned int cpu;
+>  	struct percpu_counter *fbc;
+>  
+> +	compute_batch_value();
+>  	if (action != CPU_DEAD)
+>  		return NOTIFY_OK;
+>  
+> @@ -139,11 +150,14 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+>  	mutex_unlock(&percpu_counters_lock);
+>  	return NOTIFY_OK;
+>  }
+> +#endif
+>  
+>  static int __init percpu_counter_startup(void)
+>  {
+> +	compute_batch_value();
+> +#ifdef CONFIG_HOTPLUG_CPU
+>  	hotcpu_notifier(percpu_counter_hotcpu_callback, 0);
+> +#endif
+>  	return 0;
+>  }
+>  module_init(percpu_counter_startup);
+> -#endif
 
-Thanks
+hm, now what's going on in there?  We should be able to drop the #ifdef
+CONFIG_HOTPLUG_CPU from lib/percpu_counter.c altogether. 
+hotcpu_notifier() will do the right thing, and the compiler should
+generate no code for percpu_counter_hotcpu_callback() if
+CONFIG_HOTPLUG_CPU=n.  
 
-[PATCH] percpu_counter: Fix __percpu_counter_sum()
+Do
 
-commit e8ced39d5e8911c662d4d69a342b9d053eaaac4e (percpu_counter:=20
-new function percpu_counter_sum_and_set) was to make __percpu_counter_s=
-um()
-being able to recompute the estimate of a percpu_counter value.
+	$EDITOR  $(grep -l hotcpu_notifier */*.c)
 
-Problem is that we cannot write on other cpus counters without racing.
-
-What we can do is to use two s64 counter, one acting as a reference
-that we should not change in __percpu_counter_sum(), another one, shado=
-wing
-the reference.
-
-percpu_counter_read() is reading the shadow
-percpu_counter_sum() reads the reference and recompute the shadow.
-
-If a given percpu_counter is never 'summed', then its shadow_counter
-is always equal to its reference.
-
-Signed-off-by: Eric Dumazet <dada1@cosmosbay.com>
----
- include/linux/percpu_counter.h |    9 +++++----
- lib/percpu_counter.c           |   27 +++++++++++++++++----------
- 2 files changed, 22 insertions(+), 14 deletions(-)
-
-diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_coun=
-ter.h
-index 9007ccd..71b5c5d 100644
---- a/include/linux/percpu_counter.h
-+++ b/include/linux/percpu_counter.h
-@@ -17,7 +17,8 @@
-=20
- struct percpu_counter {
- 	spinlock_t lock;
--	s64 count;
-+	s64	   reference_count;
-+	s64	   shadow_count;
- #ifdef CONFIG_HOTPLUG_CPU
- 	struct list_head list;	/* All percpu_counters are on a list */
- #endif
-@@ -55,7 +56,7 @@ static inline s64 percpu_counter_sum(struct percpu_co=
-unter *fbc)
-=20
- static inline s64 percpu_counter_read(struct percpu_counter *fbc)
- {
--	return fbc->count;
-+	return fbc->shadow_count;
- }
-=20
- /*
-@@ -65,9 +66,9 @@ static inline s64 percpu_counter_read(struct percpu_c=
-ounter *fbc)
-  */
- static inline s64 percpu_counter_read_positive(struct percpu_counter *=
-fbc)
- {
--	s64 ret =3D fbc->count;
-+	s64 ret =3D percpu_counter_read(fbc);
-=20
--	barrier();		/* Prevent reloads of fbc->count */
-+	barrier();		/* Prevent reloads of fbc->shadow_count */
- 	if (ret >=3D 0)
- 		return ret;
- 	return 1;
-diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
-index a866389..44ec857 100644
---- a/lib/percpu_counter.c
-+++ b/lib/percpu_counter.c
-@@ -14,6 +14,9 @@ static LIST_HEAD(percpu_counters);
- static DEFINE_MUTEX(percpu_counters_lock);
- #endif
-=20
-+/*
-+ * Note : This function is racy
-+ */
- void percpu_counter_set(struct percpu_counter *fbc, s64 amount)
- {
- 	int cpu;
-@@ -23,7 +26,8 @@ void percpu_counter_set(struct percpu_counter *fbc, s=
-64 amount)
- 		s32 *pcount =3D per_cpu_ptr(fbc->counters, cpu);
- 		*pcount =3D 0;
- 	}
--	fbc->count =3D amount;
-+	fbc->reference_count =3D amount;
-+	fbc->shadow_count =3D amount;
- 	spin_unlock(&fbc->lock);
- }
- EXPORT_SYMBOL(percpu_counter_set);
-@@ -38,7 +42,8 @@ void __percpu_counter_add(struct percpu_counter *fbc,=
- s64 amount, s32 batch)
- 	count =3D *pcount + amount;
- 	if (count >=3D batch || count <=3D -batch) {
- 		spin_lock(&fbc->lock);
--		fbc->count +=3D count;
-+		fbc->reference_count +=3D count;
-+		fbc->shadow_count +=3D count;
- 		*pcount =3D 0;
- 		spin_unlock(&fbc->lock);
- 	} else {
-@@ -57,16 +62,16 @@ s64 __percpu_counter_sum(struct percpu_counter *fbc=
-)
- 	s64 ret;
- 	int cpu;
-=20
--	spin_lock(&fbc->lock);
--	ret =3D fbc->count;
-+	ret =3D fbc->reference_count;
- 	for_each_online_cpu(cpu) {
- 		s32 *pcount =3D per_cpu_ptr(fbc->counters, cpu);
- 		ret +=3D *pcount;
--		*pcount =3D 0;
- 	}
--	fbc->count =3D ret;
--
--	spin_unlock(&fbc->lock);
-+	/*
-+	 * Update fbc->shadow_count so that percpu_counter_read()
-+	 * can have a better idea of this counter 'value'
-+	 */
-+	fbc->shadow_count =3D ret;
- 	return ret;
- }
- EXPORT_SYMBOL(__percpu_counter_sum);
-@@ -76,7 +81,8 @@ static struct lock_class_key percpu_counter_irqsafe;
- int percpu_counter_init(struct percpu_counter *fbc, s64 amount)
- {
- 	spin_lock_init(&fbc->lock);
--	fbc->count =3D amount;
-+	fbc->shadow_count =3D amount;
-+	fbc->reference_count =3D amount;
- 	fbc->counters =3D alloc_percpu(s32);
- 	if (!fbc->counters)
- 		return -ENOMEM;
-@@ -132,7 +138,8 @@ static int __cpuinit percpu_counter_hotcpu_callback=
-(struct notifier_block *nb,
-=20
- 		spin_lock_irqsave(&fbc->lock, flags);
- 		pcount =3D per_cpu_ptr(fbc->counters, cpu);
--		fbc->count +=3D *pcount;
-+		fbc->reference_count +=3D *pcount;
-+		fbc->shadow_count +=3D *pcount;
- 		*pcount =3D 0;
- 		spin_unlock_irqrestore(&fbc->lock, flags);
- 	}
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+and you'll see lots of code gets it right, and lots of code gets it wrong.
