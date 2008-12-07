@@ -1,53 +1,106 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [ext4] Documentation patch
-Date: Sun, 07 Dec 2008 14:43:28 -0600
-Message-ID: <493C3570.4040100@redhat.com>
-References: <8763m3u9kv.fsf@basilikum.skogtun.org> <20081201165700.GA26680@infradead.org> <493425DC.1010008@redhat.com> <20081201205828.GA20069@mit.edu> <20081206222534.GJ1323@mit.edu> <493B0BAD.10004@redhat.com> <20081207183916.GB15998@mit.edu>
+From: Eric Dumazet <dada1@cosmosbay.com>
+Subject: [PATCH] atomic: fix a typo in atomic_long_xchg()
+Date: Sun, 07 Dec 2008 23:24:29 +0100
+Message-ID: <493C4D1D.3000300@cosmosbay.com>
+References: <4936D287.6090206@cosmosbay.com>	<4936EB04.8000609@cosmosbay.com>	<20081206202233.3b74febc.akpm@linux-foundation.org>	<493BCF60.1080409@cosmosbay.com> <20081207092854.f6bcbfae.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Christoph Hellwig <hch@infradead.org>,
-	Harald Arnesen <skogtun.harald@gmail.com>,
-	linux-kernel@vger.kernel.org, linux-
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux kernel <linux-kernel@vger.kernel.org>,
+	"David S. Miller" <davem@davemloft.net>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33506 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751471AbYLGUnz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 7 Dec 2008 15:43:55 -0500
-In-Reply-To: <20081207183916.GB15998@mit.edu>
+Received: from gw1.cosmosbay.com ([86.65.150.130]:32957 "EHLO
+	gw1.cosmosbay.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753006AbYLGWZD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Dec 2008 17:25:03 -0500
+In-Reply-To: <20081207092854.f6bcbfae.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> Good points.  OK, how about this?
->      	      
->   - When comparing performance with other filesystems, it's always
->     important to try multiple workloads; very often a subtle change in a
->     workload parameter can completely change the ranking of which
->     filesystems do well compared to others.  When comparing versus ext3,
->     note that ext4 enables write barriers by default, while ext3 does
->     not enable write barriers by default.  So it is useful to use
->     explicitly specify whether barriers are enabled or not when via the
->     '-o barriers=[0|1]' mount option for both ext3 and ext4 filesystems
->     for a fair comparison.  When tuning ext3 for best benchmark numbers,
->     it is often worthwhile to try changing the data journaling mode; '-o
->     data=writeback,nobh' can be faster for some workloads.  (Note
->     however that running mounting with data=writeback can potentially
+Andrew Morton a =E9crit :
+> We can do lots of things in 2.6.29.  Including just making ->counters
+> an array of atomic_t.
 
-I'd say "running mounted with data=writeback...."
+I was playing with this idea this week (but using atomic_long_t),
+and this is why I bother you with all this stuff : cleanup patches
+before work for 2.6.29
 
-other than that it looks good to me :)
+My idea was using atomic_long_t so that 64bit arches dont need=20
+a spinlock any more, and new percpu_lcounter would be ok for
+counters that dont need s64 but a plain long (nr_files, network
+counters...)
 
-(sorta nitpicky but it probably won't be touched again for 5 years so
-may as well get it right now) :)
+struct percpu_lcounter {
+        atomic_long_t count;
+#ifdef CONFIG_SMP
+#ifdef CONFIG_HOTPLUG_CPU
+        struct list_head list;  /* All percpu_counters are on a list */
+#endif
+        atomic_long_t *counters;
+#endif
+};
 
--Eric
+void __percpu_lcounter_add(struct percpu_lcounter *fbc, long amount, s3=
+2 batch)
+{
+        long count;
+        atomic_long_t *pcount;
 
->     leave stale data exposed in recently written files in case of an
->     unclean shutdown, which could be a security exposure in some
->     situations.)  Configuring the filesystem with a large journal can
->     also be helpful for metadata-intensive workloads.
-> 
-> 							- Ted
+        pcount =3D per_cpu_ptr(fbc->counters, get_cpu());
+        count =3D atomic_long_add_return(amount, pcount);
+        if (unlikely(count >=3D batch || count <=3D -batch)) {
+                atomic_long_add(count, &fbc->count);
+                atomic_long_sub(count, pcount);
+        }
+        put_cpu();
+}
 
+
+long percpu_lcounter_sum(struct percpu_lcounter *fbc)
+{
+        long accumulator =3D 0, val;
+        int cpu;
+
+        for_each_online_cpu(cpu) {
+                atomic_long_t *pcount =3D per_cpu_ptr(fbc->counters, cp=
+u);
+
+                val =3D atomic_long_xchg(pcount, 0);
+                accumulator +=3D val;
+        }
+        return atomic_long_add_return(accumulator, &fbc->count);
+}
+
+Then I found the following typo :
+
+[PATCH] atomic: fix a typo in atomic_long_xchg()
+
+atomic_long_xchg() not correctly defined for 32bit arches.
+
+Signed-off-by: Eric Dumazet <dada1@cosmosbay.com>
+---
+diff --git a/include/asm-generic/atomic.h b/include/asm-generic/atomic.=
+h
+index 4ec0a29..7abdaa9 100644
+--- a/include/asm-generic/atomic.h
++++ b/include/asm-generic/atomic.h
+@@ -251,7 +251,7 @@ static inline long atomic_long_add_unless(atomic_lo=
+ng_t *l, long a, long u)
+ #define atomic_long_cmpxchg(l, old, new) \
+ 	(atomic_cmpxchg((atomic_t *)(l), (old), (new)))
+ #define atomic_long_xchg(v, new) \
+-	(atomic_xchg((atomic_t *)(l), (new)))
++	(atomic_xchg((atomic_t *)(v), (new)))
+=20
+ #endif  /*  BITS_PER_LONG =3D=3D 64  */
+=20
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
