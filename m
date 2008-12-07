@@ -1,134 +1,113 @@
-From: akpm@linux-foundation.org
-Subject: + ext4-tighten-restrictions-on-inode-flags.patch added to -mm tree
-Date: Sat, 06 Dec 2008 22:18:26 -0800
-Message-ID: <200812070618.mB76IQsU017102@imap1.linux-foundation.org>
-Cc: duaneg@dghda.com, adilger@sun.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: Eric Dumazet <dada1@cosmosbay.com>
+Subject: [PATCH, take2] percpu_counter: FBC_BATCH might be too big
+Date: Sun, 07 Dec 2008 10:25:45 +0100
+Message-ID: <493B9699.8080603@cosmosbay.com>
+References: <4939513C.3090101@cosmosbay.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	Mike Travis <travis@sgi.com>,
+	"David S. Miller" <davem@davemloft.net>,
+	linux kernel <linux-kernel@vger.kernel.org>,
+	Christoph Lameter <cl@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:48794 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752047AbYLGGSb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Dec 2008 01:18:31 -0500
+Received: from gw1.cosmosbay.com ([86.65.150.130]:44528 "EHLO
+	gw1.cosmosbay.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752398AbYLGJgA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Dec 2008 04:36:00 -0500
+In-Reply-To: <4939513C.3090101@cosmosbay.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+In this second version I guarded hotcpu_notifier() call by
+a #ifdef CONFIG_HOTPLUG_CPU
 
-The patch titled
-     ext4: tighten restrictions on inode flags
-has been added to the -mm tree.  Its filename is
-     ext4-tighten-restrictions-on-inode-flags.patch
+I wonder why hotcpu_notifier() is not a null op if !CONFIG_HOTPLUG_CPU
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+Thank you
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+[PATCH] percpu_counter: FBC_BATCH might be too big
 
-See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
-out what to do about this
+For NR_CPUS >= 16 values, FBC_BATCH is 2*NR_CPUS
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+Considering more and more distros are using high NR_CPUS values,
+it makes sense to use a more sensible value for FBC_BATCH.
 
-------------------------------------------------------
-Subject: ext4: tighten restrictions on inode flags
-From: "Duane Griffin" <duaneg@dghda.com>
+A sensible value is 2*num_online_cpus(), with a minimum value of 32
+(This minimum value helps branch prediction in __percpu_counter_add())
 
-At the moment there are few restrictions on which flags may be set on
-which inodes.  Specifically DIRSYNC may only be set on directories and
-IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
-TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
-on non-regular file, non-directories.
+We already have a hotcpu notifier, so we can adjust FBC_BATCH dynamically.
 
-Introduces a flags masking function which masks flags based on mode and
-use it during inode creation and when flags are set via the ioctl to
-facilitate future consistency.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Acked-by: Andreas Dilger <adilger@sun.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Eric Dumazet <dada1@cosmosbay.com>
+Acked-by: David S. Miller <davem@davemloft.net>
+Acked-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
 ---
+ include/linux/percpu_counter.h |    6 +-----
+ lib/percpu_counter.c           |   16 +++++++++++++++-
+ 2 files changed, 16 insertions(+), 6 deletions(-)
 
- fs/ext4/ext4.h   |   17 +++++++++++++++++
- fs/ext4/ialloc.c |   14 +++++---------
- fs/ext4/ioctl.c  |    3 +--
- 3 files changed, 23 insertions(+), 11 deletions(-)
-
-diff -puN fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags fs/ext4/ext4.h
---- a/fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags
-+++ a/fs/ext4/ext4.h
-@@ -255,6 +255,23 @@ struct flex_groups {
- 			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL|\
- 			   EXT4_DIRSYNC_FL)
+diff --git a/include/linux/percpu_counter.h b/include/linux/percpu_counter.h
+index 9007ccd..c42a184 100644
+--- a/include/linux/percpu_counter.h
++++ b/include/linux/percpu_counter.h
+@@ -24,11 +24,7 @@ struct percpu_counter {
+ 	s32 *counters;
+ };
  
-+/* Flags that are appropriate for regular files (all but dir-specific ones). */
-+#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
+-#if NR_CPUS >= 16
+-#define FBC_BATCH	(NR_CPUS*2)
+-#else
+-#define FBC_BATCH	(NR_CPUS*4)
+-#endif
++extern int FBC_BATCH;
+ 
+ int percpu_counter_init(struct percpu_counter *fbc, s64 amount);
+ int percpu_counter_init_irq(struct percpu_counter *fbc, s64 amount);
+diff --git a/lib/percpu_counter.c b/lib/percpu_counter.c
+index a866389..e21ce7c 100644
+--- a/lib/percpu_counter.c
++++ b/lib/percpu_counter.c
+@@ -114,6 +114,16 @@ void percpu_counter_destroy(struct percpu_counter *fbc)
+ }
+ EXPORT_SYMBOL(percpu_counter_destroy);
+ 
++int FBC_BATCH __read_mostly = 32;
++EXPORT_SYMBOL(FBC_BATCH);
 +
-+/* Flags that are appropriate for non-directories/regular files. */
-+#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
-+
-+/* Mask out flags that are inappropriate for the given type of inode. */
-+static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
++static void compute_batch_value(void)
 +{
-+	if (S_ISDIR(mode))
-+		return flags;
-+	else if (S_ISREG(mode))
-+		return flags & EXT4_REG_FLMASK;
-+	else
-+		return flags & EXT4_OTHER_FLMASK;
++	int nr = num_online_cpus();
++
++	FBC_BATCH = max(32, nr*2);
 +}
 +
- /*
-  * Inode dynamic state flags
-  */
-diff -puN fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags
-+++ a/fs/ext4/ialloc.c
-@@ -809,16 +809,12 @@ got:
- 	ei->i_disksize = 0;
+ #ifdef CONFIG_HOTPLUG_CPU
+ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+ 					unsigned long action, void *hcpu)
+@@ -121,6 +131,7 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+ 	unsigned int cpu;
+ 	struct percpu_counter *fbc;
  
- 	/*
--	 * Don't inherit extent flag from directory. We set extent flag on
--	 * newly created directory and file only if -o extent mount option is
--	 * specified
-+	 * Don't inherit extent flag from directory, amongst others. We set
-+	 * extent flag on newly created directory and file only if -o extent
-+	 * mount option is specified
- 	 */
--	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
--	if (S_ISLNK(mode))
--		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
--	/* dirsync only applies to directories */
--	if (!S_ISDIR(mode))
--		ei->i_flags &= ~EXT4_DIRSYNC_FL;
-+	ei->i_flags =
-+		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
- 	ei->i_file_acl = 0;
- 	ei->i_dtime = 0;
- 	ei->i_block_group = group;
-diff -puN fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ioctl.c
---- a/fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags
-+++ a/fs/ext4/ioctl.c
-@@ -48,8 +48,7 @@ long ext4_ioctl(struct file *filp, unsig
- 		if (err)
- 			return err;
++	compute_batch_value();
+ 	if (action != CPU_DEAD)
+ 		return NOTIFY_OK;
  
--		if (!S_ISDIR(inode->i_mode))
--			flags &= ~EXT4_DIRSYNC_FL;
-+		flags = ext4_mask_flags(inode->i_mode, flags);
+@@ -139,11 +150,14 @@ static int __cpuinit percpu_counter_hotcpu_callback(struct notifier_block *nb,
+ 	mutex_unlock(&percpu_counters_lock);
+ 	return NOTIFY_OK;
+ }
++#endif
  
- 		err = -EPERM;
- 		mutex_lock(&inode->i_mutex);
-_
-
-Patches currently in -mm which might be from duaneg@dghda.com are
-
-ext2-dont-inherit-inappropriate-inode-flags-from-parent.patch
-ext3-dont-inherit-inappropriate-inode-flags-from-parent.patch
-ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch
-ext2-tighten-restrictions-on-inode-flags.patch
-ext3-tighten-restrictions-on-inode-flags.patch
-ext4-tighten-restrictions-on-inode-flags.patch
-
+ static int __init percpu_counter_startup(void)
+ {
++	compute_batch_value();
++#ifdef CONFIG_HOTPLUG_CPU
+ 	hotcpu_notifier(percpu_counter_hotcpu_callback, 0);
++#endif
+ 	return 0;
+ }
+ module_init(percpu_counter_startup);
+-#endif
