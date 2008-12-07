@@ -1,116 +1,112 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC] ext4: remove ext4_new_blocks() and call ext4_mb_new_blocks() directly
-Date: Sun,  7 Dec 2008 14:33:52 -0500
-Message-ID: <1228678434-14707-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC] ext4: remove ext4_new_meta_block()
+Date: Sun,  7 Dec 2008 14:33:53 -0500
+Message-ID: <1228678434-14707-2-git-send-email-tytso@mit.edu>
+References: <1228678434-14707-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:41273 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:41271 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752220AbYLGUbw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Dec 2008 15:31:52 -0500
+	with ESMTP id S1752179AbYLGUbv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Dec 2008 15:31:51 -0500
+In-Reply-To: <1228678434-14707-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There was only one caller of the compatibility function
-ext4_new_blocks(), in balloc.c's ext4_alloc_blocks().  Change it to
-call ext4_mb_new_blocks() directly, and remove ext4_new_blocks()
-altogether.  This cleans up the code, by removing two extra functions
-from the call chain, and hopefully saving some stack usage.
+There were only two one callers of the function ext4_new_meta_block(),
+which just a very simpler wrapper function around
+ext4_new_meta_blocks().  Change those two functions to call
+ext4_new_meta_blocks() directly, to save code and stack space usage.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |   20 --------------------
- fs/ext4/ext4.h   |    3 ---
- fs/ext4/inode.c  |   16 +++++++++++-----
- 3 files changed, 11 insertions(+), 28 deletions(-)
+ fs/ext4/balloc.c  |   17 -----------------
+ fs/ext4/ext4.h    |    2 --
+ fs/ext4/extents.c |    3 ++-
+ fs/ext4/xattr.c   |    5 +++--
+ 4 files changed, 5 insertions(+), 22 deletions(-)
 
 diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 9ce2fcd..02e8ce4 100644
+index 02e8ce4..47cf25d 100644
 --- a/fs/ext4/balloc.c
 +++ b/fs/ext4/balloc.c
-@@ -741,26 +741,6 @@ ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
- 	return ext4_new_meta_blocks(handle, inode, goal, &count, errp);
+@@ -724,23 +724,6 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ 	return ret;
  }
  
 -/*
-- * ext4_new_blocks() -- allocate data blocks
+- * ext4_new_meta_block() -- allocate block for meta data (indexing) blocks
 - *
 - * @handle:             handle to this transaction
 - * @inode:              file inode
 - * @goal:               given target block(filesystem wide)
-- * @count:		total number of blocks need
 - * @errp:               error code
 - *
-- * Return 1st allocated block numberon success, *count stores total account
-- * error stores in errp pointer
+- * Return allocated block number on success
 - */
--
--ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
--				ext4_lblk_t iblock, ext4_fsblk_t goal,
--				unsigned long *count, int *errp)
+-ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
+-		ext4_fsblk_t goal, int *errp)
 -{
--	return do_blk_alloc(handle, inode, iblock, goal, count, errp, 0);
+-	unsigned long count = 1;
+-	return ext4_new_meta_blocks(handle, inode, goal, &count, errp);
 -}
 -
  /**
   * ext4_count_free_blocks() -- count filesystem free blocks
   * @sb:		superblock
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 8370ffd..74cb395 100644
+index 74cb395..ac8551e 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1002,9 +1002,6 @@ extern ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
- 			ext4_fsblk_t goal, int *errp);
+@@ -998,8 +998,6 @@ extern ext4_grpblk_t ext4_block_group_offset(struct super_block *sb,
+ extern int ext4_bg_has_super(struct super_block *sb, ext4_group_t group);
+ extern unsigned long ext4_bg_num_gdb(struct super_block *sb,
+ 			ext4_group_t group);
+-extern ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
+-			ext4_fsblk_t goal, int *errp);
  extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
  			ext4_fsblk_t goal, unsigned long *count, int *errp);
--extern ext4_fsblk_t ext4_new_blocks(handle_t *handle, struct inode *inode,
--					ext4_lblk_t iblock, ext4_fsblk_t goal,
--					unsigned long *count, int *errp);
  extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
- extern int ext4_has_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
- extern void ext4_free_blocks(handle_t *handle, struct inode *inode,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2a3804e..d972b4c 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -546,6 +546,7 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
- 				int indirect_blks, int blks,
- 				ext4_fsblk_t new_blocks[4], int *err)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index ea2ce3c..e5b169b 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -189,9 +189,10 @@ ext4_ext_new_meta_block(handle_t *handle, struct inode *inode,
+ 			struct ext4_extent *ex, int *err)
  {
-+	struct ext4_allocation_request ar;
- 	int target, i;
- 	unsigned long count = 0, blk_allocated = 0;
- 	int index = 0;
-@@ -594,10 +595,15 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
- 	if (!target)
- 		goto allocated;
- 	/* Now allocate data blocks */
--	count = target;
--	/* allocating blocks for data blocks */
--	current_block = ext4_new_blocks(handle, inode, iblock,
--						goal, &count, err);
-+	memset(&ar, 0, sizeof(ar));
-+	ar.inode = inode;
-+	ar.goal = goal;
-+	ar.len = target;
-+	ar.logical = iblock;
-+	ar.flags = EXT4_MB_HINT_DATA;
-+
-+	current_block = ext4_mb_new_blocks(handle, &ar, err);
-+
- 	if (*err && (target == blks)) {
- 		/*
- 		 * if the allocation failed and we didn't allocate
-@@ -613,7 +619,7 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
- 		 */
- 			new_blocks[index] = current_block;
- 		}
--		blk_allocated += count;
-+		blk_allocated += ar.len;
- 	}
- allocated:
- 	/* total number of blocks allocated for direct blocks */
+ 	ext4_fsblk_t goal, newblock;
++	unsigned long count = 1;
+ 
+ 	goal = ext4_ext_find_goal(inode, path, le32_to_cpu(ex->ee_block));
+-	newblock = ext4_new_meta_block(handle, inode, goal, err);
++	newblock = ext4_new_meta_blocks(handle, inode, goal, &count, err);
+ 	return newblock;
+ }
+ 
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 80626d5..f896e2c 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -689,6 +689,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+ 		     struct ext4_xattr_info *i,
+ 		     struct ext4_xattr_block_find *bs)
+ {
++	unsigned long count = 1;
+ 	struct super_block *sb = inode->i_sb;
+ 	struct buffer_head *new_bh = NULL;
+ 	struct ext4_xattr_search *s = &bs->s;
+@@ -810,8 +811,8 @@ inserted:
+ 			/* We need to allocate a new block */
+ 			ext4_fsblk_t goal = ext4_group_first_block_no(sb,
+ 						EXT4_I(inode)->i_block_group);
+-			ext4_fsblk_t block = ext4_new_meta_block(handle, inode,
+-							goal, &error);
++			ext4_fsblk_t block = ext4_new_meta_blocks(handle, inode,
++						  goal, &count, &error);
+ 			if (error)
+ 				goto cleanup;
+ 			ea_idebug(inode, "creating block %d", block);
 -- 
 1.6.0.4.8.g36f27.dirty
 
