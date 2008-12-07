@@ -1,50 +1,53 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] percpu_counter: Fix __percpu_counter_sum()
-Date: Sun, 7 Dec 2008 10:28:21 -0500
-Message-ID: <20081207152821.GA9596@mit.edu>
-References: <4936D287.6090206@cosmosbay.com> <4936EB04.8000609@cosmosbay.com> <20081206202233.3b74febc.akpm@linux-foundation.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [ext4] Documentation patch
+Date: Sun, 07 Dec 2008 14:43:28 -0600
+Message-ID: <493C3570.4040100@redhat.com>
+References: <8763m3u9kv.fsf@basilikum.skogtun.org> <20081201165700.GA26680@infradead.org> <493425DC.1010008@redhat.com> <20081201205828.GA20069@mit.edu> <20081206222534.GJ1323@mit.edu> <493B0BAD.10004@redhat.com> <20081207183916.GB15998@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Dumazet <dada1@cosmosbay.com>,
-	linux kernel <linux-kernel@vger.kernel.org>,
-	"David S. Miller" <davem@davemloft.net>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>,
-	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Harald Arnesen <skogtun.harald@gmail.com>,
+	linux-kernel@vger.kernel.org, linux-
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:41295 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1753174AbYLGUcE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Dec 2008 15:32:04 -0500
-Content-Disposition: inline
-In-Reply-To: <20081206202233.3b74febc.akpm@linux-foundation.org>
+Received: from mx2.redhat.com ([66.187.237.31]:33506 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751471AbYLGUnz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 7 Dec 2008 15:43:55 -0500
+In-Reply-To: <20081207183916.GB15998@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 06, 2008 at 08:22:33PM -0800, Andrew Morton wrote:
+Theodore Tso wrote:
+> Good points.  OK, how about this?
+>      	      
+>   - When comparing performance with other filesystems, it's always
+>     important to try multiple workloads; very often a subtle change in a
+>     workload parameter can completely change the ranking of which
+>     filesystems do well compared to others.  When comparing versus ext3,
+>     note that ext4 enables write barriers by default, while ext3 does
+>     not enable write barriers by default.  So it is useful to use
+>     explicitly specify whether barriers are enabled or not when via the
+>     '-o barriers=[0|1]' mount option for both ext3 and ext4 filesystems
+>     for a fair comparison.  When tuning ext3 for best benchmark numbers,
+>     it is often worthwhile to try changing the data journaling mode; '-o
+>     data=writeback,nobh' can be faster for some workloads.  (Note
+>     however that running mounting with data=writeback can potentially
+
+I'd say "running mounted with data=writeback...."
+
+other than that it looks good to me :)
+
+(sorta nitpicky but it probably won't be touched again for 5 years so
+may as well get it right now) :)
+
+-Eric
+
+>     leave stale data exposed in recently written files in case of an
+>     unclean shutdown, which could be a security exposure in some
+>     situations.)  Configuring the filesystem with a large journal can
+>     also be helpful for metadata-intensive workloads.
 > 
-> I suggest that what we do is to revert both those changes.  We can
-> worry about the possibly-unneeded spin_lock later, in a separate patch.
-> 
-> It should have been a separate patch anyway.  It's conceptually
-> unrelated and is not a bugfix, but it was mixed in with a bugfix.
-> 
-> Mingming, this needs urgent consideration, please.  Note that I had to
-> make additional changes to ext4 due to the subsequent introduction of
-> the dirty_blocks counter.
+> 							- Ted
 
-I've looked the two patches which you've queued in the -mm branch, and
-they look correct to me.
-
-The bugs fixed by these patches can potentially lead to filesystem
-corruption, since we ultimately use these fields to set the superblock
-values.  This in my mind makes them stable candidates at the very
-least, and if we weren't so late in the 2.6.28 cycle, I'd be strongly
-tempted to push them to Linus as a bugfix before the merge window.
-
-Andrew, any strong objections for me to grab them for the ext4 tree?
-Or would you rather carry them?  I would prefer that they get pushed
-to Linus as soon as the merge window opens, which is one reason why
-I'd prefer carry them, but we can do this either way.
-
-        	   	       	      	     - Ted
