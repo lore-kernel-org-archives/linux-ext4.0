@@ -1,106 +1,119 @@
-From: Eric Dumazet <dada1@cosmosbay.com>
-Subject: [PATCH] atomic: fix a typo in atomic_long_xchg()
-Date: Sun, 07 Dec 2008 23:24:29 +0100
-Message-ID: <493C4D1D.3000300@cosmosbay.com>
-References: <4936D287.6090206@cosmosbay.com>	<4936EB04.8000609@cosmosbay.com>	<20081206202233.3b74febc.akpm@linux-foundation.org>	<493BCF60.1080409@cosmosbay.com> <20081207092854.f6bcbfae.akpm@linux-foundation.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH, RFC] ext4: remove ext4_new_meta_block()
+Date: Sun, 07 Dec 2008 19:30:45 -0600
+Message-ID: <493C78C5.8080805@redhat.com>
+References: <1228678434-14707-1-git-send-email-tytso@mit.edu> <1228678434-14707-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux kernel <linux-kernel@vger.kernel.org>,
-	"David S. Miller" <davem@davemloft.net>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>,
-	Mingming Cao <cmm@us.ibm.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gw1.cosmosbay.com ([86.65.150.130]:32957 "EHLO
-	gw1.cosmosbay.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753006AbYLGWZD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 7 Dec 2008 17:25:03 -0500
-In-Reply-To: <20081207092854.f6bcbfae.akpm@linux-foundation.org>
+Received: from mx2.redhat.com ([66.187.237.31]:56265 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751202AbYLHBbI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 7 Dec 2008 20:31:08 -0500
+In-Reply-To: <1228678434-14707-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andrew Morton a =E9crit :
-> We can do lots of things in 2.6.29.  Including just making ->counters
-> an array of atomic_t.
+Theodore Ts'o wrote:
+> There were only two one callers of the function ext4_new_meta_block(),
+> which just a very simpler wrapper function around
+> ext4_new_meta_blocks().  Change those two functions to call
+> ext4_new_meta_blocks() directly, to save code and stack space usage.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-I was playing with this idea this week (but using atomic_long_t),
-and this is why I bother you with all this stuff : cleanup patches
-before work for 2.6.29
+Looks like a good idea to me.
 
-My idea was using atomic_long_t so that 64bit arches dont need=20
-a spinlock any more, and new percpu_lcounter would be ok for
-counters that dont need s64 but a plain long (nr_files, network
-counters...)
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-struct percpu_lcounter {
-        atomic_long_t count;
-#ifdef CONFIG_SMP
-#ifdef CONFIG_HOTPLUG_CPU
-        struct list_head list;  /* All percpu_counters are on a list */
-#endif
-        atomic_long_t *counters;
-#endif
-};
+> ---
+>  fs/ext4/balloc.c  |   17 -----------------
+>  fs/ext4/ext4.h    |    2 --
+>  fs/ext4/extents.c |    3 ++-
+>  fs/ext4/xattr.c   |    5 +++--
+>  4 files changed, 5 insertions(+), 22 deletions(-)
+> 
+> diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+> index 02e8ce4..47cf25d 100644
+> --- a/fs/ext4/balloc.c
+> +++ b/fs/ext4/balloc.c
+> @@ -724,23 +724,6 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+>  	return ret;
+>  }
+>  
+> -/*
+> - * ext4_new_meta_block() -- allocate block for meta data (indexing) blocks
+> - *
+> - * @handle:             handle to this transaction
+> - * @inode:              file inode
+> - * @goal:               given target block(filesystem wide)
+> - * @errp:               error code
+> - *
+> - * Return allocated block number on success
+> - */
+> -ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
+> -		ext4_fsblk_t goal, int *errp)
+> -{
+> -	unsigned long count = 1;
+> -	return ext4_new_meta_blocks(handle, inode, goal, &count, errp);
+> -}
+> -
+>  /**
+>   * ext4_count_free_blocks() -- count filesystem free blocks
+>   * @sb:		superblock
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 74cb395..ac8551e 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -998,8 +998,6 @@ extern ext4_grpblk_t ext4_block_group_offset(struct super_block *sb,
+>  extern int ext4_bg_has_super(struct super_block *sb, ext4_group_t group);
+>  extern unsigned long ext4_bg_num_gdb(struct super_block *sb,
+>  			ext4_group_t group);
+> -extern ext4_fsblk_t ext4_new_meta_block(handle_t *handle, struct inode *inode,
+> -			ext4_fsblk_t goal, int *errp);
+>  extern ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+>  			ext4_fsblk_t goal, unsigned long *count, int *errp);
+>  extern int ext4_claim_free_blocks(struct ext4_sb_info *sbi, s64 nblocks);
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index ea2ce3c..e5b169b 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -189,9 +189,10 @@ ext4_ext_new_meta_block(handle_t *handle, struct inode *inode,
+>  			struct ext4_extent *ex, int *err)
+>  {
+>  	ext4_fsblk_t goal, newblock;
+> +	unsigned long count = 1;
+>  
+>  	goal = ext4_ext_find_goal(inode, path, le32_to_cpu(ex->ee_block));
+> -	newblock = ext4_new_meta_block(handle, inode, goal, err);
+> +	newblock = ext4_new_meta_blocks(handle, inode, goal, &count, err);
+>  	return newblock;
+>  }
+>  
+> diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+> index 80626d5..f896e2c 100644
+> --- a/fs/ext4/xattr.c
+> +++ b/fs/ext4/xattr.c
+> @@ -689,6 +689,7 @@ ext4_xattr_block_set(handle_t *handle, struct inode *inode,
+>  		     struct ext4_xattr_info *i,
+>  		     struct ext4_xattr_block_find *bs)
+>  {
+> +	unsigned long count = 1;
+>  	struct super_block *sb = inode->i_sb;
+>  	struct buffer_head *new_bh = NULL;
+>  	struct ext4_xattr_search *s = &bs->s;
+> @@ -810,8 +811,8 @@ inserted:
+>  			/* We need to allocate a new block */
+>  			ext4_fsblk_t goal = ext4_group_first_block_no(sb,
+>  						EXT4_I(inode)->i_block_group);
+> -			ext4_fsblk_t block = ext4_new_meta_block(handle, inode,
+> -							goal, &error);
+> +			ext4_fsblk_t block = ext4_new_meta_blocks(handle, inode,
+> +						  goal, &count, &error);
+>  			if (error)
+>  				goto cleanup;
+>  			ea_idebug(inode, "creating block %d", block);
 
-void __percpu_lcounter_add(struct percpu_lcounter *fbc, long amount, s3=
-2 batch)
-{
-        long count;
-        atomic_long_t *pcount;
-
-        pcount =3D per_cpu_ptr(fbc->counters, get_cpu());
-        count =3D atomic_long_add_return(amount, pcount);
-        if (unlikely(count >=3D batch || count <=3D -batch)) {
-                atomic_long_add(count, &fbc->count);
-                atomic_long_sub(count, pcount);
-        }
-        put_cpu();
-}
-
-
-long percpu_lcounter_sum(struct percpu_lcounter *fbc)
-{
-        long accumulator =3D 0, val;
-        int cpu;
-
-        for_each_online_cpu(cpu) {
-                atomic_long_t *pcount =3D per_cpu_ptr(fbc->counters, cp=
-u);
-
-                val =3D atomic_long_xchg(pcount, 0);
-                accumulator +=3D val;
-        }
-        return atomic_long_add_return(accumulator, &fbc->count);
-}
-
-Then I found the following typo :
-
-[PATCH] atomic: fix a typo in atomic_long_xchg()
-
-atomic_long_xchg() not correctly defined for 32bit arches.
-
-Signed-off-by: Eric Dumazet <dada1@cosmosbay.com>
----
-diff --git a/include/asm-generic/atomic.h b/include/asm-generic/atomic.=
-h
-index 4ec0a29..7abdaa9 100644
---- a/include/asm-generic/atomic.h
-+++ b/include/asm-generic/atomic.h
-@@ -251,7 +251,7 @@ static inline long atomic_long_add_unless(atomic_lo=
-ng_t *l, long a, long u)
- #define atomic_long_cmpxchg(l, old, new) \
- 	(atomic_cmpxchg((atomic_t *)(l), (old), (new)))
- #define atomic_long_xchg(v, new) \
--	(atomic_xchg((atomic_t *)(l), (new)))
-+	(atomic_xchg((atomic_t *)(v), (new)))
-=20
- #endif  /*  BITS_PER_LONG =3D=3D 64  */
-=20
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
