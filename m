@@ -1,109 +1,50 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -V2] ext3: provide function to release metadata pages under memory pressure
-Date: Mon,  8 Dec 2008 09:06:42 -0500
-Message-ID: <1228745203-743-1-git-send-email-tytso@mit.edu>
-References: <20081208140138.GA17700@mit.edu>
-Cc: aneesh.kumar@linux.vnet.ibm.com, balbir@linux.vnet.ibm.com,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: RFC, 32-bit compat handlers for EXT4_IOC_GROUP_ADD
+Date: Mon, 08 Dec 2008 10:31:03 -0600
+Message-ID: <493D4BC7.1010903@redhat.com>
+References: <49385BC5.2070703@redhat.com> <20081206010204.GY3186@webber.adilger.int> <20081206202409.GI1323@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:60198 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751792AbYLHOGs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Dec 2008 09:06:48 -0500
-In-Reply-To: <20081208140138.GA17700@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:60883 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753212AbYLHQb2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Dec 2008 11:31:28 -0500
+In-Reply-To: <20081206202409.GI1323@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Theodore Tso wrote:
+> On Fri, Dec 05, 2008 at 06:02:04PM -0700, Andreas Dilger wrote:
+>>> How far out of "dev" are we?  I'm leaning towards saying "oh well, would
+>>> have been nicer the other way" but going ahead and just putting the
+>>> compat handler into the kernel.
+>> I would be OK with changing to the "proper" struct layout.  Not being able
+>> to resize with an older e2fsprogs + newer kernel isn't going to cause any
+>> serious problems (unlike e.g. not being able to mount or e2fsck "/").
+>>
+>> If we are seriously worried about compatibility, we could add the compat
+>> handler for 32-bit kernels (should have a different IOC number anyways
+>> because of the struct size) and add some arbitrary check like:
+>>
+>> #ifdef LINUX_KERNEL_VERSION > KERNEL_VERSION(2,6,40)
+>> #warning remove this old compat code
+>> #endif
+> 
+> Given that a bunch of distro's have shipped e2fsprogs 1.41.x which we
+> advertised as being ext4 compatibility, I think we need to keep the
+> compatibility code.  If we want to add the complexity for the 32-bit
+> side, with a 2-3 year timeout, that seems like a reasonable
+> compromise.
+> 
+> 							- Ted
 
-Pages in the page cache belonging to ext3 data files are released via
-the ext3_releasepage() function specified in the ext3 inode's
-address_space_ops.  However, metadata blocks (such as indirect blocks,
-directory blocks, etc) are managed via the block device
-address_space_ops, and they can not be released by
-try_to_free_buffers() if they have a journal head attached to them.
+I tend to agree, unfortunately... I'll send the current compat patch,
+then, and when/if I get motivated, add another cleaner interface+number
+I guess...
 
-To address this, we supply a release_metadata function which is called
-by the block device's blkdev_releasepage() function, which calls
-journal_try_to_free_buffers() function to free the metadata.
-
-Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: linux-fsdevel@vger.kernel.org
----
- fs/ext3/inode.c         |   29 +++++++++++++++++++++++++++++
- fs/ext3/super.c         |    2 ++
- include/linux/ext3_fs.h |    2 ++
- 3 files changed, 33 insertions(+), 0 deletions(-)
-
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index f8424ad..89c065a 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -1680,6 +1680,35 @@ static int ext3_releasepage(struct page *page, gfp_t wait)
- }
- 
- /*
-+ * Try to release metadata pages (indirect blocks, directories) which are
-+ * mapped via the block device.  Since these pages could have journal heads
-+ * which would prevent try_to_free_buffers() from freeing them, we must use
-+ * jbd layer's try_to_free_buffers() function to release them.
-+ *
-+ * Note: we have to strip the __GFP_WAIT flag before calling
-+ * journal_try_to_free_buffers because blkdev_releasepage is
-+ * called while holding a spinlock (bdev_inode.client_lock).
-+ * Fortunately the metadata buffers we are interested are freed right
-+ * away and do not require calling journal_wait_for_transaction_sync_data().
-+ */
-+int ext3_release_metadata(void *client, struct page *page, gfp_t wait)
-+{
-+	struct super_block *sb = (struct super_block*)client;
-+	journal_t *journal;
-+
-+	WARN_ON(PageChecked(page));
-+	if (!page_has_buffers(page))
-+		return 0;
-+	BUG_ON(EXT3_SB(sb) == NULL);
-+	journal = EXT3_SB(sb)->s_journal;
-+	if (journal != NULL)
-+		return journal_try_to_free_buffers(journal, page,
-+						   wait & ~__GFP_WAIT);
-+	else
-+		return try_to_free_buffers(page);
-+}
-+
-+/*
-  * If the O_DIRECT write will extend the file then add this inode to the
-  * orphan list.  So recovery will truncate it back to the original size
-  * if the machine crashes during the write.
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 541d5e4..4428149 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -2981,6 +2981,8 @@ static struct file_system_type ext3_fs_type = {
- 	.name		= "ext3",
- 	.get_sb		= ext3_get_sb,
- 	.kill_sb	= kill_block_super,
-+	.release_metadata 
-+			= ext3_release_metadata,
- 	.fs_flags	= FS_REQUIRES_DEV,
- };
- 
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 9004794..3e3052f 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -867,6 +867,8 @@ extern void ext3_get_inode_flags(struct ext3_inode_info *);
- extern void ext3_set_aops(struct inode *inode);
- extern int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 		       u64 start, u64 len);
-+extern int ext3_release_metadata(void *client, struct page *page, 
-+			gfp_t wait);
- 
- /* ioctl.c */
- extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
--- 
-1.6.0.4.8.g36f27.dirty
-
+-Eric
