@@ -1,51 +1,72 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] percpu_counter: Fix __percpu_counter_sum()
-Date: Mon, 8 Dec 2008 14:22:26 -0800
-Message-ID: <20081208142226.c7b46f04.akpm@linux-foundation.org>
-References: <4936D287.6090206@cosmosbay.com>
-	<4936EB04.8000609@cosmosbay.com>
-	<20081206202233.3b74febc.akpm@linux-foundation.org>
-	<493BCF60.1080409@cosmosbay.com>
-	<20081207092854.f6bcbfae.akpm@linux-foundation.org>
-	<493C0F40.7040304@cosmosbay.com>
-	<20081207205250.dbb7fe4b.akpm@linux-foundation.org>
-	<20081208221241.GA2501@mit.edu>
+Subject: Re: Checking link targets are NULL-terminated
+Date: Mon, 8 Dec 2008 14:30:03 -0800
+Message-ID: <20081208143003.9449bc77.akpm@linux-foundation.org>
+References: <20081205144810.GA25585@dastardly.home.dghda.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: dada1@cosmosbay.com, linux-kernel@vger.kernel.org,
-	davem@davemloft.net, a.p.zijlstra@chello.nl, cmm@us.ibm.com,
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:47238 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752626AbYLHWXa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Dec 2008 17:23:30 -0500
-In-Reply-To: <20081208221241.GA2501@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+To: "Duane Griffin" <duaneg@dghda.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081205144810.GA25585@dastardly.home.dghda.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, 8 Dec 2008 17:12:41 -0500
-Theodore Tso <tytso@mit.edu> wrote:
+On Fri, 5 Dec 2008 14:48:10 +0000
+"Duane Griffin" <duaneg@dghda.com> wrote:
 
-> Actually, if all popular architectures had a hardware-implemented
-> atomic_t, I wonder how much ext4 really needs the percpu counter,
-> especially given ext4's multiblock allocator; with ext3, given that
-> each block allocation required taking a per-filesystem spin lock,
-> optimizing away that spinlock was far more important for improving
-> ext3's scalability.  But with the multiblock allocator, it may that
-> we're going through a lot more effort than what is truly necessary.
+> Hi folks,
+> 
+> I am looking at a report of an intermittent BUG caused by an
+> intentionally corrupted ext2 filesystem:
+> http://bugzilla.kernel.org/show_bug.cgi?id=11412
+> 
+> What I think is happening is generic_readlink gets the name via
+> i_ops->follow_link and passes it into vfs_readlink, without it
+> necessarily being validating anywhere. If the name is not
+> NULL-terminated the strlen call in vfs_readlink may run off past the end
+> of the page. I think this is potentially happening in
+> page_follow_link_light, as well as ext2_follow_link, so it isn't just
+> ext* that is affected.
+> 
+> Does this sound correct, or have I missed something?
+> 
+> Assuming this is a real problem, does anyone have a better solution than
+> scanning the name for a \0 (in ext2_follow_link and
+> page_follow_link_light) and returning -ENAMETOOLONG if we can't find
+> one? I.e. something like this:
 
-I expect that the performance numbers for the percpu counters in the
-superblock are buried away in the historical git changelogs somewhere. 
-I don't recall how much difference it made.
+It would be nice to fix this in a single place, for all filesystems,
+for all time.  But how to do that?
 
-An atomic_inc() of an fs-wide counter will have similar cost to
-spin_lock() of an fs-wide lock.
 
-If the multiblock allocator can avoid doing one atomic_inc() for each
-block and can instead do atomic_add(large_value, &counter) then yes,
-I'm sure that an fs-wide atomic_long_t would be OK.
+> diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
+> index 4e2426e..9b01af2 100644
+> --- a/fs/ext2/symlink.c
+> +++ b/fs/ext2/symlink.c
+> @@ -24,8 +24,14 @@
+>  static void *ext2_follow_link(struct dentry *dentry, struct nameidata *nd)
+>  {
+>  	struct ext2_inode_info *ei = EXT2_I(dentry->d_inode);
+> -	nd_set_link(nd, (char *)ei->i_data);
+> -	return NULL;
+> +	void *err = NULL;
+> +
+> +	if (memchr(ei->i_data, 0, sizeof(ei->i_data)) == NULL)
+> +		err = ERR_PTR(-ENAMETOOLONG);
+> +	else
+> +		nd_set_link(nd, (char *)ei->i_data);
+> +
+> +	return err;
+>  }
 
-Of course, similar changes should be made in trucate, etc.
+Perhaps nd_set_link() is a suitable place?  Change that function so
+that it is passed a third argument (max_len) and then check that within
+nd_set_link().  Change nd_set_link() to return a __must_check-marked
+errno, change callers to handle errors appropriately.
+
+Or something totally different ;)  But along those lines?
+
+
