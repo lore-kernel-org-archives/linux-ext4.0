@@ -1,22 +1,25 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -V2] ext4: provide function to release metadata pages under memory pressure
-Date: Mon,  8 Dec 2008 09:06:43 -0500
-Message-ID: <1228745203-743-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH -V2] ext3: provide function to release metadata pages under memory pressure
+Date: Mon,  8 Dec 2008 09:06:42 -0500
+Message-ID: <1228745203-743-1-git-send-email-tytso@mit.edu>
 References: <20081208140138.GA17700@mit.edu>
- <1228745203-743-1-git-send-email-tytso@mit.edu>
 Cc: aneesh.kumar@linux.vnet.ibm.com, balbir@linux.vnet.ibm.com,
 	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
 	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1228745203-743-1-git-send-email-tytso@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:60198 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751792AbYLHOGs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Dec 2008 09:06:48 -0500
+In-Reply-To: <20081208140138.GA17700@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 
-Pages in the page cache belonging to ext4 data files are released via
-the ext4_releasepage() function specified in the ext4 inode's
+Pages in the page cache belonging to ext3 data files are released via
+the ext3_releasepage() function specified in the ext3 inode's
 address_space_ops.  However, metadata blocks (such as indirect blocks,
 directory blocks, etc) are managed via the block device
 address_space_ops, and they can not be released by
@@ -30,44 +33,31 @@ Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: linux-fsdevel@vger.kernel.org
 ---
- fs/ext4/ext4.h  |    2 ++
- fs/ext4/inode.c |   29 +++++++++++++++++++++++++++++
- fs/ext4/super.c |    4 ++++
- 3 files changed, 35 insertions(+), 0 deletions(-)
+ fs/ext3/inode.c         |   29 +++++++++++++++++++++++++++++
+ fs/ext3/super.c         |    2 ++
+ include/linux/ext3_fs.h |    2 ++
+ 3 files changed, 33 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 695b45c..91e06e4 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1099,6 +1099,8 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
-+extern int ext4_release_metadata(void *client, struct page *page,
-+		gfp_t wait);
- 
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f6d9447..1647903 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3045,6 +3045,35 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index f8424ad..89c065a 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1680,6 +1680,35 @@ static int ext3_releasepage(struct page *page, gfp_t wait)
  }
  
  /*
 + * Try to release metadata pages (indirect blocks, directories) which are
 + * mapped via the block device.  Since these pages could have journal heads
 + * which would prevent try_to_free_buffers() from freeing them, we must use
-+ * jbd2 layer's try_to_free_buffers() function to release them.
++ * jbd layer's try_to_free_buffers() function to release them.
 + *
 + * Note: we have to strip the __GFP_WAIT flag before calling
-+ * jbd2_journal_try_to_free_buffers because blkdev_releasepage is
++ * journal_try_to_free_buffers because blkdev_releasepage is
 + * called while holding a spinlock (bdev_inode.client_lock).
 + * Fortunately the metadata buffers we are interested are freed right
 + * away and do not require calling journal_wait_for_transaction_sync_data().
 + */
-+int ext4_release_metadata(void *client, struct page *page, gfp_t wait)
++int ext3_release_metadata(void *client, struct page *page, gfp_t wait)
 +{
 +	struct super_block *sb = (struct super_block*)client;
 +	journal_t *journal;
@@ -75,11 +65,11 @@ index f6d9447..1647903 100644
 +	WARN_ON(PageChecked(page));
 +	if (!page_has_buffers(page))
 +		return 0;
-+	BUG_ON(EXT4_SB(sb) == NULL);
-+	journal = EXT4_SB(sb)->s_journal;
++	BUG_ON(EXT3_SB(sb) == NULL);
++	journal = EXT3_SB(sb)->s_journal;
 +	if (journal != NULL)
-+		return jbd2_journal_try_to_free_buffers(journal, page,
-+							wait & ~__GFP_WAIT);
++		return journal_try_to_free_buffers(journal, page,
++						   wait & ~__GFP_WAIT);
 +	else
 +		return try_to_free_buffers(page);
 +}
@@ -88,28 +78,32 @@ index f6d9447..1647903 100644
   * If the O_DIRECT write will extend the file then add this inode to the
   * orphan list.  So recovery will truncate it back to the original size
   * if the machine crashes during the write.
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index bd41fad..f447c46 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3689,6 +3689,8 @@ static struct file_system_type ext4_fs_type = {
- 	.name		= "ext4",
- 	.get_sb		= ext4_get_sb,
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 541d5e4..4428149 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2981,6 +2981,8 @@ static struct file_system_type ext3_fs_type = {
+ 	.name		= "ext3",
+ 	.get_sb		= ext3_get_sb,
  	.kill_sb	= kill_block_super,
-+	.release_metadata
-+			= ext4_release_metadata,
++	.release_metadata 
++			= ext3_release_metadata,
  	.fs_flags	= FS_REQUIRES_DEV,
  };
  
-@@ -3708,6 +3710,8 @@ static struct file_system_type ext4dev_fs_type = {
- 	.name		= "ext4dev",
- 	.get_sb		= ext4dev_get_sb,
- 	.kill_sb	= kill_block_super,
-+	.release_metadata
-+			= ext4_release_metadata,
- 	.fs_flags	= FS_REQUIRES_DEV,
- };
- MODULE_ALIAS("ext4dev");
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 9004794..3e3052f 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -867,6 +867,8 @@ extern void ext3_get_inode_flags(struct ext3_inode_info *);
+ extern void ext3_set_aops(struct inode *inode);
+ extern int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		       u64 start, u64 len);
++extern int ext3_release_metadata(void *client, struct page *page, 
++			gfp_t wait);
+ 
+ /* ioctl.c */
+ extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
 -- 
 1.6.0.4.8.g36f27.dirty
 
