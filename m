@@ -1,36 +1,47 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: Getting direct support for fallocate(2) into glibc
-Date: Tue, 9 Dec 2008 12:31:28 -0500
-Message-ID: <20081209173128.GA19214@mit.edu>
-References: <E1L9wQt-0003dz-DE@closure.thunk.org> <493EA3AB.2080308@redhat.com>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: Checking link targets are NULL-terminated
+Date: Tue, 09 Dec 2008 20:00:12 +0200
+Message-ID: <493EB22C.2050108@panasas.com>
+References: <20081205144810.GA25585@dastardly.home.dghda.com> <20081208143003.9449bc77.akpm@linux-foundation.org> <20081209171814.GA8667@infradead.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:48569 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752612AbYLIRhU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 12:37:20 -0500
-Content-Disposition: inline
-In-Reply-To: <493EA3AB.2080308@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Duane Griffin <duaneg@dghda.com>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Christoph Hellwig <hch@infradead.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081209171814.GA8667@infradead.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Dec 09, 2008 at 10:58:19AM -0600, Eric Sandeen wrote:
-> ... oh, ok, but plain old fallocate() isn't yet hooked up, odd.
+Christoph Hellwig wrote:
+> On Mon, Dec 08, 2008 at 02:30:03PM -0800, Andrew Morton wrote:
+>> Perhaps nd_set_link() is a suitable place?  Change that function so
+>> that it is passed a third argument (max_len) and then check that within
+>> nd_set_link().  Change nd_set_link() to return a __must_check-marked
+>> errno, change callers to handle errors appropriately.
+>>
+>> Or something totally different ;)  But along those lines?
 > 
-> # gcc -o test-fallocate test-fallocate.c
-> /tmp/ccQTk6an.o: In function `main':
-> test-fallocate.c:(.text+0x3e): undefined reference to `fallocate'
+> Note that XFS and possibly other filesystem don't store the NULL
+> termination on disk.  
+
+Note that ext2, for example, also only writes the string bytes without
+any NULLs. It only happen to be zero padded because any last-page is zero-padded
+from i_size to end of page.
+
+> So having a follow_link interface that uses a
+> counted string would be a nice little optimization for the XFS
+> follow_link / readlink implementation.   But I'm not really sure it's
+> worth complicating the VFS for that little gem.
 > 
-> Especially odd because we have a man page shipping, but no actual
-> implemented interface  :)  OK, I'll go bug people.
 
-Yep, that was what I was referring to.  We have the fallocate(2) man
-page because Michael Kerrisk has documented the userspace/kernel
-interface.  But that doesn't necessarily mean that glibc has wired up
-the interface.  (Sigh, we had been able to push this issue *before*
-glibc 2.9 shipped last month, but we were all too busy....)
+The inode's i_size already holds the string count so at the higher level
+we have that information. But I'm convinced, nd_set_link() should receive
+a new max_len, all users should be changed as a matter of code audit.
+nd_set_link() should then proceed to truncate the string at that length
+unconditionally no need for error returns.
 
-						- Ted
+My $0.017
+Boaz
