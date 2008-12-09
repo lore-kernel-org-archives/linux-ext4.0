@@ -1,63 +1,34 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Getting direct support for fallocate(2) into glibc
-Date: Tue, 09 Dec 2008 10:58:19 -0600
-Message-ID: <493EA3AB.2080308@redhat.com>
-References: <E1L9wQt-0003dz-DE@closure.thunk.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: Checking link targets are NULL-terminated
+Date: Tue, 9 Dec 2008 12:18:14 -0500
+Message-ID: <20081209171814.GA8667@infradead.org>
+References: <20081205144810.GA25585@dastardly.home.dghda.com> <20081208143003.9449bc77.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@MIT.EDU>
+Content-Type: text/plain; charset=us-ascii
+Cc: Duane Griffin <duaneg@dghda.com>, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51395 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753706AbYLIQ6n (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Dec 2008 11:58:43 -0500
-In-Reply-To: <E1L9wQt-0003dz-DE@closure.thunk.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:60208 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751700AbYLIRSQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 12:18:16 -0500
+Content-Disposition: inline
+In-Reply-To: <20081208143003.9449bc77.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o wrote:
-> Hey Eric,
+On Mon, Dec 08, 2008 at 02:30:03PM -0800, Andrew Morton wrote:
+> Perhaps nd_set_link() is a suitable place?  Change that function so
+> that it is passed a third argument (max_len) and then check that within
+> nd_set_link().  Change nd_set_link() to return a __must_check-marked
+> errno, change callers to handle errors appropriately.
 > 
-> Can you or Ric put in a good word with Ulrich (through appropriate Red
-> Hat channels, if that would be helpful) for this glibc enhancement request:
-> 
-> 	http://sources.redhat.com/bugzilla/show_bug.cgi?id=7083
-> 
-> Given that glibc 2.9 was just released, presumably this won't show up
-> until glibc 2.10, and it'll probably be a *long* time before it this
-> will show up in real distributions, but it would be good to get this
-> into functionality into glibc ASAP.
+> Or something totally different ;)  But along those lines?
 
-Hm... I thought it was already there.  posix_fallocate() is indeed
-calling sys_fallocate; doing a very simple test:
+Note that XFS and possibly other filesystem don't store the NULL
+termination on disk.  So having a follow_link interface that uses a
+counted string would be a nice little optimization for the XFS
+follow_link / readlink implementation.   But I'm not really sure it's
+worth complicating the VFS for that little gem.
 
-        fd = open("testfile", O_RDWR|O_CREAT);
-        error = posix_fallocate(fd, 0, 16384);
-
-and then asking xfs about the allocation (sorry for the xfs, but
-xfs_bmap is still so handy for this...):
-
-# xfs_bmap -vv testfile
-testfile:
- EXT: FILE-OFFSET   BLOCK-RANGE        AG AG-OFFSET          TOTAL FLAGS
-   0: [0..31]:      34984576..34984607  2 (1256112..1256143)    32 10000
- FLAG Values:
-    010000 Unwritten preallocated extent
-
-it looks like it's doing the Right Thing.  This is on:
-
-# rpm -q glibc
-glibc-2.9-2.x86_64
-
-... oh, ok, but plain old fallocate() isn't yet hooked up, odd.
-
-# gcc -o test-fallocate test-fallocate.c
-/tmp/ccQTk6an.o: In function `main':
-test-fallocate.c:(.text+0x3e): undefined reference to `fallocate'
-
-Especially odd because we have a man page shipping, but no actual
-implemented interface  :)  OK, I'll go bug people.
-
--Eric
