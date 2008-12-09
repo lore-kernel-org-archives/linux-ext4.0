@@ -1,83 +1,62 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH]ext4: online defrag: Enable to reuse blocks by multiple
-	defrag
-Date: Tue, 9 Dec 2008 00:47:12 -0500
-Message-ID: <20081209054712.GB10270@mit.edu>
-References: <493DD75D.60504@rs.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: "Theodore Ts'o" <tytso@MIT.EDU>
+Subject: Getting direct support for fallocate(2) into glibc
+Date: Tue, 09 Dec 2008 01:50:59 -0500
+Message-ID: <E1L9wQt-0003dz-DE@closure.thunk.org>
 Cc: linux-ext4@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:59489 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751073AbYLIFrR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 00:47:17 -0500
-Content-Disposition: inline
-In-Reply-To: <493DD75D.60504@rs.jp.nec.com>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:64349 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751696AbYLIGva (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 01:51:30 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hey Eric,
 
-On Tue, Dec 09, 2008 at 11:26:37AM +0900, Akira Fujita wrote:
-> I'm redesigning ext4 online defrag based on the comments from Ted.
-> Probably defrag's block allocation method will be changed greatly.
+Can you or Ric put in a good word with Ulrich (through appropriate Red
+Hat channels, if that would be helpful) for this glibc enhancement request:
 
-Akira-san,
+	http://sources.redhat.com/bugzilla/show_bug.cgi?id=7083
 
-FYI, there was a discussion about defrag on today's ext4 call.  One of
-the ideas that was kicked around was to completely change the
-primitives used by defrag, and to design things around three
-primitive, general purpose interfaces.
+Given that glibc 2.9 was just released, presumably this won't show up
+until glibc 2.10, and it'll probably be a *long* time before it this
+will show up in real distributions, but it would be good to get this
+into functionality into glibc ASAP.
 
-We didn't go into complete detail on the call, but let me give you a
-strawman proposal for consideration/discussion:
+I've been doing an analysis of which files are ending up getting
+fragmented on my system, and relatively common case is logfiles (since
+they are written via appending).  Another common case is gaim log files,
+and of course /var/spool/mail files.  All of these cases could be
+addressed by using fallocate() with the FALLOC_FL_KEEP_SIZE flag; and
+unfortunately, there is no way to do this currently through a glibc
+mediated interface (posix_fallocate() is mandated by the Posix
+specification to _not_ pass the FALLOC_FL_KEEP_SIZE flag).
 
-(1) An (ioctl-based) interface which allows a privileged program to
-specify one or more range of blocks which the filesystem's block
-allocator must NOT allocate from.  (We may want to have a flag for
-each block range which either makes the block lockout advisory, such
-that if the block allocator can't find blocks anywhere else, it may
-invade the reserved block area --- or mandatory, where if there are no
-other blocks, the filesystem returns ENOSPC).  This allows the
-defragmenter to work on an area of the disk without worrying about
-concurrent allocations by other processes from getting in the way.
+Changing various programs to use fallocate() when the final size of the
+file is known (i.e, cp, tar, cpio, rpm, etc.) helps for large files.
+And of course, it *definitely* helps for bittorent clients.  So if the
+goal is to optimize filesystems aging, this would be a perfect project
+to sic an intern or two, or maybe an intro-level Google Summer of Code
+students, to sweep through some of the more common programs.  For
+programs like cp, tar, et. al, posix_fallocate() will work just fine.
+For things like logrotate, we'd either need direct fallocate() support
+in glibc, or logrotate would have to call the system call directly,
+which would be evil and tricky given that different architectures use
+different system call numbers.
 
-(2) An (ioctl-based) interface which associates with an inode
-preferred range(s) of blocks which the block allocator will try using
-first; if those blocks are not available, or the block range(s) is
-exhausted, the block allocator use its normal algorithms to pick the
-best available block.  The set of preferred blocks is only guaranteed
-to persist while the inode is in memory.
+(Logrotate could use fallocate to preallocate the new /var/log/syslog to
+same size as the previous day's syslog, which has the bonus of
+guaranteeing that log messages won't get lost --- and if there's not
+enough disk space for the fallocate to succeed, the system administrator
+can get notified right away, while there is still free space on the
+system.  For paranoid DoD types who want to make sure that the audit
+logs are written, this could be quite useful.)
 
-(3) An (ioctl-based) interface which takes two inode numbers, and
-allows a privileged program to "defrag" an inode by using blocks from
-a donor inode and using them as the new blocks for the destination
-inode, preserving the contents of the destination inode.
-
-The advantage of this implementation strategy is that each of the
-interfaces can be implemented one at a time, with very well defined
-semantics, and which can be independently tested.  The semantics can
-also be used in different combinations to solve alternate problems.
-For example, a combination of (1) and (2) can be used to reserve
-blocks for use by a directory that is expected to grow, so the
-directory can use contiguous blocks.  Or, they could be used to
-implement an "online shrink" that would allow a filesystem to be
-resized to a smaller size.
-
-One other thing that comes to mind.  If it turns out that these
-interfaces have multiple users, and in some cases the reservations or
-block allocation restrictions are expected to last for longer than a
-process lifetime, it may be useful to tag them with a short (8-16
-character) name, so that it is possible to list the current set of
-reservations, and so they can be removed by a privileged user.  This
-could be overdesigning the interface; but the whole *point* of
-thinking about the interfaces from a more generic point of view (as
-opposed for use by a specific program for which the kernel interfaces
-are custom-designed) is that hopefully they will have multiple use
-cases and multiple users, in which case we need to worry about how
-multiple users can co-exist.
-
-Thoughts, comments?
+If it's going to take too long to get this into glibc, I guess I could
+put an fallocate() interface into libe2p, although that would not be my
+first preference.  After all, this sort of thing will be useful for all
+filesystems, not just ext4; it should be helpful for xfs and btrfs as
+well.
 
 						- Ted
