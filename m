@@ -1,92 +1,83 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [PATCH]ext4: online defrag: Enable to reuse blocks by multiple defrag
-Date: Tue, 09 Dec 2008 11:26:37 +0900
-Message-ID: <493DD75D.60504@rs.jp.nec.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH]ext4: online defrag: Enable to reuse blocks by multiple
+	defrag
+Date: Tue, 9 Dec 2008 00:47:12 -0500
+Message-ID: <20081209054712.GB10270@mit.edu>
+References: <493DD75D.60504@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:52931 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750931AbYLIC1F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Dec 2008 21:27:05 -0500
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:59489 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751073AbYLIFrR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 00:47:17 -0500
+Content-Disposition: inline
+In-Reply-To: <493DD75D.60504@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: online defrag: Enable to reuse blocks by multiple defrag.
 
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
+On Tue, Dec 09, 2008 at 11:26:37AM +0900, Akira Fujita wrote:
+> I'm redesigning ext4 online defrag based on the comments from Ted.
+> Probably defrag's block allocation method will be changed greatly.
 
-This patch is for defrag ver0.97 in the ext4 patch queue.
-If journal is not writeback mode, commit the transaction
-before block allocation to reuse blocks which previous defrag released.
+Akira-san,
 
-I'm redesigning ext4 online defrag based on the comments from Ted.
-Probably defrag's block allocation method will be changed greatly.
+FYI, there was a discussion about defrag on today's ext4 call.  One of
+the ideas that was kicked around was to completely change the
+primitives used by defrag, and to design things around three
+primitive, general purpose interfaces.
 
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
----
- defrag.c |   22 ++++++++++++----------
- 1 file changed, 12 insertions(+), 10 deletions(-)
-diff -Nrup -X linux-2.6.28-rc6-a/Documentation/dontdiff linux-2.6.28-rc6-a/fs/ext4/defrag.c linux-2.6.28-rc6-b/fs/ext4/defrag.c
---- linux-2.6.28-rc6-a/fs/ext4/defrag.c	2008-12-05 15:14:58.000000000 +0900
-+++ linux-2.6.28-rc6-b/fs/ext4/defrag.c	2008-12-05 15:56:26.000000000 +0900
-@@ -1279,7 +1279,6 @@ ext4_defrag_new_extent_tree(struct inode
- 			ext4_fsblk_t goal, int phase)
- {
- 	handle_t *handle;
--	struct ext4_sb_info *sbi = EXT4_SB(org_inode->i_sb);
- 	struct ext4_extent_header *eh = NULL;
- 	struct ext4_allocation_request ar;
- 	struct ext4_ext_path *dest_path = NULL;
-@@ -1287,7 +1286,7 @@ ext4_defrag_new_extent_tree(struct inode
- 	ext4_fsblk_t alloc_total = 0;
- 	ext4_fsblk_t newblock = 0;
- 	ext4_lblk_t req_end = req_start + req_blocks - 1;
--	ext4_lblk_t rest_blocks = 0;
-+	ext4_lblk_t rest_blocks = req_blocks;
- 	ext4_group_t dest_group_no, goal_group_no;
- 	ext4_grpblk_t dest_blk_off, goal_blk_off;
- 	int sum_tmp = 0;
-@@ -1308,6 +1307,17 @@ ext4_defrag_new_extent_tree(struct inode
- 	ext4_defrag_fill_ar(org_inode, tmp_inode, &ar, org_path,
- 				dest_path, req_blocks, iblock, goal, phase);
+We didn't go into complete detail on the call, but let me give you a
+strawman proposal for consideration/discussion:
 
-+	/*
-+	 * If journal is not writeback mode,
-+	 * commit the transaction to reuse the blocks
-+	 * which previous defrag released.
-+	 */
-+	if (!ext4_should_writeback_data(org_inode)) {
-+		ret = ext4_force_commit(org_inode->i_sb);
-+		if (ret)
-+			goto out2;
-+	}
-+
- 	handle = ext4_journal_start(tmp_inode, 0);
- 	if (IS_ERR(handle)) {
- 		ret = PTR_ERR(handle);
-@@ -1323,8 +1333,6 @@ ext4_defrag_new_extent_tree(struct inode
- 						&ar, dest_path, &newblock);
- 		if (ret < 0)
- 			goto out;
--		/* Claimed blocks are already reserved */
--		EXT4_I(ar.inode)->i_delalloc_reserved_flag = 1;
+(1) An (ioctl-based) interface which allows a privileged program to
+specify one or more range of blocks which the filesystem's block
+allocator must NOT allocate from.  (We may want to have a flag for
+each block range which either makes the block lockout advisory, such
+that if the block allocator can't find blocks anywhere else, it may
+invade the reserved block area --- or mandatory, where if there are no
+other blocks, the filesystem returns ENOSPC).  This allows the
+defragmenter to work on an area of the disk without worrying about
+concurrent allocations by other processes from getting in the way.
 
- 		ext4_get_group_no_and_offset(tmp_inode->i_sb, newblock,
- 					&dest_group_no, &dest_blk_off);
-@@ -1362,12 +1370,6 @@ ext4_defrag_new_extent_tree(struct inode
- out:
- 	if (ret < 0 && ar.len)
- 		ext4_free_blocks(handle, tmp_inode, newblock, ar.len, metadata);
--	/*
--	 * Update dirty-blocks counter if we cannot allocate the all of
--	 * requested blocks.
--	 */
--	if (rest_blocks)
--		percpu_counter_sub(&sbi->s_dirtyblocks_counter, rest_blocks);
+(2) An (ioctl-based) interface which associates with an inode
+preferred range(s) of blocks which the block allocator will try using
+first; if those blocks are not available, or the block range(s) is
+exhausted, the block allocator use its normal algorithms to pick the
+best available block.  The set of preferred blocks is only guaranteed
+to persist while the inode is in memory.
 
- 	ext4_journal_stop(handle);
+(3) An (ioctl-based) interface which takes two inode numbers, and
+allows a privileged program to "defrag" an inode by using blocks from
+a donor inode and using them as the new blocks for the destination
+inode, preserving the contents of the destination inode.
+
+The advantage of this implementation strategy is that each of the
+interfaces can be implemented one at a time, with very well defined
+semantics, and which can be independently tested.  The semantics can
+also be used in different combinations to solve alternate problems.
+For example, a combination of (1) and (2) can be used to reserve
+blocks for use by a directory that is expected to grow, so the
+directory can use contiguous blocks.  Or, they could be used to
+implement an "online shrink" that would allow a filesystem to be
+resized to a smaller size.
+
+One other thing that comes to mind.  If it turns out that these
+interfaces have multiple users, and in some cases the reservations or
+block allocation restrictions are expected to last for longer than a
+process lifetime, it may be useful to tag them with a short (8-16
+character) name, so that it is possible to list the current set of
+reservations, and so they can be removed by a privileged user.  This
+could be overdesigning the interface; but the whole *point* of
+thinking about the interfaces from a more generic point of view (as
+opposed for use by a specific program for which the kernel interfaces
+are custom-designed) is that hopefully they will have multiple use
+cases and multiple users, in which case we need to worry about how
+multiple users can co-exist.
+
+Thoughts, comments?
+
+						- Ted
