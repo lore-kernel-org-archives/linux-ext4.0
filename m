@@ -1,172 +1,80 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: [PATCH] percpu_counter: Fix __percpu_counter_sum()
-Date: Tue, 09 Dec 2008 09:34:13 +0100
-Message-ID: <1228811653.6809.26.camel@twins>
-References: <4936D287.6090206@cosmosbay.com>
-	 <4936EB04.8000609@cosmosbay.com>
-	 <20081206202233.3b74febc.akpm@linux-foundation.org>
-	 <493BCF60.1080409@cosmosbay.com>
-	 <20081207092854.f6bcbfae.akpm@linux-foundation.org>
-	 <493C0F40.7040304@cosmosbay.com>
-	 <20081207205250.dbb7fe4b.akpm@linux-foundation.org>
-	 <20081208221241.GA2501@mit.edu>
-	 <1228774836.16244.22.camel@lappy.programming.kicks-ass.net>
-	 <20081208230047.GC2501@mit.edu> <1228777500.12729.4.camel@twins>
-	 <493E2884.6010600@cosmosbay.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: BUG: unable to handle kernel NULL pointer dereference at 00000000
+	[ext4_new_meta_blocks+0x7c/0xb7]
+Date: Tue, 9 Dec 2008 16:11:22 +0530
+Message-ID: <20081209104121.GA7572@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux kernel <linux-kernel@vger.kernel.org>,
-	"David S. Miller" <davem@davemloft.net>,
-	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
-To: Eric Dumazet <dada1@cosmosbay.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from viefep18-int.chello.at ([213.46.255.22]:30825 "EHLO
-	viefep18-int.chello.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753254AbYLIIeX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 03:34:23 -0500
-In-Reply-To: <493E2884.6010600@cosmosbay.com>
+Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:36456 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750960AbYLIKoI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 05:44:08 -0500
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id mB9AgfuM005887
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Dec 2008 21:42:41 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mB9AfaLf268150
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Dec 2008 21:41:36 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mB9Afavi031519
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Dec 2008 21:41:36 +1100
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2008-12-09 at 09:12 +0100, Eric Dumazet wrote:
-> Peter Zijlstra a =C3=A9crit :
-> > On Mon, 2008-12-08 at 18:00 -0500, Theodore Tso wrote:
-> >> On Mon, Dec 08, 2008 at 11:20:35PM +0100, Peter Zijlstra wrote:
-> >>> atomic_t is pretty good on all archs, but you get to keep the cac=
-heline
-> >>> ping-pong.
-> >>>
-> >> Stupid question --- if you're worried about cacheline ping-pongs, =
-why
-> >> aren't each cpu's delta counter cacheline aligned?  With a 64-byte
-> >> cache-line, and a 32-bit counters entry, with less than 16 CPU's w=
-e're
-> >> going to be getting cache ping-pong effects with percpu_counter's,
-> >> right?  Or am I missing something?
-> >=20
-> > sorta - a new per-cpu allocator is in the works, but we do cachelin=
-e
-> > align the per-cpu allocations (or used to), also, the allocations a=
-re
-> > node affine.
-> >=20
->=20
-> I did work on a 'light weight percpu counter', aka percpu_lcounter, f=
-or
-> all metrics that dont need 64 bits wide, but a plain 'long'
-> (network, nr_files, nr_dentry, nr_inodes, ...)
->=20
-> struct percpu_lcounter {
->         atomic_long_t count;
-> #ifdef CONFIG_SMP
-> #ifdef CONFIG_HOTPLUG_CPU
->         struct list_head list;  /* All percpu_counters are on a list =
-*/
-> #endif
->         long *counters;
-> #endif
-> };
->=20
-> (No more spinlock)
->=20
-> Then I tried to have atomic_t  (or atomic_long_t) for 'counters', but=
- got a
-> 10% slow down of __percpu_lcounter_add(), even if never hitting the '=
-slow path'
-> atomic_long_add_return() is really expensiven, even on a non contende=
-d cache
-> line.
->=20
-> struct percpu_lcounter {
->         atomic_long_t count;
-> #ifdef CONFIG_SMP
-> #ifdef CONFIG_HOTPLUG_CPU
->         struct list_head list;  /* All percpu_counters are on a list =
-*/
-> #endif
->         atomic_long_t *counters;
-> #endif
-> };
->=20
-> So I believe the percpu_clounter_sum() that tries to reset to 0 all c=
-pu local
->  counts would be really too expensive, if it slows down _add() so muc=
-h.
->=20
-> long percpu_lcounter_sum(struct percpu_lcounter *fblc)
-> {
->         long acc =3D 0;
->         int cpu;
->=20
->         for_each_online_cpu(cpu)
->                 acc +=3D atomic_long_xchg(per_cpu_ptr(fblc->counters,=
- cpu), 0);
->         return atomic_long_add_return(acc, &fblc->count);
-> }
->=20
-> void __percpu_lcounter_add(struct percpu_lcounter *flbc, long amount,=
- s32 batch)
-> {
->         long count;
->         atomic_long_t *pcount;
->=20
->         pcount =3D per_cpu_ptr(flbc->counters, get_cpu());
->         count =3D atomic_long_add_return(amount, pcount); /* way too =
-expensive !!! */
+Hi Ted,
 
-Yeah, its an extra LOCK ins where there wasn't one before.
+I hit the below Oops with the latest patchqueue.
 
->         if (unlikely(count >=3D batch || count <=3D -batch)) {
->                 atomic_long_add(count, &flbc->count);
->                 atomic_long_sub(count, pcount);
+BUG: unable to handle kernel NULL pointer dereference at 00000000
+IP: [<c04c0e39>] ext4_new_meta_blocks+0x7c/0xb7
+*pdpt = 0000000011945001 *pde = 0000000000000000
+....
+....
+EAX: da5dae60 EBX: e8c233e0 ECX: d4cb2000 EDX: 00000000
+ESI: e8c23114 EDI: e8c2302c EBP: d4cb2b70 ESP: d4cb2b28
 
-Also, this are two LOCKs where, with the spinlock, you'd likely only
-have 1.
+The problem is due to remove-do_blk_alloc patch.
 
-So yes, having the per-cpu variable an atomic seems like a way too
-expensive idea. That xchg based _sum is cool though.
+The patch below should fix the crash. 
 
->         }
->         put_cpu();
-> }
->=20
-> Just forget about it and let percpu_lcounter_sum() only read the valu=
-es, and
-> let percpu_lcounter_add() not using atomic ops in fast path.
->=20
-> void __percpu_lcounter_add(struct percpu_lcounter *flbc, long amount,=
- s32 batch)
-> {
->         long count;
->         long *pcount;
->=20
->         pcount =3D per_cpu_ptr(flbc->counters, get_cpu());
->         count =3D *pcount + amount;
->         if (unlikely(count >=3D batch || count <=3D -batch)) {
->                 atomic_long_add(count, &flbc->count);
->                 count =3D 0;
->         }
->         *pcount =3D count;
->         put_cpu();
-> }
-> EXPORT_SYMBOL(__percpu_lcounter_add);
->=20
->=20
-> Also, with upcoming NR_CPUS=3D4096, it may be time to design a hierar=
-chical percpu_counter,
-> to avoid hitting one shared "fbc->count" all the time a local counter=
- overflows.
 
-So we'd normally write to the shared cacheline every cpus/batch.
-Cascading this you'd get ln(cpus)/(batch^ln(cpus)) or something like
-that, right? Won't just increasing batch give the same result - or are
-we going to play funny games with the topology information?
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index e950898..2dd1162 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -650,7 +650,7 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
+ 	 */
+ 	if (!(*errp) && EXT4_I(inode)->i_delalloc_reserved_flag) {
+ 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+-		EXT4_I(inode)->i_allocated_meta_blocks += *count;
++		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	}
+ 	return ret;
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+I have one question regarding the patch. What about blocks allocated for
+directories for the  ext3 format.  With extent format we are not
+setting EXT4_MB_HINT_DATA for non regular files. So i guess we also
+need the below patch .
+
+
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 1647903..89aa870 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -600,7 +600,9 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
+ 	ar.goal = goal;
+ 	ar.len = target;
+ 	ar.logical = iblock;
+-	ar.flags = EXT4_MB_HINT_DATA;
++	if (S_ISREG(inode->i_mode))
++		/* enable in-core preallocation only for regular files */
++		ar.flags = EXT4_MB_HINT_DATA;
+ 
+ 	current_block = ext4_mb_new_blocks(handle, &ar, err);
+ 
