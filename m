@@ -1,354 +1,154 @@
-From: <gregkh@suse.de>
-Subject: patch jbd-fix-error-handling-for-checkpoint-io.patch added to 2.6.27-stable tree
-Date: Tue, 09 Dec 2008 10:16:37 -0800
-Message-ID: <20081209181722.86DDF48D3F@coco.kroah.org>
-Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
-To: hidehiro.kawai.ez@hitachi.com, akpm@linux-foundation.org,
-	gregkh@suse.de, jack@suse.cz, linux-ext4@vger.kernel.org,
-	torvalds@linux-foundation.org
+From: akpm@linux-foundation.org
+Subject: [patch 06/19] revert "percpu counter: clean up percpu_counter_sum_and_set()"
+Date: Tue, 09 Dec 2008 13:14:13 -0800
+Message-ID: <200812092114.mB9LED3e027042@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, a.p.zijlstra@chello.nl, cmm@us.ibm.com,
+	dada1@cosmosbay.com, davem@davemloft.net,
+	linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:42279 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754161AbYLISRY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Dec 2008 13:17:24 -0500
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:38613 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754021AbYLIVO1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 16:14:27 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Andrew Morton <akpm@linux-foundation.org>
 
-This is a note to let you know that we have just queued up the patch titled
+Revert
 
-    Subject: jbd: fix error handling for checkpoint io
+    commit 1f7c14c62ce63805f9574664a6c6de3633d4a354
+    Author: Mingming Cao <cmm@us.ibm.com>
+    Date:   Thu Oct 9 12:50:59 2008 -0400
 
-to the 2.6.27-stable tree.  Its filename is
+        percpu counter: clean up percpu_counter_sum_and_set()
 
-    jbd-fix-error-handling-for-checkpoint-io.patch
+Before this patch we had the following:
 
-A git repo of this tree can be found at 
-    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
+percpu_counter_sum(): return the percpu_counter's value
+
+percpu_counter_sum_and_set(): return the percpu_counter's value, copying
+that value into the central value and zeroing the per-cpu counters before
+returning.
+
+After this patch, percpu_counter_sum_and_set() has gone, and
+percpu_counter_sum() gets the old percpu_counter_sum_and_set()
+functionality.
+
+Problem is, as Eric points out, the old percpu_counter_sum_and_set()
+functionality was racy and wrong.  It zeroes out counters on "other" cpus,
+without holding any locks which will prevent races agaist updates from
+those other CPUS.
+
+This patch reverts 1f7c14c62ce63805f9574664a6c6de3633d4a354.  This means
+that percpu_counter_sum_and_set() still has the race, but
+percpu_counter_sum() does not.
+
+Note that this is not a simple revert - ext4 has since started using
+percpu_counter_sum() for its dirty_blocks counter as well.
 
 
->From 4afe978530702c934dfdb11f54073136818b2119 Mon Sep 17 00:00:00 2001
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Date: Wed, 22 Oct 2008 14:15:00 -0700
-Subject: jbd: fix error handling for checkpoint io
+Note that this revert patch changes percpu_counter_sum() semantics. 
 
-From: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
+Before the patch, a call to percpu_counter_sum() will bring the counter's
+central counter mostly up-to-date, so a following percpu_counter_read()
+will return a close value.
 
-commit 4afe978530702c934dfdb11f54073136818b2119 upstream.
+After this patch, a call to percpu_counter_sum() will leave the counter's
+central accumulator unaltered, so a subsequent call to
+percpu_counter_read() can now return a significantly inaccurate result.
 
-When a checkpointing IO fails, current JBD code doesn't check the error
-and continue journaling.  This means latest metadata can be lost from both
-the journal and filesystem.
+If there is any code in the tree which was introduced after
+e8ced39d5e8911c662d4d69a342b9d053eaaac4e was merged, and which depends
+upon the new percpu_counter_sum() semantics, that code will break.
 
-This patch leaves the failed metadata blocks in the journal space and
-aborts journaling in the case of log_do_checkpoint().  To achieve this, we
-need to do:
 
-1. don't remove the failed buffer from the checkpoint list where in
-   the case of __try_to_free_cp_buf() because it may be released or
-   overwritten by a later transaction
-2. log_do_checkpoint() is the last chance, remove the failed buffer
-   from the checkpoint list and abort the journal
-3. when checkpointing fails, don't update the journal super block to
-   prevent the journaled contents from being cleaned.  For safety,
-   don't update j_tail and j_tail_sequence either
-4. when checkpointing fails, notify this error to the ext3 layer so
-   that ext3 don't clear the needs_recovery flag, otherwise the
-   journaled contents are ignored and cleaned in the recovery phase
-5. if the recovery fails, keep the needs_recovery flag
-6. prevent cleanup_journal_tail() from being called between
-   __journal_drop_transaction() and journal_abort() (a race issue
-   between journal_flush() and __log_wait_for_space()
-
-Signed-off-by: Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>
-Acked-by: Jan Kara <jack@suse.cz>
+Reported-by: Eric Dumazet <dada1@cosmosbay.com>
+Cc: "David S. Miller" <davem@davemloft.net>
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: Mingming Cao <cmm@us.ibm.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
 ---
- fs/jbd/checkpoint.c |   49 +++++++++++++++++++++++++++++++++++++------------
- fs/jbd/journal.c    |   28 ++++++++++++++++++++++------
- fs/jbd/recovery.c   |    7 +++++--
- include/linux/jbd.h |    2 +-
- 4 files changed, 65 insertions(+), 21 deletions(-)
 
---- a/fs/jbd/checkpoint.c
-+++ b/fs/jbd/checkpoint.c
-@@ -93,7 +93,8 @@ static int __try_to_free_cp_buf(struct j
- 	int ret = 0;
- 	struct buffer_head *bh = jh2bh(jh);
- 
--	if (jh->b_jlist == BJ_None && !buffer_locked(bh) && !buffer_dirty(bh)) {
-+	if (jh->b_jlist == BJ_None && !buffer_locked(bh) &&
-+	    !buffer_dirty(bh) && buffer_uptodate(bh)) {
- 		JBUFFER_TRACE(jh, "remove from checkpoint list");
- 		ret = __journal_remove_checkpoint(jh) + 1;
- 		jbd_unlock_bh_state(bh);
-@@ -160,21 +161,25 @@ static void jbd_sync_bh(journal_t *journ
-  * buffers. Note that we take the buffers in the opposite ordering
-  * from the one in which they were submitted for IO.
-  *
-+ * Return 0 on success, and return <0 if some buffers have failed
-+ * to be written out.
-+ *
-  * Called with j_list_lock held.
-  */
--static void __wait_cp_io(journal_t *journal, transaction_t *transaction)
-+static int __wait_cp_io(journal_t *journal, transaction_t *transaction)
- {
- 	struct journal_head *jh;
- 	struct buffer_head *bh;
- 	tid_t this_tid;
- 	int released = 0;
-+	int ret = 0;
- 
- 	this_tid = transaction->t_tid;
- restart:
- 	/* Did somebody clean up the transaction in the meanwhile? */
- 	if (journal->j_checkpoint_transactions != transaction ||
- 			transaction->t_tid != this_tid)
--		return;
-+		return ret;
- 	while (!released && transaction->t_checkpoint_io_list) {
- 		jh = transaction->t_checkpoint_io_list;
- 		bh = jh2bh(jh);
-@@ -194,6 +199,9 @@ restart:
- 			spin_lock(&journal->j_list_lock);
- 			goto restart;
- 		}
-+		if (unlikely(!buffer_uptodate(bh)))
-+			ret = -EIO;
-+
- 		/*
- 		 * Now in whatever state the buffer currently is, we know that
- 		 * it has been written out and so we can drop it from the list
-@@ -203,6 +211,8 @@ restart:
- 		journal_remove_journal_head(bh);
- 		__brelse(bh);
- 	}
-+
-+	return ret;
- }
- 
- #define NR_BATCH	64
-@@ -226,7 +236,8 @@ __flush_batch(journal_t *journal, struct
-  * Try to flush one buffer from the checkpoint list to disk.
-  *
-  * Return 1 if something happened which requires us to abort the current
-- * scan of the checkpoint list.
-+ * scan of the checkpoint list.  Return <0 if the buffer has failed to
-+ * be written out.
-  *
-  * Called with j_list_lock held and drops it if 1 is returned
-  * Called under jbd_lock_bh_state(jh2bh(jh)), and drops it
-@@ -256,6 +267,9 @@ static int __process_buffer(journal_t *j
- 		log_wait_commit(journal, tid);
- 		ret = 1;
- 	} else if (!buffer_dirty(bh)) {
-+		ret = 1;
-+		if (unlikely(!buffer_uptodate(bh)))
-+			ret = -EIO;
- 		J_ASSERT_JH(jh, !buffer_jbddirty(bh));
- 		BUFFER_TRACE(bh, "remove from checkpoint");
- 		__journal_remove_checkpoint(jh);
-@@ -263,7 +277,6 @@ static int __process_buffer(journal_t *j
- 		jbd_unlock_bh_state(bh);
- 		journal_remove_journal_head(bh);
- 		__brelse(bh);
--		ret = 1;
- 	} else {
- 		/*
- 		 * Important: we are about to write the buffer, and
-@@ -295,6 +308,7 @@ static int __process_buffer(journal_t *j
-  * to disk. We submit larger chunks of data at once.
-  *
-  * The journal should be locked before calling this function.
-+ * Called with j_checkpoint_mutex held.
-  */
- int log_do_checkpoint(journal_t *journal)
- {
-@@ -318,6 +332,7 @@ int log_do_checkpoint(journal_t *journal
- 	 * OK, we need to start writing disk blocks.  Take one transaction
- 	 * and write it.
- 	 */
-+	result = 0;
- 	spin_lock(&journal->j_list_lock);
- 	if (!journal->j_checkpoint_transactions)
- 		goto out;
-@@ -334,7 +349,7 @@ restart:
- 		int batch_count = 0;
- 		struct buffer_head *bhs[NR_BATCH];
- 		struct journal_head *jh;
--		int retry = 0;
-+		int retry = 0, err;
- 
- 		while (!retry && transaction->t_checkpoint_list) {
- 			struct buffer_head *bh;
-@@ -347,6 +362,8 @@ restart:
- 				break;
- 			}
- 			retry = __process_buffer(journal, jh, bhs,&batch_count);
-+			if (retry < 0 && !result)
-+				result = retry;
- 			if (!retry && (need_resched() ||
- 				spin_needbreak(&journal->j_list_lock))) {
- 				spin_unlock(&journal->j_list_lock);
-@@ -371,14 +388,18 @@ restart:
- 		 * Now we have cleaned up the first transaction's checkpoint
- 		 * list. Let's clean up the second one
- 		 */
--		__wait_cp_io(journal, transaction);
-+		err = __wait_cp_io(journal, transaction);
-+		if (!result)
-+			result = err;
- 	}
- out:
- 	spin_unlock(&journal->j_list_lock);
--	result = cleanup_journal_tail(journal);
- 	if (result < 0)
--		return result;
--	return 0;
-+		journal_abort(journal, result);
-+	else
-+		result = cleanup_journal_tail(journal);
-+
-+	return (result < 0) ? result : 0;
- }
- 
- /*
-@@ -394,8 +415,9 @@ out:
-  * This is the only part of the journaling code which really needs to be
-  * aware of transaction aborts.  Checkpointing involves writing to the
-  * main filesystem area rather than to the journal, so it can proceed
-- * even in abort state, but we must not update the journal superblock if
-- * we have an abort error outstanding.
-+ * even in abort state, but we must not update the super block if
-+ * checkpointing may have failed.  Otherwise, we would lose some metadata
-+ * buffers which should be written-back to the filesystem.
-  */
- 
- int cleanup_journal_tail(journal_t *journal)
-@@ -404,6 +426,9 @@ int cleanup_journal_tail(journal_t *jour
- 	tid_t		first_tid;
- 	unsigned long	blocknr, freed;
- 
-+	if (is_journal_aborted(journal))
-+		return 1;
-+
- 	/* OK, work out the oldest transaction remaining in the log, and
- 	 * the log block it starts at.
- 	 *
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -1121,9 +1121,12 @@ recovery_error:
-  *
-  * Release a journal_t structure once it is no longer in use by the
-  * journaled object.
-+ * Return <0 if we couldn't clean up the journal.
-  */
--void journal_destroy(journal_t *journal)
-+int journal_destroy(journal_t *journal)
- {
-+	int err = 0;
-+
- 	/* Wait for the commit thread to wake up and die. */
- 	journal_kill_thread(journal);
- 
-@@ -1146,11 +1149,16 @@ void journal_destroy(journal_t *journal)
- 	J_ASSERT(journal->j_checkpoint_transactions == NULL);
- 	spin_unlock(&journal->j_list_lock);
- 
--	/* We can now mark the journal as empty. */
--	journal->j_tail = 0;
--	journal->j_tail_sequence = ++journal->j_transaction_sequence;
- 	if (journal->j_sb_buffer) {
--		journal_update_superblock(journal, 1);
-+		if (!is_journal_aborted(journal)) {
-+			/* We can now mark the journal as empty. */
-+			journal->j_tail = 0;
-+			journal->j_tail_sequence =
-+				++journal->j_transaction_sequence;
-+			journal_update_superblock(journal, 1);
-+		} else {
-+			err = -EIO;
-+		}
- 		brelse(journal->j_sb_buffer);
- 	}
- 
-@@ -1160,6 +1168,8 @@ void journal_destroy(journal_t *journal)
- 		journal_destroy_revoke(journal);
- 	kfree(journal->j_wbuf);
- 	kfree(journal);
-+
-+	return err;
- }
- 
- 
-@@ -1359,10 +1369,16 @@ int journal_flush(journal_t *journal)
- 	spin_lock(&journal->j_list_lock);
- 	while (!err && journal->j_checkpoint_transactions != NULL) {
- 		spin_unlock(&journal->j_list_lock);
-+		mutex_lock(&journal->j_checkpoint_mutex);
- 		err = log_do_checkpoint(journal);
-+		mutex_unlock(&journal->j_checkpoint_mutex);
- 		spin_lock(&journal->j_list_lock);
- 	}
- 	spin_unlock(&journal->j_list_lock);
-+
-+	if (is_journal_aborted(journal))
-+		return -EIO;
-+
- 	cleanup_journal_tail(journal);
- 
- 	/* Finally, mark the journal as really needing no recovery.
-@@ -1384,7 +1400,7 @@ int journal_flush(journal_t *journal)
- 	J_ASSERT(journal->j_head == journal->j_tail);
- 	J_ASSERT(journal->j_tail_sequence == journal->j_transaction_sequence);
- 	spin_unlock(&journal->j_state_lock);
--	return err;
-+	return 0;
- }
- 
- /**
---- a/fs/jbd/recovery.c
-+++ b/fs/jbd/recovery.c
-@@ -223,7 +223,7 @@ do {									\
-  */
- int journal_recover(journal_t *journal)
- {
--	int			err;
-+	int			err, err2;
- 	journal_superblock_t *	sb;
- 
- 	struct recovery_info	info;
-@@ -261,7 +261,10 @@ int journal_recover(journal_t *journal)
- 	journal->j_transaction_sequence = ++info.end_transaction;
- 
- 	journal_clear_revoke(journal);
--	sync_blockdev(journal->j_fs_dev);
-+	err2 = sync_blockdev(journal->j_fs_dev);
-+	if (!err)
-+		err = err2;
-+
- 	return err;
- }
- 
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -908,7 +908,7 @@ extern int	   journal_set_features
- 		   (journal_t *, unsigned long, unsigned long, unsigned long);
- extern int	   journal_create     (journal_t *);
- extern int	   journal_load       (journal_t *journal);
--extern void	   journal_destroy    (journal_t *);
-+extern int	   journal_destroy    (journal_t *);
- extern int	   journal_recover    (journal_t *journal);
- extern int	   journal_wipe       (journal_t *, int);
- extern int	   journal_skip_recovery	(journal_t *);
+ fs/ext4/balloc.c               |    4 ++--
+ include/linux/percpu_counter.h |   12 +++++++++---
+ lib/percpu_counter.c           |    8 +++++---
+ 3 files changed, 16 insertions(+), 8 deletions(-)
 
-
-Patches currently in stable-queue which might be from hidehiro.kawai.ez@hitachi.com are
-
-queue-2.6.27/jbd-fix-error-handling-for-checkpoint-io.patch
-queue-2.6.27/jbd-test-bh_write_eio-to-detect-errors-on-metadata-buffers.patch
+diff -puN fs/ext4/balloc.c~revert-percpu-counter-clean-up-percpu_counter_sum_and_set fs/ext4/balloc.c
+--- a/fs/ext4/balloc.c~revert-percpu-counter-clean-up-percpu_counter_sum_and_set
++++ a/fs/ext4/balloc.c
+@@ -609,8 +609,8 @@ int ext4_has_free_blocks(struct ext4_sb_
+ 
+ 	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
+ 						EXT4_FREEBLOCKS_WATERMARK) {
+-		free_blocks  = percpu_counter_sum(fbc);
+-		dirty_blocks = percpu_counter_sum(dbc);
++		free_blocks  = percpu_counter_sum_and_set(fbc);
++		dirty_blocks = percpu_counter_sum_and_set(dbc);
+ 		if (dirty_blocks < 0) {
+ 			printk(KERN_CRIT "Dirty block accounting "
+ 					"went wrong %lld\n",
+diff -puN include/linux/percpu_counter.h~revert-percpu-counter-clean-up-percpu_counter_sum_and_set include/linux/percpu_counter.h
+--- a/include/linux/percpu_counter.h~revert-percpu-counter-clean-up-percpu_counter_sum_and_set
++++ a/include/linux/percpu_counter.h
+@@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percp
+ void percpu_counter_destroy(struct percpu_counter *fbc);
+ void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
+ void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
+-s64 __percpu_counter_sum(struct percpu_counter *fbc);
++s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
+ 
+ static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
+ {
+@@ -44,13 +44,19 @@ static inline void percpu_counter_add(st
+ 
+ static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
+ {
+-	s64 ret = __percpu_counter_sum(fbc);
++	s64 ret = __percpu_counter_sum(fbc, 0);
+ 	return ret < 0 ? 0 : ret;
+ }
+ 
++static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
++{
++	return __percpu_counter_sum(fbc, 1);
++}
++
++
+ static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
+ {
+-	return __percpu_counter_sum(fbc);
++	return __percpu_counter_sum(fbc, 0);
+ }
+ 
+ static inline s64 percpu_counter_read(struct percpu_counter *fbc)
+diff -puN lib/percpu_counter.c~revert-percpu-counter-clean-up-percpu_counter_sum_and_set lib/percpu_counter.c
+--- a/lib/percpu_counter.c~revert-percpu-counter-clean-up-percpu_counter_sum_and_set
++++ a/lib/percpu_counter.c
+@@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
+  * Add up all the per-cpu counts, return the result.  This is a more accurate
+  * but much slower version of percpu_counter_read_positive()
+  */
+-s64 __percpu_counter_sum(struct percpu_counter *fbc)
++s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
+ {
+ 	s64 ret;
+ 	int cpu;
+@@ -62,9 +62,11 @@ s64 __percpu_counter_sum(struct percpu_c
+ 	for_each_online_cpu(cpu) {
+ 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
+ 		ret += *pcount;
+-		*pcount = 0;
++		if (set)
++			*pcount = 0;
+ 	}
+-	fbc->count = ret;
++	if (set)
++		fbc->count = ret;
+ 
+ 	spin_unlock(&fbc->lock);
+ 	return ret;
+_
