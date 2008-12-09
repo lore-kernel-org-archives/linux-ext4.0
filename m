@@ -1,80 +1,156 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: BUG: unable to handle kernel NULL pointer dereference at 00000000
-	[ext4_new_meta_blocks+0x7c/0xb7]
-Date: Tue, 9 Dec 2008 16:11:22 +0530
-Message-ID: <20081209104121.GA7572@skywalker>
+From: Boaz Harrosh <bharrosh@panasas.com>
+Subject: Re: Checking link targets are NULL-terminated
+Date: Tue, 09 Dec 2008 17:30:57 +0200
+Message-ID: <493E8F31.3040806@panasas.com>
+References: <20081205144810.GA25585@dastardly.home.dghda.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP03.au.ibm.com ([202.81.18.172]:36456 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750960AbYLIKoI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 05:44:08 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id mB9AgfuM005887
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Dec 2008 21:42:41 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mB9AfaLf268150
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Dec 2008 21:41:36 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mB9Afavi031519
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Dec 2008 21:41:36 +1100
-Content-Disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Duane Griffin <duaneg@dghda.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081205144810.GA25585@dastardly.home.dghda.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
+Duane Griffin wrote:
+> Hi folks,
+> 
+> I am looking at a report of an intermittent BUG caused by an
+> intentionally corrupted ext2 filesystem:
+> http://bugzilla.kernel.org/show_bug.cgi?id=11412
+> 
+> What I think is happening is generic_readlink gets the name via
+> i_ops->follow_link and passes it into vfs_readlink, without it
+> necessarily being validating anywhere. If the name is not
+> NULL-terminated the strlen call in vfs_readlink may run off past the end
+> of the page. I think this is potentially happening in
+> page_follow_link_light, as well as ext2_follow_link, so it isn't just
+> ext* that is affected.
+> 
+> Does this sound correct, or have I missed something?
+> 
+> Assuming this is a real problem, does anyone have a better solution than
+> scanning the name for a \0 (in ext2_follow_link and
+> page_follow_link_light) and returning -ENAMETOOLONG if we can't find
+> one? I.e. something like this:
+> 
+> diff --git a/fs/ext2/symlink.c b/fs/ext2/symlink.c
+> index 4e2426e..9b01af2 100644
+> --- a/fs/ext2/symlink.c
+> +++ b/fs/ext2/symlink.c
+> @@ -24,8 +24,14 @@
+>  static void *ext2_follow_link(struct dentry *dentry, struct nameidata *nd)
+>  {
+>  	struct ext2_inode_info *ei = EXT2_I(dentry->d_inode);
+> -	nd_set_link(nd, (char *)ei->i_data);
+> -	return NULL;
+> +	void *err = NULL;
+> +
+> +	if (memchr(ei->i_data, 0, sizeof(ei->i_data)) == NULL)
+> +		err = ERR_PTR(-ENAMETOOLONG);
+> +	else
+> +		nd_set_link(nd, (char *)ei->i_data);
+> +
+> +	return err;
+>  }
 
-I hit the below Oops with the latest patchqueue.
+Here (Like below) Just zero the very last byte in the buffer.
+The first time this buffer was strcpy to, it was including the null terminated
+string. then written to inode on disk. When read, at most it could be,
+is as space allocated at inode (including null). If intentionally damaged, the symlink
+will be corrupted but Kernel is safe.
 
-BUG: unable to handle kernel NULL pointer dereference at 00000000
-IP: [<c04c0e39>] ext4_new_meta_blocks+0x7c/0xb7
-*pdpt = 0000000011945001 *pde = 0000000000000000
-....
-....
-EAX: da5dae60 EBX: e8c233e0 ECX: d4cb2000 EDX: 00000000
-ESI: e8c23114 EDI: e8c2302c EBP: d4cb2b70 ESP: d4cb2b28
+>  
+>  const struct inode_operations ext2_symlink_inode_operations = {
+> diff --git a/fs/namei.c b/fs/namei.c
+> index d34e0f9..f20e94b 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -2750,29 +2750,49 @@ static char *page_getlink(struct dentry * dentry, struct page **ppage)
+>  {
+>  	struct page * page;
+>  	struct address_space *mapping = dentry->d_inode->i_mapping;
+> +	char *kaddr;
+> +
+>  	page = read_mapping_page(mapping, 0, NULL);
+>  	if (IS_ERR(page))
+>  		return (char*)page;
+> +
+> +	kaddr = kmap(page);
+> +	if (memchr(kaddr, 0, PAGE_SIZE) == NULL) {
+> +		kunmap(kaddr);
+> +		page_cache_release(page);
+> +		return ERR_PTR(-ENAMETOOLONG);
+> +	}
+> +
 
-The problem is due to remove-do_blk_alloc patch.
+You don't need to search and fail here. All you need is to NULL terminate on
+read_i_size() + 1 of inode. The length of the written string was set on write-time
+the buffer is big since it is a full page and I think symlinks are limited to
+less then that.
 
-The patch below should fix the crash. 
+If a person damaged the symlink inode on disk (set different size) then
+the data is corrupted but Kernel is still safe.
 
+>  	*ppage = page;
+> -	return kmap(page);
+> +	return kaddr;
+>  }
+>  
+>  int page_readlink(struct dentry *dentry, char __user *buffer, int buflen)
+>  {
+> +	int res;
+>  	struct page *page = NULL;
+>  	char *s = page_getlink(dentry, &page);
+> -	int res = vfs_readlink(dentry,buffer,buflen,s);
+> +
+> +	if (IS_ERR(s))
+> +		return PTR_ERR(s);
+> +
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index e950898..2dd1162 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -650,7 +650,7 @@ ext4_fsblk_t ext4_new_meta_blocks(handle_t *handle, struct inode *inode,
- 	 */
- 	if (!(*errp) && EXT4_I(inode)->i_delalloc_reserved_flag) {
- 		spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
--		EXT4_I(inode)->i_allocated_meta_blocks += *count;
-+		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 	}
- 	return ret;
+Above will not fail this change is not needed
 
+> +	res = vfs_readlink(dentry, buffer, buflen, s);
+>  	if (page) {
+>  		kunmap(page);
+>  		page_cache_release(page);
+>  	}
+> +
+>  	return res;
+>  }
+>  
+>  void *page_follow_link_light(struct dentry *dentry, struct nameidata *nd)
+>  {
+>  	struct page *page = NULL;
+> -	nd_set_link(nd, page_getlink(dentry, &page));
+> +	char *name = page_getlink(dentry, &page);
+> +	if (IS_ERR(name))
+> +		return name;
+> +
 
-I have one question regarding the patch. What about blocks allocated for
-directories for the  ext3 format.  With extent format we are not
-setting EXT4_MB_HINT_DATA for non regular files. So i guess we also
-need the below patch .
+Same here
 
+> +	nd_set_link(nd, name);
+>  	return page;
+>  }
+>  
+> Cheers,
+> Duane.
+> 
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1647903..89aa870 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -600,7 +600,9 @@ static int ext4_alloc_blocks(handle_t *handle, struct inode *inode,
- 	ar.goal = goal;
- 	ar.len = target;
- 	ar.logical = iblock;
--	ar.flags = EXT4_MB_HINT_DATA;
-+	if (S_ISREG(inode->i_mode))
-+		/* enable in-core preallocation only for regular files */
-+		ar.flags = EXT4_MB_HINT_DATA;
- 
- 	current_block = ext4_mb_new_blocks(handle, &ar, err);
- 
+I hit this problem too, while developing a filesystem that was based
+on ext2. The reason that it works is because the remainder of a page is always
+Zero'ed out on writes. Then when read, you receive back your zero terminated link.
+(Which means that if you have a symlink exactly 4k it will BUG but I guess
+that is not possible).
+
+The solution is to use the i_size information for the string length, and zero
+terminate at i_size + 1.
+
+The way I fixed it is that I Zero out the last page's remainder on read and not
+on write like ext2 and other do it. (A symlink is less then 4k, right?)
+
+Boaz
+
