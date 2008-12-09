@@ -1,62 +1,141 @@
-From: "Theodore Ts'o" <tytso@MIT.EDU>
-Subject: Getting direct support for fallocate(2) into glibc
-Date: Tue, 09 Dec 2008 01:50:59 -0500
-Message-ID: <E1L9wQt-0003dz-DE@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+From: Eric Dumazet <dada1@cosmosbay.com>
+Subject: Re: [PATCH] percpu_counter: Fix __percpu_counter_sum()
+Date: Tue, 09 Dec 2008 09:12:52 +0100
+Message-ID: <493E2884.6010600@cosmosbay.com>
+References: <4936D287.6090206@cosmosbay.com>	 <4936EB04.8000609@cosmosbay.com>	 <20081206202233.3b74febc.akpm@linux-foundation.org>	 <493BCF60.1080409@cosmosbay.com>	 <20081207092854.f6bcbfae.akpm@linux-foundation.org>	 <493C0F40.7040304@cosmosbay.com>	 <20081207205250.dbb7fe4b.akpm@linux-foundation.org>	 <20081208221241.GA2501@mit.edu>	 <1228774836.16244.22.camel@lappy.programming.kicks-ass.net>	 <20081208230047.GC2501@mit.edu> <1228777500.12729.4.camel@twins>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux kernel <linux-kernel@vger.kernel.org>,
+	"David S. Miller" <davem@davemloft.net>,
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:64349 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751696AbYLIGva (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 01:51:30 -0500
+Received: from gw1.cosmosbay.com ([86.65.150.130]:60243 "EHLO
+	gw1.cosmosbay.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751949AbYLIINZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 03:13:25 -0500
+In-Reply-To: <1228777500.12729.4.camel@twins>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hey Eric,
+Peter Zijlstra a =E9crit :
+> On Mon, 2008-12-08 at 18:00 -0500, Theodore Tso wrote:
+>> On Mon, Dec 08, 2008 at 11:20:35PM +0100, Peter Zijlstra wrote:
+>>> atomic_t is pretty good on all archs, but you get to keep the cache=
+line
+>>> ping-pong.
+>>>
+>> Stupid question --- if you're worried about cacheline ping-pongs, wh=
+y
+>> aren't each cpu's delta counter cacheline aligned?  With a 64-byte
+>> cache-line, and a 32-bit counters entry, with less than 16 CPU's we'=
+re
+>> going to be getting cache ping-pong effects with percpu_counter's,
+>> right?  Or am I missing something?
+>=20
+> sorta - a new per-cpu allocator is in the works, but we do cacheline
+> align the per-cpu allocations (or used to), also, the allocations are
+> node affine.
+>=20
 
-Can you or Ric put in a good word with Ulrich (through appropriate Red
-Hat channels, if that would be helpful) for this glibc enhancement request:
+I did work on a 'light weight percpu counter', aka percpu_lcounter, for
+all metrics that dont need 64 bits wide, but a plain 'long'
+(network, nr_files, nr_dentry, nr_inodes, ...)
 
-	http://sources.redhat.com/bugzilla/show_bug.cgi?id=7083
+struct percpu_lcounter {
+        atomic_long_t count;
+#ifdef CONFIG_SMP
+#ifdef CONFIG_HOTPLUG_CPU
+        struct list_head list;  /* All percpu_counters are on a list */
+#endif
+        long *counters;
+#endif
+};
 
-Given that glibc 2.9 was just released, presumably this won't show up
-until glibc 2.10, and it'll probably be a *long* time before it this
-will show up in real distributions, but it would be good to get this
-into functionality into glibc ASAP.
+(No more spinlock)
 
-I've been doing an analysis of which files are ending up getting
-fragmented on my system, and relatively common case is logfiles (since
-they are written via appending).  Another common case is gaim log files,
-and of course /var/spool/mail files.  All of these cases could be
-addressed by using fallocate() with the FALLOC_FL_KEEP_SIZE flag; and
-unfortunately, there is no way to do this currently through a glibc
-mediated interface (posix_fallocate() is mandated by the Posix
-specification to _not_ pass the FALLOC_FL_KEEP_SIZE flag).
+Then I tried to have atomic_t  (or atomic_long_t) for 'counters', but g=
+ot a
+10% slow down of __percpu_lcounter_add(), even if never hitting the 'sl=
+ow path'
+atomic_long_add_return() is really expensiven, even on a non contended =
+cache
+line.
 
-Changing various programs to use fallocate() when the final size of the
-file is known (i.e, cp, tar, cpio, rpm, etc.) helps for large files.
-And of course, it *definitely* helps for bittorent clients.  So if the
-goal is to optimize filesystems aging, this would be a perfect project
-to sic an intern or two, or maybe an intro-level Google Summer of Code
-students, to sweep through some of the more common programs.  For
-programs like cp, tar, et. al, posix_fallocate() will work just fine.
-For things like logrotate, we'd either need direct fallocate() support
-in glibc, or logrotate would have to call the system call directly,
-which would be evil and tricky given that different architectures use
-different system call numbers.
+struct percpu_lcounter {
+        atomic_long_t count;
+#ifdef CONFIG_SMP
+#ifdef CONFIG_HOTPLUG_CPU
+        struct list_head list;  /* All percpu_counters are on a list */
+#endif
+        atomic_long_t *counters;
+#endif
+};
 
-(Logrotate could use fallocate to preallocate the new /var/log/syslog to
-same size as the previous day's syslog, which has the bonus of
-guaranteeing that log messages won't get lost --- and if there's not
-enough disk space for the fallocate to succeed, the system administrator
-can get notified right away, while there is still free space on the
-system.  For paranoid DoD types who want to make sure that the audit
-logs are written, this could be quite useful.)
+So I believe the percpu_clounter_sum() that tries to reset to 0 all cpu=
+ local
+ counts would be really too expensive, if it slows down _add() so much.
 
-If it's going to take too long to get this into glibc, I guess I could
-put an fallocate() interface into libe2p, although that would not be my
-first preference.  After all, this sort of thing will be useful for all
-filesystems, not just ext4; it should be helpful for xfs and btrfs as
-well.
+long percpu_lcounter_sum(struct percpu_lcounter *fblc)
+{
+        long acc =3D 0;
+        int cpu;
 
-						- Ted
+        for_each_online_cpu(cpu)
+                acc +=3D atomic_long_xchg(per_cpu_ptr(fblc->counters, c=
+pu), 0);
+        return atomic_long_add_return(acc, &fblc->count);
+}
+
+void __percpu_lcounter_add(struct percpu_lcounter *flbc, long amount, s=
+32 batch)
+{
+        long count;
+        atomic_long_t *pcount;
+
+        pcount =3D per_cpu_ptr(flbc->counters, get_cpu());
+        count =3D atomic_long_add_return(amount, pcount); /* way too ex=
+pensive !!! */
+        if (unlikely(count >=3D batch || count <=3D -batch)) {
+                atomic_long_add(count, &flbc->count);
+                atomic_long_sub(count, pcount);
+        }
+        put_cpu();
+}
+
+Just forget about it and let percpu_lcounter_sum() only read the values=
+, and
+let percpu_lcounter_add() not using atomic ops in fast path.
+
+void __percpu_lcounter_add(struct percpu_lcounter *flbc, long amount, s=
+32 batch)
+{
+        long count;
+        long *pcount;
+
+        pcount =3D per_cpu_ptr(flbc->counters, get_cpu());
+        count =3D *pcount + amount;
+        if (unlikely(count >=3D batch || count <=3D -batch)) {
+                atomic_long_add(count, &flbc->count);
+                count =3D 0;
+        }
+        *pcount =3D count;
+        put_cpu();
+}
+EXPORT_SYMBOL(__percpu_lcounter_add);
+
+
+Also, with upcoming NR_CPUS=3D4096, it may be time to design a hierarch=
+ical percpu_counter,
+to avoid hitting one shared "fbc->count" all the time a local counter o=
+verflows.
+
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
