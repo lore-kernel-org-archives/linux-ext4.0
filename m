@@ -1,207 +1,175 @@
-From: akpm@linux-foundation.org
-Subject: - revert-percpu_counter-new-function-percpu_counter_sum_and_set.patch removed from -mm tree
-Date: Wed, 10 Dec 2008 11:28:47 -0800
-Message-ID: <200812101928.mBAJSlRM021381@imap1.linux-foundation.org>
-To: akpm@linux-foundation.org, a.p.zijlstra@chello.nl, cmm@us.ibm.com,
-	dada1@cosmosbay.com, davem@davemloft.net,
-	linux-ext4@vger.kernel.org, stable@kernel.org,
-	mm-commits@vger.kernel.org
+From: Eric Dumazet <dada1@cosmosbay.com>
+Subject: Re: [PATCH] percpu_counter: Fix __percpu_counter_sum()
+Date: Wed, 10 Dec 2008 23:56:37 +0100
+Message-ID: <49404925.7090902@cosmosbay.com>
+References: <4936D287.6090206@cosmosbay.com>	<4936EB04.8000609@cosmosbay.com>	<20081206202233.3b74febc.akpm@linux-foundation.org>	<493BCF60.1080409@cosmosbay.com>	<20081207092854.f6bcbfae.akpm@linux-foundation.org>	<493C0F40.7040304@cosmosbay.com>	<20081207205250.dbb7fe4b.akpm@linux-foundation.org>	<20081208221241.GA2501@mit.edu>	<1228774836.16244.22.camel@lappy.programming.kicks-ass.net>	<20081208230047.GC2501@mit.edu>	<1228777500.12729.4.camel@twins>	<493E2884.6010600@cosmosbay.com>	<1228811653.6809.26.camel@twins>	<493F4EF4.4080205@cosmosbay.com> <20081209214921.b3944687.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
+	Theodore Tso <tytso@mit.edu>,
+	linux kernel <linux-kernel@vger.kernel.org>,
+	"David S. Miller" <davem@davemloft.net>,
+	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
+	Christoph Lameter <clameter@sgi.com>,
+	Rusty Russell <rusty@rustcorp.com.au>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:45908 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755451AbYLJT3v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Dec 2008 14:29:51 -0500
+Received: from gw1.cosmosbay.com ([86.65.150.130]:58749 "EHLO
+	gw1.cosmosbay.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752260AbYLJW5t convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Dec 2008 17:57:49 -0500
+In-Reply-To: <20081209214921.b3944687.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Andrew Morton a =E9crit :
+> On Wed, 10 Dec 2008 06:09:08 +0100 Eric Dumazet <dada1@cosmosbay.com>=
+ wrote:
+>=20
+>> Now percpu_counter_sum() is 'fixed', what about "percpu_counter_add(=
+)" ?
+>>
+>> void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s3=
+2 batch)
+>> {
+>>         s64 count;
+>>         s32 *pcount;
+>>         int cpu =3D get_cpu();
+>>
+>>         pcount =3D per_cpu_ptr(fbc->counters, cpu);
+>>         count =3D *pcount + amount;
+>>         if (count >=3D batch || count <=3D -batch) {
+>>                 spin_lock(&fbc->lock);
+>>                 fbc->count +=3D count;
+>>                 *pcount =3D 0;
+>>                 spin_unlock(&fbc->lock);
+>>         } else {
+>>                 *pcount =3D count;
+>>         }
+>>         put_cpu();
+>> }
+>>
+>>
+>> If I read this well, this is not IRQ safe.
+>=20
+> Sure.  It's racy against interrupts on this cpu, it'll deadlock over
+> the non-irq-safe spinlock and lockdep will have a coronary over it.
+>=20
+>> get_cpu() only disables preemption IMHO
+>=20
+> yes
+>=20
+>> For nr_files, nr_dentry, nr_inodes, it should not be a problem.
+>=20
+> yes
+>=20
+>> But for network counters (only in net-next-2.6)=20
+>> and lib/proportions.c, we have a problem ?
+>=20
+> yes
+>=20
+>> Using local_t instead of s32 for cpu=20
+>> local counter here is possible, so that fast path doesnt have=20
+>> to disable interrupts
+>>
+>> (use a local_t instead of s32 for fbc->counters)
+>>
+>> void __percpu_counter_add_irqsafe(struct percpu_counter *fbc, s64 am=
+ount, s32 batch)
+>> {
+>>         long count;
+>>         local_t *pcount;
+>>
+>> 	/* following code only matters on 32bit arches */
+>> 	if (sizeof(amount) !=3D sizeof(local_t)) {
+>> 		if (unlikely(amount >=3D batch || amount <=3D -batch))) {
+>>         	        spin_lock_irqsave(&fbc->lock, flags);
+>>                 	fbc->count +=3D amount;
+>>                 	spin_unlock_irqrestore(&fbc->lock, flags);
+>> 			return;
+>> 		}
+>> 	}
+>>         pcount =3D per_cpu_ptr(fbc->counters, get_cpu());
+>>         count =3D local_add_return((long)amount, pcount);
+>>         if (unlikely(count >=3D batch || count <=3D -batch)) {
+>> 		unsigned long flags;
+>>
+>> 		local_sub(count, pcount);
+>>                 spin_lock_irqsave(&fbc->lock, flags);
+>>                 fbc->count +=3D count;
+>>                 spin_unlock_irqrestore(&fbc->lock, flags);
+>>         }
+>>         put_cpu();
+>> }
+>=20
+>=20
+> I think it's reasonable.  If the batching is working as intended, the
+> increased cost of s/spin_lock/spin_lock_irqsave/ should be
+> insignificant.
+>=20
+> In fact, if *at all* possible it would be best to make percpu_counter=
+s
+> irq-safe under all circumstances and avoid fattening and complicating=
+ the
+> interface.
+>=20
+>=20
+>=20
+> But before adding more dependencies on local_t I do think we should
+> refresh ourselves on Christoph's objections to them - I remember
+> finding them fairly convincing at the time, but I don't recall the
+> details.
+>=20
+> <searches for a long time>
+>=20
+> Here, I think:
+> http://lkml.indiana.edu/hypermail/linux/kernel/0805.3/2482.html
+>=20
+> Rusty, Christoph: talk to me.  If we add a new user of local_t in cor=
+e
+> kernel, will we regret it?
+>=20
 
-The patch titled
-     revert "percpu_counter: new function percpu_counter_sum_and_set"
-has been removed from the -mm tree.  Its filename was
-     revert-percpu_counter-new-function-percpu_counter_sum_and_set.patch
-
-This patch was dropped because it was merged into mainline or a subsystem tree
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: revert "percpu_counter: new function percpu_counter_sum_and_set"
-From: Andrew Morton <akpm@linux-foundation.org>
-
-Revert
-
-    commit e8ced39d5e8911c662d4d69a342b9d053eaaac4e
-    Author: Mingming Cao <cmm@us.ibm.com>
-    Date:   Fri Jul 11 19:27:31 2008 -0400
-
-        percpu_counter: new function percpu_counter_sum_and_set
+__percpu_counter_add() already disables preemption (calling get_cpu())
 
 
-As described in
+But then, some (all but x86 ;) ) arches dont have true local_t and we f=
+allback
+to plain atomic_long_t, and this is wrong because it would add a LOCKED
+instruction in fast path.
 
-	revert "percpu counter: clean up percpu_counter_sum_and_set()"
+I remember Christoph added FAST_CMPXCHG_LOCAL, but no more uses of it i=
+n current
+tree.
 
-the new percpu_counter_sum_and_set() is racy against updates to the
-cpu-local accumulators on other CPUs.  Revert that change.
 
-This means that ext4 will be slow again.  But correct.
+Ie : using local_t only if CONFIG_FAST_CMPXCHG_LOCAL, else something li=
+ke :
 
-Reported-by: Eric Dumazet <dada1@cosmosbay.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Cc: Mingming Cao <cmm@us.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: <stable@kernel.org>		[2.6.27.x]
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+void __percpu_counter_add_irqsafe(struct percpu_counter *fbc, s64 amoun=
+t, s32 batch)
+{
+        s64 count;
+        s32 *pcount =3D per_cpu_ptr(fbc->counters, get_cpu());
+        unsigned long flags;
 
- fs/ext4/balloc.c               |    4 ++--
- include/linux/percpu_counter.h |   12 +++---------
- lib/percpu_counter.c           |    7 +------
- 3 files changed, 6 insertions(+), 17 deletions(-)
+        local_irq_save(flags);
+        count =3D *pcount + amount;
+        if (unlikely(count >=3D batch || count <=3D -batch)) {
+                spin_lock(&fbc->lock);
+                fbc->count +=3D count;
+                spin_unlock(&fbc->lock);
+                count =3D 0;
+        }
+        *pcount =3D count;
+        local_irq_restore(flags);
+        put_cpu();
+}
+EXPORT_SYMBOL(__percpu_counter_add_irqsafe);
 
-diff -puN fs/ext4/balloc.c~revert-percpu_counter-new-function-percpu_counter_sum_and_set fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~revert-percpu_counter-new-function-percpu_counter_sum_and_set
-+++ a/fs/ext4/balloc.c
-@@ -609,8 +609,8 @@ int ext4_has_free_blocks(struct ext4_sb_
- 
- 	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
- 						EXT4_FREEBLOCKS_WATERMARK) {
--		free_blocks  = percpu_counter_sum_and_set(fbc);
--		dirty_blocks = percpu_counter_sum_and_set(dbc);
-+		free_blocks  = percpu_counter_sum_positive(fbc);
-+		dirty_blocks = percpu_counter_sum_positive(dbc);
- 		if (dirty_blocks < 0) {
- 			printk(KERN_CRIT "Dirty block accounting "
- 					"went wrong %lld\n",
-diff -puN include/linux/percpu_counter.h~revert-percpu_counter-new-function-percpu_counter_sum_and_set include/linux/percpu_counter.h
---- a/include/linux/percpu_counter.h~revert-percpu_counter-new-function-percpu_counter_sum_and_set
-+++ a/include/linux/percpu_counter.h
-@@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percp
- void percpu_counter_destroy(struct percpu_counter *fbc);
- void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
- void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
-+s64 __percpu_counter_sum(struct percpu_counter *fbc);
- 
- static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
- {
-@@ -44,19 +44,13 @@ static inline void percpu_counter_add(st
- 
- static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
- {
--	s64 ret = __percpu_counter_sum(fbc, 0);
-+	s64 ret = __percpu_counter_sum(fbc);
- 	return ret < 0 ? 0 : ret;
- }
- 
--static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
--{
--	return __percpu_counter_sum(fbc, 1);
--}
--
--
- static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
- {
--	return __percpu_counter_sum(fbc, 0);
-+	return __percpu_counter_sum(fbc);
- }
- 
- static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-diff -puN lib/percpu_counter.c~revert-percpu_counter-new-function-percpu_counter_sum_and_set lib/percpu_counter.c
---- a/lib/percpu_counter.c~revert-percpu_counter-new-function-percpu_counter_sum_and_set
-+++ a/lib/percpu_counter.c
-@@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
-  * Add up all the per-cpu counts, return the result.  This is a more accurate
-  * but much slower version of percpu_counter_read_positive()
-  */
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
-+s64 __percpu_counter_sum(struct percpu_counter *fbc)
- {
- 	s64 ret;
- 	int cpu;
-@@ -62,12 +62,7 @@ s64 __percpu_counter_sum(struct percpu_c
- 	for_each_online_cpu(cpu) {
- 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
- 		ret += *pcount;
--		if (set)
--			*pcount = 0;
- 	}
--	if (set)
--		fbc->count = ret;
--
- 	spin_unlock(&fbc->lock);
- 	return ret;
- }
-_
-
-Patches currently in -mm which might be from akpm@linux-foundation.org are
-
-origin.patch
-mm-remove-the-might_sleep-from-lock_page.patch
-make-linx-next-apply.patch
-linux-next.patch
-next-remove-localversion.patch
-linux-next-git-rejects.patch
-tick-schedc-suppress-needless-timer-reprogramming.patch
-linux-timexh-cleanup-for-userspace.patch
-drivers-input-touchscreen-ucb1400_tsc-needs-gpio.patch
-pci-uninline-pci_ioremap_bar.patch
-raw-fix-rawctl-compat-ioctls-breakage-on-amd64-and-itanic-checkpatch-fixes.patch
-scsi-dpt_i2o-is-bust-on-ia64.patch
-mm-invoke-oom-killer-from-page-fault-fix.patch
-mm-invoke-oom-killer-from-page-fault-fix-fix-2.patch
-mm-write_cache_pages-more-terminate-quickly.patch
-swapfile-change-discard-pgoff_t-to-sector_t-fix.patch
-fs-truncate-blocks-outside-i_size-after-o_direct-write-error-fix.patch
-vmscan-shrink_active_list-reduce-lru_lock-hold-time.patch
-page_fault-retry-with-nopage_retry-fix.patch
-page_fault-retry-with-nopage_retry-fix-fix.patch
-mm-mmapc-fix-coding-style-fix.patch
-init-properly-placing-noinline-keyword.patch
-add-pr_prefix-to-pr_xyz-macros-checkpatch-fixes.patch
-poll-allow-f_op-poll-to-sleep-take6.patch
-binfmtsh-include-listh-fix.patch
-max3100-spi-uart-driver-select-serial_core-fix.patch
-spi_gpio-driver-cleanups.patch
-kprobes-support-probing-module-__exit-function-fix.patch
-kprobes-support-probing-module-__exit-function-fix-2.patch
-nfs-optimize-attribute-timeouts-for-noac-and-actimeo=0-checkpatch-fixes.patch
-nfs-optimize-attribute-timeouts-for-noac-and-actimeo=0-checkpatch-fixes-checkpatch-fixes.patch
-rtc-au1000-on-chip-counter0-as-rtc-driver-fix.patch
-cgroups-skip-processes-from-other-namespaces-when-listing-a-cgroup-checkpatch-fixes.patch
-memcg-introduce-charge-commit-cancel-style-of-functions-fix.patch
-memcg-new-force_empty-to-free-pages-under-group-fix-fix.patch
-memcg-swap-cgroup-for-remembering-usage.patch
-memory-cgroup-resource-counters-for-hierarchy-v4-checkpatch-fixes.patch
-memory-cgroup-hierarchical-reclaim-v4-checkpatch-fixes.patch
-memcg-avoid-unnecessary-system-wide-oom-killer-fix.patch
-edac-struct-device-replace-bus_id-with-dev_name-dev_set_name-checkpatch-fixes.patch
-edac-x38-use-the-architectures-readq-function-fix.patch
-edac-x38-use-the-architectures-readq-function-fix-fix.patch
-parport-ieee1284-use-del_timer_sync-in-parport_wait_event-checkpatch-fixes.patch
-romfs-romfs_iget-unsigned-ino-=-0-is-always-true-checkpatch-fixes.patch
-filesystem-freeze-implement-generic-freeze-feature-fix.patch
-nilfs2-inode-operations-fix.patch
-nilfs2-pathname-operations-fix.patch
-nilfs2-super-block-operations-fix.patch
-reiser4.patch
-reiser4-tree_lock-fixes.patch
-reiser4-tree_lock-fixes-fix.patch
-reiser4-semaphore-fix.patch
-slb-drop-kmem-cache-argument-from-constructor-reiser4.patch
-reiser4-suid.patch
-reiser4-track-upstream-changes.patch
-reiser4-remove-simple_prepare_write-usage-checkpatch-fixes.patch
-nr_blockdev_pages-in_interrupt-warning.patch
-slab-leaks3-default-y.patch
-put_bh-debug.patch
-shrink_slab-handle-bad-shrinkers.patch
-getblk-handle-2tb-devices.patch
-getblk-handle-2tb-devices-fix.patch
-undeprecate-pci_find_device.patch
-notify_change-callers-must-hold-i_mutex.patch
-drivers-net-bonding-bond_sysfsc-suppress-uninitialized-var-warning.patch
-w1-build-fix.patch
-
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
