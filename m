@@ -1,119 +1,97 @@
-From: akpm@linux-foundation.org
-Subject: [patch 07/19] revert "percpu_counter: new function percpu_counter_sum_and_set"
-Date: Tue, 09 Dec 2008 13:14:14 -0800
-Message-ID: <200812092114.mB9LEFOe027046@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, a.p.zijlstra@chello.nl, cmm@us.ibm.com,
-	dada1@cosmosbay.com, davem@davemloft.net,
-	linux-ext4@vger.kernel.org, stable@kernel.org
-To: torvalds@linux-foundation.org
+From: Andres Freund <andres@anarazel.de>
+Subject: Re: EXT4 ENOSPC Bug
+Date: Wed, 10 Dec 2008 01:07:57 +0100
+Message-ID: <200812100108.04163.andres@anarazel.de>
+References: <200811291418.24672.andres@anarazel.de>
+Mime-Version: 1.0
+Content-Type: multipart/signed;
+  boundary="nextPart8098954.BVZABXChbZ";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
+Cc: adilger@sun.com, LKML <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	"Jonathan Bastien-Filiatrault" <joe@x2a.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:58972 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754129AbYLIVOf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Dec 2008 16:14:35 -0500
+Received: from mail.anarazel.de ([217.115.131.40]:53474 "EHLO smtp.anarazel.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750914AbYLJAIO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Dec 2008 19:08:14 -0500
+In-Reply-To: <200811291418.24672.andres@anarazel.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Andrew Morton <akpm@linux-foundation.org>
+--nextPart8098954.BVZABXChbZ
+Content-Type: text/plain;
+  charset="iso-8859-15"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
 
-Revert
+Hi Ted,
 
-    commit e8ced39d5e8911c662d4d69a342b9d053eaaac4e
-    Author: Mingming Cao <cmm@us.ibm.com>
-    Date:   Fri Jul 11 19:27:31 2008 -0400
+Very Strange:
+I booted (after an crash which I did not see) a somewhat older kernel and I=
+=20
+once more caught the issue. Unfortunately I do not have your patch in this=
+=20
+older kernel.
 
-        percpu_counter: new function percpu_counter_sum_and_set
+
+older kernel: 2.6.28-rc5-andres-00070-g4e14e83
+kernel I rean whole last week: 2.6.28-rc6-andres-00007-ged31348
+There seem to have been no significant ext4 related changes to the kernel =
+=20
+between those.
+
+for i in `seq 1 1000`;do touch tmp$i;done
+touch: cannot touch `tmp139': No space left on device
+=2E..
+
+rm tmp*;for i in `seq 1 200`;do dd if=3D/dev/zero of=3Dtmp$i bs=3D1024k cou=
+nt=3D1;done
+dd: opening `tmp139': No space left on device
+139
+=2E.
+
+Various different blocksizes and filesizes all return the same result.
+
+This all hints to the patch Anesh linked. But it is included in 2.6.28-rc5.=
+=20
+Any idea how that could happen?
+
+The kernel install is just a "make;make install; update-initramfs -c -k `ma=
+ke=20
+kernelrelease`; update-grub" run...
+
+A short idea how I could verify on binary level what kernelrelease it reall=
+y=20
+is?
 
 
-As described in
+If a somehow corrupted compile (murked ccache?) is the culprit of this (in=
+=20
+addition to my inaccuracies) I am very sorry for all your work.
 
-	revert "percpu counter: clean up percpu_counter_sum_and_set()"
+I let this kernel run for the next hours if you want to run some tests...
 
-the new percpu_counter_sum_and_set() is racy against updates to the
-cpu-local accumulators on other CPUs.  Revert that change.
+Thanks,
 
-This means that ext4 will be slow again.  But correct.
+Andres
 
-Reported-by: Eric Dumazet <dada1@cosmosbay.com>
-Cc: "David S. Miller" <davem@davemloft.net>
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Cc: Mingming Cao <cmm@us.ibm.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: <stable@kernel.org>		[2.6.27.x]
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
 
- fs/ext4/balloc.c               |    4 ++--
- include/linux/percpu_counter.h |   12 +++---------
- lib/percpu_counter.c           |    7 +------
- 3 files changed, 6 insertions(+), 17 deletions(-)
 
-diff -puN fs/ext4/balloc.c~revert-percpu_counter-new-function-percpu_counter_sum_and_set fs/ext4/balloc.c
---- a/fs/ext4/balloc.c~revert-percpu_counter-new-function-percpu_counter_sum_and_set
-+++ a/fs/ext4/balloc.c
-@@ -609,8 +609,8 @@ int ext4_has_free_blocks(struct ext4_sb_
- 
- 	if (free_blocks - (nblocks + root_blocks + dirty_blocks) <
- 						EXT4_FREEBLOCKS_WATERMARK) {
--		free_blocks  = percpu_counter_sum_and_set(fbc);
--		dirty_blocks = percpu_counter_sum_and_set(dbc);
-+		free_blocks  = percpu_counter_sum_positive(fbc);
-+		dirty_blocks = percpu_counter_sum_positive(dbc);
- 		if (dirty_blocks < 0) {
- 			printk(KERN_CRIT "Dirty block accounting "
- 					"went wrong %lld\n",
-diff -puN include/linux/percpu_counter.h~revert-percpu_counter-new-function-percpu_counter_sum_and_set include/linux/percpu_counter.h
---- a/include/linux/percpu_counter.h~revert-percpu_counter-new-function-percpu_counter_sum_and_set
-+++ a/include/linux/percpu_counter.h
-@@ -35,7 +35,7 @@ int percpu_counter_init_irq(struct percp
- void percpu_counter_destroy(struct percpu_counter *fbc);
- void percpu_counter_set(struct percpu_counter *fbc, s64 amount);
- void __percpu_counter_add(struct percpu_counter *fbc, s64 amount, s32 batch);
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set);
-+s64 __percpu_counter_sum(struct percpu_counter *fbc);
- 
- static inline void percpu_counter_add(struct percpu_counter *fbc, s64 amount)
- {
-@@ -44,19 +44,13 @@ static inline void percpu_counter_add(st
- 
- static inline s64 percpu_counter_sum_positive(struct percpu_counter *fbc)
- {
--	s64 ret = __percpu_counter_sum(fbc, 0);
-+	s64 ret = __percpu_counter_sum(fbc);
- 	return ret < 0 ? 0 : ret;
- }
- 
--static inline s64 percpu_counter_sum_and_set(struct percpu_counter *fbc)
--{
--	return __percpu_counter_sum(fbc, 1);
--}
--
--
- static inline s64 percpu_counter_sum(struct percpu_counter *fbc)
- {
--	return __percpu_counter_sum(fbc, 0);
-+	return __percpu_counter_sum(fbc);
- }
- 
- static inline s64 percpu_counter_read(struct percpu_counter *fbc)
-diff -puN lib/percpu_counter.c~revert-percpu_counter-new-function-percpu_counter_sum_and_set lib/percpu_counter.c
---- a/lib/percpu_counter.c~revert-percpu_counter-new-function-percpu_counter_sum_and_set
-+++ a/lib/percpu_counter.c
-@@ -52,7 +52,7 @@ EXPORT_SYMBOL(__percpu_counter_add);
-  * Add up all the per-cpu counts, return the result.  This is a more accurate
-  * but much slower version of percpu_counter_read_positive()
-  */
--s64 __percpu_counter_sum(struct percpu_counter *fbc, int set)
-+s64 __percpu_counter_sum(struct percpu_counter *fbc)
- {
- 	s64 ret;
- 	int cpu;
-@@ -62,12 +62,7 @@ s64 __percpu_counter_sum(struct percpu_c
- 	for_each_online_cpu(cpu) {
- 		s32 *pcount = per_cpu_ptr(fbc->counters, cpu);
- 		ret += *pcount;
--		if (set)
--			*pcount = 0;
- 	}
--	if (set)
--		fbc->count = ret;
+--nextPart8098954.BVZABXChbZ
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAkk/CF4ACgkQporPraT14ig7mQCgljDsBQtzENxJBx8lmaeDRE4V
+QkUAnRP3u2fDzIiyjlVEmlboLe6eDtE0
+=8lJm
+-----END PGP SIGNATURE-----
+
+--nextPart8098954.BVZABXChbZ--
