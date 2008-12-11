@@ -1,106 +1,46 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] [PATCH] percpu_counter: Fix __percpu_counter_sum()
-Date: Thu, 11 Dec 2008 08:32:26 -0800
-Message-ID: <20081211163226.GA15057@kroah.com>
-References: <4936D287.6090206@cosmosbay.com> <4936EB04.8000609@cosmosbay.com> <20081207204222.d811c00b.akpm@linux-foundation.org> <1228758923.7096.10.camel@mingming-laptop>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Getting direct support for fallocate(2) into glibc
+Date: Thu, 11 Dec 2008 12:00:34 -0700
+Message-ID: <20081211190034.GA3178@webber.adilger.int>
+References: <E1L9wQt-0003dz-DE@closure.thunk.org> <493EA3AB.2080308@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>, stable@kernel.org,
-	linux kernel <linux-kernel@vger.kernel.org>,
-	Eric Dumazet <dada1@cosmosbay.com>, linux-ext4@vger.kernel.org,
-	"David S. Miller" <davem@davemloft.net>
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757366AbYLKRoY@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1228758923.7096.10.camel@mingming-laptop>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: "Theodore Ts'o" <tytso@MIT.EDU>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:62349 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756748AbYLKTB0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Dec 2008 14:01:26 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mBBJ1HxW004908
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Dec 2008 11:01:17 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KBQ00K017FBCN00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Thu, 11 Dec 2008 11:01:17 -0800 (PST)
+In-reply-to: <493EA3AB.2080308@redhat.com>
+Content-disposition: inline
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 08, 2008 at 09:55:23AM -0800, Mingming Cao wrote:
-> =E5=9C=A8 2008-12-07=E6=97=A5=E7=9A=84 20:42 -0800=EF=BC=8CAndrew Mor=
-ton=E5=86=99=E9=81=93=EF=BC=9A
-> > (cc stable)
-> >=20
-> > On Sun, 7 Dec 2008 10:28:21 -0500 Theodore Tso <tytso@mit.edu> wrot=
-e:
-> >=20
-> > > On Sat, Dec 06, 2008 at 08:22:33PM -0800, Andrew Morton wrote:
-> > > >=20
-> > > > I suggest that what we do is to revert both those changes.  We =
-can
-> > > > worry about the possibly-unneeded spin_lock later, in a separat=
-e patch.
-> > > >=20
-> > > > It should have been a separate patch anyway.  It's conceptually
-> > > > unrelated and is not a bugfix, but it was mixed in with a bugfi=
-x.
-> > > >=20
-> > > > Mingming, this needs urgent consideration, please.  Note that I=
- had to
-> > > > make additional changes to ext4 due to the subsequent introduct=
-ion of
-> > > > the dirty_blocks counter.
-> > >=20
-> > > I've looked the two patches which you've queued in the -mm branch=
-, and
-> > > they look correct to me.
-> > >=20
-> > > The bugs fixed by these patches can potentially lead to filesyste=
-m
-> > > corruption, since we ultimately use these fields to set the super=
-block
-> > > values.  This in my mind makes them stable candidates at the very
-> > > least, and if we weren't so late in the 2.6.28 cycle, I'd be stro=
-ngly
-> > > tempted to push them to Linus as a bugfix before the merge window=
-=2E
-> > >=20
-> > > Andrew, any strong objections for me to grab them for the ext4 tr=
-ee?
-> > > Or would you rather carry them?  I would prefer that they get pus=
-hed
-> > > to Linus as soon as the merge window opens, which is one reason w=
-hy
-> > > I'd prefer carry them, but we can do this either way.
-> > >=20
-> >=20
-> > I'm planning on sending them off to Linus for 2.6.28 this week,
-> > assuming nobody can think of a plausible reason to not do that.
-> >=20
-> > Now I didn't look _very_ closely at the chronology, but I think tha=
-t
-> > revert-percpu-counter-clean-up-percpu_counter_sum_and_set.patch rev=
-erts
-> > a post-2.6.27 change, and is not needed in stable.
-> >=20
-> > revert-percpu_counter-new-function-percpu_counter_sum_and_set.patch
-> > however reverts a pre-2.6.27 change, and should be merged into 2.6.=
-27.=20
-> > This patch reverts the addition and use of
-> > percpu_counter_sum_and_set(), which is racy and can corrupt the
-> > counters.
-> >=20
-> > However
-> > revert-percpu_counter-new-function-percpu_counter_sum_and_set.patch
-> > won't apply to 2.6.27 because the dirty_blocks stuff was added and
-> > generates rejects.
-> >=20
-> > So if all the above is correct, I'd propose that if and when
-> > revert-percpu_counter-new-function-percpu_counter_sum_and_set.patch
-> > hits mainline, we should ask the -stable guys to directly revert=20
-> >=20
->=20
-> Agreed.
->=20
-> I checked 2.6.27.8, above are correct, the
-> revert-percpu-counter-clean-up-percpu_counter_sum_and_set.patch is no=
-t
-> needed for 2.6.27.x stable tree.
+On Dec 09, 2008  10:58 -0600, Eric Sandeen wrote:
+> sorry for the xfs, but > xfs_bmap is still so handy for this...
+> 
+> # xfs_bmap -vv testfile
+> testfile:
+>  EXT: FILE-OFFSET   BLOCK-RANGE        AG AG-OFFSET          TOTAL FLAGS
+>    0: [0..31]:      34984576..34984607  2 (1256112..1256143)    32 10000
+>  FLAG Values:
+>     010000 Unwritten preallocated extent
 
-Thanks for letting me know, I'll not include it in the 2.6.27-stable
-tree then.
+Is the FIEMAP filefrag patch not in e2fsprogs yet?  It should provide
+equivalent output.
 
-greg k-h
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
