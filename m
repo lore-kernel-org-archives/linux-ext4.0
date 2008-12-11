@@ -1,45 +1,36 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 01/18] jbd2: Add buffer triggers
-Date: Thu, 11 Dec 2008 12:57:47 -0700
-Message-ID: <20081211195747.GC3178@webber.adilger.int>
-References: <1228871395-10273-1-git-send-email-joel.becker@oracle.com>
- <1228871395-10273-2-git-send-email-joel.becker@oracle.com>
+From: "Duane Griffin" <duaneg@dghda.com>
+Subject: Re: [PATCH] ext2: ensure link targets are NULL-terminated
+Date: Thu, 11 Dec 2008 20:25:03 +0000
+Message-ID: <e9e943910812111225o700afd2crc72e3aab4053fa72@mail.gmail.com>
+References: <1229022995-9898-1-git-send-email-duaneg@dghda.com>
+	 <1229022995-9898-2-git-send-email-duaneg@dghda.com>
+	 <1229022995-9898-3-git-send-email-duaneg@dghda.com>
+	 <1229022995-9898-4-git-send-email-duaneg@dghda.com>
+	 <1229022995-9898-5-git-send-email-duaneg@dghda.com>
+	 <20081211192158.GE26095@parisc-linux.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: mfasheh@suse.com, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Joel Becker <joel.becker@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:50361 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758190AbYLKT6A (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 11 Dec 2008 14:58:00 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mBBJvxdQ001676
-	for <linux-ext4@vger.kernel.org>; Thu, 11 Dec 2008 11:57:59 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KBQ00K019R0ZF00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Thu, 11 Dec 2008 11:57:59 -0800 (PST)
-In-reply-to: <1228871395-10273-2-git-send-email-joel.becker@oracle.com>
-Content-disposition: inline
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	"Boaz Harrosh" <bharrosh@panasas.com>, linux-ext4@vger.kernel.org
+To: "Matthew Wilcox" <matthew@wil.cx>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081211192158.GE26095@parisc-linux.org>
+Content-Disposition: inline
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Dec 09, 2008  17:09 -0800, Joel Becker wrote:
-> This adds triggers to jbd2 buffer heads.  Just before writing a metadata
-> buffer to the journal, jbd2 will optionally call a commit trigger associated
-> with the buffer.  If the journal is aborted, an abort trigger will be
-> called on any dirty buffers as they are dropped from pending
-> transactions.
+2008/12/11 Matthew Wilcox <matthew@wil.cx>:
+> On Thu, Dec 11, 2008 at 07:16:28PM +0000, Duane Griffin wrote:
+>> Ensure link targets are NULL-terminated, even if corrupted on-disk.
+>
+> FWIW, that's spelled 'NUL' -- NULL is a pointer value, NUL is an ASCII
+> code.
 
-It would be a useful exercise to see if changing the group descriptor
-checksum to use this mechanism.
+Good point, thanks. I'll try to remember for the future!
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Cheers,
+Duane.
 
+-- 
+"I never could learn to drink that blood and call it wine" - Bob Dylan
