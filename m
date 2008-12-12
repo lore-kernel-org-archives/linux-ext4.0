@@ -1,59 +1,48 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH, v2] ext3: ensure link targets are NULL-terminated
-Date: Thu, 11 Dec 2008 19:32:28 -0800
-Message-ID: <20081211193228.51c34114.akpm@linux-foundation.org>
-References: <1229022995-9898-1-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-2-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-3-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-4-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-5-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-6-git-send-email-duaneg@dghda.com>
-	<20081211222605.GB18665@dastardly.home.dghda.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [BUG][PATCH 1/4] ext3: fix a cause of __schedule_bug via
+	blkdev_releasepage
+Date: Fri, 12 Dec 2008 01:21:48 -0500
+Message-ID: <20081212062148.GJ10890@mit.edu>
+References: <20081202200647.72cc5807.toshi.okajima@jp.fujitsu.com> <20081208140138.GA17700@mit.edu> <4941B63A.3090302@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Boaz Harrosh <bharrosh@panasas.com>, Stephen@kumera.dghda.com,
-	Tweedie@kumera.dghda.com, sct@redhat.com, Andrew@kumera.dghda.com,
-	Morton@kumera.dghda.com, adilger@sun.com,
+Content-Type: text/plain; charset=us-ascii
+Cc: aneesh.kumar@linux.vnet.ibm.com, balbir@linux.vnet.ibm.com,
 	linux-ext4@vger.kernel.org
-To: "Duane Griffin" <duaneg@dghda.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20081211222605.GB18665@dastardly.home.dghda.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:42310 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751230AbYLLGVy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Dec 2008 01:21:54 -0500
+Content-Disposition: inline
+In-Reply-To: <4941B63A.3090302@jp.fujitsu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 11 Dec 2008 22:26:05 +0000 "Duane Griffin" <duaneg@dghda.com> wrote:
+On Fri, Dec 12, 2008 at 09:54:18AM +0900, Toshiyuki Okajima wrote:
+> To tell the truth, at first, I imagined the same patch as yours to fix this
+> problem. But I have made another patch because I thought that ext3(or ext4)
+> should not know the contents of the processing of journal_try_to_free_buffers
+>  in detail. (ext3 should not know there is a possibility to call
+> journal_wait_for_transaction_sync_data from journal_try_to_free_buffers.)
 
-> Ensure link targets are NUL-terminated, even if corrupted on-disk.
-> 
-> Signed-off-by: Duane Griffin <duaneg@dghda.com>
-> ---
-> 
-> V2: terminate when the link is read instead of every time it is
-> followed, as suggested by Dave Kleikamp.
-> 
-> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> index f8424ad..c168781 100644
-> --- a/fs/ext3/inode.c
-> +++ b/fs/ext3/inode.c
-> @@ -2817,9 +2817,10 @@ struct inode *ext3_iget(struct super_block *sb, unsigned long ino)
->  		inode->i_op = &ext3_dir_inode_operations;
->  		inode->i_fop = &ext3_dir_operations;
->  	} else if (S_ISLNK(inode->i_mode)) {
-> -		if (ext3_inode_is_fast_symlink(inode))
-> +		if (ext3_inode_is_fast_symlink(inode)) {
->  			inode->i_op = &ext3_fast_symlink_inode_operations;
-> -		else {
-> +			((char *) ei->i_data)[inode->i_size] = '\0';
-> +		} else {
->  			inode->i_op = &ext3_symlink_inode_operations;
->  			ext3_set_aops(inode);
->  		}
+I agree, but ext3 doesn't need to know that.  What my change did was
+to mask off the _GFP_WAIT flag, which prohibits the function it calls
+from blocking, because it knows that its caller is holding a spinlock.
 
-Really?  The ext2 on-disk format requires that the fast symlink be
-null-terminated on disk?  Even though the length is already in i_size?
+And actually, come to think of it.  We can do even better; the right
+fix is to have blkdev_releasepage() mask off the _GFP_WAIT flag; this
+is the function which is taking spinlock, and by masking off the
+__GFP_WAIT flag, this is simply requesting all of the downstream
+functions not to block, but to do the best job they can do without
+blocking.  It doesn't need to know whether it's going to call
+log_wait_commit(), or anything else; all it needs to do is request
+"please don't block".
 
-It seems that's true.  How un-ext2-like.
+That means we only make the request once, in the function which is
+taking spinlock, so all of the per-filesystem implementations of
+release_metadata() don't need to know that its caller is holding a
+spinlock. 
 
-ext2 and ext4 need the same fix, yes?
+							- Ted
+
