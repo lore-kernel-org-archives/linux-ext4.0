@@ -1,208 +1,112 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH -v3] vfs: add releasepages hooks to block devices which can be used by file systems
-Date: Fri, 12 Dec 2008 12:52:53 -0500
-Message-ID: <1229104375-11567-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH -v3] ext4: provide function to release metadata pages under memory pressure
+Date: Fri, 12 Dec 2008 12:52:55 -0500
+Message-ID: <1229104375-11567-3-git-send-email-tytso@mit.edu>
 References: <20081212062148.GJ10890@mit.edu>
+ <1229104375-11567-1-git-send-email-tytso@mit.edu>
+ <1229104375-11567-2-git-send-email-tytso@mit.edu>
 Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
 	"Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.org ([69.25.196.31]:36738 "EHLO
+Received: from www.church-of-our-saviour.org ([69.25.196.31]:36737 "EHLO
 	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1757501AbYLLRxE (ORCPT
+	with ESMTP id S1757459AbYLLRxE (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Dec 2008 12:53:04 -0500
-In-Reply-To: <20081212062148.GJ10890@mit.edu>
+In-Reply-To: <1229104375-11567-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 
-Implement blkdev_releasepage() to release the buffer_heads and page
-after we release private data which belongs to a client of the block
-device, such as a filesystem.
+Pages in the page cache belonging to ext4 data files are released via
+the ext4_releasepage() function specified in the ext4 inode's
+address_space_ops.  However, metadata blocks (such as indirect blocks,
+directory blocks, etc) are managed via the block device
+address_space_ops, and they can not be released by
+try_to_free_buffers() if they have a journal head attached to them.
 
-blkdev_releasepage() call the client's releasepage() which is
-registered by blkdev_register_client_releasepage() to release its
-private data.
+To address this, we supply a release_metadata function which is called
+by the block device's blkdev_releasepage() function, which calls
+journal_try_to_free_buffers() function to free the metadata.
 
 Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: linux-fsdevel@vger.kernel.org
 ---
- fs/block_dev.c     |   68 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/super.c         |   22 ++++++++++++++++
- include/linux/fs.h |    9 +++++++
- 3 files changed, 99 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h  |    2 ++
+ fs/ext4/inode.c |   22 ++++++++++++++++++++++
+ fs/ext4/super.c |    4 ++++
+ 3 files changed, 28 insertions(+), 0 deletions(-)
 
-diff --git a/fs/block_dev.c b/fs/block_dev.c
-index db831ef..bac0a38 100644
---- a/fs/block_dev.c
-+++ b/fs/block_dev.c
-@@ -29,6 +29,9 @@
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 695b45c..91e06e4 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1099,6 +1099,8 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+ extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
++extern int ext4_release_metadata(void *client, struct page *page,
++		gfp_t wait);
  
- struct bdev_inode {
- 	struct block_device bdev;
-+	void *client;
-+	int (*client_releasepage)(void*, struct page*, gfp_t);
-+	rwlock_t client_lock;
- 	struct inode vfs_inode;
- };
- 
-@@ -260,6 +263,9 @@ static struct inode *bdev_alloc_inode(struct super_block *sb)
- 	struct bdev_inode *ei = kmem_cache_alloc(bdev_cachep, GFP_KERNEL);
- 	if (!ei)
- 		return NULL;
-+	ei->client = NULL;
-+	ei->client_releasepage = NULL;
-+	rwlock_init(&ei->client_lock);
- 	return &ei->vfs_inode;
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f6d9447..e77a059 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3045,6 +3045,28 @@ static int ext4_releasepage(struct page *page, gfp_t wait)
  }
  
-@@ -1208,6 +1214,67 @@ static long block_ioctl(struct file *file, unsigned cmd, unsigned long arg)
- 	return blkdev_ioctl(bdev, mode, cmd, arg);
- }
- 
-+/*
-+ * blkdev_releasepage: execute ei->client_releasepage() if it exists.
-+ * Otherwise, execute try_to_free_buffers().
-+ * ei->client_releasepage() releases private client's page if possible.
-+ * Because a buffer_head's using counter is bigger than 0 if a client has
-+ * a page for private usage. If so, try_to_free_buffers() cannot release it.
-+ * Therefore a client must try to release a page itself.
+ /*
++ * Try to release metadata pages (indirect blocks, directories) which are
++ * mapped via the block device.  Since these pages could have journal heads
++ * which would prevent try_to_free_buffers() from freeing them, we must use
++ * jbd2 layer's try_to_free_buffers() function to release them.
 + */
-+static int blkdev_releasepage(struct page *page, gfp_t wait)
++int ext4_release_metadata(void *client, struct page *page, gfp_t wait)
 +{
-+	struct bdev_inode *ei = BDEV_I(page->mapping->host);
-+	int ret;
++	struct super_block *sb = (struct super_block*)client;
++	journal_t *journal;
 +
-+	read_lock(&ei->client_lock);
-+	if (ei->client_releasepage != NULL)
-+		/*
-+		 * Since we are holding a spinlock (ei->client_lock),
-+		 * make sure the client_releasepage function
-+		 * understands that it must not block.
-+		 */
-+		ret = (*ei->client_releasepage)(ei->client, page,
-+						wait & ~__GFP_WAIT);
++	WARN_ON(PageChecked(page));
++	if (!page_has_buffers(page))
++		return 0;
++	BUG_ON(EXT4_SB(sb) == NULL);
++	journal = EXT4_SB(sb)->s_journal;
++	if (journal != NULL)
++		return jbd2_journal_try_to_free_buffers(journal, page, wait);
 +	else
-+		ret = try_to_free_buffers(page);
-+	read_unlock(&ei->client_lock);
-+	return ret;
++		return try_to_free_buffers(page);
 +}
 +
 +/*
-+ * blkdev_register_client_releasepage: register client_releasepage.
-+ */
-+int blkdev_register_client_releasepage(struct block_device *bdev,
-+	void *client, int (*releasepage)(void*, struct page*, gfp_t))
-+{
-+	struct bdev_inode *ei = BDEV_I(bdev->bd_inode);
-+	int ret = 1;
-+
-+	write_lock(&ei->client_lock);
-+	if (ei->client == NULL && ei->client_releasepage == NULL) {
-+		ei->client = client;
-+		ei->client_releasepage = releasepage;
-+	} else if (ei->client != client 
-+			|| ei->client_releasepage != releasepage)
-+		ret = 0;
-+	write_unlock(&ei->client_lock);
-+	return ret;
-+}
-+
-+/*
-+ * blkdev_unregister_client_releasepage: unregister client_releasepage.
-+ */
-+void blkdev_unregister_client_releasepage(struct block_device *bdev)
-+{
-+	struct bdev_inode *ei = BDEV_I(bdev->bd_inode);
-+
-+	write_lock(&ei->client_lock);
-+	ei->client = NULL;
-+	ei->client_releasepage = NULL;
-+	write_unlock(&ei->client_lock);
-+}
-+
- static const struct address_space_operations def_blk_aops = {
- 	.readpage	= blkdev_readpage,
- 	.writepage	= blkdev_writepage,
-@@ -1215,6 +1282,7 @@ static const struct address_space_operations def_blk_aops = {
- 	.write_begin	= blkdev_write_begin,
- 	.write_end	= blkdev_write_end,
- 	.writepages	= generic_writepages,
-+	.releasepage	= blkdev_releasepage,
- 	.direct_IO	= blkdev_direct_IO,
+  * If the O_DIRECT write will extend the file then add this inode to the
+  * orphan list.  So recovery will truncate it back to the original size
+  * if the machine crashes during the write.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index bd41fad..f447c46 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3689,6 +3689,8 @@ static struct file_system_type ext4_fs_type = {
+ 	.name		= "ext4",
+ 	.get_sb		= ext4_get_sb,
+ 	.kill_sb	= kill_block_super,
++	.release_metadata
++			= ext4_release_metadata,
+ 	.fs_flags	= FS_REQUIRES_DEV,
  };
  
-diff --git a/fs/super.c b/fs/super.c
-index 400a760..fd254eb 100644
---- a/fs/super.c
-+++ b/fs/super.c
-@@ -801,6 +801,18 @@ int get_sb_bdev(struct file_system_type *fs_type,
- 
- 		s->s_flags |= MS_ACTIVE;
- 	}
-+	/*
-+	 * register a client function which releases a page whose mapping is
-+	 * block device 
-+	 */
-+	if (fs_type->release_metadata != NULL
-+		&& !blkdev_register_client_releasepage(bdev, s,
-+			fs_type->release_metadata)) {
-+		up_write(&s->s_umount);
-+		deactivate_super(s);
-+		error = -EBUSY;
-+		goto error_bdev;
-+	}
- 
- 	return simple_set_mnt(mnt, s);
- 
-@@ -819,6 +831,16 @@ void kill_block_super(struct super_block *sb)
- 	struct block_device *bdev = sb->s_bdev;
- 	fmode_t mode = sb->s_mode;
- 
-+	/*
-+	 * unregister a client function which releases a page whose mapping is
-+	 * block device
-+	 *
-+	 * This is sure to be unmounting here, and it releases all own data
-+	 * itself. Therefore the filesystem's function which is owned by the
-+	 * block device, which releases its data is not needed any more.
-+	 */
-+	if (sb->s_type->release_metadata != NULL)
-+		blkdev_unregister_client_releasepage(bdev);
- 	generic_shutdown_super(sb);
- 	sync_blockdev(bdev);
- 	close_bdev_exclusive(bdev, mode);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 0dcdd94..398c8ed 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1538,6 +1538,7 @@ struct file_system_type {
- 	int (*get_sb) (struct file_system_type *, int,
- 		       const char *, void *, struct vfsmount *);
- 	void (*kill_sb) (struct super_block *);
-+	int (*release_metadata)(void*, struct page*, gfp_t);
- 	struct module *owner;
- 	struct file_system_type * next;
- 	struct list_head fs_supers;
-@@ -1699,8 +1700,16 @@ extern void bd_set_size(struct block_device *, loff_t size);
- extern void bd_forget(struct inode *inode);
- extern void bdput(struct block_device *);
- extern struct block_device *open_by_devnum(dev_t, fmode_t);
-+extern int blkdev_register_client_releasepage(struct block_device *,
-+	void *, int (*releasepage)(void *, struct page*, gfp_t));
-+extern void blkdev_unregister_client_releasepage(struct block_device *);
- #else
- static inline void bd_forget(struct inode *inode) {}
-+static inline int blkdev_register_client_releasepage(struct block_device *,
-+	void *, int (*releasepage)(void *, struct page*, gfp_t))
-+{ return 1; }
-+static inline void blkdev_unregister_client_releasepage(struct block_device *)
-+{}
- #endif
- extern const struct file_operations def_blk_fops;
- extern const struct file_operations def_chr_fops;
+@@ -3708,6 +3710,8 @@ static struct file_system_type ext4dev_fs_type = {
+ 	.name		= "ext4dev",
+ 	.get_sb		= ext4dev_get_sb,
+ 	.kill_sb	= kill_block_super,
++	.release_metadata
++			= ext4_release_metadata,
+ 	.fs_flags	= FS_REQUIRES_DEV,
+ };
+ MODULE_ALIAS("ext4dev");
 -- 
 1.6.0.4.8.g36f27.dirty
 
