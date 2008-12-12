@@ -1,510 +1,341 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH V3 2/3] quota: Add quota claim and release reserved
-	quota
-Date: Fri, 12 Dec 2008 12:26:56 -0800
-Message-ID: <1229113616.7646.9.camel@mingming-laptop>
-References: <20081203190639.GD12803@duck.suse.cz>
+Subject: Re: [PATCH V3 3/3]ext4: quota handling for delayed allocation
+Date: Fri, 12 Dec 2008 12:27:53 -0800
+Message-ID: <1229113673.7646.11.camel@mingming-laptop>
+References: <1226014745.6430.64.camel@mingming-laptop>
+	 <20081203201105.GE12803@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20081203190639.GD12803@duck.suse.cz>
+In-Reply-To: <20081203201105.GE12803@duck.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 
-=E5=9C=A8 2008-12-03=E4=B8=89=E7=9A=84 20:06 +0100=EF=BC=8CJan Kara=E5=86=
+=E5=9C=A8 2008-12-03=E4=B8=89=E7=9A=84 21:11 +0100=EF=BC=8CJan Kara=E5=86=
 =99=E9=81=93=EF=BC=9A
-> Hmm, I can't find the email with this patch so I've just copied it fr=
-om
-> some mail archive ;). Sorry if the CC's are wrong.
+> Hi,
 >=20
-> > quota: Add quota reservation claim and released operations
+> On Thu 06-11-08 15:39:05, Mingming Cao wrote:
+> > ext4: quota reservation for delayed allocation
 > >=20
-> > Reserved quota will be claimed at the block allocation time. Over-b=
-ooked
-> > quota could be returned back with the release callback function.
+> > Uses quota reservation/claim/release to handle quota properly for d=
+elayed
+> > allocation in the three steps: 1) quotas are reserved when data bei=
+ng copied
+> > to cache when block allocation is defered 2) when new blocks are al=
+located.
+> > reserved quotas are converted to the real allocated quota, 2) over-=
+booked
+> > quotas for metadata blocks are released back.
+> >=20
 > >=20
 > > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 > > ---
-> >  fs/dquot.c               |   87 ++++++++++++++++++++++++++++++++++=
-+++++++++++++
-> >  include/linux/quota.h    |    4 +-
-> >  include/linux/quotaops.h |   55 +++++++++++++++++++++++++++++
-> >  3 files changed, 145 insertions(+), 1 deletion(-)
+> >  fs/ext4/inode.c   |   29 ++++++++++++++++++++++++++---
+> >  fs/ext4/mballoc.c |   42 +++++++++++++++++++++++++----------------=
+-
+> >  fs/ext4/super.c   |    3 +++
+> >  3 files changed, 54 insertions(+), 20 deletions(-)
 > >=20
-> > Index: linux-2.6.28-rc2/include/linux/quota.h
+> > Index: linux-2.6.28-rc2/fs/ext4/inode.c
 > > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
 =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
 =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> > --- linux-2.6.28-rc2.orig/include/linux/quota.h	2008-11-06 13:36:42=
-=2E000000000 -0800
-> > +++ linux-2.6.28-rc2/include/linux/quota.h	2008-11-06 14:03:52.0000=
-00000 -0800
-> > @@ -292,7 +292,9 @@ struct dquot_operations {
-> >  	int (*release_dquot) (struct dquot *);		/* Quota is going to be d=
-eleted from disk */
-> >  	int (*mark_dirty) (struct dquot *);		/* Dquot is marked dirty */
-> >  	int (*write_info) (struct super_block *, int);	/* Write of quota =
-"superblock" */
-> > -	int (*reserve_space) (struct inode *, qsize_t, int); /* reserve q=
-uota for delayed block allocation */
-> > +	int (*reserve_space) (struct inode *, qsize_t, int); /* reserve q=
-uota for delayed alloc */
-> > +	int (*claim_space) (struct inode *, qsize_t); /* claim reserved q=
-uota for delayed alloc */
-> > +	void (*release_rsv) (struct inode *, qsize_t); /* release rsved q=
-uota for delayed alloc */
-> >  };
-> > =20
-> >  /* Operations handling requests from userspace */
-> > Index: linux-2.6.28-rc2/include/linux/quotaops.h
-> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> > --- linux-2.6.28-rc2.orig/include/linux/quotaops.h	2008-11-06 13:37=
-:04.000000000 -0800
-> > +++ linux-2.6.28-rc2/include/linux/quotaops.h	2008-11-06 14:03:52.0=
-00000000 -0800
-> > @@ -28,6 +28,11 @@ int dquot_drop(struct inode *inode);
-> >  int dquot_alloc_space(struct inode *inode, qsize_t number, int pre=
-alloc);
-> >  int dquot_alloc_inode(const struct inode *inode, qsize_t number);
-> > =20
-> > +int dquot_reserve_space(struct inode *inode, qsize_t number, int p=
-realloc);
-> > +int dquot_claim_space(struct inode *inode, qsize_t number);
-> > +void dquot_release_reserved_space(struct inode *inode, qsize_t num=
-ber);
-> > +
-> > +
-> >  int dquot_free_space(struct inode *inode, qsize_t number);
-> >  int dquot_free_inode(const struct inode *inode, qsize_t number);
-> > =20
-> > @@ -196,6 +201,31 @@ static inline int vfs_dq_alloc_inode(str
-> >  	return 0;
-> >  }
-> > =20
-> > +/*
-> > + * Convert in-memory reserved quotas to real consumed quotas
-> > + */
-> > +static inline int vfs_dq_claim_space(struct inode *inode, qsize_t =
-nr)
-> > +{
-> > +	if (sb_any_quota_active(inode->i_sb)) {
-> > +		if (inode->i_sb->dq_op->claim_space(inode, nr) =3D=3D NO_QUOTA)
-> > +			return 1;
-> > +	} else
-> > +		inode_add_bytes(inode, nr);
-> > +
-> > +	mark_inode_dirty(inode);
-> > +	return 0;
-> > +}
-> > +
-> > +/*
-> > + * Release reserved (in-memory) quotas
-> > + */
-> > +static inline
-> > +void vfs_dq_release_reservation_space(struct inode *inode, qsize_t=
- nr)
-> > +{
-> > +	if (sb_any_quota_active(inode->i_sb))
-> > +		inode->i_sb->dq_op->release_rsv(inode, nr);
-> > +}
-> > +
-> >  static inline void vfs_dq_free_space_nodirty(struct inode *inode, =
-qsize_t nr)
-> >  {
-> >  	if (sb_any_quota_active(inode->i_sb))
-> > @@ -342,6 +372,17 @@ static inline int vfs_dq_reserve_space(s
-> >  	return 0;
-> >  }
-> > =20
-> > +static inline int vfs_dq_claim_space(struct inode *inode, qsize_t =
-nr)
-> > +{
-> > +	return vfs_dq_alloc_space(inode, nr);
-> > +}
-> > +
-> > +static inline
-> > +int vfs_dq_release_reservation_space(struct inode *inode, qsize_t =
-nr)
-> > +{
-> > +	return 0;
-> > +}
-> > +
-> >  static inline void vfs_dq_free_space_nodirty(struct inode *inode, =
-qsize_t nr)
-> >  {
-> >  	inode_sub_bytes(inode, nr);
-> > @@ -386,6 +427,18 @@ static inline int vfs_dq_reserve_block(s
-> >  			nr << inode->i_blkbits);
-> >  }
-> > =20
-> > +static inline int vfs_dq_claim_block(struct inode *inode, qsize_t =
-nr)
-> > +{
-> > +	return vfs_dq_claim_space(inode,
-> > +			nr << inode->i_blkbits);
-> > +}
-> > +
-> > +static inline
-> > +void vfs_dq_release_reservation(struct inode *inode, qsize_t nr)
-> > +{
-> > +	vfs_dq_release_reservation_space(inode, nr << inode->i_blkbits);
-> > +}
-> > +
->   I guess the function should be called like vfs_dq_release_reservati=
-on_block().
-> It's ugly long but we should not omit the "block" part. Maybe we coul=
-d shorten
-> reservation everywhere in function names to rsv?
->=20
-> >  static inline void vfs_dq_free_block_nodirty(struct inode *inode, =
-qsize_t nr)
-> >  {
-> >  	vfs_dq_free_space_nodirty(inode, nr << inode->i_sb->s_blocksize_b=
-its);
-> > @@ -415,6 +468,8 @@ static inline void vfs_dq_free_block(str
-> >  				vfs_dq_alloc_block_nodirty(inode, nr)
-> >  #define DQUOT_ALLOC_BLOCK(inode, nr) vfs_dq_alloc_block(inode, nr)
-> >  #define DQUOT_RESERVE_BLOCK(inode, nr) vfs_dq_reserve_block(inode,=
- nr)
-> > +#define DQUOT_CLAIM_BLOCK(inode, nr) vfs_dq_claim_block(inode, nr)
-> > +#define DQUOT_RELEASE_RSV_BLOCK(inode, nr) vfs_dq_release_reservat=
-ion(inode, nr)
->   Please call lowercase variants from ext4 and don't define these fun=
-ctions.
->=20
-> >  #define DQUOT_ALLOC_INODE(inode) vfs_dq_alloc_inode(inode)
-> >  #define DQUOT_FREE_SPACE_NODIRTY(inode, nr) \
-> >  				vfs_dq_free_space_nodirty(inode, nr)
-> > Index: linux-2.6.28-rc2/fs/dquot.c
-> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> > --- linux-2.6.28-rc2.orig/fs/dquot.c	2008-11-06 13:37:04.000000000 =
--0800
-> > +++ linux-2.6.28-rc2/fs/dquot.c	2008-11-06 14:03:52.000000000 -0800
-> > @@ -846,6 +846,24 @@ static inline void dquot_resv_space(stru
-> >  	dquot->dq_dqb.dqb_rsvspace +=3D number;
-> >  }
-> > =20
-> > +/*
-> > + * Claim reserved quota space
-> > + */
-> > +static int dquot_claim_reserved_space(struct dquot *dquot,
-> > +						qsize_t number)
-> > +{
-> > +	if (dquot->dq_dqb.dqb_rsvspace < number) {
-> > +		printk(KERN_WARNING "Reserved quota %llu is not enough for"
-> > +			"request %llu bytes\n",
-> > +			(unsigned long long)dquot->dq_dqb.dqb_rsvspace, number);
-> > +		return 1;
->   Wouldn't a WARN_ON here be more appropriate? It's a filesystem bug =
-to cause
-> this AFAICS.
->=20
-> > +	}
-> > +
-> > +	dquot->dq_dqb.dqb_curspace +=3D number;
-> > +	dquot->dq_dqb.dqb_rsvspace -=3D number;
-> > +	return 0;
-> > +}
->   You should use dq_data_lock to protect these operations...
->=20
-> > +
-> >  static inline void dquot_decr_inodes(struct dquot *dquot, qsize_t =
-number)
-> >  {
-> >  	if (dquot->dq_dqb.dqb_curinodes > number)
-> > @@ -1319,6 +1337,73 @@ out:
-> >  	return ret;
-> >  }
-> > =20
-> > +int dquot_claim_space(struct inode *inode, qsize_t number)
-> > +{
-> > +	int cnt;
-> > +	int ret =3D QUOTA_OK;
-> > +
-> > +	if (IS_NOQUOTA(inode)) {
-> > +		inode_add_bytes(inode, number);
-> > +		return ret;
-> > +	}
-> > +
-> > +	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> > +	if (IS_NOQUOTA(inode))	{
-> > +		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> > +		inode_add_bytes(inode, number);
-> > +		return ret;
-> > +	}
-> > +
-> > +	/* Claim reserved quotas to allocated quotas */
-> > +	for (cnt =3D 0; cnt < MAXQUOTAS; cnt++) {
-> > +		if (inode->i_dquot[cnt] !=3D NODQUOT)
-> > +			ret =3D dquot_claim_reserved_space(inode->i_dquot[cnt],
-> > +							number);
-> > +	}
-> > +	if (ret =3D=3D NO_QUOTA) {
-> > +		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> > +		return ret;
-> > +	}
->   It seems a bit silly to try to recover here from filesystem bugs. I=
-'d just
-> make dquot_claim_reserved_space() void and ignore possible failure he=
-re.
-> We won't do anything harmful like loosing data. Just counters might b=
-ecome
-> out of sync but given there's a bug in fs anyway it does not matter m=
-uch.
->=20
-> > +	/* Dirtify all the dquots - this can block when journalling */
-> > +	for (cnt =3D 0; cnt < MAXQUOTAS; cnt++)
-> > +		if (inode->i_dquot[cnt])
-> > +			mark_dquot_dirty(inode->i_dquot[cnt]);
-> > +	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> > +
-> > +	/* Update inode bytes */
-> > +	inode_add_bytes(inode, number);
->   And this should be called from under dq_data_lock from
-> dquot_claim_reserved_space().
->   BTW: This reminds me that you should also modify dquot_transfer() f=
-unction.
-> Because that should not only transfer i_blocks sectors from one user
-> to another but it has to also transfer the amount reserved for that i=
-node...
-> I think the easiest way around this would be to change i_blocks alrea=
-dy when
-> reservation is acquired (and than substract it when some of it is giv=
-en back).
->=20
-> > +	return ret;
-> > +}
-> > +
-> > +/*
-> > + * Release reserved quota space
-> > + */
-> > +void dquot_release_reserved_space(struct inode *inode, qsize_t num=
-ber)
-> > +{
-> > +	int cnt;
-> > +	struct dquot *dquot;
-> > +
-> > +	if (IS_NOQUOTA(inode))
-> > +		goto out;
-> > +
-> > +	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> > +	if (IS_NOQUOTA(inode))
-> > +		goto out_unlock;
-> > +
-> > +	/* Release reserved dquots */
-> > +	for (cnt =3D 0; cnt < MAXQUOTAS; cnt++) {
-> > +		if (inode->i_dquot[cnt] !=3D NODQUOT) {
-> > +			dquot =3D inode->i_dquot[cnt];
-> > +			dquot->dq_dqb.dqb_rsvspace -=3D number;
-> > +		}
-> > +	}
->   Again dq_data_lock...
->=20
-> > +
-> > +out_unlock:
-> > +	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> > +out:
-> > +	return;
-> > +}
-> > +
-> >  /*
-> >   * This operation can block, but only after everything is updated
-> >   */
-> > @@ -2344,6 +2429,8 @@ EXPORT_SYMBOL(dquot_alloc_inode);
-> >  EXPORT_SYMBOL(dquot_free_space);
-> >  EXPORT_SYMBOL(dquot_free_inode);
-> >  EXPORT_SYMBOL(dquot_reserve_space);
-> > +EXPORT_SYMBOL(dquot_claim_space);
-> > +EXPORT_SYMBOL(dquot_release_reserved_space);
-> >  EXPORT_SYMBOL(dquot_transfer);
-> >  EXPORT_SYMBOL(vfs_dq_transfer);
-> >  EXPORT_SYMBOL(vfs_dq_quota_on_remount);
->=20
-> 										Honza
-
-Incremental fix
----
- fs/dquot.c               |   54 ++++++++++++++++++++++++++------------=
----------
- include/linux/quotaops.h |    4 ---
- 2 files changed, 31 insertions(+), 27 deletions(-)
-
-Index: linux-2.6.28-rc2/fs/dquot.c
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
---- linux-2.6.28-rc2.orig/fs/dquot.c	2008-12-09 15:56:29.000000000 -080=
-0
-+++ linux-2.6.28-rc2/fs/dquot.c	2008-12-09 17:09:14.000000000 -0800
-@@ -849,19 +849,18 @@ static inline void dquot_resv_space(stru
- /*
-  * Claim reserved quota space
-  */
--static int dquot_claim_reserved_space(struct dquot *dquot,
-+static void dquot_claim_reserved_space(struct dquot *dquot,
- 						qsize_t number)
- {
--	if (dquot->dq_dqb.dqb_rsvspace < number) {
--		printk(KERN_WARNING "Reserved quota %llu is not enough for"
--			"request %llu bytes\n",
--			(unsigned long long)dquot->dq_dqb.dqb_rsvspace, number);
--		return 1;
--	}
--
-+	WARN_ON(dquot->dq_dqb.dqb_rsvspace < number);
- 	dquot->dq_dqb.dqb_curspace +=3D number;
- 	dquot->dq_dqb.dqb_rsvspace -=3D number;
--	return 0;
-+}
-+
-+static inline
-+void dquot_free_reserved_space(struct dquot *dquot, qsize_t number)
-+{
-+	dquot->dq_dqb.dqb_rsvspace -=3D number;
- }
-=20
- static inline void dquot_decr_inodes(struct dquot *dquot, qsize_t numb=
-er)
-@@ -1344,34 +1343,32 @@ int dquot_claim_space(struct inode *inod
-=20
- 	if (IS_NOQUOTA(inode)) {
- 		inode_add_bytes(inode, number);
--		return ret;
-+		goto out;
- 	}
-=20
- 	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 	if (IS_NOQUOTA(inode))	{
- 		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 		inode_add_bytes(inode, number);
--		return ret;
-+		goto out;
- 	}
-=20
-+	spin_lock(&dq_data_lock);
- 	/* Claim reserved quotas to allocated quotas */
- 	for (cnt =3D 0; cnt < MAXQUOTAS; cnt++) {
- 		if (inode->i_dquot[cnt] !=3D NODQUOT)
--			ret =3D dquot_claim_reserved_space(inode->i_dquot[cnt],
-+			dquot_claim_reserved_space(inode->i_dquot[cnt],
- 							number);
- 	}
--	if (ret =3D=3D NO_QUOTA) {
--		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--		return ret;
--	}
-+	/* Update inode bytes */
-+	inode_add_bytes(inode, number);
-+	spin_unlock(&dq_data_lock);
- 	/* Dirtify all the dquots - this can block when journalling */
- 	for (cnt =3D 0; cnt < MAXQUOTAS; cnt++)
- 		if (inode->i_dquot[cnt])
- 			mark_dquot_dirty(inode->i_dquot[cnt]);
- 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
--
--	/* Update inode bytes */
--	inode_add_bytes(inode, number);
-+out:
- 	return ret;
- }
-=20
-@@ -1390,13 +1387,15 @@ void dquot_release_reserved_space(struct
- 	if (IS_NOQUOTA(inode))
- 		goto out_unlock;
-=20
-+	spin_lock(&dq_data_lock);
- 	/* Release reserved dquots */
- 	for (cnt =3D 0; cnt < MAXQUOTAS; cnt++) {
- 		if (inode->i_dquot[cnt] !=3D NODQUOT) {
- 			dquot =3D inode->i_dquot[cnt];
--			dquot->dq_dqb.dqb_rsvspace -=3D number;
-+			dquot_free_reserved_space(dquot, number);
- 		}
- 	}
-+	spin_unlock(&dq_data_lock);
-=20
- out_unlock:
- 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-@@ -1533,7 +1532,8 @@ int dquot_free_inode(const struct inode=20
-  */
- int dquot_transfer(struct inode *inode, struct iattr *iattr)
- {
--	qsize_t space;
-+	qsize_t space, cur_space;
-+	qsize_t rsv_space =3D 0;
- 	struct dquot *transfer_from[MAXQUOTAS];
- 	struct dquot *transfer_to[MAXQUOTAS];
- 	int cnt, ret =3D NO_QUOTA, chuid =3D (iattr->ia_valid & ATTR_UID) && =
-inode->i_uid !=3D iattr->ia_uid,
-@@ -1574,12 +1574,16 @@ int dquot_transfer(struct inode *inode,=20
- 		}
- 	}
- 	spin_lock(&dq_data_lock);
--	space =3D inode_get_bytes(inode);
-+	space =3D cur_space =3D inode_get_bytes(inode);
- 	/* Build the transfer_from list and check the limits */
- 	for (cnt =3D 0; cnt < MAXQUOTAS; cnt++) {
- 		if (transfer_to[cnt] =3D=3D NODQUOT)
- 			continue;
- 		transfer_from[cnt] =3D inode->i_dquot[cnt];
-+		if (!rsv_space) {
-+			rsv_space =3D transfer_from[cnt]->dq_dqb.dqb_rsvspace;
-+			space +=3D rsv_space;
-+		}
- 		if (check_idq(transfer_to[cnt], 1, warntype_to + cnt) =3D=3D
- 		    NO_QUOTA || check_bdq(transfer_to[cnt], space, 0,
- 		    warntype_to + cnt) =3D=3D NO_QUOTA)
-@@ -1603,11 +1607,13 @@ int dquot_transfer(struct inode *inode,=20
- 			warntype_from_space[cnt] =3D
- 				info_bdq_free(transfer_from[cnt], space);
- 			dquot_decr_inodes(transfer_from[cnt], 1);
--			dquot_decr_space(transfer_from[cnt], space);
-+			dquot_decr_space(transfer_from[cnt], cur_space);
-+			dquot_free_reserved_space(transfer_from[cnt], rsv_space);
- 		}
-=20
- 		dquot_incr_inodes(transfer_to[cnt], 1);
--		dquot_incr_space(transfer_to[cnt], space);
-+		dquot_incr_space(transfer_to[cnt], cur_space);
-+		dquot_resv_space(transfer_to[cnt], rsv_space);
-=20
- 		inode->i_dquot[cnt] =3D transfer_to[cnt];
- 	}
-Index: linux-2.6.28-rc2/include/linux/quotaops.h
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
---- linux-2.6.28-rc2.orig/include/linux/quotaops.h	2008-12-09 15:56:04.=
-000000000 -0800
-+++ linux-2.6.28-rc2/include/linux/quotaops.h	2008-12-09 15:58:09.00000=
+> > --- linux-2.6.28-rc2.orig/fs/ext4/inode.c	2008-11-06 13:36:16.00000=
 0000 -0800
-@@ -434,7 +434,7 @@ static inline int vfs_dq_claim_block(str
+> > +++ linux-2.6.28-rc2/fs/ext4/inode.c	2008-11-06 14:03:35.000000000 =
+-0800
+> > @@ -994,7 +994,9 @@ static void ext4_da_update_reserve_space
+> >  {
+> >  	struct ext4_sb_info *sbi =3D EXT4_SB(inode->i_sb);
+> >  	int total, mdb, mdb_free;
+> > +	int claim_quota, free_quota =3D 0;
+> > =20
+> > +	claim_quota =3D used;
+> >  	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+> >  	/* recalculate the number of metablocks still need to be reserved=
+ */
+> >  	total =3D EXT4_I(inode)->i_reserved_data_blocks - used;
+> > @@ -1007,6 +1009,8 @@ static void ext4_da_update_reserve_space
+> >  	if (mdb_free) {
+> >  		/* Account for allocated meta_blocks */
+> >  		mdb_free -=3D EXT4_I(inode)->i_allocated_meta_blocks;
+> > +		free_quota =3D mdb_free;
+> > +		claim_quota +=3D EXT4_I(inode)->i_allocated_meta_blocks;
+> > =20
+> >  		/* update fs dirty blocks counter */
+> >  		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
+> > @@ -1017,8 +1021,14 @@ static void ext4_da_update_reserve_space
+> >  	/* update per-inode reservations */
+> >  	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
+> >  	EXT4_I(inode)->i_reserved_data_blocks -=3D used;
+> > -
+> >  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> > +
+> > +	/*
+> > +	 * free those over-booking quota for metadata blocks
+> > +	 */
+> > +
+> > +	if (free_quota)
+> > +		DQUOT_RELEASE_RSV_BLOCK(inode, free_quota);
+>   claim_quota seems to be unused here and I'm not sure we need it for
+> anything...
+>=20
+> >  }
+> > =20
+> >  /*
+> > @@ -1514,8 +1524,8 @@ static int ext4_journalled_write_end(str
+> >  static int ext4_da_reserve_space(struct inode *inode, int nrblocks=
+)
+> >  {
+> >  	int retries =3D 0;
+> > -       struct ext4_sb_info *sbi =3D EXT4_SB(inode->i_sb);
+> > -       unsigned long md_needed, mdblocks, total =3D 0;
+> > +	struct ext4_sb_info *sbi =3D EXT4_SB(inode->i_sb);
+> > +	unsigned long md_needed, mdblocks, total =3D 0;
+> > =20
+> >  	/*
+> >  	 * recalculate the amount of metadata blocks to reserve
+> > @@ -1531,12 +1541,23 @@ repeat:
+> >  	md_needed =3D mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
+> >  	total =3D md_needed + nrblocks;
+> > =20
+> > +	/*
+> > +	 * Make quota reservation here to prevent quota overflow
+> > +	 * later. Real quota accounting is done at pages writeout
+> > +	 * time.
+> > +	 */
+> > +	if (DQUOT_RESERVE_BLOCK(inode, total)) {
+> > +		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> > +		return -EDQUOT;
+> > +	}
+> > +
+> >  	if (ext4_claim_free_blocks(sbi, total)) {
+> >  		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> >  		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
+> >  			yield();
+> >  			goto repeat;
+> >  		}
+> > +		DQUOT_RELEASE_RSV_BLOCK(inode, total);
+> >  		return -ENOSPC;
+> >  	}
+> >  	EXT4_I(inode)->i_reserved_data_blocks +=3D nrblocks;
+> > @@ -1590,6 +1611,8 @@ static void ext4_da_release_space(struct
+> >  	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
+> >  	EXT4_I(inode)->i_reserved_meta_blocks =3D mdb;
+> >  	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+> > +
+> > +	DQUOT_RELEASE_RSV_BLOCK(inode, release);
+> >  }
+> > =20
+> >  static void ext4_da_page_release_reservation(struct page *page,
+> > Index: linux-2.6.28-rc2/fs/ext4/super.c
+> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> > --- linux-2.6.28-rc2.orig/fs/ext4/super.c	2008-11-06 13:36:16.00000=
+0000 -0800
+> > +++ linux-2.6.28-rc2/fs/ext4/super.c	2008-11-06 14:02:57.000000000 =
+-0800
+> > @@ -795,6 +795,9 @@ static struct dquot_operations ext4_quot
+> >  	.initialize	=3D ext4_dquot_initialize,
+> >  	.drop		=3D ext4_dquot_drop,
+> >  	.alloc_space	=3D dquot_alloc_space,
+> > +	.reserve_space	=3D dquot_reserve_space,
+> > +	.claim_space	=3D dquot_claim_space,
+> > +	.release_rsv	=3D dquot_release_reserved_space,
+> >  	.alloc_inode	=3D dquot_alloc_inode,
+> >  	.free_space	=3D dquot_free_space,
+> >  	.free_inode	=3D dquot_free_inode,
+> > Index: linux-2.6.28-rc2/fs/ext4/mballoc.c
+> > =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+> > --- linux-2.6.28-rc2.orig/fs/ext4/mballoc.c	2008-11-06 13:36:16.000=
+000000 -0800
+> > +++ linux-2.6.28-rc2/fs/ext4/mballoc.c	2008-11-06 14:03:35.00000000=
+0 -0800
+> > @@ -2887,9 +2887,11 @@ ext4_mb_mark_diskspace_used(struct ext4_
+> >  	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
+> >  		/* release all the reserved blocks if non delalloc */
+> >  		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
+> > -	else
+> > +	else {
+> >  		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+> >  						ac->ac_b_ex.fe_len);
+> > +		DQUOT_CLAIM_BLOCK(ac->ac_inode, ac->ac_b_ex.fe_len);
+> > +	}
+> > =20
+> >  	if (sbi->s_log_groups_per_flex) {
+> >  		ext4_group_t flex_group =3D ext4_flex_group(sbi,
+> > @@ -4286,15 +4288,24 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
+> >  	struct ext4_sb_info *sbi;
+> >  	struct super_block *sb;
+> >  	ext4_fsblk_t block =3D 0;
+> > -	unsigned long inquota;
+> > +	unsigned long inquota =3D 0;
+> >  	unsigned long reserv_blks =3D 0;
+> > =20
+> >  	sb =3D ar->inode->i_sb;
+> >  	sbi =3D EXT4_SB(sb);
+> > =20
+> > -	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
+> > +	/*
+> > +	 * For delayed allocation, we could skip the ENOSPC and
+> > +	 * EDQUOT check, as blocks and quotas have been already
+> > +	 * reserved when data being copied into pagecache.
+> > +	 */
+> > +	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
+> > +		ar->flags |=3D EXT4_MB_DELALLOC_RESERVED;
+> > +	else {
+> >  		/*
+> > -		 * With delalloc we already reserved the blocks
+> > +		 * Without delayed allocation we need to verify
+> > +		 * there is enough free blocks to do block allocation
+> > +		 * and verify allocation doesn't exceed the quota limits.
+> >  		 */
+> >  		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
+> >  			/* let others to free the space */
+> > @@ -4306,19 +4317,16 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
+> >  			return 0;
+> >  		}
+> >  		reserv_blks =3D ar->len;
+> > +		while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
+> > +			ar->flags |=3D EXT4_MB_HINT_NOPREALLOC;
+> > +			ar->len--;
+> > +		}
+> > +		if (ar->len =3D=3D 0) {
+> > +			*errp =3D -EDQUOT;
+> > +			return 0;
+> > +		}
+> > +		inquota =3D ar->len;
+> >  	}
+> > -	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
+> > -		ar->flags |=3D EXT4_MB_HINT_NOPREALLOC;
+> > -		ar->len--;
+> > -	}
+> > -	if (ar->len =3D=3D 0) {
+> > -		*errp =3D -EDQUOT;
+> > -		return 0;
+> > -	}
+> > -	inquota =3D ar->len;
+> > -
+> > -	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
+> > -		ar->flags |=3D EXT4_MB_DELALLOC_RESERVED;
+> > =20
+> >  	ac =3D kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
+> >  	if (!ac) {
+> > @@ -4380,7 +4388,7 @@ repeat:
+> >  out2:
+> >  	kmem_cache_free(ext4_ac_cachep, ac);
+> >  out1:
+> > -	if (ar->len < inquota)
+> > +	if (inquota && ar->len < inquota)
+> >  		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
+> > =20
+> >  	return block;
+> >=20
+> 									Honza
+> >=20
+>=20
+
+incremental fix.
+
+Thanks,
+---
+ fs/ext4/inode.c   |   14 +++++---------
+ fs/ext4/mballoc.c |    3 ++-
+ 2 files changed, 7 insertions(+), 10 deletions(-)
+
+Index: linux-2.6.28-rc2/fs/ext4/inode.c
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+--- linux-2.6.28-rc2.orig/fs/ext4/inode.c	2008-12-09 17:20:10.000000000=
+ -0800
++++ linux-2.6.28-rc2/fs/ext4/inode.c	2008-12-09 17:35:32.000000000 -080=
+0
+@@ -994,9 +994,7 @@ static void ext4_da_update_reserve_space
+ {
+ 	struct ext4_sb_info *sbi =3D EXT4_SB(inode->i_sb);
+ 	int total, mdb, mdb_free;
+-	int claim_quota, free_quota =3D 0;
+=20
+-	claim_quota =3D used;
+ 	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	/* recalculate the number of metablocks still need to be reserved */
+ 	total =3D EXT4_I(inode)->i_reserved_data_blocks - used;
+@@ -1009,8 +1007,6 @@ static void ext4_da_update_reserve_space
+ 	if (mdb_free) {
+ 		/* Account for allocated meta_blocks */
+ 		mdb_free -=3D EXT4_I(inode)->i_allocated_meta_blocks;
+-		free_quota =3D mdb_free;
+-		claim_quota +=3D EXT4_I(inode)->i_allocated_meta_blocks;
+=20
+ 		/* update fs dirty blocks counter */
+ 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, mdb_free);
+@@ -1027,8 +1023,8 @@ static void ext4_da_update_reserve_space
+ 	 * free those over-booking quota for metadata blocks
+ 	 */
+=20
+-	if (free_quota)
+-		DQUOT_RELEASE_RSV_BLOCK(inode, free_quota);
++	if (mdb_free)
++		vfs_dq_release_reservation_block(inode, mdb_free);
  }
 =20
- static inline
--void vfs_dq_release_reservation(struct inode *inode, qsize_t nr)
-+void vfs_dq_release_reservation_block(struct inode *inode, qsize_t nr)
- {
- 	vfs_dq_release_reservation_space(inode, nr << inode->i_blkbits);
+ /*
+@@ -1546,7 +1542,7 @@ repeat:
+ 	 * later. Real quota accounting is done at pages writeout
+ 	 * time.
+ 	 */
+-	if (DQUOT_RESERVE_BLOCK(inode, total)) {
++	if (vfs_dq_reserve_block(inode, total)) {
+ 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ 		return -EDQUOT;
+ 	}
+@@ -1557,7 +1553,7 @@ repeat:
+ 			yield();
+ 			goto repeat;
+ 		}
+-		DQUOT_RELEASE_RSV_BLOCK(inode, total);
++		vfs_dq_release_reservation_block(inode, total);
+ 		return -ENOSPC;
+ 	}
+ 	EXT4_I(inode)->i_reserved_data_blocks +=3D nrblocks;
+@@ -1612,7 +1608,7 @@ static void ext4_da_release_space(struct
+ 	EXT4_I(inode)->i_reserved_meta_blocks =3D mdb;
+ 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+=20
+-	DQUOT_RELEASE_RSV_BLOCK(inode, release);
++	vfs_dq_release_reservation_block(inode, release);
  }
-@@ -467,8 +467,6 @@ static inline void vfs_dq_free_block(str
- #define DQUOT_ALLOC_BLOCK_NODIRTY(inode, nr) \
- 				vfs_dq_alloc_block_nodirty(inode, nr)
- #define DQUOT_ALLOC_BLOCK(inode, nr) vfs_dq_alloc_block(inode, nr)
--#define DQUOT_CLAIM_BLOCK(inode, nr) vfs_dq_claim_block(inode, nr)
--#define DQUOT_RELEASE_RSV_BLOCK(inode, nr) vfs_dq_release_reservation(=
-inode, nr)
- #define DQUOT_ALLOC_INODE(inode) vfs_dq_alloc_inode(inode)
- #define DQUOT_FREE_SPACE_NODIRTY(inode, nr) \
- 				vfs_dq_free_space_nodirty(inode, nr)
+=20
+ static void ext4_da_page_release_reservation(struct page *page,
+Index: linux-2.6.28-rc2/fs/ext4/mballoc.c
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+--- linux-2.6.28-rc2.orig/fs/ext4/mballoc.c	2008-12-09 17:20:21.0000000=
+00 -0800
++++ linux-2.6.28-rc2/fs/ext4/mballoc.c	2008-12-09 17:22:41.000000000 -0=
+800
+@@ -2890,7 +2890,8 @@ ext4_mb_mark_diskspace_used(struct ext4_
+ 	else {
+ 		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
+ 						ac->ac_b_ex.fe_len);
+-		DQUOT_CLAIM_BLOCK(ac->ac_inode, ac->ac_b_ex.fe_len);
++		/* convert reserved quota blocks to real quota blocks */
++		vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
+ 	}
+=20
+ 	if (sbi->s_log_groups_per_flex) {
 
 
 --
