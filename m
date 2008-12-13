@@ -1,349 +1,340 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH V2 2/2]QUOTA cleanup:Move EXPORT_SYMBOL immediatlely next
-	to the functions/varibles
-Date: Fri, 12 Dec 2008 12:48:26 -0800
-Message-ID: <1229114906.7646.30.camel@mingming-laptop>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: [PATCH 01/18] jbd2: Add buffer triggers
+Date: Fri, 12 Dec 2008 16:45:12 -0800
+Message-ID: <20081213004512.GD15241@mail.oracle.com>
+References: <1228871395-10273-1-git-send-email-joel.becker@oracle.com>
+	<1228871395-10273-2-git-send-email-joel.becker@oracle.com>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: jack@suse.cz, tytso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-	KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e38.co.us.ibm.com ([32.97.110.159]:60586 "EHLO
-	e38.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752083AbYLLUsi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Dec 2008 15:48:38 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: mfasheh@suse.com, linux-ext4@vger.kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>
+To: ocfs2-devel@oss.oracle.com
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+Content-Disposition: inline
+In-Reply-To: <1228871395-10273-2-git-send-email-joel.becker@oracle.com>
+List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
+List-Id: linux-ext4.vger.kernel.org
 
-quota: Move EXPORT_SYMBOL immediatlely next to the functions/varibles
-From: Mingming Cao <cmm@us.ibm.com>
+On Tue, Dec 09, 2008 at 05:09:38PM -0800, Joel Becker wrote:
+> Filesystems often to do compute intensive operation on some
+> metadata.  If this operation is repeated many times, it can be very
+> expensive.  It would be much nicer if the operation could be performed
+> once before a buffer goes to disk.
 
-According to checkpatch: EXPORT_SYMBOL(foo); should immediately follow its function/variable
+	I realized, well, that I'm an idiot.  The previous patch has a
+significant bug: what if a block is deallocated, then reused as a
+different type of metadata, all before the committing transaction gets
+around to firing the triggers?  It could use the new block type's
+triggers against the b_frozen_data of the old block type.
+	The easy answer is to add b_frozen_triggers alongside
+b_frozen_data.  Here's the new patch.
+	We'd like to submit this for the merge window with the ocfs2
+meteaecc code.  We'll do that via ocfs2.git, as Ted recommended.
 
-Updated with KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com> compile fix.
+Joel
 
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+>From 23662f70a948a142be96070ead435b098318a1df Mon Sep 17 00:00:00 2001
+From: Joel Becker <joel.becker@oracle.com>
+Date: Thu, 11 Sep 2008 15:35:47 -0700
+Subject: [PATCH] jbd2: Add buffer triggers
+
+Filesystems often to do compute intensive operation on some
+metadata.  If this operation is repeated many times, it can be very
+expensive.  It would be much nicer if the operation could be performed
+once before a buffer goes to disk.
+
+This adds triggers to jbd2 buffer heads.  Just before writing a metadata
+buffer to the journal, jbd2 will optionally call a commit trigger associated
+with the buffer.  If the journal is aborted, an abort trigger will be
+called on any dirty buffers as they are dropped from pending
+transactions.
+
+ocfs2 will use this feature.
+
+Initially I tried to come up with a more generic trigger that could be
+used for non-buffer-related events like transaction completion.  It
+doesn't tie nicely, because the information a buffer trigger needs
+(specific to a journal_head) isn't the same as what a transaction
+trigger needs (specific to a tranaction_t or perhaps journal_t).  So I
+implemented a buffer set, with the understanding that
+journal/transaction wide triggers should be implemented separately.
+
+There is only one trigger set allowed per buffer.  I can't think of any
+reason to attach more than one set.  Contrast this with a journal or
+transaction in which multiple places may want to watch the entire
+transaction separately.
+
+The trigger sets are considered static allocation from the jbd2
+perspective.  ocfs2 will just have one trigger set per block type,
+setting the same set on every bh of the same type.
+
+Signed-off-by: Joel Becker <joel.becker@oracle.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
+Cc: <linux-ext4@vger.kernel.org>
 ---
- fs/dquot.c |   69 ++++++++++++++++++++++++++++++-------------------------------
- 1 file changed, 34 insertions(+), 35 deletions(-)
+ fs/jbd2/commit.c             |    9 ++++++++
+ fs/jbd2/journal.c            |   19 +++++++++++++++++
+ fs/jbd2/transaction.c        |   47 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/jbd2.h         |   31 +++++++++++++++++++++++++++
+ include/linux/journal-head.h |    8 +++++++
+ 5 files changed, 114 insertions(+), 0 deletions(-)
 
-Index: linux-2.6.28-rc2/fs/dquot.c
-===================================================================
---- linux-2.6.28-rc2.orig/fs/dquot.c	2008-12-12 12:21:49.000000000 -0800
-+++ linux-2.6.28-rc2/fs/dquot.c	2008-12-12 12:35:36.000000000 -0800
-@@ -127,6 +127,7 @@
- 
- static DEFINE_SPINLOCK(dq_list_lock);
- DEFINE_SPINLOCK(dq_data_lock);
-+EXPORT_SYMBOL(dq_data_lock);
- 
- static char *quotatypes[] = INITQFNAMES;
- static struct quota_format_type *quota_formats;	/* List of registered formats */
-@@ -143,6 +144,7 @@ int register_quota_format(struct quota_f
- 	spin_unlock(&dq_list_lock);
- 	return 0;
- }
-+EXPORT_SYMBOL(register_quota_format);
- 
- void unregister_quota_format(struct quota_format_type *fmt)
- {
-@@ -154,6 +156,7 @@ void unregister_quota_format(struct quot
- 		*actqf = (*actqf)->qf_next;
- 	spin_unlock(&dq_list_lock);
- }
-+EXPORT_SYMBOL(unregister_quota_format);
- 
- static struct quota_format_type *find_quota_format(int id)
- {
-@@ -210,6 +213,7 @@ static unsigned int dq_hash_bits, dq_has
- static struct hlist_head *dquot_hash;
- 
- struct dqstats dqstats;
-+EXPORT_SYMBOL(dqstats);
- 
- static void dqput(struct dquot *dquot);
- 
-@@ -306,6 +310,7 @@ int dquot_mark_dquot_dirty(struct dquot 
- 	spin_unlock(&dq_list_lock);
- 	return 0;
- }
-+EXPORT_SYMBOL(dquot_mark_dquot_dirty);
- 
- /* This function needs dq_list_lock */
- static inline int clear_dquot_dirty(struct dquot *dquot)
-@@ -357,6 +362,7 @@ out_iolock:
- 	mutex_unlock(&dquot->dq_lock);
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_acquire);
- 
- /*
-  *	Write dquot to disk
-@@ -386,6 +392,7 @@ out_sem:
- 	mutex_unlock(&dqopt->dqio_mutex);
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_commit);
- 
- /*
-  *	Release dquot
-@@ -414,6 +421,7 @@ out_dqlock:
- 	mutex_unlock(&dquot->dq_lock);
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_release);
- 
- static void destroy_dquot(struct dquot *dquot)
- {
-@@ -522,6 +530,7 @@ int vfs_quota_sync(struct super_block *s
- 
- 	return 0;
- }
-+EXPORT_SYMBOL(vfs_quota_sync);
- 
- /* Free unused dquots from cache */
- static void prune_dqcache(int count)
-@@ -1200,6 +1209,7 @@ out_err:
- 	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_initialize);
- 
- /*
-  * 	Release all quotas referenced by inode
-@@ -1219,6 +1229,7 @@ int dquot_drop(struct inode *inode)
- 	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 	return 0;
- }
-+EXPORT_SYMBOL(dquot_drop);
- 
- /* Wrapper to remove references to quota structures from inode */
- void vfs_dq_drop(struct inode *inode)
-@@ -1241,6 +1252,7 @@ void vfs_dq_drop(struct inode *inode)
- 			inode->i_sb->dq_op->drop(inode);
- 	}
- }
-+EXPORT_SYMBOL(vfs_dq_drop);
- 
- /*
-  * Following four functions update i_blocks+i_bytes fields and
-@@ -1317,6 +1329,7 @@ out_unlock:
- out:
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_alloc_space);
- 
- int dquot_reserve_space(struct inode *inode, qsize_t number, int warn)
- {
-@@ -1335,6 +1348,7 @@ out_unlock:
- out:
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_reserve_space);
- 
- int dquot_claim_space(struct inode *inode, qsize_t number)
- {
-@@ -1371,6 +1385,7 @@ int dquot_claim_space(struct inode *inod
- out:
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_claim_space);
- 
- /*
-  * Release reserved quota space
-@@ -1402,6 +1417,7 @@ out_unlock:
- out:
- 	return;
- }
-+EXPORT_SYMBOL(dquot_release_reserved_space);
- 
- /*
-  * This operation can block, but only after everything is updated
-@@ -1447,6 +1463,7 @@ warn_put_all:
- 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_alloc_inode);
- 
- /*
-  * This operation can block, but only after everything is updated
-@@ -1487,6 +1504,7 @@ out_sub:
- 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 	return QUOTA_OK;
- }
-+EXPORT_SYMBOL(dquot_free_space);
- 
- /*
-  * This operation can block, but only after everything is updated
-@@ -1523,6 +1541,7 @@ int dquot_free_inode(const struct inode 
- 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 	return QUOTA_OK;
- }
-+EXPORT_SYMBOL(dquot_free_inode);
- 
- /*
-  * Transfer the number of inode and blocks from one diskquota to an other.
-@@ -1640,6 +1659,7 @@ warn_put_all:
- 	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_transfer);
- 
- /* Wrapper for transferring ownership of an inode */
- int vfs_dq_transfer(struct inode *inode, struct iattr *iattr)
-@@ -1651,7 +1671,7 @@ int vfs_dq_transfer(struct inode *inode,
- 	}
- 	return 0;
- }
--
-+EXPORT_SYMBOL(vfs_dq_transfer);
- 
- /*
-  * Write info of quota file to disk
-@@ -1666,6 +1686,7 @@ int dquot_commit_info(struct super_block
- 	mutex_unlock(&dqopt->dqio_mutex);
- 	return ret;
- }
-+EXPORT_SYMBOL(dquot_commit_info);
- 
- /*
-  * Definitions of diskquota operations.
-@@ -1811,12 +1832,14 @@ put_inodes:
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index ebc667b..c8a1bac 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -509,6 +509,10 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+ 		if (is_journal_aborted(journal)) {
+ 			clear_buffer_jbddirty(jh2bh(jh));
+ 			JBUFFER_TRACE(jh, "journal is aborting: refile");
++			jbd2_buffer_abort_trigger(jh,
++						  jh->b_frozen_data ?
++						  jh->b_frozen_triggers :
++						  jh->b_triggers);
+ 			jbd2_journal_refile_buffer(journal, jh);
+ 			/* If that was the last one, we need to clean up
+ 			 * any descriptor buffers which may have been
+@@ -844,6 +848,9 @@ restart_loop:
+ 		 * data.
+ 		 *
+ 		 * Otherwise, we can just throw away the frozen data now.
++		 *
++		 * We also know that the frozen data has already fired
++		 * its triggers if they exist, so we can clear that too.
+ 		 */
+ 		if (jh->b_committed_data) {
+ 			jbd2_free(jh->b_committed_data, bh->b_size);
+@@ -851,10 +858,12 @@ restart_loop:
+ 			if (jh->b_frozen_data) {
+ 				jh->b_committed_data = jh->b_frozen_data;
+ 				jh->b_frozen_data = NULL;
++				jh->b_frozen_triggers = NULL;
+ 			}
+ 		} else if (jh->b_frozen_data) {
+ 			jbd2_free(jh->b_frozen_data, bh->b_size);
+ 			jh->b_frozen_data = NULL;
++			jh->b_frozen_triggers = NULL;
  		}
- 	return ret;
- }
-+EXPORT_SYMBOL(vfs_quota_disable);
  
- int vfs_quota_off(struct super_block *sb, int type, int remount)
- {
- 	return vfs_quota_disable(sb, type, remount ? DQUOT_SUSPENDED :
- 				 (DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED));
- }
-+EXPORT_SYMBOL(vfs_quota_off);
+ 		spin_lock(&journal->j_list_lock);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index e70d657..f6bff9d 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -50,6 +50,7 @@ EXPORT_SYMBOL(jbd2_journal_unlock_updates);
+ EXPORT_SYMBOL(jbd2_journal_get_write_access);
+ EXPORT_SYMBOL(jbd2_journal_get_create_access);
+ EXPORT_SYMBOL(jbd2_journal_get_undo_access);
++EXPORT_SYMBOL(jbd2_journal_set_triggers);
+ EXPORT_SYMBOL(jbd2_journal_dirty_metadata);
+ EXPORT_SYMBOL(jbd2_journal_release_buffer);
+ EXPORT_SYMBOL(jbd2_journal_forget);
+@@ -290,6 +291,7 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	struct page *new_page;
+ 	unsigned int new_offset;
+ 	struct buffer_head *bh_in = jh2bh(jh_in);
++	struct jbd2_buffer_trigger_type *triggers;
  
- /*
-  *	Turn quotas on on a device
-@@ -1954,6 +1977,7 @@ static int vfs_quota_on_remount(struct s
- 
- 	return ret;
- }
-+EXPORT_SYMBOL(vfs_quota_on_remount);
- 
- int vfs_quota_on_path(struct super_block *sb, int type, int format_id,
- 		      struct path *path)
-@@ -1970,6 +1994,7 @@ int vfs_quota_on_path(struct super_block
- 					     DQUOT_LIMITS_ENABLED);
- 	return error;
- }
-+EXPORT_SYMBOL(vfs_quota_on_path);
- 
- int vfs_quota_on(struct super_block *sb, int type, int format_id, char *name,
- 		 int remount)
-@@ -1987,6 +2012,7 @@ int vfs_quota_on(struct super_block *sb,
+ 	/*
+ 	 * The buffer really shouldn't be locked: only the current committing
+@@ -314,13 +316,23 @@ repeat:
+ 		done_copy_out = 1;
+ 		new_page = virt_to_page(jh_in->b_frozen_data);
+ 		new_offset = offset_in_page(jh_in->b_frozen_data);
++		triggers = jh_in->b_frozen_triggers;
+ 	} else {
+ 		new_page = jh2bh(jh_in)->b_page;
+ 		new_offset = offset_in_page(jh2bh(jh_in)->b_data);
++		triggers = jh_in->b_triggers;
  	}
- 	return error;
- }
-+EXPORT_SYMBOL(vfs_quota_on);
  
- /*
-  * More powerful function for turning on quotas allowing setting
-@@ -2031,6 +2057,7 @@ out_lock:
- load_quota:
- 	return vfs_load_quota_inode(inode, type, format_id, flags);
- }
-+EXPORT_SYMBOL(vfs_quota_enable);
- 
- /*
-  * This function is used when filesystem needs to initialize quotas
-@@ -2060,6 +2087,7 @@ out:
- 	dput(dentry);
- 	return error;
- }
-+EXPORT_SYMBOL(vfs_quota_on_mount);
- 
- /* Wrapper to turn on quotas when remounting rw */
- int vfs_dq_quota_on_remount(struct super_block *sb)
-@@ -2076,6 +2104,7 @@ int vfs_dq_quota_on_remount(struct super
+ 	mapped_data = kmap_atomic(new_page, KM_USER0);
+ 	/*
++	 * Fire any commit trigger.  Do this before checking for escaping,
++	 * as the trigger may modify the magic offset.  If a copy-out
++	 * happens afterwards, it will have the correct data in the buffer.
++	 */
++	jbd2_buffer_commit_trigger(jh_in, mapped_data + new_offset,
++				   triggers);
++
++	/*
+ 	 * Check for escaping
+ 	 */
+ 	if (*((__be32 *)(mapped_data + new_offset)) ==
+@@ -352,6 +364,13 @@ repeat:
+ 		new_page = virt_to_page(tmp);
+ 		new_offset = offset_in_page(tmp);
+ 		done_copy_out = 1;
++
++		/*
++		 * This isn't strictly necessary, as we're using frozen
++		 * data for the escaping, but it keeps consistency with
++		 * b_frozen_data usage.
++		 */
++		jh_in->b_frozen_triggers = jh_in->b_triggers;
  	}
- 	return ret;
- }
-+EXPORT_SYMBOL(vfs_dq_quota_on_remount);
  
- static inline qsize_t qbtos(qsize_t blocks)
- {
-@@ -2119,6 +2148,7 @@ int vfs_get_dqblk(struct super_block *sb
- 	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
- 	return 0;
- }
-+EXPORT_SYMBOL(vfs_get_dqblk);
+ 	/*
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 39b7805..4f925a4 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -741,6 +741,12 @@ done:
+ 		source = kmap_atomic(page, KM_USER0);
+ 		memcpy(jh->b_frozen_data, source+offset, jh2bh(jh)->b_size);
+ 		kunmap_atomic(source, KM_USER0);
++
++		/*
++		 * Now that the frozen data is saved off, we need to store
++		 * any matching triggers.
++		 */
++		jh->b_frozen_triggers = jh->b_triggers;
+ 	}
+ 	jbd_unlock_bh_state(bh);
  
- /* Generic routine for setting common part of quota structure */
- static int do_set_dqblk(struct dquot *dquot, struct if_dqblk *di)
-@@ -2202,6 +2232,7 @@ out:
- 	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
- 	return rc;
+@@ -944,6 +950,47 @@ out:
  }
-+EXPORT_SYMBOL(vfs_set_dqblk);
  
- /* Generic routine for getting common part of quota file information */
- int vfs_get_dqinfo(struct super_block *sb, int type, struct if_dqinfo *ii)
-@@ -2223,6 +2254,7 @@ int vfs_get_dqinfo(struct super_block *s
- 	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
- 	return 0;
- }
-+EXPORT_SYMBOL(vfs_get_dqinfo);
+ /**
++ * void jbd2_journal_set_triggers() - Add triggers for commit writeout
++ * @bh: buffer to trigger on
++ * @type: struct jbd2_buffer_trigger_type containing the trigger(s).
++ *
++ * Set any triggers on this journal_head.  This is always safe, because
++ * triggers for a committing buffer will be saved off, and triggers for
++ * a running transaction will match the buffer in that transaction.
++ *
++ * Call with NULL to clear the triggers.
++ */
++void jbd2_journal_set_triggers(struct buffer_head *bh,
++			       struct jbd2_buffer_trigger_type *type)
++{
++	struct journal_head *jh = bh2jh(bh);
++
++	jh->b_triggers = type;
++}
++
++void jbd2_buffer_commit_trigger(struct journal_head *jh, void *mapped_data,
++				struct jbd2_buffer_trigger_type *triggers)
++{
++	struct buffer_head *bh = jh2bh(jh);
++
++	if (!triggers || !triggers->t_commit)
++		return;
++
++	triggers->t_commit(triggers, bh, mapped_data, bh->b_size);
++}
++
++void jbd2_buffer_abort_trigger(struct journal_head *jh,
++			       struct jbd2_buffer_trigger_type *triggers)
++{
++	if (!triggers || !triggers->t_abort)
++		return;
++
++	triggers->t_abort(triggers, jh2bh(jh));
++}
++
++
++
++/**
+  * int jbd2_journal_dirty_metadata() -  mark a buffer as containing dirty metadata
+  * @handle: transaction to add buffer to.
+  * @bh: buffer to mark
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index f366457..3445647 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1008,6 +1008,35 @@ int __jbd2_journal_clean_checkpoint_list(journal_t *journal);
+ int __jbd2_journal_remove_checkpoint(struct journal_head *);
+ void __jbd2_journal_insert_checkpoint(struct journal_head *, transaction_t *);
  
- /* Generic routine for setting common part of quota file information */
- int vfs_set_dqinfo(struct super_block *sb, int type, struct if_dqinfo *ii)
-@@ -2251,6 +2283,7 @@ out:
- 	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
- 	return err;
- }
-+EXPORT_SYMBOL(vfs_set_dqinfo);
++
++/*
++ * Triggers
++ */
++
++struct jbd2_buffer_trigger_type {
++	/*
++	 * Fired just before a buffer is written to the journal.
++	 * mapped_data is a mapped buffer that is the frozen data for
++	 * commit.
++	 */
++	void (*t_commit)(struct jbd2_buffer_trigger_type *type,
++			 struct buffer_head *bh, void *mapped_data,
++			 size_t size);
++
++	/*
++	 * Fired during journal abort for dirty buffers that will not be
++	 * committed.
++	 */
++	void (*t_abort)(struct jbd2_buffer_trigger_type *type,
++			struct buffer_head *bh);
++};
++
++extern void jbd2_buffer_commit_trigger(struct journal_head *jh,
++				       void *mapped_data,
++				       struct jbd2_buffer_trigger_type *triggers);
++extern void jbd2_buffer_abort_trigger(struct journal_head *jh,
++				      struct jbd2_buffer_trigger_type *triggers);
++
+ /* Buffer IO */
+ extern int
+ jbd2_journal_write_metadata_buffer(transaction_t	  *transaction,
+@@ -1046,6 +1075,8 @@ extern int	 jbd2_journal_extend (handle_t *, int nblocks);
+ extern int	 jbd2_journal_get_write_access(handle_t *, struct buffer_head *);
+ extern int	 jbd2_journal_get_create_access (handle_t *, struct buffer_head *);
+ extern int	 jbd2_journal_get_undo_access(handle_t *, struct buffer_head *);
++void		 jbd2_journal_set_triggers(struct buffer_head *,
++					   struct jbd2_buffer_trigger_type *type);
+ extern int	 jbd2_journal_dirty_metadata (handle_t *, struct buffer_head *);
+ extern void	 jbd2_journal_release_buffer (handle_t *, struct buffer_head *);
+ extern int	 jbd2_journal_forget (handle_t *, struct buffer_head *);
+diff --git a/include/linux/journal-head.h b/include/linux/journal-head.h
+index bb70ebb..525aac3 100644
+--- a/include/linux/journal-head.h
++++ b/include/linux/journal-head.h
+@@ -12,6 +12,8 @@
  
- struct quotactl_ops vfs_quotactl_ops = {
- 	.quota_on	= vfs_quota_on,
-@@ -2406,37 +2439,3 @@ static int __init dquot_init(void)
- 	return 0;
- }
- module_init(dquot_init);
--
--EXPORT_SYMBOL(register_quota_format);
--EXPORT_SYMBOL(unregister_quota_format);
--EXPORT_SYMBOL(dqstats);
--EXPORT_SYMBOL(dq_data_lock);
--EXPORT_SYMBOL(vfs_quota_enable);
--EXPORT_SYMBOL(vfs_quota_on);
--EXPORT_SYMBOL(vfs_quota_on_path);
--EXPORT_SYMBOL(vfs_quota_on_mount);
--EXPORT_SYMBOL(vfs_quota_disable);
--EXPORT_SYMBOL(vfs_quota_off);
--EXPORT_SYMBOL(vfs_quota_sync);
--EXPORT_SYMBOL(vfs_get_dqinfo);
--EXPORT_SYMBOL(vfs_set_dqinfo);
--EXPORT_SYMBOL(vfs_get_dqblk);
--EXPORT_SYMBOL(vfs_set_dqblk);
--EXPORT_SYMBOL(dquot_commit);
--EXPORT_SYMBOL(dquot_commit_info);
--EXPORT_SYMBOL(dquot_acquire);
--EXPORT_SYMBOL(dquot_release);
--EXPORT_SYMBOL(dquot_mark_dquot_dirty);
--EXPORT_SYMBOL(dquot_initialize);
--EXPORT_SYMBOL(dquot_drop);
--EXPORT_SYMBOL(vfs_dq_drop);
--EXPORT_SYMBOL(dquot_alloc_space);
--EXPORT_SYMBOL(dquot_alloc_inode);
--EXPORT_SYMBOL(dquot_free_space);
--EXPORT_SYMBOL(dquot_free_inode);
--EXPORT_SYMBOL(dquot_reserve_space);
--EXPORT_SYMBOL(dquot_claim_space);
--EXPORT_SYMBOL(dquot_release_reserved_space);
--EXPORT_SYMBOL(dquot_transfer);
--EXPORT_SYMBOL(vfs_dq_transfer);
--EXPORT_SYMBOL(vfs_dq_quota_on_remount);
+ typedef unsigned int		tid_t;		/* Unique transaction ID */
+ typedef struct transaction_s	transaction_t;	/* Compound transaction type */
++
++
+ struct buffer_head;
+ 
+ struct journal_head {
+@@ -87,6 +89,12 @@ struct journal_head {
+ 	 * [j_list_lock]
+ 	 */
+ 	struct journal_head *b_cpnext, *b_cpprev;
++
++	/* Trigger type */
++	struct jbd2_buffer_trigger_type *b_triggers;
++
++	/* Trigger type for the committing transaction's frozen data */
++	struct jbd2_buffer_trigger_type *b_frozen_triggers;
+ };
+ 
+ #endif		/* JOURNAL_HEAD_H_INCLUDED */
+-- 
+1.5.6.5
 
+-- 
 
+Life's Little Instruction Book #335
+
+	"Every so often, push your luck."
+
+Joel Becker
+Principal Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
