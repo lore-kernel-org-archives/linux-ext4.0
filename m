@@ -1,23 +1,29 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [Bug 12224] journal activity on inactive partition causes inactive
- harddrive spinup
-Date: Sun, 14 Dec 2008 17:10:20 -0600
-Message-ID: <4945925C.8010606@redhat.com>
-References: <20081214223001.9E693108047@picon.linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: bugme-daemon@bugzilla.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
+Date: Sun, 14 Dec 2008 15:10:54 -0800 (PST)
+Message-ID: <20081214231054.86C82108041@picon.linux-foundation.org>
+References: <bug-12224-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:49150 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751616AbYLNXKy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Dec 2008 18:10:54 -0500
-In-Reply-To: <20081214223001.9E693108047@picon.linux-foundation.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:47635 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754928AbYLNXLZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Dec 2008 18:11:25 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mBENAsRA021664
+	for <linux-ext4@vger.kernel.org>; Sun, 14 Dec 2008 15:10:55 -0800
+In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
+
+
+
+
+
+------- Comment #2 from sandeen@redhat.com  2008-12-14 15:10 -------
 bugme-daemon@bugzilla.kernel.org wrote:
 
 > OK, that's a huge mess because bugzilla went and wordwrapped it.  Let
@@ -64,3 +70,7 @@ to see if you get any info about inodes on sda1 being dirtied.
 -Eric
 
 
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
