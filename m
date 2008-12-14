@@ -1,30 +1,37 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Bugme-new] [Bug 12224] New: journal activity on inactive
- partition causes inactive harddrive spinup
-Date: Sun, 14 Dec 2008 14:29:45 -0800
-Message-ID: <20081214142945.522d209b.akpm@linux-foundation.org>
-References: <bug-12224-10286@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: bugme-daemon@bugzilla.kernel.org, stable@kernel.org,
-	csights@fastmail.fm
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
+Date: Sun, 14 Dec 2008 14:30:01 -0800 (PST)
+Message-ID: <20081214223001.9E693108047@picon.linux-foundation.org>
+References: <bug-12224-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:37993 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:33152 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754300AbYLNWaB (ORCPT
+	by vger.kernel.org with ESMTP id S1754576AbYLNWaE (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 14 Dec 2008 17:30:01 -0500
-In-Reply-To: <bug-12224-10286@http.bugzilla.kernel.org/>
+	Sun, 14 Dec 2008 17:30:04 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mBEMU1Mg020111
+	for <linux-ext4@vger.kernel.org>; Sun, 14 Dec 2008 14:30:02 -0800
+In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
+
+
+
+
+
+------- Comment #1 from anonymous@kernel-bugs.osdl.org  2008-12-14 14:30 -------
+Reply-To: akpm@linux-foundation.org
 
 
 (switched to email.  Please respond via emailed reply-to-all, not via the
 bugzilla web interface).
 
-On Sun, 14 Dec 2008 11:39:34 -0800 (PST) bugme-daemon@bugzilla.kernel.org wrote:
+On Sun, 14 Dec 2008 11:39:34 -0800 (PST) bugme-daemon@bugzilla.kernel.org
+wrote:
 
 > http://bugzilla.kernel.org/show_bug.cgi?id=12224
 > 
@@ -109,3 +116,8 @@ ftp://ftp.kernel.org/pub/linux/kernel/v2.6/ChangeLog-2.6.27.6 is "ext3:
 wait on all pending commits in ext3_sync_fs", but I don't see how it
 could cause this.
 
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
