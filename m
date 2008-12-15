@@ -1,22 +1,30 @@
-From: Goswin von Brederlow <goswin-v-b@web.de>
-Subject: Re: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
-Date: Mon, 15 Dec 2008 02:22:01 +0100
-Message-ID: <87fxkqdyh2.fsf@frosties.localdomain>
-References: <20081214223001.9E693108047@picon.linux-foundation.org>
-	<4945925C.8010606@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bugme-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
+Date: Sun, 14 Dec 2008 17:22:19 -0800 (PST)
+Message-ID: <20081215012219.58E4310800F@picon.linux-foundation.org>
+References: <bug-12224-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fmmailgate03.web.de ([217.72.192.234]:38060 "EHLO
-	fmmailgate03.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750916AbYLOBWI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 14 Dec 2008 20:22:08 -0500
-In-Reply-To: <4945925C.8010606@redhat.com> (Eric Sandeen's message of "Sun, 14
-	Dec 2008 17:10:20 -0600")
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:56428 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750992AbYLOBWu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Dec 2008 20:22:50 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mBF1MJUB026681
+	for <linux-ext4@vger.kernel.org>; Sun, 14 Dec 2008 17:22:20 -0800
+In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
+
+
+
+
+
+------- Comment #3 from anonymous@kernel-bugs.osdl.org  2008-12-14 17:22 -------
+Reply-To: goswin-v-b@web.de
 
 Eric Sandeen <sandeen@redhat.com> writes:
 
@@ -42,3 +50,9 @@ Like atime/diratime updates?
 
 MfG
         Goswin
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
