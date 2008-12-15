@@ -1,9 +1,9 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH V4 1/3] quota: Add reservation support for delayed
-	block allocation
-Date: Mon, 15 Dec 2008 14:16:08 +0100
-Message-ID: <20081215131608.GC15464@duck.suse.cz>
-References: <1229114856.7646.25.camel@mingming-laptop>
+Subject: Re: [PATCH V4 2/3] quota: Add quota claim and release reserved
+	quota blocks operations
+Date: Mon, 15 Dec 2008 14:40:16 +0100
+Message-ID: <20081215134016.GD15464@duck.suse.cz>
+References: <1229114860.7646.26.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>,
@@ -11,169 +11,97 @@ Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:37393 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:38497 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753322AbYLONQL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Dec 2008 08:16:11 -0500
+	id S1751964AbYLONkS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Dec 2008 08:40:18 -0500
 Content-Disposition: inline
-In-Reply-To: <1229114856.7646.25.camel@mingming-laptop>
+In-Reply-To: <1229114860.7646.26.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Minming,
+  Hi Mingming,
 
-On Fri 12-12-08 12:47:36, Mingming Cao wrote:
-> Quota: Add quota reservation support
+  sorry I spoke to soon in my previous email. You tried to resolve the
+issue with dquot_transfer(). I just thought it would belong to the first
+patch...
+
+On Fri 12-12-08 12:47:40, Mingming Cao wrote:
+> quota: Add quota reservation claim and released operations
 > 
-> Delayed allocation defers the block allocation at the dirty pages
-> flush-out time, doing quota charge/check at that time is too late.
-> But we can't charge the quota blocks until blocks are really allocated,
-> otherwise users could get overcharged after reboot from system crash.
-> 
-> This patch adds quota reservation for delayed llocation. Quota blocks
-> are reserved in memory, inode and quota won't gets dirtied until later
-> block allocation time.
+> Reserved quota will be claimed at the block allocation time. Over-booked
+> quota could be returned back with the release callback function.
 > 
 > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> 
-> 
 > ---
->  fs/dquot.c               |  109 +++++++++++++++++++++++++++++++++--------------
->  include/linux/quota.h    |    2 
->  include/linux/quotaops.h |   22 +++++++++
->  3 files changed, 102 insertions(+), 31 deletions(-)
+>  fs/dquot.c               |  101 +++++++++++++++++++++++++++++++++++++++++++++--
+>  include/linux/quota.h    |    4 +
+>  include/linux/quotaops.h |   53 ++++++++++++++++++++++++
+>  3 files changed, 153 insertions(+), 5 deletions(-)
 > 
-> Index: linux-2.6.28-rc2/fs/dquot.c
-> ===================================================================
-> --- linux-2.6.28-rc2.orig/fs/dquot.c	2008-11-06 13:36:21.000000000 -0800
-> +++ linux-2.6.28-rc2/fs/dquot.c	2008-12-12 12:20:45.000000000 -0800
-<snip>
-> @@ -1227,49 +1237,85 @@ void vfs_dq_drop(struct inode *inode)
->  /*
->   * This operation can block, but only after everything is updated
->   */
-> -int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
-> +int __dquot_alloc_space(struct inode *inode, qsize_t number,
-> +			int warn, int reserve)
->  {
-> -	int cnt, ret = NO_QUOTA;
-> +	int cnt, ret = QUOTA_OK;
->  	char warntype[MAXQUOTAS];
->  
-> -	/* First test before acquiring mutex - solves deadlocks when we
-> -         * re-enter the quota code and are already holding the mutex */
-> -	if (IS_NOQUOTA(inode)) {
-> -out_add:
-> -		inode_add_bytes(inode, number);
-> -		return QUOTA_OK;
-> -	}
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
->  		warntype[cnt] = QUOTA_NL_NOWARN;
->  
-> -	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> -	if (IS_NOQUOTA(inode)) {	/* Now we can do reliable test... */
-> -		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> -		goto out_add;
-> -	}
->  	spin_lock(&dq_data_lock);
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
->  		if (inode->i_dquot[cnt] == NODQUOT)
->  			continue;
-> -		if (check_bdq(inode->i_dquot[cnt], number, warn, warntype+cnt) == NO_QUOTA)
-> -			goto warn_put_all;
-> +		if (check_bdq(inode->i_dquot[cnt], number, warn, warntype+cnt)
-> +		    == NO_QUOTA) {
-> +			ret = NO_QUOTA;
-> +			goto out_unlock;
-> +		}
->  	}
->  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
->  		if (inode->i_dquot[cnt] == NODQUOT)
->  			continue;
-> -		dquot_incr_space(inode->i_dquot[cnt], number);
-> +		if (reserve)
-> +			dquot_resv_space(inode->i_dquot[cnt], number);
-> +		else{
-                    ^ here is missing space
-
-> +			dquot_incr_space(inode->i_dquot[cnt], number);
-> +			inode_add_bytes(inode, number);
-> +		}
->  	}
-> -	inode_add_bytes(inode, number);
-> -	ret = QUOTA_OK;
-> -warn_put_all:
-> -	spin_unlock(&dq_data_lock);
-> -	if (ret == QUOTA_OK)
-> -		/* Dirtify all the dquots - this can block when journalling */
-> -		for (cnt = 0; cnt < MAXQUOTAS; cnt++)
-> -			if (inode->i_dquot[cnt])
-> -				mark_dquot_dirty(inode->i_dquot[cnt]);
-> +out_unlock:
->  	flush_warnings(inode->i_dquot, warntype);
-> +	spin_unlock(&dq_data_lock);
-  We can't do flush_warnings() inside the spinlock - that function can
-sleep. Please move the call outside the lock.
-
-> +	return ret;
-> +}
-> +
-> +int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
-> +{
-> +	int cnt, ret = QUOTA_OK;
-> +
-> +	/*
-> +	 * First test before acquiring mutex - solves deadlocks when we
-> +	 * re-enter the quota code and are already holding the mutex
-> +	 */
-> +	if (IS_NOQUOTA(inode))
-> +		goto out;
-> +
-> +	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	if (IS_NOQUOTA(inode))
-> +		goto out_unlock;
-> +
-> +	ret = __dquot_alloc_space(inode, number, warn, 0);
-> +	if (ret == NO_QUOTA)
-> +		goto out_unlock;
-> +
-> +	/* Dirtify all the dquots - this can block when journalling */
-> +	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
-> +		if (inode->i_dquot[cnt])
-> +			mark_dquot_dirty(inode->i_dquot[cnt]);
-> +out_unlock:
->  	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +out:
-> +	return ret;
-> +}
-> +
-> +int dquot_reserve_space(struct inode *inode, qsize_t number, int warn)
-> +{
-> +	int ret = QUOTA_OK;
-> +
-> +	if (IS_NOQUOTA(inode))
-> +		goto out;
-> +
-> +	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +	if (IS_NOQUOTA(inode))
-> +		goto out_unlock;
-> +
-> +	ret = __dquot_alloc_space(inode, number, warn, 1);
-> +out_unlock:
-> +	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
-> +out:
->  	return ret;
->  }
   <snip>
 
-  And one global comment: I see you haven't still resolved the problem
-with dquot_transfer(). I've been thinking about it a bit and I realized you
-really cannot increase i_blocks already when reserving space as I suggested
-because then i_blocks would be inconsistent after the crash.
-  Thus the only correct possibility is to keep amount of space reserved for
-an inode (which ext4 already does) and when dquot_transfer() is called,
-transfer this amount of quota reservation from a source user to a target
-user.
+> Index: linux-2.6.28-rc2/fs/dquot.c
+> ===================================================================
+> --- linux-2.6.28-rc2.orig/fs/dquot.c	2008-12-12 12:20:45.000000000 -0800
+> +++ linux-2.6.28-rc2/fs/dquot.c	2008-12-12 12:21:49.000000000 -0800
+  <snip>
+
+> @@ -1448,7 +1532,8 @@ int dquot_free_inode(const struct inode 
+>   */
+>  int dquot_transfer(struct inode *inode, struct iattr *iattr)
+>  {
+> -	qsize_t space;
+> +	qsize_t space, cur_space;
+> +	qsize_t rsv_space = 0;
+>  	struct dquot *transfer_from[MAXQUOTAS];
+>  	struct dquot *transfer_to[MAXQUOTAS];
+>  	int cnt, ret = NO_QUOTA, chuid = (iattr->ia_valid & ATTR_UID) && inode->i_uid != iattr->ia_uid,
+> @@ -1489,12 +1574,16 @@ int dquot_transfer(struct inode *inode, 
+>  		}
+>  	}
+>  	spin_lock(&dq_data_lock);
+> -	space = inode_get_bytes(inode);
+> +	space = cur_space = inode_get_bytes(inode);
+>  	/* Build the transfer_from list and check the limits */
+>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+>  		if (transfer_to[cnt] == NODQUOT)
+>  			continue;
+>  		transfer_from[cnt] = inode->i_dquot[cnt];
+> +		if (!rsv_space) {
+> +			rsv_space = transfer_from[cnt]->dq_dqb.dqb_rsvspace;
+> +			space += rsv_space;
+  Hmm, but you cannot simply transfer all the reserved space from one user
+to another. You have to transfer just the amount reserved for this inode
+(i.e. EXT4_I(inode)->i_reserved_data_blocks +
+EXT4_I(inode)->i_reserved_meta_blocks). The fact is this is not available
+to quota code. One possibility is to store this number in VFS inode (which I
+guess people would not like because it would increase every inode size by 8
+bytes). So probably more plausible is to provide a callback so that quota
+code can find out how much space this inode has reserved. This is not a
+performance critical operation so the cost of the function call is
+acceptable here IMO.
+
+> +		}
+>  		if (check_idq(transfer_to[cnt], 1, warntype_to + cnt) ==
+>  		    NO_QUOTA || check_bdq(transfer_to[cnt], space, 0,
+>  		    warntype_to + cnt) == NO_QUOTA)
+> @@ -1518,11 +1607,13 @@ int dquot_transfer(struct inode *inode, 
+>  			warntype_from_space[cnt] =
+>  				info_bdq_free(transfer_from[cnt], space);
+>  			dquot_decr_inodes(transfer_from[cnt], 1);
+> -			dquot_decr_space(transfer_from[cnt], space);
+> +			dquot_decr_space(transfer_from[cnt], cur_space);
+> +			dquot_free_reserved_space(transfer_from[cnt], rsv_space);
+>  		}
+>  
+>  		dquot_incr_inodes(transfer_to[cnt], 1);
+> -		dquot_incr_space(transfer_to[cnt], space);
+> +		dquot_incr_space(transfer_to[cnt], cur_space);
+> +		dquot_resv_space(transfer_to[cnt], rsv_space);
+>  
+>  		inode->i_dquot[cnt] = transfer_to[cnt];
+>  	}
 
 								Honza
 -- 
