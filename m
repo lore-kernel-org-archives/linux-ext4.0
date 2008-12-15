@@ -1,324 +1,359 @@
-From: Rusty Russell <rusty@rustcorp.com.au>
-Subject: Re: [PATCH] percpu_counter: Fix __percpu_counter_sum()
-Date: Mon, 15 Dec 2008 23:23:52 +1030
-Message-ID: <200812152323.53592.rusty@rustcorp.com.au>
-References: <4936D287.6090206@cosmosbay.com> <493F4EF4.4080205@cosmosbay.com> <20081209214921.b3944687.akpm@linux-foundation.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH V2 2/2]QUOTA cleanup:Move EXPORT_SYMBOL immediatlely
+	next to the functions/varibles
+Date: Mon, 15 Dec 2008 13:57:56 +0100
+Message-ID: <20081215125756.GB15464@duck.suse.cz>
+References: <1229114906.7646.30.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Eric Dumazet <dada1@cosmosbay.com>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>,
-	Theodore Tso <tytso@mit.edu>,
-	linux kernel <linux-kernel@vger.kernel.org>,
-	"David S. Miller" <davem@davemloft.net>,
-	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
-	Christoph Lameter <clameter@sgi.com>,
-	Paul Mackerras <paulus@samba.org>
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+	KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com>
+To: Mingming Cao <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ozlabs.org ([203.10.76.45]:56523 "EHLO ozlabs.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751201AbYLOMx7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Dec 2008 07:53:59 -0500
-In-Reply-To: <20081209214921.b3944687.akpm@linux-foundation.org>
+Received: from styx.suse.cz ([82.119.242.94]:36683 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750793AbYLOM57 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Dec 2008 07:57:59 -0500
 Content-Disposition: inline
+In-Reply-To: <1229114906.7646.30.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wednesday 10 December 2008 16:19:21 Andrew Morton wrote:
-> Rusty, Christoph: talk to me.  If we add a new user of local_t in core
-> kernel, will we regret it?
+On Fri 12-12-08 12:48:26, Mingming Cao wrote:
+> quota: Move EXPORT_SYMBOL immediatlely next to the functions/varibles
+> From: Mingming Cao <cmm@us.ibm.com>
+> 
+> According to checkpatch: EXPORT_SYMBOL(foo); should immediately follow its function/variable
+> 
+> Updated with KAMEZAWA Hiroyuki <kamezawa.hiroyu@jp.fujitsu.com> compile fix.
+> 
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+  This patch does not reflect the changes that are in linux-next (and thus
+in -mm kernels) due to OCFS2. Please refresh the patch with them. Thanks.
 
-Interesting.  There's new local_t infrastructure, but it's not used.
-
-Here's a benchmark patch showing some results.  x86 is pretty close to
-optimal already, though my results on Power show atomic_long is a bad choice
-there.
-
-I'll do an audit of the users, then send out some local_t cleanup patches etc.
-
-Benchmarks for local_t variants
-
-(This patch also fixes the x86 cpu_local_* macros, which are obviously
-unused).
-
-I chose a large array (1M longs) for the inc/add/add_return tests so
-the trivalue case would show some cache pressure.
-
-The cpu_local_inc case is always cache-hot, so it's not comparable to
-the others.
-
-Time in ns per iteration (brackets is with CONFIG_PREEMPT=y):
-
-		inc	add	add_return	cpu_local_inc	read
-x86-32: 2.13 Ghz Core Duo 2
-atomic_long	118	118	115		17		17
-irqsave/rest	77	78	77		23		16
-trivalue	45	45	127		3(6)		21
-local_t		36	36	36		1(5)		17
-
-x86-64: 2.6 GHz Dual-Core AMD Opteron 2218
-atomic_long	55	60	-		6		19
-irqsave/rest	54	54	-		11		19
-trivalue	47	47	-		5		28
-local_t		47	46	-		1		19
-
-Signed-off-by: Rusty Russell <rusty@rustcorp.com.au>
----
- arch/x86/include/asm/local.h |   20 ++--
- init/main.c                  |  198 +++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 208 insertions(+), 10 deletions(-)
-
-diff --git a/arch/x86/include/asm/local.h b/arch/x86/include/asm/local.h
---- a/arch/x86/include/asm/local.h
-+++ b/arch/x86/include/asm/local.h
-@@ -220,16 +220,16 @@ static inline long local_sub_return(long
- 	preempt_enable();		\
- })					\
- 
--#define cpu_local_read(l)    cpu_local_wrap_v(local_read(&__get_cpu_var((l))))
--#define cpu_local_set(l, i)  cpu_local_wrap(local_set(&__get_cpu_var((l)), (i)))
--#define cpu_local_inc(l)     cpu_local_wrap(local_inc(&__get_cpu_var((l))))
--#define cpu_local_dec(l)     cpu_local_wrap(local_dec(&__get_cpu_var((l))))
--#define cpu_local_add(i, l)  cpu_local_wrap(local_add((i), &__get_cpu_var((l))))
--#define cpu_local_sub(i, l)  cpu_local_wrap(local_sub((i), &__get_cpu_var((l))))
-+#define cpu_local_read(l)    cpu_local_wrap_v(local_read(&__get_cpu_var(l)))
-+#define cpu_local_set(l, i)  cpu_local_wrap(local_set(&__get_cpu_var(l), (i)))
-+#define cpu_local_inc(l)     cpu_local_wrap(local_inc(&__get_cpu_var(l)))
-+#define cpu_local_dec(l)     cpu_local_wrap(local_dec(&__get_cpu_var(l)))
-+#define cpu_local_add(i, l)  cpu_local_wrap(local_add((i), &__get_cpu_var(l)))
-+#define cpu_local_sub(i, l)  cpu_local_wrap(local_sub((i), &__get_cpu_var(l)))
- 
--#define __cpu_local_inc(l)	cpu_local_inc((l))
--#define __cpu_local_dec(l)	cpu_local_dec((l))
--#define __cpu_local_add(i, l)	cpu_local_add((i), (l))
--#define __cpu_local_sub(i, l)	cpu_local_sub((i), (l))
-+#define __cpu_local_inc(l)	cpu_local_inc(l)
-+#define __cpu_local_dec(l)	cpu_local_dec(l)
-+#define __cpu_local_add(i, l)	cpu_local_add((i), l)
-+#define __cpu_local_sub(i, l)	cpu_local_sub((i), l)
- 
- #endif /* _ASM_X86_LOCAL_H */
-diff --git a/init/main.c b/init/main.c
---- a/init/main.c
-+++ b/init/main.c
-@@ -539,6 +539,200 @@ void __init __weak thread_info_cache_ini
- {
- }
- 
-+/* There are three obvious ways to implement local_t on an arch which
-+ * can't do single-instruction inc/dec etc.
-+ * 1) atomic_long
-+ * 2) irq_save/irq_restore
-+ * 3) multiple counters.
-+ *
-+ * This does a very rough benchmark on each one.
-+ */
-+struct local1 {
-+	atomic_long_t v;
-+};
-+struct local2 {
-+	unsigned long v;
-+};
-+struct local3 {
-+	unsigned long v[3];
-+};
-+
-+/* Enough to put some pressure on the caches. */
-+#define NUM_LOCAL_TEST (1024*1024)
-+#define NUM_LOCAL_RUNS (NUM_LOCAL_TEST*32)
-+/* This will make it jump around looking random */
-+#define STRIDE 514001
-+
-+static void *test_local_variants_mem;
-+
-+static void init_test_local_variants(void)
-+{
-+	unsigned long size;
-+	size = max(sizeof(struct local1),
-+		   max(sizeof(struct local2),
-+		       max(sizeof(struct local3), sizeof(local_t))))
-+		* NUM_LOCAL_TEST;
-+	/* Assume this works in early boot. */
-+	test_local_variants_mem = alloc_bootmem_nopanic(size);
-+
-+	if (!test_local_variants_mem) {
-+		printk("test_local_variants: failed to allocate %lu bytes\n",
-+		       size);
-+		return;
-+	}
-+}
-+
-+static void print_result(const char *str,
-+			 struct timespec start, struct timespec end)
-+{
-+	s64 diff;
-+
-+	diff = ktime_to_ns(ktime_sub(timespec_to_ktime(end), timespec_to_ktime(start)));
-+	printk("%s=%lli/%lli ",
-+	       str, diff, diff/NUM_LOCAL_RUNS);
-+}
-+
-+static unsigned int warm_local_test_cache(const void *mem, size_t len)
-+{
-+	unsigned int i, total = 0;
-+	for (i = 0; i < len; i++)
-+		total += ((char *)mem)[i];
-+	return total;
-+}
-+
-+#define TEST_LOOP(expr)				\
-+	n = 0;					\
-+	getnstimeofday(&start);			\
-+	for (i = 0; i < NUM_LOCAL_RUNS; i++) {	\
-+		expr;				\
-+		n += STRIDE;			\
-+		n %= NUM_LOCAL_TEST;		\
-+	}					\
-+	getnstimeofday(&end);
-+
-+/* This doesn't test cache effects at all */
-+#define NUM_PERCPU_VARS		16
-+DEFINE_PER_CPU(struct local1[NUM_PERCPU_VARS], local1_test);
-+DEFINE_PER_CPU(struct local2[NUM_PERCPU_VARS], local2_test);
-+DEFINE_PER_CPU(struct local3[NUM_PERCPU_VARS], local3_test);
-+DEFINE_PER_CPU(local_t[NUM_PERCPU_VARS], local4_test);
-+
-+static void test_local_variants(void)
-+{
-+	struct timespec start, end;
-+	unsigned int i, n;
-+	unsigned long total, warm_total = 0;
-+	struct local1 *l1;
-+	struct local2 *l2;
-+	struct local3 *l3;
-+	local_t *l4;
-+
-+	if (!test_local_variants_mem)
-+		return;
-+		
-+	printk("Running local_t variant benchmarks\n");
-+	l1 = test_local_variants_mem;
-+	l2 = test_local_variants_mem;
-+	l3 = test_local_variants_mem;
-+	l4 = test_local_variants_mem;
-+
-+	printk("atomic_long: ");
-+	memset(l1, 0, sizeof(*l1)*NUM_LOCAL_TEST);
-+	TEST_LOOP(atomic_long_inc(&l1[n].v));
-+	print_result("local_inc", start, end);
-+
-+	warm_total += warm_local_test_cache(l1, sizeof(*l1)*NUM_LOCAL_TEST);
-+	TEST_LOOP(atomic_long_add(1234, &l1[n].v));
-+	print_result("local_add", start, end);
-+
-+	warm_total += warm_local_test_cache(l1, sizeof(*l1)*NUM_LOCAL_TEST);
-+	TEST_LOOP(atomic_long_inc(&__get_cpu_var(local1_test)[n%NUM_PERCPU_VARS].v));
-+	print_result("cpu_local_inc", start, end);
-+
-+	warm_total += warm_local_test_cache(l1, sizeof(*l1)*NUM_LOCAL_TEST);
-+	total = 0;
-+	TEST_LOOP(total += atomic_long_read(&l1[n].v));
-+	print_result("local_read", start, end);
-+
-+	printk("(total was %lu)\n", total);
-+
-+	printk("irqsave/restore: ");
-+	memset(l2, 0, sizeof(*l2)*NUM_LOCAL_TEST);
-+	TEST_LOOP(unsigned long flags;
-+		  local_irq_save(flags);
-+		  l2[n].v++;
-+		  local_irq_restore(flags));
-+	print_result("local_inc", start, end);
-+
-+	warm_total += warm_local_test_cache(l2, sizeof(*l2)*NUM_LOCAL_TEST);
-+	TEST_LOOP(unsigned long flags;
-+		  local_irq_save(flags);
-+		  l2[n].v += 1234;
-+		  local_irq_restore(flags));
-+	print_result("local_add", start, end);
-+
-+	warm_total += warm_local_test_cache(l2, sizeof(*l2)*NUM_LOCAL_TEST);
-+	TEST_LOOP(unsigned long flags;
-+		  local_irq_save(flags);
-+		  __get_cpu_var(local2_test)[n%NUM_PERCPU_VARS].v++;
-+		  local_irq_restore(flags));
-+	print_result("cpu_local_inc", start, end);
-+
-+	warm_total += warm_local_test_cache(l2, sizeof(*l2)*NUM_LOCAL_TEST);
-+	total = 0;
-+	TEST_LOOP(total += l2[n].v);
-+	print_result("local_read", start, end);
-+	printk("(total was %lu)\n", total);
-+
-+	printk("trivalue: ");
-+	memset(l3, 0, sizeof(*l3)*NUM_LOCAL_TEST);
-+	TEST_LOOP(unsigned int idx
-+			= !(preempt_count() & (HARDIRQ_MASK | SOFTIRQ_MASK)) +
-+			!(preempt_count() & HARDIRQ_MASK);
-+		  l3[n].v[idx]++);
-+	print_result("local_inc", start, end);
-+
-+	warm_total += warm_local_test_cache(l3, sizeof(*l3)*NUM_LOCAL_TEST);
-+	TEST_LOOP(unsigned int idx
-+			= !(preempt_count() & (HARDIRQ_MASK | SOFTIRQ_MASK)) +
-+			!(preempt_count() & HARDIRQ_MASK);
-+		  l3[n].v[idx] += 1234);
-+	print_result("local_add", start, end);
-+
-+	warm_total += warm_local_test_cache(l3, sizeof(*l3)*NUM_LOCAL_TEST);
-+	TEST_LOOP(unsigned int idx
-+			= !(preempt_count() & (HARDIRQ_MASK | SOFTIRQ_MASK)) +
-+			!(preempt_count() & HARDIRQ_MASK);
-+		  get_cpu_var(local3_test)[n%NUM_PERCPU_VARS].v[idx]++;
-+		  put_cpu_var());
-+	print_result("cpu_local_inc", start, end);
-+
-+	warm_total += warm_local_test_cache(l3, sizeof(*l3)*NUM_LOCAL_TEST);
-+	total = 0;
-+	TEST_LOOP(total += l3[n].v[0] + l3[n].v[1] + l3[n].v[2]);
-+	print_result("local_read", start, end);
-+	printk("(total was %lu)\n", total);
-+
-+	printk("local_t: ");
-+	memset(l4, 0, sizeof(*l4)*NUM_LOCAL_TEST);
-+	TEST_LOOP(local_inc(&l4[n]));
-+	print_result("local_inc", start, end);
-+
-+	warm_total += warm_local_test_cache(l4, sizeof(*l4)*NUM_LOCAL_TEST);
-+	TEST_LOOP(local_add(1234, &l4[n]));
-+	print_result("local_add", start, end);
-+
-+	warm_total += warm_local_test_cache(l4, sizeof(*l4)*NUM_LOCAL_TEST);
-+	TEST_LOOP(cpu_local_inc(local4_test[n%NUM_PERCPU_VARS]));
-+	print_result("cpu_local_inc", start, end);
-+
-+	warm_total += warm_local_test_cache(l4, sizeof(*l4)*NUM_LOCAL_TEST);
-+	total = 0;
-+	TEST_LOOP(total += local_read(&l4[n]));
-+	print_result("local_read", start, end);
-+	printk("(total was %lu, warm_total %lu)\n", total, warm_total);
-+}
-+
- asmlinkage void __init start_kernel(void)
- {
- 	char * command_line;
-@@ -635,6 +829,8 @@ asmlinkage void __init start_kernel(void
- 	 */
- 	locking_selftest();
- 
-+	init_test_local_variants();
-+
- #ifdef CONFIG_BLK_DEV_INITRD
- 	if (initrd_start && !initrd_below_start_ok &&
- 	    page_to_pfn(virt_to_page((void *)initrd_start)) < min_low_pfn) {
-@@ -692,6 +888,8 @@ asmlinkage void __init start_kernel(void
- 	acpi_early_init(); /* before LAPIC and SMP init */
- 
- 	ftrace_init();
-+
-+	test_local_variants();
- 
- 	/* Do the rest non-__init'ed, we're now alive */
- 	rest_init();
+										Honza
+> ---
+>  fs/dquot.c |   69 ++++++++++++++++++++++++++++++-------------------------------
+>  1 file changed, 34 insertions(+), 35 deletions(-)
+> 
+> Index: linux-2.6.28-rc2/fs/dquot.c
+> ===================================================================
+> --- linux-2.6.28-rc2.orig/fs/dquot.c	2008-12-12 12:21:49.000000000 -0800
+> +++ linux-2.6.28-rc2/fs/dquot.c	2008-12-12 12:35:36.000000000 -0800
+> @@ -127,6 +127,7 @@
+>  
+>  static DEFINE_SPINLOCK(dq_list_lock);
+>  DEFINE_SPINLOCK(dq_data_lock);
+> +EXPORT_SYMBOL(dq_data_lock);
+>  
+>  static char *quotatypes[] = INITQFNAMES;
+>  static struct quota_format_type *quota_formats;	/* List of registered formats */
+> @@ -143,6 +144,7 @@ int register_quota_format(struct quota_f
+>  	spin_unlock(&dq_list_lock);
+>  	return 0;
+>  }
+> +EXPORT_SYMBOL(register_quota_format);
+>  
+>  void unregister_quota_format(struct quota_format_type *fmt)
+>  {
+> @@ -154,6 +156,7 @@ void unregister_quota_format(struct quot
+>  		*actqf = (*actqf)->qf_next;
+>  	spin_unlock(&dq_list_lock);
+>  }
+> +EXPORT_SYMBOL(unregister_quota_format);
+>  
+>  static struct quota_format_type *find_quota_format(int id)
+>  {
+> @@ -210,6 +213,7 @@ static unsigned int dq_hash_bits, dq_has
+>  static struct hlist_head *dquot_hash;
+>  
+>  struct dqstats dqstats;
+> +EXPORT_SYMBOL(dqstats);
+>  
+>  static void dqput(struct dquot *dquot);
+>  
+> @@ -306,6 +310,7 @@ int dquot_mark_dquot_dirty(struct dquot 
+>  	spin_unlock(&dq_list_lock);
+>  	return 0;
+>  }
+> +EXPORT_SYMBOL(dquot_mark_dquot_dirty);
+>  
+>  /* This function needs dq_list_lock */
+>  static inline int clear_dquot_dirty(struct dquot *dquot)
+> @@ -357,6 +362,7 @@ out_iolock:
+>  	mutex_unlock(&dquot->dq_lock);
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_acquire);
+>  
+>  /*
+>   *	Write dquot to disk
+> @@ -386,6 +392,7 @@ out_sem:
+>  	mutex_unlock(&dqopt->dqio_mutex);
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_commit);
+>  
+>  /*
+>   *	Release dquot
+> @@ -414,6 +421,7 @@ out_dqlock:
+>  	mutex_unlock(&dquot->dq_lock);
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_release);
+>  
+>  static void destroy_dquot(struct dquot *dquot)
+>  {
+> @@ -522,6 +530,7 @@ int vfs_quota_sync(struct super_block *s
+>  
+>  	return 0;
+>  }
+> +EXPORT_SYMBOL(vfs_quota_sync);
+>  
+>  /* Free unused dquots from cache */
+>  static void prune_dqcache(int count)
+> @@ -1200,6 +1209,7 @@ out_err:
+>  	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_initialize);
+>  
+>  /*
+>   * 	Release all quotas referenced by inode
+> @@ -1219,6 +1229,7 @@ int dquot_drop(struct inode *inode)
+>  	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>  	return 0;
+>  }
+> +EXPORT_SYMBOL(dquot_drop);
+>  
+>  /* Wrapper to remove references to quota structures from inode */
+>  void vfs_dq_drop(struct inode *inode)
+> @@ -1241,6 +1252,7 @@ void vfs_dq_drop(struct inode *inode)
+>  			inode->i_sb->dq_op->drop(inode);
+>  	}
+>  }
+> +EXPORT_SYMBOL(vfs_dq_drop);
+>  
+>  /*
+>   * Following four functions update i_blocks+i_bytes fields and
+> @@ -1317,6 +1329,7 @@ out_unlock:
+>  out:
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_alloc_space);
+>  
+>  int dquot_reserve_space(struct inode *inode, qsize_t number, int warn)
+>  {
+> @@ -1335,6 +1348,7 @@ out_unlock:
+>  out:
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_reserve_space);
+>  
+>  int dquot_claim_space(struct inode *inode, qsize_t number)
+>  {
+> @@ -1371,6 +1385,7 @@ int dquot_claim_space(struct inode *inod
+>  out:
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_claim_space);
+>  
+>  /*
+>   * Release reserved quota space
+> @@ -1402,6 +1417,7 @@ out_unlock:
+>  out:
+>  	return;
+>  }
+> +EXPORT_SYMBOL(dquot_release_reserved_space);
+>  
+>  /*
+>   * This operation can block, but only after everything is updated
+> @@ -1447,6 +1463,7 @@ warn_put_all:
+>  	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_alloc_inode);
+>  
+>  /*
+>   * This operation can block, but only after everything is updated
+> @@ -1487,6 +1504,7 @@ out_sub:
+>  	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>  	return QUOTA_OK;
+>  }
+> +EXPORT_SYMBOL(dquot_free_space);
+>  
+>  /*
+>   * This operation can block, but only after everything is updated
+> @@ -1523,6 +1541,7 @@ int dquot_free_inode(const struct inode 
+>  	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>  	return QUOTA_OK;
+>  }
+> +EXPORT_SYMBOL(dquot_free_inode);
+>  
+>  /*
+>   * Transfer the number of inode and blocks from one diskquota to an other.
+> @@ -1640,6 +1659,7 @@ warn_put_all:
+>  	up_write(&sb_dqopt(inode->i_sb)->dqptr_sem);
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_transfer);
+>  
+>  /* Wrapper for transferring ownership of an inode */
+>  int vfs_dq_transfer(struct inode *inode, struct iattr *iattr)
+> @@ -1651,7 +1671,7 @@ int vfs_dq_transfer(struct inode *inode,
+>  	}
+>  	return 0;
+>  }
+> -
+> +EXPORT_SYMBOL(vfs_dq_transfer);
+>  
+>  /*
+>   * Write info of quota file to disk
+> @@ -1666,6 +1686,7 @@ int dquot_commit_info(struct super_block
+>  	mutex_unlock(&dqopt->dqio_mutex);
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(dquot_commit_info);
+>  
+>  /*
+>   * Definitions of diskquota operations.
+> @@ -1811,12 +1832,14 @@ put_inodes:
+>  		}
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(vfs_quota_disable);
+>  
+>  int vfs_quota_off(struct super_block *sb, int type, int remount)
+>  {
+>  	return vfs_quota_disable(sb, type, remount ? DQUOT_SUSPENDED :
+>  				 (DQUOT_USAGE_ENABLED | DQUOT_LIMITS_ENABLED));
+>  }
+> +EXPORT_SYMBOL(vfs_quota_off);
+>  
+>  /*
+>   *	Turn quotas on on a device
+> @@ -1954,6 +1977,7 @@ static int vfs_quota_on_remount(struct s
+>  
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(vfs_quota_on_remount);
+>  
+>  int vfs_quota_on_path(struct super_block *sb, int type, int format_id,
+>  		      struct path *path)
+> @@ -1970,6 +1994,7 @@ int vfs_quota_on_path(struct super_block
+>  					     DQUOT_LIMITS_ENABLED);
+>  	return error;
+>  }
+> +EXPORT_SYMBOL(vfs_quota_on_path);
+>  
+>  int vfs_quota_on(struct super_block *sb, int type, int format_id, char *name,
+>  		 int remount)
+> @@ -1987,6 +2012,7 @@ int vfs_quota_on(struct super_block *sb,
+>  	}
+>  	return error;
+>  }
+> +EXPORT_SYMBOL(vfs_quota_on);
+>  
+>  /*
+>   * More powerful function for turning on quotas allowing setting
+> @@ -2031,6 +2057,7 @@ out_lock:
+>  load_quota:
+>  	return vfs_load_quota_inode(inode, type, format_id, flags);
+>  }
+> +EXPORT_SYMBOL(vfs_quota_enable);
+>  
+>  /*
+>   * This function is used when filesystem needs to initialize quotas
+> @@ -2060,6 +2087,7 @@ out:
+>  	dput(dentry);
+>  	return error;
+>  }
+> +EXPORT_SYMBOL(vfs_quota_on_mount);
+>  
+>  /* Wrapper to turn on quotas when remounting rw */
+>  int vfs_dq_quota_on_remount(struct super_block *sb)
+> @@ -2076,6 +2104,7 @@ int vfs_dq_quota_on_remount(struct super
+>  	}
+>  	return ret;
+>  }
+> +EXPORT_SYMBOL(vfs_dq_quota_on_remount);
+>  
+>  static inline qsize_t qbtos(qsize_t blocks)
+>  {
+> @@ -2119,6 +2148,7 @@ int vfs_get_dqblk(struct super_block *sb
+>  	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
+>  	return 0;
+>  }
+> +EXPORT_SYMBOL(vfs_get_dqblk);
+>  
+>  /* Generic routine for setting common part of quota structure */
+>  static int do_set_dqblk(struct dquot *dquot, struct if_dqblk *di)
+> @@ -2202,6 +2232,7 @@ out:
+>  	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
+>  	return rc;
+>  }
+> +EXPORT_SYMBOL(vfs_set_dqblk);
+>  
+>  /* Generic routine for getting common part of quota file information */
+>  int vfs_get_dqinfo(struct super_block *sb, int type, struct if_dqinfo *ii)
+> @@ -2223,6 +2254,7 @@ int vfs_get_dqinfo(struct super_block *s
+>  	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
+>  	return 0;
+>  }
+> +EXPORT_SYMBOL(vfs_get_dqinfo);
+>  
+>  /* Generic routine for setting common part of quota file information */
+>  int vfs_set_dqinfo(struct super_block *sb, int type, struct if_dqinfo *ii)
+> @@ -2251,6 +2283,7 @@ out:
+>  	mutex_unlock(&sb_dqopt(sb)->dqonoff_mutex);
+>  	return err;
+>  }
+> +EXPORT_SYMBOL(vfs_set_dqinfo);
+>  
+>  struct quotactl_ops vfs_quotactl_ops = {
+>  	.quota_on	= vfs_quota_on,
+> @@ -2406,37 +2439,3 @@ static int __init dquot_init(void)
+>  	return 0;
+>  }
+>  module_init(dquot_init);
+> -
+> -EXPORT_SYMBOL(register_quota_format);
+> -EXPORT_SYMBOL(unregister_quota_format);
+> -EXPORT_SYMBOL(dqstats);
+> -EXPORT_SYMBOL(dq_data_lock);
+> -EXPORT_SYMBOL(vfs_quota_enable);
+> -EXPORT_SYMBOL(vfs_quota_on);
+> -EXPORT_SYMBOL(vfs_quota_on_path);
+> -EXPORT_SYMBOL(vfs_quota_on_mount);
+> -EXPORT_SYMBOL(vfs_quota_disable);
+> -EXPORT_SYMBOL(vfs_quota_off);
+> -EXPORT_SYMBOL(vfs_quota_sync);
+> -EXPORT_SYMBOL(vfs_get_dqinfo);
+> -EXPORT_SYMBOL(vfs_set_dqinfo);
+> -EXPORT_SYMBOL(vfs_get_dqblk);
+> -EXPORT_SYMBOL(vfs_set_dqblk);
+> -EXPORT_SYMBOL(dquot_commit);
+> -EXPORT_SYMBOL(dquot_commit_info);
+> -EXPORT_SYMBOL(dquot_acquire);
+> -EXPORT_SYMBOL(dquot_release);
+> -EXPORT_SYMBOL(dquot_mark_dquot_dirty);
+> -EXPORT_SYMBOL(dquot_initialize);
+> -EXPORT_SYMBOL(dquot_drop);
+> -EXPORT_SYMBOL(vfs_dq_drop);
+> -EXPORT_SYMBOL(dquot_alloc_space);
+> -EXPORT_SYMBOL(dquot_alloc_inode);
+> -EXPORT_SYMBOL(dquot_free_space);
+> -EXPORT_SYMBOL(dquot_free_inode);
+> -EXPORT_SYMBOL(dquot_reserve_space);
+> -EXPORT_SYMBOL(dquot_claim_space);
+> -EXPORT_SYMBOL(dquot_release_reserved_space);
+> -EXPORT_SYMBOL(dquot_transfer);
+> -EXPORT_SYMBOL(vfs_dq_transfer);
+> -EXPORT_SYMBOL(vfs_dq_quota_on_remount);
+> 
+> 
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
