@@ -1,53 +1,104 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/1] Allow ext4 to run without a journal.
-Date: Mon, 15 Dec 2008 23:00:11 -0500
-Message-ID: <20081216040011.GF11502@mit.edu>
-References: <1228953270.14314.15.camel@bobble.smo.corp.google.com> <1229362555.19828.2.camel@bobble.smo.corp.google.com>
+From: Yasunori Goto <y-goto@jp.fujitsu.com>
+Subject: [Patch/BUG] (ext4) s_mb_maxs[] of ext4_sb_info is too small size
+Date: Tue, 16 Dec 2008 17:25:44 +0900
+Message-ID: <20081216170409.34EA.E1E9C6FF@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Frank Mayhar <fmayhar@google.com>
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7bit
+Cc: Li Zefan <lizf@cn.fujitsu.com>, linux-ext4@vger.kernel.org,
+	Miao Xie <miaox@cn.fujitsu.com>,
+	Linux Kernel ML <linux-kernel@vger.kernel.org>
+To: tytso@mit.edu, adilger@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:36420 "EHLO
-	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750958AbYLPEAO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Dec 2008 23:00:14 -0500
-Content-Disposition: inline
-In-Reply-To: <1229362555.19828.2.camel@bobble.smo.corp.google.com>
+Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:57393 "EHLO
+	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750970AbYLPIZr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Dec 2008 03:25:47 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Dec 15, 2008 at 09:35:55AM -0800, Frank Mayhar wrote:
-> On Wed, 2008-12-10 at 15:54 -0800, Frank Mayhar wrote:
-> > A few weeks ago I posted a patch for discussion that allowed ext4 to run
-> > without a journal.  Since that time I've integrated the excellent
-> > comments from Andreas and fixed several serious bugs.  We're currently
-> > running with this patch and generating some performance numbers against
-> > both ext2 (with backported reservations code) and ext4 with and without
-> > a journal.  It just so happens that running without a journal is
-> > slightly faster for most everything.
-> 
-> Has anyone had a chance to take a look at this?  Andreas?  Ted?  Anyone?
+Hello.
 
-For some reason it didn't show up in my mailbox; maybe an errant SPAM
-checker grabbed it?  (For some reason Herbert Xu's mail server
-recently blacklisted my mail server, so he can't get any e-mails from
-me, whether it's a reply to LKML or an invite to the kernel summit.
-More recently Baracuda Networks, which handles mit.edu's spam
-filtering, blacklisted the mail server for the vendor-sec mailing
-list.  Go figure.)  
+I chased the cause of following ext4 oops report which is tested on
+ia64 box.
 
-Fortunately your patch did show up in patchwork:
+http://bugzilla.kernel.org/show_bug.cgi?id=12018
 
-	http://patchwork.ozlabs.org/project/linux-ext4/
+The cause is the size of s_mb_maxs array that is
+defined as "unsigned short" in ext4_sb_info structure.
+Unsigned short is too small.
 
-I've been travelling, so I haven't had a chance to look at it,
-although I did note that it had showed up over the weekend when I was
-going over the patch queue and reconciling it with Patchwork, and
-wondered why I hadn't seen earlier...
+In this bug report, Li-san formatted with 64Kbyte block size like
+the following. Ia64 has 64Kbyte page size, then this
+block size is acceptable.
 
-I will try to get it shortly.
+# mkfs.ext4 -b 65536 /dev/md0
 
-Regards,
+In this case, the maximum value of s_mb_maxs[] becomes 
+(blocksize << 2) = 256K by the following code.
 
-						- Ted
+2482 int ext4_mb_init(struct super_block *sb, int needs_recovery)
+               : 
+               :
+2508         max = sb->s_blocksize << 2;    <---- max becomes 0x40000.
+2509         do {
+2510                 sbi->s_mb_offsets[i] = offset;
+2511                 sbi->s_mb_maxs[i] = max;            <--- over flow!!!
+2512                 offset += 1 << (sb->s_blocksize_bits - i);
+2513                 max = max >> 1;
+2514                 i++;
+2515         } while (i <= sb->s_blocksize_bits + 1);
+
+Then, some s_mb_maxs[] becomes 0 due to overflow.
+It is cause of this oops. The following patch is to fix it.
+
+Thanks.
+
+----
+
+The size of s_mb_maxs that is defined in ext4_sb_info is too small.
+When block size is 64K, which is possible on ia64,
+the maximum value of s_mb_maxs becomes 256K(0x40000).
+However, s_mb_maxs is defined as unsigned short. This is cause of panic.
+
+Signed-off-by: Yasunori Goto <y-goto@jp.fujitsu.com>
+Cc: Li Zefan <lizf@cn.fujitsu.com>
+Cc: Miao Xie <miaox@cn.fujitsu.com>
+
+---
+ fs/ext4/ext4_sb.h |    3 ++-
+ fs/ext4/mballoc.c |    2 ++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+Index: test2/fs/ext4/ext4_sb.h
+===================================================================
+--- test2.orig/fs/ext4/ext4_sb.h	2008-12-16 11:20:18.000000000 +0900
++++ test2/fs/ext4/ext4_sb.h	2008-12-16 14:17:32.000000000 +0900
+@@ -101,7 +101,8 @@ struct ext4_sb_info {
+ 	spinlock_t s_reserve_lock;
+ 	spinlock_t s_md_lock;
+ 	tid_t s_last_transaction;
+-	unsigned short *s_mb_offsets, *s_mb_maxs;
++	unsigned short *s_mb_offsets;
++	unsigned int *s_mb_maxs;
+ 
+ 	/* tunables */
+ 	unsigned long s_stripe;
+Index: test2/fs/ext4/mballoc.c
+===================================================================
+--- test2.orig/fs/ext4/mballoc.c	2008-12-16 11:20:18.000000000 +0900
++++ test2/fs/ext4/mballoc.c	2008-12-16 14:23:21.000000000 +0900
+@@ -2493,6 +2493,8 @@ int ext4_mb_init(struct super_block *sb,
+ 	if (sbi->s_mb_offsets == NULL) {
+ 		return -ENOMEM;
+ 	}
++
++	i = (sb->s_blocksize_bits + 2) * sizeof(unsigned int);
+ 	sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_mb_maxs == NULL) {
+ 		kfree(sbi->s_mb_maxs);
+
+-- 
+Yasunori Goto 
+
+
