@@ -1,63 +1,58 @@
-From: akpm@linux-foundation.org
-Subject: - ext3-ensure-link-targets-are-null-terminated.patch removed from -mm tree
-Date: Mon, 15 Dec 2008 16:09:47 -0800
-Message-ID: <200812160009.mBG09lC0000695@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: duaneg@dghda.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH, v2] ext3: ensure link targets are NULL-terminated
+Date: Mon, 15 Dec 2008 16:09:36 -0800
+Message-ID: <20081215160936.7b70bec9.akpm@linux-foundation.org>
+References: <1229022995-9898-1-git-send-email-duaneg@dghda.com>
+	<1229022995-9898-2-git-send-email-duaneg@dghda.com>
+	<1229022995-9898-3-git-send-email-duaneg@dghda.com>
+	<1229022995-9898-4-git-send-email-duaneg@dghda.com>
+	<1229022995-9898-5-git-send-email-duaneg@dghda.com>
+	<1229022995-9898-6-git-send-email-duaneg@dghda.com>
+	<20081211222605.GB18665@dastardly.home.dghda.com>
+	<20081211193228.51c34114.akpm@linux-foundation.org>
+	<e9e943910812120140j356d9e1g972dfddbb4f14369@mail.gmail.com>
+	<e9e943910812120219k54e46330hc82add29a7fda455@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	bharrosh@panasas.com, sct@redhat.com, adilger@sun.com,
+	linux-ext4@vger.kernel.org
+To: "Duane Griffin" <duaneg@dghda.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:58673 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754127AbYLPAKN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 15 Dec 2008 19:10:13 -0500
+In-Reply-To: <e9e943910812120219k54e46330hc82add29a7fda455@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, 12 Dec 2008 10:19:20 +0000
+"Duane Griffin" <duaneg@dghda.com> wrote:
 
-The patch titled
-     ext3: ensure link targets are NULL-terminated
-has been removed from the -mm tree.  Its filename was
-     ext3-ensure-link-targets-are-null-terminated.patch
+> 2008/12/12 Duane Griffin <duaneg@dghda.com>:
+> > 2008/12/12 Andrew Morton <akpm@linux-foundation.org>:
+> >> Really?  The ext2 on-disk format requires that the fast symlink be
+> >> null-terminated on disk?  Even though the length is already in i_size?
+> >>
+> >> It seems that's true.  How un-ext2-like.
+> >>
+> >> ext2 and ext4 need the same fix, yes?
+> >
+> > Yes. I've sent them out already, but thanks to a monumental cock-up
+> > with the CCs they may not have made it to the list. I'll check and
+> > resend to real addresses if necessary.
+> 
+> Seems they did make it:
+> http://marc.info/?l=linux-kernel&m=122903437006575&w=2
+> http://marc.info/?l=linux-kernel&m=122903451306859&w=2
+> 
 
-This patch was dropped because an updated version will be merged
+OK, thanks, it seems I was sneakily not cc'ed ;)
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext3: ensure link targets are NULL-terminated
-From: "Duane Griffin" <duaneg@dghda.com>
-
-Ensure link targets are NUL-terminated, even if corrupted on-disk.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext3/inode.c |    5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
-
-diff -puN fs/ext3/inode.c~ext3-ensure-link-targets-are-null-terminated fs/ext3/inode.c
---- a/fs/ext3/inode.c~ext3-ensure-link-targets-are-null-terminated
-+++ a/fs/ext3/inode.c
-@@ -2817,9 +2817,10 @@ struct inode *ext3_iget(struct super_blo
- 		inode->i_op = &ext3_dir_inode_operations;
- 		inode->i_fop = &ext3_dir_operations;
- 	} else if (S_ISLNK(inode->i_mode)) {
--		if (ext3_inode_is_fast_symlink(inode))
-+		if (ext3_inode_is_fast_symlink(inode)) {
- 			inode->i_op = &ext3_fast_symlink_inode_operations;
--		else {
-+			((char *) ei->i_data)[inode->i_size] = '\0';
-+		} else {
- 			inode->i_op = &ext3_symlink_inode_operations;
- 			ext3_set_aops(inode);
- 		}
-_
-
-Patches currently in -mm which might be from duaneg@dghda.com are
-
-ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch
-ext4-tighten-restrictions-on-inode-flags.patch
-ext2-dont-inherit-inappropriate-inode-flags-from-parent.patch
-ext2-tighten-restrictions-on-inode-flags.patch
-ext3-dont-inherit-inappropriate-inode-flags-from-parent.patch
-ext3-tighten-restrictions-on-inode-flags.patch
-ext3-ensure-link-targets-are-null-terminated.patch
+As Al points out, the code which you implemented is still vulnerable to
+on-disk corruption: bad values of i_size will cause the kernel to write
+a zero byte to any address within the entire CPU address range.
 
