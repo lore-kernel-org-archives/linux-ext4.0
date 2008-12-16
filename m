@@ -1,58 +1,53 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH, v2] ext3: ensure link targets are NULL-terminated
-Date: Mon, 15 Dec 2008 16:09:36 -0800
-Message-ID: <20081215160936.7b70bec9.akpm@linux-foundation.org>
-References: <1229022995-9898-1-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-2-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-3-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-4-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-5-git-send-email-duaneg@dghda.com>
-	<1229022995-9898-6-git-send-email-duaneg@dghda.com>
-	<20081211222605.GB18665@dastardly.home.dghda.com>
-	<20081211193228.51c34114.akpm@linux-foundation.org>
-	<e9e943910812120140j356d9e1g972dfddbb4f14369@mail.gmail.com>
-	<e9e943910812120219k54e46330hc82add29a7fda455@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 1/1] Allow ext4 to run without a journal.
+Date: Mon, 15 Dec 2008 23:00:11 -0500
+Message-ID: <20081216040011.GF11502@mit.edu>
+References: <1228953270.14314.15.camel@bobble.smo.corp.google.com> <1229362555.19828.2.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	bharrosh@panasas.com, sct@redhat.com, adilger@sun.com,
-	linux-ext4@vger.kernel.org
-To: "Duane Griffin" <duaneg@dghda.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Frank Mayhar <fmayhar@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:58673 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754127AbYLPAKN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 15 Dec 2008 19:10:13 -0500
-In-Reply-To: <e9e943910812120219k54e46330hc82add29a7fda455@mail.gmail.com>
+Received: from www.church-of-our-saviour.ORG ([69.25.196.31]:36420 "EHLO
+	thunker.thunk.org" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1750958AbYLPEAO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Dec 2008 23:00:14 -0500
+Content-Disposition: inline
+In-Reply-To: <1229362555.19828.2.camel@bobble.smo.corp.google.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 12 Dec 2008 10:19:20 +0000
-"Duane Griffin" <duaneg@dghda.com> wrote:
-
-> 2008/12/12 Duane Griffin <duaneg@dghda.com>:
-> > 2008/12/12 Andrew Morton <akpm@linux-foundation.org>:
-> >> Really?  The ext2 on-disk format requires that the fast symlink be
-> >> null-terminated on disk?  Even though the length is already in i_size?
-> >>
-> >> It seems that's true.  How un-ext2-like.
-> >>
-> >> ext2 and ext4 need the same fix, yes?
-> >
-> > Yes. I've sent them out already, but thanks to a monumental cock-up
-> > with the CCs they may not have made it to the list. I'll check and
-> > resend to real addresses if necessary.
+On Mon, Dec 15, 2008 at 09:35:55AM -0800, Frank Mayhar wrote:
+> On Wed, 2008-12-10 at 15:54 -0800, Frank Mayhar wrote:
+> > A few weeks ago I posted a patch for discussion that allowed ext4 to run
+> > without a journal.  Since that time I've integrated the excellent
+> > comments from Andreas and fixed several serious bugs.  We're currently
+> > running with this patch and generating some performance numbers against
+> > both ext2 (with backported reservations code) and ext4 with and without
+> > a journal.  It just so happens that running without a journal is
+> > slightly faster for most everything.
 > 
-> Seems they did make it:
-> http://marc.info/?l=linux-kernel&m=122903437006575&w=2
-> http://marc.info/?l=linux-kernel&m=122903451306859&w=2
-> 
+> Has anyone had a chance to take a look at this?  Andreas?  Ted?  Anyone?
 
-OK, thanks, it seems I was sneakily not cc'ed ;)
+For some reason it didn't show up in my mailbox; maybe an errant SPAM
+checker grabbed it?  (For some reason Herbert Xu's mail server
+recently blacklisted my mail server, so he can't get any e-mails from
+me, whether it's a reply to LKML or an invite to the kernel summit.
+More recently Baracuda Networks, which handles mit.edu's spam
+filtering, blacklisted the mail server for the vendor-sec mailing
+list.  Go figure.)  
 
-As Al points out, the code which you implemented is still vulnerable to
-on-disk corruption: bad values of i_size will cause the kernel to write
-a zero byte to any address within the entire CPU address range.
+Fortunately your patch did show up in patchwork:
 
+	http://patchwork.ozlabs.org/project/linux-ext4/
+
+I've been travelling, so I haven't had a chance to look at it,
+although I did note that it had showed up over the weekend when I was
+going over the patch queue and reconciling it with Patchwork, and
+wondered why I hadn't seen earlier...
+
+I will try to get it shortly.
+
+Regards,
+
+						- Ted
