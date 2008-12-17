@@ -1,61 +1,45 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Don't overwrite allocation_context ac_status
-Date: Wed, 17 Dec 2008 14:24:10 +0530
-Message-ID: <20081217085410.GB7685@skywalker>
-References: <1228914463-12716-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081212175922.GC26085@mit.edu>
+From: Lars =?UTF-8?B?VMOkdWJlcg==?= <taeuber@bbaw.de>
+Subject: tune2fs -o noatime /dev/sd_
+Date: Wed, 17 Dec 2008 12:15:33 +0100
+Message-ID: <20081217121533.30951131.taeuber@bbaw.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [59.145.155.5] ([59.145.155.5]:41804 "EHLO e28smtp05.in.ibm.com"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750806AbYLQJOw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Dec 2008 04:14:52 -0500
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28smtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id mBH8sBdE025704
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 14:24:11 +0530
-Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mBH8r3oB4067512
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 14:23:03 +0530
-Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
-	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id mBH8sAY1003104
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 19:54:11 +1100
-Content-Disposition: inline
-In-Reply-To: <20081212175922.GC26085@mit.edu>
+Received: from mail.bbaw.de ([194.95.188.6]:56751 "EHLO mail.bbaw.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751086AbYLQLd6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Dec 2008 06:33:58 -0500
+Received: from mailhub.bbaw.de (unknown [192.168.4.1])
+	by mail.bbaw.de (Postfix) with ESMTP id 9082F4A8074
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 12:15:30 +0100 (CET)
+Received: from localhost (localhost [127.0.0.1])
+	by mailhub.bbaw.de (Postfix) with ESMTP id 75A309377C
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 12:15:29 +0100 (CET)
+Received: from taeuber.bbaw.de (taeuber.bbaw.de [192.168.1.148])
+	by mailhub.bbaw.de (Postfix) with SMTP id 3AD2893753
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 12:15:29 +0100 (CET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 12, 2008 at 12:59:22PM -0500, Theodore Tso wrote:
-> On Wed, Dec 10, 2008 at 06:37:43PM +0530, Aneesh Kumar K.V wrote:
-> > We can call ext4_mb_check_limits even after successfull
-> > allocation. Make sure we don't overwrite ac_status.
-> > This fix the below lockdep warning
-> 
-> So the ext4_mb_check_limits() function isn't that well documented, but
-> one of the things it is supposed to do is to make sure that blocks
-> comprising the extent that was found is in fact still available.  This
-> check patches this out.   Are we sure this does the right thing?
+Hallo developers!
 
-ext4_mb_check_limits does allocation in complex_scan. In complex scan
-we loop through available free blocks and try to find the best extent.
-We also want to make sure we doesn't loop too much. So
-ext4_mb_check_limits  and ext4_mb_measure_extent does multiple things.
+I just would like to ask for a feature request for the ext[234] filesys=
+tems.
+There are some usb-sticks used by me that are formated with ext2. All r=
+ecent desktop enviroments let me mount them quiet easy but without the =
+chance to tell them to mount it with the =C2=BBnoatime=C2=AB option. Bu=
+t I liked them to be mounted with this option because of their flash ch=
+aracteristics.
+It seems there is some space left for an EXT4_MOUNT_NOATIME option in e=
+xt4.h for all the ext[234] file systems.
+What do you think about this?
 
-
-Now what we do in complex_scan is
-
-for blocks in group:
-	ext4_mb_find_extent();
-	ext4_mb_measure_extents()
-
-ext4_mb_check_limits(..., 1);
-
-Now ext4_mb_measure_extents() can result in successfull
-allocation. So we need to make sure we don't do further allocation in
-ext4_mb_check_limits when we call ext4_mb_check_limits later with
-finish_group = 1;
-
-
--aneesh
-
+Thanks
+Lars
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
