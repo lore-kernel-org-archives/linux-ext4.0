@@ -1,69 +1,72 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
-Date: Tue, 16 Dec 2008 18:30:08 -0800 (PST)
-Message-ID: <20081217023008.54CF111D108@picon.linux-foundation.org>
-References: <bug-12224-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Yasunori Goto <y-goto@jp.fujitsu.com>
+Subject: Re: [Patch/BUG] (ext4) s_mb_maxs[] of ext4_sb_info is too small size
+Date: Wed, 17 Dec 2008 11:45:31 +0900
+Message-ID: <20081217114124.2011.E1E9C6FF@jp.fujitsu.com>
+References: <20081216170409.34EA.E1E9C6FF@jp.fujitsu.com> <4947DE30.2090903@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, adilger@sun.com, Li Zefan <lizf@cn.fujitsu.com>,
+	linux-ext4@vger.kernel.org, Miao Xie <miaox@cn.fujitsu.com>,
+	Linux Kernel ML <linux-kernel@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:40563 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751473AbYLQCaK (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Dec 2008 21:30:10 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mBH2U8ak017732
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Dec 2008 18:30:09 -0800
-In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:46501 "EHLO
+	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750981AbYLQCpi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Dec 2008 21:45:38 -0500
+In-Reply-To: <4947DE30.2090903@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12224
+> Yasunori Goto wrote:
+> > Hello.
+> > 
+> > I chased the cause of following ext4 oops report which is tested on
+> > ia64 box.
+> > 
+> > http://bugzilla.kernel.org/show_bug.cgi?id=12018
+> > 
+> > The cause is the size of s_mb_maxs array that is
+> > defined as "unsigned short" in ext4_sb_info structure.
+> > Unsigned short is too small.
+> > 
+> > In this bug report, Li-san formatted with 64Kbyte block size like
+> > the following. Ia64 has 64Kbyte page size, then this
+> > block size is acceptable.
+> > 
+> > # mkfs.ext4 -b 65536 /dev/md0
+> > 
+> > In this case, the maximum value of s_mb_maxs[] becomes 
+> > (blocksize << 2) = 256K by the following code.
+> > 
+> > 2482 int ext4_mb_init(struct super_block *sb, int needs_recovery)
+> >                : 
+> >                :
+> > 2508         max = sb->s_blocksize << 2;    <---- max becomes 0x40000.
+> > 2509         do {
+> > 2510                 sbi->s_mb_offsets[i] = offset;
+> > 2511                 sbi->s_mb_maxs[i] = max;            <--- over flow!!!
+> > 2512                 offset += 1 << (sb->s_blocksize_bits - i);
+> > 2513                 max = max >> 1;
+> > 2514                 i++;
+> > 2515         } while (i <= sb->s_blocksize_bits + 1);
+> > 
+> > Then, some s_mb_maxs[] becomes 0 due to overflow.
+> > It is cause of this oops. The following patch is to fix it.
+> 
+> Looks good to mee; and these lines before it:
+> 
+>         sbi->s_mb_maxs[0] = sb->s_blocksize << 3;
+>         sbi->s_mb_offsets[0] = 0;
+> 
+> mean that we would have a problem "even" on 8k blocks, yes?
 
+Oh, Yes. :-)
 
-
-
-
-------- Comment #10 from csights@fastmail.fm  2008-12-16 18:30 -------
-On Tuesday 16 December 2008 17:01:27 bugme-daemon@bugzilla.kernel.org wrote:
-> http://bugzilla.kernel.org/show_bug.cgi?id=12224
-
-
-> ------- Comment #9 from sandeen@redhat.com  2008-12-16 14:01 -------
-> Are the laptop-mode tools doing remounts behind your back?
->
-> The only way I see this is if I do "mount -o remount /"; then I see
-> kjournald activity on other ext3 filesystems.  I'll dig into that.
-
-I don't think so: I was able to reproduce this bug using an ext3 loopback 
-mounted file.  laptop-mode-tools does not touch loopback devices as far as I 
-can tell.  Here is my laptop-mode.conf:
-
-> #
-> # The drives that laptop mode controls.
-> # Separate them by a space, e.g. HD="/dev/hda /dev/hdb". The default is a
-> # wildcard, which will get you all your IDE and SCSI/SATA drives.
-> #
-> HD="/dev/[hs]d[abcdefgh]"
-
-        And here is the loopback mount:
-
-/tmp/ext3Image on /mnt/loop type ext3 
-(rw,noatime,loop=/dev/loop/0,commit=1209600)
-
-        (I set the commit=1209600 and noatime by hand on the loopback mounted
-ext3 
-image file.)
-
-        Since I'm not a kernel hacker, I don't know how the code is structured.
- It 
-feels like the kernel commit code is not fully separated by device (or 
-partition). When the active partition's journal is "synced" it triggers 
-activity on other partitions, even if the other partitions aren't active.
-
-C.
-
+Thanks.
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Yasunori Goto 
+
+
