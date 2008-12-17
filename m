@@ -1,89 +1,61 @@
-From: Miao Xie <miaox@cn.fujitsu.com>
-Subject: [PATCH] [e2fsprogs] e2fsck: fix segmentation fault when block size
- is greater than 8192
-Date: Wed, 17 Dec 2008 16:58:12 +0800
-Message-ID: <4948BF24.3040601@cn.fujitsu.com>
-Reply-To: miaox@cn.fujitsu.com
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: Don't overwrite allocation_context ac_status
+Date: Wed, 17 Dec 2008 14:24:10 +0530
+Message-ID: <20081217085410.GB7685@skywalker>
+References: <1228914463-12716-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20081212175922.GC26085@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: tytso@mit.edu
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:60618 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1755560AbYLQI7u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Dec 2008 03:59:50 -0500
+Received: from [59.145.155.5] ([59.145.155.5]:41804 "EHLO e28smtp05.in.ibm.com"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750806AbYLQJOw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Dec 2008 04:14:52 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp05.in.ibm.com (8.13.1/8.13.1) with ESMTP id mBH8sBdE025704
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 14:24:11 +0530
+Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mBH8r3oB4067512
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 14:23:03 +0530
+Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
+	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id mBH8sAY1003104
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 19:54:11 +1100
+Content-Disposition: inline
+In-Reply-To: <20081212175922.GC26085@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When I did fsck a filesystem with large blocksize(greater than 8192),
-segmentation fault occured. The cause is the size of b_data array that is
-defined as a fixed size in buffer_head structure.
-  (File: e2fsck/jfs_user.h)
-  struct buffer_head {
-	char		b_data[8192];
-	e2fsck_t	b_ctx;
-	io_channel	b_io;
-	int		b_size;
-	blk_t		b_blocknr;
-	int		b_dirty;
-	int		b_uptodate;
-	int		b_err;
-  };
+On Fri, Dec 12, 2008 at 12:59:22PM -0500, Theodore Tso wrote:
+> On Wed, Dec 10, 2008 at 06:37:43PM +0530, Aneesh Kumar K.V wrote:
+> > We can call ext4_mb_check_limits even after successfull
+> > allocation. Make sure we don't overwrite ac_status.
+> > This fix the below lockdep warning
+> 
+> So the ext4_mb_check_limits() function isn't that well documented, but
+> one of the things it is supposed to do is to make sure that blocks
+> comprising the extent that was found is in fact still available.  This
+> check patches this out.   Are we sure this does the right thing?
 
-It is unreasonable, because if the blocksize is greater than 8192, b_data will
-overflow and the other variable would be changed, then if we touch those
-variable, segmentation fault occurs.
+ext4_mb_check_limits does allocation in complex_scan. In complex scan
+we loop through available free blocks and try to find the best extent.
+We also want to make sure we doesn't loop too much. So
+ext4_mb_check_limits  and ext4_mb_measure_extent does multiple things.
 
-This patch fixes this bug.
 
-Signed-off-by: Miao Xie <miaox@cn.fujitsu.com>
+Now what we do in complex_scan is
 
----
- e2fsck/jfs_user.h |    2 +-
- e2fsck/journal.c  |    8 ++++++++
- 2 files changed, 9 insertions(+), 1 deletions(-)
+for blocks in group:
+	ext4_mb_find_extent();
+	ext4_mb_measure_extents()
 
-diff --git a/e2fsck/jfs_user.h b/e2fsck/jfs_user.h
-index 0e4f951..f042218 100644
---- a/e2fsck/jfs_user.h
-+++ b/e2fsck/jfs_user.h
-@@ -15,7 +15,7 @@
- #include "e2fsck.h"
- 
- struct buffer_head {
--	char		b_data[8192];
-+	char *		b_data;
- 	e2fsck_t	b_ctx;
- 	io_channel 	b_io;
- 	int	 	b_size;
-diff --git a/e2fsck/journal.c b/e2fsck/journal.c
-index 10f5095..ca7a4c3 100644
---- a/e2fsck/journal.c
-+++ b/e2fsck/journal.c
-@@ -73,6 +73,12 @@ struct buffer_head *getblk(kdev_t kdev, blk_t blocknr, int blocksize)
- 	if (!bh)
- 		return NULL;
- 
-+	bh->b_data = e2fsck_allocate_memory(kdev->k_ctx, blocksize,
-+						"block buffer b_data");
-+	if (!bh->b_data) {
-+		ext2fs_free_mem(&bh);
-+		return NULL;
-+	}
- #ifdef CONFIG_JBD_DEBUG
- 	if (journal_enable_debug >= 3)
- 		bh_count++;
-@@ -163,6 +169,8 @@ void brelse(struct buffer_head *bh)
- 		ll_rw_block(WRITE, 1, &bh);
- 	jfs_debug(3, "freeing block %lu/%p (total %d)\n",
- 		  (unsigned long) bh->b_blocknr, (void *) bh, --bh_count);
-+	if (bh->b_data)
-+		ext2fs_free_mem(&bh->b_data);
- 	ext2fs_free_mem(&bh);
- }
- 
--- 
-1.5.4.rc3
+ext4_mb_check_limits(..., 1);
+
+Now ext4_mb_measure_extents() can result in successfull
+allocation. So we need to make sure we don't do further allocation in
+ext4_mb_check_limits when we call ext4_mb_check_limits later with
+finish_group = 1;
+
+
+-aneesh
 
