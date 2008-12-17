@@ -1,110 +1,87 @@
-From: "Kalpak Shah" <kalpak.shah@gmail.com>
-Subject: Re: [PATCH 2/2] Large EAs
-Date: Wed, 17 Dec 2008 11:40:02 +0530
-Message-ID: <460220570812162210j784b10b4x9b8187ec1d7f0f0c@mail.gmail.com>
-References: <1226954173.3972.70.camel@localhost>
-	 <20081126044138.GD1410@mit.edu>
-	 <460220570811252200t5d9e4aaax95f73843b8f3e482@mail.gmail.com>
-	 <20081126065439.GA27490@mit.edu>
-	 <20081126214929.GZ3186@webber.adilger.int>
-	 <20081127003555.GD14101@mit.edu> <1228300707.3121.71.camel@localhost>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: BUG: unable to handle kernel NULL pointer dereference at
+	00000000 [ext4_new_meta_blocks+0x7c/0xb7]
+Date: Wed, 17 Dec 2008 13:26:35 +0530
+Message-ID: <20081217075635.GA7685@skywalker>
+References: <20081209104121.GA7572@skywalker> <20081212145609.GA26085@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Andreas Dilger" <adilger@sun.com>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	"Mingming Cao" <cmm@us.ibm.com>
-To: "Theodore Tso" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.171]:38296 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751041AbYLQGKD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Dec 2008 01:10:03 -0500
-Received: by wf-out-1314.google.com with SMTP id 27so3615082wfd.4
-        for <linux-ext4@vger.kernel.org>; Tue, 16 Dec 2008 22:10:02 -0800 (PST)
-In-Reply-To: <1228300707.3121.71.camel@localhost>
+Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:48953 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760192AbYLQIBT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Dec 2008 03:01:19 -0500
+Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id mBH7xtcw004421
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 18:59:55 +1100
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mBH7vU1P192104
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 18:57:30 +1100
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mBH7vUvI026933
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 18:57:30 +1100
 Content-Disposition: inline
+In-Reply-To: <20081212145609.GA26085@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 3, 2008 at 4:08 PM, Kalpak Shah <Kalpak.Shah@sun.com> wrote:
-> Since we need to make sure that inodes are not used very frequently for
-> storing EAs, the following design was discussed on the ext4 concall:
->
-> xattrs of size blocksize/2 < ea_size <= blocksize are stored by
-> referencing the block number directly from the ext4_xattr_entry (using
-> some unique combination of bits to encode that this is referencing a
-> block instead of an inode, and also finding space to store 48-bit block
-> numbers) and then ea_size > blocksize is referenced directly by an
-> inode.
->
-> During discussion Andreas suggested another idea using which we can
-> avoid the need to point at blocks from the ext4_xattr_entry:
->
-> Use mballoc to try and find up to 64kB of contiguous blocks to store
-> smaller xattrs. Looking at the ext4_xattr_header it has an h_blocks
-> field which we can use to indicate the number of blocks in a row that
-> are allocated for this inode's xattrs.
->
-> The ext4_xattr_entry has a 16-bit block offset that can be used to
-> point anywhere within a 64kB block.  This not only allows many more
-> small xattrs to be stored efficiently, but also mid-sized xattrs (<=
-> blocksize) can be handled efficiently because the data will be packed
-> into the single group of blocks.  It also avoids the need to reference
-> block numbers from the ext4_xattr_entry directly, which is ugly.
->
-> Comments?
+On Fri, Dec 12, 2008 at 09:56:09AM -0500, Theodore Tso wrote:
+> On Tue, Dec 09, 2008 at 04:11:22PM +0530, Aneesh Kumar K.V wrote:
+> > The problem is due to remove-do_blk_alloc patch.
+> > 
+> > The patch below should fix the crash. 
+> > 
+> > -		EXT4_I(inode)->i_allocated_meta_blocks += *count;
+> > +		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
+> 
+> 
+> Good catch, thanks.  I'll add it to the patch queue.
+> 
+> > I have one question regarding the patch. What about blocks allocated for
+> > directories for the  ext3 format.  With extent format we are not
+> > setting EXT4_MB_HINT_DATA for non regular files. So i guess we also
+> > need the below patch .
+> 
+> One of the good things about getting rid of too many layers of
+> abstractions is that it makes bugs like this easier to spot.  We've
+> been sending allocating directory and symlinks using EXT4_MB_HINT_DATA
+> if extents haven't been enabled, and no one noticed before we
+> simplified out things....
 
-Hi Ted,
+We had always sent the directory allocation request with
+EXT4_MB_HINT_DATA not set.  With Linus kernel I have this
 
-Did you get a chance to think about this? It would be great if you can
-let me know which design is more preferable to you, so I can go ahead
-with the implementation. I understand that including this work in ext4
-isn't a priority right now, but it would be great if we can register a
-feature flag and also what all the flag will include (EA inodes, EA
-entries pointing to blocks or larger no of EA blocks).
+671 static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
+.....
+....
+686         if (S_ISREG(inode->i_mode) && !(flags & EXT4_META_BLOCK))
+687                 /* enable in-core preallocation for data block allocation */
+688                 ar.flags = EXT4_MB_HINT_DATA;
+689         else
+690                 /* disable in-core preallocation for non-regular files */
+691                 ar.flags = 0;
 
-Thanks,
-Kalpak
 
->
-> Thanks,
-> Kalpak
->
-> On Wed, 2008-11-26 at 19:35 -0500, Theodore Tso wrote:
->> On Wed, Nov 26, 2008 at 02:49:29PM -0700, Andreas Dilger wrote:
->> >
->> > One benefit I think is that at least the orphaned EA inode can be
->> > cleaned up instead of lingering in the middle of the shared EA tree.
->> >
->> > Another benefit of having separate EAs is that it makes it tractable to
->> > modify very large EAs.  Otherwise, if there are a number of large
->> > EAs shared in a single tree they would all have to be modified in order
->> > to store a larger value for an EA in the middle of the tree.
->>
->> I guess I didn't make myself clear.  I was *not* suggesting that we
->> share EA's in one inode, or in one extent tree.  Instead, what I
->> suggested was that instead of having a pointer to an inode, if the
->> value of the EA is less than half the blocksize, it is stored in the
->> EA block.  If it is between 50% and 100% of the blocksize, instead of
->> pointing at inode, we point to a block.  If it is greater than a
->> blocksize, we point at a block containing an EA tree.  (Which means
->> for a large EA the average space overhead is 6k --- 4k for the extent
->> block, plus 2k for the fragmentation cost).
->>
->> So this scheme very much uses separate EA's, and does not pack all of
->> the EA's into a single tree.  It is deliberately kept simple precisely
->> because like you I don't think it's worth it to optimize EA's.  On the
->> other hand, running out of inodes is a big problem, and dynamic inodes
->> is far more complicated an issue, especially if we don't have 64-bit
->> inode support in the kernel and in userspace, and we need to worry
->> about locality issues and how dynamic inodes work with online
->> resizing.
->>
->> The tradeoff is that my scheme doesn't burn an inode for each large
->> EA, but for EA's greater than a blocksize, we chew an extra block's
->> worth of overhead.  Personally, I think it's a worthwhile tradeoff ---
->>
->>                                            - Ted
->
->
+That means if the request for block allocation is not on regular files
+set ar.flags = 0; For regular files if the request is for meta-data
+blocks set ar.glags = 0.
+
+
+
+> 
+> Actually, I wonder if maybe we should set EXT4_MB_HINT_DATA for
+> directories as well.  Making directories contiguous does speed up
+> certain workloads, and it does speed up fsck.  It may be though that
+> the mballoc algorithms should be tuned specifically for directories,
+> and what we should do is to define a new flag, EXT4_MB_HINT_DIRECTORY,
+> and pass it in for that case. 
+> 
+> Some experimentation is clearly called for, here....
+> 
+
+True. But with the changes to do do_blk_alloc I guess we need to make
+sure we request directories with EXT4_MB_HINT_DATA not set.
+
+-aneesh
