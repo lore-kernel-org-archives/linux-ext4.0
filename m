@@ -1,87 +1,89 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: BUG: unable to handle kernel NULL pointer dereference at
-	00000000 [ext4_new_meta_blocks+0x7c/0xb7]
-Date: Wed, 17 Dec 2008 13:26:35 +0530
-Message-ID: <20081217075635.GA7685@skywalker>
-References: <20081209104121.GA7572@skywalker> <20081212145609.GA26085@mit.edu>
+From: Miao Xie <miaox@cn.fujitsu.com>
+Subject: [PATCH] [e2fsprogs] e2fsck: fix segmentation fault when block size
+ is greater than 8192
+Date: Wed, 17 Dec 2008 16:58:12 +0800
+Message-ID: <4948BF24.3040601@cn.fujitsu.com>
+Reply-To: miaox@cn.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP05.au.ibm.com ([202.81.18.174]:48953 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760192AbYLQIBT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Dec 2008 03:01:19 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id mBH7xtcw004421
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 18:59:55 +1100
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id mBH7vU1P192104
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 18:57:30 +1100
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id mBH7vUvI026933
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 18:57:30 +1100
-Content-Disposition: inline
-In-Reply-To: <20081212145609.GA26085@mit.edu>
+Received: from cn.fujitsu.com ([222.73.24.84]:60618 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1755560AbYLQI7u (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Dec 2008 03:59:50 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 12, 2008 at 09:56:09AM -0500, Theodore Tso wrote:
-> On Tue, Dec 09, 2008 at 04:11:22PM +0530, Aneesh Kumar K.V wrote:
-> > The problem is due to remove-do_blk_alloc patch.
-> > 
-> > The patch below should fix the crash. 
-> > 
-> > -		EXT4_I(inode)->i_allocated_meta_blocks += *count;
-> > +		EXT4_I(inode)->i_allocated_meta_blocks += ar.len;
-> 
-> 
-> Good catch, thanks.  I'll add it to the patch queue.
-> 
-> > I have one question regarding the patch. What about blocks allocated for
-> > directories for the  ext3 format.  With extent format we are not
-> > setting EXT4_MB_HINT_DATA for non regular files. So i guess we also
-> > need the below patch .
-> 
-> One of the good things about getting rid of too many layers of
-> abstractions is that it makes bugs like this easier to spot.  We've
-> been sending allocating directory and symlinks using EXT4_MB_HINT_DATA
-> if extents haven't been enabled, and no one noticed before we
-> simplified out things....
+When I did fsck a filesystem with large blocksize(greater than 8192),
+segmentation fault occured. The cause is the size of b_data array that is
+defined as a fixed size in buffer_head structure.
+  (File: e2fsck/jfs_user.h)
+  struct buffer_head {
+	char		b_data[8192];
+	e2fsck_t	b_ctx;
+	io_channel	b_io;
+	int		b_size;
+	blk_t		b_blocknr;
+	int		b_dirty;
+	int		b_uptodate;
+	int		b_err;
+  };
 
-We had always sent the directory allocation request with
-EXT4_MB_HINT_DATA not set.  With Linus kernel I have this
+It is unreasonable, because if the blocksize is greater than 8192, b_data will
+overflow and the other variable would be changed, then if we touch those
+variable, segmentation fault occurs.
 
-671 static ext4_fsblk_t do_blk_alloc(handle_t *handle, struct inode *inode,
-.....
-....
-686         if (S_ISREG(inode->i_mode) && !(flags & EXT4_META_BLOCK))
-687                 /* enable in-core preallocation for data block allocation */
-688                 ar.flags = EXT4_MB_HINT_DATA;
-689         else
-690                 /* disable in-core preallocation for non-regular files */
-691                 ar.flags = 0;
+This patch fixes this bug.
 
+Signed-off-by: Miao Xie <miaox@cn.fujitsu.com>
 
-That means if the request for block allocation is not on regular files
-set ar.flags = 0; For regular files if the request is for meta-data
-blocks set ar.glags = 0.
+---
+ e2fsck/jfs_user.h |    2 +-
+ e2fsck/journal.c  |    8 ++++++++
+ 2 files changed, 9 insertions(+), 1 deletions(-)
 
+diff --git a/e2fsck/jfs_user.h b/e2fsck/jfs_user.h
+index 0e4f951..f042218 100644
+--- a/e2fsck/jfs_user.h
++++ b/e2fsck/jfs_user.h
+@@ -15,7 +15,7 @@
+ #include "e2fsck.h"
+ 
+ struct buffer_head {
+-	char		b_data[8192];
++	char *		b_data;
+ 	e2fsck_t	b_ctx;
+ 	io_channel 	b_io;
+ 	int	 	b_size;
+diff --git a/e2fsck/journal.c b/e2fsck/journal.c
+index 10f5095..ca7a4c3 100644
+--- a/e2fsck/journal.c
++++ b/e2fsck/journal.c
+@@ -73,6 +73,12 @@ struct buffer_head *getblk(kdev_t kdev, blk_t blocknr, int blocksize)
+ 	if (!bh)
+ 		return NULL;
+ 
++	bh->b_data = e2fsck_allocate_memory(kdev->k_ctx, blocksize,
++						"block buffer b_data");
++	if (!bh->b_data) {
++		ext2fs_free_mem(&bh);
++		return NULL;
++	}
+ #ifdef CONFIG_JBD_DEBUG
+ 	if (journal_enable_debug >= 3)
+ 		bh_count++;
+@@ -163,6 +169,8 @@ void brelse(struct buffer_head *bh)
+ 		ll_rw_block(WRITE, 1, &bh);
+ 	jfs_debug(3, "freeing block %lu/%p (total %d)\n",
+ 		  (unsigned long) bh->b_blocknr, (void *) bh, --bh_count);
++	if (bh->b_data)
++		ext2fs_free_mem(&bh->b_data);
+ 	ext2fs_free_mem(&bh);
+ }
+ 
+-- 
+1.5.4.rc3
 
-
-> 
-> Actually, I wonder if maybe we should set EXT4_MB_HINT_DATA for
-> directories as well.  Making directories contiguous does speed up
-> certain workloads, and it does speed up fsck.  It may be though that
-> the mballoc algorithms should be tuned specifically for directories,
-> and what we should do is to define a new flag, EXT4_MB_HINT_DIRECTORY,
-> and pass it in for that case. 
-> 
-> Some experimentation is clearly called for, here....
-> 
-
-True. But with the changes to do do_blk_alloc I guess we need to make
-sure we request directories with EXT4_MB_HINT_DATA not set.
-
--aneesh
