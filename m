@@ -1,79 +1,69 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: Re: [PATCH] vfs: introduce helper function to safely NUL-terminate symlinks
-Date: Wed, 17 Dec 2008 00:26:57 +0000
-Message-ID: <e9e943910812161626i6f2cdc3eldc36c68e9a98f180@mail.gmail.com>
-References: <1229442720-31056-3-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-4-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-5-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-1-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-6-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-2-git-send-email-duaneg@dghda.com>
-	 <20081216234638.GX5000@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	"Al Viro" <viro@zeniv.linux.org.uk>,
-	"Andrew Morton" <akpm@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: "Andreas Dilger" <adilger@sun.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20081216234638.GX5000@webber.adilger.int>
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
+Date: Tue, 16 Dec 2008 18:30:08 -0800 (PST)
+Message-ID: <20081217023008.54CF111D108@picon.linux-foundation.org>
+References: <bug-12224-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:40563 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751473AbYLQCaK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Dec 2008 21:30:10 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mBH2U8ak017732
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Dec 2008 18:30:09 -0800
+In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2008/12/16 Andreas Dilger <adilger@sun.com>:
-> On Dec 16, 2008  15:51 +0000, Duane Griffin wrote:
->> A number of filesystems were potentially triggering kernel bugs due to
->> corrupted symlink names on disk. This helper helps safely terminate the
->> names.
->>
->> +static inline void nd_terminate_link(void *name,unsigned len,unsigned maxlen)
->> +{
->> +     ((char *) name)[min(len, maxlen)] = '\0';
->> +}
->
->> @@ -4200,9 +4201,11 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->>       } else if (S_ISLNK(inode->i_mode)) {
->> +             if (ext4_inode_is_fast_symlink(inode)) {
->>                       inode->i_op = &ext4_fast_symlink_inode_operations;
->> +                     nd_terminate_link(ei->i_data, inode->i_size,
->> +                             sizeof(ei->i_data));
->> +             } else {
->>                       inode->i_op = &ext4_symlink_inode_operations;
->>                       ext4_set_aops(inode);
->>               }
->
-> With sizeof(ei->i_data) = 15 * 4 = 60 bytes, this will set ei->i_data[60]
-> as NUL, which is writing 1 byte beyond the end of the array.
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
 
-Argh, you are correct, of course.
 
-> Note that in ext[234]_symlink() the check for fast symlinks is:
->
->        l = strlen(symname)+1;
->        if (l > sizeof (EXT3_I(inode)->i_data)) {
->                inode->i_op = &ext3_symlink_inode_operations;
->        } else {
->                inode->i_op = &ext3_fast_symlink_inode_operations;
->                inode->i_size = l-1;
->        }
->
-> so in fact the fast symlinks should always have space for a trailing NUL
-> character, and "sizeof(ei->i_data) - 1" is the right maxlen to use for
-> ext[234].
->
-> That might not be true for other filesystems, in which case you would
-> need to add a "padding" field after the symlink name in memory to hold
-> the trailing NUL.
 
-It is true for sysv, too. The ufs code also, but that has other
-issues, anyway. The generic page symlink and freevxfs patches should
-be fine, though.
 
-Cheers,
-Duane.
+
+------- Comment #10 from csights@fastmail.fm  2008-12-16 18:30 -------
+On Tuesday 16 December 2008 17:01:27 bugme-daemon@bugzilla.kernel.org wrote:
+> http://bugzilla.kernel.org/show_bug.cgi?id=12224
+
+
+> ------- Comment #9 from sandeen@redhat.com  2008-12-16 14:01 -------
+> Are the laptop-mode tools doing remounts behind your back?
+>
+> The only way I see this is if I do "mount -o remount /"; then I see
+> kjournald activity on other ext3 filesystems.  I'll dig into that.
+
+I don't think so: I was able to reproduce this bug using an ext3 loopback 
+mounted file.  laptop-mode-tools does not touch loopback devices as far as I 
+can tell.  Here is my laptop-mode.conf:
+
+> #
+> # The drives that laptop mode controls.
+> # Separate them by a space, e.g. HD="/dev/hda /dev/hdb". The default is a
+> # wildcard, which will get you all your IDE and SCSI/SATA drives.
+> #
+> HD="/dev/[hs]d[abcdefgh]"
+
+        And here is the loopback mount:
+
+/tmp/ext3Image on /mnt/loop type ext3 
+(rw,noatime,loop=/dev/loop/0,commit=1209600)
+
+        (I set the commit=1209600 and noatime by hand on the loopback mounted
+ext3 
+image file.)
+
+        Since I'm not a kernel hacker, I don't know how the code is structured.
+ It 
+feels like the kernel commit code is not fully separated by device (or 
+partition). When the active partition's journal is "synced" it triggers 
+activity on other partitions, even if the other partitions aren't active.
+
+C.
+
 
 -- 
-"I never could learn to drink that blood and call it wine" - Bob Dylan
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
