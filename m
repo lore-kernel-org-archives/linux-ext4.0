@@ -1,122 +1,80 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 1/1] Allow ext4 to run without a journal.
-Date: Wed, 17 Dec 2008 23:51:10 -0700
-Message-ID: <20081218065110.GD5000@webber.adilger.int>
-References: <1228953270.14314.15.camel@bobble.smo.corp.google.com>
+Subject: Re: BUG: unable to handle kernel NULL pointer dereference at	00000000
+ [ext4_new_meta_blocks+0x7c/0xb7]
+Date: Thu, 18 Dec 2008 01:55:24 -0700
+Message-ID: <20081218085524.GE5000@webber.adilger.int>
+References: <20081209104121.GA7572@skywalker> <20081212145609.GA26085@mit.edu>
+ <20081217075635.GA7685@skywalker> <20081217114711.GL10590@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Frank Mayhar <fmayhar@google.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:43572 "EHLO
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:45880 "EHLO
 	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750957AbYLRGvO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2008 01:51:14 -0500
+	with ESMTP id S1752243AbYLRIza (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2008 03:55:30 -0500
 Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mBI6pCxA006039
-	for <linux-ext4@vger.kernel.org>; Wed, 17 Dec 2008 22:51:12 -0800 (PST)
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mBI8tRIg009543
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 00:55:29 -0800 (PST)
 Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KC200501878QO00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Wed, 17 Dec 2008 22:51:12 -0800 (PST)
-In-reply-to: <1228953270.14314.15.camel@bobble.smo.corp.google.com>
+ id <0KC200901DZI9N00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Thu, 18 Dec 2008 00:55:27 -0800 (PST)
+In-reply-to: <20081217114711.GL10590@mit.edu>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Dec 10, 2008  15:54 -0800, Frank Mayhar wrote:
-> A few weeks ago I posted a patch for discussion that allowed ext4 to run
-> without a journal.  Since that time I've integrated the excellent
-> comments from Andreas and fixed several serious bugs.  We're currently
-> running with this patch and generating some performance numbers against
-> both ext2 (with backported reservations code) and ext4 with and without
-> a journal.  It just so happens that running without a journal is
-> slightly faster for most everything.
+On Dec 17, 2008  06:47 -0500, Theodore Ts'o wrote:
+> I've played with this a bit, and changing extents.c to pass in
+> EXT4_MB_HINT_DATA for directories does work, although it's a toss-up
+> regarding exactly how effective it really is.  It does seem to reduce
+> fragmentation of directories, but I'm concerned that it might impact
+> the long-term performance of the filesystem as it ages.
+
+How can reducing fragmentation of the directories hurt long-term performance?
+
+> My current thinking is that we should consider changing the block
+> allocation algorithms as follows:
 > 
-> We did
-> 	iozone -T -t 4 s 2g -r 256k -T -I -i0 -i1 -i2
-> 
-> which creates 4 threads, each of which create and do reads and writes on
-> a 2G file, with a buffer size of 256K, using O_DIRECT for all file opens
-> to bypass the page cache.  Results:
-> 
->                      ext2        ext4, default   ext4, no journal
->   initial writes   13.0 MB/s        15.4 MB/s          15.7 MB/s
->   rewrites         13.1 MB/s        15.6 MB/s          15.9 MB/s
->   reads            15.2 MB/s        16.9 MB/s          17.2 MB/s
->   re-reads         15.3 MB/s        16.9 MB/s          17.2 MB/s
->   random readers    5.6 MB/s         5.6 MB/s           5.7 MB/s
->   random writers    5.1 MB/s         5.3 MB/s           5.4 MB/s 
-> 
-> So it seems that, so far, this was a useful exercise.
+> 1) Change the inode allocator to strongly avoid (unless no other
+> inodes are available) block groups where the block group number is a
+> even multiple of the flex blockgroup size.  The reasoning behind this
+> is these bg's have a fewer number of blocks given that the inode table
+> blocks are all allocated there, so they are much more likely to
+> overflow into other bg's when used.  So we should try to avoid these
+> bg's by the inode allocator unless there is no other choice.
 
-This would imply that there is very little value in keeping ext2 or
-ext3 around for the long term anymore (though of course I'm not going
-to suggest that we get rid of them today).  It is now possible to mount
-ext2 filesystems directly with ext4, and it seems clear that ext4 is
-noticably faster, even with a journal.
+With flex_bg does it really matter at all where the blocks for an inode
+are located?  There will ALWAYS be a seek from reading the inode until
+the first data block is read, so I don't see any significance to whether
+the inode's "group" has more free blocks or not.
 
-> +#define EXT4_NOJOURNAL_MAGIC	(void *)0x457874344e6a6e6c /* "Ext4Njnl" */
+> 2) Directory blocks for inodes in the flex bg metagroup should be
+> allocated in this first bg of the flexbg metagroup.  This keeps the
+> filesystem metadata together, and keeps directory blocks (which tend
+> to be much longer-lived that data blocks, especially for source/build
+> directories) in different block allocation regions, which is a good
+> thing.  It may be that all metadata blocks (i.e., also long symlinks
+> and extent-tree blocks) should also be located here, although that's
+> probably less important, simply because there are so few of such
+> blocks in most ext4 filesystems.  
 
-While I wouldn't go so far as Ted suggests to use "1" as the magic value,
-it is definitely reasonable to not use a valid pointer value (so it should
-be an odd number) and keeping it out of the kernel address space is also
-useful.  Ensuring that it is not a valid pointer is sufficient, because
-the first element of struct handle_s is a pointer and it can never be an
-odd number due to alignment requirements.
+I do agree with this, and if (1) is just a mechanism to ensure that there
+is space for (2) then I would tend to agree.
 
->> If you look at ext4_handle_valid you'll see where it's actually used.  I
->> admit this is very non-obvious (so far it has confused at least two
->> different reviewers); if you have a more clear way to handle it I'm all
->> ears.
+This would also allow implementation of my long-held idea of using LVM
+to put some parts of the filesystem on one type of device (e.g. RAID-1
+and/or SSD) for metadata, and the rest (data blocks) on RAID-5/6.  I had
+always thought of doing this with the first N of 128 MB for each group
+on the fast storage.
 
-Adding a clear comments explaining this (not just a one-liner) at 
-ext4_sb_info so that no others are so confused about this.
-
-> +	/*
-> +	 * We're not journaling.  Return a pointer to our flag that
-> +	 * indicates that fact.
-> +	 */
-> +	current->journal_info = (handle_t *)&EXT4_SB(sb)->s_nojournal_flag;
-> +	return current->journal_info;
-
-
-Since current->journal_info is a void * you shouldn't need to cast here.
-
-
-Also, I thought there was somewhere that the "handle" was turned back into
-ext4_sb_info again?  I can't see this after looking through the code.
-The EXT4_NOJOURNAL_MAGIC and s_nojournal_flag is only used to determine if
-a handle is not valid, and I can't see anywhere that a handle is turned
-into ext4_sb_info.
-
-If there is nowhere that you need to translate a handle into a superblock
-anymore then having a pointer to a static variable would be sufficient.
-There is no need for a magic value, and dereferencing it will give an oops:
-
-static int dummy_handle = 0x0bad;
-void *ext4_no_journal_in_use = &dummy_handle;
-
-static inline int ext4_handle_valid(handle_t *handle)
-{
-	if (handle == ext4_no_journal_in_use)
-		return 0;
-	return 1;
-}
-
-handle_t *ext4_journal_start_sb(struct super_block *sb, int nblocks)
-{
-
-	/*
-	 * We're not journaling.  Return a pointer to our flag that
-	 * indicates that fact.
-	 */
-	current->journal_info = ext4_no_journal_in_use;
-	return current->journal_info;
-}
-
-
+Putting the first of each N whole groups on the fast storage would be
+equivalent, and probably less work to configure.  Having the allocator
+also put other metadata there (index and directory blocks) is a bonus.
 
 Cheers, Andreas
 --
