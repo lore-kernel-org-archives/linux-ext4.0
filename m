@@ -1,87 +1,75 @@
-From: Krzysztof Halasa <khc@pm.waw.pl>
-Subject: FPE error on e2fsck (ext3 fs)
-Date: Wed, 17 Dec 2008 23:04:59 +0100
-Message-ID: <m3k59ye9v8.fsf@maximus.localdomain>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [PATCH -v3] vfs: add releasepages hooks to block devices which
+ can be used by file systems
+Date: Thu, 18 Dec 2008 14:15:25 +0900
+Message-ID: <4949DC6D.3050908@jp.fujitsu.com>
+References: <20081212062148.GJ10890@mit.edu> <1229104375-11567-1-git-send-email-tytso@mit.edu> <20081217153940.GA6495@atrey.karlin.mff.cuni.cz>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from khc.piap.pl ([195.187.100.11]:56987 "EHLO khc.piap.pl"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753134AbYLQWFB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Dec 2008 17:05:01 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20081217153940.GA6495@atrey.karlin.mff.cuni.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 Hi,
+ >   Hello,
+ >
+ > > > From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+ > > >
+ > > > Implement blkdev_releasepage() to release the buffer_heads and page
+ > > > after we release private data which belongs to a client of the block
+ > > > device, such as a filesystem.
+ > > >
+ > > > blkdev_releasepage() call the client's releasepage() which is
+ > > > registered by blkdev_register_client_releasepage() to release its
+ > > > private data.
+ >   Yes, this is IMO the right fix. I'm just wondering about the fact that we
+ > can't block in the client_releasepage(). That seems to be caused by the fact
+ > that we need to be protected against client_releasepage() callback changes
+ > which essentially means umount, right? I'm not saying I have a better solution
+ > but introducing such limitation seems stupid just because of umount...
+ >
+ > 									Honza
+ >
 
-FYI: I've spotted a report about an e2fsck exiting with SIGFPE on
-a damaged (by a power loss) ext3 fs.
+Difference between v2 and v3 in blkdev_releasepage:
+<		ret = (*ei->client_releasepage)(ei->client, page, wait);
+<	else
+--
+ >		/*
+ >		 * Since we are holding a spinlock (ei->client_lock),
+ >		 * make sure the client_releasepage function
+ >		 * understands that it must not block.
+ >		 */
+ >		ret = (*ei->client_releasepage)(ei->client, page,
+ >						wait & ~__GFP_WAIT);
+ >	else
 
-e2image works (though I'm not sure the image is still available),
-e2image -r aborts with FPE.
+Ask for clarification.
 
-dumpe2fs 1.41.3 (12-Oct-2008) - Gentoo.
-Filesystem volume name:   d!ne4
-Last mounted on:          <not available>
-Filesystem UUID:          71ab8e2a-8f1a-4189-a09d-fc27eca31c97
-Filesystem magic number:  0xEF53
-Filesystem revision #:    1 (dynamic)
-Filesystem features:      has_journal resize_inode dir_index filetype 
-sparse_super large_file
-Filesystem flags:         signed_directory_hash 
-Default mount options:    journal_data_ordered bsdgroups user_xattr acl
-Filesystem state:         clean
-Errors behavior:          Remount read-only
-Filesystem OS type:       Linux
-Inode count:              9928704
-Block count:              19825891
-Reserved block count:     0
-Free blocks:              3151047
-Free inodes:              9911645
-First block:              0
-Block size:               4096
-Fragment size:            4096
-Reserved GDT blocks:      1024
-Blocks per group:         32768
-Fragments per group:      32768
-Inodes per group:         0
-Inode blocks per group:   0
-Filesystem created:       Fri Oct 27 03:08:12 1972
-Last mount time:          Mon Dec 15 09:52:11 2008
-Last write time:          Mon Dec 15 14:37:05 2008
-Mount count:              9
-Maximum mount count:      35
-Last checked:             Wed Dec 10 10:20:51 2008
-Check interval:           2592000 (1 month)
-Next check after:         Fri Jan  9 10:20:51 2009
-Reserved blocks uid:      0 (user root)
-Reserved blocks gid:      0 (group root)
-First inode:              11
-Inode size:	          128
-Journal inode:            8
-Default directory hash:   tea
-Directory Hash Seed:      5aad87aa-32bd-4603-8901-2c8bdf020e5e
-Journal backup:           inode blocks
-(SIGFPE)
+Which of the following do you mean:
+1) If using a spinlock in client_releasepage() is only for mount/umount,
+  this implementation is not wise.
+2) There is the fact that a spinlock is necessary for blkdev_releasepage().
+This fact prevents us from making various implementations of
+client_releasepage().
+(Without a spinlock, we can implement a client_releasepage() which can release
+the buffers with a sleep. As a result, it may enable more buffers release than
+before.)
 
-strace log (tail only):
-write(1, "Reserved blocks gid:      0 (grou"..., 41) = 41
-write(1, "First inode:              11\n"..., 29) = 29
-write(1, "Inode size:\t          128\n"..., 26) = 26
-write(1, "Journal inode:            8\n"..., 28) = 28
-write(1, "Default directory hash:   tea\n"..., 30) = 30
-write(1, "Directory Hash Seed:      5aad87a"..., 63) = 63
-write(1, "Journal backup:           inode b"..., 39) = 39
---- SIGFPE (Floating point exception) @ 0 (0) --- 
-+++ killed by SIGFPE +++
+There is the fact that a filesystem can be mounted on several places,
+and the lock mechanism is absolutely necessary for this fact.
 
-# e2fsck -n -v /dev/sdb1
-e2fsck 1.41.3 (12-Oct-2008)
-Floating point exception
+I also think we are sad that we cannot implement various implementations for
+client_releasepage(). But now I cannot imagine what to do for
+a client_releasepage() which can sleep, too...
 
-If required I can contact the person in question and ask for more
-info.
-Please Cc: me if needed, I'm not subscribed to linux-ext4.
--- 
-Krzysztof Halasa
+Regards,
+Toshiyuki Okajima
+
