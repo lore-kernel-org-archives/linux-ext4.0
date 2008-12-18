@@ -1,49 +1,62 @@
-From: Michael Rubin <mrubin@google.com>
-Subject: Re: EXT3 way too happy with write errors
-Date: Thu, 18 Dec 2008 10:29:09 -0800
-Message-ID: <532480950812181029k1baf8264y82fb6d9760fe05f8@mail.gmail.com>
-References: <20081015002256.GD25662@hostway.ca>
-	 <20081218170714.GA6797@atrey.karlin.mff.cuni.cz>
-	 <20081218171825.GD20515@hostway.ca>
-	 <20081218172759.GE13580@duck.suse.cz>
-	 <20081218174921.GF20515@hostway.ca>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Re: [PATCH 1/1] Allow ext4 to run without a journal.
+Date: Thu, 18 Dec 2008 10:29:21 -0800
+Message-ID: <6601abe90812181029r626e6ed4n4c8500e42f88a101@mail.gmail.com>
+References: <1228953270.14314.15.camel@bobble.smo.corp.google.com>
+	 <20081218180004.GB6797@atrey.karlin.mff.cuni.cz>
+	 <532480950812181013m76fef953s3b3fb517d708b383@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>,
-	Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
-	Mike Snitzer <snitzer@gmail.com>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Simon Kirby <sim@netnation.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:37207 "EHLO
+Received: from smtp-out.google.com ([216.239.45.13]:37290 "EHLO
 	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751949AbYLRS3N (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2008 13:29:13 -0500
-Received: from zps38.corp.google.com (zps38.corp.google.com [172.25.146.38])
-	by smtp-out.google.com with ESMTP id mBIITC3L023773
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:29:12 -0800
-Received: from el-out-1112.google.com (elem34.prod.google.com [10.126.164.34])
-	by zps38.corp.google.com with ESMTP id mBIIT99F004439
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:29:10 -0800
-Received: by el-out-1112.google.com with SMTP id m34so132260ele.25
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:29:09 -0800 (PST)
-In-Reply-To: <20081218174921.GF20515@hostway.ca>
+	with ESMTP id S1751972AbYLRS3Y (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2008 13:29:24 -0500
+Received: from spaceape24.eur.corp.google.com (spaceape24.eur.corp.google.com [172.28.16.76])
+	by smtp-out.google.com with ESMTP id mBIITMgM001348
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:29:23 -0800
+Received: from bwz13 (bwz13.prod.google.com [10.188.26.13])
+	by spaceape24.eur.corp.google.com with ESMTP id mBIISVJE017763
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:29:21 -0800
+Received: by bwz13 with SMTP id 13so1726466bwz.21
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:29:21 -0800 (PST)
+In-Reply-To: <532480950812181013m76fef953s3b3fb517d708b383@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Dec 18, 2008 at 9:49 AM, Simon Kirby <sim@netnation.com> wrote:
-> Not aborting on data write error: User loses data.  File system gets very
-> confused.
+I should be able to post some numbers we're seeing for compilebench on
+various filesystems next week, including ext4 without a journal
+(Frank's patch).
+
+Curt
+
+On Thu, Dec 18, 2008 at 10:13 AM, Michael Rubin <mrubin@google.com> wrote:
+> On Thu, Dec 18, 2008 at 10:00 AM, Jan Kara <jack@suse.cz> wrote:
+>>  Interesting although I'm not that surprised because those tests seem
+>> to do a lot of data changes (which are never journaled in fact) and tiny
+>> amount of metadata changes. If you run some benchmark doing lots of
+>> directory operations, I guess the numbers would be considerably
+>> different.
 >
-> What am I missing?
-
-I can think of certain situations when companies may care about
-getting most of the data to disk and clean it up later.
-Datacenters may be replicating the data to many spindles and may
-sometimes care about throughput as much as possible. So lossy data
-could be preferred to complete data.
-
-Not saying this is always preferred but I can see a use case.
-
-mrubin
+> Actually we have some compile bench numbers (coming to this list soon)
+> that also surprised us.
+> The stages of compile bench that I believe are dominated by directory
+> operations are also
+> showing improvements without the journal.
+>
+>> Maybe trying dbench (I know it's kind of stupid ;) or
+>> postmark will show the differences better.
+>
+> I admit also we see huge variance using dbench on subsequent runs. To
+> the point where I don't know how much I trust it's numbers.
+> Is this a tool that people on this list have a lot of faith in?
+>
+> mrubin
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
