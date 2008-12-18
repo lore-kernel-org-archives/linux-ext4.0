@@ -1,36 +1,36 @@
-From: "Rohit Sharma" <imreckless@gmail.com>
-Subject: Re: block allocation for ext2_mkdir
-Date: Fri, 19 Dec 2008 01:22:39 +0530
-Message-ID: <2d08ef090812181152r53fa9d18j1b21310c4e592f@mail.gmail.com>
-References: <2d08ef090812181042k2b15f27fke39076cc72453797@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Kernelnewbies <kernelnewbies@nl.linux.org>,
-	ext4 <linux-ext4@vger.kernel.org>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
+Date: Thu, 18 Dec 2008 11:56:18 -0800 (PST)
+Message-ID: <20081218195618.E1FDC10800E@picon.linux-foundation.org>
+References: <bug-12224-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wf-out-1314.google.com ([209.85.200.173]:27014 "EHLO
-	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750746AbYLRTwk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2008 14:52:40 -0500
-Received: by wf-out-1314.google.com with SMTP id 27so623655wfd.4
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 11:52:39 -0800 (PST)
-In-Reply-To: <2d08ef090812181042k2b15f27fke39076cc72453797@mail.gmail.com>
-Content-Disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:49895 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752006AbYLRT4v (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Dec 2008 14:56:51 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mBIJuJqa020476
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 11:56:20 -0800
+In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 19, 2008 at 12:12 AM, Rohit Sharma <imreckless@gmail.com> wrote:
-> How does ext2 allocate blocks for directory.
->
-> ext2_mkdir               calls            ext2_make_empty
->
-> ext2_make_empty     calls           __ext2_write_begin
->
-> __ ext2_write_begin   calls           block_write_begin
->
-> my query is that how does this function allocates blocks for directories. ??
->
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
 
-Does ext2 uses ext2_get_block to allocate blocks for both files and
-directories. ??
+
+csights@fastmail.fm changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+OtherBugsDependingO|                            |11808
+              nThis|                            |
+
+
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
