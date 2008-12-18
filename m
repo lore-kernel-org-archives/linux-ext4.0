@@ -1,51 +1,49 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/1] Allow ext4 to run without a journal.
-Date: Thu, 18 Dec 2008 19:27:21 +0100
-Message-ID: <20081218182721.GE6797@atrey.karlin.mff.cuni.cz>
-References: <1228953270.14314.15.camel@bobble.smo.corp.google.com> <20081218180004.GB6797@atrey.karlin.mff.cuni.cz> <532480950812181013m76fef953s3b3fb517d708b383@mail.gmail.com>
+From: Michael Rubin <mrubin@google.com>
+Subject: Re: EXT3 way too happy with write errors
+Date: Thu, 18 Dec 2008 10:29:09 -0800
+Message-ID: <532480950812181029k1baf8264y82fb6d9760fe05f8@mail.gmail.com>
+References: <20081015002256.GD25662@hostway.ca>
+	 <20081218170714.GA6797@atrey.karlin.mff.cuni.cz>
+	 <20081218171825.GD20515@hostway.ca>
+	 <20081218172759.GE13580@duck.suse.cz>
+	 <20081218174921.GF20515@hostway.ca>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Frank Mayhar <fmayhar@google.com>, linux-ext4@vger.kernel.org
-To: Michael Rubin <mrubin@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>,
+	Hidehiro Kawai <hidehiro.kawai.ez@hitachi.com>,
+	Mike Snitzer <snitzer@gmail.com>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Simon Kirby <sim@netnation.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:54778 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752112AbYLRS1W (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2008 13:27:22 -0500
-Content-Disposition: inline
-In-Reply-To: <532480950812181013m76fef953s3b3fb517d708b383@mail.gmail.com>
+Received: from smtp-out.google.com ([216.239.45.13]:37207 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751949AbYLRS3N (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2008 13:29:13 -0500
+Received: from zps38.corp.google.com (zps38.corp.google.com [172.25.146.38])
+	by smtp-out.google.com with ESMTP id mBIITC3L023773
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:29:12 -0800
+Received: from el-out-1112.google.com (elem34.prod.google.com [10.126.164.34])
+	by zps38.corp.google.com with ESMTP id mBIIT99F004439
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:29:10 -0800
+Received: by el-out-1112.google.com with SMTP id m34so132260ele.25
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:29:09 -0800 (PST)
+In-Reply-To: <20081218174921.GF20515@hostway.ca>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Thu, Dec 18, 2008 at 10:00 AM, Jan Kara <jack@suse.cz> wrote:
-> >  Interesting although I'm not that surprised because those tests seem
-> > to do a lot of data changes (which are never journaled in fact) and tiny
-> > amount of metadata changes. If you run some benchmark doing lots of
-> > directory operations, I guess the numbers would be considerably
-> > different.
-> 
-> Actually we have some compile bench numbers (coming to this list soon)
-> that also surprised us.
-> The stages of compile bench that I believe are dominated by directory
-> operations are also showing improvements without the journal.
-  Yes, compilebench excercises directory operations quite heavily so
-that is the kind of benchmark I'd be interested in :).
+On Thu, Dec 18, 2008 at 9:49 AM, Simon Kirby <sim@netnation.com> wrote:
+> Not aborting on data write error: User loses data.  File system gets very
+> confused.
+>
+> What am I missing?
 
-> > Maybe trying dbench (I know it's kind of stupid ;) or
-> > postmark will show the differences better.
-> 
-> I admit also we see huge variance using dbench on subsequent runs. To
-> the point where I don't know how much I trust it's numbers.
-> Is this a tool that people on this list have a lot of faith in?
-  Not really (at least as far as I'm concerned :). I had to deal with
-dbench recently tracking some reported performance regression and lost
-a lot of my faith in it ;). It measures something but the numbers
-vary greatly and also the load it puts on the filesystem is not much
-realistic (lots of rewrites of the same pages and file deletes just
-after creation). I think compilebench is a better choice, I just didn't
-remember its name when I was writing the email.
+I can think of certain situations when companies may care about
+getting most of the data to disk and clean it up later.
+Datacenters may be replicating the data to many spindles and may
+sometimes care about throughput as much as possible. So lossy data
+could be preferred to complete data.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Not saying this is always preferred but I can see a use case.
+
+mrubin
