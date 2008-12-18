@@ -1,76 +1,49 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Possible ext3 corruption with 1K block size
-Date: Thu, 18 Dec 2008 19:12:49 +0100
-Message-ID: <20081218181249.GD6797@atrey.karlin.mff.cuni.cz>
-References: <200810150724.42180.arvidjaar@mail.ru> <48F5E6D4.8080603@redhat.com> <200810151824.36119.arvidjaar@mail.ru> <48F601A5.1050405@redhat.com> <1224164860.11578.14.camel@plop> <48F751E9.8070705@redhat.com>
+From: Michael Rubin <mrubin@google.com>
+Subject: Re: [PATCH 1/1] Allow ext4 to run without a journal.
+Date: Thu, 18 Dec 2008 10:13:13 -0800
+Message-ID: <532480950812181013m76fef953s3b3fb517d708b383@mail.gmail.com>
+References: <1228953270.14314.15.camel@bobble.smo.corp.google.com>
+	 <20081218180004.GB6797@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Pascal Terjan <pterjan@mandriva.com>,
-	Andrey Borzenkov <arvidjaar@mail.ru>, pterjan@mandriva.org,
-	linux-ext4@vger.kernel.org,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Frank Mayhar <fmayhar@google.com>, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:40694 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752126AbYLRSMv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2008 13:12:51 -0500
-Content-Disposition: inline
-In-Reply-To: <48F751E9.8070705@redhat.com>
+Received: from smtp-out.google.com ([216.239.45.13]:33324 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752879AbYLRSNS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Dec 2008 13:13:18 -0500
+Received: from zps75.corp.google.com (zps75.corp.google.com [172.25.146.75])
+	by smtp-out.google.com with ESMTP id mBIIDHLB015059
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:13:17 -0800
+Received: from el-out-1112.google.com (elfj27.prod.google.com [10.126.186.27])
+	by zps75.corp.google.com with ESMTP id mBIIDEsE000343
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:13:14 -0800
+Received: by el-out-1112.google.com with SMTP id j27so129203elf.15
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Dec 2008 10:13:13 -0800 (PST)
+In-Reply-To: <20081218180004.GB6797@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi Eric,
+On Thu, Dec 18, 2008 at 10:00 AM, Jan Kara <jack@suse.cz> wrote:
+>  Interesting although I'm not that surprised because those tests seem
+> to do a lot of data changes (which are never journaled in fact) and tiny
+> amount of metadata changes. If you run some benchmark doing lots of
+> directory operations, I guess the numbers would be considerably
+> different.
 
-> Pascal Terjan wrote:
-> > Le mercredi 15 octobre 2008 =C3=A0 09:43 -0500, Eric Sandeen a =C3=A9=
-crit :
-> >> Andrey Borzenkov wrote:
-> >>> On Wednesday 15 October 2008, Eric Sandeen wrote:
-> >>
-> >>>> My kingdom for a testcase... does anyone have simple steps to re=
-produce
-> >>>> this?  Or do they all start with "install mandriva on a 1k block=
- size
-> >>>> system?"  :)
-> >>>>
-> >>> May be RH will do? :)
-> >> I did try a 1k-block root fs Fedora install, and didn't see any pr=
-oblems...
-> >>
-> >>> As indicated by last comment, Pascal has some ways to trigger it;=
- I
-> >>> forgot to Cc to him initially; doing it now.
-> >> Ok, good deal.
-> >>
-> >=20
-> > On my test machine I reproduce it easily : rpm --rebuilddb and if t=
-he db
-> > is not detected to be corrupted yet it will be after installing a f=
-ew
-> > packages (tested again with 2.6.27).
-> >=20
-> > If I do the rebuilddb on a 2.6.17 and then reboot on a recent kerne=
-l,
-> > then I can install/uninstall thousands of packages without any
-> > corruption.
->=20
-> so it seems to be the database rebuilding, under a recent kernel, whi=
-ch
-> causes the problem?  installing under a recent kernel is ok, as long =
-as
-> the db was created on an older kernel?
->=20
-> Ok that's a good clue...
-  Have you been able to track this down? Anything interesting?
+Actually we have some compile bench numbers (coming to this list soon)
+that also surprised us.
+The stages of compile bench that I believe are dominated by directory
+operations are also
+showing improvements without the journal.
 
-								Honza
---=20
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Maybe trying dbench (I know it's kind of stupid ;) or
+> postmark will show the differences better.
+
+I admit also we see huge variance using dbench on subsequent runs. To
+the point where I don't know how much I trust it's numbers.
+Is this a tool that people on this list have a lot of faith in?
+
+mrubin
