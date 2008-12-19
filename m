@@ -1,63 +1,94 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: tune2fs -o noatime /dev/sd_
-Date: Fri, 19 Dec 2008 09:19:50 -0600
-Message-ID: <494BBB96.5080207@redhat.com>
-References: <20081217121533.30951131.taeuber@bbaw.de> <20081219110114.aedf7b29.taeuber@bbaw.de>
+From: "Peter Teoh" <htmldeveloper@gmail.com>
+Subject: Re: block allocation for ext2_mkdir
+Date: Fri, 19 Dec 2008 23:29:16 +0800
+Message-ID: <804dabb00812190729r74d9f131kdd5c86d56320dc20@mail.gmail.com>
+References: <2d08ef090812181042k2b15f27fke39076cc72453797@mail.gmail.com>
+	 <2d08ef090812181152r53fa9d18j1b21310c4e592f@mail.gmail.com>
+	 <20081218223928.GA20092@atrey.karlin.mff.cuni.cz>
+	 <2d08ef090812182342p1a210adcgd70d8a5cf3bf828c@mail.gmail.com>
+	 <804dabb00812190135q2cf1a5co85ce9cc4ac8bbb30@mail.gmail.com>
+	 <2d08ef090812190318w2c33c76bg93042ca61884cd5@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: =?UTF-8?B?TGFycyBUw6R1YmVy?= <taeuber@bbaw.de>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Jan Kara" <jack@suse.cz>,
+	Kernelnewbies <kernelnewbies@nl.linux.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: "Rohit Sharma" <imreckless@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:38199 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751046AbYLSPUF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Dec 2008 10:20:05 -0500
-In-Reply-To: <20081219110114.aedf7b29.taeuber@bbaw.de>
+Received: from rn-out-0910.google.com ([64.233.170.190]:3533 "EHLO
+	rn-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750837AbYLSP3S (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Dec 2008 10:29:18 -0500
+Received: by rn-out-0910.google.com with SMTP id k40so759587rnd.17
+        for <linux-ext4@vger.kernel.org>; Fri, 19 Dec 2008 07:29:16 -0800 (PST)
+In-Reply-To: <2d08ef090812190318w2c33c76bg93042ca61884cd5@mail.gmail.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Lars T=C3=A4uber wrote:
-> Sorry for the noise.
-> Might have been a silly idea.
-
-It's not silly, I can see where this might be very useful; but noatime
-is applied at the vfs level and not at the filesystem level, so putting
-the flag in the filesystem superblock on disk and propagating that back
-up to the vfs at mount time might require a bit of trickiness to get
-right & do cleanly, I'm not sure.  I'll give it some thought.
-
-It may be simpler & quicker to just tell your auto-mount framework to
-mount certain devices, or labels, or uuids, or $WHATEVER with noatime i=
-f
-you can?  Of course that configuration is local to a single machine, an=
-d
-doesn't travel with the drive...
-
--Eric
-
-> Happy Christmas to you.
-> Lars
->=20
-> Lars T=C3=A4uber <taeuber@bbaw.de> schrieb:
->> Hallo developers!
+On Fri, Dec 19, 2008 at 7:18 PM, Rohit Sharma <imreckless@gmail.com> wrote:
+> On Fri, Dec 19, 2008 at 3:05 PM, Peter Teoh <htmldeveloper@gmail.com> wrote:
+>> On Fri, Dec 19, 2008 at 3:42 PM, Rohit Sharma <imreckless@gmail.com> wrote:
+>>> On Fri, Dec 19, 2008 at 4:09 AM, Jan Kara <jack@suse.cz> wrote:
+>>>>> On Fri, Dec 19, 2008 at 12:12 AM, Rohit Sharma <imreckless@gmail.com> wrote:
+>>>>> > How does ext2 allocate blocks for directory.
+>>>>> >
+>>>>> > ext2_mkdir               calls            ext2_make_empty
+>>>>> >
+>>>>> > ext2_make_empty     calls           __ext2_write_begin
+>>>>> >
+>>>>> > __ ext2_write_begin   calls           block_write_begin
+>>>>> >
+>>>>> > my query is that how does this function allocates blocks for directories. ??
+>>>>> >
+>>>>>
+>>>>> Does ext2 uses ext2_get_block to allocate blocks for both files and
+>>>>> directories. ??
+>>>>  Yes, exactly. Ext2 (unlike ext3 or ext4) treats directories the same
+>>>> ways as ordinary files and thus ext2_get_block is used for block
+>>>> allocation.
+>>>>
+>>>
+>>> Can i modify this function to restrict allocation of blocks
+>>> to a particular block group ?
+>>>
+>>> Like i want that my abc.txt file should be in block group 5 suppose, then
+>>> what should i do?
+>>>
 >>
->> I just would like to ask for a feature request for the ext[234] file=
-systems.
->> There are some usb-sticks used by me that are formated with ext2. Al=
-l recent desktop enviroments let me mount them quiet easy but without t=
-he chance to tell them to mount it with the =C2=BBnoatime=C2=AB option.=
- But I liked them to be mounted with this option because of their flash=
- characteristics.
->> It seems there is some space left for an EXT4_MOUNT_NOATIME option i=
-n ext4.h for all the ext[234] file systems.
->> What do you think about this?
+>> I think this can be done.   Or is done in the kernel source in several
+>> ways (indirectly).
 >>
->> Thanks
->> Lars
+>> 1.   ext2_find_goal()-->this will look for the best new block.   when
+>> searching, it will try to find the block to be allocated to follow the
+>> one last allocated in the file, so as to maintain storage contiguity.
+>>
+>> 2.   looking into fs/ext2/balloc.c: ext2_try_to_allocate(), there is a
+>> argument called group_goal, whose purpose is to specify the goal block
+>> group, and the algorithm will start searching from the group specified
+>> (look for "start=grp_goal").   Of course, if search is in vain it will
+>> proceed to other block group, which u don't want ....so may be can
+>> customize from here.
+>>
+>> Not sure if I am right?
+>>
+> When we create new file, do we use reservation window to allocate blocks
+> or we use reservation window every time we need a new data blocks
+> for file.
+>
+>
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+http://lwn.net/Articles/81357/ ===> from here, we deduced that it
+should be done at every new block request level, and not at the file
+level.   This is because when file level request is initiated, the
+first thing is see if any existing block can be reused or not, before
+allocating new block (which then comes with reservation features - to
+ensure contiguity of datablocks).
+
+
+-- 
+Regards,
+Peter Teoh
+
+Ernest Hemingway - "Never mistake motion for action."
