@@ -1,76 +1,54 @@
-From: "Peter Teoh" <htmldeveloper@gmail.com>
-Subject: Re: block allocation for ext2_mkdir
-Date: Fri, 19 Dec 2008 17:35:58 +0800
-Message-ID: <804dabb00812190135q2cf1a5co85ce9cc4ac8bbb30@mail.gmail.com>
-References: <2d08ef090812181042k2b15f27fke39076cc72453797@mail.gmail.com>
-	 <2d08ef090812181152r53fa9d18j1b21310c4e592f@mail.gmail.com>
-	 <20081218223928.GA20092@atrey.karlin.mff.cuni.cz>
-	 <2d08ef090812182342p1a210adcgd70d8a5cf3bf828c@mail.gmail.com>
+From: Lars =?UTF-8?B?VMOkdWJlcg==?= <taeuber@bbaw.de>
+Subject: Re: tune2fs -o noatime /dev/sd_
+Date: Fri, 19 Dec 2008 11:01:14 +0100
+Message-ID: <20081219110114.aedf7b29.taeuber@bbaw.de>
+References: <20081217121533.30951131.taeuber@bbaw.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Jan Kara" <jack@suse.cz>,
-	Kernelnewbies <kernelnewbies@nl.linux.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: "Rohit Sharma" <imreckless@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.31]:34114 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751069AbYLSJf7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Dec 2008 04:35:59 -0500
-Received: by yw-out-2324.google.com with SMTP id 9so325982ywe.1
-        for <linux-ext4@vger.kernel.org>; Fri, 19 Dec 2008 01:35:58 -0800 (PST)
-In-Reply-To: <2d08ef090812182342p1a210adcgd70d8a5cf3bf828c@mail.gmail.com>
-Content-Disposition: inline
+Received: from mail.bbaw.de ([194.95.188.6]:33234 "EHLO mail.bbaw.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752430AbYLSKBI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Dec 2008 05:01:08 -0500
+Received: from mailhub.bbaw.de (unknown [192.168.4.1])
+	by mail.bbaw.de (Postfix) with ESMTP id 76CEF4A8072
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Dec 2008 11:01:03 +0100 (CET)
+Received: from localhost (localhost [127.0.0.1])
+	by mailhub.bbaw.de (Postfix) with ESMTP id 8801F937BE
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Dec 2008 11:01:04 +0100 (CET)
+Received: from taeuber.bbaw.de (taeuber.bbaw.de [192.168.1.148])
+	by mailhub.bbaw.de (Postfix) with SMTP id 6F144937B4
+	for <linux-ext4@vger.kernel.org>; Fri, 19 Dec 2008 11:01:04 +0100 (CET)
+In-Reply-To: <20081217121533.30951131.taeuber@bbaw.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 19, 2008 at 3:42 PM, Rohit Sharma <imreckless@gmail.com> wrote:
-> On Fri, Dec 19, 2008 at 4:09 AM, Jan Kara <jack@suse.cz> wrote:
->>> On Fri, Dec 19, 2008 at 12:12 AM, Rohit Sharma <imreckless@gmail.com> wrote:
->>> > How does ext2 allocate blocks for directory.
->>> >
->>> > ext2_mkdir               calls            ext2_make_empty
->>> >
->>> > ext2_make_empty     calls           __ext2_write_begin
->>> >
->>> > __ ext2_write_begin   calls           block_write_begin
->>> >
->>> > my query is that how does this function allocates blocks for directories. ??
->>> >
->>>
->>> Does ext2 uses ext2_get_block to allocate blocks for both files and
->>> directories. ??
->>  Yes, exactly. Ext2 (unlike ext3 or ext4) treats directories the same
->> ways as ordinary files and thus ext2_get_block is used for block
->> allocation.
->>
->
-> Can i modify this function to restrict allocation of blocks
-> to a particular block group ?
->
-> Like i want that my abc.txt file should be in block group 5 suppose, then
-> what should i do?
->
+Sorry for the noise.
+Might have been a silly idea.
 
-I think this can be done.   Or is done in the kernel source in several
-ways (indirectly).
+Happy Christmas to you.
+Lars
 
-1.   ext2_find_goal()-->this will look for the best new block.   when
-searching, it will try to find the block to be allocated to follow the
-one last allocated in the file, so as to maintain storage contiguity.
-
-2.   looking into fs/ext2/balloc.c: ext2_try_to_allocate(), there is a
-argument called group_goal, whose purpose is to specify the goal block
-group, and the algorithm will start searching from the group specified
-(look for "start=grp_goal").   Of course, if search is in vain it will
-proceed to other block group, which u don't want ....so may be can
-customize from here.
-
-Not sure if I am right?
-
--- 
-Regards,
-Peter Teoh
-
-Ernest Hemingway - "Never mistake motion for action."
+Lars T=C3=A4uber <taeuber@bbaw.de> schrieb:
+> Hallo developers!
+>=20
+> I just would like to ask for a feature request for the ext[234] files=
+ystems.
+> There are some usb-sticks used by me that are formated with ext2. All=
+ recent desktop enviroments let me mount them quiet easy but without th=
+e chance to tell them to mount it with the =C2=BBnoatime=C2=AB option. =
+But I liked them to be mounted with this option because of their flash =
+characteristics.
+> It seems there is some space left for an EXT4_MOUNT_NOATIME option in=
+ ext4.h for all the ext[234] file systems.
+> What do you think about this?
+>=20
+> Thanks
+> Lars
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
