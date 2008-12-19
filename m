@@ -1,7 +1,7 @@
-From: "Sandeep K Sinha" <sandeepksinha@gmail.com>
+From: "Peter Teoh" <htmldeveloper@gmail.com>
 Subject: Re: block allocation for ext2_mkdir
-Date: Fri, 19 Dec 2008 14:51:48 +0530
-Message-ID: <37d33d830812190121r2336c121p620f8fd6a77dc835@mail.gmail.com>
+Date: Fri, 19 Dec 2008 17:35:58 +0800
+Message-ID: <804dabb00812190135q2cf1a5co85ce9cc4ac8bbb30@mail.gmail.com>
 References: <2d08ef090812181042k2b15f27fke39076cc72453797@mail.gmail.com>
 	 <2d08ef090812181152r53fa9d18j1b21310c4e592f@mail.gmail.com>
 	 <20081218223928.GA20092@atrey.karlin.mff.cuni.cz>
@@ -14,18 +14,18 @@ Cc: "Jan Kara" <jack@suse.cz>,
 	ext4 <linux-ext4@vger.kernel.org>
 To: "Rohit Sharma" <imreckless@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.179]:21079 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752242AbYLSJVt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Dec 2008 04:21:49 -0500
-Received: by wa-out-1112.google.com with SMTP id v27so450863wah.21
-        for <linux-ext4@vger.kernel.org>; Fri, 19 Dec 2008 01:21:48 -0800 (PST)
+Received: from yw-out-2324.google.com ([74.125.46.31]:34114 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751069AbYLSJf7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Dec 2008 04:35:59 -0500
+Received: by yw-out-2324.google.com with SMTP id 9so325982ywe.1
+        for <linux-ext4@vger.kernel.org>; Fri, 19 Dec 2008 01:35:58 -0800 (PST)
 In-Reply-To: <2d08ef090812182342p1a210adcgd70d8a5cf3bf828c@mail.gmail.com>
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 19, 2008 at 1:12 PM, Rohit Sharma <imreckless@gmail.com> wrote:
+On Fri, Dec 19, 2008 at 3:42 PM, Rohit Sharma <imreckless@gmail.com> wrote:
 > On Fri, Dec 19, 2008 at 4:09 AM, Jan Kara <jack@suse.cz> wrote:
 >>> On Fri, Dec 19, 2008 at 12:12 AM, Rohit Sharma <imreckless@gmail.com> wrote:
 >>> > How does ext2 allocate blocks for directory.
@@ -48,36 +48,29 @@ On Fri, Dec 19, 2008 at 1:12 PM, Rohit Sharma <imreckless@gmail.com> wrote:
 >
 > Can i modify this function to restrict allocation of blocks
 > to a particular block group ?
-
-Did you forget to mention "ONLY FOR YOUR PERSONAL USE, IN YOUR PRIVATE KERNEL".
-
 >
 > Like i want that my abc.txt file should be in block group 5 suppose, then
 > what should i do?
 >
->>                                                                Honza
->>
->> --
->> Jan Kara <jack@suse.cz>
->> SuSE CR Labs
->>
->
-> --
-> To unsubscribe from this list: send an email with
-> "unsubscribe kernelnewbies" to ecartis@nl.linux.org
-> Please read the FAQ at http://kernelnewbies.org/FAQ
->
->
 
+I think this can be done.   Or is done in the kernel source in several
+ways (indirectly).
 
+1.   ext2_find_goal()-->this will look for the best new block.   when
+searching, it will try to find the block to be allocated to follow the
+one last allocated in the file, so as to maintain storage contiguity.
+
+2.   looking into fs/ext2/balloc.c: ext2_try_to_allocate(), there is a
+argument called group_goal, whose purpose is to specify the goal block
+group, and the algorithm will start searching from the group specified
+(look for "start=grp_goal").   Of course, if search is in vain it will
+proceed to other block group, which u don't want ....so may be can
+customize from here.
+
+Not sure if I am right?
 
 -- 
 Regards,
-Sandeep.
+Peter Teoh
 
-
-
-
-
- 	
-"To learn is to change. Education is a process that changes the learner."
+Ernest Hemingway - "Never mistake motion for action."
