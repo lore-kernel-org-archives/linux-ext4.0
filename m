@@ -1,39 +1,63 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: Re: [PATCH] vfs: introduce helper function to safely NUL-terminate symlinks
-Date: Fri, 19 Dec 2008 15:03:52 +0000
-Message-ID: <e9e943910812190703w6fb43cebmfe96f2a2e8cc47dd@mail.gmail.com>
-References: <1229442720-31056-3-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-4-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-5-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-1-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-6-git-send-email-duaneg@dghda.com>
-	 <1229442720-31056-2-git-send-email-duaneg@dghda.com>
-	 <20081216234638.GX5000@webber.adilger.int>
-	 <e9e943910812161626i6f2cdc3eldc36c68e9a98f180@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: tune2fs -o noatime /dev/sd_
+Date: Fri, 19 Dec 2008 09:19:50 -0600
+Message-ID: <494BBB96.5080207@redhat.com>
+References: <20081217121533.30951131.taeuber@bbaw.de> <20081219110114.aedf7b29.taeuber@bbaw.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	"Andreas Dilger" <adilger@sun.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: "Al Viro" <viro@zeniv.linux.org.uk>,
-	"Andrew Morton" <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <e9e943910812161626i6f2cdc3eldc36c68e9a98f180@mail.gmail.com>
-Content-Disposition: inline
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: =?UTF-8?B?TGFycyBUw6R1YmVy?= <taeuber@bbaw.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:38199 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751046AbYLSPUF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Dec 2008 10:20:05 -0500
+In-Reply-To: <20081219110114.aedf7b29.taeuber@bbaw.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2008/12/17 Duane Griffin <duaneg@dghda.com>:
-> It is true for sysv, too. The ufs code also, but that has other
-> issues, anyway. The generic page symlink and freevxfs patches should
-> be fine, though.
+Lars T=C3=A4uber wrote:
+> Sorry for the noise.
+> Might have been a silly idea.
 
-Before I fire off another set of patches, should I be sending out the
-complete set again or just the ones that need to be updated?
+It's not silly, I can see where this might be very useful; but noatime
+is applied at the vfs level and not at the filesystem level, so putting
+the flag in the filesystem superblock on disk and propagating that back
+up to the vfs at mount time might require a bit of trickiness to get
+right & do cleanly, I'm not sure.  I'll give it some thought.
 
-Cheers,
-Duane.
+It may be simpler & quicker to just tell your auto-mount framework to
+mount certain devices, or labels, or uuids, or $WHATEVER with noatime i=
+f
+you can?  Of course that configuration is local to a single machine, an=
+d
+doesn't travel with the drive...
 
--- 
-"I never could learn to drink that blood and call it wine" - Bob Dylan
+-Eric
+
+> Happy Christmas to you.
+> Lars
+>=20
+> Lars T=C3=A4uber <taeuber@bbaw.de> schrieb:
+>> Hallo developers!
+>>
+>> I just would like to ask for a feature request for the ext[234] file=
+systems.
+>> There are some usb-sticks used by me that are formated with ext2. Al=
+l recent desktop enviroments let me mount them quiet easy but without t=
+he chance to tell them to mount it with the =C2=BBnoatime=C2=AB option.=
+ But I liked them to be mounted with this option because of their flash=
+ characteristics.
+>> It seems there is some space left for an EXT4_MOUNT_NOATIME option i=
+n ext4.h for all the ext[234] file systems.
+>> What do you think about this?
+>>
+>> Thanks
+>> Lars
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
