@@ -1,117 +1,86 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
-Date: Fri, 19 Dec 2008 01:27:52 +0100
-Message-ID: <20081219002752.GE8424@duck.suse.cz>
-References: <4908C951.2000309@redhat.com> <20081103184426.GA31894@ajones-laptop.nbttech.com> <20081103113318.35b0c266.akpm@linux-foundation.org> <20081103201428.GB30565@ajones-laptop.nbttech.com> <20081218231707.GB20092@atrey.karlin.mff.cuni.cz> <494ADEB3.8010109@redhat.com>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: [PATCH 01/18] jbd2: Add buffer triggers
+Date: Thu, 18 Dec 2008 16:32:25 -0800
+Message-ID: <20081219003224.GC21870@mail.oracle.com>
+References: <1228871395-10273-1-git-send-email-joel.becker@oracle.com>
+	<1228871395-10273-2-git-send-email-joel.becker@oracle.com>
+	<20081213004512.GD15241@mail.oracle.com>
+	<20081218180820.GC6797@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Arthur Jones <ajones@riverbed.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"sct@redhat.com" <sct@redhat.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:59245 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751165AbYLSA1z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Dec 2008 19:27:55 -0500
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: mfasheh@suse.com, linux-ext4@vger.kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>, ocfs2-devel@oss.oracle.com
+To: Jan Kara <jack@suse.cz>
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
 Content-Disposition: inline
-In-Reply-To: <494ADEB3.8010109@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20081218180820.GC6797@atrey.karlin.mff.cuni.cz>
+List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu 18-12-08 17:37:23, Eric Sandeen wrote:
-> Jan Kara wrote:
-> >   Hello,
+On Thu, Dec 18, 2008 at 07:08:21PM +0100, Jan Kara wrote:
+> > On Tue, Dec 09, 2008 at 05:09:38PM -0800, Joel Becker wrote:
+> > > Filesystems often to do compute intensive operation on some
+> > > metadata.  If this operation is repeated many times, it can be very
+> > > expensive.  It would be much nicer if the operation could be performed
+> > > once before a buffer goes to disk.
 > > 
-> >   I'm sorry I'm replying late but I got time to react to this only now...
-> > 
-> 
-> <snip>
-> 
-> >> I tried this and it too fixes the problem.  FWIW I agree it
-> >> looks better...
-> >   Well, shouldn't we rather fix what journal_start_commit() returns?
-> > The interface which returns 1 when a transaction is already committing or
-> > a transaction commit has just been started but 0 when we race with
-> > somebody staring the commit is fairly unusable. Moreover
-> > ext3_force_commit() will unnecessarily create new sync transaction and
-> > commit it if there's no transaction running which is quite expensive
-> > (even merging empty sync handle is not for free because of sync
-> > transaction batching). But this is minor problem since we probably
-> > don't care too much about sync() performance - BTW this is probably a
-> > cause for bug 12224, isn't it?
-> 
-> Yep, it is!  :)
-> 
-> >   BTW: ocfs2 would need fixing as well if done your way since it's
-> > sync_fs function has been copied over from ext3.
-> >   To summarized I'd rather see a patch like below (untested) going in
-> > and your patch reverted... Opinions? I can cookup a JBD2 version of
-> > the patch in case we agree to go this way.
-> 
-> Thanks, I'll look that over.
-  Thanks.
+> > 	I realized, well, that I'm an idiot.  The previous patch has a
+> > significant bug: what if a block is deallocated, then reused as a
+> > different type of metadata, all before the committing transaction gets
+> > around to firing the triggers?  It could use the new block type's
+> > triggers against the b_frozen_data of the old block type.
+> > 	The easy answer is to add b_frozen_triggers alongside
+> > b_frozen_data.  Here's the new patch.
+>   I think this is a reasonable thing to do, although I'm not sure it can
+> really happen - at least ext3 uses a mechanism that does not allow
+> reusing a freed block in the same transaction (because otherwise there's
+> no way of recovering unjournaled data after crash).
 
-> In looking at what we have today, I wonder if we can make things smarter
-> so that we don't commit empty transactions in any case?
-  Probably it does not make sence to commit such transactions and we might
-save some time in sync paths if we do so. So yes, I think skipping empty
-transaction commit might be worthwhile and it shouldn't be hard to do
-either. But I'd give it serious testing just in case some unexpectedly
-relies on this behaviour - wouldn't this interfere e.g. with sync
-transaction batching autotuning code? Untested patch below...
-								Honza
+	Oh, frozen_data protects that sort of thing.  The concern is
+that the old block type is in the committing transaction, and the new
+block type is in the running transaction.  But the trigger type is from
+the new block type, and not valid to call against the committing block
+in the committing transaction.
+
+> > diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+> > index ebc667b..c8a1bac 100644
+> > --- a/fs/jbd2/commit.c
+> > +++ b/fs/jbd2/commit.c
+> > @@ -509,6 +509,10 @@ void jbd2_journal_commit_transaction(journal_t *journal)
+> >  		if (is_journal_aborted(journal)) {
+> >  			clear_buffer_jbddirty(jh2bh(jh));
+> >  			JBUFFER_TRACE(jh, "journal is aborting: refile");
+> > +			jbd2_buffer_abort_trigger(jh,
+> > +						  jh->b_frozen_data ?
+> > +						  jh->b_frozen_triggers :
+> > +						  jh->b_triggers);
+>   Wouldn't it be nicer if the jbd2_buffer_foo_trigger() functions
+> checked which set of triggers they should use and used it?
+
+	Well, it only does on the frozen-data check.  I suppose that
+could be pulled into the abort_trigger() function.  Maybe an additional
+patch?
+
+>   Otherwise the patch looks nice.
+
+	Thanks for taking a look!
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
----
 
->From 3e1a8dc6a64fdce5c99d7edca0a2812178f7463c Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Fri, 19 Dec 2008 01:20:47 +0100
-Subject: [PATCH] jbd2: Skip commit of a transaction without any buffers
+"Win95 file and print sharing are for relatively friendly nets."
+	- Paul Leach, Microsoft
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd2/commit.c |   16 ++++++++++++++++
- 1 files changed, 16 insertions(+), 0 deletions(-)
-
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index ebc667b..798e021 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -401,6 +401,21 @@ void jbd2_journal_commit_transaction(journal_t *journal)
- 	J_ASSERT (commit_transaction->t_outstanding_credits <=
- 			journal->j_max_transaction_buffers);
- 
-+	/* Skip commit of a transaction without any buffers */
-+	spin_lock(&journal->j_list_lock);
-+	if (commit_transaction->t_reserved_list == NULL &&
-+	    commit_transaction->t_buffers == NULL &&
-+	    commit_transaction->t_forget == NULL &&
-+	    list_empty(commit_transaction->t_inode_list)) {
-+		BUG_ON(commit_transaction->t_checkpoint_list);
-+		BUG_ON(commit_transaction->t_checkpoint_io_list);
-+		BUG_ON(commit_transaction->t_iobuf_list);
-+		BUG_ON(commit_transaction->t_shadow_list);
-+		BUG_ON(commit_transaction->t_log_list);
-+		goto out_committed;
-+	}
-+	spin_unlock(&journal->j_list_lock);
-+
- 	/*
- 	 * First thing we are allowed to do is to discard any remaining
- 	 * BJ_Reserved buffers.  Note, it is _not_ permissible to assume
-@@ -934,6 +949,7 @@ restart_loop:
- 
- 	/* Done with this transaction! */
- 
-+out_committed:
- 	jbd_debug(3, "JBD: commit phase 7\n");
- 
- 	J_ASSERT(commit_transaction->t_state == T_COMMIT);
--- 
-1.6.0.2
-
+Joel Becker
+Principal Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
