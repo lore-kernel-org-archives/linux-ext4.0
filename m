@@ -1,46 +1,54 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
-Date: Thu, 18 Dec 2008 19:34:14 -0600
-Message-ID: <494AFA16.2010004@redhat.com>
-References: <4908C951.2000309@redhat.com> <20081103184426.GA31894@ajones-laptop.nbttech.com> <20081103113318.35b0c266.akpm@linux-foundation.org> <20081103201428.GB30565@ajones-laptop.nbttech.com> <20081218231707.GB20092@atrey.karlin.mff.cuni.cz> <494ADEB3.8010109@redhat.com> <20081219002752.GE8424@duck.suse.cz>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: [PATCH 01/18] jbd2: Add buffer triggers
+Date: Thu, 18 Dec 2008 17:43:11 -0800
+Message-ID: <20081219014311.GD21870@mail.oracle.com>
+References: <1228871395-10273-1-git-send-email-joel.becker@oracle.com>
+	<1228871395-10273-2-git-send-email-joel.becker@oracle.com>
+	<20081213004512.GD15241@mail.oracle.com>
+	<20081218180820.GC6797@atrey.karlin.mff.cuni.cz>
+	<20081219003224.GC21870@mail.oracle.com>
+	<20081219004005.GG8424@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: Arthur Jones <ajones@riverbed.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"sct@redhat.com" <sct@redhat.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+Cc: mfasheh@suse.com, linux-ext4@vger.kernel.org,
+        "Theodore Ts'o" <tytso@mit.edu>, ocfs2-devel@oss.oracle.com
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:60438 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753540AbYLSBeX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Dec 2008 20:34:23 -0500
-In-Reply-To: <20081219002752.GE8424@duck.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <ocfs2-devel-bounces@oss.oracle.com>
+Content-Disposition: inline
+In-Reply-To: <20081219004005.GG8424@duck.suse.cz>
+List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
+List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
+List-Post: <mailto:ocfs2-devel@oss.oracle.com>
+List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
+List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
+	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
+Sender: ocfs2-devel-bounces@oss.oracle.com
+Errors-To: ocfs2-devel-bounces@oss.oracle.com
+List-Id: linux-ext4.vger.kernel.org
 
-Jan Kara wrote:
+On Fri, Dec 19, 2008 at 01:40:05AM +0100, Jan Kara wrote:
+> On Thu 18-12-08 16:32:25, Joel Becker wrote:
+>   Yeah, I was just wondering why we don't do:
+> jbd2_buffer_abort_trigger(jh)
+>   and choose the proper set of triggers in the jbd2_buffer_abort_trigger()
+> function (and similarly for the commit trigger). Or does it make sence
+> to not call frozen trigger in some place if there're frozen data set?
 
->> In looking at what we have today, I wonder if we can make things smarter
->> so that we don't commit empty transactions in any case?
->   Probably it does not make sence to commit such transactions and we might
-> save some time in sync paths if we do so. So yes, I think skipping empty
-> transaction commit might be worthwhile and it shouldn't be hard to do
-> either. But I'd give it serious testing just in case some unexpectedly
-> relies on this behaviour - wouldn't this interfere e.g. with sync
-> transaction batching autotuning code? Untested patch below...
-> 								Honza
+	When I wrote it up, I was worried about that.  Right now, I
+don't think it's a problem.  But really, that's a cleanup.
 
+Joel
 
-Cool, thanks!  This's stop:
+-- 
 
-# sync
+Life's Little Instruction Book #337
 
-from spinning up disks under idle filesystems too, I think.
+	"Reread your favorite book."
 
-I was looking at something similar but was still working out how many
-things to check before deciding if the transaction was in fact empty.  :)
-
--Eric
+Joel Becker
+Principal Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
