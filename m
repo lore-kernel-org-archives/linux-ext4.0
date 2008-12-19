@@ -1,54 +1,78 @@
-From: Joel Becker <Joel.Becker@oracle.com>
-Subject: Re: [PATCH 01/18] jbd2: Add buffer triggers
-Date: Thu, 18 Dec 2008 17:43:11 -0800
-Message-ID: <20081219014311.GD21870@mail.oracle.com>
-References: <1228871395-10273-1-git-send-email-joel.becker@oracle.com>
-	<1228871395-10273-2-git-send-email-joel.becker@oracle.com>
-	<20081213004512.GD15241@mail.oracle.com>
-	<20081218180820.GC6797@atrey.karlin.mff.cuni.cz>
-	<20081219003224.GC21870@mail.oracle.com>
-	<20081219004005.GG8424@duck.suse.cz>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [PATCH -v3] vfs: add releasepages hooks to block devices which
+ can be used by file systems
+Date: Fri, 19 Dec 2008 14:15:23 +0900
+Message-ID: <494B2DEB.7080107@jp.fujitsu.com>
+References: <20081212062148.GJ10890@mit.edu> <1229104375-11567-1-git-send-email-tytso@mit.edu> <20081217153940.GA6495@atrey.karlin.mff.cuni.cz> <4949DC6D.3050908@jp.fujitsu.com> <20081218131222.GB13580@duck.suse.cz>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: mfasheh@suse.com, linux-ext4@vger.kernel.org,
-        "Theodore Ts'o" <tytso@mit.edu>, ocfs2-devel@oss.oracle.com
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
 To: Jan Kara <jack@suse.cz>
-Return-path: <ocfs2-devel-bounces@oss.oracle.com>
-Content-Disposition: inline
-In-Reply-To: <20081219004005.GG8424@duck.suse.cz>
-List-Unsubscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=unsubscribe>
-List-Archive: <http://oss.oracle.com/pipermail/ocfs2-devel>
-List-Post: <mailto:ocfs2-devel@oss.oracle.com>
-List-Help: <mailto:ocfs2-devel-request@oss.oracle.com?subject=help>
-List-Subscribe: <http://oss.oracle.com/mailman/listinfo/ocfs2-devel>,
-	<mailto:ocfs2-devel-request@oss.oracle.com?subject=subscribe>
-Sender: ocfs2-devel-bounces@oss.oracle.com
-Errors-To: ocfs2-devel-bounces@oss.oracle.com
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:47321 "EHLO
+	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751043AbYLSFPg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Dec 2008 00:15:36 -0500
+In-Reply-To: <20081218131222.GB13580@duck.suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 19, 2008 at 01:40:05AM +0100, Jan Kara wrote:
-> On Thu 18-12-08 16:32:25, Joel Becker wrote:
->   Yeah, I was just wondering why we don't do:
-> jbd2_buffer_abort_trigger(jh)
->   and choose the proper set of triggers in the jbd2_buffer_abort_trigger()
-> function (and similarly for the commit trigger). Or does it make sence
-> to not call frozen trigger in some place if there're frozen data set?
+Hello.
 
-	When I wrote it up, I was worried about that.  Right now, I
-don't think it's a problem.  But really, that's a cleanup.
+Jan Kara wrote:
+ >   Hello,
+ >
+<SNIP>
+ > > Which of the following do you mean:
+ > > 1) If using a spinlock in client_releasepage() is only for mount/umount,
+ > >  this implementation is not wise.
+ > > 2) There is the fact that a spinlock is necessary for blkdev_releasepage().
+ > > This fact prevents us from making various implementations of
+ > > client_releasepage().
+ > > (Without a spinlock, we can implement a client_releasepage() which can release
+ > > the buffers with a sleep. As a result, it may enable more buffers release than
+ > > before.)
+ > >
+ > > There is the fact that a filesystem can be mounted on several places,
+ > > and the lock mechanism is absolutely necessary for this fact.
+ >   This is the thing I was wondering about. Why exactly is the spinlock
+ > necessary for blkdev_releasepage()? I understand we have to protect
+ > reading client_releasepage() pointer because it could change but my point
+ > was that it changes only during mount / umount.
 
-Joel
+There are 2 purposes of this lock.
+1) The race between filesystem's mount and umount.
+(So that a filesystem can be mounted on several places concurrently.)
+------------------------------------------------------------------
+Without this lock, there is a possibility that the pointer of
+ei->client_releasepage becomes NULL by umount.
+As a result, a special releasepage for its filesystem is not used even if its
+filesystem has been mounted.
+------------------------------------------------------------------
 
--- 
+2) The race between the usage of blkdev_releasepage() and umount.
+------------------------------------------------------------------
+Without this lock, there is a possibility that the pointer of
+ei->client_releasepage becomes NULL by umount.
+As a result, the process which calls blkdev_releasepage() may experience a page
+  fault. Because blkdev_releasepage() refers the value ei->client_releasepage
+and then calls it as a function.
 
-Life's Little Instruction Book #337
+But even if the pointer is not NULL, there is a possibility that a filesystem
+which has it has been unmounted. Besides, there is a possibility that the
+module of the filesystem has been unloaded. In this case, something wrong
+can happen.
+(Example: While a filesystem is being unmounted, one of its resources can be
+touched by using the ei->client_releasepage of the filesystem by
+the side of calling blkdev_releasepage.)
+------------------------------------------------------------------
 
-	"Reread your favorite book."
+Therefore some lock mechanisms are necessary to solve the races.
 
-Joel Becker
-Principal Software Developer
-Oracle
-E-mail: joel.becker@oracle.com
-Phone: (650) 506-8127
+Regards,
+Toshiyuki Okajima
+
