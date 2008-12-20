@@ -1,82 +1,109 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Massive filesystem corruption
-Date: Sat, 20 Dec 2008 13:27:24 -0600
-Message-ID: <494D471C.8030907@redhat.com>
-References: <200812201914.43614.technoboy85@gmail.com>
+From: "Sandeep K Sinha" <sandeepksinha@gmail.com>
+Subject: Re: ext2_block_alloc_info
+Date: Sun, 21 Dec 2008 01:10:47 +0530
+Message-ID: <37d33d830812201140r1bc64a83kdc3f27b3fa88cc1b@mail.gmail.com>
+References: <2d08ef090812200743o47cd4abdwd9915653f6f4f3f7@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Matteo Croce <technoboy85@gmail.com>
+Cc: Kernelnewbies <kernelnewbies@nl.linux.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: "Rohit Sharma" <imreckless@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:60035 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752340AbYLTT1b (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 20 Dec 2008 14:27:31 -0500
-In-Reply-To: <200812201914.43614.technoboy85@gmail.com>
+Received: from rv-out-0506.google.com ([209.85.198.227]:7782 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752816AbYLTTks (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2008 14:40:48 -0500
+Received: by rv-out-0506.google.com with SMTP id k40so1386551rvb.1
+        for <linux-ext4@vger.kernel.org>; Sat, 20 Dec 2008 11:40:47 -0800 (PST)
+In-Reply-To: <2d08ef090812200743o47cd4abdwd9915653f6f4f3f7@mail.gmail.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Matteo Croce wrote:
-> Hi,
-> i've lost my ext4 partition with a 2.6.27 vanilla kernel:
-> 
-> root@ubuntu:~# mount -t ext4dev /dev/sda1 /mnt
-> mount: wrong fs type, bad option, bad superblock on /dev/sda1,
->        missing codepage or helper program, or other error
->        In some cases useful info is found in syslog - try
->        dmesg | tail  or so
+Hi Rohit,
 
-What happened between the last successful mount and this failure?
+On Sat, Dec 20, 2008 at 9:13 PM, Rohit Sharma <imreckless@gmail.com> wrote:
+> A little confusion.
+>
+> Just refer this structure in linux/ext2_fs_sb.h
+>
+> struct ext2_block_alloc_info {
+>  46        /* information about reservation window */
+>  47        struct ext2_reserve_window_node rsv_window_node;
+>  48        /*
+>  49         * was i_next_alloc_block in ext2_inode_info
+>  50         * is the logical (file-relative) number of the
+>  51         * most-recently-allocated block in this file.
+>  52         * We use this for detecting linearly ascending allocation requests.
+>  53         */
+>  54        __u32                   last_alloc_logical_block;
+>  55        /*
+>  56         * Was i_next_alloc_goal in ext2_inode_info
+>  57         * is the *physical* companion to i_next_alloc_block.
+>  58         * it the the physical block number of the block which was
+> most-recentl
+>  59         * allocated to this file.  This give us the goal (target)
+> for the next
 
-> root@ubuntu:~# dmesg | tail -1
-> [ 4874.514703] VFS: Can't find ext4 filesystem on dev sda1.
+Look at the comment, this clearly suggests that its a file specific information.
+So, its specific to inode.
 
-Was there anything before that?  (i.e. check tail -n 10?)
+>  60         * allocation when we detect linearly ascending requests.
+>  61         */
 
-What does the beginning of the fs look like, maybe you can put the first
-16k or so of a dd somewehre, or run it through hexdump -C, see if
-something else stomped on this partition.
+It can be only to a file, as for the file system it is already ascending.
 
-> root@ubuntu:~# e2fsck /dev/sda1
-> e2fsck 1.41.3 (12-Oct-2008)
-> e2fsck: Superblock invalid, trying backup blocks...
-> /dev/sda1 was not cleanly unmounted, check forced.
-> Pass 1: Checking inodes, blocks, and sizes
-> Error1: Corrupt extent header on inode 107192
-> Aborted (core dumped)
-> root@ubuntu:~# gdb -q --args e2fsck /dev/sda1
-> (gdb) run
-> Starting program: /sbin/e2fsck /dev/sda1
-> [Thread debugging using libthread_db enabled]
-> e2fsck 1.41.3 (12-Oct-2008)
-> /sbin/e2fsck: Superblock invalid, trying backup blocks...
-> /dev/sda1 was not cleanly unmounted, check forced.
-> Pass 1: Checking inodes, blocks, and sizes
-> Error1: Corrupt extent header on inode 107192
-> [New Thread 0xb7e46700 (LWP 12878)]
-> 
-> Program received signal SIGABRT, Aborted.
+>  62        ext2_fsblk_t            last_alloc_physical_block;
+>  63};
+>
+>
+> this information is maintained by ext2 for every inode.
+>
+> here  last_alloc_logical_block is for every inode or its for filesystem.
+>
 
-well, this was an explicit abort():
+inode.
 
-        if (pctx->errcode) {
-                printf("Error1: %s on inode %u\n",
-                        error_message(pctx->errcode), pctx->ino);
-                abort();
-        }
+> I mean if we are allocating blocks for inode
+> it can be block no.  0 to n logically
+> and physically like 23 24 25 34 36 40 41 42
+>
+> i mean to say
+>
+> is it like
+>
+> inode1 has logical blocks 1 2 3 , physical 22 23 24
+> inode2 has logical blocks 4 5 6 , physical 34 35 50
+>
 
-... I guess that error is not handled yet.
+This is correct.
+> OR
+>
+> inode1 has logical blocks 0 1 2 , physical 22 23 24
+> inode2 has logical blocks 0 1 2 , physical 34 35 50
+>
 
-can you open the fs with debugfs, and try
+You cannot have the same logical block assigned to two inodes with
+diff physical blocks, probably. Doesn't make sense to me.
+> ??
+>
+> --
+> To unsubscribe from this list: send an email with
+> "unsubscribe kernelnewbies" to ecartis@nl.linux.org
+> Please read the FAQ at http://kernelnewbies.org/FAQ
+>
+>
 
-debugfs> stat <107192>
 
-and/or
 
-debugfs> dump <107192> /some/path/to/dumpfile
+-- 
+Regards,
+Sandeep.
 
-and maybe we can see what's wrong with this inode.  If it's the only one
-then perhaps it can be nuked w/ debugfs and fsck will continue.
 
--Eric
+
+
+
+ 	
+"To learn is to change. Education is a process that changes the learner."
