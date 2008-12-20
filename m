@@ -1,68 +1,68 @@
-From: "Duane Griffin" <duaneg@dghda.com>
-Subject: [PATCH, v5] ext3: ensure fast symlinks are NUL-terminated
-Date: Fri, 19 Dec 2008 20:47:14 +0000
-Message-ID: <1229719638-6982-7-git-send-email-duaneg@dghda.com>
-References: <1229719638-6982-1-git-send-email-duaneg@dghda.com>
- <1229719638-6982-2-git-send-email-duaneg@dghda.com>
- <1229719638-6982-3-git-send-email-duaneg@dghda.com>
- <1229719638-6982-4-git-send-email-duaneg@dghda.com>
- <1229719638-6982-5-git-send-email-duaneg@dghda.com>
- <1229719638-6982-6-git-send-email-duaneg@dghda.com>
-Cc: linux-fsdevel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Duane Griffin <duaneg@dghda.com>,
-	Stephen Tweedie <sct@redhat.com>, linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
+From: "Rohit Sharma" <imreckless@gmail.com>
+Subject: ext2_block_alloc_info
+Date: Sat, 20 Dec 2008 21:13:08 +0530
+Message-ID: <2d08ef090812200743o47cd4abdwd9915653f6f4f3f7@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Kernelnewbies <kernelnewbies@nl.linux.org>,
+	ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kumera.dghda.com ([80.68.90.171]:35298 "EHLO kumera.dghda.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753147AbYLSUrj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Dec 2008 15:47:39 -0500
-In-Reply-To: <1229719638-6982-6-git-send-email-duaneg@dghda.com>
+Received: from wf-out-1314.google.com ([209.85.200.173]:35463 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752089AbYLTPnJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Dec 2008 10:43:09 -0500
+Received: by wf-out-1314.google.com with SMTP id 27so1487030wfd.4
+        for <linux-ext4@vger.kernel.org>; Sat, 20 Dec 2008 07:43:08 -0800 (PST)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ensure fast symlink targets are NUL-terminated, even if corrupted
-on-disk.
+A little confusion.
 
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: Stephen Tweedie <sct@redhat.com>
-Cc: linux-ext4@vger.kernel.org
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
----
+Just refer this structure in linux/ext2_fs_sb.h
 
-Changes from v4: fixed off-by-one bug in maximum length, as pointed out by
-Andreas Dilger.
+struct ext2_block_alloc_info {
+  46        /* information about reservation window */
+  47        struct ext2_reserve_window_node rsv_window_node;
+  48        /*
+  49         * was i_next_alloc_block in ext2_inode_info
+  50         * is the logical (file-relative) number of the
+  51         * most-recently-allocated block in this file.
+  52         * We use this for detecting linearly ascending allocation requests.
+  53         */
+  54        __u32                   last_alloc_logical_block;
+  55        /*
+  56         * Was i_next_alloc_goal in ext2_inode_info
+  57         * is the *physical* companion to i_next_alloc_block.
+  58         * it the the physical block number of the block which was
+most-recentl
+  59         * allocated to this file.  This give us the goal (target)
+for the next
+  60         * allocation when we detect linearly ascending requests.
+  61         */
+  62        ext2_fsblk_t            last_alloc_physical_block;
+  63};
 
- fs/ext3/inode.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index f8424ad..c4bdccf 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -37,6 +37,7 @@
- #include <linux/uio.h>
- #include <linux/bio.h>
- #include <linux/fiemap.h>
-+#include <linux/namei.h>
- #include "xattr.h"
- #include "acl.h"
- 
-@@ -2817,9 +2818,11 @@ struct inode *ext3_iget(struct super_block *sb, unsigned long ino)
- 		inode->i_op = &ext3_dir_inode_operations;
- 		inode->i_fop = &ext3_dir_operations;
- 	} else if (S_ISLNK(inode->i_mode)) {
--		if (ext3_inode_is_fast_symlink(inode))
-+		if (ext3_inode_is_fast_symlink(inode)) {
- 			inode->i_op = &ext3_fast_symlink_inode_operations;
--		else {
-+			nd_terminate_link(ei->i_data, inode->i_size,
-+				sizeof(ei->i_data) - 1);
-+		} else {
- 			inode->i_op = &ext3_symlink_inode_operations;
- 			ext3_set_aops(inode);
- 		}
--- 
-1.6.0.4
+this information is maintained by ext2 for every inode.
 
+here  last_alloc_logical_block is for every inode or its for filesystem.
+
+I mean if we are allocating blocks for inode
+it can be block no.  0 to n logically
+and physically like 23 24 25 34 36 40 41 42
+
+i mean to say
+
+is it like
+
+inode1 has logical blocks 1 2 3 , physical 22 23 24
+inode2 has logical blocks 4 5 6 , physical 34 35 50
+
+OR
+
+inode1 has logical blocks 0 1 2 , physical 22 23 24
+inode2 has logical blocks 0 1 2 , physical 34 35 50
+
+??
