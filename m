@@ -1,31 +1,52 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: Re: Massive filesystem corruption
-Date: Sun, 21 Dec 2008 00:09:36 -0500
-Message-ID: <10556.1229836176@gamaville.dokosmarshall.org>
-References: <200812201914.43614.technoboy85@gmail.com> <494D471C.8030907@redhat.com>  <200812210305.49271.technoboy85@gmail.com>
-Reply-To: nicholas.dokos@hp.com
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Matteo Croce <technoboy85@gmail.com>
+From: Joseph Fannin <jfannin@gmail.com>
+Subject: Autoremoval of test_fs flag kinda sucks
+Date: Sun, 21 Dec 2008 08:43:27 -0500
+Message-ID: <20081221134326.GA26216@nineveh.local>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qmta08.emeryville.ca.mail.comcast.net ([76.96.30.80]:35334 "EHLO
-	QMTA08.emeryville.ca.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750729AbYLUFIu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Dec 2008 00:08:50 -0500
-In-Reply-To: Message from Matteo Croce <technoboy85@gmail.com>
-   of "Sun, 21 Dec 2008 03:05:49 +0100." <200812210305.49271.technoboy85@gmail.com>
+Received: from mail-gx0-f13.google.com ([209.85.217.13]:41009 "EHLO
+	mail-gx0-f13.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751921AbYLUNnb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Dec 2008 08:43:31 -0500
+Received: by gxk6 with SMTP id 6so1535537gxk.13
+        for <linux-ext4@vger.kernel.org>; Sun, 21 Dec 2008 05:43:30 -0800 (PST)
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Matteo Croce <technoboy85@gmail.com> wrote:
+This is mostly me blowing off a little steam here, so yeah.  But maybe
+it won't hurt to send out a heads up and get this in the archives:
 
+Booting a 2.6.28-pre kernel will cause e2fsck to remove the test_fs
+flag from any filesystem it checks, presumably because "ext4dev" has
+become "ext4" in 2.6.28.  If your root fs is on ext4, this makes it
+impossible to reboot back into a older kernel (i.e. < 2.6.28) since it
+will refuse to mount an ext4dev fs without the "test_fs" flag set --
+unless you chase after e2fsck and set the flag back.
 
-> ...
-> debugfs is new to me, have you some docs for me to read?
-> 
+It's not a huge deal -- and if you have your root on ext4dev before
+2.6.28, you get an extra helping of "use at your own risk", anyway --
+but it's an extra caveat that it might pay to be aware of.
 
-The debugfs man page gives summary descriptions of all the commands. I
-am not aware of any other documentation. If for some reason the man page
-is not installed locally, you can try e.g.
+I didn't mention this when I ran into this before because that first
+2.6.28-rc kernel I booted didn't crash after fsck cleared that flag,
+and I've just been working around it. I finally managed to get make
+one of my computers unbootable this morning because of this, though.
+It was user error, but now I have to take the box apart and put a CD
+drive in it, just so I can boot a live CD and set that &^*# flag again.
 
-    http://linux.die.net/man/8/debugfs
+Since (I'm guessing that) the bit that does the clearing seems to be
+in e2fsck, and not in the kernel, it doesn't seem like there's much
+that could be done about it.  In hindsight though, a deprecation
+period might have been called for.
+
+Ehn, it could be worse; I could have lost data.
+
+Thanks.
+
+--
+Joseph Fannin
+jfannin@gmail.com
+
