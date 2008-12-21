@@ -1,60 +1,48 @@
-From: Norbert Preining <preining@logic.at>
+From: Alan Cox <alan@lxorguk.ukuu.org.uk>
 Subject: Re: linux ext3 partition hosed, is this hardware of software error?
-Date: Sun, 21 Dec 2008 16:03:02 +0100
-Message-ID: <20081221150302.GA3457@gamma.logic.tuwien.ac.at>
-References: <20081221143640.GF1509@gamma.logic.tuwien.ac.at> <20081221144913.76ca53d3@lxorguk.ukuu.org.uk>
+Date: Sun, 21 Dec 2008 15:57:20 +0000
+Message-ID: <20081221155720.36b700f7@lxorguk.ukuu.org.uk>
+References: <20081221143640.GF1509@gamma.logic.tuwien.ac.at>
+	<20081221144913.76ca53d3@lxorguk.ukuu.org.uk>
+	<20081221150302.GA3457@gamma.logic.tuwien.ac.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Alan Cox <alan@lxorguk.ukuu.org.uk>
+To: Norbert Preining <preining@logic.at>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx.logic.tuwien.ac.at ([128.130.175.19]:44696 "EHLO
-	mx.logic.tuwien.ac.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754361AbYLUPDE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Dec 2008 10:03:04 -0500
-Content-Disposition: inline
-In-Reply-To: <20081221144913.76ca53d3@lxorguk.ukuu.org.uk>
+Received: from earthlight.etchedpixels.co.uk ([81.2.110.250]:33281 "EHLO
+	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1752239AbYLUP5Q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Dec 2008 10:57:16 -0500
+In-Reply-To: <20081221150302.GA3457@gamma.logic.tuwien.ac.at>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Alan,
-
-On So, 21 Dez 2008, Alan Cox wrote:
-> >          res 41/40:40:38:3d:95/91:00:0a:00:00/6a Emask 0x409 (media error) <F>
-> > ata1.00: status: { DRDY ERR }
-> > ata1.00: error: { UNC }
+> > > Buffer I/O error on device sda3, logical block 12
+> > > Buffer I/O error on device sda3, logical block 13
+> > 
+> > Right near the start of the disk.
 > 
-> Bad sectors
+> Ah, that is the reason why grub is gone.
 
-Umpf. 4 month old. INcredible rubbish.
+To be accurate - start of partition but the effect is the same yes.
 
-> > Buffer I/O error on device sda3, logical block 12
-> > Buffer I/O error on device sda3, logical block 13
+> > Make a copy of the partition with a recovery tool and write it somewhere
 > 
-> Right near the start of the disk.
+> ddrescue? partimage? Any other suggestion?
 
-Ah, that is the reason why grub is gone.
+ddrescue should do the trick - anything which will copy all the valid
+sectors and write out the lost ones as zero or similar preserving what is
+left of the file.
 
-> Make a copy of the partition with a recovery tool and write it somewhere
+> 
+> > (file on another disk whatever) and keep it safe. Make a copy of that and
+> > fsck the copy. You may need to use the alternate superblock option on
+> > fsck for this.
+> 
+> Thanks, good hint, didn't know about that.
 
-ddrescue? partimage? Any other suggestion?
+It's there for exactly this kind of situation.
 
-> (file on another disk whatever) and keep it safe. Make a copy of that and
-> fsck the copy. You may need to use the alternate superblock option on
-> fsck for this.
-
-Thanks, good hint, didn't know about that.
-
-Best wishes
-
-Norbert
-
--------------------------------------------------------------------------------
-Dr. Norbert Preining <preining@logic.at>        Vienna University of Technology
-Debian Developer <preining@debian.org>                         Debian TeX Group
-gpg DSA: 0x09C5B094      fp: 14DF 2E6C 0307 BE6D AD76  A9C0 D2BF 4AA3 09C5 B094
--------------------------------------------------------------------------------
-MALIBU (n.)
-The height by which the top of a wave exceeds the height to which you
-have rolled up your trousers.
-			--- Douglas Adams, The Meaning of Liff
+Alan
