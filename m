@@ -1,48 +1,41 @@
-From: Alan Cox <alan@lxorguk.ukuu.org.uk>
-Subject: Re: linux ext3 partition hosed, is this hardware of software error?
-Date: Sun, 21 Dec 2008 15:57:20 +0000
-Message-ID: <20081221155720.36b700f7@lxorguk.ukuu.org.uk>
-References: <20081221143640.GF1509@gamma.logic.tuwien.ac.at>
-	<20081221144913.76ca53d3@lxorguk.ukuu.org.uk>
-	<20081221150302.GA3457@gamma.logic.tuwien.ac.at>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: Autoremoval of test_fs flag kinda sucks
+Date: Sun, 21 Dec 2008 21:28:15 -0500
+Message-ID: <20081222022815.GD23723@mit.edu>
+References: <20081221134326.GA26216@nineveh.local>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Norbert Preining <preining@logic.at>
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from earthlight.etchedpixels.co.uk ([81.2.110.250]:33281 "EHLO
-	lxorguk.ukuu.org.uk" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1752239AbYLUP5Q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Dec 2008 10:57:16 -0500
-In-Reply-To: <20081221150302.GA3457@gamma.logic.tuwien.ac.at>
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:53730 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751597AbYLVC2T (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Dec 2008 21:28:19 -0500
+Content-Disposition: inline
+In-Reply-To: <20081221134326.GA26216@nineveh.local>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> > > Buffer I/O error on device sda3, logical block 12
-> > > Buffer I/O error on device sda3, logical block 13
-> > 
-> > Right near the start of the disk.
+On Sun, Dec 21, 2008 at 08:43:27AM -0500, Joseph Fannin wrote:
+> This is mostly me blowing off a little steam here, so yeah.  But maybe
+> it won't hurt to send out a heads up and get this in the archives:
 > 
-> Ah, that is the reason why grub is gone.
+> Booting a 2.6.28-pre kernel will cause e2fsck to remove the test_fs
+> flag from any filesystem it checks, presumably because "ext4dev" has
+> become "ext4" in 2.6.28.  If your root fs is on ext4, this makes it
+> impossible to reboot back into a older kernel (i.e. < 2.6.28) since it
+> will refuse to mount an ext4dev fs without the "test_fs" flag set --
+> unless you chase after e2fsck and set the flag back.
 
-To be accurate - start of partition but the effect is the same yes.
+Yeah, Sorry I guess I didn't think it was going to be *that* common
+for people to be going back and forth between the boundary.  It is
+possible to disable this, BTW, via /etc/e2fsck.conf:
 
-> > Make a copy of the partition with a recovery tool and write it somewhere
-> 
-> ddrescue? partimage? Any other suggestion?
+[options]
+	clear_test_fs_flag = false
 
-ddrescue should do the trick - anything which will copy all the valid
-sectors and write out the lost ones as zero or similar preserving what is
-left of the file.
+The assumption I made was that the number of pre-2.6.28 ext4 users
+would be small, and so it would be safe to default the option to true.
 
-> 
-> > (file on another disk whatever) and keep it safe. Make a copy of that and
-> > fsck the copy. You may need to use the alternate superblock option on
-> > fsck for this.
-> 
-> Thanks, good hint, didn't know about that.
-
-It's there for exactly this kind of situation.
-
-Alan
+      	 	       	  	   	- Ted
