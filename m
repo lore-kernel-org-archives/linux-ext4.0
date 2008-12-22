@@ -1,52 +1,48 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
-Date: Mon, 22 Dec 2008 15:57:57 -0700
-Message-ID: <20081222225757.GV5000@webber.adilger.int>
-References: <4908C951.2000309@redhat.com>
- <20081103184426.GA31894@ajones-laptop.nbttech.com>
- <20081103113318.35b0c266.akpm@linux-foundation.org>
- <20081103201428.GB30565@ajones-laptop.nbttech.com>
- <20081218231707.GB20092@atrey.karlin.mff.cuni.cz>
- <494ADEB3.8010109@redhat.com> <20081219002752.GE8424@duck.suse.cz>
- <494AFA16.2010004@redhat.com> <494FE73E.5000802@redhat.com>
+Subject: Re: Ext4 documentation
+Date: Mon, 22 Dec 2008 16:44:56 -0700
+Message-ID: <20081222234456.GW5000@webber.adilger.int>
+References: <20081222235841.7aaaef93@diego-desktop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7BIT
-Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	Arthur Jones <ajones@riverbed.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"sct@redhat.com" <sct@redhat.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Ric Wheeler <rwheeler@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Diego Calleja <diegocg@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:40774 "EHLO
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:42727 "EHLO
 	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753593AbYLVW6O (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Dec 2008 17:58:14 -0500
-In-reply-to: <494FE73E.5000802@redhat.com>
+	with ESMTP id S1755441AbYLVXpM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Dec 2008 18:45:12 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mBMNjBSg016967
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Dec 2008 15:45:11 -0800 (PST)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
+ id <0KCA00101XSKXD00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 22 Dec 2008 15:45:11 -0800 (PST)
+In-reply-to: <20081222235841.7aaaef93@diego-desktop>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Dec 22, 2008  14:15 -0500, Ric Wheeler wrote:
-> Without having dived into the patch in detail, one worry I would have is  
-> that we still might care to spin up a drive for empty transactions in  
-> order to invalidate the drive's write cache.
->
-> For example, if we have the following sequence:
->
->    (1) user app performs series of writes to file A
->    (2) pages dirtied from writes to A are destaged to the disk over time
->    (3) user app issues fsync(file A) to make sure that the data will  
-> survive a power outage
->
-> At this point in time, would this change prevent us from spinning up the  
-> drive and invalidating the disk write cache for that fsync() ?
+On Dec 22, 2008  23:58 +0100, Diego Calleja wrote:
+> Due to the astounding lack of good end-user documentation about Ext4, I've
+> taken the freedom of writing an article about it for the kernelnewbies
+> 2.6.28 changelog: http://kernelnewbies.org/Ext4
+> 
+> If you find any error or you have some suggestion, just tell me and I'll
+> fix it.
 
-Well, if the writes themselves didn't spin up the drive, it is uncertain
-whether the write of the journal commit block would be any more helpful
-in getting that to happen.
+Looks pretty good, thanks for writing this up.  Minor notes:
+- While > 16TB is supported by ext4 disk formats, the mke2fs/e2fsck code
+  to support this is not in any released e2fsprogs yet
+- I don't think the journal async commit blocks are enabled by default, so
+  the "20% speedup" is not available yet.  There is some work that
+  needs to be done to make this feature 100% safe in case of corruption.
+- I'm not sure if enabling flex_bg on an existing ext3 filesystem is useful
+- you don't mention anything about the required e2fsprogs version.  I
+  _think_ (someone should confirm) that e2fsprogs-1.41.3 is the minimum
+  version that anyone should use.
 
 Cheers, Andreas
 --
