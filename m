@@ -1,38 +1,54 @@
-From: Peter Zijlstra <a.p.zijlstra@chello.nl>
-Subject: Re: [PATCH] percpu_counter: use local_t and atomic_long_t if
- possible
-Date: Tue, 23 Dec 2008 12:43:21 +0100
-Message-ID: <1230032601.9487.247.camel@twins>
-References: <4936D287.6090206@cosmosbay.com>
-	 <20081209214921.b3944687.akpm@linux-foundation.org>
-	 <49404925.7090902@cosmosbay.com> <200812121847.06432.rusty@rustcorp.com.au>
-	 <49424637.3010107@cosmosbay.com>
+From: Josef Bacik <jbacik@redhat.com>
+Subject: Re: [PATCH] ext4: annotate unhandled kmem_cache_alloc() error
+Date: Tue, 23 Dec 2008 09:29:16 -0500
+Message-ID: <20081223142915.GA23303@unused.rdu.redhat.com>
+References: <20081223104016.GC7217@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Rusty Russell <rusty@rustcorp.com.au>,
-	Theodore Tso <tytso@mit.edu>,
-	linux kernel <linux-kernel@vger.kernel.org>,
-	"David S. Miller" <davem@davemloft.net>,
-	Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org,
-	Christoph Lameter <cl@linux-foundation.org>
-To: Eric Dumazet <dada1@cosmosbay.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from viefep19-int.chello.at ([62.179.121.39]:60892 "EHLO
-	viefep18-int.chello.at" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1750912AbYLWLnY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2008 06:43:24 -0500
-In-Reply-To: <49424637.3010107@cosmosbay.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+	Theodore Tso <tytso@mit.edu>, adilger@sun.com,
+	linux-ext4@vger.kernel.org
+To: Akinobu Mita <akinobu.mita@gmail.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1751682AbYLWOai@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20081223104016.GC7217@localhost.localdomain>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-One think that sprung to mind,..
+On Tue, Dec 23, 2008 at 07:40:18PM +0900, Akinobu Mita wrote:
+> kmem_cache_alloc() error in ext4_mb_free_metadata is not handled.
+> I don't know how to fix it. But I can put BUG_ON to let others
+> know the problem.
+> 
+> Cc: Theodore Tso <tytso@mit.edu>
+> Cc: adilger@sun.com
+> Cc: linux-ext4@vger.kernel.org
+> Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+> ---
+>  fs/ext4/mballoc.c |    1 +
+>  1 file changed, 1 insertion(+)
+> 
+> Index: 2.6-rc/fs/ext4/mballoc.c
+> ===================================================================
+> --- 2.6-rc.orig/fs/ext4/mballoc.c
+> +++ 2.6-rc/fs/ext4/mballoc.c
+> @@ -4417,6 +4417,7 @@ ext4_mb_free_metadata(handle_t *handle, 
+>  	BUG_ON(e4b->bd_buddy_page == NULL);
+>  
+>  	new_entry  = kmem_cache_alloc(ext4_free_ext_cachep, GFP_NOFS);
+> +	BUG_ON(!new_entry);
+>  	new_entry->start_blk = block;
+>  	new_entry->group  = group;
+>  	new_entry->count = count;
 
-IFF we're going to implement percpu_counter with local_t and make
-local_t this funny tri-counter thing which has its own error, you need
-to fix up bdi_stat_error() - it expects to be an upper bound for the
-counter error, getting that wrong _will_ cause deadlocks.
+BUG_ON is good for devel things, but for stable stuff it's better to let
+somebody know an error occured rather than panic'ing the box.  The proper
+solution would be to do
 
+if (!new_entry)
+	return -ENOMEM;
 
+or if there is some out: label set ret to -ENOMEM and goto out, whatever is
+appropriate in the context.  Thanks,
 
+Josef
