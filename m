@@ -1,149 +1,118 @@
-From: "Manish Katiyar" <mkatiyar@gmail.com>
-Subject: Re: ext2_block_alloc_info
-Date: Tue, 23 Dec 2008 10:30:21 +0530
-Message-ID: <ea11fea30812222100o6f506bb9p8a612b27d8fa2036@mail.gmail.com>
-References: <2d08ef090812200743o47cd4abdwd9915653f6f4f3f7@mail.gmail.com>
-	 <804dabb00812201725r304bed36ufc56ebc2393e2299@mail.gmail.com>
-	 <170fa0d20812221856j4c660384nc2ac693ca8fd0ba4@mail.gmail.com>
-	 <804dabb00812222029x76d34c24o798ade5dd0e31351@mail.gmail.com>
+From: Paul Collins <paul@burly.ondioline.org>
+Subject: (resend) extent header problems following shrink with resize2fs
+Date: Tue, 23 Dec 2008 18:49:15 +1300
+Message-ID: <87abanbfvo.fsf@burly.wgtn.ondioline.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Mike Snitzer" <snitzer@gmail.com>,
-	"Rohit Sharma" <imreckless@gmail.com>,
-	Kernelnewbies <kernelnewbies@nl.linux.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: "Peter Teoh" <htmldeveloper@gmail.com>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from yx-out-2324.google.com ([74.125.44.29]:3245 "EHLO
-	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750852AbYLWFAW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2008 00:00:22 -0500
-Received: by yx-out-2324.google.com with SMTP id 8so814101yxm.1
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Dec 2008 21:00:21 -0800 (PST)
-In-Reply-To: <804dabb00812222029x76d34c24o798ade5dd0e31351@mail.gmail.com>
-Content-Disposition: inline
+Received: from jenny.ondioline.org ([66.220.1.122]:51748 "EHLO
+	jenny.ondioline.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751204AbYLWFtQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2008 00:49:16 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Dec 23, 2008 at 9:59 AM, Peter Teoh <htmldeveloper@gmail.com> wrote:
-> Sorry, resent due to SMTP error:
->
-> anyone knows any way of enumerating all the low level information like
-> these for each file?
->
-> Best I can get is "debugfs":
->
-> So using "show_inode_infor xxxx":
->
-> Inode: 1146884   Type: regular    Mode:  0767   Flags: 0x0
-> Generation: 4262211373
-> User:     0   Group:     0   Size: 4670783
-> File ACL: 0    Directory ACL: 0
-> Links: 1   Blockcount: 9152
-> Fragment:  Address: 0    Number: 0    Size: 0
-> ctime: 0x46db7fb6 -- Mon Sep  3 11:29:58 2007
-> atime: 0x47c66735 -- Thu Feb 28 15:48:05 2008
-> mtime: 0x43118298 -- Sun Aug 28 17:23:36 2005
-> BLOCKS:
-> (0-11):2317946-0, (IND):2317958, (12-1035):2317959-0, (DIND):2318983,
-> (IND):2318984, (1036-1140):2318985-0
-> TOTAL: 1144
->
-> Here the "BLOCKS" correspond to the block numbering we are talking
-> about, right?   It always start at 0 per-file.   "IND" is the indirect
-> block.
->  But what is "DIND"?
+(resending without gipped attachment)
 
-Double indirect blocks ..... Sine the size of file is 4670783, we
-would need 1140 direct blocks (holding data) and other indirect
-blocks.
+Running Linux 2.6.28-rc9 as of ab65387243f47a7bc11725f733c86bf27248b326=
+=2E
+e2fsprogs 1.41.3-1 from Debian.
 
->  "2317946" is the physical block number
-> right?
-Yes.......
+Yesterday I created a ~464GB ext4 volume and copied about 107GB of musi=
+c
+files onto it.  Then I decided that I wanted to use half of the disk fo=
+r
+something else, so last night I resized the ext4 filesystem to ~232GB
+and recreated the partitions to suit.  This morning I wrote some new
+files to the ext4 filesystem, which went fine.  Then I installed a new
+music player, which wanted to scan all of the files on the disk.  It
+reported being unable to read some files, and there's rather a lot of
+this sort of thing in dmesg (see also http://ondioline.org/~paul/e4dmes=
+g.gz):
 
-> And what is the zero after the "2317946"?
-0 is just the end specifier for a range which debugfs prints. So
-either you print the range of blocks or a 0 at the end to mark the
-start of a new range. The code to do is present in
-e2fsprogs/debugfs/debugfs.c : list_blocks_proc()
+EXT4-fs error (device sdb1): ext4_ext_find_extent: bad header in inode =
+#39565: invalid magic - magic 24e, entries 28338, max 21313(0), depth 2=
+8712(0)
+EXT4-fs error (device sdb1): ext4_ext_find_extent: bad header in inode =
+#39555: invalid magic - magic cd8c, entries 59560, max 57082(0), depth =
+5425(0)
+EXT4-fs error (device sdb1): ext4_ext_find_extent: bad header in inode =
+#39563: invalid magic - magic 976d, entries 52325, max 49256(0), depth =
+50316(0)
+EXT4-fs error (device sdb1): ext4_ext_find_extent: bad header in inode =
+#39556: invalid magic - magic 61c6, entries 47990, max 4668(0), depth 3=
+2768(0)
+EXT4-fs error (device sdb1): ext4_ext_find_extent: bad header in inode =
+#44888: invalid magic - magic 42a, entries 5388, max 32960(0), depth 18=
+72(0)
+EXT4-fs error (device sdb1): ext4_ext_find_extent: bad header in inode =
+#39844: invalid magic - magic 6ae8, entries 44073, max 20807(0), depth =
+10869(0)
+EXT4-fs error (device sdb1): ext4_ext_find_extent: bad header in inode =
+#39843: invalid magic - magic 2200, entries 38282, max 17931(0), depth =
+0(0)
 
-list_block_proc () {
-...................
-	/*
-	 * Not a normal block.  Always force a new range.
-	 */
-	finish_range(lb);
-	if (lb->first)
-		lb->first = 0;
-	else
-		fprintf(lb->f, ", ");
-	if (blockcnt == -1)
-		fprintf(lb->f, "(IND):%u", *blocknr);
-	else if (blockcnt == -2)
-		fprintf(lb->f, "(DIND):%u", *blocknr);
-	else if (blockcnt == -3)
-		fprintf(lb->f, "(TIND):%u", *blocknr);
-...................
-}
+There are no "access beyond end of partition" messages, so I don't thin=
+k
+I screwed up the resize procedure.  The argument I gave resizefs was
+"244192000K"; here's the partition table:
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sdb1               1       30401   244196001   83  Linux
+/dev/sdb2           30402       60801   244188000   83  Linux
 
 
-Thanks -
-Manish
+e2fsck aborts when I try to use it fix the filesystem:
+
+        /dev/sdb1 contains a file system with errors, check forced.
+        Pass 1: Checking inodes, blocks, and sizes
+        Error1: Corrupt extent header on inode 38979
+        [New Thread 0x7fe15e066740 (LWP 24166)]
+
+        Program received signal SIGABRT, Aborted.
+        [Switching to Thread 0x7fe15e066740 (LWP 24166)]
+        0x00007fe15d0fbed5 in raise () from /lib/libc.so.6
+        (gdb) bt
+        #0  0x00007fe15d0fbed5 in raise () from /lib/libc.so.6
+        #1  0x00007fe15d0fd3f3 in abort () from /lib/libc.so.6
+        #2  0x000000000040bdae in scan_extent_node (ctx=3D0x24c6f70,=20
+            pctx=3D0x7fff6607c7a0, pb=3D0x7fff6607c5f0, start_block=3D0=
+, ehandle=3D0x2ed94d0)
+            at /build/buildd/e2fsprogs-1.41.3/e2fsck/pass1.c:1700
+        #3  0x000000000040cc1d in check_blocks (ctx=3D0x24c6f70, pctx=3D=
+0x7fff6607c7a0,=20
+            block_buf=3D0x2ec11a0 "=EF=BF=BD002")
+            at /build/buildd/e2fsprogs-1.41.3/e2fsck/pass1.c:1773
+        #4  0x000000000040e063 in e2fsck_pass1 (ctx=3D0x24c6f70)
+            at /build/buildd/e2fsprogs-1.41.3/e2fsck/pass1.c:1030
+        #5  0x00000000004089e8 in e2fsck_run (ctx=3D0x24c6f70)
+            at /build/buildd/e2fsprogs-1.41.3/e2fsck/e2fsck.c:215
+        #6  0x00000000004074a3 in main (argc=3D<value optimized out>,=20
+            argv=3D<value optimized out>)
+            at /build/buildd/e2fsprogs-1.41.3/e2fsck/unix.c:1278
+
+and e2image exits with:
+
+        e2image: Corrupt extent header while iterating over inode 38979
+
+In the matter of inode 38979, debugfs says:
+
+        debugfs:  bmap <38979> 0
+        argv[0]: Corrupt extent header while mapping logical block 0
 
 
->
-> On Tue, Dec 23, 2008 at 10:56 AM, Mike Snitzer <snitzer@gmail.com> wrote:
->>
->> On Sat, Dec 20, 2008 at 8:25 PM, Peter Teoh <htmldeveloper@gmail.com> wrote:
->> > On Sat, Dec 20, 2008 at 11:43 PM, Rohit Sharma <imreckless@gmail.com> wrote:
->> >> A little confusion.
->> >>
->> >> Just refer this structure in linux/ext2_fs_sb.h
->> >>
->> >> struct ext2_block_alloc_info {
->> >>  46        /* information about reservation window */
->> >>  47        struct ext2_reserve_window_node rsv_window_node;
->> >>  48        /*
->> >>  49         * was i_next_alloc_block in ext2_inode_info
->> >>  50         * is the logical (file-relative) number of the
->> >>  51         * most-recently-allocated block in this file.
->> >>  52         * We use this for detecting linearly ascending allocation requests.
->> >>  53         */
->> >>  54        __u32                   last_alloc_logical_block;
->> >
->> > if i interpret the meaning of "file-relative logical number"
->> > correctly, and since one-file-one-inode concept, then it means that it
->> > should mean inode-relative logical block number.
->> >
->> >>  55        /*
->> >>  56         * Was i_next_alloc_goal in ext2_inode_info
->> >>  57         * is the *physical* companion to i_next_alloc_block.
->> >>  58         * it the the physical block number of the block which was
->> >
->> >> inode1 has logical blocks 0 1 2 , physical 22 23 24
->> >> inode2 has logical blocks 0 1 2 , physical 34 35 50
->> >>
->> >
->> > as per comment above, the sequence above looks likely, but then this
->> > is my guess again.
->>
->> You are correct.  last_alloc_logical_block is used to detect if the
->> write workload against a given inode is sequential (the current
->> logical block is last_alloc_logical_block+1).
->>
->> Mike
->
->
->
-> --
-> Regards,
-> Peter Teoh
->
-> Ernest Hemingway - "Never mistake motion for action."
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+I can keep the FS around so let me know if you need any more
+information.
+
+--=20
+Paul Collins
+Wellington, New Zealand
+
+Dag vijandelijk luchtschip de huismeester is dood
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
