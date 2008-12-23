@@ -1,63 +1,166 @@
-From: "Mike Snitzer" <snitzer@gmail.com>
-Subject: Re: ext2_block_alloc_info
-Date: Mon, 22 Dec 2008 21:56:29 -0500
-Message-ID: <170fa0d20812221856j4c660384nc2ac693ca8fd0ba4@mail.gmail.com>
-References: <2d08ef090812200743o47cd4abdwd9915653f6f4f3f7@mail.gmail.com>
-	 <804dabb00812201725r304bed36ufc56ebc2393e2299@mail.gmail.com>
+From: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
+Subject: Problems with the max value for create directory
+Date: Tue, 23 Dec 2008 11:02:54 +0800
+Message-ID: <495054DE.9030405@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "Rohit Sharma" <imreckless@gmail.com>,
-	Kernelnewbies <kernelnewbies@nl.linux.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: "Peter Teoh" <htmldeveloper@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f17.google.com ([209.85.219.17]:64641 "EHLO
-	mail-ew0-f17.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751616AbYLWC4b (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Dec 2008 21:56:31 -0500
-Received: by ewy10 with SMTP id 10so2498558ewy.13
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Dec 2008 18:56:29 -0800 (PST)
-In-Reply-To: <804dabb00812201725r304bed36ufc56ebc2393e2299@mail.gmail.com>
-Content-Disposition: inline
+Received: from cn.fujitsu.com ([222.73.24.84]:49229 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751243AbYLWDCN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 22 Dec 2008 22:02:13 -0500
+Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
+	by song.cn.fujitsu.com (Postfix) with ESMTP id B0665170135
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 11:09:36 +0800 (CST)
+Received: from fnst.cn.fujitsu.com (localhost.localdomain [127.0.0.1])
+	by tang.cn.fujitsu.com (8.13.1/8.13.1) with ESMTP id mBN39a4F021943
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 11:09:36 +0800
+Received: from [127.0.0.1] (unknown [10.167.141.190])
+	by fnst.cn.fujitsu.com (Postfix) with ESMTPA id 15672291A29
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 11:08:08 +0800 (CST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 20, 2008 at 8:25 PM, Peter Teoh <htmldeveloper@gmail.com> wrote:
-> On Sat, Dec 20, 2008 at 11:43 PM, Rohit Sharma <imreckless@gmail.com> wrote:
->> A little confusion.
->>
->> Just refer this structure in linux/ext2_fs_sb.h
->>
->> struct ext2_block_alloc_info {
->>  46        /* information about reservation window */
->>  47        struct ext2_reserve_window_node rsv_window_node;
->>  48        /*
->>  49         * was i_next_alloc_block in ext2_inode_info
->>  50         * is the logical (file-relative) number of the
->>  51         * most-recently-allocated block in this file.
->>  52         * We use this for detecting linearly ascending allocation requests.
->>  53         */
->>  54        __u32                   last_alloc_logical_block;
->
-> if i interpret the meaning of "file-relative logical number"
-> correctly, and since one-file-one-inode concept, then it means that it
-> should mean inode-relative logical block number.
->
->>  55        /*
->>  56         * Was i_next_alloc_goal in ext2_inode_info
->>  57         * is the *physical* companion to i_next_alloc_block.
->>  58         * it the the physical block number of the block which was
->
->> inode1 has logical blocks 0 1 2 , physical 22 23 24
->> inode2 has logical blocks 0 1 2 , physical 34 35 50
->>
->
-> as per comment above, the sequence above looks likely, but then this
-> is my guess again.
+Hi,
 
-You are correct.  last_alloc_logical_block is used to detect if the
-write workload against a given inode is sequential (the current
-logical block is last_alloc_logical_block+1).
+I creat 65537 long directories and failed when the block size is 1024.
 
-Mike
+# mkfs.ext4dev -b 1024 -I 256 /dev/hda3
+# tune2fs -E test_fs -O extents /dev/hda3
+# mount -t ext4dev /dev/hda3 /mnt
+# ./create_long_dirs 65537 /mnt
+
+The code of create_long_dirs.c:
+
+#define _ATFILE_SOURCE
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <fcntl.h>
+#include <sys/types.h>
+//#define __USE_ATFILE
+#include <sys/stat.h>
+
+#define NAME_LEN	255
+#define NCHARS		62
+#define MAX_LEN1	62
+#define MAX_LEN2	(62 * 62)
+#define MAX_LEN3	(62 * 62 * 62)
+
+/* valid characters for the directory name */
+char chars[NCHARS + 1] =
+	"0123456789qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM";
+
+/* to store the generated directory name */
+char name[NAME_LEN + 1];
+int names;
+int parent_fd;
+
+void init_name(void)
+{
+	int i;
+
+	srand(time(NULL));
+
+	for (i = 0; i < NAME_LEN; i++)
+		name[i] = chars[rand() % 62];
+}
+
+void create_dir(void)
+{
+	if (mkdirat(parent_fd, name, S_IRWXU)) {
+		perror("mkdir");
+		exit(1);
+	}
+}
+
+/*
+ * create_dirs - create @names directory names
+ * @n: how many names to be created
+ *
+ * if n <= 62,       we need to modify 1 char of the name
+ * if n <= 62*62,    we need to modify 2 chars
+ * if n <= 62*62*62, we need to modify 3 chars
+ */
+void create_dirs(int n)
+{
+	int i, j, k;
+	int depth;
+
+	if (n <= MAX_LEN1)
+		depth = 1;
+	else if (n <= MAX_LEN2)
+		depth = 2;
+	else
+		depth = 3;
+
+	for (i = 0; i < NCHARS; i++) {
+		name[0] = chars[i];
+		if (depth == 1) {
+			create_dir();
+			if (--n == 0)
+				return;
+			continue;
+		}
+
+		for (j = 0; j < NCHARS; j++) {
+			name[1] = chars[j];
+			if (depth == 2) {
+				create_dir();
+				if (--n == 0)
+					return;
+				continue;
+			}
+
+			for (k = 0; k < NCHARS; k++) {
+				name[2] = chars[k];
+				create_dir();
+				if (--n == 0)
+					return;
+			}
+		}
+	}
+}
+
+void usage()
+{
+	fprintf(stderr, "Usage: create_long_dirs nr_dirs parent_dir\n");
+}
+
+int main(int argc, char *argv[])
+{
+	if (argc != 3) {
+		usage();
+		return 1;
+	}
+
+	names = atoi(argv[1]);
+	if (names > MAX_LEN3 || names <= 0) {
+		usage();
+		return 1;
+	}
+
+	parent_fd = open(argv[2], O_RDONLY);
+	if (parent_fd == -1) {
+		perror("open parent dir failed");
+		return 1;
+	}
+
+	init_name();
+
+	create_dirs(names);
+
+	return 0;
+}
+
+
+-- 
+Regards
+Zhang Xiliang
+
+
+
