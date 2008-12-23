@@ -1,47 +1,42 @@
-From: Diego Calleja <diegocg@gmail.com>
-Subject: Re: Ext4 documentation
-Date: Tue, 23 Dec 2008 10:00:07 +0100
-Message-ID: <20081223100007.6b79cd27@diego-desktop>
-References: <20081222235841.7aaaef93@diego-desktop>
-	<20081222234456.GW5000@webber.adilger.int>
+From: Akinobu Mita <akinobu.mita@gmail.com>
+Subject: [PATCH] ext4: annotate unhandled kmem_cache_alloc() error
+Date: Tue, 23 Dec 2008 19:40:18 +0900
+Message-ID: <20081223104016.GC7217@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=iso-2022-jp
+Cc: akpm@linux-foundation.org, Theodore Tso <tytso@mit.edu>,
+	adilger@sun.com, linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f21.google.com ([209.85.218.21]:43286 "EHLO
-	mail-bw0-f21.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752882AbYLWI61 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2008 03:58:27 -0500
-Received: by bwz14 with SMTP id 14so9438621bwz.13
-        for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 00:58:25 -0800 (PST)
-In-Reply-To: <20081222234456.GW5000@webber.adilger.int>
+Received: from wa-out-1112.google.com ([209.85.146.177]:32030 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750749AbYLWKki (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2008 05:40:38 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-El Mon, 22 Dec 2008 16:44:56 -0700, Andreas Dilger <adilger@sun.com> es=
-cribi=C3=B3:
+kmem_cache_alloc() error in ext4_mb_free_metadata is not handled.
+I don't know how to fix it. But I can put BUG_ON to let others
+know the problem.
 
-> Looks pretty good, thanks for writing this up.  Minor notes:
-> - While > 16TB is supported by ext4 disk formats, the mke2fs/e2fsck c=
-ode
->   to support this is not in any released e2fsprogs yet
-> - I don't think the journal async commit blocks are enabled by defaul=
-t, so
->   the "20% speedup" is not available yet.  There is some work that
->   needs to be done to make this feature 100% safe in case of corrupti=
-on.
-> - I'm not sure if enabling flex_bg on an existing ext3 filesystem is =
-useful
-> - you don't mention anything about the required e2fsprogs version.  I
->   _think_ (someone should confirm) that e2fsprogs-1.41.3 is the minim=
-um
->   version that anyone should use.
+Cc: Theodore Tso <tytso@mit.edu>
+Cc: adilger@sun.com
+Cc: linux-ext4@vger.kernel.org
+Signed-off-by: Akinobu Mita <akinobu.mita@gmail.com>
+---
+ fs/ext4/mballoc.c |    1 +
+ 1 file changed, 1 insertion(+)
 
-Thanks, I've mentioned all this.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Index: 2.6-rc/fs/ext4/mballoc.c
+===================================================================
+--- 2.6-rc.orig/fs/ext4/mballoc.c
++++ 2.6-rc/fs/ext4/mballoc.c
+@@ -4417,6 +4417,7 @@ ext4_mb_free_metadata(handle_t *handle, 
+ 	BUG_ON(e4b->bd_buddy_page == NULL);
+ 
+ 	new_entry  = kmem_cache_alloc(ext4_free_ext_cachep, GFP_NOFS);
++	BUG_ON(!new_entry);
+ 	new_entry->start_blk = block;
+ 	new_entry->group  = group;
+ 	new_entry->count = count;
