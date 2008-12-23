@@ -1,60 +1,82 @@
-From: "Peng tao" <bergwolf@gmail.com>
-Subject: Re: Ext4 documentation
-Date: Tue, 23 Dec 2008 11:11:56 +0800
-Message-ID: <6149e97b0812221911l397556dau64b7f5935cf9411f@mail.gmail.com>
-References: <20081222235841.7aaaef93@diego-desktop>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: Problems with the max value for create directory
+Date: Tue, 23 Dec 2008 13:02:25 +0900
+Message-ID: <495062D1.6010805@jp.fujitsu.com>
+References: <495054DE.9030405@cn.fujitsu.com>
+Reply-To: toshi.okajima@jp.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
-To: "Diego Calleja" <diegocg@gmail.com>
+To: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.227]:50963 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752457AbYLWDL6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Dec 2008 22:11:58 -0500
-Received: by rv-out-0506.google.com with SMTP id k40so2194461rvb.1
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Dec 2008 19:11:57 -0800 (PST)
-In-Reply-To: <20081222235841.7aaaef93@diego-desktop>
-Content-Disposition: inline
+Received: from fgwmail5.fujitsu.co.jp ([192.51.44.35]:49752 "EHLO
+	fgwmail5.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753532AbYLWECh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Dec 2008 23:02:37 -0500
+Received: from mt1.gw.fujitsu.co.jp ([10.0.50.74])
+	by fgwmail5.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id mBN42Xxb015441
+	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
+	Tue, 23 Dec 2008 13:02:33 +0900
+Received: from smail (m4 [127.0.0.1])
+	by outgoing.m4.gw.fujitsu.co.jp (Postfix) with ESMTP id 6DF8945DE4F
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 13:02:33 +0900 (JST)
+Received: from s4.gw.fujitsu.co.jp (s4.gw.fujitsu.co.jp [10.0.50.94])
+	by m4.gw.fujitsu.co.jp (Postfix) with ESMTP id 4C20045DD7A
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 13:02:33 +0900 (JST)
+Received: from s4.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s4.gw.fujitsu.co.jp (Postfix) with ESMTP id 31F5A1DB8013
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 13:02:33 +0900 (JST)
+Received: from ml14.s.css.fujitsu.com (ml14.s.css.fujitsu.com [10.249.87.104])
+	by s4.gw.fujitsu.co.jp (Postfix) with ESMTP id E1A791DB8018
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 13:02:32 +0900 (JST)
+In-Reply-To: <495054DE.9030405@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi, Diego
+Hi,
 
-Thanks for your efforts.
+Zhang Xiliang wrote:
+> Hi,
+>=20
+> I creat 65537 long directories and failed when the block size is 1024=
+=2E
+>=20
+> # mkfs.ext4dev -b 1024 -I 256 /dev/hda3
+> # tune2fs -E test_fs -O extents /dev/hda3
+> # mount -t ext4dev /dev/hda3 /mnt
+> # ./create_long_dirs 65537 /mnt
+>=20
+> The code of create_long_dirs.c:
 
-About migrating from ext3 to ext4, you suggested the following:
-tune2fs -O extents,uninit_bg,flex_bg,dir_index /dev/yourfilesystem
+ext4 filesystem cannot make over 65000 links toward a file.
+(ext3 filesystem cannot make over 32000 links toward a file.)
+This test makes over 65000 links toward /mnt-directory.
+(Creating 65000 sub-directories makes 65000 links toward /mnt-directory=
+=2E)
 
-Tuning on flex_bg isn't supported yet. tune2fs doesn't really do the
-magic you want. It just sets the incompatible feature bit in super
-block and nothing else. An e2fsck after that won't modify the ondisk
-format either. e2fsck doesn't check log_groups_per_flex right
-now(might be a bug if superblock corrupts?).
+static int ext4_mkdir(struct inode *dir, struct dentry *dentry, int mod=
+e)
+{
+          handle_t *handle;
+          struct inode *inode;
+          struct buffer_head *dir_block;
+          struct ext4_dir_entry_2 *de;
+          int err, retries =3D 0;
 
-So even if you turn on flex_bg, fs doesn't benefit from flex_bg feature.
+          if (EXT4_DIR_LINK_MAX(dir))
+=E3=80=80=E3=80=80=E3=80=80=E3=80=80=E3=80=80^^^^^^^^^^^^^^^^^^^^^^^^^^=
+^=E3=80=80=E3=80=80=E3=80=80=E3=80=80
+                  return -EMLINK;
 
-On Tue, Dec 23, 2008 at 6:58 AM, Diego Calleja <diegocg@gmail.com> wrote:
-> Due to the astounding lack of good end-user documentation about Ext4, I've
-> taken the freedom of writing an article about it for the kernelnewbies
-> 2.6.28 changelog: http://kernelnewbies.org/Ext4
->
-> If you find any error or you have some suggestion, just tell me and I'll
-> fix it.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
+This limit is ext4's specification.
 
+Regards,
+Toshiyuki Okajima
 
-
--- 
-Cheers,
-
-Bergwolf
-
-................
-Margaret Mead  - "Always remember that you are absolutely unique. Just
-like everyone else."
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
