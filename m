@@ -1,62 +1,63 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
-Date: Mon, 22 Dec 2008 19:09:47 -0500
-Message-ID: <49502C4B.7040308@redhat.com>
-References: <4908C951.2000309@redhat.com> <20081103184426.GA31894@ajones-laptop.nbttech.com> <20081103113318.35b0c266.akpm@linux-foundation.org> <20081103201428.GB30565@ajones-laptop.nbttech.com> <20081218231707.GB20092@atrey.karlin.mff.cuni.cz> <494ADEB3.8010109@redhat.com> <20081219002752.GE8424@duck.suse.cz> <494AFA16.2010004@redhat.com> <494FE73E.5000802@redhat.com> <20081222225757.GV5000@webber.adilger.int>
+From: "Mike Snitzer" <snitzer@gmail.com>
+Subject: Re: ext2_block_alloc_info
+Date: Mon, 22 Dec 2008 21:56:29 -0500
+Message-ID: <170fa0d20812221856j4c660384nc2ac693ca8fd0ba4@mail.gmail.com>
+References: <2d08ef090812200743o47cd4abdwd9915653f6f4f3f7@mail.gmail.com>
+	 <804dabb00812201725r304bed36ufc56ebc2393e2299@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>, Jan Kara <jack@suse.cz>,
-	Arthur Jones <ajones@riverbed.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"sct@redhat.com" <sct@redhat.com>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Cc: "Rohit Sharma" <imreckless@gmail.com>,
+	Kernelnewbies <kernelnewbies@nl.linux.org>,
+	ext4 <linux-ext4@vger.kernel.org>
+To: "Peter Teoh" <htmldeveloper@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33035 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755366AbYLWAKF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 22 Dec 2008 19:10:05 -0500
-In-Reply-To: <20081222225757.GV5000@webber.adilger.int>
+Received: from mail-ew0-f17.google.com ([209.85.219.17]:64641 "EHLO
+	mail-ew0-f17.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751616AbYLWC4b (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Dec 2008 21:56:31 -0500
+Received: by ewy10 with SMTP id 10so2498558ewy.13
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Dec 2008 18:56:29 -0800 (PST)
+In-Reply-To: <804dabb00812201725r304bed36ufc56ebc2393e2299@mail.gmail.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Dec 22, 2008  14:15 -0500, Ric Wheeler wrote:
->   
->> Without having dived into the patch in detail, one worry I would have is  
->> that we still might care to spin up a drive for empty transactions in  
->> order to invalidate the drive's write cache.
+On Sat, Dec 20, 2008 at 8:25 PM, Peter Teoh <htmldeveloper@gmail.com> wrote:
+> On Sat, Dec 20, 2008 at 11:43 PM, Rohit Sharma <imreckless@gmail.com> wrote:
+>> A little confusion.
 >>
->> For example, if we have the following sequence:
+>> Just refer this structure in linux/ext2_fs_sb.h
 >>
->>    (1) user app performs series of writes to file A
->>    (2) pages dirtied from writes to A are destaged to the disk over time
->>    (3) user app issues fsync(file A) to make sure that the data will  
->> survive a power outage
+>> struct ext2_block_alloc_info {
+>>  46        /* information about reservation window */
+>>  47        struct ext2_reserve_window_node rsv_window_node;
+>>  48        /*
+>>  49         * was i_next_alloc_block in ext2_inode_info
+>>  50         * is the logical (file-relative) number of the
+>>  51         * most-recently-allocated block in this file.
+>>  52         * We use this for detecting linearly ascending allocation requests.
+>>  53         */
+>>  54        __u32                   last_alloc_logical_block;
+>
+> if i interpret the meaning of "file-relative logical number"
+> correctly, and since one-file-one-inode concept, then it means that it
+> should mean inode-relative logical block number.
+>
+>>  55        /*
+>>  56         * Was i_next_alloc_goal in ext2_inode_info
+>>  57         * is the *physical* companion to i_next_alloc_block.
+>>  58         * it the the physical block number of the block which was
+>
+>> inode1 has logical blocks 0 1 2 , physical 22 23 24
+>> inode2 has logical blocks 0 1 2 , physical 34 35 50
 >>
->> At this point in time, would this change prevent us from spinning up the  
->> drive and invalidating the disk write cache for that fsync() ?
->>     
 >
-> Well, if the writes themselves didn't spin up the drive, it is uncertain
-> whether the write of the journal commit block would be any more helpful
-> in getting that to happen.
->
-> Cheers, Andreas
-> --
-> Andreas Dilger
-> Sr. Staff Engineer, Lustre Group
-> Sun Microsystems of Canada, Inc.
->
->   
-To make the example cleared, add a step:
+> as per comment above, the sequence above looks likely, but then this
+> is my guess again.
 
-    (2.5) between the writes and the fsync(), the drive spins down
+You are correct.  last_alloc_logical_block is used to detect if the
+write workload against a given inode is sequential (the current
+logical block is last_alloc_logical_block+1).
 
-In this case, if the app issues an fsync(), will we still have volatile 
-data in its write cache that has not been flushed?
-
-Ric
-
+Mike
