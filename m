@@ -1,67 +1,47 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: ext2_block_alloc_info
-Date: Tue, 23 Dec 2008 01:05:45 -0700
-Message-ID: <20081223080545.GI5000@webber.adilger.int>
-References: <2d08ef090812200743o47cd4abdwd9915653f6f4f3f7@mail.gmail.com>
- <804dabb00812201725r304bed36ufc56ebc2393e2299@mail.gmail.com>
- <170fa0d20812221856j4c660384nc2ac693ca8fd0ba4@mail.gmail.com>
- <804dabb00812222029x76d34c24o798ade5dd0e31351@mail.gmail.com>
- <37d33d830812222037s362060c3i8278a8a39083c50f@mail.gmail.com>
+From: Diego Calleja <diegocg@gmail.com>
+Subject: Re: Ext4 documentation
+Date: Tue, 23 Dec 2008 10:00:07 +0100
+Message-ID: <20081223100007.6b79cd27@diego-desktop>
+References: <20081222235841.7aaaef93@diego-desktop>
+	<20081222234456.GW5000@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Peter Teoh <htmldeveloper@gmail.com>,
-	Mike Snitzer <snitzer@gmail.com>,
-	Rohit Sharma <imreckless@gmail.com>,
-	Kernelnewbies <kernelnewbies@nl.linux.org>,
-	ext4 <linux-ext4@vger.kernel.org>
-To: Sandeep K Sinha <sandeepksinha@gmail.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:40477 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752528AbYLWIGB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2008 03:06:01 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id mBN85m5n024801
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 00:05:48 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KCB00901L5I5000@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 23 Dec 2008 00:05:48 -0800 (PST)
-In-reply-to: <37d33d830812222037s362060c3i8278a8a39083c50f@mail.gmail.com>
-Content-disposition: inline
+Received: from mail-bw0-f21.google.com ([209.85.218.21]:43286 "EHLO
+	mail-bw0-f21.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752882AbYLWI61 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2008 03:58:27 -0500
+Received: by bwz14 with SMTP id 14so9438621bwz.13
+        for <linux-ext4@vger.kernel.org>; Tue, 23 Dec 2008 00:58:25 -0800 (PST)
+In-Reply-To: <20081222234456.GW5000@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Dec 23, 2008  10:07 +0530, Sandeep K Sinha wrote:
-> I have a tool ready with unfolds a file system completely thrugh
-> ioctl. You will just have to patch the kernel.
-> And that also, its for ext2.
+El Mon, 22 Dec 2008 16:44:56 -0700, Andreas Dilger <adilger@sun.com> es=
+cribi=C3=B3:
 
-It would be much more generic to use the FIEMAP ioctl, which has made
-it into the 2.6.28 kernel.  It will currently only dump the file data
-and xattr blocks, but it is designed to be extensible to allow dumping
-other kinds of inode metadata (e.g. indirect/index blocks, etc).
+> Looks pretty good, thanks for writing this up.  Minor notes:
+> - While > 16TB is supported by ext4 disk formats, the mke2fs/e2fsck c=
+ode
+>   to support this is not in any released e2fsprogs yet
+> - I don't think the journal async commit blocks are enabled by defaul=
+t, so
+>   the "20% speedup" is not available yet.  There is some work that
+>   needs to be done to make this feature 100% safe in case of corrupti=
+on.
+> - I'm not sure if enabling flex_bg on an existing ext3 filesystem is =
+useful
+> - you don't mention anything about the required e2fsprogs version.  I
+>   _think_ (someone should confirm) that e2fsprogs-1.41.3 is the minim=
+um
+>   version that anyone should use.
 
-> But its really verbose.
-
-There are patches to e2fsprogs to allow filefrag to call FIEMAP to dump
-the file layout.  They were posted to this list a few months ago, and
-are scheduled for upstream inclusion.  While they will be part of e2fsprogs,
-the FIEMAP ioctl is a generic mechanism that is supported by ext2/3/4,
-OCFS, and XFS, and hopefully more now that it is in the kernel.
-
-> You can have a look for the sources @ http://code.google.com/p/fscops/
-> We will be uploading the tool there soon.
-
-While the description of "What OHSM offer" sounds really good, I couldn't
-find any code or description of what is actually implemented.  Is this
-a system that actually works, or is it only describing what you would like
-OHSM to do?
-
-Cheers, Andreas
+Thanks, I've mentioned all this.
 --
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
