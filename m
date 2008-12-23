@@ -1,7 +1,7 @@
-From: "Sandeep K Sinha" <sandeepksinha@gmail.com>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
 Subject: Re: ext2_block_alloc_info
-Date: Tue, 23 Dec 2008 10:07:44 +0530
-Message-ID: <37d33d830812222037s362060c3i8278a8a39083c50f@mail.gmail.com>
+Date: Tue, 23 Dec 2008 10:30:21 +0530
+Message-ID: <ea11fea30812222100o6f506bb9p8a612b27d8fa2036@mail.gmail.com>
 References: <2d08ef090812200743o47cd4abdwd9915653f6f4f3f7@mail.gmail.com>
 	 <804dabb00812201725r304bed36ufc56ebc2393e2299@mail.gmail.com>
 	 <170fa0d20812221856j4c660384nc2ac693ca8fd0ba4@mail.gmail.com>
@@ -15,26 +15,16 @@ Cc: "Mike Snitzer" <snitzer@gmail.com>,
 	ext4 <linux-ext4@vger.kernel.org>
 To: "Peter Teoh" <htmldeveloper@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.181]:4383 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754543AbYLWEho (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Dec 2008 23:37:44 -0500
-Received: by wa-out-1112.google.com with SMTP id v27so1192112wah.21
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Dec 2008 20:37:44 -0800 (PST)
+Received: from yx-out-2324.google.com ([74.125.44.29]:3245 "EHLO
+	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750852AbYLWFAW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2008 00:00:22 -0500
+Received: by yx-out-2324.google.com with SMTP id 8so814101yxm.1
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Dec 2008 21:00:21 -0800 (PST)
 In-Reply-To: <804dabb00812222029x76d34c24o798ade5dd0e31351@mail.gmail.com>
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-I have a tool ready with unfolds a file system completely thrugh
-ioctl. You will just have to patch the kernel.
-And that also, its for ext2.
-But its really verbose.
-
-You can have a look for the sources @ http://code.google.com/p/fscops/
-We will be uploading the tool there soon.
-
-Rohit if you have a working copy can you mail it to him.
 
 On Tue, Dec 23, 2008 at 9:59 AM, Peter Teoh <htmldeveloper@gmail.com> wrote:
 > Sorry, resent due to SMTP error:
@@ -62,8 +52,47 @@ On Tue, Dec 23, 2008 at 9:59 AM, Peter Teoh <htmldeveloper@gmail.com> wrote:
 >
 > Here the "BLOCKS" correspond to the block numbering we are talking
 > about, right?   It always start at 0 per-file.   "IND" is the indirect
-> block.   But what is "DIND"?   "2317946" is the physical block number
-> right?   And what is the zero after the "2317946"?
+> block.
+>  But what is "DIND"?
+
+Double indirect blocks ..... Sine the size of file is 4670783, we
+would need 1140 direct blocks (holding data) and other indirect
+blocks.
+
+>  "2317946" is the physical block number
+> right?
+Yes.......
+
+> And what is the zero after the "2317946"?
+0 is just the end specifier for a range which debugfs prints. So
+either you print the range of blocks or a 0 at the end to mark the
+start of a new range. The code to do is present in
+e2fsprogs/debugfs/debugfs.c : list_blocks_proc()
+
+list_block_proc () {
+...................
+	/*
+	 * Not a normal block.  Always force a new range.
+	 */
+	finish_range(lb);
+	if (lb->first)
+		lb->first = 0;
+	else
+		fprintf(lb->f, ", ");
+	if (blockcnt == -1)
+		fprintf(lb->f, "(IND):%u", *blocknr);
+	else if (blockcnt == -2)
+		fprintf(lb->f, "(DIND):%u", *blocknr);
+	else if (blockcnt == -3)
+		fprintf(lb->f, "(TIND):%u", *blocknr);
+...................
+}
+
+
+Thanks -
+Manish
+
+
 >
 > On Tue, Dec 23, 2008 at 10:56 AM, Mike Snitzer <snitzer@gmail.com> wrote:
 >>
@@ -113,23 +142,8 @@ On Tue, Dec 23, 2008 at 9:59 AM, Peter Teoh <htmldeveloper@gmail.com> wrote:
 > Peter Teoh
 >
 > Ernest Hemingway - "Never mistake motion for action."
->
 > --
-> To unsubscribe from this list: send an email with
-> "unsubscribe kernelnewbies" to ecartis@nl.linux.org
-> Please read the FAQ at http://kernelnewbies.org/FAQ
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >
->
-
-
-
--- 
-Regards,
-Sandeep.
-
-
-
-
-
- 	
-"To learn is to change. Education is a process that changes the learner."
