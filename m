@@ -1,65 +1,42 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: jbd2 inside a device mapper module
-Date: Wed, 24 Dec 2008 18:49:15 -0500
-Message-ID: <20081224234915.GA23723@mit.edu>
-References: <20081224211038.GT4127@blitiri.com.ar>
+Subject: Re: Problems with the max value for create directory
+Date: Wed, 24 Dec 2008 18:54:22 -0500
+Message-ID: <20081224235422.GB23723@mit.edu>
+References: <495054DE.9030405@cn.fujitsu.com> <495062D1.6010805@jp.fujitsu.com> <20081223201247.GU23723@mit.edu> <49518DFD.8090507@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-mm-cc@lists.laptop.org,
-	dm-devel@redhat.com
-To: Alberto Bertogli <albertito@blitiri.com.ar>
+Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	linux-ext4@vger.kernel.org
+To: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:63700 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:63817 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751330AbYLXXwg (ORCPT
+	by vger.kernel.org with ESMTP id S1751273AbYLXXyc (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 24 Dec 2008 18:52:36 -0500
+	Wed, 24 Dec 2008 18:54:32 -0500
 Content-Disposition: inline
-In-Reply-To: <20081224211038.GT4127@blitiri.com.ar>
+In-Reply-To: <49518DFD.8090507@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Dec 24, 2008 at 07:10:38PM -0200, Alberto Bertogli wrote:
-> 
-> I'm writing a small device mapper module, and I'm interested in placing
-> a jbd/jdb2 journal on the backing device.
-> 
-> I started by trying to do a __bread() manually (just for early tests)
-> inside my map function. But it got stucked, as far as I could see,
-> waiting for a buffer head in wait_on_buffer() IIRC (I could track it
-> down again if it's needed). And I couldn't find why it was locked, since
-> it was an unused loopback device, and my code didn't even deal with
-> buffer heads.
+On Wed, Dec 24, 2008 at 09:18:53AM +0800, Zhang Xiliang wrote:
+>
+> Thanks for explanation.
+>
+> I see the limit of ext4 subdirectory. The test program originally tests it.
+> But I fail and find the limit of the htree.
 
-I have no idea why you would need to do manual __breads().  No doubt
-I'm missing some context here.   
+But if that was your goal, why did you use the largest possible
+filename length for the subdirectories?  And why did you use a 1k
+block filesystem?  Both of these are totally unnecessary if the goal
+is to test the limit of the number of ext4 subdirectories, and are
+*ideal* if you are trying to detect the htree limit.
 
-> Then, since I was planning on using jbd/jdb2 anyway, I decided to use it
-> (and went for jbd2).
-> 
-> Now, I'm having issues with journal creation.
-> 
-> I tried using "mkfs.ext3 -O journal_dev", but jbd2_journal_load()
-> complains that it can't find the journal superblock.
+> I think it may be annoying. Somebody may be puzzled for the two limits.
+> The limit of the htree should be greater than the limit of ext4 subdirectory.
 
-So I'll tell you how to do this via simple hard drives, and you can
-figure out how to make it work with dm.  Note that if the journal
-device isn't on a stand-alone spindle, it's probably not going to help
-you.  The whole point of using an external journal device is to avoid
-the seeking on the journal device, or to take advantage of the speed
-of a battery-backed NVRAM device.  I'm not sure how much sense it
-makes to use dm-based external journal device.... what exactly do you
-hope to achieve.
+Well, are you annoyed enough to help to try to solve the problem?  In
+actual practice very few people have run across the htree limit as far
+as I know.  
 
-To create an external journal device on the device /dev/sda:
-
-   mke2fs -O journal_dev /dev/sda
-
-To create a new filesystem on /dev/sdb1 that will use the external
-journal found on /dev/sda:
-
-   mke2fs -j -J device=/dev/sda /dev/sdb1
-
-						- Ted
-
-P.S.   All of this is in the mke2fs man page....
+							- Ted
