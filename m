@@ -1,47 +1,43 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: Problems with Online Defragmentation (was: Re: bugs of Online
- Defragmentation)
-Date: Wed, 24 Dec 2008 11:43:28 +0900
-Message-ID: <4951A1D0.3060502@rs.jp.nec.com>
-References: <494F277B.3080902@cn.fujitsu.com>
+From: Miao Xie <miaox@cn.fujitsu.com>
+Subject: [BUG][e2fsprogs] e2fsck: e2fsck reports ext3 message when checking
+ ext4 filesystem
+Date: Wed, 24 Dec 2008 11:14:30 +0800
+Message-ID: <4951A916.706@cn.fujitsu.com>
+Reply-To: miaox@cn.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Linux-Ext4 <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:41107 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751182AbYLXCnd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Dec 2008 21:43:33 -0500
-In-Reply-To: <494F277B.3080902@cn.fujitsu.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:55522 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751065AbYLXDQS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Dec 2008 22:16:18 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Hi,
-Zhang Xiliang wrote:
-> Hi,
-> 
-> I tested Online Defrag by using the new code.
-> When I have space left which is less than 40M, I can't use e4defrag 
-> function.
-> 
-> Does the Online Defragmentation need some space left which is greater 
-> than a value? 40M?
-> 
 
-Yes.  Ext4 online defrag needs more than the target file size.
-In this case, your file size might be greater than left space.
+I use "e2fsck" to repair the damaged ext4 device.
 
-If you failed in defrag, -v option might be helpful
-to find the reason as follows:
+The message was followings.
 
-[root@bsd086 KERN]# ./e4defrag -v /mnt/mp1/file1
-ext4 defragmentation for /mnt/mp1/file1
-[1/1] "/mnt/mp2/WORK/file1"
-     Defrag size is larger than FileSystem's free space        [ NG ]
-  Success:            [0/1]
+------
+# ./e2fsck /dev/sdb3
+e2fsck 1.41.3 (12-Oct-2008)
+Superblock has an invalid ext3 journal (inode 8).
+Clear<y>?
+---
 
-Regards,
-Akira Fujita
+Why e2fsck tells me "ext3"? It looks the message was wrong
+or e2fsck doesn't recognize ext4 correctly.
 
+Thanks=EF=BC=81
+Miao Xie
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
