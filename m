@@ -1,71 +1,34 @@
-From: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
-Subject: Re: Problems with the max value for create directory
-Date: Wed, 24 Dec 2008 09:18:53 +0800
-Message-ID: <49518DFD.8090507@cn.fujitsu.com>
-References: <495054DE.9030405@cn.fujitsu.com> <495062D1.6010805@jp.fujitsu.com> <20081223201247.GU23723@mit.edu>
+From: Gui Xiaohua <guixh@cn.fujitsu.com>
+Subject: [BUG]:resize2fs /dev/sda6 -M
+Date: Wed, 24 Dec 2008 10:12:18 +0800
+Message-ID: <49519A82.7090208@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:57171 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:56533 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751330AbYLXBSJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Dec 2008 20:18:09 -0500
-In-Reply-To: <20081223201247.GU23723@mit.edu>
+	id S1751860AbYLXCNu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Dec 2008 21:13:50 -0500
+Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
+	by song.cn.fujitsu.com (Postfix) with ESMTP id 6590917013C
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Dec 2008 10:22:00 +0800 (CST)
+Received: from fnst.cn.fujitsu.com (localhost.localdomain [127.0.0.1])
+	by tang.cn.fujitsu.com (8.13.1/8.13.1) with ESMTP id mBO2Lxvq019037
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Dec 2008 10:22:00 +0800
+Received: from [10.167.141.161] (unknown [10.167.141.161])
+	by fnst.cn.fujitsu.com (Postfix) with ESMTPA id DF0ECD439F
+	for <linux-ext4@vger.kernel.org>; Wed, 24 Dec 2008 10:19:53 +0800 (CST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso =E5=86=99=E9=81=93:
+While resizing a partition, if its filesystem is ext4dev,
+it will be fail.
 
->=20
-> So that's not it.  The problem is that indexed diretories have a limi=
-t
-> that only allows the trees to be two levels deep.  The fanout is
-> normally big enough that this is effectively not a problem, but if yo=
-u
-> use very long filenames, and a 1k blocksize, you will run into this
-> limit much more quickly.  So the problem is not the number of sub
-> directories, but the maximum depth of the htree allowed in Daniel
-> Phillips' relatively restricted implementation.  Note that with a 4k
-> block filesystem, the limits get expanded by a factor of 4 cubed, or
-> 64.  And most of the time users aren't maximal length named directory
-> entries, which further pushes the limit out in the normal case.
->=20
-> It in theory would be possible to relax this restriction, using a mor=
-e
-> advanced htree implementation and a feature flag to allow backwards
-> compatibility with older kernels that only support the maximal depth.
-> Andreas has a prototype kernel implementation which in theory could b=
-e
-> added to ext4.  It hasn't been high on my priority list to complete,
-> but if someone else really finds this limit to be annoying, it is a
-> project they might try to complete.
->=20
-> Were you writing this test program because this is a realistic
-> situation for your application, or just to explore the limits of ext4=
-?
->=20
+Steps to reproduce:
 
-Thanks for explanation.
+#mkfs.ext4dev /dev/sda6
+#resize2fs /dev/sda6 -M
 
-I see the limit of ext4 subdirectory. The test program originally tests=
- it.
-But I fail and find the limit of the htree.
-=20
-I think it may be annoying. Somebody may be puzzled for the two limits.
-The limit of the htree should be greater than the limit of ext4 subdire=
-ctory.
-
---=20
-Regards
-Zhang Xiliang
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+resize2fs: No space left on device while trying to resize /dev/sda6
