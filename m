@@ -1,48 +1,47 @@
-From: Norbert Preining <preining@logic.at>
-Subject: Re: linux ext3 partition hosed, is this hardware of software error?
-Date: Thu, 25 Dec 2008 10:55:34 +0100
-Message-ID: <20081225095534.GY12914@gamma.logic.tuwien.ac.at>
-References: <20081221143640.GF1509@gamma.logic.tuwien.ac.at> <20081221144913.76ca53d3@lxorguk.ukuu.org.uk> <20081221150302.GA3457@gamma.logic.tuwien.ac.at> <20081221155720.36b700f7@lxorguk.ukuu.org.uk>
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: (resend) extent header problems following shrink with resize2fs
+Date: Thu, 25 Dec 2008 08:09:58 -0500
+Message-ID: <20081225130958.GH9871@mit.edu>
+References: <87abanbfvo.fsf@burly.wgtn.ondioline.org> <20081223061833.GQ23723@mit.edu> <877i5ozprb.fsf@burly.wgtn.ondioline.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Alan Cox <alan@lxorguk.ukuu.org.uk>
+Cc: linux-ext4@vger.kernel.org
+To: Paul Collins <paul@burly.ondioline.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx.logic.tuwien.ac.at ([128.130.175.19]:55280 "EHLO
-	mx.logic.tuwien.ac.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751613AbYLYJzg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Dec 2008 04:55:36 -0500
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:36356 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750912AbYLYNME (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Dec 2008 08:12:04 -0500
 Content-Disposition: inline
-In-Reply-To: <20081221155720.36b700f7@lxorguk.ukuu.org.uk>
+In-Reply-To: <877i5ozprb.fsf@burly.wgtn.ondioline.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Alan,
+On Thu, Dec 25, 2008 at 08:18:48PM +1300, Paul Collins wrote:
+> My real concern, which I didn't highlight well and buried way down in my
+> original report to boot, was e2fsck blowing up like it did.  Hardware
+> being what it is, I imagine at some point extent headers will get
+> corrupted, and losing one file is of course preferable to losing the
+> entire filesystem.
 
-On So, 21 Dez 2008, Alan Cox wrote:
-> ddrescue should do the trick - anything which will copy all the valid
-> sectors and write out the lost ones as zero or similar preserving what is
-> left of the file.
+Yeah, I know about that problem.  It was highlighted recently but what
+with the end of the year coming up I haven't had a chance to fix it
+yet.  It's an embarassing oversight on my part; I didn't notice that I
+failed to handle this case because it happens relatively rarely that
+an extent tree has a depth >= 2 in the first place, since this error
+only happens when an non-leaf interior node gets corrupted.  I had
+left it as an "we'll handle this later" case, and I never got back to
+it.  The short-term workaround is simply to use debugfs and use the
+clri function:
 
-Again thanks for your help. I rescued most of the hard disc, fsck
-succeeded in finding another superblock by itself, and AFAIS (still
-checking) all the stuff is still there.
+debugfs -w /dev/sdb1
+debugfs: clri <38979>
+debugfs: quit
 
-The only thing I hate is the reinstallation procedure (many system files
-are hosed, inconsistent md5sums, ...) and that they will carry away my
-laptop for quite a lot of days (still under warranty, 2.5months!)
+... and then run e2fsck.  I'll get this fixed in the next maintenance
+release of e2fsprogs, though, which will be out soon.  We have a few
+ext4 related problems that I really need to get fixed and out the
+door.
 
-Best wishes
-
-Norbert
-
--------------------------------------------------------------------------------
-Dr. Norbert Preining <preining@logic.at>        Vienna University of Technology
-Debian Developer <preining@debian.org>                         Debian TeX Group
-gpg DSA: 0x09C5B094      fp: 14DF 2E6C 0307 BE6D AD76  A9C0 D2BF 4AA3 09C5 B094
--------------------------------------------------------------------------------
-ARDSCULL (n.)
-Excuse made by rural Welsh hairdresser for deep wounds inflicted on
-your scalp in an attempt to rectify whatever it was that induced the
-ardscalpsie (q.v.).
-			--- Douglas Adams, The Meaning of Liff
+	   	      	      	    	    	- Ted
