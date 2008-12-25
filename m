@@ -1,70 +1,48 @@
-From: Nick Warne <nick@ukfsn.org>
-Subject: Re: [PATCH] EXT4: super.c - remove extraneous newline
-Date: Thu, 25 Dec 2008 08:11:20 +0000
-Message-ID: <20081225081120.3100c23e@sauron.linicks.net>
-References: <20081225080647.6890d867@sauron.linicks.net>
+From: Norbert Preining <preining@logic.at>
+Subject: Re: linux ext3 partition hosed, is this hardware of software error?
+Date: Thu, 25 Dec 2008 10:55:34 +0100
+Message-ID: <20081225095534.GY12914@gamma.logic.tuwien.ac.at>
+References: <20081221143640.GF1509@gamma.logic.tuwien.ac.at> <20081221144913.76ca53d3@lxorguk.ukuu.org.uk> <20081221150302.GA3457@gamma.logic.tuwien.ac.at> <20081221155720.36b700f7@lxorguk.ukuu.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-To: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Alan Cox <alan@lxorguk.ukuu.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.ukfsn.org ([77.75.108.10]:41069 "EHLO mail.ukfsn.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750948AbYLYILZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Dec 2008 03:11:25 -0500
-In-Reply-To: <20081225080647.6890d867@sauron.linicks.net>
+Received: from mx.logic.tuwien.ac.at ([128.130.175.19]:55280 "EHLO
+	mx.logic.tuwien.ac.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751613AbYLYJzg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Dec 2008 04:55:36 -0500
+Content-Disposition: inline
+In-Reply-To: <20081221155720.36b700f7@lxorguk.ukuu.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 25 Dec 2008 08:06:47 +0000
-Nick Warne <nick@ukfsn.org> wrote:
+Hi Alan,
 
-> Sorry, I just realised I forgot to finish typing the correct subject
-> line in my earlier mail :-)  Please ignore earlier mail with the same
-> patch.
-> 
-> Applies to stable 2.6.28.
-> 
-> Remove extraneous newline that creates empty print line
-> in boot logs.
-> 
-> Signed-off-by: Nick Warne <nick@ukfsn.org>
-> 
-> --- linux-2.6.28/fs/ext4/super.cORIG	2008-12-25
-> 01:35:49.156527726 +0000 +++ linux-2.6.28/fs/ext4/super.c
-> 2008-12-25 01:36:50.914527855 +0000 @@ -1973,7 +1973,7 @@
->  	else
->  		ext4_warning(sb, __func__,
->  			"extents feature not enabled on this
-> filesystem, "
-> -			"use tune2fs.\n");
-> +			"use tune2fs.");
->  
->  	/*
->  	 * enable delayed allocation by default
-> 
-Sigh... this is mangled.  Sorry for the noise :-(
+On So, 21 Dez 2008, Alan Cox wrote:
+> ddrescue should do the trick - anything which will copy all the valid
+> sectors and write out the lost ones as zero or similar preserving what is
+> left of the file.
 
-Applies to stable 2.6.28.
+Again thanks for your help. I rescued most of the hard disc, fsck
+succeeded in finding another superblock by itself, and AFAIS (still
+checking) all the stuff is still there.
 
-Remove extraneous newline that creates empty print line
-in boot logs.
+The only thing I hate is the reinstallation procedure (many system files
+are hosed, inconsistent md5sums, ...) and that they will carry away my
+laptop for quite a lot of days (still under warranty, 2.5months!)
 
-Signed-off-by: Nick Warne <nick@ukfsn.org>
+Best wishes
 
---- linux-2.6.28/fs/ext4/super.cORIG	2008-12-25 01:35:49.156527726 +0000
-+++ linux-2.6.28/fs/ext4/super.c	2008-12-25 01:36:50.914527855 +0000
-@@ -1973,7 +1973,7 @@
- 	else
- 		ext4_warning(sb, __func__,
- 			"extents feature not enabled on this filesystem, "
--			"use tune2fs.\n");
-+			"use tune2fs.");
- 
- 	/*
- 	 * enable delayed allocation by default
+Norbert
 
-
--- 
-Free Software Foundation Associate Member 5508
-http://linicks.net/
+-------------------------------------------------------------------------------
+Dr. Norbert Preining <preining@logic.at>        Vienna University of Technology
+Debian Developer <preining@debian.org>                         Debian TeX Group
+gpg DSA: 0x09C5B094      fp: 14DF 2E6C 0307 BE6D AD76  A9C0 D2BF 4AA3 09C5 B094
+-------------------------------------------------------------------------------
+ARDSCULL (n.)
+Excuse made by rural Welsh hairdresser for deep wounds inflicted on
+your scalp in an attempt to rectify whatever it was that induced the
+ardscalpsie (q.v.).
+			--- Douglas Adams, The Meaning of Liff
