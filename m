@@ -1,45 +1,55 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12272] at random rmmod/insmod corrupts filesystem
-Date: Fri, 26 Dec 2008 06:16:21 -0800 (PST)
-Message-ID: <20081226141621.6F4F7108042@picon.linux-foundation.org>
-References: <bug-12272-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Alberto Bertogli <albertito@blitiri.com.ar>
+Subject: Re: jbd2 inside a device mapper module
+Date: Fri, 26 Dec 2008 14:17:08 -0200
+Message-ID: <20081226161708.GC4127@blitiri.com.ar>
+References: <20081224211038.GT4127@blitiri.com.ar> <20081224234915.GA23723@mit.edu> <20081225143535.GA4127@blitiri.com.ar> <20081225155248.GJ9871@mit.edu> <20081226000005.GB4127@blitiri.com.ar> <20081226033736.GK9871@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, dm-devel@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:43557 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752153AbYLZOQs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 26 Dec 2008 09:16:48 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mBQEGLeA018992
-	for <linux-ext4@vger.kernel.org>; Fri, 26 Dec 2008 06:16:22 -0800
-In-Reply-To: <bug-12272-13602@http.bugzilla.kernel.org/>
+Received: from alerce.vps.bitfolk.com ([212.13.194.134]:4423 "EHLO
+	alerce.vps.bitfolk.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752084AbYLZQTL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Dec 2008 11:19:11 -0500
+Content-Disposition: inline
+In-Reply-To: <20081226033736.GK9871@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12272
+On Thu, Dec 25, 2008 at 10:37:36PM -0500, Theodore Tso wrote:
+> On Thu, Dec 25, 2008 at 10:00:05PM -0200, Alberto Bertogli wrote:
+> > 
+> > I think I'm not explaining myself correctly. My code has _nothing_ to do
+> > with ext2/3/4 (or any other filesystem) whatsoever. I'm not using the
+> > journal as an external one for a filesystem. I want to use it to be able
+> > to do atomic writes in my own, filesystem independant, device-mapper
+> > code.
+> 
+> How many block writes are you batching into a single transaction?  If
+> you're not careful you may find that performance overhead will be
+> quite expensive.
+
+At this moment I'm trying to keep it simple, so I plan to batch two for
+each sector written to the device: one for the metadata and one for the
+data.
 
 
+> > After what you told me (both this and the deprecation of
+> > jbd2_journal_create()), I took a look at e2fsprogs' source. From what I
+> > could see, "mke2fs -O journal_dev" creates the external journal inside
+> > some ext2/3/4 structures, which caused my journal-loading code to fail
+> > (because it doesn't know about ext stuff).
+> 
+> Yes, this is necessary because in a production system you need to be
+> able to identify the external journal by UUID, and the ext2/3/4
+> superblock makes it easy to add a label, UUID, et. al.  It also
+> significantly lowers the chance that an external journal will get
+> misidentified as some other filesystem based on the data stored in the
+> journal.
 
+Yes, it makes sense. I've reserved the first sector for that purpose.
 
+Thanks a lot,
+		Alberto
 
-------- Comment #2 from tytso@mit.edu  2008-12-26 06:16 -------
-What does e2fsck report when you try running e2fsck on the filesystem?   Most
-of the errors indicate filesystem corruption which e2fsck should have
-complained vociferously about, and which it should have been able to fix if run
-manually.
-
-I can't tell how big the filesystem is (I'd need the output of dumpe2fs
-/dev/hdXXX) to detect that, but this:
-
-[92499.263311] Buffer I/O error on device dm-2, logical block 522133279
-
-Indicates either a hardware error, or a corrected journal inode.   In the
-latter case, e2fsck would have detected the problem, and offered to fix it.  In
-the former case, this isn't a kernel bug, but rather a hardware problem....
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
