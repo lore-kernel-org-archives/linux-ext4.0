@@ -1,74 +1,59 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: (resend) extent header problems following shrink with resize2fs
-Date: Thu, 25 Dec 2008 23:14:11 -0500
-Message-ID: <20081226041411.GM9871@mit.edu>
-References: <87abanbfvo.fsf@burly.wgtn.ondioline.org> <20081223061833.GQ23723@mit.edu> <877i5ozprb.fsf@burly.wgtn.ondioline.org>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH -v3] vfs: add releasepages hooks to block devices which
+	can be used by file systems
+Date: Fri, 26 Dec 2008 05:01:38 +0000
+Message-ID: <20081226050138.GU28946@ZenIV.linux.org.uk>
+References: <20081212062148.GJ10890@mit.edu> <1229104375-11567-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Paul Collins <paul@burly.ondioline.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:53692 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752711AbYLZEOP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Dec 2008 23:14:15 -0500
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
+	linux-fsdevel@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <877i5ozprb.fsf@burly.wgtn.ondioline.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1229104375-11567-1-git-send-email-tytso@mit.edu>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 25, 2008 at 08:18:48PM +1300, Paul Collins wrote:
-> Theodore Tso <tytso@MIT.EDU> writes:
-> > Yeah, resize2fs needs to be fixed to handle extents correctly.  At the
-> > moment it can screw them up pretty badly.
+On Fri, Dec 12, 2008 at 12:52:53PM -0500, Theodore Ts'o wrote:
+> From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 > 
-> In the meantime, perhaps something like the patch below is appropriate?
+> Implement blkdev_releasepage() to release the buffer_heads and page
+> after we release private data which belongs to a client of the block
+> device, such as a filesystem.
+> 
+> blkdev_releasepage() call the client's releasepage() which is
+> registered by blkdev_register_client_releasepage() to release its
+> private data.
+> 
+> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Cc: linux-fsdevel@vger.kernel.org
+Entire-pile-NAKed-by: Al Viro <viro@zeniv.linux.org.uk>
 
-Actually, I think the following patch should fix things up nicely.  I
-need to create a test case so I can be sure this fixes the problem,
-but I think this should address the root cause of theproblem you
-reported.
+a) Use of fs_type to hide a callback is wrong.  Pass it explicitly to
+whatever helper you want, don't do that crapin get_sb_bdev()
 
-						- Ted
+b) the same goes from unregistration
 
-diff --git a/resize/resize2fs.c b/resize/resize2fs.c
-index abe05f5..65398a6 100644
---- a/resize/resize2fs.c
-+++ b/resize/resize2fs.c
-@@ -1188,6 +1188,16 @@ static int process_block(ext2_filsys fs, blk_t	*block_nr,
- 	return ret;
- }
- 
-+static int process_block_ind(ext2_filsys fs, blk_t *block_nr,
-+			     e2_blkcnt_t blockcnt, blk_t ref_block, 
-+			     int ref_offset, void *priv_data)
-+{
-+	if (blockcnt >= 0)
-+		return 0;
-+	return process_block(fs, block_nr, blockcnt, ref_block, ref_offset,
-+			     priv_data);
-+}
-+
- /*
-  * Progress callback
-  */
-@@ -1302,6 +1312,18 @@ static errcode_t inode_scan_and_fix(ext2_resize_t rfs)
- 		if (ext2fs_inode_has_valid_blocks(inode) &&
- 		    (rfs->bmap || pb.is_dir)) {
- 			pb.ino = ino;
-+			if (inode->i_flags & EXT4_EXTENTS_FL) {
-+				/*
-+				 * With extent-based files, we have
-+				 * to translate all of the interior
-+				 * node blocks first.
-+				 */
-+				retval = ext2fs_block_iterate2(rfs->old_fs,
-+						ino, 0, block_buf,
-+						process_block_ind, &pb);
-+				if (retval)
-+					goto errout;
-+			}
- 			retval = ext2fs_block_iterate2(rfs->old_fs,
- 						       ino, 0, block_buf,
- 						       process_block, &pb);
+c) you are unregistering your callback before doing generic_shutdown_super().
+Odd, seeing that a _lot_ of fs operations can happen at that point.
+
+d) we *already* have exclusion mechanism.  It's called open_bdev_exclusive()
+and it is used by get_sb_bdev() and friends already.  Don't reinvent the
+wheel, please.
+
+e) what's going on with the locking there?  Comments about mount/umount races
+are absolutely bogus - we *have* serialization for fs shutdown/startup.  And
+if we hadn't, we would have far worse problems with races than that.  The
+other kind of race is possible, but... this interface is asking for trouble.
+It sounds like a way to attach some data structures of your own to page and
+rely on that callback for freeing them.  But as soon as somebody tries that
+we'll have a problem; page can outlive the unregistration of callback and
+we'll get a leak (in the best case).  Sure, ext3 and ext4 won't step into
+it (journal shutdown will deal with that), but it's a trap for unaware.
+At the very least it needs to be commented.
+
+Said that, I still don't like the use of rwlock here ;-/  If nothing else,
+that calls for rcu - fs shutdown is extremely rare compared to releasepage...
