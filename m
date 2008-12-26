@@ -1,66 +1,55 @@
-From: Alberto Bertogli <albertito@blitiri.com.ar>
+From: Theodore Tso <tytso@MIT.EDU>
 Subject: Re: jbd2 inside a device mapper module
-Date: Thu, 25 Dec 2008 22:00:05 -0200
-Message-ID: <20081226000005.GB4127@blitiri.com.ar>
-References: <20081224211038.GT4127@blitiri.com.ar> <20081224234915.GA23723@mit.edu> <20081225143535.GA4127@blitiri.com.ar> <20081225155248.GJ9871@mit.edu>
+Date: Thu, 25 Dec 2008 22:37:36 -0500
+Message-ID: <20081226033736.GK9871@mit.edu>
+References: <20081224211038.GT4127@blitiri.com.ar>
+	<20081224234915.GA23723@mit.edu>
+	<20081225143535.GA4127@blitiri.com.ar>
+	<20081225155248.GJ9871@mit.edu>
+	<20081226000005.GB4127@blitiri.com.ar>
+Reply-To: device-mapper development <dm-devel@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, dm-devel@redhat.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from alerce.vps.bitfolk.com ([212.13.194.134]:4611 "EHLO
-	alerce.vps.bitfolk.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752077AbYLZACH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Dec 2008 19:02:07 -0500
+Cc: dm-devel@redhat.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Alberto Bertogli <albertito@blitiri.com.ar>
+Return-path: <dm-devel-bounces@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <20081225155248.GJ9871@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20081226000005.GB4127@blitiri.com.ar>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/dm-devel>
+List-Post: <mailto:dm-devel@redhat.com>
+List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=subscribe>
+Sender: dm-devel-bounces@redhat.com
+Errors-To: dm-devel-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Dec 25, 2008 at 10:52:48AM -0500, Theodore Tso wrote:
-> On Thu, Dec 25, 2008 at 12:35:35PM -0200, Alberto Bertogli wrote:
-> >  - What is the reason behind the j_inode check in jbd2_journal_create()?
+On Thu, Dec 25, 2008 at 10:00:05PM -0200, Alberto Bertogli wrote:
 > 
-> jbd2_journal_create was only designed for creating inode-based
-> journals, and it's a deprecated function that will likely be removed
-> soon.
+> I think I'm not explaining myself correctly. My code has _nothing_ to do
+> with ext2/3/4 (or any other filesystem) whatsoever. I'm not using the
+> journal as an external one for a filesystem. I want to use it to be able
+> to do atomic writes in my own, filesystem independant, device-mapper
+> code.
 
-Thanks, I didn't know that!
+How many block writes are you batching into a single transaction?  If
+you're not careful you may find that performance overhead will be
+quite expensive.
 
+> After what you told me (both this and the deprecation of
+> jbd2_journal_create()), I took a look at e2fsprogs' source. From what I
+> could see, "mke2fs -O journal_dev" creates the external journal inside
+> some ext2/3/4 structures, which caused my journal-loading code to fail
+> (because it doesn't know about ext stuff).
 
-> >  - Does mke2fs -O journal_dev creates a journal that jbd2_journal_load()
-> >    is supposed to read without any knowledge of ext2/3/4 stuff? If not,
-> >    how can I create such a journal? I'll be looking at the e2fsprogs
-> >    code for the answer to this question later today (I haven't looked at
-> >    it yet).
-> 
-> mke2fs -O journal_dev creates an external journal, but when you create
-> a filesystem, you need to specify need to specify location of the
-> external journal.    Hence:
-> 
-> 	 mke2fs -O journal_dev /dev/extern_journal_dev
-> 	 mke2fs -t ext4 -J device=/dev/extern_journal_dev /dev/filesystem_dev
-> 
-> As I said in my last message.  I've tested it, and it works Just Fine.
+Yes, this is necessary because in a production system you need to be
+able to identify the external journal by UUID, and the ext2/3/4
+superblock makes it easy to add a label, UUID, et. al.  It also
+significantly lowers the chance that an external journal will get
+misidentified as some other filesystem based on the data stored in the
+journal.
 
-I think I'm not explaining myself correctly. My code has _nothing_ to do
-with ext2/3/4 (or any other filesystem) whatsoever. I'm not using the
-journal as an external one for a filesystem. I want to use it to be able
-to do atomic writes in my own, filesystem independant, device-mapper
-code.
-
-After what you told me (both this and the deprecation of
-jbd2_journal_create()), I took a look at e2fsprogs' source. From what I
-could see, "mke2fs -O journal_dev" creates the external journal inside
-some ext2/3/4 structures, which caused my journal-loading code to fail
-(because it doesn't know about ext stuff).
-
-So, I wrote a small "mkjournal" utility that creates a journal on the
-block device without any ext2/3/4 stuff. It's based on e2fsprogs'
-mkjournal.c, except it doesn't have any ext2 stuff. And it worked great!
-I'm now able to load the journal just fine.
-
-Thanks a lot for all the help!
-
-		Alberto
-
+					- Ted
