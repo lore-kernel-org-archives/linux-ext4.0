@@ -1,59 +1,41 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH -v3] vfs: add releasepages hooks to block devices which
-	can be used by file systems
-Date: Fri, 26 Dec 2008 05:01:38 +0000
-Message-ID: <20081226050138.GU28946@ZenIV.linux.org.uk>
-References: <20081212062148.GJ10890@mit.edu> <1229104375-11567-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>,
-	linux-fsdevel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1229104375-11567-1-git-send-email-tytso@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12272] at random rmmod/insmod corrupts filesystem
+Date: Fri, 26 Dec 2008 04:11:07 -0800 (PST)
+Message-ID: <20081226121107.7E59610800D@picon.linux-foundation.org>
+References: <bug-12272-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:60140 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752233AbYLZMLi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 26 Dec 2008 07:11:38 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id mBQCB7Fl011152
+	for <linux-ext4@vger.kernel.org>; Fri, 26 Dec 2008 04:11:08 -0800
+In-Reply-To: <bug-12272-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Dec 12, 2008 at 12:52:53PM -0500, Theodore Ts'o wrote:
-> From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> 
-> Implement blkdev_releasepage() to release the buffer_heads and page
-> after we release private data which belongs to a client of the block
-> device, such as a filesystem.
-> 
-> blkdev_releasepage() call the client's releasepage() which is
-> registered by blkdev_register_client_releasepage() to release its
-> private data.
-> 
-> Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Cc: linux-fsdevel@vger.kernel.org
-Entire-pile-NAKed-by: Al Viro <viro@zeniv.linux.org.uk>
+http://bugzilla.kernel.org/show_bug.cgi?id=12272
 
-a) Use of fs_type to hide a callback is wrong.  Pass it explicitly to
-whatever helper you want, don't do that crapin get_sb_bdev()
 
-b) the same goes from unregistration
+devzero@web.de changed:
 
-c) you are unregistering your callback before doing generic_shutdown_super().
-Odd, seeing that a _lot_ of fs operations can happen at that point.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |devzero@web.de
 
-d) we *already* have exclusion mechanism.  It's called open_bdev_exclusive()
-and it is used by get_sb_bdev() and friends already.  Don't reinvent the
-wheel, please.
 
-e) what's going on with the locking there?  Comments about mount/umount races
-are absolutely bogus - we *have* serialization for fs shutdown/startup.  And
-if we hadn't, we would have far worse problems with races than that.  The
-other kind of race is possible, but... this interface is asking for trouble.
-It sounds like a way to attach some data structures of your own to page and
-rely on that callback for freeing them.  But as soon as somebody tries that
-we'll have a problem; page can outlive the unregistration of callback and
-we'll get a leak (in the best case).  Sure, ext3 and ext4 won't step into
-it (journal shutdown will deal with that), but it's a trap for unaware.
-At the very least it needs to be commented.
 
-Said that, I still don't like the use of rwlock here ;-/  If nothing else,
-that calls for rcu - fs shutdown is extremely rare compared to releasepage...
+
+------- Comment #1 from devzero@web.de  2008-12-26 04:11 -------
+please provide the output of the script and/or post a list of your modules. 
+
+do you see any warnings/oopses in dmesg while running it ?
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
