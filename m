@@ -1,71 +1,83 @@
-From: Alberto Bertogli <albertito@blitiri.com.ar>
+From: Theodore Tso <tytso@MIT.EDU>
 Subject: Re: jbd2 inside a device mapper module
-Date: Sat, 27 Dec 2008 01:00:20 -0200
-Message-ID: <20081227030020.GD4127@blitiri.com.ar>
-References: <20081224211038.GT4127@blitiri.com.ar> <20081224234915.GA23723@mit.edu> <20081225143535.GA4127@blitiri.com.ar> <20081225155248.GJ9871@mit.edu> <20081226000005.GB4127@blitiri.com.ar> <20081226033736.GK9871@mit.edu> <20081226161708.GC4127@blitiri.com.ar> <20081226180642.GO9871@mit.edu>
+Date: Sat, 27 Dec 2008 14:29:50 -0500
+Message-ID: <20081227192950.GB30198@mit.edu>
+References: <20081224211038.GT4127@blitiri.com.ar>
+	<20081224234915.GA23723@mit.edu>
+	<20081225143535.GA4127@blitiri.com.ar>
+	<20081225155248.GJ9871@mit.edu>
+	<20081226000005.GB4127@blitiri.com.ar>
+	<20081226033736.GK9871@mit.edu>
+	<20081226161708.GC4127@blitiri.com.ar>
+	<20081226180642.GO9871@mit.edu>
+	<20081227030020.GD4127@blitiri.com.ar>
+Reply-To: device-mapper development <dm-devel@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, dm-devel@redhat.com
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from alerce.vps.bitfolk.com ([212.13.194.134]:3806 "EHLO
-	alerce.vps.bitfolk.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752278AbYL0DBy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Dec 2008 22:01:54 -0500
+Cc: dm-devel@redhat.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: Alberto Bertogli <albertito@blitiri.com.ar>
+Return-path: <dm-devel-bounces@redhat.com>
 Content-Disposition: inline
-In-Reply-To: <20081226180642.GO9871@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20081227030020.GD4127@blitiri.com.ar>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/dm-devel>
+List-Post: <mailto:dm-devel@redhat.com>
+List-Help: <mailto:dm-devel-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/dm-devel>,
+	<mailto:dm-devel-request@redhat.com?subject=subscribe>
+Sender: dm-devel-bounces@redhat.com
+Errors-To: dm-devel-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, Dec 26, 2008 at 01:06:42PM -0500, Theodore Tso wrote:
-> On Fri, Dec 26, 2008 at 02:17:08PM -0200, Alberto Bertogli wrote:
-> > 
-> > At this moment I'm trying to keep it simple, so I plan to batch two for
-> > each sector written to the device: one for the metadata and one for the
-> > data.
-> > 
+On Sat, Dec 27, 2008 at 01:00:20AM -0200, Alberto Bertogli wrote:
+> I have a couple of alternatives in mind, the most decent one at the
+> moment is having two metadatas (M1 and M2) for the each block, and
+> update M1 on the first write to the given block, M2 on the second, M1 on
+> the third, and so on.
+
+I don't see how this would help.  You still have to do synchronous
+writes for safety, which is what is going to kill your performance.
+
+What you want to do is to batch as many writes as possible.  Until the
+underlying filesystem requests a flush, you can afford to hold off
+writing the block to disk.  Otherwise, you'll end up turning each 4k
+write into two 8k synchronous writes, which will be a performance
+disaster.  If you hold off, it's much more likely that the you'll be
+able to patch a large number of blocks into a single transaction.
+Also, if a block gets modified multiple times (for example, with an
+inode table block where tar writes one file, and then another), if you
+hold off the write as long as possible, you can only write the inode
+table block once, instead of multiple times.
+
+Note that this means that you have to wait until the last minute to
+calculate the checksum, since the buffer could be modified after the
+write request.  OCFS2 does this, by using a commit-time callback to
+calculate the checksums used.
+
+The bottom line doing something like this in an efficient way is
+tricky.
+
+> > Why not just use the ext3/4 external journal format?
 > 
-> I think I can pretty much guarantee that your performance will be so
-> horrible that it won't be worth using.
+> Wouldn't that lead to confusion, because people can think the device
+> holds an ext3/4 external journal, while it actually holds a
+> device-mapper backing device that happens to contain a journal?
 
-Thanks for the warning.
+Not really; the external journal has a label and uuid, and the journal
+superblock has a place to store the uuid of the "client" of the
+journal.  So there is plenty of information available to tie an
+external journal to some device-mapper backing device.
 
-I have a couple of alternatives in mind, the most decent one at the
-moment is having two metadatas (M1 and M2) for the each block, and
-update M1 on the first write to the given block, M2 on the second, M1 on
-the third, and so on.
+> What would be the advantages of using the ext3/4 journal format, over a
+> simple initial sector and the journal following?
 
-So, if a block has written "A" and M1 holds crc("A"), and the user wants
-to write "B" to the block, I would first write crc("B") in M2, and then
-write "B" to the block.
+There already existing tools to find the external journal, using the
+blkid library.  So you only have to store the UUID of the journal in
+the superblock of the device-mapper backing device, and then you can
+easily find the external journal as follows:
 
-The biggest problem I can see with this approach is that I require
-either a timestamp on the metadata so I can determine where to write (if
-M1 or M2).
+       journal_fn = blkid_get_devname(ctx->blkid, "UUID", uuid);
 
-And I'm not sure if it'd perform better than the journal, tho.
-
-Do you have any suggestions as to how can I handle this issue?
-
-
-> > > Yes, this is necessary because in a production system you need to be
-> > > able to identify the external journal by UUID, and the ext2/3/4
-> > > superblock makes it easy to add a label, UUID, et. al.  It also
-> > > significantly lowers the chance that an external journal will get
-> > > misidentified as some other filesystem based on the data stored in the
-> > > journal.
-> > 
-> > Yes, it makes sense. I've reserved the first sector for that purpose.
-> 
-> Why not just use the ext3/4 external journal format?
-
-Wouldn't that lead to confusion, because people can think the device
-holds an ext3/4 external journal, while it actually holds a
-device-mapper backing device that happens to contain a journal?
-
-What would be the advantages of using the ext3/4 journal format, over a
-simple initial sector and the journal following?
-
-Thanks,
-		Alberto
-
+       		    				  	  - Ted
