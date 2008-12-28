@@ -1,44 +1,63 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: jbd2 inside a device mapper module
-Date: Sat, 27 Dec 2008 13:01:27 -0700
-Message-ID: <20081227200127.GX5000@webber.adilger.int>
-References: <20081224211038.GT4127@blitiri.com.ar>
- <20081224234915.GA23723@mit.edu> <20081225143535.GA4127@blitiri.com.ar>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Free blocks count wrong following shrink with resize2fs
+Date: Sun, 28 Dec 2008 11:00:11 +0100 (CET)
+Message-ID: <alpine.DEB.2.00.0812281047450.24239@bogon.housecafe.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Theodore Tso <tytso@MIT.EDU>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, dm-devel@redhat.com
-To: Alberto Bertogli <albertito@blitiri.com.ar>,
-	Alex Zhuravlev <Alex.Zhuravlev@sun.com>
+Content-Type: TEXT/PLAIN; format=flowed; charset=US-ASCII
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:46934 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753286AbYL0UBq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Dec 2008 15:01:46 -0500
-In-reply-to: <20081225143535.GA4127@blitiri.com.ar>
-Content-disposition: inline
+Received: from moutng.kundenserver.de ([212.227.126.186]:61714 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752795AbYL1KAP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Dec 2008 05:00:15 -0500
+Received: from localhost ([127.0.0.1] helo=localhost.localdomain)
+	by bogon.housecafe.de with esmtp (Exim 4.63)
+	(envelope-from <lists@nerdbynature.de>)
+	id 1LGsRP-0000jd-SM
+	for linux-ext4@vger.kernel.org; Sun, 28 Dec 2008 11:00:11 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Dec 25, 2008  12:35 -0200, Alberto Bertogli wrote:
-> On Wed, Dec 24, 2008 at 06:49:15PM -0500, Theodore Tso wrote:
-> > I have no idea why you would need to do manual __breads().  No doubt
-> > I'm missing some context here.   
-> 
-> I'm writing (just for fun and learning purposes) a device mapper module
-> that stores checksums on writes and verifies them on reads. The
-> integrity metadata (currently just the checksum) is interleaved in the
-> backing device: one sector holding the integrity metadata for the
-> following 64 data sectors.
+Since I'm not *entirely* sure if this is related to the the extent header 
+issue[0], I thought I just report it:
 
-Alex and I discussed implementing checksums for ext4 using an external
-device like this, and he might have some more design information for
-you.
+When shrinking a filesystem with resize2fs, fsck.ext4 (1.41.3, 
+12-Oct-2008) reports:
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+------------
+Pass 5: Checking group summary information
+Block bitmap differences:  -(2488--2493) -(149959--151395)
+Fix<y>? yes
+Free blocks count wrong for group #0 (3188, counted=3194).
+Fix<y>? yes
+Free blocks count wrong for group #4 (10182, counted=11619).
+Fix<y>? yes
+Free blocks count wrong (26225, counted=27668).
+Fix<y>? yes
+-----------
 
+After this, the filesystem is perfectly fine though, no corruptions have 
+been noticed yet. I'm even able to mount it without running fsck after the 
+resize2fs. I've put a few more details here:
+
+   http://nerdbynature.de/bits/2.6.28/
+
+Thanks,
+Christian.
+[0] http://thread.gmane.org/gmane.comp.file-systems.ext4/10736
+
+
+PS: As my rootfs is also on ext4, I noticed another, completely unrelated oddity:
+
+[    1.604198] Using IPI Shortcut mode
+[    1.608394] input: AT Translated Set 2 keyboard as /devices/platform/i8042/serio0/input/input0
+[    1.737198] EXT3-fs: hda1: couldn't mount because of unsupported optional features (240).
+[    1.754302] EXT4-fs: barriers enabled
+[    1.773267] kjournald2 starting.  Commit interval 5 seconds
+
+...this is befor INIT starts, so who's trying to mount "/" as ext3 first?
+
+-- 
+BOFH excuse #55:
+
+Plumber mistook routing panel for decorative wall fixture
