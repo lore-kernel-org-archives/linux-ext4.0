@@ -1,71 +1,57 @@
-From: "Peng tao" <bergwolf@gmail.com>
-Subject: Re: Problems with the max value for create directory
-Date: Mon, 29 Dec 2008 21:47:15 +0800
-Message-ID: <6149e97b0812290547r6e487caap46c0ec77ccc28709@mail.gmail.com>
-References: <495054DE.9030405@cn.fujitsu.com> <495062D1.6010805@jp.fujitsu.com>
-	 <20081223201247.GU23723@mit.edu> <49518DFD.8090507@cn.fujitsu.com>
+From: Alberto Bertogli <albertito@blitiri.com.ar>
+Subject: Re: [dm-devel] Re: jbd2 inside a device mapper module
+Date: Mon, 29 Dec 2008 19:05:37 -0200
+Message-ID: <20081229210537.GN4127@blitiri.com.ar>
+References: <20081225143535.GA4127@blitiri.com.ar> <20081227200127.GX5000@webber.adilger.int> <46A00B48CC54E4468EF6911F877AC4CA01DDBB66@blrx3m10.blr.amer.dell.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: base64
-Cc: "Theodore Tso" <tytso@mit.edu>,
-	"Toshiyuki Okajima" <toshi.okajima@jp.fujitsu.com>,
-	linux-ext4@vger.kernel.org
-To: "Zhang Xiliang" <zhangxiliang@cn.fujitsu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: dm-devel@redhat.com, Alex.Zhuravlev@sun.com,
+	linux-ext4@vger.kernel.org, tytso@MIT.EDU,
+	linux-kernel@vger.kernel.org
+To: Shyam_Iyer@Dell.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.227]:46258 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753021AbYL2NrQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Dec 2008 08:47:16 -0500
-Received: by rv-out-0506.google.com with SMTP id k40so4380156rvb.1
-        for <linux-ext4@vger.kernel.org>; Mon, 29 Dec 2008 05:47:15 -0800 (PST)
-In-Reply-To: <49518DFD.8090507@cn.fujitsu.com>
+Received: from alerce.vps.bitfolk.com ([212.13.194.134]:1064 "EHLO
+	alerce.vps.bitfolk.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752646AbYL2VIn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Dec 2008 16:08:43 -0500
 Content-Disposition: inline
+In-Reply-To: <46A00B48CC54E4468EF6911F877AC4CA01DDBB66@blrx3m10.blr.amer.dell.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-SGksIGd1eXMKCkkgZ290IGEgcXVlc3Rpb24gYWJvdXQgdGhpcy4KU2luY2UgaHRyZWUgaXMgYSBw
-b3RlbnRpYWwgbGltaXRhdGlvbiBmb3Igc3ViZGlyZWN0b3JpZXMuIElzIHRoZXJlIGEKcmVhc29u
-IHdoeSBFWFQ0X0xJTktfTUFYIGlzIGFwcGxpZWQgd2hlbiBmcyBoYXNuJ3QgZGlyX2luZGV4IGJ1
-dAppZ25vcmVkIHdoZW4gZnMgaGFzIGRpcl9pbmRleChieSB0aGUgZm9sbG93aW5nIGNvZGUpPwoK
-I2RlZmluZSBpc19keChkaXIpIChFWFQ0X0hBU19DT01QQVRfRkVBVFVSRShkaXItPmlfc2IsIFwK
-CQkJCSAgICAgIEVYVDRfRkVBVFVSRV9DT01QQVRfRElSX0lOREVYKSAmJiBcCgkJICAgICAgKEVY
-VDRfSShkaXIpLT5pX2ZsYWdzICYgRVhUNF9JTkRFWF9GTCkpCiNkZWZpbmUgRVhUNF9ESVJfTElO
-S19NQVgoZGlyKSAoIWlzX2R4KGRpcikgJiYgKGRpciktPmlfbmxpbmsgPj0gRVhUNF9MSU5LX01B
-WCkKCgpPbiBXZWQsIERlYyAyNCwgMjAwOCBhdCA5OjE4IEFNLCBaaGFuZyBYaWxpYW5nCjx6aGFu
-Z3hpbGlhbmdAY24uZnVqaXRzdS5jb20+IHdyb3RlOgo+IFRoZW9kb3JlIFRzbyDlhpnpgZM6Cj4K
-Pj4KPj4gU28gdGhhdCdzIG5vdCBpdC4gIFRoZSBwcm9ibGVtIGlzIHRoYXQgaW5kZXhlZCBkaXJl
-dG9yaWVzIGhhdmUgYSBsaW1pdAo+PiB0aGF0IG9ubHkgYWxsb3dzIHRoZSB0cmVlcyB0byBiZSB0
-d28gbGV2ZWxzIGRlZXAuICBUaGUgZmFub3V0IGlzCj4+IG5vcm1hbGx5IGJpZyBlbm91Z2ggdGhh
-dCB0aGlzIGlzIGVmZmVjdGl2ZWx5IG5vdCBhIHByb2JsZW0sIGJ1dCBpZiB5b3UKPj4gdXNlIHZl
-cnkgbG9uZyBmaWxlbmFtZXMsIGFuZCBhIDFrIGJsb2Nrc2l6ZSwgeW91IHdpbGwgcnVuIGludG8g
-dGhpcwo+PiBsaW1pdCBtdWNoIG1vcmUgcXVpY2tseS4gIFNvIHRoZSBwcm9ibGVtIGlzIG5vdCB0
-aGUgbnVtYmVyIG9mIHN1Ygo+PiBkaXJlY3RvcmllcywgYnV0IHRoZSBtYXhpbXVtIGRlcHRoIG9m
-IHRoZSBodHJlZSBhbGxvd2VkIGluIERhbmllbAo+PiBQaGlsbGlwcycgcmVsYXRpdmVseSByZXN0
-cmljdGVkIGltcGxlbWVudGF0aW9uLiAgTm90ZSB0aGF0IHdpdGggYSA0awo+PiBibG9jayBmaWxl
-c3lzdGVtLCB0aGUgbGltaXRzIGdldCBleHBhbmRlZCBieSBhIGZhY3RvciBvZiA0IGN1YmVkLCBv
-cgo+PiA2NC4gIEFuZCBtb3N0IG9mIHRoZSB0aW1lIHVzZXJzIGFyZW4ndCBtYXhpbWFsIGxlbmd0
-aCBuYW1lZCBkaXJlY3RvcnkKPj4gZW50cmllcywgd2hpY2ggZnVydGhlciBwdXNoZXMgdGhlIGxp
-bWl0IG91dCBpbiB0aGUgbm9ybWFsIGNhc2UuCj4+Cj4+IEl0IGluIHRoZW9yeSB3b3VsZCBiZSBw
-b3NzaWJsZSB0byByZWxheCB0aGlzIHJlc3RyaWN0aW9uLCB1c2luZyBhIG1vcmUKPj4gYWR2YW5j
-ZWQgaHRyZWUgaW1wbGVtZW50YXRpb24gYW5kIGEgZmVhdHVyZSBmbGFnIHRvIGFsbG93IGJhY2t3
-YXJkcwo+PiBjb21wYXRpYmlsaXR5IHdpdGggb2xkZXIga2VybmVscyB0aGF0IG9ubHkgc3VwcG9y
-dCB0aGUgbWF4aW1hbCBkZXB0aC4KPj4gQW5kcmVhcyBoYXMgYSBwcm90b3R5cGUga2VybmVsIGlt
-cGxlbWVudGF0aW9uIHdoaWNoIGluIHRoZW9yeSBjb3VsZCBiZQo+PiBhZGRlZCB0byBleHQ0LiAg
-SXQgaGFzbid0IGJlZW4gaGlnaCBvbiBteSBwcmlvcml0eSBsaXN0IHRvIGNvbXBsZXRlLAo+PiBi
-dXQgaWYgc29tZW9uZSBlbHNlIHJlYWxseSBmaW5kcyB0aGlzIGxpbWl0IHRvIGJlIGFubm95aW5n
-LCBpdCBpcyBhCj4+IHByb2plY3QgdGhleSBtaWdodCB0cnkgdG8gY29tcGxldGUuCj4+Cj4+IFdl
-cmUgeW91IHdyaXRpbmcgdGhpcyB0ZXN0IHByb2dyYW0gYmVjYXVzZSB0aGlzIGlzIGEgcmVhbGlz
-dGljCj4+IHNpdHVhdGlvbiBmb3IgeW91ciBhcHBsaWNhdGlvbiwgb3IganVzdCB0byBleHBsb3Jl
-IHRoZSBsaW1pdHMgb2YgZXh0ND8KPj4KPgo+IFRoYW5rcyBmb3IgZXhwbGFuYXRpb24uCj4KPiBJ
-IHNlZSB0aGUgbGltaXQgb2YgZXh0NCBzdWJkaXJlY3RvcnkuIFRoZSB0ZXN0IHByb2dyYW0gb3Jp
-Z2luYWxseSB0ZXN0cyBpdC4KPiBCdXQgSSBmYWlsIGFuZCBmaW5kIHRoZSBsaW1pdCBvZiB0aGUg
-aHRyZWUuCj4KPiBJIHRoaW5rIGl0IG1heSBiZSBhbm5veWluZy4gU29tZWJvZHkgbWF5IGJlIHB1
-enpsZWQgZm9yIHRoZSB0d28gbGltaXRzLgo+IFRoZSBsaW1pdCBvZiB0aGUgaHRyZWUgc2hvdWxk
-IGJlIGdyZWF0ZXIgdGhhbiB0aGUgbGltaXQgb2YgZXh0NAo+IHN1YmRpcmVjdG9yeS4KPgo+IC0t
-Cj4gUmVnYXJkcwo+IFpoYW5nIFhpbGlhbmcKPgo+IC0tCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0
-aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LWV4dDQiIGluCj4gdGhl
-IGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcKPiBNb3JlIG1h
-am9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0
-bWwKPgoKCgotLSAKQ2hlZXJzLAoKQmVyZ3dvbGYKCi4uLi4uLi4uLi4uLi4uLi4KUm9kbmV5IERh
-bmdlcmZpZWxkICAtICJUaGUgd2F5IG15IGx1Y2sgaXMgcnVubmluZywgaWYgSSB3YXMgYQpwb2xp
-dGljaWFuIEkgd291bGQgYmUgaG9uZXN0LiIK
+On Mon, Dec 29, 2008 at 11:50:14AM +0530, Shyam_Iyer@Dell.com wrote:
+> Andreas Dilger wrote:
+> > On Dec 25, 2008  12:35 -0200, Alberto Bertogli wrote:
+> > > On Wed, Dec 24, 2008 at 06:49:15PM -0500, Theodore Tso wrote:
+> > > > I have no idea why you would need to do manual __breads().  No
+> doubt
+> > > > I'm missing some context here.  
+> > >
+> > > I'm writing (just for fun and learning purposes) a device mapper
+> > > module that stores checksums on writes and verifies them on reads.
+> The
+> > > integrity metadata (currently just the checksum) is interleaved in
+> the
+> > > backing device: one sector holding the integrity metadata for the
+> > > following 64 data sectors.
+> 
+> > Alex and I discussed implementing checksums for ext4 using an external
+> device like this, and he might have some more design information for
+> you.
+> 
+> 
+> That external device could possibly be a TPM chip that can store
+> checksums.
+
+Thanks for the suggestion. The code I have at the moment (without the
+journal stuff) already has the capability of storing checksums in a
+different device. It's one of the reasons why I would prefer to avoid
+using jbd.
+
+I think I'll go with the "two metadatas" approach and see how it goes.
+Worst case scenario is that I have to drop that code, which means to be
+back where I am now, only with one less option.
+
+Thanks,
+		Alberto
+
