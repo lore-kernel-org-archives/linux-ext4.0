@@ -1,22 +1,71 @@
-From: "Michelle" <spektar33@whowantsmoney.net>
-Subject: Greeting Card from 1lovecards.com
-Date: Tue, 30 Dec 2008 00:51:39 -0800
-Message-ID: <20081230005139.5000408@whowantsmoney.net>
+From: "Peng tao" <bergwolf@gmail.com>
+Subject: Re: Problems with the max value for create directory
+Date: Mon, 29 Dec 2008 21:47:15 +0800
+Message-ID: <6149e97b0812290547r6e487caap46c0ec77ccc28709@mail.gmail.com>
+References: <495054DE.9030405@cn.fujitsu.com> <495062D1.6010805@jp.fujitsu.com>
+	 <20081223201247.GU23723@mit.edu> <49518DFD.8090507@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: base64
+Cc: "Theodore Tso" <tytso@mit.edu>,
+	"Toshiyuki Okajima" <toshi.okajima@jp.fujitsu.com>,
+	linux-ext4@vger.kernel.org
+To: "Zhang Xiliang" <zhangxiliang@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from dsl-146-31-21.telkomadsl.co.za ([165.146.31.21]:63570 "HELO
-	wblv-ip-pcache-1-vif0.telkom-ipnet.co.za" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with SMTP id S1752687AbYL2KyO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Dec 2008 05:54:14 -0500
+Received: from rv-out-0506.google.com ([209.85.198.227]:46258 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753021AbYL2NrQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Dec 2008 08:47:16 -0500
+Received: by rv-out-0506.google.com with SMTP id k40so4380156rvb.1
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Dec 2008 05:47:15 -0800 (PST)
+In-Reply-To: <49518DFD.8090507@cn.fujitsu.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Michelle has just sent an electronic greeting card.
-View the card by clicking: 
-http://superchristmasday.com/?code=316a8c76abb3139b7859aa17c0983
-Your eCard will be available with us for the next 30 days.
-
+SGksIGd1eXMKCkkgZ290IGEgcXVlc3Rpb24gYWJvdXQgdGhpcy4KU2luY2UgaHRyZWUgaXMgYSBw
+b3RlbnRpYWwgbGltaXRhdGlvbiBmb3Igc3ViZGlyZWN0b3JpZXMuIElzIHRoZXJlIGEKcmVhc29u
+IHdoeSBFWFQ0X0xJTktfTUFYIGlzIGFwcGxpZWQgd2hlbiBmcyBoYXNuJ3QgZGlyX2luZGV4IGJ1
+dAppZ25vcmVkIHdoZW4gZnMgaGFzIGRpcl9pbmRleChieSB0aGUgZm9sbG93aW5nIGNvZGUpPwoK
+I2RlZmluZSBpc19keChkaXIpIChFWFQ0X0hBU19DT01QQVRfRkVBVFVSRShkaXItPmlfc2IsIFwK
+CQkJCSAgICAgIEVYVDRfRkVBVFVSRV9DT01QQVRfRElSX0lOREVYKSAmJiBcCgkJICAgICAgKEVY
+VDRfSShkaXIpLT5pX2ZsYWdzICYgRVhUNF9JTkRFWF9GTCkpCiNkZWZpbmUgRVhUNF9ESVJfTElO
+S19NQVgoZGlyKSAoIWlzX2R4KGRpcikgJiYgKGRpciktPmlfbmxpbmsgPj0gRVhUNF9MSU5LX01B
+WCkKCgpPbiBXZWQsIERlYyAyNCwgMjAwOCBhdCA5OjE4IEFNLCBaaGFuZyBYaWxpYW5nCjx6aGFu
+Z3hpbGlhbmdAY24uZnVqaXRzdS5jb20+IHdyb3RlOgo+IFRoZW9kb3JlIFRzbyDlhpnpgZM6Cj4K
+Pj4KPj4gU28gdGhhdCdzIG5vdCBpdC4gIFRoZSBwcm9ibGVtIGlzIHRoYXQgaW5kZXhlZCBkaXJl
+dG9yaWVzIGhhdmUgYSBsaW1pdAo+PiB0aGF0IG9ubHkgYWxsb3dzIHRoZSB0cmVlcyB0byBiZSB0
+d28gbGV2ZWxzIGRlZXAuICBUaGUgZmFub3V0IGlzCj4+IG5vcm1hbGx5IGJpZyBlbm91Z2ggdGhh
+dCB0aGlzIGlzIGVmZmVjdGl2ZWx5IG5vdCBhIHByb2JsZW0sIGJ1dCBpZiB5b3UKPj4gdXNlIHZl
+cnkgbG9uZyBmaWxlbmFtZXMsIGFuZCBhIDFrIGJsb2Nrc2l6ZSwgeW91IHdpbGwgcnVuIGludG8g
+dGhpcwo+PiBsaW1pdCBtdWNoIG1vcmUgcXVpY2tseS4gIFNvIHRoZSBwcm9ibGVtIGlzIG5vdCB0
+aGUgbnVtYmVyIG9mIHN1Ygo+PiBkaXJlY3RvcmllcywgYnV0IHRoZSBtYXhpbXVtIGRlcHRoIG9m
+IHRoZSBodHJlZSBhbGxvd2VkIGluIERhbmllbAo+PiBQaGlsbGlwcycgcmVsYXRpdmVseSByZXN0
+cmljdGVkIGltcGxlbWVudGF0aW9uLiAgTm90ZSB0aGF0IHdpdGggYSA0awo+PiBibG9jayBmaWxl
+c3lzdGVtLCB0aGUgbGltaXRzIGdldCBleHBhbmRlZCBieSBhIGZhY3RvciBvZiA0IGN1YmVkLCBv
+cgo+PiA2NC4gIEFuZCBtb3N0IG9mIHRoZSB0aW1lIHVzZXJzIGFyZW4ndCBtYXhpbWFsIGxlbmd0
+aCBuYW1lZCBkaXJlY3RvcnkKPj4gZW50cmllcywgd2hpY2ggZnVydGhlciBwdXNoZXMgdGhlIGxp
+bWl0IG91dCBpbiB0aGUgbm9ybWFsIGNhc2UuCj4+Cj4+IEl0IGluIHRoZW9yeSB3b3VsZCBiZSBw
+b3NzaWJsZSB0byByZWxheCB0aGlzIHJlc3RyaWN0aW9uLCB1c2luZyBhIG1vcmUKPj4gYWR2YW5j
+ZWQgaHRyZWUgaW1wbGVtZW50YXRpb24gYW5kIGEgZmVhdHVyZSBmbGFnIHRvIGFsbG93IGJhY2t3
+YXJkcwo+PiBjb21wYXRpYmlsaXR5IHdpdGggb2xkZXIga2VybmVscyB0aGF0IG9ubHkgc3VwcG9y
+dCB0aGUgbWF4aW1hbCBkZXB0aC4KPj4gQW5kcmVhcyBoYXMgYSBwcm90b3R5cGUga2VybmVsIGlt
+cGxlbWVudGF0aW9uIHdoaWNoIGluIHRoZW9yeSBjb3VsZCBiZQo+PiBhZGRlZCB0byBleHQ0LiAg
+SXQgaGFzbid0IGJlZW4gaGlnaCBvbiBteSBwcmlvcml0eSBsaXN0IHRvIGNvbXBsZXRlLAo+PiBi
+dXQgaWYgc29tZW9uZSBlbHNlIHJlYWxseSBmaW5kcyB0aGlzIGxpbWl0IHRvIGJlIGFubm95aW5n
+LCBpdCBpcyBhCj4+IHByb2plY3QgdGhleSBtaWdodCB0cnkgdG8gY29tcGxldGUuCj4+Cj4+IFdl
+cmUgeW91IHdyaXRpbmcgdGhpcyB0ZXN0IHByb2dyYW0gYmVjYXVzZSB0aGlzIGlzIGEgcmVhbGlz
+dGljCj4+IHNpdHVhdGlvbiBmb3IgeW91ciBhcHBsaWNhdGlvbiwgb3IganVzdCB0byBleHBsb3Jl
+IHRoZSBsaW1pdHMgb2YgZXh0ND8KPj4KPgo+IFRoYW5rcyBmb3IgZXhwbGFuYXRpb24uCj4KPiBJ
+IHNlZSB0aGUgbGltaXQgb2YgZXh0NCBzdWJkaXJlY3RvcnkuIFRoZSB0ZXN0IHByb2dyYW0gb3Jp
+Z2luYWxseSB0ZXN0cyBpdC4KPiBCdXQgSSBmYWlsIGFuZCBmaW5kIHRoZSBsaW1pdCBvZiB0aGUg
+aHRyZWUuCj4KPiBJIHRoaW5rIGl0IG1heSBiZSBhbm5veWluZy4gU29tZWJvZHkgbWF5IGJlIHB1
+enpsZWQgZm9yIHRoZSB0d28gbGltaXRzLgo+IFRoZSBsaW1pdCBvZiB0aGUgaHRyZWUgc2hvdWxk
+IGJlIGdyZWF0ZXIgdGhhbiB0aGUgbGltaXQgb2YgZXh0NAo+IHN1YmRpcmVjdG9yeS4KPgo+IC0t
+Cj4gUmVnYXJkcwo+IFpoYW5nIFhpbGlhbmcKPgo+IC0tCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0
+aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LWV4dDQiIGluCj4gdGhl
+IGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcKPiBNb3JlIG1h
+am9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0
+bWwKPgoKCgotLSAKQ2hlZXJzLAoKQmVyZ3dvbGYKCi4uLi4uLi4uLi4uLi4uLi4KUm9kbmV5IERh
+bmdlcmZpZWxkICAtICJUaGUgd2F5IG15IGx1Y2sgaXMgcnVubmluZywgaWYgSSB3YXMgYQpwb2xp
+dGljaWFuIEkgd291bGQgYmUgaG9uZXN0LiIK
