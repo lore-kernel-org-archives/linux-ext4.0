@@ -1,79 +1,50 @@
-From: Alberto Bertogli <albertito@blitiri.com.ar>
-Subject: Re: jbd2 inside a device mapper module
-Date: Mon, 29 Dec 2008 19:30:38 -0200
-Message-ID: <20081229213038.GO4127@blitiri.com.ar>
-References: <20081224211038.GT4127@blitiri.com.ar> <20081224234915.GA23723@mit.edu> <20081225143535.GA4127@blitiri.com.ar> <20081225155248.GJ9871@mit.edu> <20081226000005.GB4127@blitiri.com.ar> <20081226033736.GK9871@mit.edu> <20081226161708.GC4127@blitiri.com.ar> <20081226180642.GO9871@mit.edu> <20081227030020.GD4127@blitiri.com.ar> <20081227192950.GB30198@mit.edu>
+From: "Manish Katiyar" <mkatiyar@gmail.com>
+Subject: confusion in validation of rec_len in ext2_add_link
+Date: Tue, 30 Dec 2008 11:15:51 +0530
+Message-ID: <ea11fea30812292145n2f484706refbe7bebaeb44e77@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, dm-devel@redhat.com
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Kernelnewbies <kernelnewbies@nl.linux.org>,
+	Linux-Ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from alerce.vps.bitfolk.com ([212.13.194.134]:4678 "EHLO
-	alerce.vps.bitfolk.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752644AbYL2Vbs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Dec 2008 16:31:48 -0500
+Received: from ti-out-0910.google.com ([209.85.142.184]:35070 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750788AbYL3Fpx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Dec 2008 00:45:53 -0500
+Received: by ti-out-0910.google.com with SMTP id b6so7944123tic.23
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Dec 2008 21:45:51 -0800 (PST)
 Content-Disposition: inline
-In-Reply-To: <20081227192950.GB30198@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Dec 27, 2008 at 02:29:50PM -0500, Theodore Tso wrote:
-> On Sat, Dec 27, 2008 at 01:00:20AM -0200, Alberto Bertogli wrote:
-> > I have a couple of alternatives in mind, the most decent one at the
-> > moment is having two metadatas (M1 and M2) for the each block, and
-> > update M1 on the first write to the given block, M2 on the second, M1 on
-> > the third, and so on.
-> 
-> I don't see how this would help.  You still have to do synchronous
-> writes for safety, which is what is going to kill your performance.
+Hi,
 
-I was thinking of queueing the writes to the metadata, and then queue
-the writes of the data marked with bio_barrier(); when the data write
-completes I end the original bio.
+I was trying to understand the purpose of the below check for
+validating rec_len in the function ext2_add_link(). Before reaching
+line 515 we call ext2_get_page() which checks for valid entries on the
+page and thus validates the rec_len too. And then we call the
+lock_page(), so is this check redundant or to avoid cases when
+something could have changed on the page between the lines 497 and 501
+?
 
-Although if they metadata is on a different device, I do have to wait
-for the metadata to be written because the barrier is useless; but OTOH
-if I use a journal I can't split my data and metadata in two different
-devices, can I? (without using two journals or doing more complex
-stuff).
+ext2_add_link() {
 
+........	
+497            page = ext2_get_page(dir, n, 0);
+499	        	if (IS_ERR(page))
+500			goto out;
+501		    lock_page(page);
+.........
+515			if (de->rec_len == 0) {
+516				ext2_error(dir->i_sb, __func__,
+517					"zero-length directory entry");
+518				err = -EIO;
+519				goto out_unlock;
+520			}
 
-> What you want to do is to batch as many writes as possible.  Until the
-> underlying filesystem requests a flush, you can afford to hold off
-> writing the block to disk.  Otherwise, you'll end up turning each 4k
+..........
+}
 
-I think I can't do this at the device-mapper layer. There's a .flush
-function pointer, but I think it's suspend-related; and in any case I
-gave it a try and it's never called during normal operation.
-
-
-> > > Why not just use the ext3/4 external journal format?
-> > 
-> > Wouldn't that lead to confusion, because people can think the device
-> > holds an ext3/4 external journal, while it actually holds a
-> > device-mapper backing device that happens to contain a journal?
-> 
-> Not really; the external journal has a label and uuid, and the journal
-> superblock has a place to store the uuid of the "client" of the
-> journal.  So there is plenty of information available to tie an
-> external journal to some device-mapper backing device.
-> 
-> > What would be the advantages of using the ext3/4 journal format, over a
-> > simple initial sector and the journal following?
-> 
-> There already existing tools to find the external journal, using the
-> blkid library.  So you only have to store the UUID of the journal in
-> the superblock of the device-mapper backing device, and then you can
-> easily find the external journal as follows:
-> 
->        journal_fn = blkid_get_devname(ctx->blkid, "UUID", uuid);
-
-Thanks a lot for the suggestions!
-
-As I said in the other email, I'll give the writes a try and see how it
-goes. If their performance suck (what, from what you tell me, it's
-likely) at least I'll have something that works.
-
-Thanks a lot,
-		Alberto
-
+Thanks -
+Manish
