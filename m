@@ -1,268 +1,336 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Remove code to create the journal inode
-Date: Sun,  4 Jan 2009 15:32:45 -0500
-Message-ID: <1231101165-13815-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext4: Add markers for better debuggability
+Date: Sun,  4 Jan 2009 15:33:58 -0500
+Message-ID: <1231101238-13911-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40621 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:40629 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751373AbZADUcs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 4 Jan 2009 15:32:48 -0500
+	id S1751140AbZADUeB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 4 Jan 2009 15:34:01 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This code has been obsolete in quite some time, since the supported
-method for adding a journal inode is to use tune2fs (or to creating
-new filesystem with a journal via mke2fs or mkfs.ext4).
-
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- Documentation/filesystems/ext4.txt |    4 --
- fs/ext4/super.c                    |   68 ++--------------------------------
- fs/jbd2/journal.c                  |   72 ------------------------------------
- include/linux/jbd2.h               |    1 -
- 4 files changed, 4 insertions(+), 141 deletions(-)
+ fs/ext4/ialloc.c  |    9 ++++++++
+ fs/ext4/inode.c   |   56 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/mballoc.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 116 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index 8066e6e..3024f74 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -143,10 +143,6 @@ journal_async_commit	Commit block can be written to disk without waiting
- journal=update		Update the ext4 file system's journal to the current
- 			format.
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 88ab940..3bcf197 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -210,6 +210,11 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
  
--journal=inum		When a journal already exists, this option is ignored.
--			Otherwise, it specifies the number of the inode which
--			will represent the ext4 file system's journal file.
--
- journal_dev=devnum	When the external journal device's major/minor numbers
- 			have changed, this option allows the user to specify
- 			the new journal location.  The journal device is
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 356ad34..70c27ad 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -51,8 +51,6 @@ struct proc_dir_entry *ext4_proc_root;
+ 	ino = inode->i_ino;
+ 	ext4_debug("freeing inode %lu\n", ino);
++	trace_mark(ext4_free_inode,
++		   "dev %s ino %lu mode %d uid %lu gid %lu bocks %llu",
++		   sb->s_id, inode->i_ino, inode->i_mode,
++		   (unsigned long) inode->i_uid, (unsigned long) inode->i_gid,
++		   (unsigned long long) inode->i_blocks);
  
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
- 			     unsigned long journal_devnum);
--static int ext4_create_journal(struct super_block *, struct ext4_super_block *,
--			       unsigned int);
- static void ext4_commit_super(struct super_block *sb,
- 			      struct ext4_super_block *es, int sync);
- static void ext4_mark_recovery_complete(struct super_block *sb,
-@@ -1006,7 +1004,7 @@ enum {
- 	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
- 	Opt_reservation, Opt_noreservation, Opt_noload, Opt_nobh, Opt_bh,
- 	Opt_commit, Opt_min_batch_time, Opt_max_batch_time,
--	Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
-+	Opt_journal_update, Opt_journal_dev,
- 	Opt_journal_checksum, Opt_journal_async_commit,
- 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
- 	Opt_data_err_abort, Opt_data_err_ignore,
-@@ -1048,7 +1046,6 @@ static const match_table_t tokens = {
- 	{Opt_min_batch_time, "min_batch_time=%u"},
- 	{Opt_max_batch_time, "max_batch_time=%u"},
- 	{Opt_journal_update, "journal=update"},
--	{Opt_journal_inum, "journal=%u"},
- 	{Opt_journal_dev, "journal_dev=%u"},
- 	{Opt_journal_checksum, "journal_checksum"},
- 	{Opt_journal_async_commit, "journal_async_commit"},
-@@ -1102,7 +1099,7 @@ static ext4_fsblk_t get_sb_block(void **data)
- }
- 
- static int parse_options(char *options, struct super_block *sb,
--			 unsigned int *inum, unsigned long *journal_devnum,
-+			 unsigned long *journal_devnum,
- 			 ext4_fsblk_t *n_blocks_count, int is_remount)
- {
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -1226,16 +1223,6 @@ static int parse_options(char *options, struct super_block *sb,
- 			}
- 			set_opt(sbi->s_mount_opt, UPDATE_JOURNAL);
- 			break;
--		case Opt_journal_inum:
--			if (is_remount) {
--				printk(KERN_ERR "EXT4-fs: cannot specify "
--				       "journal on remount\n");
--				return 0;
--			}
--			if (match_int(&args[0], &option))
--				return 0;
--			*inum = option;
--			break;
- 		case Opt_journal_dev:
- 			if (is_remount) {
- 				printk(KERN_ERR "EXT4-fs: cannot specify "
-@@ -2041,7 +2028,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	ext4_fsblk_t sb_block = get_sb_block(&data);
- 	ext4_fsblk_t logical_sb_block;
- 	unsigned long offset = 0;
--	unsigned int journal_inum = 0;
- 	unsigned long journal_devnum = 0;
- 	unsigned long def_mount_opts;
- 	struct inode *root;
-@@ -2161,8 +2147,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	set_opt(sbi->s_mount_opt, DELALLOC);
- 
- 
--	if (!parse_options((char *) data, sb, &journal_inum, &journal_devnum,
--			   NULL, 0))
-+	if (!parse_options((char *) data, sb, &journal_devnum, NULL, 0))
- 		goto failed_mount;
- 
- 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
-@@ -2469,9 +2454,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 				goto failed_mount4;
- 			}
- 		}
--	} else if (journal_inum) {
--		if (ext4_create_journal(sb, es, journal_inum))
--			goto failed_mount3;
- 	} else {
- 		clear_opt(sbi->s_mount_opt, DATA_FLAGS);
- 		set_opt(sbi->s_mount_opt, WRITEBACK_DATA);
-@@ -2929,48 +2911,6 @@ static int ext4_load_journal(struct super_block *sb,
- 	return 0;
- }
- 
--static int ext4_create_journal(struct super_block *sb,
--			       struct ext4_super_block *es,
--			       unsigned int journal_inum)
--{
--	journal_t *journal;
--	int err;
--
--	if (sb->s_flags & MS_RDONLY) {
--		printk(KERN_ERR "EXT4-fs: readonly filesystem when trying to "
--				"create journal.\n");
--		return -EROFS;
--	}
--
--	journal = ext4_get_journal(sb, journal_inum);
--	if (!journal)
--		return -EINVAL;
--
--	printk(KERN_INFO "EXT4-fs: creating new journal on inode %u\n",
--	       journal_inum);
--
--	err = jbd2_journal_create(journal);
--	if (err) {
--		printk(KERN_ERR "EXT4-fs: error creating journal.\n");
--		jbd2_journal_destroy(journal);
--		return -EIO;
--	}
--
--	EXT4_SB(sb)->s_journal = journal;
--
--	ext4_update_dynamic_rev(sb);
--	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--	EXT4_SET_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL);
--
--	es->s_journal_inum = cpu_to_le32(journal_inum);
--	sb->s_dirt = 1;
--
--	/* Make sure we flush the recovery flag to disk. */
--	ext4_commit_super(sb, es, 1);
--
--	return 0;
--}
--
- static void ext4_commit_super(struct super_block *sb,
- 			      struct ext4_super_block *es, int sync)
- {
-@@ -3209,7 +3149,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
  	/*
- 	 * Allow the "check" option to be passed as a remount option.
- 	 */
--	if (!parse_options(data, sb, NULL, NULL, &n_blocks_count, 1)) {
-+	if (!parse_options(data, sb, NULL, &n_blocks_count, 1)) {
- 		err = -EINVAL;
- 		goto restore_opts;
+ 	 * Note: we must free any quota before locking the superblock,
+@@ -698,6 +703,8 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 		return ERR_PTR(-EPERM);
+ 
+ 	sb = dir->i_sb;
++	trace_mark(ext4_request_inode, "dev %s dir %lu mode %d", sb->s_id,
++		   dir->i_ino, mode);
+ 	inode = new_inode(sb);
+ 	if (!inode)
+ 		return ERR_PTR(-ENOMEM);
+@@ -922,6 +929,8 @@ got:
  	}
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 34ef980..b10d728 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -66,7 +66,6 @@ EXPORT_SYMBOL(jbd2_journal_update_format);
- EXPORT_SYMBOL(jbd2_journal_check_used_features);
- EXPORT_SYMBOL(jbd2_journal_check_available_features);
- EXPORT_SYMBOL(jbd2_journal_set_features);
--EXPORT_SYMBOL(jbd2_journal_create);
- EXPORT_SYMBOL(jbd2_journal_load);
- EXPORT_SYMBOL(jbd2_journal_destroy);
- EXPORT_SYMBOL(jbd2_journal_abort);
-@@ -1163,77 +1162,6 @@ static int journal_reset(journal_t *journal)
+ 
+ 	ext4_debug("allocating inode %lu\n", inode->i_ino);
++	trace_mark(ext4_allocate_inode, "dev %s ino %lu dir %lu mode %d",
++		   sb->s_id, inode->i_ino, dir->i_ino, mode);
+ 	goto really_out;
+ fail:
+ 	ext4_std_error(sb, err);
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index aa402db..8f7884d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1350,6 +1350,10 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+  	pgoff_t index;
+ 	unsigned from, to;
+ 
++	trace_mark(ext4_write_begin,
++		   "dev %s ino %lu pos %llu len %u flags %u",
++		   inode->i_sb->s_id, inode->i_ino,
++		   (unsigned long long) pos, len, flags);
+  	index = pos >> PAGE_CACHE_SHIFT;
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+ 	to = from + len;
+@@ -1421,6 +1425,10 @@ static int ext4_ordered_write_end(struct file *file,
+ 	struct inode *inode = mapping->host;
+ 	int ret = 0, ret2;
+ 
++	trace_mark(ext4_ordered_write_end,
++		   "dev %s ino %lu pos %llu len %u copied %u",
++		   inode->i_sb->s_id, inode->i_ino,
++		   (unsigned long long) pos, len, copied);
+ 	ret = ext4_jbd2_file_inode(handle, inode);
+ 
+ 	if (ret == 0) {
+@@ -1459,6 +1467,10 @@ static int ext4_writeback_write_end(struct file *file,
+ 	int ret = 0, ret2;
+ 	loff_t new_i_size;
+ 
++	trace_mark(ext4_writeback_write_end,
++		   "dev %s ino %lu pos %llu len %u copied %u",
++		   inode->i_sb->s_id, inode->i_ino,
++		   (unsigned long long) pos, len, copied);
+ 	new_i_size = pos + copied;
+ 	if (new_i_size > EXT4_I(inode)->i_disksize) {
+ 		ext4_update_i_disksize(inode, new_i_size);
+@@ -1494,6 +1506,10 @@ static int ext4_journalled_write_end(struct file *file,
+ 	unsigned from, to;
+ 	loff_t new_i_size;
+ 
++	trace_mark(ext4_journalled_write_end,
++		   "dev %s ino %lu pos %llu len %u copied %u",
++		   inode->i_sb->s_id, inode->i_ino,
++		   (unsigned long long) pos, len, copied);
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+ 	to = from + len;
+ 
+@@ -2310,6 +2326,9 @@ static int ext4_da_writepage(struct page *page,
+ 	struct buffer_head *page_bufs;
+ 	struct inode *inode = page->mapping->host;
+ 
++	trace_mark(ext4_da_writepage,
++		   "dev %s ino %lu page_index %lu",
++		   inode->i_sb->s_id, inode->i_ino, page->index);
+ 	size = i_size_read(inode);
+ 	if (page->index == size >> PAGE_CACHE_SHIFT)
+ 		len = size & ~PAGE_CACHE_MASK;
+@@ -2420,6 +2439,20 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
+ 
++	trace_mark(ext4_da_writepages,
++		   "dev %s ino %lu nr_t_write %ld "
++		   "pages_skipped %ld range_start %llu "
++		   "range_end %llu nonblocking %d "
++		   "for_kupdate %d for_reclaim %d "
++		   "for_writepages %d range_cyclic %d",
++		   inode->i_sb->s_id, inode->i_ino,
++		   wbc->nr_to_write, wbc->pages_skipped,
++		   (unsigned long long) wbc->range_start,
++		   (unsigned long long) wbc->range_end,
++		   wbc->nonblocking, wbc->for_kupdate,
++		   wbc->for_reclaim, wbc->for_writepages,
++		   wbc->range_cyclic);
++
+ 	/*
+ 	 * No pages to write? This is mainly a kludge to avoid starting
+ 	 * a transaction for special inodes like journal inode on last iput()
+@@ -2538,6 +2571,14 @@ out_writepages:
+ 	if (!no_nrwrite_index_update)
+ 		wbc->no_nrwrite_index_update = 0;
+ 	wbc->nr_to_write -= nr_to_writebump;
++	trace_mark(ext4_da_writepage_result,
++		   "dev %s ino %lu ret %d pages_written %d "
++		   "pages_skipped %ld congestion %d "
++		   "more_io %d no_nrwrite_index_update %d",
++		   inode->i_sb->s_id, inode->i_ino, ret,
++		   pages_written, wbc->pages_skipped,
++		   wbc->encountered_congestion, wbc->more_io,
++		   wbc->no_nrwrite_index_update);
+ 	return ret;
  }
  
- /**
-- * int jbd2_journal_create() - Initialise the new journal file
-- * @journal: Journal to create. This structure must have been initialised
-- *
-- * Given a journal_t structure which tells us which disk blocks we can
-- * use, create a new journal superblock and initialise all of the
-- * journal fields from scratch.
-- **/
--int jbd2_journal_create(journal_t *journal)
--{
--	unsigned long long blocknr;
--	struct buffer_head *bh;
--	journal_superblock_t *sb;
--	int i, err;
--
--	if (journal->j_maxlen < JBD2_MIN_JOURNAL_BLOCKS) {
--		printk (KERN_ERR "Journal length (%d blocks) too short.\n",
--			journal->j_maxlen);
--		journal_fail_superblock(journal);
--		return -EINVAL;
--	}
--
--	if (journal->j_inode == NULL) {
--		/*
--		 * We don't know what block to start at!
--		 */
--		printk(KERN_EMERG
--		       "%s: creation of journal on external device!\n",
--		       __func__);
--		BUG();
--	}
--
--	/* Zero out the entire journal on disk.  We cannot afford to
--	   have any blocks on disk beginning with JBD2_MAGIC_NUMBER. */
--	jbd_debug(1, "JBD: Zeroing out journal blocks...\n");
--	for (i = 0; i < journal->j_maxlen; i++) {
--		err = jbd2_journal_bmap(journal, i, &blocknr);
--		if (err)
--			return err;
--		bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
--		lock_buffer(bh);
--		memset (bh->b_data, 0, journal->j_blocksize);
--		BUFFER_TRACE(bh, "marking dirty");
--		mark_buffer_dirty(bh);
--		BUFFER_TRACE(bh, "marking uptodate");
--		set_buffer_uptodate(bh);
--		unlock_buffer(bh);
--		__brelse(bh);
--	}
--
--	sync_blockdev(journal->j_dev);
--	jbd_debug(1, "JBD: journal cleared.\n");
--
--	/* OK, fill in the initial static fields in the new superblock */
--	sb = journal->j_superblock;
--
--	sb->s_header.h_magic	 = cpu_to_be32(JBD2_MAGIC_NUMBER);
--	sb->s_header.h_blocktype = cpu_to_be32(JBD2_SUPERBLOCK_V2);
--
--	sb->s_blocksize	= cpu_to_be32(journal->j_blocksize);
--	sb->s_maxlen	= cpu_to_be32(journal->j_maxlen);
--	sb->s_first	= cpu_to_be32(1);
--
--	journal->j_transaction_sequence = 1;
--
--	journal->j_flags &= ~JBD2_ABORT;
--	journal->j_format_version = 2;
--
--	return journal_reset(journal);
--}
+@@ -2589,6 +2630,11 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 					len, flags, pagep, fsdata);
+ 	}
+ 	*fsdata = (void *)0;
++
++	trace_mark(ext4_da_write_begin,
++		   "dev %s ino %lu pos %llu len %u flags %u",
++		   inode->i_sb->s_id, inode->i_ino,
++		   (unsigned long long) pos, len, flags);
+ retry:
+ 	/*
+ 	 * With delayed allocation, we don't log the i_disksize update
+@@ -2678,6 +2724,10 @@ static int ext4_da_write_end(struct file *file,
+ 		}
+ 	}
+ 
++	trace_mark(ext4_da_write_end,
++		   "dev %s ino %lu pos %llu len %u copied %u",
++		   inode->i_sb->s_id, inode->i_ino,
++		   (unsigned long long) pos, len, copied);
+ 	start = pos & (PAGE_CACHE_SIZE - 1);
+ 	end = start + copied - 1;
+ 
+@@ -2891,6 +2941,9 @@ static int ext4_normal_writepage(struct page *page,
+ 	loff_t size = i_size_read(inode);
+ 	loff_t len;
+ 
++	trace_mark(ext4_normal_writepage,
++		   "dev %s ino %lu page_index %lu",
++		   inode->i_sb->s_id, inode->i_ino, page->index);
+ 	J_ASSERT(PageLocked(page));
+ 	if (page->index == size >> PAGE_CACHE_SHIFT)
+ 		len = size & ~PAGE_CACHE_MASK;
+@@ -2976,6 +3029,9 @@ static int ext4_journalled_writepage(struct page *page,
+ 	loff_t size = i_size_read(inode);
+ 	loff_t len;
+ 
++	trace_mark(ext4_journalled_writepage,
++		   "dev %s ino %lu page_index %lu",
++		   inode->i_sb->s_id, inode->i_ino, page->index);
+ 	J_ASSERT(PageLocked(page));
+ 	if (page->index == size >> PAGE_CACHE_SHIFT)
+ 		len = size & ~PAGE_CACHE_MASK;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 0372626..78e826d 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2878,8 +2878,9 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
+ 		discard_block = (ext4_fsblk_t) entry->group * EXT4_BLOCKS_PER_GROUP(sb)
+ 			+ entry->start_blk
+ 			+ le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+-		trace_mark(ext4_discard_blocks, "dev %s blk %llu count %u", sb->s_id,
+-			   (unsigned long long) discard_block, entry->count);
++		trace_mark(ext4_discard_blocks, "dev %s blk %llu count %u",
++			   sb->s_id, (unsigned long long) discard_block,
++			   entry->count);
+ 		sb_issue_discard(sb, discard_block, entry->count);
+ 
+ 		kmem_cache_free(ext4_free_ext_cachep, entry);
+@@ -3697,6 +3698,10 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
+ 
+ 	mb_debug("new inode pa %p: %llu/%u for %u\n", pa,
+ 			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
++	trace_mark(ext4_mb_new_inode_pa,
++		   "dev %s ino %lu pstart %llu len %u lstart %u",
++		   sb->s_id, ac->ac_inode->i_ino,
++		   pa->pa_pstart, pa->pa_len, pa->pa_lstart);
+ 
+ 	ext4_mb_use_inode_pa(ac, pa);
+ 	atomic_add(pa->pa_free, &EXT4_SB(sb)->s_mb_preallocated);
+@@ -3754,7 +3759,9 @@ ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
+ 	pa->pa_linear = 1;
+ 
+ 	mb_debug("new group pa %p: %llu/%u for %u\n", pa,
+-			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
++		 pa->pa_pstart, pa->pa_len, pa->pa_lstart);
++	trace_mark(ext4_mb_new_group_pa, "dev %s pstart %llu len %u lstart %u",
++		   sb->s_id, pa->pa_pstart, pa->pa_len, pa->pa_lstart);
+ 
+ 	ext4_mb_use_group_pa(ac, pa);
+ 	atomic_add(pa->pa_free, &EXT4_SB(sb)->s_mb_preallocated);
+@@ -3807,12 +3814,14 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
+ 	unsigned int next;
+ 	ext4_group_t group;
+ 	ext4_grpblk_t bit;
++	unsigned long long grp_blk_start;
+ 	sector_t start;
+ 	int err = 0;
+ 	int free = 0;
+ 
+ 	BUG_ON(pa->pa_deleted == 0);
+ 	ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, &bit);
++	grp_blk_start = pa->pa_pstart - bit;
+ 	BUG_ON(group != e4b->bd_group && pa->pa_len != 0);
+ 	end = bit + pa->pa_len;
+ 
+@@ -3842,6 +3851,10 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
+ 			ext4_mb_store_history(ac);
+ 		}
+ 
++		trace_mark(ext4_mb_release_inode_pa,
++			   "dev %s ino %lu block %llu count %u",
++			   sb->s_id, pa->pa_inode->i_ino, grp_blk_start + bit,
++			   next - bit);
+ 		mb_free_blocks(pa->pa_inode, e4b, bit, next - bit);
+ 		bit = next + 1;
+ 	}
+@@ -3875,6 +3888,8 @@ ext4_mb_release_group_pa(struct ext4_buddy *e4b,
+ 	if (ac)
+ 		ac->ac_op = EXT4_MB_HISTORY_DISCARD;
+ 
++	trace_mark(ext4_mb_release_group_pa, "dev %s pstart %llu len %d",
++		   sb->s_id, pa->pa_pstart, pa->pa_len);
+ 	BUG_ON(pa->pa_deleted == 0);
+ 	ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, &bit);
+ 	BUG_ON(group != e4b->bd_group && pa->pa_len != 0);
+@@ -4040,6 +4055,8 @@ void ext4_discard_preallocations(struct inode *inode)
+ 	}
+ 
+ 	mb_debug("discard preallocation for inode %lu\n", inode->i_ino);
++	trace_mark(ext4_discard_preallocations, "dev %s ino %lu", sb->s_id,
++		   inode->i_ino);
+ 
+ 	INIT_LIST_HEAD(&list);
+ 
+@@ -4492,6 +4509,8 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
+ 	int ret;
+ 	int freed = 0;
+ 
++	trace_mark(ext4_mb_discard_preallocations, "dev %s needed %d",
++		   sb->s_id, needed);
+ 	for (i = 0; i < EXT4_SB(sb)->s_groups_count && needed > 0; i++) {
+ 		ret = ext4_mb_discard_group_preallocations(sb, i, needed);
+ 		freed += ret;
+@@ -4520,6 +4539,18 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	sb = ar->inode->i_sb;
+ 	sbi = EXT4_SB(sb);
+ 
++	trace_mark(ext4_request_blocks, "dev %s flags %u len %u ino %lu "
++		   "lblk %llu goal %llu lleft %llu lright %llu "
++		   "pleft %llu pright %llu ",
++		   sb->s_id, ar->flags, ar->len,
++		   ar->inode ? ar->inode->i_ino : 0,
++		   (unsigned long long) ar->logical,
++		   (unsigned long long) ar->goal,
++		   (unsigned long long) ar->lleft,
++		   (unsigned long long) ar->lright,
++		   (unsigned long long) ar->pleft,
++		   (unsigned long long) ar->pright);
++
+ 	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
+ 		/*
+ 		 * With delalloc we already reserved the blocks
+@@ -4622,6 +4653,19 @@ out3:
+ 						reserv_blks);
+ 	}
+ 
++	trace_mark(ext4_allocate_blocks,
++		   "dev %s block %llu flags %u len %u ino %lu "
++		   "logical %llu goal %llu lleft %llu lright %llu "
++		   "pleft %llu pright %llu ",
++		   sb->s_id, (unsigned long long) block,
++		   ar->flags, ar->len, ar->inode ? ar->inode->i_ino : 0,
++		   (unsigned long long) ar->logical,
++		   (unsigned long long) ar->goal,
++		   (unsigned long long) ar->lleft,
++		   (unsigned long long) ar->lright,
++		   (unsigned long long) ar->pleft,
++		   (unsigned long long) ar->pright);
++
+ 	return block;
+ }
+ 
+@@ -4755,6 +4799,10 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 	}
+ 
+ 	ext4_debug("freeing block %lu\n", block);
++	trace_mark(ext4_free_blocks,
++		   "dev %s block %llu count %lu metadata %d ino %lu",
++		   sb->s_id, (unsigned long long) block, count, metadata,
++		   inode ? inode->i_ino : 0);
+ 
+ 	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
+ 	if (ac) {
+-- 
+1.6.0.4.8.g36f27.dirty
+
