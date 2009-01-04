@@ -1,57 +1,72 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] jbd2: Submit writes to the journal using WRITE_SYNC
-Date: Sun,  4 Jan 2009 16:42:21 -0500
-Message-ID: <1231105341-22896-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH, RFC] Use WRITE_SYNC in __block_write_full_page() if WBC_SYNC_ALL
+Date: Sun, 04 Jan 2009 16:52:46 -0500
+Message-ID: <E1LJatq-00061O-0e@closure.thunk.org>
+Cc: Jens Axboe <jens.axboe@oracle.com>
+To: Andrew Morton <akpm@osdl.org>, linux-mm@vger.kernel.org,
+	linux-ext4@vger.kernel.org, Arjan van de Ven <arjan@infradead.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:46254 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:57185 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752226AbZADVmY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 4 Jan 2009 16:42:24 -0500
+	id S1750822AbZADVwu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 4 Jan 2009 16:52:50 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Since we will be waiting for writes to the journal to complete in
-jbd2_journal_commit_transaction() and journal_submit_commit_record(),
-submit them using WRITE_SYNC.
+
+If wbc.sync_mode is WBC_SYNC_ALL, then in the page writeback paths we
+will be waiting for the write to complete.  So the I/O should be
+submitted via submit_bh() with WRITE_SYNC so the block layer should
+properly prioritize the I/O.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-mm@vger.kernel.org
 ---
- fs/jbd2/commit.c |    6 +++---
- 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 0ad8416..04d3472 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -138,7 +138,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 		set_buffer_ordered(bh);
- 		barrier_done = 1;
- 	}
--	ret = submit_bh(WRITE, bh);
-+	ret = submit_bh(WRITE_SYNC, bh);
- 	if (barrier_done)
- 		clear_buffer_ordered(bh);
- 
-@@ -159,7 +159,7 @@ static int journal_submit_commit_record(journal_t *journal,
- 		lock_buffer(bh);
- 		set_buffer_uptodate(bh);
- 		clear_buffer_dirty(bh);
--		ret = submit_bh(WRITE, bh);
-+		ret = submit_bh(WRITE_SYNC, bh);
- 	}
- 	*cbh = bh;
- 	return ret;
-@@ -676,7 +676,7 @@ start_journal_io:
- 				clear_buffer_dirty(bh);
- 				set_buffer_uptodate(bh);
- 				bh->b_end_io = journal_end_buffer_io_sync;
--				submit_bh(WRITE, bh);
-+				submit_bh(WRITE_SYNC, bh);
- 			}
- 			cond_resched();
- 			stats.u.run.rs_blocks_logged += bufs;
+Following up with an e-mail thread started by Arjan two months ago,
+(subject: [PATCH] Give kjournald a IOPRIO_CLASS_RT io priority), I have
+a patch, just sent to linux-ext4@vger.kernel.org, which fixes the jbd2
+layer to submit journal writes via submit_bh() with WRITE_SYNC.
+Hopefully this might be enough of a priority boost so we don't have to
+force a higher I/O priority level via a buffer_head flag.  However,
+while looking through the code paths, in ordered data mode, we end up
+flushing data pages via the page writeback paths on a per-inode basis,
+and I noticed that even though we are passing in
+wbc.sync_mode=WBC_SYNC_ALL, __block_write_full_page() is using
+submit_bh(WRITE, bh) instead of submit_bh(WRITE_SYNC).
+
+I'm not completely confident in my understanding of the page writeback
+code paths --- does this change make sense?
+
+					- Ted
+
+ fs/buffer.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 10179cf..392b1b3 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1741,7 +1741,8 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
+ 	do {
+ 		struct buffer_head *next = bh->b_this_page;
+ 		if (buffer_async_write(bh)) {
+-			submit_bh(WRITE, bh);
++			submit_bh((wbc->sync_mode == WB_SYNC_ALL) ?
++				  WRITE_SYNC : WRITE, bh);
+ 			nr_underway++;
+ 		}
+ 		bh = next;
+@@ -1795,7 +1796,8 @@ recover:
+ 		struct buffer_head *next = bh->b_this_page;
+ 		if (buffer_async_write(bh)) {
+ 			clear_buffer_dirty(bh);
+-			submit_bh(WRITE, bh);
++			submit_bh((wbc->sync_mode == WB_SYNC_ALL) ?
++				  WRITE_SYNC : WRITE, bh);
+ 			nr_underway++;
+ 		}
+ 		bh = next;
 -- 
 1.6.0.4.8.g36f27.dirty
 
