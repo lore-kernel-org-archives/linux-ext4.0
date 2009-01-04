@@ -1,94 +1,268 @@
-From: akpm@linux-foundation.org
-Subject: [patch 4/7] fs: introduce bgl_lock_ptr()
-Date: Sun, 04 Jan 2009 12:00:48 -0800
-Message-ID: <200901042000.n04K0mPT011680@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, penberg@cs.helsinki.fi, adilger@sun.com,
-	linux-ext4@vger.kernel.org
-To: torvalds@linux-foundation.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Remove code to create the journal inode
+Date: Sun,  4 Jan 2009 15:32:45 -0500
+Message-ID: <1231101165-13815-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:38801 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759250AbZADUB0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 4 Jan 2009 15:01:26 -0500
+Received: from thunk.org ([69.25.196.29]:40621 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751373AbZADUcs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 4 Jan 2009 15:32:48 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Pekka Enberg <penberg@cs.helsinki.fi>
+This code has been obsolete in quite some time, since the supported
+method for adding a journal inode is to use tune2fs (or to creating
+new filesystem with a journal via mke2fs or mkfs.ext4).
 
-As suggested by Andreas Dilger, introduce a bgl_lock_ptr() helper in
-<linux/blockgroup_lock.h> and add separate sb_bgl_lock() helpers to filesystem
-specific header files to break the hidden dependency to struct
-ext[234]_sb_info. Also, while at it, convert the macros to static inlines to
-try make up for all the times I broke Andrew Morton's tree.
-
-Acked-by: Andreas Dilger <adilger@sun.com>
-Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
+ Documentation/filesystems/ext4.txt |    4 --
+ fs/ext4/super.c                    |   68 ++--------------------------------
+ fs/jbd2/journal.c                  |   72 ------------------------------------
+ include/linux/jbd2.h               |    1 -
+ 4 files changed, 4 insertions(+), 141 deletions(-)
 
- fs/ext4/ext4_sb.h               |    6 ++++++
- include/linux/blockgroup_lock.h |    7 +++++--
- include/linux/ext2_fs_sb.h      |    6 ++++++
- include/linux/ext3_fs_sb.h      |    6 ++++++
- 4 files changed, 23 insertions(+), 2 deletions(-)
-
-diff -puN fs/ext4/ext4_sb.h~fs-introduce-bgl_lock_ptr fs/ext4/ext4_sb.h
---- a/fs/ext4/ext4_sb.h~fs-introduce-bgl_lock_ptr
-+++ a/fs/ext4/ext4_sb.h
-@@ -146,4 +146,10 @@ struct ext4_sb_info {
- 	struct flex_groups *s_flex_groups;
- };
+diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+index 8066e6e..3024f74 100644
+--- a/Documentation/filesystems/ext4.txt
++++ b/Documentation/filesystems/ext4.txt
+@@ -143,10 +143,6 @@ journal_async_commit	Commit block can be written to disk without waiting
+ journal=update		Update the ext4 file system's journal to the current
+ 			format.
  
-+static inline spinlock_t *
-+sb_bgl_lock(struct ext4_sb_info *sbi, unsigned int block_group)
-+{
-+	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+}
-+
- #endif	/* _EXT4_SB */
-diff -puN include/linux/blockgroup_lock.h~fs-introduce-bgl_lock_ptr include/linux/blockgroup_lock.h
---- a/include/linux/blockgroup_lock.h~fs-introduce-bgl_lock_ptr
-+++ a/include/linux/blockgroup_lock.h
-@@ -53,7 +53,10 @@ static inline void bgl_lock_init(struct 
-  * The accessor is a macro so we can embed a blockgroup_lock into different
-  * superblock types
-  */
--#define sb_bgl_lock(sb, block_group) \
--	(&(sb)->s_blockgroup_lock.locks[(block_group) & (NR_BG_LOCKS-1)].lock)
-+static inline spinlock_t *
-+bgl_lock_ptr(struct blockgroup_lock *bgl, unsigned int block_group)
-+{
-+	return &bgl->locks[(block_group) & (NR_BG_LOCKS-1)].lock;
-+}
+-journal=inum		When a journal already exists, this option is ignored.
+-			Otherwise, it specifies the number of the inode which
+-			will represent the ext4 file system's journal file.
+-
+ journal_dev=devnum	When the external journal device's major/minor numbers
+ 			have changed, this option allows the user to specify
+ 			the new journal location.  The journal device is
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 356ad34..70c27ad 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -51,8 +51,6 @@ struct proc_dir_entry *ext4_proc_root;
  
- #endif
-diff -puN include/linux/ext2_fs_sb.h~fs-introduce-bgl_lock_ptr include/linux/ext2_fs_sb.h
---- a/include/linux/ext2_fs_sb.h~fs-introduce-bgl_lock_ptr
-+++ a/include/linux/ext2_fs_sb.h
-@@ -108,4 +108,10 @@ struct ext2_sb_info {
- 	struct ext2_reserve_window_node s_rsv_window_head;
- };
+ static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
+ 			     unsigned long journal_devnum);
+-static int ext4_create_journal(struct super_block *, struct ext4_super_block *,
+-			       unsigned int);
+ static void ext4_commit_super(struct super_block *sb,
+ 			      struct ext4_super_block *es, int sync);
+ static void ext4_mark_recovery_complete(struct super_block *sb,
+@@ -1006,7 +1004,7 @@ enum {
+ 	Opt_user_xattr, Opt_nouser_xattr, Opt_acl, Opt_noacl,
+ 	Opt_reservation, Opt_noreservation, Opt_noload, Opt_nobh, Opt_bh,
+ 	Opt_commit, Opt_min_batch_time, Opt_max_batch_time,
+-	Opt_journal_update, Opt_journal_inum, Opt_journal_dev,
++	Opt_journal_update, Opt_journal_dev,
+ 	Opt_journal_checksum, Opt_journal_async_commit,
+ 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
+ 	Opt_data_err_abort, Opt_data_err_ignore,
+@@ -1048,7 +1046,6 @@ static const match_table_t tokens = {
+ 	{Opt_min_batch_time, "min_batch_time=%u"},
+ 	{Opt_max_batch_time, "max_batch_time=%u"},
+ 	{Opt_journal_update, "journal=update"},
+-	{Opt_journal_inum, "journal=%u"},
+ 	{Opt_journal_dev, "journal_dev=%u"},
+ 	{Opt_journal_checksum, "journal_checksum"},
+ 	{Opt_journal_async_commit, "journal_async_commit"},
+@@ -1102,7 +1099,7 @@ static ext4_fsblk_t get_sb_block(void **data)
+ }
  
-+static inline spinlock_t *
-+sb_bgl_lock(struct ext2_sb_info *sbi, unsigned int block_group)
-+{
-+	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+}
-+
- #endif	/* _LINUX_EXT2_FS_SB */
-diff -puN include/linux/ext3_fs_sb.h~fs-introduce-bgl_lock_ptr include/linux/ext3_fs_sb.h
---- a/include/linux/ext3_fs_sb.h~fs-introduce-bgl_lock_ptr
-+++ a/include/linux/ext3_fs_sb.h
-@@ -83,4 +83,10 @@ struct ext3_sb_info {
- #endif
- };
+ static int parse_options(char *options, struct super_block *sb,
+-			 unsigned int *inum, unsigned long *journal_devnum,
++			 unsigned long *journal_devnum,
+ 			 ext4_fsblk_t *n_blocks_count, int is_remount)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+@@ -1226,16 +1223,6 @@ static int parse_options(char *options, struct super_block *sb,
+ 			}
+ 			set_opt(sbi->s_mount_opt, UPDATE_JOURNAL);
+ 			break;
+-		case Opt_journal_inum:
+-			if (is_remount) {
+-				printk(KERN_ERR "EXT4-fs: cannot specify "
+-				       "journal on remount\n");
+-				return 0;
+-			}
+-			if (match_int(&args[0], &option))
+-				return 0;
+-			*inum = option;
+-			break;
+ 		case Opt_journal_dev:
+ 			if (is_remount) {
+ 				printk(KERN_ERR "EXT4-fs: cannot specify "
+@@ -2041,7 +2028,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	ext4_fsblk_t sb_block = get_sb_block(&data);
+ 	ext4_fsblk_t logical_sb_block;
+ 	unsigned long offset = 0;
+-	unsigned int journal_inum = 0;
+ 	unsigned long journal_devnum = 0;
+ 	unsigned long def_mount_opts;
+ 	struct inode *root;
+@@ -2161,8 +2147,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	set_opt(sbi->s_mount_opt, DELALLOC);
  
-+static inline spinlock_t *
-+sb_bgl_lock(struct ext3_sb_info *sbi, unsigned int block_group)
-+{
-+	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+}
-+
- #endif	/* _LINUX_EXT3_FS_SB */
-_
+ 
+-	if (!parse_options((char *) data, sb, &journal_inum, &journal_devnum,
+-			   NULL, 0))
++	if (!parse_options((char *) data, sb, &journal_devnum, NULL, 0))
+ 		goto failed_mount;
+ 
+ 	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+@@ -2469,9 +2454,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 				goto failed_mount4;
+ 			}
+ 		}
+-	} else if (journal_inum) {
+-		if (ext4_create_journal(sb, es, journal_inum))
+-			goto failed_mount3;
+ 	} else {
+ 		clear_opt(sbi->s_mount_opt, DATA_FLAGS);
+ 		set_opt(sbi->s_mount_opt, WRITEBACK_DATA);
+@@ -2929,48 +2911,6 @@ static int ext4_load_journal(struct super_block *sb,
+ 	return 0;
+ }
+ 
+-static int ext4_create_journal(struct super_block *sb,
+-			       struct ext4_super_block *es,
+-			       unsigned int journal_inum)
+-{
+-	journal_t *journal;
+-	int err;
+-
+-	if (sb->s_flags & MS_RDONLY) {
+-		printk(KERN_ERR "EXT4-fs: readonly filesystem when trying to "
+-				"create journal.\n");
+-		return -EROFS;
+-	}
+-
+-	journal = ext4_get_journal(sb, journal_inum);
+-	if (!journal)
+-		return -EINVAL;
+-
+-	printk(KERN_INFO "EXT4-fs: creating new journal on inode %u\n",
+-	       journal_inum);
+-
+-	err = jbd2_journal_create(journal);
+-	if (err) {
+-		printk(KERN_ERR "EXT4-fs: error creating journal.\n");
+-		jbd2_journal_destroy(journal);
+-		return -EIO;
+-	}
+-
+-	EXT4_SB(sb)->s_journal = journal;
+-
+-	ext4_update_dynamic_rev(sb);
+-	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-	EXT4_SET_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL);
+-
+-	es->s_journal_inum = cpu_to_le32(journal_inum);
+-	sb->s_dirt = 1;
+-
+-	/* Make sure we flush the recovery flag to disk. */
+-	ext4_commit_super(sb, es, 1);
+-
+-	return 0;
+-}
+-
+ static void ext4_commit_super(struct super_block *sb,
+ 			      struct ext4_super_block *es, int sync)
+ {
+@@ -3209,7 +3149,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 	/*
+ 	 * Allow the "check" option to be passed as a remount option.
+ 	 */
+-	if (!parse_options(data, sb, NULL, NULL, &n_blocks_count, 1)) {
++	if (!parse_options(data, sb, NULL, &n_blocks_count, 1)) {
+ 		err = -EINVAL;
+ 		goto restore_opts;
+ 	}
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 34ef980..b10d728 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -66,7 +66,6 @@ EXPORT_SYMBOL(jbd2_journal_update_format);
+ EXPORT_SYMBOL(jbd2_journal_check_used_features);
+ EXPORT_SYMBOL(jbd2_journal_check_available_features);
+ EXPORT_SYMBOL(jbd2_journal_set_features);
+-EXPORT_SYMBOL(jbd2_journal_create);
+ EXPORT_SYMBOL(jbd2_journal_load);
+ EXPORT_SYMBOL(jbd2_journal_destroy);
+ EXPORT_SYMBOL(jbd2_journal_abort);
+@@ -1163,77 +1162,6 @@ static int journal_reset(journal_t *journal)
+ }
+ 
+ /**
+- * int jbd2_journal_create() - Initialise the new journal file
+- * @journal: Journal to create. This structure must have been initialised
+- *
+- * Given a journal_t structure which tells us which disk blocks we can
+- * use, create a new journal superblock and initialise all of the
+- * journal fields from scratch.
+- **/
+-int jbd2_journal_create(journal_t *journal)
+-{
+-	unsigned long long blocknr;
+-	struct buffer_head *bh;
+-	journal_superblock_t *sb;
+-	int i, err;
+-
+-	if (journal->j_maxlen < JBD2_MIN_JOURNAL_BLOCKS) {
+-		printk (KERN_ERR "Journal length (%d blocks) too short.\n",
+-			journal->j_maxlen);
+-		journal_fail_superblock(journal);
+-		return -EINVAL;
+-	}
+-
+-	if (journal->j_inode == NULL) {
+-		/*
+-		 * We don't know what block to start at!
+-		 */
+-		printk(KERN_EMERG
+-		       "%s: creation of journal on external device!\n",
+-		       __func__);
+-		BUG();
+-	}
+-
+-	/* Zero out the entire journal on disk.  We cannot afford to
+-	   have any blocks on disk beginning with JBD2_MAGIC_NUMBER. */
+-	jbd_debug(1, "JBD: Zeroing out journal blocks...\n");
+-	for (i = 0; i < journal->j_maxlen; i++) {
+-		err = jbd2_journal_bmap(journal, i, &blocknr);
+-		if (err)
+-			return err;
+-		bh = __getblk(journal->j_dev, blocknr, journal->j_blocksize);
+-		lock_buffer(bh);
+-		memset (bh->b_data, 0, journal->j_blocksize);
+-		BUFFER_TRACE(bh, "marking dirty");
+-		mark_buffer_dirty(bh);
+-		BUFFER_TRACE(bh, "marking uptodate");
+-		set_buffer_uptodate(bh);
+-		unlock_buffer(bh);
+-		__brelse(bh);
+-	}
+-
+-	sync_blockdev(journal->j_dev);
+-	jbd_debug(1, "JBD: journal cleared.\n");
+-
+-	/* OK, fill in the initial static fields in the new superblock */
+-	sb = journal->j_superblock;
+-
+-	sb->s_header.h_magic	 = cpu_to_be32(JBD2_MAGIC_NUMBER);
+-	sb->s_header.h_blocktype = cpu_to_be32(JBD2_SUPERBLOCK_V2);
+-
+-	sb->s_blocksize	= cpu_to_be32(journal->j_blocksize);
+-	sb->s_maxlen	= cpu_to_be32(journal->j_maxlen);
+-	sb->s_first	= cpu_to_be32(1);
+-
+-	journal->j_transaction_sequence = 1;
+-
+-	journal->j_flags &= ~JBD2_ABORT;
+-	journal->j_format_version = 2;
+-
+-	return journal_reset(journal);
+-}
