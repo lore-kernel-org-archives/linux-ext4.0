@@ -1,44 +1,77 @@
-From: Randy Dunlap <randy.dunlap@oracle.com>
-Subject: [PATCH -next] jbd2: fix printk format warning
-Date: Mon, 5 Jan 2009 12:11:58 -0800
-Message-ID: <20090105121158.94d990c3.randy.dunlap@oracle.com>
-References: <20090105173517.deeff918.sfr@canb.auug.org.au>
+From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+Subject: Re: [PATCH] ext4: fix null pointer deref on mount
+Date: Mon, 05 Jan 2009 21:50:13 +0100
+Message-ID: <49627285.8060407@ph.tum.de>
+References: <4961603B.5020505@ph.tum.de> <20090105170259.GB8939@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-next@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org
-To: Stephen Rothwell <sfr@canb.auug.org.au>,
-	akpm <akpm@linux-foundation.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:51895 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753335AbZAEUMr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jan 2009 15:12:47 -0500
-In-Reply-To: <20090105173517.deeff918.sfr@canb.auug.org.au>
+Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:54136 "EHLO
+	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752858AbZAEUr6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jan 2009 15:47:58 -0500
+In-Reply-To: <20090105170259.GB8939@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Randy Dunlap <randy.dunlap@oracle.com>
+Theodore Tso wrote:
+> On Mon, Jan 05, 2009 at 02:19:55AM +0100, Thiemo Nagel wrote:
+>> I came across a null pointer dereference when mounting an intentionally  
+>> corrupted filesystem (cf. debug.dmesg).  In my opinion, the problem lies  
+>> in ext4_fill_super(), where truncation may occur on setting the integer  
+>> db_count, which results in too little memory being allocated for  
+>> sbi->s_group_desc.  The attached patch (against 2.6.28) fixes this by  
+>> changing the type of db_count to unsigned long.  I also took the  
+>> opportunity to make the check against sign extension in calculation of  
+>> db_count more strict, so that it now excludes cases in which db_count  
+>> comes out as zero.
+> 
+> Usigned unsigned long is almost always wrong, because it's not a fixed
+> size; it's 32 bits on x86_32, but 64 bits on x86_64.  In this
+> particular case, db_count is always going to well under 32-bits for
+> any legitimate filesystem. 
 
-Fix jbd2 printk format:
+I have chosen unsigned long for the sole reason to avoid truncation in 
+the assignment
 
-fs/jbd2/journal.c:848: warning: format '%lu' expects type 'long unsigned int', but argument 3 has type 'uint32_t'
+db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+	   EXT4_DESC_PER_BLOCK(sb);
 
-Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
----
- fs/jbd2/journal.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+where the operands on the right side are of type unsigned long and 
+ext4_group_t (which is typedef unsigned long), so I don't think to make 
+db_count an unsigned long is hurting anything.
 
---- linux-next-20090105.orig/fs/jbd2/journal.c
-+++ linux-next-20090105/fs/jbd2/journal.c
-@@ -845,7 +845,8 @@ static int jbd2_seq_info_show(struct seq
- 	seq_printf(seq, "  %ums logging transaction\n",
- 	    jiffies_to_msecs(s->stats->u.run.rs_logging / s->stats->ts_tid));
- 	seq_printf(seq, "  %luus average transaction commit time\n",
--		   do_div(s->journal->j_average_commit_time, 1000));
-+		   (unsigned long)do_div(s->journal->j_average_commit_time,
-+					1000));
- 	seq_printf(seq, "  %lu handles per transaction\n",
- 	    s->stats->u.run.rs_handle_count / s->stats->ts_tid);
- 	seq_printf(seq, "  %lu blocks per transaction\n",
+But maybe it's not desireable to allow filesystems which are mountable 
+on x86_64 but not on x86_32?  Then a different solution would be to 
+enforce s_groups_count < (1<<31).
+
+But there is another caveat:  We also need to take care of the overflow 
+in the argument to kmalloc(), and that further reduces the allowed range 
+of s_groups_count for x86_32 (but not for x86_64):
+
+sbi->s_group_desc = kmalloc(db_count * sizeof(struct buffer_head *),
+			    GFP_KERNEL);
+
+So, which approach do you think would be best?
+
+> If it isn't we need to have better checks;
+> it sounds like the checks we need are ones that do a better job
+> checking s_blocks_per_group; am I right in assuming that
+> s_blocks_per_group was something ridiculous and that is what caused
+> the overflow?
+
+No, it was a very large block count (but the small blocks per group 
+helped, too):
+
+block count 562949953423360, first data block 8257, blocks per group 512
+
+BTW:  In case anybody likes to have a look at the corrupt filesystem:
+It's available at 
+http://www.e18.physik.tu-muenchen.de/~tnagel/misc/ext4.null_deref.image.bz2
+The size of the download is 88k.
+
+Kind regards,
+Thiemo
