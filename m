@@ -1,35 +1,40 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/3] add releasepage hooks to block devices which can
-	be used by file systems
-Date: Mon, 5 Jan 2009 11:05:14 -0500
-Message-ID: <20090105160514.GA8939@mit.edu>
-References: <20081226050138.GU28946@ZenIV.linux.org.uk> <1230995358-24013-1-git-send-email-tytso@mit.edu> <1230995358-24013-2-git-send-email-tytso@mit.edu> <4961C1C8.2080300@jp.fujitsu.com>
+Subject: Re: [PATCH] ext4: fix null pointer deref on mount
+Date: Mon, 5 Jan 2009 12:02:59 -0500
+Message-ID: <20090105170259.GB8939@mit.edu>
+References: <4961603B.5020505@ph.tum.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Al Viro <viro@ZenIV.linux.org.uk>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	linux-fsdevel@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:58254 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751373AbZAERDD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Jan 2009 12:03:03 -0500
 Content-Disposition: inline
-In-Reply-To: <4961C1C8.2080300@jp.fujitsu.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <4961603B.5020505@ph.tum.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jan 05, 2009 at 05:16:08PM +0900, Toshiyuki Okajima wrote:
-> 
-> I was confirming whether the kernel to which your new patch is
-> applied can run without trouble. But unfortunately, I got a hangup
-> problem. Now I am investigating the root cause.  After I
-> investigated it for a little time, I think calling log_wait_commit()
-> from journal_try_to_free_buffers() can cause it.  
+On Mon, Jan 05, 2009 at 02:19:55AM +0100, Thiemo Nagel wrote:
+> I came across a null pointer dereference when mounting an intentionally  
+> corrupted filesystem (cf. debug.dmesg).  In my opinion, the problem lies  
+> in ext4_fill_super(), where truncation may occur on setting the integer  
+> db_count, which results in too little memory being allocated for  
+> sbi->s_group_desc.  The attached patch (against 2.6.28) fixes this by  
+> changing the type of db_count to unsigned long.  I also took the  
+> opportunity to make the check against sign extension in calculation of  
+> db_count more strict, so that it now excludes cases in which db_count  
+> comes out as zero.
 
-Sounds like a deadlock caused by the fact that we're no longer masking
-__GFP_WAIT, probably on journal->j_wait_done_commit.  Presumably the
-system came under pressure during a commit operation, which makes
-sense, and so we ended up with a deadlock between kjournald and
-kswapd.  The fix is pretty simple; we just need to mask out the
-__GFP_WAIT in the filesystem-specific callback, since this is a
-restriction imposed by the filesystem's use of the jbd/jbd2 layer.
+Usigned unsigned long is almost always wrong, because it's not a fixed
+size; it's 32 bits on x86_32, but 64 bits on x86_64.  In this
+particular case, db_count is always going to well under 32-bits for
+any legitimate filesystem.  If it isn't we need to have better checks;
+it sounds like the checks we need are ones that do a better job
+checking s_blocks_per_group; am I right in assuming that
+s_blocks_per_group was something ridiculous and that is what caused
+the overflow?
 
-	    	       	   		       - Ted
+						- Ted
