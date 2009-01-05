@@ -1,112 +1,93 @@
-From: Christian Ohm <chr.ohm@gmx.net>
-Subject: How to recover a damaged ext4 file system?
-Date: Mon, 5 Jan 2009 14:53:47 +0100
-Message-ID: <20090105135347.GA3337@localdomain>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] Use WRITE_SYNC in __block_write_full_page() if
+	WBC_SYNC_ALL
+Date: Mon, 5 Jan 2009 09:47:40 -0500
+Message-ID: <20090105144740.GA4116@mit.edu>
+References: <E1LJatq-00061O-0e@closure.thunk.org> <20090104142303.98762f81.akpm@linux-foundation.org> <20090104224351.GF22958@mit.edu> <20090104151927.1f1603c6.akpm@linux-foundation.org> <20090105080241.GX32491@kernel.dk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, Arjan van de Ven <arjan@infradead.org>
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:45102 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1753905AbZAENxw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Jan 2009 08:53:52 -0500
+Received: from thunk.org ([69.25.196.29]:43515 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755321AbZAEOrs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Jan 2009 09:47:48 -0500
 Content-Disposition: inline
+In-Reply-To: <20090105080241.GX32491@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+[ I've removed linux-mm from the cc list since we seem to have
+  wandered away from any details of page writeback.  -- Ted]
 
-Hello,
+On Mon, Jan 05, 2009 at 09:02:43AM +0100, Jens Axboe wrote:
+> > Is it?  WRITE_SYNC means "unplug the queue after this bh/BIO".  By setting
+> > it against every bh, don't we risk the generation of more BIOs and
+> > the loss of merging opportunities?
+> 
+> But it also implies that the io scheduler will treat the IO as sync even
+> if it is a write, which seems to be the very effect that Ted is looking
+> for as well.
 
-Since ext4 had its development status removed in 2.6.28, and there seemed to be
-no reports of serious problems, I decided to try it on a partition of
-semi-important files. Well, after a hard system hang because of the (open
-source Radeon) graphics driver, the file system is quite corrupted, and cannot
-be mounted any more (that never happened with ext3). mount gives the following
-error:
+Yeah, but I suspect the downsides caused by the lack of merging will
+far outweigh wins from giving the hints to the I/O scheduler.
+Separting things into two behavioural flags sounds like the the right
+thing to me.  Until that happens, I've dropped my proposed patch and
+substituted a patch which allows the user to diddle the I/O priorities
+of kjournald2 via a mount option so we can experiment a bit.
 
-mount: wrong fs type, bad option, bad superblock on /dev/sdb1,
-       missing codepage or helper program, or other error
-       In some cases useful info is found in syslog - try
-       dmesg | tail  or so
+I agree that Andrew's long-term solution is probably the right one,
+but there will be times (i.e., when we are doing a checkpoint as
+opposed to a commit, or in a fsync-heavy workload), where we will end
+up getting blocked behind kjournald, so upping the I/O priority really
+does make sense.  So a tunable mount option seems to make sense even
+in the long run, since for some workloads we'll want to adjust
+kjournald's I/O priority even after we stop normal (non-fsync) I/O
+from blocking against the commit operation done by kjournald.
 
-dmesg message:
+Jens, one question....  I came across the folllowing in blkdev.h:
 
-EXT4-fs: ext4_check_descriptors: Block bitmap for group 0 not in group (block 727012683)!
-EXT4-fs: group descriptors corrupted!
+      __REQ_RW_SYNC,		/* request is sync (O_DIRECT) */
 
-I have uploaded the output of fsck .ext4 -n at
-http://www.filefactory.com/file/aff6f3g/n/fsck_ext4_bz2 which is over 6MB of
-stuff like
+Is the comment about O_DIRECT still relevant?  I'm not sure it is.
 
----
-e2fsck 1.41.3 (12-Oct-2008)
-fsck.ext4: Group descriptors look bad... trying backup blocks...
-Block bitmap for group 0 is not in group.  (block 727012683)
-Relocate? no
+Also, there's another confusing comment in bio.h:
 
-Inode bitmap for group 0 is not in group.  (block 3406175899)
-Relocate? no
-
-Inode table for group 0 is not in group.  (block 1236188664)
-WARNING: SEVERE DATA LOSS POSSIBLE.
-Relocate? no
-
-Group descriptor 0 checksum is invalid.  Fix? no
-
-Block bitmap for group 1 is not in group.  (block 2704710215)
-Relocate? no
-
-Inode bitmap for group 1 is not in group.  (block 2166870417)
-Relocate? no
-
-Inode table for group 1 is not in group.  (block 600148394)
-WARNING: SEVERE DATA LOSS POSSIBLE.
-Relocate? no
-
-Group descriptor 1 checksum is invalid.  Fix? no
----
-
-and later
-
----
-Group descriptor 7452 checksum is invalid.  Fix? no
-
-Error reading block 1236188664 (Invalid argument).  Ignore error? no
-
-data-1000 contains a file system with errors, check forced.
-Error reading block 1236188664 (Invalid argument).  Ignore error? no
-
-fsck.ext4: Invalid argument while reading bad blocks inode
-This doesn't bode well, but we'll try to go on...
-Pass 1: Checking inodes, blocks, and sizes
-Illegal block number passed to ext2fs_test_block_bitmap #1236188664 for in-use block map
-Illegal block number passed to ext2fs_mark_block_bitmap #1236188664 for in-use block map
----
+#define BIO_RW		0	/* Must match RW in req flags (blkdev.h) */
+#define BIO_RW_AHEAD	1	/* Must match FAILFAST in req flags */
+                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+#define BIO_RW_FAILFAST_DEV		6
+#define BIO_RW_FAILFAST_TRANSPORT	7
+#define BIO_RW_FAILFAST_DRIVER		8
 
 
-Now as I said, the files are semi-important, meaning I could recover those I
-still want with some time, but repairing the file system would be preferable.
-Unfortunately I don't have enough space on another harddrive to just copy the
-partition and experiment on that, so I haven't tried letting fsck repair the fs
-yet, and since it says SEVERE DATA LOSS POSSIBLE I wouldn't like to try that
-without copying first.
+In fact, submit_bh() depends on BIO_RW_AHEAD matching with the
+definition of READA in fs.h.  I'm a bit confused about the fact that
+we have both BIO_RW_AHEAD and BIO_RW_FAILFAST_DEV, and then in the req
+flags in blkdev.h:
 
-So my two main questions would be:
+/*
+ * request type modified bits. first two bits match BIO_RW* bits, important
+ */
+enum rq_flag_bits {
+     __REQ_RW,		/* not set, read. set, write */
+     __REQ_FAILFAST_DEV,   /* no driver retries of device errors */
+     __REQ_FAILFAST_TRANSPORT, /* no driver retries of transport errors */
+     __REQ_FAILFAST_DRIVER,    /* no driver retries of driver errors */
 
-1. How can I recover the data on the file system? As I said, I don't need all
-the files, but it would save some time. I created it with the mkfs.ext4 from
-Debian unstable (1.41.3) with only largefile as extra option, and the default
-mount options with kernel 2.6.28. The fs wasn't used for long, and I mostly
-copied/created files, without deleting much.
+I assume when doing readhaead, we don't want to retry in the face of
+device errors, which is why it's desirable for __REQ_FAILFAST_DEV
+overlays with BIO_RW_AHEAD.  But if that's the case, why are
+BIO_RW_READA and BIO_RW_FAILFAST_DEV not mapped to the same BIO_RW_*
+flag?
 
-2. Is this corruption a fault of ext4? I guess this is difficult to answer, but
-I had ext3 survive any lockups without much problems. So far ext4 seems not
-quite that robust, but perhaps another file system would have blown up as well
-in this situation. Is there any information I can give you to help make ext4
-more robust?
+Am I missing something here?  As far as I can tell nothing seems to be
+using BIO_RW_FAILFAST_DEV.  Is there a reason why it's not just
+#define'd to be the same value as BIO_RW_READA?
 
-Best regards,
-Christian Ohm
+Thanks, regards,
 
-PS: I think my first post with the fsck output attached got rejected due to its
-size, though I didn't receive a message about that.
+						- Ted
