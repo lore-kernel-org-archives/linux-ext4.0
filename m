@@ -1,128 +1,71 @@
-From: akpm@linux-foundation.org
-Subject: - fs-introduce-bgl_lock_ptr.patch removed from -mm tree
-Date: Sun, 04 Jan 2009 22:40:47 -0800
-Message-ID: <200901050640.n056el62004845@imap1.linux-foundation.org>
-To: penberg@cs.helsinki.fi, adilger@sun.com,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:40176 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750891AbZAEGkz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jan 2009 01:40:55 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jens Axboe <jens.axboe@oracle.com>
+Subject: Re: [PATCH, RFC] Use WRITE_SYNC in __block_write_full_page() if WBC_SYNC_ALL
+Date: Mon, 5 Jan 2009 09:02:43 +0100
+Message-ID: <20090105080241.GX32491@kernel.dk>
+References: <E1LJatq-00061O-0e@closure.thunk.org> <20090104142303.98762f81.akpm@linux-foundation.org> <20090104224351.GF22958@mit.edu> <20090104151927.1f1603c6.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>, linux-mm@kvack.org,
+	linux-ext4@vger.kernel.org, Arjan van de Ven <arjan@infradead.org>
+To: Andrew Morton <akpm@linux-foundation.org>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20090104151927.1f1603c6.akpm@linux-foundation.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Sun, Jan 04 2009, Andrew Morton wrote:
+> On Sun, 4 Jan 2009 17:43:51 -0500 Theodore Tso <tytso@mit.edu> wrote:
+> 
+> > On Sun, Jan 04, 2009 at 02:23:03PM -0800, Andrew Morton wrote:
+> > > > Following up with an e-mail thread started by Arjan two months ago,
+> > > > (subject: [PATCH] Give kjournald a IOPRIO_CLASS_RT io priority), I have
+> > > > a patch, just sent to linux-ext4@vger.kernel.org, which fixes the jbd2
+> > > > layer to submit journal writes via submit_bh() with WRITE_SYNC.
+> > > > Hopefully this might be enough of a priority boost so we don't have to
+> > > > force a higher I/O priority level via a buffer_head flag.  However,
+> > > > while looking through the code paths, in ordered data mode, we end up
+> > > > flushing data pages via the page writeback paths on a per-inode basis,
+> > > > and I noticed that even though we are passing in
+> > > > wbc.sync_mode=WBC_SYNC_ALL, __block_write_full_page() is using
+> > > > submit_bh(WRITE, bh) instead of submit_bh(WRITE_SYNC).
+> > > 
+> > > But this is all the wrong way to fix the problem, isn't it?
+> > > 
+> > > The problem is that at one particular point, the current transaction
+> > > blocks callers behind the committing transaction's IO completion.
+> > > 
+> > > Did anyone look at fixing that?  ISTR concluding that a data copy and
+> > > shadow-bh arrangement might be needed.
+> > 
+> > I haven't had time to really drill down into the jbd code yet, and
+> > yes, eventually we probably want to do this.
+> 
+> We do.
+> 
+> >  Still, if we are
+> > submitting I/O which we are going to end up waiting on, we really
+> > should submit it with WRITE_SYNC, and this patch should optimize
+> > writes in other situations; for example, if we fsync() a file, we will
+> > also end up calling block_write_full_page(), and so supplying the
+> > WRITE_SYNC hint to the block layer would be a Good Thing.
+> 
+> Is it?  WRITE_SYNC means "unplug the queue after this bh/BIO".  By setting
+> it against every bh, don't we risk the generation of more BIOs and
+> the loss of merging opportunities?
 
-The patch titled
-     fs: introduce bgl_lock_ptr()
-has been removed from the -mm tree.  Its filename was
-     fs-introduce-bgl_lock_ptr.patch
+But it also implies that the io scheduler will treat the IO as sync even
+if it is a write, which seems to be the very effect that Ted is looking
+for as well.
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+Perhaps we should seperate it into two behavioural flags instead and
+make the unplugging explicit.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+-- 
+Jens Axboe
 
-------------------------------------------------------
-Subject: fs: introduce bgl_lock_ptr()
-From: Pekka Enberg <penberg@cs.helsinki.fi>
-
-As suggested by Andreas Dilger, introduce a bgl_lock_ptr() helper in
-<linux/blockgroup_lock.h> and add separate sb_bgl_lock() helpers to filesystem
-specific header files to break the hidden dependency to struct
-ext[234]_sb_info. Also, while at it, convert the macros to static inlines to
-try make up for all the times I broke Andrew Morton's tree.
-
-Acked-by: Andreas Dilger <adilger@sun.com>
-Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext4/ext4_sb.h               |    6 ++++++
- include/linux/blockgroup_lock.h |    7 +++++--
- include/linux/ext2_fs_sb.h      |    6 ++++++
- include/linux/ext3_fs_sb.h      |    6 ++++++
- 4 files changed, 23 insertions(+), 2 deletions(-)
-
-diff -puN fs/ext4/ext4_sb.h~fs-introduce-bgl_lock_ptr fs/ext4/ext4_sb.h
---- a/fs/ext4/ext4_sb.h~fs-introduce-bgl_lock_ptr
-+++ a/fs/ext4/ext4_sb.h
-@@ -146,4 +146,10 @@ struct ext4_sb_info {
- 	struct flex_groups *s_flex_groups;
- };
- 
-+static inline spinlock_t *
-+sb_bgl_lock(struct ext4_sb_info *sbi, unsigned int block_group)
-+{
-+	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+}
-+
- #endif	/* _EXT4_SB */
-diff -puN include/linux/blockgroup_lock.h~fs-introduce-bgl_lock_ptr include/linux/blockgroup_lock.h
---- a/include/linux/blockgroup_lock.h~fs-introduce-bgl_lock_ptr
-+++ a/include/linux/blockgroup_lock.h
-@@ -53,7 +53,10 @@ static inline void bgl_lock_init(struct 
-  * The accessor is a macro so we can embed a blockgroup_lock into different
-  * superblock types
-  */
--#define sb_bgl_lock(sb, block_group) \
--	(&(sb)->s_blockgroup_lock.locks[(block_group) & (NR_BG_LOCKS-1)].lock)
-+static inline spinlock_t *
-+bgl_lock_ptr(struct blockgroup_lock *bgl, unsigned int block_group)
-+{
-+	return &bgl->locks[(block_group) & (NR_BG_LOCKS-1)].lock;
-+}
- 
- #endif
-diff -puN include/linux/ext2_fs_sb.h~fs-introduce-bgl_lock_ptr include/linux/ext2_fs_sb.h
---- a/include/linux/ext2_fs_sb.h~fs-introduce-bgl_lock_ptr
-+++ a/include/linux/ext2_fs_sb.h
-@@ -108,4 +108,10 @@ struct ext2_sb_info {
- 	struct ext2_reserve_window_node s_rsv_window_head;
- };
- 
-+static inline spinlock_t *
-+sb_bgl_lock(struct ext2_sb_info *sbi, unsigned int block_group)
-+{
-+	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+}
-+
- #endif	/* _LINUX_EXT2_FS_SB */
-diff -puN include/linux/ext3_fs_sb.h~fs-introduce-bgl_lock_ptr include/linux/ext3_fs_sb.h
---- a/include/linux/ext3_fs_sb.h~fs-introduce-bgl_lock_ptr
-+++ a/include/linux/ext3_fs_sb.h
-@@ -83,4 +83,10 @@ struct ext3_sb_info {
- #endif
- };
- 
-+static inline spinlock_t *
-+sb_bgl_lock(struct ext3_sb_info *sbi, unsigned int block_group)
-+{
-+	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+}
-+
- #endif	/* _LINUX_EXT3_FS_SB */
-_
-
-Patches currently in -mm which might be from penberg@cs.helsinki.fi are
-
-origin.patch
-repeatable-slab-corruption-with-ltp-msgctl08.patch
-linux-next.patch
-ext4-allocate-s_blockgroup_lock-separately.patch
-mm-make-get_user_pages-interruptible.patch
-mm-make-get_user_pages-interruptible-mmotm-ignore-sigkill-in-get_user_pages-during-munlock.patch
-ext2-allocate-s_blockgroup_lock-separately.patch
-ext3-allocate-s_blockgroup_lock-separately.patch
-memcg-add-inactive_anon_is_low.patch
-dma_alloc_coherent-clean-it-up.patch
-dma-coherent-catch-oversized-requests-to-dma_alloc_from_coherent.patch
-nilfs2-avoid-double-error-caused-by-nilfs_transaction_end.patch
-kmemleak-add-the-base-support.patch
-kmemleak-add-the-base-support-fix.patch
-kmemleak-add-the-slab-memory-allocation-freeing-hooks.patch
-kmemleak-add-the-slob-memory-allocation-freeing-hooks.patch
-kmemleak-add-the-slub-memory-allocation-freeing-hooks.patch
-kmemleak-remove-some-of-the-kmemleak-false-positives.patch
-slab-leaks3-default-y.patch
-
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
