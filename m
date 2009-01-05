@@ -1,71 +1,36 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [PATCH, RFC] Use WRITE_SYNC in __block_write_full_page() if WBC_SYNC_ALL
-Date: Mon, 5 Jan 2009 09:02:43 +0100
-Message-ID: <20090105080241.GX32491@kernel.dk>
-References: <E1LJatq-00061O-0e@closure.thunk.org> <20090104142303.98762f81.akpm@linux-foundation.org> <20090104224351.GF22958@mit.edu> <20090104151927.1f1603c6.akpm@linux-foundation.org>
+From: Gui Xiaohua <guixh@cn.fujitsu.com>
+Subject: [BUG] e2fsprogs: resize2fs failed when "mkfs.ext4dev -O flex_bg"
+Date: Mon, 05 Jan 2009 16:06:22 +0800
+Message-ID: <4961BF7E.6050203@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, linux-mm@kvack.org,
-	linux-ext4@vger.kernel.org, Arjan van de Ven <arjan@infradead.org>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <20090104151927.1f1603c6.akpm@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:60597 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751329AbZAEIIO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 5 Jan 2009 03:08:14 -0500
+Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
+	by song.cn.fujitsu.com (Postfix) with ESMTP id EB1E0170080
+	for <linux-ext4@vger.kernel.org>; Mon,  5 Jan 2009 16:25:43 +0800 (CST)
+Received: from fnst.cn.fujitsu.com (localhost.localdomain [127.0.0.1])
+	by tang.cn.fujitsu.com (8.13.1/8.13.1) with ESMTP id n058PhCH003882
+	for <linux-ext4@vger.kernel.org>; Mon, 5 Jan 2009 16:25:43 +0800
+Received: from [10.167.141.161] (unknown [10.167.141.161])
+	by fnst.cn.fujitsu.com (Postfix) with ESMTPA id 0197ED43B4
+	for <linux-ext4@vger.kernel.org>; Mon,  5 Jan 2009 16:15:40 +0800 (CST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 04 2009, Andrew Morton wrote:
-> On Sun, 4 Jan 2009 17:43:51 -0500 Theodore Tso <tytso@mit.edu> wrote:
-> 
-> > On Sun, Jan 04, 2009 at 02:23:03PM -0800, Andrew Morton wrote:
-> > > > Following up with an e-mail thread started by Arjan two months ago,
-> > > > (subject: [PATCH] Give kjournald a IOPRIO_CLASS_RT io priority), I have
-> > > > a patch, just sent to linux-ext4@vger.kernel.org, which fixes the jbd2
-> > > > layer to submit journal writes via submit_bh() with WRITE_SYNC.
-> > > > Hopefully this might be enough of a priority boost so we don't have to
-> > > > force a higher I/O priority level via a buffer_head flag.  However,
-> > > > while looking through the code paths, in ordered data mode, we end up
-> > > > flushing data pages via the page writeback paths on a per-inode basis,
-> > > > and I noticed that even though we are passing in
-> > > > wbc.sync_mode=WBC_SYNC_ALL, __block_write_full_page() is using
-> > > > submit_bh(WRITE, bh) instead of submit_bh(WRITE_SYNC).
-> > > 
-> > > But this is all the wrong way to fix the problem, isn't it?
-> > > 
-> > > The problem is that at one particular point, the current transaction
-> > > blocks callers behind the committing transaction's IO completion.
-> > > 
-> > > Did anyone look at fixing that?  ISTR concluding that a data copy and
-> > > shadow-bh arrangement might be needed.
-> > 
-> > I haven't had time to really drill down into the jbd code yet, and
-> > yes, eventually we probably want to do this.
-> 
-> We do.
-> 
-> >  Still, if we are
-> > submitting I/O which we are going to end up waiting on, we really
-> > should submit it with WRITE_SYNC, and this patch should optimize
-> > writes in other situations; for example, if we fsync() a file, we will
-> > also end up calling block_write_full_page(), and so supplying the
-> > WRITE_SYNC hint to the block layer would be a Good Thing.
-> 
-> Is it?  WRITE_SYNC means "unplug the queue after this bh/BIO".  By setting
-> it against every bh, don't we risk the generation of more BIOs and
-> the loss of merging opportunities?
+When mkfs.ext4dev with flex_bg option, resize2fs with -M option will fail.
+While calculate how many blocks need to move, the result is wrong. Because 
+some block groups have no meta_data if mkfs.ext4dev with flex_bg option, 
+all meta_data are stored in the flex group.
 
-But it also implies that the io scheduler will treat the IO as sync even
-if it is a write, which seems to be the very effect that Ted is looking
-for as well.
+Steps to reproduce:
 
-Perhaps we should seperate it into two behavioural flags instead and
-make the unplugging explicit.
+# mkfs.ext4dev -O flex_bg /dev/sda6
+# resize2fs /dev/sda6 -M
 
--- 
-Jens Axboe
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+resize2fs: No space left on device while trying to resize /dev/sda6
