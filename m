@@ -1,7 +1,8 @@
 From: Mingming Cao <cmm@us.ibm.com>
-Subject: [PATCH V5 3/5]ext4: quota handling for delayed allocation
-Date: Mon, 05 Jan 2009 20:40:55 -0800
-Message-ID: <1231216855.9267.27.camel@mingming-laptop>
+Subject: [PATCH V5  4/5] QUOTA cleanup: Use inode->i_blkbits to get block
+	bits
+Date: Mon, 05 Jan 2009 20:41:14 -0800
+Message-ID: <1231216874.9267.29.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
@@ -9,221 +10,91 @@ Cc: Jan Kara <jack@suse.cz>, tytso <tytso@mit.edu>,
 	linux-ext4 <linux-ext4@vger.kernel.org>,
 	linux-fsdevel <linux-fsdevel@vger.kernel.org>
 To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e32.co.us.ibm.com ([32.97.110.150]:60921 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752030AbZAFElT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 5 Jan 2009 23:41:19 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: quota reservation for delayed allocation
+quota: Use inode->i_blkbits to get block bits
 
-Uses quota reservation/claim/release to handle quota properly for delayed
-allocation in the three steps: 1) quotas are reserved when data being copied
-to cache when block allocation is defered 2) when new blocks are allocated.
-reserved quotas are converted to the real allocated quota, 2) over-booked
-quotas for metadata blocks are released back.
+From: Mingming Cao <cmm@us.ibm.com>
 
+Andrew has suggested to use inode->i_blkbits to get the block bits info,
+rather than use super block's blockbits. That should be faster and emit
+less code.
 
 Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 ---
- fs/ext4/ext4.h    |    1 +
- fs/ext4/inode.c   |   36 +++++++++++++++++++++++++++++++++---
- fs/ext4/mballoc.c |   44 ++++++++++++++++++++++++++------------------
- fs/ext4/super.c   |    4 ++++
- 4 files changed, 64 insertions(+), 21 deletions(-)
+ include/linux/quotaops.h |   23 ++++++++---------------
+ 1 file changed, 8 insertions(+), 15 deletions(-)
 
-Index: linux-2.6.28-git7/fs/ext4/inode.c
+Index: linux-2.6.28-git7/include/linux/quotaops.h
 ===================================================================
---- linux-2.6.28-git7.orig/fs/ext4/inode.c	2009-01-05 17:45:01.000000000 -0800
-+++ linux-2.6.28-git7/fs/ext4/inode.c	2009-01-05 17:45:30.000000000 -0800
-@@ -973,6 +973,17 @@ out:
- 	return err;
- }
+--- linux-2.6.28-git7.orig/include/linux/quotaops.h	2009-01-05 20:06:37.000000000 -0800
++++ linux-2.6.28-git7/include/linux/quotaops.h	2009-01-05 20:06:52.000000000 -0800
+@@ -412,39 +412,32 @@ static inline void vfs_dq_free_space(str
  
-+unsigned long long ext4_get_reserved_space(struct inode *inode)
-+{
-+	unsigned long long total;
-+
-+	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
-+	total = EXT4_I(inode)->i_reserved_data_blocks +
-+		EXT4_I(inode)->i_reserved_meta_blocks;
-+	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+
-+	return total;
-+}
- /*
-  * Calculate the number of metadata blocks need to reserve
-  * to allocate @blocks for non extent file based file
-@@ -1034,8 +1045,14 @@ static void ext4_da_update_reserve_space
- 	/* update per-inode reservations */
- 	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
- 	EXT4_I(inode)->i_reserved_data_blocks -= used;
--
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+
-+	/*
-+	 * free those over-booking quota for metadata blocks
-+	 */
-+
-+	if (mdb_free)
-+		vfs_dq_release_reservation_block(inode, mdb_free);
- }
- 
- /*
-@@ -1547,8 +1564,8 @@ static int ext4_journalled_write_end(str
- static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
+ static inline int vfs_dq_prealloc_block_nodirty(struct inode *inode, qsize_t nr)
  {
- 	int retries = 0;
--       struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--       unsigned long md_needed, mdblocks, total = 0;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	unsigned long md_needed, mdblocks, total = 0;
- 
- 	/*
- 	 * recalculate the amount of metadata blocks to reserve
-@@ -1564,12 +1581,23 @@ repeat:
- 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
- 	total = md_needed + nrblocks;
- 
-+	/*
-+	 * Make quota reservation here to prevent quota overflow
-+	 * later. Real quota accounting is done at pages writeout
-+	 * time.
-+	 */
-+	if (vfs_dq_reserve_block(inode, total)) {
-+		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+		return -EDQUOT;
-+	}
-+
- 	if (ext4_claim_free_blocks(sbi, total)) {
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
- 			yield();
- 			goto repeat;
- 		}
-+		vfs_dq_release_reservation_block(inode, total);
- 		return -ENOSPC;
- 	}
- 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
-@@ -1623,6 +1651,8 @@ static void ext4_da_release_space(struct
- 	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
- 	EXT4_I(inode)->i_reserved_meta_blocks = mdb;
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+
-+	vfs_dq_release_reservation_block(inode, release);
+-	return vfs_dq_prealloc_space_nodirty(inode,
+-			nr << inode->i_sb->s_blocksize_bits);
++	return vfs_dq_prealloc_space_nodirty(inode, nr << inode->i_blkbits);
  }
  
- static void ext4_da_page_release_reservation(struct page *page,
-Index: linux-2.6.28-git7/fs/ext4/super.c
-===================================================================
---- linux-2.6.28-git7.orig/fs/ext4/super.c	2009-01-05 17:45:01.000000000 -0800
-+++ linux-2.6.28-git7/fs/ext4/super.c	2009-01-05 17:45:30.000000000 -0800
-@@ -948,6 +948,10 @@ static struct dquot_operations ext4_quot
- 	.initialize	= ext4_dquot_initialize,
- 	.drop		= ext4_dquot_drop,
- 	.alloc_space	= dquot_alloc_space,
-+	.reserve_space	= dquot_reserve_space,
-+	.claim_space	= dquot_claim_space,
-+	.release_rsv	= dquot_release_reserved_space,
-+	.get_reserved_space = ext4_get_reserved_space,
- 	.alloc_inode	= dquot_alloc_inode,
- 	.free_space	= dquot_free_space,
- 	.free_inode	= dquot_free_inode,
-Index: linux-2.6.28-git7/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.28-git7.orig/fs/ext4/mballoc.c	2009-01-05 17:45:01.000000000 -0800
-+++ linux-2.6.28-git7/fs/ext4/mballoc.c	2009-01-05 17:46:38.000000000 -0800
-@@ -3086,9 +3086,12 @@ ext4_mb_mark_diskspace_used(struct ext4_
- 	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
- 		/* release all the reserved blocks if non delalloc */
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
--	else
-+	else {
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
- 						ac->ac_b_ex.fe_len);
-+		/* convert reserved quota blocks to real quota blocks */
-+		vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
-+	}
+ static inline int vfs_dq_prealloc_block(struct inode *inode, qsize_t nr)
+ {
+-	return vfs_dq_prealloc_space(inode,
+-			nr << inode->i_sb->s_blocksize_bits);
++	return vfs_dq_prealloc_space(inode, nr << inode->i_blkbits);
+ }
  
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi,
-@@ -4533,7 +4536,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 	struct ext4_sb_info *sbi;
- 	struct super_block *sb;
- 	ext4_fsblk_t block = 0;
--	unsigned int inquota;
-+	unsigned int inquota = 0;
- 	unsigned int reserv_blks = 0;
+ static inline int vfs_dq_alloc_block_nodirty(struct inode *inode, qsize_t nr)
+ {
+- 	return vfs_dq_alloc_space_nodirty(inode,
+-			nr << inode->i_sb->s_blocksize_bits);
++	return vfs_dq_alloc_space_nodirty(inode, nr << inode->i_blkbits);
+ }
  
- 	sb = ar->inode->i_sb;
-@@ -4551,9 +4554,17 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 		   (unsigned long long) ar->pleft,
- 		   (unsigned long long) ar->pright);
- 
--	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
--		/*
--		 * With delalloc we already reserved the blocks
-+	/*
-+	 * For delayed allocation, we could skip the ENOSPC and
-+	 * EDQUOT check, as blocks and quotas have been already
-+	 * reserved when data being copied into pagecache.
-+	 */
-+	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
-+		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
-+	else {
-+		/* Without delayed allocation we need to verify
-+		 * there is enough free blocks to do block allocation
-+		 * and verify allocation doesn't exceed the quota limits.
- 		 */
- 		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
- 			/* let others to free the space */
-@@ -4565,19 +4576,16 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 			return 0;
- 		}
- 		reserv_blks = ar->len;
-+		while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
-+			ar->flags |= EXT4_MB_HINT_NOPREALLOC;
-+			ar->len--;
-+		}
-+		inquota = ar->len;
-+		if (ar->len == 0) {
-+			*errp = -EDQUOT;
-+			goto out3;
-+		}
- 	}
--	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
--		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
--		ar->len--;
--	}
--	if (ar->len == 0) {
--		*errp = -EDQUOT;
--		goto out3;
--	}
--	inquota = ar->len;
 -
--	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
--		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
+ static inline int vfs_dq_alloc_block(struct inode *inode, qsize_t nr)
+ {
+-	return vfs_dq_alloc_space(inode,
+-			nr << inode->i_sb->s_blocksize_bits);
++	return vfs_dq_alloc_space(inode, nr << inode->i_blkbits);
+ }
  
- 	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
- 	if (!ac) {
-@@ -4643,7 +4651,7 @@ repeat:
- out2:
- 	kmem_cache_free(ext4_ac_cachep, ac);
- out1:
--	if (ar->len < inquota)
-+	if (inquota && ar->len < inquota)
- 		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
- out3:
- 	if (!ar->len) {
-Index: linux-2.6.28-git7/fs/ext4/ext4.h
-===================================================================
---- linux-2.6.28-git7.orig/fs/ext4/ext4.h	2009-01-05 17:45:01.000000000 -0800
-+++ linux-2.6.28-git7/fs/ext4/ext4.h	2009-01-05 17:45:30.000000000 -0800
-@@ -1124,6 +1124,7 @@ extern int ext4_chunk_trans_blocks(struc
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
-+extern unsigned long long ext4_get_reserved_space(struct inode *inode);
+ static inline int vfs_dq_reserve_block(struct inode *inode, qsize_t nr)
+ {
+-	return vfs_dq_reserve_space(inode,
+-			nr << inode->i_blkbits);
++	return vfs_dq_reserve_space(inode, nr << inode->i_blkbits);
+ }
  
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+ static inline int vfs_dq_claim_block(struct inode *inode, qsize_t nr)
+ {
+-	return vfs_dq_claim_space(inode,
+-			nr << inode->i_blkbits);
++	return vfs_dq_claim_space(inode, nr << inode->i_blkbits);
+ }
+ 
+ static inline
+@@ -455,12 +448,12 @@ void vfs_dq_release_reservation_block(st
+ 
+ static inline void vfs_dq_free_block_nodirty(struct inode *inode, qsize_t nr)
+ {
+-	vfs_dq_free_space_nodirty(inode, nr << inode->i_sb->s_blocksize_bits);
++	vfs_dq_free_space_nodirty(inode, nr << inode->i_blkbits);
+ }
+ 
+ static inline void vfs_dq_free_block(struct inode *inode, qsize_t nr)
+ {
+-	vfs_dq_free_space(inode, nr << inode->i_sb->s_blocksize_bits);
++	vfs_dq_free_space(inode, nr << inode->i_blkbits);
+ }
+ 
+ /*
 
 
