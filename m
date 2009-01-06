@@ -1,118 +1,167 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: New ext4 patchset: 2.6.28-ext4-2
-Date: Tue, 06 Jan 2009 01:35:06 -0500
-Message-ID: <E1LK5Ws-00076Z-7D@closure.thunk.org>
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH RESEND] Add extent conversion support to chattr
+Date: Tue,  6 Jan 2009 12:07:14 +0530
+Message-ID: <1231223834-2785-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56219 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751421AbZAFGfI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Jan 2009 01:35:08 -0500
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:57196 "EHLO
+	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750725AbZAFGhR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jan 2009 01:37:17 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id n066bFMf026881
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Jan 2009 12:07:15 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n066Zc6x3674120
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Jan 2009 12:05:38 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id n066bEC8000438
+	for <linux-ext4@vger.kernel.org>; Tue, 6 Jan 2009 17:37:15 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This patch adds new option, +e to chattr. The +e option
+is used to convert the ext3 format (non extent) file
+to ext4 (extent) format. This can be used to migrate
+the ext3 file system to ext4 file system.
 
-This is an update of the draft set of patches which I hope to be able to
-push to Linus shortly, after a tad bit more testing.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-These patches fix a few cosmetic issues, add stable@kernel.org markings
-for patches that should be attached to the stable tree, and fix a few
-bugs in the "allow-ext4-to-run-without-a-journal" patch as well as fix a
-potential deadlock in the blkdev-releasepage patches.
+---
+ misc/chattr.1.in |    8 ++----
+ misc/chattr.c    |   58 +++++++++++++++++++++++++++++++++++------------------
+ 2 files changed, 41 insertions(+), 25 deletions(-)
 
-git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.28-ext4-2
-http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.28-ext
-4-2
-
-As a patchset:
-
-ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.28-ext4-2
-
-                                                        - Ted
-
-(*) Patches that will *NOT* be pushed to Linus
-
-Alexander Beregalov (1):
-      ext4: fix printk format warning
-
-Aneesh Kumar K.V (21):
-      ext4: Fix the delalloc writepages to allocate blocks at the right offset.
-      ext4: avoid ext4_error when mounting a fs with a single bg
-      ext4: Don't overwrite allocation_context ac_status
-      ext4: sparse fixes
-      ext4: Add blocks added during resize to bitmap
-      ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
-      ext4: cleanup mballoc header files
-      jbd2: Call journal commit callback without holding j_list_lock
-      ext4: don't use blocks freed but not yet committed in buddy cache init
-      ext4: Fix lockdep recursive locking warning
-      ext4: fix BUG when calling ext4_error with locked block group
-      ext4: Fix race between read_block_bitmap() and mark_diskspace_used()
-      ext4: Use high 16 bits of the block group descriptor's free counts fields
-      ext4: code cleanup
-      ext4: Fix the race between read_inode_bitmap() and ext4_new_inode()
-      ext4: Use new buffer_head flag to check uninit group bitmaps initialization
-      ext4: mark the blocks/inode bitmap beyond end of group as used
-      ext4: Don't allow new groups to be added during block allocation
-      ext4: Init the complete page while building buddy cache
-      ext4: Fix s_dirty_blocks_counter if block allocation failed with nodelalloc
-  (*) ext4: undo the stable boundary patch changes
-
-David Howells (1):
-      CRED: Wrap task credential accesses in the Ext4 filesystem
-
-Frank Mayhar (1):
-      ext4: Allow ext4 to run without a journal
-
-Josef Bacik (1):
-      jbd2: improve jbd2 fsync batching
-
-Mark Fasheh (1):
-      jbd2: Add BH_JBDPrivateStart
-
-Roel Kluin (1):
-      ext4: Use simple_strtol() instead of simple_strtoul() in ext4_ui_proc_open
-
-Solofo.Ramangalahy@bull.net (1):
-      ext4: When resizing set the EXT4_BG_INODE_ZEROED flag for new block groups
-
-Theodore Ts'o (28):
-      ext3: Add support for non-native signed/unsigned htree hash algorithms
-      ext4: Add support for non-native signed/unsigned htree hash algorithms
-      ext3/4: Fix loop index in do_split() so it is signed
-      Update Documentation/filesystems/ext4.txt
-      ext4: remove ext4_new_blocks() and call ext4_mb_new_blocks() directly
-      ext4: remove ext4_new_meta_block()
-      ext4: remove do_blk_alloc()
-      ext4: tone down ext4_da_writepages warnings
-      jbd2: Add barrier not supported test to journal_wait_on_commit_record
-      ext4: remove extraneous newlines from calls to ext4_error() and ext4_warning()
-      ext4: display average commit time
-      ext4: add fsync batch tuning knobs
-      ext4: Remove i_ext_generation from ext4_inode_info structure
-      ext4: Make ext4_group_t be an unsigned int
-      ext4: Change unsigned long to unsigned int
-      jbd2: Remove a large array of bh's from the stack of the checkpoint routine
-      add releasepage hooks to block devices which can be used by file systems
-      ext4: Remove code to create the journal inode
-      ext4: Add markers for better debuggability
-      jbd2: Add pid and journal device name to the "kjournald2 starting" message
-      jbd2: Submit writes to the journal using WRITE_SYNC
-      ext4: Add mount option to set kjournald's I/O priority
-      ext4: Add sanity checks for the superblock before mounting the filesystem
-      ext4: Make printk's consistently prefixed with "EXT4-fs: "
-  (*) ext4: Stable/Unstable boundary
-  (*) Add a ioctl which dumps out all of the in-use buffer heads for a block device
-  (*) ext4: Add a delayed allocation debugging ioctl
-  (*) ext4: akpm's locking hack to fix locking delays
-
-Toshiyuki Okajima (2):
-      ext3: provide function to release metadata pages under memory pressure
-      ext4: provide function to release metadata pages under memory pressure
-
-Wu Fengguang (1):
-      ext4: fix build warning
-
-Yasunori Goto (1):
-      ext4: Widen type of ext4_sb_info.s_mb_maxs[]
-
+diff --git a/misc/chattr.1.in b/misc/chattr.1.in
+index 960f058..c49f876 100644
+--- a/misc/chattr.1.in
++++ b/misc/chattr.1.in
+@@ -19,7 +19,7 @@ chattr \- change file attributes on a Linux second extended file system
+ .B chattr
+ changes the file attributes on a Linux second extended file system.
+ .PP
+-The format of a symbolic mode is +-=[ASacDdIijsTtu].
++The format of a symbolic mode is +-=[ASacDdeIijsTtu].
+ .PP
+ The operator `+' causes the selected attributes to be added to the
+ existing attributes of the files; `-' causes them to be removed; and
+@@ -74,10 +74,8 @@ although it can be displayed by
+ .BR lsattr (1).
+ .PP
+ The 'e' attribute indicates that the file is using extents for mapping
+-the blocks on disk.  It may not be set or reset using
+-.BR chattr (1),
+-although it can be displayed by
+-.BR lsattr (1).
++the blocks on disk.  It may not be removed using
++.BR chattr (1).
+ .PP
+ The 'I' attribute is used by the htree code to indicate that a directory
+ is being indexed using hashed trees.  It may not be set or reset using 
+diff --git a/misc/chattr.c b/misc/chattr.c
+index 3d67519..067d0b6 100644
+--- a/misc/chattr.c
++++ b/misc/chattr.c
+@@ -82,7 +82,7 @@ static unsigned long sf;
+ static void usage(void)
+ {
+ 	fprintf(stderr,
+-		_("Usage: %s [-RVf] [-+=AacDdijsSu] [-v version] files...\n"),
++		_("Usage: %s [-RVf] [-+=AacDdeijsSu] [-v version] files...\n"),
+ 		program_name);
+ 	exit(1);
+ }
+@@ -99,6 +99,7 @@ static const struct flags_char flags_array[] = {
+ 	{ EXT2_APPEND_FL, 'a' },
+ 	{ EXT2_COMPR_FL, 'c' },
+ 	{ EXT2_NODUMP_FL, 'd' },
++	{ EXT4_EXTENTS_FL, 'e'},
+ 	{ EXT2_IMMUTABLE_FL, 'i' },
+ 	{ EXT3_JOURNAL_DATA_FL, 'j' },
+ 	{ EXT2_SECRM_FL, 's' },
+@@ -191,6 +192,7 @@ static int change_attributes(const char * name)
+ {
+ 	unsigned long flags;
+ 	STRUCT_STAT	st;
++	int extent_file = 0;
+ 
+ 	if (LSTAT (name, &st) == -1) {
+ 		if (!silent)
+@@ -199,7 +201,22 @@ static int change_attributes(const char * name)
+ 		return -1;
+ 	}
+ 
++	if (fgetflags (name, &flags) == -1) {
++		if (!silent)
++			com_err (program_name, errno,
++					_("while reading flags on %s"), name);
++		return -1;
++	}
++	if (flags & EXT4_EXTENTS_FL)
++		extent_file = 1;
+ 	if (set) {
++		if (extent_file && !(sf & EXT4_EXTENTS_FL)) {
++			if (!silent)
++				com_err(program_name, 0,
++				_("Clearing extent flag not supported on %s"),
++					name);
++			return -1;
++		}
+ 		if (verbose) {
+ 			printf (_("Flags of %s set as "), name);
+ 			print_flags (stdout, sf, 0);
+@@ -208,30 +225,31 @@ static int change_attributes(const char * name)
+ 		if (fsetflags (name, sf) == -1)
+ 			perror (name);
+ 	} else {
+-		if (fgetflags (name, &flags) == -1) {
++		if (rem)
++			flags &= ~rf;
++		if (add)
++			flags |= af;
++		if (extent_file && !(flags & EXT4_EXTENTS_FL)) {
+ 			if (!silent)
+-				com_err (program_name, errno,
+-					 _("while reading flags on %s"), name);
++				com_err(program_name, 0,
++				_("Clearing extent flag not supported on %s"),
++					name);
+ 			return -1;
+-		} else {
+-			if (rem)
+-				flags &= ~rf;
+-			if (add)
+-				flags |= af;
+-			if (verbose) {
+-				printf (_("Flags of %s set as "), name);
+-				print_flags (stdout, flags, 0);
+-				printf ("\n");
+-			}
+-			if (!S_ISDIR(st.st_mode))
+-				flags &= ~EXT2_DIRSYNC_FL;
+-			if (fsetflags (name, flags) == -1) {
+-				if (!silent)
+-					com_err(program_name, errno,
++		}
++		if (verbose) {
++			printf (_("Flags of %s set as "), name);
++			print_flags (stdout, flags, 0);
++			printf ("\n");
++		}
++		if (!S_ISDIR(st.st_mode))
++			flags &= ~EXT2_DIRSYNC_FL;
++		if (fsetflags (name, flags) == -1) {
++			if (!silent) {
++				com_err(program_name, errno,
+ 						_("while setting flags on %s"),
+ 						name);
+-				return -1;
+ 			}
++			return -1;
+ 		}
+ 	}
+ 	if (set_version) {
+-- 
+tg: (8680b4e..) an/chattr3 (depends on: master)
