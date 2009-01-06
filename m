@@ -1,34 +1,223 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: New ext4 patchset: 2.6.28-ext4-2
-Date: Tue, 6 Jan 2009 13:26:38 -0500
-Message-ID: <20090106182638.GD10903@mit.edu>
-References: <E1LK5Ws-00076Z-7D@closure.thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Remove "extents" mount option
+Date: Tue,  6 Jan 2009 13:49:37 -0500
+Message-ID: <1231267777-18831-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:43044 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:36550 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753494AbZAFS0k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Jan 2009 13:26:40 -0500
-Content-Disposition: inline
-In-Reply-To: <E1LK5Ws-00076Z-7D@closure.thunk.org>
+	id S1754397AbZAFStj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Jan 2009 13:49:39 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 06, 2009 at 01:35:06AM -0500, Theodore Ts'o wrote:
-> 
-> This is an update of the draft set of patches which I hope to be able to
-> push to Linus shortly, after a tad bit more testing.
+This mount option is largely superfluous, and in fact the way it was
+implemented was buggy; if a filesystem which did not have the extents
+feature flag was mounted -o extents, the filesystem would attempt to
+create and use extents-based file even though the extents feature flag
+was not eabled.  The simplest thing to do is to nuke the mount option
+entirely.  It's not all that useful to force the non-creation of new
+extent-based files if the filesystem can support it.
 
-Note; there is a serious bug in 2.6.28-ext4-2 due to a typo on my
-part; said typo disables journalling entirely on ext4 filesystems.
-Oops.  My bad; there was a missing "else" what should have read:
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ Documentation/filesystems/ext4.txt |    5 ---
+ fs/ext4/ext4.h                     |    1 -
+ fs/ext4/ext4_jbd2.h                |    4 +-
+ fs/ext4/extents.c                  |    4 +-
+ fs/ext4/ialloc.c                   |    2 +-
+ fs/ext4/migrate.c                  |   14 +++++-----
+ fs/ext4/super.c                    |   48 +----------------------------------
+ 7 files changed, 14 insertions(+), 64 deletions(-)
 
-+      } if (test_opt(sb, NOLOAD) && !(sb->s_flags & MS_RDONLY) &&
-
-So please don't use 2.6.28-ext4-2.  I will be releasing a
-2.6.28-ext4-3 to fix this up, as well as one or two other problems and
-documentation fix ups.
-
-					- Ted
+diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+index 8938949..cec829b 100644
+--- a/Documentation/filesystems/ext4.txt
++++ b/Documentation/filesystems/ext4.txt
+@@ -131,11 +131,6 @@ ro                   	Mount filesystem read only. Note that ext4 will
+                      	mount options "ro,noload" can be used to prevent
+ 		     	writes to the filesystem.
+ 
+-extents		(*)	ext4 will use extents to address file data.  The
+-			file system will no longer be mountable by ext3.
+-
+-noextents		ext4 will not use extents for newly created files
+-
+ journal_checksum	Enable checksumming of the journal transactions.
+ 			This will allow the recovery code in e2fsck and the
+ 			kernel to detect corruption in the kernel.  It is a
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 695b45c..db17188 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -536,7 +536,6 @@ do {									       \
+ #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
+ #define EXT4_MOUNT_USRQUOTA		0x100000 /* "old" user quota */
+ #define EXT4_MOUNT_GRPQUOTA		0x200000 /* "old" group quota */
+-#define EXT4_MOUNT_EXTENTS		0x400000 /* Extents support */
+ #define EXT4_MOUNT_JOURNAL_CHECKSUM	0x800000 /* Journal checksums */
+ #define EXT4_MOUNT_JOURNAL_ASYNC_COMMIT	0x1000000 /* Journal Async Commit */
+ #define EXT4_MOUNT_I_VERSION            0x2000000 /* i_version support */
+diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
+index 663197a..be2f426 100644
+--- a/fs/ext4/ext4_jbd2.h
++++ b/fs/ext4/ext4_jbd2.h
+@@ -32,8 +32,8 @@
+  * 5 levels of tree + root which are stored in the inode. */
+ 
+ #define EXT4_SINGLEDATA_TRANS_BLOCKS(sb)				\
+-	(EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)	\
+-		|| test_opt(sb, EXTENTS) ? 27U : 8U)
++	(EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)   \
++	 ? 27U : 8U)
+ 
+ /* Extended attribute operations touch at most two data buffers,
+  * two bitmap buffers, and two group summaries, in addition to the inode
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index c64080e..240cf0d 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2247,7 +2247,7 @@ void ext4_ext_init(struct super_block *sb)
+ 	 * possible initialization would be here
+ 	 */
+ 
+-	if (test_opt(sb, EXTENTS)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+ 		printk(KERN_INFO "EXT4-fs: file extents enabled");
+ #ifdef AGGRESSIVE_TEST
+ 		printk(", aggressive tests");
+@@ -2272,7 +2272,7 @@ void ext4_ext_init(struct super_block *sb)
+  */
+ void ext4_ext_release(struct super_block *sb)
+ {
+-	if (!test_opt(sb, EXTENTS))
++	if (!EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
+ 		return;
+ 
+ #ifdef EXTENTS_STATS
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 17483ad..4ed2c04 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -914,7 +914,7 @@ got:
+ 	if (err)
+ 		goto fail_free_drop;
+ 
+-	if (test_opt(sb, EXTENTS)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+ 		/* set extent flag only for directory, file and normal symlink*/
+ 		if (S_ISDIR(mode) || S_ISREG(mode) || S_ISLNK(mode)) {
+ 			EXT4_I(inode)->i_flags |= EXT4_EXTENTS_FL;
+diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
+index e7cd488..734abca 100644
+--- a/fs/ext4/migrate.c
++++ b/fs/ext4/migrate.c
+@@ -459,13 +459,13 @@ int ext4_ext_migrate(struct inode *inode)
+ 	struct list_blocks_struct lb;
+ 	unsigned long max_entries;
+ 
+-	if (!test_opt(inode->i_sb, EXTENTS))
+-		/*
+-		 * if mounted with noextents we don't allow the migrate
+-		 */
+-		return -EINVAL;
+-
+-	if ((EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
++	/*
++	 * If the filesystem does not support extents, or the inode
++	 * already is extent-based, error out.
++	 */
++	if (!EXT4_HAS_INCOMPAT_FEATURE(inode->i_sb,
++				       EXT4_FEATURE_INCOMPAT_EXTENTS) ||
++	    (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL))
+ 		return -EINVAL;
+ 
+ 	if (S_ISLNK(inode->i_mode) && inode->i_blocks == 0)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 697ffed..22c4fde 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -830,8 +830,6 @@ static int ext4_show_options(struct seq_file *seq, struct vfsmount *vfs)
+ 		seq_puts(seq, ",journal_async_commit");
+ 	if (test_opt(sb, NOBH))
+ 		seq_puts(seq, ",nobh");
+-	if (!test_opt(sb, EXTENTS))
+-		seq_puts(seq, ",noextents");
+ 	if (test_opt(sb, I_VERSION))
+ 		seq_puts(seq, ",i_version");
+ 	if (!test_opt(sb, DELALLOC))
+@@ -1012,7 +1010,7 @@ enum {
+ 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+ 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
+ 	Opt_ignore, Opt_barrier, Opt_err, Opt_resize, Opt_usrquota,
+-	Opt_grpquota, Opt_extents, Opt_noextents, Opt_i_version,
++	Opt_grpquota, Opt_i_version,
+ 	Opt_stripe, Opt_delalloc, Opt_nodelalloc,
+ 	Opt_inode_readahead_blks, Opt_journal_ioprio
+ };
+@@ -1067,8 +1065,6 @@ static const match_table_t tokens = {
+ 	{Opt_quota, "quota"},
+ 	{Opt_usrquota, "usrquota"},
+ 	{Opt_barrier, "barrier=%u"},
+-	{Opt_extents, "extents"},
+-	{Opt_noextents, "noextents"},
+ 	{Opt_i_version, "i_version"},
+ 	{Opt_stripe, "stripe=%u"},
+ 	{Opt_resize, "resize"},
+@@ -1116,7 +1112,6 @@ static int parse_options(char *options, struct super_block *sb,
+ 	int qtype, qfmt;
+ 	char *qname;
+ #endif
+-	ext4_fsblk_t last_block;
+ 
+ 	if (!options)
+ 		return 1;
+@@ -1446,33 +1441,6 @@ set_qf_format:
+ 		case Opt_bh:
+ 			clear_opt(sbi->s_mount_opt, NOBH);
+ 			break;
+-		case Opt_extents:
+-			if (!EXT4_HAS_INCOMPAT_FEATURE(sb,
+-					EXT4_FEATURE_INCOMPAT_EXTENTS)) {
+-				ext4_warning(sb, __func__,
+-					"extents feature not enabled "
+-					"on this filesystem, use tune2fs");
+-				return 0;
+-			}
+-			set_opt(sbi->s_mount_opt, EXTENTS);
+-			break;
+-		case Opt_noextents:
+-			/*
+-			 * When e2fsprogs support resizing an already existing
+-			 * ext3 file system to greater than 2**32 we need to
+-			 * add support to block allocator to handle growing
+-			 * already existing block  mapped inode so that blocks
+-			 * allocated for them fall within 2**32
+-			 */
+-			last_block = ext4_blocks_count(sbi->s_es) - 1;
+-			if (last_block  > 0xffffffffULL) {
+-				printk(KERN_ERR "EXT4-fs: Filesystem too "
+-						"large to mount with "
+-						"-o noextents options\n");
+-				return 0;
+-			}
+-			clear_opt(sbi->s_mount_opt, EXTENTS);
+-			break;
+ 		case Opt_i_version:
+ 			set_opt(sbi->s_mount_opt, I_VERSION);
+ 			sb->s_flags |= MS_I_VERSION;
+@@ -2137,18 +2105,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	set_opt(sbi->s_mount_opt, BARRIER);
+ 
+ 	/*
+-	 * turn on extents feature by default in ext4 filesystem
+-	 * only if feature flag already set by mkfs or tune2fs.
+-	 * Use -o noextents to turn it off
+-	 */
+-	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_EXTENTS))
+-		set_opt(sbi->s_mount_opt, EXTENTS);
+-	else
+-		ext4_warning(sb, __func__,
+-			"extents feature not enabled on this filesystem, "
+-			"use tune2fs.");
