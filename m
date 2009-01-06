@@ -1,57 +1,122 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: How to recover a damaged ext4 file system?
-Date: Tue, 6 Jan 2009 14:34:04 -0500
-Message-ID: <20090106193404.GA18957@mit.edu>
-References: <20090105135347.GA3337@localdomain> <20090106120527.GT3932@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christian Ohm <chr.ohm@gmx.net>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:57059 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750944AbZAFTeI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 6 Jan 2009 14:34:08 -0500
-Content-Disposition: inline
-In-Reply-To: <20090106120527.GT3932@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-On Tue, Jan 06, 2009 at 05:05:27AM -0700, Andreas Dilger wrote:
-> 
-> You should try to run e2fsck with the backup group descriptors, using
-> the -B and/or -b options (at a guess -B 4096 and -b 32768).
-
-That probably won't help, given that the fsck transcript already says
-this:
-
-> > fsck.ext4: Group descriptors look bad... trying backup blocks...
-
-It looks like both the primary and the backup block group descriptors
-are bad.  I'm not sure how this happened; normally nothing touches the
-backup block superblocks at all.  Stupid question --- are you sure the
-partition table is sane; that's always the first thing to check.
-
-Can you upload someplace the output of
-
-dumpe2fs /dev/XXX
-dumpe2fs -o superblock=32768 /dev/XXX
-dumpe2fs -o superblock=98304 /dev/XXX
-
-That would be helpful to see what had happened.
-
-> 2. Is this corruption a fault of ext4? I guess this is difficult to
-> answer, but I had ext3 survive any lockups without much problems. So
-> far ext4 seems not quite that robust, but perhaps another file
-> system would have blown up as well in this situation. Is there any
-> information I can give you to help make ext4 more robust?
-
-I'm not sure what the hard system hang did, but it looks like it
-splattered a lot of random crap all over the harddrive.  I doubt ext4
-did this, and I doubt ext3 would have done any better.... we need to
-know a lot more about exactly what sort damage was done to the
-filesytem to say for certain, though.
-
-					- Ted
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: New ext4 patchset: 2.6.28-ext4-3
+Date: Tue, 06 Jan 2009 15:04:56 -0500
+Message-ID: <E1LKIAa-00044j-Q3@closure.thunk.org>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754796AbZAFUFW@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
+This is (hopefully!) the last draft set of patches which I hope to be
+able to push to Linus shortly.
+
+These patches fix an embarassing typo in
+"allow-ext4-to-run-without-a-journal", fix up some documentation issues,
+and adds a patch which fixes a oops-on-corrupted-filesystem issue.  We
+also remove the "extents" mount option, since it was buggy if used on a
+filesystem that did not have the extents feature enabled, and it was
+largely superfluous; so the easiest fix was to remove the extents mount
+option altogether.
+
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 2.6.28-ext4-3
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=shortlog;h=2.6.28-ext
+4-3
+
+As a patchset:
+
+ftp://ftp.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/2.6.28-ext4-3
+
+                                                        - Ted
+
+(*) Patches which will *NOT* not be pushed to Linus
+(+) Patches which are new or modified for 2.6.28-ext4-3
+
+Alexander Beregalov (1):
+      ext4: fix printk format warning
+
+Aneesh Kumar K.V (21):
+      ext4: Fix the delalloc writepages to allocate blocks at the right offset.
+      ext4: avoid ext4_error when mounting a fs with a single bg
+      ext4: Don't overwrite allocation_context ac_status
+      ext4: sparse fixes
+      ext4: Add blocks added during resize to bitmap
+      ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
+      ext4: cleanup mballoc header files
+      jbd2: Call journal commit callback without holding j_list_lock
+      ext4: don't use blocks freed but not yet committed in buddy cache init
+      ext4: Fix lockdep recursive locking warning
+      ext4: fix BUG when calling ext4_error with locked block group
+      ext4: Fix race between read_block_bitmap() and mark_diskspace_used()
+      ext4: Use high 16 bits of the block group descriptor's free counts fields
+      ext4: code cleanup
+      ext4: Fix the race between read_inode_bitmap() and ext4_new_inode()
+      ext4: Use new buffer_head flag to check uninit group bitmaps initialization
+      ext4: mark the blocks/inode bitmap beyond end of group as used
+      ext4: Don't allow new groups to be added during block allocation
+      ext4: Init the complete page while building buddy cache
+      ext4: Fix s_dirty_blocks_counter if block allocation failed with nodelalloc
+  (*) ext4: undo the stable boundary patch changes
+
+David Howells (1):
+      CRED: Wrap task credential accesses in the Ext4 filesystem
+
+Frank Mayhar (1):
+  (+) ext4: Allow ext4 to run without a journal
+
+Jan Kara (1):
+  (+) jbd2: Fix oops in jbd2_journal_init_inode() on corrupted fs
+
+Josef Bacik (1):
+      jbd2: improve jbd2 fsync batching
+
+Mark Fasheh (1):
+      jbd2: Add BH_JBDPrivateStart
+
+Roel Kluin (1):
+      ext4: Use simple_strtol() instead of simple_strtoul() in ext4_ui_proc_open
+
+Solofo.Ramangalahy@bull.net (1):
+      ext4: When resizing set the EXT4_BG_INODE_ZEROED flag for new block groups
+
+Theodore Ts'o (30):
+      ext3: Add support for non-native signed/unsigned htree hash algorithms
+      ext4: Add support for non-native signed/unsigned htree hash algorithms
+      ext3/4: Fix loop index in do_split() so it is signed
+      Update Documentation/filesystems/ext4.txt
+      ext4: remove ext4_new_blocks() and call ext4_mb_new_blocks() directly
+      ext4: remove ext4_new_meta_block()
+      ext4: remove do_blk_alloc()
+      ext4: tone down ext4_da_writepages warnings
+      jbd2: Add barrier not supported test to journal_wait_on_commit_record
+      ext4: remove extraneous newlines from calls to ext4_error() and ext4_warning()
+      ext4: display average commit time
+      ext4: add fsync batch tuning knobs
+      ext4: Remove i_ext_generation from ext4_inode_info structure
+      ext4: Make ext4_group_t be an unsigned int
+      ext4: Change unsigned long to unsigned int
+      jbd2: Remove a large array of bh's from the stack of the checkpoint routine
+      add releasepage hooks to block devices which can be used by file systems
+      ext4: Remove code to create the journal inode
+      ext4: Add markers for better debuggability
+      jbd2: Add pid and journal device name to the "kjournald2 starting" message
+      jbd2: Submit writes to the journal using WRITE_SYNC
+      ext4: Add mount option to set kjournald's I/O priority
+      ext4: Add sanity checks for the superblock before mounting the filesystem
+      ext4: Make printk's consistently prefixed with "EXT4-fs: "
+  (+) block: Add Kconfig help which notes that ext4 needs CONFIG_LSF
+  (+) ext4: Remove "extents" mount option
+  (*) ext4: Stable/Unstable boundary
+  (*) Add a ioctl which dumps out all of the in-use buffer heads for a block device
+  (*) ext4: Add a delayed allocation debugging ioctl
+  (*) ext4: akpm's locking hack to fix locking delays
+
+Toshiyuki Okajima (2):
+      ext3: provide function to release metadata pages under memory pressure
+      ext4: provide function to release metadata pages under memory pressure
+
+Wu Fengguang (1):
+      ext4: fix build warning
+
+Yasunori Goto (1):
+      ext4: Widen type of ext4_sb_info.s_mb_maxs[]
