@@ -1,37 +1,74 @@
-From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-Subject: Re: [PATCH] ext4: fix null pointer deref on mount
-Date: Tue, 06 Jan 2009 17:32:07 +0100
-Message-ID: <49638787.3020707@ph.tum.de>
-References: <4961603B.5020505@ph.tum.de> <20090105170259.GB8939@mit.edu> <49627285.8060407@ph.tum.de> <20090105213938.GG8939@mit.edu> <49628EBF.2040805@ph.tum.de> <20090105234411.GD14500@mit.edu> <4963529F.4040703@ph.tum.de> <20090106132509.GA12407@mit.edu>
+From: "Rohit Sharma" <imreckless@gmail.com>
+Subject: Re: Copying Data Blocks
+Date: Tue, 6 Jan 2009 22:15:33 +0530
+Message-ID: <2d08ef090901060845t85ac2b0i11c684a09d930608@mail.gmail.com>
+References: <2d08ef090901060236p46d4d396x797e4bceb24a2a34@mail.gmail.com>
+	 <ea11fea30901060524n559a48f1h85bbf27be5b30b50@mail.gmail.com>
+	 <5feb302e0901060612p4e114953pb6e297778aa7c0a4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Cc: "Manish Katiyar" <mkatiyar@gmail.com>,
+	ext4 <linux-ext4@vger.kernel.org>,
+	Kernelnewbies <kernelnewbies@nl.linux.org>
+To: "rishi agrawal" <postrishi@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:48059 "EHLO
-	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752249AbZAFQ3v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jan 2009 11:29:51 -0500
-In-Reply-To: <20090106132509.GA12407@mit.edu>
+Received: from rn-out-0910.google.com ([64.233.170.190]:41451 "EHLO
+	rn-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750846AbZAFQpe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jan 2009 11:45:34 -0500
+Received: by rn-out-0910.google.com with SMTP id k40so5399664rnd.17
+        for <linux-ext4@vger.kernel.org>; Tue, 06 Jan 2009 08:45:33 -0800 (PST)
+In-Reply-To: <5feb302e0901060612p4e114953pb6e297778aa7c0a4@mail.gmail.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Tue, Jan 06, 2009 at 01:46:23PM +0100, Thiemo Nagel wrote:
->>>> @@ -2160,6 +2162,15 @@
->>>>  			EXT4_BLOCKS_PER_GROUP(sb) - 1);
->>>>  	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
->>>>  	sbi->s_groups_count = blocks_count;
->>>> +	if (sbi->s_groups_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
->>> This can't possibly work, given that s_groups_count is an unsigned
->>> int.
->> I'm casting to uint64_t, so in my opinion it should work on all  
->> architectures.
-> ... which doesn't help given that sbi->s_groups_count is 32 bits on
-> x86_32 machines if it is unsigned long, and always 32 bits once
-> ext4_group_t was changed to be an unsigned int.
+On Tue, Jan 6, 2009 at 7:42 PM, rishi agrawal <postrishi@gmail.com> wrote:
+> yes i suppose the donor inode is known
+> moreover the receiver inode's number is also known
+>
+> On Tue, Jan 6, 2009 at 6:54 PM, Manish Katiyar <mkatiyar@gmail.com> wrote:
+>>
+>> On Tue, Jan 6, 2009 at 4:06 PM, Rohit Sharma <imreckless@gmail.com> wrote:
+>> > I want to read data blocks from one inode
+>> > and copy it to other inode.
+>> >
+>> > I mean to copy data from data blocks associated with one inode
+>> > to the data blocks associated with other inode.
+>>
+>> Copying 4K chunk of data itself is a costly operation. and depending
 
-You're right.
+Yes its a costly operation, but if this can be done then
+we can definitely copy n blocks at a time.
 
-Thiemo
+>> on the size of your donor inode this can be huge . Why do you want to
+>> do that ? Do you know the inode of the donor inode ?
+
+For physically relocating a file from one disk to other.
+
+Yes Manish, i know the donor inode and i will create the reciever inode.
+
+Can we do that in kernel space.?
+>>
+>> thanks -
+>> Manish
+>> >
+>> > Is that possible in kernel space.?
+>> > --
+>> > To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> > the body of a message to majordomo@vger.kernel.org
+>> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> >
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+>
+> --
+> Regards,
+> Rishi B. Agrawal
+>
+>
