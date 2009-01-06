@@ -1,94 +1,152 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix null pointer deref on mount
-Date: Mon, 5 Jan 2009 23:12:30 -0500
-Message-ID: <20090106041230.GA21733@mit.edu>
-References: <4961603B.5020505@ph.tum.de> <20090105170259.GB8939@mit.edu> <49627285.8060407@ph.tum.de> <20090105213938.GG8939@mit.edu> <49628EBF.2040805@ph.tum.de> <20090105234411.GD14500@mit.edu>
+Subject: Re: [PATCH 1/3] add releasepage hooks to block devices which can
+	be used by file systems
+Date: Mon, 5 Jan 2009 23:29:38 -0500
+Message-ID: <20090106042938.GB21733@mit.edu>
+References: <20081226050138.GU28946@ZenIV.linux.org.uk> <1230995358-24013-1-git-send-email-tytso@mit.edu> <1230995358-24013-2-git-send-email-tytso@mit.edu> <4961C1C8.2080300@jp.fujitsu.com> <20090105160514.GA8939@mit.edu> <4962D8FF.2000409@jp.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57496 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751620AbZAFEMb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 5 Jan 2009 23:12:31 -0500
+Cc: Al Viro <viro@ZenIV.linux.org.uk>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-fsdevel@vger.kernel.org
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20090105234411.GD14500@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <4962D8FF.2000409@jp.fujitsu.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-This is what I've ended up adding to the ext4 patch queue.
+On Tue, Jan 06, 2009 at 01:07:27PM +0900, Toshiyuki Okajima wrote:
+> > Sounds like a deadlock caused by the fact that we're no longer masking
+> > __GFP_WAIT, probably on journal->j_wait_done_commit.  Presumably the
+> > system came under pressure during a commit operation, which makes
+> > sense, and so we ended up with a deadlock between kjournald and
+> > kswapd.  The fix is pretty simple; we just need to mask out the
+> > __GFP_WAIT in the filesystem-specific callback, since this is a
+> > restriction imposed by the filesystem's use of the jbd/jbd2 layer.
+>
+> Your opinion is correct.
+> A detailed investigation is done, and the root cause has been understood.
 
-     	     	  	   	     	      - Ted
+Thanks for confirming my supposition.  I've checked the following
+modified patches into the ext4 patch queue, which will be sent to
+Linus shortly.
 
->From 7439e5386e381e6727ff156fb891175ed96775e9 Mon Sep 17 00:00:00 2001
-From: Theodore Ts'o <tytso@mit.edu>
-Date: Mon, 5 Jan 2009 23:11:36 -0500
-Subject: [PATCH] ext4: Add sanity checks for the superblock before mounting the filesystem
+						- Ted
 
-This avoids insane superblock configurations that could lead to kernel
-oops due to null pointer derefences.
+ext3: provide function to release metadata pages under memory pressure
 
-Signed-off-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+
+Pages in the page cache belonging to ext3 data files are released via
+the ext3_releasepage() function specified in the ext3 inode's
+address_space_ops.  However, metadata blocks (such as indirect blocks,
+directory blocks, etc) are managed via the block device
+address_space_ops, and they can not be released by
+try_to_free_buffers() if they have a journal head attached to them.
+
+To address this, we supply a try_to_free_pages() function which calls
+journal_try_to_free_buffers() function to free the metadata, and which
+is called by the block device's blkdev_releasepage() function.
+
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/super.c |   30 ++++++++++++++++++++----------
- 1 files changed, 20 insertions(+), 10 deletions(-)
+Cc: linux-fsdevel@vger.kernel.org
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 541d5e4..6900ff0 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -682,6 +682,26 @@ static struct dentry *ext3_fh_to_parent(struct super_block *sb, struct fid *fid,
+ 				    ext3_nfs_get_inode);
+ }
+ 
++/*
++ * Try to release metadata pages (indirect blocks, directories) which are
++ * mapped via the block device.  Since these pages could have journal heads
++ * which would prevent try_to_free_buffers() from freeing them, we must use
++ * jbd layer's try_to_free_buffers() function to release them.
++ */
++static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
++				 gfp_t wait)
++{
++	journal_t *journal = EXT3_SB(sb)->s_journal;
++
++	WARN_ON(PageChecked(page));
++	if (!page_has_buffers(page))
++		return 0;
++	if (journal)
++		return journal_try_to_free_buffers(journal, page, 
++						   wait & ~__GFP_WAIT);
++	return try_to_free_buffers(page);
++}
++
+ #ifdef CONFIG_QUOTA
+ #define QTYPE2NAME(t) ((t)==USRQUOTA?"user":"group")
+ #define QTYPE2MOPT(on, t) ((t)==USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
+@@ -746,6 +766,7 @@ static const struct super_operations ext3_sops = {
+ 	.quota_read	= ext3_quota_read,
+ 	.quota_write	= ext3_quota_write,
+ #endif
++	.bdev_try_to_free_page = bdev_try_to_free_page,
+ };
+ 
+ static const struct export_operations ext3_export_ops = {
 
+----------------------
+
+ext4: provide function to release metadata pages under memory pressure
+
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+
+Pages in the page cache belonging to ext4 data files are released via
+the ext4_releasepage() function specified in the ext4 inode's
+address_space_ops.  However, metadata blocks (such as indirect blocks,
+directory blocks, etc) are managed via the block device
+address_space_ops, and they can not be released by
+try_to_free_buffers() if they have a journal head attached to them.
+
+To address this, we supply a release_metadata function which calls
+jbd2_journal_try_to_free_buffers() function to free the metadata, and
+which is called by the block device's blkdev_releasepage() function.
+
+Signed-off-by: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-fsdevel@vger.kernel.org
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 57a3ccc..bf6a81d 100644
+index 0023ca9..5cfac23 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -2048,8 +2048,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	const char *descr;
- 	int ret = -EINVAL;
- 	int blocksize;
--	int db_count;
--	int i;
-+	unsigned int db_count;
-+	unsigned int i;
- 	int needs_recovery, has_huge_files;
- 	int features;
- 	__u64 blocks_count;
-@@ -2338,20 +2338,30 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	if (EXT4_BLOCKS_PER_GROUP(sb) == 0)
- 		goto cantfind_ext4;
+@@ -908,6 +908,25 @@ static struct dentry *ext4_fh_to_parent(struct super_block *sb, struct fid *fid,
+ 				    ext4_nfs_get_inode);
+ }
  
--	/* ensure blocks_count calculation below doesn't sign-extend */
--	if (ext4_blocks_count(es) + EXT4_BLOCKS_PER_GROUP(sb) <
--	    le32_to_cpu(es->s_first_data_block) + 1) {
--		printk(KERN_WARNING "EXT4-fs: bad geometry: block count %llu, "
--		       "first data block %u, blocks per group %lu\n",
--			ext4_blocks_count(es),
--			le32_to_cpu(es->s_first_data_block),
--			EXT4_BLOCKS_PER_GROUP(sb));
-+        /*
-+         * It makes no sense for the first data block to be beyond the end
-+         * of the filesystem.
-+         */
-+        if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
-+                printk(KERN_WARNING "EXT4-fs: bad geometry: first data"
-+		       "block %u is beyond end of filesystem (%llu)\n",
-+		       le32_to_cpu(es->s_first_data_block),
-+		       ext4_blocks_count(es));
- 		goto failed_mount;
- 	}
- 	blocks_count = (ext4_blocks_count(es) -
- 			le32_to_cpu(es->s_first_data_block) +
- 			EXT4_BLOCKS_PER_GROUP(sb) - 1);
- 	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
-+	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
-+		printk(KERN_WARNING "EXT4-fs: groups count too large: %u "
-+		       "(block count %llu, first data block %u, "
-+		       "blocks per group %lu)\n", sbi->s_groups_count,
-+		       ext4_blocks_count(es),
-+		       le32_to_cpu(es->s_first_data_block),
-+		       EXT4_BLOCKS_PER_GROUP(sb));
-+		goto failed_mount;
-+	}
- 	sbi->s_groups_count = blocks_count;
- 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
- 		   EXT4_DESC_PER_BLOCK(sb);
--- 
-1.6.0.4.8.g36f27.dirty
-
++/*
++ * Try to release metadata pages (indirect blocks, directories) which are
++ * mapped via the block device.  Since these pages could have journal heads
++ * which would prevent try_to_free_buffers() from freeing them, we must use
++ * jbd2 layer's try_to_free_buffers() function to release them.
++ */
++static int bdev_try_to_free_page(struct super_block *sb, struct page *page, gfp_t wait)
++{
++	journal_t *journal = EXT4_SB(sb)->s_journal;
++
++	WARN_ON(PageChecked(page));
++	if (!page_has_buffers(page))
++		return 0;
++	if (journal)
++		return jbd2_journal_try_to_free_buffers(journal, page,
++							wait & ~__GFP_WAIT);
++	return try_to_free_buffers(page);
++}
++
+ #ifdef CONFIG_QUOTA
+ #define QTYPE2NAME(t) ((t) == USRQUOTA ? "user" : "group")
+ #define QTYPE2MOPT(on, t) ((t) == USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
+@@ -972,6 +991,7 @@ static const struct super_operations ext4_sops = {
+ 	.quota_read	= ext4_quota_read,
+ 	.quota_write	= ext4_quota_write,
+ #endif
++	.bdev_try_to_free_page = bdev_try_to_free_page,
+ };
+ 
+ static const struct export_operations ext4_export_ops = {
