@@ -1,167 +1,89 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH RESEND] Add extent conversion support to chattr
-Date: Tue,  6 Jan 2009 12:07:14 +0530
-Message-ID: <1231223834-2785-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: tytso@mit.edu
+From: Jens Axboe <jens.axboe@oracle.com>
+Subject: Re: [PATCH, RFC] Use WRITE_SYNC in __block_write_full_page() if WBC_SYNC_ALL
+Date: Tue, 6 Jan 2009 08:34:18 +0100
+Message-ID: <20090106073416.GX32491@kernel.dk>
+References: <E1LJatq-00061O-0e@closure.thunk.org> <20090104142303.98762f81.akpm@linux-foundation.org> <20090104224351.GF22958@mit.edu> <20090104151927.1f1603c6.akpm@linux-foundation.org> <20090105080241.GX32491@kernel.dk> <20090105144740.GA4116@mit.edu> <20090105104713.78fdabc9.akpm@linux-foundation.org> <20090105193517.GC11632@mit.edu> <20090105193820.GW32491@kernel.dk> <20090105211607.GF8939@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org, Arjan van de Ven <arjan@infradead.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:57196 "EHLO
-	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750725AbZAFGhR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 6 Jan 2009 01:37:17 -0500
-Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
-	by e28smtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id n066bFMf026881
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Jan 2009 12:07:15 +0530
-Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n066Zc6x3674120
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Jan 2009 12:05:38 +0530
-Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id n066bEC8000438
-	for <linux-ext4@vger.kernel.org>; Tue, 6 Jan 2009 17:37:15 +1100
+Received: from brick.kernel.dk ([93.163.65.50]:17512 "EHLO kernel.dk"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750796AbZAFHfX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 6 Jan 2009 02:35:23 -0500
+Content-Disposition: inline
+In-Reply-To: <20090105211607.GF8939@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This patch adds new option, +e to chattr. The +e option
-is used to convert the ext3 format (non extent) file
-to ext4 (extent) format. This can be used to migrate
-the ext3 file system to ext4 file system.
+On Mon, Jan 05 2009, Theodore Tso wrote:
+> On Mon, Jan 05, 2009 at 08:38:20PM +0100, Jens Axboe wrote:
+> > On Mon, Jan 05 2009, Theodore Tso wrote:
+> > > So long-term, I suspect the hueristic which makes sense is that in the
+> > > case where there is an fsync() in progress, any writes which take
+> > > place as a result of that fsync (which includes the journal records as
+> > > well as ordered writes that are being forced out as a result of
+> > > data=ordered and which block the fsync from returning), should get a
+> > > hint which propagates down to the block layer that these writes *are*
+> > > synchronous in that someone is waiting for them to complete.  They
+> > 
+> > If someone is waiting for them, they are by definition sync!
+> 
+> Surely.  :-)
+> 
+> Andrew's argument is that someone *shouldn't* be waiting for them ---
+> and he's right, although in the case of fsync() in particular, there's
+> nothing we can do; there will be a userspace application waiting by
+> definition.
+> 
+> The bigger problem right now is until we split up the meaning of
+> "unplug the I/O queue" with "mark the I/O as synchronous", right now
+> the way data ordered mode works is all of the data blocks get pushed
+> out in 4k chunks.  So in the worst case, if the user has just written
+> some 200 megabytes of vmlinuz and kernel modules, and then calls
+> fsync(), the block I/O layer might get flooded with some 50,000+ 4k
+> writes, and if they are all BIO_RW_SYNC, they might not get coalesced
+> properly, and the result would be badness.  One could argue that
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+The flag doesn't mean "don't merge", it merely starts device queuing
+right away instead of waiting for the unplug. So there will be merging
+going on, especially for cases like the above where you push lots and
+lots of IO. For that particular case, there should be essentially zero
+difference in performance, just the few initial ios may be smaller. So
+usually it's not going to be a big difference in IO behaviour.
 
----
- misc/chattr.1.in |    8 ++----
- misc/chattr.c    |   58 +++++++++++++++++++++++++++++++++++------------------
- 2 files changed, 41 insertions(+), 25 deletions(-)
+So I'd be more worried about the case of smallish files and lots of
+fsync(), since that'll be a lot more randomized writes.
 
-diff --git a/misc/chattr.1.in b/misc/chattr.1.in
-index 960f058..c49f876 100644
---- a/misc/chattr.1.in
-+++ b/misc/chattr.1.in
-@@ -19,7 +19,7 @@ chattr \- change file attributes on a Linux second extended file system
- .B chattr
- changes the file attributes on a Linux second extended file system.
- .PP
--The format of a symbolic mode is +-=[ASacDdIijsTtu].
-+The format of a symbolic mode is +-=[ASacDdeIijsTtu].
- .PP
- The operator `+' causes the selected attributes to be added to the
- existing attributes of the files; `-' causes them to be removed; and
-@@ -74,10 +74,8 @@ although it can be displayed by
- .BR lsattr (1).
- .PP
- The 'e' attribute indicates that the file is using extents for mapping
--the blocks on disk.  It may not be set or reset using
--.BR chattr (1),
--although it can be displayed by
--.BR lsattr (1).
-+the blocks on disk.  It may not be removed using
-+.BR chattr (1).
- .PP
- The 'I' attribute is used by the htree code to indicate that a directory
- is being indexed using hashed trees.  It may not be set or reset using 
-diff --git a/misc/chattr.c b/misc/chattr.c
-index 3d67519..067d0b6 100644
---- a/misc/chattr.c
-+++ b/misc/chattr.c
-@@ -82,7 +82,7 @@ static unsigned long sf;
- static void usage(void)
- {
- 	fprintf(stderr,
--		_("Usage: %s [-RVf] [-+=AacDdijsSu] [-v version] files...\n"),
-+		_("Usage: %s [-RVf] [-+=AacDdeijsSu] [-v version] files...\n"),
- 		program_name);
- 	exit(1);
- }
-@@ -99,6 +99,7 @@ static const struct flags_char flags_array[] = {
- 	{ EXT2_APPEND_FL, 'a' },
- 	{ EXT2_COMPR_FL, 'c' },
- 	{ EXT2_NODUMP_FL, 'd' },
-+	{ EXT4_EXTENTS_FL, 'e'},
- 	{ EXT2_IMMUTABLE_FL, 'i' },
- 	{ EXT3_JOURNAL_DATA_FL, 'j' },
- 	{ EXT2_SECRM_FL, 's' },
-@@ -191,6 +192,7 @@ static int change_attributes(const char * name)
- {
- 	unsigned long flags;
- 	STRUCT_STAT	st;
-+	int extent_file = 0;
- 
- 	if (LSTAT (name, &st) == -1) {
- 		if (!silent)
-@@ -199,7 +201,22 @@ static int change_attributes(const char * name)
- 		return -1;
- 	}
- 
-+	if (fgetflags (name, &flags) == -1) {
-+		if (!silent)
-+			com_err (program_name, errno,
-+					_("while reading flags on %s"), name);
-+		return -1;
-+	}
-+	if (flags & EXT4_EXTENTS_FL)
-+		extent_file = 1;
- 	if (set) {
-+		if (extent_file && !(sf & EXT4_EXTENTS_FL)) {
-+			if (!silent)
-+				com_err(program_name, 0,
-+				_("Clearing extent flag not supported on %s"),
-+					name);
-+			return -1;
-+		}
- 		if (verbose) {
- 			printf (_("Flags of %s set as "), name);
- 			print_flags (stdout, sf, 0);
-@@ -208,30 +225,31 @@ static int change_attributes(const char * name)
- 		if (fsetflags (name, sf) == -1)
- 			perror (name);
- 	} else {
--		if (fgetflags (name, &flags) == -1) {
-+		if (rem)
-+			flags &= ~rf;
-+		if (add)
-+			flags |= af;
-+		if (extent_file && !(flags & EXT4_EXTENTS_FL)) {
- 			if (!silent)
--				com_err (program_name, errno,
--					 _("while reading flags on %s"), name);
-+				com_err(program_name, 0,
-+				_("Clearing extent flag not supported on %s"),
-+					name);
- 			return -1;
--		} else {
--			if (rem)
--				flags &= ~rf;
--			if (add)
--				flags |= af;
--			if (verbose) {
--				printf (_("Flags of %s set as "), name);
--				print_flags (stdout, flags, 0);
--				printf ("\n");
--			}
--			if (!S_ISDIR(st.st_mode))
--				flags &= ~EXT2_DIRSYNC_FL;
--			if (fsetflags (name, flags) == -1) {
--				if (!silent)
--					com_err(program_name, errno,
-+		}
-+		if (verbose) {
-+			printf (_("Flags of %s set as "), name);
-+			print_flags (stdout, flags, 0);
-+			printf ("\n");
-+		}
-+		if (!S_ISDIR(st.st_mode))
-+			flags &= ~EXT2_DIRSYNC_FL;
-+		if (fsetflags (name, flags) == -1) {
-+			if (!silent) {
-+				com_err(program_name, errno,
- 						_("while setting flags on %s"),
- 						name);
--				return -1;
- 			}
-+			return -1;
- 		}
- 	}
- 	if (set_version) {
+> journal layer should do doing a better job of coalescing the write
+> requests, but historically the block layer has done this for us, so
+> why add duplicate functionality at the journalling layer?
+
+I agree, we've always done this coalescing in the block layer, so no
+point in changing that now.
+
+> In any case, that's why I'm really not convinced we can afford to use
+> BIO_RW_SYNC until we separate out the queue unplug functionality.
+> Maybe what makes sence is to have two flags, BIO_RW_UNPLUG and
+> BIO_RW_SYNCIO, and then make BIO_RW_SYNC be defined to be
+> (BIO_RW_UNPLUG|BIO_RW_SYNCIO)?
+
+Yep, that's exactly what I'll do!
+
+> > > shouldn't necessarily be prioritized ahead of other reads (unless they
+> > > are readahead operations that couldn't be combined with reads that
+> > > *are* synchronous that someone is waiting for completion), but they
+> > > should be prioritized ahead of asynchronous writes.
+> > 
+> > And that is *exactly* what flagging the write as sync will do...
+> 
+> Great, so once we separate out the queue unplug request, I think this
+> should be exactly what we need.
+
+Should fit nicely then.
+
 -- 
-tg: (8680b4e..) an/chattr3 (depends on: master)
+Jens Axboe
+
