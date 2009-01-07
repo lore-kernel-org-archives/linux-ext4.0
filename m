@@ -1,34 +1,44 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12375] ext4_block_to_path block too big cause cpu to burn
-Date: Wed,  7 Jan 2009 02:57:41 -0800 (PST)
-Message-ID: <20090107105741.5E1DA108041@picon.linux-foundation.org>
-References: <bug-12375-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Remove "extents" mount option
+Date: Wed, 7 Jan 2009 09:45:02 -0500
+Message-ID: <20090107144502.GC17110@mit.edu>
+References: <1231267777-18831-1-git-send-email-tytso@mit.edu> <20090107053250.GA9617@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:39058 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752210AbZAGK6J (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Jan 2009 05:58:09 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n07AvfW9017959
-	for <linux-ext4@vger.kernel.org>; Wed, 7 Jan 2009 02:57:42 -0800
-In-Reply-To: <bug-12375-13602@http.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:47038 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753906AbZAGOpE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 7 Jan 2009 09:45:04 -0500
+Content-Disposition: inline
+In-Reply-To: <20090107053250.GA9617@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12375
+On Wed, Jan 07, 2009 at 11:02:50AM +0530, Aneesh Kumar K.V wrote:
+> On Tue, Jan 06, 2009 at 01:49:37PM -0500, Theodore Ts'o wrote:
+> > This mount option is largely superfluous, and in fact the way it was
+> > implemented was buggy; if a filesystem which did not have the extents
+> > feature flag was mounted -o extents, the filesystem would attempt to
+> > create and use extents-based file even though the extents feature flag
+> > was not eabled.  The simplest thing to do is to nuke the mount option
+> > entirely.  It's not all that useful to force the non-creation of new
+> > extent-based files if the filesystem can support it.
+> > 
+> 
+> Ext4 -> Ext3 migration story is to mount the filesystem with -o
+> noextents and copy the file around. If we remove the -o noextents
+> options how do we force the creation of non extent format files ?
 
+1) How much do we care about ext4->ext3 migration?  
 
+2) That only deals with extent-based files; it doesn't deal with any
+of the other ext4-specific features.
 
+What's the scenario you're thinking about here?  When would it be
+useful for users to be able to downgrade extent-based files to
+indirect block files by copying files around?
 
-
-------- Comment #2 from dmaciejak@fortinet.com  2009-01-07 02:57 -------
-Created an attachment (id=19686)
- --> (http://bugzilla.kernel.org/attachment.cgi?id=19686&action=view)
-ext4 image poc
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+						- Ted
