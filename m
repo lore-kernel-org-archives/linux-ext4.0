@@ -1,114 +1,112 @@
 From: akpm@linux-foundation.org
-Subject: - ext2-allocate-s_blockgroup_lock-separately.patch removed from -mm tree
-Date: Thu, 08 Jan 2009 14:46:52 -0800
-Message-ID: <200901082246.n08Mkqnh026384@imap1.linux-foundation.org>
-To: penberg@cs.helsinki.fi, adilger@sun.com,
-	linux-ext4@vger.kernel.org, mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:53395 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757599AbZAHWr0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jan 2009 17:47:26 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: - ext2-tighten-restrictions-on-inode-flags.patch removed from -mm tree
+Date: Thu, 08 Jan 2009 14:46:56 -0800
+Message-ID: <200901082246.n08Mkuue026434@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: duaneg@dghda.com, adilger@sun.com, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext2: allocate ->s_blockgroup_lock separately
+     ext2: tighten restrictions on inode flags
 has been removed from the -mm tree.  Its filename was
-     ext2-allocate-s_blockgroup_lock-separately.patch
+     ext2-tighten-restrictions-on-inode-flags.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext2: allocate ->s_blockgroup_lock separately
-From: Pekka J Enberg <penberg@cs.helsinki.fi>
+Subject: ext2: tighten restrictions on inode flags
+From: "Duane Griffin" <duaneg@dghda.com>
 
-As spotted by kmemtrace, struct ext2_sb_info is 17024 bytes on 64-bit
-which makes it a very bad fit for SLAB allocators.  The culprit of the
-wasted memory is ->s_blockgroup_lock which can be as big as 16 KB when
-NR_CPUS >= 32.
+At the moment there are few restrictions on which flags may be set on
+which inodes.  Specifically DIRSYNC may only be set on directories and
+IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
+TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
+on non-regular file, non-directories.
 
-To fix that, allocate ->s_blockgroup_lock, which fits nicely in a order 2
-page in the worst case, separately.  This shinks down struct ext2_sb_info
-enough to fit a 1 KB slab cache so now we allocate 16 KB + 1 KB instead of
-32 KB saving 15 KB of memory.
+Introduces a flags masking function which masks flags based on mode and
+use it during inode creation and when flags are set via the ioctl to
+facilitate future consistency.
 
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Acked-by: Andreas Dilger <adilger@sun.com>
-Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext2/super.c            |   10 +++++++++-
- include/linux/ext2_fs_sb.h |    4 ++--
- 2 files changed, 11 insertions(+), 3 deletions(-)
+ fs/ext2/ialloc.c        |    8 ++------
+ fs/ext2/ioctl.c         |    3 +--
+ include/linux/ext2_fs.h |   17 +++++++++++++++++
+ 3 files changed, 20 insertions(+), 8 deletions(-)
 
-diff -puN fs/ext2/super.c~ext2-allocate-s_blockgroup_lock-separately fs/ext2/super.c
---- a/fs/ext2/super.c~ext2-allocate-s_blockgroup_lock-separately
-+++ a/fs/ext2/super.c
-@@ -132,6 +132,7 @@ static void ext2_put_super (struct super
- 	percpu_counter_destroy(&sbi->s_dirs_counter);
- 	brelse (sbi->s_sbh);
- 	sb->s_fs_info = NULL;
-+	kfree(sbi->s_blockgroup_lock);
- 	kfree(sbi);
+diff -puN fs/ext2/ialloc.c~ext2-tighten-restrictions-on-inode-flags fs/ext2/ialloc.c
+--- a/fs/ext2/ialloc.c~ext2-tighten-restrictions-on-inode-flags
++++ a/fs/ext2/ialloc.c
+@@ -565,12 +565,8 @@ got:
+ 	inode->i_blocks = 0;
+ 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME_SEC;
+ 	memset(ei->i_data, 0, sizeof(ei->i_data));
+-	ei->i_flags = EXT2_I(dir)->i_flags & EXT2_FL_INHERITED;
+-	if (S_ISLNK(mode))
+-		ei->i_flags &= ~(EXT2_IMMUTABLE_FL|EXT2_APPEND_FL);
+-	/* dirsync is only applied to directories */
+-	if (!S_ISDIR(mode))
+-		ei->i_flags &= ~EXT2_DIRSYNC_FL;
++	ei->i_flags =
++		ext2_mask_flags(mode, EXT2_I(dir)->i_flags & EXT2_FL_INHERITED);
+ 	ei->i_faddr = 0;
+ 	ei->i_frag_no = 0;
+ 	ei->i_frag_size = 0;
+diff -puN fs/ext2/ioctl.c~ext2-tighten-restrictions-on-inode-flags fs/ext2/ioctl.c
+--- a/fs/ext2/ioctl.c~ext2-tighten-restrictions-on-inode-flags
++++ a/fs/ext2/ioctl.c
+@@ -50,8 +50,7 @@ long ext2_ioctl(struct file *filp, unsig
+ 			goto setflags_out;
+ 		}
  
- 	return;
-@@ -756,6 +757,13 @@ static int ext2_fill_super(struct super_
- 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
- 	if (!sbi)
- 		return -ENOMEM;
+-		if (!S_ISDIR(inode->i_mode))
+-			flags &= ~EXT2_DIRSYNC_FL;
++		flags = ext2_mask_flags(inode->i_mode, flags);
+ 
+ 		mutex_lock(&inode->i_mutex);
+ 		/* Is it quota file? Do not allow user to mess with it */
+diff -puN include/linux/ext2_fs.h~ext2-tighten-restrictions-on-inode-flags include/linux/ext2_fs.h
+--- a/include/linux/ext2_fs.h~ext2-tighten-restrictions-on-inode-flags
++++ a/include/linux/ext2_fs.h
+@@ -201,6 +201,23 @@ struct ext2_group_desc
+ 			   EXT2_NOCOMP_FL | EXT2_JOURNAL_DATA_FL |\
+ 			   EXT2_NOTAIL_FL | EXT2_DIRSYNC_FL)
+ 
++/* Flags that are appropriate for regular files (all but dir-specific ones). */
++#define EXT2_REG_FLMASK (~(EXT2_DIRSYNC_FL | EXT2_TOPDIR_FL))
 +
-+	sbi->s_blockgroup_lock =
-+		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
-+	if (!sbi->s_blockgroup_lock) {
-+		kfree(sbi);
-+		return -ENOMEM;
-+	}
- 	sb->s_fs_info = sbi;
- 	sbi->s_sb_block = sb_block;
- 
-@@ -983,7 +991,7 @@ static int ext2_fill_super(struct super_
- 		printk ("EXT2-fs: not enough memory\n");
- 		goto failed_mount;
- 	}
--	bgl_lock_init(&sbi->s_blockgroup_lock);
-+	bgl_lock_init(sbi->s_blockgroup_lock);
- 	sbi->s_debts = kcalloc(sbi->s_groups_count, sizeof(*sbi->s_debts), GFP_KERNEL);
- 	if (!sbi->s_debts) {
- 		printk ("EXT2-fs: not enough memory\n");
-diff -puN include/linux/ext2_fs_sb.h~ext2-allocate-s_blockgroup_lock-separately include/linux/ext2_fs_sb.h
---- a/include/linux/ext2_fs_sb.h~ext2-allocate-s_blockgroup_lock-separately
-+++ a/include/linux/ext2_fs_sb.h
-@@ -101,7 +101,7 @@ struct ext2_sb_info {
- 	struct percpu_counter s_freeblocks_counter;
- 	struct percpu_counter s_freeinodes_counter;
- 	struct percpu_counter s_dirs_counter;
--	struct blockgroup_lock s_blockgroup_lock;
-+	struct blockgroup_lock *s_blockgroup_lock;
- 	/* root of the per fs reservation window tree */
- 	spinlock_t s_rsv_window_lock;
- 	struct rb_root s_rsv_window_root;
-@@ -111,7 +111,7 @@ struct ext2_sb_info {
- static inline spinlock_t *
- sb_bgl_lock(struct ext2_sb_info *sbi, unsigned int block_group)
- {
--	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
- }
- 
- #endif	/* _LINUX_EXT2_FS_SB */
++/* Flags that are appropriate for non-directories/regular files. */
++#define EXT2_OTHER_FLMASK (EXT2_NODUMP_FL | EXT2_NOATIME_FL)
++
++/* Mask out flags that are inappropriate for the given type of inode. */
++static inline __u32 ext2_mask_flags(umode_t mode, __u32 flags)
++{
++	if (S_ISDIR(mode))
++		return flags;
++	else if (S_ISREG(mode))
++		return flags & EXT2_REG_FLMASK;
++	else
++		return flags & EXT2_OTHER_FLMASK;
++}
++
+ /*
+  * ioctl commands
+  */
 _
 
-Patches currently in -mm which might be from penberg@cs.helsinki.fi are
+Patches currently in -mm which might be from duaneg@dghda.com are
 
 origin.patch
-repeatable-slab-corruption-with-ltp-msgctl08.patch
-linux-next.patch
-ext4-allocate-s_blockgroup_lock-separately.patch
-nilfs2-avoid-double-error-caused-by-nilfs_transaction_end.patch
-slab-leaks3-default-y.patch
+ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch
+ext4-tighten-restrictions-on-inode-flags.patch
 
