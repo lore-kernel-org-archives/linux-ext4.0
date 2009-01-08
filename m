@@ -1,56 +1,177 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Re: Ext4 without a journal: some benchmark results
-Date: Thu, 8 Jan 2009 09:20:53 -0800
-Message-ID: <6601abe90901080920h2d2f4215tf8b886cefbb6e4b7@mail.gmail.com>
-References: <6601abe90901071129v3de159d4jcf3b250aac40d0eb@mail.gmail.com>
-	 <20090108130357.GW13721@webber.adilger.int>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] blkid: recognize btrfs
+Date: Thu, 08 Jan 2009 15:08:16 -0600
+Message-ID: <49666B40.2090106@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Cc: "MASON,CHRISTOPHER" <CHRIS.MASON@oracle.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:10224 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754037AbZAHRU6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jan 2009 12:20:58 -0500
-Received: from zps37.corp.google.com (zps37.corp.google.com [172.25.146.37])
-	by smtp-out.google.com with ESMTP id n08HKvN7008921
-	for <linux-ext4@vger.kernel.org>; Thu, 8 Jan 2009 09:20:57 -0800
-Received: from bwz10 (bwz10.prod.google.com [10.188.26.10])
-	by zps37.corp.google.com with ESMTP id n08HJL2I017486
-	for <linux-ext4@vger.kernel.org>; Thu, 8 Jan 2009 09:20:54 -0800
-Received: by bwz10 with SMTP id 10so1257291bwz.22
-        for <linux-ext4@vger.kernel.org>; Thu, 08 Jan 2009 09:20:54 -0800 (PST)
-In-Reply-To: <20090108130357.GW13721@webber.adilger.int>
+Received: from mx2.redhat.com ([66.187.237.31]:57561 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751941AbZAHVIV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 8 Jan 2009 16:08:21 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas:
+Add btrfs detection to libblkid, now that the disk format should be
+recognizable in the future.
 
-On Thu, Jan 8, 2009 at 5:03 AM, Andreas Dilger <adilger@sun.com> wrote:
-> On Jan 07, 2009  11:29 -0800, Curt Wohlgemuth wrote:
->> Iozone was run with the following command line:
->>
->>       iozone -t (# threads) -s 2g -r 256k -I -T -i0 -i1 -i2
->>
->> I.e., throughput mode; 2GiB file; 256KiB buffer; O_DIRECT.  Tests were
->> limited to
->
-> How much RAM is on the test system?  If the file size is only 2GB then
-> it will likely fit into RAM, which is possibly why the performance
-> numbers of all the filesystems is so close together.  The other possibility
-> is that a single disk is the performance bottleneck and all of the
-> filesystems can feed a single disk at a reasonable rate.
+# misc/blkid /tmp/fsfile 
+/tmp/fsfile: LABEL="mylabel" UUID="102b07f0-0e79-4b42-8a4e-1dde418bbe6d" TYPE="btrfs" 
 
-Indeed, the system was not memory-limited at all.  I've done some
-playing around with how limiting memory affects random reads in iozone
-with O_DIRECT, and have found that, as expected, ext4 is much less
-affected than ext2.  I'm assuming this is because the metadata isn't
-in the page cache, and the far larger number of metadata blocks on
-ext2 than ext4 in this case causes a bigger hit on ext2.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-If I generate numbers on a low-memory system, I'll post them here too.
+Index: e2fsprogs/lib/blkid/probe.c
+===================================================================
+--- e2fsprogs.orig/lib/blkid/probe.c
++++ e2fsprogs/lib/blkid/probe.c
+@@ -1293,6 +1293,22 @@ static int probe_lvm2(struct blkid_probe
+ 
+ 	return 0;
+ }
++
++static int probe_btrfs(struct blkid_probe *probe,
++			struct blkid_magic *id,
++			unsigned char *buf)
++{
++	struct btrfs_super_block *bs;
++	const char *label = 0;
++
++	bs = (struct btrfs_super_block *)buf;
++
++	if (strlen(bs->label))
++		label = bs->label;
++	blkid_set_tag(probe->dev, "LABEL", label, sizeof(bs->label));
++	set_uuid(probe->dev, bs->fsid, 0);
++	return 0;
++}
+ /*
+  * Various filesystem magics that we can check for.  Note that kboff and
+  * sboff are in kilobytes and bytes respectively.  All magics are in
+@@ -1386,6 +1402,7 @@ static struct blkid_magic type_array[] =
+   { "lvm2pv",	 0,  0x018,  8, "LVM2 001",		probe_lvm2 },
+   { "lvm2pv",	 1,  0x018,  8, "LVM2 001",		probe_lvm2 },
+   { "lvm2pv",	 1,  0x218,  8, "LVM2 001",		probe_lvm2 },
++  { "btrfs",	 64,  0x40,  8, "_BHRfS_M",		probe_btrfs },
+   {   NULL,	 0,	 0,  0, NULL,			NULL }
+ };
+ 
+Index: e2fsprogs/lib/blkid/probe.h
+===================================================================
+--- e2fsprogs.orig/lib/blkid/probe.h
++++ e2fsprogs/lib/blkid/probe.h
+@@ -621,6 +621,110 @@ struct lvm2_pv_label_header {
+ 	__u8	pv_uuid[LVM2_ID_LEN];
+ } __attribute__ ((packed));
+ 
++
++/*
++ * this is a very generous portion of the super block, giving us
++ * room to translate 14 chunks with 3 stripes each.
++ */
++#define BTRFS_SYSTEM_CHUNK_ARRAY_SIZE 2048
++#define BTRFS_LABEL_SIZE 256
++#define BTRFS_UUID_SIZE 16
++#define BTRFS_FSID_SIZE 16
++#define BTRFS_CSUM_SIZE 32
++
++struct btrfs_dev_item {
++	/* the internal btrfs device id */
++	__u64 devid;
++
++	/* size of the device */
++	__u64 total_bytes;
++
++	/* bytes used */
++	__u64 bytes_used;
++
++	/* optimal io alignment for this device */
++	__u32 io_align;
++
++	/* optimal io width for this device */
++	__u32 io_width;
++
++	/* minimal io size for this device */
++	__u32 sector_size;
++
++	/* type and info about this device */
++	__u64 type;
++
++	/* expected generation for this device */
++	__u64 generation;
++
++	/*
++	 * starting byte of this partition on the device,
++	 * to allowr for stripe alignment in the future
++	 */
++	__u64 start_offset;
++
++	/* grouping information for allocation decisions */
++	__u32 dev_group;
++
++	/* seek speed 0-100 where 100 is fastest */
++	__u8 seek_speed;
++
++	/* bandwidth 0-100 where 100 is fastest */
++	__u8 bandwidth;
++
++	/* btrfs generated uuid for this device */
++	__u8 uuid[BTRFS_UUID_SIZE];
++
++	/* uuid of FS who owns this device */
++	__u8 fsid[BTRFS_UUID_SIZE];
++} __attribute__ ((__packed__));
++
++/*
++ * the super block basically lists the main trees of the FS
++ * it currently lacks any block count etc etc
++ */
++struct btrfs_super_block {
++	__u8 csum[BTRFS_CSUM_SIZE];
++	/* the first 3 fields must match struct btrfs_header */
++	__u8 fsid[BTRFS_FSID_SIZE];    /* FS specific uuid */
++	__u64 bytenr; /* this block number */
++	__u64 flags;
++
++	/* allowed to be different from the btrfs_header from here own down */
++	__u64 magic;
++	__u64 generation;
++	__u64 root;
++	__u64 chunk_root;
++	__u64 log_root;
++
++	/* this will help find the new super based on the log root */
++	__u64 log_root_transid;
++	__u64 total_bytes;
++	__u64 bytes_used;
++	__u64 root_dir_objectid;
++	__u64 num_devices;
++	__u32 sectorsize;
++	__u32 nodesize;
++	__u32 leafsize;
++	__u32 stripesize;
++	__u32 sys_chunk_array_size;
++	__u64 chunk_root_generation;
++	__u64 compat_flags;
++	__u64 compat_ro_flags;
++	__u64 incompat_flags;
++	__u16 csum_type;
++	__u8 root_level;
++	__u8 chunk_root_level;
++	__u8 log_root_level;
++	struct btrfs_dev_item dev_item;
++
++	char label[BTRFS_LABEL_SIZE];
++
++	/* future expansion */
++	__u64 reserved[32];
++	__u8 sys_chunk_array[BTRFS_SYSTEM_CHUNK_ARRAY_SIZE];
++} __attribute__ ((__packed__));
++
+ /*
+  * Byte swap functions
+  */
 
-Thanks,
-Curt
