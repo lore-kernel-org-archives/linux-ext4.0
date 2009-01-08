@@ -1,115 +1,255 @@
 From: akpm@linux-foundation.org
-Subject: - ext3-tighten-restrictions-on-inode-flags.patch removed from -mm tree
-Date: Thu, 08 Jan 2009 14:47:06 -0800
-Message-ID: <200901082247.n08Ml6tm026586@imap1.linux-foundation.org>
-To: duaneg@dghda.com, adilger@sun.com, linux-ext4@vger.kernel.org,
+Subject: - jbd-improve-fsync-batching.patch removed from -mm tree
+Date: Thu, 08 Jan 2009 14:46:59 -0800
+Message-ID: <200901082247.n08Ml0Wc026499@imap1.linux-foundation.org>
+To: jbacik@redhat.com, adilger@sun.com, arjan@infradead.org,
+	linux-ext4@vger.kernel.org, rwheeler@redhat.com,
 	mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:56416 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:38165 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759776AbZAHWrl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jan 2009 17:47:41 -0500
+	by vger.kernel.org with ESMTP id S1763258AbZAHWrq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 8 Jan 2009 17:47:46 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext3: tighten restrictions on inode flags
+     jbd: improve fsync batching
 has been removed from the -mm tree.  Its filename was
-     ext3-tighten-restrictions-on-inode-flags.patch
+     jbd-improve-fsync-batching.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext3: tighten restrictions on inode flags
-From: "Duane Griffin" <duaneg@dghda.com>
+Subject: jbd: improve fsync batching
+From: Josef Bacik <jbacik@redhat.com>
 
-At the moment there are few restrictions on which flags may be set on
-which inodes.  Specifically DIRSYNC may only be set on directories and
-IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
-TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
-on non-regular file, non-directories.
+There is a flaw with the way jbd handles fsync batching.  If we fsync() a
+file and we were not the last person to run fsync() on this fs then we
+automatically sleep for 1 jiffie in order to wait for new writers to join
+into the transaction before forcing the commit.  The problem with this is
+that with really fast storage (ie a Clariion) the time it takes to commit
+a transaction to disk is way faster than 1 jiffie in most cases, so
+sleeping means waiting longer with nothing to do than if we just committed
+the transaction and kept going.  Ric Wheeler noticed this when using
+fs_mark with more than 1 thread, the throughput would plummet as he added
+more threads.
 
-Introduces a flags masking function which masks flags based on mode and
-use it during inode creation and when flags are set via the ioctl to
-facilitate future consistency.
+This patch attempts to fix this problem by recording the average time in
+nanoseconds that it takes to commit a transaction to disk, and what time
+we started the transaction.  If we run an fsync() and we have been running
+for less time than it takes to commit the transaction to disk, we sleep
+for the delta amount of time and then commit to disk.  We acheive
+sub-jiffie sleeping using schedule_hrtimeout.  This means that the wait
+time is auto-tuned to the speed of the underlying disk, instead of having
+this static timeout.  I weighted the average according to somebody's
+comments (Andreas Dilger I think) in order to help normalize random
+outliers where we take way longer or way less time to commit than the
+average.  I also have a min() check in there to make sure we don't sleep
+longer than a jiffie in case our storage is super slow, this was requested
+by Andrew.
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Acked-by: Andreas Dilger <adilger@sun.com>
+I unfortunately do not have access to a Clariion, so I had to use a
+ramdisk to represent a super fast array.  I tested with a SATA drive with
+barrier=1 to make sure there was no regression with local disks, I tested
+with a 4 way multipathed Apple Xserve RAID array and of course the
+ramdisk.  I ran the following command
+
+fs_mark -d /mnt/ext3-test -s 4096 -n 2000 -D 64 -t $i
+
+where $i was 2, 4, 8, 16 and 32.  I mkfs'ed the fs each time.  Here are my
+results
+
+type	threads		with patch	without patch
+sata	2		24.6		26.3
+sata	4		49.2		48.1
+sata	8		70.1		67.0
+sata	16		104.0		94.1
+sata	32		153.6		142.7
+
+xserve	2		246.4		222.0
+xserve	4		480.0		440.8
+xserve	8		829.5		730.8
+xserve	16		1172.7		1026.9
+xserve	32		1816.3		1650.5
+
+ramdisk	2		2538.3		1745.6
+ramdisk	4		2942.3		661.9
+ramdisk	8		2882.5		999.8
+ramdisk	16		2738.7		1801.9
+ramdisk	32		2541.9		2394.0
+
+Signed-off-by: Josef Bacik <jbacik@redhat.com>
+Cc: Andreas Dilger <adilger@sun.com>
+Cc: Arjan van de Ven <arjan@infradead.org>
+Cc: Ric Wheeler <rwheeler@redhat.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext3/ialloc.c        |    8 ++------
- fs/ext3/ioctl.c         |    3 +--
- include/linux/ext3_fs.h |   17 +++++++++++++++++
- 3 files changed, 20 insertions(+), 8 deletions(-)
+ fs/jbd/commit.c      |   15 +++++++++++++++
+ fs/jbd/transaction.c |   38 +++++++++++++++++++++++++++++++++-----
+ include/linux/jbd.h  |   15 +++++++++++++++
+ 3 files changed, 63 insertions(+), 5 deletions(-)
 
-diff -puN fs/ext3/ialloc.c~ext3-tighten-restrictions-on-inode-flags fs/ext3/ialloc.c
---- a/fs/ext3/ialloc.c~ext3-tighten-restrictions-on-inode-flags
-+++ a/fs/ext3/ialloc.c
-@@ -559,12 +559,8 @@ got:
- 	ei->i_dir_start_lookup = 0;
- 	ei->i_disksize = 0;
- 
--	ei->i_flags = EXT3_I(dir)->i_flags & EXT3_FL_INHERITED;
--	if (S_ISLNK(mode))
--		ei->i_flags &= ~(EXT3_IMMUTABLE_FL|EXT3_APPEND_FL);
--	/* dirsync only applies to directories */
--	if (!S_ISDIR(mode))
--		ei->i_flags &= ~EXT3_DIRSYNC_FL;
-+	ei->i_flags =
-+		ext3_mask_flags(mode, EXT3_I(dir)->i_flags & EXT3_FL_INHERITED);
- #ifdef EXT3_FRAGMENTS
- 	ei->i_faddr = 0;
- 	ei->i_frag_no = 0;
-diff -puN fs/ext3/ioctl.c~ext3-tighten-restrictions-on-inode-flags fs/ext3/ioctl.c
---- a/fs/ext3/ioctl.c~ext3-tighten-restrictions-on-inode-flags
-+++ a/fs/ext3/ioctl.c
-@@ -53,8 +53,7 @@ int ext3_ioctl (struct inode * inode, st
- 			goto flags_out;
- 		}
- 
--		if (!S_ISDIR(inode->i_mode))
--			flags &= ~EXT3_DIRSYNC_FL;
-+		flags = ext3_mask_flags(inode->i_mode, flags);
- 
- 		mutex_lock(&inode->i_mutex);
- 		/* Is it quota file? Do not allow user to mess with it */
-diff -puN include/linux/ext3_fs.h~ext3-tighten-restrictions-on-inode-flags include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~ext3-tighten-restrictions-on-inode-flags
-+++ a/include/linux/ext3_fs.h
-@@ -185,6 +185,23 @@ struct ext3_group_desc
- 			   EXT3_NOCOMPR_FL | EXT3_JOURNAL_DATA_FL |\
- 			   EXT3_NOTAIL_FL | EXT3_DIRSYNC_FL)
- 
-+/* Flags that are appropriate for regular files (all but dir-specific ones). */
-+#define EXT3_REG_FLMASK (~(EXT3_DIRSYNC_FL | EXT3_TOPDIR_FL))
+diff -puN fs/jbd/commit.c~jbd-improve-fsync-batching fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-improve-fsync-batching
++++ a/fs/jbd/commit.c
+@@ -306,6 +306,8 @@ void journal_commit_transaction(journal_
+ 	int flags;
+ 	int err;
+ 	unsigned long blocknr;
++	ktime_t start_time;
++	u64 commit_time;
+ 	char *tagp = NULL;
+ 	journal_header_t *header;
+ 	journal_block_tag_t *tag = NULL;
+@@ -418,6 +420,7 @@ void journal_commit_transaction(journal_
+ 	commit_transaction->t_state = T_FLUSH;
+ 	journal->j_committing_transaction = commit_transaction;
+ 	journal->j_running_transaction = NULL;
++	start_time = ktime_get();
+ 	commit_transaction->t_log_start = journal->j_head;
+ 	wake_up(&journal->j_wait_transaction_locked);
+ 	spin_unlock(&journal->j_state_lock);
+@@ -913,6 +916,18 @@ restart_loop:
+ 	J_ASSERT(commit_transaction == journal->j_committing_transaction);
+ 	journal->j_commit_sequence = commit_transaction->t_tid;
+ 	journal->j_committing_transaction = NULL;
++	commit_time = ktime_to_ns(ktime_sub(ktime_get(), start_time));
 +
-+/* Flags that are appropriate for non-directories/regular files. */
-+#define EXT3_OTHER_FLMASK (EXT3_NODUMP_FL | EXT3_NOATIME_FL)
-+
-+/* Mask out flags that are inappropriate for the given type of inode. */
-+static inline __u32 ext3_mask_flags(umode_t mode, __u32 flags)
-+{
-+	if (S_ISDIR(mode))
-+		return flags;
-+	else if (S_ISREG(mode))
-+		return flags & EXT3_REG_FLMASK;
++	/*
++	 * weight the commit time higher than the average time so we don't
++	 * react too strongly to vast changes in commit time
++	 */
++	if (likely(journal->j_average_commit_time))
++		journal->j_average_commit_time = (commit_time*3 +
++				journal->j_average_commit_time) / 4;
 +	else
-+		return flags & EXT3_OTHER_FLMASK;
-+}
++		journal->j_average_commit_time = commit_time;
 +
- /*
-  * Inode dynamic state flags
-  */
+ 	spin_unlock(&journal->j_state_lock);
+ 
+ 	if (commit_transaction->t_checkpoint_list == NULL &&
+diff -puN fs/jbd/transaction.c~jbd-improve-fsync-batching fs/jbd/transaction.c
+--- a/fs/jbd/transaction.c~jbd-improve-fsync-batching
++++ a/fs/jbd/transaction.c
+@@ -25,6 +25,7 @@
+ #include <linux/timer.h>
+ #include <linux/mm.h>
+ #include <linux/highmem.h>
++#include <linux/hrtimer.h>
+ 
+ static void __journal_temp_unlink_buffer(struct journal_head *jh);
+ 
+@@ -49,6 +50,7 @@ get_transaction(journal_t *journal, tran
+ {
+ 	transaction->t_journal = journal;
+ 	transaction->t_state = T_RUNNING;
++	transaction->t_start_time = ktime_get();
+ 	transaction->t_tid = journal->j_transaction_sequence++;
+ 	transaction->t_expires = jiffies + journal->j_commit_interval;
+ 	spin_lock_init(&transaction->t_handle_lock);
+@@ -1370,7 +1372,7 @@ int journal_stop(handle_t *handle)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+ 	journal_t *journal = transaction->t_journal;
+-	int old_handle_count, err;
++	int err;
+ 	pid_t pid;
+ 
+ 	J_ASSERT(journal_current_handle() == handle);
+@@ -1399,6 +1401,17 @@ int journal_stop(handle_t *handle)
+ 	 * on IO anyway.  Speeds up many-threaded, many-dir operations
+ 	 * by 30x or more...
+ 	 *
++	 * We try and optimize the sleep time against what the underlying disk
++	 * can do, instead of having a static sleep time.  This is usefull for
++	 * the case where our storage is so fast that it is more optimal to go
++	 * ahead and force a flush and wait for the transaction to be committed
++	 * than it is to wait for an arbitrary amount of time for new writers to
++	 * join the transaction.  We acheive this by measuring how long it takes
++	 * to commit a transaction, and compare it with how long this
++	 * transaction has been running, and if run time < commit time then we
++	 * sleep for the delta and commit.  This greatly helps super fast disks
++	 * that would see slowdowns as more threads started doing fsyncs.
++	 *
+ 	 * But don't do this if this process was the most recent one to
+ 	 * perform a synchronous write.  We do this to detect the case where a
+ 	 * single process is doing a stream of sync writes.  No point in waiting
+@@ -1406,11 +1419,26 @@ int journal_stop(handle_t *handle)
+ 	 */
+ 	pid = current->pid;
+ 	if (handle->h_sync && journal->j_last_sync_writer != pid) {
++		u64 commit_time, trans_time;
++
+ 		journal->j_last_sync_writer = pid;
+-		do {
+-			old_handle_count = transaction->t_handle_count;
+-			schedule_timeout_uninterruptible(1);
+-		} while (old_handle_count != transaction->t_handle_count);
++
++		spin_lock(&journal->j_state_lock);
++		commit_time = journal->j_average_commit_time;
++		spin_unlock(&journal->j_state_lock);
++
++		trans_time = ktime_to_ns(ktime_sub(ktime_get(),
++						   transaction->t_start_time));
++
++		commit_time = min_t(u64, commit_time,
++				    1000*jiffies_to_usecs(1));
++
++		if (trans_time < commit_time) {
++			ktime_t expires = ktime_add_ns(ktime_get(),
++						       commit_time);
++			set_current_state(TASK_UNINTERRUPTIBLE);
++			schedule_hrtimeout(&expires, HRTIMER_MODE_ABS);
++		}
+ 	}
+ 
+ 	current->journal_info = NULL;
+diff -puN include/linux/jbd.h~jbd-improve-fsync-batching include/linux/jbd.h
+--- a/include/linux/jbd.h~jbd-improve-fsync-batching
++++ a/include/linux/jbd.h
+@@ -543,6 +543,11 @@ struct transaction_s
+ 	unsigned long		t_expires;
+ 
+ 	/*
++	 * When this transaction started, in nanoseconds [no locking]
++	 */
++	ktime_t			t_start_time;
++
++	/*
+ 	 * How many handles used this transaction? [t_handle_lock]
+ 	 */
+ 	int t_handle_count;
+@@ -798,9 +803,19 @@ struct journal_s
+ 	struct buffer_head	**j_wbuf;
+ 	int			j_wbufsize;
+ 
++	/*
++	 * this is the pid of the last person to run a synchronous operation
++	 * through the journal.
++	 */
+ 	pid_t			j_last_sync_writer;
+ 
+ 	/*
++	 * the average amount of time in nanoseconds it takes to commit a
++	 * transaction to the disk.  [j_state_lock]
++	 */
++	u64			j_average_commit_time;
++
++	/*
+ 	 * An opaque pointer to fs-private information.  ext3 puts its
+ 	 * superblock pointer here
+ 	 */
 _
 
-Patches currently in -mm which might be from duaneg@dghda.com are
+Patches currently in -mm which might be from jbacik@redhat.com are
 
 origin.patch
-ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch
-ext4-tighten-restrictions-on-inode-flags.patch
+linux-next.patch
 
