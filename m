@@ -1,39 +1,93 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4 changes in linux-next
-Date: Wed, 7 Jan 2009 19:20:06 -0500
-Message-ID: <20090108002006.GD4698@mit.edu>
-References: <20090107140436.46a17a3e.akpm@linux-foundation.org> <20090107153209.b49d5cf7.akpm@linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+From: akpm@linux-foundation.org
+Subject: [patch 006/123] ext2: allocate ->s_blockgroup_lock separately
+Date: Wed, 07 Jan 2009 18:07:19 -0800
+Message-ID: <200901080207.n0827Jpv011541@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, penberg@cs.helsinki.fi, adilger@sun.com,
+	linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:41018 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751877AbZAHAUJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 7 Jan 2009 19:20:09 -0500
-Content-Disposition: inline
-In-Reply-To: <20090107153209.b49d5cf7.akpm@linux-foundation.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:39666 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752011AbZAHCH4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 7 Jan 2009 21:07:56 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 07, 2009 at 03:32:09PM -0800, Andrew Morton wrote:
-> On Wed, 7 Jan 2009 14:04:36 -0800
-> Andrew Morton <akpm@linux-foundation.org> wrote:
-> 
-> > a pile of new ext4 stuff just turned up in linux-next
+From: Pekka J Enberg <penberg@cs.helsinki.fi>
 
-Sorry, most of the stuff had been sitting in the unstable part of the
-queue, but I didn't have time to get them fully vetted and pushed into
-the stable tree until the week just before and after the new year's.
-They've actually been tested for a while, but I like to review all the
-patches before they go in.
+As spotted by kmemtrace, struct ext2_sb_info is 17024 bytes on 64-bit
+which makes it a very bad fit for SLAB allocators.  The culprit of the
+wasted memory is ->s_blockgroup_lock which can be as big as 16 KB when
+NR_CPUS >= 32.
 
-> Do you plan on merging all those changes into mainline for 2.6.29?  If
-> so, please do so asap?
+To fix that, allocate ->s_blockgroup_lock, which fits nicely in a order 2
+page in the worst case, separately.  This shinks down struct ext2_sb_info
+enough to fit a 1 KB slab cache so now we allocate 16 KB + 1 KB instead of
+32 KB saving 15 KB of memory.
 
-Yes, and I sent the pull request to Linus earlier today.  Last I
-checked it hasn't hit his public tree yet, but hopefully it will by
-tomorrow.
+Acked-by: Andreas Dilger <adilger@sun.com>
+Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-							- Ted
+ fs/ext2/super.c            |   10 +++++++++-
+ include/linux/ext2_fs_sb.h |    4 ++--
+ 2 files changed, 11 insertions(+), 3 deletions(-)
+
+diff -puN fs/ext2/super.c~ext2-allocate-s_blockgroup_lock-separately fs/ext2/super.c
+--- a/fs/ext2/super.c~ext2-allocate-s_blockgroup_lock-separately
++++ a/fs/ext2/super.c
+@@ -132,6 +132,7 @@ static void ext2_put_super (struct super
+ 	percpu_counter_destroy(&sbi->s_dirs_counter);
+ 	brelse (sbi->s_sbh);
+ 	sb->s_fs_info = NULL;
++	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
+ 
+ 	return;
+@@ -756,6 +757,13 @@ static int ext2_fill_super(struct super_
+ 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+ 	if (!sbi)
+ 		return -ENOMEM;
++
++	sbi->s_blockgroup_lock =
++		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
++	if (!sbi->s_blockgroup_lock) {
++		kfree(sbi);
++		return -ENOMEM;
++	}
+ 	sb->s_fs_info = sbi;
+ 	sbi->s_sb_block = sb_block;
+ 
+@@ -983,7 +991,7 @@ static int ext2_fill_super(struct super_
+ 		printk ("EXT2-fs: not enough memory\n");
+ 		goto failed_mount;
+ 	}
+-	bgl_lock_init(&sbi->s_blockgroup_lock);
++	bgl_lock_init(sbi->s_blockgroup_lock);
+ 	sbi->s_debts = kcalloc(sbi->s_groups_count, sizeof(*sbi->s_debts), GFP_KERNEL);
+ 	if (!sbi->s_debts) {
+ 		printk ("EXT2-fs: not enough memory\n");
+diff -puN include/linux/ext2_fs_sb.h~ext2-allocate-s_blockgroup_lock-separately include/linux/ext2_fs_sb.h
+--- a/include/linux/ext2_fs_sb.h~ext2-allocate-s_blockgroup_lock-separately
++++ a/include/linux/ext2_fs_sb.h
+@@ -101,7 +101,7 @@ struct ext2_sb_info {
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+-	struct blockgroup_lock s_blockgroup_lock;
++	struct blockgroup_lock *s_blockgroup_lock;
+ 	/* root of the per fs reservation window tree */
+ 	spinlock_t s_rsv_window_lock;
+ 	struct rb_root s_rsv_window_root;
+@@ -111,7 +111,7 @@ struct ext2_sb_info {
+ static inline spinlock_t *
+ sb_bgl_lock(struct ext2_sb_info *sbi, unsigned int block_group)
+ {
+-	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
++	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
+ }
+ 
+ #endif	/* _LINUX_EXT2_FS_SB */
+_
