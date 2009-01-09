@@ -1,93 +1,67 @@
 From: akpm@linux-foundation.org
-Subject: [patch 1/3] ext4: allocate ->s_blockgroup_lock separately
-Date: Fri, 09 Jan 2009 12:24:52 -0800
-Message-ID: <200901092024.n09KOqq8021734@imap1.linux-foundation.org>
+Subject: [patch 2/3] ext4: don't inherit inappropriate inode flags from parent
+Date: Fri, 09 Jan 2009 12:24:53 -0800
+Message-ID: <200901092024.n09KOrG7021737@imap1.linux-foundation.org>
 Cc: linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-	penberg@cs.helsinki.fi, adilger@sun.com
+	duaneg@dghda.com, adilger@sun.com
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:37422 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:60485 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754262AbZAIUZW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Jan 2009 15:25:22 -0500
+	by vger.kernel.org with ESMTP id S1753553AbZAIUZV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Jan 2009 15:25:21 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Pekka Enberg <penberg@cs.helsinki.fi>
+From: "Duane Griffin" <duaneg@dghda.com>
 
-As spotted by kmemtrace, struct ext4_sb_info is 17664 bytes on 64-bit
-which makes it a very bad fit for SLAB allocators.  The culprit of the
-wasted memory is ->s_blockgroup_lock which can be as big as 16 KB when
-NR_CPUS >= 32.
+At present INDEX and EXTENTS are the only flags that new ext4 inodes do
+NOT inherit from their parent.  In addition prevent the flags DIRTY,
+ECOMPR, IMAGIC, TOPDIR, HUGE_FILE and EXT_MIGRATE from being inherited. 
+List inheritable flags explicitly to prevent future flags from
+accidentally being inherited.
 
-To fix that, allocate ->s_blockgroup_lock, which fits nicely in a order 2
-page in the worst case, separately.  This shinks down struct ext4_sb_info
-enough to fit a 2 KB slab cache so now we allocate 16 KB + 2 KB instead of
-32 KB saving 14 KB of memory.
+This fixes the TOPDIR flag inheritance bug reported at
+http://bugzilla.kernel.org/show_bug.cgi?id=9866.
 
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Acked-by: Andreas Dilger <adilger@sun.com>
-Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/ext4_sb.h |    4 ++--
- fs/ext4/super.c   |   10 +++++++++-
- 2 files changed, 11 insertions(+), 3 deletions(-)
+ fs/ext4/ext4.h   |    8 ++++++++
+ fs/ext4/ialloc.c |    2 +-
+ 2 files changed, 9 insertions(+), 1 deletion(-)
 
-diff -puN fs/ext4/ext4_sb.h~ext4-allocate-s_blockgroup_lock-separately fs/ext4/ext4_sb.h
---- a/fs/ext4/ext4_sb.h~ext4-allocate-s_blockgroup_lock-separately
-+++ a/fs/ext4/ext4_sb.h
-@@ -62,7 +62,7 @@ struct ext4_sb_info {
- 	struct percpu_counter s_freeinodes_counter;
- 	struct percpu_counter s_dirs_counter;
- 	struct percpu_counter s_dirtyblocks_counter;
--	struct blockgroup_lock s_blockgroup_lock;
-+	struct blockgroup_lock *s_blockgroup_lock;
- 	struct proc_dir_entry *s_proc;
+diff -puN fs/ext4/ext4.h~ext4-dont-inherit-inappropriate-inode-flags-from-parent fs/ext4/ext4.h
+--- a/fs/ext4/ext4.h~ext4-dont-inherit-inappropriate-inode-flags-from-parent
++++ a/fs/ext4/ext4.h
+@@ -248,6 +248,14 @@ struct flex_groups {
+ #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
+ #define EXT4_FL_USER_MODIFIABLE		0x000B80FF /* User modifiable flags */
  
- 	/* root of the per fs reservation window tree */
-@@ -153,7 +153,7 @@ struct ext4_sb_info {
- static inline spinlock_t *
- sb_bgl_lock(struct ext4_sb_info *sbi, unsigned int block_group)
- {
--	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
-+	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
- }
- 
- #endif	/* _EXT4_SB */
-diff -puN fs/ext4/super.c~ext4-allocate-s_blockgroup_lock-separately fs/ext4/super.c
---- a/fs/ext4/super.c~ext4-allocate-s_blockgroup_lock-separately
-+++ a/fs/ext4/super.c
-@@ -615,6 +615,7 @@ static void ext4_put_super(struct super_
- 		ext4_blkdev_remove(sbi);
- 	}
- 	sb->s_fs_info = NULL;
-+	kfree(sbi->s_blockgroup_lock);
- 	kfree(sbi);
- 	return;
- }
-@@ -2019,6 +2020,13 @@ static int ext4_fill_super(struct super_
- 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
- 	if (!sbi)
- 		return -ENOMEM;
++/* Flags that should be inherited by new inodes from their parent. */
++#define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
++			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
++			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
++			   EXT4_COMPRBLK_FL | EXT4_NOCOMPR_FL |\
++			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL|\
++			   EXT4_DIRSYNC_FL)
 +
-+	sbi->s_blockgroup_lock =
-+		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
-+	if (!sbi->s_blockgroup_lock) {
-+		kfree(sbi);
-+		return -ENOMEM;
-+	}
- 	sb->s_fs_info = sbi;
- 	sbi->s_mount_opt = 0;
- 	sbi->s_resuid = EXT4_DEF_RESUID;
-@@ -2330,7 +2338,7 @@ static int ext4_fill_super(struct super_
- 				 &sbi->s_inode_readahead_blks);
- #endif
- 
--	bgl_lock_init(&sbi->s_blockgroup_lock);
-+	bgl_lock_init(sbi->s_blockgroup_lock);
- 
- 	for (i = 0; i < db_count; i++) {
- 		block = descriptor_loc(sb, logical_sb_block, i);
+ /*
+  * Inode dynamic state flags
+  */
+diff -puN fs/ext4/ialloc.c~ext4-dont-inherit-inappropriate-inode-flags-from-parent fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~ext4-dont-inherit-inappropriate-inode-flags-from-parent
++++ a/fs/ext4/ialloc.c
+@@ -878,7 +878,7 @@ got:
+ 	 * newly created directory and file only if -o extent mount option is
+ 	 * specified
+ 	 */
+-	ei->i_flags = EXT4_I(dir)->i_flags & ~(EXT4_INDEX_FL|EXT4_EXTENTS_FL);
++	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
+ 	if (S_ISLNK(mode))
+ 		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+ 	/* dirsync only applies to directories */
 _
