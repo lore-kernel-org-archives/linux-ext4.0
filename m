@@ -1,397 +1,44 @@
-From: Mathieu Desnoyers <compudj@krystal.dyndns.org>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [ltt-dev] Fw: [PATCH] ext4: Add markers for better
 	debuggability
-Date: Fri, 9 Jan 2009 09:49:01 -0500
-Message-ID: <20090109144901.GA7262@Krystal>
-References: <20090109170408.75C1.KOSAKI.MOTOHIRO@jp.fujitsu.com>
+Date: Fri, 9 Jan 2009 13:58:40 -0500
+Message-ID: <20090109185840.GD23869@mit.edu>
+References: <20090109170408.75C1.KOSAKI.MOTOHIRO@jp.fujitsu.com> <20090109144901.GA7262@Krystal>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: ltt-dev@lists.casi.polymtl.ca,
+Cc: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
+	ltt-dev@lists.casi.polymtl.ca,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
-	Theodore Ts'o <tytso@mit.edu>
+To: Mathieu Desnoyers <compudj@krystal.dyndns.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from toq9.bellnexxia.net ([209.226.175.116]:39677 "EHLO
-	toq9-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751136AbZAIPFF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 9 Jan 2009 10:05:05 -0500
-Received: from toip3.srvr.bell.ca ([209.226.175.86])
-          by tomts40-srv.bellnexxia.net
-          (InterMail vM.5.01.06.13 201-253-122-130-113-20050324) with ESMTP
-          id <20090109144902.JCZP1608.tomts40-srv.bellnexxia.net@toip3.srvr.bell.ca>
-          for <linux-ext4@vger.kernel.org>; Fri, 9 Jan 2009 09:49:02 -0500
+Received: from thunk.org ([69.25.196.29]:33274 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753097AbZAIS6p (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 9 Jan 2009 13:58:45 -0500
 Content-Disposition: inline
-In-Reply-To: <20090109170408.75C1.KOSAKI.MOTOHIRO@jp.fujitsu.com>
+In-Reply-To: <20090109144901.GA7262@Krystal>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* KOSAKI Motohiro (kosaki.motohiro@jp.fujitsu.com) wrote:
-> FYI
+On Fri, Jan 09, 2009 at 09:49:01AM -0500, Mathieu Desnoyers wrote:
 > 
-> following patch merged linus tree today.
-> 
-> 
-> 
-> Forwarded by KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
-> ----------------------- Original Message -----------------------
->  From:    Theodore Ts'o <tytso@mit.edu>
->  To:      Ext4 Developers List <linux-ext4@vger.kernel.org>
->  Cc:      Theodore Ts'o <tytso@mit.edu>
->  Date:    Sun,  4 Jan 2009 15:33:58 -0500
->  Subject: [PATCH] ext4: Add markers for better debuggability
-> ----
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ialloc.c  |    9 ++++++++
->  fs/ext4/inode.c   |   56 +++++++++++++++++++++++++++++++++++++++++++++++++++++
->  fs/ext4/mballoc.c |   54 ++++++++++++++++++++++++++++++++++++++++++++++++--
->  3 files changed, 116 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-> index 88ab940..3bcf197 100644
-> --- a/fs/ext4/ialloc.c
-> +++ b/fs/ext4/ialloc.c
-> @@ -210,6 +210,11 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
->  
->  	ino = inode->i_ino;
->  	ext4_debug("freeing inode %lu\n", ino);
-> +	trace_mark(ext4_free_inode,
-> +		   "dev %s ino %lu mode %d uid %lu gid %lu bocks %llu",
-> +		   sb->s_id, inode->i_ino, inode->i_mode,
-> +		   (unsigned long) inode->i_uid, (unsigned long) inode->i_gid,
-> +		   (unsigned long long) inode->i_blocks);
->  
+> Given this is meant to be in the mainline kernel, using tracepoints
+> rather than markers would be more appropriate. Please see
+> Documentation/tracepoints.txt and samples/tracepoints/ for details.
 
-Hi Ted,
+I saw that, but I'm still not sure how I would actually *use*
+tracepoints.  I can use markers today with Systemtap, and I need an
+easy way to be able to selectively do things like "trap and print all
+of the logged data when the ext4_request_inode tracepoint/marker is
+tripped where dev=='dm-8'".
 
-Given this is meant to be in the mainline kernel, using tracepoints
-rather than markers would be more appropriate. Please see
-Documentation/tracepoints.txt and samples/tracepoints/ for details.
+Unfortunately, Systemtap seems doomed given its current course and
+direction, so I'm not opposed to moving to another solution --- I just
+need a HOWTO that demonstrates how I can do this painlessly and
+easily; preferably without having me have to manually hack up a kernel
+module each time I want to implement the tracing
 
-Best regards,
+Is there an easy way to do that using ltt today?  Can you point me at
+a sample of how this could be done?
 
-Mathieu
-
-
->  	/*
->  	 * Note: we must free any quota before locking the superblock,
-> @@ -698,6 +703,8 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
->  		return ERR_PTR(-EPERM);
->  
->  	sb = dir->i_sb;
-> +	trace_mark(ext4_request_inode, "dev %s dir %lu mode %d", sb->s_id,
-> +		   dir->i_ino, mode);
->  	inode = new_inode(sb);
->  	if (!inode)
->  		return ERR_PTR(-ENOMEM);
-> @@ -922,6 +929,8 @@ got:
->  	}
->  
->  	ext4_debug("allocating inode %lu\n", inode->i_ino);
-> +	trace_mark(ext4_allocate_inode, "dev %s ino %lu dir %lu mode %d",
-> +		   sb->s_id, inode->i_ino, dir->i_ino, mode);
->  	goto really_out;
->  fail:
->  	ext4_std_error(sb, err);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index aa402db..8f7884d 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1350,6 +1350,10 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
->   	pgoff_t index;
->  	unsigned from, to;
->  
-> +	trace_mark(ext4_write_begin,
-> +		   "dev %s ino %lu pos %llu len %u flags %u",
-> +		   inode->i_sb->s_id, inode->i_ino,
-> +		   (unsigned long long) pos, len, flags);
->   	index = pos >> PAGE_CACHE_SHIFT;
->  	from = pos & (PAGE_CACHE_SIZE - 1);
->  	to = from + len;
-> @@ -1421,6 +1425,10 @@ static int ext4_ordered_write_end(struct file *file,
->  	struct inode *inode = mapping->host;
->  	int ret = 0, ret2;
->  
-> +	trace_mark(ext4_ordered_write_end,
-> +		   "dev %s ino %lu pos %llu len %u copied %u",
-> +		   inode->i_sb->s_id, inode->i_ino,
-> +		   (unsigned long long) pos, len, copied);
->  	ret = ext4_jbd2_file_inode(handle, inode);
->  
->  	if (ret == 0) {
-> @@ -1459,6 +1467,10 @@ static int ext4_writeback_write_end(struct file *file,
->  	int ret = 0, ret2;
->  	loff_t new_i_size;
->  
-> +	trace_mark(ext4_writeback_write_end,
-> +		   "dev %s ino %lu pos %llu len %u copied %u",
-> +		   inode->i_sb->s_id, inode->i_ino,
-> +		   (unsigned long long) pos, len, copied);
->  	new_i_size = pos + copied;
->  	if (new_i_size > EXT4_I(inode)->i_disksize) {
->  		ext4_update_i_disksize(inode, new_i_size);
-> @@ -1494,6 +1506,10 @@ static int ext4_journalled_write_end(struct file *file,
->  	unsigned from, to;
->  	loff_t new_i_size;
->  
-> +	trace_mark(ext4_journalled_write_end,
-> +		   "dev %s ino %lu pos %llu len %u copied %u",
-> +		   inode->i_sb->s_id, inode->i_ino,
-> +		   (unsigned long long) pos, len, copied);
->  	from = pos & (PAGE_CACHE_SIZE - 1);
->  	to = from + len;
->  
-> @@ -2310,6 +2326,9 @@ static int ext4_da_writepage(struct page *page,
->  	struct buffer_head *page_bufs;
->  	struct inode *inode = page->mapping->host;
->  
-> +	trace_mark(ext4_da_writepage,
-> +		   "dev %s ino %lu page_index %lu",
-> +		   inode->i_sb->s_id, inode->i_ino, page->index);
->  	size = i_size_read(inode);
->  	if (page->index == size >> PAGE_CACHE_SHIFT)
->  		len = size & ~PAGE_CACHE_MASK;
-> @@ -2420,6 +2439,20 @@ static int ext4_da_writepages(struct address_space *mapping,
->  	int needed_blocks, ret = 0, nr_to_writebump = 0;
->  	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
->  
-> +	trace_mark(ext4_da_writepages,
-> +		   "dev %s ino %lu nr_t_write %ld "
-> +		   "pages_skipped %ld range_start %llu "
-> +		   "range_end %llu nonblocking %d "
-> +		   "for_kupdate %d for_reclaim %d "
-> +		   "for_writepages %d range_cyclic %d",
-> +		   inode->i_sb->s_id, inode->i_ino,
-> +		   wbc->nr_to_write, wbc->pages_skipped,
-> +		   (unsigned long long) wbc->range_start,
-> +		   (unsigned long long) wbc->range_end,
-> +		   wbc->nonblocking, wbc->for_kupdate,
-> +		   wbc->for_reclaim, wbc->for_writepages,
-> +		   wbc->range_cyclic);
-> +
->  	/*
->  	 * No pages to write? This is mainly a kludge to avoid starting
->  	 * a transaction for special inodes like journal inode on last iput()
-> @@ -2538,6 +2571,14 @@ out_writepages:
->  	if (!no_nrwrite_index_update)
->  		wbc->no_nrwrite_index_update = 0;
->  	wbc->nr_to_write -= nr_to_writebump;
-> +	trace_mark(ext4_da_writepage_result,
-> +		   "dev %s ino %lu ret %d pages_written %d "
-> +		   "pages_skipped %ld congestion %d "
-> +		   "more_io %d no_nrwrite_index_update %d",
-> +		   inode->i_sb->s_id, inode->i_ino, ret,
-> +		   pages_written, wbc->pages_skipped,
-> +		   wbc->encountered_congestion, wbc->more_io,
-> +		   wbc->no_nrwrite_index_update);
->  	return ret;
->  }
->  
-> @@ -2589,6 +2630,11 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
->  					len, flags, pagep, fsdata);
->  	}
->  	*fsdata = (void *)0;
-> +
-> +	trace_mark(ext4_da_write_begin,
-> +		   "dev %s ino %lu pos %llu len %u flags %u",
-> +		   inode->i_sb->s_id, inode->i_ino,
-> +		   (unsigned long long) pos, len, flags);
->  retry:
->  	/*
->  	 * With delayed allocation, we don't log the i_disksize update
-> @@ -2678,6 +2724,10 @@ static int ext4_da_write_end(struct file *file,
->  		}
->  	}
->  
-> +	trace_mark(ext4_da_write_end,
-> +		   "dev %s ino %lu pos %llu len %u copied %u",
-> +		   inode->i_sb->s_id, inode->i_ino,
-> +		   (unsigned long long) pos, len, copied);
->  	start = pos & (PAGE_CACHE_SIZE - 1);
->  	end = start + copied - 1;
->  
-> @@ -2891,6 +2941,9 @@ static int ext4_normal_writepage(struct page *page,
->  	loff_t size = i_size_read(inode);
->  	loff_t len;
->  
-> +	trace_mark(ext4_normal_writepage,
-> +		   "dev %s ino %lu page_index %lu",
-> +		   inode->i_sb->s_id, inode->i_ino, page->index);
->  	J_ASSERT(PageLocked(page));
->  	if (page->index == size >> PAGE_CACHE_SHIFT)
->  		len = size & ~PAGE_CACHE_MASK;
-> @@ -2976,6 +3029,9 @@ static int ext4_journalled_writepage(struct page *page,
->  	loff_t size = i_size_read(inode);
->  	loff_t len;
->  
-> +	trace_mark(ext4_journalled_writepage,
-> +		   "dev %s ino %lu page_index %lu",
-> +		   inode->i_sb->s_id, inode->i_ino, page->index);
->  	J_ASSERT(PageLocked(page));
->  	if (page->index == size >> PAGE_CACHE_SHIFT)
->  		len = size & ~PAGE_CACHE_MASK;
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 0372626..78e826d 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2878,8 +2878,9 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
->  		discard_block = (ext4_fsblk_t) entry->group * EXT4_BLOCKS_PER_GROUP(sb)
->  			+ entry->start_blk
->  			+ le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
-> -		trace_mark(ext4_discard_blocks, "dev %s blk %llu count %u", sb->s_id,
-> -			   (unsigned long long) discard_block, entry->count);
-> +		trace_mark(ext4_discard_blocks, "dev %s blk %llu count %u",
-> +			   sb->s_id, (unsigned long long) discard_block,
-> +			   entry->count);
->  		sb_issue_discard(sb, discard_block, entry->count);
->  
->  		kmem_cache_free(ext4_free_ext_cachep, entry);
-> @@ -3697,6 +3698,10 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
->  
->  	mb_debug("new inode pa %p: %llu/%u for %u\n", pa,
->  			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
-> +	trace_mark(ext4_mb_new_inode_pa,
-> +		   "dev %s ino %lu pstart %llu len %u lstart %u",
-> +		   sb->s_id, ac->ac_inode->i_ino,
-> +		   pa->pa_pstart, pa->pa_len, pa->pa_lstart);
->  
->  	ext4_mb_use_inode_pa(ac, pa);
->  	atomic_add(pa->pa_free, &EXT4_SB(sb)->s_mb_preallocated);
-> @@ -3754,7 +3759,9 @@ ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
->  	pa->pa_linear = 1;
->  
->  	mb_debug("new group pa %p: %llu/%u for %u\n", pa,
-> -			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
-> +		 pa->pa_pstart, pa->pa_len, pa->pa_lstart);
-> +	trace_mark(ext4_mb_new_group_pa, "dev %s pstart %llu len %u lstart %u",
-> +		   sb->s_id, pa->pa_pstart, pa->pa_len, pa->pa_lstart);
->  
->  	ext4_mb_use_group_pa(ac, pa);
->  	atomic_add(pa->pa_free, &EXT4_SB(sb)->s_mb_preallocated);
-> @@ -3807,12 +3814,14 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
->  	unsigned int next;
->  	ext4_group_t group;
->  	ext4_grpblk_t bit;
-> +	unsigned long long grp_blk_start;
->  	sector_t start;
->  	int err = 0;
->  	int free = 0;
->  
->  	BUG_ON(pa->pa_deleted == 0);
->  	ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, &bit);
-> +	grp_blk_start = pa->pa_pstart - bit;
->  	BUG_ON(group != e4b->bd_group && pa->pa_len != 0);
->  	end = bit + pa->pa_len;
->  
-> @@ -3842,6 +3851,10 @@ ext4_mb_release_inode_pa(struct ext4_buddy *e4b, struct buffer_head *bitmap_bh,
->  			ext4_mb_store_history(ac);
->  		}
->  
-> +		trace_mark(ext4_mb_release_inode_pa,
-> +			   "dev %s ino %lu block %llu count %u",
-> +			   sb->s_id, pa->pa_inode->i_ino, grp_blk_start + bit,
-> +			   next - bit);
->  		mb_free_blocks(pa->pa_inode, e4b, bit, next - bit);
->  		bit = next + 1;
->  	}
-> @@ -3875,6 +3888,8 @@ ext4_mb_release_group_pa(struct ext4_buddy *e4b,
->  	if (ac)
->  		ac->ac_op = EXT4_MB_HISTORY_DISCARD;
->  
-> +	trace_mark(ext4_mb_release_group_pa, "dev %s pstart %llu len %d",
-> +		   sb->s_id, pa->pa_pstart, pa->pa_len);
->  	BUG_ON(pa->pa_deleted == 0);
->  	ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, &bit);
->  	BUG_ON(group != e4b->bd_group && pa->pa_len != 0);
-> @@ -4040,6 +4055,8 @@ void ext4_discard_preallocations(struct inode *inode)
->  	}
->  
->  	mb_debug("discard preallocation for inode %lu\n", inode->i_ino);
-> +	trace_mark(ext4_discard_preallocations, "dev %s ino %lu", sb->s_id,
-> +		   inode->i_ino);
->  
->  	INIT_LIST_HEAD(&list);
->  
-> @@ -4492,6 +4509,8 @@ static int ext4_mb_discard_preallocations(struct super_block *sb, int needed)
->  	int ret;
->  	int freed = 0;
->  
-> +	trace_mark(ext4_mb_discard_preallocations, "dev %s needed %d",
-> +		   sb->s_id, needed);
->  	for (i = 0; i < EXT4_SB(sb)->s_groups_count && needed > 0; i++) {
->  		ret = ext4_mb_discard_group_preallocations(sb, i, needed);
->  		freed += ret;
-> @@ -4520,6 +4539,18 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
->  	sb = ar->inode->i_sb;
->  	sbi = EXT4_SB(sb);
->  
-> +	trace_mark(ext4_request_blocks, "dev %s flags %u len %u ino %lu "
-> +		   "lblk %llu goal %llu lleft %llu lright %llu "
-> +		   "pleft %llu pright %llu ",
-> +		   sb->s_id, ar->flags, ar->len,
-> +		   ar->inode ? ar->inode->i_ino : 0,
-> +		   (unsigned long long) ar->logical,
-> +		   (unsigned long long) ar->goal,
-> +		   (unsigned long long) ar->lleft,
-> +		   (unsigned long long) ar->lright,
-> +		   (unsigned long long) ar->pleft,
-> +		   (unsigned long long) ar->pright);
-> +
->  	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
->  		/*
->  		 * With delalloc we already reserved the blocks
-> @@ -4622,6 +4653,19 @@ out3:
->  						reserv_blks);
->  	}
->  
-> +	trace_mark(ext4_allocate_blocks,
-> +		   "dev %s block %llu flags %u len %u ino %lu "
-> +		   "logical %llu goal %llu lleft %llu lright %llu "
-> +		   "pleft %llu pright %llu ",
-> +		   sb->s_id, (unsigned long long) block,
-> +		   ar->flags, ar->len, ar->inode ? ar->inode->i_ino : 0,
-> +		   (unsigned long long) ar->logical,
-> +		   (unsigned long long) ar->goal,
-> +		   (unsigned long long) ar->lleft,
-> +		   (unsigned long long) ar->lright,
-> +		   (unsigned long long) ar->pleft,
-> +		   (unsigned long long) ar->pright);
-> +
->  	return block;
->  }
->  
-> @@ -4755,6 +4799,10 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
->  	}
->  
->  	ext4_debug("freeing block %lu\n", block);
-> +	trace_mark(ext4_free_blocks,
-> +		   "dev %s block %llu count %lu metadata %d ino %lu",
-> +		   sb->s_id, (unsigned long long) block, count, metadata,
-> +		   inode ? inode->i_ino : 0);
->  
->  	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
->  	if (ac) {
-> -- 
-> 1.6.0.4.8.g36f27.dirty
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --------------------- Original Message Ends --------------------
-> 
-> 
-> 
-> 
-> _______________________________________________
-> ltt-dev mailing list
-> ltt-dev@lists.casi.polymtl.ca
-> http://lists.casi.polymtl.ca/cgi-bin/mailman/listinfo/ltt-dev
-> 
-
--- 
-Mathieu Desnoyers
-OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
+						- Ted
