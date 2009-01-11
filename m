@@ -1,35 +1,52 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 11493] "proc_dir_entry 'hdb' already registered" on repeatedly mounting/umounting intentionally corrupted fs
-Date: Sun, 11 Jan 2009 09:44:29 -0800 (PST)
-Message-ID: <20090111174429.4C7BB10800F@picon.linux-foundation.org>
-References: <bug-11493-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:33810 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752177AbZAKRo7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Jan 2009 12:44:59 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0BHiTUS008142
-	for <linux-ext4@vger.kernel.org>; Sun, 11 Jan 2009 09:44:30 -0800
-In-Reply-To: <bug-11493-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Simon Holm =?ISO-8859-1?Q?Th=F8gersen?= <odie@cs.aau.dk>
+Subject: Re: [PATCH -next] jbd2: fix printk format warning
+Date: Sun, 11 Jan 2009 19:52:53 +0100
+Message-ID: <1231699973.17759.22.camel@odie.local>
+References: <20090105173517.deeff918.sfr@canb.auug.org.au>
+	 <20090105121158.94d990c3.randy.dunlap@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Stephen Rothwell <sfr@canb.auug.org.au>,
+	akpm <akpm@linux-foundation.org>, linux-next@vger.kernel.org,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: Randy Dunlap <randy.dunlap@oracle.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753197AbZAKSwN@vger.kernel.org>
+In-Reply-To: <20090105121158.94d990c3.randy.dunlap@oracle.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=11493
+man, 05 01 2009 kl. 12:11 -0800, skrev Randy Dunlap:
+> From: Randy Dunlap <randy.dunlap@oracle.com>
+>=20
+> Fix jbd2 printk format:
+>=20
+> fs/jbd2/journal.c:848: warning: format '%lu' expects type 'long unsig=
+ned int',
+> but argument 3 has type 'uint32_t'
+>=20
+> Signed-off-by: Randy Dunlap <randy.dunlap@oracle.com>
+> ---
+>  fs/jbd2/journal.c |    3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+>=20
+> --- linux-next-20090105.orig/fs/jbd2/journal.c
+> +++ linux-next-20090105/fs/jbd2/journal.c
+> @@ -845,7 +845,8 @@ static int jbd2_seq_info_show(struct seq
+>  	seq_printf(seq, "  %ums logging transaction\n",
+>  	    jiffies_to_msecs(s->stats->u.run.rs_logging / s->stats->ts_tid)=
+);
+>  	seq_printf(seq, "  %luus average transaction commit time\n",
+> -		   do_div(s->journal->j_average_commit_time, 1000));
+> +		   (unsigned long)do_div(s->journal->j_average_commit_time,
+> +					1000));
+>  	seq_printf(seq, "  %lu handles per transaction\n",
+>  	    s->stats->u.run.rs_handle_count / s->stats->ts_tid);
+>  	seq_printf(seq, "  %lu blocks per transaction\n",
+
+This patch is just as wrong as the original code. Please don't
+apply it, but see my "[PATCH] jbd2: fix wrong use of do_div"
+that I just sent out.
 
 
-sliedes@cc.hut.fi changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
-
-
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Simon Holm Th=C3=B8gersen
