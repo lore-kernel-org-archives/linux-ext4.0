@@ -1,17 +1,19 @@
 From: Simon Holm =?ISO-8859-1?Q?Th=F8gersen?= <odie@cs.aau.dk>
 Subject: [PATCH] jbd2: fix wrong use of do_div
-Date: Sun, 11 Jan 2009 19:51:35 +0100
-Message-ID: <1231699895.17759.19.camel@odie.local>
+Date: Sun, 11 Jan 2009 20:16:33 +0100
+Message-ID: <1231701393.17759.30.camel@odie.local>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>, linux-kernel@cs.aau.dk
+Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Randy Dunlap <randy.dunlap@oracle.com>
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.cs.aau.dk ([130.225.194.6]:54714 "EHLO smtp.cs.aau.dk"
+Received: from smtp.cs.aau.dk ([130.225.194.6]:54740 "EHLO smtp.cs.aau.dk"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754892AbZAKTMu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Jan 2009 14:12:50 -0500
+	id S1752011AbZAKTPJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Jan 2009 14:15:09 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
