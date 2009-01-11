@@ -1,18 +1,18 @@
 From: bugme-daemon@bugzilla.kernel.org
 Subject: [Bug 11493] "proc_dir_entry 'hdb' already registered" on repeatedly mounting/umounting intentionally corrupted fs
-Date: Sun, 11 Jan 2009 09:43:45 -0800 (PST)
-Message-ID: <20090111174345.384C210800F@picon.linux-foundation.org>
+Date: Sun, 11 Jan 2009 09:44:29 -0800 (PST)
+Message-ID: <20090111174429.4C7BB10800F@picon.linux-foundation.org>
 References: <bug-11493-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:53557 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:33810 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751695AbZAKRoR (ORCPT
+	by vger.kernel.org with ESMTP id S1752177AbZAKRo7 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Jan 2009 12:44:17 -0500
+	Sun, 11 Jan 2009 12:44:59 -0500
 Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0BHhjQn008093
-	for <linux-ext4@vger.kernel.org>; Sun, 11 Jan 2009 09:43:46 -0800
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0BHiTUS008142
+	for <linux-ext4@vger.kernel.org>; Sun, 11 Jan 2009 09:44:30 -0800
 In-Reply-To: <bug-11493-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -24,14 +24,9 @@ sliedes@cc.hut.fi changed:
 
            What    |Removed                     |Added
 ----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|                            |CODE_FIX
+             Status|RESOLVED                    |CLOSED
 
 
-
-
-------- Comment #2 from sliedes@cc.hut.fi  2009-01-11 09:43 -------
-Fixed in 2.6.28.
 
 
 -- 
