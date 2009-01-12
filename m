@@ -1,27 +1,69 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Remove stale block allocator code
-Date: Sun, 11 Jan 2009 23:10:19 -0500
-Message-ID: <20090112041019.GA17381@mit.edu>
-References: <1231619326-29963-1-git-send-email-snitzer@gmail.com>
+From: "Rohit Sharma" <imreckless@gmail.com>
+Subject: Re: Copying Data Blocks
+Date: Mon, 12 Jan 2009 11:48:26 +0530
+Message-ID: <2d08ef090901112218v1c6820d7q98d39af1350a07a0@mail.gmail.com>
+References: <2d08ef090901060236p46d4d396x797e4bceb24a2a34@mail.gmail.com>
+	 <804dabb00901110715x2baf84e8kc0fc5d6fa2512fe8@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Mike Snitzer <snitzer@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 <linux-ext4@vger.kernel.org>,
+	Kernelnewbies <kernelnewbies@nl.linux.org>
+To: "Peter Teoh" <htmldeveloper@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59504 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750955AbZALEKV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Jan 2009 23:10:21 -0500
+Received: from rv-out-0506.google.com ([209.85.198.238]:57164 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751253AbZALGS1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Jan 2009 01:18:27 -0500
+Received: by rv-out-0506.google.com with SMTP id k40so10079999rvb.1
+        for <linux-ext4@vger.kernel.org>; Sun, 11 Jan 2009 22:18:26 -0800 (PST)
+In-Reply-To: <804dabb00901110715x2baf84e8kc0fc5d6fa2512fe8@mail.gmail.com>
 Content-Disposition: inline
-In-Reply-To: <1231619326-29963-1-git-send-email-snitzer@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 10, 2009 at 03:28:46PM -0500, Mike Snitzer wrote:
-> Remove some leftovers from when the old block allocator was removed
-> (c2ea3fde).  ext4_sb_info is now a bit lighter.  Also remove a dangling
-> read_block_bitmap() prototype.
+Hi,
 
-Thanks for the patch.  I've added it to the ext4 patch queue.
+I am having some issues in locking inode while copying data blocks.
+We are trying to keep file system live during this operation, so
+both read and write operations should work.
+In this case what type of lock on inode should be used, semaphore,
+mutex or spinlock?
 
-       	       	       	    	     	- Ted
+
+On Sun, Jan 11, 2009 at 8:45 PM, Peter Teoh <htmldeveloper@gmail.com> wrote:
+> Sorry.....some mistakes...a resent:
+>
+> Here are some tips on the blockdevice API:
+>
+> http://lkml.org/lkml/2006/1/24/287
+> http://linux.derkeiler.com/Mailing-Lists/Kernel/2006-01/msg09388.html
+>
+> as indicated, documentation is rather sparse in this area.
+>
+> not sure if anyone else have a summary list of blockdevice API and its
+> explanation?
+>
+> not wrt the following "cleanup patch", i am not sure how the API will change:
+>
+> http://lwn.net/Articles/304485/
+>
+> thanks.
+>
+> On Tue, Jan 6, 2009 at 6:36 PM, Rohit Sharma <imreckless@gmail.com> wrote:
+>>
+>> I want to read data blocks from one inode
+>> and copy it to other inode.
+>>
+>> I mean to copy data from data blocks associated with one inode
+>> to the data blocks associated with other inode.
+>>
+>> Is that possible in kernel space.?
+>> --
+>
+>
+>
+> --
+> Regards,
+> Peter Teoh
+>
