@@ -1,45 +1,37 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix unhandled ext4_free_data allocation failure
-Date: Mon, 12 Jan 2009 10:03:36 -0500
-Message-ID: <20090112150336.GE21793@mit.edu>
-References: <20081223104016.GC7217@localhost.localdomain> <20081223142915.GA23303@unused.rdu.redhat.com> <961aa3350812231437x4debaf9byf230a63582561010@mail.gmail.com> <20090111020352.GA4285@localhost.localdomain> <20090111143942.GA28488@unused.rdu.redhat.com> <496A0648.9050100@redhat.com> <20090112035835.GA16898@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Eric Sandeen <sandeen@redhat.com>, Josef Bacik <jbacik@redhat.com>,
-	Akinobu Mita <akinobu.mita@gmail.com>,
-	linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-	adilger@sun.com, li
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12424] ext4_da_writepages error while downloading a file w/firefox
+Date: Mon, 12 Jan 2009 07:07:36 -0800 (PST)
+Message-ID: <20090112150736.10FCE10800D@picon.linux-foundation.org>
+References: <bug-12424-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59586 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751016AbZALPED (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Jan 2009 10:04:03 -0500
-Content-Disposition: inline
-In-Reply-To: <20090112035835.GA16898@mit.edu>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:39188 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752408AbZALPIK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 12 Jan 2009 10:08:10 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0CF7a7C009980
+	for <linux-ext4@vger.kernel.org>; Mon, 12 Jan 2009 07:07:37 -0800
+In-Reply-To: <bug-12424-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 11, 2009 at 10:58:35PM -0500, Theodore Tso wrote:
-> On Sun, Jan 11, 2009 at 08:46:32AM -0600, Eric Sandeen wrote:
-> > 
-> > Well, this will now force a filesystem error (then remount-ro or panic
-> > (or ignore) if the allocation fails.  I'm not sure that's better...?
-> > 
-> 
-> Well, our choices basically are:
-> 
-> 1)  Force a filesystem error
-> 2)  Sleep and retry the allocation
-> 3)  Don't add the freed blocks to the list regions that mballoc should
->     be allowed to allocate from after the transaction commits.  This 
->     results in the blocks getting "leaked" until the filesystem is
->     mounted/unounted.
+http://bugzilla.kernel.org/show_bug.cgi?id=12424
 
-I just thought of another alternative:
 
-4) Mark the buddy cache has being in need of being completely rebuilt
-after the transaction commits. 
 
-Someone want to try coding that up?
 
-						- Ted
+
+------- Comment #6 from tytso@mit.edu  2009-01-12 07:07 -------
+There was at least one ext4 bug that could have caused this that was fixed in
+2.6.28 as well as in the 2.6.29 merge window.   Unfortunately, we need to see
+the original bug to know which bug might as caused the problem.   There was
+also a more recent bug fix that makes ext4_da_writepages much less verbose,
+since that tends to hide the original root cause of the problem....
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
