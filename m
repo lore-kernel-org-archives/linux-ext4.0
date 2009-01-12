@@ -1,38 +1,27 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix unhandled ext4_free_data allocation failure
-Date: Sun, 11 Jan 2009 22:58:35 -0500
-Message-ID: <20090112035835.GA16898@mit.edu>
-References: <20081223104016.GC7217@localhost.localdomain> <20081223142915.GA23303@unused.rdu.redhat.com> <961aa3350812231437x4debaf9byf230a63582561010@mail.gmail.com> <20090111020352.GA4285@localhost.localdomain> <20090111143942.GA28488@unused.rdu.redhat.com> <496A0648.9050100@redhat.com>
+Subject: Re: [PATCH] ext4: Remove stale block allocator code
+Date: Sun, 11 Jan 2009 23:10:19 -0500
+Message-ID: <20090112041019.GA17381@mit.edu>
+References: <1231619326-29963-1-git-send-email-snitzer@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Josef Bacik <jbacik@redhat.com>,
-	Akinobu Mita <akinobu.mita@gmail.com>,
-	linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
-	adilger@sun.com, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Mike Snitzer <snitzer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60172 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:59504 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752133AbZALD6o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Jan 2009 22:58:44 -0500
+	id S1750955AbZALEKV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Jan 2009 23:10:21 -0500
 Content-Disposition: inline
-In-Reply-To: <496A0648.9050100@redhat.com>
+In-Reply-To: <1231619326-29963-1-git-send-email-snitzer@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 11, 2009 at 08:46:32AM -0600, Eric Sandeen wrote:
-> 
-> Well, this will now force a filesystem error (then remount-ro or panic
-> (or ignore) if the allocation fails.  I'm not sure that's better...?
-> 
+On Sat, Jan 10, 2009 at 03:28:46PM -0500, Mike Snitzer wrote:
+> Remove some leftovers from when the old block allocator was removed
+> (c2ea3fde).  ext4_sb_info is now a bit lighter.  Also remove a dangling
+> read_block_bitmap() prototype.
 
-Well, our choices basically are:
+Thanks for the patch.  I've added it to the ext4 patch queue.
 
-1)  Force a filesystem error
-2)  Sleep and retry the allocation
-3)  Don't add the freed blocks to the list regions that mballoc should
-    be allowed to allocate from after the transaction commits.  This 
-    results in the blocks getting "leaked" until the filesystem is
-    mounted/unounted.
-
-						- Ted
+       	       	       	    	     	- Ted
