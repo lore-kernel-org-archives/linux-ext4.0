@@ -1,37 +1,109 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12424] ext4_da_writepages error while downloading a file w/firefox
-Date: Mon, 12 Jan 2009 07:07:36 -0800 (PST)
-Message-ID: <20090112150736.10FCE10800D@picon.linux-foundation.org>
-References: <bug-12424-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: - filesystem-freeze-remove-xfs-specific-ioctl-interfaces-for-freeze-feature.patch removed from -mm tree
+Date: Mon, 12 Jan 2009 11:58:06 -0800
+Message-ID: <200901121958.n0CJw6mt027334@imap1.linux-foundation.org>
+To: t-sato@yk.jp.nec.com, agk@redhat.com, david@fromorbit.com,
+	dgc@sgi.com, hch@lst.de, linux-ext4@vger.kernel.org,
+	shaggy@austin.ibm.com, viro@zeniv.linux.org.uk,
+	xfs-masters@oss.sgi.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:39188 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:40871 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752408AbZALPIK (ORCPT
+	by vger.kernel.org with ESMTP id S1755184AbZALUPG (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 12 Jan 2009 10:08:10 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0CF7a7C009980
-	for <linux-ext4@vger.kernel.org>; Mon, 12 Jan 2009 07:07:37 -0800
-In-Reply-To: <bug-12424-13602@http.bugzilla.kernel.org/>
+	Mon, 12 Jan 2009 15:15:06 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12424
+
+The patch titled
+     filesystem freeze: remove XFS specific ioctl interfaces for freeze feature
+has been removed from the -mm tree.  Its filename was
+     filesystem-freeze-remove-xfs-specific-ioctl-interfaces-for-freeze-feature.patch
+
+This patch was dropped because it was merged into mainline or a subsystem tree
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: filesystem freeze: remove XFS specific ioctl interfaces for freeze feature
+From: Takashi Sato <t-sato@yk.jp.nec.com>
+
+It removes XFS specific ioctl interfaces and request codes
+for freeze feature.
+
+This patch has been supplied by David Chinner.
+
+Signed-off-by: Dave Chinner <dgc@sgi.com>
+Signed-off-by: Takashi Sato <t-sato@yk.jp.nec.com>
+Cc: Dave Chinner <david@fromorbit.com>
+Cc: <xfs-masters@oss.sgi.com>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Dave Kleikamp <shaggy@austin.ibm.com>
+Cc: Alasdair G Kergon <agk@redhat.com>
+Cc: Al Viro <viro@zeniv.linux.org.uk>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/xfs/linux-2.6/xfs_ioctl.c   |   15 ---------------
+ fs/xfs/linux-2.6/xfs_ioctl32.c |    2 --
+ fs/xfs/xfs_fs.h                |    4 ++--
+ 3 files changed, 2 insertions(+), 19 deletions(-)
+
+diff -puN fs/xfs/linux-2.6/xfs_ioctl.c~filesystem-freeze-remove-xfs-specific-ioctl-interfaces-for-freeze-feature fs/xfs/linux-2.6/xfs_ioctl.c
+--- a/fs/xfs/linux-2.6/xfs_ioctl.c~filesystem-freeze-remove-xfs-specific-ioctl-interfaces-for-freeze-feature
++++ a/fs/xfs/linux-2.6/xfs_ioctl.c
+@@ -1546,21 +1546,6 @@ xfs_file_ioctl(
+ 		return -error;
+ 	}
+ 
+-	case XFS_IOC_FREEZE:
+-		if (!capable(CAP_SYS_ADMIN))
+-			return -EPERM;
+-
+-		if (inode->i_sb->s_frozen == SB_UNFROZEN)
+-			freeze_bdev(inode->i_sb->s_bdev);
+-		return 0;
+-
+-	case XFS_IOC_THAW:
+-		if (!capable(CAP_SYS_ADMIN))
+-			return -EPERM;
+-		if (inode->i_sb->s_frozen != SB_UNFROZEN)
+-			thaw_bdev(inode->i_sb->s_bdev, inode->i_sb);
+-		return 0;
+-
+ 	case XFS_IOC_GOINGDOWN: {
+ 		__uint32_t in;
+ 
+diff -puN fs/xfs/linux-2.6/xfs_ioctl32.c~filesystem-freeze-remove-xfs-specific-ioctl-interfaces-for-freeze-feature fs/xfs/linux-2.6/xfs_ioctl32.c
+--- a/fs/xfs/linux-2.6/xfs_ioctl32.c~filesystem-freeze-remove-xfs-specific-ioctl-interfaces-for-freeze-feature
++++ a/fs/xfs/linux-2.6/xfs_ioctl32.c
+@@ -632,8 +632,6 @@ xfs_file_compat_ioctl(
+ 	case XFS_IOC_SET_RESBLKS:
+ 	case XFS_IOC_GET_RESBLKS:
+ 	case XFS_IOC_FSGROWFSLOG:
+-	case XFS_IOC_FREEZE:
+-	case XFS_IOC_THAW:
+ 	case XFS_IOC_GOINGDOWN:
+ 	case XFS_IOC_ERROR_INJECTION:
+ 	case XFS_IOC_ERROR_CLEARALL:
+diff -puN fs/xfs/xfs_fs.h~filesystem-freeze-remove-xfs-specific-ioctl-interfaces-for-freeze-feature fs/xfs/xfs_fs.h
+--- a/fs/xfs/xfs_fs.h~filesystem-freeze-remove-xfs-specific-ioctl-interfaces-for-freeze-feature
++++ a/fs/xfs/xfs_fs.h
+@@ -465,8 +465,8 @@ typedef struct xfs_handle {
+ #define XFS_IOC_ERROR_INJECTION	     _IOW ('X', 116, struct xfs_error_injection)
+ #define XFS_IOC_ERROR_CLEARALL	     _IOW ('X', 117, struct xfs_error_injection)
+ /*	XFS_IOC_ATTRCTL_BY_HANDLE -- deprecated 118	 */
+-#define XFS_IOC_FREEZE		     _IOWR('X', 119, int)
+-#define XFS_IOC_THAW		     _IOWR('X', 120, int)
++/*	XFS_IOC_FREEZE		  -- FIFREEZE   119	 */
++/*	XFS_IOC_THAW		  -- FITHAW     120	 */
+ #define XFS_IOC_FSSETDM_BY_HANDLE    _IOW ('X', 121, struct xfs_fsop_setdm_handlereq)
+ #define XFS_IOC_ATTRLIST_BY_HANDLE   _IOW ('X', 122, struct xfs_fsop_attrlist_handlereq)
+ #define XFS_IOC_ATTRMULTI_BY_HANDLE  _IOW ('X', 123, struct xfs_fsop_attrmulti_handlereq)
+_
+
+Patches currently in -mm which might be from t-sato@yk.jp.nec.com are
 
 
-
-
-
-------- Comment #6 from tytso@mit.edu  2009-01-12 07:07 -------
-There was at least one ext4 bug that could have caused this that was fixed in
-2.6.28 as well as in the 2.6.29 merge window.   Unfortunately, we need to see
-the original bug to know which bug might as caused the problem.   There was
-also a more recent bug fix that makes ext4_da_writepages much less verbose,
-since that tends to hide the original root cause of the problem....
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
