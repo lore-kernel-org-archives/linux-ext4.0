@@ -1,25 +1,38 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: fix wrong use of do_div
-Date: Sun, 11 Jan 2009 22:36:15 -0500
-Message-ID: <20090112033615.GA5798@mit.edu>
-References: <1231701393.17759.30.camel@odie.local> <1231724680.3094.3.camel@odie.local>
+Subject: Re: [PATCH] ext4: fix unhandled ext4_free_data allocation failure
+Date: Sun, 11 Jan 2009 22:58:35 -0500
+Message-ID: <20090112035835.GA16898@mit.edu>
+References: <20081223104016.GC7217@localhost.localdomain> <20081223142915.GA23303@unused.rdu.redhat.com> <961aa3350812231437x4debaf9byf230a63582561010@mail.gmail.com> <20090111020352.GA4285@localhost.localdomain> <20090111143942.GA28488@unused.rdu.redhat.com> <496A0648.9050100@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Randy Dunlap <randy.dunlap@oracle.com>
-To: Simon Holm =?iso-8859-1?Q?Th=F8gersen?= <odie@cs.aau.dk>
+Cc: Josef Bacik <jbacik@redhat.com>,
+	Akinobu Mita <akinobu.mita@gmail.com>,
+	linux-kernel@vger.kernel.org, akpm@linux-foundation.org,
+	adilger@sun.com, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:41276 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:60172 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752069AbZALDgS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Jan 2009 22:36:18 -0500
+	id S1752133AbZALD6o (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Jan 2009 22:58:44 -0500
 Content-Disposition: inline
-In-Reply-To: <1231724680.3094.3.camel@odie.local>
+In-Reply-To: <496A0648.9050100@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks for the patch; I've queued it for testing and will push it to
-Linus.
+On Sun, Jan 11, 2009 at 08:46:32AM -0600, Eric Sandeen wrote:
+> 
+> Well, this will now force a filesystem error (then remount-ro or panic
+> (or ignore) if the allocation fails.  I'm not sure that's better...?
+> 
+
+Well, our choices basically are:
+
+1)  Force a filesystem error
+2)  Sleep and retry the allocation
+3)  Don't add the freed blocks to the list regions that mballoc should
+    be allowed to allocate from after the transaction commits.  This 
+    results in the blocks getting "leaked" until the filesystem is
+    mounted/unounted.
 
 						- Ted
