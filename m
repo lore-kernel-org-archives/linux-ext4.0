@@ -1,241 +1,214 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12433] New: Oops while resizing an ext4 LVM2 volume
-Date: Sun, 11 Jan 2009 12:20:13 -0800 (PST)
-Message-ID: <bug-12433-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Mathieu Desnoyers <compudj@krystal.dyndns.org>
+Subject: Re: [ltt-dev] Fw: [PATCH] ext4: Add markers for better
+	debuggability
+Date: Sun, 11 Jan 2009 20:34:16 -0500
+Message-ID: <20090112013415.GA23423@Krystal>
+References: <20090109170408.75C1.KOSAKI.MOTOHIRO@jp.fujitsu.com> <20090109144901.GA7262@Krystal> <20090109185840.GD23869@mit.edu> <20090110161906.GB20526@Krystal> <20090110184240.GA31579@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+To: Theodore Tso <tytso@mit.edu>,
+	KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>,
+	ltt-dev@lists.casi.polymtl.ca,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	linux-kernel@vger.ke
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:60470 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751859AbZAKUUR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 11 Jan 2009 15:20:17 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0BKKDvU016512
-	for <linux-ext4@vger.kernel.org>; Sun, 11 Jan 2009 12:20:14 -0800
+Received: from tomts13-srv.bellnexxia.net ([209.226.175.34]:35681 "EHLO
+	tomts13-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752359AbZALBeT convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 11 Jan 2009 20:34:19 -0500
+Content-Disposition: inline
+In-Reply-To: <20090110184240.GA31579@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12433
+* Theodore Tso (tytso@mit.edu) wrote:
+> On Sat, Jan 10, 2009 at 11:19:06AM -0500, Mathieu Desnoyers wrote:
+> > 
+> > I just ported LTTng to 2.6.28 yesterday and started doing the port of
+> > ext4/jbd2 to tracepoints. As you can see in my 0.74 announcement, the
+> > tracepoint work for both jbd2 and ext4 is done. I also did the lttng
+> > probe module for jbd2. Now I just have to create the probe module for
+> > ext4. I also want to create debugfs files to control per-probe module
+> > filtering, e.g. :
+> > 
+> > /mnt/debugfs/ltt/filter/jbd2/dev
+> > /mnt/debugfs/ltt/filter/ext4/dev
+> > 
+> > Where writing to it would add device names to the filter list. I would
+> > like a scheme where we can easily add/remove devices, list all
+> > devices... I think ftrace already has something similar for
+> > instrumentation activation.
+> > 
+> > The main question I am facing is : What interface semantic do we want
+> > for such filter control file ?
+> 
+> Hmm, we'll let's see.  The most common filtering restriction will be
+> by device, but I'll occasionally want to filter based on a single
+> inode; the next most common thing I could forsee wanting to do is to
+> filter on a based of inode numbers or on one or more block groups.
+> (This would be when trying to figure out what is going on with a
+> particular filesystem benchmark.)
+> 
+> Past a certain point, I recognize that I'll probably have to write a
+> custom probe module --- although I have to admit that's one of the
+> things that has spoiled me about SystemTap; it automates the job of
+> creating the custom probe modules, and allows me to create
+> turing-equivalent filtering and data collection.
+> 
+> So the question is where do we draw the line between the most common
+> filters that is worth putting into a probe module that goes into
+> mainline, versus what should be done via custome probe modules,
+> probably via modifying the probe module as an example.
+> 
+> If it's not too much trouble, being able to filter on a single device
+> (or report the data from all trace points) and filtering on a single
+> inode (or reporting all inodes) seems to make the most mount of sense.
+> Does tht seem reasonable to you?
+> 
 
-           Summary: Oops while resizing an ext4 LVM2 volume
-           Product: File System
-           Version: 2.5
-     KernelVersion: 2.6.29-rc1
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: peter@kerwien.homeip.net
+Yes, very reasonable. It's now implemented in LTTng 0.77. Usage looks
+like :
 
+echo "*" > /mnt/debugfs/ltt/filter/ext4/dev
+ (or just echo "" > /mnt/debugfs/ltt/filter/ext4/dev)
+ (enables all devices, this is the default)
+cat /mnt/debugfs/ltt/filter/ext4/dev
+ (shows current filter)
 
-Latest working kernel version: N/A
-Earliest failing kernel version: 2.6.29-rc1
-Distribution: Gentoo Linux amd64
-Hardware Environment: 
-Software Environment: e2fsprogs-1.41.3
-Problem Description: During a resize of an ext4 formated lvm2 volume, a NULL
-pointer was derefrenced.
+echo sda1 > /mnt/debugfs/ltt/filter/ext4/dev
+ (ext4 probes will only record information for device sda1)
+echo 15 > /mnt/debugfs/ltt/filter/ext4/inode
+ (in addition to device filtering, only inode 15 will be traced)
 
-When I executed this command on a mounted LVM2 volume:
+I think it makes sense to let people edit
+ltt/probes/ext4-trace.c to implement their own more complex filtering
+suiting their need. It can be compiled as a kernel module.
 
-# resize2fs /dev/vg1/ftp
+Here is the ext4 filtering feature diff :
+http://ltt.polymtl.ca/cgi-bin/gitweb.cgi?p=linux-2.6-lttng.git;a=blob;f=ltt/probes/ext4-trace.c;h=4824a82fe9c2056d8dea83c57473ecf6c7f1c25d;hb=ad03cc9ead62d85d7641dcd19ea883f07bb7900a
 
-The following error happened:
+> The other question is how much data gets reported back; normally with
+> Systemtap I would report back to userspace only the bits that I needed
+> to debug whatever issue I was looking at.  However, with the LTTNG
+> approach, can we send back all of the bits of data tht was in the
+> markers?
 
-Jan 11 20:56:41 kerwien kernel: BUG: unable to handle kernel NULL pointer
-dereference at (null)
-Jan 11 20:56:41 kerwien kernel: IP: [<ffffffffa01c6b59>]
-ext4_block_bitmap+0x9/0x30 [ext4]
-Jan 11 20:56:41 kerwien kernel: PGD 1a873067 PUD 3eded067 PMD 0 
-Jan 11 20:56:41 kerwien kernel: Oops: 0000 [#1] SMP 
-Jan 11 20:56:41 kerwien kernel: last sysfs file:
-/sys/devices/virtual/block/dm-0/range
-Jan 11 20:56:41 kerwien kernel: CPU 0 
-Jan 11 20:56:41 kerwien kernel: Modules linked in: ide_cd_mod cdrom dm_mod
-zlib_deflate zlib_inflate cryptomgr aead crypto_blkcipher crc32c libcrc32c
-crypto_hash crypto_algapi nfs lockd sunrpc cpufreq_ondemand snd_seq
-snd_seq_device ext4 jbd2 crc16 powernow_k8 freq_table usbhid snd_intel8x0
-snd_ac97_codec ac97_bus snd_pcm ehci_hcd ohci_hcd snd_timer floppy snd sg
-usbcore forcedeth soundcore k8temp snd_page_alloc hwmon thermal processor
-button ext3 jbd mbcache sata_nv libata sd_mod amd74xx [last unloaded: cdrom]
-Jan 11 20:56:41 kerwien kernel: Pid: 5202, comm: resize2fs Not tainted
-2.6.29-rc1 #3
-Jan 11 20:56:41 kerwien kernel: RIP: 0010:[<ffffffffa01c6b59>] 
-[<ffffffffa01c6b59>] ext4_block_bitmap+0x9/0x30 [ext4]
-Jan 11 20:56:41 kerwien kernel: RSP: 0018:ffff88001a9cdbc0  EFLAGS: 00010246
-Jan 11 20:56:41 kerwien kernel: RAX: ffff88003ec90000 RBX: 0000000000000200
-RCX: 00000000c0000100
-Jan 11 20:56:41 kerwien kernel: RDX: 0000000000000000 RSI: 0000000000000000
-RDI: ffff8800333dfc00
-Jan 11 20:56:41 kerwien kernel: RBP: ffff8800333dfc00 R08: ffff88001a9cc000
-R09: 0000000000000000
-Jan 11 20:56:41 kerwien kernel: R10: ffff880001011ff0 R11: 0000000000000001
-R12: 0000000000000202
-Jan 11 20:56:41 kerwien kernel: R13: ffff88003ec90000 R14: 0000000000000000
-R15: ffff88003ec90000
-Jan 11 20:56:41 kerwien kernel: FS:  00007fa469b62710(0000)
-GS:ffffffff80593040(0000) knlGS:00000000f7caeaf0
-Jan 11 20:56:41 kerwien kernel: CS:  0010 DS: 0000 ES: 0000 CR0:
-000000008005003b
-Jan 11 20:56:41 kerwien kernel: CR2: 0000000000000000 CR3: 000000003eaa6000
-CR4: 00000000000006e0
-Jan 11 20:56:41 kerwien kernel: DR0: 0000000000000000 DR1: 0000000000000000
-DR2: 0000000000000000
-Jan 11 20:56:41 kerwien kernel: DR3: 0000000000000000 DR6: 00000000ffff0ff0
-DR7: 0000000000000400
-Jan 11 20:56:41 kerwien kernel: Process resize2fs (pid: 5202, threadinfo
-ffff88001a9cc000, task ffff88003ef5e310)
-Jan 11 20:56:41 kerwien kernel: Stack:
-Jan 11 20:56:41 kerwien kernel:  ffffffffa01b8877 0000000000000003
-0000000000000246 0000800000000191
-Jan 11 20:56:41 kerwien kernel:  ffff88003f7b0a20 0000000000000000
-ffff88000a5c23d8 0000000000000000
-Jan 11 20:56:41 kerwien kernel:  ffff88003ed400c0 ffff88003e40e888
-ffff8800333dfc00 0000000000000191
-Jan 11 20:56:41 kerwien kernel: Call Trace:
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01b8877>] ?
-ext4_init_block_bitmap+0x347/0x3d0 [ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01d5955>] ?
-ext4_mb_add_groupinfo+0x105/0x1f0 [ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01cdbf1>] ?
-ext4_group_add+0xa01/0x1330 [ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff802b3c80>] ? sync_buffer+0x0/0x50
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff80430290>] ? io_schedule+0x20/0x30
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8024fa70>] ?
-wake_bit_function+0x0/0x30
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01c26bf>] ? ext4_ioctl+0x55f/0x6d0
-[ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8035af48>] ?
-do_output_char+0x208/0x210
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8024fc39>] ?
-remove_wait_queue+0x19/0x60
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff80230903>] ? __wake_up+0x43/0x70
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8029f74f>] ? vfs_ioctl+0x2f/0xa0
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8029f9db>] ?
-do_vfs_ioctl+0x21b/0x530
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8042fc9f>] ?
-thread_return+0x41/0x592
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8029fd39>] ? sys_ioctl+0x49/0x80
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8020c335>] ?
-device_not_available+0x15/0x20
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8020b61b>] ?
-system_call_fastpath+0x16/0x1b
-Jan 11 20:56:41 kerwien kernel: Code: 66 90 48 89 c7 45 31 ed e8 15 bd 0e e0 e9
-e1 fa ff ff 0f 0b eb fe 90 90 90 90 90 90 90 90 90 90 90 90 48 8b 87 88 02 00
-00 31 d2 <8b> 0e 48 83 38 3f 76 07 8b 56 20 48 c1 e2 20 89 c8 48 09 c2 48 
-Jan 11 20:56:41 kerwien kernel: RIP  [<ffffffffa01c6b59>]
-ext4_block_bitmap+0x9/0x30 [ext4]
-Jan 11 20:56:41 kerwien kernel:  RSP <ffff88001a9cdbc0>
-Jan 11 20:56:41 kerwien kernel: CR2: 0000000000000000
-Jan 11 20:56:41 kerwien kernel: ---[ end trace 19e39679f9447577 ]---
-Jan 11 20:56:41 kerwien kernel: ------------[ cut here ]------------
-Jan 11 20:56:41 kerwien kernel: WARNING: at kernel/exit.c:1010
-do_exit+0x72b/0x850()
-Jan 11 20:56:41 kerwien kernel: Hardware name:  
-Jan 11 20:56:41 kerwien kernel: Modules linked in: ide_cd_mod cdrom dm_mod
-zlib_deflate zlib_inflate cryptomgr aead crypto_blkcipher crc32c libcrc32c
-crypto_hash crypto_algapi nfs lockd sunrpc cpufreq_ondemand snd_seq
-snd_seq_device ext4 jbd2 crc16 powernow_k8 freq_table usbhid snd_intel8x0
-snd_ac97_codec ac97_bus snd_pcm ehci_hcd ohci_hcd snd_timer floppy snd sg
-usbcore forcedeth soundcore k8temp snd_page_alloc hwmon thermal processor
-button ext3 jbd mbcache sata_nv libata sd_mod amd74xx [last unloaded: cdrom]
-Jan 11 20:56:41 kerwien kernel: Pid: 5202, comm: resize2fs Tainted: G      D   
-2.6.29-rc1 #3
-Jan 11 20:56:41 kerwien kernel: Call Trace:
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8023afc2>] warn_slowpath+0xf2/0x130
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff80367f65>] notify_update+0x25/0x30
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff80368213>]
-vt_console_print+0x223/0x2f0
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8020bf4e>] common_interrupt+0xe/0x13
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8023bca7>] vprintk+0x227/0x390
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8023be5e>] printk+0x4e/0x60
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8023be5e>] printk+0x4e/0x60
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8023e73b>] do_exit+0x72b/0x850
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff80253886>] up+0x16/0x50
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8032ccb0>] bit_cursor+0x0/0x5e0
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8023b7e5>]
-release_console_sem+0x1b5/0x1f0
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8020f5a5>] oops_end+0xa5/0xb0
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff80228b53>] do_page_fault+0x323/0x890
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01c7fe6>] ext4_error+0x96/0xc0
-[ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff80431cef>] page_fault+0x1f/0x30
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01c6b59>]
-ext4_block_bitmap+0x9/0x30 [ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01b8877>]
-ext4_init_block_bitmap+0x347/0x3d0 [ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01d5955>]
-ext4_mb_add_groupinfo+0x105/0x1f0 [ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01cdbf1>]
-ext4_group_add+0xa01/0x1330 [ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff802b3c80>] sync_buffer+0x0/0x50
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff80430290>] io_schedule+0x20/0x30
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8024fa70>]
-wake_bit_function+0x0/0x30
-Jan 11 20:56:41 kerwien kernel:  [<ffffffffa01c26bf>] ext4_ioctl+0x55f/0x6d0
-[ext4]
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8035af48>]
-do_output_char+0x208/0x210
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8024fc39>]
-remove_wait_queue+0x19/0x60
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff80230903>] __wake_up+0x43/0x70
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8029f74f>] vfs_ioctl+0x2f/0xa0
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8029f9db>] do_vfs_ioctl+0x21b/0x530
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8042fc9f>] thread_return+0x41/0x592
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8029fd39>] sys_ioctl+0x49/0x80
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8020c335>]
-device_not_available+0x15/0x20
-Jan 11 20:56:41 kerwien kernel:  [<ffffffff8020b61b>]
-system_call_fastpath+0x16/0x1b
-Jan 11 20:56:41 kerwien kernel: ---[ end trace 19e39679f9447578 ]---
-Jan 11 20:57:27 kerwien kernel: ------------[ cut here ]------------
-Jan 11 20:57:27 kerwien kernel: WARNING: at fs/namespace.c:636
-mntput_no_expire+0x146/0x150()
-Jan 11 20:57:27 kerwien kernel: Hardware name:  
-Jan 11 20:57:27 kerwien kernel: Modules linked in: ide_cd_mod cdrom dm_mod
-zlib_deflate zlib_inflate cryptomgr aead crypto_blkcipher crc32c libcrc32c
-crypto_hash crypto_algapi nfs lockd sunrpc cpufreq_ondemand snd_seq
-snd_seq_device ext4 jbd2 crc16 powernow_k8 freq_table usbhid snd_intel8x0
-snd_ac97_codec ac97_bus snd_pcm ehci_hcd ohci_hcd snd_timer floppy snd sg
-usbcore forcedeth soundcore k8temp snd_page_alloc hwmon thermal processor
-button ext3 jbd mbcache sata_nv libata sd_mod amd74xx [last unloaded: cdrom]
-Jan 11 20:57:27 kerwien kernel: Pid: 5230, comm: umount Tainted: G      D W 
-2.6.29-rc1 #3
-Jan 11 20:57:27 kerwien kernel: Call Trace:
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff8023afc2>] warn_slowpath+0xf2/0x130
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff802a8c75>]
-mntput_no_expire+0x35/0x150
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff8029cf29>]
-__link_path_walk+0xbe9/0xd50
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff802305cc>] update_curr+0x6c/0xc0
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff802305cc>] update_curr+0x6c/0xc0
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff8023055a>]
-wakeup_preempt_entity+0x3a/0x40
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff80237413>]
-check_preempt_wakeup+0x113/0x150
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff80233dae>]
-try_to_wake_up+0x10e/0x1b0
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff802a1bd5>] pollwake+0x55/0x60
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff80233e50>]
-default_wake_function+0x0/0x10
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff8022fdcb>]
-__wake_up_common+0x5b/0x90
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff802a8d86>]
-mntput_no_expire+0x146/0x150
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff802a9066>] sys_umount+0x76/0x380
-Jan 11 20:57:27 kerwien kernel:  [<ffffffff8020b61b>]
-system_call_fastpath+0x16/0x1b
-Jan 11 20:57:27 kerwien kernel: ---[ end trace 19e39679f9447579 ]---
+Yes, LTTng consists of a "probe layer" which converts the data taken
+from tracepoints into markers. For ext4 :
+http://ltt.polymtl.ca/cgi-bin/gitweb.cgi?p=linux-2.6-lttng.git;a=blob;f=ltt/probes/ext4-trace.c;h=167357d87e730e33c3ca1fb335358ddc469473ad;hb=1861c6b862df1e6aad2d658984fbff137b15496e
 
-Steps to reproduce: Unknown. I have resized ext4 volumes a couple of time. This
-error has only happened once so far.
+By default, LTTng sends all the data, including the payload, identified
+by the markers. Note that the marker format string is only recorded once
+per trace in the metadata channel in a table, which makes everything
+very compact and efficient.
 
+> It won't be needed for all problems, and I know that sending
+> too much data back will cause us to potentilly overflow the kernel
+> buffering, since there is a limited bandwidth of stuff we can send
+> back through the kernel<->user interface.  I'll have to admit to being
+> that well informed about LTTNG; what are the practical bandwidth
+> limitations that I should expect to see when it's in use?
+> 
+
+LTTng has been heavily optimized to provide good performances. It uses
+lightweight locking (RCU and per-cpu local atomic operations) and
+splices the data directly from the memory buffers to disk without
+intermediate copy.
+
+A small test to give you an idea of the amount of data generated :
+
+Copying 125MB worth of data (the drivers/ subdirectory) from an ext3 to
+an ext4 partition, both on the same disk (raid1) + issuing sync, while
+tracing with the trace output on the same disk (on the ext3 partition).
+
+Copy duration : 12.99s
+sync duration :  3.59s
+
+Trace generated : 39M
+
+ext4-related data:
+516K  /tmp/trace/ext4_0
+516K  /tmp/trace/ext4_1
+516K  /tmp/trace/ext4_2
+3.1M  /tmp/trace/ext4_3
+516K  /tmp/trace/ext4_4
+516K  /tmp/trace/ext4_5
+516K  /tmp/trace/ext4_6
+516K  /tmp/trace/ext4_7
+
+Therefore, most of the trace size is padding due to unused buffer space.
+I should say that this amount of ext4 data output (187.0kB/s) is really
+not a problem neither for LTTng nor the disk.
+
+A small speed test to figure out the tracer impact :
+echo 3 > /proc/sys/vm/drop_caches; time (cp -ax drivers /mnt/testext4/; sync)
+
+Without tracing (1):
+real  0m18.182s to 0m19.026s
+
+While tracing the overall kernel (including ext4) to disk :
+real  0m19.309s to 0m19.986s (~4.8% execution time overhead over (1))
+
+If you cannot afford to dirturb disk activity, you can use the flight
+recorder mode, which only keep the data in memory buffers and overwrites
+the oldest data until you stop tracing. At that point, you can grab the
+buffers and dump them to disk to analyse the last events. It's very
+useful if you know what particular condition you are looking for and if
+you are only interested in the latest prior to the condition.
+
+Flight recorder trace example :
+
+lttctl -C -w /tmp/trace3 -o channel.all.overwrite=1 trace3
+...
+lttctl -D -w /tmp/trace3 trace3
+
+While tracing the overall kernel (including ext4) to memory buffers :
+real  0m18.748s to 0m19.388s (~2.2% execution time overhead over (1))
+
+Note that the current ext4 probe implementation uses the format-string
+serializer (printk-like code which iterates on the format string). For
+very high throughput events, we can trivially change to
+ltt-type-serializer.[ch] and diminish the execution time impact a lot.
+It's just a bit more probe code to write. See kernel-trace.c to see
+examples using such mechanism. The only reason why I use this dynamic
+serializer is because I am lazy. ;)
+
+> Thanks, regards,
+> 
+> 						- Ted
+> 
+> P.S.  At the kernel summit, there was some talk about a very
+> simplified interface that would allow us to extract text dumps from
+> tracepoints without having to download a huge userspace utility like
+> SystemTap --- or LTTng.  Has that been written yet, or is the only way
+> for me to use Tracepoints right now is to figure out how to use the
+> whole LTTng infrstructure?
+> 
+
+Yes, we're working on having a binary-to-ascii converter in the kernel.
+People at Fujitsu are helping on this, and I'm waiting for news in this
+regard. That's the main element I'm waiting for before I start
+submitting LTTng for mainline inclusion.
+
+The current LTTng work flow does not require "huge" userspace utilities.
+lttctl (from the ltt-control package) is just a helper over the
+/mnt/debugfs/ltt/ interface; this can be done using simple "echo"
+commands too. It's therefore optional.
+
+lttd is the daemon which splices the data to disk. It is required.
+
+lttv is built as a single executable with multiple libraries. The
+package itself depends on GTK/GDK, but the textDump module really only
+needs the glib library.
+
+However, I agree that also providing a text output directly from a
+debugfs file would be useful for low-overhead tracing. Note, however,
+that this would increase the tracer footprint.
+
+Mathieu
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Mathieu Desnoyers
+OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
