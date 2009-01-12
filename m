@@ -1,36 +1,42 @@
-From: "Rohit Sharma" <imreckless@gmail.com>
+From: "Sandeep K Sinha" <sandeepksinha@gmail.com>
 Subject: Re: Copying Data Blocks
-Date: Mon, 12 Jan 2009 11:48:26 +0530
-Message-ID: <2d08ef090901112218v1c6820d7q98d39af1350a07a0@mail.gmail.com>
+Date: Mon, 12 Jan 2009 12:18:01 +0530
+Message-ID: <37d33d830901112248r1616865aye537b5ff3f72780f@mail.gmail.com>
 References: <2d08ef090901060236p46d4d396x797e4bceb24a2a34@mail.gmail.com>
 	 <804dabb00901110715x2baf84e8kc0fc5d6fa2512fe8@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: ext4 <linux-ext4@vger.kernel.org>,
+Cc: "Rohit Sharma" <imreckless@gmail.com>,
+	ext4 <linux-ext4@vger.kernel.org>,
 	Kernelnewbies <kernelnewbies@nl.linux.org>
 To: "Peter Teoh" <htmldeveloper@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.238]:57164 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751253AbZALGS1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Jan 2009 01:18:27 -0500
-Received: by rv-out-0506.google.com with SMTP id k40so10079999rvb.1
-        for <linux-ext4@vger.kernel.org>; Sun, 11 Jan 2009 22:18:26 -0800 (PST)
+Received: from wa-out-1112.google.com ([209.85.146.183]:59700 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752642AbZALGsD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 12 Jan 2009 01:48:03 -0500
+Received: by wa-out-1112.google.com with SMTP id v27so5519154wah.21
+        for <linux-ext4@vger.kernel.org>; Sun, 11 Jan 2009 22:48:01 -0800 (PST)
 In-Reply-To: <804dabb00901110715x2baf84e8kc0fc5d6fa2512fe8@mail.gmail.com>
 Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Hi Peter,
 
-I am having some issues in locking inode while copying data blocks.
-We are trying to keep file system live during this operation, so
-both read and write operations should work.
-In this case what type of lock on inode should be used, semaphore,
-mutex or spinlock?
+As our work veery tightly couples with the FS for our intial
+implementation and we are working around with the inodes, we will
+require to work at the filesystem level itself.
+Though it may not be very feasible, but we will try to push everything
+to the blockdev level once our base system is up and running.
 
+Thanks a lot for your finding, I went through it and found that it
+will be useful, but with some kind of tweaking around here and there.
 
+We have taken note of the links that you have provided.
+
+Thanks again.
 On Sun, Jan 11, 2009 at 8:45 PM, Peter Teoh <htmldeveloper@gmail.com> wrote:
 > Sorry.....some mistakes...a resent:
 >
@@ -67,3 +73,22 @@ On Sun, Jan 11, 2009 at 8:45 PM, Peter Teoh <htmldeveloper@gmail.com> wrote:
 > Regards,
 > Peter Teoh
 >
+> --
+> To unsubscribe from this list: send an email with
+> "unsubscribe kernelnewbies" to ecartis@nl.linux.org
+> Please read the FAQ at http://kernelnewbies.org/FAQ
+>
+>
+
+
+
+-- 
+Regards,
+Sandeep.
+
+
+
+
+
+ 	
+"To learn is to change. Education is a process that changes the learner."
