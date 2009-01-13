@@ -1,39 +1,38 @@
-From: akpm@linux-foundation.org
-Subject: + ext3-remove-the-bkl-in-ext3-ioctlc.patch added to -mm tree
-Date: Tue, 13 Jan 2009 00:04:03 -0800
-Message-ID: <200901130804.n0D843na002649@imap1.linux-foundation.org>
-Cc: cyrusm@gmx.net, jack@ucw.cz, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] ext3: remove the BKL in ext3/ioctl.c
+Date: Tue, 13 Jan 2009 00:03:59 -0800
+Message-ID: <20090113000359.60109e46.akpm@linux-foundation.org>
+References: <496605AF.7020002@gmx.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
+	Jan Kara <jack@ucw.cz>
+To: Cyrus Massoumi <cyrusm@gmx.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:48995 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:37934 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755350AbZAMIEN (ORCPT
+	by vger.kernel.org with ESMTP id S1752694AbZAMIEj (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 13 Jan 2009 03:04:13 -0500
+	Tue, 13 Jan 2009 03:04:39 -0500
+In-Reply-To: <496605AF.7020002@gmx.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, 08 Jan 2009 14:54:55 +0100 Cyrus Massoumi <cyrusm@gmx.net> wrote:
 
-The patch titled
-     ext3: remove the BKL in ext3/ioctl.c
-has been added to the -mm tree.  Its filename is
-     ext3-remove-the-bkl-in-ext3-ioctlc.patch
+> Reformat ext3/ioctl.c to make it look more like ext4/ioctl.c and remove the BKL around ext3_ioctl().
+> Patch is against 2.6.28. Compile tested only.
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+Looks OK to me.
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+Jan, it affects quota a little bit: lost bkl coverage around quota
+operations.  Does it look OK?
 
-See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
-out what to do about this
+(patch reworked to apply to 2.6.29-rc1):
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-------------------------------------------------------
-Subject: ext3: remove the BKL in ext3/ioctl.c
+
 From: Cyrus Massoumi <cyrusm@gmx.net>
 
 Reformat ext3/ioctl.c to make it look more like ext4/ioctl.c and remove
@@ -237,8 +236,4 @@ diff -puN include/linux/ext3_fs.h~ext3-remove-the-bkl-in-ext3-ioctlc include/lin
  /* namei.c */
  extern int ext3_orphan_add(handle_t *, struct inode *);
 _
-
-Patches currently in -mm which might be from cyrusm@gmx.net are
-
-ext3-remove-the-bkl-in-ext3-ioctlc.patch
 
