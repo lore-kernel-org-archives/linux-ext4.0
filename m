@@ -1,142 +1,83 @@
-From: Mathieu Desnoyers <compudj@krystal.dyndns.org>
-Subject: Re: [ltt-dev] LTTng 0.74 for Linux 2.6.28 (ext4 tracepoints)
-	(fixed in LTTng 0.78)
-Date: Tue, 13 Jan 2009 17:58:27 -0500
-Message-ID: <20090113225827.GA5791@Krystal>
-References: <20090109235449.GA21999@Krystal> <20090110161137.GA20526@Krystal> <2f11576a0901131433h31056e34n82588a9c643224de@mail.gmail.com>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] ext2: Update also inode on disk when dir is IS_DIRSYNC
+Date: Tue, 13 Jan 2009 15:17:16 -0800
+Message-ID: <20090113151716.cefb738b.akpm@linux-foundation.org>
+References: <1231850522-11074-1-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	ltt-dev@lists.casi.polymtl.ca, Theodore Tso <tytso@mit.edu>,
-	linux-kernel@vger.kernel.org
-To: KOSAKI Motohiro <kosaki.motohiro@jp.fujitsu.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	jack@suse.cz, pavel@suse.cz
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tomts5.bellnexxia.net ([209.226.175.25]:42034 "EHLO
-	tomts5-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751185AbZAMW6o (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Jan 2009 17:58:44 -0500
-Content-Disposition: inline
-In-Reply-To: <2f11576a0901131433h31056e34n82588a9c643224de@mail.gmail.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:46050 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1758497AbZAMXRx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Jan 2009 18:17:53 -0500
+In-Reply-To: <1231850522-11074-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* KOSAKI Motohiro (kosaki.motohiro@jp.fujitsu.com) wrote:
-> Hi Mathieu
-> 
-> 2009/1/11 Mathieu Desnoyers <compudj@krystal.dyndns.org>:
-> > Hi,
-> >
-> > LTTng 0.74 fixes the probe Makefile to build the net-trace probe module.
-> > It also adds jbd2 and ext4 tracepoints, and jbd2 probe module.
-> 
-> -ECANTBUILD
-> 
+On Tue, 13 Jan 2009 13:42:02 +0100
+Jan Kara <jack@suse.cz> wrote:
 
-Hi Kosaki,
+> We used to just write changed page for IS_DIRSYNC inodes. But we also have to
+> update directory inode itself just for the case that we've allocated a new
+> block and changed i_size.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> CC: Pavel Machek <pavel@suse.cz>
+> ---
+>  fs/ext2/dir.c |    5 ++---
+>  1 files changed, 2 insertions(+), 3 deletions(-)
+> 
+>   Andrew, would you please merge the patch? Ext3 and ext4 don't have this
+> problem BTW.
+> 
+> diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+> index 9a0fc40..7fba549 100644
+> --- a/fs/ext2/dir.c
+> +++ b/fs/ext2/dir.c
+> @@ -94,11 +94,10 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
+>  		i_size_write(dir, pos+len);
+>  		mark_inode_dirty(dir);
+>  	}
+> +	unlock_page(page);
+>  
+>  	if (IS_DIRSYNC(dir))
+> -		err = write_one_page(page, 1);
+> -	else
+> -		unlock_page(page);
+> +		err = ext2_sync_inode(dir);
+>  
 
-Thanks for the report. This should be fixed in LTTng 0.78 now.
+But with this change we no longer sync the data page?  Don't we need
+something like this:
 
-Best regards,
+static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
+{
+	struct address_space *mapping = page->mapping;
+	struct inode *dir = mapping->host;
+	int err = 0;
 
-Mathieu
+	dir->i_version++;
+	block_write_end(NULL, mapping, pos, len, len, page, NULL);
 
-> fs/jbd2/commit.c:27:24: error: trace/jbd2.h: No such file or directory
-> fs/jbd2/commit.c:29: warning: data definition has no type or storage class
-> fs/jbd2/commit.c:29: warning: type defaults to 'int' in declaration of
-> 'DEFINE_TRACE'
-> fs/jbd2/commit.c:29: warning: parameter names (without types) in
-> function declaration
-> fs/jbd2/commit.c:30: warning: data definition has no type or storage class
-> fs/jbd2/commit.c:30: warning: type defaults to 'int' in declaration of
-> 'DEFINE_TRACE'
-> fs/jbd2/commit.c:30: warning: parameter names (without types) in
-> function declaration
-> fs/jbd2/commit.c: In function 'jbd2_journal_commit_transaction':
-> fs/jbd2/commit.c:374: error: implicit declaration of function
-> 'trace_jbd2_start_commit'
-> fs/jbd2/commit.c:1003: error: implicit declaration of function
-> 'trace_jbd2_end_commit'
-> make[2]: *** [fs/jbd2/commit.o] Error 1
-> 
-> 
-> because
-> 
-> jbd2-instrumentation-move-to-tracepoints patch only change following two files.
-> it didn't create trace/jbd2.h
-> 
->   fs/jbd2/checkpoint.c 		
->   fs/jbd2/commit.c 		
-> 
-> 
-> 
-> 
-> 
-> >
-> > A new version including ext4 probe module should be available shortly.
-> >
-> > Installation QUICKSTART :
-> > http://ltt.polymtl.ca/svn/trunk/lttv/QUICKSTART
-> >
-> > git url :
-> >
-> > http://git.kernel.org/?p=linux/kernel/git/compudj/linux-2.6-lttng.git;a=shortlog;h=2.6.28-lttng-0.74
-> >
-> > tarball :
-> >
-> > http://ltt.polymtl.ca/lttng/patch-2.6.28-lttng-0.74.tar.gz
-> >
-> > jbd2/ext4 patches within the tarball :
-> >
-> > ext4-instrumentation-add-tracepoints.patch
-> > jbd2-instrumentation-move-to-tracepoints.patch
-> > lttng-instrumentation-jbd2-probes.patch
-> >
-> > Mathieu
-> >
-> > * Mathieu Desnoyers (compudj@krystal.dyndns.org) wrote:
-> >> Hi everyone,
-> >>
-> >> I just ported LTTng to 2.6.28. Enjoy !
-> >>
-> >> You may also want to upgrade to lttv 0.12.5 which puts back the syscall
-> >> and softirq names in the event list.
-> >>
-> >> For newcomers, instructions to install LTTng can be found at :
-> >> http://ltt.polymtl.ca/svn/trunk/lttv/QUICKSTART
-> >>
-> >> (I just updated the QUICKSTART guide. Please feel free to try it and
-> >> report inconsistencies.)
-> >>
-> >> Mathieu
-> >>
-> >>
-> >> --
-> >> Mathieu Desnoyers
-> >> OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
-> >>
-> >> _______________________________________________
-> >> ltt-dev mailing list
-> >> ltt-dev@lists.casi.polymtl.ca
-> >> http://lists.casi.polymtl.ca/cgi-bin/mailman/listinfo/ltt-dev
-> >>
-> >
-> > --
-> > Mathieu Desnoyers
-> > OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > Please read the FAQ at  http://www.tux.org/lkml/
-> >
-> 
-> _______________________________________________
-> ltt-dev mailing list
-> ltt-dev@lists.casi.polymtl.ca
-> http://lists.casi.polymtl.ca/cgi-bin/mailman/listinfo/ltt-dev
-> 
+	if (pos+len > dir->i_size) {
+		i_size_write(dir, pos+len);
+		mark_inode_dirty(dir);
+	}
 
--- 
-Mathieu Desnoyers
-OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
+	if (IS_DIRSYNC(dir)) {
+		err = write_one_page(page, 1);
+		if (err == 0)
+			err = ext2_sync_inode(dir);
+	} else {
+		unlock_page(page);
+	}
+
+	return err;
+}
+
+?
