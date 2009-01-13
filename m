@@ -1,279 +1,244 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH V5 3/5]ext4: quota handling for delayed allocation
-Date: Mon, 12 Jan 2009 16:47:09 -0800
-Message-ID: <1231807629.6752.30.camel@mingming-laptop>
-References: <1231216855.9267.27.camel@mingming-laptop>
-	 <20090106093528.GE10705@duck.suse.cz> <20090106093936.GF10705@duck.suse.cz>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="=-WqR7uUD+fbD43UaG4NkS"
-Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20090106093936.GF10705@duck.suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: + ext3-remove-the-bkl-in-ext3-ioctlc.patch added to -mm tree
+Date: Tue, 13 Jan 2009 00:04:03 -0800
+Message-ID: <200901130804.n0D843na002649@imap1.linux-foundation.org>
+Cc: cyrusm@gmx.net, jack@ucw.cz, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:48995 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755350AbZAMIEN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Jan 2009 03:04:13 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
---=-WqR7uUD+fbD43UaG4NkS
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 8bit
+The patch titled
+     ext3: remove the BKL in ext3/ioctl.c
+has been added to the -mm tree.  Its filename is
+     ext3-remove-the-bkl-in-ext3-ioctlc.patch
 
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-在 2009-01-06二的 10:39 +0100，Jan Kara写道：
-> On Tue 06-01-09 10:35:29, Jan Kara wrote:
-> > On Mon 05-01-09 20:40:55, Mingming Cao wrote:
-> > > ext4: quota reservation for delayed allocation
-> > > 
-> > > Uses quota reservation/claim/release to handle quota properly for delayed
-> > > allocation in the three steps: 1) quotas are reserved when data being copied
-> > > to cache when block allocation is defered 2) when new blocks are allocated.
-> > > reserved quotas are converted to the real allocated quota, 2) over-booked
-> > > quotas for metadata blocks are released back.
-> > > 
-> > > Signed-off-by: Mingming Cao <cmm@us.ibm.com>
-> >   The patch looks fine as far as I can tell :). But I'm not to familiar
-> > with the code so I won't add my Acked-by...
->   On a second thought:
-> 
-> > > +unsigned long long ext4_get_reserved_space(struct inode *inode)
-> > > +{
-> > > +	unsigned long long total;
-> > > +
-> > > +	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
-> > > +	total = EXT4_I(inode)->i_reserved_data_blocks +
-> > > +		EXT4_I(inode)->i_reserved_meta_blocks;
-> > > +	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> > > +
-> > > +	return total;
-> > > +}
->   Shouldn't we return here (total << inode->i_blksize)? Quota expects
-> bytes as output...
-> 
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
 
-This is updated ext4 part to return number of bytes reserved as output.
+See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
+out what to do about this
 
-Thanks,
-Mingming
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
---=-WqR7uUD+fbD43UaG4NkS
-Content-Disposition: attachment; filename=ext4-delalloc-quota-spt.patch
-Content-Type: text/x-patch; name=ext4-delalloc-quota-spt.patch; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+------------------------------------------------------
+Subject: ext3: remove the BKL in ext3/ioctl.c
+From: Cyrus Massoumi <cyrusm@gmx.net>
 
-ext4: quota reservation for delayed allocation
+Reformat ext3/ioctl.c to make it look more like ext4/ioctl.c and remove
+the BKL around ext3_ioctl().
 
-Uses quota reservation/claim/release to handle quota properly for delayed
-allocation in the three steps: 1) quotas are reserved when data being copied
-to cache when block allocation is defered 2) when new blocks are allocated.
-reserved quotas are converted to the real allocated quota, 2) over-booked
-quotas for metadata blocks are released back.
-
-
-Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+Signed-off-by: Cyrus Massoumi <cyrusm@gmx.net>
+Cc: <linux-ext4@vger.kernel.org>
+Cc: Jan Kara <jack@ucw.cz>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
- fs/ext4/ext4.h    |    1 +
- fs/ext4/inode.c   |   36 +++++++++++++++++++++++++++++++++---
- fs/ext4/mballoc.c |   44 ++++++++++++++++++++++++++------------------
- fs/ext4/super.c   |    4 ++++
- 4 files changed, 64 insertions(+), 21 deletions(-)
 
-Index: linux-2.6.29-rc1/fs/ext4/inode.c
-===================================================================
---- linux-2.6.29-rc1.orig/fs/ext4/inode.c	2009-01-10 15:43:05.000000000 -0800
-+++ linux-2.6.29-rc1/fs/ext4/inode.c	2009-01-12 16:31:34.000000000 -0800
-@@ -973,6 +973,17 @@ out:
- 	return err;
- }
+ fs/ext3/dir.c           |    2 -
+ fs/ext3/file.c          |    2 -
+ fs/ext3/ioctl.c         |   59 ++++++++++++--------------------------
+ include/linux/ext3_fs.h |    5 +--
+ 4 files changed, 24 insertions(+), 44 deletions(-)
+
+diff -puN fs/ext3/dir.c~ext3-remove-the-bkl-in-ext3-ioctlc fs/ext3/dir.c
+--- a/fs/ext3/dir.c~ext3-remove-the-bkl-in-ext3-ioctlc
++++ a/fs/ext3/dir.c
+@@ -42,7 +42,7 @@ const struct file_operations ext3_dir_op
+ 	.llseek		= generic_file_llseek,
+ 	.read		= generic_read_dir,
+ 	.readdir	= ext3_readdir,		/* we take BKL. needed?*/
+-	.ioctl		= ext3_ioctl,		/* BKL held */
++	.unlocked_ioctl	= ext3_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext3_compat_ioctl,
+ #endif
+diff -puN fs/ext3/file.c~ext3-remove-the-bkl-in-ext3-ioctlc fs/ext3/file.c
+--- a/fs/ext3/file.c~ext3-remove-the-bkl-in-ext3-ioctlc
++++ a/fs/ext3/file.c
+@@ -112,7 +112,7 @@ const struct file_operations ext3_file_o
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= ext3_file_write,
+-	.ioctl		= ext3_ioctl,
++	.unlocked_ioctl	= ext3_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext3_compat_ioctl,
+ #endif
+diff -puN fs/ext3/ioctl.c~ext3-remove-the-bkl-in-ext3-ioctlc fs/ext3/ioctl.c
+--- a/fs/ext3/ioctl.c~ext3-remove-the-bkl-in-ext3-ioctlc
++++ a/fs/ext3/ioctl.c
+@@ -15,12 +15,11 @@
+ #include <linux/mount.h>
+ #include <linux/time.h>
+ #include <linux/compat.h>
+-#include <linux/smp_lock.h>
+ #include <asm/uaccess.h>
  
-+qsize_t ext4_get_reserved_space(struct inode *inode)
-+{
-+	unsigned long long total;
-+
-+	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
-+	total = EXT4_I(inode)->i_reserved_data_blocks +
-+		EXT4_I(inode)->i_reserved_meta_blocks;
-+	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+
-+	return (qsize_t)total << inode->i_blkbits;
-+}
- /*
-  * Calculate the number of metadata blocks need to reserve
-  * to allocate @blocks for non extent file based file
-@@ -1034,8 +1045,14 @@ static void ext4_da_update_reserve_space
- 	/* update per-inode reservations */
- 	BUG_ON(used  > EXT4_I(inode)->i_reserved_data_blocks);
- 	EXT4_I(inode)->i_reserved_data_blocks -= used;
--
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+
-+	/*
-+	 * free those over-booking quota for metadata blocks
-+	 */
-+
-+	if (mdb_free)
-+		vfs_dq_release_reservation_block(inode, mdb_free);
- }
- 
- /*
-@@ -1547,8 +1564,8 @@ static int ext4_journalled_write_end(str
- static int ext4_da_reserve_space(struct inode *inode, int nrblocks)
+-int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
+-		unsigned long arg)
++long ext3_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
  {
- 	int retries = 0;
--       struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
--       unsigned long md_needed, mdblocks, total = 0;
-+	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
-+	unsigned long md_needed, mdblocks, total = 0;
++	struct inode *inode = filp->f_dentry->d_inode;
+ 	struct ext3_inode_info *ei = EXT3_I(inode);
+ 	unsigned int flags;
+ 	unsigned short rsv_window_size;
+@@ -39,29 +38,25 @@ int ext3_ioctl (struct inode * inode, st
+ 		unsigned int oldflags;
+ 		unsigned int jflag;
  
- 	/*
- 	 * recalculate the amount of metadata blocks to reserve
-@@ -1564,12 +1581,23 @@ repeat:
- 	md_needed = mdblocks - EXT4_I(inode)->i_reserved_meta_blocks;
- 	total = md_needed + nrblocks;
- 
-+	/*
-+	 * Make quota reservation here to prevent quota overflow
-+	 * later. Real quota accounting is done at pages writeout
-+	 * time.
-+	 */
-+	if (vfs_dq_reserve_block(inode, total)) {
-+		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-+		return -EDQUOT;
-+	}
++		if (!is_owner_or_cap(inode))
++			return -EACCES;
 +
- 	if (ext4_claim_free_blocks(sbi, total)) {
- 		spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- 		if (ext4_should_retry_alloc(inode->i_sb, &retries)) {
- 			yield();
- 			goto repeat;
- 		}
-+		vfs_dq_release_reservation_block(inode, total);
- 		return -ENOSPC;
- 	}
- 	EXT4_I(inode)->i_reserved_data_blocks += nrblocks;
-@@ -1623,6 +1651,8 @@ static void ext4_da_release_space(struct
- 	BUG_ON(mdb > EXT4_I(inode)->i_reserved_meta_blocks);
- 	EXT4_I(inode)->i_reserved_meta_blocks = mdb;
- 	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
++		if (get_user(flags, (int __user *) arg))
++			return -EFAULT;
 +
-+	vfs_dq_release_reservation_block(inode, release);
- }
+ 		err = mnt_want_write(filp->f_path.mnt);
+ 		if (err)
+ 			return err;
  
- static void ext4_da_page_release_reservation(struct page *page,
-Index: linux-2.6.29-rc1/fs/ext4/super.c
-===================================================================
---- linux-2.6.29-rc1.orig/fs/ext4/super.c	2009-01-10 15:43:05.000000000 -0800
-+++ linux-2.6.29-rc1/fs/ext4/super.c	2009-01-12 16:28:44.000000000 -0800
-@@ -945,6 +945,10 @@ static struct dquot_operations ext4_quot
- 	.initialize	= ext4_dquot_initialize,
- 	.drop		= ext4_dquot_drop,
- 	.alloc_space	= dquot_alloc_space,
-+	.reserve_space	= dquot_reserve_space,
-+	.claim_space	= dquot_claim_space,
-+	.release_rsv	= dquot_release_reserved_space,
-+	.get_reserved_space = ext4_get_reserved_space,
- 	.alloc_inode	= dquot_alloc_inode,
- 	.free_space	= dquot_free_space,
- 	.free_inode	= dquot_free_inode,
-Index: linux-2.6.29-rc1/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.29-rc1.orig/fs/ext4/mballoc.c	2009-01-10 15:43:05.000000000 -0800
-+++ linux-2.6.29-rc1/fs/ext4/mballoc.c	2009-01-12 16:28:44.000000000 -0800
-@@ -3086,9 +3086,12 @@ ext4_mb_mark_diskspace_used(struct ext4_
- 	if (!(ac->ac_flags & EXT4_MB_DELALLOC_RESERVED))
- 		/* release all the reserved blocks if non delalloc */
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter, reserv_blks);
--	else
-+	else {
- 		percpu_counter_sub(&sbi->s_dirtyblocks_counter,
- 						ac->ac_b_ex.fe_len);
-+		/* convert reserved quota blocks to real quota blocks */
-+		vfs_dq_claim_block(ac->ac_inode, ac->ac_b_ex.fe_len);
-+	}
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi,
-@@ -4533,7 +4536,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 	struct ext4_sb_info *sbi;
- 	struct super_block *sb;
- 	ext4_fsblk_t block = 0;
--	unsigned int inquota;
-+	unsigned int inquota = 0;
- 	unsigned int reserv_blks = 0;
- 
- 	sb = ar->inode->i_sb;
-@@ -4551,9 +4554,17 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 		   (unsigned long long) ar->pleft,
- 		   (unsigned long long) ar->pright);
- 
--	if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag) {
--		/*
--		 * With delalloc we already reserved the blocks
-+	/*
-+	 * For delayed allocation, we could skip the ENOSPC and
-+	 * EDQUOT check, as blocks and quotas have been already
-+	 * reserved when data being copied into pagecache.
-+	 */
-+	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
-+		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
-+	else {
-+		/* Without delayed allocation we need to verify
-+		 * there is enough free blocks to do block allocation
-+		 * and verify allocation doesn't exceed the quota limits.
- 		 */
- 		while (ar->len && ext4_claim_free_blocks(sbi, ar->len)) {
- 			/* let others to free the space */
-@@ -4565,19 +4576,16 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 			return 0;
- 		}
- 		reserv_blks = ar->len;
-+		while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
-+			ar->flags |= EXT4_MB_HINT_NOPREALLOC;
-+			ar->len--;
-+		}
-+		inquota = ar->len;
-+		if (ar->len == 0) {
-+			*errp = -EDQUOT;
-+			goto out3;
-+		}
- 	}
--	while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
--		ar->flags |= EXT4_MB_HINT_NOPREALLOC;
--		ar->len--;
--	}
--	if (ar->len == 0) {
--		*errp = -EDQUOT;
--		goto out3;
--	}
--	inquota = ar->len;
+-		if (!is_owner_or_cap(inode)) {
+-			err = -EACCES;
+-			goto flags_out;
+-		}
 -
--	if (EXT4_I(ar->inode)->i_delalloc_reserved_flag)
--		ar->flags |= EXT4_MB_DELALLOC_RESERVED;
+-		if (get_user(flags, (int __user *) arg)) {
+-			err = -EFAULT;
+-			goto flags_out;
+-		}
+-
+ 		flags = ext3_mask_flags(inode->i_mode, flags);
  
- 	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
- 	if (!ac) {
-@@ -4643,7 +4651,7 @@ repeat:
- out2:
- 	kmem_cache_free(ext4_ac_cachep, ac);
- out1:
--	if (ar->len < inquota)
-+	if (inquota && ar->len < inquota)
- 		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
- out3:
- 	if (!ar->len) {
-Index: linux-2.6.29-rc1/fs/ext4/ext4.h
-===================================================================
---- linux-2.6.29-rc1.orig/fs/ext4/ext4.h	2009-01-10 15:43:05.000000000 -0800
-+++ linux-2.6.29-rc1/fs/ext4/ext4.h	2009-01-12 16:28:44.000000000 -0800
-@@ -1098,6 +1098,7 @@ extern int ext4_chunk_trans_blocks(struc
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
-+extern qsize_t ext4_get_reserved_space(struct inode *inode);
+ 		mutex_lock(&inode->i_mutex);
++
+ 		/* Is it quota file? Do not allow user to mess with it */
+-		if (IS_NOQUOTA(inode)) {
+-			mutex_unlock(&inode->i_mutex);
+-			err = -EPERM;
++		err = -EPERM;
++		if (IS_NOQUOTA(inode))
+ 			goto flags_out;
+-		}
++
+ 		oldflags = ei->i_flags;
+ 
+ 		/* The JOURNAL_DATA flag is modifiable only by root */
+@@ -74,11 +69,8 @@ int ext3_ioctl (struct inode * inode, st
+ 		 * This test looks nicer. Thanks to Pauline Middelink
+ 		 */
+ 		if ((flags ^ oldflags) & (EXT3_APPEND_FL | EXT3_IMMUTABLE_FL)) {
+-			if (!capable(CAP_LINUX_IMMUTABLE)) {
+-				mutex_unlock(&inode->i_mutex);
+-				err = -EPERM;
++			if (!capable(CAP_LINUX_IMMUTABLE))
+ 				goto flags_out;
+-			}
+ 		}
+ 
+ 		/*
+@@ -86,17 +78,12 @@ int ext3_ioctl (struct inode * inode, st
+ 		 * the relevant capability.
+ 		 */
+ 		if ((jflag ^ oldflags) & (EXT3_JOURNAL_DATA_FL)) {
+-			if (!capable(CAP_SYS_RESOURCE)) {
+-				mutex_unlock(&inode->i_mutex);
+-				err = -EPERM;
++			if (!capable(CAP_SYS_RESOURCE))
+ 				goto flags_out;
+-			}
+ 		}
+ 
+-
+ 		handle = ext3_journal_start(inode, 1);
+ 		if (IS_ERR(handle)) {
+-			mutex_unlock(&inode->i_mutex);
+ 			err = PTR_ERR(handle);
+ 			goto flags_out;
+ 		}
+@@ -116,15 +103,13 @@ int ext3_ioctl (struct inode * inode, st
+ 		err = ext3_mark_iloc_dirty(handle, inode, &iloc);
+ flags_err:
+ 		ext3_journal_stop(handle);
+-		if (err) {
+-			mutex_unlock(&inode->i_mutex);
+-			return err;
+-		}
++		if (err)
++			goto flags_out;
+ 
+ 		if ((jflag ^ oldflags) & (EXT3_JOURNAL_DATA_FL))
+ 			err = ext3_change_inode_journal_flag(inode, jflag);
+-		mutex_unlock(&inode->i_mutex);
+ flags_out:
++		mutex_unlock(&inode->i_mutex);
+ 		mnt_drop_write(filp->f_path.mnt);
+ 		return err;
+ 	}
+@@ -140,6 +125,7 @@ flags_out:
+ 
+ 		if (!is_owner_or_cap(inode))
+ 			return -EPERM;
++
+ 		err = mnt_want_write(filp->f_path.mnt);
+ 		if (err)
+ 			return err;
+@@ -147,6 +133,7 @@ flags_out:
+ 			err = -EFAULT;
+ 			goto setversion_out;
+ 		}
++
+ 		handle = ext3_journal_start(inode, 1);
+ 		if (IS_ERR(handle)) {
+ 			err = PTR_ERR(handle);
+@@ -299,9 +286,6 @@ group_add_out:
+ #ifdef CONFIG_COMPAT
+ long ext3_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ {
+-	struct inode *inode = file->f_path.dentry->d_inode;
+-	int ret;
+-
+ 	/* These are just misnamed, they actually get/put from/to user an int */
+ 	switch (cmd) {
+ 	case EXT3_IOC32_GETFLAGS:
+@@ -341,9 +325,6 @@ long ext3_compat_ioctl(struct file *file
+ 	default:
+ 		return -ENOIOCTLCMD;
+ 	}
+-	lock_kernel();
+-	ret = ext3_ioctl(inode, file, cmd, (unsigned long) compat_ptr(arg));
+-	unlock_kernel();
+-	return ret;
++	return ext3_ioctl(file, cmd, (unsigned long) compat_ptr(arg));
+ }
+ #endif
+diff -puN include/linux/ext3_fs.h~ext3-remove-the-bkl-in-ext3-ioctlc include/linux/ext3_fs.h
+--- a/include/linux/ext3_fs.h~ext3-remove-the-bkl-in-ext3-ioctlc
++++ a/include/linux/ext3_fs.h
+@@ -893,9 +893,8 @@ extern int ext3_fiemap(struct inode *ino
+ 		       u64 start, u64 len);
  
  /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+-extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
+-		       unsigned long);
+-extern long ext3_compat_ioctl (struct file *, unsigned int, unsigned long);
++extern long ext3_ioctl(struct file *, unsigned int, unsigned long);
++extern long ext3_compat_ioctl(struct file *, unsigned int, unsigned long);
+ 
+ /* namei.c */
+ extern int ext3_orphan_add(handle_t *, struct inode *);
+_
 
---=-WqR7uUD+fbD43UaG4NkS--
+Patches currently in -mm which might be from cyrusm@gmx.net are
+
+ext3-remove-the-bkl-in-ext3-ioctlc.patch
 
