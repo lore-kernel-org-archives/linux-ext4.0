@@ -1,243 +1,303 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: remove the BKL in ext3/ioctl.c
-Date: Tue, 13 Jan 2009 15:56:44 +0100
-Message-ID: <20090113145644.GA3599@atrey.karlin.mff.cuni.cz>
-References: <496605AF.7020002@gmx.net> <20090113000359.60109e46.akpm@linux-foundation.org>
+Subject: Re: [PATCH V5 2/5] quota: Add quota claim and release reserved
+	quota blocks operations
+Date: Tue, 13 Jan 2009 16:07:48 +0100
+Message-ID: <20090113150748.GC10064@duck.suse.cz>
+References: <1231216837.9267.24.camel@mingming-laptop> <20090106095252.GG10705@duck.suse.cz> <1231806287.6752.25.camel@mingming-laptop>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Cyrus Massoumi <cyrusm@gmx.net>, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, Jan Kara <jack@ucw.cz>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:48133 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754241AbZAMO4q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Jan 2009 09:56:46 -0500
+Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20090113000359.60109e46.akpm@linux-foundation.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1231806287.6752.25.camel@mingming-laptop>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-> On Thu, 08 Jan 2009 14:54:55 +0100 Cyrus Massoumi <cyrusm@gmx.net> wrote:
+  Hello,
+
+On Mon 12-01-09 16:24:47, Mingming Cao wrote:
+> quota: Add quota reservation claim and released operations
 > 
-> > Reformat ext3/ioctl.c to make it look more like ext4/ioctl.c and remove the BKL around ext3_ioctl().
-> > Patch is against 2.6.28. Compile tested only.
+> Reserved quota will be claimed at the block allocation time. Over-booked
+> quota could be returned back with the release callback function.
 > 
-> Looks OK to me.
-> 
-> Jan, it affects quota a little bit: lost bkl coverage around quota
-> operations.  Does it look OK?
-  It looks fine to me as well. You can add:
+> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+  Looks fine. You can add:
 Acked-by: Jan Kara <jack@suse.cz>
-
-Quota shouldn't ever care about BKL, it uses spinlocks for everything
-for some time already.
 
 									Honza
 
-> From: Cyrus Massoumi <cyrusm@gmx.net>
-> 
-> Reformat ext3/ioctl.c to make it look more like ext4/ioctl.c and remove
-> the BKL around ext3_ioctl().
-> 
-> Signed-off-by: Cyrus Massoumi <cyrusm@gmx.net>
-> Cc: <linux-ext4@vger.kernel.org>
-> Cc: Jan Kara <jack@ucw.cz>
-> Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 > ---
+>  fs/dquot.c               |  110 +++++++++++++++++++++++++++++++++++++++++++++--
+>  include/linux/quota.h    |    6 ++
+>  include/linux/quotaops.h |   53 ++++++++++++++++++++++
+>  3 files changed, 165 insertions(+), 4 deletions(-)
 > 
->  fs/ext3/dir.c           |    2 -
->  fs/ext3/file.c          |    2 -
->  fs/ext3/ioctl.c         |   59 ++++++++++++--------------------------
->  include/linux/ext3_fs.h |    5 +--
->  4 files changed, 24 insertions(+), 44 deletions(-)
-> 
-> diff -puN fs/ext3/dir.c~ext3-remove-the-bkl-in-ext3-ioctlc fs/ext3/dir.c
-> --- a/fs/ext3/dir.c~ext3-remove-the-bkl-in-ext3-ioctlc
-> +++ a/fs/ext3/dir.c
-> @@ -42,7 +42,7 @@ const struct file_operations ext3_dir_op
->  	.llseek		= generic_file_llseek,
->  	.read		= generic_read_dir,
->  	.readdir	= ext3_readdir,		/* we take BKL. needed?*/
-> -	.ioctl		= ext3_ioctl,		/* BKL held */
-> +	.unlocked_ioctl	= ext3_ioctl,
->  #ifdef CONFIG_COMPAT
->  	.compat_ioctl	= ext3_compat_ioctl,
->  #endif
-> diff -puN fs/ext3/file.c~ext3-remove-the-bkl-in-ext3-ioctlc fs/ext3/file.c
-> --- a/fs/ext3/file.c~ext3-remove-the-bkl-in-ext3-ioctlc
-> +++ a/fs/ext3/file.c
-> @@ -112,7 +112,7 @@ const struct file_operations ext3_file_o
->  	.write		= do_sync_write,
->  	.aio_read	= generic_file_aio_read,
->  	.aio_write	= ext3_file_write,
-> -	.ioctl		= ext3_ioctl,
-> +	.unlocked_ioctl	= ext3_ioctl,
->  #ifdef CONFIG_COMPAT
->  	.compat_ioctl	= ext3_compat_ioctl,
->  #endif
-> diff -puN fs/ext3/ioctl.c~ext3-remove-the-bkl-in-ext3-ioctlc fs/ext3/ioctl.c
-> --- a/fs/ext3/ioctl.c~ext3-remove-the-bkl-in-ext3-ioctlc
-> +++ a/fs/ext3/ioctl.c
-> @@ -15,12 +15,11 @@
->  #include <linux/mount.h>
->  #include <linux/time.h>
->  #include <linux/compat.h>
-> -#include <linux/smp_lock.h>
->  #include <asm/uaccess.h>
+> Index: linux-2.6.28-git7/include/linux/quota.h
+> ===================================================================
+> --- linux-2.6.28-git7.orig/include/linux/quota.h	2009-01-06 17:35:38.000000000 -0800
+> +++ linux-2.6.28-git7/include/linux/quota.h	2009-01-08 17:22:56.000000000 -0800
+> @@ -311,6 +311,12 @@ struct dquot_operations {
+>  	int (*write_info) (struct super_block *, int);	/* Write of quota "superblock" */
+>  	/* reserve quota for delayed block allocation */
+>  	int (*reserve_space) (struct inode *, qsize_t, int);
+> +	/* claim reserved quota for delayed alloc */
+> +	int (*claim_space) (struct inode *, qsize_t);
+> +	/* release rsved quota for delayed alloc */
+> +	void (*release_rsv) (struct inode *, qsize_t);
+> +	/* get reserved quota for delayed alloc */
+> +	qsize_t (*get_reserved_space) (struct inode *);
+>  };
 >  
-> -int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
-> -		unsigned long arg)
-> +long ext3_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
->  {
-> +	struct inode *inode = filp->f_dentry->d_inode;
->  	struct ext3_inode_info *ei = EXT3_I(inode);
->  	unsigned int flags;
->  	unsigned short rsv_window_size;
-> @@ -39,29 +38,25 @@ int ext3_ioctl (struct inode * inode, st
->  		unsigned int oldflags;
->  		unsigned int jflag;
+>  /* Operations handling requests from userspace */
+> Index: linux-2.6.28-git7/include/linux/quotaops.h
+> ===================================================================
+> --- linux-2.6.28-git7.orig/include/linux/quotaops.h	2009-01-06 17:35:38.000000000 -0800
+> +++ linux-2.6.28-git7/include/linux/quotaops.h	2009-01-08 17:18:40.000000000 -0800
+> @@ -37,6 +37,11 @@ void dquot_destroy(struct dquot *dquot);
+>  int dquot_alloc_space(struct inode *inode, qsize_t number, int prealloc);
+>  int dquot_alloc_inode(const struct inode *inode, qsize_t number);
 >  
-> +		if (!is_owner_or_cap(inode))
-> +			return -EACCES;
+> +int dquot_reserve_space(struct inode *inode, qsize_t number, int prealloc);
+> +int dquot_claim_space(struct inode *inode, qsize_t number);
+> +void dquot_release_reserved_space(struct inode *inode, qsize_t number);
+> +qsize_t dquot_get_reserved_space(struct inode *inode);
 > +
-> +		if (get_user(flags, (int __user *) arg))
-> +			return -EFAULT;
-> +
->  		err = mnt_want_write(filp->f_path.mnt);
->  		if (err)
->  			return err;
+>  int dquot_free_space(struct inode *inode, qsize_t number);
+>  int dquot_free_inode(const struct inode *inode, qsize_t number);
 >  
-> -		if (!is_owner_or_cap(inode)) {
-> -			err = -EACCES;
-> -			goto flags_out;
-> -		}
-> -
-> -		if (get_user(flags, (int __user *) arg)) {
-> -			err = -EFAULT;
-> -			goto flags_out;
-> -		}
-> -
->  		flags = ext3_mask_flags(inode->i_mode, flags);
->  
->  		mutex_lock(&inode->i_mutex);
-> +
->  		/* Is it quota file? Do not allow user to mess with it */
-> -		if (IS_NOQUOTA(inode)) {
-> -			mutex_unlock(&inode->i_mutex);
-> -			err = -EPERM;
-> +		err = -EPERM;
-> +		if (IS_NOQUOTA(inode))
->  			goto flags_out;
-> -		}
-> +
->  		oldflags = ei->i_flags;
->  
->  		/* The JOURNAL_DATA flag is modifiable only by root */
-> @@ -74,11 +69,8 @@ int ext3_ioctl (struct inode * inode, st
->  		 * This test looks nicer. Thanks to Pauline Middelink
->  		 */
->  		if ((flags ^ oldflags) & (EXT3_APPEND_FL | EXT3_IMMUTABLE_FL)) {
-> -			if (!capable(CAP_LINUX_IMMUTABLE)) {
-> -				mutex_unlock(&inode->i_mutex);
-> -				err = -EPERM;
-> +			if (!capable(CAP_LINUX_IMMUTABLE))
->  				goto flags_out;
-> -			}
->  		}
->  
->  		/*
-> @@ -86,17 +78,12 @@ int ext3_ioctl (struct inode * inode, st
->  		 * the relevant capability.
->  		 */
->  		if ((jflag ^ oldflags) & (EXT3_JOURNAL_DATA_FL)) {
-> -			if (!capable(CAP_SYS_RESOURCE)) {
-> -				mutex_unlock(&inode->i_mutex);
-> -				err = -EPERM;
-> +			if (!capable(CAP_SYS_RESOURCE))
->  				goto flags_out;
-> -			}
->  		}
->  
-> -
->  		handle = ext3_journal_start(inode, 1);
->  		if (IS_ERR(handle)) {
-> -			mutex_unlock(&inode->i_mutex);
->  			err = PTR_ERR(handle);
->  			goto flags_out;
->  		}
-> @@ -116,15 +103,13 @@ int ext3_ioctl (struct inode * inode, st
->  		err = ext3_mark_iloc_dirty(handle, inode, &iloc);
->  flags_err:
->  		ext3_journal_stop(handle);
-> -		if (err) {
-> -			mutex_unlock(&inode->i_mutex);
-> -			return err;
-> -		}
-> +		if (err)
-> +			goto flags_out;
->  
->  		if ((jflag ^ oldflags) & (EXT3_JOURNAL_DATA_FL))
->  			err = ext3_change_inode_journal_flag(inode, jflag);
-> -		mutex_unlock(&inode->i_mutex);
->  flags_out:
-> +		mutex_unlock(&inode->i_mutex);
->  		mnt_drop_write(filp->f_path.mnt);
->  		return err;
->  	}
-> @@ -140,6 +125,7 @@ flags_out:
->  
->  		if (!is_owner_or_cap(inode))
->  			return -EPERM;
-> +
->  		err = mnt_want_write(filp->f_path.mnt);
->  		if (err)
->  			return err;
-> @@ -147,6 +133,7 @@ flags_out:
->  			err = -EFAULT;
->  			goto setversion_out;
->  		}
-> +
->  		handle = ext3_journal_start(inode, 1);
->  		if (IS_ERR(handle)) {
->  			err = PTR_ERR(handle);
-> @@ -299,9 +286,6 @@ group_add_out:
->  #ifdef CONFIG_COMPAT
->  long ext3_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
->  {
-> -	struct inode *inode = file->f_path.dentry->d_inode;
-> -	int ret;
-> -
->  	/* These are just misnamed, they actually get/put from/to user an int */
->  	switch (cmd) {
->  	case EXT3_IOC32_GETFLAGS:
-> @@ -341,9 +325,6 @@ long ext3_compat_ioctl(struct file *file
->  	default:
->  		return -ENOIOCTLCMD;
->  	}
-> -	lock_kernel();
-> -	ret = ext3_ioctl(inode, file, cmd, (unsigned long) compat_ptr(arg));
-> -	unlock_kernel();
-> -	return ret;
-> +	return ext3_ioctl(file, cmd, (unsigned long) compat_ptr(arg));
+> @@ -205,6 +210,31 @@ static inline int vfs_dq_alloc_inode(str
+>  	return 0;
 >  }
->  #endif
-> diff -puN include/linux/ext3_fs.h~ext3-remove-the-bkl-in-ext3-ioctlc include/linux/ext3_fs.h
-> --- a/include/linux/ext3_fs.h~ext3-remove-the-bkl-in-ext3-ioctlc
-> +++ a/include/linux/ext3_fs.h
-> @@ -893,9 +893,8 @@ extern int ext3_fiemap(struct inode *ino
->  		       u64 start, u64 len);
 >  
->  /* ioctl.c */
-> -extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
-> -		       unsigned long);
-> -extern long ext3_compat_ioctl (struct file *, unsigned int, unsigned long);
-> +extern long ext3_ioctl(struct file *, unsigned int, unsigned long);
-> +extern long ext3_compat_ioctl(struct file *, unsigned int, unsigned long);
+> +/*
+> + * Convert in-memory reserved quotas to real consumed quotas
+> + */
+> +static inline int vfs_dq_claim_space(struct inode *inode, qsize_t nr)
+> +{
+> +	if (sb_any_quota_active(inode->i_sb)) {
+> +		if (inode->i_sb->dq_op->claim_space(inode, nr) == NO_QUOTA)
+> +			return 1;
+> +	} else
+> +		inode_add_bytes(inode, nr);
+> +
+> +	mark_inode_dirty(inode);
+> +	return 0;
+> +}
+> +
+> +/*
+> + * Release reserved (in-memory) quotas
+> + */
+> +static inline
+> +void vfs_dq_release_reservation_space(struct inode *inode, qsize_t nr)
+> +{
+> +	if (sb_any_quota_active(inode->i_sb))
+> +		inode->i_sb->dq_op->release_rsv(inode, nr);
+> +}
+> +
+>  static inline void vfs_dq_free_space_nodirty(struct inode *inode, qsize_t nr)
+>  {
+>  	if (sb_any_quota_active(inode->i_sb))
+> @@ -356,6 +386,17 @@ static inline int vfs_dq_reserve_space(s
+>  	return 0;
+>  }
 >  
->  /* namei.c */
->  extern int ext3_orphan_add(handle_t *, struct inode *);
-> _
+> +static inline int vfs_dq_claim_space(struct inode *inode, qsize_t nr)
+> +{
+> +	return vfs_dq_alloc_space(inode, nr);
+> +}
+> +
+> +static inline
+> +int vfs_dq_release_reservation_space(struct inode *inode, qsize_t nr)
+> +{
+> +	return 0;
+> +}
+> +
+>  static inline void vfs_dq_free_space_nodirty(struct inode *inode, qsize_t nr)
+>  {
+>  	inode_sub_bytes(inode, nr);
+> @@ -399,6 +440,18 @@ static inline int vfs_dq_reserve_block(s
+>  			nr << inode->i_blkbits);
+>  }
+>  
+> +static inline int vfs_dq_claim_block(struct inode *inode, qsize_t nr)
+> +{
+> +	return vfs_dq_claim_space(inode,
+> +			nr << inode->i_blkbits);
+> +}
+> +
+> +static inline
+> +void vfs_dq_release_reservation_block(struct inode *inode, qsize_t nr)
+> +{
+> +	vfs_dq_release_reservation_space(inode, nr << inode->i_blkbits);
+> +}
+> +
+>  static inline void vfs_dq_free_block_nodirty(struct inode *inode, qsize_t nr)
+>  {
+>  	vfs_dq_free_space_nodirty(inode, nr << inode->i_sb->s_blocksize_bits);
+> Index: linux-2.6.28-git7/fs/dquot.c
+> ===================================================================
+> --- linux-2.6.28-git7.orig/fs/dquot.c	2009-01-06 17:35:38.000000000 -0800
+> +++ linux-2.6.28-git7/fs/dquot.c	2009-01-08 17:22:56.000000000 -0800
+> @@ -903,6 +903,23 @@ static inline void dquot_resv_space(stru
+>  	dquot->dq_dqb.dqb_rsvspace += number;
+>  }
+>  
+> +/*
+> + * Claim reserved quota space
+> + */
+> +static void dquot_claim_reserved_space(struct dquot *dquot,
+> +						qsize_t number)
+> +{
+> +	WARN_ON(dquot->dq_dqb.dqb_rsvspace < number);
+> +	dquot->dq_dqb.dqb_curspace += number;
+> +	dquot->dq_dqb.dqb_rsvspace -= number;
+> +}
+> +
+> +static inline
+> +void dquot_free_reserved_space(struct dquot *dquot, qsize_t number)
+> +{
+> +	dquot->dq_dqb.dqb_rsvspace -= number;
+> +}
+> +
+>  static inline void dquot_decr_inodes(struct dquot *dquot, qsize_t number)
+>  {
+>  	if (sb_dqopt(dquot->dq_sb)->flags & DQUOT_NEGATIVE_USAGE ||
+> @@ -1438,6 +1455,72 @@ warn_put_all:
+>  	return ret;
+>  }
+>  
+> +int dquot_claim_space(struct inode *inode, qsize_t number)
+> +{
+> +	int cnt;
+> +	int ret = QUOTA_OK;
+> +
+> +	if (IS_NOQUOTA(inode)) {
+> +		inode_add_bytes(inode, number);
+> +		goto out;
+> +	}
+> +
+> +	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +	if (IS_NOQUOTA(inode))	{
+> +		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +		inode_add_bytes(inode, number);
+> +		goto out;
+> +	}
+> +
+> +	spin_lock(&dq_data_lock);
+> +	/* Claim reserved quotas to allocated quotas */
+> +	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+> +		if (inode->i_dquot[cnt] != NODQUOT)
+> +			dquot_claim_reserved_space(inode->i_dquot[cnt],
+> +							number);
+> +	}
+> +	/* Update inode bytes */
+> +	inode_add_bytes(inode, number);
+> +	spin_unlock(&dq_data_lock);
+> +	/* Dirtify all the dquots - this can block when journalling */
+> +	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+> +		if (inode->i_dquot[cnt])
+> +			mark_dquot_dirty(inode->i_dquot[cnt]);
+> +	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +out:
+> +	return ret;
+> +}
+> +EXPORT_SYMBOL(dquot_claim_space);
+> +
+> +/*
+> + * Release reserved quota space
+> + */
+> +void dquot_release_reserved_space(struct inode *inode, qsize_t number)
+> +{
+> +	int cnt;
+> +
+> +	if (IS_NOQUOTA(inode))
+> +		goto out;
+> +
+> +	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +	if (IS_NOQUOTA(inode))
+> +		goto out_unlock;
+> +
+> +	spin_lock(&dq_data_lock);
+> +	/* Release reserved dquots */
+> +	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+> +		if (inode->i_dquot[cnt] != NODQUOT)
+> +			dquot_free_reserved_space(inode->i_dquot[cnt], number);
+> +	}
+> +	spin_unlock(&dq_data_lock);
+> +
+> +out_unlock:
+> +	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+> +out:
+> +	return;
+> +}
+> +EXPORT_SYMBOL(dquot_release_reserved_space);
+> +
+>  /*
+>   * This operation can block, but only after everything is updated
+>   */
+> @@ -1515,6 +1598,19 @@ int dquot_free_inode(const struct inode 
+>  }
+>  
+>  /*
+> + * call back function, get reserved quota space from underlying fs
+> + */
+> +qsize_t dquot_get_reserved_space(struct inode *inode)
+> +{
+> +	qsize_t reserved_space = 0;
+> +
+> +	if (sb_any_quota_active(inode->i_sb) &&
+> +	    inode->i_sb->dq_op->get_reserved_space)
+> +		reserved_space = inode->i_sb->dq_op->get_reserved_space(inode);
+> +	return reserved_space;
+> +}
+> +
+> +/*
+>   * Transfer the number of inode and blocks from one diskquota to an other.
+>   *
+>   * This operation can block, but only after everything is updated
+> @@ -1522,7 +1618,8 @@ int dquot_free_inode(const struct inode 
+>   */
+>  int dquot_transfer(struct inode *inode, struct iattr *iattr)
+>  {
+> -	qsize_t space;
+> +	qsize_t space, cur_space;
+> +	qsize_t rsv_space = 0;
+>  	struct dquot *transfer_from[MAXQUOTAS];
+>  	struct dquot *transfer_to[MAXQUOTAS];
+>  	int cnt, ret = NO_QUOTA, chuid = (iattr->ia_valid & ATTR_UID) && inode->i_uid != iattr->ia_uid,
+> @@ -1563,7 +1660,9 @@ int dquot_transfer(struct inode *inode, 
+>  		}
+>  	}
+>  	spin_lock(&dq_data_lock);
+> -	space = inode_get_bytes(inode);
+> +	cur_space = inode_get_bytes(inode);
+> +	rsv_space = dquot_get_reserved_space(inode);
+> +	space = cur_space + rsv_space;
+>  	/* Build the transfer_from list and check the limits */
+>  	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+>  		if (transfer_to[cnt] == NODQUOT)
+> @@ -1592,11 +1691,14 @@ int dquot_transfer(struct inode *inode, 
+>  			warntype_from_space[cnt] =
+>  				info_bdq_free(transfer_from[cnt], space);
+>  			dquot_decr_inodes(transfer_from[cnt], 1);
+> -			dquot_decr_space(transfer_from[cnt], space);
+> +			dquot_decr_space(transfer_from[cnt], cur_space);
+> +			dquot_free_reserved_space(transfer_from[cnt],
+> +						  rsv_space);
+>  		}
+>  
+>  		dquot_incr_inodes(transfer_to[cnt], 1);
+> -		dquot_incr_space(transfer_to[cnt], space);
+> +		dquot_incr_space(transfer_to[cnt], cur_space);
+> +		dquot_resv_space(transfer_to[cnt], rsv_space);
+>  
+>  		inode->i_dquot[cnt] = transfer_to[cnt];
+>  	}
+
 -- 
 Jan Kara <jack@suse.cz>
-SuSE CR Labs
+SUSE Labs, CR
