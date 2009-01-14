@@ -1,53 +1,52 @@
-From: "Pallipadi, Venkatesh" <venkatesh.pallipadi@intel.com>
-Subject: Re: kernel BUG at fs/ext/super.c:428
-Date: Wed, 14 Jan 2009 11:48:39 -0800
-Message-ID: <20090114194838.GB18436@linux-os.sc.intel.com>
-References: <20090110003645.GA16107@linux-os.sc.intel.com> <20090113164842.c6aa7095.akpm@linux-foundation.org> <20090114014434.GE14730@mit.edu> <496D526D.1010402@linux.intel.com> <20090114044059.GA6222@mit.edu> <20090114191632.GA13114@linux-os.sc.intel.com> <1231961377.14825.51.camel@laptop> <20090114193844.GA18436@linux-os.sc.intel.com> <1231962169.14825.54.camel@laptop>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Pallipadi, Venkatesh" <venkatesh.pallipadi@intel.com>,
-	Theodore Tso <tytso@mit.edu>,
-	Arjan van de Ven <arjan@linux.intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ingo Molnar <mingo@elte.hu>,
-	Nick Piggin <nickpiggin@yahoo.com.au>
-To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
+Date: Wed, 14 Jan 2009 12:35:27 -0800 (PST)
+Message-ID: <20090114203527.92C94108041@picon.linux-foundation.org>
+References: <bug-12224-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga11.intel.com ([192.55.52.93]:43441 "EHLO mga11.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752237AbZANTst (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Jan 2009 14:48:49 -0500
-Content-Disposition: inline
-In-Reply-To: <1231962169.14825.54.camel@laptop>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:50299 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752457AbZANUf5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Jan 2009 15:35:57 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0EKZR6c021014
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Jan 2009 12:35:28 -0800
+In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 14, 2009 at 11:42:49AM -0800, Peter Zijlstra wrote:
-> On Wed, 2009-01-14 at 11:38 -0800, Pallipadi, Venkatesh wrote:
-> 
-> > > > Below is the result of full bisect
-> 
-> > > >     futex: rely on get_user_pages() for shared futexes
-> 
-> > > However does a futex change make ext3 crap its pants?
-> > > 
-> > > Is there anything more to it than start the machine, and reboot?
-> > 
-> > Just system startup and reboot is enough to reproduce the problem. And 100%
-> > reproducible. So, does seem to be any timing involved either.
-> 
-> That's very odd indeed, non of my test systems nor Ingo's ever triggered
-> this, and that patch has been in -tip for a rather long time.
-> 
-> CommitDate: Tue Sep 30 12:35:20 2008 +0200
-> 
-> That's 3.5 months of test time.. most curious. What kind of userland do
-> you have that triggers this?
-> 
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
 
-This is a Core 2 (X5460) DP server system with SuSE SLES 10 installation.
-I have 3 ext3 partitions mounted; root, home and my own masterboot that I use to
-switch between different OS installations.
 
+
+
+
+------- Comment #14 from csights@fastmail.fm  2009-01-14 12:35 -------
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
+
+>
+>
+>
+> ------- Comment #13 from sandeen@redhat.com  2009-01-13 14:17 -------
+> Care to test the patch at http://patchwork.ozlabs.org/patch/14755/ ?
+
+Sure!
+        I manually patched 2.6.28.  btrace showed lots of output as above. 
+However, 
+I didn't wait to see if the observed activity affected the drive spinup/down 
+b/c I thought maybe patching 2.6.28 was not proper.
+        I don't know how to git the right kernel sources to patch.  Could you
+prepare 
+a patch against an RC (or in some other way hold my hand)?  Or I could wait 
+for some RC which includes the patch already.
+
+Sorry for my gimpiness,
+        C.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
