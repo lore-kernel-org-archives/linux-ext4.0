@@ -1,34 +1,51 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
-Date: Wed, 14 Jan 2009 12:44:14 -0800 (PST)
-Message-ID: <20090114204414.5CE38108048@picon.linux-foundation.org>
-References: <bug-12224-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: kernel BUG at fs/ext/super.c:428
+Date: Wed, 14 Jan 2009 16:20:38 -0500
+Message-ID: <20090114212038.GJ6222@mit.edu>
+References: <20090110003645.GA16107@linux-os.sc.intel.com> <20090113164842.c6aa7095.akpm@linux-foundation.org> <20090114014434.GE14730@mit.edu> <496D526D.1010402@linux.intel.com> <20090114044059.GA6222@mit.edu> <20090114191632.GA13114@linux-os.sc.intel.com> <1231961377.14825.51.camel@laptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: "Pallipadi, Venkatesh" <venkatesh.pallipadi@intel.com>,
+	Arjan van de Ven <arjan@linux.intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Ingo Molnar <mingo@elte.hu>,
+	Nick Piggin <nickpiggin@yahoo.com.au>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:39421 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756627AbZANUoq (ORCPT
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:46803 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754273AbZANVWa (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Jan 2009 15:44:46 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0EKiEtp021588
-	for <linux-ext4@vger.kernel.org>; Wed, 14 Jan 2009 12:44:15 -0800
-In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
+	Wed, 14 Jan 2009 16:22:30 -0500
+Content-Disposition: inline
+In-Reply-To: <1231961377.14825.51.camel@laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12224
+On Wed, Jan 14, 2009 at 08:29:37PM +0100, Peter Zijlstra wrote:
+> > 38d47c1b7075bd7ec3881141bb3629da58f88dab is first bad commit
+> > commit 38d47c1b7075bd7ec3881141bb3629da58f88dab
+> > Author: Peter Zijlstra <a.p.zijlstra@chello.nl>
+> > Date:   Fri Sep 26 19:32:20 2008 +0200
+> > 
+> >     futex: rely on get_user_pages() for shared futexes
+> >     
+> >     On the way of getting rid of the mmap_sem requirement for shared futexes,
+> >     start by relying on get_user_pages().
+> >     
+> >     Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
+> >     Acked-by: Nick Piggin <nickpiggin@yahoo.com.au>
+> >     Signed-off-by: Ingo Molnar <mingo@elte.hu>
+> > 
+> However does a futex change make ext3 crap its pants?
 
+I agree, this doesn't make much sense.  I've looked at the patch, and
+I don't see how this would cause an ext3 orphaned-inode list handling
+problem
 
+Are you sure the bisect was done correctly?  Have you tried reverting
+that one commit, or otherwise conclusively shown that a kernel with
+this commit fails, and one without this commit works just fine?
 
-
-
-------- Comment #15 from sandeen@redhat.com  2009-01-14 12:44 -------
-Sure, I'll gladly attach a patch.  You tell me a specific kernel version, I'll
-attach a patch.  :)  2.6.28?
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+     	    	       	   	   	- Ted
