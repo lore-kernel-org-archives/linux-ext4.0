@@ -1,51 +1,67 @@
 From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: kernel BUG at fs/ext/super.c:428
-Date: Wed, 14 Jan 2009 16:20:38 -0500
-Message-ID: <20090114212038.GJ6222@mit.edu>
-References: <20090110003645.GA16107@linux-os.sc.intel.com> <20090113164842.c6aa7095.akpm@linux-foundation.org> <20090114014434.GE14730@mit.edu> <496D526D.1010402@linux.intel.com> <20090114044059.GA6222@mit.edu> <20090114191632.GA13114@linux-os.sc.intel.com> <1231961377.14825.51.camel@laptop>
+Subject: Re: [PATCH 2/2] ext2: Add blk_issue_flush() to syncing paths
+Date: Wed, 14 Jan 2009 17:04:18 -0500
+Message-ID: <20090114220418.GN6222@mit.edu>
+References: <1231945948-23676-1-git-send-email-jack@suse.cz> <1231945948-23676-2-git-send-email-jack@suse.cz> <20090114101834.fbb9ea12.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Pallipadi, Venkatesh" <venkatesh.pallipadi@intel.com>,
-	Arjan van de Ven <arjan@linux.intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Ingo Molnar <mingo@elte.hu>,
-	Nick Piggin <nickpiggin@yahoo.com.au>
-To: Peter Zijlstra <a.p.zijlstra@chello.nl>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, pavel@suse.cz
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:46803 "EHLO
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:60376 "EHLO
 	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754273AbZANVWa (ORCPT
+	by vger.kernel.org with ESMTP id S1754598AbZANWFL (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Jan 2009 16:22:30 -0500
+	Wed, 14 Jan 2009 17:05:11 -0500
 Content-Disposition: inline
-In-Reply-To: <1231961377.14825.51.camel@laptop>
+In-Reply-To: <20090114101834.fbb9ea12.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 14, 2009 at 08:29:37PM +0100, Peter Zijlstra wrote:
-> > 38d47c1b7075bd7ec3881141bb3629da58f88dab is first bad commit
-> > commit 38d47c1b7075bd7ec3881141bb3629da58f88dab
-> > Author: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> > Date:   Fri Sep 26 19:32:20 2008 +0200
-> > 
-> >     futex: rely on get_user_pages() for shared futexes
-> >     
-> >     On the way of getting rid of the mmap_sem requirement for shared futexes,
-> >     start by relying on get_user_pages().
-> >     
-> >     Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> >     Acked-by: Nick Piggin <nickpiggin@yahoo.com.au>
-> >     Signed-off-by: Ingo Molnar <mingo@elte.hu>
-> > 
-> However does a futex change make ext3 crap its pants?
+On Wed, Jan 14, 2009 at 10:18:34AM -0800, Andrew Morton wrote:
+> /**
+>  * blkdev_issue_flush - queue a flush
+>  * @bdev:	blockdev to issue flush for
+>  * @error_sector:	error sector
+>  *
+>  * Description:
+>  *    Issue a flush for the block device in question. Caller can supply
+>  *    room for storing the error offset in case of a flush error, if they
+>  *    wish to.  Caller must run wait_for_completion() on its own.
+>  */
+> 
+> So afaict the change you've made is incomplete.  We'll queue a
+> writeback command to the disk but we won't wait for it to be sent down
+> the wire.  
 
-I agree, this doesn't make much sense.  I've looked at the patch, and
-I don't see how this would cause an ext3 orphaned-inode list handling
-problem
+No, that last part of the comment is stale, and it's already been
+confirmed by Jens.   He's queued in the block tree:
 
-Are you sure the bisect was done correctly?  Have you tried reverting
-that one commit, or otherwise conclusively shown that a kernel with
-this commit fails, and one without this commit works just fine?
+>From 801d773a6ff5dbb37c9eaa4b89ae3fc6574ba294 Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Tue, 13 Jan 2009 09:25:08 -0500
+Subject: [PATCH] block: Fix documentation for blkdev_issue_flush()
 
-     	    	       	   	   	- Ted
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ block/blk-barrier.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/block/blk-barrier.c b/block/blk-barrier.c
+index 8eba4e4..f7dae57 100644
+--- a/block/blk-barrier.c
++++ b/block/blk-barrier.c
+@@ -302,7 +302,7 @@ static void bio_end_empty_barrier(struct bio *bio, int err)
+  * Description:
+  *    Issue a flush for the block device in question. Caller can supply
+  *    room for storing the error offset in case of a flush error, if they
+- *    wish to.  Caller must run wait_for_completion() on its own.
++ *    wish to.
+  */
+ int blkdev_issue_flush(struct block_device *bdev, sector_t *error_sector)
+ {
+-- 
+1.6.0.4.8.g36f27.dirty
+
+						- Ted
