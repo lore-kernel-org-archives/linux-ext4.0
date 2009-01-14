@@ -1,40 +1,41 @@
-From: Arjan van de Ven <arjan@linux.intel.com>
-Subject: Re: kernel BUG at fs/ext/super.c:428
-Date: Wed, 14 Jan 2009 02:48:13 +0000
-Message-ID: <496D526D.1010402@linux.intel.com>
-References: <20090110003645.GA16107@linux-os.sc.intel.com> <20090113164842.c6aa7095.akpm@linux-foundation.org> <20090114014434.GE14730@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
+Date: Tue, 13 Jan 2009 23:24:02 -0500
+Message-ID: <20090114042402.GH14730@mit.edu>
+References: <4908C951.2000309@redhat.com> <20081103184426.GA31894@ajones-laptop.nbttech.com> <20081103113318.35b0c266.akpm@linux-foundation.org> <20081103201428.GB30565@ajones-laptop.nbttech.com> <20081218231707.GB20092@atrey.karlin.mff.cuni.cz> <496D1233.2060905@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Arthur Jones <ajones@riverbed.com>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	"Pallipadi, Venkatesh" <venkatesh.pallipadi@intel.com>,
-	Arjan van de Ven <arjan@linux.intel.com>,
-	linux-kerne
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"sct@redhat.com" <sct@redhat.com>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga10.intel.com ([192.55.52.92]:9672 "EHLO
-	fmsmga102.fm.intel.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1751393AbZANCs3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 13 Jan 2009 21:48:29 -0500
-In-Reply-To: <20090114014434.GE14730@mit.edu>
+Received: from THUNK.ORG ([69.25.196.29]:35337 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752144AbZANEYJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 13 Jan 2009 23:24:09 -0500
+Content-Disposition: inline
+In-Reply-To: <496D1233.2060905@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Tue, Jan 13, 2009 at 04:48:42PM -0800, Andrew Morton wrote:
->> Well that's not good.  I don't recall us making any changes which
->> affect the orphan list handling.  Perhaps "filesystem freeze: add error
->> handling of write_super_lockfs/unlockfs", but only indirectly.
->>
->> Does Arjan's new async stuff play with filesystems at umount/shutdown
->> time?  Don't think so.
+On Tue, Jan 13, 2009 at 04:14:11PM -0600, Eric Sandeen wrote:
 > 
-> Well, Arjan's commit, efaee192: "async: make the final inode deletion
-> an asynchronous event", does change how inodes get deleted, and this
-> looks like a race where an inode is getting deleted during the umount.
+> This looks sane to me, and it does fix the below testcase.
 > 
-> So I would try reverting commit efaee192 and see if it fixes things
-> before starting a full bisect...
+> Care to formally propose it?
 
-the commit is already reverted before rc1
+Can we confirm what is being proposed?  From following this thread, I
+think what folks are suggesting is:
 
+1)  Revert the current "ext3/4: wait on all pending ocmmits in ext3/4_sync_fs"
+
+2)  Apply Jan's patch "jbd[2]: Fix return value of journal_start_commit()"
+
+3)  Also apply Jan's patch "jbd2: Skip commit of a transaction without
+any buffers" since it appears to be a good optimization (although it's
+not clear it would happen once we revert (1), above.
+
+    	     	   	       	  	      - Ted
