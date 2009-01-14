@@ -1,29 +1,46 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH V5 1/5] quota: Add reservation support for delayed
-	block allocation
-Date: Wed, 14 Jan 2009 16:45:00 +0100
-Message-ID: <20090114154459.GI19950@duck.suse.cz>
-References: <1231216808.9267.22.camel@mingming-laptop> <20090106100645.GH10705@duck.suse.cz> <1231805946.6752.17.camel@mingming-laptop> <20090113153748.GE10064@duck.suse.cz> <1231872797.8719.6.camel@mingming-laptop> <20090113190931.GI10064@duck.suse.cz> <1231893775.8719.22.camel@mingming-laptop>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
+Date: Wed, 14 Jan 2009 11:26:49 -0600
+Message-ID: <496E2059.8010904@redhat.com>
+References: <4908C951.2000309@redhat.com> <20081103184426.GA31894@ajones-laptop.nbttech.com> <20081103113318.35b0c266.akpm@linux-foundation.org> <20081103201428.GB30565@ajones-laptop.nbttech.com> <20081218231707.GB20092@atrey.karlin.mff.cuni.cz> <496D1233.2060905@redhat.com> <20090114042402.GH14730@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>,
-	linux-fsdevel <linux-fsdevel@vger.kernel.org>
-To: Mingming Cao <cmm@us.ibm.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1231893775.8719.22.camel@mingming-laptop>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+	Jan Kara <jack@suse.cz>, Arthur Jones <ajones@riverbed.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"linux-ext4@vg
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:55400 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1761024AbZANR1S (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Jan 2009 12:27:18 -0500
+In-Reply-To: <20090114042402.GH14730@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 13-01-09 16:42:55, Mingming Cao wrote:
-> Attached are all the 5 2.6.29-rc1 based patches, including the two
-> cleanups.
+Theodore Tso wrote:
+> On Tue, Jan 13, 2009 at 04:14:11PM -0600, Eric Sandeen wrote:
+>> This looks sane to me, and it does fix the below testcase.
+>>
+>> Care to formally propose it?
 > 
-> Thanks!
-  OK, merged the two cleanups.
+> Can we confirm what is being proposed?  From following this thread, I
+> think what folks are suggesting is:
+> 
+> 1)  Revert the current "ext3/4: wait on all pending ocmmits in ext3/4_sync_fs"
+> 
+> 2)  Apply Jan's patch "jbd[2]: Fix return value of journal_start_commit()"
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+The above seems like the right plan to me.  It should address the
+kernel.org bug about IO on idle partitions.
+
+> 3)  Also apply Jan's patch "jbd2: Skip commit of a transaction without
+> any buffers" since it appears to be a good optimization (although it's
+> not clear it would happen once we revert (1), above.
+
+Maybe not yet, it could probably use more testing/review/soak.
+
+-Eric
+
+>     	     	   	       	  	      - Ted
