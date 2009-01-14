@@ -1,52 +1,29 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/2] ext2: Update also inode on disk when dir is IS_DIRSYNC
-Date: Wed, 14 Jan 2009 16:12:27 +0100
-Message-ID: <1231945948-23676-1-git-send-email-jack@suse.cz>
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org, Jan Kara <jack@suse.cz>,
-	Pavel Machek <pavel@suse.cz>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:56985 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752358AbZANPMa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Jan 2009 10:12:30 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: Re: [PATCH V5 1/5] quota: Add reservation support for delayed
+	block allocation
+Date: Wed, 14 Jan 2009 16:45:00 +0100
+Message-ID: <20090114154459.GI19950@duck.suse.cz>
+References: <1231216808.9267.22.camel@mingming-laptop> <20090106100645.GH10705@duck.suse.cz> <1231805946.6752.17.camel@mingming-laptop> <20090113153748.GE10064@duck.suse.cz> <1231872797.8719.6.camel@mingming-laptop> <20090113190931.GI10064@duck.suse.cz> <1231893775.8719.22.camel@mingming-laptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>, tytso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>,
+	linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <1231893775.8719.22.camel@mingming-laptop>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-We used to just write changed page for IS_DIRSYNC inodes. But we also have to
-update directory inode itself just for the case that we've allocated a new
-block and changed i_size.
+On Tue 13-01-09 16:42:55, Mingming Cao wrote:
+> Attached are all the 5 2.6.29-rc1 based patches, including the two
+> cleanups.
+> 
+> Thanks!
+  OK, merged the two cleanups.
 
-Thanks to AKPM for spotting a serious bug in the original version of this
-patch.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-CC: Pavel Machek <pavel@suse.cz>
----
- fs/ext2/dir.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
-
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 9a0fc40..2999d72 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -95,10 +95,13 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
- 		mark_inode_dirty(dir);
- 	}
- 
--	if (IS_DIRSYNC(dir))
-+	if (IS_DIRSYNC(dir)) {
- 		err = write_one_page(page, 1);
--	else
-+		if (!err)
-+			err = ext2_sync_inode(dir);
-+	} else {
- 		unlock_page(page);
-+	}
- 
- 	return err;
- }
+									Honza
 -- 
-1.6.0.2
-
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
