@@ -1,49 +1,162 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: wait on all pending commits in ext3_sync_fs
-Date: Wed, 14 Jan 2009 18:27:50 +0100
-Message-ID: <20090114172750.GJ19950@duck.suse.cz>
-References: <4908C951.2000309@redhat.com> <20081103184426.GA31894@ajones-laptop.nbttech.com> <20081103113318.35b0c266.akpm@linux-foundation.org> <20081103201428.GB30565@ajones-laptop.nbttech.com> <20081218231707.GB20092@atrey.karlin.mff.cuni.cz> <496D1233.2060905@redhat.com> <20090114042402.GH14730@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 2/2] ext2: Add blk_issue_flush() to syncing paths
+Date: Wed, 14 Jan 2009 11:35:50 -0600
+Message-ID: <496E2276.8050309@redhat.com>
+References: <1231945948-23676-1-git-send-email-jack@suse.cz> <1231945948-23676-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
-	Jan Kara <jack@suse.cz>, Arthur Jones <ajones@riverbed.com>,
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org,
 	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-ext4@vg
+	linux-kernel@vger.kernel.org, pavel@suse.cz
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:45739 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755892AbZANR1w (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 14 Jan 2009 12:27:52 -0500
-Content-Disposition: inline
-In-Reply-To: <20090114042402.GH14730@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:47908 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758439AbZANRga (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Jan 2009 12:36:30 -0500
+In-Reply-To: <1231945948-23676-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 13-01-09 23:24:02, Theodore Tso wrote:
-> On Tue, Jan 13, 2009 at 04:14:11PM -0600, Eric Sandeen wrote:
-> > 
-> > This looks sane to me, and it does fix the below testcase.
-> > 
-> > Care to formally propose it?
+Jan Kara wrote:
+> To be really safe that the data hit the platter, we should also flush drive's
+> writeback caches on fsync and for O_SYNC files or O_DIRSYNC inodes.
+
+Seems sane, but aren't we getting really divergent behavior here between
+ext2, ext3, and ext4 w.r.t. drive cache flushing for sync paths?
+
+(at least, ext3 has no calls to flush cache at this point)
+
+-Eric
+
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> CC: pavel@suse.cz
+> ---
+>  fs/ext2/dir.c   |    5 ++++-
+>  fs/ext2/fsync.c |    7 +++++--
+>  fs/ext2/inode.c |    7 +++++++
+>  fs/ext2/xattr.c |    6 +++++-
+>  4 files changed, 21 insertions(+), 4 deletions(-)
 > 
-> Can we confirm what is being proposed?  From following this thread, I
-> think what folks are suggesting is:
-> 
-> 1)  Revert the current "ext3/4: wait on all pending ocmmits in ext3/4_sync_fs"
-  Yes.
+> diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+> index 2999d72..d6cb59f 100644
+> --- a/fs/ext2/dir.c
+> +++ b/fs/ext2/dir.c
+> @@ -25,6 +25,7 @@
+>  #include <linux/buffer_head.h>
+>  #include <linux/pagemap.h>
+>  #include <linux/swap.h>
+> +#include <linux/blkdev.h>		/* for blkdev_issue_flush() */
+>  
+>  typedef struct ext2_dir_entry_2 ext2_dirent;
+>  
+> @@ -97,8 +98,10 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
+>  
+>  	if (IS_DIRSYNC(dir)) {
+>  		err = write_one_page(page, 1);
+> -		if (!err)
+> +		if (!err) {
+>  			err = ext2_sync_inode(dir);
+> +			blkdev_issue_flush(dir->i_sb->s_bdev, NULL);
+> +		}
+>  	} else {
+>  		unlock_page(page);
+>  	}
+> diff --git a/fs/ext2/fsync.c b/fs/ext2/fsync.c
+> index fc66c93..9cd1838 100644
+> --- a/fs/ext2/fsync.c
+> +++ b/fs/ext2/fsync.c
+> @@ -24,6 +24,7 @@
+>  
+>  #include "ext2.h"
+>  #include <linux/buffer_head.h>		/* for sync_mapping_buffers() */
+> +#include <linux/blkdev.h>		/* for blkdev_issue_flush() */
+>  
+>  
+>  /*
+> @@ -39,12 +40,14 @@ int ext2_sync_file(struct file *file, struct dentry *dentry, int datasync)
+>  
+>  	ret = sync_mapping_buffers(inode->i_mapping);
+>  	if (!(inode->i_state & I_DIRTY))
+> -		return ret;
+> +		goto out;
+>  	if (datasync && !(inode->i_state & I_DIRTY_DATASYNC))
+> -		return ret;
+> +		goto out;
+>  
+>  	err = ext2_sync_inode(inode);
+>  	if (ret == 0)
+>  		ret = err;
+> +out:
+> +	blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+>  	return ret;
+>  }
+> diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+> index 23fff2f..49b479e 100644
+> --- a/fs/ext2/inode.c
+> +++ b/fs/ext2/inode.c
+> @@ -33,6 +33,7 @@
+>  #include <linux/mpage.h>
+>  #include <linux/fiemap.h>
+>  #include <linux/namei.h>
+> +#include <linux/blkdev.h>	/* for blkdev_issue_flush() */
+>  #include "ext2.h"
+>  #include "acl.h"
+>  #include "xip.h"
+> @@ -68,9 +69,14 @@ void ext2_delete_inode (struct inode * inode)
+>  	mark_inode_dirty(inode);
+>  	ext2_update_inode(inode, inode_needs_sync(inode));
+>  
+> +	/* Make sure inode deletion really gets to disk. Disk write caches
+> +	 * are flushed either in ext2_truncate() or we do it explicitly */
+>  	inode->i_size = 0;
+>  	if (inode->i_blocks)
+>  		ext2_truncate (inode);
+> +	else if (inode_needs_sync(inode))
+> +		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+> +
+>  	ext2_free_inode (inode);
+>  
+>  	return;
+> @@ -1104,6 +1110,7 @@ do_indirects:
+>  	if (inode_needs_sync(inode)) {
+>  		sync_mapping_buffers(inode->i_mapping);
+>  		ext2_sync_inode (inode);
+> +		blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+>  	} else {
+>  		mark_inode_dirty(inode);
+>  	}
+> diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+> index 987a526..d480216 100644
+> --- a/fs/ext2/xattr.c
+> +++ b/fs/ext2/xattr.c
+> @@ -60,6 +60,7 @@
+>  #include <linux/mbcache.h>
+>  #include <linux/quotaops.h>
+>  #include <linux/rwsem.h>
+> +#include <linux/blkdev.h>		/* for blkdev_issue_flush() */
+>  #include "ext2.h"
+>  #include "xattr.h"
+>  #include "acl.h"
+> @@ -702,6 +703,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+>  				DQUOT_FREE_BLOCK(inode, 1);
+>  			goto cleanup;
+>  		}
+> +		blkdev_issue_flush(sb->s_bdev, NULL);
+>  	} else
+>  		mark_inode_dirty(inode);
+>  
+> @@ -792,8 +794,10 @@ ext2_xattr_delete_inode(struct inode *inode)
+>  			le32_to_cpu(HDR(bh)->h_refcount));
+>  		unlock_buffer(bh);
+>  		mark_buffer_dirty(bh);
+> -		if (IS_SYNC(inode))
+> +		if (IS_SYNC(inode)) {
+>  			sync_dirty_buffer(bh);
+> +			blkdev_issue_flush(inode->i_sb->s_bdev, NULL);
+> +		}
+>  		DQUOT_FREE_BLOCK(inode, 1);
+>  	}
+>  	EXT2_I(inode)->i_file_acl = 0;
 
-> 2)  Apply Jan's patch "jbd[2]: Fix return value of journal_start_commit()"
-  Yes.
-
-> 3)  Also apply Jan's patch "jbd2: Skip commit of a transaction without
-> any buffers" since it appears to be a good optimization (although it's
-> not clear it would happen once we revert (1), above.
-  Yes, it's an optimization but I'm still a bit afraid about something
-relying on jbd2_journal_force_commit() implying a barrier which would not
-always be a case after this patch... So we should probably audit all users of
-ext4_force_commit() and check that this change is fine with them.
-
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
