@@ -1,38 +1,93 @@
-From: Mrs Wendy collins <infotodaysltd@cox.net>
-Subject: QUICK LOAN OFFER FOR THE NEW YEAR
-Date: Wed, 14 Jan 2009 6:45:38 -0500
-Message-ID: <20090114064538.U965S.412805.imail@eastrmwml29>
-Reply-To: todayschoiceplc@gmail.com
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] ext2: Update also inode on disk when dir is IS_DIRSYNC
+Date: Wed, 14 Jan 2009 16:12:34 +0100
+Message-ID: <20090114151234.GG19950@duck.suse.cz>
+References: <1231850522-11074-1-git-send-email-jack@suse.cz> <20090113151716.cefb738b.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 7bit
-To: unlisted-recipients:; (no To-header on input)
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, pavel@suse.cz
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from eastrmmtao101.cox.net ([68.230.240.7]:53469 "EHLO
-	eastrmmtao101.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1762577AbZANLpj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Jan 2009 06:45:39 -0500
+Received: from styx.suse.cz ([82.119.242.94]:56996 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1758818AbZANPMg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Jan 2009 10:12:36 -0500
+Content-Disposition: inline
+In-Reply-To: <20090113151716.cefb738b.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue 13-01-09 15:17:16, Andrew Morton wrote:
+> On Tue, 13 Jan 2009 13:42:02 +0100
+> Jan Kara <jack@suse.cz> wrote:
+> 
+> > We used to just write changed page for IS_DIRSYNC inodes. But we also have to
+> > update directory inode itself just for the case that we've allocated a new
+> > block and changed i_size.
+> > 
+> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > CC: Pavel Machek <pavel@suse.cz>
+> > ---
+> >  fs/ext2/dir.c |    5 ++---
+> >  1 files changed, 2 insertions(+), 3 deletions(-)
+> > 
+> >   Andrew, would you please merge the patch? Ext3 and ext4 don't have this
+> > problem BTW.
+> > 
+> > diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
+> > index 9a0fc40..7fba549 100644
+> > --- a/fs/ext2/dir.c
+> > +++ b/fs/ext2/dir.c
+> > @@ -94,11 +94,10 @@ static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
+> >  		i_size_write(dir, pos+len);
+> >  		mark_inode_dirty(dir);
+> >  	}
+> > +	unlock_page(page);
+> >  
+> >  	if (IS_DIRSYNC(dir))
+> > -		err = write_one_page(page, 1);
+> > -	else
+> > -		unlock_page(page);
+> > +		err = ext2_sync_inode(dir);
+> >  
+> 
+> But with this change we no longer sync the data page?  Don't we need
+> something like this:
+  Oh, correct, we do. I was confused by sync_inode() calling fdatawrite()
+but did not realize that the way ext2_sync_inode() calls it has start ==
+end == 0. Thanks for spotting this.
 
---
-ATTENTION:
+> static int ext2_commit_chunk(struct page *page, loff_t pos, unsigned len)
+> {
+> 	struct address_space *mapping = page->mapping;
+> 	struct inode *dir = mapping->host;
+> 	int err = 0;
+> 
+> 	dir->i_version++;
+> 	block_write_end(NULL, mapping, pos, len, len, page, NULL);
+> 
+> 	if (pos+len > dir->i_size) {
+> 		i_size_write(dir, pos+len);
+> 		mark_inode_dirty(dir);
+> 	}
+> 
+> 	if (IS_DIRSYNC(dir)) {
+> 		err = write_one_page(page, 1);
+> 		if (err == 0)
+> 			err = ext2_sync_inode(dir);
+> 	} else {
+> 		unlock_page(page);
+> 	}
+> 
+> 	return err;
+> }
+> 
+> ?
+  Yes, I'll send you a new version of the patch and also send refreshed
+second patch with blkdev_issue_flush() calls.
 
-Are you a business man or woman? Are you in any financial stress or do you
-need funds to start up your own business? Do you need loan to settle your debt
-We offer loan at low interest rate and with no credit check, we offer Personal
-loan, debt consolidation loan, venture capital, business loan, education loan,
-home loan or "loan for any reason!".
-However, Our method offers you the chance to state the amount of loan needed
-and also the duration you can afford. This gives you a real chance to get the
-funds you need. Any interested Applicants should get back to me via email for
-further information on our loan program.
-
-Name: Mrs. Wendy
-
-Email:todayschoiceplc@gmail.com
-
-Thanks for your understanding as we await your contact.
-Mrs. Wendy
-=============================================================
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
