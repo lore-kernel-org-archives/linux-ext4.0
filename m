@@ -1,54 +1,52 @@
-From: Matthew Wilcox <matthew@wil.cx>
-Subject: Re: [RESEND] [PATCH] lseek: change i_mutex usage.
-Date: Thu, 15 Jan 2009 06:22:52 -0700
-Message-ID: <20090115132252.GZ29283@parisc-linux.org>
-References: <6.0.0.20.2.20090115163853.07056ed0@172.19.0.2>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext2/3/4: change i_mutex usage on lseek
+Date: Thu, 15 Jan 2009 08:35:30 -0500
+Message-ID: <20090115133530.GA30522@mit.edu>
+References: <6.0.0.20.2.20090106134318.06709010@172.19.0.2> <1231993950.9468.8.camel@norville.austin.ibm.com> <20090115130154.GA32368@shareable.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
+Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
+	Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
+	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
-To: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from palinux.external.hp.com ([192.25.206.14]:40177 "EHLO
-	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754757AbZAONXJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 15 Jan 2009 08:23:09 -0500
+To: Jamie Lokier <jamie@shareable.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <6.0.0.20.2.20090115163853.07056ed0@172.19.0.2>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20090115130154.GA32368@shareable.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jan 15, 2009 at 04:42:19PM +0900, Hisashi Hifumi wrote:
-> I changed i_mutex usage on generic_file_llseek.
-> This function is inside i_mutex, but I think there is room for optimization in some cases.
-> When SEEK_END is specified from caller, in this case we should handle
-> inode->i_size so i_mutex is needed. But in other cases such as SEEK_CUR or
-> SEEK_SET, i_mutex is not needed because just changing file->f_pos value without
-> touching i_size.
+On Thu, Jan 15, 2009 at 01:01:54PM +0000, Jamie Lokier wrote:
+> Dave Kleikamp wrote:
+> > Is there any reason you couldn't have just changed generic_file_llseek()
+> > to do this rather than making identical changes to the individual file
+> > systems.  I would think this optimization would be safe for any file
+> > system.
+> 
+> Is it safe on 32-bit systems where 64-bit updates are not atomic?
 
-Of course if you have multiple threads, they will share a struct file,
-and you're updating f_pos and f_version without locking.  Maybe that's
-OK, but it's soemthing you didn't discuss.
+Protection of 64-bit updates of i_size where 32-bit systems do not
+have atomic 64-bit updates is done via i_size_seqcount, which is done
+automatically as long as the code in question uses i_size_write(), an
+inline function defined in include/linux/fs.h.
 
-I think it's the only reason to have the mutex here.  Otherwise we could
-simply use i_size_read() in generic_file_llseek_unlocked() and there
-would be no need for a mutex at all.
+> You may say that doing multiple parallel lseek() calls is undefined
+> behaviour, so it's ok to end up with file position that none of the
+> individual lseek() calls asked for.
+> 
+> But if it's undefined behaviour, no programs should be doing parallel
+> lseek() calls on the same open file, so why optimise it at all?
 
-> -	mutex_lock(&file->f_dentry->d_inode->i_mutex);
-> -	rval = generic_file_llseek_unlocked(file, offset, origin);
-> -	mutex_unlock(&file->f_dentry->d_inode->i_mutex);
-> +	if (origin == SEEK_END) {
-> +		mutex_lock(&file->f_dentry->d_inode->i_mutex);
-> +		rval = generic_file_llseek_unlocked(file, offset, origin);
-> +		mutex_unlock(&file->f_dentry->d_inode->i_mutex);
-> +	} else
-> +		rval = generic_file_llseek_unlocked(file, offset, origin);
+i_mutex gets used for a lot more than protecting i_size updates for
+lseek(), so removing the need for i_mutex could very well be helpful
+for non-micro-benchmark tests.  As Hirashi-san mentioned in his patch,
+this could avoid contention between lseek() and write() (possibly via
+a different file descriptor, so it wouldn't be an undefined race
+condition) and fsync().
 
-I'm pretty sure the spinning mutex work will have a significant effect
-on the performance here.
+I do agree this is an optimization that should be done in
+generic_file_llseek(), though.
 
--- 
-Matthew Wilcox				Intel Open Source Technology Centre
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
+Regards,
+
+						- Ted
