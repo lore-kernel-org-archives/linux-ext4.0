@@ -1,228 +1,92 @@
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Subject: [PATCH] ext2/3/4: change i_mutex usage on lseek
-Date: Thu, 15 Jan 2009 09:32:17 +0900
-Message-ID: <6.0.0.20.2.20090106134318.06709010@172.19.0.2>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="ISO-2022-JP"
-Content-Transfer-Encoding: 7bit
-To: akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
+Date: Wed, 14 Jan 2009 17:09:33 -0800 (PST)
+Message-ID: <20090115010933.21E6F108048@picon.linux-foundation.org>
+References: <bug-12224-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:42120 "EHLO
-	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754852AbZAOA6i (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 14 Jan 2009 19:58:38 -0500
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:43008 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754079AbZAOBJf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 14 Jan 2009 20:09:35 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0F19XND009131
+	for <linux-ext4@vger.kernel.org>; Wed, 14 Jan 2009 17:09:34 -0800
+In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi.
-
-I wrote some patch that changed a range of i_mutex on ext2/3/4's lseek.
-Ext2/3/4 uses generic_file_llseek, this function is inside i_mutex.
-I think there is room for optimization in some cases.
-When SEEK_END is specified from caller, in this case we should handle
-inode->i_size so i_mutex is needed. But in other cases such as SEEK_CUR or
-SEEK_SET, i_mutex is not needed because just changing file->f_pos value without
-touching i_size.
-
-I did some test to measure i_mutex contention.
-This test do:
-	1. make an 128MB file.
-	2. fork 100 processes. repeat 10000000 times lseeking randomly on each process to this file.
-	3, gauge seconds between start and end of this test.
-
-The result was:
-
-	-2.6.29-rc1
-	# time ./lseek_test
-	315 sec
-
-	real    5m15.407s
-	user    1m19.128s
-	sys     5m38.884s
-
-	-2.6.29-rc1-patched
-	# time ./lseek_test
-	13 sec
-
-	real    0m13.039s
-	user    1m14.730s
-	sys     2m9.633s 
-
-Hardware environment:
-CPU　2.4GHz(Quad Core) *4
-Memory 64GB
-
-This improvement is derived from just removal of lseek's i_mutex contention.
-There is i_mutex contention not only around lseek, but also fsync or write.
-So,  I think we also can mitigate i_mutex contention between fsync and lseek.
-
-Thanks.
-
-Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-
-diff -Nrup linux-2.6.29-rc1.org/fs/ext2/file.c linux-2.6.29-rc1/fs/ext2/file.c
---- linux-2.6.29-rc1.org/fs/ext2/file.c	2008-12-25 08:26:37.000000000 +0900
-+++ linux-2.6.29-rc1/fs/ext2/file.c	2009-01-13 11:58:16.000000000 +0900
-@@ -38,12 +38,24 @@ static int ext2_release_file (struct ino
- 	return 0;
- }
- 
-+static loff_t ext2_file_llseek(struct file *file, loff_t offset, int origin)
-+{
-+	loff_t retval;
-+
-+	if (origin == SEEK_END)
-+		retval = generic_file_llseek(file, offset, origin);
-+	else
-+		retval = generic_file_llseek_unlocked(file, offset, origin);
-+
-+	return retval;
-+}
-+
- /*
-  * We have mostly NULL's here: the current defaults are ok for
-  * the ext2 filesystem.
-  */
- const struct file_operations ext2_file_operations = {
--	.llseek		= generic_file_llseek,
-+	.llseek		= ext2_file_llseek,
- 	.read		= do_sync_read,
- 	.write		= do_sync_write,
- 	.aio_read	= generic_file_aio_read,
-@@ -62,7 +74,7 @@ const struct file_operations ext2_file_o
- 
- #ifdef CONFIG_EXT2_FS_XIP
- const struct file_operations ext2_xip_file_operations = {
--	.llseek		= generic_file_llseek,
-+	.llseek		= ext2_file_llseek,
- 	.read		= xip_file_read,
- 	.write		= xip_file_write,
- 	.unlocked_ioctl = ext2_ioctl,
-diff -Nrup linux-2.6.29-rc1.org/fs/ext3/file.c linux-2.6.29-rc1/fs/ext3/file.c
---- linux-2.6.29-rc1.org/fs/ext3/file.c	2008-12-25 08:26:37.000000000 +0900
-+++ linux-2.6.29-rc1/fs/ext3/file.c	2009-01-13 11:58:16.000000000 +0900
-@@ -106,8 +106,20 @@ force_commit:
- 	return ret;
- }
- 
-+static loff_t ext3_file_llseek(struct file *file, loff_t offset, int origin)
-+{
-+	loff_t retval;
-+
-+	if (origin == SEEK_END)
-+		retval = generic_file_llseek(file, offset, origin);
-+	else
-+		retval = generic_file_llseek_unlocked(file, offset, origin);
-+
-+	return retval;
-+}
-+
- const struct file_operations ext3_file_operations = {
--	.llseek		= generic_file_llseek,
-+	.llseek		= ext3_file_llseek,
- 	.read		= do_sync_read,
- 	.write		= do_sync_write,
- 	.aio_read	= generic_file_aio_read,
-diff -Nrup linux-2.6.29-rc1.org/fs/ext4/file.c linux-2.6.29-rc1/fs/ext4/file.c
---- linux-2.6.29-rc1.org/fs/ext4/file.c	2009-01-13 11:55:09.000000000 +0900
-+++ linux-2.6.29-rc1/fs/ext4/file.c	2009-01-13 12:09:59.000000000 +0900
-@@ -140,8 +140,20 @@ static int ext4_file_mmap(struct file *f
- 	return 0;
- }
- 
-+static loff_t ext4_file_llseek(struct file *file, loff_t offset, int origin)
-+{
-+	loff_t retval;
-+
-+	if (origin == SEEK_END)
-+		retval = generic_file_llseek(file, offset, origin);
-+	else
-+		retval = generic_file_llseek_unlocked(file, offset, origin);
-+
-+	return retval;
-+}
-+
- const struct file_operations ext4_file_operations = {
--	.llseek		= generic_file_llseek,
-+	.llseek		= ext4_file_llseek,
- 	.read		= do_sync_read,
- 	.write		= do_sync_write,
- 	.aio_read	= generic_file_aio_read,
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
 
 
 
 
-Following is the test program "lseek_test.c".
 
-#include <stdio.h>
-#include <sched.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <signal.h>
-#define NUM 100
-#define LEN 4096
-#define LOOP 32*1024
+------- Comment #18 from csights@fastmail.fm  2009-01-14 17:09 -------
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
 
-int num;
-
-void catch_SIGCHLD(int signo)
-{
-	pid_t child_pid = 0;
-	do {
-		int child_ret;
-		child_pid = waitpid(-1, &child_ret, WNOHANG);
-		if (child_pid > 0)
-			num++;
-	} while (child_pid > 0);
-}
-main()
-{
-        int  i, pid;
-	char buf[LEN];
-	unsigned long offset, filesize;
-	time_t t1, t2;
-	struct sigaction act;
-	memset(buf, 0, LEN);
-	memset(&act, 0, sizeof(act));
-	act.sa_handler = catch_SIGCHLD;
-	act.sa_flags = SA_NOCLDSTOP|SA_RESTART;
-	sigemptyset(&act.sa_mask);
-	sigaction(SIGCHLD, &act, NULL);	
-
-	filesize = LEN * LOOP;
-	int fd = open("targetfile1",O_RDWR|O_CREAT);	
-
-	/* create a 128MB file */
-	for(i = 0; i < LOOP; i++)
-		write(fd, buf, LEN);
-	fsync(fd);
-	close(fd);
-	
-	time(&t1);	
-	for (i = 0; i < NUM; i++) {	
-		pid = fork();
-		if(pid == 0){
-		/* child */
-			int fd = open("targetfile1", O_RDWR);	
-			int j;
-			for (j = 0; j < 10000000; j++) {
-				offset = (random() % filesize);
-				lseek(fd, offset, SEEK_SET);
-			}
-			close(fd);
-			exit(0);
-		}
-	}
-	while(num < NUM)
-		sleep(1);
-	time(&t2);	
-	printf("%d sec\n",t2-t1);
-}
+        I applied the patch to 2.6.28....
+        However there is still activity on the inactive partition (sda) if
+there is 
+activity on the other partition (hda).
+        I've pasted the current output of 'btrace /dev/sda' in case it has
+changed 
+from before.
 
 
+
+Jan 14 19:51:29 localhost logger:   8,0    0        1     0.000000000  1138  A  
+WS 12599 + 8 <- (8,1) 12536
+Jan 14 19:51:29 localhost logger:   8,0    0        2     0.000006426  1138  Q  
+WS 12599 + 8 [kjournald]
+Jan 14 19:51:29 localhost logger:   8,0    0        3     0.000044978  1138  G  
+WS 12599 + 8 [kjournald]
+Jan 14 19:51:29 localhost logger:   8,0    0        4     0.000066489  1138  P  
+N [kjournald]
+Jan 14 19:51:29 localhost logger:   8,0    0        5     0.000081295  1138  I  
+W 12599 + 8 [kjournald]
+Jan 14 19:51:29 localhost logger:   8,0    0        6     0.000300597  1138  D  
+W 12599 + 8 [kjournald]
+Jan 14 19:51:29 localhost logger:   8,0    0        7     0.000492521  1138  U  
+N [kjournald] 1
+Jan 14 19:51:29 localhost logger:   8,0    0        8     0.041120321     3  C  
+W 12599 + 8 [0]
+Jan 14 19:51:51 localhost logger:   8,0    0        9    21.646946652  1138  A  
+WS 12607 + 8 <- (8,1) 12544
+Jan 14 19:51:51 localhost logger:   8,0    0       10    21.646955591  1138  Q  
+WS 12607 + 8 [kjournald]
+Jan 14 19:51:51 localhost logger:   8,0    0       11    21.646991071  1138  G  
+WS 12607 + 8 [kjournald]
+Jan 14 19:51:51 localhost logger:   8,0    0       12    21.647011464  1138  P  
+N [kjournald]
+Jan 14 19:51:51 localhost logger:   8,0    0       13    21.647027109  1138  I  
+W 12607 + 8 [kjournald]
+Jan 14 19:51:51 localhost logger:   8,0    0       14    21.647229369  1138  D  
+W 12607 + 8 [kjournald]
+Jan 14 19:51:51 localhost logger:   8,0    0       15    21.647339439  1138  U  
+N [kjournald] 1
+Jan 14 19:51:51 localhost logger:   8,0    0       16    21.688494962     3  C  
+W 12607 + 8 [0]
+Jan 14 19:51:55 localhost logger:   8,0    0       17    26.471770149  1138  A  
+WS 12615 + 8 <- (8,1) 12552
+Jan 14 19:51:55 localhost logger:   8,0    0       18    26.471779368  1138  Q  
+WS 12615 + 8 [kjournald]
+Jan 14 19:51:55 localhost logger:   8,0    0       19    26.471812613  1138  G  
+WS 12615 + 8 [kjournald]
+Jan 14 19:51:55 localhost logger:   8,0    0       20    26.471831889  1138  P  
+N [kjournald]
+Jan 14 19:51:55 localhost logger:   8,0    0       21    26.471846136  1138  I  
+W 12615 + 8 [kjournald]
+Jan 14 19:51:55 localhost logger:   8,0    0       22    26.472050632  1138  D  
+W 12615 + 8 [kjournald]
+Jan 14 19:51:55 localhost logger:   8,0    0       23    26.472162099  1138  U  
+N [kjournald] 1
+Jan 14 19:51:55 localhost logger:   8,0    0       24    26.481685099     3  C  
+W 12615 + 8 [0]
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
