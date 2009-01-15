@@ -1,52 +1,55 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext2/3/4: change i_mutex usage on lseek
-Date: Thu, 15 Jan 2009 08:35:30 -0500
-Message-ID: <20090115133530.GA30522@mit.edu>
-References: <6.0.0.20.2.20090106134318.06709010@172.19.0.2> <1231993950.9468.8.camel@norville.austin.ibm.com> <20090115130154.GA32368@shareable.org>
+Subject: Re: [RESEND] [PATCH] lseek: change i_mutex usage.
+Date: Thu, 15 Jan 2009 09:21:13 -0500
+Message-ID: <20090115142113.GD30522@mit.edu>
+References: <6.0.0.20.2.20090115163853.07056ed0@172.19.0.2> <20090115132252.GZ29283@parisc-linux.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Dave Kleikamp <shaggy@linux.vnet.ibm.com>,
-	Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
+Cc: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
 	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
 	linux-fsdevel@vger.kernel.org
-To: Jamie Lokier <jamie@shareable.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+To: Matthew Wilcox <matthew@wil.cx>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:51733 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755987AbZAOOVU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Jan 2009 09:21:20 -0500
 Content-Disposition: inline
-In-Reply-To: <20090115130154.GA32368@shareable.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20090115132252.GZ29283@parisc-linux.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jan 15, 2009 at 01:01:54PM +0000, Jamie Lokier wrote:
-> Dave Kleikamp wrote:
-> > Is there any reason you couldn't have just changed generic_file_llseek()
-> > to do this rather than making identical changes to the individual file
-> > systems.  I would think this optimization would be safe for any file
-> > system.
+On Thu, Jan 15, 2009 at 06:22:52AM -0700, Matthew Wilcox wrote:
 > 
-> Is it safe on 32-bit systems where 64-bit updates are not atomic?
+> Of course if you have multiple threads, they will share a struct file,
+> and you're updating f_pos and f_version without locking.  Maybe that's
+> OK, but it's soemthing you didn't discuss.
 
-Protection of 64-bit updates of i_size where 32-bit systems do not
-have atomic 64-bit updates is done via i_size_seqcount, which is done
-automatically as long as the code in question uses i_size_write(), an
-inline function defined in include/linux/fs.h.
+f_pos is updated by sys_write(), and friends without locking, so we're
+fine on that front, or at least no worse off.  SUSv3 doesn't seem to
+say one way or another what should happen if two threads try to
+write() to a file at the same time using the same file descriptor in
+terms of whether or not f_pos gets updated intelligently.  We've opted
+for speed over determinism already.
 
-> You may say that doing multiple parallel lseek() calls is undefined
-> behaviour, so it's ok to end up with file position that none of the
-> individual lseek() calls asked for.
-> 
-> But if it's undefined behaviour, no programs should be doing parallel
-> lseek() calls on the same open file, so why optimise it at all?
+Zero'ing out f_version is fine to do without locking.  It's only used
+so we know that we need to revalidate in the readdir() case so that we
+know it's pointing at a valid directory pointer.
 
-i_mutex gets used for a lot more than protecting i_size updates for
-lseek(), so removing the need for i_mutex could very well be helpful
-for non-micro-benchmark tests.  As Hirashi-san mentioned in his patch,
-this could avoid contention between lseek() and write() (possibly via
-a different file descriptor, so it wouldn't be an undefined race
-condition) and fsync().
+That being said, I do see a race in fs/ext*/dir.c, but i_mutex locking
+isn't the problem and it's not going to save us.  ext[234]_readdir()
+uses f_pos through the routine, even between calls that might block;
+so if one thread is randomly calling seekdir() (or lseek() directly)
+while another read is calling readdir(), ext[234]_readdir() could get
+potentially very confused.  If someone wants to take a look at it,
+that would be great.  Otherwise I'll put it on my low-priority queue
+of things to look at.
 
-I do agree this is an optimization that should be done in
-generic_file_llseek(), though.
+> I think it's the only reason to have the mutex here.  Otherwise we could
+> simply use i_size_read() in generic_file_llseek_unlocked() and there
+> would be no need for a mutex at all.
 
-Regards,
+That's a good point.  Maybe I'm missing something, but I'm not sure we
+need the mutex in generic_file_llseek() at all.
 
 						- Ted
