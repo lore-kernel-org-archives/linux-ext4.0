@@ -1,68 +1,41 @@
-From: jim owens <jowens@hp.com>
-Subject: Re: [RESEND] [PATCH] lseek: change i_mutex usage.
-Date: Thu, 15 Jan 2009 10:36:37 -0500
-Message-ID: <496F5805.3000502@hp.com>
-References: <6.0.0.20.2.20090115163853.07056ed0@172.19.0.2> <20090115132252.GZ29283@parisc-linux.org> <20090115142113.GD30522@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Matthew Wilcox <matthew@wil.cx>,
-	Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>,
-	akpm@linux-foundation.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20090115142113.GD30522@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
+Date: Thu, 15 Jan 2009 07:48:14 -0800 (PST)
+Message-ID: <20090115154814.BE6EF11D108@picon.linux-foundation.org>
+References: <bug-12224-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:57179 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754243AbZAOPsR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 15 Jan 2009 10:48:17 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0FFmEAF005110
+	for <linux-ext4@vger.kernel.org>; Thu, 15 Jan 2009 07:48:15 -0800
+In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Thu, Jan 15, 2009 at 06:22:52AM -0700, Matthew Wilcox wrote:
->> Of course if you have multiple threads, they will share a struct file,
->> and you're updating f_pos and f_version without locking.  Maybe that's
->> OK, but it's soemthing you didn't discuss.
-> 
-> f_pos is updated by sys_write(), and friends without locking, so we're
-> fine on that front, or at least no worse off.  SUSv3 doesn't seem to
-> say one way or another what should happen if two threads try to
-> write() to a file at the same time using the same file descriptor in
-> terms of whether or not f_pos gets updated intelligently.  We've opted
-> for speed over determinism already.
-> 
-> Zero'ing out f_version is fine to do without locking.  It's only used
-> so we know that we need to revalidate in the readdir() case so that we
-> know it's pointing at a valid directory pointer.
-> 
-> That being said, I do see a race in fs/ext*/dir.c, but i_mutex locking
-> isn't the problem and it's not going to save us.  ext[234]_readdir()
-> uses f_pos through the routine, even between calls that might block;
-> so if one thread is randomly calling seekdir() (or lseek() directly)
-> while another read is calling readdir(), ext[234]_readdir() could get
-> potentially very confused.  If someone wants to take a look at it,
-> that would be great.  Otherwise I'll put it on my low-priority queue
-> of things to look at.
-> 
->> I think it's the only reason to have the mutex here.  Otherwise we could
->> simply use i_size_read() in generic_file_llseek_unlocked() and there
->> would be no need for a mutex at all.
-> 
-> That's a good point.  Maybe I'm missing something, but I'm not sure we
-> need the mutex in generic_file_llseek() at all.
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
 
-I'm not arguing against this.  Just pointing out what
-I suspect Jamie was thinking about and what a difference
-3 months makes to the patch author :)
 
-Subject:[RESEND] [PATCH] VFS: make file->f_pos access atomic on 32bit
-http://marc.info/?l=linux-fsdevel&m=122335627224515
 
-...that ended with Linus rightly saying users expecting to
-do stuff like that are insane.
 
-*However*, we should remember that any time you remove locks
-from a path, you run the risk the lock was providing some
-unplanned consistency and removing it will increase the window
-for unexpected behavior.  And maybe finding more buggy apps
-is good or bad only depending on your point of view.
 
-jim
+------- Comment #19 from csights@fastmail.fm  2009-01-15 07:48 -------
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
+
+> ------- Comment #17 from sandeen@redhat.com  2009-01-14 14:58 -------
+> Created an attachment (id=19805)
+ --> (http://bugzilla.kernel.org/attachment.cgi?id=19805&action=view)
+>  --> (http://bugzilla.kernel.org/attachment.cgi?id=19805&action=view)
+> patch reverting old change & adding Jan's proposed fix
+
+Does this patch "revert the old change"?
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
