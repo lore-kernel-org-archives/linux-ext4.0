@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 11/11] reiserfs: Remove unnecessary quota functions
-Date: Fri, 16 Jan 2009 19:08:19 +0100
-Message-ID: <1232129299-22018-12-git-send-email-jack@suse.cz>
+Subject: [PATCH 09/11] ext3: Remove unnecessary quota functions
+Date: Fri, 16 Jan 2009 19:08:17 +0100
+Message-ID: <1232129299-22018-10-git-send-email-jack@suse.cz>
 References: <yes>
  <1232129299-22018-1-git-send-email-jack@suse.cz>
  <1232129299-22018-2-git-send-email-jack@suse.cz>
@@ -12,104 +12,91 @@ References: <yes>
  <1232129299-22018-7-git-send-email-jack@suse.cz>
  <1232129299-22018-8-git-send-email-jack@suse.cz>
  <1232129299-22018-9-git-send-email-jack@suse.cz>
- <1232129299-22018-10-git-send-email-jack@suse.cz>
- <1232129299-22018-11-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
 	Jan Kara <jack@suse.cz>
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:48000 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1762570AbZAPSIZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Jan 2009 13:08:25 -0500
-In-Reply-To: <1232129299-22018-11-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1232129299-22018-9-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-reiserfs_dquot_initialize() and reiserfs_dquot_drop() is no longer
+ext3_dquot_initialize() and ext3_dquot_drop() is no longer
 needed because of modified quota locking.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/reiserfs/super.c |   58 +-------------------------------------------------
- 1 files changed, 2 insertions(+), 56 deletions(-)
+ fs/ext3/super.c |   44 ++------------------------------------------
+ 1 files changed, 2 insertions(+), 42 deletions(-)
 
-diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
-index f3c820b..317c035 100644
---- a/fs/reiserfs/super.c
-+++ b/fs/reiserfs/super.c
-@@ -629,8 +629,6 @@ static const struct super_operations reiserfs_sops = {
- #ifdef CONFIG_QUOTA
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index b70d90e..ec410a9 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -707,8 +707,6 @@ static int bdev_try_to_free_page(struct super_block *sb, struct page *page,
  #define QTYPE2NAME(t) ((t)==USRQUOTA?"user":"group")
+ #define QTYPE2MOPT(on, t) ((t)==USRQUOTA?((on)##USRJQUOTA):((on)##GRPJQUOTA))
  
--static int reiserfs_dquot_initialize(struct inode *, int);
--static int reiserfs_dquot_drop(struct inode *);
- static int reiserfs_write_dquot(struct dquot *);
- static int reiserfs_acquire_dquot(struct dquot *);
- static int reiserfs_release_dquot(struct dquot *);
-@@ -639,8 +637,8 @@ static int reiserfs_write_info(struct super_block *, int);
- static int reiserfs_quota_on(struct super_block *, int, int, char *, int);
+-static int ext3_dquot_initialize(struct inode *inode, int type);
+-static int ext3_dquot_drop(struct inode *inode);
+ static int ext3_write_dquot(struct dquot *dquot);
+ static int ext3_acquire_dquot(struct dquot *dquot);
+ static int ext3_release_dquot(struct dquot *dquot);
+@@ -723,8 +721,8 @@ static ssize_t ext3_quota_write(struct super_block *sb, int type,
+ 				const char *data, size_t len, loff_t off);
  
- static struct dquot_operations reiserfs_quota_operations = {
--	.initialize = reiserfs_dquot_initialize,
--	.drop = reiserfs_dquot_drop,
-+	.initialize = dquot_initialize,
-+	.drop = dquot_drop,
- 	.alloc_space = dquot_alloc_space,
- 	.alloc_inode = dquot_alloc_inode,
- 	.free_space = dquot_free_space,
-@@ -1896,58 +1894,6 @@ static int reiserfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+ static struct dquot_operations ext3_quota_operations = {
+-	.initialize	= ext3_dquot_initialize,
+-	.drop		= ext3_dquot_drop,
++	.initialize	= dquot_initialize,
++	.drop		= dquot_drop,
+ 	.alloc_space	= dquot_alloc_space,
+ 	.alloc_inode	= dquot_alloc_inode,
+ 	.free_space	= dquot_free_space,
+@@ -2713,44 +2711,6 @@ static inline struct inode *dquot_to_inode(struct dquot *dquot)
+ 	return sb_dqopt(dquot->dq_sb)->files[dquot->dq_type];
  }
  
- #ifdef CONFIG_QUOTA
--static int reiserfs_dquot_initialize(struct inode *inode, int type)
+-static int ext3_dquot_initialize(struct inode *inode, int type)
 -{
--	struct reiserfs_transaction_handle th;
+-	handle_t *handle;
 -	int ret, err;
 -
 -	/* We may create quota structure so we need to reserve enough blocks */
--	reiserfs_write_lock(inode->i_sb);
--	ret =
--	    journal_begin(&th, inode->i_sb,
--			  2 * REISERFS_QUOTA_INIT_BLOCKS(inode->i_sb));
--	if (ret)
--		goto out;
+-	handle = ext3_journal_start(inode, 2*EXT3_QUOTA_INIT_BLOCKS(inode->i_sb));
+-	if (IS_ERR(handle))
+-		return PTR_ERR(handle);
 -	ret = dquot_initialize(inode, type);
--	err =
--	    journal_end(&th, inode->i_sb,
--			2 * REISERFS_QUOTA_INIT_BLOCKS(inode->i_sb));
--	if (!ret && err)
+-	err = ext3_journal_stop(handle);
+-	if (!ret)
 -		ret = err;
--      out:
--	reiserfs_write_unlock(inode->i_sb);
 -	return ret;
 -}
 -
--static int reiserfs_dquot_drop(struct inode *inode)
+-static int ext3_dquot_drop(struct inode *inode)
 -{
--	struct reiserfs_transaction_handle th;
+-	handle_t *handle;
 -	int ret, err;
 -
 -	/* We may delete quota structure so we need to reserve enough blocks */
--	reiserfs_write_lock(inode->i_sb);
--	ret =
--	    journal_begin(&th, inode->i_sb,
--			  2 * REISERFS_QUOTA_DEL_BLOCKS(inode->i_sb));
--	if (ret) {
+-	handle = ext3_journal_start(inode, 2*EXT3_QUOTA_DEL_BLOCKS(inode->i_sb));
+-	if (IS_ERR(handle)) {
 -		/*
 -		 * We call dquot_drop() anyway to at least release references
 -		 * to quota structures so that umount does not hang.
 -		 */
 -		dquot_drop(inode);
--		goto out;
+-		return PTR_ERR(handle);
 -	}
 -	ret = dquot_drop(inode);
--	err =
--	    journal_end(&th, inode->i_sb,
--			2 * REISERFS_QUOTA_DEL_BLOCKS(inode->i_sb));
--	if (!ret && err)
+-	err = ext3_journal_stop(handle);
+-	if (!ret)
 -		ret = err;
--      out:
--	reiserfs_write_unlock(inode->i_sb);
 -	return ret;
 -}
+-
+ static int ext3_write_dquot(struct dquot *dquot)
+ {
+ 	int ret, err;
+-- 
+1.6.0.2
+
