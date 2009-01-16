@@ -1,177 +1,310 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 03/11] ocfs2: Push out dropping of dentry lock to ocfs2_wq
-Date: Fri, 16 Jan 2009 19:08:11 +0100
-Message-ID: <1232129299-22018-4-git-send-email-jack@suse.cz>
+Subject: [PATCH 05/11] quota: Add quota reservation support
+Date: Fri, 16 Jan 2009 19:08:13 +0100
+Message-ID: <1232129299-22018-6-git-send-email-jack@suse.cz>
 References: <yes>
  <1232129299-22018-1-git-send-email-jack@suse.cz>
  <1232129299-22018-2-git-send-email-jack@suse.cz>
  <1232129299-22018-3-git-send-email-jack@suse.cz>
+ <1232129299-22018-4-git-send-email-jack@suse.cz>
+ <1232129299-22018-5-git-send-email-jack@suse.cz>
 Cc: linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
+	Mingming Cao <cmm@us.ibm.com>, Jan Kara <jack@suse.cz>
 To: linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:47972 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1761525AbZAPSIW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 16 Jan 2009 13:08:22 -0500
-In-Reply-To: <1232129299-22018-3-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1232129299-22018-5-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Dropping of last reference to dentry lock is a complicated operation involving
-dropping of reference to inode. This can get complicated and quota code in
-particular needs to obtain some quota locks which leads to potential deadlock.
-Thus we defer dropping of inode reference to ocfs2_wq.
+From: Mingming Cao <cmm@us.ibm.com>
 
+Delayed allocation defers the block allocation at the dirty pages
+flush-out time, doing quota charge/check at that time is too late.
+But we can't charge the quota blocks until blocks are really allocated,
+otherwise users could get overcharged after reboot from system crash.
+
+This patch adds quota reservation for delayed allocation. Quota blocks
+are reserved in memory, inode and quota won't gets dirtied until later
+block allocation time.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
-Acked-by: Mark Fasheh <mfasheh@suse.de>
 ---
- fs/ocfs2/dcache.c |   42 +++++++++++++++++++++++++++++++++++++++---
- fs/ocfs2/dcache.h |    9 ++++++++-
- fs/ocfs2/ocfs2.h  |    6 ++++++
- fs/ocfs2/super.c  |    3 +++
- 4 files changed, 56 insertions(+), 4 deletions(-)
+ fs/dquot.c               |  117 +++++++++++++++++++++++++++++++++------------
+ include/linux/quota.h    |    3 +
+ include/linux/quotaops.h |   21 ++++++++
+ 3 files changed, 110 insertions(+), 31 deletions(-)
 
-diff --git a/fs/ocfs2/dcache.c b/fs/ocfs2/dcache.c
-index b1cc7c3..e9d7c20 100644
---- a/fs/ocfs2/dcache.c
-+++ b/fs/ocfs2/dcache.c
-@@ -38,6 +38,7 @@
- #include "dlmglue.h"
- #include "file.h"
- #include "inode.h"
-+#include "super.h"
+diff --git a/fs/dquot.c b/fs/dquot.c
+index bca3cac..9b1c4d3 100644
+--- a/fs/dquot.c
++++ b/fs/dquot.c
+@@ -899,6 +899,11 @@ static inline void dquot_incr_space(struct dquot *dquot, qsize_t number)
+ 	dquot->dq_dqb.dqb_curspace += number;
+ }
  
++static inline void dquot_resv_space(struct dquot *dquot, qsize_t number)
++{
++	dquot->dq_dqb.dqb_rsvspace += number;
++}
++
+ static inline void dquot_decr_inodes(struct dquot *dquot, qsize_t number)
+ {
+ 	if (sb_dqopt(dquot->dq_sb)->flags & DQUOT_NEGATIVE_USAGE ||
+@@ -1068,7 +1073,11 @@ err_out:
+ 	kfree_skb(skb);
+ }
+ #endif
+-
++/*
++ * Write warnings to the console and send warning messages over netlink.
++ *
++ * Note that this function can sleep.
++ */
+ static inline void flush_warnings(struct dquot * const *dquots, char *warntype)
+ {
+ 	int i;
+@@ -1129,13 +1138,18 @@ static int check_idq(struct dquot *dquot, qsize_t inodes, char *warntype)
+ /* needs dq_data_lock */
+ static int check_bdq(struct dquot *dquot, qsize_t space, int prealloc, char *warntype)
+ {
++	qsize_t tspace;
++
+ 	*warntype = QUOTA_NL_NOWARN;
+ 	if (!sb_has_quota_limits_enabled(dquot->dq_sb, dquot->dq_type) ||
+ 	    test_bit(DQ_FAKE_B, &dquot->dq_flags))
+ 		return QUOTA_OK;
  
- static int ocfs2_dentry_revalidate(struct dentry *dentry,
-@@ -294,6 +295,34 @@ out_attach:
++	tspace = dquot->dq_dqb.dqb_curspace + dquot->dq_dqb.dqb_rsvspace
++		+ space;
++
+ 	if (dquot->dq_dqb.dqb_bhardlimit &&
+-	    dquot->dq_dqb.dqb_curspace + space > dquot->dq_dqb.dqb_bhardlimit &&
++	    tspace > dquot->dq_dqb.dqb_bhardlimit &&
+             !ignore_hardlimit(dquot)) {
+ 		if (!prealloc)
+ 			*warntype = QUOTA_NL_BHARDWARN;
+@@ -1143,7 +1157,7 @@ static int check_bdq(struct dquot *dquot, qsize_t space, int prealloc, char *war
+ 	}
+ 
+ 	if (dquot->dq_dqb.dqb_bsoftlimit &&
+-	    dquot->dq_dqb.dqb_curspace + space > dquot->dq_dqb.dqb_bsoftlimit &&
++	    tspace > dquot->dq_dqb.dqb_bsoftlimit &&
+ 	    dquot->dq_dqb.dqb_btime && get_seconds() >= dquot->dq_dqb.dqb_btime &&
+             !ignore_hardlimit(dquot)) {
+ 		if (!prealloc)
+@@ -1152,7 +1166,7 @@ static int check_bdq(struct dquot *dquot, qsize_t space, int prealloc, char *war
+ 	}
+ 
+ 	if (dquot->dq_dqb.dqb_bsoftlimit &&
+-	    dquot->dq_dqb.dqb_curspace + space > dquot->dq_dqb.dqb_bsoftlimit &&
++	    tspace > dquot->dq_dqb.dqb_bsoftlimit &&
+ 	    dquot->dq_dqb.dqb_btime == 0) {
+ 		if (!prealloc) {
+ 			*warntype = QUOTA_NL_BSOFTWARN;
+@@ -1306,51 +1320,92 @@ void vfs_dq_drop(struct inode *inode)
+ /*
+  * This operation can block, but only after everything is updated
+  */
+-int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
++int __dquot_alloc_space(struct inode *inode, qsize_t number,
++			int warn, int reserve)
+ {
+-	int cnt, ret = NO_QUOTA;
++	int cnt, ret = QUOTA_OK;
+ 	char warntype[MAXQUOTAS];
+ 
+-	/* First test before acquiring mutex - solves deadlocks when we
+-         * re-enter the quota code and are already holding the mutex */
+-	if (IS_NOQUOTA(inode)) {
+-out_add:
+-		inode_add_bytes(inode, number);
+-		return QUOTA_OK;
+-	}
+ 	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+ 		warntype[cnt] = QUOTA_NL_NOWARN;
+ 
+-	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+-	if (IS_NOQUOTA(inode)) {	/* Now we can do reliable test... */
+-		up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
+-		goto out_add;
+-	}
+ 	spin_lock(&dq_data_lock);
+ 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+ 		if (inode->i_dquot[cnt] == NODQUOT)
+ 			continue;
+-		if (check_bdq(inode->i_dquot[cnt], number, warn, warntype+cnt) == NO_QUOTA)
+-			goto warn_put_all;
++		if (check_bdq(inode->i_dquot[cnt], number, warn, warntype+cnt)
++		    == NO_QUOTA) {
++			ret = NO_QUOTA;
++			goto out_unlock;
++		}
+ 	}
+ 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+ 		if (inode->i_dquot[cnt] == NODQUOT)
+ 			continue;
+-		dquot_incr_space(inode->i_dquot[cnt], number);
++		if (reserve)
++			dquot_resv_space(inode->i_dquot[cnt], number);
++		else
++			dquot_incr_space(inode->i_dquot[cnt], number);
+ 	}
+-	inode_add_bytes(inode, number);
+-	ret = QUOTA_OK;
+-warn_put_all:
++	if (!reserve)
++		inode_add_bytes(inode, number);
++out_unlock:
+ 	spin_unlock(&dq_data_lock);
+-	if (ret == QUOTA_OK)
+-		/* Dirtify all the dquots - this can block when journalling */
+-		for (cnt = 0; cnt < MAXQUOTAS; cnt++)
+-			if (inode->i_dquot[cnt])
+-				mark_dquot_dirty(inode->i_dquot[cnt]);
+ 	flush_warnings(inode->i_dquot, warntype);
++	return ret;
++}
++
++int dquot_alloc_space(struct inode *inode, qsize_t number, int warn)
++{
++	int cnt, ret = QUOTA_OK;
++
++	/*
++	 * First test before acquiring mutex - solves deadlocks when we
++	 * re-enter the quota code and are already holding the mutex
++	 */
++	if (IS_NOQUOTA(inode)) {
++		inode_add_bytes(inode, number);
++		goto out;
++	}
++
++	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++	if (IS_NOQUOTA(inode)) {
++		inode_add_bytes(inode, number);
++		goto out_unlock;
++	}
++
++	ret = __dquot_alloc_space(inode, number, warn, 0);
++	if (ret == NO_QUOTA)
++		goto out_unlock;
++
++	/* Dirtify all the dquots - this can block when journalling */
++	for (cnt = 0; cnt < MAXQUOTAS; cnt++)
++		if (inode->i_dquot[cnt])
++			mark_dquot_dirty(inode->i_dquot[cnt]);
++out_unlock:
+ 	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++out:
++	return ret;
++}
++
++int dquot_reserve_space(struct inode *inode, qsize_t number, int warn)
++{
++	int ret = QUOTA_OK;
++
++	if (IS_NOQUOTA(inode))
++		goto out;
++
++	down_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++	if (IS_NOQUOTA(inode))
++		goto out_unlock;
++
++	ret = __dquot_alloc_space(inode, number, warn, 1);
++out_unlock:
++	up_read(&sb_dqopt(inode->i_sb)->dqptr_sem);
++out:
+ 	return ret;
+ }
++EXPORT_SYMBOL(dquot_reserve_space);
+ 
+ /*
+  * This operation can block, but only after everything is updated
+@@ -2057,7 +2112,7 @@ static void do_get_dqblk(struct dquot *dquot, struct if_dqblk *di)
+ 	spin_lock(&dq_data_lock);
+ 	di->dqb_bhardlimit = stoqb(dm->dqb_bhardlimit);
+ 	di->dqb_bsoftlimit = stoqb(dm->dqb_bsoftlimit);
+-	di->dqb_curspace = dm->dqb_curspace;
++	di->dqb_curspace = dm->dqb_curspace + dm->dqb_rsvspace;
+ 	di->dqb_ihardlimit = dm->dqb_ihardlimit;
+ 	di->dqb_isoftlimit = dm->dqb_isoftlimit;
+ 	di->dqb_curinodes = dm->dqb_curinodes;
+@@ -2097,7 +2152,7 @@ static int do_set_dqblk(struct dquot *dquot, struct if_dqblk *di)
+ 
+ 	spin_lock(&dq_data_lock);
+ 	if (di->dqb_valid & QIF_SPACE) {
+-		dm->dqb_curspace = di->dqb_curspace;
++		dm->dqb_curspace = di->dqb_curspace - dm->dqb_rsvspace;
+ 		check_blim = 1;
+ 		__set_bit(DQ_LASTSET_B + QIF_SPACE_B, &dquot->dq_flags);
+ 	}
+diff --git a/include/linux/quota.h b/include/linux/quota.h
+index d72d5d8..54b837f 100644
+--- a/include/linux/quota.h
++++ b/include/linux/quota.h
+@@ -198,6 +198,7 @@ struct mem_dqblk {
+ 	qsize_t dqb_bhardlimit;	/* absolute limit on disk blks alloc */
+ 	qsize_t dqb_bsoftlimit;	/* preferred limit on disk blks */
+ 	qsize_t dqb_curspace;	/* current used space */
++	qsize_t dqb_rsvspace;   /* current reserved space for delalloc*/
+ 	qsize_t dqb_ihardlimit;	/* absolute limit on allocated inodes */
+ 	qsize_t dqb_isoftlimit;	/* preferred inode limit */
+ 	qsize_t dqb_curinodes;	/* current # allocated inodes */
+@@ -308,6 +309,8 @@ struct dquot_operations {
+ 	int (*release_dquot) (struct dquot *);		/* Quota is going to be deleted from disk */
+ 	int (*mark_dirty) (struct dquot *);		/* Dquot is marked dirty */
+ 	int (*write_info) (struct super_block *, int);	/* Write of quota "superblock" */
++	/* reserve quota for delayed block allocation */
++	int (*reserve_space) (struct inode *, qsize_t, int);
+ };
+ 
+ /* Operations handling requests from userspace */
+diff --git a/include/linux/quotaops.h b/include/linux/quotaops.h
+index 0b35b3a..3e3a0d2 100644
+--- a/include/linux/quotaops.h
++++ b/include/linux/quotaops.h
+@@ -183,6 +183,16 @@ static inline int vfs_dq_alloc_space(struct inode *inode, qsize_t nr)
  	return ret;
  }
  
-+static DEFINE_SPINLOCK(dentry_list_lock);
-+
-+/* We limit the number of dentry locks to drop in one go. We have
-+ * this limit so that we don't starve other users of ocfs2_wq. */
-+#define DL_INODE_DROP_COUNT 64
-+
-+/* Drop inode references from dentry locks */
-+void ocfs2_drop_dl_inodes(struct work_struct *work)
++static inline int vfs_dq_reserve_space(struct inode *inode, qsize_t nr)
 +{
-+	struct ocfs2_super *osb = container_of(work, struct ocfs2_super,
-+					       dentry_lock_work);
-+	struct ocfs2_dentry_lock *dl;
-+	int drop_count = DL_INODE_DROP_COUNT;
-+
-+	spin_lock(&dentry_list_lock);
-+	while (osb->dentry_lock_list && drop_count--) {
-+		dl = osb->dentry_lock_list;
-+		osb->dentry_lock_list = dl->dl_next;
-+		spin_unlock(&dentry_list_lock);
-+		iput(dl->dl_inode);
-+		kfree(dl);
-+		spin_lock(&dentry_list_lock);
++	if (sb_any_quota_active(inode->i_sb)) {
++		/* Used space is updated in alloc_space() */
++		if (inode->i_sb->dq_op->reserve_space(inode, nr, 0) == NO_QUOTA)
++			return 1;
 +	}
-+	if (osb->dentry_lock_list)
-+		queue_work(ocfs2_wq, &osb->dentry_lock_work);
-+	spin_unlock(&dentry_list_lock);
++	return 0;
 +}
 +
- /*
-  * ocfs2_dentry_iput() and friends.
-  *
-@@ -318,16 +347,23 @@ out_attach:
- static void ocfs2_drop_dentry_lock(struct ocfs2_super *osb,
- 				   struct ocfs2_dentry_lock *dl)
+ static inline int vfs_dq_alloc_inode(struct inode *inode)
  {
--	iput(dl->dl_inode);
- 	ocfs2_simple_drop_lockres(osb, &dl->dl_lockres);
- 	ocfs2_lock_res_free(&dl->dl_lockres);
--	kfree(dl);
-+
-+	/* We leave dropping of inode reference to ocfs2_wq as that can
-+	 * possibly lead to inode deletion which gets tricky */
-+	spin_lock(&dentry_list_lock);
-+	if (!osb->dentry_lock_list)
-+		queue_work(ocfs2_wq, &osb->dentry_lock_work);
-+	dl->dl_next = osb->dentry_lock_list;
-+	osb->dentry_lock_list = dl;
-+	spin_unlock(&dentry_list_lock);
+ 	if (sb_any_quota_active(inode->i_sb)) {
+@@ -339,6 +349,11 @@ static inline int vfs_dq_alloc_space(struct inode *inode, qsize_t nr)
+ 	return 0;
  }
  
- void ocfs2_dentry_lock_put(struct ocfs2_super *osb,
- 			   struct ocfs2_dentry_lock *dl)
++static inline int vfs_dq_reserve_space(struct inode *inode, qsize_t nr)
++{
++	return 0;
++}
++
+ static inline void vfs_dq_free_space_nodirty(struct inode *inode, qsize_t nr)
  {
--	int unlock = 0;
-+	int unlock;
+ 	inode_sub_bytes(inode, nr);
+@@ -376,6 +391,12 @@ static inline int vfs_dq_alloc_block(struct inode *inode, qsize_t nr)
+ 			nr << inode->i_sb->s_blocksize_bits);
+ }
  
- 	BUG_ON(dl->dl_count == 0);
- 
-diff --git a/fs/ocfs2/dcache.h b/fs/ocfs2/dcache.h
-index c091c34..d06e16c 100644
---- a/fs/ocfs2/dcache.h
-+++ b/fs/ocfs2/dcache.h
-@@ -29,8 +29,13 @@
- extern struct dentry_operations ocfs2_dentry_ops;
- 
- struct ocfs2_dentry_lock {
-+	/* Use count of dentry lock */
- 	unsigned int		dl_count;
--	u64			dl_parent_blkno;
-+	union {
-+		/* Linked list of dentry locks to release */
-+		struct ocfs2_dentry_lock *dl_next;
-+		u64			dl_parent_blkno;
-+	};
- 
- 	/*
- 	 * The ocfs2_dentry_lock keeps an inode reference until
-@@ -47,6 +52,8 @@ int ocfs2_dentry_attach_lock(struct dentry *dentry, struct inode *inode,
- void ocfs2_dentry_lock_put(struct ocfs2_super *osb,
- 			   struct ocfs2_dentry_lock *dl);
- 
-+void ocfs2_drop_dl_inodes(struct work_struct *work);
++static inline int vfs_dq_reserve_block(struct inode *inode, qsize_t nr)
++{
++	return vfs_dq_reserve_space(inode,
++			nr << inode->i_blkbits);
++}
 +
- struct dentry *ocfs2_find_local_alias(struct inode *inode, u64 parent_blkno,
- 				      int skip_unhashed);
- 
-diff --git a/fs/ocfs2/ocfs2.h b/fs/ocfs2/ocfs2.h
-index ad5c24a..0773841 100644
---- a/fs/ocfs2/ocfs2.h
-+++ b/fs/ocfs2/ocfs2.h
-@@ -210,6 +210,7 @@ struct ocfs2_journal;
- struct ocfs2_slot_info;
- struct ocfs2_recovery_map;
- struct ocfs2_quota_recovery;
-+struct ocfs2_dentry_lock;
- struct ocfs2_super
+ static inline void vfs_dq_free_block_nodirty(struct inode *inode, qsize_t nr)
  {
- 	struct task_struct *commit_task;
-@@ -325,6 +326,11 @@ struct ocfs2_super
- 	struct list_head blocked_lock_list;
- 	unsigned long blocked_lock_count;
- 
-+	/* List of dentry locks to release. Anyone can add locks to
-+	 * the list, ocfs2_wq processes the list  */
-+	struct ocfs2_dentry_lock *dentry_lock_list;
-+	struct work_struct dentry_lock_work;
-+
- 	wait_queue_head_t		osb_mount_event;
- 
- 	/* Truncate log info */
-diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
-index 43ed113..b1cb38f 100644
---- a/fs/ocfs2/super.c
-+++ b/fs/ocfs2/super.c
-@@ -1887,6 +1887,9 @@ static int ocfs2_initialize_super(struct super_block *sb,
- 	INIT_WORK(&journal->j_recovery_work, ocfs2_complete_recovery);
- 	journal->j_state = OCFS2_JOURNAL_FREE;
- 
-+	INIT_WORK(&osb->dentry_lock_work, ocfs2_drop_dl_inodes);
-+	osb->dentry_lock_list = NULL;
-+
- 	/* get some pseudo constants for clustersize bits */
- 	osb->s_clustersize_bits =
- 		le32_to_cpu(di->id2.i_super.s_clustersize_bits);
+ 	vfs_dq_free_space_nodirty(inode, nr << inode->i_sb->s_blocksize_bits);
 -- 
 1.6.0.2
 
