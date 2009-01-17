@@ -1,127 +1,42 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: Ext4 tree backports for 2.6.27.10 and 2.6.28
-Date: Sat, 17 Jan 2009 13:43:55 -0500
-Message-ID: <E1LOG9D-0006h4-7R@closure.thunk.org>
-Cc: stable@kernel.org
-To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12272] at random rmmod/insmod corrupts filesystem
+Date: Sat, 17 Jan 2009 10:43:33 -0800 (PST)
+Message-ID: <20090117184333.97457108043@picon.linux-foundation.org>
+References: <bug-12272-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:39328 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761857AbZAQSn5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 17 Jan 2009 13:43:57 -0500
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:60728 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1763861AbZAQSoE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 17 Jan 2009 13:44:04 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0HIhXDk023491
+	for <linux-ext4@vger.kernel.org>; Sat, 17 Jan 2009 10:43:34 -0800
+In-Reply-To: <bug-12272-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12272
 
-I've created a couple of ext4 backport branches which have been uploaded
-to the ext4 git tree:
 
-   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 
-   http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git
 
-The master branch contains the latest ext4 patch queue, against Linus's
-tip; currently, this is versus 2.6.29-rc2.  The 'for_linus' tag is
-located on this branch, and currently contains a number of urgent fixes
-that I plan to be pushing to Linus after he gets back from
-linux.conf.au.  They are mostly fixes that prevent OOPS or cpu lockups
-when ext4 mounts an intentionally corrupted filesystem.
 
-The ext4-stable branch is based off of 2.6.28, and contains all of the
-patches which were pushed to linus during the 2.6.29-rc1 merge window,
-plus the fixes listed above in the 'master' branch.  It is designed for
-people who want the very latest in the ext4 tree versus a stable kernel.
 
-The for-stable branch is currently based off of 2.6.28, and contains a
-candidate set of patches to be included in the 2.6.28.y stable tree.
-Ext4 developers --- I would appreciate it if you could review the
-patches on the ext4-stable tree, and see if I missed any patches which
-in your opinion should be pushed to the 2.6.28.y tree.  Furthermore, if
-some folks could test the for-stable branch and let me know whether or
-not you found it stable, I would appreciate it.  Some of the patches
-were relatively painful to backport, given the desire to remove
-"non-critical" patches, so I'm not 100% certain I got the backports
-completely right.  Please test!
+------- Comment #22 from folkert@vanheusden.com  2009-01-17 10:43 -------
+(In reply to comment #20)
+[ .. not guaranteed that removing a module works in all cases ]
+> P.P.S. In any case, it's pretty clear this isn't a filesystem bug.
 
-The for-stable-2.6.27 is currently based off of 2.6.27.11, and it
-contains a candidate set of patches to be incuded in the 2.6.27.y tree.
-It was even more difficult to backport these patches to 2.6.27.y, and so
-I would **really** appreciate if some folks could review and test this
-branch.  In addition, a number of changes (in particular some of
-Aneesh's resize race condition patches) were painful enough that I
-decided to abort and not try to do the backport.  It was late, and I was
-getting tired....  If someone would like to try to backport some of
-these missing patches, I would appreciate it; Aneesh, you might have
-better luck since they were originally your patches, and they were
-complicated enough that I was worried that there might have been
-prerequisites that I had missed so they would function correctly.
+Ah ok. I thought it was supposed to work in all cases and that I just found a
+bug that should not be there.
+Glad it is not a filesystem bug as I became a little afraid to upgrade to
+something more recent than 2.6.26.
 
-The patch backports can be summarized in this table below.  It contains
-the original mainline commit ID, the commit ID in the 2.6.28 for-stable
-branch, and the commit ID in the for-stable-2.6.27 branch.  If you see
-"-----" in the column for the 2.6.27-stable column, those were patches
-which I did not backport due to lack of valor/courage at 11pm at night.
+Thanks
 
-      	    		     	     	- Ted
 
-mainline 2.6.28  2.6.27
-    commit-description
--------------------------------------------------------------------------
-f99b2589 485f02f 11599d0
-    ext4: Add support for non-native signed/unsigned htree hash algorithms
-
-2a21e37e 7426272 8443aef
-    ext4: tone down ext4_da_writepages warnings
-
-791b7f08 2efd58c c7eef47
-    ext4: Fix the delalloc writepages to allocate blocks at the right offset.
-
-565a9617 ce99b0d b2a193d
-    ext4: avoid ext4_error when mounting a fs with a single bg
-
-ff7ef329 3a04ef3 626e5b9
-    ext4: Widen type of ext4_sb_info.s_mb_maxs[]
-
-fd98496f f97e641 dc270b3
-    jbd2: Add barrier not supported test to journal_wait_on_commit_record
-
-032115fc b9475aa c1944c2
-    ext4: Don't overwrite allocation_context ac_status
-
-e21675d4 c31a2b2 -----
-    ext4: Add blocks added during resize to bitmap
-
-920313a7 2a4f6ca -----
-    ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
-
-c3a326a6 66364e6 24a5c92
-    ext4: cleanup mballoc header files
-
-7a2fcbf7 39a0b8b -----
-    ext4: don't use blocks freed but not yet committed in buddy cache init
-    
-e8134b27 83a082c c712c85
-    ext4: Fix race between read_block_bitmap() and mark_diskspace_used()
-
-39341867 8e53df4 4d3302c
-    ext4: Fix the race between read_inode_bitmap() and ext4_new_inode()
-
-e97fcd95 20d6100 7e081e8
-    jbd2: Add BH_JBDPrivateStart
-
-2ccb5fb9 92f1c0e -----
-    ext4: Use new buffer_head flag to check uninit group bitmaps initialization
-
-648f5879 51eef9f 469a48a
-    ext4: mark the blocks/inode bitmap beyond end of group as used
-
-8556e8f3 5a2c7ad 686beef
-    ext4: Don't allow new groups to be added during block allocation
-
-29eaf024 39d994e 0c56383
-    ext4: Init the complete page while building buddy cache
-
-0087d9fb 808dfdb -----
-    ext4: Fix s_dirty_blocks_counter if block allocation failed with nodelalloc
-
-4ec11028 cf7da20 -----
-    ext4: Add sanity checks for the superblock before mounting the filesystem
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
