@@ -1,62 +1,46 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH, RFC] ext4: ignore i_size_high for directories
-Date: Sat, 17 Jan 2009 07:57:06 +0800
-Message-ID: <20090116235706.GK13929@webber.adilger.int>
-References: <1232125148-13785-1-git-send-email-tytso@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	stable@kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12272] at random rmmod/insmod corrupts filesystem
+Date: Fri, 16 Jan 2009 18:23:09 -0800 (PST)
+Message-ID: <20090117022309.2BC92108040@picon.linux-foundation.org>
+References: <bug-12272-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:34373 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754851AbZAPX5S (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 16 Jan 2009 18:57:18 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n0GNvC8q024045
-	for <linux-ext4@vger.kernel.org>; Fri, 16 Jan 2009 15:57:17 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KDL0020195ONN00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Fri, 16 Jan 2009 15:57:12 -0800 (PST)
-In-reply-to: <1232125148-13785-1-git-send-email-tytso@mit.edu>
-Content-disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:44680 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754630AbZAQCXk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 16 Jan 2009 21:23:40 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0H2N9DH029480
+	for <linux-ext4@vger.kernel.org>; Fri, 16 Jan 2009 18:23:10 -0800
+In-Reply-To: <bug-12272-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jan 16, 2009  11:59 -0500, Theodore Ts'o wrote:
-> Directories are not allowed to be bigger than 2TB, so don't use
+http://bugzilla.kernel.org/show_bug.cgi?id=12272
 
-... bigger than 2GB?
 
-> i_size_high when reading the inode.  E2fsck should complain about
-> these inodes, but the simplest thing to do for the kernel is simply to
-> not consult i_size_high for directory inodes.
 
-Actually, it would be preferable to allow directories to grow beyond
-the 2GB limit.  2GB only allows about 30M files.  While the htree code
-is currently limited to only 2 levels deep, if you have 8kB+ block
-size it is possible to have directories larger than 2GB with only
-2 levels of htree.
 
->  static inline loff_t ext4_isize(struct ext4_inode *raw_inode)
->  {
-> +	if (S_ISDIR(le16_to_cpu(raw_inode->i_mode)))
-> +		return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
-> +	else
-> +		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
-> +			le32_to_cpu(raw_inode->i_size_lo);
 
-If you are going to limit this it should be "if (!S_ISREG(...))"
-instead of "if (S_ISDIR(...))" because none of the special files
-should use i_size_high - e2fsck will clear a special inode if
-it has a non-zero size.
+------- Comment #12 from tytso@mit.edu  2009-01-16 18:23 -------
+It's still not clear to me what you do to trigger the corruption.  What
+modules, specifically, are you removing and inserting?   Can you narrow it down
+to a single module?
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+The messages
 
+[  487.377387] bio too big device hda5 (8 > 0)
+[  487.377860] bio too big device hda5 (8 > 0)
+
+... indicates that the block queue data structure has gotten corrupted (since
+queue->max_hw_sectors should never be zero).   Bottom line is it sounds like
+*some* module is causing random memory corruption, leading to the kernel
+malfunctioning.   The bottom line is figuring out which kernel module or
+modules are involved.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
