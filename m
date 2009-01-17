@@ -1,44 +1,57 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 11492] "BUG: held lock freed" on mounting intentionally corrupted ext4 fs
-Date: Sat, 17 Jan 2009 15:21:52 -0800 (PST)
-Message-ID: <20090117232152.5E2AD10800F@picon.linux-foundation.org>
-References: <bug-11492-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@MIT.EDU>
+Subject: Re: [PATCH, RFC] ext4: ignore i_size_high for directories
+Date: Sat, 17 Jan 2009 18:36:53 -0500
+Message-ID: <20090117233653.GC25943@mit.edu>
+References: <1232125148-13785-1-git-send-email-tytso@mit.edu> <20090116235706.GK13929@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	stable@kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:56255 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1760894AbZAQXWV (ORCPT
+Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:52915 "EHLO
+	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756719AbZAQXhM (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 17 Jan 2009 18:22:21 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0HNLqvQ009686
-	for <linux-ext4@vger.kernel.org>; Sat, 17 Jan 2009 15:21:53 -0800
-In-Reply-To: <bug-11492-13602@http.bugzilla.kernel.org/>
+	Sat, 17 Jan 2009 18:37:12 -0500
+Content-Disposition: inline
+In-Reply-To: <20090116235706.GK13929@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=11492
+On Sat, Jan 17, 2009 at 07:57:06AM +0800, Andreas Dilger wrote:
+> 
+> Actually, it would be preferable to allow directories to grow beyond
+> the 2GB limit.  2GB only allows about 30M files.  While the htree code
+> is currently limited to only 2 levels deep, if you have 8kB+ block
+> size it is possible to have directories larger than 2GB with only
+> 2 levels of htree.
 
+At some point, maybe, although e2fsprogs doesn't have any support for
+directories > 2GB, and I strongly suspect there are other places in
+the kernel where we assume directories are < 2GB.  So this is
+something that I'd prefer we implement with a feature flag,
+explicitly, probably after we get a better b-tree implementation into
+ext4 (say, like the one you gave me a few months ago, if one of us
+actually has time to try to get it integrated into the kernel and into
+e2fsprogs).
 
-tytso@mit.edu changed:
+> >  static inline loff_t ext4_isize(struct ext4_inode *raw_inode)
+> >  {
+> > +	if (S_ISDIR(le16_to_cpu(raw_inode->i_mode)))
+> > +		return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
+> > +	else
+> > +		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
+> > +			le32_to_cpu(raw_inode->i_size_lo);
+> 
+> If you are going to limit this it should be "if (!S_ISREG(...))"
+> instead of "if (S_ISDIR(...))" because none of the special files
+> should use i_size_high - e2fsck will clear a special inode if
+> it has a non-zero size.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |CLOSED
-         Resolution|                            |PATCH_ALREADY_AVAILABLE
+Hmm, yes, that's probably a better check; although for most special
+inodes we ignore i_size so having an absurd i_size is harmless.
+Looking at things, we should probably add a check to make sure that
+i_size for symlinks is sane.
 
-
-
-
-------- Comment #2 from tytso@mit.edu  2009-01-17 15:21 -------
-Yeah, I'm 99% sure this was fixed by the referenced patch, which is in
-mainline.  I'm going to close this for now.  Can you reopen it if it turns out
-to still be an issue.
-
-(And yes, we've toned down ext4_da_writepages.)
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+						- Ted
