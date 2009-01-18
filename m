@@ -1,39 +1,31 @@
 From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 11252] Kernel BUG on unmounting an intentionally corrupted filesystem
-Date: Sat, 17 Jan 2009 17:46:00 -0800 (PST)
-Message-ID: <20090118014600.1ACFD10800F@picon.linux-foundation.org>
-References: <bug-11252-13602@http.bugzilla.kernel.org/>
+Subject: [Bug 11960] Oops in ext4_mb_poll_new_transaction
+Date: Sat, 17 Jan 2009 17:47:46 -0800 (PST)
+Message-ID: <20090118014746.6D056108040@picon.linux-foundation.org>
+References: <bug-11960-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:38958 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:51412 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757089AbZARBqD (ORCPT
+	by vger.kernel.org with ESMTP id S1757194AbZARBrs (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 17 Jan 2009 20:46:03 -0500
+	Sat, 17 Jan 2009 20:47:48 -0500
 Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0I1k0qg021161
-	for <linux-ext4@vger.kernel.org>; Sat, 17 Jan 2009 17:46:01 -0800
-In-Reply-To: <bug-11252-13602@http.bugzilla.kernel.org/>
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0I1lk4P021280
+	for <linux-ext4@vger.kernel.org>; Sat, 17 Jan 2009 17:47:47 -0800
+In-Reply-To: <bug-11960-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=11252
-
-
-tytso@mit.edu changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |REJECTED
-         Resolution|                            |UNREPRODUCIBLE
+http://bugzilla.kernel.org/show_bug.cgi?id=11960
 
 
 
 
-------- Comment #3 from tytso@mit.edu  2009-01-17 17:45 -------
-I'm not seeing any oops with 2.6.29-rc1 either, so I'm going to close this. 
-The large number of errors is to be expected given how badly corrupted the
-filesystem happens to be.
+
+------- Comment #4 from tytso@mit.edu  2009-01-17 17:47 -------
+Any updates on this bug?  If not, given that the function in question is no
+longer in the ext4 codebase, I plan to close this bug.  Thanks!!
 
 
 -- 
