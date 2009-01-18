@@ -1,45 +1,35 @@
-From: Theodore Tso <tytso@MIT.EDU>
-Subject: Re: ext4 fails on ext2 filesystems
-Date: Sat, 17 Jan 2009 21:38:41 -0500
-Message-ID: <20090118023841.GD25943@mit.edu>
-References: <20090118013516.GA4876@alea.gnuu.de>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: =?iso-8859-1?Q?J=F6rg?= Sommer <joerg@alea.gnuu.de>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 10393] ext4 compile error on m68k
+Date: Sat, 17 Jan 2009 19:15:18 -0800 (PST)
+Message-ID: <20090118031518.9E15C10800D@picon.linux-foundation.org>
+References: <bug-10393-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from BISCAYNE-ONE-STATION.MIT.EDU ([18.7.7.80]:34587 "EHLO
-	biscayne-one-station.mit.edu" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754162AbZARCis (ORCPT
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36891 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755938AbZARDPs (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 17 Jan 2009 21:38:48 -0500
-Content-Disposition: inline
-In-Reply-To: <20090118013516.GA4876@alea.gnuu.de>
+	Sat, 17 Jan 2009 22:15:48 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0I3FI8X029208
+	for <linux-ext4@vger.kernel.org>; Sat, 17 Jan 2009 19:15:19 -0800
+In-Reply-To: <bug-10393-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 18, 2009 at 02:35:16AM +0100, J=F6rg Sommer wrote:
->=20
-> But when remounting the filesystem read/write and changing a file, th=
-e
-> changes are written to the filesystem, but it's remounted readonly
-> immediatly. I've set the mount option remount-ro.
->=20
-> [  203.082300] EXT4 FS on hda3, no journal
-> [  205.746713] EXT4-fs error (device hda3): ext4_free_data: circular =
-indirect block detected, inode=3D165056, block=3D184476
->=20
+http://bugzilla.kernel.org/show_bug.cgi?id=10393
 
-Can you do me a favor?  Can you run debugfs /dev/hda3, and then run
-the debugfs command: "stat <165056>"? =20
 
-Any thanks!!
+tytso@mit.edu changed:
 
-					- Ted
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|RESOLVED                    |CLOSED
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
