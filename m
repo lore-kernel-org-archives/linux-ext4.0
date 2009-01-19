@@ -1,69 +1,53 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: Re: The meaning of data=ordered as it relates to delayed allocation
-Date: Tue, 20 Jan 2009 03:10:41 +0800
-Message-ID: <20090119191041.GA3286@webber.adilger.int>
-References: <E1LOiN8-0001Cj-91@closure.thunk.org>
+Subject: Re: ext4 fails on ext2 filesystems
+Date: Tue, 20 Jan 2009 07:30:59 +0800
+Message-ID: <20090119233059.GH3286@webber.adilger.int>
+References: <20090118013516.GA4876@alea.gnuu.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: =?utf-8?B?Su+/vXJn?= Sommer <joerg@alea.gnuu.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58084 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753201AbZASTLE (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jan 2009 14:11:04 -0500
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:37211 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754184AbZASXbI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jan 2009 18:31:08 -0500
 Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n0JJAmFu004822
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 11:11:02 -0800 (PST)
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n0JNV2dl021763
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 15:31:02 -0800 (PST)
 Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
  (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KDQ00501FTQZF00@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Mon, 19 Jan 2009 11:10:48 -0800 (PST)
-In-reply-to: <E1LOiN8-0001Cj-91@closure.thunk.org>
+ id <0KDQ00501RU8P400@fe-sfbay-10.sun.com> (original mail from adilger@sun.com)
+ for linux-ext4@vger.kernel.org; Mon, 19 Jan 2009 15:31:01 -0800 (PST)
+In-reply-to: <20090118013516.GA4876@alea.gnuu.de>
 Content-disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jan 18, 2009  19:52 -0500, Theodore Ts'o wrote:
-> An Ubuntu user recently complained about a large number of recently
-> updated files which were zero-length after an crash.  I started looking
-> more closely at that, and it's because we have an interesting
-> interpretation of data=ordered.  It applies for blocks which are already
-> allocated, but not for blocks which haven't been allocated yet.  This
-> can be surprising for users; and indeed, for many workloads where you
-> aren't using berk_db some other database, all of the files written will 
-> be newly created files (or files which are getting rewritten after
-> opening with O_TRUNC), so there won't be any difference between
-> data=writeback and data=ordered.
-> 
-> So I wonder if we should either:
-> 
-> (a) make data=ordered force block allocation and writeback --- which
->     should just be a matter of disabling the
->     redirty_page_for_writepage() code path in ext4_da_writepage()
+On Jan 18, 2009  02:35 +0100, J=EF=BF=BDrg Sommer wrote:
+> I've an ext2 filesystem as root filesystem, because it's mounted read=
+only
+> for the most part. I've built in the support for ext[234] in the kern=
+el.
+> Ext4 takes precedence over ext2 and it mounts the root filesystem:
 
-That would re-introduce the "Firefox" problem where fsync of one file forces
-all other files being written to flush their data blocks to disk.
+Hmm, probably an unintended consequence of the newly-added patch to
+allow ext4 to mount ext2 filesystems.
 
-> (b) add a new mount option, call it data=delalloc-ordered which is (a)
+> But when remounting the filesystem read/write and changing a file, th=
+e
+> changes are written to the filesystem, but it's remounted readonly
+> immediatly. I've set the mount option remount-ro.
+>=20
+> [  203.082300] EXT4 FS on hda3, no journal
+> [  205.746713] EXT4-fs error (device hda3): ext4_free_data: circular =
+indirect block detected, inode=3D165056, block=3D184476
 
-I'd prefer a better name, like "flushall-ordered" or similar, because to
-me "delalloc-ordered" would imply the current behaviour.
+> motherboard	: PowerBook6,3 MacRISC3 Power Macintosh
 
-> (c) change the default mount option to be data=writeback
+Hmm, looks like it might be a bug in the endian conversion?
 
-That can expose garbage data to the user, which the current behaviour
-does not do.
-
-> (d) Do (b) and make it the default
-> 
-> (e) Keep things the way they are
-> 
-> Thoughts, comments?   My personal favorite is (b).   This allows users
-> who want something that works functionally much more like ext3 to get
-> that, while giving us the current speed advantages of a more aggressive
-> delayed allocation.
 
 Cheers, Andreas
 --
@@ -71,3 +55,8 @@ Andreas Dilger
 Sr. Staff Engineer, Lustre Group
 Sun Microsystems of Canada, Inc.
 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
