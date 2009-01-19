@@ -1,85 +1,37 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: The meaning of data=ordered as it relates to delayed allocation
-Date: Mon, 19 Jan 2009 10:13:45 +0530
-Message-ID: <20090119044345.GB9482@skywalker>
-References: <E1LOiN8-0001Cj-91@closure.thunk.org>
+From: Graham Murray <graham@gmurray.org.uk>
+Subject: All processes accessing etx4 partition stuck in 'D' state
+Date: Mon, 19 Jan 2009 06:47:45 +0000
+Message-ID: <87ljt7zt9q.fsf@newton.gmurray.org.uk>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from E23SMTP06.au.ibm.com ([202.81.18.175]:45536 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754064AbZASEn5 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 18 Jan 2009 23:43:57 -0500
-Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id n0J4geHq005885
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 15:42:40 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n0J4htYB295738
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 15:43:55 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n0J4hsKt022726
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 15:43:54 +1100
-Content-Disposition: inline
-In-Reply-To: <E1LOiN8-0001Cj-91@closure.thunk.org>
+Received: from newton.gmurray.org.uk ([81.2.114.237]:52885 "EHLO
+	newton.gmurray.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753537AbZASHAv (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jan 2009 02:00:51 -0500
+Received: from newton.gmurray.org.uk (localhost [127.0.0.1])
+	by newton.gmurray.org.uk (8.14.3/8.14.3) with ESMTP id n0J6ljQO003849
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 06:47:45 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jan 18, 2009 at 07:52:10PM -0500, Theodore Ts'o wrote:
-> 
-> An Ubuntu user recently complained about a large number of recently
-> updated files which were zero-length after an crash.  I started looking
-> more closely at that, and it's because we have an interesting
-> interpretation of data=ordered.  It applies for blocks which are already
-> allocated, but not for blocks which haven't been allocated yet.  This
-> can be surprising for users; and indeed, for many workloads where you
-> aren't using berk_db some other database, all of the files written will 
-> be newly created files (or files which are getting rewritten after
-> opening with O_TRUNC), so there won't be any difference between
-> data=writeback and data=ordered.
+I do not know if this is ext4 related or not, so my apologies if it is
+not.
 
+I am running the latest linus 2.6.29-rc2 git kernel together with the
+master branch of the ext4 git tree announced here a couple of days ago.
 
-That meaning of data=ordered is to ensure that we don't update inode
-i_size without writing the data blocks within i_size. So even with
-delayed allocation if we have i_size update ( this happen when we
-allocate blocks ) we would write the data blocks first.
-
-With that interpretation having a zero block file on crash is fine. But
-we should not find the files corrupted.(ie, files with wrong contents).
-
-> 
-> So I wonder if we should either:
-> 
-> (a) make data=ordered force block allocation and writeback --- which
->     should just be a matter of disabling the
->     redirty_page_for_writepage() code path in ext4_da_writepage()
-
-
-We can't do that because we cannot do block allocation there. So we need
-to redirty the page that have unmapped buffer_heads.
-
-> 
-> (b) add a new mount option, call it data=delalloc-ordered which is (a)
-> 
-> (c) change the default mount option to be data=writeback
-
-
-This won't guarantee that i_size/metadata get updated ONLY after data blocks
-are written.
-
-> 
-> (d) Do (b) and make it the default
-> 
-> (e) Keep things the way they are
-> 
-> Thoughts, comments?   My personal favorite is (b).   This allows users
-> who want something that works functionally much more like ext3 to get
-> that, while giving us the current speed advantages of a more aggressive
-> delayed allocation.
-> 
-> 						- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Yesterday evening, all processes accessing /home which is formatted as
+ext4 (created as ext4 under 2.6.26 with the ext4 patches applied, not
+converted from ext3) were stuck in 'D' state and top showed both cores
+of the core2 CPU in 100% Waiting state. Everything not accessing /home
+was responsive. To eliminate a physical problem I ran a SMART self-test
+on the drive containing /home and it passed with no errors. / is also
+etx4, but was converted from ext3. There were no kernel messages, just
+the hung processes. The system would not reboot normally (because of the
+processes in 'D' state), but following sysrq sync, mount r/o and reboot,
+the filesystem showed as clean when restarted. To be sure, the first
+thing I did was to unmount it and manually ran fsck -f and that did not
+report any problems. 
