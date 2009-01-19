@@ -1,57 +1,62 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 11688] Oops while writing on a newly ext4 formated 1TB partition on a external USB drive
-Date: Sun, 18 Jan 2009 18:28:13 -0800 (PST)
-Message-ID: <20090119022813.765DE108042@picon.linux-foundation.org>
-References: <bug-11688-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
+Subject: kernel BUG at ext4_readdir
+Date: Mon, 19 Jan 2009 11:56:33 +0800
+Message-ID: <4973F9F1.4080608@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Transfer-Encoding: 7bit
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:37292 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756774AbZASC2Q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 18 Jan 2009 21:28:16 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0J2SDSc021559
-	for <linux-ext4@vger.kernel.org>; Sun, 18 Jan 2009 18:28:14 -0800
-In-Reply-To: <bug-11688-13602@http.bugzilla.kernel.org/>
+Received: from cn.fujitsu.com ([222.73.24.84]:58968 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1757997AbZASDzk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 18 Jan 2009 22:55:40 -0500
+Received: from tang.cn.fujitsu.com (tang.cn.fujitsu.com [10.167.250.3])
+	by song.cn.fujitsu.com (Postfix) with ESMTP id AE5AE170132
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 12:23:47 +0800 (CST)
+Received: from fnst.cn.fujitsu.com (localhost.localdomain [127.0.0.1])
+	by tang.cn.fujitsu.com (8.13.1/8.13.1) with ESMTP id n0J3tYis030525
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 11:55:35 +0800
+Received: from [127.0.0.1] (unknown [10.167.141.190])
+	by fnst.cn.fujitsu.com (Postfix) with ESMTPA id B1771D441F
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 11:55:10 +0800 (CST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=11688
+Hi,
 
+I used soft raid on IA64 and got the following error report.
+(I found the type of rec_len is "__u16". But the actual value of rec_len is more than 65535.)
 
-tytso@mit.edu changed:
+# fdisk -l
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-         AssignedTo|fs_ext4@kernel-bugs.osdl.org|fs_ext3@kernel-bugs.osdl.org
-          Component|ext4                        |ext3
+Disk /dev/sdc: 881.0 GB, 881005166592 bytes
+255 heads, 63 sectors/track, 107109 cylinders
+Units = cylinders of 16065 * 512 = 8225280 bytes
+Disk identifier: 0x0000544c
 
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sdc1               1      107109   860353011   fd  Linux raid autodetect
+...
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sdd1               1      107109   860353011   fd  Linux raid autodetect
+...
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sde1               1      107109   860353011   fd  Linux raid autodetect
+...
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sdf1               1      107109   860353011   fd  Linux raid autodetect
 
+# mdadm --create /dev/md0 --level=0 --raid-devices=4 /dev/sdc1 /dev/sdd1 /dev/sde1 \
+/dev/sdf1 
+# mkfs.ext4 -b 65536 /dev/md0
+# mount -t ext4 /dev/md0 /mnt
+# cd /mnt
+# dd if=/dev/zero of=tmp_file bs=1M count=1000
+# dmesg
 
+EXT4-fs error (device md0): ext4_readdir: bad entry in directory #11: rec_len
+is smaller than minimal - offset=0, inode=0, rec_len=0, name_len=0
+EXT4-fs error (device md0): empty_dir: bad entry in directory #11: rec_len is
+smaller than minimal - offset=65536, inode=0, rec_len=0, name_len=0
 
-------- Comment #7 from tytso@mit.edu  2009-01-18 18:28 -------
-So you only have 2 megabytes of memory....  Yeah, this sounds like a low-memory
-pressure situation.   Ext4's delayed allocation will definitely use more
-memory, and it looks like you are tickling an ext3 memory pressure bug.   Is
-there a reason why you aren't mounting your filesystems with noatime?   That's
-undoubtedly responsible for the ext3 journal activity, and I suspect mounting
-/home with noatime will make the problem go away.  It might also be interesting
-disabling quotas on /home, to see if the problem goes away or moves to
-something else.
-
-What is happening is that when ext4 starts writing, it needs memory for the
-page cache.  To get that space, the VM system is trying to get space, so it
-calls among other things, shrink_icache_memory, to shrink the inode cache,
-which then calls clear_inode, which ended up calling ext3_dquot_drop, through
-the quota code.  Ext3_dquot_drop() calls journal_start(), which then trips over
-a sanity check.   In any case, given what you've told me, I'm even more
-convinced this is an ext3 and/or a quota system bug, which is getting triggered
-to severe memory pressure caused by ext4 and the fact that you have a very tiny
-amount of memory.
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
