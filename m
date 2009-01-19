@@ -1,45 +1,37 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: The meaning of data=ordered as it relates to delayed allocation
-Date: Sun, 18 Jan 2009 19:52:10 -0500
-Message-ID: <E1LOiN8-0001Cj-91@closure.thunk.org>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 11688] Oops while writing on a newly ext4 formated 1TB partition on a external USB drive
+Date: Sun, 18 Jan 2009 16:56:49 -0800 (PST)
+Message-ID: <20090119005649.F333310800F@picon.linux-foundation.org>
+References: <bug-11688-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:54556 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755438AbZASAwN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 18 Jan 2009 19:52:13 -0500
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:32959 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755439AbZASA5U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 18 Jan 2009 19:57:20 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0J0uoDN015947
+	for <linux-ext4@vger.kernel.org>; Sun, 18 Jan 2009 16:56:51 -0800
+In-Reply-To: <bug-11688-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=11688
 
-An Ubuntu user recently complained about a large number of recently
-updated files which were zero-length after an crash.  I started looking
-more closely at that, and it's because we have an interesting
-interpretation of data=ordered.  It applies for blocks which are already
-allocated, but not for blocks which haven't been allocated yet.  This
-can be surprising for users; and indeed, for many workloads where you
-aren't using berk_db some other database, all of the files written will 
-be newly created files (or files which are getting rewritten after
-opening with O_TRUNC), so there won't be any difference between
-data=writeback and data=ordered.
 
-So I wonder if we should either:
 
-(a) make data=ordered force block allocation and writeback --- which
-    should just be a matter of disabling the
-    redirty_page_for_writepage() code path in ext4_da_writepage()
 
-(b) add a new mount option, call it data=delalloc-ordered which is (a)
 
-(c) change the default mount option to be data=writeback
+------- Comment #5 from tytso@mit.edu  2009-01-18 16:56 -------
+Ext4's delayed allocation will cause more memory pressure, because blocks
+aren't as aggressively pushed out to disk.   How much memory do you have in
+your system, how many ext3/ext4 filesystems do you have mounted, how many of
+them are active (and how active) versus totally quiescent, and how big is the
+journal for those filesystems?
 
-(d) Do (b) and make it the default
 
-(e) Keep things the way they are
-
-Thoughts, comments?   My personal favorite is (b).   This allows users
-who want something that works functionally much more like ext3 to get
-that, while giving us the current speed advantages of a more aggressive
-delayed allocation.
-
-						- Ted
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
