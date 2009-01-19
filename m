@@ -1,18 +1,18 @@
 From: bugme-daemon@bugzilla.kernel.org
 Subject: [Bug 11688] Oops while writing on a newly ext4 formated 1TB partition on a external USB drive
-Date: Sun, 18 Jan 2009 17:18:15 -0800 (PST)
-Message-ID: <20090119011815.BFC3310800F@picon.linux-foundation.org>
+Date: Sun, 18 Jan 2009 18:28:13 -0800 (PST)
+Message-ID: <20090119022813.765DE108042@picon.linux-foundation.org>
 References: <bug-11688-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:42697 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:37292 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756427AbZASBSr (ORCPT
+	by vger.kernel.org with ESMTP id S1756774AbZASC2Q (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 18 Jan 2009 20:18:47 -0500
+	Sun, 18 Jan 2009 21:28:16 -0500
 Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0J1IFUS017174
-	for <linux-ext4@vger.kernel.org>; Sun, 18 Jan 2009 17:18:16 -0800
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0J2SDSc021559
+	for <linux-ext4@vger.kernel.org>; Sun, 18 Jan 2009 18:28:14 -0800
 In-Reply-To: <bug-11688-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -20,49 +20,35 @@ List-ID: <linux-ext4.vger.kernel.org>
 http://bugzilla.kernel.org/show_bug.cgi?id=11688
 
 
+tytso@mit.edu changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+         AssignedTo|fs_ext4@kernel-bugs.osdl.org|fs_ext3@kernel-bugs.osdl.org
+          Component|ext4                        |ext3
 
 
 
-------- Comment #6 from vedranf@vedranf.mine.nu  2009-01-18 17:18 -------
-                total       used       free     shared    buffers     cached
-Mem:       1773      1730       43        0            23           1185
--/+ buffers/cache:   521       1252
-Swap:            0          0          0
 
-/dev/mapper/vg-root on / type ext3 (rw,errors=remount-ro)
-/dev/mapper/vg-home on /home type ext3 (rw,usrquota)
-/dev/mapper/vg-var on /var type ext3 (rw)
-/dev/sda3 on /media/disk type ext4dev (rw,nosuid,nodev,uhelper=hal)
-/dev/sda2 on /media/disk-1 type ext3 (rw,nosuid,nodev,uhelper=hal,data=ordered)
+------- Comment #7 from tytso@mit.edu  2009-01-18 18:28 -------
+So you only have 2 megabytes of memory....  Yeah, this sounds like a low-memory
+pressure situation.   Ext4's delayed allocation will definitely use more
+memory, and it looks like you are tickling an ext3 memory pressure bug.   Is
+there a reason why you aren't mounting your filesystems with noatime?   That's
+undoubtedly responsible for the ext3 journal activity, and I suspect mounting
+/home with noatime will make the problem go away.  It might also be interesting
+disabling quotas on /home, to see if the problem goes away or moves to
+something else.
 
-Copying from /home to /media/disk so only these are active if I understand you
-correctly. 
-
-# debugfs -R "stat <8>" /dev/mapper/vg-home                               
-debugfs 1.41.3 (12-Oct-2008)
-Inode: 8   Type: regular    Mode:  0600   Flags: 0x0
-Generation: 0    Version: 0x00000000
-User:     0   Group:     0   Size: 134217728
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 262416
-Fragment:  Address: 0    Number: 0    Size: 0
-ctime: 0x487a96ce -- Mon Jul 14 01:59:10 2008
-atime: 0x00000000 -- Thu Jan  1 01:00:00 1970
-mtime: 0x487a96ce -- Mon Jul 14 01:59:10 2008
-Size of extra inode fields: 0
-
-# debugfs -R "stat <8>" /dev/sda3                                           
-debugfs 1.41.3 (12-Oct-2008)
-Inode: 8   Type: regular    Mode:  0600   Flags: 0x80000
-Generation: 0    Version: 0x00000000
-User:     0   Group:     0   Size: 134217728
-File ACL: 0    Directory ACL: 0
-Links: 1   Blockcount: 262144
-Fragment:  Address: 0    Number: 0    Size: 0
-ctime: 0x48ee6d44 -- Thu Oct  9 22:44:52 2008
-atime: 0x00000000 -- Thu Jan  1 01:00:00 1970
-mtime: 0x48ee6d44 -- Thu Oct  9 22:44:52 2008
-Size of extra inode fields: 0
+What is happening is that when ext4 starts writing, it needs memory for the
+page cache.  To get that space, the VM system is trying to get space, so it
+calls among other things, shrink_icache_memory, to shrink the inode cache,
+which then calls clear_inode, which ended up calling ext3_dquot_drop, through
+the quota code.  Ext3_dquot_drop() calls journal_start(), which then trips over
+a sanity check.   In any case, given what you've told me, I'm even more
+convinced this is an ext3 and/or a quota system bug, which is getting triggered
+to severe memory pressure caused by ext4 and the fact that you have a very tiny
+amount of memory.
 
 
 -- 
