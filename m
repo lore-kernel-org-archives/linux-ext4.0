@@ -1,149 +1,241 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: Ext4 tree backports for 2.6.27.10 and 2.6.28
-Date: Mon, 19 Jan 2009 17:03:00 +0530
-Message-ID: <20090119113300.GC9482@skywalker>
+Date: Mon, 19 Jan 2009 17:03:55 +0530
+Message-ID: <20090119113355.GD9482@skywalker>
 References: <E1LOG9D-0006h4-7R@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	stable@kernel.org
+Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1759546AbZASLdX@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e28smtp07.in.ibm.com ([59.145.155.7]:59727 "EHLO
+	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755777AbZASLeF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 19 Jan 2009 06:34:05 -0500
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id n0JBY0H8032218
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 17:04:00 +0530
+Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n0JBW44l3244042
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 17:02:04 +0530
+Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id n0JBY0b0004931
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 22:34:00 +1100
 Content-Disposition: inline
 In-Reply-To: <E1LOG9D-0006h4-7R@closure.thunk.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 17, 2009 at 01:43:55PM -0500, Theodore Ts'o wrote:
-> 
-> I've created a couple of ext4 backport branches which have been uploaded
-> to the ext4 git tree:
-> 
->    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git 
->    http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git
-> 
-> The master branch contains the latest ext4 patch queue, against Linus's
-> tip; currently, this is versus 2.6.29-rc2.  The 'for_linus' tag is
-> located on this branch, and currently contains a number of urgent fixes
-> that I plan to be pushing to Linus after he gets back from
-> linux.conf.au.  They are mostly fixes that prevent OOPS or cpu lockups
-> when ext4 mounts an intentionally corrupted filesystem.
-> 
-> The ext4-stable branch is based off of 2.6.28, and contains all of the
-> patches which were pushed to linus during the 2.6.29-rc1 merge window,
-> plus the fixes listed above in the 'master' branch.  It is designed for
-> people who want the very latest in the ext4 tree versus a stable kernel.
-> 
-> The for-stable branch is currently based off of 2.6.28, and contains a
-> candidate set of patches to be included in the 2.6.28.y stable tree.
-> Ext4 developers --- I would appreciate it if you could review the
-> patches on the ext4-stable tree, and see if I missed any patches which
-> in your opinion should be pushed to the 2.6.28.y tree.  Furthermore, if
-> some folks could test the for-stable branch and let me know whether or
-> not you found it stable, I would appreciate it.  Some of the patches
-> were relatively painful to backport, given the desire to remove
-> "non-critical" patches, so I'm not 100% certain I got the backports
-> completely right.  Please test!
-> 
-> The for-stable-2.6.27 is currently based off of 2.6.27.11, and it
-> contains a candidate set of patches to be incuded in the 2.6.27.y tree.
-> It was even more difficult to backport these patches to 2.6.27.y, and so
-> I would **really** appreciate if some folks could review and test this
-> branch.  In addition, a number of changes (in particular some of
-> Aneesh's resize race condition patches) were painful enough that I
-> decided to abort and not try to do the backport.  It was late, and I was
-> getting tired....  If someone would like to try to backport some of
-> these missing patches, I would appreciate it; Aneesh, you might have
-> better luck since they were originally your patches, and they were
-> complicated enough that I was worried that there might have been
-> prerequisites that I had missed so they would function correctly.
-> 
-> The patch backports can be summarized in this table below.  It contains
-> the original mainline commit ID, the commit ID in the 2.6.28 for-stable
-> branch, and the commit ID in the for-stable-2.6.27 branch.  If you see
-> "-----" in the column for the 2.6.27-stable column, those were patches
-> which I did not backport due to lack of valor/courage at 11pm at night.
-> 
->       	    		     	     	- Ted
-> 
-> mainline 2.6.28  2.6.27
->     commit-description
-> -------------------------------------------------------------------------
-> f99b2589 485f02f 11599d0
->     ext4: Add support for non-native signed/unsigned htree hash algorithms
-> 
-> 2a21e37e 7426272 8443aef
->     ext4: tone down ext4_da_writepages warnings
-> 
-> 791b7f08 2efd58c c7eef47
->     ext4: Fix the delalloc writepages to allocate blocks at the right offset.
-> 
-> 565a9617 ce99b0d b2a193d
->     ext4: avoid ext4_error when mounting a fs with a single bg
-> 
-> ff7ef329 3a04ef3 626e5b9
->     ext4: Widen type of ext4_sb_info.s_mb_maxs[]
-> 
-> fd98496f f97e641 dc270b3
->     jbd2: Add barrier not supported test to journal_wait_on_commit_record
-> 
-> 032115fc b9475aa c1944c2
->     ext4: Don't overwrite allocation_context ac_status
-> 
-> e21675d4 c31a2b2 -----
->     ext4: Add blocks added during resize to bitmap
 
-Will send the patch as a reply to this mail to linux-ext4 
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Add blocks added during resize to bitmap
 
-> 
-> 920313a7 2a4f6ca -----
->     ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
+With this change new blocks added during resize
+are marked as free in the block bitmap and the
+group is flagged with EXT4_GROUP_INFO_NEED_INIT_BIT
+flag. This make sure when mballoc tries to allocate
+blocks from the new group we would reload the
+buddy information using the bitmap present in the disk.
 
-Will send the patch as a reply to this mail to linux-ext4 
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>                                                            
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu> 
 
-> 
-> c3a326a6 66364e6 24a5c92
->     ext4: cleanup mballoc header files
-> 
-> 7a2fcbf7 39a0b8b -----
->     ext4: don't use blocks freed but not yet committed in buddy cache init
 
-This would need the patch "use rb-tree for free blocks tracking".
-Will send the patch as a reply to this mail to linux-ext4 
+---
+ fs/ext4/balloc.c |  126 ++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ext4.h   |    6 ++-
+ fs/ext4/resize.c |   11 +----
+ 3 files changed, 132 insertions(+), 11 deletions(-)
 
->     
-> e8134b27 83a082c c712c85
->     ext4: Fix race between read_block_bitmap() and mark_diskspace_used()
-> 
-> 39341867 8e53df4 4d3302c
->     ext4: Fix the race between read_inode_bitmap() and ext4_new_inode()
-> 
-> e97fcd95 20d6100 7e081e8
->     jbd2: Add BH_JBDPrivateStart
-> 
-> 2ccb5fb9 92f1c0e -----
->     ext4: Use new buffer_head flag to check uninit group bitmaps initialization
-
-Will send the patch as a reply to this mail to linux-ext4 
-
-> 
-> 648f5879 51eef9f 469a48a
->     ext4: mark the blocks/inode bitmap beyond end of group as used
-> 
-> 8556e8f3 5a2c7ad 686beef
->     ext4: Don't allow new groups to be added during block allocation
-> 
-> 29eaf024 39d994e 0c56383
->     ext4: Init the complete page while building buddy cache
-> 
-> 0087d9fb 808dfdb -----
->     ext4: Fix s_dirty_blocks_counter if block allocation failed with nodelalloc
-
-2.6.27 doesn't have  ext4: Add percpu dirty block accounting. So we
-won't need this patch.
-
-> 
-> 4ec11028 cf7da20 -----
->     ext4: Add sanity checks for the superblock before mounting the filesystem
-
--aneesh
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index e9fa960..1b375bb 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -20,6 +20,7 @@
+ #include "ext4.h"
+ #include "ext4_jbd2.h"
+ #include "group.h"
++#include "mballoc.h"
+ 
+ /*
+  * balloc.c contains the blocks allocation and deallocation routines
+@@ -837,6 +838,131 @@ error_return:
+ }
+ 
+ /**
++ * ext4_add_groupblocks() -- Add given blocks to an existing group
++ * @handle:			handle to this transaction
++ * @sb:				super block
++ * @block:			start physcial block to add to the block group
++ * @count:			number of blocks to free
++ *
++ * This marks the blocks as free in the bitmap. We ask the
++ * mballoc to reload the buddy after this by setting group
++ * EXT4_GROUP_INFO_NEED_INIT_BIT flag
++ */
++void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
++			 ext4_fsblk_t block, unsigned long count)
++{
++	struct buffer_head *bitmap_bh = NULL;
++	struct buffer_head *gd_bh;
++	ext4_group_t block_group;
++	ext4_grpblk_t bit;
++	unsigned long i;
++	struct ext4_group_desc * desc;
++	struct ext4_super_block * es;
++	struct ext4_sb_info *sbi;
++	int err = 0, ret;
++	ext4_grpblk_t blocks_freed;
++	struct ext4_group_info *grp;
++
++	sbi = EXT4_SB(sb);
++	es = sbi->s_es;
++	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
++
++	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
++	/*
++	 * Check to see if we are freeing blocks across a group
++	 * boundary.
++	 */
++	if (bit + count > EXT4_BLOCKS_PER_GROUP(sb)) {
++		goto error_return;
++	}
++	bitmap_bh = ext4_read_block_bitmap(sb, block_group);
++	if (!bitmap_bh)
++		goto error_return;
++	desc = ext4_get_group_desc (sb, block_group, &gd_bh);
++	if (!desc)
++		goto error_return;
++
++	if (in_range(ext4_block_bitmap(sb, desc), block, count) ||
++	    in_range(ext4_inode_bitmap(sb, desc), block, count) ||
++	    in_range(block, ext4_inode_table(sb, desc), sbi->s_itb_per_group) ||
++	    in_range(block + count - 1, ext4_inode_table(sb, desc),
++		     sbi->s_itb_per_group)) {
++		ext4_error(sb, __func__,
++			   "Adding blocks in system zones - "
++			    "Block = %llu, count = %lu",
++			    block, count);
++		goto error_return;
++	}
++
++	/*
++	 * We are about to add blocks to the bitmap,
++	 * so we need undo access.
++	 */
++	BUFFER_TRACE(bitmap_bh, "getting undo access");
++	err = ext4_journal_get_undo_access(handle, bitmap_bh);
++	if (err)
++		goto error_return;
++
++	/*
++	 * We are about to modify some metadata.  Call the journal APIs
++	 * to unshare ->b_data if a currently-committing transaction is
++	 * using it
++	 */
++	BUFFER_TRACE(gd_bh, "get_write_access");
++	err = ext4_journal_get_write_access(handle, gd_bh);
++	if (err)
++		goto error_return;
++
++	for (i = 0, blocks_freed = 0; i < count; i++) {
++		BUFFER_TRACE(bitmap_bh, "clear bit");
++		if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
++						bit + i, bitmap_bh->b_data)) {
++			ext4_error(sb, __func__,
++				   "bit already cleared for block %llu",
++				   (ext4_fsblk_t)(block + i));
++			BUFFER_TRACE(bitmap_bh, "bit already cleared");
++		} else {
++			blocks_freed++;
++		}
++	}
++	spin_lock(sb_bgl_lock(sbi, block_group));
++	le16_add_cpu(&desc->bg_free_blocks_count, blocks_freed);
++	desc->bg_checksum = ext4_group_desc_csum(sbi, block_group, desc);
++	spin_unlock(sb_bgl_lock(sbi, block_group));
++	percpu_counter_add(&sbi->s_freeblocks_counter, blocks_freed);
++
++	if (sbi->s_log_groups_per_flex) {
++		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
++		spin_lock(sb_bgl_lock(sbi, flex_group));
++		sbi->s_flex_groups[flex_group].free_blocks += blocks_freed;
++		spin_unlock(sb_bgl_lock(sbi, flex_group));
++	}
++
++	/* We dirtied the bitmap block */
++	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
++	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
++
++	/* And the group descriptor block */
++	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
++	ret = ext4_journal_dirty_metadata(handle, gd_bh);
++	if (!err)
++		err = ret;
++	sb->s_dirt = 1;
++	/*
++	 * request to reload the buddy with the
++	 * new bitmap information
++	 */
++	grp = ext4_get_group_info(sb, block_group);
++	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
++	ext4_mb_update_group_info(grp, blocks_freed);
++
++error_return:
++	brelse(bitmap_bh);
++	ext4_std_error(sb, err);
++	return;
++}
++
++/**
+  * ext4_free_blocks() -- Free given blocks and update quota
+  * @handle:		handle for this transaction
+  * @inode:		inode
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b0483ce..98de963 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -992,8 +992,10 @@ extern ext4_fsblk_t ext4_has_free_blocks(struct ext4_sb_info *sbi,
+ extern void ext4_free_blocks (handle_t *handle, struct inode *inode,
+ 			ext4_fsblk_t block, unsigned long count, int metadata);
+ extern void ext4_free_blocks_sb (handle_t *handle, struct super_block *sb,
+-				 ext4_fsblk_t block, unsigned long count,
+-				unsigned long *pdquot_freed_blocks);
++		                               ext4_fsblk_t block, unsigned long count,
++		                               unsigned long *pdquot_freed_blocks);
++extern void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
++				ext4_fsblk_t block, unsigned long count);
+ extern ext4_fsblk_t ext4_count_free_blocks (struct super_block *);
+ extern void ext4_check_blocks_bitmap (struct super_block *);
+ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index 5726c5e..d7e9761 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -974,9 +974,7 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	struct buffer_head * bh;
+ 	handle_t *handle;
+ 	int err;
+-	unsigned long freed_blocks;
+ 	ext4_group_t group;
+-	struct ext4_group_info *grp;
+ 
+ 	/* We don't need to worry about locking wrt other resizers just
+ 	 * yet: we're going to revalidate es->s_blocks_count after
+@@ -1075,7 +1073,8 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 	unlock_super(sb);
+ 	ext4_debug("freeing blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+-	ext4_free_blocks_sb(handle, sb, o_blocks_count, add, &freed_blocks);
++	/* We add the blocks to the bitmap and set the group need init bit */
++	ext4_add_groupblocks(handle, sb, o_blocks_count, add);
+ 	ext4_debug("freed blocks %llu through %llu\n", o_blocks_count,
+ 		   o_blocks_count + add);
+ 	if ((err = ext4_journal_stop(handle)))
+@@ -1111,12 +1110,6 @@ int ext4_group_extend(struct super_block *sb, struct ext4_super_block *es,
+ 			ClearPageUptodate(page);
+ 			page_cache_release(page);
+ 		}
+-
+-		/* Get the info on the last group */
+-		grp = ext4_get_group_info(sb, group);
