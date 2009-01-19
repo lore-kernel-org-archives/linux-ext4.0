@@ -1,27 +1,27 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH]ext4: Use new buffer_head flag to check uninit group
-	bitmaps initialization
-Date: Mon, 19 Jan 2009 17:08:09 +0530
-Message-ID: <20090119113809.GH9482@skywalker>
+Subject: [PATCH] ext4: don't use blocks freed but not yet committed in
+	buddy cache init
+Date: Mon, 19 Jan 2009 17:06:40 +0530
+Message-ID: <20090119113640.GG9482@skywalker>
 References: <E1LOG9D-0006h4-7R@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ausmtp04.au.ibm.com ([202.81.18.152]:64506 "EHLO
+Received: from ausmtp04.au.ibm.com ([202.81.18.152]:39081 "EHLO
 	ausmtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751841AbZATGDF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jan 2009 01:03:05 -0500
+	with ESMTP id S1754407AbZATHz0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 20 Jan 2009 02:55:26 -0500
 Received: from sd0109e.au.ibm.com (d23rh905.au.ibm.com [202.81.18.225])
-	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id n0JBuvFU040268
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 22:57:47 +1100
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n0JBcM7O205312
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 22:38:22 +1100
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n0JBcL1q001318
-	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 22:38:22 +1100
+	by ausmtp04.au.ibm.com (8.13.8/8.13.8) with ESMTP id n0JBtkkP216632
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 22:57:26 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by sd0109e.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n0JBbBN8025012
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 22:37:11 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n0JBbA7b016416
+	for <linux-ext4@vger.kernel.org>; Mon, 19 Jan 2009 22:37:10 +1100
 Content-Disposition: inline
 In-Reply-To: <E1LOG9D-0006h4-7R@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
@@ -29,201 +29,184 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH]ext4: Use new buffer_head flag to check uninit group bitmaps initialization
+Subject: [PATCH] ext4: don't use blocks freed but not yet committed in buddy cache init
 
-For uninit block group, the ondisk bitmap is not initialized. That implies
-we cannot depend on the uptodate flag on the bitmap buffer_head to
-find bitmap validity. Use a new buffer_head flag which would be set after
-we properly initialize the bitmap. This also prevent the initializing
-the uninit group bitmap initialization every time we do a
-ext4_read_block_bitmap.
+When we generate buddy cache (especially during resize) we need to
+make sure we don't use the blocks freed but not yet comitted.  This
+makes sure we have the right value of free blocks count in the group
+info and also in the bitmap.  This also ensures the ordered mode
+consistency
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>   
 
 ---
- fs/ext4/balloc.c  |   25 ++++++++++++++++++++++++-
- fs/ext4/ext4.h    |   18 ++++++++++++++++++
- fs/ext4/ialloc.c  |   24 +++++++++++++++++++++++-
- fs/ext4/mballoc.c |   24 +++++++++++++++++++++++-
- 4 files changed, 88 insertions(+), 3 deletions(-)
+ fs/ext4/mballoc.c |   82 ++++++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 60 insertions(+), 22 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 4235817..0cedf3b 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -319,18 +319,41 @@ ext4_read_block_bitmap(struct super_block *sb, ext4_group_t block_group)
- 			    block_group, bitmap_blk);
- 		return NULL;
- 	}
--	if (bh_uptodate_or_lock(bh))
-+
-+	if (bitmap_uptodate(bh))
- 		return bh;
- 
-+  	lock_buffer(bh);
-+ 	if (bitmap_uptodate(bh)) {
-+ 		unlock_buffer(bh);
-+ 		return bh;
-+ 	}
- 	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 		ext4_init_block_bitmap(sb, bh, block_group, desc);
-+		set_bitmap_uptodate(bh);
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
- 		spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 		return bh;
- 	}
- 	spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
-+	if (buffer_uptodate(bh)) {
-+ 		/*
-+ 		 * if not uninit if bh is uptodate,
-+ 		 * bitmap is also uptodate
-+ 		 */
-+ 		set_bitmap_uptodate(bh);
-+ 		unlock_buffer(bh);
-+ 		return bh;
-+ 	}
-+ 	/*
-+ 	 * submit the buffer_head for read. We can
-+ 	 * safely mark the bitmap as uptodate now.
-+ 	 * We do it here so the bitmap uptodate bit
-+ 	 * get set with buffer lock held.
-+ 	 */
-+ 	set_bitmap_uptodate(bh);
- 	if (bh_submit_read(bh) < 0) {
- 		put_bh(bh);
- 		ext4_error(sb, __func__,
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index e605295..1bbab6a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -19,6 +19,7 @@
- #include <linux/types.h>
- #include <linux/blkdev.h>
- #include <linux/magic.h>
-+#include <linux/jbd2.h>
- #include "ext4_i.h"
- 
- /*
-@@ -1250,6 +1251,23 @@ extern int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode,
- 			sector_t block, unsigned long max_blocks,
- 			struct buffer_head *bh, int create,
- 			int extend_disksize, int flag);
-+/*
-+ * Add new method to test wether block and inode bitmaps are properly
-+ * initialized. With uninit_bg reading the block from disk is not enough
-+ * to mark the bitmap uptodate. We need to also zero-out the bitmap
-+ */
-+#define BH_BITMAP_UPTODATE BH_JBDPrivateStart
-+ 
-+static inline int bitmap_uptodate(struct buffer_head *bh)
-+{
-+	return (buffer_uptodate(bh) &&
-+ 			test_bit(BH_BITMAP_UPTODATE, &(bh)->b_state));
-+}
-+static inline void set_bitmap_uptodate(struct buffer_head *bh)
-+{
-+	set_bit(BH_BITMAP_UPTODATE, &(bh)->b_state);
-+}
-+ 
- #endif	/* __KERNEL__ */
- 
- #endif	/* _EXT4_H */
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index c61168d..9b9705c 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -115,18 +115,40 @@ ext4_read_inode_bitmap(struct super_block *sb, ext4_group_t block_group)
- 			    block_group, bitmap_blk);
- 		return NULL;
- 	}
--	if (bh_uptodate_or_lock(bh))
-+	if (bitmap_uptodate(bh))
- 		return bh;
- 
-+  	lock_buffer(bh);
-+ 	if (bitmap_uptodate(bh)) {
-+ 		unlock_buffer(bh);
-+ 		return bh;
-+ 	}
- 	spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 	if (desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
- 		ext4_init_inode_bitmap(sb, bh, block_group, desc);
-+		set_bitmap_uptodate(bh);
- 		set_buffer_uptodate(bh);
- 		unlock_buffer(bh);
- 		spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
- 		return bh;
- 	}
- 	spin_unlock(sb_bgl_lock(EXT4_SB(sb), block_group));
-+ 	if (buffer_uptodate(bh)) {
-+ 		/*
-+ 		 * if not uninit if bh is uptodate,
-+ 		 * bitmap is also uptodate
-+ 		 */
-+ 		set_bitmap_uptodate(bh);
-+ 		unlock_buffer(bh);
-+ 		return bh;
-+ 	}
-+ 	/*
-+ 	 * submit the buffer_head for read. We can
-+ 	 * safely mark the bitmap as uptodate now.
-+ 	 * We do it here so the bitmap uptodate bit
-+ 	 * get set with buffer lock held.
-+ 	 */
-+ 	set_bitmap_uptodate(bh);
- 	if (bh_submit_read(bh) < 0) {
- 		put_bh(bh);
- 		ext4_error(sb, __func__,
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index ea13c5e..417e254 100644
+index 93e4c09..ea13c5e 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -796,20 +796,42 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
- 		if (bh[i] == NULL)
- 			goto out;
+@@ -335,6 +335,8 @@ static struct kmem_cache *ext4_ac_cachep;
+ static struct kmem_cache *ext4_free_ext_cachep;
+ static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+ 					ext4_group_t group);
++static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
++						ext4_group_t group);
+ static int ext4_mb_init_per_dev_proc(struct super_block *sb);
+ static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
+ static void ext4_mb_free_committed_blocks(struct super_block *);
+@@ -859,7 +861,9 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
+ 			/*
+ 			 * incore got set to the group block bitmap below
+ 			 */
++			ext4_lock_group(sb, group);
+ 			ext4_mb_generate_buddy(sb, data, incore, group);
++			ext4_unlock_group(sb, group);
+ 			incore = NULL;
+ 		} else {
+ 			/* this is block of bitmap */
+@@ -873,6 +877,7 @@ static int ext4_mb_init_cache(struct page *page, char *incore)
  
--		if (bh_uptodate_or_lock(bh[i]))
-+		if (bitmap_uptodate(bh[i]))
- 			continue;
+ 			/* mark all preallocated blks used in in-core bitmap */
+ 			ext4_mb_generate_from_pa(sb, data, group);
++			ext4_mb_generate_from_freelist(sb, data, group);
+ 			ext4_unlock_group(sb, group);
  
-+  		lock_buffer(bh[i]);
-+ 		if (bitmap_uptodate(bh[i])) {
-+ 			unlock_buffer(bh[i]);
-+ 			continue;
-+		}
- 		spin_lock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
- 		if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
- 			ext4_init_block_bitmap(sb, bh[i],
- 						first_group + i, desc);
-+			set_bitmap_uptodate(bh[i]);
- 			set_buffer_uptodate(bh[i]);
- 			unlock_buffer(bh[i]);
- 			spin_unlock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
- 			continue;
- 		}
- 		spin_unlock(sb_bgl_lock(EXT4_SB(sb), first_group + i));
-+ 		if (buffer_uptodate(bh[i])) {
-+ 			/*
-+ 			 * if not uninit if bh is uptodate,
-+ 			 * bitmap is also uptodate
-+ 			 */
-+ 			set_bitmap_uptodate(bh[i]);
-+ 			unlock_buffer(bh[i]);
-+ 			continue;
-+ 		}
- 		get_bh(bh[i]);
-+ 		/*
-+ 		 * submit the buffer_head for read. We can
-+ 		 * safely mark the bitmap as uptodate now.
-+ 		 * We do it here so the bitmap uptodate bit
-+ 		 * get set with buffer lock held.
-+ 		 */
-+ 		set_bitmap_uptodate(bh[i]);
- 		bh[i]->b_end_io = end_buffer_read_sync;
- 		submit_bh(READ, bh[i]);
- 		mb_debug("read bitmap for group %lu\n", first_group + i);
+ 			/* set incore so that the buddy information can be
+@@ -3583,6 +3588,32 @@ ext4_mb_use_preallocated(struct ext4_allocation_context *ac)
+ }
+ 
+ /*
++ * the function goes through all block freed in the group
++ * but not yet committed and marks them used in in-core bitmap.
++ * buddy must be generated from this bitmap
++ * Need to be called with ext4 group lock (ext4_lock_group)
++ */
++static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
++						ext4_group_t group)
++{
++	struct rb_node *n;
++	struct ext4_group_info *grp;
++	struct ext4_free_data *entry;
++
++	grp = ext4_get_group_info(sb, group);
++	n = rb_first(&(grp->bb_free_root));
++
++	while (n) {
++		entry = rb_entry(n, struct ext4_free_data, node);
++		mb_set_bits(sb_bgl_lock(EXT4_SB(sb), group),
++				bitmap, entry->start_blk,
++				entry->count);
++		n = rb_next(n);
++	}
++	return;
++}
++
++/*
+  * the function goes through all preallocation in this group and marks them
+  * used in in-core bitmap. buddy must be generated from this bitmap
+  * Need to be called with ext4 group lock (ext4_lock_group)
+@@ -4720,27 +4751,22 @@ static int can_merge(struct ext4_free_data *entry1,
+ 
+ static noinline_for_stack int
+ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+-			  ext4_group_t group, ext4_grpblk_t block, int count)
++			struct ext4_free_data *new_entry)
+ {
++	ext4_grpblk_t block;
++	struct ext4_free_data *entry;
+ 	struct ext4_group_info *db = e4b->bd_info;
+ 	struct super_block *sb = e4b->bd_sb;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_free_data *entry, *new_entry;
+ 	struct rb_node **n = &db->bb_free_root.rb_node, *node;
+ 	struct rb_node *parent = NULL, *new_node;
+ 
+-
+ 	BUG_ON(e4b->bd_bitmap_page == NULL);
+ 	BUG_ON(e4b->bd_buddy_page == NULL);
+ 
+-	new_entry  = kmem_cache_alloc(ext4_free_ext_cachep, GFP_NOFS);
+-	new_entry->start_blk = block;
+-	new_entry->group  = group;
+-	new_entry->count = count;
+-	new_entry->t_tid = handle->h_transaction->t_tid;
+ 	new_node = &new_entry->node;
++	block = new_entry->start_blk;
+ 
+-	ext4_lock_group(sb, group);
+ 	if (!*n) {
+ 		/* first free block exent. We need to
+ 		   protect buddy cache from being freed,
+@@ -4799,7 +4825,6 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+ 	spin_lock(&sbi->s_md_lock);
+ 	list_add(&new_entry->list, &sbi->s_active_transaction);
+ 	spin_unlock(&sbi->s_md_lock);
+-	ext4_unlock_group(sb, group);
+ 	return 0;
+ }
+ 
+@@ -4906,15 +4931,6 @@ do_more:
+ 			BUG_ON(!mb_test_bit(bit + i, bitmap_bh->b_data));
+ 	}
+ #endif
+-	mb_clear_bits(sb_bgl_lock(sbi, block_group), bitmap_bh->b_data,
+-			bit, count);
+-
+-	/* We dirtied the bitmap block */
+-	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
+-	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
+-	if (err)
+-		goto error_return;
+-
+ 	if (ac) {
+ 		ac->ac_b_ex.fe_group = block_group;
+ 		ac->ac_b_ex.fe_start = bit;
+@@ -4926,11 +4942,29 @@ do_more:
+ 	if (err)
+ 		goto error_return;
+ 	if (metadata) {
+-		/* blocks being freed are metadata. these blocks shouldn't
+-		 * be used until this transaction is committed */
+-		ext4_mb_free_metadata(handle, &e4b, block_group, bit, count);
++		struct ext4_free_data *new_entry;
++		/*
++		 * blocks being freed are metadata. these blocks shouldn't
++		 * be used until this transaction is committed
++		 */
++		new_entry  = kmem_cache_alloc(ext4_free_ext_cachep, GFP_NOFS);
++		new_entry->start_blk = bit;
++		new_entry->group  = block_group;
++		new_entry->count = count;
++		new_entry->t_tid = handle->h_transaction->t_tid;
++		ext4_lock_group(sb, block_group);
++		mb_clear_bits(sb_bgl_lock(sbi, block_group), bitmap_bh->b_data,
++				bit, count);
++		ext4_mb_free_metadata(handle, &e4b, new_entry);
++		ext4_unlock_group(sb, block_group);
+ 	} else {
+ 		ext4_lock_group(sb, block_group);
++		/* need to update group_info->bb_free and bitmap
++		 * with group lock held. generate_buddy look at
++		 * them with group lock_held
++		 */
++		mb_clear_bits(sb_bgl_lock(sbi, block_group), bitmap_bh->b_data,
++				bit, count);
+ 		mb_free_blocks(inode, &e4b, bit, count);
+ 		ext4_mb_return_to_preallocation(inode, &e4b, block, count);
+ 		ext4_unlock_group(sb, block_group);
+@@ -4953,6 +4987,10 @@ do_more:
+ 
+ 	*freed += count;
+ 
++	/* We dirtied the bitmap block */
++	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
++	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
++
+ 	/* And the group descriptor block */
+ 	BUFFER_TRACE(gd_bh, "dirtied group descriptor block");
+ 	ret = ext4_journal_dirty_metadata(handle, gd_bh);
 -- 
-tg: (56a5653..) ext4-Use-new-buffer_head-flag-to-check-uninit-group.patch (depends on: aneesh-7-dont-use-blocks-freed-but-not-yet-committed-in-buddy-cache-init)
+tg: (7830455..) aneesh-7-dont-use-blocks-freed-but-not-yet-committed-in-buddy-cache-init (depends on: use-rb-tree-for-free-blocks-tracking)
