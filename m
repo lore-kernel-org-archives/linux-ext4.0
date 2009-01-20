@@ -1,121 +1,44 @@
-From: Mingming Cao <cmm@us.ibm.com>
-Subject: Re: [PATCH 09/11] ext3: Remove unnecessary quota functions
-Date: Tue, 20 Jan 2009 13:41:34 -0800
-Message-ID: <1232487694.6464.13.camel@mingming-laptop>
-References: <yes> <1232129299-22018-1-git-send-email-jack@suse.cz>
-	 <1232129299-22018-2-git-send-email-jack@suse.cz>
-	 <1232129299-22018-3-git-send-email-jack@suse.cz>
-	 <1232129299-22018-4-git-send-email-jack@suse.cz>
-	 <1232129299-22018-5-git-send-email-jack@suse.cz>
-	 <1232129299-22018-6-git-send-email-jack@suse.cz>
-	 <1232129299-22018-7-git-send-email-jack@suse.cz>
-	 <1232129299-22018-8-git-send-email-jack@suse.cz>
-	 <1232129299-22018-9-git-send-email-jack@suse.cz>
-	 <1232129299-22018-10-git-send-email-jack@suse.cz>
+From: Joel Becker <Joel.Becker@oracle.com>
+Subject: Re: [RFC] [PATCH] vfs: Call filesystem callback when backing
+	device caches should be flushed
+Date: Tue, 20 Jan 2009 15:16:48 -0800
+Message-ID: <20090120231647.GC2392@mail.oracle.com>
+References: <20090120160527.GA17067@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@MIT.EDU>
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1232129299-22018-10-git-send-email-jack@suse.cz>
+Content-Disposition: inline
+In-Reply-To: <20090120160527.GA17067@duck.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Jan 20, 2009 at 05:05:27PM +0100, Jan Kara wrote:
+>   we noted in our testing that ext2 (and it seems some other filesystems as
+> well) don't flush disk's write caches on cases like fsync() or changing
+> DIRSYNC directory. This is my attempt to solve the problem in a generic way
+> by calling a filesystem callback from VFS at appropriate place as Andrew
+> suggested. For ext2 what I did is enough (it just then fills in
+> block_flush_device() as .flush_device callback) and I think it could be
+> fine for other filesystems as well.
 
-=E5=9C=A8 2009-01-16=E4=BA=94=E7=9A=84 19:08 +0100=EF=BC=8CJan Kara=E5=86=
-=99=E9=81=93=EF=BC=9A
-> ext3_dquot_initialize() and ext3_dquot_drop() is no longer
-> needed because of modified quota locking.
->=20
-> Signed-off-by: Jan Kara <jack@suse.cz>
+	The only question I have is why this would be optional.  It
+would seem that this would be the preferred default behavior for all
+block filesystems.  We have the backing_dev_info and a way to override
+the default if a filesystem needs something special.
 
-Reviewed_by: Mingming Cao <cmm@us.ibm.com>
-> ---
->  fs/ext3/super.c |   44 ++------------------------------------------
->  1 files changed, 2 insertions(+), 42 deletions(-)
->=20
-> diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-> index b70d90e..ec410a9 100644
-> --- a/fs/ext3/super.c
-> +++ b/fs/ext3/super.c
-> @@ -707,8 +707,6 @@ static int bdev_try_to_free_page(struct super_blo=
-ck *sb, struct page *page,
->  #define QTYPE2NAME(t) ((t)=3D=3DUSRQUOTA?"user":"group")
->  #define QTYPE2MOPT(on, t) ((t)=3D=3DUSRQUOTA?((on)##USRJQUOTA):((on)=
-##GRPJQUOTA))
->=20
-> -static int ext3_dquot_initialize(struct inode *inode, int type);
-> -static int ext3_dquot_drop(struct inode *inode);
->  static int ext3_write_dquot(struct dquot *dquot);
->  static int ext3_acquire_dquot(struct dquot *dquot);
->  static int ext3_release_dquot(struct dquot *dquot);
-> @@ -723,8 +721,8 @@ static ssize_t ext3_quota_write(struct super_bloc=
-k *sb, int type,
->  				const char *data, size_t len, loff_t off);
->=20
->  static struct dquot_operations ext3_quota_operations =3D {
-> -	.initialize	=3D ext3_dquot_initialize,
-> -	.drop		=3D ext3_dquot_drop,
-> +	.initialize	=3D dquot_initialize,
-> +	.drop		=3D dquot_drop,
->  	.alloc_space	=3D dquot_alloc_space,
->  	.alloc_inode	=3D dquot_alloc_inode,
->  	.free_space	=3D dquot_free_space,
-> @@ -2713,44 +2711,6 @@ static inline struct inode *dquot_to_inode(str=
-uct dquot *dquot)
->  	return sb_dqopt(dquot->dq_sb)->files[dquot->dq_type];
->  }
->=20
-> -static int ext3_dquot_initialize(struct inode *inode, int type)
-> -{
-> -	handle_t *handle;
-> -	int ret, err;
-> -
-> -	/* We may create quota structure so we need to reserve enough block=
-s */
-> -	handle =3D ext3_journal_start(inode, 2*EXT3_QUOTA_INIT_BLOCKS(inode=
-->i_sb));
-> -	if (IS_ERR(handle))
-> -		return PTR_ERR(handle);
-> -	ret =3D dquot_initialize(inode, type);
-> -	err =3D ext3_journal_stop(handle);
-> -	if (!ret)
-> -		ret =3D err;
-> -	return ret;
-> -}
-> -
-> -static int ext3_dquot_drop(struct inode *inode)
-> -{
-> -	handle_t *handle;
-> -	int ret, err;
-> -
-> -	/* We may delete quota structure so we need to reserve enough block=
-s */
-> -	handle =3D ext3_journal_start(inode, 2*EXT3_QUOTA_DEL_BLOCKS(inode-=
->i_sb));
-> -	if (IS_ERR(handle)) {
-> -		/*
-> -		 * We call dquot_drop() anyway to at least release references
-> -		 * to quota structures so that umount does not hang.
-> -		 */
-> -		dquot_drop(inode);
-> -		return PTR_ERR(handle);
-> -	}
-> -	ret =3D dquot_drop(inode);
-> -	err =3D ext3_journal_stop(handle);
-> -	if (!ret)
-> -		ret =3D err;
-> -	return ret;
-> -}
-> -
->  static int ext3_write_dquot(struct dquot *dquot)
->  {
->  	int ret, err;
+Joel
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+
+"A narcissist is someone better looking than you are."  
+         - Gore Vidal
+
+Joel Becker
+Principal Software Developer
+Oracle
+E-mail: joel.becker@oracle.com
+Phone: (650) 506-8127
