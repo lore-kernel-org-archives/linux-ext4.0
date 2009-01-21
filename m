@@ -1,46 +1,90 @@
-From: David Flater <dflater@nist.gov>
-Subject: fs corruption with 2.6.28-ext4-4
-Date: Wed, 21 Jan 2009 15:36:03 -0500
-Message-ID: <49778733.4030307@nist.gov>
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: [RFC] [PATCH] vfs: Call filesystem callback when backing device caches should be flushed
+Date: Wed, 21 Jan 2009 21:41:32 +0000
+Message-ID: <20090121214132.GD16133@shareable.org>
+References: <20090120160527.GA17067@duck.suse.cz> <20090120231647.GC2392@mail.oracle.com> <20090121001630.GA32645@shareable.org> <20090121150557.GC3186@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rimp2.nist.gov ([129.6.16.227]:53197 "EHLO smtp.nist.gov"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752273AbZAUUgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Jan 2009 15:36:09 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@MIT.EDU>
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <20090121150557.GC3186@duck.suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-I am guessing that this doesn't belong in bugzilla since it's not a 
-mainline kernel I'm talking about.  Sorry if this is still the wrong venue.
+Jan Kara wrote:
+>   Well, that would be nice but you cannot return from fsync() until you've
+> done the flush. So you have to be careful not to wait for too long. JBD
+> actually plays these tricks with sync transaction batching and it's not
+> trivial to get this right. So I'd rather avoid it.
 
-On two different computers, I experienced file system corruption after 
-upgrading the kernel to 2.6.28-ext4-4 (meaning, mainline 2.6.28 kernel 
-with the 2.6.28-ext4-4 patchset from 
-http://www2.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/ applied).
+Didn't extN for some N do/did something similar?
 
-On Computer #1, an ext4 file system would not mount on reboot.  fsck 
-reported that hundreds (all?) of the group descriptors were corrupted.
+> > What about O_SYNC writes though?  A device flush after each one would
+> > be expensive, but that's what equivalence to fsync() implies is
+> > needed.
+>   Yes.
+> 
+> > O_DIRECT writes shouldn't do block_flush_device(), but an app may
+> > still need a way to commit data for integrity.  So fsync() or
+> > fdatasync() called after a series of O_DIRECT writes should call
+> > block_flush_device() _even_ though there's no page-cache dirty data to
+> > commit, and even if there's no inode change to commit.
+>   Hmm, this is an interesting point. You're right that we currently miss
+> the flushes and we probably need some dirty inode flag like needs_flush or
+> so.
 
-On Computer #2, the ext2 file system on an external drive became 
-corrupted with cross linked blocks.  The file system mounted but the 
-kernel soon began reporting problems with it.
+Proposal (both together):
 
-In both cases, the corruption seemed to occur at about the time that I 
-created a large file (> 4 GiB) using the 2.6.28-ext4-4 kernel.  An older 
-computer that I configured with the same kernel and an ext4 file system 
-for testing, before the others were upgraded, still has no problems--but 
-it has a smaller hard drive and no large files.
+  1. per-device-queue flag needs_flush.
 
-I am in the process of reverting to a stable configuration, but please 
-accept this experience report for what it is worth.
+     Set on write queued, clear on flush queued.  When clear, flushes
+     are discarded instead of being queued.  Waiting on the discarded
+     flush waits instead for the last flush which was queued, if it's
+     still in flight.  So the queue will also track that last flush.
 
-Thank you,
+  2. per-inode flag needs_flush.
 
--- 
-David Flater, National Institute of Standards and Technology, U.S.A.
+     Set on write queued from this file (writeback), cleared on flush
+     sent from this file (i.e. the thing fsync/fdatasync/O_SYNC should
+     be calling).  As above, flushes aren't sent from this file when
+     this flag is clear, and waiting on a discarded flush waits
+     instead on the last flush sent for this file, if it's still in
+     flight.  So the file will track that last flush command in
+     addition to needs_flush.
 
+Implement both.  The first doee right thing optimising away
+unnecessary journal/tree-log barriers.  The second further optimises
+individual files.
 
+You *could* have a needs_flush bit per page, to tune it further, in
+the same way that fsync_range() and O_DIRECT invalidations etc. are
+getting better at working with ranges, but that may be pointless
+overengineering (I've no idea).
+
+> > Since you want to avoid issuing two device flushes in a row (they're
+> > not free), and a journalling fs may issue one separately, as Joel says
+> > a filesystem could override this.
+>   Yes, journalling filesystems usually take care themselves.
+> 
+> > But I suspect it would be better to keep the generic call to
+> > block_flush_device() from fsync(), and at the block layer discard
+> > duplicate flushes that have no writes in between.
+
+>   Hmm, probably this won't be too hard to implement. OTOH it won't catch
+> those cases where some other process manages to squeeze in some writes
+> between the two flushes. So I'm not sure if we really want to design things
+> this way unless really necessary.
+
+Let me put it this way.  ext3 is a journalling fs, and it does _not_
+provide integrity with fsync() or fdatasync() in all cases, even with
+barriers and data=ordered turned on.
+
+We should have something which provides flushes generically, with the
+possibility for the fs to override it with a smarter method when it
+knows better.
+
+-- Jamie
