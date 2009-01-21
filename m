@@ -1,74 +1,88 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [RFC] [PATCH] vfs: Call filesystem callback when backing
-	device caches should be flushed
-Date: Wed, 21 Jan 2009 16:05:57 +0100
-Message-ID: <20090121150557.GC3186@duck.suse.cz>
-References: <20090120160527.GA17067@duck.suse.cz> <20090120231647.GC2392@mail.oracle.com> <20090121001630.GA32645@shareable.org>
+From: =?iso-8859-1?Q?J=F6rg?= Sommer <joerg@alea.gnuu.de>
+Subject: Re: ext4 fails on ext2 filesystems
+Date: Wed, 21 Jan 2009 19:45:17 +0100
+Message-ID: <20090121184221.GA2063@alea.gnuu.de>
+References: <20090118013516.GA4876@alea.gnuu.de> <20090118023841.GD25943@mit.edu> <20090118100458.GA22064@alea.gnuu.de> <20090120145100.GD10037@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@MIT.EDU>
-To: Jamie Lokier <jamie@shareable.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="aVD9QWMuhilNxW9f"
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from uucp.gnuu.de ([83.246.114.63]:2016 "EHLO uucp.gnuu.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751404AbZAUSqb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Jan 2009 13:46:31 -0500
 Content-Disposition: inline
-In-Reply-To: <20090121001630.GA32645@shareable.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20090120145100.GD10037@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 21-01-09 00:16:30, Jamie Lokier wrote:
-> Joel Becker wrote:
-> > On Tue, Jan 20, 2009 at 05:05:27PM +0100, Jan Kara wrote:
-> > >   we noted in our testing that ext2 (and it seems some other filesystems as
-> > > well) don't flush disk's write caches on cases like fsync() or changing
-> > > DIRSYNC directory. This is my attempt to solve the problem in a generic way
-> > > by calling a filesystem callback from VFS at appropriate place as Andrew
-> > > suggested. For ext2 what I did is enough (it just then fills in
-> > > block_flush_device() as .flush_device callback) and I think it could be
-> > > fine for other filesystems as well.
-> > 
-> > 	The only question I have is why this would be optional.  It
-> > would seem that this would be the preferred default behavior for all
-> > block filesystems.  We have the backing_dev_info and a way to override
-> > the default if a filesystem needs something special.
-> 
-> I agree, it should be done by default.  Not only that, if you have
-> several concurrent fsync() calls (could be unrelated but on the same
-> disk), it could perhaps delay slightly and coalesce the flushes for
-> better throughput.
-  Well, that would be nice but you cannot return from fsync() until you've
-done the flush. So you have to be careful not to wait for too long. JBD
-actually plays these tricks with sync transaction batching and it's not
-trivial to get this right. So I'd rather avoid it.
 
-> What about O_SYNC writes though?  A device flush after each one would
-> be expensive, but that's what equivalence to fsync() implies is
-> needed.
-  Yes.
+--aVD9QWMuhilNxW9f
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
-> O_DIRECT writes shouldn't do block_flush_device(), but an app may
-> still need a way to commit data for integrity.  So fsync() or
-> fdatasync() called after a series of O_DIRECT writes should call
-> block_flush_device() _even_ though there's no page-cache dirty data to
-> commit, and even if there's no inode change to commit.
-  Hmm, this is an interesting point. You're right that we currently miss
-the flushes and we probably need some dirty inode flag like needs_flush or
-so.
+Hi Theodore,
 
-> Since you want to avoid issuing two device flushes in a row (they're
-> not free), and a journalling fs may issue one separately, as Joel says
-> a filesystem could override this.
-  Yes, journalling filesystems usually take care themselves.
+Theodore Tso schrieb am Tue 20. Jan, 09:51 (-0500):
+> On Sun, Jan 18, 2009 at 11:04:59AM +0100, J=F6rg Sommer wrote:
+> > > > [  203.082300] EXT4 FS on hda3, no journal
+> > > > [  205.746713] EXT4-fs error (device hda3): ext4_free_data: circula=
+r indirect block detected, inode=3D165056, block=3D184476
+> > > >=20
+>=20
+> Hi, this patch should fix your problem.
 
-> But I suspect it would be better to keep the generic call to
-> block_flush_device() from fsync(), and at the block layer discard
-> duplicate flushes that have no writes in between.
-  Hmm, probably this won't be too hard to implement. OTOH it won't catch
-those cases where some other process manages to squeeze in some writes
-between the two flushes. So I'm not sure if we really want to design things
-this way unless really necessary.
+Yes, this patch fixes the problem. Thanks.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> commit bf3baec2b4529dcf47ee422a48b8c0e83df7f0a0
+> Author: Theodore Ts'o <tytso@mit.edu>
+> Date:   Tue Jan 20 09:50:19 2009 -0500
+>=20
+>     ext4: Fix ext4_free_blocks() w/o a journal when files have indirect b=
+locks
+>    =20
+>     When trying to unlink a file with indirect blocks on a filesystem
+>     without a journal, the "circular indirect block" sanity test was
+>     getting falsely triggered.
+>    =20
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+Tested-by: J=F6rg Sommer <joerg@alea.gnuu.de>
+
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 49484ba..b4386da 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -3622,7 +3622,7 @@ static void ext4_free_data(handle_t *handle, struct=
+ inode *inode,
+>  		 * block pointed to itself, it would have been detached when
+>  		 * the block was cleared. Check for this instead of OOPSing.
+>  		 */
+> -		if (bh2jh(this_bh))
+> +		if ((EXT4_JOURNAL(inode) =3D=3D NULL) || bh2jh(this_bh))
+>  			ext4_handle_dirty_metadata(handle, inode, this_bh);
+>  		else
+>  			ext4_error(inode->i_sb, __func__,
+>=20
+
+Bye, J=F6rg.
+--=20
+Freiheit hei=DFt, die Wahl zu haben, wessen Sklave man ist.
+
+--aVD9QWMuhilNxW9f
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature http://en.wikipedia.org/wiki/OpenPGP
+Content-Disposition: inline
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEARECAAYFAkl3bT0ACgkQwe0mZwH1VIBNRACgp+PpLvmO4vr5CZoODrs53wkb
+rjcAn3VjUWc/JUeSl61F7WTswcpaCuqY
+=AcLY
+-----END PGP SIGNATURE-----
+
+--aVD9QWMuhilNxW9f--
