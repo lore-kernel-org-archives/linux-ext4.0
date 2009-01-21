@@ -1,8 +1,8 @@
 From: Jamie Lokier <jamie@shareable.org>
 Subject: Re: [RFC] [PATCH] vfs: Call filesystem callback when backing device caches should be flushed
-Date: Wed, 21 Jan 2009 21:41:32 +0000
-Message-ID: <20090121214132.GD16133@shareable.org>
-References: <20090120160527.GA17067@duck.suse.cz> <20090120231647.GC2392@mail.oracle.com> <20090121001630.GA32645@shareable.org> <20090121150557.GC3186@duck.suse.cz>
+Date: Wed, 21 Jan 2009 21:47:48 +0000
+Message-ID: <20090121214748.GE16133@shareable.org>
+References: <20090120160527.GA17067@duck.suse.cz> <20090120231647.GC2392@mail.oracle.com> <20090121125537.GB3186@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
@@ -11,80 +11,49 @@ Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-fsdevel-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20090121150557.GC3186@duck.suse.cz>
+In-Reply-To: <20090121125537.GB3186@duck.suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
 Jan Kara wrote:
->   Well, that would be nice but you cannot return from fsync() until you've
-> done the flush. So you have to be careful not to wait for too long. JBD
-> actually plays these tricks with sync transaction batching and it's not
-> trivial to get this right. So I'd rather avoid it.
+> On Tue 20-01-09 15:16:48, Joel Becker wrote:
+> > On Tue, Jan 20, 2009 at 05:05:27PM +0100, Jan Kara wrote:
+> > >   we noted in our testing that ext2 (and it seems some other filesystems as
+> > > well) don't flush disk's write caches on cases like fsync() or changing
+> > > DIRSYNC directory. This is my attempt to solve the problem in a generic way
+> > > by calling a filesystem callback from VFS at appropriate place as Andrew
+> > > suggested. For ext2 what I did is enough (it just then fills in
+> > > block_flush_device() as .flush_device callback) and I think it could be
+> > > fine for other filesystems as well.
+> > 
+> > 	The only question I have is why this would be optional.  It
+> > would seem that this would be the preferred default behavior for all
+> > block filesystems.  We have the backing_dev_info and a way to override
+> > the default if a filesystem needs something special.
+>
+>   The reason why I've decided for NOP to be the default is that
+> filesystems doing proper journalling with barriers should not need
+> this (as the barrier in the transaction commit already does the job
+> for them).
 
-Didn't extN for some N do/did something similar?
+No, that doesn't work.
 
-> > What about O_SYNC writes though?  A device flush after each one would
-> > be expensive, but that's what equivalence to fsync() implies is
-> > needed.
->   Yes.
-> 
-> > O_DIRECT writes shouldn't do block_flush_device(), but an app may
-> > still need a way to commit data for integrity.  So fsync() or
-> > fdatasync() called after a series of O_DIRECT writes should call
-> > block_flush_device() _even_ though there's no page-cache dirty data to
-> > commit, and even if there's no inode change to commit.
->   Hmm, this is an interesting point. You're right that we currently miss
-> the flushes and we probably need some dirty inode flag like needs_flush or
-> so.
+fsync() doesn't always cause a transaction.  If there's no inode
+change, there may not be a transaction.  Writing does not always dirty
+mtime, if it's within mtime granularity.
 
-Proposal (both together):
+For efficient fdatasync() you _never_ want a transaction if possible,
+because it forces the disk head to seek between alternating regions of
+the disk, two seeks per fsync().
 
-  1. per-device-queue flag needs_flush.
+So you can't rely on journalling transactions to flush.
 
-     Set on write queued, clear on flush queued.  When clear, flushes
-     are discarded instead of being queued.  Waiting on the discarded
-     flush waits instead for the last flush which was queued, if it's
-     still in flight.  So the queue will also track that last flush.
+>   Finally, I prefer maintainers of the filesystems themselves to decide
+> whether their filesystem needs flushing and thus knowingly impose this
+> performance penalty on them...
 
-  2. per-inode flag needs_flush.
-
-     Set on write queued from this file (writeback), cleared on flush
-     sent from this file (i.e. the thing fsync/fdatasync/O_SYNC should
-     be calling).  As above, flushes aren't sent from this file when
-     this flag is clear, and waiting on a discarded flush waits
-     instead on the last flush sent for this file, if it's still in
-     flight.  So the file will track that last flush command in
-     addition to needs_flush.
-
-Implement both.  The first doee right thing optimising away
-unnecessary journal/tree-log barriers.  The second further optimises
-individual files.
-
-You *could* have a needs_flush bit per page, to tune it further, in
-the same way that fsync_range() and O_DIRECT invalidations etc. are
-getting better at working with ranges, but that may be pointless
-overengineering (I've no idea).
-
-> > Since you want to avoid issuing two device flushes in a row (they're
-> > not free), and a journalling fs may issue one separately, as Joel says
-> > a filesystem could override this.
->   Yes, journalling filesystems usually take care themselves.
-> 
-> > But I suspect it would be better to keep the generic call to
-> > block_flush_device() from fsync(), and at the block layer discard
-> > duplicate flushes that have no writes in between.
-
->   Hmm, probably this won't be too hard to implement. OTOH it won't catch
-> those cases where some other process manages to squeeze in some writes
-> between the two flushes. So I'm not sure if we really want to design things
-> this way unless really necessary.
-
-Let me put it this way.  ext3 is a journalling fs, and it does _not_
-provide integrity with fsync() or fdatasync() in all cases, even with
-barriers and data=ordered turned on.
-
-We should have something which provides flushes generically, with the
-possibility for the fs to override it with a smarter method when it
-knows better.
+I say it should flush be default unless a filesystem hooks an
+alternative strategy.  Certainly, it's silly to have the same code
+duplicated in nearly every filesystem
 
 -- Jamie
