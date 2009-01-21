@@ -1,84 +1,46 @@
-From: "Pallipadi, Venkatesh" <venkatesh.pallipadi@intel.com>
-Subject: Re: kernel BUG at fs/ext/super.c:428
-Date: Wed, 21 Jan 2009 12:10:18 -0800
-Message-ID: <1232568618.16682.20.camel@jamoon.sc.intel.com>
-References: <20090110003645.GA16107@linux-os.sc.intel.com>
-	 <20090113164842.c6aa7095.akpm@linux-foundation.org>
-	 <20090114014434.GE14730@mit.edu> <496D526D.1010402@linux.intel.com>
-	 <20090114044059.GA6222@mit.edu>
-	 <20090114191632.GA13114@linux-os.sc.intel.com>
-	 <1231961377.14825.51.camel@laptop>  <20090114212038.GJ6222@mit.edu>
+From: David Flater <dflater@nist.gov>
+Subject: fs corruption with 2.6.28-ext4-4
+Date: Wed, 21 Jan 2009 15:36:03 -0500
+Message-ID: <49778733.4030307@nist.gov>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
-	Arjan van de Ven <arjan@linux.intel.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Ingo Molnar <mingo@elte.hu>,
-	Nick Piggin <nickpiggin@yahoo.com.au>
-To: Theodore Tso <tytso@MIT.EDU>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mga02.intel.com ([134.134.136.20]:23429 "EHLO mga02.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751582AbZAUUN1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 21 Jan 2009 15:13:27 -0500
-In-Reply-To: <20090114212038.GJ6222@mit.edu>
+Received: from rimp2.nist.gov ([129.6.16.227]:53197 "EHLO smtp.nist.gov"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752273AbZAUUgJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 21 Jan 2009 15:36:09 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 2009-01-14 at 13:20 -0800, Theodore Tso wrote:
-> On Wed, Jan 14, 2009 at 08:29:37PM +0100, Peter Zijlstra wrote:
-> > > 38d47c1b7075bd7ec3881141bb3629da58f88dab is first bad commit
-> > > commit 38d47c1b7075bd7ec3881141bb3629da58f88dab
-> > > Author: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> > > Date:   Fri Sep 26 19:32:20 2008 +0200
-> > >
-> > >     futex: rely on get_user_pages() for shared futexes
-> > >
-> > >     On the way of getting rid of the mmap_sem requirement for sha=
-red futexes,
-> > >     start by relying on get_user_pages().
-> > >
-> > >     Signed-off-by: Peter Zijlstra <a.p.zijlstra@chello.nl>
-> > >     Acked-by: Nick Piggin <nickpiggin@yahoo.com.au>
-> > >     Signed-off-by: Ingo Molnar <mingo@elte.hu>
-> > >
-> > However does a futex change make ext3 crap its pants?
->=20
-> I agree, this doesn't make much sense.  I've looked at the patch, and
-> I don't see how this would cause an ext3 orphaned-inode list handling
-> problem
->=20
-> Are you sure the bisect was done correctly?  Have you tried reverting
-> that one commit, or otherwise conclusively shown that a kernel with
-> this commit fails, and one without this commit works just fine?
->=20
+I am guessing that this doesn't belong in bugzilla since it's not a 
+mainline kernel I'm talking about.  Sorry if this is still the wrong venue.
 
-Unfortunately, I cannot revert this patch alone from upstream git.
-But I consistently see
-upstream git: Always produces this oops on reboot
-checkout of =EF=BB=BF38d47c1b: Always produces this oops on reboot
-checkout of =EF=BB=BF=EF=BB=BF94aca1da (one patch before the above comm=
-it): Reboots fine
-without the oops.
+On two different computers, I experienced file system corruption after 
+upgrading the kernel to 2.6.28-ext4-4 (meaning, mainline 2.6.28 kernel 
+with the 2.6.28-ext4-4 patchset from 
+http://www2.kernel.org/pub/linux/kernel/people/tytso/ext4-patches/ applied).
 
-This is petty specific to the particular userspace, looks like.
-I only see this on SLES10 installation. Also, I need a non-root user
-logged in at least once after boot through X to see this problem. I was
-always seeing this as I had autologin on local terminal and was remotel=
-y
-rebooting the system. If I just boot to init 3 or boot to init 5 with n=
-o
-user logged in or boot to init 5 with root logged in, I do not see this
-problem.
+On Computer #1, an ext4 file system would not mount on reboot.  fsck 
+reported that hundreds (all?) of the group descriptors were corrupted.
 
-Thanks,
-Venki
+On Computer #2, the ext2 file system on an external drive became 
+corrupted with cross linked blocks.  The file system mounted but the 
+kernel soon began reporting problems with it.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+In both cases, the corruption seemed to occur at about the time that I 
+created a large file (> 4 GiB) using the 2.6.28-ext4-4 kernel.  An older 
+computer that I configured with the same kernel and an ext4 file system 
+for testing, before the others were upgraded, still has no problems--but 
+it has a smaller hard drive and no large files.
+
+I am in the process of reverting to a stable configuration, but please 
+accept this experience report for what it is worth.
+
+Thank you,
+
+-- 
+David Flater, National Institute of Standards and Technology, U.S.A.
+
+
