@@ -1,45 +1,46 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] e2fsck: Add superblock check to make sure s_first_ino is valid
-Date: Thu, 22 Jan 2009 16:32:23 -0500
-Message-ID: <1232659946-10073-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH] e2fsck: Change PR_3_CREATE_LPF_ERROR to be a non-fatal problem
+Date: Thu, 22 Jan 2009 16:32:26 -0500
+Message-ID: <1232659946-10073-4-git-send-email-tytso@mit.edu>
 References: <20090122211224.GJ14966@mit.edu>
+ <1232659946-10073-1-git-send-email-tytso@mit.edu>
+ <1232659946-10073-2-git-send-email-tytso@mit.edu>
+ <1232659946-10073-3-git-send-email-tytso@mit.edu>
 Cc: Eric Sesterhenn <snakebyte@gmx.de>, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44556 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44562 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751070AbZAVVca (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752056AbZAVVca (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 22 Jan 2009 16:32:30 -0500
-In-Reply-To: <20090122211224.GJ14966@mit.edu>
+In-Reply-To: <1232659946-10073-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-An deliberately corrupted filesystem with an insanely large
-s_first_ino field could cause e2fsck to crash with a seg fault.
-
-Thanks to Eric Sesterhenn for supplying test cases which demonstrated
-this issue.
+The other problem codes associated with failing to create the
+lost+found directory are non-fatal, and this one should be non-fatal
+as well.  The two places which call e2fsck_get_lost_and_found()
+already deal with a failure to create the directory, so there's no
+point making this be a fatal error.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/super.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ e2fsck/problem.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index cd2b9f0..24ec7a8 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -513,6 +513,10 @@ void check_super_block(e2fsck_t ctx)
- 	check_super_value(ctx, "reserved_gdt_blocks",
- 			  sb->s_reserved_gdt_blocks, MAX_CHECK, 0,
- 			  fs->blocksize/4);
-+	if (sb->s_rev_level > EXT2_GOOD_OLD_REV)
-+		check_super_value(ctx, "first_ino", sb->s_first_ino,
-+				  MIN_CHECK | MAX_CHECK,
-+				  EXT2_GOOD_OLD_FIRST_INO, sb->s_inodes_count);
- 	inode_size = EXT2_INODE_SIZE(sb);
- 	check_super_value(ctx, "inode_size",
- 			  inode_size, MIN_CHECK | MAX_CHECK,
+diff --git a/e2fsck/problem.c b/e2fsck/problem.c
+index 9d193c3..3f53350 100644
+--- a/e2fsck/problem.c
++++ b/e2fsck/problem.c
+@@ -1386,7 +1386,7 @@ static struct e2fsck_problem problem_table[] = {
+ 	/* Error creating lost and found directory */
+ 	{ PR_3_CREATE_LPF_ERROR,
+ 	  N_("Error creating /@l @d (%s): %m\n"),
+-	  PROMPT_NONE, PR_FATAL },
++	  PROMPT_NONE, 0 },
+ 
+ 	/* Root inode is not directory; aborting */
+ 	{ PR_3_ROOT_NOT_DIR_ABORT,
 -- 
 1.6.0.4.8.g36f27.dirty
 
