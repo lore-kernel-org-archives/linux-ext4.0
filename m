@@ -1,45 +1,43 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] e2fsck: Add superblock check to make sure s_first_ino is valid
-Date: Thu, 22 Jan 2009 16:33:01 -0500
-Message-ID: <1232659984-10183-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext2fs_new_inode(): Add sanity check to assure a valid inode number
+Date: Thu, 22 Jan 2009 16:33:02 -0500
+Message-ID: <1232659984-10183-2-git-send-email-tytso@mit.edu>
 References: <20090122211224.GJ14966@mit.edu>
+ <1232659984-10183-1-git-send-email-tytso@mit.edu>
 Cc: Eric Sesterhenn <snakebyte@gmx.de>, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44594 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44597 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751070AbZAVVdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751582AbZAVVdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 22 Jan 2009 16:33:07 -0500
-In-Reply-To: <20090122211224.GJ14966@mit.edu>
+In-Reply-To: <1232659984-10183-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-An deliberately corrupted filesystem with an insanely large
-s_first_ino field could cause e2fsck to crash with a seg fault.
-
-Thanks to Eric Sesterhenn for supplying test cases which demonstrated
-this issue.
+Add a sanity check to makesure that even if the superblock field
+s_first_inode is insane, that we won't return an invalid inode number.
+(The function will return the error EXT2_ET_INODE_ALLOC_FAIL in that
+case.)
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- e2fsck/super.c |    4 ++++
- 1 files changed, 4 insertions(+), 0 deletions(-)
+ lib/ext2fs/alloc.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/e2fsck/super.c b/e2fsck/super.c
-index cd2b9f0..24ec7a8 100644
---- a/e2fsck/super.c
-+++ b/e2fsck/super.c
-@@ -513,6 +513,10 @@ void check_super_block(e2fsck_t ctx)
- 	check_super_value(ctx, "reserved_gdt_blocks",
- 			  sb->s_reserved_gdt_blocks, MAX_CHECK, 0,
- 			  fs->blocksize/4);
-+	if (sb->s_rev_level > EXT2_GOOD_OLD_REV)
-+		check_super_value(ctx, "first_ino", sb->s_first_ino,
-+				  MIN_CHECK | MAX_CHECK,
-+				  EXT2_GOOD_OLD_FIRST_INO, sb->s_inodes_count);
- 	inode_size = EXT2_INODE_SIZE(sb);
- 	check_super_value(ctx, "inode_size",
- 			  inode_size, MIN_CHECK | MAX_CHECK,
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index be2b56b..ade5149 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -120,6 +120,8 @@ errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir,
+ 	start_inode = (dir_group * EXT2_INODES_PER_GROUP(fs->super)) + 1;
+ 	if (start_inode < EXT2_FIRST_INODE(fs->super))
+ 		start_inode = EXT2_FIRST_INODE(fs->super);
++	if (start_inode > fs->super->s_inodes_count)
++		return EXT2_ET_INODE_ALLOC_FAIL;
+ 	i = start_inode;
+ 
+ 	do {
 -- 
 1.6.0.4.8.g36f27.dirty
 
