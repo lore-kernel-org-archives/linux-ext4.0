@@ -1,66 +1,45 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] libext2fs: Add sanity checks to ext2fs_{block,inode}_alloc_stats
-Date: Thu, 22 Jan 2009 16:32:25 -0500
-Message-ID: <1232659946-10073-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH] e2fsck: Add superblock check to make sure s_first_ino is valid
+Date: Thu, 22 Jan 2009 16:32:23 -0500
+Message-ID: <1232659946-10073-1-git-send-email-tytso@mit.edu>
 References: <20090122211224.GJ14966@mit.edu>
- <1232659946-10073-1-git-send-email-tytso@mit.edu>
- <1232659946-10073-2-git-send-email-tytso@mit.edu>
 Cc: Eric Sesterhenn <snakebyte@gmx.de>, Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44561 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:44556 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752000AbZAVVca (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751070AbZAVVca (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Thu, 22 Jan 2009 16:32:30 -0500
-In-Reply-To: <1232659946-10073-2-git-send-email-tytso@mit.edu>
+In-Reply-To: <20090122211224.GJ14966@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If ext2fs_inode_alloc_stats2() or ext2fs_block_alloc_stats() is passed
-an insanely large inode or block number, it's possible for these
-functions to overrun an array boundary and cause the calling program
-to crash with a memory error.
+An deliberately corrupted filesystem with an insanely large
+s_first_ino field could cause e2fsck to crash with a seg fault.
 
-Detect this case, and since these functions don't return an error
-code, print a warning message, much like we do in ext2fs_warn_bitmap2().
+Thanks to Eric Sesterhenn for supplying test cases which demonstrated
+this issue.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- lib/ext2fs/alloc_stats.c |   14 ++++++++++++++
- 1 files changed, 14 insertions(+), 0 deletions(-)
+ e2fsck/super.c |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
 
-diff --git a/lib/ext2fs/alloc_stats.c b/lib/ext2fs/alloc_stats.c
-index 97661dc..d523b43 100644
---- a/lib/ext2fs/alloc_stats.c
-+++ b/lib/ext2fs/alloc_stats.c
-@@ -20,6 +20,13 @@ void ext2fs_inode_alloc_stats2(ext2_filsys fs, ext2_ino_t ino,
- {
- 	int	group = ext2fs_group_of_ino(fs, ino);
- 
-+#ifndef OMIT_COM_ERR
-+	if (ino > fs->super->s_inodes_count) {
-+		com_err("ext2fs_inode_alloc_stats2", 0,
-+			"Illegal inode number: %lu", ino);
-+		return;
-+	}
-+#endif
- 	if (inuse > 0)
- 		ext2fs_mark_inode_bitmap(fs->inode_map, ino);
- 	else
-@@ -58,6 +65,13 @@ void ext2fs_block_alloc_stats(ext2_filsys fs, blk_t blk, int inuse)
- {
- 	int	group = ext2fs_group_of_blk(fs, blk);
- 
-+#ifndef OMIT_COM_ERR
-+	if (blk >= fs->super->s_blocks_count) {
-+		com_err("ext2fs_block_alloc_stats2", 0,
-+			"Illegal block number: %lu", blk);
-+		return;
-+	}
-+#endif
- 	if (inuse > 0)
- 		ext2fs_mark_block_bitmap(fs->block_map, blk);
- 	else
+diff --git a/e2fsck/super.c b/e2fsck/super.c
+index cd2b9f0..24ec7a8 100644
+--- a/e2fsck/super.c
++++ b/e2fsck/super.c
+@@ -513,6 +513,10 @@ void check_super_block(e2fsck_t ctx)
+ 	check_super_value(ctx, "reserved_gdt_blocks",
+ 			  sb->s_reserved_gdt_blocks, MAX_CHECK, 0,
+ 			  fs->blocksize/4);
++	if (sb->s_rev_level > EXT2_GOOD_OLD_REV)
++		check_super_value(ctx, "first_ino", sb->s_first_ino,
++				  MIN_CHECK | MAX_CHECK,
++				  EXT2_GOOD_OLD_FIRST_INO, sb->s_inodes_count);
+ 	inode_size = EXT2_INODE_SIZE(sb);
+ 	check_super_value(ctx, "inode_size",
+ 			  inode_size, MIN_CHECK | MAX_CHECK,
 -- 
 1.6.0.4.8.g36f27.dirty
 
