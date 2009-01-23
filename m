@@ -1,69 +1,84 @@
-From: Valerie Aurora Henson <vaurora@redhat.com>
-Subject: 64-bit e2fsprogs tree for testing
-Date: Thu, 22 Jan 2009 19:28:15 -0500
-Message-ID: <20090123002815.GJ12643@shell>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
+Subject: [PATCH] Fix EXT4FS_DEBUG build: use ext4_free_blks_count and %u instead of %lu
+Date: Fri, 23 Jan 2009 00:52:43 -0200
+Message-ID: <1232679163-4176-1-git-send-email-cascardo@holoscopio.com>
+Cc: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:39371 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759820AbZAWA2R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Jan 2009 19:28:17 -0500
-Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
-	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n0N0SGp4015763
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Jan 2009 19:28:16 -0500
-Received: from shell.devel.redhat.com (shell.devel.redhat.com [10.10.36.195])
-	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n0N0SHlB010809
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Jan 2009 19:28:17 -0500
-Received: from shell.devel.redhat.com (localhost.localdomain [127.0.0.1])
-	by shell.devel.redhat.com (8.13.8/8.13.8) with ESMTP id n0N0SFio028081
-	for <linux-ext4@vger.kernel.org>; Thu, 22 Jan 2009 19:28:16 -0500
-Received: (from vaurora@localhost)
-	by shell.devel.redhat.com (8.13.8/8.13.8/Submit) id n0N0SF2k028080
-	for linux-ext4@vger.kernel.org; Thu, 22 Jan 2009 19:28:15 -0500
-Content-Disposition: inline
+Received: from liberdade.minaslivre.org ([72.232.18.203]:60386 "EHLO
+	liberdade.minaslivre.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754283AbZAWDWj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 22 Jan 2009 22:22:39 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi folks,
+When bg_free_blocks_count was renamed to bg_free_blocks_count_lo in
+560671a0, its uses under EXT4FS_DEBUG were not changed to the helper
+ext4_free_blks_count.
 
-The e2fsprogs 64-bit branch is available for public testing.  This
-branch adds support for creating, checking, etc. ext4 file systems
-with more than 2^32 blocks - i.e., more than 16TB on most systems.
-This is for TESTING ONLY - don't put any data you care about on it!
+Another commit, 498e5f24, also did not change everything needed under
+EXT4FS_DEBUG, thus making it spill some warnings related to printing
+format.
 
-The public git repository is available here:
+This commit fix both issues and make ext4 build again when EXT4FS_DEBUG
+is set.
 
-git://git.kernel.org/pub/scm/fs/ext2/val/e2fsprogs.git
+Signed-off-by: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
+---
+ fs/ext4/balloc.c  |    6 +++---
+ fs/ext4/extents.c |    2 +-
+ fs/ext4/mballoc.c |    2 +-
+ 3 files changed, 5 insertions(+), 5 deletions(-)
 
-The branch is "64bit".
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 6bba06b..9a50b80 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -684,15 +684,15 @@ ext4_fsblk_t ext4_count_free_blocks(struct super_block *sb)
+ 		gdp = ext4_get_group_desc(sb, i, NULL);
+ 		if (!gdp)
+ 			continue;
+-		desc_count += le16_to_cpu(gdp->bg_free_blocks_count);
++		desc_count += ext4_free_blks_count(sb, gdp);
+ 		brelse(bitmap_bh);
+ 		bitmap_bh = ext4_read_block_bitmap(sb, i);
+ 		if (bitmap_bh == NULL)
+ 			continue;
+ 
+ 		x = ext4_count_free(bitmap_bh, sb->s_blocksize);
+-		printk(KERN_DEBUG "group %lu: stored = %d, counted = %u\n",
+-			i, le16_to_cpu(gdp->bg_free_blocks_count), x);
++		printk(KERN_DEBUG "group %u: stored = %d, counted = %u\n",
++			i, ext4_free_blks_count(sb, gdp), x);
+ 		bitmap_count += x;
+ 	}
+ 	brelse(bitmap_bh);
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 54bf062..e2eab19 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3048,7 +3048,7 @@ retry:
+ 			WARN_ON(ret <= 0);
+ 			printk(KERN_ERR "%s: ext4_ext_get_blocks "
+ 				    "returned error inode#%lu, block=%u, "
+-				    "max_blocks=%lu", __func__,
++				    "max_blocks=%u", __func__,
+ 				    inode->i_ino, block, max_blocks);
+ #endif
+ 			ext4_mark_inode_dirty(handle, inode);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 918aec0..deba54f 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3025,7 +3025,7 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 		goto out_err;
+ 
+ 	ext4_debug("using block group %u(%d)\n", ac->ac_b_ex.fe_group,
+-			gdp->bg_free_blocks_count);
++			ext4_free_blks_count(sb, gdp));
+ 
+ 	err = ext4_journal_get_write_access(handle, gdp_bh);
+ 	if (err)
+-- 
+1.6.0.6
 
-Known bugs:
-
-* compilation of programs using certain libe2p routines may fail 
-  (chattr, lsattr)
-* fsck will fail if directories contain blocks above the 32-bit
-  boundary
-
-In general, this is very lightly tested.
-
-Please only test against the latest ext4 kernel bits from:
-
-git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
-
-Please report bugs to this mailing list and cc'd to me if possible.
-
-I am personally testing this using a sparse backing file on XFS, e.g.:
-
- # dd if=/dev/zero of=/xfs/testfile bs=4096 seek=5G count=1
- # ./misc/mke2fs /xfs/testfile
- # mount -o loop /xfs/testfile /mnt
- # dmesg | tail # to make sure it actually mounted as ext4, etc.
-
-Unfortunately, you can't use ext4 itself to host the backing file,
-since it has a limit of 2^32 blocks per file.
-
-Thank you in advance!
-
--VAL
