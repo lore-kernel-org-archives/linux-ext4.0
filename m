@@ -1,55 +1,46 @@
-From: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
-Subject: [PATCH] ext4: fix oops when online resizing a filesystem with flex_bg
-Date: Fri, 23 Jan 2009 18:41:49 -0200
-Message-ID: <1232743309-3929-1-git-send-email-cascardo@holoscopio.com>
-Cc: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12433] Oops while resizing an ext4 LVM2 volume
+Date: Fri, 23 Jan 2009 13:02:45 -0800 (PST)
+Message-ID: <20090123210245.0D5AB10800F@picon.linux-foundation.org>
+References: <bug-12433-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from liberdade.minaslivre.org ([72.232.18.203]:40589 "EHLO
-	liberdade.minaslivre.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751600AbZAWUlW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 23 Jan 2009 15:41:22 -0500
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41067 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753916AbZAWVDO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 23 Jan 2009 16:03:14 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0NL2jhv031196
+	for <linux-ext4@vger.kernel.org>; Fri, 23 Jan 2009 13:02:46 -0800
+In-Reply-To: <bug-12433-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://kerneloops.org/raw.php?rawid=176715 and
-http://bugzilla.kernel.org/show_bug.cgi?id=12433 report a bug when
-resizing a mounted ext4 filesystem. I could easily reproduce it using
-2.6.29-rc2, 2.6.28 and 2.6.27.
+http://bugzilla.kernel.org/show_bug.cgi?id=12433
 
-ext4_error was called just before the NULL derefence from
-ext4_get_group_desc, indicating a block group beyond s_groups_count.
-This function returned a NULL. The requested block group was beyond
-s_groups_count because this is the last changed bit when resizing.
 
-The caller, ext4_group_used_meta_blocks, did not check the returned
-pointer. It needs the gdp anyway. Fortunately, its only caller,
-ext4_init_block_bitmap, has a gdp and it was simply a matter of adding
-this parameter to ext4_group_used_meta_blocks and use it.
 
-Tested and the oops is gone.
 
-Signed-off-by: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
----
- fs/ext4/balloc.c |    8 ++------
- 1 files changed, 2 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index 9a50b80..d7dc22a 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -55,7 +55,7 @@ static int ext4_block_in_group(struct super_block *sb, ext4_fsblk_t block,
- }
- 
- static int ext4_group_used_meta_blocks(struct super_block *sb,
--				ext4_group_t block_group)
-+		ext4_group_t block_group, struct ext4_group_desc *gdp)
- {
- 	ext4_fsblk_t tmp;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -63,10 +63,6 @@ static int ext4_group_used_meta_blocks(struct super_block *sb,
- 	int used_blocks = sbi->s_itb_per_group + 2;
- 
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
--		struct ext4_group_desc *gdp;
--		struct buffer_head *bh;
+------- Comment #1 from cascardo@holoscopio.com  2009-01-23 13:02 -------
+Have you enabled flex_bg recently? Have you kept the log? Any message
+indicating an error like this one?
+
+Jan 23 14:20:42 vespa kernel: [  463.027499] EXT4-fs error (device dm-11):
+ext4_get_group_desc: block_group >= groups_count - block_group = 11,
+groups_count = 11
+
+I've hit this bug and fixed it. The patch was sent to linux-ext4 and is
+available at
+http://holoscopio.com/patches/0001-ext4-fix-oops-when-online-resizing-a-filesystem-wit.patch.
+Could you, please, test it?
+
+Regards,
+Cascardo.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
