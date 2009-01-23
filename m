@@ -1,43 +1,69 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext2fs_new_inode(): Add sanity check to assure a valid inode number
-Date: Thu, 22 Jan 2009 16:33:02 -0500
-Message-ID: <1232659984-10183-2-git-send-email-tytso@mit.edu>
-References: <20090122211224.GJ14966@mit.edu>
- <1232659984-10183-1-git-send-email-tytso@mit.edu>
-Cc: Eric Sesterhenn <snakebyte@gmx.de>, Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: 64-bit e2fsprogs tree for testing
+Date: Thu, 22 Jan 2009 19:28:15 -0500
+Message-ID: <20090123002815.GJ12643@shell>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44597 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([66.187.233.31]:39371 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751582AbZAVVdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 22 Jan 2009 16:33:07 -0500
-In-Reply-To: <1232659984-10183-1-git-send-email-tytso@mit.edu>
+	id S1759820AbZAWA2R (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 22 Jan 2009 19:28:17 -0500
+Received: from int-mx1.corp.redhat.com (int-mx1.corp.redhat.com [172.16.52.254])
+	by mx1.redhat.com (8.13.8/8.13.8) with ESMTP id n0N0SGp4015763
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Jan 2009 19:28:16 -0500
+Received: from shell.devel.redhat.com (shell.devel.redhat.com [10.10.36.195])
+	by int-mx1.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n0N0SHlB010809
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Jan 2009 19:28:17 -0500
+Received: from shell.devel.redhat.com (localhost.localdomain [127.0.0.1])
+	by shell.devel.redhat.com (8.13.8/8.13.8) with ESMTP id n0N0SFio028081
+	for <linux-ext4@vger.kernel.org>; Thu, 22 Jan 2009 19:28:16 -0500
+Received: (from vaurora@localhost)
+	by shell.devel.redhat.com (8.13.8/8.13.8/Submit) id n0N0SF2k028080
+	for linux-ext4@vger.kernel.org; Thu, 22 Jan 2009 19:28:15 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add a sanity check to makesure that even if the superblock field
-s_first_inode is insane, that we won't return an invalid inode number.
-(The function will return the error EXT2_ET_INODE_ALLOC_FAIL in that
-case.)
+Hi folks,
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- lib/ext2fs/alloc.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+The e2fsprogs 64-bit branch is available for public testing.  This
+branch adds support for creating, checking, etc. ext4 file systems
+with more than 2^32 blocks - i.e., more than 16TB on most systems.
+This is for TESTING ONLY - don't put any data you care about on it!
 
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index be2b56b..ade5149 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -120,6 +120,8 @@ errcode_t ext2fs_new_inode(ext2_filsys fs, ext2_ino_t dir,
- 	start_inode = (dir_group * EXT2_INODES_PER_GROUP(fs->super)) + 1;
- 	if (start_inode < EXT2_FIRST_INODE(fs->super))
- 		start_inode = EXT2_FIRST_INODE(fs->super);
-+	if (start_inode > fs->super->s_inodes_count)
-+		return EXT2_ET_INODE_ALLOC_FAIL;
- 	i = start_inode;
- 
- 	do {
--- 
-1.6.0.4.8.g36f27.dirty
+The public git repository is available here:
 
+git://git.kernel.org/pub/scm/fs/ext2/val/e2fsprogs.git
+
+The branch is "64bit".
+
+Known bugs:
+
+* compilation of programs using certain libe2p routines may fail 
+  (chattr, lsattr)
+* fsck will fail if directories contain blocks above the 32-bit
+  boundary
+
+In general, this is very lightly tested.
+
+Please only test against the latest ext4 kernel bits from:
+
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+
+Please report bugs to this mailing list and cc'd to me if possible.
+
+I am personally testing this using a sparse backing file on XFS, e.g.:
+
+ # dd if=/dev/zero of=/xfs/testfile bs=4096 seek=5G count=1
+ # ./misc/mke2fs /xfs/testfile
+ # mount -o loop /xfs/testfile /mnt
+ # dmesg | tail # to make sure it actually mounted as ext4, etc.
+
+Unfortunately, you can't use ext4 itself to host the backing file,
+since it has a limit of 2^32 blocks per file.
+
+Thank you in advance!
+
+-VAL
