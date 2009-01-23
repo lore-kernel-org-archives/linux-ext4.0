@@ -1,18 +1,18 @@
 From: bugme-daemon@bugzilla.kernel.org
 Subject: [Bug 12433] Oops while resizing an ext4 LVM2 volume
-Date: Fri, 23 Jan 2009 13:02:45 -0800 (PST)
-Message-ID: <20090123210245.0D5AB10800F@picon.linux-foundation.org>
+Date: Fri, 23 Jan 2009 14:00:37 -0800 (PST)
+Message-ID: <20090123220037.8E36B10800C@picon.linux-foundation.org>
 References: <bug-12433-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:41067 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:57475 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753916AbZAWVDO (ORCPT
+	by vger.kernel.org with ESMTP id S1753456AbZAWWAj (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 23 Jan 2009 16:03:14 -0500
+	Fri, 23 Jan 2009 17:00:39 -0500
 Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0NL2jhv031196
-	for <linux-ext4@vger.kernel.org>; Fri, 23 Jan 2009 13:02:46 -0800
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0NM0bKs003215
+	for <linux-ext4@vger.kernel.org>; Fri, 23 Jan 2009 14:00:38 -0800
 In-Reply-To: <bug-12433-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -23,21 +23,24 @@ http://bugzilla.kernel.org/show_bug.cgi?id=12433
 
 
 
-------- Comment #1 from cascardo@holoscopio.com  2009-01-23 13:02 -------
-Have you enabled flex_bg recently? Have you kept the log? Any message
-indicating an error like this one?
+------- Comment #2 from peter@kerwien.homeip.net  2009-01-23 14:00 -------
+flex_bg is default on when creating ext4 on my Gentoo system.
 
-Jan 23 14:20:42 vespa kernel: [  463.027499] EXT4-fs error (device dm-11):
-ext4_get_group_desc: block_group >= groups_count - block_group = 11,
-groups_count = 11
+Yeap, I found this in my log:
+...
+Jan 11 20:54:58 kerwien kernel: EXT4-fs: mounted filesystem dm-0 with ordered
+data mode
+Jan 11 20:56:41 kerwien kernel: EXT4-fs error (device dm-0):
+ext4_get_group_desc: block_group >= groups_count -
+ block_group = 401, groups_count = 401
+Jan 11 20:56:41 kerwien kernel: BUG: unable to handle kernel NULL pointer
+dereference at (null)
+Jan 11 20:56:41 kerwien kernel: IP: [<ffffffffa01c6b59>]
+ext4_block_bitmap+0x9/0x30 [ext4]
+Jan 11 20:56:41 kerwien kernel: PGD 1a873067 PUD 3eded067 PMD 0 
+...
 
-I've hit this bug and fixed it. The patch was sent to linux-ext4 and is
-available at
-http://holoscopio.com/patches/0001-ext4-fix-oops-when-online-resizing-a-filesystem-wit.patch.
-Could you, please, test it?
-
-Regards,
-Cascardo.
+I can try the patch and see if I can reproduce the problem again or not.
 
 
 -- 
