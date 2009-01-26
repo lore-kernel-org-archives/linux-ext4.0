@@ -1,132 +1,95 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12543] New: ext4_da_writepages error in 2.6.28.1 after a disk error
-Date: Mon, 26 Jan 2009 08:56:40 -0800 (PST)
-Message-ID: <bug-12543-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Darren Hart <dvhltc@us.ibm.com>
+Subject: Re: kernel BUG at fs/ext/super.c:428
+Date: Mon, 26 Jan 2009 09:12:34 -0800
+Message-ID: <497DEF02.90003@us.ibm.com>
+References: <20090110003645.GA16107@linux-os.sc.intel.com> <20090113164842.c6aa7095.akpm@linux-foundation.org> <20090114014434.GE14730@mit.edu> <496D526D.1010402@linux.intel.com> <20090114044059.GA6222@mit.edu> <20090114191632.GA13114@linux-os.sc.intel.com> <1231961377.14825.51.camel@laptop>  <20090114212038.GJ6222@mit.edu> <1232568618.16682.20.camel@jamoon.sc.intel.com> <1232782595.4859.3.camel@laptop>  <497DE73B.4050602@us.ibm.com> <1232988371.4863.162.camel@laptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: "Pallipadi, Venkatesh" <venkatesh.pallipadi@intel.com>,
+	Theodore Tso <tytso@MIT.EDU>,
+	Arjan van de Ven <arjan@linux.intel.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Ingo Molnar <mingo@elte.hu>,
+	Nick Piggin <nickpiggin@yahoo.com.au>
+To: Peter Zijlstra <a.p.zijlstra@chello.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:54373 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751457AbZAZQ5b (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Jan 2009 11:57:31 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0QGueOY024216
-	for <linux-ext4@vger.kernel.org>; Mon, 26 Jan 2009 08:56:41 -0800
+Received: from e32.co.us.ibm.com ([32.97.110.150]:37879 "EHLO
+	e32.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751448AbZAZRMi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jan 2009 12:12:38 -0500
+In-Reply-To: <1232988371.4863.162.camel@laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12543
+Peter Zijlstra wrote:
+> On Mon, 2009-01-26 at 08:39 -0800, Darren Hart wrote:
+> 
+>>> diff --git a/kernel/futex.c b/kernel/futex.c
+>>> index f89d373..f4132ab 100644
+>>> --- a/kernel/futex.c
+>>> +++ b/kernel/futex.c
+>>> @@ -929,7 +929,7 @@ out_unlock:
+>>>
+>>>  	/* drop_futex_key_refs() must be called outside the spinlocks. */
+>>>  	while (--drop_count >= 0)
+>>> -		drop_futex_key_refs(&key1);
+>>> +		drop_futex_key_refs(&key2);
+>> Unfortunately, I realized later that this code was indeed correct and I 
+>> asked Ingo to pull my patch implementing the above change.  Quoting my 
+>> previous mail on the subject:
+>>
+>> "I believe what is happening here is that the requeue loop requeues each 
+>> waiter from one futex (key1) to another (key2).  It rightly takes a 
+>> reference to the futex at key2 and then decrements the references to 
+>> key1 by drop_count (since the waiters now reference key2, not key1). 
+>> The newly taken key2 references will be dropped in futex_wait() when 
+>> each waiter is woken up and takes the futex."
+> 
+> Argh, that wants a comment..
+> 
 
-           Summary: ext4_da_writepages error in 2.6.28.1 after a disk error
-           Product: File System
-           Version: 2.5
-     KernelVersion: 2.6.28.1
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: abaptist@cleversafe.com
-
-
-Distribution: 
-custom stripped down kernel parameters
-
-Hardware Environment: 
-4 disk SATA system -
-
-Software Environment:
-Problem Description:
-While running tests over the weekend one of the drives reported errors "Buffer
-I/O error on device". After this error, a series of "emerg" level stack traces
-were printed with the following stack:
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel: Pid: 13486, comm:
-pdflush Not tainted 2.6.28.1.cs.1 #1
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel: Call Trace:
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c10e9168>]
-ext4_da_writepages+0x2d8/0x310
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c12d5b0b>]
-schedule+0x22b/0x880
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c10626ab>]
-do_writepages+0x2b/0x50
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c109ccb9>]
-__writeback_single_inode+0x89/0x300
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c109d2ee>]
-generic_sync_sb_inodes+0x1ce/0x2b0
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c109d738>]
-writeback_inodes+0x88/0xb0
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c10630f4>]
-wb_kupdate+0x84/0xf0
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c1063520>]
-pdflush+0x0/0x1a0
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c106360b>]
-pdflush+0xeb/0x1a0
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c1063070>]
-wb_kupdate+0x0/0xf0
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c1039b42>]
-kthread+0x42/0x70
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c1039b00>]
-kthread+0x0/0x70
-
-Jan 26 15:06:13 qwchi-mbxss-pd52.cleversafelabs.com kernel:  [<c1004aab>]
-kernel_thread_helper+0x7/0x1c
-
-Steps to reproduce:
-The syslog before these errors started was the following:
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: Buffer I/O error on
-device sdd1, logical block 121667584
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: lost page write due
-to I/O error on sdd1
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: ext4_abort called.
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: EXT4-fs error
-(device sdd1): ext4_journal_start_sb: Detected aborted journal
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: Remounting
-filesystem read-only
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: EXT4-fs error
-(device sdd1) in ext4_delete_inode: Journal has aborted
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: EXT4-fs error
-(device sdd1) in ext4_create: IO failure
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: JBD2: I/O error
-detected when updating journal superblock for sdd1:8.
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: lost page write due
-to I/O error on sdd1
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: sd 3:0:0:0: [sdd]
-Result: hostbyte=DID_BAD_TARGET driverbyte=DRIVER_OK,SUGGEST_OK
-
-Jan 26 08:12:21 qwchi-mbxss-pd52.cleversafelabs.com kernel: end_request: I/O
-error, dev sdd, sector 26623
+Agreed.  How about this.
 
 
-One note is that the filesystem was NOT remounted read-only even though it
-claimed to be (at least by looking at mount).
+futex: comment requeue key reference symmantics
+
+From: Darren Hart <dvhltc@us.ibm.com>
+
+We've tripped over the futex_requeue drop_count refering to key2
+instead of key1.  The code is actually correct, but is non-intuitive.
+This patch adds an explicit comment explaining the requeue.
+
+Signed-off-by: Darren Hart <dvhltc@us.ibm.com>
+---
+
+ kernel/futex.c |    7 ++++++-
+ 1 files changed, 6 insertions(+), 1 deletions(-)
+
+
+diff --git a/kernel/futex.c b/kernel/futex.c
+index 8af1002..3655cad 100644
+--- a/kernel/futex.c
++++ b/kernel/futex.c
+@@ -969,7 +969,12 @@ out_unlock:
+ 	if (hb1 != hb2)
+ 		spin_unlock(&hb2->lock);
+ 
+-	/* drop_futex_key_refs() must be called outside the spinlocks. */
++	/*
++	 * drop_futex_key_refs() must be called outside the spinlocks. During
++	 * the requeue we moved futex_q's from the hash bucket at key1 to the
++	 * one at key2 and updated their key pointer.  We no longer need to
++	 * hold the references to key1.
++	 */
+ 	while (--drop_count >= 0)
+ 		drop_futex_key_refs(&key1);
+ 
 
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Darren Hart
+IBM Linux Technology Center
+Real-Time Linux Team
