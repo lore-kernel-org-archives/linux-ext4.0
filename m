@@ -1,83 +1,61 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] : make sure the buffer head members are zeroed out
-	before using them.
-Date: Mon, 26 Jan 2009 14:00:16 +0100
-Message-ID: <20090126130016.GC2726@duck.suse.cz>
-References: <ea11fea30901200906m4dfb5060ya82104519b4984bb@mail.gmail.com> <ea11fea30901250753j6db5158dj9082d57aa9469685@mail.gmail.com> <20090126122907.GA18681@atrey.karlin.mff.cuni.cz> <ea11fea30901260433i6d06ea49v8524c46ad373733f@mail.gmail.com> <ea11fea30901260448v564b424byc9e4d1bbb289d1d8@mail.gmail.com>
+Subject: Re: The meaning of data=ordered as it relates to delayed allocation
+Date: Mon, 26 Jan 2009 14:24:45 +0100
+Message-ID: <20090126132445.GC18681@atrey.karlin.mff.cuni.cz>
+References: <E1LOiN8-0001Cj-91@closure.thunk.org> <20090119044345.GB9482@skywalker> <20090119124513.GC7598@mit.edu> <20090119144554.GJ9482@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 <linux-ext4@vger.kernel.org>, Theodore Ts'o <tytso@mit.edu>,
-	cmm@us.ibm.com
-To: Manish Katiyar <mkatiyar@gmail.com>
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:37131 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750926AbZAZNAT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 26 Jan 2009 08:00:19 -0500
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:42649 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750738AbZAZNYr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 26 Jan 2009 08:24:47 -0500
 Content-Disposition: inline
-In-Reply-To: <ea11fea30901260448v564b424byc9e4d1bbb289d1d8@mail.gmail.com>
+In-Reply-To: <20090119144554.GJ9482@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 26-01-09 18:18:19, Manish Katiyar wrote:
-> On Mon, Jan 26, 2009 at 6:03 PM, Manish Katiyar <mkatiyar@gmail.com> wrote:
-> > On Mon, Jan 26, 2009 at 5:59 PM, Jan Kara <jack@suse.cz> wrote:
-> >>> On Tue, Jan 20, 2009 at 10:36 PM, Manish Katiyar <mkatiyar@gmail.com> wrote:
-> >>> > ext2_quota_read doesn't bzeroes tmp_bh before calling ext2_get_block()
-> >>> > where we access the b_size of it. Since it is a local variable it
-> >>> > might contain some garbage. Make sure it is filled with zero before
-> >>> > passing.
-> >>>
-> >>> Hi Ted/mingming,
-> >>>
-> >>> Any feedback on this ??
-> >>  Ops, sorry. I wanted to reply but first I wanted to research more
-> >> whether we can set b_size to 0 and then forgot about it. Looking into
-> >> other code (e.g. in fs/mpage.c or fs/buffer.c) I think it would be
-> >> better to set b_size to sb->s_blocksize and be done with that. Mapping
-> >> code does not need anything else set to a deterministic value so using
-> >> memset is a bit overkill.
-> >
-> > Thanks Jan for your comments. Yes memset is an overkill. I did it just
-> > because other users of ext2_get_block were doing the same way. Will
-> > rework the patch with setting b_size as blocksize and send again.
-> 
-> Here is the updated patch. compile tested.
-> 
-> Signed-off-by : Manish Katiyar <mkatiyar@gmail.com>
-  Yes, now it looks fine. Thanks for the fix.
+> On Mon, Jan 19, 2009 at 07:45:13AM -0500, Theodore Tso wrote:
+> > On Mon, Jan 19, 2009 at 10:13:45AM +0530, Aneesh Kumar K.V wrote:
+> > > > So I wonder if we should either:
+> > > > 
+> > > > (a) make data=ordered force block allocation and writeback --- which
+> > > >     should just be a matter of disabling the
+> > > >     redirty_page_for_writepage() code path in ext4_da_writepage()
+> > > 
+> > > We can't do that because we cannot do block allocation there. So we need
+> > > to redirty the page that have unmapped buffer_heads.
+> > 
+> > What is preventing us from doing block allocation from
+> > ext4_da_writepage()?
+> > 
+> The callback is called with page lock held and we can't start a journal
+> with page lock held.
+  There is actually even more fundamental problem with this.
+ext4_da_writepage() is called from JBD2 commit code to commit ordered
+mode data buffers. But when you're committing a transaction you might
+not have enough space in the journal to do the allocation. OTOH I think
+in it would be a good thing to allocate blocks on transaction commit
+(in ordered mode) exactly because we'd have better consistency
+guarantees. As Andreas points out, the downside would be that the fsync
+problem we have with ext3 starts manifesting itself again.
+  The question is how to technically implement allocation on commit time
+- if we had transaction credits reserved it would not be a big deal, but
+the problem is, we usually highly overestimate number of credits needed
+for an allocation and these errors accumulate. So the result would be
+that we'd have to commit transactions much earlier then we do now.
+  So technically simpler might be to just ask pdflush to flush dirty
+data on ext4 filesystem more often. We could actually queue a writeout
+after every transaction commit. For users the result should be roughly
+the same as writeout on transaction commit. Although it might take a bit
+of time to allocate and writeout those 100M of dirty memory that can in
+theory accumulate on average desktop so there might be noticable
+differences. But it's going to be less noticable than that 30s kupdate
+timeout which is default now.
 
-  Acked-by: Jan Kara <jack@suse.cz>
-
-									Honza
-> ---
->  fs/ext2/super.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index da8bdea..2a1c0c6 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -1328,6 +1328,7 @@ static ssize_t ext2_quota_read(struct
-> super_block *sb, int type, char *data,
->  				sb->s_blocksize - offset : toread;
-> 
->  		tmp_bh.b_state = 0;
-> +		tmp_bh.b_size = sb->s_blocksize;
->  		err = ext2_get_block(inode, blk, &tmp_bh, 0);
->  		if (err < 0)
->  			return err;
-> @@ -1367,6 +1368,7 @@ static ssize_t ext2_quota_write(struct
-> super_block *sb, int type,
->  				sb->s_blocksize - offset : towrite;
-> 
->  		tmp_bh.b_state = 0;
-> +		tmp_bh.b_size = sb->s_blocksize;
->  		err = ext2_get_block(inode, blk, &tmp_bh, 1);
->  		if (err < 0)
->  			goto out;
-> -- 
-> 1.5.4.3
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+SuSE CR Labs
