@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 07/16] ext2: Use lowercase names of quota functions
-Date: Tue, 27 Jan 2009 17:48:40 +0100
-Message-ID: <1233074929-12277-8-git-send-email-jack@suse.cz>
+Subject: [PATCH 09/16] ext4: Use lowercase names of quota functions
+Date: Tue, 27 Jan 2009 17:48:42 +0100
+Message-ID: <1233074929-12277-10-git-send-email-jack@suse.cz>
 References: <y>
  <1233074929-12277-1-git-send-email-jack@suse.cz>
  <1233074929-12277-2-git-send-email-jack@suse.cz>
@@ -10,90 +10,75 @@ References: <y>
  <1233074929-12277-5-git-send-email-jack@suse.cz>
  <1233074929-12277-6-git-send-email-jack@suse.cz>
  <1233074929-12277-7-git-send-email-jack@suse.cz>
+ <1233074929-12277-8-git-send-email-jack@suse.cz>
+ <1233074929-12277-9-git-send-email-jack@suse.cz>
 Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
 To: linux-fsdevel@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1233074929-12277-7-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from styx.suse.cz ([82.119.242.94]:42471 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754272AbZA0Qsx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 Jan 2009 11:48:53 -0500
+In-Reply-To: <1233074929-12277-9-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 Use lowercase names of quota functions instead of old uppercase ones.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 CC: linux-ext4@vger.kernel.org
 ---
- fs/ext2/balloc.c |    8 ++++----
- fs/ext2/ialloc.c |   10 +++++-----
- fs/ext2/inode.c  |    2 +-
- fs/ext2/xattr.c  |    8 ++++----
- 4 files changed, 14 insertions(+), 14 deletions(-)
+ fs/ext4/balloc.c  |    2 +-
+ fs/ext4/ialloc.c  |   12 ++++++------
+ fs/ext4/inode.c   |    4 ++--
+ fs/ext4/mballoc.c |    4 ++--
+ fs/ext4/namei.c   |    6 +++---
+ fs/ext4/super.c   |    6 +++---
+ fs/ext4/xattr.c   |    6 +++---
+ 7 files changed, 20 insertions(+), 20 deletions(-)
 
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 4a29d63..7f8d2e5 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -570,7 +570,7 @@ do_more:
- error_return:
- 	brelse(bitmap_bh);
- 	release_blocks(sb, freed);
--	DQUOT_FREE_BLOCK(inode, freed);
-+	vfs_dq_free_block(inode, freed);
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index 6bba06b..0c92f26 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -536,7 +536,7 @@ void ext4_free_blocks(handle_t *handle, struct inode *inode,
+ 	ext4_mb_free_blocks(handle, inode, block, count,
+ 			    metadata, &dquot_freed_blocks);
+ 	if (dquot_freed_blocks)
+-		DQUOT_FREE_BLOCK(inode, dquot_freed_blocks);
++		vfs_dq_free_block(inode, dquot_freed_blocks);
+ 	return;
  }
  
- /**
-@@ -1247,7 +1247,7 @@ ext2_fsblk_t ext2_new_blocks(struct inode *inode, ext2_fsblk_t goal,
- 	/*
- 	 * Check quota for allocation of this block.
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 4fb86a0..bd39075 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -220,10 +220,10 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 	 * Note: we must free any quota before locking the superblock,
+ 	 * as writing the quota to disk may need the lock as well.
  	 */
--	if (DQUOT_ALLOC_BLOCK(inode, num)) {
-+	if (vfs_dq_alloc_block(inode, num)) {
- 		*errp = -EDQUOT;
- 		return 0;
- 	}
-@@ -1409,7 +1409,7 @@ allocated:
+-	DQUOT_INIT(inode);
++	vfs_dq_init(inode);
+ 	ext4_xattr_delete_inode(handle, inode);
+-	DQUOT_FREE_INODE(inode);
+-	DQUOT_DROP(inode);
++	vfs_dq_free_inode(inode);
++	vfs_dq_drop(inode);
  
- 	*errp = 0;
- 	brelse(bitmap_bh);
--	DQUOT_FREE_BLOCK(inode, *count-num);
-+	vfs_dq_free_block(inode, *count-num);
- 	*count = num;
- 	return ret_block;
+ 	is_directory = S_ISDIR(inode->i_mode);
  
-@@ -1420,7 +1420,7 @@ out:
- 	 * Undo the block allocation
- 	 */
- 	if (!performed_allocation)
--		DQUOT_FREE_BLOCK(inode, *count);
-+		vfs_dq_free_block(inode, *count);
- 	brelse(bitmap_bh);
- 	return 0;
- }
-diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-index 66321a8..15387c9 100644
---- a/fs/ext2/ialloc.c
-+++ b/fs/ext2/ialloc.c
-@@ -121,8 +121,8 @@ void ext2_free_inode (struct inode * inode)
- 	if (!is_bad_inode(inode)) {
- 		/* Quota is already initialized in iput() */
- 		ext2_xattr_delete_inode(inode);
--	    	DQUOT_FREE_INODE(inode);
--		DQUOT_DROP(inode);
-+		vfs_dq_free_inode(inode);
-+		vfs_dq_drop(inode);
- 	}
+@@ -904,7 +904,7 @@ got:
+ 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
  
- 	es = EXT2_SB(sb)->s_es;
-@@ -586,7 +586,7 @@ got:
- 		goto fail_drop;
- 	}
- 
+ 	ret = inode;
 -	if (DQUOT_ALLOC_INODE(inode)) {
 +	if (vfs_dq_alloc_inode(inode)) {
  		err = -EDQUOT;
  		goto fail_drop;
  	}
-@@ -605,10 +605,10 @@ got:
- 	return inode;
+@@ -945,10 +945,10 @@ really_out:
+ 	return ret;
  
  fail_free_drop:
 -	DQUOT_FREE_INODE(inode);
@@ -105,59 +90,136 @@ index 66321a8..15387c9 100644
  	inode->i_flags |= S_NOQUOTA;
  	inode->i_nlink = 0;
  	unlock_new_inode(inode);
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index 23fff2f..b43b955 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -1444,7 +1444,7 @@ int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
- 		return error;
- 	if ((iattr->ia_valid & ATTR_UID && iattr->ia_uid != inode->i_uid) ||
- 	    (iattr->ia_valid & ATTR_GID && iattr->ia_gid != inode->i_gid)) {
--		error = DQUOT_TRANSFER(inode, iattr) ? -EDQUOT : 0;
-+		error = vfs_dq_transfer(inode, iattr) ? -EDQUOT : 0;
- 		if (error)
- 			return error;
- 	}
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 987a526..7913531 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -642,7 +642,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 				ea_bdebug(new_bh, "reusing block");
- 
- 				error = -EDQUOT;
--				if (DQUOT_ALLOC_BLOCK(inode, 1)) {
-+				if (vfs_dq_alloc_block(inode, 1)) {
- 					unlock_buffer(new_bh);
- 					goto cleanup;
- 				}
-@@ -699,7 +699,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 		 * as if nothing happened and cleanup the unused block */
- 		if (error && error != -ENOSPC) {
- 			if (new_bh && new_bh != old_bh)
--				DQUOT_FREE_BLOCK(inode, 1);
-+				vfs_dq_free_block(inode, 1);
- 			goto cleanup;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 29f62a3..414134d 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4619,7 +4619,7 @@ int ext4_setattr(struct dentry *dentry, struct iattr *attr)
+ 			error = PTR_ERR(handle);
+ 			goto err_out;
  		}
- 	} else
-@@ -731,7 +731,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
- 			le32_add_cpu(&HDR(old_bh)->h_refcount, -1);
- 			if (ce)
- 				mb_cache_entry_release(ce);
--			DQUOT_FREE_BLOCK(inode, 1);
-+			vfs_dq_free_block(inode, 1);
- 			mark_buffer_dirty(old_bh);
- 			ea_bdebug(old_bh, "refcount now=%d",
- 				le32_to_cpu(HDR(old_bh)->h_refcount));
-@@ -794,7 +794,7 @@ ext2_xattr_delete_inode(struct inode *inode)
- 		mark_buffer_dirty(bh);
+-		error = DQUOT_TRANSFER(inode, attr) ? -EDQUOT : 0;
++		error = vfs_dq_transfer(inode, attr) ? -EDQUOT : 0;
+ 		if (error) {
+ 			ext4_journal_stop(handle);
+ 			return error;
+@@ -4998,7 +4998,7 @@ int ext4_mark_inode_dirty(handle_t *handle, struct inode *inode)
+  * i_size has been changed by generic_commit_write() and we thus need
+  * to include the updated inode in the current transaction.
+  *
+- * Also, DQUOT_ALLOC_SPACE() will always dirty the inode when blocks
++ * Also, vfs_dq_alloc_block() will always dirty the inode when blocks
+  * are allocated to the file.
+  *
+  * If the inode is marked synchronous, we don't honour that here - doing
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 84458a5..392d689 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4576,7 +4576,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 			return 0;
+ 		}
+ 		reserv_blks = ar->len;
+-		while (ar->len && DQUOT_ALLOC_BLOCK(ar->inode, ar->len)) {
++		while (ar->len && vfs_dq_alloc_block(ar->inode, ar->len)) {
+ 			ar->flags |= EXT4_MB_HINT_NOPREALLOC;
+ 			ar->len--;
+ 		}
+@@ -4652,7 +4652,7 @@ out2:
+ 	kmem_cache_free(ext4_ac_cachep, ac);
+ out1:
+ 	if (inquota && ar->len < inquota)
+-		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
++		vfs_dq_free_block(ar->inode, inquota - ar->len);
+ out3:
+ 	if (!ar->len) {
+ 		if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag)
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index fec0b4c..2943bf8 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2083,7 +2083,7 @@ static int ext4_rmdir(struct inode *dir, struct dentry *dentry)
+ 
+ 	/* Initialize quotas before so that eventual writes go in
+ 	 * separate transaction */
+-	DQUOT_INIT(dentry->d_inode);
++	vfs_dq_init(dentry->d_inode);
+ 	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+@@ -2142,7 +2142,7 @@ static int ext4_unlink(struct inode *dir, struct dentry *dentry)
+ 
+ 	/* Initialize quotas before so that eventual writes go
+ 	 * in separate transaction */
+-	DQUOT_INIT(dentry->d_inode);
++	vfs_dq_init(dentry->d_inode);
+ 	handle = ext4_journal_start(dir, EXT4_DELETE_TRANS_BLOCKS(dir->i_sb));
+ 	if (IS_ERR(handle))
+ 		return PTR_ERR(handle);
+@@ -2309,7 +2309,7 @@ static int ext4_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	/* Initialize quotas before so that eventual writes go
+ 	 * in separate transaction */
+ 	if (new_dentry->d_inode)
+-		DQUOT_INIT(new_dentry->d_inode);
++		vfs_dq_init(new_dentry->d_inode);
+ 	handle = ext4_journal_start(old_dir, 2 *
+ 					EXT4_DATA_TRANS_BLOCKS(old_dir->i_sb) +
+ 					EXT4_INDEX_EXTRA_TRANS_BLOCKS + 2);
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 439ab9d..a7b8cb1 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1804,7 +1804,7 @@ static void ext4_orphan_cleanup(struct super_block *sb,
+ 		}
+ 
+ 		list_add(&EXT4_I(inode)->i_orphan, &EXT4_SB(sb)->s_orphan);
+-		DQUOT_INIT(inode);
++		vfs_dq_init(inode);
+ 		if (inode->i_nlink) {
+ 			printk(KERN_DEBUG
+ 				"%s: truncating inode %lu to %lld bytes\n",
+@@ -3367,8 +3367,8 @@ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf)
+  * is locked for write. Otherwise the are possible deadlocks:
+  * Process 1                         Process 2
+  * ext4_create()                     quota_sync()
+- *   jbd2_journal_start()                   write_dquot()
+- *   DQUOT_INIT()                        down(dqio_mutex)
++ *   jbd2_journal_start()                  write_dquot()
++ *   vfs_dq_init()                         down(dqio_mutex)
+  *     down(dqio_mutex)                    jbd2_journal_start()
+  *
+  */
+diff --git a/fs/ext4/xattr.c b/fs/ext4/xattr.c
+index 157ce65..62b31c2 100644
+--- a/fs/ext4/xattr.c
++++ b/fs/ext4/xattr.c
+@@ -490,7 +490,7 @@ ext4_xattr_release_block(handle_t *handle, struct inode *inode,
+ 		error = ext4_handle_dirty_metadata(handle, inode, bh);
  		if (IS_SYNC(inode))
- 			sync_dirty_buffer(bh);
+ 			ext4_handle_sync(handle);
 -		DQUOT_FREE_BLOCK(inode, 1);
 +		vfs_dq_free_block(inode, 1);
- 	}
- 	EXT2_I(inode)->i_file_acl = 0;
+ 		ea_bdebug(bh, "refcount now=%d; releasing",
+ 			  le32_to_cpu(BHDR(bh)->h_refcount));
+ 		if (ce)
+@@ -784,7 +784,7 @@ inserted:
+ 				/* The old block is released after updating
+ 				   the inode. */
+ 				error = -EDQUOT;
+-				if (DQUOT_ALLOC_BLOCK(inode, 1))
++				if (vfs_dq_alloc_block(inode, 1))
+ 					goto cleanup;
+ 				error = ext4_journal_get_write_access(handle,
+ 								      new_bh);
+@@ -860,7 +860,7 @@ cleanup:
+ 	return error;
  
+ cleanup_dquot:
+-	DQUOT_FREE_BLOCK(inode, 1);
++	vfs_dq_free_block(inode, 1);
+ 	goto cleanup;
+ 
+ bad_block:
 -- 
 1.6.0.2
 
