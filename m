@@ -1,116 +1,63 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: ext 4 online defragment bug report+patch
-Date: Tue, 27 Jan 2009 17:32:45 +0900
-Message-ID: <497EC6AD.9050604@rs.jp.nec.com>
-References: <497E6389.40302@simpson.demon.co.uk>
+From: Pavel Machek <pavel@suse.cz>
+Subject: Re: ext3 read only handling
+Date: Tue, 27 Jan 2009 10:56:26 +0100
+Message-ID: <20090127095626.GB18449@elf.ucw.cz>
+References: <20080925150319.GA4344@elf.ucw.cz> <48DBAB0E.3090608@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Duncan Simpson <dps@simpson.demon.co.uk>
+Content-Type: text/plain; charset=us-ascii
+Cc: kernel list <linux-kernel@vger.kernel.org>, tytso@mit.edu,
+	jack@suse.cz, sct@redhat.com, akpm@linux-foundation.org,
+	adilger@sun.com, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:65292 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750899AbZA0Idb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2009 03:33:31 -0500
-In-Reply-To: <497E6389.40302@simpson.demon.co.uk>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:38286 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751977AbZA0J4k (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2009 04:56:40 -0500
+Content-Disposition: inline
+In-Reply-To: <48DBAB0E.3090608@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Duncan,
-
-Thanks for looking at the e4defrag.
-
-Duncan Simpson wrote:
-> The version of the ext 4 defragment command linked to by wikipedia has a
-> serious bug: it opens named pipes and sockets even when somebody is not
-> listening to them.
+On Thu 2008-09-25 10:15:26, Eric Sandeen wrote:
+> Pavel Machek wrote:
+> > Inserting read-only ext3 SD card into a machine and trying to mount
+> > ext3 volume on it is very unnice :-(.
+> > 
+> > Is there easy way to "fix" -oro so that it does not write to the
+> > media?
+> > 
+> > (Machine died after I played with that SD card a bit more, but I can't
+> > easily reproduce that...)
 > 
-> This causes blocking the until the defragment process is killed. It never
-> gets to the code which discovers the object is not a regular file and
-> should not be defragemented. The patch below fixes this by checking that 
-> the
-> object is a regular file *before* openning it, thereby avoiding the 
-> problem.
-
-You are right, open for non support file is waste and harmful.
-But the e4defrag has already checked the target file type
-before open it in the main function as follows.
-
-int main(int argc, char *argv[])
-{
-<snip>
-                 if (lstat64(argv[i], &buf) < 0) {
-                         perror(NGMSG_FILE_INFO);
-                         PRINT_FILE_NAME(argv[i]);
-                         continue;
-                 }
-
-                 /* Only regular file is acceptalbe with force defrag mode */
-                 if (force_flag && !S_ISREG(buf.st_mode)) {
-                         printf("Inappropriate file type\n");
-                         goto out;
-                 }
-
-                 if (S_ISBLK(buf.st_mode)) {
-                         /* Block device */
-                         if (get_mount_point(argv[i], dir_name, PATH_MAX)
-                                                         == RETURN_NG)
-                                 continue;
-                         arg_type = DEVNAME;
-                         printf("ext4 defragmentation for device(%s)\n",
-                                 argv[i]);
-                 } else if (S_ISDIR(buf.st_mode)) {
-                         /* Directory */
-                         if (access(argv[i], R_OK) < 0) {
-                                 perror(argv[i]);
-                                 continue;
-                         }
-                         arg_type = DIRNAME;
-                         strcpy(dir_name, argv[i]);
-                 } else if (S_ISREG(buf.st_mode)) {
-                         /* Regular file */
-                         arg_type = FILENAME;
-*               } else {
-*                       /* Irregular file */
-*                       PRINT_ERR_MSG(NGMSG_FILE_UNREG);
-*                       PRINT_FILE_NAME(argv[i]);
-*                       continue;
-                 }
-
-<snip>
-
-Te above "else" handles non support files (e.g. socket and pipe) correctly.
-Therefore e4defrag will print error message and skip them without file open.
-
-Thanks,
-Akira Fujita
-
-
-> You may want to leave the check after the object has been opened in place
-> to avoid problems due to race conditions.
+> Is the block device recognized as readonly?
 > 
-> Duncan (-:
+> ext3_load_journal() does things like:
 > 
-> --- e4defrag.c.dist     2009-01-27 01:19:07.605937764 +0000
-> +++ e4defrag.c  2009-01-27 01:18:32.505937083 +0000
-> @@ -631,6 +633,16 @@
->                 return FTW_CONT;
->         }
+>         really_read_only = bdev_read_only(sb->s_bdev);
+> ...
+>                         printk(KERN_INFO "EXT3-fs: INFO: recovery "
+>                                         "required on readonly
+> filesystem.\n");
+>                         if (really_read_only) {
+>                                 printk(KERN_ERR "EXT3-fs: write access "
+>                                         "unavailable, cannot proceed.\n");
+>                                 return -EROFS;
+>                         }
 > 
-> +       /* Openning a pipe or socket can block, so bypass non-regular files
-> +        * before openning them. */
-> +       if (S_ISREG(buf->st_mode)==0) {
-> +               if (detail_flag) {
-> +                       PRINT_FILE_NAME(file);
-> +                       IN_FTW_PRINT_ERR_MSG(NGMSG_FILE_UNREG);
-> +               }
-> +               goto out;
-> +       }
-> +
->         fd = open64(file, O_RDONLY);
->         if (fd < 0) {
->                 if (detail_flag) {
+> so it shouldn't have tried to replay the log ...
 > 
+> (replaying the log & writing to the device on a read-only mount is
+> another issue, but the behavior today is *supposed* to be such that if
+> you cannot write to the device, then even a read-only mount with a dirty
+> journal should fail gracefully, not explode ....)
 
+Well, that card is so broken I'm afraid to insert it into machine any
+more. I had hard time removing it on last attempt. But these days at
+least "ro,noload" is documented, so... 
 
+								Pavel
+
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
