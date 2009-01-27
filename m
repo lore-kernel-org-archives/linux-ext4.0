@@ -1,46 +1,59 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12551] end_request: I/O error, dev cciss/c0d0, sector 87435720
-Date: Tue, 27 Jan 2009 07:42:47 -0800 (PST)
-Message-ID: <20090127154247.F033A108040@picon.linux-foundation.org>
-References: <bug-12551-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Nick Warne <nick@ukfsn.org>
+Subject: Re: [QUESTION] root ext4 strange couldn't mount/can mount report
+Date: Tue, 27 Jan 2009 15:44:56 +0000
+Message-ID: <20090127154456.1c87f037@sauron.linicks.net>
+References: <20090127134231.6daf4cbb@sauron.linicks.net>
+	<20090127141426.GC11843@mit.edu>
+	<20090127143714.2389b5c2@sauron.linicks.net>
+	<20090127153706.GD11843@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:36373 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751328AbZA0PnJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Jan 2009 10:43:09 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0RFgmrL020097
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Jan 2009 07:42:49 -0800
-In-Reply-To: <bug-12551-13602@http.bugzilla.kernel.org/>
+Received: from mail.ukfsn.org ([77.75.108.10]:34150 "EHLO mail.ukfsn.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753231AbZA0PpJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 Jan 2009 10:45:09 -0500
+In-Reply-To: <20090127153706.GD11843@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12551
+On Tue, 27 Jan 2009 10:37:06 -0500
+Theodore Tso <tytso@mit.edu> wrote:
 
+> On Tue, Jan 27, 2009 at 02:37:14PM +0000, Nick Warne wrote:
+> > 
+> > I see.  I currently build ext3 in the kernel (as well as ext4), as
+> > I keep /boot partition ext3 for bootloader lilo.
+> > 
+> > So I can remove ext3 now, and lilo and kernel ext4 will happily read
+> > and use /boot partition as ext3 OK? 
+> 
+> The only thing which might not work is automatic type detection with
+> mount.  That is, if you specify:
+> 
+> 	mount /dev/hda1 /boot
+> 
+> without specifying a filesystem type, /bin/mount will probably do an
+> automatic type detection, detect that the filesystem is an ext3
+> filesystem, and attempt to mount it as ext3, and not know to try it
+> with ext4.  Libraries such as blkid and fsid could be made smart
+> enough to do the right thing, but they don't at the moment.
+> 
+> But if you type "mout -t ext4 /dev/sda1 /boot", you can mount an ext3
+> filesystem using the ext4 filesystem driver, and with 2.6.29 and up,
+> you'll be able to mount ext2 filesystems using the ext4 filesystem
+> code.  (You'll also be able to create extent-based filesystems without
+> a journal, which is why Google contributed the support for this.)
+> 
+>        	     	       	      	       - Ted
 
-tytso@mit.edu changed:
+Many thanks Ted - you cleared up the 'missing link' in any of the docs I
+could find.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |mike.miller@hp.com
-
-
-
-
-------- Comment #2 from tytso@mit.edu  2009-01-27 07:42 -------
-Looks like the cciss driver is returning an error when we try to do a write
-with barriers enabled.   If we get a failure return from the device driver, we
-fall back to writing the commit block w/o barriers, and that is apparently
-succeeding.   So this looks like a cciss issue.
-
-I've added Mike Miller, the maintainer of the cciss driver, to the cc list. 
-Mike, does this ring any bells; has there been any changes between 2.6.28.1 and
-2.6.29-rc2-git3 that might account for this?
-
-
+Nick
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Free Software Foundation Associate Member 5508
+http://linicks.net/
