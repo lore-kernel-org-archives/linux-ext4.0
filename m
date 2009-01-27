@@ -1,56 +1,54 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12551] end_request: I/O error, dev cciss/c0d0, sector 87435720
-Date: Tue, 27 Jan 2009 06:52:35 -0800 (PST)
-Message-ID: <20090127145235.2F279108040@picon.linux-foundation.org>
-References: <bug-12551-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
+Subject: Re: [PATCH] ext4: fix oops when online resizing a filesystem with
+	flex_bg
+Date: Tue, 27 Jan 2009 13:25:40 -0200
+Message-ID: <20090127152539.GA3704@vespa.holoscopio.com>
+References: <1232743309-3929-1-git-send-email-cascardo@holoscopio.com> <20090127000743.GC10118@mit.edu>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=pgp-sha1;
+	protocol="application/pgp-signature"; boundary="vkogqOf2sHV7VnPd"
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:52560 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751443AbZA0Owx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Jan 2009 09:52:53 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0REqZbN015227
-	for <linux-ext4@vger.kernel.org>; Tue, 27 Jan 2009 06:52:36 -0800
-In-Reply-To: <bug-12551-13602@http.bugzilla.kernel.org/>
+Received: from liberdade.minaslivre.org ([72.232.18.203]:49753 "EHLO
+	liberdade.minaslivre.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752989AbZA0PZP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2009 10:25:15 -0500
+Content-Disposition: inline
+In-Reply-To: <20090127000743.GC10118@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12551
 
+--vkogqOf2sHV7VnPd
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+Content-Transfer-Encoding: quoted-printable
 
+On Mon, Jan 26, 2009 at 07:07:43PM -0500, Theodore Tso wrote:
+> Fortunately having random bits in bg_flags is otherwise mostly
+> harmless, but this is clearly a bug.  Can you test and confirm this
+> also fixes your failure case?
+>=20
+> 						- Ted
 
+Yes, it fix my test case. No oops while online resizing anymore with
+only your patch applied on top of 2.6.29-rc2.
 
+Best Regards,
+Cascardo.
 
-------- Comment #1 from ralf.hildebrandt@charite.de  2009-01-27 06:52 -------
-[    5.928545] EXT4-fs: barriers enabled
-[    5.937105] kjournald2 starting: pid 703, dev cciss!c0d0p8:8, commit
-interval 5 seconds
-[    5.946272] EXT4 FS on cciss!c0d0p8, internal journal on cciss!c0d0p8:8
-[    5.946331] EXT4-fs: delayed allocation enabled
-[    5.946392] EXT4-fs: file extents enabled
-[    5.946592] EXT4-fs: mballoc enabled
-[    5.946646] EXT4-fs: mounted filesystem cciss!c0d0p8 with ordered data mode
-[    5.976729] EXT4-fs: barriers enabled
-[    5.985294] kjournald2 starting: pid 704, dev cciss!c0d0p9:8, commit
-interval 5 seconds
-[    5.989773] EXT4 FS on cciss!c0d0p9, internal journal on cciss!c0d0p9:8
-[    5.989833] EXT4-fs: delayed allocation enabled
-[    5.989889] EXT4-fs: file extents enabled
-[    5.990093] EXT4-fs: mballoc enabled
-[    5.990148] EXT4-fs: mounted filesystem cciss!c0d0p9 with ordered data mode
-[    6.011721] EXT4-fs: barriers enabled
-[    6.012150] kjournald2 starting: pid 705, dev cciss!c0d0p10:8, commit
-interval 5 seconds
-[    6.020273] EXT4 FS on cciss!c0d0p10, internal journal on cciss!c0d0p10:8
-[    6.020332] EXT4-fs: delayed allocation enabled
-[    6.020387] EXT4-fs: file extents enabled
-[    6.020604] EXT4-fs: mballoc enabled
-[    6.020659] EXT4-fs: mounted filesystem cciss!c0d0p10 with ordered data mode
+--vkogqOf2sHV7VnPd
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: Digital signature
+Content-Disposition: inline
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+iEYEARECAAYFAkl/J3MACgkQyTpryRcqtS1GbQCfVf0aXczdPL0dhEg7DdjshaiZ
+sL8AmwVYojqWalhfkP6fXEMYyngN4mQS
+=1YcT
+-----END PGP SIGNATURE-----
+
+--vkogqOf2sHV7VnPd--
