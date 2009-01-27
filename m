@@ -1,59 +1,163 @@
-From: Nick Warne <nick@ukfsn.org>
-Subject: Re: [QUESTION] root ext4 strange couldn't mount/can mount report
-Date: Tue, 27 Jan 2009 15:44:56 +0000
-Message-ID: <20090127154456.1c87f037@sauron.linicks.net>
-References: <20090127134231.6daf4cbb@sauron.linicks.net>
-	<20090127141426.GC11843@mit.edu>
-	<20090127143714.2389b5c2@sauron.linicks.net>
-	<20090127153706.GD11843@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.ukfsn.org ([77.75.108.10]:34150 "EHLO mail.ukfsn.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753231AbZA0PpJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Jan 2009 10:45:09 -0500
-In-Reply-To: <20090127153706.GD11843@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 07/16] ext2: Use lowercase names of quota functions
+Date: Tue, 27 Jan 2009 17:48:40 +0100
+Message-ID: <1233074929-12277-8-git-send-email-jack@suse.cz>
+References: <y>
+ <1233074929-12277-1-git-send-email-jack@suse.cz>
+ <1233074929-12277-2-git-send-email-jack@suse.cz>
+ <1233074929-12277-3-git-send-email-jack@suse.cz>
+ <1233074929-12277-4-git-send-email-jack@suse.cz>
+ <1233074929-12277-5-git-send-email-jack@suse.cz>
+ <1233074929-12277-6-git-send-email-jack@suse.cz>
+ <1233074929-12277-7-git-send-email-jack@suse.cz>
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
+To: linux-fsdevel@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <1233074929-12277-7-git-send-email-jack@suse.cz>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 27 Jan 2009 10:37:06 -0500
-Theodore Tso <tytso@mit.edu> wrote:
+Use lowercase names of quota functions instead of old uppercase ones.
 
-> On Tue, Jan 27, 2009 at 02:37:14PM +0000, Nick Warne wrote:
-> > 
-> > I see.  I currently build ext3 in the kernel (as well as ext4), as
-> > I keep /boot partition ext3 for bootloader lilo.
-> > 
-> > So I can remove ext3 now, and lilo and kernel ext4 will happily read
-> > and use /boot partition as ext3 OK? 
-> 
-> The only thing which might not work is automatic type detection with
-> mount.  That is, if you specify:
-> 
-> 	mount /dev/hda1 /boot
-> 
-> without specifying a filesystem type, /bin/mount will probably do an
-> automatic type detection, detect that the filesystem is an ext3
-> filesystem, and attempt to mount it as ext3, and not know to try it
-> with ext4.  Libraries such as blkid and fsid could be made smart
-> enough to do the right thing, but they don't at the moment.
-> 
-> But if you type "mout -t ext4 /dev/sda1 /boot", you can mount an ext3
-> filesystem using the ext4 filesystem driver, and with 2.6.29 and up,
-> you'll be able to mount ext2 filesystems using the ext4 filesystem
-> code.  (You'll also be able to create extent-based filesystems without
-> a journal, which is why Google contributed the support for this.)
-> 
->        	     	       	      	       - Ted
+Signed-off-by: Jan Kara <jack@suse.cz>
+CC: linux-ext4@vger.kernel.org
+---
+ fs/ext2/balloc.c |    8 ++++----
+ fs/ext2/ialloc.c |   10 +++++-----
+ fs/ext2/inode.c  |    2 +-
+ fs/ext2/xattr.c  |    8 ++++----
+ 4 files changed, 14 insertions(+), 14 deletions(-)
 
-Many thanks Ted - you cleared up the 'missing link' in any of the docs I
-could find.
-
-Nick
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index 4a29d63..7f8d2e5 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -570,7 +570,7 @@ do_more:
+ error_return:
+ 	brelse(bitmap_bh);
+ 	release_blocks(sb, freed);
+-	DQUOT_FREE_BLOCK(inode, freed);
++	vfs_dq_free_block(inode, freed);
+ }
+ 
+ /**
+@@ -1247,7 +1247,7 @@ ext2_fsblk_t ext2_new_blocks(struct inode *inode, ext2_fsblk_t goal,
+ 	/*
+ 	 * Check quota for allocation of this block.
+ 	 */
+-	if (DQUOT_ALLOC_BLOCK(inode, num)) {
++	if (vfs_dq_alloc_block(inode, num)) {
+ 		*errp = -EDQUOT;
+ 		return 0;
+ 	}
+@@ -1409,7 +1409,7 @@ allocated:
+ 
+ 	*errp = 0;
+ 	brelse(bitmap_bh);
+-	DQUOT_FREE_BLOCK(inode, *count-num);
++	vfs_dq_free_block(inode, *count-num);
+ 	*count = num;
+ 	return ret_block;
+ 
+@@ -1420,7 +1420,7 @@ out:
+ 	 * Undo the block allocation
+ 	 */
+ 	if (!performed_allocation)
+-		DQUOT_FREE_BLOCK(inode, *count);
++		vfs_dq_free_block(inode, *count);
+ 	brelse(bitmap_bh);
+ 	return 0;
+ }
+diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
+index 66321a8..15387c9 100644
+--- a/fs/ext2/ialloc.c
++++ b/fs/ext2/ialloc.c
+@@ -121,8 +121,8 @@ void ext2_free_inode (struct inode * inode)
+ 	if (!is_bad_inode(inode)) {
+ 		/* Quota is already initialized in iput() */
+ 		ext2_xattr_delete_inode(inode);
+-	    	DQUOT_FREE_INODE(inode);
+-		DQUOT_DROP(inode);
++		vfs_dq_free_inode(inode);
++		vfs_dq_drop(inode);
+ 	}
+ 
+ 	es = EXT2_SB(sb)->s_es;
+@@ -586,7 +586,7 @@ got:
+ 		goto fail_drop;
+ 	}
+ 
+-	if (DQUOT_ALLOC_INODE(inode)) {
++	if (vfs_dq_alloc_inode(inode)) {
+ 		err = -EDQUOT;
+ 		goto fail_drop;
+ 	}
+@@ -605,10 +605,10 @@ got:
+ 	return inode;
+ 
+ fail_free_drop:
+-	DQUOT_FREE_INODE(inode);
++	vfs_dq_free_inode(inode);
+ 
+ fail_drop:
+-	DQUOT_DROP(inode);
++	vfs_dq_drop(inode);
+ 	inode->i_flags |= S_NOQUOTA;
+ 	inode->i_nlink = 0;
+ 	unlock_new_inode(inode);
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index 23fff2f..b43b955 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -1444,7 +1444,7 @@ int ext2_setattr(struct dentry *dentry, struct iattr *iattr)
+ 		return error;
+ 	if ((iattr->ia_valid & ATTR_UID && iattr->ia_uid != inode->i_uid) ||
+ 	    (iattr->ia_valid & ATTR_GID && iattr->ia_gid != inode->i_gid)) {
+-		error = DQUOT_TRANSFER(inode, iattr) ? -EDQUOT : 0;
++		error = vfs_dq_transfer(inode, iattr) ? -EDQUOT : 0;
+ 		if (error)
+ 			return error;
+ 	}
+diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
+index 987a526..7913531 100644
+--- a/fs/ext2/xattr.c
++++ b/fs/ext2/xattr.c
+@@ -642,7 +642,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 				ea_bdebug(new_bh, "reusing block");
+ 
+ 				error = -EDQUOT;
+-				if (DQUOT_ALLOC_BLOCK(inode, 1)) {
++				if (vfs_dq_alloc_block(inode, 1)) {
+ 					unlock_buffer(new_bh);
+ 					goto cleanup;
+ 				}
+@@ -699,7 +699,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 		 * as if nothing happened and cleanup the unused block */
+ 		if (error && error != -ENOSPC) {
+ 			if (new_bh && new_bh != old_bh)
+-				DQUOT_FREE_BLOCK(inode, 1);
++				vfs_dq_free_block(inode, 1);
+ 			goto cleanup;
+ 		}
+ 	} else
+@@ -731,7 +731,7 @@ ext2_xattr_set2(struct inode *inode, struct buffer_head *old_bh,
+ 			le32_add_cpu(&HDR(old_bh)->h_refcount, -1);
+ 			if (ce)
+ 				mb_cache_entry_release(ce);
+-			DQUOT_FREE_BLOCK(inode, 1);
++			vfs_dq_free_block(inode, 1);
+ 			mark_buffer_dirty(old_bh);
+ 			ea_bdebug(old_bh, "refcount now=%d",
+ 				le32_to_cpu(HDR(old_bh)->h_refcount));
+@@ -794,7 +794,7 @@ ext2_xattr_delete_inode(struct inode *inode)
+ 		mark_buffer_dirty(bh);
+ 		if (IS_SYNC(inode))
+ 			sync_dirty_buffer(bh);
+-		DQUOT_FREE_BLOCK(inode, 1);
++		vfs_dq_free_block(inode, 1);
+ 	}
+ 	EXT2_I(inode)->i_file_acl = 0;
+ 
 -- 
-Free Software Foundation Associate Member 5508
-http://linicks.net/
+1.6.0.2
+
