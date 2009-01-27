@@ -1,50 +1,63 @@
-From: Nick Warne <nick@ukfsn.org>
-Subject: Re: [QUESTION] root ext4 strange couldn't mount/can mount report
-Date: Tue, 27 Jan 2009 14:37:14 +0000
-Message-ID: <20090127143714.2389b5c2@sauron.linicks.net>
-References: <20090127134231.6daf4cbb@sauron.linicks.net>
-	<20090127141426.GC11843@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12551] New: end_request: I/O error, dev cciss/c0d0, sector 87435720
+Date: Tue, 27 Jan 2009 06:51:58 -0800 (PST)
+Message-ID: <bug-12551-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.ukfsn.org ([77.75.108.10]:45864 "EHLO mail.ukfsn.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753441AbZA0OhR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 27 Jan 2009 09:37:17 -0500
-In-Reply-To: <20090127141426.GC11843@mit.edu>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:56916 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751020AbZA0OwU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 Jan 2009 09:52:20 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0REpwVv015086
+	for <linux-ext4@vger.kernel.org>; Tue, 27 Jan 2009 06:51:59 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 27 Jan 2009 09:14:26 -0500
-Theodore Tso <tytso@mit.edu> wrote:
+http://bugzilla.kernel.org/show_bug.cgi?id=12551
 
-> On Tue, Jan 27, 2009 at 01:42:31PM +0000, Nick Warne wrote:
-> > 
-> > Jan 27 12:54:57 sauron kernel: EXT3-fs: sda2: couldn't mount
-> > because of unsupported optional features (40). Jan 27 12:54:57
-> > sauron kernel: VFS: Mounted root (ext4 filesystem) readonly.
-> > 
-> > i.e. root / -> /dev/sda2 couldn't mount, but it does mount, and
-> > system boots normally and functions fine.
-> 
-> That's normal; what happens is that the kernel tries to mount it as
-> ext3 first, which takes a pass since it can't support certain
-> filesystems features, and then ext4 mounts it.  The ext4 filesystem
-> code will happily mount an ext3 filesystem, so that's why the kernel
-> tries ext3 first.
+           Summary: end_request: I/O error, dev cciss/c0d0, sector 87435720
+           Product: File System
+           Version: 2.5
+     KernelVersion: 2.6.29-rc2-git3
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: ralf.hildebrandt@charite.de
 
-Hi Ted,
 
-I see.  I currently build ext3 in the kernel (as well as ext4), as
-I keep /boot partition ext3 for bootloader lilo.
+Latest working kernel version: 2.6.28.1
+Earliest failing kernel version: 2.6.29-rc2-git3
+Distribution: Debian/testing
+Hardware Environment:
+Software Environment:
+Problem Description:
 
-So I can remove ext3 now, and lilo and kernel ext4 will happily read
-and use /boot partition as ext3 OK? 
+Steps to reproduce:
 
-Nick
+With 2.6.29-rc2-git3, I suddenly get:
+
+[   73.306279] ip_tables: (C) 2000-2006 Netfilter Core Team
+[   80.047614] end_request: I/O error, dev cciss/c0d0, sector 52257960
+[   80.047689] JBD: barrier-based sync failed on cciss!c0d0p8:8 - disabling
+barriers
+[   80.089865] end_request: I/O error, dev cciss/c0d0, sector 87435720
+[   80.089931] JBD: barrier-based sync failed on cciss!c0d0p9:8 - disabling
+barriers
+[   80.141581] end_request: I/O error, dev cciss/c0d0, sector 105586480
+[   80.141643] JBD: barrier-based sync failed on cciss!c0d0p10:8 - disabling
+barriers
+
+With 2.6.28.1 I didn't get those.
+
+
 -- 
-Free Software Foundation Associate Member 5508
-http://linicks.net/
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
