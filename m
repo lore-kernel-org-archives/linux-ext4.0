@@ -1,54 +1,45 @@
-From: Thadeu Lima de Souza Cascardo <cascardo@holoscopio.com>
-Subject: Re: [PATCH] ext4: fix oops when online resizing a filesystem with
-	flex_bg
-Date: Tue, 27 Jan 2009 13:25:40 -0200
-Message-ID: <20090127152539.GA3704@vespa.holoscopio.com>
-References: <1232743309-3929-1-git-send-email-cascardo@holoscopio.com> <20090127000743.GC10118@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [QUESTION] root ext4 strange couldn't mount/can mount report
+Date: Tue, 27 Jan 2009 10:37:06 -0500
+Message-ID: <20090127153706.GD11843@mit.edu>
+References: <20090127134231.6daf4cbb@sauron.linicks.net> <20090127141426.GC11843@mit.edu> <20090127143714.2389b5c2@sauron.linicks.net>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="vkogqOf2sHV7VnPd"
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Nick Warne <nick@ukfsn.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from liberdade.minaslivre.org ([72.232.18.203]:49753 "EHLO
-	liberdade.minaslivre.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752989AbZA0PZP (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 27 Jan 2009 10:25:15 -0500
+Received: from thunk.org ([69.25.196.29]:44233 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752794AbZA0PhL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 27 Jan 2009 10:37:11 -0500
 Content-Disposition: inline
-In-Reply-To: <20090127000743.GC10118@mit.edu>
+In-Reply-To: <20090127143714.2389b5c2@sauron.linicks.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, Jan 27, 2009 at 02:37:14PM +0000, Nick Warne wrote:
+> 
+> I see.  I currently build ext3 in the kernel (as well as ext4), as
+> I keep /boot partition ext3 for bootloader lilo.
+> 
+> So I can remove ext3 now, and lilo and kernel ext4 will happily read
+> and use /boot partition as ext3 OK? 
 
---vkogqOf2sHV7VnPd
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+The only thing which might not work is automatic type detection with
+mount.  That is, if you specify:
 
-On Mon, Jan 26, 2009 at 07:07:43PM -0500, Theodore Tso wrote:
-> Fortunately having random bits in bg_flags is otherwise mostly
-> harmless, but this is clearly a bug.  Can you test and confirm this
-> also fixes your failure case?
->=20
-> 						- Ted
+	mount /dev/hda1 /boot
 
-Yes, it fix my test case. No oops while online resizing anymore with
-only your patch applied on top of 2.6.29-rc2.
+without specifying a filesystem type, /bin/mount will probably do an
+automatic type detection, detect that the filesystem is an ext3
+filesystem, and attempt to mount it as ext3, and not know to try it
+with ext4.  Libraries such as blkid and fsid could be made smart
+enough to do the right thing, but they don't at the moment.
 
-Best Regards,
-Cascardo.
+But if you type "mout -t ext4 /dev/sda1 /boot", you can mount an ext3
+filesystem using the ext4 filesystem driver, and with 2.6.29 and up,
+you'll be able to mount ext2 filesystems using the ext4 filesystem
+code.  (You'll also be able to create extent-based filesystems without
+a journal, which is why Google contributed the support for this.)
 
---vkogqOf2sHV7VnPd
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkl/J3MACgkQyTpryRcqtS1GbQCfVf0aXczdPL0dhEg7DdjshaiZ
-sL8AmwVYojqWalhfkP6fXEMYyngN4mQS
-=1YcT
------END PGP SIGNATURE-----
-
---vkogqOf2sHV7VnPd--
+       	     	       	      	       - Ted
