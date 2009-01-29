@@ -1,40 +1,45 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] debugfs - fix segfault on "stat" command with no open fs
-Date: Thu, 29 Jan 2009 17:46:28 -0500
-Message-ID: <498231C4.6090203@redhat.com>
+Subject: [PATCH] e2fsprogs: fix libext2fs info page name
+Date: Thu, 29 Jan 2009 17:52:13 -0500
+Message-ID: <4982331D.9070707@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Andrew Hecox <ahecox@redhat.com>
+Cc: Jerry James <loganjerry@gmail.com>
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:41192 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:40054 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751850AbZA2Wqb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 29 Jan 2009 17:46:31 -0500
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n0TMkUvH014003
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Jan 2009 17:46:30 -0500
+	id S1753276AbZA2WwR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 29 Jan 2009 17:52:17 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a regression from commit 
-8fdf29117f922419bd5b3f741e5d554b1d5b8893, which attempts to access
-current_fs via a feature check before we check that it's open.
+In Red Hat bug #481620 Jerry reported that the libext2fs info page
+is not accesable via "info libext2fs" but is via "info libext2fs.info"
+and suggested that the following change should fix it.
 
-Just moving the feature check below the open check should fix it.
+Additional info from Jerry:
+The problem is that makeinfo 4.12 interprets the dot in "libext2fs.info"
+to be the end of the description portion of the info entry, even though 
+it hasn't seen the closing parenthesis yet.  Making the reference be to 
+just "libext2fs" works.
 
-Reported-by: Andrew Hecox <ahecox@redhat.com>
+Reported-by: Jerry James <loganjerry@gmail.com>
 Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
 
-Index: e2fsprogs/debugfs/debugfs.c
+Index: e2fsprogs/doc/libext2fs.texinfo
 ===================================================================
---- e2fsprogs.orig/debugfs/debugfs.c	2008-09-12 10:37:52.000000000 -0500
-+++ e2fsprogs/debugfs/debugfs.c	2009-01-29 16:36:04.748574864 -0600
-@@ -291,9 +291,6 @@ void do_show_super_stats(int argc, char 
- 	int	c, header_only = 0;
- 	int	numdirs = 0, first, gdt_csum;
+--- e2fsprogs.orig/doc/libext2fs.texinfo	2009-01-29 16:37:48.819575689 -0600
++++ e2fsprogs/doc/libext2fs.texinfo	2009-01-29 16:48:07.821574818 -0600
+@@ -8,7 +8,7 @@
+ @ifinfo
+ @dircategory Development
+ @direntry
+-* libext2fs: (libext2fs.info).                  The EXT2FS library.
++* libext2fs: (libext2fs).                  The EXT2FS library.
+ @end direntry
+ @end ifinfo
  
--	gdt_csum = EXT2_HAS_RO_COMPAT_FEATURE(current_fs->super,
--					      EXT4_FEATURE_RO_COMPAT_GDT_CSUM);
+
