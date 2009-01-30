@@ -1,114 +1,49 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH] : Remove incompatible pointer assignment warning in ext4
-	quota operations
-Date: Fri, 30 Jan 2009 20:30:03 +0530
-Message-ID: <ea11fea30901300700q400d6249vcea829481d4ab5e9@mail.gmail.com>
-References: <ea11fea30901272117j760a34e8w5df0ec1916632f3f@mail.gmail.com>
-	 <ea11fea30901272121x319aa2b3m2a5a5799b6df4d8a@mail.gmail.com>
+From: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
+Subject: LTTng 0.89 for Linux 2.6.29-rc3
+Date: Fri, 30 Jan 2009 15:07:57 -0500
+Message-ID: <20090130200757.GA14999@Krystal>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Content-Transfer-Encoding: 7bit
-Cc: mkatiyar@gmail.com
-To: "Theodore Ts'o" <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>
+To: ltt-dev@lists.casi.polymtl.ca, linux-kernel@vger.kernel.org,
+	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.189]:51600 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751631AbZA3PAG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Jan 2009 10:00:06 -0500
-Received: by ti-out-0910.google.com with SMTP id b6so161145tic.23
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Jan 2009 07:00:03 -0800 (PST)
-In-Reply-To: <ea11fea30901272121x319aa2b3m2a5a5799b6df4d8a@mail.gmail.com>
+Received: from tomts25-srv.bellnexxia.net ([209.226.175.188]:53920 "EHLO
+	tomts25-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752811AbZA3UIB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Jan 2009 15:08:01 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jan 28, 2009 at 10:51 AM, Manish Katiyar <mkatiyar@gmail.com> wrote:
-> On Wed, Jan 28, 2009 at 10:47 AM, Manish Katiyar <mkatiyar@gmail.com> wrote:
->> Below patch removes the following warning during compilation :
->>
->>  CC [M]  fs/ext4/super.o
->> fs/ext4/super.c:949: warning: initialization from incompatible pointer type
->>  LD [M]  fs/ext4/ext4.o
+Hi,
 
-Hi Ted,
+I just ported LTTng to the 2.6.29-rc3 kernel. It includes the following
+changes :
 
-Any feedback on this ?
+- Tree RCU instrumentation
+- Updated ext4 and jbd2 instrumentation
 
-Thanks -
-Manish
+Please feel free to try it and report any success/problem you may have.
+Note that cross-build has been slightly less tested this time because
+I'll have to upgrade many of my compilers to a version compatible with
+kernel 2.6.29-rc.
 
->
-> Sorry,
->
-> Tha correct patch is here.
->
-> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-> ---
->  fs/ext4/ext4.h  |    2 +-
->  fs/ext4/inode.c |    4 ++--
->  2 files changed, 3 insertions(+), 3 deletions(-)
->
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 3ab1a41..0164866 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -1088,7 +1088,7 @@ extern int ext4_chunk_trans_blocks(struct inode
-> *, int nrblocks);
->  extern int ext4_block_truncate_page(handle_t *handle,
->                struct address_space *mapping, loff_t from);
->  extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
-> -extern unsigned long long ext4_get_reserved_space(struct inode *inode);
-> +extern qsize_t ext4_get_reserved_space(struct inode *inode);
->
->  /* ioctl.c */
->  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 6a316ec..6be09be 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -973,9 +973,9 @@ out:
->        return err;
->  }
->
-> -unsigned long long ext4_get_reserved_space(struct inode *inode)
-> +qsize_t ext4_get_reserved_space(struct inode *inode)
->  {
-> -       unsigned long long total;
-> +       qsize_t total;
->
->        spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
->        total = EXT4_I(inode)->i_reserved_data_blocks +
-> --
-> 1.5.4.3
->
-> Thanks -
-> Manish
->
->>
->>
->> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
->> ---
->>  fs/ext4/ext4.h |    2 +-
->>  1 files changed, 1 insertions(+), 1 deletions(-)
->>
->> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
->> index 3ab1a41..0164866 100644
->> --- a/fs/ext4/ext4.h
->> +++ b/fs/ext4/ext4.h
->> @@ -1088,7 +1088,7 @@ extern int ext4_chunk_trans_blocks(struct inode
->> *, int nrblocks);
->>  extern int ext4_block_truncate_page(handle_t *handle,
->>                struct address_space *mapping, loff_t from);
->>  extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
->> -extern unsigned long long ext4_get_reserved_space(struct inode *inode);
->> +extern qsize_t ext4_get_reserved_space(struct inode *inode);
->>
->>  /* ioctl.c */
->>  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
->> --
->> 1.5.4.3
->>
->>
->> Thanks -
->> Manish
->>
->
+It also includes the recently added kprobes support through a simple
+
+echo symbol_name > /mnt/debugfs/ltt/kprobes/enable
+
+It's available at the new LTTng website :
+
+http://www.lttng.org/
+
+Thanks,
+
+Mathieu
+
+-- 
+Mathieu Desnoyers
+OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
