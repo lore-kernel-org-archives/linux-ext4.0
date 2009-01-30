@@ -1,49 +1,47 @@
-From: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
-Subject: LTTng 0.89 for Linux 2.6.29-rc3
-Date: Fri, 30 Jan 2009 15:07:57 -0500
-Message-ID: <20090130200757.GA14999@Krystal>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [RFC][PATCH 0/3] ext4: online defrag (ver 1.0)
+Date: Fri, 30 Jan 2009 15:15:18 -0500
+Message-ID: <1233346518.9253.44.camel@think.oraclecorp.com>
+References: <49829A1D.5090002@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-To: ltt-dev@lists.casi.polymtl.ca, linux-kernel@vger.kernel.org,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tomts25-srv.bellnexxia.net ([209.226.175.188]:53920 "EHLO
-	tomts25-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752811AbZA3UIB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Jan 2009 15:08:01 -0500
-Content-Disposition: inline
+Received: from rcsinet12.oracle.com ([148.87.113.124]:60634 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753043AbZA3UPt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Jan 2009 15:15:49 -0500
+In-Reply-To: <49829A1D.5090002@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Fri, 2009-01-30 at 15:11 +0900, Akira Fujita wrote:
+> Hi,
+> 
+> I have rewritten ext4 online defrag patches based on the comments from Ted.
+> In the new defrag, create donor inode in the user space instead of kernel space,
+> and then allocate contiguous blocks to it with fallocate().
+> In kernel space, exchange the blocks between target inode and donor inode,
+> and then copy the file data of target inode to donor inode every 64MB.
+> The EXT4_IOC_DEFRAG ioctl becomes simpler than the old one,
+> so it may be useful for other purposes.
+> 
 
-I just ported LTTng to the 2.6.29-rc3 kernel. It includes the following
-changes :
+One thing you'll want to handle is swap files.  The swap code uses the
+bmap ioctl to make a mapping of extents in the files, and expects that
+mapping not to change.  So, defragging a swap file will lead to some
+serious problems.
 
-- Tree RCU instrumentation
-- Updated ext4 and jbd2 instrumentation
+Btrfs is currently getting around this by dropping bmap support, so
+swapfiles on btrfs won't work at all.  A real long term solution is
+required ;)
 
-Please feel free to try it and report any success/problem you may have.
-Note that cross-build has been slightly less tested this time because
-I'll have to upgrade many of my compilers to a version compatible with
-kernel 2.6.29-rc.
+For ext4 you should be able to just detect swapfile and disallow the
+defrag on it.
 
-It also includes the recently added kprobes support through a simple
+-chris
 
-echo symbol_name > /mnt/debugfs/ltt/kprobes/enable
 
-It's available at the new LTTng website :
-
-http://www.lttng.org/
-
-Thanks,
-
-Mathieu
-
--- 
-Mathieu Desnoyers
-OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
