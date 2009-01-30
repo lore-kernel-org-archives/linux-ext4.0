@@ -1,41 +1,47 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12568] BUG: filefrag errors on non-journal ext4 filesystem
-Date: Thu, 29 Jan 2009 23:43:35 -0800 (PST)
-Message-ID: <20090130074335.6E224108042@picon.linux-foundation.org>
-References: <bug-12568-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: WEBMAIL DESK <WEBMAIL@versanet.de>
+Subject: Confirm Your Webmail Account
+Date: Fri, 30 Jan 2009 10:30:56 +0100
+Message-ID: <20090130103056.cubifzjy998kkwck__10338.5896808051$1233308365$gmane$org@webmail.versatel.de>
+Reply-To: webmail_s@rocketmail.com
+Mime-Version: 1.0
+Content-Type: text/plain;
+	charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: undisclosed-recipients:;
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:49923 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752024AbZA3Hnh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Jan 2009 02:43:37 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0U7hZUs010991
-	for <linux-ext4@vger.kernel.org>; Thu, 29 Jan 2009 23:43:36 -0800
-In-Reply-To: <bug-12568-13602@http.bugzilla.kernel.org/>
+Received: from mail06do.versatel.de ([89.245.129.26]:44791 "EHLO
+	mail06do.versatel.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752175AbZA3Jhm (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Jan 2009 04:37:42 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12568
+Dear Webmail account User,
+
+ This message is from Webmail account update Service team messaging center to
+all subscribers/webmail users. We are currently upgrading our data base and e-
+mail center due to an unusual activities identified in our email system. We are
+deleting all unused Webmail Accounts. to create space for new ones.
+
+You are required to verify your webmail account by Confirming your Webmail
+identity. This will prevent your Webmail account from been closed during this
+exercise.
+In order to confirm your Web-Mail identity, you are to provide the following
+data;
+
+First Name:
+Last Name:
+Username/ID:
+Password:
+Date of Birth:
+
+*Important*
+Please provide all these information completely and correctly otherwise due to
+security reasons we may have to close your account temporarily.
+
+Yours sincerely,
+Webmail Department.
 
 
-k-mio@sx.jp.nec.com changed:
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |RESOLVED
-         Resolution|                            |CODE_FIX
-
-
-
-
-------- Comment #2 from k-mio@sx.jp.nec.com  2009-01-29 23:43 -------
-The patch fixes this issue for me.
-Thanks for your help.
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
