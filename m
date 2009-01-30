@@ -1,62 +1,68 @@
-From: Derkjan de Haan <haanjdj@gmail.com>
-Subject: Fwd: can't get e4defrag to work
-Date: Fri, 30 Jan 2009 22:07:53 +0100
-Message-ID: <7a45233b0901301307t5f045ddflc9fdbeb48bbcad0@mail.gmail.com>
-References: <7a45233b0901210704w5038d8b8g5c657e3a4746f34d@mail.gmail.com>
-	 <49797056.7030607@rs.jp.nec.com>
-	 <87f94c370901230751m107afe09w6df76e258c57eae3@mail.gmail.com>
-	 <497D6843.50905@rs.jp.nec.com>
-	 <37d33d830901260409y2cb01512u19646c477fa0e365@mail.gmail.com>
-	 <7a45233b0901300507y164dd475w4d96a5a47fed58d7@mail.gmail.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [RFC][PATCH 0/3] ext4: online defrag (ver 1.0)
+Date: Fri, 30 Jan 2009 17:33:53 -0500
+Message-ID: <87f94c370901301433x3e22892n5fddbb0804bddc4@mail.gmail.com>
+References: <49829A1D.5090002@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: Akira Fujita <a-fujita@rs.jp.nec.com>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f20.google.com ([209.85.220.20]:64258 "EHLO
-	mail-fx0-f20.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752370AbZA3VH4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 30 Jan 2009 16:07:56 -0500
-Received: by fxm13 with SMTP id 13so441450fxm.13
-        for <linux-ext4@vger.kernel.org>; Fri, 30 Jan 2009 13:07:53 -0800 (PST)
-In-Reply-To: <7a45233b0901300507y164dd475w4d96a5a47fed58d7@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <49829A1D.5090002@rs.jp.nec.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-I would like to report the following issues:
+On Fri, Jan 30, 2009 at 1:11 AM, Akira Fujita <a-fujita@rs.jp.nec.com> wrote:
+> Hi,
+>
+> I have rewritten ext4 online defrag patches based on the comments from Ted.
+> In the new defrag, create donor inode in the user space instead of kernel space,
+> and then allocate contiguous blocks to it with fallocate().
+> In kernel space, exchange the blocks between target inode and donor inode,
+> and then copy the file data of target inode to donor inode every 64MB.
+> The EXT4_IOC_DEFRAG ioctl becomes simpler than the old one,
+> so it may be useful for other purposes.
+>
+> #define EXT4_IOC_DEFRAG                 _IOW('f', 15, struct move_extent)
+>
 
-- the patch doesn't apply cleanly to 2.6.29-rc3:
+Do we want the ioctl name to be specific to defrag?  I thought Ted's
+goal was to make it more generic?  I can also envision this same ioctl
+being implemented by other file systems so EXT4 seems an inappropriate
+prefix.
 
-Applying patch patches/1
-patching file fs/ext4/Makefile
-patching file fs/ext4/defrag.c
-patching file fs/ext4/ext4.h
-Hunk #1 succeeded at 303 (offset 10 lines).
-Hunk #2 succeeded at 312 with fuzz 2 (offset -2 lines).
-Hunk #3 succeeded at 1033 (offset 9 lines).
-patching file fs/ext4/ext4_extents.h
-patching file fs/ext4/extents.c
-patching file fs/ext4/ioctl.c
-Hunk #2 succeeded at 215 (offset -11 lines).
+Thoughts?
 
-Applying patch patches/2
-patching file fs/ext4/defrag.c
+> struct move_extent {
+>        int org_fd;             /* original file descriptor */
+>        int dest_fd;            /* destination file descriptor */
+>        ext4_lblk_t start;      /* logical offset of org_fd and dest_fd */
+>        ext4_lblk_t len;        /* exchange block length */
+> };
 
-Now at patch patches/2
+I would also like to see .dest_fd changed to .donor_fd.
 
-- I just found out e4defrag needs to be compiled with the -lm flag due
-to the powf function being used.
+I would like to see the ABI be more flexible and have .start be broken
+into 2 fields:
 
-- When compiling ext4 as a module, the kernel build fails on this error:
+.start_orig
+.start_donor
 
-ERROR: "fget_light" [fs/ext4/ext4.ko] undefined!
-make[1]: *** [__modpost] Error 1
-make: *** [modules] Error 2
+And I don't think they should be of type ext4_lblk_t.  Something more
+generic seems appropriate.
 
-After that, I compiled a kernel with ext4 built in, and that one built
-OK. I now have a working e4defrag; thanks for your work on this!
+Thoughts?
 
+Greg
+-- 
+Greg Freemyer
+Litigation Triage Solutions Specialist
+http://www.linkedin.com/in/gregfreemyer
+First 99 Days Litigation White Paper -
+http://www.norcrossgroup.com/forms/whitepapers/99%20Days%20whitepaper.pdf
 
-regards,
-
-Derkjan
+The Norcross Group
+The Intersection of Evidence & Technology
+http://www.norcrossgroup.com
