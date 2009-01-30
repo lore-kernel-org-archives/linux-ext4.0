@@ -1,26 +1,32 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [Bug 12568] New: BUG: filefrag errors on non-journal ext4
-	filesystem
-Date: Fri, 30 Jan 2009 00:01:22 -0500
-Message-ID: <20090130050122.GC23220@mit.edu>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12568] BUG: filefrag errors on non-journal ext4 filesystem
+Date: Thu, 29 Jan 2009 21:02:00 -0800 (PST)
+Message-ID: <20090130050201.08F74108040@picon.linux-foundation.org>
 References: <bug-12568-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: bugme-daemon@bugzilla.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33300 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750773AbZA3FB1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 30 Jan 2009 00:01:27 -0500
-Content-Disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41137 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750779AbZA3FCb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 30 Jan 2009 00:02:31 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n0U521EF004571
+	for <linux-ext4@vger.kernel.org>; Thu, 29 Jan 2009 21:02:02 -0800
 In-Reply-To: <bug-12568-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12568
+
+
+
+
+
+------- Comment #1 from tytso@mit.edu  2009-01-29 21:02 -------
 Here's the patch to fix this issue.
 
-					- Ted
+                                        - Ted
 
 >From b9ec63f78b425c0e16cc95605b5d4ff2dc228b97 Mon Sep 17 00:00:00 2001
 From: Theodore Ts'o <tytso@mit.edu>
@@ -52,9 +58,10 @@ diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
 index b4386da..03ba20b 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2821,9 +2821,6 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
- 		filemap_write_and_wait(mapping);
- 	}
- 
--	BUG_ON(!EXT4_JOURNAL(inode) &&
--	       EXT4_I(inode)->i_state & EXT4_STATE_JDATA);
+@@ -2821,9 +2821,6 @@ static sector_t ext4_bmap(struct address_space *mapping,
+sector_t block)
+                filemap_write_and_wait(mapping);
+        }
+
+-       BUG_ON(!EXT4_JOURNAL(inode) &&
+-              EXT4_I(inode)->i_state & EXT4_STATE_JDATA);
