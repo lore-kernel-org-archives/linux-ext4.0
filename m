@@ -1,68 +1,111 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: Re: [RFC][PATCH 0/3] ext4: online defrag (ver 1.0)
-Date: Fri, 30 Jan 2009 17:33:53 -0500
-Message-ID: <87f94c370901301433x3e22892n5fddbb0804bddc4@mail.gmail.com>
-References: <49829A1D.5090002@rs.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <49829A1D.5090002@rs.jp.nec.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
+Date: Sat, 31 Jan 2009 00:25:39 -0500
+Message-ID: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:43104 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750851AbZAaFZm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 31 Jan 2009 00:25:42 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 30, 2009 at 1:11 AM, Akira Fujita <a-fujita@rs.jp.nec.com> wrote:
-> Hi,
->
-> I have rewritten ext4 online defrag patches based on the comments from Ted.
-> In the new defrag, create donor inode in the user space instead of kernel space,
-> and then allocate contiguous blocks to it with fallocate().
-> In kernel space, exchange the blocks between target inode and donor inode,
-> and then copy the file data of target inode to donor inode every 64MB.
-> The EXT4_IOC_DEFRAG ioctl becomes simpler than the old one,
-> so it may be useful for other purposes.
->
-> #define EXT4_IOC_DEFRAG                 _IOW('f', 15, struct move_extent)
->
+I've updated the ext4 backport branches on the ext4 git tree:
 
-Do we want the ioctl name to be specific to defrag?  I thought Ted's
-goal was to make it more generic?  I can also envision this same ioctl
-being implemented by other file systems so EXT4 seems an inappropriate
-prefix.
+   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+   http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git
 
-Thoughts?
+The for-stable branch is branched off of 2.6.28.2, and has a candidate
+set of patches to be included in the next stable release.  The
+for-stable-2.6.27 branch is branched off of 2.6.27.13.  
 
-> struct move_extent {
->        int org_fd;             /* original file descriptor */
->        int dest_fd;            /* destination file descriptor */
->        ext4_lblk_t start;      /* logical offset of org_fd and dest_fd */
->        ext4_lblk_t len;        /* exchange block length */
-> };
+I'm more confident with the 2.6.28 stable candidate than the 2.6.27
+stable candidates at the moment, but given that we just missed the
+2.6.27.14 and 2.6.28.3 release cycles, that should give us plenty of
+time to test the patches.
 
-I would also like to see .dest_fd changed to .donor_fd.
+						- Ted
 
-I would like to see the ABI be more flexible and have .start be broken
-into 2 fields:
 
-.start_orig
-.start_donor
+mainline 2.6.28  2.6.27
+    commit-description
+-------------------------------------------------------------------------
+f99b2589 99186e9 50137b9b
+    ext4: Add support for non-native signed/unsigned htree hash algorithms
 
-And I don't think they should be of type ext4_lblk_t.  Something more
-generic seems appropriate.
+2a21e37e a24d2c3 c6ee3785
+    ext4: tone down ext4_da_writepages warnings
 
-Thoughts?
+791b7f08 09dd336 20a5992c
+    ext4: Fix the delalloc writepages to allocate blocks at the right offset.
 
-Greg
--- 
-Greg Freemyer
-Litigation Triage Solutions Specialist
-http://www.linkedin.com/in/gregfreemyer
-First 99 Days Litigation White Paper -
-http://www.norcrossgroup.com/forms/whitepapers/99%20Days%20whitepaper.pdf
+565a9617 98da3f7 8fac34d1
+    ext4: avoid ext4_error when mounting a fs with a single bg
 
-The Norcross Group
-The Intersection of Evidence & Technology
-http://www.norcrossgroup.com
+ff7ef329 d77464d a3d3507c
+    ext4: Widen type of ext4_sb_info.s_mb_maxs[]
+
+fd98496f 956559e d0c7cd8e
+    jbd2: Add barrier not supported test to journal_wait_on_commit_record
+
+032115fc faa39cf 672ccd67
+    ext4: Don't overwrite allocation_context ac_status
+
+e21675d4 f45872d 44e83b40
+    ext4: Add blocks added during resize to bitmap
+
+920313a7 36a926a de7c44e7
+    ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
+
+c3a326a6 34bb72b d0bbe797
+    ext4: cleanup mballoc header files
+
+c894058d -----   71ae3e25
+    ext4: Use an rbtree for tracking blocks freed during transaction.
+
+7a2fcbf7 cbf340c c71f2a67
+    ext4: don't use blocks freed but not yet committed in buddy cache init
+    
+e8134b27 8e5ffb2 0d047b2d
+    ext4: Fix race between read_block_bitmap() and mark_diskspace_used()
+
+39341867 2298c89 78114d26
+    ext4: Fix the race between read_inode_bitmap() and ext4_new_inode()
+
+e97fcd95 469496b b04246c8
+    jbd2: Add BH_JBDPrivateStart
+
+2ccb5fb9 bfb49c0 bf79ca1d
+    ext4: Use new buffer_head flag to check uninit group bitmaps initialization
+
+648f5879 08d0947 ba08e9a6
+    ext4: mark the blocks/inode bitmap beyond end of group as used
+
+8556e8f3 18d5cb0 fd3bd090
+    ext4: Don't allow new groups to be added during block allocation
+
+29eaf024 a38467c fb8c1296
+    ext4: Init the complete page while building buddy cache
+
+0087d9fb 462dbdb -----
+    ext4: Fix s_dirty_blocks_counter if block allocation failed with nodelalloc
+
+4ec11028 c457db2 850eb20e
+    ext4: Add sanity checks for the superblock before mounting the filesystem
+
+06a279d6 cd676b5 713e7106
+    ext4: only use i_size_high for regular files
+
+e6b8bc09 4a81724 312eaf17
+    ext4: Add sanity check to make_indexed_dir
+
+a21102b5 1b1872b 0f30c439
+    ext3: Add sanity check to make_indexed_dir
+
+08ec8c38 a062e44 2ea34131
+    jbd2: On a __journal_expect() assertion failure printk "JBD2", not "EXT3-fs"
+
+fdff73f0 e041093 b86f4c8d
+    ext4: Initialize the new group descriptor when resizing the filesystem
+
