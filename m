@@ -1,105 +1,65 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [Bugme-new] [Bug 12594] New: filesystem corruption while
- running bonnie
-Date: Sun, 1 Feb 2009 12:49:53 -0800
-Message-ID: <20090201124953.fbae0e76.akpm@linux-foundation.org>
-References: <bug-12594-10286@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: bugme-daemon@bugzilla.kernel.org, folkert@vanheusden.com,
-	"Theodore Ts'o" <tytso@mit.edu>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12603] New: firefox downloads hang on ext4; fine on ext3
+Date: Sun,  1 Feb 2009 14:32:20 -0800 (PST)
+Message-ID: <bug-12603-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:46104 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:48846 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754557AbZBAUu0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Feb 2009 15:50:26 -0500
-In-Reply-To: <bug-12594-10286@http.bugzilla.kernel.org/>
+	by vger.kernel.org with ESMTP id S1753704AbZBAWck (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Feb 2009 17:32:40 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n11MWKu3026785
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Feb 2009 14:32:22 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12603
 
-(switched to email.  Please respond via emailed reply-to-all, not via the
-bugzilla web interface).
+           Summary: firefox downloads hang on ext4; fine on ext3
+           Product: File System
+           Version: 2.5
+     KernelVersion: 2.6.27.10
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: avery@shadypixel.com
 
-On Sun,  1 Feb 2009 06:59:52 -0800 (PST) bugme-daemon@bugzilla.kernel.org wrote:
 
-> http://bugzilla.kernel.org/show_bug.cgi?id=12594
-> 
->            Summary: filesystem corruption while running bonnie
->            Product: File System
->            Version: 2.5
->      KernelVersion: 2.6.28.1
->           Platform: All
->         OS/Version: Linux
->               Tree: Mainline
->             Status: NEW
->           Severity: normal
->           Priority: P1
->          Component: ext3
->         AssignedTo: fs_ext3@kernel-bugs.osdl.org
->         ReportedBy: folkert@vanheusden.com
-> 
-> 
-> mkdir /mnt/tmp /tmp/tmp ; mount -t tmpfs /dev/null /mnt
-> chown folkert /mnt/tmp /tmp/tmp
-> 
-> and then in parallel:
-> while [ 1 ] ; do bonnie++ -d /tmp/tmp -s 128 -r 64 -x 1 -u folkert ; done
-> while [ 1 ] ; do bonnie++ -d /mnt/tmp -s 128 -r 64 -x 1 -u folkert ; done
-> 
-> then after say 15 minutes i run the reboot command (normal via init) during the
-> fsck (I always do a touch /forcefsck) I get:
-> fsck 1.41.3 (12-Oct-2008)
-> /dev/mapper/VGODR-tmp contains a file system with errors, check forced.
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (1) has
-> invalid depth (2)
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (1) not
-> referenced
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (2) has
-> invalid depth (2)
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (2) not
-> referenced
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (3) has
-> invalid depth (2)
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (3) not
-> referenced
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (4) has
-> invalid depth (2)
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (4) not
-> referenced
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (5) has
-> invalid depth (2)
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (5) not
-> referenced
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (6) has
-> invalid depth (2)
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (6) not
-> referenced
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (7) has
-> invalid depth (2)
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (7) not
-> referenced
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (8) has
-> invalid depth (2)
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (8) has bad
-> max hash
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (8) not
-> referenced
-> ...
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (523) not
-> referenced
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (524) has
-> invalid depth (2)
-> /dev/mapper/VGODR-tmp: Problem in HTREE directory inode 69634: node (524) not
-> referenced
-> /dev/mapper/VGODR-tmp: Invalid HTREE directory inode 69634 (/tmp/Bonnie.3813). 
-> 
-> I've got a gzip'ed dump of /tmp available on request.
+Distribution:
 
-htree went bad.  It's strange that exercising tmpfs would do this.
+Debian testing/unstable
 
-I always get worried when I see device-mapper in the picture.  It has a
-history..  Perhaps you can describe your device-mapper setup?
+Software Environment:
 
+Kernel is actually from http://wiki.debian.org/DebianKernel. Version is
+2.6.27-1~experimental.1~snapshot.12516, which appears to be based on 2.6.27.10.
+
+Problem Description:
+
+I mentioned this in my last bug report
+(http://bugzilla.kernel.org/show_bug.cgi?id=12424), but it seems that was
+something unrelated (I think). My firefox downloads have been hanging off and
+on since reformatting ext3->ext4. I've finally found a way to reproduce this
+100% of the time.
+
+Steps:
+1.) download large file to folder on ext4 fs
+2.) close all firefox windows except the download manager before download
+completes
+3.) download will hang at nearly 100%
+
+This happens every single time. If I keep another firefox window open (beside
+the downloads mini-window), the download always completes successfully. If I do
+the same steps except save the file to an ext3 fs, it always works.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
