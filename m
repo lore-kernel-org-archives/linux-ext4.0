@@ -1,36 +1,29 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12594] filesystem corruption while running bonnie
-Date: Sun,  1 Feb 2009 12:50:01 -0800 (PST)
-Message-ID: <20090201205001.5DF3B108042@picon.linux-foundation.org>
-References: <bug-12594-13602@http.bugzilla.kernel.org/>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [Bugme-new] [Bug 12594] New: filesystem corruption while
+ running bonnie
+Date: Sun, 1 Feb 2009 12:49:53 -0800
+Message-ID: <20090201124953.fbae0e76.akpm@linux-foundation.org>
+References: <bug-12594-10286@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: bugme-daemon@bugzilla.kernel.org, folkert@vanheusden.com,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:49673 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:46104 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754555AbZBAUuD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Feb 2009 15:50:03 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n11Ko1C6021219
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Feb 2009 12:50:02 -0800
-In-Reply-To: <bug-12594-13602@http.bugzilla.kernel.org/>
+	by vger.kernel.org with ESMTP id S1754557AbZBAUu0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Feb 2009 15:50:26 -0500
+In-Reply-To: <bug-12594-10286@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-http://bugzilla.kernel.org/show_bug.cgi?id=12594
-
-
-
-
-
-------- Comment #2 from anonymous@kernel-bugs.osdl.org  2009-02-01 12:50 -------
-Reply-To: akpm@linux-foundation.org
 
 
 (switched to email.  Please respond via emailed reply-to-all, not via the
 bugzilla web interface).
 
-On Sun,  1 Feb 2009 06:59:52 -0800 (PST) bugme-daemon@bugzilla.kernel.org
-wrote:
+On Sun,  1 Feb 2009 06:59:52 -0800 (PST) bugme-daemon@bugzilla.kernel.org wrote:
 
 > http://bugzilla.kernel.org/show_bug.cgi?id=12594
 > 
@@ -110,8 +103,3 @@ htree went bad.  It's strange that exercising tmpfs would do this.
 I always get worried when I see device-mapper in the picture.  It has a
 history..  Perhaps you can describe your device-mapper setup?
 
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
