@@ -1,32 +1,32 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] jbd: Fix return value of journal_start_commit()
-Date: Mon,  2 Feb 2009 18:55:06 +0100
-Message-ID: <1233597309-20233-2-git-send-email-jack@suse.cz>
+Subject: [PATCH] jbd2: Fix return value of jbd2_journal_start_commit()
+Date: Mon,  2 Feb 2009 18:55:07 +0100
+Message-ID: <1233597309-20233-3-git-send-email-jack@suse.cz>
 References: <y>
  <1233597309-20233-1-git-send-email-jack@suse.cz>
+ <1233597309-20233-2-git-send-email-jack@suse.cz>
 Cc: Andrew Morton <akpm@linux-foundation.org>, tytso@mit.edu,
-	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>,
-	Mike Snitzer <snitzer@gmail.com>
+	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:43331 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:43329 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753087AbZBBRzO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1753206AbZBBRzO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Mon, 2 Feb 2009 12:55:14 -0500
-In-Reply-To: <1233597309-20233-1-git-send-email-jack@suse.cz>
+In-Reply-To: <1233597309-20233-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-journal_start_commit() returns 1 if either a transaction is committing or the
-function has queued a transaction commit. But it returns 0 if we raced with
+jbd2_journal_start_commit() returns 1 if either a transaction is committing or
+the function has queued a transaction commit. But it returns 0 if we raced with
 somebody queueing the transaction commit as well. This resulted in
-ext3_sync_fs() not functioning correctly (description from Arthur Jones):
-In the case of a data=ordered umount with pending long symlinks which are
-delayed due to a long list of other I/O on the backing block device, this
-causes the buffer associated with the long symlinks to not be moved to the
-inode dirty list in the second phase of fsync_super.  Then, before they can be
-dirtied again, kjournald exits, seeing the UMOUNT flag and the dirty pages are
-never written to the backing block device, causing long symlink corruption and
+ext4_sync_fs() not functioning correctly (description from Arthur Jones): In
+the case of a data=ordered umount with pending long symlinks which are delayed
+due to a long list of other I/O on the backing block device, this causes the
+buffer associated with the long symlinks to not be moved to the inode dirty
+list in the second phase of fsync_super.  Then, before they can be dirtied
+again, kjournald exits, seeing the UMOUNT flag and the dirty pages are never
+written to the backing block device, causing long symlink corruption and
 exposing new or previously freed block data to userspace.
 
 This can be reproduced with a script created by Eric Sandeen
@@ -45,31 +45,30 @@ This can be reproduced with a script created by Eric Sandeen
         mount /dev/sdb4 /mnt/test2
         ls /mnt/test2/
 
-This patch fixes journal_start_commit() to always return 1 when there's
+This patch fixes jbd2_journal_start_commit() to always return 1 when there's
 a transaction committing or queued for commit.
 
 CC: Eric Sandeen <sandeen@redhat.com>
-CC: Mike Snitzer <snitzer@gmail.com>
 CC: linux-ext4@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd/journal.c |   17 +++++++++++------
+ fs/jbd2/journal.c |   17 +++++++++++------
  1 files changed, 11 insertions(+), 6 deletions(-)
 
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 9e4fa52..e79c078 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -427,7 +427,7 @@ int __log_space_left(journal_t *journal)
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 5667530..42d8953 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -450,7 +450,7 @@ int __jbd2_log_space_left(journal_t *journal)
  }
  
  /*
 - * Called under j_state_lock.  Returns true if a transaction was started.
 + * Called under j_state_lock.  Returns true if a transaction commit was started.
   */
- int __log_start_commit(journal_t *journal, tid_t target)
+ int __jbd2_log_start_commit(journal_t *journal, tid_t target)
  {
-@@ -495,7 +495,8 @@ int journal_force_commit_nested(journal_t *journal)
+@@ -518,7 +518,8 @@ int jbd2_journal_force_commit_nested(journal_t *journal)
  
  /*
   * Start a commit of the current running transaction (if any).  Returns true
@@ -77,15 +76,15 @@ index 9e4fa52..e79c078 100644
 + * if a transaction is going to be committed (or is currently already
 + * committing), and fills its tid in at *ptid
   */
- int journal_start_commit(journal_t *journal, tid_t *ptid)
+ int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
  {
-@@ -505,15 +506,19 @@ int journal_start_commit(journal_t *journal, tid_t *ptid)
+@@ -528,15 +529,19 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
  	if (journal->j_running_transaction) {
  		tid_t tid = journal->j_running_transaction->t_tid;
  
--		ret = __log_start_commit(journal, tid);
+-		ret = __jbd2_log_start_commit(journal, tid);
 -		if (ret && ptid)
-+		__log_start_commit(journal, tid);
++		__jbd2_log_start_commit(journal, tid);
 +		/* There's a running transaction and we've just made sure
 +		 * it's commit has been scheduled. */
 +		if (ptid)
