@@ -1,68 +1,59 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [PATCH] ext2: Mark the buffer as unmapped before reading the next
-	quota block
-Date: Mon, 2 Feb 2009 16:35:21 +0530
-Message-ID: <ea11fea30902020305n491f2875jeacee32af60dba65@mail.gmail.com>
-References: <ea11fea30902020204t7a2db3a7tbf3f0b8d22b20cce@mail.gmail.com>
-	 <20090202103429.GB7145@duck.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>,
-	cmm@us.ibm.com
-To: Jan Kara <jack@suse.cz>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12603] firefox downloads hang on ext4; fine on ext3
+Date: Mon,  2 Feb 2009 04:33:20 -0800 (PST)
+Message-ID: <20090202123320.DA65B10800E@picon.linux-foundation.org>
+References: <bug-12603-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.190]:63413 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751900AbZBBLFX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Feb 2009 06:05:23 -0500
-Received: by ti-out-0910.google.com with SMTP id b6so715863tic.23
-        for <linux-ext4@vger.kernel.org>; Mon, 02 Feb 2009 03:05:21 -0800 (PST)
-In-Reply-To: <20090202103429.GB7145@duck.suse.cz>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59085 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753016AbZBBMdX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Feb 2009 07:33:23 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n12CXL0p008779
+	for <linux-ext4@vger.kernel.org>; Mon, 2 Feb 2009 04:33:22 -0800
+In-Reply-To: <bug-12603-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 2, 2009 at 4:04 PM, Jan Kara <jack@suse.cz> wrote:
-> On Mon 02-02-09 15:34:27, Manish Katiyar wrote:
->> Hi Jan,
->>
->> This is in continuation with the previous patch
->> (http://patchwork.ozlabs.org/patch/20275/) . We also need to set the
->> buffer as unmapped before reading the next block. I don't think quota
->> files can have holes, but atleast for correctness, otherwise once we
->> have read a block, tmp_bh is always mapped even for holes.
->>
->>
->> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
->> ---
->>  fs/ext2/super.c |    1 +
->>  1 files changed, 1 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
->> index da8bdea..b4e7633 100644
->> --- a/fs/ext2/super.c
->> +++ b/fs/ext2/super.c
->> @@ -1328,6 +1328,7 @@ static ssize_t ext2_quota_read(struct
->> super_block *sb, int type, char *data,
->>                               sb->s_blocksize - offset : toread;
->>
->>               tmp_bh.b_state = 0;
->> +             clear_buffer_mapped(&tmp_bh);
->  I don't get this. When b_state is 0, then in particuler the buffer is not
-> mapped. So why clear the mapped bit explicitely?
+http://bugzilla.kernel.org/show_bug.cgi?id=12603
 
-Sorry for the noise.......my bad :-( !!
 
-Thanks -
-Manish
 
->
->>               err = ext2_get_block(inode, blk, &tmp_bh, 0);
->>               if (err < 0)
->>                       return err;
->
->                                                                        Honza
-> --
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
->
+
+
+------- Comment #16 from tytso@mit.edu  2009-02-02 04:33 -------
+Unfortunately the strace logs aren't complete because firefox multi-threaded,
+and it looks like strace is only tracing one thread.   So we can see that the
+thread which writes the downloaded file does a poll(2) for a set of file
+descriptors, including fd 18, and then it reads a byte from fd 18, and then
+writes a buffer to fd 54, which is the firefox-3.0.5.tar.bz2.part file.   But
+it is always writing in 32k chunks, and it's not writing the last 2837 bytes,
+as in the good strace.
+
+It looks like the thread which reads from the network isn't signalling that the
+last set of bytes isn't there, but why, I have no idea.
+
+It also seems very strange that this is filesystem-specific; whatever it is,
+there isn't anything in the file writing thread that would hint at this.   I
+also can't duplicate it on my end.   I wonder if it's something stupid like the
+writes are returning much faster, and this is triggering a race condition in
+firefox.  Maybe some other thread is checking to see when the write is
+completing by stat'ing the fd, or something stupid like that.
+
+Something that might be worth trying is to chattr +S your downloads directory,
+which will force a sync after every write, and see if that makes a difference
+when you download the file from scratch.   You'll want to do a "chattr -S
+downloads downloads/*" afterwards, since a sync after every writes does a real
+number on performance.   But if that causes firefox to succeed, then it's
+probably some wierd timing/race condition problem in firefox.
+
+I'll note that I can't reproduce this on my firefox on my Ubuntu/Hardy system.
+
+BTW, how many CPU's do you have, and which version of Firefox are you running?
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
