@@ -1,107 +1,65 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] jbd2: Fix return value of jbd2_journal_start_commit()
-Date: Mon,  2 Feb 2009 18:55:07 +0100
-Message-ID: <1233597309-20233-3-git-send-email-jack@suse.cz>
+Subject: [PATCH] Revert "ext4: wait on all pending commits in ext4_sync_fs()"
+Date: Mon,  2 Feb 2009 18:55:08 +0100
+Message-ID: <1233597309-20233-4-git-send-email-jack@suse.cz>
 References: <y>
  <1233597309-20233-1-git-send-email-jack@suse.cz>
  <1233597309-20233-2-git-send-email-jack@suse.cz>
+ <1233597309-20233-3-git-send-email-jack@suse.cz>
 Cc: Andrew Morton <akpm@linux-foundation.org>, tytso@mit.edu,
 	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:43329 "EHLO mail.suse.cz"
+Received: from styx.suse.cz ([82.119.242.94]:43328 "EHLO mail.suse.cz"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753206AbZBBRzO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Feb 2009 12:55:14 -0500
-In-Reply-To: <1233597309-20233-2-git-send-email-jack@suse.cz>
+	id S1753230AbZBBRzN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Feb 2009 12:55:13 -0500
+In-Reply-To: <1233597309-20233-3-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-jbd2_journal_start_commit() returns 1 if either a transaction is committing or
-the function has queued a transaction commit. But it returns 0 if we raced with
-somebody queueing the transaction commit as well. This resulted in
-ext4_sync_fs() not functioning correctly (description from Arthur Jones): In
-the case of a data=ordered umount with pending long symlinks which are delayed
-due to a long list of other I/O on the backing block device, this causes the
-buffer associated with the long symlinks to not be moved to the inode dirty
-list in the second phase of fsync_super.  Then, before they can be dirtied
-again, kjournald exits, seeing the UMOUNT flag and the dirty pages are never
-written to the backing block device, causing long symlink corruption and
-exposing new or previously freed block data to userspace.
+This undoes commit 14ce0cb411c88681ab8f3a4c9caa7f42e97a3184.
 
-This can be reproduced with a script created by Eric Sandeen
-<sandeen@redhat.com>:
-
-        #!/bin/bash
-
-        umount /mnt/test2
-        mount /dev/sdb4 /mnt/test2
-        rm -f /mnt/test2/*
-        dd if=/dev/zero of=/mnt/test2/bigfile bs=1M count=512
-        touch /mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-        ln -s /mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-        /mnt/test2/link
-        umount /mnt/test2
-        mount /dev/sdb4 /mnt/test2
-        ls /mnt/test2/
-
-This patch fixes jbd2_journal_start_commit() to always return 1 when there's
-a transaction committing or queued for commit.
+Since jbd2_journal_start_commit() is now fixed to return 1 when we
+started a transaction commit, there's some transaction waiting to be
+committed or there's a transaction already committing, we don't
+need to call ext4_force_commit() in ext4_sync_fs(). Furthermore
+ext4_force_commit() can unnecessarily create sync transaction which is
+expensive so it's worthwhile to remove it when we can.
 
 CC: Eric Sandeen <sandeen@redhat.com>
 CC: linux-ext4@vger.kernel.org
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/journal.c |   17 +++++++++++------
- 1 files changed, 11 insertions(+), 6 deletions(-)
+ fs/ext4/super.c |   11 +++++++----
+ 1 files changed, 7 insertions(+), 4 deletions(-)
 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 5667530..42d8953 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -450,7 +450,7 @@ int __jbd2_log_space_left(journal_t *journal)
- }
- 
- /*
-- * Called under j_state_lock.  Returns true if a transaction was started.
-+ * Called under j_state_lock.  Returns true if a transaction commit was started.
-  */
- int __jbd2_log_start_commit(journal_t *journal, tid_t target)
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e5f06a5..a5732c5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3046,14 +3046,17 @@ static void ext4_write_super(struct super_block *sb)
+ static int ext4_sync_fs(struct super_block *sb, int wait)
  {
-@@ -518,7 +518,8 @@ int jbd2_journal_force_commit_nested(journal_t *journal)
+ 	int ret = 0;
++	tid_t target;
  
- /*
-  * Start a commit of the current running transaction (if any).  Returns true
-- * if a transaction was started, and fills its tid in at *ptid
-+ * if a transaction is going to be committed (or is currently already
-+ * committing), and fills its tid in at *ptid
-  */
- int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
- {
-@@ -528,15 +529,19 @@ int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
- 	if (journal->j_running_transaction) {
- 		tid_t tid = journal->j_running_transaction->t_tid;
- 
--		ret = __jbd2_log_start_commit(journal, tid);
--		if (ret && ptid)
-+		__jbd2_log_start_commit(journal, tid);
-+		/* There's a running transaction and we've just made sure
-+		 * it's commit has been scheduled. */
-+		if (ptid)
- 			*ptid = tid;
--	} else if (journal->j_committing_transaction && ptid) {
-+		ret = 1;
-+	} else if (journal->j_committing_transaction) {
- 		/*
- 		 * If ext3_write_super() recently started a commit, then we
- 		 * have to wait for completion of that transaction
- 		 */
--		*ptid = journal->j_committing_transaction->t_tid;
-+		if (ptid)
-+			*ptid = journal->j_committing_transaction->t_tid;
- 		ret = 1;
+ 	trace_mark(ext4_sync_fs, "dev %s wait %d", sb->s_id, wait);
+ 	sb->s_dirt = 0;
+ 	if (EXT4_SB(sb)->s_journal) {
+-		if (wait)
+-			ret = ext4_force_commit(sb);
+-		else
+- 			jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, NULL);
++		if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal,
++					      &target)) {
++			if (wait)
++				jbd2_log_wait_commit(EXT4_SB(sb)->s_journal,
++						     target);
++		}
+ 	} else {
+ 		ext4_commit_super(sb, EXT4_SB(sb)->s_es, wait);
  	}
- 	spin_unlock(&journal->j_state_lock);
 -- 
 1.6.0.2
 
