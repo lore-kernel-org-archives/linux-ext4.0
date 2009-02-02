@@ -1,59 +1,112 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12603] firefox downloads hang on ext4; fine on ext3
-Date: Mon,  2 Feb 2009 04:33:20 -0800 (PST)
-Message-ID: <20090202123320.DA65B10800E@picon.linux-foundation.org>
-References: <bug-12603-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] : Remove incompatible pointer assignment warning in ext4 quota operations
+Date: Mon, 2 Feb 2009 17:10:05 +0100
+Message-ID: <20090202161005.GG19165@atrey.karlin.mff.cuni.cz>
+References: <ea11fea30901272117j760a34e8w5df0ec1916632f3f@mail.gmail.com> <ea11fea30901272121x319aa2b3m2a5a5799b6df4d8a@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Ts'o <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:59085 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753016AbZBBMdX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Feb 2009 07:33:23 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n12CXL0p008779
-	for <linux-ext4@vger.kernel.org>; Mon, 2 Feb 2009 04:33:22 -0800
-In-Reply-To: <bug-12603-13602@http.bugzilla.kernel.org/>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:55399 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752758AbZBBQKH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Feb 2009 11:10:07 -0500
+Content-Disposition: inline
+In-Reply-To: <ea11fea30901272121x319aa2b3m2a5a5799b6df4d8a@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12603
+> On Wed, Jan 28, 2009 at 10:47 AM, Manish Katiyar <mkatiyar@gmail.com> wrote:
+> > Below patch removes the following warning during compilation :
+> >
+> >  CC [M]  fs/ext4/super.o
+> > fs/ext4/super.c:949: warning: initialization from incompatible pointer type
+> >  LD [M]  fs/ext4/ext4.o
+> 
+> Sorry,
+> 
+> Tha correct patch is here.
+> 
+> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+  Looks fine to me.
+Acked-by: Jan Kara <jack@suse.cz>
 
+										Honza
 
-
-
-
-------- Comment #16 from tytso@mit.edu  2009-02-02 04:33 -------
-Unfortunately the strace logs aren't complete because firefox multi-threaded,
-and it looks like strace is only tracing one thread.   So we can see that the
-thread which writes the downloaded file does a poll(2) for a set of file
-descriptors, including fd 18, and then it reads a byte from fd 18, and then
-writes a buffer to fd 54, which is the firefox-3.0.5.tar.bz2.part file.   But
-it is always writing in 32k chunks, and it's not writing the last 2837 bytes,
-as in the good strace.
-
-It looks like the thread which reads from the network isn't signalling that the
-last set of bytes isn't there, but why, I have no idea.
-
-It also seems very strange that this is filesystem-specific; whatever it is,
-there isn't anything in the file writing thread that would hint at this.   I
-also can't duplicate it on my end.   I wonder if it's something stupid like the
-writes are returning much faster, and this is triggering a race condition in
-firefox.  Maybe some other thread is checking to see when the write is
-completing by stat'ing the fd, or something stupid like that.
-
-Something that might be worth trying is to chattr +S your downloads directory,
-which will force a sync after every write, and see if that makes a difference
-when you download the file from scratch.   You'll want to do a "chattr -S
-downloads downloads/*" afterwards, since a sync after every writes does a real
-number on performance.   But if that causes firefox to succeed, then it's
-probably some wierd timing/race condition problem in firefox.
-
-I'll note that I can't reproduce this on my firefox on my Ubuntu/Hardy system.
-
-BTW, how many CPU's do you have, and which version of Firefox are you running?
-
-
+> ---
+>  fs/ext4/ext4.h  |    2 +-
+>  fs/ext4/inode.c |    4 ++--
+>  2 files changed, 3 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index 3ab1a41..0164866 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -1088,7 +1088,7 @@ extern int ext4_chunk_trans_blocks(struct inode
+> *, int nrblocks);
+>  extern int ext4_block_truncate_page(handle_t *handle,
+>  		struct address_space *mapping, loff_t from);
+>  extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+> -extern unsigned long long ext4_get_reserved_space(struct inode *inode);
+> +extern qsize_t ext4_get_reserved_space(struct inode *inode);
+> 
+>  /* ioctl.c */
+>  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 6a316ec..6be09be 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -973,9 +973,9 @@ out:
+>  	return err;
+>  }
+> 
+> -unsigned long long ext4_get_reserved_space(struct inode *inode)
+> +qsize_t ext4_get_reserved_space(struct inode *inode)
+>  {
+> -	unsigned long long total;
+> +	qsize_t total;
+> 
+>  	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+>  	total = EXT4_I(inode)->i_reserved_data_blocks +
+> -- 
+> 1.5.4.3
+> 
+> Thanks -
+> Manish
+> 
+> >
+> >
+> > Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
+> > ---
+> >  fs/ext4/ext4.h |    2 +-
+> >  1 files changed, 1 insertions(+), 1 deletions(-)
+> >
+> > diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> > index 3ab1a41..0164866 100644
+> > --- a/fs/ext4/ext4.h
+> > +++ b/fs/ext4/ext4.h
+> > @@ -1088,7 +1088,7 @@ extern int ext4_chunk_trans_blocks(struct inode
+> > *, int nrblocks);
+> >  extern int ext4_block_truncate_page(handle_t *handle,
+> >                struct address_space *mapping, loff_t from);
+> >  extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
+> > -extern unsigned long long ext4_get_reserved_space(struct inode *inode);
+> > +extern qsize_t ext4_get_reserved_space(struct inode *inode);
+> >
+> >  /* ioctl.c */
+> >  extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
+> > --
+> > 1.5.4.3
+> >
+> >
+> > Thanks -
+> > Manish
+> >
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
