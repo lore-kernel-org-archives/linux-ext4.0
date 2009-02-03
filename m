@@ -1,65 +1,130 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] Revert "ext4: wait on all pending commits in ext4_sync_fs()"
-Date: Mon,  2 Feb 2009 18:55:08 +0100
-Message-ID: <1233597309-20233-4-git-send-email-jack@suse.cz>
-References: <y>
- <1233597309-20233-1-git-send-email-jack@suse.cz>
- <1233597309-20233-2-git-send-email-jack@suse.cz>
- <1233597309-20233-3-git-send-email-jack@suse.cz>
-Cc: Andrew Morton <akpm@linux-foundation.org>, tytso@mit.edu,
-	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>
-To: linux-ext4@vger.kernel.org
+From: Gui Xiaohua <guixh@cn.fujitsu.com>
+Subject: Re: [PATCH V5 1/5] quota: Add reservation support for delayed	block
+ allocation
+Date: Tue, 03 Feb 2009 15:11:00 +0800
+Message-ID: <4987EE04.4020506@cn.fujitsu.com>
+References: <1231216808.9267.22.camel@mingming-laptop>	 <20090106100645.GH10705@duck.suse.cz>	 <1231805946.6752.17.camel@mingming-laptop>	 <20090113153748.GE10064@duck.suse.cz>	 <1231872797.8719.6.camel@mingming-laptop>	 <20090113190931.GI10064@duck.suse.cz> <1231893775.8719.22.camel@mingming-laptop>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:43328 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753230AbZBBRzN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Feb 2009 12:55:13 -0500
-In-Reply-To: <1233597309-20233-3-git-send-email-jack@suse.cz>
+Received: from cn.fujitsu.com ([222.73.24.84]:52805 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750917AbZBCHNU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Feb 2009 02:13:20 -0500
+In-Reply-To: <1231893775.8719.22.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This undoes commit 14ce0cb411c88681ab8f3a4c9caa7f42e97a3184.
+Hi mingming=EF=BC=9A
+I have tested your patch in 2.6.29-rc1. The sum of characters which=20
+i had written were fewer than the block softlimit,but a warning occurs.
 
-Since jbd2_journal_start_commit() is now fixed to return 1 when we
-started a transaction commit, there's some transaction waiting to be
-committed or there's a transaction already committing, we don't
-need to call ext4_force_commit() in ext4_sync_fs(). Furthermore
-ext4_force_commit() can unnecessarily create sync transaction which is
-expensive so it's worthwhile to remove it when we can.
+# edquota -u quser1
+Disk quotas for user quser1 (uid 504):
+  Filesystem                   blocks       soft       hard     inodes =
+    soft     hard
+  /dev/sda7                         0          5         10          0 =
+       5       10
 
-CC: Eric Sandeen <sandeen@redhat.com>
-CC: linux-ext4@vger.kernel.org
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/super.c |   11 +++++++----
- 1 files changed, 7 insertions(+), 4 deletions(-)
+Steps to reproduce:
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index e5f06a5..a5732c5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3046,14 +3046,17 @@ static void ext4_write_super(struct super_block *sb)
- static int ext4_sync_fs(struct super_block *sb, int wait)
- {
- 	int ret = 0;
-+	tid_t target;
- 
- 	trace_mark(ext4_sync_fs, "dev %s wait %d", sb->s_id, wait);
- 	sb->s_dirt = 0;
- 	if (EXT4_SB(sb)->s_journal) {
--		if (wait)
--			ret = ext4_force_commit(sb);
--		else
-- 			jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, NULL);
-+		if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal,
-+					      &target)) {
-+			if (wait)
-+				jbd2_log_wait_commit(EXT4_SB(sb)->s_journal,
-+						     target);
-+		}
- 	} else {
- 		ext4_commit_super(sb, EXT4_SB(sb)->s_es, wait);
- 	}
--- 
-1.6.0.2
+# mkfs.ext4 /dev/sda7
+# mount /dev/sda7 /mnt -t ext4
+# setquota -u quser1 5 10 5 10 /mnt
 
+Then log in as quser1
+$ cd /mnt
+$ ll
+total 20
+-rw------- 1 root root  7168 01-20 01:51 aquota.user
+drwx------ 2 root root 12288 01-20 01:44 lost+found
+$ vim dd.sh
+
+I written some characters,such as abc,then i do wq,
+the warning occurs likes below:
+"dd.sh" sda7: write failed, user block limit reached.
+
+Mingming Cao =E5=86=99=E9=81=93:
+> =E5=9C=A8 2009-01-13=E4=BA=8C=E7=9A=84 20:09 +0100=EF=BC=8CJan Kara=E5=
+=86=99=E9=81=93=EF=BC=9A
+>> On Tue 13-01-09 10:53:17, Mingming Cao wrote:
+>>> =E5=9C=A8 2009-01-13=E4=BA=8C=E7=9A=84 16:37 +0100=EF=BC=8CJan Kara=
+=E5=86=99=E9=81=93=EF=BC=9A
+>>>> On Mon 12-01-09 16:19:06, Mingming Cao wrote:
+>>>>> Thanks for your review and suggestions. All points are taken. I h=
+ave
+>>>>> updated the quota patches.I am attaching the updated patch here j=
+ust for
+>>>>> your review.
+>>>>>
+>>>>> I am waiting for the ext4 tree to updated to rebase the whole ser=
+ies
+>>>>> against 2.6.29-rc1 plus ext4 patch queue. =20
+>>>>>
+>>>>   <snip>
+>>>>> Quota: Add quota reservation support
+>>>>>
+>>>>> Delayed allocation defers the block allocation at the dirty pages
+>>>>> flush-out time, doing quota charge/check at that time is too late=
+=2E
+>>>>> But we can't charge the quota blocks until blocks are really allo=
+cated,
+>>>>> otherwise users could get overcharged after reboot from system cr=
+ash.
+>>>>>
+>>>>> This patch adds quota reservation for delayed llocation. Quota bl=
+ocks
+>>>>> are reserved in memory, inode and quota won't gets dirtied until =
+later
+>>>>> block allocation time.
+>>>>>
+>>>>> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+>>>>   The patch is fine. You can add
+>>>>
+>>>>   Acked-by: Jan Kara <jack@suse.cz>
+>>>>
+>>>>   How do you want to merge the patches? Via ext4 patch queue?
+>>>> There's one generic quota patch that I also need to push to fix so=
+me OCFS2
+>>>> issue and it collides with your patchset. And also there're furthe=
+r
+>>>> cleanups in quota code which are long overdue which I want to base=
+ on all
+>>>> other patches. So I've decided to setup quota git tree. I'll pull =
+in your
+>>>> two VFS quota patches. Will that work for you?
+>>> I think a quota tree is the best place to hold all these quota chan=
+ges.
+>>> The ext4 part probably make sense to stay together with the vfs cha=
+nges,
+>>> but it will need to coordinate with Ted's ext4 tree.  Ted, what do =
+you
+>>> think?
+>>   Yes. The best would be if could pull quota changes from my tree bu=
+t you
+>> could also just carry your two patches and only leave merging them w=
+ith
+>> vanilla to me.
+>>
+> Sure, that works for me.
+>=20
+>>> BTW, there are other two quota cleanup patches that you have alread=
+y
+>>> acked. I will sent the 2.6.29-rc1 based version.
+>>   Yes. Thanks.
+>>
+>=20
+> Attached are all the 5 2.6.29-rc1 based patches, including the two
+> cleanups.
+>=20
+> Thanks!
+>=20
+> Mingming
+>=20
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
