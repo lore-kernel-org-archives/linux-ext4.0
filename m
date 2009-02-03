@@ -1,40 +1,57 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12433] Oops while resizing an ext4 LVM2 volume
-Date: Tue,  3 Feb 2009 11:18:51 -0800 (PST)
-Message-ID: <20090203191851.E6E5411D109@picon.linux-foundation.org>
-References: <bug-12433-13602@http.bugzilla.kernel.org/>
+From: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: Using libext2fs in libe2p?
+Date: Tue, 3 Feb 2009 14:56:45 -0500
+Message-ID: <20090203195645.GG20654@shell>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>, Nick Dokos <nicholas.dokos@hp.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:42894 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755882AbZBCTTX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Feb 2009 14:19:23 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n13JIp2S008283
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Feb 2009 11:18:52 -0800
-In-Reply-To: <bug-12433-13602@http.bugzilla.kernel.org/>
+Received: from mx1.redhat.com ([66.187.233.31]:48223 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751932AbZBCT4t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Feb 2009 14:56:49 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12433
+Nick Dokos noticed that libe2p now depends on libext2fs in the 64-bit
+tree, since we use ext2fs_blocks_count() and friends (see diff below).
 
+Possible solutions:
 
-tytso@mit.edu changed:
+Link libext2fs with libe2p
+Open code 64-bit block counts
+Require users of libe2p to link with libext2fs
+Move ext2fs_blocks_count() and friends into a header file and inline them
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|NEW                         |CLOSED
-         Resolution|                            |CODE_FIX
+I am agnostic.
 
+-VAL
 
+diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
+index 6d2ce70..1923793 100644
+--- a/lib/e2p/ls.c
++++ b/lib/e2p/ls.c
+@@ -20,6 +20,7 @@
+ #include <time.h>
+ 
+ #include "e2p.h"
++#include "ext2fs/ext2fs.h"
+ 
+ static void print_user (unsigned short uid, FILE *f)
+ {
+@@ -219,9 +220,9 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
+        fprintf(f, "Filesystem OS type:       %s\n", str);
+        free(str);
+        fprintf(f, "Inode count:              %u\n", sb->s_inodes_count);
+-       fprintf(f, "Block count:              %u\n", sb->s_blocks_count);
+-       fprintf(f, "Reserved block count:     %u\n", sb->s_r_blocks_count);
+-       fprintf(f, "Free blocks:              %u\n", sb->s_free_blocks_count);
++       fprintf(f, "Block count:              %llu\n", ext2fs_blocks_count(sb));
++       fprintf(f, "Reserved block count:     %llu\n", ext2fs_r_blocks_count(sb));
++       fprintf(f, "Free blocks:              %llu\n", ext2fs_free_blocks_count(sb));
+        fprintf(f, "Free inodes:              %u\n", sb->s_free_inodes_count);
+        fprintf(f, "First block:              %u\n", sb->s_first_data_block);
+        fprintf(f, "Block size:               %u\n", EXT2_BLOCK_SIZE(sb));
 
-
-------- Comment #4 from tytso@mit.edu  2009-02-03 11:18 -------
-This patch has been merged into the Linux mainline and should be in 2.6.29-rc4
-(and newer) releases.
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
