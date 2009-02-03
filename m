@@ -1,170 +1,150 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: typo in jbd2_journal_begin_ordered_truncate()
-Date: Tue, 3 Feb 2009 15:23:12 +0100
-Message-ID: <20090203142312.GA24630@duck.suse.cz>
-References: <alpine.DEB.2.00.0902012309120.26166@bikeee> <20090203003351.1efaa6db.akpm@linux-foundation.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: 64-bit e2fsprogs patch queue
+Date: Tue, 3 Feb 2009 10:52:31 -0500
+Message-ID: <20090203155231.GP14762@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Dan Carpenter <error27@gmail.com>, sct@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: multipart/mixed; boundary="8NvZYKFJsRX2Djef"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from styx.suse.cz ([82.119.242.94]:37894 "EHLO mail.suse.cz"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1752484AbZBCOXQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Feb 2009 09:23:16 -0500
+Received: from thunk.org ([69.25.196.29]:57751 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755881AbZBCPwe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Feb 2009 10:52:34 -0500
 Content-Disposition: inline
-In-Reply-To: <20090203003351.1efaa6db.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 03-02-09 00:33:51, Andrew Morton wrote:
-> On Tue, 3 Feb 2009 11:23:03 +0300 (EAT) Dan Carpenter <error27@gmail.com> wrote:
+
+--8NvZYKFJsRX2Djef
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+
+For folks who want to follow along with the 64-bit e2fsprogs
+integration effort.
+
+						- Ted
+
+
+--8NvZYKFJsRX2Djef
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Return-Path: <tytso@MIT.EDU>
+Received: from po14.mit.edu ([unix socket])
+	by po14.mit.edu (Cyrus v2.1.5) with LMTP; Tue, 03 Feb 2009 09:37:25 -0500
+X-Sieve: CMU Sieve 2.2
+Received: from fort-point-station.mit.edu by po14.mit.edu (8.13.6/4.7) id n13EbPMP023305; Tue, 3 Feb 2009 09:37:25 -0500 (EST)
+Received: from mit.edu (W92-130-BARRACUDA-2.MIT.EDU [18.7.21.223])
+	by fort-point-station.mit.edu (8.13.6/8.9.2) with ESMTP id n13EbHWi023173
+	for <tytso@mit.edu>; Tue, 3 Feb 2009 09:37:17 -0500 (EST)
+Received: from thunker.thunk.org (THUNK.ORG [69.25.196.29])
+	(using TLSv1 with cipher AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mit.edu (Spam Firewall) with ESMTP id 3EAA011E131D
+	for <tytso@mit.edu>; Tue,  3 Feb 2009 09:36:53 -0500 (EST)
+Received: from root (helo=closure.thunk.org)
+	by thunker.thunk.org with local-esmtp   (Exim 4.50 #1 (Debian))
+	id 1LUMOS-0000a5-Em; Tue, 03 Feb 2009 09:36:52 -0500
+Received: from tytso by closure.thunk.org with local (Exim 4.69)
+	(envelope-from <tytso@mit.edu>)
+	id 1LUMOR-0008Be-NN; Tue, 03 Feb 2009 09:36:51 -0500
+Date: Tue, 3 Feb 2009 09:36:51 -0500
+From: Theodore Tso <tytso@MIT.EDU>
+To: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: Re: Branch to base against?
+Message-ID: <20090203143651.GO14762@mit.edu>
+References: <20090203072754.GB20654@shell>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
+In-Reply-To: <20090203072754.GB20654@shell>
+User-Agent: Mutt/1.5.17+20080114 (2008-01-14)
+X-SA-Exim-Connect-IP: <locally generated>
+X-SA-Exim-Mail-From: tytso@mit.edu
+X-SA-Exim-Scanned: No (on thunker.thunk.org); SAEximRunCond expanded to false
+X-Spam-Score: 0.12
+X-Spam-Flag: NO
+X-Scanned-By: MIMEDefang 2.42
+
+On Tue, Feb 03, 2009 at 02:27:54AM -0500, Valerie Aurora Henson wrote:
+> Hey Ted,
 > 
-> > This is jbd2_journal_begin_ordered_truncate() from fs/jbd2/transaction.c.
-> > 
-> > I think the "&&" is supposed to be an "||" on line 2144.  Just knowing 
-> > that inode->i_transaction is NULL should be enough, otherwise we would 
-> > immediately dereference a null on line 2146.
-> > 
-> >    2144          if (!inode->i_transaction && !inode->i_next_transaction)
-> >    2145                  goto out;
-> >    2146          journal = inode->i_transaction->t_journal;
-> > 
-> 
-> Could be.  Hard to tell from the code, changelog and (non) comments.  Perhaps
-> it's dead code.
-  It isn't dead, ext4 and ocfs2 use it. The condition is suspitious but ||
-is definitely wrong there. i_next_transaction is often NULL - it is
-non-NULL only if the inode is part of both the currently committing
-transaction and the running transaction but we need to call
-filemap_fdatawrite_range() whenever the inode is part of the committing
-transaction. The correct check seems to be just !inode->i_transaction
-because when i_transaction is NULL, then i_next_transaction must be NULL as
-well.
-  But as I'm looking at the function, it definitely deserves more detailed
-comments about how transaction commit interacts with truncates. And the
-dereference inode->i_transaction->t_journal can potentially race with
-commit code clearing i_transaction pointer :(. The bad thing is that to
-lock against that you need a journal pointer we are trying to get. So I'll
-probably have to change the function to get the journal pointer from the
-caller (which can obtain it from filesystems's superblock or so).
+> Eric said something about my 64-bit patches being against the wrong
+> branch.  What should I base them against?  My goal is to get some
+> subset of the patches into some branch in your repo - I'm happy with
+> any branch and any number.
 
-> Send a patch, become famous ;)
-> 
-> While you're there, rename local var `inode' to `jinode'.
-  Yes.
+Not your fault; the issue was the "pu" branch hadn't been updated in a
+long time, and it had some 64-bit patches that you needed to base your
+work on.  So you did the right thing; it was just that the "pu" branch
+was based on somethig around the time of e2fpsrogs 1.41.1, and there
+had been a lot of other fix-ups that had gone in since then.
 
-  Thank you and Dan for pointing at the problems.
+I thought you were out due to your shoulder surgery, so I've already
+rebased your patches; to see what I've done, take a look at:
 
-  Below is how I think the function should be rewritten. I'll post it also
-with the corresponding OCFS2 and EXT4 changes if you won't see obvious
-problems with it.
+	http://github.com/tytso/e2fsprogs-64bit/tree/master
+	git://github.com/tytso/e2fsprogs-64bit.git
 
-										Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
---
+(This was my excuse to play with github; previously I had used
+git.or.cz for the ext4 patch queue).
 
->From ee0edb7e1809515467846e8730daae85e0e53b89 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 3 Feb 2009 14:56:53 +0100
-Subject: [PATCH] jbd2: Fix possible NULL pointer dereference in jbd2_journal_begin_ordered_truncate()
+This is a patch series based off of e2fsprogs 1.41.4.  It includes the
+'pu' proposed update patches, plus your patches, rebased against the
+latest e2fsprogs development head.
 
-If we race with commit code setting i_transaction to NULL, we could possibly
-dereference it. Proper locking requires journal pointer (journal->j_list_lock)
-we don't have. So we have to change the prototype of the function so that
-filesystem passes us the journal pointer. Also add more detailed comment
-about why function does what it does how it should be used.
+It is a patch series because some of the patches clearly need cleanup
+and refactorization.  For example, you had fixed some bugs in Jose's
+64-bit_mke2fs_cleanup patch, that should be merged into his patch.
+For another, what's up with "0031-temporary-check-about-to-checksum-
+conversion.patch"?  :-)
 
-Thanks to Dan Carpenter <error27@gmail.com> for pointing to the suspitious
-code.
+I also suspect there may be places where I've added some old interface
+since 1.41.1 that would therefore not be caught in your patches, which
+is another reason why the patches will need updating after the
+rebasing effort.
 
-CC: linux-ext4@vger.kernel.org
-CC: ocfs2-devel@oss.oracle.com
-CC: Dan Carpenter <error27@gmail.com>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd2/transaction.c |   41 ++++++++++++++++++++++++++++++-----------
- include/linux/jbd2.h  |    3 ++-
- 2 files changed, 32 insertions(+), 12 deletions(-)
+So... the way I use this patch set is via a tool called "guilt":
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 46b4e34..9f1f5f2 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -2129,26 +2129,45 @@ done:
- }
- 
- /*
-- * This function must be called when inode is journaled in ordered mode
-- * before truncation happens. It starts writeout of truncated part in
-- * case it is in the committing transaction so that we stand to ordered
-- * mode consistency guarantees.
-+ * File truncate and transaction commit interact with each other in a
-+ * non-trivial way. If a transaction writing data block A is committing,
-+ * we cannot discard the data by truncate until we have written them.
-+ * Otherwise if we crashed after the transaction with write has committed
-+ * but before the transaction with truncate has committed, we could see
-+ * stale data in block A. This function is a helper to solve this problem.
-+ * It starts writeout of the truncated part in case it is in the committing
-+ * transaction.
-+ *
-+ * Filesystem must call this function when inode is journaled in ordered mode
-+ * before truncation happens and after the inode has been placed on orphan list
-+ * with the new inode size. The second condition avoids the race that someone
-+ * writes new data and we start committing the transaction after this function
-+ * has been called but before a transaction for truncate is started (and
-+ * furthermore it allows us to optimize the case where addition to orphan list
-+ * happens in the same transaction as write - we don't have to write any data
-+ * in such case).
-  */
--int jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode,
-+int jbd2_journal_begin_ordered_truncate(journal_t *journal,
-+					struct jbd2_inode *jinode,
- 					loff_t new_size)
- {
--	journal_t *journal;
--	transaction_t *commit_trans;
-+	transaction_t *inode_trans, *commit_trans;
- 	int ret = 0;
- 
--	if (!inode->i_transaction && !inode->i_next_transaction)
-+	/* This is a quick check to avoid locking if not necessary */
-+	if (!jinode->i_transaction)
- 		goto out;
--	journal = inode->i_transaction->t_journal;
-+	/* Locks are here just to force reading of recent values, it is
-+	 * enough that the transaction was not committing before we started
-+	 * a transaction adding the inode to orphan list */
- 	spin_lock(&journal->j_state_lock);
- 	commit_trans = journal->j_committing_transaction;
- 	spin_unlock(&journal->j_state_lock);
--	if (inode->i_transaction == commit_trans) {
--		ret = filemap_fdatawrite_range(inode->i_vfs_inode->i_mapping,
-+	spin_lock(&journal->j_list_lock);
-+	inode_trans = jinode->i_transaction;
-+	spin_unlock(&journal->j_list_lock);
-+	if (inode_trans == commit_trans) {
-+		ret = filemap_fdatawrite_range(jinode->i_vfs_inode->i_mapping,
- 			new_size, LLONG_MAX);
- 		if (ret)
- 			jbd2_journal_abort(journal, ret);
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index b28b37e..4d248b3 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1150,7 +1150,8 @@ extern int	   jbd2_journal_clear_err  (journal_t *);
- extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
- extern int	   jbd2_journal_force_commit(journal_t *);
- extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
--extern int	   jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode, loff_t new_size);
-+extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
-+				struct jbd2_inode *inode, loff_t new_size);
- extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
- extern void	   jbd2_journal_release_jbd_inode(journal_t *journal, struct jbd2_inode *jinode);
- 
--- 
-1.6.0.2
+	git://git.kernel.org/pub/scm/linux/kernel/git/jsipek/guilt.git
+	http://git.kernel.org/?p=linux/kernel/git/jsipek/guilt.git
 
+Works just like quilt, in that you can use "guilt push", "guilt pop",
+etc.  I like it because as you push and pop commits, they are real
+commits in git, so I can review them via "git log", and make sure the
+commit changelogs make sense.  "git grep" works, "git log -p", "git
+log --stat", etc.
+
+If you want to use guilt, after installing it, do:
+
+% cd /usr/projects/e2fsprogs           <---- replace w/ your e2fsprogs repo
+% mkdir .git/patches; pushd .git/patches
+% git clone git://github.com/tytso/e2fsprogs-64bit.git shared-64bit
+% cp /dev/null shared-64bit/status
+% popd
+% ln -s .git/patches/shared-64bit patches     <---- optional, for convenience
+% git checkout -b shared-64bit v1.41.4
+% guilt push -a
+
+You can also use quilt if you like, in that case, just drop the
+contents of the patch tree repo in the top-level "patches" directory.
+
+If you sign up to github, I'll add you to the access list so you can
+also push updates to the patch queue.  That way we can work together
+on cleaning up the patch series, and as things are ready at the
+beginning of the queue, I'll merge it into mainline and then we can
+delete them from the patch series.
+
+This is the workflow that we developed for the ext4 patch queue, and
+it worked really well, with Mingming, Eric,and I having access to the
+ext4 patch queue for kernel patches.  That way they could queue up
+their patches, and afterwards multiple people could edit and refine
+the patches so they could be made ready to be pushed into mainline.
+IIRC Eric uses guilt, although Mingming prefers to use raw quilt.
+Either works.
+
+Sound like a plan?
+
+						- Ted
+
+--8NvZYKFJsRX2Djef--
