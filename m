@@ -1,77 +1,88 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Using libext2fs in libe2p?
-Date: Tue, 03 Feb 2009 13:31:14 -0700
-Message-ID: <20090203203114.GZ28818@webber.adilger.int>
-References: <20090203195645.GG20654@shell>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
-	Nick Dokos <nicholas.dokos@hp.com>
-To: Valerie Aurora Henson <vaurora@redhat.com>
+From: akpm@linux-foundation.org
+Subject: + revert-ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch added to -mm tree
+Date: Tue, 03 Feb 2009 13:04:46 -0800
+Message-ID: <200902032104.n13L4leU024287@imap1.linux-foundation.org>
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org, sandeen@redhat.com
+To: mm-commits@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:39872 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751193AbZBCUbo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Feb 2009 15:31:44 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n13KVRO3021722
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Feb 2009 12:31:39 -0800 (PST)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java System Messaging Server 6.2-8.04 (built Feb 28 2007))
- id <0KEI00H01BEJMK00@fe-sfbay-09.sun.com> (original mail from adilger@sun.com)
- for linux-ext4@vger.kernel.org; Tue, 03 Feb 2009 12:31:27 -0800 (PST)
-In-reply-to: <20090203195645.GG20654@shell>
-Content-disposition: inline
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:42257 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752161AbZBCVFn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Feb 2009 16:05:43 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Feb 03, 2009  14:56 -0500, Valerie Aurora Henson wrote:
-> Possible solutions:
-> 
-> Link libext2fs with libe2p
-> Open code 64-bit block counts
-> Require users of libe2p to link with libext2fs
-> Move ext2fs_blocks_count() and friends into a header file and inline them
 
-I would probably do the latter.  The functions are small enough that
-inlining them is likely equivalent in terms of instructions compared
-to jumping to a new function.
+The patch titled
+     ext3: revert "ext3: wait on all pending commits in ext3_sync_fs"
+has been added to the -mm tree.  Its filename is
+     revert-ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch
 
-> diff --git a/lib/e2p/ls.c b/lib/e2p/ls.c
-> index 6d2ce70..1923793 100644
-> --- a/lib/e2p/ls.c
-> +++ b/lib/e2p/ls.c
-> @@ -20,6 +20,7 @@
->  #include <time.h>
->  
->  #include "e2p.h"
-> +#include "ext2fs/ext2fs.h"
->  
->  static void print_user (unsigned short uid, FILE *f)
->  {
-> @@ -219,9 +220,9 @@ void list_super2(struct ext2_super_block * sb, FILE *f)
->         fprintf(f, "Filesystem OS type:       %s\n", str);
->         free(str);
->         fprintf(f, "Inode count:              %u\n", sb->s_inodes_count);
-> -       fprintf(f, "Block count:              %u\n", sb->s_blocks_count);
-> -       fprintf(f, "Reserved block count:     %u\n", sb->s_r_blocks_count);
-> -       fprintf(f, "Free blocks:              %u\n", sb->s_free_blocks_count);
-> +       fprintf(f, "Block count:              %llu\n", ext2fs_blocks_count(sb));
-> +       fprintf(f, "Reserved block count:     %llu\n", ext2fs_r_blocks_count(sb));
-> +       fprintf(f, "Free blocks:              %llu\n", ext2fs_free_blocks_count(sb));
->         fprintf(f, "Free inodes:              %u\n", sb->s_free_inodes_count);
->         fprintf(f, "First block:              %u\n", sb->s_first_data_block);
->         fprintf(f, "Block size:               %u\n", EXT2_BLOCK_SIZE(sb));
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext3: revert "ext3: wait on all pending commits in ext3_sync_fs"
+From: Jan Kara <jack@suse.cz>
+
+This reverts commit c87591b719737b4e91eb1a9fa8fd55a4ff1886d6.
+
+Since journal_start_commit() is now fixed to return 1 when we started a
+transaction commit, there's some transaction waiting to be committed or
+there's a transaction already committing, we don't need to call
+ext3_force_commit() in ext3_sync_fs().  Furthermore ext3_force_commit()
+can unnecessarily create sync transaction which is expensive so it's
+worthwhile to remove it when we can.
+
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/super.c |   11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
+
+diff -puN fs/ext3/super.c~revert-ext3-wait-on-all-pending-commits-in-ext3_sync_fs fs/ext3/super.c
+--- a/fs/ext3/super.c~revert-ext3-wait-on-all-pending-commits-in-ext3_sync_fs
++++ a/fs/ext3/super.c
+@@ -2426,12 +2426,13 @@ static void ext3_write_super (struct sup
+ 
+ static int ext3_sync_fs(struct super_block *sb, int wait)
+ {
+-	sb->s_dirt = 0;
+-	if (wait)
+-		ext3_force_commit(sb);
+-	else
+-		journal_start_commit(EXT3_SB(sb)->s_journal, NULL);
++	tid_t target;
+ 
++	sb->s_dirt = 0;
++	if (journal_start_commit(EXT3_SB(sb)->s_journal, &target)) {
++		if (wait)
++			log_wait_commit(EXT3_SB(sb)->s_journal, target);
++	}
+ 	return 0;
+ }
+ 
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+linux-next.patch
+jbd-fix-return-value-of-journal_start_commit.patch
+revert-ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch
+ext2-add-blk_issue_flush-to-syncing-paths.patch
+jbd-fix-oops-in-jbd_journal_init_inode-on-corrupted-fs.patch
+fs-adfs-return-f_fsid-for-statfs2.patch
 
