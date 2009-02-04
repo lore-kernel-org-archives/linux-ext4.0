@@ -1,74 +1,44 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][PATCH 2/3] ext4: Exchange the blocks between two inodes
-Date: Wed, 4 Feb 2009 10:20:29 -0500
-Message-ID: <20090204152029.GE14762@mit.edu>
-References: <49829A91.8000800@rs.jp.nec.com>
+Subject: Re: [RFC][PATCH 0/3] ext4: online defrag (ver 1.0)
+Date: Wed, 4 Feb 2009 10:32:05 -0500
+Message-ID: <20090204153205.GF14762@mit.edu>
+References: <49829A1D.5090002@rs.jp.nec.com> <87f94c370901301433x3e22892n5fddbb0804bddc4@mail.gmail.com> <49894CD4.4060000@rs.jp.nec.com> <20090204140911.GB14762@mit.edu> <87f94c370902040651v388db0aak46d7843872d312ce@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56258 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:36056 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752545AbZBDPUc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Feb 2009 10:20:32 -0500
+	id S1753097AbZBDPcI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Feb 2009 10:32:08 -0500
 Content-Disposition: inline
-In-Reply-To: <49829A91.8000800@rs.jp.nec.com>
+In-Reply-To: <87f94c370902040651v388db0aak46d7843872d312ce@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jan 30, 2009 at 03:13:37PM +0900, Akira Fujita wrote:
-> ext4: online defrag -- Exchange the blocks between two inodes
+On Wed, Feb 04, 2009 at 09:51:07AM -0500, Greg Freemyer wrote:
 > 
-> From: Akira Fujita <a-fujita@rs.jp.nec.com>
-> 
-> For each page, exchange the extents between original inode
-> and destination inode, and then write the file data of
-> the original inode to destination inode.
+> If the OHSM team implements a similar ioctl for ext2 and ext3 and
+> submits them for mainline at some point, do they have a chance of
+> being accepted or are ext2 and ext3 feature frozen?
 
-As I mentioned earlier, it would be better to merge this patch into
-the previous once; we don't need to keep them broken apart.
+It seems unlikely it would be accepted.  If the patch could be done in
+a way that seriously minimized the chances of destablizing the code,
+maybe --- but consider also that the OHSM design is a pretty terrible
+hack.  I'm not at all conviced they will be able to stablize it for
+production use, and a scheme that involves using dmapi across multiple
+block devices.
 
-> +/**
-> + * ext4_defrag_replace_branches - Replace original extents with new extents
-> + *
-> + * @handle:		journal handle
-> + * @org_inode:		original inode
-> + * @dest_inode:		destination inode
-> + * @from:		block offset of org_inode
-> + * @count:		block count to be replaced
+Note that they apparently need to make other changes to the core
+filesystem code besides just the ioctl --- to the block allocation
+code, at the very least.
 
-It's really good that this function can support moving an arbitrarily
-large block range.  It's unfortunate that its caller is only moving a
-4k page at a time.  :-)
+The right answer is really to use a stackable filesystem, and to use
+separate filesystems for each different tier, and then build on top of
+unionfs to give it its policy support.  I suspect that OHSM will be a
+cute student project, but it won't become anything serious given its
+architecture/design, unfortunately.
 
-> +
-> +	up_write(&EXT4_I(org_inode)->i_data_sem);
-> +	ret = a_ops->write_begin(o_filp, mapping, offs, data_len, w_flags,
-> +								&page, &fsdata);
-> +	down_write(&EXT4_I(org_inode)->i_data_sem);
-
-This is going to be a problem.  Once we release i_data_sem, there is
-the possibility that other processes which might be running and
-accessing the file at the same time that the defragger is running
-could be blocked waiting for i_data_sem to be released.  The moment it
-gets released, they will grab the lock then start to modify extent
-tree --- either allocating new blocks to it, or worse, truncating or
-unlinking the target inode.
-
-This is going to be a mess to fix, since Linux doesn't have recursive
-locking primitives.  We do take i_mutex, which will protect us against
-truncates, but it won't protect against a write() system call.  Also,
-if there inode has delayed allocation blocks pending, those could get
-written out by the page cleaner, and i_mutex won't protect us against
-changes to i_data_sem, either.
-
-We could add special-case kludgery to wrap around all of the places
-that takes or release the i_data_sem so that we get recursive locking
-support --- but that would be very ugly indeed.
-
-I'm not sure what's the best way to deal with this; maybe if we sleep
-on it someone will come up with a better suggestion --- but it's
-something that we have to figure out.
-
-	  					- Ted
+						- Ted
