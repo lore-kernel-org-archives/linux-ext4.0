@@ -1,55 +1,69 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][PATCH 0/3] ext4: online defrag (ver 1.0)
-Date: Wed, 4 Feb 2009 09:09:11 -0500
-Message-ID: <20090204140911.GB14762@mit.edu>
-References: <49829A1D.5090002@rs.jp.nec.com> <87f94c370901301433x3e22892n5fddbb0804bddc4@mail.gmail.com> <49894CD4.4060000@rs.jp.nec.com>
+From: Jimmy Rentz <jedynamic@bellsouth.net>
+Subject: Re: ext4 - error with root drive mount
+Date: Wed, 4 Feb 2009 09:34:20 -0500
+Message-ID: <20090204093420.44cac139@amd64linuxmsi.rentzhouse.lan>
+References: <20090203191531.0dfe27a1@amd64linuxmsi.rentzhouse.lan>
+	<20090204062400.GZ14762@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Akira Fujita <a-fujita@rs.jp.nec.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <49894CD4.4060000@rs.jp.nec.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Jimmy Rentz <jedynamic@bellsouth.net>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fmailhost03.isp.att.net ([207.115.11.53]:37376 "EHLO
+	fmailhost03.isp.att.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752211AbZBDOj0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Feb 2009 09:39:26 -0500
+In-Reply-To: <20090204062400.GZ14762@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 04, 2009 at 05:07:48PM +0900, Akira Fujita wrote:
->> Do we want the ioctl name to be specific to defrag?  I thought Ted's
->> goal was to make it more generic?  I can also envision this same ioctl
->> being implemented by other file systems so EXT4 seems an inappropriate
->> prefix.
+On Wed, 4 Feb 2009 01:24:00 -0500
+Theodore Tso <tytso@mit.edu> wrote:
 
-When I said generic I meant in terms of decomposing the functionality
-into multiple ioctls which each could be useful for multiple purposes.
-Not necessarily in terms of being used by other filesystem, because
-they will almost certainly have their own requirements.
+> On Tue, Feb 03, 2009 at 07:15:31PM -0500, Jimmy Rentz wrote:
+> > 	I am unable to mount my ext4 root drive. 
+> > 
+> > 	I get this error:
+> > 	EXT4-fs: ext4_check_descriptors: Block bitmap for group 2688
+> > 	not in group (block 4205711663)!<3>EXT4-fs: group
+> > descriptors corrupted!
+> > 
+> > 	I had a similar error some time ago, but I thought it was
+> > power related.  I fixed the problem by running a fcsk.  
+> 
+> You'll need to fix it using fsck again.  I assume the back up
+> superblocks will have the correct value.
+> 
+> It would be interesting to see if there are any other errors picked up
+> by e2fsck.
+I reran fsck and that fixed the problem. 
 
-So for example, primitives like "allocate blocks for this inode from
-this region of the disk", or "don't allocate blocks for any inode in
-this region of disk", can be used for multiple things (such as on-line
-shrink), and not just defragmentation.
+Here is a sample of the errors:
+Free blocks count wrong for group #1 (14705, counted=19112).
+Fix? no
 
-I don't want to move this to the VFS layer, since it will involve huge
-amounts of time while people argue over generic issues regarding the
-interface.  Look at how long it took to settle on the FIEMAP
-interface; that's not an experience I care to repeat.
+Free blocks count wrong for group #2 (12753, counted=11404).
+Fix? no
 
->>> struct move_extent {
->>>        int org_fd;             /* original file descriptor */
->>>        int dest_fd;            /* destination file descriptor */
->>>        ext4_lblk_t start;      /* logical offset of org_fd and dest_fd */
->>>        ext4_lblk_t len;        /* exchange block length */
->>> };
->>
->> I would also like to see .dest_fd changed to .donor_fd.
+Free blocks count wrong for group #3 (20531, counted=17213).
+Fix? no
+...
+Free blocks count wrong for group #11160 (7673, counted=3577).
 
-Agreed --- dest_fd is very confusing, because while the data is moving
-to the blocks contributed by the donor_fd, the actual inode which
-remains pointed to by all of the directory entries is the org_fd.  But
-people who think of the operation as the blocks moving to the
-"destination fd", will get completely confused.  Donor makes more
-sense, since it has the sense of "organ transplant", which makes a lot
-more sense.
+Then some errors about inode and directory counts wrong.
 
-						- Ted
+I also forgot that I have a log of the fsck errors when I
+had this problem before.
+
+> 
+> > 	Any tips to debug this?
+> 
+> Can you reliably replicate this problem?  I've not seen any similar
+> reports of problems like this.
+> 
+> 						- Ted
+
+I am not sure how to reproduce this problem.  It seems random
+enough.  The system is a mythtv box so it happens to
+poweron/poweroff on a regular basis to record.    
