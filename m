@@ -1,69 +1,60 @@
-From: Jimmy Rentz <jedynamic@bellsouth.net>
-Subject: Re: ext4 - error with root drive mount
-Date: Wed, 4 Feb 2009 09:34:20 -0500
-Message-ID: <20090204093420.44cac139@amd64linuxmsi.rentzhouse.lan>
-References: <20090203191531.0dfe27a1@amd64linuxmsi.rentzhouse.lan>
-	<20090204062400.GZ14762@mit.edu>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [RFC][PATCH 0/3] ext4: online defrag (ver 1.0)
+Date: Wed, 4 Feb 2009 09:51:07 -0500
+Message-ID: <87f94c370902040651v388db0aak46d7843872d312ce@mail.gmail.com>
+References: <49829A1D.5090002@rs.jp.nec.com>
+	 <87f94c370901301433x3e22892n5fddbb0804bddc4@mail.gmail.com>
+	 <49894CD4.4060000@rs.jp.nec.com> <20090204140911.GB14762@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Jimmy Rentz <jedynamic@bellsouth.net>, linux-ext4@vger.kernel.org
+Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fmailhost03.isp.att.net ([207.115.11.53]:37376 "EHLO
-	fmailhost03.isp.att.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752211AbZBDOj0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Feb 2009 09:39:26 -0500
-In-Reply-To: <20090204062400.GZ14762@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090204140911.GB14762@mit.edu>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Wed, 4 Feb 2009 01:24:00 -0500
-Theodore Tso <tytso@mit.edu> wrote:
+On Wed, Feb 4, 2009 at 9:09 AM, Theodore Tso <tytso@mit.edu> wrote:
+> On Wed, Feb 04, 2009 at 05:07:48PM +0900, Akira Fujita wrote:
+>>> Do we want the ioctl name to be specific to defrag?  I thought Ted's
+>>> goal was to make it more generic?  I can also envision this same ioctl
+>>> being implemented by other file systems so EXT4 seems an inappropriate
+>>> prefix.
+>
+> When I said generic I meant in terms of decomposing the functionality
+> into multiple ioctls which each could be useful for multiple purposes.
+> Not necessarily in terms of being used by other filesystem, because
+> they will almost certainly have their own requirements.
+>
+> So for example, primitives like "allocate blocks for this inode from
+> this region of the disk", or "don't allocate blocks for any inode in
+> this region of disk", can be used for multiple things (such as on-line
+> shrink), and not just defragmentation.
+>
+> I don't want to move this to the VFS layer, since it will involve huge
+> amounts of time while people argue over generic issues regarding the
+> interface.  Look at how long it took to settle on the FIEMAP
+> interface; that's not an experience I care to repeat.
 
-> On Tue, Feb 03, 2009 at 07:15:31PM -0500, Jimmy Rentz wrote:
-> > 	I am unable to mount my ext4 root drive. 
-> > 
-> > 	I get this error:
-> > 	EXT4-fs: ext4_check_descriptors: Block bitmap for group 2688
-> > 	not in group (block 4205711663)!<3>EXT4-fs: group
-> > descriptors corrupted!
-> > 
-> > 	I had a similar error some time ago, but I thought it was
-> > power related.  I fixed the problem by running a fcsk.  
-> 
-> You'll need to fix it using fsck again.  I assume the back up
-> superblocks will have the correct value.
-> 
-> It would be interesting to see if there are any other errors picked up
-> by e2fsck.
-I reran fsck and that fixed the problem. 
+Convinced and request withdrawn.
 
-Here is a sample of the errors:
-Free blocks count wrong for group #1 (14705, counted=19112).
-Fix? no
+Talking about this ioctl, can anyone say:
 
-Free blocks count wrong for group #2 (12753, counted=11404).
-Fix? no
+If the OHSM team implements a similar ioctl for ext2 and ext3 and
+submits them for mainline at some point, do they have a chance of
+being accepted or are ext2 and ext3 feature frozen?
 
-Free blocks count wrong for group #3 (20531, counted=17213).
-Fix? no
-...
-Free blocks count wrong for group #11160 (7673, counted=3577).
+Thanks
+Greg
+-- 
+Greg Freemyer
+Litigation Triage Solutions Specialist
+http://www.linkedin.com/in/gregfreemyer
+First 99 Days Litigation White Paper -
+http://www.norcrossgroup.com/forms/whitepapers/99%20Days%20whitepaper.pdf
 
-Then some errors about inode and directory counts wrong.
-
-I also forgot that I have a log of the fsck errors when I
-had this problem before.
-
-> 
-> > 	Any tips to debug this?
-> 
-> Can you reliably replicate this problem?  I've not seen any similar
-> reports of problems like this.
-> 
-> 						- Ted
-
-I am not sure how to reproduce this problem.  It seems random
-enough.  The system is a mythtv box so it happens to
-poweron/poweroff on a regular basis to record.    
+The Norcross Group
+The Intersection of Evidence & Technology
+http://www.norcrossgroup.com
