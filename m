@@ -1,42 +1,80 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4 - error with root drive mount
-Date: Wed, 4 Feb 2009 01:24:00 -0500
-Message-ID: <20090204062400.GZ14762@mit.edu>
-References: <20090203191531.0dfe27a1@amd64linuxmsi.rentzhouse.lan>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jimmy Rentz <jedynamic@bellsouth.net>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12629] New: EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone
+Date: Tue,  3 Feb 2009 23:37:04 -0800 (PST)
+Message-ID: <bug-12629-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44394 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751623AbZBDGYE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Feb 2009 01:24:04 -0500
-Content-Disposition: inline
-In-Reply-To: <20090203191531.0dfe27a1@amd64linuxmsi.rentzhouse.lan>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41429 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751025AbZBDHhX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Feb 2009 02:37:23 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n147b4Pj019561
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Feb 2009 23:37:05 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 03, 2009 at 07:15:31PM -0500, Jimmy Rentz wrote:
-> 	I am unable to mount my ext4 root drive. 
-> 
-> 	I get this error:
-> 	EXT4-fs: ext4_check_descriptors: Block bitmap for group 2688
-> 	not in group (block 4205711663)!<3>EXT4-fs: group descriptors
-> 	corrupted!
-> 
-> 	I had a similar error some time ago, but I thought it was power
-> 	related.  I fixed the problem by running a fcsk.  
+http://bugzilla.kernel.org/show_bug.cgi?id=12629
 
-You'll need to fix it using fsck again.  I assume the back up
-superblocks will have the correct value.
+           Summary: EXT3-fs error (device dm-1): ext3_new_block: Allocating
+                    block in system zone
+           Product: File System
+           Version: 2.5
+     KernelVersion: 2.6.28.2
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext3
+        AssignedTo: fs_ext3@kernel-bugs.osdl.org
+        ReportedBy: juris.krumins@ctco.lv
 
-It would be interesting to see if there are any other errors picked up
-by e2fsck.
 
-> 	Any tips to debug this?
+I'm experiencing problem with fs, reflected by the following errors:
 
-Can you reliably replicate this problem?  I've not seen any similar
-reports of problems like this.
+...
+EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone -
+blocks from 537690639, length 1
+EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone -
+blocks from 537690640, length 1
+EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone -
+blocks from 537690641, length 1
+EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone -
+blocks from 537690642, length 1
+EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone -
+blocks from 537690643, length 1
+EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone -
+blocks from 537690644, length 1
+EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone -
+blocks from 537690645, length 1
+EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone -
+blocks from 537690646, length 1
+EXT3-fs error (device dm-1): ext3_new_block: Allocating block in system zone -
+blocks from 537690647, length 1
+...
 
-						- Ted
+Distribution  - CentOS 5.2
+Hardware used - IBM x3650 with ServerRAID10K raid controller and EXP3000 disk
+bay (12 SATA disks, RAID0. Total LD size ~8TB).
+Tested with different default centos kernels (kernel-2.6.18-92.el5,
+kernel-2.6.18-92.1.22.el5), the same
+error. Tested also with custom 2.6.28.2 kernel and different FS flags, no
+changes.
+Hardware used - IBM x3650 with ServerRAID10K raid controller and EXP3000 disk
+bay (12 SATA disks, RAID0. Total LD size ~8TB).
+Right now running test on 2.6.28.2 with different FS flags, partition sizes and
+so on. More that that, dm-crypt module is used
+for this partition. But I think it's not dm-crypt related issue.
+
+
+Right now I'm trying to update mu e2fsprogs utulities and run tests. Still
+running and it's seems like FS, created with new e2fsprogs,
+ looks more stable.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
