@@ -1,26 +1,42 @@
-From: Ray Van Dolson <rvandolson@esri.com>
-Subject: (unknown)
-Date: Tue, 3 Feb 2009 22:10:02 -0800
-Message-ID: <20090204061002.GA25194@esri.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext4 - error with root drive mount
+Date: Wed, 4 Feb 2009 01:24:00 -0500
+Message-ID: <20090204062400.GZ14762@mit.edu>
+References: <20090203191531.0dfe27a1@amd64linuxmsi.rentzhouse.lan>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Jimmy Rentz <jedynamic@bellsouth.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from esrismtp2.esri.com ([198.102.62.103]:28376 "EHLO esri3.esri.com"
+Received: from thunk.org ([69.25.196.29]:44394 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751471AbZBDGWF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Feb 2009 01:22:05 -0500
-Received: from leoray.esri.com (leoray.esri.com [10.27.102.12])
-	by esri3.esri.com (8.11.7p3+Sun/8.11.6) with ESMTP id n146A2d12044
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Feb 2009 22:10:02 -0800 (PST)
-Received: from leoray.esri.com (leoray.esri.com [127.0.0.1])
-	by leoray.esri.com (8.14.3/8.14.1) with ESMTP id n146A22p025202
-	for <linux-ext4@vger.kernel.org>; Tue, 3 Feb 2009 22:10:02 -0800
-Received: (from ray5147@localhost)
-	by leoray.esri.com (8.14.3/8.14.3/Submit) id n146A2NW025201
-	for linux-ext4@vger.kernel.org; Tue, 3 Feb 2009 22:10:02 -0800
+	id S1751623AbZBDGYE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Feb 2009 01:24:04 -0500
 Content-Disposition: inline
+In-Reply-To: <20090203191531.0dfe27a1@amd64linuxmsi.rentzhouse.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-subscribe linux-ext4
+On Tue, Feb 03, 2009 at 07:15:31PM -0500, Jimmy Rentz wrote:
+> 	I am unable to mount my ext4 root drive. 
+> 
+> 	I get this error:
+> 	EXT4-fs: ext4_check_descriptors: Block bitmap for group 2688
+> 	not in group (block 4205711663)!<3>EXT4-fs: group descriptors
+> 	corrupted!
+> 
+> 	I had a similar error some time ago, but I thought it was power
+> 	related.  I fixed the problem by running a fcsk.  
+
+You'll need to fix it using fsck again.  I assume the back up
+superblocks will have the correct value.
+
+It would be interesting to see if there are any other errors picked up
+by e2fsck.
+
+> 	Any tips to debug this?
+
+Can you reliably replicate this problem?  I've not seen any similar
+reports of problems like this.
+
+						- Ted
