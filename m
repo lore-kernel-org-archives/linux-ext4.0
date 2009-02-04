@@ -1,28 +1,24 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12594] filesystem corruption while running bonnie
-Date: Wed,  4 Feb 2009 04:11:10 -0800 (PST)
-Message-ID: <20090204121110.31FD011D109@picon.linux-foundation.org>
-References: <bug-12594-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Folkert van Heusden <folkert@vanheusden.com>
+Subject: Re: [Bugme-new] [Bug 12594] New: filesystem corruption while
+	running bonnie
+Date: Wed, 4 Feb 2009 13:10:42 +0100
+Message-ID: <20090204121042.GK21127@vanheusden.com>
+References: <bug-12594-10286@http.bugzilla.kernel.org/> <20090201124953.fbae0e76.akpm@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, bugme-daemon@bugzilla.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:33258 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755359AbZBDMLM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Feb 2009 07:11:12 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n14CBA4A000480
-	for <linux-ext4@vger.kernel.org>; Wed, 4 Feb 2009 04:11:11 -0800
-In-Reply-To: <bug-12594-13602@http.bugzilla.kernel.org/>
+Received: from smtp-vbr9.xs4all.nl ([194.109.24.29]:2731 "EHLO
+	smtp-vbr9.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750837AbZBDMLZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Feb 2009 07:11:25 -0500
+Content-Disposition: inline
+In-Reply-To: <20090201124953.fbae0e76.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12594
-
-
-
-
-
-------- Comment #3 from folkert@vanheusden.com  2009-02-04 04:11 -------
 > > http://bugzilla.kernel.org/show_bug.cgi?id=12594
 > > 
 > >            Summary: filesystem corruption while running bonnie
@@ -109,8 +105,7 @@ seperate LVM slices.
 
 Folkert van Heusden
 
-
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+                     www.ishetweekend.nl
+----------------------------------------------------------------------
+Phone: +31-6-41278122, PGP-key: 1F28D8AE, www.vanheusden.com
