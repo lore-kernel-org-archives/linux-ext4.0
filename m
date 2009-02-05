@@ -1,69 +1,42 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: [ltt-dev] LTTng 0.89 for Linux 2.6.29-rc3
-Date: Thu, 5 Feb 2009 10:44:56 -0800
-Message-ID: <20090205184456.GK6915@linux.vnet.ibm.com>
-References: <20090130200757.GA14999@Krystal> <20090205140432.GE6915@linux.vnet.ibm.com> <20090205150242.GA27895@Krystal> <20090205151841.GF6915@linux.vnet.ibm.com> <20090205153825.GA30255@Krystal> <20090205155854.GG6915@linux.vnet.ibm.com> <5d5443650902050822r2e4d08ffg2322b45a5e009fb8@mail.gmail.com> <20090205180132.GJ6915@linux.vnet.ibm.com> <20090205183158.GA1969@Krystal>
-Reply-To: paulmck@linux.vnet.ibm.com
+From: Mark Fasheh <mfasheh@suse.com>
+Subject: Re: [PATCH 0/3] Fix possible NULL pointer dereference in JBD2
+Date: Thu, 5 Feb 2009 11:32:17 -0800
+Message-ID: <20090205193217.GZ17410@wotan.suse.de>
+References: <1233845582-954-1-git-send-email-jack@suse.cz>
+Reply-To: Mark Fasheh <mfasheh@suse.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Trilok Soni <soni.trilok@gmail.com>, ltt-dev@lists.casi.polymtl.ca,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org
-To: Mathieu Desnoyers <compudj@krystal.dyndns.org>
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:33116 "EHLO e4.ny.us.ibm.com"
+Received: from mx2.suse.de ([195.135.220.15]:52655 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755627AbZBESo6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Feb 2009 13:44:58 -0500
+	id S1756923AbZBETcT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Feb 2009 14:32:19 -0500
 Content-Disposition: inline
-In-Reply-To: <20090205183158.GA1969@Krystal>
+In-Reply-To: <1233845582-954-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 05, 2009 at 01:31:59PM -0500, Mathieu Desnoyers wrote:
-> * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
-> > On Thu, Feb 05, 2009 at 09:52:16PM +0530, Trilok Soni wrote:
-> > > Hi Paul,
-> > > 
-> > > On Thu, Feb 5, 2009 at 9:28 PM, Paul E. McKenney
-> > > <paulmck@linux.vnet.ibm.com> wrote:
-> > > >>
-> > > >> Are you using quilt to apply the patchset series file in the right order ?
-> > > >
-> > > > Ummm...  No.  I never have used quilt.
-> > > >
-> > > > Ah, there is a series file.  I guess it would not be too hard to make
-> > > > an appropriate "sh" command:
-> > > 
-> > > How about trying?
-> > > 
-> > > #quilt push -a
-> > 
-> > Is the appropriate incantation as follows?
-> > 
-> > 	cd <top of git tree>
-> > 	mkdir patches
-> > 	cp /tmp/patch-2.6.29-rc3-lttng-0.92/* patches
-> > 	quilt push -a
-> > 
+On Thu, Feb 05, 2009 at 03:52:59PM +0100, Jan Kara wrote:
 > 
-> Yes, exactly.
-
-Whew!  ;-)
-
-> And from there you can follow the LTTng manual here :
+>   Hi,
 > 
-> http://ltt.polymtl.ca/svn/trunk/lttv/LTTngManual.html
+>   the three patches below fix a bug in jbd2_journal_begin_ordered_truncate() that
+> could possibly lead to NULL pointer dereference. The question is how to merge
+> the fix as it changes the prototype of the function and both ext4 and ocfs2 use it.
+> Mark, Mingming, any suggestions?
 
-I get some fuzz and the following:
+This seems like it'd be easiest for Andrew to carry. The Ocfs2 patch is
+unlikely to conflict with anything in my tree.
 
-	patching file kernel/trace/trace-clock-32-to-64.c
-	Patch attempted to create file kernel/trace/trace-clock-32-to-64.c,
-	which already exists.
-	Hunk #1 FAILED at 1.
-	1 out of 1 hunk FAILED -- rejects in file
-	kernel/trace/trace-clock-32-to-64.c
+Btw, you can add:
 
-Should I be starting from somewhere other than v2.6.29-rc3?
+Acked-by: Mark Fasheh <mfasheh@suse.com>
 
-							Thanx, Paul
+to the Ocfs2 patch.
+	--Mark
+
+--
+Mark Fasheh
