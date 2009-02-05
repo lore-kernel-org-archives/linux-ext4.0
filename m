@@ -1,49 +1,36 @@
-From: Trilok Soni <soni.trilok@gmail.com>
-Subject: Re: [ltt-dev] LTTng 0.89 for Linux 2.6.29-rc3
-Date: Thu, 5 Feb 2009 21:58:25 +0530
-Message-ID: <5d5443650902050828h75738f0bg48ab16e20ed802a4@mail.gmail.com>
-References: <20090130200757.GA14999@Krystal>
-	 <20090205140432.GE6915@linux.vnet.ibm.com>
-	 <20090205150242.GA27895@Krystal>
-	 <20090205151841.GF6915@linux.vnet.ibm.com>
-	 <20090205153825.GA30255@Krystal>
-	 <20090205155854.GG6915@linux.vnet.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Mathieu Desnoyers <compudj@krystal.dyndns.org>,
-	ltt-dev@lists.casi.polymtl.ca,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org
-To: paulmck@linux.vnet.ibm.com
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 11688] Oops while writing on a newly ext4 formated 1TB partition on a external USB drive
+Date: Thu,  5 Feb 2009 08:30:39 -0800 (PST)
+Message-ID: <20090205163039.3459A108048@picon.linux-foundation.org>
+References: <bug-11688-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from yx-out-2324.google.com ([74.125.44.29]:62334 "EHLO
-	yx-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751562AbZBEQ21 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2009 11:28:27 -0500
-In-Reply-To: <20090205155854.GG6915@linux.vnet.ibm.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:58803 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751057AbZBEQbB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2009 11:31:01 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n15GUdfX020602
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Feb 2009 08:30:40 -0800
+In-Reply-To: <bug-11688-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Paul,
-
-On Thu, Feb 5, 2009 at 9:28 PM, Paul E. McKenney
-<paulmck@linux.vnet.ibm.com> wrote:
->>
->> Are you using quilt to apply the patchset series file in the right order ?
->
-> Ummm...  No.  I never have used quilt.
->
-> Ah, there is a series file.  I guess it would not be too hard to make
-> an appropriate "sh" command:
->
-
-How about trying?
+http://bugzilla.kernel.org/show_bug.cgi?id=11688
 
 
-#quilt push -a
+
+
+
+------- Comment #10 from jack@suse.cz  2009-02-05 08:30 -------
+Created an attachment (id=20124)
+ --> (http://bugzilla.kernel.org/attachment.cgi?id=20124&action=view)
+Fix for the bug in ext4_write_begin and ext4_da_write_begin
+
+This patch should fix the problem. Testing welcome ;)
+
 
 -- 
----Trilok Soni
-http://triloksoni.wordpress.com
-http://www.linkedin.com/in/triloksoni
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
