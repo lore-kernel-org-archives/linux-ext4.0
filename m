@@ -1,100 +1,94 @@
-From: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
-Subject: Re: LTTng 0.89 for Linux 2.6.29-rc3
-Date: Thu, 5 Feb 2009 10:02:42 -0500
-Message-ID: <20090205150242.GA27895@Krystal>
-References: <20090130200757.GA14999@Krystal> <20090205140432.GE6915@linux.vnet.ibm.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [RFC] ext4_bmap() may return blocks outside filesystem
+Date: Thu, 5 Feb 2009 10:22:43 -0500
+Message-ID: <87f94c370902050722wf2099c9i2d815737e85209f3@mail.gmail.com>
+References: <498AD58B.5000805@ph.tum.de> <20090205134905.GL8945@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: ltt-dev@lists.casi.polymtl.ca, linux-kernel@vger.kernel.org,
-	Theodore Ts'o <tytso@mit.edu>,
+Cc: Thiemo Nagel <thiemo.nagel@ph.tum.de>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tomts10-srv.bellnexxia.net ([209.226.175.54]:40877 "EHLO
-	tomts10-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752565AbZBEPCq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2009 10:02:46 -0500
-Content-Disposition: inline
-In-Reply-To: <20090205140432.GE6915@linux.vnet.ibm.com>
+Received: from mail-qy0-f11.google.com ([209.85.221.11]:43548 "EHLO
+	mail-qy0-f11.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754219AbZBEPWo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2009 10:22:44 -0500
+Received: by qyk4 with SMTP id 4so387169qyk.13
+        for <linux-ext4@vger.kernel.org>; Thu, 05 Feb 2009 07:22:43 -0800 (PST)
+In-Reply-To: <20090205134905.GL8945@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
-> On Fri, Jan 30, 2009 at 03:07:57PM -0500, Mathieu Desnoyers wrote:
-> > Hi,
-> > 
-> > I just ported LTTng to the 2.6.29-rc3 kernel. It includes the following
-> > changes :
-> > 
-> > - Tree RCU instrumentation
-> > - Updated ext4 and jbd2 instrumentation
-> > 
-> > Please feel free to try it and report any success/problem you may have.
-> > Note that cross-build has been slightly less tested this time because
-> > I'll have to upgrade many of my compilers to a version compatible with
-> > kernel 2.6.29-rc.
-> > 
-> > It also includes the recently added kprobes support through a simple
-> > 
-> > echo symbol_name > /mnt/debugfs/ltt/kprobes/enable
-> > 
-> > It's available at the new LTTng website :
-> > 
-> > http://www.lttng.org/
-> 
-> Hello, Matheiu,
-> 
-> When I try to apply this to v2.6.29-rc3, I get the following:
-> 
-> 	can't find file to patch at input line 61
-> 	Perhaps you used the wrong -p or --strip option?
-> 	The text leading up to this was:
-> 	--------------------------
-> 	|get_ltt_root() is necessary for ltt-trace-control to create subdirs in
-> 	ltt's
-> 	|debugfs dir.
-> 	|
-> 	|From: Zhao Lei <zhaolei@cn.fujitsu.com>
-> 	|Signed-off-by: Zhao Lei <zhaolei@cn.fujitsu.com>
-> 	|Signed-off-by: Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
-> 	|---
-> 	| include/linux/ltt-core.h |    8 ++++++++
-> 	| ltt/ltt-core.c           |   14 ++++++++++++++
-> 	| ltt/ltt-relay.c          |    8 +-------
-> 	| 3 files changed, 23 insertions(+), 7 deletions(-)
-> 	|
-> 	|Index: linux-2.6-lttng/include/linux/ltt-core.h
-> 	|===================================================================
-> 	|--- linux-2.6-lttng.orig/include/linux/ltt-core.h      2009-01-15
-> 	15:55:18.000000000 -0500
-> 	|+++ linux-2.6-lttng/include/linux/ltt-core.h   2009-01-15
-> 	15:55:24.000000000 -0500
-> 
-> Help?
-> 
+On Thu, Feb 5, 2009 at 8:49 AM, Theodore Tso <tytso@mit.edu> wrote:
+> On Thu, Feb 05, 2009 at 01:03:23PM +0100, Thiemo Nagel wrote:
+>> But there also are cases which are not handled gracefully by bmap() callers.
+>>
+>> I've attached a conceptual patch against 2.6.29-rc2 which fixes one case
+>> in which invalid block numbers are returned (there might be more) by
+>> adding sanity checks to ext4_ext_find_extent(), but before I start
+>> looking for further occurences, I'd like to ask whether you think my
+>> approach is reasonable.
+>
+> Yes, it's reasonable; the right thing is not just to jump out to
+> errout, though, but to call ext4_error() first, since the filesystem is
+> clearly corrupted, so we want to mark the filesystem as needing to be
+> fsck'ed, and so if the filesystem is marked "remount readonly" or
+> "panic" on filesystem errors, that the right thing happens.  We should
+> also log the device name, inode number and logical block number that
+> was requested, so that someone who is looking in the console logs can
+> see what was going on at the time.
+>
+> As an unrelated patch, might also want to put a check in
+> fs/ext4/inode.c's ext4_get_branch(), so we can equivalently detect
+> bogus direct/indirect blocks and flag them with the appropriate
+> errors.
+>
+>                                                - Ted
 
-Hi Paul,
+This is just a rant, and I doubt anyone can do anything about it, but
+it is still worth reading imho.
 
-I must admit I'm a bit puzzled. I've tried to quilt push -a both 
-LTTng 0.89 and LTTng 0.92 taken from the website and they both apply
-correctly on 2.6.29-rc3. When I quilt pop -a, neither of those 3 files
-(include/linux/ltt-core.h, ltt/ltt-core.c, ltt/ltt-relay.c) are stucked
-in my tree.
+<rant>
+This brings up a concern I have with the proposed Thin Provisioning
+updates to the SCSI and ATA specs.
 
-I've used files from :
+As I'm sure most know, both are looking at supporting the concept of
+mapped / unmapped sectors being tracked not only in the filesystem but
+also in the storage device.
 
-http://www.lttng.org/files/lttng/patch-2.6.29-rc3-lttng-0.92.tar.bz2
+[SSDs are one use case, and  storage arrays are the other.  Many
+storage arrays already support thin provisioning but not via the new
+"discard" functionality in the linux kernel.]
 
-Which tarballs are you using exactly ?
+My big concern is that neither is proposing a way for a tool like fsck
+to query the storage device to verify the filesystem's view of what is
+mapped vs unmapped agrees with the storage devices view.
 
-I guess you need to apply them to your existing tree, so pointing you to
-git.kernel.org lttng tree won't help much here.
+For both sets of proposed spec updates there are circumstances where
+the storage device spec allows garbage to be returned for non-mapped
+sectors.  Thus in the situation of a corrupt filesystem, it is very
+possible that some of the sectors that the filesystem is relying on
+are actually unmapped and potentially garbage.
 
-Mathieu
+Lacking any knowledge of which specific sectors the underlying storage
+systems treats as reliable vs. unreliable, I can imagine the
+filesystem corruption will go from a correctable situation to a
+"restore from backups" situation.
 
-> 							Thanx, Paul
+The solution in my mind is that both specs add a way for diagnostic
+tools to query the status of a sector to see if it is mapped vs
+unmapped, etc.
+</rant>.
 
+Greg
 -- 
-Mathieu Desnoyers
-OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE 9A68
+Greg Freemyer
+Litigation Triage Solutions Specialist
+http://www.linkedin.com/in/gregfreemyer
+First 99 Days Litigation White Paper -
+http://www.norcrossgroup.com/forms/whitepapers/99%20Days%20whitepaper.pdf
+
+The Norcross Group
+The Intersection of Evidence & Technology
+http://www.norcrossgroup.com
