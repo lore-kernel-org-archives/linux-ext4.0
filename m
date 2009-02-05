@@ -1,24 +1,28 @@
-From: Folkert van Heusden <folkert@vanheusden.com>
-Subject: Re: [Bugme-new] [Bug 12594] New: filesystem corruption while
-	running bonnie
-Date: Thu, 5 Feb 2009 20:59:31 +0100
-Message-ID: <20090205195931.GT21127@vanheusden.com>
-References: <bug-12594-10286@http.bugzilla.kernel.org/> <20090201124953.fbae0e76.akpm@linux-foundation.org> <20090204121042.GK21127@vanheusden.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, bugme-daemon@bugzilla.kernel.org,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Andrew Morton <akpm@linux-foundation.org>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12594] filesystem corruption while running bonnie
+Date: Thu,  5 Feb 2009 12:00:14 -0800 (PST)
+Message-ID: <20090205200014.2EFA1108048@picon.linux-foundation.org>
+References: <bug-12594-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-vbr5.xs4all.nl ([194.109.24.25]:4642 "EHLO
-	smtp-vbr5.xs4all.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751775AbZBEUAb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2009 15:00:31 -0500
-Content-Disposition: inline
-In-Reply-To: <20090204121042.GK21127@vanheusden.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:38002 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752064AbZBEUAq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2009 15:00:46 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n15K0EZe007769
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Feb 2009 12:00:15 -0800
+In-Reply-To: <bug-12594-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12594
+
+
+
+
+
+------- Comment #4 from folkert@vanheusden.com  2009-02-05 12:00 -------
 > > htree went bad.  It's strange that exercising tmpfs would do this.
 > > 
 > > I always get worried when I see device-mapper in the picture.  It has a
@@ -68,7 +72,7 @@ odr:/home/folkert# lvdisplay
   Read ahead sectors     auto
   - currently set to     256
   Block device           254:0
-   
+
   --- Logical volume ---
   LV Name                /dev/VGODR/usr
   VG Name                VGODR
@@ -83,7 +87,7 @@ odr:/home/folkert# lvdisplay
   Read ahead sectors     auto
   - currently set to     256
   Block device           254:1
-   
+
   --- Logical volume ---
   LV Name                /dev/VGODR/var
   VG Name                VGODR
@@ -98,7 +102,7 @@ odr:/home/folkert# lvdisplay
   Read ahead sectors     auto
   - currently set to     256
   Block device           254:2
-   
+
   --- Logical volume ---
   LV Name                /dev/VGODR/swap_1
   VG Name                VGODR
@@ -113,7 +117,7 @@ odr:/home/folkert# lvdisplay
   Read ahead sectors     auto
   - currently set to     256
   Block device           254:3
-   
+
   --- Logical volume ---
   LV Name                /dev/VGODR/tmp
   VG Name                VGODR
@@ -128,7 +132,7 @@ odr:/home/folkert# lvdisplay
   Read ahead sectors     auto
   - currently set to     256
   Block device           254:4
-   
+
   --- Logical volume ---
   LV Name                /dev/VGODR/home
   VG Name                VGODR
@@ -143,14 +147,13 @@ odr:/home/folkert# lvdisplay
   Read ahead sectors     auto
   - currently set to     256
   Block device           254:5
-   
+
 
 
 Folkert van Heusden
 
+
 -- 
-MultiTail is een flexibele tool voor het volgen van logfiles en
-uitvoer van commando's. Filteren, van kleur voorzien, mergen,
-'diff-view', etc. http://www.vanheusden.com/multitail/
-----------------------------------------------------------------------
-Phone: +31-6-41278122, PGP-key: 1F28D8AE, www.vanheusden.com
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
