@@ -1,186 +1,98 @@
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-Subject: Re: [ltt-dev] LTTng 0.89 for Linux 2.6.29-rc3
-Date: Thu, 5 Feb 2009 16:33:08 -0800
-Message-ID: <20090206003308.GO6915@linux.vnet.ibm.com>
-References: <20090205151841.GF6915@linux.vnet.ibm.com> <20090205153825.GA30255@Krystal> <20090205155854.GG6915@linux.vnet.ibm.com> <5d5443650902050822r2e4d08ffg2322b45a5e009fb8@mail.gmail.com> <20090205180132.GJ6915@linux.vnet.ibm.com> <20090205183158.GA1969@Krystal> <20090205184456.GK6915@linux.vnet.ibm.com> <20090205202249.GA26964@Krystal> <20090205210415.GM6915@linux.vnet.ibm.com> <20090205210627.GA1313@Krystal>
-Reply-To: paulmck@linux.vnet.ibm.com
+From: Bernd Schubert <bs@q-leap.de>
+Subject: possible endless loop in ext4_mb_discard_group_preallocations()
+Date: Fri, 6 Feb 2009 02:25:21 +0100
+Message-ID: <200902060225.23162.bs@q-leap.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Trilok Soni <soni.trilok@gmail.com>, ltt-dev@lists.casi.polymtl.ca,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org
-To: Mathieu Desnoyers <compudj@krystal.dyndns.org>
+Content-Type: text/plain;
+  charset="iso-8859-15"
+Content-Transfer-Encoding: 7bit
+Cc: bs_lists@aakef.fastmail.fm, Andreas Dilger <adilger@sun.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e4.ny.us.ibm.com ([32.97.182.144]:55431 "EHLO e4.ny.us.ibm.com"
+Received: from ns2.q-leap.de ([88.79.172.217]:33297 "EHLO mail.q-leap.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751972AbZBFAdL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Feb 2009 19:33:11 -0500
+	id S1751776AbZBFBZ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Feb 2009 20:25:28 -0500
 Content-Disposition: inline
-In-Reply-To: <20090205210627.GA1313@Krystal>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 05, 2009 at 04:06:27PM -0500, Mathieu Desnoyers wrote:
-> * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
-> > On Thu, Feb 05, 2009 at 03:22:49PM -0500, Mathieu Desnoyers wrote:
-> > > * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
-> > > > On Thu, Feb 05, 2009 at 01:31:59PM -0500, Mathieu Desnoyers wro=
-te:
-> > > > > * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
-> > > > > > On Thu, Feb 05, 2009 at 09:52:16PM +0530, Trilok Soni wrote=
-:
-> > > > > > > Hi Paul,
-> > > > > > >=20
-> > > > > > > On Thu, Feb 5, 2009 at 9:28 PM, Paul E. McKenney
-> > > > > > > <paulmck@linux.vnet.ibm.com> wrote:
-> > > > > > > >>
-> > > > > > > >> Are you using quilt to apply the patchset series file =
-in the right order ?
-> > > > > > > >
-> > > > > > > > Ummm...  No.  I never have used quilt.
-> > > > > > > >
-> > > > > > > > Ah, there is a series file.  I guess it would not be to=
-o hard to make
-> > > > > > > > an appropriate "sh" command:
-> > > > > > >=20
-> > > > > > > How about trying?
-> > > > > > >=20
-> > > > > > > #quilt push -a
-> > > > > >=20
-> > > > > > Is the appropriate incantation as follows?
-> > > > > >=20
-> > > > > > 	cd <top of git tree>
-> > > > > > 	mkdir patches
-> > > > > > 	cp /tmp/patch-2.6.29-rc3-lttng-0.92/* patches
-> > > > > > 	quilt push -a
-> > > > > >=20
-> > > > >=20
-> > > > > Yes, exactly.
-> > > >=20
-> > > > Whew!  ;-)
-> > > >=20
-> > > > > And from there you can follow the LTTng manual here :
-> > > > >=20
-> > > > > http://ltt.polymtl.ca/svn/trunk/lttv/LTTngManual.html
-> > > >=20
-> > > > I get some fuzz and the following:
-> > > >=20
-> > > > 	patching file kernel/trace/trace-clock-32-to-64.c
-> > > > 	Patch attempted to create file kernel/trace/trace-clock-32-to-=
-64.c,
-> > > > 	which already exists.
-> > > > 	Hunk #1 FAILED at 1.
-> > > > 	1 out of 1 hunk FAILED -- rejects in file
-> > > > 	kernel/trace/trace-clock-32-to-64.c
-> > > >=20
-> > > > Should I be starting from somewhere other than v2.6.29-rc3?
-> > > >=20
-> > >=20
-> > > Let's see it step by step, that should get us there.
-> > >=20
-> > > With patches :
-> > >=20
-> > > mkdir ~/lttng
-> > > cd ~/lttng
-> > > wget http://www.kernel.org/pub/linux/kernel/v2.6/testing/linux-2.=
-6.29-rc3.tar.bz2
-> > > wget http://lttng.org/files/lttng/patch-2.6.29-rc3-lttng-0.92.tar=
-=2Ebz2
-> > > bzip2 -cd linux-2.6.29-rc3.tar.bz2 |tar xvof -
-> > > bzip2 -cd patch-2.6.29-rc3-lttng-0.92.tar.bz2  |tar xvof -
-> > > cd linux-2.6.29-rc3
-> > > mkdir patches
-> > > ln -s ../patch-2.6.29-rc3-lttng-0.92 patches
-> > > quilt push -a
-> > >=20
-> > > Does this work ?
-> >=20
-> > Leaving out the "mkdir", yes.
->=20
-> Ah, yes, my mistake.
->=20
-> > My apologies -- I was forgetting that
-> > "git reset --hard" doesn't get rid of untracked files.  I do see fu=
-zz
-> > in a few places, but hopefully this is non-fatal.  And in any case,=
- I
-> > can now make the patch required to actually try this out.  ;-)
-> >=20
->=20
-> Great !
->=20
-> Don't hesitate to ask if you have any question.
->=20
-> Mathieu
+Hello,
 
-=46ails to build on Power, so trying x86...  (Stock 2.6.29-rc3 does
-build and boot, FWIW.)
+actually I run into an endless loop in Lustres ldiskfs, but the code is very 
+similar, so it also might be present in ext4. For those who are interested to 
+read lustre bug reports, please see here: 
+https://bugzilla.lustre.org/show_bug.cgi?id=16984
 
-Looks like misplaced file.
+Unfortunately I have never been able to reproduce this directly on ldiskfs or 
+ext4, so far the reproducer ('stress') only works on a real lustre 
+filesystem.
 
-							Thanx, Paul
+In ext4_mb_discard_group_preallocations() there is a repeat loop
 
------------------------------------------------------------------------=
--
+repeat:
+        ext4_lock_group(sb, group);
+        list_for_each_entry_safe(pa, tmp,
+                                &grp->bb_prealloc_list, pa_group_list) {
+                spin_lock(&pa->pa_lock);
+                if (atomic_read(&pa->pa_count)) {
+                        spin_unlock(&pa->pa_lock);
+                        busy = 1;
+                        continue;
+                }
+		...
+	}
 
-  CHK     include/linux/version.h
-  UPD     include/linux/version.h
-  CHK     include/linux/utsrelease.h
-  UPD     include/linux/utsrelease.h
-  SYMLINK include/asm -> include/asm-powerpc
-  HOSTCC  scripts/ihex2fw
-  HOSTCC  scripts/kallsyms
-  HOSTCC  scripts/pnmtologo
-  HOSTCC  scripts/genksyms/genksyms.o
-  HOSTCC  scripts/conmakehash
-  HOSTCC  scripts/bin2c
-  CC      scripts/mod/empty.o
-  HOSTCC  scripts/mod/mk_elfconfig
-  SHIPPED scripts/genksyms/lex.c
-  SHIPPED scripts/genksyms/parse.h
-  SHIPPED scripts/genksyms/keywords.c
-  SHIPPED scripts/genksyms/parse.c
-  HOSTCC  scripts/genksyms/parse.o
-  HOSTCC  scripts/genksyms/lex.o
-  MKELF   scripts/mod/elfconfig.h
-  HOSTCC  scripts/mod/file2alias.o
-  HOSTCC  scripts/mod/modpost.o
-  HOSTCC  scripts/mod/sumversion.o
-  HOSTLD  scripts/genksyms/genksyms
-  HOSTLD  scripts/mod/modpost
-  CC      kernel/bounds.s
-  GEN     include/linux/bounds.h
-  CC      arch/powerpc/kernel/asm-offsets.s
-In file included from include/linux/module.h:18,
-                 from include/linux/sysdev.h:25,
-                 from include/linux/node.h:22,
-                 from include/linux/swap.h:10,
-                 from include/linux/suspend.h:7,
-                 from arch/powerpc/kernel/asm-offsets.c:24:
-include/linux/immediate.h:15:27: error: asm/immediate.h: No such file o=
-r directory
-In file included from include/linux/module.h:18,
-                 from include/linux/sysdev.h:25,
-                 from include/linux/node.h:22,
-                 from include/linux/swap.h:10,
-                 from include/linux/suspend.h:7,
-                 from arch/powerpc/kernel/asm-offsets.c:24:
-include/linux/immediate.h:37: warning: =C3=A2=E2=82=AC=CB=9Cstruct __im=
-v=C3=A2=E2=82=AC=E2=84=A2 declared
-inside parameter list
-include/linux/immediate.h:37: warning: its scope is only this definitio=
-n
-or declaration, which is probably not what you want
-include/linux/immediate.h:40: warning: =C3=A2=E2=82=AC=CB=9Cstruct __im=
-v=C3=A2=E2=82=AC=E2=84=A2 declared
-inside parameter list
-make[1]: *** [arch/powerpc/kernel/asm-offsets.s] Error 1
-make: *** [prepare0] Error 2
-02/05/2009-17:57:41 Build the kernel. Failed rc =3D 2
-02/05/2009-17:57:41 build: Building kernel... Failed rc =3D 1
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+        /* if we still need more blocks and some PAs were used, try again */
+        if (free < needed && busy) {
+                busy = 0;
+                ext4_unlock_group(sb, group);
+                /*
+                 * Yield the CPU here so that we don't get soft lockup
+                 * in non preempt case.
+                 */
+                yield();
+                goto repeat;
+        }
+
+Aren't repeat-loop somehow the style of about 30 years ago? Anyway, somehow 
+the i/o pattern of Lustre manages, that it never goes out of this loop.
+Unfortunately, after several thousand repeats it then locks up entirely at one 
+of the spin_locks, which is nearly impossible to debug with Lustre, since it 
+it doesn't allow to run lockdep.
+
+The calling chain is (reverse order as in traces)
+
+ext4_mb_discard_group_preallocations
+ext4_mb_discard_preallocations()
+ext4_mb_new_blocks()
+
+Now in ext4_mb_new_blocks() is another repeat-loop, which will run, if 
+ext4_mb_discard_group_preallocations() could free a sufficient number of 
+blocks. So I simply removed the loop in 
+ext4_mb_discard_group_preallocations() and all our problems where gone. This 
+now leaves two questions:
+
+1) Is it safe to to remove this second repeat-loop. As far as I can see, it 
+seems so.
+
+2) Wouldn't it make sense to run ext4_mb_discard_group_preallocations() in an 
+extra thread, which would free unused preallocations, lets say after 60s? In 
+our Lustre case it seems to me, that at about 60% disk usage, the other 40% 
+had been take by preallocations. At least at about 60% the filesystem started 
+to run ext4_mb_discard_group_preallocations().
+
+
+Thanks,
+Bernd
+
+
+PS: I think by removing the 2nd loop in ext4_mb_discard_group_preallocations() 
+the spin_lock problem is not solved, just the probability is reduced. But 
+untill all the lockdep problems in Lustre are solved, I don't see how to 
+debug this (at least not without a huge number of printks).
+
+
+-- 
+Bernd Schubert
+Q-Leap Networks GmbH
