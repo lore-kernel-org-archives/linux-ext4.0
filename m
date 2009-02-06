@@ -1,223 +1,164 @@
-From: Mathieu Desnoyers <compudj@krystal.dyndns.org>
-Subject: Re: [ltt-dev] LTTng 0.89 for Linux 2.6.29-rc3
-Date: Thu, 5 Feb 2009 21:00:05 -0500
-Message-ID: <20090206020005.GA8560@Krystal>
-References: <20090205153825.GA30255@Krystal> <20090205155854.GG6915@linux.vnet.ibm.com> <5d5443650902050822r2e4d08ffg2322b45a5e009fb8@mail.gmail.com> <20090205180132.GJ6915@linux.vnet.ibm.com> <20090205183158.GA1969@Krystal> <20090205184456.GK6915@linux.vnet.ibm.com> <20090205202249.GA26964@Krystal> <20090205210415.GM6915@linux.vnet.ibm.com> <20090205210627.GA1313@Krystal> <20090206003308.GO6915@linux.vnet.ibm.com>
+From: "J.D. Bakker" <jdb@lartmaker.nl>
+Subject: Recovering a damaged ext4 fs - revisited.
+Date: Fri, 6 Feb 2009 04:06:38 +0100
+Message-ID: <p06240517c5b14e12f7d1@[10.1.5.33]>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Trilok Soni <soni.trilok@gmail.com>, ltt-dev@lists.casi.polymtl.ca,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>, linux-kernel@vger.kernel.org
-To: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="us-ascii" ; format="flowed"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tomts13.bellnexxia.net ([209.226.175.34]:46962 "EHLO
-	tomts13-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752205AbZBFCAK convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Feb 2009 21:00:10 -0500
-Content-Disposition: inline
-In-Reply-To: <20090206003308.GO6915@linux.vnet.ibm.com>
+Received: from www.lartmaker.nl ([69.93.127.100]:50768 "EHLO www.lartmaker.nl"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752224AbZBFDyt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Feb 2009 22:54:49 -0500
+Received: from bakker by www.lartmaker.nl with local (Exim 4.69)
+	(envelope-from <bakker@lartmaker.nl>)
+	id 1LVH3N-0005zA-Ds
+	for linux-ext4@vger.kernel.org; Fri, 06 Feb 2009 04:06:53 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-* Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
-> On Thu, Feb 05, 2009 at 04:06:27PM -0500, Mathieu Desnoyers wrote:
-> > * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
-> > > On Thu, Feb 05, 2009 at 03:22:49PM -0500, Mathieu Desnoyers wrote=
-:
-> > > > * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
-> > > > > On Thu, Feb 05, 2009 at 01:31:59PM -0500, Mathieu Desnoyers w=
-rote:
-> > > > > > * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
-> > > > > > > On Thu, Feb 05, 2009 at 09:52:16PM +0530, Trilok Soni wro=
-te:
-> > > > > > > > Hi Paul,
-> > > > > > > >=20
-> > > > > > > > On Thu, Feb 5, 2009 at 9:28 PM, Paul E. McKenney
-> > > > > > > > <paulmck@linux.vnet.ibm.com> wrote:
-> > > > > > > > >>
-> > > > > > > > >> Are you using quilt to apply the patchset series fil=
-e in the right order ?
-> > > > > > > > >
-> > > > > > > > > Ummm...  No.  I never have used quilt.
-> > > > > > > > >
-> > > > > > > > > Ah, there is a series file.  I guess it would not be =
-too hard to make
-> > > > > > > > > an appropriate "sh" command:
-> > > > > > > >=20
-> > > > > > > > How about trying?
-> > > > > > > >=20
-> > > > > > > > #quilt push -a
-> > > > > > >=20
-> > > > > > > Is the appropriate incantation as follows?
-> > > > > > >=20
-> > > > > > > 	cd <top of git tree>
-> > > > > > > 	mkdir patches
-> > > > > > > 	cp /tmp/patch-2.6.29-rc3-lttng-0.92/* patches
-> > > > > > > 	quilt push -a
-> > > > > > >=20
-> > > > > >=20
-> > > > > > Yes, exactly.
-> > > > >=20
-> > > > > Whew!  ;-)
-> > > > >=20
-> > > > > > And from there you can follow the LTTng manual here :
-> > > > > >=20
-> > > > > > http://ltt.polymtl.ca/svn/trunk/lttv/LTTngManual.html
-> > > > >=20
-> > > > > I get some fuzz and the following:
-> > > > >=20
-> > > > > 	patching file kernel/trace/trace-clock-32-to-64.c
-> > > > > 	Patch attempted to create file kernel/trace/trace-clock-32-t=
-o-64.c,
-> > > > > 	which already exists.
-> > > > > 	Hunk #1 FAILED at 1.
-> > > > > 	1 out of 1 hunk FAILED -- rejects in file
-> > > > > 	kernel/trace/trace-clock-32-to-64.c
-> > > > >=20
-> > > > > Should I be starting from somewhere other than v2.6.29-rc3?
-> > > > >=20
-> > > >=20
-> > > > Let's see it step by step, that should get us there.
-> > > >=20
-> > > > With patches :
-> > > >=20
-> > > > mkdir ~/lttng
-> > > > cd ~/lttng
-> > > > wget http://www.kernel.org/pub/linux/kernel/v2.6/testing/linux-=
-2.6.29-rc3.tar.bz2
-> > > > wget http://lttng.org/files/lttng/patch-2.6.29-rc3-lttng-0.92.t=
-ar.bz2
-> > > > bzip2 -cd linux-2.6.29-rc3.tar.bz2 |tar xvof -
-> > > > bzip2 -cd patch-2.6.29-rc3-lttng-0.92.tar.bz2  |tar xvof -
-> > > > cd linux-2.6.29-rc3
-> > > > mkdir patches
-> > > > ln -s ../patch-2.6.29-rc3-lttng-0.92 patches
-> > > > quilt push -a
-> > > >=20
-> > > > Does this work ?
-> > >=20
-> > > Leaving out the "mkdir", yes.
-> >=20
-> > Ah, yes, my mistake.
-> >=20
-> > > My apologies -- I was forgetting that
-> > > "git reset --hard" doesn't get rid of untracked files.  I do see =
-fuzz
-> > > in a few places, but hopefully this is non-fatal.  And in any cas=
-e, I
-> > > can now make the patch required to actually try this out.  ;-)
-> > >=20
-> >=20
-> > Great !
-> >=20
-> > Don't hesitate to ask if you have any question.
-> >=20
-> > Mathieu
->=20
-> Fails to build on Power, so trying x86...  (Stock 2.6.29-rc3 does
-> build and boot, FWIW.)
->=20
-> Looks like misplaced file.
->=20
-> 							Thanx, Paul
->=20
-> ---------------------------------------------------------------------=
----
->=20
->   CHK     include/linux/version.h
->   UPD     include/linux/version.h
->   CHK     include/linux/utsrelease.h
->   UPD     include/linux/utsrelease.h
->   SYMLINK include/asm -> include/asm-powerpc
->   HOSTCC  scripts/ihex2fw
->   HOSTCC  scripts/kallsyms
->   HOSTCC  scripts/pnmtologo
->   HOSTCC  scripts/genksyms/genksyms.o
->   HOSTCC  scripts/conmakehash
->   HOSTCC  scripts/bin2c
->   CC      scripts/mod/empty.o
->   HOSTCC  scripts/mod/mk_elfconfig
->   SHIPPED scripts/genksyms/lex.c
->   SHIPPED scripts/genksyms/parse.h
->   SHIPPED scripts/genksyms/keywords.c
->   SHIPPED scripts/genksyms/parse.c
->   HOSTCC  scripts/genksyms/parse.o
->   HOSTCC  scripts/genksyms/lex.o
->   MKELF   scripts/mod/elfconfig.h
->   HOSTCC  scripts/mod/file2alias.o
->   HOSTCC  scripts/mod/modpost.o
->   HOSTCC  scripts/mod/sumversion.o
->   HOSTLD  scripts/genksyms/genksyms
->   HOSTLD  scripts/mod/modpost
->   CC      kernel/bounds.s
->   GEN     include/linux/bounds.h
->   CC      arch/powerpc/kernel/asm-offsets.s
-> In file included from include/linux/module.h:18,
->                  from include/linux/sysdev.h:25,
->                  from include/linux/node.h:22,
->                  from include/linux/swap.h:10,
->                  from include/linux/suspend.h:7,
->                  from arch/powerpc/kernel/asm-offsets.c:24:
-> include/linux/immediate.h:15:27: error: asm/immediate.h: No such file=
- or directory
-> In file included from include/linux/module.h:18,
->                  from include/linux/sysdev.h:25,
->                  from include/linux/node.h:22,
->                  from include/linux/swap.h:10,
->                  from include/linux/suspend.h:7,
->                  from arch/powerpc/kernel/asm-offsets.c:24:
-> include/linux/immediate.h:37: warning: =C3=A2=E2=82=AC=CB=9Cstruct __=
-imv=C3=A2=E2=82=AC=E2=84=A2 declared
-> inside parameter list
-> include/linux/immediate.h:37: warning: its scope is only this definit=
-ion
-> or declaration, which is probably not what you want
-> include/linux/immediate.h:40: warning: =C3=A2=E2=82=AC=CB=9Cstruct __=
-imv=C3=A2=E2=82=AC=E2=84=A2 declared
-> inside parameter list
-> make[1]: *** [arch/powerpc/kernel/asm-offsets.s] Error 1
-> make: *** [prepare0] Error 2
-> 02/05/2009-17:57:41 Build the kernel. Failed rc =3D 2
-> 02/05/2009-17:57:41 build: Building kernel... Failed rc =3D 1
->=20
+Hi,
 
-Hrm, does the file
+My 4TB ext4 RAID-6 has just become damaged for the second time in two 
+months. While I do have backups for most of my data, it would be good 
+to know if there is a recovery procedure or a way to avoid these 
+crashes. The symptoms are massive group descriptor corruption, 
+similar to what was mentioned in 
+http://thread.gmane.org/gmane.comp.file-systems.ext4/10844 and 
+http://article.gmane.org/gmane.comp.file-systems.ext4/11195 .
 
-arch/powerpc/include/asm/immediate.h exist in your tree ?
+The bad news: on the first occurrence I didn't record any information 
+but decided to zero the partitions and restart from scratch. This 
+second time my kernel is tainted by the nvidia module (as I since 
+switched to an nVidia 8500-card from the Radeon X1300 I'd borrowed to 
+get the system up).
 
-Here, with the setup done following the commands I gave you (minus the
-mkdir patch), I get :
+The machine is an Intel i720 on an Asus P6T with 3GB RAM, running 
+2.6.28 x86_64. /dev/md0 is a RAID-6 over six 1TB drives. Details:
 
+http://lartmaker.nl/ext4/kernel-config.txt
+http://lartmaker.nl/ext4/dmesg.txt
+http://lartmaker.nl/ext4/lspci.txt
+http://lartmaker.nl/ext4/proc-mdstat.txt
+http://lartmaker.nl/ext4/proc-partitions.txt
 
-compudj@ok:~$ head testpaulmck/linux-2.6.29-rc3/arch/powerpc/include/as=
-m/immediate.h=20
-#ifndef _ASM_POWERPC_IMMEDIATE_H
-#define _ASM_POWERPC_IMMEDIATE_H
+This afternoon I issued an rm on a file which was a few hundred MB 
+large. The rm process kept running at 100% CPU for over a minute, and 
+could not be terminated through either CTRL-C or kill -9 (process 
+would remain in the 'R'-state). The kernel reported a soft lockup, 
+with the following call trace:
 
-/*
- * Immediate values. PowerPC architecture optimizations.
- *
- * (C) Copyright 2006 Mathieu Desnoyers <mathieu.desnoyers@polymtl.ca>
- *
- * This file is released under the GPLv2.
- * See the file COPYING for more details.
+   [<ffffffff8050f1b7>] ? _spin_lock+0x16/0x19
+   [<ffffffff80308a23>] ? ext4_mb_init_cache+0x6d2/0x876
+   [<ffffffff802754de>] ? __lru_cache_add+0x8a/0xb2
+   [<ffffffff80308cd6>] ? ext4_mb_load_buddy+0x10f/0x2f2
+   [<ffffffff80309d15>] ? ext4_mb_free_blocks+0x2b3/0x611
+   [<ffffffff802f0aa8>] ? ext4_free_blocks+0x75/0xa8
+   [<ffffffff80303839>] ? ext4_ext_truncate+0x3f9/0x832
+   [<ffffffff802f848e>] ? ext4_truncate+0x67/0x5bc
+   [<ffffffff80316279>] ? jbd2_journal_dirty_metadata+0x124/0x146
+   [<ffffffff80305ba6>] ? __ext4_journal_dirty_metadata+0x1e/0x46
+   [<ffffffff802f3e9b>] ? ext4_mark_iloc_dirty+0x3fa/0x463
+   [<ffffffff802f4a81>] ? ext4_mark_inode_dirty+0x134/0x147
+   [<ffffffff802f8b2b>] ? ext4_delete_inode+0x148/0x209
+   [<ffffffff802f89e3>] ? ext4_delete_inode+0x0/0x209
+   [<ffffffff802a7472>] ? generic_delete_inode+0x82/0x108
+   [<ffffffff8029ff76>] ? do_unlinkat+0xe2/0x13b
+   [<ffffffff8050f8ba>] ? error_exit+0x0/0x70
+   [<ffffffff8020bf5a>] ? system_call_fastpath+0x16/0x1b
 
-=2E...
+(full log at http://lartmaker.nl/ext4/softlock-log.txt).
 
-Which defines struct __imv. So hrm, normally the header should be there=
-=2E
-(/me still confused) :)
+The system was otherwise still responsive, as long as processes 
+didn't access the ext4 fs on the RAID array. I tried to halt the 
+system, which did not work. Finally I powered the machine down 
+manually.
 
-Mathieu
+On reboot the system refused to auto-fsck /dev/md0. A manual e2fsck 
+-nv /dev/md0 reported:
 
---=20
-Mathieu Desnoyers
-OpenPGP key fingerprint: 8CD5 52C3 8E3C 4140 715F  BA06 3F25 A8FE 3BAE =
-9A68
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+   e2fsck 1.41.4 (27-Jan-2009)
+   ./e2fsck/e2fsck: Group descriptors look bad... trying backup blocks...
+   Group descriptor 0 checksum is invalid.  Fix? no
+   Group descriptor 1 checksum is invalid.  Fix? no
+   Group descriptor 2 checksum is invalid.  Fix? no
+   [...]
+   Group descriptor 29808 checksum is invalid.  Fix? no
+   newraidfs contains a file system with errors, check forced.
+   Pass 1: Checking inodes, blocks, and sizes
+   Pass 2: Checking directory structure
+   Pass 3: Checking directory connectivity
+   Pass 4: Checking reference counts
+   Pass 5: Checking group summary information
+   Block bitmap differences:  [...]
+   Fix? no
+   Free blocks count wrong for group #0 (23513, counted=464).
+   Fix? no
+   Free blocks count wrong for group #1 (31743, counted=509).
+   Fix? no
+   [...]
+   Free inodes count wrong for group #7748 (8192, counted=940).
+   Fix? no
+   Directories count wrong for group #7748 (0, counted=1).
+   Fix? no
+   Free inodes count wrong for group #7749 (8192, counted=8059).
+   Fix? no
+   Free inodes count wrong (244195317, counted=237646747).
+   Fix? no
+   newraidfs: ***** FILE SYSTEM WAS MODIFIED *****
+   newraidfs: ********** WARNING: Filesystem still has errors **********
+         11 inodes used (0.00%)
+      41796 non-contiguous files (379963.6%)
+       3002 non-contiguous directories (27290.9%)
+            # of inodes with ind/dind/tind blocks: 0/0/0
+            Extent depth histogram: 4423417/4694/3
+   15377150 blocks used (1.57%)
+          0 bad blocks
+        106 large files
+
+    3738164 regular files
+     685644 directories
+       3663 character device files
+       8709 block device files
+         19 fifos
+    2180635 links
+      47335 symbolic links (43028 fast symbolic links)
+         54 sockets
+   --------
+    6664223 files
+   Error writing block 1 (Attempt to write block from filesystem 
+resulted in short write).  Ignore error? no
+   Error writing block 2 (Attempt to write block from filesystem 
+resulted in short write).  Ignore error? no
+   Error writing block 3 (Attempt to write block from filesystem 
+resulted in short write).  Ignore error? no
+   [...]
+   Error writing block 231 (Attempt to write block from filesystem 
+resulted in short write).  Ignore error? no
+   Error writing block 232 (Attempt to write block from filesystem 
+resulted in short write).  Ignore error? no
+
+(full log at http://lartmaker.nl/ext4/e2fsck-md0.txt)
+
+As suggested in the earlier threads I ran dumpe2fs; once without the 
+-b option, once with -b 32768 and once with -b 98304:
+
+http://lartmaker.nl/ext4/dumpe2fs-md0.txt
+http://lartmaker.nl/ext4/dumpe2fs-md0-32768.txt
+http://lartmaker.nl/ext4/dumpe2fs-md0-98304.txt
+
+Output of findsuper:
+
+http://lartmaker.nl/ext4/findsuper.txt
+
+Please let me know if you need more information.
+
+As I said, is there anything I can do to recover my data, or to make 
+sure this doesn't happen again?
+
+Thanks,
+
+JDB.
+-- 
+LART. 250 MIPS under one Watt. Free hardware design files.
+http://www.lartmaker.nl/
