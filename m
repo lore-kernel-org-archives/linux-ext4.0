@@ -1,110 +1,186 @@
-From: Greg Freemyer <greg.freemyer@gmail.com>
-Subject: References to unmapped sectors [Was: [RFC] ext4_bmap() may return
-	blocks outside filesystem]
-Date: Thu, 5 Feb 2009 17:58:03 -0500
-Message-ID: <87f94c370902051458t714822cbj84011446c24ec3dc@mail.gmail.com>
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+Subject: Re: [ltt-dev] LTTng 0.89 for Linux 2.6.29-rc3
+Date: Thu, 5 Feb 2009 16:33:08 -0800
+Message-ID: <20090206003308.GO6915@linux.vnet.ibm.com>
+References: <20090205151841.GF6915@linux.vnet.ibm.com> <20090205153825.GA30255@Krystal> <20090205155854.GG6915@linux.vnet.ibm.com> <5d5443650902050822r2e4d08ffg2322b45a5e009fb8@mail.gmail.com> <20090205180132.GJ6915@linux.vnet.ibm.com> <20090205183158.GA1969@Krystal> <20090205184456.GK6915@linux.vnet.ibm.com> <20090205202249.GA26964@Krystal> <20090205210415.GM6915@linux.vnet.ibm.com> <20090205210627.GA1313@Krystal>
+Reply-To: paulmck@linux.vnet.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Thiemo Nagel <thiemo.nagel@ph.tum.de>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Trilok Soni <soni.trilok@gmail.com>, ltt-dev@lists.casi.polymtl.ca,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-kernel@vger.kernel.org
+To: Mathieu Desnoyers <compudj@krystal.dyndns.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f11.google.com ([209.85.221.11]:51951 "EHLO
-	mail-qy0-f11.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750782AbZBEW6H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Feb 2009 17:58:07 -0500
-Received: by qyk4 with SMTP id 4so805223qyk.13
-        for <linux-ext4@vger.kernel.org>; Thu, 05 Feb 2009 14:58:04 -0800 (PST)
+Received: from e4.ny.us.ibm.com ([32.97.182.144]:55431 "EHLO e4.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751972AbZBFAdL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Feb 2009 19:33:11 -0500
+Content-Disposition: inline
+In-Reply-To: <20090205210627.GA1313@Krystal>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 5, 2009 at 5:18 PM, Theodore Tso <tytso@mit.edu> wrote:
-> On Thu, Feb 05, 2009 at 05:01:01PM -0500, Greg Freemyer wrote:
->> > It also has absolutely nothing to do with the original thread, which
->> > was block numbers which are far outside the range of valid block
->> > numbers given the size of the block device.  :-)
->>
->> The subject was "return blocks outside filesystem".
->
-> Yes, it's clear you didn't read the e-mail thread, but rather just
-> keyed off the subject line.  :-)
->
->> In a thin-provisioning environment I'd argue that unmapped sectors are
->> "outside the filesystem". :)
->>
->> Unfortunately, I can't get anyone else to see the world from my
->> apparently unique perspective. :(
->
-> If you don't like this, don't use thin-provisioned devices.  Again, I
-> don't see the likely scenario where your fears are likely to be a
-> factor in a real world scenario.  If there are bugs in the
-> thin-provisioned devices, people shouldn't use them.  Given that we
-> are conservative about when we tell thin-provisioned devices that
-> blocks are no longer in use (i.e., on journal commits, and if we
-> crash, just don't tell the device the blocks can be reused), what's
-> the problem that you're worried about?  How does it occur in real
-> life?
->
-> It's hard to defend against a theoretical problem when you only give
-> vague fears about how it might be triggered...
->
->                                                - Ted
+On Thu, Feb 05, 2009 at 04:06:27PM -0500, Mathieu Desnoyers wrote:
+> * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
+> > On Thu, Feb 05, 2009 at 03:22:49PM -0500, Mathieu Desnoyers wrote:
+> > > * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
+> > > > On Thu, Feb 05, 2009 at 01:31:59PM -0500, Mathieu Desnoyers wro=
+te:
+> > > > > * Paul E. McKenney (paulmck@linux.vnet.ibm.com) wrote:
+> > > > > > On Thu, Feb 05, 2009 at 09:52:16PM +0530, Trilok Soni wrote=
+:
+> > > > > > > Hi Paul,
+> > > > > > >=20
+> > > > > > > On Thu, Feb 5, 2009 at 9:28 PM, Paul E. McKenney
+> > > > > > > <paulmck@linux.vnet.ibm.com> wrote:
+> > > > > > > >>
+> > > > > > > >> Are you using quilt to apply the patchset series file =
+in the right order ?
+> > > > > > > >
+> > > > > > > > Ummm...  No.  I never have used quilt.
+> > > > > > > >
+> > > > > > > > Ah, there is a series file.  I guess it would not be to=
+o hard to make
+> > > > > > > > an appropriate "sh" command:
+> > > > > > >=20
+> > > > > > > How about trying?
+> > > > > > >=20
+> > > > > > > #quilt push -a
+> > > > > >=20
+> > > > > > Is the appropriate incantation as follows?
+> > > > > >=20
+> > > > > > 	cd <top of git tree>
+> > > > > > 	mkdir patches
+> > > > > > 	cp /tmp/patch-2.6.29-rc3-lttng-0.92/* patches
+> > > > > > 	quilt push -a
+> > > > > >=20
+> > > > >=20
+> > > > > Yes, exactly.
+> > > >=20
+> > > > Whew!  ;-)
+> > > >=20
+> > > > > And from there you can follow the LTTng manual here :
+> > > > >=20
+> > > > > http://ltt.polymtl.ca/svn/trunk/lttv/LTTngManual.html
+> > > >=20
+> > > > I get some fuzz and the following:
+> > > >=20
+> > > > 	patching file kernel/trace/trace-clock-32-to-64.c
+> > > > 	Patch attempted to create file kernel/trace/trace-clock-32-to-=
+64.c,
+> > > > 	which already exists.
+> > > > 	Hunk #1 FAILED at 1.
+> > > > 	1 out of 1 hunk FAILED -- rejects in file
+> > > > 	kernel/trace/trace-clock-32-to-64.c
+> > > >=20
+> > > > Should I be starting from somewhere other than v2.6.29-rc3?
+> > > >=20
+> > >=20
+> > > Let's see it step by step, that should get us there.
+> > >=20
+> > > With patches :
+> > >=20
+> > > mkdir ~/lttng
+> > > cd ~/lttng
+> > > wget http://www.kernel.org/pub/linux/kernel/v2.6/testing/linux-2.=
+6.29-rc3.tar.bz2
+> > > wget http://lttng.org/files/lttng/patch-2.6.29-rc3-lttng-0.92.tar=
+=2Ebz2
+> > > bzip2 -cd linux-2.6.29-rc3.tar.bz2 |tar xvof -
+> > > bzip2 -cd patch-2.6.29-rc3-lttng-0.92.tar.bz2  |tar xvof -
+> > > cd linux-2.6.29-rc3
+> > > mkdir patches
+> > > ln -s ../patch-2.6.29-rc3-lttng-0.92 patches
+> > > quilt push -a
+> > >=20
+> > > Does this work ?
+> >=20
+> > Leaving out the "mkdir", yes.
+>=20
+> Ah, yes, my mistake.
+>=20
+> > My apologies -- I was forgetting that
+> > "git reset --hard" doesn't get rid of untracked files.  I do see fu=
+zz
+> > in a few places, but hopefully this is non-fatal.  And in any case,=
+ I
+> > can now make the patch required to actually try this out.  ;-)
+> >=20
+>=20
+> Great !
+>=20
+> Don't hesitate to ask if you have any question.
+>=20
+> Mathieu
 
-Ted,
+=46ails to build on Power, so trying x86...  (Stock 2.6.29-rc3 does
+build and boot, FWIW.)
 
-I just have a very fundamental issue with a storage spec that allows
-random garbage to be returned in response to a read request with no
-signaling mechanism included to notify the kernel that it is reading
-trash.  Ric has told me that in the real world, storage vendors are
-likely to return a well defined pattern (nulls, etc.) in response to
-reads of these unmapped sectors.  If true, why not have the spec say
-so.
+Looks like misplaced file.
 
-Or have some way to communicate to the kernel which sectors are
-reliable (mapped) vs. unreliable (unmapped).
+							Thanx, Paul
 
-On the one hand the whole purpose of the SCSI DIF/DIX extension is to
-ensure that the data being read from a scsi device is the exact data
-that was written, but the thin-provisioning specs go in the opposite
-direction and allow complete garbage to be returned with no signaling
-mechanism to allow the kernel to even conceivably find out.
+-----------------------------------------------------------------------=
+-
 
-Instead of focusing on the negative, I'll reword my issue to discuss
-how unmapped sector knowledge (if available) could be used to
-_improve_ the current functionality of a filesystem:
-
-==> Positive spin on how knowledge of which sectors are unmapped could
-improve filesystem reliability
-
-The original email discussed pointers that in someway became corrupted
-to point at blocks which NEVER contained valid data.  Since the data
-is outside of the overall range of data blocks, it can be identified
-and both the kernel and userspace can be prevented from relying on
-what would obviously be trash.
-
-Whatever mechanism caused the bmap pointers to point outside the
-overall range of the filesystem, I assume could just as easily cause
-the those pointers to point at unmapped sectors.
-
-If the SCSI / ATA specs were enhanced to somehow notify the kernel
-when a read of these unmapped sectors occurred, then both the  kernel
-and userspace could be protected from relying on this potential trash
-as well.
-
-FYI: I've tried to find a way to send my comments to the T10
-committee, but I have not found a way to do that since the spec is not
-in a "public comment" period at present.
-
-Greg
--- 
-Greg Freemyer
-Litigation Triage Solutions Specialist
-http://www.linkedin.com/in/gregfreemyer
-First 99 Days Litigation White Paper -
-http://www.norcrossgroup.com/forms/whitepapers/99%20Days%20whitepaper.pdf
-
-The Norcross Group
-The Intersection of Evidence & Technology
-http://www.norcrossgroup.com
+  CHK     include/linux/version.h
+  UPD     include/linux/version.h
+  CHK     include/linux/utsrelease.h
+  UPD     include/linux/utsrelease.h
+  SYMLINK include/asm -> include/asm-powerpc
+  HOSTCC  scripts/ihex2fw
+  HOSTCC  scripts/kallsyms
+  HOSTCC  scripts/pnmtologo
+  HOSTCC  scripts/genksyms/genksyms.o
+  HOSTCC  scripts/conmakehash
+  HOSTCC  scripts/bin2c
+  CC      scripts/mod/empty.o
+  HOSTCC  scripts/mod/mk_elfconfig
+  SHIPPED scripts/genksyms/lex.c
+  SHIPPED scripts/genksyms/parse.h
+  SHIPPED scripts/genksyms/keywords.c
+  SHIPPED scripts/genksyms/parse.c
+  HOSTCC  scripts/genksyms/parse.o
+  HOSTCC  scripts/genksyms/lex.o
+  MKELF   scripts/mod/elfconfig.h
+  HOSTCC  scripts/mod/file2alias.o
+  HOSTCC  scripts/mod/modpost.o
+  HOSTCC  scripts/mod/sumversion.o
+  HOSTLD  scripts/genksyms/genksyms
+  HOSTLD  scripts/mod/modpost
+  CC      kernel/bounds.s
+  GEN     include/linux/bounds.h
+  CC      arch/powerpc/kernel/asm-offsets.s
+In file included from include/linux/module.h:18,
+                 from include/linux/sysdev.h:25,
+                 from include/linux/node.h:22,
+                 from include/linux/swap.h:10,
+                 from include/linux/suspend.h:7,
+                 from arch/powerpc/kernel/asm-offsets.c:24:
+include/linux/immediate.h:15:27: error: asm/immediate.h: No such file o=
+r directory
+In file included from include/linux/module.h:18,
+                 from include/linux/sysdev.h:25,
+                 from include/linux/node.h:22,
+                 from include/linux/swap.h:10,
+                 from include/linux/suspend.h:7,
+                 from arch/powerpc/kernel/asm-offsets.c:24:
+include/linux/immediate.h:37: warning: =C3=A2=E2=82=AC=CB=9Cstruct __im=
+v=C3=A2=E2=82=AC=E2=84=A2 declared
+inside parameter list
+include/linux/immediate.h:37: warning: its scope is only this definitio=
+n
+or declaration, which is probably not what you want
+include/linux/immediate.h:40: warning: =C3=A2=E2=82=AC=CB=9Cstruct __im=
+v=C3=A2=E2=82=AC=E2=84=A2 declared
+inside parameter list
+make[1]: *** [arch/powerpc/kernel/asm-offsets.s] Error 1
+make: *** [prepare0] Error 2
+02/05/2009-17:57:41 Build the kernel. Failed rc =3D 2
+02/05/2009-17:57:41 build: Building kernel... Failed rc =3D 1
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
