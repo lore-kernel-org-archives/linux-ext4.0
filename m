@@ -1,52 +1,61 @@
 From: "J.D. Bakker" <jdb@lartmaker.nl>
 Subject: Re: Recovering a damaged ext4 fs - revisited.
-Date: Fri, 6 Feb 2009 13:18:38 +0100
-Message-ID: <p06240522c5b1d7426151@[10.1.5.33]>
-References: <p06240517c5b14e12f7d1@[10.1.5.33]> <498BB63D.50503@redhat.com>
+Date: Fri, 6 Feb 2009 13:23:07 +0100
+Message-ID: <p06240523c5b1db4d5423@[10.1.5.33]>
+References: <p06240517c5b14e12f7d1@[10.1.5.33]>
+ <20090206062901.GM3209@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset="us-ascii" ; format="flowed"
 Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from www.lartmaker.nl ([69.93.127.100]:51016 "EHLO www.lartmaker.nl"
+Received: from www.lartmaker.nl ([69.93.127.100]:51018 "EHLO www.lartmaker.nl"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752239AbZBFMSn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Feb 2009 07:18:43 -0500
-In-Reply-To: <498BB63D.50503@redhat.com>
+	id S1752773AbZBFMXX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Feb 2009 07:23:23 -0500
+In-Reply-To: <20090206062901.GM3209@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-At 22:02 -0600 05-02-2009, Eric Sandeen wrote:
->J.D. Bakker wrote:
->  >    Error writing block 1 (Attempt to write block from filesystem
->>  resulted in short write).  Ignore error? no
->>     Error writing block 2 (Attempt to write block from filesystem
->>  resulted in short write).  Ignore error? no
->>     Error writing block 3 (Attempt to write block from filesystem
->>  resulted in short write).  Ignore error? no
->>     [...]
->>     Error writing block 231 (Attempt to write block from filesystem
->>  resulted in short write).  Ignore error? no
->>     Error writing block 232 (Attempt to write block from filesystem
->>  resulted in short write).  Ignore error? no
->>
->>  (full log at http://lartmaker.nl/ext4/e2fsck-md0.txt)
+At 23:29 -0700 05-02-2009, Andreas Dilger wrote:
+>On Feb 06, 2009  04:06 +0100, J.D. Bakker wrote:
+>  > On reboot the system refused to auto-fsck /dev/md0. A manual e2fsck -nv
+>  > /dev/md0 reported:
+>  > [...]
+>  >   Error writing block 1 (Attempt to write block from filesystem resulted
+>>  in short write).  Ignore error? no
+>>    Error writing block 2 (Attempt to write block from filesystem resulted
+>>  in short write).  Ignore error? no
+>>    Error writing block 3 (Attempt to write block from filesystem resulted
+>>  in short write).  Ignore error? no
 >
->Those seem a bit odd; why are these write failing?  Anything in the
->kernel logs when this happens?  I'm just wondering if there could be
->some underlying storage problem?
+>This is a serious problem.
 
-No, nothing in the logs.
+Could this be caused by my using the -n option on e2fsck (see my 
+reply to Eric)?
 
-Isn't this a side-effect of me passing the -n option to e2fsck? I 
-haven't traced the full path in the e2fsprogs-source, but it would 
-appear that the -n option sets E2F_OPT_NO, which sets 
-E2F_OPT_READONLY, which clears EXT2_FLAG_RW, which (in a few places) 
-clears IO_FLAG_RW, which appears to open the fs RO (as expected).
+>  > As I said, is there anything I can do to recover my data, or to make 
+>>  sure this doesn't happen again?
+>
+>I would say to run "e2fsck -fp /dev/XXX" and your data _should_ be
+>there.
+
+No dice:
+
+   newraidfs: Note: if several inode or block bitmap blocks or part
+   of the inode table require relocation, you may wish to try
+   running e2fsck with the '-b 32768' option first.  The problem
+   may lie only with the primary block group descriptors, and
+   the backup block group descriptors may be OK.
+
+   newraidfs: Block bitmap for group 7808 is not in group.  (block 3731742663)
+
+   newraidfs: UNEXPECTED INCONSISTENCY; RUN fsck MANUALLY.
+	  (i.e., without -a or -p options)
+
+Thanks,
 
 JDB.
-[I passed -n to e2fsck as I want to keep the fs as untouched as 
-possible, and I don't have 4TB in scratch space handy to park a copy]
 -- 
 LART. 250 MIPS under one Watt. Free hardware design files.
 http://www.lartmaker.nl/
