@@ -1,93 +1,98 @@
 From: Goswin von Brederlow <goswin-v-b@web.de>
-Subject: Re: [RFC] ext4_bmap() may return blocks outside filesystem
-Date: Sat, 07 Feb 2009 14:27:31 +0100
-Message-ID: <87r62aidh8.fsf@frosties.localdomain>
-References: <498AD58B.5000805@ph.tum.de> <20090205134905.GL8945@mit.edu>
-	<87f94c370902050722wf2099c9i2d815737e85209f3@mail.gmail.com>
-	<498B084F.2060608@redhat.com> <20090205164803.GM8945@mit.edu>
-	<87f94c370902051401s6d73d810s720f187c134f0b1e@mail.gmail.com>
-	<20090205221809.GD9814@mit.edu>
+Subject: Re: References to unmapped sectors
+Date: Sat, 07 Feb 2009 14:41:44 +0100
+Message-ID: <87mycyictj.fsf@frosties.localdomain>
+References: <87f94c370902051458t714822cbj84011446c24ec3dc@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fmmailgate01.web.de ([217.72.192.221]:51315 "EHLO
-	fmmailgate01.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752893AbZBGN1d (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Feb 2009 08:27:33 -0500
-In-Reply-To: <20090205221809.GD9814@mit.edu> (Theodore Tso's message of "Thu,
-	5 Feb 2009 17:18:09 -0500")
+Received: from fmmailgate02.web.de ([217.72.192.227]:45090 "EHLO
+	fmmailgate02.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753198AbZBGNlq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 7 Feb 2009 08:41:46 -0500
+Received: from smtp07.web.de (fmsmtp07.dlan.cinetic.de [172.20.5.215])
+	by fmmailgate02.web.de (Postfix) with ESMTP id 4370FFA19599
+	for <linux-ext4@vger.kernel.org>; Sat,  7 Feb 2009 14:41:45 +0100 (CET)
+Received: from [78.43.226.218] (helo=frosties.localdomain)
+	by smtp07.web.de with asmtp (TLSv1:AES256-SHA:256)
+	(WEB.DE 4.110 #277)
+	id 1LVnRJ-0003fy-00
+	for linux-ext4@vger.kernel.org; Sat, 07 Feb 2009 14:41:45 +0100
+Received: from mrvn by frosties.localdomain with local (Exim 4.69)
+	(envelope-from <goswin-v-b@web.de>)
+	id 1LVnRI-0001Fb-OQ
+	for linux-ext4@vger.kernel.org; Sat, 07 Feb 2009 14:41:44 +0100
+In-Reply-To: <87f94c370902051458t714822cbj84011446c24ec3dc@mail.gmail.com>
+	(Greg Freemyer's message of "Thu, 5 Feb 2009 17:58:03 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso <tytso@mit.edu> writes:
+Greg Freemyer <greg.freemyer@gmail.com> writes:
 
-> On Thu, Feb 05, 2009 at 05:01:01PM -0500, Greg Freemyer wrote:
->> > It also has absolutely nothing to do with the original thread, which
->> > was block numbers which are far outside the range of valid block
->> > numbers given the size of the block device.  :-)
->> 
->> The subject was "return blocks outside filesystem".
+> I just have a very fundamental issue with a storage spec that allows
+> random garbage to be returned in response to a read request with no
+> signaling mechanism included to notify the kernel that it is reading
+> trash.  Ric has told me that in the real world, storage vendors are
+> likely to return a well defined pattern (nulls, etc.) in response to
+> reads of these unmapped sectors.  If true, why not have the spec say
+> so.
+
+More flexibility for implementations. It means implementations do not
+have to check for the validity of read requests. This can sometimes
+speed up things, save (non volatile) memory, save disk syncs, save
+global locks for mapping updates, ...
+
+Imagine if the C standard would require that accessing a invalid
+pointer would abort the program. Suddenly every pointer access would
+have to be validated in case the pointer is invalid but accidentally
+points to some (for the cpu) valid address.
+
+> Or have some way to communicate to the kernel which sectors are
+> reliable (mapped) vs. unreliable (unmapped).
 >
-> Yes, it's clear you didn't read the e-mail thread, but rather just
-> keyed off the subject line.  :-)
+> On the one hand the whole purpose of the SCSI DIF/DIX extension is to
+> ensure that the data being read from a scsi device is the exact data
+> that was written, but the thin-provisioning specs go in the opposite
+> direction and allow complete garbage to be returned with no signaling
+> mechanism to allow the kernel to even conceivably find out.
 >
->> In a thin-provisioning environment I'd argue that unmapped sectors are
->> "outside the filesystem". :)
->> 
->> Unfortunately, I can't get anyone else to see the world from my
->> apparently unique perspective. :(
+> Instead of focusing on the negative, I'll reword my issue to discuss
+> how unmapped sector knowledge (if available) could be used to
+> _improve_ the current functionality of a filesystem:
 >
-> If you don't like this, don't use thin-provisioned devices.  Again, I
-> don't see the likely scenario where your fears are likely to be a
-> factor in a real world scenario.  If there are bugs in the
+> ==> Positive spin on how knowledge of which sectors are unmapped could
+> improve filesystem reliability
 
-There will be bugs.
+Isn't it more advantageous for wear leveling? The more unused blocks a
+device has the better it can level wear and thereby extend the
+lifetime of the device.
 
-> thin-provisioned devices, people shouldn't use them.  Given that we
-
-And people will still use them.
-
-Assuming that storage boxes work perfectly is just ignoring reality.
-Even if the software has no bugs there will still be hardware
-failures. Given enough boxes there will be multi-bit toggles with
-correct ECC sum in ram or on disks. Power and battery backups will
-fail mid update and and and.
-
-> are conservative about when we tell thin-provisioned devices that
-> blocks are no longer in use (i.e., on journal commits, and if we
-> crash, just don't tell the device the blocks can be reused), what's
-> the problem that you're worried about?  How does it occur in real
-> life?
+> The original email discussed pointers that in someway became corrupted
+> to point at blocks which NEVER contained valid data.  Since the data
+> is outside of the overall range of data blocks, it can be identified
+> and both the kernel and userspace can be prevented from relying on
+> what would obviously be trash.
 >
-> It's hard to defend against a theoretical problem when you only give
-> vague fears about how it might be triggered...
+> Whatever mechanism caused the bmap pointers to point outside the
+> overall range of the filesystem, I assume could just as easily cause
+> the those pointers to point at unmapped sectors.
 >
-> 						- Ted
+> If the SCSI / ATA specs were enhanced to somehow notify the kernel
+> when a read of these unmapped sectors occurred, then both the  kernel
+> and userspace could be protected from relying on this potential trash
+> as well.
 
-I see the following scenario:
+At least there should be a scsi reply for this. The use of which could
+still be optional. So either an error or any data could be
+valid. Obviously requiring a proper error would be better for the
+user.
 
-1) The filesystem / thin-provision gets corrupted somehow. fs bug,
-hardware, whatever.
-
-2) The thin-provision thinks a block is free while the FS thinks it is
-in use. Make it a meta data block so it really matters.
-
-3) The thin-provision still has the mapping and data of the block and
-hasn't reused the block yet. On read the device will return the
-correct data as long as the block is not reused. This seems to be a
-valid implementation for a thin-provision device.
-
-4) fsck will find no error but future writes will reuse the block on
-the thin-provision device overwriting the data and causing
-catastrophic FS corruption.
-
-
-So I think a fsck pass to check FS used blocks against hardware used
-blocks is essential if the FS does support thin-provisioned devices.
-Once you free hardware blocks you have to check that what the FS and
-hardware think are compatible.
+> FYI: I've tried to find a way to send my comments to the T10
+> committee, but I have not found a way to do that since the spec is not
+> in a "public comment" period at present.
+>
+> Greg
 
 MfG
         Goswin
