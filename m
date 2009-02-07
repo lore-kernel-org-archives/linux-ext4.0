@@ -1,80 +1,59 @@
-From: Christian Ohm <chr.ohm@gmx.net>
-Subject: Re: How to recover a damaged ext4 file system?
-Date: Sat, 7 Feb 2009 17:27:25 +0100
-Message-ID: <20090207162725.GA27086@moongate.localnet>
-References: <20090105135347.GA3337@localdomain> <20090106120527.GT3932@webber.adilger.int> <20090106193404.GA18957@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [RFC] ext4_bmap() may return blocks outside filesystem
+Date: Sat, 7 Feb 2009 10:51:51 -0500
+Message-ID: <20090207155151.GE29213@mini-me.lan>
+References: <498AD58B.5000805@ph.tum.de> <20090205134905.GL8945@mit.edu> <87f94c370902050722wf2099c9i2d815737e85209f3@mail.gmail.com> <498B084F.2060608@redhat.com> <20090205164803.GM8945@mit.edu> <87f94c370902051401s6d73d810s720f187c134f0b1e@mail.gmail.com> <20090205221809.GD9814@mit.edu> <87r62aidh8.fsf@frosties.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, Christian Ohm <chr.ohm@gmx.net>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Goswin von Brederlow <goswin-v-b@web.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:56520 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1752291AbZBGQ3q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 7 Feb 2009 11:29:46 -0500
+Received: from THUNK.ORG ([69.25.196.29]:57698 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752979AbZBGR0Y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 7 Feb 2009 12:26:24 -0500
 Content-Disposition: inline
-In-Reply-To: <20090106193404.GA18957@mit.edu>
+In-Reply-To: <87r62aidh8.fsf@frosties.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday,  6 January 2009 at 14:34, Theodore Tso wrote:
-> It looks like both the primary and the backup block group descriptors
-> are bad.  I'm not sure how this happened; normally nothing touches the
-> backup block superblocks at all.  Stupid question --- are you sure the
-> partition table is sane; that's always the first thing to check.
-
-I created a new partition on the second drive, and I hope I used exactly the
-same options. The result of fdisk -l is the following:
-
-corrupted drive:
-
-Disk /dev/sde: 1000.2 GB, 1000204886016 bytes
-255 heads, 63 sectors/track, 121601 cylinders
-Units = cylinders of 16065 * 512 = 8225280 bytes
-Disk identifier: 0xaaaaaaaa
-
-   Device Boot      Start         End      Blocks   Id  System
-   /dev/sde1               1      121601   976760032   83  Linux
-
-new partition on similar drive:
-
-Disk /dev/sdb: 1000.2 GB, 1000204886016 bytes
-255 heads, 63 sectors/track, 121601 cylinders
-Units = cylinders of 16065 * 512 = 8225280 bytes
-Disk identifier: 0xaaaaaaaa
-
-   Device Boot      Start         End      Blocks   Id  System
-   /dev/sdb1               1      121601   976760001   83  Linux
-
-The only difference is the number of blocks of the partition, I guess since the
-start and end are the same this should be equal as well.
-
-> Can you upload someplace the output of
+On Sat, Feb 07, 2009 at 02:27:31PM +0100, Goswin von Brederlow wrote:
+> I see the following scenario:
 > 
-> dumpe2fs /dev/XXX
-> dumpe2fs -o superblock=32768 /dev/XXX
-> dumpe2fs -o superblock=98304 /dev/XXX
+> 1) The filesystem / thin-provision gets corrupted somehow. fs bug,
+> hardware, whatever.
 > 
-> That would be helpful to see what had happened.
+> 2) The thin-provision thinks a block is free while the FS thinks it is
+> in use. Make it a meta data block so it really matters.
+> 
+> 3) The thin-provision still has the mapping and data of the block and
+> hasn't reused the block yet. On read the device will return the
+> correct data as long as the block is not reused. This seems to be a
+> valid implementation for a thin-provision device.
 
-Uploaded at http://www.filefactory.com/file/afg88b1/n/dumps_tar_bz2. dump-0 is
-the output of the first command, dump-32768 the second, and the third was equal
-to the second. The following two lines weren't redirected into the files (even
-with 2>&1), and were the same for all three commands (well, at least for the
-first line that's not really surprising).
+That's highly unlikely, actually.  Once you tell the thin-provisioning
+device that the block is not in use, they will delete the mapping from
+their mapping structures.  So it's highly unlikely you will be able to
+recover once you send the TRIM command.
 
-dumpe2fs 1.41.3 (12-Oct-2008)
-ext2fs_read_bb_inode: Invalid argument-
+> 4) fsck will find no error but future writes will reuse the block on
+> the thin-provision device overwriting the data and causing
+> catastrophic FS corruption.
 
-I couldn't yet compile the findsuper program (some missing headers), but since
-dumpe2fs found some more or less valid data, it shouldn't be necessary, right?
+The way this can happen today is if the bitmap block gets corrupted,
+and so a block which is in use gets used by another inode.  So now you
+have a filesystem block overwritten by a data block from an inode ---
+so you have potentially catastrophic FS corruption, even before you
+issue the ATA TRIM command.  This can happen to day, and in practice,
+it is extremely rare.  So permit me for being highly dubious about
+your claim this is going to happen more often with thin-provisioned
+devices.
 
-I also tried the R-Linux recovery program mentioned from
-http://www.data-recovery-software.net/Linux_Recovery.shtml, but that didn't
-really work (not surprising, since it's for ext3 only).
+> So I think a fsck pass to check FS used blocks against hardware used
+> blocks is essential if the FS does support thin-provisioned devices.
 
-Best regards,
-Christian Ohm
+The filesystem might not even know whether or not a thin-provisioned
+device is in use.  The OS may not even know whether the device is
+thin-provisioned.  So ultiamtely, it's not up to the FS...
 
-PS: Sorry for the late answer, I'll reply more quickly now.
+		      		       	      - Ted
