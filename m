@@ -1,54 +1,51 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: Recovering a damaged ext4 fs - revisited.
-Date: Fri, 06 Feb 2009 17:43:21 -0500
-Message-ID: <498CBD09.4020301@redhat.com>
-References: <p06240517c5b14e12f7d1@[10.1.5.33]> <498CB68C.5030409@redhat.com> <p06240530c5b26b5a174c@[10.1.5.33]>
+From: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: Re: 64-bit e2fsprogs patch queue
+Date: Fri, 6 Feb 2009 20:10:03 -0500
+Message-ID: <20090207011003.GA18400@shell>
+References: <20090203155231.GP14762@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Ric Wheeler <rwheeler@redhat.com>, linux-ext4@vger.kernel.org
-To: "J.D. Bakker" <jdb@lartmaker.nl>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35482 "EHLO mx2.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:37595 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755421AbZBFWp0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Feb 2009 17:45:26 -0500
-In-Reply-To: <p06240530c5b26b5a174c@[10.1.5.33]>
+	id S1752517AbZBGBKJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 6 Feb 2009 20:10:09 -0500
+Content-Disposition: inline
+In-Reply-To: <20090203155231.GP14762@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-J.D. Bakker wrote:
-> At 17:15 -0500 06-02-2009, Ric Wheeler wrote:
->> J.D. Bakker wrote:
->>> Hi,
->>>
->>> My 4TB ext4 RAID-6 has just become damaged for the second time in 
->>> two months. While I do have backups for most of my data, it would be 
->>> good to know if there is a recovery procedure or a way to avoid 
->>> these crashes. The symptoms are massive group descriptor corruption, 
->>> similar to what was mentioned in 
->>> http://thread.gmane.org/gmane.comp.file-systems.ext4/10844 and 
->>> http://article.gmane.org/gmane.comp.file-systems.ext4/11195 .
->> What kind of RAID 6 device are you using? Is it MD raid or some 
->> vendor array?
->
-> md, as shown in the linked config and dmesg.
->
->>> http://lartmaker.nl/ext4/kernel-config.txt
->>> http://lartmaker.nl/ext4/dmesg.txt
->>> http://lartmaker.nl/ext4/lspci.txt
->>> http://lartmaker.nl/ext4/proc-mdstat.txt
->>> http://lartmaker.nl/ext4/proc-partitions.txt
->
-> JDB.
+On Tue, Feb 03, 2009 at 10:52:31AM -0500, Theodore Tso wrote:
+> I thought you were out due to your shoulder surgery, so I've already
+> rebased your patches; to see what I've done, take a look at:
+> 
+> 	http://github.com/tytso/e2fsprogs-64bit/tree/master
+> 	git://github.com/tytso/e2fsprogs-64bit.git
 
-RAID6 is not that new, but it is newer than MD raid5. Does RAID5/6 
-handle the write barriers correctly these days? I think that barriers 
-are enabled only for RAID1 which means that your disks might be holding 
-up lots of volatile data that will go "poof" if you power off or reboot.
+[Instructions for applying these patches with guilt]
 
-You can "fix" this by disabling the write cache on your drives, but you 
-will have a performance hit (at least for S-ATA drives).
+I've exported the rebased series as a git branch in my repo:
 
-Ric
+git://git.kernel.org/pub/scm/fs/ext2/val/e2fsprogs.git
 
+Branch "shared-64bit".
+
+The commit that introduces the failing regression test is:
+
+commit de119e26eb2cf041a8365994dc3a32efc080682e
+Author: Valerie Aurora Henson <vaurora@redhat.com>
+Date:   Tue Feb 3 13:15:19 2009 -0800
+
+    e2fsck: Miscellaneous e2fsck-related 64-bit fixes.
+    
+    With this change, e2fsck runs to completion on a minimal 33-bit file system.
+    
+    Signed-off-by: Valerie Aurora Henson <vaurora@redhat.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+I won't be able to get to this for another week or so, so if anyone
+else wants to take a whack at it, I'd be grateful.
+
+-VAL
