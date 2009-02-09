@@ -1,68 +1,51 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12676] New: fs/ext4/extents.c: In function =?UTF-8?Q?_=E2=80=98ext4_ext_search_right=E2=80=99:?= fs/ext4/extents.c:1120: warning: =?UTF-8?Q?_=E2=80=98ix=E2=80=99?= may be used uninitialized in this function
-Date: Mon,  9 Feb 2009 03:15:49 -0800 (PST)
-Message-ID: <bug-12676-13602@http.bugzilla.kernel.org/>
+From: Alexander Beregalov <a.beregalov@gmail.com>
+Subject: Re: next-20090206: deadlock on ext4
+Date: Mon, 9 Feb 2009 15:01:13 +0300
+Message-ID: <a4423d670902090401k716d054eo25640aa2207beca7@mail.gmail.com>
+References: <a4423d670902060935y59e540beta417144935416560@mail.gmail.com>
+	 <498C7671.1050309@redhat.com>
+	 <a4423d670902061004i424817e1vd699a61e335f010a@mail.gmail.com>
+	 <498C9876.3060208@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:54849 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751549AbZBILQX convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Feb 2009 06:16:23 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n19BFnD4008359
-	for <linux-ext4@vger.kernel.org>; Mon, 9 Feb 2009 03:15:50 -0800
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Transfer-Encoding: 7bit
+Cc: "linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-next-owner@vger.kernel.org>
+In-Reply-To: <498C9876.3060208@redhat.com>
+Sender: linux-next-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=3D12676
+2009/2/6 Eric Sandeen <sandeen@redhat.com>:
+> Alexander Beregalov wrote:
+>> 2009/2/6 Eric Sandeen <sandeen@redhat.com>:
+>>> Alexander Beregalov wrote:
+>>>> Hi
+>>>>
+>>>> I run dbench on ext4 on loop device.
+>>>>
+>>>> EXT4-fs: barriers enabled
+>>>> kjournald2 starting: pid 2420, dev loop0:8, commit interval 5 seconds
+>>>> EXT4 FS on loop0, internal journal on loop0:8
+>>>> EXT4-fs: delayed allocation enabled
+>>>> EXT4-fs: file extents enabled
+>>>> EXT4-fs: mballoc enabled
+>>>> EXT4-fs: mounted filesystem loop0 with ordered data mode
+>>>> JBD: barrier-based sync failed on loop0:8 - disabling barriers
+>>>>
+>>>> INFO: task pdflush:2339 blocked for more than 120 seconds.
+>>> Looks a lot like a bug I filed:
+>>>
+>>> http://bugzilla.kernel.org/show_bug.cgi?id=12579
+>>>
+>>> but I'm having trouble reproducing it, now.  I'll try dbench!
+>> Yes, I can reproduce it easy with dbench.
+>
+> Do you only hit it on loopback?  What is the filesystem hosting the loop
+> file?
 
-           Summary: fs/ext4/extents.c: In function
-                    =E2=80=98ext4_ext_search_right=E2=80=99: fs/ext4/ex=
-tents.c:1120:
-                    warning: =E2=80=98ix=E2=80=99 may be used uninitial=
-ized in this
-                    function
-           Product: File System
-           Version: 2.5
-     KernelVersion: 2.6.28.4
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: blubaustin@gmail.com
-
-
-Latest working kernel version:2.6.29-rc2
-Earliest failing kernel version:2.6.29rc3
-Distribution:Debian Sid
-Hardware Environment:Imac G3 600mhz 640MB RAM, 40GB Hard drive
-Software Environment:?
-Problem Description:
-When compiling gets this error on Ext4 FS:
-"fs/ext4/extents.c: In function =E2=80=98ext4_ext_search_right=E2=80=99=
-:
-fs/ext4/extents.c:1120: warning: =E2=80=98ix=E2=80=99 may be used unini=
-tialized in this
-function
-"
-
-Steps to reproduce:Compile kernel with Ext4
-
-
---=20
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I have reproduced it with 2.6.29-rc4.
+Loop file was on XFS.
+I can not reproduce it on ext4 on raw device.
+Let me know if I can do anything else to help resolving it.
