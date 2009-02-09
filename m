@@ -1,69 +1,68 @@
-From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-Subject: Re: [PATCH] Validate extent details only when read from the disk
-Date: Mon, 09 Feb 2009 12:12:53 +0100
-Message-ID: <49900FB5.9080705@ph.tum.de>
-References: <20090207173239.GA25942@skywalker> <1234036882-30656-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1234036882-30656-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <49900612.3020609@ph.tum.de> <20090209104857.GE31884@skywalker>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12676] New: fs/ext4/extents.c: In function =?UTF-8?Q?_=E2=80=98ext4_ext_search_right=E2=80=99:?= fs/ext4/extents.c:1120: warning: =?UTF-8?Q?_=E2=80=98ix=E2=80=99?= may be used uninitialized in this function
+Date: Mon,  9 Feb 2009 03:15:49 -0800 (PST)
+Message-ID: <bug-12676-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:47864 "EHLO
-	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751661AbZBILND (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Feb 2009 06:13:03 -0500
-In-Reply-To: <20090209104857.GE31884@skywalker>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:54849 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751549AbZBILQX convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Feb 2009 06:16:23 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n19BFnD4008359
+	for <linux-ext4@vger.kernel.org>; Mon, 9 Feb 2009 03:15:50 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
-> On Mon, Feb 09, 2009 at 11:31:46AM +0100, Thiemo Nagel wrote:
->> Aneesh Kumar K.V wrote:
->>> Make sure we validate extent details only when read from the disk.
->>>
->>> @@ -602,15 +607,13 @@ struct ext4_ext_path *
->>>  ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
->>>  					struct ext4_ext_path *path)
->>>  {
->>> +	int need_to_validate = 0;
->>>  	struct ext4_extent_header *eh;
->>>  	struct buffer_head *bh;
->>>  	short int depth, i, ppos = 0, alloc = 0;
->>>  
->>>  	eh = ext_inode_hdr(inode);
->>>  	depth = ext_depth(inode);
->>> -	if (ext4_ext_check(inode, eh, depth))
->>> -		return ERR_PTR(-EIO);
->>> -
-> 
-> I am doing the check in ext4_iget while reading the inode from disk.
+http://bugzilla.kernel.org/show_bug.cgi?id=3D12676
 
-You're right, there is a check.  I didn't notice that, because 
-ext4_iget() doesn't return an error.
+           Summary: fs/ext4/extents.c: In function
+                    =E2=80=98ext4_ext_search_right=E2=80=99: fs/ext4/ex=
+tents.c:1120:
+                    warning: =E2=80=98ix=E2=80=99 may be used uninitial=
+ized in this
+                    function
+           Product: File System
+           Version: 2.5
+     KernelVersion: 2.6.28.4
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: blubaustin@gmail.com
 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 03ba20b..a8bab39 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -4273,6 +4273,11 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
->  			(__u64)(le32_to_cpu(raw_inode->i_version_hi)) << 32;
->  	}
->  
-> +	if (ei->i_flags & EXT4_EXTENTS_FL) {
-> +		/* Validate extent which is part of inode */
-> +		ext4_ext_check_inode(inode);
-> +	}
-> +
 
-I'd propose to change that to:
+Latest working kernel version:2.6.29-rc2
+Earliest failing kernel version:2.6.29rc3
+Distribution:Debian Sid
+Hardware Environment:Imac G3 600mhz 640MB RAM, 40GB Hard drive
+Software Environment:?
+Problem Description:
+When compiling gets this error on Ext4 FS:
+"fs/ext4/extents.c: In function =E2=80=98ext4_ext_search_right=E2=80=99=
+:
+fs/ext4/extents.c:1120: warning: =E2=80=98ix=E2=80=99 may be used unini=
+tialized in this
+function
+"
 
-	if (ei->i_flags & EXT4_EXTENTS_FL) {
-		/* Validate extent which is part of inode */
-		if ((ret = ext4_ext_check_inode(inode)))
-			goto bad_inode;
-	}
+Steps to reproduce:Compile kernel with Ext4
 
-Kind regards,
 
-Thiemo
+--=20
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
