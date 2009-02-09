@@ -1,35 +1,42 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12676] fs/ext4/extents.c: In function =?UTF-8?Q?_=E2=80=98ext4_ext_search_right=E2=80=99:?= fs/ext4/extents.c:1120: warning: =?UTF-8?Q?_=E2=80=98ix=E2=80=99?= may be used uninitialized in this function
-Date: Mon,  9 Feb 2009 08:10:18 -0800 (PST)
-Message-ID: <20090209161018.4241110800D@picon.linux-foundation.org>
-References: <bug-12676-13602@http.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 0/3] Fix possible NULL pointer dereference in JBD2
+Date: Mon, 9 Feb 2009 18:34:41 +0100
+Message-ID: <20090209173441.GA3824@duck.suse.cz>
+References: <1233845582-954-1-git-send-email-jack@suse.cz> <20090205213744.GA9814@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>, mfasheh@suse.com
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:58479 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750741AbZBIQKr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Feb 2009 11:10:47 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n19GAIkx025953
-	for <linux-ext4@vger.kernel.org>; Mon, 9 Feb 2009 08:10:19 -0800
-In-Reply-To: <bug-12676-13602@http.bugzilla.kernel.org/>
+Received: from styx.suse.cz ([82.119.242.94]:38403 "EHLO mail.suse.cz"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754780AbZBIReo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Feb 2009 12:34:44 -0500
+Content-Disposition: inline
+In-Reply-To: <20090205213744.GA9814@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12676
+On Thu 05-02-09 16:37:44, Theodore Tso wrote:
+> On Thu, Feb 05, 2009 at 03:52:59PM +0100, Jan Kara wrote:
+> > 
+> 
+> >   the three patches below fix a bug in
+> > jbd2_journal_begin_ordered_truncate() that could possibly lead to
+> > NULL pointer dereference. The question is how to merge the fix as it
+> > changes the prototype of the function and both ext4 and ocfs2 use
+> > it.  Mark, Mingming, any suggestions?
+> 
+> Jan, how how easy is it to hit this?  Do you believe we should try to
+> get this in for 2.6.29?  I got some final things to push to Linus so
+> I can also push it via the ext4 tree.  I doubt it will conflict with
+> > anything in my tree, either.
+  The possibility of hitting this is quite small. We check
+inode->i_transaction for NULL just before dereferencing it so the commit
+would have to set it to NULL just between those two instructions.
 
-
-
-
-
-------- Comment #1 from sandeen@redhat.com  2009-02-09 08:10 -------
-I think this is fixed upstream; you say in the bug metadata that this is
-version 2.6.28.4 but the first comment says 2.6.29-rc* - which is it?
-
-
+								Honza
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
