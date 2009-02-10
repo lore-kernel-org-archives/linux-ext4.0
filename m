@@ -1,46 +1,42 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH: e2fsprogs: resize2fs failed when "mkfs.ext4 -O
-	flex_bg"]
-Date: Mon, 9 Feb 2009 20:09:17 -0500
-Message-ID: <20090210010917.GA30689@mini-me.lan>
-References: <4990CB6A.1020403@cn.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Gui Xiaohua <guixh@cn.fujitsu.com>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12672] lockdep warning when using ext4 on x86_64
+Date: Mon,  9 Feb 2009 19:04:03 -0800 (PST)
+Message-ID: <20090210030404.06C70108041@picon.linux-foundation.org>
+References: <bug-12672-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51677 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751480AbZBJBQR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Feb 2009 20:16:17 -0500
-Content-Disposition: inline
-In-Reply-To: <4990CB6A.1020403@cn.fujitsu.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:49747 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752150AbZBJDEI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Feb 2009 22:04:08 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1A344rn022604
+	for <linux-ext4@vger.kernel.org>; Mon, 9 Feb 2009 19:04:05 -0800
+In-Reply-To: <bug-12672-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 10, 2009 at 08:33:46AM +0800, Gui Xiaohua wrote:
-> When mkfs.ext4 with flex_bg option, resize2fs with -M option will fail.
-> 
-> Steps to reproduce:
-> 
-> # mkfs.ext4 -O flex_bg /dev/sda6
-> # resize2fs /dev/sda6 -M
-> 
-> resize2fs: No space left on device while trying to resize /dev/sda6
+http://bugzilla.kernel.org/show_bug.cgi?id=12672
 
-These problems were fixed in e2fsprogs 1.41.4.  See especially commit
-id's 793a04a0 and 9227c5bb.  (There were a number of other resize2fs
-bugs fixed in 1.41.4, but these two relate to the problems you were
-trying to solve.)
 
-I'm not convinced your attempt at trying to guesstimate how the number
-of extra blocks needed by counting fragments works for anything other
-than an empty filesystem.  If the filesystem is filled with contents,
-and then it is shrunk, the resulting number of new extent blocks which
-are needed is very much dependent on how the blocks end up getting
-moved, and trying to determine the exact number up front is extremely
-difficult.
+miaox@cn.fujitsu.com changed:
 
-Regards,
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |miaox@cn.fujitsu.com
+             Status|NEW                         |RESOLVED
+         Resolution|                            |PATCH_ALREADY_AVAILABLE
 
-					- Ted
+
+
+
+------- Comment #3 from miaox@cn.fujitsu.com  2009-02-09 19:04 -------
+This patch is available.
+
+Tested-by: Miao Xie <miaox@cn.fujitsu.com>
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
