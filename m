@@ -1,95 +1,57 @@
-From: akpm@linux-foundation.org
-Subject: + ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems.patch added to -mm tree
-Date: Tue, 10 Feb 2009 14:59:22 -0800
-Message-ID: <200902102259.n1AMxMDL008883@imap1.linux-foundation.org>
-Cc: yjwei@cn.fujitsu.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
+From: Chuck Ebbert <cebbert@redhat.com>
+Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
+Date: Tue, 10 Feb 2009 18:36:02 -0500
+Message-ID: <20090210183602.404ee561@dhcp-100-2-144.bos.redhat.com>
+References: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:36108 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754527AbZBJW76 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Feb 2009 17:59:58 -0500
+Received: from mx2.redhat.com ([66.187.237.31]:34578 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756601AbZBJXi4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Feb 2009 18:38:56 -0500
+In-Reply-To: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat, 31 Jan 2009 00:25:39 -0500
+"Theodore Ts'o" <tytso@mit.edu> wrote:
 
-The patch titled
-     ext3: fix support for empty directory blocks in 64k blocksize filesystems
-has been added to the -mm tree.  Its filename is
-     ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems.patch
+> I've updated the ext4 backport branches on the ext4 git tree:
+> 
+>    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+>    http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git
+> 
+> The for-stable branch is branched off of 2.6.28.2, and has a candidate
+> set of patches to be included in the next stable release.  The
+> for-stable-2.6.27 branch is branched off of 2.6.27.13.  
+> 
+> I'm more confident with the 2.6.28 stable candidate than the 2.6.27
+> stable candidates at the moment, but given that we just missed the
+> 2.6.27.14 and 2.6.28.3 release cycles, that should give us plenty of
+> time to test the patches.
+> 
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+.27 has a bug and one patch got merged in .27.14...
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+> 
+> mainline 2.6.28  2.6.27
+>     commit-description
+> -------------------------------------------------------------------------
+> c894058d -----   71ae3e25
+>     ext4: Use an rbtree for tracking blocks freed during transaction.
+> 
 
-See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
-out what to do about this
+The chunk that creates the ext4_free_block_extents cache is misapplied: it
+ended up at the end of ext4_mb_use_preallocated() instead of
+init_ext4_mballoc(). The null cache pointer then causes oopses when trying
+to delete files.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+> a21102b5 1b1872b 0f30c439
+>     ext3: Add sanity check to make_indexed_dir
+> 
 
-------------------------------------------------------
-Subject: ext3: fix support for empty directory blocks in 64k blocksize filesystems
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-
-The rec_len field in the directory entry is 16 bits, so if the filesystem
-is completely empty, rec_len of 0 is used to designate 65536 in e2fsprogs,
-for the case where the directory entry takes the entire 64k block.
-
-But if an empty directory is read, an error message will be output by
-current kernels.  You can use the following commands to reproduce it.
-
-  - mkfs.ext3 -b $(( 64 * 1024 )) /dev/sdc1
-  - mount /dev/sda1 /mnt
-  - cd /mnt/lost+found
-  - ll
-  - tail /var/log/messages
-  EXT3-fs error (device sdc1): ext3_readdir: bad entry in \
-  directory #11: rec_len is smaller than minimal - offset=0, \
-  inode=0, rec_len=0, name_len=0
-
-Treat a rec_len of 0 as 65536, as e2fsprogs does.
-
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- include/linux/ext3_fs.h |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff -puN include/linux/ext3_fs.h~ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems
-+++ a/include/linux/ext3_fs.h
-@@ -711,7 +711,7 @@ static inline unsigned ext3_rec_len_from
- {
- 	unsigned len = le16_to_cpu(dlen);
- 
--	if (len == EXT3_MAX_REC_LEN)
-+	if (len == EXT3_MAX_REC_LEN || len == 0)
- 		return 1 << 16;
- 	return len;
- }
-@@ -719,7 +719,7 @@ static inline unsigned ext3_rec_len_from
- static inline __le16 ext3_rec_len_to_disk(unsigned len)
- {
- 	if (len == (1 << 16))
--		return cpu_to_le16(EXT3_MAX_REC_LEN);
-+		return cpu_to_le16(0);
- 	else if (len > (1 << 16))
- 		BUG();
- 	return cpu_to_le16(len);
-_
-
-Patches currently in -mm which might be from yjwei@cn.fujitsu.com are
-
-linux-next.patch
-fs-jffs2-mallocc-kmem_cache_alloc-memset-kmem_cache_zalloc.patch
-scsi-used-kmem_cache_zalloc-instead-of-kmem_cache_alloc-memset.patch
-ext2-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems.patch
-ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems.patch
-
+This went into 2.6.27.14.
