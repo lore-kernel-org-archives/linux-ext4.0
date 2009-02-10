@@ -1,167 +1,90 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] ocfs2: Add journal parameter to
-	jbd2_journal_begin_ordered_truncate()
-Date: Tue, 10 Feb 2009 10:12:55 -0500
-Message-ID: <20090210151255.GE30689@mini-me.lan>
-References: <1233845582-954-1-git-send-email-jack@suse.cz> <1233845582-954-2-git-send-email-jack@suse.cz> <1233845582-954-3-git-send-email-jack@suse.cz> <1233845582-954-4-git-send-email-jack@suse.cz>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12676] fs/ext4/extents.c: In function =?UTF-8?Q?_=E2=80=98ext4_ext_search_right=E2=80=99:?= fs/ext4/extents.c:1120: warning: =?UTF-8?Q?_=E2=80=98ix=E2=80=99?= may be used uninitialized in this function
+Date: Tue, 10 Feb 2009 10:21:37 -0800 (PST)
+Message-ID: <20090210182137.28812108042@picon.linux-foundation.org>
+References: <bug-12676-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>, mfasheh@suse.com,
-	ocfs2-devel@oss.oracle.com, mfasheh@suse.de
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60544 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753188AbZBJSVd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Feb 2009 13:21:33 -0500
-Content-Disposition: inline
-In-Reply-To: <1233845582-954-4-git-send-email-jack@suse.cz>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:54907 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753436AbZBJSWI convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Feb 2009 13:22:08 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1AILb53010715
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Feb 2009 10:21:38 -0800
+In-Reply-To: <bug-12676-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The problem with separating out the patch into three separate commits
-is that it can potentially break a "git bisect".  To fix this, I
-believe the right thing to do is to combine the three patches into a
-single commit, and to push this via the ext4 tree; any objections?
+http://bugzilla.kernel.org/show_bug.cgi?id=3D12676
 
-						- Ted
 
-jbd2: Avoid possible NULL dereference in jbd2_journal_begin_ordered_truncate()
 
-From: Jan Kara <jack@suse.cz>
 
-If we race with commit code setting i_transaction to NULL, we could
-possibly dereference it.  Proper locking requires the journal pointer
-(to access journal->j_list_lock), which we don't have.  So we have to
-change the prototype of the function so that filesystem passes us the
-journal pointer.  Also add a more detailed comment about why the
-function jbd2_journal_begin_ordered_truncate() does what it does and
-how it should be used.
 
-Thanks to Dan Carpenter <error27@gmail.com> for pointing to the
-suspitious code.
+------- Comment #2 from tytso@mit.edu  2009-02-10 10:21 -------
+On Mon, Feb 09, 2009 at 03:15:49AM -0800, bugme-daemon@bugzilla.kernel.=
+org
+wrote:
+> http://bugzilla.kernel.org/show_bug.cgi?id=3D12676
+>=20
+>            Summary: fs/ext4/extents.c: In function
+>                     =E2=80=98ext4_ext_search_right=E2=80=99: fs/ext4/=
+extents.c:1120:
+>                     warning: =E2=80=98ix=E2=80=99 may be used uniniti=
+alized in this
+>                     function
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Acked-by: Joel Becker <joel.becker@oracle.com>
-CC: linux-ext4@vger.kernel.org
-CC: ocfs2-devel@oss.oracle.com
-CC: mfasheh@suse.de
-CC: Dan Carpenter <error27@gmail.com>
----
- fs/ext4/inode.c       |    6 ++++--
- fs/jbd2/transaction.c |   42 +++++++++++++++++++++++++++++++-----------
- fs/ocfs2/journal.h    |    6 ++++--
- include/linux/jbd2.h  |    3 ++-
- 4 files changed, 41 insertions(+), 16 deletions(-)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 03ba20b..658c4a7 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -47,8 +47,10 @@
- static inline int ext4_begin_ordered_truncate(struct inode *inode,
- 					      loff_t new_size)
- {
--	return jbd2_journal_begin_ordered_truncate(&EXT4_I(inode)->jinode,
--						   new_size);
-+	return jbd2_journal_begin_ordered_truncate(
-+					EXT4_SB(inode->i_sb)->s_journal,
-+					&EXT4_I(inode)->jinode,
-+					new_size);
- }
- 
- static void ext4_invalidatepage(struct page *page, unsigned long offset);
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 46b4e34..28ce21d 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -2129,26 +2129,46 @@ done:
- }
- 
- /*
-- * This function must be called when inode is journaled in ordered mode
-- * before truncation happens. It starts writeout of truncated part in
-- * case it is in the committing transaction so that we stand to ordered
-- * mode consistency guarantees.
-+ * File truncate and transaction commit interact with each other in a
-+ * non-trivial way.  If a transaction writing data block A is
-+ * committing, we cannot discard the data by truncate until we have
-+ * written them.  Otherwise if we crashed after the transaction with
-+ * write has committed but before the transaction with truncate has
-+ * committed, we could see stale data in block A.  This function is a
-+ * helper to solve this problem.  It starts writeout of the truncated
-+ * part in case it is in the committing transaction.
-+ *
-+ * Filesystem code must call this function when inode is journaled in
-+ * ordered mode before truncation happens and after the inode has been
-+ * placed on orphan list with the new inode size. The second condition
-+ * avoids the race that someone writes new data and we start
-+ * committing the transaction after this function has been called but
-+ * before a transaction for truncate is started (and furthermore it
-+ * allows us to optimize the case where the addition to orphan list
-+ * happens in the same transaction as write --- we don't have to write
-+ * any data in such case).
-  */
--int jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode,
-+int jbd2_journal_begin_ordered_truncate(journal_t *journal,
-+					struct jbd2_inode *jinode,
- 					loff_t new_size)
- {
--	journal_t *journal;
--	transaction_t *commit_trans;
-+	transaction_t *inode_trans, *commit_trans;
- 	int ret = 0;
- 
--	if (!inode->i_transaction && !inode->i_next_transaction)
-+	/* This is a quick check to avoid locking if not necessary */
-+	if (!jinode->i_transaction)
- 		goto out;
--	journal = inode->i_transaction->t_journal;
-+	/* Locks are here just to force reading of recent values, it is
-+	 * enough that the transaction was not committing before we started
-+	 * a transaction adding the inode to orphan list */
- 	spin_lock(&journal->j_state_lock);
- 	commit_trans = journal->j_committing_transaction;
- 	spin_unlock(&journal->j_state_lock);
--	if (inode->i_transaction == commit_trans) {
--		ret = filemap_fdatawrite_range(inode->i_vfs_inode->i_mapping,
-+	spin_lock(&journal->j_list_lock);
-+	inode_trans = jinode->i_transaction;
-+	spin_unlock(&journal->j_list_lock);
-+	if (inode_trans == commit_trans) {
-+		ret = filemap_fdatawrite_range(jinode->i_vfs_inode->i_mapping,
- 			new_size, LLONG_MAX);
- 		if (ret)
- 			jbd2_journal_abort(journal, ret);
-diff --git a/fs/ocfs2/journal.h b/fs/ocfs2/journal.h
-index 3c3532e..172850a 100644
---- a/fs/ocfs2/journal.h
-+++ b/fs/ocfs2/journal.h
-@@ -513,8 +513,10 @@ static inline int ocfs2_jbd2_file_inode(handle_t *handle, struct inode *inode)
- static inline int ocfs2_begin_ordered_truncate(struct inode *inode,
- 					       loff_t new_size)
- {
--	return jbd2_journal_begin_ordered_truncate(&OCFS2_I(inode)->ip_jinode,
--						   new_size);
-+	return jbd2_journal_begin_ordered_truncate(
-+				OCFS2_SB(inode->i_sb)->journal->j_journal,
-+				&OCFS2_I(inode)->ip_jinode,
-+				new_size);
- }
- 
- #endif /* OCFS2_JOURNAL_H */
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index b28b37e..4d248b3 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -1150,7 +1150,8 @@ extern int	   jbd2_journal_clear_err  (journal_t *);
- extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
- extern int	   jbd2_journal_force_commit(journal_t *);
- extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
--extern int	   jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode, loff_t new_size);
-+extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
-+				struct jbd2_inode *inode, loff_t new_size);
- extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
- extern void	   jbd2_journal_release_jbd_inode(journal_t *journal, struct jbd2_inode *jinode);
- 
+> When compiling gets this error on Ext4 FS:
+> "fs/ext4/extents.c: In function =E2=80=98ext4_ext_search_right=E2=80=99=
+:
+> fs/ext4/extents.c:1120: warning: =E2=80=98ix=E2=80=99 may be used uni=
+nitialized in this
+> function
+> "
+
+What version of gcc are you using to compile your kernel?  This looks
+like the case of "gcc is stupid not to notice that depth must be
+non-zero, so ix is always initialized".  Which doesn't seem to be the
+case with gcc 4.3.2, but it might be true with an older version of
+gcc.
+
+We can shut up gcc by forcibly initializing ix, but if this is only a
+problem with older gcc's, as it seems, it's probably best not to
+clutter the source (and the compiled binary) with an unneeded
+initialization:
+
+        /* go up and search for index to the right */
+        while (--depth >=3D 0) {
+                ix =3D path[depth].p_idx;
+                if (ix !=3D EXT_LAST_INDEX(path[depth].p_hdr))
+                        goto got_index;
+        }
+
+        /* we've gone up to the root and found no index to the right */
+        return 0;
+
+got_index:
+        /* we've found index to the right, let's
+         * follow it and find the closest allocated
+         * block to the right */
+        ix++;
+        ^^^^^ Gee, aren't (some verions of) gcc stupid?
+
+
+                                                - Ted
+
+
+--=20
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
