@@ -1,47 +1,78 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix to read empty directory blocks correctly in
-	64k blocksize filesystems
-Date: Tue, 10 Feb 2009 10:20:49 -0500
-Message-ID: <20090210152049.GF30689@mini-me.lan>
-References: <4990FAE4.1080009@cn.fujitsu.com>
+Subject: Re: [Bug 12676] New: =?utf-8?Q?fs=2Fext4?=
+	=?utf-8?Q?=2Fextents=2Ec=3A_In_function__=E2=80=98ext4_ext_search_right?=
+	=?utf-8?B?4oCZOiBmcy9leHQ0L2V4dGVudHMuYzoxMTIwOiB3YXJuaW5nOiAg4oCYaXg=?=
+	=?utf-8?B?4oCZ?= may be used uninitialized in this function
+Date: Tue, 10 Feb 2009 08:25:13 -0500
+Message-ID: <20090210132513.GD30689@mini-me.lan>
+References: <bug-12676-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
 Cc: linux-ext4@vger.kernel.org
-To: Wei Yongjun <yjwei@cn.fujitsu.com>
+To: bugme-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60539 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:60537 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753143AbZBJSVc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1752341AbZBJSVc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 10 Feb 2009 13:21:32 -0500
 Content-Disposition: inline
-In-Reply-To: <4990FAE4.1080009@cn.fujitsu.com>
+In-Reply-To: <bug-12676-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a good patch, but the patch description doesn't tell the
-complete tale.  I've replaced it with the following.
+On Mon, Feb 09, 2009 at 03:15:49AM -0800, bugme-daemon@bugzilla.kernel.=
+org wrote:
+> http://bugzilla.kernel.org/show_bug.cgi?id=3D12676
+>=20
+>            Summary: fs/ext4/extents.c: In function
+>                     =E2=80=98ext4_ext_search_right=E2=80=99: fs/ext4/=
+extents.c:1120:
+>                     warning: =E2=80=98ix=E2=80=99 may be used uniniti=
+alized in this
+>                     function
 
-	 	     	      	      	  - Ted
+> When compiling gets this error on Ext4 FS:
+> "fs/ext4/extents.c: In function =E2=80=98ext4_ext_search_right=E2=80=99=
+:
+> fs/ext4/extents.c:1120: warning: =E2=80=98ix=E2=80=99 may be used uni=
+nitialized in this
+> function
+> "
 
-ext4: Fix to read empty directory blocks correctly in 64k
+What version of gcc are you using to compile your kernel?  This looks
+like the case of "gcc is stupid not to notice that depth must be
+non-zero, so ix is always initialized".  Which doesn't seem to be the
+case with gcc 4.3.2, but it might be true with an older version of
+gcc.
 
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
+We can shut up gcc by forcibly initializing ix, but if this is only a
+problem with older gcc's, as it seems, it's probably best not to
+clutter the source (and the compiled binary) with an unneeded
+initialization:
 
-The rec_len field in the directory entry is 16 bits, so there was a
-problem representing rec_len for filesystems with a 64k block size in
-the case where the directory entry takes the entire 64k block.
-Unfortunately, there were two schemes that were proposed; one where
-all zeros meant 65536 and one where all ones (65535) meant 65536.
-E2fsprogs used 0, whereas the kernel used 65535.  Oops.  Fortunately
-this case happens extremely rarely, with the most common case being
-the lost+found directory, created by mke2fs.
+	/* go up and search for index to the right */
+	while (--depth >=3D 0) {
+		ix =3D path[depth].p_idx;
+		if (ix !=3D EXT_LAST_INDEX(path[depth].p_hdr))
+			goto got_index;
+	}
 
-So we will be liberal in what we accept, and accept both encodings,
-but we will continue to encode 65536 as 65535.  This will require a
-change in e2fsprogs, but with fortunately ext4 filesystems normally
-have the dir_index feature enabled, which precludes having a
-completely empty directory block.
+	/* we've gone up to the root and found no index to the right */
+	return 0;
 
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+got_index:
+	/* we've found index to the right, let's
+	 * follow it and find the closest allocated
+	 * block to the right */
+	ix++;
+        ^^^^^ Gee, aren't (some verions of) gcc stupid?
 
+
+	      	   	  		    	- Ted
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
