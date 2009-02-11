@@ -1,105 +1,94 @@
 From: akpm@linux-foundation.org
-Subject: [patch 3/3] ext4: tighten restrictions on inode flags
-Date: Wed, 11 Feb 2009 13:28:28 -0800
-Message-ID: <200902112128.n1BLSTIc000814@imap1.linux-foundation.org>
+Subject: [patch 1/3] ext4: allocate ->s_blockgroup_lock separately
+Date: Wed, 11 Feb 2009 13:28:26 -0800
+Message-ID: <200902112128.n1BLSQ17000785@imap1.linux-foundation.org>
 Cc: linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-	duaneg@dghda.com, adilger@sun.com
+	penberg@cs.helsinki.fi, adilger@sun.com
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:59306 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:49585 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759043AbZBKV3q (ORCPT
+	by vger.kernel.org with ESMTP id S1759012AbZBKV3m (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Feb 2009 16:29:46 -0500
+	Wed, 11 Feb 2009 16:29:42 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: "Duane Griffin" <duaneg@dghda.com>
+From: Pekka Enberg <penberg@cs.helsinki.fi>
 
-At the moment there are few restrictions on which flags may be set on
-which inodes.  Specifically DIRSYNC may only be set on directories and
-IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
-TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
-on non-regular file, non-directories.
+As spotted by kmemtrace, struct ext4_sb_info is 17664 bytes on 64-bit
+which makes it a very bad fit for SLAB allocators.  The culprit of the
+wasted memory is ->s_blockgroup_lock which can be as big as 16 KB when
+NR_CPUS >= 32.
 
-Introduces a flags masking function which masks flags based on mode and
-use it during inode creation and when flags are set via the ioctl to
-facilitate future consistency.
+To fix that, allocate ->s_blockgroup_lock, which fits nicely in a order 2
+page in the worst case, separately.  This shinks down struct ext4_sb_info
+enough to fit a 2 KB slab cache so now we allocate 16 KB + 2 KB instead of
+32 KB saving 14 KB of memory.
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
 Acked-by: Andreas Dilger <adilger@sun.com>
+Signed-off-by: Pekka Enberg <penberg@cs.helsinki.fi>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/ext4.h   |   17 +++++++++++++++++
- fs/ext4/ialloc.c |   14 +++++---------
- fs/ext4/ioctl.c  |    3 +--
- 3 files changed, 23 insertions(+), 11 deletions(-)
+ fs/ext4/ext4_sb.h |    4 ++--
+ fs/ext4/super.c   |   10 +++++++++-
+ 2 files changed, 11 insertions(+), 3 deletions(-)
 
-diff -puN fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags fs/ext4/ext4.h
---- a/fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags
-+++ a/fs/ext4/ext4.h
-@@ -247,6 +247,23 @@ struct flex_groups {
- 			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL|\
- 			   EXT4_DIRSYNC_FL)
+diff -puN fs/ext4/ext4_sb.h~ext4-allocate-s_blockgroup_lock-separately fs/ext4/ext4_sb.h
+--- a/fs/ext4/ext4_sb.h~ext4-allocate-s_blockgroup_lock-separately
++++ a/fs/ext4/ext4_sb.h
+@@ -62,7 +62,7 @@ struct ext4_sb_info {
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+ 	struct percpu_counter s_dirtyblocks_counter;
+-	struct blockgroup_lock s_blockgroup_lock;
++	struct blockgroup_lock *s_blockgroup_lock;
+ 	struct proc_dir_entry *s_proc;
  
-+/* Flags that are appropriate for regular files (all but dir-specific ones). */
-+#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
+ 	/* Journaling */
+@@ -149,7 +149,7 @@ struct ext4_sb_info {
+ static inline spinlock_t *
+ sb_bgl_lock(struct ext4_sb_info *sbi, unsigned int block_group)
+ {
+-	return bgl_lock_ptr(&sbi->s_blockgroup_lock, block_group);
++	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
+ }
+ 
+ #endif	/* _EXT4_SB */
+diff -puN fs/ext4/super.c~ext4-allocate-s_blockgroup_lock-separately fs/ext4/super.c
+--- a/fs/ext4/super.c~ext4-allocate-s_blockgroup_lock-separately
++++ a/fs/ext4/super.c
+@@ -615,6 +615,7 @@ static void ext4_put_super(struct super_
+ 		ext4_blkdev_remove(sbi);
+ 	}
+ 	sb->s_fs_info = NULL;
++	kfree(sbi->s_blockgroup_lock);
+ 	kfree(sbi);
+ 	return;
+ }
+@@ -2021,6 +2022,13 @@ static int ext4_fill_super(struct super_
+ 	sbi = kzalloc(sizeof(*sbi), GFP_KERNEL);
+ 	if (!sbi)
+ 		return -ENOMEM;
 +
-+/* Flags that are appropriate for non-directories/regular files. */
-+#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
-+
-+/* Mask out flags that are inappropriate for the given type of inode. */
-+static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
-+{
-+	if (S_ISDIR(mode))
-+		return flags;
-+	else if (S_ISREG(mode))
-+		return flags & EXT4_REG_FLMASK;
-+	else
-+		return flags & EXT4_OTHER_FLMASK;
-+}
-+
- /*
-  * Inode dynamic state flags
-  */
-diff -puN fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags
-+++ a/fs/ext4/ialloc.c
-@@ -874,16 +874,12 @@ got:
- 	ei->i_disksize = 0;
++	sbi->s_blockgroup_lock =
++		kzalloc(sizeof(struct blockgroup_lock), GFP_KERNEL);
++	if (!sbi->s_blockgroup_lock) {
++		kfree(sbi);
++		return -ENOMEM;
++	}
+ 	sb->s_fs_info = sbi;
+ 	sbi->s_mount_opt = 0;
+ 	sbi->s_resuid = EXT4_DEF_RESUID;
+@@ -2332,7 +2340,7 @@ static int ext4_fill_super(struct super_
+ 				 &sbi->s_inode_readahead_blks);
+ #endif
  
- 	/*
--	 * Don't inherit extent flag from directory. We set extent flag on
--	 * newly created directory and file only if -o extent mount option is
--	 * specified
-+	 * Don't inherit extent flag from directory, amongst others. We set
-+	 * extent flag on newly created directory and file only if -o extent
-+	 * mount option is specified
- 	 */
--	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
--	if (S_ISLNK(mode))
--		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
--	/* dirsync only applies to directories */
--	if (!S_ISDIR(mode))
--		ei->i_flags &= ~EXT4_DIRSYNC_FL;
-+	ei->i_flags =
-+		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
- 	ei->i_file_acl = 0;
- 	ei->i_dtime = 0;
- 	ei->i_block_group = group;
-diff -puN fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ioctl.c
---- a/fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags
-+++ a/fs/ext4/ioctl.c
-@@ -48,8 +48,7 @@ long ext4_ioctl(struct file *filp, unsig
- 		if (err)
- 			return err;
+-	bgl_lock_init(&sbi->s_blockgroup_lock);
++	bgl_lock_init(sbi->s_blockgroup_lock);
  
--		if (!S_ISDIR(inode->i_mode))
--			flags &= ~EXT4_DIRSYNC_FL;
-+		flags = ext4_mask_flags(inode->i_mode, flags);
- 
- 		err = -EPERM;
- 		mutex_lock(&inode->i_mutex);
+ 	for (i = 0; i < db_count; i++) {
+ 		block = descriptor_loc(sb, logical_sb_block, i);
 _
