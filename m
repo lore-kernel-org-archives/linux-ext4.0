@@ -1,76 +1,54 @@
-From: Miao Xie <miaox@cn.fujitsu.com>
-Subject: Re: [BUG][e2fsprogs] e2fsck: e2fsck reports ext3 message when checking
- ext4 filesystem
-Date: Wed, 11 Feb 2009 10:35:06 +0800
-Message-ID: <4992395A.8030301@cn.fujitsu.com>
-References: <4951A916.706@cn.fujitsu.com> <ea11fea30812232040g1e939f87y6bfaf5e82df99dd1@mail.gmail.com>
-Reply-To: miaox@cn.fujitsu.com
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] ext4: Fix to read empty directory blocks correctly in	64k
+ blocksize filesystems
+Date: Wed, 11 Feb 2009 00:48:16 -0500
+Message-ID: <20090211054816.GP3209@webber.adilger.int>
+References: <4990FAE4.1080009@cn.fujitsu.com>
+ <20090210152049.GF30689@mini-me.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>,
-	Linux-Ext4 <linux-ext4@vger.kernel.org>
-To: Manish Katiyar <mkatiyar@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Wei Yongjun <yjwei@cn.fujitsu.com>, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:64513 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752994AbZBKCho (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Feb 2009 21:37:44 -0500
-In-Reply-To: <ea11fea30812232040g1e939f87y6bfaf5e82df99dd1@mail.gmail.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:50459 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750719AbZBKFs0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Feb 2009 00:48:26 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n1B5mJSc022338
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Feb 2009 21:48:19 -0800 (PST)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
+ id <0KEV00G00ZZXYQ00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
+ 10 Feb 2009 21:48:19 -0800 (PST)
+In-reply-to: <20090210152049.GF30689@mini-me.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-on 2008-12-24 12:40 Manish Katiyar wrote:
-> On Wed, Dec 24, 2008 at 8:44 AM, Miao Xie <miaox@cn.fujitsu.com> wrote:
->> Hi,
->>
->> I use "e2fsck" to repair the damaged ext4 device.
->>
->> The message was followings.
->>
->> ------
->> # ./e2fsck /dev/sdb3
->> e2fsck 1.41.3 (12-Oct-2008)
->> Superblock has an invalid ext3 journal (inode 8).
->> Clear<y>?
->> ---
->>
->> Why e2fsck tells me "ext3"?
+On Feb 10, 2009  10:20 -0500, Theodore Ts'o wrote:
+> The rec_len field in the directory entry is 16 bits, so there was a
+> problem representing rec_len for filesystems with a 64k block size in
+> the case where the directory entry takes the entire 64k block.
+> Unfortunately, there were two schemes that were proposed; one where
+> all zeros meant 65536 and one where all ones (65535) meant 65536.
+> E2fsprogs used 0, whereas the kernel used 65535.  Oops.  Fortunately
+> this case happens extremely rarely, with the most common case being
+> the lost+found directory, created by mke2fs.
 > 
-> Because it is hardcoded :-(
-> 
->>From the file e2fsprogs/po/id.po :-
-> 
-> #. @-expanded: superblock has an invalid ext3 journal (inode %i).\n
-> #: e2fsck/problem.c:187
-> #, c-format
-> msgid "@S has an @n ext3 @j (@i %i).\n"
-> msgstr "@S memiliki sebuah @n ext3 @j (@i %i).\n"
+> So we will be liberal in what we accept, and accept both encodings,
+> but we will continue to encode 65536 as 65535.  This will require a
+> change in e2fsprogs, but with fortunately ext4 filesystems normally
+> have the dir_index feature enabled, which precludes having a
+> completely empty directory block.
 
-someone submitted a patch to fix this bug. I tested it and the test was pass.
-But I found the translation is not updated.
+I'm glad that the MAX_REC_LEN value is being kept, because "0" is
+too easily hit due to disk corruption.
 
-Thanks!
-Miao
-
-> 
-> 
-> Thanks -
-> Manish
-> 
->> It looks the message was wrong
->> or e2fsck doesn't recognize ext4 correctly.
->>
->> Thanks！
->> Miao Xie
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> 
-> 
-> 
-
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
