@@ -1,57 +1,106 @@
-From: Chuck Ebbert <cebbert@redhat.com>
-Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
-Date: Tue, 10 Feb 2009 18:36:02 -0500
-Message-ID: <20090210183602.404ee561@dhcp-100-2-144.bos.redhat.com>
-References: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
+From: Gui Xiaohua <guixh@cn.fujitsu.com>
+Subject: Re: [PATCH: e2fsprogs: resize2fs failed when "mkfs.ext4 -O flex_bg"]
+Date: Wed, 11 Feb 2009 09:15:56 +0800
+Message-ID: <499226CC.9070809@cn.fujitsu.com>
+References: <4990CB6A.1020403@cn.fujitsu.com> <20090210010917.GA30689@mini-me.lan> <4990F546.3050906@cn.fujitsu.com> <20090210164831.GA29220@mini-me.lan>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34578 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756601AbZBJXi4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Feb 2009 18:38:56 -0500
-In-Reply-To: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
+Received: from cn.fujitsu.com ([222.73.24.84]:55874 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1752751AbZBKBS2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Feb 2009 20:18:28 -0500
+In-Reply-To: <20090210164831.GA29220@mini-me.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, 31 Jan 2009 00:25:39 -0500
-"Theodore Ts'o" <tytso@mit.edu> wrote:
 
-> I've updated the ext4 backport branches on the ext4 git tree:
-> 
->    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
->    http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git
-> 
-> The for-stable branch is branched off of 2.6.28.2, and has a candidate
-> set of patches to be included in the next stable release.  The
-> for-stable-2.6.27 branch is branched off of 2.6.27.13.  
-> 
-> I'm more confident with the 2.6.28 stable candidate than the 2.6.27
-> stable candidates at the moment, but given that we just missed the
-> 2.6.27.14 and 2.6.28.3 release cycles, that should give us plenty of
-> time to test the patches.
-> 
 
-.27 has a bug and one patch got merged in .27.14...
+Theodore Tso ??:
+> On Tue, Feb 10, 2009 at 11:32:22AM +0800, Gui Xiaohua wrote:
+>> Hi Ted
+>> I have tested your patch,but occurs some messages like below:
+>> resize2fs: Illegal triply indirect block found while trying to resize /dev/sda7
+>>
+> 
+> Hi, Could you be a bit more precise with your reproduction
+> instructions?  I've tried this, and it works for me.  Stupid question
+> --- you did install e2fsprogs 1.41.4 before you tried this, right?  If
+
+Yes,you are right.Then make uninstall e2fsprogs 1.41.3 and recompile 
+e2fsprogs 1.41.4, resize succuess, but some messages occurs after do e2fsck
+
+> you built with shared libraries, and ended up using 1.41.3's shared
+> libraries with the 1.41.4 binaries, this might cause this problem,
+> since a number of the bug fixes which I applied were in the libext2fs
+> library.
+> 
+> 							- Ted
+> 
+> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
+> 513# dd if=/dev/zero of=/var/tmp/resize-test.img bs=4k count=16032
+> 16032+0 records in
+> 16032+0 records out
+> 65667072 bytes (66 MB) copied, 1.08768 s, 60.4 MB/s
+> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
+> 514# mke2fs -t ext4 -O flex_bg /var/tmp/resize-test.img 
+> mke2fs 1.41.4 (27-Jan-2009)
+> /var/tmp/resize-test.img is not a block special device.
+> Proceed anyway? (y,n) y
+> Filesystem label=
+> OS type: Linux
+> Block size=1024 (log=0)
+> Fragment size=1024 (log=0)
+> 16064 inodes, 64128 blocks
+> 3206 blocks (5.00%) reserved for the super user
+> First data block=1
+> Maximum filesystem blocks=65798144
+> 8 block groups
+> 8192 blocks per group, 8192 fragments per group
+> 2008 inodes per group
+> Superblock backups stored on blocks: 
+> 	   8193, 24577, 40961, 57345
+> 
+> Writing inode tables: done                            
+> Creating journal (4096 blocks): done
+> Writing superblocks and filesystem accounting information: done
+> 
+> This filesystem will be automatically checked every 39 mounts or
+> 180 days, whichever comes first.  Use tune2fs -c or -i to override.
+> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
+> 515# mount -o loop -t ext4 /var/tmp/resize-test.img  /mnt
+> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
+> 516# (cd /mnt; mkdir -p foo; cd foo; seq 1 2500 | xargs touch)
+> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
+
+After this step you weren't remove 2000 files
+
+
+> 517# umount /mnt
+> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
+> 518# e2fsck -f /var/tmp/resize-test.img 
+> e2fsck 1.41.4 (27-Jan-2009)
+> Pass 1: Checking inodes, blocks, and sizes
+> Pass 2: Checking directory structure
+> Pass 3: Checking directory connectivity
+> Pass 4: Checking reference counts
+> Pass 5: Checking group summary information
+> /var/tmp/resize-test.img: 2512/16064 files (0.1% non-contiguous), 7441/64128 blocks
+> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
+> 519# resize2fs -M /var/tmp/resize-test.img
+> resize2fs 1.41.4 (27-Jan-2009)
+> Resizing the filesystem on /var/tmp/foo.img to 8857 (1k) blocks.
+> The filesystem on /var/tmp/foo.img is now 8857 blocks long.
+> 
+> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
+> 520# 
+
+Do e2fsck -f /var/tmp/resize-test.img
+there are many problems
 
 > 
-> mainline 2.6.28  2.6.27
->     commit-description
-> -------------------------------------------------------------------------
-> c894058d -----   71ae3e25
->     ext4: Use an rbtree for tracking blocks freed during transaction.
 > 
-
-The chunk that creates the ext4_free_block_extents cache is misapplied: it
-ended up at the end of ext4_mb_use_preallocated() instead of
-init_ext4_mballoc(). The null cache pointer then causes oopses when trying
-to delete files.
-
-> a21102b5 1b1872b 0f30c439
->     ext3: Add sanity check to make_indexed_dir
 > 
-
-This went into 2.6.27.14.
