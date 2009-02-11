@@ -1,28 +1,29 @@
 From: Chuck Ebbert <cebbert@redhat.com>
 Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
-Date: Wed, 11 Feb 2009 15:33:28 -0500
-Message-ID: <20090211153328.37ef255f@dhcp-100-2-144.bos.redhat.com>
+Date: Wed, 11 Feb 2009 15:37:27 -0500
+Message-ID: <20090211153727.008033fd@dhcp-100-2-144.bos.redhat.com>
 References: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
-	<20090211075914.GC20842@skywalker>
+	<20090210183602.404ee561@dhcp-100-2-144.bos.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:40065 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:56361 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755473AbZBKUgC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Feb 2009 15:36:02 -0500
-In-Reply-To: <20090211075914.GC20842@skywalker>
+	id S1757614AbZBKUkR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Feb 2009 15:40:17 -0500
+In-Reply-To: <20090210183602.404ee561@dhcp-100-2-144.bos.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 11 Feb 2009 13:29:14 +0530
-"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+On Tue, 10 Feb 2009 18:36:02 -0500
+Chuck Ebbert <cebbert@redhat.com> wrote:
 
-> On Sat, Jan 31, 2009 at 12:25:39AM -0500, Theodore Ts'o wrote:
+> On Sat, 31 Jan 2009 00:25:39 -0500
+> "Theodore Ts'o" <tytso@mit.edu> wrote:
+> 
 > > I've updated the ext4 backport branches on the ext4 git tree:
 > > 
 > >    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
@@ -37,23 +38,30 @@ On Wed, 11 Feb 2009 13:29:14 +0530
 > > 2.6.27.14 and 2.6.28.3 release cycles, that should give us plenty of
 > > time to test the patches.
 > > 
-> > 						- Ted
+> 
+> .27 has a bug and one patch got merged in .27.14...
+> 
 > > 
-> > 
-> > 8556e8f3 18d5cb0 fd3bd090
-> >     ext4: Don't allow new groups to be added during block allocation
+> > mainline 2.6.28  2.6.27
+> >     commit-description
+> > -------------------------------------------------------------------------
+> > c894058d -----   71ae3e25
+> >     ext4: Use an rbtree for tracking blocks freed during transaction.
 > > 
 > 
-> This commit on for-stable-2.6.27 is not complete.
-> ac->alloc_semp is not assigned in the code.
+> The chunk that creates the ext4_free_block_extents cache is misapplied: it
+> ended up at the end of ext4_mb_use_preallocated() instead of
+> init_ext4_mballoc(). The null cache pointer then causes oopses when trying
+> to delete files.
 > 
 
-I think this fixes that one:
+Here's the fix for that:
 
 
-Add missing pieces to the below patch in the 2.6.27 ext4 patchset.
-http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=commitdiff;h=fd3bd090d7cc93292d3fa361b9c323752417bd7b
-"ext4: Don't allow new groups to be added during block allocation"
+Move init of the ext4_free_block_extents cache to the right place.
+Original patch that misapplies this is at:
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=commitdiff;h=71ae3e256af82b77100bd2e7392fd510aca0b8b9
+"ext4: Use an rbtree for tracking blocks freed during transaction."
 
 Signed-off-by: Chuck Ebbert <cebbert@redhat.com>
 
@@ -61,23 +69,36 @@ Index: linux-2.6.27.noarch/fs/ext4/mballoc.c
 ===================================================================
 --- linux-2.6.27.noarch.orig/fs/ext4/mballoc.c
 +++ linux-2.6.27.noarch/fs/ext4/mballoc.c
-@@ -1055,7 +1055,8 @@ static void ext4_mb_release_desc(struct 
- 	if (e4b->bd_buddy_page)
- 		page_cache_release(e4b->bd_buddy_page);
- 	/* Done with the buddy cache */
--	up_read(e4b->alloc_semp);
-+	if (e4b->alloc_semp)
-+		up_read(e4b->alloc_semp);
+@@ -3060,6 +3060,16 @@ int __init init_ext4_mballoc(void)
+ 		kmem_cache_destroy(ext4_pspace_cachep);
+ 		return -ENOMEM;
+ 	}
++
++	ext4_free_ext_cachep =
++		kmem_cache_create("ext4_free_block_extents",
++				     sizeof(struct ext4_free_data),
++				     0, SLAB_RECLAIM_ACCOUNT, NULL);
++	if (ext4_free_ext_cachep == NULL) {
++		kmem_cache_destroy(ext4_pspace_cachep);
++		kmem_cache_destroy(ext4_ac_cachep);
++		return -ENOMEM;
++	}
+ #ifdef CONFIG_PROC_FS
+ 	proc_root_ext4 = proc_mkdir("fs/ext4", NULL);
+ 	if (proc_root_ext4 == NULL)
+@@ -3597,15 +3607,6 @@ ext4_mb_use_preallocated(struct ext4_all
+ 		return 1;
+ 	}
+ 
+-	ext4_free_ext_cachep =
+-		kmem_cache_create("ext4_free_block_extents",
+-				     sizeof(struct ext4_free_data),
+-				     0, SLAB_RECLAIM_ACCOUNT, NULL);
+-	if (ext4_free_ext_cachep == NULL) {
+-		kmem_cache_destroy(ext4_pspace_cachep);
+-		kmem_cache_destroy(ext4_ac_cachep);
+-		return -ENOMEM;
+-	}
+ 	return 0;
  }
  
- 
-@@ -1375,6 +1376,9 @@ static void ext4_mb_use_best_found(struc
- 	get_page(ac->ac_bitmap_page);
- 	ac->ac_buddy_page = e4b->bd_buddy_page;
- 	get_page(ac->ac_buddy_page);
-+	/* on allocation we use ac to track the held semaphore */
-+	ac->alloc_semp =  e4b->alloc_semp;
-+	e4b->alloc_semp = NULL;
- 	/* store last allocated for subsequent stream allocation */
- 	if ((ac->ac_flags & EXT4_MB_HINT_DATA)) {
- 		spin_lock(&sbi->s_md_lock);
