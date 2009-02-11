@@ -1,81 +1,48 @@
-From: akpm@linux-foundation.org
-Subject: [nacked] ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems.patch removed from -mm tree
-Date: Wed, 11 Feb 2009 09:13:12 -0800
-Message-ID: <200902111713.n1BHDCUB002068@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: yjwei@cn.fujitsu.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: Re: with -b N and block count, should mkfs.ext4 fail with dev-too-big?
+Date: Wed, 11 Feb 2009 14:26:17 -0500
+Message-ID: <20090211192617.GA9501@shell>
+References: <87ab8ti1cw.fsf@meyering.net> <20090211140905.GG29220@mini-me.lan>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Jim Meyering <jim@meyering.net>, ext <linux-ext4@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:50101 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756537AbZBKT0W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Feb 2009 14:26:22 -0500
+Content-Disposition: inline
+In-Reply-To: <20090211140905.GG29220@mini-me.lan>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Feb 11, 2009 at 09:09:05AM -0500, Theodore Tso wrote:
+> On Wed, Feb 11, 2009 at 01:50:39PM +0100, Jim Meyering wrote:
+> > 
+> > FWIW, I was trying to create an ext4 file system with more than 2^32
+> > blocks to demonstrate a parted bug fix, but with the particular device
+> > I was using, I couldn't even create one with 2^31-1 blocks.
+> > 
+> > When I try to create an ext4 file system specifying both block size and
+> > the number of blocks, the size of the underlying device should not matter,
+> > as long as it is large enough.
+> 
+> Oops, my fault.  I fixed the case where the device was exactly 16TB
+> (as in created via lvcreate --size 16TB, but the fix was very minimal,
+> since it was just before a maintenance release.  I didn't consider (or
+> test) the case where the device was larger than or equal to 2*32
+> blocks (given a specified blocksize, or 4k if no blocksize was
+> specified), and an explicit block size less than 2*32 was specified.
+> 
+> I'll put it on my todo list to fix for e2fsprogs 1.41.5.
 
-The patch titled
-     ext3: fix support for empty directory blocks in 64k blocksize filesystems
-has been removed from the -mm tree.  Its filename was
-     ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems.patch
+Note that this is fixed in effect by the 64bit patches, since we use
+the 64bit get device size function.
 
-This patch was dropped because it was nacked
+git://git.kernel.org/pub/scm/fs/ext2/val/e2fsprogs.git
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+Branch "shared-64bit".
 
-------------------------------------------------------
-Subject: ext3: fix support for empty directory blocks in 64k blocksize filesystems
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-
-The rec_len field in the directory entry is 16 bits, so if the filesystem
-is completely empty, rec_len of 0 is used to designate 65536 in e2fsprogs,
-for the case where the directory entry takes the entire 64k block.
-
-But if an empty directory is read, an error message will be output by
-current kernels.  You can use the following commands to reproduce it.
-
-  - mkfs.ext3 -b $(( 64 * 1024 )) /dev/sdc1
-  - mount /dev/sda1 /mnt
-  - cd /mnt/lost+found
-  - ll
-  - tail /var/log/messages
-  EXT3-fs error (device sdc1): ext3_readdir: bad entry in \
-  directory #11: rec_len is smaller than minimal - offset=0, \
-  inode=0, rec_len=0, name_len=0
-
-Treat a rec_len of 0 as 65536, as e2fsprogs does.
-
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- include/linux/ext3_fs.h |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff -puN include/linux/ext3_fs.h~ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems include/linux/ext3_fs.h
---- a/include/linux/ext3_fs.h~ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems
-+++ a/include/linux/ext3_fs.h
-@@ -711,7 +711,7 @@ static inline unsigned ext3_rec_len_from
- {
- 	unsigned len = le16_to_cpu(dlen);
- 
--	if (len == EXT3_MAX_REC_LEN)
-+	if (len == EXT3_MAX_REC_LEN || len == 0)
- 		return 1 << 16;
- 	return len;
- }
-@@ -719,7 +719,7 @@ static inline unsigned ext3_rec_len_from
- static inline __le16 ext3_rec_len_to_disk(unsigned len)
- {
- 	if (len == (1 << 16))
--		return cpu_to_le16(EXT3_MAX_REC_LEN);
-+		return cpu_to_le16(0);
- 	else if (len > (1 << 16))
- 		BUG();
- 	return cpu_to_le16(len);
-_
-
-Patches currently in -mm which might be from yjwei@cn.fujitsu.com are
-
-linux-next.patch
-fs-jffs2-mallocc-kmem_cache_alloc-memset-kmem_cache_zalloc.patch
-scsi-used-kmem_cache_zalloc-instead-of-kmem_cache_alloc-memset.patch
-ext3-fix-support-for-empty-directory-blocks-in-64k-blocksize-filesystems.patch
-
+-VAL
