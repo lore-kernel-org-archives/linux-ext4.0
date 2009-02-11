@@ -1,173 +1,60 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 3/3] ocfs2: Add journal parameter to
-	jbd2_journal_begin_ordered_truncate()
-Date: Wed, 11 Feb 2009 10:25:38 +0100
-Message-ID: <20090211092538.GA8118@duck.suse.cz>
-References: <1233845582-954-1-git-send-email-jack@suse.cz> <1233845582-954-2-git-send-email-jack@suse.cz> <1233845582-954-3-git-send-email-jack@suse.cz> <1233845582-954-4-git-send-email-jack@suse.cz> <20090210151255.GE30689@mini-me.lan>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>, mfasheh@suse.com,
-	ocfs2-devel@oss.oracle.com, mfasheh@suse.de
-To: Theodore Tso <tytso@mit.edu>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12686] New: kernel oops __ticket_spin_lock
+Date: Wed, 11 Feb 2009 02:54:08 -0800 (PST)
+Message-ID: <bug-12686-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:49577 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754378AbZBKJZm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Feb 2009 04:25:42 -0500
-Content-Disposition: inline
-In-Reply-To: <20090210151255.GE30689@mini-me.lan>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35128 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754337AbZBKKyL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Feb 2009 05:54:11 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1BAs9WG006304
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Feb 2009 02:54:10 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 10-02-09 10:12:55, Theodore Tso wrote:
-> The problem with separating out the patch into three separate commits
-> is that it can potentially break a "git bisect".  To fix this, I
-> believe the right thing to do is to combine the three patches into a
-> single commit, and to push this via the ext4 tree; any objections?
-  On a second thought, this is probably the best for such simple change.
-So please go ahead. Thanks.
+http://bugzilla.kernel.org/show_bug.cgi?id=12686
 
-								Honza
+           Summary: kernel oops __ticket_spin_lock
+           Product: File System
+           Version: 2.5
+     KernelVersion: 2.6.29-rc4
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: dmaciejak@fortinet.com
 
-> jbd2: Avoid possible NULL dereference in jbd2_journal_begin_ordered_truncate()
-> 
-> From: Jan Kara <jack@suse.cz>
-> 
-> If we race with commit code setting i_transaction to NULL, we could
-> possibly dereference it.  Proper locking requires the journal pointer
-> (to access journal->j_list_lock), which we don't have.  So we have to
-> change the prototype of the function so that filesystem passes us the
-> journal pointer.  Also add a more detailed comment about why the
-> function jbd2_journal_begin_ordered_truncate() does what it does and
-> how it should be used.
-> 
-> Thanks to Dan Carpenter <error27@gmail.com> for pointing to the
-> suspitious code.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> Acked-by: Joel Becker <joel.becker@oracle.com>
-> CC: linux-ext4@vger.kernel.org
-> CC: ocfs2-devel@oss.oracle.com
-> CC: mfasheh@suse.de
-> CC: Dan Carpenter <error27@gmail.com>
-> ---
->  fs/ext4/inode.c       |    6 ++++--
->  fs/jbd2/transaction.c |   42 +++++++++++++++++++++++++++++++-----------
->  fs/ocfs2/journal.h    |    6 ++++--
->  include/linux/jbd2.h  |    3 ++-
->  4 files changed, 41 insertions(+), 16 deletions(-)
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 03ba20b..658c4a7 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -47,8 +47,10 @@
->  static inline int ext4_begin_ordered_truncate(struct inode *inode,
->  					      loff_t new_size)
->  {
-> -	return jbd2_journal_begin_ordered_truncate(&EXT4_I(inode)->jinode,
-> -						   new_size);
-> +	return jbd2_journal_begin_ordered_truncate(
-> +					EXT4_SB(inode->i_sb)->s_journal,
-> +					&EXT4_I(inode)->jinode,
-> +					new_size);
->  }
->  
->  static void ext4_invalidatepage(struct page *page, unsigned long offset);
-> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-> index 46b4e34..28ce21d 100644
-> --- a/fs/jbd2/transaction.c
-> +++ b/fs/jbd2/transaction.c
-> @@ -2129,26 +2129,46 @@ done:
->  }
->  
->  /*
-> - * This function must be called when inode is journaled in ordered mode
-> - * before truncation happens. It starts writeout of truncated part in
-> - * case it is in the committing transaction so that we stand to ordered
-> - * mode consistency guarantees.
-> + * File truncate and transaction commit interact with each other in a
-> + * non-trivial way.  If a transaction writing data block A is
-> + * committing, we cannot discard the data by truncate until we have
-> + * written them.  Otherwise if we crashed after the transaction with
-> + * write has committed but before the transaction with truncate has
-> + * committed, we could see stale data in block A.  This function is a
-> + * helper to solve this problem.  It starts writeout of the truncated
-> + * part in case it is in the committing transaction.
-> + *
-> + * Filesystem code must call this function when inode is journaled in
-> + * ordered mode before truncation happens and after the inode has been
-> + * placed on orphan list with the new inode size. The second condition
-> + * avoids the race that someone writes new data and we start
-> + * committing the transaction after this function has been called but
-> + * before a transaction for truncate is started (and furthermore it
-> + * allows us to optimize the case where the addition to orphan list
-> + * happens in the same transaction as write --- we don't have to write
-> + * any data in such case).
->   */
-> -int jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode,
-> +int jbd2_journal_begin_ordered_truncate(journal_t *journal,
-> +					struct jbd2_inode *jinode,
->  					loff_t new_size)
->  {
-> -	journal_t *journal;
-> -	transaction_t *commit_trans;
-> +	transaction_t *inode_trans, *commit_trans;
->  	int ret = 0;
->  
-> -	if (!inode->i_transaction && !inode->i_next_transaction)
-> +	/* This is a quick check to avoid locking if not necessary */
-> +	if (!jinode->i_transaction)
->  		goto out;
-> -	journal = inode->i_transaction->t_journal;
-> +	/* Locks are here just to force reading of recent values, it is
-> +	 * enough that the transaction was not committing before we started
-> +	 * a transaction adding the inode to orphan list */
->  	spin_lock(&journal->j_state_lock);
->  	commit_trans = journal->j_committing_transaction;
->  	spin_unlock(&journal->j_state_lock);
-> -	if (inode->i_transaction == commit_trans) {
-> -		ret = filemap_fdatawrite_range(inode->i_vfs_inode->i_mapping,
-> +	spin_lock(&journal->j_list_lock);
-> +	inode_trans = jinode->i_transaction;
-> +	spin_unlock(&journal->j_list_lock);
-> +	if (inode_trans == commit_trans) {
-> +		ret = filemap_fdatawrite_range(jinode->i_vfs_inode->i_mapping,
->  			new_size, LLONG_MAX);
->  		if (ret)
->  			jbd2_journal_abort(journal, ret);
-> diff --git a/fs/ocfs2/journal.h b/fs/ocfs2/journal.h
-> index 3c3532e..172850a 100644
-> --- a/fs/ocfs2/journal.h
-> +++ b/fs/ocfs2/journal.h
-> @@ -513,8 +513,10 @@ static inline int ocfs2_jbd2_file_inode(handle_t *handle, struct inode *inode)
->  static inline int ocfs2_begin_ordered_truncate(struct inode *inode,
->  					       loff_t new_size)
->  {
-> -	return jbd2_journal_begin_ordered_truncate(&OCFS2_I(inode)->ip_jinode,
-> -						   new_size);
-> +	return jbd2_journal_begin_ordered_truncate(
-> +				OCFS2_SB(inode->i_sb)->journal->j_journal,
-> +				&OCFS2_I(inode)->ip_jinode,
-> +				new_size);
->  }
->  
->  #endif /* OCFS2_JOURNAL_H */
-> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-> index b28b37e..4d248b3 100644
-> --- a/include/linux/jbd2.h
-> +++ b/include/linux/jbd2.h
-> @@ -1150,7 +1150,8 @@ extern int	   jbd2_journal_clear_err  (journal_t *);
->  extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
->  extern int	   jbd2_journal_force_commit(journal_t *);
->  extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
-> -extern int	   jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode, loff_t new_size);
-> +extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
-> +				struct jbd2_inode *inode, loff_t new_size);
->  extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
->  extern void	   jbd2_journal_release_jbd_inode(journal_t *journal, struct jbd2_inode *jinode);
->  
+
+Latest working kernel version: NA
+Earliest failing kernel version: NA
+Distribution: Ubuntu
+Hardware Environment: Dell Optiplex 740
+Software Environment: NA
+
+Hi,
+
+playing around with crafted ext4 fs raised a kernel oops (see attached extract
+from kern.log)
+
+Steps to reproduce:
+*gunzip the poc enclosed
+*mount -t ext4 ext4.poc.img /media/here -o loop
+*touch /media/here/test
+
+Regards,
+
+David Maciejak
+Fortinet's FortiGuard Global Security Research Team
+
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
