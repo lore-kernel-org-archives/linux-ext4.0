@@ -1,45 +1,173 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
-Date: Wed, 11 Feb 2009 13:29:14 +0530
-Message-ID: <20090211075914.GC20842@skywalker>
-References: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 3/3] ocfs2: Add journal parameter to
+	jbd2_journal_begin_ordered_truncate()
+Date: Wed, 11 Feb 2009 10:25:38 +0100
+Message-ID: <20090211092538.GA8118@duck.suse.cz>
+References: <1233845582-954-1-git-send-email-jack@suse.cz> <1233845582-954-2-git-send-email-jack@suse.cz> <1233845582-954-3-git-send-email-jack@suse.cz> <1233845582-954-4-git-send-email-jack@suse.cz> <20090210151255.GE30689@mini-me.lan>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>, mfasheh@suse.com,
+	ocfs2-devel@oss.oracle.com, mfasheh@suse.de
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:54643 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750920AbZBKH70 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Feb 2009 02:59:26 -0500
+Received: from ns2.suse.de ([195.135.220.15]:49577 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754378AbZBKJZm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Feb 2009 04:25:42 -0500
 Content-Disposition: inline
-In-Reply-To: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
+In-Reply-To: <20090210151255.GE30689@mini-me.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jan 31, 2009 at 12:25:39AM -0500, Theodore Ts'o wrote:
-> I've updated the ext4 backport branches on the ext4 git tree:
-> 
->    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
->    http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git
-> 
-> The for-stable branch is branched off of 2.6.28.2, and has a candidate
-> set of patches to be included in the next stable release.  The
-> for-stable-2.6.27 branch is branched off of 2.6.27.13.  
-> 
-> I'm more confident with the 2.6.28 stable candidate than the 2.6.27
-> stable candidates at the moment, but given that we just missed the
-> 2.6.27.14 and 2.6.28.3 release cycles, that should give us plenty of
-> time to test the patches.
-> 
-> 						- Ted
-> 
-> 
-> 8556e8f3 18d5cb0 fd3bd090
->     ext4: Don't allow new groups to be added during block allocation
-> 
+On Tue 10-02-09 10:12:55, Theodore Tso wrote:
+> The problem with separating out the patch into three separate commits
+> is that it can potentially break a "git bisect".  To fix this, I
+> believe the right thing to do is to combine the three patches into a
+> single commit, and to push this via the ext4 tree; any objections?
+  On a second thought, this is probably the best for such simple change.
+So please go ahead. Thanks.
 
-This commit on for-stable-2.6.27 is not complete.
-ac->alloc_semp is not assigned in the code.
+								Honza
 
--aneesh
+> jbd2: Avoid possible NULL dereference in jbd2_journal_begin_ordered_truncate()
+> 
+> From: Jan Kara <jack@suse.cz>
+> 
+> If we race with commit code setting i_transaction to NULL, we could
+> possibly dereference it.  Proper locking requires the journal pointer
+> (to access journal->j_list_lock), which we don't have.  So we have to
+> change the prototype of the function so that filesystem passes us the
+> journal pointer.  Also add a more detailed comment about why the
+> function jbd2_journal_begin_ordered_truncate() does what it does and
+> how it should be used.
+> 
+> Thanks to Dan Carpenter <error27@gmail.com> for pointing to the
+> suspitious code.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> Acked-by: Joel Becker <joel.becker@oracle.com>
+> CC: linux-ext4@vger.kernel.org
+> CC: ocfs2-devel@oss.oracle.com
+> CC: mfasheh@suse.de
+> CC: Dan Carpenter <error27@gmail.com>
+> ---
+>  fs/ext4/inode.c       |    6 ++++--
+>  fs/jbd2/transaction.c |   42 +++++++++++++++++++++++++++++++-----------
+>  fs/ocfs2/journal.h    |    6 ++++--
+>  include/linux/jbd2.h  |    3 ++-
+>  4 files changed, 41 insertions(+), 16 deletions(-)
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 03ba20b..658c4a7 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -47,8 +47,10 @@
+>  static inline int ext4_begin_ordered_truncate(struct inode *inode,
+>  					      loff_t new_size)
+>  {
+> -	return jbd2_journal_begin_ordered_truncate(&EXT4_I(inode)->jinode,
+> -						   new_size);
+> +	return jbd2_journal_begin_ordered_truncate(
+> +					EXT4_SB(inode->i_sb)->s_journal,
+> +					&EXT4_I(inode)->jinode,
+> +					new_size);
+>  }
+>  
+>  static void ext4_invalidatepage(struct page *page, unsigned long offset);
+> diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+> index 46b4e34..28ce21d 100644
+> --- a/fs/jbd2/transaction.c
+> +++ b/fs/jbd2/transaction.c
+> @@ -2129,26 +2129,46 @@ done:
+>  }
+>  
+>  /*
+> - * This function must be called when inode is journaled in ordered mode
+> - * before truncation happens. It starts writeout of truncated part in
+> - * case it is in the committing transaction so that we stand to ordered
+> - * mode consistency guarantees.
+> + * File truncate and transaction commit interact with each other in a
+> + * non-trivial way.  If a transaction writing data block A is
+> + * committing, we cannot discard the data by truncate until we have
+> + * written them.  Otherwise if we crashed after the transaction with
+> + * write has committed but before the transaction with truncate has
+> + * committed, we could see stale data in block A.  This function is a
+> + * helper to solve this problem.  It starts writeout of the truncated
+> + * part in case it is in the committing transaction.
+> + *
+> + * Filesystem code must call this function when inode is journaled in
+> + * ordered mode before truncation happens and after the inode has been
+> + * placed on orphan list with the new inode size. The second condition
+> + * avoids the race that someone writes new data and we start
+> + * committing the transaction after this function has been called but
+> + * before a transaction for truncate is started (and furthermore it
+> + * allows us to optimize the case where the addition to orphan list
+> + * happens in the same transaction as write --- we don't have to write
+> + * any data in such case).
+>   */
+> -int jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode,
+> +int jbd2_journal_begin_ordered_truncate(journal_t *journal,
+> +					struct jbd2_inode *jinode,
+>  					loff_t new_size)
+>  {
+> -	journal_t *journal;
+> -	transaction_t *commit_trans;
+> +	transaction_t *inode_trans, *commit_trans;
+>  	int ret = 0;
+>  
+> -	if (!inode->i_transaction && !inode->i_next_transaction)
+> +	/* This is a quick check to avoid locking if not necessary */
+> +	if (!jinode->i_transaction)
+>  		goto out;
+> -	journal = inode->i_transaction->t_journal;
+> +	/* Locks are here just to force reading of recent values, it is
+> +	 * enough that the transaction was not committing before we started
+> +	 * a transaction adding the inode to orphan list */
+>  	spin_lock(&journal->j_state_lock);
+>  	commit_trans = journal->j_committing_transaction;
+>  	spin_unlock(&journal->j_state_lock);
+> -	if (inode->i_transaction == commit_trans) {
+> -		ret = filemap_fdatawrite_range(inode->i_vfs_inode->i_mapping,
+> +	spin_lock(&journal->j_list_lock);
+> +	inode_trans = jinode->i_transaction;
+> +	spin_unlock(&journal->j_list_lock);
+> +	if (inode_trans == commit_trans) {
+> +		ret = filemap_fdatawrite_range(jinode->i_vfs_inode->i_mapping,
+>  			new_size, LLONG_MAX);
+>  		if (ret)
+>  			jbd2_journal_abort(journal, ret);
+> diff --git a/fs/ocfs2/journal.h b/fs/ocfs2/journal.h
+> index 3c3532e..172850a 100644
+> --- a/fs/ocfs2/journal.h
+> +++ b/fs/ocfs2/journal.h
+> @@ -513,8 +513,10 @@ static inline int ocfs2_jbd2_file_inode(handle_t *handle, struct inode *inode)
+>  static inline int ocfs2_begin_ordered_truncate(struct inode *inode,
+>  					       loff_t new_size)
+>  {
+> -	return jbd2_journal_begin_ordered_truncate(&OCFS2_I(inode)->ip_jinode,
+> -						   new_size);
+> +	return jbd2_journal_begin_ordered_truncate(
+> +				OCFS2_SB(inode->i_sb)->journal->j_journal,
+> +				&OCFS2_I(inode)->ip_jinode,
+> +				new_size);
+>  }
+>  
+>  #endif /* OCFS2_JOURNAL_H */
+> diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+> index b28b37e..4d248b3 100644
+> --- a/include/linux/jbd2.h
+> +++ b/include/linux/jbd2.h
+> @@ -1150,7 +1150,8 @@ extern int	   jbd2_journal_clear_err  (journal_t *);
+>  extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
+>  extern int	   jbd2_journal_force_commit(journal_t *);
+>  extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
+> -extern int	   jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode, loff_t new_size);
+> +extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
+> +				struct jbd2_inode *inode, loff_t new_size);
+>  extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
+>  extern void	   jbd2_journal_release_jbd_inode(journal_t *journal, struct jbd2_inode *jinode);
+>  
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
