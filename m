@@ -1,106 +1,76 @@
-From: Gui Xiaohua <guixh@cn.fujitsu.com>
-Subject: Re: [PATCH: e2fsprogs: resize2fs failed when "mkfs.ext4 -O flex_bg"]
-Date: Wed, 11 Feb 2009 09:15:56 +0800
-Message-ID: <499226CC.9070809@cn.fujitsu.com>
-References: <4990CB6A.1020403@cn.fujitsu.com> <20090210010917.GA30689@mini-me.lan> <4990F546.3050906@cn.fujitsu.com> <20090210164831.GA29220@mini-me.lan>
+From: Miao Xie <miaox@cn.fujitsu.com>
+Subject: Re: [BUG][e2fsprogs] e2fsck: e2fsck reports ext3 message when checking
+ ext4 filesystem
+Date: Wed, 11 Feb 2009 10:35:06 +0800
+Message-ID: <4992395A.8030301@cn.fujitsu.com>
+References: <4951A916.706@cn.fujitsu.com> <ea11fea30812232040g1e939f87y6bfaf5e82df99dd1@mail.gmail.com>
+Reply-To: miaox@cn.fujitsu.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Linux-Ext4 <linux-ext4@vger.kernel.org>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:55874 "EHLO song.cn.fujitsu.com"
+Received: from cn.fujitsu.com ([222.73.24.84]:64513 "EHLO song.cn.fujitsu.com"
 	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1752751AbZBKBS2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 10 Feb 2009 20:18:28 -0500
-In-Reply-To: <20090210164831.GA29220@mini-me.lan>
+	id S1752994AbZBKCho (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Feb 2009 21:37:44 -0500
+In-Reply-To: <ea11fea30812232040g1e939f87y6bfaf5e82df99dd1@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+on 2008-12-24 12:40 Manish Katiyar wrote:
+> On Wed, Dec 24, 2008 at 8:44 AM, Miao Xie <miaox@cn.fujitsu.com> wrote:
+>> Hi,
+>>
+>> I use "e2fsck" to repair the damaged ext4 device.
+>>
+>> The message was followings.
+>>
+>> ------
+>> # ./e2fsck /dev/sdb3
+>> e2fsck 1.41.3 (12-Oct-2008)
+>> Superblock has an invalid ext3 journal (inode 8).
+>> Clear<y>?
+>> ---
+>>
+>> Why e2fsck tells me "ext3"?
+> 
+> Because it is hardcoded :-(
+> 
+>>From the file e2fsprogs/po/id.po :-
+> 
+> #. @-expanded: superblock has an invalid ext3 journal (inode %i).\n
+> #: e2fsck/problem.c:187
+> #, c-format
+> msgid "@S has an @n ext3 @j (@i %i).\n"
+> msgstr "@S memiliki sebuah @n ext3 @j (@i %i).\n"
 
+someone submitted a patch to fix this bug. I tested it and the test was pass.
+But I found the translation is not updated.
 
-Theodore Tso ??:
-> On Tue, Feb 10, 2009 at 11:32:22AM +0800, Gui Xiaohua wrote:
->> Hi Ted
->> I have tested your patch,but occurs some messages like below:
->> resize2fs: Illegal triply indirect block found while trying to resize /dev/sda7
+Thanks!
+Miao
+
+> 
+> 
+> Thanks -
+> Manish
+> 
+>> It looks the message was wrong
+>> or e2fsck doesn't recognize ext4 correctly.
+>>
+>> Thanks！
+>> Miao Xie
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 >>
 > 
-> Hi, Could you be a bit more precise with your reproduction
-> instructions?  I've tried this, and it works for me.  Stupid question
-> --- you did install e2fsprogs 1.41.4 before you tried this, right?  If
-
-Yes,you are right.Then make uninstall e2fsprogs 1.41.3 and recompile 
-e2fsprogs 1.41.4, resize succuess, but some messages occurs after do e2fsck
-
-> you built with shared libraries, and ended up using 1.41.3's shared
-> libraries with the 1.41.4 binaries, this might cause this problem,
-> since a number of the bug fixes which I applied were in the libext2fs
-> library.
 > 
-> 							- Ted
 > 
-> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
-> 513# dd if=/dev/zero of=/var/tmp/resize-test.img bs=4k count=16032
-> 16032+0 records in
-> 16032+0 records out
-> 65667072 bytes (66 MB) copied, 1.08768 s, 60.4 MB/s
-> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
-> 514# mke2fs -t ext4 -O flex_bg /var/tmp/resize-test.img 
-> mke2fs 1.41.4 (27-Jan-2009)
-> /var/tmp/resize-test.img is not a block special device.
-> Proceed anyway? (y,n) y
-> Filesystem label=
-> OS type: Linux
-> Block size=1024 (log=0)
-> Fragment size=1024 (log=0)
-> 16064 inodes, 64128 blocks
-> 3206 blocks (5.00%) reserved for the super user
-> First data block=1
-> Maximum filesystem blocks=65798144
-> 8 block groups
-> 8192 blocks per group, 8192 fragments per group
-> 2008 inodes per group
-> Superblock backups stored on blocks: 
-> 	   8193, 24577, 40961, 57345
-> 
-> Writing inode tables: done                            
-> Creating journal (4096 blocks): done
-> Writing superblocks and filesystem accounting information: done
-> 
-> This filesystem will be automatically checked every 39 mounts or
-> 180 days, whichever comes first.  Use tune2fs -c or -i to override.
-> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
-> 515# mount -o loop -t ext4 /var/tmp/resize-test.img  /mnt
-> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
-> 516# (cd /mnt; mkdir -p foo; cd foo; seq 1 2500 | xargs touch)
-> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
-
-After this step you weren't remove 2000 files
 
 
-> 517# umount /mnt
-> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
-> 518# e2fsck -f /var/tmp/resize-test.img 
-> e2fsck 1.41.4 (27-Jan-2009)
-> Pass 1: Checking inodes, blocks, and sizes
-> Pass 2: Checking directory structure
-> Pass 3: Checking directory connectivity
-> Pass 4: Checking reference counts
-> Pass 5: Checking group summary information
-> /var/tmp/resize-test.img: 2512/16064 files (0.1% non-contiguous), 7441/64128 blocks
-> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
-> 519# resize2fs -M /var/tmp/resize-test.img
-> resize2fs 1.41.4 (27-Jan-2009)
-> Resizing the filesystem on /var/tmp/foo.img to 8857 (1k) blocks.
-> The filesystem on /var/tmp/foo.img is now 8857 blocks long.
-> 
-> <tytso.root@mini-me> {/home/tytso/e2fsprogs/build}, level 2  [master]
-> 520# 
-
-Do e2fsck -f /var/tmp/resize-test.img
-there are many problems
-
-> 
-> 
-> 
