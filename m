@@ -1,107 +1,80 @@
-From: akpm@linux-foundation.org
-Subject: [patch 07/24] jbd: fix return value of journal_start_commit()
-Date: Wed, 11 Feb 2009 13:04:25 -0800
-Message-ID: <200902112104.n1BL4PnL031734@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, sandeen@redhat.com, snitzer@gmail.com
-To: torvalds@linux-foundation.org
+From: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: Re: with -b N and block count, should mkfs.ext4 fail with dev-too-big?
+Date: Wed, 11 Feb 2009 16:17:09 -0500
+Message-ID: <20090211211709.GB9501@shell>
+References: <87ab8ti1cw.fsf@meyering.net> <20090211140905.GG29220@mini-me.lan> <20090211192617.GA9501@shell> <499327D2.8010502@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Theodore Tso <tytso@mit.edu>, Jim Meyering <jim@meyering.net>,
+	ext <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:33605 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754948AbZBKVFc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Feb 2009 16:05:32 -0500
+Received: from mx1.redhat.com ([66.187.233.31]:60509 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756773AbZBKVRN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Feb 2009 16:17:13 -0500
+Content-Disposition: inline
+In-Reply-To: <499327D2.8010502@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
+On Wed, Feb 11, 2009 at 01:32:34PM -0600, Eric Sandeen wrote:
+> Valerie Aurora Henson wrote:
+> > On Wed, Feb 11, 2009 at 09:09:05AM -0500, Theodore Tso wrote:
+> >> On Wed, Feb 11, 2009 at 01:50:39PM +0100, Jim Meyering wrote:
+> >>> FWIW, I was trying to create an ext4 file system with more than 2^32
+> >>> blocks to demonstrate a parted bug fix, but with the particular device
+> >>> I was using, I couldn't even create one with 2^31-1 blocks.
+> >>>
+> >>> When I try to create an ext4 file system specifying both block size and
+> >>> the number of blocks, the size of the underlying device should not matter,
+> >>> as long as it is large enough.
+> >> Oops, my fault.  I fixed the case where the device was exactly 16TB
+> >> (as in created via lvcreate --size 16TB, but the fix was very minimal,
+> >> since it was just before a maintenance release.  I didn't consider (or
+> >> test) the case where the device was larger than or equal to 2*32
+> >> blocks (given a specified blocksize, or 4k if no blocksize was
+> >> specified), and an explicit block size less than 2*32 was specified.
+> >>
+> >> I'll put it on my todo list to fix for e2fsprogs 1.41.5.
+> > 
+> > Note that this is fixed in effect by the 64bit patches, since we use
+> > the 64bit get device size function.
+> > 
+> > git://git.kernel.org/pub/scm/fs/ext2/val/e2fsprogs.git
+> > 
+> > Branch "shared-64bit".
+> > 
+> > -VAL
+> 
+> That won't fix it for ext3 though will it?  (not that I've looked in
+> detail) but the issue is not whether we can properly get the device
+> size; it's that the device size, rather than the filesystem size, is
+> checked for overflow vs. the filesystem's limits...
 
-journal_start_commit() returns 1 if either a transaction is committing or
-the function has queued a transaction commit.  But it returns 0 if we
-raced with somebody queueing the transaction commit as well.  This
-resulted in ext3_sync_fs() not functioning correctly (description from
-Arthur Jones): In the case of a data=ordered umount with pending long
-symlinks which are delayed due to a long list of other I/O on the backing
-block device, this causes the buffer associated with the long symlinks to
-not be moved to the inode dirty list in the second phase of fsync_super. 
-Then, before they can be dirtied again, kjournald exits, seeing the UMOUNT
-flag and the dirty pages are never written to the backing block device,
-causing long symlink corruption and exposing new or previously freed block
-data to userspace.
+Without actually going to the effort of trying to understand that code
+again :), what I remember is that it's the order of the checks that
+mattered.  When we used the 32-bit device size function, that would
+fail before we got around to checking the user-specified number of
+blocks to be in range.  Now the 64-bit call works and we can go on to
+the range check for the user-specified number of blocks.
 
-This can be reproduced with a script created by Eric Sandeen
-<sandeen@redhat.com>:
+At any rate, it works for 2^31-1 4096 byte blocks:
 
-        #!/bin/bash
+[val@clunky e2fsprogs]$ ls -lh /terabyte/20TB -rw-rw-r-- 1 val val 19T 2009-02-11 13:11 /terabyte/20TB
+[val@clunky e2fsprogs]$ ~/src/build/misc/mke2fs -b 4096 -t ext3 /terabyte/20TB `echo '2*1024^3-1'|bc`
+mke2fs 1.41.4 (27-Jan-2009)
+/terabyte/20TB is not a block special device.
+Proceed anyway? (y,n) y
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+536870912 inodes, 2147483647 blocks
+[etc]
 
-        umount /mnt/test2
-        mount /dev/sdb4 /mnt/test2
-        rm -f /mnt/test2/*
-        dd if=/dev/zero of=/mnt/test2/bigfile bs=1M count=512
-        touch /mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-        ln -s /mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-        /mnt/test2/link
-        umount /mnt/test2
-        mount /dev/sdb4 /mnt/test2
-        ls /mnt/test2/
+It doesn't work for 1024 byte blocks - fails on number of inodes no
+matter how few inodes I specify.  This might be a bug but I don't have
+time to check it out right now.
 
-This patch fixes journal_start_commit() to always return 1 when there's
-a transaction committing or queued for commit.
-
-Cc: Eric Sandeen <sandeen@redhat.com>
-Cc: Mike Snitzer <snitzer@gmail.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/jbd/journal.c |   17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
-
-diff -puN fs/jbd/journal.c~jbd-fix-return-value-of-journal_start_commit fs/jbd/journal.c
---- a/fs/jbd/journal.c~jbd-fix-return-value-of-journal_start_commit
-+++ a/fs/jbd/journal.c
-@@ -427,7 +427,7 @@ int __log_space_left(journal_t *journal)
- }
- 
- /*
-- * Called under j_state_lock.  Returns true if a transaction was started.
-+ * Called under j_state_lock.  Returns true if a transaction commit was started.
-  */
- int __log_start_commit(journal_t *journal, tid_t target)
- {
-@@ -495,7 +495,8 @@ int journal_force_commit_nested(journal_
- 
- /*
-  * Start a commit of the current running transaction (if any).  Returns true
-- * if a transaction was started, and fills its tid in at *ptid
-+ * if a transaction is going to be committed (or is currently already
-+ * committing), and fills its tid in at *ptid
-  */
- int journal_start_commit(journal_t *journal, tid_t *ptid)
- {
-@@ -505,15 +506,19 @@ int journal_start_commit(journal_t *jour
- 	if (journal->j_running_transaction) {
- 		tid_t tid = journal->j_running_transaction->t_tid;
- 
--		ret = __log_start_commit(journal, tid);
--		if (ret && ptid)
-+		__log_start_commit(journal, tid);
-+		/* There's a running transaction and we've just made sure
-+		 * it's commit has been scheduled. */
-+		if (ptid)
- 			*ptid = tid;
--	} else if (journal->j_committing_transaction && ptid) {
-+		ret = 1;
-+	} else if (journal->j_committing_transaction) {
- 		/*
- 		 * If ext3_write_super() recently started a commit, then we
- 		 * have to wait for completion of that transaction
- 		 */
--		*ptid = journal->j_committing_transaction->t_tid;
-+		if (ptid)
-+			*ptid = journal->j_committing_transaction->t_tid;
- 		ret = 1;
- 	}
- 	spin_unlock(&journal->j_state_lock);
-_
+-VAL
