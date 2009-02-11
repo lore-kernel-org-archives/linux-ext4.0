@@ -1,54 +1,59 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: with -b N and block count, should mkfs.ext4 fail with dev-too-big?
-Date: Wed, 11 Feb 2009 13:32:34 -0600
-Message-ID: <499327D2.8010502@redhat.com>
-References: <87ab8ti1cw.fsf@meyering.net> <20090211140905.GG29220@mini-me.lan> <20090211192617.GA9501@shell>
+From: Xiang Wang <xiangw@google.com>
+Subject: Options for migrating existing files on ext2 partitions to ext4
+Date: Wed, 11 Feb 2009 12:18:09 -0800
+Message-ID: <d5ca277e0902111218l1b568724l2557315d2945637a@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Jim Meyering <jim@meyering.net>,
-	ext <linux-ext4@vger.kernel.org>
-To: Valerie Aurora Henson <vaurora@redhat.com>
+To: linux-ext4@vger.kernel.org, ext4-team <ext4-team@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35870 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756103AbZBKTdA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Feb 2009 14:33:00 -0500
-In-Reply-To: <20090211192617.GA9501@shell>
+Received: from smtp-out.google.com ([216.239.33.17]:57928 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755342AbZBKUSN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Feb 2009 15:18:13 -0500
+Received: from wpaz13.hot.corp.google.com (wpaz13.hot.corp.google.com [172.24.198.77])
+	by smtp-out.google.com with ESMTP id n1BKIBQG010977
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Feb 2009 20:18:11 GMT
+Received: from yx-out-1718.google.com (yxn6.prod.google.com [10.190.4.70])
+	by wpaz13.hot.corp.google.com with ESMTP id n1BKHxAZ003388
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Feb 2009 12:18:10 -0800
+Received: by yx-out-1718.google.com with SMTP id 6so243862yxn.36
+        for <linux-ext4@vger.kernel.org>; Wed, 11 Feb 2009 12:18:10 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Valerie Aurora Henson wrote:
-> On Wed, Feb 11, 2009 at 09:09:05AM -0500, Theodore Tso wrote:
->> On Wed, Feb 11, 2009 at 01:50:39PM +0100, Jim Meyering wrote:
->>> FWIW, I was trying to create an ext4 file system with more than 2^32
->>> blocks to demonstrate a parted bug fix, but with the particular device
->>> I was using, I couldn't even create one with 2^31-1 blocks.
->>>
->>> When I try to create an ext4 file system specifying both block size and
->>> the number of blocks, the size of the underlying device should not matter,
->>> as long as it is large enough.
->> Oops, my fault.  I fixed the case where the device was exactly 16TB
->> (as in created via lvcreate --size 16TB, but the fix was very minimal,
->> since it was just before a maintenance release.  I didn't consider (or
->> test) the case where the device was larger than or equal to 2*32
->> blocks (given a specified blocksize, or 4k if no blocksize was
->> specified), and an explicit block size less than 2*32 was specified.
->>
->> I'll put it on my todo list to fix for e2fsprogs 1.41.5.
-> 
-> Note that this is fixed in effect by the 64bit patches, since we use
-> the 64bit get device size function.
-> 
-> git://git.kernel.org/pub/scm/fs/ext2/val/e2fsprogs.git
-> 
-> Branch "shared-64bit".
-> 
-> -VAL
+Hey,
 
-That won't fix it for ext3 though will it?  (not that I've looked in
-detail) but the issue is not whether we can properly get the device
-size; it's that the device size, rather than the filesystem size, is
-checked for overflow vs. the filesystem's limits...
+Since we are thinking of switching into using the ext4 file systems on
+some of our machines with purely ext2 partitions, we face the problem
+of how to migrate all those existing files on ext2 partitions. Seems
+like there are two major directions to go:
 
--Eric
+1) do a backup, umount, mke2fs into ext4, and restore
+In this approach, we may actually take advantage of the layout changes
+so as to benefit from some features of ext4.
+
+2) umount, tune2fs to add the 'extent' feature, mount back using type
+ext4, migrate the existing files(directories) one by one through the
+ioctl EXT4_IOC_MIGRATE
+Motivated by the ext4 ioctl interface for migration, we are also
+looking into this in-place approach. But we are mostly concerned with
+the fact that if the existing files are highly fragmented, will we
+still get benefit from the extents? Or will we even get hurt by
+turning the files into being extents-based?
+
+Before we do more detailed experiments on both approaches, we are here
+to ask for advice, suggestion and comments.
+
+So If you have ever run into either direction or even both, do you
+have any experience you can share with us? Or simply express your
+feeling:
+
+Does it work? What could go wrong?
+Does it take very long to complete the migration(of course, it could
+depends on the number of files and their data block locations)?
+Are you happy with the resulting files being migrated?
+Has anyone every tried approach 2)? How did that work for you?
+
+Thanks,
+Xiang
