@@ -1,59 +1,83 @@
-From: Xiang Wang <xiangw@google.com>
-Subject: Options for migrating existing files on ext2 partitions to ext4
-Date: Wed, 11 Feb 2009 12:18:09 -0800
-Message-ID: <d5ca277e0902111218l1b568724l2557315d2945637a@mail.gmail.com>
+From: Chuck Ebbert <cebbert@redhat.com>
+Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
+Date: Wed, 11 Feb 2009 15:33:28 -0500
+Message-ID: <20090211153328.37ef255f@dhcp-100-2-144.bos.redhat.com>
+References: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
+	<20090211075914.GC20842@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org, ext4-team <ext4-team@google.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:57928 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755342AbZBKUSN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Feb 2009 15:18:13 -0500
-Received: from wpaz13.hot.corp.google.com (wpaz13.hot.corp.google.com [172.24.198.77])
-	by smtp-out.google.com with ESMTP id n1BKIBQG010977
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Feb 2009 20:18:11 GMT
-Received: from yx-out-1718.google.com (yxn6.prod.google.com [10.190.4.70])
-	by wpaz13.hot.corp.google.com with ESMTP id n1BKHxAZ003388
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Feb 2009 12:18:10 -0800
-Received: by yx-out-1718.google.com with SMTP id 6so243862yxn.36
-        for <linux-ext4@vger.kernel.org>; Wed, 11 Feb 2009 12:18:10 -0800 (PST)
+Received: from mx2.redhat.com ([66.187.237.31]:40065 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755473AbZBKUgC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Feb 2009 15:36:02 -0500
+In-Reply-To: <20090211075914.GC20842@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hey,
+On Wed, 11 Feb 2009 13:29:14 +0530
+"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
 
-Since we are thinking of switching into using the ext4 file systems on
-some of our machines with purely ext2 partitions, we face the problem
-of how to migrate all those existing files on ext2 partitions. Seems
-like there are two major directions to go:
+> On Sat, Jan 31, 2009 at 12:25:39AM -0500, Theodore Ts'o wrote:
+> > I've updated the ext4 backport branches on the ext4 git tree:
+> > 
+> >    git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+> >    http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git
+> > 
+> > The for-stable branch is branched off of 2.6.28.2, and has a candidate
+> > set of patches to be included in the next stable release.  The
+> > for-stable-2.6.27 branch is branched off of 2.6.27.13.  
+> > 
+> > I'm more confident with the 2.6.28 stable candidate than the 2.6.27
+> > stable candidates at the moment, but given that we just missed the
+> > 2.6.27.14 and 2.6.28.3 release cycles, that should give us plenty of
+> > time to test the patches.
+> > 
+> > 						- Ted
+> > 
+> > 
+> > 8556e8f3 18d5cb0 fd3bd090
+> >     ext4: Don't allow new groups to be added during block allocation
+> > 
+> 
+> This commit on for-stable-2.6.27 is not complete.
+> ac->alloc_semp is not assigned in the code.
+> 
 
-1) do a backup, umount, mke2fs into ext4, and restore
-In this approach, we may actually take advantage of the layout changes
-so as to benefit from some features of ext4.
+I think this fixes that one:
 
-2) umount, tune2fs to add the 'extent' feature, mount back using type
-ext4, migrate the existing files(directories) one by one through the
-ioctl EXT4_IOC_MIGRATE
-Motivated by the ext4 ioctl interface for migration, we are also
-looking into this in-place approach. But we are mostly concerned with
-the fact that if the existing files are highly fragmented, will we
-still get benefit from the extents? Or will we even get hurt by
-turning the files into being extents-based?
 
-Before we do more detailed experiments on both approaches, we are here
-to ask for advice, suggestion and comments.
+Add missing pieces to the below patch in the 2.6.27 ext4 patchset.
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=commitdiff;h=fd3bd090d7cc93292d3fa361b9c323752417bd7b
+"ext4: Don't allow new groups to be added during block allocation"
 
-So If you have ever run into either direction or even both, do you
-have any experience you can share with us? Or simply express your
-feeling:
+Signed-off-by: Chuck Ebbert <cebbert@redhat.com>
 
-Does it work? What could go wrong?
-Does it take very long to complete the migration(of course, it could
-depends on the number of files and their data block locations)?
-Are you happy with the resulting files being migrated?
-Has anyone every tried approach 2)? How did that work for you?
-
-Thanks,
-Xiang
+Index: linux-2.6.27.noarch/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.27.noarch.orig/fs/ext4/mballoc.c
++++ linux-2.6.27.noarch/fs/ext4/mballoc.c
+@@ -1055,7 +1055,8 @@ static void ext4_mb_release_desc(struct 
+ 	if (e4b->bd_buddy_page)
+ 		page_cache_release(e4b->bd_buddy_page);
+ 	/* Done with the buddy cache */
+-	up_read(e4b->alloc_semp);
++	if (e4b->alloc_semp)
++		up_read(e4b->alloc_semp);
+ }
+ 
+ 
+@@ -1375,6 +1376,9 @@ static void ext4_mb_use_best_found(struc
+ 	get_page(ac->ac_bitmap_page);
+ 	ac->ac_buddy_page = e4b->bd_buddy_page;
+ 	get_page(ac->ac_buddy_page);
++	/* on allocation we use ac to track the held semaphore */
++	ac->alloc_semp =  e4b->alloc_semp;
++	e4b->alloc_semp = NULL;
+ 	/* store last allocated for subsequent stream allocation */
+ 	if ((ac->ac_flags & EXT4_MB_HINT_DATA)) {
+ 		spin_lock(&sbi->s_md_lock);
