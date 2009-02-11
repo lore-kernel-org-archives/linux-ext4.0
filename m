@@ -1,80 +1,105 @@
-From: Valerie Aurora Henson <vaurora@redhat.com>
-Subject: Re: with -b N and block count, should mkfs.ext4 fail with dev-too-big?
-Date: Wed, 11 Feb 2009 16:17:09 -0500
-Message-ID: <20090211211709.GB9501@shell>
-References: <87ab8ti1cw.fsf@meyering.net> <20090211140905.GG29220@mini-me.lan> <20090211192617.GA9501@shell> <499327D2.8010502@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Jim Meyering <jim@meyering.net>,
-	ext <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+From: akpm@linux-foundation.org
+Subject: [patch 3/3] ext4: tighten restrictions on inode flags
+Date: Wed, 11 Feb 2009 13:28:28 -0800
+Message-ID: <200902112128.n1BLSTIc000814@imap1.linux-foundation.org>
+Cc: linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
+	duaneg@dghda.com, adilger@sun.com
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:60509 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756773AbZBKVRN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 11 Feb 2009 16:17:13 -0500
-Content-Disposition: inline
-In-Reply-To: <499327D2.8010502@redhat.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59306 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1759043AbZBKV3q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 11 Feb 2009 16:29:46 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 11, 2009 at 01:32:34PM -0600, Eric Sandeen wrote:
-> Valerie Aurora Henson wrote:
-> > On Wed, Feb 11, 2009 at 09:09:05AM -0500, Theodore Tso wrote:
-> >> On Wed, Feb 11, 2009 at 01:50:39PM +0100, Jim Meyering wrote:
-> >>> FWIW, I was trying to create an ext4 file system with more than 2^32
-> >>> blocks to demonstrate a parted bug fix, but with the particular device
-> >>> I was using, I couldn't even create one with 2^31-1 blocks.
-> >>>
-> >>> When I try to create an ext4 file system specifying both block size and
-> >>> the number of blocks, the size of the underlying device should not matter,
-> >>> as long as it is large enough.
-> >> Oops, my fault.  I fixed the case where the device was exactly 16TB
-> >> (as in created via lvcreate --size 16TB, but the fix was very minimal,
-> >> since it was just before a maintenance release.  I didn't consider (or
-> >> test) the case where the device was larger than or equal to 2*32
-> >> blocks (given a specified blocksize, or 4k if no blocksize was
-> >> specified), and an explicit block size less than 2*32 was specified.
-> >>
-> >> I'll put it on my todo list to fix for e2fsprogs 1.41.5.
-> > 
-> > Note that this is fixed in effect by the 64bit patches, since we use
-> > the 64bit get device size function.
-> > 
-> > git://git.kernel.org/pub/scm/fs/ext2/val/e2fsprogs.git
-> > 
-> > Branch "shared-64bit".
-> > 
-> > -VAL
-> 
-> That won't fix it for ext3 though will it?  (not that I've looked in
-> detail) but the issue is not whether we can properly get the device
-> size; it's that the device size, rather than the filesystem size, is
-> checked for overflow vs. the filesystem's limits...
+From: "Duane Griffin" <duaneg@dghda.com>
 
-Without actually going to the effort of trying to understand that code
-again :), what I remember is that it's the order of the checks that
-mattered.  When we used the 32-bit device size function, that would
-fail before we got around to checking the user-specified number of
-blocks to be in range.  Now the 64-bit call works and we can go on to
-the range check for the user-specified number of blocks.
+At the moment there are few restrictions on which flags may be set on
+which inodes.  Specifically DIRSYNC may only be set on directories and
+IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
+TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
+on non-regular file, non-directories.
 
-At any rate, it works for 2^31-1 4096 byte blocks:
+Introduces a flags masking function which masks flags based on mode and
+use it during inode creation and when flags are set via the ioctl to
+facilitate future consistency.
 
-[val@clunky e2fsprogs]$ ls -lh /terabyte/20TB -rw-rw-r-- 1 val val 19T 2009-02-11 13:11 /terabyte/20TB
-[val@clunky e2fsprogs]$ ~/src/build/misc/mke2fs -b 4096 -t ext3 /terabyte/20TB `echo '2*1024^3-1'|bc`
-mke2fs 1.41.4 (27-Jan-2009)
-/terabyte/20TB is not a block special device.
-Proceed anyway? (y,n) y
-Filesystem label=
-OS type: Linux
-Block size=4096 (log=2)
-Fragment size=4096 (log=2)
-536870912 inodes, 2147483647 blocks
-[etc]
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-It doesn't work for 1024 byte blocks - fails on number of inodes no
-matter how few inodes I specify.  This might be a bug but I don't have
-time to check it out right now.
+ fs/ext4/ext4.h   |   17 +++++++++++++++++
+ fs/ext4/ialloc.c |   14 +++++---------
+ fs/ext4/ioctl.c  |    3 +--
+ 3 files changed, 23 insertions(+), 11 deletions(-)
 
--VAL
+diff -puN fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags fs/ext4/ext4.h
+--- a/fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags
++++ a/fs/ext4/ext4.h
+@@ -247,6 +247,23 @@ struct flex_groups {
+ 			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL|\
+ 			   EXT4_DIRSYNC_FL)
+ 
++/* Flags that are appropriate for regular files (all but dir-specific ones). */
++#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
++
++/* Flags that are appropriate for non-directories/regular files. */
++#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
++
++/* Mask out flags that are inappropriate for the given type of inode. */
++static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
++{
++	if (S_ISDIR(mode))
++		return flags;
++	else if (S_ISREG(mode))
++		return flags & EXT4_REG_FLMASK;
++	else
++		return flags & EXT4_OTHER_FLMASK;
++}
++
+ /*
+  * Inode dynamic state flags
+  */
+diff -puN fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags
++++ a/fs/ext4/ialloc.c
+@@ -874,16 +874,12 @@ got:
+ 	ei->i_disksize = 0;
+ 
+ 	/*
+-	 * Don't inherit extent flag from directory. We set extent flag on
+-	 * newly created directory and file only if -o extent mount option is
+-	 * specified
++	 * Don't inherit extent flag from directory, amongst others. We set
++	 * extent flag on newly created directory and file only if -o extent
++	 * mount option is specified
+ 	 */
+-	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
+-	if (S_ISLNK(mode))
+-		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+-	/* dirsync only applies to directories */
+-	if (!S_ISDIR(mode))
+-		ei->i_flags &= ~EXT4_DIRSYNC_FL;
++	ei->i_flags =
++		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
+ 	ei->i_file_acl = 0;
+ 	ei->i_dtime = 0;
+ 	ei->i_block_group = group;
+diff -puN fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ioctl.c
+--- a/fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags
++++ a/fs/ext4/ioctl.c
+@@ -48,8 +48,7 @@ long ext4_ioctl(struct file *filp, unsig
+ 		if (err)
+ 			return err;
+ 
+-		if (!S_ISDIR(inode->i_mode))
+-			flags &= ~EXT4_DIRSYNC_FL;
++		flags = ext4_mask_flags(inode->i_mode, flags);
+ 
+ 		err = -EPERM;
+ 		mutex_lock(&inode->i_mutex);
+_
