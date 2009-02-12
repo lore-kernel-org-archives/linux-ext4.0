@@ -1,39 +1,42 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12579] ext4 filesystem hang
-Date: Thu, 12 Feb 2009 08:44:36 -0800 (PST)
-Message-ID: <20090212164436.A3579108042@picon.linux-foundation.org>
-References: <bug-12579-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Bug 12579] ext4 filesystem hang
+Date: Thu, 12 Feb 2009 12:49:08 -0500
+Message-ID: <20090212174908.GA6922@mini-me.lan>
+References: <bug-12579-13602@http.bugzilla.kernel.org/> <20090212152406.C59BC108041@picon.linux-foundation.org> <20090212163610.GA10351@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: bugme-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:44305 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756980AbZBLQpa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Feb 2009 11:45:30 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1CGia5g011144
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Feb 2009 08:44:37 -0800
-In-Reply-To: <bug-12579-13602@http.bugzilla.kernel.org/>
+Received: from THUNK.ORG ([69.25.196.29]:53764 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756821AbZBLSsu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Feb 2009 13:48:50 -0500
+Content-Disposition: inline
+In-Reply-To: <20090212163610.GA10351@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12579
 
+>> Finally had some time, and I've tracked this down to the
+>> page-writeback.c changes since .28 - backing them all out the
+>> testcase runs overnight.  Still working out which one and why.  I
+>> suppose it's still possible it's an ext4 bug but if so the
+>> page-writeback.c changes exposed it.
+>> 
+>> It's a classic deadlock; I usually have 2 threads stuck, pdflush
+>> vs. the livecd creator doing an fsync.  Each is waiting for a page
+>> the other has locked.
+>
+> Two commits which are already in the mainline which fixed some changes
+> after .28 are
+> 
+> 89e1219004b3657cc014521663eeef0744f1c99d
+> dcf6a79dda5cc2a2bec183e50d829030c0972aaa
+> 
 
-sandeen@redhat.com changed:
+I read Eric's email as saying he tracked it down to the
+page-writeback.c changes *after* 2.6.28.  Eric, is that what you
+meant?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-      KernelVersion|2.6.29-rc2-git1             |2.6.29-rc4
-
-
-
-
-------- Comment #3 from sandeen@redhat.com  2009-02-12 08:44 -------
-Aneesh, thanks.  I tried both of those last night, and the problem persists.
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+	    	      	       	    	     - Ted
