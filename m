@@ -1,35 +1,31 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Initialize list properly
-Date: Thu, 12 Feb 2009 17:00:37 -0500
-Message-ID: <20090212220037.GG6922@mini-me.lan>
-References: <a4423d670902100906q36e7f36fo53ba2060f5644303@mail.gmail.com> <1234422331-32766-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
+Date: Thu, 12 Feb 2009 16:19:35 -0500
+Message-ID: <20090212211935.GE6922@mini-me.lan>
+References: <E1LT8MN-0003Ps-Ur@closure.thunk.org> <20090211075914.GC20842@skywalker> <20090211153328.37ef255f@dhcp-100-2-144.bos.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	linux-next@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <linux-next-owner@vger.kernel.org>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Chuck Ebbert <cebbert@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:41677 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753407AbZBLXmk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Feb 2009 18:42:40 -0500
 Content-Disposition: inline
-In-Reply-To: <1234422331-32766-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Sender: linux-next-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20090211153328.37ef255f@dhcp-100-2-144.bos.redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 12, 2009 at 12:35:31PM +0530, Aneesh Kumar K.V wrote:
-> We need to initialize the list_head properly before we add
-> them to the any list. Otherwise with list debug on we get
-> list corruption warnings.
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Chuck, Anesh,
 
-Added to the ext4 patch queue with a slight adjustment in the patch
-commit for readability issues:
+Thanks for testing out the for-stable-2.6.27 branch!  
 
-   When creating a new ext4_prealloc_space structure, we have to
-   initialize its list_head pointers before we add them to any prealloc
-   lists.  Otherwise, with list debug enabled, we will get list
-   corruption warnings.
-
-   Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-   Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+I've updated the for-stable and for-stable-2.6.27 branches against the
+latest stable releases, and I've updated the two flawed backports in
+the for-stable-2.6.27 branch.  Could you do a quick double-check and
+make sure the fixes are as you expect, before I send a pull request to
+stable@kernel.org?
 
 						- Ted
