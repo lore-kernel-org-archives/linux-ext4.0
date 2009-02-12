@@ -1,52 +1,35 @@
-From: Christian Ohm <chr.ohm@gmx.net>
-Subject: Re: How to recover a damaged ext4 file system?
-Date: Thu, 12 Feb 2009 22:36:24 +0100
-Message-ID: <20090212213624.GA17744@moongate.localnet>
-References: <20090105135347.GA3337@localdomain> <20090106120527.GT3932@webber.adilger.int> <20090106193404.GA18957@mit.edu> <20090207162725.GA27086@moongate.localnet> <498DDB26.3080102@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Initialize list properly
+Date: Thu, 12 Feb 2009 17:00:37 -0500
+Message-ID: <20090212220037.GG6922@mini-me.lan>
+References: <a4423d670902100906q36e7f36fo53ba2060f5644303@mail.gmail.com> <1234422331-32766-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:50475 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1750896AbZBLVjJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Feb 2009 16:39:09 -0500
+Cc: linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	linux-next@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-next-owner@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <498DDB26.3080102@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <1234422331-32766-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Sender: linux-next-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Saturday,  7 February 2009 at 13:04, Eric Sandeen wrote:
-> that's counting "cylinders" - try "fdisk -u" to be able to display (or
-> specify) geometry in sectors, which is not a unit open to interpretation...
+On Thu, Feb 12, 2009 at 12:35:31PM +0530, Aneesh Kumar K.V wrote:
+> We need to initialize the list_head properly before we add
+> them to the any list. Otherwise with list debug on we get
+> list corruption warnings.
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Corrupted disk:
+Added to the ext4 patch queue with a slight adjustment in the patch
+commit for readability issues:
 
-Disk /dev/sdc: 1000.2 GB, 1000204886016 bytes
-255 heads, 63 sectors/track, 121601 cylinders, total 1953525168 sectors
-Units = sectors of 1 * 512 = 512 bytes
-Disk identifier: 0xaaaaaaaa
+   When creating a new ext4_prealloc_space structure, we have to
+   initialize its list_head pointers before we add them to any prealloc
+   lists.  Otherwise, with list debug enabled, we will get list
+   corruption warnings.
 
-   Device Boot      Start         End      Blocks   Id  System
-   /dev/sdc1               1  1953520064   976760032   83  Linux
+   Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+   Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-New partition:
-
-Disk /dev/sdc: 1000.2 GB, 1000204886016 bytes
-255 heads, 63 sectors/track, 121601 cylinders, total 1953525168 sectors
-Units = sectors of 1 * 512 = 512 bytes
-Disk identifier: 0xaaaaaaaa
-
-   Device Boot      Start         End      Blocks   Id  System
-   /dev/sdc1              63  1953520064   976760001   83  Linux
-
-
-Both disks show the exact same size in sectors (in the kernel messages as
-well), so the new partition on the new drive should be exactly the same as the
-one on the old drive. For some reason the new partition starts at sector 63,
-while the old one starts at sector 1 - but that could be a difference in
-creating the partitions (unless sector 1 is an invalid starting sector?).
-
-Best regards,
-Christian Ohm
-
+						- Ted
