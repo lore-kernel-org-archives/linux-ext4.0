@@ -1,79 +1,41 @@
-From: akpm@linux-foundation.org
-Subject: [merged] revert-ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch removed from -mm tree
-Date: Thu, 12 Feb 2009 12:25:20 -0800
-Message-ID: <200902122025.n1CKPKa5014453@imap1.linux-foundation.org>
-To: jack@suse.cz, linux-ext4@vger.kernel.org, sandeen@redhat.com,
-	mm-commits@vger.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12697] ext4_journal_start() spews errors on readonly filesystem
+Date: Thu, 12 Feb 2009 12:53:19 -0800 (PST)
+Message-ID: <20090212205320.0E36110800D@picon.linux-foundation.org>
+References: <bug-12697-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:55290 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:46349 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753178AbZBLUfk (ORCPT
+	by vger.kernel.org with ESMTP id S1758752AbZBLUxi (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Feb 2009 15:35:40 -0500
+	Thu, 12 Feb 2009 15:53:38 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1CKrKYa029826
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Feb 2009 12:53:21 -0800
+In-Reply-To: <bug-12697-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12697
 
-The patch titled
-     ext3: revert "ext3: wait on all pending commits in ext3_sync_fs"
-has been removed from the -mm tree.  Its filename was
-     revert-ext3-wait-on-all-pending-commits-in-ext3_sync_fs.patch
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+tytso@mit.edu changed:
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |CLOSED
+         Resolution|                            |PATCH_ALREADY_AVAILABLE
 
-------------------------------------------------------
-Subject: ext3: revert "ext3: wait on all pending commits in ext3_sync_fs"
-From: Jan Kara <jack@suse.cz>
 
-This reverts commit c87591b719737b4e91eb1a9fa8fd55a4ff1886d6.
 
-Since journal_start_commit() is now fixed to return 1 when we started a
-transaction commit, there's some transaction waiting to be committed or
-there's a transaction already committing, we don't need to call
-ext3_force_commit() in ext3_sync_fs().  Furthermore ext3_force_commit()
-can unnecessarily create sync transaction which is expensive so it's
-worthwhile to remove it when we can.
 
-Cc: Eric Sandeen <sandeen@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+------- Comment #2 from tytso@mit.edu  2009-02-12 12:53 -------
+Yes, it's fixed already in 2.6.29-rcX, and it's in the queue of patches that
+I'm preparing for 2.6.27 and 2.6.28.
 
- fs/ext3/super.c |   11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
 
-diff -puN fs/ext3/super.c~revert-ext3-wait-on-all-pending-commits-in-ext3_sync_fs fs/ext3/super.c
---- a/fs/ext3/super.c~revert-ext3-wait-on-all-pending-commits-in-ext3_sync_fs
-+++ a/fs/ext3/super.c
-@@ -2428,12 +2428,13 @@ static void ext3_write_super (struct sup
- 
- static int ext3_sync_fs(struct super_block *sb, int wait)
- {
--	sb->s_dirt = 0;
--	if (wait)
--		ext3_force_commit(sb);
--	else
--		journal_start_commit(EXT3_SB(sb)->s_journal, NULL);
-+	tid_t target;
- 
-+	sb->s_dirt = 0;
-+	if (journal_start_commit(EXT3_SB(sb)->s_journal, &target)) {
-+		if (wait)
-+			log_wait_commit(EXT3_SB(sb)->s_journal, target);
-+	}
- 	return 0;
- }
- 
-_
-
-Patches currently in -mm which might be from jack@suse.cz are
-
-origin.patch
-linux-next.patch
-ext2-add-blk_issue_flush-to-syncing-paths.patch
-jbd-fix-oops-in-jbd_journal_init_inode-on-corrupted-fs.patch
-fs-adfs-return-f_fsid-for-statfs2.patch
-
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
