@@ -1,47 +1,39 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] : Remove incompatible pointer assignment warning in
-	ext4 quota operations
-Date: Thu, 12 Feb 2009 06:47:36 -0500
-Message-ID: <20090212114736.GA13040@mini-me.lan>
-References: <ea11fea30901272117j760a34e8w5df0ec1916632f3f@mail.gmail.com> <ea11fea30901272121x319aa2b3m2a5a5799b6df4d8a@mail.gmail.com> <20090202161005.GG19165@atrey.karlin.mff.cuni.cz> <ea11fea30902120054g5192f269y5cdf34795d9f8e1e@mail.gmail.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [Bug 12579] ext4 filesystem hang
+Date: Thu, 12 Feb 2009 22:06:10 +0530
+Message-ID: <20090212163610.GA10351@skywalker>
+References: <bug-12579-13602@http.bugzilla.kernel.org/> <20090212152406.C59BC108041@picon.linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, ext4 <linux-ext4@vger.kernel.org>
-To: Manish Katiyar <mkatiyar@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: bugme-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:34791 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758383AbZBLQDp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Feb 2009 11:03:45 -0500
+Received: from e23smtp05.au.ibm.com ([202.81.31.147]:42304 "EHLO
+	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756079AbZBLQgY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Feb 2009 11:36:24 -0500
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1CGYm37022396
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 03:34:48 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n1CGaMa61171594
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 03:36:22 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1CGaMBU007987
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 03:36:22 +1100
 Content-Disposition: inline
-In-Reply-To: <ea11fea30902120054g5192f269y5cdf34795d9f8e1e@mail.gmail.com>
+In-Reply-To: <20090212152406.C59BC108041@picon.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 12, 2009 at 02:24:17PM +0530, Manish Katiyar wrote:
-> On Mon, Feb 2, 2009 at 9:40 PM, Jan Kara <jack@suse.cz> wrote:
-> >> On Wed, Jan 28, 2009 at 10:47 AM, Manish Katiyar <mkatiyar@gmail.com> wrote:
-> >> > Below patch removes the following warning during compilation :
-> >> >
-> >> >  CC [M]  fs/ext4/super.o
-> >> > fs/ext4/super.c:949: warning: initialization from incompatible pointer type
-> >> >  LD [M]  fs/ext4/ext4.o
-> >>
-> >> Sorry,
-> >>
-> >> Tha correct patch is here.
-> >>
-> >> Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
-> >  Looks fine to me.
-> > Acked-by: Jan Kara <jack@suse.cz>
-> 
-> Hi Jan,
-> 
-> A simple doubt. Patches acked by you will be automatically picked up
-> or will I have to resend it with your ack added ??
+Two commits which are already in the mainline which fixed some changes
+after .28 are
 
-Actually, in this case Jan should pick up the patch and merge it with
-Mingming's ext4 quota patch which is being carried in his tree.  The
-current ext4 code doesn't have ext4_get_reserved_space() at all.
+89e1219004b3657cc014521663eeef0744f1c99d
+dcf6a79dda5cc2a2bec183e50d829030c0972aaa
 
-							- Ted
+
+Both changes have implication wrt ext4. I would suggest try with the
+above two commits and see if the problem still exist.
+
+-aneesh
