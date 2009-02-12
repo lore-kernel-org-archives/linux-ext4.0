@@ -1,31 +1,29 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [Bug 12579] ext4 filesystem hang
-Date: Thu, 12 Feb 2009 22:06:10 +0530
-Message-ID: <20090212163610.GA10351@skywalker>
-References: <bug-12579-13602@http.bugzilla.kernel.org/> <20090212152406.C59BC108041@picon.linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: bugme-daemon@bugzilla.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12579] ext4 filesystem hang
+Date: Thu, 12 Feb 2009 08:37:04 -0800 (PST)
+Message-ID: <20090212163704.3CADE108047@picon.linux-foundation.org>
+References: <bug-12579-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp05.au.ibm.com ([202.81.31.147]:42304 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756079AbZBLQgY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Feb 2009 11:36:24 -0500
-Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp05.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1CGYm37022396
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 03:34:48 +1100
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n1CGaMa61171594
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 03:36:22 +1100
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1CGaMBU007987
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 03:36:22 +1100
-Content-Disposition: inline
-In-Reply-To: <20090212152406.C59BC108041@picon.linux-foundation.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:40959 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757623AbZBLQhq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Feb 2009 11:37:46 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1CGbDKZ010259
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Feb 2009 08:37:14 -0800
+In-Reply-To: <bug-12579-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12579
+
+
+
+
+
+------- Comment #2 from aneesh.kumar@linux.vnet.ibm.com  2009-02-12 08:37 -------
 Two commits which are already in the mainline which fixed some changes
 after .28 are
 
@@ -37,3 +35,9 @@ Both changes have implication wrt ext4. I would suggest try with the
 above two commits and see if the problem still exist.
 
 -aneesh
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
