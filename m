@@ -1,50 +1,67 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH] ext4: Initialize list properly
-Date: Thu, 12 Feb 2009 12:35:31 +0530
-Message-ID: <1234422331-32766-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <a4423d670902100906q36e7f36fo53ba2060f5644303@mail.gmail.com>
-Cc: linux-ext4@vger.kernel.org, linux-next@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: linux-kernel@vger.kernel.org, tytso@mit.edu
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Subject: [PATCH] ext4: Use unsigned instead of int for type of blocksize in
+ fs/ext4/namei.c
+Date: Thu, 12 Feb 2009 15:11:29 +0800
+Message-ID: <4993CBA1.5080204@cn.fujitsu.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp05.au.ibm.com ([202.81.31.147]:48715 "EHLO
-	e23smtp05.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751154AbZBLHFh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Feb 2009 02:05:37 -0500
-In-Reply-To: <a4423d670902100906q36e7f36fo53ba2060f5644303@mail.gmail.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:57276 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1751286AbZBLHLu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Feb 2009 02:11:50 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We need to initialize the list_head properly before we add
-them to the any list. Otherwise with list debug on we get
-list corruption warnings.
+Use unsigned instead of int for paramter which means blocksize.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
+Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
 ---
- fs/ext4/mballoc.c |    3 +++
- 1 files changed, 3 insertions(+), 0 deletions(-)
+ fs/ext4/namei.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index deba54f..0e9155a 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3693,6 +3693,8 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
- 	pa->pa_free = pa->pa_len;
- 	atomic_set(&pa->pa_count, 1);
- 	spin_lock_init(&pa->pa_lock);
-+	INIT_LIST_HEAD(&pa->pa_inode_list);
-+	INIT_LIST_HEAD(&pa->pa_group_list);
- 	pa->pa_deleted = 0;
- 	pa->pa_linear = 0;
- 
-@@ -3755,6 +3757,7 @@ ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
- 	atomic_set(&pa->pa_count, 1);
- 	spin_lock_init(&pa->pa_lock);
- 	INIT_LIST_HEAD(&pa->pa_inode_list);
-+	INIT_LIST_HEAD(&pa->pa_group_list);
- 	pa->pa_deleted = 0;
- 	pa->pa_linear = 1;
- 
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index ba702bd..371e851 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -161,12 +161,12 @@ static struct dx_frame *dx_probe(const struct qstr *d_name,
+ 				 struct dx_frame *frame,
+ 				 int *err);
+ static void dx_release(struct dx_frame *frames);
+-static int dx_make_map(struct ext4_dir_entry_2 *de, int size,
++static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned size,
+ 		       struct dx_hash_info *hinfo, struct dx_map_entry map[]);
+ static void dx_sort_map(struct dx_map_entry *map, unsigned count);
+ static struct ext4_dir_entry_2 *dx_move_dirents(char *from, char *to,
+ 		struct dx_map_entry *offsets, int count);
+-static struct ext4_dir_entry_2* dx_pack_dirents(char *base, int size);
++static struct ext4_dir_entry_2* dx_pack_dirents(char *base, unsigned size);
+ static void dx_insert_block(struct dx_frame *frame,
+ 					u32 hash, ext4_lblk_t block);
+ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
+@@ -713,7 +713,7 @@ errout:
+  * Create map of hash values, offsets, and sizes, stored at end of block.
+  * Returns number of entries mapped.
+  */
+-static int dx_make_map (struct ext4_dir_entry_2 *de, int size,
++static int dx_make_map (struct ext4_dir_entry_2 *de, unsigned size,
+ 			struct dx_hash_info *hinfo, struct dx_map_entry *map_tail)
+ {
+ 	int count = 0;
+@@ -1130,7 +1130,7 @@ dx_move_dirents(char *from, char *to, struct dx_map_entry *map, int count)
+  * Compact each dir entry in the range to the minimal rec_len.
+  * Returns pointer to last entry in range.
+  */
+-static struct ext4_dir_entry_2* dx_pack_dirents(char *base, int size)
++static struct ext4_dir_entry_2* dx_pack_dirents(char *base, unsigned size)
+ {
+ 	struct ext4_dir_entry_2 *next, *to, *prev, *de = (struct ext4_dir_entry_2 *) base;
+ 	unsigned rec_len = 0;
 -- 
-tg: (b578f3f..) fix_list_corruption (depends on: master)
+1.5.3.8
+
+
+
+
