@@ -1,33 +1,52 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12697] ext4_journal_start() spews errors on readonly filesystem
-Date: Thu, 12 Feb 2009 12:57:31 -0800 (PST)
-Message-ID: <20090212205731.895CE10800D@picon.linux-foundation.org>
-References: <bug-12697-13602@http.bugzilla.kernel.org/>
+From: Christian Ohm <chr.ohm@gmx.net>
+Subject: Re: How to recover a damaged ext4 file system?
+Date: Thu, 12 Feb 2009 22:36:24 +0100
+Message-ID: <20090212213624.GA17744@moongate.localnet>
+References: <20090105135347.GA3337@localdomain> <20090106120527.GT3932@webber.adilger.int> <20090106193404.GA18957@mit.edu> <20090207162725.GA27086@moongate.localnet> <498DDB26.3080102@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:56549 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752896AbZBLU5v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Feb 2009 15:57:51 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1CKvW7O030140
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Feb 2009 12:57:33 -0800
-In-Reply-To: <bug-12697-13602@http.bugzilla.kernel.org/>
+Received: from mail.gmx.net ([213.165.64.20]:50475 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1750896AbZBLVjJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Feb 2009 16:39:09 -0500
+Content-Disposition: inline
+In-Reply-To: <498DDB26.3080102@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12697
+On Saturday,  7 February 2009 at 13:04, Eric Sandeen wrote:
+> that's counting "cylinders" - try "fdisk -u" to be able to display (or
+> specify) geometry in sectors, which is not a unit open to interpretation...
+
+Corrupted disk:
+
+Disk /dev/sdc: 1000.2 GB, 1000204886016 bytes
+255 heads, 63 sectors/track, 121601 cylinders, total 1953525168 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Disk identifier: 0xaaaaaaaa
+
+   Device Boot      Start         End      Blocks   Id  System
+   /dev/sdc1               1  1953520064   976760032   83  Linux
+
+New partition:
+
+Disk /dev/sdc: 1000.2 GB, 1000204886016 bytes
+255 heads, 63 sectors/track, 121601 cylinders, total 1953525168 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Disk identifier: 0xaaaaaaaa
+
+   Device Boot      Start         End      Blocks   Id  System
+   /dev/sdc1              63  1953520064   976760001   83  Linux
 
 
+Both disks show the exact same size in sectors (in the kernel messages as
+well), so the new partition on the new drive should be exactly the same as the
+one on the old drive. For some reason the new partition starts at sector 63,
+while the old one starts at sector 1 - but that could be a difference in
+creating the partitions (unless sector 1 is an invalid starting sector?).
 
+Best regards,
+Christian Ohm
 
-
-------- Comment #3 from sandeen@redhat.com  2009-02-12 12:57 -------
-Thanks Ted, thought so but couldn't remember for sure :)
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
