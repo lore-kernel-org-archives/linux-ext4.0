@@ -1,69 +1,54 @@
-From: Andreas Dilger <adilger@sun.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Subject: Re: Options for migrating existing files on ext2 partitions to ext4
-Date: Thu, 12 Feb 2009 02:23:34 -0500
-Message-ID: <20090212072334.GB3199@webber.adilger.int>
-References: <d5ca277e0902111218l1b568724l2557315d2945637a@mail.gmail.com>
+Date: Thu, 12 Feb 2009 13:27:34 +0530
+Message-ID: <20090212075734.GA21074@skywalker>
+References: <d5ca277e0902111218l1b568724l2557315d2945637a@mail.gmail.com> <20090212072334.GB3199@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, ext4-team <ext4-team@google.com>
-To: Xiang Wang <xiangw@google.com>
+Cc: Xiang Wang <xiangw@google.com>, linux-ext4@vger.kernel.org,
+	ext4-team <ext4-team@google.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:62989 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754587AbZBLHXs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Feb 2009 02:23:48 -0500
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n1C7NkQe013367
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Feb 2009 23:23:46 -0800 (PST)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
- id <0KEX00B00Z2LDG00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 11 Feb 2009 23:23:46 -0800 (PST)
-In-reply-to: <d5ca277e0902111218l1b568724l2557315d2945637a@mail.gmail.com>
+Received: from e23smtp06.au.ibm.com ([202.81.31.148]:32857 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752359AbZBLH5u (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Feb 2009 02:57:50 -0500
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1C7viQ1021712
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Feb 2009 18:57:44 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n1C7w4Y61155230
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Feb 2009 18:58:04 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1C7vkU7011995
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Feb 2009 18:57:47 +1100
+Content-Disposition: inline
+In-Reply-To: <20090212072334.GB3199@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Feb 11, 2009  12:18 -0800, Xiang Wang wrote:
-> Since we are thinking of switching into using the ext4 file systems on
-> some of our machines with purely ext2 partitions, we face the problem
-> of how to migrate all those existing files on ext2 partitions. Seems
-> like there are two major directions to go:
+On Thu, Feb 12, 2009 at 02:23:34AM -0500, Andreas Dilger wrote:
+> On Feb 11, 2009  12:18 -0800, Xiang Wang wrote:
 > 
-> 1) do a backup, umount, mke2fs into ext4, and restore
-> In this approach, we may actually take advantage of the layout changes
-> so as to benefit from some features of ext4.
+> > Motivated by the ext4 ioctl interface for migration, we are also
+> > looking into this in-place approach. But we are mostly concerned with
+> > the fact that if the existing files are highly fragmented, will we
+> > still get benefit from the extents? Or will we even get hurt by
+> > turning the files into being extents-based?
 > 
-> 2) umount, tune2fs to add the 'extent' feature, mount back using type
-> ext4,
+> The mballoc allocator is pretty good in conjunction with delalloc, so
+> I expect you would get mostly defragmented files as you migrate.  This
+> would depend on having some decent amount of free space in the filesystem
+> so that it is likely that there is enough contiguous free space for some
+> number of the >= average size files.
+> 
 
-Note that you can really stop at this point - new files will be created
-with extents, old ones will be left alone.
+We don't touch the data block during migrate. So we are not actually
+doing block allocation. So if the file is fragmented it would remain so
+after migrate also. But if it is not we would end up having lesser
+number of meta-data information with extent format.
 
-> migrate the existing files(directories) one by one through the
-> ioctl EXT4_IOC_MIGRATE
+The plan was to hook the migrate interface with defrag so that after
+migrate we run a defrag on that that would move data blocks around.
 
-Note that you don't really need to do this.  If the filesystem is
-offline to users you can just do "cp file file.tmp; mv file.tmp file"
-and it will do the same thing, with exception of getting a new inode
-number and requiring that files are not being modified at the time.
-
-> Motivated by the ext4 ioctl interface for migration, we are also
-> looking into this in-place approach. But we are mostly concerned with
-> the fact that if the existing files are highly fragmented, will we
-> still get benefit from the extents? Or will we even get hurt by
-> turning the files into being extents-based?
-
-The mballoc allocator is pretty good in conjunction with delalloc, so
-I expect you would get mostly defragmented files as you migrate.  This
-would depend on having some decent amount of free space in the filesystem
-so that it is likely that there is enough contiguous free space for some
-number of the >= average size files.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+-aneesh
