@@ -1,68 +1,69 @@
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-Subject: [PATCH] ext3: Use unsigned instead of int for type of blocksize in
- fs/ext3/namei.c
-Date: Thu, 12 Feb 2009 15:15:40 +0800
-Message-ID: <4993CC9C.9040308@cn.fujitsu.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Options for migrating existing files on ext2 partitions to ext4
+Date: Thu, 12 Feb 2009 02:23:34 -0500
+Message-ID: <20090212072334.GB3199@webber.adilger.int>
+References: <d5ca277e0902111218l1b568724l2557315d2945637a@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>
-To: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, ext4-team <ext4-team@google.com>
+To: Xiang Wang <xiangw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:55584 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1751532AbZBLHPz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Feb 2009 02:15:55 -0500
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:62989 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754587AbZBLHXs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Feb 2009 02:23:48 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n1C7NkQe013367
+	for <linux-ext4@vger.kernel.org>; Wed, 11 Feb 2009 23:23:46 -0800 (PST)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
+ id <0KEX00B00Z2LDG00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 11 Feb 2009 23:23:46 -0800 (PST)
+In-reply-to: <d5ca277e0902111218l1b568724l2557315d2945637a@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Use unsigned instead of int for paramter which means blocksize.
+On Feb 11, 2009  12:18 -0800, Xiang Wang wrote:
+> Since we are thinking of switching into using the ext4 file systems on
+> some of our machines with purely ext2 partitions, we face the problem
+> of how to migrate all those existing files on ext2 partitions. Seems
+> like there are two major directions to go:
+> 
+> 1) do a backup, umount, mke2fs into ext4, and restore
+> In this approach, we may actually take advantage of the layout changes
+> so as to benefit from some features of ext4.
+> 
+> 2) umount, tune2fs to add the 'extent' feature, mount back using type
+> ext4,
 
-Signed-off-by: Wei Yongjun <yjwei@cn.fujitsu.com>
----
- fs/ext3/namei.c |   8 +++++-----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+Note that you can really stop at this point - new files will be created
+with extents, old ones will be left alone.
 
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index 4db4ffa..40d0844 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -161,12 +161,12 @@ static struct dx_frame *dx_probe(struct qstr *entry,
- 				 struct dx_frame *frame,
- 				 int *err);
- static void dx_release (struct dx_frame *frames);
--static int dx_make_map (struct ext3_dir_entry_2 *de, int size,
-+static int dx_make_map (struct ext3_dir_entry_2 *de, unsigned size,
- 			struct dx_hash_info *hinfo, struct dx_map_entry map[]);
- static void dx_sort_map(struct dx_map_entry *map, unsigned count);
- static struct ext3_dir_entry_2 *dx_move_dirents (char *from, char *to,
- 		struct dx_map_entry *offsets, int count);
--static struct ext3_dir_entry_2* dx_pack_dirents (char *base, int size);
-+static struct ext3_dir_entry_2* dx_pack_dirents (char *base, unsigned size);
- static void dx_insert_block (struct dx_frame *frame, u32 hash, u32 block);
- static int ext3_htree_next_block(struct inode *dir, __u32 hash,
- 				 struct dx_frame *frame,
-@@ -708,7 +708,7 @@ errout:
-  * Create map of hash values, offsets, and sizes, stored at end of block.
-  * Returns number of entries mapped.
-  */
--static int dx_make_map (struct ext3_dir_entry_2 *de, int size,
-+static int dx_make_map (struct ext3_dir_entry_2 *de, unsigned size,
- 			struct dx_hash_info *hinfo, struct dx_map_entry *map_tail)
- {
- 	int count = 0;
-@@ -1120,7 +1120,7 @@ dx_move_dirents(char *from, char *to, struct dx_map_entry *map, int count)
-  * Compact each dir entry in the range to the minimal rec_len.
-  * Returns pointer to last entry in range.
-  */
--static struct ext3_dir_entry_2* dx_pack_dirents(char *base, int size)
-+static struct ext3_dir_entry_2* dx_pack_dirents(char *base, unsigned size)
- {
- 	struct ext3_dir_entry_2 *next, *to, *prev, *de = (struct ext3_dir_entry_2 *) base;
- 	unsigned rec_len = 0;
--- 
-1.5.3.8
+> migrate the existing files(directories) one by one through the
+> ioctl EXT4_IOC_MIGRATE
 
+Note that you don't really need to do this.  If the filesystem is
+offline to users you can just do "cp file file.tmp; mv file.tmp file"
+and it will do the same thing, with exception of getting a new inode
+number and requiring that files are not being modified at the time.
 
+> Motivated by the ext4 ioctl interface for migration, we are also
+> looking into this in-place approach. But we are mostly concerned with
+> the fact that if the existing files are highly fragmented, will we
+> still get benefit from the extents? Or will we even get hurt by
+> turning the files into being extents-based?
 
+The mballoc allocator is pretty good in conjunction with delalloc, so
+I expect you would get mostly defragmented files as you migrate.  This
+would depend on having some decent amount of free space in the filesystem
+so that it is likely that there is enough contiguous free space for some
+number of the >= average size files.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
