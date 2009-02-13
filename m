@@ -1,30 +1,41 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: issue of ext3_file_write function & remote shares
-Date: Fri, 13 Feb 2009 09:03:07 -0500
-Message-ID: <20090213140307.GC10683@mini-me.lan>
-References: <1234529184.3927.3.camel@Q0405CPU53.qualexsystems.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Kavita Kulkarni <Kavita_Kulkarni@qualexsystems.com>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12579] ext4 filesystem hang
+Date: Fri, 13 Feb 2009 14:06:06 -0800 (PST)
+Message-ID: <20090213220606.AE8FC11D109@picon.linux-foundation.org>
+References: <bug-12579-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60340 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761567AbZBMQ3P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Feb 2009 11:29:15 -0500
-Content-Disposition: inline
-In-Reply-To: <1234529184.3927.3.camel@Q0405CPU53.qualexsystems.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:51760 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753326AbZBMWGh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Feb 2009 17:06:37 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1DM66C3027345
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 14:06:07 -0800
+In-Reply-To: <bug-12579-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Feb 13, 2009 at 06:16:24PM +0530, Kavita Kulkarni wrote:
-> The "ext3_file_write" function in the file
-> "/usr/src/linux-source/fs/ext3/file.c" is called whenever a file is
-> accessed/modified.
+http://bugzilla.kernel.org/show_bug.cgi?id=12579
 
-That's where you're wrong.  Files can also be modified via mmap(), and
-file modifications that take place after files are memory mapped and
-then modified via their memory mappings do not go through
-ext3_file_write.
 
-					- Ted
+
+
+
+------- Comment #8 from sandeen@redhat.com  2009-02-13 14:06 -------
+Created an attachment (id=20238)
+ --> (http://bugzilla.kernel.org/attachment.cgi?id=20238&action=view)
+Tested patch
+
+Patch from Aneesh, un-whitespace-mangled.
+
+Ted, can you push this out?  Works great.  :)  We might want to ask the other
+reporter of something similar (next-20090206: deadlock on ext4) to test it too.
+ I'll ping him.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
