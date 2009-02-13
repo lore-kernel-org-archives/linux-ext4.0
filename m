@@ -1,118 +1,115 @@
-From: akpm@linux-foundation.org
-Subject: + ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic.patch added to -mm tree
-Date: Fri, 13 Feb 2009 14:12:20 -0800
-Message-ID: <200902132212.n1DMCKB8027990@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: yjwei@cn.fujitsu.com, linux-ext4@vger.kernel.org, tytso@mit.edu
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: next-20090206: deadlock on ext4
+Date: Fri, 13 Feb 2009 16:21:50 -0600
+Message-ID: <4995F27E.3070401@redhat.com>
+References: <a4423d670902060935y59e540beta417144935416560@mail.gmail.com>	 <498C7671.1050309@redhat.com>	 <a4423d670902061004i424817e1vd699a61e335f010a@mail.gmail.com>	 <498C9876.3060208@redhat.com> <a4423d670902090401k716d054eo25640aa2207beca7@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: "linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Alexander Beregalov <a.beregalov@gmail.com>
+Return-path: <linux-next-owner@vger.kernel.org>
+In-Reply-To: <a4423d670902090401k716d054eo25640aa2207beca7@mail.gmail.com>
+Sender: linux-next-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Alexander Beregalov wrote:
 
-The patch titled
-     ext4: use unsigned instead of int for type of blocksize in fs/ext4/namei.c
-has been added to the -mm tree.  Its filename is
-     ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic.patch
+> I have reproduced it with 2.6.29-rc4.
+> Loop file was on XFS.
+> I can not reproduce it on ext4 on raw device.
+> Let me know if I can do anything else to help resolving it.
+>   
+Can you try this patch from Aneesh?  Works for me...
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+Thanks,
+-Eric
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Don't use the range_cylic mode implemented by
+write_cache_pages
 
-See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
-out what to do about this
+With delayed allocation we lock the page in write_cache_pages and 
+try to build an in memory extent of contiguous blocks. This is 
+needed so that we can get a large contiguous blocks request. Now 
+with range_cyclic mode in write_cache_pages if we have not done an 
+I/O we loop back to 0 index and try to write the page.  That would 
+imply we will attempt to take page lock of lower index page holding
+the page lock of higher index page. This can cause a dead lock with
+other writeback thread.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext4: use unsigned instead of int for type of blocksize in fs/ext4/namei.c
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
-
-- Use unsigned instead of int for the parameter which carries a
-  blocksize.  (ported from Wei Yongjun's ext3 patch).
-
-- coding-style fixes
-
-- rename `size' to `blocksize']
-
-Cc: Wei Yongjun <yjwei@cn.fujitsu.com>
-Cc: Theodore Ts'o <tytso@mit.edu>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+Tested-by: Eric Sandeen <sandeen@redhat.com>
 ---
+ fs/ext4/inode.c |   20 ++++++++++++++++++--
+ 1 files changed, 18 insertions(+), 2 deletions(-)
 
- fs/ext4/namei.c |   20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
-
-diff -puN fs/ext4/namei.c~ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic fs/ext4/namei.c
---- a/fs/ext4/namei.c~ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic
-+++ a/fs/ext4/namei.c
-@@ -161,12 +161,12 @@ static struct dx_frame *dx_probe(const s
- 				 struct dx_frame *frame,
- 				 int *err);
- static void dx_release(struct dx_frame *frames);
--static int dx_make_map(struct ext4_dir_entry_2 *de, int size,
-+static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
- 		       struct dx_hash_info *hinfo, struct dx_map_entry map[]);
- static void dx_sort_map(struct dx_map_entry *map, unsigned count);
- static struct ext4_dir_entry_2 *dx_move_dirents(char *from, char *to,
- 		struct dx_map_entry *offsets, int count);
--static struct ext4_dir_entry_2* dx_pack_dirents(char *base, int size);
-+static struct ext4_dir_entry_2 *dx_pack_dirents(char *base, unsigned blocksize);
- static void dx_insert_block(struct dx_frame *frame,
- 					u32 hash, ext4_lblk_t block);
- static int ext4_htree_next_block(struct inode *dir, __u32 hash,
-@@ -713,15 +713,14 @@ errout:
-  * Create map of hash values, offsets, and sizes, stored at end of block.
-  * Returns number of entries mapped.
-  */
--static int dx_make_map (struct ext4_dir_entry_2 *de, int size,
--			struct dx_hash_info *hinfo, struct dx_map_entry *map_tail)
-+static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
-+		struct dx_hash_info *hinfo, struct dx_map_entry *map_tail)
- {
- 	int count = 0;
--	char *base = (char *) de;
-+	char *base = (char *)de;
- 	struct dx_hash_info h = *hinfo;
+Index: linux-2.6.28.x86_64/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.28.x86_64.orig/fs/ext4/inode.c
++++ linux-2.6.28.x86_64/fs/ext4/inode.c
+@@ -2437,6 +2437,7 @@ static int ext4_da_writepages(struct add
+ 	int no_nrwrite_index_update;
+ 	int pages_written = 0;
+ 	long pages_skipped;
++       int range_cyclic = 0, cycled = 1, io_done = 0;
+ 	int needed_blocks, ret = 0, nr_to_writebump = 0;
+ 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
  
--	while ((char *) de < base + size)
--	{
-+	while ((char *) de < base + blocksize) {
- 		if (de->name_len && de->inode) {
- 			ext4fs_dirhash(de->name, de->name_len, &h);
- 			map_tail--;
-@@ -1130,13 +1129,14 @@ dx_move_dirents(char *from, char *to, st
-  * Compact each dir entry in the range to the minimal rec_len.
-  * Returns pointer to last entry in range.
-  */
--static struct ext4_dir_entry_2* dx_pack_dirents(char *base, int size)
-+static struct ext4_dir_entry_2 *dx_pack_dirents(char *base, unsigned blocksize)
- {
--	struct ext4_dir_entry_2 *next, *to, *prev, *de = (struct ext4_dir_entry_2 *) base;
-+	struct ext4_dir_entry_2 *next, *to, *prev;
-+	struct ext4_dir_entry_2 *de = (struct ext4_dir_entry_2 *)base;
- 	unsigned rec_len = 0;
+@@ -2488,9 +2489,14 @@ static int ext4_da_writepages(struct add
+ 	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
+ 		range_whole = 1;
  
- 	prev = to = de;
--	while ((char*)de < base + size) {
-+	while ((char *)de < base + blocksize) {
- 		next = ext4_next_entry(de);
- 		if (de->inode && de->name_len) {
- 			rec_len = EXT4_DIR_REC_LEN(de->name_len);
-_
-
-Patches currently in -mm which might be from yjwei@cn.fujitsu.com are
-
-linux-next.patch
-fs-jffs2-mallocc-kmem_cache_alloc-memset-kmem_cache_zalloc.patch
-ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic.patch
-scsi-used-kmem_cache_zalloc-instead-of-kmem_cache_alloc-memset.patch
-ext3-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext3-nameic.patch
-ext3-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext3-nameic-fix.patch
-ext3-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext3-nameic-fix-checkpatch-fixes.patch
-
+-	if (wbc->range_cyclic)
++       if (wbc->range_cyclic) {
+ 		index = mapping->writeback_index;
+-	else
++	       wbc->range_start = index << PAGE_CACHE_SHIFT;
++	       wbc->range_end  = LLONG_MAX;
++	       wbc->range_cyclic = 0;
++	       range_cyclic = 1;
++	       cycled = 0;
++       } else
+ 		index = wbc->range_start >> PAGE_CACHE_SHIFT;
+ 
+ 	mpd.wbc = wbc;
+@@ -2504,6 +2510,7 @@ static int ext4_da_writepages(struct add
+ 	wbc->no_nrwrite_index_update = 1;
+ 	pages_skipped = wbc->pages_skipped;
+ 
++retry:
+ 	while (!ret && wbc->nr_to_write > 0) {
+ 
+ 		/*
+@@ -2546,6 +2553,7 @@ static int ext4_da_writepages(struct add
+ 			pages_written += mpd.pages_written;
+ 			wbc->pages_skipped = pages_skipped;
+ 			ret = 0;
++		       io_done = 1;
+ 		} else if (wbc->nr_to_write)
+ 			/*
+ 			 * There is no more writeout needed
+@@ -2554,6 +2562,13 @@ static int ext4_da_writepages(struct add
+ 			 */
+ 			break;
+ 	}
++       if (!io_done && !cycled) {
++	       cycled = 1;
++	       index = 0;
++	       wbc->range_start = index << PAGE_CACHE_SHIFT;
++	       wbc->range_end  = mapping->writeback_index - 1;
++	       goto retry;
++       }
+ 	if (pages_skipped != wbc->pages_skipped)
+ 		printk(KERN_EMERG "This should not happen leaving %s "
+ 				"with nr_to_write = %ld ret = %d\n",
+@@ -2561,6 +2576,7 @@ static int ext4_da_writepages(struct add
+ 
+ 	/* Update index */
+ 	index += pages_written;
++       wbc->range_cyclic = range_cyclic;
+ 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
+ 		/*
+ 		 * set the writeback_index so that range_cyclic
