@@ -1,47 +1,98 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12579] ext4 filesystem hang
-Date: Fri, 13 Feb 2009 19:52:11 -0800 (PST)
-Message-ID: <20090214035211.E92B511D109@picon.linux-foundation.org>
-References: <bug-12579-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:52732 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752226AbZBNDwo (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Feb 2009 22:52:44 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1E3qCnA017102
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 19:52:13 -0800
-In-Reply-To: <bug-12579-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Bryan Donlan <bdonlan@gmail.com>
+Subject: [RESEND/PATCH] ext[234]: Return -EIO not -ESTALE on directory traversal missing inode
+Date: Sat, 14 Feb 2009 00:18:08 -0500
+Message-ID: <1234588688-9497-1-git-send-email-bdonlan@gmail.com>
+References: <1234588099-8445-1-git-send-email-bdonlan@fushizen.net>
+Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@sun.com,
+	tytso@mit.edu, Bryan Donlan <bdonlan@gmail.com>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754272AbZBNFSW@vger.kernel.org>
+In-Reply-To: <1234588099-8445-1-git-send-email-bdonlan@fushizen.net>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12579
+The ext[234]_iget() functions in the ext[234] family of filesystems returns
+-ESTALE if invoked on a deleted inode, in order to report errors to NFS
+properly. However, in ext[234]_lookup(), this -ESTALE can be propagated to
+userspace if the filesystem is corrupted, and a inode is linked even
+though it is marked as deleted. This leads to a misleading error message -
+"Stale NFS file handle" - and confusion on the part of the admin.
 
+The bug can be easily reproduced by creating a new filesystem, making a link
+to an unused inode using debugfs, then mounting and attempting to ls -l
+said link.
 
+This patch thus changes ext[234]_lookup to return -EIO if it receives -ESTALE
+from ext[234]_iget(), as ext[234] does for other filesystem metadata
+corruption.
 
+Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
+---
 
+Apologies for the resend so quickly for those on the CC list - my mailer was
+misconfigured and the mail rejected by vger.
 
-------- Comment #11 from sandeen@redhat.com  2009-02-13 19:52 -------
-Ted, all good questions.  :)  If you think we need to digest this a bit that's
-fine, though I'd rather this go in than not at all, before 2.6.29 gets out the
-door.  But I think we still have some time.
+ fs/ext2/namei.c |    8 ++++++--
+ fs/ext3/namei.c |    8 ++++++--
+ fs/ext4/namei.c |    8 ++++++--
+ 3 files changed, 18 insertions(+), 6 deletions(-)
 
-The problem has not been seen on 2.6.28 kernels; I can't right now point for
-sure to one of Nick's patch series that changed the behavior; in fact many
-points in the series seemed to not work at all; even building kernels on other
-filesystems got me hung up.  Didn't inspire tons of confidence.  :)
-
-You're probably right though, and echoing my concern in the previous comment,
-that we might need to look at this holistically and decide if this exact change
-to ext4 is the right path or if the page-writeback infrastructure needs a
-tweak...
-
--Eric
-
-
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 90ea179..7dab3e8 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -66,8 +66,12 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
+ 	inode = NULL;
+ 	if (ino) {
+ 		inode = ext2_iget(dir->i_sb, ino);
+-		if (IS_ERR(inode))
+-			return ERR_CAST(inode);
++		if (unlikely(IS_ERR(inode))) {
++			if (PTR_ERR(inode) == -ESTALE)
++				return ERR_PTR(-EIO);
++			else
++				return ERR_CAST(inode);
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 4db4ffa..625f5dc 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -1047,8 +1047,12 @@ static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, str
+ 			return ERR_PTR(-EIO);
+ 		}
+ 		inode = ext3_iget(dir->i_sb, ino);
+-		if (IS_ERR(inode))
+-			return ERR_CAST(inode);
++		if (unlikely(IS_ERR(inode))) {
++			if (PTR_ERR(inode) == -ESTALE)
++				return ERR_PTR(-EIO);
++			else
++				return ERR_CAST(inode);
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index ba702bd..4b054b3 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1052,8 +1052,12 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, stru
+ 			return ERR_PTR(-EIO);
+ 		}
+ 		inode = ext4_iget(dir->i_sb, ino);
+-		if (IS_ERR(inode))
+-			return ERR_CAST(inode);
++		if (unlikely(IS_ERR(inode))) {
++			if (PTR_ERR(inode) == -ESTALE)
++				return ERR_PTR(-EIO);
++			else
++				return ERR_CAST(inode);
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+1.5.6.3
