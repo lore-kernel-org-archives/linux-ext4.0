@@ -1,110 +1,60 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V2] ext4: Don't use the range_cylic mode implemented by write_cache_pages
-Date: Sat, 14 Feb 2009 13:38:35 +0530
-Message-ID: <1234598915-25830-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: sandeen@redhat.com, tytso@mit.edu
+Subject: Re: [Bug 12579] ext4 filesystem hang
+Date: Sat, 14 Feb 2009 14:10:04 +0530
+Message-ID: <20090214084004.GC22585@skywalker>
+References: <bug-12579-13602@http.bugzilla.kernel.org/> <20090213220606.AE8FC11D109@picon.linux-foundation.org> <20090214015018.GB26628@mini-me.lan>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: bugme-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp03.au.ibm.com ([202.81.31.145]:54225 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750752AbZBNIIu (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Feb 2009 03:08:50 -0500
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:41885 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750806AbZBNIkU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Feb 2009 03:40:20 -0500
 Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1E87BtE000600
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 19:07:11 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n1E88mVG761908
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 19:08:48 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1E88l6o008484
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 19:08:47 +1100
+	by e23smtp07.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1E8eIv3029808
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 19:40:18 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n1E8eIAj1110204
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 19:40:18 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1E8eH79019752
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 19:40:18 +1100
+Content-Disposition: inline
+In-Reply-To: <20090214015018.GB26628@mini-me.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With delayed allocation we lock the page in write_cache_pages and try to build
-an in memory extent of contiguous blocks. This is needed so that we can get
-large contiguous blocks request. Now with range_cyclic mode in write_cache_pages
-if we have not done an I/O we loop back to 0 index and try to write the page.
-That would imply we will attempt to take page lock of lower index page holding
-the page lock of higher index page. This can cause a dead lock with other writeback
-thread.
+On Fri, Feb 13, 2009 at 08:50:18PM -0500, Theodore Tso wrote:
+> > Patch from Aneesh, un-whitespace-mangled.
+> > 
+> > Ted, can you push this out?  Works great.  :) We might want to ask
+> > the other reporter of something similar (next-20090206: deadlock on
+> > ext4) to test it too.  I'll ping him.
+> 
+> Do we completely understand the root cause, in terms of which commit
+> broken the mm/page-writeback.c code we were depending on?  And if so,
+> what of the code in mm/page-writeback.c?  Does anyone else use it?
+> Can anyone sanely use it?
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+AFAIU we need the changes even for older kernels. The
+reasoning is, with delayed allocation we cannot allow to retry with lower
+page index in write_cache_pages. We do retry even in older version of
+kernel. What made it so easy to reproduce it on later kernels is that
+we were doing a retry even if nr_to_write was zero. This got fixed on
+mainline by 3a4c6800f31ea8395628af5e7e490270ee5d0585. So with that
+change we are logically back to 2.6.28 state, But still the possibility
+of deadlock remain.
 
----
- fs/ext4/inode.c |   23 +++++++++++++++++++++--
- 1 files changed, 21 insertions(+), 2 deletions(-)
+> 
+> And am I right in assuming that this only applies to 2.6.29-rcX
+> kernels, and is not needed for 2.6.28 or earlier kernels?
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 61e8fc0..c80e038 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2437,6 +2437,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	int no_nrwrite_index_update;
- 	int pages_written = 0;
- 	long pages_skipped;
-+	int range_cyclic = 0, cycled = 1, io_done = 0;
- 	int needed_blocks, ret = 0, nr_to_writebump = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
- 
-@@ -2488,9 +2489,17 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
- 		range_whole = 1;
- 
--	if (wbc->range_cyclic)
-+	if (wbc->range_cyclic) {
- 		index = mapping->writeback_index;
--	else
-+		wbc->range_start = index << PAGE_CACHE_SHIFT;
-+		wbc->range_end  = LLONG_MAX;
-+		wbc->range_cyclic = 0;
-+		range_cyclic = 1;
-+		if (index == 0)
-+			cycled = 1;
-+		else
-+			cycled = 0;
-+	} else
- 		index = wbc->range_start >> PAGE_CACHE_SHIFT;
- 
- 	mpd.wbc = wbc;
-@@ -2504,6 +2513,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	wbc->no_nrwrite_index_update = 1;
- 	pages_skipped = wbc->pages_skipped;
- 
-+retry:
- 	while (!ret && wbc->nr_to_write > 0) {
- 
- 		/*
-@@ -2546,6 +2556,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 			pages_written += mpd.pages_written;
- 			wbc->pages_skipped = pages_skipped;
- 			ret = 0;
-+			io_done = 1;
- 		} else if (wbc->nr_to_write)
- 			/*
- 			 * There is no more writeout needed
-@@ -2554,6 +2565,13 @@ static int ext4_da_writepages(struct address_space *mapping,
- 			 */
- 			break;
- 	}
-+	if (!io_done && !cycled) {
-+		cycled = 1;
-+		index = 0;
-+		wbc->range_start = index << PAGE_CACHE_SHIFT;
-+		wbc->range_end  = mapping->writeback_index - 1;
-+		goto retry;
-+	}
- 	if (pages_skipped != wbc->pages_skipped)
- 		printk(KERN_EMERG "This should not happen leaving %s "
- 				"with nr_to_write = %ld ret = %d\n",
-@@ -2561,6 +2579,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 
- 	/* Update index */
- 	index += pages_written;
-+	wbc->range_cyclic = range_cyclic;
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
- 		/*
- 		 * set the writeback_index so that range_cyclic
--- 
-tg: (6ebb071..) range_cyclic_fix (depends on: fix_list_corruption)
+I guess the hang can happen on 2.6.28 or earlier kernels.
+
+> 
+> I hadn't yet pushed it out because I needed time to understand all of
+> these issues, hence these questions....
+
+-aneesh
