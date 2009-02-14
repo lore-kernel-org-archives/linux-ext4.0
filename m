@@ -1,31 +1,29 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [Bug 12579] ext4 filesystem hang
-Date: Sat, 14 Feb 2009 15:11:01 +0530
-Message-ID: <20090214094101.GD22585@skywalker>
-References: <bug-12579-13602@http.bugzilla.kernel.org/> <20090213220606.AE8FC11D109@picon.linux-foundation.org> <20090214015018.GB26628@mini-me.lan> <20090214084004.GC22585@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bugme-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12579] ext4 filesystem hang
+Date: Sat, 14 Feb 2009 01:42:10 -0800 (PST)
+Message-ID: <20090214094210.80B6611D10A@picon.linux-foundation.org>
+References: <bug-12579-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:50041 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750967AbZBNJlb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Feb 2009 04:41:31 -0500
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1E9fBbv031460
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 20:41:11 +1100
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.1) with ESMTP id n1E9fPTW389134
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 20:41:29 +1100
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1E9fOqQ027382
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 20:41:24 +1100
-Content-Disposition: inline
-In-Reply-To: <20090214084004.GC22585@skywalker>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59969 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750996AbZBNJml (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 14 Feb 2009 04:42:41 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1E9gAPX007936
+	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 01:42:11 -0800
+In-Reply-To: <bug-12579-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12579
+
+
+
+
+
+------- Comment #14 from aneesh.kumar@linux.vnet.ibm.com  2009-02-14 01:42 -------
 On Sat, Feb 14, 2009 at 02:10:04PM +0530, Aneesh Kumar K.V wrote:
 > On Fri, Feb 13, 2009 at 08:50:18PM -0500, Theodore Tso wrote:
 > > > Patch from Aneesh, un-whitespace-mangled.
@@ -54,9 +52,10 @@ cause. The commit is correct in what it does. Ext4 was dependent on the
 wrong behaviour. The relevant change is 
 
 @@ -897,7 +903,6 @@ retry:
-                                              min(end - index, (pgoff_t)PAGEVEC_SIZE-1) + 1))) {
+                                              min(end - index,
+(pgoff_t)PAGEVEC_SIZE-1) + 1))) {
                 unsigned i;
- 
+
 -               scanned = 1;
                 for (i = 0; i < nr_pages; i++) {
 
@@ -67,3 +66,9 @@ behaviour of write_cache_pages i would suggest we still push the patch
 to 2.6.28
 
 -aneesh
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
