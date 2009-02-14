@@ -1,18 +1,18 @@
 From: bugme-daemon@bugzilla.kernel.org
 Subject: [Bug 12579] ext4 filesystem hang
-Date: Fri, 13 Feb 2009 18:07:28 -0800 (PST)
-Message-ID: <20090214020728.8361711D10A@picon.linux-foundation.org>
+Date: Fri, 13 Feb 2009 19:52:11 -0800 (PST)
+Message-ID: <20090214035211.E92B511D109@picon.linux-foundation.org>
 References: <bug-12579-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:40308 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:52732 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752716AbZBNCHb (ORCPT
+	by vger.kernel.org with ESMTP id S1752226AbZBNDwo (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Feb 2009 21:07:31 -0500
+	Fri, 13 Feb 2009 22:52:44 -0500
 Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1E27SWi012858
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 18:07:29 -0800
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1E3qCnA017102
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 19:52:13 -0800
 In-Reply-To: <bug-12579-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -23,25 +23,22 @@ http://bugzilla.kernel.org/show_bug.cgi?id=12579
 
 
 
-------- Comment #10 from tytso@mit.edu  2009-02-13 18:07 -------
-> Patch from Aneesh, un-whitespace-mangled.
-> 
-> Ted, can you push this out?  Works great.  :) We might want to ask
-> the other reporter of something similar (next-20090206: deadlock on
-> ext4) to test it too.  I'll ping him.
+------- Comment #11 from sandeen@redhat.com  2009-02-13 19:52 -------
+Ted, all good questions.  :)  If you think we need to digest this a bit that's
+fine, though I'd rather this go in than not at all, before 2.6.29 gets out the
+door.  But I think we still have some time.
 
-Do we completely understand the root cause, in terms of which commit
-broken the mm/page-writeback.c code we were depending on?  And if so,
-what of the code in mm/page-writeback.c?  Does anyone else use it?
-Can anyone sanely use it?
+The problem has not been seen on 2.6.28 kernels; I can't right now point for
+sure to one of Nick's patch series that changed the behavior; in fact many
+points in the series seemed to not work at all; even building kernels on other
+filesystems got me hung up.  Didn't inspire tons of confidence.  :)
 
-And am I right in assuming that this only applies to 2.6.29-rcX
-kernels, and is not needed for 2.6.28 or earlier kernels?
+You're probably right though, and echoing my concern in the previous comment,
+that we might need to look at this holistically and decide if this exact change
+to ext4 is the right path or if the page-writeback infrastructure needs a
+tweak...
 
-I hadn't yet pushed it out because I needed time to understand all of
-these issues, hence these questions....
-
-                                                - Ted
+-Eric
 
 
 -- 
