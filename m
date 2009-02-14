@@ -1,74 +1,45 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12579] ext4 filesystem hang
-Date: Sat, 14 Feb 2009 01:42:10 -0800 (PST)
-Message-ID: <20090214094210.80B6611D10A@picon.linux-foundation.org>
-References: <bug-12579-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH -V2] ext4: Don't use the range_cylic mode implemented
+	by write_cache_pages
+Date: Sat, 14 Feb 2009 10:16:17 -0500
+Message-ID: <20090214151617.GH26628@mini-me.lan>
+References: <1234598915-25830-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:59969 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750996AbZBNJml (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 14 Feb 2009 04:42:41 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1E9gAPX007936
-	for <linux-ext4@vger.kernel.org>; Sat, 14 Feb 2009 01:42:11 -0800
-In-Reply-To: <bug-12579-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:34764 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751339AbZBNPQy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 14 Feb 2009 10:16:54 -0500
+Content-Disposition: inline
+In-Reply-To: <1234598915-25830-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+I've rewritten the patch description for clarity's sake; can you
+confirm I didn't mess anything up?
+
+						- Ted
+
+ext4: Implement range_cyclic in ext4_da_writepages instead of write_cache_pages
+
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+
+With delayed allocation we lock the page in write_cache_pages() and
+try to build an in memory extent of contiguous blocks.  This is needed
+so that we can get large contiguous blocks request.  If range_cyclic
+mode is enabled, write_cache_pages() will loop back to the 0 index if
+no I/O has been done yet, and try to start writing from the beginning
+of the range.  That causes an attempt to take the page lock of lower
+index page while holding the page lock of higher index page, which can
+cause a dead lock with another writeback thread.
+
+The solution is to implement the range_cyclic behavior in
+ext4_da_writepages() instead.
+
 http://bugzilla.kernel.org/show_bug.cgi?id=12579
 
-
-
-
-
-------- Comment #14 from aneesh.kumar@linux.vnet.ibm.com  2009-02-14 01:42 -------
-On Sat, Feb 14, 2009 at 02:10:04PM +0530, Aneesh Kumar K.V wrote:
-> On Fri, Feb 13, 2009 at 08:50:18PM -0500, Theodore Tso wrote:
-> > > Patch from Aneesh, un-whitespace-mangled.
-> > > 
-> > > Ted, can you push this out?  Works great.  :) We might want to ask
-> > > the other reporter of something similar (next-20090206: deadlock on
-> > > ext4) to test it too.  I'll ping him.
-> > 
-> > Do we completely understand the root cause, in terms of which commit
-> > broken the mm/page-writeback.c code we were depending on?  And if so,
-> > what of the code in mm/page-writeback.c?  Does anyone else use it?
-> > Can anyone sanely use it?
-> 
-> AFAIU we need the changes even for older kernels. The
-> reasoning is, with delayed allocation we cannot allow to retry with lower
-> page index in write_cache_pages. We do retry even in older version of
-> kernel. What made it so easy to reproduce it on later kernels is that
-> we were doing a retry even if nr_to_write was zero. This got fixed on
-> mainline by 3a4c6800f31ea8395628af5e7e490270ee5d0585. So with that
-> change we are logically back to 2.6.28 state, But still the possibility
-> of deadlock remain.
-> 
-
-I found commit 31a12666d8f0c22235297e1c1575f82061480029 to be the root
-cause. The commit is correct in what it does. Ext4 was dependent on the
-wrong behaviour. The relevant change is 
-
-@@ -897,7 +903,6 @@ retry:
-                                              min(end - index,
-(pgoff_t)PAGEVEC_SIZE-1) + 1))) {
-                unsigned i;
-
--               scanned = 1;
-                for (i = 0; i < nr_pages; i++) {
-
-
-I think that caused us the retry. That would imply we may not need the
-patch I did for 2.6.28. But given that Ext4 was dependent on the wrong
-behaviour of write_cache_pages i would suggest we still push the patch
-to 2.6.28
-
--aneesh
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
