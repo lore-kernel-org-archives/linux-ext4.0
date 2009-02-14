@@ -1,15 +1,21 @@
-From: Bryan Donlan <bdonlan@gmail.com>
+From: d-email-bdonlan@fushizen.net
 Subject: [RESEND/PATCH] ext[234]: Return -EIO not -ESTALE on directory traversal missing inode
-Date: Sat, 14 Feb 2009 00:18:08 -0500
-Message-ID: <1234588688-9497-1-git-send-email-bdonlan@gmail.com>
-References: <1234588099-8445-1-git-send-email-bdonlan@fushizen.net>
+Date: Sat, 14 Feb 2009 00:17:10 -0500
+Message-ID: <1234588630-9380-1-git-send-email-d-email-bdonlan@fushizen.net>
+References: <1234588099-8445-1-git-sen--dry-run>
 Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@sun.com,
 	tytso@mit.edu, Bryan Donlan <bdonlan@gmail.com>
 To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1754272AbZBNFSW@vger.kernel.org>
-In-Reply-To: <1234588099-8445-1-git-send-email-bdonlan@fushizen.net>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from satoko.is.fushizen.net ([207.192.69.114]:58944 "EHLO
+	satoko.is.fushizen.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750828AbZBNFlN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Feb 2009 00:41:13 -0500
+In-Reply-To: <1234588099-8445-1-git-sen--dry-run>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+From: Bryan Donlan <bdonlan@gmail.com>
 
 The ext[234]_iget() functions in the ext[234] family of filesystems returns
 -ESTALE if invoked on a deleted inode, in order to report errors to NFS
@@ -96,3 +102,4 @@ index ba702bd..4b054b3 100644
  }
 -- 
 1.5.6.3
+
