@@ -1,48 +1,38 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12579] ext4 filesystem hang
-Date: Fri, 13 Feb 2009 14:22:34 -0800 (PST)
-Message-ID: <20090213222234.60A7911D109@picon.linux-foundation.org>
-References: <bug-12579-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [Bug 12579] ext4 filesystem hang
+Date: Fri, 13 Feb 2009 20:50:18 -0500
+Message-ID: <20090214015018.GB26628@mini-me.lan>
+References: <bug-12579-13602@http.bugzilla.kernel.org/> <20090213220606.AE8FC11D109@picon.linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: bugme-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:47367 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753302AbZBMWXF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Feb 2009 17:23:05 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1DMMY2g028466
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Feb 2009 14:22:35 -0800
-In-Reply-To: <bug-12579-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:40120 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752466AbZBNCH0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Feb 2009 21:07:26 -0500
+Content-Disposition: inline
+In-Reply-To: <20090213220606.AE8FC11D109@picon.linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12579
+> Patch from Aneesh, un-whitespace-mangled.
+> 
+> Ted, can you push this out?  Works great.  :) We might want to ask
+> the other reporter of something similar (next-20090206: deadlock on
+> ext4) to test it too.  I'll ping him.
 
+Do we completely understand the root cause, in terms of which commit
+broken the mm/page-writeback.c code we were depending on?  And if so,
+what of the code in mm/page-writeback.c?  Does anyone else use it?
+Can anyone sanely use it?
 
-sandeen@redhat.com changed:
+And am I right in assuming that this only applies to 2.6.29-rcX
+kernels, and is not needed for 2.6.28 or earlier kernels?
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-  Attachment #20238|0                           |1
-        is obsolete|                            |
+I hadn't yet pushed it out because I needed time to understand all of
+these issues, hence these questions....
 
+						- Ted
 
-
-
-------- Comment #9 from sandeen@redhat.com  2009-02-13 14:22 -------
-Created an attachment (id=20239)
- --> (http://bugzilla.kernel.org/attachment.cgi?id=20239&action=view)
-updated patch w/ my signoffs
-
-Updated the patch w/ my tested/reviewed by.
-
-I'd like to think about whether we can make write_cache_pages smarter and not
-need to sort of recreate bits of it in the ext4 code, but for now this solves
-my problem, at least.
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
