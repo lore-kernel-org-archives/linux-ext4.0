@@ -1,46 +1,34 @@
-From: Zlatko Calusic <zlatko.calusic@iskon.hr>
-Subject: Dump/restore not functional on ext4
-Date: Sun, 15 Feb 2009 13:04:48 +0100
-Message-ID: <87d4djucrj.fsf@atlas.lan>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext4 not currently doing (much) multi-block allocation?
+Date: Sun, 15 Feb 2009 08:36:18 -0500
+Message-ID: <20090215133618.GE10706@mini-me.lan>
+References: <20090215053206.GA4803@mini-me.lan> <20090215110528.GE22585@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mxout2.iskon.hr ([213.191.128.81]:60787 "HELO mxout2.iskon.hr"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1755798AbZBOMLa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 15 Feb 2009 07:11:30 -0500
+Received: from THUNK.ORG ([69.25.196.29]:41138 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753862AbZBONgh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 15 Feb 2009 08:36:37 -0500
+Content-Disposition: inline
+In-Reply-To: <20090215110528.GE22585@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hello list!
+On Sun, Feb 15, 2009 at 04:35:28PM +0530, Aneesh Kumar K.V wrote:
+> Here is how it works. During writepages we loop through the dirty pages
+> and build largest contiguous block extent (mpage_add_bh_to_extent). Then we call
+> mpage_da_map_blocks. mpage_da_map_blocks does the mutli block request.
+> Once we have the blocks allocated we map these blocks to the pages. And
+> then we writeback one page at a time using writepage callback.
 
-Cca 2 months ago I switched to ext4 on all of my machines/partitions and
-has been a very happy customer ever since. Except one little thing...
+mpage_da_map_blocks() calls mpd->get_block, which is set to
+ext4_da_get_block_write(), which allocates a single block at a time
+(max_blocks is set to bh->b_size >> inode->i_blkbits).
 
-Dump/restore is not working on ext4 filesystem. Actually... it's even
-worse, it appears that it's working, but if you try to restore files,
-only garbage gets restored. Obviously wrong fs blocks are dumped (or
-restored) rendering backup completely useless.
+Put another way, where is the call to ext4_get_blocks_wrap() which
+does the multi-block request?  I don't see it...
 
-As this could be bug in e2fslibs, I'm reporting all versions relevant:
-
-Distribution: Debian sid
-Kernel: 2.6.28 Linus virgin (FS made with 2.6.28-rc9)
-File system: ext4 (w/ extents, w/o xattr)
-e2fsprogs: 1.41.3-1
-dump: 0.4b41-6
-
-And I'm slightly dissapointed that there's so little users of dump, it
-has a feature set that I can't replace with any other backup system (I
-tried). Or is it maybe that ext4 is slow to adapt?
-
-This was also reported as Debian bug #511651 a month ago, but without
-any progress so far, so I decided to report it to this list, too (I'm
-not subscribed).
-
-http://bugs.debian.org/cgi-bin/bugreport.cgi?bug=511651
-
-Thanks for any help you can provide!
--- 
-Zlatko
+						- Ted
