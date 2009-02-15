@@ -1,118 +1,93 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH -v3] ext4: Don't use the range_cylic mode implemented
-	by write_cache_pages
-Date: Sat, 14 Feb 2009 10:45:06 -0500
-Message-ID: <20090214154506.GI26628@mini-me.lan>
-References: <1234622835-5521-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: Bryan Donlan <bdonlan@gmail.com>
+Subject: Re: [RESEND/PATCH] ext[234]: Return -EIO not -ESTALE on directory
+	traversal missing inode
+Date: Sat, 14 Feb 2009 23:53:48 -0500
+Message-ID: <3e8340490902142053x18ae3c20q7018e0d8bc42636d@mail.gmail.com>
+References: <1234588099-8445-1-git-send-email-bdonlan@fushizen.net>
+	 <1234588688-9497-1-git-send-email-bdonlan@gmail.com>
+	 <20090214141411.GD26628@mini-me.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>, Bryan Donlan <bdonlan@gmail.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	sct@redhat.com, akpm@linux-foundation.org, adilger@sun.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:38555 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751008AbZBNPrn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 14 Feb 2009 10:47:43 -0500
-Content-Disposition: inline
-In-Reply-To: <1234622835-5521-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from qw-out-2122.google.com ([74.125.92.25]:56787 "EHLO
+	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752860AbZBOExu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 14 Feb 2009 23:53:50 -0500
+In-Reply-To: <20090214141411.GD26628@mini-me.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is what I have in the ext4 patch queue; it's based on your -V3
-patch, with two slight changes in the patch for clarity and a minor
-optimization.
+On Sat, Feb 14, 2009 at 9:14 AM, Theodore Tso <tytso@mit.edu> wrote:
+> On Sat, Feb 14, 2009 at 12:18:08AM -0500, Bryan Donlan wrote:
+>> The ext[234]_iget() functions in the ext[234] family of filesystems returns
+>> -ESTALE if invoked on a deleted inode, in order to report errors to NFS
+>> properly. However, in ext[234]_lookup(), this -ESTALE can be propagated to
+>> userspace if the filesystem is corrupted, and a inode is linked even
+>> though it is marked as deleted.
+>
+> I'm not sure what you mean by "inode is linked" here.  All you are
+> really proposing to do here is to remap the ESTALE error to EIO, yes?
 
-						- Ted
+Sorry, I meant "if the an inode marked as deleted is linked in a
+directory" - describing what causes the condition. But yes, I'm
+basically proposing to remap ESTALE to EIO here.
 
-ext4: Implement range_cyclic in ext4_da_writepages instead of write_cache_pages
+>> Apologies for the resend so quickly for those on the CC list - my mailer was
+>> misconfigured and the mail rejected by vger.
+>
+> RESEND is a code word meaning --- "I sent this a few days/weeks ago
+> and no one responded; please look at it again?" I was confused when I
+> saw this, because I didn't remember seeing this, either in my inbox or
+> in the ext4 patchwork (which is really great and helping me make sure
+> I don't miss patches), so I spent a few extra minutes googling to see
+> what had gotten missed until I finally got to your apologies section....
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Sorry about that; it's my first patch submission so I'm not entirely
+up to speed on such keywords...
 
-With delayed allocation we lock the page in write_cache_pages() and
-try to build an in memory extent of contiguous blocks.  This is needed
-so that we can get large contiguous blocks request.  If range_cyclic
-mode is enabled, write_cache_pages() will loop back to the 0 index if
-no I/O has been done yet, and try to start writing from the beginning
-of the range.  That causes an attempt to take the page lock of lower
-index page while holding the page lock of higher index page, which can
-cause a dead lock with another writeback thread.
+> I received two copies with the RESEND keyword; so I guess that means
+> you ended up sending it three times?  Anyway, apparently the first
+> time you sent it your mailer was so badly misconfigured that it got
+> dropped by mit.edu's mailer as well.  :-) In general if you end up
+> resending, don't worry about flagging it as a resend; deleting
+> duplicates is easy enough to do.
 
-The solution is to implement the range_cyclic behavior in
-ext4_da_writepages() instead.
+Okay then - hopefully it won't happen again, but I'll keep that in
+mind if there is a next time :)
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12579
+>
+>> --- a/fs/ext2/namei.c
+>> +++ b/fs/ext2/namei.c
+>> @@ -66,8 +66,12 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
+>>       inode = NULL;
+>>       if (ino) {
+>>               inode = ext2_iget(dir->i_sb, ino);
+>> -             if (IS_ERR(inode))
+>> -                     return ERR_CAST(inode);
+>> +             if (unlikely(IS_ERR(inode))) {
+>
+> I'm dubious about unlikely() here; OTOH, penalizing the error case
+> seems reasonable.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |   21 +++++++++++++++++++--
- 1 files changed, 19 insertions(+), 2 deletions(-)
+I can leave it without the unlikely(), as it was before, but as far as
+I can tell, this should never happen under a non-corrupted, non-broken
+hardware filesystem, so it seems like a reasonable annotation to me.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 658c4a7..cbd2ca9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2439,6 +2439,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	int no_nrwrite_index_update;
- 	int pages_written = 0;
- 	long pages_skipped;
-+	int range_cyclic, cycled = 1, io_done = 0;
- 	int needed_blocks, ret = 0, nr_to_writebump = 0;
- 	struct ext4_sb_info *sbi = EXT4_SB(mapping->host->i_sb);
- 
-@@ -2490,9 +2491,15 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	if (wbc->range_start == 0 && wbc->range_end == LLONG_MAX)
- 		range_whole = 1;
- 
--	if (wbc->range_cyclic)
-+	range_cyclic = wbc->range_cyclic;
-+	if (wbc->range_cyclic) {
- 		index = mapping->writeback_index;
--	else
-+		if (index)
-+			cycled = 0;
-+		wbc->range_start = index << PAGE_CACHE_SHIFT;
-+		wbc->range_end  = LLONG_MAX;
-+		wbc->range_cyclic = 0;
-+	} else
- 		index = wbc->range_start >> PAGE_CACHE_SHIFT;
- 
- 	mpd.wbc = wbc;
-@@ -2506,6 +2513,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	wbc->no_nrwrite_index_update = 1;
- 	pages_skipped = wbc->pages_skipped;
- 
-+retry:
- 	while (!ret && wbc->nr_to_write > 0) {
- 
- 		/*
-@@ -2548,6 +2556,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 			pages_written += mpd.pages_written;
- 			wbc->pages_skipped = pages_skipped;
- 			ret = 0;
-+			io_done = 1;
- 		} else if (wbc->nr_to_write)
- 			/*
- 			 * There is no more writeout needed
-@@ -2556,6 +2565,13 @@ static int ext4_da_writepages(struct address_space *mapping,
- 			 */
- 			break;
- 	}
-+	if (!io_done && !cycled) {
-+		cycled = 1;
-+		index = 0;
-+		wbc->range_start = index << PAGE_CACHE_SHIFT;
-+		wbc->range_end  = mapping->writeback_index - 1;
-+		goto retry;
-+	}
- 	if (pages_skipped != wbc->pages_skipped)
- 		printk(KERN_EMERG "This should not happen leaving %s "
- 				"with nr_to_write = %ld ret = %d\n",
-@@ -2563,6 +2579,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 
- 	/* Update index */
- 	index += pages_written;
-+	wbc->range_cyclic = range_cyclic;
- 	if (wbc->range_cyclic || (range_whole && wbc->nr_to_write > 0))
- 		/*
- 		 * set the writeback_index so that range_cyclic
+>> +                     if (PTR_ERR(inode) == -ESTALE)
+>
+> Please add a call to ext2_error() here, and in make a similar change
+> for the ext3 and ext4 patches:
+>
+>                                ext2_error(dir->i_sb, "ext2_lockup",
+>                                           "deleted inode referenced: %u",
+>                                           ino);
+
+Okay, I'll update the patch and resubmit.
+
+Thanks,
+
+Bryan Donlan
