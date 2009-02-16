@@ -1,98 +1,117 @@
-From: Kavita Kulkarni <Kavita_Kulkarni@qualexsystems.com>
-Subject: Re: issue of ext3_file_write function & remote shares
-Date: Mon, 16 Feb 2009 12:03:59 +0530
-Message-ID: <1234766039.3910.3.camel@Q0405CPU53.qualexsystems.com>
-References: <1234529184.3927.3.camel@Q0405CPU53.qualexsystems.com>
-	 <499598EB.5010301@redhat.com>
-Reply-To: Kavita_Kulkarni@qualexsystems.com
+From: Andres Freund <andres@anarazel.de>
+Subject: Re: EXT4 ENOSPC Bug
+Date: Mon, 16 Feb 2009 12:37:19 +0100
+Message-ID: <49994FEF.2020908@anarazel.de>
+References: <200811291418.24672.andres@anarazel.de> <200812100108.04163.andres@anarazel.de>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: adilger@sun.com, LKML <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org,
+	Jonathan Bastien-Filiatrault <joe@x2a.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.qualexsystems.com ([203.123.162.235]:48677 "EHLO
-	earth.qualexsystems.com" rhost-flags-OK-FAIL-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751226AbZBPGeZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Feb 2009 01:34:25 -0500
-In-Reply-To: <499598EB.5010301@redhat.com>
+Received: from mail.anarazel.de ([217.115.131.40]:34717 "EHLO smtp.anarazel.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751170AbZBPLru (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Feb 2009 06:47:50 -0500
+In-Reply-To: <200812100108.04163.andres@anarazel.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi All,
 
-Well,
-i can surely give u the code snippet. It doesnt seem to be buggy.
+"Luckily", to prove that I am not completly mad I recently found this 
+problem again. On a more recent kernel:
+2.6.29-rc3-andres-00498-g68e80d5
+(upstream 2.6.29 + Theodore's ext4 debug patches)
 
-static ssize_t
-ext3_file_write(struct kiocb *iocb, const char __user *buf, size_t
-count, loff_t pos)
-{
-        struct file *file = iocb->ki_filp;
-        struct inode *inode = file->f_dentry->d_inode;
-        ssize_t ret;
-        int err;
+Again I got:
+open("/home/andres/tt", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK, 0666) = -1 
+ENOSPC (No space left on device)
 
-        /* My code snippet : CODE TO RESTRICT SIZE AFTER EXPIRY DATE
-August 01, 2009 */
-        struct timespec current_time;
-        getnstimeofday(&current_time);
+When doing `touch /home/andres/tt`
 
-        printk("\nIn ext3_file_write function");
+Again df does not show something suspicious:
+Filesystem            Inodes   IUsed   IFree IUse% Mounted on
+/dev/mapper/root_crypt
+                      19234816  826296 18408520    5% /
+tmpfs                 491025       3  491022    1% /lib/init/rw
+varrun                491025      96  490929    1% /var/run
+varlock               491025       3  491022    1% /var/lock
+udev                  491025    5517  485508    2% /dev
+tmpfs                 491025       1  491024    1% /dev/shm
+/dev/sda2              61312     110   61202    1% /boot
 
-        if (current_time.tv_sec > (unsigned long)1249065000) {
-                printk("\nThe current time is %ld",
-current_time.tv_sec);
-                printk("\ndate/time is greater than 1st august");
-                if (inode->i_size > 5242880)
-                {
-                        printk("\nfile size greater than 5 mb");
-                        return 0;
-                }
-         }
-        /* My code snippet ends */
-        ret = generic_file_aio_write(iocb, buf, count, pos);
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/mapper/root_crypt
+                      302855628 202819548 100036080  67% /
+tmpfs                  1964100         0   1964100   0% /lib/init/rw
+varrun                 1964100       300   1963800   1% /var/run
+varlock                1964100         0   1964100   0% /var/lock
+udev                   1964100        92   1964008   1% /dev
+tmpfs                  1964100         0   1964100   0% /dev/shm
+/dev/sda2               964532    634052    281484  70% /boot
+
+Delayed allocations are not showing anything suspicious:
+[72586.050538] ext4 debug delalloc of dm-0
+[72586.050547] ext4: dirty blocks 22 free blocks 25008749
+[72586.050551] s_dirty list:
+[72586.050556] ino 534064: 2 2
+[72586.050559] ino 539981: 2 2
+[72586.050563] ino 524506: 5 2
+[72586.050566] ino 184479: 1 2
+[72586.050571] ino 167172: 2 2
+[72586.050574] ext4 debug delalloc done
 
 
-On Fri, 2009-02-13 at 09:59 -0600, Eric Sandeen wrote:
-> Kavita Kulkarni wrote:
-> > The "ext3_file_write" function in the file
-> > "/usr/src/linux-source/fs/ext3/file.c" is called whenever a file is
-> > accessed/modified.
-> > Now, i have inserted a simple printk and some more code of mine in it
-> > immediately after declaration/initialization of variables. When a local
-> > file is accessed, this printk as well the other code is executed
-> > successfully. But when i export a share and mount it remotely and do
-> > some operations like writing to a file in it, neither my code nor even
-> > the simple printk(which is without any conditions) is executed.
-> > And after this takes place, it doesnt even work locally.
-> > I'm unable to find any solution.
-> > Any help will be welcome.
-> 
-> Perhaps there is a problem with the code you have added, but it's hard
-> to tell, since you haven't really said what you changed.  :)
-> 
-> -Eric
--- 
-Kavita Kulkarni
-Associate Systems Engineer
+Any debugging ideas?
 
-Qualex Systems
-426, Siddharth Towers, Bldg.No.1,
-Near Sangam Press, Kothrud.
-Pune 411 029. INDIA.
+I got this twice in the last two months, so its not really easy to 
+reproduce :-(
 
-Phone: +91-20-25406000
-Fax: +91-20-25406001
+Andres
 
-www.qualexsystems.com 
+PS: All information is taken out of the running kernel while having the 
+problem
 
-Confidentiality Notice: 
-
-The information contained in this electronic message and any attachments
-to this message are intended for the exclusive use of the addressee(s)
-and may contain confidential or privileged information. If you are not
-the intended recipient, please notify the sender at QualEx or
-Mailadmin@qualexsystems.com immediately and destroy all copies of this
-message and any attachments.
-
+meminfo:
+MemTotal:        3928200 kB
+MemFree:           23312 kB
+Buffers:          239564 kB
+Cached:          2383280 kB
+SwapCached:            0 kB
+Active:          1490948 kB
+Inactive:        2149360 kB
+Active(anon):     879880 kB
+Inactive(anon):   294356 kB
+Active(file):     611068 kB
+Inactive(file):  1855004 kB
+Unevictable:          52 kB
+Mlocked:              52 kB
+SwapTotal:             0 kB
+SwapFree:              0 kB
+Dirty:                52 kB
+Writeback:             4 kB
+AnonPages:       1017356 kB
+Mapped:           129440 kB
+Slab:             123316 kB
+SReclaimable:      94512 kB
+SUnreclaim:        28804 kB
+PageTables:        26936 kB
+NFS_Unstable:          0 kB
+Bounce:                0 kB
+WritebackTmp:          0 kB
+CommitLimit:     1964100 kB
+Committed_AS:    1169664 kB
+VmallocTotal:   34359738367 kB
+VmallocUsed:      341580 kB
+VmallocChunk:   34359392035 kB
+HugePages_Total:       0
+HugePages_Free:        0
+HugePages_Rsvd:        0
+HugePages_Surp:        0
+Hugepagesize:       2048 kB
+DirectMap4k:       86016 kB
+DirectMap2M:     4003840 kB
