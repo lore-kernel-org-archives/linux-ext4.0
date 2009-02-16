@@ -1,69 +1,98 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH] ext4: Fix to read empty directory blocks correctly in	64k
- blocksize filesystems
-Date: Mon, 16 Feb 2009 16:32:56 -0700
-Message-ID: <20090216233256.GI3199@webber.adilger.int>
-References: <4990FAE4.1080009@cn.fujitsu.com>
- <20090210152049.GF30689@mini-me.lan>
- <20090211054816.GP3209@webber.adilger.int> <20090211151547.GK29220@mini-me.lan>
+From: Theodore Tso <tytso@mit.edu>
+Subject: [cebbert@redhat.com: Re: Ext4 tree backports for 2.6.27.13 and
+	2.6.28.2]
+Date: Mon, 16 Feb 2009 18:01:04 -0500
+Message-ID: <20090216230104.GG23758@mini-me.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Wei Yongjun <yjwei@cn.fujitsu.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: multipart/mixed; boundary="J2SCkAp4GZ/dPZZf"
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:42582 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751592AbZBPXdL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Feb 2009 18:33:11 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n1GNX8DR011241
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Feb 2009 15:33:08 -0800 (PST)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
- id <0KF600B00LT6UY00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 16 Feb 2009 15:14:13 -0800 (PST)
-In-reply-to: <20090211151547.GK29220@mini-me.lan>
+Received: from thunk.org ([69.25.196.29]:48681 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750727AbZBPXkK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Feb 2009 18:40:10 -0500
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Feb 11, 2009  10:15 -0500, Theodore Ts'o wrote:
-> On Wed, Feb 11, 2009 at 12:48:16AM -0500, Andreas Dilger wrote:
-> > I'm glad that the MAX_REC_LEN value is being kept, because "0" is
-> > too easily hit due to disk corruption.
-> 
-> I'm not too worried about that, actually.  If there is a disk
-> corruption, we will detect it easily enough no matter which encoding
-> we use.  I am thinking though that neither 65535 nor 0 is the best way
-> of encoding 65536.  In fact, I would suggest the encoding 0x01.
-> Specifically, I suggest:
-> 
-> 	     (rec_len & 65532) | ((rec_len >> 16) & 3)
-> 
-> This encodes valid rec_len values in the range 0 through 2**18-4, and
-> allows for maximum block sizes of up to 256k.  To retain backwards
-> compatibility, and to allow for a 256k blocksize, we can have a
-> special case where a rec_len of either 0 or 65535 means
-> EXT4_BLOCK_SIZE(s).
-> 
-> It's unlikely we'll see VM pages of up to 256k, but at some point we
-> might find that the Linux VM has been enhanced to support filesystem
-> block sizes > than the VM page size, at which point it might be useful
-> for some applications to allow very large filesystem block sizes.
 
-There are probably a dozen other places in the ext* code that expect
-blocksize <= 65536, so I don't think this new encoding is really helping
-us at all.  We are already restricted to 2^32-1 inodes due to the dirent
-format and I expect we will have changed the dirent format by that time
-anyways.
+--J2SCkAp4GZ/dPZZf
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-I'd rather keep this change as simple as possible (i.e. the original
-65535 or 0 values, preferring 65535).
+Hi,
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Can you please include the patches found in the for-stable and
+for-stable-2.6.27 branches at:
 
+	  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+
+into the next 2.6.28.y and 2.6.27.y kernels, respectively?
+
+Or do you need me to send them in e-mail format via git
+format-patch/git send-email?  I can do that too if you prefer that.
+
+		 	      	       - Ted
+
+
+
+
+--J2SCkAp4GZ/dPZZf
+Content-Type: message/rfc822
+Content-Disposition: inline
+
+Return-Path: <cebbert@redhat.com>
+Received: from po14.mit.edu ([unix socket])
+	by po14.mit.edu (Cyrus v2.1.5) with LMTP; Mon, 16 Feb 2009 16:37:49 -0500
+X-Sieve: CMU Sieve 2.2
+Received: from fort-point-station.mit.edu by po14.mit.edu (8.13.6/4.7) id n1GLbmDm014461; Mon, 16 Feb 2009 16:37:48 -0500 (EST)
+Received: from mit.edu (M24-004-BARRACUDA-1.MIT.EDU [18.7.7.111])
+	by fort-point-station.mit.edu (8.13.6/8.9.2) with ESMTP id n1GLbhLi004836
+	for <tytso@mit.edu>; Mon, 16 Feb 2009 16:37:43 -0500 (EST)
+Received: from mx2.redhat.com (mx2.redhat.com [66.187.237.31])
+	by mit.edu (Spam Firewall) with ESMTP id 33E14D647FE
+	for <tytso@mit.edu>; Mon, 16 Feb 2009 16:37:41 -0500 (EST)
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n1GLbe2q016841;
+	Mon, 16 Feb 2009 16:37:40 -0500
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n1GLbeWP020811;
+	Mon, 16 Feb 2009 16:37:40 -0500
+Received: from dhcp-100-2-144.bos.redhat.com (dhcp-100-2-144.bos.redhat.com [10.16.2.144])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n1GLbdYC016657;
+	Mon, 16 Feb 2009 16:37:39 -0500
+Date: Mon, 16 Feb 2009 16:35:07 -0500
+From: Chuck Ebbert <cebbert@redhat.com>
+To: Theodore Tso <tytso@mit.edu>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
+Message-ID: <20090216163507.1e73f452@dhcp-100-2-144.bos.redhat.com>
+In-Reply-To: <20090212211935.GE6922@mini-me.lan>
+References: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
+	<20090211075914.GC20842@skywalker>
+	<20090211153328.37ef255f@dhcp-100-2-144.bos.redhat.com>
+	<20090212211935.GE6922@mini-me.lan>
+Organization: Red Hat, Inc.
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.42
+X-Scanned-By: MIMEDefang 2.58 on 172.16.27.26
+X-Spam-Score: 0.00
+X-Spam-Flag: NO
+
+On Thu, 12 Feb 2009 16:19:35 -0500
+Theodore Tso <tytso@mit.edu> wrote:
+
+> 
+> I've updated the for-stable and for-stable-2.6.27 branches against the
+> latest stable releases, and I've updated the two flawed backports in
+> the for-stable-2.6.27 branch.  Could you do a quick double-check and
+> make sure the fixes are as you expect, before I send a pull request to
+> stable@kernel.org?
+
+The 2.6.27 branch looks good to me.
+
+--J2SCkAp4GZ/dPZZf--
