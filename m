@@ -1,98 +1,112 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: [cebbert@redhat.com: Re: Ext4 tree backports for 2.6.27.13 and
-	2.6.28.2]
-Date: Mon, 16 Feb 2009 18:01:04 -0500
-Message-ID: <20090216230104.GG23758@mini-me.lan>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="J2SCkAp4GZ/dPZZf"
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: stable@kernel.org
+From: Bryan Donlan <bdonlan@gmail.com>
+Subject: [PATCH v2] ext[234]: Return -EIO not -ESTALE on directory traversal through deleted inode
+Date: Mon, 16 Feb 2009 20:10:03 -0500
+Message-ID: <1234833003-19631-1-git-send-email-bdonlan@gmail.com>
+References: <20090214141411.GD26628@mini-me.lan>
+Cc: sct@redhat.com, akpm@linux-foundation.org, adilger@sun.com,
+	tytso@mit.edu, Bryan Donlan <bdonlan@gmail.com>
+To: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:48681 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750727AbZBPXkK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Feb 2009 18:40:10 -0500
-Content-Disposition: inline
+Received: from satoko.is.fushizen.net ([207.192.69.114]:49642 "EHLO
+	satoko.is.fushizen.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750721AbZBQBKH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Feb 2009 20:10:07 -0500
+In-Reply-To: <20090214141411.GD26628@mini-me.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+The ext[234]_iget() functions in the ext[234] family of filesystems returns
+-ESTALE if invoked on a deleted inode, in order to report errors to NFS
+properly. However, in ext[234]_lookup(), this -ESTALE can be propagated to
+userspace if the filesystem is corrupted such that a directory entry
+references a deleted inode. This leads to a misleading error message - "Stale
+NFS file handle" - and confusion on the part of the admin.
 
---J2SCkAp4GZ/dPZZf
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+The bug can be easily reproduced by creating a new filesystem, making a link
+to an unused inode using debugfs, then mounting and attempting to ls -l
+said link.
 
-Hi,
+This patch thus changes ext[234]_lookup to return -EIO if it receives -ESTALE
+from ext[234]_iget(), as ext[234] does for other filesystem metadata
+corruption; and also invokes the appropriate ext*_error functions when
+this case is detected.
 
-Can you please include the patches found in the for-stable and
-for-stable-2.6.27 branches at:
+Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
+---
+ fs/ext2/namei.c |   12 ++++++++++--
+ fs/ext3/namei.c |   12 ++++++++++--
+ fs/ext4/namei.c |   12 ++++++++++--
+ 3 files changed, 30 insertions(+), 6 deletions(-)
 
-	  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
+index 90ea179..e3d2d34 100644
+--- a/fs/ext2/namei.c
++++ b/fs/ext2/namei.c
+@@ -66,8 +66,16 @@ static struct dentry *ext2_lookup(struct inode * dir, struct dentry *dentry, str
+ 	inode = NULL;
+ 	if (ino) {
+ 		inode = ext2_iget(dir->i_sb, ino);
+-		if (IS_ERR(inode))
+-			return ERR_CAST(inode);
++		if (unlikely(IS_ERR(inode))) {
++			if (PTR_ERR(inode) == -ESTALE) {
++				ext2_error(dir->i_sb, "ext2_lookup",
++						"deleted inode referenced: %lu",
++						ino);
++				return ERR_PTR(-EIO);
++			} else {
++				return ERR_CAST(inode);
++			}
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
+index 4db4ffa..7a99af0 100644
+--- a/fs/ext3/namei.c
++++ b/fs/ext3/namei.c
+@@ -1047,8 +1047,16 @@ static struct dentry *ext3_lookup(struct inode * dir, struct dentry *dentry, str
+ 			return ERR_PTR(-EIO);
+ 		}
+ 		inode = ext3_iget(dir->i_sb, ino);
+-		if (IS_ERR(inode))
+-			return ERR_CAST(inode);
++		if (unlikely(IS_ERR(inode))) {
++			if (PTR_ERR(inode) == -ESTALE) {
++				ext3_error(dir->i_sb, "ext2_lookup",
++						"deleted inode referenced: %lu",
++						ino);
++				return ERR_PTR(-EIO);
++			} else {
++				return ERR_CAST(inode);
++			}
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index ba702bd..a61637b 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1052,8 +1052,16 @@ static struct dentry *ext4_lookup(struct inode *dir, struct dentry *dentry, stru
+ 			return ERR_PTR(-EIO);
+ 		}
+ 		inode = ext4_iget(dir->i_sb, ino);
+-		if (IS_ERR(inode))
+-			return ERR_CAST(inode);
++		if (unlikely(IS_ERR(inode))) {
++			if (PTR_ERR(inode) == -ESTALE) {
++				ext4_error(dir->i_sb, "ext2_lookup",
++						"deleted inode referenced: %u",
++						ino);
++				return ERR_PTR(-EIO);
++			} else {
++				return ERR_CAST(inode);
++			}
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+-- 
+1.5.6.3
 
-into the next 2.6.28.y and 2.6.27.y kernels, respectively?
-
-Or do you need me to send them in e-mail format via git
-format-patch/git send-email?  I can do that too if you prefer that.
-
-		 	      	       - Ted
-
-
-
-
---J2SCkAp4GZ/dPZZf
-Content-Type: message/rfc822
-Content-Disposition: inline
-
-Return-Path: <cebbert@redhat.com>
-Received: from po14.mit.edu ([unix socket])
-	by po14.mit.edu (Cyrus v2.1.5) with LMTP; Mon, 16 Feb 2009 16:37:49 -0500
-X-Sieve: CMU Sieve 2.2
-Received: from fort-point-station.mit.edu by po14.mit.edu (8.13.6/4.7) id n1GLbmDm014461; Mon, 16 Feb 2009 16:37:48 -0500 (EST)
-Received: from mit.edu (M24-004-BARRACUDA-1.MIT.EDU [18.7.7.111])
-	by fort-point-station.mit.edu (8.13.6/8.9.2) with ESMTP id n1GLbhLi004836
-	for <tytso@mit.edu>; Mon, 16 Feb 2009 16:37:43 -0500 (EST)
-Received: from mx2.redhat.com (mx2.redhat.com [66.187.237.31])
-	by mit.edu (Spam Firewall) with ESMTP id 33E14D647FE
-	for <tytso@mit.edu>; Mon, 16 Feb 2009 16:37:41 -0500 (EST)
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n1GLbe2q016841;
-	Mon, 16 Feb 2009 16:37:40 -0500
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n1GLbeWP020811;
-	Mon, 16 Feb 2009 16:37:40 -0500
-Received: from dhcp-100-2-144.bos.redhat.com (dhcp-100-2-144.bos.redhat.com [10.16.2.144])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n1GLbdYC016657;
-	Mon, 16 Feb 2009 16:37:39 -0500
-Date: Mon, 16 Feb 2009 16:35:07 -0500
-From: Chuck Ebbert <cebbert@redhat.com>
-To: Theodore Tso <tytso@mit.edu>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-        linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
-Message-ID: <20090216163507.1e73f452@dhcp-100-2-144.bos.redhat.com>
-In-Reply-To: <20090212211935.GE6922@mini-me.lan>
-References: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
-	<20090211075914.GC20842@skywalker>
-	<20090211153328.37ef255f@dhcp-100-2-144.bos.redhat.com>
-	<20090212211935.GE6922@mini-me.lan>
-Organization: Red Hat, Inc.
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-X-Scanned-By: MIMEDefang 2.42
-X-Scanned-By: MIMEDefang 2.58 on 172.16.27.26
-X-Spam-Score: 0.00
-X-Spam-Flag: NO
-
-On Thu, 12 Feb 2009 16:19:35 -0500
-Theodore Tso <tytso@mit.edu> wrote:
-
-> 
-> I've updated the for-stable and for-stable-2.6.27 branches against the
-> latest stable releases, and I've updated the two flawed backports in
-> the for-stable-2.6.27 branch.  Could you do a quick double-check and
-> make sure the fixes are as you expect, before I send a pull request to
-> stable@kernel.org?
-
-The 2.6.27 branch looks good to me.
-
---J2SCkAp4GZ/dPZZf--
