@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 16/24] ext4: mark the blocks/inode bitmap beyond end of group as used
-Date: Tue, 17 Feb 2009 10:32:34 -0500
-Message-ID: <1234884762-13580-17-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.28 14/24] jbd2: Add BH_JBDPrivateStart
+Date: Tue, 17 Feb 2009 10:32:32 -0500
+Message-ID: <1234884762-13580-15-git-send-email-tytso@mit.edu>
 References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-2-git-send-email-tytso@mit.edu>
  <1234884762-13580-3-git-send-email-tytso@mit.edu>
@@ -16,74 +16,44 @@ References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-12-git-send-email-tytso@mit.edu>
  <1234884762-13580-13-git-send-email-tytso@mit.edu>
  <1234884762-13580-14-git-send-email-tytso@mit.edu>
- <1234884762-13580-15-git-send-email-tytso@mit.edu>
- <1234884762-13580-16-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:54673 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:54661 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751469AbZBQQEh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:04:37 -0500
-In-Reply-To: <1234884762-13580-16-git-send-email-tytso@mit.edu>
+	id S1751177AbZBQQET (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 11:04:19 -0500
+In-Reply-To: <1234884762-13580-14-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: Mark Fasheh <mfasheh@suse.com>
 
-We need to mark the block/inode bitmap beyond the end of the group
-with '1'.
+Add this so that file systems using JBD2 can safely allocate unused b_state
+bits.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@kernel.org
-(cherry picked from commit 648f5879f5892dddd3ba71cd0d285599f40f2512)
+In this case, we add it so that Ocfs2 can define a single bit for tracking
+the validation state of a buffer.
+
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Mark Fasheh <mfasheh@suse.com>
+(cherry picked from commit e97fcd95a4778a8caf1980c6c72fdf68185a0838)
 ---
- fs/ext4/ialloc.c  |    2 +-
- fs/ext4/mballoc.c |    4 ++--
- fs/ext4/resize.c  |    6 ++----
- 3 files changed, 5 insertions(+), 7 deletions(-)
+ include/linux/jbd2.h |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 4f1601b..b363c49 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -84,7 +84,7 @@ unsigned ext4_init_inode_bitmap(struct super_block *sb, struct buffer_head *bh,
- 	}
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index c7d106e..f366457 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -329,6 +329,7 @@ enum jbd_state_bits {
+ 	BH_State,		/* Pins most journal_head state */
+ 	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+ 	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
++	BH_JBDPrivateStart,	/* First bit available for private use by FS */
+ };
  
- 	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
--	mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), EXT4_BLOCKS_PER_GROUP(sb),
-+	mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
- 			bh->b_data);
- 
- 	return EXT4_INODES_PER_GROUP(sb);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 0c20447..3c4d75e 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3036,8 +3036,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	    in_range(block + len - 1, ext4_inode_table(sb, gdp),
- 		     EXT4_SB(sb)->s_itb_per_group)) {
- 		ext4_error(sb, __func__,
--			   "Allocating block in system zone - block = %llu",
--			   block);
-+			   "Allocating block %llu in system zone of %d group\n",
-+			   block, ac->ac_b_ex.fe_group);
- 		/* File system mounted not to panic on error
- 		 * Fix the bitmap and repeat the block allocation
- 		 * We leak some of the blocks here.
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index c07ddc0..d1585dd 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -284,11 +284,9 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	if ((err = extend_or_restart_transaction(handle, 2, bh)))
- 		goto exit_bh;
- 
--	mark_bitmap_end(input->blocks_count, EXT4_BLOCKS_PER_GROUP(sb),
--			bh->b_data);
-+	mark_bitmap_end(input->blocks_count, sb->s_blocksize * 8, bh->b_data);
- 	ext4_journal_dirty_metadata(handle, bh);
- 	brelse(bh);
+ BUFFER_FNS(JBD, jbd)
+-- 
+1.5.6.3
+
