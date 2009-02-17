@@ -1,20 +1,251 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 00/24]
-Date: Tue, 17 Feb 2009 10:32:18 -0500
-Message-ID: <1234884762-13580-1-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
+Subject: [PATCH FOR-STABLE-2.6.28 01/24] ext4: Add support for non-native signed/unsigned htree hash algorithms
+Date: Tue, 17 Feb 2009 10:32:19 -0500
+Message-ID: <1234884762-13580-2-git-send-email-tytso@mit.edu>
+References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:47315 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:47320 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752183AbZBQPcz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 10:32:55 -0500
+	id S1752219AbZBQPdG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 10:33:06 -0500
+In-Reply-To: <1234884762-13580-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+The original ext3 hash algorithms assumed that variables of type char
+were signed, as God and K&R intended.  Unfortunately, this assumption
+is not true on some architectures.  Userspace support for marking
+filesystems with non-native signed/unsigned chars was added two years
+ago, but the kernel-side support was never added (until now).
 
-The following patches are ext4 bugfixes from 2.6.29-rcX that have been
-backported to 2.6.28.5; could you please queue them up for the next
-2.6.28.y release?  Thanks!!
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+(cherry picked from commit f99b25897a86fcfff9140396a97261ae65fed872)
+---
+ fs/ext4/ext4.h    |    3 ++
+ fs/ext4/ext4_sb.h |    1 +
+ fs/ext4/hash.c    |   77 ++++++++++++++++++++++++++++++++++++++++++++++-------
+ fs/ext4/namei.c   |    7 +++++
+ fs/ext4/super.c   |   12 ++++++++
+ 5 files changed, 90 insertions(+), 10 deletions(-)
 
-						- Ted
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index b0537c8..8370ffd 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -891,6 +891,9 @@ static inline __le16 ext4_rec_len_to_disk(unsigned len)
+ #define DX_HASH_LEGACY		0
+ #define DX_HASH_HALF_MD4	1
+ #define DX_HASH_TEA		2
++#define DX_HASH_LEGACY_UNSIGNED	3
++#define DX_HASH_HALF_MD4_UNSIGNED	4
++#define DX_HASH_TEA_UNSIGNED		5
+ 
+ #ifdef __KERNEL__
+ 
+diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
+index 445fde6..2f3b8b1 100644
+--- a/fs/ext4/ext4_sb.h
++++ b/fs/ext4/ext4_sb.h
+@@ -57,6 +57,7 @@ struct ext4_sb_info {
+ 	u32 s_next_generation;
+ 	u32 s_hash_seed[4];
+ 	int s_def_hash_version;
++	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+diff --git a/fs/ext4/hash.c b/fs/ext4/hash.c
+index 556ca8e..ac8f168 100644
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -35,23 +35,71 @@ static void TEA_transform(__u32 buf[4], __u32 const in[])
+ 
+ 
+ /* The old legacy hash */
+-static __u32 dx_hack_hash(const char *name, int len)
++static __u32 dx_hack_hash_unsigned(const char *name, int len)
+ {
+-	__u32 hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	const unsigned char *ucp = (const unsigned char *) name;
++
++	while (len--) {
++		hash = hash1 + (hash0 ^ (((int) *ucp++) * 7152373));
++
++		if (hash & 0x80000000)
++			hash -= 0x7fffffff;
++		hash1 = hash0;
++		hash0 = hash;
++	}
++	return hash0 << 1;
++}
++
++static __u32 dx_hack_hash_signed(const char *name, int len)
++{
++	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	const signed char *scp = (const signed char *) name;
++
+ 	while (len--) {
+-		__u32 hash = hash1 + (hash0 ^ (*name++ * 7152373));
++		hash = hash1 + (hash0 ^ (((int) *scp++) * 7152373));
+ 
+-		if (hash & 0x80000000) hash -= 0x7fffffff;
++		if (hash & 0x80000000)
++			hash -= 0x7fffffff;
+ 		hash1 = hash0;
+ 		hash0 = hash;
+ 	}
+-	return (hash0 << 1);
++	return hash0 << 1;
++}
++
++static void str2hashbuf_signed(const char *msg, int len, __u32 *buf, int num)
++{
++	__u32	pad, val;
++	int	i;
++	const signed char *scp = (const signed char *) msg;
++
++	pad = (__u32)len | ((__u32)len << 8);
++	pad |= pad << 16;
++
++	val = pad;
++	if (len > num*4)
++		len = num * 4;
++	for (i = 0; i < len; i++) {
++		if ((i % 4) == 0)
++			val = pad;
++		val = ((int) scp[i]) + (val << 8);
++		if ((i % 4) == 3) {
++			*buf++ = val;
++			val = pad;
++			num--;
++		}
++	}
++	if (--num >= 0)
++		*buf++ = val;
++	while (--num >= 0)
++		*buf++ = pad;
+ }
+ 
+-static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
++static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
+ {
+ 	__u32	pad, val;
+ 	int	i;
++	const unsigned char *ucp = (const unsigned char *) msg;
+ 
+ 	pad = (__u32)len | ((__u32)len << 8);
+ 	pad |= pad << 16;
+@@ -62,7 +110,7 @@ static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
+ 	for (i = 0; i < len; i++) {
+ 		if ((i % 4) == 0)
+ 			val = pad;
+-		val = msg[i] + (val << 8);
++		val = ((int) ucp[i]) + (val << 8);
+ 		if ((i % 4) == 3) {
+ 			*buf++ = val;
+ 			val = pad;
+@@ -95,6 +143,8 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 	const char	*p;
+ 	int		i;
+ 	__u32		in[8], buf[4];
++	void		(*str2hashbuf)(const char *, int, __u32 *, int) =
++				str2hashbuf_signed;
+ 
+ 	/* Initialize the default seed for the hash checksum functions */
+ 	buf[0] = 0x67452301;
+@@ -113,13 +163,18 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 	}
+ 
+ 	switch (hinfo->hash_version) {
++	case DX_HASH_LEGACY_UNSIGNED:
++		hash = dx_hack_hash_unsigned(name, len);
++		break;
+ 	case DX_HASH_LEGACY:
+-		hash = dx_hack_hash(name, len);
++		hash = dx_hack_hash_signed(name, len);
+ 		break;
++	case DX_HASH_HALF_MD4_UNSIGNED:
++		str2hashbuf = str2hashbuf_unsigned;
+ 	case DX_HASH_HALF_MD4:
+ 		p = name;
+ 		while (len > 0) {
+-			str2hashbuf(p, len, in, 8);
++			(*str2hashbuf)(p, len, in, 8);
+ 			half_md4_transform(buf, in);
+ 			len -= 32;
+ 			p += 32;
+@@ -127,10 +182,12 @@ int ext4fs_dirhash(const char *name, int len, struct dx_hash_info *hinfo)
+ 		minor_hash = buf[2];
+ 		hash = buf[1];
+ 		break;
++	case DX_HASH_TEA_UNSIGNED:
++		str2hashbuf = str2hashbuf_unsigned;
+ 	case DX_HASH_TEA:
+ 		p = name;
+ 		while (len > 0) {
+-			str2hashbuf(p, len, in, 4);
++			(*str2hashbuf)(p, len, in, 4);
+ 			TEA_transform(buf, in);
+ 			len -= 16;
+ 			p += 16;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 92c8397..dc0b16a 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -372,6 +372,8 @@ dx_probe(const struct qstr *d_name, struct inode *dir,
+ 		goto fail;
+ 	}
+ 	hinfo->hash_version = root->info.hash_version;
++	if (hinfo->hash_version <= DX_HASH_TEA)
++		hinfo->hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 	if (d_name)
+ 		ext4fs_dirhash(d_name->name, d_name->len, hinfo);
+@@ -641,6 +643,9 @@ int ext4_htree_fill_tree(struct file *dir_file, __u32 start_hash,
+ 	dir = dir_file->f_path.dentry->d_inode;
+ 	if (!(EXT4_I(dir)->i_flags & EXT4_INDEX_FL)) {
+ 		hinfo.hash_version = EXT4_SB(dir->i_sb)->s_def_hash_version;
++		if (hinfo.hash_version <= DX_HASH_TEA)
++			hinfo.hash_version +=
++				EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 		hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 		count = htree_dirblock_to_tree(dir_file, dir, 0, &hinfo,
+ 					       start_hash, start_minor_hash);
+@@ -1408,6 +1413,8 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 
+ 	/* Initialize as for dx_probe */
+ 	hinfo.hash_version = root->info.hash_version;
++	if (hinfo.hash_version <= DX_HASH_TEA)
++		hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 	ext4fs_dirhash(name, namelen, &hinfo);
+ 	frame = frames;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e4a241c..7b3ba42 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2118,6 +2118,18 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	for (i = 0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
++	i = le32_to_cpu(es->s_flags);
++	if (i & EXT2_FLAGS_UNSIGNED_HASH)
++		sbi->s_hash_unsigned = 3;
++	else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
++#ifdef __CHAR_UNSIGNED__
++		es->s_flags |= cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
++		sbi->s_hash_unsigned = 3;
++#else
++		es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
++#endif
++		sb->s_dirt = 1;
++	}
+ 
+ 	if (sbi->s_blocks_per_group > blocksize * 8) {
+ 		printk(KERN_ERR
+-- 
+1.5.6.3
+
