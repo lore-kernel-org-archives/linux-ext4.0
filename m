@@ -1,29 +1,30 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 14/24] jbd2: Add BH_JBDPrivateStart
-Date: Tue, 17 Feb 2009 10:32:32 -0500
-Message-ID: <1234884762-13580-15-git-send-email-tytso@mit.edu>
-References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
- <1234884762-13580-2-git-send-email-tytso@mit.edu>
- <1234884762-13580-3-git-send-email-tytso@mit.edu>
- <1234884762-13580-4-git-send-email-tytso@mit.edu>
- <1234884762-13580-5-git-send-email-tytso@mit.edu>
- <1234884762-13580-6-git-send-email-tytso@mit.edu>
- <1234884762-13580-7-git-send-email-tytso@mit.edu>
- <1234884762-13580-8-git-send-email-tytso@mit.edu>
- <1234884762-13580-9-git-send-email-tytso@mit.edu>
- <1234884762-13580-10-git-send-email-tytso@mit.edu>
- <1234884762-13580-11-git-send-email-tytso@mit.edu>
- <1234884762-13580-12-git-send-email-tytso@mit.edu>
- <1234884762-13580-13-git-send-email-tytso@mit.edu>
- <1234884762-13580-14-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.27 15/24] jbd2: Add BH_JBDPrivateStart
+Date: Tue, 17 Feb 2009 10:58:35 -0500
+Message-ID: <1234886324-15105-16-git-send-email-tytso@mit.edu>
+References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
+ <1234886324-15105-2-git-send-email-tytso@mit.edu>
+ <1234886324-15105-3-git-send-email-tytso@mit.edu>
+ <1234886324-15105-4-git-send-email-tytso@mit.edu>
+ <1234886324-15105-5-git-send-email-tytso@mit.edu>
+ <1234886324-15105-6-git-send-email-tytso@mit.edu>
+ <1234886324-15105-7-git-send-email-tytso@mit.edu>
+ <1234886324-15105-8-git-send-email-tytso@mit.edu>
+ <1234886324-15105-9-git-send-email-tytso@mit.edu>
+ <1234886324-15105-10-git-send-email-tytso@mit.edu>
+ <1234886324-15105-11-git-send-email-tytso@mit.edu>
+ <1234886324-15105-12-git-send-email-tytso@mit.edu>
+ <1234886324-15105-13-git-send-email-tytso@mit.edu>
+ <1234886324-15105-14-git-send-email-tytso@mit.edu>
+ <1234886324-15105-15-git-send-email-tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org, Mark Fasheh <mfasheh@suse.com>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:54661 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:35413 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751177AbZBQQET (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:04:19 -0500
-In-Reply-To: <1234884762-13580-14-git-send-email-tytso@mit.edu>
+	id S1752223AbZBQQDV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 11:03:21 -0500
+In-Reply-To: <1234886324-15105-15-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -43,7 +44,7 @@ Signed-off-by: Mark Fasheh <mfasheh@suse.com>
  1 files changed, 1 insertions(+), 0 deletions(-)
 
 diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index c7d106e..f366457 100644
+index 66c3499..e8e9133 100644
 --- a/include/linux/jbd2.h
 +++ b/include/linux/jbd2.h
 @@ -329,6 +329,7 @@ enum jbd_state_bits {
