@@ -1,97 +1,75 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 06/24] jbd2: Add barrier not supported test to journal_wait_on_commit_record
-Date: Tue, 17 Feb 2009 10:32:24 -0500
-Message-ID: <1234884762-13580-7-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.28 05/24] ext4: Widen type of ext4_sb_info.s_mb_maxs[]
+Date: Tue, 17 Feb 2009 10:32:23 -0500
+Message-ID: <1234884762-13580-6-git-send-email-tytso@mit.edu>
 References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-2-git-send-email-tytso@mit.edu>
  <1234884762-13580-3-git-send-email-tytso@mit.edu>
  <1234884762-13580-4-git-send-email-tytso@mit.edu>
  <1234884762-13580-5-git-send-email-tytso@mit.edu>
- <1234884762-13580-6-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Yasunori Goto <y-goto@jp.fujitsu.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, Li Zefan <lizf@cn.fujitsu.com>,
+	Miao Xie <miaox@cn.fujitsu.com>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:42106 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:42101 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752526AbZBQPdl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 10:33:41 -0500
-In-Reply-To: <1234884762-13580-6-git-send-email-tytso@mit.edu>
+	id S1752407AbZBQPdh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 10:33:37 -0500
+In-Reply-To: <1234884762-13580-5-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Xen doesn't report that barriers are not supported until buffer I/O is
-reported as completed, instead of when the buffer I/O is submitted.
-Add a check and a fallback codepath to journal_wait_on_commit_record()
-to detect this case, so that attempts to mount ext4 filesystems on
-LVM/devicemapper devices on Xen guests don't blow up with an "Aborting
-journal on device XXX"; "Remounting filesystem read-only" error.
+From: Yasunori Goto <y-goto@jp.fujitsu.com>
 
-Thanks to Andreas Sundstrom for reporting this issue.
+I chased the cause of following ext4 oops report which is tested on
+ia64 box.
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12018
+
+The cause is the size of s_mb_maxs array that is defined as "unsigned
+short" in ext4_sb_info structure.  If the file system's block size is
+8k or greater, an unsigned short is not wide enough to contain the
+value fs->blocksize << 3.
+
+Signed-off-by: Yasunori Goto <y-goto@jp.fujitsu.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Li Zefan <lizf@cn.fujitsu.com>
+Cc: Miao Xie <miaox@cn.fujitsu.com>
 Cc: stable@kernel.org
-(cherry picked from commit fd98496f467b3d26d05ab1498f41718b5ef13de5)
+(cherry picked from commit ff7ef329b268b603ea4a2303241ef1c3829fd574)
 ---
- fs/jbd2/commit.c |   27 +++++++++++++++++++++++++--
- 1 files changed, 25 insertions(+), 2 deletions(-)
+ fs/ext4/ext4_sb.h |    3 ++-
+ fs/ext4/mballoc.c |    2 ++
+ 2 files changed, 4 insertions(+), 1 deletions(-)
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index ebc667b..6393fd0 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -25,6 +25,7 @@
- #include <linux/crc32.h>
- #include <linux/writeback.h>
- #include <linux/backing-dev.h>
-+#include <linux/bio.h>
+diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
+index 2f3b8b1..f00f112 100644
+--- a/fs/ext4/ext4_sb.h
++++ b/fs/ext4/ext4_sb.h
+@@ -102,7 +102,8 @@ struct ext4_sb_info {
+ 	spinlock_t s_reserve_lock;
+ 	spinlock_t s_md_lock;
+ 	tid_t s_last_transaction;
+-	unsigned short *s_mb_offsets, *s_mb_maxs;
++	unsigned short *s_mb_offsets;
++	unsigned int *s_mb_maxs;
  
- /*
-  * Default IO end handler for temporary BJ_IO buffer_heads.
-@@ -168,12 +169,34 @@ static int journal_submit_commit_record(journal_t *journal,
-  * This function along with journal_submit_commit_record
-  * allows to write the commit record asynchronously.
-  */
--static int journal_wait_on_commit_record(struct buffer_head *bh)
-+static int journal_wait_on_commit_record(journal_t *journal,
-+					 struct buffer_head *bh)
- {
- 	int ret = 0;
- 
-+retry:
- 	clear_buffer_dirty(bh);
- 	wait_on_buffer(bh);
-+	if (buffer_eopnotsupp(bh) && (journal->j_flags & JBD2_BARRIER)) {
-+		printk(KERN_WARNING
-+		       "JBD2: wait_on_commit_record: sync failed on %s - "
-+		       "disabling barriers\n", journal->j_devname);
-+		spin_lock(&journal->j_state_lock);
-+		journal->j_flags &= ~JBD2_BARRIER;
-+		spin_unlock(&journal->j_state_lock);
-+
-+		lock_buffer(bh);
-+		clear_buffer_dirty(bh);
-+		set_buffer_uptodate(bh);
-+		bh->b_end_io = journal_end_buffer_io_sync;
-+
-+		ret = submit_bh(WRITE_SYNC, bh);
-+		if (ret) {
-+			unlock_buffer(bh);
-+			return ret;
-+		}
-+		goto retry;
-+	}
- 
- 	if (unlikely(!buffer_uptodate(bh)))
- 		ret = -EIO;
-@@ -799,7 +822,7 @@ wait_for_iobuf:
- 			__jbd2_journal_abort_hard(journal);
+ 	/* tunables */
+ 	unsigned long s_stripe;
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 444ad99..7beab71 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2493,6 +2493,8 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
+ 	if (sbi->s_mb_offsets == NULL) {
+ 		return -ENOMEM;
  	}
- 	if (!err && !is_journal_aborted(journal))
--		err = journal_wait_on_commit_record(cbh);
-+		err = journal_wait_on_commit_record(journal, cbh);
- 
- 	if (err)
- 		jbd2_journal_abort(journal, err);
++
++	i = (sb->s_blocksize_bits + 2) * sizeof(unsigned int);
+ 	sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_mb_maxs == NULL) {
+ 		kfree(sbi->s_mb_maxs);
 -- 
 1.5.6.3
 
