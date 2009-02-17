@@ -1,67 +1,53 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 02/24] ext4: tone down ext4_da_writepages warnings
-Date: Tue, 17 Feb 2009 10:32:20 -0500
-Message-ID: <1234884762-13580-3-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.28 04/24] ext4: avoid ext4_error when mounting a fs with a single bg
+Date: Tue, 17 Feb 2009 10:32:22 -0500
+Message-ID: <1234884762-13580-5-git-send-email-tytso@mit.edu>
 References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-2-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+ <1234884762-13580-3-git-send-email-tytso@mit.edu>
+ <1234884762-13580-4-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:47326 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:42088 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752020AbZBQPdI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 10:33:08 -0500
-In-Reply-To: <1234884762-13580-2-git-send-email-tytso@mit.edu>
+	id S1752262AbZBQPdY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 10:33:24 -0500
+In-Reply-To: <1234884762-13580-4-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the filesystem has errors, ext4_da_writepages() will return a *lot*
-of errors, including lots and lots of stack dumps.  While it's true
-that we are dropping user data on the floor, which is unfortunate, the
-stack dumps aren't helpful, and they tend to obscure the true original
-root cause of the problem.  So in the case where the filesystem has
-aborted, return an EROFS right away.
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
+Remove some completely unneeded code which which caused an ext4_error
+to be generated when mounting a file system with only a single block
+group.
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit 2a21e37e48b94388f2cc8c0392f104f5443d4bb8)
+Cc: stable@kernel.org
+(cherry picked from commit 565a9617b2151e21b22700e97a8b04e70e103153)
 ---
- fs/ext4/inode.c |   16 +++++++++++++++-
- 1 files changed, 15 insertions(+), 1 deletions(-)
+ fs/ext4/super.c |    4 ----
+ 1 files changed, 0 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8e46b19..25d6adc 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2388,6 +2388,20 @@ static int ext4_da_writepages(struct address_space *mapping,
- 	 */
- 	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
- 		return 0;
-+
-+	/*
-+	 * If the filesystem has aborted, it is read-only, so return
-+	 * right away instead of dumping stack traces later on that
-+	 * will obscure the real source of the problem.  We test
-+	 * EXT4_MOUNT_ABORT instead of sb->s_flag's MS_RDONLY because
-+	 * the latter could be true if the filesystem is mounted
-+	 * read-only, and in that case, ext4_da_writepages should
-+	 * *never* be called, so if that ever happens, we would want
-+	 * the stack trace.
-+	 */
-+	if (unlikely(sbi->s_mount_opt & EXT4_MOUNT_ABORT))
-+		return -EROFS;
-+
- 	/*
- 	 * Make sure nr_to_write is >= sbi->s_mb_stream_request
- 	 * This make sure small files blocks are allocated in
-@@ -2432,7 +2446,7 @@ static int ext4_da_writepages(struct address_space *mapping,
- 		handle = ext4_journal_start(inode, needed_blocks);
- 		if (IS_ERR(handle)) {
- 			ret = PTR_ERR(handle);
--			printk(KERN_EMERG "%s: jbd2_start: "
-+			printk(KERN_CRIT "%s: jbd2_start: "
- 			       "%ld pages, ino %lu; err %d\n", __func__,
- 				wbc->nr_to_write, inode->i_ino, ret);
- 			dump_stack();
--- 
-1.5.6.3
-
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7b3ba42..4aa2040 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1445,7 +1445,6 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 	ext4_group_t flex_group_count;
+ 	ext4_group_t flex_group;
+ 	int groups_per_flex = 0;
+-	__u64 block_bitmap = 0;
+ 	int i;
+ 
+ 	if (!sbi->s_es->s_log_groups_per_flex) {
+@@ -1468,9 +1467,6 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 		goto failed;
+ 	}
+ 
+-	gdp = ext4_get_group_desc(sb, 1, &bh);
+-	block_bitmap = ext4_block_bitmap(sb, gdp) - 1;
