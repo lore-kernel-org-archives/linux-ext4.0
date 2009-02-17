@@ -1,53 +1,40 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.27 04/24] ext4: avoid ext4_error when mounting a fs with a single bg
-Date: Tue, 17 Feb 2009 10:58:24 -0500
-Message-ID: <1234886324-15105-5-git-send-email-tytso@mit.edu>
-References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
- <1234886324-15105-2-git-send-email-tytso@mit.edu>
- <1234886324-15105-3-git-send-email-tytso@mit.edu>
- <1234886324-15105-4-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: stable@kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Fix to read empty directory blocks correctly in
+	64k blocksize filesystems
+Date: Mon, 16 Feb 2009 19:05:09 -0500
+Message-ID: <20090217000509.GI23758@mini-me.lan>
+References: <4990FAE4.1080009@cn.fujitsu.com> <20090210152049.GF30689@mini-me.lan> <20090211054816.GP3209@webber.adilger.int> <20090211151547.GK29220@mini-me.lan> <20090216233256.GI3199@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Wei Yongjun <yjwei@cn.fujitsu.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35292 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:35305 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751894AbZBQP7W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 10:59:22 -0500
-In-Reply-To: <1234886324-15105-4-git-send-email-tytso@mit.edu>
+	id S1752097AbZBQP7Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 10:59:25 -0500
+Content-Disposition: inline
+In-Reply-To: <20090216233256.GI3199@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+On Mon, Feb 16, 2009 at 04:32:56PM -0700, Andreas Dilger wrote:
+> There are probably a dozen other places in the ext* code that expect
+> blocksize <= 65536, so I don't think this new encoding is really helping
+> us at all.  We are already restricted to 2^32-1 inodes due to the dirent
+> format and I expect we will have changed the dirent format by that time
+> anyways.
 
-Remove some completely unneeded code which which caused an ext4_error
-to be generated when mounting a file system with only a single block
-group.
+I can only find one other place, actually, which would be the extended
+attribute code --- e_value_offs is a 16 bit offset (although we could
+steal bits form e_value block if necessary).
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@kernel.org
-(cherry picked from commit 565a9617b2151e21b22700e97a8b04e70e103153)
----
- fs/ext4/super.c |    4 ----
- 1 files changed, 0 insertions(+), 4 deletions(-)
+> I'd rather keep this change as simple as possible (i.e. the original
+> 65535 or 0 values, preferring 65535).
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 787455a..2dabc32 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1493,7 +1493,6 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 	ext4_group_t flex_group_count;
- 	ext4_group_t flex_group;
- 	int groups_per_flex = 0;
--	__u64 block_bitmap = 0;
- 	int i;
- 
- 	if (!sbi->s_es->s_log_groups_per_flex) {
-@@ -1516,9 +1515,6 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 		goto failed;
- 	}
- 
--	gdp = ext4_get_group_desc(sb, 1, &bh);
--	block_bitmap = ext4_block_bitmap(sb, gdp) - 1;
+For 64k block sizes, I've kept this, although I preferred 0 since it's
+a cleaner change if we want to allow bigger blocksize alternative.  I
+don't think 65535 is any worse than 0 in terms of detecting directory
+corruption.
+
+					- Ted
