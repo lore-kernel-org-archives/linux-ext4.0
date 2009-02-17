@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.27 17/24] ext4: mark the blocks/inode bitmap beyond end of group as used
-Date: Tue, 17 Feb 2009 10:58:37 -0500
-Message-ID: <1234886324-15105-18-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.27 14/24] ext4: Fix the race between read_inode_bitmap() and ext4_new_inode()
+Date: Tue, 17 Feb 2009 10:58:34 -0500
+Message-ID: <1234886324-15105-15-git-send-email-tytso@mit.edu>
 References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
  <1234886324-15105-2-git-send-email-tytso@mit.edu>
  <1234886324-15105-3-git-send-email-tytso@mit.edu>
@@ -16,75 +16,225 @@ References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
  <1234886324-15105-12-git-send-email-tytso@mit.edu>
  <1234886324-15105-13-git-send-email-tytso@mit.edu>
  <1234886324-15105-14-git-send-email-tytso@mit.edu>
- <1234886324-15105-15-git-send-email-tytso@mit.edu>
- <1234886324-15105-16-git-send-email-tytso@mit.edu>
- <1234886324-15105-17-git-send-email-tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35379 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:35402 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752554AbZBQQBa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:01:30 -0500
-In-Reply-To: <1234886324-15105-17-git-send-email-tytso@mit.edu>
+	id S1752558AbZBQQCW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 11:02:22 -0500
+In-Reply-To: <1234886324-15105-14-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-We need to mark the block/inode bitmap beyond the end of the group
-with '1'.
+We need to make sure we update the inode bitmap and clear
+EXT4_BG_INODE_UNINIT flag with sb_bgl_lock held, since
+ext4_read_inode_bitmap() looks at EXT4_BG_INODE_UNINIT to decide
+whether to initialize the inode bitmap each time it is called.
+(introduced by commit c806e68f.)
+
+ext4_read_inode_bitmap does:
+
+spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
+if (desc->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+	ext4_init_inode_bitmap(sb, bh, block_group, desc);
+
+and ext4_new_inode does
+if (!ext4_set_bit_atomic(sb_bgl_lock(sbi, group),
+                   ino, inode_bitmap_bh->b_data))
+		   ......
+		   ...
+spin_lock(sb_bgl_lock(sbi, group));
+
+gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
+i.e., on allocation we update the bitmap then we take the sb_bgl_lock
+and clear the EXT4_BG_INODE_UNINIT flag. What can happen is a
+parallel ext4_read_inode_bitmap can zero out the bitmap in between
+the above ext4_set_bit_atomic and spin_lock(sb_bg_lock..)
+
+The race results in below user visible errors
+EXT4-fs error (device sdb1): ext4_free_inode: bit already cleared for inode 168449
+EXT4-fs warning (device sdb1): ext4_unlink: Deleting nonexistent file ...
+EXT4-fs warning (device sdb1): ext4_rmdir: empty directory has too many links ...
+ls: /mnt/tmp/f/p369/d3/d6/d39/db2/dee/d10f/d3f/l71: Stale NFS file handle
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: stable@kernel.org
-(cherry picked from commit 648f5879f5892dddd3ba71cd0d285599f40f2512)
+(cherry picked from commit 393418676a7602e1d7d3f6e560159c65c8cbd50e)
 ---
- fs/ext4/ialloc.c  |    2 +-
- fs/ext4/mballoc.c |    4 ++--
- fs/ext4/resize.c  |    6 ++----
- 3 files changed, 5 insertions(+), 7 deletions(-)
+ fs/ext4/ialloc.c |  140 ++++++++++++++++++++++++++++++++----------------------
+ 1 files changed, 83 insertions(+), 57 deletions(-)
 
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 4a3aee8..b994854 100644
+index 9805924..474214e 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -84,7 +84,7 @@ unsigned ext4_init_inode_bitmap(struct super_block *sb, struct buffer_head *bh,
+@@ -567,6 +567,77 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ }
+ 
+ /*
++ * claim the inode from the inode bitmap. If the group
++ * is uninit we need to take the groups's sb_bgl_lock
++ * and clear the uninit flag. The inode bitmap update
++ * and group desc uninit flag clear should be done
++ * after holding sb_bgl_lock so that ext4_read_inode_bitmap
++ * doesn't race with the ext4_claim_inode
++ */
++static int ext4_claim_inode(struct super_block *sb,
++			struct buffer_head *inode_bitmap_bh,
++			unsigned long ino, ext4_group_t group, int mode)
++{
++	int free = 0, retval = 0;
++	struct ext4_sb_info *sbi = EXT4_SB(sb);
++	struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group, NULL);
++
++	spin_lock(sb_bgl_lock(sbi, group));
++	if (ext4_set_bit(ino, inode_bitmap_bh->b_data)) {
++		/* not a free inode */
++		retval = 1;
++		goto err_ret;
++	}
++	ino++;
++	if ((group == 0 && ino < EXT4_FIRST_INO(sb)) ||
++			ino > EXT4_INODES_PER_GROUP(sb)) {
++		spin_unlock(sb_bgl_lock(sbi, group));
++		ext4_error(sb, __func__,
++			   "reserved inode or inode > inodes count - "
++			   "block_group = %lu, inode=%lu", group,
++			   ino + group * EXT4_INODES_PER_GROUP(sb));
++		return 1;
++	}
++	/* If we didn't allocate from within the initialized part of the inode
++	 * table then we need to initialize up to this inode. */
++	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
++
++		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
++			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
++			/* When marking the block group with
++			 * ~EXT4_BG_INODE_UNINIT we don't want to depend
++			 * on the value of bg_itable_unused even though
++			 * mke2fs could have initialized the same for us.
++			 * Instead we calculated the value below
++			 */
++
++			free = 0;
++		} else {
++			free = EXT4_INODES_PER_GROUP(sb) -
++				le16_to_cpu(gdp->bg_itable_unused);
++		}
++
++		/*
++		 * Check the relative inode number against the last used
++		 * relative inode number in this group. if it is greater
++		 * we need to  update the bg_itable_unused count
++		 *
++		 */
++		if (ino > free)
++			gdp->bg_itable_unused =
++				cpu_to_le16(EXT4_INODES_PER_GROUP(sb) - ino);
++	}
++	le16_add_cpu(&gdp->bg_free_inodes_count, -1);
++	if (S_ISDIR(mode)) {
++		le16_add_cpu(&gdp->bg_used_dirs_count, 1);
++	}
++	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
++err_ret:
++	spin_unlock(sb_bgl_lock(sbi, group));
++	return retval;
++}
++
++/*
+  * There are two policies for allocating an inode.  If the new inode is
+  * a directory, then a forward search is made for a block group with both
+  * free space and a low directory-to-inode ratio; if that fails, then of
+@@ -649,8 +720,12 @@ repeat_in_this_group:
+ 			if (err)
+ 				goto fail;
+ 
+-			if (!ext4_set_bit_atomic(sb_bgl_lock(sbi, group),
+-						ino, bitmap_bh->b_data)) {
++			BUFFER_TRACE(bh2, "get_write_access");
++			err = ext4_journal_get_write_access(handle, bh2);
++			if (err)
++				goto fail;
++			if (!ext4_claim_inode(sb, bitmap_bh,
++						ino, group, mode)) {
+ 				/* we won it */
+ 				BUFFER_TRACE(bitmap_bh,
+ 					"call ext4_journal_dirty_metadata");
+@@ -658,10 +733,13 @@ repeat_in_this_group:
+ 								bitmap_bh);
+ 				if (err)
+ 					goto fail;
++				/* zero bit is inode number 1*/
++				ino++;
+ 				goto got;
+ 			}
+ 			/* we lost it */
+ 			jbd2_journal_release_buffer(handle, bitmap_bh);
++			jbd2_journal_release_buffer(handle, bh2);
+ 
+ 			if (++ino < EXT4_INODES_PER_GROUP(sb))
+ 				goto repeat_in_this_group;
+@@ -681,21 +759,6 @@ repeat_in_this_group:
+ 	goto out;
+ 
+ got:
+-	ino++;
+-	if ((group == 0 && ino < EXT4_FIRST_INO(sb)) ||
+-	    ino > EXT4_INODES_PER_GROUP(sb)) {
+-		ext4_error(sb, __func__,
+-			   "reserved inode or inode > inodes count - "
+-			   "block_group = %lu, inode=%lu", group,
+-			   ino + group * EXT4_INODES_PER_GROUP(sb));
+-		err = -EIO;
+-		goto fail;
+-	}
+-
+-	BUFFER_TRACE(bh2, "get_write_access");
+-	err = ext4_journal_get_write_access(handle, bh2);
+-	if (err) goto fail;
+-
+ 	/* We may have to initialize the block bitmap if it isn't already */
+ 	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM) &&
+ 	    gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
+@@ -730,47 +793,10 @@ got:
+ 		if (err)
+ 			goto fail;
  	}
- 
- 	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
--	mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), EXT4_BLOCKS_PER_GROUP(sb),
-+	mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
- 			bh->b_data);
- 
- 	return EXT4_INODES_PER_GROUP(sb);
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index a7057a3..4a21c79 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3148,8 +3148,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	    in_range(block + len - 1, ext4_inode_table(sb, gdp),
- 		     EXT4_SB(sb)->s_itb_per_group)) {
- 		ext4_error(sb, __func__,
--			   "Allocating block in system zone - block = %llu",
--			   block);
-+			   "Allocating block %llu in system zone of %d group\n",
-+			   block, ac->ac_b_ex.fe_group);
- 		/* File system mounted not to panic on error
- 		 * Fix the bitmap and repeat the block allocation
- 		 * We leak some of the blocks here.
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index fcb911e..cfb8e36 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -284,11 +284,9 @@ static int setup_new_group_blocks(struct super_block *sb,
- 	if ((err = extend_or_restart_transaction(handle, 2, bh)))
- 		goto exit_bh;
- 
--	mark_bitmap_end(input->blocks_count, EXT4_BLOCKS_PER_GROUP(sb),
--			bh->b_data);
-+	mark_bitmap_end(input->blocks_count, sb->s_blocksize * 8, bh->b_data);
- 	ext4_journal_dirty_metadata(handle, bh);
- 	brelse(bh);
+-
+-	spin_lock(sb_bgl_lock(sbi, group));
+-	/* If we didn't allocate from within the initialized part of the inode
+-	 * table then we need to initialize up to this inode. */
+-	if (EXT4_HAS_RO_COMPAT_FEATURE(sb, EXT4_FEATURE_RO_COMPAT_GDT_CSUM)) {
+-		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
+-			gdp->bg_flags &= cpu_to_le16(~EXT4_BG_INODE_UNINIT);
+-
+-			/* When marking the block group with
+-			 * ~EXT4_BG_INODE_UNINIT we don't want to depend
+-			 * on the value of bg_itable_unused even though
+-			 * mke2fs could have initialized the same for us.
+-			 * Instead we calculated the value below
+-			 */
+-
+-			free = 0;
+-		} else {
+-			free = EXT4_INODES_PER_GROUP(sb) -
+-				le16_to_cpu(gdp->bg_itable_unused);
+-		}
+-
+-		/*
+-		 * Check the relative inode number against the last used
+-		 * relative inode number in this group. if it is greater
+-		 * we need to  update the bg_itable_unused count
+-		 *
+-		 */
+-		if (ino > free)
+-			gdp->bg_itable_unused =
+-				cpu_to_le16(EXT4_INODES_PER_GROUP(sb) - ino);
+-	}
