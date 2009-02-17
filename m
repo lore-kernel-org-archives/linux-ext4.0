@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.27 24/24] ext4: Initialize the new group descriptor when resizing the filesystem
-Date: Tue, 17 Feb 2009 10:58:44 -0500
-Message-ID: <1234886324-15105-25-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.27 23/24] jbd2: On a __journal_expect() assertion failure printk "JBD2", not "EXT3-fs"
+Date: Tue, 17 Feb 2009 10:58:43 -0500
+Message-ID: <1234886324-15105-24-git-send-email-tytso@mit.edu>
 References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
  <1234886324-15105-2-git-send-email-tytso@mit.edu>
  <1234886324-15105-3-git-send-email-tytso@mit.edu>
@@ -25,50 +25,41 @@ References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
  <1234886324-15105-21-git-send-email-tytso@mit.edu>
  <1234886324-15105-22-git-send-email-tytso@mit.edu>
  <1234886324-15105-23-git-send-email-tytso@mit.edu>
- <1234886324-15105-24-git-send-email-tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40530 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:40526 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751396AbZBQQbj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:31:39 -0500
-In-Reply-To: <1234886324-15105-24-git-send-email-tytso@mit.edu>
+	id S1751301AbZBQQbb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 11:31:31 -0500
+In-Reply-To: <1234886324-15105-23-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Make sure all of the fields of the group descriptor are properly
-initialized.  Previously, we allowed bg_flags field to be contain
-random garbage, which could trigger non-deterministic behavior,
-including a kernel OOPS.
-
-http://bugzilla.kernel.org/show_bug.cgi?id=12433
+Otherwise it can be very confusing to find a "EXT3-fs: " failure in
+the middle of EXT4-fs failures, and it makes it harder to track the
+source of the failure.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@kernel.org
-(cherry picked from commit fdff73f094e7220602cc3f8959c7230517976412)
+(cherry picked from commit 08ec8c3878cea0bf91f2ba3c0badf44b383752d0)
 ---
- fs/ext4/resize.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+ include/linux/jbd2.h |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index cfb8e36..0070431 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -860,11 +860,13 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	gdp = (struct ext4_group_desc *)((char *)primary->b_data +
- 					 gdb_off * EXT4_DESC_SIZE(sb));
- 
-+	memset(gdp, 0, EXT4_DESC_SIZE(sb));
- 	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
- 	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
- 	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
- 	gdp->bg_free_blocks_count = cpu_to_le16(input->free_blocks_count);
- 	gdp->bg_free_inodes_count = cpu_to_le16(EXT4_INODES_PER_GROUP(sb));
-+	gdp->bg_flags = cpu_to_le16(EXT4_BG_INODE_ZEROED);
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
- 
- 	/*
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index e8e9133..0e1bd70 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -308,7 +308,8 @@ void buffer_assertion_failure(struct buffer_head *bh);
+ 		int val = (expr);					     \
+ 		if (!val) {						     \
+ 			printk(KERN_ERR					     \
+-				"EXT3-fs unexpected failure: %s;\n",# expr); \
++			       "JBD2 unexpected failure: %s: %s;\n",	     \
++			       __func__, #expr);			     \
+ 			printk(KERN_ERR why "\n");			     \
+ 		}							     \
+ 		val;							     \
 -- 
 1.5.6.3
 
