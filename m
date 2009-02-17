@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.27 20/24] ext4: Add sanity checks for the superblock before mounting the filesystem
-Date: Tue, 17 Feb 2009 10:58:40 -0500
-Message-ID: <1234886324-15105-21-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.27 22/24] ext4: Add sanity check to make_indexed_dir
+Date: Tue, 17 Feb 2009 10:58:42 -0500
+Message-ID: <1234886324-15105-23-git-send-email-tytso@mit.edu>
 References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
  <1234886324-15105-2-git-send-email-tytso@mit.edu>
  <1234886324-15105-3-git-send-email-tytso@mit.edu>
@@ -22,89 +22,80 @@ References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
  <1234886324-15105-18-git-send-email-tytso@mit.edu>
  <1234886324-15105-19-git-send-email-tytso@mit.edu>
  <1234886324-15105-20-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Thiemo Nagel <thiemo.nagel@ph.tum.de>
+ <1234886324-15105-21-git-send-email-tytso@mit.edu>
+ <1234886324-15105-22-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56251 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:56262 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752611AbZBQQPB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:15:01 -0500
-In-Reply-To: <1234886324-15105-20-git-send-email-tytso@mit.edu>
+	id S1752669AbZBQQPU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 11:15:20 -0500
+In-Reply-To: <1234886324-15105-22-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This avoids insane superblock configurations that could lead to kernel
-oops due to null pointer derefences.
+Make sure the rec_len field in the '..' entry is sane, lest we overrun
+the directory block and cause a kernel oops on a purposefully
+corrupted filesystem.
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12371
+Thanks to Sami Liedes for reporting this bug.
 
-Thanks to David Maciejak at Fortinet's FortiGuard Global Security
-Research Team who discovered this bug independently (but at
-approximately the same time) as Thiemo Nagel, who submitted the patch.
+http://bugzilla.kernel.org/show_bug.cgi?id=12430
 
-Signed-off-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: stable@kernel.org
-(cherry picked from commit 4ec110281379826c5cf6ed14735e47027c3c5765)
+(cherry picked from commit e6b8bc09ba2075cd91fbffefcd2778b1a00bd76f)
 ---
- fs/ext4/super.c |   30 ++++++++++++++++++++----------
- 1 files changed, 20 insertions(+), 10 deletions(-)
+ fs/ext4/namei.c |   21 +++++++++++++++------
+ 1 files changed, 15 insertions(+), 6 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2dabc32..5e4491d 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1916,8 +1916,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	struct inode *root;
- 	int ret = -EINVAL;
- 	int blocksize;
--	int db_count;
--	int i;
-+	unsigned int db_count;
-+	unsigned int i;
- 	int needs_recovery;
- 	__le32 features;
- 	__u64 blocks_count;
-@@ -2207,20 +2207,30 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	if (EXT4_BLOCKS_PER_GROUP(sb) == 0)
- 		goto cantfind_ext4;
+diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
+index 8f0881b..4f3628f 100644
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1382,7 +1382,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	struct fake_dirent *fde;
  
--	/* ensure blocks_count calculation below doesn't sign-extend */
--	if (ext4_blocks_count(es) + EXT4_BLOCKS_PER_GROUP(sb) <
--	    le32_to_cpu(es->s_first_data_block) + 1) {
--		printk(KERN_WARNING "EXT4-fs: bad geometry: block count %llu, "
--		       "first data block %u, blocks per group %lu\n",
--			ext4_blocks_count(es),
--			le32_to_cpu(es->s_first_data_block),
--			EXT4_BLOCKS_PER_GROUP(sb));
-+	/*
-+	 * It makes no sense for the first data block to be beyond the end
-+	 * of the filesystem.
-+	 */
-+	if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
-+		printk(KERN_WARNING "EXT4-fs: bad geometry: first data"
-+		       "block %u is beyond end of filesystem (%llu)\n",
-+		       le32_to_cpu(es->s_first_data_block),
-+		       ext4_blocks_count(es));
- 		goto failed_mount;
+ 	blocksize =  dir->i_sb->s_blocksize;
+-	dxtrace(printk("Creating index\n"));
++	dxtrace(printk(KERN_DEBUG "Creating index: inode %lu\n", dir->i_ino));
+ 	retval = ext4_journal_get_write_access(handle, bh);
+ 	if (retval) {
+ 		ext4_std_error(dir->i_sb, retval);
+@@ -1391,6 +1391,20 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
  	}
- 	blocks_count = (ext4_blocks_count(es) -
- 			le32_to_cpu(es->s_first_data_block) +
- 			EXT4_BLOCKS_PER_GROUP(sb) - 1);
- 	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
-+	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
-+		printk(KERN_WARNING "EXT4-fs: groups count too large: %u "
-+		       "(block count %llu, first data block %u, "
-+		       "blocks per group %lu)\n", sbi->s_groups_count,
-+		       ext4_blocks_count(es),
-+		       le32_to_cpu(es->s_first_data_block),
-+		       EXT4_BLOCKS_PER_GROUP(sb));
-+		goto failed_mount;
+ 	root = (struct dx_root *) bh->b_data;
+ 
++	/* The 0th block becomes the root, move the dirents out */
++	fde = &root->dotdot;
++	de = (struct ext4_dir_entry_2 *)((char *)fde +
++		ext4_rec_len_from_disk(fde->rec_len));
++	if ((char *) de >= (((char *) root) + blocksize)) {
++		ext4_error(dir->i_sb, __func__,
++			   "invalid rec_len for '..' in inode %lu",
++			   dir->i_ino);
++		brelse(bh);
++		return -EIO;
 +	}
- 	sbi->s_groups_count = blocks_count;
- 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
- 		   EXT4_DESC_PER_BLOCK(sb);
++	len = ((char *) root) + blocksize - (char *) de;
++
++	/* Allocate new block for the 0th block's dirents */
+ 	bh2 = ext4_append (handle, dir, &block, &retval);
+ 	if (!(bh2)) {
+ 		brelse(bh);
+@@ -1399,11 +1413,6 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
+ 	EXT4_I(dir)->i_flags |= EXT4_INDEX_FL;
+ 	data1 = bh2->b_data;
+ 
+-	/* The 0th block becomes the root, move the dirents out */
+-	fde = &root->dotdot;
+-	de = (struct ext4_dir_entry_2 *)((char *)fde +
+-		ext4_rec_len_from_disk(fde->rec_len));
+-	len = ((char *) root) + blocksize - (char *) de;
+ 	memcpy (data1, de, len);
+ 	de = (struct ext4_dir_entry_2 *) data1;
+ 	top = data1 + len;
 -- 
 1.5.6.3
 
