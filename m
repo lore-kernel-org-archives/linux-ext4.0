@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 21/24] ext4: only use i_size_high for regular files
-Date: Tue, 17 Feb 2009 10:32:39 -0500
-Message-ID: <1234884762-13580-22-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.28 16/24] ext4: mark the blocks/inode bitmap beyond end of group as used
+Date: Tue, 17 Feb 2009 10:32:34 -0500
+Message-ID: <1234884762-13580-17-git-send-email-tytso@mit.edu>
 References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-2-git-send-email-tytso@mit.edu>
  <1234884762-13580-3-git-send-email-tytso@mit.edu>
@@ -18,80 +18,72 @@ References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-14-git-send-email-tytso@mit.edu>
  <1234884762-13580-15-git-send-email-tytso@mit.edu>
  <1234884762-13580-16-git-send-email-tytso@mit.edu>
- <1234884762-13580-17-git-send-email-tytso@mit.edu>
- <1234884762-13580-18-git-send-email-tytso@mit.edu>
- <1234884762-13580-19-git-send-email-tytso@mit.edu>
- <1234884762-13580-20-git-send-email-tytso@mit.edu>
- <1234884762-13580-21-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:54657 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:54673 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752630AbZBQQDh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:03:37 -0500
-In-Reply-To: <1234884762-13580-21-git-send-email-tytso@mit.edu>
+	id S1751469AbZBQQEh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 11:04:37 -0500
+In-Reply-To: <1234884762-13580-16-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Directories are not allowed to be bigger than 2GB, so don't use
-i_size_high for anything other than regular files.  E2fsck should
-complain about these inodes, but the simplest thing to do for the
-kernel is to only use i_size_high for regular files.
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-This prevents an intentially corrupted filesystem from causing the
-kernel to burn a huge amount of CPU and issuing error messages such
-as:
+We need to mark the block/inode bitmap beyond the end of the group
+with '1'.
 
-EXT4-fs warning (device loop0): ext4_block_to_path: block 135090028 > max
-
-Thanks to David Maciejak from Fortinet's FortiGuard Global Security
-Research Team for reporting this issue.
-
-http://bugzilla.kernel.org/show_bug.cgi?id=12375
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: stable@kernel.org
-(cherry picked from commit 06a279d636734da32bb62dd2f7b0ade666f65d7c)
+(cherry picked from commit 648f5879f5892dddd3ba71cd0d285599f40f2512)
 ---
- fs/ext4/ext4.h  |    7 +++++--
- fs/ext4/inode.c |    4 ++--
- 2 files changed, 7 insertions(+), 4 deletions(-)
+ fs/ext4/ialloc.c  |    2 +-
+ fs/ext4/mballoc.c |    4 ++--
+ fs/ext4/resize.c  |    6 ++----
+ 3 files changed, 5 insertions(+), 7 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 4b73ac1..dfccef5 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1188,8 +1188,11 @@ static inline void ext4_r_blocks_count_set(struct ext4_super_block *es,
- 
- static inline loff_t ext4_isize(struct ext4_inode *raw_inode)
- {
--	return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
--		le32_to_cpu(raw_inode->i_size_lo);
-+	if (S_ISREG(le16_to_cpu(raw_inode->i_mode)))
-+		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
-+			le32_to_cpu(raw_inode->i_size_lo);
-+	else
-+		return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
- }
- 
- static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t i_size)
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 008c4b0..ccb6947 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -351,9 +351,9 @@ static int ext4_block_to_path(struct inode *inode,
- 		final = ptrs;
- 	} else {
- 		ext4_warning(inode->i_sb, "ext4_block_to_path",
--				"block %lu > max",
-+				"block %lu > max in inode %lu",
- 				i_block + direct_blocks +
--				indirect_blocks + double_blocks);
-+				indirect_blocks + double_blocks, inode->i_ino);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 4f1601b..b363c49 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -84,7 +84,7 @@ unsigned ext4_init_inode_bitmap(struct super_block *sb, struct buffer_head *bh,
  	}
- 	if (boundary)
- 		*boundary = final - 1 - (i_block & (ptrs - 1));
--- 
-1.5.6.3
-
+ 
+ 	memset(bh->b_data, 0, (EXT4_INODES_PER_GROUP(sb) + 7) / 8);
+-	mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), EXT4_BLOCKS_PER_GROUP(sb),
++	mark_bitmap_end(EXT4_INODES_PER_GROUP(sb), sb->s_blocksize * 8,
+ 			bh->b_data);
+ 
+ 	return EXT4_INODES_PER_GROUP(sb);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 0c20447..3c4d75e 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3036,8 +3036,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	    in_range(block + len - 1, ext4_inode_table(sb, gdp),
+ 		     EXT4_SB(sb)->s_itb_per_group)) {
+ 		ext4_error(sb, __func__,
+-			   "Allocating block in system zone - block = %llu",
+-			   block);
++			   "Allocating block %llu in system zone of %d group\n",
++			   block, ac->ac_b_ex.fe_group);
+ 		/* File system mounted not to panic on error
+ 		 * Fix the bitmap and repeat the block allocation
+ 		 * We leak some of the blocks here.
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index c07ddc0..d1585dd 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -284,11 +284,9 @@ static int setup_new_group_blocks(struct super_block *sb,
+ 	if ((err = extend_or_restart_transaction(handle, 2, bh)))
+ 		goto exit_bh;
+ 
+-	mark_bitmap_end(input->blocks_count, EXT4_BLOCKS_PER_GROUP(sb),
+-			bh->b_data);
++	mark_bitmap_end(input->blocks_count, sb->s_blocksize * 8, bh->b_data);
+ 	ext4_journal_dirty_metadata(handle, bh);
+ 	brelse(bh);
