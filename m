@@ -1,39 +1,52 @@
-From: Greg KH <greg@kroah.com>
-Subject: Re: [stable] [cebbert@redhat.com: Re: Ext4 tree backports for
-	2.6.27.13 and 2.6.28.2]
-Date: Mon, 16 Feb 2009 19:15:21 -0800
-Message-ID: <20090217031521.GB8343@kroah.com>
-References: <20090216230104.GG23758@mini-me.lan>
+From: Nick Piggin <nickpiggin@yahoo.com.au>
+Subject: Re: sync-Regression in 2.6.28.2?
+Date: Tue, 17 Feb 2009 15:17:23 +1100
+Message-ID: <200902171517.23980.nickpiggin@yahoo.com.au>
+References: <20090127093533.GB7037@charite.de> <20090209134958.GP27548@charite.de> <20090215134235.GB15398@charite.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, stable@kernel.org,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:35475 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750859AbZBQDXs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Feb 2009 22:23:48 -0500
+Content-Type: text/plain;
+  charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org,
+	Federico Cuello <fedux@lugmen.org.ar>,
+	Artem Bityutskiy <Artem.Bityutskiy@nokia.com>
+To: Ralf Hildebrandt <Ralf.Hildebrandt@charite.de>, stable@kernel.org,
+	linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1752516AbZBQESJ@vger.kernel.org>
+In-Reply-To: <20090215134235.GB15398@charite.de>
 Content-Disposition: inline
-In-Reply-To: <20090216230104.GG23758@mini-me.lan>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Feb 16, 2009 at 06:01:04PM -0500, Theodore Tso wrote:
-> Hi,
-> 
-> Can you please include the patches found in the for-stable and
-> for-stable-2.6.27 branches at:
-> 
-> 	  git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
-> 
-> into the next 2.6.28.y and 2.6.27.y kernels, respectively?
-> 
-> Or do you need me to send them in e-mail format via git
-> format-patch/git send-email?  I can do that too if you prefer that.
+On Monday 16 February 2009 00:42:35 Ralf Hildebrandt wrote:
+> * Ralf Hildebrandt <Ralf.Hildebrandt@charite.de>:
+> > > This patch seems good to me. If you would care to add a changelog and
+> > > Signed-off-by: line, then we could get it merged?
+> > >
+> > > I am not too sure about this bug. I have reproduced a strange hang with
+> > > ext4 (which does include sys_sync and write_cache_pages traces), and
+> > > also turned up a lockdep report. Also, we haven't seen any reports of
+> > > this problem on other filesystems. So it could be an ext4 bug.
+> > >
+> > > Your traces also have lots of tasks hung waiting for page lock. It is
+> > > possible that wakeups get lost, which is fixed by this commit in
+> > > mainline
+> > > 777c6c5f1f6e757ae49ecca2ed72d6b1f523c007
+> > >
+> > > Which might also be your bug.
+> > >
+> > >
+> > > Any chance you can test this patch (as well as the existing patches
+> > > you are using to fix write_cache_pages?).
+> >
+> > I could test 2.6.28.4
+>
+> Still there in 2.6.28.5 :(
 
-Yes, please do that, it makes it much easier for our scripts to handle
-them that way.
+I believe it is basically a deadlock in ext4 due to the cyclic writeback
+change.
 
-thanks,
+http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git;a=commitdiff;h=2acf2c261b823d9d9ed954f348b97620297a36b5
 
-greg k-h
+ext4 guys, is this correct? Is there a minimal fix that can be made for
+.stable kernels?
