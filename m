@@ -1,20 +1,67 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.27 00/24]
-Date: Tue, 17 Feb 2009 10:58:20 -0500
-Message-ID: <1234886324-15105-1-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org
+Subject: [PATCH FOR-STABLE-2.6.27 02/24] ext4: tone down ext4_da_writepages warnings
+Date: Tue, 17 Feb 2009 10:58:22 -0500
+Message-ID: <1234886324-15105-3-git-send-email-tytso@mit.edu>
+References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
+ <1234886324-15105-2-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35268 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:35277 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751443AbZBQP64 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 10:58:56 -0500
+	id S1751600AbZBQP7I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 10:59:08 -0500
+In-Reply-To: <1234886324-15105-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+If the filesystem has errors, ext4_da_writepages() will return a *lot*
+of errors, including lots and lots of stack dumps.  While it's true
+that we are dropping user data on the floor, which is unfortunate, the
+stack dumps aren't helpful, and they tend to obscure the true original
+root cause of the problem.  So in the case where the filesystem has
+aborted, return an EROFS right away.
 
-The following patches are ext4 bugfixes from 2.6.29-rcX that have been
-backported to 2.6.27.16; could you please queue them up for the next
-2.6.28.y release?  Thanks!!
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+(cherry picked from commit 2a21e37e48b94388f2cc8c0392f104f5443d4bb8)
+---
+ fs/ext4/inode.c |   16 +++++++++++++++-
+ 1 files changed, 15 insertions(+), 1 deletions(-)
 
-						- Ted
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index d77f674..c1b52a8 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2298,6 +2298,20 @@ static int ext4_da_writepages(struct address_space *mapping,
+ 	 */
+ 	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
+ 		return 0;
++
++	/*
++	 * If the filesystem has aborted, it is read-only, so return
++	 * right away instead of dumping stack traces later on that
++	 * will obscure the real source of the problem.  We test
++	 * EXT4_MOUNT_ABORT instead of sb->s_flag's MS_RDONLY because
++	 * the latter could be true if the filesystem is mounted
++	 * read-only, and in that case, ext4_da_writepages should
++	 * *never* be called, so if that ever happens, we would want
++	 * the stack trace.
++	 */
++	if (unlikely(sbi->s_mount_opt & EXT4_MOUNT_ABORT))
++		return -EROFS;
++
+ 	/*
+ 	 * Make sure nr_to_write is >= sbi->s_mb_stream_request
+ 	 * This make sure small files blocks are allocated in
+@@ -2336,7 +2350,7 @@ restart_loop:
+ 		handle = ext4_journal_start(inode, needed_blocks);
+ 		if (IS_ERR(handle)) {
+ 			ret = PTR_ERR(handle);
+-			printk(KERN_EMERG "%s: jbd2_start: "
++			printk(KERN_CRIT "%s: jbd2_start: "
+ 			       "%ld pages, ino %lu; err %d\n", __func__,
+ 				wbc->nr_to_write, inode->i_ino, ret);
+ 			dump_stack();
+-- 
+1.5.6.3
+
