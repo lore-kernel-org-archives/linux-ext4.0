@@ -1,65 +1,56 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.27 23/24] jbd2: On a __journal_expect() assertion failure printk "JBD2", not "EXT3-fs"
-Date: Tue, 17 Feb 2009 10:58:43 -0500
-Message-ID: <1234886324-15105-24-git-send-email-tytso@mit.edu>
-References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
- <1234886324-15105-2-git-send-email-tytso@mit.edu>
- <1234886324-15105-3-git-send-email-tytso@mit.edu>
- <1234886324-15105-4-git-send-email-tytso@mit.edu>
- <1234886324-15105-5-git-send-email-tytso@mit.edu>
- <1234886324-15105-6-git-send-email-tytso@mit.edu>
- <1234886324-15105-7-git-send-email-tytso@mit.edu>
- <1234886324-15105-8-git-send-email-tytso@mit.edu>
- <1234886324-15105-9-git-send-email-tytso@mit.edu>
- <1234886324-15105-10-git-send-email-tytso@mit.edu>
- <1234886324-15105-11-git-send-email-tytso@mit.edu>
- <1234886324-15105-12-git-send-email-tytso@mit.edu>
- <1234886324-15105-13-git-send-email-tytso@mit.edu>
- <1234886324-15105-14-git-send-email-tytso@mit.edu>
- <1234886324-15105-15-git-send-email-tytso@mit.edu>
- <1234886324-15105-16-git-send-email-tytso@mit.edu>
- <1234886324-15105-17-git-send-email-tytso@mit.edu>
- <1234886324-15105-18-git-send-email-tytso@mit.edu>
- <1234886324-15105-19-git-send-email-tytso@mit.edu>
- <1234886324-15105-20-git-send-email-tytso@mit.edu>
- <1234886324-15105-21-git-send-email-tytso@mit.edu>
- <1234886324-15105-22-git-send-email-tytso@mit.edu>
- <1234886324-15105-23-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
-To: stable@kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40526 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751301AbZBQQbb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:31:31 -0500
-In-Reply-To: <1234886324-15105-23-git-send-email-tytso@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Alex Buell <alex.buell@munted.org.uk>
+Subject: Re: EXT4 ENOSPC Bug
+Date: Tue, 17 Feb 2009 17:21:15 +0000
+Message-ID: <20090217172115.7a42044a@lithium.local.net>
+References: <20090216162028.3032666a@lithium.local.net>
+	<200811291418.24672.andres@anarazel.de>
+	<200812100108.04163.andres@anarazel.de>
+	<49994FEF.2020908@anarazel.de>
+	<20090216150156.GD22619@mini-me.lan>
+	<499985C7.8010302@anarazel.de>
+	<20090216190001.GB11788@mini-me.lan>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Andres Freund <andres@anarazel.de>, adilger@sun.com,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	Jonathan Bastien-Filiatrault <joe@x2a.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753707AbZBQRVq@vger.kernel.org>
+In-Reply-To: <20090216190001.GB11788@mini-me.lan>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Otherwise it can be very confusing to find a "EXT3-fs: " failure in
-the middle of EXT4-fs failures, and it makes it harder to track the
-source of the failure.
+On Mon, 16 Feb 2009 14:00:01 -0500, I waved a wand and this message
+magically appears in front of Theodore Tso:
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit 08ec8c3878cea0bf91f2ba3c0badf44b383752d0)
----
- include/linux/jbd2.h |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+> On Mon, Feb 16, 2009 at 04:27:03PM +0100, Andres Freund wrote:
+> >
+> > So, yes, seems to be an inode allocation problem.
+> 
+> Andres, Alex, others,
+> 
+> I'm pretty sure the ENOSPC problem which you both found is an inode
+> allocation problem.  Some of you seem to have an easier time
+> reproducing it than others; could you try this patch, and periodically
+> scan your system logs for the message "ext4: find_group_flex failed,
+> fallback succeeded"?  If the problem goes away for you, and you find
+> the occasional aforemention message in your system log, that will
+> confirm what I suspect, which is the bug is in fs/ext4/inode.c's
+> find_group_flex() function.  (If I'm wrong, the fallback code will
+> activate only when the filesystem is genuinely out of inodes, which
+> should be very rare.)
 
-diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
-index e8e9133..0e1bd70 100644
---- a/include/linux/jbd2.h
-+++ b/include/linux/jbd2.h
-@@ -308,7 +308,8 @@ void buffer_assertion_failure(struct buffer_head *bh);
- 		int val = (expr);					     \
- 		if (!val) {						     \
- 			printk(KERN_ERR					     \
--				"EXT3-fs unexpected failure: %s;\n",# expr); \
-+			       "JBD2 unexpected failure: %s: %s;\n",	     \
-+			       __func__, #expr);			     \
- 			printk(KERN_ERR why "\n");			     \
- 		}							     \
- 		val;							     \
+OK, I had to go look through the archives on linux-ext4 mailing list to
+see what the context was. For myself, this used to happen at least once
+a week with 2.6.26, and less frequently with 2.6.27. I think that 2.6.28
+with your patch should get rid of that problem altogether. I will of
+course get in touch should I see any more of these find_group_flex
+failures as that would mean your patch worked. 
+
+Thanks for your work on tracking this one down!
 -- 
-1.5.6.3
+http://www.munted.org.uk
 
+Fearsome grindings.
