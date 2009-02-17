@@ -1,128 +1,97 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 03/24] ext4: Fix the delalloc writepages to allocate blocks at the right offset.
-Date: Tue, 17 Feb 2009 10:32:21 -0500
-Message-ID: <1234884762-13580-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.28 06/24] jbd2: Add barrier not supported test to journal_wait_on_commit_record
+Date: Tue, 17 Feb 2009 10:32:24 -0500
+Message-ID: <1234884762-13580-7-git-send-email-tytso@mit.edu>
 References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-2-git-send-email-tytso@mit.edu>
  <1234884762-13580-3-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+ <1234884762-13580-4-git-send-email-tytso@mit.edu>
+ <1234884762-13580-5-git-send-email-tytso@mit.edu>
+ <1234884762-13580-6-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:42096 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:42106 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752358AbZBQPdc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 10:33:32 -0500
-In-Reply-To: <1234884762-13580-3-git-send-email-tytso@mit.edu>
+	id S1752526AbZBQPdl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 10:33:41 -0500
+In-Reply-To: <1234884762-13580-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Xen doesn't report that barriers are not supported until buffer I/O is
+reported as completed, instead of when the buffer I/O is submitted.
+Add a check and a fallback codepath to journal_wait_on_commit_record()
+to detect this case, so that attempts to mount ext4 filesystems on
+LVM/devicemapper devices on Xen guests don't blow up with an "Aborting
+journal on device XXX"; "Remounting filesystem read-only" error.
 
-When iterating through the pages which have mapped buffer_heads, we
-failed to update the b_state value. This results in allocating blocks
-at logical offset 0.
+Thanks to Andreas Sundstrom for reporting this issue.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: stable@kernel.org
-(cherry picked from commit 791b7f08954869d7b8ff438f3dac3cfb39778297)
+(cherry picked from commit fd98496f467b3d26d05ab1498f41718b5ef13de5)
 ---
- fs/ext4/inode.c |   56 ++++++++++++++++++++++++++++++++++++++----------------
- 1 files changed, 39 insertions(+), 17 deletions(-)
+ fs/jbd2/commit.c |   27 +++++++++++++++++++++++++--
+ 1 files changed, 25 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 25d6adc..008c4b0 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1644,35 +1644,39 @@ struct mpage_da_data {
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index ebc667b..6393fd0 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -25,6 +25,7 @@
+ #include <linux/crc32.h>
+ #include <linux/writeback.h>
+ #include <linux/backing-dev.h>
++#include <linux/bio.h>
+ 
+ /*
+  * Default IO end handler for temporary BJ_IO buffer_heads.
+@@ -168,12 +169,34 @@ static int journal_submit_commit_record(journal_t *journal,
+  * This function along with journal_submit_commit_record
+  * allows to write the commit record asynchronously.
   */
- static int mpage_da_submit_io(struct mpage_da_data *mpd)
+-static int journal_wait_on_commit_record(struct buffer_head *bh)
++static int journal_wait_on_commit_record(journal_t *journal,
++					 struct buffer_head *bh)
  {
--	struct address_space *mapping = mpd->inode->i_mapping;
--	int ret = 0, err, nr_pages, i;
--	unsigned long index, end;
--	struct pagevec pvec;
- 	long pages_skipped;
-+	struct pagevec pvec;
-+	unsigned long index, end;
-+	int ret = 0, err, nr_pages, i;
-+	struct inode *inode = mpd->inode;
-+	struct address_space *mapping = inode->i_mapping;
+ 	int ret = 0;
  
- 	BUG_ON(mpd->next_page <= mpd->first_page);
--	pagevec_init(&pvec, 0);
-+	/*
-+	 * We need to start from the first_page to the next_page - 1
-+	 * to make sure we also write the mapped dirty buffer_heads.
-+	 * If we look at mpd->lbh.b_blocknr we would only be looking
-+	 * at the currently mapped buffer_heads.
-+	 */
- 	index = mpd->first_page;
- 	end = mpd->next_page - 1;
- 
-+	pagevec_init(&pvec, 0);
- 	while (index <= end) {
--		/*
--		 * We can use PAGECACHE_TAG_DIRTY lookup here because
--		 * even though we have cleared the dirty flag on the page
--		 * We still keep the page in the radix tree with tag
--		 * PAGECACHE_TAG_DIRTY. See clear_page_dirty_for_io.
--		 * The PAGECACHE_TAG_DIRTY is cleared in set_page_writeback
--		 * which is called via the below writepage callback.
--		 */
--		nr_pages = pagevec_lookup_tag(&pvec, mapping, &index,
--					PAGECACHE_TAG_DIRTY,
--					min(end - index,
--					(pgoff_t)PAGEVEC_SIZE-1) + 1);
-+		nr_pages = pagevec_lookup(&pvec, mapping, index, PAGEVEC_SIZE);
- 		if (nr_pages == 0)
- 			break;
- 		for (i = 0; i < nr_pages; i++) {
- 			struct page *page = pvec.pages[i];
- 
-+			index = page->index;
-+			if (index > end)
-+				break;
-+			index++;
++retry:
+ 	clear_buffer_dirty(bh);
+ 	wait_on_buffer(bh);
++	if (buffer_eopnotsupp(bh) && (journal->j_flags & JBD2_BARRIER)) {
++		printk(KERN_WARNING
++		       "JBD2: wait_on_commit_record: sync failed on %s - "
++		       "disabling barriers\n", journal->j_devname);
++		spin_lock(&journal->j_state_lock);
++		journal->j_flags &= ~JBD2_BARRIER;
++		spin_unlock(&journal->j_state_lock);
 +
-+			BUG_ON(!PageLocked(page));
-+			BUG_ON(PageWriteback(page));
++		lock_buffer(bh);
++		clear_buffer_dirty(bh);
++		set_buffer_uptodate(bh);
++		bh->b_end_io = journal_end_buffer_io_sync;
 +
- 			pages_skipped = mpd->wbc->pages_skipped;
- 			err = mapping->a_ops->writepage(page, mpd->wbc);
- 			if (!err && (pages_skipped == mpd->wbc->pages_skipped))
-@@ -2086,11 +2090,29 @@ static int __mpage_da_writepage(struct page *page,
- 		bh = head;
- 		do {
- 			BUG_ON(buffer_locked(bh));
-+			/*
-+			 * We need to try to allocate
-+			 * unmapped blocks in the same page.
-+			 * Otherwise we won't make progress
-+			 * with the page in ext4_da_writepage
-+			 */
- 			if (buffer_dirty(bh) &&
- 				(!buffer_mapped(bh) || buffer_delay(bh))) {
- 				mpage_add_bh_to_extent(mpd, logical, bh);
- 				if (mpd->io_done)
- 					return MPAGE_DA_EXTENT_TAIL;
-+			} else if (buffer_dirty(bh) && (buffer_mapped(bh))) {
-+				/*
-+				 * mapped dirty buffer. We need to update
-+				 * the b_state because we look at
-+				 * b_state in mpage_da_map_blocks. We don't
-+				 * update b_size because if we find an
-+				 * unmapped buffer_head later we need to
-+				 * use the b_state flag of that buffer_head.
-+				 */
-+				if (mpd->lbh.b_size == 0)
-+					mpd->lbh.b_state =
-+						bh->b_state & BH_FLAGS;
- 			}
- 			logical++;
- 		} while ((bh = bh->b_this_page) != head);
++		ret = submit_bh(WRITE_SYNC, bh);
++		if (ret) {
++			unlock_buffer(bh);
++			return ret;
++		}
++		goto retry;
++	}
+ 
+ 	if (unlikely(!buffer_uptodate(bh)))
+ 		ret = -EIO;
+@@ -799,7 +822,7 @@ wait_for_iobuf:
+ 			__jbd2_journal_abort_hard(journal);
+ 	}
+ 	if (!err && !is_journal_aborted(journal))
+-		err = journal_wait_on_commit_record(cbh);
++		err = journal_wait_on_commit_record(journal, cbh);
+ 
+ 	if (err)
+ 		jbd2_journal_abort(journal, err);
 -- 
 1.5.6.3
 
