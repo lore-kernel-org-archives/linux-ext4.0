@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 12/24] ext4: Fix race between read_block_bitmap() and mark_diskspace_used()
-Date: Tue, 17 Feb 2009 10:32:30 -0500
-Message-ID: <1234884762-13580-13-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.28 17/24] ext4: Don't allow new groups to be added during block allocation
+Date: Tue, 17 Feb 2009 10:32:35 -0500
+Message-ID: <1234884762-13580-18-git-send-email-tytso@mit.edu>
 References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-2-git-send-email-tytso@mit.edu>
  <1234884762-13580-3-git-send-email-tytso@mit.edu>
@@ -14,91 +14,114 @@ References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-10-git-send-email-tytso@mit.edu>
  <1234884762-13580-11-git-send-email-tytso@mit.edu>
  <1234884762-13580-12-git-send-email-tytso@mit.edu>
+ <1234884762-13580-13-git-send-email-tytso@mit.edu>
+ <1234884762-13580-14-git-send-email-tytso@mit.edu>
+ <1234884762-13580-15-git-send-email-tytso@mit.edu>
+ <1234884762-13580-16-git-send-email-tytso@mit.edu>
+ <1234884762-13580-17-git-send-email-tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33239 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33245 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751767AbZBQQIr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:08:47 -0500
-In-Reply-To: <1234884762-13580-12-git-send-email-tytso@mit.edu>
+	id S1751499AbZBQQJe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 11:09:34 -0500
+In-Reply-To: <1234884762-13580-17-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-We need to make sure we update the block bitmap and clear
-EXT4_BG_BLOCK_UNINIT flag with sb_bgl_lock held, since
-ext4_read_block_bitmap() looks at EXT4_BG_BLOCK_UNINIT to decide
-whether to initialize the block bitmap each time it is called
-(introduced by commit c806e68f), and this can race with block
-allocations in ext4_mb_mark_diskspace_used().
-
-ext4_read_block_bitmap does:
-
-spin_lock(sb_bgl_lock(EXT4_SB(sb), block_group));
-if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-	ext4_init_block_bitmap(sb, bh, block_group, desc);
-
-Now on the block allocation side we do
-
-mb_set_bits(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group), bitmap_bh->b_data,
-			ac->ac_b_ex.fe_start, ac->ac_b_ex.fe_len);
-....
-spin_lock(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group));
-if (gdp->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT)) {
-	gdp->bg_flags &= cpu_to_le16(~EXT4_BG_BLOCK_UNINIT);
-
-ie on allocation we update the bitmap then we take the sb_bgl_lock
-and clear the EXT4_BG_BLOCK_UNINIT flag. What can happen is a
-parallel ext4_read_block_bitmap can zero out the bitmap in between
-the above mb_set_bits and spin_lock(sb_bg_lock..)
-
-The race results in below user visible errors
-EXT4-fs error (device sdb1): ext4_mb_release_inode_pa: free 100, pa_free 105
-EXT4-fs error (device sdb1): mb_free_blocks: double-free of inode 0's block ..
+After we mark the blocks in the buddy cache as allocated,
+we need to ensure that we don't reinit the buddy cache until
+the block bitmap is updated.  This commit achieves this by holding
+the group_info alloc_semaphore till ext4_mb_release_context
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: stable@kernel.org
-(cherry picked from commit e8134b27e351e813414da3b95aa8eac6d3908088)
+(cherry picked from commit 8556e8f3b6c4c11601ce1e9ea8090a6d8bd5daae)
 ---
- fs/ext4/mballoc.c |   15 ++++++++++-----
- 1 files changed, 10 insertions(+), 5 deletions(-)
+ fs/ext4/mballoc.c |   16 +++++++++++++---
+ fs/ext4/mballoc.h |    5 +++++
+ 2 files changed, 18 insertions(+), 3 deletions(-)
 
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index d4283b4..dfcdda7 100644
+index 3c4d75e..851411f 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -1070,7 +1070,10 @@ static void mb_clear_bits(spinlock_t *lock, void *bm, int cur, int len)
- 			cur += 32;
- 			continue;
- 		}
--		mb_clear_bit_atomic(lock, cur, bm);
-+		if (lock)
-+			mb_clear_bit_atomic(lock, cur, bm);
-+		else
-+			mb_clear_bit(cur, bm);
- 		cur++;
- 	}
+@@ -1052,7 +1052,8 @@ static void ext4_mb_release_desc(struct ext4_buddy *e4b)
+ 	if (e4b->bd_buddy_page)
+ 		page_cache_release(e4b->bd_buddy_page);
+ 	/* Done with the buddy cache */
+-	up_read(e4b->alloc_semp);
++	if (e4b->alloc_semp)
++		up_read(e4b->alloc_semp);
  }
-@@ -1088,7 +1091,10 @@ static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
- 			cur += 32;
- 			continue;
+ 
+ 
+@@ -1372,7 +1373,9 @@ static void ext4_mb_use_best_found(struct ext4_allocation_context *ac,
+ 	get_page(ac->ac_bitmap_page);
+ 	ac->ac_buddy_page = e4b->bd_buddy_page;
+ 	get_page(ac->ac_buddy_page);
+-
++	/* on allocation we use ac to track the held semaphore */
++	ac->alloc_semp =  e4b->alloc_semp;
++	e4b->alloc_semp = NULL;
+ 	/* store last allocated for subsequent stream allocation */
+ 	if ((ac->ac_flags & EXT4_MB_HINT_DATA)) {
+ 		spin_lock(&sbi->s_md_lock);
+@@ -4286,6 +4289,7 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
+ 	ac->ac_pa = NULL;
+ 	ac->ac_bitmap_page = NULL;
+ 	ac->ac_buddy_page = NULL;
++	ac->alloc_semp = NULL;
+ 	ac->ac_lg = NULL;
+ 
+ 	/* we have to define context: we'll we work with a file or
+@@ -4466,6 +4470,8 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
  		}
--		mb_set_bit_atomic(lock, cur, bm);
-+		if (lock)
-+			mb_set_bit_atomic(lock, cur, bm);
-+		else
-+			mb_set_bit(cur, bm);
- 		cur++;
+ 		ext4_mb_put_pa(ac, ac->ac_sb, pa);
  	}
- }
-@@ -3033,10 +3039,9 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 		}
++	if (ac->alloc_semp)
++		up_read(ac->alloc_semp);
+ 	if (ac->ac_bitmap_page)
+ 		page_cache_release(ac->ac_bitmap_page);
+ 	if (ac->ac_buddy_page)
+@@ -4566,10 +4572,14 @@ repeat:
+ 				ac->ac_o_ex.fe_len < ac->ac_b_ex.fe_len)
+ 			ext4_mb_new_preallocation(ac);
  	}
- #endif
--	mb_set_bits(sb_bgl_lock(sbi, ac->ac_b_ex.fe_group), bitmap_bh->b_data,
--				ac->ac_b_ex.fe_start, ac->ac_b_ex.fe_len);
+-
+ 	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
+ 		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_blks);
+ 		if (*errp ==  -EAGAIN) {
++			/*
++			 * drop the reference that we took
++			 * in ext4_mb_use_best_found
++			 */
++			ext4_mb_release_context(ac);
+ 			ac->ac_b_ex.fe_group = 0;
+ 			ac->ac_b_ex.fe_start = 0;
+ 			ac->ac_b_ex.fe_len = 0;
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index 997f78f..85eb45c 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -216,6 +216,11 @@ struct ext4_allocation_context {
+ 	__u8 ac_op;		/* operation, for history only */
+ 	struct page *ac_bitmap_page;
+ 	struct page *ac_buddy_page;
++	/*
++	 * pointer to the held semaphore upon successful
++	 * block allocation
++	 */
++	struct rw_semaphore *alloc_semp;
+ 	struct ext4_prealloc_space *ac_pa;
+ 	struct ext4_locality_group *ac_lg;
+ };
+-- 
+1.5.6.3
+
