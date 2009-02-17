@@ -1,63 +1,49 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: EXT4 ENOSPC Bug
-Date: Tue, 17 Feb 2009 14:08:21 -0600
-Message-ID: <499B1935.10906__11977.2529499189$1234901505$gmane$org@redhat.com>
-References: <20090216162028.3032666a@lithium.local.net> <200811291418.24672.andres@anarazel.de> <200812100108.04163.andres@anarazel.de> <49994FEF.2020908@anarazel.de> <20090216150156.GD22619@mini-me.lan> <499985C7.8010302@anarazel.de> <20090216190001.GB11788@mini-me.lan> <499AFE32.7070003@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: EXT3 file system with unsupported revision level can be
+	mounted in R/W mode
+Date: Tue, 17 Feb 2009 15:36:17 -0500
+Message-ID: <20090217203617.GO23758@mini-me.lan>
+References: <4885AFBF.2010409@uniadex.co.jp> <48A90371.6070700@uniadex.co.jp> <48A9439C.4010007@uniadex.co.jp> <48B5B2BC.4050303@redhat.com> <D457AE0D137B9143B30CDD9EB9B2F8D509FDD525@ZZ01X1MB24.ixas.unisys.co.jp> <499A7A64.8040608@uniadex.co.jp>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, Andres Freund <andres@anarazel.de>,
-	Alex Buell <alex.buell@munted.org.uk>, adilger@sun.com,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.or
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Tadao Uchiyama <Tadao.Uchiyama@uniadex.co.jp>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:45369 "EHLO mx2.redhat.com"
+Received: from thunk.org ([69.25.196.29]:48789 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753240AbZBQUJM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 15:09:12 -0500
-In-Reply-To: <499AFE32.7070003@redhat.com>
+	id S1752566AbZBQV4U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 16:56:20 -0500
+Content-Disposition: inline
+In-Reply-To: <499A7A64.8040608@uniadex.co.jp>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> Theodore Tso wrote:
->> On Mon, Feb 16, 2009 at 04:27:03PM +0100, Andres Freund wrote:
->>> So, yes, seems to be an inode allocation problem.
->>>
->> Andres, Alex, others,
->>
->> I'm pretty sure the ENOSPC problem which you both found is an inode
->> allocation problem.  Some of you seem to have an easier time
->> reproducing it than others; could you try this patch, and periodically
->> scan your system logs for the message "ext4: find_group_flex failed,
->> fallback succeeded"?  If the problem goes away for you, and you find
->> the occasional aforemention message in your system log, that will
->> confirm what I suspect, which is the bug is in fs/ext4/inode.c's
->> find_group_flex() function.  (If I'm wrong, the fallback code will
->> activate only when the filesystem is genuinely out of inodes, which
->> should be very rare.)
->>
->> More comments are in the patch header.  My current long-term plan for
->> dealing with this is to enhance find_group_orlov() to and
->> find_group_other() to understand about flex_bg's.
-> 
-> Ok, I finally got to where I can reliably hit this.  Just as I was about
-> to install an ext4 with this patch in place, and the bug was preventing
-> the new initrd creation ;)  But worked around that, and:
-> 
-> ext4: find_group_flex failed, fallback succeeded dir 258402
-> ext4: find_group_flex failed, fallback succeeded dir 258402
-> ext4: find_group_flex failed, fallback succeeded dir 258402
-> ext4: find_group_flex failed, fallback succeeded dir 258402
-> ....
-> 
-> I'll see if I can dig a bit more as to why the find_group_flex failed,
-> if you think it's worth it, Ted.
+On Tue, Feb 17, 2009 at 05:50:44PM +0900, Tadao Uchiyama wrote:
+> Sorry for the long delay in my response.  I agree that the mount of
+> a file with a too-high revision level should be rejected, if the
+> current revision level is never going to change again, because the
+> too-high revision level must be an indication of some corruption in
+> this case.  The problem is when we should fail the mount. It seems
+> to be too late to fail the mount after the related super block has
+> been updated in group_extend or clear_journal_error.  It=E2=80=99ll b=
+e safe
+> to make the revision somewhere earlier stage, at least before doing
+> clear_journal_error and group_extend.
 
-FWIW my problem seems to be different than others have encountered; mine
-persists past reboot, while other reporters have said that a reboot
-(remount) makes the problem go away.
+I'd just probably add something right after the magic number check
+(i.e., around line 2072 in fs/ext4/super.c, in ext4_fill_super()).
 
-I seem to be encountering some silliness in find_group_flex when 2 out
-of 3 groups are full (I "only" have 55k inodes left, all in the last group).
+It's highly unlikely we would ever change the revision number at this
+point, given that we have the feature compatibility bitmasks as the
+primary way we indicate format changes in the filesystem these days.
+So I wouldn't even allow a read-only mount, I'd just fail the mount
+altogether, and very early; basically, treat it as part of the magic
+number.
 
--Eric
+						- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
