@@ -1,40 +1,97 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Fix to read empty directory blocks correctly in
-	64k blocksize filesystems
-Date: Mon, 16 Feb 2009 19:05:09 -0500
-Message-ID: <20090217000509.GI23758@mini-me.lan>
-References: <4990FAE4.1080009@cn.fujitsu.com> <20090210152049.GF30689@mini-me.lan> <20090211054816.GP3209@webber.adilger.int> <20090211151547.GK29220@mini-me.lan> <20090216233256.GI3199@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Wei Yongjun <yjwei@cn.fujitsu.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.27 06/24] jbd2: Add barrier not supported test to journal_wait_on_commit_record
+Date: Tue, 17 Feb 2009 10:58:26 -0500
+Message-ID: <1234886324-15105-7-git-send-email-tytso@mit.edu>
+References: <1234886324-15105-1-git-send-email-tytso@mit.edu>
+ <1234886324-15105-2-git-send-email-tytso@mit.edu>
+ <1234886324-15105-3-git-send-email-tytso@mit.edu>
+ <1234886324-15105-4-git-send-email-tytso@mit.edu>
+ <1234886324-15105-5-git-send-email-tytso@mit.edu>
+ <1234886324-15105-6-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
+To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35305 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:35316 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752097AbZBQP7Z (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 10:59:25 -0500
-Content-Disposition: inline
-In-Reply-To: <20090216233256.GI3199@webber.adilger.int>
+	id S1752334AbZBQP7f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 10:59:35 -0500
+In-Reply-To: <1234886324-15105-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 16, 2009 at 04:32:56PM -0700, Andreas Dilger wrote:
-> There are probably a dozen other places in the ext* code that expect
-> blocksize <= 65536, so I don't think this new encoding is really helping
-> us at all.  We are already restricted to 2^32-1 inodes due to the dirent
-> format and I expect we will have changed the dirent format by that time
-> anyways.
+Xen doesn't report that barriers are not supported until buffer I/O is
+reported as completed, instead of when the buffer I/O is submitted.
+Add a check and a fallback codepath to journal_wait_on_commit_record()
+to detect this case, so that attempts to mount ext4 filesystems on
+LVM/devicemapper devices on Xen guests don't blow up with an "Aborting
+journal on device XXX"; "Remounting filesystem read-only" error.
 
-I can only find one other place, actually, which would be the extended
-attribute code --- e_value_offs is a 16 bit offset (although we could
-steal bits form e_value block if necessary).
+Thanks to Andreas Sundstrom for reporting this issue.
 
-> I'd rather keep this change as simple as possible (i.e. the original
-> 65535 or 0 values, preferring 65535).
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: stable@kernel.org
+(cherry picked from commit fd98496f467b3d26d05ab1498f41718b5ef13de5)
+---
+ fs/jbd2/commit.c |   27 +++++++++++++++++++++++++--
+ 1 files changed, 25 insertions(+), 2 deletions(-)
 
-For 64k block sizes, I've kept this, although I preferred 0 since it's
-a cleaner change if we want to allow bigger blocksize alternative.  I
-don't think 65535 is any worse than 0 in terms of detecting directory
-corruption.
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 6caf22d..b1f0756 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -24,6 +24,7 @@
+ #include <linux/crc32.h>
+ #include <linux/writeback.h>
+ #include <linux/backing-dev.h>
++#include <linux/bio.h>
+ 
+ /*
+  * Default IO end handler for temporary BJ_IO buffer_heads.
+@@ -170,12 +171,34 @@ static int journal_submit_commit_record(journal_t *journal,
+  * This function along with journal_submit_commit_record
+  * allows to write the commit record asynchronously.
+  */
+-static int journal_wait_on_commit_record(struct buffer_head *bh)
++static int journal_wait_on_commit_record(journal_t *journal,
++					 struct buffer_head *bh)
+ {
+ 	int ret = 0;
+ 
++retry:
+ 	clear_buffer_dirty(bh);
+ 	wait_on_buffer(bh);
++	if (buffer_eopnotsupp(bh) && (journal->j_flags & JBD2_BARRIER)) {
++		printk(KERN_WARNING
++		       "JBD2: wait_on_commit_record: sync failed on %s - "
++		       "disabling barriers\n", journal->j_devname);
++		spin_lock(&journal->j_state_lock);
++		journal->j_flags &= ~JBD2_BARRIER;
++		spin_unlock(&journal->j_state_lock);
++
++		lock_buffer(bh);
++		clear_buffer_dirty(bh);
++		set_buffer_uptodate(bh);
++		bh->b_end_io = journal_end_buffer_io_sync;
++
++		ret = submit_bh(WRITE_SYNC, bh);
++		if (ret) {
++			unlock_buffer(bh);
++			return ret;
++		}
++		goto retry;
++	}
+ 
+ 	if (unlikely(!buffer_uptodate(bh)))
+ 		ret = -EIO;
+@@ -795,7 +818,7 @@ wait_for_iobuf:
+ 			__jbd2_journal_abort_hard(journal);
+ 	}
+ 	if (!err && !is_journal_aborted(journal))
+-		err = journal_wait_on_commit_record(cbh);
++		err = journal_wait_on_commit_record(journal, cbh);
+ 
+ 	if (err)
+ 		jbd2_journal_abort(journal, err);
+-- 
+1.5.6.3
 
-					- Ted
