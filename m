@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 22/24] ext4: Add sanity check to make_indexed_dir
-Date: Tue, 17 Feb 2009 10:32:40 -0500
-Message-ID: <1234884762-13580-23-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.28 23/24] jbd2: On a __journal_expect() assertion failure printk "JBD2", not "EXT3-fs"
+Date: Tue, 17 Feb 2009 10:32:41 -0500
+Message-ID: <1234884762-13580-24-git-send-email-tytso@mit.edu>
 References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-2-git-send-email-tytso@mit.edu>
  <1234884762-13580-3-git-send-email-tytso@mit.edu>
@@ -24,78 +24,42 @@ References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-20-git-send-email-tytso@mit.edu>
  <1234884762-13580-21-git-send-email-tytso@mit.edu>
  <1234884762-13580-22-git-send-email-tytso@mit.edu>
+ <1234884762-13580-23-git-send-email-tytso@mit.edu>
 Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33265 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33276 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752172AbZBQQLQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:11:16 -0500
-In-Reply-To: <1234884762-13580-22-git-send-email-tytso@mit.edu>
+	id S1751717AbZBQQLd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 11:11:33 -0500
+In-Reply-To: <1234884762-13580-23-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Make sure the rec_len field in the '..' entry is sane, lest we overrun
-the directory block and cause a kernel oops on a purposefully
-corrupted filesystem.
-
-Thanks to Sami Liedes for reporting this bug.
-
-http://bugzilla.kernel.org/show_bug.cgi?id=12430
+Otherwise it can be very confusing to find a "EXT3-fs: " failure in
+the middle of EXT4-fs failures, and it makes it harder to track the
+source of the failure.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: stable@kernel.org
-(cherry picked from commit e6b8bc09ba2075cd91fbffefcd2778b1a00bd76f)
+(cherry picked from commit 08ec8c3878cea0bf91f2ba3c0badf44b383752d0)
 ---
- fs/ext4/namei.c |   21 +++++++++++++++------
- 1 files changed, 15 insertions(+), 6 deletions(-)
+ include/linux/jbd2.h |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index dc0b16a..da94b20 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1372,7 +1372,7 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	struct fake_dirent *fde;
- 
- 	blocksize =  dir->i_sb->s_blocksize;
--	dxtrace(printk(KERN_DEBUG "Creating index\n"));
-+	dxtrace(printk(KERN_DEBUG "Creating index: inode %lu\n", dir->i_ino));
- 	retval = ext4_journal_get_write_access(handle, bh);
- 	if (retval) {
- 		ext4_std_error(dir->i_sb, retval);
-@@ -1381,6 +1381,20 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	}
- 	root = (struct dx_root *) bh->b_data;
- 
-+	/* The 0th block becomes the root, move the dirents out */
-+	fde = &root->dotdot;
-+	de = (struct ext4_dir_entry_2 *)((char *)fde +
-+		ext4_rec_len_from_disk(fde->rec_len));
-+	if ((char *) de >= (((char *) root) + blocksize)) {
-+		ext4_error(dir->i_sb, __func__,
-+			   "invalid rec_len for '..' in inode %lu",
-+			   dir->i_ino);
-+		brelse(bh);
-+		return -EIO;
-+	}
-+	len = ((char *) root) + blocksize - (char *) de;
-+
-+	/* Allocate new block for the 0th block's dirents */
- 	bh2 = ext4_append(handle, dir, &block, &retval);
- 	if (!(bh2)) {
- 		brelse(bh);
-@@ -1389,11 +1403,6 @@ static int make_indexed_dir(handle_t *handle, struct dentry *dentry,
- 	EXT4_I(dir)->i_flags |= EXT4_INDEX_FL;
- 	data1 = bh2->b_data;
- 
--	/* The 0th block becomes the root, move the dirents out */
--	fde = &root->dotdot;
--	de = (struct ext4_dir_entry_2 *)((char *)fde +
--		ext4_rec_len_from_disk(fde->rec_len));
--	len = ((char *) root) + blocksize - (char *) de;
- 	memcpy (data1, de, len);
- 	de = (struct ext4_dir_entry_2 *) data1;
- 	top = data1 + len;
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index f366457..7c31d67 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -308,7 +308,8 @@ void buffer_assertion_failure(struct buffer_head *bh);
+ 		int val = (expr);					     \
+ 		if (!val) {						     \
+ 			printk(KERN_ERR					     \
+-				"EXT3-fs unexpected failure: %s;\n",# expr); \
++			       "JBD2 unexpected failure: %s: %s;\n",	     \
++			       __func__, #expr);			     \
+ 			printk(KERN_ERR why "\n");			     \
+ 		}							     \
+ 		val;							     \
 -- 
 1.5.6.3
 
