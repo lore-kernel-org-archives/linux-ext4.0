@@ -1,36 +1,28 @@
-From: Alex Buell <alex.buell@munted.org.uk>
+From: Andres Freund <andres@anarazel.de>
 Subject: Re: EXT4 ENOSPC Bug
-Date: Tue, 17 Feb 2009 17:21:15 +0000
-Message-ID: <20090217172115.7a42044a@lithium.local.net>
-References: <20090216162028.3032666a@lithium.local.net>
-	<200811291418.24672.andres@anarazel.de>
-	<200812100108.04163.andres@anarazel.de>
-	<49994FEF.2020908@anarazel.de>
-	<20090216150156.GD22619@mini-me.lan>
-	<499985C7.8010302@anarazel.de>
-	<20090216190001.GB11788@mini-me.lan>
+Date: Tue, 17 Feb 2009 18:36:24 +0100
+Message-ID: <499AF598.7080400@anarazel.de>
+References: <20090216162028.3032666a@lithium.local.net> <200811291418.24672.andres@anarazel.de> <200812100108.04163.andres@anarazel.de> <49994FEF.2020908@anarazel.de> <20090216150156.GD22619@mini-me.lan> <499985C7.8010302@anarazel.de> <20090216190001.GB11788@mini-me.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Andres Freund <andres@anarazel.de>, adilger@sun.com,
+To: Theodore Tso <tytso@mit.edu>,
+	Alex Buell <alex.buell@munted.org.uk>, adilger@sun.com,
 	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	Jonathan Bastien-Filiatrault <joe@x2a.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753707AbZBQRVq@vger.kernel.org>
+	Jonathan Bastien-Filiatrault <jo
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.anarazel.de ([217.115.131.40]:36356 "EHLO smtp.anarazel.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752470AbZBQRg3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 12:36:29 -0500
 In-Reply-To: <20090216190001.GB11788@mini-me.lan>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 16 Feb 2009 14:00:01 -0500, I waved a wand and this message
-magically appears in front of Theodore Tso:
-
+On 02/16/2009 08:00 PM, Theodore Tso wrote:
 > On Mon, Feb 16, 2009 at 04:27:03PM +0100, Andres Freund wrote:
-> >
-> > So, yes, seems to be an inode allocation problem.
-> 
-> Andres, Alex, others,
-> 
+>> So, yes, seems to be an inode allocation problem.
+
 > I'm pretty sure the ENOSPC problem which you both found is an inode
 > allocation problem.  Some of you seem to have an easier time
 > reproducing it than others; could you try this patch, and periodically
@@ -41,16 +33,11 @@ magically appears in front of Theodore Tso:
 > find_group_flex() function.  (If I'm wrong, the fallback code will
 > activate only when the filesystem is genuinely out of inodes, which
 > should be very rare.)
+>
+> More comments are in the patch header.  My current long-term plan for
+> dealing with this is to enhance find_group_orlov() to and
+> find_group_other() to understand about flex_bg's.
+Ok. I am now running with the patch enabled on two machines - but as the 
+issue occured only 2 times in nearly 2 months on two machines...
 
-OK, I had to go look through the archives on linux-ext4 mailing list to
-see what the context was. For myself, this used to happen at least once
-a week with 2.6.26, and less frequently with 2.6.27. I think that 2.6.28
-with your patch should get rid of that problem altogether. I will of
-course get in touch should I see any more of these find_group_flex
-failures as that would mean your patch worked. 
-
-Thanks for your work on tracking this one down!
--- 
-http://www.munted.org.uk
-
-Fearsome grindings.
+Andres
