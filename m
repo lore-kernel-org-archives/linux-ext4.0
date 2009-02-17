@@ -1,88 +1,46 @@
-From: akpm@linux-foundation.org
-Subject: + ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch added to -mm tree
-Date: Tue, 17 Feb 2009 16:09:23 -0800
-Message-ID: <200902180009.n1I09NHB021769@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: bdonlan@gmail.com, linux-ext4@vger.kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: EXT4 ENOSPC Bug
+Date: Tue, 17 Feb 2009 17:00:29 -0500
+Message-ID: <20090217220029.GS23758@mini-me.lan>
+References: <20090216162028.3032666a@lithium.local.net> <200811291418.24672.andres@anarazel.de> <200812100108.04163.andres@anarazel.de> <49994FEF.2020908@anarazel.de> <20090216150156.GD22619@mini-me.lan> <499985C7.8010302@anarazel.de> <20090216190001.GB11788@mini-me.lan> <499AFE32.7070003@redhat.com> <499B1935.10906@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andres Freund <andres@anarazel.de>,
+	Alex Buell <alex.buell@munted.org.uk>, adilger@sun.com,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	Jonathan Bastien-Filiatrault <joe@x2a.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:60323 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750828AbZBRC37 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 21:29:59 -0500
+Content-Disposition: inline
+In-Reply-To: <499B1935.10906@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, Feb 17, 2009 at 02:08:21PM -0600, Eric Sandeen wrote:
+> FWIW my problem seems to be different than others have encountered; mine
+> persists past reboot, while other reporters have said that a reboot
+> (remount) makes the problem go away.
 
-The patch titled
-     ext3: return -EIO not -ESTALE on directory traversal through deleted inode
-has been added to the -mm tree.  Its filename is
-     ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
+It might or might not be the same problem, since the reporters were
+doing this on a mounted root partition, and on a filesystem quite a
+bit larger than your test filesystem; so it could be that the act of
+shutting down and rebooting created/deleted various pid files, and
+purturbed the filesystem to make the problem go away.
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+The other possibility is that it is the flex_bg specific counters
+which were introduced specifically for find_group_flex.  I'm not wild
+about them since they mean we have to take an extra flex_bg specific
+spin lock for every block and inode allocation.  The Orlov algorithm
+only needs the information when allocating directories, and since
+those are rarer than file allocations, I think it should be OK to
+simply sum up the necessary fields at directory allocation time
+instead of trying to maintain separate counters (which could possibly
+get corrupted, although I couldn't see a way that they could be
+getting out of sync with reality).
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
-
-See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
-out what to do about this
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext3: return -EIO not -ESTALE on directory traversal through deleted inode
-From: Bryan Donlan <bdonlan@gmail.com>
-
-ext3_iget() returns -ESTALE if invoked on a deleted inode, in order to
-report errors to NFS properly.  However, in ext[234]_lookup(), this
--ESTALE can be propagated to userspace if the filesystem is corrupted such
-that a directory entry references a deleted inode.  This leads to a
-misleading error message - "Stale NFS file handle" - and confusion on the
-part of the admin.
-
-The bug can be easily reproduced by creating a new filesystem, making a
-link to an unused inode using debugfs, then mounting and attempting to ls
--l said link.
-
-This patch thus changes ext3_lookup to return -EIO if it receives -ESTALE
-from ext3_iget(), as ext3 does for other filesystem metadata corruption;
-and also invokes the appropriate ext*_error functions when this case is
-detected.
-
-Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext3/namei.c |   12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
-
-diff -puN fs/ext3/namei.c~ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode fs/ext3/namei.c
---- a/fs/ext3/namei.c~ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode
-+++ a/fs/ext3/namei.c
-@@ -1047,8 +1047,16 @@ static struct dentry *ext3_lookup(struct
- 			return ERR_PTR(-EIO);
- 		}
- 		inode = ext3_iget(dir->i_sb, ino);
--		if (IS_ERR(inode))
--			return ERR_CAST(inode);
-+		if (unlikely(IS_ERR(inode))) {
-+			if (PTR_ERR(inode) == -ESTALE) {
-+				ext3_error(dir->i_sb, "ext2_lookup",
-+						"deleted inode referenced: %lu",
-+						ino);
-+				return ERR_PTR(-EIO);
-+			} else {
-+				return ERR_CAST(inode);
-+			}
-+		}
- 	}
- 	return d_splice_alias(inode, dentry);
- }
-_
-
-Patches currently in -mm which might be from bdonlan@gmail.com are
-
-ext4-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
-ext2-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
-ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
-
+					- Ted
