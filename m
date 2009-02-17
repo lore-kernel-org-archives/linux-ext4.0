@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH FOR-STABLE-2.6.28 20/24] ext4: Add sanity checks for the superblock before mounting the filesystem
-Date: Tue, 17 Feb 2009 10:32:38 -0500
-Message-ID: <1234884762-13580-21-git-send-email-tytso@mit.edu>
+Subject: [PATCH FOR-STABLE-2.6.28 24/24] ext4: Initialize the new group descriptor when resizing the filesystem
+Date: Tue, 17 Feb 2009 10:32:42 -0500
+Message-ID: <1234884762-13580-25-git-send-email-tytso@mit.edu>
 References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-2-git-send-email-tytso@mit.edu>
  <1234884762-13580-3-git-send-email-tytso@mit.edu>
@@ -22,89 +22,53 @@ References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
  <1234884762-13580-18-git-send-email-tytso@mit.edu>
  <1234884762-13580-19-git-send-email-tytso@mit.edu>
  <1234884762-13580-20-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>,
-	Thiemo Nagel <thiemo.nagel@ph.tum.de>
+ <1234884762-13580-21-git-send-email-tytso@mit.edu>
+ <1234884762-13580-22-git-send-email-tytso@mit.edu>
+ <1234884762-13580-23-git-send-email-tytso@mit.edu>
+ <1234884762-13580-24-git-send-email-tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33282 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33288 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752087AbZBQQMQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 11:12:16 -0500
-In-Reply-To: <1234884762-13580-20-git-send-email-tytso@mit.edu>
+	id S1752177AbZBQQM6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Feb 2009 11:12:58 -0500
+In-Reply-To: <1234884762-13580-24-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This avoids insane superblock configurations that could lead to kernel
-oops due to null pointer derefences.
+Make sure all of the fields of the group descriptor are properly
+initialized.  Previously, we allowed bg_flags field to be contain
+random garbage, which could trigger non-deterministic behavior,
+including a kernel OOPS.
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12371
+http://bugzilla.kernel.org/show_bug.cgi?id=12433
 
-Thanks to David Maciejak at Fortinet's FortiGuard Global Security
-Research Team who discovered this bug independently (but at
-approximately the same time) as Thiemo Nagel, who submitted the patch.
-
-Signed-off-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Cc: stable@kernel.org
-(cherry picked from commit 4ec110281379826c5cf6ed14735e47027c3c5765)
+(cherry picked from commit fdff73f094e7220602cc3f8959c7230517976412)
 ---
- fs/ext4/super.c |   30 ++++++++++++++++++++----------
- 1 files changed, 20 insertions(+), 10 deletions(-)
+ fs/ext4/resize.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4aa2040..d38e3e1 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1869,8 +1869,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	char *cp;
- 	int ret = -EINVAL;
- 	int blocksize;
--	int db_count;
--	int i;
-+	unsigned int db_count;
-+	unsigned int i;
- 	int needs_recovery, has_huge_files;
- 	__le32 features;
- 	__u64 blocks_count;
-@@ -2153,20 +2153,30 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	if (EXT4_BLOCKS_PER_GROUP(sb) == 0)
- 		goto cantfind_ext4;
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index d1585dd..a027691 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -860,11 +860,13 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	gdp = (struct ext4_group_desc *)((char *)primary->b_data +
+ 					 gdb_off * EXT4_DESC_SIZE(sb));
  
--	/* ensure blocks_count calculation below doesn't sign-extend */
--	if (ext4_blocks_count(es) + EXT4_BLOCKS_PER_GROUP(sb) <
--	    le32_to_cpu(es->s_first_data_block) + 1) {
--		printk(KERN_WARNING "EXT4-fs: bad geometry: block count %llu, "
--		       "first data block %u, blocks per group %lu\n",
--			ext4_blocks_count(es),
--			le32_to_cpu(es->s_first_data_block),
--			EXT4_BLOCKS_PER_GROUP(sb));
-+        /*
-+         * It makes no sense for the first data block to be beyond the end
-+         * of the filesystem.
-+         */
-+        if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
-+                printk(KERN_WARNING "EXT4-fs: bad geometry: first data"
-+		       "block %u is beyond end of filesystem (%llu)\n",
-+		       le32_to_cpu(es->s_first_data_block),
-+		       ext4_blocks_count(es));
- 		goto failed_mount;
- 	}
- 	blocks_count = (ext4_blocks_count(es) -
- 			le32_to_cpu(es->s_first_data_block) +
- 			EXT4_BLOCKS_PER_GROUP(sb) - 1);
- 	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
-+	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
-+		printk(KERN_WARNING "EXT4-fs: groups count too large: %u "
-+		       "(block count %llu, first data block %u, "
-+		       "blocks per group %lu)\n", sbi->s_groups_count,
-+		       ext4_blocks_count(es),
-+		       le32_to_cpu(es->s_first_data_block),
-+		       EXT4_BLOCKS_PER_GROUP(sb));
-+		goto failed_mount;
-+	}
- 	sbi->s_groups_count = blocks_count;
- 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
- 		   EXT4_DESC_PER_BLOCK(sb);
++	memset(gdp, 0, EXT4_DESC_SIZE(sb));
+ 	ext4_block_bitmap_set(sb, gdp, input->block_bitmap); /* LV FIXME */
+ 	ext4_inode_bitmap_set(sb, gdp, input->inode_bitmap); /* LV FIXME */
+ 	ext4_inode_table_set(sb, gdp, input->inode_table); /* LV FIXME */
+ 	gdp->bg_free_blocks_count = cpu_to_le16(input->free_blocks_count);
+ 	gdp->bg_free_inodes_count = cpu_to_le16(EXT4_INODES_PER_GROUP(sb));
++	gdp->bg_flags = cpu_to_le16(EXT4_BG_INODE_ZEROED);
+ 	gdp->bg_checksum = ext4_group_desc_csum(sbi, input->group, gdp);
+ 
+ 	/*
 -- 
 1.5.6.3
 
