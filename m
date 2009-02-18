@@ -1,8 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 18/36] jbd2: Add barrier not supported test to
-	journal_wait_on_commit_record
-Date: Wed, 18 Feb 2009 14:29:30 -0800
-Message-ID: <20090218222930.GS10668@kroah.com>
+Subject: [patch 19/36] ext4: Dont overwrite allocation_context ac_status
+Date: Wed, 18 Feb 2009 14:29:32 -0800
+Message-ID: <20090218222932.GT10668@kroah.com>
 References: <20090218222447.432108614@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -19,14 +18,15 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org
+	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:34909 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:34919 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757896AbZBRWcJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 17:32:09 -0500
-Content-Disposition: inline; filename="jbd2-add-barrier-not-supported-test-to-journal_wait_on_commit_record.patch"
+	id S1756996AbZBRWcK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 17:32:10 -0500
+Content-Disposition: inline; filename="ext4-don-t-overwrite-allocation_context-ac_status.patch"
 In-Reply-To: <20090218222841.GA10668@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -36,79 +36,48 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 ------------------
 
-From: "Theodore Ts'o" <tytso@mit.edu>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-(cherry picked from commit fd98496f467b3d26d05ab1498f41718b5ef13de5)
+(cherry picked from commit 032115fcef837a00336ddf7bda584e89789ea498)
 
-Xen doesn't report that barriers are not supported until buffer I/O is
-reported as completed, instead of when the buffer I/O is submitted.
-Add a check and a fallback codepath to journal_wait_on_commit_record()
-to detect this case, so that attempts to mount ext4 filesystems on
-LVM/devicemapper devices on Xen guests don't blow up with an "Aborting
-journal on device XXX"; "Remounting filesystem read-only" error.
+We can call ext4_mb_check_limits even after successfully allocating
+the requested blocks.  In that case, make sure we don't overwrite
+ac_status if it already has the status AC_STATUS_FOUND.  This fixes
+the lockdep warning:
 
-Thanks to Andreas Sundstrom for reporting this issue.
+=============================================
+[ INFO: possible recursive locking detected ]
+2.6.28-rc6-autokern1 #1
+---------------------------------------------
+fsstress/11948 is trying to acquire lock:
+ (&meta_group_info[i]->alloc_sem){----}, at: [<c04d9a49>] ext4_mb_load_buddy+0x9f/0x278
+.....
 
+stack backtrace:
+.....
+ [<c04db974>] ext4_mb_regular_allocator+0xbb5/0xd44
+.....
+
+but task is already holding lock:
+ (&meta_group_info[i]->alloc_sem){----}, at: [<c04d9a49>] ext4_mb_load_buddy+0x9f/0x278
+
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/jbd2/commit.c |   27 +++++++++++++++++++++++++--
- 1 file changed, 25 insertions(+), 2 deletions(-)
+ fs/ext4/mballoc.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -24,6 +24,7 @@
- #include <linux/crc32.h>
- #include <linux/writeback.h>
- #include <linux/backing-dev.h>
-+#include <linux/bio.h>
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1326,6 +1326,8 @@ static void ext4_mb_check_limits(struct 
+ 	struct ext4_free_extent ex;
+ 	int max;
  
- /*
-  * Default IO end handler for temporary BJ_IO buffer_heads.
-@@ -170,12 +171,34 @@ static int journal_submit_commit_record(
-  * This function along with journal_submit_commit_record
-  * allows to write the commit record asynchronously.
-  */
--static int journal_wait_on_commit_record(struct buffer_head *bh)
-+static int journal_wait_on_commit_record(journal_t *journal,
-+					 struct buffer_head *bh)
- {
- 	int ret = 0;
- 
-+retry:
- 	clear_buffer_dirty(bh);
- 	wait_on_buffer(bh);
-+	if (buffer_eopnotsupp(bh) && (journal->j_flags & JBD2_BARRIER)) {
-+		printk(KERN_WARNING
-+		       "JBD2: wait_on_commit_record: sync failed on %s - "
-+		       "disabling barriers\n", journal->j_devname);
-+		spin_lock(&journal->j_state_lock);
-+		journal->j_flags &= ~JBD2_BARRIER;
-+		spin_unlock(&journal->j_state_lock);
-+
-+		lock_buffer(bh);
-+		clear_buffer_dirty(bh);
-+		set_buffer_uptodate(bh);
-+		bh->b_end_io = journal_end_buffer_io_sync;
-+
-+		ret = submit_bh(WRITE_SYNC, bh);
-+		if (ret) {
-+			unlock_buffer(bh);
-+			return ret;
-+		}
-+		goto retry;
-+	}
- 
- 	if (unlikely(!buffer_uptodate(bh)))
- 		ret = -EIO;
-@@ -795,7 +818,7 @@ wait_for_iobuf:
- 			__jbd2_journal_abort_hard(journal);
- 	}
- 	if (!err && !is_journal_aborted(journal))
--		err = journal_wait_on_commit_record(cbh);
-+		err = journal_wait_on_commit_record(journal, cbh);
- 
- 	if (err)
- 		jbd2_journal_abort(journal, err);
++	if (ac->ac_status == AC_STATUS_FOUND)
++		return;
+ 	/*
+ 	 * We don't want to scan for a whole year
+ 	 */
 
