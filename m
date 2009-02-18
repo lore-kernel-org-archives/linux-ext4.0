@@ -1,59 +1,88 @@
-From: Alex Buell <alex.buell@munted.org.uk>
-Subject: Re: EXT4 ENOSPC Bug
-Date: Tue, 17 Feb 2009 22:59:46 +0000
-Message-ID: <20090217225946.053b8149@lithium.local.net>
-References: <20090216162028.3032666a@lithium.local.net>
-	<200811291418.24672.andres@anarazel.de>
-	<200812100108.04163.andres@anarazel.de>
-	<49994FEF.2020908@anarazel.de>
-	<20090216150156.GD22619@mini-me.lan>
-	<499985C7.8010302@anarazel.de>
-	<20090216190001.GB11788@mini-me.lan>
-	<499AFE32.7070003@redhat.com>
-	<499B1935.10906@redhat.com>
-	<20090217223017.3a86a045@lithium.local.net>
-	<499B4097.90808@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, Andres Freund <andres@anarazel.de>,
-	adilger@sun.com, LKML <linux-kernel@vger.kernel.org>,
-	linux-ext4@vger.kernel.org,
-	Jonathan Bastien-Filiatrault <joe@x2a.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sov-mail-b0016.gradwell.net ([193.84.87.40]:51588 "EHLO
-	sov-mail-b0016.gradwell.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753501AbZBQXBI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 18:01:08 -0500
-In-Reply-To: <499B4097.90808@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: + ext4-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch added to -mm tree
+Date: Tue, 17 Feb 2009 16:08:11 -0800
+Message-ID: <200902180008.n1I08BZF020006@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: bdonlan@gmail.com, linux-ext4@vger.kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, 17 Feb 2009 16:56:23 -0600, I waved a wand and this message
-magically appears in front of Eric Sandeen:
 
-> Alex Buell wrote:
-> > On Tue, 17 Feb 2009 14:08:21 -0600, I waved a wand and this message
-> > magically appears in front of Eric Sandeen:
-> > 
-> >> FWIW my problem seems to be different than others have encountered;
-> >> mine persists past reboot, while other reporters have said that a
-> >> reboot (remount) makes the problem go away.
-> >>
-> >> I seem to be encountering some silliness in find_group_flex when 2
-> >> out of 3 groups are full (I "only" have 55k inodes left, all in
-> >> the last group).
-> > 
-> > I've discovered a forced fsck clears this. HTH.
-> 
-> Do you have the output of the fsck run?
+The patch titled
+     ext4: return -EIO not -ESTALE on directory traversal through deleted inode
+has been added to the -mm tree.  Its filename is
+     ext4-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
 
-I'm afraid not, there's no way to save the output on a forced fsck
-reboot.
--- 
-http://www.munted.org.uk
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
-Fearsome grindings.
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext4: return -EIO not -ESTALE on directory traversal through deleted inode
+From: Bryan Donlan <bdonlan@gmail.com>
+
+ext4_iget() returns -ESTALE if invoked on a deleted inode, in order to
+report errors to NFS properly.  However, in ext[234]_lookup(), this
+-ESTALE can be propagated to userspace if the filesystem is corrupted such
+that a directory entry references a deleted inode.  This leads to a
+misleading error message - "Stale NFS file handle" - and confusion on the
+part of the admin.
+
+The bug can be easily reproduced by creating a new filesystem, making a
+link to an unused inode using debugfs, then mounting and attempting to ls
+-l said link.
+
+This patch thus changes ext4_lookup to return -EIO if it receives -ESTALE
+from ext4_iget(), as ext4 does for other filesystem metadata corruption;
+and also invokes the appropriate ext*_error functions when this case is
+detected.
+
+Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext4/namei.c |   12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff -puN fs/ext4/namei.c~ext4-return-eio-not-estale-on-directory-traversal-through-deleted-inode fs/ext4/namei.c
+--- a/fs/ext4/namei.c~ext4-return-eio-not-estale-on-directory-traversal-through-deleted-inode
++++ a/fs/ext4/namei.c
+@@ -1051,8 +1051,16 @@ static struct dentry *ext4_lookup(struct
+ 			return ERR_PTR(-EIO);
+ 		}
+ 		inode = ext4_iget(dir->i_sb, ino);
+-		if (IS_ERR(inode))
+-			return ERR_CAST(inode);
++		if (unlikely(IS_ERR(inode))) {
++			if (PTR_ERR(inode) == -ESTALE) {
++				ext4_error(dir->i_sb, "ext2_lookup",
++						"deleted inode referenced: %u",
++						ino);
++				return ERR_PTR(-EIO);
++			} else {
++				return ERR_CAST(inode);
++			}
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+_
+
+Patches currently in -mm which might be from bdonlan@gmail.com are
+
+ext4-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
+ext2-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
+ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
+
