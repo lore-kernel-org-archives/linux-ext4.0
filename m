@@ -1,9 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 31/39] ext4: Dont allow new groups to be added during block
-	allocation
-Date: Wed, 18 Feb 2009 13:33:12 -0800
-Message-ID: <20090218213312.GF19814@kroah.com>
-References: <20090218212144.965748151@mini.kroah.org>
+Subject: [patch 14/36] ext4: tone down ext4_da_writepages warnings
+Date: Wed, 18 Feb 2009 14:29:23 -0800
+Message-ID: <20090218222923.GO10668@kroah.com>
+References: <20090218222447.432108614@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
@@ -19,110 +18,70 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56424 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:34842 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754237AbZBRVgF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:36:05 -0500
-Content-Disposition: inline; filename="ext4-don-t-allow-new-groups-to-be-added-during-block-allocation.patch"
-In-Reply-To: <20090218213021.GA19814@kroah.com>
+	id S1757286AbZBRWcE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 17:32:04 -0500
+Content-Disposition: inline; filename="ext4-tone-down-ext4_da_writepages-warnings.patch"
+In-Reply-To: <20090218222841.GA10668@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-2.6.28-stable review patch.  If anyone has any objections, please let us know.
+2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 8556e8f3b6c4c11601ce1e9ea8090a6d8bd5daae)
+(cherry picked from commit 2a21e37e48b94388f2cc8c0392f104f5443d4bb8)
 
-After we mark the blocks in the buddy cache as allocated,
-we need to ensure that we don't reinit the buddy cache until
-the block bitmap is updated.  This commit achieves this by holding
-the group_info alloc_semaphore till ext4_mb_release_context
+If the filesystem has errors, ext4_da_writepages() will return a *lot*
+of errors, including lots and lots of stack dumps.  While it's true
+that we are dropping user data on the floor, which is unfortunate, the
+stack dumps aren't helpful, and they tend to obscure the true original
+root cause of the problem.  So in the case where the filesystem has
+aborted, return an EROFS right away.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/mballoc.c |   16 +++++++++++++---
- fs/ext4/mballoc.h |    5 +++++
- 2 files changed, 18 insertions(+), 3 deletions(-)
+ fs/ext4/inode.c |   16 +++++++++++++++-
+ 1 file changed, 15 insertions(+), 1 deletion(-)
 
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1052,7 +1052,8 @@ static void ext4_mb_release_desc(struct 
- 	if (e4b->bd_buddy_page)
- 		page_cache_release(e4b->bd_buddy_page);
- 	/* Done with the buddy cache */
--	up_read(e4b->alloc_semp);
-+	if (e4b->alloc_semp)
-+		up_read(e4b->alloc_semp);
- }
- 
- 
-@@ -1372,7 +1373,9 @@ static void ext4_mb_use_best_found(struc
- 	get_page(ac->ac_bitmap_page);
- 	ac->ac_buddy_page = e4b->bd_buddy_page;
- 	get_page(ac->ac_buddy_page);
--
-+	/* on allocation we use ac to track the held semaphore */
-+	ac->alloc_semp =  e4b->alloc_semp;
-+	e4b->alloc_semp = NULL;
- 	/* store last allocated for subsequent stream allocation */
- 	if ((ac->ac_flags & EXT4_MB_HINT_DATA)) {
- 		spin_lock(&sbi->s_md_lock);
-@@ -4286,6 +4289,7 @@ ext4_mb_initialize_context(struct ext4_a
- 	ac->ac_pa = NULL;
- 	ac->ac_bitmap_page = NULL;
- 	ac->ac_buddy_page = NULL;
-+	ac->alloc_semp = NULL;
- 	ac->ac_lg = NULL;
- 
- 	/* we have to define context: we'll we work with a file or
-@@ -4466,6 +4470,8 @@ static int ext4_mb_release_context(struc
- 		}
- 		ext4_mb_put_pa(ac, ac->ac_sb, pa);
- 	}
-+	if (ac->alloc_semp)
-+		up_read(ac->alloc_semp);
- 	if (ac->ac_bitmap_page)
- 		page_cache_release(ac->ac_bitmap_page);
- 	if (ac->ac_buddy_page)
-@@ -4566,10 +4572,14 @@ repeat:
- 				ac->ac_o_ex.fe_len < ac->ac_b_ex.fe_len)
- 			ext4_mb_new_preallocation(ac);
- 	}
--
- 	if (likely(ac->ac_status == AC_STATUS_FOUND)) {
- 		*errp = ext4_mb_mark_diskspace_used(ac, handle, reserv_blks);
- 		if (*errp ==  -EAGAIN) {
-+			/*
-+			 * drop the reference that we took
-+			 * in ext4_mb_use_best_found
-+			 */
-+			ext4_mb_release_context(ac);
- 			ac->ac_b_ex.fe_group = 0;
- 			ac->ac_b_ex.fe_start = 0;
- 			ac->ac_b_ex.fe_len = 0;
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -216,6 +216,11 @@ struct ext4_allocation_context {
- 	__u8 ac_op;		/* operation, for history only */
- 	struct page *ac_bitmap_page;
- 	struct page *ac_buddy_page;
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2298,6 +2298,20 @@ static int ext4_da_writepages(struct add
+ 	 */
+ 	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
+ 		return 0;
++
 +	/*
-+	 * pointer to the held semaphore upon successful
-+	 * block allocation
++	 * If the filesystem has aborted, it is read-only, so return
++	 * right away instead of dumping stack traces later on that
++	 * will obscure the real source of the problem.  We test
++	 * EXT4_MOUNT_ABORT instead of sb->s_flag's MS_RDONLY because
++	 * the latter could be true if the filesystem is mounted
++	 * read-only, and in that case, ext4_da_writepages should
++	 * *never* be called, so if that ever happens, we would want
++	 * the stack trace.
 +	 */
-+	struct rw_semaphore *alloc_semp;
- 	struct ext4_prealloc_space *ac_pa;
- 	struct ext4_locality_group *ac_lg;
- };
++	if (unlikely(sbi->s_mount_opt & EXT4_MOUNT_ABORT))
++		return -EROFS;
++
+ 	/*
+ 	 * Make sure nr_to_write is >= sbi->s_mb_stream_request
+ 	 * This make sure small files blocks are allocated in
+@@ -2336,7 +2350,7 @@ restart_loop:
+ 		handle = ext4_journal_start(inode, needed_blocks);
+ 		if (IS_ERR(handle)) {
+ 			ret = PTR_ERR(handle);
+-			printk(KERN_EMERG "%s: jbd2_start: "
++			printk(KERN_CRIT "%s: jbd2_start: "
+ 			       "%ld pages, ino %lu; err %d\n", __func__,
+ 				wbc->nr_to_write, inode->i_ino, ret);
+ 			dump_stack();
 
