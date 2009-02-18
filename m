@@ -1,58 +1,265 @@
-From: Andres Freund <andres@anarazel.de>
-Subject: Re: EXT4 ENOSPC Bug
-Date: Wed, 18 Feb 2009 22:18:57 +0100
-Message-ID: <499C7B41.1090800@anarazel.de>
-References: <20090216162028.3032666a@lithium.local.net> <200811291418.24672.andres@anarazel.de> <200812100108.04163.andres@anarazel.de> <49994FEF.2020908@anarazel.de> <20090216150156.GD22619@mini-me.lan> <499985C7.8010302@anarazel.de> <20090216190001.GB11788@mini-me.lan> <499AF598.7080400@anarazel.de>
+From: Greg KH <gregkh@suse.de>
+Subject: [patch 15/39] ext4: Add support for non-native signed/unsigned
+	htree hash algorithms
+Date: Wed, 18 Feb 2009 13:32:42 -0800
+Message-ID: <20090218213242.GP19814@kroah.com>
+References: <20090218212144.965748151@mini.kroah.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
-Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>,
-	Alex Buell <alex.buell@munted.org.uk>, adilger@sun.com,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	Jonathan Bastien-Filiatrault <jo
+Content-Type: text/plain; charset=us-ascii
+Cc: Justin Forbes <jmforbes@linuxtx.org>,
+	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
+	Theodore Ts'o <tytso@mit.edu>,
+	Randy Dunlap <rdunlap@xenotime.net>,
+	Dave Jones <davej@redhat.com>,
+	Chuck Wolber <chuckw@quantumlinux.com>,
+	Chris Wedgwood <reviews@ml.cw.f00f.org>,
+	Michael Krufky <mkrufky@linuxtv.org>,
+	Chuck Ebbert <cebbert@redhat.com>,
+	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
+	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
+	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
+	torvalds@linux-foundation.org, akpm@linux-foundation.org,
+	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.anarazel.de ([217.115.131.40]:36108 "EHLO smtp.anarazel.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752020AbZBRVTB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:19:01 -0500
-In-Reply-To: <499AF598.7080400@anarazel.de>
+Received: from kroah.org ([198.145.64.141]:56210 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1756758AbZBRVfl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 16:35:41 -0500
+Content-Disposition: inline; filename="ext4-add-support-for-non-native-signed-unsigned-htree-hash-algorithms.patch"
+In-Reply-To: <20090218213021.GA19814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi All,
+2.6.28-stable review patch.  If anyone has any objections, please let us know.
 
-On 02/17/2009 06:36 PM, Andres Freund wrote:
-> On 02/16/2009 08:00 PM, Theodore Tso wrote:
->> On Mon, Feb 16, 2009 at 04:27:03PM +0100, Andres Freund wrote:
->>> So, yes, seems to be an inode allocation problem.
->> I'm pretty sure the ENOSPC problem which you both found is an inode
->> allocation problem. Some of you seem to have an easier time
->> reproducing it than others; could you try this patch, and periodically
->> scan your system logs for the message "ext4: find_group_flex failed,
->> fallback succeeded"? If the problem goes away for you, and you find
->> the occasional aforemention message in your system log, that will
->> confirm what I suspect, which is the bug is in fs/ext4/inode.c's
->> find_group_flex() function. (If I'm wrong, the fallback code will
->> activate only when the filesystem is genuinely out of inodes, which
->> should be very rare.)
->> More comments are in the patch header. My current long-term plan for
->> dealing with this is to enhance find_group_orlov() to and
->> find_group_other() to understand about flex_bg's.
-> Ok. I am now running with the patch enabled on two machines - but as the
-> issue occured only 2 times in nearly 2 months on two machines...
-Didn't take that long:
-On one of the machines I got several thousand of:
+------------------
 
-[10379.575904] ext4: find_group_flex failed, fallback succeeded dir 416319
-[10379.576002] ext4: find_group_flex failed, fallback succeeded dir 416319
-[10379.579981] ext4: find_group_flex failed, fallback succeeded dir 416319
-[10379.580097] ext4: find_group_flex failed, fallback succeeded dir 416319
-(with different directories)
+From: "Theodore Ts'o" <tytso@mit.edu>
 
-No userspace visible behaviour.
+(cherry picked from commit f99b25897a86fcfff9140396a97261ae65fed872)
 
-So it seems you were right. It seems sensible to put that patch without 
-printk in the kernel until the issue is fully solved...
+The original ext3 hash algorithms assumed that variables of type char
+were signed, as God and K&R intended.  Unfortunately, this assumption
+is not true on some architectures.  Userspace support for marking
+filesystems with non-native signed/unsigned chars was added two years
+ago, but the kernel-side support was never added (until now).
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
-Andres
+---
+ fs/ext4/ext4.h    |    3 ++
+ fs/ext4/ext4_sb.h |    1 
+ fs/ext4/hash.c    |   77 ++++++++++++++++++++++++++++++++++++++++++++++--------
+ fs/ext4/namei.c   |    7 ++++
+ fs/ext4/super.c   |   12 ++++++++
+ 5 files changed, 90 insertions(+), 10 deletions(-)
+
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -891,6 +891,9 @@ static inline __le16 ext4_rec_len_to_dis
+ #define DX_HASH_LEGACY		0
+ #define DX_HASH_HALF_MD4	1
+ #define DX_HASH_TEA		2
++#define DX_HASH_LEGACY_UNSIGNED	3
++#define DX_HASH_HALF_MD4_UNSIGNED	4
++#define DX_HASH_TEA_UNSIGNED		5
+ 
+ #ifdef __KERNEL__
+ 
+--- a/fs/ext4/ext4_sb.h
++++ b/fs/ext4/ext4_sb.h
+@@ -57,6 +57,7 @@ struct ext4_sb_info {
+ 	u32 s_next_generation;
+ 	u32 s_hash_seed[4];
+ 	int s_def_hash_version;
++	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
+ 	struct percpu_counter s_freeblocks_counter;
+ 	struct percpu_counter s_freeinodes_counter;
+ 	struct percpu_counter s_dirs_counter;
+--- a/fs/ext4/hash.c
++++ b/fs/ext4/hash.c
+@@ -35,23 +35,71 @@ static void TEA_transform(__u32 buf[4], 
+ 
+ 
+ /* The old legacy hash */
+-static __u32 dx_hack_hash(const char *name, int len)
++static __u32 dx_hack_hash_unsigned(const char *name, int len)
+ {
+-	__u32 hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	const unsigned char *ucp = (const unsigned char *) name;
++
++	while (len--) {
++		hash = hash1 + (hash0 ^ (((int) *ucp++) * 7152373));
++
++		if (hash & 0x80000000)
++			hash -= 0x7fffffff;
++		hash1 = hash0;
++		hash0 = hash;
++	}
++	return hash0 << 1;
++}
++
++static __u32 dx_hack_hash_signed(const char *name, int len)
++{
++	__u32 hash, hash0 = 0x12a3fe2d, hash1 = 0x37abe8f9;
++	const signed char *scp = (const signed char *) name;
++
+ 	while (len--) {
+-		__u32 hash = hash1 + (hash0 ^ (*name++ * 7152373));
++		hash = hash1 + (hash0 ^ (((int) *scp++) * 7152373));
+ 
+-		if (hash & 0x80000000) hash -= 0x7fffffff;
++		if (hash & 0x80000000)
++			hash -= 0x7fffffff;
+ 		hash1 = hash0;
+ 		hash0 = hash;
+ 	}
+-	return (hash0 << 1);
++	return hash0 << 1;
++}
++
++static void str2hashbuf_signed(const char *msg, int len, __u32 *buf, int num)
++{
++	__u32	pad, val;
++	int	i;
++	const signed char *scp = (const signed char *) msg;
++
++	pad = (__u32)len | ((__u32)len << 8);
++	pad |= pad << 16;
++
++	val = pad;
++	if (len > num*4)
++		len = num * 4;
++	for (i = 0; i < len; i++) {
++		if ((i % 4) == 0)
++			val = pad;
++		val = ((int) scp[i]) + (val << 8);
++		if ((i % 4) == 3) {
++			*buf++ = val;
++			val = pad;
++			num--;
++		}
++	}
++	if (--num >= 0)
++		*buf++ = val;
++	while (--num >= 0)
++		*buf++ = pad;
+ }
+ 
+-static void str2hashbuf(const char *msg, int len, __u32 *buf, int num)
++static void str2hashbuf_unsigned(const char *msg, int len, __u32 *buf, int num)
+ {
+ 	__u32	pad, val;
+ 	int	i;
++	const unsigned char *ucp = (const unsigned char *) msg;
+ 
+ 	pad = (__u32)len | ((__u32)len << 8);
+ 	pad |= pad << 16;
+@@ -62,7 +110,7 @@ static void str2hashbuf(const char *msg,
+ 	for (i = 0; i < len; i++) {
+ 		if ((i % 4) == 0)
+ 			val = pad;
+-		val = msg[i] + (val << 8);
++		val = ((int) ucp[i]) + (val << 8);
+ 		if ((i % 4) == 3) {
+ 			*buf++ = val;
+ 			val = pad;
+@@ -95,6 +143,8 @@ int ext4fs_dirhash(const char *name, int
+ 	const char	*p;
+ 	int		i;
+ 	__u32		in[8], buf[4];
++	void		(*str2hashbuf)(const char *, int, __u32 *, int) =
++				str2hashbuf_signed;
+ 
+ 	/* Initialize the default seed for the hash checksum functions */
+ 	buf[0] = 0x67452301;
+@@ -113,13 +163,18 @@ int ext4fs_dirhash(const char *name, int
+ 	}
+ 
+ 	switch (hinfo->hash_version) {
++	case DX_HASH_LEGACY_UNSIGNED:
++		hash = dx_hack_hash_unsigned(name, len);
++		break;
+ 	case DX_HASH_LEGACY:
+-		hash = dx_hack_hash(name, len);
++		hash = dx_hack_hash_signed(name, len);
+ 		break;
++	case DX_HASH_HALF_MD4_UNSIGNED:
++		str2hashbuf = str2hashbuf_unsigned;
+ 	case DX_HASH_HALF_MD4:
+ 		p = name;
+ 		while (len > 0) {
+-			str2hashbuf(p, len, in, 8);
++			(*str2hashbuf)(p, len, in, 8);
+ 			half_md4_transform(buf, in);
+ 			len -= 32;
+ 			p += 32;
+@@ -127,10 +182,12 @@ int ext4fs_dirhash(const char *name, int
+ 		minor_hash = buf[2];
+ 		hash = buf[1];
+ 		break;
++	case DX_HASH_TEA_UNSIGNED:
++		str2hashbuf = str2hashbuf_unsigned;
+ 	case DX_HASH_TEA:
+ 		p = name;
+ 		while (len > 0) {
+-			str2hashbuf(p, len, in, 4);
++			(*str2hashbuf)(p, len, in, 4);
+ 			TEA_transform(buf, in);
+ 			len -= 16;
+ 			p += 16;
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -372,6 +372,8 @@ dx_probe(const struct qstr *d_name, stru
+ 		goto fail;
+ 	}
+ 	hinfo->hash_version = root->info.hash_version;
++	if (hinfo->hash_version <= DX_HASH_TEA)
++		hinfo->hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo->seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 	if (d_name)
+ 		ext4fs_dirhash(d_name->name, d_name->len, hinfo);
+@@ -641,6 +643,9 @@ int ext4_htree_fill_tree(struct file *di
+ 	dir = dir_file->f_path.dentry->d_inode;
+ 	if (!(EXT4_I(dir)->i_flags & EXT4_INDEX_FL)) {
+ 		hinfo.hash_version = EXT4_SB(dir->i_sb)->s_def_hash_version;
++		if (hinfo.hash_version <= DX_HASH_TEA)
++			hinfo.hash_version +=
++				EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 		hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 		count = htree_dirblock_to_tree(dir_file, dir, 0, &hinfo,
+ 					       start_hash, start_minor_hash);
+@@ -1408,6 +1413,8 @@ static int make_indexed_dir(handle_t *ha
+ 
+ 	/* Initialize as for dx_probe */
+ 	hinfo.hash_version = root->info.hash_version;
++	if (hinfo.hash_version <= DX_HASH_TEA)
++		hinfo.hash_version += EXT4_SB(dir->i_sb)->s_hash_unsigned;
+ 	hinfo.seed = EXT4_SB(dir->i_sb)->s_hash_seed;
+ 	ext4fs_dirhash(name, namelen, &hinfo);
+ 	frame = frames;
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2118,6 +2118,18 @@ static int ext4_fill_super(struct super_
+ 	for (i = 0; i < 4; i++)
+ 		sbi->s_hash_seed[i] = le32_to_cpu(es->s_hash_seed[i]);
+ 	sbi->s_def_hash_version = es->s_def_hash_version;
++	i = le32_to_cpu(es->s_flags);
++	if (i & EXT2_FLAGS_UNSIGNED_HASH)
++		sbi->s_hash_unsigned = 3;
++	else if ((i & EXT2_FLAGS_SIGNED_HASH) == 0) {
++#ifdef __CHAR_UNSIGNED__
++		es->s_flags |= cpu_to_le32(EXT2_FLAGS_UNSIGNED_HASH);
++		sbi->s_hash_unsigned = 3;
++#else
++		es->s_flags |= cpu_to_le32(EXT2_FLAGS_SIGNED_HASH);
++#endif
++		sb->s_dirt = 1;
++	}
+ 
+ 	if (sbi->s_blocks_per_group > blocksize * 8) {
+ 		printk(KERN_ERR
+
