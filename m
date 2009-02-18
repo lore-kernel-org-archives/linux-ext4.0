@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 16/39] ext4: tone down ext4_da_writepages warnings
-Date: Wed, 18 Feb 2009 13:32:44 -0800
-Message-ID: <20090218213244.GQ19814@kroah.com>
+Subject: [patch 19/39] ext4: Widen type of ext4_sb_info.s_mb_maxs[]
+Date: Wed, 18 Feb 2009 13:32:49 -0800
+Message-ID: <20090218213249.GT19814@kroah.com>
 References: <20090218212144.965748151@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -18,70 +18,71 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org
+	alan@lxorguk.ukuu.org.uk, Li Zefan <lizf@cn.fujitsu.com>,
+	Yasunori Goto <y-goto@jp.fujitsu.com>,
+	linux-ext4@vger.kernel.org, Miao Xie <miaox@cn.fujitsu.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56219 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56250 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756804AbZBRVfm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:35:42 -0500
-Content-Disposition: inline; filename="ext4-tone-down-ext4_da_writepages-warnings.patch"
+	id S1756896AbZBRVfp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 16:35:45 -0500
+Content-Disposition: inline; filename="ext4-widen-type-of-ext4_sb_info.s_mb_maxs.patch"
 In-Reply-To: <20090218213021.GA19814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
 
 2.6.28-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: "Theodore Ts'o" <tytso@mit.edu>
+From: Yasunori Goto <y-goto@jp.fujitsu.com>
 
-(cherry picked from commit 2a21e37e48b94388f2cc8c0392f104f5443d4bb8)
+(cherry picked from commit ff7ef329b268b603ea4a2303241ef1c3829fd574)
 
-If the filesystem has errors, ext4_da_writepages() will return a *lot*
-of errors, including lots and lots of stack dumps.  While it's true
-that we are dropping user data on the floor, which is unfortunate, the
-stack dumps aren't helpful, and they tend to obscure the true original
-root cause of the problem.  So in the case where the filesystem has
-aborted, return an EROFS right away.
+I chased the cause of following ext4 oops report which is tested on
+ia64 box.
 
+http://bugzilla.kernel.org/show_bug.cgi?id=12018
+
+The cause is the size of s_mb_maxs array that is defined as "unsigned
+short" in ext4_sb_info structure.  If the file system's block size is
+8k or greater, an unsigned short is not wide enough to contain the
+value fs->blocksize << 3.
+
+Signed-off-by: Yasunori Goto <y-goto@jp.fujitsu.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: Li Zefan <lizf@cn.fujitsu.com>
+Cc: Miao Xie <miaox@cn.fujitsu.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/inode.c |   16 +++++++++++++++-
- 1 file changed, 15 insertions(+), 1 deletion(-)
+ fs/ext4/ext4_sb.h |    3 ++-
+ fs/ext4/mballoc.c |    2 ++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
 
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2388,6 +2388,20 @@ static int ext4_da_writepages(struct add
- 	 */
- 	if (!mapping->nrpages || !mapping_tagged(mapping, PAGECACHE_TAG_DIRTY))
- 		return 0;
+--- a/fs/ext4/ext4_sb.h
++++ b/fs/ext4/ext4_sb.h
+@@ -102,7 +102,8 @@ struct ext4_sb_info {
+ 	spinlock_t s_reserve_lock;
+ 	spinlock_t s_md_lock;
+ 	tid_t s_last_transaction;
+-	unsigned short *s_mb_offsets, *s_mb_maxs;
++	unsigned short *s_mb_offsets;
++	unsigned int *s_mb_maxs;
+ 
+ 	/* tunables */
+ 	unsigned long s_stripe;
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2493,6 +2493,8 @@ int ext4_mb_init(struct super_block *sb,
+ 	if (sbi->s_mb_offsets == NULL) {
+ 		return -ENOMEM;
+ 	}
 +
-+	/*
-+	 * If the filesystem has aborted, it is read-only, so return
-+	 * right away instead of dumping stack traces later on that
-+	 * will obscure the real source of the problem.  We test
-+	 * EXT4_MOUNT_ABORT instead of sb->s_flag's MS_RDONLY because
-+	 * the latter could be true if the filesystem is mounted
-+	 * read-only, and in that case, ext4_da_writepages should
-+	 * *never* be called, so if that ever happens, we would want
-+	 * the stack trace.
-+	 */
-+	if (unlikely(sbi->s_mount_opt & EXT4_MOUNT_ABORT))
-+		return -EROFS;
-+
- 	/*
- 	 * Make sure nr_to_write is >= sbi->s_mb_stream_request
- 	 * This make sure small files blocks are allocated in
-@@ -2432,7 +2446,7 @@ static int ext4_da_writepages(struct add
- 		handle = ext4_journal_start(inode, needed_blocks);
- 		if (IS_ERR(handle)) {
- 			ret = PTR_ERR(handle);
--			printk(KERN_EMERG "%s: jbd2_start: "
-+			printk(KERN_CRIT "%s: jbd2_start: "
- 			       "%ld pages, ino %lu; err %d\n", __func__,
- 				wbc->nr_to_write, inode->i_ino, ret);
- 			dump_stack();
++	i = (sb->s_blocksize_bits + 2) * sizeof(unsigned int);
+ 	sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
+ 	if (sbi->s_mb_maxs == NULL) {
+ 		kfree(sbi->s_mb_maxs);
 
