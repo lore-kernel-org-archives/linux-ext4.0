@@ -1,38 +1,31 @@
-From: Alexander Beregalov <a.beregalov@gmail.com>
-Subject: Re: next-20090206: deadlock on ext4
-Date: Wed, 18 Feb 2009 12:56:33 +0300
-Message-ID: <a4423d670902180156yd293319na51f91c6651e076c@mail.gmail.com>
-References: <a4423d670902060935y59e540beta417144935416560@mail.gmail.com>
-	 <498C7671.1050309@redhat.com>
-	 <a4423d670902061004i424817e1vd699a61e335f010a@mail.gmail.com>
-	 <498C9876.3060208@redhat.com>
-	 <a4423d670902090401k716d054eo25640aa2207beca7@mail.gmail.com>
-	 <4995F27E.3070401@redhat.com>
+From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+Subject: Re: [PATCH -V2] ext4: Validate extent details only when read from
+ the disk
+Date: Wed, 18 Feb 2009 11:10:51 +0100
+Message-ID: <499BDEAB.6080807@ph.tum.de>
+References: <1234805202-6922-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1234805202-6922-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <4995F27E.3070401@redhat.com>
-Sender: linux-next-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:57384 "EHLO
+	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751318AbZBRKLG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 05:11:06 -0500
+In-Reply-To: <1234805202-6922-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-2009/2/14 Eric Sandeen <sandeen@redhat.com>:
-> Alexander Beregalov wrote:
->
->> I have reproduced it with 2.6.29-rc4.
->> Loop file was on XFS.
->> I can not reproduce it on ext4 on raw device.
->> Let me know if I can do anything else to help resolving it.
->>
-> Can you try this patch from Aneesh?  Works for me...
->
+Aneesh Kumar K.V wrote:
+> Make sure we validate extent details only when read from the disk.
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Yes, it works, I can not reproduce the bug on
-2.6.29-rc5-00122-g5955c7a which contains 2acf2c261b82
-"ext4: Implement range_cyclic in ext4_da_writepages instead of
-write_cache_pages"
+Your patches work well for my test case.
 
-Thanks
+Kind regards,
+
+Thiemo
