@@ -1,8 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 34/39] ext4: Add sanity checks for the superblock before
-	mounting the filesystem
-Date: Wed, 18 Feb 2009 13:33:18 -0800
-Message-ID: <20090218213318.GI19814@kroah.com>
+Subject: [patch 35/39] ext4: only use i_size_high for regular files
+Date: Wed, 18 Feb 2009 13:33:20 -0800
+Message-ID: <20090218213320.GJ19814@kroah.com>
 References: <20090218212144.965748151@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -19,18 +18,18 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, Thiemo Nagel <thiemo.nagel@ph.tum.de>,
-	linux-ext4@vger.kernel.org
+	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56359 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56388 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754186AbZBRVgA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:36:00 -0500
-Content-Disposition: inline; filename="ext4-add-sanity-checks-for-the-superblock-before-mounting-the-filesystem.patch"
+	id S1757287AbZBRVgB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 16:36:01 -0500
+Content-Disposition: inline; filename="ext4-only-use-i_size_high-for-regular-files.patch"
 In-Reply-To: <20090218213021.GA19814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
 
 2.6.28-stable review patch.  If anyone has any objections, please let us know.
 
@@ -38,75 +37,60 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 4ec110281379826c5cf6ed14735e47027c3c5765)
+(cherry picked from commit 06a279d636734da32bb62dd2f7b0ade666f65d7c)
 
-This avoids insane superblock configurations that could lead to kernel
-oops due to null pointer derefences.
+Directories are not allowed to be bigger than 2GB, so don't use
+i_size_high for anything other than regular files.  E2fsck should
+complain about these inodes, but the simplest thing to do for the
+kernel is to only use i_size_high for regular files.
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12371
+This prevents an intentially corrupted filesystem from causing the
+kernel to burn a huge amount of CPU and issuing error messages such
+as:
 
-Thanks to David Maciejak at Fortinet's FortiGuard Global Security
-Research Team who discovered this bug independently (but at
-approximately the same time) as Thiemo Nagel, who submitted the patch.
+EXT4-fs warning (device loop0): ext4_block_to_path: block 135090028 > max
 
-Signed-off-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+Thanks to David Maciejak from Fortinet's FortiGuard Global Security
+Research Team for reporting this issue.
+
+http://bugzilla.kernel.org/show_bug.cgi?id=12375
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/super.c |   30 ++++++++++++++++++++----------
- 1 file changed, 20 insertions(+), 10 deletions(-)
+ fs/ext4/ext4.h  |    7 +++++--
+ fs/ext4/inode.c |    4 ++--
+ 2 files changed, 7 insertions(+), 4 deletions(-)
 
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1869,8 +1869,8 @@ static int ext4_fill_super(struct super_
- 	char *cp;
- 	int ret = -EINVAL;
- 	int blocksize;
--	int db_count;
--	int i;
-+	unsigned int db_count;
-+	unsigned int i;
- 	int needs_recovery, has_huge_files;
- 	__le32 features;
- 	__u64 blocks_count;
-@@ -2153,20 +2153,30 @@ static int ext4_fill_super(struct super_
- 	if (EXT4_BLOCKS_PER_GROUP(sb) == 0)
- 		goto cantfind_ext4;
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -1188,8 +1188,11 @@ static inline void ext4_r_blocks_count_s
  
--	/* ensure blocks_count calculation below doesn't sign-extend */
--	if (ext4_blocks_count(es) + EXT4_BLOCKS_PER_GROUP(sb) <
--	    le32_to_cpu(es->s_first_data_block) + 1) {
--		printk(KERN_WARNING "EXT4-fs: bad geometry: block count %llu, "
--		       "first data block %u, blocks per group %lu\n",
--			ext4_blocks_count(es),
--			le32_to_cpu(es->s_first_data_block),
--			EXT4_BLOCKS_PER_GROUP(sb));
-+        /*
-+         * It makes no sense for the first data block to be beyond the end
-+         * of the filesystem.
-+         */
-+        if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
-+                printk(KERN_WARNING "EXT4-fs: bad geometry: first data"
-+		       "block %u is beyond end of filesystem (%llu)\n",
-+		       le32_to_cpu(es->s_first_data_block),
-+		       ext4_blocks_count(es));
- 		goto failed_mount;
+ static inline loff_t ext4_isize(struct ext4_inode *raw_inode)
+ {
+-	return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
+-		le32_to_cpu(raw_inode->i_size_lo);
++	if (S_ISREG(le16_to_cpu(raw_inode->i_mode)))
++		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
++			le32_to_cpu(raw_inode->i_size_lo);
++	else
++		return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
+ }
+ 
+ static inline void ext4_isize_set(struct ext4_inode *raw_inode, loff_t i_size)
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -351,9 +351,9 @@ static int ext4_block_to_path(struct ino
+ 		final = ptrs;
+ 	} else {
+ 		ext4_warning(inode->i_sb, "ext4_block_to_path",
+-				"block %lu > max",
++				"block %lu > max in inode %lu",
+ 				i_block + direct_blocks +
+-				indirect_blocks + double_blocks);
++				indirect_blocks + double_blocks, inode->i_ino);
  	}
- 	blocks_count = (ext4_blocks_count(es) -
- 			le32_to_cpu(es->s_first_data_block) +
- 			EXT4_BLOCKS_PER_GROUP(sb) - 1);
- 	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
-+	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
-+		printk(KERN_WARNING "EXT4-fs: groups count too large: %u "
-+		       "(block count %llu, first data block %u, "
-+		       "blocks per group %lu)\n", sbi->s_groups_count,
-+		       ext4_blocks_count(es),
-+		       le32_to_cpu(es->s_first_data_block),
-+		       EXT4_BLOCKS_PER_GROUP(sb));
-+		goto failed_mount;
-+	}
- 	sbi->s_groups_count = blocks_count;
- 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
- 		   EXT4_DESC_PER_BLOCK(sb);
+ 	if (boundary)
+ 		*boundary = final - 1 - (i_block & (ptrs - 1));
 
