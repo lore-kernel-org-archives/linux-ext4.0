@@ -1,88 +1,48 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 17/36] ext4: Widen type of ext4_sb_info.s_mb_maxs[]
-Date: Wed, 18 Feb 2009 14:29:28 -0800
-Message-ID: <20090218222928.GR10668@kroah.com>
-References: <20090218222447.432108614@mini.kroah.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: EXT4 ENOSPC Bug
+Date: Wed, 18 Feb 2009 16:29:57 -0500
+Message-ID: <20090218212957.GR3600@mini-me.lan>
+References: <20090216162028.3032666a@lithium.local.net> <200811291418.24672.andres@anarazel.de> <200812100108.04163.andres@anarazel.de> <49994FEF.2020908@anarazel.de> <20090216150156.GD22619@mini-me.lan> <499985C7.8010302@anarazel.de> <20090216190001.GB11788@mini-me.lan> <499AF598.7080400@anarazel.de> <499C7B41.1090800@anarazel.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
-	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
-	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
-	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, Li Zefan <lizf@cn.fujitsu.com>,
-	Yasunori Goto <y-goto@jp.fujitsu.com>,
-	linux-ext4@vger.kernel.org, Miao Xie <miaox@cn.fujitsu.com>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
+Cc: Alex Buell <alex.buell@munted.org.uk>, adilger@sun.com,
+	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
+	Jonathan Bastien-Filiatrault <joe@x2a.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Andres Freund <andres@anarazel.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:34894 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757892AbZBRWcI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 17:32:08 -0500
-Content-Disposition: inline; filename="ext4-widen-type-of-ext4_sb_info.s_mb_maxs.patch"
-In-Reply-To: <20090218222841.GA10668@kroah.com>
+Received: from THUNK.ORG ([69.25.196.29]:52147 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760312AbZBRWsZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 17:48:25 -0500
+Content-Disposition: inline
+In-Reply-To: <499C7B41.1090800@anarazel.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Feb 18, 2009 at 10:18:57PM +0100, Andres Freund wrote:
+> On one of the machines I got several thousand of:
+>
+> [10379.575904] ext4: find_group_flex failed, fallback succeeded dir 416319
+> [10379.576002] ext4: find_group_flex failed, fallback succeeded dir 416319
+> [10379.579981] ext4: find_group_flex failed, fallback succeeded dir 416319
+> [10379.580097] ext4: find_group_flex failed, fallback succeeded dir 416319
+> (with different directories)
 
-2.6.27-stable review patch.  If anyone has any objections, please let us know.
+Ok, that's good.  Good to know the workaround works.  
 
-------------------
+Can you send me a dumpe2fs of the filesystem in question?  I'm curious
+what was going on...
 
-From: Yasunori Goto <y-goto@jp.fujitsu.com>
+> No userspace visible behaviour.
+>
+> So it seems you were right. It seems sensible to put that patch without  
+> printk in the kernel until the issue is fully solved...
 
-(cherry picked from commit ff7ef329b268b603ea4a2303241ef1c3829fd574)
+Thanks for the report.  I'll push the workaround patch to Linus for
+2.6.29 to avoid this problem for now.  I recently sent to linux-ext4
+for comment a patch to revamp the Orlov allocator for flex_bg and to
+use that instead of find_group_flex(), but no way that's going into
+2.6.29 at this point....
 
-I chased the cause of following ext4 oops report which is tested on
-ia64 box.
-
-http://bugzilla.kernel.org/show_bug.cgi?id=12018
-
-The cause is the size of s_mb_maxs array that is defined as "unsigned
-short" in ext4_sb_info structure.  If the file system's block size is
-8k or greater, an unsigned short is not wide enough to contain the
-value fs->blocksize << 3.
-
-Signed-off-by: Yasunori Goto <y-goto@jp.fujitsu.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Cc: Li Zefan <lizf@cn.fujitsu.com>
-Cc: Miao Xie <miaox@cn.fujitsu.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- fs/ext4/ext4_sb.h |    3 ++-
- fs/ext4/mballoc.c |    2 ++
- 2 files changed, 4 insertions(+), 1 deletion(-)
-
---- a/fs/ext4/ext4_sb.h
-+++ b/fs/ext4/ext4_sb.h
-@@ -103,7 +103,8 @@ struct ext4_sb_info {
- 	struct list_head s_committed_transaction;
- 	spinlock_t s_md_lock;
- 	tid_t s_last_transaction;
--	unsigned short *s_mb_offsets, *s_mb_maxs;
-+	unsigned short *s_mb_offsets;
-+	unsigned int *s_mb_maxs;
- 
- 	/* tunables */
- 	unsigned long s_stripe;
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2495,6 +2495,8 @@ int ext4_mb_init(struct super_block *sb,
- 		clear_opt(sbi->s_mount_opt, MBALLOC);
- 		return -ENOMEM;
- 	}
-+
-+	i = (sb->s_blocksize_bits + 2) * sizeof(unsigned int);
- 	sbi->s_mb_maxs = kmalloc(i, GFP_KERNEL);
- 	if (sbi->s_mb_maxs == NULL) {
- 		clear_opt(sbi->s_mount_opt, MBALLOC);
-
+							- Ted
