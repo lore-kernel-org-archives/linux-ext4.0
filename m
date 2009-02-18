@@ -1,8 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 18/39] ext4: avoid ext4_error when mounting a fs with a
-	single bg
-Date: Wed, 18 Feb 2009 13:32:47 -0800
-Message-ID: <20090218213247.GS19814@kroah.com>
+Subject: [patch 21/39] ext4: Dont overwrite allocation_context ac_status
+Date: Wed, 18 Feb 2009 13:32:53 -0800
+Message-ID: <20090218213253.GV19814@kroah.com>
 References: <20090218212144.965748151@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -23,14 +22,15 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56240 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56267 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756860AbZBRVfo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:35:44 -0500
-Content-Disposition: inline; filename="ext4-avoid-ext4_error-when-mounting-a-fs-with-a-single-bg.patch"
+	id S1757050AbZBRVfr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 16:35:47 -0500
+Content-Disposition: inline; filename="ext4-don-t-overwrite-allocation_context-ac_status.patch"
 In-Reply-To: <20090218213021.GA19814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
 
 2.6.28-stable review patch.  If anyone has any objections, please let us know.
 
@@ -38,33 +38,45 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-(cherry picked from commit 565a9617b2151e21b22700e97a8b04e70e103153)
+(cherry picked from commit 032115fcef837a00336ddf7bda584e89789ea498)
 
-Remove some completely unneeded code which which caused an ext4_error
-to be generated when mounting a file system with only a single block
-group.
+We can call ext4_mb_check_limits even after successfully allocating
+the requested blocks.  In that case, make sure we don't overwrite
+ac_status if it already has the status AC_STATUS_FOUND.  This fixes
+the lockdep warning:
+
+=============================================
+[ INFO: possible recursive locking detected ]
+2.6.28-rc6-autokern1 #1
+---------------------------------------------
+fsstress/11948 is trying to acquire lock:
+ (&meta_group_info[i]->alloc_sem){----}, at: [<c04d9a49>] ext4_mb_load_buddy+0x9f/0x278
+.....
+
+stack backtrace:
+.....
+ [<c04db974>] ext4_mb_regular_allocator+0xbb5/0xd44
+.....
+
+but task is already holding lock:
+ (&meta_group_info[i]->alloc_sem){----}, at: [<c04d9a49>] ext4_mb_load_buddy+0x9f/0x278
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
 ---
- fs/ext4/super.c |    4 ----
- 1 file changed, 4 deletions(-)
+ fs/ext4/mballoc.c |    2 ++
+ 1 file changed, 2 insertions(+)
 
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1445,7 +1445,6 @@ static int ext4_fill_flex_info(struct su
- 	ext4_group_t flex_group_count;
- 	ext4_group_t flex_group;
- 	int groups_per_flex = 0;
--	__u64 block_bitmap = 0;
- 	int i;
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1326,6 +1326,8 @@ static void ext4_mb_check_limits(struct 
+ 	struct ext4_free_extent ex;
+ 	int max;
  
- 	if (!sbi->s_es->s_log_groups_per_flex) {
-@@ -1468,9 +1467,6 @@ static int ext4_fill_flex_info(struct su
- 		goto failed;
- 	}
- 
--	gdp = ext4_get_group_desc(sb, 1, &bh);
--	block_bitmap = ext4_block_bitmap(sb, gdp) - 1;
++	if (ac->ac_status == AC_STATUS_FOUND)
++		return;
+ 	/*
+ 	 * We don't want to scan for a whole year
+ 	 */
+
