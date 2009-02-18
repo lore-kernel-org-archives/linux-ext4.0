@@ -1,7 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 19/36] ext4: Dont overwrite allocation_context ac_status
-Date: Wed, 18 Feb 2009 14:29:32 -0800
-Message-ID: <20090218222932.GT10668@kroah.com>
+Subject: [patch 31/36] ext4: Init the complete page while building buddy
+	cache
+Date: Wed, 18 Feb 2009 14:29:53 -0800
+Message-ID: <20090218222953.GF10668@kroah.com>
 References: <20090218222447.432108614@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -22,11 +23,11 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:34919 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:35084 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756996AbZBRWcK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 17:32:10 -0500
-Content-Disposition: inline; filename="ext4-don-t-overwrite-allocation_context-ac_status.patch"
+	id S1757896AbZBRWcW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 17:32:22 -0500
+Content-Disposition: inline; filename="ext4-init-the-complete-page-while-building-buddy-cache.patch"
 In-Reply-To: <20090218222841.GA10668@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -38,46 +39,41 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-(cherry picked from commit 032115fcef837a00336ddf7bda584e89789ea498)
+(cherry picked from commit 29eaf024980e07cc01f31ae4ea5d68c917f4b7da)
 
-We can call ext4_mb_check_limits even after successfully allocating
-the requested blocks.  In that case, make sure we don't overwrite
-ac_status if it already has the status AC_STATUS_FOUND.  This fixes
-the lockdep warning:
+We need to init the complete page during buddy cache init
+by setting the contents to '1'.  Otherwise we can see the
+following errors after doing an online resize of the
+filesystem:
 
-=============================================
-[ INFO: possible recursive locking detected ]
-2.6.28-rc6-autokern1 #1
----------------------------------------------
-fsstress/11948 is trying to acquire lock:
- (&meta_group_info[i]->alloc_sem){----}, at: [<c04d9a49>] ext4_mb_load_buddy+0x9f/0x278
-.....
-
-stack backtrace:
-.....
- [<c04db974>] ext4_mb_regular_allocator+0xbb5/0xd44
-.....
-
-but task is already holding lock:
- (&meta_group_info[i]->alloc_sem){----}, at: [<c04d9a49>] ext4_mb_load_buddy+0x9f/0x278
+EXT4-fs error (device sdb1): ext4_mb_mark_diskspace_used:
+	Allocating block 1040385 in system zone of 127 group
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/mballoc.c |    2 ++
- 1 file changed, 2 insertions(+)
+ fs/ext4/mballoc.c |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -1326,6 +1326,8 @@ static void ext4_mb_check_limits(struct 
- 	struct ext4_free_extent ex;
- 	int max;
+@@ -848,6 +848,8 @@ static int ext4_mb_init_cache(struct pag
  
-+	if (ac->ac_status == AC_STATUS_FOUND)
-+		return;
- 	/*
- 	 * We don't want to scan for a whole year
- 	 */
+ 	err = 0;
+ 	first_block = page->index * blocks_per_page;
++	/* init the page  */
++	memset(page_address(page), 0xff, PAGE_CACHE_SIZE);
+ 	for (i = 0; i < blocks_per_page; i++) {
+ 		int group;
+ 		struct ext4_group_info *grinfo;
+@@ -874,7 +876,6 @@ static int ext4_mb_init_cache(struct pag
+ 			BUG_ON(incore == NULL);
+ 			mb_debug("put buddy for group %u in page %lu/%x\n",
+ 				group, page->index, i * blocksize);
+-			memset(data, 0xff, blocksize);
+ 			grinfo = ext4_get_group_info(sb, group);
+ 			grinfo->bb_fragments = 0;
+ 			memset(grinfo->bb_counters, 0,
 
