@@ -1,64 +1,38 @@
-From: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
-Subject: [PATCH -v2]ext4: add the spec for ext4 subdirectory limit(was: Problems
- with the max value for create directory)
-Date: Wed, 18 Feb 2009 13:29:55 +0800
-Message-ID: <499B9CD3.8060608@cn.fujitsu.com>
+From: Alexander Beregalov <a.beregalov@gmail.com>
+Subject: Re: next-20090206: deadlock on ext4
+Date: Wed, 18 Feb 2009 12:56:33 +0300
+Message-ID: <a4423d670902180156yd293319na51f91c6651e076c@mail.gmail.com>
+References: <a4423d670902060935y59e540beta417144935416560@mail.gmail.com>
+	 <498C7671.1050309@redhat.com>
+	 <a4423d670902061004i424817e1vd699a61e335f010a@mail.gmail.com>
+	 <498C9876.3060208@redhat.com>
+	 <a4423d670902090401k716d054eo25640aa2207beca7@mail.gmail.com>
+	 <4995F27E.3070401@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@MIT.EDU>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cn.fujitsu.com ([222.73.24.84]:61928 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750840AbZBRF2I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 00:28:08 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-next-owner@vger.kernel.org>
+In-Reply-To: <4995F27E.3070401@redhat.com>
+Sender: linux-next-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-When using hash index, too many long-subdirectory-names and 1024 blocksize, the
-subdirectory limit may be less than 32000.
+2009/2/14 Eric Sandeen <sandeen@redhat.com>:
+> Alexander Beregalov wrote:
+>
+>> I have reproduced it with 2.6.29-rc4.
+>> Loop file was on XFS.
+>> I can not reproduce it on ext4 on raw device.
+>> Let me know if I can do anything else to help resolving it.
+>>
+> Can you try this patch from Aneesh?  Works for me...
+>
 
-The problem is that indexed diretories have a limit that only allows the trees
-to be two levels deep. The fanout is normally big enough that this is effectively
-not a problem, but if you use too many long-names, and a 1024 blocksize, you will
-run into htree limit much more quickly.
+Yes, it works, I can not reproduce the bug on
+2.6.29-rc5-00122-g5955c7a which contains 2acf2c261b82
+"ext4: Implement range_cyclic in ext4_da_writepages instead of
+write_cache_pages"
 
-The users may be puzzled when they can't create more than 32000 subdirecties with
-using hash index, too many long-names and 1024 blocksize. It should be remind of
-in the ext4 document.
-
-Signed-off-by: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
----
- Documentation/filesystems/ext4.txt |    8 +++++++-
- 1 files changed, 7 insertions(+), 1 deletions(-)
-
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index cec829b..0e1ec9c 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -85,7 +85,7 @@ Note: More extensive information for getting started with ext4 can be
- * extent format more robust in face of on-disk corruption due to magics,
- * internal redundancy in tree
- * improved file allocation (multi-block alloc)
--* fix 32000 subdirectory limit
-+* fix 32000 subdirectory limit (*1)
- * nsec timestamps for mtime, atime, ctime, create time
- * inode version field on disk (NFSv4, Lustre)
- * reduced e2fsck time via uninit_bg feature
-@@ -100,6 +100,12 @@ Note: More extensive information for getting started with ext4 can be
- * efficent new ordered mode in JBD2 and ext4(avoid using buffer head to force
-   the ordering)
- 
-+(*1) Note
-+Basically, the limit depends on blocksize and length of subdirectory names in
-+the directory. If blocksize is too small (like 1024) and you use too many
-+long-names, you may reach a smaller limit. When dir index is off, the limit is
-+65000.
-+
- 2.2 Candidate features for future inclusion
- 
- * Online defrag (patches available but not well tested)
-
-
-
+Thanks
