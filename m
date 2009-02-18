@@ -1,46 +1,64 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: EXT4 ENOSPC Bug
-Date: Tue, 17 Feb 2009 17:00:29 -0500
-Message-ID: <20090217220029.GS23758@mini-me.lan>
-References: <20090216162028.3032666a@lithium.local.net> <200811291418.24672.andres@anarazel.de> <200812100108.04163.andres@anarazel.de> <49994FEF.2020908@anarazel.de> <20090216150156.GD22619@mini-me.lan> <499985C7.8010302@anarazel.de> <20090216190001.GB11788@mini-me.lan> <499AFE32.7070003@redhat.com> <499B1935.10906@redhat.com>
+From: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
+Subject: [PATCH -v2]ext4: add the spec for ext4 subdirectory limit(was: Problems
+ with the max value for create directory)
+Date: Wed, 18 Feb 2009 13:29:55 +0800
+Message-ID: <499B9CD3.8060608@cn.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andres Freund <andres@anarazel.de>,
-	Alex Buell <alex.buell@munted.org.uk>, adilger@sun.com,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	Jonathan Bastien-Filiatrault <joe@x2a.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@MIT.EDU>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:60323 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750828AbZBRC37 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Feb 2009 21:29:59 -0500
-Content-Disposition: inline
-In-Reply-To: <499B1935.10906@redhat.com>
+Received: from cn.fujitsu.com ([222.73.24.84]:61928 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750840AbZBRF2I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 00:28:08 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Feb 17, 2009 at 02:08:21PM -0600, Eric Sandeen wrote:
-> FWIW my problem seems to be different than others have encountered; mine
-> persists past reboot, while other reporters have said that a reboot
-> (remount) makes the problem go away.
+When using hash index, too many long-subdirectory-names and 1024 blocksize, the
+subdirectory limit may be less than 32000.
 
-It might or might not be the same problem, since the reporters were
-doing this on a mounted root partition, and on a filesystem quite a
-bit larger than your test filesystem; so it could be that the act of
-shutting down and rebooting created/deleted various pid files, and
-purturbed the filesystem to make the problem go away.
+The problem is that indexed diretories have a limit that only allows the trees
+to be two levels deep. The fanout is normally big enough that this is effectively
+not a problem, but if you use too many long-names, and a 1024 blocksize, you will
+run into htree limit much more quickly.
 
-The other possibility is that it is the flex_bg specific counters
-which were introduced specifically for find_group_flex.  I'm not wild
-about them since they mean we have to take an extra flex_bg specific
-spin lock for every block and inode allocation.  The Orlov algorithm
-only needs the information when allocating directories, and since
-those are rarer than file allocations, I think it should be OK to
-simply sum up the necessary fields at directory allocation time
-instead of trying to maintain separate counters (which could possibly
-get corrupted, although I couldn't see a way that they could be
-getting out of sync with reality).
+The users may be puzzled when they can't create more than 32000 subdirecties with
+using hash index, too many long-names and 1024 blocksize. It should be remind of
+in the ext4 document.
 
-					- Ted
+Signed-off-by: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
+---
+ Documentation/filesystems/ext4.txt |    8 +++++++-
+ 1 files changed, 7 insertions(+), 1 deletions(-)
+
+diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
+index cec829b..0e1ec9c 100644
+--- a/Documentation/filesystems/ext4.txt
++++ b/Documentation/filesystems/ext4.txt
+@@ -85,7 +85,7 @@ Note: More extensive information for getting started with ext4 can be
+ * extent format more robust in face of on-disk corruption due to magics,
+ * internal redundancy in tree
+ * improved file allocation (multi-block alloc)
+-* fix 32000 subdirectory limit
++* fix 32000 subdirectory limit (*1)
+ * nsec timestamps for mtime, atime, ctime, create time
+ * inode version field on disk (NFSv4, Lustre)
+ * reduced e2fsck time via uninit_bg feature
+@@ -100,6 +100,12 @@ Note: More extensive information for getting started with ext4 can be
+ * efficent new ordered mode in JBD2 and ext4(avoid using buffer head to force
+   the ordering)
+ 
++(*1) Note
++Basically, the limit depends on blocksize and length of subdirectory names in
++the directory. If blocksize is too small (like 1024) and you use too many
++long-names, you may reach a smaller limit. When dir index is off, the limit is
++65000.
++
+ 2.2 Candidate features for future inclusion
+ 
+ * Online defrag (patches available but not well tested)
+
+
+
