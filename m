@@ -1,34 +1,28 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12689] kernel oops fs/jbd/checkpoint.c:164 __log_wait_for_space
-Date: Wed, 18 Feb 2009 09:37:15 -0800 (PST)
-Message-ID: <20090218173715.C915310803F@picon.linux-foundation.org>
-References: <bug-12689-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Greg KH <greg@kroah.com>
+Subject: Re: [stable] [PATCH FOR-STABLE-2.6.28 00/24]
+Date: Wed, 18 Feb 2009 10:28:45 -0800
+Message-ID: <20090218182845.GA4547@kroah.com>
+References: <1234884762-13580-1-git-send-email-tytso@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: stable@kernel.org, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:60604 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753276AbZBRRhr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 12:37:47 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1IHbGtx008326
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Feb 2009 09:37:17 -0800
-In-Reply-To: <bug-12689-13602@http.bugzilla.kernel.org/>
+Received: from kroah.org ([198.145.64.141]:40625 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1754197AbZBRSa5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 13:30:57 -0500
+Content-Disposition: inline
+In-Reply-To: <1234884762-13580-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12689
+On Tue, Feb 17, 2009 at 10:32:18AM -0500, Theodore Ts'o wrote:
+> 
+> The following patches are ext4 bugfixes from 2.6.29-rcX that have been
+> backported to 2.6.28.5; could you please queue them up for the next
+> 2.6.28.y release?  Thanks!!
 
+All queued up now, thanks.
 
-
-
-
-------- Comment #2 from jack@suse.cz  2009-02-18 09:37 -------
-Can you post somewhere the filesystem image you use? From your comment I
-suppose it's corrupted or something like that.
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+greg k-h
