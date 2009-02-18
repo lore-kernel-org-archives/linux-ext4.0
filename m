@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 36/39] ext4: Add sanity check to make_indexed_dir
-Date: Wed, 18 Feb 2009 13:33:21 -0800
-Message-ID: <20090218213321.GK19814@kroah.com>
+Subject: [patch 28/39] jbd2: Add BH_JBDPrivateStart
+Date: Wed, 18 Feb 2009 13:33:07 -0800
+Message-ID: <20090218213307.GC19814@kroah.com>
 References: <20090218212144.965748151@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -18,83 +18,50 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org
+	alan@lxorguk.ukuu.org.uk, Mark Fasheh <mfasheh@suse.com>,
+	linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56388 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56341 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1755930AbZBRVgE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:36:04 -0500
-Content-Disposition: inline; filename="ext4-add-sanity-check-to-make_indexed_dir.patch"
+	id S1757236AbZBRVfy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 16:35:54 -0500
+Content-Disposition: inline; filename="jbd2-add-bh_jbdprivatestart.patch"
 In-Reply-To: <20090218213021.GA19814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
 
 2.6.28-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: "Theodore Ts'o" <tytso@mit.edu>
+From: Mark Fasheh <mfasheh@suse.com>
 
-(cherry picked from commit e6b8bc09ba2075cd91fbffefcd2778b1a00bd76f)
+(cherry picked from commit e97fcd95a4778a8caf1980c6c72fdf68185a0838)
 
-Make sure the rec_len field in the '..' entry is sane, lest we overrun
-the directory block and cause a kernel oops on a purposefully
-corrupted filesystem.
+Add this so that file systems using JBD2 can safely allocate unused b_state
+bits.
 
-Thanks to Sami Liedes for reporting this bug.
+In this case, we add it so that Ocfs2 can define a single bit for tracking
+the validation state of a buffer.
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12430
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Mark Fasheh <mfasheh@suse.com>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/namei.c |   21 +++++++++++++++------
- 1 file changed, 15 insertions(+), 6 deletions(-)
+ include/linux/jbd2.h |    1 +
+ 1 file changed, 1 insertion(+)
 
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1372,7 +1372,7 @@ static int make_indexed_dir(handle_t *ha
- 	struct fake_dirent *fde;
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -329,6 +329,7 @@ enum jbd_state_bits {
+ 	BH_State,		/* Pins most journal_head state */
+ 	BH_JournalHead,		/* Pins bh->b_private and jh->b_bh */
+ 	BH_Unshadow,		/* Dummy bit, for BJ_Shadow wakeup filtering */
++	BH_JBDPrivateStart,	/* First bit available for private use by FS */
+ };
  
- 	blocksize =  dir->i_sb->s_blocksize;
--	dxtrace(printk(KERN_DEBUG "Creating index\n"));
-+	dxtrace(printk(KERN_DEBUG "Creating index: inode %lu\n", dir->i_ino));
- 	retval = ext4_journal_get_write_access(handle, bh);
- 	if (retval) {
- 		ext4_std_error(dir->i_sb, retval);
-@@ -1381,6 +1381,20 @@ static int make_indexed_dir(handle_t *ha
- 	}
- 	root = (struct dx_root *) bh->b_data;
- 
-+	/* The 0th block becomes the root, move the dirents out */
-+	fde = &root->dotdot;
-+	de = (struct ext4_dir_entry_2 *)((char *)fde +
-+		ext4_rec_len_from_disk(fde->rec_len));
-+	if ((char *) de >= (((char *) root) + blocksize)) {
-+		ext4_error(dir->i_sb, __func__,
-+			   "invalid rec_len for '..' in inode %lu",
-+			   dir->i_ino);
-+		brelse(bh);
-+		return -EIO;
-+	}
-+	len = ((char *) root) + blocksize - (char *) de;
-+
-+	/* Allocate new block for the 0th block's dirents */
- 	bh2 = ext4_append(handle, dir, &block, &retval);
- 	if (!(bh2)) {
- 		brelse(bh);
-@@ -1389,11 +1403,6 @@ static int make_indexed_dir(handle_t *ha
- 	EXT4_I(dir)->i_flags |= EXT4_INDEX_FL;
- 	data1 = bh2->b_data;
- 
--	/* The 0th block becomes the root, move the dirents out */
--	fde = &root->dotdot;
--	de = (struct ext4_dir_entry_2 *)((char *)fde +
--		ext4_rec_len_from_disk(fde->rec_len));
--	len = ((char *) root) + blocksize - (char *) de;
- 	memcpy (data1, de, len);
- 	de = (struct ext4_dir_entry_2 *) data1;
- 	top = data1 + len;
+ BUFFER_FNS(JBD, jbd)
 
