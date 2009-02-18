@@ -1,7 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 23/39] ext4: Use EXT4_GROUP_INFO_NEED_INIT_BIT during resize
-Date: Wed, 18 Feb 2009 13:32:57 -0800
-Message-ID: <20090218213257.GX19814@kroah.com>
+Subject: [patch 20/39] jbd2: Add barrier not supported test to
+	journal_wait_on_commit_record
+Date: Wed, 18 Feb 2009 13:32:51 -0800
+Message-ID: <20090218213251.GU19814@kroah.com>
 References: <20090218212144.965748151@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -18,596 +19,95 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56267 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56261 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756854AbZBRVft (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:35:49 -0500
-Content-Disposition: inline; filename="ext4-use-ext4_group_info_need_init_bit-during-resize.patch"
+	id S1756920AbZBRVfq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 16:35:46 -0500
+Content-Disposition: inline; filename="jbd2-add-barrier-not-supported-test-to-journal_wait_on_commit_record.patch"
 In-Reply-To: <20090218213021.GA19814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
 
 2.6.28-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 920313a726e04fef0f2c0bcb04ad8229c0e700d8)
+(cherry picked from commit fd98496f467b3d26d05ab1498f41718b5ef13de5)
 
-The new groups added during resize are flagged as
-need_init group. Make sure we properly initialize these
-groups. When we have block size < page size and we are adding
-new groups the page may still be marked uptodate even though
-we haven't initialized the group. While forcing the init
-of buddy cache we need to make sure other groups part of the
-same page of buddy cache is not using the cache.
-group_info->alloc_sem is added to ensure the same.
+Xen doesn't report that barriers are not supported until buffer I/O is
+reported as completed, instead of when the buffer I/O is submitted.
+Add a check and a fallback codepath to journal_wait_on_commit_record()
+to detect this case, so that attempts to mount ext4 filesystems on
+LVM/devicemapper devices on Xen guests don't blow up with an "Aborting
+journal on device XXX"; "Remounting filesystem read-only" error.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Thanks to Andreas Sundstrom for reporting this issue.
+
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/balloc.c  |   21 ++--
- fs/ext4/ext4.h    |    7 -
- fs/ext4/mballoc.c |  259 +++++++++++++++++++++++++++++++++++++++++-------------
- fs/ext4/mballoc.h |    3 
- fs/ext4/resize.c  |   49 +---------
- 5 files changed, 229 insertions(+), 110 deletions(-)
+ fs/jbd2/commit.c |   27 +++++++++++++++++++++++++--
+ 1 file changed, 25 insertions(+), 2 deletions(-)
 
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -381,6 +381,7 @@ void ext4_add_groupblocks(handle_t *hand
- 	ext4_debug("Adding block(s) %llu-%llu\n", block, block + count - 1);
- 
- 	ext4_get_group_no_and_offset(sb, block, &block_group, &bit);
-+	grp = ext4_get_group_info(sb, block_group);
- 	/*
- 	 * Check to see if we are freeing blocks across a group
- 	 * boundary.
-@@ -425,7 +426,11 @@ void ext4_add_groupblocks(handle_t *hand
- 	err = ext4_journal_get_write_access(handle, gd_bh);
- 	if (err)
- 		goto error_return;
--
-+	/*
-+	 * make sure we don't allow a parallel init on other groups in the
-+	 * same buddy cache
-+	 */
-+	down_write(&grp->alloc_sem);
- 	for (i = 0, blocks_freed = 0; i < count; i++) {
- 		BUFFER_TRACE(bitmap_bh, "clear bit");
- 		if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
-@@ -450,6 +455,13 @@ void ext4_add_groupblocks(handle_t *hand
- 		sbi->s_flex_groups[flex_group].free_blocks += blocks_freed;
- 		spin_unlock(sb_bgl_lock(sbi, flex_group));
- 	}
-+	/*
-+	 * request to reload the buddy with the
-+	 * new bitmap information
-+	 */
-+	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
-+	ext4_mb_update_group_info(grp, blocks_freed);
-+	up_write(&grp->alloc_sem);
- 
- 	/* We dirtied the bitmap block */
- 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
-@@ -461,13 +473,6 @@ void ext4_add_groupblocks(handle_t *hand
- 	if (!err)
- 		err = ret;
- 	sb->s_dirt = 1;
--	/*
--	 * request to reload the buddy with the
--	 * new bitmap information
--	 */
--	grp = ext4_get_group_info(sb, block_group);
--	set_bit(EXT4_GROUP_INFO_NEED_INIT_BIT, &(grp->bb_state));
--	ext4_mb_update_group_info(grp, blocks_freed);
- 
- error_return:
- 	brelse(bitmap_bh);
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1056,12 +1056,13 @@ extern int __init init_ext4_mballoc(void
- extern void exit_ext4_mballoc(void);
- extern void ext4_mb_free_blocks(handle_t *, struct inode *,
- 		unsigned long, unsigned long, int, unsigned long *);
--extern int ext4_mb_add_more_groupinfo(struct super_block *sb,
-+extern int ext4_mb_add_groupinfo(struct super_block *sb,
- 		ext4_group_t i, struct ext4_group_desc *desc);
- extern void ext4_mb_update_group_info(struct ext4_group_info *grp,
- 		ext4_grpblk_t add);
--
--
-+extern int ext4_mb_get_buddy_cache_lock(struct super_block *, ext4_group_t);
-+extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
-+						ext4_group_t, int);
- /* inode.c */
- int ext4_forget(handle_t *handle, int is_metadata, struct inode *inode,
- 		struct buffer_head *bh, ext4_fsblk_t blocknr);
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -886,18 +886,20 @@ static noinline_for_stack int
- ext4_mb_load_buddy(struct super_block *sb, ext4_group_t group,
- 					struct ext4_buddy *e4b)
- {
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct inode *inode = sbi->s_buddy_cache;
- 	int blocks_per_page;
- 	int block;
- 	int pnum;
- 	int poff;
- 	struct page *page;
- 	int ret;
-+	struct ext4_group_info *grp;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct inode *inode = sbi->s_buddy_cache;
- 
- 	mb_debug("load group %lu\n", group);
- 
- 	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-+	grp = ext4_get_group_info(sb, group);
- 
- 	e4b->bd_blkbits = sb->s_blocksize_bits;
- 	e4b->bd_info = ext4_get_group_info(sb, group);
-@@ -905,6 +907,15 @@ ext4_mb_load_buddy(struct super_block *s
- 	e4b->bd_group = group;
- 	e4b->bd_buddy_page = NULL;
- 	e4b->bd_bitmap_page = NULL;
-+	e4b->alloc_semp = &grp->alloc_sem;
-+
-+	/* Take the read lock on the group alloc
-+	 * sem. This would make sure a parallel
-+	 * ext4_mb_init_group happening on other
-+	 * groups mapped by the page is blocked
-+	 * till we are done with allocation
-+	 */
-+	down_read(e4b->alloc_semp);
- 
- 	/*
- 	 * the buddy cache inode stores the block bitmap
-@@ -920,6 +931,14 @@ ext4_mb_load_buddy(struct super_block *s
- 	page = find_get_page(inode->i_mapping, pnum);
- 	if (page == NULL || !PageUptodate(page)) {
- 		if (page)
-+			/*
-+			 * drop the page reference and try
-+			 * to get the page with lock. If we
-+			 * are not uptodate that implies
-+			 * somebody just created the page but
-+			 * is yet to initialize the same. So
-+			 * wait for it to initialize.
-+			 */
- 			page_cache_release(page);
- 		page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
- 		if (page) {
-@@ -985,6 +1004,9 @@ err:
- 		page_cache_release(e4b->bd_buddy_page);
- 	e4b->bd_buddy = NULL;
- 	e4b->bd_bitmap = NULL;
-+
-+	/* Done with the buddy cache */
-+	up_read(e4b->alloc_semp);
- 	return ret;
- }
- 
-@@ -994,6 +1016,8 @@ static void ext4_mb_release_desc(struct 
- 		page_cache_release(e4b->bd_bitmap_page);
- 	if (e4b->bd_buddy_page)
- 		page_cache_release(e4b->bd_buddy_page);
-+	/* Done with the buddy cache */
-+	up_read(e4b->alloc_semp);
- }
- 
- 
-@@ -1694,6 +1718,173 @@ static int ext4_mb_good_group(struct ext
- 	return 0;
- }
- 
-+/*
-+ * lock the group_info alloc_sem of all the groups
-+ * belonging to the same buddy cache page. This
-+ * make sure other parallel operation on the buddy
-+ * cache doesn't happen  whild holding the buddy cache
-+ * lock
-+ */
-+int ext4_mb_get_buddy_cache_lock(struct super_block *sb, ext4_group_t group)
-+{
-+	int i;
-+	int block, pnum;
-+	int blocks_per_page;
-+	int groups_per_page;
-+	ext4_group_t first_group;
-+	struct ext4_group_info *grp;
-+
-+	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-+	/*
-+	 * the buddy cache inode stores the block bitmap
-+	 * and buddy information in consecutive blocks.
-+	 * So for each group we need two blocks.
-+	 */
-+	block = group * 2;
-+	pnum = block / blocks_per_page;
-+	first_group = pnum * blocks_per_page / 2;
-+
-+	groups_per_page = blocks_per_page >> 1;
-+	if (groups_per_page == 0)
-+		groups_per_page = 1;
-+	/* read all groups the page covers into the cache */
-+	for (i = 0; i < groups_per_page; i++) {
-+
-+		if ((first_group + i) >= EXT4_SB(sb)->s_groups_count)
-+			break;
-+		grp = ext4_get_group_info(sb, first_group + i);
-+		/* take all groups write allocation
-+		 * semaphore. This make sure there is
-+		 * no block allocation going on in any
-+		 * of that groups
-+		 */
-+		down_write(&grp->alloc_sem);
-+	}
-+	return i;
-+}
-+
-+void ext4_mb_put_buddy_cache_lock(struct super_block *sb,
-+					ext4_group_t group, int locked_group)
-+{
-+	int i;
-+	int block, pnum;
-+	int blocks_per_page;
-+	ext4_group_t first_group;
-+	struct ext4_group_info *grp;
-+
-+	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-+	/*
-+	 * the buddy cache inode stores the block bitmap
-+	 * and buddy information in consecutive blocks.
-+	 * So for each group we need two blocks.
-+	 */
-+	block = group * 2;
-+	pnum = block / blocks_per_page;
-+	first_group = pnum * blocks_per_page / 2;
-+	/* release locks on all the groups */
-+	for (i = 0; i < locked_group; i++) {
-+
-+		grp = ext4_get_group_info(sb, first_group + i);
-+		/* take all groups write allocation
-+		 * semaphore. This make sure there is
-+		 * no block allocation going on in any
-+		 * of that groups
-+		 */
-+		up_write(&grp->alloc_sem);
-+	}
-+
-+}
-+
-+static int ext4_mb_init_group(struct super_block *sb, ext4_group_t group)
-+{
-+
-+	int ret;
-+	void *bitmap;
-+	int blocks_per_page;
-+	int block, pnum, poff;
-+	int num_grp_locked = 0;
-+	struct ext4_group_info *this_grp;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct inode *inode = sbi->s_buddy_cache;
-+	struct page *page = NULL, *bitmap_page = NULL;
-+
-+	mb_debug("init group %lu\n", group);
-+	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
-+	this_grp = ext4_get_group_info(sb, group);
-+	/*
-+	 * This ensures we don't add group
-+	 * to this buddy cache via resize
-+	 */
-+	num_grp_locked =  ext4_mb_get_buddy_cache_lock(sb, group);
-+	if (!EXT4_MB_GRP_NEED_INIT(this_grp)) {
-+		/*
-+		 * somebody initialized the group
-+		 * return without doing anything
-+		 */
-+		ret = 0;
-+		goto err;
-+	}
-+	/*
-+	 * the buddy cache inode stores the block bitmap
-+	 * and buddy information in consecutive blocks.
-+	 * So for each group we need two blocks.
-+	 */
-+	block = group * 2;
-+	pnum = block / blocks_per_page;
-+	poff = block % blocks_per_page;
-+	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+	if (page) {
-+		BUG_ON(page->mapping != inode->i_mapping);
-+		ret = ext4_mb_init_cache(page, NULL);
-+		if (ret) {
-+			unlock_page(page);
-+			goto err;
-+		}
-+		unlock_page(page);
-+	}
-+	if (page == NULL || !PageUptodate(page)) {
-+		ret = -EIO;
-+		goto err;
-+	}
-+	mark_page_accessed(page);
-+	bitmap_page = page;
-+	bitmap = page_address(page) + (poff * sb->s_blocksize);
-+
-+	/* init buddy cache */
-+	block++;
-+	pnum = block / blocks_per_page;
-+	poff = block % blocks_per_page;
-+	page = find_or_create_page(inode->i_mapping, pnum, GFP_NOFS);
-+	if (page == bitmap_page) {
-+		/*
-+		 * If both the bitmap and buddy are in
-+		 * the same page we don't need to force
-+		 * init the buddy
-+		 */
-+		unlock_page(page);
-+	} else if (page) {
-+		BUG_ON(page->mapping != inode->i_mapping);
-+		ret = ext4_mb_init_cache(page, bitmap);
-+		if (ret) {
-+			unlock_page(page);
-+			goto err;
-+		}
-+		unlock_page(page);
-+	}
-+	if (page == NULL || !PageUptodate(page)) {
-+		ret = -EIO;
-+		goto err;
-+	}
-+	mark_page_accessed(page);
-+err:
-+	ext4_mb_put_buddy_cache_lock(sb, group, num_grp_locked);
-+	if (bitmap_page)
-+		page_cache_release(bitmap_page);
-+	if (page)
-+		page_cache_release(page);
-+	return ret;
-+}
-+
- static noinline_for_stack int
- ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- {
-@@ -1777,7 +1968,7 @@ repeat:
- 				group = 0;
- 
- 			/* quick check to skip empty groups */
--			grp = ext4_get_group_info(ac->ac_sb, group);
-+			grp = ext4_get_group_info(sb, group);
- 			if (grp->bb_free == 0)
- 				continue;
- 
-@@ -1790,10 +1981,9 @@ repeat:
- 				 * we need full data about the group
- 				 * to make a good selection
- 				 */
--				err = ext4_mb_load_buddy(sb, group, &e4b);
-+				err = ext4_mb_init_group(sb, group);
- 				if (err)
- 					goto out;
--				ext4_mb_release_desc(&e4b);
- 			}
- 
- 			/*
-@@ -2302,6 +2492,7 @@ int ext4_mb_add_groupinfo(struct super_b
- 	}
- 
- 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
-+	init_rwsem(&meta_group_info[i]->alloc_sem);
- 	meta_group_info[i]->bb_free_root.rb_node = NULL;;
- 
- #ifdef DOUBLE_CHECK
-@@ -2329,54 +2520,6 @@ exit_meta_group_info:
- } /* ext4_mb_add_groupinfo */
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -25,6 +25,7 @@
+ #include <linux/crc32.h>
+ #include <linux/writeback.h>
+ #include <linux/backing-dev.h>
++#include <linux/bio.h>
  
  /*
-- * Add a group to the existing groups.
-- * This function is used for online resize
-- */
--int ext4_mb_add_more_groupinfo(struct super_block *sb, ext4_group_t group,
--			       struct ext4_group_desc *desc)
--{
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct inode *inode = sbi->s_buddy_cache;
--	int blocks_per_page;
--	int block;
--	int pnum;
--	struct page *page;
--	int err;
--
--	/* Add group based on group descriptor*/
--	err = ext4_mb_add_groupinfo(sb, group, desc);
--	if (err)
--		return err;
--
--	/*
--	 * Cache pages containing dynamic mb_alloc datas (buddy and bitmap
--	 * datas) are set not up to date so that they will be re-initilaized
--	 * during the next call to ext4_mb_load_buddy
--	 */
--
--	/* Set buddy page as not up to date */
--	blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
--	block = group * 2;
--	pnum = block / blocks_per_page;
--	page = find_get_page(inode->i_mapping, pnum);
--	if (page != NULL) {
--		ClearPageUptodate(page);
--		page_cache_release(page);
--	}
--
--	/* Set bitmap page as not up to date */
--	block++;
--	pnum = block / blocks_per_page;
--	page = find_get_page(inode->i_mapping, pnum);
--	if (page != NULL) {
--		ClearPageUptodate(page);
--		page_cache_release(page);
--	}
--
--	return 0;
--}
--
--/*
-  * Update an existing group.
-  * This function is used for online resize
+  * Default IO end handler for temporary BJ_IO buffer_heads.
+@@ -168,12 +169,34 @@ static int journal_submit_commit_record(
+  * This function along with journal_submit_commit_record
+  * allows to write the commit record asynchronously.
   */
-@@ -4585,11 +4728,6 @@ do_more:
- 	err = ext4_journal_get_write_access(handle, gd_bh);
- 	if (err)
- 		goto error_return;
--
--	err = ext4_mb_load_buddy(sb, block_group, &e4b);
--	if (err)
--		goto error_return;
--
- #ifdef AGGRESSIVE_CHECK
- 	{
- 		int i;
-@@ -4603,6 +4741,8 @@ do_more:
- 	/* We dirtied the bitmap block */
- 	BUFFER_TRACE(bitmap_bh, "dirtied bitmap block");
- 	err = ext4_journal_dirty_metadata(handle, bitmap_bh);
-+	if (err)
-+		goto error_return;
+-static int journal_wait_on_commit_record(struct buffer_head *bh)
++static int journal_wait_on_commit_record(journal_t *journal,
++					 struct buffer_head *bh)
+ {
+ 	int ret = 0;
  
- 	if (ac) {
- 		ac->ac_b_ex.fe_group = block_group;
-@@ -4611,6 +4751,9 @@ do_more:
- 		ext4_mb_store_history(ac);
- 	}
- 
-+	err = ext4_mb_load_buddy(sb, block_group, &e4b);
-+	if (err)
-+		goto error_return;
- 	if (metadata) {
- 		/* blocks being freed are metadata. these blocks shouldn't
- 		 * be used until this transaction is committed */
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -20,6 +20,7 @@
- #include <linux/version.h>
- #include <linux/blkdev.h>
- #include <linux/marker.h>
-+#include <linux/mutex.h>
- #include "ext4_jbd2.h"
- #include "ext4.h"
- #include "group.h"
-@@ -130,6 +131,7 @@ struct ext4_group_info {
- #ifdef DOUBLE_CHECK
- 	void		*bb_bitmap;
- #endif
-+	struct rw_semaphore alloc_sem;
- 	unsigned short	bb_counters[];
- };
- 
-@@ -250,6 +252,7 @@ struct ext4_buddy {
- 	struct super_block *bd_sb;
- 	__u16 bd_blkbits;
- 	ext4_group_t bd_group;
-+	struct rw_semaphore *alloc_semp;
- };
- #define EXT4_MB_BITMAP(e4b)	((e4b)->bd_bitmap)
- #define EXT4_MB_BUDDY(e4b)	((e4b)->bd_buddy)
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -747,6 +747,7 @@ int ext4_group_add(struct super_block *s
- 	struct inode *inode = NULL;
- 	handle_t *handle;
- 	int gdb_off, gdb_num;
-+	int num_grp_locked = 0;
- 	int err, err2;
- 
- 	gdb_num = input->group / EXT4_DESC_PER_BLOCK(sb);
-@@ -787,6 +788,7 @@ int ext4_group_add(struct super_block *s
- 		}
- 	}
- 
++retry:
+ 	clear_buffer_dirty(bh);
+ 	wait_on_buffer(bh);
++	if (buffer_eopnotsupp(bh) && (journal->j_flags & JBD2_BARRIER)) {
++		printk(KERN_WARNING
++		       "JBD2: wait_on_commit_record: sync failed on %s - "
++		       "disabling barriers\n", journal->j_devname);
++		spin_lock(&journal->j_state_lock);
++		journal->j_flags &= ~JBD2_BARRIER;
++		spin_unlock(&journal->j_state_lock);
 +
- 	if ((err = verify_group_input(sb, input)))
- 		goto exit_put;
- 
-@@ -855,6 +857,7 @@ int ext4_group_add(struct super_block *s
-          * using the new disk blocks.
-          */
- 
-+	num_grp_locked = ext4_mb_get_buddy_cache_lock(sb, input->group);
- 	/* Update group descriptor block for new group */
- 	gdp = (struct ext4_group_desc *)((char *)primary->b_data +
- 					 gdb_off * EXT4_DESC_SIZE(sb));
-@@ -870,9 +873,11 @@ int ext4_group_add(struct super_block *s
- 	 * We can allocate memory for mb_alloc based on the new group
- 	 * descriptor
- 	 */
--	err = ext4_mb_add_more_groupinfo(sb, input->group, gdp);
--	if (err)
-+	err = ext4_mb_add_groupinfo(sb, input->group, gdp);
-+	if (err) {
-+		ext4_mb_put_buddy_cache_lock(sb, input->group, num_grp_locked);
- 		goto exit_journal;
++		lock_buffer(bh);
++		clear_buffer_dirty(bh);
++		set_buffer_uptodate(bh);
++		bh->b_end_io = journal_end_buffer_io_sync;
++
++		ret = submit_bh(WRITE_SYNC, bh);
++		if (ret) {
++			unlock_buffer(bh);
++			return ret;
++		}
++		goto retry;
 +	}
  
- 	/*
- 	 * Make the new blocks and inodes valid next.  We do this before
-@@ -914,6 +919,7 @@ int ext4_group_add(struct super_block *s
+ 	if (unlikely(!buffer_uptodate(bh)))
+ 		ret = -EIO;
+@@ -799,7 +822,7 @@ wait_for_iobuf:
+ 			__jbd2_journal_abort_hard(journal);
+ 	}
+ 	if (!err && !is_journal_aborted(journal))
+-		err = journal_wait_on_commit_record(cbh);
++		err = journal_wait_on_commit_record(journal, cbh);
  
- 	/* Update the global fs size fields */
- 	sbi->s_groups_count++;
-+	ext4_mb_put_buddy_cache_lock(sb, input->group, num_grp_locked);
- 
- 	ext4_journal_dirty_metadata(handle, primary);
- 
-@@ -1081,45 +1087,6 @@ int ext4_group_extend(struct super_block
- 	if ((err = ext4_journal_stop(handle)))
- 		goto exit_put;
- 
--	/*
--	 * Mark mballoc pages as not up to date so that they will be updated
--	 * next time they are loaded by ext4_mb_load_buddy.
--	 *
--	 * XXX Bad, Bad, BAD!!!  We should not be overloading the
--	 * Uptodate flag, particularly on thte bitmap bh, as way of
--	 * hinting to ext4_mb_load_buddy() that it needs to be
--	 * overloaded.  A user could take a LVM snapshot, then do an
--	 * on-line fsck, and clear the uptodate flag, and this would
--	 * not be a bug in userspace, but a bug in the kernel.  FIXME!!!
--	 */
--	{
--		struct ext4_sb_info *sbi = EXT4_SB(sb);
--		struct inode *inode = sbi->s_buddy_cache;
--		int blocks_per_page;
--		int block;
--		int pnum;
--		struct page *page;
--
--		/* Set buddy page as not up to date */
--		blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
--		block = group * 2;
--		pnum = block / blocks_per_page;
--		page = find_get_page(inode->i_mapping, pnum);
--		if (page != NULL) {
--			ClearPageUptodate(page);
--			page_cache_release(page);
--		}
--
--		/* Set bitmap page as not up to date */
--		block++;
--		pnum = block / blocks_per_page;
--		page = find_get_page(inode->i_mapping, pnum);
--		if (page != NULL) {
--			ClearPageUptodate(page);
--			page_cache_release(page);
--		}
--	}
+ 	if (err)
+ 		jbd2_journal_abort(journal, err);
+
