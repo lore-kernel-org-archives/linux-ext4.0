@@ -1,8 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 20/39] jbd2: Add barrier not supported test to
-	journal_wait_on_commit_record
-Date: Wed, 18 Feb 2009 13:32:51 -0800
-Message-ID: <20090218213251.GU19814@kroah.com>
+Subject: [patch 18/39] ext4: avoid ext4_error when mounting a fs with a
+	single bg
+Date: Wed, 18 Feb 2009 13:32:47 -0800
+Message-ID: <20090218213247.GS19814@kroah.com>
 References: <20090218212144.965748151@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -19,14 +19,15 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org
+	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56261 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56240 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1756920AbZBRVfq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:35:46 -0500
-Content-Disposition: inline; filename="jbd2-add-barrier-not-supported-test-to-journal_wait_on_commit_record.patch"
+	id S1756860AbZBRVfo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 16:35:44 -0500
+Content-Disposition: inline; filename="ext4-avoid-ext4_error-when-mounting-a-fs-with-a-single-bg.patch"
 In-Reply-To: <20090218213021.GA19814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -35,79 +36,35 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 ------------------
 
-From: "Theodore Ts'o" <tytso@mit.edu>
+From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-(cherry picked from commit fd98496f467b3d26d05ab1498f41718b5ef13de5)
+(cherry picked from commit 565a9617b2151e21b22700e97a8b04e70e103153)
 
-Xen doesn't report that barriers are not supported until buffer I/O is
-reported as completed, instead of when the buffer I/O is submitted.
-Add a check and a fallback codepath to journal_wait_on_commit_record()
-to detect this case, so that attempts to mount ext4 filesystems on
-LVM/devicemapper devices on Xen guests don't blow up with an "Aborting
-journal on device XXX"; "Remounting filesystem read-only" error.
+Remove some completely unneeded code which which caused an ext4_error
+to be generated when mounting a file system with only a single block
+group.
 
-Thanks to Andreas Sundstrom for reporting this issue.
-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/jbd2/commit.c |   27 +++++++++++++++++++++++++--
- 1 file changed, 25 insertions(+), 2 deletions(-)
+ fs/ext4/super.c |    4 ----
+ 1 file changed, 4 deletions(-)
 
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -25,6 +25,7 @@
- #include <linux/crc32.h>
- #include <linux/writeback.h>
- #include <linux/backing-dev.h>
-+#include <linux/bio.h>
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1445,7 +1445,6 @@ static int ext4_fill_flex_info(struct su
+ 	ext4_group_t flex_group_count;
+ 	ext4_group_t flex_group;
+ 	int groups_per_flex = 0;
+-	__u64 block_bitmap = 0;
+ 	int i;
  
- /*
-  * Default IO end handler for temporary BJ_IO buffer_heads.
-@@ -168,12 +169,34 @@ static int journal_submit_commit_record(
-  * This function along with journal_submit_commit_record
-  * allows to write the commit record asynchronously.
-  */
--static int journal_wait_on_commit_record(struct buffer_head *bh)
-+static int journal_wait_on_commit_record(journal_t *journal,
-+					 struct buffer_head *bh)
- {
- 	int ret = 0;
- 
-+retry:
- 	clear_buffer_dirty(bh);
- 	wait_on_buffer(bh);
-+	if (buffer_eopnotsupp(bh) && (journal->j_flags & JBD2_BARRIER)) {
-+		printk(KERN_WARNING
-+		       "JBD2: wait_on_commit_record: sync failed on %s - "
-+		       "disabling barriers\n", journal->j_devname);
-+		spin_lock(&journal->j_state_lock);
-+		journal->j_flags &= ~JBD2_BARRIER;
-+		spin_unlock(&journal->j_state_lock);
-+
-+		lock_buffer(bh);
-+		clear_buffer_dirty(bh);
-+		set_buffer_uptodate(bh);
-+		bh->b_end_io = journal_end_buffer_io_sync;
-+
-+		ret = submit_bh(WRITE_SYNC, bh);
-+		if (ret) {
-+			unlock_buffer(bh);
-+			return ret;
-+		}
-+		goto retry;
-+	}
- 
- 	if (unlikely(!buffer_uptodate(bh)))
- 		ret = -EIO;
-@@ -799,7 +822,7 @@ wait_for_iobuf:
- 			__jbd2_journal_abort_hard(journal);
+ 	if (!sbi->s_es->s_log_groups_per_flex) {
+@@ -1468,9 +1467,6 @@ static int ext4_fill_flex_info(struct su
+ 		goto failed;
  	}
- 	if (!err && !is_journal_aborted(journal))
--		err = journal_wait_on_commit_record(cbh);
-+		err = journal_wait_on_commit_record(journal, cbh);
  
- 	if (err)
- 		jbd2_journal_abort(journal, err);
-
+-	gdp = ext4_get_group_desc(sb, 1, &bh);
+-	block_bitmap = ext4_block_bitmap(sb, gdp) - 1;
