@@ -1,7 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 24/39] ext4: cleanup mballoc header files
-Date: Wed, 18 Feb 2009 13:32:59 -0800
-Message-ID: <20090218213259.GY19814@kroah.com>
+Subject: [patch 34/39] ext4: Add sanity checks for the superblock before
+	mounting the filesystem
+Date: Wed, 18 Feb 2009 13:33:18 -0800
+Message-ID: <20090218213318.GI19814@kroah.com>
 References: <20090218212144.965748151@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -18,126 +19,94 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+	alan@lxorguk.ukuu.org.uk, Thiemo Nagel <thiemo.nagel@ph.tum.de>,
+	linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56302 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56359 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757198AbZBRVfu (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:35:50 -0500
-Content-Disposition: inline; filename="ext4-cleanup-mballoc-header-files.patch"
+	id S1754186AbZBRVgA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 16:36:00 -0500
+Content-Disposition: inline; filename="ext4-add-sanity-checks-for-the-superblock-before-mounting-the-filesystem.patch"
 In-Reply-To: <20090218213021.GA19814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
 
 2.6.28-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit c3a326a657562dab81acf05aee106dc1fe345eb4)
+(cherry picked from commit 4ec110281379826c5cf6ed14735e47027c3c5765)
 
-Move some of the forward declaration of the static functions
-to mballoc.c where they are used. This enables us to include
-mballoc.h in other .c files. Also correct the buddy cache
-documentation.
+This avoids insane superblock configurations that could lead to kernel
+oops due to null pointer derefences.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+http://bugzilla.kernel.org/show_bug.cgi?id=12371
+
+Thanks to David Maciejak at Fortinet's FortiGuard Global Security
+Research Team who discovered this bug independently (but at
+approximately the same time) as Thiemo Nagel, who submitted the patch.
+
+Signed-off-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/mballoc.c |   23 +++++++++++++++++++----
- fs/ext4/mballoc.h |   18 +-----------------
- 2 files changed, 20 insertions(+), 21 deletions(-)
+ fs/ext4/super.c |   30 ++++++++++++++++++++----------
+ 1 file changed, 20 insertions(+), 10 deletions(-)
 
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -100,7 +100,7 @@
-  * inode as:
-  *
-  *  {                        page                        }
-- *  [ group 0 buddy][ group 0 bitmap] [group 1][ group 1]...
-+ *  [ group 0 bitmap][ group 0 buddy] [group 1][ group 1]...
-  *
-  *
-  * one block each for bitmap and buddy information.  So for each group we
-@@ -330,6 +330,16 @@
-  *        object
-  *
-  */
-+static struct kmem_cache *ext4_pspace_cachep;
-+static struct kmem_cache *ext4_ac_cachep;
-+static struct kmem_cache *ext4_free_ext_cachep;
-+static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
-+					ext4_group_t group);
-+static int ext4_mb_init_per_dev_proc(struct super_block *sb);
-+static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
-+static void release_blocks_on_commit(journal_t *journal, transaction_t *txn);
-+
-+
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1869,8 +1869,8 @@ static int ext4_fill_super(struct super_
+ 	char *cp;
+ 	int ret = -EINVAL;
+ 	int blocksize;
+-	int db_count;
+-	int i;
++	unsigned int db_count;
++	unsigned int i;
+ 	int needs_recovery, has_huge_files;
+ 	__le32 features;
+ 	__u64 blocks_count;
+@@ -2153,20 +2153,30 @@ static int ext4_fill_super(struct super_
+ 	if (EXT4_BLOCKS_PER_GROUP(sb) == 0)
+ 		goto cantfind_ext4;
  
- static inline void *mb_correct_addr_and_bit(int *bit, void *addr)
- {
-@@ -716,7 +726,7 @@ static void ext4_mb_generate_buddy(struc
-  * stored in the inode as
-  *
-  * {                        page                        }
-- * [ group 0 buddy][ group 0 bitmap] [group 1][ group 1]...
-+ * [ group 0 bitmap][ group 0 buddy] [group 1][ group 1]...
-  *
-  *
-  * one block each for bitmap and buddy information.
-@@ -1320,8 +1330,13 @@ static void ext4_mb_use_best_found(struc
- 	ac->ac_tail = ret & 0xffff;
- 	ac->ac_buddy = ret >> 16;
- 
--	/* XXXXXXX: SUCH A HORRIBLE **CK */
--	/*FIXME!! Why ? */
-+	/*
-+	 * take the page reference. We want the page to be pinned
-+	 * so that we don't get a ext4_mb_init_cache_call for this
-+	 * group until we update the bitmap. That would mean we
-+	 * double allocate blocks. The reference is dropped
-+	 * in ext4_mb_release_context
-+	 */
- 	ac->ac_bitmap_page = e4b->bd_bitmap_page;
- 	get_page(ac->ac_bitmap_page);
- 	ac->ac_buddy_page = e4b->bd_buddy_page;
---- a/fs/ext4/mballoc.h
-+++ b/fs/ext4/mballoc.h
-@@ -99,9 +99,6 @@
-  */
- #define MB_DEFAULT_GROUP_PREALLOC	512
- 
--static struct kmem_cache *ext4_pspace_cachep;
--static struct kmem_cache *ext4_ac_cachep;
--static struct kmem_cache *ext4_free_ext_cachep;
- 
- struct ext4_free_data {
- 	/* this links the free block information from group_info */
-@@ -262,25 +259,12 @@ static inline void ext4_mb_store_history
- {
- 	return;
- }
--#else
--static void ext4_mb_store_history(struct ext4_allocation_context *ac);
- #endif
- 
- #define in_range(b, first, len)	((b) >= (first) && (b) <= (first) + (len) - 1)
- 
- struct buffer_head *read_block_bitmap(struct super_block *, ext4_group_t);
- 
--static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
--					ext4_group_t group);
--static void ext4_mb_return_to_preallocation(struct inode *inode,
--					struct ext4_buddy *e4b, sector_t block,
--					int count);
--static void ext4_mb_put_pa(struct ext4_allocation_context *,
--			struct super_block *, struct ext4_prealloc_space *pa);
--static int ext4_mb_init_per_dev_proc(struct super_block *sb);
--static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
--static void release_blocks_on_commit(journal_t *journal, transaction_t *txn);
+-	/* ensure blocks_count calculation below doesn't sign-extend */
+-	if (ext4_blocks_count(es) + EXT4_BLOCKS_PER_GROUP(sb) <
+-	    le32_to_cpu(es->s_first_data_block) + 1) {
+-		printk(KERN_WARNING "EXT4-fs: bad geometry: block count %llu, "
+-		       "first data block %u, blocks per group %lu\n",
+-			ext4_blocks_count(es),
+-			le32_to_cpu(es->s_first_data_block),
+-			EXT4_BLOCKS_PER_GROUP(sb));
++        /*
++         * It makes no sense for the first data block to be beyond the end
++         * of the filesystem.
++         */
++        if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
++                printk(KERN_WARNING "EXT4-fs: bad geometry: first data"
++		       "block %u is beyond end of filesystem (%llu)\n",
++		       le32_to_cpu(es->s_first_data_block),
++		       ext4_blocks_count(es));
+ 		goto failed_mount;
+ 	}
+ 	blocks_count = (ext4_blocks_count(es) -
+ 			le32_to_cpu(es->s_first_data_block) +
+ 			EXT4_BLOCKS_PER_GROUP(sb) - 1);
+ 	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
++	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
++		printk(KERN_WARNING "EXT4-fs: groups count too large: %u "
++		       "(block count %llu, first data block %u, "
++		       "blocks per group %lu)\n", sbi->s_groups_count,
++		       ext4_blocks_count(es),
++		       le32_to_cpu(es->s_first_data_block),
++		       EXT4_BLOCKS_PER_GROUP(sb));
++		goto failed_mount;
++	}
+ 	sbi->s_groups_count = blocks_count;
+ 	db_count = (sbi->s_groups_count + EXT4_DESC_PER_BLOCK(sb) - 1) /
+ 		   EXT4_DESC_PER_BLOCK(sb);
+
