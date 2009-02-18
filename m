@@ -1,8 +1,8 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 33/39] ext4: Fix s_dirty_blocks_counter if block allocation
-	failed with nodelalloc
-Date: Wed, 18 Feb 2009 13:33:16 -0800
-Message-ID: <20090218213316.GH19814@kroah.com>
+Subject: [patch 37/39] jbd2: On a __journal_expect() assertion failure
+	printk "JBD2", not "EXT3-fs"
+Date: Wed, 18 Feb 2009 13:33:23 -0800
+Message-ID: <20090218213323.GL19814@kroah.com>
 References: <20090218212144.965748151@mini.kroah.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
@@ -19,66 +19,47 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:56388 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:56439 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1757272AbZBRVf7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Feb 2009 16:35:59 -0500
-Content-Disposition: inline; filename="ext4-fix-s_dirty_blocks_counter-if-block-allocation-failed-with-nodelalloc.patch"
+	id S1754254AbZBRVgE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Feb 2009 16:36:04 -0500
+Content-Disposition: inline; filename="jbd2-on-a-__journal_expect-assertion-failure-printk-jbd2-not-ext3-fs.patch"
 In-Reply-To: <20090218213021.GA19814@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
 
 2.6.28-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 0087d9fb3f29f59e8d42c8b058376d80e5adde4c)
+(cherry picked from commit 08ec8c3878cea0bf91f2ba3c0badf44b383752d0)
 
-With nodelalloc option we need to update the dirty block counter on
-block allocation failure. This is needed because we increment the
-dirty block counter early in the block allocation phase. Without
-the patch s_dirty_blocks_counter goes wrong so that filesystem's
-free blocks decreases incorrectly.
+Otherwise it can be very confusing to find a "EXT3-fs: " failure in
+the middle of EXT4-fs failures, and it makes it harder to track the
+source of the failure.
 
-Tested-by: Akira Fujita <a-fujita@rs.jp.nec.com>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/ext4/mballoc.c |    9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ include/linux/jbd2.h |    3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4538,7 +4538,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t
- 	}
- 	if (ar->len == 0) {
- 		*errp = -EDQUOT;
--		return 0;
-+		goto out3;
- 	}
- 	inquota = ar->len;
- 
-@@ -4611,6 +4611,13 @@ out2:
- out1:
- 	if (ar->len < inquota)
- 		DQUOT_FREE_BLOCK(ar->inode, inquota - ar->len);
-+out3:
-+	if (!ar->len) {
-+		if (!EXT4_I(ar->inode)->i_delalloc_reserved_flag)
-+			/* release all the reserved blocks if non delalloc */
-+			percpu_counter_sub(&sbi->s_dirtyblocks_counter,
-+						reserv_blks);
-+	}
- 
- 	return block;
- }
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -308,7 +308,8 @@ void buffer_assertion_failure(struct buf
+ 		int val = (expr);					     \
+ 		if (!val) {						     \
+ 			printk(KERN_ERR					     \
+-				"EXT3-fs unexpected failure: %s;\n",# expr); \
++			       "JBD2 unexpected failure: %s: %s;\n",	     \
++			       __func__, #expr);			     \
+ 			printk(KERN_ERR why "\n");			     \
+ 		}							     \
+ 		val;							     \
 
