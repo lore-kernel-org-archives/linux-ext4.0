@@ -1,52 +1,57 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: EXT4 ENOSPC Bug
-Date: Wed, 18 Feb 2009 22:22:44 -0500
-Message-ID: <20090219032244.GW3600@mini-me.lan>
-References: <200811291418.24672.andres@anarazel.de> <200812100108.04163.andres@anarazel.de> <49994FEF.2020908@anarazel.de> <20090216150156.GD22619@mini-me.lan> <499985C7.8010302@anarazel.de> <20090216190001.GB11788@mini-me.lan> <499AF598.7080400@anarazel.de> <499C7B41.1090800@anarazel.de> <20090218212957.GR3600@mini-me.lan> <499CC185.6050904@anarazel.de>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH V5 1/5] quota: Add reservation support for delayed	block allocation
+Date: Thu, 19 Feb 2009 15:15:06 +0100
+Message-ID: <20090219141505.GA15068@atrey.karlin.mff.cuni.cz>
+References: <1231216808.9267.22.camel@mingming-laptop> <20090106100645.GH10705@duck.suse.cz> <1231805946.6752.17.camel@mingming-laptop> <20090113153748.GE10064@duck.suse.cz> <1231872797.8719.6.camel@mingming-laptop> <20090113190931.GI10064@duck.suse.cz> <1231893775.8719.22.camel@mingming-laptop> <4987EE04.4020506@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Alex Buell <alex.buell@munted.org.uk>, adilger@sun.com,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org,
-	Jonathan Bastien-Filiatrault <joe@x2a.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Andres Freund <andres@anarazel.de>
+Cc: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
+To: Gui Xiaohua <guixh@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:42092 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750914AbZBSFBM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 19 Feb 2009 00:01:12 -0500
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:40437 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752094AbZBSOPI (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Feb 2009 09:15:08 -0500
 Content-Disposition: inline
-In-Reply-To: <499CC185.6050904@anarazel.de>
+In-Reply-To: <4987EE04.4020506@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Feb 19, 2009 at 03:18:45AM +0100, Andres Freund wrote:
-> On 02/18/2009 10:29 PM, Theodore Tso wrote:
->> Ok, that's good.  Good to know the workaround works.
->> Can you send me a dumpe2fs of the filesystem in question?  I'm curious
->> what was going on...
-> Will do as soon as I am at the same place as the machine. I guess thats  
-> only interesting to you privately (size and so on)?
->
->> Thanks for the report.  I'll push the workaround patch to Linus for
->> 2.6.29 to avoid this problem for now.  I recently sent to linux-ext4
->> for comment a patch to revamp the Orlov allocator for flex_bg and to
->> use that instead of find_group_flex(), but no way that's going into
->> 2.6.29 at this point....
-> Would it be helpfull if I test that patch?
->
+  Hi,
 
-Sure, I'll take all of the testing I can get.  :-)
+> I have tested your patch in 2.6.29-rc1. The sum of characters which 
+> i had written were fewer than the block softlimit,but a warning occurs.
+  I haven't seen any reply to this. Did it get resolved?
 
-The patch is in the ext4 patch queue, and I sent them to the ext4
-patch queue.  The patch is also in patch work:
+> # edquota -u quser1
+> Disk quotas for user quser1 (uid 504):
+>   Filesystem                   blocks       soft       hard     inodes     soft     hard
+>   /dev/sda7                         0          5         10          0        5       10
+> 
+> Steps to reproduce:
+> 
+> # mkfs.ext4 /dev/sda7
+> # mount /dev/sda7 /mnt -t ext4
+> # setquota -u quser1 5 10 5 10 /mnt
+> 
+> Then log in as quser1
+> $ cd /mnt
+> $ ll
+> total 20
+> -rw------- 1 root root  7168 01-20 01:51 aquota.user
+> drwx------ 2 root root 12288 01-20 01:44 lost+found
+> $ vim dd.sh
+  Well, vim creates backup files and possibly some other stuff so it's
+quite possible that the block limit of 10 KB has been exceeded. Could
+you verify that e.g.: echo "abc" >dd.sh
+works as expected (you should then see 4KB used).
 
-http://patchwork.ozlabs.org/patch/23343/
+> I written some characters,such as abc,then i do wq,
+> the warning occurs likes below:
+> "dd.sh" sda7: write failed, user block limit reached.
 
-The patch which I sent you earlier (available below) is a prequisite:
+									Honza
 
-http://patchwork.ozlabs.org/patch/23228/
-
-
-							- Ted
-
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
