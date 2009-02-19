@@ -1,57 +1,65 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH V5 1/5] quota: Add reservation support for delayed	block allocation
-Date: Thu, 19 Feb 2009 15:15:06 +0100
-Message-ID: <20090219141505.GA15068@atrey.karlin.mff.cuni.cz>
-References: <1231216808.9267.22.camel@mingming-laptop> <20090106100645.GH10705@duck.suse.cz> <1231805946.6752.17.camel@mingming-laptop> <20090113153748.GE10064@duck.suse.cz> <1231872797.8719.6.camel@mingming-laptop> <20090113190931.GI10064@duck.suse.cz> <1231893775.8719.22.camel@mingming-laptop> <4987EE04.4020506@cn.fujitsu.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>, linux-ext4@vger.kernel.org
-To: Gui Xiaohua <guixh@cn.fujitsu.com>
+Subject: [PATCH] ext4: Fix deadlock in ext4_write_begin() and ext4_da_write_begin()
+Date: Thu, 19 Feb 2009 15:24:48 +0100
+Message-ID: <1235053488-16937-1-git-send-email-jack@suse.cz>
+Cc: tytso@mit.edu, Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:40437 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752094AbZBSOPI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Feb 2009 09:15:08 -0500
-Content-Disposition: inline
-In-Reply-To: <4987EE04.4020506@cn.fujitsu.com>
+Received: from cantor.suse.de ([195.135.220.2]:52349 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751494AbZBSOYw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Feb 2009 09:24:52 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+Functions ext4_write_begin() and ext4_da_write_begin() call
+grab_cache_page_write_begin() without AOP_FLAG_NOFS. Thus it
+can happen that page reclaim is triggered in that function
+and it recurses back into the filesystem (or some other filesystem).
+But this can lead to various problems as a transaction is already
+started at that point. Add the necessary flag.
 
-> I have tested your patch in 2.6.29-rc1. The sum of characters which 
-> i had written were fewer than the block softlimit,but a warning occurs.
-  I haven't seen any reply to this. Did it get resolved?
+(Reported in http://bugzilla.kernel.org/show_bug.cgi?id=11688)
 
-> # edquota -u quser1
-> Disk quotas for user quser1 (uid 504):
->   Filesystem                   blocks       soft       hard     inodes     soft     hard
->   /dev/sda7                         0          5         10          0        5       10
-> 
-> Steps to reproduce:
-> 
-> # mkfs.ext4 /dev/sda7
-> # mount /dev/sda7 /mnt -t ext4
-> # setquota -u quser1 5 10 5 10 /mnt
-> 
-> Then log in as quser1
-> $ cd /mnt
-> $ ll
-> total 20
-> -rw------- 1 root root  7168 01-20 01:51 aquota.user
-> drwx------ 2 root root 12288 01-20 01:44 lost+found
-> $ vim dd.sh
-  Well, vim creates backup files and possibly some other stuff so it's
-quite possible that the block limit of 10 KB has been exceeded. Could
-you verify that e.g.: echo "abc" >dd.sh
-works as expected (you should then see 4KB used).
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c |    9 ++++++++-
+ 1 files changed, 8 insertions(+), 1 deletions(-)
 
-> I written some characters,such as abc,then i do wq,
-> the warning occurs likes below:
-> "dd.sh" sda7: write failed, user block limit reached.
-
-									Honza
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 03ba20b..e62e6e4 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1366,6 +1366,10 @@ retry:
+ 		goto out;
+ 	}
+ 
++	/* We cannot recurse into the filesystem as the transaction is already
++	 * started */
++	flags |= AOP_FLAG_NOFS;
++
+ 	page = grab_cache_page_write_begin(mapping, index, flags);
+ 	if (!page) {
+ 		ext4_journal_stop(handle);
+@@ -1375,7 +1379,7 @@ retry:
+ 	*pagep = page;
+ 
+ 	ret = block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
+-							ext4_get_block);
++				ext4_get_block);
+ 
+ 	if (!ret && ext4_should_journal_data(inode)) {
+ 		ret = walk_page_buffers(handle, page_buffers(page),
+@@ -2648,6 +2652,9 @@ retry:
+ 		ret = PTR_ERR(handle);
+ 		goto out;
+ 	}
++	/* We cannot recurse into the filesystem as the transaction is already
++	 * started */
++	flags |= AOP_FLAG_NOFS;
+ 
+ 	page = grab_cache_page_write_begin(mapping, index, flags);
+ 	if (!page) {
 -- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+1.6.0.2
+
