@@ -1,29 +1,35 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH, RFC] add fsck to util-linux
-Date: Thu, 19 Feb 2009 13:42:19 -0500
-Message-ID: <20090219184219.GA18750@infradead.org>
-References: <20080206113426.7833.59505.stgit@sor.suse.de> <20070925153735.GA26693@infradead.org> <20090218164254.GF7629@nb.net.home>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	Matthias Koenig <mkoenig@suse.de>,
-	util-linux-ng@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Karel Zak <kzak@redhat.com>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12579] ext4 filesystem hang
+Date: Thu, 19 Feb 2009 18:31:49 -0800 (PST)
+Message-ID: <20090220023149.C0CB1108040@picon.linux-foundation.org>
+References: <bug-12579-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:54665 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752468AbZBSSmW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 19 Feb 2009 13:42:22 -0500
-Content-Disposition: inline
-In-Reply-To: <20090218164254.GF7629@nb.net.home>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:58125 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751969AbZBTCby (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 19 Feb 2009 21:31:54 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1K2VoJR008998
+	for <linux-ext4@vger.kernel.org>; Thu, 19 Feb 2009 18:31:51 -0800
+In-Reply-To: <bug-12579-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 18, 2009 at 05:42:54PM +0100, Karel Zak wrote:
-> 
->  The fsck from the latest e2fsprogs git is util-linux-ng git now. It's
+http://bugzilla.kernel.org/show_bug.cgi?id=12579
 
-Did you speak to Ted to make sure it's from the right branch?  I
-remember that the one on the master branch wasn't the latests one when
-I did the first patch.
 
+
+
+
+------- Comment #15 from fedux@lugmen.org.ar  2009-02-19 18:31 -------
+There is another bug reported about the deadlock (
+http://bugzilla.kernel.org/show_bug.cgi?id=12610 ) happening on 2.6.28.2 and
+later.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
