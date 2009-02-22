@@ -1,71 +1,70 @@
-From: Andreas Friedrich Berendsen <afberendsen@gmail.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: kernel BUG at fs/ext4/extents.c:2738!
-Date: Sun, 22 Feb 2009 17:21:59 +1300
-Message-ID: <1235276519.7599.7.camel@localhost.localdomain>
-References: <1235115642.22702.2.camel@localhost.localdomain>
-	 <499ECF5C.7020509@redhat.com>
-	 <1235155713.22702.25.camel@localhost.localdomain>
-	 <20090220193013.GA28530@mini-me.lan>
+Date: Sat, 21 Feb 2009 23:31:26 -0500
+Message-ID: <20090222043126.GE17066@mit.edu>
+References: <1235115642.22702.2.camel@localhost.localdomain> <499ECF5C.7020509@redhat.com> <1235155713.22702.25.camel@localhost.localdomain> <20090220193013.GA28530@mini-me.lan> <1235276519.7599.7.camel@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+To: Andreas Friedrich Berendsen <afberendsen@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.184]:42335 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753295AbZBVEWL (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 21 Feb 2009 23:22:11 -0500
-Received: by ti-out-0910.google.com with SMTP id d10so1058342tib.23
-        for <linux-ext4@vger.kernel.org>; Sat, 21 Feb 2009 20:22:09 -0800 (PST)
-In-Reply-To: <20090220193013.GA28530@mini-me.lan>
+Received: from thunk.org ([69.25.196.29]:41386 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753145AbZBVEbb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 21 Feb 2009 23:31:31 -0500
+Content-Disposition: inline
+In-Reply-To: <1235276519.7599.7.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Tso,
+On Sun, Feb 22, 2009 at 05:21:59PM +1300, Andreas Friedrich Berendsen wrote:
+> Tso,
+> 
+> I used fsck many times but an error as identified at a certain block and
+> fsck was aborting with a Segment fault error. I had to fix all the
+> errors manually (not using -p or -y), skipping this specific problem.
 
-I used fsck many times but an error as identified at a certain block and
-fsck was aborting with a Segment fault error. I had to fix all the
-errors manually (not using -p or -y), skipping this specific problem.
+What version of e2fsck were you using, and what was the failure?
+*Please* don't ignore stuff like this.  Report it, and mention it when
+you report kernel problems.  It really helps get to the bottom of
+things.
 
-After that I used reszie2fs -pM for just the first step. Mounting the
-filesystem, removing many files (which triggered the BUG), I was able to
-run fsck with -y many times.
+I'm going to guess you were using something older than e2fsprogs
+1.41.4, and you were running into the bug which was fixed in this
+e2fsprogs commit.
 
-Anyway, the problem seems to be under control but I'm not sure. The new
-kernel (2.6.28.7) has a long list of ext4 errors corrected and I'm
-compiling it right now. Let's see what happens next :)
+commit 7518c176867099eb529502103106501861a71280
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu Dec 25 22:42:38 2008 -0500
 
-Thanks anyway
+    e2fsck: Fix an unhandled corruption case in scan_extent_node()
+    
+    A corrupted interior node in an extent tree would cause e2fsck to
+    crash with the error message:
+    
+    Error1: Corrupt extent header on inode 107192
+    Aborted (core dumped)
+    
+    Handle this and related failures when scanning an inode's extent tree
+    more robustly.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
--- Andreas
 
+A corrupted extent could very easily have explained the symptoms you
+reported.  (No, the kernel still shouldn't have flagged a BUG(), but
+the fact of the matter is the filesystme was corrupted.)
 
------Original Message-----
-From: Theodore Tso <tytso@mit.edu>
-To: Andreas Friedrich Berendsen <afberendsen@gmail.com>
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-Bcc: tytso@mit.edu
-Subject: Re: kernel BUG at fs/ext4/extents.c:2738!
-Date: Fri, 20 Feb 2009 14:30:13 -0500
+> Anyway, the problem seems to be under control but I'm not sure. The new
+> kernel (2.6.28.7) has a long list of ext4 errors corrected and I'm
+> compiling it right now. Let's see what happens next :)
 
-On Sat, Feb 21, 2009 at 07:48:32AM +1300, Andreas Friedrich Berendsen wrote:
-> ...I haven't noticed  before, but before that message few more lines
-> where recorded, which makes sense with the BUG line. Also, running
-> fsck.ext4 on that filesystem I always got a Segment fault at an specific
-> point, which it is impossible to fix. I'm in a process to remove files
-> from that filesystem, as soon it finish I can run fsck again and send
-> the result. Meanwhile, when removing files, rm stuck at a certain inode,
-> which caused the first BUG message.
+I'd recommend making sure you're running the latest version of
+e2fsprogs and use e2fsck to make sure the filesystem is fully
+consistent.
 
-Have you tried running e2fsck?  It sounds like a filesystem corruption
-is triggering a BUG() message, which is obviously a bug in and of
-itself.  :-)
+If e2fsck ever core dumps, please report it as a bug.  The e2fsck man
+page has a section, REPORTING BUGS, that goes into details about how
+to send a useful bug report about an e2fsck failure.
 
-						- Ted
-
--- 
-__________________________________________
-Andreas Friedrich Berendsen
-SCA OCP MSCA A+ Linux+ Network+ HpMASE
-
+   	  	     	    	  - Ted
