@@ -1,45 +1,41 @@
-From: "Sachin P. Sant" <sachinp@in.ibm.com>
-Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
-Date: Mon, 23 Feb 2009 16:27:20 +0530
-Message-ID: <49A28110.1000802@in.ibm.com>
-References: <49A2705D.9030008@in.ibm.com> <20090223021320.11019d64.akpm@linux-foundation.org> <18850.31567.212454.514549@cargo.ozlabs.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Mel Gorman <mel@csn.ul.ie>, linuxppc-dev@ozlabs.org,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@ucw.cz>,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: Paul Mackerras <paulus@samba.org>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12224] journal activity on inactive partition causes inactive harddrive spinup
+Date: Mon, 23 Feb 2009 04:22:28 -0800 (PST)
+Message-ID: <20090223122228.CB9AD108043@picon.linux-foundation.org>
+References: <bug-12224-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:45230 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753040AbZBWK5p (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Feb 2009 05:57:45 -0500
-In-Reply-To: <18850.31567.212454.514549@cargo.ozlabs.ibm.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:51918 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753664AbZBWMW7 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Feb 2009 07:22:59 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1NCMT8V002191
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Feb 2009 04:22:30 -0800
+In-Reply-To: <bug-12224-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Paul Mackerras wrote:
-> It appears to have faulted on a load, implicating the source.  The
-> address being referenced (0xc00000003f380000) doesn't look
-> outlandish.  I wonder if this kernel has CONFIG_DEBUG_PAGEALLOC turned
-> on, and what page size is selected?
-Yes CONFIG_DEBUG_PAGEALLOC is enabled and the page size is 64K.
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
 
-CONFIG_DEBUG_PAGEALLOC=y
-CONFIG_PPC_64K_PAGES=y
 
-Thanks
--Sachin
+tytso@mit.edu changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |CLOSED
+         Resolution|                            |CODE_FIX
+
+
+
+
+------- Comment #22 from tytso@mit.edu  2009-02-23 04:22 -------
+The fix for this has landed in mainline as commit 02ac59 for ext3, and  
+commit 9eddac for ext4.
 
 
 -- 
-
----------------------------------
-Sachin Sant
-IBM Linux Technology Center
-India Systems and Technology Labs
-Bangalore, India
----------------------------------
-
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
