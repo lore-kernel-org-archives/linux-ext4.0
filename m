@@ -1,57 +1,77 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH -v2]ext4: add the spec for ext4 subdirectory limit(was:
-	Problems with the max value for create directory)
-Date: Sun, 22 Feb 2009 22:25:40 -0500
-Message-ID: <20090223032540.GB19739@mit.edu>
-References: <499B9CD3.8060608@cn.fujitsu.com>
+From: "Sachin P. Sant" <sachinp@in.ibm.com>
+Subject: Crash (ext3 ) during 2.6.29-rc6 boot
+Date: Mon, 23 Feb 2009 15:16:05 +0530
+Message-ID: <49A2705D.9030008@in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Zhang Xiliang <zhangxiliang@cn.fujitsu.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: akpm@linux-foundation.org, Mel Gorman <mel@csn.ul.ie>
+To: linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:37052 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751146AbZBWDZq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Feb 2009 22:25:46 -0500
-Content-Disposition: inline
-In-Reply-To: <499B9CD3.8060608@cn.fujitsu.com>
+Received: from e23smtp02.au.ibm.com ([202.81.31.144]:36697 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751906AbZBWJqO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Feb 2009 04:46:14 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I really don't think this tweak to Documentation/filesystems/ext4.txt
-is necessary, but if we going to do this, I want to tighten up the
-explanation.
+2.6.29-rc6 bootup on a powerpc box failed with
 
-						- Ted
+Unable to handle kernel paging request for data at address 0xc00000003f380000
+Faulting instruction address: 0xc000000000039574
+cpu 0x1: Vector: 300 (Data Access) at [c00000003baf3020]
+    pc: c000000000039574: .memcpy+0x74/0x244
+    lr: d00000000244916c: .ext3_xattr_get+0x288/0x2f4 [ext3]
+    sp: c00000003baf32a0
+   msr: 8000000000009032
+   dar: c00000003f380000
+ dsisr: 40000000
+  current = 0xc00000003e54b010
+  paca    = 0xc000000000a53680
+    pid   = 1840, comm = readahead
+enter ? for help
+[link register   ] d00000000244916c .ext3_xattr_get+0x288/0x2f4 [ext3]
+[c00000003baf32a0] d000000002449104 .ext3_xattr_get+0x220/0x2f4 [ext3]
+(unreliab
+le)
+[c00000003baf3390] d00000000244a6e8 .ext3_xattr_security_get+0x40/0x5c [ext3]
+[c00000003baf3400] c000000000148154 .generic_getxattr+0x74/0x9c
+[c00000003baf34a0] c000000000333400 .inode_doinit_with_dentry+0x1c4/0x678
+[c00000003baf3560] c00000000032c6b0 .security_d_instantiate+0x50/0x68
+[c00000003baf35e0] c00000000013c818 .d_instantiate+0x78/0x9c
+[c00000003baf3680] c00000000013ced0 .d_splice_alias+0xf0/0x120
+[c00000003baf3720] d00000000243e05c .ext3_lookup+0xec/0x134 [ext3]
+[c00000003baf37c0] c000000000131e74 .do_lookup+0x110/0x260
+[c00000003baf3880] c000000000134ed0 .__link_path_walk+0xa98/0x1010
+[c00000003baf3970] c0000000001354a0 .path_walk+0x58/0xc4
+[c00000003baf3a20] c000000000135720 .do_path_lookup+0x138/0x1e4
+[c00000003baf3ad0] c00000000013645c .path_lookup_open+0x6c/0xc8
+[c00000003baf3b70] c000000000136780 .do_filp_open+0xcc/0x874
+[c00000003baf3d10] c0000000001251e0 .do_sys_open+0x80/0x140
+[c00000003baf3dc0] c00000000016aaec .compat_sys_open+0x24/0x38
+[c00000003baf3e30] c00000000000855c syscall_exit+0x0/0x40
+--- Exception: c01 (System Call) at 000000000ff0ef18
+SP (ffc6f4b0) is in userspace
+1:mon>
 
-ext4: Add fine print for the 32000 subdirectory limit
+Following EXT3 related options were enabled in the config.
 
-Some poeple are reading the ext4 feature list too literally and create
-dubious test cases involving very long filenames and 1k blocksize and
-then complain when they run into an htree-imposed limit.  So add fine
-print to the "fix 32000 subdirectory limit" ext4 feature.
+CONFIG_EXT3_FS=m
+CONFIG_EXT3_FS_XATTR=y
+CONFIG_EXT3_FS_POSIX_ACL=y
+CONFIG_EXT3_FS_SECURITY=y
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-diff --git a/Documentation/filesystems/ext4.txt b/Documentation/filesystems/ext4.txt
-index cec829b..5c484ae 100644
---- a/Documentation/filesystems/ext4.txt
-+++ b/Documentation/filesystems/ext4.txt
-@@ -85,7 +85,7 @@ Note: More extensive information for getting started with ext4 can be
- * extent format more robust in face of on-disk corruption due to magics,
- * internal redundancy in tree
- * improved file allocation (multi-block alloc)
--* fix 32000 subdirectory limit
-+* lift 32000 subdirectory limit imposed by i_links_count[1]
- * nsec timestamps for mtime, atime, ctime, create time
- * inode version field on disk (NFSv4, Lustre)
- * reduced e2fsck time via uninit_bg feature
-@@ -100,6 +100,9 @@ Note: More extensive information for getting started with ext4 can be
- * efficent new ordered mode in JBD2 and ext4(avoid using buffer head to force
-   the ordering)
- 
-+[1] Filesystems with a block size of 1k may see a limit imposed by the
-+directory hash tree having a maximum depth of two.
-+
- 2.2 Candidate features for future inclusion
- 
- * Online defrag (patches available but not well tested)
+
+Thanks
+-Sachin
+
+-- 
+
+---------------------------------
+Sachin Sant
+IBM Linux Technology Center
+India Systems and Technology Labs
+Bangalore, India
+---------------------------------
+
