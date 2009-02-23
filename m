@@ -1,23 +1,29 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH -V2] ext4: Validate extent details only when read from
-	the disk
-Date: Sun, 22 Feb 2009 21:49:54 -0500
-Message-ID: <20090223024954.GN17066@mit.edu>
-References: <1234805202-6922-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1234805202-6922-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext3/4: Clear pagep after write_begin() has failed
+Date: Sun, 22 Feb 2009 22:12:30 -0500
+Message-ID: <20090223031230.GA19739@mit.edu>
+References: <1234898659-4686-1-git-send-email-dmonakhov@openvz.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Dmitri Monakhov <dmonakhov@openvz.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:36853 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:42671 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751412AbZBWCt7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 22 Feb 2009 21:49:59 -0500
+	id S1750895AbZBWDMf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 22 Feb 2009 22:12:35 -0500
 Content-Disposition: inline
-In-Reply-To: <1234805202-6922-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1234898659-4686-1-git-send-email-dmonakhov@openvz.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thanks, I've applied both of these patches to the ext4 patch queue.
+On Tue, Feb 17, 2009 at 10:24:19PM +0300, Dmitri Monakhov wrote:
+> Seems there is no strict rule to for this case. In fact everybody
+> just ignored this variable after write_begin() has failed.
+> This was true until ext4_defrag_partial(). So let's follows simple
+> rule similar to block_write_begin().
 
-	     	     	     	   	      - Ted
+I've checked the latest ext4_defrag_partial, and it doesn't reference
+the page variable if write_begin() failed....
+
+						- Ted
