@@ -1,59 +1,36 @@
-From: Jim Meyering <jim@meyering.net>
-Subject: [PATCH] * request_tbl.c (ss_add_request_table): Avoid leak upon failed realloc.
-Date: Mon, 23 Feb 2009 18:26:05 +0100
-Message-ID: <87ocwtcbf6.fsf@meyering.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+From: Karel Zak <kzak@redhat.com>
+Subject: uti-linux-ng libblkid
+Date: Mon, 23 Feb 2009 18:38:51 +0100
+Message-ID: <1235410733-4193-1-git-send-email-kzak@redhat.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp3-g21.free.fr ([212.27.42.3]:33291 "EHLO smtp3-g21.free.fr"
+Received: from mx2.redhat.com ([66.187.237.31]:32955 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751069AbZBWR0Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Feb 2009 12:26:16 -0500
-Received: from smtp3-g21.free.fr (localhost [127.0.0.1])
-	by smtp3-g21.free.fr (Postfix) with ESMTP id B491C81818B
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Feb 2009 18:26:08 +0100 (CET)
-Received: from mx.meyering.net (mx.meyering.net [82.230.74.64])
-	by smtp3-g21.free.fr (Postfix) with ESMTP id 8E03B8182BC
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Feb 2009 18:26:05 +0100 (CET)
+	id S1751610AbZBWRji (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Feb 2009 12:39:38 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi Ted,
 
-Signed-off-by: Jim Meyering <meyering@redhat.com>
----
-Here's another found via inspection.
-It looks like it can only affect debugfs.
+here are two patches that allow to link utils from e2fsprogs with
+external libblkid (e.g. the version from util-linux-ng).
 
- lib/ss/request_tbl.c |    7 ++++---
- 1 files changed, 4 insertions(+), 3 deletions(-)
+Note that the patches don't include *generated* stuff from the configure
+script.
 
-diff --git a/lib/ss/request_tbl.c b/lib/ss/request_tbl.c
-index 4027af8..4632d65 100644
---- a/lib/ss/request_tbl.c
-+++ b/lib/ss/request_tbl.c
-@@ -27,18 +27,19 @@ void ss_add_request_table(sci_idx, rqtbl_ptr, position, code_ptr)
- {
- 	register ss_data *info;
- 	register int i, size;
-+	ssrt **t;
+Changes:
+	- add --disable-libblkid
+	- don't build & install blkid(8) and findfs(8)
 
- 	info = ss_info(sci_idx);
- 	for (size=0; info->rqt_tables[size] != (ssrt *)NULL; size++)
- 		;
- 	/* size == C subscript of NULL == #elements */
- 	size += 2;		/* new element, and NULL */
--	info->rqt_tables = (ssrt **)realloc(info->rqt_tables,
--					    (unsigned)size*sizeof(ssrt));
--	if (info->rqt_tables == (ssrt **)NULL) {
-+	t = (ssrt **)realloc(info->rqt_tables, (unsigned)size*sizeof(ssrt));
-+	if (t == (ssrt **)NULL) {
- 		*code_ptr = errno;
- 		return;
- 	}
-+	info->rqt_tables = t;
- 	if (position > size - 2)
- 		position = size - 2;
+Note that I'm not sure of your opinion about "#include blkid.h". The
+code in e2fsprogs mix "blkid/blkid.h" and "blkid.h" (and somewhere it
+depends on #ifdef :-). I think the best would be to remove the directory
+and use "-Ilib/blkid" (for private libblkid) or CFLAGS from pkg-config
+(for external libblkid). Anyway the code compiles with the current
+"#include" directives, so I didn't touch this stuff.
 
---
-1.6.2.rc1.266.g4bdf
+  Karel
+
+
