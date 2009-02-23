@@ -1,35 +1,49 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12679] 2.6.28.4 ext4 fs hang, load 22 and up, may be firefox/apps stuck on sync_page
-Date: Mon, 23 Feb 2009 14:10:26 -0800 (PST)
-Message-ID: <20090223221027.03DE4108043@picon.linux-foundation.org>
-References: <bug-12679-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: rawhide's init/nash segfaults in libblkid
+Date: Mon, 23 Feb 2009 15:42:19 -0700
+Message-ID: <20090223224219.GB3199@webber.adilger.int>
+References: <87ab8dds1z.fsf@meyering.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: Jim Meyering <jim@meyering.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50315 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753387AbZBWWK7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Feb 2009 17:10:59 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1NMARov017915
-	for <linux-ext4@vger.kernel.org>; Mon, 23 Feb 2009 14:10:28 -0800
-In-Reply-To: <bug-12679-13602@http.bugzilla.kernel.org/>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:64890 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753715AbZBWWnF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Feb 2009 17:43:05 -0500
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n1NMgqEw017722
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Feb 2009 14:42:56 -0800 (PST)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
+ id <0KFJ00700ICIMA00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 23 Feb 2009 14:42:52 -0800 (PST)
+In-reply-to: <87ab8dds1z.fsf@meyering.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12679
+On Feb 23, 2009  17:41 +0100, Jim Meyering wrote:
+> FYI, I've just filed this against the kernel:
+> 
+>   http://bugzilla.redhat.com/486997
+> 
+> Perhaps it should be reassigned to e2fsprogs...
+> ---------
+> 
+> Normally I track rawhide pretty closely, but for the last few weeks
+> new kernels haven't booted on the system I use for that, so I stuck
+> with the most recent one that worked,
 
+Is rawhide using util-linux-ng that included the libblkid code?  It
+seems we probably need to add a configure check to e2fsprogs not to
+build libblkid if util-linux-ng has it.
 
-sec@dschroeder.info changed:
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|REJECTED                    |CLOSED
-
-
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
