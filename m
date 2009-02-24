@@ -1,107 +1,41 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
-Date: Tue, 24 Feb 2009 17:14:06 +0100
-Message-ID: <20090224161406.GA13313@atrey.karlin.mff.cuni.cz>
-References: <49A2705D.9030008@in.ibm.com>
-	<20090223021320.11019d64.akpm@linux-foundation.org>
-	<49A27EE8.5030700@in.ibm.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="us-ascii"
-Content-Transfer-Encoding: 7bit
-Cc: Mel Gorman <mel@csn.ul.ie>, linuxppc-dev@ozlabs.org,
-	Andrew Morton <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org,
-	linux-kernel <linux-kernel@vger.kernel.org>
-To: "Sachin P. Sant" <sachinp@in.ibm.com>
-Return-path: <linuxppc-dev-bounces+glppe-linuxppc-embedded-2=m.gmane.org@ozlabs.org>
-Content-Disposition: inline
-In-Reply-To: <49A27EE8.5030700@in.ibm.com>
-List-Unsubscribe: <https://ozlabs.org/mailman/options/linuxppc-dev>,
-	<mailto:linuxppc-dev-request@ozlabs.org?subject=unsubscribe>
-List-Archive: <http://ozlabs.org/pipermail/linuxppc-dev>
-List-Post: <mailto:linuxppc-dev@ozlabs.org>
-List-Help: <mailto:linuxppc-dev-request@ozlabs.org?subject=help>
-List-Subscribe: <https://ozlabs.org/mailman/listinfo/linuxppc-dev>,
-	<mailto:linuxppc-dev-request@ozlabs.org?subject=subscribe>
-Sender: linuxppc-dev-bounces+glppe-linuxppc-embedded-2=m.gmane.org@ozlabs.org
-Errors-To: linuxppc-dev-bounces+glppe-linuxppc-embedded-2=m.gmane.org@ozlabs.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 11688] Oops while writing on a newly ext4 formated 1TB partition on a external USB drive
+Date: Tue, 24 Feb 2009 08:22:03 -0800 (PST)
+Message-ID: <20090224162203.EFDEE10800E@picon.linux-foundation.org>
+References: <bug-11688-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:51128 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757793AbZBXQWY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Feb 2009 11:22:24 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1OGM4l0019061
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Feb 2009 08:22:05 -0800
+In-Reply-To: <bug-11688-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-> Andrew Morton wrote:
-> >hm, I wonder what could have caused that - we haven't altered
-> >fs/ext3/xattr.c in ages.
-> >
-> >What is the most recent kernel version you know of which didn't do
-> >this?  Bear in mind that this crash might be triggered by the
-> >current contents of the filesystem, so if possible, please test
-> >some other kernel versions on that disk.
-> >  
-> I am trying to boot a vanilla kernel on this machine for the first
-> time. Haven't tried any other kernels. Will give it a try.
-> 
-> >It looks like we died in ext3_xattr_block_get():
-> >
-> >		memcpy(buffer, bh->b_data + le16_to_cpu(entry->e_value_offs),
-> >		       size);
-> >
-> >Perhaps entry->e_value_offs is no good.  I wonder if the filesystem is
-> >corrupted and this snuck through the defenses.
-> >
-> >I also wonder if there is enough info in that trace for a ppc person to
-> >be able to determine whether the faulting address is in the source or
-> >destination of the memcpy() (please)?
-> >  
-> Some more information if this could be of any help.
-> 
-> 0:mon> di 0xc000000000039574
-> c000000000039574  e9240008      ld      r9,8(r4)
-> c000000000039578  409d0010      ble     cr7,c000000000039588    # 
-> .memcpy+0x88/0x244
-> c00000000003957c  79290002      rotldi  r9,r9,32
-> c000000000039580  91230000      stw     r9,0(r3)
-> c000000000039584  38630004      addi    r3,r3,4
-> c000000000039588  409e0010      bne     cr7,c000000000039598    # 
-> .memcpy+0x98/0x244
-> c00000000003958c  79298000      rotldi  r9,r9,16
-> c000000000039590  b1230000      sth     r9,0(r3)
-> c000000000039594  38630002      addi    r3,r3,2
-> c000000000039598  409f000c      bns     cr7,c0000000000395a4    # 
-> .memcpy+0xa4/0x244
-> c00000000003959c  79294000      rotldi  r9,r9,8
-> c0000000000395a0  99230000      stb     r9,0(r3)
-> c0000000000395a4  e8610030      ld      r3,48(r1)
-> c0000000000395a8  4e800020      blr
-> c0000000000395ac  78a6e8c2      rldicl  r6,r5,61,3
-> c0000000000395b0  38a5fff0      addi    r5,r5,-16
-> 0:mon> r
-> R00 = 000000000000e40f   R16 = 00000000100edbc8
-> R01 = c00000003e59b3e0   R17 = 00000000100b0000
-> R02 = c0000000009c2110   R18 = 0000000000000005
-> R03 = c000000044bc90e0   R19 = 00000000fff0d7a8
-> R04 = c000000039cffff4   R20 = 00000000fff0d708
-> R05 = 0000000000000003   R21 = 00000000000000ff
-> R06 = 0000000000000000   R22 = 0000000000000006
-> R07 = 0000000000000001   R23 = c00000000079ab49
-> R08 = 723a7573725f743a   R24 = c0000000372fe2a8
-> R09 = 3a6f626a6563745f   R25 = c000000044bc90c8
-> R10 = c00000003b250968   R26 = c0000000372fe240
-> R11 = c000000000039500   R27 = c0000000372fe3b0
-> R12 = d00000000244c590   R28 = c0000000372c5280
-> R13 = c000000000a53480   R29 = 000000000000001b
-> R14 = 00000000100d0000   R30 = d0000000024654d0
-> R15 = 0000000000000000   R31 = ffffffffffffffde
-> pc  = c000000000039574 .memcpy+0x74/0x244
-> lr  = d00000000244916c .ext3_xattr_get+0x288/0x2f4 [ext3]
-> msr = 8000000000009032   cr  = 4400844b
-> ctr = 0000000000000000   xer = 0000000000000001   trap =  300
-> dar = c000000039d00000   dsisr = 40000000
-> 0:mon>
-  Yes, this makes me even more suspitious that memcpy() on powerpc could
-be at fault. The instruction (ld r9,8(r4)) is loading last 8 bytes to copy,
-but in fact it should load only 3 bytes in our case because remaining 5
-bytes are not in the range we specified and thus larger load can cause
-page fault...
+http://bugzilla.kernel.org/show_bug.cgi?id=11688
 
-								Honza
+
+jack@suse.cz changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+         AssignedTo|fs_ext3@kernel-bugs.osdl.org|jack@suse.cz
+             Status|NEW                         |ASSIGNED
+
+
+
+
+------- Comment #11 from jack@suse.cz  2009-02-24 08:22 -------
+OK, the patch was merged into ext4-tree. Closing the bug.
+
+
 -- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
+You are the assignee for the bug, or are watching the assignee.
