@@ -1,15 +1,15 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [STABLE, 2.6.28.y] jbd2: Fix return value of jbd2_journal_start_commit()
-Date: Tue, 24 Feb 2009 12:14:41 -0500
-Message-ID: <1235495688-8044-1-git-send-email-tytso@mit.edu>
+Subject: [STABLE, 2.6.27.y] jbd2: Fix return value of jbd2_journal_start_commit()
+Date: Tue, 24 Feb 2009 12:14:48 -0500
+Message-ID: <1235495694-8116-1-git-send-email-tytso@mit.edu>
 Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
 	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:39949 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:39951 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756980AbZBXRPX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Feb 2009 12:15:23 -0500
+	id S1757024AbZBXRP0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Feb 2009 12:15:26 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -60,7 +60,7 @@ CC: linux-ext4@vger.kernel.org
  1 files changed, 11 insertions(+), 6 deletions(-)
 
 diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index e70d657..a8fb64d 100644
+index 52d2bee..ecb2603 100644
 --- a/fs/jbd2/journal.c
 +++ b/fs/jbd2/journal.c
 @@ -430,7 +430,7 @@ int __jbd2_log_space_left(journal_t *journal)
