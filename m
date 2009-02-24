@@ -1,121 +1,41 @@
-From: akpm@linux-foundation.org
-Subject: [merged] ext4-tighten-restrictions-on-inode-flags.patch removed from -mm tree
-Date: Tue, 24 Feb 2009 11:32:59 -0800
-Message-ID: <200902241932.n1OJWxqN004476@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: duaneg@dghda.com, adilger@sun.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: Chuck Ebbert <cebbert@redhat.com>
+Subject: Re: Ext4 tree backports for 2.6.27.19 and 2.6.28.7
+Date: Tue, 24 Feb 2009 15:45:38 -0500
+Message-ID: <20090224154538.6f57094a@dhcp-100-2-144.bos.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@MIT.EDU>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:48775 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754701AbZBXUqa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Feb 2009 15:46:30 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+In the 2.6.27 series, commit 19815ad26f2d60e3ce390fca4d18ad729c9f5f42
+has an extra chunk. I applied this patch after the series to fix it:
 
 
-The patch titled
-     ext4: tighten restrictions on inode flags
-has been removed from the -mm tree.  Its filename was
-     ext4-tighten-restrictions-on-inode-flags.patch
+In file included from fs/ocfs2/alloc.c:42:
+fs/ocfs2/journal.h: In function 'ocfs2_jbd2_file_inode':
+fs/ocfs2/journal.h:420: error: implicit declaration of function 'jbd2_journal_file_inode'
+fs/ocfs2/journal.h:420: error: 'struct ocfs2_inode_info' has no member named 'ip_jinode'
+fs/ocfs2/journal.h: In function 'ocfs2_begin_ordered_truncate':
+fs/ocfs2/journal.h:426: error: implicit declaration of function 'jbd2_journal_begin_ordered_truncate'
+fs/ocfs2/journal.h:428: error: 'struct ocfs2_inode_info' has no member named 'ip_jinode'
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+[caused by the ext4 patch queue]
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: ext4: tighten restrictions on inode flags
-From: "Duane Griffin" <duaneg@dghda.com>
-
-At the moment there are few restrictions on which flags may be set on
-which inodes.  Specifically DIRSYNC may only be set on directories and
-IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
-TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
-on non-regular file, non-directories.
-
-Introduces a flags masking function which masks flags based on mode and
-use it during inode creation and when flags are set via the ioctl to
-facilitate future consistency.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Acked-by: Andreas Dilger <adilger@sun.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext4/ext4.h   |   17 +++++++++++++++++
- fs/ext4/ialloc.c |   14 +++++---------
- fs/ext4/ioctl.c  |    3 +--
- 3 files changed, 23 insertions(+), 11 deletions(-)
-
-diff -puN fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags fs/ext4/ext4.h
---- a/fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags
-+++ a/fs/ext4/ext4.h
-@@ -247,6 +247,23 @@ struct flex_groups {
- 			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL|\
- 			   EXT4_DIRSYNC_FL)
+--- linux-2.6.27.noarch.orig/fs/ocfs2/journal.h
++++ linux-2.6.27.noarch/fs/ocfs2/journal.h
+@@ -415,17 +415,4 @@ static inline int ocfs2_calc_tree_trunc_
+ 	return credits;
+ }
  
-+/* Flags that are appropriate for regular files (all but dir-specific ones). */
-+#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
-+
-+/* Flags that are appropriate for non-directories/regular files. */
-+#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
-+
-+/* Mask out flags that are inappropriate for the given type of inode. */
-+static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
-+{
-+	if (S_ISDIR(mode))
-+		return flags;
-+	else if (S_ISREG(mode))
-+		return flags & EXT4_REG_FLMASK;
-+	else
-+		return flags & EXT4_OTHER_FLMASK;
-+}
-+
- /*
-  * Inode dynamic state flags
-  */
-diff -puN fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags
-+++ a/fs/ext4/ialloc.c
-@@ -874,16 +874,12 @@ got:
- 	ei->i_disksize = 0;
- 
- 	/*
--	 * Don't inherit extent flag from directory. We set extent flag on
--	 * newly created directory and file only if -o extent mount option is
--	 * specified
-+	 * Don't inherit extent flag from directory, amongst others. We set
-+	 * extent flag on newly created directory and file only if -o extent
-+	 * mount option is specified
- 	 */
--	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
--	if (S_ISLNK(mode))
--		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
--	/* dirsync only applies to directories */
--	if (!S_ISDIR(mode))
--		ei->i_flags &= ~EXT4_DIRSYNC_FL;
-+	ei->i_flags =
-+		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
- 	ei->i_file_acl = 0;
- 	ei->i_dtime = 0;
- 	ei->i_block_group = group;
-diff -puN fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ioctl.c
---- a/fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags
-+++ a/fs/ext4/ioctl.c
-@@ -48,8 +48,7 @@ long ext4_ioctl(struct file *filp, unsig
- 		if (err)
- 			return err;
- 
--		if (!S_ISDIR(inode->i_mode))
--			flags &= ~EXT4_DIRSYNC_FL;
-+		flags = ext4_mask_flags(inode->i_mode, flags);
- 
- 		err = -EPERM;
- 		mutex_lock(&inode->i_mutex);
-_
-
-Patches currently in -mm which might be from duaneg@dghda.com are
-
-linux-next.patch
-ufs-validate-maximum-fast-symlink-size-from-superblock.patch
-ufs-dont-truncate-longer-ufs2-fast-symlinks.patch
-ufs-ensure-fast-symlinks-are-nul-terminated.patch
-ufs-copy-symlink-data-into-the-correct-union-member.patch
-
+-static inline int ocfs2_jbd2_file_inode(handle_t *handle, struct inode *inode)
+-{
+-	return jbd2_journal_file_inode(handle, &OCFS2_I(inode)->ip_jinode);
+-}
