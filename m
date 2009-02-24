@@ -1,46 +1,48 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH, RFC] ext4: add EXT4_IOC_ALLOC_DA_BLKS ioctl
-Date: Tue, 24 Feb 2009 03:11:05 -0700
-Message-ID: <20090224101105.GM3199@webber.adilger.int>
-References: <1235451952-2726-1-git-send-email-tytso@mit.edu>
- <1235451952-2726-2-git-send-email-tytso@mit.edu>
- <1235451952-2726-3-git-send-email-tytso@mit.edu>
- <1235451952-2726-4-git-send-email-tytso@mit.edu>
- <1235451952-2726-5-git-send-email-tytso@mit.edu>
+From: Dmitri Monakhov <dmonakhov@openvz.org>
+Subject: Re: [PATCH] ext3/4: Clear pagep after write_begin() has failed
+Date: Tue, 24 Feb 2009 13:11:33 +0300
+Message-ID: <m3prh8w3e2.fsf@openvz.org>
+References: <1234898659-4686-1-git-send-email-dmonakhov@openvz.org>
+	<20090223031230.GA19739@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, aneesh.kumar@linux.vnet.ibm.com
-To: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:34201 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751111AbZBXKLg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Feb 2009 05:11:36 -0500
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n1OABHWq023638
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Feb 2009 02:11:30 -0800 (PST)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
- id <0KFK00K00ETOWF00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 24 Feb 2009 02:11:17 -0800 (PST)
-In-reply-to: <1235451952-2726-5-git-send-email-tytso@mit.edu>
+Received: from mailhub.sw.ru ([195.214.232.25]:9253 "EHLO relay.sw.ru"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752481AbZBXKNS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Feb 2009 05:13:18 -0500
+In-Reply-To: <20090223031230.GA19739@mit.edu> (Theodore Tso's message of "Sun\, 22 Feb 2009 22\:12\:30 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Feb 24, 2009  00:05 -0500, Theodore Ts'o wrote:
-> +#define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 10)
->   /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
+Theodore Tso <tytso@mit.edu> writes:
 
-Please don't use ioctl number 10 - it was used by an early
-version of the FIEMAP ioctl that we still have in use in Lustre
-filesystems.  Not that there is much chance of a collision, but
-it is also easily enough avoided.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+> On Tue, Feb 17, 2009 at 10:24:19PM +0300, Dmitri Monakhov wrote:
+>> Seems there is no strict rule to for this case. In fact everybody
+>> just ignored this variable after write_begin() has failed.
+>> This was true until ext4_defrag_partial(). So let's follows simple
+>> rule similar to block_write_begin().
+>
+> I've checked the latest ext4_defrag_partial, and it doesn't reference
+> the page variable if write_begin() failed....
+>
+> 						- Ted
+Latest posted defrag version 1.0 from 30 Jan, contains following code
++	up_write(&EXT4_I(org_inode)->i_data_sem);
++	ret = a_ops->write_begin(o_filp, mapping, offs, data_len, w_flags,
++								&page, &fsdata);
++	down_write(&EXT4_I(org_inode)->i_data_sem);
++
++	if (unlikely(ret < 0))
++		goto out;
+.....
++out:
++	if (unlikely(page)) {
++		if (PageLocked(page))
++			unlock_page(page);
++		page_cache_release(page);
++	}
+In fact the patch i'm propose is mostly a cleanup, rather then serious fix
+for real issue. IMHO it is not bad idea to fold it in to some real patch.
