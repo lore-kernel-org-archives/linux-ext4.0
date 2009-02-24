@@ -1,74 +1,160 @@
-From: Andreas Friedrich Berendsen <afberendsen@gmail.com>
-Subject: Re: May I suggested an update for ext4.txt file?
-Date: Wed, 25 Feb 2009 06:14:21 +1300
-Message-ID: <1235495661.11758.40.camel@localhost.localdomain>
-References: <1235494800.11758.28.camel@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [STABLE, 2.6.28.y] jbd2: Avoid possible NULL dereference in jbd2_journal_begin_ordered_truncate()
+Date: Tue, 24 Feb 2009 12:14:43 -0500
+Message-ID: <1235495688-8044-3-git-send-email-tytso@mit.edu>
+References: <1235495688-8044-1-git-send-email-tytso@mit.edu>
+ <1235495688-8044-2-git-send-email-tytso@mit.edu>
+Cc: Jan Kara <jack@suse.cz>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, ocfs2-devel@oss.oracle.com,
+	mfasheh@suse.de, Dan Carpenter <error27@gmail.com>
+To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.30]:29184 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752586AbZBXROb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Feb 2009 12:14:31 -0500
-Received: by yw-out-2324.google.com with SMTP id 5so1096971ywh.1
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Feb 2009 09:14:28 -0800 (PST)
-In-Reply-To: <1235494800.11758.28.camel@localhost.localdomain>
+Received: from thunk.org ([69.25.196.29]:39911 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753110AbZBXRPE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Feb 2009 12:15:04 -0500
+In-Reply-To: <1235495688-8044-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
->From http://kernelnewbies.org/Ext4 "3.2. Migrate existing Ext3
-filesystems to Ext4", instructions to migrate are different from the
-ext4.txt file:
+From: Jan Kara <jack@suse.cz>
 
-/* ----------------------- */
+If we race with commit code setting i_transaction to NULL, we could
+possibly dereference it.  Proper locking requires the journal pointer
+(to access journal->j_list_lock), which we don't have.  So we have to
+change the prototype of the function so that filesystem passes us the
+journal pointer.  Also add a more detailed comment about why the
+function jbd2_journal_begin_ordered_truncate() does what it does and
+how it should be used.
 
-You need to use the tune2fs and fsck tools in the filesystem, and that
-filesystem needs to be unmounted. Run: 
+Thanks to Dan Carpenter <error27@gmail.com> for pointing to the
+suspitious code.
 
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Acked-by: Joel Becker <joel.becker@oracle.com>
+CC: linux-ext4@vger.kernel.org
+CC: ocfs2-devel@oss.oracle.com
+CC: mfasheh@suse.de
+CC: Dan Carpenter <error27@gmail.com>
+(cherry picked from commit 7f5aa215088b817add9c71914b83650bdd49f8a9)
+---
+ fs/ext4/inode.c       |    6 ++++--
+ fs/jbd2/transaction.c |   42 +++++++++++++++++++++++++++++++-----------
+ fs/ocfs2/journal.h    |    6 ++++--
+ include/linux/jbd2.h  |    3 ++-
+ 4 files changed, 41 insertions(+), 16 deletions(-)
 
-      * tune2fs -O extents,uninit_bg,dir_index /dev/yourfilesystem 
-        
-
-After running this command you MUST run fsck. If you don't do it, Ext4
-WILL NOT MOUNT your filesystem. 
-
-/* -------------------------- *
-
--- Berendsen
-
-----Original Message-----
-From: Andreas Friedrich Berendsen <afberendsen@gmail.com>
-To: linux-ext4@vger.kernel.org
-Subject: May I suggested an update for ext4.txt file?
-Date: Wed, 25 Feb 2009 06:00:07 +1300
-
-kernel 2.6.28.7
-efs2prog: 1.41.4
-
-File Documentation/filesystems/ext4.txt states:
-
-...
-    Or to configure an existing ext3 filesystem to support extents:
-
-        # tune2fs -O extents /dev/hda1
-....
-
-
-To convert from ext2 (a very old filesystem :) ) to ext4, it's necessary
-to add more options. I'm not sure which one made the trick.
-
-tune2fs -O
-has_journal,dir_index,filetype,extent,flex_bg,sparse_super,large_file,huge_file,uninit_bg,dir_nlink,extra_isize 
-
-Also, /etc/filesystems does not contain an entry for
-ext4. /etc/efs2prog.conf is ok.
-
--- Berendsen
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index ccb6947..7353def 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -46,8 +46,10 @@
+ static inline int ext4_begin_ordered_truncate(struct inode *inode,
+ 					      loff_t new_size)
+ {
+-	return jbd2_journal_begin_ordered_truncate(&EXT4_I(inode)->jinode,
+-						   new_size);
++	return jbd2_journal_begin_ordered_truncate(
++					EXT4_SB(inode->i_sb)->s_journal,
++					&EXT4_I(inode)->jinode,
++					new_size);
+ }
+ 
+ static void ext4_invalidatepage(struct page *page, unsigned long offset);
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 39b7805..89f63ba 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -2050,26 +2050,46 @@ done:
+ }
+ 
+ /*
+- * This function must be called when inode is journaled in ordered mode
+- * before truncation happens. It starts writeout of truncated part in
+- * case it is in the committing transaction so that we stand to ordered
+- * mode consistency guarantees.
++ * File truncate and transaction commit interact with each other in a
++ * non-trivial way.  If a transaction writing data block A is
++ * committing, we cannot discard the data by truncate until we have
++ * written them.  Otherwise if we crashed after the transaction with
++ * write has committed but before the transaction with truncate has
++ * committed, we could see stale data in block A.  This function is a
++ * helper to solve this problem.  It starts writeout of the truncated
++ * part in case it is in the committing transaction.
++ *
++ * Filesystem code must call this function when inode is journaled in
++ * ordered mode before truncation happens and after the inode has been
++ * placed on orphan list with the new inode size. The second condition
++ * avoids the race that someone writes new data and we start
++ * committing the transaction after this function has been called but
++ * before a transaction for truncate is started (and furthermore it
++ * allows us to optimize the case where the addition to orphan list
++ * happens in the same transaction as write --- we don't have to write
++ * any data in such case).
+  */
+-int jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode,
++int jbd2_journal_begin_ordered_truncate(journal_t *journal,
++					struct jbd2_inode *jinode,
+ 					loff_t new_size)
+ {
+-	journal_t *journal;
+-	transaction_t *commit_trans;
++	transaction_t *inode_trans, *commit_trans;
+ 	int ret = 0;
+ 
+-	if (!inode->i_transaction && !inode->i_next_transaction)
++	/* This is a quick check to avoid locking if not necessary */
++	if (!jinode->i_transaction)
+ 		goto out;
+-	journal = inode->i_transaction->t_journal;
++	/* Locks are here just to force reading of recent values, it is
++	 * enough that the transaction was not committing before we started
++	 * a transaction adding the inode to orphan list */
+ 	spin_lock(&journal->j_state_lock);
+ 	commit_trans = journal->j_committing_transaction;
+ 	spin_unlock(&journal->j_state_lock);
+-	if (inode->i_transaction == commit_trans) {
+-		ret = filemap_fdatawrite_range(inode->i_vfs_inode->i_mapping,
++	spin_lock(&journal->j_list_lock);
++	inode_trans = jinode->i_transaction;
++	spin_unlock(&journal->j_list_lock);
++	if (inode_trans == commit_trans) {
++		ret = filemap_fdatawrite_range(jinode->i_vfs_inode->i_mapping,
+ 			new_size, LLONG_MAX);
+ 		if (ret)
+ 			jbd2_journal_abort(journal, ret);
+diff --git a/fs/ocfs2/journal.h b/fs/ocfs2/journal.h
+index d4d14e9..3657926 100644
+--- a/fs/ocfs2/journal.h
++++ b/fs/ocfs2/journal.h
+@@ -445,8 +445,10 @@ static inline int ocfs2_jbd2_file_inode(handle_t *handle, struct inode *inode)
+ static inline int ocfs2_begin_ordered_truncate(struct inode *inode,
+ 					       loff_t new_size)
+ {
+-	return jbd2_journal_begin_ordered_truncate(&OCFS2_I(inode)->ip_jinode,
+-						   new_size);
++	return jbd2_journal_begin_ordered_truncate(
++				OCFS2_SB(inode->i_sb)->journal->j_journal,
++				&OCFS2_I(inode)->ip_jinode,
++				new_size);
+ }
+ 
+ #endif /* OCFS2_JOURNAL_H */
+diff --git a/include/linux/jbd2.h b/include/linux/jbd2.h
+index 7c31d67..56593cb 100644
+--- a/include/linux/jbd2.h
++++ b/include/linux/jbd2.h
+@@ -1087,7 +1087,8 @@ extern int	   jbd2_journal_clear_err  (journal_t *);
+ extern int	   jbd2_journal_bmap(journal_t *, unsigned long, unsigned long long *);
+ extern int	   jbd2_journal_force_commit(journal_t *);
+ extern int	   jbd2_journal_file_inode(handle_t *handle, struct jbd2_inode *inode);
+-extern int	   jbd2_journal_begin_ordered_truncate(struct jbd2_inode *inode, loff_t new_size);
++extern int	   jbd2_journal_begin_ordered_truncate(journal_t *journal,
++				struct jbd2_inode *inode, loff_t new_size);
+ extern void	   jbd2_journal_init_jbd_inode(struct jbd2_inode *jinode, struct inode *inode);
+ extern void	   jbd2_journal_release_jbd_inode(journal_t *journal, struct jbd2_inode *jinode);
+ 
 -- 
-__________________________________________
-Andreas Friedrich Berendsen
-SCA OCP MSCA A+ Linux+ Network+ HpMASE
+1.5.6.3
 
