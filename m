@@ -1,275 +1,476 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: [PATCH] blkid: add --disable-libblkid (v2)
-Date: Tue, 24 Feb 2009 09:44:34 +0100
-Message-ID: <20090224084434.GF6020@nb.net.home>
-References: <1235410733-4193-1-git-send-email-kzak@redhat.com> <1235410733-4193-2-git-send-email-kzak@redhat.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH, RFC] ext4: New inode/block allocation algorithms for
+	flex_bg filesystems
+Date: Tue, 24 Feb 2009 14:29:31 +0530
+Message-ID: <20090224085931.GA25657@skywalker>
+References: <20090218154310.GH3600@mini-me.lan>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35413 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751371AbZBXIpV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Feb 2009 03:45:21 -0500
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:50671 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754016AbZBXJAE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Feb 2009 04:00:04 -0500
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp07.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1O8xvOe013942
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Feb 2009 19:59:57 +1100
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n1O90EX5483456
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Feb 2009 20:00:14 +1100
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1O8xuw5017458
+	for <linux-ext4@vger.kernel.org>; Tue, 24 Feb 2009 19:59:56 +1100
 Content-Disposition: inline
-In-Reply-To: <1235410733-4193-2-git-send-email-kzak@redhat.com>
+In-Reply-To: <20090218154310.GH3600@mini-me.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Feb 23, 2009 at 06:38:52PM +0100, Karel Zak wrote:
-> This patch allows to switch between private (in-tree) libblkid and
-> public (in-system installed) library. The private version is still
-> enabled by default.
-
- I found some bugs in my previous patches. Please, use the patch
- below. This patch includes all necessary changes. Sorry.
-
-    Karel
-
-
->From 3a75bf0b06b791280c43781544290c5c8838729b Mon Sep 17 00:00:00 2001
-From: Karel Zak <kzak@redhat.com>
-Date: Tue, 24 Feb 2009 09:10:07 +0100
-Subject: [PATCH] blkid: --disable-libblkid to build with external libblkid
-
- * add --disable-libblkid to switch between private (in-tree) libblkid
-   and public (in-system installed) library. The private version is still
-   enabled by default.
-
- * add CONFIG_BUILD_FINDFS to enable/disable findfs(8) code in tune2fs.
-
-Signed-off-by: Karel Zak <kzak@redhat.com>
----
- MCONFIG.in       |   28 ++++++++++++++++++++++------
- Makefile.in      |    3 ++-
- configure.in     |   33 +++++++++++++++++++++++++++++++++
- misc/Makefile.in |   23 ++++++++++++++++-------
- misc/tune2fs.c   |    6 ++++++
- 5 files changed, 79 insertions(+), 14 deletions(-)
-
-diff --git a/MCONFIG.in b/MCONFIG.in
-index f67682e..c7c16bf 100644
---- a/MCONFIG.in
-+++ b/MCONFIG.in
-@@ -69,36 +69,52 @@ MKINSTALLDIRS = @MKINSTALLDIRS@
- #
- # Library definitions
- #
-+@BLKID_CMT@PRIVATE_LIBBLKID = yes
-+
-+# public libblkid options
-+BLKID_LIBS = @BLKID_LIBS@
-+STATIC_BLKID_LIBS = @STATIC_BLKID_LIBS@
-+
-+ifdef PRIVATE_LIBBLKID
-+LIBBLKID = $(LIB)/libblkid@LIB_EXT@ @PRIVATE_LIBS_CMT@ $(LIBUUID)
-+DEPLIBBLKID = $(LIB)/libblkid@LIB_EXT@ @PRIVATE_LIBS_CMT@ $(LIBUUID)
-+STATIC_LIBBLKID = $(LIB)/libblkid@STATIC_LIB_EXT@ $(STATIC_LIBUUID)
-+DEPSTATIC_LIBBLKID = $(LIB)/libblkid@STATIC_LIB_EXT@
-+PROFILED_LIBBLKID = $(LIB)/libblkid@PROFILED_LIB_EXT@ $(PROFILED_LIBUUID)
-+DEPPROFILED_LIBBLKID = $(LIB)/libblkid@PROFILED_LIB_EXT@
-+else
-+LIBBLKID = $(BLKID_LIBS) @PRIVATE_LIBS_CMT@ $(LIBUUID)
-+DEPLIBBLKID = $(BLKID_LIBS) @PRIVATE_LIBS_CMT@ $(LIBUUID)
-+STATIC_LIBBLKID = $(STATIC_BLKID_LIBS) $(STATIC_LIBUUID)
-+DEPSTATIC_LIBBLKID = $(STATIC_BLKID_LIBS)
-+PROFILED_LIBBLKID = $(BLKID_LIBS) $(PROFILED_LIBUUID)
-+DEPPROFILED_LIBBLKID = $(BLKID_LIBS)
-+endif
-+
- LIB = $(top_builddir)/lib
- LIBSS = $(LIB)/libss@LIB_EXT@ @PRIVATE_LIBS_CMT@ @DLOPEN_LIB@
- LIBCOM_ERR = $(LIB)/libcom_err@LIB_EXT@ @PRIVATE_LIBS_CMT@ @SEM_INIT_LIB@
- LIBE2P = $(LIB)/libe2p@LIB_EXT@
- LIBEXT2FS = $(LIB)/libext2fs@LIB_EXT@
- LIBUUID = $(LIB)/libuuid@LIB_EXT@ @SOCKET_LIB@
--LIBBLKID = $(LIB)/libblkid@LIB_EXT@ @PRIVATE_LIBS_CMT@ $(LIBUUID)
- LIBINTL = @LIBINTL@
- DEPLIBSS = $(LIB)/libss@LIB_EXT@
- DEPLIBUUID = $(LIB)/libuuid@LIB_EXT@
--DEPLIBBLKID = $(LIB)/libblkid@LIB_EXT@ @PRIVATE_LIBS_CMT@ $(LIBUUID)
- 
- STATIC_LIBSS = $(LIB)/libss@STATIC_LIB_EXT@ @DLOPEN_LIB@
- STATIC_LIBCOM_ERR = $(LIB)/libcom_err@STATIC_LIB_EXT@ @SEM_INIT_LIB@
- STATIC_LIBE2P = $(LIB)/libe2p@STATIC_LIB_EXT@
- STATIC_LIBEXT2FS = $(LIB)/libext2fs@STATIC_LIB_EXT@
- STATIC_LIBUUID = $(LIB)/libuuid@STATIC_LIB_EXT@ @SOCKET_LIB@ 
--STATIC_LIBBLKID = $(LIB)/libblkid@STATIC_LIB_EXT@ $(STATIC_LIBUUID)
- DEPSTATIC_LIBSS = $(LIB)/libss@STATIC_LIB_EXT@
- DEPSTATIC_LIBUUID = $(LIB)/libuuid@STATIC_LIB_EXT@
--DEPSTATIC_LIBBLKID = $(LIB)/libblkid@STATIC_LIB_EXT@
- 
- PROFILED_LIBSS = $(LIB)/libss@PROFILED_LIB_EXT@ @DLOPEN_LIB@
- PROFILED_LIBCOM_ERR = $(LIB)/libcom_err@PROFILED_LIB_EXT@ @SEM_INIT_LIB@
- PROFILED_LIBE2P = $(LIB)/libe2p@PROFILED_LIB_EXT@
- PROFILED_LIBEXT2FS = $(LIB)/libext2fs@PROFILED_LIB_EXT@
- PROFILED_LIBUUID = $(LIB)/libuuid@PROFILED_LIB_EXT@ @SOCKET_LIB@ 
--PROFILED_LIBBLKID = $(LIB)/libblkid@PROFILED_LIB_EXT@ $(PROFILED_LIBUUID)
- DEPPROFILED_LIBUUID = $(LIB)/libuuid@PROFILED_LIB_EXT@
--DEPPROFILED_LIBBLKID = $(LIB)/libblkid@PROFILED_LIB_EXT@
- 
- # An include directive pointing to a directory holding enough linux-like
- # include files to satisfy some programs here
-diff --git a/Makefile.in b/Makefile.in
-index 728d3a5..1f1b8ea 100644
---- a/Makefile.in
-+++ b/Makefile.in
-@@ -11,8 +11,9 @@ INSTALL = @INSTALL@
- 
- @RESIZER_CMT@RESIZE_DIR= resize
- @DEBUGFS_CMT@DEBUGFS_DIR= debugfs
-+@BLKID_CMT@BLKID_LIB_SUBDIR= lib/blkid
- 
--LIB_SUBDIRS=lib/et lib/ss lib/e2p lib/uuid lib/ext2fs lib/blkid intl
-+LIB_SUBDIRS=lib/et lib/ss lib/e2p lib/uuid lib/ext2fs $(BLKID_LIB_SUBDIR) intl
- PROG_SUBDIRS=e2fsck $(DEBUGFS_DIR) misc $(RESIZE_DIR) tests/progs po
- SUBDIRS=util $(LIB_SUBDIRS) $(PROG_SUBDIRS) tests
- 
-diff --git a/configure.in b/configure.in
-index 2534df4..732ed30 100644
---- a/configure.in
-+++ b/configure.in
-@@ -276,6 +276,39 @@ AC_MSG_RESULT([Disabling BSD shared libraries by default])
- AC_SUBST(BSDLIB_CMT)
- AC_SUBST_FILE(MAKEFILE_BSDLIB)
- dnl
-+dnl handle --disable-libblkid
-+dnl
-+PKG_PROG_PKG_CONFIG
-+BLKID_LIBS=
-+STATIC_BLKID_LIBS=
-+BLKID_CMT=
-+AC_ARG_ENABLE([libblkid],
-+[  --disable-libblkid	  do not build private blkid library],
-+if test "$enableval" = "no"
-+then
-+	if test -z "$PKG_CONFIG"; then
-+		AC_MSG_ERROR([pkg-config not installed; please install it.])
-+	fi
-+
-+	AC_CHECK_LIB(blkid, blkid_get_cache,
-+		[BLKID_LIBS=`$PKG_CONFIG --libs blkid`;
-+		 STATIC_BLKID_LIBS=`$PKG_CONFIG --static --libs blkid`],
-+		[AC_MSG_ERROR([external blkid library not found])],
-+		[$BLKID_LIBS])
-+	BLKID_CMT=#
-+	AC_MSG_RESULT([Disabling private blkid library])
-+else
-+	AC_DEFINE(CONFIG_BUILD_FINDFS)
-+	AC_MSG_RESULT([Enabling private blkid library])
-+fi
-+,
-+AC_DEFINE(CONFIG_BUILD_FINDFS)
-+AC_MSG_RESULT([Enabling private blkid library by default])
-+)
-+AC_SUBST(BLKID_CMT)
-+AC_SUBST(BLKID_LIBS)
-+AC_SUBST(STATIC_BLKID_LIBS)
-+dnl
- dnl handle --enable-profile
- dnl
- AC_ARG_ENABLE([profile],
-diff --git a/misc/Makefile.in b/misc/Makefile.in
-index e35bb8f..d426e57 100644
---- a/misc/Makefile.in
-+++ b/misc/Makefile.in
-@@ -17,11 +17,18 @@ INSTALL = @INSTALL@
- @UUIDD_CMT@UUIDD_PROG= uuidd
- @UUIDD_CMT@UUIDD_MAN= uuidd.8
- 
--SPROGS=		mke2fs badblocks tune2fs dumpe2fs blkid logsave \
-+@BLKID_CMT@BLKID_PROG= blkid
-+@BLKID_CMT@BLKID_MAN= blkid.8
-+@BLKID_CMT@BLKID_PROFILED= blkid.profiled
-+
-+@BLKID_CMT@FINDFS_LINK= findfs
-+@BLKID_CMT@FINDFS_MAN= findfs.8
-+
-+SPROGS=		mke2fs badblocks tune2fs dumpe2fs $(BLKID_PROG) logsave \
- 			$(E2IMAGE_PROG) @FSCK_PROG@ e2undo
- USPROGS=	mklost+found filefrag $(UUIDD_PROG)
- SMANPAGES=	tune2fs.8 mklost+found.8 mke2fs.8 dumpe2fs.8 badblocks.8 \
--			e2label.8 findfs.8 blkid.8 $(E2IMAGE_MAN) \
-+			e2label.8 $(FINDFS_MAN) $(BLKID_MAN) $(E2IMAGE_MAN) \
- 			logsave.8 filefrag.8 e2undo.8 $(UUIDD_MAN) @FSCK_MAN@
- FMANPAGES=	mke2fs.conf.5
- 
-@@ -94,7 +101,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
- all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
- 	$(FMANPAGES) $(LPROGS)
- 
--@PROFILE_CMT@all:: tune2fs.profiled blkid.profiled e2image.profiled \
-+@PROFILE_CMT@all:: tune2fs.profiled $(BLKID_PROFILED) e2image.profiled \
- 	e2undo.profiled mke2fs.profiled dumpe2fs.profiled fsck.profiled \
- 	logsave.profiled filefrag.profiled uuidgen.profiled uuidd.profiled \
- 	e2image.profiled
-@@ -397,9 +404,11 @@ install: all $(SMANPAGES) $(UMANPAGES) installdirs
- 	@echo "	LINK $(root_sbindir)/e2label"
- 	@$(LN) -f $(DESTDIR)$(root_sbindir)/tune2fs \
- 		$(DESTDIR)$(root_sbindir)/e2label
--	@echo "	LINK $(root_sbindir)/findfs"
--	@$(LN) -f $(DESTDIR)$(root_sbindir)/tune2fs \
--		$(DESTDIR)$(root_sbindir)/findfs
-+	@if test -n "$(FINDFS_LINK)"; then \
-+		echo "	LINK $(root_sbindir)/findfs"; \
-+		$(LN) -f $(DESTDIR)$(root_sbindir)/tune2fs \
-+			$(DESTDIR)$(root_sbindir)/findfs; \
-+	fi
- 	@for i in $(UPROGS); do \
- 		echo "	INSTALL $(bindir)/$$i"; \
- 		$(INSTALL_PROGRAM) $$i $(DESTDIR)$(bindir)/$$i; \
-@@ -509,7 +518,7 @@ uninstall:
- 	for i in $(UMANPAGES); do \
- 		$(RM) -f $(DESTDIR)$(man1dir)/$$i; \
- 	done
--	for i in findfs e2label ; do \
-+	for i in $(FINDFS_LINK) e2label ; do \
- 		$(RM) -f $(DESTDIR)$(root_sbindir)/$$i; \
- 	done
- 	for i in $(FMANPAGES); do \
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 887a702..f1c8ab9 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -95,7 +95,9 @@ struct blk_move {
- 
- static const char *please_fsck = N_("Please run e2fsck on the filesystem.\n");
- 
-+#ifdef CONFIG_BUILD_FINDFS
- void do_findfs(int argc, char **argv);
-+#endif
- 
- static void usage(void)
- {
-@@ -836,6 +838,7 @@ static void parse_tune2fs_options(int argc, char **argv)
- 	}
- }
- 
-+#ifdef CONFIG_BUILD_FINDFS
- void do_findfs(int argc, char **argv)
- {
- 	char	*dev;
-@@ -854,6 +857,7 @@ void do_findfs(int argc, char **argv)
- 	puts(dev);
- 	exit(0);
- }
-+#endif
- 
- static void parse_extended_opts(ext2_filsys fs, const char *opts)
- {
-@@ -1492,8 +1496,10 @@ int main(int argc, char **argv)
- 		program_name = *argv;
- 	add_error_table(&et_ext2_error_table);
- 
-+#ifdef CONFIG_BUILD_FINDFS
- 	if (strcmp(get_progname(argv[0]), "findfs") == 0)
- 		do_findfs(argc, argv);
-+#endif
- 	if (strcmp(get_progname(argv[0]), "e2label") == 0)
- 		parse_e2label_options(argc, argv);
- 	else
--- 
-1.6.0.6
+  4 files changed, 186 insertions(+), 51 deletions(-)
+> 
+> diff --git a/fs/ext4/ext4_i.h b/fs/ext4/ext4_i.h
+> index 2d516c0..4ce2187 100644
+> --- a/fs/ext4/ext4_i.h
+> +++ b/fs/ext4/ext4_i.h
+> @@ -122,6 +122,9 @@ struct ext4_inode_info {
+>  	struct list_head i_prealloc_list;
+>  	spinlock_t i_prealloc_lock;
+> 
+> +	/* ialloc */
+> +	ext4_group_t	i_last_alloc_group;
+> +
+>  	/* allocation reservation info for delalloc */
+>  	unsigned int i_reserved_data_blocks;
+>  	unsigned int i_reserved_meta_blocks;
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index e2eab19..0aeb8c2 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -152,6 +152,8 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+>  	ext4_fsblk_t bg_start;
+>  	ext4_fsblk_t last_block;
+>  	ext4_grpblk_t colour;
+> +	ext4_group_t block_group;
+> +	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
+>  	int depth;
+> 
+>  	if (path) {
+> @@ -170,10 +172,23 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+>  	}
+> 
+>  	/* OK. use inode's group */
+> -	bg_start = (ei->i_block_group * EXT4_BLOCKS_PER_GROUP(inode->i_sb)) +
+> +	block_group = ei->i_block_group;
+> +	if (flex_size >= 4) {
+> +		block_group &= ~(flex_size-1);
+> +		if (S_ISREG(inode->i_mode))
+> +			block_group++;
+> +	}
 
 
+Can you explain why we select 4 here ?
+
+
+Also add a comment explaining directory/symlink block allocation goes to
+first group of flex_bg and regular files goes to second group and which
+type of workload that would help ? You have the comment in commit message. 
+
+
+> +	bg_start = (block_group * EXT4_BLOCKS_PER_GROUP(inode->i_sb)) +
+>  		le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_first_data_block);
+>  	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+> 
+> +	/* 
+> +	 * If we are doing delayed allocation, we don't need take
+> +	 * colour into account.
+> +	 */
+> +	if (test_opt(inode->i_sb, DELALLOC))
+> +		return bg_start;
+> +
+
+Again why we don't want to look at colour for delayed allocation ?
+
+
+>  	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+>  		colour = (current->pid % 16) *
+>  			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+> diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+> index 21080ab..212e5be 100644
+> --- a/fs/ext4/ialloc.c
+> +++ b/fs/ext4/ialloc.c
+> @@ -409,6 +409,42 @@ out:
+>  }
+> 
+>  /*
+> + * Helper function for Orlov's allocator; returns critical information 
+> + * for a particular block group or flex_bg
+> + */
+> +struct orlov_stats {
+> +	__u32 free_inodes;
+> +	__u32 free_blocks;
+> +	__u32 used_dirs;  
+> +};
+> +
+> +void get_orlov_stats(struct super_block *sb, ext4_group_t g, 
+> +		       int flex_size, struct orlov_stats *stats)
+> +{
+> +	struct ext4_group_desc *desc;
+> +	ext4_group_t		ngroups = EXT4_SB(sb)->s_groups_count;
+> +	int			i;
+> +
+> +	stats->free_inodes = 0;
+> +	stats->free_blocks = 0;
+> +	stats->used_dirs = 0;
+> +
+> +	g *= flex_size;
+
+
+Can you add a comment to the function saying g can be flex group number
+or the actual group number depending on flex_size ?. Without that
+comment the above operation can be confusing.
+
+> +
+> +	for (i = 0; i < flex_size; i++) {
+> +		if (g >= ngroups)
+> +			break;
+> +		desc = ext4_get_group_desc(sb, g++, NULL);
+> +		if (!desc)
+> +			continue;
+> +
+> +		stats->free_inodes += ext4_free_inodes_count(sb, desc);
+> +		stats->free_blocks += ext4_free_blks_count(sb, desc);
+> +		stats->used_dirs += ext4_used_dirs_count(sb, desc);
+> +	}
+> +}
+> +
+> +/*
+>   * Orlov's allocator for directories.
+>   *
+>   * We always try to spread first-level directories.
+> @@ -423,7 +459,6 @@ out:
+>   * it has too many directories already (max_dirs) or
+>   * it has too few free inodes left (min_inodes) or
+>   * it has too few free blocks left (min_blocks) or
+> - * it's already running too large debt (max_debt).
+>   * Parent's group is preferred, if it doesn't satisfy these
+>   * conditions we search cyclically through the rest. If none
+>   * of the groups look good we just look for a group with more
+> @@ -437,7 +472,7 @@ out:
+>  #define BLOCK_COST 256
+
+You can also remove further description about debt and INODE_COST and
+BLOCK_COST
+
+
+
+> 
+>  static int find_group_orlov(struct super_block *sb, struct inode *parent,
+> -				ext4_group_t *group)
+> +			    ext4_group_t *group, int mode)
+>  {
+>  	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> @@ -446,12 +481,21 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+>  	int inodes_per_group = EXT4_INODES_PER_GROUP(sb);
+>  	unsigned int freei, avefreei;
+>  	ext4_fsblk_t freeb, avefreeb;
+> -	ext4_fsblk_t blocks_per_dir;
+>  	unsigned int ndirs;
+> -	int max_debt, max_dirs, min_inodes;
+> +	int max_dirs, min_inodes;
+>  	ext4_grpblk_t min_blocks;
+> -	ext4_group_t i;
+> +	ext4_group_t i, grp, g;
+>  	struct ext4_group_desc *desc;
+> +	struct orlov_stats stats;
+> +	int flex_size = ext4_flex_bg_size(sbi);
+> +
+> +	if (flex_size < 4)
+> +		flex_size = 1;
+> +	else {
+> +		ngroups = (ngroups + flex_size - 1) >>
+> +			sbi->s_log_groups_per_flex;
+> +		parent_group >>= sbi->s_log_groups_per_flex;
+> +	}
+> 
+>  	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+>  	avefreei = freei / ngroups;
+> @@ -460,71 +504,85 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+>  	do_div(avefreeb, ngroups);
+>  	ndirs = percpu_counter_read_positive(&sbi->s_dirs_counter);
+> 
+> -	if ((parent == sb->s_root->d_inode) ||
+> -	    (EXT4_I(parent)->i_flags & EXT4_TOPDIR_FL)) {
+> +	if (S_ISDIR(mode) &&
+> +	    ((parent == sb->s_root->d_inode) ||
+> +	     (EXT4_I(parent)->i_flags & EXT4_TOPDIR_FL))) {
+>  		int best_ndir = inodes_per_group;
+> -		ext4_group_t grp;
+>  		int ret = -1;
+> 
+>  		get_random_bytes(&grp, sizeof(grp));
+>  		parent_group = (unsigned)grp % ngroups;
+>  		for (i = 0; i < ngroups; i++) {
+> -			grp = (parent_group + i) % ngroups;
+> -			desc = ext4_get_group_desc(sb, grp, NULL);
+> -			if (!desc || !ext4_free_inodes_count(sb, desc))
+> +			g = (parent_group + i) % ngroups;
+> +			get_orlov_stats(sb, g, flex_size, &stats);
+> +			if (!stats.free_inodes)
+>  				continue;
+> -			if (ext4_used_dirs_count(sb, desc) >= best_ndir)
+> +			if (stats.used_dirs >= best_ndir)
+>  				continue;
+> -			if (ext4_free_inodes_count(sb, desc) < avefreei)
+> +			if (stats.free_inodes < avefreei)
+>  				continue;
+> -			if (ext4_free_blks_count(sb, desc) < avefreeb)
+> +			if (stats.free_blocks < avefreeb)
+>  				continue;
+> -			*group = grp;
+> +			grp = g;
+>  			ret = 0;
+> -			best_ndir = ext4_used_dirs_count(sb, desc);
+> +			best_ndir = stats.used_dirs;
+> +		}
+> +		if (ret)
+> +			goto fallback;
+> +	found_flex_bg:
+> +		if (flex_size == 1) {
+> +			*group = grp;
+> +			return 0;
+> +		}
+> +
+> +		grp *= flex_size;
+> +		for (i = 1; i < flex_size; i++) {
+
+Why we start  with i = 1 ?
+
+
+> +			if (grp+i >= sbi->s_groups_count)
+> +				break;
+> +			desc = ext4_get_group_desc(sb, grp+i, NULL);
+> +			if (desc && ext4_free_inodes_count(sb, desc)) {
+
+
+Can you add a comment saying that we just  pick the first group with
+free inode because the goal block for rest of the block allocation
+of the file/directory looks at the flex block group number with flex_bg. (more
+details on ext4_ext_find_goal)
+
+
+> +				*group = grp+i;
+> +				return 0;
+> +			}
+> +		}
+> +		desc = ext4_get_group_desc(sb, grp, NULL);
+> +		if (desc && ext4_free_inodes_count(sb, desc)) {
+> +			*group = grp;
+> +			return 0;
+>  		}
+> -		if (ret == 0)
+> -			return ret;
+>  		goto fallback;
+>  	}
+> 
+> -	blocks_per_dir = ext4_blocks_count(es) - freeb;
+> -	do_div(blocks_per_dir, ndirs);
+> -
+>  	max_dirs = ndirs / ngroups + inodes_per_group / 16;
+> -	min_inodes = avefreei - inodes_per_group / 4;
+> -	min_blocks = avefreeb - EXT4_BLOCKS_PER_GROUP(sb) / 4;
+> -
+> -	max_debt = EXT4_BLOCKS_PER_GROUP(sb);
+> -	max_debt /= max_t(int, blocks_per_dir, BLOCK_COST);
+> -	if (max_debt * INODE_COST > inodes_per_group)
+> -		max_debt = inodes_per_group / INODE_COST;
+> -	if (max_debt > 255)
+> -		max_debt = 255;
+> -	if (max_debt == 0)
+> -		max_debt = 1;
+> +	min_inodes = avefreei - inodes_per_group*flex_size / 4;
+> +	if (min_inodes < 1)
+> +		min_inodes = 1;
+> +	min_blocks = avefreeb - EXT4_BLOCKS_PER_GROUP(sb)*flex_size / 4;
+> 
+>  	for (i = 0; i < ngroups; i++) {
+> -		*group = (parent_group + i) % ngroups;
+> -		desc = ext4_get_group_desc(sb, *group, NULL);
+> -		if (!desc || !ext4_free_inodes_count(sb, desc))
+> +		grp = (parent_group + i) % ngroups;
+> +		get_orlov_stats(sb, grp, flex_size, &stats);
+> +		if (stats.used_dirs >= max_dirs)
+>  			continue;
+> -		if (ext4_used_dirs_count(sb, desc) >= max_dirs)
+> +		if (stats.free_inodes < min_inodes)
+>  			continue;
+> -		if (ext4_free_inodes_count(sb, desc) < min_inodes)
+> +		if (stats.free_blocks < min_blocks)
+>  			continue;
+> -		if (ext4_free_blks_count(sb, desc) < min_blocks)
+> -			continue;
+> -		return 0;
+> +		goto found_flex_bg;
+>  	}
+> 
+>  fallback:
+> +	ngroups = sbi->s_groups_count;
+> +	avefreei = freei / ngroups;
+> +	parent_group = EXT4_I(parent)->i_block_group;
+>  	for (i = 0; i < ngroups; i++) {
+> -		*group = (parent_group + i) % ngroups;
+> -		desc = ext4_get_group_desc(sb, *group, NULL);
+> +		grp = (parent_group + i) % ngroups;
+> +		desc = ext4_get_group_desc(sb, grp, NULL);
+>  		if (desc && ext4_free_inodes_count(sb, desc) &&
+> -			ext4_free_inodes_count(sb, desc) >= avefreei)
+> +		    ext4_free_inodes_count(sb, desc) >= avefreei) {
+> +			*group = grp;
+>  			return 0;
+> +		}
+>  	}
+> 
+>  	if (avefreei) {
+> @@ -540,12 +598,54 @@ fallback:
+>  }
+> 
+>  static int find_group_other(struct super_block *sb, struct inode *parent,
+> -				ext4_group_t *group)
+> +			    ext4_group_t *group, int mode)
+>  {
+>  	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+>  	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
+>  	struct ext4_group_desc *desc;
+> -	ext4_group_t i;
+> +	ext4_group_t i, last;
+> +	int flex_size = ext4_flex_bg_size(EXT4_SB(sb));
+> +
+> +	/*
+> +	 * If we are doing flex_bg style allocation, try to put
+> +	 * special inodes in the first block group; start files and
+> +	 * directories at the 2nd block group in the flex_bg.
+> +	 */
+
+Why ? Can you explain whether this placing helps any specific work load
+? or something where you have observed that this placement helps ?  
+
+> +	if (flex_size >= 4) {
+> +		int ret, retry = 0;
+> +
+> +	try_again:
+> +		i = (parent_group & ~(flex_size-1));
+> +		last = i+flex_size;
+> +		if (last > ngroups)
+> +			last = ngroups;
+> +		if (S_ISDIR(mode) || S_ISREG(mode))
+> +			i++;
+> +		while (i < last) {
+> +			desc = ext4_get_group_desc(sb, i, NULL);
+> +			if (desc && ext4_free_inodes_count(sb, desc)) {
+> +				*group = i;
+> +				return 0;
+> +			}
+> +			i++;
+> +		}
+> +		if (!retry && EXT4_I(parent)->i_last_alloc_group != ~0) {
+> +			retry = 1;
+> +			parent_group = EXT4_I(parent)->i_last_alloc_group;
+> +			goto try_again;
+> +		}
+> +		/*
+> +		 * If this didn't work, use the Orlov search
+> +		 * algorithm; we pass in the mode to avoid the subdir
+> +		 * of topdir algorithms.  If successful, save the
+> +		 * group that we used so that future allocations in
+> +		 * that directory are stable.
+> +		 */
+> +		ret = find_group_orlov(sb, parent, &parent_group, mode);
+> +		if (ret == 0)
+> +			EXT4_I(parent)->i_last_alloc_group = parent_group;
+> +		return ret;
+> +	}
+> 
+>  	/*
+>  	 * Try to place the inode in its parent directory
+> @@ -713,10 +813,10 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+>  	sbi = EXT4_SB(sb);
+>  	es = sbi->s_es;
+> 
+> -	if (sbi->s_log_groups_per_flex) {
+> +	if (sbi->s_log_groups_per_flex && test_opt(sb, OLDALLOC)) {
+>  		ret2 = find_group_flex(sb, dir, &group);
+>  		if (ret2 == -1) {
+> -			ret2 = find_group_other(sb, dir, &group);
+> +			ret2 = find_group_other(sb, dir, &group, mode);
+>  			if (ret2 == 0)
+>  				printk(KERN_NOTICE "ext4: find_group_flex "
+>  				       "failed, fallback succeeded dir %lu\n",
+> @@ -729,9 +829,9 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+>  		if (test_opt(sb, OLDALLOC))
+>  			ret2 = find_group_dir(sb, dir, &group);
+>  		else
+> -			ret2 = find_group_orlov(sb, dir, &group);
+> +			ret2 = find_group_orlov(sb, dir, &group, mode);
+>  	} else
+> -		ret2 = find_group_other(sb, dir, &group);
+> +		ret2 = find_group_other(sb, dir, &group, mode);
+> 
+>  got_group:
+>  	err = -ENOSPC;
+> @@ -890,6 +990,7 @@ got:
+>  	ei->i_file_acl = 0;
+>  	ei->i_dtime = 0;
+>  	ei->i_block_group = group;
+> +	ei->i_last_alloc_group = ~0;
+> 
+>  	ext4_set_inode_flags(inode);
+>  	if (IS_DIRSYNC(inode))
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index cbd2ca9..12f1374 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -459,6 +459,8 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+>  	ext4_fsblk_t bg_start;
+>  	ext4_fsblk_t last_block;
+>  	ext4_grpblk_t colour;
+> +	ext4_group_t block_group;
+> +	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
+> 
+>  	/* Try to find previous block */
+>  	for (p = ind->p - 1; p >= start; p--) {
+> @@ -474,9 +476,22 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+>  	 * It is going to be referred to from the inode itself? OK, just put it
+>  	 * into the same cylinder group then.
+>  	 */
+> -	bg_start = ext4_group_first_block_no(inode->i_sb, ei->i_block_group);
+> +	block_group = ei->i_block_group;
+> +	if (flex_size >= 4) {
+> +		block_group &= ~(flex_size-1);
+> +		if (S_ISREG(inode->i_mode))
+> +			block_group++;
+> +	}
+> +	bg_start = ext4_group_first_block_no(inode->i_sb, block_group);
+>  	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+> 
+> +	/* 
+> +	 * If we are doing delayed allocation, we don't need take
+> +	 * colour into account.
+> +	 */
+> +	if (test_opt(inode->i_sb, DELALLOC))
+> +		return bg_start;
+> +
+>  	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+>  		colour = (current->pid % 16) *
+>  			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+> @@ -4250,6 +4265,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+>  	ei->i_disksize = inode->i_size;
+>  	inode->i_generation = le32_to_cpu(raw_inode->i_generation);
+>  	ei->i_block_group = iloc.block_group;
+> +	ei->i_last_alloc_group = ~0;
+>  	/*
+>  	 * NOTE! The in-memory inode i_data array is in little-endian order
+>  	 * even on big-endian machines: we do NOT byteswap the block numbers!
+> -- 
+
+-aneesh
