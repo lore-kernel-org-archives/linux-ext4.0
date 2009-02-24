@@ -1,131 +1,230 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC] ext4: add EXT4_IOC_ALLOC_DA_BLKS ioctl
-Date: Tue, 24 Feb 2009 00:05:50 -0500
-Message-ID: <1235451952-2726-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC] ext4: Simplify delalloc implementation by removing mpd.get_block
+Date: Tue, 24 Feb 2009 00:05:47 -0500
+Message-ID: <1235451952-2726-2-git-send-email-tytso@mit.edu>
 References: <1235451952-2726-1-git-send-email-tytso@mit.edu>
- <1235451952-2726-2-git-send-email-tytso@mit.edu>
- <1235451952-2726-3-git-send-email-tytso@mit.edu>
- <1235451952-2726-4-git-send-email-tytso@mit.edu>
 Cc: aneesh.kumar@linux.vnet.ibm.com, Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40272 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:40277 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751491AbZBXFGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751349AbZBXFGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 24 Feb 2009 00:06:04 -0500
-In-Reply-To: <1235451952-2726-4-git-send-email-tytso@mit.edu>
+In-Reply-To: <1235451952-2726-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add an ioctl which forces all of the delay allocated blocks to be
-allocated.  This also provides a function ext4_alloc_da_blocks() which
-will be used by the following commits to force files to be fully
-allocated to preserve application-expected ext3 behaviour.
+This parameter was always set to ext4_da_get_block_write().
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h  |    2 ++
- fs/ext4/inode.c |   42 ++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ioctl.c |   13 +++++++++++++
- 3 files changed, 57 insertions(+), 0 deletions(-)
+ fs/ext4/inode.c |  125 +++++++++++++++++++++++++-----------------------------
+ 1 files changed, 58 insertions(+), 67 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 9840cad..626bda7 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -316,6 +316,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
- #define EXT4_IOC_GROUP_ADD		_IOW('f', 8, struct ext4_new_group_input)
- #define EXT4_IOC_MIGRATE		_IO('f', 9)
-+#define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 10)
-  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
- 
- /*
-@@ -1094,6 +1095,7 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
- extern int ext4_block_truncate_page(handle_t *handle,
- 		struct address_space *mapping, loff_t from);
- extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
-+extern int ext4_alloc_da_blocks(struct inode *inode);
- 
- /* ioctl.c */
- extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 1216fb9..c66af1c 100644
+index fd08f78..a533314 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2807,6 +2807,48 @@ out:
+@@ -1675,7 +1675,6 @@ struct mpage_da_data {
+ 	struct inode *inode;
+ 	struct buffer_head lbh;			/* extent of blocks */
+ 	unsigned long first_page, next_page;	/* extent of pages */
+-	get_block_t *get_block;
+ 	struct writeback_control *wbc;
+ 	int io_done;
+ 	int pages_written;
+@@ -1689,7 +1688,6 @@ struct mpage_da_data {
+  * @mpd->inode: inode
+  * @mpd->first_page: first page of the extent
+  * @mpd->next_page: page after the last page of the extent
+- * @mpd->get_block: the filesystem's block mapper function
+  *
+  * By the time mpage_da_submit_io() is called we expect all blocks
+  * to be allocated. this may be wrong if allocation failed.
+@@ -1899,16 +1897,60 @@ static void ext4_print_free_blocks(struct inode *inode)
  	return;
  }
  
-+/*
-+ * Force all delayed allocation blocks to be allocated for a given inode.
-+ */
-+int ext4_alloc_da_blocks(struct inode *inode)
++#define		EXT4_DELALLOC_RSVED	1
++static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
++				   struct buffer_head *bh_result, int create)
 +{
-+	if (!EXT4_I(inode)->i_reserved_data_blocks &&
-+	    !EXT4_I(inode)->i_reserved_meta_blocks)
-+		return 0;
++	int ret;
++	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
++	loff_t disksize = EXT4_I(inode)->i_disksize;
++	handle_t *handle = NULL;
 +
-+	/*
-+	 * We do something simple for now.  The filemap_flush() will
-+	 * also start triggering a write of the data blocks, which is
-+	 * not strictly speaking necessary (and for users of
-+	 * laptop_mode, not even desirable).  However, to do otherwise
-+	 * would require replicating code paths in:
-+	 * 
-+	 * ext4_da_writepages() ->
-+	 *    write_cache_pages() ---> (via passed in callback function)
-+	 *        __mpage_da_writepage() -->
-+	 *           mpage_add_bh_to_extent()
-+	 *           mpage_da_map_blocks()
-+	 *
-+	 * The problem is that write_cache_pages(), located in
-+	 * mm/page-writeback.c, marks pages clean in preparation for
-+	 * doing I/O, which is not desirable if we're not planning on
-+	 * doing I/O at all.
-+	 *
-+	 * We could call write_cache_pages(), and then redirty all of
-+	 * the pages by calling redirty_page_for_writeback() but that
-+	 * would be ugly in the extreme.  So instead we would need to
-+	 * replicate parts of the code in the above functions,
-+	 * simplifying them becuase we wouldn't actually intend to
-+	 * write out the pages, but rather only collect contiguous
-+	 * logical block extents, call the multi-block allocator, and
-+	 * then update the buffer heads with the block allocations.
-+	 * 
-+	 * For now, though, we'll cheat by calling filemap_flush(),
-+	 * which will map the blocks, and start the I/O, but not
-+	 * actually wait for the I/O to complete.
-+	 */
-+	return filemap_flush(inode->i_mapping);
-+}
- 
- /*
-  * bmap() is special.  It gets used by applications such as lilo and by
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 22dd29f..0d59f5f 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -262,6 +262,19 @@ setversion_out:
- 		return err;
- 	}
- 
-+	case EXT4_IOC_ALLOC_DA_BLKS:
-+	{
-+		int err;
-+		if (!is_owner_or_cap(inode))
-+			return -EACCES;
++	handle = ext4_journal_current_handle();
++	BUG_ON(!handle);
++	ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
++				   bh_result, create, 0, EXT4_DELALLOC_RSVED);
++	if (ret <= 0)
++		return ret;
 +
-+		err = mnt_want_write(filp->f_path.mnt);
-+		if (err)
-+			return err;
-+		err = ext4_alloc_da_blocks(inode);
-+		return err;
++	bh_result->b_size = (ret << inode->i_blkbits);
++
++	if (ext4_should_order_data(inode)) {
++		int retval;
++		retval = ext4_jbd2_file_inode(handle, inode);
++		if (retval)
++			/*
++			 * Failed to add inode for ordered mode. Don't
++			 * update file size
++			 */
++			return retval;
 +	}
 +
- 	default:
- 		return -ENOTTY;
- 	}
++	/*
++	 * Update on-disk size along with block allocation we don't
++	 * use 'extend_disksize' as size may change within already
++	 * allocated block -bzzz
++	 */
++	disksize = ((loff_t) iblock + ret) << inode->i_blkbits;
++	if (disksize > i_size_read(inode))
++		disksize = i_size_read(inode);
++	if (disksize > EXT4_I(inode)->i_disksize) {
++		ext4_update_i_disksize(inode, disksize);
++		ret = ext4_mark_inode_dirty(handle, inode);
++		return ret;
++	}
++	return 0;
++}
++
+ /*
+  * mpage_da_map_blocks - go through given space
+  *
+  * @mpd->lbh - bh describing space
+- * @mpd->get_block - the filesystem's block mapper function
+  *
+  * The function skips space we know is already mapped to disk blocks.
+  *
+  */
+-static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
++static int mpage_da_map_blocks(struct mpage_da_data *mpd)
+ {
+ 	int err = 0;
+ 	struct buffer_head new;
+@@ -1930,30 +1972,29 @@ static int  mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	 */
+ 	if (!new.b_size)
+ 		return 0;
+-	err = mpd->get_block(mpd->inode, next, &new, 1);
+-	if (err) {
+ 
+-		/* If get block returns with error
+-		 * we simply return. Later writepage
+-		 * will redirty the page and writepages
+-		 * will find the dirty page again
++	err = ext4_da_get_block_write(mpd->inode, next, &new, 1);
++	if (err) {
++		/*
++		 * If get block returns with error we simply
++		 * return. Later writepage will redirty the page and
++		 * writepages will find the dirty page again
+ 		 */
+ 		if (err == -EAGAIN)
+ 			return 0;
+ 
+ 		if (err == -ENOSPC &&
+-				ext4_count_free_blocks(mpd->inode->i_sb)) {
++		    ext4_count_free_blocks(mpd->inode->i_sb)) {
+ 			mpd->retval = err;
+ 			return 0;
+ 		}
+ 
+ 		/*
+-		 * get block failure will cause us
+-		 * to loop in writepages. Because
+-		 * a_ops->writepage won't be able to
+-		 * make progress. The page will be redirtied
+-		 * by writepage and writepages will again
+-		 * try to write the same.
++		 * get block failure will cause us to loop in
++		 * writepages, because a_ops->writepage won't be able
++		 * to make progress. The page will be redirtied by
++		 * writepage and writepages will again try to write
++		 * the same.
+ 		 */
+ 		printk(KERN_EMERG "%s block allocation failed for inode %lu "
+ 				  "at logical offset %llu with max blocks "
+@@ -2182,7 +2223,6 @@ static int __mpage_da_writepage(struct page *page,
+  *
+  * @mapping: address space structure to write
+  * @wbc: subtract the number of written pages from *@wbc->nr_to_write
+- * @get_block: the filesystem's block mapper function.
+  *
+  * This is a library function, which implements the writepages()
+  * address_space_operation.
+@@ -2193,9 +2233,6 @@ static int mpage_da_writepages(struct address_space *mapping,
+ {
+ 	int ret;
+ 
+-	if (!mpd->get_block)
+-		return generic_writepages(mapping, wbc);
+-
+ 	mpd->lbh.b_size = 0;
+ 	mpd->lbh.b_state = 0;
+ 	mpd->lbh.b_blocknr = 0;
+@@ -2259,51 +2296,6 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 
+ 	return ret;
+ }
+-#define		EXT4_DELALLOC_RSVED	1
+-static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
+-				   struct buffer_head *bh_result, int create)
+-{
+-	int ret;
+-	unsigned max_blocks = bh_result->b_size >> inode->i_blkbits;
+-	loff_t disksize = EXT4_I(inode)->i_disksize;
+-	handle_t *handle = NULL;
+-
+-	handle = ext4_journal_current_handle();
+-	BUG_ON(!handle);
+-	ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
+-			bh_result, create, 0, EXT4_DELALLOC_RSVED);
+-	if (ret > 0) {
+-
+-		bh_result->b_size = (ret << inode->i_blkbits);
+-
+-		if (ext4_should_order_data(inode)) {
+-			int retval;
+-			retval = ext4_jbd2_file_inode(handle, inode);
+-			if (retval)
+-				/*
+-				 * Failed to add inode for ordered
+-				 * mode. Don't update file size
+-				 */
+-				return retval;
+-		}
+-
+-		/*
+-		 * Update on-disk size along with block allocation
+-		 * we don't use 'extend_disksize' as size may change
+-		 * within already allocated block -bzzz
+-		 */
+-		disksize = ((loff_t) iblock + ret) << inode->i_blkbits;
+-		if (disksize > i_size_read(inode))
+-			disksize = i_size_read(inode);
+-		if (disksize > EXT4_I(inode)->i_disksize) {
+-			ext4_update_i_disksize(inode, disksize);
+-			ret = ext4_mark_inode_dirty(handle, inode);
+-			return ret;
+-		}
+-		ret = 0;
+-	}
+-	return ret;
+-}
+ 
+ static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
+ {
+@@ -2554,7 +2546,6 @@ retry:
+ 			dump_stack();
+ 			goto out_writepages;
+ 		}
+-		mpd.get_block = ext4_da_get_block_write;
+ 		ret = mpage_da_writepages(mapping, wbc, &mpd);
+ 
+ 		ext4_journal_stop(handle);
 -- 
 1.5.6.3
 
