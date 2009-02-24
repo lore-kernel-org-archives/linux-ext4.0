@@ -1,67 +1,72 @@
 From: Andreas Friedrich Berendsen <afberendsen@gmail.com>
-Subject: Re: possible ext4 race situation freezing linux
-Date: Wed, 25 Feb 2009 06:03:33 +1300
-Message-ID: <1235495013.11758.37.camel@localhost.localdomain>
-References: <1235478142.11758.9.camel@localhost.localdomain>
-	 <20090224141749.GC5482@mit.edu>  <49A41469.6090604@redhat.com>
+Subject: Re: May I suggested an update for ext4.txt file?
+Date: Wed, 25 Feb 2009 06:14:21 +1300
+Message-ID: <1235495661.11758.40.camel@localhost.localdomain>
+References: <1235494800.11758.28.camel@localhost.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-To: linux-ext4 <linux-ext4@vger.kernel.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.228]:5443 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754389AbZBXRDl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Feb 2009 12:03:41 -0500
-Received: by rv-out-0506.google.com with SMTP id g37so2556548rvb.1
-        for <linux-ext4@vger.kernel.org>; Tue, 24 Feb 2009 09:03:39 -0800 (PST)
-In-Reply-To: <49A41469.6090604@redhat.com>
+Received: from yw-out-2324.google.com ([74.125.46.30]:29184 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752586AbZBXROb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Feb 2009 12:14:31 -0500
+Received: by yw-out-2324.google.com with SMTP id 5so1096971ywh.1
+        for <linux-ext4@vger.kernel.org>; Tue, 24 Feb 2009 09:14:28 -0800 (PST)
+In-Reply-To: <1235494800.11758.28.camel@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Tso & Eric,
+>From http://kernelnewbies.org/Ext4 "3.2. Migrate existing Ext3
+filesystems to Ext4", instructions to migrate are different from the
+ext4.txt file:
 
-I'll try again to reproduce the error, but when the system freezes, I
-have the X interface running. And, indeed, I'm not familiar with the
-behaviour of sysreq. Which sysrq should I use when the problem happens?
-Will the system change to the text interface? If there are no disk
-activity (all leds are off), where the information will be recorded?
+/* ----------------------- */
+
+You need to use the tune2fs and fsck tools in the filesystem, and that
+filesystem needs to be unmounted. Run: 
+
+
+      * tune2fs -O extents,uninit_bg,dir_index /dev/yourfilesystem 
+        
+
+After running this command you MUST run fsck. If you don't do it, Ext4
+WILL NOT MOUNT your filesystem. 
+
+/* -------------------------- *
 
 -- Berendsen
 
------Original Message-----
-From: Eric Sandeen <sandeen@redhat.com>
-To: Theodore Tso <tytso@mit.edu>
-Cc: Andreas Friedrich Berendsen <afberendsen@gmail.com>,
-linux-ext4@vger.kernel.org
-Subject: Re: possible ext4 race situation freezing linux
-Date: Tue, 24 Feb 2009 09:38:17 -0600
+----Original Message-----
+From: Andreas Friedrich Berendsen <afberendsen@gmail.com>
+To: linux-ext4@vger.kernel.org
+Subject: May I suggested an update for ext4.txt file?
+Date: Wed, 25 Feb 2009 06:00:07 +1300
 
-Theodore Tso wrote:
-> On Wed, Feb 25, 2009 at 01:22:22AM +1300, Andreas Friedrich Berendsen wrote:
->> Kernel version: 2.26.28.7
->> efs2progs version: 1.41.4
->> arch: x86_64 (amd)
->>
->> I made this test four times and the results  were the same: linux
->> freezes and becomes unresponsive. Only solution is to reset the box. I
->> do not know if the problem is with the USB devices sub-subsystem or a
->> possible ext4 race condition.
-> 
-> Can you use alt-sysrq to get some stack traces or a register dump out,
-> so we can see where the kernel is hanging?
-> 
->       	      	    	       	  - Ted
+kernel 2.6.28.7
+efs2prog: 1.41.4
 
-alt-sysrq-w would be a good place to start (just in case you're not
-familiar w/ the sysrq keys)
+File Documentation/filesystems/ext4.txt states:
 
-It'd also be great to test w/ 2.6.29, as a deadlock was fixed there
-recently (it's on its way to .28.x too AFAIK)
+...
+    Or to configure an existing ext3 filesystem to support extents:
 
-Thanks,
+        # tune2fs -O extents /dev/hda1
+....
 
--Eric
+
+To convert from ext2 (a very old filesystem :) ) to ext4, it's necessary
+to add more options. I'm not sure which one made the trick.
+
+tune2fs -O
+has_journal,dir_index,filetype,extent,flex_bg,sparse_super,large_file,huge_file,uninit_bg,dir_nlink,extra_isize 
+
+Also, /etc/filesystems does not contain an entry for
+ext4. /etc/efs2prog.conf is ok.
+
+-- Berendsen
+
 -- 
 __________________________________________
 Andreas Friedrich Berendsen
