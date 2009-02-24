@@ -1,126 +1,107 @@
 From: Jan Kara <jack@suse.cz>
 Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
-Date: Tue, 24 Feb 2009 16:51:20 +0100
-Message-ID: <20090224155119.GC22108@duck.suse.cz>
-References: <49A2705D.9030008@in.ibm.com> <20090223021320.11019d64.akpm@linux-foundation.org> <18850.31567.212454.514549@cargo.ozlabs.ibm.com> <20090223155116.GB5764@atrey.karlin.mff.cuni.cz> <49A395ED.5030607@in.ibm.com>
+Date: Tue, 24 Feb 2009 17:14:06 +0100
+Message-ID: <20090224161406.GA13313@atrey.karlin.mff.cuni.cz>
+References: <49A2705D.9030008@in.ibm.com>
+	<20090223021320.11019d64.akpm@linux-foundation.org>
+	<49A27EE8.5030700@in.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Paul Mackerras <paulus@samba.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Mel Gorman <mel@csn.ul.ie>, linuxppc-dev@ozlabs.org,
-	linux-ext4@vger.kernel.org, Jan Kara <jack@ucw.cz>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Mark Nelson <markn@au1.ibm.com>
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: Mel Gorman <mel@csn.ul.ie>, linuxppc-dev@ozlabs.org,
+	Andrew Morton <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org,
+	linux-kernel <linux-kernel@vger.kernel.org>
 To: "Sachin P. Sant" <sachinp@in.ibm.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.suse.de ([195.135.220.2]:42454 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751048AbZBXPv1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Feb 2009 10:51:27 -0500
+Return-path: <linuxppc-dev-bounces+glppe-linuxppc-embedded-2=m.gmane.org@ozlabs.org>
 Content-Disposition: inline
-In-Reply-To: <49A395ED.5030607@in.ibm.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <49A27EE8.5030700@in.ibm.com>
+List-Unsubscribe: <https://ozlabs.org/mailman/options/linuxppc-dev>,
+	<mailto:linuxppc-dev-request@ozlabs.org?subject=unsubscribe>
+List-Archive: <http://ozlabs.org/pipermail/linuxppc-dev>
+List-Post: <mailto:linuxppc-dev@ozlabs.org>
+List-Help: <mailto:linuxppc-dev-request@ozlabs.org?subject=help>
+List-Subscribe: <https://ozlabs.org/mailman/listinfo/linuxppc-dev>,
+	<mailto:linuxppc-dev-request@ozlabs.org?subject=subscribe>
+Sender: linuxppc-dev-bounces+glppe-linuxppc-embedded-2=m.gmane.org@ozlabs.org
+Errors-To: linuxppc-dev-bounces+glppe-linuxppc-embedded-2=m.gmane.org@ozlabs.org
+List-Id: linux-ext4.vger.kernel.org
 
-  Hello,
-
-On Tue 24-02-09 12:08:37, Sachin P. Sant wrote:
-> Jan Kara wrote:
->>   Hmm, OK. But then I'm not sure how that can happen. Obviously, memcpy
->> somehow got beyond end of the page referenced by bh->b_data. So it means
->> that le16_to_cpu(entry->e_value_offs) + size > page_size. But
->> ext3_xattr_find_entry() calls ext3_xattr_check_entry() which in
->> particular checks whether e_value_offs + e_value_size isn't greater than
->> bh->b_size. So I see no way how memcpy can get beyond end of the page.
->>   Sachin, is the problem reproducible? If yes, can you send us contents
->>   
-> Yes, i am able to recreate this problem easily. As i had mentioned if the
-> earlier kernel is booted with selinux enabled and then 2.6.29-rc6 is booted
-> i get this crash. But if i specify selinux=0 at command line, 2.6.29-rc6 boots
-> without any problem.
->
->> of the page just before the faulting address (i.e., for current fault it
->> would be 0xc00000003f370000-0xc00000003f37ffff). As far as I can
->> remember powerpc monitor could dump it.
->>   
-> Here is the page dump. This time it crashed while accessing address
-> 0xc00000002d670000.
-  Thanks for the dump.
-
-> Unable to handle kernel paging request for data at address 0xc0000
-> 0002d670000
-> Faulting instruction address: 0xc000000000039574
-> cpu 0x1: Vector: 300 (Data Access) at [c00000004288b0b0]
->    pc: c000000000039574: .memcpy+0x74/0x244
->    lr: c0000000001b497c: .ext3_xattr_get+0x288/0x2f4
->    sp: c00000004288b330
->   msr: 8000000000009032
->
-> 1:mon> d 0xc00000002d660000
-> ............................... <SNIP> ...............................
->
-> c00000002d66efd0 0000000000000000 0000000000000000  |................|
-> c00000002d66efe0 0000000000000000 0000000000000000  |................|
-> c00000002d66eff0 0000000000000000 0000000000000000  |................|
-> c00000002d66f000 000002ea00040000 01000000e200d20a  |................|
-> c00000002d66f010 0000000000000000 0000000000000000  |................|
-> c00000002d66f020 0706e40f00000000 1b000000e200d20a  |................|
-> c00000002d66f030 73656c696e757800 0000000000000000  |selinux.........|
-> c00000002d66f040 0000000000000000 0000000000000000  |................|
-> c00000002d66f050 0000000000000000 0000000000000000  |................|
-> c00000002d66f060 0000000000000000 0000000000000000  |................|
->
-> ............................... <SNIP> ...............................
->
-> c00000002d66ff60 0000000000000000 0000000000000000  |................|
-> c00000002d66ff70 0000000000000000 0000000000000000  |................|
-> c00000002d66ff80 0000000000000000 0000000000000000  |................|
-> c00000002d66ff90 0000000000000000 0000000000000000  |................|
-> c00000002d66ffa0 0000000000000000 0000000000000000  |................|
-> c00000002d66ffb0 0000000000000000 0000000000000000  |................|
-> c00000002d66ffc0 0000000000000000 0000000000000000  |................|
-> c00000002d66ffd0 0000000000000000 0000000000000000  |................|
-> c00000002d66ffe0 0000000073797374 656d5f753a6f626a  |....system_u:obj|
-> c00000002d66fff0 6563745f723a7573 725f743a73300000  |ect_r:usr_t:s0..|
-> c00000002d670000 **************** ****************  |                |
-> 1:mon> r
-> R00 = 000000000000e40f   R16 = 000000000000005d
-> R01 = c00000004288b330   R17 = 0000000000000000
-> R02 = c0000000009f59b8   R18 = 00000000fffbfe9e
-> R03 = c000000044aa34a0   R19 = 0000000010042638
-> R04 = c00000002d66fff4   R20 = 0000000010041610
+> Andrew Morton wrote:
+> >hm, I wonder what could have caused that - we haven't altered
+> >fs/ext3/xattr.c in ages.
+> >
+> >What is the most recent kernel version you know of which didn't do
+> >this?  Bear in mind that this crash might be triggered by the
+> >current contents of the filesystem, so if possible, please test
+> >some other kernel versions on that disk.
+> >  
+> I am trying to boot a vanilla kernel on this machine for the first
+> time. Haven't tried any other kernels. Will give it a try.
+> 
+> >It looks like we died in ext3_xattr_block_get():
+> >
+> >		memcpy(buffer, bh->b_data + le16_to_cpu(entry->e_value_offs),
+> >		       size);
+> >
+> >Perhaps entry->e_value_offs is no good.  I wonder if the filesystem is
+> >corrupted and this snuck through the defenses.
+> >
+> >I also wonder if there is enough info in that trace for a ppc person to
+> >be able to determine whether the faulting address is in the source or
+> >destination of the memcpy() (please)?
+> >  
+> Some more information if this could be of any help.
+> 
+> 0:mon> di 0xc000000000039574
+> c000000000039574  e9240008      ld      r9,8(r4)
+> c000000000039578  409d0010      ble     cr7,c000000000039588    # 
+> .memcpy+0x88/0x244
+> c00000000003957c  79290002      rotldi  r9,r9,32
+> c000000000039580  91230000      stw     r9,0(r3)
+> c000000000039584  38630004      addi    r3,r3,4
+> c000000000039588  409e0010      bne     cr7,c000000000039598    # 
+> .memcpy+0x98/0x244
+> c00000000003958c  79298000      rotldi  r9,r9,16
+> c000000000039590  b1230000      sth     r9,0(r3)
+> c000000000039594  38630002      addi    r3,r3,2
+> c000000000039598  409f000c      bns     cr7,c0000000000395a4    # 
+> .memcpy+0xa4/0x244
+> c00000000003959c  79294000      rotldi  r9,r9,8
+> c0000000000395a0  99230000      stb     r9,0(r3)
+> c0000000000395a4  e8610030      ld      r3,48(r1)
+> c0000000000395a8  4e800020      blr
+> c0000000000395ac  78a6e8c2      rldicl  r6,r5,61,3
+> c0000000000395b0  38a5fff0      addi    r5,r5,-16
+> 0:mon> r
+> R00 = 000000000000e40f   R16 = 00000000100edbc8
+> R01 = c00000003e59b3e0   R17 = 00000000100b0000
+> R02 = c0000000009c2110   R18 = 0000000000000005
+> R03 = c000000044bc90e0   R19 = 00000000fff0d7a8
+> R04 = c000000039cffff4   R20 = 00000000fff0d708
 > R05 = 0000000000000003   R21 = 00000000000000ff
 > R06 = 0000000000000000   R22 = 0000000000000006
-> R07 = 0000000000000001   R23 = c0000000007d27c1
-> R08 = 723a7573725f743a   R24 = c00000002c0cd758
-> R09 = 3a6f626a6563745f   R25 = c000000044aa3488
-> R10 = c00000000017b43c   R26 = c00000002c0cd6f0
-> R11 = c00000002d66f020   R27 = c00000002c0cd860
-> R12 = d0000000023c14b0   R28 = c00000002c0b0840
-> R13 = c000000000a93680   R29 = 000000000000001b
-> R14 = 00000000000041ed   R30 = c0000000009880b0
-> R15 = 0000000010040000   R31 = ffffffffffffffde
+> R07 = 0000000000000001   R23 = c00000000079ab49
+> R08 = 723a7573725f743a   R24 = c0000000372fe2a8
+> R09 = 3a6f626a6563745f   R25 = c000000044bc90c8
+> R10 = c00000003b250968   R26 = c0000000372fe240
+> R11 = c000000000039500   R27 = c0000000372fe3b0
+> R12 = d00000000244c590   R28 = c0000000372c5280
+> R13 = c000000000a53480   R29 = 000000000000001b
+> R14 = 00000000100d0000   R30 = d0000000024654d0
+> R15 = 0000000000000000   R31 = ffffffffffffffde
 > pc  = c000000000039574 .memcpy+0x74/0x244
-> lr  = c0000000001b497c .ext3_xattr_get+0x288/0x2f4
-> msr = 8000000000009032   cr  = 4400044b
-> ctr = 0000000000000000   xer = 0000000020000001   trap =  300
-> dar = c00000002d670000   dsisr = 40000000
-> 1:mon> zr
->
->>   BTW, I suppose you use 4KB blocksize on the filesystem, right?
->>   
-> Yes.
->
-> dumpe2fs /dev/sda3 | grep -i "block size" dumpe2fs 1.39 (29-May-2006)
-> Block size:               4096
-  OK. The xattr block causing oops is completely correct. To me it seems
-more like some problem in powerpc memcpy() (I saw there went some changes
-into in in the end of December) - we call it to copy 27 bytes from
-address 0xc00000002d66ffe4 (which is one byte before end of the page).
-Could some of the powerpc guys have a look whether this could be the case?
-I'm not quite fluent in the powerpc assembly so it would take me ages ;).
+> lr  = d00000000244916c .ext3_xattr_get+0x288/0x2f4 [ext3]
+> msr = 8000000000009032   cr  = 4400844b
+> ctr = 0000000000000000   xer = 0000000000000001   trap =  300
+> dar = c000000039d00000   dsisr = 40000000
+> 0:mon>
+  Yes, this makes me even more suspitious that memcpy() on powerpc could
+be at fault. The instruction (ld r9,8(r4)) is loading last 8 bytes to copy,
+but in fact it should load only 3 bytes in our case because remaining 5
+bytes are not in the range we specified and thus larger load can cause
+page fault...
 
-									Honza
+								Honza
 -- 
 Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+SuSE CR Labs
