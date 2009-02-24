@@ -1,243 +1,124 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC] ext4: Save stack space by removing fake buffer heads
-Date: Tue, 24 Feb 2009 00:05:48 -0500
-Message-ID: <1235451952-2726-3-git-send-email-tytso@mit.edu>
-References: <1235451952-2726-1-git-send-email-tytso@mit.edu>
- <1235451952-2726-2-git-send-email-tytso@mit.edu>
-Cc: aneesh.kumar@linux.vnet.ibm.com, Theodore Ts'o <tytso@mit.edu>
-To: linux-ext4@vger.kernel.org
+From: "Sachin P. Sant" <sachinp@in.ibm.com>
+Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
+Date: Tue, 24 Feb 2009 12:08:37 +0530
+Message-ID: <49A395ED.5030607@in.ibm.com>
+References: <49A2705D.9030008@in.ibm.com> <20090223021320.11019d64.akpm@linux-foundation.org> <18850.31567.212454.514549@cargo.ozlabs.ibm.com> <20090223155116.GB5764@atrey.karlin.mff.cuni.cz>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Paul Mackerras <paulus@samba.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Mel Gorman <mel@csn.ul.ie>, linuxppc-dev@ozlabs.org,
+	linux-ext4@vger.kernel.org, Jan Kara <jack@ucw.cz>,
+	linux-kernel <linux-kernel@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40275 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751371AbZBXFGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Feb 2009 00:06:04 -0500
-In-Reply-To: <1235451952-2726-2-git-send-email-tytso@mit.edu>
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:43238 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753417AbZBXGir (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Feb 2009 01:38:47 -0500
+In-Reply-To: <20090223155116.GB5764@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Struct mpage_da_data and mpage_add_bh_to_extent() use a fake struct
-buffer_head which is 104 bytes on an x86_64 system, but only use 24
-bytes of the structure.  On systems that use a spinlock for atomic_t,
-the stack savings will be even greater.
+Jan Kara wrote:
+>   Hmm, OK. But then I'm not sure how that can happen. Obviously, memcpy
+> somehow got beyond end of the page referenced by bh->b_data. So it means
+> that le16_to_cpu(entry->e_value_offs) + size > page_size. But
+> ext3_xattr_find_entry() calls ext3_xattr_check_entry() which in
+> particular checks whether e_value_offs + e_value_size isn't greater than
+> bh->b_size. So I see no way how memcpy can get beyond end of the page.
+>   Sachin, is the problem reproducible? If yes, can you send us contents
+>   
+Yes, i am able to recreate this problem easily. As i had mentioned if the
+earlier kernel is booted with selinux enabled and then 2.6.29-rc6 is booted
+i get this crash. But if i specify selinux=0 at command line, 2.6.29-rc6 boots
+without any problem.
 
-It turns out that using a fake struct buffer_head doesn't even save
-that much code, and it makes the code more confusing since it's not
-used as a "real" buffer head.  So just store pass b_size and b_state
-in mpage_add_bh_to_extent(), and store b_size, b_state, and b_block_nr
-in the mpage_da_data structure.
+> of the page just before the faulting address (i.e., for current fault it
+> would be 0xc00000003f370000-0xc00000003f37ffff). As far as I can
+> remember powerpc monitor could dump it.
+>   
+Here is the page dump. This time it crashed while accessing address
+0xc00000002d670000.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |   83 ++++++++++++++++++++++++++-----------------------------
- 1 files changed, 39 insertions(+), 44 deletions(-)
+ Unable to handle kernel paging request for data at address 0xc0000
+0002d670000
+Faulting instruction address: 0xc000000000039574
+cpu 0x1: Vector: 300 (Data Access) at [c00000004288b0b0]
+    pc: c000000000039574: .memcpy+0x74/0x244
+    lr: c0000000001b497c: .ext3_xattr_get+0x288/0x2f4
+    sp: c00000004288b330
+   msr: 8000000000009032
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index a533314..407aa85 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1673,7 +1673,9 @@ static void ext4_da_page_release_reservation(struct page *page,
- 
- struct mpage_da_data {
- 	struct inode *inode;
--	struct buffer_head lbh;			/* extent of blocks */
-+	sector_t b_blocknr;		/* start block number of extent */
-+	size_t b_size;			/* size of extent */
-+	unsigned long b_state;		/* state of the extent */
- 	unsigned long first_page, next_page;	/* extent of pages */
- 	struct writeback_control *wbc;
- 	int io_done;
-@@ -1707,7 +1709,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
- 	/*
- 	 * We need to start from the first_page to the next_page - 1
- 	 * to make sure we also write the mapped dirty buffer_heads.
--	 * If we look at mpd->lbh.b_blocknr we would only be looking
-+	 * If we look at mpd->b_blocknr we would only be looking
- 	 * at the currently mapped buffer_heads.
- 	 */
- 	index = mpd->first_page;
-@@ -1945,7 +1947,7 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
- /*
-  * mpage_da_map_blocks - go through given space
-  *
-- * @mpd->lbh - bh describing space
-+ * @mpd - bh describing space
-  *
-  * The function skips space we know is already mapped to disk blocks.
-  *
-@@ -1954,18 +1956,18 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- {
- 	int err = 0;
- 	struct buffer_head new;
--	struct buffer_head *lbh = &mpd->lbh;
- 	sector_t next;
- 
- 	/*
- 	 * We consider only non-mapped and non-allocated blocks
- 	 */
--	if (buffer_mapped(lbh) && !buffer_delay(lbh))
-+	if ((mpd->b_state  & (1 << BH_Mapped)) &&
-+	    !(mpd->b_state & (1 << BH_Delay)))
- 		return 0;
--	new.b_state = lbh->b_state;
-+	new.b_state = mpd->b_state;
- 	new.b_blocknr = 0;
--	new.b_size = lbh->b_size;
--	next = lbh->b_blocknr;
-+	new.b_size = mpd->b_size;
-+	next = mpd->b_blocknr;
- 	/*
- 	 * If we didn't accumulate anything
- 	 * to write simply return
-@@ -2001,7 +2003,7 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 				  "%zd with error %d\n",
- 				  __func__, mpd->inode->i_ino,
- 				  (unsigned long long)next,
--				  lbh->b_size >> mpd->inode->i_blkbits, err);
-+				  mpd->b_size >> mpd->inode->i_blkbits, err);
- 		printk(KERN_EMERG "This should not happen.!! "
- 					"Data will be lost\n");
- 		if (err == -ENOSPC) {
-@@ -2009,7 +2011,7 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 		}
- 		/* invlaidate all the pages */
- 		ext4_da_block_invalidatepages(mpd, next,
--				lbh->b_size >> mpd->inode->i_blkbits);
-+				mpd->b_size >> mpd->inode->i_blkbits);
- 		return err;
- 	}
- 	BUG_ON(new.b_size == 0);
-@@ -2021,7 +2023,8 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
- 	 * If blocks are delayed marked, we need to
- 	 * put actual blocknr and drop delayed bit
- 	 */
--	if (buffer_delay(lbh) || buffer_unwritten(lbh))
-+	if ((mpd->b_state & (1 << BH_Delay)) ||
-+	    (mpd->b_state & (1 << BH_Unwritten)))
- 		mpage_put_bnr_to_bhs(mpd, next, &new);
- 
- 	return 0;
-@@ -2040,12 +2043,11 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
-  * the function is used to collect contig. blocks in same state
-  */
- static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
--				   sector_t logical, struct buffer_head *bh)
-+				   sector_t logical, size_t b_size,
-+				   unsigned long b_state)
- {
- 	sector_t next;
--	size_t b_size = bh->b_size;
--	struct buffer_head *lbh = &mpd->lbh;
--	int nrblocks = lbh->b_size >> mpd->inode->i_blkbits;
-+	int nrblocks = mpd->b_size >> mpd->inode->i_blkbits;
- 
- 	/* check if thereserved journal credits might overflow */
- 	if (!(EXT4_I(mpd->inode)->i_flags & EXT4_EXTENTS_FL)) {
-@@ -2072,19 +2074,19 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
- 	/*
- 	 * First block in the extent
- 	 */
--	if (lbh->b_size == 0) {
--		lbh->b_blocknr = logical;
--		lbh->b_size = b_size;
--		lbh->b_state = bh->b_state & BH_FLAGS;
-+	if (mpd->b_size == 0) {
-+		mpd->b_blocknr = logical;
-+		mpd->b_size = b_size;
-+		mpd->b_state = b_state & BH_FLAGS;
- 		return;
- 	}
- 
--	next = lbh->b_blocknr + nrblocks;
-+	next = mpd->b_blocknr + nrblocks;
- 	/*
- 	 * Can we merge the block to our big extent?
- 	 */
--	if (logical == next && (bh->b_state & BH_FLAGS) == lbh->b_state) {
--		lbh->b_size += b_size;
-+	if (logical == next && (b_state & BH_FLAGS) == mpd->b_state) {
-+		mpd->b_size += b_size;
- 		return;
- 	}
- 
-@@ -2113,7 +2115,7 @@ static int __mpage_da_writepage(struct page *page,
- {
- 	struct mpage_da_data *mpd = data;
- 	struct inode *inode = mpd->inode;
--	struct buffer_head *bh, *head, fake;
-+	struct buffer_head *bh, *head;
- 	sector_t logical;
- 
- 	if (mpd->io_done) {
-@@ -2155,9 +2157,9 @@ static int __mpage_da_writepage(struct page *page,
- 		/*
- 		 * ... and blocks
- 		 */
--		mpd->lbh.b_size = 0;
--		mpd->lbh.b_state = 0;
--		mpd->lbh.b_blocknr = 0;
-+		mpd->b_size = 0;
-+		mpd->b_state = 0;
-+		mpd->b_blocknr = 0;
- 	}
- 
- 	mpd->next_page = page->index + 1;
-@@ -2165,16 +2167,8 @@ static int __mpage_da_writepage(struct page *page,
- 		  (PAGE_CACHE_SHIFT - inode->i_blkbits);
- 
- 	if (!page_has_buffers(page)) {
--		/*
--		 * There is no attached buffer heads yet (mmap?)
--		 * we treat the page asfull of dirty blocks
--		 */
--		bh = &fake;
--		bh->b_size = PAGE_CACHE_SIZE;
--		bh->b_state = 0;
--		set_buffer_dirty(bh);
--		set_buffer_uptodate(bh);
--		mpage_add_bh_to_extent(mpd, logical, bh);
-+		mpage_add_bh_to_extent(mpd, logical, PAGE_CACHE_SIZE,
-+				       (1 << BH_Dirty) | (1 << BH_Uptodate));
- 		if (mpd->io_done)
- 			return MPAGE_DA_EXTENT_TAIL;
- 	} else {
-@@ -2192,8 +2186,10 @@ static int __mpage_da_writepage(struct page *page,
- 			 * with the page in ext4_da_writepage
- 			 */
- 			if (buffer_dirty(bh) &&
--				(!buffer_mapped(bh) || buffer_delay(bh))) {
--				mpage_add_bh_to_extent(mpd, logical, bh);
-+			    (!buffer_mapped(bh) || buffer_delay(bh))) {
-+				mpage_add_bh_to_extent(mpd, logical,
-+						       bh->b_size,
-+						       bh->b_state);
- 				if (mpd->io_done)
- 					return MPAGE_DA_EXTENT_TAIL;
- 			} else if (buffer_dirty(bh) && (buffer_mapped(bh))) {
-@@ -2205,9 +2201,8 @@ static int __mpage_da_writepage(struct page *page,
- 				 * unmapped buffer_head later we need to
- 				 * use the b_state flag of that buffer_head.
- 				 */
--				if (mpd->lbh.b_size == 0)
--					mpd->lbh.b_state =
--						bh->b_state & BH_FLAGS;
-+				if (mpd->b_size == 0)
-+					mpd->b_state = bh->b_state & BH_FLAGS;
- 			}
- 			logical++;
- 		} while ((bh = bh->b_this_page) != head);
-@@ -2233,9 +2228,9 @@ static int mpage_da_writepages(struct address_space *mapping,
- {
- 	int ret;
- 
--	mpd->lbh.b_size = 0;
--	mpd->lbh.b_state = 0;
--	mpd->lbh.b_blocknr = 0;
-+	mpd->b_size = 0;
-+	mpd->b_state = 0;
-+	mpd->b_blocknr = 0;
- 	mpd->first_page = 0;
- 	mpd->next_page = 0;
- 	mpd->io_done = 0;
+1:mon> d 0xc00000002d660000
+............................... <SNIP> ...............................
+
+c00000002d66efd0 0000000000000000 0000000000000000  |................|
+c00000002d66efe0 0000000000000000 0000000000000000  |................|
+c00000002d66eff0 0000000000000000 0000000000000000  |................|
+c00000002d66f000 000002ea00040000 01000000e200d20a  |................|
+c00000002d66f010 0000000000000000 0000000000000000  |................|
+c00000002d66f020 0706e40f00000000 1b000000e200d20a  |................|
+c00000002d66f030 73656c696e757800 0000000000000000  |selinux.........|
+c00000002d66f040 0000000000000000 0000000000000000  |................|
+c00000002d66f050 0000000000000000 0000000000000000  |................|
+c00000002d66f060 0000000000000000 0000000000000000  |................|
+
+............................... <SNIP> ...............................
+
+c00000002d66ff60 0000000000000000 0000000000000000  |................|
+c00000002d66ff70 0000000000000000 0000000000000000  |................|
+c00000002d66ff80 0000000000000000 0000000000000000  |................|
+c00000002d66ff90 0000000000000000 0000000000000000  |................|
+c00000002d66ffa0 0000000000000000 0000000000000000  |................|
+c00000002d66ffb0 0000000000000000 0000000000000000  |................|
+c00000002d66ffc0 0000000000000000 0000000000000000  |................|
+c00000002d66ffd0 0000000000000000 0000000000000000  |................|
+c00000002d66ffe0 0000000073797374 656d5f753a6f626a  |....system_u:obj|
+c00000002d66fff0 6563745f723a7573 725f743a73300000  |ect_r:usr_t:s0..|
+c00000002d670000 **************** ****************  |                |
+1:mon> r
+R00 = 000000000000e40f   R16 = 000000000000005d
+R01 = c00000004288b330   R17 = 0000000000000000
+R02 = c0000000009f59b8   R18 = 00000000fffbfe9e
+R03 = c000000044aa34a0   R19 = 0000000010042638
+R04 = c00000002d66fff4   R20 = 0000000010041610
+R05 = 0000000000000003   R21 = 00000000000000ff
+R06 = 0000000000000000   R22 = 0000000000000006
+R07 = 0000000000000001   R23 = c0000000007d27c1
+R08 = 723a7573725f743a   R24 = c00000002c0cd758
+R09 = 3a6f626a6563745f   R25 = c000000044aa3488
+R10 = c00000000017b43c   R26 = c00000002c0cd6f0
+R11 = c00000002d66f020   R27 = c00000002c0cd860
+R12 = d0000000023c14b0   R28 = c00000002c0b0840
+R13 = c000000000a93680   R29 = 000000000000001b
+R14 = 00000000000041ed   R30 = c0000000009880b0
+R15 = 0000000010040000   R31 = ffffffffffffffde
+pc  = c000000000039574 .memcpy+0x74/0x244
+lr  = c0000000001b497c .ext3_xattr_get+0x288/0x2f4
+msr = 8000000000009032   cr  = 4400044b
+ctr = 0000000000000000   xer = 0000000020000001   trap =  300
+dar = c00000002d670000   dsisr = 40000000
+1:mon> zr
+
+>   BTW, I suppose you use 4KB blocksize on the filesystem, right?
+>   
+Yes.
+
+dumpe2fs /dev/sda3 | grep -i "block size" 
+dumpe2fs 1.39 (29-May-2006)
+Block size:               4096
+
+Thanks
+-Sachin
+
 -- 
-1.5.6.3
+
+---------------------------------
+Sachin Sant
+IBM Linux Technology Center
+India Systems and Technology Labs
+Bangalore, India
+---------------------------------
 
