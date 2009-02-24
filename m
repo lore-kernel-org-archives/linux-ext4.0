@@ -1,122 +1,77 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC] ext4: Simplify delalloc code by removing mpage_da_writepages()
-Date: Tue, 24 Feb 2009 00:05:49 -0500
-Message-ID: <1235451952-2726-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC] ext4: Automatically allocate delay allocated blocks on close
+Date: Tue, 24 Feb 2009 00:05:51 -0500
+Message-ID: <1235451952-2726-6-git-send-email-tytso@mit.edu>
 References: <1235451952-2726-1-git-send-email-tytso@mit.edu>
  <1235451952-2726-2-git-send-email-tytso@mit.edu>
  <1235451952-2726-3-git-send-email-tytso@mit.edu>
+ <1235451952-2726-4-git-send-email-tytso@mit.edu>
+ <1235451952-2726-5-git-send-email-tytso@mit.edu>
 Cc: aneesh.kumar@linux.vnet.ibm.com, Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40274 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:40269 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751195AbZBXFGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751184AbZBXFGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 24 Feb 2009 00:06:04 -0500
-In-Reply-To: <1235451952-2726-3-git-send-email-tytso@mit.edu>
+In-Reply-To: <1235451952-2726-5-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The mpage_da_writepages() function is only used in one place, so
-inline it to simplify the call stack and make the code easier to
-understand.
+When closing a file that had been previously truncated, force any
+delay allocated blocks that to be allocated so that if the filesystem
+is mounted with data=ordered, the data blocks will be pushed out to
+disk along with the journal commit.  Many application programs expect
+this, so we do this to avoid zero length files if the system crashes
+unexpectedly.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |   74 +++++++++++++++++++++++-------------------------------
- 1 files changed, 32 insertions(+), 42 deletions(-)
+ fs/ext4/ext4.h  |    1 +
+ fs/ext4/file.c  |    4 ++++
+ fs/ext4/inode.c |    2 ++
+ 3 files changed, 7 insertions(+), 0 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 626bda7..b56245d 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -269,6 +269,7 @@ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
+ #define EXT4_STATE_NEW			0x00000002 /* inode is newly created */
+ #define EXT4_STATE_XATTR		0x00000004 /* has in-inode xattrs */
+ #define EXT4_STATE_NO_EXPAND		0x00000008 /* No space for expansion */
++#define EXT4_STATE_DA_ALLOC_CLOSE	0x00000010 /* Alloc DA blks on close */
+ 
+ /* Used to pass group descriptor data when online resize is done */
+ struct ext4_new_group_input {
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index f731cb5..06df827 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -33,6 +33,10 @@
+  */
+ static int ext4_release_file(struct inode *inode, struct file *filp)
+ {
++	if (EXT4_I(inode)->i_state & EXT4_STATE_DA_ALLOC_CLOSE) {
++		ext4_alloc_da_blocks(inode);
++		EXT4_I(inode)->i_state &= ~EXT4_STATE_DA_ALLOC_CLOSE;
++	}
+ 	/* if we are the last writer on the inode, drop the block reservation */
+ 	if ((filp->f_mode & FMODE_WRITE) &&
+ 			(atomic_read(&inode->i_writecount) == 1))
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 407aa85..1216fb9 100644
+index c66af1c..22993ca 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2212,47 +2212,6 @@ static int __mpage_da_writepage(struct page *page,
- }
+@@ -3871,6 +3871,8 @@ void ext4_truncate(struct inode *inode)
+ 	if (!ext4_can_truncate(inode))
+ 		return;
  
- /*
-- * mpage_da_writepages - walk the list of dirty pages of the given
-- * address space, allocates non-allocated blocks, maps newly-allocated
-- * blocks to existing bhs and issue IO them
-- *
-- * @mapping: address space structure to write
-- * @wbc: subtract the number of written pages from *@wbc->nr_to_write
-- *
-- * This is a library function, which implements the writepages()
-- * address_space_operation.
-- */
--static int mpage_da_writepages(struct address_space *mapping,
--			       struct writeback_control *wbc,
--			       struct mpage_da_data *mpd)
--{
--	int ret;
--
--	mpd->b_size = 0;
--	mpd->b_state = 0;
--	mpd->b_blocknr = 0;
--	mpd->first_page = 0;
--	mpd->next_page = 0;
--	mpd->io_done = 0;
--	mpd->pages_written = 0;
--	mpd->retval = 0;
--
--	ret = write_cache_pages(mapping, wbc, __mpage_da_writepage, mpd);
--	/*
--	 * Handle last extent of pages
--	 */
--	if (!mpd->io_done && mpd->next_page != mpd->first_page) {
--		if (mpage_da_map_blocks(mpd) == 0)
--			mpage_da_submit_io(mpd);
--
--		mpd->io_done = 1;
--		ret = MPAGE_DA_EXTENT_TAIL;
--	}
--	wbc->nr_to_write -= mpd->pages_written;
--	return ret;
--}
--
--/*
-  * this is a special callback for ->write_begin() only
-  * it's intention is to return mapped block or reserve space
-  */
-@@ -2541,7 +2500,38 @@ retry:
- 			dump_stack();
- 			goto out_writepages;
- 		}
--		ret = mpage_da_writepages(mapping, wbc, &mpd);
++	ei->i_state |= EXT4_STATE_DA_ALLOC_CLOSE;
 +
-+		/*
-+		 * Now call __mpage_da_writepage to find the next
-+		 * contiguous region of logical blocks that need
-+		 * blocks to be allocated by ext4.  We don't actually
-+		 * submit the blocks for I/O here, even though
-+		 * write_cache_pages thinks it will, and will set the
-+		 * pages as clean for write before calling
-+		 * __mpage_da_writepage().
-+		 */
-+		mpd.b_size = 0;
-+		mpd.b_state = 0;
-+		mpd.b_blocknr = 0;
-+		mpd.first_page = 0;
-+		mpd.next_page = 0;
-+		mpd.io_done = 0;
-+		mpd.pages_written = 0;
-+		mpd.retval = 0;
-+		ret = write_cache_pages(mapping, wbc, __mpage_da_writepage,
-+					&mpd);
-+		/*
-+		 * If we have a contigous extent of pages and we
-+		 * haven't done the I/O yet, map the blocks and submit
-+		 * them for I/O.
-+		 */
-+		if (!mpd.io_done && mpd.next_page != mpd.first_page) {
-+			if (mpage_da_map_blocks(&mpd) == 0)
-+				mpage_da_submit_io(&mpd);
-+			mpd.io_done = 1;
-+			ret = MPAGE_DA_EXTENT_TAIL;
-+		}
-+		wbc->nr_to_write -= mpd.pages_written;
- 
- 		ext4_journal_stop(handle);
- 
+ 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
+ 		ext4_ext_truncate(inode);
+ 		return;
 -- 
 1.5.6.3
 
