@@ -1,77 +1,131 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC] ext4: Automatically allocate delay allocated blocks on close
-Date: Tue, 24 Feb 2009 00:05:51 -0500
-Message-ID: <1235451952-2726-6-git-send-email-tytso@mit.edu>
+Subject: [PATCH, RFC] ext4: add EXT4_IOC_ALLOC_DA_BLKS ioctl
+Date: Tue, 24 Feb 2009 00:05:50 -0500
+Message-ID: <1235451952-2726-5-git-send-email-tytso@mit.edu>
 References: <1235451952-2726-1-git-send-email-tytso@mit.edu>
  <1235451952-2726-2-git-send-email-tytso@mit.edu>
  <1235451952-2726-3-git-send-email-tytso@mit.edu>
  <1235451952-2726-4-git-send-email-tytso@mit.edu>
- <1235451952-2726-5-git-send-email-tytso@mit.edu>
 Cc: aneesh.kumar@linux.vnet.ibm.com, Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40269 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:40272 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751184AbZBXFGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751491AbZBXFGE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 24 Feb 2009 00:06:04 -0500
-In-Reply-To: <1235451952-2726-5-git-send-email-tytso@mit.edu>
+In-Reply-To: <1235451952-2726-4-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-When closing a file that had been previously truncated, force any
-delay allocated blocks that to be allocated so that if the filesystem
-is mounted with data=ordered, the data blocks will be pushed out to
-disk along with the journal commit.  Many application programs expect
-this, so we do this to avoid zero length files if the system crashes
-unexpectedly.
+Add an ioctl which forces all of the delay allocated blocks to be
+allocated.  This also provides a function ext4_alloc_da_blocks() which
+will be used by the following commits to force files to be fully
+allocated to preserve application-expected ext3 behaviour.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h  |    1 +
- fs/ext4/file.c  |    4 ++++
- fs/ext4/inode.c |    2 ++
- 3 files changed, 7 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h  |    2 ++
+ fs/ext4/inode.c |   42 ++++++++++++++++++++++++++++++++++++++++++
+ fs/ext4/ioctl.c |   13 +++++++++++++
+ 3 files changed, 57 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 626bda7..b56245d 100644
+index 9840cad..626bda7 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -269,6 +269,7 @@ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
- #define EXT4_STATE_NEW			0x00000002 /* inode is newly created */
- #define EXT4_STATE_XATTR		0x00000004 /* has in-inode xattrs */
- #define EXT4_STATE_NO_EXPAND		0x00000008 /* No space for expansion */
-+#define EXT4_STATE_DA_ALLOC_CLOSE	0x00000010 /* Alloc DA blks on close */
+@@ -316,6 +316,7 @@ struct ext4_new_group_data {
+ #define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
+ #define EXT4_IOC_GROUP_ADD		_IOW('f', 8, struct ext4_new_group_input)
+ #define EXT4_IOC_MIGRATE		_IO('f', 9)
++#define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 10)
+  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
  
- /* Used to pass group descriptor data when online resize is done */
- struct ext4_new_group_input {
-diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-index f731cb5..06df827 100644
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -33,6 +33,10 @@
-  */
- static int ext4_release_file(struct inode *inode, struct file *filp)
- {
-+	if (EXT4_I(inode)->i_state & EXT4_STATE_DA_ALLOC_CLOSE) {
-+		ext4_alloc_da_blocks(inode);
-+		EXT4_I(inode)->i_state &= ~EXT4_STATE_DA_ALLOC_CLOSE;
-+	}
- 	/* if we are the last writer on the inode, drop the block reservation */
- 	if ((filp->f_mode & FMODE_WRITE) &&
- 			(atomic_read(&inode->i_writecount) == 1))
+ /*
+@@ -1094,6 +1095,7 @@ extern int ext4_chunk_trans_blocks(struct inode *, int nrblocks);
+ extern int ext4_block_truncate_page(handle_t *handle,
+ 		struct address_space *mapping, loff_t from);
+ extern int ext4_page_mkwrite(struct vm_area_struct *vma, struct page *page);
++extern int ext4_alloc_da_blocks(struct inode *inode);
+ 
+ /* ioctl.c */
+ extern long ext4_ioctl(struct file *, unsigned int, unsigned long);
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c66af1c..22993ca 100644
+index 1216fb9..c66af1c 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -3871,6 +3871,8 @@ void ext4_truncate(struct inode *inode)
- 	if (!ext4_can_truncate(inode))
- 		return;
+@@ -2807,6 +2807,48 @@ out:
+ 	return;
+ }
  
-+	ei->i_state |= EXT4_STATE_DA_ALLOC_CLOSE;
++/*
++ * Force all delayed allocation blocks to be allocated for a given inode.
++ */
++int ext4_alloc_da_blocks(struct inode *inode)
++{
++	if (!EXT4_I(inode)->i_reserved_data_blocks &&
++	    !EXT4_I(inode)->i_reserved_meta_blocks)
++		return 0;
 +
- 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
- 		ext4_ext_truncate(inode);
- 		return;
++	/*
++	 * We do something simple for now.  The filemap_flush() will
++	 * also start triggering a write of the data blocks, which is
++	 * not strictly speaking necessary (and for users of
++	 * laptop_mode, not even desirable).  However, to do otherwise
++	 * would require replicating code paths in:
++	 * 
++	 * ext4_da_writepages() ->
++	 *    write_cache_pages() ---> (via passed in callback function)
++	 *        __mpage_da_writepage() -->
++	 *           mpage_add_bh_to_extent()
++	 *           mpage_da_map_blocks()
++	 *
++	 * The problem is that write_cache_pages(), located in
++	 * mm/page-writeback.c, marks pages clean in preparation for
++	 * doing I/O, which is not desirable if we're not planning on
++	 * doing I/O at all.
++	 *
++	 * We could call write_cache_pages(), and then redirty all of
++	 * the pages by calling redirty_page_for_writeback() but that
++	 * would be ugly in the extreme.  So instead we would need to
++	 * replicate parts of the code in the above functions,
++	 * simplifying them becuase we wouldn't actually intend to
++	 * write out the pages, but rather only collect contiguous
++	 * logical block extents, call the multi-block allocator, and
++	 * then update the buffer heads with the block allocations.
++	 * 
++	 * For now, though, we'll cheat by calling filemap_flush(),
++	 * which will map the blocks, and start the I/O, but not
++	 * actually wait for the I/O to complete.
++	 */
++	return filemap_flush(inode->i_mapping);
++}
+ 
+ /*
+  * bmap() is special.  It gets used by applications such as lilo and by
+diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
+index 22dd29f..0d59f5f 100644
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -262,6 +262,19 @@ setversion_out:
+ 		return err;
+ 	}
+ 
++	case EXT4_IOC_ALLOC_DA_BLKS:
++	{
++		int err;
++		if (!is_owner_or_cap(inode))
++			return -EACCES;
++
++		err = mnt_want_write(filp->f_path.mnt);
++		if (err)
++			return err;
++		err = ext4_alloc_da_blocks(inode);
++		return err;
++	}
++
+ 	default:
+ 		return -ENOTTY;
+ 	}
 -- 
 1.5.6.3
 
