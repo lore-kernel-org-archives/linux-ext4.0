@@ -1,112 +1,121 @@
 From: akpm@linux-foundation.org
-Subject: [merged] ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic.patch removed from -mm tree
-Date: Tue, 24 Feb 2009 11:33:02 -0800
-Message-ID: <200902241933.n1OJX2Mx004485@imap1.linux-foundation.org>
-To: yjwei@cn.fujitsu.com, linux-ext4@vger.kernel.org, tytso@mit.edu,
+Subject: [merged] ext4-tighten-restrictions-on-inode-flags.patch removed from -mm tree
+Date: Tue, 24 Feb 2009 11:32:59 -0800
+Message-ID: <200902241932.n1OJWxqN004476@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: duaneg@dghda.com, adilger@sun.com, linux-ext4@vger.kernel.org,
 	mm-commits@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:36831 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1757766AbZBXTh0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Feb 2009 14:37:26 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
 The patch titled
-     ext4: use unsigned instead of int for type of blocksize in fs/ext4/namei.c
+     ext4: tighten restrictions on inode flags
 has been removed from the -mm tree.  Its filename was
-     ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic.patch
+     ext4-tighten-restrictions-on-inode-flags.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext4: use unsigned instead of int for type of blocksize in fs/ext4/namei.c
-From: Wei Yongjun <yjwei@cn.fujitsu.com>
+Subject: ext4: tighten restrictions on inode flags
+From: "Duane Griffin" <duaneg@dghda.com>
 
-- Use unsigned instead of int for the parameter which carries a
-  blocksize.  (ported from Wei Yongjun's ext3 patch).
+At the moment there are few restrictions on which flags may be set on
+which inodes.  Specifically DIRSYNC may only be set on directories and
+IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
+TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
+on non-regular file, non-directories.
 
-- coding-style fixes
+Introduces a flags masking function which masks flags based on mode and
+use it during inode creation and when flags are set via the ioctl to
+facilitate future consistency.
 
-- rename `size' to `blocksize']
-
-Cc: Wei Yongjun <yjwei@cn.fujitsu.com>
-Cc: Theodore Ts'o <tytso@mit.edu>
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/namei.c |   20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ fs/ext4/ext4.h   |   17 +++++++++++++++++
+ fs/ext4/ialloc.c |   14 +++++---------
+ fs/ext4/ioctl.c  |    3 +--
+ 3 files changed, 23 insertions(+), 11 deletions(-)
 
-diff -puN fs/ext4/namei.c~ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic fs/ext4/namei.c
---- a/fs/ext4/namei.c~ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic
-+++ a/fs/ext4/namei.c
-@@ -161,12 +161,12 @@ static struct dx_frame *dx_probe(const s
- 				 struct dx_frame *frame,
- 				 int *err);
- static void dx_release(struct dx_frame *frames);
--static int dx_make_map(struct ext4_dir_entry_2 *de, int size,
-+static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
- 		       struct dx_hash_info *hinfo, struct dx_map_entry map[]);
- static void dx_sort_map(struct dx_map_entry *map, unsigned count);
- static struct ext4_dir_entry_2 *dx_move_dirents(char *from, char *to,
- 		struct dx_map_entry *offsets, int count);
--static struct ext4_dir_entry_2* dx_pack_dirents(char *base, int size);
-+static struct ext4_dir_entry_2 *dx_pack_dirents(char *base, unsigned blocksize);
- static void dx_insert_block(struct dx_frame *frame,
- 					u32 hash, ext4_lblk_t block);
- static int ext4_htree_next_block(struct inode *dir, __u32 hash,
-@@ -713,15 +713,14 @@ errout:
-  * Create map of hash values, offsets, and sizes, stored at end of block.
-  * Returns number of entries mapped.
-  */
--static int dx_make_map (struct ext4_dir_entry_2 *de, int size,
--			struct dx_hash_info *hinfo, struct dx_map_entry *map_tail)
-+static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
-+		struct dx_hash_info *hinfo, struct dx_map_entry *map_tail)
- {
- 	int count = 0;
--	char *base = (char *) de;
-+	char *base = (char *)de;
- 	struct dx_hash_info h = *hinfo;
+diff -puN fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags fs/ext4/ext4.h
+--- a/fs/ext4/ext4.h~ext4-tighten-restrictions-on-inode-flags
++++ a/fs/ext4/ext4.h
+@@ -247,6 +247,23 @@ struct flex_groups {
+ 			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL|\
+ 			   EXT4_DIRSYNC_FL)
  
--	while ((char *) de < base + size)
--	{
-+	while ((char *) de < base + blocksize) {
- 		if (de->name_len && de->inode) {
- 			ext4fs_dirhash(de->name, de->name_len, &h);
- 			map_tail--;
-@@ -1130,13 +1129,14 @@ dx_move_dirents(char *from, char *to, st
-  * Compact each dir entry in the range to the minimal rec_len.
-  * Returns pointer to last entry in range.
++/* Flags that are appropriate for regular files (all but dir-specific ones). */
++#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
++
++/* Flags that are appropriate for non-directories/regular files. */
++#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
++
++/* Mask out flags that are inappropriate for the given type of inode. */
++static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
++{
++	if (S_ISDIR(mode))
++		return flags;
++	else if (S_ISREG(mode))
++		return flags & EXT4_REG_FLMASK;
++	else
++		return flags & EXT4_OTHER_FLMASK;
++}
++
+ /*
+  * Inode dynamic state flags
   */
--static struct ext4_dir_entry_2* dx_pack_dirents(char *base, int size)
-+static struct ext4_dir_entry_2 *dx_pack_dirents(char *base, unsigned blocksize)
- {
--	struct ext4_dir_entry_2 *next, *to, *prev, *de = (struct ext4_dir_entry_2 *) base;
-+	struct ext4_dir_entry_2 *next, *to, *prev;
-+	struct ext4_dir_entry_2 *de = (struct ext4_dir_entry_2 *)base;
- 	unsigned rec_len = 0;
+diff -puN fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ialloc.c
+--- a/fs/ext4/ialloc.c~ext4-tighten-restrictions-on-inode-flags
++++ a/fs/ext4/ialloc.c
+@@ -874,16 +874,12 @@ got:
+ 	ei->i_disksize = 0;
  
- 	prev = to = de;
--	while ((char*)de < base + size) {
-+	while ((char *)de < base + blocksize) {
- 		next = ext4_next_entry(de);
- 		if (de->inode && de->name_len) {
- 			rec_len = EXT4_DIR_REC_LEN(de->name_len);
+ 	/*
+-	 * Don't inherit extent flag from directory. We set extent flag on
+-	 * newly created directory and file only if -o extent mount option is
+-	 * specified
++	 * Don't inherit extent flag from directory, amongst others. We set
++	 * extent flag on newly created directory and file only if -o extent
++	 * mount option is specified
+ 	 */
+-	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
+-	if (S_ISLNK(mode))
+-		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+-	/* dirsync only applies to directories */
+-	if (!S_ISDIR(mode))
+-		ei->i_flags &= ~EXT4_DIRSYNC_FL;
++	ei->i_flags =
++		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
+ 	ei->i_file_acl = 0;
+ 	ei->i_dtime = 0;
+ 	ei->i_block_group = group;
+diff -puN fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags fs/ext4/ioctl.c
+--- a/fs/ext4/ioctl.c~ext4-tighten-restrictions-on-inode-flags
++++ a/fs/ext4/ioctl.c
+@@ -48,8 +48,7 @@ long ext4_ioctl(struct file *filp, unsig
+ 		if (err)
+ 			return err;
+ 
+-		if (!S_ISDIR(inode->i_mode))
+-			flags &= ~EXT4_DIRSYNC_FL;
++		flags = ext4_mask_flags(inode->i_mode, flags);
+ 
+ 		err = -EPERM;
+ 		mutex_lock(&inode->i_mutex);
 _
 
-Patches currently in -mm which might be from yjwei@cn.fujitsu.com are
+Patches currently in -mm which might be from duaneg@dghda.com are
 
 linux-next.patch
-fs-jffs2-mallocc-kmem_cache_alloc-memset-kmem_cache_zalloc.patch
-scsi-used-kmem_cache_zalloc-instead-of-kmem_cache_alloc-memset.patch
-ext3-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext3-nameic.patch
-ext3-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext3-nameic-fix.patch
-ext3-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext3-nameic-fix-checkpatch-fixes.patch
+ufs-validate-maximum-fast-symlink-size-from-superblock.patch
+ufs-dont-truncate-longer-ufs2-fast-symlinks.patch
+ufs-ensure-fast-symlinks-are-nul-terminated.patch
+ufs-copy-symlink-data-into-the-correct-union-member.patch
 
