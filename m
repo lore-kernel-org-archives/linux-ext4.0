@@ -1,84 +1,112 @@
 From: akpm@linux-foundation.org
-Subject: [merged] ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch removed from -mm tree
-Date: Tue, 24 Feb 2009 11:32:57 -0800
-Message-ID: <200902241932.n1OJWvMW004469@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: duaneg@dghda.com, adilger@sun.com, linux-ext4@vger.kernel.org,
+Subject: [merged] ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic.patch removed from -mm tree
+Date: Tue, 24 Feb 2009 11:33:02 -0800
+Message-ID: <200902241933.n1OJX2Mx004485@imap1.linux-foundation.org>
+To: yjwei@cn.fujitsu.com, linux-ext4@vger.kernel.org, tytso@mit.edu,
 	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:36831 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757766AbZBXTh0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Feb 2009 14:37:26 -0500
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
 
 The patch titled
-     ext4: don't inherit inappropriate inode flags from parent
+     ext4: use unsigned instead of int for type of blocksize in fs/ext4/namei.c
 has been removed from the -mm tree.  Its filename was
-     ext4-dont-inherit-inappropriate-inode-flags-from-parent.patch
+     ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic.patch
 
 This patch was dropped because it was merged into mainline or a subsystem tree
 
 The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
 ------------------------------------------------------
-Subject: ext4: don't inherit inappropriate inode flags from parent
-From: "Duane Griffin" <duaneg@dghda.com>
+Subject: ext4: use unsigned instead of int for type of blocksize in fs/ext4/namei.c
+From: Wei Yongjun <yjwei@cn.fujitsu.com>
 
-At present INDEX and EXTENTS are the only flags that new ext4 inodes do
-NOT inherit from their parent.  In addition prevent the flags DIRTY,
-ECOMPR, IMAGIC, TOPDIR, HUGE_FILE and EXT_MIGRATE from being inherited. 
-List inheritable flags explicitly to prevent future flags from
-accidentally being inherited.
+- Use unsigned instead of int for the parameter which carries a
+  blocksize.  (ported from Wei Yongjun's ext3 patch).
 
-This fixes the TOPDIR flag inheritance bug reported at
-http://bugzilla.kernel.org/show_bug.cgi?id=9866.
+- coding-style fixes
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Acked-by: Andreas Dilger <adilger@sun.com>
+- rename `size' to `blocksize']
+
+Cc: Wei Yongjun <yjwei@cn.fujitsu.com>
+Cc: Theodore Ts'o <tytso@mit.edu>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 ---
 
- fs/ext4/ext4.h   |    8 ++++++++
- fs/ext4/ialloc.c |    2 +-
- 2 files changed, 9 insertions(+), 1 deletion(-)
+ fs/ext4/namei.c |   20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff -puN fs/ext4/ext4.h~ext4-dont-inherit-inappropriate-inode-flags-from-parent fs/ext4/ext4.h
---- a/fs/ext4/ext4.h~ext4-dont-inherit-inappropriate-inode-flags-from-parent
-+++ a/fs/ext4/ext4.h
-@@ -239,6 +239,14 @@ struct flex_groups {
- #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
- #define EXT4_FL_USER_MODIFIABLE		0x000B80FF /* User modifiable flags */
- 
-+/* Flags that should be inherited by new inodes from their parent. */
-+#define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
-+			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
-+			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
-+			   EXT4_COMPRBLK_FL | EXT4_NOCOMPR_FL |\
-+			   EXT4_JOURNAL_DATA_FL | EXT4_NOTAIL_FL|\
-+			   EXT4_DIRSYNC_FL)
-+
- /*
-  * Inode dynamic state flags
+diff -puN fs/ext4/namei.c~ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic fs/ext4/namei.c
+--- a/fs/ext4/namei.c~ext4-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext4-nameic
++++ a/fs/ext4/namei.c
+@@ -161,12 +161,12 @@ static struct dx_frame *dx_probe(const s
+ 				 struct dx_frame *frame,
+ 				 int *err);
+ static void dx_release(struct dx_frame *frames);
+-static int dx_make_map(struct ext4_dir_entry_2 *de, int size,
++static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
+ 		       struct dx_hash_info *hinfo, struct dx_map_entry map[]);
+ static void dx_sort_map(struct dx_map_entry *map, unsigned count);
+ static struct ext4_dir_entry_2 *dx_move_dirents(char *from, char *to,
+ 		struct dx_map_entry *offsets, int count);
+-static struct ext4_dir_entry_2* dx_pack_dirents(char *base, int size);
++static struct ext4_dir_entry_2 *dx_pack_dirents(char *base, unsigned blocksize);
+ static void dx_insert_block(struct dx_frame *frame,
+ 					u32 hash, ext4_lblk_t block);
+ static int ext4_htree_next_block(struct inode *dir, __u32 hash,
+@@ -713,15 +713,14 @@ errout:
+  * Create map of hash values, offsets, and sizes, stored at end of block.
+  * Returns number of entries mapped.
   */
-diff -puN fs/ext4/ialloc.c~ext4-dont-inherit-inappropriate-inode-flags-from-parent fs/ext4/ialloc.c
---- a/fs/ext4/ialloc.c~ext4-dont-inherit-inappropriate-inode-flags-from-parent
-+++ a/fs/ext4/ialloc.c
-@@ -878,7 +878,7 @@ got:
- 	 * newly created directory and file only if -o extent mount option is
- 	 * specified
- 	 */
--	ei->i_flags = EXT4_I(dir)->i_flags & ~(EXT4_INDEX_FL|EXT4_EXTENTS_FL);
-+	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
- 	if (S_ISLNK(mode))
- 		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
- 	/* dirsync only applies to directories */
+-static int dx_make_map (struct ext4_dir_entry_2 *de, int size,
+-			struct dx_hash_info *hinfo, struct dx_map_entry *map_tail)
++static int dx_make_map(struct ext4_dir_entry_2 *de, unsigned blocksize,
++		struct dx_hash_info *hinfo, struct dx_map_entry *map_tail)
+ {
+ 	int count = 0;
+-	char *base = (char *) de;
++	char *base = (char *)de;
+ 	struct dx_hash_info h = *hinfo;
+ 
+-	while ((char *) de < base + size)
+-	{
++	while ((char *) de < base + blocksize) {
+ 		if (de->name_len && de->inode) {
+ 			ext4fs_dirhash(de->name, de->name_len, &h);
+ 			map_tail--;
+@@ -1130,13 +1129,14 @@ dx_move_dirents(char *from, char *to, st
+  * Compact each dir entry in the range to the minimal rec_len.
+  * Returns pointer to last entry in range.
+  */
+-static struct ext4_dir_entry_2* dx_pack_dirents(char *base, int size)
++static struct ext4_dir_entry_2 *dx_pack_dirents(char *base, unsigned blocksize)
+ {
+-	struct ext4_dir_entry_2 *next, *to, *prev, *de = (struct ext4_dir_entry_2 *) base;
++	struct ext4_dir_entry_2 *next, *to, *prev;
++	struct ext4_dir_entry_2 *de = (struct ext4_dir_entry_2 *)base;
+ 	unsigned rec_len = 0;
+ 
+ 	prev = to = de;
+-	while ((char*)de < base + size) {
++	while ((char *)de < base + blocksize) {
+ 		next = ext4_next_entry(de);
+ 		if (de->inode && de->name_len) {
+ 			rec_len = EXT4_DIR_REC_LEN(de->name_len);
 _
 
-Patches currently in -mm which might be from duaneg@dghda.com are
+Patches currently in -mm which might be from yjwei@cn.fujitsu.com are
 
 linux-next.patch
-ufs-validate-maximum-fast-symlink-size-from-superblock.patch
-ufs-dont-truncate-longer-ufs2-fast-symlinks.patch
-ufs-ensure-fast-symlinks-are-nul-terminated.patch
-ufs-copy-symlink-data-into-the-correct-union-member.patch
+fs-jffs2-mallocc-kmem_cache_alloc-memset-kmem_cache_zalloc.patch
+scsi-used-kmem_cache_zalloc-instead-of-kmem_cache_alloc-memset.patch
+ext3-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext3-nameic.patch
+ext3-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext3-nameic-fix.patch
+ext3-use-unsigned-instead-of-int-for-type-of-blocksize-in-fs-ext3-nameic-fix-checkpatch-fixes.patch
 
