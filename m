@@ -1,48 +1,55 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: possible ext4 race situation freezing linux
-Date: Tue, 24 Feb 2009 12:30:31 -0500
-Message-ID: <20090224173031.GE5482@mit.edu>
-References: <1235478142.11758.9.camel@localhost.localdomain> <20090224141749.GC5482@mit.edu> <49A41469.6090604@redhat.com> <1235495013.11758.37.camel@localhost.localdomain>
+From: Felipe Franciosi <ozzy@doc.ic.ac.uk>
+Subject: Simple inode question (ext2/3)
+Date: Tue, 24 Feb 2009 17:13:52 +0000 (GMT)
+Message-ID: <alpine.DEB.2.00.0902241713520.16614@pintail.doc.ic.ac.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Friedrich Berendsen <afberendsen@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:41566 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760189AbZBXRak (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Feb 2009 12:30:40 -0500
-Content-Disposition: inline
-In-Reply-To: <1235495013.11758.37.camel@localhost.localdomain>
+Received: from cardinal.doc.ic.ac.uk ([146.169.1.194]:57212 "EHLO
+	cardinal.doc.ic.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758320AbZBXRgJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Feb 2009 12:36:09 -0500
+Received: from pintail.doc.ic.ac.uk ([146.169.1.119])
+	by cardinal.doc.ic.ac.uk with esmtps (TLS-1.0:DHE_RSA_AES_256_CBC_SHA1:32)
+	(Exim 4.69)
+	(envelope-from <ozzy@doc.ic.ac.uk>)
+	id 1Lc0qu-0007c3-FE
+	for linux-ext4@vger.kernel.org; Tue, 24 Feb 2009 17:13:52 +0000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 25, 2009 at 06:03:33AM +1300, Andreas Friedrich Berendsen wrote:
-> Tso & Eric,
-> 
-> I'll try again to reproduce the error, but when the system freezes, I
-> have the X interface running. And, indeed, I'm not familiar with the
-> behaviour of sysreq. Which sysrq should I use when the problem happens?
-> Will the system change to the text interface? If there are no disk
-> activity (all leds are off), where the information will be recorded?
+Hi there!
 
-Well, given that you can reproduce it fairly reliably, can't you just
-switch to a text console using before triggering your reproduction
-case?  You can use different VT consules, switching between them using
-Alt-F2, Alt-F3, Alt-F2, Alt-F4, etc., instead of using different
-terminal windows.
+I've been trying to write a kernel module that is capable of locating a specific mounted filesystem (ext2/3) and dump all the inode entries that are in use. I have two questions:
 
-Depending on how badly system is wedged, it may not be possible to
-record the information to disk.  Usually what folks will do is use a
-digital camera and record snapshots from the text console, or, if they
-have a serial console set up, they can record output on another
-machine.  A serial console has the advantage that you can reliably
-capture the entire sysrq output (you send a serial break character
-instead of using the sysrq key) and it also works even if you have X
-running.  As such, it's the preferred method, but it's a bit of a pain
-for most people to set up, and some modern laptops no longer have 8250
-serial ports any more, so we make do with what we have.
+1) Is it possible to know if an inode is free just by looking to its (struct ext3_inode) info or do I have to check the inode bitmap for the specific block group?
 
-Regards,
+2) Does the following look correct?
 
-							- Ted
+--------8<--------
+
+struct vfsmount        *mountpoint = ... // fetch this from the proper namespace
+struct ext3_sb_info    *sbi = EXT3_SB(mountpoint->mnt_sb);
+struct ext3_group_desc *egd;
+struct ext3_inode      *ino;
+struct buffer_head     *bh;
+int i, j, k;
+
+for (i=0; i<sbi->s_groups_count; i++) {
+ egd = ext3_get_group_desc(mountpoint->mnt_sb, i, NULL);
+ for (j=0; j<(sbi->s_inodes_per_group)/(sbi->s_inodes_per_block); j++) {
+  bh = sb_getblk(mountpoint->mnt_sb, le32_to_cpu(egd->bg_inode_table+j));
+  for (k=0; k<sbi->s_inodes_per_block; k++) {
+   ino = (struct ext3_inode *)(bh+(k*sizeof(struct ext3_inode)));
+   // dump contents of ino
+   // index of ino should be: (i*(sbi->s_inodes_per_group)) + (j*(sbi->s_inodes_per_block)) + k
+  }
+ }
+}
+
+--------8<--------
+
+Cheers,
+Felipe
+
