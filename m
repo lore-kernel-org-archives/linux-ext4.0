@@ -1,55 +1,86 @@
-From: Felipe Franciosi <ozzy@doc.ic.ac.uk>
-Subject: Simple inode question (ext2/3)
-Date: Tue, 24 Feb 2009 17:13:52 +0000 (GMT)
-Message-ID: <alpine.DEB.2.00.0902241713520.16614@pintail.doc.ic.ac.uk>
+From: Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>
+Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
+Date: Tue, 24 Feb 2009 19:01:59 +0100 (CET)
+Message-ID: <alpine.LRH.2.00.0902241857170.544@vixen.sonytel.be>
+References: <49A2705D.9030008@in.ibm.com> <20090223021320.11019d64.akpm@linux-foundation.org> <18850.31567.212454.514549@cargo.ozlabs.ibm.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@ucw.cz>,
+	Mel Gorman <mel@csn.ul.ie>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linuxppc-dev@ozlabs.org, linux-ext4@vger.kernel.org
+To: Paul Mackerras <paulus@samba.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cardinal.doc.ic.ac.uk ([146.169.1.194]:57212 "EHLO
-	cardinal.doc.ic.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758320AbZBXRgJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Feb 2009 12:36:09 -0500
-Received: from pintail.doc.ic.ac.uk ([146.169.1.119])
-	by cardinal.doc.ic.ac.uk with esmtps (TLS-1.0:DHE_RSA_AES_256_CBC_SHA1:32)
-	(Exim 4.69)
-	(envelope-from <ozzy@doc.ic.ac.uk>)
-	id 1Lc0qu-0007c3-FE
-	for linux-ext4@vger.kernel.org; Tue, 24 Feb 2009 17:13:52 +0000
+Received: from vervifontaine.sonytel.be ([80.88.33.193]:44368 "EHLO
+	vervifontaine.sonycom.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752175AbZBXSCC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Feb 2009 13:02:02 -0500
+In-Reply-To: <18850.31567.212454.514549@cargo.ozlabs.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi there!
+On Mon, 23 Feb 2009, Paul Mackerras wrote:
+> Andrew Morton writes:
+> > It looks like we died in ext3_xattr_block_get():
+> >=20
+> > 		memcpy(buffer, bh->b_data + le16_to_cpu(entry->e_value_offs),
+> > 		       size);
+> >=20
+> > Perhaps entry->e_value_offs is no good.  I wonder if the filesystem=
+ is
+> > corrupted and this snuck through the defenses.
+> >=20
+> > I also wonder if there is enough info in that trace for a ppc perso=
+n to
+> > be able to determine whether the faulting address is in the source =
+or
+> > destination of the memcpy() (please)?
+>=20
+> It appears to have faulted on a load, implicating the source.  The
+> address being referenced (0xc00000003f380000) doesn't look
+> outlandish.  I wonder if this kernel has CONFIG_DEBUG_PAGEALLOC turne=
+d
+> on, and what page size is selected?
 
-I've been trying to write a kernel module that is capable of locating a specific mounted filesystem (ext2/3) and dump all the inode entries that are in use. I have two questions:
+I'm seeing a similar thing on PS3, but not in ext3. During early usersp=
+ace
+setup (udevd), it crashes accessing a 0xc00* address in:
 
-1) Is it possible to know if an inode is free just by looking to its (struct ext3_inode) info or do I have to check the inode bitmap for the specific block group?
+| NIP setup+0x20/0x130
+| LR copy_user_page+0x18/0x6c
+| Call trace:
+| do_wp_page+0x5b4/0x89c
+| do_page_fault+0x3a8/0x58c
+| handle_page_fault+0x20/0x5c
 
-2) Does the following look correct?
+I have CONFIG_DEBUG_PAGEALLOC=3Dy. If I disable it, the system boots fi=
+ne.
 
---------8<--------
+If needed, I can probably bisect this tomorrow. It definitely didn't ha=
+ppen in
+2.6.29-rc5.
 
-struct vfsmount        *mountpoint = ... // fetch this from the proper namespace
-struct ext3_sb_info    *sbi = EXT3_SB(mountpoint->mnt_sb);
-struct ext3_group_desc *egd;
-struct ext3_inode      *ino;
-struct buffer_head     *bh;
-int i, j, k;
+With kind regards,
 
-for (i=0; i<sbi->s_groups_count; i++) {
- egd = ext3_get_group_desc(mountpoint->mnt_sb, i, NULL);
- for (j=0; j<(sbi->s_inodes_per_group)/(sbi->s_inodes_per_block); j++) {
-  bh = sb_getblk(mountpoint->mnt_sb, le32_to_cpu(egd->bg_inode_table+j));
-  for (k=0; k<sbi->s_inodes_per_block; k++) {
-   ino = (struct ext3_inode *)(bh+(k*sizeof(struct ext3_inode)));
-   // dump contents of ino
-   // index of ino should be: (i*(sbi->s_inodes_per_group)) + (j*(sbi->s_inodes_per_block)) + k
-  }
- }
-}
+Geert Uytterhoeven
+Software Architect
 
---------8<--------
+Sony Techsoft Centre Europe
+The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
+gium
 
-Cheers,
-Felipe
+Phone:    +32 (0)2 700 8453
+=46ax:      +32 (0)2 700 8622
+E-mail:   Geert.Uytterhoeven@sonycom.com
+Internet: http://www.sony-europe.com/
 
+A division of Sony Europe (Belgium) N.V.
+VAT BE 0413.825.160 =B7 RPR Brussels
+=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
