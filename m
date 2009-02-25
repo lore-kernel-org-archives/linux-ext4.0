@@ -1,81 +1,92 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Fix discard of inode prealloc space with delayed
-	allocation.
-Date: Wed, 25 Feb 2009 23:07:40 +0530
-Message-ID: <20090225173740.GA10367@skywalker>
-References: <1235578922-7790-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <m3y6vusbcf.fsf@openvz.org>
+From: Xiang Wang <xiangw@google.com>
+Subject: Re: fsck errors encountered when applying patch "ext4: fix BUG when
+	calling ext4_error with locked block group"
+Date: Wed, 25 Feb 2009 10:33:49 -0800
+Message-ID: <d5ca277e0902251033l6a67abd3vd9deb08f52f5f3c6@mail.gmail.com>
+References: <d5ca277e0902201531g6e32691cweda3fd8f6d1dbbff@mail.gmail.com>
+	 <20090221012908.GC12966@mini-me.lan>
+	 <532480950902201737j5162125teea57eedbd01873f@mail.gmail.com>
+	 <20090221015026.GD12966@mini-me.lan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Dmitri Monakhov <dmonakhov@openvz.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Michael Rubin <mrubin@google.com>, linux-ext4@vger.kernel.org,
+	aneesh.kumar@linux.vnet.ibm.com,
+	Curt Wohlgemuth <curtw@google.com>,
+	Chad Talbott <ctalbott@google.com>,
+	Frank Mayhar <fmayhar@google.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp04.au.ibm.com ([202.81.31.146]:57465 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752836AbZBYRiU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 12:38:20 -0500
-Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1PHaP3e010729
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Feb 2009 04:36:25 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n1PHcXKn917528
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Feb 2009 04:38:33 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1PHcFF5027099
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Feb 2009 04:38:15 +1100
-Content-Disposition: inline
-In-Reply-To: <m3y6vusbcf.fsf@openvz.org>
+Received: from smtp-out.google.com ([216.239.33.17]:9202 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751684AbZBYSd4 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 13:33:56 -0500
+Received: from zps36.corp.google.com (zps36.corp.google.com [172.25.146.36])
+	by smtp-out.google.com with ESMTP id n1PIXpnn019161
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 18:33:52 GMT
+Received: from wf-out-1314.google.com (wff28.prod.google.com [10.142.6.28])
+	by zps36.corp.google.com with ESMTP id n1PIXnFH030911
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 10:33:49 -0800
+Received: by wf-out-1314.google.com with SMTP id 28so151286wff.29
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 10:33:49 -0800 (PST)
+In-Reply-To: <20090221015026.GD12966@mini-me.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 25, 2009 at 07:57:52PM +0300, Dmitri Monakhov wrote:
-> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> writes:
-> 
-> > With delayed allocation we should not/cannot discard inode prealloc space
-> > during file close. We would still have dirty pages for which we haven't allocated
-> > blocks yet. With this fix after each get_blocks request we check whether we have
-> > zero reserved blocks and if yes and we don't have any writers on the file we
-> > discard inode prealloc space.
-> >
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> >
-> > ---
-> >  fs/ext4/file.c  |    9 ++++++++-
-> >  fs/ext4/inode.c |    6 ++++++
-> >  2 files changed, 14 insertions(+), 1 deletions(-)
-> >
-> > diff --git a/fs/ext4/file.c b/fs/ext4/file.c
-> > index f731cb5..4e468e2 100644
-> > --- a/fs/ext4/file.c
-> > +++ b/fs/ext4/file.c
-> > @@ -33,9 +33,16 @@
-> >   */
-> >  static int ext4_release_file(struct inode *inode, struct file *filp)
-> >  {
-> > +	int rsv_data_blocks;
-> > +
-> > +	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
-> > +	rsv_data_blocks = EXT4_I(inode)->i_reserved_data_blocks;
-> > +	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
-> > +
-> Seems we have race condition here because at this point someone may:
-> 1)open file
-> 2)then perform some write activity => (i_reserved_data_blocks != 0)
-> 3)close file => (inode->i_writecount == 1)
-> 
+Hey Ted,
 
-i_data_sem doesn't actually ensure i_reserved_data_blocks won't change.
-We update i_reserved_data_blocks during block reservation
-(ext4_da_write_begin). But yes what you mentioned is possible.
-But I am not sure we need to be worried about that. It is true that
-throwing away prealloc space is not good. But we still do block allocation
-based on goal blocks. So we may end up allocating blocks within the
-discarded prealloc space again.
+Good news!
+You are right! Taking the two commits as you suggested cleared our
+bug. Thank you very much for pointing that out.
 
-What is bad is that if we don't discard the prealloc space even after
-all the needed block allocation. That would mean nothing can be
-allocated out of that prealloc space. With the current code We would
-be discarding the prealloc space only when we hit ENOSPC 
-. But then that would be bad.
+We may still be back-porting patches for a while until our internal
+tree catches up with 2.6.29 or 2.6.30.
+But we definitely will be much more careful in taking patches.
 
--aneesh
+Thanks,
+Xiang
 
+On Fri, Feb 20, 2009 at 5:50 PM, Theodore Tso <tytso@mit.edu> wrote:
+> On Fri, Feb 20, 2009 at 05:37:35PM -0800, Michael Rubin wrote:
+>> We know. Our qualifying process is not the most light weight and the
+>> kernel moves fast. Normally we take a snapshot and qualify it, tryin=
+g
+>> to take upstream patches when we can and then also publishing bugs w=
+e
+>> find. The problem is that with ext4 still undergoing active dev we
+>> want to be able to keep our ext4 portion of the tree as up to date a=
+s
+>> possible.
+>
+> I understand, and it's not a burden to answer questions like this. =A0=
+I
+> was just pointing out the effort that it will likely take to backport
+> the percpu counter patches, since you will need to scan the your
+> sources and make sure the behavioural changes in percpu_counter_sum
+> isn't going to cause problems for you elsewhere, and that this sort o=
+f
+> thing is probably going to get harder as time goes by, not easier. =A0=
+I
+> know how painful it can be, since I've been having a hard time
+> backporting fixes to the 2.6.27 stable tree.
+>
+> The good news is that ext4 development is settling down, so if you
+> manage to take another snapshot around 2.6.29 or 2.6.30, I suspect
+> life will be much easier (at least as far as backporting patches for
+> ext4 is concerned.)
+>
+> Best regards,
+>
+> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0- Ted
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
