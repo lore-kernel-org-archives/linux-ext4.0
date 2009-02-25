@@ -1,87 +1,90 @@
-From: Felipe Franciosi <ozzy@doc.ic.ac.uk>
-Subject: Re: Simple inode question (ext2/3)
-Date: Wed, 25 Feb 2009 10:59:22 +0000
-Message-ID: <417E5333-32B8-42AA-A498-011DF1DDB074@doc.ic.ac.uk>
-References: <20090224210515.GA7064@mit.edu> <alpine.DEB.2.00.0902242148450.13652@pintail.doc.ic.ac.uk> <20090225040654.GT3199@webber.adilger.int>
-Mime-Version: 1.0 (Apple Message framework v930.3)
-Content-Type: text/plain; charset=US-ASCII; format=flowed; delsp=yes
-Content-Transfer-Encoding: 7bit
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: double free of blocks occurred during online defrag
+Date: Wed, 25 Feb 2009 16:29:44 +0530
+Message-ID: <20090225105944.GB25714@skywalker>
+References: <49A4E7B8.2040804@sx.jp.nec.com> <20090225104446.GA25714@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f174.google.com ([209.85.217.174]:58954 "EHLO
-	mail-gx0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757186AbZBYK71 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 05:59:27 -0500
-Received: by gxk22 with SMTP id 22so8434572gxk.13
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 02:59:25 -0800 (PST)
-In-Reply-To: <20090225040654.GT3199@webber.adilger.int>
+Received: from e23smtp04.au.ibm.com ([202.81.31.146]:54387 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752071AbZBYLAG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 06:00:06 -0500
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1PAwDms027793
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 21:58:13 +1100
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n1PB0K5g377084
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 22:00:20 +1100
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1PB02Jv030847
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 22:00:03 +1100
+Content-Disposition: inline
+In-Reply-To: <20090225104446.GA25714@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Andreas,
+On Wed, Feb 25, 2009 at 04:14:46PM +0530, Aneesh Kumar K.V wrote:
+> On Wed, Feb 25, 2009 at 03:39:52PM +0900, Kazuya Mio wrote:
+> > Hi Aneesh,
+> > 
+> > When I remove the file that is running online defrag, the following error occurs
+> > after closing the file descriptor:
+> > 
+> > Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8):
+> > ext4_mb_release_inode_pa: free 2048, pa_free 1562
+> > Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
+> > double-free of inode 0's block 802817(bit 0 in group 98)
+> > Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
+> > double-free of inode 0's block 802818(bit 1 in group 98)
+> > Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
+> > double-free of inode 0's block 802819(bit 2 in group 98)
+> > Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
+> > double-free of inode 0's block 802820(bit 3 in group 98)
+> > Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
+> > double-free of inode 0's block 802821(bit 4 in group 98)
+> > Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
+> > double-free of inode 0's block 802822(bit 5 in group 98)
+> > 
+> > So, online defrag calls ext4_discard_preallocations() at the end of
+> > ext4_defrag() to avoid double-free error.
+> > However, above error hasn't occurred since applying your patch posted on Nov
+> > 6th, 2008 because this error is caused by the same reason of your report.
+> > http://marc.info/?l=linux-ext4&m=122599787406193&w=4
+> > 
+> > What is the status of this patch?
+> 
+> We dropped the patch because I found that the double free in my case was
+> not exactly due the explanation given in the patch above.
+> 
+> I asked to drop the patch in
+> 
+> http://article.gmane.org/gmane.comp.file-systems.ext4/10199
+> 
+> I also found that the patch is not completely correct. The meta-data
+> blocks which are added to the free_list are not allocated from any
+> prealloc space.
+> 
+> So what you are seeing may be a different problem which the patch is
+> hiding from happening.  I guess you will have to look more closely at why the
+> double-free is happening in your case.
 
-On 25 Feb 2009, at 04:06, Andreas Dilger wrote:
+I found one case of double-free , but not sure how the above patch is
+helping to avoid that. Any how here is the case:
 
-> On Feb 24, 2009  21:48 +0000, Felipe Franciosi wrote:
->>> This isn't for some college class, is it?
->>
->> No, it is not. Where would you get that idea from?
->
-> Because there are lots of questions like this from university
-> students that would rather have the mailing list do their
-> homework for them.
 
-I'm sorry, but quite honestly, I don't think my questions looked like  
-"hey, can someone do this for me?".
+a) We have inode prealloc space. We allocated some blocks out of that
+for data
+b) We later free the data blocks. That means we mark the bits in bitmap
+and buddy as free.
+c) Now we want to discard the prealloc space. We look at the bitmap and
+try mark the blocks which are free in bitmap as free in buddy. But since
+the blocks are already marked free in buddy we hit the double free case.
 
-I've had replies from other people in the list. Some with similar  
-questions, but believe me, AFRAID of asking them publicly exactly  
-because you can get this kind of reply.
+To fix this we will have to scan all the inode prealloc space of the group
+and if he blocks belong to the inode prealloc space we should not mark
+them free in buddy.
 
-And as I've said to another member of the list that also contacted me  
-privately: I'd rather help students with humble and honest questions  
-than developers that lie about their skills to get a job and then go  
-to mailing lists to get their work done for them.
-
-> How sad that you have just been rude one of the main ext2/3/4  
-> developers,
-> e2fsprogs maintainer, and one of the most senior Linux kernel  
-> developers.
-
-I know exactly who he is and how good he is (at least, technically),  
-because I follow this list's discussions. I just don't see how he is  
-helping by not only refusing to answer, but also constantly and  
-publicly asking questions about my intentions in an offensive manner,  
-already criticising the way I'm experimenting something.
-
-> I would suggest that you look at what ext2_iget->ext2_get_inode() is  
-> doing.
-
-Thank you. This is the kind of reply I was expecting. Much appreciated.
-
-> You will have a hard time getting much help from the list unless you  
-> change
-> your attitude.
-
-Unless some people stand up and say something about this type of reply  
-from time to time, NO ONE is getting any help here.
-
-As a matter of fact, I didn't see any critics to the question below. I  
-can only assume that messing with inodes can look academic or not  
-depending on the phase of the moon or something.
-
-------------------8<------------------
-On 6 Jan 2009, at 10:36, Rohit Sharma wrote:
-> I want to read data blocks from one inode
-> and copy it to other inode.
->
-> I mean to copy data from data blocks associated with one inode
-> to the data blocks associated with other inode.
->
-> Is that possible in kernel space.?
-> --
-------------------8<------------------
-
-My very best,
-Felipe
+-aneesh
