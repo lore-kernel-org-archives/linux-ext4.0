@@ -1,73 +1,102 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: double free of blocks occurred during online defrag
-Date: Wed, 25 Feb 2009 16:14:46 +0530
-Message-ID: <20090225104446.GA25714@skywalker>
-References: <49A4E7B8.2040804@sx.jp.nec.com>
+From: Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>
+Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
+Date: Wed, 25 Feb 2009 11:50:57 +0100 (CET)
+Message-ID: <alpine.LRH.2.00.0902251150300.4063@vixen.sonytel.be>
+References: <49A2705D.9030008@in.ibm.com> <18850.31567.212454.514549@cargo.ozlabs.ibm.com> <alpine.LRH.2.00.0902241857170.544@vixen.sonytel.be> <200902251227.38741.markn@au1.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Kazuya Mio <k-mio@sx.jp.nec.com>
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linuxppc-dev@ozlabs.org, Jan Kara <jack@ucw.cz>,
+	Mel Gorman <mel@csn.ul.ie>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Paul Mackerras <paulus@samba.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Mark Nelson <markn@au1.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp03.au.ibm.com ([202.81.31.145]:58986 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757022AbZBYKpI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 05:45:08 -0500
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id n1PAhPpS023352
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 21:43:25 +1100
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n1PAjNLo413958
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 21:45:23 +1100
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n1PAj5jh012205
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 21:45:05 +1100
-Content-Disposition: inline
-In-Reply-To: <49A4E7B8.2040804@sx.jp.nec.com>
+Received: from vervifontaine.sonytel.be ([80.88.33.193]:59907 "EHLO
+	vervifontaine.sonycom.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751751AbZBYKvA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Feb 2009 05:51:00 -0500
+In-Reply-To: <200902251227.38741.markn@au1.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 25, 2009 at 03:39:52PM +0900, Kazuya Mio wrote:
-> Hi Aneesh,
-> 
-> When I remove the file that is running online defrag, the following error occurs
-> after closing the file descriptor:
-> 
-> Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8):
-> ext4_mb_release_inode_pa: free 2048, pa_free 1562
-> Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
-> double-free of inode 0's block 802817(bit 0 in group 98)
-> Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
-> double-free of inode 0's block 802818(bit 1 in group 98)
-> Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
-> double-free of inode 0's block 802819(bit 2 in group 98)
-> Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
-> double-free of inode 0's block 802820(bit 3 in group 98)
-> Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
-> double-free of inode 0's block 802821(bit 4 in group 98)
-> Jan 22 17:06:52 G3-OPC-SVR2 kernel: EXT4-fs error (device hda8): mb_free_blocks:
-> double-free of inode 0's block 802822(bit 5 in group 98)
-> 
-> So, online defrag calls ext4_discard_preallocations() at the end of
-> ext4_defrag() to avoid double-free error.
-> However, above error hasn't occurred since applying your patch posted on Nov
-> 6th, 2008 because this error is caused by the same reason of your report.
-> http://marc.info/?l=linux-ext4&m=122599787406193&w=4
-> 
-> What is the status of this patch?
+On Wed, 25 Feb 2009, Mark Nelson wrote:
+> On Wed, 25 Feb 2009 05:01:59 am Geert Uytterhoeven wrote:
+> > On Mon, 23 Feb 2009, Paul Mackerras wrote:
+> > > Andrew Morton writes:
+> > > > It looks like we died in ext3_xattr_block_get():
+> > > >=20
+> > > > 		memcpy(buffer, bh->b_data + le16_to_cpu(entry->e_value_offs),
+> > > > 		       size);
+> > > >=20
+> > > > Perhaps entry->e_value_offs is no good.  I wonder if the filesy=
+stem is
+> > > > corrupted and this snuck through the defenses.
+> > > >=20
+> > > > I also wonder if there is enough info in that trace for a ppc p=
+erson to
+> > > > be able to determine whether the faulting address is in the sou=
+rce or
+> > > > destination of the memcpy() (please)?
+> > >=20
+> > > It appears to have faulted on a load, implicating the source.  Th=
+e
+> > > address being referenced (0xc00000003f380000) doesn't look
+> > > outlandish.  I wonder if this kernel has CONFIG_DEBUG_PAGEALLOC t=
+urned
+> > > on, and what page size is selected?
+> >=20
+> > I'm seeing a similar thing on PS3, but not in ext3. During early us=
+erspace
+> > setup (udevd), it crashes accessing a 0xc00* address in:
+> >=20
+> > | NIP setup+0x20/0x130
+> > | LR copy_user_page+0x18/0x6c
+> > | Call trace:
+> > | do_wp_page+0x5b4/0x89c
+> > | do_page_fault+0x3a8/0x58c
+> > | handle_page_fault+0x20/0x5c
+> >=20
+> > I have CONFIG_DEBUG_PAGEALLOC=3Dy. If I disable it, the system boot=
+s fine.
+> >=20
+> > If needed, I can probably bisect this tomorrow. It definitely didn'=
+t happen in
+> > 2.6.29-rc5.
+>=20
+> No need to bisect - it was 25d6e2d7c58ddc4a3b614fc5381591c0cfe66556, =
+my
+> commit that "optimised" 64bit memcpy() for Power6 and Cell.
+>=20
+> The bug was in -rc1, but if your copies were 8-byte aligned with resp=
+ect
+> to the source the problem wouldn't have been seen... Could this have
+> been why you didn't see it in -rc5?
 
-We dropped the patch because I found that the double free in my case was
-not exactly due the explanation given in the patch above.
+Hmm... I just started seeing it on older kernels (-rc5+), too...
 
-I asked to drop the patch in
+With kind regards,
 
-http://article.gmane.org/gmane.comp.file-systems.ext4/10199
+Geert Uytterhoeven
+Software Architect
 
-I also found that the patch is not completely correct. The meta-data
-blocks which are added to the free_list are not allocated from any
-prealloc space.
+Sony Techsoft Centre Europe
+The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
+gium
 
-So what you are seeing may be a different problem which the patch is
-hiding from happening.  I guess you will have to look more closely at why the
-double-free is happening in your case.
+Phone:    +32 (0)2 700 8453
+=46ax:      +32 (0)2 700 8622
+E-mail:   Geert.Uytterhoeven@sonycom.com
+Internet: http://www.sony-europe.com/
 
--aneesh
+A division of Sony Europe (Belgium) N.V.
+VAT BE 0413.825.160 =B7 RPR Brussels
+=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
