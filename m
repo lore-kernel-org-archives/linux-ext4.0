@@ -1,137 +1,147 @@
-From: Ron Johnson <ron.l.johnson@cox.net>
-Subject: Re: EXT4-fs: group descriptors corrupted!
-Date: Wed, 25 Feb 2009 17:42:05 -0600
-Message-ID: <49A5D74D.9030309@cox.net>
-References: <49A5AC83.1020009@cox.net> <20090225213046.GF1363@mit.edu> <49A5BC63.9030104@cox.net> <20090225231853.GG1363@mit.edu>
+From: Mark Nelson <markn@au1.ibm.com>
+Subject: [PATCH] powerpc: Fix 64bit __copy_tofrom_user() regression
+Date: Thu, 26 Feb 2009 10:46:24 +1100
+Message-ID: <200902261046.24367.markn@au1.ibm.com>
+References: <49A2705D.9030008@in.ibm.com> <200902251752.56514.markn@au1.ibm.com> <200902261026.48183.markn@au1.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii; format=flowed
+Content-Type: text/plain;
+  charset="iso-8859-1"
 Content-Transfer-Encoding: 7bit
-To: Linux-Ext4 <linux-ext4@vger.kernel.org>
+Cc: linuxppc-dev@ozlabs.org, Jan Kara <jack@ucw.cz>,
+	Jan Kara <jack@suse.cz>, Mel Gorman <mel@csn.ul.ie>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Paul Mackerras <paulus@samba.org>,
+	Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: benh@kernel.crashing.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from eastrmmtao107.cox.net ([68.230.240.59]:42568 "EHLO
-	eastrmmtao107.cox.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752234AbZBYXmJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 18:42:09 -0500
-Received: from eastrmimpo02.cox.net ([68.1.16.120])
-          by eastrmmtao107.cox.net
-          (InterMail vM.7.08.02.01 201-2186-121-102-20070209) with ESMTP
-          id <20090225234205.DCDS23750.eastrmmtao107.cox.net@eastrmimpo02.cox.net>
-          for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 18:42:05 -0500
-Received: from [192.168.1.10] (haggis.homelan [192.168.1.10])
-	by haggis.homelan (Postfix) with ESMTP id 6E67987CF9
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 17:42:05 -0600 (CST)
-In-Reply-To: <20090225231853.GG1363@mit.edu>
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:55028 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752245AbZBYXov (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 18:44:51 -0500
+In-Reply-To: <200902261026.48183.markn@au1.ibm.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 02/25/2009 05:18 PM, Theodore Tso wrote:
-> Huh.  OK, there's something really strange going on here.
-> 
-> The kernel never updates the backup superblock; that's by design, to
-> avoid corruption problems.  So for example, on my laptop, if I run
-> dumpe2fs on my root partition, I see this:
-> 
-> Filesystem created:       Fri Feb 13 09:00:02 2009
-> Last mount time:          Tue Feb 24 14:34:19 2009
-> Last write time:          Tue Feb 24 14:34:19 2009
-> Mount count:              3
-> Maximum mount count:      30
-> Last checked:             Sat Feb 14 10:46:41 2009
-> Check interval:           15552000 (6 months)
-> Next check after:         Thu Aug 13 11:46:41 2009
-> 
-> However, if I run dumpe2fs -o superblock=32768 on my root partition,
-> I'll see this:
-> 
-> Filesystem created:       Fri Feb 13 09:00:02 2009
-> Last mount time:          Fri Feb 13 11:22:06 2009
-> Last write time:          Sat Feb 14 10:47:11 2009
-> Mount count:              0
-> Maximum mount count:      30
-> Last checked:             Sat Feb 14 10:46:41 2009
-> Check interval:           15552000 (6 months)
-> Next check after:         Thu Aug 13 11:46:41 2009
-> 
-> Note the difference in the "last write time" and the "last mount
-> time".  That's because normally we avoid touching the backup
-> superblocks.
-> 
-> Now let's take a look at your dumpe2fs output.  In your case, we see
-> the following:
-> 
-> Filesystem created:       Thu Jan 22 19:33:20 2009
-> Last mount time:          Fri Jan 23 16:23:58 2009
-> Last write time:          Sun Feb 22 02:31:02 2009
-> Mount count:              1
-> Maximum mount count:      24
-> Last checked:             Fri Jan 23 16:19:49 2009
-> Check interval:           15552000 (6 months)
-> Next check after:         Wed Jul 22 17:19:49 2009
-> 
-> and it's the same on both the primary and backup (dumpe2fs -o
-> superblock=32768).  The question is how the heck did *that* happen?
-> As I mentioned, the kernel doesn't even have code to touch the backup
-> superblock.  That would tend to implicate one of the e2fsprogs tools,
-> or sometihng using the e2fsprogs libraries --- but the recent
-> libraries (and you're using e2fsprogs 1.41.x) also avoid touching the
-> backup superblocks.  The only tools that could have done it from
-> e2fsprogs userland are e2fsck, tune2fs, and resize2fs, and that
-> doesn't explain how the values turned out to be pure garbage.
-> 
-> Does that the "last write" timestamp suggest anything to you?  What
-> was happening on the system at or around Sun Feb 22 02:31:02 2009?
-> Maybe if we can localize this down to what userspace program caused
-> the problem, it'll be a hint.
+This fixes a regression introduced by commit
+a4e22f02f5b6518c1484faea1f88d81802b9feac ("powerpc: Update 64bit
+__copy_tofrom_user() using CPU_FTR_UNALIGNED_LD_STD").
 
-That's about 10 hours before I rebooted the machine, middle of a 
-Saturday night...
+The same bug that existed in the 64bit memcpy() also exists here so fix
+it here too. The fix is the same as that applied to memcpy() with the
+addition of fixes for the exception handling code required for
+__copy_tofrom_user().
 
-I performed a rather large apt-get upgrade at around 01:30, but that 
-  would have only touched /, not my "big data" directory. 
-~/Documents  is symlinked into /data/big/Documents, so I might have 
-been editing an OOo document, or copying a YouTube file to it, but 
-nothing pops into mind.
+This stops us reading beyond the end of the source region we were told
+to copy.
 
-> (This is why I didn't want you to run e2fsck just yet; if you had, it
-> would have overwritten the last write time, which could be a value
-> clue as to what is causing this problem.)
-> 
-> As far as how to recover your data, what I would recommend doing is
-> creating a writeable LVM snapshot, with a pretty good amount of space.
+Signed-off-by: Mark Nelson <markn@au1.ibm.com>
+---
+ arch/powerpc/lib/copyuser_64.S |   38 +++++++++++++++++++++++++++++++-------
+ 1 file changed, 31 insertions(+), 7 deletions(-)
 
-Sorry, but I don't have *any* unallocated space left.
-
-> Then try running the command "mke2fs -S " on the snapshot, with
-> *precisely* the same mke2fs arguments and /etc/mke2fs.conf that you
-> used to create the filesystem in the first place.  Then cross your
-> fingers, and e2fsck on the snapshot, and see how much of the data you
-> can recover; some of it may end up in lost+found, but hopefully you'll
-> get most of the data back.  If it works on snapshot, only then try it
-> on the real LVM.  If it doesn't work out on the snapshot, you can
-> always discard it and try again without further corrupting any of your
-> original filesystem.
-> 
-> Good luck, and thanks in advance for anything information you can give
-> us to help track down this problem.  And this point I'm going to guess
-> that it's a nasty e2fsprogs bug, where somehow the internal in-memory
-
-I'm sure that I didn't run any "e2" app on a mounted device!
-
-> version of the block group descriptors got corrupted, and then gotten
-> writen out to disk.  But this is just a guess at this point --- and
-> I'm still left wondering why I haven't seen it on my systems and on my
-> regression testing.
-
-Note that this only happened on a reboot.  I had mounted & unmounted 
-this device many times while learning about lvm2, adding files, 
-resizing-expanding the fs, adding more files, etc.  But that only 
-took two days, and then it "sat" there for almost 4 weeks with no 
-problems.
-
--- 
-Ron Johnson, Jr.
-Jefferson LA  USA
-
-The feeling of disgust at seeing a human female in a Relationship
-with a chimp male is Homininphobia, and you should be ashamed of
-yourself.
+Index: upstream/arch/powerpc/lib/copyuser_64.S
+===================================================================
+--- upstream.orig/arch/powerpc/lib/copyuser_64.S
++++ upstream/arch/powerpc/lib/copyuser_64.S
+@@ -62,18 +62,19 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
+ 72:	std	r8,8(r3)
+ 	beq+	3f
+ 	addi	r3,r3,16
+-23:	ld	r9,8(r4)
+ .Ldo_tail:
+ 	bf	cr7*4+1,1f
+-	rotldi	r9,r9,32
++23:	lwz	r9,8(r4)
++	addi	r4,r4,4
+ 73:	stw	r9,0(r3)
+ 	addi	r3,r3,4
+ 1:	bf	cr7*4+2,2f
+-	rotldi	r9,r9,16
++44:	lhz	r9,8(r4)
++	addi	r4,r4,2
+ 74:	sth	r9,0(r3)
+ 	addi	r3,r3,2
+ 2:	bf	cr7*4+3,3f
+-	rotldi	r9,r9,8
++45:	lbz	r9,8(r4)
+ 75:	stb	r9,0(r3)
+ 3:	li	r3,0
+ 	blr
+@@ -141,11 +142,24 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
+ 6:	cmpwi	cr1,r5,8
+ 	addi	r3,r3,32
+ 	sld	r9,r9,r10
+-	ble	cr1,.Ldo_tail
++	ble	cr1,7f
+ 34:	ld	r0,8(r4)
+ 	srd	r7,r0,r11
+ 	or	r9,r7,r9
+-	b	.Ldo_tail
++7:
++	bf	cr7*4+1,1f
++	rotldi	r9,r9,32
++94:	stw	r9,0(r3)
++	addi	r3,r3,4
++1:	bf	cr7*4+2,2f
++	rotldi	r9,r9,16
++95:	sth	r9,0(r3)
++	addi	r3,r3,2
++2:	bf	cr7*4+3,3f
++	rotldi	r9,r9,8
++96:	stb	r9,0(r3)
++3:	li	r3,0
++	blr
+ 
+ .Ldst_unaligned:
+ 	PPC_MTOCRF	0x01,r6		/* put #bytes to 8B bdry into cr7 */
+@@ -218,7 +232,6 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
+ 121:
+ 132:
+ 	addi	r3,r3,8
+-123:
+ 134:
+ 135:
+ 138:
+@@ -226,6 +239,9 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
+ 140:
+ 141:
+ 142:
++123:
++144:
++145:
+ 
+ /*
+  * here we have had a fault on a load and r3 points to the first
+@@ -309,6 +325,9 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
+ 187:
+ 188:
+ 189:	
++194:
++195:
++196:
+ 1:
+ 	ld	r6,-24(r1)
+ 	ld	r5,-8(r1)
+@@ -329,7 +348,9 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
+ 	.llong	72b,172b
+ 	.llong	23b,123b
+ 	.llong	73b,173b
++	.llong	44b,144b
+ 	.llong	74b,174b
++	.llong	45b,145b
+ 	.llong	75b,175b
+ 	.llong	24b,124b
+ 	.llong	25b,125b
+@@ -347,6 +368,9 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
+ 	.llong	79b,179b
+ 	.llong	80b,180b
+ 	.llong	34b,134b
++	.llong	94b,194b
++	.llong	95b,195b
++	.llong	96b,196b
+ 	.llong	35b,135b
+ 	.llong	81b,181b
+ 	.llong	36b,136b
