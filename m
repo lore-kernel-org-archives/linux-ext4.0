@@ -1,73 +1,93 @@
-From: Mark Nelson <markn@au1.ibm.com>
-Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
-Date: Wed, 25 Feb 2009 12:27:38 +1100
-Message-ID: <200902251227.38741.markn@au1.ibm.com>
-References: <49A2705D.9030008@in.ibm.com> <18850.31567.212454.514549@cargo.ozlabs.ibm.com> <alpine.LRH.2.00.0902241857170.544@vixen.sonytel.be>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] ext4: New inode/block allocation algorithms for
+	flex_bg filesystems
+Date: Tue, 24 Feb 2009 21:50:54 -0500
+Message-ID: <20090225025054.GD7064@mit.edu>
+References: <20090218154310.GH3600@mini-me.lan> <20090224085931.GA25657@skywalker> <20090224224108.GQ3199@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-15"
-Content-Transfer-Encoding: 7bit
-Cc: Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>,
-	Paul Mackerras <paulus@samba.org>, Jan Kara <jack@ucw.cz>,
-	Mel Gorman <mel@csn.ul.ie>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	linux-ext4@vger.kernel.org
-To: linuxppc-dev@ozlabs.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:39194 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754959AbZBYB0G (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Feb 2009 20:26:06 -0500
-In-Reply-To: <alpine.LRH.2.00.0902241857170.544@vixen.sonytel.be>
+Received: from THUNK.ORG ([69.25.196.29]:34848 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753299AbZBYCvA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Feb 2009 21:51:00 -0500
 Content-Disposition: inline
+In-Reply-To: <20090224224108.GQ3199@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 25 Feb 2009 05:01:59 am Geert Uytterhoeven wrote:
-> On Mon, 23 Feb 2009, Paul Mackerras wrote:
-> > Andrew Morton writes:
-> > > It looks like we died in ext3_xattr_block_get():
-> > > 
-> > > 		memcpy(buffer, bh->b_data + le16_to_cpu(entry->e_value_offs),
-> > > 		       size);
-> > > 
-> > > Perhaps entry->e_value_offs is no good.  I wonder if the filesystem is
-> > > corrupted and this snuck through the defenses.
-> > > 
-> > > I also wonder if there is enough info in that trace for a ppc person to
-> > > be able to determine whether the faulting address is in the source or
-> > > destination of the memcpy() (please)?
-> > 
-> > It appears to have faulted on a load, implicating the source.  The
-> > address being referenced (0xc00000003f380000) doesn't look
-> > outlandish.  I wonder if this kernel has CONFIG_DEBUG_PAGEALLOC turned
-> > on, and what page size is selected?
+> Two notes here -
+> - get_random_bytes() is actually a fairly CPU-intensive operation, though
+>   I'm not sure it is significant in this context
+> - more importantly, scanning ALL groups in a very large filesystem to find
+>   an optimal group.  Large filesystems can have upwards of 60-100k groups
+>   to scan, and even with flexbg it seems that get_orlov_stats() is not
+>   using the flex_group[] stats in the common case where flex_size is the
+>   same as the flexbg size, but recalculating these for every allocation.
+
+Note that this only happens when we are creating directories.  I'm
+making the assumption here that creating directories is rare, and
+certainly happens less often than allocating inodes or blocks.  I was
+deliberately not using flex_group[] stats, since I was thinking that
+eventually it would be worthwhile to nuke the need to take a spinlock
+for every inode and block allocation, and it wasn't keeping track of
+the number of directories, anyway.
+
+We also don't actually scan ALL the groups.  For top-level directories
+we do, yes.  But most directories aren't top-level; and for non
+top-level directories, we find the first block group which meets the
+minimum criteria:
+
+	for (i = 0; i < ngroups; i++) {
+		grp = (parent_group + i) % ngroups;
+		get_orlov_stats(sb, grp, flex_size, &stats);
+		if (stats.used_dirs >= max_dirs)
+			continue;
+		if (stats.free_inodes < min_inodes)
+			continue;
+		if (stats.free_blocks < min_blocks)
+			continue;
+		goto found_flex_bg;
+	}
+
+Looking at Eric's benchmark, it looks like each iteration is creating
+196,608 directories for each iteration.  If takes 6 seconds, then each
+mkdir is taking 30 microseconds, and if takes 15 seconds to do an
+interation, then each mkdir is taking 76 microseconds.  So that
+variance is large, but how bad does it really get?
+
+Also, what workload is likely going to be creating tons and tons of
+directories?  Even a psycho squid cache hierarchy is only 65536
+directories.
+
+> Based on the above, it would be preferable to settle for a "local"
+> optimal group after scanning N successful candidates, then checking
+> the "most recently selected" group saved in the superblock if it is
+> still better than the local optimum.  Of course it should continue to
+> scan all groups if there are no suitable groups yet found.
 > 
-> I'm seeing a similar thing on PS3, but not in ext3. During early userspace
-> setup (udevd), it crashes accessing a 0xc00* address in:
-> 
-> | NIP setup+0x20/0x130
-> | LR copy_user_page+0x18/0x6c
-> | Call trace:
-> | do_wp_page+0x5b4/0x89c
-> | do_page_fault+0x3a8/0x58c
-> | handle_page_fault+0x20/0x5c
-> 
-> I have CONFIG_DEBUG_PAGEALLOC=y. If I disable it, the system boots fine.
-> 
-> If needed, I can probably bisect this tomorrow. It definitely didn't happen in
-> 2.6.29-rc5.
+> Since the starting group is random, this will avoid being stuck in
+> a bad local minimum, while avoiding an exhaustive search when there
+> are a lot of groups.
 
-No need to bisect - it was 25d6e2d7c58ddc4a3b614fc5381591c0cfe66556, my
-commit that "optimised" 64bit memcpy() for Power6 and Cell.
+The above algorithm is only used for top-level directories.
 
-The bug was in -rc1, but if your copies were 8-byte aligned with respect
-to the source the problem wouldn't have been seen... Could this have
-been why you didn't see it in -rc5?
+> It would seem that using i_last_alloc_group FIRST (if set) would be better
+> than always checking all groups in the flexbg.  Either i_last_alloc_group
+> is in the same flex group as parent_group (so no harm done) or a previous
+> allocation wasn't able to find any free inode in that flex group and it
+> had to do a more expensive search elsewhere.
 
-I'll work on a fix now.
+(This is the algorithm used for non-directories).  Yeah, I agree that
+keeping track of the last flex group and using it first makes sense.
 
-Thanks!
+I do think it makes sense to start at the beginning of each flex
+group; checking each block group is pretty fast, since we're not
+scanning the bitmap; just checking a count value.  Even if there are
+128 groups for flex groups, we're in big trouble if checking free
+inodes count for 100+ groups is noticeable.
 
-Mark
+							- Ted
