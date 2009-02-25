@@ -1,111 +1,63 @@
-From: Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>
-Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
-Date: Wed, 25 Feb 2009 14:31:20 +0100 (CET)
-Message-ID: <alpine.LRH.2.00.0902251430410.4063@vixen.sonytel.be>
-References: <49A2705D.9030008@in.ibm.com> <200902251752.56514.markn@au1.ibm.com> <alpine.LRH.2.00.0902251018060.4063@vixen.sonytel.be> <200902252310.05792.markn@au1.ibm.com>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: Simple inode question (ext2/3)
+Date: Wed, 25 Feb 2009 09:10:02 -0500
+Message-ID: <87f94c370902250610u3f5929b1i9e56000e7bcdb44a@mail.gmail.com>
+References: <20090224210515.GA7064@mit.edu>
+	 <alpine.DEB.2.00.0902242148450.13652@pintail.doc.ic.ac.uk>
+	 <20090225040654.GT3199@webber.adilger.int>
+	 <417E5333-32B8-42AA-A498-011DF1DDB074@doc.ic.ac.uk>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=iso-8859-15
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linuxppc-dev@ozlabs.org, Jan Kara <jack@ucw.cz>,
-	Jan Kara <jack@suse.cz>, Mel Gorman <mel@csn.ul.ie>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Paul Mackerras <paulus@samba.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Mark Nelson <markn@au1.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Felipe Franciosi <ozzy@doc.ic.ac.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vervifontaine.sonytel.be ([80.88.33.193]:63590 "EHLO
-	vervifontaine.sonycom.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1752959AbZBYNbX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Feb 2009 08:31:23 -0500
-In-Reply-To: <200902252310.05792.markn@au1.ibm.com>
+Received: from qw-out-2122.google.com ([74.125.92.25]:21774 "EHLO
+	qw-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753152AbZBYOKF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 09:10:05 -0500
+Received: by qw-out-2122.google.com with SMTP id 5so60357qwi.37
+        for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 06:10:02 -0800 (PST)
+In-Reply-To: <417E5333-32B8-42AA-A498-011DF1DDB074@doc.ic.ac.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 25 Feb 2009, Mark Nelson wrote:
-> On Wed, 25 Feb 2009 08:50:46 pm Geert Uytterhoeven wrote:
-> > On Wed, 25 Feb 2009, Mark Nelson wrote:
-> > > On Tue, 24 Feb 2009 05:38:37 pm Sachin P. Sant wrote:
-> > > > Jan Kara wrote:
-> > > > >   Hmm, OK. But then I'm not sure how that can happen. Obvious=
-ly, memcpy
-> > > > > somehow got beyond end of the page referenced by bh->b_data. =
-So it means
-> > > > > that le16_to_cpu(entry->e_value_offs) + size > page_size. But
-> > > > > ext3_xattr_find_entry() calls ext3_xattr_check_entry() which =
-in
-> > > > > particular checks whether e_value_offs + e_value_size isn't g=
-reater than
-> > > > > bh->b_size. So I see no way how memcpy can get beyond end of =
-the page.
-> > > > >   Sachin, is the problem reproducible? If yes, can you send u=
-s contents
-> > > > >  =20
-> > > > Yes, i am able to recreate this problem easily. As i had mentio=
-ned if the
-> > > > earlier kernel is booted with selinux enabled and then 2.6.29-r=
-c6 is booted
-> > > > i get this crash. But if i specify selinux=3D0 at command line,=
- 2.6.29-rc6 boots
-> > > > without any problem.
-> > >=20
-> > > Hi Sanchin and Geert,
-> > >=20
-> > > Does the patch below fix the problems you're seeing? If it does I=
-'ll send
-> > > a properly written up and formatted patch to linuxppc-dev (as wel=
-l as
-> > > another one to fix the same problem in copy_tofrom_user()).
-> >=20
-> > Unfortunately not, now it crashes while accessing the memory pointe=
-d to by
-> > GPR16, in
-> >=20
-> > NIP: copy_page_range+x0608/0x628
-> > LR:  dup_mm+0x2e4/0x428
-> > Trace: debug_table+0xcc70/0x1afe0 (unreliable)
-> > dup_mm+0x2e4/0x428
-> > copy_process+0x86c/0xf9c
-> > do_fork+0x188/0x39c
-> > sys_clone+0x58/0x70
-> > ppc_clone+0x8/0xc
-> >=20
-> > However, after reverting 25d6e2d7c58ddc4a3b614fc5381591c0cfe66556, =
-I still see
-> > similar problems as above (crash in copy_page_range()).
-> > Which makes me think that
-> >   1. Your new patch fixes the problem introduced by 25d6e2d7,
-> >   2. There's still another issue than the one introduced by 25d6e2d=
-7.
->=20
-> Does the following patch fix the errors you're seeing? (it applies th=
-e
-> same fix as the previous patch but this time to copy_tofrom_user, whi=
-ch
-> I updated in a4e22f02f5b6518c1484faea1f88d81802b9feac)
+On Wed, Feb 25, 2009 at 5:59 AM, Felipe Franciosi <ozzy@doc.ic.ac.uk> wrote:
 
-Thanks, but I still get crashes in copy_page_range().
+>
+> As a matter of fact, I didn't see any critics to the question below. I can
+> only assume that messing with inodes can look academic or not depending on
+> the phase of the moon or something.
+>
+> ------------------8<------------------
+> On 6 Jan 2009, at 10:36, Rohit Sharma wrote:
+>>
+>> I want to read data blocks from one inode
+>> and copy it to other inode.
+>>
+>> I mean to copy data from data blocks associated with one inode
+>> to the data blocks associated with other inode.
+>>
+>> Is that possible in kernel space.?
+>> --
 
-With kind regards,
+By chance that question was also asked on the kernelnewbies list.
 
-Geert Uytterhoeven
-Software Architect
+The first responses there were also of the form "Why do you want to do that?"
 
-Sony Techsoft Centre Europe
-The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
-gium
+FYI: It started a very long thread discussing what they were actually
+doing. (This was part of the OHSM project that has been mentioned here
+a couple times.)  It was eventually determined the proposed
+online_defrag patchset was very similar to their need.
 
-Phone:    +32 (0)2 700 8453
-=46ax:      +32 (0)2 700 8622
-E-mail:   Geert.Uytterhoeven@sonycom.com
-Internet: http://www.sony-europe.com/
+Greg
+-- 
+Greg Freemyer
+Litigation Triage Solutions Specialist
+http://www.linkedin.com/in/gregfreemyer
+First 99 Days Litigation White Paper -
+http://www.norcrossgroup.com/forms/whitepapers/99%20Days%20whitepaper.pdf
 
-A division of Sony Europe (Belgium) N.V.
-VAT BE 0413.825.160 =B7 RPR Brussels
-=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The Norcross Group
+The Intersection of Evidence & Technology
+http://www.norcrossgroup.com
