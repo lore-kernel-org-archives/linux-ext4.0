@@ -1,92 +1,63 @@
-From: Xiang Wang <xiangw@google.com>
-Subject: Re: fsck errors encountered when applying patch "ext4: fix BUG when
-	calling ext4_error with locked block group"
-Date: Wed, 25 Feb 2009 10:33:49 -0800
-Message-ID: <d5ca277e0902251033l6a67abd3vd9deb08f52f5f3c6@mail.gmail.com>
-References: <d5ca277e0902201531g6e32691cweda3fd8f6d1dbbff@mail.gmail.com>
-	 <20090221012908.GC12966@mini-me.lan>
-	 <532480950902201737j5162125teea57eedbd01873f@mail.gmail.com>
-	 <20090221015026.GD12966@mini-me.lan>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] don't call jbd2_journal_force_commit_nested w/o journal
+Date: Wed, 25 Feb 2009 14:15:21 -0600
+Message-ID: <49A5A6D9.2080602@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Michael Rubin <mrubin@google.com>, linux-ext4@vger.kernel.org,
-	aneesh.kumar@linux.vnet.ibm.com,
-	Curt Wohlgemuth <curtw@google.com>,
-	Chad Talbott <ctalbott@google.com>,
-	Frank Mayhar <fmayhar@google.com>
-To: Theodore Tso <tytso@mit.edu>
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:9202 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751684AbZBYSd4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 13:33:56 -0500
-Received: from zps36.corp.google.com (zps36.corp.google.com [172.25.146.36])
-	by smtp-out.google.com with ESMTP id n1PIXpnn019161
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 18:33:52 GMT
-Received: from wf-out-1314.google.com (wff28.prod.google.com [10.142.6.28])
-	by zps36.corp.google.com with ESMTP id n1PIXnFH030911
-	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 10:33:49 -0800
-Received: by wf-out-1314.google.com with SMTP id 28so151286wff.29
-        for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 10:33:49 -0800 (PST)
-In-Reply-To: <20090221015026.GD12966@mini-me.lan>
+Received: from mx2.redhat.com ([66.187.237.31]:55861 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753245AbZBYUPZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Feb 2009 15:15:25 -0500
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n1PKFMCw005287
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 15:15:22 -0500
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n1PKFNW2026601
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 15:15:23 -0500
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n1PKFM3n004376
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 15:15:22 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hey Ted,
+Running without a journal, I oopsed when I ran out of space,
+because we called jbd2_journal_force_commit_nested() from
+ext4_should_retry_alloc() without a journal.
 
-Good news!
-You are right! Taking the two commits as you suggested cleared our
-bug. Thank you very much for pointing that out.
+This should take care of it, I think.
 
-We may still be back-porting patches for a while until our internal
-tree catches up with 2.6.29 or 2.6.30.
-But we definitely will be much more careful in taking patches.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-Thanks,
-Xiang
+Index: linux-2.6/fs/ext4/balloc.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/balloc.c
++++ linux-2.6/fs/ext4/balloc.c
+@@ -609,7 +609,9 @@ int ext4_claim_free_blocks(struct ext4_s
+  */
+ int ext4_should_retry_alloc(struct super_block *sb, int *retries)
+ {
+-	if (!ext4_has_free_blocks(EXT4_SB(sb), 1) || (*retries)++ > 3)
++	if (!ext4_has_free_blocks(EXT4_SB(sb), 1) ||
++	    (*retries)++ > 3 ||
++	    !EXT4_SB(sb)->s_journal)
+ 		return 0;
+ 
+ 	jbd_debug(1, "%s: retrying operation after ENOSPC\n", sb->s_id);
+Index: linux-2.6/fs/ext4/inode.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/inode.c
++++ linux-2.6/fs/ext4/inode.c
+@@ -2540,7 +2540,7 @@ retry:
+ 
+ 		ext4_journal_stop(handle);
+ 
+-		if (mpd.retval == -ENOSPC) {
++		if ((mpd.retval == -ENOSPC) && sbi->s_journal) {
+ 			/* commit the transaction which would
+ 			 * free blocks released in the transaction
+ 			 * and try again
 
-On Fri, Feb 20, 2009 at 5:50 PM, Theodore Tso <tytso@mit.edu> wrote:
-> On Fri, Feb 20, 2009 at 05:37:35PM -0800, Michael Rubin wrote:
->> We know. Our qualifying process is not the most light weight and the
->> kernel moves fast. Normally we take a snapshot and qualify it, tryin=
-g
->> to take upstream patches when we can and then also publishing bugs w=
-e
->> find. The problem is that with ext4 still undergoing active dev we
->> want to be able to keep our ext4 portion of the tree as up to date a=
-s
->> possible.
->
-> I understand, and it's not a burden to answer questions like this. =A0=
-I
-> was just pointing out the effort that it will likely take to backport
-> the percpu counter patches, since you will need to scan the your
-> sources and make sure the behavioural changes in percpu_counter_sum
-> isn't going to cause problems for you elsewhere, and that this sort o=
-f
-> thing is probably going to get harder as time goes by, not easier. =A0=
-I
-> know how painful it can be, since I've been having a hard time
-> backporting fixes to the 2.6.27 stable tree.
->
-> The good news is that ext4 development is settling down, so if you
-> manage to take another snapshot around 2.6.29 or 2.6.30, I suspect
-> life will be much easier (at least as far as backporting patches for
-> ext4 is concerned.)
->
-> Best regards,
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0- Ted
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
