@@ -1,100 +1,111 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Simple inode question (ext2/3)
-Date: Wed, 25 Feb 2009 08:11:18 -0500
-Message-ID: <20090225131118.GE7064@mit.edu>
-References: <20090224210515.GA7064@mit.edu> <alpine.DEB.2.00.0902242148450.13652@pintail.doc.ic.ac.uk> <20090225040654.GT3199@webber.adilger.int> <417E5333-32B8-42AA-A498-011DF1DDB074@doc.ic.ac.uk>
+From: Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>
+Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
+Date: Wed, 25 Feb 2009 14:31:20 +0100 (CET)
+Message-ID: <alpine.LRH.2.00.0902251430410.4063@vixen.sonytel.be>
+References: <49A2705D.9030008@in.ibm.com> <200902251752.56514.markn@au1.ibm.com> <alpine.LRH.2.00.0902251018060.4063@vixen.sonytel.be> <200902252310.05792.markn@au1.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Felipe Franciosi <ozzy@doc.ic.ac.uk>
+Content-Type: TEXT/PLAIN; charset=iso-8859-15
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linuxppc-dev@ozlabs.org, Jan Kara <jack@ucw.cz>,
+	Jan Kara <jack@suse.cz>, Mel Gorman <mel@csn.ul.ie>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Paul Mackerras <paulus@samba.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Mark Nelson <markn@au1.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:33145 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752301AbZBYNLY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Feb 2009 08:11:24 -0500
-Content-Disposition: inline
-In-Reply-To: <417E5333-32B8-42AA-A498-011DF1DDB074@doc.ic.ac.uk>
+Received: from vervifontaine.sonytel.be ([80.88.33.193]:63590 "EHLO
+	vervifontaine.sonycom.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752959AbZBYNbX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 25 Feb 2009 08:31:23 -0500
+In-Reply-To: <200902252310.05792.markn@au1.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Feb 25, 2009 at 10:59:22AM +0000, Felipe Franciosi wrote:
->> Because there are lots of questions like this from university
->> students that would rather have the mailing list do their
->> homework for them.
->
-> I'm sorry, but quite honestly, I don't think my questions looked like  
-> "hey, can someone do this for me?".
+On Wed, 25 Feb 2009, Mark Nelson wrote:
+> On Wed, 25 Feb 2009 08:50:46 pm Geert Uytterhoeven wrote:
+> > On Wed, 25 Feb 2009, Mark Nelson wrote:
+> > > On Tue, 24 Feb 2009 05:38:37 pm Sachin P. Sant wrote:
+> > > > Jan Kara wrote:
+> > > > >   Hmm, OK. But then I'm not sure how that can happen. Obvious=
+ly, memcpy
+> > > > > somehow got beyond end of the page referenced by bh->b_data. =
+So it means
+> > > > > that le16_to_cpu(entry->e_value_offs) + size > page_size. But
+> > > > > ext3_xattr_find_entry() calls ext3_xattr_check_entry() which =
+in
+> > > > > particular checks whether e_value_offs + e_value_size isn't g=
+reater than
+> > > > > bh->b_size. So I see no way how memcpy can get beyond end of =
+the page.
+> > > > >   Sachin, is the problem reproducible? If yes, can you send u=
+s contents
+> > > > >  =20
+> > > > Yes, i am able to recreate this problem easily. As i had mentio=
+ned if the
+> > > > earlier kernel is booted with selinux enabled and then 2.6.29-r=
+c6 is booted
+> > > > i get this crash. But if i specify selinux=3D0 at command line,=
+ 2.6.29-rc6 boots
+> > > > without any problem.
+> > >=20
+> > > Hi Sanchin and Geert,
+> > >=20
+> > > Does the patch below fix the problems you're seeing? If it does I=
+'ll send
+> > > a properly written up and formatted patch to linuxppc-dev (as wel=
+l as
+> > > another one to fix the same problem in copy_tofrom_user()).
+> >=20
+> > Unfortunately not, now it crashes while accessing the memory pointe=
+d to by
+> > GPR16, in
+> >=20
+> > NIP: copy_page_range+x0608/0x628
+> > LR:  dup_mm+0x2e4/0x428
+> > Trace: debug_table+0xcc70/0x1afe0 (unreliable)
+> > dup_mm+0x2e4/0x428
+> > copy_process+0x86c/0xf9c
+> > do_fork+0x188/0x39c
+> > sys_clone+0x58/0x70
+> > ppc_clone+0x8/0xc
+> >=20
+> > However, after reverting 25d6e2d7c58ddc4a3b614fc5381591c0cfe66556, =
+I still see
+> > similar problems as above (crash in copy_page_range()).
+> > Which makes me think that
+> >   1. Your new patch fixes the problem introduced by 25d6e2d7,
+> >   2. There's still another issue than the one introduced by 25d6e2d=
+7.
+>=20
+> Does the following patch fix the errors you're seeing? (it applies th=
+e
+> same fix as the previous patch but this time to copy_tofrom_user, whi=
+ch
+> I updated in a4e22f02f5b6518c1484faea1f88d81802b9feac)
 
-Actually, it looks a huge amount like questions I've gotten in the
-past, where, after I push the students a little, they admit that they
-are taking undegraduate classes and that they were lazy and it really
-was for a problem set for some undergraduate introduction to operating
-systems class.  About half the time the Really Dumb Approach was
-caused by a clueless professor and it was driven by the problem set
-question; the other half of the time the Really Dumb Approach is
-caused by the students being completely in the weeds.
+Thanks, but I still get crashes in copy_page_range().
 
-So out of respect of the pedogagical process, these days *whenever* my
-"this might be a bogus problem set" warning light goes on, I always
-quiz people asking for progamming assistance.  If you really are a
-Ph.D. student, and someday you are teaching undergraduates, hopefully
-you would appreciate might care in trying to not help undergraduates
-attempting to cheat on problem sets.  (Whether it is students trying
-to cheat on a problem set, or developers who lie about their skills
-and then try to get work done by asking on the mailing lists --- I
-prefer not to help either, thank you very much.)
+With kind regards,
 
+Geert Uytterhoeven
+Software Architect
 
-As far as your approach is concerned, you asked a whole bunch of
-questions which were just *off*.  They made no rational sense, and
-even if you are practicing, sometimes the wrong kind of practicing can
-end up doing far more harm than good.  If you have code that
-completely bypasses all of the normal abstraction layers, the danger
-is that you might actually try to use it later, or get confused into
-thinking that this was a valid thing to do.  It's like practicing to
-compose counterpoint where there is a huge numbers of parallel fifths
-between the bass and soprano lines.  What you did would be the
-equivalent of asking a composer with help with the interior voices,
-and the composer notices and raises questions about the parallel
-fifths in the outer voices, and observes that helping you would be
-doing you a disservice, because you are *practicing* *the* *wrong*
-*thing*.
+Sony Techsoft Centre Europe
+The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
+gium
 
-In this particular case, you mentioned that you want to be able to
-access and change the inodes.  Well, there is an inode cache, and
-bypassing the inode cache while the filesystem is mounted will only
-give you possibly out of date information if you are reading, but will
-be ***disastrous*** if you plan to (in your worlds) "change specific
-inode data".  So this is not a question of doing things in a more
-"fashionable" way.  It is a question of doing things the right way or
-the data corrupting way.
+Phone:    +32 (0)2 700 8453
+=46ax:      +32 (0)2 700 8622
+E-mail:   Geert.Uytterhoeven@sonycom.com
+Internet: http://www.sony-europe.com/
 
-Finally, please note that I, nor any other kernel developer that you
-might try to cozen, am under no obligation to dispense free progamming
-advice.  Your attitude seems to be that we all exist to help you out,
-and that we are obliged to spend time answering your questions.  If
-someone will eventually be contributing to the kernel, and submitting
-useful ext4 patches, I'll give that person some beginning pointers.
-But most of the time such contributors start by trying to implement
-something useful, not just "practice".  If you are just practicing,
-and your only interests is to develop your own skills, and get your
-own Ph.D., why the heck should I help you?  Personally, I think the
-world needs a lot more Ph.D.'s that don't have attitude, so if someone
-is going to be an *sshole, the last thing that I would find an
-appealing is using some of my precious free time (that would otherwise
-be devoted towards making ext4 better) and waste it instead helping
-them get that Ph.D., at which point they will probably be even more
-offensive to others because they think the "Dr." title makes them
-better than everybody else.
-
-The bottom line is that this is a list about ext3/ext4 development.
-If someone wants to ask a question, and it doesn't make sense why they
-are asking a question, I'm going to ask them why.  In some cases this
-is important, because otherwise I might give them a wrong or
-misleading answer.  But it's also because if we let every single
-person who has a random "I want to learn how to program the kernel"
-swamp the list, we'd have no time to work on what the folks on the
-community *really* is interested in doing, which is making ext3/ext4
-better and more stable filesystems.
-
-	  	      		    	   - Ted
+A division of Sony Europe (Belgium) N.V.
+VAT BE 0413.825.160 =B7 RPR Brussels
+=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
