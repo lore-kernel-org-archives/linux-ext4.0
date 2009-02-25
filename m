@@ -1,103 +1,95 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: EXT4-fs: group descriptors corrupted!
-Date: Wed, 25 Feb 2009 18:18:53 -0500
-Message-ID: <20090225231853.GG1363@mit.edu>
-References: <49A5AC83.1020009@cox.net> <20090225213046.GF1363@mit.edu> <49A5BC63.9030104@cox.net>
+From: Mark Nelson <markn@au1.ibm.com>
+Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
+Date: Thu, 26 Feb 2009 10:20:34 +1100
+Message-ID: <200902261020.34325.markn@au1.ibm.com>
+References: <49A2705D.9030008@in.ibm.com> <alpine.LRH.2.00.0902251430410.4063@vixen.sonytel.be> <200902260945.41990.markn@au1.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linux-Ext4 <linux-ext4@vger.kernel.org>
-To: Ron Johnson <ron.l.johnson@cox.net>
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>,
+	Jan Kara <jack@ucw.cz>, Jan Kara <jack@suse.cz>,
+	Mel Gorman <mel@csn.ul.ie>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Paul Mackerras <paulus@samba.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: linuxppc-dev@ozlabs.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44405 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753810AbZBYXS6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 25 Feb 2009 18:18:58 -0500
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:51767 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753810AbZBYXTC (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 18:19:02 -0500
+In-Reply-To: <200902260945.41990.markn@au1.ibm.com>
 Content-Disposition: inline
-In-Reply-To: <49A5BC63.9030104@cox.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Huh.  OK, there's something really strange going on here.
+On Thu, 26 Feb 2009 09:45:41 am Mark Nelson wrote:
+> On Thu, 26 Feb 2009 12:31:20 am Geert Uytterhoeven wrote:
+> > On Wed, 25 Feb 2009, Mark Nelson wrote:
+> > > On Wed, 25 Feb 2009 08:50:46 pm Geert Uytterhoeven wrote:
+> > > > On Wed, 25 Feb 2009, Mark Nelson wrote:
+> > > > > On Tue, 24 Feb 2009 05:38:37 pm Sachin P. Sant wrote:
+> > > > > > Jan Kara wrote:
+> > > > > > >   Hmm, OK. But then I'm not sure how that can happen. Obviously, memcpy
+> > > > > > > somehow got beyond end of the page referenced by bh->b_data. So it means
+> > > > > > > that le16_to_cpu(entry->e_value_offs) + size > page_size. But
+> > > > > > > ext3_xattr_find_entry() calls ext3_xattr_check_entry() which in
+> > > > > > > particular checks whether e_value_offs + e_value_size isn't greater than
+> > > > > > > bh->b_size. So I see no way how memcpy can get beyond end of the page.
+> > > > > > >   Sachin, is the problem reproducible? If yes, can you send us contents
+> > > > > > >   
+> > > > > > Yes, i am able to recreate this problem easily. As i had mentioned if the
+> > > > > > earlier kernel is booted with selinux enabled and then 2.6.29-rc6 is booted
+> > > > > > i get this crash. But if i specify selinux=0 at command line, 2.6.29-rc6 boots
+> > > > > > without any problem.
+> > > > > 
+> > > > > Hi Sanchin and Geert,
+> > > > > 
+> > > > > Does the patch below fix the problems you're seeing? If it does I'll send
+> > > > > a properly written up and formatted patch to linuxppc-dev (as well as
+> > > > > another one to fix the same problem in copy_tofrom_user()).
+> > > > 
+> > > > Unfortunately not, now it crashes while accessing the memory pointed to by
+> > > > GPR16, in
+> > > > 
+> > > > NIP: copy_page_range+x0608/0x628
+> > > > LR:  dup_mm+0x2e4/0x428
+> > > > Trace: debug_table+0xcc70/0x1afe0 (unreliable)
+> > > > dup_mm+0x2e4/0x428
+> > > > copy_process+0x86c/0xf9c
+> > > > do_fork+0x188/0x39c
+> > > > sys_clone+0x58/0x70
+> > > > ppc_clone+0x8/0xc
+> > > > 
+> > > > However, after reverting 25d6e2d7c58ddc4a3b614fc5381591c0cfe66556, I still see
+> > > > similar problems as above (crash in copy_page_range()).
+> > > > Which makes me think that
+> > > >   1. Your new patch fixes the problem introduced by 25d6e2d7,
+> > > >   2. There's still another issue than the one introduced by 25d6e2d7.
+> > > 
+> > > Does the following patch fix the errors you're seeing? (it applies the
+> > > same fix as the previous patch but this time to copy_tofrom_user, which
+> > > I updated in a4e22f02f5b6518c1484faea1f88d81802b9feac)
+> > 
+> > Thanks, but I still get crashes in copy_page_range().
+> > 
+> 
+> Hmmm... I'm out of ideas for the moment, but thanks for testing anyway!
+> 
+> Mark
+> _______________________________________________
+> Linuxppc-dev mailing list
+> Linuxppc-dev@ozlabs.org
+> https://ozlabs.org/mailman/listinfo/linuxppc-dev
+> 
 
-The kernel never updates the backup superblock; that's by design, to
-avoid corruption problems.  So for example, on my laptop, if I run
-dumpe2fs on my root partition, I see this:
+If you revert both 25d6e2d7c58ddc4a3b614fc5381591c0cfe66556 and
+a4e22f02f5b6518c1484faea1f88d81802b9feac, does it help? You could also
+try to revert 57dda6ef5bd5b9e60410477ad29e654097e2cca1 just in case I
+need to keep wearing the brown paper bag for a bit longer :)
 
-Filesystem created:       Fri Feb 13 09:00:02 2009
-Last mount time:          Tue Feb 24 14:34:19 2009
-Last write time:          Tue Feb 24 14:34:19 2009
-Mount count:              3
-Maximum mount count:      30
-Last checked:             Sat Feb 14 10:46:41 2009
-Check interval:           15552000 (6 months)
-Next check after:         Thu Aug 13 11:46:41 2009
+Thanks!
 
-However, if I run dumpe2fs -o superblock=32768 on my root partition,
-I'll see this:
-
-Filesystem created:       Fri Feb 13 09:00:02 2009
-Last mount time:          Fri Feb 13 11:22:06 2009
-Last write time:          Sat Feb 14 10:47:11 2009
-Mount count:              0
-Maximum mount count:      30
-Last checked:             Sat Feb 14 10:46:41 2009
-Check interval:           15552000 (6 months)
-Next check after:         Thu Aug 13 11:46:41 2009
-
-Note the difference in the "last write time" and the "last mount
-time".  That's because normally we avoid touching the backup
-superblocks.
-
-Now let's take a look at your dumpe2fs output.  In your case, we see
-the following:
-
-Filesystem created:       Thu Jan 22 19:33:20 2009
-Last mount time:          Fri Jan 23 16:23:58 2009
-Last write time:          Sun Feb 22 02:31:02 2009
-Mount count:              1
-Maximum mount count:      24
-Last checked:             Fri Jan 23 16:19:49 2009
-Check interval:           15552000 (6 months)
-Next check after:         Wed Jul 22 17:19:49 2009
-
-and it's the same on both the primary and backup (dumpe2fs -o
-superblock=32768).  The question is how the heck did *that* happen?
-As I mentioned, the kernel doesn't even have code to touch the backup
-superblock.  That would tend to implicate one of the e2fsprogs tools,
-or sometihng using the e2fsprogs libraries --- but the recent
-libraries (and you're using e2fsprogs 1.41.x) also avoid touching the
-backup superblocks.  The only tools that could have done it from
-e2fsprogs userland are e2fsck, tune2fs, and resize2fs, and that
-doesn't explain how the values turned out to be pure garbage.
-
-Does that the "last write" timestamp suggest anything to you?  What
-was happening on the system at or around Sun Feb 22 02:31:02 2009?
-Maybe if we can localize this down to what userspace program caused
-the problem, it'll be a hint.
-
-(This is why I didn't want you to run e2fsck just yet; if you had, it
-would have overwritten the last write time, which could be a value
-clue as to what is causing this problem.)
-
-As far as how to recover your data, what I would recommend doing is
-creating a writeable LVM snapshot, with a pretty good amount of space.
-Then try running the command "mke2fs -S " on the snapshot, with
-*precisely* the same mke2fs arguments and /etc/mke2fs.conf that you
-used to create the filesystem in the first place.  Then cross your
-fingers, and e2fsck on the snapshot, and see how much of the data you
-can recover; some of it may end up in lost+found, but hopefully you'll
-get most of the data back.  If it works on snapshot, only then try it
-on the real LVM.  If it doesn't work out on the snapshot, you can
-always discard it and try again without further corrupting any of your
-original filesystem.
-
-Good luck, and thanks in advance for anything information you can give
-us to help track down this problem.  And this point I'm going to guess
-that it's a nasty e2fsprogs bug, where somehow the internal in-memory
-version of the block group descriptors got corrupted, and then gotten
-writen out to disk.  But this is just a guess at this point --- and
-I'm still left wondering why I haven't seen it on my systems and on my
-regression testing.
-
-    	       		       	       	    - Ted
-
+Mark
