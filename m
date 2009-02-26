@@ -1,147 +1,76 @@
-From: Mark Nelson <markn@au1.ibm.com>
-Subject: [PATCH] powerpc: Fix 64bit __copy_tofrom_user() regression
-Date: Thu, 26 Feb 2009 10:46:24 +1100
-Message-ID: <200902261046.24367.markn@au1.ibm.com>
-References: <49A2705D.9030008@in.ibm.com> <200902251752.56514.markn@au1.ibm.com> <200902261026.48183.markn@au1.ibm.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: EXT4-fs: group descriptors corrupted!
+Date: Wed, 25 Feb 2009 17:05:41 -0700
+Message-ID: <20090226000541.GC3199@webber.adilger.int>
+References: <49A5AC83.1020009@cox.net> <20090225213046.GF1363@mit.edu>
+ <49A5BC63.9030104@cox.net> <20090225231853.GG1363@mit.edu>
+ <49A5D74D.9030309@cox.net>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: linuxppc-dev@ozlabs.org, Jan Kara <jack@ucw.cz>,
-	Jan Kara <jack@suse.cz>, Mel Gorman <mel@csn.ul.ie>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Paul Mackerras <paulus@samba.org>,
-	Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: benh@kernel.crashing.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Linux-Ext4 <linux-ext4@vger.kernel.org>
+To: Ron Johnson <ron.l.johnson@cox.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp03.au.ibm.com ([202.81.31.145]:55028 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752245AbZBYXov (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 18:44:51 -0500
-In-Reply-To: <200902261026.48183.markn@au1.ibm.com>
-Content-Disposition: inline
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:33715 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1764252AbZBZAGK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Feb 2009 19:06:10 -0500
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n1Q0689g014390
+	for <linux-ext4@vger.kernel.org>; Wed, 25 Feb 2009 16:06:09 -0800 (PST)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
+ id <0KFN00300BH3G000@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 25 Feb 2009 16:06:08 -0800 (PST)
+In-reply-to: <49A5D74D.9030309@cox.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This fixes a regression introduced by commit
-a4e22f02f5b6518c1484faea1f88d81802b9feac ("powerpc: Update 64bit
-__copy_tofrom_user() using CPU_FTR_UNALIGNED_LD_STD").
+On Feb 25, 2009  17:42 -0600, Ron Johnson wrote:
+> On 02/25/2009 05:18 PM, Theodore Tso wrote:
+>> Now let's take a look at your dumpe2fs output.  In your case, we see
+>> the following:
+>>
+>> Filesystem created:       Thu Jan 22 19:33:20 2009
+>> Last mount time:          Fri Jan 23 16:23:58 2009
+>> Last write time:          Sun Feb 22 02:31:02 2009
+>> Mount count:              1
+>> Maximum mount count:      24
+>> Last checked:             Fri Jan 23 16:19:49 2009
+>> Check interval:           15552000 (6 months)
+>> Next check after:         Wed Jul 22 17:19:49 2009
+>>
+>> and it's the same on both the primary and backup (dumpe2fs -o
+>> superblock=32768).  The question is how the heck did *that* happen?
+>> As I mentioned, the kernel doesn't even have code to touch the backup
+>> superblock.
 
-The same bug that existed in the 64bit memcpy() also exists here so fix
-it here too. The fix is the same as that applied to memcpy() with the
-addition of fixes for the exception handling code required for
-__copy_tofrom_user().
+Except online resizing?  It HAS to update the backup superblocks,
+otherwise if the primary gets corrupted the backup will not have
+the right total blocks count and anything beyond the old blocks
+count might be lost...
 
-This stops us reading beyond the end of the source region we were told
-to copy.
+>> Does that the "last write" timestamp suggest anything to you?  What
+>> was happening on the system at or around Sun Feb 22 02:31:02 2009?
+>> Maybe if we can localize this down to what userspace program caused
+>> the problem, it'll be a hint.
+>
+> That's about 10 hours before I rebooted the machine, middle of a  
+> Saturday night...
 
-Signed-off-by: Mark Nelson <markn@au1.ibm.com>
----
- arch/powerpc/lib/copyuser_64.S |   38 +++++++++++++++++++++++++++++++-------
- 1 file changed, 31 insertions(+), 7 deletions(-)
+Please take time zones into account also.
 
-Index: upstream/arch/powerpc/lib/copyuser_64.S
-===================================================================
---- upstream.orig/arch/powerpc/lib/copyuser_64.S
-+++ upstream/arch/powerpc/lib/copyuser_64.S
-@@ -62,18 +62,19 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
- 72:	std	r8,8(r3)
- 	beq+	3f
- 	addi	r3,r3,16
--23:	ld	r9,8(r4)
- .Ldo_tail:
- 	bf	cr7*4+1,1f
--	rotldi	r9,r9,32
-+23:	lwz	r9,8(r4)
-+	addi	r4,r4,4
- 73:	stw	r9,0(r3)
- 	addi	r3,r3,4
- 1:	bf	cr7*4+2,2f
--	rotldi	r9,r9,16
-+44:	lhz	r9,8(r4)
-+	addi	r4,r4,2
- 74:	sth	r9,0(r3)
- 	addi	r3,r3,2
- 2:	bf	cr7*4+3,3f
--	rotldi	r9,r9,8
-+45:	lbz	r9,8(r4)
- 75:	stb	r9,0(r3)
- 3:	li	r3,0
- 	blr
-@@ -141,11 +142,24 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
- 6:	cmpwi	cr1,r5,8
- 	addi	r3,r3,32
- 	sld	r9,r9,r10
--	ble	cr1,.Ldo_tail
-+	ble	cr1,7f
- 34:	ld	r0,8(r4)
- 	srd	r7,r0,r11
- 	or	r9,r7,r9
--	b	.Ldo_tail
-+7:
-+	bf	cr7*4+1,1f
-+	rotldi	r9,r9,32
-+94:	stw	r9,0(r3)
-+	addi	r3,r3,4
-+1:	bf	cr7*4+2,2f
-+	rotldi	r9,r9,16
-+95:	sth	r9,0(r3)
-+	addi	r3,r3,2
-+2:	bf	cr7*4+3,3f
-+	rotldi	r9,r9,8
-+96:	stb	r9,0(r3)
-+3:	li	r3,0
-+	blr
- 
- .Ldst_unaligned:
- 	PPC_MTOCRF	0x01,r6		/* put #bytes to 8B bdry into cr7 */
-@@ -218,7 +232,6 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
- 121:
- 132:
- 	addi	r3,r3,8
--123:
- 134:
- 135:
- 138:
-@@ -226,6 +239,9 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
- 140:
- 141:
- 142:
-+123:
-+144:
-+145:
- 
- /*
-  * here we have had a fault on a load and r3 points to the first
-@@ -309,6 +325,9 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
- 187:
- 188:
- 189:	
-+194:
-+195:
-+196:
- 1:
- 	ld	r6,-24(r1)
- 	ld	r5,-8(r1)
-@@ -329,7 +348,9 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
- 	.llong	72b,172b
- 	.llong	23b,123b
- 	.llong	73b,173b
-+	.llong	44b,144b
- 	.llong	74b,174b
-+	.llong	45b,145b
- 	.llong	75b,175b
- 	.llong	24b,124b
- 	.llong	25b,125b
-@@ -347,6 +368,9 @@ END_FTR_SECTION_IFCLR(CPU_FTR_UNALIGNED_
- 	.llong	79b,179b
- 	.llong	80b,180b
- 	.llong	34b,134b
-+	.llong	94b,194b
-+	.llong	95b,195b
-+	.llong	96b,196b
- 	.llong	35b,135b
- 	.llong	81b,181b
- 	.llong	36b,136b
+> I performed a rather large apt-get upgrade at around 01:30, but that  
+> would have only touched /, not my "big data" directory. ~/Documents  is 
+> symlinked into /data/big/Documents, so I might have been editing an OOo 
+> document, or copying a YouTube file to it, but nothing pops into mind.
+
+This might have happened AFTER your reboot, by e2fsck or similar?
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
