@@ -1,76 +1,574 @@
-From: Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>
-Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
-Date: Thu, 26 Feb 2009 18:40:31 +0100 (CET)
-Message-ID: <alpine.LRH.2.00.0902261805510.29190@vixen.sonytel.be>
-References: <49A2705D.9030008@in.ibm.com> <alpine.LRH.2.00.0902251430410.4063@vixen.sonytel.be> <200902260945.41990.markn@au1.ibm.com> <200902261020.34325.markn@au1.ibm.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH, RFC] ext4: New inode/block allocation algorithms for
+	flex_bg filesystems
+Date: Thu, 26 Feb 2009 13:21:56 -0500
+Message-ID: <20090226182156.GL7227@mit.edu>
+References: <20090218154310.GH3600@mini-me.lan>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=ISO-8859-15
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linuxppc-dev@ozlabs.org, Jan Kara <jack@ucw.cz>,
-	Jan Kara <jack@suse.cz>, Mel Gorman <mel@csn.ul.ie>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	Paul Mackerras <paulus@samba.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Mark Nelson <markn@au1.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Eric Sandeen <sandeen@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from vervifontaine.sonytel.be ([80.88.33.193]:57842 "EHLO
-	vervifontaine.sonycom.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1751972AbZBZRke (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Feb 2009 12:40:34 -0500
-In-Reply-To: <200902261020.34325.markn@au1.ibm.com>
+Received: from thunk.org ([69.25.196.29]:46061 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751236AbZBZSWB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Feb 2009 13:22:01 -0500
+Content-Disposition: inline
+In-Reply-To: <20090218154310.GH3600@mini-me.lan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 26 Feb 2009, Mark Nelson wrote:
-> On Thu, 26 Feb 2009 09:45:41 am Mark Nelson wrote:
-> > On Thu, 26 Feb 2009 12:31:20 am Geert Uytterhoeven wrote:
-> > > On Wed, 25 Feb 2009, Mark Nelson wrote:
-> > > > Does the following patch fix the errors you're seeing? (it appl=
-ies the
-> > > > same fix as the previous patch but this time to copy_tofrom_use=
-r, which
-> > > > I updated in a4e22f02f5b6518c1484faea1f88d81802b9feac)
-> > >=20
-> > > Thanks, but I still get crashes in copy_page_range().
-> >=20
-> > Hmmm... I'm out of ideas for the moment, but thanks for testing any=
-way!
->=20
-> If you revert both 25d6e2d7c58ddc4a3b614fc5381591c0cfe66556 and
-> a4e22f02f5b6518c1484faea1f88d81802b9feac, does it help? You could als=
-o
-> try to revert 57dda6ef5bd5b9e60410477ad29e654097e2cca1 just in case I
-> need to keep wearing the brown paper bag for a bit longer :)
+There is an updated patch to add updated orlov inode/block allocators
+to ext4 in the ext4 patch queue, and which I've attached here.
 
-Still doesn't help.
+It seems to make a huge difference on e2fsck times, which I've written
+about here:
 
-However, I noticed I never enabled CONFIG_DEBUG_PAGEALLOC before 2.6.29=
--rc5.
-So far I tried 2.6.2[5-8], and they all crash with CONFIG_DEBUG_PAGEALL=
-OC.
-I guess it never actually worked on PS3.
+   http://thunk.org/tytso/blog/2009/02/26/fast-ext4-fsck-times-revisited/
 
-With kind regards,
+I've also tried running Eric Sandeen's seq_mkdirs benchmark (which
+I've suggested should be renamed mkdirs_mark, with a suitable tweaked
+logo: http://graphics.ucsd.edu/courses/rendering/2003/joshwills.jpg)
+and what I see is a fairly consistent time per interation that does
+*not* increase as more directories are added to the file system.
 
-Geert Uytterhoeven
-Software Architect
+I tried adding some of Andreas' suggestions which would tend to pack
+the inodes less agressively, in the hopes that it might speed up the
+mkdir operation, but at least for seq_mkdir/mkdirs_mark benchmark, it
+really didn't help, because we are disk bound, not cpu bound.  (At
+least, on a 5400 rpm drive the limiting factor was the hard drive, not
+CPU; maybe things will be different on a big SAN-attached RAID array.)
 
-Sony Techsoft Centre Europe
-The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
-gium
+CPU utilization and speed per interation goes up significantly once
+the disk is full, since at that point we really *do* scan all block
+groups, but that seems to be an acceptable thing to do; I don't think
+it's all that important whether mkdir() returns ENOSPC quickly or not.  :-)
 
-Phone:    +32 (0)2 700 8453
-=46ax:      +32 (0)2 700 8622
-E-mail:   Geert.Uytterhoeven@sonycom.com
-Internet: http://www.sony-europe.com/
+At this point, the major speed advantage of XFS for this benchmark
+seems to be caused by the fact that it supports small form-factor
+directories which are encoded in the inode structure, whereas ext4
+needs to write a 4k directory block even for an empty directory (this
+is what is causing us to be I/O bound).  
 
-A division of Sony Europe (Belgium) N.V.
-VAT BE 0413.825.160 =B7 RPR Brussels
-=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+So any improvements in mkdirs_mark would require special-case hacks
+such as treating a zero-length directory inode as a synthetic empty
+inode, and not actually trying to allocate the directory block until
+the first time a file is created in the directory.  But that would be
+a file system format change that would probably only really be useful
+for better benchmark results --- how common are file systems with
+hundreds of thousands of empty directories, after all?
+
+						- Ted
+
+ext4: New inode/block allocation algorithms for flex_bg file systems
+
+The find_group_flex() inode allocator is now only used if the
+file system is mounted using the "oldalloc" mount option.  It is
+replaced with the original Orlov allocator that has been updated for
+flex_bg file systems (it should behave the same way if flex_bg is
+disabled).  The inode allocator now functions by taking into account
+each flex_bg group, instead of each block group, when deciding whether
+or not it's time to allocate a new directory into a fresh flex_bg.
+
+The block allocator has also been changed so that the first block
+group in each flex_bg is preferred for use for storing directory
+blocks.  This keeps directory blocks close together, which is good for
+speeding up e2fsck since large directories are more likely to look
+like this:
+
+debugfs:  stat /home/tytso/Maildir/cur
+Inode: 1844562   Type: directory    Mode:  0700   Flags: 0x81000
+Generation: 1132745781    Version: 0x00000000:0000ad71
+User: 15806   Group: 15806   Size: 1060864
+File ACL: 0    Directory ACL: 0
+Links: 2   Blockcount: 2072
+Fragment:  Address: 0    Number: 0    Size: 0
+ ctime: 0x499c0ff4:164961f4 -- Wed Feb 18 08:41:08 2009
+ atime: 0x499c0ff4:00000000 -- Wed Feb 18 08:41:08 2009
+ mtime: 0x49957f51:00000000 -- Fri Feb 13 09:10:25 2009
+crtime: 0x499c0f57:00d51440 -- Wed Feb 18 08:38:31 2009
+Size of extra inode fields: 28
+BLOCKS:
+(0):7348651, (1-258):7348654-7348911
+TOTAL: 259
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h    |    6 ++
+ fs/ext4/ext4_i.h  |    3 +
+ fs/ext4/extents.c |   25 ++++++-
+ fs/ext4/ialloc.c  |  215 +++++++++++++++++++++++++++++++++++++++--------------
+ fs/ext4/inode.c   |   18 ++++-
+ fs/ext4/mballoc.c |    7 ++
+ 6 files changed, 216 insertions(+), 58 deletions(-)
+
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 9840cad..684a063 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -827,6 +827,12 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ #define EXT4_DEF_MAX_BATCH_TIME	15000 /* 15ms */
+ 
+ /*
++ * Minimum number of groups in a flexgroup before we separate out
++ * directories into the first block group of a flexgroup
++ */
++#define EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME	4
++
++/*
+  * Structure of a directory entry
+  */
+ #define EXT4_NAME_LEN 255
+diff --git a/fs/ext4/ext4_i.h b/fs/ext4/ext4_i.h
+index 2d516c0..4ce2187 100644
+--- a/fs/ext4/ext4_i.h
++++ b/fs/ext4/ext4_i.h
+@@ -122,6 +122,9 @@ struct ext4_inode_info {
+ 	struct list_head i_prealloc_list;
+ 	spinlock_t i_prealloc_lock;
+ 
++	/* ialloc */
++	ext4_group_t	i_last_alloc_group;
++
+ 	/* allocation reservation info for delalloc */
+ 	unsigned int i_reserved_data_blocks;
+ 	unsigned int i_reserved_meta_blocks;
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index e2eab19..bd0092a 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -152,6 +152,8 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+ 	ext4_fsblk_t bg_start;
+ 	ext4_fsblk_t last_block;
+ 	ext4_grpblk_t colour;
++	ext4_group_t block_group;
++	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
+ 	int depth;
+ 
+ 	if (path) {
+@@ -170,10 +172,31 @@ static ext4_fsblk_t ext4_ext_find_goal(struct inode *inode,
+ 	}
+ 
+ 	/* OK. use inode's group */
+-	bg_start = (ei->i_block_group * EXT4_BLOCKS_PER_GROUP(inode->i_sb)) +
++	block_group = ei->i_block_group;
++	if (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) {
++		/*
++		 * If there are at least EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME
++		 * block groups per flexgroup, reserve the first block 
++		 * group for directories and special files.  Regular 
++		 * files will start at the second block group.  This
++		 * tends to speed up directory access and improves 
++		 * fsck times.
++		 */
++		block_group &= ~(flex_size-1);
++		if (S_ISREG(inode->i_mode))
++			block_group++;
++	}
++	bg_start = (block_group * EXT4_BLOCKS_PER_GROUP(inode->i_sb)) +
+ 		le32_to_cpu(EXT4_SB(inode->i_sb)->s_es->s_first_data_block);
+ 	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+ 
++	/*
++	 * If we are doing delayed allocation, we don't need take
++	 * colour into account.
++	 */
++	if (test_opt(inode->i_sb, DELALLOC))
++		return bg_start;
++
+ 	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+ 		colour = (current->pid % 16) *
+ 			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index f524d9b..c0d2bb6 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -408,6 +408,43 @@ out:
+ 	return 0;
+ }
+ 
++struct orlov_stats {
++	__u32 free_inodes;
++	__u32 free_blocks;
++	__u32 used_dirs;
++};
++
++/*
++ * Helper function for Orlov's allocator; returns critical information
++ * for a particular block group or flex_bg.  If flex_size is 1, then g
++ * is a block group number; otherwise it is flex_bg number.
++ */
++void get_orlov_stats(struct super_block *sb, ext4_group_t g,
++		       int flex_size, struct orlov_stats *stats)
++{
++	struct ext4_group_desc *desc;
++	ext4_group_t		ngroups = EXT4_SB(sb)->s_groups_count;
++	int			i;
++
++	stats->free_inodes = 0;
++	stats->free_blocks = 0;
++	stats->used_dirs = 0;
++
++	g *= flex_size;
++
++	for (i = 0; i < flex_size; i++) {
++		if (g >= ngroups)
++			break;
++		desc = ext4_get_group_desc(sb, g++, NULL);
++		if (!desc)
++			continue;
++
++		stats->free_inodes += ext4_free_inodes_count(sb, desc);
++		stats->free_blocks += ext4_free_blks_count(sb, desc);
++		stats->used_dirs += ext4_used_dirs_count(sb, desc);
++	}
++}
++
+ /*
+  * Orlov's allocator for directories.
+  *
+@@ -423,35 +460,34 @@ out:
+  * it has too many directories already (max_dirs) or
+  * it has too few free inodes left (min_inodes) or
+  * it has too few free blocks left (min_blocks) or
+- * it's already running too large debt (max_debt).
+  * Parent's group is preferred, if it doesn't satisfy these
+  * conditions we search cyclically through the rest. If none
+  * of the groups look good we just look for a group with more
+  * free inodes than average (starting at parent's group).
+- *
+- * Debt is incremented each time we allocate a directory and decremented
+- * when we allocate an inode, within 0--255.
+  */
+ 
+-#define INODE_COST 64
+-#define BLOCK_COST 256
+-
+ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+-				ext4_group_t *group)
++			    ext4_group_t *group, int mode)
+ {
+ 	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+-	struct ext4_super_block *es = sbi->s_es;
+ 	ext4_group_t ngroups = sbi->s_groups_count;
+ 	int inodes_per_group = EXT4_INODES_PER_GROUP(sb);
+ 	unsigned int freei, avefreei;
+ 	ext4_fsblk_t freeb, avefreeb;
+-	ext4_fsblk_t blocks_per_dir;
+ 	unsigned int ndirs;
+-	int max_debt, max_dirs, min_inodes;
++	int max_dirs, min_inodes;
+ 	ext4_grpblk_t min_blocks;
+-	ext4_group_t i;
++	ext4_group_t i, grp, g;
+ 	struct ext4_group_desc *desc;
++	struct orlov_stats stats;
++	int flex_size = ext4_flex_bg_size(sbi);
++
++	if (flex_size > 1) {
++		ngroups = (ngroups + flex_size - 1) >>
++			sbi->s_log_groups_per_flex;
++		parent_group >>= sbi->s_log_groups_per_flex;
++	}
+ 
+ 	freei = percpu_counter_read_positive(&sbi->s_freeinodes_counter);
+ 	avefreei = freei / ngroups;
+@@ -460,71 +496,97 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 	do_div(avefreeb, ngroups);
+ 	ndirs = percpu_counter_read_positive(&sbi->s_dirs_counter);
+ 
+-	if ((parent == sb->s_root->d_inode) ||
+-	    (EXT4_I(parent)->i_flags & EXT4_TOPDIR_FL)) {
++	if (S_ISDIR(mode) &&
++	    ((parent == sb->s_root->d_inode) ||
++	     (EXT4_I(parent)->i_flags & EXT4_TOPDIR_FL))) {
+ 		int best_ndir = inodes_per_group;
+-		ext4_group_t grp;
+ 		int ret = -1;
+ 
+ 		get_random_bytes(&grp, sizeof(grp));
+ 		parent_group = (unsigned)grp % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+-			grp = (parent_group + i) % ngroups;
+-			desc = ext4_get_group_desc(sb, grp, NULL);
+-			if (!desc || !ext4_free_inodes_count(sb, desc))
++			g = (parent_group + i) % ngroups;
++			get_orlov_stats(sb, g, flex_size, &stats);
++			if (!stats.free_inodes)
+ 				continue;
+-			if (ext4_used_dirs_count(sb, desc) >= best_ndir)
++			if (stats.used_dirs >= best_ndir)
+ 				continue;
+-			if (ext4_free_inodes_count(sb, desc) < avefreei)
++			if (stats.free_inodes < avefreei)
+ 				continue;
+-			if (ext4_free_blks_count(sb, desc) < avefreeb)
++			if (stats.free_blocks < avefreeb)
+ 				continue;
+-			*group = grp;
++			grp = g;
+ 			ret = 0;
+-			best_ndir = ext4_used_dirs_count(sb, desc);
++			best_ndir = stats.used_dirs;
++		}
++		if (ret)
++			goto fallback;
++	found_flex_bg:
++		if (flex_size == 1) {
++			*group = grp;
++			return 0;
++		}
++
++		/*
++		 * We pack inodes at the beginning of the flexgroup's
++		 * inode tables.  Block allocation decisions will do
++		 * something similar, although regular files will
++		 * start at 2nd block group of the flexgroup.  See
++		 * ext4_ext_find_goal() and ext4_find_near().
++		 */
++		grp *= flex_size;
++		for (i = 0; i < flex_size; i++) {
++			if (grp+i >= sbi->s_groups_count)
++				break;
++			desc = ext4_get_group_desc(sb, grp+i, NULL);
++			if (desc && ext4_free_inodes_count(sb, desc)) {
++				*group = grp+i;
++				return 0;
++			}
+ 		}
+-		if (ret == 0)
+-			return ret;
+ 		goto fallback;
+ 	}
+ 
+-	blocks_per_dir = ext4_blocks_count(es) - freeb;
+-	do_div(blocks_per_dir, ndirs);
+-
+ 	max_dirs = ndirs / ngroups + inodes_per_group / 16;
+-	min_inodes = avefreei - inodes_per_group / 4;
+-	min_blocks = avefreeb - EXT4_BLOCKS_PER_GROUP(sb) / 4;
+-
+-	max_debt = EXT4_BLOCKS_PER_GROUP(sb);
+-	max_debt /= max_t(int, blocks_per_dir, BLOCK_COST);
+-	if (max_debt * INODE_COST > inodes_per_group)
+-		max_debt = inodes_per_group / INODE_COST;
+-	if (max_debt > 255)
+-		max_debt = 255;
+-	if (max_debt == 0)
+-		max_debt = 1;
++	min_inodes = avefreei - inodes_per_group*flex_size / 4;
++	if (min_inodes < 1)
++		min_inodes = 1;
++	min_blocks = avefreeb - EXT4_BLOCKS_PER_GROUP(sb)*flex_size / 4;
++
++	/*
++	 * Start looking in the flex group where we last allocated an
++	 * inode for this parent directory
++	 */
++	if (EXT4_I(parent)->i_last_alloc_group != ~0) {
++		parent_group = EXT4_I(parent)->i_last_alloc_group;
++		if (flex_size > 1)
++			parent_group >>= sbi->s_log_groups_per_flex;
++	}
+ 
+ 	for (i = 0; i < ngroups; i++) {
+-		*group = (parent_group + i) % ngroups;
+-		desc = ext4_get_group_desc(sb, *group, NULL);
+-		if (!desc || !ext4_free_inodes_count(sb, desc))
+-			continue;
+-		if (ext4_used_dirs_count(sb, desc) >= max_dirs)
++		grp = (parent_group + i) % ngroups;
++		get_orlov_stats(sb, grp, flex_size, &stats);
++		if (stats.used_dirs >= max_dirs)
+ 			continue;
+-		if (ext4_free_inodes_count(sb, desc) < min_inodes)
++		if (stats.free_inodes < min_inodes)
+ 			continue;
+-		if (ext4_free_blks_count(sb, desc) < min_blocks)
++		if (stats.free_blocks < min_blocks)
+ 			continue;
+-		return 0;
++		goto found_flex_bg;
+ 	}
+ 
+ fallback:
++	ngroups = sbi->s_groups_count;
++	avefreei = freei / ngroups;
++	parent_group = EXT4_I(parent)->i_block_group;
+ 	for (i = 0; i < ngroups; i++) {
+-		*group = (parent_group + i) % ngroups;
+-		desc = ext4_get_group_desc(sb, *group, NULL);
++		grp = (parent_group + i) % ngroups;
++		desc = ext4_get_group_desc(sb, grp, NULL);
+ 		if (desc && ext4_free_inodes_count(sb, desc) &&
+-			ext4_free_inodes_count(sb, desc) >= avefreei)
++		    ext4_free_inodes_count(sb, desc) >= avefreei) {
++			*group = grp;
+ 			return 0;
++		}
+ 	}
+ 
+ 	if (avefreei) {
+@@ -540,12 +602,51 @@ fallback:
+ }
+ 
+ static int find_group_other(struct super_block *sb, struct inode *parent,
+-				ext4_group_t *group)
++			    ext4_group_t *group, int mode)
+ {
+ 	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+ 	ext4_group_t ngroups = EXT4_SB(sb)->s_groups_count;
+ 	struct ext4_group_desc *desc;
+-	ext4_group_t i;
++	ext4_group_t i, last;
++	int flex_size = ext4_flex_bg_size(EXT4_SB(sb));
++
++	/*
++	 * Try to place the inode is the same flex group as its
++	 * parent.  If we can't find space, use the Orlov algorithm to
++	 * find another flex group, and store that information in the
++	 * parent directory's inode information so that use that flex
++	 * group for future allocations.
++	 */
++	if (flex_size > 1) {
++		int retry = 0;
++
++	try_again:
++		parent_group &= ~(flex_size-1);
++		last = parent_group + flex_size;
++		if (last > ngroups)
++			last = ngroups;
++		for  (i = parent_group; i < last; i++) {
++			desc = ext4_get_group_desc(sb, i, NULL);
++			if (desc && ext4_free_inodes_count(sb, desc)) {
++				*group = i;
++				return 0;
++			}
++		}
++		if (!retry && EXT4_I(parent)->i_last_alloc_group != ~0) {
++			retry = 1;
++			parent_group = EXT4_I(parent)->i_last_alloc_group;
++			goto try_again;
++		}
++		/*
++		 * If this didn't work, use the Orlov search algorithm
++		 * to find a new flex group; we pass in the mode to
++		 * avoid the topdir algorithms.
++		 */
++		*group = parent_group + flex_size;
++		if (*group > ngroups)
++			*group = 0;
++		return find_group_orlov(sb, parent, group, mode);
++	}
+ 
+ 	/*
+ 	 * Try to place the inode in its parent directory
+@@ -713,10 +814,10 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 	sbi = EXT4_SB(sb);
+ 	es = sbi->s_es;
+ 
+-	if (sbi->s_log_groups_per_flex) {
++	if (sbi->s_log_groups_per_flex && test_opt(sb, OLDALLOC)) {
+ 		ret2 = find_group_flex(sb, dir, &group);
+ 		if (ret2 == -1) {
+-			ret2 = find_group_other(sb, dir, &group);
++			ret2 = find_group_other(sb, dir, &group, mode);
+ 			if (ret2 == 0 && printk_ratelimit())
+ 				printk(KERN_NOTICE "ext4: find_group_flex "
+ 				       "failed, fallback succeeded dir %lu\n",
+@@ -729,11 +830,12 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 		if (test_opt(sb, OLDALLOC))
+ 			ret2 = find_group_dir(sb, dir, &group);
+ 		else
+-			ret2 = find_group_orlov(sb, dir, &group);
++			ret2 = find_group_orlov(sb, dir, &group, mode);
+ 	} else
+-		ret2 = find_group_other(sb, dir, &group);
++		ret2 = find_group_other(sb, dir, &group, mode);
+ 
+ got_group:
++	EXT4_I(dir)->i_last_alloc_group = group;
+ 	err = -ENOSPC;
+ 	if (ret2 == -1)
+ 		goto out;
+@@ -890,6 +992,7 @@ got:
+ 	ei->i_file_acl = 0;
+ 	ei->i_dtime = 0;
+ 	ei->i_block_group = group;
++	ei->i_last_alloc_group = ~0;
+ 
+ 	ext4_set_inode_flags(inode);
+ 	if (IS_DIRSYNC(inode))
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 51cdd13..51d70bc 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -459,6 +459,8 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+ 	ext4_fsblk_t bg_start;
+ 	ext4_fsblk_t last_block;
+ 	ext4_grpblk_t colour;
++	ext4_group_t block_group;
++	int flex_size = ext4_flex_bg_size(EXT4_SB(inode->i_sb));
+ 
+ 	/* Try to find previous block */
+ 	for (p = ind->p - 1; p >= start; p--) {
+@@ -474,9 +476,22 @@ static ext4_fsblk_t ext4_find_near(struct inode *inode, Indirect *ind)
+ 	 * It is going to be referred to from the inode itself? OK, just put it
+ 	 * into the same cylinder group then.
+ 	 */
+-	bg_start = ext4_group_first_block_no(inode->i_sb, ei->i_block_group);
++	block_group = ei->i_block_group;
++	if (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) {
++		block_group &= ~(flex_size-1);
++		if (S_ISREG(inode->i_mode))
++			block_group++;
++	}
++	bg_start = ext4_group_first_block_no(inode->i_sb, block_group);
+ 	last_block = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es) - 1;
+ 
++	/*
++	 * If we are doing delayed allocation, we don't need take
++	 * colour into account.
++	 */
++	if (test_opt(inode->i_sb, DELALLOC))
++		return bg_start;
++
+ 	if (bg_start + EXT4_BLOCKS_PER_GROUP(inode->i_sb) <= last_block)
+ 		colour = (current->pid % 16) *
+ 			(EXT4_BLOCKS_PER_GROUP(inode->i_sb) / 16);
+@@ -4257,6 +4272,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	ei->i_disksize = inode->i_size;
+ 	inode->i_generation = le32_to_cpu(raw_inode->i_generation);
+ 	ei->i_block_group = iloc.block_group;
++	ei->i_last_alloc_group = ~0;
+ 	/*
+ 	 * NOTE! The in-memory inode i_data array is in little-endian order
+ 	 * even on big-endian machines: we do NOT byteswap the block numbers!
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4415bee..0430143 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1726,6 +1726,7 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+ {
+ 	unsigned free, fragments;
+ 	unsigned i, bits;
++	int flex_size = ext4_flex_bg_size(EXT4_SB(ac->ac_sb));
+ 	struct ext4_group_desc *desc;
+ 	struct ext4_group_info *grp = ext4_get_group_info(ac->ac_sb, group);
+ 
+@@ -1747,6 +1748,12 @@ static int ext4_mb_good_group(struct ext4_allocation_context *ac,
+ 		if (desc->bg_flags & cpu_to_le16(EXT4_BG_BLOCK_UNINIT))
+ 			return 0;
+ 
++		/* Avoid using the first bg of a flexgroup for data files */
++		if ((ac->ac_flags & EXT4_MB_HINT_DATA) &&
++		    (flex_size >= EXT4_FLEX_SIZE_DIR_ALLOC_SCHEME) &&
++		    ((group % flex_size) == 0))
++			return 0;
++
+ 		bits = ac->ac_sb->s_blocksize_bits + 1;
+ 		for (i = ac->ac_2order; i <= bits; i++)
+ 			if (grp->bb_counters[i] > 0)
