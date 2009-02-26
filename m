@@ -1,46 +1,76 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Crash in 2.6.28.7 - ext4 related
-Date: Thu, 26 Feb 2009 11:08:29 -0500
-Message-ID: <20090226160829.GH7227@mit.edu>
-References: <b637ec0b0902251203i1fe5f081vfd06350dbf5060e9@mail.gmail.com> <b637ec0b0902260118o19f74acal567440a6f049512@mail.gmail.com> <20090226141946.GE7227@mit.edu> <b637ec0b0902260638u2a07433ayf0ea56fd3e41ec5a@mail.gmail.com>
+From: Geert Uytterhoeven <Geert.Uytterhoeven@sonycom.com>
+Subject: Re: Crash (ext3 ) during 2.6.29-rc6 boot
+Date: Thu, 26 Feb 2009 18:40:31 +0100 (CET)
+Message-ID: <alpine.LRH.2.00.0902261805510.29190@vixen.sonytel.be>
+References: <49A2705D.9030008@in.ibm.com> <alpine.LRH.2.00.0902251430410.4063@vixen.sonytel.be> <200902260945.41990.markn@au1.ibm.com> <200902261020.34325.markn@au1.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Fabio Comolli <fabio.comolli@gmail.com>
+Content-Type: TEXT/PLAIN; charset=ISO-8859-15
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linuxppc-dev@ozlabs.org, Jan Kara <jack@ucw.cz>,
+	Jan Kara <jack@suse.cz>, Mel Gorman <mel@csn.ul.ie>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	Paul Mackerras <paulus@samba.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Mark Nelson <markn@au1.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:37045 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753787AbZBZQId (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Feb 2009 11:08:33 -0500
-Content-Disposition: inline
-In-Reply-To: <b637ec0b0902260638u2a07433ayf0ea56fd3e41ec5a@mail.gmail.com>
+Received: from vervifontaine.sonytel.be ([80.88.33.193]:57842 "EHLO
+	vervifontaine.sonycom.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1751972AbZBZRke (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Feb 2009 12:40:34 -0500
+In-Reply-To: <200902261020.34325.markn@au1.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I got the crash image.  Unfortunately the beginning of the Oops
-message was cut off, which might have been valuable.  There are some
-new patches that are newer than what has been backported to 2.6.28.7;
-some of them are in the for-stable branch of the ext4 git tree, and
-have been queued for 2.6.28.8.  The call stack doesn't look like one
-of the known bugs, though.
+On Thu, 26 Feb 2009, Mark Nelson wrote:
+> On Thu, 26 Feb 2009 09:45:41 am Mark Nelson wrote:
+> > On Thu, 26 Feb 2009 12:31:20 am Geert Uytterhoeven wrote:
+> > > On Wed, 25 Feb 2009, Mark Nelson wrote:
+> > > > Does the following patch fix the errors you're seeing? (it appl=
+ies the
+> > > > same fix as the previous patch but this time to copy_tofrom_use=
+r, which
+> > > > I updated in a4e22f02f5b6518c1484faea1f88d81802b9feac)
+> > >=20
+> > > Thanks, but I still get crashes in copy_page_range().
+> >=20
+> > Hmmm... I'm out of ideas for the moment, but thanks for testing any=
+way!
+>=20
+> If you revert both 25d6e2d7c58ddc4a3b614fc5381591c0cfe66556 and
+> a4e22f02f5b6518c1484faea1f88d81802b9feac, does it help? You could als=
+o
+> try to revert 57dda6ef5bd5b9e60410477ad29e654097e2cca1 just in case I
+> need to keep wearing the brown paper bag for a bit longer :)
 
-Hmm... can you send us the output of dumpe2fs on the filesystem?  And
-something that would be very useful would be a raw e2image of the
-filesystem, created thusly:
+Still doesn't help.
 
-	    e2image -r /dev/sdXXX - | bzip2 > sdXXX.e2i.bz2
+However, I noticed I never enabled CONFIG_DEBUG_PAGEALLOC before 2.6.29=
+-rc5.
+So far I tried 2.6.2[5-8], and they all crash with CONFIG_DEBUG_PAGEALL=
+OC.
+I guess it never actually worked on PS3.
 
-This image will contain the basic filesystem metadata, including the
-directory blocks (and directory names), but none of the data blocks.
-It is therefore much smaller, and if you are willing to let me see
-your directory file names, I can take that image and try to replicate
-the problem on one of my systems.
+With kind regards,
 
-If you have a spare 20gb of disk space, you can also unpack the raw
-image dump and try reproducing the problem on the raw image dump.  If
-you can trigger it easily with an rm -rf operation, it should be just
-as reproducible on the raw image dump.
+Geert Uytterhoeven
+Software Architect
 
-Regards,
+Sony Techsoft Centre Europe
+The Corporate Village =B7 Da Vincilaan 7-D1 =B7 B-1935 Zaventem =B7 Bel=
+gium
 
-						- Ted
+Phone:    +32 (0)2 700 8453
+=46ax:      +32 (0)2 700 8622
+E-mail:   Geert.Uytterhoeven@sonycom.com
+Internet: http://www.sony-europe.com/
+
+A division of Sony Europe (Belgium) N.V.
+VAT BE 0413.825.160 =B7 RPR Brussels
+=46ortis =B7 BIC GEBABEBB =B7 IBAN BE41293037680010
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
