@@ -1,61 +1,46 @@
-From: Fabio Comolli <fabio.comolli@gmail.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Crash in 2.6.28.7 - ext4 related
-Date: Thu, 26 Feb 2009 15:38:24 +0100
-Message-ID: <b637ec0b0902260638u2a07433ayf0ea56fd3e41ec5a@mail.gmail.com>
-References: <b637ec0b0902251203i1fe5f081vfd06350dbf5060e9@mail.gmail.com>
-	 <b637ec0b0902260118o19f74acal567440a6f049512@mail.gmail.com>
-	 <20090226141946.GE7227@mit.edu>
+Date: Thu, 26 Feb 2009 11:08:29 -0500
+Message-ID: <20090226160829.GH7227@mit.edu>
+References: <b637ec0b0902251203i1fe5f081vfd06350dbf5060e9@mail.gmail.com> <b637ec0b0902260118o19f74acal567440a6f049512@mail.gmail.com> <20090226141946.GE7227@mit.edu> <b637ec0b0902260638u2a07433ayf0ea56fd3e41ec5a@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Theodore Tso <tytso@mit.edu>,
-	Fabio Comolli <fabio.comolli@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Fabio Comolli <fabio.comolli@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f176.google.com ([209.85.220.176]:36546 "EHLO
-	mail-fx0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754088AbZBZOi1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Feb 2009 09:38:27 -0500
-In-Reply-To: <20090226141946.GE7227@mit.edu>
+Received: from thunk.org ([69.25.196.29]:37045 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753787AbZBZQId (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Feb 2009 11:08:33 -0500
+Content-Disposition: inline
+In-Reply-To: <b637ec0b0902260638u2a07433ayf0ea56fd3e41ec5a@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Can you try http://www.megaupload.com/?d=3D3UVSWP54 ?
+I got the crash image.  Unfortunately the beginning of the Oops
+message was cut off, which might have been valuable.  There are some
+new patches that are newer than what has been backported to 2.6.28.7;
+some of them are in the for-stable branch of the ext4 git tree, and
+have been queued for 2.6.28.8.  The call stack doesn't look like one
+of the known bugs, though.
 
-It's the first time I'm using such a service so please be patient :-)
+Hmm... can you send us the output of dumpe2fs on the filesystem?  And
+something that would be very useful would be a raw e2image of the
+filesystem, created thusly:
 
-And yes, I cc'ed you in the first message.
+	    e2image -r /dev/sdXXX - | bzip2 > sdXXX.e2i.bz2
+
+This image will contain the basic filesystem metadata, including the
+directory blocks (and directory names), but none of the data blocks.
+It is therefore much smaller, and if you are willing to let me see
+your directory file names, I can take that image and try to replicate
+the problem on one of my systems.
+
+If you have a spare 20gb of disk space, you can also unpack the raw
+image dump and try reproducing the problem on the raw image dump.  If
+you can trigger it easily with an rm -rf operation, it should be just
+as reproducible on the raw image dump.
 
 Regards,
-=46abio
 
-
-
-On Thu, Feb 26, 2009 at 3:19 PM, Theodore Tso <tytso@mit.edu> wrote:
-> On Thu, Feb 26, 2009 at 10:18:29AM +0100, Fabio Comolli wrote:
->> OK, I see that my message didn't reach neither linux-kernel nor
->> linux-fsdevel, maybe because of the image size (484K).
->>
->> If anyone is interested in details, please let me know.
->
-> Yes, we're interested. =C2=A0I've changed the cc list to be the linux=
--ext4
-> list, though. =C2=A0That's a better list for tracking such things tha=
-n the
-> more general linux-fsdevel list.
->
-> Can you post the image (I assume of the kernel oops message, I hope)
-> somewhere? =C2=A0If you cc'ed directly on your first e-mail posting, =
-it
-> apparently never arrived to my inbox, either....
->
-> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
- =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
-=C2=A0 =C2=A0 =C2=A0 - Ted
->
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+						- Ted
