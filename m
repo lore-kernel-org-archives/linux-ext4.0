@@ -1,40 +1,19 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Remove duplicate call to ext4_commit_super() in ext4_freeze()
-Date: Sat, 28 Feb 2009 00:09:34 -0500
-Message-ID: <1235797774-6279-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
+From: "Rudolf Brandt" <casoni.adriano@legrand.sk>
+Subject: She has a lot about you
+Date: Sat, 28 Feb 2009 12:07:22 +0300
+Message-ID: <20090228120722.6040707@legrand.sk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:53020 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750772AbZB1FJj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Feb 2009 00:09:39 -0500
+Received: from nat1-pool2-3.sw.veteranov.net ([78.155.216.14]:28397 "HELO
+	nat1-pool2-3.sw.veteranov.net" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with SMTP id S1752623AbZB1JSl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Feb 2009 04:18:41 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Commit c4be0c1d added error checking to ext4_freeze() when calling
-ext4_commit_super().  Unfortunately the patch failed to remove the
-original call to ext4_commit_super(), with the net result that when
-freezing the filesystem, the superblock gets written twice, the first
-time without error checking.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/super.c |    1 -
- 1 files changed, 0 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index a5732c5..39d1993 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -3091,7 +3091,6 @@ static int ext4_freeze(struct super_block *sb)
- 
- 		/* Journal blocked and flushed, clear needs_recovery flag. */
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--		ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
- 		error = ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
- 		if (error)
- 			goto out;
--- 
-1.5.6.3
+She'll whisper: "You're the best!" http://kt.chickfabled.com/
 
