@@ -1,41 +1,62 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12790] kernel build warning causes EXT4 boot warning
-Date: Sat, 28 Feb 2009 06:12:56 -0800 (PST)
-Message-ID: <20090228141256.C680C11D107@picon.linux-foundation.org>
-References: <bug-12790-13602@http.bugzilla.kernel.org/>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] Reorder ext4 and ext2 so that ext2 root filesystems are mounted using ext2
+Date: Sat, 28 Feb 2009 09:24:20 -0500
+Message-ID: <1235831060-10086-1-git-send-email-tytso@mit.edu>
+Cc: linux-kernel@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:54393 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751592AbZB1ON3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Feb 2009 09:13:29 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1SECvK4006787
-	for <linux-ext4@vger.kernel.org>; Sat, 28 Feb 2009 06:12:58 -0800
-In-Reply-To: <bug-12790-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:45888 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752179AbZB1OY0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Feb 2009 09:24:26 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12790
+In fs/Makefile, ext3 was placed before ext2 so that a root filesystem
+that possessed a journal, it would be mounted as ext3 instead of ext2.
+This was necessary because a cleanly unmounted ext3 filesystem was
+fully backwards compatible with ext2, and could be mounted by ext2 ---
+but it was desirable that it be mounted with ext3 so that the
+journaling would be enabled.
 
+The ext4 filesystem supports new incompatible features, so there is no
+danger of an ext4 filesystem being mistaken for an ext2 filesystem.
+However, ordering didn't matter until ext4 gained the ability to mount
+filesystems without a journal.  Now that this is the case, given that
+ext4 is before ext2, it means that root filesystems that were only
+using the plain-jane ext2 format are getting mounted using the ext4
+filesystem driver, which is a change in behavior which could be
+surprising to users
 
+It's doubtful that there are that many ext2-only root filesystem users
+that would also have ext4 compiled into the kernel, but to adhere to
+the principle of least surprise, the correct ordering in fs/Makefile
+is ext3, followed by ext2, and finally ext4.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/Makefile |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-
-------- Comment #2 from tytso@mit.edu  2009-02-28 06:12 -------
-The two are unrelated.  The boot-time warning is because you are using the ext4
-filesystem driver on a file system that does not have extents.  This is
-harmless unless it's not what you wanted to do.  This might be because you have
-ext4 built into a system where you have an ext2 root file system, or because
-you explicitly asked for the filesystem to be mounted with ext4 even though it
-doesn't have the extents feature enabled.
-
-The build warning is harmless, and is fixed in 2.6.29 when we make ext4_group_t
-be an unsigned int --- it has no need to be an unsigned long.
-
-
+diff --git a/fs/Makefile b/fs/Makefile
+index 38bc735..21c2f50 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -69,10 +69,12 @@ obj-$(CONFIG_DLM)		+= dlm/
+ # Do not add any filesystems before this line
+ obj-$(CONFIG_REISERFS_FS)	+= reiserfs/
+ obj-$(CONFIG_EXT3_FS)		+= ext3/ # Before ext2 so root fs can be ext3
+-obj-$(CONFIG_EXT4_FS)		+= ext4/ # Before ext2 so root fs can be ext4
++obj-$(CONFIG_EXT2_FS)		+= ext2/
++# We place ext4 after ext2 so plain ext2 root fs's are mounted using ext4
++# unless explicitly requested by rootfstype
++obj-$(CONFIG_EXT4_FS)		+= ext4/
+ obj-$(CONFIG_JBD)		+= jbd/
+ obj-$(CONFIG_JBD2)		+= jbd2/
+-obj-$(CONFIG_EXT2_FS)		+= ext2/
+ obj-$(CONFIG_CRAMFS)		+= cramfs/
+ obj-$(CONFIG_SQUASHFS)		+= squashfs/
+ obj-y				+= ramfs/
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+1.5.6.3
+
