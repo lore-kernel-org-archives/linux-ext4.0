@@ -1,34 +1,89 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12787] possible circular locking dependency
-Date: Fri, 27 Feb 2009 11:35:02 -0800 (PST)
-Message-ID: <20090227193502.766BE11D108@picon.linux-foundation.org>
-References: <bug-12787-13602@http.bugzilla.kernel.org/>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [PATCH] ext4: Track lifetime disk writes
+Date: Sat, 28 Feb 2009 00:01:52 -0500
+Message-ID: <E1LdHKi-0000Zm-Mv@closure.thunk.org>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:42446 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754179AbZB0Tfc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Feb 2009 14:35:32 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1RJZ2uh032346
-	for <linux-ext4@vger.kernel.org>; Fri, 27 Feb 2009 11:35:03 -0800
-In-Reply-To: <bug-12787-13602@http.bugzilla.kernel.org/>
+Received: from thunk.org ([69.25.196.29]:41282 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750750AbZB1FB6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Feb 2009 00:01:58 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12787
 
+Add a new superblock value which tracks the lifetime amount of writes
+to the filesystem.  This is useful in estimating the amount of wear on
+solid state drives (SSD's) caused by writes to the filesystem.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/ext4.h    |    3 ++-
+ fs/ext4/ext4_sb.h |    4 ++++
+ fs/ext4/super.c   |    7 +++++++
+ 3 files changed, 13 insertions(+), 1 deletions(-)
 
-
-
-------- Comment #4 from tytso@mit.edu  2009-02-27 11:35 -------
-Already sent to stable@kernel.org.   I thought greg was going to start a review
-cycle earlier this week, but I guess he got busy.
-
-
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index 8599e37..f9a3bc3 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -685,7 +685,8 @@ struct ext4_super_block {
+ 	__u8	s_log_groups_per_flex;  /* FLEX_BG group size */
+ 	__u8	s_reserved_char_pad2;
+ 	__le16  s_reserved_pad;
+-	__u32   s_reserved[162];        /* Padding to the end of the block */
++	__le64	s_kbytes_written;	/* nr of lifetime kilobytes written */
++	__u32   s_reserved[160];        /* Padding to the end of the block */
+ };
+ 
+ #ifdef __KERNEL__
+diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
+index 4e4d9cc..50ab116 100644
+--- a/fs/ext4/ext4_sb.h
++++ b/fs/ext4/ext4_sb.h
+@@ -142,6 +142,10 @@ struct ext4_sb_info {
+ 	/* locality groups */
+ 	struct ext4_locality_group *s_locality_groups;
+ 
++	/* for write statistics */
++	unsigned long s_sectors_written_start;
++	u64 s_kbytes_written;
++
+ 	unsigned int s_log_groups_per_flex;
+ 	struct flex_groups *s_flex_groups;
+ };
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index c69f04c..007aa0a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2039,6 +2039,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_resgid = EXT4_DEF_RESGID;
+ 	sbi->s_inode_readahead_blks = EXT4_DEF_INODE_READAHEAD_BLKS;
+ 	sbi->s_sb_block = sb_block;
++	sbi->s_sectors_written_start = part_stat_read(sb->s_bdev->bd_part,
++						      sectors[1]);
+ 
+ 	unlock_kernel();
+ 
+@@ -2535,6 +2537,7 @@ no_journal:
+ 	}
+ 
+ 	ext4_setup_super(sb, es, sb->s_flags & MS_RDONLY);
++	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
+ 
+ 	/* determine the minimum size of new large inodes, if present */
+ 	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
+@@ -2929,6 +2932,10 @@ static int ext4_commit_super(struct super_block *sb,
+ 		set_buffer_uptodate(sbh);
+ 	}
+ 	es->s_wtime = cpu_to_le32(get_seconds());
++	es->s_kbytes_written =
++		cpu_to_le64(EXT4_SB(sb)->s_kbytes_written + 
++			    ((part_stat_read(sb->s_bdev->bd_part, sectors[1]) -
++			      EXT4_SB(sb)->s_sectors_written_start) >> 1));
+ 	ext4_free_blocks_count_set(es, percpu_counter_sum_positive(
+ 					&EXT4_SB(sb)->s_freeblocks_counter));
+ 	es->s_free_inodes_count = cpu_to_le32(percpu_counter_sum_positive(
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+1.5.6.3
+
