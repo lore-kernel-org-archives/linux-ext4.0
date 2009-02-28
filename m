@@ -1,72 +1,41 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] Reorder ext4 and ext2 so that ext2 root filesystems are
- mounted using ext2
-Date: Sat, 28 Feb 2009 09:39:54 -0600
-Message-ID: <49A95ACA.9020307@redhat.com>
-References: <1235831060-10086-1-git-send-email-tytso@mit.edu>
+Subject: Re: [GIT PULL] ext4 fixes
+Date: Sat, 28 Feb 2009 09:41:16 -0600
+Message-ID: <49A95B1C.9060008@redhat.com>
+References: <E1LdQQ5-0004kd-OD@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:57710 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:57727 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751736AbZB1Pkk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Feb 2009 10:40:40 -0500
-In-Reply-To: <1235831060-10086-1-git-send-email-tytso@mit.edu>
+	id S1752001AbZB1PmA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Feb 2009 10:42:00 -0500
+In-Reply-To: <E1LdQQ5-0004kd-OD@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Theodore Ts'o wrote:
-> In fs/Makefile, ext3 was placed before ext2 so that a root filesystem
-> that possessed a journal, it would be mounted as ext3 instead of ext2.
-> This was necessary because a cleanly unmounted ext3 filesystem was
-> fully backwards compatible with ext2, and could be mounted by ext2 ---
-> but it was desirable that it be mounted with ext3 so that the
-> journaling would be enabled.
+> Hi Linus,
 > 
-> The ext4 filesystem supports new incompatible features, so there is no
-> danger of an ext4 filesystem being mistaken for an ext2 filesystem.
-> However, ordering didn't matter until ext4 gained the ability to mount
-> filesystems without a journal.  Now that this is the case, given that
-> ext4 is before ext2, it means that root filesystems that were only
-> using the plain-jane ext2 format are getting mounted using the ext4
-> filesystem driver, which is a change in behavior which could be
-> surprising to users
+> Please pull from:
 > 
-> It's doubtful that there are that many ext2-only root filesystem users
-> that would also have ext4 compiled into the kernel, but to adhere to
-> the principle of least surprise, the correct ordering in fs/Makefile
-> is ext3, followed by ext2, and finally ext4.
+>         git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/Makefile |    6 ++++--
->  1 files changed, 4 insertions(+), 2 deletions(-)
+> to grab two two more bug fixes for ext4.  Thanks!!
 > 
-> diff --git a/fs/Makefile b/fs/Makefile
-> index 38bc735..21c2f50 100644
-> --- a/fs/Makefile
-> +++ b/fs/Makefile
-> @@ -69,10 +69,12 @@ obj-$(CONFIG_DLM)		+= dlm/
->  # Do not add any filesystems before this line
->  obj-$(CONFIG_REISERFS_FS)	+= reiserfs/
->  obj-$(CONFIG_EXT3_FS)		+= ext3/ # Before ext2 so root fs can be ext3
-> -obj-$(CONFIG_EXT4_FS)		+= ext4/ # Before ext2 so root fs can be ext4
-> +obj-$(CONFIG_EXT2_FS)		+= ext2/
-> +# We place ext4 after ext2 so plain ext2 root fs's are mounted using ext4
-> +# unless explicitly requested by rootfstype
+>                                                 - Ted
+> 
+> Theodore Ts'o (2):
+>       ext4: Remove duplicate call to ext4_commit_super() in ext4_freeze()
+>       ext4: Reorder fs/Makefile so that ext2 root fs's are mounted using ext2
+> 
+>  fs/Makefile     |    6 ++++--
+>  fs/ext4/super.c |    1 -
+>  2 files changed, 4 insertions(+), 3 deletions(-)
 
-Shouldn't that be "aren't mounted using ext4..." ?
+Ted, might be good to get my nojournal fix in too?  It's an easy oopser.
 
 -Eric
-
-> +obj-$(CONFIG_EXT4_FS)		+= ext4/
->  obj-$(CONFIG_JBD)		+= jbd/
->  obj-$(CONFIG_JBD2)		+= jbd2/
-> -obj-$(CONFIG_EXT2_FS)		+= ext2/
->  obj-$(CONFIG_CRAMFS)		+= cramfs/
->  obj-$(CONFIG_SQUASHFS)		+= squashfs/
->  obj-y				+= ramfs/
-
