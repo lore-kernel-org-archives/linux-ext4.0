@@ -1,41 +1,33 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [GIT PULL] ext4 fixes
-Date: Sat, 28 Feb 2009 09:41:16 -0600
-Message-ID: <49A95B1C.9060008@redhat.com>
-References: <E1LdQQ5-0004kd-OD@closure.thunk.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12790] kernel build warning causes EXT4 boot warning
+Date: Sat, 28 Feb 2009 08:07:56 -0800 (PST)
+Message-ID: <20090228160756.BB42F108041@picon.linux-foundation.org>
+References: <bug-12790-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:57727 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752001AbZB1PmA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Feb 2009 10:42:00 -0500
-In-Reply-To: <E1LdQQ5-0004kd-OD@closure.thunk.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59315 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750966AbZB1QIc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Feb 2009 11:08:32 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n1SG7v7J013629
+	for <linux-ext4@vger.kernel.org>; Sat, 28 Feb 2009 08:07:58 -0800
+In-Reply-To: <bug-12790-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o wrote:
-> Hi Linus,
-> 
-> Please pull from:
-> 
->         git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
-> 
-> to grab two two more bug fixes for ext4.  Thanks!!
-> 
->                                                 - Ted
-> 
-> Theodore Ts'o (2):
->       ext4: Remove duplicate call to ext4_commit_super() in ext4_freeze()
->       ext4: Reorder fs/Makefile so that ext2 root fs's are mounted using ext2
-> 
->  fs/Makefile     |    6 ++++--
->  fs/ext4/super.c |    1 -
->  2 files changed, 4 insertions(+), 3 deletions(-)
+http://bugzilla.kernel.org/show_bug.cgi?id=12790
 
-Ted, might be good to get my nojournal fix in too?  It's an easy oopser.
 
--Eric
+
+
+
+------- Comment #3 from thoralf.dassler@gmail.com  2009-02-28 08:07 -------
+Tahnks for clarifying.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
