@@ -1,298 +1,41 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Add sysfs support
-Date: Sat, 28 Feb 2009 22:48:07 -0500
-Message-ID: <1235879288-26201-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Manish Katiyar <mkatiyar@gmail.com>
+Subject: Checking of NULL with __GFP_NOFAIL in kzalloc()
+Date: Sun, 1 Mar 2009 11:35:32 +0530
+Message-ID: <ea11fea30902282205y14062e72v37780481e93802a3@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49411 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755296AbZCADsN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 28 Feb 2009 22:48:13 -0500
+Received: from ti-out-0910.google.com ([209.85.142.186]:21630 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751129AbZCAGFg (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Mar 2009 01:05:36 -0500
+Received: by ti-out-0910.google.com with SMTP id d10so2475359tib.23
+        for <linux-ext4@vger.kernel.org>; Sat, 28 Feb 2009 22:05:33 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add basic sysfs support so that information about the mounted
-filesystem and various tuning parameters can be accessed via
-/sys/fs/ext4/<dev>/*.
+Hi,
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4_sb.h |    2 +
- fs/ext4/super.c   |  198 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 200 insertions(+), 0 deletions(-)
+While going through jbd code, I was wondering why do we need to check
+new_transaction for NULL, if we are passing __GFP_NOFAIL ?
+Last code change around this code was when Ted converted kmalloc to
+kzalloc, but since he also didn't remove it I am guessing there would
+be some good reason for it. Can someone enlighten me ?
 
-diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-index 50ab116..57b71fe 100644
---- a/fs/ext4/ext4_sb.h
-+++ b/fs/ext4/ext4_sb.h
-@@ -64,6 +64,8 @@ struct ext4_sb_info {
- 	struct percpu_counter s_dirtyblocks_counter;
- 	struct blockgroup_lock *s_blockgroup_lock;
- 	struct proc_dir_entry *s_proc;
-+	struct kobject s_kobj;
-+	struct completion s_kobj_unregister;
- 
- 	/* Journaling */
- 	struct inode *s_journal_inode;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index c61b6a6..4257613 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -35,6 +35,7 @@
- #include <linux/quotaops.h>
- #include <linux/seq_file.h>
- #include <linux/proc_fs.h>
-+#include <linux/ctype.h>
- #include <linux/marker.h>
- #include <linux/log2.h>
- #include <linux/crc16.h>
-@@ -48,6 +49,7 @@
- #include "group.h"
- 
- struct proc_dir_entry *ext4_proc_root;
-+static struct kset *ext4_kset;
- 
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
- 			     unsigned long journal_devnum);
-@@ -580,6 +582,8 @@ static void ext4_put_super(struct super_block *sb)
- 		remove_proc_entry("inode_readahead_blks", sbi->s_proc);
- 		remove_proc_entry(sb->s_id, ext4_proc_root);
- 	}
-+	kobject_put(&sbi->s_kobj);
-+	wait_for_completion(&sbi->s_kobj_unregister);
- 
- 	for (i = 0; i < sbi->s_gdb_count; i++)
- 		brelse(sbi->s_group_desc[i]);
-@@ -1462,6 +1466,11 @@ set_qf_format:
- 				return 0;
- 			if (option < 0 || option > (1 << 30))
- 				return 0;
-+			if (option & (option - 1)) {
-+				printk(KERN_ERR "EXT4-fs: inode_readahead_blks"
-+				       " must be a power of 2\n");
-+				return 0;
-+			}
- 			sbi->s_inode_readahead_blks = option;
- 			break;
- 		case Opt_journal_ioprio:
-@@ -1990,6 +1999,181 @@ static unsigned long ext4_get_stripe_size(struct ext4_sb_info *sbi)
- 	return 0;
- }
- 
-+/* sysfs supprt */
-+
-+struct ext4_attr {
-+	struct attribute attr;
-+	ssize_t (*show)(struct ext4_attr *, struct ext4_sb_info *, char *);
-+	ssize_t (*store)(struct ext4_attr *, struct ext4_sb_info *, 
-+			 const char *, size_t);
-+	int offset;
-+};
-+
-+static int parse_strtoul(const char *buf,
-+		unsigned long max, unsigned long *value)
-+{
-+	char *endp;
-+
-+	while (*buf && isspace(*buf))
-+		buf++;
-+	*value = simple_strtoul(buf, &endp, 0);
-+	while (*endp && isspace(*endp))
-+		endp++;
-+	if (*endp || *value > max)
-+		return -EINVAL;
-+
-+	return 0;
-+}
-+
-+static ssize_t delayed_allocation_blocks_show(struct ext4_attr *a,
-+					      struct ext4_sb_info *sbi,
-+					      char *buf)
-+{
-+	return snprintf(buf, PAGE_SIZE, "%llu\n",
-+			(s64) percpu_counter_sum(&sbi->s_dirtyblocks_counter));
-+}
-+
-+static ssize_t session_write_kbytes_show(struct ext4_attr *a,
-+					 struct ext4_sb_info *sbi, char *buf)
-+{
-+	struct super_block *sb = sbi->s_buddy_cache->i_sb;
-+
-+	return snprintf(buf, PAGE_SIZE, "%lu\n",
-+			(part_stat_read(sb->s_bdev->bd_part, sectors[1]) -
-+			 sbi->s_sectors_written_start) >> 1);
-+}
-+
-+static ssize_t lifetime_write_kbytes_show(struct ext4_attr *a,
-+					  struct ext4_sb_info *sbi, char *buf)
-+{
-+	struct super_block *sb = sbi->s_buddy_cache->i_sb;
-+
-+	return snprintf(buf, PAGE_SIZE, "%llu\n",
-+			sbi->s_kbytes_written + 
-+			((part_stat_read(sb->s_bdev->bd_part, sectors[1]) -
-+			  EXT4_SB(sb)->s_sectors_written_start) >> 1));
-+}
-+
-+static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
-+					  struct ext4_sb_info *sbi,
-+					  const char *buf, size_t count)
-+{
-+	unsigned long t;
-+
-+	if (parse_strtoul(buf, 0x40000000, &t))
-+		return -EINVAL;
-+
-+	/* inode_readahead_blks must be a power of 2 */
-+	if (t & (t-1))
-+		return -EINVAL;
-+
-+	sbi->s_inode_readahead_blks = t;
-+	return count;
-+}
-+
-+static ssize_t sbi_ui_show(struct ext4_attr *a,
-+				struct ext4_sb_info *sbi, char *buf)
-+{
-+	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
-+
-+	return snprintf(buf, PAGE_SIZE, "%u\n", *ui);
-+}
-+
-+static ssize_t sbi_ui_store(struct ext4_attr *a,
-+			    struct ext4_sb_info *sbi,
-+			    const char *buf, size_t count)
-+{
-+	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
-+	unsigned long t;
-+
-+	if (parse_strtoul(buf, 0xffffffff, &t))
-+		return -EINVAL;
-+	*ui = t;
-+	return count;
-+}
-+
-+#define EXT4_ATTR_OFFSET(_name,_mode,_show,_store,_elname) \
-+static struct ext4_attr ext4_attr_##_name = {			\
-+	.attr = {.name = __stringify(_name), .mode = _mode },	\
-+	.show	= _show,					\
-+	.store	= _store,					\
-+	.offset = offsetof(struct ext4_sb_info, _elname),	\
-+}
-+#define EXT4_ATTR(name, mode, show, store) \
-+static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
-+
-+#define EXT4_RO_ATTR(name) EXT4_ATTR(name, 0444, name##_show, NULL)
-+#define EXT4_RW_ATTR(name) EXT4_ATTR(name, 0644, name##_show, name##_store)
-+#define EXT4_RW_ATTR_SBI_UI(name, elname)	\
-+	EXT4_ATTR_OFFSET(name, 0644, sbi_ui_show, sbi_ui_store, elname)
-+#define ATTR_LIST(name) &ext4_attr_##name.attr
-+
-+EXT4_RO_ATTR(delayed_allocation_blocks);
-+EXT4_RO_ATTR(session_write_kbytes);
-+EXT4_RO_ATTR(lifetime_write_kbytes);
-+EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
-+		 inode_readahead_blks_store, s_inode_readahead_blks);
-+EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
-+EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
-+EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
-+EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
-+EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
-+EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
-+
-+static struct attribute *ext4_attrs[] = {
-+	ATTR_LIST(delayed_allocation_blocks),
-+	ATTR_LIST(session_write_kbytes),
-+	ATTR_LIST(lifetime_write_kbytes),
-+	ATTR_LIST(inode_readahead_blks),
-+	ATTR_LIST(mb_stats),
-+	ATTR_LIST(mb_max_to_scan),
-+	ATTR_LIST(mb_min_to_scan),
-+	ATTR_LIST(mb_order2_req),
-+	ATTR_LIST(mb_stream_req),
-+	ATTR_LIST(mb_group_prealloc),
-+	NULL,
-+};
-+
-+static ssize_t ext4_attr_show(struct kobject *kobj,
-+			      struct attribute *attr, char *buf)
-+{
-+	struct ext4_sb_info *sbi = container_of(kobj, struct ext4_sb_info,
-+						s_kobj);
-+	struct ext4_attr *a = container_of(attr, struct ext4_attr, attr);
-+
-+	return a->show ? a->show(a, sbi, buf) : 0;
-+}
-+
-+static ssize_t ext4_attr_store(struct kobject *kobj,
-+			       struct attribute *attr,
-+			       const char *buf, size_t len)
-+{
-+	struct ext4_sb_info *sbi = container_of(kobj, struct ext4_sb_info,
-+						s_kobj);
-+	struct ext4_attr *a = container_of(attr, struct ext4_attr, attr);
-+
-+	return a->store ? a->store(a, sbi, buf, len) : 0;
-+}
-+
-+static void ext4_sb_release(struct kobject *kobj)
-+{
-+	struct ext4_sb_info *sbi = container_of(kobj, struct ext4_sb_info,
-+						s_kobj);
-+	complete(&sbi->s_kobj_unregister);
-+}
-+
-+
-+static struct sysfs_ops ext4_attr_ops = {
-+	.show	= ext4_attr_show,
-+	.store	= ext4_attr_store,
-+};
-+
-+static struct kobj_type ext4_ktype = {
-+	.default_attrs	= ext4_attrs,
-+	.sysfs_ops	= &ext4_attr_ops,
-+	.release	= ext4_sb_release,
-+};
-+
- static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 				__releases(kernel_lock)
- 				__acquires(kernel_lock)
-@@ -2573,6 +2757,16 @@ no_journal:
- 		goto failed_mount4;
- 	}
- 
-+	sbi->s_kobj.kset = ext4_kset;
-+	init_completion(&sbi->s_kobj_unregister);
-+	err = kobject_init_and_add(&sbi->s_kobj, &ext4_ktype, NULL,
-+				   "%s", sb->s_id);
-+	if (err) {
-+		ext4_mb_release(sb);
-+		ext4_ext_release(sb);
-+		goto failed_mount4;
-+	};
-+
- 	/*
- 	 * akpm: core read_super() calls in here with the superblock locked.
- 	 * That deadlocks, because orphan cleanup needs to lock the superblock
-@@ -3770,6 +3964,9 @@ static int __init init_ext4_fs(void)
- {
- 	int err;
- 
-+	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
-+	if (!ext4_kset)
-+		return -ENOMEM;
- 	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
- 	err = init_ext4_mballoc();
- 	if (err)
-@@ -3811,6 +4008,7 @@ static void __exit exit_ext4_fs(void)
- 	exit_ext4_xattr();
- 	exit_ext4_mballoc();
- 	remove_proc_entry("fs/ext4", NULL);
-+	kset_unregister(ext4_kset);
- }
- 
- MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
--- 
-1.5.6.3
+start_this_handle() {
+..........
+	..........
+	new_transaction = kzalloc(sizeof(*new_transaction),
+			GFP_NOFS|__GFP_NOFAIL);
+        if (!new_transaction) {
+        	ret = -ENOMEM;
+        	goto out;
+        }
+	..........
+}
+		
 
+Thanks -
+Manish
