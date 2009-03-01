@@ -1,33 +1,40 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12787] possible circular locking dependency
-Date: Sun,  1 Mar 2009 12:53:44 -0800 (PST)
-Message-ID: <20090301205345.11ADE10800D@picon.linux-foundation.org>
-References: <bug-12787-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: how to scale root-reserved space going forward...
+Date: Sun, 01 Mar 2009 16:22:54 -0600
+Message-ID: <49AB0ABE.1030009@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:59763 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754300AbZCAUxt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 1 Mar 2009 15:53:49 -0500
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n21KrjSl022802
-	for <linux-ext4@vger.kernel.org>; Sun, 1 Mar 2009 12:53:46 -0800
-In-Reply-To: <bug-12787-13602@http.bugzilla.kernel.org/>
+Received: from mx2.redhat.com ([66.187.237.31]:38004 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751202AbZCAWW6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 1 Mar 2009 17:22:58 -0500
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n21MMumq012556
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Mar 2009 17:22:56 -0500
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n21MMv1M007961
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Mar 2009 17:22:57 -0500
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n21MMtHC023798
+	for <linux-ext4@vger.kernel.org>; Sun, 1 Mar 2009 17:22:56 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12787
+5% of a 16T filesystem is getting a little crazy from the point of view
+of "root-reserved" - 800G!
 
+But I think the original reason for this reserved space was actually as
+an allocator cushion; letting root gain access to it was just a
+safety-valve for that.
 
+Now that we have a completely different allocator in ext4, and
+potentially much larger filesystems, I think we need to revisit how much
+is held back, and for what reason.
 
+Any thoughts on a reasonable way to scale this reservation (or, just for
+discussion - if it's even needed at all today for ext4?)
 
-
-------- Comment #5 from marko.kohtala@gmail.com  2009-03-01 12:53 -------
-I applied fb68407b0d9efba962c03f55009c797e22f024bc to 2.6.28.7 and it seemes to
-have removed the bug.
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+-Eric
