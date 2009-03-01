@@ -1,344 +1,298 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: remove /proc tuning knobs
-Date: Sat, 28 Feb 2009 22:48:08 -0500
-Message-ID: <1235879288-26201-2-git-send-email-tytso@mit.edu>
-References: <1235879288-26201-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext4: Add sysfs support
+Date: Sat, 28 Feb 2009 22:48:07 -0500
+Message-ID: <1235879288-26201-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49412 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:49411 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754922AbZCADsN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755296AbZCADsN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 28 Feb 2009 22:48:13 -0500
-In-Reply-To: <1235879288-26201-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Remove tuning knobs in /proc/fs/ext4/<dev/* since they have been
-replaced by knobs in sysfs at /sys/fs/ext4/<dev>/*.
+Add basic sysfs support so that information about the mounted
+filesystem and various tuning parameters can be accessed via
+/sys/fs/ext4/<dev>/*.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |   16 -------
- fs/ext4/inode.c   |    7 +---
- fs/ext4/mballoc.c |  117 +++++++++++++----------------------------------------
- fs/ext4/super.c   |   46 ---------------------
- 4 files changed, 30 insertions(+), 156 deletions(-)
+ fs/ext4/ext4_sb.h |    2 +
+ fs/ext4/super.c   |  198 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 200 insertions(+), 0 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 5621eb0..2c165fa 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -975,22 +975,6 @@ void ext4_get_group_no_and_offset(struct super_block *sb, ext4_fsblk_t blocknr,
+diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
+index 50ab116..57b71fe 100644
+--- a/fs/ext4/ext4_sb.h
++++ b/fs/ext4/ext4_sb.h
+@@ -64,6 +64,8 @@ struct ext4_sb_info {
+ 	struct percpu_counter s_dirtyblocks_counter;
+ 	struct blockgroup_lock *s_blockgroup_lock;
+ 	struct proc_dir_entry *s_proc;
++	struct kobject s_kobj;
++	struct completion s_kobj_unregister;
  
- extern struct proc_dir_entry *ext4_proc_root;
- 
--#ifdef CONFIG_PROC_FS
--extern const struct file_operations ext4_ui_proc_fops;
--
--#define	EXT4_PROC_HANDLER(name, var)					\
--do {									\
--	proc = proc_create_data(name, mode, sbi->s_proc,		\
--				&ext4_ui_proc_fops, &sbi->s_##var);	\
--	if (proc == NULL) {						\
--		printk(KERN_ERR "EXT4-fs: can't create %s\n", name);	\
--		goto err_out;						\
--	}								\
--} while (0)
--#else
--#define EXT4_PROC_HANDLER(name, var)
--#endif
--
- /*
-  * Function prototypes
-  */
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 8815b9c..b8e3412 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4124,12 +4124,7 @@ make_io:
- 			unsigned num;
- 
- 			table = ext4_inode_table(sb, gdp);
--			/* Make sure s_inode_readahead_blks is a power of 2 */
--			while (EXT4_SB(sb)->s_inode_readahead_blks &
--			       (EXT4_SB(sb)->s_inode_readahead_blks-1))
--				EXT4_SB(sb)->s_inode_readahead_blks = 
--				   (EXT4_SB(sb)->s_inode_readahead_blks &
--				    (EXT4_SB(sb)->s_inode_readahead_blks-1));
-+			/* s_inode_readahead_blks is always a power of 2 */
- 			b = block & ~(EXT4_SB(sb)->s_inode_readahead_blks-1);
- 			if (table > b)
- 				b = table;
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 0430143..7e729cb 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -46,22 +46,23 @@
-  * The allocation request involve request for multiple number of blocks
-  * near to the goal(block) value specified.
-  *
-- * During initialization phase of the allocator we decide to use the group
-- * preallocation or inode preallocation depending on the size file. The
-- * size of the file could be the resulting file size we would have after
-- * allocation or the current file size which ever is larger. If the size is
-- * less that sbi->s_mb_stream_request we select the group
-- * preallocation. The default value of s_mb_stream_request is 16
-- * blocks. This can also be tuned via
-- * /proc/fs/ext4/<partition>/stream_req. The value is represented in terms
-- * of number of blocks.
-+ * During initialization phase of the allocator we decide to use the
-+ * group preallocation or inode preallocation depending on the size of
-+ * the file. The size of the file could be the resulting file size we
-+ * would have after allocation, or the current file size, which ever
-+ * is larger. If the size is less than sbi->s_mb_stream_request we
-+ * select to use the group preallocation. The default value of
-+ * s_mb_stream_request is 16 blocks. This can also be tuned via
-+ * /sys/fs/ext4/<partition>/mb_stream_req. The value is represented in
-+ * terms of number of blocks.
-  *
-  * The main motivation for having small file use group preallocation is to
-- * ensure that we have small file closer in the disk.
-+ * ensure that we have small files closer together on the disk.
-  *
-- * First stage the allocator looks at the inode prealloc list
-- * ext4_inode_info->i_prealloc_list contain list of prealloc spaces for
-- * this particular inode. The inode prealloc space is represented as:
-+ * First stage the allocator looks at the inode prealloc list,
-+ * ext4_inode_info->i_prealloc_list, which contains list of prealloc
-+ * spaces for this particular inode. The inode prealloc space is
-+ * represented as:
-  *
-  * pa_lstart -> the logical start block for this prealloc space
-  * pa_pstart -> the physical start block for this prealloc space
-@@ -121,29 +122,29 @@
-  * list. In case of inode preallocation we follow a list of heuristics
-  * based on file size. This can be found in ext4_mb_normalize_request. If
-  * we are doing a group prealloc we try to normalize the request to
-- * sbi->s_mb_group_prealloc. Default value of s_mb_group_prealloc is set to
-+ * sbi->s_mb_group_prealloc. Default value of s_mb_group_prealloc is
-  * 512 blocks. This can be tuned via
-- * /proc/fs/ext4/<partition/group_prealloc. The value is represented in
-+ * /sys/fs/ext4/<partition/mb_group_prealloc. The value is represented in
-  * terms of number of blocks. If we have mounted the file system with -O
-  * stripe=<value> option the group prealloc request is normalized to the
-  * stripe value (sbi->s_stripe)
-  *
-- * The regular allocator(using the buddy cache) support few tunables.
-+ * The regular allocator(using the buddy cache) supports few tunables.
-  *
-- * /proc/fs/ext4/<partition>/min_to_scan
-- * /proc/fs/ext4/<partition>/max_to_scan
-- * /proc/fs/ext4/<partition>/order2_req
-+ * /sys/fs/ext4/<partition>/mb_min_to_scan
-+ * /sys/fs/ext4/<partition>/mb_max_to_scan
-+ * /sys/fs/ext4/<partition>/mb_order2_req
-  *
-- * The regular allocator use buddy scan only if the request len is power of
-+ * The regular allocator uses buddy scan only if the request len is power of
-  * 2 blocks and the order of allocation is >= sbi->s_mb_order2_reqs. The
-  * value of s_mb_order2_reqs can be tuned via
-- * /proc/fs/ext4/<partition>/order2_req.  If the request len is equal to
-+ * /sys/fs/ext4/<partition>/mb_order2_req.  If the request len is equal to
-  * stripe size (sbi->s_stripe), we try to search for contigous block in
-- * stripe size. This should result in better allocation on RAID setup. If
-- * not we search in the specific group using bitmap for best extents. The
-- * tunable min_to_scan and max_to_scan controll the behaviour here.
-+ * stripe size. This should result in better allocation on RAID setups. If
-+ * not, we search in the specific group using bitmap for best extents. The
-+ * tunable min_to_scan and max_to_scan control the behaviour here.
-  * min_to_scan indicate how long the mballoc __must__ look for a best
-- * extent and max_to_scanindicate how long the mballoc __can__ look for a
-+ * extent and max_to_scan indicates how long the mballoc __can__ look for a
-  * best extent in the found extents. Searching for the blocks starts with
-  * the group specified as the goal value in allocation context via
-  * ac_g_ex. Each group is first checked based on the criteria whether it
-@@ -337,8 +338,6 @@ static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
- 					ext4_group_t group);
- static void ext4_mb_generate_from_freelist(struct super_block *sb, void *bitmap,
- 						ext4_group_t group);
--static int ext4_mb_init_per_dev_proc(struct super_block *sb);
--static int ext4_mb_destroy_per_dev_proc(struct super_block *sb);
- static void release_blocks_on_commit(journal_t *journal, transaction_t *txn);
- 
- 
-@@ -1978,7 +1977,7 @@ ext4_mb_regular_allocator(struct ext4_allocation_context *ac)
- 	/*
- 	 * We search using buddy data only if the order of the request
- 	 * is greater than equal to the sbi_s_mb_order2_reqs
--	 * You can tune it via /proc/fs/ext4/<partition>/order2_req
-+	 * You can tune it via /sys/fs/ext4/<partition>/mb_order2_req
- 	 */
- 	if (i >= sbi->s_mb_order2_reqs) {
- 		/*
-@@ -2753,7 +2752,6 @@ int ext4_mb_init(struct super_block *sb, int needs_recovery)
- 		spin_lock_init(&lg->lg_prealloc_lock);
- 	}
- 
--	ext4_mb_init_per_dev_proc(sb);
- 	ext4_mb_history_init(sb);
- 
- 	if (sbi->s_journal)
-@@ -2836,7 +2834,6 @@ int ext4_mb_release(struct super_block *sb)
- 
- 	free_percpu(sbi->s_locality_groups);
- 	ext4_mb_history_release(sb);
--	ext4_mb_destroy_per_dev_proc(sb);
- 
- 	return 0;
- }
-@@ -2897,62 +2894,6 @@ static void release_blocks_on_commit(journal_t *journal, transaction_t *txn)
- 	mb_debug("freed %u blocks in %u structures\n", count, count2);
- }
- 
--#define EXT4_MB_STATS_NAME		"stats"
--#define EXT4_MB_MAX_TO_SCAN_NAME	"max_to_scan"
--#define EXT4_MB_MIN_TO_SCAN_NAME	"min_to_scan"
--#define EXT4_MB_ORDER2_REQ		"order2_req"
--#define EXT4_MB_STREAM_REQ		"stream_req"
--#define EXT4_MB_GROUP_PREALLOC		"group_prealloc"
--
--static int ext4_mb_init_per_dev_proc(struct super_block *sb)
--{
--#ifdef CONFIG_PROC_FS
--	mode_t mode = S_IFREG | S_IRUGO | S_IWUSR;
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--	struct proc_dir_entry *proc;
--
--	if (sbi->s_proc == NULL)
--		return -EINVAL;
--
--	EXT4_PROC_HANDLER(EXT4_MB_STATS_NAME, mb_stats);
--	EXT4_PROC_HANDLER(EXT4_MB_MAX_TO_SCAN_NAME, mb_max_to_scan);
--	EXT4_PROC_HANDLER(EXT4_MB_MIN_TO_SCAN_NAME, mb_min_to_scan);
--	EXT4_PROC_HANDLER(EXT4_MB_ORDER2_REQ, mb_order2_reqs);
--	EXT4_PROC_HANDLER(EXT4_MB_STREAM_REQ, mb_stream_request);
--	EXT4_PROC_HANDLER(EXT4_MB_GROUP_PREALLOC, mb_group_prealloc);
--	return 0;
--
--err_out:
--	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_proc);
--	return -ENOMEM;
--#else
--	return 0;
--#endif
--}
--
--static int ext4_mb_destroy_per_dev_proc(struct super_block *sb)
--{
--#ifdef CONFIG_PROC_FS
--	struct ext4_sb_info *sbi = EXT4_SB(sb);
--
--	if (sbi->s_proc == NULL)
--		return -EINVAL;
--
--	remove_proc_entry(EXT4_MB_GROUP_PREALLOC, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_STREAM_REQ, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_ORDER2_REQ, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_MIN_TO_SCAN_NAME, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_MAX_TO_SCAN_NAME, sbi->s_proc);
--	remove_proc_entry(EXT4_MB_STATS_NAME, sbi->s_proc);
--#endif
--	return 0;
--}
--
- int __init init_ext4_mballoc(void)
- {
- 	ext4_pspace_cachep =
-@@ -3120,7 +3061,7 @@ out_err:
-  * here we normalize request for locality group
-  * Group request are normalized to s_strip size if we set the same via mount
-  * option. If not we set it to s_mb_group_prealloc which can be configured via
-- * /proc/fs/ext4/<partition>/group_prealloc
-+ * /sys/fs/ext4/<partition>/mb_group_prealloc
-  *
-  * XXX: should we try to preallocate more than the group has now?
-  */
-@@ -4231,7 +4172,7 @@ static inline void ext4_mb_show_ac(struct ext4_allocation_context *ac)
-  * file is determined by the current size or the resulting size after
-  * allocation which ever is larger
-  *
-- * One can tune this size via /proc/fs/ext4/<partition>/stream_req
-+ * One can tune this size via /sys/fs/ext4/<partition>/mb_stream_req
-  */
- static void ext4_mb_group_or_file(struct ext4_allocation_context *ac)
- {
+ 	/* Journaling */
+ 	struct inode *s_journal_inode;
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 4257613..904bbab 100644
+index c61b6a6..4257613 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -579,7 +579,6 @@ static void ext4_put_super(struct super_block *sb)
- 		ext4_commit_super(sb, es, 1);
- 	}
- 	if (sbi->s_proc) {
--		remove_proc_entry("inode_readahead_blks", sbi->s_proc);
- 		remove_proc_entry(sb->s_id, ext4_proc_root);
- 	}
- 	kobject_put(&sbi->s_kobj);
-@@ -2518,11 +2517,6 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- #ifdef CONFIG_PROC_FS
- 	if (ext4_proc_root)
- 		sbi->s_proc = proc_mkdir(sb->s_id, ext4_proc_root);
--
--	if (sbi->s_proc)
--		proc_create_data("inode_readahead_blks", 0644, sbi->s_proc,
--				 &ext4_ui_proc_fops,
--				 &sbi->s_inode_readahead_blks);
- #endif
+@@ -35,6 +35,7 @@
+ #include <linux/quotaops.h>
+ #include <linux/seq_file.h>
+ #include <linux/proc_fs.h>
++#include <linux/ctype.h>
+ #include <linux/marker.h>
+ #include <linux/log2.h>
+ #include <linux/crc16.h>
+@@ -48,6 +49,7 @@
+ #include "group.h"
  
- 	bgl_lock_init(sbi->s_blockgroup_lock);
-@@ -2821,7 +2815,6 @@ failed_mount2:
- 	kfree(sbi->s_group_desc);
- failed_mount:
- 	if (sbi->s_proc) {
--		remove_proc_entry("inode_readahead_blks", sbi->s_proc);
+ struct proc_dir_entry *ext4_proc_root;
++static struct kset *ext4_kset;
+ 
+ static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
+ 			     unsigned long journal_devnum);
+@@ -580,6 +582,8 @@ static void ext4_put_super(struct super_block *sb)
+ 		remove_proc_entry("inode_readahead_blks", sbi->s_proc);
  		remove_proc_entry(sb->s_id, ext4_proc_root);
  	}
- #ifdef CONFIG_QUOTA
-@@ -3892,45 +3885,6 @@ static int ext4_get_sb(struct file_system_type *fs_type,
- 	return get_sb_bdev(fs_type, flags, dev_name, data, ext4_fill_super, mnt);
++	kobject_put(&sbi->s_kobj);
++	wait_for_completion(&sbi->s_kobj_unregister);
+ 
+ 	for (i = 0; i < sbi->s_gdb_count; i++)
+ 		brelse(sbi->s_group_desc[i]);
+@@ -1462,6 +1466,11 @@ set_qf_format:
+ 				return 0;
+ 			if (option < 0 || option > (1 << 30))
+ 				return 0;
++			if (option & (option - 1)) {
++				printk(KERN_ERR "EXT4-fs: inode_readahead_blks"
++				       " must be a power of 2\n");
++				return 0;
++			}
+ 			sbi->s_inode_readahead_blks = option;
+ 			break;
+ 		case Opt_journal_ioprio:
+@@ -1990,6 +1999,181 @@ static unsigned long ext4_get_stripe_size(struct ext4_sb_info *sbi)
+ 	return 0;
  }
  
--#ifdef CONFIG_PROC_FS
--static int ext4_ui_proc_show(struct seq_file *m, void *v)
--{
--	unsigned int *p = m->private;
--
--	seq_printf(m, "%u\n", *p);
--	return 0;
--}
--
--static int ext4_ui_proc_open(struct inode *inode, struct file *file)
--{
--	return single_open(file, ext4_ui_proc_show, PDE(inode)->data);
--}
--
--static ssize_t ext4_ui_proc_write(struct file *file, const char __user *buf,
--			       size_t cnt, loff_t *ppos)
--{
--	unsigned long *p = PDE(file->f_path.dentry->d_inode)->data;
--	char str[32];
--
--	if (cnt >= sizeof(str))
--		return -EINVAL;
--	if (copy_from_user(str, buf, cnt))
--		return -EFAULT;
--
--	*p = simple_strtoul(str, NULL, 0);
--	return cnt;
--}
--
--const struct file_operations ext4_ui_proc_fops = {
--	.owner		= THIS_MODULE,
--	.open		= ext4_ui_proc_open,
--	.read		= seq_read,
--	.llseek		= seq_lseek,
--	.release	= single_release,
--	.write		= ext4_ui_proc_write,
--};
--#endif
++/* sysfs supprt */
++
++struct ext4_attr {
++	struct attribute attr;
++	ssize_t (*show)(struct ext4_attr *, struct ext4_sb_info *, char *);
++	ssize_t (*store)(struct ext4_attr *, struct ext4_sb_info *, 
++			 const char *, size_t);
++	int offset;
++};
++
++static int parse_strtoul(const char *buf,
++		unsigned long max, unsigned long *value)
++{
++	char *endp;
++
++	while (*buf && isspace(*buf))
++		buf++;
++	*value = simple_strtoul(buf, &endp, 0);
++	while (*endp && isspace(*endp))
++		endp++;
++	if (*endp || *value > max)
++		return -EINVAL;
++
++	return 0;
++}
++
++static ssize_t delayed_allocation_blocks_show(struct ext4_attr *a,
++					      struct ext4_sb_info *sbi,
++					      char *buf)
++{
++	return snprintf(buf, PAGE_SIZE, "%llu\n",
++			(s64) percpu_counter_sum(&sbi->s_dirtyblocks_counter));
++}
++
++static ssize_t session_write_kbytes_show(struct ext4_attr *a,
++					 struct ext4_sb_info *sbi, char *buf)
++{
++	struct super_block *sb = sbi->s_buddy_cache->i_sb;
++
++	return snprintf(buf, PAGE_SIZE, "%lu\n",
++			(part_stat_read(sb->s_bdev->bd_part, sectors[1]) -
++			 sbi->s_sectors_written_start) >> 1);
++}
++
++static ssize_t lifetime_write_kbytes_show(struct ext4_attr *a,
++					  struct ext4_sb_info *sbi, char *buf)
++{
++	struct super_block *sb = sbi->s_buddy_cache->i_sb;
++
++	return snprintf(buf, PAGE_SIZE, "%llu\n",
++			sbi->s_kbytes_written + 
++			((part_stat_read(sb->s_bdev->bd_part, sectors[1]) -
++			  EXT4_SB(sb)->s_sectors_written_start) >> 1));
++}
++
++static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
++					  struct ext4_sb_info *sbi,
++					  const char *buf, size_t count)
++{
++	unsigned long t;
++
++	if (parse_strtoul(buf, 0x40000000, &t))
++		return -EINVAL;
++
++	/* inode_readahead_blks must be a power of 2 */
++	if (t & (t-1))
++		return -EINVAL;
++
++	sbi->s_inode_readahead_blks = t;
++	return count;
++}
++
++static ssize_t sbi_ui_show(struct ext4_attr *a,
++				struct ext4_sb_info *sbi, char *buf)
++{
++	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
++
++	return snprintf(buf, PAGE_SIZE, "%u\n", *ui);
++}
++
++static ssize_t sbi_ui_store(struct ext4_attr *a,
++			    struct ext4_sb_info *sbi,
++			    const char *buf, size_t count)
++{
++	unsigned int *ui = (unsigned int *) (((char *) sbi) + a->offset);
++	unsigned long t;
++
++	if (parse_strtoul(buf, 0xffffffff, &t))
++		return -EINVAL;
++	*ui = t;
++	return count;
++}
++
++#define EXT4_ATTR_OFFSET(_name,_mode,_show,_store,_elname) \
++static struct ext4_attr ext4_attr_##_name = {			\
++	.attr = {.name = __stringify(_name), .mode = _mode },	\
++	.show	= _show,					\
++	.store	= _store,					\
++	.offset = offsetof(struct ext4_sb_info, _elname),	\
++}
++#define EXT4_ATTR(name, mode, show, store) \
++static struct ext4_attr ext4_attr_##name = __ATTR(name, mode, show, store)
++
++#define EXT4_RO_ATTR(name) EXT4_ATTR(name, 0444, name##_show, NULL)
++#define EXT4_RW_ATTR(name) EXT4_ATTR(name, 0644, name##_show, name##_store)
++#define EXT4_RW_ATTR_SBI_UI(name, elname)	\
++	EXT4_ATTR_OFFSET(name, 0644, sbi_ui_show, sbi_ui_store, elname)
++#define ATTR_LIST(name) &ext4_attr_##name.attr
++
++EXT4_RO_ATTR(delayed_allocation_blocks);
++EXT4_RO_ATTR(session_write_kbytes);
++EXT4_RO_ATTR(lifetime_write_kbytes);
++EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
++		 inode_readahead_blks_store, s_inode_readahead_blks);
++EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
++EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
++EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
++EXT4_RW_ATTR_SBI_UI(mb_order2_req, s_mb_order2_reqs);
++EXT4_RW_ATTR_SBI_UI(mb_stream_req, s_mb_stream_request);
++EXT4_RW_ATTR_SBI_UI(mb_group_prealloc, s_mb_group_prealloc);
++
++static struct attribute *ext4_attrs[] = {
++	ATTR_LIST(delayed_allocation_blocks),
++	ATTR_LIST(session_write_kbytes),
++	ATTR_LIST(lifetime_write_kbytes),
++	ATTR_LIST(inode_readahead_blks),
++	ATTR_LIST(mb_stats),
++	ATTR_LIST(mb_max_to_scan),
++	ATTR_LIST(mb_min_to_scan),
++	ATTR_LIST(mb_order2_req),
++	ATTR_LIST(mb_stream_req),
++	ATTR_LIST(mb_group_prealloc),
++	NULL,
++};
++
++static ssize_t ext4_attr_show(struct kobject *kobj,
++			      struct attribute *attr, char *buf)
++{
++	struct ext4_sb_info *sbi = container_of(kobj, struct ext4_sb_info,
++						s_kobj);
++	struct ext4_attr *a = container_of(attr, struct ext4_attr, attr);
++
++	return a->show ? a->show(a, sbi, buf) : 0;
++}
++
++static ssize_t ext4_attr_store(struct kobject *kobj,
++			       struct attribute *attr,
++			       const char *buf, size_t len)
++{
++	struct ext4_sb_info *sbi = container_of(kobj, struct ext4_sb_info,
++						s_kobj);
++	struct ext4_attr *a = container_of(attr, struct ext4_attr, attr);
++
++	return a->store ? a->store(a, sbi, buf, len) : 0;
++}
++
++static void ext4_sb_release(struct kobject *kobj)
++{
++	struct ext4_sb_info *sbi = container_of(kobj, struct ext4_sb_info,
++						s_kobj);
++	complete(&sbi->s_kobj_unregister);
++}
++
++
++static struct sysfs_ops ext4_attr_ops = {
++	.show	= ext4_attr_show,
++	.store	= ext4_attr_store,
++};
++
++static struct kobj_type ext4_ktype = {
++	.default_attrs	= ext4_attrs,
++	.sysfs_ops	= &ext4_attr_ops,
++	.release	= ext4_sb_release,
++};
++
+ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 				__releases(kernel_lock)
+ 				__acquires(kernel_lock)
+@@ -2573,6 +2757,16 @@ no_journal:
+ 		goto failed_mount4;
+ 	}
+ 
++	sbi->s_kobj.kset = ext4_kset;
++	init_completion(&sbi->s_kobj_unregister);
++	err = kobject_init_and_add(&sbi->s_kobj, &ext4_ktype, NULL,
++				   "%s", sb->s_id);
++	if (err) {
++		ext4_mb_release(sb);
++		ext4_ext_release(sb);
++		goto failed_mount4;
++	};
++
+ 	/*
+ 	 * akpm: core read_super() calls in here with the superblock locked.
+ 	 * That deadlocks, because orphan cleanup needs to lock the superblock
+@@ -3770,6 +3964,9 @@ static int __init init_ext4_fs(void)
+ {
+ 	int err;
+ 
++	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
++	if (!ext4_kset)
++		return -ENOMEM;
+ 	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
+ 	err = init_ext4_mballoc();
+ 	if (err)
+@@ -3811,6 +4008,7 @@ static void __exit exit_ext4_fs(void)
+ 	exit_ext4_xattr();
+ 	exit_ext4_mballoc();
+ 	remove_proc_entry("fs/ext4", NULL);
++	kset_unregister(ext4_kset);
+ }
+ 
+ MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
+-- 
+1.5.6.3
+
