@@ -1,41 +1,49 @@
-From: Peng Tao <bergwolf@gmail.com>
-Subject: [PATCH-e2fsprogs] Allow tune2fs -I if only one group per flex
-Date: Mon,  2 Mar 2009 16:29:20 +0800
-Message-ID: <1235982560-7725-1-git-send-email-bergwolf@gmail.com>
-Cc: Peng Tao <bergwolf@gmail.com>
-To: linux-ext4@vger.kernel.org
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: double free of blocks occurred during online defrag
+Date: Mon, 02 Mar 2009 17:30:51 +0900
+Message-ID: <49AB993B.8050705@sx.jp.nec.com>
+References: <49A4E7B8.2040804@sx.jp.nec.com> <20090225104446.GA25714@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.184]:14055 "EHLO
-	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754811AbZCBI33 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Mar 2009 03:29:29 -0500
-Received: by ti-out-0910.google.com with SMTP id d10so2756646tib.23
-        for <linux-ext4@vger.kernel.org>; Mon, 02 Mar 2009 00:29:28 -0800 (PST)
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:59839 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751873AbZCBIdz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Mar 2009 03:33:55 -0500
+In-Reply-To: <20090225104446.GA25714@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This can be caused by tune2fs -O flex_bg.
-And tune2fs -I should work okay for such partitions.
+Hi Aneesh,
 
-Signed-off-by: Peng Tao <bergwolf@gmail.com>
----
- misc/tune2fs.c |    3 ++-
- 1 files changed, 2 insertions(+), 1 deletions(-)
+Thanks for your reply.
 
-diff --git a/misc/tune2fs.c b/misc/tune2fs.c
-index 887a702..ee982e5 100644
---- a/misc/tune2fs.c
-+++ b/misc/tune2fs.c
-@@ -1715,7 +1715,8 @@ retry_open:
- 			exit(1);
- 		}
- 		if (fs->super->s_feature_incompat &
--		    EXT4_FEATURE_INCOMPAT_FLEX_BG) {
-+		    EXT4_FEATURE_INCOMPAT_FLEX_BG &&
-+		    fs->super->s_log_groups_per_flex) {
- 			fputs(_("Changing the inode size not supported for "
- 				"filesystems with the flex_bg\n"
- 				"feature enabled.\n"),
--- 
-1.6.1.3
+Aneesh Kumar K.V wrote:
+> We dropped the patch because I found that the double free in my case was
+> not exactly due the explanation given in the patch above.
+> 
+> I asked to drop the patch in
+> 
+> http://article.gmane.org/gmane.comp.file-systems.ext4/10199
+> 
+> I also found that the patch is not completely correct. The meta-data
+> blocks which are added to the free_list are not allocated from any
+> prealloc space.
+> 
+> So what you are seeing may be a different problem which the patch is
+> hiding from happening.  I guess you will have to look more closely at why the
+> double-free is happening in your case.
+> 
+> -aneesh
+> 
 
+I thought that the problem would be solved if we check whether on-disk and buddy
+bitmap is different or not when inode prealloc space is released.
+However, my understanding was incorrect.
+I will continue examining this problem.
+
+Best regards,
+Kazuya Mio
