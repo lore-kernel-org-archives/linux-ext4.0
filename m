@@ -1,27 +1,47 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH-e2fsprogs] Allow tune2fs -I if only one group per flex
-Date: Mon, 2 Mar 2009 07:40:19 -0500
-Message-ID: <20090302124019.GK6973@mit.edu>
-References: <1235982560-7725-1-git-send-email-bergwolf@gmail.com>
+Subject: Re: Checking of NULL with __GFP_NOFAIL in kzalloc()
+Date: Mon, 2 Mar 2009 08:44:11 -0500
+Message-ID: <20090302134411.GL6973@mit.edu>
+References: <ea11fea30902282205y14062e72v37780481e93802a3@mail.gmail.com> <ea11fea30903012208k6992a019h9683b95379314b55@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Peng Tao <bergwolf@gmail.com>
+Cc: ext4 <linux-ext4@vger.kernel.org>
+To: Manish Katiyar <mkatiyar@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44775 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:48399 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750699AbZCBMkY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Mar 2009 07:40:24 -0500
+	id S1752906AbZCBNoR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 2 Mar 2009 08:44:17 -0500
 Content-Disposition: inline
-In-Reply-To: <1235982560-7725-1-git-send-email-bergwolf@gmail.com>
+In-Reply-To: <ea11fea30903012208k6992a019h9683b95379314b55@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 02, 2009 at 04:29:20PM +0800, Peng Tao wrote:
-> This can be caused by tune2fs -O flex_bg.
-> And tune2fs -I should work okay for such partitions.
+On Mon, Mar 02, 2009 at 11:38:53AM +0530, Manish Katiyar wrote:
+> On Sun, Mar 1, 2009 at 11:35 AM, Manish Katiyar <mkatiyar@gmail.com> wrote:
+> > Hi,
+> >
+> > While going through jbd code, I was wondering why do we need to check
+> > new_transaction for NULL, if we are passing __GFP_NOFAIL ?
+> > Last code change around this code was when Ted converted kmalloc to
+> > kzalloc, but since he also didn't remove it I am guessing there would
+> > be some good reason for it. Can someone enlighten me ?
+> 
+> I didn't receive any response to this. So probably removing the NULL
+> check is harmless. Or should I remove the __GFP_NOFAIL flag and keep
+> the error handling ?
 
-It will *probably* work, but again, it would be better to check to
-make sure it really was caused by an accidental "tune2fs -O flex_bg".
+We don't want to remove __GFP_NOFAIL here since returning an error
+would cause the filesystem to be marked as corrupted, and so it's
+better to simply ask the memory allocator to retry until it can
+succeed, which is what GFP_NOFAIL does.
 
-     	     	    	       	     - Ted
+This isn't an excuse for using GFP_NOFAIL in journal_init_common(),
+though; that's an example of a use of __GFP_NOFAIL that should go
+away.  (Basically, if that fails, the mount will fail; we should
+printk an explanatory message since the mount system call return
+EINVAL, but failing a mount due to not enough memory is reasonable.
+Marking the filesystem as corrupted, and remounting the filesystem
+read-only and/or panic'ing the system is not.)
+
+						- Ted
