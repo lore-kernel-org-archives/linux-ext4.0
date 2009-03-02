@@ -1,20 +1,20 @@
 From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: [PATCH] jbd2: Remove unnecessary check for NULL after calling kzalloc
+Subject: [PATCH] jbd: Remove unnecessary check for NULL after calling kzalloc
 	with __GFP_NOFAIL
-Date: Mon, 2 Mar 2009 12:11:28 +0530
-Message-ID: <ea11fea30903012241u44d31e6aw6c18af7c06f60734@mail.gmail.com>
+Date: Mon, 2 Mar 2009 12:11:32 +0530
+Message-ID: <ea11fea30903012241qc2dbaa0q9cac669ff9f89a4a@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: mkatiyar@gmail.com
 To: ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ti-out-0910.google.com ([209.85.142.184]:2955 "EHLO
+Received: from ti-out-0910.google.com ([209.85.142.185]:60091 "EHLO
 	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755440AbZCBGlh (ORCPT
+	with ESMTP id S1755504AbZCBGlh (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Mar 2009 01:41:37 -0500
-Received: by ti-out-0910.google.com with SMTP id d10so2723280tib.23
-        for <linux-ext4@vger.kernel.org>; Sun, 01 Mar 2009 22:41:29 -0800 (PST)
+Received: by ti-out-0910.google.com with SMTP id d10so2723296tib.23
+        for <linux-ext4@vger.kernel.org>; Sun, 01 Mar 2009 22:41:32 -0800 (PST)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -24,14 +24,14 @@ not needed.
 
 Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
 ---
- fs/jbd2/transaction.c |    7 +------
+ fs/jbd/transaction.c |    7 +------
  1 files changed, 1 insertions(+), 6 deletions(-)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 46b4e34..e22f993 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -101,14 +101,9 @@ static int start_this_handle(journal_t *journal,
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index e6a1174..9e817fd 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -97,14 +97,9 @@ static int start_this_handle(journal_t *journal,
 handle_t *handle)
  	}
 
@@ -50,7 +50,6 @@ handle_t *handle)
 
 -- 
 1.5.4.3
-
 
 Thanks -
 Manish
