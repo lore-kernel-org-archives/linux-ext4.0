@@ -1,39 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: how to scale root-reserved space going forward...
-Date: Mon, 02 Mar 2009 10:26:21 -0600
-Message-ID: <49AC08AD.7050602@redhat.com>
-References: <49AB0ABE.1030009@redhat.com> <20090302024754.GF6973@mit.edu> <20090302085632.GM3199@webber.adilger.int>
+From: Peng tao <bergwolf@gmail.com>
+Subject: Re: [PATCH-e2fsprogs] Allow clearing flex_bg if only one group per
+	flex
+Date: Tue, 3 Mar 2009 11:02:02 +0800
+Message-ID: <6149e97b0903021902r228e4de2ia95dd4f39ef8f06a@mail.gmail.com>
+References: <1235982524-7673-1-git-send-email-bergwolf@gmail.com>
+	 <20090302123908.GJ6973@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:48223 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751289AbZCBQ0a (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 2 Mar 2009 11:26:30 -0500
-In-Reply-To: <20090302085632.GM3199@webber.adilger.int>
+Received: from rv-out-0506.google.com ([209.85.198.226]:56205 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752578AbZCCDCI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 2 Mar 2009 22:02:08 -0500
+Received: by rv-out-0506.google.com with SMTP id g37so2570033rvb.1
+        for <linux-ext4@vger.kernel.org>; Mon, 02 Mar 2009 19:02:03 -0800 (PST)
+In-Reply-To: <20090302123908.GJ6973@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
+On Mon, Mar 2, 2009 at 8:39 PM, Theodore Tso <tytso@mit.edu> wrote:
+> On Mon, Mar 02, 2009 at 04:28:44PM +0800, Peng Tao wrote:
+>> This can be caused by tune2fs -O flex_bg. And clearing flex_bg on su=
+ch
+>> partitions is harmless.
+>
+> It's actually not necessarily harmless; e2fsck could have already
+> assigned new bitmap and inode tables outside of the block group. =C2=A0=
+If
+> you want to enable this, you need to actually check to make sure all
+> of the block/inode bitmap blocks and inode tables are within their ow=
+n
+> block group before allowing flex_bg to be cleared.
+>
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =
+=C2=A0 =C2=A0 =C2=A0 =C2=A0- Ted
+>
+Hi, Ted
 
-> I suspect that at a certain filesystem size, there isn't much benefit
-> in having more reserved space.  If we keep 50GB of reserved space then
-> this is likely to contain a decent amount of 1MB free chunks, which is
-> what we really care about.
-> 
-> Cheers, Andreas
+=46urther looking into the code, I realized that tune2fs -O^flex_bg is
+already supported if it doesn't break file system consistency. So
+please ignore this patch.
+I will send you a new patch for enabling tune2fs -I dealing with the
+similar scenario.
 
-As long as we don't care much about inode<->block locality, that is
-probably ok...
-
-I got one off-list reply from someone who was depending on the 5% for
-administration reasons, but even if we change the default I assume we'll
-leave the tunable in place for people who really do want 5% for
-"root-reserved" over "allocator safety buffer" reasons.
-
--Eric
-
+Cheers,
+Bergwolf
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
