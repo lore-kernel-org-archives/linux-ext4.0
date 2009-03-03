@@ -1,58 +1,82 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: mkfs.ext4: high default -i value undocumented
-Date: Tue, 03 Mar 2009 17:19:31 -0600
-Message-ID: <49ADBB03.9070303@redhat.com>
-References: <alpine.LSU.2.00.0903040007470.12969@fbirervta.pbzchgretzou.qr>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [RFC][PATCH 2/3] ext4: Exchange the blocks between two inodes
+Date: Tue, 03 Mar 2009 17:36:05 +0900
+Message-ID: <49ACEBF5.8020407@rs.jp.nec.com>
+References: <49829A91.8000800@rs.jp.nec.com> <20090204152029.GE14762@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, kzak@redhat.com
-To: Jan Engelhardt <jengelh@medozas.de>
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:49118 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753292AbZCCXTh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Mar 2009 18:19:37 -0500
-In-Reply-To: <alpine.LSU.2.00.0903040007470.12969@fbirervta.pbzchgretzou.qr>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:43532 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754606AbZCCX1H (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Mar 2009 18:27:07 -0500
+In-Reply-To: <20090204152029.GE14762@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Engelhardt wrote:
-> Hi,
-> 
-> 
-> Creating an ext4 filesystem on a 4 GB image file (to be loop-mounted 
-> later) gives me 256K inodes. Choosing -i 4096 instead gives 1M, which 
-> would mean the default for -i is 16384. 
+Hi Ted,
+Thank you for comment. :-)
 
-That's right, look in /etc/mke2fs.conf:
+Theodore Tso wrote:
+>> +
+>> +	up_write(&EXT4_I(org_inode)->i_data_sem);
+>> +	ret = a_ops->write_begin(o_filp, mapping, offs, data_len, w_flags,
+>> +								&page, &fsdata);
+>> +	down_write(&EXT4_I(org_inode)->i_data_sem);
+>>     
+>
+> This is going to be a problem.  Once we release i_data_sem, there is
+> the possibility that other processes which might be running and
+> accessing the file at the same time that the defragger is running
+> could be blocked waiting for i_data_sem to be released.  The moment it
+> gets released, they will grab the lock then start to modify extent
+> tree --- either allocating new blocks to it, or worse, truncating or
+> unlinking the target inode.
+>
+> This is going to be a mess to fix, since Linux doesn't have recursive
+> locking primitives.  We do take i_mutex, which will protect us against
+> truncates, but it won't protect against a write() system call.  Also,
+> if there inode has delayed allocation blocks pending, those could get
+> written out by the page cleaner, and i_mutex won't protect us against
+> changes to i_data_sem, either.
+>
+>   
+As you said, we take i_mutex at the start of ext4_defrag()
+and hold it until the end of this function,
+so orig file is protected against truncates and
+it never be shrunk during defrag.
 
-[defaults]
-        base_features =
-sparse_super,filetype,resize_inode,dir_index,ext_attr
-        blocksize = 4096
-        inode_size = 256
-        inode_ratio = 16384
+On the other hand, semaphore is released/taken around write_begin()
+in ext4_defrag_partial() every page, so it does not protect orig file
+against a write() system call from other process.  
+So that defrag result (fragmentation) might not be best,
+but data corruption does not occur at least.
+So I think it is not a serious problem.
 
-> Besides me finding 16384 a 
-> little unreasonable (XFS offers 2M inodes by default), 
+As above, it is not necessary to lock the whole of ext4_defrag()
+with semaphore, we should just lock only a necessary point.
+Therefore defrag V1's lock seems have unneeded lock points.
+I will change lock point and semaphore type in the next version.
 
-XFS is a totally different beast, because it dynamically allocates
-inodes.  It doesn't really offer *anything* by default.
+Do I overlook something?
 
-Which part of a 16384-data-bytes-to-inode-count ratio do you find
-unreasonable?  Do you find it unreasonably high, or unreasonably low?
+Regards,
+Akira Fujita
 
-> the big 
-> point is that the mke2fs manpage (belonging to util-linux, hence Cc) 
 
-not so much:
-$ rpm -qf /usr/share/man/man8/mke2fs.8.gz
-e2fsprogs-1.41.3-2.fc10.x86_64
+> We could add special-case kludgery to wrap around all of the places
+> that takes or release the i_data_sem so that we get recursive locking
+> support --- but that would be very ugly indeed.
+>
+> I'm not sure what's the best way to deal with this; maybe if we sleep
+> on it someone will come up with a better suggestion --- but it's
+> something that we have to figure out.
+>
+> 	  					- Ted
+>
+>   
 
-> does not mention this 16384 default.
-> Hope this can be addressed.
 
-You could send a patch :)
-
--Eric
