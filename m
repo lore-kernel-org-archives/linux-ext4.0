@@ -1,37 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: possible ext4 race situation freezing linux
-Date: Wed, 04 Mar 2009 00:56:04 -0600
-Message-ID: <49AE2604.8080107@redhat.com>
-References: <1235478142.11758.9.camel@localhost.localdomain>	 <20090224141749.GC5482@mit.edu> <49A41469.6090604@redhat.com>	 <1235495013.11758.37.camel@localhost.localdomain>	 <20090224173031.GE5482@mit.edu> <1236148970.4674.3.camel@localhost.localdomain>
+From: Meelis Roos <mroos@linux.ee>
+Subject: ext3 warning from mark_buffer_dirty after aborting journal
+Date: Wed, 4 Mar 2009 09:03:09 +0200 (EET)
+Message-ID: <Pine.SOC.4.64.0903040858510.6557@math.ut.ee>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	linux-ext4 <linux-ext4@vger.kernel.org>
-To: Andreas Friedrich Berendsen <afberendsen@gmail.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51496 "EHLO mx2.redhat.com"
+Received: from smtp2.it.da.ut.ee ([193.40.5.67]:35318 "EHLO smtp2.it.da.ut.ee"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752034AbZCDG4v (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Mar 2009 01:56:51 -0500
-In-Reply-To: <1236148970.4674.3.camel@localhost.localdomain>
+	id S1751160AbZCDHDL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 4 Mar 2009 02:03:11 -0500
+Received: from math.ut.ee (math.ut.ee [193.40.36.2])
+	by smtp2.it.da.ut.ee (Postfix) with ESMTP id 6127473D7E8
+	for <linux-ext4@vger.kernel.org>; Wed,  4 Mar 2009 09:03:09 +0200 (EET)
+Received: from localhost (localhost [127.0.0.1])
+	by math.ut.ee (Postfix) with ESMTP id 3FD25FD79B
+	for <linux-ext4@vger.kernel.org>; Wed,  4 Mar 2009 09:03:09 +0200 (EET)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Friedrich Berendsen wrote:
->  Ts'o,
-> 
-> Problem still exist. Now, when executing 'fsck.ext4 -C 0 -F -y -v' I
-> receive a list of inodes, and at certain point system freezes.
+Just got this warning when running 2.6.29-rc + yesterdays git on 
+sparc64. For some yet unknown reason, scsi disk goes repeatably offline 
+during shutdown and this got a warning out of ext3. Is this an expected 
+warning or does it need some attention?
 
-so now it's freezing when ext4 isn't even mounted but simply being
-fsck'd?  This may point to a generic storage problem.
+Please CC: as I am not subscribed to linux-ext4.
 
-> Attached I'm sending the output for SysRq as requested
+[20639.424955] sd 0:0:0:0: rejecting I/O to offline device
+[20639.488559] Aborting journal on device sda2.
+[20639.538715] sd 0:0:0:0: rejecting I/O to offline device
+[20639.607271] sd 0:0:0:0: rejecting I/O to offline device
+[20639.670515] EXT3-fs error (device sda2): ext3_find_entry: reading directory #188427 offset 0
+[20639.770755] Remounting filesystem read-only
+[20639.821110] ------------[ cut here ]------------
+[20639.876118] WARNING: at fs/buffer.c:1251 mark_buffer_dirty+0xa8/0xc0()
+[20639.954215] Modules linked in: ipv6 ext2 loop
+[20640.006202] Call Trace:
+[20640.035492]  [000000000045cd6c] warn_slowpath+0x6c/0xc0
+[20640.097999]  [0000000000508708] mark_buffer_dirty+0xa8/0xc0
+[20640.164695]  [0000000000554b58] ext3_commit_super+0xb8/0x100
+[20640.232396]  [00000000005563e8] ext3_handle_error+0x68/0xe0
+[20640.299084]  [0000000000556530] ext3_error+0x50/0x60
+[20640.358463]  [0000000000551ed4] ext3_find_entry+0x554/0x680
+[20640.425137]  [00000000005529f0] ext3_lookup+0x30/0x160
+[20640.486648]  [00000000004ebfb8] __lookup_hash+0xf8/0x140
+[20640.550159]  [00000000004ec034] lookup_hash+0x34/0x60
+[20640.610596]  [00000000004ef998] do_filp_open+0x238/0x7e0
+[20640.674154]  [00000000004e0ab4] do_sys_open+0x54/0x100
+[20640.735614]  [00000000004431bc] sparc32_open+0x1c/0x40
+[20640.797080]  [0000000000406254] linux_sparc_syscall32+0x34/0x40
+[20640.867912] ---[ end trace 747d11ba5876fcd1 ]---
 
-$ zcat messages.gz | grep -i sysrq
-$
 
-The sysrq output didn't seem to make it to that log.
-
--Eric
+-- 
+Meelis Roos (mroos@linux.ee)
