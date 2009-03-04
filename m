@@ -1,183 +1,131 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC] mballoc: Add ioctls for new block allocation policy
-Date: Wed, 04 Mar 2009 16:34:54 +0900
-Message-ID: <49AE2F1E.205@rs.jp.nec.com>
+From: Andreas Friedrich Berendsen <afberendsen@gmail.com>
+Subject: Re: possible ext4 race situation freezing linux
+Date: Wed, 04 Mar 2009 21:03:23 +1300
+Message-ID: <1236153803.4674.16.camel@localhost.localdomain>
+References: <1235478142.11758.9.camel@localhost.localdomain>
+	 <20090224141749.GC5482@mit.edu> <49A41469.6090604@redhat.com>
+	 <1235495013.11758.37.camel@localhost.localdomain>
+	 <20090224173031.GE5482@mit.edu>
+	 <1236148970.4674.3.camel@localhost.localdomain>
+	 <49AE2604.8080107@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Theodore Tso <tytso@mit.edu>,
+	linux-ext4 <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:55064 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751686AbZCDHf0 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Mar 2009 02:35:26 -0500
+Received: from ti-out-0910.google.com ([209.85.142.184]:9091 "EHLO
+	ti-out-0910.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751137AbZCDIDj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Mar 2009 03:03:39 -0500
+Received: by ti-out-0910.google.com with SMTP id d10so3377601tib.23
+        for <linux-ext4@vger.kernel.org>; Wed, 04 Mar 2009 00:03:35 -0800 (PST)
+In-Reply-To: <49AE2604.8080107@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Steps:
 
-We will reconsider the implementation of force defragmentation mode (-f mode)
-and relevant file defragmentation mode (-r mode), as you suggested in the
-mail in December 2008:
- http://marc.info/?l=linux-ext4&m=122880166227883&w=2
+1. Original FS with problems.
+2. Using fsck with -y was problematic because at certainpoint a segment
+faul occured
+3. Using fsck manually. Answering 'y' for all questions but the one
+which caused the segment fault
+4. Removed as most as possible files from FS to new LV in the same VG
+5. A new fsck run worked
+6. resize2fs+lvreduce to reduce FS size and have more free space in VG
+7. Removed more files to new LV inside the same VG
+8. New run of fsck worked
+9. resize2fs to prepare for a new lvreduce. Power failure after almost
+24 hours of run
+10. After system reboot, FS can be mounted and FS seems to be ok.
+Executed find, find+grep, cp, and other tools to check file
+accessibility. Not messages in /var/log/messages
+11. New run of fsck. system freeze
+12. Per request, used ALT+PrintScreen+(dlmpqtvw)
+13. Used AltPrintScree+(resuib) to restart system
+14. System restarted
+15. Copy of /var/log/messages to /tmp/messages. Removed lines before and
+after Alt+PrintScreen commands
 
-These modes need to add the two following functions into the ext4 multiblock
-allocation.
-We'd like to decide the interface for the functions, so any comments are
-welcome.
+Problem can be reproduced as many times as needed.
 
-  a. Block allocation restriction
-     This is the ioctl interface which allows a privileged program to specify
-     one or more range of blocks which the filesystem's block allocator
-     must not allocate from.
-     This allows the ext4 online defrag to solve free space fragmentation;
-     it has to do with force defragmentation mode.
-     This feature may be useful for online shrink; at first, we restrict the
-     allocation from the tail of a filesystem, then move data away from there,
-     and shorten the size of it.
+Do you want me to execute any procedures to collect data?
 
-  b. Preferred blocks allocation
-     This is ioctl interface which associates an inode with preferred range of
-     blocks which the block allocator will try using first.
-     It gives the two following features to ext4 online defrag.
-      1. Defragment files and re-allocate them closely each other
-         (Relevant file defragmentation mode needs this one).
-      2. After solving free space fragmentation, re-allocate a file to the
-         contiguous free space (Force defragmentation mode needs this one).
-     It is also possible to allocate particular blocks to a file with
-     fallocate in advance.
+Extract from /tmp/messages:
 
-The followings are the implementation approaches of above two functions.
+Mar  4 19:19:28 storage kernel: ------------[ cut here ]------------
+Mar  4 19:19:28 storage kernel: WARNING: at arch/x86/mm/ioremap.c:226
+__ioremap_caller+0xc7/0x299()
+Mar  4 19:19:28 storage kernel: Modules linked in: ck804xrom(+) i2c_core
+mtd chipreg map_funcs joydev usb_storage ata_generic pata_acpi pata_amd
+[last unloaded: scsi_wait_scan]
+Mar  4 19:19:28 storage kernel: Pid: 881, comm: modprobe Not tainted
+2.6.28.7.afb.fc10.4.x86_amd64 #1
+Mar  4 19:19:28 storage kernel: Call Trace:
+Mar  4 19:19:28 storage kernel: [<ffffffff8104516d>] warn_on_slowpath
++0x58/0x7d
+Mar  4 19:19:28 storage kernel: [<ffffffff810458a5>] ?
+release_console_sem+0x1c6/0x1fb
+Mar  4 19:19:28 storage kernel: [<ffffffff81347775>] ? printk+0x3c/0x3f
+Mar  4 19:19:28 storage kernel: [<ffffffff81028787>] ?
+default_spin_lock_flags+0x9/0xe
+Mar  4 19:19:28 storage kernel: [<ffffffffa006c000>] ? init_ck804xrom
++0x0/0x556 [ck804xrom]
+Mar  4 19:19:28 storage kernel: [<ffffffff8102e4a6>] __ioremap_caller
++0xc7/0x299
+Mar  4 19:19:28 storage kernel: [<ffffffffa006c25c>] ? init_ck804xrom
++0x25c/0x556 [ck804xrom]
+Mar  4 19:19:28 storage kernel: [<ffffffffa006c000>] ? init_ck804xrom
++0x0/0x556 [ck804xrom]
+Mar  4 19:19:28 storage kernel: [<ffffffff8102e74d>] ioremap_nocache
++0x12/0x14
+Mar  4 19:19:28 storage kernel: [<ffffffffa006c25c>] init_ck804xrom
++0x25c/0x556 [ck804xrom]
+Mar  4 19:19:28 storage kernel: [<ffffffff810ae835>] ? vfree+0x29/0x2b
+Mar  4 19:19:28 storage kernel: [<ffffffff810699e5>] ? load_module
++0x1803/0x197a
+Mar  4 19:19:28 storage kernel: [<ffffffffa006c000>] ? init_ck804xrom
++0x0/0x556 [ck804xrom]
+Mar  4 19:19:28 storage kernel: [<ffffffff8100a058>] do_one_initcall
++0x58/0x145
+Mar  4 19:19:28 storage kernel: [<ffffffff810c612c>] ? do_sync_read
++0xe7/0x12d
+Mar  4 19:19:28 storage kernel: [<ffffffff81069ce2>] sys_init_module
++0xa9/0x1b6
+Mar  4 19:19:28 storage kernel: [<ffffffff8101104a>]
+system_call_fastpath+0x16/0x1b
+Mar  4 19:19:28 storage kernel: ---[ end trace 66d1cdaa6433edb1 ]---
 
-  a. Block allocation restriction (balloc restriction)
-     For balloc restriction, we need to add ioctls, structures, and a member
-     to an existing structure.
 
-     Ioctls:
-       EXT4_IOC_ADD_GLOBAL_ALLOC_RULE
-				_IOW('f', 16, struct ext4_alloc_rule);
+-----Original Message-----
+From: Eric Sandeen <sandeen@redhat.com>
+To: Andreas Friedrich Berendsen <afberendsen@gmail.com>
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4
+<linux-ext4@vger.kernel.org>
+Subject: Re: possible ext4 race situation freezing linux
+Date: Wed, 04 Mar 2009 00:56:04 -0600
 
-       This ioctl forbids block allocation from the blocks range where
-       pointed by the ext4_alloc_rule. struct ext4_alloc_rule is set to
-       ext4_sb_info->s_bg_list (described later).
-       When we set it, the filesystem relative blocks range is converted into
-       the block group relative one.
-       The set ext4_alloc_rule is removed by the following ioctl or
-       unmounting filesystem.
+Andreas Friedrich Berendsen wrote:
+>  Ts'o,
+> 
+> Problem still exist. Now, when executing 'fsck.ext4 -C 0 -F -y -v' I
+> receive a list of inodes, and at certain point system freezes.
 
-       EXT4_IOC_CLR_GLOBAL_ALLOC_RULE
-				_IOW('f', 17, struct ext4_alloc_rule);
+so now it's freezing when ext4 isn't even mounted but simply being
+fsck'd?  This may point to a generic storage problem.
 
-       This ioctl permits block allocator to allocate the range of blocks
-       pointed by ext4_alloc_rule.
-       It modifies s_bg_list->range_list to make the range allocatable.
+> Attached I'm sending the output for SysRq as requested
 
-     Structures:
-       * ext4_alloc_rule (describes the range of balloc restriction)
-         struct ext4_alloc_rule {
-		__u64 start;	  /* physical start offset in block */
-		__u64 len;	  /* the length of the blocks range */
-		__u32 alloc_flag; /* mandatory...0(default) advisory...1 */
-         };
+$ zcat messages.gz | grep -i sysrq
+$
 
-         "alloc_flag" defines the behavior when the block allocator can not
-         get blocks in the range of balloc restriction.
-         In "mandatory" case, we never get the blocks from "start" to
-         "start + len". If block allocation fail by the restriction, we get
-         error (ENOSPC).
-         On the other hand, we may get the blocks from the restricted range in
-         "advisory" case.
+The sysrq output didn't seem to make it to that log.
 
-       * ext4_bg_list (the list of the bg relative range of balloc restriction)
-         struct ext4_bg_list {
-		struct list_head bg_list;     /* next ext4_bg_list */
-		ext4_group_t	 bg_num;      /* bg num */
-		ext4_grpblk_t	 used_blocks; /* forbidden blocks by the
-						 restriction */
-		struct list_head range_list;  /* The list of bg relative balloc
-						 restriction */
-         };
+-Eric
+-- 
+__________________________________________
+Andreas Friedrich Berendsen
+SCA OCP MSCA A+ Linux+ Network+ HpMASE
 
-         This list manages the bg relative range of balloc restrictions (struct
-         ext4_bg_alloc_rule).
-
-       * ext4_bg_alloc_rule (the bg relative range of balloc restriction)
-         struct ext4_bg_alloc_rule {
-		struct list_head range_list; /* next ext4_bg_alloc_rule */
-		ext4_grpblk_t	 start;      /* physical start offset
-						in block */
-		ext4_grpblk_t	 end;        /* physical last offset
-						in block */
-		int		 alloc_flag; /* mandatory...0(default)
-						advisory...1 */
-         };
-
-         This structure stores the bg relative range of balloc restriction.
-         The range passed by ioctl is filesystem relative one, so it needs to
-         be converted into it.
-
-     A new member of the structure:
-       We add the new member to the ext4_sb_info.
-       struct ext4_sb_info {
-		...
-	+	struct list_head s_bg_list;
-       }
-
-     Behavior in mballoc:
-       In the free blocks lookup (ext4_mb_{simple, complex}_scan_group,
-       ext4_mb_scan_aligned, etc.), they compare the bg relative balloc
-       restriction list to the range of free blocks we got. If the free blocks
-       range overlaps with the restricted blocks one, we shorten the free
-       blocks one or do lookup again.
-
-  b. Preferred block allocation
-     For preferred block allocation, we add ioctl, structures, and
-     a member for an existing structure.
-
-     Ioctl:
-       EXT4_IOC_ADD_INODE_ALLOC_RULE	_IOW('f', 18, struct ext4_alloc_rule);
-       This ioctl sets the preferred range of blocks (struct ext4_alloc_rule)
-       to the inode. The range is cancelled by doing block allocation or
-       closing fd.
-
-     Structure:
-       * ext4_alloc_rule (describes the range of balloc restriction)
-         struct ext4_alloc_rule {
-		__u64 start;	  /* physical start offset in block */
-		__u64 len;	  /* the length of the blocks range */
-		__u32 alloc_flag; /* mandatory...0(default) advisory...1 */
-         };
-
-         If we fail allocation to the blocks of purpose, "mandatory" case
-         causes ENOSPC. Meanwhile, "advisory" case tries to allocate from the
-         other place.
-
-      * ext4_inode_alloc_rule (stores allocation rule and pid which set rule)
-        struct ext4_inode_alloc_rule {
-		struct *ext4_alloc_rule alloc_rule;
-		pid_t alloc_pid;
-        }
-
-        alloc_rule: Stores the contents of ext4_alloc_rule from the ioctl.
-        alloc_pid: The pid of the process which sets "alloc_rule"
-
-     A new member of the structure:
-       We add the new member to struct ext4_inode_info.
-       struct ext4_inode_info {
-		...
-	+	struct ext4_inode_alloc_rule *i_alloc_rule;
-		spinlock_t i_block_reservation_lock;
-       }
-
-     Behavior in mballoc:
-       If current->pid differs from ext4_inode_info->i_alloc_rule->alloc_pid,
-       the ordinary multiblock routine is executed. If not, block allocator
-       does the following behavior:
-
-       When doing multiblock allocation, it sets ext4_allocation_request->
-       {goal, len, flags} with the contents of struct alloc_rule.
-       Then, the purpose blocks are allocated via existing mballoc process.
-
-Best regards,
-Akira Fujita
