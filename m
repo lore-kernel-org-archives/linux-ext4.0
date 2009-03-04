@@ -1,56 +1,183 @@
-From: Meelis Roos <mroos@linux.ee>
-Subject: ext3 warning from mark_buffer_dirty after aborting journal
-Date: Wed, 4 Mar 2009 09:03:09 +0200 (EET)
-Message-ID: <Pine.SOC.4.64.0903040858510.6557@math.ut.ee>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [RFC] mballoc: Add ioctls for new block allocation policy
+Date: Wed, 04 Mar 2009 16:34:54 +0900
+Message-ID: <49AE2F1E.205@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp2.it.da.ut.ee ([193.40.5.67]:35318 "EHLO smtp2.it.da.ut.ee"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751160AbZCDHDL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Mar 2009 02:03:11 -0500
-Received: from math.ut.ee (math.ut.ee [193.40.36.2])
-	by smtp2.it.da.ut.ee (Postfix) with ESMTP id 6127473D7E8
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Mar 2009 09:03:09 +0200 (EET)
-Received: from localhost (localhost [127.0.0.1])
-	by math.ut.ee (Postfix) with ESMTP id 3FD25FD79B
-	for <linux-ext4@vger.kernel.org>; Wed,  4 Mar 2009 09:03:09 +0200 (EET)
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:55064 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751686AbZCDHf0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Mar 2009 02:35:26 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Just got this warning when running 2.6.29-rc + yesterdays git on 
-sparc64. For some yet unknown reason, scsi disk goes repeatably offline 
-during shutdown and this got a warning out of ext3. Is this an expected 
-warning or does it need some attention?
+Hi Ted,
 
-Please CC: as I am not subscribed to linux-ext4.
+We will reconsider the implementation of force defragmentation mode (-f mode)
+and relevant file defragmentation mode (-r mode), as you suggested in the
+mail in December 2008:
+ http://marc.info/?l=linux-ext4&m=122880166227883&w=2
 
-[20639.424955] sd 0:0:0:0: rejecting I/O to offline device
-[20639.488559] Aborting journal on device sda2.
-[20639.538715] sd 0:0:0:0: rejecting I/O to offline device
-[20639.607271] sd 0:0:0:0: rejecting I/O to offline device
-[20639.670515] EXT3-fs error (device sda2): ext3_find_entry: reading directory #188427 offset 0
-[20639.770755] Remounting filesystem read-only
-[20639.821110] ------------[ cut here ]------------
-[20639.876118] WARNING: at fs/buffer.c:1251 mark_buffer_dirty+0xa8/0xc0()
-[20639.954215] Modules linked in: ipv6 ext2 loop
-[20640.006202] Call Trace:
-[20640.035492]  [000000000045cd6c] warn_slowpath+0x6c/0xc0
-[20640.097999]  [0000000000508708] mark_buffer_dirty+0xa8/0xc0
-[20640.164695]  [0000000000554b58] ext3_commit_super+0xb8/0x100
-[20640.232396]  [00000000005563e8] ext3_handle_error+0x68/0xe0
-[20640.299084]  [0000000000556530] ext3_error+0x50/0x60
-[20640.358463]  [0000000000551ed4] ext3_find_entry+0x554/0x680
-[20640.425137]  [00000000005529f0] ext3_lookup+0x30/0x160
-[20640.486648]  [00000000004ebfb8] __lookup_hash+0xf8/0x140
-[20640.550159]  [00000000004ec034] lookup_hash+0x34/0x60
-[20640.610596]  [00000000004ef998] do_filp_open+0x238/0x7e0
-[20640.674154]  [00000000004e0ab4] do_sys_open+0x54/0x100
-[20640.735614]  [00000000004431bc] sparc32_open+0x1c/0x40
-[20640.797080]  [0000000000406254] linux_sparc_syscall32+0x34/0x40
-[20640.867912] ---[ end trace 747d11ba5876fcd1 ]---
+These modes need to add the two following functions into the ext4 multiblock
+allocation.
+We'd like to decide the interface for the functions, so any comments are
+welcome.
 
+  a. Block allocation restriction
+     This is the ioctl interface which allows a privileged program to specify
+     one or more range of blocks which the filesystem's block allocator
+     must not allocate from.
+     This allows the ext4 online defrag to solve free space fragmentation;
+     it has to do with force defragmentation mode.
+     This feature may be useful for online shrink; at first, we restrict the
+     allocation from the tail of a filesystem, then move data away from there,
+     and shorten the size of it.
 
--- 
-Meelis Roos (mroos@linux.ee)
+  b. Preferred blocks allocation
+     This is ioctl interface which associates an inode with preferred range of
+     blocks which the block allocator will try using first.
+     It gives the two following features to ext4 online defrag.
+      1. Defragment files and re-allocate them closely each other
+         (Relevant file defragmentation mode needs this one).
+      2. After solving free space fragmentation, re-allocate a file to the
+         contiguous free space (Force defragmentation mode needs this one).
+     It is also possible to allocate particular blocks to a file with
+     fallocate in advance.
+
+The followings are the implementation approaches of above two functions.
+
+  a. Block allocation restriction (balloc restriction)
+     For balloc restriction, we need to add ioctls, structures, and a member
+     to an existing structure.
+
+     Ioctls:
+       EXT4_IOC_ADD_GLOBAL_ALLOC_RULE
+				_IOW('f', 16, struct ext4_alloc_rule);
+
+       This ioctl forbids block allocation from the blocks range where
+       pointed by the ext4_alloc_rule. struct ext4_alloc_rule is set to
+       ext4_sb_info->s_bg_list (described later).
+       When we set it, the filesystem relative blocks range is converted into
+       the block group relative one.
+       The set ext4_alloc_rule is removed by the following ioctl or
+       unmounting filesystem.
+
+       EXT4_IOC_CLR_GLOBAL_ALLOC_RULE
+				_IOW('f', 17, struct ext4_alloc_rule);
+
+       This ioctl permits block allocator to allocate the range of blocks
+       pointed by ext4_alloc_rule.
+       It modifies s_bg_list->range_list to make the range allocatable.
+
+     Structures:
+       * ext4_alloc_rule (describes the range of balloc restriction)
+         struct ext4_alloc_rule {
+		__u64 start;	  /* physical start offset in block */
+		__u64 len;	  /* the length of the blocks range */
+		__u32 alloc_flag; /* mandatory...0(default) advisory...1 */
+         };
+
+         "alloc_flag" defines the behavior when the block allocator can not
+         get blocks in the range of balloc restriction.
+         In "mandatory" case, we never get the blocks from "start" to
+         "start + len". If block allocation fail by the restriction, we get
+         error (ENOSPC).
+         On the other hand, we may get the blocks from the restricted range in
+         "advisory" case.
+
+       * ext4_bg_list (the list of the bg relative range of balloc restriction)
+         struct ext4_bg_list {
+		struct list_head bg_list;     /* next ext4_bg_list */
+		ext4_group_t	 bg_num;      /* bg num */
+		ext4_grpblk_t	 used_blocks; /* forbidden blocks by the
+						 restriction */
+		struct list_head range_list;  /* The list of bg relative balloc
+						 restriction */
+         };
+
+         This list manages the bg relative range of balloc restrictions (struct
+         ext4_bg_alloc_rule).
+
+       * ext4_bg_alloc_rule (the bg relative range of balloc restriction)
+         struct ext4_bg_alloc_rule {
+		struct list_head range_list; /* next ext4_bg_alloc_rule */
+		ext4_grpblk_t	 start;      /* physical start offset
+						in block */
+		ext4_grpblk_t	 end;        /* physical last offset
+						in block */
+		int		 alloc_flag; /* mandatory...0(default)
+						advisory...1 */
+         };
+
+         This structure stores the bg relative range of balloc restriction.
+         The range passed by ioctl is filesystem relative one, so it needs to
+         be converted into it.
+
+     A new member of the structure:
+       We add the new member to the ext4_sb_info.
+       struct ext4_sb_info {
+		...
+	+	struct list_head s_bg_list;
+       }
+
+     Behavior in mballoc:
+       In the free blocks lookup (ext4_mb_{simple, complex}_scan_group,
+       ext4_mb_scan_aligned, etc.), they compare the bg relative balloc
+       restriction list to the range of free blocks we got. If the free blocks
+       range overlaps with the restricted blocks one, we shorten the free
+       blocks one or do lookup again.
+
+  b. Preferred block allocation
+     For preferred block allocation, we add ioctl, structures, and
+     a member for an existing structure.
+
+     Ioctl:
+       EXT4_IOC_ADD_INODE_ALLOC_RULE	_IOW('f', 18, struct ext4_alloc_rule);
+       This ioctl sets the preferred range of blocks (struct ext4_alloc_rule)
+       to the inode. The range is cancelled by doing block allocation or
+       closing fd.
+
+     Structure:
+       * ext4_alloc_rule (describes the range of balloc restriction)
+         struct ext4_alloc_rule {
+		__u64 start;	  /* physical start offset in block */
+		__u64 len;	  /* the length of the blocks range */
+		__u32 alloc_flag; /* mandatory...0(default) advisory...1 */
+         };
+
+         If we fail allocation to the blocks of purpose, "mandatory" case
+         causes ENOSPC. Meanwhile, "advisory" case tries to allocate from the
+         other place.
+
+      * ext4_inode_alloc_rule (stores allocation rule and pid which set rule)
+        struct ext4_inode_alloc_rule {
+		struct *ext4_alloc_rule alloc_rule;
+		pid_t alloc_pid;
+        }
+
+        alloc_rule: Stores the contents of ext4_alloc_rule from the ioctl.
+        alloc_pid: The pid of the process which sets "alloc_rule"
+
+     A new member of the structure:
+       We add the new member to struct ext4_inode_info.
+       struct ext4_inode_info {
+		...
+	+	struct ext4_inode_alloc_rule *i_alloc_rule;
+		spinlock_t i_block_reservation_lock;
+       }
+
+     Behavior in mballoc:
+       If current->pid differs from ext4_inode_info->i_alloc_rule->alloc_pid,
+       the ordinary multiblock routine is executed. If not, block allocator
+       does the following behavior:
+
+       When doing multiblock allocation, it sets ext4_allocation_request->
+       {goal, len, flags} with the contents of struct alloc_rule.
+       Then, the purpose blocks are allocated via existing mballoc process.
+
+Best regards,
+Akira Fujita
