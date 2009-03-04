@@ -1,48 +1,66 @@
-From: Jan Engelhardt <jengelh@medozas.de>
-Subject: Re: mkfs.ext4: high default -i value undocumented
-Date: Wed, 4 Mar 2009 04:11:26 +0100 (CET)
-Message-ID: <alpine.LSU.2.00.0903040406570.26543@fbirervta.pbzchgretzou.qr>
-References: <alpine.LSU.2.00.0903040007470.12969@fbirervta.pbzchgretzou.qr> <49ADBB03.9070303@redhat.com> <alpine.LSU.2.00.0903040125410.12894@fbirervta.pbzchgretzou.qr> <20090304024904.GK32284@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] fix ext4_free_inode vs. ext4_claim_inode race
+Date: Tue, 03 Mar 2009 22:38:41 -0600
+Message-ID: <49AE05D1.9050607@redhat.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org,
-	kzak@redhat.com
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sovereign.computergmbh.de ([85.214.69.204]:58558 "EHLO
-	sovereign.computergmbh.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751916AbZCDDLa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 3 Mar 2009 22:11:30 -0500
-In-Reply-To: <20090304024904.GK32284@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:37459 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752185AbZCDEis (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 3 Mar 2009 23:38:48 -0500
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+I was seeing fsck errors on inode bitmaps after a 4 thread
+dbench run on a 4 cpu machine:
 
-On Wednesday 2009-03-04 03:49, Theodore Tso wrote:
->On Wed, Mar 04, 2009 at 01:36:44AM +0100, Jan Engelhardt wrote:
->> >> 
->> >> Creating an ext4 filesystem on a 4 GB image file (to be loop-mounted 
->> >> later) gives me 256K inodes. Choosing -i 4096 instead gives 1M, which 
->> >> would mean the default for -i is 16384. 
->> >
->> >Which part of a 16384-data-bytes-to-inode-count ratio do you find
->> >unreasonable?  Do you find it unreasonably high, or unreasonably low?
->> 
->> I think it's a bit too high, causing the amount of usable inodes
->> to be a bit too low.
->
->So out of curiosity, what are you storing on the filesystem such that
->you're worried about running out of inodes?  The assumption was that
->on most filesystems the average file size would indeed be bigger than
->4k these days, although obviously things will vary depending on what
->you plan to store.  Even if you're using maildir stores, or squid
->caches, it seemed like 16k was a good default.
+Inode bitmap differences: -50736 -(50752--50753) etc...
 
-The source and module_prepare'd obj dirs for the trees
-2.6.{17.14,18.8,19.7,20.21,21.7,22.19,23.17,24.7,25.20,26.8,27.8,28}.
+I believe that this is because ext4_free_inode() uses atomic
+bitops, and although ext4_new_inode() *used* to also use atomic 
+bitops for synchronization, commit 
+393418676a7602e1d7d3f6e560159c65c8cbd50e changed this to use
+the sb_bgl_lock, so that we could also synchronize against
+read_inode_bitmap and initialization of uninit inode tables.
 
-Filesystem    Type    1K-blocks      Used Available Use% Mounted on
-/dev/loop0     xfs      4184064   3676644    507420  88% /lo/kernel
+However, that change left ext4_free_inode using atomic bitops,
+which I think leaves no synchronization between setting & 
+unsetting bits in the inode table.
 
-Filesystem    Type    Inodes   IUsed   IFree IUse% Mounted on
-/dev/loop0     xfs   2343280  313466 2029814   14% /lo/kernel
+The below patch fixes it for me, although I wonder if we're 
+getting at all heavy-handed with this spinlock...
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+Index: linux-2.6/fs/ext4/ialloc.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/ialloc.c
++++ linux-2.6/fs/ext4/ialloc.c
+@@ -188,7 +188,7 @@ void ext4_free_inode(handle_t *handle, s
+ 	struct ext4_group_desc *gdp;
+ 	struct ext4_super_block *es;
+ 	struct ext4_sb_info *sbi;
+-	int fatal = 0, err, count;
++	int fatal = 0, err, count, cleared;
+ 	ext4_group_t flex_group;
+ 
+ 	if (atomic_read(&inode->i_count) > 1) {
+@@ -248,8 +248,10 @@ void ext4_free_inode(handle_t *handle, s
+ 		goto error_return;
+ 
+ 	/* Ok, now we can actually update the inode bitmaps.. */
+-	if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
+-					bit, bitmap_bh->b_data))
++	spin_lock(sb_bgl_lock(sbi, block_group));
++	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
++	spin_unlock(sb_bgl_lock(sbi, block_group));
++	if (!cleared)
+ 		ext4_error(sb, "ext4_free_inode",
+ 			   "bit already cleared for inode %lu", ino);
+ 	else {
+
