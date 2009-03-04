@@ -1,66 +1,75 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] fix ext4_free_inode vs. ext4_claim_inode race
-Date: Tue, 03 Mar 2009 22:38:41 -0600
-Message-ID: <49AE05D1.9050607@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12815] New: JBD: barrier-based sync failed on dm-1:8 - disabling barriers  -- and then hang
+Date: Tue,  3 Mar 2009 21:08:47 -0800 (PST)
+Message-ID: <bug-12815-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37459 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752185AbZCDEis (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 3 Mar 2009 23:38:48 -0500
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35849 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750717AbZCDFJV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 4 Mar 2009 00:09:21 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n2458mX4032648
+	for <linux-ext4@vger.kernel.org>; Tue, 3 Mar 2009 21:08:49 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I was seeing fsck errors on inode bitmaps after a 4 thread
-dbench run on a 4 cpu machine:
+http://bugzilla.kernel.org/show_bug.cgi?id=12815
 
-Inode bitmap differences: -50736 -(50752--50753) etc...
+           Summary: JBD: barrier-based sync failed on dm-1:8 - disabling
+                    barriers  -- and then hang
+           Product: File System
+           Version: 2.5
+     KernelVersion: 2.6.28
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: joey@kitenet.net
 
-I believe that this is because ext4_free_inode() uses atomic
-bitops, and although ext4_new_inode() *used* to also use atomic 
-bitops for synchronization, commit 
-393418676a7602e1d7d3f6e560159c65c8cbd50e changed this to use
-the sb_bgl_lock, so that we could also synchronize against
-read_inode_bitmap and initialization of uninit inode tables.
 
-However, that change left ext4_free_inode using atomic bitops,
-which I think leaves no synchronization between setting & 
-unsetting bits in the inode table.
+Latest working kernel version: none
+Earliest failing kernel version: 2.6.28.1
+Distribution: Debian unstable
+Hardware Environment: Thecus N2100 (arm), two 1 TB SATA drives
+Software Environment: /home is an ext4 filesystem on an LVM of the two drives
+Problem Description:
 
-The below patch fixes it for me, although I wonder if we're 
-getting at all heavy-handed with this spinlock...
+This has happened at least three times since I converted the filesystem from
+ext3 to ext4 two days ago. All processes accessing the filesystem go into
+uninterruptable sleep. The system does not crash. On one occasion, the problem
+cleared itself up after a few minutes and processes resumed running. On the
+other two, I hard-reset the machine after 8 hours, and half an hour,
+respectively.
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+The only thing in the log is this:
 
-Index: linux-2.6/fs/ext4/ialloc.c
-===================================================================
---- linux-2.6.orig/fs/ext4/ialloc.c
-+++ linux-2.6/fs/ext4/ialloc.c
-@@ -188,7 +188,7 @@ void ext4_free_inode(handle_t *handle, s
- 	struct ext4_group_desc *gdp;
- 	struct ext4_super_block *es;
- 	struct ext4_sb_info *sbi;
--	int fatal = 0, err, count;
-+	int fatal = 0, err, count, cleared;
- 	ext4_group_t flex_group;
- 
- 	if (atomic_read(&inode->i_count) > 1) {
-@@ -248,8 +248,10 @@ void ext4_free_inode(handle_t *handle, s
- 		goto error_return;
- 
- 	/* Ok, now we can actually update the inode bitmaps.. */
--	if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
--					bit, bitmap_bh->b_data))
-+	spin_lock(sb_bgl_lock(sbi, block_group));
-+	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
-+	spin_unlock(sb_bgl_lock(sbi, block_group));
-+	if (!cleared)
- 		ext4_error(sb, "ext4_free_inode",
- 			   "bit already cleared for inode %lu", ino);
- 	else {
+JBD: barrier-based sync failed on dm-1:8 - disabling barriers
 
+It was never logged in the month before switching to ext4, and has been logged
+seven times in the past two days. I have not matched up all seven  times
+exactly with the hangs, but some of them match up very well.
+
+Steps to reproduce:
+
+Unsure, but heavy disk load does not seem to help; at one point rtorrent was
+hashing a large file when the hang occurred.
+
+This may be a duplicate of bug 12679 -- at least, the symtoms as described are
+the same, and the backtrace obtained there shows a hang in
+jbd2_journal_commit_transaction, which calls the function from which my message
+originates.
+
+
+I am running a Debian kernel, not mainline. Apologies, but I don't have a head
+on this machine.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
