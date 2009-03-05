@@ -1,125 +1,206 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Use struct flex_groups to calculate get_orlov_stats()
-Date: Wed,  4 Mar 2009 19:54:14 -0500
-Message-ID: <1236214454-3140-2-git-send-email-tytso@mit.edu>
-References: <1236214454-3140-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext4: Use atomic_t's in struct flex_groups
+Date: Wed,  4 Mar 2009 19:54:13 -0500
+Message-ID: <1236214454-3140-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:34701 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:34703 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751766AbZCEAyT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751943AbZCEAyT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 4 Mar 2009 19:54:19 -0500
-In-Reply-To: <1236214454-3140-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Instead of looping over all of the block groups in a flex group
-summing their summary statistics, start tracking used_dirs in struct
-flex_groups, and use struct flex_groups instead.  This should save a
-bit of CPU for mkdir-heavy workloads.
+Reduce pressure on the sb_bgl_lock family of locks by using atomic_t's
+to track the number of free blocks and inodes in each flex_group.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h   |    1 +
- fs/ext4/ialloc.c |   45 ++++++++++++++++++++++++++++-----------------
- fs/ext4/super.c  |    2 ++
- 3 files changed, 31 insertions(+), 17 deletions(-)
+ fs/ext4/balloc.c  |    5 ++---
+ fs/ext4/ext4.h    |    4 ++--
+ fs/ext4/ialloc.c  |   33 +++++++++++++++------------------
+ fs/ext4/mballoc.c |    9 +++------
+ fs/ext4/resize.c  |    8 ++++----
+ fs/ext4/super.c   |    8 ++++----
+ 6 files changed, 30 insertions(+), 37 deletions(-)
 
+diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
+index e1234f3..070ec0f 100644
+--- a/fs/ext4/balloc.c
++++ b/fs/ext4/balloc.c
+@@ -470,9 +470,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
+-		spin_lock(sb_bgl_lock(sbi, flex_group));
+-		sbi->s_flex_groups[flex_group].free_blocks += blocks_freed;
+-		spin_unlock(sb_bgl_lock(sbi, flex_group));
++		atomic_add(blocks_freed,
++			   &sbi->s_flex_groups[flex_group].free_blocks);
+ 	}
+ 	/*
+ 	 * request to reload the buddy with the
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 50c92a8..8065374 100644
+index 2c165fa..50c92a8 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -171,6 +171,7 @@ struct ext4_group_desc
+@@ -169,8 +169,8 @@ struct ext4_group_desc
+  */
+ 
  struct flex_groups {
- 	atomic_t free_inodes;
- 	atomic_t free_blocks;
-+	atomic_t used_dirs;
+-	__u32 free_inodes;
+-	__u32 free_blocks;
++	atomic_t free_inodes;
++	atomic_t free_blocks;
  };
  
  #define EXT4_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not in use */
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 692fd0d..7c21a24 100644
+index 847a357..692fd0d 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -267,6 +267,13 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 			if (is_directory) {
- 				count = ext4_used_dirs_count(sb, gdp) - 1;
- 				ext4_used_dirs_set(sb, gdp, count);
-+				if (sbi->s_log_groups_per_flex) {
-+					ext4_group_t f;
+@@ -189,7 +189,6 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 	struct ext4_super_block *es;
+ 	struct ext4_sb_info *sbi;
+ 	int fatal = 0, err, count, cleared;
+-	ext4_group_t flex_group;
+ 
+ 	if (atomic_read(&inode->i_count) > 1) {
+ 		printk(KERN_ERR "ext4_free_inode: inode has count=%d\n",
+@@ -277,10 +276,10 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
+ 				percpu_counter_dec(&sbi->s_dirs_counter);
+ 
+ 			if (sbi->s_log_groups_per_flex) {
+-				flex_group = ext4_flex_group(sbi, block_group);
+-				spin_lock(sb_bgl_lock(sbi, flex_group));
+-				sbi->s_flex_groups[flex_group].free_inodes++;
+-				spin_unlock(sb_bgl_lock(sbi, flex_group));
++				ext4_group_t f;
 +
-+					f = ext4_flex_group(sbi, block_group);
-+					atomic_dec(&sbi->s_flex_groups[f].free_inodes);
-+				}
-+
++				f = ext4_flex_group(sbi, block_group);
++				atomic_inc(&sbi->s_flex_groups[f].free_inodes);
  			}
- 			gdp->bg_checksum = ext4_group_desc_csum(sbi,
- 							block_group, gdp);
-@@ -424,25 +431,24 @@ void get_orlov_stats(struct super_block *sb, ext4_group_t g,
- 		       int flex_size, struct orlov_stats *stats)
- {
- 	struct ext4_group_desc *desc;
--	ext4_group_t		ngroups = EXT4_SB(sb)->s_groups_count;
--	int			i;
--
--	stats->free_inodes = 0;
--	stats->free_blocks = 0;
--	stats->used_dirs = 0;
-+	struct flex_groups *flex_group = EXT4_SB(sb)->s_flex_groups;
+ 		}
+ 		BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
+@@ -360,9 +359,9 @@ static int find_group_flex(struct super_block *sb, struct inode *parent,
+ 		sbi->s_log_groups_per_flex;
  
--	g *= flex_size;
--
--	for (i = 0; i < flex_size; i++) {
--		if (g >= ngroups)
--			break;
--		desc = ext4_get_group_desc(sb, g++, NULL);
--		if (!desc)
--			continue;
-+	if (flex_size > 1) {
-+		stats->free_inodes = atomic_read(&flex_group[g].free_inodes);
-+		stats->free_blocks = atomic_read(&flex_group[g].free_blocks);
-+		stats->used_dirs = atomic_read(&flex_group[g].used_dirs);
-+		return;
-+	}
+ find_close_to_parent:
+-	flexbg_free_blocks = flex_group[best_flex].free_blocks;
++	flexbg_free_blocks = atomic_read(&flex_group[best_flex].free_blocks);
+ 	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
+-	if (flex_group[best_flex].free_inodes &&
++	if (atomic_read(&flex_group[best_flex].free_inodes) &&
+ 	    flex_freeb_ratio > free_block_ratio)
+ 		goto found_flexbg;
  
--		stats->free_inodes += ext4_free_inodes_count(sb, desc);
--		stats->free_blocks += ext4_free_blks_count(sb, desc);
--		stats->used_dirs += ext4_used_dirs_count(sb, desc);
-+	desc = ext4_get_group_desc(sb, g, NULL);
-+	if (desc) {
-+		stats->free_inodes = ext4_free_inodes_count(sb, desc);
-+		stats->free_blocks = ext4_free_blks_count(sb, desc);
-+		stats->used_dirs = ext4_used_dirs_count(sb, desc);
-+	} else {
-+		stats->free_inodes = 0;
-+		stats->free_blocks = 0;
-+		stats->used_dirs = 0;
+@@ -375,24 +374,24 @@ find_close_to_parent:
+ 		if (i == parent_fbg_group || i == parent_fbg_group - 1)
+ 			continue;
+ 
+-		flexbg_free_blocks = flex_group[i].free_blocks;
++		flexbg_free_blocks = atomic_read(&flex_group[i].free_blocks);
+ 		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
+ 
+ 		if (flex_freeb_ratio > free_block_ratio &&
+-		    flex_group[i].free_inodes) {
++		    (atomic_read(&flex_group[i].free_inodes))) {
+ 			best_flex = i;
+ 			goto found_flexbg;
+ 		}
+ 
+-		if (flex_group[best_flex].free_inodes == 0 ||
+-		    (flex_group[i].free_blocks >
+-		     flex_group[best_flex].free_blocks &&
+-		     flex_group[i].free_inodes))
++		if ((atomic_read(&flex_group[best_flex].free_inodes) == 0) ||
++		    ((atomic_read(&flex_group[i].free_blocks) >
++		      atomic_read(&flex_group[best_flex].free_blocks)) &&
++		     atomic_read(&flex_group[i].free_inodes)))
+ 			best_flex = i;
  	}
- }
  
-@@ -765,6 +771,11 @@ static int ext4_claim_inode(struct super_block *sb,
- 	if (S_ISDIR(mode)) {
- 		count = ext4_used_dirs_count(sb, gdp) + 1;
- 		ext4_used_dirs_set(sb, gdp, count);
-+		if (sbi->s_log_groups_per_flex) {
-+			ext4_group_t f = ext4_flex_group(sbi, group);
-+
-+			atomic_inc(&sbi->s_flex_groups[f].free_inodes);
-+		}
+-	if (!flex_group[best_flex].free_inodes ||
+-	    !flex_group[best_flex].free_blocks)
++	if (!atomic_read(&flex_group[best_flex].free_inodes) ||
++	    !atomic_read(&flex_group[best_flex].free_blocks))
+ 		return -1;
+ 
+ found_flexbg:
+@@ -958,9 +957,7 @@ got:
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		flex_group = ext4_flex_group(sbi, group);
+-		spin_lock(sb_bgl_lock(sbi, flex_group));
+-		sbi->s_flex_groups[flex_group].free_inodes--;
+-		spin_unlock(sb_bgl_lock(sbi, flex_group));
++		atomic_dec(&sbi->s_flex_groups[flex_group].free_inodes);
  	}
- 	gdp->bg_checksum = ext4_group_desc_csum(sbi, group, gdp);
- err_ret:
+ 
+ 	inode->i_uid = current_fsuid();
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 7e729cb..33ed0c0 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3041,9 +3041,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi,
+ 							  ac->ac_b_ex.fe_group);
+-		spin_lock(sb_bgl_lock(sbi, flex_group));
+-		sbi->s_flex_groups[flex_group].free_blocks -= ac->ac_b_ex.fe_len;
+-		spin_unlock(sb_bgl_lock(sbi, flex_group));
++		atomic_sub(ac->ac_b_ex.fe_len,
++			   &sbi->s_flex_groups[flex_group].free_blocks);
+ 	}
+ 
+ 	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
+@@ -4871,9 +4870,7 @@ do_more:
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
+-		spin_lock(sb_bgl_lock(sbi, flex_group));
+-		sbi->s_flex_groups[flex_group].free_blocks += count;
+-		spin_unlock(sb_bgl_lock(sbi, flex_group));
++		atomic_add(count, &sbi->s_flex_groups[flex_group].free_blocks);
+ 	}
+ 
+ 	ext4_mb_release_desc(&e4b);
+diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
+index c06886a..546c7dd 100644
+--- a/fs/ext4/resize.c
++++ b/fs/ext4/resize.c
+@@ -938,10 +938,10 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
+ 		ext4_group_t flex_group;
+ 		flex_group = ext4_flex_group(sbi, input->group);
+-		sbi->s_flex_groups[flex_group].free_blocks +=
+-			input->free_blocks_count;
+-		sbi->s_flex_groups[flex_group].free_inodes +=
+-			EXT4_INODES_PER_GROUP(sb);
++		atomic_add(input->free_blocks_count,
++			   &sbi->s_flex_groups[flex_group].free_blocks);
++		atomic_add(EXT4_INODES_PER_GROUP(sb),
++			   &sbi->s_flex_groups[flex_group].free_inodes);
+ 	}
+ 
+ 	ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f34ddf8..8bd9d82 100644
+index 904bbab..f34ddf8 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -1623,6 +1623,8 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 			   ext4_free_inodes_count(sb, gdp));
- 		atomic_set(&sbi->s_flex_groups[flex_group].free_blocks,
- 			   ext4_free_blks_count(sb, gdp));
-+		atomic_set(&sbi->s_flex_groups[flex_group].used_dirs,
-+			   ext4_used_dirs_count(sb, gdp));
+@@ -1619,10 +1619,10 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 		gdp = ext4_get_group_desc(sb, i, &bh);
+ 
+ 		flex_group = ext4_flex_group(sbi, i);
+-		sbi->s_flex_groups[flex_group].free_inodes +=
+-			ext4_free_inodes_count(sb, gdp);
+-		sbi->s_flex_groups[flex_group].free_blocks +=
+-			ext4_free_blks_count(sb, gdp);
++		atomic_set(&sbi->s_flex_groups[flex_group].free_inodes,
++			   ext4_free_inodes_count(sb, gdp));
++		atomic_set(&sbi->s_flex_groups[flex_group].free_blocks,
++			   ext4_free_blks_count(sb, gdp));
  	}
  
  	return 1;
