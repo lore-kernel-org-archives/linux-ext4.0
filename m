@@ -1,63 +1,58 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] fix ext4_free_inode vs. ext4_claim_inode race
-Date: Wed, 04 Mar 2009 22:21:59 -0600
-Message-ID: <49AF5367.5040006@redhat.com>
-References: <49AE05D1.9050607@redhat.com> <49AF0AA0.3080506@redhat.com> <20090305040340.GC17949@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [STABLE, 2.6.27.y] ext4: Add fallback for find_group_flex
+Date: Thu,  5 Mar 2009 02:34:06 -0500
+Message-ID: <1236238447-8341-1-git-send-email-tytso@mit.edu>
+References: <1235495694-8116-6-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Theodore Ts'o <tytso@mit.edu>
+To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51313 "EHLO mx2.redhat.com"
+Received: from thunk.org ([69.25.196.29]:59125 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752677AbZCEEWF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Mar 2009 23:22:05 -0500
-In-Reply-To: <20090305040340.GC17949@skywalker>
+	id S1750896AbZCEHeN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 5 Mar 2009 02:34:13 -0500
+In-Reply-To: <1235495694-8116-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
-> On Wed, Mar 04, 2009 at 05:11:28PM -0600, Eric Sandeen wrote:
->> Eric Sandeen wrote:
->>
->> Index: linux-2.6/fs/ext4/ialloc.c
->> ===================================================================
->> --- linux-2.6.orig/fs/ext4/ialloc.c
->> +++ linux-2.6/fs/ext4/ialloc.c
->> @@ -609,26 +609,33 @@ static int ext4_claim_inode(struct super
->>  			struct buffer_head *inode_bitmap_bh,
->>  			unsigned long ino, ext4_group_t group, int mode)
->>  {
->> -	int free = 0, retval = 0, count;
->> +	int free = 0, bitset, count;
->>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
->>  	struct ext4_group_desc *gdp = ext4_get_group_desc(sb, group, NULL);
->>
->> -	spin_lock(sb_bgl_lock(sbi, group));
->> -	if (ext4_set_bit(ino, inode_bitmap_bh->b_data)) {
->> -		/* not a free inode */
->> -		retval = 1;
->> -		goto err_ret;
->> +	/* if uninit, protect against ext4_read_inode_bitmap initialization */
->> +	bitset = -1;
->> +	if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT)) {
->> +		spin_lock(sb_bgl_lock(sbi, group));
->> +		if (gdp->bg_flags & cpu_to_le16(EXT4_BG_INODE_UNINIT))
->> +			bitset = ext4_set_bit(ino, inode_bitmap_bh->b_data);
->> +		spin_unlock(sb_bgl_lock(sbi, group));
->>  	}
-> 
-> 
-> That won't work. We need set the bit and clear the  INODE_UNINIT flag
-> by holding the spin_lock. In ext4_read_inode_bitmap we check the
-> INODE_UNINIT flag and re-init the inode bitmap. So we may end up 
-> re-initing the bitmap if we don't clear the INODE_UNINIT flag holding
-> the spin lock
+This is a workaround for find_group_flex() which badly needs to be
+replaced.  One of its problems (besides ignoring the Orlov algorithm)
+is that it is a bit hyperactive about returning failure under
+suspicious circumstances.  This can lead to spurious ENOSPC failures
+even when there are inodes still available.
 
-Yeah, I guess maybe that's the same old race we had to start with isn't it.
+Work around this for now by retrying the search using
+find_group_other() if find_group_flex() returns -1.  If
+find_group_other() succeeds when find_group_flex() has failed, log a
+warning message.
 
-Remind me again why we don't just clear UNINIT when we read in the
-bitmap in and ... init it?
+A better block/inode allocator that will fix this problem for real has
+been queued up for the next merge window.
 
--Eric
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+(cherry picked from commit 05bf9e839d9de4e8a094274a0a2fd07beb47eaf1)
+---
+ fs/ext4/ialloc.c |    7 +++++++
+ 1 files changed, 7 insertions(+), 0 deletions(-)
+
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index b994854..cce841f 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -702,6 +702,13 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
+ 
+ 	if (sbi->s_log_groups_per_flex) {
+ 		ret2 = find_group_flex(sb, dir, &group);
++		if (ret2 == -1) {
++			ret2 = find_group_other(sb, dir, &group);
++			if (ret2 == 0 && printk_ratelimit())
++				printk(KERN_NOTICE "ext4: find_group_flex "
++				       "failed, fallback succeeded dir %lu\n",
++				       dir->i_ino);
++		}
+ 		goto got_group;
+ 	}
+ 
+-- 
+1.5.6.3
+
