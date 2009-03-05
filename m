@@ -1,209 +1,55 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Use atomic_t's in struct flex_groups
-Date: Wed,  4 Mar 2009 19:54:13 -0500
-Message-ID: <1236214454-3140-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:34703 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751943AbZCEAyT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 4 Mar 2009 19:54:19 -0500
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Nick Piggin <nickpiggin@yahoo.com.au>
+Subject: Re: fsx-linux loosing mmap() writes under memory pressure
+Date: Thu, 5 Mar 2009 13:55:43 +1100
+Message-ID: <200903051355.43909.nickpiggin@yahoo.com.au>
+References: <20090304145109.GA7140@duck.suse.cz> <20090304155535.GA23108@duck.suse.cz> <20090304175031.GA24730@duck.suse.cz>
+Mime-Version: 1.0
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org,
+	user-mode-linux-devel@lists.sourceforge.net,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>, Andrew Morton <akpm@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755596AbZCEC4I@vger.kernel.org>
+In-Reply-To: <20090304175031.GA24730@duck.suse.cz>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Reduce pressure on the sb_bgl_lock family of locks by using atomic_t's
-to track the number of free blocks and inodes in each flex_group.
+On Thursday 05 March 2009 04:50:31 Jan Kara wrote:
+> On Wed 04-03-09 16:55:35, Jan Kara wrote:
+> > On Wed 04-03-09 15:51:09, Jan Kara wrote:
+> > >   first, I'd like to point out that this has happened under UML so it
+> > > can be just some obscure bug in that architecture but I belive it's
+> > > worth debugging anyway. Now to the problem:
+> > >   This has happened with today Linus's git snapshot. The filesystem is
+> > > ext3 with *1KB* blocksize. I booted UML with 64MB of memory and run
+> > > (these are test's from Andrew Morton's torture tests):
+> > >   fsx-linux -l 8000000 /mnt/testfile
+> > >   bash-shared-mapping -t 8 /mnt/bashfile 50000000
+> > > (the second test just makes the UML under memory pressure and stresses
+> > > the filesystem, otherwise it does not interact with fsx-linux in any
+> > > way). After some time (like an hour) fsx-linux reported the file is
+> > > corrupted. I tried again and it happened again so probably some
+> > > debugging should be possible.
+> > >   Both times it seems we've simply completely lost a write which
+> > > happened through mmap (2 pages in the first case, 3 pages in the second
+> > > case). Also I've checked and in the first case no blocks are allocated
+> > > for the offsets where the data should be so most probably we've lost
+> > > the write before block_write_full_page() called get_block().
+> > >   I'll debug this further but I wanted let people know there's some
+> > > problem and maybe somebody has some bright idea :).  I'm attaching the
+> > > log from fsx if someone is interested.
+> >
+> >   Testing a bit more, I managed to reproduce the problem on ext2 and
+> > what's more strange, now the lost page was written via ordinary write()
+> > (fsxlog attached). So I believe this is more likely to be UML specific...
+>
+>   And to add even more information, this also happens on ext2 with 4KB
+> blocksize (although much more rarely it seems). Again the data was written
+> by an extending write() but the block for it was not even allocated...
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/balloc.c  |    5 ++---
- fs/ext4/ext4.h    |    4 ++--
- fs/ext4/ialloc.c  |   33 +++++++++++++++------------------
- fs/ext4/mballoc.c |    9 +++------
- fs/ext4/resize.c  |    8 ++++----
- fs/ext4/super.c   |    8 ++++----
- 6 files changed, 30 insertions(+), 37 deletions(-)
+What block device driver are you using?
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index e1234f3..070ec0f 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -470,9 +470,8 @@ void ext4_add_groupblocks(handle_t *handle, struct super_block *sb,
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
--		spin_lock(sb_bgl_lock(sbi, flex_group));
--		sbi->s_flex_groups[flex_group].free_blocks += blocks_freed;
--		spin_unlock(sb_bgl_lock(sbi, flex_group));
-+		atomic_add(blocks_freed,
-+			   &sbi->s_flex_groups[flex_group].free_blocks);
- 	}
- 	/*
- 	 * request to reload the buddy with the
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 2c165fa..50c92a8 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -169,8 +169,8 @@ struct ext4_group_desc
-  */
- 
- struct flex_groups {
--	__u32 free_inodes;
--	__u32 free_blocks;
-+	atomic_t free_inodes;
-+	atomic_t free_blocks;
- };
- 
- #define EXT4_BG_INODE_UNINIT	0x0001 /* Inode table/bitmap not in use */
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 847a357..692fd0d 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -189,7 +189,6 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 	struct ext4_super_block *es;
- 	struct ext4_sb_info *sbi;
- 	int fatal = 0, err, count, cleared;
--	ext4_group_t flex_group;
- 
- 	if (atomic_read(&inode->i_count) > 1) {
- 		printk(KERN_ERR "ext4_free_inode: inode has count=%d\n",
-@@ -277,10 +276,10 @@ void ext4_free_inode(handle_t *handle, struct inode *inode)
- 				percpu_counter_dec(&sbi->s_dirs_counter);
- 
- 			if (sbi->s_log_groups_per_flex) {
--				flex_group = ext4_flex_group(sbi, block_group);
--				spin_lock(sb_bgl_lock(sbi, flex_group));
--				sbi->s_flex_groups[flex_group].free_inodes++;
--				spin_unlock(sb_bgl_lock(sbi, flex_group));
-+				ext4_group_t f;
-+
-+				f = ext4_flex_group(sbi, block_group);
-+				atomic_inc(&sbi->s_flex_groups[f].free_inodes);
- 			}
- 		}
- 		BUFFER_TRACE(bh2, "call ext4_handle_dirty_metadata");
-@@ -360,9 +359,9 @@ static int find_group_flex(struct super_block *sb, struct inode *parent,
- 		sbi->s_log_groups_per_flex;
- 
- find_close_to_parent:
--	flexbg_free_blocks = flex_group[best_flex].free_blocks;
-+	flexbg_free_blocks = atomic_read(&flex_group[best_flex].free_blocks);
- 	flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
--	if (flex_group[best_flex].free_inodes &&
-+	if (atomic_read(&flex_group[best_flex].free_inodes) &&
- 	    flex_freeb_ratio > free_block_ratio)
- 		goto found_flexbg;
- 
-@@ -375,24 +374,24 @@ find_close_to_parent:
- 		if (i == parent_fbg_group || i == parent_fbg_group - 1)
- 			continue;
- 
--		flexbg_free_blocks = flex_group[i].free_blocks;
-+		flexbg_free_blocks = atomic_read(&flex_group[i].free_blocks);
- 		flex_freeb_ratio = flexbg_free_blocks * 100 / blocks_per_flex;
- 
- 		if (flex_freeb_ratio > free_block_ratio &&
--		    flex_group[i].free_inodes) {
-+		    (atomic_read(&flex_group[i].free_inodes))) {
- 			best_flex = i;
- 			goto found_flexbg;
- 		}
- 
--		if (flex_group[best_flex].free_inodes == 0 ||
--		    (flex_group[i].free_blocks >
--		     flex_group[best_flex].free_blocks &&
--		     flex_group[i].free_inodes))
-+		if ((atomic_read(&flex_group[best_flex].free_inodes) == 0) ||
-+		    ((atomic_read(&flex_group[i].free_blocks) >
-+		      atomic_read(&flex_group[best_flex].free_blocks)) &&
-+		     atomic_read(&flex_group[i].free_inodes)))
- 			best_flex = i;
- 	}
- 
--	if (!flex_group[best_flex].free_inodes ||
--	    !flex_group[best_flex].free_blocks)
-+	if (!atomic_read(&flex_group[best_flex].free_inodes) ||
-+	    !atomic_read(&flex_group[best_flex].free_blocks))
- 		return -1;
- 
- found_flexbg:
-@@ -958,9 +957,7 @@ got:
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		flex_group = ext4_flex_group(sbi, group);
--		spin_lock(sb_bgl_lock(sbi, flex_group));
--		sbi->s_flex_groups[flex_group].free_inodes--;
--		spin_unlock(sb_bgl_lock(sbi, flex_group));
-+		atomic_dec(&sbi->s_flex_groups[flex_group].free_inodes);
- 	}
- 
- 	inode->i_uid = current_fsuid();
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 7e729cb..33ed0c0 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3041,9 +3041,8 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi,
- 							  ac->ac_b_ex.fe_group);
--		spin_lock(sb_bgl_lock(sbi, flex_group));
--		sbi->s_flex_groups[flex_group].free_blocks -= ac->ac_b_ex.fe_len;
--		spin_unlock(sb_bgl_lock(sbi, flex_group));
-+		atomic_sub(ac->ac_b_ex.fe_len,
-+			   &sbi->s_flex_groups[flex_group].free_blocks);
- 	}
- 
- 	err = ext4_handle_dirty_metadata(handle, NULL, bitmap_bh);
-@@ -4871,9 +4870,7 @@ do_more:
- 
- 	if (sbi->s_log_groups_per_flex) {
- 		ext4_group_t flex_group = ext4_flex_group(sbi, block_group);
--		spin_lock(sb_bgl_lock(sbi, flex_group));
--		sbi->s_flex_groups[flex_group].free_blocks += count;
--		spin_unlock(sb_bgl_lock(sbi, flex_group));
-+		atomic_add(count, &sbi->s_flex_groups[flex_group].free_blocks);
- 	}
- 
- 	ext4_mb_release_desc(&e4b);
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index c06886a..546c7dd 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -938,10 +938,10 @@ int ext4_group_add(struct super_block *sb, struct ext4_new_group_data *input)
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_FLEX_BG)) {
- 		ext4_group_t flex_group;
- 		flex_group = ext4_flex_group(sbi, input->group);
--		sbi->s_flex_groups[flex_group].free_blocks +=
--			input->free_blocks_count;
--		sbi->s_flex_groups[flex_group].free_inodes +=
--			EXT4_INODES_PER_GROUP(sb);
-+		atomic_add(input->free_blocks_count,
-+			   &sbi->s_flex_groups[flex_group].free_blocks);
-+		atomic_add(EXT4_INODES_PER_GROUP(sb),
-+			   &sbi->s_flex_groups[flex_group].free_inodes);
- 	}
- 
- 	ext4_handle_dirty_metadata(handle, NULL, sbi->s_sbh);
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 904bbab..f34ddf8 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1619,10 +1619,10 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 		gdp = ext4_get_group_desc(sb, i, &bh);
- 
- 		flex_group = ext4_flex_group(sbi, i);
--		sbi->s_flex_groups[flex_group].free_inodes +=
--			ext4_free_inodes_count(sb, gdp);
--		sbi->s_flex_groups[flex_group].free_blocks +=
--			ext4_free_blks_count(sb, gdp);
-+		atomic_set(&sbi->s_flex_groups[flex_group].free_inodes,
-+			   ext4_free_inodes_count(sb, gdp));
-+		atomic_set(&sbi->s_flex_groups[flex_group].free_blocks,
-+			   ext4_free_blks_count(sb, gdp));
- 	}
- 
- 	return 1;
--- 
-1.5.6.3
-
+Can it be reproduced without mapped reads and writes completely? (-W -R)
