@@ -1,74 +1,122 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: fsx-linux loosing mmap() writes under memory pressure
-Date: Thu, 5 Mar 2009 11:42:33 +0100
-Message-ID: <20090305104233.GA29531@duck.suse.cz>
-References: <20090304145109.GA7140@duck.suse.cz> <200903051355.43909.nickpiggin@yahoo.com.au> <20090305100516.GB29177@duck.suse.cz> <200903052118.55380.nickpiggin@yahoo.com.au>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel@vger.kernel.org,
-	user-mode-linux-devel@lists.sourceforge.net,
-	linux-ext4@vger.kernel.org
-To: Nick Piggin <nickpiggin@yahoo.com.au>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12821] New: filesystem corrupts on heavy I/O
+Date: Thu,  5 Mar 2009 08:42:39 -0800 (PST)
+Message-ID: <bug-12821-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.suse.de ([195.135.220.2]:42057 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754600AbZCEKmh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 5 Mar 2009 05:42:37 -0500
-Content-Disposition: inline
-In-Reply-To: <200903052118.55380.nickpiggin@yahoo.com.au>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:54835 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757309AbZCEQnM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 5 Mar 2009 11:43:12 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n25GgdrW003861
+	for <linux-ext4@vger.kernel.org>; Thu, 5 Mar 2009 08:42:40 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 05-03-09 21:18:54, Nick Piggin wrote:
-> On Thursday 05 March 2009 21:05:16 Jan Kara wrote:
-> > On Thu 05-03-09 13:55:43, Nick Piggin wrote:
-> > > On Thursday 05 March 2009 04:50:31 Jan Kara wrote:
-> > > > On Wed 04-03-09 16:55:35, Jan Kara wrote:
-> > > > > On Wed 04-03-09 15:51:09, Jan Kara wrote:
-> > > > > >   first, I'd like to point out that this has happened under UML so
-> > > > > > it can be just some obscure bug in that architecture but I belive
-> > > > > > it's worth debugging anyway. Now to the problem:
-> > > > > >   This has happened with today Linus's git snapshot. The filesystem
-> > > > > > is ext3 with *1KB* blocksize. I booted UML with 64MB of memory and
-> > > > > > run (these are test's from Andrew Morton's torture tests):
-> > > > > >   fsx-linux -l 8000000 /mnt/testfile
-> > > > > >   bash-shared-mapping -t 8 /mnt/bashfile 50000000
-> > > > > > (the second test just makes the UML under memory pressure and
-> > > > > > stresses the filesystem, otherwise it does not interact with
-> > > > > > fsx-linux in any way). After some time (like an hour) fsx-linux
-> > > > > > reported the file is corrupted. I tried again and it happened again
-> > > > > > so probably some debugging should be possible.
-> > > > > >   Both times it seems we've simply completely lost a write which
-> > > > > > happened through mmap (2 pages in the first case, 3 pages in the
-> > > > > > second case). Also I've checked and in the first case no blocks are
-> > > > > > allocated for the offsets where the data should be so most probably
-> > > > > > we've lost the write before block_write_full_page() called
-> > > > > > get_block(). I'll debug this further but I wanted let people know
-> > > > > > there's some problem and maybe somebody has some bright idea :). 
-> > > > > > I'm attaching the log from fsx if someone is interested.
-> > > > >
-> > > > >   Testing a bit more, I managed to reproduce the problem on ext2 and
-> > > > > what's more strange, now the lost page was written via ordinary
-> > > > > write() (fsxlog attached). So I believe this is more likely to be UML
-> > > > > specific...
-> > > >
-> > > >   And to add even more information, this also happens on ext2 with 4KB
-> > > > blocksize (although much more rarely it seems). Again the data was
-> > > > written by an extending write() but the block for it was not even
-> > > > allocated...
-> > >
-> > > What block device driver are you using?
-> >
-> >   UML was just using image file to back the filesystem I was testing on.
-> > But I don't think that plays a big role because the blocks were not even
-> > allocated in the fs-image so we must have lost them quite early.
-> 
-> So you're using ubd driver? OK, I just have a report of a problem
-> with brd driver...
-  Yes, I'm using UBD.
+http://bugzilla.kernel.org/show_bug.cgi?id=12821
 
-									Honza
+           Summary: filesystem corrupts on heavy I/O
+           Product: File System
+           Version: 2.5
+     KernelVersion: ubuntu-server-2.6.27-9 (smp)
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: ddi@dubex.dk
+
+
+Hi
+
+Hoping for a bit of advice from here, since the Ubuntu Server team is
+completely unresponsive.
+
+Failing kernel version: 2.6.27-9
+Distribution: Ubuntu Server 8.10
+Hardware Environment: VMware ESX
+Problem Description:
+
+On one box with particularly heavy database I/O, we're seeing this in
+the system log:
+
+==================
+[1099257.456522] EXT4-fs error (device sdb1): ext4_ext_search_right: bad header
+in inode #2621457: unexpected eh_depth - magic f30a, entries 340, max 340(0),
+depth 1(2)
+[1099257.495979] EXT4-fs error (device sdb1): ext4_ext_search_right: bad header
+in inode #2621457: unexpected eh_depth - magic f30a, entries 328, max 340(0),
+depth 1(2)
+[1099257.505934] EXT4-fs error (device sdb1): ext4_ext_search_right: bad header
+in inode #2621457: unexpected eh_depth - magic f30a, entries 340, max 340(0),
+depth 1(2)
+==================
+
+... ad infinitum.
+
+Kernel (version above) installed a couple months ago, never changed since the
+box does not have internet access per default.
+
+dumpe2fs for the filesystem:
+===================
+dumpe2fs 1.41.3 (12-Oct-2008)
+Last mounted on:          <not available>
+Filesystem UUID:          7adcc7a6-5dd4-4fd5-b988-c92f9429a06c
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype
+needs_recovery extent flex_bg sparse_super large_file huge_file uninit_bg
+dir_nlink extra_isize
+Filesystem flags:         signed_directory_hash 
+Default mount options:    (none)
+Filesystem state:         clean with errors
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              90177536
+Block count:              360683091
+Reserved block count:     18034154
+Free blocks:              116980051
+Free inodes:              90170042
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      938
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8192
+Inode blocks per group:   512
+Flex block group size:    16
+Filesystem created:       Tue Dec  2 17:23:58 2008
+Last mount time:          Wed Feb 18 21:44:25 2009
+Last write time:          Tue Mar  3 15:19:14 2009
+Mount count:              5
+Maximum mount count:      30
+Last checked:             Tue Dec  2 17:23:58 2008
+Check interval:           15552000 (6 months)
+Next check after:         Sun May 31 18:23:58 2009
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:               256
+Required extra isize:     28
+Desired extra isize:      28
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      2180b9fc-09e3-445e-8170-302178b2eadd
+Journal backup:           inode blocks
+Journal size:             128M
+========================
+
+(Deceased launchpad report: https://bugs.launchpad.net/bugs/337246)
+
+What to do?
+
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
