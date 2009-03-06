@@ -1,62 +1,40 @@
 From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12829] New: kernel complains on ENOSPC
-Date: Fri,  6 Mar 2009 14:33:05 -0800 (PST)
-Message-ID: <bug-12829-13602@http.bugzilla.kernel.org/>
+Subject: [Bug 12829] kernel complains on ENOSPC
+Date: Fri,  6 Mar 2009 15:02:21 -0800 (PST)
+Message-ID: <20090306230222.2732110800D@picon.linux-foundation.org>
+References: <bug-12829-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:51296 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:52850 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752121AbZCFWdl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Mar 2009 17:33:41 -0500
+	by vger.kernel.org with ESMTP id S1753132AbZCFXCz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Mar 2009 18:02:55 -0500
 Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n26MX62S031730
-	for <linux-ext4@vger.kernel.org>; Fri, 6 Mar 2009 14:33:07 -0800
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n26N2Mhl001696
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Mar 2009 15:02:23 -0800
+In-Reply-To: <bug-12829-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 http://bugzilla.kernel.org/show_bug.cgi?id=12829
 
-           Summary: kernel complains on ENOSPC
-           Product: File System
-           Version: 2.5
-     KernelVersion: 2.6.29-rc6
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: sandeen@redhat.com
 
 
-while copying a few very large files to ext4:
 
-mpage_da_map_blocks block allocation failed for inode 12289 at logical offset
-443072 with max blocks 1036 with error -28
-This should not happen.!! Data will be lost
-Total free blocks count 0
-Free/Dirty block details
-free_blocks=0
-dirty_blocks=1179
-Block reservation details
-i_reserved_data_blocks=1174
-i_reserved_meta_blocks=5
-mpage_da_map_blocks block allocation failed for inode 12289 at logical offset
-444108 with max blocks 138 with error -28
-This should not happen.!! Data will be lost
-Total free blocks count 0
-Free/Dirty block details
-free_blocks=0
-dirty_blocks=1179
-Block reservation details
-i_reserved_data_blocks=1174
-i_reserved_meta_blocks=5
 
-haven't dug into it, but this is just ENOSPC; ext4 should be more graceful.
+------- Comment #1 from tytso@mit.edu  2009-03-06 15:02 -------
+What are the precise reproduction details?   We're supposed to keep track of
+how many delayed allocation blocks are outstanding, so that we return ENOSPC
+*before* we get to this stage.
 
--Eric
+I'm not sure we do the right thing if we mmap into an unallocated region of
+file; when do we actually track delayed allocation blocks?   The right answer
+would be at mmap() time, but OTOH that means if we mmap a 2GB region, do we
+immediately take a 2GB charge because the process might write into this region?
+ And does free space returned by 'df' immediately drop by 2GB?
+
+Do you know if there was any allocation by mmap going on in your reproduction
+case?   That seems the most likely cause to me, if I had to guess....
 
 
 -- 
