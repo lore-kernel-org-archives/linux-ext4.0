@@ -1,71 +1,65 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] fix header check in ext4_ext_search_right() for deep extent
- trees.
-Date: Fri, 06 Mar 2009 14:50:51 -0600
-Message-ID: <49B18CAB.5020605@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: David Dindorp <ddi@dubex.dk>
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12829] New: kernel complains on ENOSPC
+Date: Fri,  6 Mar 2009 14:33:05 -0800 (PST)
+Message-ID: <bug-12829-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:54287 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753395AbZCFUu5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 6 Mar 2009 15:50:57 -0500
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:51296 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752121AbZCFWdl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 6 Mar 2009 17:33:41 -0500
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n26MX62S031730
+	for <linux-ext4@vger.kernel.org>; Fri, 6 Mar 2009 14:33:07 -0800
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This should resolve kernel.org bugzilla 12821
+http://bugzilla.kernel.org/show_bug.cgi?id=12829
 
-I've not actually crafted a workload to exercise this code; 
-this is from inspection...
+           Summary: kernel complains on ENOSPC
+           Product: File System
+           Version: 2.5
+     KernelVersion: 2.6.29-rc6
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: sandeen@redhat.com
 
-The ext4_ext_search_right() function is confusing; it uses a
-"depth" variable which is 0 at the root and maximum at the leaves, 
-but the on-disk metadata uses a "depth" (actually eh_depth) which
-is opposite: maximum at the root, and 0 at the leaves.
 
-The ext4_ext_check_header() function is given a depth and checks
-the header agaisnt that depth; it expects the on-disk semantics,
-but we are giving it the opposite in the while loop in this 
-function.  We should be giving it the on-disk notion of "depth"
-which we can get from (p_depth - depth) - and if you look, the last
-(more commonly hit) call to ext4_ext_check_header() does just this.
+while copying a few very large files to ext4:
 
-Sending in the wrong depth results in (incorrect) messages
-about corruption:
+mpage_da_map_blocks block allocation failed for inode 12289 at logical offset
+443072 with max blocks 1036 with error -28
+This should not happen.!! Data will be lost
+Total free blocks count 0
+Free/Dirty block details
+free_blocks=0
+dirty_blocks=1179
+Block reservation details
+i_reserved_data_blocks=1174
+i_reserved_meta_blocks=5
+mpage_da_map_blocks block allocation failed for inode 12289 at logical offset
+444108 with max blocks 138 with error -28
+This should not happen.!! Data will be lost
+Total free blocks count 0
+Free/Dirty block details
+free_blocks=0
+dirty_blocks=1179
+Block reservation details
+i_reserved_data_blocks=1174
+i_reserved_meta_blocks=5
 
-EXT4-fs error (device sdb1): ext4_ext_search_right: bad header
-in inode #2621457: unexpected eh_depth - magic f30a, entries 340,
-max 340(0), depth 1(2)
+haven't dug into it, but this is just ENOSPC; ext4 should be more graceful.
 
-Reported-by: David Dindorp <ddi@dubex.dk>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
---
+-Eric
 
-Index: linux-2.6/fs/ext4/extents.c
-===================================================================
---- linux-2.6.orig/fs/ext4/extents.c
-+++ linux-2.6/fs/ext4/extents.c
-@@ -1122,7 +1122,8 @@ ext4_ext_search_right(struct inode *inod
- 	struct ext4_extent_idx *ix;
- 	struct ext4_extent *ex;
- 	ext4_fsblk_t block;
--	int depth, ee_len;
-+	int depth;	/* Note, NOT eh_depth; depth from top of tree */
-+	int ee_len;
- 
- 	BUG_ON(path == NULL);
- 	depth = path->p_depth;
-@@ -1179,7 +1180,8 @@ got_index:
- 		if (bh == NULL)
- 			return -EIO;
- 		eh = ext_block_hdr(bh);
--		if (ext4_ext_check_header(inode, eh, depth)) {
-+		/* subtract from p_depth to get proper eh_depth */
-+		if (ext4_ext_check_header(inode, eh, path->p_depth - depth)) {
- 			put_bh(bh);
- 			return -EIO;
- 		}
 
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
