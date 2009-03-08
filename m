@@ -1,74 +1,36 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] e2fsprogs: fix incorrect .de translation file
-Date: Sun, 8 Mar 2009 19:57:23 -0400
-Message-ID: <20090308235723.GD5578@mit.edu>
-References: <49B15B7F.4000200@redhat.com>
+Subject: Re: [PATCH] blkid: recognize ext4(dev) without journal
+Date: Sun, 8 Mar 2009 19:22:39 -0400
+Message-ID: <20090308232239.GA5578@mit.edu>
+References: <49A4D482.7000900@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>,
-	Eric Sandeen <sandeen@redhat.com>
-To: Philipp Thomas <pth@suse.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44174 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:45868 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752995AbZCIDPp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 8 Mar 2009 23:15:45 -0400
+	id S1754674AbZCIDbk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 8 Mar 2009 23:31:40 -0400
 Content-Disposition: inline
-In-Reply-To: <49B15B7F.4000200@redhat.com>
+In-Reply-To: <49A4D482.7000900@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 06, 2009 at 11:21:03AM -0600, Eric Sandeen wrote:
-> The translation for this e2fsprogs output:
->=20
-> This filesystem will be automatically checked every 34 mounts or
-> 180 days, whichever comes first.  Use tune2fs -c or -i to override.
->=20
-> comes out as:
->=20
-> Das Dateisystem wird automatisch alle 25 Mounts bzw. alle 180 Tage =FC=
-berpr=FCft,
-> je nachdem, was zuerst eintritt. Ver=E4nderbar mit tune2fs -c oder -t=
- .
->=20
-> -t is not even a valid option for tune2fs...
+On Tue, Feb 24, 2009 at 11:17:54PM -0600, Eric Sandeen wrote:
+> ext4/ext4dev no longer require a journal.
+> 
+> w/o this blkid doesn't recognize after:
+> 
+> # mkfs.ext4 /dev/blah
+> # tune2fs -O ^has_journal
+> # blkid /dev/blah
+> 
+> We still must have one ext3-incompat-feature to flag
+> as ext4(dev) so we shouldn't ever mis-recognize it.
+> 
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 
-Philipp Thomas is the upstream for the German translation.  Philipp,
-=46YI.  Could you fix this and then run it through the Translation
-Project publication process?   Thanks!
+Thanks, applied to the e2fsprogs git tree.
 
 						- Ted
-
-> Resolves-rh-bugzilla: 488960
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
->=20
-> Index: e2fsprogs/po/de.po
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> --- e2fsprogs.orig/po/de.po
-> +++ e2fsprogs/po/de.po
-> @@ -4895,7 +4895,7 @@ msgid ""
->  msgstr ""
->  "Das Dateisystem wird automatisch nach jeweils %d Einh=E4ng-Vorg=E4n=
-gen bzw.\n"
->  "alle %g Tage =FCberpr=FCft, je nachdem, was zuerst eintritt. Ver=E4=
-nderbar mit\n"
-> -"tune2fs -c oder -t .\n"
-> +"tune2fs -c oder -i .\n"
-> =20
->  #: misc/uuidgen.c:31
->  #, c-format
->=20
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
