@@ -1,59 +1,64 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12829] kernel complains on ENOSPC
-Date: Sun,  8 Mar 2009 22:17:01 -0700 (PDT)
-Message-ID: <20090309051701.C6465108040@picon.linux-foundation.org>
-References: <bug-12829-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: uti-linux-ng libblkid
+Date: Mon, 9 Mar 2009 11:42:54 +0100
+Message-ID: <20090309104254.GC3278@nb.net.home>
+References: <1235410733-4193-1-git-send-email-kzak@redhat.com> <20090309010833.GE5578@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:52545 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751377AbZCIFRd (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Mar 2009 01:17:33 -0400
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n295H2Yu024732
-	for <linux-ext4@vger.kernel.org>; Sun, 8 Mar 2009 22:17:03 -0700
-In-Reply-To: <bug-12829-13602@http.bugzilla.kernel.org/>
+Received: from mx2.redhat.com ([66.187.237.31]:49475 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752549AbZCIKnA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Mar 2009 06:43:00 -0400
+Content-Disposition: inline
+In-Reply-To: <20090309010833.GE5578@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12829
-
-
-
-
-
-------- Comment #3 from aneesh.kumar@linux.vnet.ibm.com  2009-03-08 22:17 -------
-On Fri, Mar 06, 2009 at 03:02:21PM -0800, bugme-daemon@bugzilla.kernel.org
-wrote:
+On Sun, Mar 08, 2009 at 09:08:33PM -0400, Theodore Tso wrote:
+> On Mon, Feb 23, 2009 at 06:38:51PM +0100, Karel Zak wrote:
+> > Hi Ted,
+> > 
+> > here are two patches that allow to link utils from e2fsprogs with
+> > external libblkid (e.g. the version from util-linux-ng).
 > 
+> Thanks, I'm starting to play with the builtin fsprobe libraries in
+> util-linux-ng right now.  Some quick issues I've found right off the
+> bat.  Automake is returning these errors:
 > 
-> ------- Comment #1 from tytso@mit.edu  2009-03-06 15:02 -------
-> What are the precise reproduction details?   We're supposed to keep track of
-> how many delayed allocation blocks are outstanding, so that we return ENOSPC
-> *before* we get to this stage.
+> configure.ac:8: required file `config/missing' not found
+> configure.ac:8:   `automake --add-missing' can install `missing'
 
-Yes. We should not get the ENOSPC during writeback. That would imply the
-block reservation is going wrong.
+ Did you run ./autogen.sh script? (It outputs versions of all relevant
+ autotoos, this output is useful for debuging.)
 
+ Maybe I can prepare a .tar.gz snapshot with generated build-system.
+
+> Also, the configure --help for --with-fsprobe is currently:
 > 
-> I'm not sure we do the right thing if we mmap into an unallocated region of
-> file; when do we actually track delayed allocation blocks?   The right answer
-> would be at mmap() time, but OTOH that means if we mmap a 2GB region, do we
-> immediately take a 2GB charge because the process might write into this region?
->  And does free space returned by 'df' immediately drop by 2GB?
-
-
-For mmap block reservation is doing during page_mkwrite.
-
+>   --with-fsprobe          library to guess filesystems
+>                           (builtin|blkid|volume_id), default is blkid
 > 
-> Do you know if there was any allocation by mmap going on in your reproduction
-> case?   That seems the most likely cause to me, if I had to guess....
+> It would probably clearer if it read:
 > 
+>   --with-fsprobe=LIB      library to guess filesystems
+>                           LIB should be builtin|blkid|volume_id,
+> 			  default is blkid
 
--aneesh
+ Good point.
 
+> Also note there have been a couple of blkid fixes that have been made
+> to e2fsprogs git tree, I'll look into getting those pushed to you.
+
+ No problem, I'll pull from your tree. I think the missing fixes are
+ the latests patches from February only. All older fixes should be
+ already in my tree.
+
+ Thanks for your feedback.
+
+    Karel
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+ Karel Zak  <kzak@redhat.com>
