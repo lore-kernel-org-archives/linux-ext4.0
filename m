@@ -1,32 +1,30 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [Bug 12829] kernel complains on ENOSPC
-Date: Mon, 9 Mar 2009 10:46:45 +0530
-Message-ID: <20090309051645.GB26853@skywalker>
-References: <bug-12829-13602@http.bugzilla.kernel.org/> <20090306230222.2732110800D@picon.linux-foundation.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: bugme-daemon@bugzilla.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12829] kernel complains on ENOSPC
+Date: Sun,  8 Mar 2009 22:17:01 -0700 (PDT)
+Message-ID: <20090309051701.C6465108040@picon.linux-foundation.org>
+References: <bug-12829-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp02.in.ibm.com ([59.145.155.2]:56253 "EHLO
-	e28smtp02.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751211AbZCIFQx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Mar 2009 01:16:53 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp02.in.ibm.com (8.13.1/8.13.1) with ESMTP id n295GlaU012358
-	for <linux-ext4@vger.kernel.org>; Mon, 9 Mar 2009 10:46:47 +0530
-Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n295GsK34124686
-	for <linux-ext4@vger.kernel.org>; Mon, 9 Mar 2009 10:46:54 +0530
-Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
-	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id n295Gkd9012441
-	for <linux-ext4@vger.kernel.org>; Mon, 9 Mar 2009 16:16:46 +1100
-Content-Disposition: inline
-In-Reply-To: <20090306230222.2732110800D@picon.linux-foundation.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:52545 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751377AbZCIFRd (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Mar 2009 01:17:33 -0400
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n295H2Yu024732
+	for <linux-ext4@vger.kernel.org>; Sun, 8 Mar 2009 22:17:03 -0700
+In-Reply-To: <bug-12829-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 06, 2009 at 03:02:21PM -0800, bugme-daemon@bugzilla.kernel.org wrote:
+http://bugzilla.kernel.org/show_bug.cgi?id=12829
+
+
+
+
+
+------- Comment #3 from aneesh.kumar@linux.vnet.ibm.com  2009-03-08 22:17 -------
+On Fri, Mar 06, 2009 at 03:02:21PM -0800, bugme-daemon@bugzilla.kernel.org
+wrote:
 > 
 > 
 > ------- Comment #1 from tytso@mit.edu  2009-03-06 15:02 -------
@@ -53,3 +51,9 @@ For mmap block reservation is doing during page_mkwrite.
 > 
 
 -aneesh
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
