@@ -1,47 +1,47 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: uti-linux-ng libblkid
-Date: Mon, 9 Mar 2009 12:45:55 +0100
-Message-ID: <20090309114555.GD3278@nb.net.home>
-References: <1235410733-4193-1-git-send-email-kzak@redhat.com> <20090309010833.GE5578@mit.edu>
+From: Goswin von Brederlow <goswin-v-b@web.de>
+Subject: Re: ext3 duplicate entries with readdir
+Date: Mon, 09 Mar 2009 15:13:37 +0100
+Message-ID: <87vdqivl66.fsf@frosties.localdomain>
+References: <20090303200526.GA20236@ub>
+	<170fa0d20903031254l7070294cwfa45ffdcc63b24d9@mail.gmail.com>
+	<20090303215122.GB20640@ub> <20090304015713.GJ32284@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
+Cc: "Andries E. Brouwer" <Andries.Brouwer@cwi.nl>,
+	Mike Snitzer <snitzer@gmail.com>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:57410 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750746AbZCILqA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Mar 2009 07:46:00 -0400
-Content-Disposition: inline
-In-Reply-To: <20090309010833.GE5578@mit.edu>
+Received: from fmmailgate02.web.de ([217.72.192.227]:56919 "EHLO
+	fmmailgate02.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751233AbZCIONl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Mar 2009 10:13:41 -0400
+In-Reply-To: <20090304015713.GJ32284@mit.edu> (Theodore Tso's message of "Tue,
+	3 Mar 2009 20:57:13 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Mar 08, 2009 at 09:08:33PM -0400, Theodore Tso wrote:
-> Also note there have been a couple of blkid fixes that have been made
-> to e2fsprogs git tree, I'll look into getting those pushed to you.
+Theodore Tso <tytso@mit.edu> writes:
 
-Applied/ported from your tree:
+> On Tue, Mar 03, 2009 at 10:51:26PM +0100, Andries E. Brouwer wrote:
+>> > Yes, it has been fixed, please see the following git commits:
+>> >
+>> > 6a897cf447a83c9c3fd1b85a1e525c02d6eada7d
+>> > 8c9fa93d51123c5540762b1a9e1919d6f9c4af7c
+>> 
+>> [On another machine, Ubuntu with 2.6.27-7-server still fails:
+>> % ../readdirtest
+>> expected 61005 files, but readdir reports 61006
+>> % rm *
+>> rm: cannot remove `59992': No such file or directory
+>> (where the same name occurs twice in the expansion of *).]
+>
+> The patches were backported to 2.6.27 stable in 2.6.27.8.  So the
+> problem would expected to be still present in an 2.6.27.7 kernel.
+>
+> 	      	       	     	   	   - Ted
 
-  commit eb630fd8708ae433e55e384079c08e0f0f040d22
-  Author: Eric Sandeen <sandeen@redhat.com>
-  Date:   Tue Feb 24 23:15:33 2009 -0600
-  e2fsprogs: blkid.static make target
+Does the bug also affect xfs? Because I see the problem there.
 
-  commit a90f5391dda78f7bc4a8196a78355584ace0adf5
-  Author: Eric Sandeen <sandeen@redhat.com>
-  Date:   Tue Feb 24 23:17:54 2009 -0600
-  blkid: recognize ext4(dev) without journal
-
-  commit 1361821e7e248166f0740c832b164e6cd6b89de9
-  Author: Theodore Ts'o <tytso@mit.edu>
-  Date:   Sun Mar 8 18:56:41 2009 -0400
-  blkid: Add fallback to ext4 for 2.6.29+ kernels if ext2 is not present
-
-
-Our trees should be synced now.
-
-    Karel
-
--- 
- Karel Zak  <kzak@redhat.com>
+MfG
+        Goswin
