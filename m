@@ -1,52 +1,60 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext3 duplicate entries with readdir
-Date: Mon, 09 Mar 2009 11:00:21 -0500
-Message-ID: <49B53D15.6080003@redhat.com>
-References: <20090303200526.GA20236@ub>	<170fa0d20903031254l7070294cwfa45ffdcc63b24d9@mail.gmail.com>	<20090303215122.GB20640@ub> <20090304015713.GJ32284@mit.edu> <87vdqivl66.fsf@frosties.localdomain>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] fix header check in ext4_ext_search_right() for deep
+	extent trees.
+Date: Mon, 9 Mar 2009 21:31:35 +0530
+Message-ID: <20090309160135.GA30654@skywalker>
+References: <49B18CAB.5020605@redhat.com> <20090309113619.GH5578@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	"Andries E. Brouwer" <Andries.Brouwer@cwi.nl>,
-	Mike Snitzer <snitzer@gmail.com>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Goswin von Brederlow <goswin-v-b@web.de>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>,
+	David Dindorp <ddi@dubex.dk>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37031 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751603AbZCIQAh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Mar 2009 12:00:37 -0400
-In-Reply-To: <87vdqivl66.fsf@frosties.localdomain>
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:35499 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751326AbZCIQBu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Mar 2009 12:01:50 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp08.au.ibm.com (8.13.1/8.13.1) with ESMTP id n29G1ljp025925
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2009 03:01:47 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n29G24Wg1118318
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2009 03:02:05 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n29G1kqa023736
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2009 03:01:47 +1100
+Content-Disposition: inline
+In-Reply-To: <20090309113619.GH5578@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Goswin von Brederlow wrote:
-> Theodore Tso <tytso@mit.edu> writes:
+On Mon, Mar 09, 2009 at 07:36:19AM -0400, Theodore Tso wrote:
+> On Fri, Mar 06, 2009 at 02:50:51PM -0600, Eric Sandeen wrote:
+> > This should resolve kernel.org bugzilla 12821
+> > 
+> > I've not actually crafted a workload to exercise this code; 
+> > this is from inspection...
 > 
->> On Tue, Mar 03, 2009 at 10:51:26PM +0100, Andries E. Brouwer wrote:
->>>> Yes, it has been fixed, please see the following git commits:
->>>>
->>>> 6a897cf447a83c9c3fd1b85a1e525c02d6eada7d
->>>> 8c9fa93d51123c5540762b1a9e1919d6f9c4af7c
->>> [On another machine, Ubuntu with 2.6.27-7-server still fails:
->>> % ../readdirtest
->>> expected 61005 files, but readdir reports 61006
->>> % rm *
->>> rm: cannot remove `59992': No such file or directory
->>> (where the same name occurs twice in the expansion of *).]
->> The patches were backported to 2.6.27 stable in 2.6.27.8.  So the
->> problem would expected to be still present in an 2.6.27.7 kernel.
->>
->> 	      	       	     	   	   - Ted
+> Hmm, so I've been trying to create a test case, but the test cases
+> I've created (which e2fsck say are fine) aren't causing complaints by
+> the kernel.
 > 
-> Does the bug also affect xfs? Because I see the problem there.
+> Please see:
+> 
+>        http://master.kernel.org/~tytso/deep-tree/
+> 
+> deep-tree.img.gz contains an extent tree of depth 3, and
 
-Completely different, and the wrong list for the question, really.
+With depth 3 we would have path->p_depth = 2 and with middle
+index block would have eh->eh_depth = 1 and depth variable also
+will be having value 1. (also path->p_depth - depth)
 
-Please point me to the bug you filed for this problem on xfs, I'll look
-into it (and when you do so please cc: the xfs list, and trim off the
-current ext4-related recipients)
 
-Thanks,
+> deep-tree-2.img.gz contains an extent tree of depth 4....
+> 
 
--Eric
+So what is the logical block number with which you trying to allocate
+blocks in deep-tree-2.img.gz 
+
+-aneesh
