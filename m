@@ -1,47 +1,53 @@
 From: Goswin von Brederlow <goswin-v-b@web.de>
-Subject: Re: ext3 duplicate entries with readdir
-Date: Mon, 09 Mar 2009 15:13:37 +0100
-Message-ID: <87vdqivl66.fsf@frosties.localdomain>
-References: <20090303200526.GA20236@ub>
-	<170fa0d20903031254l7070294cwfa45ffdcc63b24d9@mail.gmail.com>
-	<20090303215122.GB20640@ub> <20090304015713.GJ32284@mit.edu>
+Subject: Re: mkfs.ext4: high default -i value undocumented
+Date: Mon, 09 Mar 2009 15:17:23 +0100
+Message-ID: <87r616vkzw.fsf@frosties.localdomain>
+References: <alpine.LSU.2.00.0903040007470.12969@fbirervta.pbzchgretzou.qr>
+	<49ADBB03.9070303@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Andries E. Brouwer" <Andries.Brouwer@cwi.nl>,
-	Mike Snitzer <snitzer@gmail.com>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Jan Engelhardt <jengelh@medozas.de>, linux-ext4@vger.kernel.org,
+	kzak@redhat.com
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fmmailgate02.web.de ([217.72.192.227]:56919 "EHLO
-	fmmailgate02.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751233AbZCIONl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Mar 2009 10:13:41 -0400
-In-Reply-To: <20090304015713.GJ32284@mit.edu> (Theodore Tso's message of "Tue,
-	3 Mar 2009 20:57:13 -0500")
+Received: from fmmailgate01.web.de ([217.72.192.221]:60674 "EHLO
+	fmmailgate01.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751442AbZCIOR2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Mar 2009 10:17:28 -0400
+In-Reply-To: <49ADBB03.9070303@redhat.com> (Eric Sandeen's message of "Tue, 03
+	Mar 2009 17:19:31 -0600")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso <tytso@mit.edu> writes:
+Eric Sandeen <sandeen@redhat.com> writes:
 
-> On Tue, Mar 03, 2009 at 10:51:26PM +0100, Andries E. Brouwer wrote:
->> > Yes, it has been fixed, please see the following git commits:
->> >
->> > 6a897cf447a83c9c3fd1b85a1e525c02d6eada7d
->> > 8c9fa93d51123c5540762b1a9e1919d6f9c4af7c
+> Jan Engelhardt wrote:
+>> Hi,
 >> 
->> [On another machine, Ubuntu with 2.6.27-7-server still fails:
->> % ../readdirtest
->> expected 61005 files, but readdir reports 61006
->> % rm *
->> rm: cannot remove `59992': No such file or directory
->> (where the same name occurs twice in the expansion of *).]
+>> 
+>> Creating an ext4 filesystem on a 4 GB image file (to be loop-mounted 
+>> later) gives me 256K inodes. Choosing -i 4096 instead gives 1M, which 
+>> would mean the default for -i is 16384. 
 >
-> The patches were backported to 2.6.27 stable in 2.6.27.8.  So the
-> problem would expected to be still present in an 2.6.27.7 kernel.
+> That's right, look in /etc/mke2fs.conf:
 >
-> 	      	       	     	   	   - Ted
+> [defaults]
+>         base_features =
+> sparse_super,filetype,resize_inode,dir_index,ext_attr
+>         blocksize = 4096
+>         inode_size = 256
+>         inode_ratio = 16384
+>
+>> Besides me finding 16384 a 
+>> little unreasonable (XFS offers 2M inodes by default), 
+>
+> XFS is a totally different beast, because it dynamically allocates
+> inodes.  It doesn't really offer *anything* by default.
+>
+> Which part of a 16384-data-bytes-to-inode-count ratio do you find
+> unreasonable?  Do you find it unreasonably high, or unreasonably low?
 
-Does the bug also affect xfs? Because I see the problem there.
+Too high for 4G, to low for 6 TiB.
 
 MfG
         Goswin
