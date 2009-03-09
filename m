@@ -1,62 +1,52 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: mkfs.ext4: high default -i value undocumented
-Date: Mon, 09 Mar 2009 10:56:16 -0500
-Message-ID: <49B53C20.1010206@redhat.com>
-References: <alpine.LSU.2.00.0903040007470.12969@fbirervta.pbzchgretzou.qr>	<49ADBB03.9070303@redhat.com> <87r616vkzw.fsf@frosties.localdomain>
+Subject: Re: ext3 duplicate entries with readdir
+Date: Mon, 09 Mar 2009 11:00:21 -0500
+Message-ID: <49B53D15.6080003@redhat.com>
+References: <20090303200526.GA20236@ub>	<170fa0d20903031254l7070294cwfa45ffdcc63b24d9@mail.gmail.com>	<20090303215122.GB20640@ub> <20090304015713.GJ32284@mit.edu> <87vdqivl66.fsf@frosties.localdomain>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Jan Engelhardt <jengelh@medozas.de>, linux-ext4@vger.kernel.org,
-	kzak@redhat.com
+Cc: Theodore Tso <tytso@mit.edu>,
+	"Andries E. Brouwer" <Andries.Brouwer@cwi.nl>,
+	Mike Snitzer <snitzer@gmail.com>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
 To: Goswin von Brederlow <goswin-v-b@web.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33453 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:37031 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751271AbZCIP4h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 9 Mar 2009 11:56:37 -0400
-In-Reply-To: <87r616vkzw.fsf@frosties.localdomain>
+	id S1751603AbZCIQAh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 9 Mar 2009 12:00:37 -0400
+In-Reply-To: <87vdqivl66.fsf@frosties.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Goswin von Brederlow wrote:
-> Eric Sandeen <sandeen@redhat.com> writes:
+> Theodore Tso <tytso@mit.edu> writes:
 > 
->> Jan Engelhardt wrote:
->>> Hi,
->>>
->>>
->>> Creating an ext4 filesystem on a 4 GB image file (to be loop-mounted 
->>> later) gives me 256K inodes. Choosing -i 4096 instead gives 1M, which 
->>> would mean the default for -i is 16384. 
->> That's right, look in /etc/mke2fs.conf:
+>> On Tue, Mar 03, 2009 at 10:51:26PM +0100, Andries E. Brouwer wrote:
+>>>> Yes, it has been fixed, please see the following git commits:
+>>>>
+>>>> 6a897cf447a83c9c3fd1b85a1e525c02d6eada7d
+>>>> 8c9fa93d51123c5540762b1a9e1919d6f9c4af7c
+>>> [On another machine, Ubuntu with 2.6.27-7-server still fails:
+>>> % ../readdirtest
+>>> expected 61005 files, but readdir reports 61006
+>>> % rm *
+>>> rm: cannot remove `59992': No such file or directory
+>>> (where the same name occurs twice in the expansion of *).]
+>> The patches were backported to 2.6.27 stable in 2.6.27.8.  So the
+>> problem would expected to be still present in an 2.6.27.7 kernel.
 >>
->> [defaults]
->>         base_features =
->> sparse_super,filetype,resize_inode,dir_index,ext_attr
->>         blocksize = 4096
->>         inode_size = 256
->>         inode_ratio = 16384
->>
->>> Besides me finding 16384 a 
->>> little unreasonable (XFS offers 2M inodes by default), 
->> XFS is a totally different beast, because it dynamically allocates
->> inodes.  It doesn't really offer *anything* by default.
->>
->> Which part of a 16384-data-bytes-to-inode-count ratio do you find
->> unreasonable?  Do you find it unreasonably high, or unreasonably low?
+>> 	      	       	     	   	   - Ted
 > 
-> Too high for 4G, to low for 6 TiB.
+> Does the bug also affect xfs? Because I see the problem there.
 
-I think it's hard to make a blanket statement like that; it depends very
-much on the average size of the files on the fs.
+Completely different, and the wrong list for the question, really.
 
-The only thing that makes it too high or too low is whether the average
-file size is significantly different than 16k, really (with the caveat
-that we should bias towards overprovisioning vs. underprovisioning, by
-default)
+Please point me to the bug you filed for this problem on xfs, I'll look
+into it (and when you do so please cc: the xfs list, and trim off the
+current ext4-related recipients)
+
+Thanks,
 
 -Eric
-
-> MfG
->         Goswin
-
