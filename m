@@ -1,73 +1,85 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Possible ext4 corruption - ACL related?
-Date: Tue, 10 Mar 2009 01:09:15 -0600
-Message-ID: <20090310070915.GN3199@webber.adilger.int>
-References: <1236642197.30280.18.camel@kulgan.wumi.org.au>
- <49B5D71D.1030802@redhat.com> <1236655451.30280.29.camel@kulgan.wumi.org.au>
- <49B5EDFE.8060405@redhat.com> <1236661371.30280.33.camel@kulgan.wumi.org.au>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Kevin Shanahan <kmshanah@ucwb.org.au>
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12821] filesystem corrupts on heavy I/O
+Date: Tue, 10 Mar 2009 03:03:07 -0700 (PDT)
+Message-ID: <20090310100307.B4759108043@picon.linux-foundation.org>
+References: <bug-12821-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:52780 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751714AbZCJHJn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Mar 2009 03:09:43 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n2A79TX4025740
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2009 00:09:42 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
- id <0KGA00B003OHNS00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 10 Mar 2009 00:09:29 -0700 (PDT)
-In-reply-to: <1236661371.30280.33.camel@kulgan.wumi.org.au>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:40720 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754619AbZCJKDl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Mar 2009 06:03:41 -0400
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n2AA38Vl021452
+	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2009 03:03:09 -0700
+In-Reply-To: <bug-12821-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 10, 2009  15:32 +1030, Kevin Shanahan wrote:
-> On Mon, 2009-03-09 at 23:35 -0500, Eric Sandeen wrote:
-> > Kevin Shanahan wrote:
-> > > On Mon, 2009-03-09 at 21:57 -0500, Eric Sandeen wrote:
-> > >> Kevin Shanahan wrote:
-> > >>> kernel: init_special_inode: bogus i_mode (53253)
+http://bugzilla.kernel.org/show_bug.cgi?id=12821
 
-If anyone has a chance, fixing this error message to be not-useless would
-be good...  Including the device name and the inode number would help
-track down the source of the problem.
 
-> hermes:~# debugfs /dev/dm-0 
-> debugfs 1.41.3 (12-Oct-2008)
-> debugfs:  stat "local/apps/Gestalt.Net/SetupCD/program files/Business Objects/Common/3.5/bin/Cdo32sv.dll"
-> 
-> Gives the following output:
-> 
->   Inode: 867   Type: bad type    Mode:  0404   Flags: 0x802a61af
->   Generation: 2483046020    Version: 0xb9286359:17a7fdfd
->   User: 1455931783   Group: -798021131   Size: -1808719531
->   File ACL: 141934744    Directory ACL: 0
->   Links: 15681   Blockcount: 171984001880781
->   Fragment:  Address: 956780679    Number: 0    Size: 0
->    ctime: 0xdca60244:006c5b08 -- Wed Apr 23 01:54:36 2087
->    atime: 0x5c9e956c:777587a4 -- Sat Mar 30 08:30:12 2019
->    mtime: 0x2ce44e11:286138f8 -- Sat Nov 13 13:31:37 1993
->   crtime: 0x737781cb:5661f351 -- Thu May 22 19:54:11 2031
->   dtime: 0xf19c4882 -- Sat Jun 14 11:57:14 2098
->   Size of extra inode fields: 3625
->   BLOCKS:
-> 
-> And when I exit the pager and return to the prompt I also see:
-> 
->   invalid inode->i_extra_isize (3625)
 
-All garbage.  Running e2fsck should fix this, though it won't explain
-why it got corrupted in the first place..
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
 
+------- Comment #13 from ddi@dubex.dk  2009-03-10 03:03 -------
+dd'd the problematic file to /dev/null just now.  Yielded no complaints in the
+syslog about unexpected eh_depths.  Maybe the reboot+fsck had some effect.
+
+In retrospect, I should probably have found a network mount (since write speed
+suffered badly when the problem hit) and done the e2image before reboot/fsck,
+so we'd have a pristine image.  A quick HOWTO on the subject with best
+practices for ad-hoc network mounting (using random kernel/distro) plus a copy
+of relevant parts of the e2image man page would be helpful to others in the
+same situation.
+
+comment #8:
+Priceless information.  Thanks!
+
+comment #11:
+Transcripts are great; I'm learning a bit of ext4 debugging as we go along.  I
+take it that there's no on-disk problem (now), then.  Confirmed by running fsck
+1.41.4 as requested in comment #9:
+
+e2fsck 1.41.4 (27-Jan-2009)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+
+    7648 inodes used (0.01%)
+    2994 non-contiguous files (39.1%)
+      17 non-contiguous directories (0.2%)
+         # of inodes with ind/dind/tind blocks: 0/0/0
+         Extent depth histogram: 3710/3891/35/2
+273816895 blocks used (75.92%)
+       0 bad blocks
+       7 large files
+
+    7593 regular files
+      46 directories
+       0 character device files
+       0 block device files
+       0 fifos
+       0 links
+       0 symbolic links (0 fast symbolic links)
+       0 sockets
+--------
+    7639 files
+
+comment #10:
+Thanks!  Used above.  There's some Ubuntu-related issues, I'll try my luck with
+Launchpad for those *cross fingers*.
+
+comment #11 (again):
+Will try the patch ASAP, meaning once I've figured out how to best "inject" it
+into the local Ubuntu eco-system without disrupting the package management,
+updates etc.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
