@@ -1,67 +1,90 @@
-From: Andreas Dilger <adilger@sun.com>
+From: Kevin Shanahan <kmshanah@ucwb.org.au>
 Subject: Re: Possible ext4 corruption - ACL related?
-Date: Tue, 10 Mar 2009 14:44:18 -0600
-Message-ID: <20090310204418.GW3199@webber.adilger.int>
+Date: Wed, 11 Mar 2009 07:29:44 +1030
+Message-ID: <1236718784.16191.2.camel@kulgan.wumi.org.au>
 References: <1236642197.30280.18.camel@kulgan.wumi.org.au>
- <49B5D71D.1030802@redhat.com> <1236687347.30280.42.camel@kulgan.wumi.org.au>
+	 <49B5D71D.1030802@redhat.com>
+	 <1236687347.30280.42.camel@kulgan.wumi.org.au>
+	 <20090310204418.GW3199@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
 Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Kevin Shanahan <kmshanah@ucwb.org.au>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:63242 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753377AbZCJUok (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Mar 2009 16:44:40 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n2AKibps008638
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2009 13:44:37 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
- id <0KGB00K004LPGF00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 10 Mar 2009 13:44:37 -0700 (PDT)
-In-reply-to: <1236687347.30280.42.camel@kulgan.wumi.org.au>
+Received: from bowden.ucwb.org.au ([203.122.237.119]:53632 "EHLO
+	mail.ucwb.org.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754327AbZCJU7s (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Mar 2009 16:59:48 -0400
+In-Reply-To: <20090310204418.GW3199@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 10, 2009  22:45 +1030, Kevin Shanahan wrote:
-> hermes:~# e2fsck -pfv /dev/dm-0 
-> /dev/dm-0: Inode 865 is in use, but has dtime set.  FIXED.
-> /dev/dm-0: Inode 865 has a extra size (33096) which is invalid
-> FIXED.
-> /dev/dm-0: Inode 865 has INDEX_FL flag set but is not a directory.
-> HTREE INDEX CLEARED.
-> /dev/dm-0: Inode 865, i_size is 11708523728200260508, should be 0.  FIXED.
-> /dev/dm-0: Inode 865, i_blocks is 3851901040, should be 0.  FIXED.
-
-These all mean the inode is garbage.  The Lustre e2fsprogs has a patch
-"e2fsprogs-badness_counter" that tracks the number of errors hit in
-the inode, and clears it if it appears to be garbage (as in your case),
-instead of turning a pile of manure into neatly organized fertilizer.
-
-> Pass 2: Checking directory structure
-> Inode 867 (/local/apps/Gestalt.Net/SetupCD/program files/Business Objects/Common/3.5/bin/Cdo32sv.dll) has invalid mode (0152404).
-> Clear<y>? yes
-
-This is just more indication of the inodes being corrupted.
-
-> Pass 3: Checking directory connectivity
-> Pass 3A: Optimizing directories
-> Error reading block 2705859237 (Invalid argument).  Ignore error<y>? yes
+On Tue, 2009-03-10 at 14:44 -0600, Andreas Dilger wrote:
+> On Mar 10, 2009  22:45 +1030, Kevin Shanahan wrote:
+> > Pass 3: Checking directory connectivity
+> > Pass 3A: Optimizing directories
+> > Error reading block 2705859237 (Invalid argument).  Ignore error<y>? yes
+> > 
+> > Force rewrite<y>? yes
+> > 
+> > Error writing block 2705859237 (Invalid argument).  Ignore error<y>? yes
 > 
-> Force rewrite<y>? yes
-> 
-> Error writing block 2705859237 (Invalid argument).  Ignore error<y>? yes
+> Hmm, is this read beyond EOF?  The block pointers should be fixed by this
+> time, so there may be a hole in e2fsck at this point.  I assume you do
+> not have a 10TB filesystem here.
 
-Hmm, is this read beyond EOF?  The block pointers should be fixed by this
-time, so there may be a hole in e2fsck at this point.  I assume you do
-not have a 10TB filesystem here.
+Yeah, this is a 1TB filesystem.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+hermes:~# tune2fs -l /dev/dm-0
+tune2fs 1.41.3 (12-Oct-2008)
+Filesystem volume name:   <none>
+Last mounted on:          <not available>
+Filesystem UUID:          3db511f5-97fe-4a35-b327-ea58dd498414
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index
+filetype needs_recovery extent flex_bg sparse_super large_file huge_file
+uninit_bg dir_nlink extra_isize
+Filesystem flags:         signed_directory_hash 
+Default mount options:    (none)
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              67108864
+Block count:              268435456
+Reserved block count:     13421772
+Free blocks:              227859007
+Free inodes:              66820121
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      192
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8192
+Inode blocks per group:   512
+Flex block group size:    16
+Filesystem created:       Fri Feb 27 01:58:46 2009
+Last mount time:          Tue Mar 10 22:39:18 2009
+Last write time:          Tue Mar 10 22:39:18 2009
+Mount count:              1
+Maximum mount count:      22
+Last checked:             Tue Mar 10 22:36:30 2009
+Check interval:           15552000 (6 months)
+Next check after:         Sun Sep  6 21:36:30 2009
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:	          256
+Required extra isize:     28
+Desired extra isize:      28
+Journal inode:            8
+Default directory hash:   half_md4
+Directory Hash Seed:      14c2ef0e-3417-45b2-8327-07dfb3603af1
+Journal backup:           inode blocks
+
+Cheers,
+Kevin.
+
 
