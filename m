@@ -1,76 +1,81 @@
-From: Kevin Shanahan <kmshanah@ucwb.org.au>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: Possible ext4 corruption - ACL related?
-Date: Wed, 11 Mar 2009 07:44:51 +1030
-Message-ID: <1236719691.16191.9.camel@kulgan.wumi.org.au>
-References: <1236642197.30280.18.camel@kulgan.wumi.org.au>
-	 <49B5D71D.1030802@redhat.com>
-	 <1236655451.30280.29.camel@kulgan.wumi.org.au>
-	 <49B5EDFE.8060405@redhat.com>
-	 <1236661371.30280.33.camel@kulgan.wumi.org.au>
-	 <20090310070915.GN3199@webber.adilger.int> <20090310144651.GC23075@mit.edu>
+Date: Tue, 10 Mar 2009 18:48:10 -0400
+Message-ID: <20090310224810.GA15229@mit.edu>
+References: <1236642197.30280.18.camel@kulgan.wumi.org.au> <49B5D71D.1030802@redhat.com> <1236655451.30280.29.camel@kulgan.wumi.org.au> <49B5EDFE.8060405@redhat.com> <1236661371.30280.33.camel@kulgan.wumi.org.au> <20090310070915.GN3199@webber.adilger.int> <20090310144651.GC23075@mit.edu> <1236719691.16191.9.camel@kulgan.wumi.org.au>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: Andreas Dilger <adilger@sun.com>,
 	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: Kevin Shanahan <kmshanah@ucwb.org.au>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bowden.ucwb.org.au ([203.122.237.119]:55402 "EHLO
-	mail.ucwb.org.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753942AbZCJVOz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 10 Mar 2009 17:14:55 -0400
-In-Reply-To: <20090310144651.GC23075@mit.edu>
+Received: from THUNK.ORG ([69.25.196.29]:35134 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752591AbZCJWs0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Mar 2009 18:48:26 -0400
+Content-Disposition: inline
+In-Reply-To: <1236719691.16191.9.camel@kulgan.wumi.org.au>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2009-03-10 at 10:46 -0400, Theodore Tso wrote:
-> > > hermes:~# debugfs /dev/dm-0 
-> > > debugfs 1.41.3 (12-Oct-2008)
-> > > debugfs:  stat "local/apps/Gestalt.Net/SetupCD/program files/Business Objects/Common/3.5/bin/Cdo32sv.dll"
-> > > 
-> > > Gives the following output:
-> > > 
-> > >   Inode: 867   Type: bad type    Mode:  0404   Flags: 0x802a61af
-> > >   Generation: 2483046020    Version: 0xb9286359:17a7fdfd
-> > >   User: 1455931783   Group: -798021131   Size: -1808719531
-> > >   File ACL: 141934744    Directory ACL: 0
-> > >   Links: 15681   Blockcount: 171984001880781
-> > >   Fragment:  Address: 956780679    Number: 0    Size: 0
-> > >    ctime: 0xdca60244:006c5b08 -- Wed Apr 23 01:54:36 2087
-> > >    atime: 0x5c9e956c:777587a4 -- Sat Mar 30 08:30:12 2019
-> > >    mtime: 0x2ce44e11:286138f8 -- Sat Nov 13 13:31:37 1993
-> > >   crtime: 0x737781cb:5661f351 -- Thu May 22 19:54:11 2031
-> > >   dtime: 0xf19c4882 -- Sat Jun 14 11:57:14 2098
-> > >   Size of extra inode fields: 3625
-> > >   BLOCKS:
+On Wed, Mar 11, 2009 at 07:44:51AM +1030, Kevin Shanahan wrote:
+> Thanks Ted. Just so I know what I'm doing if/when this comes up again, I
+> guess the process would be:
 > 
-> This looks like a block written to the wrong place on disk.  One of
-> the things that can be done is to dump out the disk block
-> corresponding to inode #867 before the fsck, and see if we can
-> recognize what the source of the block was.
+>   - debugfs /dev/some-filesystem
+>   - debugfs:  stat "some/problem/file"
+>   - get the inode number from the output above (867 in this case)
+>   - debugfs dump 867 inode867.bin
 
-Thanks Ted. Just so I know what I'm doing if/when this comes up again, I
-guess the process would be:
+Actually, it's a bit more complicated than that.  I should really add
+a hook to debugfs to automate this, but... to find the block to grab,
+you do this.   
 
-  - debugfs /dev/some-filesystem
-  - debugfs:  stat "some/problem/file"
-  - get the inode number from the output above (867 in this case)
-  - debugfs dump 867 inode867.bin
+1)  Grab the following fields from dumpe2fs (or debugfs's "stats" command)
 
-Or perhaps running e2fsck -n first to see which inodes really look
-corrupted and get the numbers that way. 
+Inodes per group:         8192
+Block size:               4096
+Inodes per group:         8192
+Inode size:               256
 
-> Failures like this have been reported on ext3 filesystems as well, but
-> it's rare, and it's been written off to hardware failure, although it
-> could be really anything --- from the device driver, block layer, a
-> filesystem problem, or hardware hiccup.
-> 
-> Given that you've fixed it, all I think we can tell you is to keep an
-> eye out for any further failures....
+2) To find out which block group the inode is located in, we calculate:
 
-Thanks, will do.
+inode bg = inode_number / inodes_per_group
+         = 867 / 8192 = block group 0
 
-Cheers,
-Kevin.
+(everything done using integer division, rounding any fraction down to 0.)
+
+3) To find where the inode table for block group in question can be
+found, check out dumpe2fs.
+
+Group 0: (Blocks 0-32767) [ITABLE_ZEROED]
+      ...
+  Inode table at 65-576 (+65)
+                 ^^^^^^
+
+OK, we know it begins at block 65.
+
+Now some more math:
+
+inode_per_block = block_size / inode_size
+		= 4096 / 256 = 16
+
+offset_block = (inode_number % inodes_per_group) / inodes_per_block
+             = (867 % 8192) / 16
+	     = 54
+
+So now we know that the block containing inode 867 is 65+54 = 119
+
+Now to dump that block, we do:
+
+    dd if=/dev/fs-device of=block-119.dump bs=4k skip=119 count=1
 
 
+> Or perhaps running e2fsck -n first to see which inodes really look
+> corrupted and get the numbers that way. 
+
+Yep.  In general, when you get corruption like this, the bad inodes
+comes in chunks of 16 (if you are using 256 byte inodes) or 32 (if you
+are using 128 byte inodes).
+
+						- Ted
