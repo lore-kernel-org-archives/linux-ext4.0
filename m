@@ -1,53 +1,42 @@
-From: Kevin Shanahan <kmshanah@ucwb.org.au>
-Subject: Possible ext4 corruption - ACL related?
-Date: Tue, 10 Mar 2009 10:13:17 +1030
-Message-ID: <1236642197.30280.18.camel@kulgan.wumi.org.au>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Possible ext4 corruption - ACL related?
+Date: Mon, 09 Mar 2009 23:35:10 -0500
+Message-ID: <49B5EDFE.8060405@redhat.com>
+References: <1236642197.30280.18.camel@kulgan.wumi.org.au>	 <49B5D71D.1030802@redhat.com> <1236655451.30280.29.camel@kulgan.wumi.org.au>
 Mime-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: Kevin Shanahan <kmshanah@ucwb.org.au>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bowden.ucwb.org.au ([203.122.237.119]:45568 "EHLO
-	mail.ucwb.org.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753181AbZCJANb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 9 Mar 2009 20:13:31 -0400
-Received: from [192.168.1.16] (cubit.disenchant.net [150.101.102.147])
-	by mail.ucwb.org.au (Postfix) with ESMTP id 0253C4BD0F
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2009 10:13:17 +1030 (CST)
+Received: from mx2.redhat.com ([66.187.237.31]:38068 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751395AbZCJEfV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 10 Mar 2009 00:35:21 -0400
+In-Reply-To: <1236655451.30280.29.camel@kulgan.wumi.org.au>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-
-I think we have some minor corruption happening with a new (about two
-weeks old) ext4 file system. Our backup script spat out bunch of errors
-last night while trying to read the file ACLs:
-
-getfacl: apps/Gestalt.Net/SetupCD/program\040files/Business\040Objects/Common/3.5/bin/Cdo32sv.dll: Input/output error
-getfacl: apps/Gestalt.Net/SetupCD/program\040files/Business\040Objects/Common/3.5/bin/U3520chs.dll: Input/output error
-getfacl: apps/Gestalt.Net/SetupCD/program\040files/Business\040Objects/Common/3.5/bin/ReportRenderer.dll: Input/output error
-getfacl: apps/Gestalt.Net/SetupCD/program\040files/Business\040Objects/Common/3.5/bin/ParameterDesigner.dll: Input/output error
+Kevin Shanahan wrote:
+> On Mon, 2009-03-09 at 21:57 -0500, Eric Sandeen wrote:
+>> Kevin Shanahan wrote:
 ...
+>> If you try a manual getfacl of the above files do you still get the error?
+> 
+> Yeah, same thing:
+> 
+> hermes:/srv/samba/local# getfacl apps/Gestalt.Net/SetupCD/program\ files/Business\ Objects/Common/3.5/bin/Cdo32sv.dll 
+> getfacl: apps/Gestalt.Net/SetupCD/program\040files/Business\040Objects/Common/3.5/bin/Cdo32sv.dll: Input/output error
+> 
+> Nothing extra showing up in dmesg after doing that, so it's possible the
+> two are unrelated - although, the coincidence would surprise me.
 
-And in syslog I see these warnings from the kernel:
+Can you try debugfs /dev/whatever, and then do:
 
-Mar 10 00:06:01 hermes /USR/SBIN/CRON[10875]: (root) CMD (   /usr/local/bin/rsync-backup-all.sh)
-Mar 10 00:06:24 hermes kernel: init_special_inode: bogus i_mode (53253)
-Mar 10 00:06:24 hermes kernel: attempt to access beyond end of device
-Mar 10 00:06:24 hermes kernel: dm-0: rw=0, want=1312475392770056, limit=2147483648
-Mar 10 00:06:25 hermes kernel: attempt to access beyond end of device
-Mar 10 00:06:25 hermes kernel: dm-0: rw=0, want=1312475392770056, limit=2147483648
+debugfs> stat
+apps/Gestalt.Net/SetupCD/program\040files/Business\040Objects/Common/3.5/bin/Cdo32sv.dll
 
-The filesystem is still in use (and working okay, AFAICT), but I'll need
-to fsck this tonight. Is there any useful data I can gather from the fs
-before (or while) I do that which might help track down the cause?
+(all one line there, and this is assuming that apps/ is the root dir on
+that filesystem, if not adjust accordingly...)
 
-This system has been running 2.6.29-rc6 (x86_64) since this filesystem
-was created. I did a quick scan of the ext4 commits since then, but none
-of them obviously address this unless maybe it's related to 7ce9d5d -
-    "ext4: fix ext4_free_inode() vs. ext4_claim_inode() race"
-
-Regards,
-Kevin.
-
-
+-Eric
