@@ -1,85 +1,66 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Possible ext4 corruption - ACL related?
-Date: Wed, 11 Mar 2009 00:18:39 -0600
-Message-ID: <20090311061839.GC3199@webber.adilger.int>
-References: <1236655451.30280.29.camel@kulgan.wumi.org.au>
- <49B5EDFE.8060405@redhat.com> <1236661371.30280.33.camel@kulgan.wumi.org.au>
- <20090310070915.GN3199@webber.adilger.int> <20090310144651.GC23075@mit.edu>
- <1236719691.16191.9.camel@kulgan.wumi.org.au> <20090310224810.GA15229@mit.edu>
- <20090311003845.GB3199@webber.adilger.int>
- <1236735808.16191.23.camel@kulgan.wumi.org.au>
- <1236736137.16191.25.camel@kulgan.wumi.org.au>
+From: Goswin von Brederlow <goswin-v-b@web.de>
+Subject: Re: ext3 duplicate entries with readdir
+Date: Wed, 11 Mar 2009 11:45:24 +0100
+Message-ID: <8763igtk1n.fsf@frosties.localdomain>
+References: <20090303200526.GA20236@ub>
+	<170fa0d20903031254l7070294cwfa45ffdcc63b24d9@mail.gmail.com>
+	<20090303215122.GB20640@ub> <20090304015713.GJ32284@mit.edu>
+	<87vdqivl66.fsf@frosties.localdomain> <49B53D15.6080003@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Theodore Tso <tytso@mit.edu>, Eric Sandeen <sandeen@redhat.com>,
+Cc: Goswin von Brederlow <goswin-v-b@web.de>,
+	Theodore Tso <tytso@mit.edu>,
+	"Andries E. Brouwer" <Andries.Brouwer@cwi.nl>,
+	Mike Snitzer <snitzer@gmail.com>, linux-kernel@vger.kernel.org,
 	linux-ext4@vger.kernel.org
-To: Kevin Shanahan <kmshanah@ucwb.org.au>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:63830 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751539AbZCKGSy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Mar 2009 02:18:54 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n2B6Ipjo016624
-	for <linux-ext4@vger.kernel.org>; Tue, 10 Mar 2009 23:18:51 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7.0-3.01 64bit (built Dec 23 2008))
- id <0KGB00A00W6XN100@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 10 Mar 2009 23:18:51 -0700 (PDT)
-In-reply-to: <1236736137.16191.25.camel@kulgan.wumi.org.au>
+Received: from fmmailgate01.web.de ([217.72.192.221]:59388 "EHLO
+	fmmailgate01.web.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752004AbZCKKp2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 11 Mar 2009 06:45:28 -0400
+In-Reply-To: <49B53D15.6080003@redhat.com> (Eric Sandeen's message of "Mon, 09
+	Mar 2009 11:00:21 -0500")
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 11, 2009  12:18 +1030, Kevin Shanahan wrote:
-> On Wed, 2009-03-11 at 12:13 +1030, Kevin Shanahan wrote:
-> > 
-> >   getfattr: apps/Gestalt.Net/SetupCD/program\040files/Business\040Objects/Common/3.5/bin/RptControllers.dll: Input/output error
-> > 
-> > And syslog shows:
-> >   Mar 11 00:06:24 hermes kernel: attempt to access beyond end of device
-> >   Mar 11 00:06:24 hermes kernel: dm-0: rw=0, want=946232834916360, limit=2147483648
-> > 
-> > hermes:~# debugfs /dev/dm-0
-> > debugfs 1.41.3 (12-Oct-2008)
-> > debugfs:  stat "local/apps/Gestalt.Net/SetupCD/program files/Business Objects/Common/3.5/bin/RptControllers.dll"
-> > 
-> > Inode: 875   Type: FIFO    Mode:  0611   Flags: 0xb3b9c185
-> > Generation: 3690868    Version: 0x9d36b10d
-> > User: 868313917   Group: -1340283792   Size: 0
-> > File ACL: 0    Directory ACL: 0
-> > Links: 1   Blockcount: 0
-> > Fragment:  Address: 0    Number: 0    Size: 0
-> > ctime: 0x0742afc4 -- Sun Nov 11 06:51:24 1973
-> > atime: 0x472a2311 -- Fri Nov  2 05:33:45 2007
-> > mtime: 0x80c59881 -- Fri Jun 18 09:51:21 2038
-> > Size of extra inode fields: 4
-> > BLOCKS:
+Eric Sandeen <sandeen@redhat.com> writes:
 
-There isn't anything obvious here that would imply reading a wacky block
-beyond the end of the filesystem.  I even checked if e.g. you had quotas
-enabled and the bogus UID/GID would result in the quota file becoming
-astronomically large or something, but the numbers don't seem to match.
+> Goswin von Brederlow wrote:
+>> Theodore Tso <tytso@mit.edu> writes:
+>> 
+>>> On Tue, Mar 03, 2009 at 10:51:26PM +0100, Andries E. Brouwer wrote:
+>>>>> Yes, it has been fixed, please see the following git commits:
+>>>>>
+>>>>> 6a897cf447a83c9c3fd1b85a1e525c02d6eada7d
+>>>>> 8c9fa93d51123c5540762b1a9e1919d6f9c4af7c
+>>>> [On another machine, Ubuntu with 2.6.27-7-server still fails:
+>>>> % ../readdirtest
+>>>> expected 61005 files, but readdir reports 61006
+>>>> % rm *
+>>>> rm: cannot remove `59992': No such file or directory
+>>>> (where the same name occurs twice in the expansion of *).]
+>>> The patches were backported to 2.6.27 stable in 2.6.27.8.  So the
+>>> problem would expected to be still present in an 2.6.27.7 kernel.
+>>>
+>>> 	      	       	     	   	   - Ted
+>> 
+>> Does the bug also affect xfs? Because I see the problem there.
+>
+> Completely different, and the wrong list for the question, really.
+>
+> Please point me to the bug you filed for this problem on xfs, I'll look
+> into it (and when you do so please cc: the xfs list, and trim off the
+> current ext4-related recipients)
+>
+> Thanks,
+>
+> -Eric
 
-There are no blocks in the file, no xattr block ("File ACL" should be
-renamed...).
+Haven't filed a bug and can't reproduce the problem but I had 2 cases
+that behaved the same way so I wondered if it was the same
+issue. Would have ment I could stop worrying about it and wouldn't
+have to try to reproduce it.
 
-> hermes:~# ls -l /srv/samba/local/apps/Gestalt.Net/SetupCD/program\ files/Business\ Objects/Common/3.5/bin/RptControllers.dll 
-> prwS--x--t 1 868313917 2954683504 0 1902-05-13 03:23 /srv/samba/local/apps/Gestalt.Net/SetupCD/program files/Business Objects/Common/3.5/bin/RptControllers.dll
-> 
-> I guess this is what Andreas meant by "turning a pile of manure into
-> neatly organized fertilizer" :)
-
-Yes, you should just delete the inodes reported corrupted in your
-earlier postings in the 87x range - they contain nothing of value
-anymore, and I suspect your troubles would be gone.  At least we
-wouldn't be left wondering if you are seeing new corruption in
-the same range of blocks, or just leftover badness.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+MfG
+        Goswin
