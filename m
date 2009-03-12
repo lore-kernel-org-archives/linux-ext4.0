@@ -1,36 +1,34 @@
 From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-Subject: [PATCH] ext4: check block references only when read from disk
-Date: Thu, 12 Mar 2009 18:20:00 +0100
-Message-ID: <49B94440.4010602@ph.tum.de>
-References: <49B94396.2020800@ph.tum.de>
+Subject: Re: [PATCH] ext4: check block references only when read from disk
+Date: Thu, 12 Mar 2009 18:22:48 +0100
+Message-ID: <49B944E8.2000205@ph.tum.de>
+References: <49B94396.2020800@ph.tum.de> <49B94440.4010602@ph.tum.de>
 Mime-Version: 1.0
 Content-Type: multipart/mixed;
- boundary="------------020607050801030309060300"
+ boundary="------------070904000405080005090706"
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:45651 "EHLO
+Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:34837 "EHLO
 	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754075AbZCLRUD (ORCPT
+	by vger.kernel.org with ESMTP id S1754098AbZCLRWv (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 12 Mar 2009 13:20:03 -0400
-In-Reply-To: <49B94396.2020800@ph.tum.de>
+	Thu, 12 Mar 2009 13:22:51 -0400
+In-Reply-To: <49B94440.4010602@ph.tum.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 This is a multi-part message in MIME format.
---------------020607050801030309060300
+--------------070904000405080005090706
 Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
 
-And this one should limit the checks to freshly-read block only.
+Oops.  Fixed comment.
 
 Signed-off-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
 
-
-
---------------020607050801030309060300
+--------------070904000405080005090706
 Content-Type: text/x-patch;
  name="check-blockrefs-only-when-read-from-disk_vs_2.6.29-rc7.patch"
 Content-Transfer-Encoding: 7bit
@@ -56,7 +54,7 @@ Content-Disposition: inline;
 +				put_bh(bh);
 +				goto failure;
 +			}
-+			/* validate the extent entries */
++			/* validate block references */
 +			if (ext4_check_indirect_blockref(inode, bh))
 +				goto failure;
 +		}
@@ -65,4 +63,4 @@ Content-Disposition: inline;
  		/* Reader: end */
  		if (!p->key)
 
---------------020607050801030309060300--
+--------------070904000405080005090706--
