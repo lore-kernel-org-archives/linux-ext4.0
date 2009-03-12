@@ -1,310 +1,60 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: [ext2/ext3] Re-allocation of blocks for an inode
-Date: Thu, 12 Mar 2009 20:51:20 +0530
-Message-ID: <ea11fea30903120821j3e46ece0i37eb393336d05731@mail.gmail.com>
-References: <37d33d830903120816t3a0268e8o803bd1acbc0bee47@mail.gmail.com>
+From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+Subject: [PATCH] ext4: do less extent validations
+Date: Thu, 12 Mar 2009 16:32:54 +0100
+Message-ID: <49B92B26.70402@ph.tum.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 <linux-ext4@vger.kernel.org>,
-	Kernel Newbies <kernelnewbies@nl.linux.org>,
-	Greg Freemyer <greg.freemyer@gmail.com>
-To: Sandeep K Sinha <sandeepksinha@gmail.com>
+Content-Type: multipart/mixed;
+ boundary="------------040702080606060103080902"
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.181]:13492 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755647AbZCLPVY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Mar 2009 11:21:24 -0400
-Received: by wa-out-1112.google.com with SMTP id v33so358227wah.21
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2009 08:21:21 -0700 (PDT)
-In-Reply-To: <37d33d830903120816t3a0268e8o803bd1acbc0bee47@mail.gmail.com>
+Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:37440 "EHLO
+	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755916AbZCLPdE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 12 Mar 2009 11:33:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 12, 2009 at 8:46 PM, Sandeep K Sinha
-<sandeepksinha@gmail.com> wrote:
-> Hi all,
->
-> I am listing above two codes for re-allocating new blocks for a given=
- inode.
->
-> These code snippets are specific to =A0ext2.
-> The problem here is that it is performing slower than cp and dd.
->
-> Can anyone help in determining what can be the possible reason(s) ?
->
->
-> 1. MEMCPY
-> =3D=3D=3D=3D=3D=3D=3D
->
->
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0src_ind =3D ext2_iget (sb, inum);
-> =A0 =A0 =A0 =A0if (!src_ind) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n OHSM Source Ino=
-de Not Found ");
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_err;
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0/* Getting the ghost inode */
-> =A0 =A0 =A0 =A0dest_ind =3D ext2_new_inode (nd.path.dentry->d_inode, =
-src_ind->i_mode);
-> =A0 =A0 =A0 =A0if (IS_ERR(dest_ind)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_ALERT "\n OHSM destinatio=
-n inode unable to allocate.
-> err =3D %ld", PTR_ERR(dest_ind));
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_err;
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0/* Locking the source inode using mutex */
-> =A0 =A0 =A0 =A0mutex_lock (&src_ind->i_mutex);
->
-> =A0 =A0 =A0 =A0/* Get the source inode size and number of blocks */
-> =A0 =A0 =A0 =A0i_size =3D i_size_read(src_ind);
->
-> =A0 =A0 =A0 =A0/* Calculating number of block to allocate for ghost i=
-node */
-> =A0 =A0 =A0 =A0nblocks =3D (i_size >> EXT2_BLOCK_SIZE_BITS(sb)) +
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((i_size & (sb->s_blocksize - 1))=
- ? 1 : 0);
->
-> =A0 =A0 =A0 =A0memset(&dest_bh, 0, sizeof(struct buffer_head));
-> =A0 =A0 =A0 =A0memset(&src_bh, 0, sizeof(struct buffer_head));
-> =A0 =A0 =A0 =A0for (done =3D 0; done < nblocks; done++) {
->
-> =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext2_get_block (src_ind, done, &src_b=
-h, 0);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err < 0) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n=
- error getting blocks ret_val =3D %d",err);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dest_bh.b_state =3D 0;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D ext2_get_block (dest_ind, done=
-, &dest_bh, 1);
-                              ^^^^^^^^
-                   This call to ext2_get_block() should be below after
-we have checked for hole in the source inode and did a continue. But
-for files not having holes this doesn't matter.
+This is a multi-part message in MIME format.
+--------------040702080606060103080902
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Thanks -
-Manish
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err < 0) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n=
- error getting blocks ret_val =3D %d",err);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!buffer_mapped(&src_bh)){
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n=
-HOLE ");
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0continue;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0src_bhptr =3D sb_bread(sb, src_bh.b_bl=
-ocknr);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!src_bhptr)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dst_bhptr =3D sb_bread(sb, dest_bh.b_b=
-locknr);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!dst_bhptr)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0lock_buffer(dst_bhptr);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0memcpy(dst_bhptr->b_data,src_bhptr->b_=
-data,src_bhptr->b_size);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unlock_buffer(dst_bhptr);
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0mark_buffer_dirty(dst_bhptr);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0sync_dirty_buffer(dst_bhptr);
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0brelse(src_bhptr);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0brelse(dst_bhptr);
->
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0for (blk_index =3D 0; blk_index < 15; blk_index++) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (EXT2_I (dest_ind)->i_data[blk_inde=
-x]){
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0swap =3D EXT2_I (src_i=
-nd)->i_data[blk_index];
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I (src_ind)->i_da=
-ta[blk_index] =3D
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I=
- (dest_ind)->i_data[blk_index];
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I (dest_ind)->i_d=
-ata[blk_index] =3D swap;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0dest_ind->i_blocks =3D src_ind->i_blocks ;
-> =A0 =A0 =A0 =A0mark_inode_dirty (src_ind);
-> =A0 =A0 =A0 =A0sync_mapping_buffers(src_ind->i_mapping);
-> =A0 =A0 =A0 =A0ohsm_sync_inode(src_ind);
-> =A0 =A0 =A0 =A0iput(src_ind);
->
-> =A0 =A0 =A0 =A0dest_ind->i_nlink =3D 0;
-> =A0 =A0 =A0 =A0iput(dest_ind);
-> =A0 =A0 =A0 =A0mutex_unlock (&src_ind->i_mutex);
-> =A0 =A0 =A0 =A0goto out_err;
->
-> unlock:
-> =A0 =A0 =A0 =A0brelse(src_bhptr);
-> =A0 =A0 =A0 =A0brelse(dst_bhptr);
-> =A0 =A0 =A0 =A0mutex_unlock (&src_ind->i_mutex);
->
-> out_err:
-> =A0 =A0 =A0 =A0path_put (&nd.path);
-> =A0 =A0 =A0 =A0return;
->
->
->
-> 2. PAGEFLIP
-> =3D=3D=3D=3D=3D=3D=3D=3D
->
->
-> /* Get the source inode */
->
-> =A0 =A0 =A0 =A0src_ind =3D ext2_iget (sb, inum);
-> =A0 =A0 =A0 =A0if (!src_ind) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n OHSM Source Ino=
-de Not Found ");
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_err;
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0/* Getting the ghost inode */
-> =A0 =A0 =A0 =A0dest_ind =3D ext2_new_inode (nd.path.dentry->d_inode, =
-src_ind->i_mode);
-> =A0 =A0 =A0 =A0if (IS_ERR(dest_ind)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_ALERT "\n destination ino=
-de unable to allocate. err =3D
-> %ld", PTR_ERR(dest_ind));
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_err;
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0/* Locking the source inode using mutex */
-> =A0 =A0 =A0 =A0mutex_lock (&src_ind->i_mutex);
->
-> =A0 =A0 =A0 =A0/* Get the source inode size and number of blocks */
-> =A0 =A0 =A0 =A0i_size =3D i_size_read(src_ind);
->
-> =A0 =A0 =A0 =A0/* Calculating number of block to allocate for ghost i=
-node */
-> =A0 =A0 =A0 =A0nblocks =3D (i_size >> EXT2_BLOCK_SIZE_BITS(sb)) +
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((i_size & (sb->s_blocksize - 1))=
- ? 1 : 0);
->
->
-> =A0 =A0 =A0 =A0memset(&dest_bh, 0, sizeof(struct buffer_head));
-> =A0 =A0 =A0 =A0memset(&src_bh, 0, sizeof(struct buffer_head));
-> =A0 =A0 =A0 =A0for (done =3D 0; done < nblocks; done++) {
->
-> =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext2_get_block (src_ind, done, &src_b=
-h, 0);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err < 0) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n=
- error getting blocks ret_val =3D %d",err);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dest_bh.b_state =3D 0;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D ext2_get_block (dest_ind, done=
-, &dest_bh, 1);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err < 0) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n=
- error getting blocks ret_val =3D %d",err);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!buffer_mapped(&src_bh)){
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n=
-HOLE ");
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0continue;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0src_bhptr =3D sb_bread(sb, src_bh.b_bl=
-ocknr);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!src_bhptr)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dst_bhptr =3D sb_bread(sb, dest_bh.b_b=
-locknr);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!dst_bhptr)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 lock_buffer(dst_bhptr);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 oldpage =3D dst_bhptr->b_page;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 olddata =3D dst_bhptr->b_data;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 dst_bhptr->b_data =3D src_bhptr->b_data;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 dst_bhptr->b_page =3D src_bhptr->b_page;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 flush_dcache_page(dst_bhptr->b_page);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 unlock_buffer(dst_bhptr);
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 mark_buffer_dirty(dst_bhptr);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 sync_dirty_buffer(dst_bhptr);
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 if(buffer_uptodate(dst_bhptr)) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dst_bhptr->b_page =A0=3D oldpage;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dst_bhptr->b_data =3D olddata;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
->
-> =A0 =A0 =A0 =A0 =A0 =A0 brelse(src_bhptr);
-> =A0 =A0 =A0 =A0 =A0 =A0 brelse(dst_bhptr);
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0for (blk_index =3D 0; blk_index < 15; blk_index++) {
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (EXT2_I (dest_ind)->i_data[blk_inde=
-x]){
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0swap =3D EXT2_I (src_i=
-nd)->i_data[blk_index];
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I (src_ind)->i_da=
-ta[blk_index] =3D
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I=
- (dest_ind)->i_data[blk_index];
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I (dest_ind)->i_d=
-ata[blk_index] =3D swap;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0}
->
-> =A0 =A0 =A0 =A0dest_ind->i_blocks =3D src_ind->i_blocks ;
-> =A0 =A0 =A0 =A0mark_inode_dirty (src_ind);
-> =A0 =A0 =A0 =A0sync_mapping_buffers(src_ind->i_mapping);
-> =A0 =A0 =A0 =A0ohsm_sync_inode(src_ind);
-> =A0 =A0 =A0 =A0iput(src_ind);
->
-> =A0 =A0 =A0 =A0dest_ind->i_nlink =3D 0;
-> =A0 =A0 =A0 =A0iput(dest_ind);
-> =A0 =A0 =A0 =A0mutex_unlock (&src_ind->i_mutex);
-> =A0 =A0 =A0 =A0goto out_err;
->
-> unlock:
-> =A0 =A0 =A0 =A0brelse(src_bhptr);
-> =A0 =A0 =A0 =A0brelse(dst_bhptr);
-> =A0 =A0 =A0 =A0mutex_unlock (&src_ind->i_mutex);
->
-> out_err:
-> =A0 =A0 =A0 =A0path_put (&nd.path);
-> =A0 =A0 =A0 =A0return;
-> }
->
->
->
-> --
-> Regards,
-> Sandeep.
->
->
->
->
->
->
-> =93To learn is to change. Education is a process that changes the lea=
-rner.=94
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Based on 2.6.29-rc7 with Aneesh Kumar's patches:
+ext4: Validate extent details only when read from the disk
+ext4: Add checks to validate extent entries
+
+Sets need_to_validate=0 inside instead of outside the loop.
+
+Signed-off-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+
+--------------040702080606060103080902
+Content-Type: text/x-patch;
+ name="less-extent-validations.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="less-extent-validations.patch"
+
+--- linux-2.6.29-rc7/fs/ext4/extents.c~	2009-03-12 14:51:21.000000000 +0100
++++ linux-2.6.29-rc7/fs/ext4/extents.c	2009-03-12 16:23:41.000000000 +0100
+@@ -607,7 +607,6 @@
+ ext4_ext_find_extent(struct inode *inode, ext4_lblk_t block,
+ 					struct ext4_ext_path *path)
+ {
+-	int need_to_validate = 0;
+ 	struct ext4_extent_header *eh;
+ 	struct buffer_head *bh;
+ 	short int depth, i, ppos = 0, alloc = 0;
+@@ -629,6 +628,7 @@
+ 	i = depth;
+ 	/* walk through the tree */
+ 	while (i) {
++		int need_to_validate = 0;
+ 		ext_debug("depth %d: num %d, max %d\n",
+ 			  ppos, le16_to_cpu(eh->eh_entries), le16_to_cpu(eh->eh_max));
+ 
+
+--------------040702080606060103080902--
