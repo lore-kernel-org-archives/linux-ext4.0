@@ -1,66 +1,51 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: e2fsprogs w/64-bit patches: make check gets one failure
-Date: Wed, 11 Mar 2009 22:02:10 -0600
-Message-ID: <20090312040210.GQ3199@webber.adilger.int>
-References: <12304.1236797612@alphaville.usa.hp.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH, RFC] ext4: add EXT4_IOC_ALLOC_DA_BLKS ioctl
+Date: Thu, 12 Mar 2009 10:59:06 +0530
+Message-ID: <20090312052906.GA3033@skywalker>
+References: <1235451952-2726-1-git-send-email-tytso@mit.edu> <1235451952-2726-2-git-send-email-tytso@mit.edu> <1235451952-2726-3-git-send-email-tytso@mit.edu> <1235451952-2726-4-git-send-email-tytso@mit.edu> <1235451952-2726-5-git-send-email-tytso@mit.edu> <49B83E01.1040605@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Nick Dokos <nicholas.dokos@hp.com>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:42373 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750754AbZCLECZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Mar 2009 00:02:25 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n2C42Nx4003590
-	for <linux-ext4@vger.kernel.org>; Wed, 11 Mar 2009 21:02:23 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KGD00700KE62G00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 11 Mar 2009 21:02:23 -0700 (PDT)
-In-reply-to: <12304.1236797612@alphaville.usa.hp.com>
+Received: from e28smtp07.in.ibm.com ([59.145.155.7]:46979 "EHLO
+	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750984AbZCLF3N (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Mar 2009 01:29:13 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id n2C5T8Sn026671
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2009 10:59:08 +0530
+Received: from d28av02.in.ibm.com (d28av02.in.ibm.com [9.184.220.64])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n2C5PueG585834
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2009 10:55:56 +0530
+Received: from d28av02.in.ibm.com (loopback [127.0.0.1])
+	by d28av02.in.ibm.com (8.13.1/8.13.3) with ESMTP id n2C5T7UW027584
+	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2009 16:29:07 +1100
+Content-Disposition: inline
+In-Reply-To: <49B83E01.1040605@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mar 11, 2009  14:53 -0400, Nick Dokos wrote:
-> I followed the workflow that Ted described in the following message:
+On Wed, Mar 11, 2009 at 05:41:05PM -0500, Eric Sandeen wrote:
+> Theodore Ts'o wrote:
+> > Add an ioctl which forces all of the delay allocated blocks to be
+> > allocated.  This also provides a function ext4_alloc_da_blocks() which
+> > will be used by the following commits to force files to be fully
+> > allocated to preserve application-expected ext3 behaviour.
+> > 
 > 
->    http://marc.info/?l=linux-ext4&m=123367642710241&w=2
+> Is it worth checking whether a) the file has delalloc blocks, and/or b)
+> whether the mapping is dirty before we spin off a filemap_flush?
 > 
-> with the patch series from git://github.com/tytso/e2fsprogs-64bit.git
-> 
-> With all the patches in the series file applied, make check gives
-> me the following error:
-> 
-> ...
-> f_h_reindex: reindex HTREE Directory with different hash seed: failed
-> ...
-> 100 tests succeeded	1 tests failed
-> make[1]: *** [check] Error 1
-> make[1]: Leaving directory `/home/nick/src/e2fsprogs/standard/build/tests'
-> make: *** [check-recursive] Error 1
++int ext4_alloc_da_blocks(struct inode *inode)
++{
++       if (!EXT4_I(inode)->i_reserved_data_blocks &&
++           !EXT4_I(inode)->i_reserved_meta_blocks)
++               return 0;
 
-Including the content of the tests/f_h_reindex.failed file might make
-the problem obvious.  Possibly it is just some change in the output
-format that is causing expect to fail.
+This check test does (a). Since the ioctl is to force allocation of
+delayed allocated blocks i guess (a) is enough because we don't want to
+cause a filemap_flush when we don't have any delayed allocated blocks
+but have dirty pages around.
 
-> I bisected the series and found that the culprit seems to be
-> 
->   0024-Miscellaneous-e2fsck-related-64-bit-fixes.patch
-> 
-> Unfortunately, a bunch of later patches don't apply cleanly without
-> this one, so the most complete series file that does not get the
-> error is the following - uncommenting 0024 gives the error:
-
-Well, "make check" should pass after every patch in the series, so the
-fact that later ones do not pass is irrelevant.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+-aneesh
