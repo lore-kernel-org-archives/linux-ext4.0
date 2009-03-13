@@ -1,90 +1,437 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Re: ext4_mb_generate_buddy and double-free errors
-Date: Thu, 12 Mar 2009 20:32:16 -0700
-Message-ID: <6601abe90903122032s41c0d1d3jfc0139c14ada7b0a@mail.gmail.com>
-References: <1236904175.731.12.camel@bobble.smo.corp.google.com>
-	 <49B9BF09.6010306@redhat.com>
-	 <1236914533.731.15.camel@bobble.smo.corp.google.com>
-	 <49B9D216.8040401@redhat.com>
+From: Sandeep K Sinha <sandeepksinha@gmail.com>
+Subject: Re: [ext2/ext3] Re-allocation of blocks for an inode
+Date: Fri, 13 Mar 2009 09:05:56 +0530
+Message-ID: <37d33d830903122035i722711f8qbae9e618d99217ac@mail.gmail.com>
+References: <37d33d830903120816t3a0268e8o803bd1acbc0bee47@mail.gmail.com>
+	 <87f94c370903120913p6ec23c84pdff404c0e207b56f@mail.gmail.com>
+	 <37d33d830903121059i3a4a262by2ee0c3bcf77dd04d@mail.gmail.com>
+	 <87f94c370903121137o597fec22v44a924e44b88155c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=windows-1252
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Frank Mayhar <fmayhar@google.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	mrubin <mrubin@google.com>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: ext4 <linux-ext4@vger.kernel.org>,
+	Kernel Newbies <kernelnewbies@nl.linux.org>,
+	Manish Katiyar <mkatiyar@gmail.com>
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:30916 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758105AbZCMDcU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Mar 2009 23:32:20 -0400
-Received: from zps75.corp.google.com (zps75.corp.google.com [172.25.146.75])
-	by smtp-out.google.com with ESMTP id n2D3WHFN022256
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2009 20:32:18 -0700
-Received: from rv-out-0506.google.com (rvfb25.prod.google.com [10.140.179.25])
-	by zps75.corp.google.com with ESMTP id n2D3WGHn023479
-	for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2009 20:32:16 -0700
-Received: by rv-out-0506.google.com with SMTP id b25so1365551rvf.23
-        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2009 20:32:16 -0700 (PDT)
-In-Reply-To: <49B9D216.8040401@redhat.com>
+Received: from wa-out-1112.google.com ([209.85.146.180]:38569 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757807AbZCMDf7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 12 Mar 2009 23:35:59 -0400
+Received: by wa-out-1112.google.com with SMTP id v33so822183wah.21
+        for <linux-ext4@vger.kernel.org>; Thu, 12 Mar 2009 20:35:57 -0700 (PDT)
+In-Reply-To: <87f94c370903121137o597fec22v44a924e44b88155c@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Eric:
-
-On Thu, Mar 12, 2009 at 8:25 PM, Eric Sandeen <sandeen@redhat.com> wrot=
-e:
-> Frank Mayhar wrote:
->> On Thu, 2009-03-12 at 21:03 -0500, Eric Sandeen wrote:
->>> Frank Mayhar wrote:
->>>> We're seeing errors like:
->>>> =A0 EXT4-fs error (device sda3): ext4_mb_generate_buddy: EXT4-fs: =
-group 3049: 21020 blocks in bitmap, 21529 in gd
+On Fri, Mar 13, 2009 at 12:07 AM, Greg Freemyer <greg.freemyer@gmail.co=
+m> wrote:
+> On Thu, Mar 12, 2009 at 1:59 PM, Sandeep K Sinha
+> <sandeepksinha@gmail.com> wrote:
+>> On Thu, Mar 12, 2009 at 9:43 PM, Greg Freemyer <greg.freemyer@gmail.=
+com> wrote:
+>>> On Thu, Mar 12, 2009 at 11:16 AM, Sandeep K Sinha
+>>> <sandeepksinha@gmail.com> wrote:
+>>>> Hi all,
 >>>>
->>>> Usually after this the system is cleaned and in the process we see=
- many
->>>> "mb_free_blocks: double-free of inode x's block y(bit z in group d=
-)".
->>>> (In fact, we see exactly as many of these as the difference betwee=
-n the
->>>> group and computed count of free blocks.)
+>>>> I am listing above two codes for re-allocating new blocks for a gi=
+ven inode.
 >>>>
->>>> It looks like the bitmap itself is getting messed up somehow, at l=
-east
->>>> enough to make the free count disagree with the map itself. =A0Has=
- anyone
->>>> else seen something like this? =A0Any pointers as to where to look=
- for
->>>> potential culprits?
->>> Which kernel, for starters?
+>>>> These code snippets are specific to =A0ext2.
+>>>> The problem here is that it is performing slower than cp and dd.
+>>>>
+>>>> Can anyone help in determining what can be the possible reason(s) =
+?
+>>>
+>>> Excessive use of sync_dirty_buffer();
+>>>
+>>> You're calling it for every single block you copy. Pretty sure it i=
+s a
+>>> very aggressive call that forces the data out to the disk immediate=
+ly,
+>>> thus the benefits of caching and elevators are lost. =A0And those a=
+re
+>>> big benefits.
+>>>
 >>
->> It's our development kernel, 2.6.26 plus as many of the ext4/jbd2
->> patches as we can comfortably pull in.
+>> probably the reason being that the ext2 has some issues with sync.
+>> http://kerneltrap.org/index.php?q=3Dmailarchive/linux-fsdevel/2007/2=
+/14/316836/thread
+>>
+>> Hence, if we don't do this we see a difference in the original and
+>> reallocated file.
 >
-> which makes it a little tough; can you test on upstream too to see if=
- it
-> persists?
+> Sandeep,
 >
-> At this point you are becoming your own distribution (but I suppose y=
-ou
-> are used to that) ;)
+> As I read that bug report, the issue would be resolved by doing:
+>
+> truncate(a)
+> fsync(a)
+> allocate_additional_blocks_for_b()
+> fsync(b)
+>
+> But for the reporter the issue is that the code manipulating file A i=
+s
+> independent of the code manipulating file B thus it needs to be fixed
+> in a different way.
+>
+> Since you have total control of both the files (inodes & data blocks)
+> in question, you should be able to find a better way than calling
+> sync_dirty_buffer() for every block you copy.
+>
+ We are looking over it and expect to find a better way to do it.
 
-(sigh) Yes we are.  I've pulled in nearly all the patches up in the
-ext4-stable branch through the beginning of Feb.  l looked through
-patches in this branch today, and didn't see anything new that seemed
-relevant.
+> Have you actually seen data corruption if you leave out the
+> sync_dirty_buffer() call, or is it a theoretical issue?
+Yes, It has been practically. We can see a data corruption.
 
-Testing on upstream won't work for us, unfortunately.
+>
+> Have you tried calling ext2_sync_inode() at the end of the copy loop
+> instead of sync_dirty_buffer() on every iteration. =A0I really can't =
+see
+> why that would be any more dangerous. =A0Yet it would at least allow =
+the
+> elevators and caches to work for an entire file at a time.
+>
 
-We're mostly hoping that if anybody else has seen this problem they
-can chime in with their experiences.  The generate_buddy code that
-encounters this error just resets the group descriptor bb_free to the
-value in the bitmap, so it's likely not fatal, but this is our first
-exposure to some interesting workloads, so we'd like to nail down the
-cause asap.
+Let me do this for you once again and get back to you. If I can
+recall, we did try that but were able to see data corruption.
+Will get back to you soon with the reply.
 
-Thanks,
-Curt
+> Greg
+>
+>>> Greg
+>>>
+>>>
+>>>>
+>>>> 1. MEMCPY
+>>>> =3D=3D=3D=3D=3D=3D=3D
+>>>>
+>>>>
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0src_ind =3D ext2_iget (sb, inum);
+>>>> =A0 =A0 =A0 =A0if (!src_ind) {
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n OHSM Source =
+Inode Not Found ");
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_err;
+>>>> =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0/* Getting the ghost inode */
+>>>> =A0 =A0 =A0 =A0dest_ind =3D ext2_new_inode (nd.path.dentry->d_inod=
+e, src_ind->i_mode);
+>>>> =A0 =A0 =A0 =A0if (IS_ERR(dest_ind)) {
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_ALERT "\n OHSM destina=
+tion inode unable to allocate.
+>>>> err =3D %ld", PTR_ERR(dest_ind));
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_err;
+>>>> =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0/* Locking the source inode using mutex */
+>>>> =A0 =A0 =A0 =A0mutex_lock (&src_ind->i_mutex);
+>>>>
+>>>> =A0 =A0 =A0 =A0/* Get the source inode size and number of blocks *=
+/
+>>>> =A0 =A0 =A0 =A0i_size =3D i_size_read(src_ind);
+>>>>
+>>>> =A0 =A0 =A0 =A0/* Calculating number of block to allocate for ghos=
+t inode */
+>>>> =A0 =A0 =A0 =A0nblocks =3D (i_size >> EXT2_BLOCK_SIZE_BITS(sb)) +
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((i_size & (sb->s_blocksize - =
+1)) ? 1 : 0);
+>>>>
+>>>> =A0 =A0 =A0 =A0memset(&dest_bh, 0, sizeof(struct buffer_head));
+>>>> =A0 =A0 =A0 =A0memset(&src_bh, 0, sizeof(struct buffer_head));
+>>>> =A0 =A0 =A0 =A0for (done =3D 0; done < nblocks; done++) {
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext2_get_block (src_ind, done, &sr=
+c_bh, 0);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err < 0) {
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG =
+"\n error getting blocks ret_val =3D %d",err);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dest_bh.b_state =3D 0;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D ext2_get_block (dest_ind, d=
+one, &dest_bh, 1);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err < 0) {
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG =
+"\n error getting blocks ret_val =3D %d",err);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!buffer_mapped(&src_bh)){
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG =
+"\nHOLE ");
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0continue;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0src_bhptr =3D sb_bread(sb, src_bh.b=
+_blocknr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!src_bhptr)
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dst_bhptr =3D sb_bread(sb, dest_bh.=
+b_blocknr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!dst_bhptr)
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0lock_buffer(dst_bhptr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0memcpy(dst_bhptr->b_data,src_bhptr-=
+>b_data,src_bhptr->b_size);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unlock_buffer(dst_bhptr);
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0mark_buffer_dirty(dst_bhptr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0sync_dirty_buffer(dst_bhptr);
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0brelse(src_bhptr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0brelse(dst_bhptr);
+>>>>
+>>>> =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0for (blk_index =3D 0; blk_index < 15; blk_index++) =
+{
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (EXT2_I (dest_ind)->i_data[blk_i=
+ndex]){
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0swap =3D EXT2_I (sr=
+c_ind)->i_data[blk_index];
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I (src_ind)->i=
+_data[blk_index] =3D
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT=
+2_I (dest_ind)->i_data[blk_index];
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I (dest_ind)->=
+i_data[blk_index] =3D swap;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>>> =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0dest_ind->i_blocks =3D src_ind->i_blocks ;
+>>>> =A0 =A0 =A0 =A0mark_inode_dirty (src_ind);
+>>>> =A0 =A0 =A0 =A0sync_mapping_buffers(src_ind->i_mapping);
+>>>> =A0 =A0 =A0 =A0ohsm_sync_inode(src_ind);
+>>>> =A0 =A0 =A0 =A0iput(src_ind);
+>>>>
+>>>> =A0 =A0 =A0 =A0dest_ind->i_nlink =3D 0;
+>>>> =A0 =A0 =A0 =A0iput(dest_ind);
+>>>> =A0 =A0 =A0 =A0mutex_unlock (&src_ind->i_mutex);
+>>>> =A0 =A0 =A0 =A0goto out_err;
+>>>>
+>>>> unlock:
+>>>> =A0 =A0 =A0 =A0brelse(src_bhptr);
+>>>> =A0 =A0 =A0 =A0brelse(dst_bhptr);
+>>>> =A0 =A0 =A0 =A0mutex_unlock (&src_ind->i_mutex);
+>>>>
+>>>> out_err:
+>>>> =A0 =A0 =A0 =A0path_put (&nd.path);
+>>>> =A0 =A0 =A0 =A0return;
+>>>>
+>>>>
+>>>>
+>>>> 2. PAGEFLIP
+>>>> =3D=3D=3D=3D=3D=3D=3D=3D
+>>>>
+>>>>
+>>>> /* Get the source inode */
+>>>>
+>>>> =A0 =A0 =A0 =A0src_ind =3D ext2_iget (sb, inum);
+>>>> =A0 =A0 =A0 =A0if (!src_ind) {
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG "\n OHSM Source =
+Inode Not Found ");
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_err;
+>>>> =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0/* Getting the ghost inode */
+>>>> =A0 =A0 =A0 =A0dest_ind =3D ext2_new_inode (nd.path.dentry->d_inod=
+e, src_ind->i_mode);
+>>>> =A0 =A0 =A0 =A0if (IS_ERR(dest_ind)) {
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_ALERT "\n destination =
+inode unable to allocate. err =3D
+>>>> %ld", PTR_ERR(dest_ind));
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto out_err;
+>>>> =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0/* Locking the source inode using mutex */
+>>>> =A0 =A0 =A0 =A0mutex_lock (&src_ind->i_mutex);
+>>>>
+>>>> =A0 =A0 =A0 =A0/* Get the source inode size and number of blocks *=
+/
+>>>> =A0 =A0 =A0 =A0i_size =3D i_size_read(src_ind);
+>>>>
+>>>> =A0 =A0 =A0 =A0/* Calculating number of block to allocate for ghos=
+t inode */
+>>>> =A0 =A0 =A0 =A0nblocks =3D (i_size >> EXT2_BLOCK_SIZE_BITS(sb)) +
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ((i_size & (sb->s_blocksize - =
+1)) ? 1 : 0);
+>>>>
+>>>>
+>>>> =A0 =A0 =A0 =A0memset(&dest_bh, 0, sizeof(struct buffer_head));
+>>>> =A0 =A0 =A0 =A0memset(&src_bh, 0, sizeof(struct buffer_head));
+>>>> =A0 =A0 =A0 =A0for (done =3D 0; done < nblocks; done++) {
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 err =3D ext2_get_block (src_ind, done, &sr=
+c_bh, 0);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err < 0) {
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG =
+"\n error getting blocks ret_val =3D %d",err);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dest_bh.b_state =3D 0;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D ext2_get_block (dest_ind, d=
+one, &dest_bh, 1);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err < 0) {
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG =
+"\n error getting blocks ret_val =3D %d",err);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!buffer_mapped(&src_bh)){
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0printk (KERN_DEBUG =
+"\nHOLE ");
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0continue;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0src_bhptr =3D sb_bread(sb, src_bh.b=
+_blocknr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!src_bhptr)
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dst_bhptr =3D sb_bread(sb, dest_bh.=
+b_blocknr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (!dst_bhptr)
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto unlock;
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 lock_buffer(dst_bhptr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 oldpage =3D dst_bhptr->b_page;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 olddata =3D dst_bhptr->b_data;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 dst_bhptr->b_data =3D src_bhptr->b_dat=
+a;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 dst_bhptr->b_page =3D src_bhptr->b_pag=
+e;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 flush_dcache_page(dst_bhptr->b_page);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 unlock_buffer(dst_bhptr);
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 mark_buffer_dirty(dst_bhptr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 sync_dirty_buffer(dst_bhptr);
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 if(buffer_uptodate(dst_bhptr)) {
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dst_bhptr->b_page =A0=3D oldpage;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0dst_bhptr->b_data =3D olddata;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+>>>>
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 brelse(src_bhptr);
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 brelse(dst_bhptr);
+>>>> =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0for (blk_index =3D 0; blk_index < 15; blk_index++) =
+{
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (EXT2_I (dest_ind)->i_data[blk_i=
+ndex]){
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0swap =3D EXT2_I (sr=
+c_ind)->i_data[blk_index];
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I (src_ind)->i=
+_data[blk_index] =3D
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT=
+2_I (dest_ind)->i_data[blk_index];
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0EXT2_I (dest_ind)->=
+i_data[blk_index] =3D swap;
+>>>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
+>>>> =A0 =A0 =A0 =A0}
+>>>>
+>>>> =A0 =A0 =A0 =A0dest_ind->i_blocks =3D src_ind->i_blocks ;
+>>>> =A0 =A0 =A0 =A0mark_inode_dirty (src_ind);
+>>>> =A0 =A0 =A0 =A0sync_mapping_buffers(src_ind->i_mapping);
+>>>> =A0 =A0 =A0 =A0ohsm_sync_inode(src_ind);
+>>>> =A0 =A0 =A0 =A0iput(src_ind);
+>>>>
+>>>> =A0 =A0 =A0 =A0dest_ind->i_nlink =3D 0;
+>>>> =A0 =A0 =A0 =A0iput(dest_ind);
+>>>> =A0 =A0 =A0 =A0mutex_unlock (&src_ind->i_mutex);
+>>>> =A0 =A0 =A0 =A0goto out_err;
+>>>>
+>>>> unlock:
+>>>> =A0 =A0 =A0 =A0brelse(src_bhptr);
+>>>> =A0 =A0 =A0 =A0brelse(dst_bhptr);
+>>>> =A0 =A0 =A0 =A0mutex_unlock (&src_ind->i_mutex);
+>>>>
+>>>> out_err:
+>>>> =A0 =A0 =A0 =A0path_put (&nd.path);
+>>>> =A0 =A0 =A0 =A0return;
+>>>> }
+>>>>
+>>>>
+>>>>
+>>>> --
+>>>> Regards,
+>>>> Sandeep.
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>>
+>>>> =93To learn is to change. Education is a process that changes the =
+learner.=94
+>>>>
+>>>
+>>>
+>>>
+>>> --
+>>> Greg Freemyer
+>>> Litigation Triage Solutions Specialist
+>>> http://www.linkedin.com/in/gregfreemyer
+>>> First 99 Days Litigation White Paper -
+>>> http://www.norcrossgroup.com/forms/whitepapers/99%20Days%20whitepap=
+er.pdf
+>>>
+>>> The Norcross Group
+>>> The Intersection of Evidence & Technology
+>>> http://www.norcrossgroup.com
+>>>
+>>
+>>
+>>
+>> --
+>> Regards,
+>> Sandeep.
+>>
+>>
+>>
+>>
+>>
+>>
+>> =93To learn is to change. Education is a process that changes the le=
+arner.=94
+>>
+>
+>
+>
+> --
+> Greg Freemyer
+> Head of EDD Tape Extraction and Processing team
+> Litigation Triage Solutions Specialist
+> http://www.linkedin.com/in/gregfreemyer
+> First 99 Days Litigation White Paper -
+> http://www.norcrossgroup.com/forms/whitepapers/99%20Days%20whitepaper=
+=2Epdf
+>
+> The Norcross Group
+> The Intersection of Evidence & Technology
+> http://www.norcrossgroup.com
+>
+
+
+
+--=20
+Regards,
+Sandeep.
+
+
+
+
+
+ =09
+=93To learn is to change. Education is a process that changes the learn=
+er.=94
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
