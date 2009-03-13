@@ -1,16 +1,16 @@
 From: <gregkh@suse.de>
-Subject: patch ext4-add-fallback-for-find_group_flex.patch added to 2.6.28-stable tree
-Date: Thu, 12 Mar 2009 23:20:49 -0700
-Message-ID: <20090313062318.D9F7849047@coco.kroah.org>
-References: <1236238515-8479-1-git-send-email-tytso@mit.edu>
+Subject: patch ext4-add-fallback-for-find_group_flex.patch added to 2.6.27-stable tree
+Date: Thu, 12 Mar 2009 23:33:44 -0700
+Message-ID: <20090313063751.6D4494903F@coco.kroah.org>
+References: <1236238447-8341-1-git-send-email-tytso@mit.edu>
 Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
 To: tytso@mit.edu, gregkh@suse.de, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:52196 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:42309 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751665AbZCMGXU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Mar 2009 02:23:20 -0400
-In-Reply-To: <1236238515-8479-1-git-send-email-tytso@mit.edu>
+	id S1752784AbZCMGhx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Mar 2009 02:37:53 -0400
+In-Reply-To: <1236238447-8341-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -19,7 +19,7 @@ This is a note to let you know that we have just queued up the patch titled
 
     Subject: ext4: Add fallback for find_group_flex
 
-to the 2.6.28-stable tree.  Its filename is
+to the 2.6.27-stable tree.  Its filename is
 
     ext4-add-fallback-for-find_group_flex.patch
 
@@ -27,13 +27,13 @@ A git repo of this tree can be found at
     http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
 
 
->From tytso@mit.edu  Thu Mar 12 22:52:01 2009
+>From tytso@mit.edu  Thu Mar 12 23:32:27 2009
 From: "Theodore Ts'o" <tytso@mit.edu>
-Date: Thu,  5 Mar 2009 02:35:14 -0500
+Date: Thu,  5 Mar 2009 02:34:06 -0500
 Subject: ext4: Add fallback for find_group_flex
 To: stable@kernel.org
 Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, "Theodore Ts'o" <tytso@mit.edu>
-Message-ID: <1236238515-8479-1-git-send-email-tytso@mit.edu>
+Message-ID: <1236238447-8341-1-git-send-email-tytso@mit.edu>
 
 From: "Theodore Ts'o" <tytso@mit.edu>
 
@@ -62,7 +62,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -703,6 +703,13 @@ struct inode *ext4_new_inode(handle_t *h
+@@ -702,6 +702,13 @@ struct inode *ext4_new_inode(handle_t *h
  
  	if (sbi->s_log_groups_per_flex) {
  		ret2 = find_group_flex(sb, dir, &group);
@@ -80,13 +80,12 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 Patches currently in stable-queue which might be from tytso@mit.edu are
 
-queue-2.6.28/jbd2-fix-return-value-of-jbd2_journal_start_commit.patch
-queue-2.6.28/revert-ext4-wait-on-all-pending-commits-in-ext4_sync_fs.patch
-queue-2.6.28/jbd2-avoid-possible-null-dereference-in-jbd2_journal_begin_ordered_truncate.patch
-queue-2.6.28/ext4-fix-to-read-empty-directory-blocks-correctly-in-64k.patch
-queue-2.6.28/ext4-fix-lockdep-warning.patch
-queue-2.6.28/ext4-initialize-preallocation-list_head-s-properly.patch
-queue-2.6.28/ext4-implement-range_cyclic-in-ext4_da_writepages-instead-of-write_cache_pages.patch
-queue-2.6.28/ext4-fix-null-dereference-in-ext4_ext_migrate-s-error-handling.patch
-queue-2.6.28/ext4-add-fallback-for-find_group_flex.patch
-queue-2.6.28/ext4-fix-deadlock-in-ext4_write_begin-and-ext4_da_write_begin.patch
+queue-2.6.27/jbd2-fix-return-value-of-jbd2_journal_start_commit.patch
+queue-2.6.27/revert-ext4-wait-on-all-pending-commits-in-ext4_sync_fs.patch
+queue-2.6.27/jbd2-avoid-possible-null-dereference-in-jbd2_journal_begin_ordered_truncate.patch
+queue-2.6.27/ext4-fix-to-read-empty-directory-blocks-correctly-in-64k.patch
+queue-2.6.27/ext4-fix-lockdep-warning.patch
+queue-2.6.27/ext4-initialize-preallocation-list_head-s-properly.patch
+queue-2.6.27/ext4-fix-null-dereference-in-ext4_ext_migrate-s-error-handling.patch
+queue-2.6.27/ext4-add-fallback-for-find_group_flex.patch
+queue-2.6.27/ext4-fix-deadlock-in-ext4_write_begin-and-ext4_da_write_begin.patch
