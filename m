@@ -1,71 +1,77 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12821] filesystem corrupts on heavy I/O
-Date: Fri, 13 Mar 2009 08:03:45 -0700 (PDT)
-Message-ID: <20090313150345.7BA4B108042@picon.linux-foundation.org>
-References: <bug-12821-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] fix bb_prealloc_list corruption due to wrong group locking
+Date: Fri, 13 Mar 2009 16:57:45 -0500
+Message-ID: <49BAD6D9.3010505@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:43504 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752191AbZCMPEw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Mar 2009 11:04:52 -0400
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n2DF3jXW001002
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2009 08:04:21 -0700
-In-Reply-To: <bug-12821-13602@http.bugzilla.kernel.org/>
+Received: from mx2.redhat.com ([66.187.237.31]:38528 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754458AbZCMV5y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Mar 2009 17:57:54 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2DLvrTd006227
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2009 17:57:53 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2DLvrOg003971
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2009 17:57:53 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n2DLvqP4002705
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2009 17:57:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12821
+This is for Red Hat bug 490026,
+EXT4 panic, list corruption in ext4_mb_new_inode_pa
 
+(this was on backported ext4 from 2.6.29)
 
+We hit a BUG() in __list_add from  ext4_mb_new_inode_pa()
+because the list head pointed to a removed item:
 
+list_add corruption. next->prev should be ffff81042f2fe158,
+but was 0000000000200200
 
+(0000000000200200 is LIST_POISON2, set when the item is deleted)
 
-------- Comment #15 from sandeen@redhat.com  2009-03-13 08:03 -------
-(In reply to comment #14)
-> I'm seeing a similar error with heavy read/write I/O on a 1TB ext4 volume. It's
-> not clear what behavior triggers the error for me. Occasionally I see the error
-> in dmesg...
-> 
-> [ 7829.004269] EXT4-fs error (device sdb1): ext4_ext_search_right: bad header
-> in inode #2491097: unexpected eh_depth - magic f30a, entries 78, max 340(0),
-> depth 1(2)
-> [ 7829.012197] mpage_da_map_blocks block allocation failed for inode 2491097 at
-> logical offset 2788227 with max blocks 7 with error -5
-> [ 7829.012220] This should not happen.!! Data will be lost
-> 
-> ...and sync does not complete. It's not clear from the discussion if e2image
-> needs to be done before the error occurs on a clean mount, or afterward while
-> the system is up.
+ext4_lock_group(sb, group) is supposed to protect this list for
+each group, and a common code flow is this:
 
-If you like, it's probably sufficient to point debugfs at the system and do
+    ext4_get_group_no_and_offset(sb, pa->pa_pstart, &grp, NULL);
+    ext4_lock_group(sb, grp);
+    list_del(&pa->pa_group_list);
+    ext4_unlock_group(sb, grp);
 
-debugfs> stat <2491097>
+so its critical that we get the right group number back for
+this pa->pa_pstart block.
 
-to give us an idea of the layout of that file.
+however, ext4_mb_put_pa passes in (pa->pa_pstart - 1) with a 
+comment, "-1 is to protect from crossing allocation group"
 
-> When this happens the reboot procedure does not complete, and I power cycle the
-> machine. 
+Other list-manipulators do not use the "-1" so we have the 
+potential to lock the wrong group and race.  Given how the 
+ext4_get_group_no_and_offset() function works, it doesn't seem
+to me that the subtraction is correct.
+ 
+I've not been able to reproduce the bug, so this is by inspection.
 
-the fs may have gone readonly after the error, but I'm not sure it should have
-hung up the system.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-> After a power cycle, the journal replays and fsck completes, no
-> inconsistencies. The files affected by data loss are part of a BitTorrent
-> network download and after a Torrent data consistency check, I confirm that
-> data has been lost. If I leave the Torrent active downloading for more than an
-> hour or so, the ext4 errors occur.
+Index: linux-2.6/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/mballoc.c
++++ linux-2.6/fs/ext4/mballoc.c
+@@ -3603,8 +3603,7 @@ static void ext4_mb_put_pa(struct ext4_a
+ 	pa->pa_deleted = 1;
+ 	spin_unlock(&pa->pa_lock);
+ 
+-	/* -1 is to protect from crossing allocation group */
+-	ext4_get_group_no_and_offset(sb, pa->pa_pstart - 1, &grp, NULL);
++	ext4_get_group_no_and_offset(sb, pa->pa_pstart, &grp, NULL);
+ 
+ 	/*
+ 	 * possible race:
 
-Great, if you can reproduce it w/ bittorrent, can you please try the patch in
-the attachments?
-
-Thanks,
--Eric
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
