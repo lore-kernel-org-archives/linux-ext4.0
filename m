@@ -1,57 +1,69 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12821] filesystem corrupts on heavy I/O
-Date: Fri, 13 Mar 2009 00:11:46 -0700 (PDT)
-Message-ID: <20090313071146.4B541108042@picon.linux-foundation.org>
-References: <bug-12821-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH] fix bogus BUG_ONs in in mballoc code
+Date: Fri, 13 Mar 2009 05:09:52 -0600
+Message-ID: <20090313110952.GM3199@webber.adilger.int>
+References: <49B93E44.8070109@ph.tum.de> <49B958A1.6060805@redhat.com>
+ <20090313003855.GM17104@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Thiemo Nagel <thiemo.nagel@ph.tum.de>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:58846 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750780AbZCMHMw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Mar 2009 03:12:52 -0400
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n2D7BkL7031720
-	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2009 00:12:22 -0700
-In-Reply-To: <bug-12821-13602@http.bugzilla.kernel.org/>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:35982 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751624AbZCMLKL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 13 Mar 2009 07:10:11 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n2DBA5OS013549
+	for <linux-ext4@vger.kernel.org>; Fri, 13 Mar 2009 04:10:07 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
+ id <0KGF00700YRH3H00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
+ 13 Mar 2009 04:10:05 -0700 (PDT)
+In-reply-to: <20090313003855.GM17104@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12821
+On Mar 12, 2009  20:38 -0400, Theodore Ts'o wrote:
+> On Thu, Mar 12, 2009 at 01:46:57PM -0500, Eric Sandeen wrote:
+> > Thiemo Nagel reported that:
+> > 
+> > # dd if=/dev/zero of=image.ext4 bs=1M count=2
+> > # mkfs.ext4 -v -F -b 1024 -m 0 -g 512 -G 4 -I 128 -N 1 \
+> >   -O large_file,dir_index,flex_bg,extent,sparse_super image.ext4
+> > # mount -o loop image.ext4 mnt/
+> > # dd if=/dev/zero of=mnt/file
+> > 
+> > oopsed, with a BUG_ON in ext4_mb_normalize_request because
+> > size == EXT4_BLOCKS_PER_GROUP
+> > 
+> > It appears to me (esp. after talking to Andreas) that the BUG_ON
+> > is bogus; a request of exactly EXT4_BLOCKS_PER_GROUP should
+> > be allowed, though larger sizes do indicate a problem.
+> 
+> Clearly we should make this change to avoid the BUG_ON; but stupid
+> question, why shouldn't we allow sizes larger than
+> EXT4_BLOCKS_PER_GROUP?  
+> 
+> Especially with flex_bg, it is possible for an allocation size >
+> EXT4_BLOCKS_PER_GROUP to be satisifed, especially if the filesystem
+> isn't that full yet, and it might even make sense to request a larger
+> allocation for video files that are getting preallocated, for
+> example....
 
+There are two reasons that we can't have too-large mballoc allocations:
+- mballoc works on a per-group basis, so the most blocks that it can
+  allocate at a time is BLOCKS_PER_GROUP.
+- the on-disk extent format cannot map more than 128MB at a time, which
+  is equal to the group size at 4kB blocksize.
 
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-
-
-------- Comment #14 from lucent+lkml@gmail.com  2009-03-13 00:11 -------
-I'm seeing a similar error with heavy read/write I/O on a 1TB ext4 volume. It's
-not clear what behavior triggers the error for me. Occasionally I see the error
-in dmesg...
-
-[ 7829.004269] EXT4-fs error (device sdb1): ext4_ext_search_right: bad header
-in inode #2491097: unexpected eh_depth - magic f30a, entries 78, max 340(0),
-depth 1(2)
-[ 7829.012197] mpage_da_map_blocks block allocation failed for inode 2491097 at
-logical offset 2788227 with max blocks 7 with error -5
-[ 7829.012220] This should not happen.!! Data will be lost
-
-...and sync does not complete. It's not clear from the discussion if e2image
-needs to be done before the error occurs on a clean mount, or afterward while
-the system is up.
-
-When this happens the reboot procedure does not complete, and I power cycle the
-machine. After a power cycle, the journal replays and fsck completes, no
-inconsistencies. The files affected by data loss are part of a BitTorrent
-network download and after a Torrent data consistency check, I confirm that
-data has been lost. If I leave the Torrent active downloading for more than an
-hour or so, the ext4 errors occur.
-
-So, "me too" with linux-image-2.6.28-8-generic 2.6.28-8-generic #28-Ubuntu SMP
-Thu Mar 5 21:49:36 UTC 2009 i686 GNU/Linux. I'm willing to provide debug info
-to an interested developer, privately.
-
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
