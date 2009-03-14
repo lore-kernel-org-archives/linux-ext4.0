@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 86/96] jbd2: Fix return value of jbd2_journal_start_commit()
-Date: Fri, 13 Mar 2009 17:06:34 -0700
-Message-ID: <20090314000752.253308790@mini.kroah.org>
+Subject: [patch 87/96] Revert "ext4: wait on all pending commits in ext4_sync_fs()"
+Date: Fri, 13 Mar 2009 17:06:35 -0700
+Message-ID: <20090314000752.379159554@mini.kroah.org>
 References: <20090314000508.803142980@mini.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -20,11 +20,11 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Jan Kara <jack@suse.cz>, Eric Sandeen <sandeen@redhat.com>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:35063 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:35068 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1754014AbZCNATr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 13 Mar 2009 20:19:47 -0400
-Content-Disposition: inline; filename=jbd2-fix-return-value-of-jbd2_journal_start_commit.patch
+	id S1753364AbZCNATs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 13 Mar 2009 20:19:48 -0400
+Content-Disposition: inline; filename=revert-ext4-wait-on-all-pending-commits-in-ext4_sync_fs.patch
 In-Reply-To: <20090314001449.GA4485@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -36,97 +36,51 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 From: Jan Kara <jack@suse.cz>
 
-(cherry picked from commit c88ccea3143975294f5a52097546bcbb75975f52)
+(cherry picked from commit 9eddacf9e9c03578ef2c07c9534423e823d677f8)
 
-The function jbd2_journal_start_commit() returns 1 if either a
-transaction is committing or the function has queued a transaction
-commit. But it returns 0 if we raced with somebody queueing the
-transaction commit as well. This resulted in ext4_sync_fs() not
-functioning correctly (description from Arthur Jones):
+This undoes commit 14ce0cb411c88681ab8f3a4c9caa7f42e97a3184.
 
-   In the case of a data=ordered umount with pending long symlinks
-   which are delayed due to a long list of other I/O on the backing
-   block device, this causes the buffer associated with the long
-   symlinks to not be moved to the inode dirty list in the second
-   phase of fsync_super.  Then, before they can be dirtied again,
-   kjournald exits, seeing the UMOUNT flag and the dirty pages are
-   never written to the backing block device, causing long symlink
-   corruption and exposing new or previously freed block data to
-   userspace.
+Since jbd2_journal_start_commit() is now fixed to return 1 when we
+started a transaction commit, there's some transaction waiting to be
+committed or there's a transaction already committing, we don't
+need to call ext4_force_commit() in ext4_sync_fs(). Furthermore
+ext4_force_commit() can unnecessarily create sync transaction which is
+expensive so it's worthwhile to remove it when we can.
 
-This can be reproduced with a script created by Eric Sandeen
-<sandeen@redhat.com>:
-
-        #!/bin/bash
-
-        umount /mnt/test2
-        mount /dev/sdb4 /mnt/test2
-        rm -f /mnt/test2/*
-        dd if=/dev/zero of=/mnt/test2/bigfile bs=1M count=512
-        touch /mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-        ln -s /mnt/test2/thisisveryveryveryveryveryveryveryveryveryveryveryveryveryveryveryverylongfilename
-        /mnt/test2/link
-        umount /mnt/test2
-        mount /dev/sdb4 /mnt/test2
-        ls /mnt/test2/
-
-This patch fixes jbd2_journal_start_commit() to always return 1 when
-there's a transaction committing or queued for commit.
+http://bugzilla.kernel.org/show_bug.cgi?id=12224
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-CC: Eric Sandeen <sandeen@redhat.com>
-CC: linux-ext4@vger.kernel.org
+Cc: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 
 ---
- fs/jbd2/journal.c |   17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+ fs/ext4/super.c |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -430,7 +430,7 @@ int __jbd2_log_space_left(journal_t *jou
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -2950,14 +2950,14 @@ static void ext4_write_super(struct supe
+ 
+ static int ext4_sync_fs(struct super_block *sb, int wait)
+ {
+-	int ret = 0;
++	tid_t target;
+ 
+ 	sb->s_dirt = 0;
+-	if (wait)
+-		ret = ext4_force_commit(sb);
+-	else
+-		jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, NULL);
+-	return ret;
++	if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, &target)) {
++		if (wait)
++			jbd2_log_wait_commit(EXT4_SB(sb)->s_journal, target);
++	}
++	return 0;
  }
  
  /*
-- * Called under j_state_lock.  Returns true if a transaction was started.
-+ * Called under j_state_lock.  Returns true if a transaction commit was started.
-  */
- int __jbd2_log_start_commit(journal_t *journal, tid_t target)
- {
-@@ -498,7 +498,8 @@ int jbd2_journal_force_commit_nested(jou
- 
- /*
-  * Start a commit of the current running transaction (if any).  Returns true
-- * if a transaction was started, and fills its tid in at *ptid
-+ * if a transaction is going to be committed (or is currently already
-+ * committing), and fills its tid in at *ptid
-  */
- int jbd2_journal_start_commit(journal_t *journal, tid_t *ptid)
- {
-@@ -508,15 +509,19 @@ int jbd2_journal_start_commit(journal_t 
- 	if (journal->j_running_transaction) {
- 		tid_t tid = journal->j_running_transaction->t_tid;
- 
--		ret = __jbd2_log_start_commit(journal, tid);
--		if (ret && ptid)
-+		__jbd2_log_start_commit(journal, tid);
-+		/* There's a running transaction and we've just made sure
-+		 * it's commit has been scheduled. */
-+		if (ptid)
- 			*ptid = tid;
--	} else if (journal->j_committing_transaction && ptid) {
-+		ret = 1;
-+	} else if (journal->j_committing_transaction) {
- 		/*
- 		 * If ext3_write_super() recently started a commit, then we
- 		 * have to wait for completion of that transaction
- 		 */
--		*ptid = journal->j_committing_transaction->t_tid;
-+		if (ptid)
-+			*ptid = journal->j_committing_transaction->t_tid;
- 		ret = 1;
- 	}
- 	spin_unlock(&journal->j_state_lock);
 
 
