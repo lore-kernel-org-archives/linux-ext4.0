@@ -1,96 +1,127 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V3] fix bb_prealloc_list corruption due to wrong group locking
-Date: Mon, 16 Mar 2009 12:28:16 -0500
-Message-ID: <49BE8C30.5030901@redhat.com>
-References: <49BAD6D9.3010505@redhat.com> <49BE82A9.4000407@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Rename pa_linear to pa_type
+Date: Mon, 16 Mar 2009 23:10:07 +0530
+Message-ID: <1237225207-1649-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:46664 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752421AbZCPR23 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Mar 2009 13:28:29 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2GHSRsu009472
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2009 13:28:27 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2GHSRPg022183
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2009 13:28:27 -0400
-Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n2GHSQoO011162
-	for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2009 13:28:27 -0400
-In-Reply-To: <49BE82A9.4000407@redhat.com>
+Received: from e23smtp04.au.ibm.com ([202.81.31.146]:43829 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754443AbZCPRkz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 16 Mar 2009 13:40:55 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id n2GHcucP027013
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2009 04:38:56 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n2GHf9GV999562
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2009 04:41:09 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n2GHepwp023853
+	for <linux-ext4@vger.kernel.org>; Tue, 17 Mar 2009 04:40:51 +1100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is for Red Hat bug 490026,
-EXT4 panic, list corruption in ext4_mb_new_inode_pa
+Impact: code cleanup
 
-ext4_lock_group(sb, group) is supposed to protect this list for
-each group, and a common code flow to remove an album is like
-this:
+This patch rename pa_linear to pa_type and add MB_INODE_PA
+and MB_GROUP_PA to indicate inode and group prealloc space.
 
-    ext4_get_group_no_and_offset(sb, pa->pa_pstart, &grp, NULL);
-    ext4_lock_group(sb, grp);
-    list_del(&pa->pa_group_list);
-    ext4_unlock_group(sb, grp);
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-so it's critical that we get the right group number back for
-this prealloc context, to lock the right group (the one 
-associated with this pa) and prevent concurrent list manipulation.
-
-however, ext4_mb_put_pa() passes in (pa->pa_pstart - 1) with a 
-comment, /* -1 is to protect from crossing allocation group */
-
-This makes sense for the group_pa, where pa_pstart is advanced
-by the length which has been used (in ext4_mb_release_context()),
-and when the entire length has been used, pa_pstart has been
-advanced to the first block of the next group.
-
-However, for inode_pa, pa_pstart is never advanced; it's just
-set once to the first block in the group and not moved after
-that.  So in this case, if we subtract one in ext4_mb_put_pa(),
-we are actually locking the *previous* group, and opening the
-race with the other threads which do not subtract off the extra
-block.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 ---
+ fs/ext4/mballoc.c |   14 +++++++-------
+ fs/ext4/mballoc.h |    7 +++++--
+ 2 files changed, 12 insertions(+), 9 deletions(-)
 
-(fixed up comment per Aneesh's suggestion)
-
-Index: linux-2.6/fs/ext4/mballoc.c
-===================================================================
---- linux-2.6.orig/fs/ext4/mballoc.c
-+++ linux-2.6/fs/ext4/mballoc.c
-@@ -3589,6 +3589,7 @@ static void ext4_mb_put_pa(struct ext4_a
- 			struct super_block *sb, struct ext4_prealloc_space *pa)
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4415bee..72331ce 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -3696,7 +3696,7 @@ ext4_mb_new_inode_pa(struct ext4_allocation_context *ac)
+ 	INIT_LIST_HEAD(&pa->pa_inode_list);
+ 	INIT_LIST_HEAD(&pa->pa_group_list);
+ 	pa->pa_deleted = 0;
+-	pa->pa_linear = 0;
++	pa->pa_type = MB_INODE_PA;
+ 
+ 	mb_debug("new inode pa %p: %llu/%u for %u\n", pa,
+ 			pa->pa_pstart, pa->pa_len, pa->pa_lstart);
+@@ -3759,7 +3759,7 @@ ext4_mb_new_group_pa(struct ext4_allocation_context *ac)
+ 	INIT_LIST_HEAD(&pa->pa_inode_list);
+ 	INIT_LIST_HEAD(&pa->pa_group_list);
+ 	pa->pa_deleted = 0;
+-	pa->pa_linear = 1;
++	pa->pa_type = MB_GROUP_PA;
+ 
+ 	mb_debug("new group pa %p: %llu/%u for %u\n", pa,
+ 		 pa->pa_pstart, pa->pa_len, pa->pa_lstart);
+@@ -4013,7 +4013,7 @@ repeat:
+ 		list_del_rcu(&pa->pa_inode_list);
+ 		spin_unlock(pa->pa_obj_lock);
+ 
+-		if (pa->pa_linear)
++		if (pa->pa_type == MB_GROUP_PA)
+ 			ext4_mb_release_group_pa(&e4b, pa, ac);
+ 		else
+ 			ext4_mb_release_inode_pa(&e4b, bitmap_bh, pa, ac);
+@@ -4113,7 +4113,7 @@ repeat:
+ 	spin_unlock(&ei->i_prealloc_lock);
+ 
+ 	list_for_each_entry_safe(pa, tmp, &list, u.pa_tmp_list) {
+-		BUG_ON(pa->pa_linear != 0);
++		BUG_ON(pa->pa_type != MB_INODE_PA);
+ 		ext4_get_group_no_and_offset(sb, pa->pa_pstart, &group, NULL);
+ 
+ 		err = ext4_mb_load_buddy(sb, group, &e4b);
+@@ -4365,7 +4365,7 @@ ext4_mb_discard_lg_preallocations(struct super_block *sb,
+ 			continue;
+ 		}
+ 		/* only lg prealloc space */
+-		BUG_ON(!pa->pa_linear);
++		BUG_ON(pa->pa_type != MB_GROUP_PA);
+ 
+ 		/* seems this one can be freed ... */
+ 		pa->pa_deleted = 1;
+@@ -4471,7 +4471,7 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
  {
- 	ext4_group_t grp;
-+	ext4_fsblk_t grp_blk;
+ 	struct ext4_prealloc_space *pa = ac->ac_pa;
+ 	if (pa) {
+-		if (pa->pa_linear) {
++		if (pa->pa_type == MB_GROUP_PA) {
+ 			/* see comment in ext4_mb_use_group_pa() */
+ 			spin_lock(&pa->pa_lock);
+ 			pa->pa_pstart += ac->ac_b_ex.fe_len;
+@@ -4491,7 +4491,7 @@ static int ext4_mb_release_context(struct ext4_allocation_context *ac)
+ 		 * doesn't grow big.  We need to release
+ 		 * alloc_semp before calling ext4_mb_add_n_trim()
+ 		 */
+-		if (pa->pa_linear && likely(pa->pa_free)) {
++		if ((pa->pa_type == MB_GROUP_PA) && likely(pa->pa_free)) {
+ 			spin_lock(pa->pa_obj_lock);
+ 			list_del_rcu(&pa->pa_inode_list);
+ 			spin_unlock(pa->pa_obj_lock);
+diff --git a/fs/ext4/mballoc.h b/fs/ext4/mballoc.h
+index 10a2921..340cc4b 100644
+--- a/fs/ext4/mballoc.h
++++ b/fs/ext4/mballoc.h
+@@ -132,12 +132,15 @@ struct ext4_prealloc_space {
+ 	ext4_lblk_t		pa_lstart;	/* log. block */
+ 	unsigned short		pa_len;		/* len of preallocated chunk */
+ 	unsigned short		pa_free;	/* how many blocks are free */
+-	unsigned short		pa_linear;	/* consumed in one direction
+-						 * strictly, for grp prealloc */
++	unsigned short		pa_type;	/* pa type. inode or group */
+ 	spinlock_t		*pa_obj_lock;
+ 	struct inode		*pa_inode;	/* hack, for history only */
+ };
  
- 	if (!atomic_dec_and_test(&pa->pa_count) || pa->pa_free != 0)
- 		return;
-@@ -3603,8 +3604,12 @@ static void ext4_mb_put_pa(struct ext4_a
- 	pa->pa_deleted = 1;
- 	spin_unlock(&pa->pa_lock);
++enum {
++	MB_INODE_PA = 0,
++	MB_GROUP_PA = 1
++};
  
--	/* -1 is to protect from crossing allocation group */
--	ext4_get_group_no_and_offset(sb, pa->pa_pstart - 1, &grp, NULL);
-+	grp_blk = pa->pa_pstart;
-+	/* If linear, pa_pstart may be in the next group when pa is used up */
-+	if (pa->pa_linear)
-+		grp_blk--;
-+
-+	ext4_get_group_no_and_offset(sb, grp_blk, &grp, NULL);
- 
- 	/*
- 	 * possible race:
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+ struct ext4_free_extent {
+ 	ext4_lblk_t fe_logical;
+-- 
+tg: (5bee17f..) pa_linear_rename (depends on: master)
