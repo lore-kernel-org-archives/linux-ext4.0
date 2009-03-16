@@ -1,89 +1,89 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Same magic in statfs() call for ext?
-Date: Mon, 16 Mar 2009 17:27:38 +0100
-Message-ID: <20090316162737.GC10596@duck.suse.cz>
-References: <20090316133615.GA10596@duck.suse.cz> <49BE7A99.5050601@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH V2] fix bb_prealloc_list corruption due to wrong group locking
+Date: Mon, 16 Mar 2009 11:47:37 -0500
+Message-ID: <49BE82A9.4000407@redhat.com>
+References: <49BAD6D9.3010505@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ns2.suse.de ([195.135.220.15]:59322 "EHLO mx2.suse.de"
+Received: from mx2.redhat.com ([66.187.237.31]:52976 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752191AbZCPQ1l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Mar 2009 12:27:41 -0400
-Content-Disposition: inline
-In-Reply-To: <49BE7A99.5050601@redhat.com>
+	id S1758458AbZCPQru (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 16 Mar 2009 12:47:50 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2GGlmWw032635
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2009 12:47:48 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2GGlmUW007530
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2009 12:47:48 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n2GGllCQ001495
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2009 12:47:48 -0400
+In-Reply-To: <49BAD6D9.3010505@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon 16-03-09 11:13:13, Eric Sandeen wrote:
-> Jan Kara wrote:
-> >   Hi,
-> > 
-> >   I've just noticed that EXT2_SUPER_MAGIC == EXT3_SUPER_MAGIC ==
-> > EXT4_SUPER_MAGIC. 
-> Just noticed?  *grin*
-  ;-)
+This is for Red Hat bug 490026,
+EXT4 panic, list corruption in ext4_mb_new_inode_pa
 
-> > That is just fine for the disk format but as a result we
-> > also return the same magic in statfs() syscall and thus a simple
-> > application has hard time recognizing whether it works on ext2, ext3 or
-> > ext4 (it would have to parse /proc/mounts and that is non-trivial if not
-> > impossible when it comes to bind mounts). 
-> 
-> I have a guess as to why they want to know, and ...
-> 
-> > So should not we return different
-> > magic numbers depending on how the filesystem is currently mounted?
-> >   Now you may ask why should the application care - and I agree that in the
-> > ideal world it should not. But for example there's a thread on GTK mailing
-> > list [1] where they discuss the problem that with delayed allocation and
-> > ext4, user can easily lose his data after crash 
-> 
-> ... sadly I was right.  :)
-> 
-> > (Ted wrote about it here in
-> > some other mail some time ago). So they would like to call fsync() after
-> > the file is written but on ext3 that is quite heavy and because of autosave
-> > saving happens quite often. So they'd do fsync() only if the filesystem
-> > is mounted as ext4...
-> >   So I'm writing here so hear some opinions on returning different magic
-> > numbers from statfs().
-> > 
-> > 								Honza
-> > 
-> > [1] http://mail.gnome.org/archives/gtk-devel-list/2009-March/msg00082.html
-> 
-> As an aside, Ted also pointed out that ext4-without-delalloc also hurts
-> on fsync just like ext3 does, so testing "ext3 vs. ext4" isn't quite
-> enough in general.
-  Yes, I know but it's at least some approximation.
+ext4_lock_group(sb, group) is supposed to protect this list for
+each group, and a common code flow to remove an album is like
+this:
 
-> I have been a bit dismayed that app writers just want the old ext3
-> behavior (which still has a window for loss, doesn't it?) so that they
-> can get away without fsyncing.  And talking to KDE folks and others, I
-> think that if ext3 didn't hurt so much w/ fsync, they would just happily
-> do the right posix-defined thing and add fsync() when needed.
-> 
-> But instead, since they are now justifiably afraid of fsync, we are in
-> this quandary.  (maybe this is over-simplifying a bit).
-> 
-> But off the top of my head, I think that I would prefer to see
-> applications generally do the right, posix-conformant thing w.r.t. data
-> integrity (i.e. fsync()) unless, via statfs, they find out "fsync hurts,
-> and we're likely to be reasoonably safe without it"
-> 
-> IOW, adding exceptions for ext3 sounds better to me than munging ext4,
-> xfs, btrfs, and all future filesystems to conform to some behavior which
-> isn't in any API or spec ...
-  Yes, I agree that if they want data on disk, they should use fsync(). But
-as you say for ext3 this is not really usable so they have to somehow
-recognize that "they are on a filesystem where fsync() sucks" and avoid it
-as much as possible. And I feel slightly in favor of giving them enough rope
-(i.e., different magic numbers in statfs) to hang themselves ;-).
+    ext4_get_group_no_and_offset(sb, pa->pa_pstart, &grp, NULL);
+    ext4_lock_group(sb, grp);
+    list_del(&pa->pa_group_list);
+    ext4_unlock_group(sb, grp);
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+so it's critical that we get the right group number back for
+this prealloc context, to lock the right group (the one 
+associated with this pa) and prevent concurrent list manipulation.
+
+however, ext4_mb_put_pa() passes in (pa->pa_pstart - 1) with a 
+comment, /* -1 is to protect from crossing allocation group */
+
+This makes sense for the group_pa, where pa_pstart is advanced
+by the length which has been used (in ext4_mb_release_context()),
+and when the entire length has been used, pa_pstart has been
+advanced to the first block of the next group.
+
+However, for inode_pa, pa_pstart is never advanced; it's just
+set once to the first block in the group and not moved after
+that.  So in this case, if we subtract one in ext4_mb_put_pa(),
+we are actually locking the *previous* group, and opening the
+race with the other threads which do not subtract off the extra
+block.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
+
+ndex: linux-2.6/fs/ext4/mballoc.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/mballoc.c
++++ linux-2.6/fs/ext4/mballoc.c
+@@ -3589,6 +3589,7 @@ static void ext4_mb_put_pa(struct ext4_a
+ 			struct super_block *sb, struct ext4_prealloc_space *pa)
+ {
+ 	ext4_group_t grp;
++	ext4_fsblk_t grp_blk;
+ 
+ 	if (!atomic_dec_and_test(&pa->pa_count) || pa->pa_free != 0)
+ 		return;
+@@ -3603,8 +3604,12 @@ static void ext4_mb_put_pa(struct ext4_a
+ 	pa->pa_deleted = 1;
+ 	spin_unlock(&pa->pa_lock);
+ 
+-	/* -1 is to protect from crossing allocation group */
+-	ext4_get_group_no_and_offset(sb, pa->pa_pstart - 1, &grp, NULL);
++	grp_blk = pa->pa_pstart;
++	/* If linear, pa_pstart is in the next block group when pa is used up */
++	if (pa->pa_linear)
++		grp_blk--;
++
++	ext4_get_group_no_and_offset(sb, grp_blk, &grp, NULL);
+ 
+ 	/*
+ 	 * possible race:
+
