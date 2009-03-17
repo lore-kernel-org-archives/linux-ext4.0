@@ -1,77 +1,39 @@
-From: Kyle Moffett <kyle@moffetthome.net>
-Subject: Re: ext2/3: document conditions when reliable operation is possible
-Date: Tue, 17 Mar 2009 00:55:04 -0400
-Message-ID: <f73f7ab80903162155p2f9de16aj122978d7fc220f40@mail.gmail.com>
-References: <20090312092114.GC6949@elf.ucw.cz>
-	 <20090316123051.GJ2405@elf.ucw.cz>
-	 <20090316194057.GA27897@silver.sucs.org>
-	 <200903161643.15887.rob@landley.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Sitsofe Wheeler <sitsofe@yahoo.com>, Pavel Machek <pavel@ucw.cz>,
-	kernel list <linux-kernel@vger.kernel.org>,
-	Andrew Morton <akpm@osdl.org>, mtk.manpages@gmail.com,
-	tytso@mit.edu, rdunlap@xenotime.net, linux-doc@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Rob Landley <rob@landley.net>
-Return-path: <linux-doc-owner@vger.kernel.org>
-In-Reply-To: <200903161643.15887.rob@landley.net>
-Sender: linux-doc-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: bugme-daemon@bugzilla.kernel.org
+Subject: [Bug 12821] filesystem corrupts on heavy I/O
+Date: Mon, 16 Mar 2009 23:07:40 -0700 (PDT)
+Message-ID: <20090317060740.69171108042@picon.linux-foundation.org>
+References: <bug-12821-13602@http.bugzilla.kernel.org/>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:40695 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753161AbZCQGIU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Mar 2009 02:08:20 -0400
+Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n2H67ewV011343
+	for <linux-ext4@vger.kernel.org>; Mon, 16 Mar 2009 23:08:17 -0700
+In-Reply-To: <bug-12821-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 16, 2009 at 5:43 PM, Rob Landley <rob@landley.net> wrote:
-> Flash gets into trouble when it presents the _interface_ of rotationa=
-l media
-> (a USB block device with normal 512 byte read/write sectors, which ne=
-ver wear
-> out) which doesn't match what the hardware's actually doing (erase bl=
-ock sizes
-> of up to several megabytes at a time, hidden behind a block remapping=
- layer
-> for wear leveling).
->
-> For devices that have built in flash that DON'T pretend to be a conve=
-ntional
-> block device, but instead expose their flash erase granularity and le=
-t the OS
-> do the wear levelling itself, we have special flash filesystems that =
-can be
-> reasonably reliable. =C2=A0It's just that ext3 isn't one of them, jff=
-s2 and ubifs
-> and logfs are. =C2=A0The problem with these flash filesystems is they=
- ONLY work on
-> flash, if you want to mount them on something other than flash you ne=
-ed
-> something like a loopback interface to make a normal block device pre=
-tend to
-> be flash. =C2=A0(We've got a ramdisk driver called "mtdram" that does=
- this, but
-> nobody's bothered to write a generic wrapper for a normal block devic=
-e you can
-> wrap over the loopback driver.)
+http://bugzilla.kernel.org/show_bug.cgi?id=12821
 
-The really nice SSDs actually reserve ~15-30% of their internal
-block-level storage and actually run their own log-structured virtual
-disk in hardware.  From what I understand the Intel SSDs are that way.
- Real-time garbage collection is tricky, but if you require (for
-example) a max of ~80% utilization then you can provide good latency
-and bandwidth guarantees.  There's usually something like a
-log-structured virtual-to-physical sector map as well.  If designed
-properly with automatic hardware checksumming, such a system can
-actually provide atomic writes and barriers with virtually no impact
-on performance.
 
-With firmware-level hardware knowledge and the ability to perform
-extremely efficient parallel reads of flash blocks, such a
-log-structured virtual block device can be many times more efficient
-than a general purpose OS running a log-structured filesystem.  The
-result is that for an ordinary ext3-esque filesystem with 4k blocks
-you can treat the SSD as though it is an atomic-write seek-less block
-device.
 
-Now if only I had the spare cash to go out and buy one of the shiny
-Intel ones for my laptop... :-)
 
-Cheers,
-Kyle Moffett
+
+------- Comment #18 from lucent+lkml@gmail.com  2009-03-16 23:07 -------
+Created an attachment (id=20561)
+ --> (http://bugzilla.kernel.org/attachment.cgi?id=20561&action=view)
+output of debugfs 'stat <2491101>' (split 1 of 2)
+
+Having first applied the suggested patch, is debugfs output taken after file
+completed and verified intact from BitTorrent download. Split and then
+compressed to comply with 1000k bugzilla constraint: 1 of 2.
+
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are the assignee for the bug, or are watching the assignee.
