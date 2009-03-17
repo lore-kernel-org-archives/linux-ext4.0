@@ -1,28 +1,33 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH V3] fix bb_prealloc_list corruption due to wrong group
-	locking
-Date: Mon, 16 Mar 2009 23:30:42 -0400
-Message-ID: <20090317033042.GC15989@mit.edu>
-References: <49BAD6D9.3010505@redhat.com> <49BE82A9.4000407@redhat.com> <49BE8C30.5030901@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] ext4: Add support for data=alloc_on_commit mode
+Date: Mon, 16 Mar 2009 23:07:36 -0500
+Message-ID: <49BF2208.2030709@redhat.com>
+References: <1237259998-12656-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:57292 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([66.187.233.31]:32771 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751883AbZCQDap (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 16 Mar 2009 23:30:45 -0400
-Content-Disposition: inline
-In-Reply-To: <49BE8C30.5030901@redhat.com>
+	id S1750751AbZCQEHk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 17 Mar 2009 00:07:40 -0400
+In-Reply-To: <1237259998-12656-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 16, 2009 at 12:28:16PM -0500, Eric Sandeen wrote:
-> This is for Red Hat bug 490026,
-> EXT4 panic, list corruption in ext4_mb_new_inode_pa
+Theodore Ts'o wrote:
+> Add an ext3 bug-for-bug compatible analogue for data=ordered mode.  In
+> this mode, we force all delayed allocation blocks involved with the
+> to-be-commited transaction to be allocated, and then flushed out to
+> disk before the transaction is commited.
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 
-Thanks, applied to the ext4 tree.
+Just out of curiosity, what is intended to be the default mode?  How do
+you envision users choosing between data=ordered vs. data=alloc-on-commit?
 
-						- Ted
+Maybe I'm asking whether there's a Documentation/ patch to go with this? :)
 
+-Eric
