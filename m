@@ -1,36 +1,41 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 fixes
-Date: Tue, 17 Mar 2009 16:39:41 -0400
-Message-ID: <E1Ljg4b-0000us-NG@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:41591 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753585AbZCQUjs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 17 Mar 2009 16:39:48 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH 4/4] fs: Warn about writing !uptodate buffers
+Date: Tue, 17 Mar 2009 18:33:55 +0100
+Message-ID: <1237311235-13623-5-git-send-email-jack@suse.cz>
+References: <n>
+ <1237311235-13623-1-git-send-email-jack@suse.cz>
+ <1237311235-13623-2-git-send-email-jack@suse.cz>
+ <1237311235-13623-3-git-send-email-jack@suse.cz>
+ <1237311235-13623-4-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: LKML <linux-kernel@vger.kernel.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757158AbZCQVGg@vger.kernel.org>
+In-Reply-To: <1237311235-13623-4-git-send-email-jack@suse.cz>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Linus,
+Make submit_bh() warn about writing !uptodate buffers. Hopefully this
+warns us about writing garbage (although bugs in write EIO handling
+are going to trigger this as well as they already trigger the warning
+in mark_buffer_dirty()).
 
-Please pull from:
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/buffer.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
-
-to grab final 2.6.29 fixes for ext4.  Thanks!!
-
-						- Ted
-	
-Eric Sandeen (3):
-      ext4: fix header check in ext4_ext_search_right() for deep extent trees.
-      ext4: fix bogus BUG_ONs in in mballoc code
-      ext4: fix bb_prealloc_list corruption due to wrong group locking
-
-Theodore Ts'o (1):
-      ext4: Print the find_group_flex() warning only once
-
- fs/ext4/extents.c |    6 ++++--
- fs/ext4/ialloc.c  |    4 +++-
- fs/ext4/mballoc.c |   13 +++++++++----
- 3 files changed, 16 insertions(+), 7 deletions(-)
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 22c0144..985f617 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -2997,6 +2997,8 @@ int submit_bh(int rw, struct buffer_head * bh)
+ 	BUG_ON(!buffer_locked(bh));
+ 	BUG_ON(!buffer_mapped(bh));
+ 	BUG_ON(!bh->b_end_io);
++	if (rw & WRITE)
++		WARN_ON_ONCE(!buffer_uptodate(bh));
+ 
+ 	/*
+ 	 * Mask in barrier bit for a write (could be either a WRITE or a
+-- 
+1.6.0.2
