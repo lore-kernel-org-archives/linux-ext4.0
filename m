@@ -1,43 +1,50 @@
-From: bugme-daemon@bugzilla.kernel.org
-Subject: [Bug 12885] kernel BUG at fs/jbd/transaction.c:1376!
-Date: Wed, 18 Mar 2009 12:13:20 -0700 (PDT)
-Message-ID: <20090318191320.6CD11108040@picon.linux-foundation.org>
-References: <bug-12885-13602@http.bugzilla.kernel.org/>
-To: linux-ext4@vger.kernel.org
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: uti-linux-ng libblkid
+Date: Wed, 18 Mar 2009 20:28:01 +0100
+Message-ID: <20090318192801.GB16333@nb.net.home>
+References: <1235410733-4193-1-git-send-email-kzak@redhat.com> <20090309010833.GE5578@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:52215 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750895AbZCRTOZ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Mar 2009 15:14:25 -0400
-Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n2IJDKCn004801
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Mar 2009 12:13:56 -0700
-In-Reply-To: <bug-12885-13602@http.bugzilla.kernel.org/>
+Received: from mx2.redhat.com ([66.187.237.31]:58113 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752604AbZCRT2W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 18 Mar 2009 15:28:22 -0400
+Content-Disposition: inline
+In-Reply-To: <20090309010833.GE5578@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12885
+On Sun, Mar 08, 2009 at 09:08:33PM -0400, Theodore Tso wrote:
+> On Mon, Feb 23, 2009 at 06:38:51PM +0100, Karel Zak wrote:
+> > here are two patches that allow to link utils from e2fsprogs with
+> > external libblkid (e.g. the version from util-linux-ng).
+> 
+> Thanks, I'm starting to play with the builtin fsprobe libraries in
+> util-linux-ng right now.  Some quick issues I've found right off the
+> bat.  Automake is returning these errors:
 
+ Ted, use 
+   ftp://ftp.kernel.org/pub/linux/utils/util-linux-ng/v2.15/util-linux-ng-2.15-rc1.tar.bz2
+ 
+ I look forward to see the patches in e2fsprogs ;-)
 
+ I have question, do you think that you can freeze the libblkid
+ version number in e2fsprogs? (now it's <maj>.<min>.<rel> = 1.41.4) 
+ 
+ I think it makes sense to increment the major and minor version
+ numbers in util-linux-ng only. The version in e2fsprogs should be in
+ feature-freeze state.
 
+ The current libblkid version number in util-linux-ng-2.15-rc1 is 
+ 1.99.0 -- but I'd like to use something more sane for the final
+ release.
 
+ Thanks.
 
-------- Comment #14 from tytso@mit.edu  2009-03-18 12:13 -------
-In answer to your question in comment #12, yes, it's expected that processes
-accessing the problematic directory might hang after a reboot, since when the
-process died after the BUG, it probably left some locks locked, and so
-processes would end up waiting forever for the locks to get unlocked (which
-they won't since the process that held them died after the OOPS message).
-
-But if this was caused by the unrar, then this might be harder to replicate....
-
-In any case, if you haven't rebooted yet, I would try rebooting, and then
-running e2fsck on the filesystem to make sure it is consistent.  Then the next
-trick is to see what is needed to replicate the BUG/oops message.
-
+    Karel
 
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are the assignee for the bug, or are watching the assignee.
+ Karel Zak  <kzak@redhat.com>
