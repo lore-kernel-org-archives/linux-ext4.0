@@ -1,18 +1,18 @@
 From: bugme-daemon@bugzilla.kernel.org
 Subject: [Bug 12885] kernel BUG at fs/jbd/transaction.c:1376!
-Date: Wed, 18 Mar 2009 10:41:43 -0700 (PDT)
-Message-ID: <20090318174143.5106A108040@picon.linux-foundation.org>
+Date: Wed, 18 Mar 2009 10:45:08 -0700 (PDT)
+Message-ID: <20090318174508.8C43810800E@picon.linux-foundation.org>
 References: <bug-12885-13602@http.bugzilla.kernel.org/>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:48860 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:52109 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752452AbZCRRmj (ORCPT
+	by vger.kernel.org with ESMTP id S1755984AbZCRRqO (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 18 Mar 2009 13:42:39 -0400
+	Wed, 18 Mar 2009 13:46:14 -0400
 Received: from picon.linux-foundation.org (picon.linux-foundation.org [140.211.169.79])
-	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n2IHfhGm028218
-	for <linux-ext4@vger.kernel.org>; Wed, 18 Mar 2009 10:42:19 -0700
+	by smtp1.linux-foundation.org (8.14.2/8.13.5/Debian-3ubuntu1.1) with ESMTP id n2IHj8J2028523
+	for <linux-ext4@vger.kernel.org>; Wed, 18 Mar 2009 10:45:44 -0700
 In-Reply-To: <bug-12885-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -23,14 +23,22 @@ http://bugzilla.kernel.org/show_bug.cgi?id=12885
 
 
 
-------- Comment #7 from tytso@mit.edu  2009-03-18 10:41 -------
-It's good to know that you can reproduce it easily on that particular ext3 file
-system.   One interesting question is whether you can reproduce it on some
-other ext3 file system (since then we might be able to reproduce it on our
-end); although I haven't played with LUKS at all, and I don't know how much
-effort it would take for me to set it up on my system.
+------- Comment #8 from tytso@mit.edu  2009-03-18 10:45 -------
+One interesting thing you could try, if you can go to 2.6.29-rc8, is you could
+try mounting your ext3 filesystem using ext4, and see if the problem goes away
+or not.   If the problem sticks around, then that's actually very interesting,
+since so much has changed between ext3 and ext4.  If it goes away, that could
+be a solution for you, but it also could be that it's just harder to reproduce
+on ext4.
 
-How are you backing up the data?   tar?  Amanda?   Some other backup system?
+This smells like a bug in jbd layer, or perhaps some assumption which is
+getting violated by LUKS; since if it was as simple as just doing a backup of a
+tree while another process was copying data into it, ext3 is such a commonly
+used file system that I would have thought such a problem would have been
+discovered by now.  So if we have something like this which can be easily
+reproduced, I really want to try to get it chased down.
+
+Thanks,
 
 
 -- 
