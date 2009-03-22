@@ -1,59 +1,66 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH, RFC 0/2] Mitigate fsync's with ext3's data=ordered mode
-Date: Sat, 21 Mar 2009 21:12:08 -0400
-Message-ID: <1237684330-11770-1-git-send-email-tytso@mit.edu>
-Cc: akpm@linux-foundation.org,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: linux-kernel@vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: fsync-tester.c
+Date: Sat, 21 Mar 2009 23:31:20 -0400
+Message-ID: <E1LlEPA-00046j-IZ@closure.thunk.org>
+To: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35240 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:39164 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751856AbZCVBMS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 21 Mar 2009 21:12:18 -0400
+	id S1752188AbZCVDb0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 21 Mar 2009 23:31:26 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 
-Given the recent hoo-hah about ext4 and delayed allocation, I reviewed
-the history of the Firefox 3.0 bug here:
+This is the test program I've been using to test fsync() latency.
 
-    https://bugzilla.mozilla.org/show_bug.cgi?id=421482
+     	    	 	      	   - Ted
 
-Reports of the fsync() getting delayed by up to 30 seconds didn't make
-sense to me, since there shouldn't be that much data waiting to be
-flushed out, even if there was a very heavy write-intensive job
-writing multiple gigabytes to the file.  When I looked more closely,
-it became clear that what was really going on was a *read* intensive
-job that was starving writes, due to the fact that the writes
-submitted from the journal are using WRITE instead of WRITE_SYNC, and
-I/O schedulers tend to prioritize reads ahead of writes.
+/*
+ * fsync-tester.c
+ *
+ * Written by Theodore Ts'o, 3/21/09.
+ *
+ * This file may be redistributed under the terms of the GNU Public
+ * License, version 2.
+ */
 
-This also explains why Aryan's patch which forced a higher I/O
-priority for kjournald was helpful.  This is a better approach, since
-we only force journal blocks out using WRITE_SYNC if the transaction
-was triggered by something synchronous, such as an fsync() call, or a
-file descriptor opened with O_SYNC.  The first patch does cause data
-blocks forced out using data=ordered to be written out using
-WRITE_SYNC even if the commit kicked off due to the 5 second commit
-interval --- however, it does make the right thing happen when the
-blocks are being forced out due to fsync() or fdatasync(), when before
-the writes were being submitted without being marked as synchronous
-writes.  
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <time.h>
+#include <fcntl.h>
+#include <string.h>
 
-If it is considered highly objectionable that asynchronous commits
-will result in WRITE_SYNC writes, we could add a new flag to the wbc
-structure which could be passed all the way down to
-block_write_full_page().  On the other hand, in the long run it's
-better that commit complete sooner rather than later, since a
-subsequent transaction could end up blocked behind the current
-transaction, and that subsequent transaction could be a synchronous
-one blocking an fsync() or some other synchronous operation.
+#define SIZE (1024*1024)
 
-I've done experiments with and without these patches, and it
-definitely helps fsync() latency from between when there is a heavy
-read intensive job starving the writes by about 75%.  The workload I
-used was a tar command; I suspect if I had used a dd of a really huge
-file, the fsync times without the patch would be even worse, and the
-concommittent improvements would be even better.
+static float timeval_subtract(struct timeval *tv1, struct timeval *tv2)
+{
+	return ((tv1->tv_sec - tv2->tv_sec) +
+		((float) (tv1->tv_usec - tv2->tv_usec)) / 1000000);
+}
 
-						- Ted
+int main(int argc, char **argv)
+{
+	int	fd;
+	struct timeval tv, tv2;
+	char buf[SIZE];
+
+	fd = open("fsync-tester.tst-file", O_WRONLY|O_CREAT);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+	memset(buf, 'a', SIZE);
+	while (1) {
+		pwrite(fd, buf, SIZE, 0);
+		gettimeofday(&tv, NULL);
+		fsync(fd);
+		gettimeofday(&tv2, NULL);
+		printf("fsync time: %5.4f\n", timeval_subtract(&tv2, &tv));
+		sleep(1);
+	}
+}
+	
