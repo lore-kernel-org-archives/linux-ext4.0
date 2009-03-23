@@ -1,117 +1,93 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH] ext4: Track lifetime disk writes
-Date: Mon, 23 Mar 2009 21:20:24 +0530
-Message-ID: <20090323155024.GA27876@skywalker>
-References: <E1LdHKi-0000Zm-Mv@closure.thunk.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] remove whole-disk entries from cache when partitions are
+ found
+Date: Mon, 23 Mar 2009 11:51:51 -0500
+Message-ID: <49C7BE27.2090702@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:49357 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753459AbZCWPuz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Mar 2009 11:50:55 -0400
-Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp08.au.ibm.com (8.13.1/8.13.1) with ESMTP id n2NFooiY010742
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2009 02:50:50 +1100
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n2NFp7571032358
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2009 02:51:08 +1100
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n2NFooYL024478
-	for <linux-ext4@vger.kernel.org>; Tue, 24 Mar 2009 02:50:50 +1100
-Content-Disposition: inline
-In-Reply-To: <E1LdHKi-0000Zm-Mv@closure.thunk.org>
+Received: from mx2.redhat.com ([66.187.237.31]:49444 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757389AbZCWQwJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Mar 2009 12:52:09 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2NGq7eL027839
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2009 12:52:07 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2NGq2wb021159
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2009 12:52:03 -0400
+Received: from neon.msp.redhat.com (neon.msp.redhat.com [10.15.80.10])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n2NGq69w032172
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2009 12:52:07 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Feb 28, 2009 at 12:01:52AM -0500, Theodore Ts'o wrote:
-> 
-> Add a new superblock value which tracks the lifetime amount of writes
-> to the filesystem.  This is useful in estimating the amount of wear on
-> solid state drives (SSD's) caused by writes to the filesystem.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/ext4.h    |    3 ++-
->  fs/ext4/ext4_sb.h |    4 ++++
->  fs/ext4/super.c   |    7 +++++++
->  3 files changed, 13 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-> index 8599e37..f9a3bc3 100644
-> --- a/fs/ext4/ext4.h
-> +++ b/fs/ext4/ext4.h
-> @@ -685,7 +685,8 @@ struct ext4_super_block {
->  	__u8	s_log_groups_per_flex;  /* FLEX_BG group size */
->  	__u8	s_reserved_char_pad2;
->  	__le16  s_reserved_pad;
-> -	__u32   s_reserved[162];        /* Padding to the end of the block */
-> +	__le64	s_kbytes_written;	/* nr of lifetime kilobytes written */
-> +	__u32   s_reserved[160];        /* Padding to the end of the block */
->  };
-> 
->  #ifdef __KERNEL__
-> diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
-> index 4e4d9cc..50ab116 100644
-> --- a/fs/ext4/ext4_sb.h
-> +++ b/fs/ext4/ext4_sb.h
-> @@ -142,6 +142,10 @@ struct ext4_sb_info {
->  	/* locality groups */
->  	struct ext4_locality_group *s_locality_groups;
-> 
-> +	/* for write statistics */
-> +	unsigned long s_sectors_written_start;
-> +	u64 s_kbytes_written;
-> +
->  	unsigned int s_log_groups_per_flex;
->  	struct flex_groups *s_flex_groups;
->  };
+We can get into a situation in blkid where whole disks remain
+in the cache, even though partitions are found.  For labels
+such as sun disklabels which may have the first partition
+beginning at sector 0, this is even somewhat likely.
 
-Do we need this change ? We don't seems to be using it anywhere.
+1) create a sun disklabel w/partitions
+2) mkfs the first partition (at sector 0)
+3) remove the partition table
+4) run blkid - this finds the fs on the whole disk, places in cache
+5) recreate the partition table
+6) run blkid - this finds the partition, places in cache
 
-> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-> index c69f04c..007aa0a 100644
-> --- a/fs/ext4/super.c
-> +++ b/fs/ext4/super.c
-> @@ -2039,6 +2039,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
->  	sbi->s_resgid = EXT4_DEF_RESGID;
->  	sbi->s_inode_readahead_blks = EXT4_DEF_INODE_READAHEAD_BLKS;
->  	sbi->s_sb_block = sb_block;
-> +	sbi->s_sectors_written_start = part_stat_read(sb->s_bdev->bd_part,
-> +						      sectors[1]);
-> 
->  	unlock_kernel();
-> 
-> @@ -2535,6 +2537,7 @@ no_journal:
->  	}
-> 
->  	ext4_setup_super(sb, es, sb->s_flags & MS_RDONLY);
-> +	sbi->s_kbytes_written = le64_to_cpu(es->s_kbytes_written);
-> 
->  	/* determine the minimum size of new large inodes, if present */
->  	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
-> @@ -2929,6 +2932,10 @@ static int ext4_commit_super(struct super_block *sb,
->  		set_buffer_uptodate(sbh);
->  	}
->  	es->s_wtime = cpu_to_le32(get_seconds());
-> +	es->s_kbytes_written =
-> +		cpu_to_le64(EXT4_SB(sb)->s_kbytes_written + 
-> +			    ((part_stat_read(sb->s_bdev->bd_part, sectors[1]) -
-> +			      EXT4_SB(sb)->s_sectors_written_start) >> 1));
->  	ext4_free_blocks_count_set(es, percpu_counter_sum_positive(
->  					&EXT4_SB(sb)->s_freeblocks_counter));
->  	es->s_free_inodes_count = cpu_to_le32(percpu_counter_sum_positive(
+And now we have both /dev/sda and /dev/sda1 in cache.
 
-Can't we just do
+There are heuristics in probe_all to avoid putting the whole disk
+in cache if it has partitions, but there is nothing to remove the
+whole-disk entry in the above case.  I think the below patch 
+suffices, although I haven't quite convinced myself that setting 
+the lens[which]=0; is the right logic for that bit of state...
 
-es->s_kbytes_written = cpu_to_le64(le64_to_cpu(es->s_kbytes_written) + (part_stat_read(sb->s_bdev->bd_part, sectors[1]) >> 1))
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-During ext4_commit_super without even touching ext4_sb_info ? 
-
-What is being tracked in s_sectors_written_start ?
-
--aneesh
+Index: e2fsprogs/lib/blkid/devname.c
+===================================================================
+--- e2fsprogs.orig/lib/blkid/devname.c
++++ e2fsprogs/lib/blkid/devname.c
+@@ -365,6 +365,7 @@ static int probe_all(blkid_cache cache, 
+ 	unsigned long long sz;
+ 	int lens[2] = { 0, 0 };
+ 	int which = 0, last = 0;
++	struct list_head *p, *pnext;
+ 
+ 	ptnames[0] = ptname0;
+ 	ptnames[1] = ptname1;
+@@ -425,6 +428,29 @@ static int probe_all(blkid_cache cache, 
+ 		}
+ 
+ 		/*
++		 * If last was a whole disk and we just found a partition
++		 * on it, remove the whole-disk dev from the cache if
++		 * it exists.
++		 */
++		if (lens[last] && !strncmp(ptnames[last], ptname, lens[last])) {
++			list_for_each_safe(p, pnext, &cache->bic_devs) {
++				blkid_dev tmp;
++
++				/* find blkid dev for the whole-disk devno */
++				tmp = list_entry(p, struct blkid_struct_dev,
++						 bid_devs);
++				if (tmp->bid_devno == devs[last]) {
++					DBG(DEBUG_DEVNAME,
++						printf("freeing %s\n",
++						       tmp->bid_name));
++					blkid_free_dev(tmp);
++					cache->bic_flags |= BLKID_BIC_FL_CHANGED;
++					break;
++				}
++			}
++			lens[last] = 0;
++		}
++		/*
+ 		 * If last was not checked because it looked like a whole-disk
+ 		 * dev, and the device's base name has changed,
+ 		 * check last as well.
 
 
