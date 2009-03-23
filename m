@@ -1,44 +1,47 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: old/new ext3 compatibility
-Date: Mon, 23 Mar 2009 19:34:28 +0100
-Message-ID: <20090323183428.GE15488@atrey.karlin.mff.cuni.cz>
-References: <20090319184501.GG3634@mtholyoke.edu> <20090319220224.GM3634@mtholyoke.edu>
+From: Don Porter <porterde@cs.utexas.edu>
+Subject: ext3 leaking buffer_heads
+Date: Mon, 23 Mar 2009 14:56:09 -0500
+Message-ID: <49C7E959.4010000@cs.utexas.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Ron Peterson <rpeterso@mtholyoke.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:36294 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754369AbZCWSea (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Mar 2009 14:34:30 -0400
-Content-Disposition: inline
-In-Reply-To: <20090319220224.GM3634@mtholyoke.edu>
+Received: from mail.cs.utexas.edu ([128.83.139.10]:38757 "EHLO
+	mail.cs.utexas.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755028AbZCWUpz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 23 Mar 2009 16:45:55 -0400
+Received: from [128.83.122.94] (habals.csres.utexas.edu [128.83.122.94])
+	(authenticated bits=0)
+	by mail.cs.utexas.edu (8.14.3/8.14.3) with ESMTP id n2NJu9Qw011006
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-ext4@vger.kernel.org>; Mon, 23 Mar 2009 14:56:10 -0500 (CDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> 2009-03-19_14:45:02-0400 rpeterso:
-> > As I understand it, debian lenny's ext3 filesystem uses 256 byte inodes,
-> > to be forward compatible with ext4.
-> > 
-> > I have a production server running debian etch.  It is attached to a
-> > fiber channel array, on which it has several ext3 filesystems.  I'm
-> > installing a new server, and I'd like to use lenny.  It will be attached
-> > to the same array, and I'd like to be able to occasionally use the ext3
-> > filesystems created previously.  Ideally, I'd also like to go the other
-> > direction as well.  Is this possible, or just crazy talk?
-> 
-> If I understand what I'm reading correctly, this is a non-problem.  Any
-> recent 2.6 kernel should understand ext3 filesystems with 256 byte
-> inodes just fine.  The only thing that has happened is that the latest
-> debian stable defaults to using 256 byte inodes rather than 128.  Is
-> that correct?  Are there any gotcha's here that I should be aware of?
-  Yes. Any 2.6 kernel will understand both inode sizes. It is just a
-matter of a default in mkfs. Larger inodes allow for more effective
-handling of extended attributes, ACLs and such but waste more
-space/throughput in case you don't use them...
+Hi,
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+It appears that the ext3 journal code has a slow leak of buffer_head 
+structs.  Try this simple script:
+
+perl -e 'while(1){ `sync`; }'
+
+and monitor the count of allocated buffer_head structs in 
+/proc/slabinfo, and it seems to increase without bound.  Even after this 
+script is killed and the machine is left idle for several minutes, the 
+count of buffer heads doesn't substantially decrease.
+
+Looking around at various machines I have access to, the count of 
+allocated buffer_heads roughly correlates with uptime when using ext3.  
+This is a slow leak - one would likely have to run this script for a day 
+or more to drain enough lowmem to cause problems.
+
+Other info:  I have only tried this on x86 machines, but I have tried 
+both 2.6.22.6 and 2.6.28.8, and both have the problem.  I am running 
+Ubuntu 7.10 on top of these kernels, but the kernels were built directly 
+from kernel.org tarballs.
+
+Any advice or help with this issue is greatly appreciated. 
+
+Thanks,
+Don
