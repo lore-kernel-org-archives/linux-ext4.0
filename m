@@ -1,62 +1,37 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext3 leaking buffer_heads
-Date: Mon, 23 Mar 2009 17:00:37 -0500
-Message-ID: <49C80685.9060800@redhat.com>
-References: <49C7E959.4010000@cs.utexas.edu>
+From: Greg KH <greg@kroah.com>
+Subject: Re: [stable] Linux 2.6.28.8 (ocfs2 build failure)
+Date: Mon, 23 Mar 2009 17:13:25 -0700
+Message-ID: <20090324001325.GA1909@kroah.com>
+References: <20090317012028.GA32410@kroah.com> <49C00787.6060401@oracle.com> <20090317205518.GA4442@kroah.com> <49C00FE9.9040407@oracle.com> <20090320221750.GA32416@kroah.com> <20090323024404.GA14082@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Don Porter <porterde@cs.utexas.edu>
+Content-Type: text/plain; charset=us-ascii
+To: Theodore Tso <tytso@mit.edu>,
+	Randy Dunlap <randy.dunlap@oracle.com>,
+	Jan Kara <jack@suse.cz>, Greg KH <gregkh@suse.de>,
+	mfasheh@suse.com, Andrew Morton <akpm@linux-foundation.org>,
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:45618 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752173AbZCWWBH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Mar 2009 18:01:07 -0400
-In-Reply-To: <49C7E959.4010000@cs.utexas.edu>
+Received: from kroah.org ([198.145.64.141]:58662 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1753692AbZCXAQD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 23 Mar 2009 20:16:03 -0400
+Content-Disposition: inline
+In-Reply-To: <20090323024404.GA14082@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Don Porter wrote:
-> Hi,
+On Sun, Mar 22, 2009 at 10:44:04PM -0400, Theodore Tso wrote:
+> On Fri, Mar 20, 2009 at 03:17:50PM -0700, Greg KH wrote:
+> > 
+> > I tracked this down to commit 54dc90 in the 2.6.28.8 tree.
+> > 
+> > I've included it below.  Jan and Ted, any ideas on how to fix this
+> > error?
 > 
-> It appears that the ext3 journal code has a slow leak of buffer_head 
-> structs.  Try this simple script:
-> 
-> perl -e 'while(1){ `sync`; }'
-> 
-> and monitor the count of allocated buffer_head structs in 
-> /proc/slabinfo, and it seems to increase without bound.  Even after this 
-> script is killed and the machine is left idle for several minutes, the 
-> count of buffer heads doesn't substantially decrease.
-> 
-> Looking around at various machines I have access to, the count of 
-> allocated buffer_heads roughly correlates with uptime when using ext3.  
-> This is a slow leak - one would likely have to run this script for a day 
-> or more to drain enough lowmem to cause problems.
-> 
-> Other info:  I have only tried this on x86 machines, but I have tried 
-> both 2.6.22.6 and 2.6.28.8, and both have the problem.  I am running 
-> Ubuntu 7.10 on top of these kernels, but the kernels were built directly 
-> from kernel.org tarballs.
-> 
-> Any advice or help with this issue is greatly appreciated. 
+> 2.6.29 dropped the CONFIG_OCFS2_COMPAT_JBD option; if you enable it,
+> causes a compile failure in 2.6.28.8.  This should fix it...
 
-Without investigating too far yet, I did try this, and did indeed see
-the buffer_head usage go up while the script runs.
+Can you send it in a format that I can apply it in?
 
-However, if I did:
+thanks,
 
-# echo 3 > /proc/sys/vm/drop_caches
-
-before the script, and noted the total nr. of buffer heads in use, and
-then did it again after the script had been running a while, I got back
-to the same (low) count of buffer heads in use.   So I don't think this
-is a leak as in "the system has lost all accounting of these buffer
-heads" at least... but it'd be interesting to know what the reason for
-the increase is, I'm not sure offhand.
-
--Eric
-
-
-
+greg k-h
