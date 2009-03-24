@@ -1,43 +1,95 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [stable] Linux 2.6.28.8 (ocfs2 build failure)
-Date: Mon, 23 Mar 2009 23:05:03 -0400
-Message-ID: <20090324030503.GI5814@mit.edu>
-References: <20090317012028.GA32410@kroah.com> <49C00787.6060401@oracle.com> <20090317205518.GA4442@kroah.com> <49C00FE9.9040407@oracle.com> <20090320221750.GA32416@kroah.com> <20090323024404.GA14082@mit.edu> <20090324001325.GA1909@kroah.com>
+From: Nick Piggin <nickpiggin@yahoo.com.au>
+Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
+Date: Tue, 24 Mar 2009 18:44:21 +1100
+Message-ID: <200903241844.22851.nickpiggin@yahoo.com.au>
+References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com> <200903200248.22623.nickpiggin@yahoo.com.au> <20090319164638.GB3899@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Randy Dunlap <randy.dunlap@oracle.com>, Jan Kara <jack@suse.cz>,
-	Greg KH <gregkh@suse.de>, mfasheh@suse.com,
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: Ying Han <yinghan@google.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
 	Andrew Morton <akpm@linux-foundation.org>,
-	torvalds@linux-foundation.org, linux-kernel@vger.kernel.org,
-	stable@kernel.org, Dan Carpenter <error27@gmail.com>,
-	mfasheh@suse.de, linux-ext4@vger.kernel.org,
-	ocfs2-devel@oss.oracle.com
-To: Greg KH <greg@kroah.com>
+	"linux-kernel" <linux-kernel@vger.kernel.org>,
+	"linux-mm" <linux-mm@kvack.org>, guichaz@gmail.com,
+	Alex Khesin <alexk@google.com>,
+	Mike Waychison <mikew@google.com>,
+	Rohit Seth <rohitseth@google.com>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>
+To: Jan Kara <jack@suse.cz>, "Martin J. Bligh" <mbligh@mbligh.org>,
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51174 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751735AbZCXDGR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 23 Mar 2009 23:06:17 -0400
+Received: from smtp106.mail.mud.yahoo.com ([209.191.85.216]:45834 "HELO
+	smtp106.mail.mud.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753706AbZCXHog (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Mar 2009 03:44:36 -0400
+In-Reply-To: <20090319164638.GB3899@duck.suse.cz>
 Content-Disposition: inline
-In-Reply-To: <20090324001325.GA1909@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 23, 2009 at 05:13:25PM -0700, Greg KH wrote:
-> On Sun, Mar 22, 2009 at 10:44:04PM -0400, Theodore Tso wrote:
-> > On Fri, Mar 20, 2009 at 03:17:50PM -0700, Greg KH wrote:
-> > > 
-> > > I tracked this down to commit 54dc90 in the 2.6.28.8 tree.
-> > > 
-> > > I've included it below.  Jan and Ted, any ideas on how to fix this
-> > > error?
-> > 
-> > 2.6.29 dropped the CONFIG_OCFS2_COMPAT_JBD option; if you enable it,
-> > causes a compile failure in 2.6.28.8.  This should fix it...
-> 
-> Can you send it in a format that I can apply it in?
+On Friday 20 March 2009 03:46:39 Jan Kara wrote:
+> On Fri 20-03-09 02:48:21, Nick Piggin wrote:
 
-Will do.  I have a batch of final patches that went in right before
-2.6.29, I'll include it those patches.
+> > Holding mapping->private_lock over the __set_page_dirty should
+> > fix it, although I guess you'd want to release it before calling
+> > __mark_inode_dirty so as not to put inode_lock under there. I
+> > have a patch for this if it sounds reasonable.
+>
+>   Yes, that seems to be a bug - the function actually looked suspitious to
+> me yesterday but I somehow convinced myself that it's fine. Probably
+> because fsx-linux is single-threaded.
 
-						- Ted
+
+After a whole lot of chasing my own tail in the VM and buffer layers,
+I think it is a problem in ext2 (and I haven't been able to reproduce
+with ext3 yet, which might lend weight to that, although as we have
+seen, it is very timing dependent).
+
+That would be slightly unfortunate because we still have Jan's ext3
+problem, and also another reported problem of corruption on ext3 (on
+brd driver).
+
+Anyway, when I have reproduced the problem with the test case, the
+"lost" writes are all reported to be holes. Unfortunately, that doesn't
+point straight to the filesystem, because ext2 allocates blocks in this
+case at writeout time, so if dirty bits are getting lost, then it would
+be normal to see holes.
+
+I then put in a whole lot of extra infrastructure to track metadata about
+each struct page (when it was last written out, when it last had the number
+of writable ptes reach 0, when the dirty bits were last cleared etc). And
+none of the normal asertions were triggering: eg. when any page is removed
+from pagecache (except truncates), it has always had all its buffers
+written out *after* all ptes were made readonly or unmapped. Lots of other
+tests and crap like that.
+
+So I tried what I should have done to start with and did an e2fsck after
+seeing corruption. Yes, it comes up with errors. Now that is unusual
+because that should be largely insulated from the vm: if a dirty bit gets
+lost, then the filesystem image should be quite happy and error-free with
+a hole or unwritten data there.
+
+I don't know ext? locking very well, except that it looks pretty overly
+complex and crufty.
+
+Usually, blocks are instantiated by write(2), under i_mutex, serialising
+the allocator somewhat. mmap-write blocks are instantiated at writeout
+time, unserialised. I moved truncate_mutex to cover the entire get_blocks
+function, and can no longer trigger the problem. Might be a timing issue
+though -- Ying, can you try this and see if you can still reproduce?
+
+I close my eyes and pick something out of a hat. a686cd89. Search for XXX.
+Nice. Whether or not this cased the problem, can someone please tell me
+why it got merged in that state?
+
+I'm leaving ext3 running for now. It looks like a nasty task to bisect
+ext2 down to that commit :( and I would be more interested in trying to
+reproduce Jan's ext3 problem, however, because I'm not too interested in
+diving into ext2 locking to work out exactly what is racing and how to
+fix it properly. I suspect it would be most productive to wire up some
+ioctls right into the block allocator/lookup and code up a userspace
+tester for it that could probably stress it a lot harder than kernel
+writeout can.
+
