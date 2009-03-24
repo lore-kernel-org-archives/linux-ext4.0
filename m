@@ -1,46 +1,87 @@
-From: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
-Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
-Date: Wed, 25 Mar 2009 05:14:34 +0900
-Message-ID: <873ad2znit.fsf@devron.myhome.or.jp>
-References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com>
-	<20090324125510.GA9434@duck.suse.cz>
-	<20090324132637.GA14607@duck.suse.cz>
-	<200903250130.02485.nickpiggin@yahoo.com.au>
-	<20090324144709.GF23439@duck.suse.cz>
-	<1237906563.24918.184.camel@twins>
-	<20090324152959.GG23439@duck.suse.cz>
+From: Don Porter <porterde@cs.utexas.edu>
+Subject: Re: ext3 leaking buffer_heads
+Date: Tue, 24 Mar 2009 17:43:10 -0500
+Message-ID: <49C961FE.1030704@cs.utexas.edu>
+References: <49C7E959.4010000@cs.utexas.edu> <49C80685.9060800@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Nick Piggin <nickpiggin@yahoo.com.au>,
-        "Martin J. Bligh" <mbligh@mbligh.org>, linux-ext4@vger.kernel.org,
-        Ying Han <yinghan@google.com>,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
-        Alex Khesin <alexk@google.com>, Mike Waychison <mikew@google.com>,
-        Rohit Seth <rohitseth@google.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20090324152959.GG23439@duck.suse.cz> (Jan Kara's message of
-	"Tue, 24 Mar 2009 16:29:59 +0100")
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.cs.utexas.edu ([128.83.139.10]:50805 "EHLO
+	mail.cs.utexas.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753111AbZCXWnb (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 24 Mar 2009 18:43:31 -0400
+In-Reply-To: <49C80685.9060800@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Jan Kara <jack@suse.cz> writes:
+Thanks for the tip, Eric.
 
->   BTW: Note that there's a plenty of filesystems that don't implement
-> mkwrite() (e.g. ext2, UDF, VFAT...) and thus have the same problem with
-> ENOSPC. So I'd not speak too much about consistency ;).
+I spent some time tracing through this in a debugger.
 
-FWIW, fatfs doesn't allow sparse file (mmap the non-allocated region),
-so I guess there is no problem.
--- 
-OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+I believe the lingering buffer_heads are allocated by 
+journal_write_commit_record()->journal_get_descriptor_buffer()->__getblk().  
+The reference count ends up at zero, but the buffer head is never freed.
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+As best I can tell, this is correct as long as the associated page is 
+cached, so that the associated buffer_head can be looked up and reused 
+later.
+
+I plan to look into this more, but perhaps the issue is just that the 
+kernel should be more aggressive about freeing cached journal pages?  
+They are highly unlikely to be used again once a committed transaction 
+is completely out on disk, as the journal is roughly an append-only log, 
+right?
+
+Thanks again,
+Don
+
+Eric Sandeen wrote:
+> Don Porter wrote:
+>   
+>> Hi,
+>>
+>> It appears that the ext3 journal code has a slow leak of buffer_head 
+>> structs.  Try this simple script:
+>>
+>> perl -e 'while(1){ `sync`; }'
+>>
+>> and monitor the count of allocated buffer_head structs in 
+>> /proc/slabinfo, and it seems to increase without bound.  Even after this 
+>> script is killed and the machine is left idle for several minutes, the 
+>> count of buffer heads doesn't substantially decrease.
+>>
+>> Looking around at various machines I have access to, the count of 
+>> allocated buffer_heads roughly correlates with uptime when using ext3.  
+>> This is a slow leak - one would likely have to run this script for a day 
+>> or more to drain enough lowmem to cause problems.
+>>
+>> Other info:  I have only tried this on x86 machines, but I have tried 
+>> both 2.6.22.6 and 2.6.28.8, and both have the problem.  I am running 
+>> Ubuntu 7.10 on top of these kernels, but the kernels were built directly 
+>> from kernel.org tarballs.
+>>
+>> Any advice or help with this issue is greatly appreciated. 
+>>     
+>
+> Without investigating too far yet, I did try this, and did indeed see
+> the buffer_head usage go up while the script runs.
+>
+> However, if I did:
+>
+> # echo 3 > /proc/sys/vm/drop_caches
+>
+> before the script, and noted the total nr. of buffer heads in use, and
+> then did it again after the script had been running a while, I got back
+> to the same (low) count of buffer heads in use.   So I don't think this
+> is a leak as in "the system has lost all accounting of these buffer
+> heads" at least... but it'd be interesting to know what the reason for
+> the increase is, I'm not sure offhand.
+>
+> -Eric
+>
+>
+>   
+
