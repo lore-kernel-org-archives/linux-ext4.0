@@ -1,148 +1,167 @@
-From: Nick Piggin <nickpiggin@yahoo.com.au>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
-Date: Wed, 25 Mar 2009 02:35:01 +1100
-Message-ID: <200903250235.02816.nickpiggin@yahoo.com.au>
-References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com> <200903241844.22851.nickpiggin@yahoo.com.au> <20090324033204.64f3da9d.akpm@linux-foundation.org>
+Date: Tue, 24 Mar 2009 16:48:14 +0100
+Message-ID: <20090324154813.GH23439@duck.suse.cz>
+References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com> <200903250130.02485.nickpiggin@yahoo.com.au> <20090324144709.GF23439@duck.suse.cz> <200903250203.55520.nickpiggin@yahoo.com.au>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>,
- "Martin J. Bligh" <mbligh@mbligh.org>,
- linux-ext4@vger.kernel.org,
- Ying Han <yinghan@google.com>,
- Linus Torvalds <torvalds@linux-foundation.org>,
- "linux-kernel" <linux-kernel@vger.kernel.org>,
- "linux-mm" <linux-mm@kvack.org>,
- guichaz@gmail.com,
- Alex Khesin <alexk@google.com>,
- Mike Waychison <mikew@google.com>,
- Rohit Seth <rohitseth@google.com>,
- Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20090324033204.64f3da9d.akpm@linux-foundation.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, "Martin J. Bligh" <mbligh@mbligh.org>,
+	linux-ext4@vger.kernel.org, Ying Han <yinghan@google.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
+	Alex Khesin <alexk@google.com>,
+	Mike Waychison <mikew@google.com>,
+	Rohit Seth <rohitseth@google.com>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>
+To: Nick Piggin <nickpiggin@yahoo.com.au>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor.suse.de ([195.135.220.2]:35653 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753951AbZCXPsS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 24 Mar 2009 11:48:18 -0400
 Content-Disposition: inline
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <200903250203.55520.nickpiggin@yahoo.com.au>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tuesday 24 March 2009 21:32:04 Andrew Morton wrote:
-> On Tue, 24 Mar 2009 18:44:21 +1100 Nick Piggin <nickpiggin@yahoo.com.au> 
-wrote:
-> > On Friday 20 March 2009 03:46:39 Jan Kara wrote:
-> > > On Fri 20-03-09 02:48:21, Nick Piggin wrote:
-> > > > Holding mapping->private_lock over the __set_page_dirty should
-> > > > fix it, although I guess you'd want to release it before calling
-> > > > __mark_inode_dirty so as not to put inode_lock under there. I
-> > > > have a patch for this if it sounds reasonable.
+On Wed 25-03-09 02:03:54, Nick Piggin wrote:
+> On Wednesday 25 March 2009 01:47:09 Jan Kara wrote:
+> > On Wed 25-03-09 01:30:00, Nick Piggin wrote:
+> 
+> > > I don't think it is a very good idea for block_write_full_page recovery
+> > > to do clear_buffer_dirty for !mapped buffers. I think that should rather
+> > > be a redirty_page_for_writepage in the case that the buffer is dirty.
 > > >
-> > >   Yes, that seems to be a bug - the function actually looked suspitious
-> > > to me yesterday but I somehow convinced myself that it's fine. Probably
-> > > because fsx-linux is single-threaded.
+> > > Perhaps not the cleanest way to solve the problem if it is just due to
+> > > transient shortage of space in ext3, but generic code shouldn't be
+> > > allowed to throw away dirty data even if it can't be written back due
+> > > to some software or hardware error.
 > >
-> > After a whole lot of chasing my own tail in the VM and buffer layers,
-> > I think it is a problem in ext2 (and I haven't been able to reproduce
-> > with ext3 yet, which might lend weight to that, although as we have
-> > seen, it is very timing dependent).
+> >   Well, that would be one possibility. But then we'd be left with dirty
+> > pages we cannot ever release since they are constantly dirty (when the
+> > filesystem really becomes out of space). So what I
+> 
+> If the filesystem becomes out of space and we have over-committed these
+> dirty mmapped blocks, then we most definitely want to keep them around.
+> An error of the system losing a few pages (or if it happens an insanely
+> large number of times, then slowly dying due to memory leak) is better
+> than an app suddenly seeing the contents of the page change to nulls
+> under it when the kernel decides to do some page reclaim.
+  Hmm, probably you're right. Definitely it would be much easier to track
+the problem down than it is now... Thinking a bit more... But couldn't a
+malicious user bring the machine easily to OOM this way? That would be
+unfortunate.
+
+> > rather want to do is something like below:
 > >
-> > That would be slightly unfortunate because we still have Jan's ext3
-> > problem, and also another reported problem of corruption on ext3 (on
-> > brd driver).
+> > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> > index d351eab..77c526f 100644
+> > --- a/fs/ext3/inode.c
+> > +++ b/fs/ext3/inode.c
+> > @@ -1440,6 +1440,40 @@ static int journal_dirty_data_fn(handle_t *handle,
+> > struct buffer_head *bh) }
 > >
-> > Anyway, when I have reproduced the problem with the test case, the
-> > "lost" writes are all reported to be holes. Unfortunately, that doesn't
-> > point straight to the filesystem, because ext2 allocates blocks in this
-> > case at writeout time, so if dirty bits are getting lost, then it would
-> > be normal to see holes.
+> >  /*
+> > + * Decides whether it's worthwhile to wait for transaction commit and
+> > + * retry allocation. If it is, function waits 1 is returns, otherwise
+> > + * 0 is returned. In both cases we redirty page and it's buffers so that
+> > + * data is not lost. In case we've retried too many times, we also return
+> > + * 0 and don't redirty the page. Data gets discarded but we cannot hang
+> > + * writepage forever...
+> > + */
+> > +static int ext3_writepage_retry_alloc(struct page *page, int *retries,
+> > +				      struct writeback_control *wbc)
+> > +{
+> > +	struct super_block *sb = ((struct inode *)page->mapping->host)->i_sb;
+> > +	int ret = 0;
+> > +
+> > +	/*
+> > +	 * We don't want to slow down background writeback too much. On the
+> > +	 * other hand if most of the dirty data needs allocation, we better
+> > +	 * wait to make some progress
+> > +	 */
+> > +	if (wbc->sync_mode == WB_SYNC_NONE && !wbc->for_reclaim &&
+> > +	    wbc->pages_skipped < wbc->nr_to_write / 2)
+> > +		goto redirty;
+> > +	/*
+> > +	 * Now wait if commit can free some space and we haven't retried
+> > +	 * too much
+> > +	 */
+> > +	if (!ext3_should_retry_alloc(sb, retries))
+> > +		return 0;
+> > +	ret = 1;
+> > +redirty:
+> > +	set_page_dirty(page);
+> > +	return ret;
+> > +}
+> > +
+> > +/*
+> >   * Note that we always start a transaction even if we're not journalling
+> >   * data.  This is to preserve ordering: any hole instantiation within
+> >   * __block_write_full_page -> ext3_get_block() should be journalled
+> > @@ -1564,10 +1598,12 @@ static int ext3_writeback_writepage(struct page
+> > *page, handle_t *handle = NULL;
+> >  	int ret = 0;
+> >  	int err;
+> > +	int retries;
 > >
-> > I then put in a whole lot of extra infrastructure to track metadata about
-> > each struct page (when it was last written out, when it last had the
-> > number of writable ptes reach 0, when the dirty bits were last cleared
-> > etc). And none of the normal asertions were triggering: eg. when any page
-> > is removed from pagecache (except truncates), it has always had all its
-> > buffers written out *after* all ptes were made readonly or unmapped. Lots
-> > of other tests and crap like that.
+> >  	if (ext3_journal_current_handle())
+> >  		goto out_fail;
 > >
-> > So I tried what I should have done to start with and did an e2fsck after
-> > seeing corruption. Yes, it comes up with errors.
+> > +restart:
+> >  	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+> >  	if (IS_ERR(handle)) {
+> >  		ret = PTR_ERR(handle);
+> > @@ -1580,8 +1616,13 @@ static int ext3_writeback_writepage(struct page
+> > *page, ret = block_write_full_page(page, ext3_get_block, wbc);
+> >
+> >  	err = ext3_journal_stop(handle);
+> > -	if (!ret)
+> > +	if (!ret) {
+> >  		ret = err;
+> > +	} else {
+> > +		if (ret == -ENOSPC &&
+> > +		    ext3_writepage_retry_alloc(page, &retries, wbc))
+> > +			goto restart;
+> > +	}
+> >  	return ret;
+> >
+> >  out_fail:
+> >
+> >   And similarly for the other two writepage implementations in ext3...
+> > But it currently gives me:
+> > WARNING: at fs/buffer.c:781 __set_page_dirty+0x8d/0x145()
+> > probably because of that set_page_dirty() in ext3_writepage_retry_alloc().
+> 
+> And this is a valid warning because we don't know that all buffers are
+> uptodate or which ones to set as dirty, I think. Unless it is impossible
+> to have dirty && !uptodate pages come thought this path.
+  Ah, OK, thanks for explanation.
+
+> But you shouldn't need to redirty the page at all if we change
+> block_write_full_page in the way I suggested. Because then it won't
+> have cleaned the buffer, and it will have done redirty_page_for_writepage.
 >
-> Do you recall what the errors were?
+> > Or we could implement ext3_mkwrite() to allocate buffers already when we
+> > make page writeable. But it costs some performace (we have to write page
+> > full of zeros when allocating those buffers, where previously we didn't
+> > have to do anything) and it's not trivial to make it work if pagesize >
+> > blocksize (we should not allocate buffers outside of i_size so if i_size
+> > = 1024, we create just one block in ext3_mkwrite() but then we need to
+> > allocate more when we extend the file).
+> 
+> Well the core page_mkwrite function doesn't care about that case
+> properly either (it just doesn't allocate buffers on extend). I agree it
+> should be fixed, but it is a little hard (I need to fix it in fsblock
+> and I think what is required is a setattr helper for that).
+  Won't it be enough, if extending truncate called page_mkwrite() on the
+page which used to be the last one in the file? That would be enough for
+my use although it seems a bit hacky I agree...
+  
 
-OK, after running several tests in parallel and having 3 of them
-blow up, I unmounted the fs (so error-case files are still intact).
-
-# e2fsck -fn /dev/ram0
-e2fsck 1.41.3 (12-Oct-2008)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 16, i_blocks is 131594, should be 131566.  Fix? no
-
-Inode 18, i_blocks is 131588, should be 131576.  Fix? no
-
-Inode 21, i_blocks is 131594, should be 131552.  Fix? no
-
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  -(628209--628220) -628231 -628233 -(638751--638755) 
--638765 -(646271--646295) -(646301--646304) -647609 -(651501--651505) -651509 
--(651719--651726) -(651732--651733) -(665666--665670)
-Fix? no
-
-
-/dev/ram0: ********** WARNING: Filesystem still has errors **********
-
-/dev/ram0: 21/229376 files (4.8% non-contiguous), 407105/3670016 blocks
-
-ino 16, 18, 21 of course are the files with errors.
-
-
-inode 18 is the simplest case with just one hole, so let's look at that:
-
-#hexdump file9
-0000000 ffff ffff ffff ffff ffff ffff ffff ffff
-*
-3c8c000 0000 0000 0000 0000 0000 0000 0000 0000
-*
-3c8d400 ffff ffff ffff ffff ffff ffff ffff ffff
-*
-4000000
-
-
-Let's take a look at our hole then:
-
-#./bmap file9  // bmap is modified to print hex offsets
-[... lots of stuff ...]
-3c82000-3c82c00: 26fd0400-26fd1000 (1000)
-3c83000-3c83c00: 26fd3400-26fd4000 (1000)
-3c84000-3c84c00: 26fc9c00-26fca800 (1000)
-3c85000-3c85c00: 26fcc400-26fcd000 (1000)
-3c86000-3c86c00: 26fcf400-26fd0000 (1000)
-3c87000-3c87c00: 26fd2400-26fd3000 (1000)
-3c88000-3c88c00: 26fd5400-26fd6000 (1000)
-3c89000-3c8bc00: 26fd7400-26fda000 (3000)
-3c8c000-3c8c000: 0-0 (400)
-3c8c400-3c8c400: 0-0 (400)
-3c8c800-3c8c800: 0-0 (400)
-3c8cc00-3c8cc00: 0-0 (400)
-3c8d000-3c8d000: 0-0 (400)
-3c8d400-3c8dc00: 26fcb800-26fcc000 (c00)
-3c8e000-3c8ec00: 26fce400-26fcf000 (1000)
-3c8f000-3c8fc00: 26fd1400-26fd2000 (1000)
-3c90000-3c99c00: 27924400-2792e000 (a000)
-3c9a000-3c9ac00: 2792f000-2792fc00 (1000)
-3c9b000-3c9bc00: 27931000-27931c00 (1000)
-3c9c000-3c9cc00: 27933000-27933c00 (1000)
-3c9d000-3c9dc00: 27935000-27935c00 (1000)
-3c9e000-3c9ec00: 27938000-27938c00 (1000)
-3c9f000-3c9fc00: 2793a000-2793ac00 (1000)
-[... lots more stuff ...]
-
-3.5G filesystem image bzip2s down to 500K if anybody wants it I
-can send it privately.
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
