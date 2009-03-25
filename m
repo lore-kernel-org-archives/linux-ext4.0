@@ -1,46 +1,39 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Don Porter <porterde@cs.utexas.edu>
 Subject: Re: ext3 leaking buffer_heads
-Date: Tue, 24 Mar 2009 20:46:09 -0400
-Message-ID: <20090325004609.GF32307@mit.edu>
-References: <49C7E959.4010000@cs.utexas.edu> <49C80685.9060800@redhat.com> <49C961FE.1030704@cs.utexas.edu>
+Date: Wed, 25 Mar 2009 02:04:25 -0500
+Message-ID: <49C9D779.4030805@cs.utexas.edu>
+References: <49C7E959.4010000@cs.utexas.edu> <49C80685.9060800@redhat.com> <49C961FE.1030704@cs.utexas.edu> <20090325004609.GF32307@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Don Porter <porterde@cs.utexas.edu>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:33883 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759604AbZCYAqY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 24 Mar 2009 20:46:24 -0400
-Content-Disposition: inline
-In-Reply-To: <49C961FE.1030704@cs.utexas.edu>
+Received: from mail.cs.utexas.edu ([128.83.139.10]:53853 "EHLO
+	mail.cs.utexas.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754951AbZCYHFo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 25 Mar 2009 03:05:44 -0400
+In-Reply-To: <20090325004609.GF32307@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Mar 24, 2009 at 05:43:10PM -0500, Don Porter wrote:
-> Thanks for the tip, Eric.
+Theodore Tso wrote:
+> The journal is a fixed sized, circular log, so the buffer_head will be
+> reused eventually.  In the case of memory pressure the unreferenced
+> buffer_head will be freed, but since we never reference the contents
+> of the journal, we could be more aggressive about freeing the
+> buffer_head just to avoid pushing out more valuable memory contents
+> when we start getting put under memory pressure.
 >
-> I spent some time tracing through this in a debugger.
->
-> I believe the lingering buffer_heads are allocated by  
-> journal_write_commit_record()->journal_get_descriptor_buffer()->__getblk(). 
->  The reference count ends up at zero, but the buffer head is never freed.
->
-> As best I can tell, this is correct as long as the associated page is  
-> cached, so that the associated buffer_head can be looked up and reused  
-> later.
->
-> I plan to look into this more, but perhaps the issue is just that the  
-> kernel should be more aggressive about freeing cached journal pages?   
-> They are highly unlikely to be used again once a committed transaction  
-> is completely out on disk, as the journal is roughly an append-only log,  
-> right?
+> 					- Ted
+>   
 
-The journal is a fixed sized, circular log, so the buffer_head will be
-reused eventually.  In the case of memory pressure the unreferenced
-buffer_head will be freed, but since we never reference the contents
-of the journal, we could be more aggressive about freeing the
-buffer_head just to avoid pushing out more valuable memory contents
-when we start getting put under memory pressure.
+Thanks Ted.  This makes sense.
 
-					- Ted
+I am working on a research project that may require more aggressive 
+reclaiming of these buffer_heads.  If I were to implement something, 
+would this be an optimization the maintainers would be interested in?
+
+Thanks again for the help,
+
+Don
