@@ -1,32 +1,31 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] jbd2: Update locking coments
-Date: Wed, 25 Mar 2009 14:34:34 +0100
-Message-ID: <1237988074-31144-2-git-send-email-jack@suse.cz>
+Subject: [PATCH] jbd: Update locking coments
+Date: Wed, 25 Mar 2009 14:34:33 +0100
+Message-ID: <1237988074-31144-1-git-send-email-jack@suse.cz>
 References: <n>
- <1237988074-31144-1-git-send-email-jack@suse.cz>
 Cc: Andrew Morton <akpm@linux-foundation.org>, tammy000@gmail.com,
 	Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:43058 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:36349 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753733AbZCYNei (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754857AbZCYNei (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 25 Mar 2009 09:34:38 -0400
-In-Reply-To: <1237988074-31144-1-git-send-email-jack@suse.cz>
+In-Reply-To: <n>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Update information about locking in JBD2 revoke code.
+Update information about locking in JBD revoke code.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/revoke.c |   24 +++++++++++++++++++-----
+ fs/jbd/revoke.c |   24 +++++++++++++++++++-----
  1 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
-index 257ff26..bbe6d59 100644
---- a/fs/jbd2/revoke.c
-+++ b/fs/jbd2/revoke.c
+diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
+index c7bd649..3e9afc2 100644
+--- a/fs/jbd/revoke.c
++++ b/fs/jbd/revoke.c
 @@ -55,6 +55,25 @@
   *			need do nothing.
   * RevokeValid set, Revoked set:
@@ -53,16 +52,16 @@ index 257ff26..bbe6d59 100644
   */
  
  #ifndef __KERNEL__
-@@ -401,8 +420,6 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+@@ -402,8 +421,6 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
   * the second time we would still have a pending revoke to cancel.  So,
   * do not trust the Revoked bit on buffers unless RevokeValid is also
   * set.
 - *
 - * The caller must have the journal locked.
   */
- int jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ int journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
  {
-@@ -480,10 +497,7 @@ void jbd2_journal_switch_revoke_table(journal_t *journal)
+@@ -481,10 +498,7 @@ void journal_switch_revoke_table(journal_t *journal)
  /*
   * Write revoke records to the journal for all entries in the current
   * revoke hash, deleting the entries as we go.
