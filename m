@@ -1,186 +1,81 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext3: Avoid false EIO errors
-Date: Thu, 26 Mar 2009 19:21:51 +0100
-Message-ID: <1238091711-23464-1-git-send-email-jack@suse.cz>
-Cc: Andrew Morton <akpm@linux-foundation.org>, Jan Kara <jack@suse.cz>
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52006 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753763AbZCZSVy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Mar 2009 14:21:54 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
+Date: Thu, 26 Mar 2009 19:29:47 +0100
+Message-ID: <20090326182947.GE17159@duck.suse.cz>
+References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com> <200903241844.22851.nickpiggin@yahoo.com.au> <20090324033204.64f3da9d.akpm@linux-foundation.org> <200903250235.02816.nickpiggin@yahoo.com.au>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	"Martin J. Bligh" <mbligh@mbligh.org>, linux-ext4@vger.kernel.org,
+	Ying Han <yinghan@google.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	linux-kernel <linux-kernel@vger.kernel.org>,
+	linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
+	Alex Khesin <alexk@google.com>, Mike Waychison <mikew@google.com>,
+	Rohit Seth <rohitseth@google.com>,
+	Peter Zijlstra <a.p.zijlstra@chello.nl>
+To: Nick Piggin <nickpiggin@yahoo.com.au>
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <200903250235.02816.nickpiggin@yahoo.com.au>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
-Sometimes block_write_begin() can map buffers in a page but later we fail to
-copy data into those buffers (because the source page has been paged out in the
-mean time). We then end up with !uptodate mapped buffers. To add a bit more to
-the confusion, block_write_end() does not commit any data (and thus does not
-any mark buffers as uptodate) if we didn't succeed with copying all the data.
-
-Commit f4fc66a894546bdc88a775d0e83ad20a65210bcb (ext3: convert to new aops)
-missed these cases and thus we were inserting non-uptodate buffers to
-transaction's list which confuses JBD code and it reports IO errors, aborts
-a transaction and generally makes users afraid about their data ;-P.
-
-This patch fixes the problem by reorganizing ext3_..._write_end() code to
-first call block_write_end() to mark buffers with valid data uptodate and
-after that we file only uptodate buffers to transaction's lists. Also
-fix a problem where we could leave blocks allocated beyond i_size (i_disksize
-in fact).
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext3/inode.c |   99 +++++++++++++++++++++++-------------------------------
- 1 files changed, 42 insertions(+), 57 deletions(-)
-
-  As a side note, ext4 / JBD2 only needs the "proper i_disksize update"
-part of the fix (we got rid of special handling of ordered mode buffers
-there). But I have to first figure out how to properly do it...
-  Andrew, would you please merge the patch? Thanks.
+On Wed 25-03-09 02:35:01, Nick Piggin wrote:
+> On Tuesday 24 March 2009 21:32:04 Andrew Morton wrote:
+> > On Tue, 24 Mar 2009 18:44:21 +1100 Nick Piggin <nickpiggin@yahoo.com.au> 
+> wrote:
+> > > On Friday 20 March 2009 03:46:39 Jan Kara wrote:
+> > > > On Fri 20-03-09 02:48:21, Nick Piggin wrote:
+> > > > > Holding mapping->private_lock over the __set_page_dirty should
+> > > > > fix it, although I guess you'd want to release it before calling
+> > > > > __mark_inode_dirty so as not to put inode_lock under there. I
+> > > > > have a patch for this if it sounds reasonable.
+> > > >
+> > > >   Yes, that seems to be a bug - the function actually looked suspitious
+> > > > to me yesterday but I somehow convinced myself that it's fine. Probably
+> > > > because fsx-linux is single-threaded.
+> > >
+> > > After a whole lot of chasing my own tail in the VM and buffer layers,
+> > > I think it is a problem in ext2 (and I haven't been able to reproduce
+> > > with ext3 yet, which might lend weight to that, although as we have
+> > > seen, it is very timing dependent).
+> > >
+> > > That would be slightly unfortunate because we still have Jan's ext3
+> > > problem, and also another reported problem of corruption on ext3 (on
+> > > brd driver).
+> > >
+> > > Anyway, when I have reproduced the problem with the test case, the
+> > > "lost" writes are all reported to be holes. Unfortunately, that doesn't
+> > > point straight to the filesystem, because ext2 allocates blocks in this
+> > > case at writeout time, so if dirty bits are getting lost, then it would
+> > > be normal to see holes.
+> > >
+> > > I then put in a whole lot of extra infrastructure to track metadata about
+> > > each struct page (when it was last written out, when it last had the
+> > > number of writable ptes reach 0, when the dirty bits were last cleared
+> > > etc). And none of the normal asertions were triggering: eg. when any page
+> > > is removed from pagecache (except truncates), it has always had all its
+> > > buffers written out *after* all ptes were made readonly or unmapped. Lots
+> > > of other tests and crap like that.
+> > >
+> > > So I tried what I should have done to start with and did an e2fsck after
+> > > seeing corruption. Yes, it comes up with errors.
+> >
+> > Do you recall what the errors were?
+> 
+> OK, after running several tests in parallel and having 3 of them
+> blow up, I unmounted the fs (so error-case files are still intact).
+  Nick, what tests do you use? Because on the first reading the ext2 code
+looks correct so I'll probably have to reproduce the corruption...
 
 									Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
 
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 5fa453b..e230f7a 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -1211,6 +1211,18 @@ int ext3_journal_dirty_data(handle_t *handle, struct buffer_head *bh)
- 	return err;
- }
- 
-+/* For ordered writepage and write_end functions */
-+static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
-+{
-+	/*
-+	 * Write could have mapped the buffer but it didn't copy the data in
-+	 * yet. So avoid filing such buffer into a transaction.
-+	 */
-+	if (buffer_mapped(bh) && buffer_uptodate(bh))
-+		return ext3_journal_dirty_data(handle, bh);
-+	return 0;
-+}
-+
- /* For write_end() in data=journal mode */
- static int write_end_fn(handle_t *handle, struct buffer_head *bh)
- {
-@@ -1221,26 +1233,29 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
- }
- 
- /*
-- * Generic write_end handler for ordered and writeback ext3 journal modes.
-- * We can't use generic_write_end, because that unlocks the page and we need to
-- * unlock the page after ext3_journal_stop, but ext3_journal_stop must run
-- * after block_write_end.
-+ * This is nasty and subtle: ext3_write_begin() could have allocated blocks
-+ * for the whole page but later we failed to copy the data in. So the disk
-+ * size we really have allocated is pos + len (block_write_end() has zeroed
-+ * the freshly allocated buffers so we aren't going to write garbage). But we
-+ * want to keep i_size at the place where data copying finished so that we
-+ * don't confuse readers. The worst what can happen is that we expose a page
-+ * of zeros at the end of file after a crash...
-  */
--static int ext3_generic_write_end(struct file *file,
--				struct address_space *mapping,
--				loff_t pos, unsigned len, unsigned copied,
--				struct page *page, void *fsdata)
-+static void update_file_sizes(struct inode *inode, loff_t pos, unsigned len,
-+			      unsigned copied)
- {
--	struct inode *inode = file->f_mapping->host;
--
--	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-+	int mark_dirty = 0;
- 
--	if (pos+copied > inode->i_size) {
--		i_size_write(inode, pos+copied);
--		mark_inode_dirty(inode);
-+	if (pos + len > EXT3_I(inode)->i_disksize) {
-+		mark_dirty = 1;
-+		EXT3_I(inode)->i_disksize = pos + len;
- 	}
--
--	return copied;
-+	if (pos + copied > inode->i_size) {
-+		i_size_write(inode, pos + copied);
-+		mark_dirty = 1;
-+	}
-+	if (mark_dirty)
-+		mark_inode_dirty(inode);
- }
- 
- /*
-@@ -1260,29 +1275,17 @@ static int ext3_ordered_write_end(struct file *file,
- 	unsigned from, to;
- 	int ret = 0, ret2;
- 
-+	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-+
-+	/* See comment at update_file_sizes() for why we check buffers upto
-+	 * from + len */
- 	from = pos & (PAGE_CACHE_SIZE - 1);
- 	to = from + len;
--
- 	ret = walk_page_buffers(handle, page_buffers(page),
--		from, to, NULL, ext3_journal_dirty_data);
-+		from, to, NULL, journal_dirty_data_fn);
- 
--	if (ret == 0) {
--		/*
--		 * generic_write_end() will run mark_inode_dirty() if i_size
--		 * changes.  So let's piggyback the i_disksize mark_inode_dirty
--		 * into that.
--		 */
--		loff_t new_i_size;
--
--		new_i_size = pos + copied;
--		if (new_i_size > EXT3_I(inode)->i_disksize)
--			EXT3_I(inode)->i_disksize = new_i_size;
--		ret2 = ext3_generic_write_end(file, mapping, pos, len, copied,
--							page, fsdata);
--		copied = ret2;
--		if (ret2 < 0)
--			ret = ret2;
--	}
-+	if (ret == 0)
-+		update_file_sizes(inode, pos, len, copied);
- 	ret2 = ext3_journal_stop(handle);
- 	if (!ret)
- 		ret = ret2;
-@@ -1299,22 +1302,11 @@ static int ext3_writeback_write_end(struct file *file,
- {
- 	handle_t *handle = ext3_journal_current_handle();
- 	struct inode *inode = file->f_mapping->host;
--	int ret = 0, ret2;
--	loff_t new_i_size;
--
--	new_i_size = pos + copied;
--	if (new_i_size > EXT3_I(inode)->i_disksize)
--		EXT3_I(inode)->i_disksize = new_i_size;
--
--	ret2 = ext3_generic_write_end(file, mapping, pos, len, copied,
--							page, fsdata);
--	copied = ret2;
--	if (ret2 < 0)
--		ret = ret2;
-+	int ret;
- 
--	ret2 = ext3_journal_stop(handle);
--	if (!ret)
--		ret = ret2;
-+	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-+	update_file_sizes(inode, pos, len, copied);
-+	ret = ext3_journal_stop(handle);
- 	unlock_page(page);
- 	page_cache_release(page);
- 
-@@ -1428,13 +1420,6 @@ static int bput_one(handle_t *handle, struct buffer_head *bh)
- 	return 0;
- }
- 
--static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
--{
--	if (buffer_mapped(bh))
--		return ext3_journal_dirty_data(handle, bh);
--	return 0;
--}
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
