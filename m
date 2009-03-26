@@ -1,52 +1,52 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: next-20090310: ext4 hangs
-Date: Thu, 26 Mar 2009 01:25:55 +0100
-Message-ID: <20090326002554.GD11024@duck.suse.cz>
-References: <20090325151516.GB14881@atrey.karlin.mff.cuni.cz> <a4423d670903250818n512b1c67ja1b38db6d09ac7c@mail.gmail.com> <20090325152234.GN23439@duck.suse.cz> <a4423d670903250829w5e9304a7rce24f4220379620f@mail.gmail.com> <20090325161556.GP23439@duck.suse.cz> <a4423d670903251007r72058ca8m28275c1433ab2706@mail.gmail.com> <20090325194316.GQ23439@duck.suse.cz> <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com> <20090326000035.GB11024@duck.suse.cz> <49CAC982.4050507@gaisler.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Alexander Beregalov <a.beregalov@gmail.com>,
-	Theodore Tso <tytso@mit.edu>,
-	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	sparclinux@vger.kernel.org
-To: Jiri Gaisler <jiri@gaisler.com>
-Return-path: <sparclinux-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <49CAC982.4050507@gaisler.com>
-Sender: sparclinux-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Ext4 tree stable patches backports for 2.6.27 and 2.6.28
+Date: Thu, 26 Mar 2009 00:20:55 -0400
+Message-ID: <E1Lmh5L-0004oH-Mp@closure.thunk.org>
+Cc: linux-kernel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:49782 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751040AbZCZEVF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 26 Mar 2009 00:21:05 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 26-03-09 01:17:06, Jiri Gaisler wrote:
-> Jan Kara wrote:
-> >   Hi,
-> > 
-> >   thanks for the updated disassembly.
-> > 
-> >>   55bab0:       82 10 60 01     or  %g1, 1, %g1
-> >>                 spin_unlock(&journal->j_list_lock);
-> >>   55bab4:       40 06 4b 20     call  6ee734 <_spin_unlock>
-> >>   55bab8:       c2 24 e0 28     st  %g1, [ %l3 + 0x28 ]
-> >   OK, so it really seems that:
-> >   jinode->i_flags |= JI_COMMIT_RUNNING;
-> >   spin_unlock(&journal->j_list_lock);
-> > 
-> >   has been compiled to
-> >   ld [ %l3 + 0x28 ], %g1
-> >   or  %g1, 1, %g1
-> >   call  6ee734 <_spin_unlock>
-> >   st  %g1, [ %l3 + 0x28 ]
-> > 
-> >   Which seems like a bug in the compiler or in the way implement compiler
-> > barriers in spin_unlock() on UP sparc. Or is there some sparc magic by which
-> > this is correct code? Any clever sparc guy?
-> > 
-> Looks fine to me - the store is made in the branch delay slot
-> of the call, so it will occur before the first instruction at
-> the call target address executes.
-  Thanks for explanation. I knew sparc had some surprising features like
-this ;).
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I've updated the for-stable and for-stable-2.6.27 branches in the ext4
+git tree that were merged into mainline right before 2.6.29.  In
+addition, there is a build fix for ocfs2 if CONFIG_OFS2_COMPAT_JBD is
+enabled.
+
+The ext4 git tree can be found here:
+
+   git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+   http://git.kernel.org/?p=linux/kernel/git/tytso/ext4.git
+
+The new patches in the for-stable and for-stable-2.6.27 branches can be
+found below.
+
+If folks can test out the for-stable and/or the for-stable-2.6.27
+branches, I would appreciate it before I send these patches to
+stable@kernel.org.
+
+						- Ted
+
+mainline 2.6.28 2.6.27
+    commit-description
+--------------------------------------------------------------------
+8f64b32e f609c44f -------
+    ext4: don't call jbd2_journal_force_commit_nested without journal
+7ce9d5d1 c6af7e10 8657e625
+    ext4: fix ext4_free_inode() vs. ext4_claim_inode() race
+395a87bf fa39f633 b3239aab
+    ext4: fix header check in ext4_ext_search_right() for deep extent trees.
+2842c3b5 8ef147bd e9b9a503
+    ext4: Print the find_group_flex() warning only once
+8d03c7a0 1d5f2059 ce54e9c7
+    ext4: fix bogus BUG_ONs in in mballoc code
+d33a1976 40087f88 e0ee7aa0
+    ext4: fix bb_prealloc_list corruption due to wrong group locking
+fb68407b 6dd72926 --------
+    jbd2: Call journal commit callback without holding j_list_lock
+-------- 221a645b --------
+    ocfs2: Fix build failure when CONFIG_OFS2_COMPAT_JBD is enabled
