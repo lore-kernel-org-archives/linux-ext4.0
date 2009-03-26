@@ -1,51 +1,60 @@
-From: Jiri Gaisler <jiri@gaisler.com>
-Subject: Re: next-20090310: ext4 hangs
-Date: Thu, 26 Mar 2009 01:17:06 +0100
-Message-ID: <49CAC982.4050507@gaisler.com>
-References: <a4423d670903110907o7041f4eof92278835aa0c71c@mail.gmail.com> <20090325151122.GA14881@atrey.karlin.mff.cuni.cz> <20090325151516.GB14881@atrey.karlin.mff.cuni.cz> <a4423d670903250818n512b1c67ja1b38db6d09ac7c@mail.gmail.com> <20090325152234.GN23439@duck.suse.cz> <a4423d670903250829w5e9304a7rce24f4220379620f@mail.gmail.com> <20090325161556.GP23439@duck.suse.cz> <a4423d670903251007r72058ca8m28275c1433ab2706@mail.gmail.com> <20090325194316.GQ23439@duck.suse.cz> <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com> <20090326000035.GB11024@duck.suse.cz>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
+Date: Thu, 26 Mar 2009 13:48:43 +0530
+Message-ID: <20090326081843.GA8207@skywalker>
+References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com> <200903200248.22623.nickpiggin@yahoo.com.au> <20090319164638.GB3899@duck.suse.cz> <200903241844.22851.nickpiggin@yahoo.com.au> <20090324123935.GD23439@duck.suse.cz> <20090324125510.GA9434@duck.suse.cz> <20090324132637.GA14607@duck.suse.cz> <1237903305.17910.4.camel@think.oraclecorp.com> <20090324140720.GE23439@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Alexander Beregalov <a.beregalov@gmail.com>,
-	Theodore Tso <tytso@mit.edu>,
-	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	sparclinux@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Chris Mason <chris.mason@oracle.com>,
+        Nick Piggin <nickpiggin@yahoo.com.au>,
+        "Martin J. Bligh" <mbligh@mbligh.org>, linux-ext4@vger.kernel.org,
+        Ying Han <yinghan@google.com>,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
+        Alex Khesin <alexk@google.com>, Mike Waychison <mikew@google.com>,
+        Rohit Seth <rohitseth@google.com>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-next-owner@vger.kernel.org>
-In-Reply-To: <20090326000035.GB11024@duck.suse.cz>
-Sender: linux-next-owner@vger.kernel.org
+Return-path: <owner-linux-mm@kvack.org>
+Content-Disposition: inline
+In-Reply-To: <20090324140720.GE23439@duck.suse.cz>
+Sender: owner-linux-mm@kvack.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Mar 24, 2009 at 03:07:21PM +0100, Jan Kara wrote:
+> On Tue 24-03-09 10:01:45, Chris Mason wrote:
+> > On Tue, 2009-03-24 at 14:26 +0100, Jan Kara wrote:
+> > > On Tue 24-03-09 13:55:10, Jan Kara wrote:
+> > 
+> > > >   And one more interesting thing I don't yet fully understand - I see pages
+> > > > having PageError() set when they are removed from page cache (and they have
+> > > > been faulted in before). It's probably some interaction with pagecache
+> > > > readahead...
+> > >   Argh... So the problem seems to be that get_block() occasionally returns
+> > > ENOSPC and we then discard the dirty data (hmm, we could give at least a
+> > > warning for that). I'm not yet sure why getblock behaves like this because
+> > > the filesystem seems to have enough space but anyway this seems to be some
+> > > strange fs trouble as well.
+> > > 
+> > 
+> > Ouch.  Perhaps the free space is waiting on a journal commit?
+>   Yes, exactly. I've already found there's lot of space hold by the
+> committing transaction (it can easily hold a few hundred megs or a few gigs
+> with larger journal and my UML images aren't that big...). And writepage()
+> implementation in ext3 does not have a logic to retry. Also
+> block_write_full_page() clears buffers dirty bits so it's not easy to retry
+> even if we did it. I'm now looking into how to fix this...
 
+We retry block allocation in ext3_write_begin. And for mmap we should be
+doing something similar to ext4_page_mkwrite so that we can be sure
+that during writepage we don't need to do block allocation.
 
-Jan Kara wrote:
->   Hi,
-> 
->   thanks for the updated disassembly.
-> 
->>   55bab0:       82 10 60 01     or  %g1, 1, %g1
->>                 spin_unlock(&journal->j_list_lock);
->>   55bab4:       40 06 4b 20     call  6ee734 <_spin_unlock>
->>   55bab8:       c2 24 e0 28     st  %g1, [ %l3 + 0x28 ]
->   OK, so it really seems that:
->   jinode->i_flags |= JI_COMMIT_RUNNING;
->   spin_unlock(&journal->j_list_lock);
-> 
->   has been compiled to
->   ld [ %l3 + 0x28 ], %g1
->   or  %g1, 1, %g1
->   call  6ee734 <_spin_unlock>
->   st  %g1, [ %l3 + 0x28 ]
-> 
->   Which seems like a bug in the compiler or in the way implement compiler
-> barriers in spin_unlock() on UP sparc. Or is there some sparc magic by which
-> this is correct code? Any clever sparc guy?
-> 
-> 									Honza
+-aneesh
 
-
-Looks fine to me - the store is made in the branch delay slot
-of the call, so it will occur before the first instruction at
-the call target address executes.
-Jiri.
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
