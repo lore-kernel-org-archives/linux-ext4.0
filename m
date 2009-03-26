@@ -1,136 +1,52 @@
-From: Ying Han <yinghan@google.com>
-Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
-Date: Wed, 25 Mar 2009 17:03:58 -0700
-Message-ID: <604427e00903251703s62a62e7fkc81719503228626a@mail.gmail.com>
-References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com>
-	 <200903200248.22623.nickpiggin@yahoo.com.au>
-	 <20090319164638.GB3899@duck.suse.cz>
-	 <200903241844.22851.nickpiggin@yahoo.com.au>
-	 <20090324033204.64f3da9d.akpm@linux-foundation.org>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: next-20090310: ext4 hangs
+Date: Thu, 26 Mar 2009 01:25:55 +0100
+Message-ID: <20090326002554.GD11024@duck.suse.cz>
+References: <20090325151516.GB14881@atrey.karlin.mff.cuni.cz> <a4423d670903250818n512b1c67ja1b38db6d09ac7c@mail.gmail.com> <20090325152234.GN23439@duck.suse.cz> <a4423d670903250829w5e9304a7rce24f4220379620f@mail.gmail.com> <20090325161556.GP23439@duck.suse.cz> <a4423d670903251007r72058ca8m28275c1433ab2706@mail.gmail.com> <20090325194316.GQ23439@duck.suse.cz> <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com> <20090326000035.GB11024@duck.suse.cz> <49CAC982.4050507@gaisler.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Nick Piggin <nickpiggin@yahoo.com.au>, Jan Kara <jack@suse.cz>,
-        "Martin J. Bligh" <mbligh@mbligh.org>, linux-ext4@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
-        Alex Khesin <alexk@google.com>, Mike Waychison <mikew@google.com>,
-        Rohit Seth <rohitseth@google.com>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20090324033204.64f3da9d.akpm@linux-foundation.org>
-Sender: owner-linux-mm@kvack.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Alexander Beregalov <a.beregalov@gmail.com>,
+	Theodore Tso <tytso@mit.edu>,
+	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	sparclinux@vger.kernel.org
+To: Jiri Gaisler <jiri@gaisler.com>
+Return-path: <sparclinux-owner@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <49CAC982.4050507@gaisler.com>
+Sender: sparclinux-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Mar 24, 2009 at 3:32 AM, Andrew Morton
-<akpm@linux-foundation.org> wrote:
-> On Tue, 24 Mar 2009 18:44:21 +1100 Nick Piggin <nickpiggin@yahoo.com.au> wrote:
->
->> On Friday 20 March 2009 03:46:39 Jan Kara wrote:
->> > On Fri 20-03-09 02:48:21, Nick Piggin wrote:
->>
->> > > Holding mapping->private_lock over the __set_page_dirty should
->> > > fix it, although I guess you'd want to release it before calling
->> > > __mark_inode_dirty so as not to put inode_lock under there. I
->> > > have a patch for this if it sounds reasonable.
->> >
->> >   Yes, that seems to be a bug - the function actually looked suspitious to
->> > me yesterday but I somehow convinced myself that it's fine. Probably
->> > because fsx-linux is single-threaded.
->>
->>
->> After a whole lot of chasing my own tail in the VM and buffer layers,
->> I think it is a problem in ext2 (and I haven't been able to reproduce
->> with ext3 yet, which might lend weight to that, although as we have
->> seen, it is very timing dependent).
->>
->> That would be slightly unfortunate because we still have Jan's ext3
->> problem, and also another reported problem of corruption on ext3 (on
->> brd driver).
->>
->> Anyway, when I have reproduced the problem with the test case, the
->> "lost" writes are all reported to be holes. Unfortunately, that doesn't
->> point straight to the filesystem, because ext2 allocates blocks in this
->> case at writeout time, so if dirty bits are getting lost, then it would
->> be normal to see holes.
->>
->> I then put in a whole lot of extra infrastructure to track metadata about
->> each struct page (when it was last written out, when it last had the number
->> of writable ptes reach 0, when the dirty bits were last cleared etc). And
->> none of the normal asertions were triggering: eg. when any page is removed
->> from pagecache (except truncates), it has always had all its buffers
->> written out *after* all ptes were made readonly or unmapped. Lots of other
->> tests and crap like that.
->>
->> So I tried what I should have done to start with and did an e2fsck after
->> seeing corruption. Yes, it comes up with errors.
->
-> Do you recall what the errors were?
-
-I run e2fsck on the partition after the failure happened and here is
-what i saw, not sure if that is the same message Jan looked at:
-
-e2fsck 1.41.3 (12-Oct-2008)
-Warning!  /dev/hda1 is mounted.
-/dev/hda1 contains a file system with errors, check forced.
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Block bitmap differences:  +74915 -195111 -224680
-Fix? no
-
-Free blocks count wrong for group #6 (170, counted=169).
-Fix? no
-
-Free blocks count wrong (10120, counted=523).
-Fix? no
-
-Free inodes count wrong (95678, counted=95672).
-Fix? no
-
-
-/dev/hda1: ********** WARNING: Filesystem still has errors **********
-
-/dev/hda1: 35938/131616 files (1.5% non-contiguous), 252936/263056 blocks
-
---Ying
-
-
->
->> Now that is unusual
->> because that should be largely insulated from the vm: if a dirty bit gets
->> lost, then the filesystem image should be quite happy and error-free with
->> a hole or unwritten data there.
->>
->> I don't know ext? locking very well, except that it looks pretty overly
->> complex and crufty.
->>
->> Usually, blocks are instantiated by write(2), under i_mutex, serialising
->> the allocator somewhat. mmap-write blocks are instantiated at writeout
->> time, unserialised. I moved truncate_mutex to cover the entire get_blocks
->> function, and can no longer trigger the problem. Might be a timing issue
->> though -- Ying, can you try this and see if you can still reproduce?
->>
->> I close my eyes and pick something out of a hat. a686cd89. Search for XXX.
->> Nice. Whether or not this cased the problem, can someone please tell me
->> why it got merged in that state?
->>
->> I'm leaving ext3 running for now. It looks like a nasty task to bisect
->> ext2 down to that commit :( and I would be more interested in trying to
->> reproduce Jan's ext3 problem, however, because I'm not too interested in
->> diving into ext2 locking to work out exactly what is racing and how to
->> fix it properly. I suspect it would be most productive to wire up some
->> ioctls right into the block allocator/lookup and code up a userspace
->> tester for it that could probably stress it a lot harder than kernel
->> writeout can.
->
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+On Thu 26-03-09 01:17:06, Jiri Gaisler wrote:
+> Jan Kara wrote:
+> >   Hi,
+> > 
+> >   thanks for the updated disassembly.
+> > 
+> >>   55bab0:       82 10 60 01     or  %g1, 1, %g1
+> >>                 spin_unlock(&journal->j_list_lock);
+> >>   55bab4:       40 06 4b 20     call  6ee734 <_spin_unlock>
+> >>   55bab8:       c2 24 e0 28     st  %g1, [ %l3 + 0x28 ]
+> >   OK, so it really seems that:
+> >   jinode->i_flags |= JI_COMMIT_RUNNING;
+> >   spin_unlock(&journal->j_list_lock);
+> > 
+> >   has been compiled to
+> >   ld [ %l3 + 0x28 ], %g1
+> >   or  %g1, 1, %g1
+> >   call  6ee734 <_spin_unlock>
+> >   st  %g1, [ %l3 + 0x28 ]
+> > 
+> >   Which seems like a bug in the compiler or in the way implement compiler
+> > barriers in spin_unlock() on UP sparc. Or is there some sparc magic by which
+> > this is correct code? Any clever sparc guy?
+> > 
+> Looks fine to me - the store is made in the branch delay slot
+> of the call, so it will occur before the first instruction at
+> the call target address executes.
+  Thanks for explanation. I knew sparc had some surprising features like
+this ;).
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
