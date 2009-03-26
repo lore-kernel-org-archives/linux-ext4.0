@@ -1,79 +1,34 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] e2fsck: ignore differing NEEDS_RECOVERY flag on backup
- sbs
-Date: Thu, 26 Mar 2009 11:31:41 -0500
-Message-ID: <49CBADED.7040909@redhat.com>
-References: <49281F18.7080404@redhat.com>
+From: Frank Mayhar <fmayhar@google.com>
+Subject: /proc->/sys change.
+Date: Thu, 26 Mar 2009 09:45:58 -0700
+Message-ID: <1238085958.22887.7.camel@bobble.smo.corp.google.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+To: linux-ext4 <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:46192 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758674AbZCZQbp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 26 Mar 2009 12:31:45 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n2QGViSP009825
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2009 12:31:44 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n2QGVbk5010775
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2009 12:31:37 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n2QGVgrM026852
-	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2009 12:31:43 -0400
-In-Reply-To: <49281F18.7080404@redhat.com>
+Received: from smtp-out.google.com ([216.239.45.13]:61794 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753704AbZCZQqF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 26 Mar 2009 12:46:05 -0400
+Received: from wpaz29.hot.corp.google.com (wpaz29.hot.corp.google.com [172.24.198.93])
+	by smtp-out.google.com with ESMTP id n2QGk1TY018266
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2009 09:46:02 -0700
+Received: from [172.29.60.126] (bobble.smo.corp.google.com [172.29.60.126])
+	(authenticated bits=0)
+	by wpaz29.hot.corp.google.com with ESMTP id n2QGjwO0012183
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
+	for <linux-ext4@vger.kernel.org>; Thu, 26 Mar 2009 09:46:00 -0700
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> This is for RH bugzilla 471925 -  Complete scan of filesystems expanded online
-> 
-> When we resize online, the primary superblock gets copied to all
-> the backups, and of course since we're mounted the NEEDS_RECOVERY
-> flag is set.  A subsequent fsck will find the backups have the
-> NEEDS_RECOVERY flag set while the primary does not, and this
-> forces a full fsck pass.
-> 
-> I think this flag can be safely ignored in the flag comparisons.
+We just noticed that the patches that added sysfs support and
+subsequently removed procfs support left two files in /proc.  The
+mb_history and mb_groups file appear to have been overlooked in this
+process.  Or was this intentional?
 
-ping on this?  Andreas wondered about masking the flag when sb backups
-are written, but I think that only needs to be done in kernelspace; from
-reading code & testing offline resize, I don't think userspace needs
-further changes.
-
--Eric
-
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> Index: e2fsprogs/e2fsck/super.c
-> ===================================================================
-> --- e2fsprogs.orig/e2fsck/super.c	2008-11-22 07:54:47.000000000 -0600
-> +++ e2fsprogs/e2fsck/super.c	2008-11-22 08:59:45.953060973 -0600
-> @@ -860,7 +860,8 @@ void check_super_block(e2fsck_t ctx)
->   * try to discourage it in the future.  In particular, for the newer
->   * ext4 files, especially EXT4_FEATURE_RO_COMPAT_DIR_NLINK and
->   * EXT3_FEATURE_INCOMPAT_EXTENTS.  So some of these may go away in the
-> - * future.
-> + * future.  EXT3_FEATURE_INCOMPAT_RECOVER may also get set when
-> + * copying the primary superblock during online resize.
->   *
->   * The kernel will set EXT2_FEATURE_COMPAT_EXT_ATTR, but
->   * unfortunately, we shouldn't ignore it since if it's not set in the
-> @@ -869,7 +870,8 @@ void check_super_block(e2fsck_t ctx)
->   */
->  #define FEATURE_RO_COMPAT_IGNORE	(EXT2_FEATURE_RO_COMPAT_LARGE_FILE| \
->  					 EXT4_FEATURE_RO_COMPAT_DIR_NLINK)
-> -#define FEATURE_INCOMPAT_IGNORE		(EXT3_FEATURE_INCOMPAT_EXTENTS)
-> +#define FEATURE_INCOMPAT_IGNORE		(EXT3_FEATURE_INCOMPAT_EXTENTS| \
-> +					 EXT3_FEATURE_INCOMPAT_RECOVER)
->  
->  int check_backup_super_block(e2fsck_t ctx)
->  {
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+In any event, this is a heads-up.
+-- 
+Frank Mayhar <fmayhar@google.com>
+Google, Inc.
 
