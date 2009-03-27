@@ -1,54 +1,36 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
-Date: Thu, 26 Mar 2009 16:02:03 -0700 (PDT)
-Message-ID: <alpine.LFD.2.00.0903261559200.3032@localhost.localdomain>
-References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com> <20090324125510.GA9434@duck.suse.cz> <20090324132637.GA14607@duck.suse.cz> <200903250130.02485.nickpiggin@yahoo.com.au> <20090324144709.GF23439@duck.suse.cz> <1237906563.24918.184.camel@twins>
- <20090324152959.GG23439@duck.suse.cz> <20090326084723.GB8207@skywalker>
+From: Dan Carpenter <error27@gmail.com>
+Subject: locking typo in ext4_mb_add_n_trim()
+Date: Fri, 27 Mar 2009 13:27:04 +0300 (EAT)
+Message-ID: <Pine.LNX.4.64.0903262204430.4167@usbsys.site>
 Mime-Version: 1.0
 Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Jan Kara <jack@suse.cz>, Peter Zijlstra <a.p.zijlstra@chello.nl>,
-        Nick Piggin <nickpiggin@yahoo.com.au>,
-        "Martin J. Bligh" <mbligh@mbligh.org>, linux-ext4@vger.kernel.org,
-        Ying Han <yinghan@google.com>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
-        Alex Khesin <alexk@google.com>, Mike Waychison <mikew@google.com>,
-        Rohit Seth <rohitseth@google.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20090326084723.GB8207@skywalker>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
+To: tytso@mit.edu, adilger@sun.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from fg-out-1718.google.com ([72.14.220.154]:22029 "EHLO
+	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755745AbZC0KaW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Mar 2009 06:30:22 -0400
+Received: by fg-out-1718.google.com with SMTP id e12so350481fga.17
+        for <linux-ext4@vger.kernel.org>; Fri, 27 Mar 2009 03:30:20 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Smatch (http://repo.or.cz/w/smatch.git/) complains about the locking in 
+ext4_mb_add_n_trim() from fs/ext4/mballoc.c
 
+I think it's meant to be spin_unlock(&tmp_pa->pa_lock); on line 4442.
 
-On Thu, 26 Mar 2009, Aneesh Kumar K.V wrote:
-> 
-> >page faults doing allocation can take a
-> > *long* time 
-> 
-> That is true
+  4438          list_for_each_entry_rcu(tmp_pa, &lg->lg_prealloc_list[order],
+  4439                                                  pa_inode_list) {
+  4440                  spin_lock(&tmp_pa->pa_lock);
+  4441                  if (tmp_pa->pa_deleted) {
+  4442                          spin_unlock(&pa->pa_lock);
+  4443                          continue;
+  4444                  }
 
-Btw, this is actually a feature rather than a bug.
+I can send a patch if I'm right or you could just give me a:
+Reported-by: Dan Carpenter <error27@gmail.com>
 
-We want to slow down the writer, which is why we also do dirty page 
-balancing when marking a page dirty. 
-
-Basically, if block allocation is a performance problem, then it should be 
-a performance problem that is attributed to the process that _causes_ it, 
-rather than to some random poor unrelated process that then later ends up 
-writing the page out because it wants to use some memory.
-
-This is why tracking dirty pages is so important. Yes, it also avoids 
-various nasty overcommit situations, but the whole "make it hurt for the 
-person responsible, rather than a random innocent bystander" is the more 
-important part of it. 
-
-			Linus
-
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+regards,
+dan carpenter
