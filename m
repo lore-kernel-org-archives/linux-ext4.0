@@ -1,9 +1,9 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/3] ext3: Use WRITE_SYNC for commits which are caused
-	by fsync()
-Date: Fri, 27 Mar 2009 23:20:17 +0100
-Message-ID: <20090327222017.GI31071@duck.suse.cz>
-References: <1238185471-31152-1-git-send-email-tytso@mit.edu> <1238185471-31152-2-git-send-email-tytso@mit.edu> <1238185471-31152-3-git-send-email-tytso@mit.edu>
+Subject: Re: [PATCH 3/3] ext3: Avoid starting a transaction in writepage
+	when not necessary
+Date: Fri, 27 Mar 2009 23:23:46 +0100
+Message-ID: <20090327222346.GJ31071@duck.suse.cz>
+References: <1238185471-31152-1-git-send-email-tytso@mit.edu> <1238185471-31152-2-git-send-email-tytso@mit.edu> <1238185471-31152-3-git-send-email-tytso@mit.edu> <1238185471-31152-4-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
@@ -11,166 +11,122 @@ Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
 	jack@suse.cz
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:58787 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:58855 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752711AbZC0WUV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Mar 2009 18:20:21 -0400
+	id S1751617AbZC0WXt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Mar 2009 18:23:49 -0400
 Content-Disposition: inline
-In-Reply-To: <1238185471-31152-3-git-send-email-tytso@mit.edu>
+In-Reply-To: <1238185471-31152-4-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 27-03-09 16:24:30, Theodore Ts'o wrote:
-> If a commit is triggered by fsync(), set a flag indicating the journal
-> blocks associated with the transaction should be flushed out using
-> WRITE_SYNC.
+On Fri 27-03-09 16:24:31, Theodore Ts'o wrote:
+> From: Jan Kara <jack@suse.cz>
 > 
+> We don't have to start a transaction in writepage() when all the blocks
+> are a properly allocated. Even in ordered mode either the data has been
+> written via write() and they are thus already added to transaction's list
+> or the data was written via mmap and then it's random in which transaction
+> they get written anyway.
+> 
+> This should help VM to pageout dirty memory without blocking on transaction
+> commits.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
 > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-  And this one seems fine as well. Acked-by: Jan Kara <jack@suse.cz>
+  Please, use the patch below instead (and I'd also wait a few days for
+Mingo to check whether it also helps him). It also changes data=writeback
+mode in the same way and it adheres to coding style...
 
-								Honza
-
-> ---
->  fs/jbd/commit.c      |   23 +++++++++++++++--------
->  fs/jbd/transaction.c |    2 ++
->  include/linux/jbd.h  |    5 +++++
->  3 files changed, 22 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-> index 3fbffb1..f8077b9 100644
-> --- a/fs/jbd/commit.c
-> +++ b/fs/jbd/commit.c
-> @@ -20,6 +20,7 @@
->  #include <linux/slab.h>
->  #include <linux/mm.h>
->  #include <linux/pagemap.h>
-> +#include <linux/bio.h>
->  
->  /*
->   * Default IO end handler for temporary BJ_IO buffer_heads.
-> @@ -171,14 +172,15 @@ static int journal_write_commit_record(journal_t *journal,
->  	return (ret == -EIO);
->  }
->  
-> -static void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
-> +static void journal_do_submit_data(struct buffer_head **wbuf, int bufs,
-> +				   int write_op)
->  {
->  	int i;
->  
->  	for (i = 0; i < bufs; i++) {
->  		wbuf[i]->b_end_io = end_buffer_write_sync;
->  		/* We use-up our safety reference in submit_bh() */
-> -		submit_bh(WRITE, wbuf[i]);
-> +		submit_bh(write_op, wbuf[i]);
->  	}
->  }
->  
-> @@ -186,7 +188,8 @@ static void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
->   *  Submit all the data buffers to disk
->   */
->  static int journal_submit_data_buffers(journal_t *journal,
-> -				transaction_t *commit_transaction)
-> +				       transaction_t *commit_transaction,
-> +				       int write_op)
->  {
->  	struct journal_head *jh;
->  	struct buffer_head *bh;
-> @@ -225,7 +228,7 @@ write_out_data:
->  				BUFFER_TRACE(bh, "needs blocking lock");
->  				spin_unlock(&journal->j_list_lock);
->  				/* Write out all data to prevent deadlocks */
-> -				journal_do_submit_data(wbuf, bufs);
-> +				journal_do_submit_data(wbuf, bufs, write_op);
->  				bufs = 0;
->  				lock_buffer(bh);
->  				spin_lock(&journal->j_list_lock);
-> @@ -256,7 +259,7 @@ write_out_data:
->  			jbd_unlock_bh_state(bh);
->  			if (bufs == journal->j_wbufsize) {
->  				spin_unlock(&journal->j_list_lock);
-> -				journal_do_submit_data(wbuf, bufs);
-> +				journal_do_submit_data(wbuf, bufs, write_op);
->  				bufs = 0;
->  				goto write_out_data;
->  			}
-> @@ -286,7 +289,7 @@ write_out_data:
->  		}
->  	}
->  	spin_unlock(&journal->j_list_lock);
-> -	journal_do_submit_data(wbuf, bufs);
-> +	journal_do_submit_data(wbuf, bufs, write_op);
->  
->  	return err;
->  }
-> @@ -315,6 +318,7 @@ void journal_commit_transaction(journal_t *journal)
->  	int first_tag = 0;
->  	int tag_flag;
->  	int i;
-> +	int write_op = WRITE;
->  
->  	/*
->  	 * First job: lock down the current transaction and wait for
-> @@ -347,6 +351,8 @@ void journal_commit_transaction(journal_t *journal)
->  	spin_lock(&journal->j_state_lock);
->  	commit_transaction->t_state = T_LOCKED;
->  
-> +	if (commit_transaction->t_synchronous_commit)
-> +		write_op = WRITE_SYNC;
->  	spin_lock(&commit_transaction->t_handle_lock);
->  	while (commit_transaction->t_updates) {
->  		DEFINE_WAIT(wait);
-> @@ -431,7 +437,8 @@ void journal_commit_transaction(journal_t *journal)
->  	 * Now start flushing things to disk, in the order they appear
->  	 * on the transaction lists.  Data blocks go first.
->  	 */
-> -	err = journal_submit_data_buffers(journal, commit_transaction);
-> +	err = journal_submit_data_buffers(journal, commit_transaction,
-> +					  write_op);
->  
->  	/*
->  	 * Wait for all previously submitted IO to complete.
-> @@ -660,7 +667,7 @@ start_journal_io:
->  				clear_buffer_dirty(bh);
->  				set_buffer_uptodate(bh);
->  				bh->b_end_io = journal_end_buffer_io_sync;
-> -				submit_bh(WRITE, bh);
-> +				submit_bh(write_op, bh);
->  			}
->  			cond_resched();
->  
-> diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-> index e6a1174..ed886e6 100644
-> --- a/fs/jbd/transaction.c
-> +++ b/fs/jbd/transaction.c
-> @@ -1440,6 +1440,8 @@ int journal_stop(handle_t *handle)
->  		}
->  	}
->  
-> +	if (handle->h_sync)
-> +		transaction->t_synchronous_commit = 1;
->  	current->journal_info = NULL;
->  	spin_lock(&journal->j_state_lock);
->  	spin_lock(&transaction->t_handle_lock);
-> diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-> index 64246dc..2c69431 100644
-> --- a/include/linux/jbd.h
-> +++ b/include/linux/jbd.h
-> @@ -552,6 +552,11 @@ struct transaction_s
->  	 */
->  	int t_handle_count;
->  
-> +	/*
-> +	 * This transaction is being forced and some process is
-> +	 * waiting for it to finish.
-> +	 */
-> +	int t_synchronous_commit:1;
->  };
->  
->  /**
-> -- 
-> 1.5.6.3
-> 
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
+
+---
+
+>From 8c1678ee703b36f3be51c856f4586c1512d98521 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Thu, 26 Mar 2009 13:08:04 +0100
+Subject: [PATCH] ext3: Avoid starting a transaction in writepage when not necessary
+
+We don't have to start a transaction in writepage() when all the blocks
+are a properly allocated. Even in ordered mode either the data has been
+written via write() and they are thus already added to transaction's list
+or the data was written via mmap and then it's random in which transaction
+they get written anyway.
+
+This should help VM to pageout dirty memory without blocking on transaction
+commits.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext3/inode.c |   31 ++++++++++++++++++++++++++-----
+ 1 files changed, 26 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index e230f7a..73f605a 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1420,6 +1420,10 @@ static int bput_one(handle_t *handle, struct buffer_head *bh)
+ 	return 0;
+ }
+ 
++static int buffer_unmapped(handle_t *handle, struct buffer_head *bh)
++{
++	return !buffer_mapped(bh);
++}
+ /*
+  * Note that we always start a transaction even if we're not journalling
+  * data.  This is to preserve ordering: any hole instantiation within
+@@ -1490,6 +1494,19 @@ static int ext3_ordered_writepage(struct page *page,
+ 	if (ext3_journal_current_handle())
+ 		goto out_fail;
+ 
++	if (!page_has_buffers(page)) {
++		create_empty_buffers(page, inode->i_sb->s_blocksize,
++				(1 << BH_Dirty)|(1 << BH_Uptodate));
++		page_bufs = page_buffers(page);
++	} else {
++		page_bufs = page_buffers(page);
++		if (!walk_page_buffers(NULL, page_bufs, 0, PAGE_CACHE_SIZE,
++				       NULL, buffer_unmapped)) {
++			/* Provide NULL get_block() to catch bugs if buffers
++			 * weren't really mapped */
++			return block_write_full_page(page, NULL, wbc);
++		}
++	}
+ 	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+ 
+ 	if (IS_ERR(handle)) {
+@@ -1497,11 +1514,6 @@ static int ext3_ordered_writepage(struct page *page,
+ 		goto out_fail;
+ 	}
+ 
+-	if (!page_has_buffers(page)) {
+-		create_empty_buffers(page, inode->i_sb->s_blocksize,
+-				(1 << BH_Dirty)|(1 << BH_Uptodate));
+-	}
+-	page_bufs = page_buffers(page);
+ 	walk_page_buffers(handle, page_bufs, 0,
+ 			PAGE_CACHE_SIZE, NULL, bget_one);
+ 
+@@ -1549,6 +1561,15 @@ static int ext3_writeback_writepage(struct page *page,
+ 	if (ext3_journal_current_handle())
+ 		goto out_fail;
+ 
++	if (page_has_buffers(page)) {
++		if (!walk_page_buffers(NULL, page_buffers(page), 0,
++				      PAGE_CACHE_SIZE, NULL, buffer_unmapped)) {
++			/* Provide NULL get_block() to catch bugs if buffers
++			 * weren't really mapped */
++			return block_write_full_page(page, NULL, wbc);
++		}
++	}
++
+ 	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+-- 
+1.6.0.2
+
