@@ -1,131 +1,197 @@
-From: Ying Han <yinghan@google.com>
-Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
-Date: Fri, 27 Mar 2009 13:35:16 -0700
-Message-ID: <604427e00903271335p14f96910y912ccd349faf154c@mail.gmail.com>
-References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com>
-	 <200903200248.22623.nickpiggin@yahoo.com.au>
-	 <20090319164638.GB3899@duck.suse.cz>
-	 <200903241844.22851.nickpiggin@yahoo.com.au>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [PATCH 0/3] Ext3 latency improvement patches
+Date: Fri, 27 Mar 2009 16:50:31 -0400
+Message-ID: <1238187031.27455.212.camel@think.oraclecorp.com>
+References: <1238185471-31152-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: multipart/mixed; boundary="=-+oZmrcHLBv9JsxpkoHLR"
+Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	jack@suse.cz
+To: "Theodore Ts'o" <tytso@mit.edu>, Ric Wheeler <rwheeler@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:30380 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754569AbZC0UvG (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 27 Mar 2009 16:51:06 -0400
+In-Reply-To: <1238185471-31152-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+
+--=-+oZmrcHLBv9JsxpkoHLR
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, "Martin J. Bligh" <mbligh@mbligh.org>,
-        linux-ext4@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Andrew Morton <akpm@linux-foundation.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
-        Alex Khesin <alexk@google.com>, Mike Waychison <mikew@google.com>,
-        Rohit Seth <rohitseth@google.com>,
-        Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Nick Piggin <nickpiggin@yahoo.com.au>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <200903241844.22851.nickpiggin@yahoo.com.au>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Mar 24, 2009 at 12:44 AM, Nick Piggin <nickpiggin@yahoo.com.au> wrote:
-> On Friday 20 March 2009 03:46:39 Jan Kara wrote:
->> On Fri 20-03-09 02:48:21, Nick Piggin wrote:
->
->> > Holding mapping->private_lock over the __set_page_dirty should
->> > fix it, although I guess you'd want to release it before calling
->> > __mark_inode_dirty so as not to put inode_lock under there. I
->> > have a patch for this if it sounds reasonable.
->>
->>   Yes, that seems to be a bug - the function actually looked suspitious to
->> me yesterday but I somehow convinced myself that it's fine. Probably
->> because fsx-linux is single-threaded.
->
->
-> After a whole lot of chasing my own tail in the VM and buffer layers,
-> I think it is a problem in ext2 (and I haven't been able to reproduce
-> with ext3 yet, which might lend weight to that, although as we have
-> seen, it is very timing dependent).
->
-> That would be slightly unfortunate because we still have Jan's ext3
-> problem, and also another reported problem of corruption on ext3 (on
-> brd driver).
-I believe i see the same issue on ext2 as well as ext4.
->
-> Anyway, when I have reproduced the problem with the test case, the
-> "lost" writes are all reported to be holes. Unfortunately, that doesn't
-> point straight to the filesystem, because ext2 allocates blocks in this
-> case at writeout time, so if dirty bits are getting lost, then it would
-> be normal to see holes.
->
-> I then put in a whole lot of extra infrastructure to track metadata about
-> each struct page (when it was last written out, when it last had the number
-> of writable ptes reach 0, when the dirty bits were last cleared etc). And
-> none of the normal asertions were triggering: eg. when any page is removed
-> from pagecache (except truncates), it has always had all its buffers
-> written out *after* all ptes were made readonly or unmapped. Lots of other
-> tests and crap like that.
+On Fri, 2009-03-27 at 16:24 -0400, Theodore Ts'o wrote:
+> The following patches have been posted as providing at least some
+> partial improvement to the ext3 latency problem that has been
+> discussed on the 2.6.29 mongo-LKML-thread-that-would-not-die.
 
-Do you think there might be a race in the page reclaim path? I did a
-hack which commeted out
-wakeup_pdflush in try_to_free_pages ( based on 2.6.21, just randomly
-picked on has the problem)
-It runs for couple of hours and the problem not happened yet. I am not
-sure if that is the problem or not,
-and i will leave it running.
-The reason i tried the hack since i reproduce the "bad pages" easily
-everytime i put more memory pressure
-on the system.
+Ric had asked me about a test program that would show the worst case
+ext3 behavior.  So I've modified your ext3 program a little.  It now
+creates a 8G file and forks off another proc to do random IO to that
+file.
+
+Then it runs one fsync every 4 seconds and times how long they take.
+After the program has been running for 60 seconds, it tries to stop.
+
+On my sata drive with barriers on, even btrfs and xfs saw some
+multi-second fsyncs, but ext3 came in at 414s for a single fsync.
+
+Warning: don't run this on a laptop drive, you'll still be waiting for
+it next year.  This is probably full of little errors, I cut it together
+pretty quickly.
+
+-chris
 
 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index db023e2..b4b7e1f 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -1067,11 +1067,13 @@ unsigned long try_to_free_pages(struct zone **zones, g
- 		 * that's undesirable in laptop mode, where we *want* lumpy
- 		 * writeout.  So in laptop mode, write out the whole world.
- 		 */
-+/*
- 		if (total_scanned > sc.swap_cluster_max +
- 					sc.swap_cluster_max / 2) {
- 			wakeup_pdflush(laptop_mode ? 0 : total_scanned);
- 			sc.may_writepage = 1;
- 		}
-+*/
+--=-+oZmrcHLBv9JsxpkoHLR
+Content-Disposition: attachment; filename="fsync-tester.c"
+Content-Type: text/x-csrc; name="fsync-tester.c"; charset="UTF-8"
+Content-Transfer-Encoding: 7bit
 
- 		/* Take a nap, wait for some writeback to complete */
- 		if (sc.nr_scanned && priority < DEF_PRIORITY - 2)
+/*
+ * fsync-tester.c
+ *
+ * Written by Theodore Ts'o, 3/21/09.  Updated by Chris Mason to include
+ * the random writer thread
+ *
+ * This file may be redistributed under the terms of the GNU Public
+ * License, version 2.
+ */
+#define _FILE_OFFSET_BITS 64
+#define _XOPEN_SOURCE 500
+#include <unistd.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <sys/wait.h>
+#include <signal.h>
+#include <time.h>
+#include <fcntl.h>
+#include <string.h>
 
->
-> So I tried what I should have done to start with and did an e2fsck after
-> seeing corruption. Yes, it comes up with errors. Now that is unusual
-> because that should be largely insulated from the vm: if a dirty bit gets
-> lost, then the filesystem image should be quite happy and error-free with
-> a hole or unwritten data there.
->
-> I don't know ext? locking very well, except that it looks pretty overly
-> complex and crufty.
->
-> Usually, blocks are instantiated by write(2), under i_mutex, serialising
-> the allocator somewhat. mmap-write blocks are instantiated at writeout
-> time, unserialised. I moved truncate_mutex to cover the entire get_blocks
-> function, and can no longer trigger the problem. Might be a timing issue
-> though -- Ying, can you try this and see if you can still reproduce?
->
-> I close my eyes and pick something out of a hat. a686cd89. Search for XXX.
-> Nice. Whether or not this cased the problem, can someone please tell me
-> why it got merged in that state?
->
-> I'm leaving ext3 running for now. It looks like a nasty task to bisect
-> ext2 down to that commit :( and I would be more interested in trying to
-> reproduce Jan's ext3 problem, however, because I'm not too interested in
-> diving into ext2 locking to work out exactly what is racing and how to
-> fix it properly. I suspect it would be most productive to wire up some
-> ioctls right into the block allocator/lookup and code up a userspace
-> tester for it that could probably stress it a lot harder than kernel
-> writeout can.
->
->
+#define SIZE (32768*32)
+static char bigbuf[4096];
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+static float timeval_subtract(struct timeval *tv1, struct timeval *tv2)
+{
+	return ((tv1->tv_sec - tv2->tv_sec) +
+		((float) (tv1->tv_usec - tv2->tv_usec)) / 1000000);
+}
+
+static void random_io(int fd, loff_t total)
+{
+	loff_t cur = 0;
+	int ret;
+
+	/* just some constant so our runs are always the same */
+	srand(4096);
+	while(1) {
+		/*
+		 * we want a random offset into the file,
+		 * but rand only returns max in.  So we make
+		 * it a random block number instead, and multiply
+		 * by 4096.
+		 */
+		cur = rand();
+		cur = (cur * 4096) % (total - 4096);
+
+		/* align our offset  to 4k */
+		cur = cur / 4096;
+		cur = cur * 4096;
+		ret = pwrite(fd, bigbuf, 4096, cur);
+		if (ret < 4096) {
+			fprintf(stderr, "short write ret %d cur %llu\n",
+				ret, (unsigned long long)cur);
+			exit(1);
+		}
+	}
+}
+
+int main(int argc, char **argv)
+{
+	int	fd;
+	struct timeval tv, tv2, start;
+	char buf[SIZE];
+	pid_t pid;
+	loff_t total = ((loff_t)8) * 1024 * 1024 * 1024;
+	loff_t cur = 0;
+	int rand_fd;
+	int ret;
+	int i;
+	int status;
+	struct stat st;
+
+	memset(bigbuf, 0, 4096);
+
+	rand_fd = open("fsync-tester.rnd-file", O_WRONLY|O_CREAT);
+	if (rand_fd < 0) {
+		perror("open");
+		exit(1);
+	}
+
+	ret = fstat(rand_fd, &st);
+	if (ret < 0) {
+		perror("fstat");
+		exit(1);
+	}
+
+	if (st.st_size < total) {
+		printf("setting up random write file\n");
+		while(cur < total) {
+			ret = write(rand_fd, bigbuf, 4096);
+			if (ret <= 0) {
+				fprintf(stderr, "short write\n");
+				exit(1);
+			}
+			cur += ret;
+		}
+		printf("done setting up random write file\n");
+	}
+
+	fd = open("fsync-tester.tst-file", O_WRONLY|O_CREAT);
+	if (fd < 0) {
+		perror("open");
+		exit(1);
+	}
+	memset(buf, 'a', SIZE);
+
+	pid = fork();
+	if (pid == 0) {
+		printf("starting random io!\n");
+		random_io(rand_fd, total);
+		exit(0);
+	}
+
+	close(rand_fd);
+
+	gettimeofday(&start, NULL);
+	printf("starting fsync run\n");
+	for(i = 0; i < 60; i++) {
+		pwrite(fd, buf, SIZE, 0);
+		gettimeofday(&tv, NULL);
+		fsync(fd);
+		gettimeofday(&tv2, NULL);
+		printf("fsync time: %5.4fs\n", timeval_subtract(&tv2, &tv));
+		if (timeval_subtract(&tv2, &start) > 60)
+			break;
+		sleep(4);
+	}
+	printf("run done %d fsyncs total, killing random writer\n", i + 1);
+	fflush(stdout);
+	kill(pid, SIGTERM);
+	wait(&status);
+
+	return 0;
+}
+
+
+
+
+
+--=-+oZmrcHLBv9JsxpkoHLR--
+
