@@ -1,141 +1,83 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: Avoid false EIO errors
-Date: Fri, 27 Mar 2009 21:24:21 +0100
-Message-ID: <20090327202421.GB31071@duck.suse.cz>
-References: <1238091711-23464-1-git-send-email-jack@suse.cz> <20090327180806.GB2810@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 3/3] ext3: Avoid starting a transaction in writepage when not necessary
+Date: Fri, 27 Mar 2009 16:24:31 -0400
+Message-ID: <1238185471-31152-4-git-send-email-tytso@mit.edu>
+References: <1238185471-31152-1-git-send-email-tytso@mit.edu>
+ <1238185471-31152-2-git-send-email-tytso@mit.edu>
+ <1238185471-31152-3-git-send-email-tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>, jack@suse.cz,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Linux Kernel Developers List <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:39564 "EHLO mx1.suse.de"
+Received: from THUNK.ORG ([69.25.196.29]:45716 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761413AbZC0UY2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Mar 2009 16:24:28 -0400
-Content-Disposition: inline
-In-Reply-To: <20090327180806.GB2810@skywalker>
+	id S1761413AbZC0UYf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 27 Mar 2009 16:24:35 -0400
+In-Reply-To: <1238185471-31152-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri 27-03-09 23:38:06, Aneesh Kumar K.V wrote:
-> On Thu, Mar 26, 2009 at 07:21:51PM +0100, Jan Kara wrote:
-> > Sometimes block_write_begin() can map buffers in a page but later we fail to
-> > copy data into those buffers (because the source page has been paged out in the
-> > mean time). We then end up with !uptodate mapped buffers. To add a bit more to
-> > the confusion, block_write_end() does not commit any data (and thus does not
-> > any mark buffers as uptodate) if we didn't succeed with copying all the data.
-> > 
-> > Commit f4fc66a894546bdc88a775d0e83ad20a65210bcb (ext3: convert to new aops)
-> > missed these cases and thus we were inserting non-uptodate buffers to
-> > transaction's list which confuses JBD code and it reports IO errors, aborts
-> > a transaction and generally makes users afraid about their data ;-P.
-> > 
-> > This patch fixes the problem by reorganizing ext3_..._write_end() code to
-> > first call block_write_end() to mark buffers with valid data uptodate and
-> > after that we file only uptodate buffers to transaction's lists. Also
-> > fix a problem where we could leave blocks allocated beyond i_size (i_disksize
-> > in fact).
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
-> > ---
-> >  fs/ext3/inode.c |   99 +++++++++++++++++++++++-------------------------------
-> >  1 files changed, 42 insertions(+), 57 deletions(-)
-> > 
-> >   As a side note, ext4 / JBD2 only needs the "proper i_disksize update"
-> > part of the fix (we got rid of special handling of ordered mode buffers
-> > there). But I have to first figure out how to properly do it...
-> >   Andrew, would you please merge the patch? Thanks.
-> > 
-> > 									Honza
-> > 
-> > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> > index 5fa453b..e230f7a 100644
-> > --- a/fs/ext3/inode.c
-> > +++ b/fs/ext3/inode.c
-> > @@ -1211,6 +1211,18 @@ int ext3_journal_dirty_data(handle_t *handle, struct buffer_head *bh)
-> >  	return err;
-> >  }
-> > 
-> > +/* For ordered writepage and write_end functions */
-> > +static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
-> > +{
-> > +	/*
-> > +	 * Write could have mapped the buffer but it didn't copy the data in
-> > +	 * yet. So avoid filing such buffer into a transaction.
-> > +	 */
-> > +	if (buffer_mapped(bh) && buffer_uptodate(bh))
-> > +		return ext3_journal_dirty_data(handle, bh);
-> > +	return 0;
-> > +}
-> > +
-> >  /* For write_end() in data=journal mode */
-> >  static int write_end_fn(handle_t *handle, struct buffer_head *bh)
-> >  {
-> > @@ -1221,26 +1233,29 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
-> >  }
-> > 
-> >  /*
-> > - * Generic write_end handler for ordered and writeback ext3 journal modes.
-> > - * We can't use generic_write_end, because that unlocks the page and we need to
-> > - * unlock the page after ext3_journal_stop, but ext3_journal_stop must run
-> > - * after block_write_end.
-> > + * This is nasty and subtle: ext3_write_begin() could have allocated blocks
-> > + * for the whole page but later we failed to copy the data in. So the disk
-> > + * size we really have allocated is pos + len (block_write_end() has zeroed
-> > + * the freshly allocated buffers so we aren't going to write garbage). But we
-> > + * want to keep i_size at the place where data copying finished so that we
-> > + * don't confuse readers. The worst what can happen is that we expose a page
-> > + * of zeros at the end of file after a crash...
-> >   */
-> > -static int ext3_generic_write_end(struct file *file,
-> > -				struct address_space *mapping,
-> > -				loff_t pos, unsigned len, unsigned copied,
-> > -				struct page *page, void *fsdata)
-> > +static void update_file_sizes(struct inode *inode, loff_t pos, unsigned len,
-> > +			      unsigned copied)
-> >  {
-> > -	struct inode *inode = file->f_mapping->host;
-> > -
-> > -	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-> > +	int mark_dirty = 0;
-> > 
-> > -	if (pos+copied > inode->i_size) {
-> > -		i_size_write(inode, pos+copied);
-> > -		mark_inode_dirty(inode);
-> > +	if (pos + len > EXT3_I(inode)->i_disksize) {
-> > +		mark_dirty = 1;
-> > +		EXT3_I(inode)->i_disksize = pos + len;
-> >  	}
-> 
-> Won't this result in file having wrong contents if we failed to copy
-> the contents from user space? Now if we successfully allocated
-> blocks and we failed to copy the contents from user space, the above
-> would result in update of i_disksize and a mark_inode_dirty. Doesn't
-> that imply we have wrong contents in those block for which we failed to
-> copy the contents from user space ?
-  block_write_end() zeros all new buffers. So yes, if we crash after
-this transaction commits but before we manage to redo the write, then user
-could see zeros at the end of file (previously inode could have blocks
-allocated beyond EOF).
-  I was also thinking about truncating the newly created buffers but it's a
-bit tricky. We need to do it in the same transaction (otherwise the race
-would be still there) but standard truncate path would like to add inode
-to the orphan list, lock pages etc and we have no credits for that and also
-lock ordering might be troublesome. So I've chosen the simple path.
+From: Jan Kara <jack@suse.cz>
 
-> > -
-> > -	return copied;
-> > +	if (pos + copied > inode->i_size) {
-> > +		i_size_write(inode, pos + copied);
-> > +		mark_dirty = 1;
-> > +	}
-> > +	if (mark_dirty)
-> > +		mark_inode_dirty(inode);
-> >  }
-  Thanks for reading the patch.
+We don't have to start a transaction in writepage() when all the blocks
+are a properly allocated. Even in ordered mode either the data has been
+written via write() and they are thus already added to transaction's list
+or the data was written via mmap and then it's random in which transaction
+they get written anyway.
 
-								Honza
+This should help VM to pageout dirty memory without blocking on transaction
+commits.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext3/inode.c |   19 ++++++++++++++-----
+ 1 files changed, 14 insertions(+), 5 deletions(-)
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 5fa453b..a9c12b1 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1435,6 +1435,10 @@ static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
+ 	return 0;
+ }
+ 
++static int buffer_unmapped(handle_t *handle, struct buffer_head *bh)
++{
++	return !buffer_mapped(bh);
++}
+ /*
+  * Note that we always start a transaction even if we're not journalling
+  * data.  This is to preserve ordering: any hole instantiation within
+@@ -1505,6 +1509,16 @@ static int ext3_ordered_writepage(struct page *page,
+ 	if (ext3_journal_current_handle())
+ 		goto out_fail;
+ 
++	if (!page_has_buffers(page)) {
++		create_empty_buffers(page, inode->i_sb->s_blocksize,
++				(1 << BH_Dirty)|(1 << BH_Uptodate));
++	} else if (!walk_page_buffers(NULL, page_buffers(page), 0, PAGE_CACHE_SIZE, NULL, buffer_unmapped)) {
++		/* Provide NULL instead of get_block so that we catch bugs if buffers weren't really mapped */
++		return block_write_full_page(page, NULL, wbc);
++	}
++	page_bufs = page_buffers(page);
++
++
+ 	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+ 
+ 	if (IS_ERR(handle)) {
+@@ -1512,11 +1526,6 @@ static int ext3_ordered_writepage(struct page *page,
+ 		goto out_fail;
+ 	}
+ 
+-	if (!page_has_buffers(page)) {
+-		create_empty_buffers(page, inode->i_sb->s_blocksize,
+-				(1 << BH_Dirty)|(1 << BH_Uptodate));
+-	}
+-	page_bufs = page_buffers(page);
+ 	walk_page_buffers(handle, page_bufs, 0,
+ 			PAGE_CACHE_SIZE, NULL, bget_one);
+ 
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+1.5.6.3
+
