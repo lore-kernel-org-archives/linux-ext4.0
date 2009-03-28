@@ -1,39 +1,65 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH v2] ext4: add checks of block references for non-extent
-	inodes
-Date: Fri, 27 Mar 2009 21:10:54 -0400
-Message-ID: <20090328011054.GA2155@mit.edu>
-References: <49B94396.2020800@ph.tum.de> <49C3A51C.1030201@ph.tum.de>
+Subject: Re: Once more: Recovering a damaged ext4 fs?
+Date: Sat, 28 Mar 2009 00:06:57 -0400
+Message-ID: <20090328040657.GB2155@mit.edu>
+References: <p0624058dc5f2d7be08cc@[130.161.115.44]> <20090327224616.GD5176@mit.edu> <p0624058ec5f30b501efb@[130.161.115.44]>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+Cc: linux-ext4@vger.kernel.org
+To: "J.D. Bakker" <jdb@lartmaker.nl>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:41569 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:41836 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753838AbZC1BK6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 27 Mar 2009 21:10:58 -0400
+	id S1750794AbZC1EHD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 28 Mar 2009 00:07:03 -0400
 Content-Disposition: inline
-In-Reply-To: <49C3A51C.1030201@ph.tum.de>
+In-Reply-To: <p0624058ec5f30b501efb@[130.161.115.44]>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Mar 20, 2009 at 03:15:56PM +0100, Thiemo Nagel wrote:
-> Dear Ted,
->
-> I'm sending an improved patch as I've come to the conclusion that the  
-> previous patch is too lenient in two ways:
-> * off-by-one in the check of the upper block limit
-> * it shouldn't stop when encountering a reference to block number zero  
-> because, if I'm not mistaken, references behind it still might be  
-> accessed in sparse files / when seeking behind the end of a file.
+This patch *might* solve your problem.  I can't be sure because I
+haven't been able to reproduce the soft lockup problem when rm'ing a
+file yet.  But if it's happening fairly often, it might be worth a
+try; it definitely fixes a real bug in ext4 --- I'm just not sure it's
+*your* bug.  :-)
 
-Note: this patch has a rather fatal flaw; it doens't check to make
-sure that file is a regular file or directory first.  If you have a
-fast symlink, ext4_iget() will blow up since it's a non-extent file,
-but the i_blocks[] will contain an ASCII string.
+						- Ted
 
-I'll fix up your patch to deal add the appropriate checking.
+commit 73cda61b58a060b6691791a44c01c16155617451
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Fri Mar 27 19:43:21 2009 -0400
 
-          	    	       	       	   - Ted
+    ext4: fix locking typo in mballoc which could cause soft lockup hangs
+    
+    Smatch (http://repo.or.cz/w/smatch.git/) complains about the locking in
+    ext4_mb_add_n_trim() from fs/ext4/mballoc.c
+    
+      4438          list_for_each_entry_rcu(tmp_pa, &lg->lg_prealloc_list[order],
+      4439                                                  pa_inode_list) {
+      4440                  spin_lock(&tmp_pa->pa_lock);
+      4441                  if (tmp_pa->pa_deleted) {
+      4442                          spin_unlock(&pa->pa_lock);
+      4443                          continue;
+      4444                  }
+    
+    Brown paper bag time...
+    
+    Reported-by: Dan Carpenter <error27@gmail.com>
+    Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+    Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@gmail.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+    Cc: stable@kernel.org
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 4f2f476..12d1081 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4389,7 +4389,7 @@ static void ext4_mb_add_n_trim(struct ext4_allocation_context *ac)
+ 						pa_inode_list) {
+ 		spin_lock(&tmp_pa->pa_lock);
+ 		if (tmp_pa->pa_deleted) {
+-			spin_unlock(&pa->pa_lock);
++			spin_unlock(&tmp_pa->pa_lock);
+ 			continue;
+ 		}
+ 		if (!added && pa->pa_free < tmp_pa->pa_free) {
