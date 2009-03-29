@@ -1,50 +1,57 @@
-From: Pavel Machek <pavel@ucw.cz>
+From: Avi Kivity <avi@redhat.com>
 Subject: Re: Zero length files - an alternative approach?
-Date: Sun, 29 Mar 2009 15:49:01 +0200
-Message-ID: <20090329134901.GB13737@elf.ucw.cz>
-References: <87bprka9sg.fsf@newton.gmurray.org.uk> <yw1xab744lqi.fsf@thrashbarg.mansr.com> <49CF636A.3030400@ursus.ath.cx> <yw1x1vsg4jio.fsf@thrashbarg.mansr.com>
+Date: Sun, 29 Mar 2009 19:49:08 +0300
+Message-ID: <49CFA684.2040102@redhat.com>
+References: <87bprka9sg.fsf@newton.gmurray.org.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Andreas T.Auer" <andreas.t.auer_lkml_73537@ursus.ath.cx>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: M?ns Rullg?rd <mans@mansr.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Graham Murray <graham@gmurray.org.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:35835 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751293AbZC2NtJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 29 Mar 2009 09:49:09 -0400
-Content-Disposition: inline
-In-Reply-To: <yw1x1vsg4jio.fsf@thrashbarg.mansr.com>
+Received: from mx2.redhat.com ([66.187.237.31]:60355 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751222AbZC2QtS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 29 Mar 2009 12:49:18 -0400
+In-Reply-To: <87bprka9sg.fsf@newton.gmurray.org.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 2009-03-29 13:10:23, M?ns Rullg?rd wrote:
-> "Andreas T.Auer" <andreas.t.auer_lkml_73537@ursus.ath.cx> writes:
-> 
-> > On 29.03.2009 13:22 M?ns Rullg?rd wrote:
-> >> Consider this scenario:
-> >>
-> >> 1. Create/write/close newfile
-> >> 2. Rename newfile to oldfile
-> >> 3. Open/read oldfile.  This must return the new contents.
-> >> 4. System crash and reboot before delayed allocation/flush complete
-> >> 5. Open/read oldfile.  Old contents now returned.
-> >>
-> >> This rollback isn't obviously, to me at least, without problems of its
-> >> own.
-> >>   
-> > Having the old data in 5) is far better than having no data in 5).
-> 
-> Of course having old data is better than no data.  However, fsync()
-> and similar approaches make a rollback to old data after new data has
-> been visible impossible or far less likely than the suggested one.
+Graham Murray wrote:
+> Just a thought on the ongoing discussion of dataloss with ext4 vs ext3.
+>
+> Taking the common scenario:
+> Read oldfile
+> create newfile file
+> write newfile data
+> close newfile
+> rename newfile to oldfile
+>
+> When using this scenario, the application writer wants to ensure that
+> either the old or new content are present. With delayed allocation, this
+> can lead to zero length files. Most of the suggestions on how to address
+> this have involved syncing the data either before the rename or making
+> the rename sync the data.
+>
+> What about, instead of 'bringing forward' the allocation and flushing of
+> the data, would it be possible to instead delay the rename until after
+> the blocks for newfile have been allocated and the data buffers flushed?
+> This would keep the performance benefits of delayed allocation etc and
+> also satisfy the applications developers' apparent dislike of using
+> fsync(). It would give better performance that syncing the data at
+> rename time (either using fsync() or automatically) and satisfy the
+> requirements that either the old or new content is present.
+>
+> I am not a filesystem developer, so do not know how feasible this would
+> be. 
+>   
 
-Untrue. Unless you fsync after rename, you can get olddata.
+This has been suggested, I believe.  In filesystem terms, it means 
+inserting a barrier before the rename operation, meaning that any write 
+operations needed to carry out the rename must not take place until all 
+write operations from the previous calls have completed.
 
-fsync() is easy. But some people _want_ to have either newdata _or_
-olddata, but don't care which one, and would prefer to avoid
-fsync. That's where replace() should help...
-									Pavel
+
 -- 
-(english) http://www.livejournal.com/~pavelmachek
-(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
+error compiling committee.c: too many arguments to function
+
