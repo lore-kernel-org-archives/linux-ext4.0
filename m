@@ -1,50 +1,32 @@
-From: Chris Mason <chris.mason@oracle.com>
-Subject: Re: [PATCH] ext4: fix blkdev_issue_flush() failure handling
-Date: Mon, 30 Mar 2009 07:47:47 -0400
-Message-ID: <1238413667.30488.2.camel@think.oraclecorp.com>
-References: <200903291928.14451.bzolnier@gmail.com>
-	 <49CFB33A.9020406@redhat.com> <20090330022521.GB13356@mit.edu>
-	 <49D03AE1.8070009@redhat.com>
+From: Ali Gholami Rudi <ali@rudi.ir>
+Subject: [PATCH][TRIVIAL] ext2: fix a typo in ext2.h
+Date: Mon, 30 Mar 2009 16:49:27 +0430
+Message-ID: <20090330121927.GA2237@lilem.mirepesht>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from acsinet12.oracle.com ([141.146.126.234]:32367 "EHLO
-	acsinet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750789AbZC3LsO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Mar 2009 07:48:14 -0400
-In-Reply-To: <49D03AE1.8070009@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-On Sun, 2009-03-29 at 22:22 -0500, Eric Sandeen wrote:
-> Theodore Tso wrote:
-> > On Sun, Mar 29, 2009 at 12:43:22PM -0500, Eric Sandeen wrote:
-> >> As long as we keep the call there this is probably good, but after
-> >> talking w/ Chris Mason, I think the call is extraneous anyway and should
-> >> probably just be removed...
-> >>
-> > 
-> > Yes, I agree, but it takes a lot of digging to be completely sure of
-> > that it's safe to remove it.  Interestingly, it was you who added the
-> > patch which added the call to blkdev_issue_flush():
-> 
-> > commit d755fb384250d6bd7fd18a0930e71965acc8e72e
-> > Author: Eric Sandeen <sandeen@redhat.com>
-> > Date:   Fri Jul 11 19:27:31 2008 -0400
-> 
-> 
-> Yes, it was.  Although I got the idea when hch pointed out that SuSE did
-> this... thanks to Chris.  It's come full circle.  :)
-
-Grin.  I'm not sure the I_DIRTY checks alone are enough to decide that a
-commit is required though.  I think the inode could be clean but still
-have metadata that needs commit.
-
--chris
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-kernel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757468AbZC3MUi@vger.kernel.org>
+Content-Disposition: inline
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
+Signed-off-by: Ali Gholami Rudi <ali@rudi.ir>
+---
+ fs/ext2/ext2.h |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
+index 3203042..6888b2d 100644
+--- a/fs/ext2/ext2.h
++++ b/fs/ext2/ext2.h
+@@ -27,7 +27,7 @@ struct ext2_inode_info {
+ 	/*
+ 	 * i_block_group is the number of the block group which contains
+ 	 * this file's inode.  Constant across the lifetime of the inode,
+-	 * it is ued for making block allocation decisions - we try to
++	 * it is used for making block allocation decisions - we try to
+ 	 * place a file's data blocks near its inode block, and new inodes
+ 	 * near to their parent directory's inode.
+ 	 */
