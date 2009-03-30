@@ -1,54 +1,68 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Zero length files - an alternative approach?
-Date: Mon, 30 Mar 2009 10:06:59 -0400
-Message-ID: <20090330140659.GH13356@mit.edu>
-References: <87bprka9sg.fsf@newton.gmurray.org.uk> <yw1xab744lqi.fsf@thrashbarg.mansr.com> <1238416886.30488.6.camel@think.oraclecorp.com>
+From: Ric Wheeler <rwheeler@redhat.com>
+Subject: Re: [PATCH 0/3] Ext3 latency improvement patches
+Date: Mon, 30 Mar 2009 10:16:51 -0400
+Message-ID: <49D0D453.4000307@redhat.com>
+References: <1238185471-31152-1-git-send-email-tytso@mit.edu> 	<1238187031.27455.212.camel@think.oraclecorp.com> <1238187818.27455.217.camel@think.oraclecorp.com> 	<20090327213052.GC5176@mit.edu> <20090327215454.GH31071@duck.suse.cz> 	<20090327230902.GG5176@mit.edu> <49CD6BCC.6080602@garzik.org> <72dbd3150903271724n5e7900a5j2486707565cd9d74@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: =?iso-8859-1?Q?M=E5ns_Rullg=E5rd?= <mans@mansr.com>,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Chris Mason <chris.mason@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: Jeff Garzik <jeff@garzik.org>, Theodore Tso <tytso@mit.edu>,
+	Jan Kara <jack@suse.cz>, Chris Mason <chris.mason@oracle.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: David Rees <drees76@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:57019 "EHLO thunker.thunk.org"
+Received: from mx2.redhat.com ([66.187.237.31]:49614 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751953AbZC3OHH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Mar 2009 10:07:07 -0400
-Content-Disposition: inline
-In-Reply-To: <1238416886.30488.6.camel@think.oraclecorp.com>
+	id S1751136AbZC3OUe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 30 Mar 2009 10:20:34 -0400
+In-Reply-To: <72dbd3150903271724n5e7900a5j2486707565cd9d74@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 30, 2009 at 08:41:26AM -0400, Chris Mason wrote:
-> > 
-> > Consider this scenario:
-> > 
-> > 1. Create/write/close newfile
-> > 2. Rename newfile to oldfile
-> 
-> 2a. create oldfile again
-> 2b. fsync oldfile
-> 
-> > 3. Open/read oldfile.  This must return the new contents.
-> > 4. System crash and reboot before delayed allocation/flush complete
-> > 5. Open/read oldfile.  Old contents now returned.
-> > 
-> 
-> What happens to the new generation of oldfile?  We could insert
-> dependency tracking so that we know the fsync of oldfile is supposed to
-> also fsync the rename'd new file.  But then picture a loop of operations
-> doing renames and creating files in the place of the old one...that
-> dependency tracking gets ugly in a hurry.
+David Rees wrote:
+> On Fri, Mar 27, 2009 at 5:14 PM, Jeff Garzik <jeff@garzik.org> wrote:
+>   
+>> Theodore Tso wrote:
+>>     
+>>> OTOH, the really big databases will tend to use direct I/O, so they
+>>> won't be dirtying the page cache anyway.  So maybe it's not worth the
+>>>       
+>> Not necessarily...  From what I understand, a lot of the individual
+>> low-level components in cloud storage, such as GoogleFS's chunk server[1] do
+>> not bypass the page cache, even though they do care about the details of
+>> data caching and data consistency.
+>>     
+>
+> PostgreSQL does not use direct I/O, either (except for the
+> write-ahead-logs which are written sequentially and only get read
+> during database recovery).  I'm sure that most of MySQL's database
+> engines, also don't.
+>
+> -Dave
+>   
 
-If there are any calls to link(2) to create hard links to oldfile or
-newfile intermingled in this sequence, life also gets very
-entertaining.
+The high end, traditional databases like DB2 and Oracle definitely do 
+tend to use direct I/O and manage the cache vs not cached pages 
+carefully on their own.
 
-> Databases know how to do all of this, but filesystems don't implement
-> most of the database transactional features.
+They also tend to use database "page sizes" larger than our VM page 
+size  or FS block size and work hard to send large, aligned IO's down to 
+storage in the correct order so they can be fully recoverable after a 
+crash (no partially updated DB pages, aka "torn pages").
 
-Yep, we'd have to implement a rollback log to get this right, which
-would also impact performance.  My guess is that just aggressively
-forcing out the data write before the rename() is going to cost less
-in performance, and is certainly much easier to implement.
+A lot of the cloud storage people rely on whole files. For example, you 
+implement RAID at the file level by breaking your file down into K 
+chunks, each one sent over the network to different machines. That chunk 
+is really a whole file and is sent to disk (hopefully with an fsync()!) 
+before ack'ing the transaction. They don't worry about data integrity 
+for objects less than that chunk size.
 
-   		       		      	     - Ted
+At least, this is how we did it in Centera - without doing that, you are 
+definitely open to data loss.
+
+Ric
+
+
+
