@@ -1,46 +1,53 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: fix blkdev_issue_flush() failure handling
-Date: Mon, 30 Mar 2009 10:25:18 -0400
-Message-ID: <20090330142518.GI13356@mit.edu>
-References: <200903291928.14451.bzolnier@gmail.com> <49CFB33A.9020406@redhat.com> <20090330022521.GB13356@mit.edu> <49D03AE1.8070009@redhat.com> <1238413667.30488.2.camel@think.oraclecorp.com> <49D0C29C.1060307@uvigo.es>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext3: Avoid false EIO errors
+Date: Mon, 30 Mar 2009 20:15:23 +0530
+Message-ID: <20090330144523.GA14489@skywalker>
+References: <1238091711-23464-1-git-send-email-jack@suse.cz> <20090327180806.GB2810@skywalker> <20090327202421.GB31071@duck.suse.cz> <20090330082532.GA15488@skywalker> <49D0CEE6.2060409@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Fernando Luis =?iso-8859-1?Q?V=E1zquez?= Cao <flvazquez@uvigo.es>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:56089 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751181AbZC3OZl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 30 Mar 2009 10:25:41 -0400
+Received: from e23smtp06.au.ibm.com ([202.81.31.148]:59157 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755986AbZC3Opq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Mar 2009 10:45:46 -0400
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id n2UEjSKq024853
+	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 01:45:28 +1100
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n2UEjgEf274712
+	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 01:45:42 +1100
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n2UEjgfR014485
+	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 01:45:42 +1100
 Content-Disposition: inline
-In-Reply-To: <49D0C29C.1060307@uvigo.es>
+In-Reply-To: <49D0CEE6.2060409@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Mar 30, 2009 at 10:01:16PM +0900, Fernando Luis V=E1zquez Cao w=
-rote:
->
-> Chris, I have just sent patches that attempt to fix both ext3 and
-> ext4 while also adding a per-device sysfs knob tu disable
-> write-flushes. A previous version of this patch set added a new
-> generic mount option but comments from Christoph and others
-> convinced me to turn it into a per-device tunable. Could you take
-> a look at the patches?
+On Mon, Mar 30, 2009 at 08:53:42AM -0500, Eric Sandeen wrote:
+> Aneesh Kumar K.V wrote:
+> 
+> > We do a vmtruncate if we failed to allocate blocks in
+> > ext3_write_begin. That is done after the closing the current
+> > transaction. If we crash in between (ie, after committing the
+> > transaction allocating blocks and before committing the transaction that
+> > is doing truncate) we would only have  some data blocks leaking. But
+> > that would be better than user seeing zero's in the file ?. Also if we
+> > happen to add the inode to the orphan list and crash, the recovery would
+> > truncate it properly. So by doing a vmtruncate I guess the window would be
+> > small and we are already doing that in ext3_write_begin.
+> 
+> I don't agree that leaking data blocks is better than exposing zeros...
+> the former is a security flaw, the latter a (significant) annoyance.
+> 
 
-=46ernando, see my comments on those patches.  We don't need to issue a
-barrier after a call to sync_inode() or ext[34]_force_commit(), since
-those functions will issue a barrier for us.  It would probably be a
-good idea to use blktrace to test and make sure that we have one and
-exactly one barrier op issued for each fsync().
+Even when we fail to track few data blocks we do zero them using 
+page_zero_new_buffers. So it should not imply a security flaw. I guess
+if we crash failing to commit the truncate fsck will look at the bitmap
+and find the blocks which are not tracked by any inode and will mark them
+free.
 
-						- Ted
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-aneesh
