@@ -1,61 +1,43 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Same magic in statfs() call for ext?
-Date: Mon, 30 Mar 2009 12:23:28 -0600
-Message-ID: <20090330182328.GA3199@webber.adilger.int>
-References: <20090316133615.GA10596@duck.suse.cz> <49BE7A99.5050601@redhat.com>
- <20090316162737.GC10596@duck.suse.cz>
+From: Bodo Eggert <7eggert@gmx.de>
+Subject: Re: Zero length files - an alternative approach?
+Date: Mon, 30 Mar 2009 23:10:20 +0200
+Message-ID: <E1LoOkP-0001bk-D6@be1.7eggert.dyndns.org>
+References: <cl0KI-3zZ-3@gated-at.bofh.it> <cl1oA-4El-9@gated-at.bofh.it> <clp6o-91-17@gated-at.bofh.it>
+Reply-To: 7eggert@gmx.de
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:41209 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758478AbZC3SYG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 30 Mar 2009 14:24:06 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n2UINmaP021313
-	for <linux-ext4@vger.kernel.org>; Mon, 30 Mar 2009 11:24:03 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KHB00J00YXECS00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 30 Mar 2009 11:23:48 -0700 (PDT)
-In-reply-to: <20090316162737.GC10596@duck.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Chris Mason <chris.mason@oracle.com>,
+	=?ISO-8859-1?Q?M=E5ns_Rullg=E5rd?= <mans@mansr.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757871AbZC3VKp@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mar 16, 2009  17:27 +0100, Jan Kara wrote:
-> On Mon 16-03-09 11:13:13, Eric Sandeen wrote:
-> > But off the top of my head, I think that I would prefer to see
-> > applications generally do the right, posix-conformant thing w.r.t. data
-> > integrity (i.e. fsync()) unless, via statfs, they find out "fsync hurts,
-> > and we're likely to be reasoonably safe without it"
-> > 
-> > IOW, adding exceptions for ext3 sounds better to me than munging ext4,
-> > xfs, btrfs, and all future filesystems to conform to some behavior which
-> > isn't in any API or spec ...
->
->   Yes, I agree that if they want data on disk, they should use fsync(). But
-> as you say for ext3 this is not really usable so they have to somehow
-> recognize that "they are on a filesystem where fsync() sucks" and avoid it
-> as much as possible. And I feel slightly in favor of giving them enough rope
-> (i.e., different magic numbers in statfs) to hang themselves ;-).
+Chris Mason <chris.mason@oracle.com> wrote:
+> On Sun, 2009-03-29 at 12:22 +0100, M=E5ns Rullg=E5rd wrote:
 
-One possibility that I've thought of in the past is to have "dynamic
-data=journal" mode when fsync is being called and files are small.
-What this means is that small file data will be written to the journal
-on fsync instead of journaling only the metadata and flushing the data
-to the filesystem in ordered mode.
+>> Consider this scenario:
+>>=20
+>> 1. Create/write/close newfile
+>> 2. Rename newfile to oldfile
+>=20
+> 2a. create oldfile again
+> 2b. fsync oldfile
+>=20
+>> 3. Open/read oldfile.  This must return the new contents.
+>> 4. System crash and reboot before delayed allocation/flush complete
+>> 5. Open/read oldfile.  Old contents now returned.
+>>=20
+>=20
+> What happens to the new generation of oldfile?  We could insert
+> dependency tracking so that we know the fsync of oldfile is supposed =
+to
+> also fsync the rename'd new file.
 
-While it means data is written twice to disk (once to journal, once to
-fs), if there is a lot of fsync going on and the files are small then
-it may still be faster than doing the seeks.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+If rename() is BEFORE create(oldfile) and if create(oldfile) is committ=
+ed,
+oldfile will be the newly created file. If the sync() is interrupted by=
+ the
+crash, any intermediate state may appear. If the system crashes before
+create(), either the old oldfile or newfile should be visible.
