@@ -1,41 +1,37 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: locking typo in ext4_mb_add_n_trim()
-Date: Tue, 31 Mar 2009 15:00:32 +0200
-Message-ID: <20090331130032.GE20127@atrey.karlin.mff.cuni.cz>
-References: <Pine.LNX.4.64.0903262204430.4167@usbsys.site> <49CCDFDB.9000109@redhat.com> <20090327233634.GI5176@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext4: Add sysfs support
+Date: Tue, 31 Mar 2009 09:11:47 -0400
+Message-ID: <20090331131147.GH13356@mit.edu>
+References: <1235879288-26201-1-git-send-email-tytso@mit.edu> <20090330101034.GB4796@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Dan Carpenter <error27@gmail.com>, adilger@sun.com,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:41124 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754023AbZCaNAe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Mar 2009 09:00:34 -0400
+Received: from THUNK.ORG ([69.25.196.29]:56913 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753488AbZCaNLv (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Mar 2009 09:11:51 -0400
 Content-Disposition: inline
-In-Reply-To: <20090327233634.GI5176@mit.edu>
+In-Reply-To: <20090330101034.GB4796@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Fri, Mar 27, 2009 at 09:16:59AM -0500, Eric Sandeen wrote:
+On Mon, Mar 30, 2009 at 03:40:34PM +0530, Aneesh Kumar K.V wrote:
+> On Sat, Feb 28, 2009 at 10:48:07PM -0500, Theodore Ts'o wrote:
+> > Add basic sysfs support so that information about the mounted
+> > filesystem and various tuning parameters can be accessed via
+> > /sys/fs/ext4/<dev>/*.
 > > 
-> > although I wonder why we don't trip over this in spinlock debugging
-> > (seems like it'd lead to a double unlock at times)  I wonder if we can
-> > tie this to any other bugs we've seen.
+> > Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> > ---
+> >  fs/ext4/ext4_sb.h |    2 +
+> >  fs/ext4/super.c   |  198 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+> >  2 files changed, 200 insertions(+), 0 deletions(-)
+> > 
 > 
-> I was wondering if it could be tied to the "rm -rf" soft lockup hang....
-> 
-> I wonder if vendor kernels (specifically, Ubuntu in this case) disable
-> spinlock debugging, which is why we wouldn't have seen the double
-> unlock warning.  (Or maybe it happened earlier in the log, and users
-> didn't notice it).
-  Don't know about Ubuntu but SUSE has definitely turned off spinlock
-debugging (I guess because it may cost some performance) and most other
-debug stuff.
+> This needs documentation in Documentation/ABI/testing.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Good point, added, thanks.
+
+					- Ted
