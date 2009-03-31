@@ -1,88 +1,204 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 1/2] [PATCH] ext4: Add inode to the orphan list during block allocation failure
-Date: Tue, 31 Mar 2009 14:59:25 +0530
-Message-ID: <1238491766-13182-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 2/2] [PATCH] ext4: truncate the file properly if we fail to copy data from userspace.
+Date: Tue, 31 Mar 2009 14:59:26 +0530
+Message-ID: <1238491766-13182-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <20090331044544.GB5979@skywalker>
+ <1238491766-13182-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	Jan Kara <jack@suse.cz>
 To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp02.au.ibm.com ([202.81.31.144]:56357 "EHLO
+Received: from e23smtp02.au.ibm.com ([202.81.31.144]:56371 "EHLO
 	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751304AbZCaJ3q (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Mar 2009 05:29:46 -0400
+	with ESMTP id S1751938AbZCaJ3w (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Mar 2009 05:29:52 -0400
 Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id n2V9SKK1031458
-	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 20:28:20 +1100
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id n2V9SRNC031509
+	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 20:28:27 +1100
 Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n2V9TgFX450940
-	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 20:29:43 +1100
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n2V9Toat397316
+	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 20:29:50 +1100
 Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n2V9TgWD022639
-	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 20:29:42 +1100
-In-Reply-To: <20090331044544.GB5979@skywalker>
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n2V9TnuO022916
+	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 20:29:50 +1100
+In-Reply-To: <1238491766-13182-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We should add inode to the orphan list in the same transaction
-as block allocation. This ensures that if we crash after a failed
-block allocation and before we do a vmtruncate we don't leak block
-(ie block marked as used in bitmap but not claimed by the inode).
+In generic_perform_write if we fail to copy the user data we don't
+update the inode->i_size. We should truncate the file in the above case
+so that we don't have blocks allocated outside inode->i_size. Add
+the inode to orphan list in the same transaction as block allocation
+This ensures that if we crash in between the recovery would do the truncate.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 CC:  Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c |   15 +++++++++++++--
- 1 files changed, 13 insertions(+), 2 deletions(-)
+ fs/ext4/inode.c |  103 +++++++++++++++++++++++++++++++++++++++++--------------
+ 1 files changed, 77 insertions(+), 26 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2231a65..074185f 100644
+index 074185f..3997999 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1424,7 +1424,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 				struct page **pagep, void **fsdata)
- {
- 	struct inode *inode = mapping->host;
--	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
-+	int ret, needed_blocks;
- 	handle_t *handle;
- 	int retries = 0;
- 	struct page *page;
-@@ -1435,6 +1435,11 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
- 		   "dev %s ino %lu pos %llu len %u flags %u",
- 		   inode->i_sb->s_id, inode->i_ino,
- 		   (unsigned long long) pos, len, flags);
-+	/*
-+	 * Reserve one block more for addition to orphan list in case
-+	 * we allocate blocks but write fails for some reason
-+	 */
-+	needed_blocks = ext4_writepage_trans_blocks(inode) + 1;
-  	index = pos >> PAGE_CACHE_SHIFT;
- 	from = pos & (PAGE_CACHE_SIZE - 1);
- 	to = from + len;
-@@ -1468,14 +1473,20 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+@@ -1505,6 +1505,52 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
+ 	return ext4_handle_dirty_metadata(handle, NULL, bh);
+ }
  
- 	if (ret) {
- 		unlock_page(page);
--		ext4_journal_stop(handle);
- 		page_cache_release(page);
- 		/*
- 		 * block_write_begin may have instantiated a few blocks
- 		 * outside i_size.  Trim these off again. Don't need
- 		 * i_size_read because we hold i_mutex.
-+		 *
-+		 * Add inode to orphan list in case we crash before
-+		 * truncate finishes
- 		 */
- 		if (pos + len > inode->i_size)
-+			ext4_orphan_add(handle, inode);
++static int ext4_generic_write_end(struct file *file,
++				struct address_space *mapping,
++				loff_t pos, unsigned len, unsigned copied,
++				struct page *page, void *fsdata)
++{
++	int i_size_changed = 0;
++	struct inode *inode = mapping->host;
++	handle_t *handle = ext4_journal_current_handle();
 +
-+		ext4_journal_stop(handle);
++	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
++
++	/*
++	 * No need to use i_size_read() here, the i_size
++	 * cannot change under us because we hold i_mutex.
++	 *
++	 * But it's important to update i_size while still holding page lock:
++	 * page writeout could otherwise come in and zero beyond i_size.
++	 */
++	if (pos + copied > inode->i_size) {
++		i_size_write(inode, pos + copied);
++		i_size_changed = 1;
++	}
++
++	if (pos + copied >  EXT4_I(inode)->i_disksize) {
++		/* We need to mark inode dirty even if
++		 * new_i_size is less that inode->i_size
++		 * bu greater than i_disksize.(hint delalloc)
++		 */
++		ext4_update_i_disksize(inode, (pos + copied));
++		i_size_changed = 1;
++	}
++	unlock_page(page);
++	page_cache_release(page);
++
++	/*
++	 * Don't mark the inode dirty under page lock. First, it unnecessarily
++	 * makes the holding time of page lock longer. Second, it forces lock
++	 * ordering of page lock and transaction start for journaling
++	 * filesystems.
++	 */
++	if (i_size_changed)
++		ext4_mark_inode_dirty(handle, inode);
++
++	return copied;
++}
++
+ /*
+  * We need to pick up the new inode size which generic_commit_write gave us
+  * `file' can be NULL - eg, when called from page_symlink().
+@@ -1528,21 +1574,15 @@ static int ext4_ordered_write_end(struct file *file,
+ 	ret = ext4_jbd2_file_inode(handle, inode);
+ 
+ 	if (ret == 0) {
+-		loff_t new_i_size;
+-
+-		new_i_size = pos + copied;
+-		if (new_i_size > EXT4_I(inode)->i_disksize) {
+-			ext4_update_i_disksize(inode, new_i_size);
+-			/* We need to mark inode dirty even if
+-			 * new_i_size is less that inode->i_size
+-			 * bu greater than i_disksize.(hint delalloc)
+-			 */
+-			ext4_mark_inode_dirty(handle, inode);
+-		}
+-
+-		ret2 = generic_write_end(file, mapping, pos, len, copied,
++		ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
+ 		copied = ret2;
 +		if (pos + len > inode->i_size)
- 			vmtruncate(inode, inode->i_size);
++			/* if we have allocated more blocks and copied
++			 * less. We will have blocks allocated outside
++			 * inode->i_size. So truncate them
++			 */
++			ext4_orphan_add(handle, inode);
+ 		if (ret2 < 0)
+ 			ret = ret2;
+ 	}
+@@ -1550,6 +1590,9 @@ static int ext4_ordered_write_end(struct file *file,
+ 	if (!ret)
+ 		ret = ret2;
+ 
++	if (pos + len > inode->i_size)
++		vmtruncate(inode, inode->i_size);
++
+ 	return ret ? ret : copied;
+ }
+ 
+@@ -1561,25 +1604,21 @@ static int ext4_writeback_write_end(struct file *file,
+ 	handle_t *handle = ext4_journal_current_handle();
+ 	struct inode *inode = mapping->host;
+ 	int ret = 0, ret2;
+-	loff_t new_i_size;
+ 
+ 	trace_mark(ext4_writeback_write_end,
+ 		   "dev %s ino %lu pos %llu len %u copied %u",
+ 		   inode->i_sb->s_id, inode->i_ino,
+ 		   (unsigned long long) pos, len, copied);
+-	new_i_size = pos + copied;
+-	if (new_i_size > EXT4_I(inode)->i_disksize) {
+-		ext4_update_i_disksize(inode, new_i_size);
+-		/* We need to mark inode dirty even if
+-		 * new_i_size is less that inode->i_size
+-		 * bu greater than i_disksize.(hint delalloc)
+-		 */
+-		ext4_mark_inode_dirty(handle, inode);
+-	}
+-
+-	ret2 = generic_write_end(file, mapping, pos, len, copied,
++	ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
+ 							page, fsdata);
+ 	copied = ret2;
++	if (pos + len > inode->i_size)
++		/* if we have allocated more blocks and copied
++		 * less. We will have blocks allocated outside
++		 * inode->i_size. So truncate them
++		 */
++		ext4_orphan_add(handle, inode);
++
+ 	if (ret2 < 0)
+ 		ret = ret2;
+ 
+@@ -1587,6 +1626,9 @@ static int ext4_writeback_write_end(struct file *file,
+ 	if (!ret)
+ 		ret = ret2;
+ 
++	if (pos + len > inode->i_size)
++		vmtruncate(inode, inode->i_size);
++
+ 	return ret ? ret : copied;
+ }
+ 
+@@ -1631,10 +1673,19 @@ static int ext4_journalled_write_end(struct file *file,
  	}
  
+ 	unlock_page(page);
++	page_cache_release(page);
++	if (pos + len > inode->i_size)
++		/* if we have allocated more blocks and copied
++		 * less. We will have blocks allocated outside
++		 * inode->i_size. So truncate them
++		 */
++		ext4_orphan_add(handle, inode);
++
+ 	ret2 = ext4_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+-	page_cache_release(page);
++	if (pos + len > inode->i_size)
++		vmtruncate(inode, inode->i_size);
+ 
+ 	return ret ? ret : copied;
+ }
 -- 
 1.6.2.1.404.gb0085.dirty
 
