@@ -1,55 +1,43 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Once more: Recovering a damaged ext4 fs?
-Date: Tue, 31 Mar 2009 08:42:04 -0400
-Message-ID: <20090331124204.GF13356@mit.edu>
-References: <p0624058dc5f2d7be08cc@[130.161.115.44]> <20090327224616.GD5176@mit.edu> <p0624058ec5f30b501efb@[130.161.115.44]> <20090328123035.GD2155@mit.edu> <p06240592c5f3caee289b@[130.161.115.44]> <20090328130922.GE2155@mit.edu> <p062405b1c5f59a4c5ed1@[130.161.115.44]>
+Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
+Date: Tue, 31 Mar 2009 08:47:16 -0400
+Message-ID: <20090331124716.GG13356@mit.edu>
+References: <E1LT8MN-0003Ps-Ur@closure.thunk.org> <20090211075914.GC20842@skywalker> <20090211153328.37ef255f@dhcp-100-2-144.bos.redhat.com> <20090212211935.GE6922@mini-me.lan> <20090216163507.1e73f452@dhcp-100-2-144.bos.redhat.com> <b637ec0b0903310502q56fc82eeobd5f62d24a367ac4@mail.gmail.com> <20090331123320.GC13356@mit.edu> <b637ec0b0903310540s10ddfdb3vcf8e419ebffa09f9@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "J.D. Bakker" <jdb@lartmaker.nl>
+Cc: Chuck Ebbert <cebbert@redhat.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Fabio Comolli <fabio.comolli@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:55715 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:59465 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757226AbZCaMmJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Mar 2009 08:42:09 -0400
+	id S1754699AbZCaMrW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Mar 2009 08:47:22 -0400
 Content-Disposition: inline
-In-Reply-To: <p062405b1c5f59a4c5ed1@[130.161.115.44]>
+In-Reply-To: <b637ec0b0903310540s10ddfdb3vcf8e419ebffa09f9@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-OK, here's a patch that should allow mke2fs -S to work.  It should be
-applied against the e2fsprogs 1.41.4.
+On Tue, Mar 31, 2009 at 02:40:22PM +0200, Fabio Comolli wrote:
+> OK. Now I have on my box the 2.6.27.19 kernel. Do you mean that I have
+> to apply 19->20, 20->21 and then this patch?
 
-Sorry for the delay in getting this to you; things have been crazy
-busy on my end.
+There are ext4-related fixes in the 19->20 patches.  There are no ext4
+related patches in 20->21, so whether or not you do this is optional
+(from the perspective of applying this patch).
 
-						- Ted
+> Then mount the fs as ext4dev?
 
-commit a620baddee647faf42c49ee2e04ee3f667149d68
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Tue Mar 31 07:42:24 2009 -0400
+Yes, same as before.  I will note that there were some enhancements
+and some lower-priority bug fixes that don't get backported to 2.6.27
+series, since sometimes it is extremely difficult to backport things
+as far as 2.6.27.  So if your goal is to use this in production,
+2.6.29 will almost certainly be a better bet.  The number of people
+who test the 2.6.27 backports of ext4 are also much smaller.  We
+provide it as a service those who for whatever reason refuse to update
+to newer kernels, but it's hard for me to offer guarantees.
 
-    mke2fs: Don't try to create the journal in super-only mode
-    
-    Since we aren't initializing the inode table, creating the journal
-    will just fail.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Best regards,
 
-diff --git a/misc/mke2fs.c b/misc/mke2fs.c
-index e69e5ce..4f50ffa 100644
---- a/misc/mke2fs.c
-+++ b/misc/mke2fs.c
-@@ -2079,6 +2079,12 @@ int main (int argc, char *argv[])
- 		    EXT3_FEATURE_COMPAT_HAS_JOURNAL)) {
- 		journal_blocks = figure_journal_size(journal_size, fs);
- 
-+		if (super_only) {
-+			printf(_("Skipping journal creation in super-only mode\n"));
-+			fs->super->s_journal_inum = EXT2_JOURNAL_INO;
-+			goto no_journal;
-+		}
-+
- 		if (!journal_blocks) {
- 			fs->super->s_feature_compat &=
- 				~EXT3_FEATURE_COMPAT_HAS_JOURNAL;
+					- Ted
