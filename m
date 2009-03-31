@@ -1,205 +1,297 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 2/2] [PATCH] ext4: truncate the file properly if we
-	fail to copy data from userspace.
-Date: Tue, 31 Mar 2009 11:38:19 +0200
-Message-ID: <20090331093819.GD11808@duck.suse.cz>
-References: <20090331044544.GB5979@skywalker> <1238491766-13182-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1238491766-13182-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext3: Avoid false EIO errors (version 4)
+Date: Tue, 31 Mar 2009 11:46:18 +0200
+Message-ID: <20090331094618.GE11808@duck.suse.cz>
+References: <1238091711-23464-1-git-send-email-jack@suse.cz> <20090327180806.GB2810@skywalker> <20090327202421.GB31071@duck.suse.cz> <20090330082532.GA15488@skywalker> <20090330103248.GB18833@duck.suse.cz> <20090330105821.GE4796@skywalker> <20090330160517.GB30897@duck.suse.cz> <20090331044544.GB5979@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:47290 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:47524 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750893AbZCaJiW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Mar 2009 05:38:22 -0400
+	id S1752400AbZCaJqW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Mar 2009 05:46:22 -0400
 Content-Disposition: inline
-In-Reply-To: <1238491766-13182-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <20090331044544.GB5979@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue 31-03-09 14:59:26, Aneesh Kumar K.V wrote:
-> In generic_perform_write if we fail to copy the user data we don't
-> update the inode->i_size. We should truncate the file in the above case
-> so that we don't have blocks allocated outside inode->i_size. Add
-> the inode to orphan list in the same transaction as block allocation
-> This ensures that if we crash in between the recovery would do the truncate.
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> CC:  Jan Kara <jack@suse.cz>
-  This patch looks fine as well.
-  Reviewed-by: Jan Kara <jack@suse.cz>
+  Hello,
+
+  as Aneesh pointed to me, I forgot to add truncation to the data=journaled
+mode. This patch fixes it. Hopefully final version of the fix ;).
 
 									Honza
-
-> ---
->  fs/ext4/inode.c |  103 +++++++++++++++++++++++++++++++++++++++++--------------
->  1 files changed, 77 insertions(+), 26 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 074185f..3997999 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1505,6 +1505,52 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
->  	return ext4_handle_dirty_metadata(handle, NULL, bh);
->  }
->  
-> +static int ext4_generic_write_end(struct file *file,
-> +				struct address_space *mapping,
-> +				loff_t pos, unsigned len, unsigned copied,
-> +				struct page *page, void *fsdata)
-> +{
-> +	int i_size_changed = 0;
-> +	struct inode *inode = mapping->host;
-> +	handle_t *handle = ext4_journal_current_handle();
-> +
-> +	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-> +
-> +	/*
-> +	 * No need to use i_size_read() here, the i_size
-> +	 * cannot change under us because we hold i_mutex.
-> +	 *
-> +	 * But it's important to update i_size while still holding page lock:
-> +	 * page writeout could otherwise come in and zero beyond i_size.
-> +	 */
-> +	if (pos + copied > inode->i_size) {
-> +		i_size_write(inode, pos + copied);
-> +		i_size_changed = 1;
-> +	}
-> +
-> +	if (pos + copied >  EXT4_I(inode)->i_disksize) {
-> +		/* We need to mark inode dirty even if
-> +		 * new_i_size is less that inode->i_size
-> +		 * bu greater than i_disksize.(hint delalloc)
-> +		 */
-> +		ext4_update_i_disksize(inode, (pos + copied));
-> +		i_size_changed = 1;
-> +	}
-> +	unlock_page(page);
-> +	page_cache_release(page);
-> +
-> +	/*
-> +	 * Don't mark the inode dirty under page lock. First, it unnecessarily
-> +	 * makes the holding time of page lock longer. Second, it forces lock
-> +	 * ordering of page lock and transaction start for journaling
-> +	 * filesystems.
-> +	 */
-> +	if (i_size_changed)
-> +		ext4_mark_inode_dirty(handle, inode);
-> +
-> +	return copied;
-> +}
-> +
->  /*
->   * We need to pick up the new inode size which generic_commit_write gave us
->   * `file' can be NULL - eg, when called from page_symlink().
-> @@ -1528,21 +1574,15 @@ static int ext4_ordered_write_end(struct file *file,
->  	ret = ext4_jbd2_file_inode(handle, inode);
->  
->  	if (ret == 0) {
-> -		loff_t new_i_size;
-> -
-> -		new_i_size = pos + copied;
-> -		if (new_i_size > EXT4_I(inode)->i_disksize) {
-> -			ext4_update_i_disksize(inode, new_i_size);
-> -			/* We need to mark inode dirty even if
-> -			 * new_i_size is less that inode->i_size
-> -			 * bu greater than i_disksize.(hint delalloc)
-> -			 */
-> -			ext4_mark_inode_dirty(handle, inode);
-> -		}
-> -
-> -		ret2 = generic_write_end(file, mapping, pos, len, copied,
-> +		ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
->  							page, fsdata);
->  		copied = ret2;
-> +		if (pos + len > inode->i_size)
-> +			/* if we have allocated more blocks and copied
-> +			 * less. We will have blocks allocated outside
-> +			 * inode->i_size. So truncate them
-> +			 */
-> +			ext4_orphan_add(handle, inode);
->  		if (ret2 < 0)
->  			ret = ret2;
->  	}
-> @@ -1550,6 +1590,9 @@ static int ext4_ordered_write_end(struct file *file,
->  	if (!ret)
->  		ret = ret2;
->  
-> +	if (pos + len > inode->i_size)
-> +		vmtruncate(inode, inode->i_size);
-> +
->  	return ret ? ret : copied;
->  }
->  
-> @@ -1561,25 +1604,21 @@ static int ext4_writeback_write_end(struct file *file,
->  	handle_t *handle = ext4_journal_current_handle();
->  	struct inode *inode = mapping->host;
->  	int ret = 0, ret2;
-> -	loff_t new_i_size;
->  
->  	trace_mark(ext4_writeback_write_end,
->  		   "dev %s ino %lu pos %llu len %u copied %u",
->  		   inode->i_sb->s_id, inode->i_ino,
->  		   (unsigned long long) pos, len, copied);
-> -	new_i_size = pos + copied;
-> -	if (new_i_size > EXT4_I(inode)->i_disksize) {
-> -		ext4_update_i_disksize(inode, new_i_size);
-> -		/* We need to mark inode dirty even if
-> -		 * new_i_size is less that inode->i_size
-> -		 * bu greater than i_disksize.(hint delalloc)
-> -		 */
-> -		ext4_mark_inode_dirty(handle, inode);
-> -	}
-> -
-> -	ret2 = generic_write_end(file, mapping, pos, len, copied,
-> +	ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
->  							page, fsdata);
->  	copied = ret2;
-> +	if (pos + len > inode->i_size)
-> +		/* if we have allocated more blocks and copied
-> +		 * less. We will have blocks allocated outside
-> +		 * inode->i_size. So truncate them
-> +		 */
-> +		ext4_orphan_add(handle, inode);
-> +
->  	if (ret2 < 0)
->  		ret = ret2;
->  
-> @@ -1587,6 +1626,9 @@ static int ext4_writeback_write_end(struct file *file,
->  	if (!ret)
->  		ret = ret2;
->  
-> +	if (pos + len > inode->i_size)
-> +		vmtruncate(inode, inode->i_size);
-> +
->  	return ret ? ret : copied;
->  }
->  
-> @@ -1631,10 +1673,19 @@ static int ext4_journalled_write_end(struct file *file,
->  	}
->  
->  	unlock_page(page);
-> +	page_cache_release(page);
-> +	if (pos + len > inode->i_size)
-> +		/* if we have allocated more blocks and copied
-> +		 * less. We will have blocks allocated outside
-> +		 * inode->i_size. So truncate them
-> +		 */
-> +		ext4_orphan_add(handle, inode);
-> +
->  	ret2 = ext4_journal_stop(handle);
->  	if (!ret)
->  		ret = ret2;
-> -	page_cache_release(page);
-> +	if (pos + len > inode->i_size)
-> +		vmtruncate(inode, inode->i_size);
->  
->  	return ret ? ret : copied;
->  }
-> -- 
-> 1.6.2.1.404.gb0085.dirty
-> 
--- 
+---
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
+---
+
+>From ec5c2977f87328fb93fee1aa35043bafeb53cea1 Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Wed, 25 Mar 2009 18:51:52 +0100
+Subject: [PATCH] ext3: Avoid false EIO errors (version 4)
+
+Sometimes block_write_begin() can map buffers in a page but later we fail to
+copy data into those buffers (because the source page has been paged out in the
+mean time). We then end up with !uptodate mapped buffers. To add a bit more to
+the confusion, block_write_end() does not commit any data (and thus does not
+any mark buffers as uptodate) if we didn't succeed with copying all the data.
+
+Commit f4fc66a894546bdc88a775d0e83ad20a65210bcb (ext3: convert to new aops)
+missed these cases and thus we were inserting non-uptodate buffers to
+transaction's list which confuses JBD code and it reports IO errors, aborts
+a transaction and generally makes users afraid about their data ;-P.
+
+This patch fixes the problem by reorganizing ext3_..._write_end() code to
+first call block_write_end() to mark buffers with valid data uptodate and
+after that we file only uptodate buffers to transaction's lists.
+
+We also fix a problem where we could leave blocks allocated beyond i_size
+(i_disksize in fact) because of failed write. We now add inode to orphan
+list when write fails (to be safe in case we crash) and then truncate blocks
+beyond i_size in a separate transaction.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/ext3/inode.c |  139 +++++++++++++++++++++++++++++--------------------------
+ 1 files changed, 74 insertions(+), 65 deletions(-)
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 4a09ff1..d3ef656 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1149,12 +1149,15 @@ static int ext3_write_begin(struct file *file, struct address_space *mapping,
+ 				struct page **pagep, void **fsdata)
+ {
+ 	struct inode *inode = mapping->host;
+-	int ret, needed_blocks = ext3_writepage_trans_blocks(inode);
++	int ret;
+ 	handle_t *handle;
+ 	int retries = 0;
+ 	struct page *page;
+ 	pgoff_t index;
+ 	unsigned from, to;
++	/* Reserve one block more for addition to orphan list in case
++	 * we allocate blocks but write fails for some reason */
++	int needed_blocks = ext3_writepage_trans_blocks(inode) + 1;
+ 
+ 	index = pos >> PAGE_CACHE_SHIFT;
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+@@ -1184,15 +1187,20 @@ retry:
+ 	}
+ write_begin_failed:
+ 	if (ret) {
+-		ext3_journal_stop(handle);
+-		unlock_page(page);
+-		page_cache_release(page);
+ 		/*
+ 		 * block_write_begin may have instantiated a few blocks
+ 		 * outside i_size.  Trim these off again. Don't need
+ 		 * i_size_read because we hold i_mutex.
++		 *
++		 * Add inode to orphan list in case we crash before truncate
++		 * finishes.
+ 		 */
+ 		if (pos + len > inode->i_size)
++			ext3_orphan_add(handle, inode);
++		ext3_journal_stop(handle);
++		unlock_page(page);
++		page_cache_release(page);
++		if (pos + len > inode->i_size)
+ 			vmtruncate(inode, inode->i_size);
+ 	}
+ 	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
+@@ -1211,6 +1219,18 @@ int ext3_journal_dirty_data(handle_t *handle, struct buffer_head *bh)
+ 	return err;
+ }
+ 
++/* For ordered writepage and write_end functions */
++static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
++{
++	/*
++	 * Write could have mapped the buffer but it didn't copy the data in
++	 * yet. So avoid filing such buffer into a transaction.
++	 */
++	if (buffer_mapped(bh) && buffer_uptodate(bh))
++		return ext3_journal_dirty_data(handle, bh);
++	return 0;
++}
++
+ /* For write_end() in data=journal mode */
+ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
+ {
+@@ -1221,26 +1241,20 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
+ }
+ 
+ /*
+- * Generic write_end handler for ordered and writeback ext3 journal modes.
+- * We can't use generic_write_end, because that unlocks the page and we need to
+- * unlock the page after ext3_journal_stop, but ext3_journal_stop must run
+- * after block_write_end.
++ * This is nasty and subtle: ext3_write_begin() could have allocated blocks
++ * for the whole page but later we failed to copy the data in. Update inode
++ * size according to what we managed to copy. The rest is going to be
++ * truncated in write_end function.
+  */
+-static int ext3_generic_write_end(struct file *file,
+-				struct address_space *mapping,
+-				loff_t pos, unsigned len, unsigned copied,
+-				struct page *page, void *fsdata)
++static void update_file_sizes(struct inode *inode, loff_t pos, unsigned copied)
+ {
+-	struct inode *inode = file->f_mapping->host;
+-
+-	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+-
+-	if (pos+copied > inode->i_size) {
+-		i_size_write(inode, pos+copied);
++	/* What matters to us is i_disksize. We don't write i_size anywhere */
++	if (pos + copied > inode->i_size)
++		i_size_write(inode, pos + copied);
++	if (pos + copied > EXT3_I(inode)->i_disksize) {
++		EXT3_I(inode)->i_disksize = pos + copied;
+ 		mark_inode_dirty(inode);
+ 	}
+-
+-	return copied;
+ }
+ 
+ /*
+@@ -1260,35 +1274,29 @@ static int ext3_ordered_write_end(struct file *file,
+ 	unsigned from, to;
+ 	int ret = 0, ret2;
+ 
+-	from = pos & (PAGE_CACHE_SIZE - 1);
+-	to = from + len;
++	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+ 
++	from = pos & (PAGE_CACHE_SIZE - 1);
++	to = from + copied;
+ 	ret = walk_page_buffers(handle, page_buffers(page),
+-		from, to, NULL, ext3_journal_dirty_data);
++		from, to, NULL, journal_dirty_data_fn);
+ 
+-	if (ret == 0) {
+-		/*
+-		 * generic_write_end() will run mark_inode_dirty() if i_size
+-		 * changes.  So let's piggyback the i_disksize mark_inode_dirty
+-		 * into that.
+-		 */
+-		loff_t new_i_size;
+-
+-		new_i_size = pos + copied;
+-		if (new_i_size > EXT3_I(inode)->i_disksize)
+-			EXT3_I(inode)->i_disksize = new_i_size;
+-		ret2 = ext3_generic_write_end(file, mapping, pos, len, copied,
+-							page, fsdata);
+-		copied = ret2;
+-		if (ret2 < 0)
+-			ret = ret2;
+-	}
++	if (ret == 0)
++		update_file_sizes(inode, pos, copied);
++	/*
++	 * There may be allocated blocks outside of i_size because
++	 * we failed to copy some data. Prepare for truncate.
++	 */
++	if (pos + len > inode->i_size)
++		ext3_orphan_add(handle, inode);
+ 	ret2 = ext3_journal_stop(handle);
+ 	if (!ret)
+ 		ret = ret2;
+ 	unlock_page(page);
+ 	page_cache_release(page);
+ 
++	if (pos + len > inode->i_size)
++		vmtruncate(inode, inode->i_size);
+ 	return ret ? ret : copied;
+ }
+ 
+@@ -1299,25 +1307,22 @@ static int ext3_writeback_write_end(struct file *file,
+ {
+ 	handle_t *handle = ext3_journal_current_handle();
+ 	struct inode *inode = file->f_mapping->host;
+-	int ret = 0, ret2;
+-	loff_t new_i_size;
+-
+-	new_i_size = pos + copied;
+-	if (new_i_size > EXT3_I(inode)->i_disksize)
+-		EXT3_I(inode)->i_disksize = new_i_size;
+-
+-	ret2 = ext3_generic_write_end(file, mapping, pos, len, copied,
+-							page, fsdata);
+-	copied = ret2;
+-	if (ret2 < 0)
+-		ret = ret2;
++	int ret;
+ 
+-	ret2 = ext3_journal_stop(handle);
+-	if (!ret)
+-		ret = ret2;
++	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
++	update_file_sizes(inode, pos, copied);
++	/*
++	 * There may be allocated blocks outside of i_size because
++	 * we failed to copy some data. Prepare for truncate.
++	 */
++	if (pos + len > inode->i_size)
++		ext3_orphan_add(handle, inode);
++	ret = ext3_journal_stop(handle);
+ 	unlock_page(page);
+ 	page_cache_release(page);
+ 
++	if (pos + len > inode->i_size)
++		vmtruncate(inode, inode->i_size);
+ 	return ret ? ret : copied;
+ }
+ 
+@@ -1338,15 +1343,23 @@ static int ext3_journalled_write_end(struct file *file,
+ 	if (copied < len) {
+ 		if (!PageUptodate(page))
+ 			copied = 0;
+-		page_zero_new_buffers(page, from+copied, to);
++		page_zero_new_buffers(page, from + copied, to);
++		to = from + copied;
+ 	}
+ 
+ 	ret = walk_page_buffers(handle, page_buffers(page), from,
+ 				to, &partial, write_end_fn);
+ 	if (!partial)
+ 		SetPageUptodate(page);
+-	if (pos+copied > inode->i_size)
+-		i_size_write(inode, pos+copied);
++
++	if (pos + copied > inode->i_size)
++		i_size_write(inode, pos + copied);
++	/*
++	 * There may be allocated blocks outside of i_size because
++	 * we failed to copy some data. Prepare for truncate.
++	 */
++	if (pos + len > inode->i_size)
++		ext3_orphan_add(handle, inode);
+ 	EXT3_I(inode)->i_state |= EXT3_STATE_JDATA;
+ 	if (inode->i_size > EXT3_I(inode)->i_disksize) {
+ 		EXT3_I(inode)->i_disksize = inode->i_size;
+@@ -1361,6 +1374,8 @@ static int ext3_journalled_write_end(struct file *file,
+ 	unlock_page(page);
+ 	page_cache_release(page);
+ 
++	if (pos + len > inode->i_size)
++		vmtruncate(inode, inode->i_size);
+ 	return ret ? ret : copied;
+ }
+ 
+@@ -1428,17 +1443,11 @@ static int bput_one(handle_t *handle, struct buffer_head *bh)
+ 	return 0;
+ }
+ 
+-static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
+-{
+-	if (buffer_mapped(bh))
+-		return ext3_journal_dirty_data(handle, bh);
+-	return 0;
+-}
