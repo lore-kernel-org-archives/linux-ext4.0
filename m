@@ -1,57 +1,153 @@
-From: Fabio Comolli <fabio.comolli@gmail.com>
-Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
-Date: Tue, 31 Mar 2009 14:02:26 +0200
-Message-ID: <b637ec0b0903310502q56fc82eeobd5f62d24a367ac4@mail.gmail.com>
-References: <E1LT8MN-0003Ps-Ur@closure.thunk.org>
-	 <20090211075914.GC20842@skywalker>
-	 <20090211153328.37ef255f@dhcp-100-2-144.bos.redhat.com>
-	 <20090212211935.GE6922@mini-me.lan>
-	 <20090216163507.1e73f452@dhcp-100-2-144.bos.redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: next-20090310: ext4 hangs
+Date: Tue, 31 Mar 2009 14:33:07 +0200
+Message-ID: <20090331123307.GG11808@duck.suse.cz>
+References: <20090325151516.GB14881@atrey.karlin.mff.cuni.cz> <a4423d670903250818n512b1c67ja1b38db6d09ac7c@mail.gmail.com> <20090325152234.GN23439@duck.suse.cz> <a4423d670903250829w5e9304a7rce24f4220379620f@mail.gmail.com> <20090325161556.GP23439@duck.suse.cz> <a4423d670903251007r72058ca8m28275c1433ab2706@mail.gmail.com> <20090325194316.GQ23439@duck.suse.cz> <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com> <20090331100150.GF11808@duck.suse.cz> <a4423d670903310307i7acd31f0r4836beae14cfb92d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
+Content-Type: multipart/mixed; boundary="d6Gm4EdcadzBjdND"
+Content-Transfer-Encoding: 8bit
 Cc: Theodore Tso <tytso@mit.edu>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Chuck Ebbert <cebbert@redhat.com>
+	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	sparclinux@vger.kernel.org
+To: Alexander Beregalov <a.beregalov@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fg-out-1718.google.com ([72.14.220.155]:8307 "EHLO
-	fg-out-1718.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750919AbZCaMC3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Mar 2009 08:02:29 -0400
-In-Reply-To: <20090216163507.1e73f452@dhcp-100-2-144.bos.redhat.com>
+Received: from cantor.suse.de ([195.135.220.2]:51922 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751395AbZCaMdL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Mar 2009 08:33:11 -0400
+Content-Disposition: inline
+In-Reply-To: <a4423d670903310307i7acd31f0r4836beae14cfb92d@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Is there a patch for 2.6.27.X for people not using git?
+
+--d6Gm4EdcadzBjdND
+Content-Type: text/plain; charset=iso-8859-1
+Content-Disposition: inline
+Content-Transfer-Encoding: 8bit
+
+On Tue 31-03-09 14:07:30, Alexander Beregalov wrote:
+> 2009/3/31 Jan Kara <jack@suse.cz>:
+> > On Thu 26-03-09 01:38:32, Alexander Beregalov wrote:
+> >> 2009/3/25 Jan Kara <jack@suse.cz>:
+> >> > On Wed 25-03-09 20:07:46, Alexander Beregalov wrote:
+> >> >> 2009/3/25 Jan Kara <jack@suse.cz>:
+> >> >> > On Wed 25-03-09 18:29:10, Alexander Beregalov wrote:
+> >> >> >> 2009/3/25 Jan Kara <jack@suse.cz>:
+> >> >> >> > On Wed 25-03-09 18:18:43, Alexander Beregalov wrote:
+> >> >> >> >> 2009/3/25 Jan Kara <jack@suse.cz>:
+> >> >> >> >> >> > So, I think I need to try it on 2.6.29-rc7 again.
+> >> >> >> >> >>   I've looked into this. Obviously, what's happenning is that we delete
+> >> >> >> >> >> an inode and jbd2_journal_release_jbd_inode() finds inode is just under
+> >> >> >> >> >> writeout in transaction commit and thus it waits. But it gets never woken
+> >> >> >> >> >> up and because it has a handle from the transaction, every one eventually
+> >> >> >> >> >> blocks on waiting for a transaction to finish.
+> >> >> >> >> >>   But I don't really see how that can happen. The code is really
+> >> >> >> >> >> straightforward and everything happens under j_list_lock... Strange.
+> >> >> >> >> >  BTW: Is the system SMP?
+> >> >> >> >> No, it is UP system.
+> >> >> >> >  Even stranger. And do you have CONFIG_PREEMPT set?
+> >> >> >> >
+> >> >> >> >> The bug exists even in 2.6.29, I posted it with a new topic.
+> >> >> >> >  OK, I've sort-of expected this.
+> >> >> >>
+> >> >> >> CONFIG_PREEMPT_RCU=y
+> >> >> >> CONFIG_PREEMPT_RCU_TRACE=y
+> >> >> >> # CONFIG_PREEMPT_NONE is not set
+> >> >> >> # CONFIG_PREEMPT_VOLUNTARY is not set
+> >> >> >> CONFIG_PREEMPT=y
+> >> >> >> CONFIG_DEBUG_PREEMPT=y
+> >> >> >> # CONFIG_PREEMPT_TRACER is not set
+> >> >> >>
+> >> >> >> config is attached.
+> >> >> >  Thanks for the data. I still don't see how the wakeup can get lost. The
+> >> >> > process even cannot be preempted when we are in the section protected by
+> >> >> > j_list_lock... Can you send me a disassembly of functions
+> >> >> > jbd2_journal_release_jbd_inode() and journal_submit_data_buffers() so that
+> >> >> > I can see whether the compiler has not reordered something unexpectedly?
+> >> >  Thanks for the disassembly...
+> >> >
+> >> >> By default gcc inlines journal_submit_data_buffers()
+> >> >> Here is -fno-inline version. Default version is in attach.
+> >  <snip>
+> >
+> >  I'm helpless here. I don't see how we can miss a wakeup (plus you seem to
+> > be the only one reporting the bug). Could you please compile and test the kernel
+> > with the attached patch? It will print to kernel log when we go to sleep
+> > waiting for inode commit and when we send wakeups etc. When you hit the
+> > deadlock, please send me your kernel log. It should help with debugging why do
+> > we miss the wakeup. Thanks.
+> 
+> Which patch?
+  Ups. Forgot to attach ;).
+
+										Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
+
+--d6Gm4EdcadzBjdND
+Content-Type: text/x-patch; charset=us-ascii
+Content-Disposition: attachment; filename="0001-ext4-Debug-sleepers-in-iput.patch"
+
+>From 123ab7510c04c698077e5756b4de6c66ce8ee71e Mon Sep 17 00:00:00 2001
+From: Jan Kara <jack@suse.cz>
+Date: Tue, 31 Mar 2009 11:57:10 +0200
+Subject: [PATCH] ext4: Debug sleepers in iput()
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/commit.c  |    4 ++++
+ fs/jbd2/journal.c |    6 ++++++
+ 2 files changed, 10 insertions(+), 0 deletions(-)
+
+diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
+index 62804e5..f47b8a3 100644
+--- a/fs/jbd2/commit.c
++++ b/fs/jbd2/commit.c
+@@ -259,6 +259,8 @@ static int journal_submit_data_buffers(journal_t *journal,
+ 		spin_lock(&journal->j_list_lock);
+ 		J_ASSERT(jinode->i_transaction == commit_transaction);
+ 		jinode->i_flags &= ~JI_COMMIT_RUNNING;
++		if (jinode->i_flags & 4)
++			printk(KERN_INFO "JBD2: Waking up sleeper on ino %lu\n", jinode->i_vfs_inode->i_ino);
+ 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
+ 	}
+ 	spin_unlock(&journal->j_list_lock);
+@@ -296,6 +298,8 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
+ 		}
+ 		spin_lock(&journal->j_list_lock);
+ 		jinode->i_flags &= ~JI_COMMIT_RUNNING;
++		if (jinode->i_flags & 4)
++			printk(KERN_INFO "JBD2: Waking up sleeper on ino %lu\n", jinode->i_vfs_inode->i_ino);
+ 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
+ 	}
+ 
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 5814410..5459fd9 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -2225,11 +2225,17 @@ restart:
+ 	if (jinode->i_flags & JI_COMMIT_RUNNING) {
+ 		wait_queue_head_t *wq;
+ 		DEFINE_WAIT_BIT(wait, &jinode->i_flags, __JI_COMMIT_RUNNING);
++		unsigned long ino = jinode->i_vfs_inode->i_ino;
++
++		jinode->i_flags |= 4;
++		printk(KERN_INFO "JBD2: Waiting for ino %lu\n", ino);
++
+ 		wq = bit_waitqueue(&jinode->i_flags, __JI_COMMIT_RUNNING);
+ 		prepare_to_wait(wq, &wait.wait, TASK_UNINTERRUPTIBLE);
+ 		spin_unlock(&journal->j_list_lock);
+ 		schedule();
+ 		finish_wait(wq, &wait.wait);
++		printk(KERN_INFO "JBD2: Woken on ino %lu\n", ino);
+ 		goto restart;
+ 	}
+ 
+-- 
+1.6.0.2
 
 
-On Mon, Feb 16, 2009 at 11:35 PM, Chuck Ebbert <cebbert@redhat.com> wro=
-te:
-> On Thu, 12 Feb 2009 16:19:35 -0500
-> Theodore Tso <tytso@mit.edu> wrote:
->
->>
->> I've updated the for-stable and for-stable-2.6.27 branches against t=
-he
->> latest stable releases, and I've updated the two flawed backports in
->> the for-stable-2.6.27 branch. =C2=A0Could you do a quick double-chec=
-k and
->> make sure the fixes are as you expect, before I send a pull request =
-to
->> stable@kernel.org?
->
-> The 2.6.27 branch looks good to me.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kerne=
-l" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =C2=A0http://vger.kernel.org/majordomo-info.ht=
-ml
-> Please read the FAQ at =C2=A0http://www.tux.org/lkml/
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--d6Gm4EdcadzBjdND--
