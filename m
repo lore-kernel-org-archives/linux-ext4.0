@@ -1,118 +1,88 @@
-From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-Subject: [PATCH] check block device size on mount
-Date: Tue, 31 Mar 2009 10:58:48 +0200
-Message-ID: <49D1DB48.1020708@ph.tum.de>
-Mime-Version: 1.0
-Content-Type: multipart/mixed;
- boundary="------------020200060200070806030800"
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Theodore Tso <tytso@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 1/2] [PATCH] ext4: Add inode to the orphan list during block allocation failure
+Date: Tue, 31 Mar 2009 14:59:25 +0530
+Message-ID: <1238491766-13182-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <20090331044544.GB5979@skywalker>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Jan Kara <jack@suse.cz>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:41906 "EHLO
-	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750754AbZCaI6u (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Mar 2009 04:58:50 -0400
+Received: from e23smtp02.au.ibm.com ([202.81.31.144]:56357 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751304AbZCaJ3q (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Mar 2009 05:29:46 -0400
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id n2V9SKK1031458
+	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 20:28:20 +1100
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n2V9TgFX450940
+	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 20:29:43 +1100
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n2V9TgWD022639
+	for <linux-ext4@vger.kernel.org>; Tue, 31 Mar 2009 20:29:42 +1100
+In-Reply-To: <20090331044544.GB5979@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------020200060200070806030800
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+We should add inode to the orphan list in the same transaction
+as block allocation. This ensures that if we crash after a failed
+block allocation and before we do a vmtruncate we don't leak block
+(ie block marked as used in bitmap but not claimed by the inode).
 
-Dear Ted,
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+CC:  Jan Kara <jack@suse.cz>
+---
+ fs/ext4/inode.c |   15 +++++++++++++--
+ 1 files changed, 13 insertions(+), 2 deletions(-)
 
-the attached patch (against your ext4 tree) compares device and 
-filesystem sizes and refuses to mount a filesystem that is larger than 
-the underlying block device.  This is probably needed in the first place 
-to make sure that there is a sane limit imposed by the block number 
-range checks submitted by Aneesh and me.
-
-Please take a close look at the code.  Although it works for me, I'm not 
-sure whether this is the right way to do it.  I tried to work analogous 
-to bio_check_eod()...
-
-Kind regards,
-
-Signed-off-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-
-P.S.:  This fixes errors of the kind shown below which I got when 
-playing around with a loop mount of a truncated filesystem image.
-
-[ 3009.577468] BUG: unable to handle kernel NULL pointer dereference at 
-(null)
-[ 3009.577499] IP: [<c01b88c9>] seq_escape+0x1b/0xba
-[ 3009.577552] *pdpt = 000000001d5f8001 *pde = 0000000000000000
-[ 3009.577583] Oops: 0000 [#1] PREEMPT SMP
-[ 3009.577595] last sysfs file: 
-/sys/devices/pci0000:00/0000:00:1d.0/usb1/1-1/power/autosuspend
-[ 3009.577623] Modules linked in: usbhid crc16 cpufreq_stats 
-cpufreq_ondemand cpufreq_userspace cpufreq_powersave acpi_cpufreq 
-speedstep_lib freq_table toshiba loop snd_intel8x0 snd_ac97_codec 
-ac97_bus snd_pcm snd_timer snd soundcore psmouse snd_page_alloc ipw2200 
-libipw lib80211 toshiba_acpi rfkill backlight input_polldev battery ac 
-button evdev ext3 jbd mbcache sd_mod ata_generic ata_piix libata 
-ehci_hcd uhci_hcd e100 mii scsi_mod usbcore thermal processor fan 
-thermal_sys [last unloaded: jbd2]
-[ 3009.577908]
-[ 3009.577933] Pid: 6128, comm: mount Tainted: G  R     W 
-(2.6.29-rc7-dbg #1) TECRA A3X
-[ 3009.577941] EIP: 0060:[<c01b88c9>] EFLAGS: 00010286 CPU: 0
-[ 3009.577967] EIP is at seq_escape+0x1b/0xba
-[ 3009.577991] EAX: dd0d3000 EBX: dd0d322b ECX: dec4c640 EDX: 00000000
-[ 3009.577998] ESI: dec4c640 EDI: 00001000 EBP: dd593f04 ESP: dd593ee8
-[ 3009.578022]  DS: 007b ES: 007b FS: 00d8 GS: 0033 SS: 0068
-[ 3009.578024] Process mount (pid: 6128, ti=dd592000 task=dd482430 
-task.ti=dd592000)
-[ 3009.578024] Stack:
-[ 3009.578024]  c03c3629 dec4c640 dec4c640 dd0d3221 df07a800 dec4c640 
-de8129f0 dd593f14
-[ 3009.578024]  c01b5da8 de8129c0 dec4c640 dd593f30 c01b6a9f de8129c0 
-cf9e89a4 c0327880
-[ 3009.578024]  dec4c640 de8129f0 dd593f6c c01b9086 00000400 b7fdf000 
-dd50dd80 dec4c668
-[ 3009.578024] Call Trace:
-[ 3009.578024]  [<c01b5da8>] ? show_type+0x22/0x5a
-[ 3009.578024]  [<c01b6a9f>] ? show_vfsmnt+0x61/0xc2
-[ 3009.578024]  [<c01b9086>] ? seq_read+0x258/0x332
-[ 3009.578024]  [<c01a22b9>] ? vfs_read+0x97/0x14e
-[ 3009.578024]  [<c01b8e2e>] ? seq_read+0x0/0x332
-[ 3009.578024]  [<c01a29c4>] ? sys_read+0x3d/0x61
-[ 3009.578024]  [<c01031fb>] ? sysenter_do_call+0x12/0x3f
-[ 3009.578024] Code: a2 bb 00 00 00 00 89 d8 83 c4 08 5b 5e 5f 5d c3 55 
-89 e5 57 56 53 83 ec 10 89 45 e8 89 4d e4 89 c1 8b 00 8b 79 04 89 c3 03 
-59 0c <0f> b6 0a 88 4d f3 84 c9 74 7e 01 f8 89 45 ec 39 d8 76 75 89 d7
-[ 3009.578024] EIP: [<c01b88c9>] seq_escape+0x1b/0xba SS:ESP 0068:dd593ee8
-[ 3009.584755] ---[ end trace 0355de9ee9334cfe ]---
-
---------------020200060200070806030800
-Content-Type: text/x-patch;
- name="check-device-size.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline;
- filename="check-device-size.patch"
-
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 0328b9d..8b4eabe 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2543,6 +2543,15 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	if (EXT4_BLOCKS_PER_GROUP(sb) == 0)
- 		goto cantfind_ext4;
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 2231a65..074185f 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1424,7 +1424,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 				struct page **pagep, void **fsdata)
+ {
+ 	struct inode *inode = mapping->host;
+-	int ret, needed_blocks = ext4_writepage_trans_blocks(inode);
++	int ret, needed_blocks;
+ 	handle_t *handle;
+ 	int retries = 0;
+ 	struct page *page;
+@@ -1435,6 +1435,11 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+ 		   "dev %s ino %lu pos %llu len %u flags %u",
+ 		   inode->i_sb->s_id, inode->i_ino,
+ 		   (unsigned long long) pos, len, flags);
++	/*
++	 * Reserve one block more for addition to orphan list in case
++	 * we allocate blocks but write fails for some reason
++	 */
++	needed_blocks = ext4_writepage_trans_blocks(inode) + 1;
+  	index = pos >> PAGE_CACHE_SHIFT;
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+ 	to = from + len;
+@@ -1468,14 +1473,20 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
  
-+	/* check blocks count against device size */
-+	blocks_count = sb->s_bdev->bd_inode->i_size >> sb->s_blocksize_bits;
-+	if (blocks_count && ext4_blocks_count(es) > blocks_count) {
-+		printk(KERN_WARNING "EXT4-fs: bad geometry: block count %llu "
-+		       "exceeds size of device (%llu blocks)\n",
-+		       ext4_blocks_count(es), blocks_count);
-+		goto failed_mount;
-+	}
+ 	if (ret) {
+ 		unlock_page(page);
+-		ext4_journal_stop(handle);
+ 		page_cache_release(page);
+ 		/*
+ 		 * block_write_begin may have instantiated a few blocks
+ 		 * outside i_size.  Trim these off again. Don't need
+ 		 * i_size_read because we hold i_mutex.
++		 *
++		 * Add inode to orphan list in case we crash before
++		 * truncate finishes
+ 		 */
+ 		if (pos + len > inode->i_size)
++			ext4_orphan_add(handle, inode);
 +
-         /*
-          * It makes no sense for the first data block to be beyond the end
-          * of the filesystem.
++		ext4_journal_stop(handle);
++		if (pos + len > inode->i_size)
+ 			vmtruncate(inode, inode->i_size);
+ 	}
+ 
+-- 
+1.6.2.1.404.gb0085.dirty
 
---------------020200060200070806030800--
