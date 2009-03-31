@@ -1,49 +1,121 @@
-From: =?ISO-8859-1?Q?Fernando_Luis_V=E1zquez_Cao?=
-	<fernando@oss.ntt.co.jp>
-Subject: Re: [PATCH] ext4: fix blkdev_issue_flush() failure handling
-Date: Tue, 31 Mar 2009 13:33:57 +0900
-Message-ID: <49D19D35.7020407@oss.ntt.co.jp>
-References: <200903291928.14451.bzolnier@gmail.com> <49CFB33A.9020406@redhat.com> <20090330022521.GB13356@mit.edu> <49D03AE1.8070009@redhat.com> <1238413667.30488.2.camel@think.oraclecorp.com> <49D0C29C.1060307@uvigo.es> <20090330142518.GI13356@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] Remove two unneeded exports and make two symbols
+	static in fs/mpage.c
+Date: Tue, 31 Mar 2009 10:08:36 +0530
+Message-ID: <20090331043836.GA5979@skywalker>
+References: <1238449280-10318-1-git-send-email-dmitri.vorobiev@movial.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: Theodore Tso <tytso@mit.edu>,
-	=?ISO-8859-1?Q?Fernando_Luis_V=E1zq?= =?ISO-8859-1?Q?uez_Cao?=
-	<flvazquez@uvigo.es>, Chris Mason <chris.mason@oracle.com>,
-	Eric Sandeen <sandeen@redhat.
+Content-Type: text/plain; charset=us-ascii
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+	linux-kernel@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
+	linux-ext4@vger.kernel.org, alex@clusterfs.com
+To: Dmitri Vorobiev <dmitri.vorobiev@movial.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:57874 "EHLO
-	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751152AbZCaEd7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Mar 2009 00:33:59 -0400
-In-Reply-To: <20090330142518.GI13356@mit.edu>
+Received: from e23smtp02.au.ibm.com ([202.81.31.144]:50087 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751203AbZCaEjB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Mar 2009 00:39:01 -0400
+Content-Disposition: inline
+In-Reply-To: <1238449280-10318-1-git-send-email-dmitri.vorobiev@movial.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Mon, Mar 30, 2009 at 10:01:16PM +0900, Fernando Luis V=E1zquez Cao=
- wrote:
->> Chris, I have just sent patches that attempt to fix both ext3 and
->> ext4 while also adding a per-device sysfs knob tu disable
->> write-flushes. A previous version of this patch set added a new
->> generic mount option but comments from Christoph and others
->> convinced me to turn it into a per-device tunable. Could you take
->> a look at the patches?
->=20
-> Fernando, see my comments on those patches.  We don't need to issue a
-> barrier after a call to sync_inode() or ext[34]_force_commit(), since
-> those functions will issue a barrier for us.  It would probably be a
-> good idea to use blktrace to test and make sure that we have one and
-> exactly one barrier op issued for each fsync().
+On Tue, Mar 31, 2009 at 12:41:20AM +0300, Dmitri Vorobiev wrote:
+> Commit 29a814d2ee0e43c2980f33f91c1311ec06c0aa35 (vfs: add hooks for
+> ext4's delayed allocation support) exported the following functions
+> 
+> mpage_bio_submit()
+> __mpage_writepage()
+> 
+> for the benefit of ext4's delayed allocation support. Since commit
+> a1d6cc563bfdf1bf2829d3e6ce4d8b774251796b (ext4: Rework the
+> ext4_da_writepages() function), these functions are not used by the
+> ext4 driver anymore. However, the now unnecessary exports still
+> remain, and this patch removes those. Moreover, these two functions
+> can become static again.
+> 
+> The issue was spotted by namespacecheck.
+> 
+> Signed-off-by: Dmitri Vorobiev <dmitri.vorobiev@movial.com>
 
-I'll give blktrace a spin and check if things are working as expected.
+Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Thanks!
-
-- Fernando
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> ---
+>  fs/mpage.c            |   13 +++++++++----
+>  include/linux/mpage.h |   10 ----------
+>  2 files changed, 9 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/mpage.c b/fs/mpage.c
+> index 16c3ef3..680ba60 100644
+> --- a/fs/mpage.c
+> +++ b/fs/mpage.c
+> @@ -82,7 +82,7 @@ static void mpage_end_io_write(struct bio *bio, int err)
+>  	bio_put(bio);
+>  }
+> 
+> -struct bio *mpage_bio_submit(int rw, struct bio *bio)
+> +static struct bio *mpage_bio_submit(int rw, struct bio *bio)
+>  {
+>  	bio->bi_end_io = mpage_end_io_read;
+>  	if (rw == WRITE)
+> @@ -90,7 +90,6 @@ struct bio *mpage_bio_submit(int rw, struct bio *bio)
+>  	submit_bio(rw, bio);
+>  	return NULL;
+>  }
+> -EXPORT_SYMBOL(mpage_bio_submit);
+> 
+>  static struct bio *
+>  mpage_alloc(struct block_device *bdev,
+> @@ -439,7 +438,14 @@ EXPORT_SYMBOL(mpage_readpage);
+>   * just allocate full-size (16-page) BIOs.
+>   */
+> 
+> -int __mpage_writepage(struct page *page, struct writeback_control *wbc,
+> +struct mpage_data {
+> +	struct bio *bio;
+> +	sector_t last_block_in_bio;
+> +	get_block_t *get_block;
+> +	unsigned use_writepage;
+> +};
+> +
+> +static int __mpage_writepage(struct page *page, struct writeback_control *wbc,
+>  		      void *data)
+>  {
+>  	struct mpage_data *mpd = data;
+> @@ -648,7 +654,6 @@ out:
+>  	mpd->bio = bio;
+>  	return ret;
+>  }
+> -EXPORT_SYMBOL(__mpage_writepage);
+> 
+>  /**
+>   * mpage_writepages - walk the list of dirty pages of the given address space & writepage() all of them
+> diff --git a/include/linux/mpage.h b/include/linux/mpage.h
+> index 5c42821..068a0c9 100644
+> --- a/include/linux/mpage.h
+> +++ b/include/linux/mpage.h
+> @@ -11,21 +11,11 @@
+>   */
+>  #ifdef CONFIG_BLOCK
+> 
+> -struct mpage_data {
+> -	struct bio *bio;
+> -	sector_t last_block_in_bio;
+> -	get_block_t *get_block;
+> -	unsigned use_writepage;
+> -};
+> -
+>  struct writeback_control;
+> 
+> -struct bio *mpage_bio_submit(int rw, struct bio *bio);
+>  int mpage_readpages(struct address_space *mapping, struct list_head *pages,
+>  				unsigned nr_pages, get_block_t get_block);
+>  int mpage_readpage(struct page *page, get_block_t get_block);
+> -int __mpage_writepage(struct page *page, struct writeback_control *wbc,
+> -		      void *data);
+>  int mpage_writepages(struct address_space *mapping,
+>  		struct writeback_control *wbc, get_block_t get_block);
+>  int mpage_writepage(struct page *page, get_block_t *get_block,
+> -- 
+> 1.5.6.3
+> 
