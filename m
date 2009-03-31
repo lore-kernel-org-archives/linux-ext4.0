@@ -1,297 +1,96 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext3: Avoid false EIO errors (version 4)
-Date: Tue, 31 Mar 2009 11:46:18 +0200
-Message-ID: <20090331094618.GE11808@duck.suse.cz>
-References: <1238091711-23464-1-git-send-email-jack@suse.cz> <20090327180806.GB2810@skywalker> <20090327202421.GB31071@duck.suse.cz> <20090330082532.GA15488@skywalker> <20090330103248.GB18833@duck.suse.cz> <20090330105821.GE4796@skywalker> <20090330160517.GB30897@duck.suse.cz> <20090331044544.GB5979@skywalker>
+Subject: Re: next-20090310: ext4 hangs
+Date: Tue, 31 Mar 2009 12:01:51 +0200
+Message-ID: <20090331100150.GF11808@duck.suse.cz>
+References: <a4423d670903110907o7041f4eof92278835aa0c71c@mail.gmail.com> <20090325151122.GA14881@atrey.karlin.mff.cuni.cz> <20090325151516.GB14881@atrey.karlin.mff.cuni.cz> <a4423d670903250818n512b1c67ja1b38db6d09ac7c@mail.gmail.com> <20090325152234.GN23439@duck.suse.cz> <a4423d670903250829w5e9304a7rce24f4220379620f@mail.gmail.com> <20090325161556.GP23439@duck.suse.cz> <a4423d670903251007r72058ca8m28275c1433ab2706@mail.gmail.com> <20090325194316.GQ23439@duck.suse.cz> <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>,
+	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	sparclinux@vger.kernel.org
+To: Alexander Beregalov <a.beregalov@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:47524 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:47781 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752400AbZCaJqW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Mar 2009 05:46:22 -0400
+	id S1752137AbZCaKBy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 31 Mar 2009 06:01:54 -0400
 Content-Disposition: inline
-In-Reply-To: <20090331044544.GB5979@skywalker>
+In-Reply-To: <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hello,
+On Thu 26-03-09 01:38:32, Alexander Beregalov wrote:
+> 2009/3/25 Jan Kara <jack@suse.cz>:
+> > On Wed 25-03-09 20:07:46, Alexander Beregalov wrote:
+> >> 2009/3/25 Jan Kara <jack@suse.cz>:
+> >> > On Wed 25-03-09 18:29:10, Alexander Beregalov wrote:
+> >> >> 2009/3/25 Jan Kara <jack@suse.cz>:
+> >> >> > On Wed 25-03-09 18:18:43, Alexander Beregalov wrote:
+> >> >> >> 2009/3/25 Jan Kara <jack@suse.cz>:
+> >> >> >> >> > So, I think I need to try it on 2.6.29-rc7 again.
+> >> >> >> >> =A0 I've looked into this. Obviously, what's happenning i=
+s that we delete
+> >> >> >> >> an inode and jbd2_journal_release_jbd_inode() finds inode=
+ is just under
+> >> >> >> >> writeout in transaction commit and thus it waits. But it =
+gets never woken
+> >> >> >> >> up and because it has a handle from the transaction, ever=
+y one eventually
+> >> >> >> >> blocks on waiting for a transaction to finish.
+> >> >> >> >> =A0 But I don't really see how that can happen. The code =
+is really
+> >> >> >> >> straightforward and everything happens under j_list_lock.=
+=2E. Strange.
+> >> >> >> > =A0BTW: Is the system SMP?
+> >> >> >> No, it is UP system.
+> >> >> > =A0Even stranger. And do you have CONFIG_PREEMPT set?
+> >> >> >
+> >> >> >> The bug exists even in 2.6.29, I posted it with a new topic.
+> >> >> > =A0OK, I've sort-of expected this.
+> >> >>
+> >> >> CONFIG_PREEMPT_RCU=3Dy
+> >> >> CONFIG_PREEMPT_RCU_TRACE=3Dy
+> >> >> # CONFIG_PREEMPT_NONE is not set
+> >> >> # CONFIG_PREEMPT_VOLUNTARY is not set
+> >> >> CONFIG_PREEMPT=3Dy
+> >> >> CONFIG_DEBUG_PREEMPT=3Dy
+> >> >> # CONFIG_PREEMPT_TRACER is not set
+> >> >>
+> >> >> config is attached.
+> >> > =A0Thanks for the data. I still don't see how the wakeup can get=
+ lost. The
+> >> > process even cannot be preempted when we are in the section prot=
+ected by
+> >> > j_list_lock... Can you send me a disassembly of functions
+> >> > jbd2_journal_release_jbd_inode() and journal_submit_data_buffers=
+() so that
+> >> > I can see whether the compiler has not reordered something unexp=
+ectedly?
+> > =A0Thanks for the disassembly...
+> >
+> >> By default gcc inlines journal_submit_data_buffers()
+> >> Here is -fno-inline version. Default version is in attach.
+  <snip>
 
-  as Aneesh pointed to me, I forgot to add truncation to the data=journaled
-mode. This patch fixes it. Hopefully final version of the fix ;).
+  I'm helpless here. I don't see how we can miss a wakeup (plus you see=
+m to
+be the only one reporting the bug). Could you please compile and test t=
+he kernel
+with the attached patch? It will print to kernel log when we go to slee=
+p
+waiting for inode commit and when we send wakeups etc. When you hit the
+deadlock, please send me your kernel log. It should help with debugging=
+ why do
+we miss the wakeup. Thanks.
 
 									Honza
----
+--=20
 Jan Kara <jack@suse.cz>
 SUSE Labs, CR
----
-
->From ec5c2977f87328fb93fee1aa35043bafeb53cea1 Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Wed, 25 Mar 2009 18:51:52 +0100
-Subject: [PATCH] ext3: Avoid false EIO errors (version 4)
-
-Sometimes block_write_begin() can map buffers in a page but later we fail to
-copy data into those buffers (because the source page has been paged out in the
-mean time). We then end up with !uptodate mapped buffers. To add a bit more to
-the confusion, block_write_end() does not commit any data (and thus does not
-any mark buffers as uptodate) if we didn't succeed with copying all the data.
-
-Commit f4fc66a894546bdc88a775d0e83ad20a65210bcb (ext3: convert to new aops)
-missed these cases and thus we were inserting non-uptodate buffers to
-transaction's list which confuses JBD code and it reports IO errors, aborts
-a transaction and generally makes users afraid about their data ;-P.
-
-This patch fixes the problem by reorganizing ext3_..._write_end() code to
-first call block_write_end() to mark buffers with valid data uptodate and
-after that we file only uptodate buffers to transaction's lists.
-
-We also fix a problem where we could leave blocks allocated beyond i_size
-(i_disksize in fact) because of failed write. We now add inode to orphan
-list when write fails (to be safe in case we crash) and then truncate blocks
-beyond i_size in a separate transaction.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext3/inode.c |  139 +++++++++++++++++++++++++++++--------------------------
- 1 files changed, 74 insertions(+), 65 deletions(-)
-
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index 4a09ff1..d3ef656 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -1149,12 +1149,15 @@ static int ext3_write_begin(struct file *file, struct address_space *mapping,
- 				struct page **pagep, void **fsdata)
- {
- 	struct inode *inode = mapping->host;
--	int ret, needed_blocks = ext3_writepage_trans_blocks(inode);
-+	int ret;
- 	handle_t *handle;
- 	int retries = 0;
- 	struct page *page;
- 	pgoff_t index;
- 	unsigned from, to;
-+	/* Reserve one block more for addition to orphan list in case
-+	 * we allocate blocks but write fails for some reason */
-+	int needed_blocks = ext3_writepage_trans_blocks(inode) + 1;
- 
- 	index = pos >> PAGE_CACHE_SHIFT;
- 	from = pos & (PAGE_CACHE_SIZE - 1);
-@@ -1184,15 +1187,20 @@ retry:
- 	}
- write_begin_failed:
- 	if (ret) {
--		ext3_journal_stop(handle);
--		unlock_page(page);
--		page_cache_release(page);
- 		/*
- 		 * block_write_begin may have instantiated a few blocks
- 		 * outside i_size.  Trim these off again. Don't need
- 		 * i_size_read because we hold i_mutex.
-+		 *
-+		 * Add inode to orphan list in case we crash before truncate
-+		 * finishes.
- 		 */
- 		if (pos + len > inode->i_size)
-+			ext3_orphan_add(handle, inode);
-+		ext3_journal_stop(handle);
-+		unlock_page(page);
-+		page_cache_release(page);
-+		if (pos + len > inode->i_size)
- 			vmtruncate(inode, inode->i_size);
- 	}
- 	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
-@@ -1211,6 +1219,18 @@ int ext3_journal_dirty_data(handle_t *handle, struct buffer_head *bh)
- 	return err;
- }
- 
-+/* For ordered writepage and write_end functions */
-+static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
-+{
-+	/*
-+	 * Write could have mapped the buffer but it didn't copy the data in
-+	 * yet. So avoid filing such buffer into a transaction.
-+	 */
-+	if (buffer_mapped(bh) && buffer_uptodate(bh))
-+		return ext3_journal_dirty_data(handle, bh);
-+	return 0;
-+}
-+
- /* For write_end() in data=journal mode */
- static int write_end_fn(handle_t *handle, struct buffer_head *bh)
- {
-@@ -1221,26 +1241,20 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
- }
- 
- /*
-- * Generic write_end handler for ordered and writeback ext3 journal modes.
-- * We can't use generic_write_end, because that unlocks the page and we need to
-- * unlock the page after ext3_journal_stop, but ext3_journal_stop must run
-- * after block_write_end.
-+ * This is nasty and subtle: ext3_write_begin() could have allocated blocks
-+ * for the whole page but later we failed to copy the data in. Update inode
-+ * size according to what we managed to copy. The rest is going to be
-+ * truncated in write_end function.
-  */
--static int ext3_generic_write_end(struct file *file,
--				struct address_space *mapping,
--				loff_t pos, unsigned len, unsigned copied,
--				struct page *page, void *fsdata)
-+static void update_file_sizes(struct inode *inode, loff_t pos, unsigned copied)
- {
--	struct inode *inode = file->f_mapping->host;
--
--	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
--
--	if (pos+copied > inode->i_size) {
--		i_size_write(inode, pos+copied);
-+	/* What matters to us is i_disksize. We don't write i_size anywhere */
-+	if (pos + copied > inode->i_size)
-+		i_size_write(inode, pos + copied);
-+	if (pos + copied > EXT3_I(inode)->i_disksize) {
-+		EXT3_I(inode)->i_disksize = pos + copied;
- 		mark_inode_dirty(inode);
- 	}
--
--	return copied;
- }
- 
- /*
-@@ -1260,35 +1274,29 @@ static int ext3_ordered_write_end(struct file *file,
- 	unsigned from, to;
- 	int ret = 0, ret2;
- 
--	from = pos & (PAGE_CACHE_SIZE - 1);
--	to = from + len;
-+	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
- 
-+	from = pos & (PAGE_CACHE_SIZE - 1);
-+	to = from + copied;
- 	ret = walk_page_buffers(handle, page_buffers(page),
--		from, to, NULL, ext3_journal_dirty_data);
-+		from, to, NULL, journal_dirty_data_fn);
- 
--	if (ret == 0) {
--		/*
--		 * generic_write_end() will run mark_inode_dirty() if i_size
--		 * changes.  So let's piggyback the i_disksize mark_inode_dirty
--		 * into that.
--		 */
--		loff_t new_i_size;
--
--		new_i_size = pos + copied;
--		if (new_i_size > EXT3_I(inode)->i_disksize)
--			EXT3_I(inode)->i_disksize = new_i_size;
--		ret2 = ext3_generic_write_end(file, mapping, pos, len, copied,
--							page, fsdata);
--		copied = ret2;
--		if (ret2 < 0)
--			ret = ret2;
--	}
-+	if (ret == 0)
-+		update_file_sizes(inode, pos, copied);
-+	/*
-+	 * There may be allocated blocks outside of i_size because
-+	 * we failed to copy some data. Prepare for truncate.
-+	 */
-+	if (pos + len > inode->i_size)
-+		ext3_orphan_add(handle, inode);
- 	ret2 = ext3_journal_stop(handle);
- 	if (!ret)
- 		ret = ret2;
- 	unlock_page(page);
- 	page_cache_release(page);
- 
-+	if (pos + len > inode->i_size)
-+		vmtruncate(inode, inode->i_size);
- 	return ret ? ret : copied;
- }
- 
-@@ -1299,25 +1307,22 @@ static int ext3_writeback_write_end(struct file *file,
- {
- 	handle_t *handle = ext3_journal_current_handle();
- 	struct inode *inode = file->f_mapping->host;
--	int ret = 0, ret2;
--	loff_t new_i_size;
--
--	new_i_size = pos + copied;
--	if (new_i_size > EXT3_I(inode)->i_disksize)
--		EXT3_I(inode)->i_disksize = new_i_size;
--
--	ret2 = ext3_generic_write_end(file, mapping, pos, len, copied,
--							page, fsdata);
--	copied = ret2;
--	if (ret2 < 0)
--		ret = ret2;
-+	int ret;
- 
--	ret2 = ext3_journal_stop(handle);
--	if (!ret)
--		ret = ret2;
-+	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-+	update_file_sizes(inode, pos, copied);
-+	/*
-+	 * There may be allocated blocks outside of i_size because
-+	 * we failed to copy some data. Prepare for truncate.
-+	 */
-+	if (pos + len > inode->i_size)
-+		ext3_orphan_add(handle, inode);
-+	ret = ext3_journal_stop(handle);
- 	unlock_page(page);
- 	page_cache_release(page);
- 
-+	if (pos + len > inode->i_size)
-+		vmtruncate(inode, inode->i_size);
- 	return ret ? ret : copied;
- }
- 
-@@ -1338,15 +1343,23 @@ static int ext3_journalled_write_end(struct file *file,
- 	if (copied < len) {
- 		if (!PageUptodate(page))
- 			copied = 0;
--		page_zero_new_buffers(page, from+copied, to);
-+		page_zero_new_buffers(page, from + copied, to);
-+		to = from + copied;
- 	}
- 
- 	ret = walk_page_buffers(handle, page_buffers(page), from,
- 				to, &partial, write_end_fn);
- 	if (!partial)
- 		SetPageUptodate(page);
--	if (pos+copied > inode->i_size)
--		i_size_write(inode, pos+copied);
-+
-+	if (pos + copied > inode->i_size)
-+		i_size_write(inode, pos + copied);
-+	/*
-+	 * There may be allocated blocks outside of i_size because
-+	 * we failed to copy some data. Prepare for truncate.
-+	 */
-+	if (pos + len > inode->i_size)
-+		ext3_orphan_add(handle, inode);
- 	EXT3_I(inode)->i_state |= EXT3_STATE_JDATA;
- 	if (inode->i_size > EXT3_I(inode)->i_disksize) {
- 		EXT3_I(inode)->i_disksize = inode->i_size;
-@@ -1361,6 +1374,8 @@ static int ext3_journalled_write_end(struct file *file,
- 	unlock_page(page);
- 	page_cache_release(page);
- 
-+	if (pos + len > inode->i_size)
-+		vmtruncate(inode, inode->i_size);
- 	return ret ? ret : copied;
- }
- 
-@@ -1428,17 +1443,11 @@ static int bput_one(handle_t *handle, struct buffer_head *bh)
- 	return 0;
- }
- 
--static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
--{
--	if (buffer_mapped(bh))
--		return ext3_journal_dirty_data(handle, bh);
--	return 0;
--}
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
