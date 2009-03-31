@@ -1,153 +1,169 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: next-20090310: ext4 hangs
-Date: Tue, 31 Mar 2009 14:33:07 +0200
-Message-ID: <20090331123307.GG11808@duck.suse.cz>
-References: <20090325151516.GB14881@atrey.karlin.mff.cuni.cz> <a4423d670903250818n512b1c67ja1b38db6d09ac7c@mail.gmail.com> <20090325152234.GN23439@duck.suse.cz> <a4423d670903250829w5e9304a7rce24f4220379620f@mail.gmail.com> <20090325161556.GP23439@duck.suse.cz> <a4423d670903251007r72058ca8m28275c1433ab2706@mail.gmail.com> <20090325194316.GQ23439@duck.suse.cz> <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com> <20090331100150.GF11808@duck.suse.cz> <a4423d670903310307i7acd31f0r4836beae14cfb92d@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Ext4 tree backports for 2.6.27.13 and 2.6.28.2
+Date: Tue, 31 Mar 2009 08:33:20 -0400
+Message-ID: <20090331123320.GC13356@mit.edu>
+References: <E1LT8MN-0003Ps-Ur@closure.thunk.org> <20090211075914.GC20842@skywalker> <20090211153328.37ef255f@dhcp-100-2-144.bos.redhat.com> <20090212211935.GE6922@mini-me.lan> <20090216163507.1e73f452@dhcp-100-2-144.bos.redhat.com> <b637ec0b0903310502q56fc82eeobd5f62d24a367ac4@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="d6Gm4EdcadzBjdND"
-Content-Transfer-Encoding: 8bit
-Cc: Theodore Tso <tytso@mit.edu>,
-	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	sparclinux@vger.kernel.org
-To: Alexander Beregalov <a.beregalov@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:51922 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751395AbZCaMdL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Mar 2009 08:33:11 -0400
+Content-Type: text/plain; charset=us-ascii
+Cc: Chuck Ebbert <cebbert@redhat.com>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Fabio Comolli <fabio.comolli@gmail.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1757661AbZCaMd4@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <a4423d670903310307i7acd31f0r4836beae14cfb92d@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <b637ec0b0903310502q56fc82eeobd5f62d24a367ac4@mail.gmail.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Mar 31, 2009 at 02:02:26PM +0200, Fabio Comolli wrote:
+> Is there a patch for 2.6.27.X for people not using git?
 
---d6Gm4EdcadzBjdND
-Content-Type: text/plain; charset=iso-8859-1
-Content-Disposition: inline
-Content-Transfer-Encoding: 8bit
+These patches that were referenced in the mail thread which you
+replied against have already been integrated into the latest 2.6.27.X
+series.
 
-On Tue 31-03-09 14:07:30, Alexander Beregalov wrote:
-> 2009/3/31 Jan Kara <jack@suse.cz>:
-> > On Thu 26-03-09 01:38:32, Alexander Beregalov wrote:
-> >> 2009/3/25 Jan Kara <jack@suse.cz>:
-> >> > On Wed 25-03-09 20:07:46, Alexander Beregalov wrote:
-> >> >> 2009/3/25 Jan Kara <jack@suse.cz>:
-> >> >> > On Wed 25-03-09 18:29:10, Alexander Beregalov wrote:
-> >> >> >> 2009/3/25 Jan Kara <jack@suse.cz>:
-> >> >> >> > On Wed 25-03-09 18:18:43, Alexander Beregalov wrote:
-> >> >> >> >> 2009/3/25 Jan Kara <jack@suse.cz>:
-> >> >> >> >> >> > So, I think I need to try it on 2.6.29-rc7 again.
-> >> >> >> >> >>   I've looked into this. Obviously, what's happenning is that we delete
-> >> >> >> >> >> an inode and jbd2_journal_release_jbd_inode() finds inode is just under
-> >> >> >> >> >> writeout in transaction commit and thus it waits. But it gets never woken
-> >> >> >> >> >> up and because it has a handle from the transaction, every one eventually
-> >> >> >> >> >> blocks on waiting for a transaction to finish.
-> >> >> >> >> >>   But I don't really see how that can happen. The code is really
-> >> >> >> >> >> straightforward and everything happens under j_list_lock... Strange.
-> >> >> >> >> >  BTW: Is the system SMP?
-> >> >> >> >> No, it is UP system.
-> >> >> >> >  Even stranger. And do you have CONFIG_PREEMPT set?
-> >> >> >> >
-> >> >> >> >> The bug exists even in 2.6.29, I posted it with a new topic.
-> >> >> >> >  OK, I've sort-of expected this.
-> >> >> >>
-> >> >> >> CONFIG_PREEMPT_RCU=y
-> >> >> >> CONFIG_PREEMPT_RCU_TRACE=y
-> >> >> >> # CONFIG_PREEMPT_NONE is not set
-> >> >> >> # CONFIG_PREEMPT_VOLUNTARY is not set
-> >> >> >> CONFIG_PREEMPT=y
-> >> >> >> CONFIG_DEBUG_PREEMPT=y
-> >> >> >> # CONFIG_PREEMPT_TRACER is not set
-> >> >> >>
-> >> >> >> config is attached.
-> >> >> >  Thanks for the data. I still don't see how the wakeup can get lost. The
-> >> >> > process even cannot be preempted when we are in the section protected by
-> >> >> > j_list_lock... Can you send me a disassembly of functions
-> >> >> > jbd2_journal_release_jbd_inode() and journal_submit_data_buffers() so that
-> >> >> > I can see whether the compiler has not reordered something unexpectedly?
-> >> >  Thanks for the disassembly...
-> >> >
-> >> >> By default gcc inlines journal_submit_data_buffers()
-> >> >> Here is -fno-inline version. Default version is in attach.
-> >  <snip>
-> >
-> >  I'm helpless here. I don't see how we can miss a wakeup (plus you seem to
-> > be the only one reporting the bug). Could you please compile and test the kernel
-> > with the attached patch? It will print to kernel log when we go to sleep
-> > waiting for inode commit and when we send wakeups etc. When you hit the
-> > deadlock, please send me your kernel log. It should help with debugging why do
-> > we miss the wakeup. Thanks.
-> 
-> Which patch?
-  Ups. Forgot to attach ;).
+There is another batch of patches which is being queued for the stable
+series, which I sent out last week.  The for-stable branch and
+for-stable-2.6.27 branches are for people to do a final round of
+testing before I submit them to the stable series.  At the moment,
+they are only available via git, but usually after a week or so, I'll
+send them out to stable@kernel.org, and then usually within a week or
+so (unless Greg and Chris are travelling), a new stable series shows
+up with the latest ext4 bug fixes.
 
-										Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+If you really are interested in testing the latest pre-release stable
+patches for 2.6.27 --- these are versus 2.6.27.20, they're small
+enough that I'll include them here.
 
---d6Gm4EdcadzBjdND
-Content-Type: text/x-patch; charset=us-ascii
-Content-Disposition: attachment; filename="0001-ext4-Debug-sleepers-in-iput.patch"
+						- Ted
 
->From 123ab7510c04c698077e5756b4de6c66ce8ee71e Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 31 Mar 2009 11:57:10 +0200
-Subject: [PATCH] ext4: Debug sleepers in iput()
+Eric Sandeen (4):
+      ext4: fix ext4_free_inode() vs. ext4_claim_inode() race
+      ext4: fix header check in ext4_ext_search_right() for deep extent trees.
+      ext4: fix bogus BUG_ONs in in mballoc code
+      ext4: fix bb_prealloc_list corruption due to wrong group locking
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/jbd2/commit.c  |    4 ++++
- fs/jbd2/journal.c |    6 ++++++
- 2 files changed, 10 insertions(+), 0 deletions(-)
+Theodore Ts'o (1):
+      ext4: Print the find_group_flex() warning only once
 
-diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-index 62804e5..f47b8a3 100644
---- a/fs/jbd2/commit.c
-+++ b/fs/jbd2/commit.c
-@@ -259,6 +259,8 @@ static int journal_submit_data_buffers(journal_t *journal,
- 		spin_lock(&journal->j_list_lock);
- 		J_ASSERT(jinode->i_transaction == commit_transaction);
- 		jinode->i_flags &= ~JI_COMMIT_RUNNING;
-+		if (jinode->i_flags & 4)
-+			printk(KERN_INFO "JBD2: Waking up sleeper on ino %lu\n", jinode->i_vfs_inode->i_ino);
- 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
- 	}
- 	spin_unlock(&journal->j_list_lock);
-@@ -296,6 +298,8 @@ static int journal_finish_inode_data_buffers(journal_t *journal,
+ fs/ext4/extents.c |    6 ++++--
+ fs/ext4/ialloc.c  |   16 ++++++++++------
+ fs/ext4/mballoc.c |   13 +++++++++----
+ 3 files changed, 23 insertions(+), 12 deletions(-)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index b24d3c5..acb98c9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1118,7 +1118,8 @@ ext4_ext_search_right(struct inode *inode, struct ext4_ext_path *path,
+ 	struct ext4_extent_idx *ix;
+ 	struct ext4_extent *ex;
+ 	ext4_fsblk_t block;
+-	int depth, ee_len;
++	int depth;	/* Note, NOT eh_depth; depth from top of tree */
++	int ee_len;
+ 
+ 	BUG_ON(path == NULL);
+ 	depth = path->p_depth;
+@@ -1177,7 +1178,8 @@ ext4_ext_search_right(struct inode *inode, struct ext4_ext_path *path,
+ 		if (bh == NULL)
+ 			return -EIO;
+ 		eh = ext_block_hdr(bh);
+-		if (ext4_ext_check_header(inode, eh, depth)) {
++		/* subtract from p_depth to get proper eh_depth */
++		if (ext4_ext_check_header(inode, eh, path->p_depth - depth)) {
+ 			put_bh(bh);
+ 			return -EIO;
  		}
- 		spin_lock(&journal->j_list_lock);
- 		jinode->i_flags &= ~JI_COMMIT_RUNNING;
-+		if (jinode->i_flags & 4)
-+			printk(KERN_INFO "JBD2: Waking up sleeper on ino %lu\n", jinode->i_vfs_inode->i_ino);
- 		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
- 	}
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index cce841f..b9457e1 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -188,7 +188,7 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
+ 	struct ext4_group_desc * gdp;
+ 	struct ext4_super_block * es;
+ 	struct ext4_sb_info *sbi;
+-	int fatal = 0, err;
++	int fatal = 0, err, cleared;
+ 	ext4_group_t flex_group;
  
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 5814410..5459fd9 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -2225,11 +2225,17 @@ restart:
- 	if (jinode->i_flags & JI_COMMIT_RUNNING) {
- 		wait_queue_head_t *wq;
- 		DEFINE_WAIT_BIT(wait, &jinode->i_flags, __JI_COMMIT_RUNNING);
-+		unsigned long ino = jinode->i_vfs_inode->i_ino;
-+
-+		jinode->i_flags |= 4;
-+		printk(KERN_INFO "JBD2: Waiting for ino %lu\n", ino);
-+
- 		wq = bit_waitqueue(&jinode->i_flags, __JI_COMMIT_RUNNING);
- 		prepare_to_wait(wq, &wait.wait, TASK_UNINTERRUPTIBLE);
- 		spin_unlock(&journal->j_list_lock);
- 		schedule();
- 		finish_wait(wq, &wait.wait);
-+		printk(KERN_INFO "JBD2: Woken on ino %lu\n", ino);
- 		goto restart;
- 	}
+ 	if (atomic_read(&inode->i_count) > 1) {
+@@ -242,10 +242,12 @@ void ext4_free_inode (handle_t *handle, struct inode * inode)
+ 		goto error_return;
  
--- 
-1.6.0.2
-
-
---d6Gm4EdcadzBjdND--
+ 	/* Ok, now we can actually update the inode bitmaps.. */
+-	if (!ext4_clear_bit_atomic(sb_bgl_lock(sbi, block_group),
+-					bit, bitmap_bh->b_data))
+-		ext4_error (sb, "ext4_free_inode",
+-			      "bit already cleared for inode %lu", ino);
++	spin_lock(sb_bgl_lock(sbi, block_group));
++	cleared = ext4_clear_bit(bit, bitmap_bh->b_data);
++	spin_unlock(sb_bgl_lock(sbi, block_group));
++	if (!cleared)
++		ext4_error(sb, "ext4_free_inode",
++			   "bit already cleared for inode %lu", ino);
+ 	else {
+ 		gdp = ext4_get_group_desc (sb, block_group, &bh2);
+ 
+@@ -685,6 +687,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
+ 	struct inode *ret;
+ 	ext4_group_t i;
+ 	int free = 0;
++	static int once = 1;
+ 	ext4_group_t flex_group;
+ 
+ 	/* Cannot create files in a deleted directory */
+@@ -704,7 +707,8 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode * dir, int mode)
+ 		ret2 = find_group_flex(sb, dir, &group);
+ 		if (ret2 == -1) {
+ 			ret2 = find_group_other(sb, dir, &group);
+-			if (ret2 == 0 && printk_ratelimit())
++			if (ret2 == 0 && once)
++				once = 0;
+ 				printk(KERN_NOTICE "ext4: find_group_flex "
+ 				       "failed, fallback succeeded dir %lu\n",
+ 				       dir->i_ino);
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 39d7cc1..f34dada 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1450,7 +1450,7 @@ static void ext4_mb_measure_extent(struct ext4_allocation_context *ac,
+ 	struct ext4_free_extent *gex = &ac->ac_g_ex;
+ 
+ 	BUG_ON(ex->fe_len <= 0);
+-	BUG_ON(ex->fe_len >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
++	BUG_ON(ex->fe_len > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+ 	BUG_ON(ex->fe_start >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+ 	BUG_ON(ac->ac_status != AC_STATUS_CONTINUE);
+ 
+@@ -3400,7 +3400,7 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 	}
+ 	BUG_ON(start + size <= ac->ac_o_ex.fe_logical &&
+ 			start > ac->ac_o_ex.fe_logical);
+-	BUG_ON(size <= 0 || size >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
++	BUG_ON(size <= 0 || size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+ 
+ 	/* now prepare goal request */
+ 
+@@ -3698,6 +3698,7 @@ static void ext4_mb_put_pa(struct ext4_allocation_context *ac,
+ 			struct super_block *sb, struct ext4_prealloc_space *pa)
+ {
+ 	unsigned long grp;
++	ext4_fsblk_t grp_blk;
+ 
+ 	if (!atomic_dec_and_test(&pa->pa_count) || pa->pa_free != 0)
+ 		return;
+@@ -3712,8 +3713,12 @@ static void ext4_mb_put_pa(struct ext4_allocation_context *ac,
+ 	pa->pa_deleted = 1;
+ 	spin_unlock(&pa->pa_lock);
+ 
+-	/* -1 is to protect from crossing allocation group */
+-	ext4_get_group_no_and_offset(sb, pa->pa_pstart - 1, &grp, NULL);
++	grp_blk = pa->pa_pstart;
++	/* If linear, pa_pstart may be in the next group when pa is used up */
++	if (pa->pa_linear)
++		grp_blk--;
++
++	ext4_get_group_no_and_offset(sb, grp_blk, &grp, NULL);
+ 
+ 	/*
+ 	 * possible race:
