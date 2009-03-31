@@ -1,31 +1,31 @@
-From: =?ISO-8859-1?Q?Fernando_Luis_V=E1zquez_Cao?=
+From: =?UTF-8?B?RmVybmFuZG8gTHVpcyBWw6F6cXVleiBDYW8=?=
 	<fernando@oss.ntt.co.jp>
 Subject: Re: [PATCH] ext4: fix blkdev_issue_flush() failure handling
-Date: Tue, 31 Mar 2009 13:23:40 +0900
-Message-ID: <49D19ACC.5040608@oss.ntt.co.jp>
-References: <200903291928.14451.bzolnier@gmail.com> <1238413667.30488.2.camel@think.oraclecorp.com> <49D0C29C.1060307@uvigo.es> <200903301726.12548.bzolnier@gmail.com>
+Date: Tue, 31 Mar 2009 13:28:33 +0900
+Message-ID: <49D19BF1.6020305@oss.ntt.co.jp>
+References: <200903291928.14451.bzolnier@gmail.com>	 <49CFB33A.9020406@redhat.com> <20090330022521.GB13356@mit.edu>	 <49D03AE1.8070009@redhat.com>	 <1238413667.30488.2.camel@think.oraclecorp.com> <49D0C29C.1060307@uvigo.es> <1238419459.30488.42.camel@think.oraclecorp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1;
+Content-Type: text/plain; charset=UTF-8;
 	format=flowed
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org
-To: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
+Cc: =?UTF-8?B?RmVybmFuZG8gTHVpcyBWw6F6cXVleiBDYW8=?=
+	<flvazquez@uvigo.es>, Eric Sandeen <sandeen@redhat.com>,
+	Theodore Tso <tytso@mit.edu>,
+	Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Chris Mason <chris.mason@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:57564 "EHLO
+Received: from serv2.oss.ntt.co.jp ([222.151.198.100]:57706 "EHLO
 	serv2.oss.ntt.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750695AbZCaEXn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Mar 2009 00:23:43 -0400
-In-Reply-To: <200903301726.12548.bzolnier@gmail.com>
+	with ESMTP id S1750866AbZCaE2f (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 31 Mar 2009 00:28:35 -0400
+In-Reply-To: <1238419459.30488.42.camel@think.oraclecorp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Bartlomiej Zolnierkiewicz wrote:
-> Hi,
->=20
-> On Monday 30 March 2009, Fernando Luis V=E1zquez Cao wrote:
+Chris Mason wrote:
+> On Mon, 2009-03-30 at 22:01 +0900, Fernando Luis V=C3=A1zquez Cao wro=
+te:
 >> Chris Mason wrote:
 >>> On Sun, 2009-03-29 at 22:22 -0500, Eric Sandeen wrote:
 >>>> Theodore Tso wrote:
@@ -59,22 +59,22 @@ ill
 >> convinced me to turn it into a per-device tunable. Could you take
 >> a look at the patches?
 >>
->> Bartlomiej, I have just noticed that I happened to be working on
->> patches for reiserfs and xfs similar to the ones you sent earlier
->> this week. I picked some bits from your submission so I took the
->> liberty to add your signed-off to my patches. Could you take a
->> look at them and let me know if you are confortable with that?
 >=20
-> I'm fine with people building bigger changes on top of my patches
-> but if you do so you please clearly denote in the patch description
-> what changes you have applied to the original patch...
+> Jens' comment are right on I think.  If we get that fixed up we can g=
+et
+> rid of all the filesystem mount -o barrier=3Dflush,0,1,xyz confusion =
+and
+> set it via the block devices directly.
+>=20
+> That would be nice ;)
 
-You are right, sorry about that. I will add a short changelog when I
-resubmit the patches.
+Thank you for your feedback, Chris! I will address some of the issues s=
+potted
+in the mailing list and resend the whole patch-set.
 
-Thanks!
+Regards,
 
-- Fernando
+=46ernando
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
