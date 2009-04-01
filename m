@@ -1,106 +1,116 @@
-From: Alexander Beregalov <a.beregalov@gmail.com>
-Subject: Re: 2.6.29-git: cannot mount ext4/loop
-Date: Thu, 2 Apr 2009 02:53:51 +0400
-Message-ID: <20090401225351.GA22621@orion>
-References: <a4423d670904011423x4174a81cj901bc140944412ea@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>, Jens Axboe <jens.axboe@oracle.com>
+From: David Howells <dhowells@redhat.com>
+Subject: (unknown)
+Date: Wed, 1 Apr 2009 19:10:01 -0400
+Message-ID: <200904012310.n31NA1Y5004845@ns3.rdu.redhat.com>
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f158.google.com ([209.85.220.158]:58212 "EHLO
-	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755316AbZDAWyC (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Apr 2009 18:54:02 -0400
-Content-Disposition: inline
-In-Reply-To: <a4423d670904011423x4174a81cj901bc140944412ea@mail.gmail.com>
+Received: from mx2.redhat.com ([66.187.237.31]:38489 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S934849AbZDAXLL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Apr 2009 19:11:11 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 02, 2009 at 01:23:28AM +0400, Alexander Beregalov wrote:
-> Hi Theodore, Jens
-> 
-> kernel is 2.6.29-07099-g8b53ef3
-> 
-> Mount failed:
-> 
-> EXT4-fs: barriers enabled
-> kjournald2 starting: pid 1867, dev loop0:8, commit interval 5 seconds
-> EXT4-fs error (device loop0): ext4_iget: block reference 2703228928 >=
-> max (524288) in inode #2, offset=0
-> EXT4-fs: get root inode failed
-> EXT4-fs (device loop0): mount failed
-> 
-> =====================================
-> [ BUG: bad unlock balance detected! ]
-> -------------------------------------
-> mount/1865 is trying to release lock (&lo->lo_ctl_mutex) at:
-> [<00000000006fa1c0>] mutex_unlock+0x10/0x20
-> but there are no more locks to release!
-> 
-> other info that might help us debug this:
-> 1 lock held by mount/1865:
->  #0:  (&bdev->bd_mutex){+.+.+.}, at: [<00000000004dd570>]
-> __blkdev_put+0x1c/0x14c
-> 
-> stack backtrace:
-> Call Trace:
->  [0000000000477538] print_unlock_inbalance_bug+0xe8/0xf8
->  [0000000000477624] lock_release_non_nested+0xdc/0x290
->  [0000000000477984] lock_release+0x1ac/0x1d8
->  [00000000006fa120] __mutex_unlock_slowpath+0xe8/0x178
->  [00000000006fa1c0] mutex_unlock+0x10/0x20
->  [0000000000621e38] lo_release+0x70/0x80
->  [00000000004dd5fc] __blkdev_put+0xa8/0x14c
->  [00000000004dd6b8] blkdev_put+0x18/0x2c
->  [00000000004dd704] blkdev_close+0x38/0x4c
->  [00000000004b6f0c] __fput+0xfc/0x1e4
->  [00000000004b701c] fput+0x28/0x38
->  [00000000004b4198] filp_close+0x74/0x88
->  [00000000004529e0] put_files_struct+0x9c/0xfc
->  [0000000000452a70] exit_files+0x30/0x40
->  [000000000045406c] do_exit+0x160/0x734
->  [00000000004546cc] do_group_exit+0x8c/0xc4
+>From dhowells  Thu Apr  2 00: 05:30 2009
+Return-Path: dhowells@redhat.com
+Received: from localhost.localdomain [127.0.0.1]
+	by warthog.procyon.org.uk with IMAP (fetchmail-6.3.8)
+	for <dhowells@localhost> (single-drop); Thu, 02 Apr 2009 00:05:30 +0100 (BST)
+Received: from zmta02.collab.prod.int.phx2.redhat.com (LHLO
+ zmta02.collab.prod.int.phx2.redhat.com) (10.5.5.32) by
+ mail06.corp.redhat.com with LMTP; Wed, 1 Apr 2009 19:05:13 -0400 (EDT)
+Received: from localhost (localhost.localdomain [127.0.0.1])
+	by zmta02.collab.prod.int.phx2.redhat.com (Postfix) with ESMTP id 579379DA49
+	for <dhowells@redhat.com>; Wed,  1 Apr 2009 19:05:13 -0400 (EDT)
+Received: from zmta02.collab.prod.int.phx2.redhat.com ([127.0.0.1])
+	by localhost (zmta02.collab.prod.int.phx2.redhat.com [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id WdDUt3-6Hr9d for <dhowells@redhat.com>;
+	Wed,  1 Apr 2009 19:05:13 -0400 (EDT)
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by zmta02.collab.prod.int.phx2.redhat.com (Postfix) with ESMTP id 2FF169DA44
+	for <dhowells@mail.corp.redhat.com>; Wed,  1 Apr 2009 19:05:13 -0400 (EDT)
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n31N5C1O024798;
+	Wed, 1 Apr 2009 19:05:12 -0400
+Received: from warthog.cambridge.redhat.com (kibblesnbits.boston.devel.redhat.com [10.16.60.12])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n31N5B5i004590;
+	Wed, 1 Apr 2009 19:05:11 -0400
+Received: from [127.0.0.1] (helo=warthog.procyon.org.uk)
+	by warthog.cambridge.redhat.com with esmtp (Exim 4.69 #1 (Red Hat Linux))
+	id 1Lp9Uc-0007SA-3u; Thu, 02 Apr 2009 00:05:10 +0100
+Organization: Red Hat UK Ltd. Registered Address: Red Hat UK Ltd, Amberley
+	Place, 107-111 Peascod Street, Windsor, Berkshire, SI4 1TE, United
+	Kingdom.
+	Registered in England and Wales under Company Registration No. 3798903
+From: David Howells <dhowells@redhat.com>
+Subject: [PATCH 21/43] CacheFiles: Be consistent about the use of mapping vs
+	file->f_mapping in Ext3 [ver #46]
+To: viro@ZenIV.linux.org.uk
+Cc: dhowells@redhat.com, nfsv4@linux-nfs.org,
+    linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Date: Thu, 02 Apr 2009 00:05:10 +0100
+Message-ID: <20090401230510.28177.98253.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20090401230321.28177.12010.stgit@warthog.procyon.org.uk>
+References: <20090401230321.28177.12010.stgit@warthog.procyon.org.uk>
+User-Agent: StGIT/0.14.3
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+X-Scanned-By: MIMEDefang 2.58 on 172.16.27.26
+Resent-To: sct@redhat.com, akpm@linux-foundation.org, adilger@sun.com
+Resent-cc: linux-ext4@vger.kernel.org
+Resent-Date: Thu, 02 Apr 2009 00:10:00 +0100
+Resent-Message-ID: <29219.1238627400@redhat.com>
+Resent-From: David Howells <dhowells@redhat.com>
 
-From: Alexander Beregalov <a.beregalov@gmail.com>
-Subject: [PATCH] loop: mutex already unlocked in loop_clr_fd()
+Change all the usages of file->f_mapping in ext3_*write_end() functions to use
+the mapping argument directly.  This has two consequences:
 
-mount/1865 is trying to release lock (&lo->lo_ctl_mutex) at:
-but there are no more locks to release!
+ (*) Consistency.  Without this patch sometimes one is used and sometimes the
+     other is.
 
-mutex is already unlocked in loop_clr_fd(), we should not
-try to unlock it in lo_release() again.
+ (*) A NULL file pointer can be passed.  This feature is then made use of by
+     the generic hook in the next patch, which is used by CacheFiles to write
+     pages to a file without setting up a file struct.
 
-Signed-off-by: Alexander Beregalov <a.beregalov@gmail.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
+Acked-by: Steve Dickson <steved@redhat.com>
+Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
 
- drivers/block/loop.c |    7 +++++--
- 1 files changed, 5 insertions(+), 2 deletions(-)
+ fs/ext3/inode.c |    6 +++---
+ 1 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/drivers/block/loop.c b/drivers/block/loop.c
-index 40b17d3..ddae808 100644
---- a/drivers/block/loop.c
-+++ b/drivers/block/loop.c
-@@ -1431,6 +1431,7 @@ static int lo_open(struct block_device *bdev, fmode_t mode)
- static int lo_release(struct gendisk *disk, fmode_t mode)
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 4a09ff1..d897033 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1231,7 +1231,7 @@ static int ext3_generic_write_end(struct file *file,
+ 				loff_t pos, unsigned len, unsigned copied,
+ 				struct page *page, void *fsdata)
  {
- 	struct loop_device *lo = disk->private_data;
-+	int err;
+-	struct inode *inode = file->f_mapping->host;
++	struct inode *inode = mapping->host;
  
- 	mutex_lock(&lo->lo_ctl_mutex);
+ 	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
  
-@@ -1442,7 +1443,9 @@ static int lo_release(struct gendisk *disk, fmode_t mode)
- 		 * In autoclear mode, stop the loop thread
- 		 * and remove configuration after last close.
- 		 */
--		loop_clr_fd(lo, NULL);
-+		err = loop_clr_fd(lo, NULL);
-+		if (!err)
-+			goto out_unlocked;
- 	} else {
- 		/*
- 		 * Otherwise keep thread (if running) and config,
-@@ -1453,7 +1456,7 @@ static int lo_release(struct gendisk *disk, fmode_t mode)
+@@ -1256,7 +1256,7 @@ static int ext3_ordered_write_end(struct file *file,
+ 				struct page *page, void *fsdata)
+ {
+ 	handle_t *handle = ext3_journal_current_handle();
+-	struct inode *inode = file->f_mapping->host;
++	struct inode *inode = mapping->host;
+ 	unsigned from, to;
+ 	int ret = 0, ret2;
  
- out:
- 	mutex_unlock(&lo->lo_ctl_mutex);
+@@ -1298,7 +1298,7 @@ static int ext3_writeback_write_end(struct file *file,
+ 				struct page *page, void *fsdata)
+ {
+ 	handle_t *handle = ext3_journal_current_handle();
+-	struct inode *inode = file->f_mapping->host;
++	struct inode *inode = mapping->host;
+ 	int ret = 0, ret2;
+ 	loff_t new_i_size;
+ 
+
