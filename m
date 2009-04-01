@@ -1,108 +1,330 @@
-From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-Subject: ext4: BUG: scheduling while atomic
-Date: Wed, 01 Apr 2009 00:09:26 +0200
-Message-ID: <49D29496.4060108@ph.tum.de>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] ext3: Avoid false EIO errors (version 4)
+Date: Tue, 31 Mar 2009 17:06:21 -0700
+Message-ID: <20090331170621.d2ae5693.akpm@linux-foundation.org>
+References: <1238091711-23464-1-git-send-email-jack@suse.cz>
+	<20090327180806.GB2810@skywalker>
+	<20090327202421.GB31071@duck.suse.cz>
+	<20090330082532.GA15488@skywalker>
+	<20090330103248.GB18833@duck.suse.cz>
+	<20090330105821.GE4796@skywalker>
+	<20090330160517.GB30897@duck.suse.cz>
+	<20090331044544.GB5979@skywalker>
+	<20090331094618.GE11808@duck.suse.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-ext4@vger.kernel.org,
+	Nick Piggin <nickpiggin@yahoo.com.au>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:34714 "EHLO
-	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1763669AbZCaWJf (ORCPT
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:58867 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757014AbZDAAIs (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 31 Mar 2009 18:09:35 -0400
+	Tue, 31 Mar 2009 20:08:48 -0400
+In-Reply-To: <20090331094618.GE11808@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Dear Ted,
+On Tue, 31 Mar 2009 11:46:18 +0200
+Jan Kara <jack@suse.cz> wrote:
 
-I came across "scheduling while atomic" during tests with intentionally 
-corrupted ext4 images.  It seems that ext4_error() is called while 
-holding a spinlock.  The resulting superblock flush then causes a sleep. 
-  I have no idea how bad this is (if at all).
+>   Hello,
+> 
+>   as Aneesh pointed to me, I forgot to add truncation to the data=journaled
+> mode. This patch fixes it. Hopefully final version of the fix ;).
+> 
 
-The issue can be reproduced with yesterday's version of your ext4 tree 
-when calling "mkdir" inside this fs:
-http://e18.physik.tu-muenchen.de/~tnagel/misc/issue11.image.ext4.bz2
+I _think_ I got the right version here.
 
-Kind regards,
+> 
+> >From ec5c2977f87328fb93fee1aa35043bafeb53cea1 Mon Sep 17 00:00:00 2001
+> From: Jan Kara <jack@suse.cz>
+> Date: Wed, 25 Mar 2009 18:51:52 +0100
+> Subject: [PATCH] ext3: Avoid false EIO errors (version 4)
+> 
+> Sometimes block_write_begin() can map buffers in a page but later we fail to
+> copy data into those buffers (because the source page has been paged out in the
+> mean time).
 
-Thiemo
+Really?  We should just page it back in again.  Do you mean "it was an
+invalid address and we got -EFAULT"?  Or "a parallel thread unmapped
+it" or...?
 
-[  201.286550] EXT4-fs: barriers enabled
-[  201.301352] kjournald2 starting: pid 4073, dev loop0:8, commit 
-interval 5 seconds
-[  201.301501] EXT4 FS on loop0, internal journal on loop0:8
-[  201.301508] EXT4-fs: delayed allocation enabled
-[  201.301531] EXT4-fs: file extents enabled
-[  201.301718] EXT4-fs: mballoc enabled
-[  201.301813] EXT4-fs: mounted filesystem loop0 with ordered data mode
-[  207.890044] EXT4-fs error (device loop0): ext4_mb_generate_buddy: 
-EXT4-fs: group 1: 381 blocks in bitmap, 383 in gd
-[  207.890169] EXT4-fs error (device loop0): ext4_add_entry: bad entry 
-in directory #2: directory entry across blocks - offset=0, inode=2, 
-rec_len=18444, name_len=1
-[  207.890386] EXT4-fs error (device loop0): ext4_init_block_bitmap: 
-Checksum bad for group 0
-[  207.890425] BUG: scheduling while atomic: mkdir/4088/0x00000002
-[  207.890448] INFO: lockdep is turned off.
-[  207.890453] Modules linked in: ext4 jbd2 crc16 cpufreq_ondemand 
-cpufreq_userspace cpufreq_powersave acpi_cpufreq freq_table 
-speedstep_lib michael_mic arc4 ecb lib80211_crypt_tkip nls_iso8859_1 
-nls_cp437 vfat fat nls_base toshiba loop snd_intel8x0 snd_ac97_codec 
-ac97_bus ipw2200 libipw snd_pcm snd_timer lib80211 psmouse snd soundcore 
-snd_page_alloc toshiba_acpi rfkill backlight input_polldev battery 
-button ac evdev ext3 jbd mbcache usbhid sd_mod ata_generic usb_storage 
-ata_piix libata ehci_hcd uhci_hcd e100 mii scsi_mod usbcore thermal 
-processor fan thermal_sys
-[  207.890825] Pid: 4088, comm: mkdir Not tainted 2.6.29-ext4 #1
-[  207.890831] Call Trace:
-[  207.890864]  [<c01227b7>] __schedule_bug+0x77/0x81
-[  207.890894]  [<c0316021>] schedule+0x8f/0x847
-[  207.890923]  [<c01189d6>] ? read_hpet+0xd/0x14
-[  207.890951]  [<c0140fb2>] ? ktime_get_ts+0x48/0x4c
-[  207.890961]  [<c0316820>] io_schedule+0x47/0x79
-[  207.890989]  [<c01c0839>] sync_buffer+0x36/0x3e
-[  207.891015]  [<c0316c4f>] __wait_on_bit+0x39/0x61
-[  207.891086]  [<c01c0803>] ? sync_buffer+0x0/0x3e
-[  207.891113]  [<c01c0803>] ? sync_buffer+0x0/0x3e
-[  207.891122]  [<c0316ce4>] out_of_line_wait_on_bit+0x6d/0x89
-[  207.891152]  [<c013e3ee>] ? wake_bit_function+0x0/0x55
-[  207.891178]  [<c01c0801>] __wait_on_buffer+0x21/0x23
-[  207.891205]  [<c01c24c6>] sync_dirty_buffer+0x94/0xd1
-[  207.891216]  [<c0239077>] ? __percpu_counter_sum+0x54/0x6d
-[  207.891306]  [<e044b35c>] ext4_commit_super+0x133/0x175 [ext4]
-[  207.891374]  [<e044bcc7>] ext4_handle_error+0x83/0xac [ext4]
-[  207.891402]  [<c012bb76>] ? printk+0x1b/0x1d
-[  207.891495]  [<e044c1a5>] ext4_error+0x52/0x58 [ext4]
-[  207.891564]  [<e043a56b>] ext4_init_block_bitmap+0x64/0x418 [ext4]
-[  207.891595]  [<c0318496>] ? _spin_lock+0x4a/0x50
-[  207.891657]  [<e043ac2f>] ext4_read_block_bitmap+0xdf/0x2ae [ext4]
-[  207.891744]  [<e045b4a9>] ext4_mb_free_blocks+0x133/0x6f6 [ext4]
-[  207.891753]  [<c0318d6d>] ? _spin_unlock+0x27/0x3c
-[  207.891809]  [<e008ebd0>] ? insert_revoke_hash+0xe5/0xf2 [jbd2]
-[  207.891847]  [<e008b3d6>] ? jbd2_journal_forget+0x17e/0x220 [jbd2]
-[  207.891941]  [<e0455c0c>] ? __ext4_journal_revoke+0x4a/0x5f [ext4]
-[  207.892003]  [<e043a3c4>] ext4_free_blocks+0x8c/0x106 [ext4]
-[  207.892128]  [<e045399e>] ext4_ext_truncate+0x413/0x82c [ext4]
-[  207.892195]  [<e04446bc>] ext4_truncate+0x73/0x4f0 [ext4]
-[  207.892251]  [<e008acc2>] ? jbd2_journal_get_write_access+0x2f/0x3c 
-[jbd2]
-[  207.892339]  [<e043fd6d>] ? ext4_mark_iloc_dirty+0x4cf/0x542 [ext4]
-[  207.892405]  [<e0440a2f>] ? ext4_mark_inode_dirty+0x172/0x1a2 [ext4]
-[  207.892473]  [<e0455b51>] ? __ext4_handle_dirty_metadata+0xb1/0xca [ext4]
-[  207.892538]  [<e0444b39>] ? ext4_delete_inode+0x0/0x227 [ext4]
-[  207.892603]  [<e0444c65>] ext4_delete_inode+0x12c/0x227 [ext4]
-[  207.892636]  [<c02386a7>] ? _raw_spin_unlock+0x7f/0x8b
-[  207.892723]  [<e0444b39>] ? ext4_delete_inode+0x0/0x227 [ext4]
-[  207.892751]  [<c01b4b86>] generic_delete_inode+0xdc/0x171
-[  207.892761]  [<c01b4c37>] generic_drop_inode+0x1c/0x1b9
-[  207.892790]  [<c022e096>] ? _atomic_dec_and_lock+0x3a/0x64
-[  207.892816]  [<c01b41c6>] iput+0x4b/0x4e
-[  207.892880]  [<e04484ba>] ext4_mkdir+0x250/0x2c3 [ext4]
-[  207.892914]  [<c01ad315>] vfs_mkdir+0xdd/0x182
-[  207.892940]  [<c01ad43d>] sys_mkdirat+0x83/0xbd
-[  207.892968]  [<c01ad497>] sys_mkdir+0x20/0x22
-[  207.892978]  [<c01031fb>] sysenter_do_call+0x12/0x3f
+> We then end up with !uptodate mapped buffers.
+
+OK, I suppose that has to be a legal buffer state.
+
+> To add a bit more to
+> the confusion, block_write_end() does not commit any data (and thus does not
+> any mark buffers as uptodate) if we didn't succeed with copying all the data.
+> 
+> Commit f4fc66a894546bdc88a775d0e83ad20a65210bcb (ext3: convert to new aops)
+> missed these cases and thus we were inserting non-uptodate buffers to
+> transaction's list which confuses JBD code and it reports IO errors, aborts
+> a transaction and generally makes users afraid about their data ;-P.
+
+hm.  Did any other filesystems break for these reasons?
+
+> This patch fixes the problem by reorganizing ext3_..._write_end() code to
+> first call block_write_end() to mark buffers with valid data uptodate and
+> after that we file only uptodate buffers to transaction's lists.
+> 
+> We also fix a problem where we could leave blocks allocated beyond i_size
+> (i_disksize in fact) because of failed write. We now add inode to orphan
+> list when write fails (to be safe in case we crash) and then truncate blocks
+> beyond i_size in a separate transaction.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> Reviewed-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext3/inode.c |  139 +++++++++++++++++++++++++++++--------------------------
+>  1 files changed, 74 insertions(+), 65 deletions(-)
+> 
+> diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+> index 4a09ff1..d3ef656 100644
+> --- a/fs/ext3/inode.c
+> +++ b/fs/ext3/inode.c
+> @@ -1149,12 +1149,15 @@ static int ext3_write_begin(struct file *file, struct address_space *mapping,
+>  				struct page **pagep, void **fsdata)
+>  {
+>  	struct inode *inode = mapping->host;
+> -	int ret, needed_blocks = ext3_writepage_trans_blocks(inode);
+> +	int ret;
+>  	handle_t *handle;
+>  	int retries = 0;
+>  	struct page *page;
+>  	pgoff_t index;
+>  	unsigned from, to;
+> +	/* Reserve one block more for addition to orphan list in case
+> +	 * we allocate blocks but write fails for some reason */
+> +	int needed_blocks = ext3_writepage_trans_blocks(inode) + 1;
+>  
+>  	index = pos >> PAGE_CACHE_SHIFT;
+>  	from = pos & (PAGE_CACHE_SIZE - 1);
+> @@ -1184,15 +1187,20 @@ retry:
+>  	}
+>  write_begin_failed:
+>  	if (ret) {
+> -		ext3_journal_stop(handle);
+> -		unlock_page(page);
+> -		page_cache_release(page);
+>  		/*
+>  		 * block_write_begin may have instantiated a few blocks
+>  		 * outside i_size.  Trim these off again. Don't need
+>  		 * i_size_read because we hold i_mutex.
+> +		 *
+> +		 * Add inode to orphan list in case we crash before truncate
+> +		 * finishes.
+>  		 */
+>  		if (pos + len > inode->i_size)
+> +			ext3_orphan_add(handle, inode);
+> +		ext3_journal_stop(handle);
+> +		unlock_page(page);
+> +		page_cache_release(page);
+> +		if (pos + len > inode->i_size)
+>  			vmtruncate(inode, inode->i_size);
+>  	}
+>  	if (ret == -ENOSPC && ext3_should_retry_alloc(inode->i_sb, &retries))
+> @@ -1211,6 +1219,18 @@ int ext3_journal_dirty_data(handle_t *handle, struct buffer_head *bh)
+>  	return err;
+>  }
+>  
+> +/* For ordered writepage and write_end functions */
+> +static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
+> +{
+> +	/*
+> +	 * Write could have mapped the buffer but it didn't copy the data in
+> +	 * yet. So avoid filing such buffer into a transaction.
+> +	 */
+> +	if (buffer_mapped(bh) && buffer_uptodate(bh))
+> +		return ext3_journal_dirty_data(handle, bh);
+> +	return 0;
+> +}
+> +
+>  /* For write_end() in data=journal mode */
+>  static int write_end_fn(handle_t *handle, struct buffer_head *bh)
+>  {
+> @@ -1221,26 +1241,20 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
+>  }
+>  
+>  /*
+> - * Generic write_end handler for ordered and writeback ext3 journal modes.
+> - * We can't use generic_write_end, because that unlocks the page and we need to
+> - * unlock the page after ext3_journal_stop, but ext3_journal_stop must run
+> - * after block_write_end.
+> + * This is nasty and subtle: ext3_write_begin() could have allocated blocks
+> + * for the whole page but later we failed to copy the data in. Update inode
+> + * size according to what we managed to copy. The rest is going to be
+> + * truncated in write_end function.
+>   */
+> -static int ext3_generic_write_end(struct file *file,
+> -				struct address_space *mapping,
+> -				loff_t pos, unsigned len, unsigned copied,
+> -				struct page *page, void *fsdata)
+> +static void update_file_sizes(struct inode *inode, loff_t pos, unsigned copied)
+>  {
+> -	struct inode *inode = file->f_mapping->host;
+> -
+> -	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+> -
+> -	if (pos+copied > inode->i_size) {
+> -		i_size_write(inode, pos+copied);
+> +	/* What matters to us is i_disksize. We don't write i_size anywhere */
+> +	if (pos + copied > inode->i_size)
+> +		i_size_write(inode, pos + copied);
+> +	if (pos + copied > EXT3_I(inode)->i_disksize) {
+> +		EXT3_I(inode)->i_disksize = pos + copied;
+>  		mark_inode_dirty(inode);
+>  	}
+> -
+> -	return copied;
+>  }
+>  
+>  /*
+> @@ -1260,35 +1274,29 @@ static int ext3_ordered_write_end(struct file *file,
+>  	unsigned from, to;
+>  	int ret = 0, ret2;
+>  
+> -	from = pos & (PAGE_CACHE_SIZE - 1);
+> -	to = from + len;
+> +	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+>  
+> +	from = pos & (PAGE_CACHE_SIZE - 1);
+> +	to = from + copied;
+>  	ret = walk_page_buffers(handle, page_buffers(page),
+> -		from, to, NULL, ext3_journal_dirty_data);
+> +		from, to, NULL, journal_dirty_data_fn);
+>  
+> -	if (ret == 0) {
+> -		/*
+> -		 * generic_write_end() will run mark_inode_dirty() if i_size
+> -		 * changes.  So let's piggyback the i_disksize mark_inode_dirty
+> -		 * into that.
+> -		 */
+> -		loff_t new_i_size;
+> -
+> -		new_i_size = pos + copied;
+> -		if (new_i_size > EXT3_I(inode)->i_disksize)
+> -			EXT3_I(inode)->i_disksize = new_i_size;
+> -		ret2 = ext3_generic_write_end(file, mapping, pos, len, copied,
+> -							page, fsdata);
+> -		copied = ret2;
+> -		if (ret2 < 0)
+> -			ret = ret2;
+> -	}
+> +	if (ret == 0)
+> +		update_file_sizes(inode, pos, copied);
+> +	/*
+> +	 * There may be allocated blocks outside of i_size because
+> +	 * we failed to copy some data. Prepare for truncate.
+> +	 */
+> +	if (pos + len > inode->i_size)
+> +		ext3_orphan_add(handle, inode);
+>  	ret2 = ext3_journal_stop(handle);
+>  	if (!ret)
+>  		ret = ret2;
+>  	unlock_page(page);
+>  	page_cache_release(page);
+>  
+> +	if (pos + len > inode->i_size)
+> +		vmtruncate(inode, inode->i_size);
+>  	return ret ? ret : copied;
+>  }
+>  
+> @@ -1299,25 +1307,22 @@ static int ext3_writeback_write_end(struct file *file,
+>  {
+>  	handle_t *handle = ext3_journal_current_handle();
+>  	struct inode *inode = file->f_mapping->host;
+> -	int ret = 0, ret2;
+> -	loff_t new_i_size;
+> -
+> -	new_i_size = pos + copied;
+> -	if (new_i_size > EXT3_I(inode)->i_disksize)
+> -		EXT3_I(inode)->i_disksize = new_i_size;
+> -
+> -	ret2 = ext3_generic_write_end(file, mapping, pos, len, copied,
+> -							page, fsdata);
+> -	copied = ret2;
+> -	if (ret2 < 0)
+> -		ret = ret2;
+> +	int ret;
+>  
+> -	ret2 = ext3_journal_stop(handle);
+> -	if (!ret)
+> -		ret = ret2;
+> +	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
+> +	update_file_sizes(inode, pos, copied);
+> +	/*
+> +	 * There may be allocated blocks outside of i_size because
+> +	 * we failed to copy some data. Prepare for truncate.
+> +	 */
+> +	if (pos + len > inode->i_size)
+> +		ext3_orphan_add(handle, inode);
+> +	ret = ext3_journal_stop(handle);
+>  	unlock_page(page);
+>  	page_cache_release(page);
+>  
+> +	if (pos + len > inode->i_size)
+> +		vmtruncate(inode, inode->i_size);
+>  	return ret ? ret : copied;
+>  }
+>  
+> @@ -1338,15 +1343,23 @@ static int ext3_journalled_write_end(struct file *file,
+>  	if (copied < len) {
+>  		if (!PageUptodate(page))
+>  			copied = 0;
+> -		page_zero_new_buffers(page, from+copied, to);
+> +		page_zero_new_buffers(page, from + copied, to);
+> +		to = from + copied;
+>  	}
+>  
+>  	ret = walk_page_buffers(handle, page_buffers(page), from,
+>  				to, &partial, write_end_fn);
+>  	if (!partial)
+>  		SetPageUptodate(page);
+> -	if (pos+copied > inode->i_size)
+> -		i_size_write(inode, pos+copied);
+> +
+> +	if (pos + copied > inode->i_size)
+> +		i_size_write(inode, pos + copied);
+> +	/*
+> +	 * There may be allocated blocks outside of i_size because
+> +	 * we failed to copy some data. Prepare for truncate.
+> +	 */
+> +	if (pos + len > inode->i_size)
+> +		ext3_orphan_add(handle, inode);
+>  	EXT3_I(inode)->i_state |= EXT3_STATE_JDATA;
+>  	if (inode->i_size > EXT3_I(inode)->i_disksize) {
+>  		EXT3_I(inode)->i_disksize = inode->i_size;
+> @@ -1361,6 +1374,8 @@ static int ext3_journalled_write_end(struct file *file,
+>  	unlock_page(page);
+>  	page_cache_release(page);
+>  
+> +	if (pos + len > inode->i_size)
+> +		vmtruncate(inode, inode->i_size);
+>  	return ret ? ret : copied;
+>  }
+>  
+> @@ -1428,17 +1443,11 @@ static int bput_one(handle_t *handle, struct buffer_head *bh)
+>  	return 0;
+>  }
+>  
+> -static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
+> -{
+> -	if (buffer_mapped(bh))
+> -		return ext3_journal_dirty_data(handle, bh);
+> -	return 0;
+> -}
+> -
+>  static int buffer_unmapped(handle_t *handle, struct buffer_head *bh)
+>  {
+>  	return !buffer_mapped(bh);
+>  }
+> +
+>  /*
+>   * Note that we always start a transaction even if we're not journalling
+>   * data.  This is to preserve ordering: any hole instantiation within
+> -- 
+> 1.6.0.2
