@@ -1,56 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
-Date: Thu, 2 Apr 2009 13:34:01 +0200
-Message-ID: <20090402113400.GC3010@duck.suse.cz>
-References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com> <20090324173511.GJ23439@duck.suse.cz> <604427e00904011536i6332a239pe21786cc4c8b3025@mail.gmail.com> <200904022224.31060.nickpiggin@yahoo.com.au>
+From: Alexander Beregalov <a.beregalov@gmail.com>
+Subject: Re: 2.6.29-git: cannot mount ext4/loop
+Date: Thu, 2 Apr 2009 15:39:25 +0400
+Message-ID: <a4423d670904020439m621990bch9482d19f0e48e7d2@mail.gmail.com>
+References: <a4423d670904011423x4174a81cj901bc140944412ea@mail.gmail.com>
+	 <20090401225351.GA22621@orion> <20090402055356.GC10642@mit.edu>
+	 <a4423d670904020042x6b76715du48a15e988a05019d@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ying Han <yinghan@google.com>,
-	"Martin J. Bligh" <mbligh@mbligh.org>, linux-ext4@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
-	Alex Khesin <alexk@google.com>, Mike Waychison <mikew@google.com>,
-	Rohit Seth <rohitseth@google.com>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Nick Piggin <nickpiggin@yahoo.com.au>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <200904022224.31060.nickpiggin@yahoo.com.au>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: Theodore Tso <tytso@mit.edu>, Jens Axboe <jens.axboe@oracle.com>,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from ey-out-2122.google.com ([74.125.78.26]:45939 "EHLO
+	ey-out-2122.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755972AbZDBLj2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Apr 2009 07:39:28 -0400
+In-Reply-To: <a4423d670904020042x6b76715du48a15e988a05019d@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 02-04-09 22:24:29, Nick Piggin wrote:
-> On Thursday 02 April 2009 09:36:13 Ying Han wrote:
-> > Hi Jan:
-> >     I feel that the problem you saw is kind of differnt than mine. As
-> > you mentioned that you saw the PageError() message, which i don't see
-> > it on my system. I tried you patch(based on 2.6.21) on my system and
-> > it runs ok for 2 days, Still, since i don't see the same error message
-> > as you saw, i am not convineced this is the root cause at least for
-> > our problem. I am still looking into it.
-> >     So, are you seeing the PageError() every time the problem happened?
-> 
-> So I asked if you could test with my workaround of taking truncate_mutex
-> at the start of ext2_get_blocks, and report back. I never heard of any
-> response after that.
-> 
-> To reiterate: I was able to reproduce a problem with ext2 (I was testing
-> on brd to get IO rates high enough to reproduce it quite frequently).
-> I think I narrowed the problem down to block allocation or inode block
-> tree corruption because I was unable to reproduce it with that hack in
-> place.
-  Nick, what load did you use for reproduction? I'll try to reproduce it
-here so that I can debug ext2...
+2009/4/2 Alexander Beregalov <a.beregalov@gmail.com>:
+> 2009/4/2 Theodore Tso <tytso@mit.edu>:
+>> On Thu, Apr 02, 2009 at 02:53:51AM +0400, Alexander Beregalov wrote:
+>>> On Thu, Apr 02, 2009 at 01:23:28AM +0400, Alexander Beregalov wrote=
+:
+>>> > Hi Theodore, Jens
+>>> >
+>>> > kernel is 2.6.29-07099-g8b53ef3
+>>> >
+>>> > Mount failed:
+>>> >
+>>> > EXT4-fs: barriers enabled
+>>> > kjournald2 starting: pid 1867, dev loop0:8, commit interval 5 sec=
+onds
+>>> > EXT4-fs error (device loop0): ext4_iget: block reference 27032289=
+28 >=3D
+>>> > max (524288) in inode #2, offset=3D0
+>>> > EXT4-fs: get root inode failed
+>>> > EXT4-fs (device loop0): mount failed
+>>
+>> I don't get this failure in a Linux 2.6 kernel based off of 5d80f8e5
+>> with the )now upstream) ext4 patches merged in. =C2=A0I'm guessing s=
+ometime
+>> between v2.6.29-3652-g5d80f8e and 2.6.29-07099-g8b53ef3 a regression
+>> was introduced into the loop driver?
+>
+> It is sparc host again.
+> 2.6.29-06608-g15f7176 worked fine.
+> There was one commit to loop.c:
+> 53d66608 (loop: add ioctl to resize a loop device)
+> and ext4 git pull.
+>
+> I wil try to revert it and probably bisect.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
+Revert 53d66608 does not help.
+Bisecting...
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
