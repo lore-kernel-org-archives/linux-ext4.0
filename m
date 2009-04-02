@@ -1,75 +1,56 @@
 From: Alexander Beregalov <a.beregalov@gmail.com>
-Subject: Re: 2.6.29-git: cannot mount ext4/loop
-Date: Thu, 2 Apr 2009 22:29:05 +0400
-Message-ID: <a4423d670904021129s61ee55bfh584dbe7bc4322929@mail.gmail.com>
-References: <a4423d670904011423x4174a81cj901bc140944412ea@mail.gmail.com>
-	 <20090402055356.GC10642@mit.edu>
-	 <a4423d670904020042x6b76715du48a15e988a05019d@mail.gmail.com>
-	 <a4423d670904020439m621990bch9482d19f0e48e7d2@mail.gmail.com>
-	 <a4423d670904020547s72972089t3c135a92af6751d4@mail.gmail.com>
-	 <49D4BDF2.2070102@ph.tum.de> <20090402145436.GF10642@mit.edu>
-	 <49D4D74F.1020904@ph.tum.de> <20090402154123.GG10642@mit.edu>
-	 <49D4F044.1040306@ph.tum.de>
+Subject: Re: next-20090310: ext4 hangs
+Date: Thu, 2 Apr 2009 22:50:59 +0400
+Message-ID: <a4423d670904021150p5fcd1f82wefa68c839b2869a1@mail.gmail.com>
+References: <20090325151516.GB14881@atrey.karlin.mff.cuni.cz>
+	 <20090325152234.GN23439@duck.suse.cz>
+	 <a4423d670903250829w5e9304a7rce24f4220379620f@mail.gmail.com>
+	 <20090325161556.GP23439@duck.suse.cz>
+	 <a4423d670903251007r72058ca8m28275c1433ab2706@mail.gmail.com>
+	 <20090325194316.GQ23439@duck.suse.cz>
+	 <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com>
+	 <20090331100150.GF11808@duck.suse.cz>
+	 <a4423d670903310307i7acd31f0r4836beae14cfb92d@mail.gmail.com>
+	 <20090331123307.GG11808@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>, Jens Axboe <jens.axboe@oracle.com>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+Cc: Theodore Tso <tytso@mit.edu>,
+	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	sparclinux@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f165.google.com ([209.85.219.165]:55990 "EHLO
+Received: from mail-ew0-f165.google.com ([209.85.219.165]:61980 "EHLO
 	mail-ew0-f165.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755649AbZDBS3J convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Apr 2009 14:29:09 -0400
-In-Reply-To: <49D4F044.1040306@ph.tum.de>
+	with ESMTP id S1753089AbZDBSvD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Apr 2009 14:51:03 -0400
+In-Reply-To: <20090331123307.GG11808@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2009/4/2 Thiemo Nagel <thiemo.nagel@ph.tum.de>:
-> Theodore Tso wrote:
+>> > =C2=A0I'm helpless here. I don't see how we can miss a wakeup (plu=
+s you seem to
+>> > be the only one reporting the bug). Could you please compile and t=
+est the kernel
+>> > with the attached patch? It will print to kernel log when we go to=
+ sleep
+>> > waiting for inode commit and when we send wakeups etc. When you hi=
+t the
+>> > deadlock, please send me your kernel log. It should help with debu=
+gging why do
+>> > we miss the wakeup. Thanks.
 >>
->> On Thu, Apr 02, 2009 at 05:18:39PM +0200, Thiemo Nagel wrote:
->>>
->>> Theodore Tso wrote:
->>>>
->>>> On Thu, Apr 02, 2009 at 03:30:26PM +0200, Thiemo Nagel wrote:
->>>>>
->>>>> When I added the block range checks, initially I was assuming tha=
-t
->>>>> when EXTENTS_FL is not set, the inode->i_data *always* contains
->>>>> references to further blocks. =C2=A0Ted showed me wrong and added=
- the
->>>>> condition
->>>>>
->>>>> =C2=A0 =C2=A0 =C2=A0 =C2=A0ISREG() || ISDIR() || ( ISLNK() && !is=
-_fast_symlink() )
->>>>>
->>>>> before that assumption can be made. =C2=A0But maybe we need some =
-further
->>>>> restraints?
->>>>
->>>> It's a endian-problem; we're missing le32_to_cpu() in that patch.
->>>> Sparc is big-endian.
->>>
->>> Sorry for that.
->>
->> Could you also fix the types? =C2=A0bref should have a type of __le3=
-2, not
->> unsigned int, and when you pass in the reference to
->> __ext4_check_blockref(), there was an inappropriate cast to unsigned
->> int which hid kernel's natural type checking to catch these sorts of
->> problems.
->
-> So I was really asking for things to go wrong... =C2=A0:-(
-> I hope the attached patch handles conversion and types in the right w=
-ay.
-> =C2=A0It's compile-tested only, the current ext4 tree crashes my mach=
-ine.
+>> Which patch?
+> =C2=A0Ups. Forgot to attach ;).
 
-It works fine, thanks.
+Cannot reproduce it on current 2.6.29-git. Strange.
+It should already have all ext4/jbd2 patches from next-20090310,
+but anyway it happened with 2.6.29-rc8 also.
+I ran dbench in cycle on two indentical hosts for more than 24 hours
+with no hang tasks.
 
-Reported-by: Alexander Beregalov <a.beregalov@gmail.com>
-Tested-by: Alexander Beregalov <a.beregalov@gmail.com>
+I will try 2.6.29.
 --
 To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
 n
