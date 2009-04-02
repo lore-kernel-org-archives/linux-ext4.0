@@ -1,71 +1,99 @@
-From: Nick Piggin <nickpiggin@yahoo.com.au>
-Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
-Date: Fri, 3 Apr 2009 02:51:20 +1100
-Message-ID: <200904030251.22197.nickpiggin@yahoo.com.au>
-References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com> <200904022224.31060.nickpiggin@yahoo.com.au> <20090402113400.GC3010@duck.suse.cz>
+From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+Subject: Re: 2.6.29-git: cannot mount ext4/loop
+Date: Thu, 02 Apr 2009 19:05:08 +0200
+Message-ID: <49D4F044.1040306@ph.tum.de>
+References: <a4423d670904011423x4174a81cj901bc140944412ea@mail.gmail.com> <20090401225351.GA22621@orion> <20090402055356.GC10642@mit.edu> <a4423d670904020042x6b76715du48a15e988a05019d@mail.gmail.com> <a4423d670904020439m621990bch9482d19f0e48e7d2@mail.gmail.com> <a4423d670904020547s72972089t3c135a92af6751d4@mail.gmail.com> <49D4BDF2.2070102@ph.tum.de> <20090402145436.GF10642@mit.edu> <49D4D74F.1020904@ph.tum.de> <20090402154123.GG10642@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain;
-  charset="iso-8859-1"
+Content-Type: multipart/mixed;
+ boundary="------------030109030304090003010304"
+To: Theodore Tso <tytso@mit.edu>,
+	Alexander Beregalov <a.beregalov@gmail.com>,
+	Jens Axboe <jens.axboe@oracle.com>, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:45629 "EHLO
+	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751125AbZDBRFM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Apr 2009 13:05:12 -0400
+In-Reply-To: <20090402154123.GG10642@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+This is a multi-part message in MIME format.
+--------------030109030304090003010304
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Ying Han <yinghan@google.com>,
- "Martin J. Bligh" <mbligh@mbligh.org>,
- linux-ext4@vger.kernel.org,
- Linus Torvalds <torvalds@linux-foundation.org>,
- Andrew Morton <akpm@linux-foundation.org>,
- "linux-kernel" <linux-kernel@vger.kernel.org>,
- "linux-mm" <linux-mm@kvack.org>,
- guichaz@gmail.com,
- Alex Khesin <alexk@google.com>,
- Mike Waychison <mikew@google.com>,
- Rohit Seth <rohitseth@google.com>,
- Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Jan Kara <jack@suse.cz>
-Return-path: <owner-linux-mm@kvack.org>
-In-Reply-To: <20090402113400.GC3010@duck.suse.cz>
-Content-Disposition: inline
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
 
-On Thursday 02 April 2009 22:34:01 Jan Kara wrote:
-> On Thu 02-04-09 22:24:29, Nick Piggin wrote:
-> > On Thursday 02 April 2009 09:36:13 Ying Han wrote:
-> > > Hi Jan:
-> > >     I feel that the problem you saw is kind of differnt than mine. As
-> > > you mentioned that you saw the PageError() message, which i don't see
-> > > it on my system. I tried you patch(based on 2.6.21) on my system and
-> > > it runs ok for 2 days, Still, since i don't see the same error message
-> > > as you saw, i am not convineced this is the root cause at least for
-> > > our problem. I am still looking into it.
-> > >     So, are you seeing the PageError() every time the problem happened?
-> > 
-> > So I asked if you could test with my workaround of taking truncate_mutex
-> > at the start of ext2_get_blocks, and report back. I never heard of any
-> > response after that.
-> > 
-> > To reiterate: I was able to reproduce a problem with ext2 (I was testing
-> > on brd to get IO rates high enough to reproduce it quite frequently).
-> > I think I narrowed the problem down to block allocation or inode block
-> > tree corruption because I was unable to reproduce it with that hack in
-> > place.
->   Nick, what load did you use for reproduction? I'll try to reproduce it
-> here so that I can debug ext2...
+Theodore Tso wrote:
+> On Thu, Apr 02, 2009 at 05:18:39PM +0200, Thiemo Nagel wrote:
+>> Theodore Tso wrote:
+>>> On Thu, Apr 02, 2009 at 03:30:26PM +0200, Thiemo Nagel wrote:
+>>>> When I added the block range checks, initially I was assuming that
+>>>> when EXTENTS_FL is not set, the inode->i_data *always* contains
+>>>> references to further blocks.  Ted showed me wrong and added the condition
+>>>>
+>>>> 	ISREG() || ISDIR() || ( ISLNK() && !is_fast_symlink() )
+>>>>
+>>>> before that assumption can be made.  But maybe we need some further
+>>>> restraints?
+>>> It's a endian-problem; we're missing le32_to_cpu() in that patch.
+>>> Sparc is big-endian. 
+>> Sorry for that.
+> 
+> Could you also fix the types?  bref should have a type of __le32, not
+> unsigned int, and when you pass in the reference to
+> __ext4_check_blockref(), there was an inappropriate cast to unsigned
+> int which hid kernel's natural type checking to catch these sorts of
+> problems.
 
-OK, I set up the filesystem like this:
+So I was really asking for things to go wrong...  :-(
+I hope the attached patch handles conversion and types in the right way. 
+  It's compile-tested only, the current ext4 tree crashes my machine.
 
-modprobe rd rd_size=$[3*1024*1024]   #almost fill memory so we reclaim buffers
-dd if=/dev/zero of=/dev/ram0 bs=4k   #prefill brd so we don't get alloc deadlock
-mkfs.ext2 -b1024 /dev/ram0           #1K buffers
+Kind regards,
 
-Test is basically unmodified except I use 64MB files, and start 8 of them
-at once to (8 core system, so improve chances of hitting the bug). Although I
-do see it with only 1 running it takes longer to trigger.
+Thiemo
 
-I also run a loop doing 'sync ; echo 3 > /proc/sys/vm/drop_caches' but I don't
-know if that really helps speed up reproducing it. It is quite random to hit,
-but I was able to hit it IIRC in under a minute with that setup.
+--------------030109030304090003010304
+Content-Type: text/plain;
+ name="le32_fix"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: inline;
+ filename="le32_fix"
 
---
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 98e289a..849e099 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -372,16 +372,16 @@ static int ext4_block_to_path(struct inode *inode,
+ }
+ 
+ static int __ext4_check_blockref(const char *function, struct inode *inode,
+-				 unsigned int *p, unsigned int max) {
++				 __le32 *p, unsigned int max) {
+ 
+ 	unsigned int maxblocks = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es);
+-	unsigned int *bref = p;
++	__le32 *bref = p;
+ 	while (bref < p+max) {
+-		if (unlikely(*bref >= maxblocks)) {
++		if (unlikely(le32_to_cpu(*bref) >= maxblocks)) {
+ 			ext4_error(inode->i_sb, function,
+ 				   "block reference %u >= max (%u) "
+ 				   "in inode #%lu, offset=%d",
+-				   *bref, maxblocks,
++				   le32_to_cpu(*bref), maxblocks,
+ 				   inode->i_ino, (int)(bref-p));
+  			return -EIO;
+  		}
+@@ -392,7 +392,7 @@ static int __ext4_check_blockref(const char *function, struct inode *inode,
+ 
+ 
+ #define ext4_check_indirect_blockref(inode, bh)                         \
+-        __ext4_check_blockref(__func__, inode, (__le32 *)(bh)->b_data,  \
++        __ext4_check_blockref(__func__, inode, (bh)->b_data,            \
+ 			      EXT4_ADDR_PER_BLOCK((inode)->i_sb))
+ 
+ #define ext4_check_inode_blockref(inode)                                \
+
+--------------030109030304090003010304--
