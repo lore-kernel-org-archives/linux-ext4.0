@@ -1,58 +1,65 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: [GIT PULL] Ext3 latency fixes
-Date: Fri, 3 Apr 2009 15:54:53 -0400
-Message-ID: <20090403195453.GC11661@mit.edu>
-References: <1238742067-30814-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain>
+Date: Fri, 3 Apr 2009 13:41:54 -0700 (PDT)
+Message-ID: <alpine.LFD.2.00.0904031329410.7007@localhost.localdomain>
+References: <1238742067-30814-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain> <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <jens.axboe@oracle.com>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+To: "Theodore Ts'o" <tytso@mit.edu>, Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:59266 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S936559AbZDCTzC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Apr 2009 15:55:02 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41069 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S937248AbZDCUoY (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Apr 2009 16:44:24 -0400
+In-Reply-To: <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 03, 2009 at 11:24:50AM -0700, Linus Torvalds wrote:
-> But at the same time, I now suspect that we could actually have solved 
-> this problem more easily by just doing things the other way around: make 
-> the default "WRITE" be the high-priority one (to match "READ"), and then 
-> just explicitly marking the data writes with "WRITE_ASYNC".
+
+
+On Fri, 3 Apr 2009, Linus Torvalds wrote:
 > 
-> Why? Because I think that with all the writes sprinkled around in random 
-> places, it's probably _easier_ to find the bulk writes that cause the 
-> biggest issues, and just fix _those_ to be WRITE_ASYNC. They may be bulk, 
-> they may be the common case, but they also tend to be the case where we 
-> write with generic routines (eg the whole "do_writepages()" thing).
+> The "overwrite" behavior may well be better, but it was smooth enough 
+> beforehand too (never having more than ~8MB dirty). The "create big file 
+> and sync" workload causes huge fsync pauses, though. IOW, try with
 > 
-> So the VFS layer tends to already do much of the bulk writeout, and maybe 
-> we would have been better off just changing those to ASYNC and leaving any 
-> more specialized cases as the SYNC case? That would have avoided a lot of 
-> this effort at the filesystem level. We'd just assume that the default 
-> filesystem-specific writes tend to all be SYNC.
+> 	while :
+> 	do
+> 		time sh -c "dd if=/dev/zero of=bigfile bs=8M count=256 ; sync"
+> 	done
+> 
+> and even really small fsync's end up being at the end of all that 
+> unrelated activity, and you see things like
+> 
+>     fsync(7)                                = 0 <32.756308>
 
-Well, most filesystem-specific writes tend all to be ASYNC; it's only
-those related to commits and fsync() which are SYNC.  Ext3 is unusual
-in that data=ordered and the physical-block journalling design of the
-jbd layer means that we actually have a much larger number of blocks
-that need to be written out synchronously than most other filesystems.
-But even so, the number of callsites that I needed to change weren't
-that large; in fact, over half of them weren't in the filesystem at
-all, but in the page writeback code, since fsync() and data=ordered
-both need to wait for the inodes's pages to be flushed out to disk,
-and that's all done in common code.  The other 40% was in the jbd's
-commit code, while we are writing out the journal buffers.
+Hmm. So I decided to try with "data=writeback" to see if it really makes 
+that big of a difference. It does help, but I still easily trigger 
+multi-second pauses:
 
-I suspect the more important thing to address is the fact that
-WRITE_SYNC unplugs the block device queue, and we would be better off
-separating marking a particular I/O as "a user is waiting for this"
-from "unplug the device queue now".  That will hopefully improve
-things even more.
+   fsync(4)                                = 0 <2.447926>
+   fsync(4)                                = 0 <4.275472>
+   fsync(4)                                = 0 <3.731948>
+   fsync(4)                                = 0 <4.020839>
+   fsync(6)                                = 0 <3.482735>
+   fsync(6)                                = 0 <5.819923>
 
-					- Ted
+even though the system _should_ be able to write back the 'bigfile' 
+datablocks without any ordering constraint on the fsync.
+
+So at a guess, it now avoids some nasty journal writing ordering issue 
+where it has to wait for the previous transaction, and it's probably now 
+purely an IO ordering issue.
+
+This is all with your ext3 work, btw. But I also added "rm bigfile" at the 
+end of the loop (so that it shouldn't trigge any "write out bigfile early" 
+logic), and that didn't seem to make any difference. 
+
+Are we perhaps ending up doing those regular 'bigfile' writes as 
+WRITE_SYNC, just because of the global "sync()" call? That's probably a 
+bad idea. A "sync" is about pure throughput. It's not about latency like 
+"fsync()" is.
+
+		Linus
