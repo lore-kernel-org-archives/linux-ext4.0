@@ -1,166 +1,104 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/4] ext3: Use WRITE_SYNC for commits which are caused by fsync()
-Date: Fri,  3 Apr 2009 03:01:05 -0400
-Message-ID: <1238742067-30814-3-git-send-email-tytso@mit.edu>
-References: <1238742067-30814-1-git-send-email-tytso@mit.edu>
- <1238742067-30814-2-git-send-email-tytso@mit.edu>
+Subject: [GIT PULL] Ext3 latency fixes
+Date: Fri,  3 Apr 2009 03:01:03 -0400
+Message-ID: <1238742067-30814-1-git-send-email-tytso@mit.edu>
 Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: torvalds@linuxfoundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:36446 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:36442 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751334AbZDCHBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751271AbZDCHBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 3 Apr 2009 03:01:11 -0400
-In-Reply-To: <1238742067-30814-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If a commit is triggered by fsync(), set a flag indicating the journal
-blocks associated with the transaction should be flushed out using
-WRITE_SYNC.
+Hi Linus, 
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Acked-by: Jan Kara <jack@suse.cz>
----
- fs/jbd/commit.c      |   23 +++++++++++++++--------
- fs/jbd/transaction.c |    2 ++
- include/linux/jbd.h  |    5 +++++
- 3 files changed, 22 insertions(+), 8 deletions(-)
+Please pull from:
 
-diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-index 3fbffb1..f8077b9 100644
---- a/fs/jbd/commit.c
-+++ b/fs/jbd/commit.c
-@@ -20,6 +20,7 @@
- #include <linux/slab.h>
- #include <linux/mm.h>
- #include <linux/pagemap.h>
-+#include <linux/bio.h>
- 
- /*
-  * Default IO end handler for temporary BJ_IO buffer_heads.
-@@ -171,14 +172,15 @@ static int journal_write_commit_record(journal_t *journal,
- 	return (ret == -EIO);
- }
- 
--static void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
-+static void journal_do_submit_data(struct buffer_head **wbuf, int bufs,
-+				   int write_op)
- {
- 	int i;
- 
- 	for (i = 0; i < bufs; i++) {
- 		wbuf[i]->b_end_io = end_buffer_write_sync;
- 		/* We use-up our safety reference in submit_bh() */
--		submit_bh(WRITE, wbuf[i]);
-+		submit_bh(write_op, wbuf[i]);
- 	}
- }
- 
-@@ -186,7 +188,8 @@ static void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
-  *  Submit all the data buffers to disk
-  */
- static int journal_submit_data_buffers(journal_t *journal,
--				transaction_t *commit_transaction)
-+				       transaction_t *commit_transaction,
-+				       int write_op)
- {
- 	struct journal_head *jh;
- 	struct buffer_head *bh;
-@@ -225,7 +228,7 @@ write_out_data:
- 				BUFFER_TRACE(bh, "needs blocking lock");
- 				spin_unlock(&journal->j_list_lock);
- 				/* Write out all data to prevent deadlocks */
--				journal_do_submit_data(wbuf, bufs);
-+				journal_do_submit_data(wbuf, bufs, write_op);
- 				bufs = 0;
- 				lock_buffer(bh);
- 				spin_lock(&journal->j_list_lock);
-@@ -256,7 +259,7 @@ write_out_data:
- 			jbd_unlock_bh_state(bh);
- 			if (bufs == journal->j_wbufsize) {
- 				spin_unlock(&journal->j_list_lock);
--				journal_do_submit_data(wbuf, bufs);
-+				journal_do_submit_data(wbuf, bufs, write_op);
- 				bufs = 0;
- 				goto write_out_data;
- 			}
-@@ -286,7 +289,7 @@ write_out_data:
- 		}
- 	}
- 	spin_unlock(&journal->j_list_lock);
--	journal_do_submit_data(wbuf, bufs);
-+	journal_do_submit_data(wbuf, bufs, write_op);
- 
- 	return err;
- }
-@@ -315,6 +318,7 @@ void journal_commit_transaction(journal_t *journal)
- 	int first_tag = 0;
- 	int tag_flag;
- 	int i;
-+	int write_op = WRITE;
- 
- 	/*
- 	 * First job: lock down the current transaction and wait for
-@@ -347,6 +351,8 @@ void journal_commit_transaction(journal_t *journal)
- 	spin_lock(&journal->j_state_lock);
- 	commit_transaction->t_state = T_LOCKED;
- 
-+	if (commit_transaction->t_synchronous_commit)
-+		write_op = WRITE_SYNC;
- 	spin_lock(&commit_transaction->t_handle_lock);
- 	while (commit_transaction->t_updates) {
- 		DEFINE_WAIT(wait);
-@@ -431,7 +437,8 @@ void journal_commit_transaction(journal_t *journal)
- 	 * Now start flushing things to disk, in the order they appear
- 	 * on the transaction lists.  Data blocks go first.
- 	 */
--	err = journal_submit_data_buffers(journal, commit_transaction);
-+	err = journal_submit_data_buffers(journal, commit_transaction,
-+					  write_op);
- 
- 	/*
- 	 * Wait for all previously submitted IO to complete.
-@@ -660,7 +667,7 @@ start_journal_io:
- 				clear_buffer_dirty(bh);
- 				set_buffer_uptodate(bh);
- 				bh->b_end_io = journal_end_buffer_io_sync;
--				submit_bh(WRITE, bh);
-+				submit_bh(write_op, bh);
- 			}
- 			cond_resched();
- 
-diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index e6a1174..ed886e6 100644
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -1440,6 +1440,8 @@ int journal_stop(handle_t *handle)
- 		}
- 	}
- 
-+	if (handle->h_sync)
-+		transaction->t_synchronous_commit = 1;
- 	current->journal_info = NULL;
- 	spin_lock(&journal->j_state_lock);
- 	spin_lock(&transaction->t_handle_lock);
-diff --git a/include/linux/jbd.h b/include/linux/jbd.h
-index 64246dc..2c69431 100644
---- a/include/linux/jbd.h
-+++ b/include/linux/jbd.h
-@@ -552,6 +552,11 @@ struct transaction_s
- 	 */
- 	int t_handle_count;
- 
-+	/*
-+	 * This transaction is being forced and some process is
-+	 * waiting for it to finish.
-+	 */
-+	int t_synchronous_commit:1;
- };
- 
- /**
--- 
-1.5.6.3
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git ext3-latency-fixes
+
+I posted these patches a while back, and with your "overwrite.c" test
+case, I decided to see how they did.  The results were spectacular
+enough (see below) that I've decided to request that they be included
+in 2.6.30.  I've posted the critical patches below for review before,
+and Jan Kara has acked them, and there have been no complaints about
+them.
+
+I've also added two patches which add replace-via-truncate and
+replace-via-rename workarounds to ext3's data=writeback mode.  They
+only change the behavior in the (currently non-default) data=writeback
+mode.
+
+The benchmark which I used was Linus's overwrite.c as the background
+workload, and my fsync-tester as the foreground tester.  The
+fsync-tester writes a megabyte to a file and then times how long it
+takes to fsync that file, and then sleeps a second before repeating.
+
+Using an unpatched 2.6.29, fsync-tester shows the following times:
+
+fsync time: 3.4732
+fsync time: 2.4338
+fsync time: 5.9496
+fsync time: 6.2402
+fsync time: 4.3375
+fsync time: 6.3283
+fsync time: 3.6930
+fsync time: 3.1848
+fsync time: 3.3231
+
+The final report of overwrite.c is:
+
+       1.984 GB written in 82.75 (24 MB/s)           
+
+With these patches applied, the fsync-tester times are:
+
+fsync time: 1.4538
+fsync time: 1.6328
+fsync time: 1.4632
+fsync time: 1.4550
+fsync time: 0.2932
+fsync time: 1.6986
+fsync time: 0.3787
+fsync time: 1.3380
+fsync time: 1.8145
+fsync time: 0.4050
+fsync time: 1.3880
+
+... and the final report of overwrite.c is:
+
+       1.984 GB written in 93.77 (21 MB/s)           
+
+By having the fsync-related I/O fixed to be posted using WRITE_SYNC,
+instead of WRITE, it prioritizes the fsync-related I/O so that it gets
+done ahead of the streaming write.  This does slow down the background
+write process, but it speeds up the worst-case fsync() latency from
+6.2 seconds to 1.8 seconds.  (Measurements done on a 5400 rpm laptop
+drive.)
+
+All aside from the benchmark improvements, if the writes are coming
+from fsync(), they really are synchronous operations, and they should
+be marked that way just from a correctness point of view.
+
+	       		 	       	    - Ted
+
+Theodore Ts'o (4):
+      block_write_full_page: Use synchronous writes for WBC_SYNC_ALL writebacks
+      ext3: Use WRITE_SYNC for commits which are caused by fsync()
+      ext3: Add replace-on-truncate hueristics for data=writeback mode
+      ext3: Add replace-on-rename hueristics for data=writeback mode
+
+ fs/buffer.c             |    5 +++--
+ fs/ext3/file.c          |    4 ++++
+ fs/ext3/inode.c         |    3 +++
+ fs/ext3/namei.c         |    6 +++++-
+ fs/jbd/commit.c         |   23 +++++++++++++++--------
+ fs/jbd/transaction.c    |    2 ++
+ include/linux/ext3_fs.h |    1 +
+ include/linux/jbd.h     |    5 +++++
+ 8 files changed, 38 insertions(+), 11 deletions(-)
+
+
+
 
