@@ -1,121 +1,150 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
-Date: Fri, 3 Apr 2009 11:41:10 +0200
-Message-ID: <20090403094110.GB18569@duck.suse.cz>
-References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com> <200904022224.31060.nickpiggin@yahoo.com.au> <20090402113400.GC3010@duck.suse.cz> <200904030251.22197.nickpiggin@yahoo.com.au> <604427e00904021044n73302f4uc39ca09fe96caf57@mail.gmail.com> <604427e00904021552m7ef58163n5392bbe54d902c21@mail.gmail.com> <20090402233908.GA22206@duck.suse.cz> <604427e00904021829j6a9aba65gafcc67df9c842a86@mail.gmail.com>
+From: "Nick Hennenfent (nhennefe)" <nhennefe@cisco.com>
+Subject: EXT4 in embedded systems
+Date: Fri, 3 Apr 2009 11:01:15 -0400
+Message-ID: <2FE093E39DAE7D498A29AF6BE01F267B04E42DE6@xmb-rtp-20c.amer.cisco.com>
+References: <1238742067-30814-1-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Nick Piggin <nickpiggin@yahoo.com.au>,
-	"Martin J. Bligh" <mbligh@mbligh.org>, linux-ext4@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
-	Alex Khesin <alexk@google.com>, Mike Waychison <mikew@google.com>,
-	Rohit Seth <rohitseth@google.com>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>
-To: Ying Han <yinghan@google.com>
-Return-path: <owner-linux-mm@kvack.org>
-Content-Disposition: inline
-In-Reply-To: <604427e00904021829j6a9aba65gafcc67df9c842a86@mail.gmail.com>
-Sender: owner-linux-mm@kvack.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain;
+	charset="us-ascii"
+Content-Transfer-Encoding: 8BIT
+To: "Ext4 Developers List" <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sj-iport-2.cisco.com ([171.71.176.71]:7591 "EHLO
+	sj-iport-2.cisco.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752197AbZDCPBR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Apr 2009 11:01:17 -0400
+Received: from sj-core-2.cisco.com (sj-core-2.cisco.com [171.71.177.254])
+	by sj-dkim-2.cisco.com (8.12.11/8.12.11) with ESMTP id n33F1FMl028745
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Apr 2009 08:01:15 -0700
+Received: from xbh-rtp-211.amer.cisco.com (xbh-rtp-211.cisco.com [64.102.31.102])
+	by sj-core-2.cisco.com (8.13.8/8.13.8) with ESMTP id n33F1DEb013790
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Apr 2009 15:01:15 GMT
+Content-class: urn:content-classes:message
+In-Reply-To: <1238742067-30814-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 02-04-09 18:29:21, Ying Han wrote:
-> On Thu, Apr 2, 2009 at 4:39 PM, Jan Kara <jack@suse.cz> wrote:
-> > On Thu 02-04-09 15:52:19, Ying Han wrote:
-> >> On Thu, Apr 2, 2009 at 10:44 AM, Ying Han <yinghan@google.com> wrote:
-> >> > On Thu, Apr 2, 2009 at 8:51 AM, Nick Piggin <nickpiggin@yahoo.com.au> wrote:
-> >> >> On Thursday 02 April 2009 22:34:01 Jan Kara wrote:
-> >> >>> On Thu 02-04-09 22:24:29, Nick Piggin wrote:
-> >> >>> > On Thursday 02 April 2009 09:36:13 Ying Han wrote:
-> >> >>> > > Hi Jan:
-> >> >>> > >     I feel that the problem you saw is kind of differnt than mine. As
-> >> >>> > > you mentioned that you saw the PageError() message, which i don't see
-> >> >>> > > it on my system. I tried you patch(based on 2.6.21) on my system and
-> >> >>> > > it runs ok for 2 days, Still, since i don't see the same error message
-> >> >>> > > as you saw, i am not convineced this is the root cause at least for
-> >> >>> > > our problem. I am still looking into it.
-> >> >>> > >     So, are you seeing the PageError() every time the problem happened?
-> >> >>> >
-> >> >>> > So I asked if you could test with my workaround of taking truncate_mutex
-> >> >>> > at the start of ext2_get_blocks, and report back. I never heard of any
-> >> >>> > response after that.
-> >> >>> >
-> >> >>> > To reiterate: I was able to reproduce a problem with ext2 (I was testing
-> >> >>> > on brd to get IO rates high enough to reproduce it quite frequently).
-> >> >>> > I think I narrowed the problem down to block allocation or inode block
-> >> >>> > tree corruption because I was unable to reproduce it with that hack in
-> >> >>> > place.
-> >> >>>   Nick, what load did you use for reproduction? I'll try to reproduce it
-> >> >>> here so that I can debug ext2...
-> >> >>
-> >> >> OK, I set up the filesystem like this:
-> >> >>
-> >> >> modprobe rd rd_size=$[3*1024*1024]   #almost fill memory so we reclaim buffers
-> >> >> dd if=/dev/zero of=/dev/ram0 bs=4k   #prefill brd so we don't get alloc deadlock
-> >> >> mkfs.ext2 -b1024 /dev/ram0           #1K buffers
-> >> >>
-> >> >> Test is basically unmodified except I use 64MB files, and start 8 of them
-> >> >> at once to (8 core system, so improve chances of hitting the bug). Although I
-> >> >> do see it with only 1 running it takes longer to trigger.
-> >> >>
-> >> >> I also run a loop doing 'sync ; echo 3 > /proc/sys/vm/drop_caches' but I don't
-> >> >> know if that really helps speed up reproducing it. It is quite random to hit,
-> >> >> but I was able to hit it IIRC in under a minute with that setup.
-> >> >>
-> >> >
-> >> > Here is how i reproduce it:
-> >> > Filesystem is ext2 with blocksize 4096
-> >> > Fill up the ram with 95% anon memory and mlockall ( put enough memory
-> >> > pressure which will trigger page reclaim and background writeout)
-> >> > Run one thread of the test program
-> >> >
-> >> > and i will see "bad pages" within few minutes.
-> >>
-> >> And here is the "top" and stdout while it is getting "bad pages"
-> >> top
-> >>
-> >>   PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
-> >>  3487 root      20   0 52616  50m  284 R   95  0.3   3:58.85 usemem
-> >>  3810 root      20   0  129m  99m  99m D   41  0.6   0:01.87 ftruncate_mmap
-> >>   261 root      15  -5     0    0    0 D    4  0.0   0:31.08 kswapd0
-> >>   262 root      15  -5     0    0    0 D    3  0.0   0:10.26 kswapd1
-> >>
-> >> stdout:
-> >>
-> >> while true; do
-> >>     ./ftruncate_mmap;
-> >> done
-> >> Running 852 bad page
-> >> Running 315 bad page
-> >> Running 999 bad page
-> >> Running 482 bad page
-> >> Running 24 bad page
-> >  Thanks, for the help. I've debugged the problem to a bug in
-> > ext2_get_block(). I've already sent out a patch which should fix the issue
-> > (at least it fixes the problem for me).
-> >  The fix is also attached if you want to try it.
-> 
-> hmm, now i do see that get_block() returns ENOSPC by printk the err.
-> So did you applied the patch which redirty_page_for_writepage as well
-> as this one together?
-  No, my patch contained only a fix in ext2_get_block(). When you see
-ENOSPC, that's a completely separate issue. You may apply that patch but
-with ext2 it would be enough to make the file fit the ram disk. I.e. first
-try with dd how big file fits there and then run your tester with at most
-as big file so that you don't hit ENOSPC...
 
-> I will start the test with kernel applied both patches and leave it for running.
-  OK.
+Hi all,
 
-										Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I am currently running kernel 2.6.15 on an embedded mips system.
+
+I really would like to be able to use the ext4 file system.
+
+I can easily upgrade to kernel 2.6.22 but not any further.
+
+I would like to get the latest and greatest stable ext4 code onto this
+box.
+
+Is it possible to back-port the latest ext4 code to the 2.6.22 kernel?
+
+Or, is there a better way to go about it?
+
+Thanks,
+Nick Hennenfent
+Cisco IPTV
+ 
+
+-----Original Message-----
+From: linux-ext4-owner@vger.kernel.org
+[mailto:linux-ext4-owner@vger.kernel.org] On Behalf Of Theodore Ts'o
+Sent: Friday, April 03, 2009 3:01 AM
+To: torvalds@linuxfoundation.org
+Cc: Linux Kernel Developers List; Ext4 Developers List
+Subject: [GIT PULL] Ext3 latency fixes
+
+Hi Linus, 
+
+Please pull from:
+
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git
+ext3-latency-fixes
+
+I posted these patches a while back, and with your "overwrite.c" test
+case, I decided to see how they did.  The results were spectacular
+enough (see below) that I've decided to request that they be included
+in 2.6.30.  I've posted the critical patches below for review before,
+and Jan Kara has acked them, and there have been no complaints about
+them.
+
+I've also added two patches which add replace-via-truncate and
+replace-via-rename workarounds to ext3's data=writeback mode.  They
+only change the behavior in the (currently non-default) data=writeback
+mode.
+
+The benchmark which I used was Linus's overwrite.c as the background
+workload, and my fsync-tester as the foreground tester.  The
+fsync-tester writes a megabyte to a file and then times how long it
+takes to fsync that file, and then sleeps a second before repeating.
+
+Using an unpatched 2.6.29, fsync-tester shows the following times:
+
+fsync time: 3.4732
+fsync time: 2.4338
+fsync time: 5.9496
+fsync time: 6.2402
+fsync time: 4.3375
+fsync time: 6.3283
+fsync time: 3.6930
+fsync time: 3.1848
+fsync time: 3.3231
+
+The final report of overwrite.c is:
+
+       1.984 GB written in 82.75 (24 MB/s)           
+
+With these patches applied, the fsync-tester times are:
+
+fsync time: 1.4538
+fsync time: 1.6328
+fsync time: 1.4632
+fsync time: 1.4550
+fsync time: 0.2932
+fsync time: 1.6986
+fsync time: 0.3787
+fsync time: 1.3380
+fsync time: 1.8145
+fsync time: 0.4050
+fsync time: 1.3880
+
+... and the final report of overwrite.c is:
+
+       1.984 GB written in 93.77 (21 MB/s)           
+
+By having the fsync-related I/O fixed to be posted using WRITE_SYNC,
+instead of WRITE, it prioritizes the fsync-related I/O so that it gets
+done ahead of the streaming write.  This does slow down the background
+write process, but it speeds up the worst-case fsync() latency from
+6.2 seconds to 1.8 seconds.  (Measurements done on a 5400 rpm laptop
+drive.)
+
+All aside from the benchmark improvements, if the writes are coming
+from fsync(), they really are synchronous operations, and they should
+be marked that way just from a correctness point of view.
+
+	       		 	       	    - Ted
+
+Theodore Ts'o (4):
+      block_write_full_page: Use synchronous writes for WBC_SYNC_ALL
+writebacks
+      ext3: Use WRITE_SYNC for commits which are caused by fsync()
+      ext3: Add replace-on-truncate hueristics for data=writeback mode
+      ext3: Add replace-on-rename hueristics for data=writeback mode
+
+ fs/buffer.c             |    5 +++--
+ fs/ext3/file.c          |    4 ++++
+ fs/ext3/inode.c         |    3 +++
+ fs/ext3/namei.c         |    6 +++++-
+ fs/jbd/commit.c         |   23 +++++++++++++++--------
+ fs/jbd/transaction.c    |    2 ++
+ include/linux/ext3_fs.h |    1 +
+ include/linux/jbd.h     |    5 +++++
+ 8 files changed, 38 insertions(+), 11 deletions(-)
+
+
+
 
 --
-To unsubscribe, send a message with 'unsubscribe linux-mm' in
-the body to majordomo@kvack.org.  For more info on Linux MM,
-see: http://www.linux-mm.org/ .
-Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
