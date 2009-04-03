@@ -1,7 +1,7 @@
 From: Ying Han <yinghan@google.com>
 Subject: Re: ftruncate-mmap: pages are lost after writing to mmaped file.
-Date: Thu, 2 Apr 2009 17:25:30 -0700
-Message-ID: <604427e00904021725n6bd673baq65771e53750fa913@mail.gmail.com>
+Date: Thu, 2 Apr 2009 18:29:21 -0700
+Message-ID: <604427e00904021829j6a9aba65gafcc67df9c842a86@mail.gmail.com>
 References: <604427e00903181244w360c5519k9179d5c3e5cd6ab3@mail.gmail.com>
 	 <200904022224.31060.nickpiggin@yahoo.com.au>
 	 <20090402113400.GC3010@duck.suse.cz>
@@ -13,24 +13,19 @@ Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: Nick Piggin <nickpiggin@yahoo.com.au>,
-	"Martin J. Bligh" <mbligh@mbligh.org>, linux-ext4@vger.kernel.org,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	linux-kernel <linux-kernel@vger.kernel.org>,
-	linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
-	Alex Khesin <alexk@google.com>,
-	Mike Waychison <mikew@google.com>,
-	Rohit Seth <rohitseth@google.com>,
-	Peter Zijlstra <a.p.zijlstra@chello.nl>
+        "Martin J. Bligh" <mbligh@mbligh.org>, linux-ext4@vger.kernel.org,
+        Linus Torvalds <torvalds@linux-foundation.org>,
+        Andrew Morton <akpm@linux-foundation.org>,
+        linux-kernel <linux-kernel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>, guichaz@gmail.com,
+        Alex Khesin <alexk@google.com>, Mike Waychison <mikew@google.com>,
+        Rohit Seth <rohitseth@google.com>,
+        Peter Zijlstra <a.p.zijlstra@chello.nl>
 To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:47667 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751047AbZDCAZg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Apr 2009 20:25:36 -0400
+Return-path: <owner-linux-mm@kvack.org>
 In-Reply-To: <20090402233908.GA22206@duck.suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: owner-linux-mm@kvack.org
+List-Id: linux-ext4.vger.kernel.org
 
 On Thu, Apr 2, 2009 at 4:39 PM, Jan Kara <jack@suse.cz> wrote:
 > On Thu 02-04-09 15:52:19, Ying Han wrote:
@@ -107,13 +102,21 @@ On Thu, Apr 2, 2009 at 4:39 PM, Jan Kara <jack@suse.cz> wrote:
 > (at least it fixes the problem for me).
 >  The fix is also attached if you want to try it.
 
-I just did a quick run after applied the patch, unforturnately, my
-problem is still there...
+hmm, now i do see that get_block() returns ENOSPC by printk the err.
+So did you applied the patch which redirty_page_for_writepage as well
+as this one together?
 
---Ying
+I will start the test with kernel applied both patches and leave it for running.
+
 >
 >                                                                        Honza
 > --
 > Jan Kara <jack@suse.cz>
 > SUSE Labs, CR
 >
+
+--
+To unsubscribe, send a message with 'unsubscribe linux-mm' in
+the body to majordomo@kvack.org.  For more info on Linux MM,
+see: http://www.linux-mm.org/ .
+Don't email: <a href=mailto:"dont@kvack.org"> email@kvack.org </a>
