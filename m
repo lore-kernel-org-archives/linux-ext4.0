@@ -1,65 +1,87 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
+From: Chris Mason <chris.mason@oracle.com>
 Subject: Re: [GIT PULL] Ext3 latency fixes
-Date: Fri, 3 Apr 2009 13:41:54 -0700 (PDT)
-Message-ID: <alpine.LFD.2.00.0904031329410.7007@localhost.localdomain>
-References: <1238742067-30814-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain> <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain>
+Date: Fri, 03 Apr 2009 17:01:04 -0400
+Message-ID: <1238792464.24082.32.camel@think.oraclecorp.com>
+References: <1238742067-30814-1-git-send-email-tytso@mit.edu>
+	 <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain>
+	 <20090403184729.GC5178@kernel.dk>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>, Jens Axboe <jens.axboe@oracle.com>
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:41069 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S937248AbZDCUoY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Apr 2009 16:44:24 -0400
-In-Reply-To: <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain>
+Received: from rcsinet12.oracle.com ([148.87.113.124]:61949 "EHLO
+	rgminet12.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751515AbZDCVCA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Apr 2009 17:02:00 -0400
+In-Reply-To: <20090403184729.GC5178@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-
-On Fri, 3 Apr 2009, Linus Torvalds wrote:
+On Fri, 2009-04-03 at 20:47 +0200, Jens Axboe wrote:
+> On Fri, Apr 03 2009, Linus Torvalds wrote:
+> > 
+> > 
+> > On Fri, 3 Apr 2009, Theodore Ts'o wrote:
+> > > 
+> > > Please pull from:
+> > > 
+> > > git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git ext3-latency-fixes
+> > 
+> > Thanks, pulled. I'll be interested to see how it feels. Will report back 
+> > after I've rebuild and gone through a few more emails.
 > 
-> The "overwrite" behavior may well be better, but it was smooth enough 
-> beforehand too (never having more than ~8MB dirty). The "create big file 
-> and sync" workload causes huge fsync pauses, though. IOW, try with
+> I have one question, didn't see this series before... Ted, what kind of
+> tests did you run with this and on what? Currently one has to be careful
+> with WRITE_SYNC, as it also implies an immediate unplug of the device.
+> So not only does it flag the priority as sync, it'll also kick things
+> off immediately. We had a nasty regression in performance in a few
+> revisions of the kernel due to this, sqlite performance was basically 4
+> times as bad as before we did WRITE_SYNC in sync_dirty_buffer(). So I'd
+> be curious what kind of testing was done with the patch series before
+> submitting it.
 > 
-> 	while :
-> 	do
-> 		time sh -c "dd if=/dev/zero of=bigfile bs=8M count=256 ; sync"
-> 	done
-> 
-> and even really small fsync's end up being at the end of all that 
-> unrelated activity, and you see things like
-> 
->     fsync(7)                                = 0 <32.756308>
 
-Hmm. So I decided to try with "data=writeback" to see if it really makes 
-that big of a difference. It does help, but I still easily trigger 
-multi-second pauses:
+I had run a few tests against this...the assumption was that since ext3
+doesn't have writepages I should be able to easily show using WRITE_SYNC
+made for fewer merges and lower performance.  But, the write cache on my
+array happily ate the smaller requests and came out just as fast.
 
-   fsync(4)                                = 0 <2.447926>
-   fsync(4)                                = 0 <4.275472>
-   fsync(4)                                = 0 <3.731948>
-   fsync(4)                                = 0 <4.020839>
-   fsync(6)                                = 0 <3.482735>
-   fsync(6)                                = 0 <5.819923>
+So, your sqlite example made me think of something different:
 
-even though the system _should_ be able to write back the 'bigfile' 
-datablocks without any ordering constraint on the fsync.
+mkfs.ext3 /dev/sdb
+mount /dev/sdb /mnt
+cd /mnt
+tar xf /local/linux-2.6.tar
+sync
+sync
+sync
+echo 3 > /proc/sys/vm/drop_caches
 
-So at a guess, it now avoids some nasty journal writing ordering issue 
-where it has to wait for the previous transaction, and it's probably now 
-purely an IO ordering issue.
+# step one, start an O_SYNC writer to trigger lots of WRITE_SYNC
+# this 32GB file is big enough that my drive can't finish it before the
+# tar is done.
+dd if=/dev/zero of=/mnt/foo bs=1M count=32000 oflag=sync &
 
-This is all with your ext3 work, btw. But I also added "rm bigfile" at the 
-end of the loop (so that it shouldn't trigge any "write out bigfile early" 
-logic), and that didn't seem to make any difference. 
+# step two, time how long it takes to read the linux-2.6 dir
+# from above
+time tar cf /dev/zero /mnt/linux-2.6 &
+wait %2
+kill %1
 
-Are we perhaps ending up doing those regular 'bigfile' writes as 
-WRITE_SYNC, just because of the global "sync()" call? That's probably a 
-bad idea. A "sync" is about pure throughput. It's not about latency like 
-"fsync()" is.
+/local/linux-2.6.tar is a full kernel tree after compiling with
+debuginfo turned on and including the mercurial history files.  It has
+2.2GB of files.  The goal here is to time how long it takes to read the
+big directory tree in the face of a writer doing constant WRITE_SYNC
+writes.  Time to read the directory tree:
 
-		Linus
+With Ted's ext3 patches: 8m2s
+Plain 2.6.29:            4m9s
+
+-chris
+
+
