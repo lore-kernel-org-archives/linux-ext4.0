@@ -1,65 +1,166 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/4] ext3: Add replace-on-rename hueristics for data=writeback mode
-Date: Fri,  3 Apr 2009 03:01:07 -0400
-Message-ID: <1238742067-30814-5-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/4] ext3: Use WRITE_SYNC for commits which are caused by fsync()
+Date: Fri,  3 Apr 2009 03:01:05 -0400
+Message-ID: <1238742067-30814-3-git-send-email-tytso@mit.edu>
 References: <1238742067-30814-1-git-send-email-tytso@mit.edu>
  <1238742067-30814-2-git-send-email-tytso@mit.edu>
- <1238742067-30814-3-git-send-email-tytso@mit.edu>
- <1238742067-30814-4-git-send-email-tytso@mit.edu>
 Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>,
 	Theodore Ts'o <tytso@mit.edu>
 To: torvalds@linuxfoundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:36445 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:36446 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750830AbZDCHBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751334AbZDCHBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 3 Apr 2009 03:01:11 -0400
-In-Reply-To: <1238742067-30814-4-git-send-email-tytso@mit.edu>
+In-Reply-To: <1238742067-30814-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In data=writeback mode, start an asynchronous flush when renaming a
-file on top of an already-existing file.  This lowers the probability
-of data loss in the case of applications that attempt to replace a
-file via using rename().
+If a commit is triggered by fsync(), set a flag indicating the journal
+blocks associated with the transaction should be flushed out using
+WRITE_SYNC.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Acked-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext3/namei.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+ fs/jbd/commit.c      |   23 +++++++++++++++--------
+ fs/jbd/transaction.c |    2 ++
+ include/linux/jbd.h  |    5 +++++
+ 3 files changed, 22 insertions(+), 8 deletions(-)
 
-diff --git a/fs/ext3/namei.c b/fs/ext3/namei.c
-index 4db4ffa..ab98a66 100644
---- a/fs/ext3/namei.c
-+++ b/fs/ext3/namei.c
-@@ -2265,7 +2265,7 @@ static int ext3_rename (struct inode * old_dir, struct dentry *old_dentry,
- 	struct inode * old_inode, * new_inode;
- 	struct buffer_head * old_bh, * new_bh, * dir_bh;
- 	struct ext3_dir_entry_2 * old_de, * new_de;
--	int retval;
-+	int retval, flush_file = 0;
+diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
+index 3fbffb1..f8077b9 100644
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -20,6 +20,7 @@
+ #include <linux/slab.h>
+ #include <linux/mm.h>
+ #include <linux/pagemap.h>
++#include <linux/bio.h>
  
- 	old_bh = new_bh = dir_bh = NULL;
- 
-@@ -2401,6 +2401,8 @@ static int ext3_rename (struct inode * old_dir, struct dentry *old_dentry,
- 		ext3_mark_inode_dirty(handle, new_inode);
- 		if (!new_inode->i_nlink)
- 			ext3_orphan_add(handle, new_inode);
-+		if (ext3_should_writeback_data(new_inode))
-+			flush_file = 1;
- 	}
- 	retval = 0;
- 
-@@ -2409,6 +2411,8 @@ end_rename:
- 	brelse (old_bh);
- 	brelse (new_bh);
- 	ext3_journal_stop(handle);
-+	if (retval == 0 && flush_file)
-+		filemap_flush(old_inode->i_mapping);
- 	return retval;
+ /*
+  * Default IO end handler for temporary BJ_IO buffer_heads.
+@@ -171,14 +172,15 @@ static int journal_write_commit_record(journal_t *journal,
+ 	return (ret == -EIO);
  }
  
+-static void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
++static void journal_do_submit_data(struct buffer_head **wbuf, int bufs,
++				   int write_op)
+ {
+ 	int i;
+ 
+ 	for (i = 0; i < bufs; i++) {
+ 		wbuf[i]->b_end_io = end_buffer_write_sync;
+ 		/* We use-up our safety reference in submit_bh() */
+-		submit_bh(WRITE, wbuf[i]);
++		submit_bh(write_op, wbuf[i]);
+ 	}
+ }
+ 
+@@ -186,7 +188,8 @@ static void journal_do_submit_data(struct buffer_head **wbuf, int bufs)
+  *  Submit all the data buffers to disk
+  */
+ static int journal_submit_data_buffers(journal_t *journal,
+-				transaction_t *commit_transaction)
++				       transaction_t *commit_transaction,
++				       int write_op)
+ {
+ 	struct journal_head *jh;
+ 	struct buffer_head *bh;
+@@ -225,7 +228,7 @@ write_out_data:
+ 				BUFFER_TRACE(bh, "needs blocking lock");
+ 				spin_unlock(&journal->j_list_lock);
+ 				/* Write out all data to prevent deadlocks */
+-				journal_do_submit_data(wbuf, bufs);
++				journal_do_submit_data(wbuf, bufs, write_op);
+ 				bufs = 0;
+ 				lock_buffer(bh);
+ 				spin_lock(&journal->j_list_lock);
+@@ -256,7 +259,7 @@ write_out_data:
+ 			jbd_unlock_bh_state(bh);
+ 			if (bufs == journal->j_wbufsize) {
+ 				spin_unlock(&journal->j_list_lock);
+-				journal_do_submit_data(wbuf, bufs);
++				journal_do_submit_data(wbuf, bufs, write_op);
+ 				bufs = 0;
+ 				goto write_out_data;
+ 			}
+@@ -286,7 +289,7 @@ write_out_data:
+ 		}
+ 	}
+ 	spin_unlock(&journal->j_list_lock);
+-	journal_do_submit_data(wbuf, bufs);
++	journal_do_submit_data(wbuf, bufs, write_op);
+ 
+ 	return err;
+ }
+@@ -315,6 +318,7 @@ void journal_commit_transaction(journal_t *journal)
+ 	int first_tag = 0;
+ 	int tag_flag;
+ 	int i;
++	int write_op = WRITE;
+ 
+ 	/*
+ 	 * First job: lock down the current transaction and wait for
+@@ -347,6 +351,8 @@ void journal_commit_transaction(journal_t *journal)
+ 	spin_lock(&journal->j_state_lock);
+ 	commit_transaction->t_state = T_LOCKED;
+ 
++	if (commit_transaction->t_synchronous_commit)
++		write_op = WRITE_SYNC;
+ 	spin_lock(&commit_transaction->t_handle_lock);
+ 	while (commit_transaction->t_updates) {
+ 		DEFINE_WAIT(wait);
+@@ -431,7 +437,8 @@ void journal_commit_transaction(journal_t *journal)
+ 	 * Now start flushing things to disk, in the order they appear
+ 	 * on the transaction lists.  Data blocks go first.
+ 	 */
+-	err = journal_submit_data_buffers(journal, commit_transaction);
++	err = journal_submit_data_buffers(journal, commit_transaction,
++					  write_op);
+ 
+ 	/*
+ 	 * Wait for all previously submitted IO to complete.
+@@ -660,7 +667,7 @@ start_journal_io:
+ 				clear_buffer_dirty(bh);
+ 				set_buffer_uptodate(bh);
+ 				bh->b_end_io = journal_end_buffer_io_sync;
+-				submit_bh(WRITE, bh);
++				submit_bh(write_op, bh);
+ 			}
+ 			cond_resched();
+ 
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index e6a1174..ed886e6 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -1440,6 +1440,8 @@ int journal_stop(handle_t *handle)
+ 		}
+ 	}
+ 
++	if (handle->h_sync)
++		transaction->t_synchronous_commit = 1;
+ 	current->journal_info = NULL;
+ 	spin_lock(&journal->j_state_lock);
+ 	spin_lock(&transaction->t_handle_lock);
+diff --git a/include/linux/jbd.h b/include/linux/jbd.h
+index 64246dc..2c69431 100644
+--- a/include/linux/jbd.h
++++ b/include/linux/jbd.h
+@@ -552,6 +552,11 @@ struct transaction_s
+ 	 */
+ 	int t_handle_count;
+ 
++	/*
++	 * This transaction is being forced and some process is
++	 * waiting for it to finish.
++	 */
++	int t_synchronous_commit:1;
+ };
+ 
+ /**
 -- 
 1.5.6.3
 
