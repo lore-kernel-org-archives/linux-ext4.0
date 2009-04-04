@@ -1,56 +1,57 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH e2fsprogs] Add ZFS detection to libblkid
-Date: Sat, 04 Apr 2009 16:46:31 -0500
-Message-ID: <49D7D537.50502@redhat.com>
-References: <1212171647.7508.46.camel@localhost> <49D6C844.5070604@redhat.com> <49D75AD1.7060101@redhat.com> <20090404212507.GC3199@webber.adilger.int>
+From: Linus Torvalds <torvalds@linux-foundation.org>
+Subject: Re: [GIT PULL] Ext3 latency fixes
+Date: Sat, 4 Apr 2009 15:13:13 -0700 (PDT)
+Message-ID: <alpine.LFD.2.00.0904041448090.4023@localhost.localdomain>
+References: <1238742067-30814-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain> <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain> <alpine.LFD.2.00.0904031329410.7007@localhost.localdomain>
+ <20090404135719.GA9812@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Ricardo M. Correia" <Ricardo.M.Correia@sun.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Karel Zak <kzak@redhat.com>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Jens Axboe <jens.axboe@oracle.com>,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37602 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751511AbZDDVqi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 4 Apr 2009 17:46:38 -0400
-In-Reply-To: <20090404212507.GC3199@webber.adilger.int>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:59306 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754090AbZDDWPp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Apr 2009 18:15:45 -0400
+In-Reply-To: <20090404135719.GA9812@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Apr 04, 2009  08:04 -0500, Eric Sandeen wrote:
->> And from another report, another user's zfs partition:
->>
->> # hexdump -C first_400K | grep "0c b1 07 b0 f5 02 00 00"
->> # hexdump -C first_400K | grep "00 00 02 f5 b0 07 b1 0c"
->> # hexdump -C first_400K | grep "0c b1 ba 00"
->> 00015e30  30 e8 ff ff 85 c0 5b 75  48 8b 06 35 0c b1 ba 00
->>
->> Should we be looking for 0x00babloc at offset 00015e30?
+
+
+On Sat, 4 Apr 2009, Theodore Tso wrote:
 > 
-> In probe.c I see the magic (that I've been assuming is correct, because
-> it isn't really that easy to read):
-> 
->   { "zfs",       8,      0,  8, "\0\0\x02\xf5\xb0\x07\xb1\x0c", probe_zfs },
->   { "zfs",       8,      0,  8, "\x0c\xb1\x07\xb0\xf5\x02\0\0", probe_zfs },
->   { "zfs",     264,      0,  8, "\0\0\x02\xf5\xb0\x07\xb1\x0c", probe_zfs },
->   { "zfs",     264,      0,  8, "\x0c\xb1\x07\xb0\xf5\x02\0\0", probe_zfs },
+> Using ext3 data=writeback, your "write big (2GB) file and sync" as the
+> background workload, and fsync-tester, I was able to reduce the
+> latency down to under 1 second...
 
-Yep and that's different from the patch you originally submitted, Andreas...
+Hmm. I can certainly see a very noticeable improvement.
 
-> but looking at this I have no idea what this magic value is supposed
-> to represent, from reading the ondiskformat0822.pdf (ZFS spec) document.
+I could still see 1-2s fsync() delays for my MUA test (and seem to have 
+seen a 4s one once too). But most were all 'quite noticeable stutters', 
+and very seldom do they go into the 'ooh, that's really painful' stage.
 
-VDEV_BOOT_MAGIC ...
+And yes, anticipatory seems to be quite noticeably better than cfq here. 
+With cfq I got a few two-second delays on 'ftruncate()' too (probably 
+because of your new serialization code?), and the longest fsync() delay 
+was over 7 seconds. That was definitely solidly in the "painful" category.
 
-  333 /* ZFS boot block */
-  334 #define VDEV_BOOT_MAGIC         0x2f5b007b10cULL
+(Jens - my test-case is not the exact same fsycn() test that Ted uses: 
+it's really just me being in my MUA editing an email, and doing that 
 
-but I can't find much in that spec about where it's supposed to be, at
-least from a very quick skim.
+	while : ; do time sh -c "dd if=/dev/zero of=bigfile bs=8M count=256 ; sync; rm bigfile"; done
 
-I'll let you IBM er... SUN guys sort it out  ;)
+in another window. My MUA does these save-files ever minute or so, and 
+does a 'fsync()' after writing that (small) file. If the fsync() takes 
+more than half a second, I can definitely notice. If it takes 1-2 seconds, 
+it's a big stutter, where keyboard auto-repeat when moving around really 
+hurts (ie I don't see how it moves).
 
--Eric
+If it takes 5+ seconds, it feels really bad, and as if the whole email 
+client had just died. 
+
+Yeah, it's a nasty test. 
+
+		Linus
