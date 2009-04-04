@@ -1,63 +1,132 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH e2fsprogs] Add ZFS detection to libblkid
-Date: Fri, 03 Apr 2009 21:39:00 -0500
-Message-ID: <49D6C844.5070604@redhat.com>
-References: <1212171647.7508.46.camel@localhost>
+From: Kevin Shanahan <kmshanah@ucwb.org.au>
+Subject: Re: More ext4 corruption
+Date: Sat, 4 Apr 2009 21:22:26 +1030
+Message-ID: <20090404105226.GC5436@kulgan>
+References: <20090403221508.GA5436@kulgan> <49D69AD8.6070808@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Andreas Dilger <adilger@Sun.COM>
-To: "Ricardo M. Correia" <Ricardo.M.Correia@Sun.COM>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:43360 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753155AbZDDCjJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 3 Apr 2009 22:39:09 -0400
-In-Reply-To: <1212171647.7508.46.camel@localhost>
+Received: from bowden.ucwb.org.au ([203.122.237.119]:57527 "EHLO
+	mail.ucwb.org.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752756AbZDDKwi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Apr 2009 06:52:38 -0400
+Content-Disposition: inline
+In-Reply-To: <49D69AD8.6070808@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ricardo M. Correia wrote:
-> This patch adds ZFS filesystem detection to libblkid.
->=20
-> It probes for VDEV_BOOT_MAGIC in the first 2 ZFS labels in big-endian
-> and little-endian formats.
-> Unfortunately the probe table doesn't support probing from the end of
-> the device, otherwise we could also probe in the 3rd and 4th labels (=
-in
-> case the first 2 labels were accidentally overwritten)..
->=20
-> Eventually we would set the =EF=BB=BFUUID from the ZFS pool GUID and =
-the LABEL tag
-> from the pool name, but that requires parsing an XDR encoding of the =
-pool
-> configuration which is not trivial.
+On Fri, Apr 03, 2009 at 06:25:12PM -0500, Eric Sandeen wrote:
+> Kevin Shanahan wrote:
+> > Hi,
+> > 
+> > I'm seeing some more corruption on our ext4 filesystems. Last night's
+> > backup job had these errors:
+> > 
+> ...
+> 
+> > rsync: readlink "/srv/samba/local/apps/CIM8/Release-Notes/rc_200410_01.htm" failed: Input/output error (5)
+> > rsync: readlink "/srv/samba/local/apps/CIM8/Release-Notes/rc_200709_01.pdf" failed: Input/output error (5)
+> > IO error encountered -- skipping file deletion
+> > skipping non-regular file "apps/CIM8/Release-Notes/rb_200803_02.pdf"
+> > rsync error: some files could not be transferred (code 23) at main.c(1524) [generator=3.0.3]
+> > setfacl: apps/CIM8/Release-Notes/rb_200803_02.pdf: No such file or directory
+> > 
+> > The "apps/Gestalt.Net/..." error is an old one and I need to chase
+> > that up some more[1]. The corruption in the "Release-Notes" directory
+> > is new last night.
+> > 
+> > My initial information gathering is below. Let me know what else might
+> > be helpful, but I'll have to fsck before Monday.
+> 
+> Any kernel messages this time?  You could also run e2fsck -n and provide
+> that output (it should not actually modify anything)
 
-Hi Ricardo:
+Yes, similar to before:
 
-I've got a bug on fedora now where a partition w/ zfs on it is being
-recognized as ext3.  VDEV_BOOT_MAGIC isn't anywhere in the first 1M of
-the device, though an old ext3 superblock is intact.  :(
+Apr  4 00:06:02 hermes /USR/SBIN/CRON[10898]: (root) CMD (   /usr/local/bin/rsync-backup-all.sh)
+Apr  4 00:06:26 hermes kernel: attempt to access beyond end of device
+Apr  4 00:06:26 hermes kernel: dm-0: rw=0, want=946232834916360, limit=2147483648
+Apr  4 00:06:26 hermes kernel: init_special_inode: bogus i_mode (114362)
+Apr  4 00:06:26 hermes kernel: attempt to access beyond end of device
+Apr  4 00:06:26 hermes kernel: dm-0: rw=0, want=1066184788148360, limit=2147483648
+Apr  4 00:06:27 hermes kernel: attempt to access beyond end of device
+Apr  4 00:06:27 hermes kernel: dm-0: rw=0, want=946232834916360, limit=2147483648
+Apr  4 00:06:27 hermes kernel: attempt to access beyond end of device
+Apr  4 00:06:27 hermes kernel: dm-0: rw=0, want=1066184788148360, limit=2147483648
 
-# hexdump -C sda2-first-1M | grep "0c b1 07 b0 f5 02 00 00"
-# hexdump -C sda2-first-1M | grep "00 00 02 f5 b0 07 b1 0c"
-#
+e2fsck not looking so good either...
 
-(so a plea - can you guys change mkfs to zero old signatures?  maybe
-256k at the front & end of the device in question?)
+hermes:~# e2fsck -nfv /dev/dm-0
+e2fsck 1.41.3 (12-Oct-2008)
+Pass 1: Checking inodes, blocks, and sizes
+Inode 369 is in use, but has dtime set.  Fix? no
 
-there is apparently an uberblock signature in it though:
+Inode 369 has a extra size (11147) which is invalid
+Fix? no
 
-# hexdump -C sda2-first-1M | grep "0c b1 ba 00"
-00015e30  30 e8 ff ff 85 c0 5b 75  48 8b 06 35 0c b1 ba 00
+Inode 369 has compression flag set on filesystem without compression support.  Clear? no
 
-does blkid need more work here, I guess?
+Inode 369 has INDEX_FL flag set but is not a directory.
+Clear HTree index? no
 
-Thanks,
--Eric
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+HTREE directory inode 369 has an invalid root node.
+Clear HTree index? no
+
+Inode 369, i_size is 8584410553169684654, should be 0.  Fix? no
+
+Inode 369, i_blocks is 469458281, should be 0.  Fix? no
+
+Inode 370 is in use, but has dtime set.  Fix? no
+
+Inode 371 is in use, but has dtime set.  Fix? no
+
+Inode 371 has imagic flag set.  Clear? no
+
+Inode 371 has a extra size (8644) which is invalid
+Fix? no
+
+Inode 372 is in use, but has dtime set.  Fix? no
+
+Inode 372 has a extra size (18912) which is invalid
+Fix? no
+
+Inode 373 is in use, but has dtime set.  Fix? no
+
+Inode 373 has a extra size (16777) which is invalid
+Fix? no
+
+Inode 374 is in use, but has dtime set.  Fix? no
+
+Inode 374 has a extra size (50665) which is invalid
+Fix? no
+
+Inode 375 is in use, but has dtime set.  Fix? no
+
+Inode 375 has a extra size (36893) which is invalid
+Fix? no
+
+Inode 375 has INDEX_FL flag set but is not a directory.
+Clear HTree index? no
+
+HTREE directory inode 375 has an invalid root node.
+Clear HTree index? no
+
+Inode 375, i_size is 14681128715225296171, should be 0.  Fix? no
+
+Inode 375, i_blocks is 2975024509, should be 0.  Fix? no
+
+Inode 376 is in use, but has dtime set.  Fix? no
+
+Inode 376 has a extra size (57416) which is invalid
+Fix? no
+
+Error while reading over extent tree in inode 376: Corrupt extent header
+Clear inode? no
+
+Segmentation fault
+hermes:~#
+
+Cheers,
+Kevin.
