@@ -1,49 +1,65 @@
-From: Arjan van de Ven <arjan@infradead.org>
-Subject: Re: [GIT PULL] Ext3 latency fixes
-Date: Sat, 4 Apr 2009 13:56:20 -0700
-Message-ID: <20090404135620.79d8cb3e@infradead.org>
-References: <1238742067-30814-1-git-send-email-tytso@mit.edu>
-	<alpine.LFD.2.00.0904031110420.19690@localhost.localdomain>
-	<alpine.LFD.2.00.0904031150190.4015@localhost.localdomain>
-	<alpine.LFD.2.00.0904031329410.7007@localhost.localdomain>
-	<20090404135719.GA9812@mit.edu>
-	<20090404151649.GE5178@kernel.dk>
-	<alpine.LFD.2.00.0904040854470.3915@localhost.localdomain>
-	<20090404173412.GF5178@kernel.dk>
+From: Alexander Beregalov <a.beregalov@gmail.com>
+Subject: Re: next-20090310: ext4 hangs
+Date: Sun, 5 Apr 2009 01:09:31 +0400
+Message-ID: <a4423d670904041409i271c8abbyf5b74d656eeb363f@mail.gmail.com>
+References: <20090325151516.GB14881@atrey.karlin.mff.cuni.cz>
+	 <a4423d670903250829w5e9304a7rce24f4220379620f@mail.gmail.com>
+	 <20090325161556.GP23439@duck.suse.cz>
+	 <a4423d670903251007r72058ca8m28275c1433ab2706@mail.gmail.com>
+	 <20090325194316.GQ23439@duck.suse.cz>
+	 <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com>
+	 <20090331100150.GF11808@duck.suse.cz>
+	 <a4423d670903310307i7acd31f0r4836beae14cfb92d@mail.gmail.com>
+	 <20090331123307.GG11808@duck.suse.cz>
+	 <a4423d670904021150p5fcd1f82wefa68c839b2869a1@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Jens Axboe <jens.axboe@oracle.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from casper.infradead.org ([85.118.1.10]:59336 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752622AbZDDUy4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Apr 2009 16:54:56 -0400
-In-Reply-To: <20090404173412.GF5178@kernel.dk>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso@mit.edu>,
+	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
+	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+	sparclinux@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-next-owner@vger.kernel.org>
+In-Reply-To: <a4423d670904021150p5fcd1f82wefa68c839b2869a1@mail.gmail.com>
+Sender: linux-next-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Sat, 4 Apr 2009 19:34:12 +0200
-Jens Axboe <jens.axboe@oracle.com> wrote:
+2009/4/2 Alexander Beregalov <a.beregalov@gmail.com>:
+>>> > =C2=A0I'm helpless here. I don't see how we can miss a wakeup (pl=
+us you seem to
+>>> > be the only one reporting the bug). Could you please compile and =
+test the kernel
+>>> > with the attached patch? It will print to kernel log when we go t=
+o sleep
+>>> > waiting for inode commit and when we send wakeups etc. When you h=
+it the
+>>> > deadlock, please send me your kernel log. It should help with deb=
+ugging why do
+>>> > we miss the wakeup. Thanks.
+>>>
+>>> Which patch?
+>> =C2=A0Ups. Forgot to attach ;).
+>
+> Cannot reproduce it on current 2.6.29-git. Strange.
+> It should already have all ext4/jbd2 patches from next-20090310,
+> but anyway it happened with 2.6.29-rc8 also.
+> I ran dbench in cycle on two indentical hosts for more than 24 hours
+> with no hang tasks.
+>
+> I will try 2.6.29.
 
-> > Latency is more important than throughput. It's that simple.
-> 
-> It's really not that simple, otherwise the schedulers would be much
-> simpler. It's pretty easy to get good latency if you disregard any
-> throughput concerns, 
+I cannot reproduce it with vanilla v2.6.29.
+It seems the problem has gone.
+Thanks Jan.
 
-I'd be very interested in a scheduler like that.....
-How much work would it be to make it ?
-
-(if nothing else it would be a good number to have "should be within
-50% of the perfect one for the tradeoff")
-
-
--- 
-Arjan van de Ven 	Intel Open Source Technology Centre
-For development, discussion and tips for power savings, 
-visit http://www.lesswatts.org
+The patch output:
+[133886.375874] JBD2: Waiting for ino 1062
+[133886.376372] JBD2: Waking up sleeper on ino 1062
+[133886.376824] JBD2: Woken on ino 1062
+[134611.108451] JBD2: Waiting for ino 1102
+[134611.108903] JBD2: Waking up sleeper on ino 1102
+[134611.109787] JBD2: Woken on ino 1102
+[134611.132912] JBD2: Waiting for ino 1074
+[134611.133311] JBD2: Waking up sleeper on ino 1074
+[134611.133707] JBD2: Woken on ino 1074
