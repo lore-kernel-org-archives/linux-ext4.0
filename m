@@ -1,47 +1,53 @@
-From: Linus Torvalds <torvalds@linux-foundation.org>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [GIT PULL] Ext3 latency fixes
-Date: Sat, 4 Apr 2009 11:10:03 -0700 (PDT)
-Message-ID: <alpine.LFD.2.00.0904041106510.3915@localhost.localdomain>
-References: <1238742067-30814-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain> <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain> <alpine.LFD.2.00.0904031329410.7007@localhost.localdomain> <20090404135719.GA9812@mit.edu>
- <20090404151649.GE5178@kernel.dk> <alpine.LFD.2.00.0904040854470.3915@localhost.localdomain> <20090404173412.GF5178@kernel.dk> <alpine.LFD.2.00.0904041039230.3915@localhost.localdomain> <20090404180108.GH5178@kernel.dk>
+Date: Sat, 4 Apr 2009 15:18:26 -0400
+Message-ID: <20090404191826.GE9812@mit.edu>
+References: <1238742067-30814-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain> <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain> <alpine.LFD.2.00.0904031329410.7007@localhost.localdomain> <20090404135719.GA9812@mit.edu> <20090404151649.GE5178@kernel.dk>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Theodore Tso <tytso@mit.edu>,
+Content-Type: text/plain; charset=us-ascii
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:50752 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751291AbZDDSMw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Apr 2009 14:12:52 -0400
-In-Reply-To: <20090404180108.GH5178@kernel.dk>
+Received: from thunk.org ([69.25.196.29]:33033 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752430AbZDDTSe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 4 Apr 2009 15:18:34 -0400
+Content-Disposition: inline
+In-Reply-To: <20090404151649.GE5178@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Sat, Apr 04, 2009 at 05:16:50PM +0200, Jens Axboe wrote:
+> Big nack on this patch. Ted, this is EXACTLY where I told you we saw big
+> write regressions (sqlite performance drops by a factor of 4-5). Do a
+> git log on fs/buffer.c and see the original patch (which does what your
+> patch does) and the later revert. 
 
+You mean this revert, right?
 
-On Sat, 4 Apr 2009, Jens Axboe wrote:
-> 
-> > Also, I may be odd, but I really do think latency is more important than 
-> > throughput. When my disk has latencies in the sub-milliseconds, I simply 
-> > do not think it is _acceptable_ to have hickups that affect my workload in 
-> > human-visible terms. 
-> 
-> Not everyone has an Intel SSD.
+commit 78f707bfc723552e8309b7c38a8d0cc51012e813
+Author: Jens Axboe <jens.axboe@oracle.com>
+Date:   Tue Feb 17 13:59:08 2009 +0100
 
-The thing is, I know for a fact that the hickups were much worse _before_ 
-I had the Intel SSD.
+    block: revert part of 18ce3751ccd488c78d3827e9f6bf54e6322676fb
+    
+    The above commit added WRITE_SYNC and switched various places to using
+    that for committing writes that will be waited upon immediately after
+    submission. However, this causes a performance regression with AS and CFQ
+    for ext3 at least, since sync_dirty_buffer() will submit some writes with
+    WRITE_SYNC while ext3 has sumitted others dependent writes without the sync
+    flag set. This causes excessive anticipation/idling in the IO scheduler
+    because sync and async writes get interleaved, causing a big performance
+    regression for the below test case (which is meant to simulate sqlite
+    like behaviour)....
 
-With the SSD, I have to work a lot more to get them. Back when I had 
-regular rotational disks, I definitely did not need to do any 2GB file 
-creation at all. Just standard "yum update" would make my mail reader 
-pause.
+OK, let me test things out first, but note that with the changes that
+Linus has already accepted, this may not be an issue --- since we've
+now fixed ext3 to submit those dependent writes with the SYNC flag
+now.  So I'm not sure the performance regression still applies, but
+I'll test using the test case supplied in the rest of the commit log
+and get back to you.
 
-Yeah, it's just for a short time, but it's very annoying. One second is 
-quite noticeable when I type something, and it doesn't show up on the 
-screen ("What? My Nehalem cannot keep up with my _typing_?"). 2-3 seconds 
-it really feels bad. And by the time it takes 5+ seconds, I start moving 
-my mouse around just to see whether the computer crashed.
-
-		Linus
+						- Ted
