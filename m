@@ -1,141 +1,51 @@
-From: Jens Axboe <jens.axboe@oracle.com>
+From: Linus Torvalds <torvalds@linux-foundation.org>
 Subject: Re: [GIT PULL] Ext3 latency fixes
-Date: Sat, 4 Apr 2009 17:16:50 +0200
-Message-ID: <20090404151649.GE5178@kernel.dk>
+Date: Sat, 4 Apr 2009 08:57:28 -0700 (PDT)
+Message-ID: <alpine.LFD.2.00.0904040854470.3915@localhost.localdomain>
 References: <1238742067-30814-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain> <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain> <alpine.LFD.2.00.0904031329410.7007@localhost.localdomain> <20090404135719.GA9812@mit.edu>
+ <20090404151649.GE5178@kernel.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Theodore Tso <tytso@mit.edu>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([93.163.65.50]:37458 "EHLO kernel.dk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750780AbZDDPQx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 4 Apr 2009 11:16:53 -0400
-Content-Disposition: inline
-In-Reply-To: <20090404135719.GA9812@mit.edu>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:56232 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752125AbZDDP76 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 4 Apr 2009 11:59:58 -0400
+In-Reply-To: <20090404151649.GE5178@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 04 2009, Theodore Tso wrote:
-> On Fri, Apr 03, 2009 at 01:41:54PM -0700, Linus Torvalds wrote:
-> > 
-> > Hmm. So I decided to try with "data=writeback" to see if it really makes 
-> > that big of a difference. It does help, but I still easily trigger 
-> > multi-second pauses
-> 
-> Using ext3 data=writeback, your "write big (2GB) file and sync" as the
-> background workload, and fsync-tester, I was able to reduce the
-> latency down to under 1 second...
-> 
-> fsync time: 0.1717
-> fsync time: 0.0205
-> fsync time: 0.1814
-> fsync time: 0.7408
-> fsync time: 0.1955
-> fsync time: 0.0327
-> fsync time: 0.0456
-> fsync time: 0.0563
-> 
-> ...by doing two things: (1) Applying the attached patch, which fixes
-> one last critical place where we were using WRITE instead of
-> WRITE_SYNC --- the commit record was being written by
-> sync_dirty_buffer(), and this of _all_ places needs to use WRITE_SYNC,
-> since it waits for the buffer to be written write after submitting the
-> I/O, and (2) using the anticipatory I/O scheduler instead of the cfq
-> I/O scheduler.
-> 
-> (1) brought things down from 2-3.5 seconds on my system to 1-2
-> seconds, and (2) brought things down to what you see above.  I think
-> what is going on with the cfq scheduler is that it's using time slices
-> to make sure sync and async operations never completely starve each
-> other out, and in this case we need to tune the I/O scheduling
-> parameters so that for this workload, the synchronous operations don't
-> end up getting impeded by the asynchronous writes caused by background
-> "write big file and sync" task.
-> 
-> In any case, Jens may want to look at this test case (ext3
-> data=writeback, 'while : ; do time sh -c "dd if=/dev/zero of=bigfile
-> bs=8M count=256 ; sync"; done', and fsync-tester) as a good way to see
-> how cfq might be improved.
-> 
-> On another thread, it's been commented that there are still workloads
-> for which people are quietly switching from CFQ to AS, and this is
-> bad, because it causes us not to try to figure out why our default I/O
-> scheduler still as these 1% of cases where people need to use another
-> scheduler.  Well, here's one such case which is relatively easy to
-> reproduce.
-> 
-> > Are we perhaps ending up doing those regular 'bigfile' writes as 
-> > WRITE_SYNC, just because of the global "sync()" call? That's probably a 
-> > bad idea. A "sync" is about pure throughput. It's not about latency like 
-> > "fsync()" is.
-> 
-> Well, at least on my system where I did this round of testing (4gig
-> X61s with a 5400 RPM laptop drive), most of the time we weren't
-> writing the bigfile writes because of the sync, but because dd and
-> pdflush processes was trying to flush out the dirty pages from the big
-> write operation.  At the moment where "dd" completes and the "sync"
-> command is executed, the fsync latency jumped up to about 4-5 seconds
-> before this last round of changes.  After adding the attached patch
-> and switching to the AS I/O scheduler, at the moment of the sync the
-> fsync latency was just over a second (1.1 to 1.2 seconds).  The rest
-> of the time we are averaging between a 1/4 and a 1/3 of a second, with
-> rare fsync latency spikes up to about 3/4 of a second, as show at the
-> beginning of this message.
-> 
-> (Maybe on a system with a lot more memory, the dirty pages don't start
-> getting flushed to disk until the sync command, but that's not what
-> I'm seeing on my 4 gig laptop.)
-> 
-> In answer to your question, "sync" does the writes in two passes;
-> first it pushes out writes with wbc.sync_mode set to WB_SYNC_NONE, and
-> then it calls the page writeback routines a second time with
-> WB_SYNC_ALL.  So most of the writes should go out with WRITE, except
-> that the page writeback routines aren't as aggressive about pushing
-> out _all_ pages in WB_SYNC_NONE, so I believe some of the pages would
-> still be written on the WB_SYNC_ALL, and thus would go out using
-> WRITE_SYNc.  This is based on 2-3 month old memory of how things
-> worked in the page-writeback routines, which is the last time I traced
-> the very deep call trees involved in this area.  I'd have to run a
-> blktrace experiment to see for sure how many of the writes were going
-> out as WRITE vs. WRITE_SYNC in the case of the 'sync' command.
-> 
-> In any case, I recommend you take the following attached patch, and
-> then try out ext3 data=writeback with anticipatory I/O scheduler.
-> Hopefully you'll be pleased with the results.
-> 
-> 							- Ted
-> 
-> From 6d293d2aa42d43c120f113bde55f7b0d6f3f35ae Mon Sep 17 00:00:00 2001
-> From: Theodore Ts'o <tytso@mit.edu>
-> Date: Sat, 4 Apr 2009 09:17:38 -0400
-> Subject: [PATCH] sync_dirty_buffer: Use WRITE_SYNC instead of WRITE
-> 
-> The sync_dirty_buffer() function submits a buffer for write, and then
-> synchronously waits for it.  It clearly should use WRITE_SYNC instead
-> of WRITE.  This significantly reduces ext3's fsync() latency when
-> there is a huge background task writing data asyncronously in the
-> background, since ext3 uses sync_dirty_buffer() to write the commit
-> block.
 
-Sorry for not commenting on the rest of your email, I don't have a lot
-of spare time on my hands. I'll get to that.
 
-Big nack on this patch. Ted, this is EXACTLY where I told you we saw big
-write regressions (sqlite performance drops by a factor of 4-5). Do a
-git log on fs/buffer.c and see the original patch (which does what your
-patch does) and the later revert. No idea why you are now suggestion
-making that exact change?!
+On Sat, 4 Apr 2009, Jens Axboe wrote:
+> 
+> Big nack on this patch. Ted, this is EXACTLY where I told you we saw big
+> write regressions (sqlite performance drops by a factor of 4-5). Do a
+> git log on fs/buffer.c and see the original patch (which does what your
+> patch does) and the later revert. No idea why you are now suggestion
+> making that exact change?!
 
-Low latency is nice, but not at the cost of 4-5x throughput for real
-world cases. Lets please try and keep a reasonable focus here, things
-need to be tested widely before we go and sprinkle sync magic
-everywhere. I can't rule out that CFQ will need adjusting, cutting down
-to basics it looks at sync vs async like AS does.
+Jens, if I can re-create the 'fsync' times (I haven't yet), then the 
+default scheduler _will_ be switched to AS.
 
--- 
-Jens Axboe
+> Low latency is nice, but not at the cost of 4-5x throughput for real
+> world cases.
 
+I'm sorry, but that fsync thing _is_ a real-world case, and it's the one 
+that a hell of a lot more people care about than some idiotic sqlite 
+throughput issue.
+
+You have a test-case now. Consider it a priority, or consider CFQ to be a 
+"for crazy servers that only care about throughput".
+
+Quite frankly, the fact that I can see _seconds_ of latencies with a 
+really good SSD is not acceptable. The fact that it is by design is even 
+less so.
+
+Latency is more important than throughput. It's that simple.
+
+			Linus
