@@ -1,66 +1,79 @@
-From: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-Subject: Re: [PATCH] off-by-one in "Add checks to validate extent entries."
-Date: Sun, 05 Apr 2009 12:21:03 +0200
-Message-ID: <49D8860F.6070002@ph.tum.de>
-References: <49D4F217.7050105@ph.tum.de> <20090405032438.GI7553@mit.edu>
+From: Arjan van de Ven <arjan@infradead.org>
+Subject: Re: [GIT PULL] Ext3 latency fixes
+Date: Sun, 5 Apr 2009 08:05:30 -0700
+Message-ID: <20090405080530.0859b9a6@infradead.org>
+References: <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain>
+	<alpine.LFD.2.00.0904031329410.7007@localhost.localdomain>
+	<20090404135719.GA9812@mit.edu>
+	<20090404151649.GE5178@kernel.dk>
+	<alpine.LFD.2.00.0904040854470.3915@localhost.localdomain>
+	<20090404173412.GF5178@kernel.dk>
+	<alpine.LFD.2.00.0904041039230.3915@localhost.localdomain>
+	<20090404180108.GH5178@kernel.dk>
+	<20090404232222.GA7480@mit.edu>
+	<20090404163349.20df1208@infradead.org>
+	<20090405001005.GA7553@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
+Cc: Jens Axboe <jens.axboe@oracle.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hamlet.e18.physik.tu-muenchen.de ([129.187.154.223]:54679 "EHLO
-	hamlet.e18.physik.tu-muenchen.de" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1758474AbZDEKVJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Apr 2009 06:21:09 -0400
-In-Reply-To: <20090405032438.GI7553@mit.edu>
+Received: from casper.infradead.org ([85.118.1.10]:40459 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754052AbZDEPEF (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 5 Apr 2009 11:04:05 -0400
+In-Reply-To: <20090405001005.GA7553@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Thu, Apr 02, 2009 at 07:12:55PM +0200, Thiemo Nagel wrote:
->> Theodore Tso wrote:
->>> I haven't had time yet to check your other patches; could you also
->>> take a quick scan to make sure we have all of the byte-swapping calls
->>> needed for proper big-endian checking, that we're using the correct
->>> __le32 types and not doing any casts?
->> I had a look at all patches I have sent, but I didn't notice anything  
->> suspicious.  While doing that, however I think I found an off-by-one in
->> 56b19868aca856a7d7bf20c3a7a1030e4fd75b2b
+On Sat, 4 Apr 2009 20:10:05 -0400
+Theodore Tso <tytso@mit.edu> wrote:
+
+> On Sat, Apr 04, 2009 at 04:33:49PM -0700, Arjan van de Ven wrote:
+> > > However, the full latency fixes all the writes are synchronous,
+> > > so it must be the case that the delays are caused by the fact
+> > > that queue is getting implicitly unplugged after the synchronous
+> > > write, and the problem is no longer the mixing of WRITE and
+> > > WRITE_SYNC requests as posted in the commit log for 78f707bf.  If
+> > > we remove the automatic unplug for WRITE_SYNC requests, and add
+> > > an explicit unplug where it is needed, that should fix the
+> > > performance regression for this particular sqlite test case. 
+> > 
+> > removing the unplug is bound to be bad; after all we're waiting on
+> > the IO. But maybe it should be "make the unplug a REALLY short
+> > time". At least for rotating storage. For non-rotating .. I'd never
+> > wait.
 > 
-> In the future, could you please remember to include a Signed-off-by:
-> for your patches?
+> Ext3 needs to submit a large number of blocks for writing with
+> WRITE_SYNC priority, without unplugging the queue, until they are all
+> submitted.  Then we want to let things rip.  (Hence the "add an
+> explicit unplug where it is needed".)
 > 
-> Thanks!!
-> 
-> This one is simple enough that I'll just include it, but I'd really
-> prefer to get explicit signed-off patches.
+> It may be that it's easier from an less-lines-of-the-kernels-to-change
+> point of view to add a WRITE_SYNC_PLUGGED which doesn't do the unplug,
+> and keep WRITE_SNYC as having the implicit unplug.  Or maybe it would
+> be better to completely separate the "send a write which is marked as
+> SYNC" from the "implicit unplug" in the API.
 
-Ok.  So just for the record:
+I think there's actually 3 cases:
+* Normal write with normal plugging rules
+* Write that should be "sync" priority, but which should explicitly NOT
+  unplug, even if it otherwise would have happened, because the caller
+  will, as part of the contract of the API, do the unplug when all IO
+  is submitted.
+  (a bit like tcp/cork)
+* Write that is sync priority and is the last one of a sequence,
+  and thus should unplug immediately.
 
-Signed-off-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-
----
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index ac77d8b..6132353 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -342,7 +342,7 @@ static int ext4_valid_extent_idx(struct inode *inode,
-         ext4_fsblk_t block = idx_pblock(ext_idx);
-         struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
-         if (unlikely(block < le32_to_cpu(es->s_first_data_block) ||
--                       (block > ext4_blocks_count(es))))
-+                       (block >= ext4_blocks_count(es))))
-                 return 0;
-         else
-                 return 1;
-
+I can even imagine using a temporary/special queue for the 2nd case,
+and then splice that into the regular queue when the final IO comes in,
+in one go.
 
 -- 
-+-----------------------------------+--------------------------+
-| Dipl.-Phys. Thiemo Nagel          |                          |
-| Technische Universitaet Muenchen  | Room    PH1 3276         |
-| Physik-Department E18             |                          |
-| James-Franck-Strasse              | Phone  +49 89 289-12379  |
-| D-85747 Garching                  | Fax    +49 89 289-12570  |
-+-----------------------------------+--------------------------+
+Arjan van de Ven 	Intel Open Source Technology Centre
+For development, discussion and tips for power savings, 
+visit http://www.lesswatts.org
