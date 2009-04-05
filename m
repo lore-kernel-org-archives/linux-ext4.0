@@ -1,49 +1,50 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [GIT PULL] Ext3 latency fixes
-Date: Sat, 4 Apr 2009 20:20:13 -0400
-Message-ID: <20090405002013.GB7553@mit.edu>
-References: <1238742067-30814-1-git-send-email-tytso@mit.edu> <alpine.LFD.2.00.0904031110420.19690@localhost.localdomain> <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain> <alpine.LFD.2.00.0904031329410.7007@localhost.localdomain> <20090404135719.GA9812@mit.edu> <alpine.LFD.2.00.0904041448090.4023@localhost.localdomain>
+Subject: Re: [PATCH 1/2] [PATCH] ext4: Add inode to the orphan list during
+	block allocation failure
+Date: Sat, 4 Apr 2009 23:11:16 -0400
+Message-ID: <20090405031116.GG7553@mit.edu>
+References: <20090331044544.GB5979@skywalker> <1238491766-13182-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Jens Axboe <jens.axboe@oracle.com>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:54165 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:54145 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758749AbZDEEJo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Apr 2009 00:09:44 -0400
+	id S1758817AbZDEEJk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Apr 2009 00:09:40 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.0904041448090.4023@localhost.localdomain>
+In-Reply-To: <1238491766-13182-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 04, 2009 at 03:13:13PM -0700, Linus Torvalds wrote:
-> And yes, anticipatory seems to be quite noticeably better than cfq here. 
-> With cfq I got a few two-second delays on 'ftruncate()' too (probably 
-> because of your new serialization code?), and the longest fsync() delay 
-> was over 7 seconds. That was definitely solidly in the "painful" category.
+On Tue, Mar 31, 2009 at 02:59:25PM +0530, Aneesh Kumar K.V wrote:
+> We should add inode to the orphan list in the same transaction
+> as block allocation. This ensures that if we crash after a failed
+> block allocation and before we do a vmtruncate we don't leak block
+> (ie block marked as used in bitmap but not claimed by the inode).
 
-What is going on with in your "ftruncate()" case?  The synchronization
-code I added will do call filemap_flush() on close if the file
-descriptor had been previously truncated down to zero, either because
-it was opened with O_TRUNCATE, or if ftruncate(fd, 0) was explicitly
-called.  But it won't actually call fsync() or do anything special on
-the actual ftrucate() call; it just sets a flag indicating that the
-file in question should be flushed on close.
+How likely is this going to happen?  If it's a failure in the block
+allocation, we will have really end up with blocks outside i_size?
+And in that case, I'm missing how this ends up being a leaked block,
+since presumably the block is still being referenced by the inode.  Am
+I missing something here?
 
-This is to make the right thing happen for applications which try to
-edit a file in place via:
+I guess it can happen if do_journal_get_write_access() returns an
+error, which could potentially happen if there is a ENOMEM error
+coming from the jbd2 layer.  But that brings up another potential
+problem.  It's possible for vmtruncate() to fail; if ext4_truncate()
+fails too early (particularly in ext4_ext_truncate, due to a memory
+error in a jbd2 routines), it's possible for it to return without
+calling ext4_orphan_del() --- and stray inodes on the orphan list will
+cause the kernel to panic on umount.
 
-     fd = open("foo", O_RDWR);
-     len = read(fd, buf, MAXBUF);
-     <modify buf>
-     ftruncate(fd, 0);
-     write(fd, buf, len);
-     close(fd);
+I think this can be fixed by making sure that ext4_truncate() and
+ext4_ext_truncate() calls ext4_orphan_del() in *all* of their error
+paths.  That *should* the problem, since at the moment, it doesn't
+look vmtruncate() will return without calling inode->i_op->truncate().
+But could you double check this carefully?
 
-Otherwise, given the lack of fsync(fd) in the above sequence, a crash
-may leave he file "foo" truncated or only partially written out.
+Thanks,
 
-        	     	  		     - Ted
+						- Ted
