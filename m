@@ -1,80 +1,103 @@
-From: akpm@linux-foundation.org
-Subject: [merged] ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch removed from -mm tree
-Date: Mon, 06 Apr 2009 12:33:48 -0700
-Message-ID: <200904061933.n36JXmJN011275@imap1.linux-foundation.org>
-To: bdonlan@gmail.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
+From: "Ricardo M. Correia" <Ricardo.M.Correia@Sun.COM>
+Subject: Re: [PATCH e2fsprogs] Add ZFS detection to libblkid
+Date: Mon, 06 Apr 2009 20:22:38 +0100
+Message-ID: <1239045758.7486.80.camel@localhost>
+References: <1212171647.7508.46.camel@localhost> <49D6C844.5070604@redhat.com>
+ <49D75AD1.7060101@redhat.com> <20090404212507.GC3199@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-ext4@vger.kernel.org, Karel Zak <kzak@redhat.com>
+To: Andreas Dilger <adilger@Sun.COM>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:37096 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755405AbZDFTfs (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Apr 2009 15:35:48 -0400
+Received: from gmp-eb-inf-2.sun.com ([192.18.6.24]:63949 "EHLO
+	gmp-eb-inf-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755139AbZDFTgj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Apr 2009 15:36:39 -0400
+Received: from fe-emea-10.sun.com (gmp-eb-lb-2-fe2.eu.sun.com [192.18.6.11])
+	by gmp-eb-inf-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n36JMoJS018571
+	for <linux-ext4@vger.kernel.org>; Mon, 6 Apr 2009 19:23:02 GMT
+Received: from conversion-daemon.fe-emea-10.sun.com by fe-emea-10.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
+ id <0KHP004001K5ZI00@fe-emea-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 06 Apr 2009 20:22:50 +0100 (BST)
+In-reply-to: <20090404212507.GC3199@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Hi,
 
-The patch titled
-     ext3: return -EIO not -ESTALE on directory traversal through deleted inode
-has been removed from the -mm tree.  Its filename was
-     ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
+On S=C3=A1b, 2009-04-04 at 15:25 -0600, Andreas Dilger wrote:
+> I _suppose_ there is no hard requirement that the ub_magic is present=
+ in
+> the first =C3=BCberblock slot at 128kB, but that does make it harder =
+to find.
+> In theory we would need to add 256 magic value checks, which seems
+> unreasonable.  Ricardo, do you know why the zfs.img.bz2 has bad =C3=BC=
+berblocks
+> for the first 4 slots?
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+Your supposition is correct - there's no requirement that the first
+uberblock that gets written to the uberblock array has to be in the
+first slot.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+The reason that this image has bad uberblocks in the first 4 slots is
+that, in the current ZFS implementation, when you create a ZFS pool, th=
+e
+first uberblock that gets written to disk has txg number 4, and the slo=
+t
+that gets chosen for each uberblock is "txg_nr % nr_of_uberblock_slots"=
+=2E
 
-------------------------------------------------------
-Subject: ext3: return -EIO not -ESTALE on directory traversal through deleted inode
-From: Bryan Donlan <bdonlan@gmail.com>
+So in fact, it's not that the first 4 uberblocks are bad, it's just tha=
+t
+the first 4 slots don't have any uberblocks in them yet.
 
-ext3_iget() returns -ESTALE if invoked on a deleted inode, in order to
-report errors to NFS properly.  However, in ext[234]_lookup(), this
--ESTALE can be propagated to userspace if the filesystem is corrupted such
-that a directory entry references a deleted inode.  This leads to a
-misleading error message - "Stale NFS file handle" - and confusion on the
-part of the admin.
+However, even though currently it's txg nr 4 that gets written first,
+this is an implementation-specific detail that we cannot (or should not=
+)
+rely upon.
 
-The bug can be easily reproduced by creating a new filesystem, making a
-link to an unused inode using debugfs, then mounting and attempting to ls
--l said link.
+So I think you're (mostly) right - in theory, a correct implementation
+would have to search all the uberblock slots in all the 4 labels (2 at
+the beginning of the partition and 2 at the end), for a total of 512
+magic offsets, but this is not easy to do with libblkid because it only
+looks for the magic values at hard-coded offsets (as opposed to being
+able to implement a routine to look for a filesystem, which could use a
+simple "for" statement).
 
-This patch thus changes ext3_lookup to return -EIO if it receives -ESTALE
-from ext3_iget(), as ext3 does for other filesystem metadata corruption;
-and also invokes the appropriate ext*_error functions when this case is
-detected.
+This is why I decided to change your patch to look for VDEV_BOOT_MAGIC,
+which I assumed was always there in the same place, but apparently this
+does not seem to be the case.
 
-Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+Eric, do you know how this ZFS pool/filesystem was created?
+Specifically, which Solaris/OpenSolaris version/build, or maybe zfs-fus=
+e
+version? Also, details about which partitioning scheme is being used an=
+d
+whether this is a root pool would also help a lot.
 
- fs/ext3/namei.c |   12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
+BTW, I also agree that it would be useful for ext3's mkfs to zero-out
+the first and last 512 KB of the partition, to get rid of the ZFS label=
+s
+and magic values, although if it detects these magic values, it would b=
+e
+quite useful for mkfs to refuse to format the partition, forcing the
+user to specify some "--force" flag (like "zpool create" does), or at
+least ask the user for confirmation (if mkfs is being used in
+interactive mode), to avoid accidental data destruction.
 
-diff -puN fs/ext3/namei.c~ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode fs/ext3/namei.c
---- a/fs/ext3/namei.c~ext3-return-eio-not-estale-on-directory-traversal-through-deleted-inode
-+++ a/fs/ext3/namei.c
-@@ -1047,8 +1047,16 @@ static struct dentry *ext3_lookup(struct
- 			return ERR_PTR(-EIO);
- 		}
- 		inode = ext3_iget(dir->i_sb, ino);
--		if (IS_ERR(inode))
--			return ERR_CAST(inode);
-+		if (unlikely(IS_ERR(inode))) {
-+			if (PTR_ERR(inode) == -ESTALE) {
-+				ext3_error(dir->i_sb, __func__,
-+						"deleted inode referenced: %lu",
-+						ino);
-+				return ERR_PTR(-EIO);
-+			} else {
-+				return ERR_CAST(inode);
-+			}
-+		}
- 	}
- 	return d_splice_alias(inode, dentry);
- }
-_
+If this is not done, then maybe leaving the ZFS labels intact could be
+better, so that the user has a chance to recover (some/most) of it's
+data, in case he made a mistake.
 
-Patches currently in -mm which might be from bdonlan@gmail.com are
+Cheers,
+Ricardo
 
-origin.patch
 
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
