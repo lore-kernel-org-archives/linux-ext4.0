@@ -1,47 +1,39 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [GIT PULL] Ext3 latency fixes
-Date: Mon, 6 Apr 2009 10:16:16 +0200
-Message-ID: <20090406081616.GT5178@kernel.dk>
-References: <alpine.LFD.2.00.0904031150190.4015@localhost.localdomain> <alpine.LFD.2.00.0904031329410.7007@localhost.localdomain> <20090404135719.GA9812@mit.edu> <20090404151649.GE5178@kernel.dk> <alpine.LFD.2.00.0904040854470.3915@localhost.localdomain> <20090404173412.GF5178@kernel.dk> <alpine.LFD.2.00.0904041039230.3915@localhost.localdomain> <20090404180108.GH5178@kernel.dk> <20090404232222.GA7480@mit.edu> <20090404163349.20df1208@infradead.org>
+From: Duane Griffin <duaneg@dghda.com>
+Subject: Re: Looking for glamorous newbie projects
+Date: Mon, 6 Apr 2009 09:49:20 +0100
+Message-ID: <e9e943910904060149s52464c6fv6ccc4e3ef0a1a749@mail.gmail.com>
+References: <49D6C21C.1030305@mustardgrain.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Arjan van de Ven <arjan@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Kirk True <kirk@mustardgrain.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([93.163.65.50]:38564 "EHLO kernel.dk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752114AbZDFIQT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 6 Apr 2009 04:16:19 -0400
-Content-Disposition: inline
-In-Reply-To: <20090404163349.20df1208@infradead.org>
+Received: from mail-bw0-f169.google.com ([209.85.218.169]:43320 "EHLO
+	mail-bw0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752805AbZDFItX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Apr 2009 04:49:23 -0400
+Received: by bwz17 with SMTP id 17so1757036bwz.37
+        for <linux-ext4@vger.kernel.org>; Mon, 06 Apr 2009 01:49:21 -0700 (PDT)
+In-Reply-To: <49D6C21C.1030305@mustardgrain.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 04 2009, Arjan van de Ven wrote:
-> On Sat, 4 Apr 2009 19:22:22 -0400
-> Theodore Tso <tytso@mit.edu> wrote:
-> > 
-> > However, the full latency fixes all the writes are synchronous, so it
-> > must be the case that the delays are caused by the fact that queue is
-> > getting implicitly unplugged after the synchronous write, and the
-> > problem is no longer the mixing of WRITE and WRITE_SYNC requests as
-> > posted in the commit log for 78f707bf.  If we remove the automatic
-> > unplug for WRITE_SYNC requests, and add an explicit unplug where it is
-> > needed, that should fix the performance regression for this particular
-> > sqlite test case. 
-> 
-> removing the unplug is bound to be bad; after all we're waiting on the
-> IO. But maybe it should be "make the unplug a REALLY short time".
-> At least for rotating storage. For non-rotating .. I'd never wait.
+2009/4/4 Kirk True <kirk@mustardgrain.com>:
+> Can anyone suggest some trivial newbie projects for the ext code base? I
+> don't care how menial it is, typo changes, logging, testing (something
+> specific), etc. I've been lurking on the list for awhile and want to start
+> getting my hands dirty.
 
-Well, either you are submitting a single piece of IO (in which case you
-just want to unplug or directly submit as part of the submit_bio()), or
-you are submitting several IOS (in which case you just want to unplug at
-the end of the IO submission, before waiting).
+Take a look here:
+http://bugzilla.kernel.org/buglist.cgi?quicksearch=ext3
+
+In particular these sort of reports are good places to get started, as
+you should be able to reproduce them yourself in a VM:
+http://bugzilla.kernel.org/show_bug.cgi?id=11250
+
+Cheers,
+Duane.
 
 -- 
-Jens Axboe
-
+"I never could learn to drink that blood and call it wine" - Bob Dylan
