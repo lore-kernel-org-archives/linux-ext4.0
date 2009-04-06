@@ -1,103 +1,231 @@
-From: "Ricardo M. Correia" <Ricardo.M.Correia@Sun.COM>
-Subject: Re: [PATCH e2fsprogs] Add ZFS detection to libblkid
-Date: Mon, 06 Apr 2009 20:22:38 +0100
-Message-ID: <1239045758.7486.80.camel@localhost>
-References: <1212171647.7508.46.camel@localhost> <49D6C844.5070604@redhat.com>
- <49D75AD1.7060101@redhat.com> <20090404212507.GC3199@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org, Karel Zak <kzak@redhat.com>
-To: Andreas Dilger <adilger@Sun.COM>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gmp-eb-inf-2.sun.com ([192.18.6.24]:63949 "EHLO
-	gmp-eb-inf-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755139AbZDFTgj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Apr 2009 15:36:39 -0400
-Received: from fe-emea-10.sun.com (gmp-eb-lb-2-fe2.eu.sun.com [192.18.6.11])
-	by gmp-eb-inf-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n36JMoJS018571
-	for <linux-ext4@vger.kernel.org>; Mon, 6 Apr 2009 19:23:02 GMT
-Received: from conversion-daemon.fe-emea-10.sun.com by fe-emea-10.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KHP004001K5ZI00@fe-emea-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 06 Apr 2009 20:22:50 +0100 (BST)
-In-reply-to: <20090404212507.GC3199@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-Hi,
-
-On S=C3=A1b, 2009-04-04 at 15:25 -0600, Andreas Dilger wrote:
-> I _suppose_ there is no hard requirement that the ub_magic is present=
- in
-> the first =C3=BCberblock slot at 128kB, but that does make it harder =
-to find.
-> In theory we would need to add 256 magic value checks, which seems
-> unreasonable.  Ricardo, do you know why the zfs.img.bz2 has bad =C3=BC=
-berblocks
-> for the first 4 slots?
-
-Your supposition is correct - there's no requirement that the first
-uberblock that gets written to the uberblock array has to be in the
-first slot.
-
-The reason that this image has bad uberblocks in the first 4 slots is
-that, in the current ZFS implementation, when you create a ZFS pool, th=
-e
-first uberblock that gets written to disk has txg number 4, and the slo=
-t
-that gets chosen for each uberblock is "txg_nr % nr_of_uberblock_slots"=
-=2E
-
-So in fact, it's not that the first 4 uberblocks are bad, it's just tha=
-t
-the first 4 slots don't have any uberblocks in them yet.
-
-However, even though currently it's txg nr 4 that gets written first,
-this is an implementation-specific detail that we cannot (or should not=
-)
-rely upon.
-
-So I think you're (mostly) right - in theory, a correct implementation
-would have to search all the uberblock slots in all the 4 labels (2 at
-the beginning of the partition and 2 at the end), for a total of 512
-magic offsets, but this is not easy to do with libblkid because it only
-looks for the magic values at hard-coded offsets (as opposed to being
-able to implement a routine to look for a filesystem, which could use a
-simple "for" statement).
-
-This is why I decided to change your patch to look for VDEV_BOOT_MAGIC,
-which I assumed was always there in the same place, but apparently this
-does not seem to be the case.
-
-Eric, do you know how this ZFS pool/filesystem was created?
-Specifically, which Solaris/OpenSolaris version/build, or maybe zfs-fus=
-e
-version? Also, details about which partitioning scheme is being used an=
-d
-whether this is a root pool would also help a lot.
-
-BTW, I also agree that it would be useful for ext3's mkfs to zero-out
-the first and last 512 KB of the partition, to get rid of the ZFS label=
-s
-and magic values, although if it detects these magic values, it would b=
-e
-quite useful for mkfs to refuse to format the partition, forcing the
-user to specify some "--force" flag (like "zpool create" does), or at
-least ask the user for confirmation (if mkfs is being used in
-interactive mode), to avoid accidental data destruction.
-
-If this is not done, then maybe leaving the ZFS labels intact could be
-better, so that the user has a chance to recover (some/most) of it's
-data, in case he made a mistake.
-
-Cheers,
-Ricardo
+From: akpm@linux-foundation.org
+Subject: [merged] ext3-remove-the-bkl-in-ext3-ioctlc.patch removed from -mm tree
+Date: Mon, 06 Apr 2009 12:33:42 -0700
+Message-ID: <200904061933.n36JXgmm011214@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: cyrusm@gmx.net, jack@ucw.cz, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+The patch titled
+     ext3: remove the BKL in ext3/ioctl.c
+has been removed from the -mm tree.  Its filename was
+     ext3-remove-the-bkl-in-ext3-ioctlc.patch
+
+This patch was dropped because it was merged into mainline or a subsystem tree
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: ext3: remove the BKL in ext3/ioctl.c
+From: Cyrus Massoumi <cyrusm@gmx.net>
+
+Reformat ext3/ioctl.c to make it look more like ext4/ioctl.c and remove
+the BKL around ext3_ioctl().
+
+Signed-off-by: Cyrus Massoumi <cyrusm@gmx.net>
+Cc: <linux-ext4@vger.kernel.org>
+Acked-by: Jan Kara <jack@ucw.cz>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/dir.c           |    2 -
+ fs/ext3/file.c          |    2 -
+ fs/ext3/ioctl.c         |   59 ++++++++++++--------------------------
+ include/linux/ext3_fs.h |    5 +--
+ 4 files changed, 24 insertions(+), 44 deletions(-)
+
+diff -puN fs/ext3/dir.c~ext3-remove-the-bkl-in-ext3-ioctlc fs/ext3/dir.c
+--- a/fs/ext3/dir.c~ext3-remove-the-bkl-in-ext3-ioctlc
++++ a/fs/ext3/dir.c
+@@ -42,7 +42,7 @@ const struct file_operations ext3_dir_op
+ 	.llseek		= generic_file_llseek,
+ 	.read		= generic_read_dir,
+ 	.readdir	= ext3_readdir,		/* we take BKL. needed?*/
+-	.ioctl		= ext3_ioctl,		/* BKL held */
++	.unlocked_ioctl	= ext3_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext3_compat_ioctl,
+ #endif
+diff -puN fs/ext3/file.c~ext3-remove-the-bkl-in-ext3-ioctlc fs/ext3/file.c
+--- a/fs/ext3/file.c~ext3-remove-the-bkl-in-ext3-ioctlc
++++ a/fs/ext3/file.c
+@@ -112,7 +112,7 @@ const struct file_operations ext3_file_o
+ 	.write		= do_sync_write,
+ 	.aio_read	= generic_file_aio_read,
+ 	.aio_write	= ext3_file_write,
+-	.ioctl		= ext3_ioctl,
++	.unlocked_ioctl	= ext3_ioctl,
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext3_compat_ioctl,
+ #endif
+diff -puN fs/ext3/ioctl.c~ext3-remove-the-bkl-in-ext3-ioctlc fs/ext3/ioctl.c
+--- a/fs/ext3/ioctl.c~ext3-remove-the-bkl-in-ext3-ioctlc
++++ a/fs/ext3/ioctl.c
+@@ -15,12 +15,11 @@
+ #include <linux/mount.h>
+ #include <linux/time.h>
+ #include <linux/compat.h>
+-#include <linux/smp_lock.h>
+ #include <asm/uaccess.h>
+ 
+-int ext3_ioctl (struct inode * inode, struct file * filp, unsigned int cmd,
+-		unsigned long arg)
++long ext3_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
+ {
++	struct inode *inode = filp->f_dentry->d_inode;
+ 	struct ext3_inode_info *ei = EXT3_I(inode);
+ 	unsigned int flags;
+ 	unsigned short rsv_window_size;
+@@ -39,29 +38,25 @@ int ext3_ioctl (struct inode * inode, st
+ 		unsigned int oldflags;
+ 		unsigned int jflag;
+ 
++		if (!is_owner_or_cap(inode))
++			return -EACCES;
++
++		if (get_user(flags, (int __user *) arg))
++			return -EFAULT;
++
+ 		err = mnt_want_write(filp->f_path.mnt);
+ 		if (err)
+ 			return err;
+ 
+-		if (!is_owner_or_cap(inode)) {
+-			err = -EACCES;
+-			goto flags_out;
+-		}
+-
+-		if (get_user(flags, (int __user *) arg)) {
+-			err = -EFAULT;
+-			goto flags_out;
+-		}
+-
+ 		flags = ext3_mask_flags(inode->i_mode, flags);
+ 
+ 		mutex_lock(&inode->i_mutex);
++
+ 		/* Is it quota file? Do not allow user to mess with it */
+-		if (IS_NOQUOTA(inode)) {
+-			mutex_unlock(&inode->i_mutex);
+-			err = -EPERM;
++		err = -EPERM;
++		if (IS_NOQUOTA(inode))
+ 			goto flags_out;
+-		}
++
+ 		oldflags = ei->i_flags;
+ 
+ 		/* The JOURNAL_DATA flag is modifiable only by root */
+@@ -74,11 +69,8 @@ int ext3_ioctl (struct inode * inode, st
+ 		 * This test looks nicer. Thanks to Pauline Middelink
+ 		 */
+ 		if ((flags ^ oldflags) & (EXT3_APPEND_FL | EXT3_IMMUTABLE_FL)) {
+-			if (!capable(CAP_LINUX_IMMUTABLE)) {
+-				mutex_unlock(&inode->i_mutex);
+-				err = -EPERM;
++			if (!capable(CAP_LINUX_IMMUTABLE))
+ 				goto flags_out;
+-			}
+ 		}
+ 
+ 		/*
+@@ -86,17 +78,12 @@ int ext3_ioctl (struct inode * inode, st
+ 		 * the relevant capability.
+ 		 */
+ 		if ((jflag ^ oldflags) & (EXT3_JOURNAL_DATA_FL)) {
+-			if (!capable(CAP_SYS_RESOURCE)) {
+-				mutex_unlock(&inode->i_mutex);
+-				err = -EPERM;
++			if (!capable(CAP_SYS_RESOURCE))
+ 				goto flags_out;
+-			}
+ 		}
+ 
+-
+ 		handle = ext3_journal_start(inode, 1);
+ 		if (IS_ERR(handle)) {
+-			mutex_unlock(&inode->i_mutex);
+ 			err = PTR_ERR(handle);
+ 			goto flags_out;
+ 		}
+@@ -116,15 +103,13 @@ int ext3_ioctl (struct inode * inode, st
+ 		err = ext3_mark_iloc_dirty(handle, inode, &iloc);
+ flags_err:
+ 		ext3_journal_stop(handle);
+-		if (err) {
+-			mutex_unlock(&inode->i_mutex);
+-			return err;
+-		}
++		if (err)
++			goto flags_out;
+ 
+ 		if ((jflag ^ oldflags) & (EXT3_JOURNAL_DATA_FL))
+ 			err = ext3_change_inode_journal_flag(inode, jflag);
+-		mutex_unlock(&inode->i_mutex);
+ flags_out:
++		mutex_unlock(&inode->i_mutex);
+ 		mnt_drop_write(filp->f_path.mnt);
+ 		return err;
+ 	}
+@@ -140,6 +125,7 @@ flags_out:
+ 
+ 		if (!is_owner_or_cap(inode))
+ 			return -EPERM;
++
+ 		err = mnt_want_write(filp->f_path.mnt);
+ 		if (err)
+ 			return err;
+@@ -147,6 +133,7 @@ flags_out:
+ 			err = -EFAULT;
+ 			goto setversion_out;
+ 		}
++
+ 		handle = ext3_journal_start(inode, 1);
+ 		if (IS_ERR(handle)) {
+ 			err = PTR_ERR(handle);
+@@ -299,9 +286,6 @@ group_add_out:
+ #ifdef CONFIG_COMPAT
+ long ext3_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+ {
+-	struct inode *inode = file->f_path.dentry->d_inode;
+-	int ret;
+-
+ 	/* These are just misnamed, they actually get/put from/to user an int */
+ 	switch (cmd) {
+ 	case EXT3_IOC32_GETFLAGS:
+@@ -341,9 +325,6 @@ long ext3_compat_ioctl(struct file *file
+ 	default:
+ 		return -ENOIOCTLCMD;
+ 	}
+-	lock_kernel();
+-	ret = ext3_ioctl(inode, file, cmd, (unsigned long) compat_ptr(arg));
+-	unlock_kernel();
+-	return ret;
++	return ext3_ioctl(file, cmd, (unsigned long) compat_ptr(arg));
+ }
+ #endif
+diff -puN include/linux/ext3_fs.h~ext3-remove-the-bkl-in-ext3-ioctlc include/linux/ext3_fs.h
+--- a/include/linux/ext3_fs.h~ext3-remove-the-bkl-in-ext3-ioctlc
++++ a/include/linux/ext3_fs.h
+@@ -893,9 +893,8 @@ extern int ext3_fiemap(struct inode *ino
+ 		       u64 start, u64 len);
+ 
+ /* ioctl.c */
+-extern int ext3_ioctl (struct inode *, struct file *, unsigned int,
+-		       unsigned long);
+-extern long ext3_compat_ioctl (struct file *, unsigned int, unsigned long);
++extern long ext3_ioctl(struct file *, unsigned int, unsigned long);
++extern long ext3_compat_ioctl(struct file *, unsigned int, unsigned long);
+ 
+ /* namei.c */
+ extern int ext3_orphan_add(handle_t *, struct inode *);
+_
+
+Patches currently in -mm which might be from cyrusm@gmx.net are
+
+origin.patch
+
