@@ -1,89 +1,73 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Use of kmalloc vs vmalloc in ext4?
-Date: Mon, 06 Apr 2009 03:33:10 -0600
-Message-ID: <20090406093310.GJ3199@webber.adilger.int>
-References: <6601abe90903110732n5c9df9b9td317be316921b7a6@mail.gmail.com>
- <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 1/2] [PATCH] ext4: Add inode to the orphan list during
+	block allocation failure
+Date: Mon, 6 Apr 2009 12:05:09 +0200
+Message-ID: <20090406100509.GB31189@duck.suse.cz>
+References: <20090331044544.GB5979@skywalker> <1238491766-13182-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090405031116.GG7553@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org
-To: Michael Rubin <mrubin@google.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:53647 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752141AbZDFJdU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Apr 2009 05:33:20 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n369XGJJ008214
-	for <linux-ext4@vger.kernel.org>; Mon, 6 Apr 2009 02:33:16 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KHO00800ACHYN00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 06 Apr 2009 02:33:16 -0700 (PDT)
-In-reply-to: <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com>
+Received: from cantor.suse.de ([195.135.220.2]:34720 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754508AbZDFKFR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 6 Apr 2009 06:05:17 -0400
+Content-Disposition: inline
+In-Reply-To: <20090405031116.GG7553@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 05, 2009  23:45 -0700, Michael Rubin wrote:
-> Anyone have any comments? Or historical reasons? We operate with some
-> constrained memory situations, and were wondering if a patch to move
-> from kmalloc to vmalloc would be well received.
+  Hi,
 
-On 32-bit machines vmalloc space is tiny, and in all cases vmalloc
-performance sucks, so traditionally very little kernel allocation
-is done with vmalloc.  For one-off allocations like per-fs it is
-probably OK to change them to vmalloc.
+On Sat 04-04-09 23:11:16, Theodore Tso wrote:
+> On Tue, Mar 31, 2009 at 02:59:25PM +0530, Aneesh Kumar K.V wrote:
+> > We should add inode to the orphan list in the same transaction
+> > as block allocation. This ensures that if we crash after a failed
+> > block allocation and before we do a vmtruncate we don't leak block
+> > (ie block marked as used in bitmap but not claimed by the inode).
+> 
+> How likely is this going to happen?  If it's a failure in the block
+> allocation, we will have really end up with blocks outside i_size?
+> And in that case, I'm missing how this ends up being a leaked block,
+> since presumably the block is still being referenced by the inode.  Am
+> I missing something here?
+  Aneesh's changelog was not completely precise here. First note that some
+problems (namely those in ext4_write_begin()) can happen only if blocksize
+< pagesize - there we can succeed in allocating some blocks for the page
+but not all of them. Since we then decide to redo the whole write, we have
+to truncate blocks we have already allocated.
+  The problem in ext4_..._write_end() is different (and rather easy to hit
+under heavy memory pressure) - the problem is that generic_perform_write()
+fails to copy data into our kernel page because the user page from which
+we should copy the data has been paged-out. In this situation we again
+decide to redo the write and so we should truncate the already allocated
+blocks since i_size is still set to the value before write. Otherwise
+we'd have blocks allocated beyond i_size and so a crash before we
+successfully redo the write would "leak" blocks (you're right the inode
+would be still referencing them but they'll be above i_size and I guess
+it could confuse some code).
 
-> On Wed, Mar 11, 2009 at 7:32 AM, Curt Wohlgemuth <curtw@google.com> w=
-rote:
-> > I've been running various tests of ext4 partitions lately, and have
-> > found that with very low memory situations, I'm getting intermitten=
-t
-> > mount failures due to ENOMEM from ext4_mb_init() and
-> > ext4_fill_flex_info() . =A0Here's a typical dmesg from the latter:
-> >
-> > =A0 =A0 =A0 =A0 =A0EXT4-fs: not enough memory for 8198 flex groups
-> > =A0 =A0 =A0 =A0 =A0EXT4-fs: unable to initialize flex_bg meta info!
-> >
-> > This is from a kzalloc() call of size ~64k . =A0I think the
-> > ext4_mb_init() calls to kmalloc() and alloc_percpu() are even small=
-er.
-> >
-> > I was wondering why all the code in ext4 (and ext[23], for that
-> > matter) uses kmalloc() and friends instead of vmalloc(), at least
-> > where it's safe; is it just for performance reasons?
-> >
-> > I've seen the above errors when I do a mount -a, causing several
-> > partitions to be mounted; I can usually mount the failed ones by ha=
-nd
-> > right afterwards, but this is a big difference for us, in our
-> > environment, compared to, say, ext2 partitions.
-> >
-> > Thanks,
-> > Curt
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
-4" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
-l
-> >
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I guess it can happen if do_journal_get_write_access() returns an
+> error, which could potentially happen if there is a ENOMEM error
+> coming from the jbd2 layer.  But that brings up another potential
+> problem.  It's possible for vmtruncate() to fail; if ext4_truncate()
+> fails too early (particularly in ext4_ext_truncate, due to a memory
+> error in a jbd2 routines), it's possible for it to return without
+> calling ext4_orphan_del() --- and stray inodes on the orphan list will
+> cause the kernel to panic on umount.
+> 
+> I think this can be fixed by making sure that ext4_truncate() and
+> ext4_ext_truncate() calls ext4_orphan_del() in *all* of their error
+> paths.  That *should* the problem, since at the moment, it doesn't
+> look vmtruncate() will return without calling inode->i_op->truncate().
+> But could you double check this carefully?
+  Ah, OK, that should be fixed. But note that current ext4_setattr()
+does exactly the same thing on standard truncates - it adds inode to
+orphan list and calls inode_setattr() which end's up calling vmtruncate().
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+								Honza
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
