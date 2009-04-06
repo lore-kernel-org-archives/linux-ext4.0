@@ -1,66 +1,89 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: next-20090310: ext4 hangs
-Date: Mon, 6 Apr 2009 11:20:42 +0200
-Message-ID: <20090406092042.GA31189@duck.suse.cz>
-References: <a4423d670903250829w5e9304a7rce24f4220379620f@mail.gmail.com> <20090325161556.GP23439@duck.suse.cz> <a4423d670903251007r72058ca8m28275c1433ab2706@mail.gmail.com> <20090325194316.GQ23439@duck.suse.cz> <a4423d670903251538p3a7c180br1bcfe08c4f044c15@mail.gmail.com> <20090331100150.GF11808@duck.suse.cz> <a4423d670903310307i7acd31f0r4836beae14cfb92d@mail.gmail.com> <20090331123307.GG11808@duck.suse.cz> <a4423d670904021150p5fcd1f82wefa68c839b2869a1@mail.gmail.com> <a4423d670904041409i271c8abbyf5b74d656eeb363f@mail.gmail.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Use of kmalloc vs vmalloc in ext4?
+Date: Mon, 06 Apr 2009 03:33:10 -0600
+Message-ID: <20090406093310.GJ3199@webber.adilger.int>
+References: <6601abe90903110732n5c9df9b9td317be316921b7a6@mail.gmail.com>
+ <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso@mit.edu>,
-	"linux-next@vger.kernel.org" <linux-next@vger.kernel.org>,
-	linux-ext4@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
-	sparclinux@vger.kernel.org
-To: Alexander Beregalov <a.beregalov@gmail.com>
-Return-path: <linux-next-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <a4423d670904041409i271c8abbyf5b74d656eeb363f@mail.gmail.com>
-Sender: linux-next-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org
+To: Michael Rubin <mrubin@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:53647 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752141AbZDFJdU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Apr 2009 05:33:20 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n369XGJJ008214
+	for <linux-ext4@vger.kernel.org>; Mon, 6 Apr 2009 02:33:16 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
+ id <0KHO00800ACHYN00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 06 Apr 2009 02:33:16 -0700 (PDT)
+In-reply-to: <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun 05-04-09 01:09:31, Alexander Beregalov wrote:
-> 2009/4/2 Alexander Beregalov <a.beregalov@gmail.com>:
-> >>> > =A0I'm helpless here. I don't see how we can miss a wakeup (plu=
-s you seem to
-> >>> > be the only one reporting the bug). Could you please compile an=
-d test the kernel
-> >>> > with the attached patch? It will print to kernel log when we go=
- to sleep
-> >>> > waiting for inode commit and when we send wakeups etc. When you=
- hit the
-> >>> > deadlock, please send me your kernel log. It should help with d=
-ebugging why do
-> >>> > we miss the wakeup. Thanks.
-> >>>
-> >>> Which patch?
-> >> =A0Ups. Forgot to attach ;).
-> >
-> > Cannot reproduce it on current 2.6.29-git. Strange.
-> > It should already have all ext4/jbd2 patches from next-20090310,
-> > but anyway it happened with 2.6.29-rc8 also.
-> > I ran dbench in cycle on two indentical hosts for more than 24 hour=
-s
-> > with no hang tasks.
-> >
-> > I will try 2.6.29.
->=20
-> I cannot reproduce it with vanilla v2.6.29.
-> It seems the problem has gone.
-> Thanks Jan.
-  Thanks for testing. I'm glad we have one mystery less ;).
-=20
-> The patch output:
-> [133886.375874] JBD2: Waiting for ino 1062
-> [133886.376372] JBD2: Waking up sleeper on ino 1062
-> [133886.376824] JBD2: Woken on ino 1062
-> [134611.108451] JBD2: Waiting for ino 1102
-> [134611.108903] JBD2: Waking up sleeper on ino 1102
-> [134611.109787] JBD2: Woken on ino 1102
-> [134611.132912] JBD2: Waiting for ino 1074
-> [134611.133311] JBD2: Waking up sleeper on ino 1074
-> [134611.133707] JBD2: Woken on ino 1074
-  Yes, this is how it should always look...
+On Apr 05, 2009  23:45 -0700, Michael Rubin wrote:
+> Anyone have any comments? Or historical reasons? We operate with some
+> constrained memory situations, and were wondering if a patch to move
+> from kmalloc to vmalloc would be well received.
 
-									Honza
---=20
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+On 32-bit machines vmalloc space is tiny, and in all cases vmalloc
+performance sucks, so traditionally very little kernel allocation
+is done with vmalloc.  For one-off allocations like per-fs it is
+probably OK to change them to vmalloc.
+
+> On Wed, Mar 11, 2009 at 7:32 AM, Curt Wohlgemuth <curtw@google.com> w=
+rote:
+> > I've been running various tests of ext4 partitions lately, and have
+> > found that with very low memory situations, I'm getting intermitten=
+t
+> > mount failures due to ENOMEM from ext4_mb_init() and
+> > ext4_fill_flex_info() . =A0Here's a typical dmesg from the latter:
+> >
+> > =A0 =A0 =A0 =A0 =A0EXT4-fs: not enough memory for 8198 flex groups
+> > =A0 =A0 =A0 =A0 =A0EXT4-fs: unable to initialize flex_bg meta info!
+> >
+> > This is from a kzalloc() call of size ~64k . =A0I think the
+> > ext4_mb_init() calls to kmalloc() and alloc_percpu() are even small=
+er.
+> >
+> > I was wondering why all the code in ext4 (and ext[23], for that
+> > matter) uses kmalloc() and friends instead of vmalloc(), at least
+> > where it's safe; is it just for performance reasons?
+> >
+> > I've seen the above errors when I do a mount -a, causing several
+> > partitions to be mounted; I can usually mount the failed ones by ha=
+nd
+> > right afterwards, but this is a big difference for us, in our
+> > environment, compared to, say, ext2 partitions.
+> >
+> > Thanks,
+> > Curt
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-ext=
+4" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at =A0http://vger.kernel.org/majordomo-info.htm=
+l
+> >
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
