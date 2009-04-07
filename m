@@ -1,178 +1,32 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [PATCH 1/3] block_write_full_page: Use synchronous writes for
-	WBC_SYNC_ALL writebacks
-Date: Tue, 7 Apr 2009 21:32:39 +0200
-Message-ID: <20090407193239.GE5178@kernel.dk>
-References: <1238185471-31152-1-git-send-email-tytso@mit.edu> <1238185471-31152-2-git-send-email-tytso@mit.edu> <20090406232141.ebdb426a.akpm@linux-foundation.org> <20090406235052.1ea47513.akpm@linux-foundation.org> <20090407070835.GM5178@kernel.dk> <20090407002313.fcdd1da0.akpm@linux-foundation.org> <20090407075732.GO5178@kernel.dk> <20090407190913.GA31723@mit.edu>
+From: lsorense@csclub.uwaterloo.ca (Lennart Sorensen)
+Subject: Re: [GIT PULL] Ext3 latency fixes
+Date: Tue, 7 Apr 2009 15:57:59 -0400
+Message-ID: <20090407195759.GU3795@csclub.uwaterloo.ca>
+References: <alpine.LFD.2.00.0904031329410.7007@localhost.localdomain> <20090404135719.GA9812@mit.edu> <20090404151649.GE5178@kernel.dk> <alpine.LFD.2.00.0904040854470.3915@localhost.localdomain> <20090404173412.GF5178@kernel.dk> <20090404201820.GA18067@elte.hu> <20090406215034.GD3797@csclub.uwaterloo.ca> <49DB55B9.7030108@rtr.ca> <20090407144801.GR3795@csclub.uwaterloo.ca> <49DBA7AB.7020409@rtr.ca>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
+Cc: Ingo Molnar <mingo@elte.hu>, Jens Axboe <jens.axboe@oracle.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Theodore Tso <tytso@mit.edu>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	jack@suse.cz
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1759061AbZDGTc6@vger.kernel.org>
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Mark Lord <lkml@rtr.ca>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1759879AbZDGT6U@vger.kernel.org>
 Content-Disposition: inline
-In-Reply-To: <20090407190913.GA31723@mit.edu>
+In-Reply-To: <49DBA7AB.7020409@rtr.ca>
 Sender: linux-kernel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Apr 07 2009, Theodore Tso wrote:
-> On Tue, Apr 07, 2009 at 09:57:32AM +0200, Jens Axboe wrote:
-> > > > It looks like a good candidate for WRITE_SYNC_PLUG instead,
-> > > 
-> 
-> So is this patch sane?  (Compile-tested only, since I'm at a
-> conference at the moment).  Am I using the proper abstraction to
-> unplug the block device?  If not, it might be nice to document the
-> preferred for callers into the block layer.
-> 
-> (BTW, I was looking at Documentation/biodoc.txt, and I found some
-> clearly old documentation bits: "This is just the same as in 2.4 so
-> far, though per-device unplugging support is anticipated for 2.5."  :-)
+On Tue, Apr 07, 2009 at 03:21:15PM -0400, Mark Lord wrote:
+> Mmm.. now that could be problem.
+>
+> I wonder if mythfrontend is simply getting paged out of memory,
+> until you press a button and then the relevant code has to all
+> get paged back in again before it can respond (?).
 
-Woops, something to update :-)
-
-> [RFQ] Smart unplugging for page writeback
-> 
-> Now that we have a distinction between WRITE_SYNC and WRITE_SYNC_PLUG,
-> use WRITE_SYNC_PLUG in block_write_full_page(), and then before we
-> wait for page writebacks to complete in jbd, jbd2, and filemap, call
-> blk_unplug() to make sure the writes are on the way to the disk.
-> 
-> diff --git a/fs/buffer.c b/fs/buffer.c
-> index 977e12a..95b5390 100644
-> --- a/fs/buffer.c
-> +++ b/fs/buffer.c
-> @@ -1646,7 +1646,8 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
->  	struct buffer_head *bh, *head;
->  	const unsigned blocksize = 1 << inode->i_blkbits;
->  	int nr_underway = 0;
-> -	int write_op = (wbc->sync_mode == WB_SYNC_ALL ? WRITE_SYNC : WRITE);
-> +	int write_op = (wbc->sync_mode == WB_SYNC_ALL ?
-> +			WRITE_SYNC_PLUG : WRITE);
->  
->  	BUG_ON(!PageLocked(page));
-
-This should be all you need, forget the below. The manual unplugging
-only really makes sense for very select situations, since it'll be done
-when someone waits on the buffer anyway. And the block layer will unplug
-implicitly if 3ms has passed or 4 requests are pending, if someone
-hasn't done a wait for a page/bh in flight for that device anyway.
-
-So at least with the current setup, it'll only really make a difference
-if you end up waiting on the buffer 1-2ms after submission and you
-haven't submitted enough IO to kick off the unplugging. If you wait
-immediately, the time period between your blk_unplug() call and the one
-that wait_on_bit() would do is so short that it will not make a
-difference. And if you don't wait on the IO, you just want to let it hit
-the disk eventually.
-
-
-> diff --git a/fs/jbd/commit.c b/fs/jbd/commit.c
-> index a8e8513..3e6726f 100644
-> --- a/fs/jbd/commit.c
-> +++ b/fs/jbd/commit.c
-> @@ -21,6 +21,7 @@
->  #include <linux/mm.h>
->  #include <linux/pagemap.h>
->  #include <linux/bio.h>
-> +#include <linux/blkdev.h>
->  
->  /*
->   * Default IO end handler for temporary BJ_IO buffer_heads.
-> @@ -196,6 +197,7 @@ static int journal_submit_data_buffers(journal_t *journal,
->  	int locked;
->  	int bufs = 0;
->  	struct buffer_head **wbuf = journal->j_wbuf;
-> +	struct block_device *fs_bdev = 0;
->  	int err = 0;
->  
->  	/*
-> @@ -213,6 +215,7 @@ write_out_data:
->  	while (commit_transaction->t_sync_datalist) {
->  		jh = commit_transaction->t_sync_datalist;
->  		bh = jh2bh(jh);
-> +		fs_bdev = bh->b_bdev;
->  		locked = 0;
->  
->  		/* Get reference just to make sure buffer does not disappear
-> @@ -290,6 +293,8 @@ write_out_data:
->  	}
->  	spin_unlock(&journal->j_list_lock);
->  	journal_do_submit_data(wbuf, bufs, write_op);
-> +	if (fs_bdev)
-> +		blk_unplug(bdev_get_queue(fs_bdev));
->  
->  	return err;
->  }
-> diff --git a/fs/jbd2/commit.c b/fs/jbd2/commit.c
-> index 282750c..b5448dd 100644
-> --- a/fs/jbd2/commit.c
-> +++ b/fs/jbd2/commit.c
-> @@ -26,6 +26,7 @@
->  #include <linux/writeback.h>
->  #include <linux/backing-dev.h>
->  #include <linux/bio.h>
-> +#include <linux/blkdev.h>
->  
->  /*
->   * Default IO end handler for temporary BJ_IO buffer_heads.
-> @@ -176,6 +177,7 @@ static int journal_wait_on_commit_record(journal_t *journal,
->  
->  retry:
->  	clear_buffer_dirty(bh);
-> +	blk_unplug(bdev_get_queue(bh->b_bdev));
->  	wait_on_buffer(bh);
-
-There's really not a lot of point to doing it this way, since
-wait_on_buffer() will immediately do an unplug of the device anyway.
-
-So it's quite on purpose that I didn't do a lot of tracking for this and
-manual unplugging, we simply don't need it.
-
->  	if (buffer_eopnotsupp(bh) && (journal->j_flags & JBD2_BARRIER)) {
->  		printk(KERN_WARNING
-> @@ -241,10 +243,12 @@ static int journal_submit_data_buffers(journal_t *journal,
->  	struct jbd2_inode *jinode;
->  	int err, ret = 0;
->  	struct address_space *mapping;
-> +	struct block_device *fs_bdev = 0;
->  
->  	spin_lock(&journal->j_list_lock);
->  	list_for_each_entry(jinode, &commit_transaction->t_inode_list, i_list) {
->  		mapping = jinode->i_vfs_inode->i_mapping;
-> +		fs_bdev = jinode->i_vfs_inode->i_sb->s_bdev;
->  		jinode->i_flags |= JI_COMMIT_RUNNING;
->  		spin_unlock(&journal->j_list_lock);
->  		/*
-> @@ -262,6 +266,8 @@ static int journal_submit_data_buffers(journal_t *journal,
->  		wake_up_bit(&jinode->i_flags, __JI_COMMIT_RUNNING);
->  	}
->  	spin_unlock(&journal->j_list_lock);
-> +	if (fs_bdev)
-> +		blk_unplug(bdev_get_queue(fs_bdev));
->  	return ret;
->  }
->  
-> diff --git a/mm/filemap.c b/mm/filemap.c
-> index 2e2d38e..eff2ed9 100644
-> --- a/mm/filemap.c
-> +++ b/mm/filemap.c
-> @@ -274,6 +274,10 @@ int wait_on_page_writeback_range(struct address_space *mapping,
->  	if (end < start)
->  		return 0;
->  
-> +	if (mapping->host && mapping->host->i_sb && mapping->host->i_sb &&
-> +	    mapping->host->i_sb->s_bdev)
-> +		blk_unplug(bdev_get_queue(mapping->host->i_sb->s_bdev));
-> +
-
-Ugh, this one is nasty!
-
-        blk_run_address_space(mapping);
-
-would be a lot cleaner.
+While the video is playing?  Well it is possible I guess.  I haven't had
+it happen in a while, so perhaps that was a mythtv bug that got fixed
+since the keyboard worked fine if I switch to vt1 for example.
 
 -- 
-Jens Axboe
+Len Sorensen
