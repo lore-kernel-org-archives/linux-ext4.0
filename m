@@ -1,172 +1,57 @@
-From: Kevin Shanahan <kmshanah@ucwb.org.au>
-Subject: Re: ext4 bug and/or e2fsck hole
-Date: Wed, 8 Apr 2009 09:09:55 +0930
-Message-ID: <20090407233955.GA4328@kulgan>
-References: <20090407204811.GA4495@kulgan> <20090407231324.GF3204@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] block_write_full_page: switch synchronous writes to
+	use WRITE_SYNC_PLUG
+Date: Tue, 7 Apr 2009 19:46:55 -0400
+Message-ID: <20090407234655.GC7031@mit.edu>
+References: <20090406232141.ebdb426a.akpm@linux-foundation.org> <20090406235052.1ea47513.akpm@linux-foundation.org> <20090407070835.GM5178@kernel.dk> <20090407002313.fcdd1da0.akpm@linux-foundation.org> <20090407075732.GO5178@kernel.dk> <20090407190913.GA31723@mit.edu> <20090407193239.GE5178@kernel.dk> <20090407214421.GA7031@mit.edu> <20090407221933.GB7031@mit.edu> <20090407160944.de3c5139.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="X1bOJ3K7DJ5YkBrT"
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: jens.axboe@oracle.com, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, jack@suse.cz
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bowden.ucwb.org.au ([203.122.237.119]:40661 "EHLO
-	mail.ucwb.org.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751833AbZDGXj7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 7 Apr 2009 19:39:59 -0400
+Received: from THUNK.ORG ([69.25.196.29]:34185 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754025AbZDGXrF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Apr 2009 19:47:05 -0400
 Content-Disposition: inline
-In-Reply-To: <20090407231324.GF3204@webber.adilger.int>
+In-Reply-To: <20090407160944.de3c5139.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
---X1bOJ3K7DJ5YkBrT
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
-
-On Tue, Apr 07, 2009 at 04:13:24PM -0700, Andreas Dilger wrote:
-> On Apr 08, 2009  06:18 +0930, Kevin Shanahan wrote:
-> > I have a problem where my ext4 filesystem has been corrupted
-> > previously[1], but after being repaired by e2fsck problems still
-> > remain.
+On Tue, Apr 07, 2009 at 04:09:44PM -0700, Andrew Morton wrote:
 > > 
-> > Previously, some corruption occured with the directory entries in this
-> > directory which e2fsck "fixed" and was happy that the fs was
-> > consistent, but things didn't quite get back to normal:
-> > 
-> > hermes:/srv/samba/local/apps/CIM8/Release-Notes# ls -l
-> > total 3120
-> > -rw-rw----+ 1 root          WUM3\it - dataadm   6320 2007-11-12 11:35 rb_200711_02.pdf
-> > sr-S-----x  1     167085146        3064914020      0 1988-03-09 06:02 rc_200705_01.pdf
-> > 
-> > Everything looks okay there except the one file with weird
-> > permissions, group and owner numbers. Look what happens when I try to
-> > delete the files from this directory:
-> > 
-> > hermes:/srv/samba/local/apps/CIM8/Release-Notes# rm *
-> > 
-> > The filesystem was read-write beforehand. Here's what showed up in syslog:
-> > 
-> > Apr  8 05:48:58 hermes kernel: attempt to access beyond end of device
-> > Apr  8 05:48:58 hermes kernel: dm-0: rw=0, want=824255763709960, limit=2147483648
-> > Apr  8 05:48:58 hermes kernel: EXT4-fs error (device dm-0): ext4_xattr_delete_inode: inode 383: block 103031970463744 read error
-> > Apr  8 05:48:58 hermes kernel: Aborting journal on device dm-0:8.
-> > Apr  8 05:48:58 hermes kernel: Remounting filesystem read-only
-> > Apr  8 05:48:58 hermes kernel: EXT4-fs error (device dm-0) in ext4_free_inode: Journal has aborted
-> > 
-> > So now I unmount and run fsck again:
-> > 
-> > hermes:~# e2fsck -p -f -v /dev/dm-0
-> > /dev/dm-0: recovering journal
+> > The upstream callers of block_write_full_page() which wait for the
+> > writes to finish call wait_on_buffer(), wait_on_writeback_range()
+> > (which ultimately calls sync_page(), which calls
+> > blk_run_backing_dev(), which will unplug the device queue), and so on.
 > 
-> What version of e2fsprogs is this?  It definitely appears that the
-> inode is corrupted (bad i_file_acl field), and e2fsck isn't fixing it.
+> <sob>
 
-Using current Debian stable release:
+No question, this stuff needs to be better documented; the codepaths
+involved is scattered between files in block/, fs/, and mm/
+directories, and it's not well documented as *all* what a filesystem
+developer is supposed to do.
 
-hermes:~# e2fsck -V
-e2fsck 1.41.3 (12-Oct-2008)
-        Using EXT2FS Library version 1.41.3, 12-Oct-2008
+> >  	const unsigned blocksize = 1 << inode->i_blkbits;
+> >  	int nr_underway = 0;
+> > -	int write_op = (wbc->sync_mode == WB_SYNC_ALL ? WRITE_SYNC : WRITE);
+> > +	int write_op = (wbc->sync_mode == WB_SYNC_ALL ?
+> > +			WRITE_SYNC_PLUG : WRITE);
+> >  
+> >  	BUG_ON(!PageLocked(page));
+> 
+> So how does WRITE_SYNC_PLUG differ from WRITE, and what effect does
+> this change have upon kernel behaviour?
 
-> Can you please dump this inode using "debugfs -c -R 'imap 383' /dev/dm-0"
-> and "dd if=/dev/dm-0 of=/tmp/bad_inode.383.bin bs=4k count=1 skip={blocknr}".
+The difference between WRITE_SYNC_PLUG and WRITE is that from the
+perspective of the I/O scheduler, they are prioritized as
+"synchronous" operations.  Some I/O schedulers, such as AS and CFQ,
+prioritize synchronous writes and put them in the same bucket as
+synchronous reads, and above asynchronous writes.
 
-hermes:~# debugfs -c -R 'imap 383' /dev/dm-0
-debugfs 1.41.3 (12-Oct-2008)
-/dev/dm-0: catastrophic mode - not reading inode or group bitmaps
-383: File not found by ext2_lookup 
-hermes:~# debugfs -c -R 'imap <383>' /dev/dm-0
-debugfs 1.41.3 (12-Oct-2008)
-/dev/dm-0: catastrophic mode - not reading inode or group bitmaps
-Inode 383 is part of block group 0
-        located at block 312, offset 0x0e00
+Currently, we are using WRITE_SYNC, which has the implicit unplug if
+wbc->sync_mode is WB_SYNC_ALL.  WRITE_SYNC_PLUG removes the implicit
+unplug, which was the issue that you had expressed concern.
 
-hermes:~# dd if=/dev/dm-0 of=bad_inode.383.bin bs=4k count=1 skip=312
-1+0 records in
-1+0 records out
-4096 bytes (4.1 kB) copied, 3.9273e-05 s, 104 MB/s
-
-Cheers,
-Kevin.
-
---X1bOJ3K7DJ5YkBrT
-Content-Type: application/octet-stream
-Content-Disposition: attachment; filename="bad_inode.383.bin"
-Content-Transfer-Encoding: base64
-
-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
-
---X1bOJ3K7DJ5YkBrT--
+	      	      	    	     	 - Ted
