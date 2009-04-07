@@ -1,21 +1,19 @@
-From: y@suse.cz
+From: Jan Kara <jack@suse.cz>
 Subject: [PATCH RESEND] jbd: Update locking coments
-Date: Tue,  7 Apr 2009 15:10:33 +0200
-Message-ID: <29128.4849554815$1239109953@news.gmane.org>
+Date: Tue,  7 Apr 2009 15:11:28 +0200
+Message-ID: <1239109888-18700-1-git-send-email-jack@suse.cz>
 References: <y>
 Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
 	Lin Tan <tammy000@gmail.com>
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:57394 "EHLO mx1.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:53355 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751202AbZDGNKg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Apr 2009 09:10:36 -0400
+	id S1753248AbZDGNLa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Apr 2009 09:11:30 -0400
 In-Reply-To: <y>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-From: Jan Kara <jack@suse.cz>
 
 Update information about locking in JBD revoke code. Inconsistency in comments
 found by Lin Tan <tammy000@gmail.com>.
