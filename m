@@ -1,70 +1,79 @@
 From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: [PATCH 3/5] [64-BIT] blk_t->blk64_t change in ext2fs_extent_get()/cast in extent_node_split()
-Date: Wed, 08 Apr 2009 17:46:56 -0400
-Message-ID: <11649.1239227216@alphaville.usa.hp.com>
+Subject: [PATCH 4/5][64-BIT] debugfs.c extents display.
+Date: Wed, 08 Apr 2009 17:47:09 -0400
+Message-ID: <11655.1239227229@alphaville.usa.hp.com>
 Reply-To: nicholas.dokos@hp.com
 Cc: nicholas.dokos@hp.com, linux-ext4@vger.kernel.org,
 	Valerie Aurora <vaurora@redhat.com>
 To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g4t0017.houston.hp.com ([15.201.24.20]:9332 "EHLO
+Received: from g4t0017.houston.hp.com ([15.201.24.20]:9374 "EHLO
 	g4t0017.houston.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753759AbZDHVq4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2009 17:46:56 -0400
+	with ESMTP id S1755587AbZDHVrJ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2009 17:47:09 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-e2image (after enabling 64-bitness) was reporting a corrupt extent header
-in a 16TiB file created on a 32TiB filesystem. Checking the on-disk extents
-did not uncover any problem. Debugging e2image showed truncation in the
-ext2fs_extent_get() routine. Code examination showed an inconsistency
-on line 428:
+Change the first and last block numbers in the list_blocks_struct
+from blk_t to blk64_t.
 
-                blk = ext2fs_le32_to_cpu(ix->ei_leaf) +
-                        ((__u64) ext2fs_le16_to_cpu(ix->ei_leaf_hi) << 32);
+Change the list_blocks_proc() to take a blk64_t *blocknr and use
+ext2fs_block_iterate3(), instead of ...iterate2().
 
-blk is treated as a 64 bit quantity but it is declared blk_t. This
-changes it to blk64_t. With this change, e2image has been running to
-completion.
+Change fprintf formats to use %llu, instead of %u.
 
-The second change is not based on debugging, just code examination:
-ext2fs_alloc_block2() has been modified in the 64-bit patch series (in
-the patch called add_64-bit_alloc_interface) so that its second
-argument (the goal block) is a blk64_t. However, extent_node_split()
-calls it with its second argument explicitly cast to blk_t. That looks
-wrong.
-
-There are some more blk_t's used in this file (extent.c), but they are
-in #ifdef DEBUG code, so I have not examined them any closer and I
-have not changed them (yet?).
+With these changes, it seems to produce the right block numbers: I
+spot-checked against the extents that my python script reported, but I
+have not done an exhaustive comparison.
 
 Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
 ---
- lib/ext2fs/extent.c |    4 ++--
- 1 files changed, 2 insertions(+), 2 deletions(-)
+ debugfs/debugfs.c |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index a6edd0c..1778955 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -273,7 +273,7 @@ errcode_t ext2fs_extent_get(ext2_extent_handle_t handle,
- 	struct ext3_extent_idx		*ix = 0;
- 	struct ext3_extent		*ex;
- 	errcode_t			retval;
--	blk_t				blk;
-+	blk64_t				blk;
- 	blk64_t				end_blk;
- 	int				orig_op, op;
+diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+index a71da89..6b75410 100644
+--- a/debugfs/debugfs.c
++++ b/debugfs/debugfs.c
+@@ -378,7 +378,7 @@ void do_dirty_filesys(int argc EXT2FS_ATTR((unused)),
+ struct list_blocks_struct {
+ 	FILE		*f;
+ 	e2_blkcnt_t	total;
+-	blk_t		first_block, last_block;
++	blk64_t		first_block, last_block;
+ 	e2_blkcnt_t	first_bcnt, last_bcnt;
+ 	e2_blkcnt_t	first;
+ };
+@@ -392,17 +392,17 @@ static void finish_range(struct list_blocks_struct *lb)
+ 	else
+ 		fprintf(lb->f, ", ");
+ 	if (lb->first_block == lb->last_block)
+-		fprintf(lb->f, "(%lld):%u",
++		fprintf(lb->f, "(%lld):%llu",
+ 			(long long)lb->first_bcnt, lb->first_block);
+ 	else
+-		fprintf(lb->f, "(%lld-%lld):%u-%u",
++		fprintf(lb->f, "(%lld-%lld):%llu-%llu",
+ 			(long long)lb->first_bcnt, (long long)lb->last_bcnt,
+ 			lb->first_block, lb->last_block);
+ 	lb->first_block = 0;
+ }
  
-@@ -904,7 +904,7 @@ static errcode_t extent_node_split(ext2_extent_handle_t handle)
- 		goal_blk = (group * handle->fs->super->s_blocks_per_group) +
- 			handle->fs->super->s_first_data_block;
- 	}
--	retval = ext2fs_alloc_block2(handle->fs, (blk_t) goal_blk, block_buf,
-+	retval = ext2fs_alloc_block2(handle->fs, goal_blk, block_buf,
- 				    &new_node_pblk);
- 	if (retval)
- 		goto done;
+ static int list_blocks_proc(ext2_filsys fs EXT2FS_ATTR((unused)),
+-			    blk_t *blocknr, e2_blkcnt_t blockcnt,
++			    blk64_t *blocknr, e2_blkcnt_t blockcnt,
+ 			    blk_t ref_block EXT2FS_ATTR((unused)),
+ 			    int ref_offset EXT2FS_ATTR((unused)),
+ 			    void *private)
+@@ -523,7 +523,7 @@ static void dump_blocks(FILE *f, const char *prefix, ext2_ino_t inode)
+ 	lb.first_block = 0;
+ 	lb.f = f;
+ 	lb.first = 1;
+-	ext2fs_block_iterate2(current_fs, inode, BLOCK_FLAG_READ_ONLY, NULL,
++	ext2fs_block_iterate3(current_fs, inode, BLOCK_FLAG_READ_ONLY, NULL,
+ 			      list_blocks_proc, (void *)&lb);
+ 	finish_range(&lb);
+ 	if (lb.total)
 -- 
 1.6.0.6
 
