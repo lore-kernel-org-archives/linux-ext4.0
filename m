@@ -1,127 +1,149 @@
-From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] block_write_full_page: switch synchronous writes to use
-  WRITE_SYNC_PLUG
-Date: Wed, 8 Apr 2009 15:34:28 -0700
-Message-ID: <20090408153428.6195a442.akpm@linux-foundation.org>
-References: <20090406232141.ebdb426a.akpm@linux-foundation.org>
-	<20090406235052.1ea47513.akpm@linux-foundation.org>
-	<20090407070835.GM5178@kernel.dk>
-	<20090407002313.fcdd1da0.akpm@linux-foundation.org>
-	<20090407075732.GO5178@kernel.dk>
-	<20090407190913.GA31723@mit.edu>
-	<20090407193239.GE5178@kernel.dk>
-	<20090407214421.GA7031@mit.edu>
-	<20090407221933.GB7031@mit.edu>
-	<20090407160944.de3c5139.akpm@linux-foundation.org>
-	<20090408080844.GW5178@kernel.dk>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, jack@suse.cz
-To: Jens Axboe <jens.axboe@oracle.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] Ext3 latency fixes
+Date: Wed, 08 Apr 2009 19:40:05 -0400
+Message-ID: <E1LrhNF-0002zd-BG@closure.thunk.org>
+Cc: Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: torvalds@linuxfoundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:41612 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755371AbZDHWhk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2009 18:37:40 -0400
-In-Reply-To: <20090408080844.GW5178@kernel.dk>
+Received: from thunk.org ([69.25.196.29]:55097 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755155AbZDHXkN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Apr 2009 19:40:13 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 8 Apr 2009 10:08:44 +0200 Jens Axboe <jens.axboe@oracle.com> wrote:
+Hi Linus,
 
-> > So how does WRITE_SYNC_PLUG differ from WRITE, and what effect does
-> > this change have upon kernel behaviour?
-> 
-> How about something like this. Comments welcome.
+Please pull from: 
 
-It's lovely.
+git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git ext3-latency-fixes
 
-> Should we move this to
-> a dedicated header file? fs.h is amazingly cluttered as it is.
+One of these patches fixes a performance regression caused by a64c8610,
+which unplugged the write queue after every page write.  Now that Jens
+added WRITE_SYNC_PLUG.the patch causes us to use it instead of
+WRITE_SYNC, to avoid the implicit unplugging.  These patches also seem
+to further improbve ext3 latency, especially during the "sync" command
+in Linus's write-big-file-and-sync workload.
 
-Sometime, perhaps.
+In addition, I have a patch from Jan that avoids starting a transaction
+unnecessarily for the data=writepage case.
 
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 562d285..6b6597a 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -87,6 +87,57 @@ struct inodes_stat_t {
->   */
->  #define FMODE_NOCMTIME		((__force fmode_t)2048)
->  
-> +/*
-> + * The below are the various read and write types that we support. Some of
-> + * them include behavioral modifiers that send information down to the
-> + * block layer and IO scheduler. Terminology:
-> + *
-> + *	The block layer uses device plugging to defer IO a little bit, in
-> + *	the hope that we will see more IO very shortly. This increases
-> + *	coalescing of adjacent IO and thus reduces the number of IOs we
-> + *	have to send to the device. It also allows for better queuing,
-> + *	if the IO isn't mergeable. If the caller is going to be waiting
-> + *	for the IO, then he must ensure that the device is unplugged so
-> + *	that the IO is dispatched to the driver.
-> + *
-> + *	All IO is handled async in Linux. This is fine for background
-> + *	writes, but for reads or writes that someone waits for completion
-> + *	on, we want to notify the block layer and IO scheduler so that they
-> + *	know about it. That allows them to make better scheduling
-> + *	decisions. So when the below references 'sync' and 'async', it
-> + *	is referencing this priority hint.
-> + *
-> + * With that in mind, the available types are:
-> + *
-> + * READ			A normal read operation. Device will be plugged.
-> + * READ_SYNC		A synchronous read. Device is not plugged, caller can
-> + *			immediately wait on this read without caring about
-> + *			unplugging.
-> + * READA		Used for read-ahead operations. Lower priority, and the
-> + *			 block layer could (in theory) choose to ignore this
-> + *			request if it runs into resource problems.
-> + * WRITE		A normal async write. Device will be plugged.
-> + * SWRITE		Like WRITE, but a special case for ll_rw_block() that
-> + *			tells it to lock the buffer first. Normally a buffer
-> + *			must be locked before doing IO.
-> + * WRITE_SYNC_PLUG	Synchronous write. Identical to WRITE, but passes down
-> + *			the hint that someone will be waiting on this IO
-> + *			shortly.
+						- Ted
 
->From the text, I'd expect WRITE_SYNC_PLUG to, err, unplug!
+Jan Kara (1):
+      ext3: Try to avoid starting a transaction in writepage for data=writepage
 
-> + * WRITE_SYNC		Like WRITE_SYNC_PLUG, but also unplugs the device
-> + *			immediately after submission. The write equivalent
-> + *			of READ_SYNC.
+Theodore Ts'o (1):
+      block_write_full_page: switch synchronous writes to use WRITE_SYNC_PLUG
 
-But this contradicts my expectation.
+ fs/buffer.c     |   13 ++++++++++++-
+ fs/ext3/inode.c |   23 ++++++++++++++++++-----
+ 2 files changed, 30 insertions(+), 6 deletions(-)
 
-So what does WRITE_SYNC_PLUG really do dofferent from WRITE?
 
-> + * WRITE_ODIRECT	Special case write for O_DIRECT only.
-> + * SWRITE_SYNC
-> + * SWRITE_SYNC_PLUG	Like WRITE_SYNC/WRITE_SYNC_PLUG, but locks the buffer.
-> + *			See SWRITE.
-> + * WRITE_BARRIER	Like WRITE, but tells the block layer that all
-> + *			previously submitted writes must be safely on storage
-> + *			before this one is started. Also guarantees that when
-> + *			this write is complete, it itself is also safely on
-> + *			storage. Prevents reordering of writes on both sides
-> + *			of this IO.
-> + *
-> + */
->  #define RW_MASK		1
->  #define RWA_MASK	2
->  #define READ 0
-> @@ -102,6 +153,11 @@ struct inodes_stat_t {
->  			(SWRITE | (1 << BIO_RW_SYNCIO) | (1 << BIO_RW_NOIDLE))
->  #define SWRITE_SYNC	(SWRITE_SYNC_PLUG | (1 << BIO_RW_UNPLUG))
->  #define WRITE_BARRIER	(WRITE | (1 << BIO_RW_BARRIER))
-> +
-> +/*
-> + * These aren't really reads or writes, they pass down information about
-> + * parts of device that are now unused by the file system.
-> + */
->  #define DISCARD_NOBARRIER (1 << BIO_RW_DISCARD)
->  #define DISCARD_BARRIER ((1 << BIO_RW_DISCARD) | (1 << BIO_RW_BARRIER))
+commit 430db323fae7665da721768949ade6304811c648
+Author: Jan Kara <jack@suse.cz>
+Date:   Tue Apr 7 18:25:01 2009 -0400
 
+    ext3: Try to avoid starting a transaction in writepage for data=writepage
+    
+    This does the same as commit 9e80d407736161d9b8b0c5a0d44f786e44c322ea
+    (avoid starting a transaction when no block allocation is needed)
+    but for data=writeback mode of ext3. We also cleanup the data=ordered
+    case a bit to stick to coding style...
+    
+    Signed-off-by: Jan Kara <jack@suse.cz>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index 466a332..fcfa243 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1521,12 +1521,16 @@ static int ext3_ordered_writepage(struct page *page,
+ 	if (!page_has_buffers(page)) {
+ 		create_empty_buffers(page, inode->i_sb->s_blocksize,
+ 				(1 << BH_Dirty)|(1 << BH_Uptodate));
+-	} else if (!walk_page_buffers(NULL, page_buffers(page), 0, PAGE_CACHE_SIZE, NULL, buffer_unmapped)) {
+-		/* Provide NULL instead of get_block so that we catch bugs if buffers weren't really mapped */
+-		return block_write_full_page(page, NULL, wbc);
++		page_bufs = page_buffers(page);
++	} else {
++		page_bufs = page_buffers(page);
++		if (!walk_page_buffers(NULL, page_bufs, 0, PAGE_CACHE_SIZE,
++				       NULL, buffer_unmapped)) {
++			/* Provide NULL get_block() to catch bugs if buffers
++			 * weren't really mapped */
++			return block_write_full_page(page, NULL, wbc);
++		}
+ 	}
+-	page_bufs = page_buffers(page);
+-
+ 	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+ 
+ 	if (IS_ERR(handle)) {
+@@ -1581,6 +1585,15 @@ static int ext3_writeback_writepage(struct page *page,
+ 	if (ext3_journal_current_handle())
+ 		goto out_fail;
+ 
++	if (page_has_buffers(page)) {
++		if (!walk_page_buffers(NULL, page_buffers(page), 0,
++				      PAGE_CACHE_SIZE, NULL, buffer_unmapped)) {
++			/* Provide NULL get_block() to catch bugs if buffers
++			 * weren't really mapped */
++			return block_write_full_page(page, NULL, wbc);
++		}
++	}
++
+ 	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+ 	if (IS_ERR(handle)) {
+ 		ret = PTR_ERR(handle);
+
+commit 6e34eeddf7deec1444bbddab533f03f520d8458c
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Tue Apr 7 18:12:43 2009 -0400
+
+    block_write_full_page: switch synchronous writes to use WRITE_SYNC_PLUG
+    
+    Now that we have a distinction between WRITE_SYNC and WRITE_SYNC_PLUG,
+    use WRITE_SYNC_PLUG in __block_write_full_page() to avoid unplugging
+    the block device I/O queue between each page that gets flushed out.
+    
+    Otherwise, when we run sync() or fsync() and we need to write out a
+    large number of pages, the block device queue will get unplugged
+    between for every page that is flushed out, which will be a pretty
+    serious performance regression caused by commit a64c8610.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/buffer.c b/fs/buffer.c
+index 6e35762..13edf7a 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -1596,6 +1596,16 @@ EXPORT_SYMBOL(unmap_underlying_metadata);
+  * locked buffer.   This only can happen if someone has written the buffer
+  * directly, with submit_bh().  At the address_space level PageWriteback
+  * prevents this contention from occurring.
++ *
++ * If block_write_full_page() is called with wbc->sync_mode ==
++ * WB_SYNC_ALL, the writes are posted using WRITE_SYNC_PLUG; this
++ * causes the writes to be flagged as synchronous writes, but the
++ * block device queue will NOT be unplugged, since usually many pages
++ * will be pushed to the out before the higher-level caller actually
++ * waits for the writes to be completed.  The various wait functions,
++ * such as wait_on_writeback_range() will ultimately call sync_page()
++ * which will ultimately call blk_run_backing_dev(), which will end up
++ * unplugging the device queue.
+  */
+ static int __block_write_full_page(struct inode *inode, struct page *page,
+ 			get_block_t *get_block, struct writeback_control *wbc)
+@@ -1606,7 +1616,8 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
+ 	struct buffer_head *bh, *head;
+ 	const unsigned blocksize = 1 << inode->i_blkbits;
+ 	int nr_underway = 0;
+-	int write_op = (wbc->sync_mode == WB_SYNC_ALL ? WRITE_SYNC : WRITE);
++	int write_op = (wbc->sync_mode == WB_SYNC_ALL ?
++			WRITE_SYNC_PLUG : WRITE);
+ 
+ 	BUG_ON(!PageLocked(page));
+ 
