@@ -1,109 +1,127 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: [PATCH 5/5][64-BIT] fix inode->i_blocks 32-bit wrap in e2fsck/pass1.c.
-Date: Wed, 08 Apr 2009 17:47:30 -0400
-Message-ID: <11660.1239227250@alphaville.usa.hp.com>
-Reply-To: nicholas.dokos@hp.com
-Cc: nicholas.dokos@hp.com, linux-ext4@vger.kernel.org,
-	Valerie Aurora <vaurora@redhat.com>
-To: Theodore Ts'o <tytso@mit.edu>
+From: Andrew Morton <akpm@linux-foundation.org>
+Subject: Re: [PATCH] block_write_full_page: switch synchronous writes to use
+  WRITE_SYNC_PLUG
+Date: Wed, 8 Apr 2009 15:34:28 -0700
+Message-ID: <20090408153428.6195a442.akpm@linux-foundation.org>
+References: <20090406232141.ebdb426a.akpm@linux-foundation.org>
+	<20090406235052.1ea47513.akpm@linux-foundation.org>
+	<20090407070835.GM5178@kernel.dk>
+	<20090407002313.fcdd1da0.akpm@linux-foundation.org>
+	<20090407075732.GO5178@kernel.dk>
+	<20090407190913.GA31723@mit.edu>
+	<20090407193239.GE5178@kernel.dk>
+	<20090407214421.GA7031@mit.edu>
+	<20090407221933.GB7031@mit.edu>
+	<20090407160944.de3c5139.akpm@linux-foundation.org>
+	<20090408080844.GW5178@kernel.dk>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org, jack@suse.cz
+To: Jens Axboe <jens.axboe@oracle.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g5t0009.atlanta.hp.com ([15.192.0.46]:25781 "EHLO
-	g5t0009.atlanta.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1764478AbZDHVrb (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2009 17:47:31 -0400
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41612 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755371AbZDHWhk (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Apr 2009 18:37:40 -0400
+In-Reply-To: <20090408080844.GW5178@kernel.dk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Running e2fsck on a 32TiB fs with a 16TiB file in it produced this
-error:
+On Wed, 8 Apr 2009 10:08:44 +0200 Jens Axboe <jens.axboe@oracle.com> wrote:
 
-sudo ./e2fsck -n -f /dev/mapper/bigvg-bigvol
-e2fsck 1.41.4 (27-Jan-2009)
-Pass 1: Checking inodes, blocks, and sizes
-Inode 13, i_blocks is 3216, should be 34359741584.  Fix? no
+> > So how does WRITE_SYNC_PLUG differ from WRITE, and what effect does
+> > this change have upon kernel behaviour?
+> 
+> How about something like this. Comments welcome.
 
-This patch adds a 64-bit aware access function to lib/ext2fs/blknum.c
-and uses that, instead of accessing the i_blocks field directly.
+It's lovely.
 
-With this patch, the above error goes away.
+> Should we move this to
+> a dedicated header file? fs.h is amazingly cluttered as it is.
 
-In addition, there was a stutter in the code, where inode->i_blocks was checked
-twice in an if statement: I got rid of one instance. This was harmless,
-but unnecessary.
+Sometime, perhaps.
 
-Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
----
- e2fsck/pass1.c      |    6 +++---
- lib/ext2fs/blknum.c |   11 +++++++++++
- lib/ext2fs/ext2fs.h |    2 ++
- 3 files changed, 16 insertions(+), 3 deletions(-)
+> diff --git a/include/linux/fs.h b/include/linux/fs.h
+> index 562d285..6b6597a 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -87,6 +87,57 @@ struct inodes_stat_t {
+>   */
+>  #define FMODE_NOCMTIME		((__force fmode_t)2048)
+>  
+> +/*
+> + * The below are the various read and write types that we support. Some of
+> + * them include behavioral modifiers that send information down to the
+> + * block layer and IO scheduler. Terminology:
+> + *
+> + *	The block layer uses device plugging to defer IO a little bit, in
+> + *	the hope that we will see more IO very shortly. This increases
+> + *	coalescing of adjacent IO and thus reduces the number of IOs we
+> + *	have to send to the device. It also allows for better queuing,
+> + *	if the IO isn't mergeable. If the caller is going to be waiting
+> + *	for the IO, then he must ensure that the device is unplugged so
+> + *	that the IO is dispatched to the driver.
+> + *
+> + *	All IO is handled async in Linux. This is fine for background
+> + *	writes, but for reads or writes that someone waits for completion
+> + *	on, we want to notify the block layer and IO scheduler so that they
+> + *	know about it. That allows them to make better scheduling
+> + *	decisions. So when the below references 'sync' and 'async', it
+> + *	is referencing this priority hint.
+> + *
+> + * With that in mind, the available types are:
+> + *
+> + * READ			A normal read operation. Device will be plugged.
+> + * READ_SYNC		A synchronous read. Device is not plugged, caller can
+> + *			immediately wait on this read without caring about
+> + *			unplugging.
+> + * READA		Used for read-ahead operations. Lower priority, and the
+> + *			 block layer could (in theory) choose to ignore this
+> + *			request if it runs into resource problems.
+> + * WRITE		A normal async write. Device will be plugged.
+> + * SWRITE		Like WRITE, but a special case for ll_rw_block() that
+> + *			tells it to lock the buffer first. Normally a buffer
+> + *			must be locked before doing IO.
+> + * WRITE_SYNC_PLUG	Synchronous write. Identical to WRITE, but passes down
+> + *			the hint that someone will be waiting on this IO
+> + *			shortly.
 
-diff --git a/e2fsck/pass1.c b/e2fsck/pass1.c
-index 8c4d170..d69dd5c 100644
---- a/e2fsck/pass1.c
-+++ b/e2fsck/pass1.c
-@@ -828,7 +828,7 @@ void e2fsck_pass1(e2fsck_t ctx)
- 				check_blocks(ctx, &pctx, block_buf);
- 				continue;
- 			}
--			if ((inode->i_links_count || inode->i_blocks ||
-+			if ((inode->i_links_count ||
- 			     inode->i_blocks || inode->i_block[0]) &&
- 			    fix_problem(ctx, PR_1_JOURNAL_INODE_NOT_CLEAR,
- 					&pctx)) {
-@@ -1925,7 +1925,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 		pb.num_blocks *= (fs->blocksize / 512);
- #if 0
- 	printf("inode %u, i_size = %lu, last_block = %lld, i_blocks=%lu, num_blocks = %lu\n",
--	       ino, inode->i_size, pb.last_block, inode->i_blocks,
-+	       ino, inode->i_size, pb.last_block, ext2fs_inode_i_blocks(fs, inode),
- 	       pb.num_blocks);
- #endif
- 	if (pb.is_dir) {
-@@ -1974,7 +1974,7 @@ static void check_blocks(e2fsck_t ctx, struct problem_context *pctx,
- 	if (LINUX_S_ISREG(inode->i_mode) &&
- 	    (inode->i_size_high || inode->i_size & 0x80000000UL))
- 		ctx->large_files++;
--	if ((pb.num_blocks != inode->i_blocks) ||
-+	if ((pb.num_blocks != ext2fs_inode_i_blocks(fs, inode)) ||
- 	    ((fs->super->s_feature_ro_compat &
- 	      EXT4_FEATURE_RO_COMPAT_HUGE_FILE) &&
- 	     (inode->i_flags & EXT4_HUGE_FILE_FL) &&
-diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
-index 5959ded..b9666fb 100644
---- a/lib/ext2fs/blknum.c
-+++ b/lib/ext2fs/blknum.c
-@@ -55,6 +55,17 @@ blk64_t ext2fs_inode_data_blocks2(ext2_filsys fs,
- }
- 
- /*
-+ * Return the inode i_blocks count
-+ */
-+blk64_t ext2fs_inode_i_blocks(ext2_filsys fs,
-+					struct ext2_inode *inode)
-+{
-+	return (inode->i_blocks |
-+		(fs->super->s_feature_incompat & EXT4_FEATURE_INCOMPAT_64BIT ?
-+		 (__u64)inode->osd2.linux2.l_i_blocks_hi << 32 : 0));
-+}
-+
-+/*
-  * Return the fs block count
-  */
- blk64_t ext2fs_blocks_count(struct ext2_super_block *super)
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index ea8209b..b97d39e 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -735,6 +735,8 @@ extern blk64_t ext2fs_group_first_block2(ext2_filsys fs, dgrp_t group);
- extern blk64_t ext2fs_group_last_block2(ext2_filsys fs, dgrp_t group);
- extern blk64_t ext2fs_inode_data_blocks2(ext2_filsys fs,
- 					 struct ext2_inode *inode);
-+extern blk64_t ext2fs_inode_i_blocks(ext2_filsys fs,
-+					 struct ext2_inode *inode);
- extern blk64_t ext2fs_blocks_count(struct ext2_super_block *super);
- extern void ext2fs_blocks_count_set(struct ext2_super_block *super,
- 				    blk64_t blk);
--- 
-1.6.0.6
+>From the text, I'd expect WRITE_SYNC_PLUG to, err, unplug!
+
+> + * WRITE_SYNC		Like WRITE_SYNC_PLUG, but also unplugs the device
+> + *			immediately after submission. The write equivalent
+> + *			of READ_SYNC.
+
+But this contradicts my expectation.
+
+So what does WRITE_SYNC_PLUG really do dofferent from WRITE?
+
+> + * WRITE_ODIRECT	Special case write for O_DIRECT only.
+> + * SWRITE_SYNC
+> + * SWRITE_SYNC_PLUG	Like WRITE_SYNC/WRITE_SYNC_PLUG, but locks the buffer.
+> + *			See SWRITE.
+> + * WRITE_BARRIER	Like WRITE, but tells the block layer that all
+> + *			previously submitted writes must be safely on storage
+> + *			before this one is started. Also guarantees that when
+> + *			this write is complete, it itself is also safely on
+> + *			storage. Prevents reordering of writes on both sides
+> + *			of this IO.
+> + *
+> + */
+>  #define RW_MASK		1
+>  #define RWA_MASK	2
+>  #define READ 0
+> @@ -102,6 +153,11 @@ struct inodes_stat_t {
+>  			(SWRITE | (1 << BIO_RW_SYNCIO) | (1 << BIO_RW_NOIDLE))
+>  #define SWRITE_SYNC	(SWRITE_SYNC_PLUG | (1 << BIO_RW_UNPLUG))
+>  #define WRITE_BARRIER	(WRITE | (1 << BIO_RW_BARRIER))
+> +
+> +/*
+> + * These aren't really reads or writes, they pass down information about
+> + * parts of device that are now unused by the file system.
+> + */
+>  #define DISCARD_NOBARRIER (1 << BIO_RW_DISCARD)
+>  #define DISCARD_BARRIER ((1 << BIO_RW_DISCARD) | (1 << BIO_RW_BARRIER))
 
