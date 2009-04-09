@@ -1,44 +1,42 @@
-From: Jack Stone <jwjstone@fastmail.fm>
-Subject: Re: [PATCH 10/56] ext2: Remove void casts
-Date: Thu, 09 Apr 2009 10:52:47 +0100
-Message-ID: <49DDC56F.8000006@fastmail.fm>
-References: <> <1239189748-11703-1-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-2-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-3-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-4-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-5-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-6-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-7-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-8-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-9-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-10-git-send-email-jwjstone@fastmail.fm> <1239189748-11703-11-git-send-email-jwjstone@fastmail.fm>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 12679] 2.6.28.4 ext4 fs hang, load 22 and up, may be
+ firefox/apps stuck on sync_page
+Date: Thu, 9 Apr 2009 15:09:50 GMT
+Message-ID: <200904091509.n39F9ogj014575@demeter.kernel.org>
+References: <bug-12679-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: jeff@garzik.org, kernel-janitors@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from out2.smtp.messagingengine.com ([66.111.4.26]:34955 "EHLO
-	out2.smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752401AbZDIJwv (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Apr 2009 05:52:51 -0400
-In-Reply-To: <1239189748-11703-11-git-send-email-jwjstone@fastmail.fm>
+Received: from demeter.kernel.org ([140.211.167.39]:58684 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755465AbZDIPJw (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Apr 2009 11:09:52 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n39F9olS014576
+	for <linux-ext4@vger.kernel.org>; Thu, 9 Apr 2009 15:09:50 GMT
+In-Reply-To: <bug-12679-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-[Added maintainer CCs]
-Jack Stone wrote:
-> Remove uneeded void casts
->
-> Signed-Off-By: Jack Stone <jwjstone@fastmail.fm>
-> ---
->  fs/ext2/super.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
->
-> diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-> index f983225..be6825a 100644
-> --- a/fs/ext2/super.c
-> +++ b/fs/ext2/super.c
-> @@ -143,7 +143,7 @@ static struct kmem_cache * ext2_inode_cachep;
->  static struct inode *ext2_alloc_inode(struct super_block *sb)
->  {
->  	struct ext2_inode_info *ei;
-> -	ei = (struct ext2_inode_info *)kmem_cache_alloc(ext2_inode_cachep, GFP_KERNEL);
-> +	ei = kmem_cache_alloc(ext2_inode_cachep, GFP_KERNEL);
->  	if (!ei)
->  		return NULL;
->  #ifdef CONFIG_EXT2_FS_POSIX_ACL
->   
+http://bugzilla.kernel.org/show_bug.cgi?id=12679
 
+
+daniel schroeder <sec@dschroeder.info> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|REOPENED                    |RESOLVED
+         Resolution|                            |PATCH_ALREADY_AVAILABLE
+         Regression|---                         |No
+
+
+
+
+--- Comment #8 from daniel schroeder <sec@dschroeder.info>  2009-04-09 15:09:50 ---
+seems to be fixed...mentioned patch is in 2.6.28.9...
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
