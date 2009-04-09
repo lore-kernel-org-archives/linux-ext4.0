@@ -1,131 +1,120 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: [PATCH] block_write_full_page: switch synchronous writes to
-	use   WRITE_SYNC_PLUG
-Date: Thu, 9 Apr 2009 19:59:14 +0200
-Message-ID: <20090409175914.GJ5178@kernel.dk>
-References: <20090407070835.GM5178@kernel.dk> <20090407002313.fcdd1da0.akpm@linux-foundation.org> <20090407075732.GO5178@kernel.dk> <20090407190913.GA31723@mit.edu> <20090407193239.GE5178@kernel.dk> <20090407214421.GA7031@mit.edu> <20090407221933.GB7031@mit.edu> <20090407160944.de3c5139.akpm@linux-foundation.org> <20090408080844.GW5178@kernel.dk> <20090408153428.6195a442.akpm@linux-foundation.org>
+From: Chris Mason <chris.mason@oracle.com>
+Subject: Re: [GIT PULL] Ext3 latency fixes
+Date: Thu, 09 Apr 2009 14:10:03 -0400
+Message-ID: <1239300603.31257.26.camel@think.oraclecorp.com>
+References: <E1LrhNF-0002zd-BG@closure.thunk.org>
+	 <alpine.LFD.2.00.0904090836060.4583@localhost.localdomain>
+	 <1239294219.31257.10.camel@think.oraclecorp.com>
+	 <20090409174932.GD26552@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org, jack@suse.cz
-To: Andrew Morton <akpm@linux-foundation.org>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([93.163.65.50]:38886 "EHLO kernel.dk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759082AbZDIR7P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 9 Apr 2009 13:59:15 -0400
-Content-Disposition: inline
-In-Reply-To: <20090408153428.6195a442.akpm@linux-foundation.org>
+Received: from acsinet11.oracle.com ([141.146.126.233]:33106 "EHLO
+	acsinet11.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754441AbZDISLW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Apr 2009 14:11:22 -0400
+In-Reply-To: <20090409174932.GD26552@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 08 2009, Andrew Morton wrote:
-> On Wed, 8 Apr 2009 10:08:44 +0200 Jens Axboe <jens.axboe@oracle.com> wrote:
-> 
-> > > So how does WRITE_SYNC_PLUG differ from WRITE, and what effect does
-> > > this change have upon kernel behaviour?
+On Thu, 2009-04-09 at 19:49 +0200, Jan Kara wrote:
+> > On Thu, 2009-04-09 at 08:49 -0700, Linus Torvalds wrote:
+> > > 
+> > > On Wed, 8 Apr 2009, Theodore Ts'o wrote:
+> > > > 
+> > > > One of these patches fixes a performance regression caused by a64c8610,
+> > > > which unplugged the write queue after every page write.  Now that Jens
+> > > > added WRITE_SYNC_PLUG.the patch causes us to use it instead of
+> > > > WRITE_SYNC, to avoid the implicit unplugging.  These patches also seem
+> > > > to further improbve ext3 latency, especially during the "sync" command
+> > > > in Linus's write-big-file-and-sync workload.
+> > > 
+> > > So here's a question and a untested _conceptual_ patch. 
+> > > 
+> > > The kind of writeback mode I'd personally prefer would be more of a 
+> > > mixture of the current "data=writeback" and "data=ordered" modes, with 
+> > > something of the best of both worlds. I'd like the data writeback to get 
+> > > _started_ when the journal is written to disk, but I'd like it to not 
+> > > block journal updates.
+> > > 
+> > > IOW, it wouldn't be "strictly ordered", but at the same time it wouldn't 
+> > > be totally unordered either.
+> > > 
 > > 
-> > How about something like this. Comments welcome.
+> > I started working on the xfs style i_size updates last night, and here's
+> > my current (most definitely broken) proof of concept.  I call it
+> > data=guarded.
+> > 
+> > In guarded mode the on disk i_size is not updated until after the data
+> > writes are complete.  I've got a per FS work queue and I'm abusing
+> > bh->b_private as a list pointer.  So, what happens is:
+> > 
+> > * writepage sets up the buffer with the guarded end_io handler
+> > 
+> > * The end_io handler puts the buffer onto the per-sb list of guarded
+> > buffers and then it kicks the work queue
+> > 
+> > * The workqueue updates the on disk i_size to the min of the end of the
+> > buffer or the in-memory i_size, and then it logs the inode.
+> > 
+> > * Then the regular async bh end_io handler is called to end writeback on
+> > the page.
+> > 
+> > One big gotcha is that we starting a transaction while a page is
+> > writeback.  It means that anyone who waits for writeback to finish on
+> > the datapage with a transaction running could deadlock against the work
+> > queue func trying to start a transaction.
+>   For ext3 I don't think anyone waits for PageWriteback with a
+> transaction open. We definitely don't do it from ext3 code and generic
+> code does usually sequence like:
+>   lock_page(page);
+>   ...
+>   wait_on_page_writeback(page)
 > 
-> It's lovely.
-> 
-> > Should we move this to
-> > a dedicated header file? fs.h is amazingly cluttered as it is.
-> 
-> Sometime, perhaps.
-> 
-> > diff --git a/include/linux/fs.h b/include/linux/fs.h
-> > index 562d285..6b6597a 100644
-> > --- a/include/linux/fs.h
-> > +++ b/include/linux/fs.h
-> > @@ -87,6 +87,57 @@ struct inodes_stat_t {
-> >   */
-> >  #define FMODE_NOCMTIME		((__force fmode_t)2048)
-> >  
-> > +/*
-> > + * The below are the various read and write types that we support. Some of
-> > + * them include behavioral modifiers that send information down to the
-> > + * block layer and IO scheduler. Terminology:
-> > + *
-> > + *	The block layer uses device plugging to defer IO a little bit, in
-> > + *	the hope that we will see more IO very shortly. This increases
-> > + *	coalescing of adjacent IO and thus reduces the number of IOs we
-> > + *	have to send to the device. It also allows for better queuing,
-> > + *	if the IO isn't mergeable. If the caller is going to be waiting
-> > + *	for the IO, then he must ensure that the device is unplugged so
-> > + *	that the IO is dispatched to the driver.
-> > + *
-> > + *	All IO is handled async in Linux. This is fine for background
-> > + *	writes, but for reads or writes that someone waits for completion
-> > + *	on, we want to notify the block layer and IO scheduler so that they
-> > + *	know about it. That allows them to make better scheduling
-> > + *	decisions. So when the below references 'sync' and 'async', it
-> > + *	is referencing this priority hint.
-> > + *
-> > + * With that in mind, the available types are:
-> > + *
-> > + * READ			A normal read operation. Device will be plugged.
-> > + * READ_SYNC		A synchronous read. Device is not plugged, caller can
-> > + *			immediately wait on this read without caring about
-> > + *			unplugging.
-> > + * READA		Used for read-ahead operations. Lower priority, and the
-> > + *			 block layer could (in theory) choose to ignore this
-> > + *			request if it runs into resource problems.
-> > + * WRITE		A normal async write. Device will be plugged.
-> > + * SWRITE		Like WRITE, but a special case for ll_rw_block() that
-> > + *			tells it to lock the buffer first. Normally a buffer
-> > + *			must be locked before doing IO.
-> > + * WRITE_SYNC_PLUG	Synchronous write. Identical to WRITE, but passes down
-> > + *			the hint that someone will be waiting on this IO
-> > + *			shortly.
-> 
-> From the text, I'd expect WRITE_SYNC_PLUG to, err, unplug!
+>   and because lock ordering is page_lock < transaction start, we
+> shouldn't have transaction open at that point.
+>   But with ext4 it may be different - there, the lock ordering is
+> transaction start > page_lock and so above code could well have
+> transaction started.
+>   Wouldn't it actually be better to update i_size when the page is
+> fully written out after we clear PG_writeback as you write below?
 
-You are still mixing up the sync hint and unplugging. I'll expand it a
-bit, I guess.
+It would, but then we have to take a ref on the inode and risk iput
+leading to inode deletion in the handler that is supposed to be doing IO
+completion.  It's icky either way ;)
 
-> > + * WRITE_SYNC		Like WRITE_SYNC_PLUG, but also unplugs the device
-> > + *			immediately after submission. The write equivalent
-> > + *			of READ_SYNC.
-> 
-> But this contradicts my expectation.
-> 
-> So what does WRITE_SYNC_PLUG really do dofferent from WRITE?
+The nice part with doing it before writeback is that we know that when
+we wait for page writeback, we don't also have to wait for i_size update
+to be finished.
 
-It tells the IO scheduler that this write is really sync, not async.
-The key difference between the two is as written - the sync one will
-have someone waiting for its completion. What the IO scheduler does with
-the flag is its own business. In reality it means that the write is
-expedited, whereas async writes are done somewhat more lazily.
+If we go this route and it gets copied to ext4, we can weigh our options
+I guess.
 
-> > + * WRITE_ODIRECT	Special case write for O_DIRECT only.
-> > + * SWRITE_SYNC
-> > + * SWRITE_SYNC_PLUG	Like WRITE_SYNC/WRITE_SYNC_PLUG, but locks the buffer.
-> > + *			See SWRITE.
-> > + * WRITE_BARRIER	Like WRITE, but tells the block layer that all
-> > + *			previously submitted writes must be safely on storage
-> > + *			before this one is started. Also guarantees that when
-> > + *			this write is complete, it itself is also safely on
-> > + *			storage. Prevents reordering of writes on both sides
-> > + *			of this IO.
-> > + *
-> > + */
-> >  #define RW_MASK		1
-> >  #define RWA_MASK	2
-> >  #define READ 0
-> > @@ -102,6 +153,11 @@ struct inodes_stat_t {
-> >  			(SWRITE | (1 << BIO_RW_SYNCIO) | (1 << BIO_RW_NOIDLE))
-> >  #define SWRITE_SYNC	(SWRITE_SYNC_PLUG | (1 << BIO_RW_UNPLUG))
-> >  #define WRITE_BARRIER	(WRITE | (1 << BIO_RW_BARRIER))
-> > +
-> > +/*
-> > + * These aren't really reads or writes, they pass down information about
-> > + * parts of device that are now unused by the file system.
-> > + */
-> >  #define DISCARD_NOBARRIER (1 << BIO_RW_DISCARD)
-> >  #define DISCARD_BARRIER ((1 << BIO_RW_DISCARD) | (1 << BIO_RW_BARRIER))
+>   One thing which does not seem to be handled is that your code can
+> happily race with truncate. So IO completion could reset i_size which
+> has been just set by truncate. And I'm not sure how to handle this
+> effectively. Generally I'm not sure how much this is going to cost...
 > 
 
--- 
-Jens Axboe
+Yeah, I was worried about that.  What ends up happening is the setattr
+call sets the disk i_size and then calls inode_setattr, who calls
+vmtruncate who actually waits on the writeback.
+
+Then, we wander into the ext3 truncate who resets disk i_size down
+again.  It's a pretty strange window of updates, but I was thinking it
+would work to cut down i_size, wait on IO, then cut it down again in
+setattr.
+
+Once we wait on all IO past the new in-memory i_size, writepage won't
+send any more down.  So updating disk i_size after the wait should be
+enough.
+
+-chris
+
 
