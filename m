@@ -1,85 +1,45 @@
 From: Andrew Morton <akpm@linux-foundation.org>
-Subject: Re: [PATCH] ext2: Do not update mtime of a move directory when
- parent has not changed
-Date: Thu, 9 Apr 2009 13:20:44 -0700
-Message-ID: <20090409132044.052b40ab.akpm@linux-foundation.org>
-References: <1239302492-10455-1-git-send-email-jack@suse.cz>
-	<20090409115132.9f7ccaf0.akpm@linux-foundation.org>
-	<20090409191515.GB3886@duck.suse.cz>
+Subject: Re: [PATCH] ext2: Fix data corruption for racing writes
+Date: Thu, 9 Apr 2009 13:30:30 -0700
+Message-ID: <20090409133030.a7ea94c7.akpm@linux-foundation.org>
+References: <1238715399-22172-1-git-send-email-jack@suse.cz>
+	<a4a7801d0904031738h68bf6218lfd3349ca50f46642@mail.gmail.com>
+	<20090406102329.GD31189@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, ronny.pretzsch@dfs.de, hare@suse.de
+Cc: yinghan@gmail.com, linux-ext4@vger.kernel.org,
+	linux-kernel@vger.kernel.org, yinghan@google.com,
+	nickpiggin@yahoo.com.au
 To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:57654 "EHLO
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41357 "EHLO
 	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1759944AbZDIUXn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Apr 2009 16:23:43 -0400
-In-Reply-To: <20090409191515.GB3886@duck.suse.cz>
+	by vger.kernel.org with ESMTP id S1762291AbZDIUep (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Apr 2009 16:34:45 -0400
+In-Reply-To: <20090406102329.GD31189@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 9 Apr 2009 21:15:15 +0200
+On Mon, 6 Apr 2009 12:23:29 +0200
 Jan Kara <jack@suse.cz> wrote:
 
-> On Thu 09-04-09 11:51:32, Andrew Morton wrote:
-> > On Thu,  9 Apr 2009 20:41:32 +0200
-> > Jan Kara <jack@suse.cz> wrote:
 > > 
-> > > If the parent of the moved directory has not changed, there's no real
-> > > reason to change mtime. Specs doesn't seem to say anything about this
-> > > particular case and e.g. ext3 does not change mtime in this case.
-> > > So we become a tiny bit more consistent.
-> > > 
-> > > Spotted by ronny.pretzsch@dfs.de, initial fix by J__rn Engel <joern@logfs.org>.
-> > > 
-> > > CC: ronny.pretzsch@dfs.de
-> > > CC: hare@suse.de
-> > > Acked-by: J__rn Engel <joern@logfs.org>
-> > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > > ---
-> > >  fs/ext2/namei.c |    5 ++++-
-> > >  1 files changed, 4 insertions(+), 1 deletions(-)
-> > > 
-> > > diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-> > > index 90ea179..556f258 100644
-> > > --- a/fs/ext2/namei.c
-> > > +++ b/fs/ext2/namei.c
-> > > @@ -352,7 +352,10 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
-> > >  	inode_dec_link_count(old_inode);
-> > >  
-> > >  	if (dir_de) {
-> > > -		ext2_set_link(old_inode, dir_de, dir_page, new_dir);
-> > > +		/* Set link only if parent has changed and thus avoid setting
-> > > +		 * of mtime of the moved directory on a pure rename. */
-> > > +		if (old_dir != new_dir)
-> > > +			ext2_set_link(old_inode, dir_de, dir_page, new_dir);
-> > >  		inode_dec_link_count(old_dir);
-> > >  	}
-> > >  	return 0;
-> > 
-> > hm, what do other filesystems do?  We risk breaking things in either case.
-> > Probably changing ext2 is safer than changing ext3/4, given that ext2 is
-> > used less.
->   Yes, I think so as well. Looking more into what other filesystems do, it
-> seems that FAT, UDF, reiserfs, ext3, ext4 actually never update mtime of
-> the moved directory, even if the parent has changed. So maybe it would make
-> more sence to change ext2 in this way as well. What do you think?
+> > I tried this patch and seems i got deadlock on the truncate_mutex.
+> > Here is the message after enabling lockdep. I pasted the same message
+> > on the origianal thread.
+>
+> ...
+>
+>   I don't think this is a deadlock (or is the machine hung?). The thread
+> was just waiting for a long time. I'd think that you'll occasionally get
+> exactly the same message even without my patch if you stress the machine
+> like you do.
+>  
 
-urgh, stop asking difficult questions.
+Well, it's easy to tell the difference
 
-Given that our behaviour here is basically random, I guess that nobody
-is depending on it much.
+deadlock: system never recovers
+long-sucky-delay: system eventually recovers.
 
-Probably bringing everything into line with ext3 behaviour is safest. 
-otoh we want the behaviour to a) be standards compiant and b) make
-sense.
-
-What _is_ the behaviour?
-
-mkdir ./foo
-mv ./foo ./bar
-
-will update .'s mtime?  If so, that seems correct?
-
+Which was it??
