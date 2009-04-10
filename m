@@ -1,213 +1,62 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext2: Do not update mtime of a move directory when
-	parent has not changed
-Date: Fri, 10 Apr 2009 16:13:32 +0200
-Message-ID: <20090410141332.GA1127@duck.suse.cz>
-References: <1239302492-10455-1-git-send-email-jack@suse.cz> <20090409115132.9f7ccaf0.akpm@linux-foundation.org> <20090409191515.GB3886@duck.suse.cz> <20090409132044.052b40ab.akpm@linux-foundation.org>
+From: Ying Han <yinghan@google.com>
+Subject: Re: [PATCH] ext2: Fix data corruption for racing writes
+Date: Fri, 10 Apr 2009 11:10:41 -0700
+Message-ID: <604427e00904101110j68e0bd31t885e5d60b8842d80@mail.gmail.com>
+References: <1238715399-22172-1-git-send-email-jack@suse.cz>
+	 <a4a7801d0904031738h68bf6218lfd3349ca50f46642@mail.gmail.com>
+	 <20090406102329.GD31189@duck.suse.cz>
+	 <20090409133030.a7ea94c7.akpm@linux-foundation.org>
+	 <604427e00904091359t3e068ffm1868d164824fb575@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="r5Pyd7+fXNt84Ff3"
-Content-Transfer-Encoding: 8bit
-Cc: linux-ext4@vger.kernel.org, ronny.pretzsch@dfs.de, hare@suse.de
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Jan Kara <jack@suse.cz>, yinghan@gmail.com,
+	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
+	nickpiggin@yahoo.com.au
 To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:53172 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751728AbZDJONf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Apr 2009 10:13:35 -0400
-Content-Disposition: inline
-In-Reply-To: <20090409132044.052b40ab.akpm@linux-foundation.org>
+Received: from smtp-out.google.com ([216.239.33.17]:47789 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760084AbZDJSKp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Apr 2009 14:10:45 -0400
+In-Reply-To: <604427e00904091359t3e068ffm1868d164824fb575@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, Apr 9, 2009 at 1:59 PM, Ying Han <yinghan@google.com> wrote:
+> On Thu, Apr 9, 2009 at 1:30 PM, Andrew Morton <akpm@linux-foundation.org> wrote:
+>> On Mon, 6 Apr 2009 12:23:29 +0200
+>> Jan Kara <jack@suse.cz> wrote:
+>>
+>>> >
+>>> > I tried this patch and seems i got deadlock on the truncate_mutex.
+>>> > Here is the message after enabling lockdep. I pasted the same message
+>>> > on the origianal thread.
+>>>
+>>> ...
+>>>
+>>>   I don't think this is a deadlock (or is the machine hung?). The thread
+>>> was just waiting for a long time. I'd think that you'll occasionally get
+>>> exactly the same message even without my patch if you stress the machine
+>>> like you do.
+>>>
+>>
+>> Well, it's easy to tell the difference
+>>
+>> deadlock: system never recovers
+>> long-sucky-delay: system eventually recovers.
+>>
+>> Which was it??
+> Guess i have to retest it. I didn't wait long enough to see what
+> happened on the machine. However, i do see the machine got rebooted
+> later, but i am not sure what is the reason it is got reboot.
+>
+> I will rerun the patch and keep an eye on it this time.
 
---r5Pyd7+fXNt84Ff3
-Content-Type: text/plain; charset=us-ascii
-Content-Disposition: inline
+Ok, i rerun the patch and i don't see the message poping this time and
+the machine is up healthy.
 
-On Thu 09-04-09 13:20:44, Andrew Morton wrote:
-> On Thu, 9 Apr 2009 21:15:15 +0200
-> Jan Kara <jack@suse.cz> wrote:
-> 
-> > On Thu 09-04-09 11:51:32, Andrew Morton wrote:
-> > > On Thu,  9 Apr 2009 20:41:32 +0200
-> > > Jan Kara <jack@suse.cz> wrote:
-> > > 
-> > > > If the parent of the moved directory has not changed, there's no real
-> > > > reason to change mtime. Specs doesn't seem to say anything about this
-> > > > particular case and e.g. ext3 does not change mtime in this case.
-> > > > So we become a tiny bit more consistent.
-> > > > 
-> > > > Spotted by ronny.pretzsch@dfs.de, initial fix by J__rn Engel <joern@logfs.org>.
-> > > > 
-> > > > CC: ronny.pretzsch@dfs.de
-> > > > CC: hare@suse.de
-> > > > Acked-by: J__rn Engel <joern@logfs.org>
-> > > > Signed-off-by: Jan Kara <jack@suse.cz>
-> > > > ---
-> > > >  fs/ext2/namei.c |    5 ++++-
-> > > >  1 files changed, 4 insertions(+), 1 deletions(-)
-> > > > 
-> > > > diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-> > > > index 90ea179..556f258 100644
-> > > > --- a/fs/ext2/namei.c
-> > > > +++ b/fs/ext2/namei.c
-> > > > @@ -352,7 +352,10 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
-> > > >  	inode_dec_link_count(old_inode);
-> > > >  
-> > > >  	if (dir_de) {
-> > > > -		ext2_set_link(old_inode, dir_de, dir_page, new_dir);
-> > > > +		/* Set link only if parent has changed and thus avoid setting
-> > > > +		 * of mtime of the moved directory on a pure rename. */
-> > > > +		if (old_dir != new_dir)
-> > > > +			ext2_set_link(old_inode, dir_de, dir_page, new_dir);
-> > > >  		inode_dec_link_count(old_dir);
-> > > >  	}
-> > > >  	return 0;
-> > > 
-> > > hm, what do other filesystems do?  We risk breaking things in either case.
-> > > Probably changing ext2 is safer than changing ext3/4, given that ext2 is
-> > > used less.
-> >   Yes, I think so as well. Looking more into what other filesystems do, it
-> > seems that FAT, UDF, reiserfs, ext3, ext4 actually never update mtime of
-> > the moved directory, even if the parent has changed. So maybe it would make
-> > more sence to change ext2 in this way as well. What do you think?
-> 
-> urgh, stop asking difficult questions.
-> 
-> Given that our behaviour here is basically random, I guess that nobody
-> is depending on it much.
-  Well, one of our users is complaining that his backup tool is upset on
-ext2 (while it's happy on ext3, xfs, ...) because of the mtime change. So
-there are some programs checking this. But I don't believe anybody relies
-on *ext2* behavior these days...
-
-> Probably bringing everything into line with ext3 behaviour is safest. 
-> otoh we want the behaviour to a) be standards compiant and b) make
-> sense.
-  Definitely.
-
-> What _is_ the behaviour?
-> 
-> mkdir ./foo
-> mv ./foo ./bar
-> 
-> will update .'s mtime?  If so, that seems correct?
-  Yes, it will. The problem is:
-
-mkdir foo
-mkdir bar
-mkdir foo/a
-
-Now under ext2:
-mv foo/a foo/b
-
-changes mtime of 'foo/a' (foo/b after the move). That does not really make
-sence and it does not happen under any other filesystem I've seen.
-
-More complicated is:
-mv foo/a bar/a
-
-This changes mtime of foo/a (bar/a after the move) and it makes some sence
-since we had to update parent directory pointer of foo/a. But again, no
-other filesystem does this. So after some thoughts I'd vote for consistency
-and change ext2 to behave the same as other filesystems. Patch attached.
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
-
---r5Pyd7+fXNt84Ff3
-Content-Type: text/x-patch; charset=iso-8859-1
-Content-Disposition: attachment; filename="0001-ext2-Do-not-update-mtime-of-a-moved-directory.patch"
-Content-Transfer-Encoding: 8bit
-
->From 29e12aa5d24bde1412d4ab0c7559843d030fd89a Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Thu, 9 Apr 2009 16:09:26 +0200
-Subject: [PATCH] ext2: Do not update mtime of a moved directory
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Content-Transfer-Encoding: 8bit
-
-Do not update mtime of a moved directory. Specs don't say anything
-about it (neither that it should, nor that it should not be updated)
-and other common filesystems (ext3, ext4, xfs, reiserfs, fat, ...)
-don't do it. So let's become more consistent.
-
-Spotted by ronny.pretzsch@dfs.de, initial fix by Jörn Engel <joern@logfs.org>.
-
-CC: ronny.pretzsch@dfs.de
-CC: hare@suse.de
-CC: Jörn Engel <joern@logfs.org>
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext2/dir.c   |    5 +++--
- fs/ext2/ext2.h  |    2 +-
- fs/ext2/namei.c |    5 +++--
- 3 files changed, 7 insertions(+), 5 deletions(-)
-
-diff --git a/fs/ext2/dir.c b/fs/ext2/dir.c
-index 2999d72..bce9080 100644
---- a/fs/ext2/dir.c
-+++ b/fs/ext2/dir.c
-@@ -450,7 +450,7 @@ ino_t ext2_inode_by_name(struct inode *dir, struct qstr *child)
- 
- /* Releases the page */
- void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
--			struct page *page, struct inode *inode)
-+		   struct page *page, struct inode *inode, int update_times)
- {
- 	loff_t pos = page_offset(page) +
- 			(char *) de - (char *) page_address(page);
-@@ -465,7 +465,8 @@ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
- 	ext2_set_de_type(de, inode);
- 	err = ext2_commit_chunk(page, pos, len);
- 	ext2_put_page(page);
--	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
-+	if (update_times)
-+		dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
- 	EXT2_I(dir)->i_flags &= ~EXT2_BTREE_FL;
- 	mark_inode_dirty(dir);
- }
-diff --git a/fs/ext2/ext2.h b/fs/ext2/ext2.h
-index 3203042..876b637 100644
---- a/fs/ext2/ext2.h
-+++ b/fs/ext2/ext2.h
-@@ -111,7 +111,7 @@ extern struct ext2_dir_entry_2 * ext2_find_entry (struct inode *,struct qstr *,
- extern int ext2_delete_entry (struct ext2_dir_entry_2 *, struct page *);
- extern int ext2_empty_dir (struct inode *);
- extern struct ext2_dir_entry_2 * ext2_dotdot (struct inode *, struct page **);
--extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, struct page *, struct inode *);
-+extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, struct page *, struct inode *, int);
- 
- /* fsync.c */
- extern int ext2_sync_file (struct file *, struct dentry *, int);
-diff --git a/fs/ext2/namei.c b/fs/ext2/namei.c
-index 90ea179..6524eca 100644
---- a/fs/ext2/namei.c
-+++ b/fs/ext2/namei.c
-@@ -320,7 +320,7 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 		if (!new_de)
- 			goto out_dir;
- 		inode_inc_link_count(old_inode);
--		ext2_set_link(new_dir, new_de, new_page, old_inode);
-+		ext2_set_link(new_dir, new_de, new_page, old_inode, 1);
- 		new_inode->i_ctime = CURRENT_TIME_SEC;
- 		if (dir_de)
- 			drop_nlink(new_inode);
-@@ -352,7 +352,8 @@ static int ext2_rename (struct inode * old_dir, struct dentry * old_dentry,
- 	inode_dec_link_count(old_inode);
- 
- 	if (dir_de) {
--		ext2_set_link(old_inode, dir_de, dir_page, new_dir);
-+		if (old_dir != new_dir)
-+			ext2_set_link(old_inode, dir_de, dir_page, new_dir, 0);
- 		inode_dec_link_count(old_dir);
- 	}
- 	return 0;
--- 
-1.6.0.2
-
-
---r5Pyd7+fXNt84Ff3--
+>
+> --Ying
+>>
+>
