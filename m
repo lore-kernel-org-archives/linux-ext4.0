@@ -1,62 +1,169 @@
-From: Ying Han <yinghan@google.com>
-Subject: Re: [PATCH] ext2: Fix data corruption for racing writes
-Date: Fri, 10 Apr 2009 11:10:41 -0700
-Message-ID: <604427e00904101110j68e0bd31t885e5d60b8842d80@mail.gmail.com>
-References: <1238715399-22172-1-git-send-email-jack@suse.cz>
-	 <a4a7801d0904031738h68bf6218lfd3349ca50f46642@mail.gmail.com>
-	 <20090406102329.GD31189@duck.suse.cz>
-	 <20090409133030.a7ea94c7.akpm@linux-foundation.org>
-	 <604427e00904091359t3e068ffm1868d164824fb575@mail.gmail.com>
+From: akpm@linux-foundation.org
+Subject: + ext2-do-not-update-mtime-of-a-moved-directory.patch added to -mm tree
+Date: Fri, 10 Apr 2009 13:55:35 -0700
+Message-ID: <200904102055.n3AKtap9016957@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, yinghan@gmail.com,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	nickpiggin@yahoo.com.au
-To: Andrew Morton <akpm@linux-foundation.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:47789 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760084AbZDJSKp (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Apr 2009 14:10:45 -0400
-In-Reply-To: <604427e00904091359t3e068ffm1868d164824fb575@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: jack@suse.cz, hare@suse.de, joern@logfs.org,
+	linux-ext4@vger.kernel.org, ronny.pretzsch@dfs.de
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Apr 9, 2009 at 1:59 PM, Ying Han <yinghan@google.com> wrote:
-> On Thu, Apr 9, 2009 at 1:30 PM, Andrew Morton <akpm@linux-foundation.org> wrote:
->> On Mon, 6 Apr 2009 12:23:29 +0200
->> Jan Kara <jack@suse.cz> wrote:
->>
->>> >
->>> > I tried this patch and seems i got deadlock on the truncate_mutex.
->>> > Here is the message after enabling lockdep. I pasted the same message
->>> > on the origianal thread.
->>>
->>> ...
->>>
->>>   I don't think this is a deadlock (or is the machine hung?). The thread
->>> was just waiting for a long time. I'd think that you'll occasionally get
->>> exactly the same message even without my patch if you stress the machine
->>> like you do.
->>>
->>
->> Well, it's easy to tell the difference
->>
->> deadlock: system never recovers
->> long-sucky-delay: system eventually recovers.
->>
->> Which was it??
-> Guess i have to retest it. I didn't wait long enough to see what
-> happened on the machine. However, i do see the machine got rebooted
-> later, but i am not sure what is the reason it is got reboot.
->
-> I will rerun the patch and keep an eye on it this time.
 
-Ok, i rerun the patch and i don't see the message poping this time and
-the machine is up healthy.
+The patch titled
+     ext2: Do not update mtime of a moved directory
+has been added to the -mm tree.  Its filename is
+     ext2-do-not-update-mtime-of-a-moved-directory.patch
 
->
-> --Ying
->>
->
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
+
+*** Remember to use Documentation/SubmitChecklist when testing your cod=
+e ***
+
+See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mm=
+otm/
+
+------------------------------------------------------
+Subject: ext2: Do not update mtime of a moved directory
+=46rom: Jan Kara <jack@suse.cz>
+
+One of our users is complaining that his backup tool is upset on ext2
+(while it's happy on ext3, xfs, ...) because of the mtime change.
+
+The problem is:
+
+mkdir foo
+mkdir bar
+mkdir foo/a
+
+Now under ext2:
+mv foo/a foo/b
+
+changes mtime of 'foo/a' (foo/b after the move).  That does not really
+make sence and it does not happen under any other filesystem I've seen.
+
+More complicated is:
+mv foo/a bar/a
+
+This changes mtime of foo/a (bar/a after the move) and it makes some se=
+nce
+since we had to update parent directory pointer of foo/a. But again, no
+other filesystem does this. So after some thoughts I'd vote for consist=
+ency
+and change ext2 to behave the same as other filesystems.
+
+
+
+Do not update mtime of a moved directory.  Specs don't say anything
+about it (neither that it should, nor that it should not be updated)
+and other common filesystems (ext3, ext4, xfs, reiserfs, fat, ...)
+don't do it.  So let's become more consistent.
+
+Spotted by ronny.pretzsch@dfs.de, initial fix by J=F6rn Engel.
+
+Reported-by: <ronny.pretzsch@dfs.de>
+Cc: <hare@suse.de>
+Cc: J=F6rn Engel <joern@logfs.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext2/dir.c   |    5 +++--
+ fs/ext2/ext2.h  |    2 +-
+ fs/ext2/namei.c |    5 +++--
+ 3 files changed, 7 insertions(+), 5 deletions(-)
+
+diff -puN fs/ext2/dir.c~ext2-do-not-update-mtime-of-a-moved-directory f=
+s/ext2/dir.c
+--- a/fs/ext2/dir.c~ext2-do-not-update-mtime-of-a-moved-directory
++++ a/fs/ext2/dir.c
+@@ -453,7 +453,7 @@ ino_t ext2_inode_by_name(struct inode *d
+=20
+ /* Releases the page */
+ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
+-			struct page *page, struct inode *inode)
++		   struct page *page, struct inode *inode, int update_times)
+ {
+ 	loff_t pos =3D page_offset(page) +
+ 			(char *) de - (char *) page_address(page);
+@@ -468,7 +468,8 @@ void ext2_set_link(struct inode *dir, st
+ 	ext2_set_de_type(de, inode);
+ 	err =3D ext2_commit_chunk(page, pos, len);
+ 	ext2_put_page(page);
+-	dir->i_mtime =3D dir->i_ctime =3D CURRENT_TIME_SEC;
++	if (update_times)
++		dir->i_mtime =3D dir->i_ctime =3D CURRENT_TIME_SEC;
+ 	EXT2_I(dir)->i_flags &=3D ~EXT2_BTREE_FL;
+ 	mark_inode_dirty(dir);
+ }
+diff -puN fs/ext2/ext2.h~ext2-do-not-update-mtime-of-a-moved-directory =
+fs/ext2/ext2.h
+--- a/fs/ext2/ext2.h~ext2-do-not-update-mtime-of-a-moved-directory
++++ a/fs/ext2/ext2.h
+@@ -111,7 +111,7 @@ extern struct ext2_dir_entry_2 * ext2_fi
+ extern int ext2_delete_entry (struct ext2_dir_entry_2 *, struct page *=
+);
+ extern int ext2_empty_dir (struct inode *);
+ extern struct ext2_dir_entry_2 * ext2_dotdot (struct inode *, struct p=
+age **);
+-extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, s=
+truct page *, struct inode *);
++extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, s=
+truct page *, struct inode *, int);
+=20
+ /* fsync.c */
+ extern int ext2_sync_file (struct file *, struct dentry *, int);
+diff -puN fs/ext2/namei.c~ext2-do-not-update-mtime-of-a-moved-directory=
+ fs/ext2/namei.c
+--- a/fs/ext2/namei.c~ext2-do-not-update-mtime-of-a-moved-directory
++++ a/fs/ext2/namei.c
+@@ -320,7 +320,7 @@ static int ext2_rename (struct inode * o
+ 		if (!new_de)
+ 			goto out_dir;
+ 		inode_inc_link_count(old_inode);
+-		ext2_set_link(new_dir, new_de, new_page, old_inode);
++		ext2_set_link(new_dir, new_de, new_page, old_inode, 1);
+ 		new_inode->i_ctime =3D CURRENT_TIME_SEC;
+ 		if (dir_de)
+ 			drop_nlink(new_inode);
+@@ -352,7 +352,8 @@ static int ext2_rename (struct inode * o
+ 	inode_dec_link_count(old_inode);
+=20
+ 	if (dir_de) {
+-		ext2_set_link(old_inode, dir_de, dir_page, new_dir);
++		if (old_dir !=3D new_dir)
++			ext2_set_link(old_inode, dir_de, dir_page, new_dir, 0);
+ 		inode_dec_link_count(old_dir);
+ 	}
+ 	return 0;
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+origin.patch
+linux-next.patch
+jbd-update-locking-coments.patch
+ext2-add-blk_issue_flush-to-syncing-paths.patch
+ext2-do-not-update-mtime-of-a-moved-directory.patch
+ext2-fix-data-corruption-for-racing-writes.patch
+ext3-fix-chain-verification-in-ext3_get_blocks.patch
+quota-remove-obsolete-comments-in-fs-quota-makefile.patch
+reiser4-update-names-of-quota-methods.patch
+
+--
+To unsubscribe from this list: send the line "unsubscribe mm-commits" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
