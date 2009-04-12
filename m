@@ -1,40 +1,81 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: FYI: KDE reintroduces KDE_EXTRA_FSYNC
-Date: Sat, 11 Apr 2009 21:42:43 -0500
-Message-ID: <49E15523.1080401@redhat.com>
+From: Amir Goldor <amir73il@users.sourceforge.net>
+Subject: Re: Errors reported by Coverity in ext3
+Date: Sun, 12 Apr 2009 14:58:05 +0300
+Message-ID: <18730dc50904120458m1649aaf7tab395436d159105a@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: multipart/mixed; boundary=001636c5a4af8075c904675a4f1d
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51768 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752827AbZDLCmp (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 11 Apr 2009 22:42:45 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n3C2gjaA010227
-	for <linux-ext4@vger.kernel.org>; Sat, 11 Apr 2009 22:42:45 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n3C2gkgr010760
-	for <linux-ext4@vger.kernel.org>; Sat, 11 Apr 2009 22:42:46 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n3C2giS7002865
-	for <linux-ext4@vger.kernel.org>; Sat, 11 Apr 2009 22:42:44 -0400
+Received: from mail-fx0-f158.google.com ([209.85.220.158]:33745 "EHLO
+	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758620AbZDLL6H (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Apr 2009 07:58:07 -0400
+Received: by fxm2 with SMTP id 2so1677870fxm.37
+        for <linux-ext4@vger.kernel.org>; Sun, 12 Apr 2009 04:58:05 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Just FYI for the ext4 folks:
+--001636c5a4af8075c904675a4f1d
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-http://websvn.kde.org/branches/KDE/4.2/kdelibs/kdecore/io/ksavefile.cpp?r1=949036&r2=949054&pathrev=949054
+Hi Andreas,
 
----
-re-introduce KDE_EXTRA_FSYNC for the poor XFS/Ext4/... users
+in reply to your message from 2006
+(http://marc.info/?l=linux-ext4&m=116310729115980&w=2)
+I have prepared a small patch to check jbd errors on 4 occurrences in namei.c
+could you please review my patch
 
-setting this env variable to anything (before kde starts!) will avoid
-getting those pesky 0-byte sized files after system crashes - at a
-potentially non-trivial performance cost.
+please CC me personally in your reply
+Thanks,
+Amir.
 
-BUG: 187172
----
+--001636c5a4af8075c904675a4f1d
+Content-Type: application/octet-stream;
+	name="ext3-namei-check-jbd-errors-2.6.28.patch"
+Content-Disposition: attachment;
+	filename="ext3-namei-check-jbd-errors-2.6.28.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_ftfn50yz0
 
--Eric
+ZGlmZiAtYXVyIGxpbnV4LTIuNi4yOC5vcmlnL2ZzL2V4dDMvbmFtZWkuYyBsaW51eC0yLjYuMjgv
+ZnMvZXh0My9uYW1laS5jCi0tLSBsaW51eC0yLjYuMjgub3JpZy9mcy9leHQzL25hbWVpLmMJMjAw
+OS0wNC0xMiAxMTo1ODo0MS4wMDAwMDAwMDAgKzAzMDAKKysrIGxpbnV4LTIuNi4yOC9mcy9leHQz
+L25hbWVpLmMJMjAwOS0wNC0xMiAxNDoxNTo1NS4wMDAwMDAwMDAgKzAzMDAKQEAgLTE2MTYsNyAr
+MTYxNiw3IEBACiAJCQkgICAgICBzdHJ1Y3QgYnVmZmVyX2hlYWQgKiBiaCkKIHsKIAlzdHJ1Y3Qg
+ZXh0M19kaXJfZW50cnlfMiAqIGRlLCAqIHBkZTsKLQlpbnQgaTsKKwlpbnQgaSwgZXJyOwogCiAJ
+aSA9IDA7CiAJcGRlID0gTlVMTDsKQEAgLTE2MjYsNyArMTYyNiw5IEBACiAJCQlyZXR1cm4gLUVJ
+TzsKIAkJaWYgKGRlID09IGRlX2RlbCkgIHsKIAkJCUJVRkZFUl9UUkFDRShiaCwgImdldF93cml0
+ZV9hY2Nlc3MiKTsKLQkJCWV4dDNfam91cm5hbF9nZXRfd3JpdGVfYWNjZXNzKGhhbmRsZSwgYmgp
+OworCQkJZXJyID0gZXh0M19qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBiaCk7CisJ
+CQlpZiAoZXJyKQorCQkJCXJldHVybiBlcnI7CiAJCQlpZiAocGRlKQogCQkJCXBkZS0+cmVjX2xl
+biA9IGV4dDNfcmVjX2xlbl90b19kaXNrKAogCQkJCQlleHQzX3JlY19sZW5fZnJvbV9kaXNrKHBk
+ZS0+cmVjX2xlbikgKwpAQCAtMTc3MCw3ICsxNzcyLDEzIEBACiAJCWdvdG8gb3V0X3N0b3A7CiAJ
+fQogCUJVRkZFUl9UUkFDRShkaXJfYmxvY2ssICJnZXRfd3JpdGVfYWNjZXNzIik7Ci0JZXh0M19q
+b3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBkaXJfYmxvY2spOworCWVyciA9IGV4dDNf
+am91cm5hbF9nZXRfd3JpdGVfYWNjZXNzKGhhbmRsZSwgZGlyX2Jsb2NrKTsKKwlpZiAoZXJyKSB7
+CisJCWRyb3BfbmxpbmsoaW5vZGUpOyAvKiBpcyB0aGlzIG5saW5rID09IDA/ICovCisJCWV4dDNf
+bWFya19pbm9kZV9kaXJ0eShoYW5kbGUsIGlub2RlKTsKKwkJaXB1dCAoaW5vZGUpOworCQlnb3Rv
+IG91dF9zdG9wOworCX0KIAlkZSA9IChzdHJ1Y3QgZXh0M19kaXJfZW50cnlfMiAqKSBkaXJfYmxv
+Y2stPmJfZGF0YTsKIAlkZS0+aW5vZGUgPSBjcHVfdG9fbGUzMihpbm9kZS0+aV9pbm8pOwogCWRl
+LT5uYW1lX2xlbiA9IDE7CkBAIC0yMzAyLDcgKzIzMTAsOSBAQAogCQkJZ290byBlbmRfcmVuYW1l
+OwogCX0gZWxzZSB7CiAJCUJVRkZFUl9UUkFDRShuZXdfYmgsICJnZXQgd3JpdGUgYWNjZXNzIik7
+Ci0JCWV4dDNfam91cm5hbF9nZXRfd3JpdGVfYWNjZXNzKGhhbmRsZSwgbmV3X2JoKTsKKwkJcmV0
+dmFsID0gZXh0M19qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBuZXdfYmgpOworCQlp
+ZiAocmV0dmFsKQorCQkJZ290byBlbmRfcmVuYW1lOwogCQluZXdfZGUtPmlub2RlID0gY3B1X3Rv
+X2xlMzIob2xkX2lub2RlLT5pX2lubyk7CiAJCWlmIChFWFQzX0hBU19JTkNPTVBBVF9GRUFUVVJF
+KG5ld19kaXItPmlfc2IsCiAJCQkJCSAgICAgIEVYVDNfRkVBVFVSRV9JTkNPTVBBVF9GSUxFVFlQ
+RSkpCkBAIC0yMzYwLDcgKzIzNzAsMTQgQEAKIAlleHQzX3VwZGF0ZV9keF9mbGFnKG9sZF9kaXIp
+OwogCWlmIChkaXJfYmgpIHsKIAkJQlVGRkVSX1RSQUNFKGRpcl9iaCwgImdldF93cml0ZV9hY2Nl
+c3MiKTsKLQkJZXh0M19qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBkaXJfYmgpOwor
+CQlyZXR2YWwgPSBleHQzX2pvdXJuYWxfZ2V0X3dyaXRlX2FjY2VzcyhoYW5kbGUsIGRpcl9iaCk7
+CisJCWlmIChyZXR2YWwpIHsKKwkJCWV4dDNfd2FybmluZyhvbGRfZGlyLT5pX3NiLCAiZXh0M19y
+ZW5hbWUiLAorCQkJCQkiVXBkYXRpbmcgbmV3IGRpcmVjdG9yeSAoJWx1KSBwYXJlbnQgbGluaywg
+JWQsIGVycm9yPSVkIiwKKwkJCQkJbmV3X2Rpci0+aV9pbm8sIG5ld19kaXItPmlfbmxpbmssIHJl
+dHZhbCk7CisJCX0KKwl9CisJaWYgKGRpcl9iaCAmJiAhcmV0dmFsKSB7CiAJCVBBUkVOVF9JTk8o
+ZGlyX2JoLT5iX2RhdGEpID0gY3B1X3RvX2xlMzIobmV3X2Rpci0+aV9pbm8pOwogCQlCVUZGRVJf
+VFJBQ0UoZGlyX2JoLCAiY2FsbCBleHQzX2pvdXJuYWxfZGlydHlfbWV0YWRhdGEiKTsKIAkJZXh0
+M19qb3VybmFsX2RpcnR5X21ldGFkYXRhKGhhbmRsZSwgZGlyX2JoKTsK
+--001636c5a4af8075c904675a4f1d--
