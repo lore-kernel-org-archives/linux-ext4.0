@@ -1,42 +1,40 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Errors reported by Coverity in ext3
-Date: Mon, 13 Apr 2009 16:02:40 -0600
-Message-ID: <20090413220240.GT17302@webber.adilger.int>
-References: <18730dc50904120458m1649aaf7tab395436d159105a@mail.gmail.com>
+From: Chuck Ebbert <cebbert@redhat.com>
+Subject: [patch] ext4: really print the find_group_flex fallback warning
+ only once
+Date: Mon, 13 Apr 2009 19:03:29 -0400
+Message-ID: <20090413190330.754a0dec@dhcp-100-2-144.bos.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Amir Goldor <amir73il@users.sourceforge.net>
+To: "Theodore Ts'o" <tytso@MIT.EDU>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:58305 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752646AbZDMWDg (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Apr 2009 18:03:36 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n3DM3NG0024097
-	for <linux-ext4@vger.kernel.org>; Mon, 13 Apr 2009 15:03:36 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KI200A007SJ4L00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 13 Apr 2009 15:03:23 -0700 (PDT)
-In-reply-to: <18730dc50904120458m1649aaf7tab395436d159105a@mail.gmail.com>
+Received: from mx2.redhat.com ([66.187.237.31]:48118 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750747AbZDMXFA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Apr 2009 19:05:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 12, 2009  14:58 +0300, Amir Goldor wrote:
-> in reply to your message from 2006
-> (http://marc.info/?l=linux-ext4&m=116310729115980&w=2)
-> I have prepared a small patch to check jbd errors on 4 occurrences in namei.c
-> could you please review my patch
+ext4: really print the find_group_flex fallback warning only once
 
-Could you please regenerate your patch with "diff -up" so that the
-function names are included into the patch context.
+Missing braces caused the warning to print more than once.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Signed-Off-By: Chuck Ebbert <cebbert@redhat.com>
 
+--- linux-2.6.27.noarch.orig/fs/ext4/ialloc.c
++++ linux-2.6.27.noarch/fs/ext4/ialloc.c
+@@ -705,11 +705,12 @@ struct inode *ext4_new_inode(handle_t *h
+ 		ret2 = find_group_flex(sb, dir, &group);
+ 		if (ret2 == -1) {
+ 			ret2 = find_group_other(sb, dir, &group);
+-			if (ret2 == 0 && once)
++			if (ret2 == 0 && once) {
+ 				once = 0;
+ 				printk(KERN_NOTICE "ext4: find_group_flex "
+ 				       "failed, fallback succeeded dir %lu\n",
+ 				       dir->i_ino);
++			}
+ 		}
+ 		goto got_group;
+ 	}
