@@ -1,81 +1,152 @@
-From: Amir Goldor <amir73il@users.sourceforge.net>
-Subject: Re: Errors reported by Coverity in ext3
-Date: Sun, 12 Apr 2009 14:58:05 +0300
-Message-ID: <18730dc50904120458m1649aaf7tab395436d159105a@mail.gmail.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH, RFC 2/2] ext4: Convert instrumentation from markers to
+	tracepoints
+Date: Mon, 13 Apr 2009 12:29:10 +0530
+Message-ID: <20090413065910.GA23795@skywalker>
+References: <1239479167-804-1-git-send-email-tytso@mit.edu> <1239479167-804-2-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary=001636c5a4af8075c904675a4f1d
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f158.google.com ([209.85.220.158]:33745 "EHLO
-	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758620AbZDLL6H (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 12 Apr 2009 07:58:07 -0400
-Received: by fxm2 with SMTP id 2so1677870fxm.37
-        for <linux-ext4@vger.kernel.org>; Sun, 12 Apr 2009 04:58:05 -0700 (PDT)
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:48141 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754783AbZDMG7R (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 13 Apr 2009 02:59:17 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id n3D6vPvn010486
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Apr 2009 16:57:25 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3D6xFXG1396928
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Apr 2009 16:59:15 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n3D6xExE004297
+	for <linux-ext4@vger.kernel.org>; Mon, 13 Apr 2009 16:59:15 +1000
+Content-Disposition: inline
+In-Reply-To: <1239479167-804-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---001636c5a4af8075c904675a4f1d
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+On Sat, Apr 11, 2009 at 03:46:07PM -0400, Theodore Ts'o wrote:
+.....
+......
 
-Hi Andreas,
+> diff --git a/include/linux/ext4_trace_types.h b/include/linux/ext4_trace_types.h
+> new file mode 100644
+> index 0000000..229a2dd
+> --- /dev/null
+> +++ b/include/linux/ext4_trace_types.h
+> @@ -0,0 +1,108 @@
+> +/*
+> + * ext4_trace_types.h -- these data structures are needed by the
+> + *	tracing infrastructure
+> + */
+> +
+> +#ifndef _EXT4_TRACE_TYPES_H
+> +#define _EXT4_TRACE_TYPES_H
+> +
+> +/* data type for block offset of block group */
+> +typedef int ext4_grpblk_t;
+> +
+> +/* data type for filesystem-wide blocks number */
+> +typedef unsigned long long ext4_fsblk_t;
+> +
+> +/* data type for file logical block number */
+> +typedef __u32 ext4_lblk_t;
+> +
+> +/* data type for block group number */
+> +typedef unsigned int ext4_group_t;
+> +
+> +struct ext4_allocation_request {
+> +	/* target inode for block we're allocating */
+> +	struct inode *inode;
+> +	/* logical block in target inode */
+> +	ext4_lblk_t logical;
+> +	/* phys. target (a hint) */
+> +	ext4_fsblk_t goal;
+> +	/* the closest logical allocated block to the left */
+> +	ext4_lblk_t lleft;
+> +	/* phys. block for ^^^ */
+> +	ext4_fsblk_t pleft;
+> +	/* the closest logical allocated block to the right */
+> +	ext4_lblk_t lright;
+> +	/* phys. block for ^^^ */
+> +	ext4_fsblk_t pright;
+> +	/* how many blocks we want to allocate */
+> +	unsigned int len;
+> +	/* flags. see above EXT4_MB_HINT_* */
+> +	unsigned int flags;
+> +};
+> +
+> +struct ext4_free_extent {
+> +	ext4_lblk_t fe_logical;
+> +	ext4_grpblk_t fe_start;
+> +	ext4_group_t fe_group;
+> +	int fe_len;
+> +};
+> +
+> +struct ext4_allocation_context {
+> +	struct inode *ac_inode;
+> +	struct super_block *ac_sb;
+> +
+> +	/* original request */
+> +	struct ext4_free_extent ac_o_ex;
+> +
+> +	/* goal request (after normalization) */
+> +	struct ext4_free_extent ac_g_ex;
+> +
+> +	/* the best found extent */
+> +	struct ext4_free_extent ac_b_ex;
+> +
+> +	/* copy of the bext found extent taken before preallocation efforts */
+> +	struct ext4_free_extent ac_f_ex;
+> +
+> +	/* number of iterations done. we have to track to limit searching */
+> +	unsigned long ac_ex_scanned;
+> +	__u16 ac_groups_scanned;
+> +	__u16 ac_found;
+> +	__u16 ac_tail;
+> +	__u16 ac_buddy;
+> +	__u16 ac_flags;		/* allocation hints */
+> +	__u8 ac_status;
+> +	__u8 ac_criteria;
+> +	__u8 ac_repeats;
+> +	__u8 ac_2order;		/* if request is to allocate 2^N blocks and
+> +				 * N > 0, the field stores N, otherwise 0 */
+> +	__u8 ac_op;		/* operation, for history only */
+> +	struct page *ac_bitmap_page;
+> +	struct page *ac_buddy_page;
+> +	/*
+> +	 * pointer to the held semaphore upon successful
+> +	 * block allocation
+> +	 */
+> +	struct rw_semaphore *alloc_semp;
+> +	struct ext4_prealloc_space *ac_pa;
+> +	struct ext4_locality_group *ac_lg;
+> +};
+> +
+> +struct ext4_prealloc_space {
+> +	struct list_head	pa_inode_list;
+> +	struct list_head	pa_group_list;
+> +	union {
+> +		struct list_head pa_tmp_list;
+> +		struct rcu_head	pa_rcu;
+> +	} u;
+> +	spinlock_t		pa_lock;
+> +	atomic_t		pa_count;
+> +	unsigned		pa_deleted;
+> +	ext4_fsblk_t		pa_pstart;	/* phys. block */
+> +	ext4_lblk_t		pa_lstart;	/* log. block */
+> +	unsigned short		pa_len;		/* len of preallocated chunk */
+> +	unsigned short		pa_free;	/* how many blocks are free */
+> +	unsigned short		pa_type;	/* pa type. inode or group */
+> +	spinlock_t		*pa_obj_lock;
+> +	struct inode		*pa_inode;	/* hack, for history only */
+> +};
+> +
+> +#endif /* _EXT4_TRACE_TYPES_H */
 
-in reply to your message from 2006
-(http://marc.info/?l=linux-ext4&m=116310729115980&w=2)
-I have prepared a small patch to check jbd errors on 4 occurrences in namei.c
-could you please review my patch
+We moved all the ext4 headers to fs/ext4/  Can this be
+fs/ext4/ext4_trace_types.h ?
 
-please CC me personally in your reply
-Thanks,
-Amir.
-
---001636c5a4af8075c904675a4f1d
-Content-Type: application/octet-stream;
-	name="ext3-namei-check-jbd-errors-2.6.28.patch"
-Content-Disposition: attachment;
-	filename="ext3-namei-check-jbd-errors-2.6.28.patch"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_ftfn50yz0
-
-ZGlmZiAtYXVyIGxpbnV4LTIuNi4yOC5vcmlnL2ZzL2V4dDMvbmFtZWkuYyBsaW51eC0yLjYuMjgv
-ZnMvZXh0My9uYW1laS5jCi0tLSBsaW51eC0yLjYuMjgub3JpZy9mcy9leHQzL25hbWVpLmMJMjAw
-OS0wNC0xMiAxMTo1ODo0MS4wMDAwMDAwMDAgKzAzMDAKKysrIGxpbnV4LTIuNi4yOC9mcy9leHQz
-L25hbWVpLmMJMjAwOS0wNC0xMiAxNDoxNTo1NS4wMDAwMDAwMDAgKzAzMDAKQEAgLTE2MTYsNyAr
-MTYxNiw3IEBACiAJCQkgICAgICBzdHJ1Y3QgYnVmZmVyX2hlYWQgKiBiaCkKIHsKIAlzdHJ1Y3Qg
-ZXh0M19kaXJfZW50cnlfMiAqIGRlLCAqIHBkZTsKLQlpbnQgaTsKKwlpbnQgaSwgZXJyOwogCiAJ
-aSA9IDA7CiAJcGRlID0gTlVMTDsKQEAgLTE2MjYsNyArMTYyNiw5IEBACiAJCQlyZXR1cm4gLUVJ
-TzsKIAkJaWYgKGRlID09IGRlX2RlbCkgIHsKIAkJCUJVRkZFUl9UUkFDRShiaCwgImdldF93cml0
-ZV9hY2Nlc3MiKTsKLQkJCWV4dDNfam91cm5hbF9nZXRfd3JpdGVfYWNjZXNzKGhhbmRsZSwgYmgp
-OworCQkJZXJyID0gZXh0M19qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBiaCk7CisJ
-CQlpZiAoZXJyKQorCQkJCXJldHVybiBlcnI7CiAJCQlpZiAocGRlKQogCQkJCXBkZS0+cmVjX2xl
-biA9IGV4dDNfcmVjX2xlbl90b19kaXNrKAogCQkJCQlleHQzX3JlY19sZW5fZnJvbV9kaXNrKHBk
-ZS0+cmVjX2xlbikgKwpAQCAtMTc3MCw3ICsxNzcyLDEzIEBACiAJCWdvdG8gb3V0X3N0b3A7CiAJ
-fQogCUJVRkZFUl9UUkFDRShkaXJfYmxvY2ssICJnZXRfd3JpdGVfYWNjZXNzIik7Ci0JZXh0M19q
-b3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBkaXJfYmxvY2spOworCWVyciA9IGV4dDNf
-am91cm5hbF9nZXRfd3JpdGVfYWNjZXNzKGhhbmRsZSwgZGlyX2Jsb2NrKTsKKwlpZiAoZXJyKSB7
-CisJCWRyb3BfbmxpbmsoaW5vZGUpOyAvKiBpcyB0aGlzIG5saW5rID09IDA/ICovCisJCWV4dDNf
-bWFya19pbm9kZV9kaXJ0eShoYW5kbGUsIGlub2RlKTsKKwkJaXB1dCAoaW5vZGUpOworCQlnb3Rv
-IG91dF9zdG9wOworCX0KIAlkZSA9IChzdHJ1Y3QgZXh0M19kaXJfZW50cnlfMiAqKSBkaXJfYmxv
-Y2stPmJfZGF0YTsKIAlkZS0+aW5vZGUgPSBjcHVfdG9fbGUzMihpbm9kZS0+aV9pbm8pOwogCWRl
-LT5uYW1lX2xlbiA9IDE7CkBAIC0yMzAyLDcgKzIzMTAsOSBAQAogCQkJZ290byBlbmRfcmVuYW1l
-OwogCX0gZWxzZSB7CiAJCUJVRkZFUl9UUkFDRShuZXdfYmgsICJnZXQgd3JpdGUgYWNjZXNzIik7
-Ci0JCWV4dDNfam91cm5hbF9nZXRfd3JpdGVfYWNjZXNzKGhhbmRsZSwgbmV3X2JoKTsKKwkJcmV0
-dmFsID0gZXh0M19qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBuZXdfYmgpOworCQlp
-ZiAocmV0dmFsKQorCQkJZ290byBlbmRfcmVuYW1lOwogCQluZXdfZGUtPmlub2RlID0gY3B1X3Rv
-X2xlMzIob2xkX2lub2RlLT5pX2lubyk7CiAJCWlmIChFWFQzX0hBU19JTkNPTVBBVF9GRUFUVVJF
-KG5ld19kaXItPmlfc2IsCiAJCQkJCSAgICAgIEVYVDNfRkVBVFVSRV9JTkNPTVBBVF9GSUxFVFlQ
-RSkpCkBAIC0yMzYwLDcgKzIzNzAsMTQgQEAKIAlleHQzX3VwZGF0ZV9keF9mbGFnKG9sZF9kaXIp
-OwogCWlmIChkaXJfYmgpIHsKIAkJQlVGRkVSX1RSQUNFKGRpcl9iaCwgImdldF93cml0ZV9hY2Nl
-c3MiKTsKLQkJZXh0M19qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBkaXJfYmgpOwor
-CQlyZXR2YWwgPSBleHQzX2pvdXJuYWxfZ2V0X3dyaXRlX2FjY2VzcyhoYW5kbGUsIGRpcl9iaCk7
-CisJCWlmIChyZXR2YWwpIHsKKwkJCWV4dDNfd2FybmluZyhvbGRfZGlyLT5pX3NiLCAiZXh0M19y
-ZW5hbWUiLAorCQkJCQkiVXBkYXRpbmcgbmV3IGRpcmVjdG9yeSAoJWx1KSBwYXJlbnQgbGluaywg
-JWQsIGVycm9yPSVkIiwKKwkJCQkJbmV3X2Rpci0+aV9pbm8sIG5ld19kaXItPmlfbmxpbmssIHJl
-dHZhbCk7CisJCX0KKwl9CisJaWYgKGRpcl9iaCAmJiAhcmV0dmFsKSB7CiAJCVBBUkVOVF9JTk8o
-ZGlyX2JoLT5iX2RhdGEpID0gY3B1X3RvX2xlMzIobmV3X2Rpci0+aV9pbm8pOwogCQlCVUZGRVJf
-VFJBQ0UoZGlyX2JoLCAiY2FsbCBleHQzX2pvdXJuYWxfZGlydHlfbWV0YWRhdGEiKTsKIAkJZXh0
-M19qb3VybmFsX2RpcnR5X21ldGFkYXRhKGhhbmRsZSwgZGlyX2JoKTsK
---001636c5a4af8075c904675a4f1d--
+-aneesh
