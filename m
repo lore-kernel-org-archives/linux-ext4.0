@@ -1,48 +1,48 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH 2/2] ext4: hook fiemap operation for directories
-Date: Wed, 15 Apr 2009 20:09:03 +0530
-Message-ID: <1239806343-14219-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1239806343-14219-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Recover damaged ext4 volume
+Date: Wed, 15 Apr 2009 10:02:14 -0500
+Message-ID: <49E5F6F6.4060903@redhat.com>
+References: <87iql6lci5.fsf@kawa.kanru.info>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Kan-Ru Chen <ckanru@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:40115 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754489AbZDOOj1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Apr 2009 10:39:27 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp08.au.ibm.com (8.13.1/8.13.1) with ESMTP id n3G1b9n6030515
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2009 11:37:09 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3FEdP0s438498
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2009 00:39:25 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n3FEdOhl004764
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2009 00:39:25 +1000
-In-Reply-To: <1239806343-14219-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx2.redhat.com ([66.187.237.31]:40873 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752362AbZDOPCT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Apr 2009 11:02:19 -0400
+In-Reply-To: <87iql6lci5.fsf@kawa.kanru.info>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add fiemap callback for directories
+Kan-Ru Chen wrote:
+> Hi,
+> 
+> It was a LVM lv formated to ext4 that can't mount anymore after
+> resize. Both e2fsck and dumpe2fs can not find valid superblock or backup
+> superblock.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Did something overwrite it?  What does file -s /dev/<whatever> or blkid
+/dev/<whatever> say, as a first try?
 
----
- fs/ext4/namei.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+For the record, what kernel were you using?
 
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 22098e1..5e5e311 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2533,6 +2533,7 @@ const struct inode_operations ext4_dir_inode_operations = {
- 	.removexattr	= generic_removexattr,
- #endif
- 	.permission	= ext4_permission,
-+	.fiemap         = ext4_fiemap,
- };
- 
- const struct inode_operations ext4_special_inode_operations = {
--- 
-tg: (e60eece..) ext4_dir_fiemap (depends on: dir_fiemap)
+-Eric
+
+> However, I can still read and recognize some data from the volume using
+> hd. Is there any chance that I can get my files back?
+> 
+> Following is the output of findsuper, lines with wrong mount time are
+> stripped:
+> 
+> byte_offset  byte_start     byte_end  fs_blocks blksz  grp  last_mount_time     sb_uuid label
+> 21140751872 21140750848  29059596800    1933312  4096    0  Mon Dec  8 18:27:59 2008 f4890ad8 
+> 21188896256 21188895232  29107741184    1933312  4096    0  Mon Dec  8 18:27:59 2008 f4890ad8 
+> 32368412672 32368411648  96792921088   15728640  4096    0  Thu Dec 11 22:57:22 2008 bd5e4f31 
+> 45592096256 45592095232  45847046656     248976  1024    0  Tue Dec  9 20:16:51 2008 931b7f03 
+> 
+> 
+> - Kan
+
