@@ -1,42 +1,54 @@
 From: Chris Mason <chris.mason@oracle.com>
-Subject: [PATCH 1/3] Export filemap_write_and_wait_range
-Date: Wed, 15 Apr 2009 13:22:37 -0400
-Message-ID: <abbad87ab84075cbac38f4cd99507a4c605fd731.1239815649.git.chris.mason@oracle.com>
-References: <1239816159-6868-1-git-send-email-chris.mason@oracle.com>
-Cc: Chris Mason <chris.mason@oracle.com>
+Subject: [PATCH RFC] ext3 data=guarded v3
+Date: Wed, 15 Apr 2009 13:22:36 -0400
+Message-ID: <1239816159-6868-1-git-send-email-chris.mason@oracle.com>
 To: Jan Kara <jack@suse.cz>,
 	Linus Torvalds <torvalds@linux-foundation.org>,
 	"Theodore Ts'o" <tytso@mit.edu>,
 	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
 	Ext4 Developers
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rcsinet13.oracle.com ([148.87.113.125]:42930 "EHLO
+Received: from rcsinet13.oracle.com ([148.87.113.125]:42931 "EHLO
 	rgminet13.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753445AbZDORX7 (ORCPT
+	with ESMTP id S1753457AbZDORX7 (ORCPT
 	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Apr 2009 13:23:59 -0400
-In-Reply-To: <1239816159-6868-1-git-send-email-chris.mason@oracle.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This wasn't exported before and is used by the ext3 data=guarded code
+Hello everyone,
 
-Signed-off-by: Chris Mason <chris.mason@oracle.com>
----
- mm/filemap.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+Here is another version of the data=guarded work for ext3.  The main
+difference between this code and yesterday's is the guarded writepage
+function now sends any newly allocated block through the old data=ordered code.
 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 2e2d38e..04e2160 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -441,6 +441,7 @@ int filemap_write_and_wait_range(struct address_space *mapping,
- 	}
- 	return err;
- }
-+EXPORT_SYMBOL(filemap_write_and_wait_range);
- 
- /**
-  * add_to_page_cache_locked - add a locked page to the pagecache
--- 
-1.6.0.2
+This is important because at the time we're walking the buffers, the page
+may be unlocked, so we can't trust anything inside the page.  In general,
+any allocation done by writepage is to fill a hole, so the old data=ordered
+is what we want anyway.
+
+This passed a longer stress test and generally seems to be working.  I
+don't think anyone would recommend it as a default for 2.6.30, but it
+may be a good idea to have a review party and decide if it is safe enough
+to include so people can experiment with it.
+
+Overall diffstat of the series:
+
+ fs/buffer.c                 |   45 ++-
+ fs/ext3/Makefile            |    3
+ fs/ext3/fsync.c             |   12
+ fs/ext3/inode.c             |  546 +++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext3/namei.c             |    3
+ fs/ext3/ordered-data.c      |  318 +++++++++++++++++++++++++
+ fs/ext3/super.c             |   48 +++
+ fs/jbd/transaction.c        |    1
+ include/linux/buffer_head.h |    3
+ include/linux/ext3_fs.h     |   33 ++
+ include/linux/ext3_fs_i.h   |   44 +++
+ include/linux/ext3_fs_sb.h  |    6
+ include/linux/ext3_jbd.h    |   11
+ include/linux/jbd.h         |   10
+ mm/filemap.c                |    1
+
+-chris
+
 
