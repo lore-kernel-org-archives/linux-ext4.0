@@ -1,67 +1,51 @@
-From: Kan-Ru Chen <ckanru@gmail.com>
-Subject: Recover damaged ext4 volume
-Date: Wed, 15 Apr 2009 13:18:26 +0800
-Message-ID: <87iql6lci5.fsf@kawa.kanru.info>
-Mime-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha1; protocol="application/pgp-signature"
-To: linux-ext4@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH 1/2] vfs: call file_ioctl call for directories.
+Date: Wed, 15 Apr 2009 20:09:02 +0530
+Message-ID: <1239806343-14219-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from main.gmane.org ([80.91.229.2]:47836 "EHLO ciao.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753985AbZDOFfI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Apr 2009 01:35:08 -0400
-Received: from root by ciao.gmane.org with local (Exim 4.43)
-	id 1Ltxm2-0003dp-S1
-	for linux-ext4@vger.kernel.org; Wed, 15 Apr 2009 05:35:02 +0000
-Received: from 61-228-157-41.dynamic.hinet.net ([61.228.157.41])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2009 05:35:02 +0000
-Received: from ckanru by 61-228-157-41.dynamic.hinet.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-ext4@vger.kernel.org>; Wed, 15 Apr 2009 05:35:02 +0000
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:40108 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754289AbZDOOjX (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Apr 2009 10:39:23 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp08.au.ibm.com (8.13.1/8.13.1) with ESMTP id n3G1b4Jx030499
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2009 11:37:04 +1000
+Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3FEdJTF1261702
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2009 00:39:19 +1000
+Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
+	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n3FEdJfi004679
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Apr 2009 00:39:19 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---=-=-=
-Content-Transfer-Encoding: quoted-printable
+Most of the ioctl callback in file_ioctl should be done even
+for directories. For ext4 fiemap should work even for directories.
+Similarly FIGETBSZ  should work for directories. For bmap filefrag command
+doesn't do the ioctl if the type is not a regular file.
 
-Hi,
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-It was a LVM lv formated to ext4 that can't mount anymore after
-resize. Both e2fsck and dumpe2fs can not find valid superblock or backup
-superblock.
+---
+ fs/ioctl.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-However, I can still read and recognize some data from the volume using
-hd. Is there any chance that I can get my files back?
-
-Following is the output of findsuper, lines with wrong mount time are
-stripped:
-
-byte_offset  byte_start     byte_end  fs_blocks blksz  grp  last_mount_time=
-     sb_uuid label
-21140751872 21140750848  29059596800    1933312  4096    0  Mon Dec  8 18:2=
-7:59 2008 f4890ad8=20
-21188896256 21188895232  29107741184    1933312  4096    0  Mon Dec  8 18:2=
-7:59 2008 f4890ad8=20
-32368412672 32368411648  96792921088   15728640  4096    0  Thu Dec 11 22:5=
-7:22 2008 bd5e4f31=20
-45592096256 45592095232  45847046656     248976  1024    0  Tue Dec  9 20:1=
-6:51 2008 931b7f03=20
-
-
-=2D Kan
-
---=-=-=
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAknlbnMACgkQmNgFODcAfIm19wCffxekf8IRM+CCGi5Jf/w5HW+x
-eQEAn0KrIaPsl1wB3h7x2cffCMCYMZkl
-=GX5W
------END PGP SIGNATURE-----
---=-=-=--
-
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index ac2d47e..328b533 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -523,7 +523,8 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+ 		break;
+ 
+ 	default:
+-		if (S_ISREG(filp->f_path.dentry->d_inode->i_mode))
++		if (S_ISDIR(filp->f_path.dentry->d_inode->i_mode) ||
++		    S_ISREG(filp->f_path.dentry->d_inode->i_mode))
+ 			error = file_ioctl(filp, cmd, arg);
+ 		else
+ 			error = vfs_ioctl(filp, cmd, arg);
+-- 
+tg: (0882e8d..) dir_fiemap (depends on: master)
