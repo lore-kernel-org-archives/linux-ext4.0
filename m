@@ -1,35 +1,46 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH RFC] ext3 data=guarded v3
-Date: Wed, 15 Apr 2009 17:09:49 -0400
-Message-ID: <20090415210949.GF21586@mit.edu>
-References: <1239816159-6868-1-git-send-email-chris.mason@oracle.com> <alpine.LFD.2.00.0904151333020.4042@localhost.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chris Mason <chris.mason@oracle.com>, Jan Kara <jack@suse.cz>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Nick Dokos <nicholas.dokos@hp.com>
+Subject: Re: [PATCH 0/5][64-BIT] Miscellaneous e2fsprogs 64-bit patches - description
+Date: Wed, 15 Apr 2009 17:51:07 -0400
+Message-ID: <8298.1239832267@alphaville.usa.hp.com>
+References: <11629.1239227147@alphaville.usa.hp.com>  <20090415195014.GB1668@shell>
+Reply-To: nicholas.dokos@hp.com
+Cc: Nick Dokos <nicholas.dokos@hp.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Valerie Aurora Henson <vaurora@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:47449 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752524AbZDOVKF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Apr 2009 17:10:05 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.LFD.2.00.0904151333020.4042@localhost.localdomain>
+Received: from g1t0027.austin.hp.com ([15.216.28.34]:26040 "EHLO
+	g1t0027.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751362AbZDOVu5 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Apr 2009 17:50:57 -0400
+In-Reply-To: Message from Valerie Aurora Henson <vaurora@redhat.com>
+   of "Wed, 15 Apr 2009 15:50:14 EDT." <20090415195014.GB1668@shell>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 15, 2009 at 01:35:23PM -0700, Linus Torvalds wrote:
-> I'm inclined to apply the first two patches as infrastructure, since they 
-> seem to make sense regardless of data=ordered. The ability to get a 
-> callback when IO ends sounds like something that a number of cases might 
-> find intriguing, and it's obviously how the actual IO has worked 
-> internally anyway.
+Valerie Aurora Henson <vaurora@redhat.com> wrote:
 
-The first two patches look good to me.  I haven't had time to go
-through the last patch carefully (and that's the most complicated one
-of course).  They don't currently have any in-kernel users, so it
-fails the traditional test for inclusion, but the basic functionality
-they provide makes a lot of sense to me.
+> Thanks for the testing and patches!  I apologize for the delay in
+> replying; if it's any consolation, we were all at the Linux file
+> systems workshop when you sent this email.
+> 
+> All the patches look good to me (and I will ACK them individually).  I
+> pulled them into my shared-64bit branch at:
+> 
+> http://git.kernel.org/?p=fs/ext2/val/e2fsprogs.git;a=summary
+> 
 
-					- Ted
+Val,
+
+Thanks for the feedback (no problem about the delay: I really was not
+expecting a response last week).
+
+I should add a caution that these were (mostly) problems that arose in
+testing and I tried to fix them (and only them: e.g., in a subsequent
+email you found a place where a blk_t should be a blk64_t: there are
+probably *many other* such places); in particular, there is no pretense
+of a complete and thorough code audit - that still needs to be done and
+I'm trying to do it, but I'm not there yet.
+
+Thanks,
+Nick
+
