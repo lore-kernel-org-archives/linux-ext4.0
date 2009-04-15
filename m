@@ -1,72 +1,73 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH RFC] ext3 data=guarded v3
-Date: Wed, 15 Apr 2009 14:10:08 -0500
-Message-ID: <49E63110.60507@redhat.com>
-References: <1239816159-6868-1-git-send-email-chris.mason@oracle.com>
+From: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: Re: [PATCH 0/5][64-BIT] Miscellaneous e2fsprogs 64-bit patches - description
+Date: Wed, 15 Apr 2009 15:50:14 -0400
+Message-ID: <20090415195014.GB1668@shell>
+References: <11629.1239227147@alphaville.usa.hp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	"Theodore Ts'o" <tytso@mit.edu>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Chris Mason <chris.mason@oracle.com>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753478AbZDOTLW@vger.kernel.org>
-In-Reply-To: <1239816159-6868-1-git-send-email-chris.mason@oracle.com>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Nick Dokos <nicholas.dokos@hp.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx1.redhat.com ([66.187.233.31]:57939 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752489AbZDOTu2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Apr 2009 15:50:28 -0400
+Content-Disposition: inline
+In-Reply-To: <11629.1239227147@alphaville.usa.hp.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Chris Mason wrote:
-> Hello everyone,
-> 
-> Here is another version of the data=guarded work for ext3.  The main
-> difference between this code and yesterday's is the guarded writepage
-> function now sends any newly allocated block through the old data=ordered code.
-> 
-> This is important because at the time we're walking the buffers, the page
-> may be unlocked, so we can't trust anything inside the page.  In general,
-> any allocation done by writepage is to fill a hole, so the old data=ordered
-> is what we want anyway.
-> 
-> This passed a longer stress test and generally seems to be working.  I
-> don't think anyone would recommend it as a default for 2.6.30, but it
-> may be a good idea to have a review party and decide if it is safe enough
-> to include so people can experiment with it.
+On Wed, Apr 08, 2009 at 05:45:47PM -0400, Nick Dokos wrote:
+> [I submitted the first three of these last week, but the first one,
+> although the fix was correct (in the sense of fiddling with the correct
+> bits), stylistically and from the point of code conventions and
+> readability, was rather a botch.  #2 and #3 are identical as patches but
+> I fixed up parts of the commentary that were wrong or misleading. So I
+> am reposting these as well as a couple of new ones. Please let me know
+> if there are other problems of this sort. Thanks!]
 
-Chris, thanks for getting this going.  I think this is a great idea, as
-it gives us most of the performance benefits of writeback without the
-security issues.
+Hi Nick,
 
-I'm under the gun on some other deadlines at the moment so will have to
-do a detailed review later, but this seems like a very good approach,
-and in my testing it does indeed solve the the security problem of
-writeback mode.
+Thanks for the testing and patches!  I apologize for the delay in
+replying; if it's any consolation, we were all at the Linux file
+systems workshop when you sent this email.
 
--Eric
+All the patches look good to me (and I will ACK them individually).  I
+pulled them into my shared-64bit branch at:
 
-> Overall diffstat of the series:
+http://git.kernel.org/?p=fs/ext2/val/e2fsprogs.git;a=summary
+
+> P.S. Here is an interesting side issue:
 > 
->  fs/buffer.c                 |   45 ++-
->  fs/ext3/Makefile            |    3
->  fs/ext3/fsync.c             |   12
->  fs/ext3/inode.c             |  546 +++++++++++++++++++++++++++++++++++++++++++-
->  fs/ext3/namei.c             |    3
->  fs/ext3/ordered-data.c      |  318 +++++++++++++++++++++++++
->  fs/ext3/super.c             |   48 +++
->  fs/jbd/transaction.c        |    1
->  include/linux/buffer_head.h |    3
->  include/linux/ext3_fs.h     |   33 ++
->  include/linux/ext3_fs_i.h   |   44 +++
->  include/linux/ext3_fs_sb.h  |    6
->  include/linux/ext3_jbd.h    |   11
->  include/linux/jbd.h         |   10
->  mm/filemap.c                |    1
+> Patch 3 mentions that e2image ran to completion after the patch was applied
+> (btw, in addition to the 16TiB file, the fs contains a directory with about
+> 10^7 zero length files):
 > 
-> -chris
+> # time e2image -r /dev/mapper/bigvg-bigvol /dev/null
+> e2image 1.41.4-shared-64bit (27-Jan-2009)
 > 
+> real	37m18.991s
+> user	15m21.148s
+> sys	17m57.151s
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> but there is an interesting catch-22: how do I save its output?
+> 
+> I can try the command line suggested in the manual page:
+> 
+>   e2image -r <dev> - | bzip2 > image.bz2
+> 
+> but it takes forever: I started a run on Saturday and it was not
+> done by Tuesday when I killed it - writing to the pipe at 4096 bytes
+> a pop is very slow.
+> 
+> Or I can forego the compression and try to save to a file: it's sparse
+> (I only used 7GiB before it failed), but its nominal size exceeded the
+> maximum file size limit on ext4, at which point I start getting lseek
+> failures.
+
+The 16TB limit on ext4 files is an enormous pain for testing 64-bit
+(>= 16TB) file systems.  I keep intending to write some simple dm
+setup to concatenate two loopback files together, but instead I always
+install XFS and create a loopback file on an XFS partition.
+
+-VAL
