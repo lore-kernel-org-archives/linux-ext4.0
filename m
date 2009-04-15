@@ -1,61 +1,86 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 0/5][64-BIT] Miscellaneous e2fsprogs 64-bit patches -
- description
-Date: Wed, 15 Apr 2009 14:56:15 -0500
-Message-ID: <49E63BDF.5020506@redhat.com>
-References: <11629.1239227147@alphaville.usa.hp.com> <20090415195014.GB1668@shell>
+From: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: Re: [PATCH 4/5][64-BIT] debugfs.c extents display.
+Date: Wed, 15 Apr 2009 15:59:33 -0400
+Message-ID: <20090415195933.GF1668@shell>
+References: <11655.1239227229@alphaville.usa.hp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Nick Dokos <nicholas.dokos@hp.com>,
-	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Valerie Aurora Henson <vaurora@redhat.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Nick Dokos <nicholas.dokos@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:56146 "EHLO mx2.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:45251 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755807AbZDOT4V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 15 Apr 2009 15:56:21 -0400
-In-Reply-To: <20090415195014.GB1668@shell>
+	id S1752137AbZDOT7g (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Apr 2009 15:59:36 -0400
+Content-Disposition: inline
+In-Reply-To: <11655.1239227229@alphaville.usa.hp.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Valerie Aurora Henson wrote:
-> On Wed, Apr 08, 2009 at 05:45:47PM -0400, Nick Dokos wrote:
+On Wed, Apr 08, 2009 at 05:47:09PM -0400, Nick Dokos wrote:
+> Change the first and last block numbers in the list_blocks_struct
+> from blk_t to blk64_t.
+> 
+> Change the list_blocks_proc() to take a blk64_t *blocknr and use
+> ext2fs_block_iterate3(), instead of ...iterate2().
+> 
+> Change fprintf formats to use %llu, instead of %u.
+> 
+> With these changes, it seems to produce the right block numbers: I
+> spot-checked against the extents that my python script reported, but I
+> have not done an exhaustive comparison.
+> 
+> Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
 
+Signed-off-by: Valerie Aurora (Henson) <vaurora@redhat.com>
 
->> but there is an interesting catch-22: how do I save its output?
->>
->> I can try the command line suggested in the manual page:
->>
->>   e2image -r <dev> - | bzip2 > image.bz2
->>
->> but it takes forever: I started a run on Saturday and it was not
->> done by Tuesday when I killed it - writing to the pipe at 4096 bytes
->> a pop is very slow.
->>
->> Or I can forego the compression and try to save to a file: it's sparse
->> (I only used 7GiB before it failed), but its nominal size exceeded the
->> maximum file size limit on ext4, at which point I start getting lseek
->> failures.
-
-We really need some e2image format which encodes the sparseness, I think...
-
-> The 16TB limit on ext4 files is an enormous pain for testing 64-bit
-> (>= 16TB) file systems.  I keep intending to write some simple dm
-> setup to concatenate two loopback files together, but instead I always
-> install XFS and create a loopback file on an XFS partition.
-
-For testing a large device, say /dev/sdb1 is 10GB large:
-
-# TERABYTES=`expr 20 \* 1024 \* 1024 \* 1024 \* 2`   # 20 TB in sectors
-# echo "0 $ERABYTES zero" | dmsetup create zero1
-# echo "0 $TERABYTES snapshot /dev/mapper/zero1 /dev/sdb1 p 128" | \
-   dmsetup create sparse1
-
-This will create a 20TB sparse device called /dev/mapper/sparse1 that
-has 10GB of actual storage space available. If more than 10GB of data is
-written to this device, it will start returning I/O errors.
-
-This is from Documentation/device-mapper/zero.txt
-
--Eric
+> ---
+>  debugfs/debugfs.c |   10 +++++-----
+>  1 files changed, 5 insertions(+), 5 deletions(-)
+> 
+> diff --git a/debugfs/debugfs.c b/debugfs/debugfs.c
+> index a71da89..6b75410 100644
+> --- a/debugfs/debugfs.c
+> +++ b/debugfs/debugfs.c
+> @@ -378,7 +378,7 @@ void do_dirty_filesys(int argc EXT2FS_ATTR((unused)),
+>  struct list_blocks_struct {
+>  	FILE		*f;
+>  	e2_blkcnt_t	total;
+> -	blk_t		first_block, last_block;
+> +	blk64_t		first_block, last_block;
+>  	e2_blkcnt_t	first_bcnt, last_bcnt;
+>  	e2_blkcnt_t	first;
+>  };
+> @@ -392,17 +392,17 @@ static void finish_range(struct list_blocks_struct *lb)
+>  	else
+>  		fprintf(lb->f, ", ");
+>  	if (lb->first_block == lb->last_block)
+> -		fprintf(lb->f, "(%lld):%u",
+> +		fprintf(lb->f, "(%lld):%llu",
+>  			(long long)lb->first_bcnt, lb->first_block);
+>  	else
+> -		fprintf(lb->f, "(%lld-%lld):%u-%u",
+> +		fprintf(lb->f, "(%lld-%lld):%llu-%llu",
+>  			(long long)lb->first_bcnt, (long long)lb->last_bcnt,
+>  			lb->first_block, lb->last_block);
+>  	lb->first_block = 0;
+>  }
+>  
+>  static int list_blocks_proc(ext2_filsys fs EXT2FS_ATTR((unused)),
+> -			    blk_t *blocknr, e2_blkcnt_t blockcnt,
+> +			    blk64_t *blocknr, e2_blkcnt_t blockcnt,
+>  			    blk_t ref_block EXT2FS_ATTR((unused)),
+>  			    int ref_offset EXT2FS_ATTR((unused)),
+>  			    void *private)
+> @@ -523,7 +523,7 @@ static void dump_blocks(FILE *f, const char *prefix, ext2_ino_t inode)
+>  	lb.first_block = 0;
+>  	lb.f = f;
+>  	lb.first = 1;
+> -	ext2fs_block_iterate2(current_fs, inode, BLOCK_FLAG_READ_ONLY, NULL,
+> +	ext2fs_block_iterate3(current_fs, inode, BLOCK_FLAG_READ_ONLY, NULL,
+>  			      list_blocks_proc, (void *)&lb);
+>  	finish_range(&lb);
+>  	if (lb.total)
+> -- 
+> 1.6.0.6
+> 
