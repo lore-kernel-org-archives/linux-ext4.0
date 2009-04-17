@@ -1,49 +1,59 @@
-From: Frank Mayhar <fmayhar@google.com>
-Subject: Re: Concise description of disk layout?
-Date: Fri, 17 Apr 2009 11:49:26 -0700
-Message-ID: <1239994166.7799.24.camel@bobble.smo.corp.google.com>
-References: <1239838392.12688.4.camel@bobble.smo.corp.google.com>
-	 <20090416002809.GG21586@mit.edu>  <gsahsj$8tk$1@ger.gmane.org>
+From: Jeremy Sanders <jss@ast.cam.ac.uk>
+Subject: Re: fsck.ext4: Group descriptors look bad... trying backup
+ blocks...
+Date: Fri, 17 Apr 2009 19:51:21 +0100 (BST)
+Message-ID: <alpine.LFD.2.00.0904171946030.26751@xpc17.ast.cam.ac.uk>
+References: <gs9nm5$8m1$1@ger.gmane.org> <20090417115659.GB7117@mit.edu> <gs9rve$rid$1@ger.gmane.org> <49E8B7F4.6020608@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:53166 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760549AbZDQSt3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Apr 2009 14:49:29 -0400
-Received: from zps75.corp.google.com (zps75.corp.google.com [172.25.146.75])
-	by smtp-out.google.com with ESMTP id n3HInSsK015274
-	for <linux-ext4@vger.kernel.org>; Fri, 17 Apr 2009 11:49:28 -0700
-Received: from [172.29.60.126] (bobble.smo.corp.google.com [172.29.60.126])
-	(authenticated bits=0)
-	by zps75.corp.google.com with ESMTP id n3HInQv0032613
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NOT)
-	for <linux-ext4@vger.kernel.org>; Fri, 17 Apr 2009 11:49:27 -0700
-In-Reply-To: <gsahsj$8tk$1@ger.gmane.org>
+Received: from ppsw-6.csi.cam.ac.uk ([131.111.8.136]:57737 "EHLO
+	ppsw-6.csi.cam.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751425AbZDQTOf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Apr 2009 15:14:35 -0400
+In-Reply-To: <49E8B7F4.6020608@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 2009-04-17 at 18:30 +0000, Frank Mayhar wrote:
-> Sorry for the late reply.
-> 
-> On Wed, 15 Apr 2009 20:28:09 -0400, Theodore Tso wrote:
-> >    http://e2fsprogs.sourceforge.net/ext2intro.html
-> > 
-> > but updated for ext4?
-> 
-> Yeah, the "Physical Structure" section.
+On Fri, 17 Apr 2009, Eric Sandeen wrote:
 
-I've read through some of the documents you pointed to and it sounds
-like the actual on-disk format hasn't changed significantly, i.e. block
-groups are laid out in basically the same way and the stuff within them
-is laid out in more or less the same way as in ext2/ext3; the major
-difference seems to be the allocation strategies embedded in the code
-itself.  The new strategies simply mean that files and inodes are
-allocated more efficiently but not really in new places.  Is this (more
-or less) correct or am I totally off-base?
+> Jeremy Sanders wrote:
+>> Theodore Tso wrote:
+>
+> ...
+>
+>>> I see from the dumpe2fs that you sent it had only been in use for a
+>>> week.  How were you using the filesystem?  Did you try using the
+>>> online resize feature at any time?
+>>
+>> No. The filesystem was used to store rsync snapshots of other file systems
+>> (using the hard link feature). I had only rsynced the initial data and run a
+>> couple of rsync backups on to it. The filesystem was created using:
+>>
+>> mkfs.ext4 -m0 -b 4096 -E stride=8,stripe-width=72  /dev/md0
+>
+> Can you show us exactly how you're using rsync?  is this with
+> rdiff-backup or some similar tool?
+
+No, plain rsync. We have a script which does something like
+
+rsync -raHSx --stats --while-file --numeric-ids  \
+--link-dest=/mnt/username/20090418/ host:/data/username/ \ 
+/mnt/username/20090419/
+
+for a set of users.
+
+This command copies the files from /data/username on host to 
+/mnt/username/20090419, but creates hard links to the previous copy 
+(/mnt/username/20090418/) for unchanged files.
+
+It worked fine on ext3, at least for a 2.4TB device.
+
+Jeremy
+
 -- 
-Frank Mayhar <fmayhar@google.com>
-Google, Inc.
-
+Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
+X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
+Public Key Server PGP Key ID: E1AAE053
