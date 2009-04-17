@@ -1,42 +1,46 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: fsck.ext4: Group descriptors look bad... trying backup
-	blocks...
-Date: Fri, 17 Apr 2009 12:36:17 -0400
-Message-ID: <20090417163617.GB26479@mit.edu>
-References: <gs9nm5$8m1$1@ger.gmane.org> <20090417115659.GB7117@mit.edu> <gs9sdh$u9k$1@ger.gmane.org>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: fsck.ext4: Group descriptors look bad... trying backup blocks...
+Date: Fri, 17 Apr 2009 12:00:29 -0500
+Message-ID: <49E8B5AD.6030907@redhat.com>
+References: <gs9nm5$8m1$1@ger.gmane.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: Jeremy Sanders <jss@ast.cam.ac.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:39434 "EHLO thunker.thunk.org"
+Received: from mx2.redhat.com ([66.187.237.31]:40453 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758861AbZDQQgV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Apr 2009 12:36:21 -0400
-Content-Disposition: inline
-In-Reply-To: <gs9sdh$u9k$1@ger.gmane.org>
+	id S1751509AbZDQRAq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Apr 2009 13:00:46 -0400
+In-Reply-To: <gs9nm5$8m1$1@ger.gmane.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Apr 17, 2009 at 01:24:16PM +0100, Jeremy Sanders wrote:
-> Theodore Tso wrote:
+Jeremy Sanders wrote:
+> Hi - I'm trying out ext4 on a large 8.2 TB software raid device (md). On 
+> rebooting (cleanly unmounting), I tried an fsck on the device. I get the 
+> following:
 > 
-> > I see from the dumpe2fs that you sent it had only been in use for a
-> > week.  How were you using the filesystem?  Did you try using the
-> > online resize feature at any time?
+> [root@xback2 ~]# fsck /dev/md0
+> fsck 1.41.4 (27-Jan-2009)
+> e2fsck 1.41.4 (27-Jan-2009)
+> fsck.ext4: Group descriptors look bad... trying backup blocks...
+> Group descriptor 0 checksum is invalid.  Fix<y>?
 > 
-> I assume that this isn't enough to corrupt the filesystem?
+> It then finds lots of bad group descriptors.
 > 
-> [root@xback2 ~]# tune2fs -i -1 /dev/md0
-> tune2fs 1.41.4 (27-Jan-2009)
-> Setting interval between checks to 18446744073709465216 seconds
+> This is Fedora 10, 2.6.27.21-170.2.56.fc10.x86_64 and 
+> e2fsprogs-1.41.4-4.fc10.x86_64.
+> 
 
-No, but it won't do what you want, either.  To disable time-based
-checks, you should use "tune2fs -i 0 /dev/md0".
+Jeremy, if you're willing, could you upgrade to the 2.6.29 kernel that's
+in F10 updates-testing?  That way the ext4 code is a bit more of a
+recent, common codebase.  Also, if this is a test fs, re-mkfs'ing from
+scratch might not be a bad way to go.
 
-Tune2fs should have flagged an error when you specified -1; I'll have
-to fix that.
+Depending on how hard it is to reproduce, it may also be interesting to
+try a filesystem just shy of 8TB (2^31) blocks in case there is some
+32-bit wrap-around there, since you're at 8.2T....
 
-	    	       		     - Ted
-
-
+-Eric
