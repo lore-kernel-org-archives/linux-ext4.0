@@ -1,60 +1,54 @@
-From: Amit Shah <amit.shah@redhat.com>
-Subject: Re: [PATCH] Add ext3 data=guarded mode
-Date: Sat, 18 Apr 2009 11:33:12 +0530
-Message-ID: <20090418060312.GA10943__26915.3418289081$1240034767$gmane$org@amit-x200.pnq.redhat.com>
-References: <1239816159-6868-1-git-send-email-chris.mason@oracle.com> <a22f99ce2199ebebe63228edd8afa4809511ab1e.1239815649.git.chris.mason@oracle.com> <1239910921.21233.98.camel@think.oraclecorp.com> <20090417180906.GA8363@amit-x200.pnq.redhat.com> <20090417201342.GF26479@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
-	Jan Kara <jack@suse.cz>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Linux Kernel Developers List <linux-kernel
+From: Nick Dokos <nicholas.dokos@hp.com>
+Subject: [PATCH 2/2][64-BIT] ext2fs_group_first_block2(): 32-bit truncation.
+Date: Sat, 18 Apr 2009 02:05:13 -0400
+Message-ID: <30396.1240034713@gamaville.dokosmarshall.org>
+Reply-To: nicholas.dokos@hp.com
+Cc: nicholas.dokos@hp.com, Theodore Ts'o <tytso@mit.edu>,
+	Valerie Aurora <vaurora@redhat.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:50645 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751021AbZDRGDm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Apr 2009 02:03:42 -0400
-Content-Disposition: inline
-In-Reply-To: <20090417201342.GF26479@mit.edu>
+Received: from qmta09.emeryville.ca.mail.comcast.net ([76.96.30.96]:49828 "EHLO
+	QMTA09.emeryville.ca.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751023AbZDRGFA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 18 Apr 2009 02:05:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On (Fri) Apr 17 2009 [16:13:42], Theodore Tso wrote:
-> On Fri, Apr 17, 2009 at 11:39:06PM +0530, Amit Shah wrote:
-> > # 4GiB file, kernel 9f76208c33984ab777eace5d07a4e36e88703e02 + ext3-guarded
-> > 
-> > filesystem	posix-fallocate	mmap	chunk-4096	chunk-8192
-> > ext3-guarded	85		97	459		90
-> > ext3-writeback 86		95	140		94
-> > ext3-ordered	86		96	277		95
-> > 
-> > Running the test in single user mode, I get the following results:
-> > 
-> > # 4GiB file, kernel 9f76208c33984ab777eace5d07a4e36e88703e02 + ext3-guarded
-> > 
-> > filesystem	posix-fallocate	mmap	chunk-4096	chunk-8192
-> > ext3-guarded	84		86	163		91
-> > ext3-writeback 84		88	217		91
-> > ext3-ordered	84		86	226		91
-> 
-> 
-> The difference between guarded and writeback in chunk-4096 looking at
-> your desktop timings and your single user times is.... surprising. 
+ext2fs_group_first_block2() returns the product of the group number
+and the number of blocks per group (from the superblock). Unfortunately,
+both of these are 32-bit quantities, so the multiplication result is
+also 32 bits wide. It is then returned as a 64-bit quantity, but by then,
+it's too late.
 
-Surely. I re-ran the guarded test immediately after that one and got a
-time of 353s with the desktop. Another run much latergave me a 189s time,
-so it seems to vary quite a lot. Initially when I was getting high
-numbers, I thought it could be related to the IO scheduler but looks like
-it's just some background tasks trying to get cpu or io time. Of course,
-the whole system becomes sluggish once these tests start.
+Cast one of the operands to blk64_t, so the multiplication will be done
+in 64 bits.
 
-> In particular, the fact that the guarded time is 3 times longer than
-> ext3-writeback when the desktop is running, and 20% faster in single
-> user mode.  Are these results reproducible?  And do you have any
-> thoughts as to what might be causing them?
+e2fsck was complaining about a group that was marked BLOCK_UNINIT, but
+had blocks in use (it turned out that a different group had blocks in
+use, but the block numbers of the two different groups differed by
+2^32, so this bug conflated them). With this change, this complaint
+goes away. In addition, dumpe2fs produces the right blocks for all the
+groups, whereas it was wrapping them at the 32-bit boundary previously.
 
-I initially thought there was something but I also got lower numbers
-(189s), so I can't really say what it is even though I call sync before
-starting the tests.
+Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
+---
+ lib/ext2fs/blknum.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-		Amit
+diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
+index b9666fb..fd56d53 100644
+--- a/lib/ext2fs/blknum.c
++++ b/lib/ext2fs/blknum.c
+@@ -28,7 +28,7 @@ dgrp_t ext2fs_group_of_blk2(ext2_filsys fs, blk64_t blk)
+ blk64_t ext2fs_group_first_block2(ext2_filsys fs, dgrp_t group)
+ {
+ 	return fs->super->s_first_data_block +
+-		(group * fs->super->s_blocks_per_group);
++		((blk64_t)group * fs->super->s_blocks_per_group);
+ }
+ 
+ /*
+-- 
+1.6.0.6
+
