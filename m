@@ -1,8 +1,8 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 2/2][64-BIT] ext2fs_group_first_block2(): 32-bit truncation.
-Date: Sat, 18 Apr 2009 08:09:43 -0500
-Message-ID: <49E9D117.9050502@redhat.com>
-References: <30396.1240034713@gamaville.dokosmarshall.org>
+Subject: Re: [PATCH 1/2][64-BIT] blk_t -> blk64_t in read_bitmaps().
+Date: Sat, 18 Apr 2009 08:29:16 -0500
+Message-ID: <49E9D5AC.80703@redhat.com>
+References: <30393.1240034704@gamaville.dokosmarshall.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
@@ -10,52 +10,45 @@ Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
 	Valerie Aurora <vaurora@redhat.com>
 To: nicholas.dokos@hp.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:55274 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:52874 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750702AbZDRNJs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Apr 2009 09:09:48 -0400
-In-Reply-To: <30396.1240034713@gamaville.dokosmarshall.org>
+	id S1753732AbZDRN3W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 18 Apr 2009 09:29:22 -0400
+In-Reply-To: <30393.1240034704@gamaville.dokosmarshall.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Nick Dokos wrote:
-> ext2fs_group_first_block2() returns the product of the group number
-> and the number of blocks per group (from the superblock). Unfortunately,
-> both of these are 32-bit quantities, so the multiplication result is
-> also 32 bits wide. It is then returned as a 64-bit quantity, but by then,
-> it's too late.
-> 
-> Cast one of the operands to blk64_t, so the multiplication will be done
-> in 64 bits.
-> 
-> e2fsck was complaining about a group that was marked BLOCK_UNINIT, but
-> had blocks in use (it turned out that a different group had blocks in
-> use, but the block numbers of the two different groups differed by
-> 2^32, so this bug conflated them). With this change, this complaint
-> goes away. In addition, dumpe2fs produces the right blocks for all the
-> groups, whereas it was wrapping them at the 32-bit boundary previously.
+> e2fsck -n -f on a brand-new, never-mounted 32TiB filesystem was
+> detecting a lot of "Block bitmap differences". This change makes them
+> go away (there are are still more problems however: the run finds used
+> blocks in one BLOCK_UNINIT group and a free block mismatch.)
 > 
 > Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
 
-This one looks obviously correct, thanks.
+Looks right to me as well.
 
 Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
 > ---
->  lib/ext2fs/blknum.c |    2 +-
->  1 files changed, 1 insertions(+), 1 deletions(-)
+>  lib/ext2fs/rw_bitmaps.c |    6 +++---
+>  1 files changed, 3 insertions(+), 3 deletions(-)
 > 
-> diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
-> index b9666fb..fd56d53 100644
-> --- a/lib/ext2fs/blknum.c
-> +++ b/lib/ext2fs/blknum.c
-> @@ -28,7 +28,7 @@ dgrp_t ext2fs_group_of_blk2(ext2_filsys fs, blk64_t blk)
->  blk64_t ext2fs_group_first_block2(ext2_filsys fs, dgrp_t group)
->  {
->  	return fs->super->s_first_data_block +
-> -		(group * fs->super->s_blocks_per_group);
-> +		((blk64_t)group * fs->super->s_blocks_per_group);
->  }
+> diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
+> index cee6142..5b504bf 100644
+> --- a/lib/ext2fs/rw_bitmaps.c
+> +++ b/lib/ext2fs/rw_bitmaps.c
+> @@ -144,9 +144,9 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
+>  	int csum_flag = 0;
+>  	int do_image = fs->flags & EXT2_FLAG_IMAGE_FILE;
+>  	unsigned int	cnt;
+> -	blk_t	blk;
+> -	blk_t	blk_itr = fs->super->s_first_data_block;
+> -	blk_t   blk_cnt;
+> +	blk64_t	blk;
+> +	blk64_t	blk_itr = fs->super->s_first_data_block;
+> +	blk64_t   blk_cnt;
+>  	ext2_ino_t ino_itr = 1;
+>  	ext2_ino_t ino_cnt;
 >  
->  /*
 
