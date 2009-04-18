@@ -1,61 +1,61 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: PATCH: Making mb_history length a dynamic tunable
-Date: Sat, 18 Apr 2009 08:53:21 -0400
-Message-ID: <20090418125320.GA19186@mit.edu>
-References: <6601abe90904071020gdce65d2madc6df30c182c5cd@mail.gmail.com> <532480950904180051m3226b309wc42cded4e73be028@mail.gmail.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 2/2][64-BIT] ext2fs_group_first_block2(): 32-bit truncation.
+Date: Sat, 18 Apr 2009 08:09:43 -0500
+Message-ID: <49E9D117.9050502@redhat.com>
+References: <30396.1240034713@gamaville.dokosmarshall.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Curt Wohlgemuth <curtw@google.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Michael Rubin <mrubin@google.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	Valerie Aurora <vaurora@redhat.com>
+To: nicholas.dokos@hp.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57057 "EHLO thunker.thunk.org"
+Received: from mx2.redhat.com ([66.187.237.31]:55274 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751732AbZDRMxZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Apr 2009 08:53:25 -0400
-Content-Disposition: inline
-In-Reply-To: <532480950904180051m3226b309wc42cded4e73be028@mail.gmail.com>
+	id S1750702AbZDRNJs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 18 Apr 2009 09:09:48 -0400
+In-Reply-To: <30396.1240034713@gamaville.dokosmarshall.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 18, 2009 at 12:51:43AM -0700, Michael Rubin wrote:
-> On Tue, Apr 7, 2009 at 10:20 AM, Curt Wohlgemuth <curtw@google.com> w=
-rote:
-> > Hi:
-> >
-> > Since we frequently run in memory-constrained systems with many par=
-titions,
-> > the ~68K for each partition for the mb_history buffer can be excess=
-ive. =A0The
-> > following creates a new proc file under /proc/fs/ext4/ to control t=
-he number
-> > of entries at mount time.
-> >
-> > If the notion of a history length tunable is okay, but the location=
- should
-> > be under /sys/fs/ext4/ instead of /proc/fs/ext4/, I can change this=
-=2E =A0The
-> > leftover files under /proc/fs/ext4/<partition>/ are a bit confusing=
- to me.
-> >
->=20
-> Does the silence mean that there is no interest in this CL?
+Nick Dokos wrote:
+> ext2fs_group_first_block2() returns the product of the group number
+> and the number of blocks per group (from the superblock). Unfortunately,
+> both of these are 32-bit quantities, so the multiplication result is
+> also 32 bits wide. It is then returned as a 64-bit quantity, but by then,
+> it's too late.
+> 
+> Cast one of the operands to blk64_t, so the multiplication will be done
+> in 64 bits.
+> 
+> e2fsck was complaining about a group that was marked BLOCK_UNINIT, but
+> had blocks in use (it turned out that a different group had blocks in
+> use, but the block numbers of the two different groups differed by
+> 2^32, so this bug conflated them). With this change, this complaint
+> goes away. In addition, dumpe2fs produces the right blocks for all the
+> groups, whereas it was wrapping them at the 32-bit boundary previously.
+> 
+> Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
 
-No, just that you hit the ext4 dev's during the Linux storage and
-filesystem workshop, and some of us are still trying to catch up from
-that.  This does seem like a reasonable patch.
+This one looks obviously correct, thanks.
 
-Yes, it should be in /sys/fs/ext4 (and this should actually be easier
-to support than /proc/fs/ext4).  I've left some stuff under /proc
-because /sys uses the paradigm of returning a single file per
-individual tunable, which works great for most things, but it's not so
-hot for things like /proc/fs/ext4/<dev>/mb_history.  However, tunables
-should go under /sys/fs/ext4.
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> ---
+>  lib/ext2fs/blknum.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/lib/ext2fs/blknum.c b/lib/ext2fs/blknum.c
+> index b9666fb..fd56d53 100644
+> --- a/lib/ext2fs/blknum.c
+> +++ b/lib/ext2fs/blknum.c
+> @@ -28,7 +28,7 @@ dgrp_t ext2fs_group_of_blk2(ext2_filsys fs, blk64_t blk)
+>  blk64_t ext2fs_group_first_block2(ext2_filsys fs, dgrp_t group)
+>  {
+>  	return fs->super->s_first_data_block +
+> -		(group * fs->super->s_blocks_per_group);
+> +		((blk64_t)group * fs->super->s_blocks_per_group);
+>  }
+>  
+>  /*
+
