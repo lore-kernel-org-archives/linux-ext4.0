@@ -1,54 +1,55 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 1/2][64-BIT] blk_t -> blk64_t in read_bitmaps().
-Date: Sat, 18 Apr 2009 08:29:16 -0500
-Message-ID: <49E9D5AC.80703@redhat.com>
-References: <30393.1240034704@gamaville.dokosmarshall.org>
+Subject: e2fsck -y says "yes" to "Abort?"
+Date: Sat, 18 Apr 2009 09:10:50 -0500
+Message-ID: <49E9DF6A.1090000@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	Valerie Aurora <vaurora@redhat.com>
-To: nicholas.dokos@hp.com
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:52874 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:38709 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753732AbZDRN3W (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Apr 2009 09:29:22 -0400
-In-Reply-To: <30393.1240034704@gamaville.dokosmarshall.org>
+	id S1754621AbZDROKw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 18 Apr 2009 10:10:52 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n3IEAqaW004811
+	for <linux-ext4@vger.kernel.org>; Sat, 18 Apr 2009 10:10:52 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n3IEApcl014666
+	for <linux-ext4@vger.kernel.org>; Sat, 18 Apr 2009 10:10:51 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n3IEAo3G023874
+	for <linux-ext4@vger.kernel.org>; Sat, 18 Apr 2009 10:10:50 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Nick Dokos wrote:
-> e2fsck -n -f on a brand-new, never-mounted 32TiB filesystem was
-> detecting a lot of "Block bitmap differences". This change makes them
-> go away (there are are still more problems however: the run finds used
-> blocks in one BLOCK_UNINIT group and a free block mismatch.)
-> 
-> Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
+I've got this bug filed against Fedora:
 
-Looks right to me as well.
+Bug 484913 -  Change verbage of e2fsck questioning to make the "-y"
+switch more useful
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+and I think he has a point:
 
-> ---
->  lib/ext2fs/rw_bitmaps.c |    6 +++---
->  1 files changed, 3 insertions(+), 3 deletions(-)
-> 
-> diff --git a/lib/ext2fs/rw_bitmaps.c b/lib/ext2fs/rw_bitmaps.c
-> index cee6142..5b504bf 100644
-> --- a/lib/ext2fs/rw_bitmaps.c
-> +++ b/lib/ext2fs/rw_bitmaps.c
-> @@ -144,9 +144,9 @@ static errcode_t read_bitmaps(ext2_filsys fs, int do_inode, int do_block)
->  	int csum_flag = 0;
->  	int do_image = fs->flags & EXT2_FLAG_IMAGE_FILE;
->  	unsigned int	cnt;
-> -	blk_t	blk;
-> -	blk_t	blk_itr = fs->super->s_first_data_block;
-> -	blk_t   blk_cnt;
-> +	blk64_t	blk;
-> +	blk64_t	blk_itr = fs->super->s_first_data_block;
-> +	blk64_t   blk_cnt;
->  	ext2_ino_t ino_itr = 1;
->  	ext2_ino_t ino_cnt;
->  
+sh-3.2# e2fsck -y /dev/VolGroup00/VolVol02
+e2fsck 1.41.3 (12-Oct-2008)
+The filesystem size (according to the superblock) is 14090240 blocks
+The physical size of the device is 8847360 blocks
+Either the superblock or the partition table is likely to be corrupt!
 
+Abort? yes
+
+sh-3.2#
+
+I'm reluctant to invert the logic of the Abort? question as suggested
+("Are you sure you want to continue?") because this is a significant
+enough problem that we probably should really pause for consideration.
+
+But it seems like perhaps stopping at "Abort?", allowing the user to say
+"n" to that and then let the "-y" flag take over from there would be
+reasonable.
+
+If this sounds ok I'll whip up a patch, something like a way to flag the
+really serious questions (?) as unaffected by -y.
+
+Thanks,
+-Eric
