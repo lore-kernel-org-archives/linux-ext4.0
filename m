@@ -1,57 +1,69 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH]:resize2fs:adjust the inode before inode_tables were
-	covered
-Date: Sat, 18 Apr 2009 23:21:27 -0400
-Message-ID: <20090419032127.GL19186@mit.edu>
-References: <49B8C476.1010003@cn.fujitsu.com>
+From: Amit Shah <amit.shah@redhat.com>
+Subject: Re: [PATCH] Add ext3 data=guarded mode
+Date: Sun, 19 Apr 2009 11:54:48 +0530
+Message-ID: <20090419062448.GA13272@amit-x200.pnq.redhat.com>
+References: <1239816159-6868-1-git-send-email-chris.mason@oracle.com> <a22f99ce2199ebebe63228edd8afa4809511ab1e.1239815649.git.chris.mason@oracle.com> <1239910921.21233.98.camel@think.oraclecorp.com> <20090417180906.GA8363@amit-x200.pnq.redhat.com> <20090417201342.GF26479@mit.edu> <20090418060312.GA10943@amit-x200.pnq.redhat.com> <1240039701.6298.12.camel@marge.simson.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Gui Xiaohua <guixh@cn.fujitsu.com>
+Cc: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
+	Jan Kara <jack@suse.cz>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Mike Galbraith <efault@gmx.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40059 "EHLO thunker.thunk.org"
+Received: from mx2.redhat.com ([66.187.237.31]:35717 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754103AbZDSDVa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Apr 2009 23:21:30 -0400
+	id S1756092AbZDSG0k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 19 Apr 2009 02:26:40 -0400
 Content-Disposition: inline
-In-Reply-To: <49B8C476.1010003@cn.fujitsu.com>
+In-Reply-To: <1240039701.6298.12.camel@marge.simson.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Mar 12, 2009 at 04:14:46PM +0800, Gui Xiaohua wrote:
-> Hi Ted
-> There is a problem in your patch for resize2fs -M.
-> You unmark the inode_table block in new fs,the blocks 
-> which needed to be moved will cover the the inode_table
-> blocks with its content.In inode_scan_and_fix func, we will
-> scan the inode which in the old fs, but the inode table block
-> had been coverd,then error occurs.
-> I had fixed the problem through adjust the inode before blocks
-> be moved.
+On (Sat) Apr 18 2009 [09:28:21], Mike Galbraith wrote:
+> On Sat, 2009-04-18 at 11:33 +0530, Amit Shah wrote:
+> > On (Fri) Apr 17 2009 [16:13:42], Theodore Tso wrote:
+> > > On Fri, Apr 17, 2009 at 11:39:06PM +0530, Amit Shah wrote:
+> > > > # 4GiB file, kernel 9f76208c33984ab777eace5d07a4e36e88703e02 + ext3-guarded
+> > > > 
+> > > > filesystem	posix-fallocate	mmap	chunk-4096	chunk-8192
+> > > > ext3-guarded	85		97	459		90
+> > > > ext3-writeback 86		95	140		94
+> > > > ext3-ordered	86		96	277		95
+> > > > 
+> > > > Running the test in single user mode, I get the following results:
+> > > > 
+> > > > # 4GiB file, kernel 9f76208c33984ab777eace5d07a4e36e88703e02 + ext3-guarded
+> > > > 
+> > > > filesystem	posix-fallocate	mmap	chunk-4096	chunk-8192
+> > > > ext3-guarded	84		86	163		91
+> > > > ext3-writeback 84		88	217		91
+> > > > ext3-ordered	84		86	226		91
+> > > 
+> > > 
+> > > The difference between guarded and writeback in chunk-4096 looking at
+> > > your desktop timings and your single user times is.... surprising. 
+> > 
+> > Surely. I re-ran the guarded test immediately after that one and got a
+> > time of 353s with the desktop. Another run much latergave me a 189s time,
+> > so it seems to vary quite a lot. Initially when I was getting high
+> > numbers, I thought it could be related to the IO scheduler but looks like
+> > it's just some background tasks trying to get cpu or io time. Of course,
+> > the whole system becomes sluggish once these tests start.
+> > 
+> > > In particular, the fact that the guarded time is 3 times longer than
+> > > ext3-writeback when the desktop is running, and 20% faster in single
+> > > user mode.  Are these results reproducible?  And do you have any
+> > > thoughts as to what might be causing them?
+> > 
+> > I initially thought there was something but I also got lower numbers
+> > (189s), so I can't really say what it is even though I call sync before
+> > starting the tests.
+> 
+> Probably because you're swapping heavily, and that is perturbing your
 
-Hi Gui,
+The variance only affects the 4k test; the other times more or less
+remain the same.
 
-Thanks for pointing out this problem.  It turns out there is an easier
-solution, which involves reserving the blocks in the reserved_blocks
-bitmap.  This prevents them from being reused, thus avoiding the
-problem of old inode table getting overwritten before the inodes have
-a chance to be moved.
-
-Your solution has the advantage of not needing to reserve as much
-"slop space", but the down side is that if the resize2fs is
-interrupted after the inode table is overwritten but before the
-directory blocks are updated to point at the new locations of the
-inodes on disk, it would be much harder to recover the filesystem
-after being interupted at such a bad point.
-
-This problem could be solved by relocating the inodes first, then
-updating the directory references, and then doing the block
-relocations afterwards, but that would be a much larger change to
-resize2fs.  The changes I elected to make, which I have just posted to
-linux-ext4, and which you can see here:
-
-    http://article.gmane.org/gmane.comp.file-systems.ext4/12762
-
-... solve the problem in a much smaller set of changes.
-
-    	      	      	   		    - Ted
+		Amit
