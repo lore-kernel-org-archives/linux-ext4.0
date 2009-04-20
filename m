@@ -1,45 +1,64 @@
-From: Jeremy Sanders <jss@ast.cam.ac.uk>
-Subject: Re: fsck.ext4: Group descriptors look bad... trying backup
- blocks...
-Date: Mon, 20 Apr 2009 13:54:46 +0100 (BST)
-Message-ID: <alpine.LFD.2.00.0904201353540.17316@xpc17.ast.cam.ac.uk>
-References: <gs9nm5$8m1$1@ger.gmane.org> <49E8B5AD.6030907@redhat.com> <gshfgl$o6m$1@ger.gmane.org> <20090420113534.GR19186@mit.edu> <alpine.LFD.2.00.0904201237500.17316@xpc17.ast.cam.ac.uk> <20090420124810.GT19186@mit.edu>
+From: Amit Shah <amit.shah@redhat.com>
+Subject: Re: [PATCH] Add ext3 data=guarded mode
+Date: Mon, 20 Apr 2009 18:26:53 +0530
+Message-ID: <20090420125653.GA28858@amit-x200.pnq.redhat.com>
+References: <a22f99ce2199ebebe63228edd8afa4809511ab1e.1239815649.git.chris.mason@oracle.com> <1239910921.21233.98.camel@think.oraclecorp.com> <20090417180906.GA8363@amit-x200.pnq.redhat.com> <20090417201342.GF26479@mit.edu> <20090418060312.GA10943@amit-x200.pnq.redhat.com> <1240039701.6298.12.camel@marge.simson.net> <20090419062448.GA13272@amit-x200.pnq.redhat.com> <1240218437.7005.27.camel@marge.simson.net> <20090420092604.GB14699@duck.suse.cz> <1240229714.6469.33.camel@marge.simson.net>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, Theodore Tso <tytso@mit.edu>,
+	Chris Mason <chris.mason@oracle.com>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Mike Galbraith <efault@gmx.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ppsw-5.csi.cam.ac.uk ([131.111.8.135]:40358 "EHLO
-	ppsw-5.csi.cam.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754899AbZDTMys (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Apr 2009 08:54:48 -0400
-In-Reply-To: <20090420124810.GT19186@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:35141 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755140AbZDTM7C (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Apr 2009 08:59:02 -0400
+Content-Disposition: inline
+In-Reply-To: <1240229714.6469.33.camel@marge.simson.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 20 Apr 2009, Theodore Tso wrote:
+On (Mon) Apr 20 2009 [14:15:14], Mike Galbraith wrote:
+> On Mon, 2009-04-20 at 11:26 +0200, Jan Kara wrote:
+> > On Mon 20-04-09 11:07:17, Mike Galbraith wrote:
+> > > All journal modes seem subject to bad throughput under heavy pressure,
+> > > though data=ordered seems much less likely to suffer for some reason.
+> > > Major difference _seems_ to be that write()+largefile induces very much
+> > > swap activity.
+> 
+> >   My rough guess is that this depends on the VM writeout behavior. In
+> > ordered mode, we forcibly writeout all the dirty data on a transaction
+> > commit which happens every 5 seconds so they don't accumulate that much.
+> 
+> Aha.
+> 
+> > In other journaling modes we don't do that and decisions about writeout
+> > (probably how much pdflush manages to write in background vs. how much
+> > VM throttles the process to do the writeback itself) cause variances in
+> > the run time. But this is just a guess. You could gather blktraces of
+> > slow and fast runs and then look if the amount of IO done by different
+> > processes significantly differs. If Chris has merged by improvements to
+> > Seekwatcher, then you could nicely visualize this (hmm, that doesn't seem
+> > to be the case so I'm attaching the diff and a helper script - see comments
+> > in the beginning of the script and command helps for usage).
+> 
+> Not necessary methinks.  Actually _reading_ the proggy instead of just
+> glancing at it...
+> 
+> @@ -178,7 +178,7 @@ int do_write_chunks(char *target, int *f
+>         unsigned long long remain = len;
+>         char *zeros;
+> 
+> -       zeros = calloc(1, len);
+> +       zeros = calloc(1, data);
+> 
+> I assume that was a booboo. 
 
-> That's that's useful data.  I wish we could make it fail more quickly
-> on a smaller rsync, but the fact that you didn't need to reboot is
-> definitely useful information.
->
-> And this is a fresh rsync so no files were being deleted, rsync should
-> have just been writing new files to .filename.XXXXX and then renaming
-> the filename to filename.XXXXX when it is done, right?
+Ouch! thanks for spotting that!
 
-That's what I'd guess. It was onto a clean filesystem, so there shouldn't 
-be any deletions.
+I'll re-run the tests later tonight..
 
-> OK, let me think about this a little.  I think we can create a patch
-> which checks for writes to the block group descriptors and dumps a
-> stack trace.  That would allow us catch the failing code in question
-> in the act, and maybe figure out what is going on.
-
-Ok.
-
-Jeremy
-
--- 
-Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
-X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
-Public Key Server PGP Key ID: E1AAE053
+		Amit
