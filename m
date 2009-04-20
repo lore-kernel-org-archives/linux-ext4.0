@@ -1,42 +1,46 @@
-From: Jeremy Sanders <jss@ast.cam.ac.uk>
-Subject: Re: fsck.ext4: Group descriptors look bad... trying backup
- blocks...
-Date: Mon, 20 Apr 2009 19:55:05 +0100 (BST)
-Message-ID: <alpine.LFD.2.00.0904201953260.30497@xpc17.ast.cam.ac.uk>
-References: <gs9nm5$8m1$1@ger.gmane.org> <49E8B5AD.6030907@redhat.com> <gshfgl$o6m$1@ger.gmane.org> <20090420113534.GR19186@mit.edu> <alpine.LFD.2.00.0904201237500.17316@xpc17.ast.cam.ac.uk> <20090420124810.GT19186@mit.edu> <49EC8B97.6010308@redhat.com>
- <49EC9A11.1080105@redhat.com> <alpine.LFD.2.00.0904201652540.17316@xpc17.ast.cam.ac.uk> <20090420182800.GC3209@webber.adilger.int>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: PATCH: Making mb_history length a dynamic tunable
+Date: Mon, 20 Apr 2009 15:26:12 -0400
+Message-ID: <20090420192612.GX19186@mit.edu>
+References: <6601abe90904071020gdce65d2madc6df30c182c5cd@mail.gmail.com> <20090420032252.GA3209@webber.adilger.int> <6601abe90904201153q5e66cb30na22a49767245e53f@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
-Cc: Eric Sandeen <sandeen@redhat.com>, Theodore Tso <tytso@mit.edu>,
-	linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ppsw-7.csi.cam.ac.uk ([131.111.8.137]:33254 "EHLO
-	ppsw-7.csi.cam.ac.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751905AbZDTSzI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Apr 2009 14:55:08 -0400
-In-Reply-To: <20090420182800.GC3209@webber.adilger.int>
+Received: from thunk.org ([69.25.196.29]:59910 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753834AbZDTT0U (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Apr 2009 15:26:20 -0400
+Content-Disposition: inline
+In-Reply-To: <6601abe90904201153q5e66cb30na22a49767245e53f@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 20 Apr 2009, Andreas Dilger wrote:
+On Mon, Apr 20, 2009 at 11:53:12AM -0700, Curt Wohlgemuth wrote:
+> 
+> > Since the s_mb_history buffers are allocated at mount time only,
+> > and later writing to mb_hist_size does not affect their size,
+> > it means that mb_hist_size must be set before the filesystems are
+> > mounted.  However, that makes it impossible to tune the root
+> > filesystem history size, and at best it is difficult to tune the
+> > other filesystems because the value has to be set by an init
+> > script after root mounts but before other filesystems mount.
 
-> On Apr 20, 2009  16:53 +0100, Jeremy Sanders wrote:
->> On Mon, 20 Apr 2009, Eric Sandeen wrote:
->>> One other question - do you make use of xattrs on this filesystem?
->>
->> No.
->
-> If you use anything like SELinux or ACLs you would also (indirectly) be
-> using xattrs.
+If it's only going to be allocated at mount-time (as opposed doing it
+at run-time --- where for simplicities sake I would just simply flush
+the existing history when resizing the mb_history buffers), I would
+make this a mount option.  This would allow it to be set for the root
+filesystem via a boot option (rootfsflags).
 
-SELinux is switched off and we haven't (knowingly) been using xattrs, but 
-I remember rsync might copy copy xattrs, so perhaps they get written in 
-some way...
+> Right, I thought about this.  But avoiding the race when the tunable is
+> being changed at the same time that history is being updated just didn't
+> seem worth it to me.
 
-Jeremy
+Fixing this wouldn't be that hard; I would use read-copy-update (RCU)
+and just free the old history when changing the size of the
+mb_history.  But setting it as a mount option would also be fine, I
+think.
 
--- 
-Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
-X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
-Public Key Server PGP Key ID: E1AAE053
+							- Ted
