@@ -1,69 +1,187 @@
-From: Amit Shah <amit.shah@redhat.com>
-Subject: Re: [PATCH] Add ext3 data=guarded mode
-Date: Sun, 19 Apr 2009 11:54:48 +0530
-Message-ID: <20090419062448.GA13272@amit-x200.pnq.redhat.com>
-References: <1239816159-6868-1-git-send-email-chris.mason@oracle.com> <a22f99ce2199ebebe63228edd8afa4809511ab1e.1239815649.git.chris.mason@oracle.com> <1239910921.21233.98.camel@think.oraclecorp.com> <20090417180906.GA8363@amit-x200.pnq.redhat.com> <20090417201342.GF26479@mit.edu> <20090418060312.GA10943@amit-x200.pnq.redhat.com> <1240039701.6298.12.camel@marge.simson.net>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: PATCH: Making mb_history length a dynamic tunable
+Date: Sun, 19 Apr 2009 20:22:52 -0700
+Message-ID: <20090420032252.GA3209@webber.adilger.int>
+References: <6601abe90904071020gdce65d2madc6df30c182c5cd@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
-	Jan Kara <jack@suse.cz>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Mike Galbraith <efault@gmx.de>
+Content-Transfer-Encoding: 7BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35717 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756092AbZDSG0k (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 19 Apr 2009 02:26:40 -0400
-Content-Disposition: inline
-In-Reply-To: <1240039701.6298.12.camel@marge.simson.net>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:55352 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750852AbZDTD1z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Apr 2009 23:27:55 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n3K3Revr016268
+	for <linux-ext4@vger.kernel.org>; Sun, 19 Apr 2009 20:27:52 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
+ id <0KID00100QSS6P00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Sun,
+ 19 Apr 2009 20:27:40 -0700 (PDT)
+In-reply-to: <6601abe90904071020gdce65d2madc6df30c182c5cd@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On (Sat) Apr 18 2009 [09:28:21], Mike Galbraith wrote:
-> On Sat, 2009-04-18 at 11:33 +0530, Amit Shah wrote:
-> > On (Fri) Apr 17 2009 [16:13:42], Theodore Tso wrote:
-> > > On Fri, Apr 17, 2009 at 11:39:06PM +0530, Amit Shah wrote:
-> > > > # 4GiB file, kernel 9f76208c33984ab777eace5d07a4e36e88703e02 + ext3-guarded
-> > > > 
-> > > > filesystem	posix-fallocate	mmap	chunk-4096	chunk-8192
-> > > > ext3-guarded	85		97	459		90
-> > > > ext3-writeback 86		95	140		94
-> > > > ext3-ordered	86		96	277		95
-> > > > 
-> > > > Running the test in single user mode, I get the following results:
-> > > > 
-> > > > # 4GiB file, kernel 9f76208c33984ab777eace5d07a4e36e88703e02 + ext3-guarded
-> > > > 
-> > > > filesystem	posix-fallocate	mmap	chunk-4096	chunk-8192
-> > > > ext3-guarded	84		86	163		91
-> > > > ext3-writeback 84		88	217		91
-> > > > ext3-ordered	84		86	226		91
-> > > 
-> > > 
-> > > The difference between guarded and writeback in chunk-4096 looking at
-> > > your desktop timings and your single user times is.... surprising. 
-> > 
-> > Surely. I re-ran the guarded test immediately after that one and got a
-> > time of 353s with the desktop. Another run much latergave me a 189s time,
-> > so it seems to vary quite a lot. Initially when I was getting high
-> > numbers, I thought it could be related to the IO scheduler but looks like
-> > it's just some background tasks trying to get cpu or io time. Of course,
-> > the whole system becomes sluggish once these tests start.
-> > 
-> > > In particular, the fact that the guarded time is 3 times longer than
-> > > ext3-writeback when the desktop is running, and 20% faster in single
-> > > user mode.  Are these results reproducible?  And do you have any
-> > > thoughts as to what might be causing them?
-> > 
-> > I initially thought there was something but I also got lower numbers
-> > (189s), so I can't really say what it is even though I call sync before
-> > starting the tests.
+On Apr 07, 2009  10:20 -0700, Curt Wohlgemuth wrote:
+> Since we frequently run in memory-constrained systems with many partitions,
+> the ~68K for each partition for the mb_history buffer can be excessive.  The
+> following creates a new proc file under /proc/fs/ext4/ to control the number
+> of entries at mount time.
+
+Sorry for the delay, it's been a hectic 2 weeks.  I'm totally OK with this
+patch.
+
+> If the notion of a history length tunable is okay, but the location should
+> be under /sys/fs/ext4/ instead of /proc/fs/ext4/, I can change this.  The
+> leftover files under /proc/fs/ext4/<partition>/ are a bit confusing to me.
+
+Complex /proc files like this cannot be moved into /sys because it
+does not support the seqfile interface for having output span more
+than one page.
+
+> ---
+> --- ext4/fs/ext4/mballoc.c.orig	2009-04-07 09:13:12.000000000 -0700
+> +++ ext4/fs/ext4/mballoc.c	2009-04-07 10:08:05.000000000 -0700
+> @@ -334,6 +334,10 @@
+>  static struct kmem_cache *ext4_pspace_cachep;
+>  static struct kmem_cache *ext4_ac_cachep;
+>  static struct kmem_cache *ext4_free_ext_cachep;
+> +
+> +#define DEFAULT_HIST_SIZE 1000
+> +static int ext4_mbhist_size = DEFAULT_HIST_SIZE;
+> +
+>  static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
+>  					ext4_group_t group);
+>  static void ext4_mb_generate_from_freelist(struct super_block *sb,
+> void *bitmap,
+> @@ -2417,31 +2421,36 @@ static struct file_operations ext4_mb_se
+>  static void ext4_mb_history_release(struct super_block *sb)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+> +	int delete_mbhist = sbi->s_mb_history_max != 0;
 > 
-> Probably because you're swapping heavily, and that is perturbing your
+>  	if (sbi->s_proc != NULL) {
+>  		remove_proc_entry("mb_groups", sbi->s_proc);
+> -		remove_proc_entry("mb_history", sbi->s_proc);
+> +		if (delete_mbhist)
+> +			remove_proc_entry("mb_history", sbi->s_proc);
+>  	}
+> -	kfree(sbi->s_mb_history);
+> +	if (delete_mbhist)
+> +		kfree(sbi->s_mb_history);
 
-The variance only affects the 4k test; the other times more or less
-remain the same.
+If sbi->s_mb_history == NULL (as opposed to garbage) it is OK to
+just call kfree() without the extra check.
 
-		Amit
+>  static void ext4_mb_history_init(struct super_block *sb)
+>  {
+>  	struct ext4_sb_info *sbi = EXT4_SB(sb);
+>  	int i;
+> +	int create_mbhist = ext4_mbhist_size != 0;
+> 
+>  	if (sbi->s_proc != NULL) {
+> -		proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
+> -				 &ext4_mb_seq_history_fops, sb);
+> +		if (create_mbhist)
+> +			proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
+> +					 &ext4_mb_seq_history_fops, sb);
+>  		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
+>  				 &ext4_mb_seq_groups_fops, sb);
+>  	}
+> 
+> -	sbi->s_mb_history_max = 1000;
+> +	sbi->s_mb_history_max = ext4_mbhist_size;
+>  	sbi->s_mb_history_cur = 0;
+>  	spin_lock_init(&sbi->s_mb_history_lock);
+>  	i = sbi->s_mb_history_max * sizeof(struct ext4_mb_history);
+> -	sbi->s_mb_history = kzalloc(i, GFP_KERNEL);
+> +	sbi->s_mb_history = create_mbhist ? kzalloc(i, GFP_KERNEL) : NULL;
+>  	/* if we can't allocate history, then we simple won't use it */
+>  }
+
+Since the s_mb_history buffers are allocated at mount time only,
+and later writing to mb_hist_size does not affect their size,
+it means that mb_hist_size must be set before the filesystems are
+mounted.  However, that makes it impossible to tune the root
+filesystem history size, and at best it is difficult to tune the
+other filesystems because the value has to be set by an init
+script after root mounts but before other filesystems mount.
+
+Another possible option is to have a module parameter that can be
+set when the ext4 module is inserted, so that it is sure to be
+available for all filesystems, but this won't help if ext4 is
+built into the kernel.
+
+The final (though more complex) option is to add a per-fs
+tunable that allows changing the history size at runtime for
+each filesystem.
+
+> @@ -2894,6 +2903,49 @@ static void release_blocks_on_commit(jou
+>  	mb_debug("freed %u blocks in %u structures\n", count, count2);
+>  }
+> 
+> +static ssize_t read_mb_hist_size(struct file *file, char __user *buf,
+> +				size_t count, loff_t *ppos)
+> +static ssize_t write_mb_hist_size(struct file *file, const char __user *buf,
+> +				   size_t count, loff_t *ppos)
+
+Please add an ext4_ prefix to these function names.
+
+> +{
+> +	/* This allows for 99999 entries, at 68 bytes each */
+> +#define MAX_BUFSIZE 6
+> +	char kbuf[MAX_BUFSIZE + 1];
+> +	int value;
+> +
+> +	if (count) {
+> +		if (count > MAX_BUFSIZE)
+> +			return -EINVAL;
+> +		if (copy_from_user(&kbuf, buf, count))
+> +			return -EFAULT;
+> +		kbuf[min(count, sizeof(kbuf))-1] = '\0';
+
+This is could probably be avoided.  Simply initializing "kbuf" at
+declaration time will ensure that there is a trailing NUL because
+at most MAX_BUFSIZE bytes are copied into it.
+
+	char kbuf[MAX_BUFSIZE + 1] = "";
+
+> +		value = simple_strtol(kbuf, NULL, 0);
+> +
+> +		if (value < 0)
+> +			return -EINVAL;
+> +
+> +		ext4_mbhist_size = value;
+> +	}
+> +	return count;
+> +#undef MAX_BUFSIZE
+> +}
+> +
+> +static struct file_operations ext4_mb_size_fops = {
+> +	.read		= read_mb_hist_size,
+> +	.write		= write_mb_hist_size,
+> +};
+> +
+>  int __init init_ext4_mballoc(void)
+>  {
+>  	ext4_pspace_cachep =
+> @@ -2912,6 +2964,9 @@ int __init init_ext4_mballoc(void)
+>  		return -ENOMEM;
+>  	}
+> 
+> +	proc_create("mb_hist_size", S_IRUGO | S_IWUGO, ext4_proc_root,
+> +			 &ext4_mb_size_fops);
+> +
+>  	ext4_free_ext_cachep =
+>  		kmem_cache_create("ext4_free_block_extents",
+>  				     sizeof(struct ext4_free_data),
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
