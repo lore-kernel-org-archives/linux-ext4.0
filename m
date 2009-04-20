@@ -1,187 +1,81 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: PATCH: Making mb_history length a dynamic tunable
-Date: Sun, 19 Apr 2009 20:22:52 -0700
-Message-ID: <20090420032252.GA3209@webber.adilger.int>
-References: <6601abe90904071020gdce65d2madc6df30c182c5cd@mail.gmail.com>
+From: Mike Galbraith <efault@gmx.de>
+Subject: Re: [PATCH] Add ext3 data=guarded mode
+Date: Mon, 20 Apr 2009 11:07:17 +0200
+Message-ID: <1240218437.7005.27.camel@marge.simson.net>
+References: <1239816159-6868-1-git-send-email-chris.mason@oracle.com>
+	 <a22f99ce2199ebebe63228edd8afa4809511ab1e.1239815649.git.chris.mason@oracle.com>
+	 <1239910921.21233.98.camel@think.oraclecorp.com>
+	 <20090417180906.GA8363@amit-x200.pnq.redhat.com>
+	 <20090417201342.GF26479@mit.edu>
+	 <20090418060312.GA10943@amit-x200.pnq.redhat.com>
+	 <1240039701.6298.12.camel@marge.simson.net>
+	 <20090419062448.GA13272@amit-x200.pnq.redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Curt Wohlgemuth <curtw@google.com>
+Content-Type: text/plain
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, Chris Mason <chris.mason@oracle.com>,
+	Jan Kara <jack@suse.cz>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Amit Shah <amit.shah@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:55352 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750852AbZDTD1z (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Apr 2009 23:27:55 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n3K3Revr016268
-	for <linux-ext4@vger.kernel.org>; Sun, 19 Apr 2009 20:27:52 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KID00100QSS6P00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Sun,
- 19 Apr 2009 20:27:40 -0700 (PDT)
-In-reply-to: <6601abe90904071020gdce65d2madc6df30c182c5cd@mail.gmail.com>
+Received: from mail.gmx.net ([213.165.64.20]:43764 "HELO mail.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
+	id S1751001AbZDTJHW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Apr 2009 05:07:22 -0400
+In-Reply-To: <20090419062448.GA13272@amit-x200.pnq.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 07, 2009  10:20 -0700, Curt Wohlgemuth wrote:
-> Since we frequently run in memory-constrained systems with many partitions,
-> the ~68K for each partition for the mb_history buffer can be excessive.  The
-> following creates a new proc file under /proc/fs/ext4/ to control the number
-> of entries at mount time.
+On Sun, 2009-04-19 at 11:54 +0530, Amit Shah wrote:
+> On (Sat) Apr 18 2009 [09:28:21], Mike Galbraith wrote:
 
-Sorry for the delay, it's been a hectic 2 weeks.  I'm totally OK with this
-patch.
-
-> If the notion of a history length tunable is okay, but the location should
-> be under /sys/fs/ext4/ instead of /proc/fs/ext4/, I can change this.  The
-> leftover files under /proc/fs/ext4/<partition>/ are a bit confusing to me.
-
-Complex /proc files like this cannot be moved into /sys because it
-does not support the seqfile interface for having output span more
-than one page.
-
-> ---
-> --- ext4/fs/ext4/mballoc.c.orig	2009-04-07 09:13:12.000000000 -0700
-> +++ ext4/fs/ext4/mballoc.c	2009-04-07 10:08:05.000000000 -0700
-> @@ -334,6 +334,10 @@
->  static struct kmem_cache *ext4_pspace_cachep;
->  static struct kmem_cache *ext4_ac_cachep;
->  static struct kmem_cache *ext4_free_ext_cachep;
-> +
-> +#define DEFAULT_HIST_SIZE 1000
-> +static int ext4_mbhist_size = DEFAULT_HIST_SIZE;
-> +
->  static void ext4_mb_generate_from_pa(struct super_block *sb, void *bitmap,
->  					ext4_group_t group);
->  static void ext4_mb_generate_from_freelist(struct super_block *sb,
-> void *bitmap,
-> @@ -2417,31 +2421,36 @@ static struct file_operations ext4_mb_se
->  static void ext4_mb_history_release(struct super_block *sb)
->  {
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
-> +	int delete_mbhist = sbi->s_mb_history_max != 0;
+> > Probably because you're swapping heavily, and that is perturbing your
 > 
->  	if (sbi->s_proc != NULL) {
->  		remove_proc_entry("mb_groups", sbi->s_proc);
-> -		remove_proc_entry("mb_history", sbi->s_proc);
-> +		if (delete_mbhist)
-> +			remove_proc_entry("mb_history", sbi->s_proc);
->  	}
-> -	kfree(sbi->s_mb_history);
-> +	if (delete_mbhist)
-> +		kfree(sbi->s_mb_history);
+> The variance only affects the 4k test; the other times more or less
+> remain the same.
 
-If sbi->s_mb_history == NULL (as opposed to garbage) it is OK to
-just call kfree() without the extra check.
+My box disagrees.
 
->  static void ext4_mb_history_init(struct super_block *sb)
->  {
->  	struct ext4_sb_info *sbi = EXT4_SB(sb);
->  	int i;
-> +	int create_mbhist = ext4_mbhist_size != 0;
-> 
->  	if (sbi->s_proc != NULL) {
-> -		proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
-> -				 &ext4_mb_seq_history_fops, sb);
-> +		if (create_mbhist)
-> +			proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
-> +					 &ext4_mb_seq_history_fops, sb);
->  		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
->  				 &ext4_mb_seq_groups_fops, sb);
->  	}
-> 
-> -	sbi->s_mb_history_max = 1000;
-> +	sbi->s_mb_history_max = ext4_mbhist_size;
->  	sbi->s_mb_history_cur = 0;
->  	spin_lock_init(&sbi->s_mb_history_lock);
->  	i = sbi->s_mb_history_max * sizeof(struct ext4_mb_history);
-> -	sbi->s_mb_history = kzalloc(i, GFP_KERNEL);
-> +	sbi->s_mb_history = create_mbhist ? kzalloc(i, GFP_KERNEL) : NULL;
->  	/* if we can't allocate history, then we simple won't use it */
->  }
+(bumps ulimits to test 4BG... OS+swap live on sdb btw)
 
-Since the s_mb_history buffers are allocated at mount time only,
-and later writing to mb_hist_size does not affect their size,
-it means that mb_hist_size must be set before the filesystems are
-mounted.  However, that makes it impossible to tune the root
-filesystem history size, and at best it is difficult to tune the
-other filesystems because the value has to be set by an init
-script after root mounts but before other filesystems mount.
+./test-file-zero-alloc-speed 4 /dev/sdf3 /media/root ext3 rw,_netdev,noatime,data=foo,acl,user_xattr
 
-Another possible option is to have a module parameter that can be
-set when the ext4 module is inserted, so that it is sure to be
-available for all filesystems, but this won't help if ext4 is
-built into the kernel.
+foo=guarded
+4k   225  141   80  142  361
+8k    74   96  362   78   84
+mm    55   57   57   57   57
 
-The final (though more complex) option is to add a per-fs
-tunable that allows changing the history size at runtime for
-each filesystem.
+foo=writeback
+4k   179  264  187  125   93
+8k    94  161   73  334   84
+mm    57   58   57   56   57
 
-> @@ -2894,6 +2903,49 @@ static void release_blocks_on_commit(jou
->  	mb_debug("freed %u blocks in %u structures\n", count, count2);
->  }
-> 
-> +static ssize_t read_mb_hist_size(struct file *file, char __user *buf,
-> +				size_t count, loff_t *ppos)
-> +static ssize_t write_mb_hist_size(struct file *file, const char __user *buf,
-> +				   size_t count, loff_t *ppos)
+foo=ordered
+4k    81   74   76   80   75
+8k    77   76  224   79   79 
+mm    59   56   60   58   59
 
-Please add an ext4_ prefix to these function names.
+foo=journal
+4k    95  297   69   83  420
+8k    73  139  158   80   78
+mm    57   58   56   59   56
 
-> +{
-> +	/* This allows for 99999 entries, at 68 bytes each */
-> +#define MAX_BUFSIZE 6
-> +	char kbuf[MAX_BUFSIZE + 1];
-> +	int value;
-> +
-> +	if (count) {
-> +		if (count > MAX_BUFSIZE)
-> +			return -EINVAL;
-> +		if (copy_from_user(&kbuf, buf, count))
-> +			return -EFAULT;
-> +		kbuf[min(count, sizeof(kbuf))-1] = '\0';
+./test-file-zero-alloc-speed 2 /dev/sdf3 /media/root ext3 rw,_netdev,noatime,data=foo,acl,user_xattr
 
-This is could probably be avoided.  Simply initializing "kbuf" at
-declaration time will ensure that there is a trailing NUL because
-at most MAX_BUFSIZE bytes are copied into it.
+foo=guarded
+4k    28   27   27   28   28
+8k    28   27   27   28   27
 
-	char kbuf[MAX_BUFSIZE + 1] = "";
+foo=writeback
+4k    27   27   27   27   27
+8k    28   28   27   27   28
 
-> +		value = simple_strtol(kbuf, NULL, 0);
-> +
-> +		if (value < 0)
-> +			return -EINVAL;
-> +
-> +		ext4_mbhist_size = value;
-> +	}
-> +	return count;
-> +#undef MAX_BUFSIZE
-> +}
-> +
-> +static struct file_operations ext4_mb_size_fops = {
-> +	.read		= read_mb_hist_size,
-> +	.write		= write_mb_hist_size,
-> +};
-> +
->  int __init init_ext4_mballoc(void)
->  {
->  	ext4_pspace_cachep =
-> @@ -2912,6 +2964,9 @@ int __init init_ext4_mballoc(void)
->  		return -ENOMEM;
->  	}
-> 
-> +	proc_create("mb_hist_size", S_IRUGO | S_IWUGO, ext4_proc_root,
-> +			 &ext4_mb_size_fops);
-> +
->  	ext4_free_ext_cachep =
->  		kmem_cache_create("ext4_free_block_extents",
->  				     sizeof(struct ext4_free_data),
+All journal modes seem subject to bad throughput under heavy pressure,
+though data=ordered seems much less likely to suffer for some reason.
+Major difference _seems_ to be that write()+largefile induces very much
+swap activity.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+	-Mike
 
