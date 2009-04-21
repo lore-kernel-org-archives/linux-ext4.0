@@ -1,103 +1,146 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: (unknown)
-Date: Tue, 21 Apr 2009 00:06:39 -0400
-Message-ID: <10039.1240286799@gamaville.dokosmarshall.org>
-Reply-To: nicholas.dokos@hp.com
-Cc: nicholas.dokos@hp.com
-To: linux-ext4@vger.kernel.org
+From: Amir Goldor <amir73il@users.sourceforge.net>
+Subject: Re: Errors reported by Coverity in ext3
+Date: Tue, 21 Apr 2009 12:01:55 +0300
+Message-ID: <18730dc50904210201h454e9790y434e35c364dbb9d1@mail.gmail.com>
+References: <18730dc50904120458m1649aaf7tab395436d159105a@mail.gmail.com>
+	 <20090413220240.GT17302@webber.adilger.int>
+	 <18730dc50904160230ue3cbdccqd223e0a6f2edf06e@mail.gmail.com>
+	 <20090420221441.GI3209@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: multipart/mixed; boundary=001636c5bbd1169a0f04680ce6b5
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qmta07.westchester.pa.mail.comcast.net ([76.96.62.64]:53774
-	"EHLO QMTA07.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750818AbZDUEG1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 21 Apr 2009 00:06:27 -0400
-Subject: 
+Received: from mail-fx0-f158.google.com ([209.85.220.158]:50500 "EHLO
+	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751425AbZDUJB6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 21 Apr 2009 05:01:58 -0400
+Received: by fxm2 with SMTP id 2so2397441fxm.37
+        for <linux-ext4@vger.kernel.org>; Tue, 21 Apr 2009 02:01:56 -0700 (PDT)
+In-Reply-To: <20090420221441.GI3209@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Now that 64-bit e2fsck can run to completion on a (newly-minted, never
-mounted) filesystem, here are some numbers. They must be taken with
-a large grain of salt of course, given the unrealistict situation, but
-they might be reasonable lower bounds of what one might expect.
+--001636c5bbd1169a0f04680ce6b5
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: quoted-printable
 
-First, the disks are 300GB SCSI 15K rpm - there are 28 disks per RAID
-controller and they are striped into 2TiB volumes (that's a limitation
-of the hardware). 16 of these volumes are striped together using LVM, to
-make a 32TiB volume.
+Thanks for your corrections.
 
-The machine is a four-slot quad core AMD box with 128GB of memory and
-dual-port FC adapters.
+Attached is a new patch against kernel 2.6.29.1.
+I applied most of your corrections, see my comments inline.
+Please review take #2.
 
-The filesystem was created with default values for everything, except
-that the resize_inode feature is turned off. I cleared caches before the
-run.
+Thanks,
+Amir.
 
-# time e2fsck -n -f /dev/mapper/bigvg-bigvol
-e2fsck 1.41.4-64bit (17-Apr-2009)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-/dev/mapper/bigvg-bigvol: 11/2050768896 files (0.0% non-contiguous), 128808243/8203075584 blocks
+On Tue, Apr 21, 2009 at 1:14 AM, Andreas Dilger <adilger@sun.com> wrote:
+>
+> Thanks for the patch, unfortunately it is a NACK, since there are a few
+> bugs in the error handling, and some additional cleanups that can be done=
+.
+>
+> More comments inline.
+>
+>> @@ -2302,7 +2310,9 @@ static int ext3_rename (struct inode * o
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 BUFFER_TRACE(new_bh, "get write access");
+>> - =A0 =A0 =A0 =A0 =A0 =A0 ext3_journal_get_write_access(handle, new_bh);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 retval =3D ext3_journal_get_write_access(handl=
+e, new_bh);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 if (retval)
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 goto end_rename;
+>
+> Similarly, this also needs a "brelse(new_bh)" before "goto end_rename".
 
-real	23m13.725s
-user	23m8.172s
-sys	0m4.323s
+brelse(new_bh) as well as brelse(dir_bh) are called on end_rename.
 
-Most of the time (about 22 minutes) is in pass 5. I was taking snapshots
-of
+>
+>> @@ -2360,7 +2370,14 @@ static int ext3_rename (struct inode * o
+>> =A0 =A0 =A0 ext3_update_dx_flag(old_dir);
+>> =A0 =A0 =A0 if (dir_bh) {
+>> =A0 =A0 =A0 =A0 =A0 =A0 =A0 BUFFER_TRACE(dir_bh, "get_write_access");
+>> + =A0 =A0 =A0 =A0 =A0 =A0 retval =3D ext3_journal_get_write_access(handl=
+e, dir_bh);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 if (retval) {
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 ext3_warning(old_dir->i_sb, "e=
+xt3_rename",
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 "Updating new directory (%lu) parent link, %d, error=3D%d",
+>> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =
+=A0 new_dir->i_ino, new_dir->i_nlink, retval);
+>> + =A0 =A0 =A0 =A0 =A0 =A0 }
+>> + =A0 =A0 }
+>
+> At this point, if we cannot get write access to the directory buffer, it
+> is really a bit too late to do much about it. =A0It may make more sense t=
+o
+> instead call ext3_journal_get_write_access() right after ext3_bread() is
+> called dor this buffer, so that the error can be checked and the rename
+> aborted before any changes are made.
+>
 
-     /proc/<pid of e2fsck>/statm
+good idea. I moved it up.
 
-every 10 seconds during the run[1]. It starts out like this:
+> Note also that there are some places where ext3_journal_dirty_metadata()
+> are called in these same code paths, but the error is not checked by the
+> caller.
+>
 
+true, but as with the case above, handling errors before the changes
+are made is much easier,
+and I am only aiming for 'best effort' in this patch.
 
-27798 3293 217 42 0 3983 0
-609328 585760 263 42 0 585506 0
-752059 728469 272 42 0 728237 0
-752059 728469 272 42 0 728237 0
-752059 728469 272 42 0 728237 0
-752059 728469 272 42 0 728237 0
-752059 728469 272 42 0 728237 0
-752059 728469 272 42 0 728237 0
-752059 728469 272 42 0 728237 0
-717255 693666 273 42 0 693433 0
-717255 693666 273 42 0 693433 0
-717255 693666 273 42 0 693433 0
-....
+--001636c5bbd1169a0f04680ce6b5
+Content-Type: application/octet-stream;
+	name="ext3-namei-check-jbd-errors-2.6.29.1.patch"
+Content-Disposition: attachment;
+	filename="ext3-namei-check-jbd-errors-2.6.29.1.patch"
+Content-Transfer-Encoding: base64
+X-Attachment-Id: f_ftscua8l0
 
-and stays at that level for most of the run (the drop occurs a short
-time after pass 5 starts). Here is what it looks like at the end:
-
-....
-717255 693666 273 42 0 693433 0
-717255 693666 273 42 0 693433 0
-717255 693666 273 42 0 693433 0
-717499 693910 273 42 0 693677 0
-717499 693910 273 42 0 693677 0
-717499 693910 273 42 0 693677 0
-
-
-So in this very simple case, memory required tops out at about 3 GB for the
-32Tib filesystem, or 0.4 bytes per block.
-
-Nick
-
-
-[1] The numbers are numbers of pages. The format is described in
-Documentation/filesystems/proc.txt:
-
-Table 1-2: Contents of the statm files (as of 2.6.8-rc3)
-..............................................................................
- Field    Content
- size     total program size (pages)		(same as VmSize in status)
- resident size of memory portions (pages)	(same as VmRSS in status)
- shared   number of pages that are shared	(i.e. backed by a file)
- trs      number of pages that are 'code'	(not including libs; broken,
-							includes data segment)
- lrs      number of pages of library		(always 0 on 2.6)
- drs      number of pages of data/stack		(including libs; broken,
-							includes library text)
- dt       number of dirty pages			(always 0 on 2.6)
-..............................................................................
+ZGlmZiAtdXAgbGludXgtMi42LjI5LjEub3JpZy9mcy9leHQzL25hbWVpLmMgbGludXgtMi42LjI5
+LjEvZnMvZXh0My9uYW1laS5jCi0tLSBsaW51eC0yLjYuMjkuMS5vcmlnL2ZzL2V4dDMvbmFtZWku
+YwkyMDA5LTA0LTIxIDEwOjQ0OjAxLjAwMDAwMDAwMCArMDMwMAorKysgbGludXgtMi42LjI5LjEv
+ZnMvZXh0My9uYW1laS5jCTIwMDktMDQtMjEgMTE6MzU6MTIuMDAwMDAwMDAwICswMzAwCkBAIC0x
+NjI3LDcgKzE2MjcsNyBAQCBzdGF0aWMgaW50IGV4dDNfZGVsZXRlX2VudHJ5IChoYW5kbGVfdCAq
+CiAJCQkgICAgICBzdHJ1Y3QgYnVmZmVyX2hlYWQgKiBiaCkKIHsKIAlzdHJ1Y3QgZXh0M19kaXJf
+ZW50cnlfMiAqIGRlLCAqIHBkZTsKLQlpbnQgaTsKKwlpbnQgaSwgZXJyOwogCiAJaSA9IDA7CiAJ
+cGRlID0gTlVMTDsKQEAgLTE2MzcsNyArMTYzNyw5IEBAIHN0YXRpYyBpbnQgZXh0M19kZWxldGVf
+ZW50cnkgKGhhbmRsZV90ICoKIAkJCXJldHVybiAtRUlPOwogCQlpZiAoZGUgPT0gZGVfZGVsKSAg
+ewogCQkJQlVGRkVSX1RSQUNFKGJoLCAiZ2V0X3dyaXRlX2FjY2VzcyIpOwotCQkJZXh0M19qb3Vy
+bmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBiaCk7CisJCQllcnIgPSBleHQzX2pvdXJuYWxf
+Z2V0X3dyaXRlX2FjY2VzcyhoYW5kbGUsIGJoKTsKKwkJCWlmIChlcnIpCisJCQkJcmV0dXJuIGVy
+cjsKIAkJCWlmIChwZGUpCiAJCQkJcGRlLT5yZWNfbGVuID0gZXh0M19yZWNfbGVuX3RvX2Rpc2so
+CiAJCQkJCWV4dDNfcmVjX2xlbl9mcm9tX2Rpc2socGRlLT5yZWNfbGVuKSArCkBAIC0xNzg0LDcg
+KzE3ODYsMTUgQEAgcmV0cnk6CiAJCWdvdG8gb3V0X3N0b3A7CiAJfQogCUJVRkZFUl9UUkFDRShk
+aXJfYmxvY2ssICJnZXRfd3JpdGVfYWNjZXNzIik7Ci0JZXh0M19qb3VybmFsX2dldF93cml0ZV9h
+Y2Nlc3MoaGFuZGxlLCBkaXJfYmxvY2spOworCWVyciA9IGV4dDNfam91cm5hbF9nZXRfd3JpdGVf
+YWNjZXNzKGhhbmRsZSwgZGlyX2Jsb2NrKTsKKwlpZiAoZXJyKSB7CisJCWRyb3BfbmxpbmsoaW5v
+ZGUpOyAvKiBpcyB0aGlzIG5saW5rID09IDA/ICovCisJCXVubG9ja19uZXdfaW5vZGUoaW5vZGUp
+OworCQlleHQzX21hcmtfaW5vZGVfZGlydHkoaGFuZGxlLCBpbm9kZSk7CisJCWlwdXQgKGlub2Rl
+KTsKKwkJYnJlbHNlIChkaXJfYmxvY2spOworCQlnb3RvIG91dF9zdG9wOworCX0KIAlkZSA9IChz
+dHJ1Y3QgZXh0M19kaXJfZW50cnlfMiAqKSBkaXJfYmxvY2stPmJfZGF0YTsKIAlkZS0+aW5vZGUg
+PSBjcHVfdG9fbGUzMihpbm9kZS0+aV9pbm8pOwogCWRlLT5uYW1lX2xlbiA9IDE7CkBAIC0yMzE4
+LDYgKzIzMjgsMTAgQEAgc3RhdGljIGludCBleHQzX3JlbmFtZSAoc3RydWN0IGlub2RlICogbwog
+CQlpZiAoIW5ld19pbm9kZSAmJiBuZXdfZGlyIT1vbGRfZGlyICYmCiAJCQkJbmV3X2Rpci0+aV9u
+bGluayA+PSBFWFQzX0xJTktfTUFYKQogCQkJZ290byBlbmRfcmVuYW1lOworCQlCVUZGRVJfVFJB
+Q0UoZGlyX2JoLCAiZ2V0X3dyaXRlX2FjY2VzcyIpOworCQlyZXR2YWwgPSBleHQzX2pvdXJuYWxf
+Z2V0X3dyaXRlX2FjY2VzcyhoYW5kbGUsIGRpcl9iaCk7CisJCWlmIChyZXR2YWwpCisJCQlnb3Rv
+IGVuZF9yZW5hbWU7CiAJfQogCWlmICghbmV3X2JoKSB7CiAJCXJldHZhbCA9IGV4dDNfYWRkX2Vu
+dHJ5IChoYW5kbGUsIG5ld19kZW50cnksIG9sZF9pbm9kZSk7CkBAIC0yMzI1LDcgKzIzMzksOSBA
+QCBzdGF0aWMgaW50IGV4dDNfcmVuYW1lIChzdHJ1Y3QgaW5vZGUgKiBvCiAJCQlnb3RvIGVuZF9y
+ZW5hbWU7CiAJfSBlbHNlIHsKIAkJQlVGRkVSX1RSQUNFKG5ld19iaCwgImdldCB3cml0ZSBhY2Nl
+c3MiKTsKLQkJZXh0M19qb3VybmFsX2dldF93cml0ZV9hY2Nlc3MoaGFuZGxlLCBuZXdfYmgpOwor
+CQlyZXR2YWwgPSBleHQzX2pvdXJuYWxfZ2V0X3dyaXRlX2FjY2VzcyhoYW5kbGUsIG5ld19iaCk7
+CisJCWlmIChyZXR2YWwpCisJCQlnb3RvIGVuZF9yZW5hbWU7CiAJCW5ld19kZS0+aW5vZGUgPSBj
+cHVfdG9fbGUzMihvbGRfaW5vZGUtPmlfaW5vKTsKIAkJaWYgKEVYVDNfSEFTX0lOQ09NUEFUX0ZF
+QVRVUkUobmV3X2Rpci0+aV9zYiwKIAkJCQkJICAgICAgRVhUM19GRUFUVVJFX0lOQ09NUEFUX0ZJ
+TEVUWVBFKSkKQEAgLTIzODIsOCArMjM5OCw2IEBAIHN0YXRpYyBpbnQgZXh0M19yZW5hbWUgKHN0
+cnVjdCBpbm9kZSAqIG8KIAlvbGRfZGlyLT5pX2N0aW1lID0gb2xkX2Rpci0+aV9tdGltZSA9IENV
+UlJFTlRfVElNRV9TRUM7CiAJZXh0M191cGRhdGVfZHhfZmxhZyhvbGRfZGlyKTsKIAlpZiAoZGly
+X2JoKSB7Ci0JCUJVRkZFUl9UUkFDRShkaXJfYmgsICJnZXRfd3JpdGVfYWNjZXNzIik7Ci0JCWV4
+dDNfam91cm5hbF9nZXRfd3JpdGVfYWNjZXNzKGhhbmRsZSwgZGlyX2JoKTsKIAkJUEFSRU5UX0lO
+TyhkaXJfYmgtPmJfZGF0YSkgPSBjcHVfdG9fbGUzMihuZXdfZGlyLT5pX2lubyk7CiAJCUJVRkZF
+Ul9UUkFDRShkaXJfYmgsICJjYWxsIGV4dDNfam91cm5hbF9kaXJ0eV9tZXRhZGF0YSIpOwogCQll
+eHQzX2pvdXJuYWxfZGlydHlfbWV0YWRhdGEoaGFuZGxlLCBkaXJfYmgpOwo=
+--001636c5bbd1169a0f04680ce6b5--
