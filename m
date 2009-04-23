@@ -1,77 +1,71 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Make the extent validity check more paranoid
-Date: Wed, 22 Apr 2009 21:04:30 -0500
-Message-ID: <49EFCCAE.6050602@redhat.com>
-References: <1240450174-25868-1-git-send-email-tytso@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH]mke2fs: don't check mount flags for regular files
+Date: Wed, 22 Apr 2009 22:27:11 -0400
+Message-ID: <20090423022711.GA15541@mit.edu>
+References: <1237883493-30521-1-git-send-email-bergwolf@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:57583 "EHLO mx2.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:54467 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751520AbZDWCEe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Apr 2009 22:04:34 -0400
-In-Reply-To: <1240450174-25868-1-git-send-email-tytso@mit.edu>
+	id S1754422AbZDWC1P (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Apr 2009 22:27:15 -0400
+Content-Disposition: inline
+In-Reply-To: <1237883493-30521-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o wrote:
-> Instead of just checking that the extent block number is greater or
-> equal than s_first_data_block, make sure it it is not pointing into
-> the block group descriptors, since that is clearly wrong.  This helps
-> prevent filesystem from getting very badly corrupted in case an extent
-> block is corrupted.
+On Tue, Mar 24, 2009 at 04:31:33PM +0800, Peng Tao wrote:
+> mke2fs scans /proc/mounts for mount flags of a device. But for regular files,
+> this is unnecessary and may cause troubles.
 > 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> This can be triggered by:
+> $dd if=/dev/null of=rootfs bs=1024 seek=100000 count=0
+> $mke2fs -t ext3 -F rootfs
+> mke2fs 1.41.4 (27-Jan-2009)
+> rootfs is mounted; will not make a filesystem here!
 
-Good idea.  Maybe we can get our friends with the corrupted fs to run
-with these validation patches... I can get this into rawhide at least.
+Actually, this is quite necessary; regular files can be mounted using
+the loop device, and we want to catch this case.  So simply patching
+out the check for regular files is the wrong thing to do, and hides
+the real problem.
 
-Reviewed-by: Eric Sandeen <sandeen@redhat.com>
+The correct patch to solve the problem you've reported is attached,
+and has been checked into e2fsprogs source repository.
 
-> ---
->  fs/ext4/extents.c |   18 ++++++++++++------
->  1 files changed, 12 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 6132353..c28ffe2 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -326,11 +326,14 @@ ext4_ext_max_entries(struct inode *inode, int depth)
->  
->  static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
->  {
-> -	ext4_fsblk_t block = ext_pblock(ext);
-> +	ext4_fsblk_t block = ext_pblock(ext), valid_block;
->  	int len = ext4_ext_get_actual_len(ext);
->  	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
-> -	if (unlikely(block < le32_to_cpu(es->s_first_data_block) ||
-> -			((block + len) > ext4_blocks_count(es))))
-> +
-> +	valid_block = le32_to_cpu(es->s_first_data_block) +
-> +		EXT4_SB(inode->i_sb)->s_gdb_count;
-> +	if (unlikely(block <= valid_block ||
-> +		     ((block + len) > ext4_blocks_count(es))))
->  		return 0;
->  	else
->  		return 1;
-> @@ -339,10 +342,13 @@ static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
->  static int ext4_valid_extent_idx(struct inode *inode,
->  				struct ext4_extent_idx *ext_idx)
->  {
-> -	ext4_fsblk_t block = idx_pblock(ext_idx);
-> +	ext4_fsblk_t block = idx_pblock(ext_idx), valid_block;
->  	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
-> -	if (unlikely(block < le32_to_cpu(es->s_first_data_block) ||
-> -			(block >= ext4_blocks_count(es))))
-> +
-> +	valid_block = le32_to_cpu(es->s_first_data_block) +
-> +		EXT4_SB(inode->i_sb)->s_gdb_count;
-> +	if (unlikely(block <= valid_block ||
-> +		     (block >= ext4_blocks_count(es))))
->  		return 0;
->  	else
->  		return 1;
+						- Ted
 
+commit f9110f4480eade2d849c4cc08efa49bf0f7f5148
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Wed Apr 22 22:20:22 2009 -0400
+
+    libext2fs: Skip relative pathnames in /etc/mtab in ismounted.c
+    
+    The functions which test to see if a device is mounted can get
+    confused by entries in /etc/mtab for virtual filesystems:
+    
+    rootfs / rootfs rw 0 0
+    none /sys sysfs rw,nosuid,nodev,noexec,relatime 0 0
+    
+    If the device name doesn't start with a slash, ignore the /etc/mtab
+    entry, so that relative pathnames passed into functions such as
+    ext2fs_check_mount_point() or ext2fs_check_if_mounted() don't return
+    false positives.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/lib/ext2fs/ismounted.c b/lib/ext2fs/ismounted.c
+index 4a7c8c6..4c5500f 100644
+--- a/lib/ext2fs/ismounted.c
++++ b/lib/ext2fs/ismounted.c
+@@ -65,6 +65,8 @@ static errcode_t check_mntent_file(const char *mtab_file, const char *file,
+ 		}
+ 	}
+ 	while ((mnt = getmntent (f)) != NULL) {
++		if (mnt->mnt_fsname[0] != '/')
++			continue;
+ 		if (strcmp(file, mnt->mnt_fsname) == 0)
+ 			break;
+ 		if (stat(mnt->mnt_fsname, &st_buf) == 0) {
