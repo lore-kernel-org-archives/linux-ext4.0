@@ -1,39 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Make the extent validity check more paranoid
-Date: Thu, 23 Apr 2009 07:52:28 -0500
-Message-ID: <49F0648C.10407@redhat.com>
-References: <1240450174-25868-1-git-send-email-tytso@mit.edu> <49EFCCAE.6050602@redhat.com> <20090423041914.GA2723@mit.edu>
+From: Valerie Aurora Henson <vaurora@redhat.com>
+Subject: Re: 32TB ext4 fsck times
+Date: Thu, 23 Apr 2009 11:14:26 -0400
+Message-ID: <20090423151426.GC8476@shell>
+References: <10039.1240286799@gamaville.dokosmarshall.org> <49EE1F06.5040508@redhat.com> <20090422231816.GA7066@shell> <10808.1240466476@gamaville.dokosmarshall.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Ric Wheeler <rwheeler@redhat.com>, linux-ext4@vger.kernel.org
+To: Nick Dokos <nicholas.dokos@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37237 "EHLO mx2.redhat.com"
+Received: from mx1.redhat.com ([66.187.233.31]:45319 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752553AbZDWMwc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Apr 2009 08:52:32 -0400
-In-Reply-To: <20090423041914.GA2723@mit.edu>
+	id S1751529AbZDWPOd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Apr 2009 11:14:33 -0400
+Content-Disposition: inline
+In-Reply-To: <10808.1240466476@gamaville.dokosmarshall.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Wed, Apr 22, 2009 at 09:04:30PM -0500, Eric Sandeen wrote:
->> Theodore Ts'o wrote:
->>> Instead of just checking that the extent block number is greater or
->>> equal than s_first_data_block, make sure it it is not pointing into
->>> the block group descriptors, since that is clearly wrong.  This helps
->>> prevent filesystem from getting very badly corrupted in case an extent
->>> block is corrupted.
->>>
->>> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->> Good idea.  Maybe we can get our friends with the corrupted fs to run
->> with these validation patches... I can get this into rawhide at least.
+On Thu, Apr 23, 2009 at 02:01:16AM -0400, Nick Dokos wrote:
+> Valerie Aurora Henson <vaurora@redhat.com> wrote:
 > 
-> Yeah, unfortunately this patch requires some other patches that went
-> in during the 2.6.30 merge window, so some extra back-porting would be
-> needed for our friends running a 2.6.29.1 Fedora kernel.
+> > Back to something useful the short term... Was the file system created
+> > with uninitialized block groups and lazy inode table initialization?
+> > 
+> 
+> Uninit_bg was on but lazy inode table initialization was off.  I tried
+> turning lazy_itable_init on but e2fsck gets tons of errors, starting
+> with group descriptor checksum errors.  Unfortunately, I now get group
+> descriptor checksum errors even without lazy_itable_init and I 'm not
+> sure why. So I'm back to debugging mke2fs/e2fsck.
 
-Right, but rawhide has .30-etc, so a test on that might be helpful.
+I ran into a few heisenbugs when I was working on this, and there's
+still that one failing test.  I did track down the commit that started
+it, it was:
 
--Eric
+commit de119e26eb2cf041a8365994dc3a32efc080682e
+Author: Valerie Aurora Henson <vaurora@redhat.com>
+Date:   Tue Feb 3 13:15:19 2009 -0800
+
+    e2fsck: Miscellaneous e2fsck-related 64-bit fixes.
+
+    With this change, e2fsck runs to completion on a minimal 33-bit file system.
+
+    Signed-off-by: Valerie Aurora Henson <vaurora@redhat.com>
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+I might take a look at the problem with the block group descriptors
+and lazy itables; that was some crazy^Wcomplex code.
+
+-VAL
