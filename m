@@ -1,72 +1,39 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4_ext_check_inode: bad header/extent in inode
-Date: Thu, 23 Apr 2009 07:50:50 -0500
-Message-ID: <49F0642A.4000704@redhat.com>
-References: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de>
+Subject: Re: [PATCH] ext4: Make the extent validity check more paranoid
+Date: Thu, 23 Apr 2009 07:52:28 -0500
+Message-ID: <49F0648C.10407@redhat.com>
+References: <1240450174-25868-1-git-send-email-tytso@mit.edu> <49EFCCAE.6050602@redhat.com> <20090423041914.GA2723@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37187 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:37237 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753258AbZDWMuz (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Apr 2009 08:50:55 -0400
-In-Reply-To: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de>
+	id S1752553AbZDWMwc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Apr 2009 08:52:32 -0400
+In-Reply-To: <20090423041914.GA2723@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Christian Kujau wrote:
-> Hi there,
+Theodore Tso wrote:
+> On Wed, Apr 22, 2009 at 09:04:30PM -0500, Eric Sandeen wrote:
+>> Theodore Ts'o wrote:
+>>> Instead of just checking that the extent block number is greater or
+>>> equal than s_first_data_block, make sure it it is not pointing into
+>>> the block group descriptors, since that is clearly wrong.  This helps
+>>> prevent filesystem from getting very badly corrupted in case an extent
+>>> block is corrupted.
+>>>
+>>> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+>> Good idea.  Maybe we can get our friends with the corrupted fs to run
+>> with these validation patches... I can get this into rawhide at least.
 > 
-> let's say "something" happened to this ext4 partition - OK, I created a 
-> ZFS pool on a freshly created (unmounted) ext4 partition (for testing 
-> purposes) and this might have wiped some ext4 information off the 
-> partition. But I was able to mount the partition again and it looked
-> like as if all data was in place. 
-> 
-> However, a fsck later on revealed and fixed quite a few errors. Now the 
-> filesystem can still be mounted, but some files cannot be read:
-> 
-> ------------------
-> # mount -t ext4 /dev/md0 /mnt/md0
-> # ls -la /mnt/md0 /mnt/md0/lost+found
-> /mnt/md0:
-> total 28
-> drwxr-xr-x  4 root  root   4096 Apr 23 13:43 .
-> drwxr-xr-x  4 root  root   4096 Apr  2 13:39 ..
-> drwxr-xr-x 23 dummy users  4096 Apr 18 21:06 linux-2.6-git
-> drwx------  3 root  root  16384 Apr 23 13:43 lost+found
-> ls: cannot access /mnt/md0/lost+found/#12042: Input/output error
-> ls: cannot access /mnt/md0/lost+found/#12207: Input/output error
-> ls: cannot access /mnt/md0/lost+found/#12249: Input/output error
-> -------------------
-> 
-> 
-> I realize that "creating a filesystem on an ext4 partition" may indeed 
-> harm ext4 information and I don't expect fsck to get everything fixed - 
-> but then I think: in the real world this "destruction" could be caused 
-> by bad memory/cables or just a disk controller gone mad - so yes, some 
-> ext4 information may have been lost, but:
-> 
-> Shouldn't fsck (1.41.3) complain more, when there are errors left
-> on the filesystem? Even if the errors cannot be fixed, I'd have 
-> expected fsck to tell me about that. But fsck exits clean on the 2nd run, 
-> but there are still a few files unaccessible.
+> Yeah, unfortunately this patch requires some other patches that went
+> in during the 2.6.30 merge window, so some extra back-porting would be
+> needed for our friends running a 2.6.29.1 Fedora kernel.
 
-Yep, probably so; based on:
-
-[400026.511081] EXT4-fs error (device md0): ext4_ext_check_inode: bad
-header/extent in inode #12120: invalid magic - magic 702, entries 30990,
-max 5120(0), depth 55352(55352)
-[400026.519200] EXT4-fs error (device md0): ext4_ext_check_inode: bad
-header/extent in inode #12272: invalid magic - magic 1c2b, entries 6928,
-max 14(0), depth 4116(4116)
-
-I'd have expected fsck to find that, I think.  I'd first suggest using
-1.41.4 or 1.41.5 (probably released very soon) and see if that catches
-it (I don't remember offhand if there is a relevant change since 1.41.3
-but the check should be easy...)
+Right, but rawhide has .30-etc, so a test on that might be helpful.
 
 -Eric
