@@ -1,67 +1,58 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Make the extent validity check more paranoid
-Date: Wed, 22 Apr 2009 21:29:34 -0400
-Message-ID: <1240450174-25868-1-git-send-email-tytso@mit.edu>
+Subject: [PATCH] ext4: Fix potential inode allocation soft lockup in Orlov allocator
+Date: Wed, 22 Apr 2009 21:30:57 -0400
+Message-ID: <1240450257-26045-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:50247 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:57501 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751110AbZDWB3h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 22 Apr 2009 21:29:37 -0400
+	id S1752135AbZDWBbA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 22 Apr 2009 21:31:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Instead of just checking that the extent block number is greater or
-equal than s_first_data_block, make sure it it is not pointing into
-the block group descriptors, since that is clearly wrong.  This helps
-prevent filesystem from getting very badly corrupted in case an extent
-block is corrupted.
+If the Orlov allocator is having trouble finding an appropriate block
+group, the fallback code could loop forever, causing a soft lockup
+warning in find_group_orlov():
+
+BUG: soft lockup - CPU#0 stuck for 61s! [cp:11728]
+     ...
+Pid: 11728, comm: cp Not tainted (2.6.30-rc1-dirty #77) Lenovo
+EIP: 0060:[<c021650e>] EFLAGS: 00000246 CPU: 0
+EIP is at ext4_get_group_desc+0x54/0x9d
+    ...
+Call Trace:
+ [<c0218021>] find_group_orlov+0x2ee/0x334
+ [<c0120a5f>] ? sched_clock+0x8/0xb
+ [<c02188e3>] ext4_new_inode+0x2cf/0xb1a
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/extents.c |   18 ++++++++++++------
- 1 files changed, 12 insertions(+), 6 deletions(-)
+ fs/ext4/ialloc.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 6132353..c28ffe2 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -326,11 +326,14 @@ ext4_ext_max_entries(struct inode *inode, int depth)
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index cbce5aa..f18e0a0 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -585,6 +585,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ fallback:
+ 	ngroups = sbi->s_groups_count;
+ 	avefreei = freei / ngroups;
++fallback_retry:
+ 	parent_group = EXT4_I(parent)->i_block_group;
+ 	for (i = 0; i < ngroups; i++) {
+ 		grp = (parent_group + i) % ngroups;
+@@ -602,7 +603,7 @@ fallback:
+ 		 * filesystems the above test can fail to find any blockgroups
+ 		 */
+ 		avefreei = 0;
+-		goto fallback;
++		goto fallback_retry;
+ 	}
  
- static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
- {
--	ext4_fsblk_t block = ext_pblock(ext);
-+	ext4_fsblk_t block = ext_pblock(ext), valid_block;
- 	int len = ext4_ext_get_actual_len(ext);
- 	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
--	if (unlikely(block < le32_to_cpu(es->s_first_data_block) ||
--			((block + len) > ext4_blocks_count(es))))
-+
-+	valid_block = le32_to_cpu(es->s_first_data_block) +
-+		EXT4_SB(inode->i_sb)->s_gdb_count;
-+	if (unlikely(block <= valid_block ||
-+		     ((block + len) > ext4_blocks_count(es))))
- 		return 0;
- 	else
- 		return 1;
-@@ -339,10 +342,13 @@ static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
- static int ext4_valid_extent_idx(struct inode *inode,
- 				struct ext4_extent_idx *ext_idx)
- {
--	ext4_fsblk_t block = idx_pblock(ext_idx);
-+	ext4_fsblk_t block = idx_pblock(ext_idx), valid_block;
- 	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
--	if (unlikely(block < le32_to_cpu(es->s_first_data_block) ||
--			(block >= ext4_blocks_count(es))))
-+
-+	valid_block = le32_to_cpu(es->s_first_data_block) +
-+		EXT4_SB(inode->i_sb)->s_gdb_count;
-+	if (unlikely(block <= valid_block ||
-+		     (block >= ext4_blocks_count(es))))
- 		return 0;
- 	else
- 		return 1;
+ 	return -1;
 -- 
 1.5.6.3
 
