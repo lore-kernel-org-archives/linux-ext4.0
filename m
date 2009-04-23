@@ -1,59 +1,52 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
 Subject: Re: ext4_ext_check_inode: bad header/extent in inode
-Date: Thu, 23 Apr 2009 16:40:59 -0400
-Message-ID: <20090423204059.GM2723@mit.edu>
-References: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de> <49F0642A.4000704@redhat.com> <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de>
+Date: Thu, 23 Apr 2009 14:51:24 -0600
+Message-ID: <20090423205124.GP3209@webber.adilger.int>
+References: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de>
+ <49F0642A.4000704@redhat.com>
+ <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7BIT
 Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
 To: Christian Kujau <lists@nerdbynature.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:58685 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751312AbZDWUlM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 23 Apr 2009 16:41:12 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:63252 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751230AbZDWUvu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 23 Apr 2009 16:51:50 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n3NKpg6Z002824
+	for <linux-ext4@vger.kernel.org>; Thu, 23 Apr 2009 13:51:42 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
+ id <0KIK00L00MTL4K00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Thu,
+ 23 Apr 2009 13:51:42 -0700 (PDT)
+In-reply-to: <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Apr 23, 2009 at 12:04:38PM -0700, Christian Kujau wrote:
+On Apr 23, 2009  12:04 -0700, Christian Kujau wrote:
 > On Thu, 23 Apr 2009, Eric Sandeen wrote:
 > > I'd have expected fsck to find that, I think.  I'd first suggest using
 > > 1.41.4 or 1.41.5 (probably released very soon) and see if that catches
 > > it (I don't remember offhand if there is a relevant change since 1.41.3
 > > but the check should be easy...)
-> 
-> Yes, in fact I _did_ have the latest e2fsprogs.git checkout [0] in 
-> place, but did not use it. OK, compiled that, e2fsck still present itself 
-> as "1.41.4" (which tree do I have to follow to get the 1.41.5 one?) but
-> was not able to fix the errors either. Again, I do not expect e2fsck to 
-> actuall fix it, because the damage I did to the fs was probably too 
-> severe. But when fsck exits with code 0, I'd "expect" it to be clean. So, 
-> I guess what I want is fsck to tell me to get my backups ready, as the fs 
-> is damaged too heavily...
 
-Hmm, it really should have detected it.  OK. if you still have the
-filesystem around, can you first start by sending me an e2image file:
+There is a function ext2fs_extent_header_verify() that should be
+catching the reported corruption.  The extents regression tests
+that we have for e2fsck are detecting things like bad headers
+in the tests that we have.
 
-e2image /dev/md0 /tmp/md0.e2i
+Using "debugfs" with "imap" to find and dump the inode blocks for
+the corrupted inodes would be a good start for tracking this down.
+If you have the space, saving an "e2image" of the filesystem should
+also be done for future debugging.
 
-This is will dump out the superblock, block group descriptors, and
-inode table, and it will allow me to take a look at the inodes in
-question.
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-I tried corrupting the eh_magic field in a test filesystem, and e2fsck
-caught it no problem.
-
-Eventually I might need a raw e2image dump, i.e.:
-
-
-	   e2image -r /dev/md0 - | bzip2 > /var/tmp/md0.e2i.bz2
-
-but such things are very large, and reveal more information, since it
-also includes directory names.  But let's see if a simple e2image file
-is enough for me to get started.
-
-Thanks,
-
-					- Ted
