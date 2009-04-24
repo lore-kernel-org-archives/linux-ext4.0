@@ -1,106 +1,39 @@
-From: Sylvain Rochet <gradator-XWGZPxRNpGHk1uMJSBkQmQ@public.gmane.org>
-Subject: Re: Fw: 2.6.28.9: EXT3/NFS inodes corruption
-Date: Fri, 24 Apr 2009 01:14:14 +0200
-Message-ID: <20090423231414.GA32422@gradator.net>
-References: <20090422142424.b4105f4c.akpm@linux-foundation.org> <20090422224455.GV15541@mit.edu> <20090422234823.GA24477@gradator.net> <20090423001139.GX15541@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext4_ext_check_inode: bad header/extent in inode
+Date: Thu, 23 Apr 2009 23:20:28 -0400
+Message-ID: <20090424032028.GB7949@mit.edu>
+References: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de> <49F0642A.4000704@redhat.com> <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de> <20090423204059.GM2723@mit.edu> <alpine.DEB.2.01.0904231442350.6162@bogon.housecafe.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="vtzGhvizbBRQ85DL"
-Cc: Andrew Morton <akpm-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Christian Kujau <lists@nerdbynature.de>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:54077 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752010AbZDXDUi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 23 Apr 2009 23:20:38 -0400
 Content-Disposition: inline
-In-Reply-To: <20090423001139.GX15541-3s7WtUTddSA@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <alpine.DEB.2.01.0904231442350.6162@bogon.housecafe.de>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, Apr 23, 2009 at 03:15:10PM -0700, Christian Kujau wrote:
+> On Thu, 23 Apr 2009, Theodore Tso wrote:
+> > Eventually I might need a raw e2image dump, i.e.:
+> > 
+> > 	   e2image -r /dev/md0 - | bzip2 > /var/tmp/md0.e2i.bz2
+> 
+> I've put the raw e2image dump on http://nerdbynature.de/bits/2.6.30-rc2/
+> Do you still need the dump without the "-r"?
 
---vtzGhvizbBRQ85DL
-Content-Type: text/plain; charset=iso-8859-15
-Content-Disposition: inline
-Content-Transfer-Encoding: quoted-printable
+Nope, the raw e2image file was perfect.  This was actually a problem I
+knew about, and wanted to get fixed before the e2fsprogs 1.41.5
+release.  The problem was that i_file_acl_high was set and the kernel
+unconditionally checks for it even though the INCOMPAT_64_BITS flag is
+not set.
 
-Hi,
+It's been fixed in e2fpsrogs 1.41.5, which I've only just released.
+It's available on git, sourceforge, and all of the other usual places.
+This should fix the problem for you.
 
-
-On Wed, Apr 22, 2009 at 08:11:39PM -0400, Theodore Tso wrote:
->=20
-> On the server side, that means you also an inode table block look
-> corrupted.  I'm pretty sure that if you used debugfs to examine those
-> blocks you would have seen that the inodes were completely garbaged.
-
-Yep, I destroyed all evidences by using badblocks in read-write mode,=20
-but in case of real need of them we just have to put the production back=20
-on the primary array and wait a few days.
-
-
-> Depending on the inode size, and assuming a 4k block size, there are
-> typically 128 or 64 inodes in a 4k block,
-
-4k block size
-128 bytes/inode
-
-so 32 inodes per 4k block in our case ?
-
-Since the new default is 256 bytes/inode and values of less than 128 are=20
-not allowed, how is it possible to store 64 or 128 inodes in a 4k block ?
-(Maybe I miss something :p)
-
-
-> so if you were to look at the inodes by inode number, you normally=20
-> find that adjacent inodes are corrupted within a 4k block.  Of course,=20
-> this just tells us what had gotten damaged; whether it was damanged by=20
-> a kernel bug, a memory bug, a hard drive or controller failure (and=20
-> there are multiple types of storage stack failures; complete garbage=20
-> getting written into the right place, and the right data getting=20
-> written into the wrong place).
-
-Yes, this is not going to be easy to find out what is responsible, but=20
-based on the probability of hardware that use to fail easily, let's=20
-point out one of the harddrive :-)
-
-
-> Well, sure, but any amount of corruption is extremely troubling....
-
-Yep ;-)
-
-
-> > By the way, if such corruptions doesn't happen on the backup storage=20
-> > array we can conclude to a hardware problem around the primary one, but=
-,=20
-> > we are not going to be able to conclude before a few weeks.
->=20
-> Good luck!!
-
-Thanks, actually this isn't so bad, we enjoy having backup hardware
-(The things we always consider as useless until we -really- need it --=20
-"Who said like backups ? I heard it from the end of the room." ;-)
-
-By the way, the badblocks check is going to take 12 days considering the=20
-current rate. However I ran some data checks of the raid6 array in the=20
-past, mainly when the filesystem was corrupted and every check=20
-succeeded. Maybe the raid6 driver computed another parity strides by=20
-reading corrupted data.
-
-
-Sylvain
-
---vtzGhvizbBRQ85DL
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: Digital signature
-Content-Disposition: inline
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.6 (GNU/Linux)
-
-iD8DBQFJ8PZGDFub3qtEsS8RAkaxAJwLMpETjfNlSDXI3rufcbOXpDOyKQCg1s83
-Qbhe6ixaJPh7+cdL+h/6vjY=
-=lqe6
------END PGP SIGNATURE-----
-
---vtzGhvizbBRQ85DL--
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
