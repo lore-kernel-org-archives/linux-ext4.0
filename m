@@ -1,50 +1,58 @@
-From: Christian Kujau <christian@nerdbynature.de>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: ext4_ext_check_inode: bad header/extent in inode
-Date: Fri, 24 Apr 2009 02:40:58 -0700 (PDT)
-Message-ID: <alpine.DEB.2.01.0904240235020.6162@bogon.housecafe.de>
-References: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de> <49F0642A.4000704@redhat.com> <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de> <20090423204059.GM2723@mit.edu> <alpine.DEB.2.01.0904231442350.6162@bogon.housecafe.de>
- <20090424032028.GB7949@mit.edu> <alpine.DEB.2.01.0904240153310.6162@bogon.housecafe.de>
+Date: Fri, 24 Apr 2009 07:58:16 -0400
+Message-ID: <20090424115816.GC7949@mit.edu>
+References: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de> <49F0642A.4000704@redhat.com> <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de> <20090423204059.GM2723@mit.edu> <alpine.DEB.2.01.0904231442350.6162@bogon.housecafe.de> <20090424032028.GB7949@mit.edu> <20090424070943.GR3209@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Christian Kujau <lists@nerdbynature.de>,
+	Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.177]:49521 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751288AbZDXJk7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Apr 2009 05:40:59 -0400
-In-Reply-To: <alpine.DEB.2.01.0904240153310.6162@bogon.housecafe.de>
+Received: from thunk.org ([69.25.196.29]:52065 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752547AbZDXL6V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Apr 2009 07:58:21 -0400
+Content-Disposition: inline
+In-Reply-To: <20090424070943.GR3209@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 24 Apr 2009, Christian Kujau wrote:
-> On Thu, 23 Apr 2009, Theodore Tso wrote:
-> > It's been fixed in e2fpsrogs 1.41.5, which I've only just released.
-> > It's available on git, sourceforge, and all of the other usual places.
-> > This should fix the problem for you.
+On Fri, Apr 24, 2009 at 01:09:43AM -0600, Andreas Dilger wrote:
+> On Apr 23, 2009  23:20 -0400, Theodore Ts'o wrote:
+> > On Thu, Apr 23, 2009 at 03:15:10PM -0700, Christian Kujau wrote:
+> > > On Thu, 23 Apr 2009, Theodore Tso wrote:
+> > > > Eventually I might need a raw e2image dump, i.e.:
+> > > > 
+> > > > 	   e2image -r /dev/md0 - | bzip2 > /var/tmp/md0.e2i.bz2
+> > > 
+> > > I've put the raw e2image dump on http://nerdbynature.de/bits/2.6.30-rc2/
+> > > Do you still need the dump without the "-r"?
+> > 
+> > Nope, the raw e2image file was perfect.  This was actually a problem I
+> > knew about, and wanted to get fixed before the e2fsprogs 1.41.5
+> > release.  The problem was that i_file_acl_high was set and the kernel
+> > unconditionally checks for it even though the INCOMPAT_64_BITS flag is
+> > not set.
+> 
+> Maybe I'm missing something, but how can i_file_acl_high being used
+> cause a problem with the file extent maps?
 
-I got it from sourceforge now and it did indeed "do" something:
+It didn't; what had happened was that a garbage block had got written
+into the inode table.  This caused the kernel to complain about
+eh_magic being wrong in the inode table.  E2fsck 1.41.3 fixed those
+problems, but it ignored i_file_acl_high because the 64 bit feature
+flag was not set.  The kernel always pays attention to
+i_file_acl_high, regardless of whether the 64-bit feature flag is set
+or not.  Hence, the kernel was complaining and refused to touch those
+inodes.   
 
-sid:~# /opt/e2fsprogs/sbin/fsck.ext4 -v /dev/md0
-e2fsck 1.41.5 (23-Apr-2009)
-/dev/md0 contains a file system with errors, check forced.
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-i_file_acl_hi for inode 12042 (/lost+found/#12042) is 64578, should be zero. Clear? yes
-i_file_acl_hi for inode 12207 (/lost+found/#12207) is 5, should be zero Clear? yes
-i_file_acl_hi for inode 12249 (/lost+found/#12249) is 5, should be zero.Clear? yes
-i_file_acl_hi for inode 12090 (/t/#12090) is 5932, should be zero. Clear? yes
+Actually, on a 2.6.30 kernel it causes the kernel to loop forever with
+kernel messages "__find_get_block_slow() failed."
 
-...but the "Input/output error" persist :-\
+In any case, with e2fsck 1.41.5, I added code to fix i_file_acl_high
+getting set, and I was then able to mount the raw e2image file and not
+have any problems accessing the files in question, so I'm pretty sure
+that was the problem.
 
-Full scriptlog: http://nerdbynature.de/bits/2.6.30-rc2/scriptlog2.txt
-
-Maybe the repair with 1.41.{3,4} before did something wrong and I should 
-use 1.41.5 from the beginning? This issue is somewhat reproducible (given 
-the fs holds enough files), so I could start over, corrupt the fs again 
-and let e2fsprogs-1.41.5 do the whole job.
-
-Christian.
--- 
-Bruce Schneier does not leak information on the EM spectrum: he emits the theme
-to The Good, The Bad, and The Ugly.
+						- Ted
