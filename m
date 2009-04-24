@@ -1,76 +1,53 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: ext4_ext_check_inode: bad header/extent in inode
-Date: Fri, 24 Apr 2009 07:42:01 -0500
-Message-ID: <49F1B399.2040402@redhat.com>
-References: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de> <49F0642A.4000704@redhat.com> <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de> <20090423204059.GM2723@mit.edu> <alpine.DEB.2.01.0904231442350.6162@bogon.housecafe.de> <20090424032028.GB7949@mit.edu> <alpine.DEB.2.01.0904240153310.6162@bogon.housecafe.de> <alpine.DEB.2.01.0904240235020.6162@bogon.housecafe.de> <20090424120004.GD7949@mit.edu> <49F1B24B.7080308@redhat.com>
+From: "Robert P. J. Day" <rpjday@crashcourse.ca>
+Subject: [PATCH] EXT4:  Use is_power_of_2() routine for clarity.
+Date: Fri, 24 Apr 2009 09:06:14 -0400 (EDT)
+Message-ID: <alpine.LFD.2.00.0904240905050.12966@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Christian Kujau <christian@nerdbynature.de>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Andrew Morton <akpm@osdl.org>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:47589 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755541AbZDXMmH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Apr 2009 08:42:07 -0400
-In-Reply-To: <49F1B24B.7080308@redhat.com>
+Received: from astoria.ccjclearline.com ([64.235.106.9]:51867 "EHLO
+	astoria.ccjclearline.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753422AbZDXNHM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Apr 2009 09:07:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> Theodore Tso wrote:
->> On Fri, Apr 24, 2009 at 02:40:58AM -0700, Christian Kujau wrote:
->>> Maybe the repair with 1.41.{3,4} before did something wrong and I should 
->>> use 1.41.5 from the beginning? This issue is somewhat reproducible (given 
->>> the fs holds enough files), so I could start over, corrupt the fs again 
->>> and let e2fsprogs-1.41.5 do the whole job.
->> I doubt it; the problem was that the repair performed by e2fsck 1.41.3
->> was simply imcomplete.  You can try to reproduce the corrupted
->> filesystem again, but it should result in the same result.
->>
->> Note that because there was garbage written into the inode table,
->> there was going to be data loss; there's not much that can be done
->> about that.  This just simple does a better job cleaning up after the
->> mess, that's all.
->>
->> 						- Ted
->>
-> 
-> But it's still got errors:
-> 
-> it fixed up inodes 12042, 12207, 12249 in lost+found plus "12090
-> (/t/#12090)" (?)
-> 
-> but post-mount:
-> 
-> sid:~# mount -t ext4 /dev/md0 /mnt/md0
-> sid:~# ls -la /mnt/md0/lost*
-> ls: cannot access /mnt/md0/lost+found/#12042: Input/output error
-> ls: cannot access /mnt/md0/lost+found/#12207: Input/output error
-> ls: cannot access /mnt/md0/lost+found/#12249: Input/output error
-> total 20
-> c????????? ? ?    ?        ?            ? #12042
-> s????????? ? ?    ?        ?            ? #12207
-> s????????? ? ?    ?        ?            ? #12249
-> drwx------ 2 root root 16384 Apr 23 21:16 .
-> drwxr-xr-x 5 root root  4096 Apr 23 21:15 ..
-> 
-> Christian, is there anything in dmesg along with it this time?
 
-For what it's worth, it seems to repair it ok for me, or at least I'm
-not getting your errors:
+Signed-off-by: Robert P. J. Day <rpjday@crashcourse.ca>
 
-[root@inode test]# mount -o loop md0_e2i mnt/
-[root@inode test]# ls -la mnt/lost*
-total 20
-drwx------. 2 root       root       16384 2009-04-23 14:16 .
-drwxr-xr-x. 5 root       root        4096 2009-04-23 14:15 ..
-c--S--s-w-. 1 4232184840 4232201271  8, 0 1970-01-13 00:41 #12042
-sr-xrwSr--. 1 4229628009 4228087921     0 1976-03-19 08:28 #12207
-sr-xrwSr--. 1 4229628009 4228087921     0 1976-03-19 08:28 #12249
+---
 
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 2958f4e..479d5ef 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1479,7 +1479,7 @@ set_qf_format:
+ 				return 0;
+ 			if (option < 0 || option > (1 << 30))
+ 				return 0;
+-			if (option & (option - 1)) {
++			if (!is_power_of_2(option)) {
+ 				printk(KERN_ERR "EXT4-fs: inode_readahead_blks"
+ 				       " must be a power of 2\n");
+ 				return 0;
+@@ -2092,7 +2092,7 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
+ 		return -EINVAL;
 
+ 	/* inode_readahead_blks must be a power of 2 */
+-	if (t & (t-1))
++	if (!is_power_of_2(t))
+ 		return -EINVAL;
 
+ 	sbi->s_inode_readahead_blks = t;
 
--Eric
+========================================================================
+Robert P. J. Day                               Waterloo, Ontario, CANADA
+
+        Linux Consulting, Training and Annoying Kernel Pedantry.
+
+Web page:                                          http://crashcourse.ca
+Linked In:                             http://www.linkedin.com/in/rpjday
+Twitter:                                       http://twitter.com/rpjday
+========================================================================
