@@ -1,35 +1,47 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: ext4_ext_check_inode: bad header/extent in inode
-Date: Fri, 24 Apr 2009 13:41:04 -0700 (PDT)
-Message-ID: <alpine.DEB.2.01.0904241338110.6162@bogon.housecafe.de>
-References: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de> <49F0642A.4000704@redhat.com> <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de> <20090423204059.GM2723@mit.edu> <alpine.DEB.2.01.0904231442350.6162@bogon.housecafe.de>
- <20090424032028.GB7949@mit.edu> <alpine.DEB.2.01.0904240153310.6162@bogon.housecafe.de> <alpine.DEB.2.01.0904240235020.6162@bogon.housecafe.de> <20090424120004.GD7949@mit.edu>
-Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Ignore i_file_acl_high unless EXT4_FEATURE_INCOMPAT_64BIT is present
+Date: Fri, 24 Apr 2009 16:45:57 -0400
+Message-ID: <1240605957-13512-2-git-send-email-tytso@mit.edu>
+References: <1240605957-13512-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.171]:59830 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751188AbZDXUlG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Apr 2009 16:41:06 -0400
-In-Reply-To: <20090424120004.GD7949@mit.edu>
+Received: from thunk.org ([69.25.196.29]:43788 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754155AbZDXUqG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Apr 2009 16:46:06 -0400
+In-Reply-To: <1240605957-13512-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, 24 Apr 2009, Theodore Tso wrote:
-> Note that because there was garbage written into the inode table,
-> there was going to be data loss; there's not much that can be done
-> about that.
+Don't try to look at i_file_acl_high unless the INCOMPAT_64BIT feature
+bit is set.  The field is normally zero, but older versions of e2fsck
+didn't automatically check to make sure of this, so in the spirit of
+"be liberal in what you accept", don't look at i_file_acl_high unless
+we are using a 64-bit filesystem.
 
-Of course, I realize that there will be dataloss, but I assumed that fsck 
-would repair the filesystem to be intact again. However, even with 
-e2fsprogs-1.41.5 the I/O errors persist:
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c |    4 +---
+ 1 files changed, 1 insertions(+), 3 deletions(-)
 
-  http://nerdbynature.de/bits/2.6.30-rc3/
-
-Thanks,
-Christian.
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index cab75bb..1146003 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4357,11 +4357,9 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
+ 	ei->i_flags = le32_to_cpu(raw_inode->i_flags);
+ 	inode->i_blocks = ext4_inode_blocks(raw_inode, ei);
+ 	ei->i_file_acl = le32_to_cpu(raw_inode->i_file_acl_lo);
+-	if (EXT4_SB(inode->i_sb)->s_es->s_creator_os !=
+-	    cpu_to_le32(EXT4_OS_HURD)) {
++	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_64BIT))
+ 		ei->i_file_acl |=
+ 			((__u64)le16_to_cpu(raw_inode->i_file_acl_high)) << 32;
+-	}
+ 	inode->i_size = ext4_isize(raw_inode);
+ 	ei->i_disksize = inode->i_size;
+ 	inode->i_generation = le32_to_cpu(raw_inode->i_generation);
 -- 
-Bruce Schneier has built a non-deterministic Turing machine, so he doesn't care
-whether P=NP.
+1.5.6.3
+
