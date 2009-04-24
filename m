@@ -1,55 +1,47 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Fix softlockup caused by illegal i_file_acl value in on-disk inode
-Date: Fri, 24 Apr 2009 16:45:56 -0400
-Message-ID: <1240605957-13512-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext4_ext_check_inode: bad header/extent in inode
+Date: Fri, 24 Apr 2009 16:59:27 -0400
+Message-ID: <20090424205927.GA13608@mit.edu>
+References: <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de> <20090423204059.GM2723@mit.edu> <alpine.DEB.2.01.0904231442350.6162@bogon.housecafe.de> <20090424032028.GB7949@mit.edu> <alpine.DEB.2.01.0904240153310.6162@bogon.housecafe.de> <alpine.DEB.2.01.0904240235020.6162@bogon.housecafe.de> <20090424120004.GD7949@mit.edu> <49F1B24B.7080308@redhat.com> <alpine.DEB.2.01.0904241318460.6162@bogon.housecafe.de> <49F22244.5040407@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Christian Kujau <lists@nerdbynature.de>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:43786 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:42774 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751825AbZDXUqG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Apr 2009 16:46:06 -0400
+	id S1756594AbZDXU7c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Apr 2009 16:59:32 -0400
+Content-Disposition: inline
+In-Reply-To: <49F22244.5040407@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If the block containing external extended attributes (which is stored
-in i_file_acl and i_file_acl_high) is larger than the on-disk
-filesystem, the process which tried to access the extended attributes
-will endlessly issue kernel printks complaining that
-"__find_get_block_slow() failed", locking up that CPU until the system
-is forcibly rebooted.
+On Fri, Apr 24, 2009 at 03:34:12PM -0500, Eric Sandeen wrote:
+> So these are funny inodes:
+> 
+> # file mnt/lost+found/*
+> mnt/lost+found/#12042: setuid setgid character special
+> mnt/lost+found/#12207: setgid socket
+> mnt/lost+found/#12249: setgid socket
+> 
+> by virtue of the corruption.
+.
+> so we shouldn't be checking the extent header, I think.
+> 
+>         if (ei->i_flags & EXT4_EXTENTS_FL) {
+>                 /* Validate extent which is part of inode */
+>                 ret = ext4_ext_check_inode(inode);
+>         } else if ...
+> 
+> Or maybe fsck should be clearing the extents flag on inodes like this?
+> 
 
-So when we read in the inode, make sure the i_file_acl value is legal,
-and if not, flag the filesystem as being corrupted.
+Good catch!  Yeah, probably both.  The kernel should only validating
+the extent header if the file is regular file, a directory, or a symlink.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |   12 +++++++++++-
- 1 files changed, 11 insertions(+), 1 deletions(-)
+And e2fsck should be clearing the extents flag on inodes like this.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c6bd6ce..cab75bb 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4409,7 +4409,17 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino)
- 			(__u64)(le32_to_cpu(raw_inode->i_version_hi)) << 32;
- 	}
- 
--	if (ei->i_flags & EXT4_EXTENTS_FL) {
-+	if (ei->i_file_acl &&
-+	    ((ei->i_file_acl < 
-+	      (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
-+	       EXT4_SB(sb)->s_gdb_count)) ||
-+	     (ei->i_file_acl >= ext4_blocks_count(EXT4_SB(sb)->s_es)))) {
-+		ext4_error(sb, __func__,
-+			   "bad extended attribute block %llu in inode #%lu",
-+			   ei->i_file_acl, inode->i_ino);
-+		ret = -EIO;
-+		goto bad_inode;
-+	} else if (ei->i_flags & EXT4_EXTENTS_FL) {
- 		/* Validate extent which is part of inode */
- 		ret = ext4_ext_check_inode(inode);
-  	} else if (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
--- 
-1.5.6.3
+I'll create the patch....
 
+							- Ted
