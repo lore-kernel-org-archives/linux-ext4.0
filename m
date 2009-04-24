@@ -1,41 +1,51 @@
-From: "Anthony Brown" <anthonybrown01@reilmail.com>
-Subject: hard money lenders meeting April 30th
-Date: Fri, 24 Apr 2009 18:07:04 -0400
-Message-ID: <20090424070002.ouuhtdslok@reilmail.com>
-Reply-To: r.186.15360468@reilmail.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] EXT4:  Use is_power_of_2() routine for clarity.
+Date: Fri, 24 Apr 2009 10:03:31 -0500
+Message-ID: <49F1D4C3.5040804@redhat.com>
+References: <alpine.LFD.2.00.0904240905050.12966@localhost.localdomain>
 Mime-Version: 1.0
-Content-Type: text/plain;
-	charset="iso-8859-1"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, Andrew Morton <akpm@osdl.org>
+To: "Robert P. J. Day" <rpjday@crashcourse.ca>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from ip124.reilmail.com ([67.212.87.124]:47663 "HELO
-	ip124.reilmail.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1755949AbZDXOOG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Apr 2009 10:14:06 -0400
+Received: from mx2.redhat.com ([66.187.237.31]:56276 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751128AbZDXPEm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Apr 2009 11:04:42 -0400
+In-Reply-To: <alpine.LFD.2.00.0904240905050.12966@localhost.localdomain>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hard Money Meeting and National Hard Money Conference 2009 is almost sold out. 
+Robert P. J. Day wrote:
+> Signed-off-by: Robert P. J. Day <rpjday@crashcourse.ca>
 
-go to
-http://hardmoneymeeting.com 
-For additional information
+Looks fine, thanks.
 
-Event Details:
-Las Vegas, Nevada
-Hard Rock Hotel
-April 30th, 2009
-Phone reservations 858-736-7788
+Reviewed-by: Eric Sandeen <sandeen@redhat.com>
 
-
-
-----------------------------------
-To be deleted from our list please go to http://hardmoneymeeting.com/uns/ or write Hard Money Seminars and Events at 5580 la Jolla blvd #153 La Jolla, Ca 92037
-
---------------------------------------------
-..
-
-
-
-
-
+> ---
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index 2958f4e..479d5ef 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -1479,7 +1479,7 @@ set_qf_format:
+>  				return 0;
+>  			if (option < 0 || option > (1 << 30))
+>  				return 0;
+> -			if (option & (option - 1)) {
+> +			if (!is_power_of_2(option)) {
+>  				printk(KERN_ERR "EXT4-fs: inode_readahead_blks"
+>  				       " must be a power of 2\n");
+>  				return 0;
+> @@ -2092,7 +2092,7 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
+>  		return -EINVAL;
+> 
+>  	/* inode_readahead_blks must be a power of 2 */
+> -	if (t & (t-1))
+> +	if (!is_power_of_2(t))
+>  		return -EINVAL;
+> 
+>  	sbi->s_inode_readahead_blks = t;
+> 
