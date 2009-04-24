@@ -1,35 +1,47 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: ext4_ext_check_inode: bad header/extent in inode
-Date: Fri, 24 Apr 2009 01:57:27 -0700 (PDT)
-Message-ID: <alpine.DEB.2.01.0904240153310.6162@bogon.housecafe.de>
-References: <alpine.DEB.2.01.0904191934320.6162@bogon.housecafe.de> <49F0642A.4000704@redhat.com> <alpine.DEB.2.01.0904231156460.6162@bogon.housecafe.de> <20090423204059.GM2723@mit.edu> <alpine.DEB.2.01.0904231442350.6162@bogon.housecafe.de>
- <20090424032028.GB7949@mit.edu>
+From: Jeremy Sanders <jss@ast.cam.ac.uk>
+Subject: Re: fsck.ext4: Group descriptors look bad... trying backup blocks...
+Date: Fri, 24 Apr 2009 09:27:39 +0100
+Message-ID: <gsrvqq$6kk$1@ger.gmane.org>
+References: <gs9nm5$8m1$1@ger.gmane.org> <49E8B5AD.6030907@redhat.com> <gshfgl$o6m$1@ger.gmane.org> <20090420113534.GR19186@mit.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Eric Sandeen <sandeen@redhat.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="US-ASCII"
+Content-Transfer-Encoding: 7Bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.187]:51625 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753013AbZDXI52 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 24 Apr 2009 04:57:28 -0400
-In-Reply-To: <20090424032028.GB7949@mit.edu>
+Received: from main.gmane.org ([80.91.229.2]:56893 "EHLO ciao.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752502AbZDXJNQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Apr 2009 05:13:16 -0400
+Received: from list by ciao.gmane.org with local (Exim 4.43)
+	id 1LxHT5-0001VK-Ej
+	for linux-ext4@vger.kernel.org; Fri, 24 Apr 2009 09:13:11 +0000
+Received: from xpc17.ast.cam.ac.uk ([131.111.69.96])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 24 Apr 2009 09:13:11 +0000
+Received: from jss by xpc17.ast.cam.ac.uk with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Fri, 24 Apr 2009 09:13:11 +0000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, 23 Apr 2009, Theodore Tso wrote:
-> It's been fixed in e2fpsrogs 1.41.5, which I've only just released.
-> It's available on git, sourceforge, and all of the other usual places.
-> This should fix the problem for you.
+Theodore Tso wrote:
 
-I'm pulling from git.eu.kernel.org and thought that it hasn't been sync'ed 
-yet. But git.kernel.org still lists 8203fe506a06524587c18940b6cd19a0592a4bd2
-as the last commit.
+> Do you have to reboot to see this, or is it enough to unmount the
+> filesystem?  How big is the ext4 filesystem, and how big was the
+> amount of data that you rsync'ed?  One thing that would be worth
+> trying if you can easily reproduce is whether it happens on a single
+> device disk, or whether it only shows up when you use a /dev/mdX
+> device.
 
-How do I checkout the latest version? I thought "git pull" would just do 
-that.
+I've been able to reproduce it on a single device disk (It was partitioned 
+to have the same number of blocks as the md device).
 
-Thanks,
-Christian.
+Jeremy
+
 -- 
-Bruce Schneier can change most random distributions. With his fists.
+Jeremy Sanders <jss@ast.cam.ac.uk>   http://www-xray.ast.cam.ac.uk/~jss/
+X-Ray Group, Institute of Astronomy, University of Cambridge, UK.
+Public Key Server PGP Key ID: E1AAE053
+
+
