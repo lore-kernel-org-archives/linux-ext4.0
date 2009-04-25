@@ -1,73 +1,36 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Fallback to vmalloc if kmalloc can't allocate s_flex_groups array
-Date: Fri, 24 Apr 2009 23:00:59 -0400
-Message-ID: <1240628459-25582-1-git-send-email-tytso@mit.edu>
-References: <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com>
-Cc: Curt Wohlgemuth <curtw@google.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Theodore Ts'o <tytso@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Use of kmalloc vs vmalloc in ext4?
+Date: Fri, 24 Apr 2009 23:07:03 -0400
+Message-ID: <20090425030703.GD13608@mit.edu>
+References: <6601abe90903110732n5c9df9b9td317be316921b7a6@mail.gmail.com> <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org
 To: Michael Rubin <mrubin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:54821 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:38364 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750884AbZDYDBE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Apr 2009 23:01:04 -0400
+	id S1752244AbZDYDHG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Apr 2009 23:07:06 -0400
+Content-Disposition: inline
 In-Reply-To: <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-For very large filesystems, the s_flex_groups array can get quite big.
-For example, a 16TB filesystem will have 8192 flex groups by default,
-so the array is 96k, which is marginal for kmalloc().  On the other
-hand, a 160GB filesystem will have 80 flex groups, so the array will
-be 960 bytes.  So we try to allocate the array first using kmalloc(),
-and if that fails, we'll try to use vmalloc() instead.
+On Sun, Apr 05, 2009 at 11:45:10PM -0700, Michael Rubin wrote:
+> Anyone have any comments? Or historical reasons? We operate with some
+> constrained memory situations, and were wondering if a patch to move
+> from kmalloc to vmalloc would be well received.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/super.c |   15 ++++++++++++---
- 1 files changed, 12 insertions(+), 3 deletions(-)
+Sorry, I didn't have time to get to this until now.  I've been burning
+the midnight oil getting the e2fsprogs 1.41.5 release out, as well as
+catching up after the Collab Summit.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 2958f4e..0682fe0 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1620,6 +1620,7 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 	ext4_group_t flex_group_count;
- 	ext4_group_t flex_group;
- 	int groups_per_flex = 0;
-+	size_t size;
- 	int i;
- 
- 	if (!sbi->s_es->s_log_groups_per_flex) {
-@@ -1634,8 +1635,13 @@ static int ext4_fill_flex_info(struct super_block *sb)
- 	flex_group_count = ((sbi->s_groups_count + groups_per_flex - 1) +
- 			((le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) + 1) <<
- 			      EXT4_DESC_PER_BLOCK_BITS(sb))) / groups_per_flex;
--	sbi->s_flex_groups = kzalloc(flex_group_count *
--				     sizeof(struct flex_groups), GFP_KERNEL);
-+	size = flex_group_count * sizeof(struct flex_groups);
-+	sbi->s_flex_groups = kzalloc(size, GFP_KERNEL);
-+	if (sbi->s_flex_groups == NULL) {
-+		sbi->s_flex_groups = vmalloc(size);
-+		if (sbi->s_flex_groups)
-+			memset(sbi->s_flex_groups, 0, size);
-+	}
- 	if (sbi->s_flex_groups == NULL) {
- 		printk(KERN_ERR "EXT4-fs: not enough memory for "
- 				"%u flex groups\n", flex_group_count);
-@@ -2849,7 +2855,10 @@ failed_mount3:
- failed_mount2:
- 	for (i = 0; i < db_count; i++)
- 		brelse(sbi->s_group_desc[i]);
--	kfree(sbi->s_group_desc);
-+	if (is_vmalloc_addr(sbi->s_group_desc))
-+		vfree(sbi->s_group_desc);
-+	else
-+		kfree(sbi->s_group_desc);
- failed_mount:
- 	if (sbi->s_proc) {
- 		remove_proc_entry(sb->s_id, ext4_proc_root);
--- 
-1.5.6.3
+The best thing to do I think is to try using kmalloc(), and if it
+fails, to fall back to vmalloc().  We can use is_vmalloc_addr() to
+decide whether to use vfree() or kfree(), a trick which I picked up
+from fs/ntfs/malloc.h.  I'm surprised this trick isn't used more in
+the kernel.  Perhaps there should be made a general-purpose
+infrastructure, but for now I'll just open-code it.
 
+		    	    	      		- Ted
