@@ -1,54 +1,34 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] ext4: Fallback to vmalloc if kmalloc can't allocate s_flex_groups
- array
-Date: Fri, 24 Apr 2009 22:28:04 -0500
-Message-ID: <49F28344.4010707@redhat.com>
-References: <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com> <1240628459-25582-1-git-send-email-tytso@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Use of kmalloc vs vmalloc in ext4?
+Date: Fri, 24 Apr 2009 23:39:55 -0400
+Message-ID: <20090425033955.GF13608@mit.edu>
+References: <6601abe90903110732n5c9df9b9td317be316921b7a6@mail.gmail.com> <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com> <20090425030703.GD13608@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Michael Rubin <mrubin@google.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org
+To: Michael Rubin <mrubin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:50738 "EHLO mx2.redhat.com"
+Received: from thunk.org ([69.25.196.29]:36134 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752735AbZDYD2F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 24 Apr 2009 23:28:05 -0400
-In-Reply-To: <1240628459-25582-1-git-send-email-tytso@mit.edu>
+	id S1752735AbZDYDkD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 24 Apr 2009 23:40:03 -0400
+Content-Disposition: inline
+In-Reply-To: <20090425030703.GD13608@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o wrote:
-> For very large filesystems, the s_flex_groups array can get quite big.
-> For example, a 16TB filesystem will have 8192 flex groups by default,
-> so the array is 96k, which is marginal for kmalloc().  On the other
-> hand, a 160GB filesystem will have 80 flex groups, so the array will
-> be 960 bytes.  So we try to allocate the array first using kmalloc(),
-> and if that fails, we'll try to use vmalloc() instead.
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  fs/ext4/super.c |   15 ++++++++++++---
->  1 files changed, 12 insertions(+), 3 deletions(-)
-> 
+P.S.   What sort of flex_bg size are you using?
 
-...
+          EXT4-fs: not enough memory for 8198 flex groups
+          EXT4-fs: unable to initialize flex_bg meta info!
 
-> @@ -2849,7 +2855,10 @@ failed_mount3:
->  failed_mount2:
->  	for (i = 0; i < db_count; i++)
->  		brelse(sbi->s_group_desc[i]);
-> -	kfree(sbi->s_group_desc);
-> +	if (is_vmalloc_addr(sbi->s_group_desc))
-> +		vfree(sbi->s_group_desc);
-> +	else
-> +		kfree(sbi->s_group_desc);
->  failed_mount:
->  	if (sbi->s_proc) {
->  		remove_proc_entry(sb->s_id, ext4_proc_root);
+Modern e2fsprogs default to using 16 block groups per flex_bg, which
+means 8198 flex groups is a little over 16 TB --- which the mainline
+e2fsprogs doesn't support yet.  You wouldn't be using a smaller
+flex_bg size for some reason, are you?
 
-er, won't you need the same vfree/kfree treatment in ext4_put_super? :)
+If so, can you say something about why?  I've been actually thinking
+that we might want to bump up the flex_bg size slight more, but it
+appears you're using something smaller; was this deliberate.
 
--Eric
+	       	     	       		    - Ted
