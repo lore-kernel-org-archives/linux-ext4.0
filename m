@@ -1,49 +1,53 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Use is_power_of_2() for clarity
-Date: Sat, 25 Apr 2009 00:00:23 -0400
-Message-ID: <1240632023-29556-1-git-send-email-tytso@mit.edu>
-References: <20090424173450.GJ7949@mit.edu>
-Cc: Andrew Morton <akpm@osdl.org>, Theodore Ts'o <tytso@mit.edu>,
-	"Robert P. J. Day" <rpjday@crashcourse.ca>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: 2009 Upgrade <rosgsc@singnet.com.sg>
+Subject: Upgrade Team
+Date: Sat, 25 Apr 2009 22:49:04 +0800 (SGT)
+Message-ID: <1240670944.49f322e0c5945@discus.singnet.com.sg>
+Reply-To: site.upgrader@btinternet.com
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7BIT
+To: info@Upgrade.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:49775 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750731AbZDYEAa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 25 Apr 2009 00:00:30 -0400
-In-Reply-To: <20090424173450.GJ7949@mit.edu>
+Received: from comsmtp2.singnet.com.sg ([165.21.101.75]:35120 "EHLO
+	comsmtp2.singnet.com.sg" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752929AbZDYOtz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 25 Apr 2009 10:49:55 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Signed-off-by: Robert P. J. Day <rpjday@crashcourse.ca>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/super.c |    5 ++---
- 1 files changed, 2 insertions(+), 3 deletions(-)
+This message is from the Database 
+Information Technology service messaging
+center, to all our e-mail account holders. 
+All Mailhub systems will undergo
+regularly scheduled maintenance. Access to 
+your mailbox via our mailportal
+will be unavailable for some period of time 
+during this maintenanceperiod.
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index f19d8b8..e20ff9c 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1482,7 +1482,7 @@ set_qf_format:
- 				return 0;
- 			if (option < 0 || option > (1 << 30))
- 				return 0;
--			if (option & (option - 1)) {
-+			if (!is_power_of_2(option)) {
- 				printk(KERN_ERR "EXT4-fs: inode_readahead_blks"
- 				       " must be a power of 2\n");
- 				return 0;
-@@ -2100,8 +2100,7 @@ static ssize_t inode_readahead_blks_store(struct ext4_attr *a,
- 	if (parse_strtoul(buf, 0x40000000, &t))
- 		return -EINVAL;
- 
--	/* inode_readahead_blks must be a power of 2 */
--	if (t & (t-1))
-+	if (!is_power_of_2(t))
- 		return -EINVAL;
- 
- 	sbi->s_inode_readahead_blks = t;
--- 
-1.5.6.3
+We shall be carrying out service maintenance 
+on our database and e-mail
+accountcenter for better online services. We 
+are deleting all unusede-mail
+accounts tocreate more space for new 
+accounts.
 
+In order to ensure you do not experience 
+service interruptions/possible
+deactivation Please you must reply to this 
+email immediately confirming your
+email account details below for confirmation/
+identification.
+_____________________________________
+1. First Name & Last Name:
+2. Full Login Email Address:
+3. Username & Password:
+4. Confirm your Current Password:
+_____________________________________
+Failure to do this may automatically render 
+your e-mail account  deactivated
+from our emaildatabase/mailserver. to enable 
+us upgrade your email account,
+please do reply to this mail.
+
+Thanks.
+Upgrade Team
