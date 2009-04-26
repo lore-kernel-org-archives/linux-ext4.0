@@ -1,27 +1,37 @@
-From: Camelt Office <wheelcovers@bellnet.ca>
-Subject: ***Contact Mr. Larry Whyte***
-Date: Sat, 25 Apr 2009 14:11:36 -0400
-Message-ID: <20090425181148.YMQF1599.simmts12-srv.bellnexxia.net__33287.4260646806$1240683400$gmane$org@simip9-ac.srvr.bell.ca>
-Reply-To: c_group24@8u8.hk
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Use of kmalloc vs vmalloc in ext4?
+Date: Sat, 25 Apr 2009 22:12:20 -0400
+Message-ID: <20090426021220.GB10248@mit.edu>
+References: <6601abe90903110732n5c9df9b9td317be316921b7a6@mail.gmail.com> <532480950904052345m48bc5df5wcdc4c5e32778130c@mail.gmail.com> <20090425030703.GD13608@mit.edu> <20090425033955.GF13608@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: <info@cgnl.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Curt Wohlgemuth <curtw@google.com>, linux-ext4@vger.kernel.org
+To: Michael Rubin <mrubin@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from simmts12-srv.bellnexxia.net ([206.47.199.141]:42082 "EHLO
-	simmts12-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754935AbZDYSLt convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 25 Apr 2009 14:11:49 -0400
+Received: from THUNK.ORG ([69.25.196.29]:51798 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755695AbZDZCM1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 25 Apr 2009 22:12:27 -0400
+Content-Disposition: inline
+In-Reply-To: <20090425033955.GF13608@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-You were selected for the sum of  =A31,230,310 GBP. Verify this mail im=
-mediately by sending in your information. This will include your name, =
-address, age, phone number etc to  c_group24@8u8.hk
+On Fri, Apr 24, 2009 at 11:39:55PM -0400, Theodore Tso wrote:
+> P.S.   What sort of flex_bg size are you using?
+> 
+>           EXT4-fs: not enough memory for 8198 flex groups
+>           EXT4-fs: unable to initialize flex_bg meta info!
+> 
+> Modern e2fsprogs default to using 16 block groups per flex_bg, which
+> means 8198 flex groups is a little over 16 TB --- which the mainline
+> e2fsprogs doesn't support yet.  You wouldn't be using a smaller
+> flex_bg size for some reason, are you?
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Oh, never mind.  I didn't realize this last night, but we allocate
+sbi->s_flex_counts so it is big enough in case the filesystem gets
+resized to the maximum size.  So that's why it was trying to allocate
+that many flex groups.  On the other hand, it means that it's much
+more likely for us to need the extra memory.
+
+							- Ted
