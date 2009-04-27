@@ -1,50 +1,77 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [RFC PATCH] mark buffer_head mapping preallocate area as new during write_begin with delayed allocation
-Date: Tue, 28 Apr 2009 00:35:43 +0530
-Message-ID: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [RFC PATCH] mark buffer_head mapping preallocate area as new
+ during write_begin with delayed allocation
+Date: Mon, 27 Apr 2009 14:30:10 -0500
+Message-ID: <49F607C2.6060106@redhat.com>
+References: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp06.in.ibm.com ([59.145.155.6]:38277 "EHLO
-	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757048AbZD0TFt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Apr 2009 15:05:49 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id n3RJ5l1L028751
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 00:35:47 +0530
-Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3RJ5kaa475336
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 00:35:46 +0530
-Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
-	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id n3RJ5kKv008774
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 00:35:46 +0530
+Received: from mx2.redhat.com ([66.187.237.31]:49049 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751870AbZD0TaQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Apr 2009 15:30:16 -0400
+In-Reply-To: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We need to mark the  buffer_head mapping prealloc space
-as new during write_begin. Otherwise we don't zero out the
-page cache content properly for a partial write. This will
-cause file corruption with preallocation.
+Aneesh Kumar K.V wrote:
+> We need to mark the  buffer_head mapping prealloc space
+> as new during write_begin. Otherwise we don't zero out the
+> page cache content properly for a partial write. This will
+> cause file corruption with preallocation.
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> 
+> ---
+>  fs/ext4/inode.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c6bd6ce..c7251ec 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2323,6 +2323,8 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+>  		set_buffer_delay(bh_result);
+>  	} else if (ret > 0) {
+>  		bh_result->b_size = (ret << inode->i_blkbits);
+> +		if (buffer_unwritten(bh_result))
+> +			set_buffer_new(bh_result);
+>  		ret = 0;
+>  	}
+>  
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Hm, yep, that sure does break things.  For some future regression test:
 
----
- fs/ext4/inode.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
+[root@inode tmp]# /root/fallocate -l 8k testfile
+[root@inode tmp]# dd if=/dev/zero of=testfile bs=1 count=10 conv=notrunc
+10+0 records in
+10+0 records out
+10 bytes (10 B) copied, 5.1491e-05 s, 194 kB/s
+[root@inode tmp]# hexdump -C testfile
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c6bd6ce..c7251ec 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2323,6 +2323,8 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 		set_buffer_delay(bh_result);
- 	} else if (ret > 0) {
- 		bh_result->b_size = (ret << inode->i_blkbits);
-+		if (buffer_unwritten(bh_result))
-+			set_buffer_new(bh_result);
- 		ret = 0;
- 	}
- 
--- 
-tg: (51bec03..) preallocate_corruption (depends on: ext4_lock_group_conversion)
+<much garbage ensues>
+
+This looks pretty reasonable; Aneesh & I talked online and found that
+xfs has a somewhat similar fix:
+
+commit 549054afadae44889c0b40d4c3bfb0207b98d5a0
+Author: David Chinner <dgc@sgi.com>
+Date:   Sat Feb 10 18:36:35 2007 +1100
+
+    [XFS] Fix sub-block zeroing for buffered writes into unwritten extents.
+
+    When writing less than a filesystem block of data into an unwritten
+extent
+    via buffered I/O, __xfs_get_blocks fails to set the buffer new flag.
+As a
+    result, the generic code will not zero either edge of the block
+resulting
+    in garbage being written to disk either side of the real data. Set the
+    buffer new state on bufferd writes to unwritten extents to ensure that
+    zeroing occurs.
+
+-Eric
