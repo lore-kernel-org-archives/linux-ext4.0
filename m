@@ -1,56 +1,37 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: get_fs_excl/put_fs_excl/has_fs_excl
-Date: Mon, 27 Apr 2009 11:53:39 +0200
-Message-ID: <20090427095339.GW4593@kernel.dk>
-References: <20090423191817.GA22521@lst.de> <20090423192123.GL4593@kernel.dk> <20090424184047.GA17001@lst.de> <20090425151656.GH13608@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Question on block group allocation
+Date: Mon, 27 Apr 2009 06:42:21 -0400
+Message-ID: <20090427104221.GB9059@mit.edu>
+References: <6601abe90904230941x5cdd590ck2d51410326df2fc5@mail.gmail.com> <20090423190817.GN3209@webber.adilger.int> <6601abe90904231502y393155dbrf8913b728c704320@mail.gmail.com> <20090427021411.GA9059@mit.edu> <6601abe90904262229w602e17d8s51ceae05c2895ce5@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: Andreas Dilger <adilger@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([93.163.65.50]:35706 "EHLO kernel.dk"
+Received: from thunk.org ([69.25.196.29]:56548 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757065AbZD0Jxk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Apr 2009 05:53:40 -0400
+	id S1752079AbZD0Km3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Apr 2009 06:42:29 -0400
 Content-Disposition: inline
-In-Reply-To: <20090425151656.GH13608@mit.edu>
+In-Reply-To: <6601abe90904262229w602e17d8s51ceae05c2895ce5@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Apr 25 2009, Theodore Tso wrote:
-> On Fri, Apr 24, 2009 at 08:40:47PM +0200, Christoph Hellwig wrote:
-> > On Thu, Apr 23, 2009 at 09:21:24PM +0200, Jens Axboe wrote:
-> > > The intent was to add some sort of notification mechanism from the file
-> > > system to inform the IO scheduler (and others?) that this process is how
-> > > holding a file system wide resource. So if you have a low priority
-> > > process getting access to such a resource, you want to boost its
-> > > priority to avoid higher priority apps getting stuck beind it. Sort of a
-> > > poor mans priority inheritance.
-> > > 
-> > > It would be wonderful if you could kick this process more into gear on
-> > > the fs side...
+On Sun, Apr 26, 2009 at 11:29:39PM -0600, Curt Wohlgemuth wrote:
 > 
-> I have to agree with Christoph; it would be nice if this were actually
-> documented somewhere.  Filesystem authors can't do something if they
-> don't understand what the semantics are and how it is supposed to be
-> used!
+> The random read throughput on the 10GB file went from ~16 MB/s to ~22
+> MB/s after Andreas' patch; the total fragmentation of the file was
+> much lower than before his patch.
+> 
+> However, the number of extents went up by quite a bit (I don't have
+> the debugfs output in front of me at the moment, sorry).  It seemed
+> that no extent crossed a block group; I didn't have time to see if
+> Andreas' patch disabled flex BGs or not, as to what was going on.
 
-I don't disagree, the project (unfortunately) never really went
-anywhere. THe half-assed implementation was meant to be picked up by fs
-people. I guess that's what is happening now, so it's a belated success
-:-)
+Try running e2fsck with the "-E fragcheck" option, and then capture
+e2fsck's stdout.  It will help with the grunt work of doing the
+analysis, in terms of displaying the details of all of the files which
+are discontiguous.
 
-> I'm kind of curious why you implemented things in this way, though.
-> Is there a reason why the bosting is happening deep in the guts of the
-> cfq code, instead of in blk-core.c when the submission of the block
-> I/O request is processed?
-
-You would need to implement a lot more logic in the block layer to
-handle it there, as it stands it's basically a scheduler decision. So
-the positioning is right imho, the placement of fs hooks is probably
-mostly crap and could do with some work.
-
--- 
-Jens Axboe
-
+						- Ted
