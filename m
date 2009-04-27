@@ -1,46 +1,79 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 3/5] ext4: ext4_mark_recovery_complete() doesn't need
-	to use lock_super
-Date: Sun, 26 Apr 2009 07:46:08 -0400
-Message-ID: <20090426114608.GC10248@mit.edu>
-References: <1240717765-16572-1-git-send-email-tytso@mit.edu> <1240717765-16572-2-git-send-email-tytso@mit.edu> <1240717765-16572-3-git-send-email-tytso@mit.edu> <1240717765-16572-4-git-send-email-tytso@mit.edu> <20090426070713.GA17022@infradead.org>
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: [PATCH] blkid: add --disable-libblkid (v2)
+Date: Mon, 27 Apr 2009 11:21:14 +0200
+Message-ID: <20090427092114.GA3193@nb.net.home>
+References: <20090224084434.GF6020@nb.net.home> <20090324121147.GA22386@zelda.netsplit.com> <20090416102241.GA3290@nb.net.home> <1239976118.11603.109.camel@quest> <20090422133304.GP15541@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Al Viro <viro@ZenIV.linux.org.uk>
-To: Christoph Hellwig <hch@infradead.org>
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753795AbZDZLq2@vger.kernel.org>
+Cc: Scott James Remnant <scott@ubuntu.com>, linux-ext4@vger.kernel.org,
+	Kay Sievers <kay.sievers@vrfy.org>
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:60139 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752163AbZD0JVk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 27 Apr 2009 05:21:40 -0400
 Content-Disposition: inline
-In-Reply-To: <20090426070713.GA17022@infradead.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <20090422133304.GP15541@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Apr 26, 2009 at 03:07:14AM -0400, Christoph Hellwig wrote:
-> On Sat, Apr 25, 2009 at 11:49:23PM -0400, Theodore Ts'o wrote:
-> > The function ext4_mark_recovery_complete() is called from two call
-> > paths: either (a) while mounting the filesystem, in which case there's
-> > no danger of any other CPU calling write_super() until the mount is
-> > completed, and (b) while remounting the filesystem read-write, in
-> > which case the fs core has already locked the superblock, and in any
-> > case write_super() wouldn't be called until the filesystem is
-> > successfully changed from being mounted read-only to read-write.
-> 
-> Currently ext4_remount releases/reqacquires lock_super around
-> ext4_mark_recovery_complete, and unfortunately currently ->write_super
-> can be called on a r/o filesystem (that's why we have the MS_RDONLY
-> checks in all instance, I plan to clean that mess up).
+On Wed, Apr 22, 2009 at 09:33:04AM -0400, Theodore Tso wrote:
+> This is the version of the the --disable-libblkid patch which I
 
-That's true, but the patch also takes out the release/reacquire in in
-ext4_remount (which was particularly ugly, belch).  So even if
-write_super gets called on an r/o filesystem (why?!?), we should be
-safe because remount will hold lock_super() throughout the entire
-remount operation.
+[...]
 
-We could delay this cleanup until you clean the mess with write_super,
-but I don't think it would be harmful in removing the
-lock_super()/unlock_super() pair in ext4_mark_recovery_complete(), and
-the unlock_super()/lock_super() pair in ext4_remount before then.  Am
-I missing something?
+> The changes have been pushed out to the e2fsprogs git repository if
+> you want to try it out with the latest changes, which will be in the
+> very-soon-to-be-released e2fsprogs 1.41.5.
 
-						- Ted
+ Thanks!
+
+ I forgot that we need to freeze blkid version number in e2fsprogs to
+ avoid collisions between e2fsprogs and util-linux-ng. Currently the
+ blkid version number is shared with e2fsprogs version number. 
+
+ The e2fsprogs blkid should be in maintenance mode only. All development
+ should happen in util-linux-ng only. Right?
+
+ This problem should be resolved before util-linux-ng-2.15 stable
+ release (-rc2 now).
+
+ (See the patch below -- it's example. I don't know if you want to add
+  LIBBLKID_VERSION to the global version.h or something other to
+  configure.in, or so...)
+
+    Karel
+ 
+>From 7d79dd7105c62b1b91e6e5a556b598c086aa0796 Mon Sep 17 00:00:00 2001
+From: Karel Zak <kzak@redhat.com>
+Date: Mon, 27 Apr 2009 10:55:43 +0200
+Subject: [PATCH] blkid: freeze version number
+
+Signed-off-by: Karel Zak <kzak@redhat.com>
+---
+ lib/blkid/version.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/lib/blkid/version.c b/lib/blkid/version.c
+index 7722916..0219caa 100644
+--- a/lib/blkid/version.c
++++ b/lib/blkid/version.c
+@@ -19,7 +19,10 @@
+ #include "blkid.h"
+ #include "../../version.h"
+ 
+-static const char *lib_version = E2FSPROGS_VERSION;
++/* The blkid library in e2fsprogs is in maintenance mode. The <maj>.<min>
++ * version number should be incremented in util-linux-ng only.
++ */
++static const char *lib_version = "1.41.4";
+ static const char *lib_date = E2FSPROGS_DATE;
+ 
+ int blkid_parse_version_string(const char *ver_string)
+-- 
+1.6.0.6
+
+
+-- 
+ Karel Zak  <kzak@redhat.com>
