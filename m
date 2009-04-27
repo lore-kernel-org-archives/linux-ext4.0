@@ -1,31 +1,39 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] ext4 fixes for 2.6.30-rc3
-Date: Mon, 27 Apr 2009 09:31:35 -0400
-Message-ID: <E1LyQvn-0008N6-6y@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 12151] Unexplained fsck errors on a ext4 filesystem
+Date: Mon, 27 Apr 2009 13:40:55 GMT
+Message-ID: <200904271340.n3RDetbq019169@demeter.kernel.org>
+References: <bug-12151-13602@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56450 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752563AbZD0Nbl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Apr 2009 09:31:41 -0400
+Received: from demeter.kernel.org ([140.211.167.39]:35683 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753383AbZD0Nk4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Apr 2009 09:40:56 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n3RDet8s019170
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2009 13:40:55 GMT
+In-Reply-To: <bug-12151-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Linus,
+http://bugzilla.kernel.org/show_bug.cgi?id=12151
 
-Please pull from:
 
-        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+Alan <alan@lxorguk.ukuu.org.uk> changed:
 
-to grab the following fixes for ext4.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |alan@lxorguk.ukuu.org.uk
+     Kernel Version|kernel-2.6.27.5-117.fc10.x8 |2.6.27.5
+                   |6_64                        |
+         Regression|---                         |No
 
-                                                - Ted
 
-Theodore Ts'o (3):
-      ext4: Fix softlockup caused by illegal i_file_acl value in on-disk inode
-      ext4: Ignore i_file_acl_high unless EXT4_FEATURE_INCOMPAT_64BIT is present
-      ext4: Do not try to validate extents on special files
 
- fs/ext4/inode.c |   24 ++++++++++++++++++------
- 1 files changed, 18 insertions(+), 6 deletions(-)
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
