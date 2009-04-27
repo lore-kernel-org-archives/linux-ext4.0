@@ -1,292 +1,111 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: [PATCH 1/2] have e2fsck/problem.c verify problem.h error codes
-Date: Mon, 27 Apr 2009 16:59:24 -0600
-Message-ID: <20090427225924.GG3209@webber.adilger.int>
+From: Mingming Cao <cmm@us.ibm.com>
+Subject: Re: [RFC PATCH] mark buffer_head mapping preallocate area as new
+	during write_begin with delayed allocation
+Date: Mon, 27 Apr 2009 16:04:54 -0700
+Message-ID: <1240873494.6775.8.camel@mingming-laptop>
+References: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:58198 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756334AbZD0XAJ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Apr 2009 19:00:09 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n3RMxo4C006215
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2009 16:00:03 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KIS00L007PCNS00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 27 Apr 2009 15:59:50 -0700 (PDT)
+Received: from e36.co.us.ibm.com ([32.97.110.154]:58082 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752854AbZD0XE6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Apr 2009 19:04:58 -0400
+Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
+	by e36.co.us.ibm.com (8.13.1/8.13.1) with ESMTP id n3RN3PtJ022294
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2009 17:03:25 -0600
+Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
+	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3RN4waZ078646
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2009 17:04:58 -0600
+Received: from d03av02.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av02.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n3RN4uxr021531
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2009 17:04:57 -0600
+In-Reply-To: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We've hit a number of cases where the error codes in problem.h have
-been assigned duplicate values compared to problems in our own e2fsck
-patches, and this can lead to confusing and difficult to find bugs
-in e2fsck (e.g. wrong problem messages, incorrect repair action, etc).
 
-Attached is a test case for the problem.c file to ensure that the
-problem table is sorted and does not contain any duplicate values.
-Having the problem table sorted allows the correctness checking to be
-very simple, and if it ever became important for performance we could
-use binary searching of the problem table for the specific problem code.
+=E5=9C=A8 2009-04-28=E4=BA=8C=E7=9A=84 00:35 +0530=EF=BC=8CAneesh Kumar=
+ K.V=E5=86=99=E9=81=93=EF=BC=9A
+> We need to mark the  buffer_head mapping prealloc space
+> as new during write_begin. Otherwise we don't zero out the
+> page cache content properly for a partial write. This will
+> cause file corruption with preallocation.
+>=20
 
-Signed-off-by: Andreas Dilger <adilger@sun.com>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+>=20
+> ---
+>  fs/ext4/inode.c |    2 ++
+>  1 files changed, 2 insertions(+), 0 deletions(-)
+>=20
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index c6bd6ce..c7251ec 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2323,6 +2323,8 @@ static int ext4_da_get_block_prep(struct inode =
+*inode, sector_t iblock,
+>  		set_buffer_delay(bh_result);
+>  	} else if (ret > 0) {
+>  		bh_result->b_size =3D (ret << inode->i_blkbits);
+> +		if (buffer_unwritten(bh_result))
+> +			set_buffer_new(bh_result);
+>  		ret =3D 0;
+>  	}
+>=20
 
-Index: e2fsprogs-1.41.5/e2fsck/problem.c
-===================================================================
---- e2fsprogs-1.41.5.orig/e2fsck/problem.c
-+++ e2fsprogs-1.41.5/e2fsck/problem.c
-@@ -240,15 +240,10 @@ static struct e2fsck_problem problem_tab
- 	  N_("Clear @j"),
- 	  PROMPT_NULL, PR_PREEN_NOMSG },
- 
--	/* Ask if we should run the journal anyway */
--	{ PR_0_JOURNAL_RUN,
--	  N_("Run @j anyway"),
--	  PROMPT_NULL, 0 },
--
--	/* Run the journal by default */
--	{ PR_0_JOURNAL_RUN_DEFAULT,
--	  N_("Recovery flag not set in backup @S, so running @j anyway.\n"),
--	  PROMPT_NONE, 0 },
-+	/* Filesystem revision is 0, but feature flags are set */
-+	{ PR_0_FS_REV_LEVEL,
-+	  N_("@f has feature flag(s) set, but is a revision 0 @f.  "),
-+	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
- 
- 	/* Clearing orphan inode */
- 	{ PR_0_ORPHAN_CLEAR_INODE,
-@@ -275,11 +270,6 @@ static struct e2fsck_problem problem_tab
- 	  N_("@I @i %i in @o @i list.\n"),
- 	  PROMPT_NONE, 0 },
- 
--	/* Filesystem revision is 0, but feature flags are set */
--	{ PR_0_FS_REV_LEVEL,
--	  N_("@f has feature flag(s) set, but is a revision 0 @f.  "),
--	  PROMPT_FIX, PR_PREEN_OK | PR_NO_OK },
--
- 	/* Journal superblock has an unknown read-only feature flag set */
- 	{ PR_0_JOURNAL_UNSUPP_ROCOMPAT,
- 	  N_("@j @S has an unknown read-only feature flag set.\n"),
-@@ -311,6 +301,16 @@ static struct e2fsck_problem problem_tab
- 	     "Clearing fields beyond the V1 @j @S...\n\n"),
- 	  PROMPT_NONE, 0 },
- 
-+	/* Ask if we should run the journal anyway */
-+	{ PR_0_JOURNAL_RUN,
-+	  N_("Run @j anyway"),
-+	  PROMPT_NULL, 0 },
-+
-+	/* Run the journal by default */
-+	{ PR_0_JOURNAL_RUN_DEFAULT,
-+	  N_("Recovery flag not set in backup @S, so running @j anyway.\n"),
-+	  PROMPT_NONE, 0 },
-+
- 	/* Backup journal inode blocks */
- 	{ PR_0_BACKUP_JNL,
- 	  N_("Backing up @j @i @b information.\n\n"),
-@@ -793,11 +793,6 @@ static struct e2fsck_problem problem_tab
- 	  N_("@a in @i %i has a namelen (%N) which is @n\n"),
- 	  PROMPT_CLEAR, PR_PREEN_OK },
- 
--	/* invalid ea entry->e_value_size */
--	{ PR_1_ATTR_VALUE_SIZE,
--	  N_("@a in @i %i has a value size (%N) which is @n\n"),
--	  PROMPT_CLEAR, PR_PREEN_OK },
--
- 	/* invalid ea entry->e_value_offs */
- 	{ PR_1_ATTR_VALUE_OFFSET,
- 	  N_("@a in @i %i has a value offset (%N) which is @n\n"),
-@@ -808,6 +803,11 @@ static struct e2fsck_problem problem_tab
- 	  N_("@a in @i %i has a value @b (%N) which is @n (must be 0)\n"),
- 	  PROMPT_CLEAR, PR_PREEN_OK },
- 
-+	/* invalid ea entry->e_value_size */
-+	{ PR_1_ATTR_VALUE_SIZE,
-+	  N_("@a in @i %i has a value size (%N) which is @n\n"),
-+	  PROMPT_CLEAR, PR_PREEN_OK },
-+
- 	/* invalid ea entry->e_hash */
- 	{ PR_1_ATTR_HASH,
- 	  N_("@a in @i %i has a hash (%N) which is @n\n"),
-@@ -1597,11 +1597,6 @@ static struct e2fsck_problem problem_tab
- 	  " +(%i--%j)",
- 	  PROMPT_NONE, PR_LATCH_IBITMAP | PR_PREEN_OK | PR_PREEN_NOMSG },
- 
--	/* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
--	{ PR_6_RECREATE_JOURNAL,
--	  N_("Recreate @j"),
--	  PROMPT_NULL, PR_PREEN_OK | PR_NO_OK },
--
- 	/* Group N block(s) in use but group is marked BLOCK_UNINIT */
- 	{ PR_5_BLOCK_UNINIT,
- 	  N_("@g %g @b(s) in use but @g is marked BLOCK_UNINIT\n"),
-@@ -1612,6 +1607,13 @@ static struct e2fsck_problem problem_tab
- 	  N_("@g %g @i(s) in use but @g is marked INODE_UNINIT\n"),
- 	  PROMPT_FIX, PR_PREEN_OK },
- 
-+	/* Post-Pass 5 errors */
-+
-+	/* Recreate journal if E2F_FLAG_JOURNAL_INODE flag is set */
-+	{ PR_6_RECREATE_JOURNAL,
-+	  N_("Recreate @j"),
-+	  PROMPT_NULL, PR_PREEN_OK | PR_NO_OK },
-+
- 	{ 0 }
- };
- 
-@@ -1834,3 +1835,89 @@ int fix_problem(e2fsck_t ctx, problem_t 
- 
- 	return answer;
- }
-+
-+#ifdef UNITTEST
-+
-+#include <stdlib.h>
-+#include <stdio.h>
-+
-+errcode_t
-+profile_get_boolean(profile_t profile, const char *name, const char *subname,
-+		    const char *subsubname, int def_val, int *ret_boolean)
-+{
-+	return 0;
-+}
-+
-+void print_e2fsck_message(e2fsck_t ctx, const char *msg,
-+			  struct problem_context *pctx, int first,
-+			  int recurse)
-+{
-+	return;
-+}
-+
-+void fatal_error(e2fsck_t ctx, const char *msg)
-+{
-+	return;
-+}
-+
-+void preenhalt(e2fsck_t ctx)
-+{
-+	return;
-+}
-+
-+errcode_t
-+profile_get_string(profile_t profile, const char *name, const char *subname,
-+		   const char *subsubname, const char *def_val,
-+		   char **ret_string)
-+{
-+	return 0;
-+}
-+
-+int ask (e2fsck_t ctx, const char * string, int def)
-+{
-+	return 0;
-+}
-+
-+int verify_problem_table(e2fsck_t ctx)
-+{
-+	struct e2fsck_problem *curr, *prev = NULL;
-+	int rc = 0;
-+
-+	for (prev = NULL, curr = problem_table; curr->e2p_code; prev = curr++) {
-+		if (prev == NULL)
-+			continue;
-+
-+		if (curr->e2p_code > prev->e2p_code)
-+			continue;
-+
-+		if (curr->e2p_code == prev->e2p_code)
-+			fprintf(stderr, "*** Duplicate in problem table:\n");
-+		else
-+			fprintf(stderr, "*** Unordered problem table:\n");
-+
-+		fprintf(stderr, "curr code = 0x%08x: %s\n",
-+			curr->e2p_code, curr->e2p_description);
-+		fprintf(stderr, "*** prev code = 0x%08x: %s\n",
-+			prev->e2p_code, prev->e2p_description);
-+
-+		fprintf(stderr, "*** This is a %sprogramming error in e2fsck\n",
-+			(curr->e2p_code == prev->e2p_code) ? "fatal " : "");
-+
-+		rc = 1;
-+	}
-+
-+	return rc;
-+}
-+
-+int main(int argc, char *argv[])
-+{
-+	e2fsck_t ctx;
-+	int rc;
-+
-+	rc = verify_problem_table(ctx);
-+	if (rc == 0)
-+		printf("e2fsck problem table verified\n");
-+
-+	return rc;
-+}
-+#endif /* UNITTEST */
-Index: e2fsprogs-1.41.5/e2fsck/problem.h
-===================================================================
---- e2fsprogs-1.41.5.orig/e2fsck/problem.h
-+++ e2fsprogs-1.41.5/e2fsck/problem.h
-@@ -529,10 +529,10 @@ struct problem_context {
- #define PR_1B_ALLOCATE_IBITMAP_ERROR 0x011005
- 
- /* Error while iterating over blocks */
--#define PR_1B_BLOCK_ITERATE	0x0110006
-+#define PR_1B_BLOCK_ITERATE	0x011006
- 
- /* Error adjusting EA refcount */
--#define PR_1B_ADJ_EA_REFCOUNT	0x0110007
-+#define PR_1B_ADJ_EA_REFCOUNT	0x011007
- 
- 
- /* Pass 1C: Scan directories for inodes with dup blocks. */
-Index: e2fsprogs-1.41.5/e2fsck/Makefile.in
-===================================================================
---- e2fsprogs-1.41.5.orig/e2fsck/Makefile.in
-+++ e2fsprogs-1.41.5/e2fsck/Makefile.in
-@@ -134,6 +134,10 @@ crc32table.h: gen_crc32table
- 	@echo "	GEN32TABLE $@"
- 	@./gen_crc32table > crc32table.h
- 
-+tst_problem: $(srcdir)/problem.c $(srcdir)/problem.h $(LIBEXT2FS)
-+	@$(CC) $(BUILD_LDFLAGS) $(ALL_CFLAGS) -o tst_problem \
-+		$(srcdir)/problem.c -DUNITTEST $(LIBEXT2FS) $(LIBCOM_ERR)
-+
- tst_crc32: $(srcdir)/crc32.c $(LIBEXT2FS)
- 	@$(CC) $(BUILD_LDFLAGS) $(ALL_CFLAGS) -o tst_crc32 $(srcdir)/crc32.c \
- 		-DUNITTEST $(LIBEXT2FS) $(LIBCOM_ERR)
-@@ -148,10 +152,11 @@ tst_region: region.c
- 	@$(CC) -o tst_region $(srcdir)/region.c \
- 		$(ALL_CFLAGS) -DTEST_PROGRAM $(LIBCOM_ERR)
- 
--check:: tst_refcount tst_region tst_crc32
-+check:: tst_refcount tst_region tst_crc32 tst_problem
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_refcount
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_region
- 	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_crc32
-+	LD_LIBRARY_PATH=$(LIB) DYLD_LIBRARY_PATH=$(LIB) ./tst_problem
- 
- extend: extend.o
- 	@echo "	LD $@"
-@@ -261,7 +266,7 @@ uninstall:
- clean:
- 	$(RM) -f $(PROGS) \#* *\# *.s *.o *.a *~ core e2fsck.static \
- 		e2fsck.shared e2fsck.profiled flushb e2fsck.8 \
--		tst_crc32 tst_region tst_refcount gen_crc32table \
-+		tst_problem tst_crc32 tst_region tst_refcount gen_crc32table \
- 		crc32table.h e2fsck.conf.5 prof_err.c prof_err.h \
- 		test_profile
- 	$(RM) -rf profiled
+Thanks Aneesh.
 
-Cheers, Andreas
+Just to share with list, I have seen garbage content show up on a
+preallocated but later partially written blocks. This only happens with
+delayed allocation. The test simply preallocate 2blocks to a new file,
+then write a few bytes to the beginning of file(less than a block), and
+od shows the first block the written content followed by garbage filled
+to the end of the first block.
+
+After examing the code, we did set the buffer as new for nondelalloc, a=
+s
+the create flag passed to ext4_ext_get_blocks() is 1, while for delallo=
+c
+case, ext4_get_blocks_prep() calling ext4_ext_get_block() with create
+=3D0, which leads to the code path that forget to set the bh as new if =
+the
+block is preallocated.
+
+This patch is mostly correct except forget to set the bh_result->bdev,
+which caused the fs blow out.
+
+The updated patch fixed the problem for me.
+
+Signed-off-by: Mingming Cao <cmm@us.ibm.com>
+
+Index: linux-2.6.28-rc6/fs/ext4/inode.c
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
+=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
+--- linux-2.6.28-rc6.orig/fs/ext4/inode.c	2009-03-12 10:21:05.000000000=
+ -0700
++++ linux-2.6.28-rc6/fs/ext4/inode.c	2009-04-27 14:35:21.000000000 -070=
+0
+@@ -2177,7 +2177,10 @@ static int ext4_da_get_block_prep(struct
+ 		set_buffer_new(bh_result);
+ 		set_buffer_delay(bh_result);
+ 	} else if (ret > 0) {
++		if (buffer_unwritten(bh_result))
++			set_buffer_new(bh_result);
+ 		bh_result->b_size =3D (ret << inode->i_blkbits);
++		bh_result->b_bdev =3D inode->i_sb->s_bdev;
+ 		ret =3D 0;
+ 	}
+=20
+
+
+
 --
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
