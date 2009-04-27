@@ -1,60 +1,50 @@
-From: Jamie Lokier <jamie@shareable.org>
-Subject: Re: get_fs_excl/put_fs_excl/has_fs_excl
-Date: Mon, 27 Apr 2009 18:03:14 +0100
-Message-ID: <20090427170314.GA9807@shareable.org>
-References: <20090423191817.GA22521@lst.de> <20090423192123.GL4593@kernel.dk> <20090424184047.GA17001@lst.de> <20090425151656.GH13608@mit.edu> <20090427095339.GW4593@kernel.dk> <20090427113356.GC9059@mit.edu> <20090427144742.GC4885@shareable.org> <20090427162920.GA6781@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Jens Axboe <jens.axboe@oracle.com>,
-	Christoph Hellwig <hch@lst.de>, linux-fsdevel@vger.kernel.org,
-	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [RFC PATCH] mark buffer_head mapping preallocate area as new during write_begin with delayed allocation
+Date: Tue, 28 Apr 2009 00:35:43 +0530
+Message-ID: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail2.shareable.org ([80.68.89.115]:50532 "EHLO
-	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758130AbZD0RDS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Apr 2009 13:03:18 -0400
-Content-Disposition: inline
-In-Reply-To: <20090427162920.GA6781@mit.edu>
+Received: from e28smtp06.in.ibm.com ([59.145.155.6]:38277 "EHLO
+	e28smtp06.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757048AbZD0TFt (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 27 Apr 2009 15:05:49 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28smtp06.in.ibm.com (8.13.1/8.13.1) with ESMTP id n3RJ5l1L028751
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 00:35:47 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3RJ5kaa475336
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 00:35:46 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id n3RJ5kKv008774
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 00:35:46 +0530
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Mon, Apr 27, 2009 at 03:47:42PM +0100, Jamie Lokier wrote:
-> > Personally, I'm interested in the following:
-> > 
-> >     - A process with RT I/O priority and RT CPU priority is reading
-> >       a series of files from disk.  It should be very reliable at this.
-> > 
-> >     - Other normal I/O priority and normal CPU priority processes are
-> >       reading and writing the disk.
-> > 
-> > I would like the first process to have a guaranteed minimum I/O
-> > performance: it should continuously make progress, even when it needs
-> > to read some file metadata which overlaps a page affected by the other
-> > processes.
-> 
-> That's pretty easy.  The much harder and much more interesting problem
-> is if the process with RT I/O and CPU priority is *writing* a series
-> of files to disk, and not just reading from disk.
+We need to mark the  buffer_head mapping prealloc space
+as new during write_begin. Otherwise we don't zero out the
+page cache content properly for a partial write. This will
+cause file corruption with preallocation.
 
-...
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-> I can't think of a filesystem where we would block a
-> read operation for long time just because someone was holding some
-> kind of filesytem-wide lock.  A spinlock, maybe, but the only time it
-> makes sense to worry about boosting an I/O priority is if we're going
-> to be blocing a filesystem for milliseconds or more, and not just a
-> few tens of microseconds.
+---
+ fs/ext4/inode.c |    2 ++
+ 1 files changed, 2 insertions(+), 0 deletions(-)
 
-...
-
-> For the former, where a real-time read request gets blocked because
-> the read request for that block had already been submitted --- at a
-> lower priority --- that's something that should be solvable purely in
-> core block layer and in the I/O scheduler layer, I would expect.
-
-That's great to know, thanks.  I will poke at the block layer and I/O
-scheduler then, see where it leads.
-
-Thanks,
--- Jamie
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c6bd6ce..c7251ec 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2323,6 +2323,8 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 		set_buffer_delay(bh_result);
+ 	} else if (ret > 0) {
+ 		bh_result->b_size = (ret << inode->i_blkbits);
++		if (buffer_unwritten(bh_result))
++			set_buffer_new(bh_result);
+ 		ret = 0;
+ 	}
+ 
+-- 
+tg: (51bec03..) preallocate_corruption (depends on: ext4_lock_group_conversion)
