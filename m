@@ -1,64 +1,70 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [RFC PATCH] Convert ext4_lock_group to use sb_bgl_lock
-Date: Mon, 27 Apr 2009 23:00:16 -0600
-Message-ID: <20090428050016.GL3209@webber.adilger.int>
-References: <1240860896-2011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13201] New: kernel BUG at fs/ext4/extents.c:2737
+Date: Tue, 28 Apr 2009 09:28:06 GMT
+Message-ID: <bug-13201-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:65254 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750829AbZD1FAc (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 01:00:32 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n3S50SmR024660
-	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2009 22:00:30 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KIS00300OFOZU00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 27 Apr 2009 22:00:28 -0700 (PDT)
-In-reply-to: <1240860896-2011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from demeter.kernel.org ([140.211.167.39]:41829 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754120AbZD1J2I (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 05:28:08 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n3S9S6Yf023705
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 09:28:06 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 28, 2009  01:04 +0530, Aneesh Kumar wrote:
-> +static inline spinlock_t *ext4_group_lock(struct super_block *sb, ext4_group_t group)
->  {
-> +	return bgl_lock_ptr(EXT4_SB(sb)->s_blockgroup_lock, group);
-> +}
->  
-> +static inline void ext4_lock_group(struct super_block *sb,ext4_group_t group)
-> +{
-> +	spin_lock(ext4_group_lock(sb, group));
->  }
+http://bugzilla.kernel.org/show_bug.cgi?id=13201
 
-I find it a bit confusing to have both ext4_group_lock() and ext4_lock_group()
-as it isn't obvious without looking at the functions which one is which.
+           Summary: kernel BUG at fs/ext4/extents.c:2737
+           Product: File System
+           Version: 2.5
+    Kernel Version: 2.6.29.1
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: high
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: franco@fugro-fsi.com.au
+        Regression: No
 
-I'd rather have a function name like "ext4_group_lock_ptr()" or similar,
-which is pretty unambiguous.
 
-> -static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
-> +static void mb_set_bits(void *bm, int cur, int len)
+I got this while testing ext4 on an external RAID system. The system has 4
+identical RAID systems each with a single 13TB filesystem. Only one of the 4
+failed the test which was to simply write 8GB files until the disk fills up.
 
-It also wouldn't be a terrible idea to make the mb_set_bits() function
-arguments match the name/order of mb_set_bit():
+The complete messages file is attached.
 
-static inline void mb_set_bit(int bit, void *addr)
+Apr 25 01:59:38 echo19 kernel: EXT4-fs error (device dm-2):
+__ext4_get_inode_loc: unable to read inode block - inode=761860,
+block=3612686232
+Apr 25 01:59:38 echo19 kernel: EXT4-fs error (device dm-2) in
+ext4_reserve_inode_write: IO failure
+Apr 25 01:59:38 echo19 kernel: mpage_da_map_blocks block allocation failed for
+inode 761860 at logical offset 699276 with max blocks 1024 with error -5
+Apr 25 01:59:38 echo19 kernel: This should not happen.!! Data will be lost
+Apr 25 01:59:38 echo19 kernel: ------------[ cut here ]------------
+Apr 25 01:59:38 echo19 kernel: kernel BUG at fs/ext4/extents.c:2737!
 
-static void mb_set_bits(void *bm, int cur, int len)
+The filesystem was totally inaccessible so I reset the system. On reboot, the
+filesystem couldn't be mounted - bad superblock.
 
-They should be "bit, addr" and "bit, addr, len", to be more consistent
-with ext4_set_bit().  Stuff for a separate patch, however.
+I ran fsck a few times before I could remount the filesystem, all the
+directories were lost but the test files were intact in lost+found.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+I can't see any errors anywhere that might indicate that this is a hardware
+problem but these are brand new systems using SAS host connections which we
+haven't used before.
 
+I've remade the broken filesystem and restarted the test on this and 11 other
+identical filesystems, I'll let you know if the problem reoccurs.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
