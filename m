@@ -1,45 +1,63 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: ext4 undeletion question
-Date: Tue, 28 Apr 2009 12:11:06 -0400
-Message-ID: <20090428161106.GB24043@mit.edu>
-References: <alpine.DEB.2.00.0904281037240.5262@zest.trausch.us>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH 2/5] ext4: Remove outdated comment about lock_super()
+Date: Tue, 28 Apr 2009 18:13:53 +0200
+Message-ID: <20090428161353.GJ21950@atrey.karlin.mff.cuni.cz>
+References: <1240717765-16572-1-git-send-email-tytso@mit.edu> <1240717765-16572-2-git-send-email-tytso@mit.edu> <1240717765-16572-3-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, mike-mobile@trausch.us
-To: "Michael B. Trausch" <mbt@zest.trausch.us>
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
+	Al Viro <viro@ZenIV.linux.org.uk>,
+	Christoph Hellwig <hch@infradead.org>
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:59443 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932677AbZD1QLM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Apr 2009 12:11:12 -0400
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:53859 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751294AbZD1QNy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 12:13:54 -0400
 Content-Disposition: inline
-In-Reply-To: <alpine.DEB.2.00.0904281037240.5262@zest.trausch.us>
+In-Reply-To: <1240717765-16572-3-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 28, 2009 at 10:42:39AM -0400, Michael B. Trausch wrote:
-> (First things first, please keep my cell phone -- mike-mobile@trausch.us  
-> -- on the cc list, as I cannot easily read mail on my system since it is, 
-> more or less, crippled at the moment.)
->
-> Alright, so I have found myself in a troublesome situation.  I had a  
-> directory which I accidentally deleted (instead of an identically-named  
-> directory in *another* directory) and I need to get it back; it was a  
-> version control repository directory and contains ~150 revisions of a  
-> project I have been working on this week.  (Ironically, I was preparing 
-> to back it up today, heh.)
->
-> Anyway, is there _any_ means by which to recover files from an ext4  
-> filesystem?  The utils for ext2 filesystems don't work (not surprising),  
-> and I am wondering if there is a way to look for deleted files, knowing  
-> what their name was, and recover them if they are not yet overwritten.  I 
-> have my home directory mounted read-only at this point so as to minimize  
-> the chance of the latter, and discovered my mistake nearly immediately so 
-> I hope that the data are still intact.
+> ext4_fill_super() is no longer called by read_super(), and it is no
+> longer called with the superblock locked.  The
+> unlock_super()/lock_super() is no longer present, so this comment is
+> entirely superfluous.
+  Yes, the comment seems to be out of date.
 
-There is the program "ext3grep" which will look for older versions of
-the directory and inode table blocks in the journal.  This can work,
-but unfortunately I don't think it's been extended to understand about
-the ext4 extent data structure.
+Acked-by: Jan Kara <jack@suse.cz>
 
-						- Ted
+									Honza
+> 
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> ---
+>  fs/ext4/super.c |    8 --------
+>  1 files changed, 0 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+> index e20ff9c..e0b0c9f 100644
+> --- a/fs/ext4/super.c
+> +++ b/fs/ext4/super.c
+> @@ -2806,14 +2806,6 @@ no_journal:
+>  		goto failed_mount4;
+>  	};
+>  
+> -	/*
+> -	 * akpm: core read_super() calls in here with the superblock locked.
+> -	 * That deadlocks, because orphan cleanup needs to lock the superblock
+> -	 * in numerous places.  Here we just pop the lock - it's relatively
+> -	 * harmless, because we are now ready to accept write_super() requests,
+> -	 * and aviro says that's the only reason for hanging onto the
+> -	 * superblock lock.
+> -	 */
+>  	EXT4_SB(sb)->s_mount_state |= EXT4_ORPHAN_FS;
+>  	ext4_orphan_cleanup(sb, es);
+>  	EXT4_SB(sb)->s_mount_state &= ~EXT4_ORPHAN_FS;
+> -- 
+> 1.5.6.3
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
