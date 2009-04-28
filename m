@@ -1,52 +1,64 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH] mark buffer_head mapping preallocate area as new
-	during write_begin with delayed allocation
-Date: Tue, 28 Apr 2009 09:50:49 +0530
-Message-ID: <20090428042049.GA6520@skywalker>
-References: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1240873494.6775.8.camel@mingming-laptop>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC PATCH] Convert ext4_lock_group to use sb_bgl_lock
+Date: Mon, 27 Apr 2009 23:00:16 -0600
+Message-ID: <20090428050016.GL3209@webber.adilger.int>
+References: <1240860896-2011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: tytso@mit.edu, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+Content-Transfer-Encoding: 7BIT
+Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:35004 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752233AbZD1EVN (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 00:21:13 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp07.au.ibm.com (8.13.1/8.13.1) with ESMTP id n3S4L8FF006726
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 14:21:08 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3S4L6tV426252
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 14:21:08 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n3S4L5kY024730
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 14:21:05 +1000
-Content-Disposition: inline
-In-Reply-To: <1240873494.6775.8.camel@mingming-laptop>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:65254 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750829AbZD1FAc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 01:00:32 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n3S50SmR024660
+	for <linux-ext4@vger.kernel.org>; Mon, 27 Apr 2009 22:00:30 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
+ id <0KIS00300OFOZU00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 27 Apr 2009 22:00:28 -0700 (PDT)
+In-reply-to: <1240860896-2011-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Apr 27, 2009 at 04:04:54PM -0700, Mingming Cao wrote:
-.....
+On Apr 28, 2009  01:04 +0530, Aneesh Kumar wrote:
+> +static inline spinlock_t *ext4_group_lock(struct super_block *sb, ext4_group_t group)
+>  {
+> +	return bgl_lock_ptr(EXT4_SB(sb)->s_blockgroup_lock, group);
+> +}
+>  
+> +static inline void ext4_lock_group(struct super_block *sb,ext4_group_t group)
+> +{
+> +	spin_lock(ext4_group_lock(sb, group));
+>  }
 
-> 
-> Index: linux-2.6.28-rc6/fs/ext4/inode.c
-> ===================================================================
-> --- linux-2.6.28-rc6.orig/fs/ext4/inode.c	2009-03-12 10:21:05.000000000 -0700
-> +++ linux-2.6.28-rc6/fs/ext4/inode.c	2009-04-27 14:35:21.000000000 -0700
-> @@ -2177,7 +2177,10 @@ static int ext4_da_get_block_prep(struct
->  		set_buffer_new(bh_result);
->  		set_buffer_delay(bh_result);
->  	} else if (ret > 0) {
-> +		if (buffer_unwritten(bh_result))
-> +			set_buffer_new(bh_result);
->  		bh_result->b_size = (ret << inode->i_blkbits);
-> +		bh_result->b_bdev = inode->i_sb->s_bdev;
+I find it a bit confusing to have both ext4_group_lock() and ext4_lock_group()
+as it isn't obvious without looking at the functions which one is which.
 
+I'd rather have a function name like "ext4_group_lock_ptr()" or similar,
+which is pretty unambiguous.
 
-Updated patch to set bh_result->b_dev. I also added comments in the
-source to explain whey we need to mark buffer_head new. Also updated
-single line patch summary. I will send the update (-v2) patch.
+> -static void mb_set_bits(spinlock_t *lock, void *bm, int cur, int len)
+> +static void mb_set_bits(void *bm, int cur, int len)
 
--aneesh
+It also wouldn't be a terrible idea to make the mb_set_bits() function
+arguments match the name/order of mb_set_bit():
+
+static inline void mb_set_bit(int bit, void *addr)
+
+static void mb_set_bits(void *bm, int cur, int len)
+
+They should be "bit, addr" and "bit, addr, len", to be more consistent
+with ext4_set_bit().  Stuff for a separate patch, however.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
