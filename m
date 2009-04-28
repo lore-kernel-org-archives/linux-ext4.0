@@ -1,73 +1,73 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [PATCH 1/2] have e2fsck/problem.c verify problem.h error codes
-Date: Tue, 28 Apr 2009 13:03:03 -0600
-Message-ID: <20090428190303.GB18963@webber.adilger.int>
-References: <20090427225924.GG3209@webber.adilger.int>
- <20090428020805.GF22104@mit.edu>
+From: "Michael B. Trausch" <mbt@zest.trausch.us>
+Subject: Re: ext4 undeletion question
+Date: Tue, 28 Apr 2009 15:11:39 -0400
+Message-ID: <20090428151139.020b4c36@zest.trausch.us>
+References: <alpine.DEB.2.00.0904281037240.5262@zest.trausch.us>
+	<20090428161106.GB24043@mit.edu>
+	<20090428132609.7628940e@zest.trausch.us>
+	<87f94c370904281055s630e55adsba1e4968f782a822@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/go=WMWM7eobfHU0OW0KQ1zj";
+ protocol="application/pgp-signature"
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	mike-mobile@trausch.us
+To: Greg Freemyer <greg.freemyer@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:52830 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753866AbZD1TDV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 15:03:21 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n3SJ3JWp017743
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 12:03:19 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KIT00900R2WJV00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 28 Apr 2009 12:03:19 -0700 (PDT)
-In-reply-to: <20090428020805.GF22104@mit.edu>
+Received: from 173-15-213-186-BusName-Atlanta.hfc.comcastbusiness.net ([173.15.213.186]:48042
+	"EHLO zest.trausch.us" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1751853AbZD1TLp (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 15:11:45 -0400
+In-Reply-To: <87f94c370904281055s630e55adsba1e4968f782a822@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Apr 27, 2009  22:08 -0400, Theodore Ts'o wrote:
-> On Mon, Apr 27, 2009 at 04:59:24PM -0600, Andreas Dilger wrote:
-> > We've hit a number of cases where the error codes in problem.h have
-> > been assigned duplicate values compared to problems in our own e2fsck
-> > patches, and this can lead to confusing and difficult to find bugs
-> > in e2fsck (e.g. wrong problem messages, incorrect repair action, etc).
-> > 
-> > Attached is a test case for the problem.c file to ensure that the
-> > problem table is sorted and does not contain any duplicate values.
-> > Having the problem table sorted allows the correctness checking to be
-> > very simple, and if it ever became important for performance we could
-> > use binary searching of the problem table for the specific problem code.
-> 
-> Hmm, I wonder if we should be doing this a different way.  Maybe what
-> we should do is to have a single file, call it problem_codes.in, that
-> has a format somewhat like this:
-> 
-> DEFINE_PROBLEM(PR_1_ROOT_NO_DIR, 0x010001, "@r is not a @d.  ", 
-> 	       PROMPT_CLEAR, 0)
+--Sig_/go=WMWM7eobfHU0OW0KQ1zj
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-I was wondering the same, but that would involve a huge amount of
-code churn and it probably isn't something you'd accept from someone
-else in the end...  It would still likely be desirable to have some
-indicator of which phase the problem is related to.
+On Tue, 28 Apr 2009 13:55:07 -0400
+Greg Freemyer <greg.freemyer@gmail.com> wrote:
 
-> ... which then generates problem_code.h and problem_code.c.  That way
-> there is a single place where these things are defined, and it
-> wouldn't be that hard to create a perl script which looks for multiply
-> assigned problem assignments.
-> 
-> In the short term, we can also code up the test script much more
-> simply:
-> 
-> awk '/^#define/ {print $3}' < e2fsck/problem.h   | sort | uniq -d
+> WinHex is a commercial product for doing undeletes that supports
+> Ext2/3, ReiserFS, Reiser4, and UFS.  You need the Specialist version
+> to handle ext3.  It might handle ext4.
 
-Sure, but my patch exists now, and doesn't add any overhead to the
-runtime.  The fact that the test keeps the table sorted also allows
-the ability to do a binary search on the table, should we want to.
+Aye, it says with the full forensic version it will handle ext4 (gave
+me a dialog saying that it detected ext4, and then closed the window on
+me).
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Unfortunately, I don't have =E2=82=AC176.90 (~USD 230) to purchase it, so i=
+t's
+not going to be a viable option for me.  At least, if I understand it
+correctly, that's the price for the version that I would need.
 
+It is rather nice to see a program that not only runs under Wine well,
+but also has functionality that makes it very useful specifically for
+Linux when running under Wine.  It also mentions that there are
+unsupported flags in the superblock, so maybe support isn't 100%
+complete, but if I had the funds I'd try it anyway; I am not that great
+a low-level programmer and certainly have never mucked about with
+filesystems (other than vfat, but that really doesn't count as a
+filesystem in my book...)
+
+	--- Mike
+
+--=20
+Real quality means making sure that people are proud of the code they
+write, that they're involved and taking it personally.
+                            --- Linus Torvalds
+
+--Sig_/go=WMWM7eobfHU0OW0KQ1zj
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEARECAAYFAkn3VOsACgkQ0kE/IBnFmjB2FQCffV06KFw/j7p28IxNoA8cAfXj
+1tUAn3eQNKAh59F3e+P8lp5iqYwJrioh
+=JnCZ
+-----END PGP SIGNATURE-----
+
+--Sig_/go=WMWM7eobfHU0OW0KQ1zj--
