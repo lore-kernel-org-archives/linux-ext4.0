@@ -1,112 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [RFC PATCH] mark buffer_head mapping preallocate area as new
- during write_begin with delayed allocation
-Date: Mon, 27 Apr 2009 22:03:32 -0500
-Message-ID: <49F67204.5000108@redhat.com>
-References: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1240873494.6775.8.camel@mingming-laptop>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	tytso@mit.edu, linux-ext4@vger.kernel.org
-To: Mingming Cao <cmm@us.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2] Fix sub-block zeroing for buffered writes into unwritten extents.
+Date: Tue, 28 Apr 2009 09:43:47 +0530
+Message-ID: <1240892027-6481-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:51863 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751922AbZD1DDj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 27 Apr 2009 23:03:39 -0400
-In-Reply-To: <1240873494.6775.8.camel@mingming-laptop>
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:57683 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751350AbZD1ENz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 00:13:55 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id n3S4C0Iq014981
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 14:12:00 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3S4DrQG1089784
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 14:13:53 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n3S4DqxZ019826
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 14:13:53 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Mingming Cao wrote:
-> =E5=9C=A8 2009-04-28=E4=BA=8C=E7=9A=84 00:35 +0530=EF=BC=8CAneesh Kum=
-ar K.V=E5=86=99=E9=81=93=EF=BC=9A
->> We need to mark the  buffer_head mapping prealloc space
->> as new during write_begin. Otherwise we don't zero out the
->> page cache content properly for a partial write. This will
->> cause file corruption with preallocation.
->>
->=20
->> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
->>
->> ---
->>  fs/ext4/inode.c |    2 ++
->>  1 files changed, 2 insertions(+), 0 deletions(-)
->>
->> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
->> index c6bd6ce..c7251ec 100644
->> --- a/fs/ext4/inode.c
->> +++ b/fs/ext4/inode.c
->> @@ -2323,6 +2323,8 @@ static int ext4_da_get_block_prep(struct inode=
- *inode, sector_t iblock,
->>  		set_buffer_delay(bh_result);
->>  	} else if (ret > 0) {
->>  		bh_result->b_size =3D (ret << inode->i_blkbits);
->> +		if (buffer_unwritten(bh_result))
->> +			set_buffer_new(bh_result);
->>  		ret =3D 0;
->>  	}
->>
->=20
-> Thanks Aneesh.
->=20
-> Just to share with list, I have seen garbage content show up on a
-> preallocated but later partially written blocks. This only happens wi=
-th
-> delayed allocation. The test simply preallocate 2blocks to a new file=
-,
-> then write a few bytes to the beginning of file(less than a block), a=
-nd
-> od shows the first block the written content followed by garbage fill=
-ed
-> to the end of the first block.
->=20
-> After examing the code, we did set the buffer as new for nondelalloc,=
- as
-> the create flag passed to ext4_ext_get_blocks() is 1, while for delal=
-loc
-> case, ext4_get_blocks_prep() calling ext4_ext_get_block() with create
-> =3D0, which leads to the code path that forget to set the bh as new i=
-f the
-> block is preallocated.
->=20
-> This patch is mostly correct except forget to set the bh_result->bdev=
-,
-> which caused the fs blow out.
+We need to mark the  buffer_head mapping prealloc space
+as new during write_begin. Otherwise we don't zero out the
+page cache content properly for a partial write. This will
+cause file corruption with preallocation.
 
-Yep, I saw the oops too.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-> The updated patch fixed the problem for me.
->=20
-> Signed-off-by: Mingming Cao <cmm@us.ibm.com>
->=20
-> Index: linux-2.6.28-rc6/fs/ext4/inode.c
-> =3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=
-=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D=3D
-> --- linux-2.6.28-rc6.orig/fs/ext4/inode.c	2009-03-12 10:21:05.0000000=
-00 -0700
-> +++ linux-2.6.28-rc6/fs/ext4/inode.c	2009-04-27 14:35:21.000000000 -0=
-700
-> @@ -2177,7 +2177,10 @@ static int ext4_da_get_block_prep(struct
->  		set_buffer_new(bh_result);
->  		set_buffer_delay(bh_result);
->  	} else if (ret > 0) {
-> +		if (buffer_unwritten(bh_result))
-> +			set_buffer_new(bh_result);
->  		bh_result->b_size =3D (ret << inode->i_blkbits);
-> +		bh_result->b_bdev =3D inode->i_sb->s_bdev;
->  		ret =3D 0;
->  	}
+---
+ fs/ext4/inode.c |    8 ++++++++
+ 1 files changed, 8 insertions(+), 0 deletions(-)
 
-It may be just me, but I'd like to sort out why we now need to set
-b_bdev here just because we set it as new, and it wasn't necessary
-before...?  If it's obvious I'm not yet seeing it :)
-
--Eric
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index c6bd6ce..8dfa97a 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -2323,6 +2323,14 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 		set_buffer_delay(bh_result);
+ 	} else if (ret > 0) {
+ 		bh_result->b_size = (ret << inode->i_blkbits);
++		bh_result->b_bdev = inode->i_sb->s_bdev;
++		/*
++		 * With sub-block writes into unwritten extents
++		 * we also need to mark the buffer as new so that
++		 * the unwritten parts of the buffer gets correctly zeroed.
++		 */
++		if (buffer_unwritten(bh_result))
++			set_buffer_new(bh_result);
+ 		ret = 0;
+ 	}
+ 
+-- 
+tg: (51bec03..) preallocate_corruption (depends on: ext4_lock_group_conversion)
