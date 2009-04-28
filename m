@@ -1,96 +1,55 @@
-From: "Michael B. Trausch" <mbt@zest.trausch.us>
-Subject: Re: ext4 undeletion question
-Date: Tue, 28 Apr 2009 15:29:08 -0400
-Message-ID: <20090428152908.1e98e991@zest.trausch.us>
-References: <alpine.DEB.2.00.0904281037240.5262@zest.trausch.us>
-	<20090428161106.GB24043@mit.edu>
-	<20090428132609.7628940e@zest.trausch.us>
-	<87f94c370904281055s630e55adsba1e4968f782a822@mail.gmail.com>
-	<20090428185346.GR3209@webber.adilger.int>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [RFC PATCH] mark buffer_head mapping preallocate area as new
+ during write_begin with delayed allocation
+Date: Tue, 28 Apr 2009 14:35:56 -0500
+Message-ID: <49F75A9C.6000307@redhat.com>
+References: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1240873494.6775.8.camel@mingming-laptop> <20090428042049.GA6520@skywalker> <20090428093145.GA13719@skywalker> <20090428124821.GJ22104@mit.edu> <20090428163554.GA27670@skywalker> <20090428170047.GC24043@mit.edu> <20090428185749.GA3275@skywalker>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/o5Ky0MPd/qYtZbP4eAseWGS";
- protocol="application/pgp-signature"
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	mike-mobile@trausch.us
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-15-213-186-BusName-Atlanta.hfc.comcastbusiness.net ([173.15.213.186]:42205
-	"EHLO zest.trausch.us" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1757436AbZD1T3M (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 15:29:12 -0400
-In-Reply-To: <20090428185346.GR3209@webber.adilger.int>
+Received: from mx2.redhat.com ([66.187.237.31]:36760 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753960AbZD1TgD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 28 Apr 2009 15:36:03 -0400
+In-Reply-To: <20090428185749.GA3275@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---Sig_/o5Ky0MPd/qYtZbP4eAseWGS
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Aneesh Kumar K.V wrote:
+> On Tue, Apr 28, 2009 at 01:00:47PM -0400, Theodore Tso wrote:
+>> On Tue, Apr 28, 2009 at 10:05:54PM +0530, Aneesh Kumar K.V wrote:
+...
 
-(Andreas, sorry for the dup, forgot to hit reply-all the last time.  My
-fault.)
+>>>> The other problem seems to be in the case of a delayed allocation
+>>>> write, where we return a buffer_head which is marked new, and this
+>>>> causes block_prepare_write() to call unmap_underlying_metadata(dev, 0).
+>>> Not just that. On block allocation we are not calling
+>>> unmap_underlying_metadata(dev, blocknumber) for delayed allocated
+>>> blocks. That would imply file corruption.
+>> I don't think I'm following you .  If we write into block that was
+>> delayed allocated.  Are you saying we might get in trouble of the
+>> delayed allocation block is mmap'ed in?
+> 
+> We allocate blocks for delayed buffer during writepage. Now we need to
+> make sure after getting the blocks we drop the old buffer_head mapping
+> that we may have with this particular block attached to the block
+> device. That is done by calling unmap_underlying_metadata. Now the
+> current code doesn't call unmap_underlying_metadata for delayed
+> allocated blocks. That would mean we can see corrupt files if old
+> buffer_head mapping gets synced to disk AFTER we write the new
+> buffer_head mapping.
 
-On Tue, 28 Apr 2009 12:53:46 -0600
-Andreas Dilger <adilger@sun.com> wrote:
 
-> The good news is that ext4 usually allocates file blocks contiguously
-> so if you can find the inodes themselves in the journal you can likely
-> extract most of the data just by printing the in-inode extents to find
-> the block ranges and then dumping the file data with 'dd'.
+Talking w/ Aneesh on IRC, I don't see how we can have stray dirty
+mappings lying around for this block device unless someone is writing
+directly to the mounted block device, which I don't think is ever
+considered safe ...
 
-So, here's what my current situation is:
+I'm not quite sure what the call to __unmap_underlying_blocks() in
+mpage_da_map_blocks() is for, I guess?
 
-  * I deleted a .bzr directory which contains files and additional
-    directories.  AFAIK, directories are just "files", but exposed
-    differently to the operating system, yes?  So I should be able to,
-    if I were to find its inode, find all of its descendants, too, to
-    bring them back, right?  I don't have a directory listing from
-    before the deletion, and I presume that would make all the
-    difference in the world.  Also, I'd need to figure out which one
-    would be the correct one; I've deleted other .bzr directories (as
-    part of their directory trees) repeatedly in the past on this
-    filesystem.
-
-  * This filesystem was in fact created as ext4.  I'd attempted an
-    upgrade some time ago, but the upgrade took *ages* and so I aborted
-    it early, reformatted, and restored my home directory from a
-    tarball on the new filesystem.
-
-  * I know where in the directory tree the .bzr directory had a link,
-    obviously.  I don't know if that information is helpful or not,
-    though, unless having the inode # of the containing directory is
-    useful in some way.
-
-  * I don't know _anything_ about how journaling works, but I do know
-    that the directory was about a week old (just young enough to not
-    be on a backup; since some hardware changes were made I hadn't
-    started my hourly rsnapshot back up since I don't currently have a
-    drive to rsnapshot to---d'oh!)
-
-I'd be happy to look into options, though as I mentioned in my previous
-message, I am not a solid system-level programmer (at least in my own
-personal opinion).  I could probably figure it out, given enough time,
-but when it comes to C (or C++) I just plain _suck_.  I am trying to
-improve that, though.
-
-	--- Mike
-
---=20
-I don't really know that anybody's proven that a random collection of
-people doing their own thing actually creates value.
-                            --- Steve Ballmer, 2007
-
---Sig_/o5Ky0MPd/qYtZbP4eAseWGS
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkn3WQQACgkQ0kE/IBnFmjAL2wCeM739yybTD0r9SiTd5xfRaCF2
-/zYAnRLvWbFdQQNtGTGdiACvB8NUjqh5
-=Nnb1
------END PGP SIGNATURE-----
-
---Sig_/o5Ky0MPd/qYtZbP4eAseWGS--
+-Eric
