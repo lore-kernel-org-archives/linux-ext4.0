@@ -1,82 +1,223 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC PATCH] mark buffer_head mapping preallocate area as new
-	during write_begin with delayed allocation
-Date: Wed, 29 Apr 2009 00:27:49 +0530
-Message-ID: <20090428185749.GA3275@skywalker>
-References: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1240873494.6775.8.camel@mingming-laptop> <20090428042049.GA6520@skywalker> <20090428093145.GA13719@skywalker> <20090428124821.GJ22104@mit.edu> <20090428163554.GA27670@skywalker> <20090428170047.GC24043@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: [PATCH 2/2] cleanup whitespace in problem.c and problem.h
+Date: Tue, 28 Apr 2009 12:59:07 -0600
+Message-ID: <20090428185907.GS3209@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mingming Cao <cmm@us.ibm.com>, sandeen@redhat.com,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp09.au.ibm.com ([202.81.31.142]:57390 "EHLO
-	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751538AbZD1S6B (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 14:58:01 -0400
-Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp09.au.ibm.com (8.13.1/8.13.1) with ESMTP id n3SIYF8T024615
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 14:34:15 -0400
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3SIvw2V933892
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 04:57:58 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n3SIvvNu031040
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 04:57:57 +1000
-Content-Disposition: inline
-In-Reply-To: <20090428170047.GC24043@mit.edu>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:52624 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751873AbZD1S7U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 14:59:20 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n3SIxJJw017197
+	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 11:59:20 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
+ id <0KIT00800RAZFI00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
+ 28 Apr 2009 11:59:19 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Apr 28, 2009 at 01:00:47PM -0400, Theodore Tso wrote:
-> On Tue, Apr 28, 2009 at 10:05:54PM +0530, Aneesh Kumar K.V wrote:
-> > On Tue, Apr 28, 2009 at 08:48:21AM -0400, Theodore Tso wrote:
-> > > On Tue, Apr 28, 2009 at 03:01:45PM +0530, Aneesh Kumar K.V wrote:
-> > > > 
-> > > > Looking at the source again i guess setting just b_dev is not enough.
-> > > > unmap_underlying_metadata looks at the mapping block number, which we
-> > > > don't have in case on unwritten buffer_head. How about the below patch ?
-> > > > It involve vfs changes. But i guess it is correct with respect to the
-> > > > meaning of BH_New (Disk mapping was newly created by get_block). I guess
-> > > > BH_New implies BH_Mapped.
-> > > 
-> > > Argh.  So we have multiple problems going on here.  One is the
-> > > original problem, namely that of a partial write into an preallocated
-> > > block can leave garbage behind in that unitialized block.
-> > > 
-> > > The other problem seems to be in the case of a delayed allocation
-> > > write, where we return a buffer_head which is marked new, and this
-> > > causes block_prepare_write() to call unmap_underlying_metadata(dev, 0).
-> > 
-> > Not just that. On block allocation we are not calling
-> > unmap_underlying_metadata(dev, blocknumber) for delayed allocated
-> > blocks. That would imply file corruption.
-> 
-> I don't think I'm following you .  If we write into block that was
-> delayed allocated.  Are you saying we might get in trouble of the
-> delayed allocation block is mmap'ed in?
+Cleanup whitespace in the problem.h and problem.c files.  Removes a
+bunch of places where tabs follow spaces, whitespace on empty lines, etc.
+I didn't reformat the indenting of the entire problem.h error codes,
+but there is some room for doing this...
 
-We allocate blocks for delayed buffer during writepage. Now we need to
-make sure after getting the blocks we drop the old buffer_head mapping
-that we may have with this particular block attached to the block
-device. That is done by calling unmap_underlying_metadata. Now the
-current code doesn't call unmap_underlying_metadata for delayed
-allocated blocks. That would mean we can see corrupt files if old
-buffer_head mapping gets synced to disk AFTER we write the new
-buffer_head mapping.
+Signed-off-by: Andreas Dilger <adilger@sun.com>
 
-> 
-> > The original reported problem is something really easy to reproduce. So
-> > i guess if we can have a ext4 local change that would fix the original
-> > problem that would be good. Considering that map_bh(bdev, 0) didn't
-> > create any issues till now, what we can do is to do a similar update
-> > for unwritten_buffer in ext4_da_block_write_prep. That's the v2 version
-> > of the patch with the below addition
-> > 	bh_result->b_blocknr = 0;
-> 
-> OK, I can put togehter a patch to do this.  Whatever we do, I think
-> we're going to need a *lot* of testing.
+Index: e2fsprogs-1.41.5/e2fsck/problem.c
+===================================================================
+--- e2fsprogs-1.41.5.orig/e2fsck/problem.c
++++ e2fsprogs-1.41.5/e2fsck/problem.c
+@@ -26,16 +26,16 @@
+ #define PROMPT_RELOCATE	3
+ #define PROMPT_ALLOCATE 4
+ #define PROMPT_EXPAND	5
+-#define PROMPT_CONNECT 	6
++#define PROMPT_CONNECT	6
+ #define PROMPT_CREATE	7
+ #define PROMPT_SALVAGE	8
+ #define PROMPT_TRUNCATE	9
+ #define PROMPT_CLEAR_INODE 10
+-#define PROMPT_ABORT 	11
+-#define PROMPT_SPLIT 	12
++#define PROMPT_ABORT	11
++#define PROMPT_SPLIT	12
+ #define PROMPT_CONTINUE	13
+ #define PROMPT_CLONE	14
+-#define PROMPT_DELETE 	15
++#define PROMPT_DELETE	15
+ #define PROMPT_SUPPRESS 16
+ #define PROMPT_UNLINK	17
+ #define PROMPT_CLEAR_HTREE 18
+@@ -1033,22 +1033,22 @@ static struct e2fsck_problem problem_tab
+ 	  N_("i_faddr @F %IF, @s zero.\n"),
+ 	  PROMPT_CLEAR, 0 },
+ 
+-  	/* i_file_acl should be zero */
++	/* i_file_acl should be zero */
+ 	{ PR_2_FILE_ACL_ZERO,
+ 	  N_("i_file_acl @F %If, @s zero.\n"),
+ 	  PROMPT_CLEAR, 0 },
+ 
+-  	/* i_dir_acl should be zero */
++	/* i_dir_acl should be zero */
+ 	{ PR_2_DIR_ACL_ZERO,
+ 	  N_("i_dir_acl @F %Id, @s zero.\n"),
+ 	  PROMPT_CLEAR, 0 },
+ 
+-  	/* i_frag should be zero */
++	/* i_frag should be zero */
+ 	{ PR_2_FRAG_ZERO,
+ 	  N_("i_frag @F %N, @s zero.\n"),
+ 	  PROMPT_CLEAR, 0 },
+ 
+-  	/* i_fsize should be zero */
++	/* i_fsize should be zero */
+ 	{ PR_2_FSIZE_ZERO,
+ 	  N_("i_fsize @F %N, @s zero.\n"),
+ 	  PROMPT_CLEAR, 0 },
+@@ -1183,7 +1183,7 @@ static struct e2fsck_problem problem_tab
+ 	  N_("Symlink %Q (@i #%i) is @n.\n"),
+ 	  PROMPT_CLEAR, 0 },
+ 
+-  	/* i_file_acl (extended attribute block) is bad */
++	/* i_file_acl (extended attribute block) is bad */
+ 	{ PR_2_FILE_ACL_BAD,
+ 	  N_("@a @b @F @n (%If).\n"),
+ 	  PROMPT_CLEAR, 0 },
+@@ -1267,7 +1267,7 @@ static struct e2fsck_problem problem_tab
+ 	  N_("Duplicate @e '%Dn' found.\n\tMarking %p (%i) to be rebuilt.\n\n"),
+ 	  PROMPT_NONE, 0 },
+ 
+-  	/* i_blocks_hi should be zero */
++	/* i_blocks_hi should be zero */
+ 	{ PR_2_BLOCKS_HI_ZERO,
+ 	  N_("i_blocks_hi @F %N, @s zero.\n"),
+ 	  PROMPT_CLEAR, 0 },
+@@ -1286,7 +1286,7 @@ static struct e2fsck_problem problem_tab
+ 	  N_("@E references @i %Di found in @g %g's unused inodes area.\n"),
+ 	  PROMPT_FIX, PR_PREEN_OK },
+ 
+-  	/* i_blocks_hi should be zero */
++	/* i_blocks_hi should be zero */
+ 	{ PR_2_I_FILE_ACL_HI_ZERO,
+ 	  N_("i_file_acl_hi @F %N, @s zero.\n"),
+ 	  PROMPT_CLEAR, 0 },
+@@ -1636,7 +1636,7 @@ static struct latch_descr pr_latch_info[
+ 
+ static struct e2fsck_problem *find_problem(problem_t code)
+ {
+-	int 	i;
++	int	i;
+ 
+ 	for (i=0; problem_table[i].e2p_code; i++) {
+ 		if (problem_table[i].e2p_code == code)
+@@ -1721,7 +1744,7 @@ int fix_problem(e2fsck_t ctx, problem_t 
+ 	struct e2fsck_problem *ptr;
+ 	struct latch_descr *ldesc = 0;
+ 	const char *message;
+-	int 		def_yn, answer, ans;
++	int		def_yn, answer, ans;
+ 	int		print_answer = 0;
+ 	int		suppress = 0;
+ 
+Index: e2fsprogs-1.41.5/e2fsck/problem.h
+===================================================================
+--- e2fsprogs-1.41.5.orig/e2fsck/problem.h
++++ e2fsprogs-1.41.5/e2fsck/problem.h
+@@ -146,7 +146,7 @@ struct problem_context {
+ #define PR_0_ORPHAN_ILLEGAL_HEAD_INODE		0x000023
+ 
+ /* Illegal inode in orphaned inode list */
+-#define PR_0_ORPHAN_ILLEGAL_INODE 		0x000024
++#define PR_0_ORPHAN_ILLEGAL_INODE		0x000024
+ 
+ /* Journal has unsupported read-only feature - abort */
+ #define PR_0_JOURNAL_UNSUPP_ROCOMPAT		0x000025
+@@ -273,10 +273,10 @@ struct problem_context {
+ #define PR_1_INODE_BLOCK_LATCH		0x010010
+ 
+ /* Too many bad blocks in inode */
+-#define	PR_1_TOO_MANY_BAD_BLOCKS 	0x010011
++#define	PR_1_TOO_MANY_BAD_BLOCKS	0x010011
+ 
+ /* Illegal block number in bad block inode */
+-#define PR_1_BB_ILLEGAL_BLOCK_NUM 	0x010012
++#define PR_1_BB_ILLEGAL_BLOCK_NUM	0x010012
+ 
+ /* Bad block inode has illegal blocks (latch question) */
+ #define PR_1_INODE_BBLOCK_LATCH		0x010013
+@@ -860,7 +860,7 @@ struct problem_context {
+ #define PR_3A_OPTIMIZE_DIR_ERR		0x031002
+ 
+ /* Rehashing dir header */
+-#define PR_3A_OPTIMIZE_DIR_HEADER		0x031003
++#define PR_3A_OPTIMIZE_DIR_HEADER	0x031003
+ 
+ /* Rehashing directory %d */
+ #define PR_3A_OPTIMIZE_DIR		0x031004
+@@ -873,19 +873,19 @@ struct problem_context {
+  */
+ 
+ /* Pass 4: Checking reference counts */
+-#define PR_4_PASS_HEADER	0x040000
++#define PR_4_PASS_HEADER		0x040000
+ 
+ /* Unattached zero-length inode */
+-#define PR_4_ZERO_LEN_INODE	0x040001
++#define PR_4_ZERO_LEN_INODE		0x040001
+ 
+ /* Unattached inode */
+-#define PR_4_UNATTACHED_INODE	0x040002
++#define PR_4_UNATTACHED_INODE		0x040002
+ 
+ /* Inode ref count wrong */
+-#define PR_4_BAD_REF_COUNT	0x040003
++#define PR_4_BAD_REF_COUNT		0x040003
+ 
+ /* Inconsistent inode count information cached */
+-#define PR_4_INCONSISTENT_COUNT	0x040004
++#define PR_4_INCONSISTENT_COUNT		0x040004
+ 
+ /*
+  * Pass 5 errors
+@@ -901,7 +901,7 @@ struct problem_context {
+ #define PR_5_BLOCK_BMAP_PADDING		0x050002
+ 
+ /* Block bitmap differences header */
+-#define PR_5_BLOCK_BITMAP_HEADER 	0x050003
++#define PR_5_BLOCK_BITMAP_HEADER	0x050003
+ 
+ /* Block not used, but marked in bitmap */
+ #define PR_5_BLOCK_UNUSED		0x050004
+@@ -931,7 +931,7 @@ struct problem_context {
+ #define PR_5_FREE_DIR_COUNT_GROUP	0x05000C
+ 
+ /* Free inodes count wrong */
+-#define PR_5_FREE_INODE_COUNT	0x05000D
++#define PR_5_FREE_INODE_COUNT		0x05000D
+ 
+ /* Free blocks count for group wrong */
+ #define PR_5_FREE_BLOCK_COUNT_GROUP	0x05000E
+@@ -982,7 +982,7 @@ struct problem_context {
+ int end_problem_latch(e2fsck_t ctx, int mask);
+ int set_latch_flags(int mask, int setflags, int clearflags);
+ int get_latch_flags(int mask, int *value);
+-void clear_problem_context(struct problem_context *ctx);
++void clear_problem_context(struct problem_context *pctx);
+ 
+ /* message.c */
+ void print_e2fsck_message(e2fsck_t ctx, const char *msg,
 
-I just sent -v3 version 
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
--aneesh
