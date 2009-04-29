@@ -1,7 +1,7 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 1/4] vfs: Add better VFS support for page_mkwrite when blocksize < pagesize
-Date: Wed, 29 Apr 2009 12:02:47 +0200
-Message-ID: <1240999370-27502-2-git-send-email-jack@suse.cz>
+Subject: [PATCH 4/4] ext3: Allocate space for mmaped file on page fault
+Date: Wed, 29 Apr 2009 12:02:50 +0200
+Message-ID: <1240999370-27502-5-git-send-email-jack@suse.cz>
 References: <1240999370-27502-1-git-send-email-jack@suse.cz>
 Cc: linux-fsdevel@vger.kernel.org, npiggin@suse.de,
 	Jan Kara <jack@suse.cz>
@@ -11,328 +11,336 @@ In-Reply-To: <1240999370-27502-1-git-send-email-jack@suse.cz>
 Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-page_mkwrite() is meant to be used by filesystems to allocate blocks under a
-page which is becoming writeably mmapped in some process address space. This
-allows a filesystem to return a page fault if there is not enough space
-available, user exceeds quota or similar problem happens, rather than silently
-discarding data later when writepage is called.
-
-On filesystems where blocksize < pagesize the situation is more complicated.
-Think for example that blocksize = 1024, pagesize = 4096 and a process does:
-  ftruncate(fd, 0);
-  pwrite(fd, buf, 1024, 0);
-  map = mmap(NULL, 4096, PROT_WRITE, MAP_SHARED, fd, 0);
-  map[0] = 'a';  ----> page_mkwrite() for index 0 is called
-  ftruncate(fd, 10000); /* or even pwrite(fd, buf, 1, 10000) */
-  fsync(fd); ----> writepage() for index 0 is called
-
-At the moment page_mkwrite() is called, filesystem can allocate only one block
-for the page because i_size == 1024. Otherwise it would create blocks beyond
-i_size which is generally undesirable. But later at writepage() time, we would
-like to have blocks allocated for the whole page (and in principle we have to
-allocate them because user could have filled the page with data after the
-second ftruncate()). This patch introduces a framework which allows filesystems
-to handle this with a reasonable effort.
-
-The idea is following: Before we extend i_size, we obtain a special lock blocking
-page_mkwrite() on the page straddling i_size. Then we writeprotect the page,
-change i_size and unlock the special lock. This way, page_mkwrite() is called for
-a page each time a number of blocks needed to be allocated for a page increases.
+So far we've allocated space at ->writepage() time. This has the disadvantage
+that when we hit ENOSPC or other error, we cannot do much - either throw
+away the data or keep the page indefinitely (and loose the data on reboot).
+So allocate space already when a page is faulted in.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/buffer.c                 |  130 +++++++++++++++++++++++++++++++++++++++++++
- include/linux/buffer_head.h |    4 +
- include/linux/fs.h          |   11 +++-
- mm/filemap.c                |   10 +++-
- mm/memory.c                 |    2 +-
- 5 files changed, 153 insertions(+), 4 deletions(-)
+ fs/ext3/file.c          |   19 ++++-
+ fs/ext3/inode.c         |  205 +++++++++++++++++++----------------------------
+ include/linux/ext3_fs.h |    1 +
+ 3 files changed, 103 insertions(+), 122 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index b3e5be7..58e0c32 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -40,6 +40,7 @@
- #include <linux/cpu.h>
- #include <linux/bitops.h>
- #include <linux/mpage.h>
-+#include <linux/rmap.h>
- #include <linux/bit_spinlock.h>
- 
- static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
-@@ -1970,9 +1971,11 @@ int block_write_begin(struct file *file, struct address_space *mapping,
- 	page = *pagep;
- 	if (page == NULL) {
- 		ownpage = 1;
-+		block_lock_hole_extend(inode, pos);
- 		page = grab_cache_page_write_begin(mapping, index, flags);
- 		if (!page) {
- 			status = -ENOMEM;
-+			block_unlock_hole_extend(inode);
- 			goto out;
- 		}
- 		*pagep = page;
-@@ -1987,6 +1990,7 @@ int block_write_begin(struct file *file, struct address_space *mapping,
- 			unlock_page(page);
- 			page_cache_release(page);
- 			*pagep = NULL;
-+			block_unlock_hole_extend(inode);
- 
- 			/*
- 			 * prepare_write() may have instantiated a few blocks
-@@ -2062,6 +2066,7 @@ int generic_write_end(struct file *file, struct address_space *mapping,
- 
- 	unlock_page(page);
- 	page_cache_release(page);
-+	block_unlock_hole_extend(inode);
- 
- 	/*
- 	 * Don't mark the inode dirty under page lock. First, it unnecessarily
-@@ -2368,6 +2373,124 @@ int block_commit_write(struct page *page, unsigned from, unsigned to)
+diff --git a/fs/ext3/file.c b/fs/ext3/file.c
+index 5b49704..a7dce9d 100644
+--- a/fs/ext3/file.c
++++ b/fs/ext3/file.c
+@@ -110,6 +110,23 @@ force_commit:
+ 	return ret;
  }
  
- /*
-+ * Lock inode with I_HOLE_EXTEND if the write is going to create a hole
-+ * under a mmapped page. Also mark the page RO so that page_mkwrite()
-+ * is called on the nearest write access to the page.
-+ *
-+ * @pos is offset to which write/truncate is happenning.
-+ *
-+ * Returns 1 if the lock has been acquired.
-+ */
-+int block_lock_hole_extend(struct inode *inode, loff_t pos)
++static struct vm_operations_struct ext3_file_vm_ops = {
++	.fault		= filemap_fault,
++	.page_mkwrite	= ext3_page_mkwrite,
++};
++
++static int ext3_file_mmap(struct file *file, struct vm_area_struct *vma)
 +{
-+	int bsize = 1 << inode->i_blkbits;
-+	loff_t rounded_i_size;
-+	struct page *page;
-+	pgoff_t index;
++	struct address_space *mapping = file->f_mapping;
 +
-+	/* Optimize for common case */
-+	if (PAGE_CACHE_SIZE == bsize)
-+		return 0;
-+	/* Currently last page will not have any hole block created? */
-+	rounded_i_size = (inode->i_size + bsize - 1) & ~bsize;
-+	pos = pos & ~bsize;
-+	if (pos <= rounded_i_size || !(rounded_i_size & (PAGE_CACHE_SIZE - 1)))
-+		return 0;
-+	/*
-+	 * Check the mutex here so that we don't warn on things like blockdev
-+	 * writes which have different locking rules...
-+	 */
-+	WARN_ON(!mutex_is_locked(&inode->i_mutex));
-+	spin_lock(&inode_lock);
-+	/*
-+	 * From now on, block_page_mkwrite() will block on the page straddling
-+	 * i_size. Note that the page on which it blocks changes with the
-+	 * change of i_size but that is fine since when new i_size is written
-+	 * blocks for the hole will be allocated.
-+	 */
-+	inode->i_state |= I_HOLE_EXTEND;
-+	spin_unlock(&inode_lock);
-+
-+	/*
-+	 * Make sure page_mkwrite() is called on this page before
-+	 * user is able to write any data beyond current i_size via
-+	 * mmap.
-+	 *
-+	 * See clear_page_dirty_for_io() for details why set_page_dirty()
-+	 * is needed.
-+	 */
-+	index = inode->i_size >> PAGE_CACHE_SHIFT;
-+	page = find_lock_page(inode->i_mapping, index);
-+	if (!page)
-+		return 1;
-+	if (page_mkclean(page))
-+		set_page_dirty(page);
-+	unlock_page(page);
-+	page_cache_release(page);
-+	return 1;
++	if (!mapping->a_ops->readpage)
++		return -ENOEXEC;
++	file_accessed(file);
++	vma->vm_ops = &ext3_file_vm_ops;
++	vma->vm_flags |= VM_CAN_NONLINEAR;
++	return 0;
 +}
-+EXPORT_SYMBOL(block_lock_hole_extend);
 +
-+/* New i_size creating hole has been written, unlock the inode */
-+void block_unlock_hole_extend(struct inode *inode)
-+{
-+	/*
-+	 * We want to clear the flag we could have set previously. Noone else
-+	 * can change the flag so lockless read is reliable.
-+	 */
-+	if (inode->i_state & I_HOLE_EXTEND) {
-+		spin_lock(&inode_lock);
-+		inode->i_state &= ~I_HOLE_EXTEND;
-+		spin_unlock(&inode_lock);
-+		/* Prevent speculative execution through spin_unlock */
-+		smp_mb();
-+		wake_up_bit(&inode->i_state, __I_HOLE_EXTEND);
-+	}
-+}
-+EXPORT_SYMBOL(block_unlock_hole_extend);
-+
-+void block_extend_i_size(struct inode *inode, loff_t pos, loff_t len)
-+{
-+	int locked;
-+
-+	locked = block_lock_hole_extend(inode, pos);
-+	i_size_write(inode, pos + len);
-+	if (locked)
-+		block_unlock_hole_extend(inode);
-+}
-+EXPORT_SYMBOL(block_extend_i_size);
-+
-+int block_wait_on_hole_extend(struct inode *inode, loff_t pos)
-+{
-+	loff_t size;
-+	int ret = 0;
-+
-+restart:
-+	size = i_size_read(inode);
-+	if (pos > size)
-+		return -EINVAL;
-+	if (pos + PAGE_CACHE_SIZE < size)
-+		return ret;
-+	/*
-+	 * This page contains EOF; make sure we see i_state from the moment
-+	 * after page table modification
-+	 */
-+	smp_rmb();
-+	if (inode->i_state & I_HOLE_EXTEND) {
-+		wait_queue_head_t *wqh;
-+		DEFINE_WAIT_BIT(wqb, &inode->i_state, __I_HOLE_EXTEND);
-+
-+		printk("Waiting for extend to finish (%lu).\n", (unsigned long)pos);
-+		wqh = bit_waitqueue(&inode->i_state, __I_HOLE_EXTEND);
-+		__wait_on_bit(wqh, &wqb, inode_wait, TASK_UNINTERRUPTIBLE);
-+		ret = 1;
-+		goto restart;
-+	}
-+	return ret;
-+}
-+EXPORT_SYMBOL(block_wait_on_hole_extend);
-+
-+/*
-  * block_page_mkwrite() is not allowed to change the file size as it gets
-  * called from a page fault handler when a page is first dirtied. Hence we must
-  * be careful to check for EOF conditions here. We set the page up correctly
-@@ -2392,6 +2515,13 @@ block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
- 	loff_t size;
- 	int ret = VM_FAULT_NOPAGE; /* make the VM retry the fault */
+ const struct file_operations ext3_file_operations = {
+ 	.llseek		= generic_file_llseek,
+ 	.read		= do_sync_read,
+@@ -120,7 +137,7 @@ const struct file_operations ext3_file_operations = {
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext3_compat_ioctl,
+ #endif
+-	.mmap		= generic_file_mmap,
++	.mmap		= ext3_file_mmap,
+ 	.open		= generic_file_open,
+ 	.release	= ext3_release_file,
+ 	.fsync		= ext3_sync_file,
+diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
+index fcfa243..bfed950 100644
+--- a/fs/ext3/inode.c
++++ b/fs/ext3/inode.c
+@@ -1431,18 +1431,6 @@ static sector_t ext3_bmap(struct address_space *mapping, sector_t block)
+ 	return generic_block_bmap(mapping,block,ext3_get_block);
+ }
  
+-static int bget_one(handle_t *handle, struct buffer_head *bh)
+-{
+-	get_bh(bh);
+-	return 0;
+-}
+-
+-static int bput_one(handle_t *handle, struct buffer_head *bh)
+-{
+-	put_bh(bh);
+-	return 0;
+-}
+-
+ static int buffer_unmapped(handle_t *handle, struct buffer_head *bh)
+ {
+ 	return !buffer_mapped(bh);
+@@ -1494,125 +1482,25 @@ static int buffer_unmapped(handle_t *handle, struct buffer_head *bh)
+  *   We'll probably need that anyway for journalling writepage() output.
+  *
+  * We don't honour synchronous mounts for writepage().  That would be
+- * disastrous.  Any write() or metadata operation will sync the fs for
++ * disastrous. Any write() or metadata operation will sync the fs for
+  * us.
+  *
+- * AKPM2: if all the page's buffers are mapped to disk and !data=journal,
+- * we don't need to open a transaction here.
++ * Note, even though we try, we *may* end up allocating blocks here because
++ * page_mkwrite() has not allocated blocks yet but dirty buffers were created
++ * under the whole page, not just the part inside old i_size. We could just
++ * ignore writing such buffers but it would be harder to avoid it then just
++ * do it...
+  */
+-static int ext3_ordered_writepage(struct page *page,
++static int ext3_common_writepage(struct page *page,
+ 				struct writeback_control *wbc)
+ {
+ 	struct inode *inode = page->mapping->host;
+-	struct buffer_head *page_bufs;
+-	handle_t *handle = NULL;
+ 	int ret = 0;
+-	int err;
+-
+-	J_ASSERT(PageLocked(page));
+-
+-	/*
+-	 * We give up here if we're reentered, because it might be for a
+-	 * different filesystem.
+-	 */
+-	if (ext3_journal_current_handle())
+-		goto out_fail;
+-
+-	if (!page_has_buffers(page)) {
+-		create_empty_buffers(page, inode->i_sb->s_blocksize,
+-				(1 << BH_Dirty)|(1 << BH_Uptodate));
+-		page_bufs = page_buffers(page);
+-	} else {
+-		page_bufs = page_buffers(page);
+-		if (!walk_page_buffers(NULL, page_bufs, 0, PAGE_CACHE_SIZE,
+-				       NULL, buffer_unmapped)) {
+-			/* Provide NULL get_block() to catch bugs if buffers
+-			 * weren't really mapped */
+-			return block_write_full_page(page, NULL, wbc);
+-		}
+-	}
+-	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+-
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto out_fail;
+-	}
+-
+-	walk_page_buffers(handle, page_bufs, 0,
+-			PAGE_CACHE_SIZE, NULL, bget_one);
+-
+-	ret = block_write_full_page(page, ext3_get_block, wbc);
+-
+-	/*
+-	 * The page can become unlocked at any point now, and
+-	 * truncate can then come in and change things.  So we
+-	 * can't touch *page from now on.  But *page_bufs is
+-	 * safe due to elevated refcount.
+-	 */
+-
+-	/*
+-	 * And attach them to the current transaction.  But only if
+-	 * block_write_full_page() succeeded.  Otherwise they are unmapped,
+-	 * and generally junk.
+-	 */
+-	if (ret == 0) {
+-		err = walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE,
+-					NULL, journal_dirty_data_fn);
+-		if (!ret)
+-			ret = err;
+-	}
+-	walk_page_buffers(handle, page_bufs, 0,
+-			PAGE_CACHE_SIZE, NULL, bput_one);
+-	err = ext3_journal_stop(handle);
+-	if (!ret)
+-		ret = err;
+-	return ret;
+-
+-out_fail:
+-	redirty_page_for_writepage(wbc, page);
+-	unlock_page(page);
+-	return ret;
+-}
+-
+-static int ext3_writeback_writepage(struct page *page,
+-				struct writeback_control *wbc)
+-{
+-	struct inode *inode = page->mapping->host;
+-	handle_t *handle = NULL;
+-	int ret = 0;
+-	int err;
+-
+-	if (ext3_journal_current_handle())
+-		goto out_fail;
+-
+-	if (page_has_buffers(page)) {
+-		if (!walk_page_buffers(NULL, page_buffers(page), 0,
+-				      PAGE_CACHE_SIZE, NULL, buffer_unmapped)) {
+-			/* Provide NULL get_block() to catch bugs if buffers
+-			 * weren't really mapped */
+-			return block_write_full_page(page, NULL, wbc);
+-		}
+-	}
+-
+-	handle = ext3_journal_start(inode, ext3_writepage_trans_blocks(inode));
+-	if (IS_ERR(handle)) {
+-		ret = PTR_ERR(handle);
+-		goto out_fail;
+-	}
+ 
+ 	if (test_opt(inode->i_sb, NOBH) && ext3_should_writeback_data(inode))
+ 		ret = nobh_writepage(page, ext3_get_block, wbc);
+ 	else
+ 		ret = block_write_full_page(page, ext3_get_block, wbc);
+-
+-	err = ext3_journal_stop(handle);
+-	if (!ret)
+-		ret = err;
+-	return ret;
+-
+-out_fail:
+-	redirty_page_for_writepage(wbc, page);
+-	unlock_page(page);
+ 	return ret;
+ }
+ 
+@@ -1793,6 +1681,78 @@ out:
+ 	return ret;
+ }
+ 
++int ext3_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
++{
++	struct page *page = vmf->page;
++	struct file *file = vma->vm_file;
++	struct address_space *mapping = file->f_mapping;
++	struct inode *inode = file->f_path.dentry->d_inode;
++	int ret = VM_FAULT_NOPAGE;
++	loff_t size;
++	int len;
++	void *fsdata;
++
 +	block_wait_on_hole_extend(inode, page_offset(page));
 +	/*
-+	 * From this moment on a write creating a hole can happen
-+	 * without us waiting for it. But because it writeprotects
-+	 * the page, user cannot really write to the page until next
-+	 * page_mkwrite() is called. And that one will wait.
++	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
++	 * get i_mutex because we are already holding mmap_sem.
 +	 */
- 	lock_page(page);
- 	size = i_size_read(inode);
- 	if ((page->mapping != inode->i_mapping) ||
-diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
-index 16ed028..56a0162 100644
---- a/include/linux/buffer_head.h
-+++ b/include/linux/buffer_head.h
-@@ -219,6 +219,10 @@ int cont_write_begin(struct file *, struct address_space *, loff_t,
- 			get_block_t *, loff_t *);
- int generic_cont_expand_simple(struct inode *inode, loff_t size);
- int block_commit_write(struct page *page, unsigned from, unsigned to);
-+int block_lock_hole_extend(struct inode *inode, loff_t pos);
-+void block_unlock_hole_extend(struct inode *inode);
-+int block_wait_on_hole_extend(struct inode *inode, loff_t pos);
-+void block_extend_i_size(struct inode *inode, loff_t pos, loff_t len);
- int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
- 				get_block_t get_block);
- void block_sync_page(struct page *);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 5bed436..a458477 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -580,7 +580,7 @@ struct address_space_operations {
- 	int (*write_end)(struct file *, struct address_space *mapping,
- 				loff_t pos, unsigned len, unsigned copied,
- 				struct page *page, void *fsdata);
--
-+	void (*extend_i_size)(struct inode *, loff_t pos, loff_t len);
- 	/* Unfortunately this kludge is needed for FIBMAP. Don't use it */
- 	sector_t (*bmap)(struct address_space *, sector_t);
- 	void (*invalidatepage) (struct page *, unsigned long);
-@@ -597,6 +597,8 @@ struct address_space_operations {
- 					unsigned long);
- };
- 
-+void do_extend_i_size(struct inode *inode, loff_t pos, loff_t len);
++	down_read(&inode->i_alloc_sem);
++	size = i_size_read(inode);
++	if ((page->mapping != inode->i_mapping) ||
++	    (page_offset(page) > size)) {
++		/* page got truncated out from underneath us */
++		goto out_unlock;
++	}
 +
- /*
-  * pagecache_write_begin/pagecache_write_end must be used by general code
-  * to write into the pagecache.
-@@ -1590,7 +1592,8 @@ struct super_operations {
-  * until that flag is cleared.  I_WILL_FREE, I_FREEING and I_CLEAR are set at
-  * various stages of removing an inode.
-  *
-- * Two bits are used for locking and completion notification, I_LOCK and I_SYNC.
-+ * Three bits are used for locking and completion notification, I_LOCK,
-+ * I_HOLE_EXTEND and I_SYNC.
-  *
-  * I_DIRTY_SYNC		Inode is dirty, but doesn't have to be written on
-  *			fdatasync().  i_atime is the usual cause.
-@@ -1628,6 +1631,8 @@ struct super_operations {
-  *			of inode dirty data.  Having a separate lock for this
-  *			purpose reduces latency and prevents some filesystem-
-  *			specific deadlocks.
-+ * I_HOLE_EXTEND	A lock synchronizing extension of a file which creates
-+ *			a hole under a mmapped page with page_mkwrite().
-  *
-  * Q: What is the difference between I_WILL_FREE and I_FREEING?
-  * Q: igrab() only checks on (I_FREEING|I_WILL_FREE).  Should it also check on
-@@ -1644,6 +1649,8 @@ struct super_operations {
- #define I_LOCK			(1 << __I_LOCK)
- #define __I_SYNC		8
- #define I_SYNC			(1 << __I_SYNC)
-+#define __I_HOLE_EXTEND		9
-+#define I_HOLE_EXTEND		(1 << __I_HOLE_EXTEND)
- 
- #define I_DIRTY (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES)
- 
-diff --git a/mm/filemap.c b/mm/filemap.c
-index 379ff0b..a227174 100644
---- a/mm/filemap.c
-+++ b/mm/filemap.c
-@@ -2079,6 +2079,14 @@ int pagecache_write_end(struct file *file, struct address_space *mapping,
- }
- EXPORT_SYMBOL(pagecache_write_end);
- 
-+void do_extend_i_size(struct inode *inode, loff_t pos, loff_t len)
-+{
-+	if (inode->i_mapping->a_ops->extend_i_size)
-+		inode->i_mapping->a_ops->extend_i_size(inode, pos, len);
++	/* page is wholly or partially inside EOF */
++	if (((page->index + 1) << PAGE_CACHE_SHIFT) > size)
++		len = size & ~PAGE_CACHE_MASK;
 +	else
-+		i_size_write(inode, pos + len);
++		len = PAGE_CACHE_SIZE;
++
++	/*
++	 * Check for the common case that everything is already mapped. We
++	 * have to get the page lock so that buffers cannot be released
++	 * under us.
++	 */
++	lock_page(page);
++	if (page_has_buffers(page)) {
++		if (!walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
++				       buffer_unmapped)) {
++			unlock_page(page);
++			ret = 0;
++			goto out_unlock;
++		}
++	}
++	unlock_page(page);
++
++	/*
++	 * OK, we may need to fill the hole... Do write_begin write_end to do
++	 * block allocation/reservation. We are not holding inode.i_mutex
++	 * here. That allows parallel write_begin, write_end call. lock_page
++	 * prevent this from happening on the same page though.
++	 */
++	ret = mapping->a_ops->write_begin(file, mapping, page_offset(page),
++			len, AOP_FLAG_UNINTERRUPTIBLE, &page, &fsdata);
++	if (ret < 0)
++		goto out_unlock;
++	ret = mapping->a_ops->write_end(file, mapping, page_offset(page),
++			len, len, page, fsdata);
++	if (ret < 0)
++		goto out_unlock;
++	ret = 0;
++out_unlock:
++	if (unlikely(ret)) {
++		if (ret == -ENOMEM)
++			ret = VM_FAULT_OOM;
++		else /* -ENOSPC, -EIO, etc */
++			ret = VM_FAULT_SIGBUS;
++	}
++	up_read(&inode->i_alloc_sem);
++	return ret;
 +}
 +
- ssize_t
- generic_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 		unsigned long *nr_segs, loff_t pos, loff_t *ppos,
-@@ -2139,7 +2147,7 @@ generic_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
- 	if (written > 0) {
- 		loff_t end = pos + written;
- 		if (end > i_size_read(inode) && !S_ISBLK(inode->i_mode)) {
--			i_size_write(inode,  end);
-+			do_extend_i_size(inode, pos, written);
- 			mark_inode_dirty(inode);
- 		}
- 		*ppos = end;
-diff --git a/mm/memory.c b/mm/memory.c
-index cf6873e..496cdf3 100644
---- a/mm/memory.c
-+++ b/mm/memory.c
-@@ -2344,7 +2344,7 @@ int vmtruncate(struct inode * inode, loff_t offset)
- 			goto out_sig;
- 		if (offset > inode->i_sb->s_maxbytes)
- 			goto out_big;
--		i_size_write(inode, offset);
-+		do_extend_i_size(inode, offset, 0);
- 	} else {
- 		struct address_space *mapping = inode->i_mapping;
+ /*
+  * Pages can be marked dirty completely asynchronously from ext3's journalling
+  * activity.  By filemap_sync_pte(), try_to_unmap_one(), etc.  We cannot do
+@@ -1815,10 +1775,11 @@ static int ext3_journalled_set_page_dirty(struct page *page)
+ static const struct address_space_operations ext3_ordered_aops = {
+ 	.readpage		= ext3_readpage,
+ 	.readpages		= ext3_readpages,
+-	.writepage		= ext3_ordered_writepage,
++	.writepage		= ext3_common_writepage,
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext3_write_begin,
+ 	.write_end		= ext3_ordered_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.bmap			= ext3_bmap,
+ 	.invalidatepage		= ext3_invalidatepage,
+ 	.releasepage		= ext3_releasepage,
+@@ -1830,10 +1791,11 @@ static const struct address_space_operations ext3_ordered_aops = {
+ static const struct address_space_operations ext3_writeback_aops = {
+ 	.readpage		= ext3_readpage,
+ 	.readpages		= ext3_readpages,
+-	.writepage		= ext3_writeback_writepage,
++	.writepage		= ext3_common_writepage,
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext3_write_begin,
+ 	.write_end		= ext3_writeback_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.bmap			= ext3_bmap,
+ 	.invalidatepage		= ext3_invalidatepage,
+ 	.releasepage		= ext3_releasepage,
+@@ -1849,6 +1811,7 @@ static const struct address_space_operations ext3_journalled_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext3_write_begin,
+ 	.write_end		= ext3_journalled_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.set_page_dirty		= ext3_journalled_set_page_dirty,
+ 	.bmap			= ext3_bmap,
+ 	.invalidatepage		= ext3_invalidatepage,
+diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
+index 634a5e5..ff1c030 100644
+--- a/include/linux/ext3_fs.h
++++ b/include/linux/ext3_fs.h
+@@ -892,6 +892,7 @@ extern void ext3_get_inode_flags(struct ext3_inode_info *);
+ extern void ext3_set_aops(struct inode *inode);
+ extern int ext3_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
+ 		       u64 start, u64 len);
++extern int ext3_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf);
  
+ /* ioctl.c */
+ extern long ext3_ioctl(struct file *, unsigned int, unsigned long);
 -- 
 1.6.0.2
 
