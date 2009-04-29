@@ -1,55 +1,48 @@
-From: Scott James Remnant <scott@ubuntu.com>
-Subject: Re: [PATCH] blkid: add --disable-libblkid (v2)
-Date: Wed, 29 Apr 2009 14:59:12 +0100
-Message-ID: <1241013552.16780.20.camel@quest>
-References: <20090224084434.GF6020@nb.net.home>
-	 <20090324121147.GA22386@zelda.netsplit.com>
-	 <20090416102241.GA3290@nb.net.home> <1239976118.11603.109.camel@quest>
-	 <20090422133304.GP15541@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH -V4 2/2] ext4: Use -1 as the fake block number for delayed
+ new buffer_head
+Date: Wed, 29 Apr 2009 08:59:44 -0500
+Message-ID: <49F85D50.2040307@redhat.com>
+References: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1240980441-8105-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-+7Vr2aJWPc+MU1gwdIv4"
-Cc: Karel Zak <kzak@redhat.com>, linux-ext4@vger.kernel.org,
-	Kay Sievers <kay.sievers@vrfy.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zelda.netsplit.com ([87.194.19.211]:37602 "EHLO
-	zelda.netsplit.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751853AbZD2N7I (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Apr 2009 09:59:08 -0400
-In-Reply-To: <20090422133304.GP15541@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:34832 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751998AbZD2N74 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Apr 2009 09:59:56 -0400
+In-Reply-To: <1240980441-8105-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Aneesh Kumar K.V wrote:
+> Block number '0' should not be used as the fake block number for
+> the delayed new buffer. This will result in vfs calling umap_underlying_metadata for
+> block number '0'. So  use -1 instead.
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> 
+> ---
+>  fs/ext4/inode.c |    2 +-
+>  1 files changed, 1 insertions(+), 1 deletions(-)
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 12dcfab..c7c2156 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -2318,7 +2318,7 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+>  			/* not enough space to reserve */
+>  			return ret;
+>  
+> -		map_bh(bh_result, inode->i_sb, 0);
+> +		map_bh(bh_result, inode->i_sb, -1);
+>  		set_buffer_new(bh_result);
+>  		set_buffer_delay(bh_result);
+>  	} else if (ret > 0) {
 
---=-+7Vr2aJWPc+MU1gwdIv4
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+this seems fine too, thanks.
 
-On Wed, 2009-04-22 at 09:33 -0400, Theodore Tso wrote:
-
-> The changes have been pushed out to the e2fsprogs git repository if
-> you want to try it out with the latest changes, which will be in the
-> very-soon-to-be-released e2fsprogs 1.41.5.
->=20
-I couldn't find these in the git repository - the tag has been pushed,
-but not the branch.
-
-Scott
---=20
-Scott James Remnant
-scott@ubuntu.com
-
---=-+7Vr2aJWPc+MU1gwdIv4
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkn4XTAACgkQSnQiFMl4yK5bXQCeLMpTsAvM/wVY+71zTav68mWe
-Al8AoJJ1gt5KRzNH2L/d/Lm8bBSU36Mj
-=xdQ0
------END PGP SIGNATURE-----
-
---=-+7Vr2aJWPc+MU1gwdIv4--
-
+-Eric
