@@ -1,261 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH RFC] ext3 data=guarded v5
-Date: Wed, 29 Apr 2009 21:15:33 +0200
-Message-ID: <20090429191533.GB22936@duck.suse.cz>
-References: <1240941840.15136.44.camel@think.oraclecorp.com> <20090429085632.GA18273@duck.suse.cz> <1241014093.20099.28.camel@think.oraclecorp.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Question on block group allocation
+Date: Wed, 29 Apr 2009 15:16:47 -0400
+Message-ID: <20090429191646.GF14264@mit.edu>
+References: <6601abe90904230941x5cdd590ck2d51410326df2fc5@mail.gmail.com> <20090423190817.GN3209@webber.adilger.int> <6601abe90904231502y393155dbrf8913b728c704320@mail.gmail.com> <20090427021411.GA9059@mit.edu> <6601abe90904262229w602e17d8s51ceae05c2895ce5@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Linux Kernel Developers List <linux-kernel@vger.kernel.org>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Mike Galbraith <efault@gmx.de>
-To: Chris Mason <chris.mason@oracle.com>
+Cc: Andreas Dilger <adilger@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:57515 "EHLO mx2.suse.de"
+Received: from THUNK.ORG ([69.25.196.29]:56839 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754410AbZD2TPh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Apr 2009 15:15:37 -0400
+	id S1751545AbZD2TQy (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Apr 2009 15:16:54 -0400
 Content-Disposition: inline
-In-Reply-To: <1241014093.20099.28.camel@think.oraclecorp.com>
+In-Reply-To: <6601abe90904262229w602e17d8s51ceae05c2895ce5@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 29-04-09 10:08:13, Chris Mason wrote:
-> On Wed, 2009-04-29 at 10:56 +0200, Jan Kara wrote:
+On Sun, Apr 26, 2009 at 11:29:39PM -0600, Curt Wohlgemuth wrote:
+> The random read throughput on the 10GB file went from ~16 MB/s to ~22
+> MB/s after Andreas' patch; the total fragmentation of the file was
+> much lower than before his patch.
 > 
-> > > diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-> > > index fcfa243..1e90107 100644
-> > > --- a/fs/ext3/inode.c
-> > > +++ b/fs/ext3/inode.c
-> > > @@ -38,6 +38,7 @@
-> > >  #include <linux/bio.h>
-> > >  #include <linux/fiemap.h>
-> > >  #include <linux/namei.h>
-> > > +#include <linux/workqueue.h>
-> > >  #include "xattr.h"
-> > >  #include "acl.h"
-> > >  
-> > > @@ -179,6 +180,105 @@ static int ext3_journal_test_restart(handle_t *handle, struct inode *inode)
-> > >  }
-> > >  
-> > >  /*
-> > > + * after a data=guarded IO is done, we need to update the
-> > > + * disk i_size to reflect the data we've written.  If there are
-> > > + * no more ordered data extents left in the tree, we need to
-> >                                            ^^^^^^^^ the list
-> > > + * get rid of the orphan entry making sure the file's
-> > > + * block pointers match the i_size after a crash
-> > > + *
-> > > + * When we aren't in data=guarded mode, this just does an ext3_orphan_del.
-> > > + *
-> > > + * It returns the result of ext3_orphan_del.
-> > > + *
-> > > + * handle may be null if we are just cleaning up the orphan list in
-> > > + * memory.
-> > > + *
-> > > + * pass must_log == 1 when the inode must be logged in order to get
-> > > + * an i_size update on disk
-> > > + */
-> > > +static int ordered_orphan_del(handle_t *handle, struct inode *inode,
-> > > +			      int must_log)
-> > > +{
-> >   I'm afraid this function is racy.
-> > 1) We probably need i_mutex to protect against unlink happening in parallel
-> >    (after we check i_nlink but before we all ext3_orphan_del).
+> However, the number of extents went up by quite a bit (I don't have
+> the debugfs output in front of me at the moment, sorry).  It seemed
+> that no extent crossed a block group; I didn't have time to see if
+> Andreas' patch disabled flex BGs or not, as to what was going on.
 > 
-> This would mean IO completion (clearing PG_writeback) would have to wait
-> on the inode mutex, which we can't quite do in O_SYNC and O_DIRECT.
-> But, what I can do is check i_nlink after the ext3_orphan_del call and
-> put the inode back on the orphan list if it has gone to zero.
-  Ah, good point. But doing it without i_mutex is icky. Strictly speaking
-you should have memory barriers in the code to make sure that you fetch
-a recent value of i_nlink (although other locking around those places
-probably does the work for you but *proving* the correctness is complex).
-  Hmm, I can't help but the idea of updating i_disksize and calling
-end_page_writeback() directly from end_io handler and doing just
-mark_inode_dirty() and orphan deletion from the workqueue still returns to
-me ;-) It would solve this problem as well. We just have to somehow pin the
-inode so that VFS cannot remove it before we manage to file i_disksize
-update into the transaction, which, I agree, has some issues as well as you
-wrote in some email... The main advantage of the current scheme probably is
-that PG_writeback bit naturally tells VM that we have still some pinned
-resources and so it throttles writers if needed... But still, I find my
-better ;).
+> I'll be able to send details out on Tuesday.
 
- 
-> > 2) We need superblock lock for the check
-> > list_empty(&EXT3_I(inode)->i_orphan).
-> 
-> How about I take the guarded spinlock when doing the list_add instead?
-> I'm trying to avoid the superblock lock as much as I can.
-  Well, ext3_orphan_del() takes it anyway so it's not like you introduce a
-new lock dependency. Actually in the code I wrote you have exactly as many
-superblock locking as there is now. So IMO this is not an issue if we
-somehow solve problem 1).
+Hi Curt,
 
-> > 3) The function should rather have name ext3_guarded_orphan_del()... At
-> >   least "ordered" is really confusing (that's the case for a few other
-> >   structs / variables as well).
-> 
-> My long term plan was to replaced ordered with guarded, but I can rename
-> this one to guarded if you think it'll make it more clear.
-  Ah, OK. My feeling is that there's going to be at least some time of
-coexstence of these two modes (also because the perfomance numbers for
-ordered mode were considerably better in some loads) so I'd vote for
-clearly separating their names.
+When you have a chance, can you send out the details from your test run?
 
-> > >  	if (err)
-> > >  		ext3_journal_abort_handle(__func__, __func__,
-> > >  						bh, handle, err);
-> > > @@ -1231,6 +1440,89 @@ static int journal_dirty_data_fn(handle_t *handle, struct buffer_head *bh)
-> > >  	return 0;
-> > >  }
-> > >  
-> > > +/*
-> > > + * Walk the buffers in a page for data=guarded mode.  Buffers that
-> > > + * are not marked as datanew are ignored.
-> > > + *
-> > > + * New buffers outside i_size are sent to the data guarded code
-> > > + *
-> > > + * We must do the old data=ordered mode when filling holes in the
-> > > + * file, since i_size doesn't protect these at all.
-> > > + */
-> > > +static int journal_dirty_data_guarded_fn(handle_t *handle,
-> > > +					 struct buffer_head *bh)
-> > > +{
-> > > +	u64 offset = page_offset(bh->b_page) + bh_offset(bh);
-> > > +	struct inode *inode = bh->b_page->mapping->host;
-> > > +	int ret = 0;
-> > > +
-> > > +	/*
-> > > +	 * Write could have mapped the buffer but it didn't copy the data in
-> > > +	 * yet. So avoid filing such buffer into a transaction.
-> > > +	 */
-> > > +	if (!buffer_mapped(bh) || !buffer_uptodate(bh))
-> > > +		return 0;
-> > > +
-> > > +	if (test_clear_buffer_datanew(bh)) {
-> >   Hmm, if we just extend the file inside the block (e.g. from 100 bytes to
-> > 500 bytes), then we won't do the write guarded. But then if we crash before
-> > the block really gets written, user will see zeros at the end of file
-> > instead of data... 
-> 
-> You see something like this:
-> 
-> create(file)
-> write(file, 100 bytes) # create guarded IO
-> fsync(file)
-> write(file, 400 more bytes) # buffer isn't guarded, i_size goes to 500
-  Yes.
+Many thanks,
 
-> > I don't think we should let this happen so I'd think we
-> > have to guard all the extending writes regardless whether they allocate new
-> > block or not. 
-> 
-> My main concern was avoiding stale data from the disk after a crash,
-> zeros from partially written blocks are not as big a problem.  But,
-> you're right that we can easily avoid this, so I'll update the patch to
-> do all extending writes as guarded.
-  Yes, ext3 actually does some work to avoid exposing zeros at the
-end of file when we fail to copy in new data (source page was swapped out
-in the mean time) and we crash before we manage to swap the page in again.
-So it would be stupid to introduce the same problem here again...
-
-> > Which probably makes the buffer_datanew() flag unnecessary
-> > because we just guard all the buffers from max(start of write, i_size) to
-> > end of write.
-> 
-> But, we still want buffer_datanew to decide when writes that fill holes
-> should go through data=ordered.
-  See below.
-
-> > > +/*
-> > > + * Walk the buffers in a page for data=guarded mode for writepage.
-> > > + *
-> > > + * We must do the old data=ordered mode when filling holes in the
-> > > + * file, since i_size doesn't protect these at all.
-> > > + *
-> > > + * This is actually called after writepage is run and so we can't
-> > > + * trust anything other than the buffer head (which we have pinned).
-> > > + *
-> > > + * Any datanew buffer at writepage time is filling a hole, so we don't need
-> > > + * extra tests against the inode size.
-> > > + */
-> > > +static int journal_dirty_data_guarded_writepage_fn(handle_t *handle,
-> > > +					 struct buffer_head *bh)
-> > > +{
-> > > +	int ret = 0;
-> > > +
-> > > +	/*
-> > > +	 * Write could have mapped the buffer but it didn't copy the data in
-> > > +	 * yet. So avoid filing such buffer into a transaction.
-> > > +	 */
-> > > +	if (!buffer_mapped(bh) || !buffer_uptodate(bh))
-> > > +		return 0;
-> > > +
-> > > +	if (test_clear_buffer_datanew(bh))
-> > > +		ret = ext3_journal_dirty_data(handle, bh);
-> > > +	return ret;
-> > > +}
-> > > +
-> >   Hmm, here we use the datanew flag as well. But it's probably not worth
-> > keeping it just for this case. Ordering data in all cases when we get here
-> > should be fine since if the block is already allocated we should not get
-> > here (unless somebody managed to strip buffers from the page but kept the
-> > page but that should be rare enough).
-> > 
-> 
-> I'd keep it for the common case of filling holes with write(), so then
-> the code in writepage is gravy.
-  I'm not sure I understand. I wanted to suggest to change
-if (test_clear_buffer_datanew(bh))
-	ret = ext3_journal_dirty_data(handle, bh);
-  to
-ret = ext3_journal_dirty_data(handle, bh);
-
-So to always order the data. Actually the only case when we would get to
-journal_dirty_data_guarded_writepage_fn() and buffer_datanew() is not set
-would be when
-  a) blocksize < pagesize, page already has some blocks allocated and we
-   add more blocks to we fill the hole. Then with your code we would not order
-   all blocks in the page, with my code we would. But I don't think it makes a
-   big difference.
-  b) someone removed buffers from the page.
-In all other cases we should take the fast path in writepage and submit the
-IO without starting the transaction.
-  So IMO datanew can be removed...
-
-> > >  			ext3_journal_stop(handle);
-> > >  		}
-> > >  	}
-> > > @@ -1768,11 +2266,20 @@ static ssize_t ext3_direct_IO(int rw, struct kiocb *iocb,
-> > >  			ret = PTR_ERR(handle);
-> > >  			goto out;
-> > >  		}
-> > > +
-> > >  		if (inode->i_nlink)
-> > > -			ext3_orphan_del(handle, inode);
-> > > +			ordered_orphan_del(handle, inode, 0);
-> > > +
-> > >  		if (ret > 0) {
-> > >  			loff_t end = offset + ret;
-> > >  			if (end > inode->i_size) {
-> > > +				/* i_mutex keeps other file writes from
-> > > +				 * hopping in at this time, and we
-> > > +				 * know the O_DIRECT write just put all
-> > > +				 * those blocks on disk.  So, we can
-> > > +				 * safely update i_disksize here even
-> > > +				 * in guarded mode
-> > > +				 */
-> >   Not quite - there could be guarded blocks before the place where we did
-> > O_DIRECT write and we need to wait for them...
-> 
-> Hmmm, O_DIRECT is only waiting on the blocks it actually wrote isn't it.
-> Good point, will fix.
-  Yes.
-
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+						- Ted
