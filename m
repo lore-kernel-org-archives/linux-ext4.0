@@ -1,83 +1,90 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 3/4] ext4: Make sure blocks are properly allocated under mmaped page even when blocksize < pagesize
-Date: Wed, 29 Apr 2009 12:02:49 +0200
-Message-ID: <1240999370-27502-4-git-send-email-jack@suse.cz>
+Subject: [PATCH 2/4] ext2: Allocate space for mmaped file on page fault
+Date: Wed, 29 Apr 2009 12:02:48 +0200
+Message-ID: <1240999370-27502-3-git-send-email-jack@suse.cz>
 References: <1240999370-27502-1-git-send-email-jack@suse.cz>
 Cc: linux-fsdevel@vger.kernel.org, npiggin@suse.de,
 	Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:55077 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753309AbZD2KCw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Apr 2009 06:02:52 -0400
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
 In-Reply-To: <1240999370-27502-1-git-send-email-jack@suse.cz>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-In a situation like:
-  truncate(f, 1024);
-  a = mmap(f, 0, 4096);
-  a[0] = 'a';
-  truncate(f, 4096);
-
-we end up with a dirty page which does not have all blocks allocated /
-reserved.  Fix the problem by using new VFS infrastructure.
+So far we've allocated space at ->writepage() time. This has the disadvantage
+that when we hit ENOSPC or other error, we cannot do much - either throw
+away the data or keep the page indefinitely (and loose the data on reboot).
+So allocate space already when a page is faulted in.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c |   10 ++++++++++
- 1 files changed, 10 insertions(+), 0 deletions(-)
+ fs/ext2/file.c  |   26 +++++++++++++++++++++++++-
+ fs/ext2/inode.c |    1 +
+ 2 files changed, 26 insertions(+), 1 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index c6bd6ce..8f51219 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3363,6 +3363,7 @@ static const struct address_space_operations ext4_ordered_aops = {
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_ordered_write_end,
-+	.extend_i_size		= block_extend_i_size,
- 	.bmap			= ext4_bmap,
- 	.invalidatepage		= ext4_invalidatepage,
- 	.releasepage		= ext4_releasepage,
-@@ -3378,6 +3379,7 @@ static const struct address_space_operations ext4_writeback_aops = {
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_writeback_write_end,
-+	.extend_i_size		= block_extend_i_size,
- 	.bmap			= ext4_bmap,
- 	.invalidatepage		= ext4_invalidatepage,
- 	.releasepage		= ext4_releasepage,
-@@ -3393,6 +3395,7 @@ static const struct address_space_operations ext4_journalled_aops = {
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_journalled_write_end,
-+	.extend_i_size		= block_extend_i_size,
- 	.set_page_dirty		= ext4_journalled_set_page_dirty,
- 	.bmap			= ext4_bmap,
- 	.invalidatepage		= ext4_invalidatepage,
-@@ -3408,6 +3411,7 @@ static const struct address_space_operations ext4_da_aops = {
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext4_da_write_begin,
- 	.write_end		= ext4_da_write_end,
-+	.extend_i_size		= block_extend_i_size,
- 	.bmap			= ext4_bmap,
- 	.invalidatepage		= ext4_da_invalidatepage,
- 	.releasepage		= ext4_releasepage,
-@@ -5260,6 +5264,12 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	struct address_space *mapping = inode->i_mapping;
+diff --git a/fs/ext2/file.c b/fs/ext2/file.c
+index 45ed071..74b2c3d 100644
+--- a/fs/ext2/file.c
++++ b/fs/ext2/file.c
+@@ -19,6 +19,8 @@
+  */
  
- 	/*
-+	 * Wait for extending of i_size, after this moment, next truncate /
-+	 * write can create holes under us but they writeprotect our page so
-+	 * we'll be called again to fill the hole.
-+	 */
-+	block_wait_on_hole_extend(inode, page_offset(page));
-+	/*
- 	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
- 	 * get i_mutex because we are already holding mmap_sem.
- 	 */
+ #include <linux/time.h>
++#include <linux/mm.h>
++#include <linux/buffer_head.h>
+ #include "ext2.h"
+ #include "xattr.h"
+ #include "acl.h"
+@@ -38,6 +40,28 @@ static int ext2_release_file (struct inode * inode, struct file * filp)
+ 	return 0;
+ }
+ 
++static int ext2_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
++{
++	return block_page_mkwrite(vma, vmf, ext2_get_block);
++}
++
++static struct vm_operations_struct ext2_file_vm_ops = {
++	.fault		= filemap_fault,
++	.page_mkwrite	= ext2_page_mkwrite,
++};
++
++static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
++{
++	struct address_space *mapping = file->f_mapping;
++
++	if (!mapping->a_ops->readpage)
++		return -ENOEXEC;
++	file_accessed(file);
++	vma->vm_ops = &ext2_file_vm_ops;
++	vma->vm_flags |= VM_CAN_NONLINEAR;
++	return 0;
++}
++
+ /*
+  * We have mostly NULL's here: the current defaults are ok for
+  * the ext2 filesystem.
+@@ -52,7 +76,7 @@ const struct file_operations ext2_file_operations = {
+ #ifdef CONFIG_COMPAT
+ 	.compat_ioctl	= ext2_compat_ioctl,
+ #endif
+-	.mmap		= generic_file_mmap,
++	.mmap		= ext2_file_mmap,
+ 	.open		= generic_file_open,
+ 	.release	= ext2_release_file,
+ 	.fsync		= ext2_sync_file,
+diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
+index acf6788..8217219 100644
+--- a/fs/ext2/inode.c
++++ b/fs/ext2/inode.c
+@@ -816,6 +816,7 @@ const struct address_space_operations ext2_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext2_write_begin,
+ 	.write_end		= generic_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.bmap			= ext2_bmap,
+ 	.direct_IO		= ext2_direct_IO,
+ 	.writepages		= ext2_writepages,
 -- 
 1.6.0.2
 
