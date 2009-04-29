@@ -1,90 +1,33 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 2/4] ext2: Allocate space for mmaped file on page fault
-Date: Wed, 29 Apr 2009 12:02:48 +0200
-Message-ID: <1240999370-27502-3-git-send-email-jack@suse.cz>
-References: <1240999370-27502-1-git-send-email-jack@suse.cz>
-Cc: linux-fsdevel@vger.kernel.org, npiggin@suse.de,
-	Jan Kara <jack@suse.cz>
+Subject: [PATCH 0/4] Make page_mkwrite() more useful for blocksize < pagesize
+Date: Wed, 29 Apr 2009 12:02:46 +0200
+Message-ID: <1240999370-27502-1-git-send-email-jack@suse.cz>
+Cc: linux-fsdevel@vger.kernel.org, npiggin@suse.de
 To: linux-ext4@vger.kernel.org
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1240999370-27502-1-git-send-email-jack@suse.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:42079 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752403AbZD2KCw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Apr 2009 06:02:52 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-So far we've allocated space at ->writepage() time. This has the disadvantage
-that when we hit ENOSPC or other error, we cannot do much - either throw
-away the data or keep the page indefinitely (and loose the data on reboot).
-So allocate space already when a page is faulted in.
+  Hi,
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext2/file.c  |   26 +++++++++++++++++++++++++-
- fs/ext2/inode.c |    1 +
- 2 files changed, 26 insertions(+), 1 deletions(-)
+  this is a next version of my patches which implement VFS helpers so that
+page_mkwrite() is reliably called at the first write access to a page after
+the amount of blocks allocated under the page could change. This solves
+the problem with filesystems dropping data on the floor when they hit ENOSPC
+(or EDQUOT) during writepage().
+  The series also contains patches for ext[2-4] showing how the VFS framework
+can be used. This is probably not the final version of the patches since I did
+some performance measurements with ext3 and allocating blocks on page-fault
+time instead of at writepage() time has a significant cost - BerkelyDB based
+workloads are slower by ~10% because of much higher file fragmentation
+(essentially allocation at writepage time had a kind of delayed allocation
+effect for us and it helped a lot in these random write scenarios). I'm
+thinking how to solve this so that any filesystem wanting reliable mmap
+and reasonable performance behaviour doesn't have to implement something like
+delayed allocation or other workaround again...
 
-diff --git a/fs/ext2/file.c b/fs/ext2/file.c
-index 45ed071..74b2c3d 100644
---- a/fs/ext2/file.c
-+++ b/fs/ext2/file.c
-@@ -19,6 +19,8 @@
-  */
- 
- #include <linux/time.h>
-+#include <linux/mm.h>
-+#include <linux/buffer_head.h>
- #include "ext2.h"
- #include "xattr.h"
- #include "acl.h"
-@@ -38,6 +40,28 @@ static int ext2_release_file (struct inode * inode, struct file * filp)
- 	return 0;
- }
- 
-+static int ext2_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
-+{
-+	return block_page_mkwrite(vma, vmf, ext2_get_block);
-+}
-+
-+static struct vm_operations_struct ext2_file_vm_ops = {
-+	.fault		= filemap_fault,
-+	.page_mkwrite	= ext2_page_mkwrite,
-+};
-+
-+static int ext2_file_mmap(struct file *file, struct vm_area_struct *vma)
-+{
-+	struct address_space *mapping = file->f_mapping;
-+
-+	if (!mapping->a_ops->readpage)
-+		return -ENOEXEC;
-+	file_accessed(file);
-+	vma->vm_ops = &ext2_file_vm_ops;
-+	vma->vm_flags |= VM_CAN_NONLINEAR;
-+	return 0;
-+}
-+
- /*
-  * We have mostly NULL's here: the current defaults are ok for
-  * the ext2 filesystem.
-@@ -52,7 +76,7 @@ const struct file_operations ext2_file_operations = {
- #ifdef CONFIG_COMPAT
- 	.compat_ioctl	= ext2_compat_ioctl,
- #endif
--	.mmap		= generic_file_mmap,
-+	.mmap		= ext2_file_mmap,
- 	.open		= generic_file_open,
- 	.release	= ext2_release_file,
- 	.fsync		= ext2_sync_file,
-diff --git a/fs/ext2/inode.c b/fs/ext2/inode.c
-index acf6788..8217219 100644
---- a/fs/ext2/inode.c
-+++ b/fs/ext2/inode.c
-@@ -816,6 +816,7 @@ const struct address_space_operations ext2_aops = {
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext2_write_begin,
- 	.write_end		= generic_write_end,
-+	.extend_i_size		= block_extend_i_size,
- 	.bmap			= ext2_bmap,
- 	.direct_IO		= ext2_direct_IO,
- 	.writepages		= ext2_writepages,
--- 
-1.6.0.2
-
+									Honza
