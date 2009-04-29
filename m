@@ -1,43 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -V4 2/2] ext4: Use -1 as the fake block number for	delayed
- new buffer_head
-Date: Wed, 29 Apr 2009 12:01:18 -0500
-Message-ID: <49F887DE.1040208@redhat.com>
-References: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1240980441-8105-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090429153521.GC14264@mit.edu> <49F8743E.7090201@redhat.com> <20090429165210.GD14264@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] blkid: add --disable-libblkid (v2)
+Date: Wed, 29 Apr 2009 13:17:00 -0400
+Message-ID: <20090429171700.GE14264@mit.edu>
+References: <20090224084434.GF6020@nb.net.home> <20090324121147.GA22386@zelda.netsplit.com> <20090416102241.GA3290@nb.net.home> <1239976118.11603.109.camel@quest> <20090422133304.GP15541@mit.edu> <1241013552.16780.20.camel@quest>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Karel Zak <kzak@redhat.com>, linux-ext4@vger.kernel.org,
+	Kay Sievers <kay.sievers@vrfy.org>
+To: Scott James Remnant <scott@ubuntu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:48986 "EHLO mx2.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:46596 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760710AbZD2RBZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Apr 2009 13:01:25 -0400
-In-Reply-To: <20090429165210.GD14264@mit.edu>
+	id S1751604AbZD2RRG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Apr 2009 13:17:06 -0400
+Content-Disposition: inline
+In-Reply-To: <1241013552.16780.20.camel@quest>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Wed, Apr 29, 2009 at 10:37:34AM -0500, Eric Sandeen wrote:
->> Theodore Tso wrote:
->>> On Wed, Apr 29, 2009 at 10:17:21AM +0530, Aneesh Kumar K.V wrote:
->>>> Block number '0' should not be used as the fake block number for
->>>> the delayed new buffer. This will result in vfs calling umap_underlying_metadata for
->>>> block number '0'. So  use -1 instead.
->>> sector_t is an unsigned type, so we probably want to use ~0 instead of
->>> -1.  I can fix this up before we apply into the patch queue.
->> I don't think that helps.  The point is to have a block number which is
->> invalid, therefore won't get unmapped or accidentally written to ...
+On Wed, Apr 29, 2009 at 02:59:12PM +0100, Scott James Remnant wrote:
+> On Wed, 2009-04-22 at 09:33 -0400, Theodore Tso wrote:
 > 
-> This is more of a type-safety thing to eliminate compiler warnings.
-> We could use something like s_blocks_count instead, which has less
-> chance of wrapping, but by the time we get to the bh level, the risk
-> of wrapping should be minimal, and ~0 (or -1) is more distinctive when
-> debugging/tracing.
+> > The changes have been pushed out to the e2fsprogs git repository if
+> > you want to try it out with the latest changes, which will be in the
+> > very-soon-to-be-released e2fsprogs 1.41.5.
+> > 
+> I couldn't find these in the git repository - the tag has been pushed,
+> but not the branch.
 
-I'm sorry.  Poor choice of fonts, or something, I read "-0" not "~0" and
-wondered what on earth you were thinking.  ;)
+Try it now.  The changes for --disable-blkid were in the git
+repository, but the last set of changes for 1.41.5 hadn't gotten
+pushed out to master.kernel.org for some reason.
 
--Eric
+       	      			    - Ted
