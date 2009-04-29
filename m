@@ -1,141 +1,84 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Re: Question on block group allocation
-Date: Wed, 29 Apr 2009 13:21:09 -0700
-Message-ID: <6601abe90904291321u3f13d8b0p88b9a9eba5bc03a1@mail.gmail.com>
-References: <6601abe90904230941x5cdd590ck2d51410326df2fc5@mail.gmail.com>
-	 <20090423190817.GN3209@webber.adilger.int>
-	 <6601abe90904231502y393155dbrf8913b728c704320@mail.gmail.com>
-	 <20090427021411.GA9059@mit.edu>
-	 <6601abe90904262229w602e17d8s51ceae05c2895ce5@mail.gmail.com>
-	 <20090427224052.GC22104@mit.edu> <20090429191646.GF14264@mit.edu>
-	 <6601abe90904291138r6e24c04dj4b2efcdba22bf84@mail.gmail.com>
-	 <20090429193744.GA17797@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] blkid: add --disable-libblkid (v2)
+Date: Wed, 29 Apr 2009 16:23:38 -0400
+Message-ID: <20090429202338.GD17797@mit.edu>
+References: <1239976118.11603.109.camel@quest> <20090422133304.GP15541@mit.edu> <20090427092114.GA3193@nb.net.home> <20090428203635.GA3793@nb.net.home> <20090224084434.GF6020@nb.net.home> <20090324121147.GA22386@zelda.netsplit.com> <20090416102241.GA3290@nb.net.home> <1239976118.11603.109.camel@quest> <20090422133304.GP15541@mit.edu> <20090427092114.GA3193@nb.net.home>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@sun.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Scott James Remnant <scott@ubuntu.com>, linux-ext4@vger.kernel.org,
+	Kay Sievers <kay.sievers@vrfy.org>
+To: Karel Zak <kzak@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.45.13]:20458 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753953AbZD2UVR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Apr 2009 16:21:17 -0400
-Received: from zps75.corp.google.com (zps75.corp.google.com [172.25.146.75])
-	by smtp-out.google.com with ESMTP id n3TKLB4o007487
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 13:21:12 -0700
-Received: from qw-out-1920.google.com (qwc5.prod.google.com [10.241.193.133])
-	by zps75.corp.google.com with ESMTP id n3TKKvWa020202
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 13:21:10 -0700
-Received: by qw-out-1920.google.com with SMTP id 5so1047435qwc.26
-        for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 13:21:10 -0700 (PDT)
-In-Reply-To: <20090429193744.GA17797@mit.edu>
+Received: from THUNK.ORG ([69.25.196.29]:50262 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1760668AbZD2UXo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Apr 2009 16:23:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20090428203635.GA3793@nb.net.home> <20090427092114.GA3193@nb.net.home>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted:
+On Tue, Apr 28, 2009 at 10:36:35PM +0200, Karel Zak wrote:
+> >  I forgot that we need to freeze blkid version number in e2fsprogs to
+> >  avoid collisions between e2fsprogs and util-linux-ng. Currently the
+> >  blkid version number is shared with e2fsprogs version number. 
+> 
+>  It seems we can ignore this problem for now. I can release
+>  libblkid 2.15 (=util-linux-ng version) and keep the same SONAME as
+>  you have in e2fsprogs -- it means soname "libblkid.so.1".
+> 
+>  It seems people prefer the same version for library as well as for
+>  whole package.
 
-On Wed, Apr 29, 2009 at 12:37 PM, Theodore Tso <tytso@mit.edu> wrote:
-> On Wed, Apr 29, 2009 at 03:16:47PM -0400, Theodore Tso wrote:
->>
->> When you have a chance, can you send out the details from your test =
-run?
->>
+Right, I made a point of not changing the libblkid ABI, and I tend to
+prefer to keep the library SONAME version independent of the package
+version, because I'm a firm believer in stable ABI's.  In terms of the
+package version, that's going to depend on distribution.  So the blkid
+shared library version has never changed because I've been careful
+about not screwing with the ABI.  Technically I should have bumped the
+minor version when I added new interfaces, but since no one really
+pays attention to the minor version number of shared libraries, I was
+lazy and the shared library version number has always stayed at 1.0.
+
+As far as package versions are concerned, Debian and Ubuntu uses a
+package name of "libblkid1" (where the 1 comes from the shared library
+version), and a version number which is equal to the e2fsprogs version
+(1.45).  Red Hat and Novell will use different version numbers, but if
+it's based on the package version, then 2.15 is greater than 1.45 (the
+e2fsprogs version), so that should work just fine.
+
+On Mon, Apr 27, 2009 at 11:21:14AM +0200, Karel Zak wrote:
 >
-> Oops, sorry, our two e-mails overlapped. =A0Sorry, I didn't see your =
-new
-> e-mail when I sent my ping-o-gram.
->
-> On Wed, Apr 29, 2009 at 11:38:49AM -0700, Curt Wohlgemuth wrote:
->>
->> Okay, my phrasing was not as precise as it could have been. =A0What =
-I
->> meant by "total fragmentation" was simply that the range of physical
->> blocks for the 10GB file was much lower with Andreas' patch:
->>
->> Before patch: =A08282112 - 103266303
->> After patch: 271360 - 5074943
->>
->> The number of extents is much larger. =A0See the attached debugfs ou=
-tput.
->
-> Ah, OK. =A0You didn't attach the "e2fsck -E fragcheck" output, but I'=
-m
-> going to guess that the blocks for 10g, 4g, and 4g-2 ended up getting
-> interleaved, possibly because they were written in parallel, and not
-> one after each other? =A0Each of the extents in the "after" debugfs w=
-ere
-> proximately 2k blocks (8 megabytes) in length, and are separated by a
-> largish cnumber of blocks.
+>  I forgot that we need to freeze blkid version number in e2fsprogs to
+>  avoid collisions between e2fsprogs and util-linux-ng. Currently the
+>  blkid version number is shared with e2fsprogs version number. 
+> 
+>  The e2fsprogs blkid should be in maintenance mode only. All development
+>  should happen in util-linux-ng only. Right?
 
-Hmm, I thought I attached the output from "e2fsck -E fragcheck"; yes,
-I did: one simple line:
+There have been a few bug fixes and I have some requests to detect
+some new interfaces, such as VMFS, which I'll probably apply to
+e2fsprogs blkid, but I don't expect to do any API or ABI changes, and
+the only changes will be bugfixes and some new detection functions ---
+and I'll make a point of synchronizing such improvements with
+util-linux-ng.  Fair enough?
 
-        /dev/hdm3: clean, 14/45760512 files, 7608255/183010471 blocks
+>  (See the patch below -- it's example. I don't know if you want to add
+>   LIBBLKID_VERSION to the global version.h or something other to
+>   configure.in, or so...)
 
-And actually, I created the files sequentially:
+As far as I know there are no applications which have used
+blkid_get_library_version(), but what I would suggest is that
+util-linux-bg use a lib_version of 2.15, and people who care about
+whether they have the e2fsprogs or util-linug-ng version of e2fsprogs
+can simply check for a 1.x or 2.x blkid version number as returned by
+blkid_get_lib_version().  I don't anticipate e2fsprogs ever going to a
+2.x version at this point --- we'll probably just always update the
+1.xx version, just to avoid confusion, so I don't think we need to
+worry about freezing this version number.  I'll just put in a comment
+that util-linux-nh will have a 2.x version, and that e2fsprogs will
+have a 1.x version --- not that I think anyone will really care, or
+will try to sample the version number, as long as we're careful about
+not screwing with the ABI.
 
-dd if=3D/dev/zero of=3D$MNT_PT/4g bs=3D1G count=3D4
-dd if=3D/dev/zero of=3D$MNT_PT/4g-2 bs=3D1G count=3D4
-dd if=3D/dev/zero of=3D$MNT_PT/10g bs=3D1G count=3D10
-
-> Now, if my theory that the files were written in an interleaved
-> fashion is correct, if it is also true that they will be read in an
-> interleaved pattern, the layout on disk might actually be the best
-> one. =A0If however they are going to be read sequentially, and you
-> really want them to be allocated contiguously, then if you know what
-> the final size of these files will be, then the probably the best
-> thing to do is to use the fallocate system call.
->
-> Does that make sense?
-
-Sure, in this sense.
-
-The test in question does something like this:
-
-1. Create 20 or so large files, sequentially.
-2. Randomly choose a file.
-3. Randomly choose an offset in this file.
-4. Read from that file/offset a fixed buffer size (say 256k); the file
-was opened with O_DIRECT
-5. Go back to #2
-6. Stop after some time period
-
-This might not be the most realistic workload we want (the test
-actually can be run by doing #1 above with multiple threads), but it's
-certainly interesting.
-
-The point that I'm interested in is why the physical block spread is
-so different for the 10GB file between (a) the above 'dd' command
-sequence; and (b) simply creating the "10g" file alone, without
-creating the 4GB files first.
-
-I just did (b) above on a kernel without Andreas' patch, on a freshly
-formatted ext4 FS, and here's (most of) the debugfs output for it:
-
-BLOCKS:
-(IND):164865, (0-63487):34816-98303, (63488-126975):100352-163839, (126=
-976-19046
-3):165888-229375, (190464-253951):231424-294911, (253952-481279):296960=
--524287,
-(481280-544767):821248-884735, (544768-706559):886784-1048575, (706560-=
-1196031):
-1607680-2097151, (1196032-1453067):2656256-2913291
-TOTAL: 1453069
-
-The total spread of the blocks is tiny compared to the total spread
-from the 3 "dd" commands above.
-
-I haven't yet really looked at the block allocation results using
-Andreas' patch, except for the "10g" file after the three "dd"
-commands above.  So I'm not sure what the effects are with, say,
-larger numbers of files.  I'll be doing some more experimentation
-soon.
-
-Thanks,
-Curt
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
