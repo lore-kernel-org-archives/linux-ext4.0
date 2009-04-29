@@ -1,63 +1,68 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -V4 1/2] Fix sub-block zeroing for buffered writes into
- unwritten extents
-Date: Wed, 29 Apr 2009 08:59:58 -0500
-Message-ID: <49F85D5E.8040701@redhat.com>
-References: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [RFC PATCH] mark buffer_head mapping preallocate area as new
+ during write_begin with delayed allocation
+Date: Wed, 29 Apr 2009 09:08:05 -0500
+Message-ID: <49F85F45.1020805@redhat.com>
+References: <1240859143-31122-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1240873494.6775.8.camel@mingming-laptop> <20090428042049.GA6520@skywalker> <20090428093145.GA13719@skywalker> <20090428124821.GJ22104@mit.edu> <20090428163554.GA27670@skywalker> <20090428170047.GC24043@mit.edu> <20090428185749.GA3275@skywalker> <49F75A9C.6000307@redhat.com> <20090429115727.GC18195@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34839 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:50033 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752036AbZD2OAD (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 29 Apr 2009 10:00:03 -0400
-In-Reply-To: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	id S1751507AbZD2OIR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Apr 2009 10:08:17 -0400
+In-Reply-To: <20090429115727.GC18195@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
-> We need to mark the  buffer_head mapping prealloc space
-> as new during write_begin. Otherwise we don't zero out the
-> page cache content properly for a partial write. This will
-> cause file corruption with preallocation.
-> 
-> Also use block number -1 as the fake block number so that
-> unmap_underlying_metadata doesn't drop wrong buffer_head
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> 
-> ---
->  fs/ext4/inode.c |   10 ++++++++++
->  1 files changed, 10 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e91f978..12dcfab 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2323,6 +2323,16 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
->  		set_buffer_delay(bh_result);
->  	} else if (ret > 0) {
->  		bh_result->b_size = (ret << inode->i_blkbits);
-> +		/*
-> +		 * With sub-block writes into unwritten extents
-> +		 * we also need to mark the buffer as new so that
-> +		 * the unwritten parts of the buffer gets correctly zeroed.
-> +		 */
-> +		if (buffer_unwritten(bh_result)) {
-> +			bh_result->b_bdev = inode->i_sb->s_bdev;
-> +			set_buffer_new(bh_result);
-> +			bh_result->b_blocknr = -1;
-> +		}
->  		ret = 0;
->  	}
->  
+Jan Kara wrote:
+>> Aneesh Kumar K.V wrote:
+>>> On Tue, Apr 28, 2009 at 01:00:47PM -0400, Theodore Tso wrote:
+>>>> On Tue, Apr 28, 2009 at 10:05:54PM +0530, Aneesh Kumar K.V wrote:
+>> ...
+>>>>>> The other problem seems to be in the case of a delayed allocation
+>>>>>> write, where we return a buffer_head which is marked new, and this
+>>>>>> causes block_prepare_write() to call unmap_underlying_metadata(dev, 0).
+>>>>> Not just that. On block allocation we are not calling
+>>>>> unmap_underlying_metadata(dev, blocknumber) for delayed allocated
+>>>>> blocks. That would imply file corruption.
+>>>> I don't think I'm following you .  If we write into block that was
+>>>> delayed allocated.  Are you saying we might get in trouble of the
+>>>> delayed allocation block is mmap'ed in?
+>>> We allocate blocks for delayed buffer during writepage. Now we need to
+>>> make sure after getting the blocks we drop the old buffer_head mapping
+>>> that we may have with this particular block attached to the block
+>>> device. That is done by calling unmap_underlying_metadata. Now the
+>>> current code doesn't call unmap_underlying_metadata for delayed
+>>> allocated blocks. That would mean we can see corrupt files if old
+>>> buffer_head mapping gets synced to disk AFTER we write the new
+>>> buffer_head mapping.
+>>
+>> Talking w/ Aneesh on IRC, I don't see how we can have stray dirty
+>> mappings lying around for this block device unless someone is writing
+>> directly to the mounted block device, which I don't think is ever
+>> considered safe ...
+>>
+>> I'm not quite sure what the call to __unmap_underlying_blocks() in
+>> mpage_da_map_blocks() is for, I guess?
+>   For ext3 / ext4 I think we don't need unmap_underlying_blocks() since
+> before we reallocate a block, we make sure that the transaction freeing
+> the block is committed and clear all dirty bits from freed blocks.
+>   But for more careless filesystems, if they reallocate metadata block
+> as a data block and don't clear the dirty bit in blockdev mapping,
+> unmap_underlying_blocks() does it for them.
 
-Ok, I guess this seems like the safest approach.  Long term we should
-look really hard at the state & block nr of these buffer heads, but I
-agree that keeping the changes restricted to the preallocation path for
-now is safest.
+That's what I thought - so I was wondering why we have specific calls to
+this in ext4:
+
+mpage_da_map_blocks
+	__unmap_underlying_blocks
+		for (i = 0; i < blocks; i++)
+			unmap_underlying_metadata
 
 -Eric
