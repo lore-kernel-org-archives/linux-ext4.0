@@ -1,74 +1,48 @@
-From: "Michael B. Trausch" <mbt@zest.trausch.us>
-Subject: Well, I wasn't fast enough on the snapshot...
-Date: Tue, 28 Apr 2009 22:51:11 -0400
-Message-ID: <20090428225111.3bc7fb70@zest.trausch.us>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13201] kernel BUG at fs/ext4/extents.c:2737
+Date: Wed, 29 Apr 2009 03:15:34 GMT
+Message-ID: <200904290315.n3T3FYbe015926@demeter.kernel.org>
+References: <bug-13201-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/cHoISI6FGFQnhfEKeLLctD.";
- protocol="application/pgp-signature"
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from 173-15-213-186-BusName-Atlanta.hfc.comcastbusiness.net ([173.15.213.186]:49105
-	"EHLO zest.trausch.us" rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1752242AbZD2CvW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 22:51:22 -0400
-Received: from zest.trausch.us (unknown [IPv6:::1])
-	by zest.trausch.us (Postfix) with ESMTPS id 8E137362B
-	for <linux-ext4@vger.kernel.org>; Tue, 28 Apr 2009 22:51:19 -0400 (EDT)
+Received: from demeter.kernel.org ([140.211.167.39]:39434 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752050AbZD2DPe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 23:15:34 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n3T3FYZ6015927
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 03:15:34 GMT
+In-Reply-To: <bug-13201-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---Sig_/cHoISI6FGFQnhfEKeLLctD.
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+http://bugzilla.kernel.org/show_bug.cgi?id=13201
 
-I had sent something and forgot to send it to the list, and then before
-I went to re-send it, I thought I'd take a look at an idea that I had.
-As best as I can tell, I either didn't yank the filesystem offline
-quickly enough, or I must have let some other activity I didn't
-anticipate (maybe a journal replay) occur.
 
-Whatever the cause, it would appear that at least the =C3=BCber-important
-files that I needed (the history database packs) to make the recovery
-possible in the first are more than slightly overwritten with totally
-unrelated garbage.  Without them being completely intact, of course,
-they are useless, so I did in fact lose a week of work.
+Eric Sandeen <sandeen@redhat.com> changed:
 
-Ugh.
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |sandeen@redhat.com
 
-All of this said, I remember reading about an undelete mode being
-proposed for ext4.  Are there still plans to implement that in ext4 (or
-an extension to it) at some point in the future?  It would be kind of
-nice to be able to have an assurance that you'd be able to recover
-something you _just_ deleted (FSVO "just", of course).  Maybe not quite
-freeing up blocks until a certain amount of time has passed or some
-other constraint, like space, is hit.  I don't know if that is at all
-plausible or not, just my uneducated attempt at an idea---but in any
-case, something like that would be kind of nice to have.  I haven't
-shot myself in the foot like this in years... but as I recall, last
-time I did, I lost more work than this time.
 
-At least I have the current state of the working trees.  Their history
-is just gone.  Oh, well.
 
-Thanks for all the comments and ideas!
 
-	--- Mike
+--- Comment #3 from Eric Sandeen <sandeen@redhat.com>  2009-04-29 03:15:31 ---
+Franco, sorry we haven't gotten back with suggestions on this.  It looks like
+you have hit a couple different end results.  We've had a few reports of
+corruption on larger filesystems which makes us wonder if there might be a
+problem above 8T somewhere... 
 
---=20
-Don't wait until you have a bug to step through your code.
-                            --- Steve Maguire
+The current upstream git tree (or the 2.6.30-rc3-git5 prepatch) has more extent
+validity checking in it; if you do have the time for another test, running on
+that codebase may yield more info, depending on where the problem lies.
 
---Sig_/cHoISI6FGFQnhfEKeLLctD.
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+-Eric
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEARECAAYFAkn3wKAACgkQ0kE/IBnFmjByjgCbBlgsJb2BUmjlJPv1wU7mpUfa
-pncAn2tF3bBtNjFKsCzVLR565OuN1eLb
-=/yis
------END PGP SIGNATURE-----
-
---Sig_/cHoISI6FGFQnhfEKeLLctD.--
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
