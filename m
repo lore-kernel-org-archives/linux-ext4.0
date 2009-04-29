@@ -1,107 +1,76 @@
-From: Mingming <cmm@us.ibm.com>
-Subject: Re: [PATCH -V4 1/2] Fix sub-block zeroing for buffered writes into
-	unwritten extents
-Date: Wed, 29 Apr 2009 10:28:40 -0700
-Message-ID: <1241026120.5583.49.camel@BVR-FS.beaverton.ibm.com>
-References: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	 <49F85D5E.8040701@redhat.com>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [RFC PATCH] mark buffer_head mapping preallocate area as new
+	during write_begin with delayed allocation
+Date: Wed, 29 Apr 2009 20:13:21 +0200
+Message-ID: <20090429181321.GA22936@duck.suse.cz>
+References: <1240873494.6775.8.camel@mingming-laptop> <20090428042049.GA6520@skywalker> <20090428093145.GA13719@skywalker> <20090428124821.GJ22104@mit.edu> <20090428163554.GA27670@skywalker> <20090428170047.GC24043@mit.edu> <20090428185749.GA3275@skywalker> <49F75A9C.6000307@redhat.com> <20090429115727.GC18195@atrey.karlin.mff.cuni.cz> <49F85F45.1020805@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	tytso@mit.edu, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
+	linux-ext4@vger.kernel.org
 To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e33.co.us.ibm.com ([32.97.110.151]:48683 "EHLO
-	e33.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752035AbZD2R2p (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 29 Apr 2009 13:28:45 -0400
-Received: from d03relay04.boulder.ibm.com (d03relay04.boulder.ibm.com [9.17.195.106])
-	by e33.co.us.ibm.com (8.13.1/8.13.1) with ESMTP id n3THR3wG013197
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 11:27:03 -0600
-Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
-	by d03relay04.boulder.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n3THSf3G154416
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 11:28:42 -0600
-Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n3THSfw5023745
-	for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 11:28:41 -0600
-In-Reply-To: <49F85D5E.8040701@redhat.com>
+Received: from cantor2.suse.de ([195.135.220.15]:55391 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751465AbZD2SNX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 29 Apr 2009 14:13:23 -0400
+Content-Disposition: inline
+In-Reply-To: <49F85F45.1020805@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
-On Wed, 2009-04-29 at 08:59 -0500, Eric Sandeen wrote:
-> Aneesh Kumar K.V wrote:
-> > We need to mark the  buffer_head mapping prealloc space
-> > as new during write_begin. Otherwise we don't zero out the
-> > page cache content properly for a partial write. This will
-> > cause file corruption with preallocation.
-> > 
-> > Also use block number -1 as the fake block number so that
-> > unmap_underlying_metadata doesn't drop wrong buffer_head
-> > 
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> > 
-> > ---
-> >  fs/ext4/inode.c |   10 ++++++++++
-> >  1 files changed, 10 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index e91f978..12dcfab 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -2323,6 +2323,16 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
-> >  		set_buffer_delay(bh_result);
-> >  	} else if (ret > 0) {
-> >  		bh_result->b_size = (ret << inode->i_blkbits);
-> > +		/*
-> > +		 * With sub-block writes into unwritten extents
-> > +		 * we also need to mark the buffer as new so that
-> > +		 * the unwritten parts of the buffer gets correctly zeroed.
-> > +		 */
-> > +		if (buffer_unwritten(bh_result)) {
-> > +			bh_result->b_bdev = inode->i_sb->s_bdev;
-> > +			set_buffer_new(bh_result);
-> > +			bh_result->b_blocknr = -1;
-> > +		}
-> >  		ret = 0;
-> >  	}
-> >  
+On Wed 29-04-09 09:08:05, Eric Sandeen wrote:
+> Jan Kara wrote:
+> >> Aneesh Kumar K.V wrote:
+> >>> On Tue, Apr 28, 2009 at 01:00:47PM -0400, Theodore Tso wrote:
+> >>>> On Tue, Apr 28, 2009 at 10:05:54PM +0530, Aneesh Kumar K.V wrote:
+> >> ...
+> >>>>>> The other problem seems to be in the case of a delayed allocation
+> >>>>>> write, where we return a buffer_head which is marked new, and this
+> >>>>>> causes block_prepare_write() to call unmap_underlying_metadata(dev, 0).
+> >>>>> Not just that. On block allocation we are not calling
+> >>>>> unmap_underlying_metadata(dev, blocknumber) for delayed allocated
+> >>>>> blocks. That would imply file corruption.
+> >>>> I don't think I'm following you .  If we write into block that was
+> >>>> delayed allocated.  Are you saying we might get in trouble of the
+> >>>> delayed allocation block is mmap'ed in?
+> >>> We allocate blocks for delayed buffer during writepage. Now we need to
+> >>> make sure after getting the blocks we drop the old buffer_head mapping
+> >>> that we may have with this particular block attached to the block
+> >>> device. That is done by calling unmap_underlying_metadata. Now the
+> >>> current code doesn't call unmap_underlying_metadata for delayed
+> >>> allocated blocks. That would mean we can see corrupt files if old
+> >>> buffer_head mapping gets synced to disk AFTER we write the new
+> >>> buffer_head mapping.
+> >>
+> >> Talking w/ Aneesh on IRC, I don't see how we can have stray dirty
+> >> mappings lying around for this block device unless someone is writing
+> >> directly to the mounted block device, which I don't think is ever
+> >> considered safe ...
+> >>
+> >> I'm not quite sure what the call to __unmap_underlying_blocks() in
+> >> mpage_da_map_blocks() is for, I guess?
+> >   For ext3 / ext4 I think we don't need unmap_underlying_blocks() since
+> > before we reallocate a block, we make sure that the transaction freeing
+> > the block is committed and clear all dirty bits from freed blocks.
+> >   But for more careless filesystems, if they reallocate metadata block
+> > as a data block and don't clear the dirty bit in blockdev mapping,
+> > unmap_underlying_blocks() does it for them.
 > 
-> Ok, I guess this seems like the safest approach.  Long term we should
-> look really hard at the state & block nr of these buffer heads, but I
-> agree that keeping the changes restricted to the preallocation path for
-> now is safest.
+> That's what I thought - so I was wondering why we have specific calls to
+> this in ext4:
 > 
+> mpage_da_map_blocks
+> 	__unmap_underlying_blocks
+> 		for (i = 0; i < blocks; i++)
+> 			unmap_underlying_metadata
+  Hmm, OK. So maybe change it warn on dirty blockdev buffer and if the warning
+does not trigger we can believe that our theory is right ;).
 
-This path (ret >0) this is the path where get_blocks() find the block
-allocated or preallocated. The buffer_unwritten() is strict to the
-preallocation case, but why not take care of the buffer_new() when we
-set the buffer_unwritten() for preallocation  in ext4_ext_get_blocks()
-at the first place? That makes the "preallocation" case handling there
-all together. 
+									Honza
 
-But both patch is correct, I have tested the prealloc,
-prealloc->paritial write, prealloc->paritial long
-write->partial-short-write, the content of the afterward read seems all
-sane in both patch.
-
-Any thoughts about the comments update I made in my previous patch? This
-part of comment in preallocation  handling in ext4_ext_get_blocks()
-needs some cleanup.
-
-
-Think this over, if we set the buffer new here(i.e. in the write_begin()
-path), I wonder about the read case: where do we set the buffer_new()
-for the read on preallocated space? the ext4_ext_get_blocks() with
-create = 0 on preallocated extent will return bh unwritten, but not new.
-However my read tests right after new preallocation returns all zeroed
-data. I wonder what I am missing.
-
-Mingming
-> -Eric
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
