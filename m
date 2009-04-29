@@ -1,93 +1,73 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -V3] Fix sub-block zeroing for buffered writes into unwritten
- extents
-Date: Tue, 28 Apr 2009 16:47:43 -0500
-Message-ID: <49F7797F.9080401@redhat.com>
-References: <1240944653-4328-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13201] kernel BUG at fs/ext4/extents.c:2737
+Date: Wed, 29 Apr 2009 01:06:09 GMT
+Message-ID: <200904290106.n3T169m2006757@demeter.kernel.org>
+References: <bug-13201-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:58814 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753610AbZD1Vrr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 28 Apr 2009 17:47:47 -0400
-In-Reply-To: <1240944653-4328-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from demeter.kernel.org ([140.211.167.39]:55343 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758007AbZD2BGK (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 28 Apr 2009 21:06:10 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n3T169mn006758
+	for <linux-ext4@vger.kernel.org>; Wed, 29 Apr 2009 01:06:10 GMT
+In-Reply-To: <bug-13201-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Aneesh Kumar K.V wrote:
-> We need to mark the  buffer_head mapping prealloc space
-> as new during write_begin. Otherwise we don't zero out the
-> page cache content properly for a partial write. This will
-> cause file corruption with preallocation.
-> 
-> Also use block number -1 as the fake block number so that
-> unmap_underlying_metadata doesn't drop wrong buffer_head
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> 
-> ---
->  fs/ext4/inode.c |   11 ++++++++++-
->  1 files changed, 10 insertions(+), 1 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index e91f978..0214389 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2318,11 +2318,20 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
->  			/* not enough space to reserve */
->  			return ret;
->  
-> -		map_bh(bh_result, inode->i_sb, 0);
-> +		map_bh(bh_result, inode->i_sb, -1);
+http://bugzilla.kernel.org/show_bug.cgi?id=13201
 
-This seems fine, though unrelated, isn't it?  But mapping delalloc
-blocks to -1 temporarily rather than to 0 seems safer to me (could this
-possibly be related to our low-block corruption cases?)
 
-Oh, I guess this is for the unmap_underlying_metadata stuff, though I
-don't know what that call is for in ext4, to be honest.  :)  At any rate
-this should make it not findable there which is fine, I guess.
 
->  		set_buffer_new(bh_result);
->  		set_buffer_delay(bh_result);
->  	} else if (ret > 0) {
->  		bh_result->b_size = (ret << inode->i_blkbits);
-> +		bh_result->b_bdev = inode->i_sb->s_bdev;
-> +		bh->b_blocknr = -1;
 
-Mingming pointed out on irc that this sets the blocknr to -1 for every
-mapping we find, which is probably not what we want.  :)  But if it's an
-actually (pre)allocated block, why do we set it to a fake number at all?
 
-I guess it seems to me that we should be setting up a preallocated
-block/bh just about like any other, with a block nr, bdev, etc when we
-create it or look it up - but with BH_Unwritten as well to flag it as
-such.  It may not actually matter but it just seems odd to me for it to
-have a fake block nr.
+--- Comment #2 from Franco Broi <franco@fugro-fsi.com.au>  2009-04-29 01:06:09 ---
+Of the 12 tests, 2 produced errors.
 
-If surrounding infrastructure still expects to call get_block each time
-to split up an unwritten extent, ok for now to leave it unmapped, but
-that needs work I think, as we mentioned on irc.
+EXT4-fs error (device dm-5): ext4_mb_generate_buddy: EXT4-fs: group 9: 32768
+blocks in bitmap, 1023 in gd
 
-FWIW, setting it to -1 even under the if (buffer_unwritten()) test below
-is probably redundant, I think it's already set that way from
-alloc_page_buffers().
+The filesystem seems OK, I can ls the test files.
 
-> +		/*
-> +		 * With sub-block writes into unwritten extents
-> +		 * we also need to mark the buffer as new so that
-> +		 * the unwritten parts of the buffer gets correctly zeroed.
-> +		 */
-> +		if (buffer_unwritten(bh_result))
-> +			set_buffer_new(bh_result);
->  		ret = 0;
->  	}
->  
+EXT4-fs error (device dm-3): ext4_mb_generate_buddy: EXT4-fs: group 0: 32768
+blocks in bitmap, 970 in gd
+EXT4-fs error (device dm-3): ext4_mb_generate_buddy: EXT4-fs: group 0: 32768
+blocks in bitmap, 32766 in gd
+EXT4-fs error (device dm-3): ext4_init_block_bitmap: Checksum bad for group 1
+EXT4-fs error (device dm-3): ext4_mb_generate_buddy: EXT4-fs: group 1: 0 blocks
+in bitmap, 1023 in gd
+EXT4-fs error (device dm-3): ext4_dx_find_entry: bad entry in directory #15:
+directory entry across blocks - offset=28672, inode=0, rec_len=65536,
+name_len=0
+EXT4-fs error (device dm-3): ext4_add_entry: bad entry in directory #15:
+directory entry across blocks - offset=0, inode=0, rec_len=65536, name_len=0
+EXT4-fs error (device dm-3): htree_dirblock_to_tree: bad entry in directory #2:
+directory entry across blocks - offset=0, inode=0, rec_len=65536, name_len=0
+EXT4-fs error (device dm-3): htree_dirblock_to_tree: bad entry in directory #2:
+directory entry across blocks - offset=0, inode=0, rec_len=65536, name_len=0
+EXT4-fs error (device dm-3): htree_dirblock_to_tree: bad entry in directory #2:
+directory entry across blocks - offset=0, inode=0, rec_len=65536, name_len=0
+EXT4-fs error (device dm-3): htree_dirblock_to_tree: bad entry in directory #2:
+directory entry across blocks - offset=0, inode=0, rec_len=65536, name_len=0
+EXT4-fs error (device dm-3): htree_dirblock_to_tree: bad entry in directory #2:
+directory entry across blocks - offset=0, inode=0, rec_len=65536, name_len=0
 
-This part still seems fine to me :)
+Although df looks ok
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/mapper/vgdata--143-data143
+                     13456415384 13232157624 224257760  99% /data143
+# ls /data143
 
--Eric
+Produces no output.
+
+At this point I will need to switch back to ext3 so that I can get this disk
+into production but I do have a small window to run some more tests if anyone
+has any ideas.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
