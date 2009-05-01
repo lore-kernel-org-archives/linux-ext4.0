@@ -1,109 +1,203 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/3] ext4: Fix and simplify s_dirt handling
-Date: Fri,  1 May 2009 00:37:16 -0400
-Message-ID: <1241152637-11986-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 3/3] ext4: Use separate super_operations structure for no_journal filesystems
+Date: Fri,  1 May 2009 00:37:17 -0400
+Message-ID: <1241152637-11986-3-git-send-email-tytso@mit.edu>
 References: <1241152637-11986-1-git-send-email-tytso@mit.edu>
+ <1241152637-11986-2-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59735 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:59736 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750772AbZEAEhW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750828AbZEAEhW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 1 May 2009 00:37:22 -0400
-In-Reply-To: <1241152637-11986-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <1241152637-11986-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The s_dirt flag wasn't completely handled correctly, but it didn't
-really matter when journalling was enabled.  It turns out that when
-ext4 runs without a journal, we don't clear s_dirt in places where we
-should have, with the result that the high-level write_super()
-function was writing the superblock when it wasn't necessary.
-
-So we fix this by making ext4_commit_super() clear the s_dirt flag,
-and removing many of the other places where s_dirt is manipulated.
-When journalling is enabled, the s_dirt flag might be left set more
-often, but s_dirt really doesn't matter when journalling is enabled.
+By using a separate super_operations structure for filesystems that
+have and don't have journals, we can simply ext4_write_super() ---
+which is only needed when no journal is present --- and ext4_freeze(),
+ext4_unfreeze(), and ext4_sync_fs(), which are only needed when the
+journal is present.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/super.c |   14 +++-----------
- 1 files changed, 3 insertions(+), 11 deletions(-)
+ fs/ext4/super.c |   98 ++++++++++++++++++++++++++-----------------------------
+ 1 files changed, 46 insertions(+), 52 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index ad4c9be..7c7a08a 100644
+index 7c7a08a..241a81e 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -3128,7 +3128,6 @@ static int ext4_load_journal(struct super_block *sb,
- 	if (journal_devnum &&
- 	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
- 		es->s_journal_dev = cpu_to_le32(journal_devnum);
--		sb->s_dirt = 1;
+@@ -65,7 +65,6 @@ static const char *ext4_decode_error(struct super_block *sb, int errno,
+ static int ext4_remount(struct super_block *sb, int *flags, char *data);
+ static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
+ static int ext4_unfreeze(struct super_block *sb);
+-static void ext4_write_super(struct super_block *sb);
+ static int ext4_freeze(struct super_block *sb);
  
- 		/* Make sure we flush the recovery flag to disk. */
- 		ext4_commit_super(sb, 1);
-@@ -3168,7 +3167,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
- 					&EXT4_SB(sb)->s_freeblocks_counter));
- 	es->s_free_inodes_count = cpu_to_le32(percpu_counter_sum_positive(
- 					&EXT4_SB(sb)->s_freeinodes_counter));
--
-+	sb->s_dirt = 0;
- 	BUFFER_TRACE(sbh, "marking dirty");
- 	mark_buffer_dirty(sbh);
- 	if (sync) {
-@@ -3210,7 +3209,6 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
- 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER) &&
- 	    sb->s_flags & MS_RDONLY) {
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--		sb->s_dirt = 0;
- 		ext4_commit_super(sb, 1);
- 	}
- 	unlock_super(sb);
-@@ -3271,10 +3269,8 @@ int ext4_force_commit(struct super_block *sb)
- 		return 0;
  
- 	journal = EXT4_SB(sb)->s_journal;
--	if (journal) {
--		sb->s_dirt = 0;
-+	if (journal)
- 		ret = ext4_journal_force_commit(journal);
--	}
+@@ -995,7 +994,6 @@ static const struct super_operations ext4_sops = {
+ 	.dirty_inode	= ext4_dirty_inode,
+ 	.delete_inode	= ext4_delete_inode,
+ 	.put_super	= ext4_put_super,
+-	.write_super	= ext4_write_super,
+ 	.sync_fs	= ext4_sync_fs,
+ 	.freeze_fs	= ext4_freeze,
+ 	.unfreeze_fs	= ext4_unfreeze,
+@@ -1010,6 +1008,8 @@ static const struct super_operations ext4_sops = {
+ 	.bdev_try_to_free_page = bdev_try_to_free_page,
+ };
  
++static struct super_operations ext4_nojournal_sops;
++
+ static const struct export_operations ext4_export_ops = {
+ 	.fh_to_dentry = ext4_fh_to_dentry,
+ 	.fh_to_parent = ext4_fh_to_parent,
+@@ -2615,7 +2615,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	/*
+ 	 * set up enough so that it can read an inode
+ 	 */
+-	sb->s_op = &ext4_sops;
++	if (!test_opt(sb, NOLOAD) &&
++	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
++		sb->s_op = &ext4_sops;
++	else
++		sb->s_op = &ext4_nojournal_sops;
+ 	sb->s_export_op = &ext4_export_ops;
+ 	sb->s_xattr = ext4_xattr_handlers;
+ #ifdef CONFIG_QUOTA
+@@ -3275,19 +3279,9 @@ int ext4_force_commit(struct super_block *sb)
  	return ret;
  }
-@@ -3282,15 +3278,13 @@ int ext4_force_commit(struct super_block *sb)
- /*
-  * Ext4 always journals updates to the superblock itself, so we don't
-  * have to propagate any other updates to the superblock on disk at this
-- * point.  (We can probably nuke this function altogether, and remove
-- * any mention to sb->s_dirt in all of fs/ext4; eventual cleanup...)
-+ * point if the journalling is enabled.
-  */
+ 
+-/*
+- * Ext4 always journals updates to the superblock itself, so we don't
+- * have to propagate any other updates to the superblock on disk at this
+- * point if the journalling is enabled.
+- */
  static void ext4_write_super(struct super_block *sb)
  {
- 	if (EXT4_SB(sb)->s_journal) {
- 		if (mutex_trylock(&sb->s_lock) != 0)
- 			BUG();
--		sb->s_dirt = 0;
- 	} else {
- 		ext4_commit_super(sb, 1);
- 	}
-@@ -3302,7 +3296,6 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+-	if (EXT4_SB(sb)->s_journal) {
+-		if (mutex_trylock(&sb->s_lock) != 0)
+-			BUG();
+-	} else {
+-		ext4_commit_super(sb, 1);
+-	}
++	ext4_commit_super(sb, 1);
+ }
+ 
+ static int ext4_sync_fs(struct super_block *sb, int wait)
+@@ -3296,15 +3290,9 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
  	tid_t target;
  
  	trace_mark(ext4_sync_fs, "dev %s wait %d", sb->s_id, wait);
--	sb->s_dirt = 0;
- 	if (EXT4_SB(sb)->s_journal) {
- 		if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal,
- 					      &target)) {
-@@ -3324,7 +3317,6 @@ static int ext4_freeze(struct super_block *sb)
- {
+-	if (EXT4_SB(sb)->s_journal) {
+-		if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal,
+-					      &target)) {
+-			if (wait)
+-				jbd2_log_wait_commit(EXT4_SB(sb)->s_journal,
+-						     target);
+-		}
+-	} else {
+-		ext4_commit_super(sb, wait);
++	if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, &target)) {
++		if (wait)
++			jbd2_log_wait_commit(EXT4_SB(sb)->s_journal, target);
+ 	}
+ 	return ret;
+ }
+@@ -3318,32 +3306,31 @@ static int ext4_freeze(struct super_block *sb)
  	int error = 0;
  	journal_t *journal;
--	sb->s_dirt = 0;
  
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		journal = EXT4_SB(sb)->s_journal;
+-	if (!(sb->s_flags & MS_RDONLY)) {
+-		journal = EXT4_SB(sb)->s_journal;
++	if (sb->s_flags & MS_RDONLY)
++		return 0;
+ 
+-		if (journal) {
+-			/* Now we set up the journal barrier. */
+-			jbd2_journal_lock_updates(journal);
++	journal = EXT4_SB(sb)->s_journal;
+ 
+-			/*
+-			 * We don't want to clear needs_recovery flag when we
+-			 * failed to flush the journal.
+-			 */
+-			error = jbd2_journal_flush(journal);
+-			if (error < 0)
+-				goto out;
+-		}
++	/* Now we set up the journal barrier. */
++	jbd2_journal_lock_updates(journal);
+ 
+-		/* Journal blocked and flushed, clear needs_recovery flag. */
+-		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-		error = ext4_commit_super(sb, 1);
+-		if (error)
+-			goto out;
++	/*
++	 * Don't clear the needs_recovery flag if we failed to flush
++	 * the journal.
++	 */
++	error = jbd2_journal_flush(journal);
++	if (error < 0) {
++	out:
++		jbd2_journal_unlock_updates(journal);
++		return error;
+ 	}
++
++	/* Journal blocked and flushed, clear needs_recovery flag. */
++	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
++	error = ext4_commit_super(sb, 1);
++	if (error)
++		goto out;
+ 	return 0;
+-out:
+-	jbd2_journal_unlock_updates(journal);
+-	return error;
+ }
+ 
+ /*
+@@ -3352,14 +3339,15 @@ out:
+  */
+ static int ext4_unfreeze(struct super_block *sb)
+ {
+-	if (EXT4_SB(sb)->s_journal && !(sb->s_flags & MS_RDONLY)) {
+-		lock_super(sb);
+-		/* Reser the needs_recovery flag before the fs is unlocked. */
+-		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-		ext4_commit_super(sb, 1);
+-		unlock_super(sb);
+-		jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+-	}
++	if (sb->s_flags & MS_RDONLY)
++		return 0;
++
++	lock_super(sb);
++	/* Reset the needs_recovery flag before the fs is unlocked. */
++	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
++	ext4_commit_super(sb, 1);
++	unlock_super(sb);
++	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	return 0;
+ }
+ 
+@@ -3923,6 +3911,12 @@ static int __init init_ext4_fs(void)
+ {
+ 	int err;
+ 
++	ext4_nojournal_sops = ext4_sops;
++	ext4_nojournal_sops.write_super = ext4_write_super;
++	ext4_nojournal_sops.sync_fs = 0;
++	ext4_nojournal_sops.freeze_fs = 0;
++	ext4_nojournal_sops.unfreeze_fs = 0;
++
+ 	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
+ 	if (!ext4_kset)
+ 		return -ENOMEM;
 -- 
 1.6.0.4
 
