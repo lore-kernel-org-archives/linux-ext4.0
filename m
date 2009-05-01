@@ -1,317 +1,41 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/4] ext4: Move the ext4_i.h header file into ext4.h
-Date: Fri,  1 May 2009 14:59:26 -0400
-Message-ID: <1241204369-2333-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/2 for 2.6.31] ext4: Use -1 as the fake block number
+	for delayed new buffer_head
+Date: Sat, 2 May 2009 00:35:46 +0530
+Message-ID: <20090501190546.GA920@skywalker>
+References: <1241003611-3652-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090501185841.GG7681@mit.edu>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:57348 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754635AbZEAS7c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 May 2009 14:59:32 -0400
+Received: from e23smtp06.au.ibm.com ([202.81.31.148]:56510 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754105AbZEATF4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 15:05:56 -0400
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id n41J5oBR002759
+	for <linux-ext4@vger.kernel.org>; Sat, 2 May 2009 05:05:50 +1000
+Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n41J5sr0389212
+	for <linux-ext4@vger.kernel.org>; Sat, 2 May 2009 05:05:55 +1000
+Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
+	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n41J5rAE008066
+	for <linux-ext4@vger.kernel.org>; Sat, 2 May 2009 05:05:54 +1000
+Content-Disposition: inline
+In-Reply-To: <20090501185841.GG7681@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-There is no longer a reason for a separate ext4_i.h header file, so
-move it into ext4.h just to make life easier for developers to find
-the relevant data structures and typedefs.  Should also speed up
-compiles slightly, too.
+On Fri, May 01, 2009 at 02:58:41PM -0400, Theodore Tso wrote:
+> You mean "for 2.6.30", right?
+> 
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/ext4.h   |  122 ++++++++++++++++++++++++++++++++++++++++++++++-
- fs/ext4/ext4_i.h |  140 ------------------------------------------------------
- 2 files changed, 121 insertions(+), 141 deletions(-)
- delete mode 100644 fs/ext4/ext4_i.h
+The reason for me to post two series one for 2.6.30 and other for 2.6.31
+was the [Patch 2/2] for 2.6.31 needs more testing. I added this specific
+patch in both the series to make sure  we don't miss the change in case
+we decided not to make any changes for 2.6.30. Also in my testing I created
+different topgit branches with different dependencies. So having [PATCH
+1/2 ] in both the series helped in testing with topgit branches.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 02ec44b..ba57d66 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -21,7 +21,10 @@
- #include <linux/magic.h>
- #include <linux/jbd2.h>
- #include <linux/quota.h>
--#include "ext4_i.h"
-+#include <linux/rwsem.h>
-+#include <linux/rbtree.h>
-+#include <linux/seqlock.h>
-+#include <linux/mutex.h>
- 
- /*
-  * The fourth extended filesystem constants/structures
-@@ -46,6 +49,19 @@
- #define ext4_debug(f, a...)	do {} while (0)
- #endif
- 
-+/* data type for block offset of block group */
-+typedef int ext4_grpblk_t;
-+
-+/* data type for filesystem-wide blocks number */
-+typedef unsigned long long ext4_fsblk_t;
-+
-+/* data type for file logical block number */
-+typedef __u32 ext4_lblk_t;
-+
-+/* data type for block group number */
-+typedef unsigned int ext4_group_t;
-+
-+
- /* prefer goal again. length */
- #define EXT4_MB_HINT_MERGE		1
- /* blocks already reserved */
-@@ -516,6 +532,110 @@ do {									       \
- #endif /* defined(__KERNEL__) || defined(__linux__) */
- 
- /*
-+ * storage for cached extent
-+ */
-+struct ext4_ext_cache {
-+	ext4_fsblk_t	ec_start;
-+	ext4_lblk_t	ec_block;
-+	__u32		ec_len; /* must be 32bit to return holes */
-+	__u32		ec_type;
-+};
-+
-+/*
-+ * fourth extended file system inode data in memory
-+ */
-+struct ext4_inode_info {
-+	__le32	i_data[15];	/* unconverted */
-+	__u32	i_flags;
-+	ext4_fsblk_t	i_file_acl;
-+	__u32	i_dtime;
-+
-+	/*
-+	 * i_block_group is the number of the block group which contains
-+	 * this file's inode.  Constant across the lifetime of the inode,
-+	 * it is ued for making block allocation decisions - we try to
-+	 * place a file's data blocks near its inode block, and new inodes
-+	 * near to their parent directory's inode.
-+	 */
-+	ext4_group_t	i_block_group;
-+	__u32	i_state;		/* Dynamic state flags for ext4 */
-+
-+	ext4_lblk_t		i_dir_start_lookup;
-+#ifdef CONFIG_EXT4_FS_XATTR
-+	/*
-+	 * Extended attributes can be read independently of the main file
-+	 * data. Taking i_mutex even when reading would cause contention
-+	 * between readers of EAs and writers of regular file data, so
-+	 * instead we synchronize on xattr_sem when reading or changing
-+	 * EAs.
-+	 */
-+	struct rw_semaphore xattr_sem;
-+#endif
-+#ifdef CONFIG_EXT4_FS_POSIX_ACL
-+	struct posix_acl	*i_acl;
-+	struct posix_acl	*i_default_acl;
-+#endif
-+
-+	struct list_head i_orphan;	/* unlinked but open inodes */
-+
-+	/*
-+	 * i_disksize keeps track of what the inode size is ON DISK, not
-+	 * in memory.  During truncate, i_size is set to the new size by
-+	 * the VFS prior to calling ext4_truncate(), but the filesystem won't
-+	 * set i_disksize to 0 until the truncate is actually under way.
-+	 *
-+	 * The intent is that i_disksize always represents the blocks which
-+	 * are used by this file.  This allows recovery to restart truncate
-+	 * on orphans if we crash during truncate.  We actually write i_disksize
-+	 * into the on-disk inode when writing inodes out, instead of i_size.
-+	 *
-+	 * The only time when i_disksize and i_size may be different is when
-+	 * a truncate is in progress.  The only things which change i_disksize
-+	 * are ext4_get_block (growth) and ext4_truncate (shrinkth).
-+	 */
-+	loff_t	i_disksize;
-+
-+	/*
-+	 * i_data_sem is for serialising ext4_truncate() against
-+	 * ext4_getblock().  In the 2.4 ext2 design, great chunks of inode's
-+	 * data tree are chopped off during truncate. We can't do that in
-+	 * ext4 because whenever we perform intermediate commits during
-+	 * truncate, the inode and all the metadata blocks *must* be in a
-+	 * consistent state which allows truncation of the orphans to restart
-+	 * during recovery.  Hence we must fix the get_block-vs-truncate race
-+	 * by other means, so we have i_data_sem.
-+	 */
-+	struct rw_semaphore i_data_sem;
-+	struct inode vfs_inode;
-+	struct jbd2_inode jinode;
-+
-+	struct ext4_ext_cache i_cached_extent;
-+	/*
-+	 * File creation time. Its function is same as that of
-+	 * struct timespec i_{a,c,m}time in the generic inode.
-+	 */
-+	struct timespec i_crtime;
-+
-+	/* mballoc */
-+	struct list_head i_prealloc_list;
-+	spinlock_t i_prealloc_lock;
-+
-+	/* ialloc */
-+	ext4_group_t	i_last_alloc_group;
-+
-+	/* allocation reservation info for delalloc */
-+	unsigned int i_reserved_data_blocks;
-+	unsigned int i_reserved_meta_blocks;
-+	unsigned int i_allocated_meta_blocks;
-+	unsigned short i_delalloc_reserved_flag;
-+
-+	/* on-disk additional length */
-+	__u16 i_extra_isize;
-+
-+	spinlock_t i_block_reservation_lock;
-+};
-+
-+/*
-  * File system states
-  */
- #define	EXT4_VALID_FS			0x0001	/* Unmounted cleanly */
-diff --git a/fs/ext4/ext4_i.h b/fs/ext4/ext4_i.h
-deleted file mode 100644
-index 4ce2187..0000000
---- a/fs/ext4/ext4_i.h
-+++ /dev/null
-@@ -1,140 +0,0 @@
--/*
-- *  ext4_i.h
-- *
-- * Copyright (C) 1992, 1993, 1994, 1995
-- * Remy Card (card@masi.ibp.fr)
-- * Laboratoire MASI - Institut Blaise Pascal
-- * Universite Pierre et Marie Curie (Paris VI)
-- *
-- *  from
-- *
-- *  linux/include/linux/minix_fs_i.h
-- *
-- *  Copyright (C) 1991, 1992  Linus Torvalds
-- */
--
--#ifndef _EXT4_I
--#define _EXT4_I
--
--#include <linux/rwsem.h>
--#include <linux/rbtree.h>
--#include <linux/seqlock.h>
--#include <linux/mutex.h>
--
--/* data type for block offset of block group */
--typedef int ext4_grpblk_t;
--
--/* data type for filesystem-wide blocks number */
--typedef unsigned long long ext4_fsblk_t;
--
--/* data type for file logical block number */
--typedef __u32 ext4_lblk_t;
--
--/* data type for block group number */
--typedef unsigned int ext4_group_t;
--
--/*
-- * storage for cached extent
-- */
--struct ext4_ext_cache {
--	ext4_fsblk_t	ec_start;
--	ext4_lblk_t	ec_block;
--	__u32		ec_len; /* must be 32bit to return holes */
--	__u32		ec_type;
--};
--
--/*
-- * fourth extended file system inode data in memory
-- */
--struct ext4_inode_info {
--	__le32	i_data[15];	/* unconverted */
--	__u32	i_flags;
--	ext4_fsblk_t	i_file_acl;
--	__u32	i_dtime;
--
--	/*
--	 * i_block_group is the number of the block group which contains
--	 * this file's inode.  Constant across the lifetime of the inode,
--	 * it is ued for making block allocation decisions - we try to
--	 * place a file's data blocks near its inode block, and new inodes
--	 * near to their parent directory's inode.
--	 */
--	ext4_group_t	i_block_group;
--	__u32	i_state;		/* Dynamic state flags for ext4 */
--
--	ext4_lblk_t		i_dir_start_lookup;
--#ifdef CONFIG_EXT4_FS_XATTR
--	/*
--	 * Extended attributes can be read independently of the main file
--	 * data. Taking i_mutex even when reading would cause contention
--	 * between readers of EAs and writers of regular file data, so
--	 * instead we synchronize on xattr_sem when reading or changing
--	 * EAs.
--	 */
--	struct rw_semaphore xattr_sem;
--#endif
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	struct posix_acl	*i_acl;
--	struct posix_acl	*i_default_acl;
--#endif
--
--	struct list_head i_orphan;	/* unlinked but open inodes */
--
--	/*
--	 * i_disksize keeps track of what the inode size is ON DISK, not
--	 * in memory.  During truncate, i_size is set to the new size by
--	 * the VFS prior to calling ext4_truncate(), but the filesystem won't
--	 * set i_disksize to 0 until the truncate is actually under way.
--	 *
--	 * The intent is that i_disksize always represents the blocks which
--	 * are used by this file.  This allows recovery to restart truncate
--	 * on orphans if we crash during truncate.  We actually write i_disksize
--	 * into the on-disk inode when writing inodes out, instead of i_size.
--	 *
--	 * The only time when i_disksize and i_size may be different is when
--	 * a truncate is in progress.  The only things which change i_disksize
--	 * are ext4_get_block (growth) and ext4_truncate (shrinkth).
--	 */
--	loff_t	i_disksize;
--
--	/*
--	 * i_data_sem is for serialising ext4_truncate() against
--	 * ext4_getblock().  In the 2.4 ext2 design, great chunks of inode's
--	 * data tree are chopped off during truncate. We can't do that in
--	 * ext4 because whenever we perform intermediate commits during
--	 * truncate, the inode and all the metadata blocks *must* be in a
--	 * consistent state which allows truncation of the orphans to restart
--	 * during recovery.  Hence we must fix the get_block-vs-truncate race
--	 * by other means, so we have i_data_sem.
--	 */
--	struct rw_semaphore i_data_sem;
--	struct inode vfs_inode;
--	struct jbd2_inode jinode;
--
--	struct ext4_ext_cache i_cached_extent;
--	/*
--	 * File creation time. Its function is same as that of
--	 * struct timespec i_{a,c,m}time in the generic inode.
--	 */
--	struct timespec i_crtime;
--
--	/* mballoc */
--	struct list_head i_prealloc_list;
--	spinlock_t i_prealloc_lock;
--
--	/* ialloc */
--	ext4_group_t	i_last_alloc_group;
--
--	/* allocation reservation info for delalloc */
--	unsigned int i_reserved_data_blocks;
--	unsigned int i_reserved_meta_blocks;
--	unsigned int i_allocated_meta_blocks;
--	unsigned short i_delalloc_reserved_flag;
--
--	/* on-disk additional length */
--	__u16 i_extra_isize;
--
--	spinlock_t i_block_reservation_lock;
--};
+-aneesh
