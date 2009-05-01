@@ -1,77 +1,64 @@
 From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: [PATCH 0/6][64-bit] Overview
-Date: Fri, 01 May 2009 04:46:00 -0400
-Message-ID: <15543.1241167560@gamaville.dokosmarshall.org>
+Subject: [PATCH 1/6][64-bit] Eliminate erroneous blk_t casts in ext2fs_get_free_blocks2().
+Date: Fri, 01 May 2009 04:46:13 -0400
+Message-ID: <15553.1241167573@gamaville.dokosmarshall.org>
 Reply-To: nicholas.dokos@hp.com
 Cc: nicholas.dokos@hp.com, Theodore Ts'o <tytso@mit.edu>,
 	Valerie Aurora <vaurora@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qmta06.emeryville.ca.mail.comcast.net ([76.96.30.56]:36117 "EHLO
-	QMTA06.emeryville.ca.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752491AbZEAIpr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 04:45:47 -0400
+Received: from qmta03.emeryville.ca.mail.comcast.net ([76.96.30.32]:48454 "EHLO
+	QMTA03.emeryville.ca.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752542AbZEAIqA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 04:46:00 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-With this set of patches, I can go through a mkfs/fsck cycle with a
-32TiB filesystem in four different configurations:
+Running e2fsck -n -f <device> on a brand-new, never-mounted 32Tib fs
+was producing checksum errors on half the groups (the lower half)
+before it got to pass1 and block or inode bitmap conflicts on some
+groups in the upper half. The checksum errors were actually caused by
+the conflicts: e2fsck does a sanity check on block allocations, finds
+a conflict, and uses the backup superblock at 32768. But when it does
+that, it assumes the worst: it clears the UNINIT FLAGS and zeroes the
+free inode count for each group, assuming that it will fix them up
+during the run. That triggers the checksum errors (although it's not
+clear to me why only the lower half of the groups get checksum
+errors.)
 
-   o flex_bg off, no raid parameters
-   o flex_bg off, raid parameters
-   o flex_bg on, no raid parameters
-   o flex_bg on, raid parameters
+dumpe2fs showed that the conflicts were not artifacts of e2fsck
+processing: they existed on disk. In fact, the block bitmap of a group
+conflicted with the inode bitmap of the group fifteen steps further
+along. That smelled like flex_bg, so I remade the fs with flex_bg
+off and then *every* group in the upper half (more precisely, with
+blocks above the 32-bit boundary) had a conflict with itself: the
+block bitmap and inode bitmap were allocated on top of each other.
+That led to ext2fs_get_free_blocks2() which was truncating 64-bit block
+numbers by casting them to blk_t.
 
-There are no errors and the layouts seem reasonable - in the first two
-cases, I've checked the block and inode bitmaps of the four groups that
-are not marked BG_BLOCK_UNINIT and they look correct.  I'm spot checking
-some bitmaps in the last two cases but that's a longer process.
+This patch eliminates the casts. The resulting file system is free of
+the conflicts (with or without flex_bg.) However, it does not fsck
+cleanly yet: there are block bitmap differences  in the very last group.
 
-The fs is built on an LVM volume that consists of 16 physical volumes,
-with a stripe size of 128 KiB. Each physical volume is a striped LUN
-(also with a 128KiB stripe size) exported by an MSA1000 RAID
-controller. There are 4 controllers, each with 28 300GiB, 15Krpm SCSI
-disks. Each controller exports 4 LUNs. Each LUN is 2TiB (that's
-a limitation of the hardware). So each controller exports 8TiB and
-four of them provide the 32TiB for the filesystem.
+Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
+---
+ lib/ext2fs/alloc.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-The machine is a DL585g5: 4 slots, each with a quad core AMD cpu
-(/proc/cpuinfo says:
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index b1d1f9c..9f11673 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -272,8 +272,7 @@ errcode_t ext2fs_get_free_blocks2(ext2_filsys fs, blk64_t start, blk64_t finish,
+ 	do {
+ 		if (b+num-1 > ext2fs_blocks_count(fs->super))
+ 			b = fs->super->s_first_data_block;
+-		if (ext2fs_fast_test_block_bitmap_range2(map, (blk_t) b,
+-							(blk_t) num)) {
++		if (ext2fs_fast_test_block_bitmap_range2(map, b, num)) {
+ 			*ret = b;
+ 			return 0;
+ 		}
+-- 
+1.6.0.6
 
-vendor_id	: AuthenticAMD
-cpu family	: 16
-model		: 2
-model name	: Quad-Core AMD Opteron(tm) Processor 8356
-stepping	: 3
-cpu MHz		: 2310.961
-cache size	: 512 KB
-)
-
-Even though I thought I had done this before (with the third
-configuration), I could not replicate it: when running e2fsck, I
-started getting checksum errors before the first pass and block
-conflicts in pass 1. See the patch entitled "Eliminate erroneous blk_t
-casts in ext2fs_get_free_blocks2()" for more details.
-
-Even after these fixes, dumpe2fs and e2fsck were complaining that the
-last group (group #250337) had block bitmap differences. It turned out
-that the bitmaps were being written to the wrong place because of 32-bit
-truncation. The patch entitled "write_bitmaps(): blk_t -> blk64_t" fixes
-that.
-
-mke2fs is supposed to zero out the last 16 blocks of the volume to make
-sure that any old MD RAID metadata at the end of the device are wiped
-out, but it was zeroing out the wrong blocks. The patch entitled
-"mke2fs 64-bit miscellaneous fixes" fixes that, as well as a
-few display issues.
-
-dumpe2fs needed the EXT2_FLAG_NEW_BITMAPS flag and had a few display
-problems of its own. These are fixed in the patch entitled
-"enable dumpe2fs 64-bitness and fix printf formats."
-
-There are two patches for problems found by visual inspection:
-"(blk_t) cast in ext2fs_new_block2()" and "__u32 -> __u64 in
-ba_resize_bmap() and blk_t -> blk64_t in ext2fs_check_desc()"
-
-Thanks,
-Nick
