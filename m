@@ -1,37 +1,47 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 3/3] ext4: Use separate super_operations structure for
-	no_journal filesystems
-Date: Fri, 1 May 2009 09:49:12 -0400
-Message-ID: <20090501134912.GD7681@mit.edu>
-References: <1241152637-11986-1-git-send-email-tytso@mit.edu> <1241152637-11986-2-git-send-email-tytso@mit.edu> <1241152637-11986-3-git-send-email-tytso@mit.edu> <20090501104253.GC3209@webber.adilger.int>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 12151] Unexplained fsck errors on a ext4 filesystem
+Date: Fri, 1 May 2009 13:52:35 GMT
+Message-ID: <200905011352.n41DqZqj014119@demeter.kernel.org>
+References: <bug-12151-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:58992 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751717AbZEANtN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 May 2009 09:49:13 -0400
-Content-Disposition: inline
-In-Reply-To: <20090501104253.GC3209@webber.adilger.int>
+Received: from demeter.kernel.org ([140.211.167.39]:33748 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753538AbZEANwf (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 09:52:35 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n41DqZCK014120
+	for <linux-ext4@vger.kernel.org>; Fri, 1 May 2009 13:52:35 GMT
+In-Reply-To: <bug-12151-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 01, 2009 at 04:42:53AM -0600, Andreas Dilger wrote:
-> On May 01, 2009  00:37 -0400, Theodore Ts'o wrote:
-> > @@ -3923,6 +3911,12 @@ static int __init init_ext4_fs(void)
-> > +	ext4_nojournal_sops = ext4_sops;
-> > +	ext4_nojournal_sops.write_super = ext4_write_super;
-> > +	ext4_nojournal_sops.sync_fs = 0;
-> > +	ext4_nojournal_sops.freeze_fs = 0;
-> > +	ext4_nojournal_sops.unfreeze_fs = 0;
-> 
-> I thought the general policy these days was to make a static const
-> ops struct so that it cannot be changed (correctly or incorrectly)?
+http://bugzilla.kernel.org/show_bug.cgi?id=12151
 
-The tradeoff is this makes it much easier from a maintenance point of
-view to see what the differences are between ext4_nojournal_sops and
-ext4_journal_sops.
 
-						- Ted
+Theodore Tso <tytso@mit.edu> changed:
+
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+                 CC|                            |tytso@mit.edu
+
+
+
+
+--- Comment #8 from Theodore Tso <tytso@mit.edu>  2009-05-01 13:52:35 ---
+We're desperately looking for a reliable reproduction case for this problem.  
+My suggestion at this point is if you have a large filesystem (the reports for
+this seem to come from users with > 1TB filesystems) to take a periodic e2image
+backup of your filesystem before the corruption, and save it on some other
+filesystem so there is a backup of your filesystem metadata.   This will help
+recover the filesystem after the corruption.
+
+If you can reproduce this reliably, please let us know.  We haven't been able
+to get this problem reproduced yet.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
