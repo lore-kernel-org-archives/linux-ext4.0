@@ -1,40 +1,49 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/3] ext4: Use separate super_operations structure for
-	no_journal filesystems
-Date: Fri, 1 May 2009 10:47:29 -0400
-Message-ID: <20090501144729.GA1459@infradead.org>
-References: <1241152637-11986-1-git-send-email-tytso@mit.edu> <1241152637-11986-2-git-send-email-tytso@mit.edu> <1241152637-11986-3-git-send-email-tytso@mit.edu> <20090501104253.GC3209@webber.adilger.int>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 12151] Unexplained fsck errors on a ext4 filesystem
+Date: Fri, 1 May 2009 15:19:38 GMT
+Message-ID: <200905011519.n41FJcBu021652@demeter.kernel.org>
+References: <bug-12151-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Ts'o <tytso@mit.edu>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:58446 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1764301AbZEAOra (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 10:47:30 -0400
-Content-Disposition: inline
-In-Reply-To: <20090501104253.GC3209@webber.adilger.int>
+Received: from demeter.kernel.org ([140.211.167.39]:44225 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756063AbZEAPTi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 11:19:38 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n41FJcAE021653
+	for <linux-ext4@vger.kernel.org>; Fri, 1 May 2009 15:19:38 GMT
+In-Reply-To: <bug-12151-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 01, 2009 at 04:42:53AM -0600, Andreas Dilger wrote:
-> On May 01, 2009  00:37 -0400, Theodore Ts'o wrote:
-> > @@ -3923,6 +3911,12 @@ static int __init init_ext4_fs(void)
-> > +	ext4_nojournal_sops = ext4_sops;
-> > +	ext4_nojournal_sops.write_super = ext4_write_super;
-> > +	ext4_nojournal_sops.sync_fs = 0;
-> > +	ext4_nojournal_sops.freeze_fs = 0;
-> > +	ext4_nojournal_sops.unfreeze_fs = 0;
-> 
-> I thought the general policy these days was to make a static const
-> ops struct so that it cannot be changed (correctly or incorrectly)?
+http://bugzilla.kernel.org/show_bug.cgi?id=12151
 
-Yeah.  Having the super ops in the normal style would be a lot more
-readable.  We don't copy mostly the same inode or file operations
-either.
 
-And to be super-pedantic NULL pointer should be initialized as NULL, not
-0.
 
+
+
+--- Comment #9 from Eric Sandeen <sandeen@redhat.com>  2009-05-01 15:19:38 ---
+(In reply to comment #7)
+> I have been running Fedora's kernels the whole time, and I haven't seen this
+> issue with 2.6.29 kernels. I don't think I saw it with 2.6.28 kernels either. I
+> wonder if Fedora has been putting more patches for ext4 in over what goes into
+> Linus's tree.
+
+Nathan - well, not really.  I'll never put something in fedora that hasn't been
+sent upstream, it's not how we work.
+
+One difference may be that the 2.6.27 kernels in F10 did have the ext4 "stable"
+backports that Ted was doing...
+
+If you're running .29 kernels from fedora, it should be equivalent to what's
+upstream.  The only changes in F11 for example are:
+
+Patch2920: linux-2.6-ext4-flush-on-close.patch
+Patch2921: linux-2.6-ext4-really-print-warning-once.patch
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
