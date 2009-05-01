@@ -1,38 +1,40 @@
 From: Christoph Hellwig <hch@infradead.org>
 Subject: Re: [PATCH 3/3] ext4: Use separate super_operations structure for
 	no_journal filesystems
-Date: Fri, 1 May 2009 10:24:03 -0400
-Message-ID: <20090501142403.GA4493@infradead.org>
-References: <1241152637-11986-1-git-send-email-tytso@mit.edu> <1241152637-11986-2-git-send-email-tytso@mit.edu> <1241152637-11986-3-git-send-email-tytso@mit.edu> <20090501070422.GB2107@infradead.org> <20090501134804.GC7681@mit.edu>
+Date: Fri, 1 May 2009 10:47:29 -0400
+Message-ID: <20090501144729.GA1459@infradead.org>
+References: <1241152637-11986-1-git-send-email-tytso@mit.edu> <1241152637-11986-2-git-send-email-tytso@mit.edu> <1241152637-11986-3-git-send-email-tytso@mit.edu> <20090501104253.GC3209@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
+Cc: Theodore Ts'o <tytso@mit.edu>,
 	Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:45807 "EHLO
+Received: from bombadil.infradead.org ([18.85.46.34]:58446 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754442AbZEAOYF (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 10:24:05 -0400
+	with ESMTP id S1764301AbZEAOra (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 10:47:30 -0400
 Content-Disposition: inline
-In-Reply-To: <20090501134804.GC7681@mit.edu>
+In-Reply-To: <20090501104253.GC3209@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 01, 2009 at 09:48:04AM -0400, Theodore Tso wrote:
-> So I'm guessing your plans are to have sys_sync() no longer call
-> write_super(), but to only call sync_fs()?  If that's the case, I
-> think all we need to do is set ext4_nojournal_sops.sync_fs to be
-> ext4_commit_super.
+On Fri, May 01, 2009 at 04:42:53AM -0600, Andreas Dilger wrote:
+> On May 01, 2009  00:37 -0400, Theodore Ts'o wrote:
+> > @@ -3923,6 +3911,12 @@ static int __init init_ext4_fs(void)
+> > +	ext4_nojournal_sops = ext4_sops;
+> > +	ext4_nojournal_sops.write_super = ext4_write_super;
+> > +	ext4_nojournal_sops.sync_fs = 0;
+> > +	ext4_nojournal_sops.freeze_fs = 0;
+> > +	ext4_nojournal_sops.unfreeze_fs = 0;
 > 
-> I assume the idea is so that the filesystem can distinguish between
-> periodic s_dirt writeback versus a request to write the superblock
-> caused by an explicit fsync or sync system call?
+> I thought the general policy these days was to make a static const
+> ops struct so that it cannot be changed (correctly or incorrectly)?
 
-Exactly.  The plan is to use write_super only for peridoic writeback,
-everything that is used for data integrity will go through ->sync_fs.
+Yeah.  Having the super ops in the normal style would be a lot more
+readable.  We don't copy mostly the same inode or file operations
+either.
 
-We'll grow a couple more ->sync_fs instances, but I think the result
-is a lot more logic.  We'll also avoid the mostly useless double
-sb writes due to ->write_super being called for both the wait = 0 and
-wait = 1 cases in sync.
+And to be super-pedantic NULL pointer should be initialized as NULL, not
+0.
+
