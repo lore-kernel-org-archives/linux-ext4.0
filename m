@@ -1,167 +1,30 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/3] ext4: Simplify ext4_commit_super()'s function signature
-Date: Fri,  1 May 2009 00:37:15 -0400
-Message-ID: <1241152637-11986-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Question on block group allocation
+Date: Fri, 1 May 2009 00:39:40 -0400
+Message-ID: <20090501043940.GD7275@mit.edu>
+References: <20090427021411.GA9059@mit.edu> <6601abe90904262229w602e17d8s51ceae05c2895ce5@mail.gmail.com> <20090427224052.GC22104@mit.edu> <20090429191646.GF14264@mit.edu> <6601abe90904291138r6e24c04dj4b2efcdba22bf84@mail.gmail.com> <20090429193744.GA17797@mit.edu> <6601abe90904291321u3f13d8b0p88b9a9eba5bc03a1@mail.gmail.com> <20090429212043.GB24749@mit.edu> <20090429215032.GC24749@mit.edu> <6601abe90904291529o5aaab638i73bd34c1a6d54c74@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59734 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:46429 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750837AbZEAEhW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 May 2009 00:37:22 -0400
+	id S1750757AbZEAEjm (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 May 2009 00:39:42 -0400
+Content-Disposition: inline
+In-Reply-To: <6601abe90904291529o5aaab638i73bd34c1a6d54c74@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The ext4_commit_super() function took both a struct super_block * and
-a struct ext4_super_block *, but the struct ext4_super_block can be
-derived from the struct super_block.
+On Wed, Apr 29, 2009 at 03:29:55PM -0700, Curt Wohlgemuth wrote:
+> Yes, we have this patch.  I'm not sure if we have the "1 or 2" bug
+> fixes you refer to above; do you have commits for these?
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/super.c |   33 ++++++++++++++++-----------------
- 1 files changed, 16 insertions(+), 17 deletions(-)
+b5451f7b  ext4: Fix potential inode allocation soft lockup in Orlov allocator
+6b82f3cb  ext4: really print the find_group_flex fallback warning only once
+7d39db14  ext4: Use struct flex_groups to calculate get_orlov_stats()
+9f24e420  ext4: Use atomic_t's in struct flex_groups
 
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 3e509bc..ad4c9be 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -54,8 +54,7 @@ static struct kset *ext4_kset;
- 
- static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
- 			     unsigned long journal_devnum);
--static int ext4_commit_super(struct super_block *sb,
--			      struct ext4_super_block *es, int sync);
-+static int ext4_commit_super(struct super_block *sb, int sync);
- static void ext4_mark_recovery_complete(struct super_block *sb,
- 					struct ext4_super_block *es);
- static void ext4_clear_journal_err(struct super_block *sb,
-@@ -306,7 +305,7 @@ static void ext4_handle_error(struct super_block *sb)
- 		printk(KERN_CRIT "Remounting filesystem read-only\n");
- 		sb->s_flags |= MS_RDONLY;
- 	}
--	ext4_commit_super(sb, es, 1);
-+	ext4_commit_super(sb, 1);
- 	if (test_opt(sb, ERRORS_PANIC))
- 		panic("EXT4-fs (device %s): panic forced after error\n",
- 			sb->s_id);
-@@ -448,7 +447,7 @@ __acquires(bitlock)
- 	if (test_opt(sb, ERRORS_CONT)) {
- 		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
- 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
--		ext4_commit_super(sb, es, 0);
-+		ext4_commit_super(sb, 0);
- 		return;
- 	}
- 	ext4_unlock_group(sb, grp);
-@@ -577,7 +576,7 @@ static void ext4_put_super(struct super_block *sb)
- 	if (!(sb->s_flags & MS_RDONLY)) {
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 		es->s_state = cpu_to_le16(sbi->s_mount_state);
--		ext4_commit_super(sb, es, 1);
-+		ext4_commit_super(sb, 1);
- 	}
- 	if (sbi->s_proc) {
- 		remove_proc_entry(sb->s_id, ext4_proc_root);
-@@ -1596,7 +1595,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
- 	if (sbi->s_journal)
- 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 
--	ext4_commit_super(sb, es, 1);
-+	ext4_commit_super(sb, 1);
- 	if (test_opt(sb, DEBUG))
- 		printk(KERN_INFO "[EXT4 FS bs=%lu, gc=%u, "
- 				"bpg=%lu, ipg=%lu, mo=%04lx]\n",
-@@ -2655,7 +2654,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			if (test_opt(sb, ERRORS_PANIC)) {
- 				EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
- 				es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
--				ext4_commit_super(sb, es, 1);
-+				ext4_commit_super(sb, 1);
- 				goto failed_mount4;
- 			}
- 		}
-@@ -3132,15 +3131,15 @@ static int ext4_load_journal(struct super_block *sb,
- 		sb->s_dirt = 1;
- 
- 		/* Make sure we flush the recovery flag to disk. */
--		ext4_commit_super(sb, es, 1);
-+		ext4_commit_super(sb, 1);
- 	}
- 
- 	return 0;
- }
- 
--static int ext4_commit_super(struct super_block *sb,
--			      struct ext4_super_block *es, int sync)
-+static int ext4_commit_super(struct super_block *sb, int sync)
- {
-+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
- 	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
- 	int error = 0;
- 
-@@ -3212,7 +3211,7 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
- 	    sb->s_flags & MS_RDONLY) {
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
- 		sb->s_dirt = 0;
--		ext4_commit_super(sb, es, 1);
-+		ext4_commit_super(sb, 1);
- 	}
- 	unlock_super(sb);
- 
-@@ -3253,7 +3252,7 @@ static void ext4_clear_journal_err(struct super_block *sb,
- 
- 		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
- 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
--		ext4_commit_super(sb, es, 1);
-+		ext4_commit_super(sb, 1);
- 
- 		jbd2_journal_clear_err(journal);
- 	}
-@@ -3293,7 +3292,7 @@ static void ext4_write_super(struct super_block *sb)
- 			BUG();
- 		sb->s_dirt = 0;
- 	} else {
--		ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
-+		ext4_commit_super(sb, 1);
- 	}
- }
- 
-@@ -3312,7 +3311,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
- 						     target);
- 		}
- 	} else {
--		ext4_commit_super(sb, EXT4_SB(sb)->s_es, wait);
-+		ext4_commit_super(sb, wait);
- 	}
- 	return ret;
- }
-@@ -3345,7 +3344,7 @@ static int ext4_freeze(struct super_block *sb)
- 
- 		/* Journal blocked and flushed, clear needs_recovery flag. */
- 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--		error = ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
-+		error = ext4_commit_super(sb, 1);
- 		if (error)
- 			goto out;
- 	}
-@@ -3365,7 +3364,7 @@ static int ext4_unfreeze(struct super_block *sb)
- 		lock_super(sb);
- 		/* Reser the needs_recovery flag before the fs is unlocked. */
- 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--		ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
-+		ext4_commit_super(sb, 1);
- 		unlock_super(sb);
- 		jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
- 	}
-@@ -3520,7 +3519,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 		}
- 	}
- 	if (sbi->s_journal == NULL)
--		ext4_commit_super(sb, es, 1);
-+		ext4_commit_super(sb, 1);
- 
- #ifdef CONFIG_QUOTA
- 	/* Release old quota file names */
--- 
-1.6.0.4
-
+						- Ted
