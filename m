@@ -1,203 +1,167 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 3/3] ext4: Use separate super_operations structure for no_journal filesystems
-Date: Fri,  1 May 2009 00:37:17 -0400
-Message-ID: <1241152637-11986-3-git-send-email-tytso@mit.edu>
-References: <1241152637-11986-1-git-send-email-tytso@mit.edu>
- <1241152637-11986-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/3] ext4: Simplify ext4_commit_super()'s function signature
+Date: Fri,  1 May 2009 00:37:15 -0400
+Message-ID: <1241152637-11986-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59736 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:59734 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750828AbZEAEhW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1750837AbZEAEhW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 1 May 2009 00:37:22 -0400
-In-Reply-To: <1241152637-11986-2-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-By using a separate super_operations structure for filesystems that
-have and don't have journals, we can simply ext4_write_super() ---
-which is only needed when no journal is present --- and ext4_freeze(),
-ext4_unfreeze(), and ext4_sync_fs(), which are only needed when the
-journal is present.
+The ext4_commit_super() function took both a struct super_block * and
+a struct ext4_super_block *, but the struct ext4_super_block can be
+derived from the struct super_block.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/super.c |   98 ++++++++++++++++++++++++++-----------------------------
- 1 files changed, 46 insertions(+), 52 deletions(-)
+ fs/ext4/super.c |   33 ++++++++++++++++-----------------
+ 1 files changed, 16 insertions(+), 17 deletions(-)
 
 diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7c7a08a..241a81e 100644
+index 3e509bc..ad4c9be 100644
 --- a/fs/ext4/super.c
 +++ b/fs/ext4/super.c
-@@ -65,7 +65,6 @@ static const char *ext4_decode_error(struct super_block *sb, int errno,
- static int ext4_remount(struct super_block *sb, int *flags, char *data);
- static int ext4_statfs(struct dentry *dentry, struct kstatfs *buf);
- static int ext4_unfreeze(struct super_block *sb);
--static void ext4_write_super(struct super_block *sb);
- static int ext4_freeze(struct super_block *sb);
+@@ -54,8 +54,7 @@ static struct kset *ext4_kset;
  
- 
-@@ -995,7 +994,6 @@ static const struct super_operations ext4_sops = {
- 	.dirty_inode	= ext4_dirty_inode,
- 	.delete_inode	= ext4_delete_inode,
- 	.put_super	= ext4_put_super,
--	.write_super	= ext4_write_super,
- 	.sync_fs	= ext4_sync_fs,
- 	.freeze_fs	= ext4_freeze,
- 	.unfreeze_fs	= ext4_unfreeze,
-@@ -1010,6 +1008,8 @@ static const struct super_operations ext4_sops = {
- 	.bdev_try_to_free_page = bdev_try_to_free_page,
- };
- 
-+static struct super_operations ext4_nojournal_sops;
-+
- static const struct export_operations ext4_export_ops = {
- 	.fh_to_dentry = ext4_fh_to_dentry,
- 	.fh_to_parent = ext4_fh_to_parent,
-@@ -2615,7 +2615,11 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	/*
- 	 * set up enough so that it can read an inode
- 	 */
--	sb->s_op = &ext4_sops;
-+	if (!test_opt(sb, NOLOAD) &&
-+	    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_HAS_JOURNAL))
-+		sb->s_op = &ext4_sops;
-+	else
-+		sb->s_op = &ext4_nojournal_sops;
- 	sb->s_export_op = &ext4_export_ops;
- 	sb->s_xattr = ext4_xattr_handlers;
- #ifdef CONFIG_QUOTA
-@@ -3275,19 +3279,9 @@ int ext4_force_commit(struct super_block *sb)
- 	return ret;
- }
- 
--/*
-- * Ext4 always journals updates to the superblock itself, so we don't
-- * have to propagate any other updates to the superblock on disk at this
-- * point if the journalling is enabled.
-- */
- static void ext4_write_super(struct super_block *sb)
- {
--	if (EXT4_SB(sb)->s_journal) {
--		if (mutex_trylock(&sb->s_lock) != 0)
--			BUG();
--	} else {
--		ext4_commit_super(sb, 1);
--	}
-+	ext4_commit_super(sb, 1);
- }
- 
- static int ext4_sync_fs(struct super_block *sb, int wait)
-@@ -3296,15 +3290,9 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
- 	tid_t target;
- 
- 	trace_mark(ext4_sync_fs, "dev %s wait %d", sb->s_id, wait);
--	if (EXT4_SB(sb)->s_journal) {
--		if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal,
--					      &target)) {
--			if (wait)
--				jbd2_log_wait_commit(EXT4_SB(sb)->s_journal,
--						     target);
--		}
--	} else {
--		ext4_commit_super(sb, wait);
-+	if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal, &target)) {
-+		if (wait)
-+			jbd2_log_wait_commit(EXT4_SB(sb)->s_journal, target);
+ static int ext4_load_journal(struct super_block *, struct ext4_super_block *,
+ 			     unsigned long journal_devnum);
+-static int ext4_commit_super(struct super_block *sb,
+-			      struct ext4_super_block *es, int sync);
++static int ext4_commit_super(struct super_block *sb, int sync);
+ static void ext4_mark_recovery_complete(struct super_block *sb,
+ 					struct ext4_super_block *es);
+ static void ext4_clear_journal_err(struct super_block *sb,
+@@ -306,7 +305,7 @@ static void ext4_handle_error(struct super_block *sb)
+ 		printk(KERN_CRIT "Remounting filesystem read-only\n");
+ 		sb->s_flags |= MS_RDONLY;
  	}
- 	return ret;
+-	ext4_commit_super(sb, es, 1);
++	ext4_commit_super(sb, 1);
+ 	if (test_opt(sb, ERRORS_PANIC))
+ 		panic("EXT4-fs (device %s): panic forced after error\n",
+ 			sb->s_id);
+@@ -448,7 +447,7 @@ __acquires(bitlock)
+ 	if (test_opt(sb, ERRORS_CONT)) {
+ 		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
+ 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+-		ext4_commit_super(sb, es, 0);
++		ext4_commit_super(sb, 0);
+ 		return;
+ 	}
+ 	ext4_unlock_group(sb, grp);
+@@ -577,7 +576,7 @@ static void ext4_put_super(struct super_block *sb)
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+ 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 		es->s_state = cpu_to_le16(sbi->s_mount_state);
+-		ext4_commit_super(sb, es, 1);
++		ext4_commit_super(sb, 1);
+ 	}
+ 	if (sbi->s_proc) {
+ 		remove_proc_entry(sb->s_id, ext4_proc_root);
+@@ -1596,7 +1595,7 @@ static int ext4_setup_super(struct super_block *sb, struct ext4_super_block *es,
+ 	if (sbi->s_journal)
+ 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 
+-	ext4_commit_super(sb, es, 1);
++	ext4_commit_super(sb, 1);
+ 	if (test_opt(sb, DEBUG))
+ 		printk(KERN_INFO "[EXT4 FS bs=%lu, gc=%u, "
+ 				"bpg=%lu, ipg=%lu, mo=%04lx]\n",
+@@ -2655,7 +2654,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 			if (test_opt(sb, ERRORS_PANIC)) {
+ 				EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
+ 				es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+-				ext4_commit_super(sb, es, 1);
++				ext4_commit_super(sb, 1);
+ 				goto failed_mount4;
+ 			}
+ 		}
+@@ -3132,15 +3131,15 @@ static int ext4_load_journal(struct super_block *sb,
+ 		sb->s_dirt = 1;
+ 
+ 		/* Make sure we flush the recovery flag to disk. */
+-		ext4_commit_super(sb, es, 1);
++		ext4_commit_super(sb, 1);
+ 	}
+ 
+ 	return 0;
  }
-@@ -3318,32 +3306,31 @@ static int ext4_freeze(struct super_block *sb)
+ 
+-static int ext4_commit_super(struct super_block *sb,
+-			      struct ext4_super_block *es, int sync)
++static int ext4_commit_super(struct super_block *sb, int sync)
+ {
++	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+ 	struct buffer_head *sbh = EXT4_SB(sb)->s_sbh;
  	int error = 0;
- 	journal_t *journal;
  
--	if (!(sb->s_flags & MS_RDONLY)) {
--		journal = EXT4_SB(sb)->s_journal;
-+	if (sb->s_flags & MS_RDONLY)
-+		return 0;
- 
--		if (journal) {
--			/* Now we set up the journal barrier. */
--			jbd2_journal_lock_updates(journal);
-+	journal = EXT4_SB(sb)->s_journal;
- 
--			/*
--			 * We don't want to clear needs_recovery flag when we
--			 * failed to flush the journal.
--			 */
--			error = jbd2_journal_flush(journal);
--			if (error < 0)
--				goto out;
--		}
-+	/* Now we set up the journal barrier. */
-+	jbd2_journal_lock_updates(journal);
- 
--		/* Journal blocked and flushed, clear needs_recovery flag. */
--		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--		error = ext4_commit_super(sb, 1);
--		if (error)
--			goto out;
-+	/*
-+	 * Don't clear the needs_recovery flag if we failed to flush
-+	 * the journal.
-+	 */
-+	error = jbd2_journal_flush(journal);
-+	if (error < 0) {
-+	out:
-+		jbd2_journal_unlock_updates(journal);
-+		return error;
+@@ -3212,7 +3211,7 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
+ 	    sb->s_flags & MS_RDONLY) {
+ 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+ 		sb->s_dirt = 0;
+-		ext4_commit_super(sb, es, 1);
++		ext4_commit_super(sb, 1);
  	}
-+
-+	/* Journal blocked and flushed, clear needs_recovery flag. */
-+	EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-+	error = ext4_commit_super(sb, 1);
-+	if (error)
-+		goto out;
- 	return 0;
--out:
--	jbd2_journal_unlock_updates(journal);
--	return error;
+ 	unlock_super(sb);
+ 
+@@ -3253,7 +3252,7 @@ static void ext4_clear_journal_err(struct super_block *sb,
+ 
+ 		EXT4_SB(sb)->s_mount_state |= EXT4_ERROR_FS;
+ 		es->s_state |= cpu_to_le16(EXT4_ERROR_FS);
+-		ext4_commit_super(sb, es, 1);
++		ext4_commit_super(sb, 1);
+ 
+ 		jbd2_journal_clear_err(journal);
+ 	}
+@@ -3293,7 +3292,7 @@ static void ext4_write_super(struct super_block *sb)
+ 			BUG();
+ 		sb->s_dirt = 0;
+ 	} else {
+-		ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
++		ext4_commit_super(sb, 1);
+ 	}
  }
  
- /*
-@@ -3352,14 +3339,15 @@ out:
-  */
- static int ext4_unfreeze(struct super_block *sb)
- {
--	if (EXT4_SB(sb)->s_journal && !(sb->s_flags & MS_RDONLY)) {
--		lock_super(sb);
--		/* Reser the needs_recovery flag before the fs is unlocked. */
--		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
--		ext4_commit_super(sb, 1);
--		unlock_super(sb);
--		jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
--	}
-+	if (sb->s_flags & MS_RDONLY)
-+		return 0;
-+
-+	lock_super(sb);
-+	/* Reset the needs_recovery flag before the fs is unlocked. */
-+	EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
-+	ext4_commit_super(sb, 1);
-+	unlock_super(sb);
-+	jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
- 	return 0;
+@@ -3312,7 +3311,7 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+ 						     target);
+ 		}
+ 	} else {
+-		ext4_commit_super(sb, EXT4_SB(sb)->s_es, wait);
++		ext4_commit_super(sb, wait);
+ 	}
+ 	return ret;
  }
+@@ -3345,7 +3344,7 @@ static int ext4_freeze(struct super_block *sb)
  
-@@ -3923,6 +3911,12 @@ static int __init init_ext4_fs(void)
- {
- 	int err;
+ 		/* Journal blocked and flushed, clear needs_recovery flag. */
+ 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-		error = ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
++		error = ext4_commit_super(sb, 1);
+ 		if (error)
+ 			goto out;
+ 	}
+@@ -3365,7 +3364,7 @@ static int ext4_unfreeze(struct super_block *sb)
+ 		lock_super(sb);
+ 		/* Reser the needs_recovery flag before the fs is unlocked. */
+ 		EXT4_SET_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-		ext4_commit_super(sb, EXT4_SB(sb)->s_es, 1);
++		ext4_commit_super(sb, 1);
+ 		unlock_super(sb);
+ 		jbd2_journal_unlock_updates(EXT4_SB(sb)->s_journal);
+ 	}
+@@ -3520,7 +3519,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ 		}
+ 	}
+ 	if (sbi->s_journal == NULL)
+-		ext4_commit_super(sb, es, 1);
++		ext4_commit_super(sb, 1);
  
-+	ext4_nojournal_sops = ext4_sops;
-+	ext4_nojournal_sops.write_super = ext4_write_super;
-+	ext4_nojournal_sops.sync_fs = 0;
-+	ext4_nojournal_sops.freeze_fs = 0;
-+	ext4_nojournal_sops.unfreeze_fs = 0;
-+
- 	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
- 	if (!ext4_kset)
- 		return -ENOMEM;
+ #ifdef CONFIG_QUOTA
+ 	/* Release old quota file names */
 -- 
 1.6.0.4
 
