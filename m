@@ -1,41 +1,39 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 1/2 for 2.6.31] ext4: Use -1 as the fake block number
-	for delayed new buffer_head
-Date: Sat, 2 May 2009 00:35:46 +0530
-Message-ID: <20090501190546.GA920@skywalker>
-References: <1241003611-3652-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090501185841.GG7681@mit.edu>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Re: Undeletion utililty for ext3/4
+Date: Fri, 1 May 2009 14:09:21 -0700 (PDT)
+Message-ID: <alpine.DEB.2.01.0905011406450.6162@bogon.housecafe.de>
+References: <938911.2430.qm@web43504.mail.sp1.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:56510 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754105AbZEATF4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 15:05:56 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id n41J5oBR002759
-	for <linux-ext4@vger.kernel.org>; Sat, 2 May 2009 05:05:50 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n41J5sr0389212
-	for <linux-ext4@vger.kernel.org>; Sat, 2 May 2009 05:05:55 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n41J5rAE008066
-	for <linux-ext4@vger.kernel.org>; Sat, 2 May 2009 05:05:54 +1000
-Content-Disposition: inline
-In-Reply-To: <20090501185841.GG7681@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org, ext-users <Ext3-users@redhat.com>
+To: Number9652 <number9652@yahoo.com>
+Return-path: <ext3-users-bounces@redhat.com>
+In-Reply-To: <938911.2430.qm@web43504.mail.sp1.yahoo.com>
+List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=unsubscribe>
+List-Archive: <https://www.redhat.com/archives/ext3-users>
+List-Post: <mailto:ext3-users@redhat.com>
+List-Help: <mailto:ext3-users-request@redhat.com?subject=help>
+List-Subscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
+	<mailto:ext3-users-request@redhat.com?subject=subscribe>
+Sender: ext3-users-bounces@redhat.com
+Errors-To: ext3-users-bounces@redhat.com
+List-Id: linux-ext4.vger.kernel.org
 
-On Fri, May 01, 2009 at 02:58:41PM -0400, Theodore Tso wrote:
-> You mean "for 2.6.30", right?
-> 
+On Thu, 30 Apr 2009, Number9652 wrote:
+> I have recently released a project on sourceforge 
+> ( http://extundelete.sourceforge.net ) that can undelete a file from an 
+> ext3 or ext4 partition.  It uses code from ext3grep to parse 
+> command-line options, and uses libext2fs to read the partitions.
+> Instead of reading the entire partition, as ext3grep does, it reads 
+> only the journal file and is able to restore a deleted file from the 
+> information there and in (possibly deleted) directory blocks.  I hope it 
+> is of some use.
 
-The reason for me to post two series one for 2.6.30 and other for 2.6.31
-was the [Patch 2/2] for 2.6.31 needs more testing. I added this specific
-patch in both the series to make sure  we don't miss the change in case
-we decided not to make any changes for 2.6.30. Also in my testing I created
-different topgit branches with different dependencies. So having [PATCH
-1/2 ] in both the series helped in testing with topgit branches.
+Thanks - I've added this to the collection of ext2/3 undeletion tools in 
+the wiki: http://ext4.wiki.kernel.org/index.php/Undeletion
 
--aneesh
+Christian.
+-- 
+Bruce Schneier once broke AES using nothing but six feet of rusty barbed wire,
+a toothpick, and the front axle from a 1962 Ford Falcon.
