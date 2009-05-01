@@ -1,49 +1,51 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 12151] Unexplained fsck errors on a ext4 filesystem
-Date: Fri, 1 May 2009 15:19:38 GMT
-Message-ID: <200905011519.n41FJcBu021652@demeter.kernel.org>
-References: <bug-12151-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: Nick Dokos <nicholas.dokos@hp.com>
+Subject: Re: [PATCH 0/6][64-bit] Overview
+Date: Fri, 01 May 2009 11:37:30 -0400
+Message-ID: <22617.1241192250@gamaville.dokosmarshall.org>
+References: <15543.1241167560@gamaville.dokosmarshall.org>  <20090501105757.GD3209@webber.adilger.int>
+Reply-To: nick@fc.hp.com
+Cc: Nick Dokos <nick@fc.hp.com>, linux-ext4@vger.kernel.org,
+	"Theodore Ts'o" <tytso@mit.edu>,
+	Valerie Aurora <vaurora@redhat.com>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:44225 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756063AbZEAPTi (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 11:19:38 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n41FJcAE021653
-	for <linux-ext4@vger.kernel.org>; Fri, 1 May 2009 15:19:38 GMT
-In-Reply-To: <bug-12151-13602@http.bugzilla.kernel.org/>
+Received: from qmta05.westchester.pa.mail.comcast.net ([76.96.62.48]:54884
+	"EHLO QMTA05.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753373AbZEAPhP (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 11:37:15 -0400
+In-Reply-To: Message from Andreas Dilger <adilger@sun.com>
+   of "Fri, 01 May 2009 04:57:58 MDT." <20090501105757.GD3209@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12151
+Andreas Dilger <adilger@sun.com> wrote:
 
+> Nick,
+> sorry to be so slow getting back to you.  Attached are the relatively
+> simple test programs we use to verify whether large block devices and
+> large filesystems are suffering from block address aliasing.
+> 
+> The first tool (llverdev) will write either partial or fill data patterns
+> to the disk, then read them back and verify the data is still correct.
+> 
+> The second tool (llverfs) will try to allocate directories spread across
+> the filesystem (if possible, using EXT2_TOPDIR_FL) and then fill the
+> filesystem partially or fully with a data pattern in ~1GB files and 
+> then read them back for verification.
+> 
+> This isn't really a stress test, but rather just a sanity check for
+> variable overflows at different levels of the IO stack.
+> 
 
+Andreas,
 
+thanks very much! I'll do some runs over the weekend with them,
+as well as some e2fsck runs w/blktrace (with and without lazy
+itable init).
 
+Thanks,
+Nick
 
---- Comment #9 from Eric Sandeen <sandeen@redhat.com>  2009-05-01 15:19:38 ---
-(In reply to comment #7)
-> I have been running Fedora's kernels the whole time, and I haven't seen this
-> issue with 2.6.29 kernels. I don't think I saw it with 2.6.28 kernels either. I
-> wonder if Fedora has been putting more patches for ext4 in over what goes into
-> Linus's tree.
-
-Nathan - well, not really.  I'll never put something in fedora that hasn't been
-sent upstream, it's not how we work.
-
-One difference may be that the 2.6.27 kernels in F10 did have the ext4 "stable"
-backports that Ted was doing...
-
-If you're running .29 kernels from fedora, it should be equivalent to what's
-upstream.  The only changes in F11 for example are:
-
-Patch2920: linux-2.6-ext4-flush-on-close.patch
-Patch2921: linux-2.6-ext4-really-print-warning-once.patch
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+PS. BTW, I have problems receiving email right now - the Reply-to
+address above seems to work but my "official" address in the From header
+does not.
