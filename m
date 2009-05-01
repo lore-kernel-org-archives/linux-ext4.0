@@ -1,59 +1,40 @@
 From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: [PATCH 4/6] [64-bit] enable dumpe2fs 64-bitness and fix printf formats.
-Date: Fri, 01 May 2009 04:47:07 -0400
-Message-ID: <15579.1241167627@gamaville.dokosmarshall.org>
+Subject: [PATCH 5/6] [64-bit] (blk_t) cast in ext2fs_new_block2()
+Date: Fri, 01 May 2009 04:47:17 -0400
+Message-ID: <15586.1241167637@gamaville.dokosmarshall.org>
 Reply-To: nicholas.dokos@hp.com
 Cc: nicholas.dokos@hp.com, Theodore Ts'o <tytso@mit.edu>,
 	Valerie Aurora <vaurora@redhat.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from qmta14.emeryville.ca.mail.comcast.net ([76.96.27.212]:55713
-	"EHLO QMTA14.emeryville.ca.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752619AbZEAIqy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 04:46:54 -0400
+Received: from qmta07.westchester.pa.mail.comcast.net ([76.96.62.64]:55949
+	"EHLO QMTA07.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752621AbZEAIrE (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 1 May 2009 04:47:04 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Add  EXT2_FLAG_NEW_BITMAPS to the ext2fs_open() flags.
-
-Change signature of print_range(): both arguments of the range
-are now unsigned long long, with the concomitant change to the
-printf formats.
+Found by code inspection after similar gratuitous cast in
+ext2fs_get_free_blocks2() (first patch in this series).
 
 Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
 ---
- misc/dumpe2fs.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+ lib/ext2fs/alloc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-diff --git a/misc/dumpe2fs.c b/misc/dumpe2fs.c
-index 8a746ee..4d5c90e 100644
---- a/misc/dumpe2fs.c
-+++ b/misc/dumpe2fs.c
-@@ -63,12 +63,12 @@ static void print_number(unsigned long num)
- 		printf("%lu", num);
- }
+diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+index 9f11673..a7c8860 100644
+--- a/lib/ext2fs/alloc.c
++++ b/lib/ext2fs/alloc.c
+@@ -170,7 +170,7 @@ errcode_t ext2fs_new_block2(ext2_filsys fs, blk64_t goal,
+ 					   (i - fs->super->s_first_data_block) /
+ 					   EXT2_BLOCKS_PER_GROUP(fs->super));
  
--static void print_range(unsigned long a, unsigned long b)
-+static void print_range(unsigned long long a, unsigned long long b)
- {
- 	if (hex_format)
--		printf("0x%04lx-0x%04lx", a, b);
-+		printf("0x%llx-0x%llx", a, b);
- 	else
--		printf("%lu-%lu", a, b);
-+		printf("%llu-%llu", a, b);
- }
- 
- static void print_free (unsigned long group, char * bitmap,
-@@ -481,7 +481,7 @@ int main (int argc, char ** argv)
- 	if (optind > argc - 1)
- 		usage();
- 	device_name = argv[optind++];
--	flags = EXT2_FLAG_JOURNAL_DEV_OK | EXT2_FLAG_SOFTSUPP_FEATURES;
-+	flags = EXT2_FLAG_JOURNAL_DEV_OK | EXT2_FLAG_SOFTSUPP_FEATURES | EXT2_FLAG_NEW_BITMAPS;
- 	if (force)
- 		flags |= EXT2_FLAG_FORCE;
- 	if (image_dump)
+-		if (!ext2fs_fast_test_block_bitmap2(map, (blk_t) i)) {
++		if (!ext2fs_fast_test_block_bitmap2(map, i)) {
+ 			*ret = i;
+ 			return 0;
+ 		}
 -- 
 1.6.0.6
 
