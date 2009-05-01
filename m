@@ -1,160 +1,379 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 4/4] ext4: Move fs/ext4/group.h into ext4.h
-Date: Fri,  1 May 2009 14:59:29 -0400
-Message-ID: <1241204369-2333-4-git-send-email-tytso@mit.edu>
+Subject: [PATCH 2/4] ext4: Move the ext4_sb.h header file into ext4.h
+Date: Fri,  1 May 2009 14:59:27 -0400
+Message-ID: <1241204369-2333-2-git-send-email-tytso@mit.edu>
 References: <1241204369-2333-1-git-send-email-tytso@mit.edu>
- <1241204369-2333-2-git-send-email-tytso@mit.edu>
- <1241204369-2333-3-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:57344 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:57345 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753991AbZEAS7c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1754105AbZEAS7c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Fri, 1 May 2009 14:59:32 -0400
-In-Reply-To: <1241204369-2333-3-git-send-email-tytso@mit.edu>
+In-Reply-To: <1241204369-2333-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Move the function prototypes in group.h into ext4.h so they are all
-defined in one place.
+There is no longer a reason for a separate ext4_sb.h header file, so
+move it into ext4.h just to make life easier for developers to find
+the relevant data structures and typedefs.  Should also speed up
+compiles slightly, too.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/balloc.c |    1 -
- fs/ext4/ext4.h   |   17 +++++++++++++++++
- fs/ext4/group.h  |   29 -----------------------------
- fs/ext4/ialloc.c |    1 -
- fs/ext4/resize.c |    1 -
- fs/ext4/super.c  |    1 -
- 6 files changed, 17 insertions(+), 33 deletions(-)
- delete mode 100644 fs/ext4/group.h
+ fs/ext4/ext4.h    |  145 +++++++++++++++++++++++++++++++++++++++++++++-
+ fs/ext4/ext4_sb.h |  163 -----------------------------------------------------
+ 2 files changed, 141 insertions(+), 167 deletions(-)
+ delete mode 100644 fs/ext4/ext4_sb.h
 
-diff --git a/fs/ext4/balloc.c b/fs/ext4/balloc.c
-index a5ba039..92f557d 100644
---- a/fs/ext4/balloc.c
-+++ b/fs/ext4/balloc.c
-@@ -19,7 +19,6 @@
- #include <linux/buffer_head.h>
- #include "ext4.h"
- #include "ext4_jbd2.h"
--#include "group.h"
- #include "mballoc.h"
- 
- /*
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 13238dc..05a6860 100644
+index ba57d66..3b7223d 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1271,6 +1271,14 @@ extern struct ext4_group_desc * ext4_get_group_desc(struct super_block * sb,
- 						    ext4_group_t block_group,
- 						    struct buffer_head ** bh);
- extern int ext4_should_retry_alloc(struct super_block *sb, int *retries);
-+struct buffer_head *ext4_read_block_bitmap(struct super_block *sb,
-+				      ext4_group_t block_group);
-+extern unsigned ext4_init_block_bitmap(struct super_block *sb,
-+				       struct buffer_head *bh,
-+				       ext4_group_t group,
-+				       struct ext4_group_desc *desc);
-+#define ext4_free_blocks_after_init(sb, group, desc)			\
-+		ext4_init_block_bitmap(sb, NULL, group, desc)
- 
- /* dir.c */
- extern int ext4_check_dir_entry(const char *, struct inode *,
-@@ -1295,6 +1303,11 @@ extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
- extern unsigned long ext4_count_free_inodes(struct super_block *);
- extern unsigned long ext4_count_dirs(struct super_block *);
- extern void ext4_check_inodes_bitmap(struct super_block *);
-+extern unsigned ext4_init_inode_bitmap(struct super_block *sb,
-+				       struct buffer_head *bh,
-+				       ext4_group_t group,
-+				       struct ext4_group_desc *desc);
-+extern void mark_bitmap_end(int start_bit, int end_bit, char *bitmap);
- 
- /* mballoc.c */
- extern long ext4_mb_stats;
-@@ -1418,6 +1431,10 @@ extern void ext4_used_dirs_set(struct super_block *sb,
- 				struct ext4_group_desc *bg, __u32 count);
- extern void ext4_itable_unused_set(struct super_block *sb,
- 				   struct ext4_group_desc *bg, __u32 count);
-+extern __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 group,
-+				   struct ext4_group_desc *gdp);
-+extern int ext4_group_desc_csum_verify(struct ext4_sb_info *sbi, __u32 group,
-+				       struct ext4_group_desc *gdp);
- 
- static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
- {
-diff --git a/fs/ext4/group.h b/fs/ext4/group.h
-deleted file mode 100644
-index c2c0a8d..0000000
---- a/fs/ext4/group.h
-+++ /dev/null
-@@ -1,29 +0,0 @@
--/*
-- *  linux/fs/ext4/group.h
-- *
-- * Copyright (C) 2007 Cluster File Systems, Inc
-- *
-- * Author: Andreas Dilger <adilger@clusterfs.com>
-- */
--
--#ifndef _LINUX_EXT4_GROUP_H
--#define _LINUX_EXT4_GROUP_H
--
--extern __le16 ext4_group_desc_csum(struct ext4_sb_info *sbi, __u32 group,
--				   struct ext4_group_desc *gdp);
--extern int ext4_group_desc_csum_verify(struct ext4_sb_info *sbi, __u32 group,
--				       struct ext4_group_desc *gdp);
--struct buffer_head *ext4_read_block_bitmap(struct super_block *sb,
--				      ext4_group_t block_group);
--extern unsigned ext4_init_block_bitmap(struct super_block *sb,
--				       struct buffer_head *bh,
--				       ext4_group_t group,
--				       struct ext4_group_desc *desc);
--#define ext4_free_blocks_after_init(sb, group, desc)			\
--		ext4_init_block_bitmap(sb, NULL, group, desc)
--extern unsigned ext4_init_inode_bitmap(struct super_block *sb,
--				       struct buffer_head *bh,
--				       ext4_group_t group,
--				       struct ext4_group_desc *desc);
--extern void mark_bitmap_end(int start_bit, int end_bit, char *bitmap);
--#endif /* _LINUX_EXT4_GROUP_H */
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 55ba419..916d05c 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -27,7 +27,6 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
--#include "group.h"
+@@ -25,6 +25,11 @@
+ #include <linux/rbtree.h>
+ #include <linux/seqlock.h>
+ #include <linux/mutex.h>
++#include <linux/timer.h>
++#include <linux/wait.h>
++#include <linux/rbtree.h>
++#include <linux/blockgroup_lock.h>
++#include <linux/percpu_counter.h>
  
  /*
-  * ialloc.c contains the inodes allocation and deallocation routines
-diff --git a/fs/ext4/resize.c b/fs/ext4/resize.c
-index e8ded13..27eb289 100644
---- a/fs/ext4/resize.c
-+++ b/fs/ext4/resize.c
-@@ -15,7 +15,6 @@
- #include <linux/slab.h>
+  * The fourth extended filesystem constants/structures
+@@ -195,9 +200,6 @@ struct flex_groups {
+ #define EXT4_BG_BLOCK_UNINIT	0x0002 /* Block bitmap not in use */
+ #define EXT4_BG_INODE_ZEROED	0x0004 /* On-disk itable initialized to zero */
  
- #include "ext4_jbd2.h"
--#include "group.h"
+-#ifdef __KERNEL__
+-#include "ext4_sb.h"
+-#endif
+ /*
+  * Macro-instructions used to manage group descriptors
+  */
+@@ -809,6 +811,136 @@ struct ext4_super_block {
+ };
  
- #define outside(b, first, last)	((b) < (first) || (b) >= (last))
- #define inside(b, first, last)	((b) >= (first) && (b) < (last))
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index d79e1c4..7903f20 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -46,7 +46,6 @@
- #include "ext4_jbd2.h"
- #include "xattr.h"
- #include "acl.h"
--#include "group.h"
+ #ifdef __KERNEL__
++/*
++ * fourth extended-fs super-block data in memory
++ */
++struct ext4_sb_info {
++	unsigned long s_desc_size;	/* Size of a group descriptor in bytes */
++	unsigned long s_inodes_per_block;/* Number of inodes per block */
++	unsigned long s_blocks_per_group;/* Number of blocks in a group */
++	unsigned long s_inodes_per_group;/* Number of inodes in a group */
++	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
++	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
++	unsigned long s_desc_per_block;	/* Number of group descriptors per block */
++	ext4_group_t s_groups_count;	/* Number of groups in the fs */
++	unsigned long s_overhead_last;  /* Last calculated overhead */
++	unsigned long s_blocks_last;    /* Last seen block count */
++	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
++	struct buffer_head * s_sbh;	/* Buffer containing the super block */
++	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
++	struct buffer_head **s_group_desc;
++	unsigned long  s_mount_opt;
++	ext4_fsblk_t s_sb_block;
++	uid_t s_resuid;
++	gid_t s_resgid;
++	unsigned short s_mount_state;
++	unsigned short s_pad;
++	int s_addr_per_block_bits;
++	int s_desc_per_block_bits;
++	int s_inode_size;
++	int s_first_ino;
++	unsigned int s_inode_readahead_blks;
++	spinlock_t s_next_gen_lock;
++	u32 s_next_generation;
++	u32 s_hash_seed[4];
++	int s_def_hash_version;
++	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
++	struct percpu_counter s_freeblocks_counter;
++	struct percpu_counter s_freeinodes_counter;
++	struct percpu_counter s_dirs_counter;
++	struct percpu_counter s_dirtyblocks_counter;
++	struct blockgroup_lock *s_blockgroup_lock;
++	struct proc_dir_entry *s_proc;
++	struct kobject s_kobj;
++	struct completion s_kobj_unregister;
++
++	/* Journaling */
++	struct inode *s_journal_inode;
++	struct journal_s *s_journal;
++	struct list_head s_orphan;
++	struct mutex s_orphan_lock;
++	struct mutex s_resize_lock;
++	unsigned long s_commit_interval;
++	u32 s_max_batch_time;
++	u32 s_min_batch_time;
++	struct block_device *journal_bdev;
++#ifdef CONFIG_JBD2_DEBUG
++	struct timer_list turn_ro_timer;	/* For turning read-only (crash simulation) */
++	wait_queue_head_t ro_wait_queue;	/* For people waiting for the fs to go read-only */
++#endif
++#ifdef CONFIG_QUOTA
++	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
++	int s_jquota_fmt;			/* Format of quota to use */
++#endif
++	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
++
++#ifdef EXTENTS_STATS
++	/* ext4 extents stats */
++	unsigned long s_ext_min;
++	unsigned long s_ext_max;
++	unsigned long s_depth_max;
++	spinlock_t s_ext_stats_lock;
++	unsigned long s_ext_blocks;
++	unsigned long s_ext_extents;
++#endif
++
++	/* for buddy allocator */
++	struct ext4_group_info ***s_group_info;
++	struct inode *s_buddy_cache;
++	long s_blocks_reserved;
++	spinlock_t s_reserve_lock;
++	spinlock_t s_md_lock;
++	tid_t s_last_transaction;
++	unsigned short *s_mb_offsets;
++	unsigned int *s_mb_maxs;
++
++	/* tunables */
++	unsigned long s_stripe;
++	unsigned int s_mb_stream_request;
++	unsigned int s_mb_max_to_scan;
++	unsigned int s_mb_min_to_scan;
++	unsigned int s_mb_stats;
++	unsigned int s_mb_order2_reqs;
++	unsigned int s_mb_group_prealloc;
++	/* where last allocation was done - for stream allocation */
++	unsigned long s_mb_last_group;
++	unsigned long s_mb_last_start;
++
++	/* history to debug policy */
++	struct ext4_mb_history *s_mb_history;
++	int s_mb_history_cur;
++	int s_mb_history_max;
++	int s_mb_history_num;
++	spinlock_t s_mb_history_lock;
++	int s_mb_history_filter;
++
++	/* stats for buddy allocator */
++	spinlock_t s_mb_pa_lock;
++	atomic_t s_bal_reqs;	/* number of reqs with len > 1 */
++	atomic_t s_bal_success;	/* we found long enough chunks */
++	atomic_t s_bal_allocated;	/* in blocks */
++	atomic_t s_bal_ex_scanned;	/* total extents scanned */
++	atomic_t s_bal_goals;	/* goal hits */
++	atomic_t s_bal_breaks;	/* too long searches */
++	atomic_t s_bal_2orders;	/* 2^order hits */
++	spinlock_t s_bal_lock;
++	unsigned long s_mb_buddies_generated;
++	unsigned long long s_mb_generation_time;
++	atomic_t s_mb_lost_chunks;
++	atomic_t s_mb_preallocated;
++	atomic_t s_mb_discarded;
++
++	/* locality groups */
++	struct ext4_locality_group *s_locality_groups;
++
++	/* for write statistics */
++	unsigned long s_sectors_written_start;
++	u64 s_kbytes_written;
++
++	unsigned int s_log_groups_per_flex;
++	struct flex_groups *s_flex_groups;
++};
++
+ static inline struct ext4_sb_info *EXT4_SB(struct super_block *sb)
+ {
+ 	return sb->s_fs_info;
+@@ -824,7 +956,6 @@ static inline struct timespec ext4_current_time(struct inode *inode)
+ 		current_fs_time(inode->i_sb) : CURRENT_TIME_SEC;
+ }
  
- struct proc_dir_entry *ext4_proc_root;
- static struct kset *ext4_kset;
--- 
-1.6.0.4
-
+-
+ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ {
+ 	return ino == EXT4_ROOT_INO ||
+@@ -833,6 +964,12 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+ 		(ino >= EXT4_FIRST_INO(sb) &&
+ 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
+ }
++
++static inline spinlock_t *
++sb_bgl_lock(struct ext4_sb_info *sbi, unsigned int block_group)
++{
++	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
++}
+ #else
+ /* Assume that user mode programs are passing in an ext4fs superblock, not
+  * a kernel struct super_block.  This will allow us to call the feature-test
+diff --git a/fs/ext4/ext4_sb.h b/fs/ext4/ext4_sb.h
+deleted file mode 100644
+index 2d36223..0000000
+--- a/fs/ext4/ext4_sb.h
++++ /dev/null
+@@ -1,163 +0,0 @@
+-/*
+- *  ext4_sb.h
+- *
+- * Copyright (C) 1992, 1993, 1994, 1995
+- * Remy Card (card@masi.ibp.fr)
+- * Laboratoire MASI - Institut Blaise Pascal
+- * Universite Pierre et Marie Curie (Paris VI)
+- *
+- *  from
+- *
+- *  linux/include/linux/minix_fs_sb.h
+- *
+- *  Copyright (C) 1991, 1992  Linus Torvalds
+- */
+-
+-#ifndef _EXT4_SB
+-#define _EXT4_SB
+-
+-#ifdef __KERNEL__
+-#include <linux/timer.h>
+-#include <linux/wait.h>
+-#include <linux/blockgroup_lock.h>
+-#include <linux/percpu_counter.h>
+-#endif
+-#include <linux/rbtree.h>
+-
+-/*
+- * fourth extended-fs super-block data in memory
+- */
+-struct ext4_sb_info {
+-	unsigned long s_desc_size;	/* Size of a group descriptor in bytes */
+-	unsigned long s_inodes_per_block;/* Number of inodes per block */
+-	unsigned long s_blocks_per_group;/* Number of blocks in a group */
+-	unsigned long s_inodes_per_group;/* Number of inodes in a group */
+-	unsigned long s_itb_per_group;	/* Number of inode table blocks per group */
+-	unsigned long s_gdb_count;	/* Number of group descriptor blocks */
+-	unsigned long s_desc_per_block;	/* Number of group descriptors per block */
+-	ext4_group_t s_groups_count;	/* Number of groups in the fs */
+-	unsigned long s_overhead_last;  /* Last calculated overhead */
+-	unsigned long s_blocks_last;    /* Last seen block count */
+-	loff_t s_bitmap_maxbytes;	/* max bytes for bitmap files */
+-	struct buffer_head * s_sbh;	/* Buffer containing the super block */
+-	struct ext4_super_block *s_es;	/* Pointer to the super block in the buffer */
+-	struct buffer_head **s_group_desc;
+-	unsigned long  s_mount_opt;
+-	ext4_fsblk_t s_sb_block;
+-	uid_t s_resuid;
+-	gid_t s_resgid;
+-	unsigned short s_mount_state;
+-	unsigned short s_pad;
+-	int s_addr_per_block_bits;
+-	int s_desc_per_block_bits;
+-	int s_inode_size;
+-	int s_first_ino;
+-	unsigned int s_inode_readahead_blks;
+-	spinlock_t s_next_gen_lock;
+-	u32 s_next_generation;
+-	u32 s_hash_seed[4];
+-	int s_def_hash_version;
+-	int s_hash_unsigned;	/* 3 if hash should be signed, 0 if not */
+-	struct percpu_counter s_freeblocks_counter;
+-	struct percpu_counter s_freeinodes_counter;
+-	struct percpu_counter s_dirs_counter;
+-	struct percpu_counter s_dirtyblocks_counter;
+-	struct blockgroup_lock *s_blockgroup_lock;
+-	struct proc_dir_entry *s_proc;
+-	struct kobject s_kobj;
+-	struct completion s_kobj_unregister;
+-
+-	/* Journaling */
+-	struct inode *s_journal_inode;
+-	struct journal_s *s_journal;
+-	struct list_head s_orphan;
+-	struct mutex s_orphan_lock;
+-	struct mutex s_resize_lock;
+-	unsigned long s_commit_interval;
+-	u32 s_max_batch_time;
+-	u32 s_min_batch_time;
+-	struct block_device *journal_bdev;
+-#ifdef CONFIG_JBD2_DEBUG
+-	struct timer_list turn_ro_timer;	/* For turning read-only (crash simulation) */
+-	wait_queue_head_t ro_wait_queue;	/* For people waiting for the fs to go read-only */
+-#endif
+-#ifdef CONFIG_QUOTA
+-	char *s_qf_names[MAXQUOTAS];		/* Names of quota files with journalled quota */
+-	int s_jquota_fmt;			/* Format of quota to use */
+-#endif
+-	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
+-
+-#ifdef EXTENTS_STATS
+-	/* ext4 extents stats */
+-	unsigned long s_ext_min;
+-	unsigned long s_ext_max;
+-	unsigned long s_depth_max;
+-	spinlock_t s_ext_stats_lock;
+-	unsigned long s_ext_blocks;
+-	unsigned long s_ext_extents;
+-#endif
+-
+-	/* for buddy allocator */
+-	struct ext4_group_info ***s_group_info;
+-	struct inode *s_buddy_cache;
+-	long s_blocks_reserved;
+-	spinlock_t s_reserve_lock;
+-	spinlock_t s_md_lock;
+-	tid_t s_last_transaction;
+-	unsigned short *s_mb_offsets;
+-	unsigned int *s_mb_maxs;
+-
+-	/* tunables */
+-	unsigned long s_stripe;
+-	unsigned int s_mb_stream_request;
+-	unsigned int s_mb_max_to_scan;
+-	unsigned int s_mb_min_to_scan;
+-	unsigned int s_mb_stats;
+-	unsigned int s_mb_order2_reqs;
+-	unsigned int s_mb_group_prealloc;
+-	/* where last allocation was done - for stream allocation */
+-	unsigned long s_mb_last_group;
+-	unsigned long s_mb_last_start;
+-
+-	/* history to debug policy */
+-	struct ext4_mb_history *s_mb_history;
+-	int s_mb_history_cur;
+-	int s_mb_history_max;
+-	int s_mb_history_num;
+-	spinlock_t s_mb_history_lock;
+-	int s_mb_history_filter;
+-
+-	/* stats for buddy allocator */
+-	spinlock_t s_mb_pa_lock;
+-	atomic_t s_bal_reqs;	/* number of reqs with len > 1 */
+-	atomic_t s_bal_success;	/* we found long enough chunks */
+-	atomic_t s_bal_allocated;	/* in blocks */
+-	atomic_t s_bal_ex_scanned;	/* total extents scanned */
+-	atomic_t s_bal_goals;	/* goal hits */
+-	atomic_t s_bal_breaks;	/* too long searches */
+-	atomic_t s_bal_2orders;	/* 2^order hits */
+-	spinlock_t s_bal_lock;
+-	unsigned long s_mb_buddies_generated;
+-	unsigned long long s_mb_generation_time;
+-	atomic_t s_mb_lost_chunks;
+-	atomic_t s_mb_preallocated;
+-	atomic_t s_mb_discarded;
+-
+-	/* locality groups */
+-	struct ext4_locality_group *s_locality_groups;
+-
+-	/* for write statistics */
+-	unsigned long s_sectors_written_start;
+-	u64 s_kbytes_written;
+-
+-	unsigned int s_log_groups_per_flex;
+-	struct flex_groups *s_flex_groups;
+-};
+-
+-static inline spinlock_t *
+-sb_bgl_lock(struct ext4_sb_info *sbi, unsigned int block_group)
+-{
+-	return bgl_lock_ptr(sbi->s_blockgroup_lock, block_group);
+-}
