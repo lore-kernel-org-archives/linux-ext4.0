@@ -1,64 +1,109 @@
-From: "Ramesh" <ramesh@arasan.com>
-Subject: File System Selection
-Date: Wed, 29 Apr 2009 11:03:26 +0530 (IST)
-Message-ID: <1240983206.446412847@192.168.1.35>
-Mime-Version: 1.0
-Content-Type: text/plain;charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
-To: ext3-users@redhat.com, linux-ext4@vger.kernel.org
-Return-path: <ext3-users-bounces@redhat.com>
-List-Unsubscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
-	<mailto:ext3-users-request@redhat.com?subject=unsubscribe>
-List-Archive: <https://www.redhat.com/archives/ext3-users>
-List-Post: <mailto:ext3-users@redhat.com>
-List-Help: <mailto:ext3-users-request@redhat.com?subject=help>
-List-Subscribe: <https://www.redhat.com/mailman/listinfo/ext3-users>,
-	<mailto:ext3-users-request@redhat.com?subject=subscribe>
-Sender: ext3-users-bounces@redhat.com
-Errors-To: ext3-users-bounces@redhat.com
-List-Id: linux-ext4.vger.kernel.org
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/3] ext4: Fix and simplify s_dirt handling
+Date: Fri,  1 May 2009 00:37:16 -0400
+Message-ID: <1241152637-11986-2-git-send-email-tytso@mit.edu>
+References: <1241152637-11986-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:59735 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750772AbZEAEhW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 May 2009 00:37:22 -0400
+In-Reply-To: <1241152637-11986-1-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+The s_dirt flag wasn't completely handled correctly, but it didn't
+really matter when journalling was enabled.  It turns out that when
+ext4 runs without a journal, we don't clear s_dirt in places where we
+should have, with the result that the high-level write_super()
+function was writing the superblock when it wasn't necessary.
 
-Hi All,
+So we fix this by making ext4_commit_super() clear the s_dirt flag,
+and removing many of the other places where s_dirt is manipulated.
+When journalling is enabled, the s_dirt flag might be left set more
+often, but s_dirt really doesn't matter when journalling is enabled.
 
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/super.c |   14 +++-----------
+ 1 files changed, 3 insertions(+), 11 deletions(-)
 
-I am developing a SD Block Driver.
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index ad4c9be..7c7a08a 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -3128,7 +3128,6 @@ static int ext4_load_journal(struct super_block *sb,
+ 	if (journal_devnum &&
+ 	    journal_devnum != le32_to_cpu(es->s_journal_dev)) {
+ 		es->s_journal_dev = cpu_to_le32(journal_devnum);
+-		sb->s_dirt = 1;
+ 
+ 		/* Make sure we flush the recovery flag to disk. */
+ 		ext4_commit_super(sb, 1);
+@@ -3168,7 +3167,7 @@ static int ext4_commit_super(struct super_block *sb, int sync)
+ 					&EXT4_SB(sb)->s_freeblocks_counter));
+ 	es->s_free_inodes_count = cpu_to_le32(percpu_counter_sum_positive(
+ 					&EXT4_SB(sb)->s_freeinodes_counter));
+-
++	sb->s_dirt = 0;
+ 	BUFFER_TRACE(sbh, "marking dirty");
+ 	mark_buffer_dirty(sbh);
+ 	if (sync) {
+@@ -3210,7 +3209,6 @@ static void ext4_mark_recovery_complete(struct super_block *sb,
+ 	if (EXT4_HAS_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER) &&
+ 	    sb->s_flags & MS_RDONLY) {
+ 		EXT4_CLEAR_INCOMPAT_FEATURE(sb, EXT4_FEATURE_INCOMPAT_RECOVER);
+-		sb->s_dirt = 0;
+ 		ext4_commit_super(sb, 1);
+ 	}
+ 	unlock_super(sb);
+@@ -3271,10 +3269,8 @@ int ext4_force_commit(struct super_block *sb)
+ 		return 0;
+ 
+ 	journal = EXT4_SB(sb)->s_journal;
+-	if (journal) {
+-		sb->s_dirt = 0;
++	if (journal)
+ 		ret = ext4_journal_force_commit(journal);
+-	}
+ 
+ 	return ret;
+ }
+@@ -3282,15 +3278,13 @@ int ext4_force_commit(struct super_block *sb)
+ /*
+  * Ext4 always journals updates to the superblock itself, so we don't
+  * have to propagate any other updates to the superblock on disk at this
+- * point.  (We can probably nuke this function altogether, and remove
+- * any mention to sb->s_dirt in all of fs/ext4; eventual cleanup...)
++ * point if the journalling is enabled.
+  */
+ static void ext4_write_super(struct super_block *sb)
+ {
+ 	if (EXT4_SB(sb)->s_journal) {
+ 		if (mutex_trylock(&sb->s_lock) != 0)
+ 			BUG();
+-		sb->s_dirt = 0;
+ 	} else {
+ 		ext4_commit_super(sb, 1);
+ 	}
+@@ -3302,7 +3296,6 @@ static int ext4_sync_fs(struct super_block *sb, int wait)
+ 	tid_t target;
+ 
+ 	trace_mark(ext4_sync_fs, "dev %s wait %d", sb->s_id, wait);
+-	sb->s_dirt = 0;
+ 	if (EXT4_SB(sb)->s_journal) {
+ 		if (jbd2_journal_start_commit(EXT4_SB(sb)->s_journal,
+ 					      &target)) {
+@@ -3324,7 +3317,6 @@ static int ext4_freeze(struct super_block *sb)
+ {
+ 	int error = 0;
+ 	journal_t *journal;
+-	sb->s_dirt = 0;
+ 
+ 	if (!(sb->s_flags & MS_RDONLY)) {
+ 		journal = EXT4_SB(sb)->s_journal;
+-- 
+1.6.0.4
 
-As per old specification (SD Spec 2.0 ) Maximum size of SD memory card is=
- 32 GB.
-- We used ext2 file system.
-
-By referring the new Specification (SD Spec 3.0) SD memory card size is r=
-eached upto and including 2TB (Terra Byte)
-- Block size strictly limited to 512 only (as per specification).
-
-My Questions.
-
-1. For 2TB disk with Block size 512, Which file system is preferred (ext3=
-/ext4)
-
-2.
-In a 32 bit machine, If I installed the Fedora 10 ( having ext4), am I
-able to use it as effectively ( for the maximum disk/file size usage).
-To utilize 2TB or more size hard disk, is this allowable to use 32 bit ma=
-chine with Ext4 fs?
-
-
-Thanks in advance.
-
-Regards,
-Ramesh
-
-
-
-ATTENTION:
-
-The information contained in this message may be legally privileged and c=
-onfidential.  It is intended to be read only by the individual or entity =
-to whom it is addressed or by their designee. If the reader of this messa=
-ge is not the intended recipient, you are on notice that any distribution=
- of this message, in any form, is strictly prohibited by law.
-
-If you have received this message in error, please immediately notify the=
- sender and/or Arasan Chip Systems, Inc. by telephone at (408) 282-1600 a=
-nd delete or destroy any copy of this message.
