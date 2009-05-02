@@ -1,151 +1,53 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: Make the length of the mb_history file tunable
-Date: Fri,  1 May 2009 20:31:37 -0400
-Message-ID: <1241224297-11223-1-git-send-email-tytso@mit.edu>
-References: <6601abe90904201153q5e66cb30na22a49767245e53f@mail.gmail.com>
-Cc: Michael Rubin <mrubin@google.com>,
-	Ext4 Developers List <linux-ext4@vger.kernel.org>,
-	Curt Wohlgemuth <curtw@google.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
-To: Curt Wohlgemuth <curtw@google.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 12151] Unexplained fsck errors on a ext4 filesystem
+Date: Sat, 2 May 2009 16:29:30 GMT
+Message-ID: <200905021629.n42GTU6W031805@demeter.kernel.org>
+References: <bug-12151-13602@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:42589 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751604AbZEBAbl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 May 2009 20:31:41 -0400
-In-Reply-To: <6601abe90904201153q5e66cb30na22a49767245e53f@mail.gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:52563 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755073AbZEBQ3a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 2 May 2009 12:29:30 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n42GTU6I031806
+	for <linux-ext4@vger.kernel.org>; Sat, 2 May 2009 16:29:30 GMT
+In-Reply-To: <bug-12151-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Curt Wohlgemuth <curtw@google.com>
+http://bugzilla.kernel.org/show_bug.cgi?id=12151
 
-In memory-constrained systems with many partitions, the ~68K for each
-partition for the mb_history buffer can be excessive.
 
-This patch adds a new mount option, mb_history_length, as well as a
-way of setting the default via a module parameter (or via a sysfs
-parameter in /sys/module/ext4/parameter/default_mb_history_length).
-If the mb_history_length is set to zero, the mb_history facility is
-disabled entirely.
 
-Signed-off-by: Curt Wohlgemuth <curtw@google.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
 
-I completely revamped how how tunable is set.  The combination of a
-mount option plus a default which can be tuned via a sysfs file or a
-module parameter is cleaner, and certainly requires less code.  (No need
-to open-code new file in /proc, which should be avoided if at all
-possible.)
 
-Anyway, this is what I've dropped into the ext4 patch queue.
+--- Comment #10 from Nathan Grennan <kernel-bugzilla@cygnusx-1.org>  2009-05-02 16:29:29 ---
+  Here is my basic experience with ext4. I had two basic problems.
 
- fs/ext4/mballoc.c |   13 +++++++------
- fs/ext4/super.c   |   18 +++++++++++++++++-
- 2 files changed, 24 insertions(+), 7 deletions(-)
+ One was where the system would just go off into a hang. The other was this
+issue. This issue went away when I went with a 2.6.28+ kernel. Backporting
+patches didn't work for me. I say this because at the time you guys were
+telling me there were no new patches, but I would have issue with 2.6.27
+kernels, but not 2.6.28 kernels. Later cebbert said there was something nasty
+in 2.6.28.1 kernels, so I upgraded to 2.6.29. I have had zero issues with ext4
+since upgrading to 2.6.29.
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index dbd47ea..df75855 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2413,7 +2413,8 @@ static void ext4_mb_history_release(struct super_block *sb)
- 
- 	if (sbi->s_proc != NULL) {
- 		remove_proc_entry("mb_groups", sbi->s_proc);
--		remove_proc_entry("mb_history", sbi->s_proc);
-+		if (sbi->s_mb_history_max)
-+			remove_proc_entry("mb_history", sbi->s_proc);
- 	}
- 	kfree(sbi->s_mb_history);
- }
-@@ -2424,17 +2425,17 @@ static void ext4_mb_history_init(struct super_block *sb)
- 	int i;
- 
- 	if (sbi->s_proc != NULL) {
--		proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
--				 &ext4_mb_seq_history_fops, sb);
-+		if (sbi->s_mb_history_max)
-+			proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
-+					 &ext4_mb_seq_history_fops, sb);
- 		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
- 				 &ext4_mb_seq_groups_fops, sb);
- 	}
- 
--	sbi->s_mb_history_max = 1000;
- 	sbi->s_mb_history_cur = 0;
- 	spin_lock_init(&sbi->s_mb_history_lock);
- 	i = sbi->s_mb_history_max * sizeof(struct ext4_mb_history);
--	sbi->s_mb_history = kzalloc(i, GFP_KERNEL);
-+	sbi->s_mb_history = i ? kzalloc(i, GFP_KERNEL) : NULL;
- 	/* if we can't allocate history, then we simple won't use it */
- }
- 
-@@ -2444,7 +2445,7 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
- 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
- 	struct ext4_mb_history h;
- 
--	if (unlikely(sbi->s_mb_history == NULL))
-+	if (sbi->s_mb_history == NULL)
- 		return;
- 
- 	if (!(ac->ac_op & sbi->s_mb_history_filter))
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 7903f20..39223a5 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -47,6 +47,13 @@
- #include "xattr.h"
- #include "acl.h"
- 
-+static int default_mb_history_length = 1000;
-+
-+module_param_named(default_mb_history_length, default_mb_history_length,
-+		   int, 0644);
-+MODULE_PARM_DESC(default_mb_history_length,
-+		 "Default number of entries saved for mb_history");
-+
- struct proc_dir_entry *ext4_proc_root;
- static struct kset *ext4_kset;
- 
-@@ -1042,7 +1049,7 @@ enum {
- 	Opt_journal_update, Opt_journal_dev,
- 	Opt_journal_checksum, Opt_journal_async_commit,
- 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
--	Opt_data_err_abort, Opt_data_err_ignore,
-+	Opt_data_err_abort, Opt_data_err_ignore, Opt_mb_history_length,
- 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
- 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
- 	Opt_ignore, Opt_barrier, Opt_nobarrier, Opt_err, Opt_resize,
-@@ -1088,6 +1095,7 @@ static const match_table_t tokens = {
- 	{Opt_data_writeback, "data=writeback"},
- 	{Opt_data_err_abort, "data_err=abort"},
- 	{Opt_data_err_ignore, "data_err=ignore"},
-+	{Opt_mb_history_length, "mb_history_length=%u"},
- 	{Opt_offusrjquota, "usrjquota="},
- 	{Opt_usrjquota, "usrjquota=%s"},
- 	{Opt_offgrpjquota, "grpjquota="},
-@@ -1329,6 +1337,13 @@ static int parse_options(char *options, struct super_block *sb,
- 		case Opt_data_err_ignore:
- 			clear_opt(sbi->s_mount_opt, DATA_ERR_ABORT);
- 			break;
-+		case Opt_mb_history_length:
-+			if (match_int(&args[0], &option))
-+				return 0;
-+			if (option < 0)
-+				return 0;
-+			sbi->s_mb_history_max = option;
-+			break;
- #ifdef CONFIG_QUOTA
- 		case Opt_usrjquota:
- 			qtype = USRQUOTA;
-@@ -2345,6 +2360,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 	sbi->s_commit_interval = JBD2_DEFAULT_MAX_COMMIT_AGE * HZ;
- 	sbi->s_min_batch_time = EXT4_DEF_MIN_BATCH_TIME;
- 	sbi->s_max_batch_time = EXT4_DEF_MAX_BATCH_TIME;
-+	sbi->s_mb_history_max = default_mb_history_length;
- 
- 	set_opt(sbi->s_mount_opt, BARRIER);
- 
+  I just looked through my irc logs, and found the errors that I think caused
+this problem. Sandeen, I have mentioned these to you before. How I think it
+would go would be I would get one of these errors, the system would continue,
+because that is the crazy default. Then a few days later, I having not noticed
+these errors, would reboot the system, and receive the fsck issue above. From
+what I remember reading this issue was fixed.
+
+Feb 16 12:03:19 proton kernel: EXT4-fs error (device md3):
+ext4_mb_generate_buddy: EXT4-fs: group 
+EXT4-fs error (device md3): mb_free_blocks: double-free of inode 0's block
+321550248(bit 30632 in group 9812)
+
 -- 
-1.6.0.4
-
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
