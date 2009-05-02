@@ -1,50 +1,151 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/2 for 2.6.31] ext4: Use -1 as the fake block number
-	for delayed new buffer_head
-Date: Fri, 1 May 2009 18:59:25 -0400
-Message-ID: <20090501225925.GI7681@mit.edu>
-References: <1241003611-3652-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090501185841.GG7681@mit.edu> <20090501190546.GA920@skywalker>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: Make the length of the mb_history file tunable
+Date: Fri,  1 May 2009 20:31:37 -0400
+Message-ID: <1241224297-11223-1-git-send-email-tytso@mit.edu>
+References: <6601abe90904201153q5e66cb30na22a49767245e53f@mail.gmail.com>
+Cc: Michael Rubin <mrubin@google.com>,
+	Ext4 Developers List <linux-ext4@vger.kernel.org>,
+	Curt Wohlgemuth <curtw@google.com>,
+	"Theodore Ts'o" <tytso@mit.edu>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:42765 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:42589 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753677AbZEAW7c (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 1 May 2009 18:59:32 -0400
-Content-Disposition: inline
-In-Reply-To: <20090501190546.GA920@skywalker>
+	id S1751604AbZEBAbl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 1 May 2009 20:31:41 -0400
+In-Reply-To: <6601abe90904201153q5e66cb30na22a49767245e53f@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 02, 2009 at 12:35:46AM +0530, Aneesh Kumar K.V wrote:
-> On Fri, May 01, 2009 at 02:58:41PM -0400, Theodore Tso wrote:
-> > You mean "for 2.6.30", right?
-> > 
-> 
-> The reason for me to post two series one for 2.6.30 and other for 2.6.31
-> was the [Patch 2/2] for 2.6.31 needs more testing. I added this specific
-> patch in both the series to make sure  we don't miss the change in case
-> we decided not to make any changes for 2.6.30. Also in my testing I created
-> different topgit branches with different dependencies. So having [PATCH
-> 1/2 ] in both the series helped in testing with topgit branches.
+From: Curt Wohlgemuth <curtw@google.com>
 
-Yeah, but you didn't label the other series as "for 2.6.30".  To makes
-matter worse, the fact that patch #2 in what I think is your 2.6.30
-patch series (the V4 series?) is the same as patch #1 of your 2.6.31
-series, and your "2.6.31" series doesn't have a patch backing out the
-2.6.30 changes (I assume you need to do that, right?), left me as a
-very confused maintainer about. 
+In memory-constrained systems with many partitions, the ~68K for each
+partition for the mb_history buffer can be excessive.
 
-OK, so what I have in the patch queue is the V4 version, somewhat
-modified, and I'll ignore the "for 2.6.31" patches for now.  When
-you're ready, please send me patches versus the end of the stable
-series of the ext4 patch queue, and please give me this kind of
-context.
+This patch adds a new mount option, mb_history_length, as well as a
+way of setting the default via a module parameter (or via a sysfs
+parameter in /sys/module/ext4/parameter/default_mb_history_length).
+If the mb_history_length is set to zero, the mb_history facility is
+disabled entirely.
 
-If you could verify what's in the patch queue, I'd appreciate it.
+Signed-off-by: Curt Wohlgemuth <curtw@google.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
 
-Thanks,
+I completely revamped how how tunable is set.  The combination of a
+mount option plus a default which can be tuned via a sysfs file or a
+module parameter is cleaner, and certainly requires less code.  (No need
+to open-code new file in /proc, which should be avoided if at all
+possible.)
 
-						- Ted
+Anyway, this is what I've dropped into the ext4 patch queue.
+
+ fs/ext4/mballoc.c |   13 +++++++------
+ fs/ext4/super.c   |   18 +++++++++++++++++-
+ 2 files changed, 24 insertions(+), 7 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index dbd47ea..df75855 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2413,7 +2413,8 @@ static void ext4_mb_history_release(struct super_block *sb)
+ 
+ 	if (sbi->s_proc != NULL) {
+ 		remove_proc_entry("mb_groups", sbi->s_proc);
+-		remove_proc_entry("mb_history", sbi->s_proc);
++		if (sbi->s_mb_history_max)
++			remove_proc_entry("mb_history", sbi->s_proc);
+ 	}
+ 	kfree(sbi->s_mb_history);
+ }
+@@ -2424,17 +2425,17 @@ static void ext4_mb_history_init(struct super_block *sb)
+ 	int i;
+ 
+ 	if (sbi->s_proc != NULL) {
+-		proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
+-				 &ext4_mb_seq_history_fops, sb);
++		if (sbi->s_mb_history_max)
++			proc_create_data("mb_history", S_IRUGO, sbi->s_proc,
++					 &ext4_mb_seq_history_fops, sb);
+ 		proc_create_data("mb_groups", S_IRUGO, sbi->s_proc,
+ 				 &ext4_mb_seq_groups_fops, sb);
+ 	}
+ 
+-	sbi->s_mb_history_max = 1000;
+ 	sbi->s_mb_history_cur = 0;
+ 	spin_lock_init(&sbi->s_mb_history_lock);
+ 	i = sbi->s_mb_history_max * sizeof(struct ext4_mb_history);
+-	sbi->s_mb_history = kzalloc(i, GFP_KERNEL);
++	sbi->s_mb_history = i ? kzalloc(i, GFP_KERNEL) : NULL;
+ 	/* if we can't allocate history, then we simple won't use it */
+ }
+ 
+@@ -2444,7 +2445,7 @@ ext4_mb_store_history(struct ext4_allocation_context *ac)
+ 	struct ext4_sb_info *sbi = EXT4_SB(ac->ac_sb);
+ 	struct ext4_mb_history h;
+ 
+-	if (unlikely(sbi->s_mb_history == NULL))
++	if (sbi->s_mb_history == NULL)
+ 		return;
+ 
+ 	if (!(ac->ac_op & sbi->s_mb_history_filter))
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index 7903f20..39223a5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -47,6 +47,13 @@
+ #include "xattr.h"
+ #include "acl.h"
+ 
++static int default_mb_history_length = 1000;
++
++module_param_named(default_mb_history_length, default_mb_history_length,
++		   int, 0644);
++MODULE_PARM_DESC(default_mb_history_length,
++		 "Default number of entries saved for mb_history");
++
+ struct proc_dir_entry *ext4_proc_root;
+ static struct kset *ext4_kset;
+ 
+@@ -1042,7 +1049,7 @@ enum {
+ 	Opt_journal_update, Opt_journal_dev,
+ 	Opt_journal_checksum, Opt_journal_async_commit,
+ 	Opt_abort, Opt_data_journal, Opt_data_ordered, Opt_data_writeback,
+-	Opt_data_err_abort, Opt_data_err_ignore,
++	Opt_data_err_abort, Opt_data_err_ignore, Opt_mb_history_length,
+ 	Opt_usrjquota, Opt_grpjquota, Opt_offusrjquota, Opt_offgrpjquota,
+ 	Opt_jqfmt_vfsold, Opt_jqfmt_vfsv0, Opt_quota, Opt_noquota,
+ 	Opt_ignore, Opt_barrier, Opt_nobarrier, Opt_err, Opt_resize,
+@@ -1088,6 +1095,7 @@ static const match_table_t tokens = {
+ 	{Opt_data_writeback, "data=writeback"},
+ 	{Opt_data_err_abort, "data_err=abort"},
+ 	{Opt_data_err_ignore, "data_err=ignore"},
++	{Opt_mb_history_length, "mb_history_length=%u"},
+ 	{Opt_offusrjquota, "usrjquota="},
+ 	{Opt_usrjquota, "usrjquota=%s"},
+ 	{Opt_offgrpjquota, "grpjquota="},
+@@ -1329,6 +1337,13 @@ static int parse_options(char *options, struct super_block *sb,
+ 		case Opt_data_err_ignore:
+ 			clear_opt(sbi->s_mount_opt, DATA_ERR_ABORT);
+ 			break;
++		case Opt_mb_history_length:
++			if (match_int(&args[0], &option))
++				return 0;
++			if (option < 0)
++				return 0;
++			sbi->s_mb_history_max = option;
++			break;
+ #ifdef CONFIG_QUOTA
+ 		case Opt_usrjquota:
+ 			qtype = USRQUOTA;
+@@ -2345,6 +2360,7 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+ 	sbi->s_commit_interval = JBD2_DEFAULT_MAX_COMMIT_AGE * HZ;
+ 	sbi->s_min_batch_time = EXT4_DEF_MIN_BATCH_TIME;
+ 	sbi->s_max_batch_time = EXT4_DEF_MAX_BATCH_TIME;
++	sbi->s_mb_history_max = default_mb_history_length;
+ 
+ 	set_opt(sbi->s_mount_opt, BARRIER);
+ 
+-- 
+1.6.0.4
+
