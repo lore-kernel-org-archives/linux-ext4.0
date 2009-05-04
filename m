@@ -1,71 +1,71 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 1/2] vfs: call file_ioctl call for directories.
-Date: Sun, 3 May 2009 16:30:37 -0400
-Message-ID: <20090503203037.GA17044@mit.edu>
-References: <1239806343-14219-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090502230638.GA12368@mit.edu>
+From: Valerie Aurora <vaurora@redhat.com>
+Subject: Re: [PATCH 1/6][64-bit] Eliminate erroneous blk_t casts in ext2fs_get_free_blocks2().
+Date: Mon, 4 May 2009 02:20:15 -0400
+Message-ID: <20090504062015.GC9151@shell>
+References: <15553.1241167573@gamaville.dokosmarshall.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>
+To: Nick Dokos <nicholas.dokos@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:42807 "EHLO thunker.thunk.org"
+Received: from mx1.redhat.com ([66.187.233.31]:32799 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753466AbZECUar (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 3 May 2009 16:30:47 -0400
+	id S1751598AbZEDGUX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 4 May 2009 02:20:23 -0400
 Content-Disposition: inline
-In-Reply-To: <20090502230638.GA12368@mit.edu>
+In-Reply-To: <15553.1241167573@gamaville.dokosmarshall.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, May 02, 2009 at 07:06:38PM -0400, Theodore Tso wrote:
-> On Wed, Apr 15, 2009 at 08:09:02PM +0530, Aneesh Kumar K.V wrote:
-> > Most of the ioctl callback in file_ioctl should be done even
-> > for directories. For ext4 fiemap should work even for directories.
-> > Similarly FIGETBSZ  should work for directories. For bmap filefrag command
-> > doesn't do the ioctl if the type is not a regular file.
-> > 
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+On Fri, May 01, 2009 at 04:46:13AM -0400, Nick Dokos wrote:
+> Running e2fsck -n -f <device> on a brand-new, never-mounted 32Tib fs
+> was producing checksum errors on half the groups (the lower half)
+> before it got to pass1 and block or inode bitmap conflicts on some
+> groups in the upper half. The checksum errors were actually caused by
+> the conflicts: e2fsck does a sanity check on block allocations, finds
+> a conflict, and uses the backup superblock at 32768. But when it does
+> that, it assumes the worst: it clears the UNINIT FLAGS and zeroes the
+> free inode count for each group, assuming that it will fix them up
+> during the run. That triggers the checksum errors (although it's not
+> clear to me why only the lower half of the groups get checksum
+> errors.)
 > 
-> Thanks, I've pulled this into the ext4 patch queue.
+> dumpe2fs showed that the conflicts were not artifacts of e2fsck
+> processing: they existed on disk. In fact, the block bitmap of a group
+> conflicted with the inode bitmap of the group fifteen steps further
+> along. That smelled like flex_bg, so I remade the fs with flex_bg
+> off and then *every* group in the upper half (more precisely, with
+> blocks above the 32-bit boundary) had a conflict with itself: the
+> block bitmap and inode bitmap were allocated on top of each other.
+> That led to ext2fs_get_free_blocks2() which was truncating 64-bit block
+> numbers by casting them to blk_t.
 > 
+> This patch eliminates the casts. The resulting file system is free of
+> the conflicts (with or without flex_bg.) However, it does not fsck
+> cleanly yet: there are block bitmap differences  in the very last group.
+> 
+> Signed-off-by: Nick Dokos <nicholas.dokos@hp.com>
+> ---
+>  lib/ext2fs/alloc.c |    3 +--
+>  1 files changed, 1 insertions(+), 2 deletions(-)
+> 
+> diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
+> index b1d1f9c..9f11673 100644
+> --- a/lib/ext2fs/alloc.c
+> +++ b/lib/ext2fs/alloc.c
+> @@ -272,8 +272,7 @@ errcode_t ext2fs_get_free_blocks2(ext2_filsys fs, blk64_t start, blk64_t finish,
+>  	do {
+>  		if (b+num-1 > ext2fs_blocks_count(fs->super))
+>  			b = fs->super->s_first_data_block;
+> -		if (ext2fs_fast_test_block_bitmap_range2(map, (blk_t) b,
+> -							(blk_t) num)) {
+> +		if (ext2fs_fast_test_block_bitmap_range2(map, b, num)) {
+>  			*ret = b;
+>  			return 0;
+>  		}
+> -- 
+> 1.6.0.6
 
-I've had to remove this from the ext4 patch queue --- it causes udevd
-to spin in an endless loop:
-         
-  PID USER      PR  NI  VIRT  RES  SHR S %CPU %MEM    TIME+  COMMAND
- 2865 root      16  -4  2220  572  312 R   99  0.0  11:42.06 udevd  
+Signed-off-by: Valerie Aurora (Henson) <vaurora@redhat.com>
 
-<tytso.root@mini-me> {/home/tytso}, level 2  
-498# strace -p 2865 | head -10
-Process 2865 attached - interrupt to quit
-ppoll([{fd=4, events=POLLIN}, {fd=5, events=POLLIN}, {fd=3, events=POLLIN}], 3, NULL, [], 8) = 1 ([{fd=3, revents=POLLIN}])
-rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
-ioctl(3, FIONREAD, [0])                 = 0
-rt_sigprocmask(SIG_SETMASK, ~[RTMIN RT_1], [], 8) = 0
-ppoll([{fd=4, events=POLLIN}, {fd=5, events=POLLIN}, {fd=3, events=POLLIN}], 3, NULL, [], 8) = 1 ([{fd=3, revents=POLLIN}])
-rt_sigprocmask(SIG_SETMASK, [], NULL, 8) = 0
-ioctl(3, FIONREAD, [0])                 = 0
-   ...
-
-<tytso.root@mini-me> {/home/tytso}, level 2  
-499# ls -l  /proc/2865/fd
-total 0
-0 lrwx------ 1 root root 64 2009-05-03 16:14 0 -> /dev/null
-0 lrwx------ 1 root root 64 2009-05-03 16:14 1 -> /dev/null
-0 lrwx------ 1 root root 64 2009-05-03 16:14 2 -> /dev/null
-0 lr-x------ 1 root root 64 2009-05-03 16:14 3 -> inotify
-0 lrwx------ 1 root root 64 2009-05-03 16:14 4 -> socket:[8026]
-0 lrwx------ 1 root root 64 2009-05-03 16:14 5 -> socket:[8027]
-
-I haven't had time to investigate more deeply than this.  My guess on
-quick examination is that the inotify file descriptor must be a
-directory, and using the FIONREAD ioctl from file_ioctl is disastrous
-for udevd.
-
-Aneesh, do you have time to look at this, since this was originally
-your patch?  Clearly we can't push this if it causes this regression
-with udevd.  Maybe we'd be better off simply adding an FIEMAP and
-FIGETBSZ case statements to vfs_ioctl, explicitly just for
-directories?
-
-						- Ted
+-VAL
