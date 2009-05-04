@@ -1,66 +1,73 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V4 2/2] ext4: Use -1 as the fake block number for
-	delayed new buffer_head
-Date: Mon, 4 May 2009 14:24:23 +0530
-Message-ID: <20090504085423.GA12391@skywalker>
-References: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1240980441-8105-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090429153521.GC14264@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Subject: [PATCH -V2] vfs: Enable FS_IOC_FIEMAP and FIGETBSZ for all filetypes
+Date: Mon,  4 May 2009 14:32:22 +0530
+Message-ID: <1241427742-13049-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <20090503203037.GA17044@mit.edu>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp07.in.ibm.com ([59.145.155.7]:53868 "EHLO
-	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751393AbZEDIy1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 May 2009 04:54:27 -0400
-Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id n448sPfX007202
-	for <linux-ext4@vger.kernel.org>; Mon, 4 May 2009 14:24:25 +0530
-Received: from d28av05.in.ibm.com (d28av05.in.ibm.com [9.184.220.67])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n448sP5N614536
-	for <linux-ext4@vger.kernel.org>; Mon, 4 May 2009 14:24:25 +0530
-Received: from d28av05.in.ibm.com (loopback [127.0.0.1])
-	by d28av05.in.ibm.com (8.13.1/8.13.3) with ESMTP id n448sOp0029738
-	for <linux-ext4@vger.kernel.org>; Mon, 4 May 2009 18:54:25 +1000
-Content-Disposition: inline
-In-Reply-To: <20090429153521.GC14264@mit.edu>
+Received: from e28smtp04.in.ibm.com ([59.145.155.4]:52237 "EHLO
+	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751122AbZEDJCh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 4 May 2009 05:02:37 -0400
+Received: from d28relay02.in.ibm.com (d28relay02.in.ibm.com [9.184.220.59])
+	by e28smtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id n4492XK6020994
+	for <linux-ext4@vger.kernel.org>; Mon, 4 May 2009 14:32:33 +0530
+Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
+	by d28relay02.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n4492XTq2293878
+	for <linux-ext4@vger.kernel.org>; Mon, 4 May 2009 14:32:33 +0530
+Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
+	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id n4492X96013504
+	for <linux-ext4@vger.kernel.org>; Mon, 4 May 2009 19:02:33 +1000
+In-Reply-To: <20090503203037.GA17044@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Apr 29, 2009 at 11:35:21AM -0400, Theodore Tso wrote:
-> On Wed, Apr 29, 2009 at 10:17:21AM +0530, Aneesh Kumar K.V wrote:
-> > Block number '0' should not be used as the fake block number for
-> > the delayed new buffer. This will result in vfs calling umap_underlying_metadata for
-> > block number '0'. So  use -1 instead.
-> 
-> sector_t is an unsigned type, so we probably want to use ~0 instead of
-> -1.  I can fix this up before we apply into the patch queue.
-> 
-> Are we agreed both of these should probably be pushed to Linus for
-> 2.6.30?
-> 
+fiemap and get_blk_size ioctl should be enabled even for directories.
+So move it outisde file_ioctl. Enabling file_ioctl for both
+directories and files cause udev to hang when using FIONREAD. I guess
+some of the user space may depend on these ioctls cmd failing on
+directories.
 
-With ABAT I am seeing the below error during fsstress run.
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ioctl.c |   14 ++++++++++----
+ 1 files changed, 10 insertions(+), 4 deletions(-)
 
-EXT4-fs: mounted filesystem sdb1 with ordered data mode
-attempt to access beyond end of device
-sdb1: rw=1, want=0, limit=136713087
-Buffer I/O error on device sdb1, logical block 18446744073709551615
-lost page write due to I/O error on sdb1
-attempt to access beyond end of device
-sdb1: rw=1, want=0, limit=136713087
-Buffer I/O error on device sdb1, logical block 18446744073709551615
-lost page write due to I/O error on sdb1
-attempt to access beyond end of device
-sdb1: rw=1, want=0, limit=136713087
-Buffer I/O error on device sdb1, logical block 18446744073709551615
-lost page write due to I/O error on sdb1
-attempt to access beyond end of device
-sdb1: rw=1, want=0, limit=136713087
+diff --git a/fs/ioctl.c b/fs/ioctl.c
+index ac2d47e..5362398 100644
+--- a/fs/ioctl.c
++++ b/fs/ioctl.c
+@@ -379,10 +379,6 @@ static int file_ioctl(struct file *filp, unsigned int cmd,
+ 	switch (cmd) {
+ 	case FIBMAP:
+ 		return ioctl_fibmap(filp, p);
+-	case FS_IOC_FIEMAP:
+-		return ioctl_fiemap(filp, arg);
+-	case FIGETBSZ:
+-		return put_user(inode->i_sb->s_blocksize, p);
+ 	case FIONREAD:
+ 		return put_user(i_size_read(inode) - filp->f_pos, p);
+ 	}
+@@ -522,6 +518,16 @@ int do_vfs_ioctl(struct file *filp, unsigned int fd, unsigned int cmd,
+ 		error = ioctl_fsthaw(filp);
+ 		break;
+ 
++	case FS_IOC_FIEMAP:
++		return ioctl_fiemap(filp, arg);
++
++	case FIGETBSZ:
++	{
++		struct inode *inode = filp->f_path.dentry->d_inode;
++		int __user *p = (int __user *)arg;
++		return put_user(inode->i_sb->s_blocksize, p);
++	}
++
+ 	default:
+ 		if (S_ISREG(filp->f_path.dentry->d_inode->i_mode))
+ 			error = file_ioctl(filp, cmd, arg);
+-- 
+1.6.3.rc4
 
-
-That is the logical block number ~0. Well that would imply we are trying
-to write the buffer_head which is marked delay.
-
-
--aneesh
