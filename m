@@ -1,52 +1,104 @@
-From: Christian Kujau <lists@nerdbynature.de>
-Subject: Re: fsck ate my ext4 home partition, help!?
-Date: Mon, 4 May 2009 22:33:05 -0700 (PDT)
-Message-ID: <alpine.DEB.2.01.0905042222260.6162@bogon.housecafe.de>
-References: <20090504131128.135100@gmx.net>
+From: Scott James Remnant <scott@ubuntu.com>
+Subject: Re: [PATCH] blkid: add --disable-libblkid (v2)
+Date: Tue, 05 May 2009 12:30:40 +0100
+Message-ID: <1241523040.5593.23.camel@quest>
+References: <20090224084434.GF6020@nb.net.home>
+	 <20090324121147.GA22386@zelda.netsplit.com>
+	 <20090416102241.GA3290@nb.net.home> <1239976118.11603.109.camel@quest>
+	 <20090422133304.GP15541@mit.edu> <1240407745.2902.3.camel@wing-commander>
+	 <20090422134945.GQ15541@mit.edu> <1241025728.16780.21.camel@quest>
+	 <20090429205458.GA24749@mit.edu>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: linux-ext4@vger.kernel.org
-To: Marcel Partap <mpartap@gmx.net>
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-sscmmyCaXufmK7UT3B3X"
+Cc: Karel Zak <kzak@redhat.com>, linux-ext4@vger.kernel.org,
+	Kay Sievers <kay.sievers@vrfy.org>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from moutng.kundenserver.de ([212.227.126.177]:53061 "EHLO
-	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751697AbZEEFdI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 May 2009 01:33:08 -0400
-In-Reply-To: <20090504131128.135100@gmx.net>
+Received: from zelda.netsplit.com ([87.194.19.211]:60836 "EHLO
+	zelda.netsplit.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752000AbZEELaD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 5 May 2009 07:30:03 -0400
+In-Reply-To: <20090429205458.GA24749@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, 4 May 2009, Marcel Partap wrote:
-> check over it. Unmounting went successful, however fsck complained about 
-> /dev/sdd4 still being mounted. After confirming (lsof, mtab, empty mount 
 
-Have you checked /proc/mounts? mtab could be stale, lsof not seeing 
-everything and the "empty mountpoint" could be some other mount on top of 
-/home.
+--=-sscmmyCaXufmK7UT3B3X
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> previous run of e2fsck with the -n was showing a bunch of stuff to fix, 
+On Wed, 2009-04-29 at 16:54 -0400, Theodore Tso wrote:
 
-Do you still have that e2fsck output?
+> Scott, thanks for submitting these patches.   Two quick comments:
+>=20
+> 1) It's greatly preferred if you submit each patch as separate e-mail
+> messages, with the one-line summary as the subject (as you might find
+> in a git submission or as described in sections 5.4 and 5.5 in the file
+> Documentation/development-process/5.Posting in the Linux kernel sources).
+> The reason for this is that the patchs will then be tracked in patchwork:
+>=20
+>     http://patchwork.ozlabs.org/project/linux-ext4/list/
+>=20
+> and if it's accurately reflected there, it's much less likely that I
+> won't accidentally forget to act on your patches, especially when I
+> get busy/overloaded.  The best thing to do is to use "git
+> format-patch" (which you apparenlty did to generate the patch), and
+> then use "git send-email" to send out the patches.
+>=20
+At this point, consider these patches "for your review" ;)  If you're
+happy with them, I'll submit them to the mailing list properly.
 
-> revealed the havoc that was done: ls -laR showed abundant I/O errors, 
+> 2) While lsb_release is mandatory on Ubuntu systems (there is a
+> dependency from ubuntu-minimal), it is not guaranteed to exist on
+> Debian systems.
+>=20
+That's why I have "|| Debian" in there.
 
-Again: error messages would be helpful.
+This is the same rule we use in util-linux on Debian/Ubuntu.
 
-> If someone can actually help me to get it back in the state it was
-> before invoking e2fsk,
+> So how I already test for Ubuntu in the rules file is
+> via this construct:
+>=20
+> 	if test -f /etc/lsb-release && \
+> 		grep -q DISTRIB_ID=3DUbuntu /etc/lsb-release; then \
+> 	$(INSTALL) -p -m 0644 e2fsck/e2fsck.conf.ubuntu \
+>        		${debdir}/e2fsprogs/etc/e2fsck.conf; \
+> 	fi
+>=20
+It's not guaranteed that /etc/lsb-release says DISTRIB_ID=3DUbuntu - if we
+ever simply changed the defaults in lsb_release, then this would fail -
+no?
 
-You did not take the dd image before the first e2fsck, hm? Now that you 
-have a backup: a few days ago a tool called "extundelete"[0] has been 
-annunced on ext3-users, maybe that can be of help recovering your fs.
+> Hmm, one of these days I should probably check and see if Ubuntu
+> finally fixed the installer and init scripts breakage which forced me
+> to set a special e2fsck.conf file just for Ubuntu.  (See git commit
+> 60702c26 in the e2fsprogs repository for more details.)
+>=20
+We spent a very long time on this - in Jaunty this should be
+rock-solidly correct <g>
 
-> For the record, i am running kernel 2.6.30 RC3 with gentoo's 
-> e2fsprogs-1.41.3.. and i have not rebooted the system since the incident 
+> 3) In the "nice to have" category, it would be nice if whether or not
+> blkid is built is controled via DEB_BUILD_OPTIONS flag instead of a
+> free-standard environment variable, but I won't insist on that.
+>=20
+Good idea.
 
-e2fsprogs-1.41.5 has been released recently, you might want to give it a 
-shot.
+Scott
+--=20
+Scott James Remnant
+scott@ubuntu.com
 
-Christian.
+--=-sscmmyCaXufmK7UT3B3X
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
 
-[0] http://extundelete.sf.net/
--- 
-Perfect Forward Secrecy is when Bruce Schneier whispers something in your ear.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAkoAI2AACgkQSnQiFMl4yK56+ACfT32r2RpDrSFwhyY/+2Pj4dRR
+EvkAoKyKSE1/UlZ9OlIhWSgK5pcYwNz8
+=ZVHm
+-----END PGP SIGNATURE-----
+
+--=-sscmmyCaXufmK7UT3B3X--
+
