@@ -1,33 +1,54 @@
-From: Online Notice <wilsonbusiness@bellnet.ca>
-Subject: **Congratulation**
-Date: Tue, 5 May 2009 14:24:19 -0400
-Message-ID: <20090505182423.WTUK1670.simmts8-srv.bellnexxia.net@simip9-ac.srvr.bell.ca>
-Reply-To: claimslogisticdirector@googlemail.com
+From: Karel Zak <kzak@redhat.com>
+Subject: Re: [PATCH] blkid: use /dev/mapper/<name> rather than /dev/dm-<N>
+Date: Tue, 5 May 2009 21:54:23 +0200
+Message-ID: <20090505195423.GB4460@nb.net.home>
+References: <1240837258-5440-1-git-send-email-kzak@redhat.com> <20090503020528.GA25826@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: <info@liver.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from simmts8-srv.bellnexxia.net ([206.47.199.166]:35173 "EHLO
-	simmts8-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751815AbZEESYX convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 5 May 2009 14:24:23 -0400
-Received: from simip9-ac.srvr.bell.ca ([206.47.199.87])
-          by simmts8-srv.bellnexxia.net
-          (InterMail vM.5.01.06.13 201-253-122-130-113-20050324) with ESMTP
-          id <20090505182423.WTUK1670.simmts8-srv.bellnexxia.net@simip9-ac.srvr.bell.ca>
-          for <linux-ext4@vger.kernel.org>; Tue, 5 May 2009 14:24:23 -0400
+Received: from mx2.redhat.com ([66.187.237.31]:43137 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752346AbZEETy1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 5 May 2009 15:54:27 -0400
+Content-Disposition: inline
+In-Reply-To: <20090503020528.GA25826@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-You were selected for the sum of  =A31,500,000,000.00 GBP . Verify this=
- mail immediately by sending in your information. This will include you=
-r name,address, age, phone number etc to claimslogisticdirector@googlem=
-ail.com
+On Sat, May 02, 2009 at 10:05:28PM -0400, Theodore Tso wrote:
+> On Mon, Apr 27, 2009 at 03:00:57PM +0200, Karel Zak wrote:
+> > The libblkid (since v1.41.1) returns private device-mapper names (e.g.
+> > /dev/dm-0). It's because the probe_one() function scans /dev before
+> > /dev/mapper.
+> 
+> Checked in, thanks.  Debian-derived distributions don't create
+> /dev/dm-X names, which is why I didn't notice this issue.  However,
+> because of this, I modified your patch to keep this chunk which you removed:
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ You needn't this chunk.
+
+> > -	/* Do a short-cut scan of /dev/mapper first */
+> > -	if (!devname)
+> > -		blkid__scan_dir("/dev/mapper", devno, 0, &devname);
+> 
+> For distributions that don't create /dev/dm-X devices, your check
+
+ I guess that all distributions have "dm-X" names in /proc/partitions, it
+ means my check
+
+   if (!strncmp(ptname, "dm-", 3) && isdigit(ptname[3]))
+       blkid__scan_dir("/dev/mapper", devno, 0, &devname);
+
+ works everywhere and you needn't to check /dev before /dev/mapper for 
+ dm-X ptnames.
+
+> above won't find the device name, so after searching /dev, we need to
+> do a short-cut scan of /dev/mapper before we do a full brute force
+> search via blkid_devno_to_devname.
+
+    Karel
+
+-- 
+ Karel Zak  <kzak@redhat.com>
