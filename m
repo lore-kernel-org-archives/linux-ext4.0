@@ -1,65 +1,77 @@
-From: "Marcel Partap" <mpartap@gmx.net>
-Subject: Re: fsck ate my ext4 home partition, help!?
-Date: Wed, 06 May 2009 15:43:15 +0200
-Message-ID: <20090506134315.185580@gmx.net>
-References: <20090504131128.135100@gmx.net>
- <alpine.DEB.2.01.0905042222260.6162@bogon.housecafe.de>
- <20090505144436.125410@gmx.net>
- <alpine.DEB.2.01.0905051337140.6162@bogon.housecafe.de>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: File System Selection
+Date: Wed, 06 May 2009 10:04:19 -0500
+Message-ID: <4A01A6F3.9010306@redhat.com>
+References: <1241609864.806615859@192.168.1.201>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Christian Kujau <lists@nerdbynature.de>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: ext3-users@redhat.com, linux-ext4@vger.kernel.org,
+	A Garg <agarg@arasan.com>, Prashant <prashant@arasan.com>,
+	Sridevi <sridevi@arasan.com>
+To: Ramesh <ramesh@arasan.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail.gmx.net ([213.165.64.20]:44920 "HELO mail.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with SMTP
-	id S1751667AbZEFNnR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 May 2009 09:43:17 -0400
-In-Reply-To: <alpine.DEB.2.01.0905051337140.6162@bogon.housecafe.de>
+Received: from mx2.redhat.com ([66.187.237.31]:33168 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753655AbZEFPEV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 May 2009 11:04:21 -0400
+In-Reply-To: <1241609864.806615859@192.168.1.201>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hmm yeah. First attempt issuing a fsck.ext3 -yv /dev/sdd4 resulted in a=
- lost+found frenzy - everything under the former directory /mnt/sdc4/ho=
-medirs/currenthomebase (which was mounted under /home) got relinked int=
-o lost+found with sequential numbers... Not bad, the data is there - bu=
-t this is quite unusable iykwim..
+Ramesh wrote:
+> Hi Eric,
+> 
+> Thanks for your prompt and informative reply.
+> 
+>>>> do you mean sector size of the block device, or block size of
+>>>> the fileystem?
+> For our device sector size is 4906 bytes. But the maximum allowed
+> data chunk to read/write is 512( a.k.a Block size), restricted by
+> specification.
+> 
+> By referring the wiki pages of EXT3
+> (http://en.wikipedia.org/wiki/Ext3), I saw the below table.
+> 
+> Block size       Max file size  Max filesystem size
+> 1 KiB            16 GiB         <2 TiB
+> 2 KiB            256 GiB        <4 TiB
+> 4 KiB            2 TiB          <8 TiB
+> 8 KiB[limits 1]  2 TiB          <16 TiB
 
-> Now that you have a backup copy, I'd suggest to get that "but sdd4 is
-> mounted" error out of the way and try to e2fsck with a different=20
-> superblock.
+Above, block size means the filesystem block size.
 
-Uhmm, well. So i again dded the backup image to the partition, ran mkfs=
-=2Eext3 -nv /dev/sdd4 to get a list of the FS's backup superblocks, the=
-n tried to see if any of them is in a better state than the original on=
-e by doing
-> for blockpos in 32768 98304 163840 229376 294912 819200 884736 160563=
-2
-> 2654208 4096000 7962624 11239424 20480000 23887872; do fsck.ext3 -vnb
-> $blockpos /dev/sdd4 > fsck-$blockpos.log; done
-and then comparing those output files. Unfortunately, all show the same=
- resulting output meaning there is no benefit from using them. A script=
- i found @ http://blog.windfluechter.net/index.php?/archives/307-Automa=
-tically-restore-files-from-lost+found-improved.html which can move obje=
-cts back in place from lost+found has to backup all filenames BEFORE ru=
-nning into this situation so is not of great help at this point..
+For ext3, all 32 bits should be safe on recent kernels and userspace, so
+I think the max filesystem sizes listed above are too small by half.
 
-Oh and this extundelete tool - i couldn't quite put it to the test beca=
-use as soon as i let it loose on the partition - well it quickly eats u=
-p all memory causing the oom_killer to terminate it.
+IOW, 4k filesystem blocks -> 16T max filesystem size.
 
-=46orce-mounting the partition _without_ repairing it just results in a=
-n empty mount point.
+> And by taking the values with the table, then for 512 bytes block
+> size, Max file system supported is 1 TB only. Please correct me, if I
+> assumed wrongly.
 
-Ain't there no alternative way to reconstruct the directory structure, =
-it surely can't be overwritten completely...??
-regards marcel.
---=20
-Psssst! Schon vom neuen GMX MultiMessenger geh=F6rt? Der kann`s mit all=
-en: http://www.gmx.net/de/go/multimessenger01
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+you cannot have a 512 byte block size in ext3, 1k is the minimum.
+
+>>>> I guess it doesn't matter much either way, 2^32*512 is 2T.
+> 
+> In that 32 bit, it using the MSB as signed bit. So it can use maximum
+> of 31 bits only. Is this correct?
+
+all 32 bits should be safe now.
+
+>>>> On a 32 bit machine you will be limited to 16T, this is
+>>>> actually a page cache limitation.  But 2T should be fine.
+> 
+> Please clarify me that Ext4 is using a 48 bit addressing. Is this
+> necessary to go for 64 bit machines to utilize Ext4 and manage up to
+> and including 2TB size file system... Please clarify me.
+
+The ext4 ondisk format does use 48 bits for physical addressing, but
+userspace is still 32 bits only even for ext4.
+
+-Eric
+
+> Thanks in advance.
+> 
+> 
+> Regards, Ramesh
