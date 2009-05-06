@@ -1,77 +1,83 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Of block allocation algorithms, fsck times, and file	fragmentation
-Date: Wed, 06 May 2009 05:50:29 -0600
-Message-ID: <20090506115029.GF3209@webber.adilger.int>
-References: <E1M1fIm-0001Hw-0f@closure.thunk.org>
+From: Ingo Molnar <mingo@elte.hu>
+Subject: Re: [PATCH] ext4/jbd2: remove stray markers
+Date: Wed, 6 May 2009 13:54:21 +0200
+Message-ID: <20090506115421.GN25203@elte.hu>
+References: <20090506104436.GA24047@lst.de> <20090506110354.GG25203@elte.hu> <20090506114051.GA4964@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, Curt Wohlgemuth <curtw@google.com>
-To: "Theodore Ts'o" <tytso@mit.edu>
+To: Theodore Tso <tytso@mit.edu>, Christoph Hellwig <hch@lst.de>,
+	linux-kernel@vger.kernel.org,
+	=?iso-8859-1?Q?Fr=E9d=E9ric?= Weisbecker <fweisbec@gmail.com>,
+	Steven Rostedt <rostedt@good
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:56159 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753236AbZEFLul (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 May 2009 07:50:41 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n46BofXA003139
-	for <linux-ext4@vger.kernel.org>; Wed, 6 May 2009 04:50:41 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KJ800B000S7AD00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 06 May 2009 04:50:41 -0700 (PDT)
-In-reply-to: <E1M1fIm-0001Hw-0f@closure.thunk.org>
+Received: from mx2.mail.elte.hu ([157.181.151.9]:34403 "EHLO mx2.mail.elte.hu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758748AbZEFLyi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 May 2009 07:54:38 -0400
+Content-Disposition: inline
+In-Reply-To: <20090506114051.GA4964@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On May 06, 2009  07:28 -0400, Theodore Ts'o wrote:
-> So that's the good news.  However, the block allocation shows that we
-> are doing something... strange.  Running an e2fsck -E fragcheck report,
-> the large files seem to be written out in 8 megabyte chunks:
+
+* Theodore Tso <tytso@mit.edu> wrote:
+
+> On Wed, May 06, 2009 at 01:03:54PM +0200, Ingo Molnar wrote:
+> > 
+> > > Ted, I think you have some TRAVE_EVENT patches for ext4 pending, 
+> > > but is it okay to queue up this removal in the tracing tree?  That 
+> > > way we can remove the markers leftovers there completely as soon 
+> > > as the 2.6.31 merge window opens.
+> > 
+> > i think these markers are still in active use, so i'd not remove 
+> > them before Ted's TRACE_EVENT() changes are included. We can/should 
+> > do that in a single topic - in a work flow that suits Ted best.
 > 
->   1313(f): expecting  51200 actual extent phys  53248 log 2048 len 2048
->   1351(f): expecting  53248 actual extent phys  57344 log 2048 len 2048
->   1351(f): expecting  59392 actual extent phys  67584 log 4096 len 4096
->   1351(f): expecting  71680 actual extent phys  73728 log 8192 len 2048
->   1351(f): expecting  75776 actual extent phys  77824 log 10240 len 2048
->   1574(f): expecting  77824 actual extent phys  81920 log 6144 len 2048
->   1574(f): expecting  83968 actual extent phys  86016 log 8192 len 12288
->   1574(f): expecting  98304 actual extent phys 100352 log 20480 len 32768
+> My complaint with Cristoph's is that it will conflict with patches 
+> I have pending which replaces the markers with tracepoints --- and 
+> I *am* using the tracepoints actively.  The only reason why these 
+> patches aren't in -stable is they have a dependency one of 
+> Rostedt's changes.  (Not a syntactic dependency, but if we merge 
+> in the wrong order, and the rcu_read_lock/unlock() calls aren't 
+> around the TP_PRINTK callpoint, then in certain CONFIG_PREEMPT 
+> configurations and if there is more than one active ext4 
+> filesystem while the ext4 or jbd2 tracepoints are active, there's 
+> a potential race.)
 
-Two things might be involved here:
-- IIRC mballoc limits its extent searches to 8MB, so that it doesn't
-  waste a lot of cycles looking for huge free chunks when there aren't
-  any.  For Lustre that didn't make much difference since the largest
-  possible IO size at the server is 1MB.  That said, if we have huge
-  delalloc files it might make sense to do some checking for more space,
-  possibly whole free groups for files > 128MB in size.  Scanning the
-  buddy bitmaps isn't very expensive, but loading some 10000's of them
-  in a large filesystem IS.
-- it might also relate to pdflush limiting the background writeout from 
-  a single file, and flushing the delalloc pages in round-robin manner.
-  Without delalloc the blocks would already have been allocated, so the
-  writeout speed didn't matter.  With delalloc now we might have an
-  unpleasant interaction between how pdflush writes out the dirty pages
-  and how the files are allocated on disk.
+That's OK.
 
-> Thinking this was perhaps rsync's fault, I tried the experiment where I
-> copied the files using tar:
+> > We can do a -git based special-purpose topic branch in -tip, or 
+> > we can do it in tip/tracing, or we can pull a (-git based) 
+> > branch from Ted. Or we can delay it all to the v2.6.31 merge 
+> > window. Ted's choice.
 > 
->        tar -cf - -C /mnt2 . | tar -xpf - -C /mnt .
+> My plan was to wait for the tracing patches to get pushed during 
+> the 2.6.31 merge tree, at which point I would then push my changes 
+> which replace the markers with TRACE_EVENT changes.  So no matter 
+> which way we do this, the ext4 markers will be gone by the end of 
+> the 2.6.31 merge window.
+
+That's a perfectly fine approach.
+
+> Christoph, if you have some desire to completely remove the 
+> CONFIG_MARKERS support code, and I'm holding up your ability to do 
+> work, I can take the ext4 TRACE_EVENT patches, and queue them up 
+> in tip/tracing.  It's less work than if we take your markers 
+> removal patches, since then I would have to resolve all of the 
+> conflicts with my patches which replace all of the ext4 and jbd2 
+> markers with TRACE_EVENTS macros.
 > 
-> However, the same pattern was visible.  Tar definitely copies files
-> using one at a time, so this must be an artifact of the page writeback
-> algorithms.
+> My preference is for the former, mainly because my patches are 
+> already set up for that, and I'm a lazy bastard; the latter 
+> wouldn't be much work, though.  I'm guessing your preference would 
+> be for the latter?
 
-If you can run a similar test with fsync after each file I suspect the
-layout will be correct.  Alternately, if the kernel did the equivalent
-of "fallocate(KEEP_SIZE)" for the file as soon as writeout started, it
-would avoid any interaction between pdflush and the file allocation.
+No, lets delay this to the v2.6.31 merge window. I'd like to remove 
+markers - but not at the cost of making life harder for others and 
+at the cost of creating inter-dependencies on such a level.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+I objected to markers back when they were merged in a rather 
+haphazard way, but i'll object to any haphazard removal just as much 
+;-) The .31 merge window will open in about a month.
 
+	Ingo
