@@ -1,59 +1,77 @@
-From: Christoph Hellwig <hch@lst.de>
-Subject: Re: [PATCH] ext4/jbd2: remove stray markers
-Date: Wed, 6 May 2009 13:44:15 +0200
-Message-ID: <20090506114415.GA26947@lst.de>
-References: <20090506104436.GA24047@lst.de> <20090506110354.GG25203@elte.hu> <20090506114051.GA4964@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Of block allocation algorithms, fsck times, and file	fragmentation
+Date: Wed, 06 May 2009 05:50:29 -0600
+Message-ID: <20090506115029.GF3209@webber.adilger.int>
+References: <E1M1fIm-0001Hw-0f@closure.thunk.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Ingo Molnar <mingo@elte.hu>,
-	Christoph Hellwig <hch@lst.de>, linux-kernel@vger.kernel.org,
-	Fr?d?ric Weisbecker <fweisbec@gmail.com>,
-	Steven Rostedt <rost
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, Curt Wohlgemuth <curtw@google.com>
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from verein.lst.de ([213.95.11.210]:49381 "EHLO verein.lst.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752455AbZEFLod (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 May 2009 07:44:33 -0400
-Content-Disposition: inline
-In-Reply-To: <20090506114051.GA4964@mit.edu>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:56159 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753236AbZEFLul (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 May 2009 07:50:41 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n46BofXA003139
+	for <linux-ext4@vger.kernel.org>; Wed, 6 May 2009 04:50:41 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
+ id <0KJ800B000S7AD00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 06 May 2009 04:50:41 -0700 (PDT)
+In-reply-to: <E1M1fIm-0001Hw-0f@closure.thunk.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 06, 2009 at 07:40:51AM -0400, Theodore Tso wrote:
-> My complaint with Cristoph's
-
-Christoph, still :)
-
-> is that it will conflict with patches I
-> have pending which replaces the markers with tracepoints --- and I
-> *am* using the tracepoints actively.  The only reason why these
-> patches aren't in -stable is they have a dependency one of Rostedt's
-> changes.  (Not a syntactic dependency, but if we merge in the wrong
-> order, and the rcu_read_lock/unlock() calls aren't around the
-> TP_PRINTK callpoint, then in certain CONFIG_PREEMPT configurations and
-> if there is more than one active ext4 filesystem while the ext4 or
-> jbd2 tracepoints are active, there's a potential race.)
-
-Also without Steve's updates you can't actually use them in a module.
-
-> My plan was to wait for the tracing patches to get pushed during the
-> 2.6.31 merge tree, at which point I would then push my changes which
-> replace the markers with TRACE_EVENT changes.  So no matter which way
-> we do this, the ext4 markers will be gone by the end of the 2.6.31
-> merge window.
+On May 06, 2009  07:28 -0400, Theodore Ts'o wrote:
+> So that's the good news.  However, the block allocation shows that we
+> are doing something... strange.  Running an e2fsck -E fragcheck report,
+> the large files seem to be written out in 8 megabyte chunks:
 > 
-> Christoph, if you have some desire to completely remove the
-> CONFIG_MARKERS support code, and I'm holding up your ability to do
-> work, I can take the ext4 TRACE_EVENT patches, and queue them up in
-> tip/tracing.  It's less work than if we take your markers removal
-> patches, since then I would have to resolve all of the conflicts with
-> my patches which replace all of the ext4 and jbd2 markers with
-> TRACE_EVENTS macros.
+>   1313(f): expecting  51200 actual extent phys  53248 log 2048 len 2048
+>   1351(f): expecting  53248 actual extent phys  57344 log 2048 len 2048
+>   1351(f): expecting  59392 actual extent phys  67584 log 4096 len 4096
+>   1351(f): expecting  71680 actual extent phys  73728 log 8192 len 2048
+>   1351(f): expecting  75776 actual extent phys  77824 log 10240 len 2048
+>   1574(f): expecting  77824 actual extent phys  81920 log 6144 len 2048
+>   1574(f): expecting  83968 actual extent phys  86016 log 8192 len 12288
+>   1574(f): expecting  98304 actual extent phys 100352 log 20480 len 32768
 
-I was planning to do make sure it's all gone.  Once we are into the
-2.6.31 merge dinwo I fear that the final patches will miss the window
-due to all these interdependencies.  But Ingo didn't seem to be too
-interested in taking the other patches that would be required for it,
-so I guess I'll try to somehow get it done in the merge window and
-otherwise we'll have to wait for 2.6.32.
+Two things might be involved here:
+- IIRC mballoc limits its extent searches to 8MB, so that it doesn't
+  waste a lot of cycles looking for huge free chunks when there aren't
+  any.  For Lustre that didn't make much difference since the largest
+  possible IO size at the server is 1MB.  That said, if we have huge
+  delalloc files it might make sense to do some checking for more space,
+  possibly whole free groups for files > 128MB in size.  Scanning the
+  buddy bitmaps isn't very expensive, but loading some 10000's of them
+  in a large filesystem IS.
+- it might also relate to pdflush limiting the background writeout from 
+  a single file, and flushing the delalloc pages in round-robin manner.
+  Without delalloc the blocks would already have been allocated, so the
+  writeout speed didn't matter.  With delalloc now we might have an
+  unpleasant interaction between how pdflush writes out the dirty pages
+  and how the files are allocated on disk.
+
+> Thinking this was perhaps rsync's fault, I tried the experiment where I
+> copied the files using tar:
+> 
+>        tar -cf - -C /mnt2 . | tar -xpf - -C /mnt .
+> 
+> However, the same pattern was visible.  Tar definitely copies files
+> using one at a time, so this must be an artifact of the page writeback
+> algorithms.
+
+If you can run a similar test with fsync after each file I suspect the
+layout will be correct.  Alternately, if the kernel did the equivalent
+of "fallocate(KEEP_SIZE)" for the file as soon as writeout started, it
+would avoid any interaction between pdflush and the file allocation.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
