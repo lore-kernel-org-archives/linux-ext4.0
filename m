@@ -1,41 +1,45 @@
-From: Ingo Molnar <mingo@elte.hu>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: [PATCH] ext4/jbd2: remove stray markers
-Date: Wed, 6 May 2009 13:58:50 +0200
-Message-ID: <20090506115850.GO25203@elte.hu>
+Date: Wed, 6 May 2009 08:55:52 -0400
+Message-ID: <20090506125552.GD4964@mit.edu>
 References: <20090506104436.GA24047@lst.de> <20090506110354.GG25203@elte.hu> <20090506114051.GA4964@mit.edu> <20090506114415.GA26947@lst.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Theodore Tso <tytso@mit.edu>, linux-kernel@vger.kernel.org,
+Cc: Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
 	Fr?d?ric Weisbecker <fweisbec@gmail.com>,
 	Steven Rostedt <rostedt@goodmis.org>,
 	linux-ext4@vger.kernel.org
 To: Christoph Hellwig <hch@lst.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx3.mail.elte.hu ([157.181.1.138]:36946 "EHLO mx3.mail.elte.hu"
+Received: from THUNK.ORG ([69.25.196.29]:33977 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751889AbZEFL7G (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 6 May 2009 07:59:06 -0400
+	id S1755357AbZEFM4I (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 6 May 2009 08:56:08 -0400
 Content-Disposition: inline
 In-Reply-To: <20090506114415.GA26947@lst.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, May 06, 2009 at 01:44:15PM +0200, Christoph Hellwig wrote:
+> On Wed, May 06, 2009 at 07:40:51AM -0400, Theodore Tso wrote:
+> > My complaint with Cristoph's
+> 
+> Christoph, still :)
 
-* Christoph Hellwig <hch@lst.de> wrote:
+Sorry, I keep making that mistake!  Keep calling me on it, and
+eventually I'll reprogram those finger macros.  :-)
 
-> I was planning to do make sure it's all gone.  Once we are into 
-> the 2.6.31 merge dinwo I fear that the final patches will miss the 
-> window due to all these interdependencies.  But Ingo didn't seem 
-> to be too interested in taking the other patches that would be 
-> required for it, so I guess I'll try to somehow get it done in the 
-> merge window and otherwise we'll have to wait for 2.6.32.
 
-Well, while coupling to lots of subsystems is natural for something 
-as intrinsic as the tracing tree - still i dont want to over-do it. 
-In little over a month these patches can go into their local 
-subsystem trees, without any interactions with anything.
+> Also without Steve's updates you can't actually use them in a module.
 
-So the patches you did are nice - just (as it is usual with any core 
-kernel tree) the logistics have to be planned carefully.
+Yep; not sure *how* critical that would be for -next, though.
+Probably there would be some complaints....
 
-	Ingo
+In any case, it'll be less work to worry about patch conflicts if we
+just do it during the merge window.  If we can just arrange to push
+the tip/tracing changes early, I'll push the marker replacement
+patches as soon as I see them hit mainline.
+
+Regards,
+
+						- Ted
