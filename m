@@ -1,88 +1,85 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 1/3] ext4: Properly initialize the buffer_head state
-Date: Thu, 07 May 2009 10:20:26 -0500
-Message-ID: <4A02FC3A.9000806@redhat.com>
-References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 2/3] ext4: Clear the unwritten buffer_head flag properly
+Date: Thu, 07 May 2009 10:36:49 -0500
+Message-ID: <4A030011.7040901@redhat.com>
+References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1241692770-22547-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: cmm@us.ibm.com, tytso@mit.edu, linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:50406 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:37883 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752656AbZEGPUb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 7 May 2009 11:20:31 -0400
-In-Reply-To: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	id S1753232AbZEGPgx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 7 May 2009 11:36:53 -0400
+In-Reply-To: <1241692770-22547-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Aneesh Kumar K.V wrote:
-> These buffer_heads are allocated on stack and are
-> used only to make get_blocks calls. So we can set the
-> b_state to 0
+> ext4_get_blocks_wrap does a block lookup requesting to
+> allocate new blocks. A lookup of blocks in prealloc area
+> result in setting the unwritten flag in buffer_head. So
+> a write to an unwritten extent will cause the buffer_head
+> to have unwritten and mapped flag set. Clear hte unwritten
+> buffer_head flag before requesting to allocate blocks.
 > 
 > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
-I'd noticed this too, thanks for fixing up.
-
 > ---
->  fs/ext4/extents.c |    1 +
->  fs/ext4/inode.c   |    2 +-
->  fs/mpage.c        |    2 +-
->  3 files changed, 3 insertions(+), 2 deletions(-)
+>  fs/ext4/inode.c |    7 +++++++
+>  1 files changed, 7 insertions(+), 0 deletions(-)
 > 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index e963870..10b3028 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3141,6 +3141,7 @@ long ext4_fallocate(struct inode *inode, int mode, loff_t offset, loff_t len)
->  			ret = PTR_ERR(handle);
->  			break;
->  		}
-> +		map_bh.b_state = 0;
->  		ret = ext4_get_blocks_wrap(handle, inode, block,
->  					  max_blocks, &map_bh,
->  					  EXT4_CREATE_UNINITIALIZED_EXT, 0, 0);
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 43884e3..c3cd00f 100644
+> index c3cd00f..f6d7e9b 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -2104,7 +2104,7 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
->  	if ((mpd->b_state  & (1 << BH_Mapped)) &&
->  	    !(mpd->b_state & (1 << BH_Delay)))
->  		return 0;
-> -	new.b_state = mpd->b_state;
-> +	new.b_state = 0;
-
-hm can you explain why we want 0 rather than mpd->b_state?  The others
-are obvious, b_state was largely uninitialized, but this is changing
-what looked like a different intentional initialization.  Can you update
-the changelog to say why it's wrong?
-
-While we're at it could we name this something other than "new?"
-
-If it's a mapping bh, maybe "map_bh" like normal? :)
-
->  	new.b_blocknr = 0;
->  	new.b_size = mpd->b_size;
->  	next = mpd->b_blocknr;
-> diff --git a/fs/mpage.c b/fs/mpage.c
-> index 680ba60..cd98409 100644
-> --- a/fs/mpage.c
-> +++ b/fs/mpage.c
-> @@ -412,7 +412,7 @@ int mpage_readpage(struct page *page, get_block_t get_block)
->  	struct buffer_head map_bh;
->  	unsigned long first_logical_block = 0;
+> @@ -1149,6 +1149,7 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
+>  	int retval;
 >  
-> -	clear_buffer_mapped(&map_bh);
-> +	map_bh.b_state = 0;
->  	bio = do_mpage_readpage(bio, page, 1, &last_block_in_bio,
->  			&map_bh, &first_logical_block, get_block);
->  	if (bio)
+>  	clear_buffer_mapped(bh);
+> +	clear_buffer_unwritten(bh);
+>  
+>  	/*
+>  	 * Try to see if we can get  the block without requesting
+> @@ -1179,6 +1180,12 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
+>  		return retval;
+>  
+>  	/*
+> +	 * The above get_blocks can cause the buffer to be
+> +	 * marked unwritten. So clear the same.
+> +	 */
+> +	clear_buffer_unwritten(bh);
 
-the rest looks good to me; there are places in the core kernel that
-don't initialize state and just clear flags they "know" they'll care
-about... it always struck me as messy, clearing state is much much better.
+hm, thinking out loud here.
+
+ext4_ext_get_blocks() will only set unwritten if (!create) ... but then
+ext4_get_blocks_wrap() calls ext4_ext_get_blocks() !create as an
+argument no matter what, the first time, for an initial lookup.
+
+But if ext4_get_blocks_wrap() was called with !create, then we return
+regardless, so ok - by the time you get to the above hunk, we -are- in
+create mode, we're planning to write it ... so I guess clearing the
+unwritten state makes sense here.
+
+But is this too late, because it's after this?
+
+        /*
+         * Returns if the blocks have already allocated
+         *
+         * Note that if blocks have been preallocated
+         * ext4_ext_get_block() returns th create = 0
+         * with buffer head unmapped.
+         */
+        if (retval > 0 && buffer_mapped(bh))
+                return retval;
+
+I guess not; ext4_ext_get_blocks() won't map the buffer if it's found to
+be preallocated/unwritten because it was called with !create.  If we're
+going on to write it, we want to clear unwritten.
+
+So I guess this looks right, although I can't help but think that in
+general, the buffer_head state management is really getting to be a
+hard-to-follow mess...
 
 -Eric
