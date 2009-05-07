@@ -1,148 +1,31 @@
-From: akpm@linux-foundation.org
-Subject: [patch 04/16] fiemap: fix problem with setting FIEMAP_EXTENT_LAST
-Date: Wed, 06 May 2009 16:02:53 -0700
-Message-ID: <200905062302.n46N2sGX032415@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, jbacik@redhat.com,
-	Joel.Becker@oracle.com, linux-btrfs@vger.kernel.org,
-	linux-ext4@vger.kernel.org, mfasheh@suse.com, sandeen@redhat.com,
-	stable@kernel.org, swhiteho@redhat.com, xfs-masters@oss.sgi.com
-To: torvalds@linux-foundation.org
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Re: fsck ate my ext4 home partition, help!?
+Date: Wed, 6 May 2009 21:01:19 -0700 (PDT)
+Message-ID: <alpine.DEB.2.01.0905062059280.8935@bogon.housecafe.de>
+References: <20090504131128.135100@gmx.net> <alpine.DEB.2.01.0905042222260.6162@bogon.housecafe.de> <20090505144436.125410@gmx.net> <alpine.DEB.2.01.0905051337140.6162@bogon.housecafe.de> <20090506134315.185580@gmx.net>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: Marcel Partap <mpartap@gmx.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:40288 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752962AbZEFXKH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 6 May 2009 19:10:07 -0400
+Received: from moutng.kundenserver.de ([212.227.126.171]:64394 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750852AbZEGEBV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 7 May 2009 00:01:21 -0400
+In-Reply-To: <20090506134315.185580@gmx.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Josef Bacik <jbacik@redhat.com>
+On Wed, 6 May 2009, Marcel Partap wrote:
+> Oh and this extundelete tool - i couldn't quite put it
+> to the test because as soon as i let it loose on the partition - well it 
+> quickly eats up all memory causing the oom_killer to terminate it.
 
-Fix a problem where the generic block based fiemap stuff would not
-properly set FIEMAP_EXTENT_LAST on the last extent.  I've reworked things
-to keep track if we go past the EOF, and mark the last extent properly. 
-The problem was reported by and tested by Eric Sandeen.
+There are more "undelete" tools listed in the wiki: 
+http://ext4.wiki.kernel.org/index.php/Undeletion
 
-Tested-by: Eric Sandeen <sandeen@redhat.com>
-Signed-off-by: Josef Bacik <jbacik@redhat.com>
-Cc: <linux-ext4@vger.kernel.org>
-Cc: <xfs-masters@oss.sgi.com>
-Cc: <linux-btrfs@vger.kernel.org>
-Cc: Steven Whitehouse <swhiteho@redhat.com>
-Cc: Mark Fasheh <mfasheh@suse.com>
-Cc: Joel Becker <Joel.Becker@oracle.com>
-Cc: <stable@kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
+...but the results may not be perfect, to say the least.
 
- fs/ioctl.c |   75 +++++++++++++++++++++++++++++++++++++--------------
- 1 file changed, 55 insertions(+), 20 deletions(-)
-
-diff -puN fs/ioctl.c~fiemap-fix-problem-with-setting-fiemap_extent_last fs/ioctl.c
---- a/fs/ioctl.c~fiemap-fix-problem-with-setting-fiemap_extent_last
-+++ a/fs/ioctl.c
-@@ -258,7 +258,7 @@ int __generic_block_fiemap(struct inode 
- 	long long length = 0, map_len = 0;
- 	u64 logical = 0, phys = 0, size = 0;
- 	u32 flags = FIEMAP_EXTENT_MERGED;
--	int ret = 0;
-+	int ret = 0, past_eof = 0, whole_file = 0;
- 
- 	if ((ret = fiemap_check_flags(fieinfo, FIEMAP_FLAG_SYNC)))
- 		return ret;
-@@ -266,6 +266,9 @@ int __generic_block_fiemap(struct inode 
- 	start_blk = logical_to_blk(inode, start);
- 
- 	length = (long long)min_t(u64, len, i_size_read(inode));
-+	if (length < len)
-+		whole_file = 1;
-+
- 	map_len = length;
- 
- 	do {
-@@ -282,11 +285,26 @@ int __generic_block_fiemap(struct inode 
- 
- 		/* HOLE */
- 		if (!buffer_mapped(&tmp)) {
-+			length -= blk_to_logical(inode, 1);
-+			start_blk++;
-+
-+			/*
-+			 * we want to handle the case where there is an
-+			 * allocated block at the front of the file, and then
-+			 * nothing but holes up to the end of the file properly,
-+			 * to make sure that extent at the front gets properly
-+			 * marked with FIEMAP_EXTENT_LAST
-+			 */
-+			if (!past_eof &&
-+			    blk_to_logical(inode, start_blk) >=
-+			    blk_to_logical(inode, 0)+i_size_read(inode))
-+				past_eof = 1;
-+
- 			/*
- 			 * first hole after going past the EOF, this is our
- 			 * last extent
- 			 */
--			if (length <= 0) {
-+			if (past_eof && size) {
- 				flags = FIEMAP_EXTENT_MERGED|FIEMAP_EXTENT_LAST;
- 				ret = fiemap_fill_next_extent(fieinfo, logical,
- 							      phys, size,
-@@ -294,15 +312,37 @@ int __generic_block_fiemap(struct inode 
- 				break;
- 			}
- 
--			length -= blk_to_logical(inode, 1);
--
- 			/* if we have holes up to/past EOF then we're done */
--			if (length <= 0)
-+			if (length <= 0 || past_eof)
- 				break;
--
--			start_blk++;
- 		} else {
--			if (length <= 0 && size) {
-+			/*
-+			 * we have gone over the length of what we wanted to
-+			 * map, and it wasn't the entire file, so add the extent
-+			 * we got last time and exit.
-+			 *
-+			 * This is for the case where say we want to map all the
-+			 * way up to the second to the last block in a file, but
-+			 * the last block is a hole, making the second to last
-+			 * block FIEMAP_EXTENT_LAST.  In this case we want to
-+			 * see if there is a hole after the second to last block
-+			 * so we can mark it properly.  If we found data after
-+			 * we exceeded the length we were requesting, then we
-+			 * are good to go, just add the extent to the fieinfo
-+			 * and break
-+			 */
-+			if (length <= 0 && !whole_file) {
-+				ret = fiemap_fill_next_extent(fieinfo, logical,
-+							      phys, size,
-+							      flags);
-+				break;
-+			}
-+
-+			/*
-+			 * if size != 0 then we know we already have an extent
-+			 * to add, so add it.
-+			 */
-+			if (size) {
- 				ret = fiemap_fill_next_extent(fieinfo, logical,
- 							      phys, size,
- 							      flags);
-@@ -319,19 +359,14 @@ int __generic_block_fiemap(struct inode 
- 			start_blk += logical_to_blk(inode, size);
- 
- 			/*
--			 * if we are past the EOF we need to loop again to see
--			 * if there is a hole so we can mark this extent as the
--			 * last one, and if not keep mapping things until we
--			 * find a hole, or we run out of slots in the extent
--			 * array
-+			 * If we are past the EOF, then we need to make sure as
-+			 * soon as we find a hole that the last extent we found
-+			 * is marked with FIEMAP_EXTENT_LAST
- 			 */
--			if (length <= 0)
--				continue;
+Christian.
+-- 
+Bruce Schneier doesn't keep secrets -- they keep themselves out of fear.
