@@ -1,67 +1,87 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: ext4 corruption on md [7x1TB in RAID5]
-Date: Sat, 09 May 2009 12:56:15 -0600
-Message-ID: <20090509185615.GN3209@webber.adilger.int>
-References: <EB618291F3454E4DA10D152B9045C01701D2836F@exchange-2.sandvine.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Don Bowman <don@sandvine.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:61035 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752218AbZEIS40 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 9 May 2009 14:56:26 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n49IuRMf010289
-	for <linux-ext4@vger.kernel.org>; Sat, 9 May 2009 11:56:27 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7.0-5.01 64bit (built Feb 19 2009))
- id <0KJE00A004LLA000@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Sat,
- 09 May 2009 11:56:27 -0700 (PDT)
-In-reply-to: <EB618291F3454E4DA10D152B9045C01701D2836F@exchange-2.sandvine.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: Is TRIM/DISCARD going to be a performance problem?
+Date: Sat, 09 May 2009 17:14:14 -0400
+Message-ID: <E1M2ts6-0005jr-Cg@closure.thunk.org>
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Matthew Wilcox <willy@linux.intel.com>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	Ric Wheeler <rwheeler@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On May 09, 2009  14:36 -0400, Don Bowman wrote:
-> To follow my own email, the results of the 'findsuper' program are:
-> 
-> starting at 0, with 512 byte increments
-> byte_offset  byte_start       byte_end   fs_blocks blksz  grp last_mount_time           sb_uuid label
->        1024           0  6001228775424  1465143744  4096    0  Wed Apr 22 19:04:50 2009 52e18bf7
->   134217728           0  6001228775424  1465143744  4096    1  Wed Apr 22 19:04:50 2009 52e18bf7
->   402653184           0  6001228775424  1465143744  4096    3  Wed Apr 22 19:04:50 2009 52e18bf7
->   671088640           0  6001228775424  1465143744  4096    5  Wed Apr 22 19:04:50 2009 52e18bf7
->   939524096           0  6001228775424  1465143744  4096    7  Wed Apr 22 19:04:50 2009 52e18bf7
->  1207959552           0  6001228775424  1465143744  4096    9  Wed Apr 22 19:04:50 2009 52e18bf7
->  3355443200           0  6001228775424  1465143744  4096   25  Wed Apr 22 19:04:50 2009 52e18bf7
->  3623878656           0  6001228775424  1465143744  4096   27  Wed Apr 22 19:04:50 2009 52e18bf7
->  6576668672           0  6001228775424  1465143744  4096   49  Wed Apr 22 19:04:50 2009 52e18bf7
-> 10871635968           0  6001228775424  1465143744  4096   81  Wed Apr 22 19:04:50 2009 52e18bf7
-> 16777216000           0  6001228775424  1465143744  4096  125  Wed Apr 22 19:04:50 2009 52e18bf7
-> 32614907904           0  6001228775424  1465143744  4096  243  Wed Apr 22 19:04:50 2009 52e18bf7
-> 46036680704           0  6001228775424  1465143744  4096  343  Wed Apr 22 19:04:50 2009 52e18bf7
-> 83886080000           0  6001228775424  1465143744  4096  625  Wed Apr 22 19:04:50 2009 52e18bf7
-> 97844723712           0  6001228775424  1465143744  4096  729  Wed Apr 22 19:04:50 2009 52e18bf7
->  ... [still going]
-> 
-> Can this help me somehow?
 
-These are all showing available backup superblocks and group descriptors.
-Pick one of the "grp" numbers and use that as the argument for "-b" per
-my previous email:  "e2fsck -f -b $((729 * 32768)) -B 4096 /dev/XXX".
-A backup first is still a good idea, however.
+Currently, ext4 is wired up to call sb_issue_discard, which is a wrapper
+around blkdev_issue_discard().  The way we do this is we keep track of
+deleted extents, coalescing them as much as possible, and then once we
+commit the transaction where they are deleted, we send the discards down
+the pipe via sb_issue_discard.  For example, after marking approximately
+200 mail messages as deleted, and running the mbsync command which
+synchronizes my local Maildir store with my IMAP server (and thus
+deleting approximately 200 files), and the next commit, we see this:
 
-Note that this appears to be a bug that has been hit by several Ubuntu
-users.  I would suggest to upgrade to the latest vanilla kernel (at
-least 2.6.29.stable, search the archives for details), which has fixed
-it for many users.
+3480.770129: jbd2_start_commit: dev dm-0 transaction 760204 sync 0
+3480.783797: ext4_discard_blocks: dev dm-0 blk 15967955 count 1
+3480.783830: ext4_discard_blocks: dev dm-0 blk 15970048 count 104
+3480.783839: ext4_discard_blocks: dev dm-0 blk 17045096 count 14
+3480.783842: ext4_discard_blocks: dev dm-0 blk 15702398 count 2
+	     .
+	     .
+	     .
+3480.784009: ext4_discard_blocks: dev dm-0 blk 15461632 count 32
+3480.784015: ext4_discard_blocks: dev dm-0 blk 17057632 count 32
+3480.784023: ext4_discard_blocks: dev dm-0 blk 17049120 count 32
+3480.784026: ext4_discard_blocks: dev dm-0 blk 17045408 count 32
+3480.784031: ext4_discard_blocks: dev dm-0 blk 15448634 count 6
+3480.784036: ext4_discard_blocks: dev dm-0 blk 17146618 count 1
+3480.784039: ext4_discard_blocks: dev dm-0 blk 17146370 count 1
+3480.784043: ext4_discard_blocks: dev dm-0 blk 15967947 count 6
+3480.784046: jbd2_end_commit: dev dm-0 transaction 760204 sync 0 head 758551
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+There were 42 calls to blkdev_issue_discard (I ommitted some for the
+sake of brevity), and that's a relatively minimal example.  A "make
+mrclean" in the kernel tree, especially one that tends to be more
+fragmented due to a mix of source and binary files getting updated via
+"git pull", will be much, much worse, and could result in potential
+hundreds of calls to blkev_issue_discard().  Given that each call to
+blkdeV_issue_discard() acts like a barrier command and requires that the
+queue be completely drained (of both read and write requests, if I
+understand things correctly) if there's anything else happening in
+parallel, such as other write or read requests, performance is going to
+go down the tubes.
 
+What I'm thinking that we might have to do is:
+
+*)  Batch the trim requests more than a single commit, by having a
+	separate rbtree for trim requests
+*)  If blocks get reused, we'll need to remove them from the rbtree
+*)  In some cases, we may be able to collapse the rbtree by querying the
+	filesystem block allocation data structures to determine that if
+	we have an entry for blocks 1003-1008 and 1011-1050, and block
+	1009 and 1010 are unused, we can combine this into a single
+	trim request for 1003-1050.
+*)  Create an upcall from the block layer to the trim management layer
+	indicating that the I/O device is idle, so this would be a good
+	time to send down a whole bunch of trim requeusts.
+*)  Optionally have a mode to support stupid thin-provision
+	devices that require the trim request to be aligned on some
+	large 1 or 4 megabyte boundaries, and be multiples of 1-4
+	megabyte ranges, or they will ignroe them.
+*)  Optionally have a mode which allows the filesystem's block allocator
+	to query the list of blocks on the "to be trimmed" list, so they
+	can be reused and hopefully avoid needing to send the trim
+	request in the first place.
+
+This could either be done as ext4-specific code, or as a generic "trim
+management layer" which could be utilized by any filesystem.
+
+So, a couple of questions:  First of all, do people agree with my
+concerns?   Secondly, does the above design seem sane?   And finally, if
+the answers to the first two questions are yes, I'm rather busy and
+could really use a minion to implement my evil plans --- anyone have any
+ideas about how to contact the vendors of these large thin-provisioning
+devices, and perhaps gently suggest to them that if they plan to make
+$$$ off their devices, maybe they should fund this particular piece of
+work?   :-)
+
+						- Ted
