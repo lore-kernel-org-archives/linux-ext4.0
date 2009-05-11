@@ -1,37 +1,44 @@
-From: Jeff Garzik <jeff@garzik.org>
+From: Chris Worley <worleys@gmail.com>
 Subject: Re: Is TRIM/DISCARD going to be a performance problem?
-Date: Mon, 11 May 2009 11:43:44 -0400
-Message-ID: <4A0847B0.1070507@garzik.org>
-References: <E1M2ts6-0005jr-Cg@closure.thunk.org> <20090510165259.GA31850@logfs.org> <20090511083754.GA29082@mit.edu> <20090511100624.GB6585@logfs.org> <20090511101815.GR4694@kernel.dk>
+Date: Mon, 11 May 2009 10:30:09 -0600
+Message-ID: <f3177b9e0905110930p3fe180b0nbd26bd24f17b068e@mail.gmail.com>
+References: <E1M2ts6-0005jr-Cg@closure.thunk.org>
+	 <20090510165259.GA31850@logfs.org> <20090511083754.GA29082@mit.edu>
+	 <20090511100624.GB6585@logfs.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: =?ISO-8859-1?Q?J=F6rn_Engel?= <joern@logfs.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Jens Axboe <jens.axboe@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20090511101815.GR4694@kernel.dk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: =?ISO-8859-1?Q?J=F6rn_Engel?= <joern@logfs.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from wf-out-1314.google.com ([209.85.200.172]:51108 "EHLO
+	wf-out-1314.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752693AbZEKQaI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 May 2009 12:30:08 -0400
+In-Reply-To: <20090511100624.GB6585@logfs.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Jens Axboe wrote:
->>> The only problem with SSD's is the people who designed the ATA TRIM
->>> command requires us to completely drian the I/O queue before issuing
->>> it.  Because of this incompetence, we need to be a bit more careful
->>> about how we issue them.
->> And this bit that I wasn't aware of.  Such a requirement in the standard
->> is a trainwreck indeed.
-> 
-> Precisely, but that's how basically anything works with SATA NCQ, only
-> read/write dma commands may be queued. Anything else requires an idle
-> drive before issue.
+On Mon, May 11, 2009 at 4:06 AM, J=F6rn Engel <joern@logfs.org> wrote:
+>
+> I am not sure about this part. =A0So far Intel has been the only part=
+y to
+> release any information about their dark-grey box. =A0All other boxes=
+ are
+> still solid black. =A0And until I'm told otherwise I'd consider them =
+to be
+> stupid devices that use erase block size as trim granularity.
 
-Very true -- but FWIW, one option being considered at T13 is having a 
-queue-able TRIM.
+Consider yourself informed otherwise: I can't imagine a vendor
+brain-dead enough to require that.  It's the same thing as requiring
+that the only way to re-write an LBA is to re-write all LBA's in the
+same erase block.
 
-	Jeff
+Note that Fusion-io supports "discard" in their released 1.2.5 drivers.
 
-
+Chris
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
