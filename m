@@ -1,54 +1,50 @@
-From: Jens Axboe <jens.axboe@oracle.com>
-Subject: Re: Is TRIM/DISCARD going to be a performance problem?
-Date: Mon, 11 May 2009 10:49:41 +0200
-Message-ID: <20090511084941.GN4694@kernel.dk>
-References: <E1M2ts6-0005jr-Cg@closure.thunk.org> <20090511081216.GK4694@kernel.dk> <20090511084121.GB29082@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 1/3] ext4: Properly initialize the buffer_head state
+Date: Mon, 11 May 2009 14:54:43 +0530
+Message-ID: <20090511092443.GA6459@skywalker>
+References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4A02FC3A.9000806@redhat.com> <20090510235741.GA3980@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <willy@linux.intel.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Cc: Eric Sandeen <sandeen@redhat.com>, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from brick.kernel.dk ([93.163.65.50]:36112 "EHLO kernel.dk"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757174AbZEKItl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 May 2009 04:49:41 -0400
+Received: from e28smtp01.in.ibm.com ([59.145.155.1]:34359 "EHLO
+	e28smtp01.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756919AbZEKJYs (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 May 2009 05:24:48 -0400
+Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
+	by e28smtp01.in.ibm.com (8.13.1/8.13.1) with ESMTP id n4B9OjgO011426
+	for <linux-ext4@vger.kernel.org>; Mon, 11 May 2009 14:54:45 +0530
+Received: from d28av01.in.ibm.com (d28av01.in.ibm.com [9.184.220.63])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n4B9Ojvd569462
+	for <linux-ext4@vger.kernel.org>; Mon, 11 May 2009 14:54:45 +0530
+Received: from d28av01.in.ibm.com (loopback [127.0.0.1])
+	by d28av01.in.ibm.com (8.13.1/8.13.3) with ESMTP id n4B9OiEh014828
+	for <linux-ext4@vger.kernel.org>; Mon, 11 May 2009 14:54:45 +0530
 Content-Disposition: inline
-In-Reply-To: <20090511084121.GB29082@mit.edu>
+In-Reply-To: <20090510235741.GA3980@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 11 2009, Theodore Tso wrote:
-> On Mon, May 11, 2009 at 10:12:16AM +0200, Jens Axboe wrote:
+On Sun, May 10, 2009 at 07:57:41PM -0400, Theodore Tso wrote:
+> On Thu, May 07, 2009 at 10:20:26AM -0500, Eric Sandeen wrote:
+> > Aneesh Kumar K.V wrote:
+> > > These buffer_heads are allocated on stack and are
+> > > used only to make get_blocks calls. So we can set the
+> > > b_state to 0
+> > > 
+> > > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 > > 
-> > I largely agree with this. I think that trims should be queued and
-> > postponed until the drive is largely idle. I don't want to put this IO
-> > tracking in the block layer though, it's going to slow down our iops
-> > rates for writes. Providing the functionality in the block layer does
-> > make sense though, since it sits between that and the fs anyway. So just
-> > not part of the generic IO path, but a set of helpers on the side.
+> > I'd noticed this too, thanks for fixing up.
 > 
-> Yes, I agree.  However, in that case, we need two things from the
-> block I/O path.  (A) The discard management layer needs a way of
-> knowing that the block device has become idle, and (B) ideally there
+> Is this just a clean-up, or does this fix a bug?  It wasn't obvious
+> the patch description.  (I'm not a big fan of Ingo's 'Impact: '
+> header, but it is good to make sure the patch description explains the
+> impact of a patch.)
 
-We don't have to inform of such a condition, the block layer can check
-for existing pending trims and kick those off at an appropriate time.
+If you are taking patch 3/3 you would need this patch. But otherwise you
+can drop this. The fix is actually in patch 2/3.
 
-> should be a more efficient method for sending trim requests to the I/O
-> submission path.  If we batch the results, when we *do* send the
-> discard requests, we may be sending several hundred discards, and it
-> would be useful if we could pass into the I/O submission path a linked
-> list of regions, so the queue can be drained *once*, and then a whole
-> series of discards can be sent to the device all at once.
-> 
-> Does that make sense to you?
 
-Agree, we definitely only want to do the queue quiesce once for passing
-down a series of trims. With the delayed trim queuing, that isn't very
-difficult.
-
--- 
-Jens Axboe
-
+-aneesh
