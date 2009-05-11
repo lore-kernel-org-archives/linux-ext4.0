@@ -1,67 +1,56 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: Is TRIM/DISCARD going to be a performance problem?
-Date: Mon, 11 May 2009 10:29:51 -0400
-Message-ID: <4A08365F.5040805@redhat.com>
-References: <E1M2ts6-0005jr-Cg@closure.thunk.org> <20090510165259.GA31850@logfs.org> <20090511083754.GA29082@mit.edu> <20090511100624.GB6585@logfs.org> <20090511112729.GD29082@mit.edu> <20090511120936.GB6277@mit.edu> <87f94c370905110610j2f5ea7fcua4e596b2b5e82a5f@mail.gmail.com> <20090511142740.GC6277@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/3] ext4: Properly initialize the buffer_head state
+Date: Mon, 11 May 2009 09:49:24 -0500
+Message-ID: <4A083AF4.5010006@redhat.com>
+References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4A02FC3A.9000806@redhat.com> <20090510235741.GA3980@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	=?ISO-8859-1?Q?J=F6rn_Enge?= =?ISO-8859-1?Q?l?= <joern@logfs.org>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Linux RAID <linux-raid@vger.kernel.org>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	cmm@us.ibm.com, linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20090511142740.GC6277@mit.edu>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:51454 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751062AbZEKOt3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 May 2009 10:49:29 -0400
+In-Reply-To: <20090510235741.GA3980@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On 05/11/2009 10:27 AM, Theodore Tso wrote:
-> On Mon, May 11, 2009 at 09:10:15AM -0400, Greg Freemyer wrote:
->> That implies that the SSD folks are not treating erase blocks as a
->> contiguous group of sectors.
->
-> Correct.
->
->> For some reason, I thought their was
->> only one mapping per erase block and within the erase block the
->> sectors were contiguous..
->
-> No, if you try to treat erase blocks as a contiguous group of
-> sectors, you'll have terrible write amplification problems (leading to
-> premature death of the SSD) and terrible small random write
-> performance.  Flash devices optimized for digital cameras might have
-> done that, but for SSD's, this will result in catastrophically bad
-> performance, and very limited lifespan.  As I said, I expect these
-> SSD's to be weeded out of the market very shortly.
->
-> For any sane implementation of an SSD, the mapping will be on a per
-> LBA basis, not on a per-erase block basis.
->
->> More realistic is to figure out a way to make it deterministic at
->> least for the short term (by writing data to all the trimmed blocks?),
->> then reshaping, then having a tool to scan the filesystem and re-issue
->> all the trim commands.
->
-> Writing data to all of the trimmed block?  Um, no.  That would be a
-> diaster, since it accelerates the wear and tear of the SSD.  The whole
-> *point* of the TRIM command is to avoid needing to do that.
->
-> The whole worry about determinism is highly overrated.  If the
-> filesystem doesn't need a block, then it doesn't need it.  What you
-> read after you send a TRIM command, whether it is the old data because
-> the device applied some kind of rounding, or random data, or all
-> zero's, won't matter to the filesystem.  Why should the filesystem
-> care?  I know I certainly don't....
->
-> 					- Ted
+Theodore Tso wrote:
+> On Thu, May 07, 2009 at 10:20:26AM -0500, Eric Sandeen wrote:
+>> Aneesh Kumar K.V wrote:
+>>> These buffer_heads are allocated on stack and are used only to
+>>> make get_blocks calls. So we can set the b_state to 0
+>>> 
+>>> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+>>> 
+>> I'd noticed this too, thanks for fixing up.
+> 
+> Is this just a clean-up, or does this fix a bug?  It wasn't obvious 
+> the patch description.  (I'm not a big fan of Ingo's 'Impact: ' 
+> header, but it is good to make sure the patch description explains
+> the impact of a patch.)
+
+Aneesh responded, but AFAICT it doesn't actually fix a bug, but letting
+buffer heads float around with indeterminate state can't be good in the
+long run.
 
 
-The key is not at the FS layer - this is an issue for people who RAID these 
-beasts together and want to actually check that the bits are what they should be 
-(say doing a checksum validity check for a stripe).
+> In the long run, we should really look at cleaning up the get_blocks*
+>  interfaces so they don't use buffer_head when all they're really
+> doing is passing back a block number.  All aside from the confusion
+> it causes, it also bloats our stack usage.
 
-ric
+Overall, the kernel in general could use something in place of these
+buffer-heads-that-aren't-buffer-heads, imho.
+
+Pretty sure we use it for more than just a block nr, but it's not really
+a buffer head either, it's one of these "map_bh's" - we should probably
+at least try to consistently label them as such in ext*
+
+-Eric
+
+> - Ted
 
