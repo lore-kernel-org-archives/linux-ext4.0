@@ -1,49 +1,37 @@
-From: Alexander Shishkin <alexander.shishckin@gmail.com>
-Subject: [Q] ext3 mkfs: zeroing journal blocks
-Date: Mon, 11 May 2009 18:03:13 +0300
-Message-ID: <71a0d6ff0905110803t1a6b34ccq91d5494f95fe1f34@mail.gmail.com>
+From: Jeff Garzik <jeff@garzik.org>
+Subject: Re: Is TRIM/DISCARD going to be a performance problem?
+Date: Mon, 11 May 2009 11:43:44 -0400
+Message-ID: <4A0847B0.1070507@garzik.org>
+References: <E1M2ts6-0005jr-Cg@closure.thunk.org> <20090510165259.GA31850@logfs.org> <20090511083754.GA29082@mit.edu> <20090511100624.GB6585@logfs.org> <20090511101815.GR4694@kernel.dk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f158.google.com ([209.85.220.158]:57353 "EHLO
-	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754785AbZEKPDO (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 May 2009 11:03:14 -0400
-Received: by fxm2 with SMTP id 2so2741785fxm.37
-        for <linux-ext4@vger.kernel.org>; Mon, 11 May 2009 08:03:13 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: =?ISO-8859-1?Q?J=F6rn_Engel?= <joern@logfs.org>,
+	Theodore Tso <tytso@mit.edu>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Ric Wheeler <rwheeler@redhat.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Jens Axboe <jens.axboe@oracle.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090511101815.GR4694@kernel.dk>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Hi,
+Jens Axboe wrote:
+>>> The only problem with SSD's is the people who designed the ATA TRIM
+>>> command requires us to completely drian the I/O queue before issuing
+>>> it.  Because of this incompetence, we need to be a bit more careful
+>>> about how we issue them.
+>> And this bit that I wasn't aware of.  Such a requirement in the standard
+>> is a trainwreck indeed.
+> 
+> Precisely, but that's how basically anything works with SATA NCQ, only
+> read/write dma commands may be queued. Anything else requires an idle
+> drive before issue.
 
-Here's a question regarding ext3, jbd and mkfs. I'm not 100% confident
-this is the right
-list, got it from MAINTAINERS for ext3 and jbd. Please correct me if
-this is wrong.
+Very true -- but FWIW, one option being considered at T13 is having a 
+queue-able TRIM.
 
-As far as I could tell from brief looking at jbd code, it seemed to me
-that the only thing
-that has to be reset during the filesystem creation time is journal
-superblock (talking
-about the default case when journal resides within an ext3 partition).
-However, currently
-mke2fs -j would zero every journal block no matter what. So, the
-question is: can this
-zeroing really be avoided in mkfs?
-I tried commenting-out ext2fs_zero_block() in mkjournal_proc() and it
-seems to speed
-up mkfs a great deal while the kernel is still able to mount the
-partition afterwards. Also,
-for the sake of experiment, I filled the partition with urandom's
-contents before doing
-the modified mkfs and it still works. My next step in this direction
-would be to go
-through jbd code, but before doing that, I thought, I'd ask here.
+	Jeff
 
-Please CC me in replies as I'm not (yet) subscribed.
 
-Regards,
--- 
-Alex
