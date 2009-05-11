@@ -1,59 +1,58 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: Is TRIM/DISCARD going to be a performance problem?
-Date: Mon, 11 May 2009 07:27:29 -0400
-Message-ID: <20090511112729.GD29082@mit.edu>
-References: <E1M2ts6-0005jr-Cg@closure.thunk.org> <20090510165259.GA31850@logfs.org> <20090511083754.GA29082@mit.edu> <20090511100624.GB6585@logfs.org>
+Subject: Re: [PATCH 1/3] ext4: Properly initialize the buffer_head state
+Date: Mon, 11 May 2009 07:31:06 -0400
+Message-ID: <20090511113106.GE29082@mit.edu>
+References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <4A02FC3A.9000806@redhat.com> <20090510235741.GA3980@mit.edu> <20090511092443.GA6459@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Matthew Wilcox <willy@linux.intel.com>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: =?iso-8859-1?Q?J=F6rn?= Engel <joern@logfs.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:58972 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:43818 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752392AbZEKL1m (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 May 2009 07:27:42 -0400
+	id S1751409AbZEKLbJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 May 2009 07:31:09 -0400
 Content-Disposition: inline
-In-Reply-To: <20090511100624.GB6585@logfs.org>
+In-Reply-To: <20090511092443.GA6459@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 11, 2009 at 12:06:24PM +0200, J=F6rn Engel wrote:
-> I am not sure about this part.  So far Intel has been the only party =
-to
-> release any information about their dark-grey box.  All other boxes a=
-re
-> still solid black.  And until I'm told otherwise I'd consider them to=
- be
-> stupid devices that use erase block size as trim granularity.
+On Mon, May 11, 2009 at 02:54:43PM +0530, Aneesh Kumar K.V wrote:
+> On Sun, May 10, 2009 at 07:57:41PM -0400, Theodore Tso wrote:
+> > On Thu, May 07, 2009 at 10:20:26AM -0500, Eric Sandeen wrote:
+> > > Aneesh Kumar K.V wrote:
+> > > > These buffer_heads are allocated on stack and are
+> > > > used only to make get_blocks calls. So we can set the
+> > > > b_state to 0
+> > > > 
+> > > > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> > > 
+> > > I'd noticed this too, thanks for fixing up.
+> > 
+> > Is this just a clean-up, or does this fix a bug?  It wasn't obvious
+> > the patch description.  (I'm not a big fan of Ingo's 'Impact: '
+> > header, but it is good to make sure the patch description explains the
+> > impact of a patch.)
+> 
+> If you are taking patch 3/3 you would need this patch. But otherwise you
+> can drop this. The fix is actually in patch 2/3.
 
-I believe the ATA TRIM draft standards specs don't have the 1-4
-megabyte; that craziness is only coming from the SCSI world.  So we do
-have more information than what Intel has released; also, note that
-OCZ is the first vendor who has shipped publically available SSD
-firmware with Trim support.  Supposely Intel is going to try to get me
-their trim-enabled firmware under NDA, but that hasn't happened yet.
+OK, thanks.  And these patches are orthogonal to these patches in the
+patch queue, right?
 
-> > As far as thinking that the proposal is ludicrous --- what precisel=
-y
-> > did you find ludicrous about it?
->=20
-> Mainly the idea that discard requests should act as barriers and inst=
-ead
-> of fixing that, you propose a lot of complexity to work around it.
+      fix-sub-block-zeroing-for-unwritten-extents
+      use-a-fake-block-number-for-delalloc-bh
 
-I can't fix hardware braindamage.  Given that the standard
-specifications is terminally broken, (and we can't really fix it
-without getting the drive manufacturers to rip out and replace NCQ
-with something sane --- good luck with that) the complexity is pretty
-much unaviodable.  Still think my proposal is ludicrous?
+So it looks like we probably want to push these two, plus patch 2/3.
+I'm also very much concerned about your for-2.6.31 patch.  It is
+complex, so we probably want wait, but it looks like we have a real
+bug which these patches will just expose.  And your 2/3 patch isn't
+going to fix that, right, since these are orthogonal problems.
 
-					- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+(Again, if you expect patches to supercede existing ones in the ext4
+patchwork or which are in the patch queue, please tell me.  Sometimes
+it really isn't obvious....)
+
+						- Ted
+
