@@ -1,57 +1,59 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
 Subject: Re: Is TRIM/DISCARD going to be a performance problem?
-Date: Mon, 11 May 2009 15:19:57 -0400
-Message-ID: <20090511191957.GD21518@mit.edu>
-References: <E1M2ts6-0005jr-Cg@closure.thunk.org> <20090511081216.GK4694@kernel.dk> <20090511084121.GB29082@mit.edu> <1242062325.9647.4.camel@localhost.localdomain> <20090511184323.GA16885@linux.intel.com> <1242067995.13509.1.camel@localhost.localdomain>
+Date: Mon, 11 May 2009 13:22:14 -0600
+Message-ID: <20090511192214.GC3209@webber.adilger.int>
+References: <20090511083754.GA29082@mit.edu> <20090511100624.GB6585@logfs.org>
+ <20090511112729.GD29082@mit.edu> <20090511120936.GB6277@mit.edu>
+ <87f94c370905110610j2f5ea7fcua4e596b2b5e82a5f@mail.gmail.com>
+ <20090511142740.GC6277@mit.edu> <4A08365F.5040805@redhat.com>
+ <20090511145059.GD6277@mit.edu> <20090511150040.GF8112@parisc-linux.org>
+ <87f94c370905111147t77250b92pc511ef9c6c0e7e42@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Matthew Wilcox <willy@linux.intel.com>,
-	Jens Axboe <jens.axboe@oracle.com>,
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Matthew Wilcox <matthew@wil.cx>, Theodore Tso <tytso@mit.edu>,
 	Ric Wheeler <rwheeler@redhat.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Chris Mason <chris.mason@oracle.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <1242067995.13509.1.camel@localhost.localdomain>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+	J?rn Engel <joern@logfs.org>,
+	Matthew Wilcox <willy@linux.intel.com>,
+	Jens Axboe <jens.axboe@oracle.com>,
+	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	Linux RAID <linux-raid@vger.kernel.org>
+To: Greg Freemyer <greg.freemyer@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:35562 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753439AbZEKTXB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 May 2009 15:23:01 -0400
+Content-disposition: inline
+In-reply-to: <87f94c370905111147t77250b92pc511ef9c6c0e7e42@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 11, 2009 at 02:53:15PM -0400, Chris Mason wrote:
-> > Actually, that's the exact opposite of what you want.  You want to try
-> > to reuse blocks that are scheduled for trimming so that we never have to
-> > send the command at all.
+On May 11, 2009  14:47 -0400, Greg Freemyer wrote:
+> Overall, I think Linux will need a mechanism to scan a filesystem and
+> re-issue all the trim commands in order to get the hardware back in
+> sync a major maintenance activity.  That mechanism could either be
+> admin invoked.or a always on maintenance task.
 > 
-> Regardless of the optimal way to reuse blocks, we need some way of
-> knowing the discard is done, or at least sent down to the device in such
-> a way that any writes will happen after the discard and not before.
+> Personally, I think the best option is a background task (kernel I
+> assume) to scan the filesystem and issue discards for all the data on
+> a slow but steady basis.  If it takes a week to make its way around
+> the disk/volume, then it takes a week.  Who really cares.
 
-An easy way of solving this is simply to have a way for the block
-allocator to inform the discard management layer that a particular
-block is now in use again.  That will prevent the discard from
-happening.  If the discard is in flight, then the interface won't be
-able to return until the discard is done.  (This is where real
-OS-controlled ordering via dependency --- which NCQ doesn't provide
---- combined with discard/trim as a queuable operation --- would be
-really handy.)
+I'd suggested that we can also modify e2fsck to (optionally) send the
+definitive list of blocks to be trimmed at that time.  It shouldn't
+necessarily be done all of the times e2fsck is run, because that would
+kill any chance of data recovery, but should be optional.
 
-One of the things which I worry about is the discard allocation layer
-could be an SMP contention point, since the filesystem will need to
-call it before every block allocation or deallocation.
+Other filesystem checking tools (say btrfs online check) can periodically
+do the same - lock an idle group from new allocations, scan the allocation
+bitmap for all unused blocks, send a trim command for any regions >=
+erase block size, unlock group.  It might make more sense to do this
+than send thousands of trim operations while the filesystem is busy.
 
-Hmm... maybe the better approach is let the filesystem keep the
-authoratative list of what's free and not free, and only keep a range
-of blocks where some deallocation has taken place.  Then when the
-filesystem is quiscent, we can lock out block allocations and scan the
-block bitmaps, and then send a trim request for anything that's not in
-use in a particular region (i.e. allocation group) of the filesystem.  
-
-After all, quiescing the block I/O queues is what is expensive;
-sending a large number of block ranges attached to a single ATA TRIM
-command looks cheap by comparison.  So maybe we just lock out the
-block group, and send a TRIM for all the unused blocks in that block
-group, and only keep track of which block groups should be scanned via
-flag in the block group descriptors.  That might be a much simpler
-approach.
-
-	  	    	    	  	   	  - Ted
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
