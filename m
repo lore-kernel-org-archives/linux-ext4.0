@@ -1,64 +1,56 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: [Q] ext3 mkfs: zeroing journal blocks
-Date: Mon, 11 May 2009 13:35:22 -0600
-Message-ID: <20090511193522.GD3209@webber.adilger.int>
-References: <71a0d6ff0905110803t1a6b34ccq91d5494f95fe1f34@mail.gmail.com>
- <4A086763.9090907@redhat.com> <20090511182050.GA3209@webber.adilger.int>
- <4A087202.4010601@redhat.com>
+From: Chris Worley <worleys@gmail.com>
+Subject: Re: Is TRIM/DISCARD going to be a performance problem?
+Date: Mon, 11 May 2009 16:03:38 -0600
+Message-ID: <f3177b9e0905111503l1f8f8708u7fe95c34ff74f10a@mail.gmail.com>
+References: <E1M2ts6-0005jr-Cg@closure.thunk.org>
+	 <20090510165259.GA31850@logfs.org> <20090511083754.GA29082@mit.edu>
+	 <20090511100624.GB6585@logfs.org> <20090511112729.GD29082@mit.edu>
+	 <20090511124325.GC6585@logfs.org>
+	 <20090511124822.GD8112@parisc-linux.org>
+	 <f3177b9e0905111433i40e41c90r920d7ccf36442ffd@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Alexander Shishkin <alexander.shishckin@gmail.com>,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:36166 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754025AbZEKTgA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 May 2009 15:36:00 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n4BJZxvf023674
-	for <linux-ext4@vger.kernel.org>; Mon, 11 May 2009 12:35:59 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KJH00B00VB7K400@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 11 May 2009 12:35:59 -0700 (PDT)
-In-reply-to: <4A087202.4010601@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <f3177b9e0905111433i40e41c90r920d7ccf36442ffd@mail.gmail.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On May 11, 2009  13:44 -0500, Eric Sandeen wrote:
-> Andreas Dilger wrote:
-> > The reason that the journal is zeroed is because there is some chance
-> > that old (valid at the time) transaction headers and commit blocks might
-> > be in the journal and could accidentally be "recovered" and cause bad
-> > corruption of the filesystem.
-> 
-> But I guess the question is, why isn't a normal internal log zeroed?
-> 
-> If I'm reading it right only external logs get this treatment, and I
-> think that's what generated the original question from Alexander.
+ On Mon, May 11, 2009 at 6:48 AM, Matthew Wilcox <matthew@wil.cx> wrote=
+:
+>
+> On Mon, May 11, 2009 at 02:43:25PM +0200, J??rn Engel wrote:
+> > Given the hardware braindamage it is relatively sane. =A0As always,=
+ it
+> > would be much better to fix the problem and not add workarounds, bu=
+t we
+> > seem to lack the gods favor this time around.
+> >
+> > Can't anyone explain to the SATA folks that a discard is much close=
+r to
+> > a write than to a secure erase or some other rare and slow command?
+>
+> I've heard the ATA committee are working on an NCQ version of TRIM.
 
-Hmm, possibly because when ext3 was first allocated the internal journal
-created was "dd if=/dev/zero of=/mnt/fs/.journal bs=1M count={jnl_size}"
-on the filesystem mounted as ext2, so normal filesystem IO would handle
-the zeroing of the blocks.  Even today if tune2fs adds a journal to a
-filesystem it does the zero filling of the journal.
+Doesn't this fact make this discussion moot?
 
-Looking at the mke2fs code it also appears to be doing zeroing of the
-journal inode in:
+If the ATA committee knows they've got a problem, and are fixing it at
+the level where the problem exists, why is Linux's job to fix at a
+higher level?
 
-      mke2fs
-        ->ext2fs_add_journal_inode
-	  ->write_journal_inode
-	    ->ext2fs_block_iterate
-	      ->mkjournal_proc (increment zero_count)
-	  ->ext2fs_zero_blocks
+The proposed solutions are going to consume CPU and slow down I/O
+unnecessarily, as well as inefficiently dispatch Discards (i.e. the
+longer the time between the discard and the reuse of a block, the
+better).=A0 If they are going to be implemented, then have a special
+"brain-dead ATA mode" that doesn't inhibit solutions that can
+implement Discard w/o the "queue draining" required by the broken
+implementation.
 
-Cheers, Andreas
+Chris
+P.S. Why was ext2/discard functionality removed?
 --
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
