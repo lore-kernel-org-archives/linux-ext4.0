@@ -1,50 +1,49 @@
-From: Matthew Wilcox <matthew@wil.cx>
-Subject: Re: Is TRIM/DISCARD going to be a performance problem?
-Date: Mon, 11 May 2009 09:00:40 -0600
-Message-ID: <20090511150040.GF8112@parisc-linux.org>
-References: <E1M2ts6-0005jr-Cg@closure.thunk.org> <20090510165259.GA31850@logfs.org> <20090511083754.GA29082@mit.edu> <20090511100624.GB6585@logfs.org> <20090511112729.GD29082@mit.edu> <20090511120936.GB6277@mit.edu> <87f94c370905110610j2f5ea7fcua4e596b2b5e82a5f@mail.gmail.com> <20090511142740.GC6277@mit.edu> <4A08365F.5040805@redhat.com> <20090511145059.GD6277@mit.edu>
+From: Alexander Shishkin <alexander.shishckin@gmail.com>
+Subject: [Q] ext3 mkfs: zeroing journal blocks
+Date: Mon, 11 May 2009 18:03:13 +0300
+Message-ID: <71a0d6ff0905110803t1a6b34ccq91d5494f95fe1f34@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-	Greg Freemyer <greg.freemyer@gmail.com>,
-	J?rn Engel <joern@logfs.org>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Linux RAID <linux-raid@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from palinux.external.hp.com ([192.25.206.14]:36261 "EHLO
-	mail.parisc-linux.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756630AbZEKPAk (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 May 2009 11:00:40 -0400
-Content-Disposition: inline
-In-Reply-To: <20090511145059.GD6277@mit.edu>
+Received: from mail-fx0-f158.google.com ([209.85.220.158]:57353 "EHLO
+	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754785AbZEKPDO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 11 May 2009 11:03:14 -0400
+Received: by fxm2 with SMTP id 2so2741785fxm.37
+        for <linux-ext4@vger.kernel.org>; Mon, 11 May 2009 08:03:13 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 11, 2009 at 10:50:59AM -0400, Theodore Tso wrote:
-> On Mon, May 11, 2009 at 10:29:51AM -0400, Ric Wheeler wrote:
-> > The key is not at the FS layer - this is an issue for people who RAID 
-> > these beasts together and want to actually check that the bits are what 
-> > they should be (say doing a checksum validity check for a stripe).
-> 
-> Good point, yes I can see why they need that.  In that case, the
-> storage device can't just silently truncate a TRIM request; it would
-> have to expose to the OS its alignment requirements.  The risk though
-> is that more they try push this compleixity into the OS, the higher
-> the risk that the OS will simply decide not to take advantage of the
-> functionality.  Of course, there is the question why anyone would want
-> to build a software-raid device on top of a thin-provisioned hardware
-> storage unit.  :-)
+Hi,
 
-It's not a problem for people who use Thin Provisioning, it's a problem
-for people who want to run RAID-5 on top of SSDs.  If you have a sector
-whose reads are indeterminate, your parity for that stripe will always
-be wrong.
+Here's a question regarding ext3, jbd and mkfs. I'm not 100% confident
+this is the right
+list, got it from MAINTAINERS for ext3 and jbd. Please correct me if
+this is wrong.
 
+As far as I could tell from brief looking at jbd code, it seemed to me
+that the only thing
+that has to be reset during the filesystem creation time is journal
+superblock (talking
+about the default case when journal resides within an ext3 partition).
+However, currently
+mke2fs -j would zero every journal block no matter what. So, the
+question is: can this
+zeroing really be avoided in mkfs?
+I tried commenting-out ext2fs_zero_block() in mkjournal_proc() and it
+seems to speed
+up mkfs a great deal while the kernel is still able to mount the
+partition afterwards. Also,
+for the sake of experiment, I filled the partition with urandom's
+contents before doing
+the modified mkfs and it still works. My next step in this direction
+would be to go
+through jbd code, but before doing that, I thought, I'd ask here.
+
+Please CC me in replies as I'm not (yet) subscribed.
+
+Regards,
 -- 
-Matthew Wilcox				Intel Open Source Technology Centre
-"Bill, look, we understand that you're interested in selling us this
-operating system, but compare it to ours.  We can't possibly take such
-a retrograde step."
+Alex
