@@ -1,53 +1,60 @@
-From: Neil Brown <neilb@suse.de>
-Subject: Re: Is TRIM/DISCARD going to be a performance problem?
-Date: Tue, 12 May 2009 09:38:21 +1000
-Message-ID: <18952.46829.115084.46432@notabene.brown>
-References: <E1M2ts6-0005jr-Cg@closure.thunk.org>
-	<20090511083754.GA29082@mit.edu>
-	<20090511100624.GB6585@logfs.org>
-	<20090511112729.GD29082@mit.edu>
-	<20090511120936.GB6277@mit.edu>
-	<87f94c370905110610j2f5ea7fcua4e596b2b5e82a5f@mail.gmail.com>
-	<20090511142740.GC6277@mit.edu>
-	<4A08365F.5040805@redhat.com>
-	<20090511145059.GD6277@mit.edu>
-	<20090511150040.GF8112@parisc-linux.org>
-	<87f94c370905111147t77250b92pc511ef9c6c0e7e42@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH -V4 1/2] Fix sub-block zeroing for buffered writes into
+	unwritten extents
+Date: Mon, 11 May 2009 22:42:18 -0400
+Message-ID: <20090512024218.GH21518@mit.edu>
+References: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Matthew Wilcox <matthew@wil.cx>, Theodore Tso <tytso@mit.edu>,
-	Ric Wheeler <rwheeler@redhat.com>,
-	"J?rn Engel" <joern@logfs.org>,
-	Matthew Wilcox <willy@linux.intel.com>,
-	Jens Axboe <jens.axboe@oracle.com>,
-	linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	Linux RAID <linux-raid@vger.kernel.org>
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53625 "EHLO mx2.suse.de"
+Received: from THUNK.ORG ([69.25.196.29]:44139 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758884AbZEKXiI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 May 2009 19:38:08 -0400
-In-Reply-To: message from Greg Freemyer on Monday May 11
+	id S1756994AbZELCma (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 11 May 2009 22:42:30 -0400
+Content-Disposition: inline
+In-Reply-To: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Monday May 11, greg.freemyer@gmail.com wrote:
+On Wed, Apr 29, 2009 at 10:17:20AM +0530, Aneesh Kumar K.V wrote:
+> We need to mark the  buffer_head mapping prealloc space
+> as new during write_begin. Otherwise we don't zero out the
+> page cache content properly for a partial write. This will
+> cause file corruption with preallocation.
 > 
-> And since the mdraid layer is not currently planning to track what has
-> been discarded over time, when a re-shape comes along, it will
-> effectively un-trim everything and rewrite 100% of the FS.
+> Also use block number -1 as the fake block number so that
+> unmap_underlying_metadata doesn't drop wrong buffer_head
 
-You might not call them "plans" exactly, but I have had thoughts
-about tracking which part of an raid5 had 'live' data and which were
-trimmed.  I think that is the only way I could support TRIM, unless
-devices guarantee that all trimmed blocks read a zeros, and that seems
-unlikely.
-You are right that the granularity would have to be at least
-one stripe.
-And a re-shape would be interesting, wouldn't it!  We could probably
-avoid instantiating every trimmed block, but in general quite a few
-would get instantiated.. I hadn't thought about that...
+The buffer_head code is starting to scare me more and more. 
 
-NeilBrown
+I'm looking at this code again and I can't figure out why it's safe
+(or why we would need to) put in an invalid number into
+bh_result->b_blocknr:
+
+> @@ -2323,6 +2323,16 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+>  		set_buffer_delay(bh_result);
+>  	} else if (ret > 0) {
+>  		bh_result->b_size = (ret << inode->i_blkbits);
+> +		/*
+> +		 * With sub-block writes into unwritten extents
+> +		 * we also need to mark the buffer as new so that
+> +		 * the unwritten parts of the buffer gets correctly zeroed.
+> +		 */
+> +		if (buffer_unwritten(bh_result)) {
+> +			bh_result->b_bdev = inode->i_sb->s_bdev;
+> +			set_buffer_new(bh_result);
+> +			bh_result->b_blocknr = -1;
+
+Why do we need to avoid calling unmap_underlying_metadata()?
+
+And after the buffer is zero'ed out, it leaves b_blocknr in a
+buffer_head attached to the page at an invalid block number.  Doesn't
+that get us in trouble later on?
+
+I see that this line is removed later on in the for-2.6.31 patch "Mark
+the unwritten buffer_head as mapped during write_begin".  But is it
+safe for 2.6.30?
+
+						- Ted
