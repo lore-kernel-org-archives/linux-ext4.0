@@ -1,91 +1,143 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: Re: Help to edit inode content
-Date: Tue, 12 May 2009 21:43:47 +0530
-Message-ID: <ea11fea30905120913y34586943y1567df47022ead50@mail.gmail.com>
-References: <20aa8c370905120847j4b19175akbdcafc0db2004567@mail.gmail.com>
-	<3e8340490905120856w62c6c5cexa247937bf7e84002@mail.gmail.com>
-	<20aa8c370905120902o71ab9adflb8619e2a9ae343d0@mail.gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13232] ext3/4 with synchronous writes gets wedged by Postfix
+Date: Tue, 12 May 2009 16:56:05 GMT
+Message-ID: <200905121656.n4CGu5Fl003852@demeter.kernel.org>
+References: <bug-13232-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Bryan Donlan <bdonlan@gmail.com>, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: ranjith kannikara <ranjithkannikara@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from yw-out-2324.google.com ([74.125.46.30]:36542 "EHLO
-	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752595AbZELQOG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 12:14:06 -0400
-In-Reply-To: <20aa8c370905120902o71ab9adflb8619e2a9ae343d0@mail.gmail.com>
+Received: from demeter.kernel.org ([140.211.167.39]:59524 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754125AbZELQ4E convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 12:56:04 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4CGu5s8003853
+	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 16:56:05 GMT
+In-Reply-To: <bug-13232-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 12, 2009 at 9:32 PM, ranjith kannikara
-<ranjithkannikara@gmail.com> wrote:
-> On Tue, May 12, 2009 at 9:26 PM, Bryan Donlan <bdonlan@gmail.com> wro=
-te:
->> On Tue, May 12, 2009 at 11:47 AM, ranjith kannikara
->> <ranjithkannikara@gmail.com> wrote:
->>> Hi,
->>> I am a computer science engineering student. We have started a proj=
-ect
->>> to make an application to recover deleted files from an ext3
->>> filesystem. For that we have a doubt . Can we edit the inode conten=
-t?
-
-Hi,
-
-yes you can. See the debugfs tool which comes with e2fsprogs. It
-allows you to open a filesystem and then change the attributes of an
-inode. It also has libext2fs which you can use to write programs
-through its exported APIs.
-
-Hope that helps
-
-- Manish
-
->>> ie the recovery will be robust if we could edit the inode contents =
-and
->>> give the pointer address manually or through a code. The inode is
->>> being created in the kernel mode and is it possible to edit those
->>> contents if the code is allowed to have the kernel mode permissions=
-=2E.?
->>
->> You'd probably be best off doing this in userspace, with the
->> filesystem unmounted.
-> Of course we are doing it from another filesystem. ie only after
-> unmounting the filesystem which is being worked on. in some case we
-> make image of the filesystem to ensure security of data.
->> Generally speaking, don't attempt to alter the filesystem from
->> userspace while it is mounted.
->>
-> But we would like to know whether it is possible to edit the inode
-> because it will make the recovery easy and robust. ie he know the
-> details of the inode of the file which had been deleted is it possibl=
-e
-> to edit the content of that inode with the pointers of the deleted
-> file.?
-> Regards
-> Ranju.
->
->
->
-> --
-> http://www.ranjithkannikara.blogspot.com/
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
+http://bugzilla.kernel.org/show_bug.cgi?id=13232
 
 
 
---=20
-Thanks -
-Manish
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--- Comment #2 from Jan Kara <jack@suse.cz>  2009-05-12 16:56:04 ---
+  Hi,
+
+> (switched to email.  Please respond via emailed reply-to-all, not via the
+> bugzilla web interface).
+
+> > SysRq : Show Blocked State
+> >   task                PC stack   pid father
+> > kjournald     D c01384df     0  2525      2
+> >  cfcb5f0c 00000082 de27d500 c01384df cfcb5ef4 c02cb5c0 00000001 de32ca00
+> >  de324814 dd037ebc de324814 de324934 dd037ebc cfcb5f5c cfcb5f90 c01bd4bb
+> >  00000046 c0424110 de324a0c de324814 de324800 00000000 00000002 dd037e80
+> > Call Trace:
+> >  [<c01384df>] ? trace_hardirqs_on+0xb/0xd
+> >  [<c01bd4bb>] journal_commit_transaction+0xea/0xeaf
+> >  [<c02c534a>] ? _spin_unlock_irqrestore+0x38/0x3f
+> >  [<c0138489>] ? trace_hardirqs_on_caller+0x145/0x190
+> >  [<c012b6ee>] ? autoremove_wake_function+0x0/0x38
+> >  [<c0122a25>] ? del_timer+0x50/0x59
+> >  [<c01c0c75>] kjournald+0xad/0x1bb
+> >  [<c012b6ee>] ? autoremove_wake_function+0x0/0x38
+> >  [<c01c0bc8>] ? kjournald+0x0/0x1bb
+> >  [<c012b442>] kthread+0x37/0x59
+> >  [<c012b40b>] ? kthread+0x0/0x59
+> >  [<c0103667>] kernel_thread_helper+0x7/0x10
+> 
+> I assume this is
+> 
+> 	while (commit_transaction->t_updates) {
+> 		DEFINE_WAIT(wait);
+> 
+> 		prepare_to_wait(&journal->j_wait_updates, &wait,
+> 					TASK_UNINTERRUPTIBLE);
+> 		if (commit_transaction->t_updates) {
+> 			spin_unlock(&commit_transaction->t_handle_lock);
+> 			spin_unlock(&journal->j_state_lock);
+> 			schedule();
+  Yes.
+
+> I'm wondering about
+> 
+> : commit e219cca082f52e7dfea41f3be264b7b5eb204227
+> : Author:     Theodore Ts'o <tytso@mit.edu>
+> : AuthorDate: Thu Nov 6 22:37:59 2008 -0500
+> : Commit:     Theodore Ts'o <tytso@mit.edu>
+> : CommitDate: Thu Nov 6 22:37:59 2008 -0500
+> :
+> :    jbd: don't give up looking for space so easily in __log_wait_for_space
+> 
+> but that patch was present in 2.6.28.
+  Hmm, I don't see what made this deadlock happening - as far as I can
+see it's there for quite some time. See below...
+
+> > pickup        D c01384df     0  2597   2594
+> >  cfaa9e5c 00000086 df9faa80 c01384df cfaa9e44 00000282 cfaa9e74 de32ca00
+> >  cfaa9e5c c012b8b7 00000002 de324800 0000014f cfaa9e74 cfaa9e94 c01c0539
+> >  00000000 de3248c8 de324910 de324814 00000000 df9faa80 c012b6ee de3248e4
+> > Call Trace:
+> >  [<c01384df>] ? trace_hardirqs_on+0xb/0xd
+> >  [<c012b8b7>] ? prepare_to_wait+0x42/0x4a
+> >  [<c01c0539>] log_wait_commit+0x90/0xf7
+> >  [<c012b6ee>] ? autoremove_wake_function+0x0/0x38
+> >  [<c01bba9d>] journal_stop+0x1c8/0x288
+> >  [<c01b4236>] __ext3_journal_stop+0x1c/0x38
+> >  [<c01aeb96>] ext3_delete_inode+0x90/0xc2
+> >  [<c01aeb06>] ? ext3_delete_inode+0x0/0xc2
+> >  [<c017ab82>] generic_delete_inode+0x72/0x100
+> >  [<c02c4ee1>] ? _spin_lock+0x3a/0x40
+> >  [<c017ad4c>] generic_drop_inode+0x13c/0x1da
+> >  [<c01d4068>] ? _atomic_dec_and_lock+0x10/0x38
+> >  [<c017a4e7>] iput+0x47/0x4e
+> >  [<c0173db0>] do_unlinkat+0xc1/0x137
+> >  [<c0102f87>] ? sysenter_exit+0xf/0x18
+> >  [<c0138489>] ? trace_hardirqs_on_caller+0x145/0x190
+> >  [<c0173e36>] sys_unlink+0x10/0x12
+> >  [<c0102f55>] sysenter_do_call+0x12/0x35
+  In generic_delete_inode() we mark inode as I_FREEING. Then
+ext3_delete_inode() is called and because of O_SYNC it starts a
+transaction commit and waits for it.
+
+> > postdrop      D c01384df     0  2664   2663
+> >  cfcbfd6c 00000086 dd13f700 c01384df cfcbfd54 c02cb5c0 00000001 deedc780
+> >  c03a1690 c1402348 c03a1690 cfcbfd7c c1402348 cfcbfd90 cfcbfd9c c017a55b
+> >  dd758c48 00000007 00000000 dd13f700 c012b726 c1402364 c1402364 00152b13
+> > Call Trace:
+> >  [<c01384df>] ? trace_hardirqs_on+0xb/0xd
+> >  [<c017a55b>] __wait_on_freeing_inode+0x6d/0x88
+> >  [<c012b726>] ? wake_bit_function+0x0/0x47
+> >  [<c017a5b5>] find_inode_fast+0x3f/0x4a
+> >  [<c017ba05>] insert_inode_locked+0x50/0xeb
+> >  [<c01ab90b>] ext3_new_inode+0x738/0x88f
+> >  [<c01bc550>] ? journal_start+0xab/0x100
+> >  [<c01b259a>] ext3_create+0x59/0xbf
+> >  [<c01722c4>] vfs_create+0x75/0xb0
+> >  [<c02c4dda>] ? _spin_unlock+0x1d/0x20
+> >  [<c01b2541>] ? ext3_create+0x0/0xbf
+> >  [<c0174bc3>] do_filp_open+0x644/0x713
+> >  [<c02c4dda>] ? _spin_unlock+0x1d/0x20
+> >  [<c01692ce>] do_sys_open+0x45/0xce
+> >  [<c0102f87>] ? sysenter_exit+0xf/0x18
+> >  [<c0138489>] ? trace_hardirqs_on_caller+0x145/0x190
+> >  [<c01693a3>] sys_open+0x23/0x2b
+> >  [<c0102f55>] sysenter_do_call+0x12/0x35
+  Here, we have started a transaction in ext3_create() and then wait in
+find_inode_fast() for I_FREEING to be cleared (obviously we have
+reallocated the inode and squeezed the allocation before journal_stop()
+from the delete was called).
+  Nasty deadlock and I don't see how to fix it now - have to go home for
+today... Tomorrow I'll have a look what we can do about it.
+
+                                    Honza
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
