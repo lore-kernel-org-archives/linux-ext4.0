@@ -1,76 +1,85 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH -V4 1/2] Fix sub-block zeroing for buffered writes into
- unwritten extents
-Date: Mon, 11 May 2009 22:37:32 -0500
-Message-ID: <4A08EEFC.3050200@redhat.com>
-References: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090512024218.GH21518@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 2/3] ext4: Clear the unwritten buffer_head flag properly
+Date: Tue, 12 May 2009 10:16:27 +0530
+Message-ID: <20090512044627.GA6753@skywalker>
+References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1241692770-22547-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090512030856.GI21518@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:36027 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753353AbZELDhr (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 11 May 2009 23:37:47 -0400
-In-Reply-To: <20090512024218.GH21518@mit.edu>
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:60047 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751794AbZELEqu (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 00:46:50 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp08.au.ibm.com (8.13.1/8.13.1) with ESMTP id n4C4h8dr030657
+	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 14:43:08 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n4C4kmSN1355808
+	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 14:46:50 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n4C4klQX016680
+	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 14:46:48 +1000
+Content-Disposition: inline
+In-Reply-To: <20090512030856.GI21518@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Wed, Apr 29, 2009 at 10:17:20AM +0530, Aneesh Kumar K.V wrote:
->> We need to mark the  buffer_head mapping prealloc space
->> as new during write_begin. Otherwise we don't zero out the
->> page cache content properly for a partial write. This will
->> cause file corruption with preallocation.
->>
->> Also use block number -1 as the fake block number so that
->> unmap_underlying_metadata doesn't drop wrong buffer_head
+On Mon, May 11, 2009 at 11:08:56PM -0400, Theodore Tso wrote:
+> On Thu, May 07, 2009 at 04:09:29PM +0530, Aneesh Kumar K.V wrote:
+> > ext4_get_blocks_wrap does a block lookup requesting to
+> > allocate new blocks. A lookup of blocks in prealloc area
+> > result in setting the unwritten flag in buffer_head. So
+> > a write to an unwritten extent will cause the buffer_head
+> > to have unwritten and mapped flag set. Clear hte unwritten
+> > buffer_head flag before requesting to allocate blocks.
+> > 
+> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 > 
-> The buffer_head code is starting to scare me more and more. 
+> I've rewritten the commit changelog to this, which I believe more
+> accurately describes the patch.  Comments, please?
 > 
-> I'm looking at this code again and I can't figure out why it's safe
-> (or why we would need to) put in an invalid number into
-> bh_result->b_blocknr:
-
-I don't know for sure why it should be invalid; I think a preallocated
-block, since it has an *actual* *block* *allocated* after all, should
-have that block number.  But if it's going to be fake, let's not use a
-"real" one like the superblock location...
-
-A real block nr does eventually get assigned when we do getblock with
-create=1 AFAICT.
-
->> @@ -2323,6 +2323,16 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
->>  		set_buffer_delay(bh_result);
->>  	} else if (ret > 0) {
->>  		bh_result->b_size = (ret << inode->i_blkbits);
->> +		/*
->> +		 * With sub-block writes into unwritten extents
->> +		 * we also need to mark the buffer as new so that
->> +		 * the unwritten parts of the buffer gets correctly zeroed.
->> +		 */
->> +		if (buffer_unwritten(bh_result)) {
->> +			bh_result->b_bdev = inode->i_sb->s_bdev;
->> +			set_buffer_new(bh_result);
->> +			bh_result->b_blocknr = -1;
+> ext4: Clear the unwritten buffer_head flag after the extent is initialized
 > 
-> Why do we need to avoid calling unmap_underlying_metadata()?
-
-For that matter, why do we call unmap_underlying_metadata at all, ever?
-
-> And after the buffer is zero'ed out, it leaves b_blocknr in a
-> buffer_head attached to the page at an invalid block number.  Doesn't
-> that get us in trouble later on?
+> From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 > 
-> I see that this line is removed later on in the for-2.6.31 patch "Mark
-> the unwritten buffer_head as mapped during write_begin".  But is it
-> safe for 2.6.30?
+> The BH_Unwritten flag indicates that the buffer is allocated on disk
+> but has not been written; that is, the disk was part of a persistent
+> preallocation area.  That flag should only be set when a get_blocks()
+> function is looking up a inode's logical to physical block mapping.
+> 
+> When ext4_get_blocks_wrap() is called with create=1, the uninitialized
+> extent is converted into an initialized one, so the BH_Unwritten flag
+> is no longer appropriate.  Hence, we need to make sure the
+> BH_Unwritten is not left set, to avoid the ensuing confusion and
+> hilarty.
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
 
-I have this in F11 now, but it's giving me the heebie-jeebies still.  At
-least it's confined to preallocation (one of the great new ext4 features
-I've been promoting recently... :)
+I think it is good. But one thing missing in the commit message is,
+what happens if we do a write to prealloc space. Since a
+get_block(create = 1) is now split into __get_block(create = 0 )  and
+__get_block(create = 1). That would mean if we pass a buffer head with
+BH_Unwritten cleared we will have
 
--Eric
+
+1) buffer_head as BH_Unwritten cleared.
+
+2) __get_block(create = 0 ) -> Since it is prealloc space we will have
+BH_Unwritten set .
+
+3) __get_block(create = 1) -> get the blocks out of prealloc space.
+and retun with BH_Mapped set. 
+
+That would imply we have BH_Unwritten and BH_Mapped set in the above
+case which is wrong. So we need a BH_Unwritten clear between (2) and
+(3). The patch does the same. May be we need to capture it in commit
+message.
+
+-aneesh
+
+
+
