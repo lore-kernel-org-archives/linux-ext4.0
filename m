@@ -1,68 +1,220 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V5] ext4: Use -1 as the fake block number for delayed new
-	buffer_head
-Date: Tue, 12 May 2009 20:47:54 +0530
-Message-ID: <20090512151754.GC23862@skywalker>
-References: <1240980441-8105-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1240980441-8105-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2 for 2.6.31] ext4: Mark the unwritten buffer_head mapped
+	during write_begin
+Date: Tue, 12 May 2009 20:49:56 +0530
+Message-ID: <20090512151956.GD23862@skywalker>
+References: <1241693429-27588-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp04.in.ibm.com ([59.145.155.4]:53674 "EHLO
-	e28smtp04.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751284AbZELPSG (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 11:18:06 -0400
+Received: from e28smtp07.in.ibm.com ([59.145.155.7]:45543 "EHLO
+	e28smtp07.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752224AbZELPUQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 11:20:16 -0400
 Received: from d28relay04.in.ibm.com (d28relay04.in.ibm.com [9.184.220.61])
-	by e28smtp04.in.ibm.com (8.13.1/8.13.1) with ESMTP id n4CFI59o009955
-	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 20:48:05 +0530
-Received: from d28av04.in.ibm.com (d28av04.in.ibm.com [9.184.220.66])
-	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n4CFI45V585950
-	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 20:48:04 +0530
-Received: from d28av04.in.ibm.com (loopback [127.0.0.1])
-	by d28av04.in.ibm.com (8.13.1/8.13.3) with ESMTP id n4CFI4NY024737
-	for <linux-ext4@vger.kernel.org>; Wed, 13 May 2009 01:18:04 +1000
+	by e28smtp07.in.ibm.com (8.13.1/8.13.1) with ESMTP id n4CFKAsg015337
+	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 20:50:10 +0530
+Received: from d28av03.in.ibm.com (d28av03.in.ibm.com [9.184.220.65])
+	by d28relay04.in.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n4CFKAjQ1613916
+	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 20:50:10 +0530
+Received: from d28av03.in.ibm.com (loopback [127.0.0.1])
+	by d28av03.in.ibm.com (8.13.1/8.13.3) with ESMTP id n4CFKANi004658
+	for <linux-ext4@vger.kernel.org>; Wed, 13 May 2009 01:20:10 +1000
 Content-Disposition: inline
-In-Reply-To: <1240980441-8105-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1241693429-27588-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Updated to apply cleanly after applying the version 5 of fake block
+number patches
 
-ext4: Use a fake block number for delayed new buffer_head
+-aneesh
+
+ext4: Mark the unwritten buffer_head as mapped during write_begin
 
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Use a very large unsigned number (~0xffff) as as the fake block number
-for the delayed new buffer. The VFS should never try to write out this
-number, but if it does, this will make it obvious.
+This avoids multiple get_block calls during write. Now that we have
+unwritten buffer marked as mapped, we need to make sure writepages
+will handle unwritten buffer_heads also.
+
+With this patch we have the below:
+
+ext4_ext_get()_block returns unmapped, unwritten, buffer head when
+called with create = 0 for prealloc space. This makes sure we handle
+the read path and non-delayed allocation case correctly.  Even though
+the buffer head is marked unmapped we have valid b_blocknr and b_bdev
+values in the buffer_head.
+
+ext4_da_get_block_prep called for block resrevation will now return
+mapped, unwritten, new buffer_head for prealloc space. This make sure
+we don't do multiple get_block calls for write to same offset. Also
+marking it new make sure sub-block zeroing of buffered writes happen
+correctly.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+ fs/ext4/extents.c |    4 +--
+ fs/ext4/inode.c   |   79 ++++++++++++++++++++++++++++++++++-------------------
+ 2 files changed, 52 insertions(+), 31 deletions(-)
 
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 58be344..b1fdecc 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2865,6 +2865,8 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 			if (create == EXT4_CREATE_UNINITIALIZED_EXT)
+ 				goto out;
+ 			if (!create) {
++				if (allocated > max_blocks)
++					allocated = max_blocks;
+ 				/*
+ 				 * We have blocks reserved already.  We
+ 				 * return allocated blocks so that delalloc
+@@ -2872,8 +2874,6 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 				 * the buffer head will be unmapped so that
+ 				 * a read from the block returns 0s.
+ 				 */
+-				if (allocated > max_blocks)
+-					allocated = max_blocks;
+ 				set_buffer_unwritten(bh_result);
+ 				bh_result->b_bdev    = inode->i_sb->s_bdev;
+ 				bh_result->b_blocknr = newblock;
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 498cf8b..4b1478c 100644
+index 9bf61e1..fcdda43 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2297,6 +2297,10 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 				  struct buffer_head *bh_result, int create)
- {
- 	int ret = 0;
-+	sector_t invalid_block = ~((sector_t) 0xffff);
+@@ -1846,7 +1846,7 @@ static int mpage_da_submit_io(struct mpage_da_data *mpd)
+  * @logical - first logical block to start assignment with
+  *
+  * the function goes through all passed space and put actual disk
+- * block numbers into buffer heads, dropping BH_Delay
++ * block numbers into buffer heads, dropping BH_Delay and BH_Unwritten
+  */
+ static void mpage_put_bnr_to_bhs(struct mpage_da_data *mpd, sector_t logical,
+ 				 struct buffer_head *exbh)
+@@ -1896,16 +1896,24 @@ static void mpage_put_bnr_to_bhs(struct mpage_da_data *mpd, sector_t logical,
+ 			do {
+ 				if (cur_logical >= logical + blocks)
+ 					break;
+-				if (buffer_delay(bh)) {
+-					bh->b_blocknr = pblock;
+-					clear_buffer_delay(bh);
+-					bh->b_bdev = inode->i_sb->s_bdev;
+-				} else if (buffer_unwritten(bh)) {
+-					bh->b_blocknr = pblock;
+-					clear_buffer_unwritten(bh);
+-					set_buffer_mapped(bh);
+-					set_buffer_new(bh);
+-					bh->b_bdev = inode->i_sb->s_bdev;
 +
-+	if (invalid_block < ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es))
-+		invalid_block = ~0;
++				if (buffer_delay(bh) ||
++						buffer_unwritten(bh)) {
++
++					BUG_ON(bh->b_bdev != inode->i_sb->s_bdev);
++
++					if (buffer_delay(bh)) {
++						clear_buffer_delay(bh);
++						bh->b_blocknr = pblock;
++					} else {
++						/*
++						 * unwritten already should have
++						 * blocknr assigned. Verify that
++						 */
++						clear_buffer_unwritten(bh);
++						BUG_ON(bh->b_blocknr != pblock);
++					}
++
+ 				} else if (buffer_mapped(bh))
+ 					BUG_ON(bh->b_blocknr != pblock);
  
- 	BUG_ON(create == 0);
- 	BUG_ON(bh_result->b_size != inode->i_sb->s_blocksize);
-@@ -2318,7 +2322,7 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 			/* not enough space to reserve */
- 			return ret;
+@@ -2047,7 +2055,8 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	 * We consider only non-mapped and non-allocated blocks
+ 	 */
+ 	if ((mpd->b_state  & (1 << BH_Mapped)) &&
+-	    !(mpd->b_state & (1 << BH_Delay)))
++		!(mpd->b_state & (1 << BH_Delay)) &&
++		!(mpd->b_state & (1 << BH_Unwritten)))
+ 		return 0;
+ 	new.b_state = 0;
+ 	new.b_blocknr = 0;
+@@ -2186,6 +2195,17 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
+ 	return;
+ }
  
--		map_bh(bh_result, inode->i_sb, 0);
-+		map_bh(bh_result, inode->i_sb, invalid_block);
- 		set_buffer_new(bh_result);
++static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
++{
++	/*
++	 * unmapped buffer is possible for holes.
++	 * delay buffer is possible with delayed allocation.
++	 * We also need to consider unwritten buffer as unmapped.
++	 */
++	return (!buffer_mapped(bh) || buffer_delay(bh) ||
++				buffer_unwritten(bh)) && buffer_dirty(bh);
++}
++
+ /*
+  * __mpage_da_writepage - finds extent of pages and blocks
+  *
+@@ -2270,8 +2290,7 @@ static int __mpage_da_writepage(struct page *page,
+ 			 * Otherwise we won't make progress
+ 			 * with the page in ext4_da_writepage
+ 			 */
+-			if (buffer_dirty(bh) &&
+-			    (!buffer_mapped(bh) || buffer_delay(bh))) {
++			if (ext4_bh_unmapped_or_delay(NULL, bh)) {
+ 				mpage_add_bh_to_extent(mpd, logical,
+ 						       bh->b_size,
+ 						       bh->b_state);
+@@ -2299,6 +2318,14 @@ static int __mpage_da_writepage(struct page *page,
+ /*
+  * this is a special callback for ->write_begin() only
+  * it's intention is to return mapped block or reserve space
++ *
++ * For delayed buffer_head we have BH_Mapped, BH_New, BH_Delay set.
++ * We also have b_blocknr = -1 and b_bdev initialized properly
++ *
++ * For unwritten buffer_head we have BH_Mapped, BH_New, BH_Unwritten set.
++ * We also have b_blocknr = physicalblock mapping unwritten extent and b_bdev
++ * initialized properly.
++ *
+  */
+ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 				  struct buffer_head *bh_result, int create)
+@@ -2334,13 +2361,16 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
  		set_buffer_delay(bh_result);
  	} else if (ret > 0) {
+ 		bh_result->b_size = (ret << inode->i_blkbits);
+-		/*
+-		 * With sub-block writes into unwritten extents
+-		 * we also need to mark the buffer as new so that
+-		 * the unwritten parts of the buffer gets correctly zeroed.
+-		 */
+ 		if (buffer_unwritten(bh_result)) {
++			/* a delayed write to unwritten bh should
++			 * be marked new and mapped. Mapped ensures
++			 * that we don't do get_block multiple times
++			 * when we write to the same offset and new
++			 * ensures that we do proper zero out for
++			 * partial write
++			 */
+ 			set_buffer_new(bh_result);
++			set_buffer_mapped(bh_result);
+ 		}
+ 		ret = 0;
+ 	}
+@@ -2348,15 +2378,6 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
+ 	return ret;
+ }
+ 
+-static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
+-{
+-	/*
+-	 * unmapped buffer is possible for holes.
+-	 * delay buffer is possible with delayed allocation
+-	 */
+-	return ((!buffer_mapped(bh) || buffer_delay(bh)) && buffer_dirty(bh));
+-}
