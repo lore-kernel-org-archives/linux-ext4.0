@@ -1,31 +1,23 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13232] ext3/4 with synchronous writes gets wedged by Postfix
-Date: Tue, 12 May 2009 16:56:05 GMT
-Message-ID: <200905121656.n4CGu5Fl003852@demeter.kernel.org>
-References: <bug-13232-13602@http.bugzilla.kernel.org/>
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [Bugme-new] [Bug 13232] New: ext3/4 with synchronous writes gets wedged by Postfix
+Date: Tue, 12 May 2009 18:56:01 +0200
+Message-ID: <20090512165601.GC27092@atrey.karlin.mff.cuni.cz>
+References: <bug-13232-10286@http.bugzilla.kernel.org/> <20090505145525.92e9551a.akpm@linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org, bugzilla-daemon@bugzilla.kernel.org,
+	bugme-daemon@bugzilla.kernel.org, kernel-nospam@dbwatson.ukfsn.org
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:59524 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754125AbZELQ4E convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 12:56:04 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4CGu5s8003853
-	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 16:56:05 GMT
-In-Reply-To: <bug-13232-13602@http.bugzilla.kernel.org/>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:37709 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757302AbZELQ4B (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 12:56:01 -0400
+Content-Disposition: inline
+In-Reply-To: <20090505145525.92e9551a.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13232
-
-
-
-
-
---- Comment #2 from Jan Kara <jack@suse.cz>  2009-05-12 16:56:04 ---
   Hi,
 
 > (switched to email.  Please respond via emailed reply-to-all, not via the
@@ -135,9 +127,7 @@ from the delete was called).
   Nasty deadlock and I don't see how to fix it now - have to go home for
 today... Tomorrow I'll have a look what we can do about it.
 
-                                    Honza
-
+									Honza
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
