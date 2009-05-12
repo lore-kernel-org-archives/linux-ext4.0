@@ -1,43 +1,42 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 3/3] vfs: Add BUG_ON for delayed and unwritten
-	extentsin submit_bh
-Date: Tue, 12 May 2009 10:22:10 +0530
-Message-ID: <20090512045210.GC6753@skywalker>
-References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1241692770-22547-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1241692770-22547-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090512031709.GJ21518@mit.edu>
+From: Alexander Shishkin <alexander.shishckin@gmail.com>
+Subject: Re: [Q] ext3 mkfs: zeroing journal blocks
+Date: Tue, 12 May 2009 14:55:10 +0300
+Message-ID: <71a0d6ff0905120455x291d7280ybe8d1a562987fd1b@mail.gmail.com>
+References: <71a0d6ff0905110803t1a6b34ccq91d5494f95fe1f34@mail.gmail.com>
+	 <4A086763.9090907@redhat.com>
+	 <20090511182050.GA3209@webber.adilger.int>
+	 <4A087202.4010601@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:42013 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752011AbZELEwV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 00:52:21 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp06.au.ibm.com (8.13.1/8.13.1) with ESMTP id n4C4qExv005430
-	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 14:52:14 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n4C4qMi2192894
-	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 14:52:22 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n4C4qLGV004456
-	for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 14:52:21 +1000
-Content-Disposition: inline
-In-Reply-To: <20090512031709.GJ21518@mit.edu>
+Received: from mail-fx0-f158.google.com ([209.85.220.158]:40375 "EHLO
+	mail-fx0-f158.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755582AbZELLzL (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 07:55:11 -0400
+Received: by fxm2 with SMTP id 2so3271464fxm.37
+        for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 04:55:11 -0700 (PDT)
+In-Reply-To: <4A087202.4010601@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 11, 2009 at 11:17:09PM -0400, Theodore Tso wrote:
-> On Thu, May 07, 2009 at 04:09:30PM +0530, Aneesh Kumar K.V wrote:
-> > We should not do submit_bh for delayed and unwritten extents. So
-> > add a BUG_ON on them.
-> 
-> Hmm, maybe we should add a BUG_ON(buffer_new(bh)) here to?  That flag
-> should never leak out to submit_bh as well, right?
-> 
+On 11 May 2009 21:44, Eric Sandeen <sandeen@redhat.com> wrote:
+> Andreas Dilger wrote:
+>
+>> The reason that the journal is zeroed is because there is some chance
+>> that old (valid at the time) transaction headers and commit blocks might
+>> be in the journal and could accidentally be "recovered" and cause bad
+>> corruption of the filesystem.
+>
+> But I guess the question is, why isn't a normal internal log zeroed?
+>
+> If I'm reading it right only external logs get this treatment, and I
+> think that's what generated the original question from Alexander.
 
-Yes . But since BH_New is used by all the filesystems we need to
-verify them and make sure other filesystems gets it right. IIUC BH_Delay and
-BH_Unwritten are only used by ext4, xfs and btrfs
+My concern was basically if it is safe to skip zeroing for internal journal.
 
--aneesh
+Regards,
+--
+Alex
