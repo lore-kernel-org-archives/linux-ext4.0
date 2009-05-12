@@ -1,72 +1,40 @@
-From: Alexander Shishkin <alexander.shishckin@gmail.com>
-Subject: Re: [Q] ext3 mkfs: zeroing journal blocks
-Date: Tue, 12 May 2009 15:49:30 +0300
-Message-ID: <71a0d6ff0905120549h628146d8p3def31b09b79199a@mail.gmail.com>
-References: <71a0d6ff0905110803t1a6b34ccq91d5494f95fe1f34@mail.gmail.com>
-	 <4A086763.9090907@redhat.com>
-	 <20090511182050.GA3209@webber.adilger.int>
-	 <4A087202.4010601@redhat.com>
-	 <71a0d6ff0905120455x291d7280ybe8d1a562987fd1b@mail.gmail.com>
-	 <20090512121305.GL21518@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 3/3] vfs: Add BUG_ON for delayed and unwritten	extentsin
+ submit_bh
+Date: Tue, 12 May 2009 08:25:30 -0500
+Message-ID: <4A0978CA.4040904@redhat.com>
+References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1241692770-22547-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1241692770-22547-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090512031709.GJ21518@mit.edu> <20090512045210.GC6753@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f222.google.com ([209.85.218.222]:49979 "EHLO
-	mail-bw0-f222.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751382AbZELMtb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 12 May 2009 08:49:31 -0400
-Received: by bwz22 with SMTP id 22so3248278bwz.37
-        for <linux-ext4@vger.kernel.org>; Tue, 12 May 2009 05:49:30 -0700 (PDT)
-In-Reply-To: <20090512121305.GL21518@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:36980 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751073AbZELNZt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 12 May 2009 09:25:49 -0400
+In-Reply-To: <20090512045210.GC6753@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On 12 May 2009 15:13, Theodore Tso <tytso@mit.edu> wrote:
->> My concern was basically if it is safe to skip zeroing for internal =
-journal.
->
-> Strictly speaking, no. =C2=A0Most of the time you'll get lucky. =C2=A0=
-The place
-> where you will get into trouble will be is if there is leftover
-> uninitialized garbage (particularly if you are reformatting an
-> existing ext3/4 filesystem) that looks like a journal log block, with
-> the correct journal transaction number, *and* the system crashes
-> before the journal has been completely written through at least once.
+Aneesh Kumar K.V wrote:
+> On Mon, May 11, 2009 at 11:17:09PM -0400, Theodore Tso wrote:
+>> On Thu, May 07, 2009 at 04:09:30PM +0530, Aneesh Kumar K.V wrote:
+>>> We should not do submit_bh for delayed and unwritten extents. So
+>>> add a BUG_ON on them.
+>> Hmm, maybe we should add a BUG_ON(buffer_new(bh)) here to?  That flag
+>> should never leak out to submit_bh as well, right?
+>>
+> 
+> Yes . But since BH_New is used by all the filesystems we need to
+> verify them and make sure other filesystems gets it right. IIUC BH_Delay and
+> BH_Unwritten are only used by ext4, xfs and btrfs
+> 
+> -aneesh
 
-So, what Andreas explained yesterday also applies to the internal log
-case. I see. Would you say it's possible to prevent this, for instance
-somehow say, by means checksums as Andreas suggested?
+I have confirmed that xfs won't care what we do in submit_bh... so
+BUG_ONs here related to delay/unwritten won't worry xfs.
 
-> What precisely is your concern? =C2=A0Normally the journal isn't that=
- big,
-> and it's a contiguous write --- so it doesn't take that long. =C2=A0A=
-re you
-> worried about the time it takes, or trying to avoid some writes to an
-> SSD, or some other concern? =C2=A0If we know it's an SSD, where reads=
- are
-
-It's an mmc and it (mkfs) runs almost two times faster without zeroing
-the journal. The only thing I'm worried about is the time that it
-takes for mke2fs -j to complete. I've done some caching trickery to
-unix_io.c which I'm going to post here separately, but most of the
-time seems to be taken by the journal.
-
-> fast, and writes are slow, I suppose we could scan the disk looking
-> for potentially dangerous blocks and zero them manually. =C2=A0It's r=
-eally
-> not clear it's worth the effort though.
-
-Hm. This might work, I'll look into it. Thanks for the idea!
-
-Regards,
---
-Alex
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Eric
