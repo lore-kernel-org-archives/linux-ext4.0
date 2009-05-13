@@ -1,136 +1,101 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13232] ext3/4 with synchronous writes gets wedged by Postfix
-Date: Wed, 13 May 2009 18:13:44 GMT
-Message-ID: <200905131813.n4DIDigN000780@demeter.kernel.org>
-References: <bug-13232-13602@http.bugzilla.kernel.org/>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 2/3] ext4: Clear the unwritten buffer_head flag properly
+Date: Wed, 13 May 2009 13:56:56 -0500
+Message-ID: <4A0B17F8.3000402@redhat.com>
+References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1241692770-22547-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090512030856.GI21518@mit.edu> <20090512044627.GA6753@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:55615 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760612AbZEMSNn (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2009 14:13:43 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4DIDiP8000781
-	for <linux-ext4@vger.kernel.org>; Wed, 13 May 2009 18:13:44 GMT
-In-Reply-To: <bug-13232-13602@http.bugzilla.kernel.org/>
+Received: from mx2.redhat.com ([66.187.237.31]:59705 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758571AbZEMS47 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 13 May 2009 14:56:59 -0400
+In-Reply-To: <20090512044627.GA6753@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13232
-
-
-
-
-
---- Comment #7 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>  2009-05-13 18:13:42 ---
-Reply-To: viro@ZenIV.linux.org.uk
-
-On Wed, May 13, 2009 at 05:52:54PM +0100, Al Viro wrote:
-> On Wed, May 13, 2009 at 03:48:02PM +0200, Jan Kara wrote:
-> > >   Here, we have started a transaction in ext3_create() and then wait in
-> > > find_inode_fast() for I_FREEING to be cleared (obviously we have
-> > > reallocated the inode and squeezed the allocation before journal_stop()
-> > > from the delete was called).
-> > >   Nasty deadlock and I don't see how to fix it now - have to go home for
-> > > today... Tomorrow I'll have a look what we can do about it.
-> >   OK, the deadlock has been introduced by ext3 variant of
-> > 261bca86ed4f7f391d1938167624e78da61dcc6b (adding Al to CC). The deadlock
-> > is really tough to avoid - we have to first allocate inode on disk so
-> > that we know the inode number. For this we need transaction open but we
-> > cannot afford waiting for old inode with same INO to be freed when we have
-> > transaction open because of the above deadlock. So we'd have to wait for
-> > inode release only after everything is done and we closed the transaction. But
-> > that would mean reordering a lot of code in ext3/namei.c so that all the
-> > dcache handling is done after all the IO is done.
-> >   Hmm, maybe we could change the delete side of the deadlock but that's
-> > going to be tricky as well :(.
-> >   Al, any idea if we could somehow get away without waiting on
-> > I_FREEING?
+Aneesh Kumar K.V wrote:
+> On Mon, May 11, 2009 at 11:08:56PM -0400, Theodore Tso wrote:
+>> On Thu, May 07, 2009 at 04:09:29PM +0530, Aneesh Kumar K.V wrote:
+>>> ext4_get_blocks_wrap does a block lookup requesting to
+>>> allocate new blocks. A lookup of blocks in prealloc area
+>>> result in setting the unwritten flag in buffer_head. So
+>>> a write to an unwritten extent will cause the buffer_head
+>>> to have unwritten and mapped flag set. Clear hte unwritten
+>>> buffer_head flag before requesting to allocate blocks.
+>>>
+>>> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+>> I've rewritten the commit changelog to this, which I believe more
+>> accurately describes the patch.  Comments, please?
+>>
+>> ext4: Clear the unwritten buffer_head flag after the extent is initialized
+>>
+>> From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+>>
+>> The BH_Unwritten flag indicates that the buffer is allocated on disk
+>> but has not been written; that is, the disk was part of a persistent
+>> preallocation area.  That flag should only be set when a get_blocks()
+>> function is looking up a inode's logical to physical block mapping.
+>>
+>> When ext4_get_blocks_wrap() is called with create=1, the uninitialized
+>> extent is converted into an initialized one, so the BH_Unwritten flag
+>> is no longer appropriate.  Hence, we need to make sure the
+>> BH_Unwritten is not left set, to avoid the ensuing confusion and
+>> hilarty.
+>>
+>> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+>> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+>>
 > 
-> At which point do we actually run into deadlock on delete side?  We could,
-> in principle, skip everything like that in insert_inode_locked(), but
-> I would rather avoid the "two inodes in icache at the same time, with the
-> same inumber" situations completely.  We might get away with that, since
-> everything else *will* wait, so we can afford a bunch of inodes past the
-> point in foo_delete_inode() that has cleared it in bitmap + new locked
-> one, but if it's at all possible to avoid, I'd rather avoid it.
+> I think it is good. But one thing missing in the commit message is,
+> what happens if we do a write to prealloc space. Since a
+> get_block(create = 1) is now split into __get_block(create = 0 )  and
+> __get_block(create = 1). That would mean if we pass a buffer head with
+> BH_Unwritten cleared we will have
+> 
+> 
+> 1) buffer_head as BH_Unwritten cleared.
+> 
+> 2) __get_block(create = 0 ) -> Since it is prealloc space we will have
+> BH_Unwritten set .
 
-OK, that's probably the easiest way to do that, as much as I don't like it...
-Since iget() et.al. will not accept I_FREEING (will wait to go away
-and restart), and since we'd better have serialization between new/free
-on fs data structures anyway, we can afford simply skipping I_FREEING
-et.al. in insert_inode_locked().
+Why do we need to set BH_Unwritten on a !create call at all?
 
-We do that from new_inode, so it won't race with free_inode in any interesting
-ways and it won't race with iget (of any origin; nfsd or in case of fs
-corruption a lookup) since both still will wait for I_LOCK.
+Or maybe another way of asking is, are there any !create callers of
+get_block who -want- BH_Unwritten set?
 
-Tentative patch follow; folks, I would very much like review on that one,
-since I'm far too low on caffeine and the area is nasty.
+Which is to say, should we just not be setting BH_Unwritten in get_block
+in the !create case, ever?
 
-diff --git a/fs/inode.c b/fs/inode.c
-index 9d26490..4406952 100644
---- a/fs/inode.c
-+++ b/fs/inode.c
-@@ -1053,13 +1053,22 @@ int insert_inode_locked(struct inode *inode)
-     struct super_block *sb = inode->i_sb;
-     ino_t ino = inode->i_ino;
-     struct hlist_head *head = inode_hashtable + hash(sb, ino);
--    struct inode *old;
+The comment:
 
-     inode->i_state |= I_LOCK|I_NEW;
-     while (1) {
-+        struct hlist_node *node;
-+        struct inode *old = NULL;
-         spin_lock(&inode_lock);
--        old = find_inode_fast(sb, head, ino);
--        if (likely(!old)) {
-+        hlist_for_each_entry(old, node, head, i_hash) {
-+            if (old->i_ino != ino)
-+                continue;
-+            if (old->i_sb != sb)
-+                continue;
-+            if (old->i_state & (I_FREEING|I_CLEAR|I_WILL_FREE))
-+                continue;
-+            break;
-+        }
-+        if (likely(!node)) {
-             hlist_add_head(&inode->i_hash, head);
-             spin_unlock(&inode_lock);
-             return 0;
-@@ -1081,14 +1090,24 @@ int insert_inode_locked4(struct inode *inode, unsigned
-long hashval,
- {
-     struct super_block *sb = inode->i_sb;
-     struct hlist_head *head = inode_hashtable + hash(sb, hashval);
--    struct inode *old;
+ 	/*
++	 * The above get_blocks can cause the buffer to be
++	 * marked unwritten. So clear the same.
++	 */
++	clear_buffer_unwritten(bh);
 
-     inode->i_state |= I_LOCK|I_NEW;
+is imho not helpful; to me it says "we -just- set this, so clear it!"
+It leaves me scratching my head.
 
-     while (1) {
-+        struct hlist_node *node;
-+        struct inode *old = NULL;
-+
-         spin_lock(&inode_lock);
--        old = find_inode(sb, head, test, data);
--        if (likely(!old)) {
-+        hlist_for_each_entry(old, node, head, i_hash) {
-+            if (old->i_sb != sb)
-+                continue;
-+            if (!test(old, data))
-+                continue;
-+            if (old->i_state & (I_FREEING|I_CLEAR|I_WILL_FREE))
-+                continue;
-+            break;
-+        }
-+        if (likely(!node)) {
-             hlist_add_head(&inode->i_hash, head);
-             spin_unlock(&inode_lock);
-             return 0;
+> 3) __get_block(create = 1) -> get the blocks out of prealloc space.
+> and retun with BH_Mapped set. 
+> 
+> That would imply we have BH_Unwritten and BH_Mapped set in the above
+> case which is wrong. So we need a BH_Unwritten clear between (2) and
+> (3). The patch does the same. May be we need to capture it in commit
+> message.
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Better in comments, I think.  :)
+
+-Eric
+
+> -aneesh
+> 
+> 
+> 
+
