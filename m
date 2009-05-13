@@ -1,210 +1,78 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 5/6] ext4: Add documentation to the ext4_*get_block* functions
-Date: Tue, 12 May 2009 18:48:51 -0400
-Message-ID: <1242168532-1063-6-git-send-email-tytso@mit.edu>
-References: <1242168532-1063-1-git-send-email-tytso@mit.edu>
- <1242168532-1063-2-git-send-email-tytso@mit.edu>
- <1242168532-1063-3-git-send-email-tytso@mit.edu>
- <1242168532-1063-4-git-send-email-tytso@mit.edu>
- <1242168532-1063-5-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: ranjith kannikara <ranjithkannikara@gmail.com>
+Subject: Re: Help to edit inode content
+Date: Wed, 13 May 2009 09:41:22 +0530
+Message-ID: <20aa8c370905122111x6bc80d4ave0c857fafd8d9e0a@mail.gmail.com>
+References: <20aa8c370905120847j4b19175akbdcafc0db2004567@mail.gmail.com>
+	 <3e8340490905120856w62c6c5cexa247937bf7e84002@mail.gmail.com>
+	 <20aa8c370905120902o71ab9adflb8619e2a9ae343d0@mail.gmail.com>
+	 <20090512200310.GP3209@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Bryan Donlan <bdonlan@gmail.com>, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:44297 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752456AbZELWs4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 12 May 2009 18:48:56 -0400
-In-Reply-To: <1242168532-1063-5-git-send-email-tytso@mit.edu>
+Received: from yw-out-2324.google.com ([74.125.46.30]:26263 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752644AbZEMELW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2009 00:11:22 -0400
+In-Reply-To: <20090512200310.GP3209@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This adds more docmentation to various internal functions in
-fs/ext4/inode.c, most notably ext4_ind_get_blocks(),
-ext4_da_get_block_write(), ext4_da_get_block_prep(),
-ext4_normal_get_block_write().
+On Wed, May 13, 2009 at 1:33 AM, Andreas Dilger <adilger@sun.com> wrote=
+:
+> On May 12, 2009 =A021:32 +0530, ranjith kannikara wrote:
+>> On Tue, May 12, 2009 at 9:26 PM, Bryan Donlan <bdonlan@gmail.com> wr=
+ote:
+>> > On Tue, May 12, 2009 at 11:47 AM, ranjith kannikara
+>> > <ranjithkannikara@gmail.com> wrote:
+>> >> I am a computer science engineering student. We have started a pr=
+oject
+>> >> to make an application to recover deleted files from an ext3
+>> >> filesystem. For that we have a doubt . Can we edit the inode cont=
+ent?
+>> >> ie the recovery will be robust if we could edit the inode content=
+s and
+>> >> give the pointer address manually or through a code. The inode is
+>> >> being created in the kernel mode and is it possible to edit those
+>> >> contents if the code is allowed to have the kernel mode permissio=
+ns..?
+>>
+>> But we would like to know whether it is possible to edit the inode
+>> because it will make the recovery easy and robust. ie he know the
+>> details of the inode of the file which had been deleted is it possib=
+le
+>> to edit the content of that inode with the pointers of the deleted
+>> file.?
+>
+> Are you asking whether it is possible to modify the on-disk structure
+> of the ext3 inode? Generally that is NOT allowed because it will of
+> course break all existing filesystems if not done with extreme care.
+>
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+>
+>
+Hi,
+Actually I was asking the same. whether it is possible to edit the
+inode content of a disk or the image of a disk. Did you mean that it
+is not possible at all. Is there any method to edit the inode content
+and use the edited inode for a file, If we can ensure high care.
+because such a method will be the most robust one in the recovery of
+deleted file.
 
-In addition, the static function ext4_normal_get_block_write() has
-been renamed noalloc_get_block_write(), since it is used in many
-places far beyond ext4_normal_writepage().
+Regards
+ranju.
 
-Plenty of warnings have been added to the noalloc_get_block_write()
-function, since the way it is used is amazingly fragile.
-
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
----
- fs/ext4/inode.c |   73 ++++++++++++++++++++++++++++++++++++-------------------
- 1 files changed, 48 insertions(+), 25 deletions(-)
-
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 48c8f81..9431d50 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -892,6 +892,10 @@ err_out:
- }
- 
- /*
-+ * The ext4_ind_get_blocks() function handles non-extents inodes
-+ * (i.e., using the traditional indirect/double-indirect i_blocks
-+ * scheme) for ext4_get_blocks().
-+ *
-  * Allocation strategy is simple: if we have to allocate something, we will
-  * have to go the whole way to leaf. So let's do it before attaching anything
-  * to tree, set linkage between the newborn blocks, write them if sync is
-@@ -909,10 +913,11 @@ err_out:
-  * return = 0, if plain lookup failed.
-  * return < 0, error case.
-  *
-- *
-- * Need to be called with
-- * down_read(&EXT4_I(inode)->i_data_sem) if not allocating file system block
-- * (ie, create is zero). Otherwise down_write(&EXT4_I(inode)->i_data_sem)
-+ * The ext4_ind_get_blocks() function should be called with
-+ * down_write(&EXT4_I(inode)->i_data_sem) if allocating filesystem
-+ * blocks (i.e., flags has EXT4_GET_BLOCKS_CREATE set) or
-+ * down_read(&EXT4_I(inode)->i_data_sem) if not allocating file system
-+ * blocks.
-  */
- static int ext4_ind_get_blocks(handle_t *handle, struct inode *inode,
- 				  ext4_lblk_t iblock, unsigned int maxblocks,
-@@ -1994,6 +1999,12 @@ static void ext4_print_free_blocks(struct inode *inode)
- 	return;
- }
- 
-+/*
-+ * This function is used by mpage_da_map_blocks().  We separate it out
-+ * as a separate function just to make life easier, and because
-+ * mpage_da_map_blocks() used to be a generic function that took a
-+ * get_block_t.
-+ */
- static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
- 				   struct buffer_head *bh_result)
- {
-@@ -2025,8 +2036,8 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
- 
- 	/*
- 	 * Update on-disk size along with block allocation we don't
--	 * use 'extend_disksize' as size may change within already
--	 * allocated block -bzzz
-+	 * use EXT4_GET_BLOCKS_EXTEND_DISKSIZE as size may change
-+	 * within already allocated block -bzzz
- 	 */
- 	disksize = ((loff_t) iblock + ret) << inode->i_blkbits;
- 	if (disksize > i_size_read(inode))
-@@ -2318,8 +2329,9 @@ static int __mpage_da_writepage(struct page *page,
- }
- 
- /*
-- * this is a special callback for ->write_begin() only
-- * it's intention is to return mapped block or reserve space
-+ * This is a special get_blocks_t callback which is used by
-+ * ext4_da_write_begin().  It will either return mapped block or
-+ * reserve space for a single block.
-  *
-  * For delayed buffer_head we have BH_Mapped, BH_New, BH_Delay set.
-  * We also have b_blocknr = -1 and b_bdev initialized properly
-@@ -2327,7 +2339,6 @@ static int __mpage_da_writepage(struct page *page,
-  * For unwritten buffer_head we have BH_Mapped, BH_New, BH_Unwritten set.
-  * We also have b_blocknr = physicalblock mapping unwritten extent and b_bdev
-  * initialized properly.
-- *
-  */
- static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 				  struct buffer_head *bh_result, int create)
-@@ -2380,7 +2391,23 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 	return ret;
- }
- 
--static int ext4_normal_get_block_write(struct inode *inode, sector_t iblock,
-+/*
-+ * This function is used as a standard get_block_t calback function
-+ * when there is no desire to allocate any blocks.  It is used as a
-+ * callback function for block_prepare_write(), nobh_writepage(), and
-+ * block_write_full_page().  These functions should only try to map a
-+ * single block at a time.
-+ *
-+ * Since this function doesn't do block allocations even if the caller
-+ * requests it by passing in create=1, it is critically important that
-+ * any caller checks to make sure that any buffer heads are returned
-+ * by this function are either all already mapped or marked for
-+ * delayed allocation before calling nobh_writepage() or
-+ * block_write_full_page().  Otherwise, b_blocknr could be left
-+ * unitialized, and the page write functions will be taken by
-+ * surprise.
-+ */
-+static int noalloc_get_block_write(struct inode *inode, sector_t iblock,
- 				   struct buffer_head *bh_result, int create)
- {
- 	int ret = 0;
-@@ -2453,7 +2480,7 @@ static int ext4_da_writepage(struct page *page,
- 		 * do block allocation here.
- 		 */
- 		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
--						ext4_normal_get_block_write);
-+					  noalloc_get_block_write);
- 		if (!ret) {
- 			page_bufs = page_buffers(page);
- 			/* check whether all are mapped and non delay */
-@@ -2478,11 +2505,10 @@ static int ext4_da_writepage(struct page *page,
- 	}
- 
- 	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
--		ret = nobh_writepage(page, ext4_normal_get_block_write, wbc);
-+		ret = nobh_writepage(page, noalloc_get_block_write, wbc);
- 	else
--		ret = block_write_full_page(page,
--						ext4_normal_get_block_write,
--						wbc);
-+		ret = block_write_full_page(page, noalloc_get_block_write,
-+					    wbc);
- 
- 	return ret;
- }
-@@ -2794,7 +2820,7 @@ retry:
- 	*pagep = page;
- 
- 	ret = block_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
--							ext4_da_get_block_prep);
-+				ext4_da_get_block_prep);
- 	if (ret < 0) {
- 		unlock_page(page);
- 		ext4_journal_stop(handle);
-@@ -3102,12 +3128,10 @@ static int __ext4_normal_writepage(struct page *page,
- 	struct inode *inode = page->mapping->host;
- 
- 	if (test_opt(inode->i_sb, NOBH))
--		return nobh_writepage(page,
--					ext4_normal_get_block_write, wbc);
-+		return nobh_writepage(page, noalloc_get_block_write, wbc);
- 	else
--		return block_write_full_page(page,
--						ext4_normal_get_block_write,
--						wbc);
-+		return block_write_full_page(page, noalloc_get_block_write,
-+					     wbc);
- }
- 
- static int ext4_normal_writepage(struct page *page,
-@@ -3159,7 +3183,7 @@ static int __ext4_journalled_writepage(struct page *page,
- 	int err;
- 
- 	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
--					ext4_normal_get_block_write);
-+				  noalloc_get_block_write);
- 	if (ret != 0)
- 		goto out_unlock;
- 
-@@ -3244,9 +3268,8 @@ static int ext4_journalled_writepage(struct page *page,
- 		 * really know unless we go poke around in the buffer_heads.
- 		 * But block_write_full_page will do the right thing.
- 		 */
--		return block_write_full_page(page,
--						ext4_normal_get_block_write,
--						wbc);
-+		return block_write_full_page(page, noalloc_get_block_write,
-+					     wbc);
- 	}
- no_write:
- 	redirty_page_for_writepage(wbc, page);
--- 
-1.6.3.rc4.1.g3e14.dirty
-
+--=20
+http://www.ranjithkannikara.blogspot.com/
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
