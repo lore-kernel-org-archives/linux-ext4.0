@@ -1,31 +1,22 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13232] ext3/4 with synchronous writes gets wedged by Postfix
-Date: Wed, 13 May 2009 16:52:57 GMT
-Message-ID: <200905131652.n4DGqvmJ026506@demeter.kernel.org>
-References: <bug-13232-13602@http.bugzilla.kernel.org/>
+From: Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [Bug 13232] ext3/4 with synchronous writes gets wedged by
+	Postfix
+Date: Wed, 13 May 2009 17:52:54 +0100
+Message-ID: <20090513165254.GR8633@ZenIV.linux.org.uk>
+References: <bug-13232-13602@http.bugzilla.kernel.org/> <200905121656.n4CGu5Fl003852@demeter.kernel.org> <20090513134802.GA7212@atrey.karlin.mff.cuni.cz>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: bugzilla-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:52787 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756922AbZEMQw4 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2009 12:52:56 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4DGqvfs026507
-	for <linux-ext4@vger.kernel.org>; Wed, 13 May 2009 16:52:57 GMT
-In-Reply-To: <bug-13232-13602@http.bugzilla.kernel.org/>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:59365 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756922AbZEMQwz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2009 12:52:55 -0400
+Content-Disposition: inline
+In-Reply-To: <20090513134802.GA7212@atrey.karlin.mff.cuni.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
-http://bugzilla.kernel.org/show_bug.cgi?id=13232
-
-
-
-
-
---- Comment #6 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>  2009-05-13 16:52:56 ---
-Reply-To: viro@ZenIV.linux.org.uk
 
 On Wed, May 13, 2009 at 03:48:02PM +0200, Jan Kara wrote:
 > >   Here, we have started a transaction in ext3_create() and then wait in
@@ -55,8 +46,3 @@ same inumber" situations completely.  We might get away with that, since
 everything else *will* wait, so we can afford a bunch of inodes past the
 point in foo_delete_inode() that has cleared it in bitmap + new locked
 one, but if it's at all possible to avoid, I'd rather avoid it.
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
