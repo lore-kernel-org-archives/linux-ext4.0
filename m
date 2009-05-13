@@ -1,19 +1,31 @@
-From: Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [Bug 13232] ext3/4 with synchronous writes gets wedged by
-	Postfix
-Date: Wed, 13 May 2009 19:13:40 +0100
-Message-ID: <20090513181340.GA8128@ZenIV.linux.org.uk>
-References: <bug-13232-13602@http.bugzilla.kernel.org/> <200905121656.n4CGu5Fl003852@demeter.kernel.org> <20090513134802.GA7212@atrey.karlin.mff.cuni.cz> <20090513165254.GR8633@ZenIV.linux.org.uk>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13232] ext3/4 with synchronous writes gets wedged by Postfix
+Date: Wed, 13 May 2009 18:13:44 GMT
+Message-ID: <200905131813.n4DIDigN000780@demeter.kernel.org>
+References: <bug-13232-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bugzilla-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <20090513165254.GR8633@ZenIV.linux.org.uk>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:55615 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1760612AbZEMSNn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2009 14:13:43 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4DIDiP8000781
+	for <linux-ext4@vger.kernel.org>; Wed, 13 May 2009 18:13:44 GMT
+In-Reply-To: <bug-13232-13602@http.bugzilla.kernel.org/>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
+
+http://bugzilla.kernel.org/show_bug.cgi?id=13232
+
+
+
+
+
+--- Comment #7 from Anonymous Emailer <anonymous@kernel-bugs.osdl.org>  2009-05-13 18:13:42 ---
+Reply-To: viro@ZenIV.linux.org.uk
 
 On Wed, May 13, 2009 at 05:52:54PM +0100, Al Viro wrote:
 > On Wed, May 13, 2009 at 03:48:02PM +0200, Jan Kara wrote:
@@ -63,56 +75,62 @@ index 9d26490..4406952 100644
 --- a/fs/inode.c
 +++ b/fs/inode.c
 @@ -1053,13 +1053,22 @@ int insert_inode_locked(struct inode *inode)
- 	struct super_block *sb = inode->i_sb;
- 	ino_t ino = inode->i_ino;
- 	struct hlist_head *head = inode_hashtable + hash(sb, ino);
--	struct inode *old;
- 
- 	inode->i_state |= I_LOCK|I_NEW;
- 	while (1) {
-+		struct hlist_node *node;
-+		struct inode *old = NULL;
- 		spin_lock(&inode_lock);
--		old = find_inode_fast(sb, head, ino);
--		if (likely(!old)) {
-+		hlist_for_each_entry(old, node, head, i_hash) {
-+			if (old->i_ino != ino)
-+				continue;
-+			if (old->i_sb != sb)
-+				continue;
-+			if (old->i_state & (I_FREEING|I_CLEAR|I_WILL_FREE))
-+				continue;
-+			break;
-+		}
-+		if (likely(!node)) {
- 			hlist_add_head(&inode->i_hash, head);
- 			spin_unlock(&inode_lock);
- 			return 0;
-@@ -1081,14 +1090,24 @@ int insert_inode_locked4(struct inode *inode, unsigned long hashval,
+     struct super_block *sb = inode->i_sb;
+     ino_t ino = inode->i_ino;
+     struct hlist_head *head = inode_hashtable + hash(sb, ino);
+-    struct inode *old;
+
+     inode->i_state |= I_LOCK|I_NEW;
+     while (1) {
++        struct hlist_node *node;
++        struct inode *old = NULL;
+         spin_lock(&inode_lock);
+-        old = find_inode_fast(sb, head, ino);
+-        if (likely(!old)) {
++        hlist_for_each_entry(old, node, head, i_hash) {
++            if (old->i_ino != ino)
++                continue;
++            if (old->i_sb != sb)
++                continue;
++            if (old->i_state & (I_FREEING|I_CLEAR|I_WILL_FREE))
++                continue;
++            break;
++        }
++        if (likely(!node)) {
+             hlist_add_head(&inode->i_hash, head);
+             spin_unlock(&inode_lock);
+             return 0;
+@@ -1081,14 +1090,24 @@ int insert_inode_locked4(struct inode *inode, unsigned
+long hashval,
  {
- 	struct super_block *sb = inode->i_sb;
- 	struct hlist_head *head = inode_hashtable + hash(sb, hashval);
--	struct inode *old;
- 
- 	inode->i_state |= I_LOCK|I_NEW;
- 
- 	while (1) {
-+		struct hlist_node *node;
-+		struct inode *old = NULL;
+     struct super_block *sb = inode->i_sb;
+     struct hlist_head *head = inode_hashtable + hash(sb, hashval);
+-    struct inode *old;
+
+     inode->i_state |= I_LOCK|I_NEW;
+
+     while (1) {
++        struct hlist_node *node;
++        struct inode *old = NULL;
 +
- 		spin_lock(&inode_lock);
--		old = find_inode(sb, head, test, data);
--		if (likely(!old)) {
-+		hlist_for_each_entry(old, node, head, i_hash) {
-+			if (old->i_sb != sb)
-+				continue;
-+			if (!test(old, data))
-+				continue;
-+			if (old->i_state & (I_FREEING|I_CLEAR|I_WILL_FREE))
-+				continue;
-+			break;
-+		}
-+		if (likely(!node)) {
- 			hlist_add_head(&inode->i_hash, head);
- 			spin_unlock(&inode_lock);
- 			return 0;
+         spin_lock(&inode_lock);
+-        old = find_inode(sb, head, test, data);
+-        if (likely(!old)) {
++        hlist_for_each_entry(old, node, head, i_hash) {
++            if (old->i_sb != sb)
++                continue;
++            if (!test(old, data))
++                continue;
++            if (old->i_state & (I_FREEING|I_CLEAR|I_WILL_FREE))
++                continue;
++            break;
++        }
++        if (likely(!node)) {
+             hlist_add_head(&inode->i_hash, head);
+             spin_unlock(&inode_lock);
+             return 0;
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
