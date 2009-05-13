@@ -1,22 +1,31 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [Bug 13232] ext3/4 with synchronous writes gets wedged by Postfix
-Date: Wed, 13 May 2009 15:48:02 +0200
-Message-ID: <20090513134802.GA7212@atrey.karlin.mff.cuni.cz>
-References: <bug-13232-13602@http.bugzilla.kernel.org/> <200905121656.n4CGu5Fl003852@demeter.kernel.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13232] ext3/4 with synchronous writes gets wedged by Postfix
+Date: Wed, 13 May 2009 13:48:05 GMT
+Message-ID: <200905131348.n4DDm5kt010914@demeter.kernel.org>
+References: <bug-13232-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>
-To: bugzilla-daemon@bugzilla.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: 8BIT
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:52680 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757309AbZEMNsD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2009 09:48:03 -0400
-Content-Disposition: inline
-In-Reply-To: <200905121656.n4CGu5Fl003852@demeter.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:56018 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756666AbZEMNsE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 13 May 2009 09:48:04 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4DDm5LC010915
+	for <linux-ext4@vger.kernel.org>; Wed, 13 May 2009 13:48:05 GMT
+In-Reply-To: <bug-13232-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=13232
+
+
+
+
+
+--- Comment #3 from Jan Kara <jack@suse.cz>  2009-05-13 13:48:04 ---
 > http://bugzilla.kernel.org/show_bug.cgi?id=13232
 > 
 > --- Comment #2 from Jan Kara <jack@suse.cz>  2009-05-12 16:56:04 ---
@@ -142,7 +151,9 @@ going to be tricky as well :(.
   Al, any idea if we could somehow get away without waiting on
 I_FREEING?
 
-									Honza
+                                    Honza
+
 -- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
