@@ -1,41 +1,99 @@
-From: Eric Sandeen <sandeen@redhat.com>
+From: Theodore Tso <tytso@mit.edu>
 Subject: Re: More ext4 acl/xattr corruption - 4th occurence now
-Date: Thu, 14 May 2009 16:08:22 -0500
-Message-ID: <4A0C8846.1050202@redhat.com>
-References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu> <20090514110659.GA5146@kulgan> <20090514132506.GD5146@kulgan> <20090514140732.GI11352@mit.edu> <20090514143014.GH5146@kulgan> <4A0C3C47.9080300@redhat.com> <20090514210709.GM5146@kulgan>
+Date: Thu, 14 May 2009 17:23:25 -0400
+Message-ID: <20090514212325.GG21316@mit.edu>
+References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu> <20090514110659.GA5146@kulgan> <20090514132506.GD5146@kulgan> <20090514140732.GI11352@mit.edu> <20090514143014.GH5146@kulgan> <20090514161254.GJ11352@mit.edu> <20090514210244.GL5146@kulgan>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>, Alex Tomas <bzzz@sun.com>,
+	linux-ext4@vger.kernel.org
 To: Kevin Shanahan <kmshanah@ucwb.org.au>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:38166 "EHLO mx2.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:39386 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751244AbZENVIc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 May 2009 17:08:32 -0400
-In-Reply-To: <20090514210709.GM5146@kulgan>
+	id S1752863AbZENVXc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 May 2009 17:23:32 -0400
+Content-Disposition: inline
+In-Reply-To: <20090514210244.GL5146@kulgan>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Kevin Shanahan wrote:
-> On Thu, May 14, 2009 at 10:44:07AM -0500, Eric Sandeen wrote:
+On Fri, May 15, 2009 at 06:32:45AM +0930, Kevin Shanahan wrote:
+> Okay, so now I've booted into 2.6.29.3 + check_block_validity patch +
+> short circuit i_cached_extent patch, mounted the fs without
+> nodelalloc. I was able to run the full exchange backup without
+> triggering the check_block_validity error.
 
-...
+Great!
 
->>> Extended attributes stored in inode body: 
->>>    = "01 00 00 00 01 00 06 00 02 00 07 00 12 27 00 00 04 00 05 00 08 00 05 00 57 27 00 00 08 00 07 00 98 27 00 00 10 00 06 00 20 00 00 00 " (44)
->>>   DOSATTRIB = "0x20" (4)
->> Apologies if I've asked before: DOSATTRIB is a samba xattr; how does
->> samba come into play in your setup, again?
-> 
-> This server is a Samba server. This file in particular is being
-> written to via Samba by a Windows 2000 server over the network.
-> 
->> I'm wondering what that other odd xattr value is too... (the one that
->> didn't even print a name)
-> 
-> I would assume that's the file ACL:
+So here's the final fix (it replaces the short circuit i_cached_extent
+patch) which I plan to push to Linus.  It should be much less of a
+performance hit than simply short-circuiting i_cached_extent...
 
-Ah, sure.  Ok thanks.
+Thanks so much for helping to find track this down!!!  If ever someone
+deserved an "Ext4 Baker Street Irregulars" T-shirt, it would be
+you....
 
--Eric
+       	       	   	      	   	      - Ted
+
+commit 039ed7a483fdcb2dbbc29f00cd0d74c101ab14c5
+Author: Theodore Ts'o <tytso@mit.edu>
+Date:   Thu May 14 17:09:37 2009 -0400
+
+    ext4: Fix race in ext4_inode_info.i_cached_extent
+    
+    If one CPU is reading from a file while another CPU is writing to the
+    same file different locations, there is nothing protecting the
+    i_cached_extent structure from being used and updated at the same
+    time.  This could potentially cause the wrong location on disk to be
+    read or written to, including potentially causing the corruption of
+    the block group descriptors and/or inode table.
+    
+    Many thanks to Ken Shannah for helping to track down this problem.
+    
+    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 172656c..e3a55eb 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1841,11 +1841,13 @@ ext4_ext_put_in_cache(struct inode *inode, ext4_lblk_t block,
+ {
+ 	struct ext4_ext_cache *cex;
+ 	BUG_ON(len == 0);
++	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	cex = &EXT4_I(inode)->i_cached_extent;
+ 	cex->ec_type = type;
+ 	cex->ec_block = block;
+ 	cex->ec_len = len;
+ 	cex->ec_start = start;
++	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
+ }
+ 
+ /*
+@@ -1902,12 +1904,17 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
+ 			struct ext4_extent *ex)
+ {
+ 	struct ext4_ext_cache *cex;
++	int ret = EXT4_EXT_CACHE_NO;
+ 
++	/* 
++	 * We borrow i_block_reservation_lock to protect i_cached_extent
++	 */
++	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
+ 	cex = &EXT4_I(inode)->i_cached_extent;
+ 
+ 	/* has cache valid data? */
+ 	if (cex->ec_type == EXT4_EXT_CACHE_NO)
+-		return EXT4_EXT_CACHE_NO;
++		goto errout;
+ 
+ 	BUG_ON(cex->ec_type != EXT4_EXT_CACHE_GAP &&
+ 			cex->ec_type != EXT4_EXT_CACHE_EXTENT);
+@@ -1918,11 +1925,11 @@ ext4_ext_in_cache(struct inode *inode, ext4_lblk_t block,
+ 		ext_debug("%u cached by %u:%u:%llu\n",
+ 				block,
+ 				cex->ec_block, cex->ec_len, cex->ec_start);
+-		return cex->ec_type;
++		ret = cex->ec_type;
+ 	}
