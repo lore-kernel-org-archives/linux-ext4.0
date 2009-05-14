@@ -1,96 +1,139 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: More ext4 acl/xattr corruption - 4th occurence now
-Date: Thu, 14 May 2009 12:12:54 -0400
-Message-ID: <20090514161254.GJ11352@mit.edu>
-References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu> <20090514110659.GA5146@kulgan> <20090514132506.GD5146@kulgan> <20090514140732.GI11352@mit.edu> <20090514143014.GH5146@kulgan>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Kevin Shanahan <kmshanah@ucwb.org.au>,
-	Andreas Dilger <adilger@sun.com>, Alex Tomas <bzzz@sun.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH 2/2] patch use-separate-ext4_get_blocks_update_reserve_space_flag
+Date: Thu, 14 May 2009 13:59:01 -0400
+Message-ID: <1242323941-20541-2-git-send-email-tytso@mit.edu>
+References: <1242323941-20541-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57013 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:43066 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751592AbZENQNE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 May 2009 12:13:04 -0400
-Content-Disposition: inline
-In-Reply-To: <20090514143014.GH5146@kulgan>
+	id S1752062AbZENR7F (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 May 2009 13:59:05 -0400
+In-Reply-To: <1242323941-20541-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 15, 2009 at 12:00:15AM +0930, Kevin Shanahan wrote:
-> > debugfs: stat <759>
-> 
-> hermes:~# debugfs /dev/dm-0
-> debugfs 1.41.3 (12-Oct-2008)
-> debugfs:  stat <759>
-> 
-> Inode: 759   Type: regular    Mode:  0660   Flags: 0x80000
-> Generation: 3979120103    Version: 0x00000000:00000001
-> User:     0   Group: 10140   Size: 14615630848
-> File ACL: 0    Directory ACL: 0
-> Links: 1   Blockcount: 28546168
-> Fragment:  Address: 0    Number: 0    Size: 0
->  ctime: 0x4a0acdb5:2a88cbec -- Wed May 13 23:10:05 2009
->  atime: 0x4a0ac45b:10899618 -- Wed May 13 22:30:11 2009
->  mtime: 0x4a0acdb5:2a88cbec -- Wed May 13 23:10:05 2009
-> crtime: 0x4a0ac45b:10899618 -- Wed May 13 22:30:11 2009
+---
+ fs/ext4/ext4.h  |   15 +++++++++----
+ fs/ext4/inode.c |   56 ++++++++++++++++++++++++++++++------------------------
+ 2 files changed, 41 insertions(+), 30 deletions(-)
 
-> Inode   Pathname
-> 759     /local/dumps/exchange/exchange-2000-UCWB-KVM-18.bkfB-KVM-18.bkf
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index c2b3461..fca73f2 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -318,16 +318,21 @@ struct ext4_new_group_data {
+  */
+ 	/* Allocate any needed blocks and/or convert an unitialized
+ 	   extent to be an initialized ext4 */
+-#define EXT4_GET_BLOCKS_CREATE			1
++#define EXT4_GET_BLOCKS_CREATE			0x0001
+ 	/* Request the creation of an unitialized extent */
+-#define EXT4_GET_BLOCKS_UNINIT_EXT		2
++#define EXT4_GET_BLOCKS_UNINIT_EXT		0x0002
+ #define EXT4_GET_BLOCKS_CREATE_UNINIT_EXT	(EXT4_GET_BLOCKS_UNINIT_EXT|\
+ 						 EXT4_GET_BLOCKS_CREATE)
+ 	/* Update the ext4_inode_info i_disksize field */
+-#define EXT4_GET_BLOCKS_EXTEND_DISKSIZE		4
++#define EXT4_GET_BLOCKS_EXTEND_DISKSIZE		0x0004
+ 	/* Caller is from the delayed allocation writeout path,
+-	   so the filesystem blocks have already been accounted for */
+-#define EXT4_GET_BLOCKS_DELALLOC_RESERVE	8
++	   so set the magic i_delalloc_reserve_flag after taking the 
++	   inode allocation semaphore for */
++#define EXT4_GET_BLOCKS_DELALLOC_RESERVE	0x0008
++	/* Call ext4_da_update_reserve_space() after successfully 
++	   allocating the blocks */
++#define EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE	0x0010
++
+ 
+ /*
+  * ioctl commands
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f7e5c48..e89beaa 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1270,16 +1270,15 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
+ 		}
+ 	}
+ 
+-	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE) {
++	if (flags & EXT4_GET_BLOCKS_DELALLOC_RESERVE)
+ 		EXT4_I(inode)->i_delalloc_reserved_flag = 0;
+-		/*
+-		 * Update reserved blocks/metadata blocks
+-		 * after successful block allocation
+-		 * which were deferred till now
+-		 */
+-		if ((retval > 0) && buffer_delay(bh))
+-			ext4_da_update_reserve_space(inode, retval);
+-	}
++
++	/*
++	 * Update reserved blocks/metadata blocks after successful
++	 * block allocation which had been deferred till now.
++	 */
++	if ((retval > 0) && (flags & EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE))
++		ext4_da_update_reserve_space(inode, retval);
+ 
+ 	up_write((&EXT4_I(inode)->i_data_sem));
+ 	if (retval > 0 && buffer_mapped(bh)) {
+@@ -2057,7 +2056,7 @@ static void ext4_print_free_blocks(struct inode *inode)
+  */
+ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
+ {
+-	int err, blks;
++	int err, blks, get_blocks_flags;
+ 	struct buffer_head new;
+ 	sector_t next = mpd->b_blocknr;
+ 	unsigned max_blocks = mpd->b_size >> mpd->inode->i_blkbits;
+@@ -2082,23 +2081,30 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	BUG_ON(!handle);
+ 
+ 	/*
+-	 * We need to make sure the BH_Delay flag is passed down to
+-	 * ext4_da_get_block_write(), since it calls ext4_get_blocks()
+-	 * with the EXT4_GET_BLOCKS_DELALLOC_RESERVE flag.  This flag
+-	 * causes ext4_get_blocks() to call
+-	 * ext4_da_update_reserve_space() if the passed buffer head
+-	 * has the BH_Delay flag set.  In the future, once we clean up
+-	 * the interfaces to ext4_get_blocks(), we should pass in a
+-	 * separate flag which requests that the delayed allocation
+-	 * statistics should be updated, instead of depending on the
+-	 * state information getting passed down via the map_bh's
+-	 * state bitmasks plus the magic
+-	 * EXT4_GET_BLOCKS_DELALLOC_RESERVE flag.
++	 * Call ext4_get_blocks() to allocate any delayed allocation
++	 * blocks, or to convert an uninitialized extent to be
++	 * initialized (in the case where we have written into
++	 * one or more preallocated blocks).
++	 *
++	 * We pass in the magic EXT4_GET_BLOCKS_DELALLOC_RESERVE to
++	 * indicate that we are on the delayed allocation path.  This
++	 * affects functions in many different parts of the allocation
++	 * call path.  This flag exists primarily because we don't
++	 * want to change *many* call functions, so ext4_get_blocks()
++	 * will set the magic i_delalloc_reserved_flag once the
++	 * inode's allocation semaphore is taken.
++	 *
++	 * If the blocks in questions were delalloc blocks, set
++	 * EXT4_GET_BLOCKS_DELALLOC_RESERVE so the delalloc accounting
++	 * variables are updated after the blocks have been allocated.
+ 	 */
+-	new.b_state = mpd->b_state & (1 << BH_Delay);
++	new.b_state = 0;
++	get_blocks_flags = (EXT4_GET_BLOCKS_CREATE |
++			    EXT4_GET_BLOCKS_DELALLOC_RESERVE);
++	if (mpd->b_state & (1 << BH_Delay))
++		get_blocks_flags |= EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE;
+ 	blks = ext4_get_blocks(handle, mpd->inode, next, max_blocks,
+-			       &new, EXT4_GET_BLOCKS_CREATE|
+-			       EXT4_GET_BLOCKS_DELALLOC_RESERVE);
++			       &new, get_blocks_flags);
+ 	if (blks < 0) {
+ 		err = blks;
+ 		/*
+-- 
+1.6.3.rc4.1.g3e14.dirty
 
-Do you know how the system was likely writing into
-/local/dumps/exhcnag/eexchange-2000-UCWB-KVM-18.bkf?  What this a
-backup via rsync or tar?  Was this some application writing into a
-pre-existing file via NFS, or via local disk access?
-
-Given the ctime/atime fields, I'm inclined to guess the latter, but it
-would be good to know.
-
-The stat dump for the inode 759 does *not* show logical block 1741329
-getting mapped to physical block 529.  So the question is how did that
-happen?
-
-I've started looking, and one thing popped up at me.  I need to check
-in with the Lustre folks who originally donated the code, but I don't
-see any spinlock or mutexes protecting the inode's extent cache.  So
-if you are on an SMP machine, this could potentially have caused the
-problem.  How many CPU's or cores do you have?  What does
-/proc/cpuinfo report?  Also, would it be correct to assume this file
-is getting served up via Samba.  My theory is that we might be running
-into problems when two threads are simultaneously trying read and
-write to a single file at the same time.
-
-Hmm, what is accessing your files on this system?  Are you just doing
-backups?  Is it just a backup server?  Or are you serving up files
-using Samba and there are clients which are accessing those files?
-
-So if this the problem the following experiment should be able to
-confirm whether it's the problem, by seeing if the problem goes away
-if we short-circuit the inode's extent cache.  In fs/ext4/extents.c,
-try inserting a "return" statement to in ext4_ext_put_in_cache():
-
-static void
-ext4_ext_put_in_cache(struct inode *inode, ext4_lblk_t block,
-			__u32 len, ext4_fsblk_t start, int type)
-{
-	struct ext4_ext_cache *cex;
-
-	return;		      <---- insert this line
-	BUG_ON(len == 0);
-	cex = &EXT4_I(inode)->i_cached_extent;
-	cex->ec_type = type;
-	cex->ec_block = block;
-	cex->ec_len = len;
-	cex->ec_start = start;
-}
-
-This should short circuit the i_cached_extent cache, and this may be
-enough to make your problem go away.  (If this theory is correct,
-using mount -o nodelalloc probably won't make a difference, although
-it might change the timing enough to make the bug harder to see.)
-
-If that solves the problem, the right long-term fix will be to drop bin
-a spinlock to protect i_cached_extent.
-
-						- Ted
