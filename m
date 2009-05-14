@@ -1,33 +1,51 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: More ext4 acl/xattr corruption - 4th occurence now
-Date: Thu, 14 May 2009 08:30:43 -0400
-Message-ID: <20090514123043.GF11352@mit.edu>
-References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu> <20090514110659.GA5146@kulgan> <ea11fea30905140417i53c252cbra7c8041021d425e1@mail.gmail.com>
+From: Shehjar Tikoo <shehjart@zresearch.com>
+Subject: GlusterFS 2.0 Release
+Date: Thu, 14 May 2009 17:31:32 +0530
+Message-ID: <4A0C081C.1010502@zresearch.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Kevin Shanahan <kmshanah@ucwb.org.au>, linux-ext4@vger.kernel.org
-To: Manish Katiyar <mkatiyar@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: announce@gluster.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:53999 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753127AbZENMau (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 May 2009 08:30:50 -0400
-Content-Disposition: inline
-In-Reply-To: <ea11fea30905140417i53c252cbra7c8041021d425e1@mail.gmail.com>
+Received: from [12.204.100.226] ([12.204.100.226]:44593 "EHLO gluster.com"
+	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1754595AbZENMb1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 May 2009 08:31:27 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 14, 2009 at 04:47:14PM +0530, Manish Katiyar wrote:
-> 
-> Hi Ted,
-> 
-> If we have the possibility of applying patches why not apply this too
-> and try http://markmail.org/message/e3uwzxrd42isxczg . After all it
-> originated from this bug only.
+Greetings!
 
-Because I implemented this functionality already in
-fs/ext4/inode.c:ext4_iget().  Check out commit 563bdd61 in the kernel
-mainline.  (It's not yet in stable release, as it was merged after the
-2.6.29 merge window.)
+GlusterFS is a clustered file system that runs on commodity
+off-the-shelf hardware, delivering multiple times the scalability and
+performance of conventional storage. The architecture is modular,
+stackable and kernel-independent, which makes it easy to customize,
+install, manage and support different operating systems. Multiple
+storage systems can be clustered together, supporting petabytes of
+capacity in a single global namespace.  Building a configuration of a
+few hundred terabytes can be accomplished in less than thirty minutes.
 
-							- Ted
+GlusterFS 2.0 Release:
+GlusterFS v2.0 has gone through a major revamp in design and
+development since v1.3. Thanks to thousands of initial users who
+provided us great feedback and bug reports. There are a number of
+production deployments now. GlusterFS uses existing disk file systems
+(such as Ext3, XFS, ZFS..) to store your data as regular files and
+folders. You can restore the data, even after you uninstall GlusterFS.
+So, give it a try and let us know. Please forward this message to
+relevant users.
+
+What is in 2.0 release:
+http://www.gluster.org/docs/index.php/GlusterFS_Features
+
+Who is using GlusterFS:
+http://www.gluster.org/docs/index.php/Who%27s_using_GlusterFS
+
+License: GNU GPLv3
+
+Download: http://www.gluster.org/download.php
+
+Happy Hacking
+--
+GlusterFS Team
