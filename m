@@ -1,333 +1,167 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13292] ext4 without journal reproductible file corruption
-Date: Thu, 14 May 2009 14:14:01 GMT
-Message-ID: <200905141414.n4EEE1QQ000441@demeter.kernel.org>
-References: <bug-13292-13602@http.bugzilla.kernel.org/>
+From: Kevin Shanahan <kmshanah@ucwb.org.au>
+Subject: Re: More ext4 acl/xattr corruption - 4th occurence now
+Date: Fri, 15 May 2009 00:00:15 +0930
+Message-ID: <20090514143014.GH5146@kulgan>
+References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu> <20090514110659.GA5146@kulgan> <20090514132506.GD5146@kulgan> <20090514140732.GI11352@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 8BIT
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:43972 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755186AbZENOOA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 May 2009 10:14:00 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4EEE1da000442
-	for <linux-ext4@vger.kernel.org>; Thu, 14 May 2009 14:14:01 GMT
-In-Reply-To: <bug-13292-13602@http.bugzilla.kernel.org/>
+Received: from bowden.ucwb.org.au ([203.122.237.119]:45423 "EHLO
+	mail.ucwb.org.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751088AbZENOaS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 May 2009 10:30:18 -0400
+Content-Disposition: inline
+In-Reply-To: <20090514140732.GI11352@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=3D13292
+On Thu, May 14, 2009 at 10:07:32AM -0400, Theodore Tso wrote:
+> On Thu, May 14, 2009 at 10:55:06PM +0930, Kevin Shanahan wrote:
+> > On Thu, May 14, 2009 at 08:37:00PM +0930, Kevin Shanahan wrote:
+> > > Sure - now running with 2.6.29.3 + your patch.
+> > > 
+> > >   patching file fs/ext4/inode.c
+> > >   Hunk #1 succeeded at 1040 with fuzz 1 (offset -80 lines).
+> > >   Hunk #2 succeeded at 1113 (offset -81 lines).
+> > >   Hunk #3 succeeded at 1184 (offset -93 lines).
+> > > 
+> > > I'll report any hits for "check_block_validity" in syslog.
+> > 
+> > That didn't take long:
+> > 
+> > May 14 22:49:17 hermes kernel: EXT4-fs error (device dm-0): check_block_validity: inode #759 logical block 1741329 mapped to 529 (size 1)
+> > May 14 22:49:17 hermes kernel: Aborting journal on device dm-0:8.
+> > May 14 22:49:17 hermes kernel: ext4_da_writepages: jbd2_start: 293 pages, ino 759; err -30
+> > May 14 22:49:17 hermes kernel: Pid: 374, comm: pdflush Not tainted 2.6.29.3 #1
+> > May 14 22:49:17 hermes kernel: Call Trace:
+> 
+> The reason why I put in the ext4_error() was because I figured it was
+> better to stop the filesystem from stomping on the inode table (since
+> that way would lie data loss).  It would also freeze the filesystem so
+> we could see what was happening.
 
+Sure, makes sense. I guess I have gotten complacent as I have been
+getting away with it for several months now. :)
 
+> Could you run debugfs on the filesystem, and then send me the results
+> of these commands:
+> 
+> debugfs: stat <759>
 
+hermes:~# debugfs /dev/dm-0
+debugfs 1.41.3 (12-Oct-2008)
+debugfs:  stat <759>
 
+Inode: 759   Type: regular    Mode:  0660   Flags: 0x80000
+Generation: 3979120103    Version: 0x00000000:00000001
+User:     0   Group: 10140   Size: 14615630848
+File ACL: 0    Directory ACL: 0
+Links: 1   Blockcount: 28546168
+Fragment:  Address: 0    Number: 0    Size: 0
+ ctime: 0x4a0acdb5:2a88cbec -- Wed May 13 23:10:05 2009
+ atime: 0x4a0ac45b:10899618 -- Wed May 13 22:30:11 2009
+ mtime: 0x4a0acdb5:2a88cbec -- Wed May 13 23:10:05 2009
+crtime: 0x4a0ac45b:10899618 -- Wed May 13 22:30:11 2009
+Size of extra inode fields: 28
+Extended attributes stored in inode body: 
+   = "01 00 00 00 01 00 06 00 02 00 07 00 12 27 00 00 04 00 05 00 08 00 05 00 57 27 00 00 08 00 07 00 98 27 00 00 10 00 06 00 20 00 00 00 " (44)
+  DOSATTRIB = "0x20" (4)
+BLOCKS:
+(IND):1081467, (0-24575):999424-1023999, (24576-26623):1028096-1030143, (26624-43007):1032192-1048575, (43008-45055):1087488-1089535, (45056-51199):1550336-1556479, (51200-55295):1560576-1564671, (55296-63487):1540096-1548287, (63488-65535):2985984-2988031, (65536-92159):2996224-3022847, (92160-100351):3024896-3033087, (100352-112639):3035136-3047423, (112640-155647):3049472-3092479, (155648-157695):3100672-3102719, (157696-165887):3092480-3100671, (165888-206847):3104768-3145727, (206848-208895):3186688-3188735, (208896-681983):3196928-3670015, (681984-1042431):3735552-4095999, (1042432-1048575):4155392-4161535, (1048576-1050623):4182016-4184063, (1050624-1052671):4186112-4188159, (1052672-1056767):4177920-4182015, (1056768-1060863):4190208-4194303, (1060864-1124351):4655104-4718591, (112
+ 4352-1126399):5390336-5392383, (1126400-1142783):5423104-5439487, (1142784-1155071):5478400-5490687, (1155072-1159167):5472256-5476351, (1159168-1433599):5492736-5767167, (1433600-1437695):6057984-6062079, (1437696-1634303):6094848-6291455, (1634304-1636351):6432768-6434815, (1636352-1640447):6483968-6488063, (1640448-1646591):6498304-6504447, (1646592-1662975):6510592-6526975, (1662976-1718271):6533120-6588415, (1718272-1943551):6590464-6815743, (1943552-2203647):6914048-7174143, (2203648-2205695):7182336-7184383, (2205696-2207743):7192576-7194623, (2207744-2211839):7188480-7192575, (2211840-2355199):7196672-7340031, (2355200-2357247):7380992-7383039, (2357248-2359295):7387136-7389183, (2359296-2463743):7444480-7548927, (2463744-2531327):7567360-7634943, (2531328-2746367):7649280-786431
+ 9, (2746368-2811903):7897088-7962623, (2811904-2813951):7979008-7981055, (2813952-2869247):7995392-8050687, (2869248-2879487):8052736-8062975, (2879488-2881535):8081408-8083455, (2881536-2897919):8065024-8081407, (2897920-2906111):8085504-8093695, (2906112-2908159):8110080-8112127, (2908160-2910207):8114176-8116223, (2910208-2920447):8120320-8130559, (2920448-3026943):8136704-8243199, (3026944-3028991):8249344-8251391, (3028992-3031039):8253440-8255487, (3031040-3035135):8245248-8249343, (3035136-3037183):8292352-8294399, (3037184-3041279):8298496-8302591, (3041280-3043327):8398848-8400895, (3043328-3045375):8402944-8404991, (3045376-3049471):8407040-8411135, (3049472-3055615):8417280-8423423, (3055616-3094527):8501248-8540159, (3094528-3096575):8710144-8712191, (3096576-3110911):8726528
+ -8740863, (3110912-3112959):8779776-8781823, (3112960-3115007):8806400-8808447, (3115008-3119103):8790016-8794111, (3119104-3162111):8818688-8861695, (3162112-3164159):8863744-8865791, (3164160-3166207):8923136-8925183, (3166208-3235839):11603968-11673599, (3235840-3276799):12998656-13039615, (3276800-3278847):13070336-13072383, (3278848-3282943):13058048-13062143, (3282944-3287039):13066240-13070335, (3287040-3303423):13041664-13058047, (3303424-3307519):16058368-16062463, (3307520-3311615):16084992-16089087, (3311616-3334143):16119808-16142335, (3334144-3336191):16150528-16152575, (3336192-3340287):16146432-16150527, (3340288-3342335):16154624-16156671, (3342336-3348479):16160768-16166911, (3348480-3350527):16199680-16201727, (3350528-3352575):16203776-16205823, (3352576-3354623):16226
+ 304-16228351, (3354624-3356671):16359424-16361471, (3356672-3360767):16369664-16373759, (3360768-3362815):16377856-16379903, (3362816-3364863):16388096-16
 
---- Comment #2 from Thibault Mondary <thibm@free.fr>  2009-05-14 14:14:=
-01 ---
-(In reply to comment #1)
-I'am starting from a locale "fr_FR@euro" on my system.
+> debugfs: ncheck 759
 
+debugfs:  ncheck 759
+Inode   Pathname
+759     /local/dumps/exchange/exchange-2000-UCWB-KVM-18.bkfB-KVM-18.bkf
 
-Output WITHOUT journal :
+By the way, that filename on disk is just
+"exchange-2000-UCWB-KVM-18.bkf". Not sure if the way it appears to
+repeat itself at the end there is indicative of a problem.
 
-root@ubuntu ~# mount archlinux_64_minimal_ext4_without_journal.img /mnt=
-/loop -o
-loop
-root@ubuntu ~# chroot /mnt/loop
+> Also, could you try run e2fsck on the filesystem and send me the
+> output?  The ext4_error() should have stopped the kernel from doing
+> any damage (like stomping on block 529, which was part of the inode
+> table or block group descriptors).  If send me the dumpe2fs output
+> about group 0, we'll know for sure (i.e.):
+> 
+> Group 0: (Blocks 0-32767) [ITABLE_ZEROED]
+>   Checksum 0x3e19, unused inodes 8169
+>   Primary superblock at 0, Group descriptors at 1-5
+>   Reserved GDT blocks at 6-32
+>   Block bitmap at 33 (+33), Inode bitmap at 49 (+49)
+>   Inode table at 65-576 (+65)
+> 
+> (Your numbers will be different; this was from a 80GB hard drive).
 
-bash-3.2# locale-gen
-Generating locales...
-  fr_FR.UTF-8... done
-  fr_FR.ISO-8859-1... done
-  fr_FR.ISO-8859-15@euro... done
-Generation complete.
+hermes:~# e2fsck -pfv /dev/dm-0
+/dev/dm-0: recovering journal
 
-bash-3.2# locale
-LANG=3Dfr_FR@euro
-LC_CTYPE=3D"fr_FR@euro"
-LC_NUMERIC=3D"fr_FR@euro"
-LC_TIME=3D"fr_FR@euro"
-LC_COLLATE=3D"fr_FR@euro"
-LC_MONETARY=3D"fr_FR@euro"
-LC_MESSAGES=3D"fr_FR@euro"
-LC_PAPER=3D"fr_FR@euro"
-LC_NAME=3D"fr_FR@euro"
-LC_ADDRESS=3D"fr_FR@euro"
-LC_TELEPHONE=3D"fr_FR@euro"
-LC_MEASUREMENT=3D"fr_FR@euro"
-LC_IDENTIFICATION=3D"fr_FR@euro"
-LC_ALL=3D
+  331810 inodes used (0.49%)
+   16080 non-contiguous inodes (4.8%)
+         # of inodes with ind/dind/tind blocks: 0/0/0
+         Extent depth histogram: 331411/329
+46723278 blocks used (17.41%)
+       0 bad blocks
+       3 large files
 
-bash-3.2# exit
-root@ubuntu:~# umount /mnt/loop
+  305051 regular files
+   26686 directories
+       0 character device files
+       0 block device files
+       0 fifos
+       0 links
+      64 symbolic links (60 fast symbolic links)
+       0 sockets
+--------
+  331801 files
 
-root@ubuntu:~# mount archlinux_64_minimal_ext4_without_journal.img /mnt=
-/loop -o
-loop
-root@ubuntu ~# chroot /mnt/loop
+hermes:~# dumpe2fs /dev/dm-0
+...
+Group 0: (Blocks 0-32767) [ITABLE_ZEROED]
+  Checksum 0x0eb9, unused inodes 0
+  Primary superblock at 0, Group descriptors at 1-64
+  Reserved GDT blocks at 65-256
+  Block bitmap at 257 (+257), Inode bitmap at 273 (+273)
+  Inode table at 289-800 (+289)
+  3443 free blocks, 0 free inodes, 571 directories
+  Free blocks: 9067, 9108-9111, 9116-9119, 9276-9279, 9308-9311, 9687, 9720-9727, 9736-9743, 9848-9879, 9888-9895, 9936-9951, 10032-10047, 10072-10079, 10200-10207, 10352-10367, 10584-10591, 10619-10623, 10661-10671, 10740-10751, 11476-11487, 11512-11519, 11637-11647, 11669-11679, 11711, 11772-11775, 11890-11903, 11963-11967, 12187-12191, 12213-12223, 12249-12255, 12272-12280, 12282-12287, 12322-12351, 12381-12383, 12405-12415, 12437-12447, 12478-12479, 12542-12543, 12664-12671, 12727-12735, 12766-12767, 12851-12863, 12890-12895, 12927, 12970, 12980-12991, 13047-13055, 13246-13247, 13290-13295, 13312-13317, 13406-13407, 13433, 13439, 13456-13463, 13490-13503, 13537-13567, 13658-13695, 13770-13823, 13850-13855, 13886-13887, 13908-13919, 13951, 13971-13983, 14010-14015, 14056-14079, 14204-14
+ 207, 14249-14271, 14316-14350, 14358-14361, 14375, 14487-14495, 14526-14527, 14550-14584, 14605, 14619, 14630-14635, 14647-14655, 14660, 14674-14687, 14705-14719, 14744-14774, 14785-14815, 14844-14847, 14889-14926, 14933-14944, 14948, 14965-14975, 14992-15000, 15006-15007, 15035-15039, 15069-15087, 15097-15102, 15114-15127, 15141-15156, 15158-15164, 15176-15184, 15192-15193, 15213, 15223-15230, 15238, 15241-15256, 15264-15281, 15289-15297, 15305-15325, 15333-15341, 15350-15359, 15427-15455, 15482-15487, 15599-15615, 15705-15711, 15732-15743, 15798-15807, 15860-15871, 15923-15935, 15956-15967, 15989-15999, 16040-16063, 16090-16095, 16123-16127, 16171-16191, 16219-16223, 16246-16255, 16309-16319, 16343-16351, 16379-16383, 16565-16575, 16624-16639, 16688-16703, 16721-16735, 16763-16767, 168
+ 37-16863, 16881-16895, 17036-17055, 17075-17087, 17147-17151, 17220-17247, 17267-17279, 17307-17311, 17339-17343, 17365-17375, 17403-17407, 17453-17471, 17531-17535, 17554-17567, 17599, 17647-17663, 17718-17727, 17756-17759, 17812-17823, 17844-17855, 17904-17919, 18103-18111, 18131-18143, 18162-18175, 18277-18303, 18331-18335, 18363-18367, 18393-18399, 18427-18431, 18598-18623, 18676-18687, 18706-18719, 18738-18751, 18805-18815, 18844-18847, 18876-18879, 18908-18911, 18933-18943, 19135, 19198-19199, 19249-19263, 19286-19295, 19323-19327, 19416-19423, 19455, 19527-19551, 19582-19583, 19704-19711, 19756-19775, 19835-19839, 19887-19903, 19925-19935, 19959-19967, 20148-20159, 20206-20223, 20271-20287, 20336-20351, 20422-20447, 20476-20479, 20671, 20727-20735, 20758-20767, 20795-20799, 20818-
+ 20831, 20849-20863, 20891-20895, 20918-20927, 20955-20959, 20980-20991, 21133-21151, 21172-21183, 21221-21247, 21265-21279, 21307-21311, 21345-21375, 21425-21439, 21476-21503, 21531-21553, 21560-21596, 21604, 21611, 21630-21631, 21662-21666, 21672-21673, 21683, 21695-21725, 21732-21755, 21765-21782, 21795-21842, 21848-21875, 21890-21919, 21947-21951, 22005-22030, 22038-22052, 22062-22076, 22091-22092, 22107-22118, 22131-22140, 22154-22183, 22196-22198, 22569-22591, 22619-22623, 22651-22655, 22760-22783, 22803-22815, 22847, 22888-22911, 23002-23007, 23035-23039, 23153-23167, 23189-23199, 23260-23263, 23284-23295, 23336-23359, 23402-23423, 23462-23487, 23512-23519, 23544-23551, 23572-23583, 23644-23647, 23673-23679, 23768-23804, 23806-23807, 23841-23871, 23930-23935, 24011-24031, 24053-240
+ 76, 24103-24127, 24186-24191, 24287, 24347-24351, 24371-24383, 24434-24447, 24475-24479, 24501-24511, 24566-24575, 26431, 26472-26495, 26562-26591, 26619-26623, 26903-26905, 26909-26911, 26932-26943, 26984-27007, 27134-27135, 27182-27199, 27238-27263, 27291-27295, 27323-27327, 27376-27391, 27507-27519, 27641-27647, 27979-27999, 28024-28031, 28103-28127, 28255, 28323-28351, 28373-28383, 28414-28415, 28572-28575, 28598-28607, 28668-28671
+  Free inodes: 
 
-********BEGINNING OF THE PROBLEM : locales are normally generated from =
-previous
-mount**********
+> > Any clues there? I don't think I'll be able to run this during the day
+> > if it's going to trigger and remount the fs read-only as easily as
+> > this.
+> 
+> Yes, this is a *huge*.  Finding this may have been just what we needed
+> to determine what has been going on.  Thank you!!
+> 
+> What I would suggest doing is to mount the filesystem with the mount
+> option -o nodelalloc.  This would be useful for two fronts: (1) it
+> would determine whether or not the problem shows up if we suppress
+> delayed allocation, and (2) if it works, hopefully it will prevent you
+> from further filesystem corruption incidents.  (At least as a
+> workaround; turning off delayed allocation will result in a
+> performance decrease, but better that then data loss, I always say!)
 
-bash-3.2# locale
-locale: Cannot set LC_CTYPE to default locale: No such file or director=
-y
-locale: Cannot set LC_MESSAGES to default locale: No such file or direc=
-tory
-locale: Cannot set LC_ALL to default locale: No such file or directory
-LANG=3Dfr_FR@euro
-LC_CTYPE=3D"fr_FR@euro"
-LC_NUMERIC=3D"fr_FR@euro"
-LC_TIME=3D"fr_FR@euro"
-LC_COLLATE=3D"fr_FR@euro"
-LC_MONETARY=3D"fr_FR@euro"
-LC_MESSAGES=3D"fr_FR@euro"
-LC_PAPER=3D"fr_FR@euro"
-LC_NAME=3D"fr_FR@euro"
-LC_ADDRESS=3D"fr_FR@euro"
-LC_TELEPHONE=3D"fr_FR@euro"
-LC_MEASUREMENT=3D"fr_FR@euro"
-LC_IDENTIFICATION=3D"fr_FR@euro"
-LC_ALL=3D
+Ok, thanks - I've added the mount option. I'll let you know if the
+error still triggers.
 
-bash-3.2# LANG=3Dfr_FR
-bash-3.2# locale
-locale: Cannot set LC_CTYPE to default locale: No such file or director=
-y
-locale: Cannot set LC_MESSAGES to default locale: No such file or direc=
-tory
-locale: Cannot set LC_ALL to default locale: No such file or directory
-LANG=3Dfr_FR
-LC_CTYPE=3D"fr_FR"
-LC_NUMERIC=3D"fr_FR"
-LC_TIME=3D"fr_FR"
-LC_COLLATE=3D"fr_FR"
-LC_MONETARY=3D"fr_FR"
-LC_MESSAGES=3D"fr_FR"
-LC_PAPER=3D"fr_FR"
-LC_NAME=3D"fr_FR"
-LC_ADDRESS=3D"fr_FR"
-LC_TELEPHONE=3D"fr_FR"
-LC_MEASUREMENT=3D"fr_FR"
-LC_IDENTIFICATION=3D"fr_FR"
-LC_ALL=3D
+> The fact that this triggered so quickly is actually a bit scary, so
+> hopefully we'll be able to track down exactly what happened fairly
+> quickly from here, and then fix the problem for real.
 
-**********END************
+Yeah, that would be great.
 
-
-*************VERSION 2 : adding a journal to the image ************
-
-root@ubuntu:~# tune2fs -O has_journal
-archlinux_64_minimal_ext4_without_journal.img
-tune2fs 1.41.4 (27-Jan-2009)
-Cr=C3=A9ation de l'i-noeud du journal=C2=A0: compl=C3=A9t=C3=A9
-Le syst=C3=A8me de fichiers sera automatiquement v=C3=A9rifi=C3=A9 tous=
- les 39 montages ou
-apr=C3=A8s 180 jours, selon la premi=C3=A8re =C3=A9ventualit=C3=A9. Uti=
-liser tune2fs -c ou -i
-pour =C3=A9craser la valeur.
-
-root@ubuntu:~# e2fsck -f archlinux_64_minimal_ext4_without_journal.img
-e2fsck 1.41.4 (27-Jan-2009)
-Passe=C2=A01=C2=A0: v=C3=A9rification des i-noeuds, des blocs et des ta=
-illes
-Passe 2=C2=A0: v=C3=A9rification de la structure des r=C3=A9pertoires
-Passe=C2=A03=C2=A0: v=C3=A9rification de la connectivit=C3=A9 des r=C3=A9=
-pertoires
-Passe 4=C2=A0: v=C3=A9rification des compteurs de r=C3=A9f=C3=A9rence
-Passe 5=C2=A0: v=C3=A9rification de l'information du sommaire de groupe
-archlinux_64_minimal_ext4_without_journal.img=C2=A0: 21848/65536 fichie=
-rs (0.1%
-nontigus), 86608/262144 blocs
-
-root@ubuntu:~# mount archlinux_64_minimal_ext4_without_journal.img /mnt=
-/loop -o
-loop
-root@ubuntu:~# chroot /mnt/loop
-
-bash-3.2# locale
-locale: Cannot set LC_CTYPE to default locale: No such file or director=
-y
-locale: Cannot set LC_MESSAGES to default locale: No such file or direc=
-tory
-locale: Cannot set LC_ALL to default locale: No such file or directory
-LANG=3Dfr_FR@euro
-LC_CTYPE=3D"fr_FR@euro"
-LC_NUMERIC=3D"fr_FR@euro"
-LC_TIME=3D"fr_FR@euro"
-LC_COLLATE=3D"fr_FR@euro"
-LC_MONETARY=3D"fr_FR@euro"
-LC_MESSAGES=3D"fr_FR@euro"
-LC_PAPER=3D"fr_FR@euro"
-LC_NAME=3D"fr_FR@euro"
-LC_ADDRESS=3D"fr_FR@euro"
-LC_TELEPHONE=3D"fr_FR@euro"
-LC_MEASUREMENT=3D"fr_FR@euro"
-LC_IDENTIFICATION=3D"fr_FR@euro"
-LC_ALL=3D
-
-bash-3.2# locale-gen
-Generating locales...
-  fr_FR.UTF-8... done
-  fr_FR.ISO-8859-1... done
-  fr_FR.ISO-8859-15@euro... done
-Generation complete.
-
-bash-3.2# locale
-LANG=3Dfr_FR@euro
-LC_CTYPE=3D"fr_FR@euro"
-LC_NUMERIC=3D"fr_FR@euro"
-LC_TIME=3D"fr_FR@euro"
-LC_COLLATE=3D"fr_FR@euro"
-LC_MONETARY=3D"fr_FR@euro"
-LC_MESSAGES=3D"fr_FR@euro"
-LC_PAPER=3D"fr_FR@euro"
-LC_NAME=3D"fr_FR@euro"
-LC_ADDRESS=3D"fr_FR@euro"
-LC_TELEPHONE=3D"fr_FR@euro"
-LC_MEASUREMENT=3D"fr_FR@euro"
-LC_IDENTIFICATION=3D"fr_FR@euro"
-LC_ALL=3D
-
-bash-3.2# exit
-root@ubuntu:~# umount /mnt/loop=20
-
-root@ubuntu:~# mount archlinux_64_minimal_ext4_without_journal.img /mnt=
-/loop -o
-loop
-root@ubuntu:~# chroot /mnt/loop
-*****************HERE, NO PROBLEM, locales are taken from previous
-session*******
-
-bash-3.2# locale
-LANG=3Dfr_FR@euro
-LC_CTYPE=3D"fr_FR@euro"
-LC_NUMERIC=3D"fr_FR@euro"
-LC_TIME=3D"fr_FR@euro"
-LC_COLLATE=3D"fr_FR@euro"
-LC_MONETARY=3D"fr_FR@euro"
-LC_MESSAGES=3D"fr_FR@euro"
-LC_PAPER=3D"fr_FR@euro"
-LC_NAME=3D"fr_FR@euro"
-LC_ADDRESS=3D"fr_FR@euro"
-LC_TELEPHONE=3D"fr_FR@euro"
-LC_MEASUREMENT=3D"fr_FR@euro"
-LC_IDENTIFICATION=3D"fr_FR@euro"
-LC_ALL=3D
-
-
-exit, umount...
-
-
-
-
-
-
-> I would be interested to know what your actual output looks like.  I'=
-ve tried
-> to reproduce this and don't seem to be able to, at least not in my en=
-vironment.
->=20
-> My attempts looked like:
-> [/root]# mount -t ext4 -o loop
-> /foo/archlinux_64_minimal_ext4_without_journal.img /mnt
-> [/root]# chroot /mnt
-> bash-3.2# locale-gen
-> Generating locales...
->   fr_FR.UTF-8... done
->   fr_FR.ISO-8859-1... done
->   fr_FR.ISO-8859-15@euro... done
-> Generation complete.
-> bash-3.2# locale
-> locale: Cannot set LC_CTYPE to default locale: No such file or direct=
-ory
-> locale: Cannot set LC_MESSAGES to default locale: No such file or dir=
-ectory
-> locale: Cannot set LC_ALL to default locale: No such file or director=
-y
-> LANG=3Den_US
-> LC_CTYPE=3D"en_US"
-> LC_NUMERIC=3D"en_US"
-> LC_TIME=3D"en_US"
-> LC_COLLATE=3D"en_US"
-> LC_MONETARY=3D"en_US"
-> LC_MESSAGES=3D"en_US"
-> LC_PAPER=3D"en_US"
-> LC_NAME=3D"en_US"
-> LC_ADDRESS=3D"en_US"
-> LC_TELEPHONE=3D"en_US"
-> LC_MEASUREMENT=3D"en_US"
-> LC_IDENTIFICATION=3D"en_US"
-> LC_ALL=3D
-> bash-3.2# LANG=3Dfr_FR
-> bash-3.2# locale
-> LANG=3Dfr_FR
-> LC_CTYPE=3D"fr_FR"
-> LC_NUMERIC=3D"fr_FR"
-> LC_TIME=3D"fr_FR"
-> LC_COLLATE=3D"fr_FR"
-> LC_MONETARY=3D"fr_FR"
-> LC_MESSAGES=3D"fr_FR"
-> LC_PAPER=3D"fr_FR"
-> LC_NAME=3D"fr_FR"
-> LC_ADDRESS=3D"fr_FR"
-> LC_TELEPHONE=3D"fr_FR"
-> LC_MEASUREMENT=3D"fr_FR"
-> LC_IDENTIFICATION=3D"fr_FR"
-> LC_ALL=3D
-> bash-3.2# exit
-> [/root]# umount /mnt
-> [/root]# mount -t ext4 -o loop
-> /foo/archlinux_64_minimal_ext4_without_journal.img /mnt
-> [/root]# chroot /mnt
-> bash-3.2# locale
-> locale: Cannot set LC_CTYPE to default locale: No such file or direct=
-ory
-> locale: Cannot set LC_MESSAGES to default locale: No such file or dir=
-ectory
-> locale: Cannot set LC_ALL to default locale: No such file or director=
-y
-> LANG=3Den_US
-> LC_CTYPE=3D"en_US"
-> LC_NUMERIC=3D"en_US"
-> LC_TIME=3D"en_US"
-> LC_COLLATE=3D"en_US"
-> LC_MONETARY=3D"en_US"
-> LC_MESSAGES=3D"en_US"
-> LC_PAPER=3D"en_US"
-> LC_NAME=3D"en_US"
-> LC_ADDRESS=3D"en_US"
-> LC_TELEPHONE=3D"en_US"
-> LC_MEASUREMENT=3D"en_US"
-> LC_IDENTIFICATION=3D"en_US"
-> LC_ALL=3D
-> bash-3.2# LANG=3Dfr_FR
-> bash-3.2# locale
-> LANG=3Dfr_FR
-> LC_CTYPE=3D"fr_FR"
-> LC_NUMERIC=3D"fr_FR"
-> LC_TIME=3D"fr_FR"
-> LC_COLLATE=3D"fr_FR"
-> LC_MONETARY=3D"fr_FR"
-> LC_MESSAGES=3D"fr_FR"
-> LC_PAPER=3D"fr_FR"
-> LC_NAME=3D"fr_FR"
-> LC_ADDRESS=3D"fr_FR"
-> LC_TELEPHONE=3D"fr_FR"
-> LC_MEASUREMENT=3D"fr_FR"
-> LC_IDENTIFICATION=3D"fr_FR"
-> LC_ALL=3D
-> bash-3.2#
-
---=20
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.--
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Cheers,
+Kevin.
