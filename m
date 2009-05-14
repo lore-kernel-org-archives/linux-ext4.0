@@ -1,156 +1,130 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 2/3] ext4: Clear the unwritten buffer_head flag properly
-Date: Thu, 14 May 2009 11:30:15 +0530
-Message-ID: <20090514060015.GB7359@skywalker>
-References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1241692770-22547-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090512030856.GI21518@mit.edu> <20090512044627.GA6753@skywalker> <4A0B17F8.3000402@redhat.com> <20090513222847.GA10003@mit.edu>
+From: Kevin Shanahan <kmshanah@ucwb.org.au>
+Subject: Re: More ext4 acl/xattr corruption - 4th occurence now
+Date: Thu, 14 May 2009 20:37:00 +0930
+Message-ID: <20090514110659.GA5146@kulgan>
+References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>, cmm@us.ibm.com,
-	linux-ext4@vger.kernel.org
+Cc: linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp02.au.ibm.com ([202.81.31.144]:55911 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751010AbZENGAm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 May 2009 02:00:42 -0400
-Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp02.au.ibm.com (8.13.1/8.13.1) with ESMTP id n4E5x54E003124
-	for <linux-ext4@vger.kernel.org>; Thu, 14 May 2009 15:59:05 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n4E60fM61343656
-	for <linux-ext4@vger.kernel.org>; Thu, 14 May 2009 16:00:41 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n4E60e6H008161
-	for <linux-ext4@vger.kernel.org>; Thu, 14 May 2009 16:00:41 +1000
+Received: from bowden.ucwb.org.au ([203.122.237.119]:57239 "EHLO
+	mail.ucwb.org.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752055AbZENLHD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 May 2009 07:07:03 -0400
 Content-Disposition: inline
-In-Reply-To: <20090513222847.GA10003@mit.edu>
+In-Reply-To: <20090514044011.GC11352@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 13, 2009 at 06:28:47PM -0400, Theodore Tso wrote:
-> On Wed, May 13, 2009 at 01:56:56PM -0500, Eric Sandeen wrote:
-> > The comment:
+On Thu, May 14, 2009 at 12:40:11AM -0400, Theodore Tso wrote:
+> On Wed, May 13, 2009 at 03:56:34PM +0930, Kevin Shanahan wrote:
 > > 
-> >  	/*
-> > +	 * The above get_blocks can cause the buffer to be
-> > +	 * marked unwritten. So clear the same.
-> > +	 */
-> > +	clear_buffer_unwritten(bh);
-> > 
-> > is imho not helpful; to me it says "we -just- set this, so clear it!"
-> > It leaves me scratching my head.
+> > Now, this is (possibly) interesting - that block contains a bunch of
+> > file data. Looks like a html email (I can tell it's email because of
+> > the FIXED_ prefix added to the tags by the mail sanitizer).
 > 
-> I've updated it the comment to say this instead.
+> That is interesting.  Knowing that it is file data means we might be
+> able to track things down this way.
 > 
-> 	/*
-> 	 * When we call get_blocks without the create flag, the
-> 	 * BH_Unwritten flag could have gotten set if the blocks
-> 	 * requested were part of a uninitialized extent.  We need to
-> 	 * clear this flag now that we are committed to convert all or
-> 	 * part of the uninitialized extent to be an initialized
-> 	 * extent.  This is because we need to avoid the combination
-> 	 * of BH_Unwritten and BH_Mapped flags being simultaneously
-> 	 * set on the buffer_head.
-> 	 */
+> Are you able to apply the following patch to your kernel?  If so,
+> hopefully we'll be able to catch whatever is causing the problem in
+> the act.
 
-The last line in the above comment is not a problem with the latest
-kernel with all the patches in the patch queue. The patch that does that
-is  "ext4: Mark the unwritten buffer_head as mapped during write_begin"
+Sure - now running with 2.6.29.3 + your patch.
 
-The unwritten and mapped state together was a problem with the code path
-we had before in ext4_da_get_block_prep
-we had:
+  patching file fs/ext4/inode.c
+  Hunk #1 succeeded at 1040 with fuzz 1 (offset -80 lines).
+  Hunk #2 succeeded at 1113 (offset -81 lines).
+  Hunk #3 succeeded at 1184 (offset -93 lines).
 
-ret = ext4_get_blocks(NULL, inode, iblock, 1,  bh_result, 0);
-.....
-..
-} else if (ret > 0) {
-	bh_result->b_size = (ret << inode->i_blkbits);
-	if (buffer_unwritten(bh_result)) {
-		bh_result.b_blocknr = ~0;
-		....
-	}
-}
+I'll report any hits for "check_block_validity" in syslog.
 
-The above can result in 
+Thankyou, much appreciated.
 
-1) We do a multi block delayed alloc to prealloc space. That would get
-us multiple buffer_heads marked with BH_Unwritten. (say 10, 11, 12)
-2) pdflush attempt to write some pages (say mapping block 10) which
-cause
-a get_block call with create = 1. That would attempt to convert
-uninitialized extent to initialized one. This can cause multiple blocks
-to be marked initialized. ( say 10, 11 , 12)
-3) We do an overwrite of block 11. That would mean we call
-ext4_da_get_block_prep, which would again do a get_block for block 11
-with create = 0. But remember we already have buffer_head marked with
-BH_Unwritten flag. But the buffer was unmapped because it is unwritten
-( We are fixing this mess in the patch for 2.6.31).
-4) The get_block call will find the buffer mapped due to step b. And
-mark the buffer_head mapped. There we go . We end up with buffer_head
-mapped and unwritten
-5) later in ext4_da_get_block_prep we check whether the buffer_head in
-marked
-BH_Unwritten if so we set the block number to ~0. This is introduced by
-[PATCH -V4 1/2] Fix sub-block zeroing for buffered writes into unwritten
-extents
-6) So now we have a buffer_head that is mapped, unwritten, with
-b_blocknr = ~0. That would result in the I/O error.
+Cheers,
+Kevin.
 
-
-Now that we have the actual block number in bh_result.b_blocknr I guess
-we should be ok to have the unwritten flag set. But then i guess it is
-against the VFS assumption of buffer_head state. The state unwritten
-indicate the blocks are not yet written. So if we don't do a
-clear_buffer_unwritten as in the patch we end up with a block that is
-written ( done via create = 1 get_block call) and still marked
-unwritten. (see the 6 step example above)
-
-Now to explain what "ext4: Mark the unwritten buffer_head as mapped
-during write_begin" does.
-
-It marks the buffer_head as mapped in the write_begin phase.
-And that helps in making sure we don't end up calling get_block
-multiple times.  So with delayed allocation we now have between
-the write_begin and writepage phase a buffer_head which is mapped
-and unwritten for blocks in the fallocate space. Once we do
-writepage for the block we will have buffer_head which is mapped and
-unwritten flag cleared. The unwritten get cleared when we do a get_block
-call with create = 1.
-
-
-To achieve the above we need to make sure writepage code path looks at
-the unwritten flag and does a get_blocks call with create = 1. With
-mainline we have in writepage code path
-
-mpage_da_map_blocks(...)
-
-if ((mpd->b_state  & (1 << BH_Mapped)) &&
-    !(mpd->b_state & (1 << BH_Delay)))
-	return 0;
-	...
-	..
-	ext4_da_get_block_write()
-
-
-If we start marking buffer_head mapped for fallocate blocks in the
-write_begin phase, then the above code will return without doing
-any get_block(create = 1) call. That means we don't convert the
-uninitialized extent to initialized one. So along with marking
-buffer_head mapped and unwritten in the write_begin phase we also
-need changes to writepage code path which does something like below
-
-mpage_da_map_blocks(...)
-
-if ((mpd->b_state  & (1 << BH_Mapped)) &&
-	!(mpd->b_state & (1 << BH_Delay)) &&
-	!(mpd->b_state & (1 << BH_Unwritten)))
-	    return 0;
-	...
-	..
-	ext4_da_get_block_write()
-
-this is done in patch "ext4: Mark the unwritten buffer_head as mapped
-during write_begin".
-
--aneesh
+> commit 8ff799da106e9fc4da9b2a3753b5b86caab27f13
+> Author: Theodore Ts'o <tytso@mit.edu>
+> Date:   Thu May 14 00:39:48 2009 -0400
+> 
+>     ext4: Add a block validity check to ext4_get_blocks_wrap()
+>     
+>     A few users with very large disks have been reporting low block number
+>     filesystem corruptions, potentially zapping the block group
+>     descriptors or inodes in the first inode table block.  It's not clear
+>     what is causing this, but most recently, it appears that whatever is
+>     trashing the filesystem metadata appears to be file data.  So let's
+>     try to set a trap for the corruption in ext4_get_blocks_wrap(), which
+>     is where logical blocks in an inode are mapped to physical blocks.
+>     
+>     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+> 
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index 4e7f363..4fad4fa 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1120,6 +1120,35 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
+>  		ext4_discard_preallocations(inode);
+>  }
+>  
+> +static int check_block_validity(struct inode *inode, sector_t logical,
+> +				sector_t phys, int len)
+> +{
+> +	ext4_fsblk_t valid_block, itable_block;
+> +	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
+> +	struct ext4_group_desc *gdp = ext4_get_group_desc(inode->i_sb, 0, 0);
+> +	unsigned int itable_len = EXT4_SB(inode->i_sb)->s_itb_per_group;
+> +
+> +	valid_block = le32_to_cpu(es->s_first_data_block) +
+> +		EXT4_SB(inode->i_sb)->s_gdb_count;
+> +	itable_block = ext4_inode_table(inode->i_sb, gdp);
+> +
+> +	if (unlikely((phys <= valid_block) ||
+> +		     ((phys + len - 1) > ext4_blocks_count(es)) ||
+> +		     ((phys >= itable_block) &&
+> +		      (phys <= itable_block + itable_len)) ||
+> +		     ((phys + len - 1 >= itable_block) &&
+> +		      (phys + len - 1 <= itable_block + itable_len)))) {
+> +		ext4_error(inode->i_sb, "check_block_validity",
+> +			   "inode #%lu logical block %llu mapped to %llu "
+> +			   "(size %d)", inode->i_ino,
+> +			   (unsigned long long) logical,
+> +			   (unsigned long long) phys, len);
+> +		WARN_ON(1);
+> +		return -EIO;
+> +	}
+> +	return 0;
+> +}
+> +
+>  /*
+>   * The ext4_get_blocks_wrap() function try to look up the requested blocks,
+>   * and returns if the blocks are already mapped.
+> @@ -1165,6 +1194,13 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
+>  	}
+>  	up_read((&EXT4_I(inode)->i_data_sem));
+>  
+> +	if (retval > 0 && buffer_mapped(bh)) {
+> +		int ret = check_block_validity(inode, block, 
+> +					       bh->b_blocknr, retval);
+> +		if (ret != 0)
+> +			return ret;
+> +	}
+> +
+>  	/* If it is only a block(s) look up */
+>  	if (!create)
+>  		return retval;
+> @@ -1241,6 +1277,12 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
+>  	}
+>  
+>  	up_write((&EXT4_I(inode)->i_data_sem));
+> +	if (retval > 0 && buffer_mapped(bh)) {
+> +		int ret = check_block_validity(inode, block, 
+> +					       bh->b_blocknr, retval);
+> +		if (ret != 0)
+> +			return ret;
+> +	}
+>  	return retval;
+>  }
+>  
