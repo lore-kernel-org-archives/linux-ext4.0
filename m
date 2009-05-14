@@ -1,51 +1,50 @@
-From: Shehjar Tikoo <shehjart@zresearch.com>
-Subject: GlusterFS 2.0 Release
-Date: Thu, 14 May 2009 17:31:32 +0530
-Message-ID: <4A0C081C.1010502@zresearch.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 2/3] ext4: Clear the unwritten buffer_head flag properly
+Date: Thu, 14 May 2009 09:14:29 -0400
+Message-ID: <20090514131429.GH11352@mit.edu>
+References: <1241692770-22547-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1241692770-22547-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090512030856.GI21518@mit.edu> <20090512044627.GA6753@skywalker> <4A0B17F8.3000402@redhat.com> <20090514054002.GA7359@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: announce@gluster.org
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>, cmm@us.ibm.com,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from [12.204.100.226] ([12.204.100.226]:44593 "EHLO gluster.com"
-	rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1754595AbZENMb1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 May 2009 08:31:27 -0400
+Received: from thunk.org ([69.25.196.29]:47809 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755255AbZENNOx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 14 May 2009 09:14:53 -0400
+Content-Disposition: inline
+In-Reply-To: <20090514054002.GA7359@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Greetings!
+On Thu, May 14, 2009 at 11:10:02AM +0530, Aneesh Kumar K.V wrote:
+> 
+> It should only be set in the !create case. With create == 1, we would
+> have already converted the uninitialized extent to initialized one and
+> the buffer_head should not be unwritten at all.  My understanding is
+> unwritten flag is used to indicate the buffer_head state between a
+> write_begin and write_page phase with delayed allocation. ie, when we
+> write to fallocate space, since we have delalloc enabled, we  just
+> do a block lookup (get_block with create = 0). The buffer_head returned
+> in the above case should have unwritten set so that during writepage
+> we do the actual block allocation (get_block writh create = 1)
+> looking at the flag.
 
-GlusterFS is a clustered file system that runs on commodity
-off-the-shelf hardware, delivering multiple times the scalability and
-performance of conventional storage. The architecture is modular,
-stackable and kernel-independent, which makes it easy to customize,
-install, manage and support different operating systems. Multiple
-storage systems can be clustered together, supporting petabytes of
-capacity in a single global namespace.  Building a configuration of a
-few hundred terabytes can be accomplished in less than thirty minutes.
+At the moment, ext4_da_get_block_prep(), which is used as a callback
+function by ext4_da_write_begin(), checks for buffer_unwritten(), and
+if true, set BH_New and BH_Mapped.
 
-GlusterFS 2.0 Release:
-GlusterFS v2.0 has gone through a major revamp in design and
-development since v1.3. Thanks to thousands of initial users who
-provided us great feedback and bug reports. There are a number of
-production deployments now. GlusterFS uses existing disk file systems
-(such as Ext3, XFS, ZFS..) to store your data as regular files and
-folders. You can restore the data, even after you uninstall GlusterFS.
-So, give it a try and let us know. Please forward this message to
-relevant users.
+So between the time that that write_begin() and the time when the page
+is actually written out, BH_Unwritten and BH_Mapped will both be set.
+If we end up bailing due to some error of some kind, such that we
+don't complete the write(2) operation we *can* have some pages that
+are simultaneously have BH_Unwritten and BH_Mapped flags set.  So this
+had better be a harmless case, since I think it can happen.
 
-What is in 2.0 release:
-http://www.gluster.org/docs/index.php/GlusterFS_Features
+What's confusing then is some of the comments which have been made
+about why BH_Unwritten and BH_Mapped simultaneously are a bad.  It may
+be bad at some points in time, but at other points in time it's
+completely normal operations.  Or am I missing something?
 
-Who is using GlusterFS:
-http://www.gluster.org/docs/index.php/Who%27s_using_GlusterFS
-
-License: GNU GPLv3
-
-Download: http://www.gluster.org/download.php
-
-Happy Hacking
---
-GlusterFS Team
+	   	  	       	       - Ted
