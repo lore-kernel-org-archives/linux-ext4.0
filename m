@@ -1,73 +1,34 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: More ext4 acl/xattr corruption - 4th occurence now
-Date: Thu, 14 May 2009 20:21:05 -0500
-Message-ID: <4A0CC381.3080804@redhat.com>
-References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu> <20090514110659.GA5146@kulgan> <20090514132506.GD5146@kulgan> <20090514140732.GI11352@mit.edu> <20090514143014.GH5146@kulgan> <20090514161254.GJ11352@mit.edu> <20090514210244.GL5146@kulgan> <20090514212325.GG21316@mit.edu>
+From: =?EUC-KR?B?yKu9xSBzaGluIGhvbmc=?= <hongshin@gmail.com>
+Subject: a suggestion for ext2_release_file()
+Date: Fri, 15 May 2009 12:16:43 +0900
+Message-ID: <2014bcab0905142016k7626acd1m187afb71f9ecc440@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: Kevin Shanahan <kmshanah@ucwb.org.au>,
-	Andreas Dilger <adilger@sun.com>, Alex Tomas <bzzz@sun.com>,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33739 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753688AbZEOBVO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 14 May 2009 21:21:14 -0400
-In-Reply-To: <20090514212325.GG21316@mit.edu>
+Received: from yw-out-2324.google.com ([74.125.46.29]:12182 "EHLO
+	yw-out-2324.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753100AbZEODQn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 14 May 2009 23:16:43 -0400
+Received: by yw-out-2324.google.com with SMTP id 5so969748ywb.1
+        for <linux-ext4@vger.kernel.org>; Thu, 14 May 2009 20:16:43 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Fri, May 15, 2009 at 06:32:45AM +0930, Kevin Shanahan wrote:
->> Okay, so now I've booted into 2.6.29.3 + check_block_validity patch +
->> short circuit i_cached_extent patch, mounted the fs without
->> nodelalloc. I was able to run the full exchange backup without
->> triggering the check_block_validity error.
-> 
-> Great!
-> 
-> So here's the final fix (it replaces the short circuit i_cached_extent
-> patch) which I plan to push to Linus.  It should be much less of a
-> performance hit than simply short-circuiting i_cached_extent...
-> 
-> Thanks so much for helping to find track this down!!!  If ever someone
-> deserved an "Ext4 Baker Street Irregulars" T-shirt, it would be
-> you....
-> 
->        	       	   	      	   	      - Ted
+Hi. I have a suggestion while I read ext2 code in recent Linux.
 
-So here's a fio job I thought would try to hit this ...
+mark_files_ro() function in fs/super.c turns off FMODE_WRITE
+of every file in a super block for the case of remounting.
 
-[global]
-ioengine=libaio
-iodepth=1
-filesize=4g
-bs=1m
-norandommap
-direct=1
-loops=500
-size=16g
+However, an inode whose file's mode is FMODE_WRITE may hold
+reservations. I think these reservations lost their chance to be discarded
+since FMODE_WRITE is off.
 
-[setup]
-filename=file
-rw=randwrite
-loops=1
+So, I think ext2_release_file rather check
+EXT2_I(inode)->i_block_alloc_info->rsv_window_node.
 
-[thread1]
-stonewall
-filename=file
-rw=randwrite
+Could you check my suggestion is valid or not please?
 
-[thread2]
-filename=file
-rw=randread
-
-it should lay out a 4g file in random 1m direct IOs to fragment it and
-get a lot of extents, then launch 2 threads, one each doing random reads
-and random writes of that same file.
-
-I can't make this trip it, though ...
-
--Eric
+Sincerely
+Shin Hong
