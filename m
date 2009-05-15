@@ -1,32 +1,51 @@
-From: number9652@yahoo.com
-Subject: e2fsprogs bmap problem
-Date: Fri, 15 May 2009 13:49:38 -0700 (PDT)
-Message-ID: <382524.16755.qm@web43505.mail.sp1.yahoo.com>
-Reply-To: number9652@yahoo.com
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] down i_data_sem only for read when walking tree for fiemap
+Date: Fri, 15 May 2009 16:07:32 -0500
+Message-ID: <4A0DD994.1090200@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from n71.bullet.mail.sp1.yahoo.com ([98.136.44.36]:42512 "HELO
-	n71.bullet.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752736AbZEOU4F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 15 May 2009 16:56:05 -0400
+Received: from mx2.redhat.com ([66.187.237.31]:48936 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753906AbZEOVHc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 May 2009 17:07:32 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n4FL7Yo3016243
+	for <linux-ext4@vger.kernel.org>; Fri, 15 May 2009 17:07:34 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n4FL7XAk007109
+	for <linux-ext4@vger.kernel.org>; Fri, 15 May 2009 17:07:33 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n4FL7WCH019624
+	for <linux-ext4@vger.kernel.org>; Fri, 15 May 2009 17:07:33 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Not sure why I put this in as down_write originally; all we are
+doing is walking the tree, nothing will change under us and
+concurrent reads should be no problem.
 
-I am running into a problem with the output of the function ext2fs_bmap in the ext2fs library version 1.41.5: when I send it an inode structure pointer as the third argument and the number of a deleted inode as the second argument, it seems to end up trying to read the deleted inode from disk (and results in the returned value block number being 0), when I expected it to just get the values from the inode structure I send to it.  This only happens if the inode contains an extent structure within it; when it has the indirect block structure it behaves as I expected.
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
-I couldn't find the documentation for this function, so is this the right behavior for this function?  If so, is there a better way to retrieve the block numbers pointed to by an inode structure provided by the ext2fs library?
+Index: linux-2.6/fs/ext4/extents.c
+===================================================================
+--- linux-2.6.orig/fs/ext4/extents.c
++++ linux-2.6/fs/ext4/extents.c
+@@ -3309,10 +3309,10 @@ int ext4_fiemap(struct inode *inode, str
+ 		 * Walk the extent tree gathering extent information.
+ 		 * ext4_ext_fiemap_cb will push extents back to user.
+ 		 */
+-		down_write(&EXT4_I(inode)->i_data_sem);
++		down_read(&EXT4_I(inode)->i_data_sem);
+ 		error = ext4_ext_walk_space(inode, start_blk, len_blks,
+ 					  ext4_ext_fiemap_cb, fieinfo);
+-		up_write(&EXT4_I(inode)->i_data_sem);
++		up_read(&EXT4_I(inode)->i_data_sem);
+ 	}
+ 
+ 	return error;
 
-Thanks,
-N
-
-
-
-
-
-
-      
 
