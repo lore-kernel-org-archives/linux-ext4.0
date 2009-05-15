@@ -1,95 +1,66 @@
-From: Vincent Minet <vincent@vincent-minet.net>
-Subject: [PATCH] ext4: Fix spinlock assertions on UP systems
-Date: Fri, 15 May 2009 11:55:25 +0200
-Message-ID: <1242381325-10307-1-git-send-email-vincent@vincent-minet.net>
-To: linux-ext4@vger.kernel.org
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: More ext4 acl/xattr corruption - 4th occurence now
+Date: Fri, 15 May 2009 06:11:46 -0400
+Message-ID: <20090515101146.GA6816@mit.edu>
+References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu> <20090514110659.GA5146@kulgan> <20090514132506.GD5146@kulgan> <20090514140732.GI11352@mit.edu> <20090514143014.GH5146@kulgan> <20090514161254.GJ11352@mit.edu> <20090514210244.GL5146@kulgan> <20090514212325.GG21316@mit.edu> <20090515045508.GA1279@skywalker>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Kevin Shanahan <kmshanah@ucwb.org.au>,
+	Andreas Dilger <adilger@sun.com>, Alex Tomas <bzzz@sun.com>,
+	linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from serveur.didaction.com ([91.121.180.38]:42878 "EHLO
-	serveur.didaction.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755243AbZEOKFM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 15 May 2009 06:05:12 -0400
-Received: from portablevm.vincent-minet.net (unknown [IPv6:2a01:e35:2e22:1bb0::2])
-	by serveur.didaction.com (Postfix) with ESMTPSA id 160C624042
-	for <linux-ext4@vger.kernel.org>; Fri, 15 May 2009 11:55:43 +0200 (CEST)
+Received: from thunk.org ([69.25.196.29]:38728 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754066AbZEOKL4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 15 May 2009 06:11:56 -0400
+Content-Disposition: inline
+In-Reply-To: <20090515045508.GA1279@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On UP systems without DEBUG_SPINLOCK, ext4_is_group_locked always fails
-which triggers a BUG_ON() call.
-This patch fixes it by using assert_spin_locked instead.
+On Fri, May 15, 2009 at 10:25:08AM +0530, Aneesh Kumar K.V wrote:
+> > commit 039ed7a483fdcb2dbbc29f00cd0d74c101ab14c5
+> > Author: Theodore Ts'o <tytso@mit.edu>
+> > Date:   Thu May 14 17:09:37 2009 -0400
+> > 
+> >     ext4: Fix race in ext4_inode_info.i_cached_extent
+> >     
+> >     If one CPU is reading from a file while another CPU is writing to the
+> >     same file different locations, there is nothing protecting the
+> >     i_cached_extent structure from being used and updated at the same
+> >     time.  This could potentially cause the wrong location on disk to be
+> >     read or written to, including potentially causing the corruption of
+> >     the block group descriptors and/or inode table.
+> 
+> 
+> It should be multiple readers. We don't allow read/write or multiple
+> writers via ext4_ext_get_blocks. &EXT4_I(inode)->i_data_sem is supposed
+> to protect read/write and multiple writers. What it allowed was
+> multiple readers(get_block call with create = 0). And readers did cache
+> the extent information which it read from the disk. So the fix is
+> correct, but we need to update the commit message.
 
-Signed-off-by: Vincent Minet <vincent@vincent-minet.net>
----
- fs/ext4/ext4.h    |    6 ------
- fs/ext4/mballoc.c |   10 +++++-----
- 2 files changed, 5 insertions(+), 11 deletions(-)
+Yes, you're right.  The i_data_sem would have protected us from the
+worst of these problems.  The commit message isn't totally wrong,
+though, since even a writer will call ext4_ext_get_blocks() with
+create == 0.  But we should describe the failure mode much more
+accurately, and say that it is two callers of ext4_ext_get_blocks()
+with create=0 racing against one another.  It's possible, perhaps even
+likely, that one of those callers came from a call of
+ext4_get_blocks() with create=1 --- given that the people who were
+reporting this were doing so when doing backup jobs.
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 7386b80..fec8acb 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1598,12 +1598,6 @@ static inline void ext4_unlock_group(struct super_block *sb,
- 	spin_unlock(ext4_group_lock_ptr(sb, group));
- }
- 
--static inline int ext4_is_group_locked(struct super_block *sb,
--					ext4_group_t group)
--{
--	return spin_is_locked(ext4_group_lock_ptr(sb, group));
--}
--
- /*
-  * Inodes and files operations
-  */
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 14a3b77..fe7db8b 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -449,7 +449,7 @@ static void mb_free_blocks_double(struct inode *inode, struct ext4_buddy *e4b,
- 
- 	if (unlikely(e4b->bd_info->bb_bitmap == NULL))
- 		return;
--	BUG_ON(!ext4_is_group_locked(sb, e4b->bd_group));
-+	assert_spin_locked(ext4_group_lock_ptr(sb, e4b->bd_group));
- 	for (i = 0; i < count; i++) {
- 		if (!mb_test_bit(first + i, e4b->bd_info->bb_bitmap)) {
- 			ext4_fsblk_t blocknr;
-@@ -473,7 +473,7 @@ static void mb_mark_used_double(struct ext4_buddy *e4b, int first, int count)
- 
- 	if (unlikely(e4b->bd_info->bb_bitmap == NULL))
- 		return;
--	BUG_ON(!ext4_is_group_locked(e4b->bd_sb, e4b->bd_group));
-+	assert_spin_locked(ext4_group_lock_ptr(e4b->bd_sb, e4b->bd_group));
- 	for (i = 0; i < count; i++) {
- 		BUG_ON(mb_test_bit(first + i, e4b->bd_info->bb_bitmap));
- 		mb_set_bit(first + i, e4b->bd_info->bb_bitmap);
-@@ -1128,7 +1128,7 @@ static void mb_free_blocks(struct inode *inode, struct ext4_buddy *e4b,
- 	struct super_block *sb = e4b->bd_sb;
- 
- 	BUG_ON(first + count > (sb->s_blocksize << 3));
--	BUG_ON(!ext4_is_group_locked(sb, e4b->bd_group));
-+	assert_spin_locked(ext4_group_lock_ptr(sb, e4b->bd_group));
- 	mb_check_buddy(e4b);
- 	mb_free_blocks_double(inode, e4b, first, count);
- 
-@@ -1209,7 +1209,7 @@ static int mb_find_extent(struct ext4_buddy *e4b, int order, int block,
- 	int ord;
- 	void *buddy;
- 
--	BUG_ON(!ext4_is_group_locked(e4b->bd_sb, e4b->bd_group));
-+	assert_spin_locked(ext4_group_lock_ptr(e4b->bd_sb, e4b->bd_group));
- 	BUG_ON(ex == NULL);
- 
- 	buddy = mb_find_buddy(e4b, order, &max);
-@@ -1273,7 +1273,7 @@ static int mb_mark_used(struct ext4_buddy *e4b, struct ext4_free_extent *ex)
- 
- 	BUG_ON(start + len > (e4b->bd_sb->s_blocksize << 3));
- 	BUG_ON(e4b->bd_group != ex->fe_group);
--	BUG_ON(!ext4_is_group_locked(e4b->bd_sb, e4b->bd_group));
-+	assert_spin_locked(ext4_group_lock_ptr(e4b->bd_sb, e4b->bd_group));
- 	mb_check_buddy(e4b);
- 	mb_mark_used_double(e4b, start, len);
- 
--- 
-1.6.3
+However, one could imagine multiple mysql (or DB2) threads writing
+into random parts of a database, and if two CPU's try to bmap already
+allocated (and initialized) blocks out of the database file, so that
+ext4_ext_get_blocks() is always being called with create=0, you could
+very easily end up with a situation where blocks would be written to
+the wrong location on disk.  <<shiver>>
 
+We should make sure that all of the enterprise distributions that are
+shipping ext4 as a "technology preview" get a copy of this patch as a
+fixing a high-priority bug, since a database workload should trip this
+pretty easily.
+
+							- Ted
