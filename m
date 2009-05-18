@@ -1,43 +1,43 @@
-From: Michael Shields <mshields@google.com>
-Subject: [PATCH] Doc fix: ext2 can only have 32,000 subdirs, not 32,768.
-Date: Mon, 18 May 2009 12:13:51 -0700
-Message-ID: <63a2e74f0905181213r54a2d8b2tb7dcecd177d474c2@mail.gmail.com>
+From: Andrew Clayton <andrew@digital-domain.net>
+Subject: [PATCH] Documentation/filesystems/ext3.txt
+Date: Mon, 18 May 2009 21:22:09 +0100
+Message-ID: <20090518212209.17c46cee@digital-domain.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-kernel@vger.kernel.org, trivial@kernel.org
-To: rdunlap@xenotime.net, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:39197 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751260AbZERTNy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 May 2009 15:13:54 -0400
+Received: from c.painless.aaisp.net.uk ([81.187.30.53]:48432 "EHLO
+	c.painless.aaisp.net.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755863AbZERUxy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 May 2009 16:53:54 -0400
+Received: from alpha.digital-domain.net ([217.169.2.51] helo=localhost.localdomain)
+	by c.painless.aaisp.net.uk with esmtp (Exim 4.69)
+	(envelope-from <andrew@digital-domain.net>)
+	id 1M69Le-0001Fq-0c
+	for linux-ext4@vger.kernel.org; Mon, 18 May 2009 21:22:10 +0100
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext2.txt says that dirs can have 32,768 subdirs, but the actual value
-of EXT2_LINK_MAX is 32000.
-ext3 is the same, but the doc does not mention it. =C2=A0One of ext4's
-features is to "fix 32000 subdirectory limit".
+Update the ext3 document with the fact that data=writeback is now the
+default journaling mode.
 
---- linux-2.6.29.3/Documentation/filesystems/ext2.txt.orig 2009-05-08
-15:47:21.000000000 -0700
-+++ linux-2.6.29.3/Documentation/filesystems/ext2.txt 2009-05-18
-12:03:58.000000000 -0700
-@@ -322,7 +322,7 @@ an upper limit on the block size imposed
-=C2=A0so 8kB blocks are only allowed on Alpha systems (and other archit=
-ectures
-=C2=A0which support larger pages).
 
--There is an upper limit of 32768 subdirectories in a single directory.
-+There is an upper limit of 32000 subdirectories in a single directory.
+Signed-off-by: Andrew Clayton <andrew@digital-domain.net>
 
-=C2=A0There is a "soft" upper limit of about 10-15k files in a single d=
-irectory
-=C2=A0with the current linear linked-list directory implementation. =C2=
-=A0This limit
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+--- linux-2.6/Documentation/filesystems/ext3.txt.orig	2009-05-18 20:48:27.084220753 +0100
++++ linux-2.6/Documentation/filesystems/ext3.txt	2009-05-18 20:49:01.023225288 +0100
+@@ -39,11 +39,11 @@
+ data=journal		All data are committed into the journal prior to being
+ 			written into the main file system.
+ 
+-data=ordered	(*)	All data are forced directly out to the main file
++data=ordered		All data are forced directly out to the main file
+ 			system prior to its metadata being committed to the
+ 			journal.
+ 
+-data=writeback		Data ordering is not preserved, data may be written
++data=writeback	(*)	Data ordering is not preserved, data may be written
+ 			into the main file system after its metadata has been
+ 			committed to the journal.
+ 
