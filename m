@@ -1,631 +1,118 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: [PATCH] ext4: Add a comprehensive block validity check to
-	ext4_get_blocks() (Was: More ext4 acl/xattr corruption - 4th
-	occurence now)
-Date: Sun, 17 May 2009 22:14:28 -0400
-Message-ID: <20090518021428.GD32019@mit.edu>
-References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu> <20090515045827.GB1279@skywalker> <20090515102719.GB6816@mit.edu>
+From: david@lang.hm
+Subject: Re: ext3/ext4 directories don't shrink after deleting lots of
+ files
+Date: Sun, 17 May 2009 19:49:09 -0700 (PDT)
+Message-ID: <alpine.DEB.1.10.0905171935310.32210@asgard>
+References: <1242338523.6933.664.camel@timo-desktop> <1b7401870905141732v43bd7321g1f0d9721b5e3f761@mail.gmail.com> <605A8D56-81CD-4775-8FCD-58CDB12CBA36@iki.fi> <20090517213335.GB32019@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Kevin Shanahan <kmshanah@ucwb.org.au>, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: TEXT/PLAIN; charset=US-ASCII; format=flowed
+Cc: Timo Sirainen <tss@iki.fi>, Josef Bacik <josef@toxicpanda.com>,
+	linux-kernel@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:40765 "EHLO thunker.thunk.org"
+Received: from mail.lang.hm ([64.81.33.126]:57601 "EHLO bifrost.lang.hm"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751272AbZERCOk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 17 May 2009 22:14:40 -0400
-Content-Disposition: inline
-In-Reply-To: <20090515102719.GB6816@mit.edu>
+	id S1751580AbZERCtQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 17 May 2009 22:49:16 -0400
+In-Reply-To: <20090517213335.GB32019@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 15, 2009 at 06:27:19AM -0400, Theodore Tso wrote:
-> 
-> The other problem is that ext4_mb_mark_diskspace_used()'s tests assume
-> !flex_bg, and with flex_bg, its checks are largely ineffective.
-> 
-> What I think the right approach probably will be is that we need to
-> build an rbtree of the "system zone" blocks at mount time.  Especially
-> with flex_bg, in the normal case the block group descriptors and
-> bitmap blocks will form a very nice, contiguous set of extents that
-> should be relatively compactly stored in an rbtree.  This will allow
-> us to make the tests done by ext4_valid_extent(),
-> ext4_mb_mark_diskspace_used(), and ext4_get_blocks() to be ***much***
-> more effective and comprehensive. 
+On Sun, 17 May 2009, Theodore Tso wrote:
 
-Here's the patch which I've written up that allows
-ext4_valid_extent(), ext4_mb_mark_displace_used(),
-__ext4_check_blockref(), and ext4_get_blocks() to use the same
-infrastructure.  Normally, they will all just check to make sure that
-block is between s_first_data_blocks and s_blocks_count.  But if the
-mount option block_validity is enabled, the ext4 filesystem will build
-an rbtree of all of the filesystem metadata blocks, and
-ext4_data_block_valid() will do a full check make sure the block is
-valid.
+> On Thu, May 14, 2009 at 08:45:38PM -0400, Timo Sirainen wrote:
+>> I was rather thinking something that I could run while the system was
+>> fully operational. Otherwise just moving the files to a temp directory +
+>> rmdir() + rename() would have been fine too.
+>>
+>> I just tested that xfs, jfs and reiserfs all shrink the directories
+>> immediately. Is it more difficult to implement for ext* or has no one
+>> else found this to be a problem?
+>
+> I've sketched out a design that shouldn't be too hard to implement
+> that will address the problem which you've raised.  I'm not sure when
+> I will have to implement it, so in case there's an ext4 developer who
+> has time, I thought I would throw it out there.  For folks who are
+> looking for something simple to get started, perhaps after submitting
+> a few bug fixes or cleanups, this should be a fairly straight forward
+> project.
+>
+> The constraints that we have is that for backwards compatibility's
+> sake, we can't support spares directories.  So if a block in the of
 
-I suspect we could afford to make block_validity the default, but it
-does burn slightly more memory, and will take a little bit of CPU.  It
-would be nice to benchmark the results and see if it really is
-noticeable.
+s/spares/sparse/ ?
 
-						- Ted
+> the directory becomes empty, we can't just unallocate it unless the it
+> is at the very end of the directory.  In addition, if htree support is
+> enabled, we also need to make sure the hash tree index is updated
+> remove the reference to the block we are about to remove.  Finally, if
+> journalling is enabled, we need to know in advance how many blocks the
+> unlink() operations will need to touch.
+>
+> So the basic design is as follows.  We add a new parameter to
+> ext4_delete_entry(), which is a pointer to a new data structure,
+> ext4_dir_cleanup.  This it gets filled in with information about the
+> directory block containing the directory entry which was removed:
+> directory inode, logical and physical block number, the directory
+> index blocks if present, etc.  Then the callers of ext4_delete_entry()
+> (ext4_rmdir, ext4_rename, and ext4_unlink) take that information ad
+> pass it another function which takes tries to shrink the directory ---
+> but this function gets called *after* the call to ext4_journal_stop().
+> That way we don't have to change any of the journal accounting credits
+> and the ext4_shrink_directory() function is does purely optional work.
+>
+> At least initially, the ext4_shrink_directory() might only do
+> something useful if the last directory block in the directory is
+> empty, and htree is not enabled; in that case, it can just simply
+> truncate the last block, and return.
+>
+> The next step would be to teach ext4_shrink_directory() how to handle
+> removing the last directory block for htree directories; this means
+> that it will need to find the the entry in the htree index block, and
+> remove the entry in the htree index.
+>
+> Next, to handle the case where the empty directory block is *not* the
+> last block in the directory, what ext4_shrink_directory() can do is to
+> take the contents of the last directory block, and copy it to the
+> empty directory block, and then do the truncate operation.  In the
+> case of htree directories, the htree index blocks would also have to
+> be updated (both removing the index entry pointing to the empty
+> directory block, as well as updating the index entry which had been
+> pointing to the last directory block).
 
-commit 93c1e4487e365bc637bf1fd38604817ad6cdf13a
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sun May 17 15:38:01 2009 -0400
+I think this is more complex. I think you can't just move the last 
+directory block to one earlier because that would change the order of 
+things in the directory, messing up things that do a partial readdir of 
+the directory and then come back to pick up where they left off. you would 
+need to move all blocks after the empty up one.
 
-    ext4: Add a comprehensive block validity check to ext4_get_blocks()
-    
-    To catch filesystem bugs or corruption which could lead to the
-    filesystem getting severly damaged, this patch adds a facility for
-    tracking all of the filesystem metadata blocks by contiguous regions
-    in a red-black tree.  This allows quick searching of the tree to
-    locate extents which might overlap with filesystem metadata blocks.
-    
-    This facility is also used by the multi-block allocator to assure that
-    it is not allocating blocks out of the system zone, as well as by the
-    routines used when reading indirect blocks and extents information
-    from disk to make sure their contents are valid.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Another thing, you don't nessasarily want to do this movement immediatly 
+when a directory block becomes empty. It's very possible that the user is 
+deleting a lot of things from the directory, and so may delete enough 
+stuff so that all (or almost all) of the directory blocks could be deleted 
+through the 'last block in the directory' method. it may be that the best 
+thing to do at this point is to wait for instructions from the user to do 
+this (more below)
 
-diff --git a/fs/ext4/Makefile b/fs/ext4/Makefile
-index a8ff003..8a34710 100644
---- a/fs/ext4/Makefile
-+++ b/fs/ext4/Makefile
-@@ -5,8 +5,8 @@
- obj-$(CONFIG_EXT4_FS) += ext4.o
- 
- ext4-y	:= balloc.o bitmap.o dir.o file.o fsync.o ialloc.o inode.o \
--		   ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
--		   ext4_jbd2.o migrate.o mballoc.o
-+		ioctl.o namei.o super.o symlink.o hash.o resize.o extents.o \
-+		ext4_jbd2.o migrate.o mballoc.o block_validity.o
- 
- ext4-$(CONFIG_EXT4_FS_XATTR)		+= xattr.o xattr_user.o xattr_trusted.o
- ext4-$(CONFIG_EXT4_FS_POSIX_ACL)	+= acl.o
-diff --git a/fs/ext4/block_validity.c b/fs/ext4/block_validity.c
-new file mode 100644
-index 0000000..50784ef
---- /dev/null
-+++ b/fs/ext4/block_validity.c
-@@ -0,0 +1,244 @@
-+/*
-+ *  linux/fs/ext4/block_validity.c
-+ *
-+ * Copyright (C) 2009
-+ * Theodore Ts'o (tytso@mit.edu)
-+ *
-+ * Track which blocks in the filesystem are metadata blocks that
-+ * should never be used as data blocks by files or directories.
-+ */
-+
-+#include <linux/time.h>
-+#include <linux/fs.h>
-+#include <linux/namei.h>
-+#include <linux/quotaops.h>
-+#include <linux/buffer_head.h>
-+#include <linux/module.h>
-+#include <linux/swap.h>
-+#include <linux/pagemap.h>
-+#include <linux/version.h>
-+#include <linux/blkdev.h>
-+#include <linux/mutex.h>
-+#include "ext4.h"
-+
-+struct ext4_system_zone {
-+	struct rb_node	node;
-+	ext4_fsblk_t	start_blk;
-+	unsigned int	count;
-+};
-+
-+static struct kmem_cache *ext4_system_zone_cachep;
-+
-+int __init init_ext4_system_zone(void)
-+{
-+	ext4_system_zone_cachep = KMEM_CACHE(ext4_system_zone,
-+					     SLAB_RECLAIM_ACCOUNT);
-+	if (ext4_system_zone_cachep == NULL)
-+		return -ENOMEM;
-+	return 0;
-+}
-+
-+void exit_ext4_system_zone(void)
-+{
-+	kmem_cache_destroy(ext4_system_zone_cachep);
-+}
-+
-+static inline int can_merge(struct ext4_system_zone *entry1,
-+		     struct ext4_system_zone *entry2)
-+{
-+	if ((entry1->start_blk + entry1->count) == entry2->start_blk)
-+		return 1;
-+	return 0;
-+}
-+
-+/*
-+ * Mark a range of blocks as belonging to the "system zone" --- that
-+ * is, filesystem metadata blocks which should never be used by
-+ * inodes.
-+ */
-+static int add_system_zone(struct ext4_sb_info *sbi,
-+			   ext4_fsblk_t start_blk,
-+			   unsigned int count)
-+{
-+	struct ext4_system_zone *new_entry = NULL, *entry;
-+	struct rb_node **n = &sbi->system_blks.rb_node, *node;
-+	struct rb_node *parent = NULL, *new_node = NULL;
-+
-+	while (*n) {
-+		parent = *n;
-+		entry = rb_entry(parent, struct ext4_system_zone, node);
-+		if (start_blk < entry->start_blk)
-+			n = &(*n)->rb_left;
-+		else if (start_blk >= (entry->start_blk + entry->count))
-+			n = &(*n)->rb_right;
-+		else {
-+			if (start_blk + count > (entry->start_blk + 
-+						 entry->count))
-+				entry->count = (start_blk + count - 
-+						entry->start_blk);
-+			new_node = *n;
-+			new_entry = rb_entry(new_node, struct ext4_system_zone,
-+					     node);
-+			break;
-+		}
-+	}
-+
-+	if (!new_entry) {
-+		new_entry = kmem_cache_alloc(ext4_system_zone_cachep,
-+					     GFP_KERNEL);
-+		if (!new_entry)
-+			return -ENOMEM;
-+		new_entry->start_blk = start_blk;
-+		new_entry->count = count;
-+		new_node = &new_entry->node;
-+
-+		rb_link_node(new_node, parent, n);
-+		rb_insert_color(new_node, &sbi->system_blks);
-+	}
-+
-+	/* Can we merge to the left? */
-+	node = rb_prev(new_node);
-+	if (node) {
-+		entry = rb_entry(node, struct ext4_system_zone, node);
-+		if (can_merge(entry, new_entry)) {
-+			new_entry->start_blk = entry->start_blk;
-+			new_entry->count += entry->count;
-+			rb_erase(node, &sbi->system_blks);
-+			kmem_cache_free(ext4_system_zone_cachep, entry);
-+		}
-+	}
-+
-+	/* Can we merge to the right? */
-+	node = rb_next(new_node);
-+	if (node) {
-+		entry = rb_entry(node, struct ext4_system_zone, node);
-+		if (can_merge(new_entry, entry)) {
-+			new_entry->count += entry->count;
-+			rb_erase(node, &sbi->system_blks);
-+			kmem_cache_free(ext4_system_zone_cachep, entry);
-+		}
-+	}
-+	return 0;
-+}
-+
-+static void debug_print_tree(struct ext4_sb_info *sbi)
-+{
-+	struct rb_node *node;
-+	struct ext4_system_zone *entry;
-+	int first = 1;
-+
-+	printk(KERN_INFO "System zones: ");
-+	node = rb_first(&sbi->system_blks);
-+	while (node) {
-+		entry = rb_entry(node, struct ext4_system_zone, node);
-+		printk("%s%llu-%llu", first ? "" : ", ",
-+		       entry->start_blk, entry->start_blk + entry->count - 1);
-+		first = 0;
-+		node = rb_next(node);
-+	}
-+	printk("\n");
-+}
-+
-+int ext4_setup_system_zone(struct super_block *sb)
-+{
-+	ext4_group_t ngroups = ext4_get_groups_count(sb);
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_group_desc *gdp;
-+	ext4_group_t i;
-+	int flex_size = ext4_flex_bg_size(sbi);
-+	int ret;
-+
-+	if (!test_opt(sb, BLOCK_VALIDITY)) {
-+		if (EXT4_SB(sb)->system_blks.rb_node)
-+			ext4_release_system_zone(sb);
-+		return 0;
-+	}
-+	if (EXT4_SB(sb)->system_blks.rb_node)
-+		return 0;
-+
-+	for (i=0; i < ngroups; i++) {
-+		if (ext4_bg_has_super(sb, i) &&
-+		    ((i < 5) || ((i % flex_size) == 0)))
-+			add_system_zone(sbi, ext4_group_first_block_no(sb, i),
-+					sbi->s_gdb_count + 1);
-+		gdp = ext4_get_group_desc(sb, i, NULL);
-+		ret = add_system_zone(sbi, ext4_block_bitmap(sb, gdp), 1);
-+		if (ret)
-+			return ret;
-+		ret = add_system_zone(sbi, ext4_inode_bitmap(sb, gdp), 1);
-+		if (ret)
-+			return ret;
-+		ret = add_system_zone(sbi, ext4_inode_table(sb, gdp),
-+				sbi->s_itb_per_group);
-+		if (ret)
-+			return ret;
-+	}
-+
-+	if (test_opt(sb, DEBUG))
-+		debug_print_tree(EXT4_SB(sb));
-+	return 0;
-+}
-+
-+/* Called when the filesystem is unmounted */
-+void ext4_release_system_zone(struct super_block *sb)
-+{
-+	struct rb_node	*n = EXT4_SB(sb)->system_blks.rb_node;
-+	struct rb_node	*parent;
-+	struct ext4_system_zone	*entry;
-+
-+	while (n) {
-+		/* Do the node's children first */
-+		if (n->rb_left) {
-+			n = n->rb_left;
-+			continue;
-+		}
-+		if (n->rb_right) {
-+			n = n->rb_right;
-+			continue;
-+		}
-+		/*
-+		 * The node has no children; free it, and then zero
-+		 * out parent's link to it.  Finally go to the
-+		 * beginning of the loop and try to free the parent
-+		 * node.
-+		 */
-+		parent = rb_parent(n);
-+		entry = rb_entry(n, struct ext4_system_zone, node);
-+		kmem_cache_free(ext4_system_zone_cachep, entry);
-+		if (!parent)
-+			EXT4_SB(sb)->system_blks.rb_node = NULL;
-+		else if (parent->rb_left == n)
-+			parent->rb_left = NULL;
-+		else if (parent->rb_right == n)
-+			parent->rb_right = NULL;
-+		n = parent;
-+	}
-+	EXT4_SB(sb)->system_blks.rb_node = NULL;
-+}
-+
-+/*
-+ * Returns 1 if the passed-in block region (start_blk,
-+ * start_blk+count) is valid; 0 if some part of the block region
-+ * overlaps with filesystem metadata blocks.
-+ */
-+int ext4_data_block_valid(struct ext4_sb_info *sbi, ext4_fsblk_t start_blk,
-+			  unsigned int count)
-+{
-+	struct ext4_system_zone *entry;
-+	struct rb_node *n = sbi->system_blks.rb_node;
-+
-+	if ((start_blk <= le32_to_cpu(sbi->s_es->s_first_data_block)) ||
-+	    (start_blk + count > ext4_blocks_count(sbi->s_es)))
-+		return 0;
-+	while (n) {
-+		entry = rb_entry(n, struct ext4_system_zone, node);
-+		if (start_blk + count - 1 < entry->start_blk)
-+			n = n->rb_left;
-+		else if (start_blk >= (entry->start_blk + entry->count))
-+			n = n->rb_right;
-+		else
-+			return 0;
-+	}
-+	return 1;
-+}
-+
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d164f12..4311cc8 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -696,6 +696,7 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_I_VERSION            0x2000000 /* i_version support */
- #define EXT4_MOUNT_DELALLOC		0x8000000 /* Delalloc support */
- #define EXT4_MOUNT_DATA_ERR_ABORT	0x10000000 /* Abort on file data write */
-+#define EXT4_MOUNT_BLOCK_VALIDITY	0x20000000 /* Block validity checking */
- 
- /* Compatibility, for having both ext2_fs.h and ext4_fs.h included at once */
- #ifndef _LINUX_EXT2_FS_H
-@@ -887,6 +888,7 @@ struct ext4_sb_info {
- 	int s_jquota_fmt;			/* Format of quota to use */
- #endif
- 	unsigned int s_want_extra_isize; /* New inodes should reserve # bytes */
-+	struct rb_root system_blks;
- 
- #ifdef EXTENTS_STATS
- 	/* ext4 extents stats */
-@@ -1618,6 +1620,15 @@ extern struct dentry *ext4_get_parent(struct dentry *child);
- extern const struct inode_operations ext4_symlink_inode_operations;
- extern const struct inode_operations ext4_fast_symlink_inode_operations;
- 
-+/* block_validity */
-+extern void ext4_release_system_zone(struct super_block *sb);
-+extern int ext4_setup_system_zone(struct super_block *sb);
-+extern int __init init_ext4_system_zone(void);
-+extern void exit_ext4_system_zone(void);
-+extern int ext4_data_block_valid(struct ext4_sb_info *sbi,
-+				 ext4_fsblk_t start_blk,
-+				 unsigned int count);
-+
- /* extents.c */
- extern int ext4_ext_tree_init(handle_t *handle, struct inode *);
- extern int ext4_ext_writepage_trans_blocks(struct inode *, int);
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 27c383c..d04b779 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -326,32 +326,18 @@ ext4_ext_max_entries(struct inode *inode, int depth)
- 
- static int ext4_valid_extent(struct inode *inode, struct ext4_extent *ext)
- {
--	ext4_fsblk_t block = ext_pblock(ext), valid_block;
-+	ext4_fsblk_t block = ext_pblock(ext);
- 	int len = ext4_ext_get_actual_len(ext);
--	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
- 
--	valid_block = le32_to_cpu(es->s_first_data_block) +
--		EXT4_SB(inode->i_sb)->s_gdb_count;
--	if (unlikely(block <= valid_block ||
--		     ((block + len) > ext4_blocks_count(es))))
--		return 0;
--	else
--		return 1;
-+	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, len);
- }
- 
- static int ext4_valid_extent_idx(struct inode *inode,
- 				struct ext4_extent_idx *ext_idx)
- {
--	ext4_fsblk_t block = idx_pblock(ext_idx), valid_block;
--	struct ext4_super_block *es = EXT4_SB(inode->i_sb)->s_es;
-+	ext4_fsblk_t block = idx_pblock(ext_idx);
- 
--	valid_block = le32_to_cpu(es->s_first_data_block) +
--		EXT4_SB(inode->i_sb)->s_gdb_count;
--	if (unlikely(block <= valid_block ||
--		     (block >= ext4_blocks_count(es))))
--		return 0;
--	else
--		return 1;
-+	return ext4_data_block_valid(EXT4_SB(inode->i_sb), block, 1);
- }
- 
- static int ext4_valid_extent_entries(struct inode *inode,
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index d7b7480..dadd3f9 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -372,20 +372,21 @@ static int ext4_block_to_path(struct inode *inode,
- }
- 
- static int __ext4_check_blockref(const char *function, struct inode *inode,
--				 __le32 *p, unsigned int max) {
--
--	unsigned int maxblocks = ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es);
-+				 __le32 *p, unsigned int max)
-+{
- 	__le32 *bref = p;
-+	unsigned int blk;
-+
- 	while (bref < p+max) {
--		if (unlikely(le32_to_cpu(*bref) >= maxblocks)) {
-+		blk = le32_to_cpu(*bref++);
-+		if (blk && 
-+		    unlikely(!ext4_data_block_valid(EXT4_SB(inode->i_sb), 
-+						    blk, 1))) {
- 			ext4_error(inode->i_sb, function,
--				   "block reference %u >= max (%u) "
--				   "in inode #%lu, offset=%d",
--				   le32_to_cpu(*bref), maxblocks,
--				   inode->i_ino, (int)(bref-p));
-+				   "invalid block reference %u "
-+				   "in inode #%lu", blk, inode->i_ino);
-  			return -EIO;
-  		}
--		bref++;
-  	}
-  	return 0;
- }
-@@ -1125,6 +1126,21 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
- 		ext4_discard_preallocations(inode);
- }
- 
-+static int check_block_validity(struct inode *inode, sector_t logical,
-+				sector_t phys, int len)
-+{
-+	if (!ext4_data_block_valid(EXT4_SB(inode->i_sb), phys, len)) {
-+		ext4_error(inode->i_sb, "check_block_validity",
-+			   "inode #%lu logical block %llu mapped to %llu "
-+			   "(size %d)", inode->i_ino,
-+			   (unsigned long long) logical,
-+			   (unsigned long long) phys, len);
-+		WARN_ON(1);
-+		return -EIO;
-+	}
-+	return 0;
-+}
-+
- /*
-  * The ext4_get_blocks() function tries to look up the requested blocks,
-  * and returns if the blocks are already mapped.
-@@ -1170,6 +1186,13 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
- 	}
- 	up_read((&EXT4_I(inode)->i_data_sem));
- 
-+	if (retval > 0 && buffer_mapped(bh)) {
-+		int ret = check_block_validity(inode, block, 
-+					       bh->b_blocknr, retval);
-+		if (ret != 0)
-+			return ret;
-+	}
-+
- 	/* If it is only a block(s) look up */
- 	if ((flags & EXT4_GET_BLOCKS_CREATE) == 0)
- 		return retval;
-@@ -1245,6 +1268,12 @@ int ext4_get_blocks(handle_t *handle, struct inode *inode, sector_t block,
- 		ext4_da_update_reserve_space(inode, retval);
- 
- 	up_write((&EXT4_I(inode)->i_data_sem));
-+	if (retval > 0 && buffer_mapped(bh)) {
-+		int ret = check_block_validity(inode, block, 
-+					       bh->b_blocknr, retval);
-+		if (ret != 0)
-+			return ret;
-+	}
- 	return retval;
- }
- 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 541bd9a..ed8482e 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -2961,15 +2961,10 @@ ext4_mb_mark_diskspace_used(struct ext4_allocation_context *ac,
- 		+ le32_to_cpu(es->s_first_data_block);
- 
- 	len = ac->ac_b_ex.fe_len;
--	if (in_range(ext4_block_bitmap(sb, gdp), block, len) ||
--	    in_range(ext4_inode_bitmap(sb, gdp), block, len) ||
--	    in_range(block, ext4_inode_table(sb, gdp),
--		     EXT4_SB(sb)->s_itb_per_group) ||
--	    in_range(block + len - 1, ext4_inode_table(sb, gdp),
--		     EXT4_SB(sb)->s_itb_per_group)) {
-+	if (!ext4_data_block_valid(sbi, block, len)) {
- 		ext4_error(sb, __func__,
--			   "Allocating block %llu in system zone of %d group\n",
--			   block, ac->ac_b_ex.fe_group);
-+			   "Allocating blocks %llu-%llu which overlap "
-+			   "fs metadata\n", block, block+len);
- 		/* File system mounted not to panic on error
- 		 * Fix the bitmap and repeat the block allocation
- 		 * We leak some of the blocks here.
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index dc34ed3..600b7ad 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -568,6 +568,7 @@ static void ext4_put_super(struct super_block *sb)
- 	struct ext4_super_block *es = sbi->s_es;
- 	int i, err;
- 
-+	ext4_release_system_zone(sb);
- 	ext4_mb_release(sb);
- 	ext4_ext_release(sb);
- 	ext4_xattr_put_super(sb);
-@@ -1055,6 +1056,7 @@ enum {
- 	Opt_ignore, Opt_barrier, Opt_nobarrier, Opt_err, Opt_resize,
- 	Opt_usrquota, Opt_grpquota, Opt_i_version,
- 	Opt_stripe, Opt_delalloc, Opt_nodelalloc,
-+	Opt_block_validity, Opt_noblock_validity,
- 	Opt_inode_readahead_blks, Opt_journal_ioprio
- };
- 
-@@ -1114,6 +1116,8 @@ static const match_table_t tokens = {
- 	{Opt_resize, "resize"},
- 	{Opt_delalloc, "delalloc"},
- 	{Opt_nodelalloc, "nodelalloc"},
-+	{Opt_block_validity, "block_validity"},
-+	{Opt_noblock_validity, "noblock_validity"},
- 	{Opt_inode_readahead_blks, "inode_readahead_blks=%u"},
- 	{Opt_journal_ioprio, "journal_ioprio=%u"},
- 	{Opt_auto_da_alloc, "auto_da_alloc=%u"},
-@@ -1508,6 +1512,12 @@ set_qf_format:
- 		case Opt_delalloc:
- 			set_opt(sbi->s_mount_opt, DELALLOC);
- 			break;
-+		case Opt_block_validity:
-+			set_opt(sbi->s_mount_opt, BLOCK_VALIDITY);
-+			break;
-+		case Opt_noblock_validity:
-+			clear_opt(sbi->s_mount_opt, BLOCK_VALIDITY);
-+			break;
- 		case Opt_inode_readahead_blks:
- 			if (match_int(&args[0], &option))
- 				return 0;
-@@ -2826,6 +2836,13 @@ no_journal:
- 	} else if (test_opt(sb, DELALLOC))
- 		printk(KERN_INFO "EXT4-fs: delayed allocation enabled\n");
- 
-+	err = ext4_setup_system_zone(sb);
-+	if (err) {
-+		printk(KERN_ERR "EXT4-fs: failed to initialize system "
-+		       "zone (%d)\n", err);
-+		goto failed_mount4;
-+	}
-+
- 	ext4_ext_init(sb);
- 	err = ext4_mb_init(sb, needs_recovery);
- 	if (err) {
-@@ -2875,6 +2892,7 @@ cantfind_ext4:
- 
- failed_mount4:
- 	printk(KERN_ERR "EXT4-fs (device %s): mount failed\n", sb->s_id);
-+	ext4_release_system_zone(sb);
- 	if (sbi->s_journal) {
- 		jbd2_journal_destroy(sbi->s_journal);
- 		sbi->s_journal = NULL;
-@@ -3515,6 +3533,7 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 				sb->s_flags &= ~MS_RDONLY;
- 		}
- 	}
-+	ext4_setup_system_zone(sb);
- 	if (sbi->s_journal == NULL)
- 		ext4_commit_super(sb, 1);
- 
-@@ -3927,13 +3946,16 @@ static int __init init_ext4_fs(void)
- {
- 	int err;
- 
-+	err = init_ext4_system_zone();
-+	if (err)
-+		return err;
- 	ext4_kset = kset_create_and_add("ext4", NULL, fs_kobj);
- 	if (!ext4_kset)
--		return -ENOMEM;
-+		goto out4;
- 	ext4_proc_root = proc_mkdir("fs/ext4", NULL);
- 	err = init_ext4_mballoc();
- 	if (err)
--		return err;
-+		goto out3;
- 
- 	err = init_ext4_xattr();
- 	if (err)
-@@ -3958,6 +3980,11 @@ out1:
- 	exit_ext4_xattr();
- out2:
- 	exit_ext4_mballoc();
-+out3:
-+	remove_proc_entry("fs/ext4", NULL);
-+	kset_unregister(ext4_kset);
-+out4:
-+	exit_ext4_system_zone();
- 	return err;
- }
- 
-@@ -3972,6 +3999,7 @@ static void __exit exit_ext4_fs(void)
- 	exit_ext4_mballoc();
- 	remove_proc_entry("fs/ext4", NULL);
- 	kset_unregister(ext4_kset);
-+	exit_ext4_system_zone();
- }
- 
- MODULE_AUTHOR("Remy Card, Stephen Tweedie, Andrew Morton, Andreas Dilger, Theodore Ts'o and others");
+> Finally, ext4_shrink_directory() could be taought how to take an
+> *almost* empty directory block, and attempts to move the directory
+> entries to the previous and/or next directory block.
+
+this sounds like something that's best implemented as a nighly cron job 
+(run similar to updatedb) to defrag the directory blocks. given changes 
+over the years to disk technology (both how much slower seeks have become 
+relative to sequential reads on rotating media, and how SSDs really have 
+much larger block sizes internally than what's exposed to users), it may 
+make sense to consider having a defrag tool for the data blocks as well.
+
+David Lang
+
+> The basic idea is that ext4_shrink_directory() could be implemented
+> and tested incrementally, with at each stage it becoming more
+> aggressive about being able to shrink directories.
+>
+> Anyway, if there's someone interested in trying to implement this,
+> give me a holler; I'd be happy to give more details as necessary.
+>
+>     	  	      	       	  	- Ted
+>
