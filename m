@@ -1,38 +1,43 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: e2fsprogs bmap problem
-Date: Mon, 18 May 2009 12:32:06 -0400
-Message-ID: <20090518163206.GB27751@mit.edu>
-References: <199598.89239.qm@web43514.mail.sp1.yahoo.com>
+From: Michael Shields <mshields@google.com>
+Subject: [PATCH] Doc fix: ext2 can only have 32,000 subdirs, not 32,768.
+Date: Mon, 18 May 2009 12:13:51 -0700
+Message-ID: <63a2e74f0905181213r54a2d8b2tb7dcecd177d474c2@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: number9652 <number9652@yahoo.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-kernel@vger.kernel.org, trivial@kernel.org
+To: rdunlap@xenotime.net, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:34207 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753677AbZERQcQ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 May 2009 12:32:16 -0400
-Content-Disposition: inline
-In-Reply-To: <199598.89239.qm@web43514.mail.sp1.yahoo.com>
+Received: from smtp-out.google.com ([216.239.33.17]:39197 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751260AbZERTNy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 May 2009 15:13:54 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, May 18, 2009 at 07:56:38AM -0700, number9652 wrote:
-> 
-> I have looked at it a little more closely now, and to me it seems
-> that we could add a new function like ext2fs_extent_open to accept
-> an inode structure, as an alternative to changing the extent
-> structure.
+ext2.txt says that dirs can have 32,768 subdirs, but the actual value
+of EXT2_LINK_MAX is 32000.
+ext3 is the same, but the doc does not mention it. =C2=A0One of ext4's
+features is to "fix 32000 subdirectory limit".
 
-Yes, the right way to do this is to create a new function,
-ext2fs_extent_open2() which takes a new parameter, struct inode
-*inode, and then make ext2fs_extent_open() call ext2fs_extent_open2()
-with the inode parameter set to NULL.  In ext2fs_extent_open2(), if
-struct inode *inode is non-NULL, then we use it instead of reading in
-the inode.  The one tricky bit is that we will need to use
-ext2fs_read_inode() and ext2fs_write_inode() instead of
-ext2fs_read_inode_full()/ext2fs_write_inode_full(), but that's OK; the
-extents code didn't really need to pull in the full inode structure
-anyway.
+--- linux-2.6.29.3/Documentation/filesystems/ext2.txt.orig 2009-05-08
+15:47:21.000000000 -0700
++++ linux-2.6.29.3/Documentation/filesystems/ext2.txt 2009-05-18
+12:03:58.000000000 -0700
+@@ -322,7 +322,7 @@ an upper limit on the block size imposed
+=C2=A0so 8kB blocks are only allowed on Alpha systems (and other archit=
+ectures
+=C2=A0which support larger pages).
 
-							- Ted
+-There is an upper limit of 32768 subdirectories in a single directory.
++There is an upper limit of 32000 subdirectories in a single directory.
+
+=C2=A0There is a "soft" upper limit of about 10-15k files in a single d=
+irectory
+=C2=A0with the current linear linked-list directory implementation. =C2=
+=A0This limit
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
