@@ -1,23 +1,30 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [Bug 13232] ext3/4 with synchronous writes gets wedged by
-	Postfix
-Date: Mon, 18 May 2009 14:53:57 +0200
-Message-ID: <20090518125357.GD25232@duck.suse.cz>
-References: <bug-13232-13602@http.bugzilla.kernel.org/> <200905121656.n4CGu5Fl003852@demeter.kernel.org> <20090513134802.GA7212@atrey.karlin.mff.cuni.cz> <20090513165254.GR8633@ZenIV.linux.org.uk>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13232] ext3/4 with synchronous writes gets wedged by Postfix
+Date: Mon, 18 May 2009 12:54:01 GMT
+Message-ID: <200905181254.n4ICs1ld010716@demeter.kernel.org>
+References: <bug-13232-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: bugzilla-daemon@bugzilla.kernel.org, linux-ext4@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46728 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752020AbZERMx5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 18 May 2009 08:53:57 -0400
-Content-Disposition: inline
-In-Reply-To: <20090513165254.GR8633@ZenIV.linux.org.uk>
+Received: from demeter.kernel.org ([140.211.167.39]:53136 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751062AbZERMyA (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 May 2009 08:54:00 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4ICs26p010717
+	for <linux-ext4@vger.kernel.org>; Mon, 18 May 2009 12:54:02 GMT
+In-Reply-To: <bug-13232-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+http://bugzilla.kernel.org/show_bug.cgi?id=13232
+
+
+
+
+
+--- Comment #9 from Jan Kara <jack@suse.cz>  2009-05-18 12:54:00 ---
 On Wed 13-05-09 17:52:54, Al Viro wrote:
 > On Wed, May 13, 2009 at 03:48:02PM +0200, Jan Kara wrote:
 > > >   Here, we have started a transaction in ext3_create() and then wait in
@@ -49,37 +56,39 @@ On Wed 13-05-09 17:52:54, Al Viro wrote:
 > one, but if it's at all possible to avoid, I'd rather avoid it.
   The ordering we see on delete when the filesystem is mounted with 'sync'
 option is:
-  DELETE					CREATE
+  DELETE                    CREATE
 generic_delete_inode()
   set I_FREEING
   ext3_delete_inode
     get transaction handle
     do work
-						get transaction handle
-						ext3_new_inode()
-						  reallocate inode
-						  insert_inode_locked()
+                        get transaction handle
+                        ext3_new_inode()
+                          reallocate inode
+                          insert_inode_locked()
     stop transaction, wait for it to commit
     (waiting for CREATE process to drop its
     transaction reference)
 
   Now similar race can happen even without 'sync' mount option but it's
 much harder to hit:
-  DELETE					CREATE
+  DELETE                    CREATE
 generic_delete_inode()
   set I_FREEING
   ext3_delete_inode
-						get transaction handle
-						ext3_new_inode()
-						  reallocate inode
-						  insert_inode_locked()
+                        get transaction handle
+                        ext3_new_inode()
+                          reallocate inode
+                          insert_inode_locked()
     try to get transaction handle -
       - transaction is too big so we send
       current transaction to commit which
       again waits for CREATE to drop its
       reference.
 
-								Honza
+                                Honza
+
 -- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
