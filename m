@@ -1,141 +1,80 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13232] ext3/4 with synchronous writes gets wedged by Postfix
-Date: Mon, 18 May 2009 14:10:17 GMT
-Message-ID: <200905181410.n4IEAHcW017360@demeter.kernel.org>
-References: <bug-13232-13602@http.bugzilla.kernel.org/>
+From: number9652 <number9652@yahoo.com>
+Subject: Re: e2fsprogs bmap problem
+Date: Mon, 18 May 2009 07:56:38 -0700 (PDT)
+Message-ID: <199598.89239.qm@web43514.mail.sp1.yahoo.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: 8BIT
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:43751 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753059AbZEROKQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 18 May 2009 10:10:16 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4IEAHih017361
-	for <linux-ext4@vger.kernel.org>; Mon, 18 May 2009 14:10:17 GMT
-In-Reply-To: <bug-13232-13602@http.bugzilla.kernel.org/>
+Received: from n76.bullet.mail.sp1.yahoo.com ([98.136.44.48]:33518 "HELO
+	n76.bullet.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1751140AbZERO4h (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 18 May 2009 10:56:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13232
 
-
-
-
-
---- Comment #11 from Jan Kara <jack@suse.cz>  2009-05-18 14:10:15 ---
-On Wed 13-05-09 19:13:40, Al Viro wrote:
-> On Wed, May 13, 2009 at 05:52:54PM +0100, Al Viro wrote:
-> > On Wed, May 13, 2009 at 03:48:02PM +0200, Jan Kara wrote:
-> > > >   Here, we have started a transaction in ext3_create() and then wait in
-> > > > find_inode_fast() for I_FREEING to be cleared (obviously we have
-> > > > reallocated the inode and squeezed the allocation before journal_stop()
-> > > > from the delete was called).
-> > > >   Nasty deadlock and I don't see how to fix it now - have to go home for
-> > > > today... Tomorrow I'll have a look what we can do about it.
-> > >   OK, the deadlock has been introduced by ext3 variant of
-> > > 261bca86ed4f7f391d1938167624e78da61dcc6b (adding Al to CC). The deadlock
-> > > is really tough to avoid - we have to first allocate inode on disk so
-> > > that we know the inode number. For this we need transaction open but we
-> > > cannot afford waiting for old inode with same INO to be freed when we have
-> > > transaction open because of the above deadlock. So we'd have to wait for
-> > > inode release only after everything is done and we closed the transaction. But
-> > > that would mean reordering a lot of code in ext3/namei.c so that all the
-> > > dcache handling is done after all the IO is done.
-> > >   Hmm, maybe we could change the delete side of the deadlock but that's
-> > > going to be tricky as well :(.
-> > >   Al, any idea if we could somehow get away without waiting on
-> > > I_FREEING?
+--- Theodore Tso wrote:
+> number9652 wrote:
 > > 
-> > At which point do we actually run into deadlock on delete side?  We could,
-> > in principle, skip everything like that in insert_inode_locked(), but
-> > I would rather avoid the "two inodes in icache at the same time, with the
-> > same inumber" situations completely.  We might get away with that, since
-> > everything else *will* wait, so we can afford a bunch of inodes past the
-> > point in foo_delete_inode() that has cleared it in bitmap + new locked
-> > one, but if it's at all possible to avoid, I'd rather avoid it.
+> > I am running into a problem with the output of the
+> function
+> > ext2fs_bmap in the ext2fs library version 1.41.5: when
+> I send it an
+> > inode structure pointer as the third argument and the
+> number of a
+> > deleted inode as the second argument, it seems to end
+> up trying to
+> > read the deleted inode from disk (and results in the
+> returned value
+> > block number being 0), when I expected it to just get
+> the values
+> > from the inode structure I send to it.  This only
+> happens if the
+> > inode contains an extent structure within it; when it
+> has the
+> > indirect block structure it behaves as I expected.
 > 
-> OK, that's probably the easiest way to do that, as much as I don't like it...
-> Since iget() et.al. will not accept I_FREEING (will wait to go away
-> and restart), and since we'd better have serialization between new/free
-> on fs data structures anyway, we can afford simply skipping I_FREEING
-> et.al. in insert_inode_locked().
-> 
-> We do that from new_inode, so it won't race with free_inode in any interesting
-> ways and it won't race with iget (of any origin; nfsd or in case of fs
-> corruption a lookup) since both still will wait for I_LOCK.
-> 
-> Tentative patch follow; folks, I would very much like review on that one,
-> since I'm far too low on caffeine and the area is nasty.
-  The patch looks fine. Everyone else will either get new inode and wait
-for I_LOCK or get old inode and wait for I_FREEING so everything should be
-fine... You can add.
-  Acked-by: Jan Kara <jack@suse.cz>
+> I suppose we could add a new version of the extent
+> structure which
+> used a caller-supplied inode structure.  This would be
+> mostly safe as
+> long as you were only doing read-only operations on the
+> buffer head,
+> and only assuming that all of the extents fit in the inode
+> structure.
 
-                                    Honza
-> 
-> diff --git a/fs/inode.c b/fs/inode.c
-> index 9d26490..4406952 100644
-> --- a/fs/inode.c
-> +++ b/fs/inode.c
-> @@ -1053,13 +1053,22 @@ int insert_inode_locked(struct inode *inode)
->  	struct super_block *sb = inode->i_sb;
->  	ino_t ino = inode->i_ino;
->  	struct hlist_head *head = inode_hashtable + hash(sb, ino);
-> -	struct inode *old;
->  
->  	inode->i_state |= I_LOCK|I_NEW;
->  	while (1) {
-> +		struct hlist_node *node;
-> +		struct inode *old = NULL;
->  		spin_lock(&inode_lock);
-> -		old = find_inode_fast(sb, head, ino);
-> -		if (likely(!old)) {
-> +		hlist_for_each_entry(old, node, head, i_hash) {
-> +			if (old->i_ino != ino)
-> +				continue;
-> +			if (old->i_sb != sb)
-> +				continue;
-> +			if (old->i_state & (I_FREEING|I_CLEAR|I_WILL_FREE))
-> +				continue;
-> +			break;
-> +		}
-> +		if (likely(!node)) {
->  			hlist_add_head(&inode->i_hash, head);
->  			spin_unlock(&inode_lock);
->  			return 0;
-> @@ -1081,14 +1090,24 @@ int insert_inode_locked4(struct inode *inode, unsigned long hashval,
->  {
->  	struct super_block *sb = inode->i_sb;
->  	struct hlist_head *head = inode_hashtable + hash(sb, hashval);
-> -	struct inode *old;
->  
->  	inode->i_state |= I_LOCK|I_NEW;
->  
->  	while (1) {
-> +		struct hlist_node *node;
-> +		struct inode *old = NULL;
-> +
->  		spin_lock(&inode_lock);
-> -		old = find_inode(sb, head, test, data);
-> -		if (likely(!old)) {
-> +		hlist_for_each_entry(old, node, head, i_hash) {
-> +			if (old->i_sb != sb)
-> +				continue;
-> +			if (!test(old, data))
-> +				continue;
-> +			if (old->i_state & (I_FREEING|I_CLEAR|I_WILL_FREE))
-> +				continue;
-> +			break;
-> +		}
-> +		if (likely(!node)) {
->  			hlist_add_head(&inode->i_hash, head);
->  			spin_unlock(&inode_lock);
->  			return 0;
+I have looked at it a little more closely now, and to me it seems that we could add a new function like ext2fs_extent_open to accept an inode structure, as an alternative to changing the extent structure.
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+> The short version is it would be possible for us to patch
+> the extents
+> support code to use a passed-in inode, and then change
+> ext2fs_bmap()
+> to pass the inode structure to the extents functions, but
+> the main
+> reason why I would do it would be for the optimization, and
+> not to
+> support (at least officially) the use of an inode structure
+> different
+> from what is on disk, since that is highly likely to simply
+> not work
+> correctly.
+
+I didn't consider it, but I agree that the efficiency improvement is a much better reason.  I realize there are a lot of pitfalls, some of which you enumerated, for using the inodes in this way.  For the particular use I was trying, I had opened the fs read only, and I realize I may get garbage at the end of it, but also that sometimes I will get the file.
+> 
+> Out of curiosity, where are you getting the data for the
+> inode
+> structure if it is not on disk?  Is this some kind of
+> ext3grep-like
+> approach where you are grabbing an old version of the inode
+> from the
+> journal, or some such?
+
+Yes, that is exactly it (see extundelete.sf.net if you are interested).  Currently, it has a local copy of ext2fs_block_iterate2 (and most of the rest of block.c and some from extents.c) that was modified to accept an inode to be able to restore files from an ext4 file system; I was hoping it could use bmap to get rid of most of that, but found this during testing.
+
+
+
+      
+
