@@ -1,49 +1,35 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] Documentation/filesystems/ext3.txt
-Date: Tue, 19 May 2009 09:35:16 -0500
-Message-ID: <4A12C3A4.90202@redhat.com>
-References: <20090518212209.17c46cee@digital-domain.net>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: More ext4 acl/xattr corruption - 4th occurence now
+Date: Tue, 19 May 2009 11:04:30 -0400
+Message-ID: <20090519150430.GC7927@mit.edu>
+References: <20090514110659.GA5146@kulgan> <20090514132506.GD5146@kulgan> <20090514140732.GI11352@mit.edu> <20090514143014.GH5146@kulgan> <20090514161254.GJ11352@mit.edu> <20090514210244.GL5146@kulgan> <20090514212325.GG21316@mit.edu> <m2iqjx5s4n.fsf@vador.mandriva.com> <20090519113644.GA7927@mit.edu> <4A129FA0.9050500@sun.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Andrew Clayton <andrew@digital-domain.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: Thierry Vignaud <tvignaud@mandriva.com>,
+	Kevin Shanahan <kmshanah@ucwb.org.au>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Alex Tomas <bzzz@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:40777 "EHLO mx2.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:58475 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752781AbZESOfS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 May 2009 10:35:18 -0400
-In-Reply-To: <20090518212209.17c46cee@digital-domain.net>
+	id S1751462AbZESPEo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 May 2009 11:04:44 -0400
+Content-Disposition: inline
+In-Reply-To: <4A129FA0.9050500@sun.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andrew Clayton wrote:
-> Update the ext3 document with the fact that data=writeback is now the
-> default journaling mode.
-> 
-> 
-> Signed-off-by: Andrew Clayton <andrew@digital-domain.net>
-> 
-> --- linux-2.6/Documentation/filesystems/ext3.txt.orig	2009-05-18 20:48:27.084220753 +0100
-> +++ linux-2.6/Documentation/filesystems/ext3.txt	2009-05-18 20:49:01.023225288 +0100
-> @@ -39,11 +39,11 @@
->  data=journal		All data are committed into the journal prior to being
->  			written into the main file system.
->  
-> -data=ordered	(*)	All data are forced directly out to the main file
-> +data=ordered		All data are forced directly out to the main file
->  			system prior to its metadata being committed to the
->  			journal.
->  
-> -data=writeback		Data ordering is not preserved, data may be written
-> +data=writeback	(*)	Data ordering is not preserved, data may be written
->  			into the main file system after its metadata has been
->  			committed to the journal.
+On Tue, May 19, 2009 at 04:01:36PM +0400, Alex Tomas wrote:
+> Theodore Tso wrote:
+>> On the other hand, most of the time writes into the directory will
+>> tend to be into pre-existing free space; but if you had two parallel
+>> cp's copying a large number of files into the same directory, that
+>> could certainly happen.
+>
+> isn't access to a directory protected with i_mutex ?
 
-If we're updating this documentation, while we're at it we should add
-that the default is actually controlled by a new kernel config option,
-and also something along the lines of "this mode will produce file
-corruption on a power loss or unclean shutdown, and may lead to
-unintentional information disclosure."
+Hmm, good point.  Yes, that should prevent problems with directories.
+So there should only be a problem when two processes are writing to
+the same file at the same time.
 
--Eric
+						- Ted
