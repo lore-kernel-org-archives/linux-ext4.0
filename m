@@ -1,53 +1,46 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] EXT3: Change all super.c messages to print the device
-Date: Tue, 19 May 2009 13:53:22 -0500
-Message-ID: <4A130022.6090807@redhat.com>
-References: <20090426184900.GA15038@basil.nowhere.org> <20090519171430.GA26480@atrey.karlin.mff.cuni.cz> <20090519174901.GB9053@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 12686] kernel oops __ticket_spin_lock
+Date: Tue, 19 May 2009 19:08:39 GMT
+Message-ID: <200905191908.n4JJ8d46019871@demeter.kernel.org>
+References: <bug-12686-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-	Andi Kleen <andi@firstfloor.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39894 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752614AbZESSxb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 19 May 2009 14:53:31 -0400
-In-Reply-To: <20090519174901.GB9053@mit.edu>
+Received: from demeter.kernel.org ([140.211.167.39]:33106 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753693AbZESTIi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 May 2009 15:08:38 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4JJ8dRk019872
+	for <linux-ext4@vger.kernel.org>; Tue, 19 May 2009 19:08:39 GMT
+In-Reply-To: <bug-12686-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On Tue, May 19, 2009 at 07:14:30PM +0200, Jan Kara wrote:
->>> EXT3: Change all super.c messages to print the device
->>>
->>> I had a problem where it was unclear to which device a ext3 message belonged.
->>> Not all of them them print it.
->>>
->>> This patch changes ext3 super.c to include the device name with all 
->>> warning/error messages, by using a new utility function ext3_msg. 
->>> It's a rather large patch, but very mechanic. I left debug printks
->>> alone.
->>>
->>> The normal mount output looks a little more regular now because near all
->>> messages are in the same format.
->>>
->>> Signed-off-by: Andi Kleen <ak@linux.intel.com>
->>   Ted, did you pick up this cleanup? I don't see any reply or the patch
->> being merged... The cleanup looks nice.
-> 
-> No, I didn't but thanks for reminding me; I agree it's a good cleanup.
-> We should get it ported over to ext4, too.
+http://bugzilla.kernel.org/show_bug.cgi?id=12686
 
-I'll do that, unless anyone's already started.
 
-There's a bit of inconsistency in the patch between:
+Theodore Tso <tytso@mit.edu> changed:
 
-ext3_msg(sb, KERN_ERR "message");
-and
-ext3_msg(sb, KERN_ERR, "message");
+           What    |Removed                     |Added
+----------------------------------------------------------------------------
+             Status|NEW                         |RESOLVED
+                 CC|                            |tytso@mit.edu
+         Resolution|                            |UNREPRODUCIBLE
+         Regression|---                         |No
 
-just FWIW.
 
--Eric
+
+
+--- Comment #3 from Theodore Tso <tytso@mit.edu>  2009-05-19 19:08:39 ---
+I can't reproduce this on a recent kernel.  Even after removing the bogus
+indirect and triple indirect block which causes modern kernels to refuse to
+mount the filesystem, it still doesn't crash, even after giving all of the
+ext4_claim_inode() errors caused by the very large s_first_ino value.   So it
+looks like this problem is no longer an issue on 2.6.30-rc6 kernels.
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
