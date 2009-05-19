@@ -1,43 +1,49 @@
-From: Alex Tomas <bzzz@sun.com>
-Subject: Re: More ext4 acl/xattr corruption - 4th occurence now
-Date: Tue, 19 May 2009 16:01:36 +0400
-Message-ID: <4A129FA0.9050500@sun.com>
-References: <20090513062634.GE4972@kulgan> <20090514044011.GC11352@mit.edu>
- <20090514110659.GA5146@kulgan> <20090514132506.GD5146@kulgan>
- <20090514140732.GI11352@mit.edu> <20090514143014.GH5146@kulgan>
- <20090514161254.GJ11352@mit.edu> <20090514210244.GL5146@kulgan>
- <20090514212325.GG21316@mit.edu> <m2iqjx5s4n.fsf@vador.mandriva.com>
- <20090519113644.GA7927@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] Documentation/filesystems/ext3.txt
+Date: Tue, 19 May 2009 09:35:16 -0500
+Message-ID: <4A12C3A4.90202@redhat.com>
+References: <20090518212209.17c46cee@digital-domain.net>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII; format=flowed
-Content-Transfer-Encoding: 7BIT
-Cc: Thierry Vignaud <tvignaud@mandriva.com>,
-	Kevin Shanahan <kmshanah@ucwb.org.au>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Andrew Clayton <andrew@digital-domain.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from gmp-eb-inf-2.sun.com ([192.18.6.24]:58097 "EHLO
-	gmp-eb-inf-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751234AbZESMC1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 19 May 2009 08:02:27 -0400
-Received: from fe-emea-10.sun.com (gmp-eb-lb-1-fe3.eu.sun.com [192.18.6.10])
-	by gmp-eb-inf-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n4JC2K2g016272
-	for <linux-ext4@vger.kernel.org>; Tue, 19 May 2009 12:02:23 GMT
-Received: from conversion-daemon.fe-emea-10.sun.com by fe-emea-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KJW002000RPWX00@fe-emea-10.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 19 May 2009 13:02:20 +0100 (BST)
-In-reply-to: <20090519113644.GA7927@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:40777 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752781AbZESOfS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 19 May 2009 10:35:18 -0400
+In-Reply-To: <20090518212209.17c46cee@digital-domain.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> On the other hand, most of the time writes into the directory will
-> tend to be into pre-existing free space; but if you had two parallel
-> cp's copying a large number of files into the same directory, that
-> could certainly happen.
+Andrew Clayton wrote:
+> Update the ext3 document with the fact that data=writeback is now the
+> default journaling mode.
+> 
+> 
+> Signed-off-by: Andrew Clayton <andrew@digital-domain.net>
+> 
+> --- linux-2.6/Documentation/filesystems/ext3.txt.orig	2009-05-18 20:48:27.084220753 +0100
+> +++ linux-2.6/Documentation/filesystems/ext3.txt	2009-05-18 20:49:01.023225288 +0100
+> @@ -39,11 +39,11 @@
+>  data=journal		All data are committed into the journal prior to being
+>  			written into the main file system.
+>  
+> -data=ordered	(*)	All data are forced directly out to the main file
+> +data=ordered		All data are forced directly out to the main file
+>  			system prior to its metadata being committed to the
+>  			journal.
+>  
+> -data=writeback		Data ordering is not preserved, data may be written
+> +data=writeback	(*)	Data ordering is not preserved, data may be written
+>  			into the main file system after its metadata has been
+>  			committed to the journal.
 
-isn't access to a directory protected with i_mutex ?
+If we're updating this documentation, while we're at it we should add
+that the default is actually controlled by a new kernel config option,
+and also something along the lines of "this mode will produce file
+corruption on a power loss or unclean shutdown, and may lead to
+unintentional information disclosure."
 
-thanks, Alex
-
+-Eric
