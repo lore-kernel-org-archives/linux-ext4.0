@@ -1,32 +1,58 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] resize2fs: fix ENOSPC corruption case
-Date: Wed, 20 May 2009 16:58:29 -0400
-Message-ID: <20090520205829.GK24836@mit.edu>
-References: <4A11D375.30709@redhat.com> <20090520113748.GC24836@mit.edu> <4A142851.6000807@redhat.com>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH] EXT3: Change all super.c messages to print the device
+Date: Wed, 20 May 2009 16:23:02 -0500
+Message-ID: <4A1474B6.5000408@redhat.com>
+References: <20090426184900.GA15038@basil.nowhere.org> <20090519171430.GA26480@atrey.karlin.mff.cuni.cz> <20090519174901.GB9053@mit.edu> <4A130022.6090807@redhat.com> <20090520113047.GC8684@one.firstfloor.org> <4A1426BE.2010101@redhat.com> <20090520160047.GI8684@one.firstfloor.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
+	linux-ext4@vger.kernel.org
+To: Andi Kleen <andi@firstfloor.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:45037 "EHLO thunker.thunk.org"
+Received: from mx2.redhat.com ([66.187.237.31]:42155 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750946AbZETU6f (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 May 2009 16:58:35 -0400
-Content-Disposition: inline
-In-Reply-To: <4A142851.6000807@redhat.com>
+	id S1755489AbZETVXJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 May 2009 17:23:09 -0400
+In-Reply-To: <20090520160047.GI8684@one.firstfloor.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 20, 2009 at 10:57:05AM -0500, Eric Sandeen wrote:
-> For F11 I will likely put in the later 2 patches, to fix up the minimum
-> size reporting and then enforce that as the minimum size, so we
-> shouldn't(tm) get into these error paths.  Seems like the safer
-> last-minute change.
+Andi Kleen wrote:
+>> Just a one I guess:
+>>
+>> $ grep '^+' patch | grep 'KERN[_A-Z]\+[ $]'
+>> +			ext3_msg(sb, KERN_ERR "(no)acl options not supported");
+>> +	printk(KERN_INFO "EXT3-FS (%s): ", sb->s_id);
+> 
+> Ok thanks. Not sure how grep missed that one
+> 
+> Here's a updated patch with that fixed.
+> 
+> ---
 
-The first half of this patch I think is quite safe, and after stepping
-through tst_etent, I'm pretty sure the second half of this patch would
-be pretty easy to validate.  We probably don't want to enter any of
-these error paths for now, though, since it's not clear we've fied all
-of them, particularly in the split_node code.
+Sorry, one more nitpick while I was comparing this to my ext4 patch
+doing the same:
 
-						- Ted
+
+> @@ -1465,11 +1473,11 @@
+>  #define PLURAL(x) (x), ((x)==1) ? "" : "s"
+>  
+>  	if (nr_orphans)
+> -		printk(KERN_INFO "EXT3-fs: %s: %d orphan inode%s deleted\n",
+> -		       sb->s_id, PLURAL(nr_orphans));
+> +		ext3_msg(sb, KERN_INFO, "%d orphan inode%s deleted",
+> +			PLURAL(nr_orphans));
+>  	if (nr_truncates)
+> -		printk(KERN_INFO "EXT3-fs: %s: %d truncate%s cleaned up\n",
+> -		       sb->s_id, PLURAL(nr_truncates));
+> +		ext3_msg(sb, KERN_INFO, "%5d truncate%s cleaned up",
+                                         ^^^ I doubt you wanted this :)
+
+-Eric
+
+> +		       PLURAL(nr_truncates));
+>  #ifdef CONFIG_QUOTA
+>  	/* Turn quotas off */
+>  	for (i = 0; i < MAXQUOTAS; i++) {
+
