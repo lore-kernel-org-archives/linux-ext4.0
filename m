@@ -1,27 +1,42 @@
-From: <birdlandchildrensctr@bellnet.ca>
-Subject: File For Claims
-Date: Wed, 20 May 2009 5:30:21 -0400
-Message-ID: <20090520093021.PHOY1557.tomts45-srv.bellnexxia.net@toip41-bus.srvr.bell.ca>
-Reply-To: agentoffices@gmail.com
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] EXT3: Change all super.c messages to print the device
+Date: Wed, 20 May 2009 07:21:08 -0400
+Message-ID: <20090520112108.GA24836@mit.edu>
+References: <20090426184900.GA15038@basil.nowhere.org> <20090519171430.GA26480@atrey.karlin.mff.cuni.cz> <20090519174901.GB9053@mit.edu> <4A130022.6090807@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: info@bellnet.ca
+Content-Type: text/plain; charset=us-ascii
+Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
+	Andi Kleen <andi@firstfloor.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from tomts45.bellnexxia.net ([209.226.175.112]:34301 "EHLO
-	tomts45-srv.bellnexxia.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754290AbZETJaV convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 20 May 2009 05:30:21 -0400
+Received: from thunk.org ([69.25.196.29]:47537 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756006AbZETLVN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 20 May 2009 07:21:13 -0400
+Content-Disposition: inline
+In-Reply-To: <4A130022.6090807@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-You are a certified winner of=A35,000,000 award 2009 fill in below your=
- names, address,sex, age, telephone, occupation. Email:agentoffice@btin=
-ternet.com
+On Tue, May 19, 2009 at 01:53:22PM -0500, Eric Sandeen wrote:
+> > No, I didn't but thanks for reminding me; I agree it's a good cleanup.
+> > We should get it ported over to ext4, too.
+> 
+> I'll do that, unless anyone's already started.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+If you would, that would be great.
+
+> There's a bit of inconsistency in the patch between:
+> 
+> ext3_msg(sb, KERN_ERR "message");
+> and
+> ext3_msg(sb, KERN_ERR, "message");
+
+Obviously the second is what is preferred.  :-)
+
+If you have a chance, could you clean up Andi's patch and resend it?
+I have one or two minor ext3 fixups in the ext4 tree, but we should
+check and make sure Andrew isn't carrying anything major in his mmotm
+tree, so as to avoid patch collisions.
+
+							- Ted
