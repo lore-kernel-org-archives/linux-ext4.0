@@ -1,130 +1,92 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 12624] umount hangs after fsstress with data=journal
-Date: Fri, 22 May 2009 06:51:43 GMT
-Message-ID: <200905220651.n4M6ph5X017461@demeter.kernel.org>
-References: <bug-12624-13602@http.bugzilla.kernel.org/>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [RFC][PATCH 0/3]ext4: online defrag (ver 2.0)
+Date: Fri, 22 May 2009 16:05:45 +0900
+Message-ID: <4A164EC9.3070405@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:59342 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750916AbZEVGvm (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 May 2009 02:51:42 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4M6piqS017462
-	for <linux-ext4@vger.kernel.org>; Fri, 22 May 2009 06:51:44 GMT
-In-Reply-To: <bug-12624-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12624
+Hi,
+
+There are the updated patches for ext4 online defrag.
+I have addressed the comments that I had got about defrag V1
+(http://marc.info/?l=linux-ext4&m=123329594919001&w=3).
+Changes of this version are as follows:
+
+- Change function name from ext4_defrag_xxx to ext4_mext_xxx
+  and also change the source file name from defrag.c to move_extent.c.
+- Disallow swapfile defrag.
+- Support uninitialized extent defrag.
+- Disallow data write out for uninitalized extent.
+- Call fget() and fput() instead of fget_light() and fput_light()
+  for module compile.
+- Acquire mutex and semaphore of orig and donor inodes by i_ino order.
+- Localized semaphore acquisition/release.
+- Add ext4_mext_inode_double_lock/unlock() for i_mutex lock/unlock,
+  since inode_double_lock/unlock() have been removed.
+- Replace random printk() with ext4_debug().
+- Some cleanups.
+
+Ext4 online defrag uses EXT4_IOC_MOVE_EXT ioctl and move_extent structure.
+
+#define EXT4_IOC_MOVE_EXT               _IOWR('f', 15, struct move_extent)
+
+struct move_extent {
+        int orig_fd;            /* original file descriptor */
+        int donor_fd;           /* donor file descriptor */
+        __u64 orig_start;       /* logical start offset in block for orig */
+        __u64 donor_start;      /* logical start offset in block for donor */
+        __u64 len;              /* block length to be moved */
+        __u64 moved_len;        /* moved block length */
+};
 
 
+Ext4 online defrag is done in the following steps:
+(U:User space K:Kernel space)
 
+1:U  Create donor inode and then call unlink() to it.
 
+2:U  Allocate contiguous blocks to donor inode with fallocate().
 
---- Comment #3 from Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>  2009-05-22 06:51:43 ---
-I guess we would need this patch. But i am still hitting the BUG_ON.
-Will try to debug further later today.
+3:U  Call the FS_IOC_FIEMAP ioctl to get the extents information of donor inode.
+     And check the extents of donor inode are less than the defrag target inode's.
 
--aneesh
+4:U  Call the EXT4_IOC_MOVE_EXT ioctl extent unit.
 
-commit 85ddb1581222bac63035c16a6536b0a5a2cd60a0
-Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Date:   Thu May 21 23:58:17 2009 +0530
+5:K  In kernel space, the EXT4_IOC_MOVE_EXT ioctl calls ext4_mext_move_extent()
+     to exchange the blocks between orig_fd and donor_fd.
+     Then write the file data of orig_fd to donor_fd.
 
-    ext4: Don't look at buffer_heads outside i_size.
+6:U  Close donor inode, then it will be deleted.
 
+Note: More tests may be needed without journal,
+      so I recommend that e4defrag is run on ext4 with journal.
 
-    Buffer heads outside i_size will be unmapped. So when we
-    are doing "walk_page_buffers" limit ourself to i_size.
+Summary of patch series:
+* The patch can be applied to the ext4 patch queue (2.6.30-rc6).
 
-    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+[PATCH 1/3] Add EXT4_IOC_DEFRAG ioctl and defrag functions
+- Add EXT4_IOC_DEFRAG ioctl and related functions.
+- For each page, exchange the extents between original inode
+  and donor inode, and then write the file data of
+  the original inode to donor inode.
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 6e5caa7..ebf7bb3 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2514,7 +2514,7 @@ static int ext4_da_writepage(struct page *page,
-          * all are mapped and non delay. We don't want to
-          * do block allocation here.
-          */
--        ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
-+        ret = block_prepare_write(page, 0, len,
-                       noalloc_get_block_write);
-         if (!ret) {
-             page_bufs = page_buffers(page);
-@@ -2536,7 +2536,7 @@ static int ext4_da_writepage(struct page *page,
-             return 0;
-         }
-         /* now mark the buffer_heads as dirty and uptodate */
--        block_commit_write(page, 0, PAGE_CACHE_SIZE);
-+        block_commit_write(page, 0, len);
-     }
+[PATCH 2/3] Ext4 online defrag command
+- Usage is as follows:
+  - Defrag for a single file.
+    # e4defrag file, directory, device
+  - Check the file fragments on ext4.
+    # e4defrag -c file, directory, device
 
-     if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
-@@ -3210,6 +3210,8 @@ static int ext4_normal_writepage(struct page *page,
- static int __ext4_journalled_writepage(struct page *page,
-                 struct writeback_control *wbc)
- {
-+    loff_t size;
-+    unsigned int len;
-     struct address_space *mapping = page->mapping;
-     struct inode *inode = mapping->host;
-     struct buffer_head *page_bufs;
-@@ -3217,14 +3219,19 @@ static int __ext4_journalled_writepage(struct page
-*page,
-     int ret = 0;
-     int err;
+[PATCH 3/3] Manpage of e4defrag
+-  Ext4 online defrag command manpage
+    # nroff -man e4defrag.8
 
--    ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
-+    size = i_size_read(inode);
-+    if (page->index == size >> PAGE_CACHE_SHIFT)
-+        len = size & ~PAGE_CACHE_MASK;
-+    else
-+        len = PAGE_CACHE_SIZE;
-+
-+    ret = block_prepare_write(page, 0, len,
-                   noalloc_get_block_write);
-     if (ret != 0)
-         goto out_unlock;
+Best regards,
+Akira Fujita
 
-     page_bufs = page_buffers(page);
--    walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE, NULL,
--                                bget_one);
-+    walk_page_buffers(handle, page_bufs, 0, len, NULL, bget_one);
-     /* As soon as we unlock the page, it can go away, but we have
-      * references to buffers so we are safe */
-     unlock_page(page);
-@@ -3235,19 +3242,19 @@ static int __ext4_journalled_writepage(struct page
-*page,
-         goto out;
-     }
-
--    ret = walk_page_buffers(handle, page_bufs, 0,
--            PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
-+    ret = walk_page_buffers(handle, page_bufs, 0, len,
-+                NULL, do_journal_get_write_access);
-
--    err = walk_page_buffers(handle, page_bufs, 0,
--                PAGE_CACHE_SIZE, NULL, write_end_fn);
-+    err = walk_page_buffers(handle, page_bufs, 0, len,
-+                NULL, write_end_fn);
-     if (ret == 0)
-         ret = err;
-     err = ext4_journal_stop(handle);
-     if (!ret)
-         ret = err;
-
--    walk_page_buffers(handle, page_bufs, 0,
--                PAGE_CACHE_SIZE, NULL, bput_one);
-+    walk_page_buffers(handle, page_bufs, 0, len,
-+                NULL, bput_one);
-     EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
-     goto out;
-
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
