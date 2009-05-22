@@ -1,102 +1,86 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 3/3] Manpage of ext4 online defrag command
-Date: Fri, 22 May 2009 16:07:03 +0900
-Message-ID: <4A164F17.108@rs.jp.nec.com>
+From: Matteo Croce <matteo@openwrt.org>
+Subject: Re: EXT4-fs error in ext4_reserve_inode_write: Journal has aborted
+Date: Fri, 22 May 2009 10:31:17 +0200
+Message-ID: <40101cc30905220131t48d3de40y89beafb15d9e2201@mail.gmail.com>
+References: <40101cc30905201635t6af2586bne1acbc77216628ee@mail.gmail.com>
+	<4A14AC12.4000108@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: linux-fsdevel@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:53999 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751824AbZEVHH2 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 May 2009 03:07:28 -0400
+Received: from mail-ew0-f176.google.com ([209.85.219.176]:40653 "EHLO
+	mail-ew0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751258AbZEVIbh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 22 May 2009 04:31:37 -0400
+Received: by ewy24 with SMTP id 24so1705215ewy.37
+        for <linux-ext4@vger.kernel.org>; Fri, 22 May 2009 01:31:37 -0700 (PDT)
+In-Reply-To: <4A14AC12.4000108@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-ext4: online defrag -- Ext4 online defrag command manpage
+the HD seems to reset soon.
+can it be an hardware problem?
 
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-
-Following is e4defrag command manpage.
-Please use `nroff -man e4defrag.8 | less` to view.
-
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
-Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
----
-.TH E4DEFRAG 8 "May 2009" "e4defrag version 2.0"
-.SH NAME
-e4defrag \- online defragmenter for ext4 filesystem
-.SH SYNOPSIS
-.B e4defrag
-[
-.B \-c
-]
-[
-.B \-v
-]
-.I target
-\&...
-.SH DESCRIPTION
-.B e4defrag
-reduces fragmentation of extent based file. The file targeted by
-.B e4defrag
-is created on ext4 filesystem made with "-O extent" option (see
-.BR mke2fs (8)).
-The targeted file gets more contiguous blocks and improves the file access
-speed.
-.PP
-.I target
-is a regular file, a directory, or a device that is mounted as ext4 filesystem.
-If
-.I target
-is a directory,
-.B e4defrag
-reduces fragmentation of all files in it. If
-.I target
-is a device,
-.B e4defrag
-gets the mount point of it and reduces fragmentation of all files in this mount
-point.
-.SH OPTIONS
-.TP
-.B \-c
-Get the fragmentation count and calculate fragmentation score based on it
-before and after defrag. By seeing this score, we can determine whether we
-should execute
-.B e4defrag
-to
-.IR target .
-When used with
-.B \-v
-option, the fragmentation count before and after defrag is printed for each
-file.
-.IP
-If this option is specified,
-.I target
-is never defragmented.
-.TP
-.B \-v
-Print error messages and the fragmentation count before and after defrag for
-each file.
-.SH NOTES
-.B e4defrag
-does not support swap file, files in lost+found directory, and files allocated
-in indirect blocks. When
-.I target
-is a device or a mount point,
-.B e4defrag
-doesn't defragment files in mount point of other device.
-.PP
-Non-privileged users can execute
-.B e4defrag
-to their own file, but the score is not printed if
-.B \-c
-option is specified. Therefore, it is desirable to be executed by root user.
-.SH AUTHOR
-Written by Akira Fujita <a-fujita@rs.jp.nec.com> and Takashi Sato
-<t-sato@yk.jp.nec.com>.
-.SH SEE ALSO
-.BR mke2fs (8),
-.BR mount (8).
+On Thu, May 21, 2009 at 3:19 AM, Eric Sandeen <sandeen@redhat.com> wrot=
+e:
+> Matteo Croce wrote:
+>> When launching a web browser in normal desktop usage, I get this and
+>> the disk mounted read only:
+>>
+>> [ 1101.535101] EXT4-fs error (device sda1) in
+>> ext4_reserve_inode_write: Journal has aborted
+>
+> Anything before that? =A0I'd think you'd get a message when the journ=
+al
+> aborts.
+>
+>> [ 1101.535114] Remounting filesystem read-only
+>> [ 1101.535622] EXT4-fs error (device sda1) in
+>> ext4_reserve_inode_write: Journal has aborted
+>> [ 1101.535637] EXT4-fs error (device sda1) in ext4_dirty_inode:
+>> Journal has aborted
+>> [ 1101.535669] mpage_da_map_blocks block allocation failed for inode
+>> 1867 at logical offset 0 with max blocks 1 with error -30
+>> [ 1101.535681] This should not happen.!! Data will be lost
+>
+> Hm this is probably a bad followon to the filesystem shutting down, a=
+nd
+> delalloc data having nowhere to go...
+>
+> -Eric
+>
+>> [ 1101.535703] ext4_da_writepages: jbd2_start: 1024 pages, ino 1867;=
+ err -30
+>> [ 1101.535716] Pid: 26, comm: pdflush Not tainted 2.6.29.1 #12
+>> [ 1101.535724] Call Trace:
+>> [ 1101.535744] =A0[<c038602c>] ? printk+0x18/0x1c
+>> [ 1101.535862] =A0[<c01e5999>] ext4_da_writepages+0x409/0x430
+>> [ 1101.535879] =A0[<c01e7670>] ? ext4_da_get_block_write+0x0/0x210
+>> [ 1101.535893] =A0[<c01e5590>] ? ext4_da_writepages+0x0/0x430
+>> [ 1101.535907] =A0[<c0174f6e>] do_writepages+0x2e/0x50
+>> [ 1101.535921] =A0[<c01b4748>] __writeback_single_inode+0x88/0x500
+>> [ 1101.535936] =A0[<c0122957>] ? set_next_entity+0x97/0x180
+>> [ 1101.535950] =A0[<c01b4f73>] generic_sync_sb_inodes+0x283/0x410
+>> [ 1101.535963] =A0[<c01b52b7>] writeback_inodes+0x47/0xd0
+>> [ 1101.535975] =A0[<c01750e2>] wb_kupdate+0xb2/0x120
+>> [ 1101.535988] =A0[<c01761d2>] pdflush+0x112/0x1d0
+>> [ 1101.536000] =A0[<c0175030>] ? wb_kupdate+0x0/0x120
+>> [ 1101.536160] =A0[<c01760c0>] ? pdflush+0x0/0x1d0
+>> [ 1101.536173] =A0[<c0144e6c>] kthread+0x3c/0x70
+>> [ 1101.536184] =A0[<c0144e30>] ? kthread+0x0/0x70
+>> [ 1101.536198] =A0[<c0103cdb>] kernel_thread_helper+0x7/0x1c
+>> [ 1101.536417] journal commit I/O error
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-ext4=
+" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
