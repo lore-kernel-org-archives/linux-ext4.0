@@ -1,75 +1,69 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] xfstests: enable many tests to run on ext2/3/4
-Date: Sun, 24 May 2009 11:38:02 -0500
-Message-ID: <4A1977EA.3000604@redhat.com>
-References: <4A15B649.70801@redhat.com> <20090524143945.GA32554@infradead.org>
+From: Thomas Glanzmann <thomas@glanzmann.de>
+Subject: zero out blocks of freed user data for operation a virtual machine
+	environment
+Date: Sun, 24 May 2009 19:00:45 +0200
+Message-ID: <20090524170045.GC24753@cip.informatik.uni-erlangen.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: xfs mailing list <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: tytso@thunk.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:59916 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752613AbZEXQiY (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 24 May 2009 12:38:24 -0400
-In-Reply-To: <20090524143945.GA32554@infradead.org>
+Received: from faui03.informatik.uni-erlangen.de ([131.188.30.103]:46875 "EHLO
+	faui03.informatik.uni-erlangen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754396AbZEXRH1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 May 2009 13:07:27 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Christoph Hellwig wrote:
-> Wow, that's a nice start.  The only important thing missing is checking
-> the filesystems after each test run for the non-xfs case.
+Hello Ted,
+I would like to know if there is already a mount option or feature in
+ext3/ext4 that automatically overwrites freed blocks with zeros? If this
+is not the case I would like to know if you would consider a patch for
+upstream? I'm asking this because I currently do some research work on
+data deduplication in virtual machine environments and corresponding
+backups. It would be a huge space saver if there is such a feature
+because todays and tomorrows backup tools for virtual machine
+environments work on the block layer (VMware Consolidated Backup, VMware
+Data Recovery, and NetApp Snapshots). This is not only true for backup
+tools but also for running Virtual machines. The case that this future
+addresses is the following: A huge file is downloaded and later delted.
+The backup and datadeduplication that is operating on the block level
+can't identify the block as unused. This results in backing up the
+amount of the data that was previously allocated by the file and as such
+introduces an performance overhead. If you're interested in real live
+data, I'm able to provide them.
 
-Yep, that was in the back of my mind.  Probably needs more abstraction
-to make that cleaner.
+If you don't intend to have such an optional feature in ext3/ext4 I
+would like to know if you know a tool that makes it possible to zero out
+unused blocks?
 
-> Maybe we should put this in in stages?  The _supported_fs generic
-> thing is a nice cleanup already for the existing xfs/nfs/udf setup
-> and should go in ASAP.
+The only reference that I found for such a tool for Linux is the
+following:
 
-sure, I can break it up.
+#!/bin/bash
+FileSystem=`grep ext /etc/mtab| awk -F" " '{ print $2 }'`
 
-> The _scratch_mkfs output fix in 069 could also be a separate patch.
-> 
-> The _setup_generic_testdir should be generalized to match XFS for the
-> default case and just set testdir in _setup_testdir instead of
-> another function.  Also the comment there should be updated.
-> 
-> Same for _cleanup_testdir.
-> 
-> Btw, the way udf and nfs are currently handled look not very nice to me.
-> We should not set up the test device by default for any filesystem but
-> rather have a -setup or similar option to set it up if needed.
+for i in $FileSystem
+do
+       number=`df -B 512 $i | awk -F" " '{print $4}'`
+       percent=$(echo "scale=0; $number * 95 / 100" | bc )
+       dd count=`echo $percent` if=/dev/zero of=`echo $i`/zf
+       rm -f $i/zf
+done
 
-many of them likely fail, too, some of the acl & attr tests have some
-assumptions about xfs limits.
+Source: http://blog.core-it.com.au/?p=298
 
-> In common I would indeed prefer a new fstype option, but we might aswell
-> put the current version in as-is.  Especially if we could tie up a really
-> generic fstype= that wouldn't require listing the filesystems if they
-> don't require special mount options or similar.
+Even if certainly does job I would hardly recommend it to anyone for various
+obvious reasons: A lot of I/O overhead that could be avoided, scheduling
+this at the bad moment it could lead to full disk situation. And also
+the blocksize is left the default and as such is way to low.
 
-Ok.  I'd even thought that maybe by default, w/o options, it should just
-run as whatever $TEST_DEV is formatted to (though that's trickier for
-nfs I guess)
+Just to be complete: For Microsoft Windows there is a tool called
+sdelete which can be used to zero out unused disk blocks, again it has
+the same problem as the above script but hopefully is saver to run.
 
-> The only thing preventing that is as far as I can see the current difference
-> in _require_scratch for xfs and udf vs the rest.  Which looks really weird
-> to me, need to investigate what's going on.
+Source: http://technet.microsoft.com/en-us/sysinternals/bb897443.aspx
 
-I think this is because even for udf etc, it still expects $TEST_DIR to
-be xfs, so swizzles around test & scratch. yeah, I agree that's messy.
-
-> As for the generic group I must say I don't like it very much, the
-> filtering of notrun (maybe only notrun because of the filesystem type
-> mismatch) sounds much better to me.
-
-yeah, after I ran it a bit more I think I tend to agree....
-
-I'll work on breaking this up a bit and tidying up some of the loose
-ends, since the basic approach seems sane to more than one person now  :)
-
-Thanks,
--Eric
+        Thomas
