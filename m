@@ -1,51 +1,114 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] xfstests: enable many tests to run on ext2/3/4
-Date: Sun, 24 May 2009 10:39:46 -0400
-Message-ID: <20090524143945.GA32554@infradead.org>
-References: <4A15B649.70801@redhat.com>
+From: Gertjan van Wingerde <gertjan@vanwingerde.net>
+Subject: [PATCH v2] dump: support for ext4 file-systems on Linux.
+Date: Sun, 24 May 2009 18:08:57 +0200
+Message-ID: <4A197119.4000902@vanwingerde.net>
+References: <4A1935AA.6090103@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: xfs mailing list <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Content-Type: multipart/mixed;
+ boundary="------------090604090406040501050609"
+Cc: linux-ext4@vger.kernel.org, dump-devel@lists.sourceforge.net
+To: stelian@popies.net
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:40549 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750756AbZEXOjq (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 May 2009 10:39:46 -0400
-Content-Disposition: inline
-In-Reply-To: <4A15B649.70801@redhat.com>
+Received: from cpsmtpm-eml102.kpnxchange.com ([195.121.3.6]:51246 "EHLO
+	CPSMTPM-EML102.kpnxchange.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753824AbZEXQI6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 24 May 2009 12:08:58 -0400
+In-Reply-To: <4A1935AA.6090103@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Wow, that's a nice start.  The only important thing missing is checking
-the filesystems after each test run for the non-xfs case.
+This is a multi-part message in MIME format.
+--------------090604090406040501050609
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
 
-Maybe we should put this in in stages?  The _supported_fs generic
-thing is a nice cleanup already for the existing xfs/nfs/udf setup
-and should go in ASAP.
+Hi,
 
-The _scratch_mkfs output fix in 069 could also be a separate patch.
+version 2 attached. The original patch contained a bug in which ext4 extents index nodes were dumped as well as part of a regular file dump.
+Still only for Linux.
 
-The _setup_generic_testdir should be generalized to match XFS for the
-default case and just set testdir in _setup_testdir instead of
-another function.  Also the comment there should be updated.
+---
+Gertjan van Wingerde.
 
-Same for _cleanup_testdir.
 
-Btw, the way udf and nfs are currently handled look not very nice to me.
-We should not set up the test device by default for any filesystem but
-rather have a -setup or similar option to set it up if needed.
+On 05/24/09 13:55, Gertjan van Wingerde wrote:
+> Hi,
+> 
+> Find attached a patch I created to support the dumping and restoring of ext4 file-systems under Linux.
+> For now it only works on Linux, as it uses the ext2fs library functions to get hold of the real data blocks.
+> I don't understand dump enough to also handle the non-Linux case, although it would seems that relying on
+> the ext2fs library for other systems would be appropriate.
+> 
+> N.B. Note that I am not subscribed to the mailing list, so cc me on replies.
+> 
+> ---
+> Gertjan.
 
-In common I would indeed prefer a new fstype option, but we might aswell
-put the current version in as-is.  Especially if we could tie up a really
-generic fstype= that wouldn't require listing the filesystems if they
-don't require special mount options or similar.
 
-The only thing preventing that is as far as I can see the current difference
-in _require_scratch for xfs and udf vs the rest.  Which looks really weird
-to me, need to investigate what's going on.
+--------------090604090406040501050609
+Content-Type: text/plain;
+ name="dump_ext4.diff"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="dump_ext4.diff"
 
-As for the generic group I must say I don't like it very much, the
-filtering of notrun (maybe only notrun because of the filesystem type
-mismatch) sounds much better to me.
+diff -u --recursive --new-file dump-0.4b41/dump/traverse.c dump-0.4b41.ext4/dump/traverse.c
+--- dump-0.4b41/dump/traverse.c	2005-05-02 17:10:46.000000000 +0200
++++ dump-0.4b41.ext4/dump/traverse.c	2009-05-24 16:13:52.417643761 +0200
+@@ -777,8 +777,6 @@
+ 	struct block_context *p;
+ 	e2_blkcnt_t i;
+ 
+-	if (blockcnt < NDADDR)
+-		return 0;
+ 	p = (struct block_context *)private;
+ 	for (i = p->next_block; i < blockcnt; i++) {
+ 		p->buf[p->cnt++] = 0;
+@@ -986,19 +984,6 @@
+ 		msg("Warning: undefined file type 0%o\n", dp->di_mode & IFMT);
+ 		return;
+ 	}
+-	if (i_size > (u_quad_t)NDADDR * sblock->fs_bsize)
+-#ifdef	__linux__
+-		cnt = NDADDR * EXT2_FRAGS_PER_BLOCK(fs->super);
+-#else
+-		cnt = NDADDR * sblock->fs_frag;
+-#endif
+-	else
+-		cnt = howmany(i_size, sblock->fs_fsize);
+-	blksout(&dp->di_db[0], cnt, ino);
+-	if ((quad_t) (size = i_size - NDADDR * sblock->fs_bsize) <= 0) {
+-		dump_xattr(ino, dp);
+-		return;
+-	}
+ #ifdef	__linux__
+ 	bc.max = NINDIR(sblock) * EXT2_FRAGS_PER_BLOCK(fs->super);
+ 	bc.buf = (int *)malloc (bc.max * sizeof (int));
+@@ -1006,7 +991,7 @@
+ 	bc.ino = ino;
+ 	bc.next_block = NDADDR;
+ 
+-	ext2fs_block_iterate2(fs, (ext2_ino_t)ino, 0, NULL, dumponeblock, (void *)&bc);
++	ext2fs_block_iterate2(fs, (ext2_ino_t)ino, BLOCK_FLAG_DATA_ONLY, NULL, dumponeblock, (void *)&bc);
+ 	/* deal with holes at the end of the inode */
+ 	if (i_size > ((u_quad_t)bc.next_block) * sblock->fs_fsize) {
+ 		remaining = i_size - ((u_quad_t)bc.next_block) * sblock->fs_fsize;
+@@ -1024,6 +1009,15 @@
+ 	free(bc.buf);
+ 	dump_xattr(ino, dp);
+ #else
++	if (i_size > (u_quad_t)NDADDR * sblock->fs_bsize)
++		cnt = NDADDR * sblock->fs_frag;
++	else
++		cnt = howmany(i_size, sblock->fs_fsize);
++	blksout(&dp->di_db[0], cnt, ino);
++	if ((quad_t) (size = i_size - NDADDR * sblock->fs_bsize) <= 0) {
++		dump_xattr(ino, dp);
++		return;
++	}
+ 	for (ind_level = 0; ind_level < NIADDR; ind_level++) {
+ 		dmpindir(ino, dp->di_ib[ind_level], ind_level, &size);
+ 		if (size <= 0)
+
+--------------090604090406040501050609--
