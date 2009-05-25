@@ -1,53 +1,50 @@
-From: David Newall <davidn@davidnewall.com>
-Subject: Re: zero out blocks of freed user data for operation a virtual machine
- environment
-Date: Mon, 25 May 2009 12:59:24 +0930
-Message-ID: <4A1A1094.3020903@davidnewall.com>
-References: <20090524170045.GC24753@cip.informatik.uni-erlangen.de>
+From: Thomas Glanzmann <thomas@glanzmann.de>
+Subject: Re: zero out blocks of freed user data for operation a virtual
+	machine environment
+Date: Mon, 25 May 2009 07:26:53 +0200
+Message-ID: <20090525052653.GA10812@cip.informatik.uni-erlangen.de>
+References: <20090524170045.GC24753@cip.informatik.uni-erlangen.de> <4A1A1094.3020903@davidnewall.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-To: Thomas Glanzmann <thomas@glanzmann.de>, tytso@thunk.org,
-	LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
+To: David Newall <davidn@davidnewall.com>, tytso@thunk.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from hawking.rebel.net.au ([203.20.69.83]:45080 "EHLO
-	hawking.rebel.net.au" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751619AbZEYD32 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 24 May 2009 23:29:28 -0400
-In-Reply-To: <20090524170045.GC24753@cip.informatik.uni-erlangen.de>
+Received: from faui03.informatik.uni-erlangen.de ([131.188.30.103]:33995 "EHLO
+	faui03.informatik.uni-erlangen.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751838AbZEYF0x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 May 2009 01:26:53 -0400
+Content-Disposition: inline
+In-Reply-To: <4A1A1094.3020903@davidnewall.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Thomas Glanzmann wrote:
-> If you don't intend to have such an optional feature in ext3/ext4 I
-> would like to know if you know a tool that makes it possible to zero out
-> unused blocks?
->
-> The only reference that I found for such a tool for Linux is the
-> following:
->   
-Astounding use of backquote. I'm not sure about the "percent" bit. I
-think it's some confusion over only 95% of total blocks being available
-for allocation.
+Hello David,
 
-I, too, would not recommend it, but it becomes safer by repeatedly
-allocating only half the remaining disk, stopping when there's only a
-few blocks free, to leave some for all of the other processes.
-Presumably it won't be a problem having (potentially) a few free blocks
-that don't de-duplicate.
+                        [ RESEND: CC forgotten ]
 
-#!/bin/bash
-FileSystem=`grep ext /etc/mtab| awk -F" " '{ print $2 }'`
+> Are you proposing to de-duplicate a live filesystem?
 
-for i in $FileSystem
-do
-       while number=`df -B 512 $i | awk -F" " '$4 < 10 {exit(1)} {print $4 / 2}'`
-       do
-              dd count=$number if=/dev/zero || break
-       done > $i/zf
-       rm -f $i/zf
-done
+I do, but on the storage appliance / nfs server and not inside the VM.
+But inside VM a filesystem could make the deduplication effort much
+easier if it reports unused blocks to the outside world by overwriting
+them with zero. I have two scenarios in the moment in my head:
 
+        - btrfs has already checksums. I'm at the moment evaluating if
+          the crc32 is good enough to find candidates for deduplication
+          or if a stronger checksum is required. After that one patch
+          needs to be adapted and ioctl needs to be implemented in btrfs
+          which than double checks if the blocks are for real
+          duplications of each other and deduplicates them
 
+        - btrfs will be at some point be able to generate a list of
+          blocks that have changed between two transactions. This list
+          can be used to create an (offsite-backup).
 
-Are you proposing to de-duplicate a live filesystem?
+See also: http://thread.gmane.org/gmane.comp.file-systems.btrfs/2922
+
+                Thomas
+
+PS: And it seems that NetApp has the above already in a product. They
+have the ability to dedup blocks on WAFL and they also have a feature
+that allows to have an offsite duplication of the filesystem.
