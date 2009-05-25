@@ -1,68 +1,51 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] xfstests: enable many tests to run on ext2/3/4
-Date: Mon, 25 May 2009 10:31:46 -0500
-Message-ID: <4A1AB9E2.9050503@redhat.com>
-References: <4A15B649.70801@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-To: xfs mailing list <xfs@oss.sgi.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] ext4: remove unused function __ext4_write_dirty_metadata
+Date: Mon, 25 May 2009 12:33:47 -0400
+Message-ID: <1243269227-1799-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>, Frank Mayhar <fmayhar@google.com>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:54938 "EHLO mx2.redhat.com"
+Received: from thunk.org ([69.25.196.29]:39302 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751503AbZEYPbs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 May 2009 11:31:48 -0400
-In-Reply-To: <4A15B649.70801@redhat.com>
+	id S1751681AbZEYQd5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 May 2009 12:33:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Eric Sandeen wrote:
-> This gets many of the tests running on ext4 (and should on ext2/ext3
-> as well).
-> 
-> A few things could still be cleaned up; rather than -xfs, -ext3, -ext4
-> etc it'd be better to do --fstype xfs or whatnot, and lose as much of
-> the special-casing as possible.  But this gets it going, so maybe
-> worth merging now as a first step.
-> 
-> This creates a new supported_fs "generic" type which should run on
-> any generic filesystem (well, assuming it supports acls & xattrs, along
-> with general posix-ness).
-> 
-> It also adds a "generic" group, so you can do:
-> 
-> ./check -ext4 -g generic
-> 
-> and that way it'll avoid any fs-specific tests.  They wouldn't
-> fail anyway, but it gets noisy to see all the "notrun" tests.
+The __ext4_write_dirty_metadata() function was introduced by commit
+0390131b, "ext4: Allow ext4 to run without a journal", but nothing
+ever used the function, either then or since.  So let's remove it and
+save a bit of space.
 
-For the uninitiated :)  This applies on top of:
+Cc: Frank Mayhar <fmayhar@google.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ fs/ext4/inode.c |   19 -------------------
+ 1 files changed, 0 insertions(+), 19 deletions(-)
 
-http://git.kernel.org/?p=fs/xfs/xfstests-dev.git
-
-Apply my patch & build it with make... you'll need xfsprogs,
-xfsprogs-devel, and xfsprogs-qa-devel (or make install-dev, make
-install-qa from the xfsprogs tarball)*  A few other standard devel
-packages like e2fsprogs-devel, acl-devel, attr-devel, libaio-devel are
-needed too.
-
-edit a local.config file in the top level dir:
-
-TEST_DEV=/dev/sdb1       # device containing TEST PARTITION
-TEST_DIR=/mnt/test       # mount point of TEST PARTITION
-SCRATCH_DEV=/dev/sdb3    # device containing SCRATCH PARTITION
-SCRATCH_MNT=/mnt/scratch # mount point for SCRATCH PARTITION
-
-mkfs.ext4 the $TEST_DEV
-
-./check -ext4 -g generic
-
--Eric
-
-*another TODO is probably to make ./configure cope with lack of at least
-the xfsprogs-qa-devel headers.  There's still some work to make this
-cleaner/easier but this at least gets things going.
-
-
-
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index dadd3f9..14c00ff 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4790,25 +4790,6 @@ int ext4_write_inode(struct inode *inode, int wait)
+ 	return ext4_force_commit(inode->i_sb);
+ }
+ 
+-int __ext4_write_dirty_metadata(struct inode *inode, struct buffer_head *bh)
+-{
+-	int err = 0;
+-
+-	mark_buffer_dirty(bh);
+-	if (inode && inode_needs_sync(inode)) {
+-		sync_dirty_buffer(bh);
+-		if (buffer_req(bh) && !buffer_uptodate(bh)) {
+-			ext4_error(inode->i_sb, __func__,
+-				   "IO error syncing inode, "
+-				   "inode=%lu, block=%llu",
+-				   inode->i_ino,
+-				   (unsigned long long)bh->b_blocknr);
+-			err = -EIO;
+-		}
+-	}
+-	return err;
+-}
