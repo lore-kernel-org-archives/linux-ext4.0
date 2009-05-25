@@ -1,51 +1,69 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH] ext4: remove unused function __ext4_write_dirty_metadata
-Date: Mon, 25 May 2009 12:33:47 -0400
-Message-ID: <1243269227-1799-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>, Frank Mayhar <fmayhar@google.com>
+Subject: [PATCH] ext4: Clean up calls to ext4_get_group_desc()
+Date: Mon, 25 May 2009 12:34:17 -0400
+Message-ID: <1243269257-2123-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:39302 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:39306 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751681AbZEYQd5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 25 May 2009 12:33:57 -0400
+	id S1751942AbZEYQeW (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 25 May 2009 12:34:22 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-The __ext4_write_dirty_metadata() function was introduced by commit
-0390131b, "ext4: Allow ext4 to run without a journal", but nothing
-ever used the function, either then or since.  So let's remove it and
-save a bit of space.
+If the caller isn't planning on modifying the block group descriptors,
+there's no need to pass in a pointer to a struct buffer_head.  Nuking
+this saves a tiny amount of CPU time and stack space usage.
 
-Cc: Frank Mayhar <fmayhar@google.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/inode.c |   19 -------------------
- 1 files changed, 0 insertions(+), 19 deletions(-)
+ fs/ext4/ialloc.c |    3 +--
+ fs/ext4/super.c  |    3 +--
+ 2 files changed, 2 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index dadd3f9..14c00ff 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4790,25 +4790,6 @@ int ext4_write_inode(struct inode *inode, int wait)
- 	return ext4_force_commit(inode->i_sb);
- }
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 82f7d1d..3743bd8 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -347,7 +347,6 @@ static int find_group_flex(struct super_block *sb, struct inode *parent,
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_group_desc *desc;
+-	struct buffer_head *bh;
+ 	struct flex_groups *flex_group = sbi->s_flex_groups;
+ 	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+ 	ext4_group_t parent_fbg_group = ext4_flex_group(sbi, parent_group);
+@@ -402,7 +401,7 @@ find_close_to_parent:
+ found_flexbg:
+ 	for (i = best_flex * flex_size; i < ngroups &&
+ 		     i < (best_flex + 1) * flex_size; i++) {
+-		desc = ext4_get_group_desc(sb, i, &bh);
++		desc = ext4_get_group_desc(sb, i, NULL);
+ 		if (ext4_free_inodes_count(sb, desc)) {
+ 			*best_group = i;
+ 			goto out;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index eca6c05..91b98b5 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -1660,7 +1660,6 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ {
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_group_desc *gdp = NULL;
+-	struct buffer_head *bh;
+ 	ext4_group_t flex_group_count;
+ 	ext4_group_t flex_group;
+ 	int groups_per_flex = 0;
+@@ -1693,7 +1692,7 @@ static int ext4_fill_flex_info(struct super_block *sb)
+ 	}
  
--int __ext4_write_dirty_metadata(struct inode *inode, struct buffer_head *bh)
--{
--	int err = 0;
--
--	mark_buffer_dirty(bh);
--	if (inode && inode_needs_sync(inode)) {
--		sync_dirty_buffer(bh);
--		if (buffer_req(bh) && !buffer_uptodate(bh)) {
--			ext4_error(inode->i_sb, __func__,
--				   "IO error syncing inode, "
--				   "inode=%lu, block=%llu",
--				   inode->i_ino,
--				   (unsigned long long)bh->b_blocknr);
--			err = -EIO;
--		}
--	}
--	return err;
--}
+ 	for (i = 0; i < sbi->s_groups_count; i++) {
+-		gdp = ext4_get_group_desc(sb, i, &bh);
++		gdp = ext4_get_group_desc(sb, i, NULL);
+ 
+ 		flex_group = ext4_flex_group(sbi, i);
+ 		atomic_set(&sbi->s_flex_groups[flex_group].free_inodes,
+-- 
+1.6.3.1.1.g75fc.dirty
+
