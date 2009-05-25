@@ -1,39 +1,37 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 12624] umount hangs after fsstress with data=journal
-Date: Mon, 25 May 2009 18:21:00 GMT
-Message-ID: <200905251821.n4PIL0VG001196@demeter.kernel.org>
-References: <bug-12624-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
+From: "Colbert T Gordon" <itacdlhmarht@yahoo.com>
+Subject: Directory of small companies for America
+Date: Mon, 25 May 2009 20:43:24 +0200
+Message-ID: <1M8f8v-0AnJ2W0@fwd00.aul.t-online.de>
+Content-Type: text/plain;
+Content-Transfer-Encoding: 7Bit
+To: lpvqwe@hotmail.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:46233 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751507AbZEYSU7 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 May 2009 14:20:59 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n4PIL0Y7001197
-	for <linux-ext4@vger.kernel.org>; Mon, 25 May 2009 18:21:00 GMT
-In-Reply-To: <bug-12624-13602@http.bugzilla.kernel.org/>
+Received: from mailout05.t-online.de ([194.25.134.82]:50401 "EHLO
+	mailout05.t-online.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753018AbZEYSnh (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 25 May 2009 14:43:37 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12624
+
+
+many different fields such as company income, email, number of employees and many more fields 
+
+2 million emails in total, sorted by state
+
+Now offered at the lower rate:  $298  - valid thru  May 30
+
+Email us at:      Sonja@datalistsource.com
+
+  
 
 
 
 
 
---- Comment #4 from Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>  2009-05-25 18:21:00 ---
-Filesystem with 4K blocksize works fine.
-Filesystem with 1k blocksize fails when fsx-linux is run with mmap write
-anebled.
-Filesystem with 1k blocksize works fine when we disable mmap write in
-fsx-linux with -W option.
 
--aneesh
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+
+Send email to exit@datalistsource.com for deleted status
+
+
