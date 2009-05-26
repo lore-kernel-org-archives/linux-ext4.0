@@ -1,187 +1,122 @@
-From: Chris Worley <worleys@gmail.com>
-Subject: Re: zero out blocks of freed user data for operation a virtual
-	machine environment
-Date: Tue, 26 May 2009 10:52:21 -0600
-Message-ID: <f3177b9e0905260952x2e382d9ana02dcd10a5bcc63d@mail.gmail.com>
-References: <20090524170045.GC24753@cip.informatik.uni-erlangen.de>
-	 <20090524101551.57b706e9@infradead.org>
-	 <20090524173933.GD24753@cip.informatik.uni-erlangen.de>
-	 <20090525120320.GA25908@mit.edu>
-	 <20090525123430.GA5534@cip.informatik.uni-erlangen.de>
-	 <87ab51qq91.fsf@frosties.localdomain>
-	 <f3177b9e0905251023n762b815akace1ae34e643458e@mail.gmail.com>
-	 <87ab50p3ip.fsf@frosties.localdomain>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: LKML <linux-kernel@vger.kernel.org>, linux-ext4@vger.kernel.org
-To: Goswin von Brederlow <goswin-v-b@web.de>
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] ext4: Get rid of EXTEND_DISKSIZE flag of ext4_get_blocks_handle()
+Date: Wed, 27 May 2009 00:40:38 +0200
+Message-ID: <1243377638-20620-1-git-send-email-jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
+To: tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-px0-f103.google.com ([209.85.216.103]:39006 "EHLO
-	mail-px0-f103.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755057AbZEZQwU convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 26 May 2009 12:52:20 -0400
-In-Reply-To: <87ab50p3ip.fsf@frosties.localdomain>
+Received: from cantor.suse.de ([195.135.220.2]:56598 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756346AbZEZWki (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 26 May 2009 18:40:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, May 26, 2009 at 4:22 AM, Goswin von Brederlow <goswin-v-b@web.d=
-e> wrote:
-> Chris Worley <worleys@gmail.com> writes:
->
->> On Mon, May 25, 2009 at 7:14 AM, Goswin von Brederlow <goswin-v-b@we=
-b.de>
->> wrote:
->>
->>
->> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0Thomas Glanzmann <thomas@glanzmann.de=
-> writes:
->>
->> =A0 =A0 =A0> Hello Ted,
->> =A0 =A0 =A0>
->> =A0 =A0 =A0>> Yes, it does, sb_issue_discard(). =A0So if you wanted =
-to hook into
->> =A0 =A0 =A0this
->> =A0 =A0 =A0>> routine with a function which issued calls to zero out=
- blocks, it
->> =A0 =A0 =A0>> would be easy to create a private patch.
->> =A0 =A0 =A0>
->> =A0 =A0 =A0> that sounds good because it wouldn't only target the mo=
-st used
->> =A0 =A0 =A0> filesystem but every other filesystem that uses the int=
-erface as
->> =A0 =A0 =A0well.
->> =A0 =A0 =A0> Do you think that a tunable or configurable patch has a=
- chance to
->> =A0 =A0 =A0hit
->> =A0 =A0 =A0> upstream as well?
->> =A0 =A0 =A0>
->> =A0 =A0 =A0> =A0 =A0 =A0 =A0 Thomas
->>
->>
->>
->>
->> =A0 =A0 =A0I could imagine a device mapper target that eats TRIM com=
-mands and
->> =A0 =A0 =A0writes out zeroes instead. That should be easy to maintai=
-n outside
->> =A0 =A0 =A0or
->> =A0 =A0 =A0inside the upstream kernel source.
->>
->>
->> Why bother with a time-consuming performance-draining operation?=A0 =
-There are
->> devices that already support TRIM/discard commands today, and once y=
-ou discard
->> a block, it's completely irretrievable (you'll just get back zeros i=
-f you try
->> to read that block w/o writing it after the discard).
->> Chris
->
+Get rid of EXTEND_DISKSIZE flag of ext4_get_blocks_handle(). This seems to be a
+relict from some old days and setting disksize in this function does not make
+much sence. Currently it was set only by ext4_getblk().  Since the parameter
+has some effect only if create == 1, it is easy to check by grepping through
+the sources that the three callers which end up calling ext4_getblk() with
+create == 1 (ext4_append, ext4_quota_write, ext4_mkdir) do the right thing and
+set disksize themselves.
 
-I do enjoy a good argument... and don't mean this as a flame (I'm told
-I obliviously write curtly)...
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/ext4.h    |    6 ++----
+ fs/ext4/extents.c |    8 --------
+ fs/ext4/inode.c   |   20 +++-----------------
+ 3 files changed, 5 insertions(+), 29 deletions(-)
 
-Old man's observation: I've found that the people you would think
-would readily embrace a new technology are as terrified of change as a
-Windows user, and always find so many excuses for "why change won't
-work for them" ;)
+ The patch should be against ext4 patch queue now. Ted, will you merge it
+please? Thanks.
+									Honza
 
-> Because you have one of the billions of devices that don't.
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index d164f12..7915f7b 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -323,15 +323,13 @@ struct ext4_new_group_data {
+ #define EXT4_GET_BLOCKS_UNINIT_EXT		0x0002
+ #define EXT4_GET_BLOCKS_CREATE_UNINIT_EXT	(EXT4_GET_BLOCKS_UNINIT_EXT|\
+ 						 EXT4_GET_BLOCKS_CREATE)
+-	/* Update the ext4_inode_info i_disksize field */
+-#define EXT4_GET_BLOCKS_EXTEND_DISKSIZE		0x0004
+ 	/* Caller is from the delayed allocation writeout path,
+ 	   so set the magic i_delalloc_reserve_flag after taking the 
+ 	   inode allocation semaphore for */
+-#define EXT4_GET_BLOCKS_DELALLOC_RESERVE	0x0008
++#define EXT4_GET_BLOCKS_DELALLOC_RESERVE	0x0004
+ 	/* Call ext4_da_update_reserve_space() after successfully 
+ 	   allocating the blocks */
+-#define EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE	0x0010
++#define EXT4_GET_BLOCKS_UPDATE_RESERVE_SPACE	0x0008
+ 
+ 
+ /*
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index a3781c6..938be36 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -2983,14 +2983,6 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
+ 	newblock = ext_pblock(&newex);
+ 	allocated = ext4_ext_get_actual_len(&newex);
+ outnew:
+-	if (flags & EXT4_GET_BLOCKS_EXTEND_DISKSIZE) {
+-		disksize = ((loff_t) iblock + ar.len) << inode->i_blkbits;
+-		if (disksize > i_size_read(inode))
+-			disksize = i_size_read(inode);
+-		if (disksize > EXT4_I(inode)->i_disksize)
+-			EXT4_I(inode)->i_disksize = disksize;
+-	}
+-
+ 	set_buffer_new(bh_result);
+ 
+ 	/* Cache only when it is _not_ an uninitialized extent */
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 431b470..c86dccd 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1002,19 +1002,7 @@ static int ext4_ind_get_blocks(handle_t *handle, struct inode *inode,
+ 	if (!err)
+ 		err = ext4_splice_branch(handle, inode, iblock,
+ 					partial, indirect_blks, count);
+-	/*
+-	 * i_disksize growing is protected by i_data_sem.  Don't forget to
+-	 * protect it if you're about to implement concurrent
+-	 * ext4_get_block() -bzzz
+-	*/
+-	if (!err && (flags & EXT4_GET_BLOCKS_EXTEND_DISKSIZE)) {
+-		disksize = ((loff_t) iblock + count) << inode->i_blkbits;
+-		if (disksize > i_size_read(inode))
+-			disksize = i_size_read(inode);
+-		if (disksize > ei->i_disksize)
+-			ei->i_disksize = disksize;
+-	}
+-	if (err)
++	else 
+ 		goto cleanup;
+ 
+ 	set_buffer_new(bh_result);
+@@ -1293,7 +1281,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
+ {
+ 	struct buffer_head dummy;
+ 	int fatal = 0, err;
+-	int flags = EXT4_GET_BLOCKS_EXTEND_DISKSIZE;
++	int flags = 0;
+ 
+ 	J_ASSERT(handle != NULL || create == 0);
+ 
+@@ -2104,9 +2092,7 @@ static int mpage_da_map_blocks(struct mpage_da_data *mpd)
+ 	}
+ 
+ 	/*
+-	 * Update on-disk size along with block allocation we don't
+-	 * use EXT4_GET_BLOCKS_EXTEND_DISKSIZE as size may change
+-	 * within already allocated block -bzzz
++	 * Update on-disk size along with block allocation.
+ 	 */
+ 	disksize = ((loff_t) next + blks) << mpd->inode->i_blkbits;
+ 	if (disksize > i_size_read(mpd->inode))
+-- 
+1.6.0.2
 
-You have devices that _do_ work now, that should be your selection if
-you want both this functionality and high performance.  If you don't
-want performance, write zeros to rotating media.
-
-The time frame given in this thread is two years.  In 2-5 years,
-rotating media will be history.  The tip of the Linux kernel should
-not be focused on defunct technology.
-
->
-> Because, iirc, the specs say nothing about getting back zeros.
->
-
-But all a Solid State Storage controller can do is give you garbage
-when asked for an unwritten or discarded block; it doesn't know where
-the data is, which is all that is needed for the functionality desired
-(there's no need to specify exactly what a controller should return
-when asked to read a block it knows nothing about).  Once the
-controller is no longer managing a block, there is no way for it to
-retrieve that block.  That's what TRIM is all about: get greatest
-performance by allowing the SSS controller to manage as few blocks as
-absolutely necessary.  Not being able to retrieve valid data for an
-unwritten or discarded block is a side-effect of TRIM, that fits well
-for this desired functionality.
-
-=46rom drives I've tested so far, the de-facto standard is "zero" when
-reading unmanaged blocks.
-
-> Because someone could read the raw data from disk and recover your
-> state secrets.
-
-Water-boarding won't help... the controller simply doesn't know the
-information you demand.
-
-This isn't your grandfathers rotating media...
-
-You would have to read at the Erase Block level, and know the specific
-vendor implementation's EB layout and block-level
-mapping/metadata/wear-leveling strategy (i.e. very tightly held IP).
-Controllers don't provide the functionality to request raw EB's; there
-is no way to read raw EB's.  There is no spec for it in existence for
-reading EB's from a SCSI/SAS/SATA/block device.  Your only recourse
-would be to pull the NAND chips physically off the drive and weld them
-to another piece of hardware specifically designed to blindly read all
-the erase blocks, then try to infer the manufacturers chip
-organization as well as block-level metatdata, and then you'd only
-know all the active blocks (which you would have known those blocks
-anyway, before you pulled the chips off) and would have to come up
-with some strategy for trying to figure out the original LBA's for all
-the inactive data... so there _is_ a very small chance of recovery,
-lacking physical security... there are worse issues too, when physical
-security is not available on site (i.e. all your active data would be
-vulnerable as with any mechanical drive).
-
-Of concern to those handling state secrets: there is no guarantee in
-SSS that writing whatever pattern over and over again will physically
-overwrite the targeted LBA.  New methods of "declassifying" SSS drives
-will be necessary (i.e. a Secure Erase where the controller is told to
-erase all EB's... so your NAND EB reading device will read all ones no
-matter what EB is read).  These methods are simple enough to develop,
-but those who care about this should be aware that the old rotating
-media methods no longer apply.
-
-> Because loopback don't support TRIM and compression of the image file
-> is much better with zeroes.
-
-Wouldn't it be best if the block is not in existence after the
-discard?  Then there would be nothing to compress, which I believe
-"nothing" compresses very compactly.
-
->
-> Because on a crypted device TRIM would show how much of the device is
-> in used while zeroing out (before crypting) would result in random
-> data.
-
-TRIM doesn't tell you how much of the drive is used?
-
->
-> Because it is fun?
-
-You've got me there.  To each his own.
-
->
-> So many reasons.
-
-=2E..to switch from the old rotating media to SSS ;)
-
-Chris
->
-> MfG
-> =A0 =A0 =A0 =A0Goswin
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
