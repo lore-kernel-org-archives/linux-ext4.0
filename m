@@ -1,114 +1,84 @@
-From: Josef Bacik <josef@redhat.com>
-Subject: Re: [PATCH 1/3] ext4: Don't look at buffer_heads outside i_size.
-Date: Wed, 27 May 2009 12:27:36 -0400
-Message-ID: <20090527162736.GE14035@dhcp231-156.rdu.redhat.com>
-References: <1243439888-22680-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 03/11] vfs: Add better VFS support for page_mkwrite
+	when blocksize < pagesize
+Date: Wed, 27 May 2009 22:15:04 +0530
+Message-ID: <20090527164504.GC19989@skywalker>
+References: <1243429268-3028-1-git-send-email-jack@suse.cz> <1243429268-3028-4-git-send-email-jack@suse.cz> <20090527160005.GA14035@dhcp231-156.rdu.redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com, jack@suse.cz,
-	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: Jan Kara <jack@suse.cz>, LKML <linux-kernel@vger.kernel.org>,
+	npiggin@suse.de, linux-ext4@vger.kernel.org
+To: Josef Bacik <josef@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34394 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759566AbZE0Q1j (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 May 2009 12:27:39 -0400
+Received: from e28smtp09.in.ibm.com ([59.145.155.9]:53646 "EHLO
+	e28smtp09.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751017AbZE0QpN (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 27 May 2009 12:45:13 -0400
 Content-Disposition: inline
-In-Reply-To: <1243439888-22680-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <20090527160005.GA14035@dhcp231-156.rdu.redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 27, 2009 at 09:28:06PM +0530, Aneesh Kumar K.V wrote:
-> Buffer heads outside i_size will be unmapped. So when we
-> are doing "walk_page_buffers" limit ourself to i_size.
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/inode.c |   29 ++++++++++++++++++-----------
->  1 files changed, 18 insertions(+), 11 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 3b07a6c..f0f0065 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2514,7 +2514,7 @@ static int ext4_da_writepage(struct page *page,
->  		 * all are mapped and non delay. We don't want to
->  		 * do block allocation here.
->  		 */
-> -		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
-> +		ret = block_prepare_write(page, 0, len,
->  					  noalloc_get_block_write);
->  		if (!ret) {
->  			page_bufs = page_buffers(page);
-> @@ -2536,7 +2536,7 @@ static int ext4_da_writepage(struct page *page,
->  			return 0;
->  		}
->  		/* now mark the buffer_heads as dirty and uptodate */
-> -		block_commit_write(page, 0, PAGE_CACHE_SIZE);
-> +		block_commit_write(page, 0, len);
->  	}
->  
->  	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
-> @@ -3210,6 +3210,8 @@ static int ext4_normal_writepage(struct page *page,
->  static int __ext4_journalled_writepage(struct page *page,
->  				struct writeback_control *wbc)
->  {
-> +	loff_t size;
-> +	unsigned int len;
->  	struct address_space *mapping = page->mapping;
->  	struct inode *inode = mapping->host;
->  	struct buffer_head *page_bufs;
-> @@ -3217,14 +3219,19 @@ static int __ext4_journalled_writepage(struct page *page,
->  	int ret = 0;
->  	int err;
->  
-> -	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
-> +	size = i_size_read(inode);
-> +	if (page->index == size >> PAGE_CACHE_SHIFT)
-> +		len = size & ~PAGE_CACHE_MASK;
-> +	else
-> +		len = PAGE_CACHE_SIZE;
-> +
-> +	ret = block_prepare_write(page, 0, len,
->  				  noalloc_get_block_write);
->  	if (ret != 0)
->  		goto out_unlock;
->  
->  	page_bufs = page_buffers(page);
-> -	walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE, NULL,
-> -								bget_one);
-> +	walk_page_buffers(handle, page_bufs, 0, len, NULL, bget_one);
->  	/* As soon as we unlock the page, it can go away, but we have
->  	 * references to buffers so we are safe */
->  	unlock_page(page);
-> @@ -3235,19 +3242,19 @@ static int __ext4_journalled_writepage(struct page *page,
->  		goto out;
->  	}
->  
-> -	ret = walk_page_buffers(handle, page_bufs, 0,
-> -			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
-> +	ret = walk_page_buffers(handle, page_bufs, 0, len,
-> +				NULL, do_journal_get_write_access);
->  
-> -	err = walk_page_buffers(handle, page_bufs, 0,
-> -				PAGE_CACHE_SIZE, NULL, write_end_fn);
-> +	err = walk_page_buffers(handle, page_bufs, 0, len,
-> +				NULL, write_end_fn);
->  	if (ret == 0)
->  		ret = err;
->  	err = ext4_journal_stop(handle);
->  	if (!ret)
->  		ret = err;
->  
-> -	walk_page_buffers(handle, page_bufs, 0,
-> -				PAGE_CACHE_SIZE, NULL, bput_one);
-> +	walk_page_buffers(handle, page_bufs, 0, len,
-> +				NULL, bput_one);
->  	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
->  	goto out;
->  
+On Wed, May 27, 2009 at 12:00:06PM -0400, Josef Bacik wrote:
+> On Wed, May 27, 2009 at 03:01:00PM +0200, Jan Kara wrote:
+.....
+....
 
-This feels a bit silly since its a pretty simple patch, but I took time to
-review it so,
+> >  		if (offset > inode->i_sb->s_maxbytes)
+> >  			goto out_big;
+> > -		i_size_write(inode, offset);
+> > +		do_extend_i_size(inode, offset, 0);
+> >  	} else {
+> >  		struct address_space *mapping = inode->i_mapping;
+> >
+> 
+> Sorry if I'm being a bit dense, I'm just kind of confused.  In the case you
+> outlined, we only allocate one block, as we should, but then the truncate
+> extends i_size so that when writepage() comes along, its valid to write the
+> whole page out, except we didn't allocate blocks for the whole page sine
+> blocksize < pagesize.
 
-Reviewed-by: Josef Bacik <jbacik@redhat.com>
+We can't do block allocation in writepage because we can't handler
+ENOSPC during writepage. So the patch attempt to make sure we do
+all block allocation in the process context. For mmap we should
+do it in page_mkwrite and for write in write_begin.
+
+
+
+> 
+> But if we didn't extend i_size, writepage would only have written the block's
+> worth of data correct?  If thats the case, why don't we just make it so that
+> happens in this case as well? 
+
+That is what is done in the patch i posted
+http://article.gmane.org/gmane.comp.file-systems.ext4/13468
+
+But that is not just enough. We also need to make sure we get a
+page_fault when we try to write at another offset via mmap address so
+that we can do block allocation via page_mkwrite. To do that all code
+path that extend i_size should mark the page write protect.
+
+
+>Technically only one part of the page is dirty,
+> so we just need to write that out, not the whole thing.  I assume there is a way
+> to do this, since it presumably happens in the case where i_size < page size.
+> If thats not possible then I guess this way is a good answer, it just seems
+> overly complicated to me.
+
+
+__block_write_full_page already does that. It looks at the last_block
+
+> 
+> Also, on the actualy patch, you only check the return value of
+> block_lock_hole_extend in block_extend_i_size, but sinze
+> block_unlock_hole_extend doesn't really do anything if we didn't do anything in
+> block_lock_hole_extend, you might as well make it a void as well, since you
+> unconditionally lock/unlock in every other instance.  Thanks,
+> 
+> Josef
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-aneesh
