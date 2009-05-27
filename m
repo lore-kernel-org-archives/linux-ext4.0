@@ -1,261 +1,149 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 07/11] vfs: Implement generic per-cpu counters for delayed allocation
-Date: Wed, 27 May 2009 15:01:04 +0200
-Message-ID: <1243429268-3028-8-git-send-email-jack@suse.cz>
+Subject: [PATCH 05/11] ext4: Make sure blocks are properly allocated under mmaped page even when blocksize < pagesize
+Date: Wed, 27 May 2009 15:01:02 +0200
+Message-ID: <1243429268-3028-6-git-send-email-jack@suse.cz>
 References: <1243429268-3028-1-git-send-email-jack@suse.cz>
 Cc: npiggin@suse.de, linux-ext4@vger.kernel.org,
 	Jan Kara <jack@suse.cz>
 To: LKML <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:47972 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:47971 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763062AbZE0NBJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1762789AbZE0NBJ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 27 May 2009 09:01:09 -0400
 In-Reply-To: <1243429268-3028-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Implement free blocks and reserved blocks counters for delayed
-allocation. These counters are reliable in the sence that when
-they return success, the subsequent conversion from reserved to
-allocated blocks always succeeds (see comments in the code for
-details). This is useful for ext? based filesystems to implement
-delayed allocation in particular for allocation in page_mkwrite.
+In a situation like:
+  truncate(f, 1024);
+  a = mmap(f, 0, 4096);
+  a[0] = 'a';
+  truncate(f, 4096);
+
+we end up with a dirty page which does not have all blocks allocated /
+reserved.  Fix the problem by using new VFS infrastructure.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/Kconfig                       |    4 ++
- fs/Makefile                      |    1 +
- fs/delalloc_counter.c            |  109 ++++++++++++++++++++++++++++++++++++++
- fs/ext3/Kconfig                  |    1 +
- include/linux/delalloc_counter.h |   63 ++++++++++++++++++++++
- 5 files changed, 178 insertions(+), 0 deletions(-)
- create mode 100644 fs/delalloc_counter.c
- create mode 100644 include/linux/delalloc_counter.h
+ fs/ext4/extents.c |    2 +-
+ fs/ext4/inode.c   |   20 ++++++++++++++++++--
+ 2 files changed, 19 insertions(+), 3 deletions(-)
 
-diff --git a/fs/Kconfig b/fs/Kconfig
-index 9f7270f..923251b 100644
---- a/fs/Kconfig
-+++ b/fs/Kconfig
-@@ -19,6 +19,10 @@ config FS_XIP
- source "fs/jbd/Kconfig"
- source "fs/jbd2/Kconfig"
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 6b0eeaf..ef587f7 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3082,7 +3082,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
+ 	 */
+ 	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
+ 		if (new_size > i_size_read(inode))
+-			i_size_write(inode, new_size);
++			block_extend_i_size(inode, new_size, 0);
+ 		if (new_size > EXT4_I(inode)->i_disksize)
+ 			ext4_update_i_disksize(inode, new_size);
+ 	}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index 7fcceb0..6547788 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1436,7 +1436,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+  	index = pos >> PAGE_CACHE_SHIFT;
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+ 	to = from + len;
+-
++	block_lock_hole_extend(inode, pos);
+ retry:
+ 	handle = ext4_journal_start(inode, needed_blocks);
+ 	if (IS_ERR(handle)) {
+@@ -1480,6 +1480,8 @@ retry:
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ out:
++	if (ret)
++		block_unlock_hole_extend(inode);
+ 	return ret;
+ }
  
-+config DELALLOC_COUNTER
-+	bool
-+	default y if EXT3_FS=y
-+
- config FS_MBCACHE
- # Meta block cache for Extended Attributes (ext2/ext3/ext4)
- 	tristate
-diff --git a/fs/Makefile b/fs/Makefile
-index af6d047..b5614fc 100644
---- a/fs/Makefile
-+++ b/fs/Makefile
-@@ -19,6 +19,7 @@ else
- obj-y +=	no-block.o
- endif
+@@ -1622,6 +1624,7 @@ static int ext4_journalled_write_end(struct file *file,
+ 	if (!ret)
+ 		ret = ret2;
+ 	page_cache_release(page);
++	block_unlock_hole_extend(inode);
  
-+obj-$(CONFIG_DELALLOC_COUNTER)	+= delalloc_counter.o
- obj-$(CONFIG_BLK_DEV_INTEGRITY) += bio-integrity.o
- obj-y				+= notify/
- obj-$(CONFIG_EPOLL)		+= eventpoll.o
-diff --git a/fs/delalloc_counter.c b/fs/delalloc_counter.c
-new file mode 100644
-index 0000000..0f575d5
---- /dev/null
-+++ b/fs/delalloc_counter.c
-@@ -0,0 +1,109 @@
-+/*
-+ *  Per-cpu counters for delayed allocation
-+ */
-+#include <linux/percpu_counter.h>
-+#include <linux/delalloc_counter.h>
-+#include <linux/module.h>
-+#include <linux/log2.h>
-+
-+static long dac_error(struct delalloc_counter *c)
-+{
-+#ifdef CONFIG_SMP
-+	return c->batch * nr_cpu_ids;
-+#else
-+	return 0;
-+#endif
-+}
-+
-+/*
-+ * Reserve blocks for delayed allocation
-+ *
-+ * This code is subtle because we want to avoid synchronization of processes
-+ * doing allocation in the common case when there's plenty of space in the
-+ * filesystem.
-+ *
-+ * The code maintains the following property: Among all the calls to
-+ * dac_reserve() that return 0 there exists a simple sequential ordering of
-+ * these calls such that the check (free - reserved >= limit) in each call
-+ * succeeds. This guarantees that we never reserve blocks we don't have.
-+ *
-+ * The proof of the above invariant: The function can return 0 either when the
-+ * first if succeeds or when both ifs fail. To the first type of callers we
-+ * assign the time of read of c->reserved in the first if, to the second type
-+ * of callers we assign the time of read of c->reserved in the second if. We
-+ * order callers by their assigned time and claim that this is the ordering
-+ * required by the invariant. Suppose that a check (free - reserved >= limit)
-+ * fails for caller C in the proposed ordering. We distinguish two cases:
-+ * 1) function called by C returned zero because the first if succeeded - in
-+ *  this case reads of counters in the first if must have seen effects of
-+ *  __percpu_counter_add of all the callers before C (even their condition
-+ *  evaluation happened before our). The errors accumulated in cpu-local
-+ *  variables are clearly < dac_error(c) and thus the condition should fail.
-+ *  Contradiction.
-+ * 2) function called by C returned zero because the second if failed - again
-+ *  the read of the counters must have seen effects of __percpu_counter_add of
-+ *  all the callers before C and thus the condition should have succeeded.
-+ *  Contradiction.
-+ */
-+int dac_reserve(struct delalloc_counter *c, s32 amount, s64 limit)
-+{
-+	s64 free, reserved;
-+	int ret = 0;
-+
-+	__percpu_counter_add(&c->reserved, amount, c->batch);
-+	/*
-+	 * This barrier makes sure that when effects of the following read of
-+	 * c->reserved are observable by another CPU also effects of the
-+	 * previous store to c->reserved are seen.
+ 	return ret ? ret : copied;
+ }
+@@ -2733,6 +2736,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 		   "dev %s ino %lu pos %llu len %u flags %u",
+ 		   inode->i_sb->s_id, inode->i_ino,
+ 		   (unsigned long long) pos, len, flags);
++	block_lock_hole_extend(inode, pos);
+ retry:
+ 	/*
+ 	 * With delayed allocation, we don't log the i_disksize update
+@@ -2775,6 +2779,8 @@ retry:
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ out:
++	if (ret)
++		block_unlock_hole_extend(inode);
+ 	return ret;
+ }
+ 
+@@ -3323,7 +3329,7 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+ 			loff_t end = offset + ret;
+ 			if (end > inode->i_size) {
+ 				ei->i_disksize = end;
+-				i_size_write(inode, end);
++				block_extend_i_size(inode, offset, ret);
+ 				/*
+ 				 * We're going to return a positive `ret'
+ 				 * here due to non-zero-length I/O, so there's
+@@ -3368,6 +3374,7 @@ static const struct address_space_operations ext4_ordered_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_ordered_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+@@ -3383,6 +3390,7 @@ static const struct address_space_operations ext4_writeback_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_writeback_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+@@ -3398,6 +3406,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_journalled_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.set_page_dirty		= ext4_journalled_set_page_dirty,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_invalidatepage,
+@@ -3413,6 +3422,7 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext4_da_write_begin,
+ 	.write_end		= ext4_da_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_da_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+@@ -5277,6 +5287,12 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	struct address_space *mapping = inode->i_mapping;
+ 
+ 	/*
++	 * Wait for extending of i_size, after this moment, next truncate /
++	 * write can create holes under us but they writeprotect our page so
++	 * we'll be called again to fill the hole.
 +	 */
-+	smp_mb();
-+	if (percpu_counter_read(&c->free) - percpu_counter_read(&c->reserved)
-+	    - 2 * dac_error(c) >= limit)
-+		return ret;
++	block_wait_on_hole_extend(inode, page_offset(page));
 +	/*
-+	 * Near the limit - sum the counter to avoid returning ENOSPC too
-+	 * early. Note that we can still "unnecessarily" return ENOSPC when
-+	 * there are several racing writers. Spinlock in this section would
-+	 * solve it but let's ignore it for now.
-+	 */
-+	free = percpu_counter_sum_positive(&c->free);
-+	reserved = percpu_counter_sum_positive(&c->reserved);
-+	if (free - reserved < limit) {
-+		__percpu_counter_add(&c->reserved, -amount, c->batch);
-+		ret = -ENOSPC;
-+	}
-+	return ret;
-+}
-+EXPORT_SYMBOL(dac_reserve);
-+
-+/* Account reserved blocks as allocated */
-+void dac_alloc_reserved(struct delalloc_counter *c, s32 amount)
-+{
-+	__percpu_counter_add(&c->free, -amount, c->batch);
-+	/*
-+	 * Make sure update of free counter is seen before update of
-+	 * reserved counter.
-+	 */
-+	smp_wmb();
-+	__percpu_counter_add(&c->reserved, -amount, c->batch);
-+}
-+EXPORT_SYMBOL(dac_alloc_reserved);
-+
-+int dac_init(struct delalloc_counter *c, s64 amount)
-+{
-+	int err;
-+
-+	c->batch = 8*(1+ilog2(nr_cpu_ids));
-+	err = percpu_counter_init(&c->free, amount);
-+	if (!err)
-+		err = percpu_counter_init(&c->reserved, 0);
-+	return err;
-+}
-+EXPORT_SYMBOL(dac_init);
-+
-+void dac_destroy(struct delalloc_counter *c)
-+{
-+	percpu_counter_destroy(&c->free);
-+	percpu_counter_destroy(&c->reserved);
-+}
-+EXPORT_SYMBOL(dac_destroy);
-diff --git a/fs/ext3/Kconfig b/fs/ext3/Kconfig
-index fb3c1a2..f4e122f 100644
---- a/fs/ext3/Kconfig
-+++ b/fs/ext3/Kconfig
-@@ -1,6 +1,7 @@
- config EXT3_FS
- 	tristate "Ext3 journalling file system support"
- 	select JBD
-+	select DELALLOC_COUNTER
- 	help
- 	  This is the journalling version of the Second extended file system
- 	  (often called ext3), the de facto standard Linux file system
-diff --git a/include/linux/delalloc_counter.h b/include/linux/delalloc_counter.h
-new file mode 100644
-index 0000000..9d00b6c
---- /dev/null
-+++ b/include/linux/delalloc_counter.h
-@@ -0,0 +1,63 @@
-+#ifndef _LINUX_DELALLOC_COUNTER_H
-+#define _LINUX_DELALLOC_COUNTER_H
-+
-+#include <linux/percpu_counter.h>
-+
-+struct delalloc_counter {
-+	struct percpu_counter free;
-+	struct percpu_counter reserved;
-+	int batch;
-+};
-+
-+int dac_reserve(struct delalloc_counter *c, s32 amount, s64 limit);
-+void dac_alloc_reserved(struct delalloc_counter *c, s32 amount);
-+
-+static inline int dac_alloc(struct delalloc_counter *c, s32 amount, s64 limit)
-+{
-+	int ret = dac_reserve(c, amount, limit);
-+	if (!ret)
-+		dac_alloc_reserved(c, amount);
-+	return ret;
-+}
-+
-+static inline void dac_free(struct delalloc_counter *c, s32 amount)
-+{
-+        __percpu_counter_add(&c->free, amount, c->batch);
-+}
-+
-+static inline void dac_cancel_reserved(struct delalloc_counter *c, s32 amount)
-+{
-+        __percpu_counter_add(&c->reserved, -amount, c->batch);
-+}
-+
-+int dac_init(struct delalloc_counter *c, s64 amount);
-+void dac_destroy(struct delalloc_counter *c);
-+
-+static inline s64 dac_get_avail(struct delalloc_counter *c)
-+{
-+	s64 ret = percpu_counter_read(&c->free) -
-+	       percpu_counter_read(&c->reserved);
-+	if (ret < 0)
-+		return 0;
-+	return ret;
-+}
-+
-+static inline s64 dac_get_avail_sum(struct delalloc_counter *c)
-+{
-+	s64 ret = percpu_counter_sum(&c->free) -
-+	       percpu_counter_sum(&c->reserved);
-+	if (ret < 0)
-+		return 0;
-+	return ret;
-+}
-+
-+static inline s64 dac_get_reserved(struct delalloc_counter *c)
-+{
-+	return percpu_counter_read_positive(&c->reserved);
-+}
-+
-+static inline s64 dac_get_reserved_sum(struct delalloc_counter *c)
-+{
-+	return percpu_counter_sum_positive(&c->reserved);
-+}
-+#endif
+ 	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
+ 	 * get i_mutex because we are already holding mmap_sem.
+ 	 */
 -- 
 1.6.0.2
 
