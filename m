@@ -1,55 +1,55 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 05/11] ext4: Make sure blocks are properly allocated
-	under mmaped page even when blocksize < pagesize
-Date: Wed, 27 May 2009 16:52:10 +0200
-Message-ID: <20090527145209.GG16006@duck.suse.cz>
-References: <1243429268-3028-1-git-send-email-jack@suse.cz> <1243429268-3028-6-git-send-email-jack@suse.cz> <20090527143006.GC10842@mit.edu>
+Subject: Re: [PATCH 0/11] Fix page_mkwrite() for blocksize < pagesize
+Date: Wed, 27 May 2009 16:59:11 +0200
+Message-ID: <20090527145911.GH16006@duck.suse.cz>
+References: <1243429268-3028-1-git-send-email-jack@suse.cz> <20090527142332.GB10842@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
 	LKML <linux-kernel@vger.kernel.org>, npiggin@suse.de,
-	linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+	linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:53940 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:54156 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750984AbZE0OwL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 May 2009 10:52:11 -0400
+	id S1761743AbZE0O7K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 May 2009 10:59:10 -0400
 Content-Disposition: inline
-In-Reply-To: <20090527143006.GC10842@mit.edu>
+In-Reply-To: <20090527142332.GB10842@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 27-05-09 10:30:06, Theodore Tso wrote:
-> On Wed, May 27, 2009 at 03:01:02PM +0200, Jan Kara wrote:
-> > In a situation like:
-> >   truncate(f, 1024);
-> >   a = mmap(f, 0, 4096);
-> >   a[0] = 'a';
-> >   truncate(f, 4096);
+On Wed 27-05-09 10:23:32, Theodore Tso wrote:
+> On Wed, May 27, 2009 at 03:00:57PM +0200, Jan Kara wrote:
 > > 
-> > we end up with a dirty page which does not have all blocks allocated /
-> > reserved.  Fix the problem by using new VFS infrastructure.
-> > 
-> > Signed-off-by: Jan Kara <jack@suse.cz>
+> > The series is against 2.6.30-rc7. The first two patches are just
+> > small cleanup and should be merged separately (Ted should have the
+> > ext4 cleanup rebased on top of current ext4 tree). 
 > 
-> Hi Jan,
+> So I can take the cleanup (which will be different given the changes
+> that are ready to get merged once the merge window opens), but it
+  I sent you yesterday the version of the cleanup which should apply to the
+latest patch queue. I think you can merge it right away.
+ In fact, this series should not depend on the cleanup in ext4 at all, I've
+just included it for completeness along with ext3 cleanup of the same
+problem (and the patch series depends on ext3 cleanup).
+
+> looks like the the second ext4 patch can't go in until we get
+> agreement that changes to the VFS layer should go in, correct?  So
+> we'll have a merge order dependency here.
+  Yes, we have to agree on VFS changes before ext4 changes make sense.
+
+> (And this one will be the 2nd merge order dependency we have in the
+> ext4 tree, since I also have some patches in the unstable portion of
+> the tree which are waiting for some tracing patches to go in.)
 > 
-> Have you tested with -o nodelalloc?  There is apparently a problem
-> with ext4 when blocksize < pagesize which Aneesh has been working on.
-> He has been able to reproduce the problem, and theorized that an
-> earlier version your patch set would address the problem, but it
-> apparently did not.  See:
-> 
-> 	http://bugzilla.kernel.org/show_bug.cgi?id=13369
-> 
-> ... and Aneesh can provide more details.  Aneesh, you might want to
-> try testing with this latest set and see if you can reproduce the
-> problem with this set.
-  Yes, I've exchanged a few emails with Aneesh privately yesterday and
-today. There were bugs in my original patch set which should now be fixed.
-Hopefully it also fixes the bug Aneesh sees (it's definitely the type of
-bug this patch set should solve and if it does not I should fix it ;).
+> OK, what I'll probably do is to merge the core VFS patch plus the 2nd
+> ext4 patch into the ext4 patch queue in the unstable portion of the
+> queue for testing purposes, but I won't actually push the VFS core
+> changes.  We can figure out later who actually pushes the ext4 patch
+> which utilizes the new VFS infrastructure.
+  Yes, that would be fine. Thanks. Luckily, the dependence is just one way
+(ext4 change has to go after the VFS patch) so it's just enough to merge
+that ext4 change some time after VFS changes go in.
 
 								Honza
 -- 
