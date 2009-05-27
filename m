@@ -1,128 +1,42 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 09/11] fs: Don't clear dirty bits in block_write_full_page()
-Date: Wed, 27 May 2009 15:01:06 +0200
-Message-ID: <1243429268-3028-10-git-send-email-jack@suse.cz>
+Subject: [PATCH 10/11] vfs: Export wakeup_pdflush
+Date: Wed, 27 May 2009 15:01:07 +0200
+Message-ID: <1243429268-3028-11-git-send-email-jack@suse.cz>
 References: <1243429268-3028-1-git-send-email-jack@suse.cz>
 Cc: npiggin@suse.de, linux-ext4@vger.kernel.org,
 	Jan Kara <jack@suse.cz>
 To: LKML <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:49588 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:49592 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763313AbZE0NBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 27 May 2009 09:01:11 -0400
+	id S1763400AbZE0NBO (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 27 May 2009 09:01:14 -0400
 In-Reply-To: <1243429268-3028-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-If getblock() fails in block_write_full_page(), we don't want to clear
-dirty bits on buffers. Actually, we even want to redirty the page. This
-way we just won't silently discard users data (written e.g. through mmap)
-in case of ENOSPC, EDQUOT, EIO or other write error (which may be just
-transient e.g. because we have to commit a transaction to free up some space).
-The downside of this approach is that if the error is persistent we have this
-page pinned in memory forever and if there are lots of such pages, we can bring
-the machine OOM.
-
-We also don't want to clear dirty bits from buffers above i_size because that
-is a generally a bussiness of invalidatepage where filesystem might want to do
-some additional work. If we clear dirty bits already in block_write_full_page,
-memory reclaim can reap the page before invalidatepage is called on the page
-and thus confusing the filesystem.
+When we are running out of free space on a filesystem, we want to flush dirty
+pages in the filesystem so that blocks reserved via delayed allocation get
+written and unnecessary block reservation is released. Export wakeup_pdflush()
+so that filesystem can start such writeback.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/buffer.c |   40 +++++++++++++++++-----------------------
- 1 files changed, 17 insertions(+), 23 deletions(-)
+ mm/page-writeback.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-diff --git a/fs/buffer.c b/fs/buffer.c
-index 3d0bced..6d18739 100644
---- a/fs/buffer.c
-+++ b/fs/buffer.c
-@@ -1662,19 +1662,14 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
- 	 * handle any aliases from the underlying blockdev's mapping.
- 	 */
- 	do {
--		if (block > last_block) {
--			/*
--			 * mapped buffers outside i_size will occur, because
--			 * this page can be outside i_size when there is a
--			 * truncate in progress.
--			 */
--			/*
--			 * The buffer was zeroed by block_write_full_page()
--			 */
--			clear_buffer_dirty(bh);
--			set_buffer_uptodate(bh);
--		} else if ((!buffer_mapped(bh) || buffer_delay(bh)) &&
--			   buffer_dirty(bh)) {
-+		/*
-+		 * Mapped buffers outside i_size will occur, because
-+		 * this page can be outside i_size when there is a
-+		 * truncate in progress.
-+		 */
-+		if (block <= last_block &&
-+		    (!buffer_mapped(bh) || buffer_delay(bh)) &&
-+		    buffer_dirty(bh)) {
- 			WARN_ON(bh->b_size != blocksize);
- 			err = get_block(inode, block, bh, 1);
- 			if (err)
-@@ -1692,9 +1687,10 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
- 		block++;
- 	} while (bh != head);
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index bb553c3..43af1cf 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -730,6 +730,7 @@ int wakeup_pdflush(long nr_pages)
+ 				global_page_state(NR_UNSTABLE_NFS);
+ 	return pdflush_operation(background_writeout, nr_pages);
+ }
++EXPORT_SYMBOL(wakeup_pdflush);
  
-+	block = (sector_t)page->index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
- 	do {
--		if (!buffer_mapped(bh))
--			continue;
-+		if (!buffer_mapped(bh) || block > last_block)
-+			goto next;
- 		/*
- 		 * If it's a fully non-blocking write attempt and we cannot
- 		 * lock the buffer then redirty the page.  Note that this can
-@@ -1706,13 +1702,15 @@ static int __block_write_full_page(struct inode *inode, struct page *page,
- 			lock_buffer(bh);
- 		} else if (!trylock_buffer(bh)) {
- 			redirty_page_for_writepage(wbc, page);
--			continue;
-+			goto next;
- 		}
- 		if (test_clear_buffer_dirty(bh)) {
- 			mark_buffer_async_write_endio(bh, handler);
- 		} else {
- 			unlock_buffer(bh);
- 		}
-+next:
-+		block++;
- 	} while ((bh = bh->b_this_page) != head);
- 
- 	/*
-@@ -1753,9 +1751,11 @@ recover:
- 	/*
- 	 * ENOSPC, or some other error.  We may already have added some
- 	 * blocks to the file, so we need to write these out to avoid
--	 * exposing stale data.
-+	 * exposing stale data. We redirty the page so that we don't
-+	 * loose data we are unable to write.
- 	 * The page is currently locked and not marked for writeback
- 	 */
-+	redirty_page_for_writepage(wbc, page);
- 	bh = head;
- 	/* Recovery: lock and submit the mapped buffers */
- 	do {
-@@ -1763,12 +1763,6 @@ recover:
- 		    !buffer_delay(bh)) {
- 			lock_buffer(bh);
- 			mark_buffer_async_write_endio(bh, handler);
--		} else {
--			/*
--			 * The buffer may have been set dirty during
--			 * attachment to a dirty page.
--			 */
--			clear_buffer_dirty(bh);
- 		}
- 	} while ((bh = bh->b_this_page) != head);
- 	SetPageError(page);
+ static void wb_timer_fn(unsigned long unused);
+ static void laptop_timer_fn(unsigned long unused);
 -- 
 1.6.0.2
 
