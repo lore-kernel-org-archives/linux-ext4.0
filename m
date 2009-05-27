@@ -1,258 +1,355 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH 02/11] ext4: Get rid of extend_disksize parameter of ext4_get_blocks_handle()
-Date: Wed, 27 May 2009 15:00:59 +0200
-Message-ID: <1243429268-3028-3-git-send-email-jack@suse.cz>
+Subject: [PATCH 03/11] vfs: Add better VFS support for page_mkwrite when blocksize < pagesize
+Date: Wed, 27 May 2009 15:01:00 +0200
+Message-ID: <1243429268-3028-4-git-send-email-jack@suse.cz>
 References: <1243429268-3028-1-git-send-email-jack@suse.cz>
 Cc: npiggin@suse.de, linux-ext4@vger.kernel.org,
 	Jan Kara <jack@suse.cz>
 To: LKML <linux-kernel@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:49587 "EHLO mx1.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:49590 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1763332AbZE0NBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1763367AbZE0NBL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 27 May 2009 09:01:11 -0400
 In-Reply-To: <1243429268-3028-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Get rid of extenddisksize parameter of ext4_get_blocks_handle(). This seems to
-be a relict from some old days and setting disksize in this function does not
-make much sence. Currently it was set only by ext4_getblk().  Since the
-parameter has some effect only if create == 1, it is easy to check that the
-three callers which end up calling ext4_getblk() with create == 1 (ext4_append,
-ext4_quota_write, ext4_mkdir) do the right thing and set disksize themselves.
+page_mkwrite() is meant to be used by filesystems to allocate blocks under a
+page which is becoming writeably mmapped in some process address space. This
+allows a filesystem to return a page fault if there is not enough space
+available, user exceeds quota or similar problem happens, rather than silently
+discarding data later when writepage is called.
+
+On filesystems where blocksize < pagesize the situation is more complicated.
+Think for example that blocksize = 1024, pagesize = 4096 and a process does:
+  ftruncate(fd, 0);
+  pwrite(fd, buf, 1024, 0);
+  map = mmap(NULL, 4096, PROT_WRITE, MAP_SHARED, fd, 0);
+  map[0] = 'a';  ----> page_mkwrite() for index 0 is called
+  ftruncate(fd, 10000); /* or even pwrite(fd, buf, 1, 10000) */
+  fsync(fd); ----> writepage() for index 0 is called
+
+At the moment page_mkwrite() is called, filesystem can allocate only one block
+for the page because i_size == 1024. Otherwise it would create blocks beyond
+i_size which is generally undesirable. But later at writepage() time, we would
+like to have blocks allocated for the whole page (and in principle we have to
+allocate them because user could have filled the page with data after the
+second ftruncate()). This patch introduces a framework which allows filesystems
+to handle this with a reasonable effort.
+
+The idea is following: Before we extend i_size, we obtain a special lock blocking
+page_mkwrite() on the page straddling i_size. Then we writeprotect the page,
+change i_size and unlock the special lock. This way, page_mkwrite() is called for
+a page each time a number of blocks needed to be allocated for a page increases.
 
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/dir.c     |    3 +--
- fs/ext4/ext4.h    |    6 ++----
- fs/ext4/extents.c |   16 +++-------------
- fs/ext4/inode.c   |   43 ++++++++++++-------------------------------
- 4 files changed, 18 insertions(+), 50 deletions(-)
+ fs/buffer.c                 |  143 +++++++++++++++++++++++++++++++++++++++++++
+ include/linux/buffer_head.h |    4 +
+ include/linux/fs.h          |   11 +++-
+ mm/filemap.c                |   10 +++-
+ mm/memory.c                 |    2 +-
+ 5 files changed, 166 insertions(+), 4 deletions(-)
 
-diff --git a/fs/ext4/dir.c b/fs/ext4/dir.c
-index b647899..c8e0623 100644
---- a/fs/ext4/dir.c
-+++ b/fs/ext4/dir.c
-@@ -131,8 +131,7 @@ static int ext4_readdir(struct file *filp,
- 		struct buffer_head *bh = NULL;
+diff --git a/fs/buffer.c b/fs/buffer.c
+index aed2977..ddfcade 100644
+--- a/fs/buffer.c
++++ b/fs/buffer.c
+@@ -40,6 +40,7 @@
+ #include <linux/cpu.h>
+ #include <linux/bitops.h>
+ #include <linux/mpage.h>
++#include <linux/rmap.h>
+ #include <linux/bit_spinlock.h>
  
- 		map_bh.b_state = 0;
--		err = ext4_get_blocks_wrap(NULL, inode, blk, 1, &map_bh,
--						0, 0, 0);
-+		err = ext4_get_blocks_wrap(NULL, inode, blk, 1, &map_bh, 0, 0);
- 		if (err > 0) {
- 			pgoff_t index = map_bh.b_blocknr >>
- 					(PAGE_CACHE_SHIFT - inode->i_blkbits);
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d0f15ef..2b02ae0 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -1338,8 +1338,7 @@ extern int ext4_ext_index_trans_blocks(struct inode *inode, int nrblocks,
- 				       int chunk);
- extern int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 			       ext4_lblk_t iblock, unsigned int max_blocks,
--			       struct buffer_head *bh_result,
--			       int create, int extend_disksize);
-+			       struct buffer_head *bh_result, int create);
- extern void ext4_ext_truncate(struct inode *);
- extern void ext4_ext_init(struct super_block *);
- extern void ext4_ext_release(struct super_block *);
-@@ -1347,8 +1346,7 @@ extern long ext4_fallocate(struct inode *inode, int mode, loff_t offset,
- 			  loff_t len);
- extern int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode,
- 			sector_t block, unsigned int max_blocks,
--			struct buffer_head *bh, int create,
--			int extend_disksize, int flag);
-+			struct buffer_head *bh, int create, int flag);
- extern int ext4_fiemap(struct inode *inode, struct fiemap_extent_info *fieinfo,
- 			__u64 start, __u64 len);
- 
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index e3a55eb..6b0eeaf 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2782,9 +2782,8 @@ fix_extent_len:
-  * return < 0, error case.
-  */
- int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
--			ext4_lblk_t iblock,
--			unsigned int max_blocks, struct buffer_head *bh_result,
--			int create, int extend_disksize)
-+			ext4_lblk_t iblock, unsigned int max_blocks,
-+			struct buffer_head *bh_result, int create)
- {
- 	struct ext4_ext_path *path = NULL;
- 	struct ext4_extent_header *eh;
-@@ -2793,7 +2792,6 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	int err = 0, depth, ret, cache_type;
- 	unsigned int allocated = 0;
- 	struct ext4_allocation_request ar;
--	loff_t disksize;
- 
- 	__clear_bit(BH_New, &bh_result->b_state);
- 	ext_debug("blocks %u/%u requested for inode %u\n",
-@@ -2983,14 +2981,6 @@ int ext4_ext_get_blocks(handle_t *handle, struct inode *inode,
- 	newblock = ext_pblock(&newex);
- 	allocated = ext4_ext_get_actual_len(&newex);
- outnew:
--	if (extend_disksize) {
--		disksize = ((loff_t) iblock + ar.len) << inode->i_blkbits;
--		if (disksize > i_size_read(inode))
--			disksize = i_size_read(inode);
--		if (disksize > EXT4_I(inode)->i_disksize)
--			EXT4_I(inode)->i_disksize = disksize;
--	}
--
- 	set_buffer_new(bh_result);
- 
- 	/* Cache only when it is _not_ an uninitialized extent */
-@@ -3152,7 +3142,7 @@ retry:
+ static int fsync_buffers_list(spinlock_t *lock, struct list_head *list);
+@@ -1970,9 +1971,11 @@ int block_write_begin(struct file *file, struct address_space *mapping,
+ 	page = *pagep;
+ 	if (page == NULL) {
+ 		ownpage = 1;
++		block_lock_hole_extend(inode, pos);
+ 		page = grab_cache_page_write_begin(mapping, index, flags);
+ 		if (!page) {
+ 			status = -ENOMEM;
++			block_unlock_hole_extend(inode);
+ 			goto out;
  		}
- 		ret = ext4_get_blocks_wrap(handle, inode, block,
- 					  max_blocks, &map_bh,
--					  EXT4_CREATE_UNINITIALIZED_EXT, 0, 0);
-+					  EXT4_CREATE_UNINITIALIZED_EXT, 0);
- 		if (ret <= 0) {
- #ifdef EXT4FS_DEBUG
- 			WARN_ON(ret <= 0);
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2a9ffd5..7fcceb0 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -916,8 +916,7 @@ err_out:
-  */
- static int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
- 				  ext4_lblk_t iblock, unsigned int maxblocks,
--				  struct buffer_head *bh_result,
--				  int create, int extend_disksize)
-+				  struct buffer_head *bh_result, int create)
- {
- 	int err = -EIO;
- 	ext4_lblk_t offsets[4];
-@@ -927,11 +926,8 @@ static int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
- 	int indirect_blks;
- 	int blocks_to_boundary = 0;
- 	int depth;
--	struct ext4_inode_info *ei = EXT4_I(inode);
- 	int count = 0;
- 	ext4_fsblk_t first_block = 0;
--	loff_t disksize;
--
+ 		*pagep = page;
+@@ -1987,6 +1990,7 @@ int block_write_begin(struct file *file, struct address_space *mapping,
+ 			unlock_page(page);
+ 			page_cache_release(page);
+ 			*pagep = NULL;
++			block_unlock_hole_extend(inode);
  
- 	J_ASSERT(!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL));
- 	J_ASSERT(handle != NULL || create == 0);
-@@ -997,18 +993,6 @@ static int ext4_get_blocks_handle(handle_t *handle, struct inode *inode,
- 	if (!err)
- 		err = ext4_splice_branch(handle, inode, iblock,
- 					partial, indirect_blks, count);
--	/*
--	 * i_disksize growing is protected by i_data_sem.  Don't forget to
--	 * protect it if you're about to implement concurrent
--	 * ext4_get_block() -bzzz
--	*/
--	if (!err && extend_disksize) {
--		disksize = ((loff_t) iblock + count) << inode->i_blkbits;
--		if (disksize > i_size_read(inode))
--			disksize = i_size_read(inode);
--		if (disksize > ei->i_disksize)
--			ei->i_disksize = disksize;
--	}
- 	if (err)
- 		goto cleanup;
- 
-@@ -1144,7 +1128,7 @@ static void ext4_da_update_reserve_space(struct inode *inode, int used)
-  */
- int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
- 			unsigned int max_blocks, struct buffer_head *bh,
--			int create, int extend_disksize, int flag)
-+			int create, int flag)
- {
- 	int retval;
- 
-@@ -1158,10 +1142,10 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
- 	down_read((&EXT4_I(inode)->i_data_sem));
- 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
- 		retval =  ext4_ext_get_blocks(handle, inode, block, max_blocks,
--				bh, 0, 0);
-+				bh, 0);
- 	} else {
- 		retval = ext4_get_blocks_handle(handle,
--				inode, block, max_blocks, bh, 0, 0);
-+				inode, block, max_blocks, bh, 0);
- 	}
- 	up_read((&EXT4_I(inode)->i_data_sem));
- 
-@@ -1213,10 +1197,10 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
- 	 */
- 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
- 		retval =  ext4_ext_get_blocks(handle, inode, block, max_blocks,
--				bh, create, extend_disksize);
-+				bh, create);
- 	} else {
- 		retval = ext4_get_blocks_handle(handle, inode, block,
--				max_blocks, bh, create, extend_disksize);
-+				max_blocks, bh, create);
- 
- 		if (retval > 0 && buffer_new(bh)) {
  			/*
-@@ -1269,7 +1253,7 @@ int ext4_get_block(struct inode *inode, sector_t iblock,
- 	}
+ 			 * prepare_write() may have instantiated a few blocks
+@@ -2062,6 +2066,7 @@ int generic_write_end(struct file *file, struct address_space *mapping,
  
- 	ret = ext4_get_blocks_wrap(handle, inode, iblock,
--					max_blocks, bh_result, create, 0, 0);
-+					max_blocks, bh_result, create, 0);
- 	if (ret > 0) {
- 		bh_result->b_size = (ret << inode->i_blkbits);
- 		ret = 0;
-@@ -1294,8 +1278,7 @@ struct buffer_head *ext4_getblk(handle_t *handle, struct inode *inode,
- 	dummy.b_state = 0;
- 	dummy.b_blocknr = -1000;
- 	buffer_trace_init(&dummy.b_history);
--	err = ext4_get_blocks_wrap(handle, inode, block, 1,
--					&dummy, create, 1, 0);
-+	err = ext4_get_blocks_wrap(handle, inode, block, 1, &dummy, create, 0);
- 	/*
- 	 * ext4_get_blocks_handle() returns number of blocks
- 	 * mapped. 0 in case of a HOLE.
-@@ -2002,7 +1985,7 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
- 	handle = ext4_journal_current_handle();
- 	BUG_ON(!handle);
- 	ret = ext4_get_blocks_wrap(handle, inode, iblock, max_blocks,
--				   bh_result, create, 0, EXT4_DELALLOC_RSVED);
-+				   bh_result, create, EXT4_DELALLOC_RSVED);
- 	if (ret <= 0)
- 		return ret;
- 
-@@ -2020,9 +2003,7 @@ static int ext4_da_get_block_write(struct inode *inode, sector_t iblock,
- 	}
+ 	unlock_page(page);
+ 	page_cache_release(page);
++	block_unlock_hole_extend(inode);
  
  	/*
--	 * Update on-disk size along with block allocation we don't
--	 * use 'extend_disksize' as size may change within already
--	 * allocated block -bzzz
-+	 * Update on-disk size along with block allocation.
- 	 */
- 	disksize = ((loff_t) iblock + ret) << inode->i_blkbits;
- 	if (disksize > i_size_read(inode))
-@@ -2323,7 +2304,7 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 	 * preallocated blocks are unmapped but should treated
- 	 * the same as allocated blocks.
- 	 */
--	ret = ext4_get_blocks_wrap(NULL, inode, iblock, 1,  bh_result, 0, 0, 0);
-+	ret = ext4_get_blocks_wrap(NULL, inode, iblock, 1,  bh_result, 0, 0);
- 	if ((ret == 0) && !buffer_delay(bh_result)) {
- 		/* the block isn't (pre)allocated yet, let's reserve space */
- 		/*
-@@ -2373,7 +2354,7 @@ static int ext4_normal_get_block_write(struct inode *inode, sector_t iblock,
- 	 * so call get_block_wrap with create = 0
- 	 */
- 	ret = ext4_get_blocks_wrap(NULL, inode, iblock, max_blocks,
--				   bh_result, 0, 0, 0);
-+				   bh_result, 0, 0);
- 	if (ret > 0) {
- 		bh_result->b_size = (ret << inode->i_blkbits);
- 		ret = 0;
+ 	 * Don't mark the inode dirty under page lock. First, it unnecessarily
+@@ -2368,6 +2373,137 @@ int block_commit_write(struct page *page, unsigned from, unsigned to)
+ }
+ 
+ /*
++ * Lock inode with I_HOLE_EXTEND if the write is going to create a hole
++ * under a mmapped page. Also mark the page RO so that page_mkwrite()
++ * is called on the nearest write access to the page and clear dirty bits
++ * beyond i_size.
++ *
++ * @pos is offset to which write/truncate is happenning.
++ *
++ * Returns 1 if the lock has been acquired.
++ */
++int block_lock_hole_extend(struct inode *inode, loff_t pos)
++{
++	int bsize = 1 << inode->i_blkbits;
++	loff_t rounded_i_size;
++	struct page *page;
++	pgoff_t index;
++	struct buffer_head *head, *bh;
++	sector_t block, last_block;
++
++	/* Optimize for common case */
++	if (PAGE_CACHE_SIZE == bsize)
++		return 0;
++	/* Currently last page will not have any hole block created? */
++	rounded_i_size = (inode->i_size + bsize - 1) & ~(bsize - 1);
++	if (pos <= rounded_i_size || !(rounded_i_size & (PAGE_CACHE_SIZE - 1)))
++		return 0;
++	/*
++	 * Check the mutex here so that we don't warn on things like blockdev
++	 * writes which have different locking rules...
++	 */
++	WARN_ON(!mutex_is_locked(&inode->i_mutex));
++	spin_lock(&inode_lock);
++	/*
++	 * From now on, block_page_mkwrite() will block on the page straddling
++	 * i_size. Note that the page on which it blocks changes with the
++	 * change of i_size but that is fine since when new i_size is written
++	 * blocks for the hole will be allocated.
++	 */
++	inode->i_state |= I_HOLE_EXTEND;
++	spin_unlock(&inode_lock);
++
++	/*
++	 * Make sure page_mkwrite() is called on this page before
++	 * user is able to write any data beyond current i_size via
++	 * mmap.
++	 *
++	 * See clear_page_dirty_for_io() for details why set_page_dirty()
++	 * is needed.
++	 */
++	index = inode->i_size >> PAGE_CACHE_SHIFT;
++	page = find_lock_page(inode->i_mapping, index);
++	if (!page)
++		return 1;
++	if (page_mkclean(page))
++		set_page_dirty(page);
++	/* Zero dirty bits beyond current i_size */
++	if (page_has_buffers(page)) {
++		bh = head = page_buffers(page);
++		last_block = (inode->i_size - 1) >> inode->i_blkbits;
++		block = index << (PAGE_CACHE_SHIFT - inode->i_blkbits);
++		do {
++			if (block > last_block)
++				clear_buffer_dirty(bh);
++			bh = bh->b_this_page;
++			block++;
++		} while (bh != head);
++	}
++	unlock_page(page);
++	page_cache_release(page);
++	return 1;
++}
++EXPORT_SYMBOL(block_lock_hole_extend);
++
++/* New i_size creating hole has been written, unlock the inode */
++void block_unlock_hole_extend(struct inode *inode)
++{
++	/*
++	 * We want to clear the flag we could have set previously. Noone else
++	 * can change the flag so lockless read is reliable.
++	 */
++	if (inode->i_state & I_HOLE_EXTEND) {
++		spin_lock(&inode_lock);
++		inode->i_state &= ~I_HOLE_EXTEND;
++		spin_unlock(&inode_lock);
++		/* Prevent speculative execution through spin_unlock */
++		smp_mb();
++		wake_up_bit(&inode->i_state, __I_HOLE_EXTEND);
++	}
++}
++EXPORT_SYMBOL(block_unlock_hole_extend);
++
++void block_extend_i_size(struct inode *inode, loff_t pos, loff_t len)
++{
++	int locked;
++
++	locked = block_lock_hole_extend(inode, pos + len);
++	i_size_write(inode, pos + len);
++	if (locked)
++		block_unlock_hole_extend(inode);
++}
++EXPORT_SYMBOL(block_extend_i_size);
++
++int block_wait_on_hole_extend(struct inode *inode, loff_t pos)
++{
++	loff_t size;
++	int ret = 0;
++
++restart:
++	size = i_size_read(inode);
++	if (pos > size)
++		return -EINVAL;
++	if (pos + PAGE_CACHE_SIZE < size)
++		return ret;
++	/*
++	 * This page contains EOF; make sure we see i_state from the moment
++	 * after page table modification
++	 */
++	smp_rmb();
++	if (inode->i_state & I_HOLE_EXTEND) {
++		wait_queue_head_t *wqh;
++		DEFINE_WAIT_BIT(wqb, &inode->i_state, __I_HOLE_EXTEND);
++
++		wqh = bit_waitqueue(&inode->i_state, __I_HOLE_EXTEND);
++		__wait_on_bit(wqh, &wqb, inode_wait, TASK_UNINTERRUPTIBLE);
++		ret = 1;
++		goto restart;
++	}
++	return ret;
++}
++EXPORT_SYMBOL(block_wait_on_hole_extend);
++
++/*
+  * block_page_mkwrite() is not allowed to change the file size as it gets
+  * called from a page fault handler when a page is first dirtied. Hence we must
+  * be careful to check for EOF conditions here. We set the page up correctly
+@@ -2392,6 +2528,13 @@ block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 	loff_t size;
+ 	int ret = VM_FAULT_NOPAGE; /* make the VM retry the fault */
+ 
++	block_wait_on_hole_extend(inode, page_offset(page));
++	/*
++	 * From this moment on a write creating a hole can happen
++	 * without us waiting for it. But because it writeprotects
++	 * the page, user cannot really write to the page until next
++	 * page_mkwrite() is called. And that one will wait.
++	 */
+ 	lock_page(page);
+ 	size = i_size_read(inode);
+ 	if ((page->mapping != inode->i_mapping) ||
+diff --git a/include/linux/buffer_head.h b/include/linux/buffer_head.h
+index 16ed028..56a0162 100644
+--- a/include/linux/buffer_head.h
++++ b/include/linux/buffer_head.h
+@@ -219,6 +219,10 @@ int cont_write_begin(struct file *, struct address_space *, loff_t,
+ 			get_block_t *, loff_t *);
+ int generic_cont_expand_simple(struct inode *inode, loff_t size);
+ int block_commit_write(struct page *page, unsigned from, unsigned to);
++int block_lock_hole_extend(struct inode *inode, loff_t pos);
++void block_unlock_hole_extend(struct inode *inode);
++int block_wait_on_hole_extend(struct inode *inode, loff_t pos);
++void block_extend_i_size(struct inode *inode, loff_t pos, loff_t len);
+ int block_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf,
+ 				get_block_t get_block);
+ void block_sync_page(struct page *);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 3b534e5..7cbb0c2 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -580,7 +580,7 @@ struct address_space_operations {
+ 	int (*write_end)(struct file *, struct address_space *mapping,
+ 				loff_t pos, unsigned len, unsigned copied,
+ 				struct page *page, void *fsdata);
+-
++	void (*extend_i_size)(struct inode *, loff_t pos, loff_t len);
+ 	/* Unfortunately this kludge is needed for FIBMAP. Don't use it */
+ 	sector_t (*bmap)(struct address_space *, sector_t);
+ 	void (*invalidatepage) (struct page *, unsigned long);
+@@ -597,6 +597,8 @@ struct address_space_operations {
+ 					unsigned long);
+ };
+ 
++void do_extend_i_size(struct inode *inode, loff_t pos, loff_t len);
++
+ /*
+  * pagecache_write_begin/pagecache_write_end must be used by general code
+  * to write into the pagecache.
+@@ -1590,7 +1592,8 @@ struct super_operations {
+  * until that flag is cleared.  I_WILL_FREE, I_FREEING and I_CLEAR are set at
+  * various stages of removing an inode.
+  *
+- * Two bits are used for locking and completion notification, I_LOCK and I_SYNC.
++ * Three bits are used for locking and completion notification, I_LOCK,
++ * I_HOLE_EXTEND and I_SYNC.
+  *
+  * I_DIRTY_SYNC		Inode is dirty, but doesn't have to be written on
+  *			fdatasync().  i_atime is the usual cause.
+@@ -1628,6 +1631,8 @@ struct super_operations {
+  *			of inode dirty data.  Having a separate lock for this
+  *			purpose reduces latency and prevents some filesystem-
+  *			specific deadlocks.
++ * I_HOLE_EXTEND	A lock synchronizing extension of a file which creates
++ *			a hole under a mmapped page with page_mkwrite().
+  *
+  * Q: What is the difference between I_WILL_FREE and I_FREEING?
+  * Q: igrab() only checks on (I_FREEING|I_WILL_FREE).  Should it also check on
+@@ -1644,6 +1649,8 @@ struct super_operations {
+ #define I_LOCK			(1 << __I_LOCK)
+ #define __I_SYNC		8
+ #define I_SYNC			(1 << __I_SYNC)
++#define __I_HOLE_EXTEND		9
++#define I_HOLE_EXTEND		(1 << __I_HOLE_EXTEND)
+ 
+ #define I_DIRTY (I_DIRTY_SYNC | I_DIRTY_DATASYNC | I_DIRTY_PAGES)
+ 
+diff --git a/mm/filemap.c b/mm/filemap.c
+index 379ff0b..a227174 100644
+--- a/mm/filemap.c
++++ b/mm/filemap.c
+@@ -2079,6 +2079,14 @@ int pagecache_write_end(struct file *file, struct address_space *mapping,
+ }
+ EXPORT_SYMBOL(pagecache_write_end);
+ 
++void do_extend_i_size(struct inode *inode, loff_t pos, loff_t len)
++{
++	if (inode->i_mapping->a_ops->extend_i_size)
++		inode->i_mapping->a_ops->extend_i_size(inode, pos, len);
++	else
++		i_size_write(inode, pos + len);
++}
++
+ ssize_t
+ generic_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 		unsigned long *nr_segs, loff_t pos, loff_t *ppos,
+@@ -2139,7 +2147,7 @@ generic_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 	if (written > 0) {
+ 		loff_t end = pos + written;
+ 		if (end > i_size_read(inode) && !S_ISBLK(inode->i_mode)) {
+-			i_size_write(inode,  end);
++			do_extend_i_size(inode, pos, written);
+ 			mark_inode_dirty(inode);
+ 		}
+ 		*ppos = end;
+diff --git a/mm/memory.c b/mm/memory.c
+index 4126dd1..535183d 100644
+--- a/mm/memory.c
++++ b/mm/memory.c
+@@ -2377,7 +2377,7 @@ int vmtruncate(struct inode * inode, loff_t offset)
+ 			goto out_sig;
+ 		if (offset > inode->i_sb->s_maxbytes)
+ 			goto out_big;
+-		i_size_write(inode, offset);
++		do_extend_i_size(inode, offset, 0);
+ 	} else {
+ 		struct address_space *mapping = inode->i_mapping;
+ 
 -- 
 1.6.0.2
 
