@@ -1,27 +1,36 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH RESEND] Add extent conversion support to chattr
-Date: Thu, 28 May 2009 09:10:50 -0400
-Message-ID: <20090528131050.GM26625@mit.edu>
-References: <1231223834-2785-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] chattr manpage tidyups
+Date: Thu, 28 May 2009 09:12:10 -0400
+Message-ID: <20090528131210.GN26625@mit.edu>
+References: <4A1E11CF.1000502@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:55403 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:55412 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758443AbZE1NLI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 May 2009 09:11:08 -0400
+	id S1761232AbZE1NMT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 May 2009 09:12:19 -0400
 Content-Disposition: inline
-In-Reply-To: <1231223834-2785-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <4A1E11CF.1000502@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jan 06, 2009 at 12:07:14PM +0530, Aneesh Kumar K.V wrote:
-> This patch adds new option, +e to chattr. The +e option
-> is used to convert the ext3 format (non extent) file
-> to ext4 (extent) format. This can be used to migrate
-> the ext3 file system to ext4 file system.
+On Wed, May 27, 2009 at 11:23:43PM -0500, Eric Sandeen wrote:
+> This was prompted by RH BZ#502971
+> 
+> Note that this goes after Aneesh's patch to add chattr +e
+> 
+> Tidy up the chattr(1) manpage to completely document all
+> available options, and differentiate those which are read-only
+> early in the manpage as well.
+> 
+> * Remove "I" from settable attribute list
+> * add "e" to 2nd list of settable attributes & descriptions
+> * Note that h/E/I/X/Z are readonly
+> * Correct "H" to "h" for huge file attribute description
+> * fix long_name for indexed directory in flags_array
 
 Thanks, applied.
 
