@@ -1,92 +1,60 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Add WARN_ON on unmapped dirty buffer_heads in
-	writepage
-Date: Thu, 28 May 2009 12:06:58 +0200
-Message-ID: <20090528100657.GI29199@duck.suse.cz>
-References: <1243499264-29629-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 08/11] vfs: Unmap underlying metadata of new data
+	buffers only when buffer is mapped
+Date: Thu, 28 May 2009 15:45:54 +0530
+Message-ID: <20090528101554.GB27978@skywalker>
+References: <1243429268-3028-1-git-send-email-jack@suse.cz> <1243429268-3028-9-git-send-email-jack@suse.cz> <20090527153559.GB19989@skywalker> <20090528094434.GG29199@duck.suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com, jack@suse.cz,
+Cc: LKML <linux-kernel@vger.kernel.org>, npiggin@suse.de,
 	linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:50268 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750964AbZE1KG6 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 May 2009 06:06:58 -0400
+Received: from e28smtp05.in.ibm.com ([59.145.155.5]:59415 "EHLO
+	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751137AbZE1KP6 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 May 2009 06:15:58 -0400
 Content-Disposition: inline
-In-Reply-To: <1243499264-29629-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <20090528094434.GG29199@duck.suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 28-05-09 13:57:44, Aneesh Kumar K.V wrote:
-> Now we have block_lock_hole_extend clearing the dirty flag of
-> buffer_heads outside i_size we should not find buffer_heads
-> which are unmapped and dirty in writepage. If we find do a WARN_ON.
-> We can still continue because block_write_full page look at the mapped
-> flag only.
-> 
-> Following sequence of events would result in the above condition.
-> 1) truncate(f, 1024)
-> 2) mmap(f, 0, 4096)
-> 3) a[0] = 'a'
-> 4) truncate(f, 4096)
-> 5) writepage(...)
-> 
-> After step 3 we would have unmapped buffer_heads outside i_size.
-> After step 4 we would have unmapped buffer_heads within i_size.
-> 
-> Now that truncate is calling block_lock_hole_extend which in turn
-> is clearing the dirty flag, we can safely assume that we won't
-> find unmapped dirty buffer_heads in write page. If we did find one
-> we should find out why.
-  Thanks. Apart from one coding-style nitpick, you can add:
-Acked-by: Jan Kara <jack@suse.cz>
+On Thu, May 28, 2009 at 11:44:34AM +0200, Jan Kara wrote:
+> On Wed 27-05-09 21:05:59, Aneesh Kumar K.V wrote:
+> > On Wed, May 27, 2009 at 03:01:05PM +0200, Jan Kara wrote:
+> > > When we do delayed allocation of some buffer, we want to signal to VFS that
+> > > the buffer is new (set buffer_new) so that it properly zeros out everything.
+> > > But we don't have the buffer mapped yet so we cannot really unmap underlying
+> > > metadata in this state. Make VFS avoid doing unmapping of metadata when the
+> > > buffer is not yet mapped.
+> > > 
+> ...
+> > > @@ -2683,7 +2685,7 @@ int nobh_write_begin(struct file *file, struct address_space *mapping,
+> > >  			goto failed;
+> > >  		if (!buffer_mapped(bh))
+> > >  			is_mapped_to_disk = 0;
+> > > -		if (buffer_new(bh))
+> > > +		if (buffer_new(bh) && buffer_mapped(bh))
+> > >  			unmap_underlying_metadata(bh->b_bdev, bh->b_blocknr);
+> > >  		if (PageUptodate(page)) {
+> > >  			set_buffer_uptodate(bh);
+> > 
+> > Both xfs and ext4 return mapped delay buffer_head when we do a get_block
+> > with delayed allocation in write_begin phase.
+>   Yeah, I knew about ext4 doing this. Thanks for pointing this out. I
+> wanted to trigger a separate discussion about this and similar problems -
+> the current state of buffer bits is quite messy (I think Ted complained
+> about this as well recently) and we should somehow clean it up.
+>   In this particular case: What's the point in returning the buffer mapped?
+> It does not make any sence logically (block *does not* have any physical
+> location assigned) and technically you have to map it to some fake block
+> and later remap it correctly when you do block allocation. So maybe I'm
+> missing some good reason but from what I can see, it just does not make
+> sence...
 
-									Honza
+Marking it mapped make sure we don't do multiple get_block calls for
+every write. For each write in write_begin path we do a get_block
+call if the buffer is not mapped. (__block_prepare_write have more
+details.)
 
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/ext4/inode.c |   13 +++++++++++++
->  1 files changed, 13 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index f6f2202..ca26bdd 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -2509,6 +2509,11 @@ static int __ext4_journalled_writepage(struct page *page,
->  	return ret;
->  }
->  
-> +static int ext4_bh_unmapped_and_dirty(handle_t *handle, struct buffer_head *bh)
-> +{
-> +	return (!buffer_mapped(bh)) && buffer_dirty(bh);
-               ^                  ^
-                looks a bit strange
-> +}
-> +
->  /*
->   * Note that we don't need to start a transaction unless we're journaling data
->   * because we should have holes filled from ext4_page_mkwrite(). We even don't
-> @@ -2622,6 +2627,14 @@ static int ext4_writepage(struct page *page,
->  		/* now mark the buffer_heads as dirty and uptodate */
->  		block_commit_write(page, 0, len);
->  	}
-> +	/*
-> +	 * There should not be any unmapped and dirty
-> +	 * buffer_heads at this point. Look at block_lock_hole_extend
-> +	 * for more info. If we find one print more info
-> +	 */
-> +	 WARN(walk_page_buffers(NULL, page_bufs, 0, len, NULL,
-> +				 ext4_bh_unmapped_and_dirty),
-> +		 "Unmapped dirty buffer_heads found in %s\n", __func__);
->  
->  	if (PageChecked(page) && ext4_should_journal_data(inode)) {
->  		/*
-> -- 
-> 1.6.3.1.145.gb74d77
-> 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+-aneesh
