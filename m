@@ -1,99 +1,59 @@
 From: Andreas Dilger <adilger@sun.com>
-Subject: [PATCH] only restart e2fsck once for inodes in uninit range
-Date: Thu, 28 May 2009 00:39:49 -0600
-Message-ID: <20090528063949.GE3218@webber.adilger.int>
+Subject: [PATCH] use unsigned values for memory tracking stats
+Date: Thu, 28 May 2009 00:47:37 -0600
+Message-ID: <20090528064737.GF3218@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; CHARSET=US-ASCII
 Content-Transfer-Encoding: 7BIT
 Cc: linux-ext4@vger.kernel.org
 To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:35410 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751079AbZE1GkB (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 May 2009 02:40:01 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n4S6e1lt023705
-	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2009 23:40:01 -0700 (PDT)
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:36135 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750907AbZE1Grx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 May 2009 02:47:53 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n4S6lnEs026429
+	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2009 23:47:51 -0700 (PDT)
 Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
  (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KKC00C00CQ3P700@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
- 27 May 2009 23:40:01 -0700 (PDT)
+ id <0KKC00C00D7YJV00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 27 May 2009 23:47:49 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Restart e2fsck only once in case of multiple inodes in uninit range.
-Display correct inode number during BG_INO_UNINIT and INOREF_IN_USED errors.
+Use unsigned values for printing memory tracking to avoid overflows.
+The mallinfo() data is currently signed ints, but it might change in
+the future so we may as well compute/print unsigned longs.
 
-Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
 Signed-off-by: Andreas Dilger <adilger@sun.com>
 
-Index: e2fsprogs-1.41.4/e2fsck/pass2.c
+Index: e2fsprogs-cfs/e2fsck/util.c
 ===================================================================
---- e2fsprogs-1.41.4.orig/e2fsck/pass2.c	2008-12-09 08:02:37.000000000 +0530
-+++ e2fsprogs-1.41.4/e2fsck/pass2.c	2009-04-12 11:25:00.000000000 +0530
-@@ -153,6 +153,12 @@
- 						&cd);
- 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
- 		return;
-+
-+	if (ctx->flags & E2F_FLAG_RESTART_LATER) {
-+		ctx->flags |= E2F_FLAG_RESTART;
-+		return;
-+	}
-+
- 	if (cd.pctx.errcode) {
- 		fix_problem(ctx, PR_2_DBLIST_ITERATE, &cd.pctx);
- 		ctx->flags |= E2F_FLAG_ABORT;
-@@ -988,23 +994,24 @@
- 		 * newly visible inodes.
- 		 */
- 		if (fs->group_desc[group].bg_flags & EXT2_BG_INODE_UNINIT) {
-+			pctx.num = dirent->inode;
- 			if (fix_problem(ctx, PR_2_INOREF_BG_INO_UNINIT,
- 					&cd->pctx)){
- 				fs->group_desc[group].bg_flags &=
- 					~EXT2_BG_INODE_UNINIT;
- 				ext2fs_mark_super_dirty(fs);
--				ctx->flags |= E2F_FLAG_RESTART;
-+				ctx->flags |= E2F_FLAG_RESTART_LATER;
- 			} else {
- 				ext2fs_unmark_valid(fs);
- 				if (problem == PR_2_BAD_INO)
- 					goto next;
- 			}
- 		} else if (dirent->inode >= first_unused_inode) {
-+			pctx.num = dirent->inode;
- 			if (fix_problem(ctx, PR_2_INOREF_IN_UNUSED, &cd->pctx)){
- 				fs->group_desc[group].bg_itable_unused = 0;
- 				ext2fs_mark_super_dirty(fs);
--				ctx->flags |= E2F_FLAG_RESTART;
--				goto restart_fsck;
-+				ctx->flags |= E2F_FLAG_RESTART_LATER;
- 			} else {
- 				ext2fs_unmark_valid(fs);
- 				if (problem == PR_2_BAD_INO)
-@@ -1145,7 +1152,6 @@
- 	return 0;
- abort_free_dict:
- 	ctx->flags |= E2F_FLAG_ABORT;
--restart_fsck:
- 	dict_free_nodes(&de_dict);
- 	return DIRENT_ABORT;
- }
-Index: e2fsprogs-1.41.4/e2fsck/e2fsck.h
-===================================================================
---- e2fsprogs-1.41.4.orig/e2fsck/e2fsck.h	2009-04-12 11:07:44.000000000 +0530
-+++ e2fsprogs-1.41.4/e2fsck/e2fsck.h	2009-04-12 11:20:53.000000000 +0530
-@@ -163,6 +163,7 @@
- #define E2F_FLAG_CANCEL		0x0002 /* Cancel signaled */
- #define E2F_FLAG_SIGNAL_MASK	0x0003
- #define E2F_FLAG_RESTART	0x0004 /* Restart signaled */
-+#define E2F_FLAG_RESTART_LATER	0x0008 /* Restart after all iterations done */
+--- e2fsprogs-cfs.orig/e2fsck/util.c
++++ e2fsprogs-cfs/e2fsck/util.c
+@@ -330,15 +330,15 @@ void print_resource_track(const char *de
+ 		printf("%s: ", desc);
  
- #define E2F_FLAG_SETJMP_OK	0x0010 /* Setjmp valid for abort */
+ #ifdef HAVE_MALLINFO
+-#define kbytes(x)	(((x) + 1023) / 1024)
++#define kbytes(x)	(((unsigned long)(x) + 1023) / 1024)
  
+ 	malloc_info = mallinfo();
+-	printf(_("Memory used: %dk/%dk (%dk/%dk), "),
++	printf(_("Memory used: %luk+%luk (%luk+%luk), "),
+ 	       kbytes(malloc_info.arena), kbytes(malloc_info.hblkhd),
+ 	       kbytes(malloc_info.uordblks), kbytes(malloc_info.fordblks));
+ #else
+-	printf(_("Memory used: %d, "),
+-	       (int) (((char *) sbrk(0)) - ((char *) track->brk_start)));
++	printf(_("Memory used: %lu, "),
++	       (long) (((char *) sbrk(0)) - ((char *) track->brk_start)));
+ #endif
+ #ifdef HAVE_GETRUSAGE
+ 	getrusage(RUSAGE_SELF, &r);
+
 Cheers, Andreas
 --
 Andreas Dilger
