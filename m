@@ -1,117 +1,136 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 1/3] ext4: Don't look at buffer_heads outside i_size.
-Date: Thu, 28 May 2009 10:21:21 +0200
-Message-ID: <20090528082121.GA29199@duck.suse.cz>
-References: <1243439888-22680-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 2/3] ext4: Check for only delay or unwritten
+	buffer_heads
+Date: Thu, 28 May 2009 10:27:11 +0200
+Message-ID: <20090528082711.GB29199@duck.suse.cz>
+References: <1243439888-22680-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1243439888-22680-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com, jack@suse.cz,
 	linux-ext4@vger.kernel.org
 To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:46464 "EHLO mx2.suse.de"
+Received: from cantor.suse.de ([195.135.220.2]:50274 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757177AbZE1IV1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 May 2009 04:21:27 -0400
+	id S1757268AbZE1I1K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 May 2009 04:27:10 -0400
 Content-Disposition: inline
-In-Reply-To: <1243439888-22680-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1243439888-22680-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 27-05-09 21:28:06, Aneesh Kumar K.V wrote:
-> Buffer heads outside i_size will be unmapped. So when we
-> are doing "walk_page_buffers" limit ourself to i_size.
+On Wed 27-05-09 21:28:07, Aneesh Kumar K.V wrote:
+> Even with changes to make pages writeprotech on truncate/i_size update we
+> can still see buffer_heads which are not mapped in the writepage
+> callback. Consider the below case.
 > 
+> 1) truncate(f, 1024)
+> 2) mmap(f, 0, 4096)
+> 3) a[0] = 'a'
+> 4) truncate(f, 4096)
+> 5) writepage(...)
+> 
+> Now if we get a writepage callback immediately after (4) and before an
+> attempt to write at any other offset via mmap address (which implies we
+> are yet to get a pagefault and do a get_block) what we would have is the
+> page which is dirty have first block allocated and the other three
+> buffer_heads unmapped.
+> 
+> In the above case the writepage should go ahead and try to write
+> the first blocks and clear the page_dirty flag. Because the further
+> attempt to write to the page will again create a fault and result in
+> allocating blocks and marking page dirty. Also if we don't write
+> any other offset via mmap address we would still have written the first
+> block to the disk and rest of the space will be considered as a hole.
+  OK, but this requires my patches to not cause data loss, doesn't it?
+Nothing prevents user from writing data into the full page just after
+truncate(f, 4096) before the writepage is called.  And without my patches,
+fault will not happen for such user write.
+  Just that we should have this dependency in mind. Otherwise the patch
+looks fine to me.
+
+									Honza
+
 > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-  The patch looks fine.
-Acked-by: Jan Kara <jack@suse.cz>
-
-								Honza
-
 > ---
->  fs/ext4/inode.c |   29 ++++++++++++++++++-----------
->  1 files changed, 18 insertions(+), 11 deletions(-)
+>  fs/ext4/inode.c |   21 +++++++--------------
+>  1 files changed, 7 insertions(+), 14 deletions(-)
 > 
 > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 3b07a6c..f0f0065 100644
+> index f0f0065..1efb296 100644
 > --- a/fs/ext4/inode.c
 > +++ b/fs/ext4/inode.c
-> @@ -2514,7 +2514,7 @@ static int ext4_da_writepage(struct page *page,
->  		 * all are mapped and non delay. We don't want to
->  		 * do block allocation here.
->  		 */
-> -		ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
-> +		ret = block_prepare_write(page, 0, len,
->  					  noalloc_get_block_write);
->  		if (!ret) {
->  			page_bufs = page_buffers(page);
-> @@ -2536,7 +2536,7 @@ static int ext4_da_writepage(struct page *page,
->  			return 0;
->  		}
->  		/* now mark the buffer_heads as dirty and uptodate */
-> -		block_commit_write(page, 0, PAGE_CACHE_SIZE);
-> +		block_commit_write(page, 0, len);
->  	}
+> @@ -2239,15 +2239,9 @@ static void mpage_add_bh_to_extent(struct mpage_da_data *mpd,
+>  	return;
+>  }
 >  
->  	if (test_opt(inode->i_sb, NOBH) && ext4_should_writeback_data(inode))
-> @@ -3210,6 +3210,8 @@ static int ext4_normal_writepage(struct page *page,
->  static int __ext4_journalled_writepage(struct page *page,
->  				struct writeback_control *wbc)
+> -static int ext4_bh_unmapped_or_delay(handle_t *handle, struct buffer_head *bh)
+> +static int ext4_bh_delay_or_unwritten(handle_t *handle, struct buffer_head *bh)
 >  {
-> +	loff_t size;
-> +	unsigned int len;
->  	struct address_space *mapping = page->mapping;
->  	struct inode *inode = mapping->host;
->  	struct buffer_head *page_bufs;
-> @@ -3217,14 +3219,19 @@ static int __ext4_journalled_writepage(struct page *page,
->  	int ret = 0;
->  	int err;
+> -	/*
+> -	 * unmapped buffer is possible for holes.
+> -	 * delay buffer is possible with delayed allocation.
+> -	 * We also need to consider unwritten buffer as unmapped.
+> -	 */
+> -	return (!buffer_mapped(bh) || buffer_delay(bh) ||
+> -				buffer_unwritten(bh)) && buffer_dirty(bh);
+> +	return (buffer_delay(bh) || buffer_unwritten(bh)) && buffer_dirty(bh);
+>  }
 >  
-> -	ret = block_prepare_write(page, 0, PAGE_CACHE_SIZE,
-> +	size = i_size_read(inode);
-> +	if (page->index == size >> PAGE_CACHE_SHIFT)
-> +		len = size & ~PAGE_CACHE_MASK;
-> +	else
-> +		len = PAGE_CACHE_SIZE;
-> +
-> +	ret = block_prepare_write(page, 0, len,
->  				  noalloc_get_block_write);
->  	if (ret != 0)
->  		goto out_unlock;
->  
->  	page_bufs = page_buffers(page);
-> -	walk_page_buffers(handle, page_bufs, 0, PAGE_CACHE_SIZE, NULL,
-> -								bget_one);
-> +	walk_page_buffers(handle, page_bufs, 0, len, NULL, bget_one);
->  	/* As soon as we unlock the page, it can go away, but we have
->  	 * references to buffers so we are safe */
->  	unlock_page(page);
-> @@ -3235,19 +3242,19 @@ static int __ext4_journalled_writepage(struct page *page,
->  		goto out;
+>  /*
+> @@ -2334,7 +2328,7 @@ static int __mpage_da_writepage(struct page *page,
+>  			 * Otherwise we won't make progress
+>  			 * with the page in ext4_da_writepage
+>  			 */
+> -			if (ext4_bh_unmapped_or_delay(NULL, bh)) {
+> +			if (ext4_bh_delay_or_unwritten(NULL, bh)) {
+>  				mpage_add_bh_to_extent(mpd, logical,
+>  						       bh->b_size,
+>  						       bh->b_state);
+> @@ -2451,7 +2445,6 @@ static int noalloc_get_block_write(struct inode *inode, sector_t iblock,
+>  	 * so call get_block_wrap with create = 0
+>  	 */
+>  	ret = ext4_get_blocks(NULL, inode, iblock, max_blocks, bh_result, 0);
+> -	BUG_ON(create && ret == 0);
+>  	if (ret > 0) {
+>  		bh_result->b_size = (ret << inode->i_blkbits);
+>  		ret = 0;
+> @@ -2487,7 +2480,7 @@ static int ext4_da_writepage(struct page *page,
+>  	if (page_has_buffers(page)) {
+>  		page_bufs = page_buffers(page);
+>  		if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+> -					ext4_bh_unmapped_or_delay)) {
+> +					ext4_bh_delay_or_unwritten)) {
+>  			/*
+>  			 * We don't want to do  block allocation
+>  			 * So redirty the page and return
+> @@ -2520,7 +2513,7 @@ static int ext4_da_writepage(struct page *page,
+>  			page_bufs = page_buffers(page);
+>  			/* check whether all are mapped and non delay */
+>  			if (walk_page_buffers(NULL, page_bufs, 0, len, NULL,
+> -						ext4_bh_unmapped_or_delay)) {
+> +						ext4_bh_delay_or_unwritten)) {
+>  				redirty_page_for_writepage(wbc, page);
+>  				unlock_page(page);
+>  				return 0;
+> @@ -3196,7 +3189,7 @@ static int ext4_normal_writepage(struct page *page,
+>  		 * happily proceed with mapping them and writing the page.
+>  		 */
+>  		BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+> -					ext4_bh_unmapped_or_delay));
+> +					ext4_bh_delay_or_unwritten));
 >  	}
 >  
-> -	ret = walk_page_buffers(handle, page_bufs, 0,
-> -			PAGE_CACHE_SIZE, NULL, do_journal_get_write_access);
-> +	ret = walk_page_buffers(handle, page_bufs, 0, len,
-> +				NULL, do_journal_get_write_access);
+>  	if (!ext4_journal_current_handle())
+> @@ -3291,7 +3284,7 @@ static int ext4_journalled_writepage(struct page *page,
+>  		 * happily proceed with mapping them and writing the page.
+>  		 */
+>  		BUG_ON(walk_page_buffers(NULL, page_buffers(page), 0, len, NULL,
+> -					ext4_bh_unmapped_or_delay));
+> +					ext4_bh_delay_or_unwritten));
+>  	}
 >  
-> -	err = walk_page_buffers(handle, page_bufs, 0,
-> -				PAGE_CACHE_SIZE, NULL, write_end_fn);
-> +	err = walk_page_buffers(handle, page_bufs, 0, len,
-> +				NULL, write_end_fn);
->  	if (ret == 0)
->  		ret = err;
->  	err = ext4_journal_stop(handle);
->  	if (!ret)
->  		ret = err;
->  
-> -	walk_page_buffers(handle, page_bufs, 0,
-> -				PAGE_CACHE_SIZE, NULL, bput_one);
-> +	walk_page_buffers(handle, page_bufs, 0, len,
-> +				NULL, bput_one);
->  	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
->  	goto out;
->  
+>  	if (ext4_journal_current_handle())
 > -- 
 > 1.6.3.1.145.gb74d77
 > 
