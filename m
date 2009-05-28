@@ -1,60 +1,29 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH 08/11] vfs: Unmap underlying metadata of new data
-	buffers only when buffer is mapped
-Date: Thu, 28 May 2009 15:45:54 +0530
-Message-ID: <20090528101554.GB27978@skywalker>
-References: <1243429268-3028-1-git-send-email-jack@suse.cz> <1243429268-3028-9-git-send-email-jack@suse.cz> <20090527153559.GB19989@skywalker> <20090528094434.GG29199@duck.suse.cz>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] only restart e2fsck once for inodes in uninit range
+Date: Thu, 28 May 2009 07:57:42 -0400
+Message-ID: <20090528115742.GK26625@mit.edu>
+References: <20090528063949.GE3218@webber.adilger.int>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: LKML <linux-kernel@vger.kernel.org>, npiggin@suse.de,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e28smtp05.in.ibm.com ([59.145.155.5]:59415 "EHLO
-	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751137AbZE1KP6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 May 2009 06:15:58 -0400
+Received: from thunk.org ([69.25.196.29]:57103 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755000AbZE1L54 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 May 2009 07:57:56 -0400
 Content-Disposition: inline
-In-Reply-To: <20090528094434.GG29199@duck.suse.cz>
+In-Reply-To: <20090528063949.GE3218@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 28, 2009 at 11:44:34AM +0200, Jan Kara wrote:
-> On Wed 27-05-09 21:05:59, Aneesh Kumar K.V wrote:
-> > On Wed, May 27, 2009 at 03:01:05PM +0200, Jan Kara wrote:
-> > > When we do delayed allocation of some buffer, we want to signal to VFS that
-> > > the buffer is new (set buffer_new) so that it properly zeros out everything.
-> > > But we don't have the buffer mapped yet so we cannot really unmap underlying
-> > > metadata in this state. Make VFS avoid doing unmapping of metadata when the
-> > > buffer is not yet mapped.
-> > > 
-> ...
-> > > @@ -2683,7 +2685,7 @@ int nobh_write_begin(struct file *file, struct address_space *mapping,
-> > >  			goto failed;
-> > >  		if (!buffer_mapped(bh))
-> > >  			is_mapped_to_disk = 0;
-> > > -		if (buffer_new(bh))
-> > > +		if (buffer_new(bh) && buffer_mapped(bh))
-> > >  			unmap_underlying_metadata(bh->b_bdev, bh->b_blocknr);
-> > >  		if (PageUptodate(page)) {
-> > >  			set_buffer_uptodate(bh);
-> > 
-> > Both xfs and ext4 return mapped delay buffer_head when we do a get_block
-> > with delayed allocation in write_begin phase.
->   Yeah, I knew about ext4 doing this. Thanks for pointing this out. I
-> wanted to trigger a separate discussion about this and similar problems -
-> the current state of buffer bits is quite messy (I think Ted complained
-> about this as well recently) and we should somehow clean it up.
->   In this particular case: What's the point in returning the buffer mapped?
-> It does not make any sence logically (block *does not* have any physical
-> location assigned) and technically you have to map it to some fake block
-> and later remap it correctly when you do block allocation. So maybe I'm
-> missing some good reason but from what I can see, it just does not make
-> sence...
+On Thu, May 28, 2009 at 12:39:49AM -0600, Andreas Dilger wrote:
+> Restart e2fsck only once in case of multiple inodes in uninit range.
+> Display correct inode number during BG_INO_UNINIT and INOREF_IN_USED errors.
+> 
+> Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
+> Signed-off-by: Andreas Dilger <adilger@sun.com>
 
-Marking it mapped make sure we don't do multiple get_block calls for
-every write. For each write in write_begin path we do a get_block
-call if the buffer is not mapped. (__block_prepare_write have more
-details.)
+Applied, thanks.
 
--aneesh
+					- Ted
