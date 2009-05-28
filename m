@@ -1,36 +1,28 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] chattr manpage tidyups
-Date: Thu, 28 May 2009 09:12:10 -0400
-Message-ID: <20090528131210.GN26625@mit.edu>
-References: <4A1E11CF.1000502@redhat.com>
+Subject: Re: [patch] e2fsprogs - clean up #ifdef RESOURCE_TRACK
+Date: Thu, 28 May 2009 09:37:35 -0400
+Message-ID: <20090528133735.GO26625@mit.edu>
+References: <b040c32a0905042013y2ff78187kd6b8a0090b2d4d7a@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Ken Chen <kenchen@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:55412 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:59292 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1761232AbZE1NMT (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 May 2009 09:12:19 -0400
+	id S1754624AbZE1Nho (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 28 May 2009 09:37:44 -0400
 Content-Disposition: inline
-In-Reply-To: <4A1E11CF.1000502@redhat.com>
+In-Reply-To: <b040c32a0905042013y2ff78187kd6b8a0090b2d4d7a@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, May 27, 2009 at 11:23:43PM -0500, Eric Sandeen wrote:
-> This was prompted by RH BZ#502971
+On Mon, May 04, 2009 at 08:13:40PM -0700, Ken Chen wrote:
+> Add empty function for init_resource_track() and print_resource_track()
+> in the case of ! defined RESOURCE_TRACK, so that we can clean up #ifdef
+> throughout e2fsck source.
 > 
-> Note that this goes after Aneesh's patch to add chattr +e
-> 
-> Tidy up the chattr(1) manpage to completely document all
-> available options, and differentiate those which are read-only
-> early in the manpage as well.
-> 
-> * Remove "I" from settable attribute list
-> * add "e" to 2nd list of settable attributes & descriptions
-> * Note that h/E/I/X/Z are readonly
-> * Correct "H" to "h" for huge file attribute description
-> * fix long_name for indexed directory in flags_array
+> Signed-off-by: Ken Chen <kenchen@google.com>
 
 Thanks, applied.
 
