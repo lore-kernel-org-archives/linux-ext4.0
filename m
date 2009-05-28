@@ -1,96 +1,102 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH] chattr manpage tidyups
-Date: Wed, 27 May 2009 23:23:43 -0500
-Message-ID: <4A1E11CF.1000502@redhat.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: [PATCH] only restart e2fsck once for inodes in uninit range
+Date: Thu, 28 May 2009 00:39:49 -0600
+Message-ID: <20090528063949.GE3218@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:50965 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750755AbZE1EXo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 28 May 2009 00:23:44 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n4S4Njxi014033
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2009 00:23:45 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n4S4NjgG001610
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2009 00:23:45 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n4S4NhvI015628
-	for <linux-ext4@vger.kernel.org>; Thu, 28 May 2009 00:23:44 -0400
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:35410 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751079AbZE1GkB (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 28 May 2009 02:40:01 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n4S6e1lt023705
+	for <linux-ext4@vger.kernel.org>; Wed, 27 May 2009 23:40:01 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KKC00C00CQ3P700@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 27 May 2009 23:40:01 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This was prompted by RH BZ#502971
+Restart e2fsck only once in case of multiple inodes in uninit range.
+Display correct inode number during BG_INO_UNINIT and INOREF_IN_USED errors.
 
-Note that this goes after Aneesh's patch to add chattr +e
+Signed-off-by: Kalpak Shah <kalpak.shah@sun.com>
+Signed-off-by: Andreas Dilger <adilger@sun.com>
 
-Tidy up the chattr(1) manpage to completely document all
-available options, and differentiate those which are read-only
-early in the manpage as well.
-
-* Remove "I" from settable attribute list
-* add "e" to 2nd list of settable attributes & descriptions
-* Note that h/E/I/X/Z are readonly
-* Correct "H" to "h" for huge file attribute description
-* fix long_name for indexed directory in flags_array
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-diff --git a/lib/e2p/pf.c b/lib/e2p/pf.c
-index 078b82c..4a61176 100644
---- a/lib/e2p/pf.c
-+++ b/lib/e2p/pf.c
-@@ -41,7 +41,7 @@ static struct flags_name flags_array[] = {
- 	{ EXT2_ECOMPR_FL, "E", "Compression_Error" },
- #endif
- 	{ EXT3_JOURNAL_DATA_FL, "j", "Journaled_Data" },
--	{ EXT2_INDEX_FL, "I", "Indexed_direcctory" },
-+	{ EXT2_INDEX_FL, "I", "Indexed_directory" },
- 	{ EXT2_NOTAIL_FL, "t", "No_Tailmerging" },
- 	{ EXT2_TOPDIR_FL, "T", "Top_of_Directory_Hierarchies" },
- 	{ EXT4_EXTENTS_FL, "e", "Extents" },
-diff --git a/misc/chattr.1.in b/misc/chattr.1.in
-index e1e6a85..ce6b33b 100644
---- a/misc/chattr.1.in
-+++ b/misc/chattr.1.in
-@@ -19,17 +19,23 @@ chattr \- change file attributes on a Linux second extended file system
- .B chattr
- changes the file attributes on a Linux second extended file system.
- .PP
--The format of a symbolic mode is +-=[ASacDdeIijsTtu].
-+The format of a symbolic mode is +-=[acdeijstuADST].
- .PP
- The operator `+' causes the selected attributes to be added to the
- existing attributes of the files; `-' causes them to be removed; and
- `=' causes them to be the only attributes that the files have.
- .PP
--The letters `acdijsuADST' select the new attributes for the files: 
--append only (a), compressed (c), no dump (d), immutable (i),
-+The letters `acdeijstuADST' select the new attributes for the files: 
-+append only (a), compressed (c), no dump (d), extent format (e), immutable (i),
- data journalling (j), secure deletion (s), no tail-merging (t), 
- undeletable (u), no atime updates (A), synchronous directory updates (D), 
- synchronous updates (S), and top of directory hierarchy (T).
-+.PP
-+The following attributes are read-only, and may be listed by
-+.BR lsattr (1)
-+but not modified by chattr: huge file (h), compression error (E),
-+indexed directory (I), compression raw access (X), and compressed dirty
-+file (Z).
- .SH OPTIONS
- .TP
- .B \-R
-@@ -83,7 +89,7 @@ is being indexed using hashed trees.  It may not be set or reset using
- although it can be displayed by
- .BR lsattr (1).
- .PP
--The 'H' attribute indicates the file is storing its blocks in units of the
-+The 'h' attribute indicates the file is storing its blocks in units of the
- filesystem blocksize instead of in units of sectors, and means that the file
- is (or at one time was) larger than 2TB.  It may not be set or reset using
- .BR chattr (1),
+Index: e2fsprogs-1.41.4/e2fsck/pass2.c
+===================================================================
+--- e2fsprogs-1.41.4.orig/e2fsck/pass2.c	2008-12-09 08:02:37.000000000 +0530
++++ e2fsprogs-1.41.4/e2fsck/pass2.c	2009-04-12 11:25:00.000000000 +0530
+@@ -153,6 +153,12 @@
+ 						&cd);
+ 	if (ctx->flags & E2F_FLAG_SIGNAL_MASK || ctx->flags & E2F_FLAG_RESTART)
+ 		return;
++
++	if (ctx->flags & E2F_FLAG_RESTART_LATER) {
++		ctx->flags |= E2F_FLAG_RESTART;
++		return;
++	}
++
+ 	if (cd.pctx.errcode) {
+ 		fix_problem(ctx, PR_2_DBLIST_ITERATE, &cd.pctx);
+ 		ctx->flags |= E2F_FLAG_ABORT;
+@@ -988,23 +994,24 @@
+ 		 * newly visible inodes.
+ 		 */
+ 		if (fs->group_desc[group].bg_flags & EXT2_BG_INODE_UNINIT) {
++			pctx.num = dirent->inode;
+ 			if (fix_problem(ctx, PR_2_INOREF_BG_INO_UNINIT,
+ 					&cd->pctx)){
+ 				fs->group_desc[group].bg_flags &=
+ 					~EXT2_BG_INODE_UNINIT;
+ 				ext2fs_mark_super_dirty(fs);
+-				ctx->flags |= E2F_FLAG_RESTART;
++				ctx->flags |= E2F_FLAG_RESTART_LATER;
+ 			} else {
+ 				ext2fs_unmark_valid(fs);
+ 				if (problem == PR_2_BAD_INO)
+ 					goto next;
+ 			}
+ 		} else if (dirent->inode >= first_unused_inode) {
++			pctx.num = dirent->inode;
+ 			if (fix_problem(ctx, PR_2_INOREF_IN_UNUSED, &cd->pctx)){
+ 				fs->group_desc[group].bg_itable_unused = 0;
+ 				ext2fs_mark_super_dirty(fs);
+-				ctx->flags |= E2F_FLAG_RESTART;
+-				goto restart_fsck;
++				ctx->flags |= E2F_FLAG_RESTART_LATER;
+ 			} else {
+ 				ext2fs_unmark_valid(fs);
+ 				if (problem == PR_2_BAD_INO)
+@@ -1145,7 +1152,6 @@
+ 	return 0;
+ abort_free_dict:
+ 	ctx->flags |= E2F_FLAG_ABORT;
+-restart_fsck:
+ 	dict_free_nodes(&de_dict);
+ 	return DIRENT_ABORT;
+ }
+Index: e2fsprogs-1.41.4/e2fsck/e2fsck.h
+===================================================================
+--- e2fsprogs-1.41.4.orig/e2fsck/e2fsck.h	2009-04-12 11:07:44.000000000 +0530
++++ e2fsprogs-1.41.4/e2fsck/e2fsck.h	2009-04-12 11:20:53.000000000 +0530
+@@ -163,6 +163,7 @@
+ #define E2F_FLAG_CANCEL		0x0002 /* Cancel signaled */
+ #define E2F_FLAG_SIGNAL_MASK	0x0003
+ #define E2F_FLAG_RESTART	0x0004 /* Restart signaled */
++#define E2F_FLAG_RESTART_LATER	0x0008 /* Restart after all iterations done */
+ 
+ #define E2F_FLAG_SETJMP_OK	0x0010 /* Setjmp valid for abort */
+ 
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
