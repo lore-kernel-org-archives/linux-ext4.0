@@ -1,39 +1,46 @@
-From: ed1989 <edshrock@live.com>
-Subject: I lost 15G from ext4 fsck failures tonight!
-Date: Thu, 28 May 2009 21:55:42 -0700 (PDT)
-Message-ID: <23774225.post@talk.nabble.com>
+From: Christian Kujau <lists@nerdbynature.de>
+Subject: Re: I lost 15G from ext4 fsck failures tonight!
+Date: Thu, 28 May 2009 22:22:13 -0700 (PDT)
+Message-ID: <alpine.DEB.2.01.0905282211440.7424@bogon>
+References: <23774225.post@talk.nabble.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: linux-ext4@vger.kernel.org
+To: ed1989 <edshrock@live.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kuber.nabble.com ([216.139.236.158]:44351 "EHLO
-	kuber.nabble.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751417AbZE2Ezl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 May 2009 00:55:41 -0400
-Received: from isper.nabble.com ([192.168.236.156])
-	by kuber.nabble.com with esmtp (Exim 4.63)
-	(envelope-from <lists@nabble.com>)
-	id 1M9u86-0002Ap-5i
-	for linux-ext4@vger.kernel.org; Thu, 28 May 2009 21:55:42 -0700
+Received: from moutng.kundenserver.de ([212.227.126.187]:56149 "EHLO
+	moutng.kundenserver.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751236AbZE2FWO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 29 May 2009 01:22:14 -0400
+In-Reply-To: <23774225.post@talk.nabble.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Thu, 28 May 2009, ed1989 wrote:
+> I moved some data off of a 115G ext4 filesystem on an LVM logical volume. 
+> Then I resized the ext4 filesystem.  Unfortunately, 15G of the remaining 95G
+> in data was lost to /lost+found due to repeated fsck errors.
 
-I moved some data off of a 115G ext4 filesystem on an LVM logical volume. 
-Then I resized the ext4 filesystem.  Unfortunately, 15G of the remaining 95G
-in data was lost to /lost+found due to repeated fsck errors.
+Did you run fsck (which version?) before or after the resizing process? 
+IIRC resize2fs recommends running e2fsck before doing anything. Do you 
+have a log of the errors reported by e2fsck? Also, were there any errors 
+in your syslog (i.e. /var/log/messages, dmesg, etc.)
+ 
+> I have also had the problem of ext4 destroying my kde4 configuration files
+> so that my kde4 desktop would revert back to the defaults occasionally.
 
-I have also had the problem of ext4 destroying my kde4 configuration files
-so that my kde4 desktop would revert back to the defaults occasionally.
+This has been discussed on this list (and elsewhere) before, in short: 
+it's not really ext4 destroying but more like kde4 not really writing its 
+configuration files. But this is an oversimplified version of the real 
+issues, please search the archives for details.
 
-I don't see what the benefit of ext4 really is, when data loss doesn't seem
-to be a concern among ext4 developers.  I would expect that data loss should
-be the primary concern.
+> I am most likely going to move back to ext3 or else to some other stable
+> filesystem like xfs.
 
-I am most likely going to move back to ext3 or else to some other stable
-filesystem like xfs.
+Out of curiosity: why did you switch to ext4?
+
+Christian.
 -- 
-View this message in context: http://www.nabble.com/I-lost-15G-from-ext4-fsck-failures-tonight%21-tp23774225p23774225.html
-Sent from the linux-ext4 mailing list archive at Nabble.com.
+BOFH excuse #310:
 
+asynchronous inode failure
