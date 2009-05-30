@@ -1,47 +1,47 @@
-From: Nix <nix@esperi.org.uk>
-Subject: 2.6.30rc7, ext4: 'inodes that were part of a corrupted orphan list found'
-Date: Fri, 29 May 2009 20:59:13 +0100
-Message-ID: <87eiu71y0e.fsf@hades.wkstn.nix>
+From: Pavel Machek <pavel@ucw.cz>
+Subject: Re: [PATCH 03/11] vfs: Add better VFS support for page_mkwrite
+	when blocksize < pagesize
+Date: Sat, 30 May 2009 13:23:24 +0200
+Message-ID: <20090530112324.GD1395@ucw.cz>
+References: <1243429268-3028-1-git-send-email-jack@suse.cz> <1243429268-3028-4-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: linux-kernel@vger.kernel.org
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1760524AbZE2T7X@vger.kernel.org>
-Sender: linux-kernel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: LKML <linux-kernel@vger.kernel.org>, npiggin@suse.de,
+	linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:52212 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754120AbZE3LXi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 30 May 2009 07:23:38 -0400
+Content-Disposition: inline
+In-Reply-To: <1243429268-3028-4-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This is with a brand new machine, atop a hardware RAID-5 array (Areca
-1210 battery-backed with four 1Tb disks), running a 32-bit kernel and
-userspace (albeit on a recent Xeon). After a clean shutdown of an ext4
-filesystem mounted with "defaults,usrquota,grpquota,nodev,relatime,
-journal_async_commit,commit=30,user_xattr,acl" and mkfsed with '-t ext4 -G 64',
-I got this at restart:
+Hi!
 
-src: recovering journal
-src: Journal transaction 1442 was corrupt, replay was aborted.
-src contains a file system with errors, check forced.
-Inodes that were part of a corrupted orphan linked list found.
+> On filesystems where blocksize < pagesize the situation is more complicated.
+> Think for example that blocksize = 1024, pagesize = 4096 and a process does:
+>   ftruncate(fd, 0);
+>   pwrite(fd, buf, 1024, 0);
+>   map = mmap(NULL, 4096, PROT_WRITE, MAP_SHARED, fd, 0);
+>   map[0] = 'a';  ----> page_mkwrite() for index 0 is called
+>   ftruncate(fd, 10000); /* or even pwrite(fd, buf, 1, 10000) */
+>   fsync(fd); ----> writepage() for index 0 is called
+> 
+> At the moment page_mkwrite() is called, filesystem can allocate only one block
+> for the page because i_size == 1024. Otherwise it would create blocks beyond
+> i_size which is generally undesirable. But later at writepage() time, we would
+> like to have blocks allocated for the whole page (and in principle we have to
+> allocate them because user could have filled the page with data after the
+> second ftruncate()). This patch introduces a framework which allows filesystems
+> to handle this with a reasonable effort.
 
-src: UNEXPECTED INCONSISTENCY; RUN fsck MANUALLY.
-        (i.e., without -a or -p options)
-
-Yesterday, I did a bunch of GCC bootstraps on this drive, culminating in
-removing the objdirs; e2fsck gave us saw a heap of complaints:
-
-Entry 'cd5011e.ada' in .../???/ada/???/tests/cd (933934) has deleted/unused inode 585817.
-Entry 'cd5014k.ada' in .../???/ada/???/tests/cd (933934) has deleted/unused inode 585820.
-Entry 'cd30004.a' in .../???/ada/???/tests/cd (933934) has deleted/unused inode 585814.
-
-(and so on for several thousand files, most of the files in the deleted
-objdir).
-
->From the nature of some of the files deleted, it looks like it was at
-least the most recent objdir rm which didn't fully happen (possibly this
-was the corrupted journal transaction?)
-
-The machine has ECCRAM and the array is on PCIe, so I think we can
-consider bad RAM or a messed-up bus transaction to be low probabilities.
+What happens when you do above sequence on today's kernels? Oops? 3000
+bytes of random junk in file? ...?
 
 
-(An image of this FS in corrupt state has been preserved, but it's
-100Gb...)
+-- 
+(english) http://www.livejournal.com/~pavelmachek
+(cesky, pictures) http://atrey.karlin.mff.cuni.cz/~pavel/picture/horses/blog.html
