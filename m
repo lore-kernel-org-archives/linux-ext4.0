@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH,STABLE 2.6.27 23/24] ext4: Clear the unwritten buffer_head flag after the extent is initialized
-Date: Tue,  2 Jun 2009 08:09:35 -0400
-Message-ID: <1243944576-20915-23-git-send-email-tytso@mit.edu>
+Subject: [PATCH,STABLE 2.6.27 11/24] ext4: Automatically allocate delay allocated blocks on close
+Date: Tue,  2 Jun 2009 08:09:23 -0400
+Message-ID: <1243944576-20915-11-git-send-email-tytso@mit.edu>
 References: <1243944576-20915-1-git-send-email-tytso@mit.edu>
  <1243944576-20915-2-git-send-email-tytso@mit.edu>
  <1243944576-20915-3-git-send-email-tytso@mit.edu>
@@ -12,84 +12,73 @@ References: <1243944576-20915-1-git-send-email-tytso@mit.edu>
  <1243944576-20915-8-git-send-email-tytso@mit.edu>
  <1243944576-20915-9-git-send-email-tytso@mit.edu>
  <1243944576-20915-10-git-send-email-tytso@mit.edu>
- <1243944576-20915-11-git-send-email-tytso@mit.edu>
- <1243944576-20915-12-git-send-email-tytso@mit.edu>
- <1243944576-20915-13-git-send-email-tytso@mit.edu>
- <1243944576-20915-14-git-send-email-tytso@mit.edu>
- <1243944576-20915-15-git-send-email-tytso@mit.edu>
- <1243944576-20915-16-git-send-email-tytso@mit.edu>
- <1243944576-20915-17-git-send-email-tytso@mit.edu>
- <1243944576-20915-18-git-send-email-tytso@mit.edu>
- <1243944576-20915-19-git-send-email-tytso@mit.edu>
- <1243944576-20915-20-git-send-email-tytso@mit.edu>
- <1243944576-20915-21-git-send-email-tytso@mit.edu>
- <1243944576-20915-22-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	"Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-ext4@vger.kernel.org, Theodore Ts'o <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59273 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:59284 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752241AbZFBMJq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Jun 2009 08:09:46 -0400
-In-Reply-To: <1243944576-20915-22-git-send-email-tytso@mit.edu>
+	id S1751960AbZFBMJs (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Jun 2009 08:09:48 -0400
+In-Reply-To: <1243944576-20915-10-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+When closing a file that had been previously truncated, force any
+delay allocated blocks that to be allocated so that if the filesystem
+is mounted with data=ordered, the data blocks will be pushed out to
+disk along with the journal commit.  Many application programs expect
+this, so we do this to avoid zero length files if the system crashes
+unexpectedly.
 
-The BH_Unwritten flag indicates that the buffer is allocated on disk
-but has not been written; that is, the disk was part of a persistent
-preallocation area.  That flag should only be set when a get_blocks()
-function is looking up a inode's logical to physical block mapping.
-
-When ext4_get_blocks_wrap() is called with create=1, the uninitialized
-extent is converted into an initialized one, so the BH_Unwritten flag
-is no longer appropriate.  Hence, we need to make sure the
-BH_Unwritten is not left set, since the combination of BH_Mapped and
-BH_Unwritten is not allowed; among other things, it will result ext4's
-get_block() to be called over and over again during the write_begin
-phase of write(2).
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit 2a8964d63d50dd2d65d71d342bc7fb6ef4117614)
+(cherry picked from commit 7d8f9f7d150dded7b68e61ca6403a1f166fb4edf)
 ---
- fs/ext4/inode.c |   13 +++++++++++++
- 1 files changed, 13 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h  |    1 +
+ fs/ext4/file.c  |    4 ++++
+ fs/ext4/inode.c |    3 +++
+ 3 files changed, 8 insertions(+), 0 deletions(-)
 
+diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+index cfb2ee1..1985721 100644
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -279,6 +279,7 @@ static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
+ #define EXT4_STATE_NEW			0x00000002 /* inode is newly created */
+ #define EXT4_STATE_XATTR		0x00000004 /* has in-inode xattrs */
+ #define EXT4_STATE_NO_EXPAND		0x00000008 /* No space for expansion */
++#define EXT4_STATE_DA_ALLOC_CLOSE	0x00000010 /* Alloc DA blks on close */
+ 
+ /* Used to pass group descriptor data when online resize is done */
+ struct ext4_new_group_input {
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 430eb79..b080072 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -33,6 +33,10 @@
+  */
+ static int ext4_release_file (struct inode * inode, struct file * filp)
+ {
++	if (EXT4_I(inode)->i_state & EXT4_STATE_DA_ALLOC_CLOSE) {
++		ext4_alloc_da_blocks(inode);
++		EXT4_I(inode)->i_state &= ~EXT4_STATE_DA_ALLOC_CLOSE;
++	}
+ 	/* if we are the last writer on the inode, drop the block reservation */
+ 	if ((filp->f_mode & FMODE_WRITE) &&
+ 			(atomic_read(&inode->i_writecount) == 1))
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 16c8dcb..6620045 100644
+index 095c3aa..a2586b0 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -1085,6 +1085,7 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
- 	int retval;
+@@ -3636,6 +3636,9 @@ void ext4_truncate(struct inode *inode)
+ 	if (!ext4_can_truncate(inode))
+ 		return;
  
- 	clear_buffer_mapped(bh);
-+	clear_buffer_unwritten(bh);
- 
- 	/*
- 	 * Try to see if we can get  the block without requesting
-@@ -1115,6 +1116,18 @@ int ext4_get_blocks_wrap(handle_t *handle, struct inode *inode, sector_t block,
- 		return retval;
- 
- 	/*
-+	 * When we call get_blocks without the create flag, the
-+	 * BH_Unwritten flag could have gotten set if the blocks
-+	 * requested were part of a uninitialized extent.  We need to
-+	 * clear this flag now that we are committed to convert all or
-+	 * part of the uninitialized extent to be an initialized
-+	 * extent.  This is because we need to avoid the combination
-+	 * of BH_Unwritten and BH_Mapped flags being simultaneously
-+	 * set on the buffer_head.
-+	 */
-+	clear_buffer_unwritten(bh);
++	if (inode->i_size == 0)
++		ei->i_state |= EXT4_STATE_DA_ALLOC_CLOSE;
 +
-+	/*
- 	 * New blocks allocate and/or writing to uninitialized extent
- 	 * will possibly result in updating i_data, so we take
- 	 * the write lock of i_data_sem, and call get_blocks()
+ 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
+ 		ext4_ext_truncate(inode);
+ 		return;
 -- 
 1.6.3.1.1.g75fc.dirty
 
