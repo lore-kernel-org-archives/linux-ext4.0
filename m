@@ -1,7 +1,7 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH,STABLE 2.6.29 16/18] ext4: Use a fake block number for delayed new buffer_head
-Date: Tue,  2 Jun 2009 08:07:57 -0400
-Message-ID: <1243944479-20574-16-git-send-email-tytso@mit.edu>
+Subject: [PATCH,STABLE 2.6.29 11/18] jbd2: Update locking coments
+Date: Tue,  2 Jun 2009 08:07:52 -0400
+Message-ID: <1243944479-20574-11-git-send-email-tytso@mit.edu>
 References: <1243944479-20574-1-git-send-email-tytso@mit.edu>
  <1243944479-20574-2-git-send-email-tytso@mit.edu>
  <1243944479-20574-3-git-send-email-tytso@mit.edu>
@@ -12,61 +12,74 @@ References: <1243944479-20574-1-git-send-email-tytso@mit.edu>
  <1243944479-20574-8-git-send-email-tytso@mit.edu>
  <1243944479-20574-9-git-send-email-tytso@mit.edu>
  <1243944479-20574-10-git-send-email-tytso@mit.edu>
- <1243944479-20574-11-git-send-email-tytso@mit.edu>
- <1243944479-20574-12-git-send-email-tytso@mit.edu>
- <1243944479-20574-13-git-send-email-tytso@mit.edu>
- <1243944479-20574-14-git-send-email-tytso@mit.edu>
- <1243944479-20574-15-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:33541 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:33553 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751811AbZFBMIL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 2 Jun 2009 08:08:11 -0400
-In-Reply-To: <1243944479-20574-15-git-send-email-tytso@mit.edu>
+	id S1751919AbZFBMIN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 2 Jun 2009 08:08:13 -0400
+In-Reply-To: <1243944479-20574-10-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+From: Jan Kara <jack@suse.cz>
 
-Use a very large unsigned number (~0xffff) as as the fake block number
-for the delayed new buffer. The VFS should never try to write out this
-number, but if it does, this will make it obvious.
+Update information about locking in JBD2 revoke code. Inconsistency in
+comments found by Lin Tan <tammy000@gmail.com>.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+CC: Lin Tan <tammy000@gmail.com>.
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit 33b9817e2ae097c7b8d256e3510ac6c54fc6d9d0)
+(cherry picked from commit 86db97c87f744364d5889ca8a4134ca2048b8f83)
 ---
- fs/ext4/inode.c |    6 +++++-
- 1 files changed, 5 insertions(+), 1 deletions(-)
+ fs/jbd2/revoke.c |   24 +++++++++++++++++++-----
+ 1 files changed, 19 insertions(+), 5 deletions(-)
 
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 2caeda7..4ed5e92 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2220,6 +2220,10 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 				  struct buffer_head *bh_result, int create)
+diff --git a/fs/jbd2/revoke.c b/fs/jbd2/revoke.c
+index 257ff26..bbe6d59 100644
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -55,6 +55,25 @@
+  *			need do nothing.
+  * RevokeValid set, Revoked set:
+  *			buffer has been revoked.
++ *
++ * Locking rules:
++ * We keep two hash tables of revoke records. One hashtable belongs to the
++ * running transaction (is pointed to by journal->j_revoke), the other one
++ * belongs to the committing transaction. Accesses to the second hash table
++ * happen only from the kjournald and no other thread touches this table.  Also
++ * journal_switch_revoke_table() which switches which hashtable belongs to the
++ * running and which to the committing transaction is called only from
++ * kjournald. Therefore we need no locks when accessing the hashtable belonging
++ * to the committing transaction.
++ *
++ * All users operating on the hash table belonging to the running transaction
++ * have a handle to the transaction. Therefore they are safe from kjournald
++ * switching hash tables under them. For operations on the lists of entries in
++ * the hash table j_revoke_lock is used.
++ *
++ * Finally, also replay code uses the hash tables but at this moment noone else
++ * can touch them (filesystem isn't mounted yet) and hence no locking is
++ * needed.
+  */
+ 
+ #ifndef __KERNEL__
+@@ -401,8 +420,6 @@ int jbd2_journal_revoke(handle_t *handle, unsigned long long blocknr,
+  * the second time we would still have a pending revoke to cancel.  So,
+  * do not trust the Revoked bit on buffers unless RevokeValid is also
+  * set.
+- *
+- * The caller must have the journal locked.
+  */
+ int jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
  {
- 	int ret = 0;
-+	sector_t invalid_block = ~((sector_t) 0xffff);
-+
-+	if (invalid_block < ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es))
-+		invalid_block = ~0;
- 
- 	BUG_ON(create == 0);
- 	BUG_ON(bh_result->b_size != inode->i_sb->s_blocksize);
-@@ -2241,7 +2245,7 @@ static int ext4_da_get_block_prep(struct inode *inode, sector_t iblock,
- 			/* not enough space to reserve */
- 			return ret;
- 
--		map_bh(bh_result, inode->i_sb, 0);
-+		map_bh(bh_result, inode->i_sb, invalid_block);
- 		set_buffer_new(bh_result);
- 		set_buffer_delay(bh_result);
- 	} else if (ret > 0) {
--- 
-1.6.3.1.1.g75fc.dirty
-
+@@ -480,10 +497,7 @@ void jbd2_journal_switch_revoke_table(journal_t *journal)
+ /*
+  * Write revoke records to the journal for all entries in the current
+  * revoke hash, deleting the entries as we go.
+- *
+- * Called with the journal lock held.
+  */
