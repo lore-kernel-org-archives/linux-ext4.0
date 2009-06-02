@@ -1,118 +1,75 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH,STABLE 2.6.27 07/24] ext4: tighten restrictions on inode flags
-Date: Tue,  2 Jun 2009 08:09:19 -0400
-Message-ID: <1243944576-20915-7-git-send-email-tytso@mit.edu>
+Subject: [PATCH,STABLE 2.6.27 02/24] ext4: fix header check in ext4_ext_search_right() for deep extent trees.
+Date: Tue,  2 Jun 2009 08:09:14 -0400
+Message-ID: <1243944576-20915-2-git-send-email-tytso@mit.edu>
 References: <1243944576-20915-1-git-send-email-tytso@mit.edu>
- <1243944576-20915-2-git-send-email-tytso@mit.edu>
- <1243944576-20915-3-git-send-email-tytso@mit.edu>
- <1243944576-20915-4-git-send-email-tytso@mit.edu>
- <1243944576-20915-5-git-send-email-tytso@mit.edu>
- <1243944576-20915-6-git-send-email-tytso@mit.edu>
-Cc: linux-ext4@vger.kernel.org, Duane Griffin <duaneg@dghda.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
+Cc: linux-ext4@vger.kernel.org, Eric Sandeen <sandeen@redhat.com>,
 	"Theodore Ts'o" <tytso@mit.edu>
 To: stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59252 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:59249 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752052AbZFBMJo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1751747AbZFBMJo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Tue, 2 Jun 2009 08:09:44 -0400
-In-Reply-To: <1243944576-20915-6-git-send-email-tytso@mit.edu>
+In-Reply-To: <1243944576-20915-1-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Duane Griffin <duaneg@dghda.com>
+From: Eric Sandeen <sandeen@redhat.com>
 
-At the moment there are few restrictions on which flags may be set on
-which inodes.  Specifically DIRSYNC may only be set on directories and
-IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
-TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
-on non-regular file, non-directories.
+The ext4_ext_search_right() function is confusing; it uses a
+"depth" variable which is 0 at the root and maximum at the leaves,
+but the on-disk metadata uses a "depth" (actually eh_depth) which
+is opposite: maximum at the root, and 0 at the leaves.
 
-Introduces a flags masking function which masks flags based on mode and
-use it during inode creation and when flags are set via the ioctl to
-facilitate future consistency.
+The ext4_ext_check_header() function is given a depth and checks
+the header agaisnt that depth; it expects the on-disk semantics,
+but we are giving it the opposite in the while loop in this
+function.  We should be giving it the on-disk notion of "depth"
+which we can get from (p_depth - depth) - and if you look, the last
+(more commonly hit) call to ext4_ext_check_header() does just this.
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Acked-by: Andreas Dilger <adilger@sun.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Sending in the wrong depth results in (incorrect) messages
+about corruption:
+
+EXT4-fs error (device sdb1): ext4_ext_search_right: bad header
+in inode #2621457: unexpected eh_depth - magic f30a, entries 340,
+max 340(0), depth 1(2)
+
+http://bugzilla.kernel.org/show_bug.cgi?id=12821
+
+Reported-by: David Dindorp <ddi@dubex.dk>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-(cherry picked from commit 2dc6b0d48ca0599837df21b14bb8393d0804af57)
+(cherry picked from commit 395a87bfefbc400011417e9eaae33169f9f036c0)
 ---
- fs/ext4/ext4.h   |   17 +++++++++++++++++
- fs/ext4/ialloc.c |   14 +++++---------
- fs/ext4/ioctl.c  |    3 +--
- 3 files changed, 23 insertions(+), 11 deletions(-)
+ fs/ext4/extents.c |    6 ++++--
+ 1 files changed, 4 insertions(+), 2 deletions(-)
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index ebc4f0d..67161c1 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -255,6 +255,23 @@ struct flex_groups {
- 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
- 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index b24d3c5..acb98c9 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -1118,7 +1118,8 @@ ext4_ext_search_right(struct inode *inode, struct ext4_ext_path *path,
+ 	struct ext4_extent_idx *ix;
+ 	struct ext4_extent *ex;
+ 	ext4_fsblk_t block;
+-	int depth, ee_len;
++	int depth;	/* Note, NOT eh_depth; depth from top of tree */
++	int ee_len;
  
-+/* Flags that are appropriate for regular files (all but dir-specific ones). */
-+#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
-+
-+/* Flags that are appropriate for non-directories/regular files. */
-+#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
-+
-+/* Mask out flags that are inappropriate for the given type of inode. */
-+static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
-+{
-+	if (S_ISDIR(mode))
-+		return flags;
-+	else if (S_ISREG(mode))
-+		return flags & EXT4_REG_FLMASK;
-+	else
-+		return flags & EXT4_OTHER_FLMASK;
-+}
-+
- /*
-  * Inode dynamic state flags
-  */
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 98f9f82..628d2ce 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -865,16 +865,12 @@ got:
- 	ei->i_disksize = 0;
- 
- 	/*
--	 * Don't inherit extent flag from directory. We set extent flag on
--	 * newly created directory and file only if -o extent mount option is
--	 * specified
-+	 * Don't inherit extent flag from directory, amongst others. We set
-+	 * extent flag on newly created directory and file only if -o extent
-+	 * mount option is specified
- 	 */
--	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
--	if (S_ISLNK(mode))
--		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
--	/* dirsync only applies to directories */
--	if (!S_ISDIR(mode))
--		ei->i_flags &= ~EXT4_DIRSYNC_FL;
-+	ei->i_flags =
-+		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
- 	ei->i_file_acl = 0;
- 	ei->i_dtime = 0;
- 	ei->i_block_alloc_info = NULL;
-diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 306bfd4..b2486ff 100644
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -49,8 +49,7 @@ long ext4_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
- 		if (err)
- 			return err;
- 
--		if (!S_ISDIR(inode->i_mode))
--			flags &= ~EXT4_DIRSYNC_FL;
-+		flags = ext4_mask_flags(inode->i_mode, flags);
- 
- 		err = -EPERM;
- 		mutex_lock(&inode->i_mutex);
+ 	BUG_ON(path == NULL);
+ 	depth = path->p_depth;
+@@ -1177,7 +1178,8 @@ ext4_ext_search_right(struct inode *inode, struct ext4_ext_path *path,
+ 		if (bh == NULL)
+ 			return -EIO;
+ 		eh = ext_block_hdr(bh);
+-		if (ext4_ext_check_header(inode, eh, depth)) {
++		/* subtract from p_depth to get proper eh_depth */
++		if (ext4_ext_check_header(inode, eh, path->p_depth - depth)) {
+ 			put_bh(bh);
+ 			return -EIO;
+ 		}
 -- 
 1.6.3.1.1.g75fc.dirty
 
