@@ -1,29 +1,28 @@
-From: Jiri Kosina <jkosina@suse.cz>
-Subject: Re: [PATCH] Fix minor typos in jbd2's journal.c
-Date: Wed, 3 Jun 2009 23:53:50 +0200 (CEST)
-Message-ID: <alpine.LNX.2.00.0906032353160.7457@wotan.suse.de>
-References: <alpine.LNX.2.00.0905211043100.13917@wotan.suse.de> <1242913187-4151-1-git-send-email-albertito@blitiri.com.ar> <20090603215011.GN31943@mit.edu>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] ext4/super.c whitespace cleanup
+Date: Wed, 3 Jun 2009 17:59:54 -0400
+Message-ID: <20090603215954.GP31943@mit.edu>
+References: <20090525172325.GE19035@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
-Cc: Alberto Bertogli <albertito@blitiri.com.ar>,
-	linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org,
-	jack@suse.cz
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:39942 "EHLO mx1.suse.de"
+Received: from THUNK.ORG ([69.25.196.29]:56259 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754287AbZFCVxt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Jun 2009 17:53:49 -0400
-In-Reply-To: <20090603215011.GN31943@mit.edu>
+	id S1753989AbZFCV7x (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Jun 2009 17:59:53 -0400
+Content-Disposition: inline
+In-Reply-To: <20090525172325.GE19035@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, 3 Jun 2009, Theodore Tso wrote:
+On Mon, May 25, 2009 at 11:23:25AM -0600, Andreas Dilger wrote:
+> Cleanup of whitespace and formatting.  Initially driven by confusing indents
+> for the ext4_{block,inode}_bitmap() et. al. helper routines, but figured I'd
+> cleanup some other 80-column wrapping and other indenting problems at the
+> same time.
 
-> > Signed-off-by: Alberto Bertogli <albertito@blitiri.com.ar>
-> Thanks, i've pulled this into the ext4 patch queue.
+Added to the ext4 patch tree, thanks.
 
-Thanks for letting me know, dropped from trivial queue.
-
--- 
-Jiri Kosina
+					- Ted
