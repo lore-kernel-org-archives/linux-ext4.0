@@ -1,26 +1,40 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] Fix minor typos in jbd2's journal.c
-Date: Wed, 3 Jun 2009 17:50:12 -0400
-Message-ID: <20090603215011.GN31943@mit.edu>
-References: <alpine.LNX.2.00.0905211043100.13917@wotan.suse.de> <1242913187-4151-1-git-send-email-albertito@blitiri.com.ar>
+Subject: Re: [Bug 12624] umount hangs after fsstress with data=journal
+Date: Wed, 3 Jun 2009 17:51:39 -0400
+Message-ID: <20090603215139.GO31943@mit.edu>
+References: <bug-12624-13602@http.bugzilla.kernel.org/> <200905220651.n4M6ph5X017461@demeter.kernel.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: jkosina@suse.cz, linux-ext4@vger.kernel.org,
-	linux-kernel@vger.kernel.org, jack@suse.cz, trivial@kernel.org
-To: Alberto Bertogli <albertito@blitiri.com.ar>
+Cc: linux-ext4@vger.kernel.org
+To: bugzilla-daemon@bugzilla.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:45230 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:45243 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751237AbZFCVuS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Jun 2009 17:50:18 -0400
+	id S1753626AbZFCVvj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 3 Jun 2009 17:51:39 -0400
 Content-Disposition: inline
-In-Reply-To: <1242913187-4151-1-git-send-email-albertito@blitiri.com.ar>
+In-Reply-To: <200905220651.n4M6ph5X017461@demeter.kernel.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, May 21, 2009 at 10:39:47AM -0300, Alberto Bertogli wrote:
-> Signed-off-by: Alberto Bertogli <albertito@blitiri.com.ar>
+On Fri, May 22, 2009 at 06:51:43AM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+> I guess we would need this patch. But i am still hitting the BUG_ON.
+> Will try to debug further later today.
+> 
+> -aneesh
+> 
+> commit 85ddb1581222bac63035c16a6536b0a5a2cd60a0
+> Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> Date:   Thu May 21 23:58:17 2009 +0530
+> 
+>     ext4: Don't look at buffer_heads outside i_size.
+> 
+> 
+>     Buffer heads outside i_size will be unmapped. So when we
+>     are doing "walk_page_buffers" limit ourself to i_size.
+> 
+>     Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Thanks, i've pulled this into the ext4 patch queue.
+OK, added to the ext4 patch tree.
 
-	     	    	      	       - Ted
+						- Ted
