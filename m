@@ -1,36 +1,93 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH,STABLE 2.6.29 06/18] ext4: Automatically allocate delay
-	allocated blocks on close
-Date: Wed, 3 Jun 2009 15:29:38 -0400
-Message-ID: <20090603192938.GL31943@mit.edu>
-References: <1243944479-20574-1-git-send-email-tytso@mit.edu> <1243944479-20574-2-git-send-email-tytso@mit.edu> <1243944479-20574-3-git-send-email-tytso@mit.edu> <1243944479-20574-4-git-send-email-tytso@mit.edu> <1243944479-20574-5-git-send-email-tytso@mit.edu> <1243944479-20574-6-git-send-email-tytso@mit.edu> <20090603181419.GN9002@webber.adilger.int>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH-e2fsprogs] filefrag: fix fm_start in filefrag_fiemap	loop
+Date: Wed, 03 Jun 2009 15:37:24 -0600
+Message-ID: <20090603213724.GU9002@webber.adilger.int>
+References: <1243965783-31950-1-git-send-email-bergwolf@gmail.com>
+ <20090602183513.GK3218@webber.adilger.int>
+ <6149e97b0906021821s315005a7lb1c93b74b7f35489@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, stable@kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=iso-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:39675 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753304AbZFCT3h (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Jun 2009 15:29:37 -0400
-Content-Disposition: inline
-In-Reply-To: <20090603181419.GN9002@webber.adilger.int>
+Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:47309 "EHLO
+	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753082AbZFCVhe (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Jun 2009 17:37:34 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n53LbarI006344
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Jun 2009 14:37:36 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KKO00400MGGYX00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 03 Jun 2009 14:37:36 -0700 (PDT)
+In-reply-to: <6149e97b0906021821s315005a7lb1c93b74b7f35489@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 03, 2009 at 12:14:19PM -0600, Andreas Dilger wrote:
-> 
-> Since some applications open files with open(..., O_WRONLY|O_CREAT|O_TRUNC)
-> to avoid re-using existing files (and avoiding the need to check if the
-> file already exists to modify the flags), it would make sense to set
-> EXT4_STATE_DA_ALLOC_CLOSE only if the file previously had some data in it.
-> 
-> By the time we get to ext4_truncate() i_size is overwritten already, but
-> it might make sense to also check i_disksize != 0 before setting this flag.
-> Otherwise delayed allocation may be inadvertently disabled for these apps
-> when it should not be.
+On Jun 03, 2009  09:21 +0800, Peng Tao wrote:
+> When used with -v and the targeted file has more than 144
+> extents(double of the length of fm_extents array provided by buf),
+> filefrag_fiemap loops and calls fiemap ioctl() multiple times to
+> calculate the actual number of extents in a file. Each call to fiemap
+> ioctl() uses  fm_start as the starting logical offset. The patch fixe=
+s
+> fm_start in each loop( except for the first one) and makes the extent
+> calculation correct for files with more that 144 extents.
+>=20
+> To produce the problem, first run filefrag -v on a highly fragmented
+> file. Then change the buf size in filefrag_fiemap to make it large
+> enough to have all the extent mapped in a single loop and run filefra=
+g
+> -v after recompiling. The former will produce a much smaller extent
+> count because of the false fm_start used in the loop. And the two wil=
+l
+> produce different extent output since the 145th extent.
+>=20
+> BTW, should I resend the patch to include the above explanation?
 
-Agreed; I'll make such a change for the ext4 patch queue.  We can
-propagate such a patch to the -stable kernels once it's in mainline.
+Yes, please do.  I verified that the code as modified (just '=3D') is a=
+lso
+present in the Lustre fiemap patch, so I'm not sure how it got +=3D the=
+re.
+Possibly from an older version of the patch.
 
-	       	       	      	      	      - Ted
+> > On Jun 03, 2009 =A002:03 +0800, Peng Tao wrote:
+> >> Signed-off-by: Peng Tao <bergwolf@gmail.com>
+> >> ---
+> >> =A0misc/filefrag.c | =A0 =A02 +-
+> >> =A01 files changed, 1 insertions(+), 1 deletions(-)
+> >>
+> >> diff --git a/misc/filefrag.c b/misc/filefrag.c
+> >> index 6bea2cd..7786646 100644
+> >> --- a/misc/filefrag.c
+> >> +++ b/misc/filefrag.c
+> >> @@ -239,7 +239,7 @@ int filefrag_fiemap(int fd, int blk_shift, int=
+ *num_extents)
+> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 n++;
+> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
+> >>
+> >> - =A0 =A0 =A0 =A0 =A0 =A0 fiemap->fm_start +=3D fm_ext[i-1].fe_log=
+ical +
+> >> + =A0 =A0 =A0 =A0 =A0 =A0 fiemap->fm_start =3D fm_ext[i-1].fe_logi=
+cal +
+> >> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 fm_ext[i-1].fe_length;
+> >> =A0 =A0 =A0 } while (last =3D=3D 0);
+> >>
+> >> --
+> >> 1.6.2.GIT
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
