@@ -1,23 +1,32 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [Bug 12624] umount hangs after fsstress with data=journal
-Date: Wed, 3 Jun 2009 17:51:39 -0400
-Message-ID: <20090603215139.GO31943@mit.edu>
-References: <bug-12624-13602@http.bugzilla.kernel.org/> <200905220651.n4M6ph5X017461@demeter.kernel.org>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 12624] umount hangs after fsstress with data=journal
+Date: Wed, 3 Jun 2009 21:51:43 GMT
+Message-ID: <200906032151.n53LphAe013929@demeter.kernel.org>
+References: <bug-12624-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: bugzilla-daemon@bugzilla.kernel.org
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:45243 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753626AbZFCVvj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 3 Jun 2009 17:51:39 -0400
-Content-Disposition: inline
-In-Reply-To: <200905220651.n4M6ph5X017461@demeter.kernel.org>
+Received: from demeter.kernel.org ([140.211.167.39]:51387 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753691AbZFCVvl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Jun 2009 17:51:41 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n53LphGW013930
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Jun 2009 21:51:43 GMT
+In-Reply-To: <bug-12624-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, May 22, 2009 at 06:51:43AM +0000, bugzilla-daemon@bugzilla.kernel.org wrote:
+http://bugzilla.kernel.org/show_bug.cgi?id=12624
+
+
+
+
+
+--- Comment #5 from Theodore Tso <tytso@mit.edu>  2009-06-03 21:51:42 ---
+On Fri, May 22, 2009 at 06:51:43AM +0000, bugzilla-daemon@bugzilla.kernel.org
+wrote:
 > I guess we would need this patch. But i am still hitting the BUG_ON.
 > Will try to debug further later today.
 > 
@@ -37,4 +46,9 @@ On Fri, May 22, 2009 at 06:51:43AM +0000, bugzilla-daemon@bugzilla.kernel.org wr
 
 OK, added to the ext4 patch tree.
 
-						- Ted
+                        - Ted
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
