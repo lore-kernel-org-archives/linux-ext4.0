@@ -1,81 +1,64 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 0/4] FS: userspace notification of errors
-Date: Wed, 03 Jun 2009 10:36:58 -0500
-Message-ID: <4A26989A.3030300@redhat.com>
-References: <1244041518-32229-1-git-send-email-ext-denis.2.karpov@nokia.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [PATCH,STABLE 2.6.29 06/18] ext4: Automatically allocate delay
+	allocated blocks on close
+Date: Wed, 03 Jun 2009 12:14:19 -0600
+Message-ID: <20090603181419.GN9002@webber.adilger.int>
+References: <1243944479-20574-1-git-send-email-tytso@mit.edu>
+ <1243944479-20574-2-git-send-email-tytso@mit.edu>
+ <1243944479-20574-3-git-send-email-tytso@mit.edu>
+ <1243944479-20574-4-git-send-email-tytso@mit.edu>
+ <1243944479-20574-5-git-send-email-tytso@mit.edu>
+ <1243944479-20574-6-git-send-email-tytso@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: axboe@kernel.dk, akpm@linux-foundation.org,
-	hirofumi@mail.parknet.co.jp, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-	adrian.hunter@nokia.com, artem.bityutskiy@nokia.com
-To: Denis Karpov <ext-denis.2.karpov@nokia.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <1244041518-32229-1-git-send-email-ext-denis.2.karpov@nokia.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, stable@kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:38732 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752058AbZFCSOi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 3 Jun 2009 14:14:38 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n53IEXPi019909
+	for <linux-ext4@vger.kernel.org>; Wed, 3 Jun 2009 11:14:35 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KKO00H00BTYNZ00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 03 Jun 2009 11:14:33 -0700 (PDT)
+In-reply-to: <1243944479-20574-6-git-send-email-tytso@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Denis Karpov wrote:
-> Hello, 
+On Jun 02, 2009  08:07 -0400, Theodore Ts'o wrote:
+> When closing a file that had been previously truncated, force any
+> delay allocated blocks that to be allocated so that if the filesystem
+> is mounted with data=ordered, the data blocks will be pushed out to
+> disk along with the journal commit.  Many application programs expect
+> this, so we do this to avoid zero length files if the system crashes
+> unexpectedly.
 > 
-> these patches are resent (a bit re-worked and separated from other stuff).
-> The issue was discussed here:
-> http://marc.info/?l=linux-fsdevel&m=124402900920380&w=2
-> 
-> Summary:
-> 
-> 1. Generic mechanism for notifications of user space about file system's
->    errors/inconsistency on a particular partition using:
-> 
->      - sysfs entry /sys/block/<bdev>/<part>/fs_unclean
->      - uevent KOBJ_CHANGE, uevent's environment variable FS_UNCLEAN=[0:1]
+> @@ -3880,6 +3880,9 @@ void ext4_truncate(struct inode *inode)
+>  	if (!ext4_can_truncate(inode))
+>  		return;
+>  
+> +	if (inode->i_size == 0)
+> +		ei->i_state |= EXT4_STATE_DA_ALLOC_CLOSE;
 
-My first thought here, just at a very high level, is that fs_errors
-rather than fs_unclean may be more accurate; at least in my filesystem
-developer world, an "unclean" filesystem is one that was not unmounted
-cleanly, not one with ... errors.  "fs_errors"  (or fs_has_errors?)
-would also be more in sync with ext3's "errors=" mount options...
+Since some applications open files with open(..., O_WRONLY|O_CREAT|O_TRUNC)
+to avoid re-using existing files (and avoiding the need to check if the
+file already exists to modify the flags), it would make sense to set
+EXT4_STATE_DA_ALLOC_CLOSE only if the file previously had some data in it.
 
->    Userspace might want to monitor these notifications (poll2() on sysfs 
->    file or udevd's rule for uevent) and fix the fs damage.
->    Filesystem can be marked clean again by writing '0' to the 
->    corresponding 'fs_unclean' sysfs file.
+By the time we get to ext4_truncate() i_size is overwritten already, but
+it might make sense to also check i_disksize != 0 before setting this flag.
+Otherwise delayed allocation may be inadvertently disabled for these apps
+when it should not be.
 
-It seems a little odd to me that you can just clear this error condition
-without necessarily fixing the actual error, but I don't know how else
-it should be done....
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
-For ext2/3/4, the fs is -marked- with errors in the superblock, so when
-it mounts with that error flag cleared (by fsck), the mount itself could
-clear this error condition perhaps?  Maybe it could be the filesystem's
-choice whether the error condition is clearable from userspace?
-
-It's also possible that the error was encountered in memory rather than
-from on-disk, so it might be nice to differentiate somehow, at least for
-filesystems which can do this.  I'm thinking here of "I read something
-from disk that was supposed to be an inode but it had the wrong magic
-number" vs. "I hit a programming error that caused the transaction
-subsystem to get into a state where the filesystem had to shut down" -
-in the latter case, fsck is not going to resolve it...
-
-Thanks,
--Eric
-
->    Currently some file systems remount themselves r/o on critical errors
->    (*FAT; EXT2 depending on 'errors' mount option), userspace is generally
->    unaware of such events. This feature will allow user space to become 
->    aware of possible file system problems and do something about them 
->    (e.g. run fsck automatically or with user's consent).
->    [PATCH 1]
-> 
-> 2. Make FAT and EXT2 file systems use the above mechanism to optionally
->    notify user space about errors. Implemented as 'notify' mount option
->    (PATCH 3,4).
->    FAT error reporting facilities had to be re-factored (PATCH 2) in 
->    order to simplify sending error notifications.
-> 
-> Adrian Hunter and Artem Bityutskiy provided input and ideas on implementing
-> these features.
-> 
-> Denis Karpov.
