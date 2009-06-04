@@ -1,53 +1,51 @@
-From: Artem Bityutskiy <Artem.Bityutskiy@nokia.com>
-Subject: Re: [PATCH 0/4] FS: userspace notification of errors
-Date: Thu, 04 Jun 2009 09:10:59 +0300
-Message-ID: <4A276573.5000900@nokia.com>
-References: <1244041518-32229-1-git-send-email-ext-denis.2.karpov@nokia.com> <20090603223005.GA9050@atrey.karlin.mff.cuni.cz>
-Reply-To: Artem.Bityutskiy@nokia.com
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH 3/3] ext4: Add generic writepage callback
+Date: Thu, 4 Jun 2009 11:58:44 +0530
+Message-ID: <20090604062844.GA26802@skywalker>
+References: <1243439888-22680-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1243439888-22680-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1243439888-22680-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090603225308.GA21314@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
-	format=flowed
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Karpov Denis.2 (EXT-Teleca/Helsinki)" <ext-denis.2.karpov@nokia.com>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
-	"akpm@linux-foundation.org" <akpm@linux-foundation.org>,
-	"hirofumi@mail.parknet.co.jp" <hirofumi@mail.parknet.co.jp>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"Hunter Adrian (Nokia-D/Helsinki)" <adrian.hunter@nokia.com>
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20090603223005.GA9050@atrey.karlin.mff.cuni.cz>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: cmm@us.ibm.com, sandeen@redhat.com, jack@suse.cz,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e23smtp08.au.ibm.com ([202.81.31.141]:35371 "EHLO
+	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752445AbZFDG3E (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jun 2009 02:29:04 -0400
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp08.au.ibm.com (8.13.1/8.13.1) with ESMTP id n546T4Go011341
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Jun 2009 16:29:04 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n546T4vh356630
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Jun 2009 16:29:04 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n546SsQ9010460
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Jun 2009 16:29:04 +1000
+Content-Disposition: inline
+In-Reply-To: <20090603225308.GA21314@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-ext Jan Kara wrote:
->   Hi,
->=20
->> 2. Make FAT and EXT2 file systems use the above mechanism to optiona=
-lly
->>    notify user space about errors. Implemented as 'notify' mount opt=
-ion
->>    (PATCH 3,4).
->>    FAT error reporting facilities had to be re-factored (PATCH 2) in=
-=20
->>    order to simplify sending error notifications.
->   One question: Why would not a filesystem / admin want the notificat=
-ion
-> to be sent? Or in other words what's the point of the mount option?
+On Wed, Jun 03, 2009 at 06:53:08PM -0400, Theodore Tso wrote:
+> Hi Aneesh,
+> 
+> In the future, *please* give me patches versus the patch queue.  This
+> patch moves functions around, so applying it is painful in the
+> extreme, and it's very painful to check and see whether it undoes
+> patches later in the patch.
 
-I agree on this. I guess we should instead implement a VFS helper
-like 'send_error_notification(sb, error_type)'. Then we can teach
-certain FSes to utilize it. We are particularly interested in FAT,
-actually.
+I have done is against patch queue. After the stable patch. But I guess
+some patches you added before the stable cause the patch apply to fail.
 
---=20
-Best Regards,
-Artem Bityutskiy (=D0=90=D1=80=D1=82=D1=91=D0=BC =D0=91=D0=B8=D1=82=D1=8E=
-=D1=86=D0=BA=D0=B8=D0=B9)
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+I have regenerated the patch and sent -v2 version. Also i split the
+coding moving changes in to a new patch 
+
+> 
+> In fact, can you redo these patches (2/3 and 3/3), versus the latest
+> in the patch queue?
+> 
+
+Done. I sent you 4 patches which should be all you need to take.
+
+-aneesh
