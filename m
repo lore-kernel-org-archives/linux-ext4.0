@@ -1,170 +1,88 @@
 From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: [PATCH -V2 3/4] ext4: Move some static functions around
-Date: Thu,  4 Jun 2009 11:40:04 +0530
-Message-ID: <1244095805-17015-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH -V2 4/4] ext4: Add WARN_ON on unmapped dirty buffer_heads in writepage
+Date: Thu,  4 Jun 2009 11:40:05 +0530
+Message-ID: <1244095805-17015-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 References: <1244095805-17015-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
  <1244095805-17015-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1244095805-17015-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Cc: linux-ext4@vger.kernel.org,
 	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp09.au.ibm.com ([202.81.31.142]:34460 "EHLO
+Received: from e23smtp09.au.ibm.com ([202.81.31.142]:34480 "EHLO
 	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751545AbZFDGKr (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jun 2009 02:10:47 -0400
+	with ESMTP id S1751844AbZFDGK4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jun 2009 02:10:56 -0400
 Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp09.au.ibm.com (8.13.1/8.13.1) with ESMTP id n5467bdO005067
-	for <linux-ext4@vger.kernel.org>; Thu, 4 Jun 2009 16:07:37 +1000
+	by e23smtp09.au.ibm.com (8.13.1/8.13.1) with ESMTP id n5467n9I005128
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Jun 2009 16:07:49 +1000
 Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n546AjuG798726
-	for <linux-ext4@vger.kernel.org>; Thu, 4 Jun 2009 16:10:45 +1000
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n546AvXX880694
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Jun 2009 16:10:57 +1000
 Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n546Aipw013084
-	for <linux-ext4@vger.kernel.org>; Thu, 4 Jun 2009 16:10:45 +1000
-In-Reply-To: <1244095805-17015-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n546Aur8013311
+	for <linux-ext4@vger.kernel.org>; Thu, 4 Jun 2009 16:10:57 +1000
+In-Reply-To: <1244095805-17015-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Move some static functions around so that we can
-avoid some forward declaration. Also fix some compile
-warnings
+Now we have block_lock_hole_extend clearing the dirty flag of
+buffer_heads outside i_size we should not find buffer_heads
+which are unmapped and dirty in writepage. If we find do a WARN_ON.
+We can still continue because block_write_full page look at the mapped
+flag only.
+
+Following sequence of events would result in the above condition.
+1) truncate(f, 1024)
+2) mmap(f, 0, 4096)
+3) a[0] = 'a'
+4) truncate(f, 4096)
+5) writepage(...)
+
+After step 3 we would have unmapped buffer_heads outside i_size.
+After step 4 we would have unmapped buffer_heads within i_size.
+
+Now that truncate is calling block_lock_hole_extend which in turn
+is clearing the dirty flag, we can safely assume that we won't
+find unmapped dirty buffer_heads in write page. If we did find one
+we should find out why.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Acked-by: Jan Kara <jack@suse.cz>
 ---
- fs/ext4/inode.c |  110 +++++++++++++++++++++++++++----------------------------
- fs/ext4/namei.c |    2 +-
- 2 files changed, 55 insertions(+), 57 deletions(-)
+ fs/ext4/inode.c |   12 ++++++++++++
+ 1 files changed, 12 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index 7cfacff..2219daa 100644
+index 2219daa..9bba474 100644
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -933,11 +933,8 @@ static int ext4_ind_get_blocks(handle_t *handle, struct inode *inode,
- 	int indirect_blks;
- 	int blocks_to_boundary = 0;
- 	int depth;
--	struct ext4_inode_info *ei = EXT4_I(inode);
- 	int count = 0;
- 	ext4_fsblk_t first_block = 0;
--	loff_t disksize;
--
- 
- 	J_ASSERT(!(EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL));
- 	J_ASSERT(handle != NULL || (flags & EXT4_GET_BLOCKS_CREATE) == 0);
-@@ -2438,6 +2435,60 @@ static int noalloc_get_block_write(struct inode *inode, sector_t iblock,
+@@ -2488,6 +2488,10 @@ static int __ext4_journalled_writepage(struct page *page,
  	return ret;
  }
  
-+static int bget_one(handle_t *handle, struct buffer_head *bh)
++static int ext4_bh_unmapped_and_dirty(handle_t *handle, struct buffer_head *bh)
 +{
-+	get_bh(bh);
-+	return 0;
++	return !buffer_mapped(bh) && buffer_dirty(bh);
 +}
-+
-+static int bput_one(handle_t *handle, struct buffer_head *bh)
-+{
-+	put_bh(bh);
-+	return 0;
-+}
-+
-+static int __ext4_journalled_writepage(struct page *page,
-+					struct writeback_control *wbc,
-+					unsigned int len)
-+{
-+	struct address_space *mapping = page->mapping;
-+	struct inode *inode = mapping->host;
-+	struct buffer_head *page_bufs;
-+	handle_t *handle = NULL;
-+	int ret = 0;
-+	int err;
-+
-+	page_bufs = page_buffers(page);
-+	BUG_ON(!page_bufs);
-+	walk_page_buffers(handle, page_bufs, 0, len, NULL, bget_one);
-+	/* As soon as we unlock the page, it can go away, but we have
-+	 * references to buffers so we are safe */
-+	unlock_page(page);
-+
-+	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
-+	if (IS_ERR(handle)) {
-+		ret = PTR_ERR(handle);
-+		goto out;
-+	}
-+
-+	ret = walk_page_buffers(handle, page_bufs, 0, len, NULL,
-+				do_journal_get_write_access);
-+
-+	err = walk_page_buffers(handle, page_bufs, 0, len, NULL,
-+				write_end_fn);
-+	if (ret == 0)
-+		ret = err;
-+	err = ext4_journal_stop(handle);
-+	if (!ret)
-+		ret = err;
-+
-+	walk_page_buffers(handle, page_bufs, 0, len, NULL, bput_one);
-+	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
-+out:
-+	return ret;
-+}
-+
-+
+ 
  /*
   * Note that we don't need to start a transaction unless we're journaling data
-  * because we should have holes filled from ext4_page_mkwrite(). We even don't
-@@ -3114,59 +3165,6 @@ static sector_t ext4_bmap(struct address_space *mapping, sector_t block)
- 	return generic_block_bmap(mapping, block, ext4_get_block);
- }
+@@ -2602,6 +2606,14 @@ static int ext4_writepage(struct page *page,
+ 		/* now mark the buffer_heads as dirty and uptodate */
+ 		block_commit_write(page, 0, len);
+ 	}
++	/*
++	 * There should not be any unmapped and dirty
++	 * buffer_heads at this point. Look at block_lock_hole_extend
++	 * for more info. If we find one print more info
++	 */
++	 WARN(walk_page_buffers(NULL, page_bufs, 0, len, NULL,
++				 ext4_bh_unmapped_and_dirty),
++		 "Unmapped dirty buffer_heads found in %s\n", __func__);
  
--static int bget_one(handle_t *handle, struct buffer_head *bh)
--{
--	get_bh(bh);
--	return 0;
--}
--
--static int bput_one(handle_t *handle, struct buffer_head *bh)
--{
--	put_bh(bh);
--	return 0;
--}
--
--static int __ext4_journalled_writepage(struct page *page,
--					struct writeback_control *wbc,
--					unsigned int len)
--{
--	struct address_space *mapping = page->mapping;
--	struct inode *inode = mapping->host;
--	struct buffer_head *page_bufs;
--	handle_t *handle = NULL;
--	int ret = 0;
--	int err;
--
--	page_bufs = page_buffers(page);
--	BUG_ON(!page_bufs);
--	walk_page_buffers(handle, page_bufs, 0, len, NULL, bget_one);
--	/* As soon as we unlock the page, it can go away, but we have
--	 * references to buffers so we are safe */
--	unlock_page(page);
--
--	handle = ext4_journal_start(inode, ext4_writepage_trans_blocks(inode));
--	if (IS_ERR(handle)) {
--		ret = PTR_ERR(handle);
--		goto out;
--	}
--
--	ret = walk_page_buffers(handle, page_bufs, 0, len, NULL,
--				do_journal_get_write_access);
--
--	err = walk_page_buffers(handle, page_bufs, 0, len, NULL,
--				write_end_fn);
--	if (ret == 0)
--		ret = err;
--	err = ext4_journal_stop(handle);
--	if (!ret)
--		ret = err;
--
--	walk_page_buffers(handle, page_bufs, 0, len, NULL, bput_one);
--	EXT4_I(inode)->i_state |= EXT4_STATE_JDATA;
--out:
--	return ret;
--}
+ 	if (PageChecked(page) && ext4_should_journal_data(inode)) {
+ 		/*
+-- 
+1.6.3.1.244.gf9275
+
