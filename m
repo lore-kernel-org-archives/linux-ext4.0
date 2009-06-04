@@ -1,38 +1,41 @@
-From: Andi Kleen <andi@firstfloor.org>
-Subject: Re: [PATCH] ext4: Change all super.c messages to print the device
-Date: Thu, 4 Jun 2009 20:17:56 +0200
-Message-ID: <20090604181756.GF1065@one.firstfloor.org>
-References: <4A1476D1.9080206@redhat.com> <20090604180415.GC13639@mit.edu>
+From: Szabolcs Szakacsits <szaka@ntfs-3g.com>
+Subject: EXT3: filename duplicates
+Date: Thu, 4 Jun 2009 21:39:39 +0300 (EEST)
+Message-ID: <Pine.LNX.4.62.0906042111550.22287@tamago.serverit.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	Andi Kleen <andi@firstfloor.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:49583 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751838AbZFDSKh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jun 2009 14:10:37 -0400
-Content-Disposition: inline
-In-Reply-To: <20090604180415.GC13639@mit.edu>
+Received: from tamago.serverit.net ([91.189.209.155]:46667 "EHLO
+	mail.hosting2.serverit.net" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752822AbZFDTub (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 4 Jun 2009 15:50:31 -0400
+Received: from szaka (helo=localhost)
+	by mail.hosting2.serverit.net with local-esmtp (Exim 4.63)
+	(envelope-from <szaka@ntfs-3g.com>)
+	id 1MCHql-00055h-U1
+	for linux-ext4@vger.kernel.org; Thu, 04 Jun 2009 21:39:39 +0300
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 04, 2009 at 02:04:15PM -0400, Theodore Tso wrote:
-> On Wed, May 20, 2009 at 04:32:01PM -0500, Eric Sandeen wrote:
-> > Do the same for ext4 as Andi did for ext3:
-> > 
-> > "This patch changes ext4 super.c to include the device name with all 
-> > warning/error messages, by using a new utility function ext4_msg. 
-> > It's a rather large patch, but very mechanic. I left debug printks
-> > alone."
-> 
-> I've added this to the ext4 patch queue.
 
-And how about the ext3 patch?
+Hi,
 
--Andi
+When testing file creation performance we noticed that sometimes ext3 
+getdents64(2) lists some files twice. For instance after creating 
+filesnames from 1 to 1000000 in an empty directory:
 
--- 
-ak@linux.intel.com -- Speaking for myself only.
+ find | grep ./976253
+ ./976253
+ ./976253
+
+This is 100% reproducible. Kernel is 2.6.25.5, x86_64.
+
+Sorry if this was already known and fixed (couldn't find relevant info in 
+the archives, changelogs).
+
+Regards,
+	   Szaka
+
+--
+NTFS-3G: http://ntfs-3g.org
