@@ -1,101 +1,74 @@
-From: Kay Sievers <kay.sievers@vrfy.org>
-Subject: Re: [PATCH 0/4] FS: userspace notification of errors
-Date: Fri, 5 Jun 2009 15:06:52 +0200
-Message-ID: <ac3eb2510906050606u7527654dv789364549b36f3e7@mail.gmail.com>
-References: <1244041518-32229-1-git-send-email-ext-denis.2.karpov@nokia.com>
-	<20090603115611.6bbbaf55.akpm@linux-foundation.org> <ac3eb2510906040553j294f1015wfb7deb4b4fc63afc@mail.gmail.com>
-	<4A28FC8F.5020802@nokia.com> <20090605115127.GF28764@smart.research.nokia.com>
+From: Aioanei Rares <krnl.list@gmail.com>
+Subject: Re: Mild filesystem corruption on ext4 (no journal)
+Date: Fri, 05 Jun 2009 17:40:33 +0300
+Message-ID: <4A292E61.3050204@gmail.com>
+References: <4A28F83F.4030704@tuffmail.co.uk>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-To: "Bityutskiy Artem (Nokia-D/Helsinki)" <Artem.Bityutskiy@nokia.com>,
-	Kay Sievers <kay.sievers@vrfy.org>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org,
+	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+To: Alan Jenkins <alan-jenkins@tuffmail.co.uk>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f213.google.com ([209.85.218.213]:57271 "EHLO
-	mail-bw0-f213.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751736AbZFENHI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jun 2009 09:07:08 -0400
-In-Reply-To: <20090605115127.GF28764@smart.research.nokia.com>
+Received: from mail-fx0-f213.google.com ([209.85.220.213]:36209 "EHLO
+	mail-fx0-f213.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755577AbZFEOkn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jun 2009 10:40:43 -0400
+In-Reply-To: <4A28F83F.4030704@tuffmail.co.uk>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 5, 2009 at 13:51, Denis Karpov<ext-denis.2.karpov@nokia.com=
-> wrote:
-> This is doable, e.g. in the form of optional fields "tag[:value]"
-> (field 7, Documentation/filesystems/proc.txti for mountinfo).
-
-> But is using procfs generally a good idea ? Last several years all a =
-lot of
-> stuff moved out from procfs into sysfs. Not to forget what procfs is
-> originally meant for: storing the proceses related information.
-
-Yeah, but mounted volumes are namespace dependent, and namespaces are
-process dependent. So events for your current namespace wouldn't be
-too bad here. There might be reasons we don't want the mountinfo file,
-but the "use sysfs for new stuff" does not count in this case. :)
-
-> /proc/self/mountinfo solution:
-> pros:
-> - existing solution
-> cons:
-> - polling only
-> - dedicated userspace tool to poll/parse/act
-> - additional parsing overhead and event filtering (mountinfo changes =
-for many
-> =C2=A0reasons)
-> - probably this info does not belong to procfs
-
-Userspace polls it today already on most boxes, to find out if and
-where something was mounted.
-
-> /sys/fs/<fs>/<volume>/{attributes,..} solution:
-> pros:
-> - nice hierarchy reflecting structure of entities in the kernel
-> - extensible (other errors, conditions, events can be reflected)
-> - no parsing: dedicated file for each attribute
-> - uevent interface with existing userspace tool (udev);
-> =C2=A0(polling is still possible)
-
-The uevent interface would need a rate limit inside the kernel.
-Uevents are very expensive in userspace and you need to make sure,
-that such an error reporting can never raise hundreds or thousands of
-events, in no situation.
-
-> - /sys/fs seems to be a perfect fit for the purpose judging by ext4 e=
-xample
-> cons:
-> - uevent interface is unneeded extra(?); can be made optional, per at=
-tribute
-
-You can not pass the mount path with the uevent, like you example
-shows, you just don't know that reliably, and there can be many mount
-points.
-
-How do you want to name the /sys/fs/ device? By "dev_t st_dev" or the
-underlying block device name? How do you indentify the mountpoint in
-your current namespace, of the device that raised the error? The event
-might be for a filesystem you can not reach at all in your mount tree.
-
-The /sys/fs/ approach sounds very much like an "export known
-superblocks in /sys/fs/", something like this could be useful, but we
-need to check carefully with other people what are the issues of such
-an interface, and if there is something that should not be exported
-that way.
-
-How are device-less superblocks like btrfs handled in such an
-interface, how is the device named, if it does not have a direct block
-device underneath?
-
-In any case, we definitely need something better than dmesg to pass
-filesystem errors from the kernel to userspace, so this discussion is
-much appreciated.
-
-Thanks,
-Kay
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Alan Jenkins wrote:
+> Hi,
+>
+> I run ext4 without a journal on my cheap netbook with a 4 gig SSD.  I 
+> suspect "without a journal" is significant, I don't think I'm doing 
+> anything else strange.
+>
+> When I upgrade libc from 2.7 (debian stable) to 2.9 (debian unstable), 
+> the locale breaks every reboot, and I have to repair it by running 
+> locale-gen.  This happened now when I only upgraded libc, in order to 
+> play with signalfd().  It also happened before, when I upgraded the 
+> entire machine to debian unstable (which I later reverted).
+>
+> The problem is that /usr/lib/locale/locale-archive gets corrupted when 
+> I reboot.  The exact corruption differs with each reboot (i.e. the 
+> md5sum differs).  Last time, the first ~70K was overwritten with data 
+> from xorg.log and my web browsing history.  I have copies of the 
+> original and corrupted state which I can send, the full file is 1.3 
+> megs, but I can limit it to the first 70K, since that's all that was 
+> corrupted.
+>
+> To try and rule out a faulty userspace program, I marked the file as 
+> read-only (chmod a-w) and immutable (chattr +i).  After a reboot, the 
+> file was still read-only and immutable, yet it still became corrupted.
+>
+> Also, I ran md5sum in the shutdown scripts, after mounting the root 
+> filesystem read-only (which is also preceeded by a sync in a different 
+> script).  This showed that the file did not appear corrupted at this 
+> point.  (Though maybe it was ok in page-cache, but corrupted on-disk).
+>
+> The locale-archive file is read by the libc locale routines using 
+> mmap().  The mapping is read only and is not modified.  It seems 
+> likely that some process has it mapped when the kernel shuts down.
+>
+> I tried reproducing this by writting a minimal daemon which maps a 
+> copy of the locale-archive file, and starting it just before the 
+> filesystem is remounted read-only.  It didn't work though; this copy 
+> of the locale-archive file remained uncorrupted.
+>
+> I forced a fsck on boot, and the filesystem was reported to be clean.  
+> I am currently running with e2fsprogs v1.41.6 (from debian unstable), 
+> and a custom-built kernel, 2.6.30-rc7.
+>
+> Thanks in advance!
+> Alan
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe 
+> linux-kernel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Please read the FAQ at  http://www.tux.org/lkml/
+>
+I suspect, although I might be wrong, that this is not a kernel-related
+problem.
