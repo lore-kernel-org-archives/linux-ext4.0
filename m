@@ -1,132 +1,76 @@
-From: Artem Bityutskiy <dedekind@infradead.org>
-Subject: [PATCH v2.1 05/17] EXT2: do not manipulate s_dirt directly
-Date: Fri,  5 Jun 2009 16:05:43 +0300
-Message-ID: <1244207155-2092-6-git-send-email-dedekind@infradead.org>
-References: <1244207155-2092-1-git-send-email-dedekind@infradead.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	Christoph Hellwig <hch@infradead.org>,
-	Artem Bityutskiy <Artem.Bityutskiy@nokia.com>,
-	linux-ext4@vger.kernel.org
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.nokia.com ([192.100.122.230]:49403 "EHLO
-	mgw-mx03.nokia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754931AbZFELOY (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jun 2009 07:14:24 -0400
-In-Reply-To: <1244207155-2092-1-git-send-email-dedekind@infradead.org>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Denis Karpov <ext-denis.2.karpov@nokia.com>
+Subject: Re: [PATCH 0/4] FS: userspace notification of errors
+Date: Fri, 5 Jun 2009 14:51:27 +0300
+Message-ID: <20090605115127.GF28764@smart.research.nokia.com>
+References: <1244041518-32229-1-git-send-email-ext-denis.2.karpov@nokia.com> <20090603115611.6bbbaf55.akpm@linux-foundation.org> <ac3eb2510906040553j294f1015wfb7deb4b4fc63afc@mail.gmail.com> <4A28FC8F.5020802@nokia.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Kay Sievers <kay.sievers@vrfy.org>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"axboe@kernel.dk" <axboe@kernel.dk>,
+	"hirofumi@mail.parknet.co.jp" <hirofumi@mail.parknet.co.jp>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"Hunter Adrian (Nokia-D/Helsinki)" <adrian.hunter@nokia.com>
+To: "Bityutskiy Artem (Nokia-D/Helsinki)" <Artem.Bityutskiy@nokia.com>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1753201AbZFELwD@vger.kernel.org>
+Content-Disposition: inline
+In-Reply-To: <4A28FC8F.5020802@nokia.com>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-From: Artem Bityutskiy <Artem.Bityutskiy@nokia.com>
+On Fri, Jun 05, 2009 at 01:07:59PM +0200, Bityutskiy Artem (Nokia-D/Helsinki) wrote:
+> Kay Sievers wrote:
+> > And I don't think we want several event sources for the same thing,
+> > uevents _and_ pollable sysfs files.
+> > 
+> > We already raise events on /proc/self/mountinfo when the mount tree
+> > changes, I guess that's where fs specific stuff belongs, and it will
+> > work with all kind of filesystem setups, regardless of the devices
+> > below it. This is also the established interface for flags and options
+> > and the current state of the filesystem, and does not mix filesystem
+> > options into block device interfaces.
+> > 
+> > /proc/self/mountinfo could also work properly with namespaces which
+> > might have different meaning for a device in a different namespace.
+> 
+> Well, Denis suggests /sys/fs instead. But how would we pass stuff like
+> error code via /proc/self/mountinfo? And what if later some one wants
+> to provide user-space stuff like bogus inode number? 
 
-... use new VFS helpers instead.
+This is doable, e.g. in the form of optional fields "tag[:value]"
+(field 7, Documentation/filesystems/proc.txti for mountinfo).
 
-Signed-off-by: Artem Bityutskiy <Artem.Bityutskiy@nokia.com>
-Cc: linux-ext4@vger.kernel.org
----
- fs/ext2/balloc.c |    4 ++--
- fs/ext2/ialloc.c |    4 ++--
- fs/ext2/super.c  |    8 ++++----
- fs/ext2/xattr.c  |    2 +-
- 4 files changed, 9 insertions(+), 9 deletions(-)
+Kay, sorry I didn't answer to your email separately. I tried to summarize
+and address all the posted comments/critiques in a single email earlier 
+in this thread.
+http://marc.info/?l=linux-kernel&m=124412575828015&w=2
 
-diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-index 7f8d2e5..a3de92b 100644
---- a/fs/ext2/balloc.c
-+++ b/fs/ext2/balloc.c
-@@ -164,7 +164,7 @@ static void release_blocks(struct super_block *sb, int count)
- 		struct ext2_sb_info *sbi = EXT2_SB(sb);
- 
- 		percpu_counter_add(&sbi->s_freeblocks_counter, count);
--		sb->s_dirt = 1;
-+		mark_sb_dirty(sb);
- 	}
- }
- 
-@@ -179,7 +179,7 @@ static void group_adjust_blocks(struct super_block *sb, int group_no,
- 		free_blocks = le16_to_cpu(desc->bg_free_blocks_count);
- 		desc->bg_free_blocks_count = cpu_to_le16(free_blocks + count);
- 		spin_unlock(sb_bgl_lock(sbi, group_no));
--		sb->s_dirt = 1;
-+		mark_sb_dirty(sb);
- 		mark_buffer_dirty(bh);
- 	}
- }
-diff --git a/fs/ext2/ialloc.c b/fs/ext2/ialloc.c
-index 15387c9..bb8cf4e 100644
---- a/fs/ext2/ialloc.c
-+++ b/fs/ext2/ialloc.c
-@@ -81,7 +81,7 @@ static void ext2_release_inode(struct super_block *sb, int group, int dir)
- 	spin_unlock(sb_bgl_lock(EXT2_SB(sb), group));
- 	if (dir)
- 		percpu_counter_dec(&EXT2_SB(sb)->s_dirs_counter);
--	sb->s_dirt = 1;
-+	mark_sb_dirty(sb);
- 	mark_buffer_dirty(bh);
- }
- 
-@@ -548,7 +548,7 @@ got:
- 	}
- 	spin_unlock(sb_bgl_lock(sbi, group));
- 
--	sb->s_dirt = 1;
-+	mark_sb_dirty(sb);
- 	mark_buffer_dirty(bh2);
- 	inode->i_uid = current_fsuid();
- 	if (test_opt (sb, GRPID))
-diff --git a/fs/ext2/super.c b/fs/ext2/super.c
-index f5b7fad..4f054d5 100644
---- a/fs/ext2/super.c
-+++ b/fs/ext2/super.c
-@@ -116,7 +116,7 @@ static void ext2_put_super (struct super_block * sb)
- 
- 	lock_kernel();
- 
--	if (sb->s_dirt)
-+	if (is_sb_dirty(sb))
- 		ext2_write_super(sb);
- 
- 	ext2_xattr_put_super(sb);
-@@ -1107,7 +1107,7 @@ static void ext2_commit_super (struct super_block * sb,
- {
- 	es->s_wtime = cpu_to_le32(get_seconds());
- 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
--	sb->s_dirt = 0;
-+	mark_sb_clean(sb);
- }
- 
- static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es)
-@@ -1117,7 +1117,7 @@ static void ext2_sync_super(struct super_block *sb, struct ext2_super_block *es)
- 	es->s_wtime = cpu_to_le32(get_seconds());
- 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
- 	sync_dirty_buffer(EXT2_SB(sb)->s_sbh);
--	sb->s_dirt = 0;
-+	mark_sb_clean(sb);
- }
- 
- /*
-@@ -1148,7 +1148,7 @@ void ext2_write_super (struct super_block * sb)
- 		} else
- 			ext2_commit_super (sb, es);
- 	}
--	sb->s_dirt = 0;
-+	mark_sb_clean(sb);
- 	unlock_kernel();
- }
- 
-diff --git a/fs/ext2/xattr.c b/fs/ext2/xattr.c
-index 7913531..1673ee4 100644
---- a/fs/ext2/xattr.c
-+++ b/fs/ext2/xattr.c
-@@ -343,7 +343,7 @@ static void ext2_xattr_update_super_block(struct super_block *sb)
- 		return;
- 
- 	EXT2_SET_COMPAT_FEATURE(sb, EXT2_FEATURE_COMPAT_EXT_ATTR);
--	sb->s_dirt = 1;
-+	mark_sb_dirty(sb);
- 	mark_buffer_dirty(EXT2_SB(sb)->s_sbh);
- }
- 
--- 
-1.6.0.6
+But is using procfs generally a good idea ? Last several years all a lot of
+stuff moved out from procfs into sysfs. Not to forget what procfs is
+originally meant for: storing the proceses related information.
 
+/proc/self/mountinfo solution:
+pros:
+- existing solution
+cons:
+- polling only
+- dedicated userspace tool to poll/parse/act
+- additional parsing overhead and event filtering (mountinfo changes for many
+  reasons)
+- probably this info does not belong to procfs
+
+/sys/fs/<fs>/<volume>/{attributes,..} solution:
+pros:
+- nice hierarchy reflecting structure of entities in the kernel
+- extensible (other errors, conditions, events can be reflected) 
+- no parsing: dedicated file for each attribute
+- uevent interface with existing userspace tool (udev); 
+  (polling is still possible)
+- /sys/fs seems to be a perfect fit for the purpose judging by ext4 example
+cons:
+- uevent interface is unneeded extra(?); can be made optional, per attribute
+- ...
+
+Denis
