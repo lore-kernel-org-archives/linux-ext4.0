@@ -1,45 +1,38 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/11] Fix page_mkwrite() for blocksize < pagesize
-Date: Sat, 6 Jun 2009 01:23:06 +0200
-Message-ID: <20090605232306.GD11650@duck.suse.cz>
-References: <1243429268-3028-1-git-send-email-jack@suse.cz> <20090527142332.GB10842@mit.edu> <20090527145911.GH16006@duck.suse.cz> <20090604171142.GB13639@mit.edu>
+Subject: Re: [PATCH 1/2] [PATCH] ext4: Add inode to the orphan list during
+	block allocation failure
+Date: Sat, 6 Jun 2009 01:42:39 +0200
+Message-ID: <20090605234238.GF11650@duck.suse.cz>
+References: <20090331044544.GB5979@skywalker> <1238491766-13182-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090405031116.GG7553@mit.edu> <20090406100509.GB31189@duck.suse.cz> <20090605043117.GB4046@mit.edu> <20090605062234.GA27217@mit.edu> <20090605072417.GA8236@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: Theodore Tso <tytso@mit.edu>, Jan Kara <jack@suse.cz>,
-	LKML <linux-kernel@vger.kernel.org>, npiggin@suse.de,
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
 	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:32848 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:33132 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752234AbZFEXXG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 5 Jun 2009 19:23:06 -0400
+	id S1756520AbZFEXmj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 5 Jun 2009 19:42:39 -0400
 Content-Disposition: inline
-In-Reply-To: <20090604171142.GB13639@mit.edu>
+In-Reply-To: <20090605072417.GA8236@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 04-06-09 13:11:42, Theodore Tso wrote:
-> On Wed, May 27, 2009 at 04:59:11PM +0200, Jan Kara wrote:
-> >   Yes, that would be fine. Thanks. Luckily, the dependence is just one way
-> > (ext4 change has to go after the VFS patch) so it's just enough to merge
-> > that ext4 change some time after VFS changes go in.
+On Fri 05-06-09 03:24:17, Theodore Tso wrote:
+> On Fri, Jun 05, 2009 at 02:22:34AM -0400, Theodore Tso wrote:
+> > I've tried applying these two patches to the ext4 patch queue.  On a
+> > metadata-heavy workload (specifically, fsx), it causes a 5%
+> > degradation in the wall clock run-time of the fsx run-time.
 > 
-> ext4: Add WARN_ON on unmapped dirty buffer_heads in writepage
-> fs: Don't clear dirty bits in block_write_full_page()
-> vfs: Unmap underlying metadata of new data buffers only when buffer is m
-> ext4: Make sure blocks are properly allocated under mmaped page even whe
-> vfs: Add better VFS support for page_mkwrite when blocksize < pagesize
-> 
-> FYI, I've added the following to the unstable portion of the patch
-> queue, and have started running tests (fsx, fsstress, and dbench)
-> using 1k blocksizes, using a variety of ext4 mount options.  So far,
-> things look good.
-  Thanks for the merge and testing!
-
-> How goes the reviews/comments?  Are we planning on pushing this to
-> Linus at the beginning of the next merge window?
-  I'd like to get some VFS / MM people review the generic part of the
-change... I guess I'll post a request to linux-mm to catch more attention.
+> I just did some more timing tests, and it looks like I can't confirm
+> it.  The test times are noisy enough I need to run some more under very
+> controlled circumsntances.  So ignore this for now, it might not be a
+> problem after all.
+  It would be strange if the patches caused a measurable slowdown. They
+change something only in the failure path where we fail to allocate some
+blocks or fail to copy in all the data and these should better be
+exceptional cases...
 
 								Honza
 -- 
