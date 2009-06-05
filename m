@@ -1,60 +1,54 @@
-From: Alan Jenkins <alan-jenkins@tuffmail.co.uk>
-Subject: Mild filesystem corruption on ext4 (no journal)
-Date: Fri, 05 Jun 2009 11:49:35 +0100
-Message-ID: <4A28F83F.4030704@tuffmail.co.uk>
+From: Artem Bityutskiy <Artem.Bityutskiy@nokia.com>
+Subject: Re: [PATCH 0/4] FS: userspace notification of errors
+Date: Fri, 05 Jun 2009 14:07:59 +0300
+Message-ID: <4A28FC8F.5020802@nokia.com>
+References: <1244041518-32229-1-git-send-email-ext-denis.2.karpov@nokia.com> 	<20090603115611.6bbbaf55.akpm@linux-foundation.org> <ac3eb2510906040553j294f1015wfb7deb4b4fc63afc@mail.gmail.com>
+Reply-To: Artem.Bityutskiy@nokia.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org,
-	Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8;
+	format=flowed
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Denis Karpov <ext-denis.2.karpov@nokia.com>, axboe@kernel.dk,
+	hirofumi@mail.parknet.co.jp, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+	adrian.hunter@nokia.com
+To: Kay Sievers <kay.sievers@vrfy.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-bw0-f213.google.com ([209.85.218.213]:45155 "EHLO
-	mail-bw0-f213.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751346AbZFEKsS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jun 2009 06:48:18 -0400
+Received: from smtp.nokia.com ([192.100.105.134]:36417 "EHLO
+	mgw-mx09.nokia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751377AbZFELIz (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 5 Jun 2009 07:08:55 -0400
+In-Reply-To: <ac3eb2510906040553j294f1015wfb7deb4b4fc63afc@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+Kay Sievers wrote:
+> And I don't think we want several event sources for the same thing,
+> uevents _and_ pollable sysfs files.
+>=20
+> We already raise events on /proc/self/mountinfo when the mount tree
+> changes, I guess that's where fs specific stuff belongs, and it will
+> work with all kind of filesystem setups, regardless of the devices
+> below it. This is also the established interface for flags and option=
+s
+> and the current state of the filesystem, and does not mix filesystem
+> options into block device interfaces.
+>=20
+> /proc/self/mountinfo could also work properly with namespaces which
+> might have different meaning for a device in a different namespace.
 
-I run ext4 without a journal on my cheap netbook with a 4 gig SSD.  I 
-suspect "without a journal" is significant, I don't think I'm doing 
-anything else strange.
+Well, Denis suggests /sys/fs instead. But how would we pass stuff like
+error code via /proc/self/mountinfo? And what if later some one wants
+to provide user-space stuff like bogus inode number? IMO, /sys/fs
+sounds better.
 
-When I upgrade libc from 2.7 (debian stable) to 2.9 (debian unstable), 
-the locale breaks every reboot, and I have to repair it by running 
-locale-gen.  This happened now when I only upgraded libc, in order to 
-play with signalfd().  It also happened before, when I upgraded the 
-entire machine to debian unstable (which I later reverted).
-
-The problem is that /usr/lib/locale/locale-archive gets corrupted when I 
-reboot.  The exact corruption differs with each reboot (i.e. the md5sum 
-differs).  Last time, the first ~70K was overwritten with data from 
-xorg.log and my web browsing history.  I have copies of the original and 
-corrupted state which I can send, the full file is 1.3 megs, but I can 
-limit it to the first 70K, since that's all that was corrupted.
-
-To try and rule out a faulty userspace program, I marked the file as 
-read-only (chmod a-w) and immutable (chattr +i).  After a reboot, the 
-file was still read-only and immutable, yet it still became corrupted.
-
-Also, I ran md5sum in the shutdown scripts, after mounting the root 
-filesystem read-only (which is also preceeded by a sync in a different 
-script).  This showed that the file did not appear corrupted at this 
-point.  (Though maybe it was ok in page-cache, but corrupted on-disk).
-
-The locale-archive file is read by the libc locale routines using 
-mmap().  The mapping is read only and is not modified.  It seems likely 
-that some process has it mapped when the kernel shuts down.
-
-I tried reproducing this by writting a minimal daemon which maps a copy 
-of the locale-archive file, and starting it just before the filesystem 
-is remounted read-only.  It didn't work though; this copy of the 
-locale-archive file remained uncorrupted.
-
-I forced a fsck on boot, and the filesystem was reported to be clean.  I 
-am currently running with e2fsprogs v1.41.6 (from debian unstable), and 
-a custom-built kernel, 2.6.30-rc7.
-
-Thanks in advance!
-Alan
+--=20
+Best Regards,
+Artem Bityutskiy (=D0=90=D1=80=D1=82=D1=91=D0=BC =D0=91=D0=B8=D1=82=D1=8E=
+=D1=86=D0=BA=D0=B8=D0=B9)
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
