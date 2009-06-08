@@ -1,59 +1,93 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V2 2/2] ext4: truncate the file properly if we fail to
-	copy data from userspace
-Date: Tue, 9 Jun 2009 01:50:49 +0530
-Message-ID: <20090608202049.GC23723@skywalker>
-References: <20090605234458.GG11650@duck.suse.cz> <1244435715-6807-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1244435715-6807-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090608162959.GJ23883@mit.edu> <20090608164357.GA23723@skywalker> <20090608191420.GM23883@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp01.au.ibm.com ([202.81.31.143]:52217 "EHLO
-	e23smtp01.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752867AbZFHUVA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Jun 2009 16:21:00 -0400
-Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp01.au.ibm.com (8.13.1/8.13.1) with ESMTP id n58KKDhf013941
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 06:20:13 +1000
-Received: from d23av01.au.ibm.com (d23av01.au.ibm.com [9.190.234.96])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n58KL2kR872546
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 06:21:02 +1000
-Received: from d23av01.au.ibm.com (loopback [127.0.0.1])
-	by d23av01.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n58KL1PH027585
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 06:21:02 +1000
-Content-Disposition: inline
-In-Reply-To: <20090608191420.GM23883@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: + jbd-fix-race-in-buffer-processing-in-commit-code.patch added to -mm tree
+Date: Mon, 08 Jun 2009 15:58:55 -0700
+Message-ID: <200906082258.n58MwtDI020940@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+Cc: jack@suse.cz, linux-ext4@vger.kernel.org, stable@kernel.org
+To: mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Mon, Jun 08, 2009 at 03:14:20PM -0400, Theodore Tso wrote:
-> On Mon, Jun 08, 2009 at 10:13:57PM +0530, Aneesh Kumar K.V wrote:
-> > I think i both the case Jan's patch
-> > allocate-blocks-correctly-with-subpage-blocksize need an update ? Since you have put
-> > the patch before Jan's changes.
-> 
-> OK, here's how I updated Jan's patch.  I'm going to assume that we'll
-> submit the ext4 patch queue immediately as soon as the merge window
-> opens, since my impression is Jan is still waiting for some mm
-> developers to review his patch set.   
-> 
-> Annesh, does this look good to you?
 
-I just did a quick look. Should we do a block_unlock_hole_extend after
-journal_stop. We do a block_lock_hole_extend before journal_start.
+The patch titled
+     jbd: fix race in buffer processing in commit code
+has been added to the -mm tree.  Its filename is
+     jbd-fix-race-in-buffer-processing-in-commit-code.patch
 
-> 
-> Jan, if we go down this path, you'll need to update your ext4 patch
-> with this updated one, to take into account the changes from Aneesh's
-> patch.
-> 
-> (We could do it the other way, but that means even more patches queued
-> up behind Jan's patch series, and I didn't realize originally that
-> Aneesh intended for these to be queued after Jan's patches.  So it
-> seemed easier to just order Aneesh's patches to avoid block allocation
-> leaks first, since they are at least functionally (if not
-> syntactically) independent of the subpagesize blocksize patches.)
+Before you just go and hit "reply", please:
+   a) Consider who else should be cc'ed
+   b) Prefer to cc a suitable mailing list as well
+   c) Ideally: find the original patch on the mailing list and do a
+      reply-to-all to that, adding suitable additional cc's
 
--aneesh
+*** Remember to use Documentation/SubmitChecklist when testing your code ***
+
+See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
+out what to do about this
+
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+
+------------------------------------------------------
+Subject: jbd: fix race in buffer processing in commit code
+From: Jan Kara <jack@suse.cz>
+
+In commit code, we scan buffers attached to a transaction.  During this
+scan, we sometimes have to drop j_list_lock and then we recheck whether
+the journal buffer head didn't get freed by journal_try_to_free_buffers().
+ But checking for buffer_jbd(bh) isn't enough because a new journal head
+could get attached to our buffer head.  So add a check whether the journal
+head remained the same and whether it's still at the same transaction and
+list.
+
+This is a nasty bug and can cause problems like memory corruption (use after
+free) or trigger various assertions in JBD code (observed).
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <stable@kernel.org>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/jbd/commit.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff -puN fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code
++++ a/fs/jbd/commit.c
+@@ -241,7 +241,7 @@ write_out_data:
+ 			spin_lock(&journal->j_list_lock);
+ 		}
+ 		/* Someone already cleaned up the buffer? */
+-		if (!buffer_jbd(bh)
++		if (!buffer_jbd(bh) || bh2jh(bh) != jh
+ 			|| jh->b_transaction != commit_transaction
+ 			|| jh->b_jlist != BJ_SyncData) {
+ 			jbd_unlock_bh_state(bh);
+@@ -478,7 +478,9 @@ void journal_commit_transaction(journal_
+ 			spin_lock(&journal->j_list_lock);
+ 			continue;
+ 		}
+-		if (buffer_jbd(bh) && jh->b_jlist == BJ_Locked) {
++		if (buffer_jbd(bh) && bh2jh(bh) == jh &&
++		    jh->b_transaction == commit_transaction &&
++		    jh->b_jlist == BJ_Locked) {
+ 			__journal_unfile_buffer(jh);
+ 			jbd_unlock_bh_state(bh);
+ 			journal_remove_journal_head(bh);
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+jbd-fix-race-in-buffer-processing-in-commit-code.patch
+linux-next.patch
+vfs-split-generic_forget_inode-so-that-hugetlbfs-does-not-have-to-copy-it.patch
+ext2-add-blk_issue_flush-to-syncing-paths.patch
+mm-remove-__invalidate_mapping_pages-variant.patch
+ext2-do-not-update-mtime-of-a-moved-directory.patch
+ext3-fix-chain-verification-in-ext3_get_blocks.patch
+isofs-let-mode-and-dmode-mount-options-override-rock-ridge-mode-setting.patch
+isofs-fix-setting-of-uid-and-gid-to-0.patch
+isofs-cleanup-mount-option-processing.patch
+reiser4-update-names-of-quota-methods.patch
+
