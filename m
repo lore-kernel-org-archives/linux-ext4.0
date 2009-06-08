@@ -1,165 +1,189 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: Re: Some 64-bit tests
-Date: Mon, 8 Jun 2009 12:00:13 -0700
-Message-ID: <20090608190013.GB4363@fsbox>
-References: <18887.1244469441@gamaville.dokosmarshall.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH -V2 2/2] ext4: truncate the file properly if we fail to
+	copy data from userspace
+Date: Mon, 8 Jun 2009 15:14:20 -0400
+Message-ID: <20090608191420.GM23883@mit.edu>
+References: <20090605234458.GG11650@duck.suse.cz> <1244435715-6807-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1244435715-6807-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090608162959.GJ23883@mit.edu> <20090608164357.GA23723@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
-	Eric Sandeen <sandeen@redhat.com>
-To: Nick Dokos <nicholas.dokos@hp.com>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:39117 "EHLO mx2.redhat.com"
+Received: from thunk.org ([69.25.196.29]:58994 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751377AbZFHTAR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jun 2009 15:00:17 -0400
+	id S1751752AbZFHTO3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Jun 2009 15:14:29 -0400
 Content-Disposition: inline
-In-Reply-To: <18887.1244469441@gamaville.dokosmarshall.org>
+In-Reply-To: <20090608164357.GA23723@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 08, 2009 at 09:57:21AM -0400, Nick Dokos wrote:
-> I built and ran e2fsprogs bits from the pu branch from last week
-> (not including the changes that you made yesterday.)
-> 
-> The basic cycle of mkfs/fill up the fs/fsck seemed to work without
-> fatal errors but there are several problematic points.
+On Mon, Jun 08, 2009 at 10:13:57PM +0530, Aneesh Kumar K.V wrote:
+> I think i both the case Jan's patch
+> allocate-blocks-correctly-with-subpage-blocksize need an update ? Since you have put
+> the patch before Jan's changes.
 
-That's great news!  Thanks.
+OK, here's how I updated Jan's patch.  I'm going to assume that we'll
+submit the ext4 patch queue immediately as soon as the merge window
+opens, since my impression is Jan is still waiting for some mm
+developers to review his patch set.   
 
-> The mkfs looked like this:
-> 
-> ,----
-> | $ sudo time mke2fs -q -t ext4 -O ^resize_inode -E stride=32,stripe-width=512 /dev/mapper/bigvg-bigvol
-> | 64.02user 722.30system 13:14.25elapsed 99%CPU (0avgtext+0avgdata 0maxresident)k
-> | 1240inputs+1026586096outputs (6major+317202minor)pagefaults 0swaps
-> `----
-> 
-> I then ran the Lustre test that Andreas posted:
-> 
-> ,----
-> | $ sudo time ~/src/tools/lustre/liverfs -l -r -w /mnt
-> | Timestamp: 1243984976
-> | -- 0:bash -- time-stamp -- Jun/02/09 19:24:49 --
-> | -- 0:bash -- time-stamp -- Jun/03/09  9:42:50 --
-> | write File name: /mnt/dir00240/file020          
-> | write complete
-> | 
-> | liverfs: writing /mnt/liverfs.filecount failed :No space left on device
-> | -- 0:bash -- time-stamp -- Jun/03/09  9:44:41 --
-> | -- 0:bash -- time-stamp -- Jun/03/09 12:11:14 --
-> | 
-> | -- 0:bash -- time-stamp -- Jun/03/09 12:13:10 --
-> | -- 0:bash -- time-stamp -- Jun/04/09  2:39:01 --
-> | 374.48user 87720.31system 31:16:05elapsed 78%CPU (0avgtext+0avgdata 0maxresident)k
-> | 64604538992inputs+64670728952outputs (3major+460minor)pagefaults 0swaps
-> `----
-> 
-> roughly 14 hours to write and 17 hours to read everything back (the
-> ENOSPC error message is an artifact of the program and does not affect
-> the rest of the run). liverfs performs some consistency checking on the
-> contents of the files, so the fact that it did not find anything wrong
-> is encouraging.
-> 
-> It created 241 directories, each with 32 4GiB files in it (except the last
-> one, which had 20 files). That comes out to about 30TiB which is OK.
-> 
-> The fsck looks like this:
-> 
-> ,----
-> | root@shifter:~/src/tests/2009/06-03# e2fsck -t -t -n -f /dev/mapper/bigvg-bigvol
-> | e2fsck 1.41.6 (30-May-2009)
-> | Pass 1: Checking inodes, blocks, and sizes
-> | Pass 1: Memory used: 31180k/18014398507629424k (31004k/177k), time: 384.17/294.25/ 2.24
-> | Pass 1: I/O read: 63MB, write: 0MB, rate: 0.16MB/s
-> | Pass 2: Checking directory structure
-> | Pass 2: Memory used: 31180k/18014398508200200k (30993k/188k), time:  1.00/ 0.40/ 0.49
-> | Pass 2: I/O read: 1MB, write: 0MB, rate: 1.00MB/s
-> | Pass 3: Checking directory connectivity
-> | Peak memory: Memory used: 31180k/18014398508450540k (30993k/188k), time: 389.75/298.39/ 3.52
-> | Pass 3: Memory used: 31180k/18014398508200200k (30993k/188k), time:  0.28/ 0.12/ 0.16
-> | Pass 3: I/O read: 1MB, write: 0MB, rate: 3.53MB/s
-> | Pass 4: Checking reference counts
-> | Pass 4: Memory used: 31180k/1520628k (30993k/188k), time: 70.32/70.17/ 0.13
-> | Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-> | Pass 5: Checking group summary information
-> | Pass 5: Memory used: 31212k/1270288k (30993k/220k), time: 409.82/270.69/ 5.29
-> | Pass 5: I/O read: 979MB, write: 0MB, rate: 2.39MB/s
-> | /dev/mapper/bigvg-bigvol: 7954/2050768896 files (0.0% non-contiguous), 8203066502/8203075584 blocks
-> | Memory used: 31212k/1270288k (30993k/220k), time: 869.92/639.26/ 8.96
-> | I/O read: 1058MB, write: 0MB, rate: 1.22MB/s
-> | 
-> | real	14m31.299s
-> | user	10m39.257s
-> | sys	0m10.336s
-> `----
-> 
-> The "-t -t" part of the reporting may be truncating large quantities,
-> and the "peaK" and "pass 3" memory seem bogus:
-> 
->   Peak memory: Memory used: 31180k/18014398508450540k (30993k/188k), time: 389.75/298.39/ 3.52
->   Pass 3: Memory used: 31180k/18014398508200200k (30993k/188k), time:  0.28/ 0.12/ 0.16
-> 
-> The box has "only" 256GiB of memory and about 36GB of swap.
+Annesh, does this look good to you?
 
-Part of this can be explained by overflow/wraparound/formatting bugs.
-The bogus enormously large values look more like addresses than counters:
+Jan, if we go down this path, you'll need to update your ext4 patch
+with this updated one, to take into account the changes from Aneesh's
+patch.
 
-[val@fsbox ~]$ bc
-bc 1.06
-Copyright 1991-1994, 1997, 1998, 2000 Free Software Foundation, Inc.
-This is free software with ABSOLUTELY NO WARRANTY.
-For details type `warranty'.
-obase=16
-18014398507629424
-3FFFFFFFE3BB70
-18014398508200200
-3FFFFFFFEC7108
-18014398508450540
-3FFFFFFFF042EC
-18014398508200200
-3FFFFFFFEC7108
+(We could do it the other way, but that means even more patches queued
+up behind Jan's patch series, and I didn't realize originally that
+Aneesh intended for these to be queued after Jan's patches.  So it
+seemed easier to just order Aneesh's patches to avoid block allocation
+leaks first, since they are at least functionally (if not
+syntactically) independent of the subpagesize blocksize patches.)
 
-> In addition, filefrag seems to have some problems. It reports
-> that every file has about 512 extents (most of them exactly 512, but a
-> few with less than that -- as little as 205 -- and a few more with more
-> than that -- as much as 1155. Since the program is single threaded, and
-> nothing else is happening on the file system, I (naively?) expected
-> maximal extents allocated (iiuc, that's 128MiB - so I'd expect 32
-> extents for most of the files).
+					- Ted
 
-Eric Sandeen (cc'd) is who I usually send ext4 file fragmentation
-problems to.  In my experience, ext4 never allocates just one extent
-for a file, but always exactly 512 sounds interesting.  Eric?
 
-> filefrag -v has problems:
-> 
-> # filefrag -v file010
-> Filesystem type is: ef53
-> File size of file010 is 4294967296 (1048576 blocks, blocksize 4096)
->  ext logical  physical  expected length flags
->    0       0  40931328             2048 
->    1    2048  40951808  40933375   2048 
->    2    4096  40970240  40953855   2048 
->    3    6144  40988672  40972287   2048 
->    4    8192  41007104  40990719   2048 
->    5   10240  41027584  41009151   2048 
->  ...   .....  ........  ........   ....
-> 
->  217 1034240  49362944  49348607   2048 
->  218 1036288  49379328  49364991   2048 
->  219 1038336  49397760  49381375   2048 
->  220 1040384  49414144  49399807   2048 
->  221 1042432  49430528  49416191   2048 
->  222 1044480  49446912  49432575   2048 
->  223 1046528  49463296  49448959   2048 eof
-> file010: 224 extents found
-> 
-> # filefrag file010
-> file010: 512 extents found
+ext4: Make sure blocks are properly allocated under mmaped page even when blocksize < pagesize
 
-That ought to help a lot narrowing down the bug.
+From: Jan Kara <jack@suse.cz>
 
-Thanks,
+In a situation like:
+  truncate(f, 1024);
+  a = mmap(f, 0, 4096);
+  a[0] = 'a';
+  truncate(f, 4096);
 
--VAL
+we end up with a dirty page which does not have all blocks allocated /
+reserved.  Fix the problem by using new VFS infrastructure.
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/ext4/extents.c |    2 +-
+ fs/ext4/inode.c   |   22 ++++++++++++++++++++--
+ 2 files changed, 21 insertions(+), 3 deletions(-)
+
+diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+index 9c35a7b..f2a2591 100644
+--- a/fs/ext4/extents.c
++++ b/fs/ext4/extents.c
+@@ -3069,7 +3069,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
+ 	 */
+ 	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
+ 		if (new_size > i_size_read(inode))
+-			i_size_write(inode, new_size);
++			block_extend_i_size(inode, new_size, 0);
+ 		if (new_size > EXT4_I(inode)->i_disksize)
+ 			ext4_update_i_disksize(inode, new_size);
+ 	}
+diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+index f4cf46e..6450b55 100644
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -1491,7 +1491,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+  	index = pos >> PAGE_CACHE_SHIFT;
+ 	from = pos & (PAGE_CACHE_SIZE - 1);
+ 	to = from + len;
+-
++	block_lock_hole_extend(inode, pos);
+ retry:
+ 	handle = ext4_journal_start(inode, needed_blocks);
+ 	if (IS_ERR(handle)) {
+@@ -1550,6 +1550,8 @@ retry:
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ out:
++	if (ret)
++		block_unlock_hole_extend(inode);
+ 	return ret;
+ }
+ 
+@@ -1595,6 +1597,7 @@ static int ext4_generic_write_end(struct file *file,
+ 	}
+ 	unlock_page(page);
+ 	page_cache_release(page);
++	block_unlock_hole_extend(inode);
+ 
+ 	/*
+ 	 * Don't mark the inode dirty under page lock. First, it unnecessarily
+@@ -1739,6 +1742,8 @@ static int ext4_journalled_write_end(struct file *file,
+ 
+ 	unlock_page(page);
+ 	page_cache_release(page);
++	block_unlock_hole_extend(inode);
++
+ 	if (pos + len > inode->i_size)
+ 		/* if we have allocated more blocks and copied
+ 		 * less. We will have blocks allocated outside
+@@ -2888,6 +2893,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+ 	}
+ 	*fsdata = (void *)0;
+ 	trace_ext4_da_write_begin(inode, pos, len, flags);
++	block_lock_hole_extend(inode, pos);
+ retry:
+ 	/*
+ 	 * With delayed allocation, we don't log the i_disksize update
+@@ -2930,6 +2936,8 @@ retry:
+ 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+ 		goto retry;
+ out:
++	if (ret)
++		block_unlock_hole_extend(inode);
+ 	return ret;
+ }
+ 
+@@ -3468,7 +3476,7 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+ 			loff_t end = offset + ret;
+ 			if (end > inode->i_size) {
+ 				ei->i_disksize = end;
+-				i_size_write(inode, end);
++				block_extend_i_size(inode, offset, ret);
+ 				/*
+ 				 * We're going to return a positive `ret'
+ 				 * here due to non-zero-length I/O, so there's
+@@ -3513,6 +3521,7 @@ static const struct address_space_operations ext4_ordered_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_ordered_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+@@ -3528,6 +3537,7 @@ static const struct address_space_operations ext4_writeback_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_writeback_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+@@ -3543,6 +3553,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext4_write_begin,
+ 	.write_end		= ext4_journalled_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.set_page_dirty		= ext4_journalled_set_page_dirty,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_invalidatepage,
+@@ -3558,6 +3569,7 @@ static const struct address_space_operations ext4_da_aops = {
+ 	.sync_page		= block_sync_page,
+ 	.write_begin		= ext4_da_write_begin,
+ 	.write_end		= ext4_da_write_end,
++	.extend_i_size		= block_extend_i_size,
+ 	.bmap			= ext4_bmap,
+ 	.invalidatepage		= ext4_da_invalidatepage,
+ 	.releasepage		= ext4_releasepage,
+@@ -5404,6 +5416,12 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+ 	struct address_space *mapping = inode->i_mapping;
+ 
+ 	/*
++	 * Wait for extending of i_size, after this moment, next truncate /
++	 * write can create holes under us but they writeprotect our page so
++	 * we'll be called again to fill the hole.
++	 */
++	block_wait_on_hole_extend(inode, page_offset(page));
++	/*
+ 	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
+ 	 * get i_mutex because we are already holding mmap_sem.
+ 	 */
