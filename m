@@ -1,191 +1,154 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH -V2 2/2] ext4: truncate the file properly if we fail to
-	copy data from userspace
-Date: Mon, 8 Jun 2009 21:23:57 +0200
-Message-ID: <20090608192357.GG8524@duck.suse.cz>
-References: <20090605234458.GG11650@duck.suse.cz> <1244435715-6807-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1244435715-6807-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090608162959.GJ23883@mit.edu> <20090608164357.GA23723@skywalker> <20090608191420.GM23883@mit.edu>
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: Some 64-bit tests
+Date: Tue, 9 Jun 2009 01:40:37 +0530
+Message-ID: <20090608201037.GB23723@skywalker>
+References: <18887.1244469441@gamaville.dokosmarshall.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: Theodore Tso <tytso@mit.edu>
+Cc: "Theodore Ts'o" <tytso@mit.edu>,
+	Valerie Aurora <vaurora@redhat.com>, linux-ext4@vger.kernel.org
+To: Nick Dokos <nicholas.dokos@hp.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:37953 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755412AbZFHTYA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jun 2009 15:24:00 -0400
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:55643 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751534AbZFHUKx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Jun 2009 16:10:53 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id n58K8qwL019317
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 06:08:52 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n58KAsUv639060
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 06:10:54 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n58KArHM030754
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 06:10:54 +1000
 Content-Disposition: inline
-In-Reply-To: <20090608191420.GM23883@mit.edu>
+In-Reply-To: <18887.1244469441@gamaville.dokosmarshall.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+Can you try this patch ?
 
-On Mon 08-06-09 15:14:20, Theodore Tso wrote:
-> On Mon, Jun 08, 2009 at 10:13:57PM +0530, Aneesh Kumar K.V wrote:
-> > I think i both the case Jan's patch
-> > allocate-blocks-correctly-with-subpage-blocksize need an update ? Since you have put
-> > the patch before Jan's changes.
-> 
-> OK, here's how I updated Jan's patch.  I'm going to assume that we'll
-> submit the ext4 patch queue immediately as soon as the merge window
-> opens, since my impression is Jan is still waiting for some mm
-> developers to review his patch set.
-  Yes, no review yet :( So put my patches to the end so that they don't
-block other fixes in the patch queue.
+commit 6a910bd1d28be09ba3a0e073bae78285ce057a5f
+Author: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Date:   Tue Jun 9 01:38:53 2009 +0530
 
-> Annesh, does this look good to you?
-> 
-> Jan, if we go down this path, you'll need to update your ext4 patch
-> with this updated one, to take into account the changes from Aneesh's
-> patch.
-  Thanks for the patch.
+    ext4: Use different normalization method for allocation size.
+    
+    Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-								Honza
-
-> ext4: Make sure blocks are properly allocated under mmaped page even when blocksize < pagesize
-> 
-> From: Jan Kara <jack@suse.cz>
-> 
-> In a situation like:
->   truncate(f, 1024);
->   a = mmap(f, 0, 4096);
->   a[0] = 'a';
->   truncate(f, 4096);
-> 
-> we end up with a dirty page which does not have all blocks allocated /
-> reserved.  Fix the problem by using new VFS infrastructure.
-> 
-> Signed-off-by: Jan Kara <jack@suse.cz>
-> ---
->  fs/ext4/extents.c |    2 +-
->  fs/ext4/inode.c   |   22 ++++++++++++++++++++--
->  2 files changed, 21 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-> index 9c35a7b..f2a2591 100644
-> --- a/fs/ext4/extents.c
-> +++ b/fs/ext4/extents.c
-> @@ -3069,7 +3069,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
->  	 */
->  	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
->  		if (new_size > i_size_read(inode))
-> -			i_size_write(inode, new_size);
-> +			block_extend_i_size(inode, new_size, 0);
->  		if (new_size > EXT4_I(inode)->i_disksize)
->  			ext4_update_i_disksize(inode, new_size);
->  	}
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index f4cf46e..6450b55 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1491,7 +1491,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
->   	index = pos >> PAGE_CACHE_SHIFT;
->  	from = pos & (PAGE_CACHE_SIZE - 1);
->  	to = from + len;
-> -
-> +	block_lock_hole_extend(inode, pos);
->  retry:
->  	handle = ext4_journal_start(inode, needed_blocks);
->  	if (IS_ERR(handle)) {
-> @@ -1550,6 +1550,8 @@ retry:
->  	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
->  		goto retry;
->  out:
-> +	if (ret)
-> +		block_unlock_hole_extend(inode);
->  	return ret;
->  }
->  
-> @@ -1595,6 +1597,7 @@ static int ext4_generic_write_end(struct file *file,
->  	}
->  	unlock_page(page);
->  	page_cache_release(page);
-> +	block_unlock_hole_extend(inode);
->  
->  	/*
->  	 * Don't mark the inode dirty under page lock. First, it unnecessarily
-> @@ -1739,6 +1742,8 @@ static int ext4_journalled_write_end(struct file *file,
->  
->  	unlock_page(page);
->  	page_cache_release(page);
-> +	block_unlock_hole_extend(inode);
-> +
->  	if (pos + len > inode->i_size)
->  		/* if we have allocated more blocks and copied
->  		 * less. We will have blocks allocated outside
-> @@ -2888,6 +2893,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
->  	}
->  	*fsdata = (void *)0;
->  	trace_ext4_da_write_begin(inode, pos, len, flags);
-> +	block_lock_hole_extend(inode, pos);
->  retry:
->  	/*
->  	 * With delayed allocation, we don't log the i_disksize update
-> @@ -2930,6 +2936,8 @@ retry:
->  	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
->  		goto retry;
->  out:
-> +	if (ret)
-> +		block_unlock_hole_extend(inode);
->  	return ret;
->  }
->  
-> @@ -3468,7 +3476,7 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
->  			loff_t end = offset + ret;
->  			if (end > inode->i_size) {
->  				ei->i_disksize = end;
-> -				i_size_write(inode, end);
-> +				block_extend_i_size(inode, offset, ret);
->  				/*
->  				 * We're going to return a positive `ret'
->  				 * here due to non-zero-length I/O, so there's
-> @@ -3513,6 +3521,7 @@ static const struct address_space_operations ext4_ordered_aops = {
->  	.sync_page		= block_sync_page,
->  	.write_begin		= ext4_write_begin,
->  	.write_end		= ext4_ordered_write_end,
-> +	.extend_i_size		= block_extend_i_size,
->  	.bmap			= ext4_bmap,
->  	.invalidatepage		= ext4_invalidatepage,
->  	.releasepage		= ext4_releasepage,
-> @@ -3528,6 +3537,7 @@ static const struct address_space_operations ext4_writeback_aops = {
->  	.sync_page		= block_sync_page,
->  	.write_begin		= ext4_write_begin,
->  	.write_end		= ext4_writeback_write_end,
-> +	.extend_i_size		= block_extend_i_size,
->  	.bmap			= ext4_bmap,
->  	.invalidatepage		= ext4_invalidatepage,
->  	.releasepage		= ext4_releasepage,
-> @@ -3543,6 +3553,7 @@ static const struct address_space_operations ext4_journalled_aops = {
->  	.sync_page		= block_sync_page,
->  	.write_begin		= ext4_write_begin,
->  	.write_end		= ext4_journalled_write_end,
-> +	.extend_i_size		= block_extend_i_size,
->  	.set_page_dirty		= ext4_journalled_set_page_dirty,
->  	.bmap			= ext4_bmap,
->  	.invalidatepage		= ext4_invalidatepage,
-> @@ -3558,6 +3569,7 @@ static const struct address_space_operations ext4_da_aops = {
->  	.sync_page		= block_sync_page,
->  	.write_begin		= ext4_da_write_begin,
->  	.write_end		= ext4_da_write_end,
-> +	.extend_i_size		= block_extend_i_size,
->  	.bmap			= ext4_bmap,
->  	.invalidatepage		= ext4_da_invalidatepage,
->  	.releasepage		= ext4_releasepage,
-> @@ -5404,6 +5416,12 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
->  	struct address_space *mapping = inode->i_mapping;
->  
->  	/*
-> +	 * Wait for extending of i_size, after this moment, next truncate /
-> +	 * write can create holes under us but they writeprotect our page so
-> +	 * we'll be called again to fill the hole.
-> +	 */
-> +	block_wait_on_hole_extend(inode, page_offset(page));
-> +	/*
->  	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
->  	 * get i_mutex because we are already holding mmap_sem.
->  	 */
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index ed8482e..7f2423b 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -633,7 +633,7 @@ static void ext4_mb_mark_free_simple(struct super_block *sb,
+ 
+ 	BUG_ON(len > EXT4_BLOCKS_PER_GROUP(sb));
+ 
+-	border = 2 << sb->s_blocksize_bits;
++	border = 1 << (sb->s_blocksize_bits + 1);
+ 
+ 	while (len > 0) {
+ 		/* find how many blocks can be covered since this position */
+@@ -3063,8 +3063,10 @@ static void ext4_mb_normalize_group_request(struct ext4_allocation_context *ac)
+ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 				struct ext4_allocation_request *ar)
+ {
+-	int bsbits, max;
++	int bsbits, i;
++	loff_t max;
+ 	ext4_lblk_t end;
++	unsigned int s_mb_stream_request;
+ 	loff_t size, orig_size, start_off;
+ 	ext4_lblk_t start, orig_start;
+ 	struct ext4_inode_info *ei = EXT4_I(ac->ac_inode);
+@@ -3090,54 +3092,52 @@ ext4_mb_normalize_request(struct ext4_allocation_context *ac,
+ 	}
+ 
+ 	bsbits = ac->ac_sb->s_blocksize_bits;
++	s_mb_stream_request = EXT4_SB(ac->ac_sb)->s_mb_stream_request;
++	/* make sure this is power of 2 */
++	s_mb_stream_request =
++		roundup_pow_of_two((unsigned long)s_mb_stream_request);
+ 
+ 	/* first, let's learn actual file size
+ 	 * given current request is allocated */
+ 	size = ac->ac_o_ex.fe_logical + ac->ac_o_ex.fe_len;
+-	size = size << bsbits;
+-	if (size < i_size_read(ac->ac_inode))
+-		size = i_size_read(ac->ac_inode);
+-
+-	/* max size of free chunks */
+-	max = 2 << bsbits;
++	if (size < (i_size_read(ac->ac_inode) >> bsbits))
++		size = i_size_read(ac->ac_inode) >> bsbits;
++	/*
++	 * max free chunk blocks. 
++	 * (max buddy cache order is (bsbits + 1).
++	 */
++	max = 1 << (bsbits + 1);
+ 
+ #define NRL_CHECK_SIZE(req, size, max, chunk_size)	\
+-		(req <= (size) || max <= (chunk_size))
++	(((req <= (size)) && (req <= (chunk_size))) || max <= (chunk_size))
+ 
+ 	/* first, try to predict filesize */
+ 	/* XXX: should this table be tunable? */
+ 	start_off = 0;
+-	if (size <= 16 * 1024) {
+-		size = 16 * 1024;
+-	} else if (size <= 32 * 1024) {
+-		size = 32 * 1024;
+-	} else if (size <= 64 * 1024) {
+-		size = 64 * 1024;
+-	} else if (size <= 128 * 1024) {
+-		size = 128 * 1024;
+-	} else if (size <= 256 * 1024) {
+-		size = 256 * 1024;
+-	} else if (size <= 512 * 1024) {
+-		size = 512 * 1024;
+-	} else if (size <= 1024 * 1024) {
+-		size = 1024 * 1024;
+-	} else if (NRL_CHECK_SIZE(size, 4 * 1024 * 1024, max, 2 * 1024)) {
+-		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
+-						(21 - bsbits)) << 21;
+-		size = 2 * 1024 * 1024;
+-	} else if (NRL_CHECK_SIZE(size, 8 * 1024 * 1024, max, 4 * 1024)) {
+-		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
+-							(22 - bsbits)) << 22;
+-		size = 4 * 1024 * 1024;
+-	} else if (NRL_CHECK_SIZE(ac->ac_o_ex.fe_len,
+-					(8<<20)>>bsbits, max, 8 * 1024)) {
+-		start_off = ((loff_t)ac->ac_o_ex.fe_logical >>
+-							(23 - bsbits)) << 23;
+-		size = 8 * 1024 * 1024;
+-	} else {
+-		start_off = (loff_t)ac->ac_o_ex.fe_logical << bsbits;
+-		size	  = ac->ac_o_ex.fe_len << bsbits;
++
++	/*
++	 * less than s_mb_stream_request is using locality group
++	 * preallocation
++	 */
++	if (size <= s_mb_stream_request)
++		size = s_mb_stream_request;
++	i = 4;
++	while (1) {
++		/*
++		 * if (size <= 4 * s_mb_stream ||
++		 * max <= 2 * s_mb_stream ) size = 2 * s_mb_stream
++		 */
++		if (NRL_CHECK_SIZE(size, i * s_mb_stream_request,
++					max, ((i * s_mb_stream_request) >> 1))) {
++			/* number of blocks */
++			size = (i * s_mb_stream_request) >> 1;
++			size = size << bsbits;
++			start_off = (loff_t)ac->ac_o_ex.fe_logical & ~(size - 1);
++			break;
++		}
++		i = i << 1;
+ 	}
++
+ 	orig_size = size = size >> bsbits;
+ 	orig_start = start = start_off >> bsbits;
+ 
