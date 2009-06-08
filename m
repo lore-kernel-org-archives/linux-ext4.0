@@ -1,253 +1,50 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [PATCH -V2 2/2] ext4: truncate the file properly if we fail to
-	copy data from userspace
-Date: Mon, 8 Jun 2009 22:13:57 +0530
-Message-ID: <20090608164357.GA23723@skywalker>
-References: <20090605234458.GG11650@duck.suse.cz> <1244435715-6807-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1244435715-6807-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090608162959.GJ23883@mit.edu>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13201] kernel BUG at fs/ext4/extents.c:2737
+Date: Mon, 8 Jun 2009 16:49:29 GMT
+Message-ID: <200906081649.n58GnTsB008161@demeter.kernel.org>
+References: <bug-13201-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org,
-	Jan Kara <jack@suse.cz>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset="UTF-8"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp04.au.ibm.com ([202.81.31.146]:50778 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754340AbZFHQoe (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Jun 2009 12:44:34 -0400
-Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
-	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id n58GgDob000973
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 02:42:13 +1000
-Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
-	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n58GiYMp774160
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 02:44:34 +1000
-Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
-	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n58GiXvc002377
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 02:44:34 +1000
-Content-Disposition: inline
-In-Reply-To: <20090608162959.GJ23883@mit.edu>
+Received: from demeter.kernel.org ([140.211.167.39]:44620 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752973AbZFHQt0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Jun 2009 12:49:26 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n58GnT6E008162
+	for <linux-ext4@vger.kernel.org>; Mon, 8 Jun 2009 16:49:29 GMT
+In-Reply-To: <bug-13201-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 08, 2009 at 12:29:59PM -0400, Theodore Tso wrote:
-> I had also already fixed this up in the patch queue.  This is what is
-> currently there.
-> 
-> 						- Ted
-> 
-> From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-> 
-> ext4: truncate the file properly if we fail to copy data from userspace
-> 
-> In generic_perform_write if we fail to copy the user data we don't
-> update the inode->i_size.  We should truncate the file in the above
-> case so that we don't have blocks allocated outside inode->i_size.  Add
-> the inode to orphan list in the same transaction as block allocation
-> This ensures that if we crash in between the recovery would do the
-> truncate.
-> 
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> CC:  Jan Kara <jack@suse.cz>
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> index 50ef1a2..8225f21 100644
-> --- a/fs/ext4/inode.c
-> +++ b/fs/ext4/inode.c
-> @@ -1551,6 +1551,52 @@ static int write_end_fn(handle_t *handle, struct buffer_head *bh)
->  	return ext4_handle_dirty_metadata(handle, NULL, bh);
->  }
-> 
-> +static int ext4_generic_write_end(struct file *file,
-> +				struct address_space *mapping,
-> +				loff_t pos, unsigned len, unsigned copied,
-> +				struct page *page, void *fsdata)
-> +{
-> +	int i_size_changed = 0;
-> +	struct inode *inode = mapping->host;
-> +	handle_t *handle = ext4_journal_current_handle();
-> +
-> +	copied = block_write_end(file, mapping, pos, len, copied, page, fsdata);
-> +
-> +	/*
-> +	 * No need to use i_size_read() here, the i_size
-> +	 * cannot change under us because we hold i_mutex.
-> +	 *
-> +	 * But it's important to update i_size while still holding page lock:
-> +	 * page writeout could otherwise come in and zero beyond i_size.
-> +	 */
-> +	if (pos + copied > inode->i_size) {
-> +		i_size_write(inode, pos + copied);
-> +		i_size_changed = 1;
-> +	}
-> +
-> +	if (pos + copied >  EXT4_I(inode)->i_disksize) {
-> +		/* We need to mark inode dirty even if
-> +		 * new_i_size is less that inode->i_size
-> +		 * bu greater than i_disksize.(hint delalloc)
-> +		 */
-> +		ext4_update_i_disksize(inode, (pos + copied));
-> +		i_size_changed = 1;
-> +	}
-> +	unlock_page(page);
-> +	page_cache_release(page);
+http://bugzilla.kernel.org/show_bug.cgi?id=13201
 
 
-You missed a block_unlock_hole_extend here. So you need to either fix
-jan's patches or move this patch after jan's patch 
 
 
-> +
-> +	/*
-> +	 * Don't mark the inode dirty under page lock. First, it unnecessarily
-> +	 * makes the holding time of page lock longer. Second, it forces lock
-> +	 * ordering of page lock and transaction start for journaling
-> +	 * filesystems.
-> +	 */
-> +	if (i_size_changed)
-> +		ext4_mark_inode_dirty(handle, inode);
-> +
-> +	return copied;
-> +}
-> +
->  /*
->   * We need to pick up the new inode size which generic_commit_write gave us
->   * `file' can be NULL - eg, when called from page_symlink().
-> @@ -1574,21 +1620,15 @@ static int ext4_ordered_write_end(struct file *file,
->  	ret = ext4_jbd2_file_inode(handle, inode);
-> 
->  	if (ret == 0) {
-> -		loff_t new_i_size;
-> -
-> -		new_i_size = pos + copied;
-> -		if (new_i_size > EXT4_I(inode)->i_disksize) {
-> -			ext4_update_i_disksize(inode, new_i_size);
-> -			/* We need to mark inode dirty even if
-> -			 * new_i_size is less that inode->i_size
-> -			 * bu greater than i_disksize.(hint delalloc)
-> -			 */
-> -			ext4_mark_inode_dirty(handle, inode);
-> -		}
-> -
-> -		ret2 = generic_write_end(file, mapping, pos, len, copied,
-> +		ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
->  							page, fsdata);
->  		copied = ret2;
-> +		if (pos + len > inode->i_size)
-> +			/* if we have allocated more blocks and copied
-> +			 * less. We will have blocks allocated outside
-> +			 * inode->i_size. So truncate them
-> +			 */
-> +			ext4_orphan_add(handle, inode);
->  		if (ret2 < 0)
->  			ret = ret2;
->  	}
-> @@ -1596,6 +1636,18 @@ static int ext4_ordered_write_end(struct file *file,
->  	if (!ret)
->  		ret = ret2;
-> 
-> +	if (pos + len > inode->i_size) {
-> +		vmtruncate(inode, inode->i_size);
-> +		/* 
-> +		 * If vmtruncate failed early the inode might still be
-> +		 * on the orphan list; we need to make sure the inode
-> +		 * is removed from the orphan list in that case.
-> +		 */
-> +		if (inode->i_nlink)
-> +			ext4_orphan_del(NULL, inode);
-> +	}
-> +
-> +
->  	return ret ? ret : copied;
->  }
-> 
-> @@ -1607,25 +1659,21 @@ static int ext4_writeback_write_end(struct file *file,
->  	handle_t *handle = ext4_journal_current_handle();
->  	struct inode *inode = mapping->host;
->  	int ret = 0, ret2;
-> -	loff_t new_i_size;
-> 
->  	trace_mark(ext4_writeback_write_end,
->  		   "dev %s ino %lu pos %llu len %u copied %u",
->  		   inode->i_sb->s_id, inode->i_ino,
->  		   (unsigned long long) pos, len, copied);
-> -	new_i_size = pos + copied;
-> -	if (new_i_size > EXT4_I(inode)->i_disksize) {
-> -		ext4_update_i_disksize(inode, new_i_size);
-> -		/* We need to mark inode dirty even if
-> -		 * new_i_size is less that inode->i_size
-> -		 * bu greater than i_disksize.(hint delalloc)
-> -		 */
-> -		ext4_mark_inode_dirty(handle, inode);
-> -	}
-> -
-> -	ret2 = generic_write_end(file, mapping, pos, len, copied,
-> +	ret2 = ext4_generic_write_end(file, mapping, pos, len, copied,
->  							page, fsdata);
->  	copied = ret2;
-> +	if (pos + len > inode->i_size)
-> +		/* if we have allocated more blocks and copied
-> +		 * less. We will have blocks allocated outside
-> +		 * inode->i_size. So truncate them
-> +		 */
-> +		ext4_orphan_add(handle, inode);
-> +
->  	if (ret2 < 0)
->  		ret = ret2;
-> 
-> @@ -1633,6 +1681,17 @@ static int ext4_writeback_write_end(struct file *file,
->  	if (!ret)
->  		ret = ret2;
-> 
-> +	if (pos + len > inode->i_size) {
-> +		vmtruncate(inode, inode->i_size);
-> +		/* 
-> +		 * If vmtruncate failed early the inode might still be
-> +		 * on the orphan list; we need to make sure the inode
-> +		 * is removed from the orphan list in that case.
-> +		 */
-> +		if (inode->i_nlink)
-> +			ext4_orphan_del(NULL, inode);
-> +	}
-> +
->  	return ret ? ret : copied;
->  }
-> 
-> @@ -1677,10 +1736,27 @@ static int ext4_journalled_write_end(struct file *file,
->  	}
-> 
->  	unlock_page(page);
-> +	page_cache_release(page);
-> +	if (pos + len > inode->i_size)
-> +		/* if we have allocated more blocks and copied
-> +		 * less. We will have blocks allocated outside
-> +		 * inode->i_size. So truncate them
-> +		 */
-> +		ext4_orphan_add(handle, inode);
-> +
->  	ret2 = ext4_journal_stop(handle);
->  	if (!ret)
->  		ret = ret2;
-> -	page_cache_release(page);
-> +	if (pos + len > inode->i_size) {
-> +		vmtruncate(inode, inode->i_size);
-> +		/* 
-> +		 * If vmtruncate failed early the inode might still be
-> +		 * on the orphan list; we need to make sure the inode
-> +		 * is removed from the orphan list in that case.
-> +		 */
-> +		if (inode->i_nlink)
-> +			ext4_orphan_del(NULL, inode);
-> +	}
 
-Here also need special care with block_unlock_hole_extend. We need to do
-a vmtruncate outside block_unlock_hole_extend.
+--- Comment #9 from Theodore Tso <tytso@mit.edu>  2009-06-08 16:49:28 ---
+If this is the same problem as the one which we fixed with identical symptoms,
+what matters is multiple processes/threads writing to the same file at the same
+time.  People using NFS or SAMBA on a backup server seemed to be a most common
+scenarios for triggering this (admittedly very hard to reproduce) bug.   We
+finally got lucky in that someone had a setup which allows for reliable
+reproduction of the bug, so we could finally sink our teeth into it.
 
+So if what you saw was the same as the bug we fixed in 2.6.30-rc6, no it
+shouldn't make a difference.   If it is a completely different bug, then of
+course all bets are off.  In general though whether you are writing to one
+filesystem or 4 filesystems shouldn't make a difference, except in that it
+might change the timing necessary to hit a race condition (and in the case of
+the bug that we found and fixed, it was highly timing dependent; in fact, even
+after we found the problem, we weren't able to come up with a reliable
+reproduction case, even though the problem was obvious on paper and the one
+user who could reliably reproduce reported it went away once the patch was
+applied; IIRC, Eric finally put in a delay into the code to widen the race
+window to the point where he could replicate it.)
 
-> 
->  	return ret ? ret : copied;
->  }
-
-I think i both the case Jan's patch
-allocate-blocks-correctly-with-subpage-blocksize need an update ? Since you have put
-the patch before Jan's changes.
-
--aneesh
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
