@@ -1,189 +1,191 @@
-From: Theodore Tso <tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
 Subject: Re: [PATCH -V2 2/2] ext4: truncate the file properly if we fail to
 	copy data from userspace
-Date: Mon, 8 Jun 2009 15:14:20 -0400
-Message-ID: <20090608191420.GM23883@mit.edu>
-References: <20090605234458.GG11650@duck.suse.cz> <1244435715-6807-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1244435715-6807-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090608162959.GJ23883@mit.edu> <20090608164357.GA23723@skywalker>
+Date: Mon, 8 Jun 2009 21:23:57 +0200
+Message-ID: <20090608192357.GG8524@duck.suse.cz>
+References: <20090605234458.GG11650@duck.suse.cz> <1244435715-6807-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1244435715-6807-2-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090608162959.GJ23883@mit.edu> <20090608164357.GA23723@skywalker> <20090608191420.GM23883@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org,
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org,
 	Jan Kara <jack@suse.cz>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:58994 "EHLO thunker.thunk.org"
+Received: from cantor.suse.de ([195.135.220.2]:37953 "EHLO mx1.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751752AbZFHTO3 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jun 2009 15:14:29 -0400
+	id S1755412AbZFHTYA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 8 Jun 2009 15:24:00 -0400
 Content-Disposition: inline
-In-Reply-To: <20090608164357.GA23723@skywalker>
+In-Reply-To: <20090608191420.GM23883@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 08, 2009 at 10:13:57PM +0530, Aneesh Kumar K.V wrote:
-> I think i both the case Jan's patch
-> allocate-blocks-correctly-with-subpage-blocksize need an update ? Since you have put
-> the patch before Jan's changes.
+  Hi,
 
-OK, here's how I updated Jan's patch.  I'm going to assume that we'll
-submit the ext4 patch queue immediately as soon as the merge window
-opens, since my impression is Jan is still waiting for some mm
-developers to review his patch set.   
+On Mon 08-06-09 15:14:20, Theodore Tso wrote:
+> On Mon, Jun 08, 2009 at 10:13:57PM +0530, Aneesh Kumar K.V wrote:
+> > I think i both the case Jan's patch
+> > allocate-blocks-correctly-with-subpage-blocksize need an update ? Since you have put
+> > the patch before Jan's changes.
+> 
+> OK, here's how I updated Jan's patch.  I'm going to assume that we'll
+> submit the ext4 patch queue immediately as soon as the merge window
+> opens, since my impression is Jan is still waiting for some mm
+> developers to review his patch set.
+  Yes, no review yet :( So put my patches to the end so that they don't
+block other fixes in the patch queue.
 
-Annesh, does this look good to you?
+> Annesh, does this look good to you?
+> 
+> Jan, if we go down this path, you'll need to update your ext4 patch
+> with this updated one, to take into account the changes from Aneesh's
+> patch.
+  Thanks for the patch.
 
-Jan, if we go down this path, you'll need to update your ext4 patch
-with this updated one, to take into account the changes from Aneesh's
-patch.
+								Honza
 
-(We could do it the other way, but that means even more patches queued
-up behind Jan's patch series, and I didn't realize originally that
-Aneesh intended for these to be queued after Jan's patches.  So it
-seemed easier to just order Aneesh's patches to avoid block allocation
-leaks first, since they are at least functionally (if not
-syntactically) independent of the subpagesize blocksize patches.)
-
-					- Ted
-
-
-ext4: Make sure blocks are properly allocated under mmaped page even when blocksize < pagesize
-
-From: Jan Kara <jack@suse.cz>
-
-In a situation like:
-  truncate(f, 1024);
-  a = mmap(f, 0, 4096);
-  a[0] = 'a';
-  truncate(f, 4096);
-
-we end up with a dirty page which does not have all blocks allocated /
-reserved.  Fix the problem by using new VFS infrastructure.
-
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext4/extents.c |    2 +-
- fs/ext4/inode.c   |   22 ++++++++++++++++++++--
- 2 files changed, 21 insertions(+), 3 deletions(-)
-
-diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
-index 9c35a7b..f2a2591 100644
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -3069,7 +3069,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
- 	 */
- 	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
- 		if (new_size > i_size_read(inode))
--			i_size_write(inode, new_size);
-+			block_extend_i_size(inode, new_size, 0);
- 		if (new_size > EXT4_I(inode)->i_disksize)
- 			ext4_update_i_disksize(inode, new_size);
- 	}
-diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-index f4cf46e..6450b55 100644
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -1491,7 +1491,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
-  	index = pos >> PAGE_CACHE_SHIFT;
- 	from = pos & (PAGE_CACHE_SIZE - 1);
- 	to = from + len;
--
-+	block_lock_hole_extend(inode, pos);
- retry:
- 	handle = ext4_journal_start(inode, needed_blocks);
- 	if (IS_ERR(handle)) {
-@@ -1550,6 +1550,8 @@ retry:
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
- out:
-+	if (ret)
-+		block_unlock_hole_extend(inode);
- 	return ret;
- }
- 
-@@ -1595,6 +1597,7 @@ static int ext4_generic_write_end(struct file *file,
- 	}
- 	unlock_page(page);
- 	page_cache_release(page);
-+	block_unlock_hole_extend(inode);
- 
- 	/*
- 	 * Don't mark the inode dirty under page lock. First, it unnecessarily
-@@ -1739,6 +1742,8 @@ static int ext4_journalled_write_end(struct file *file,
- 
- 	unlock_page(page);
- 	page_cache_release(page);
-+	block_unlock_hole_extend(inode);
-+
- 	if (pos + len > inode->i_size)
- 		/* if we have allocated more blocks and copied
- 		 * less. We will have blocks allocated outside
-@@ -2888,6 +2893,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
- 	}
- 	*fsdata = (void *)0;
- 	trace_ext4_da_write_begin(inode, pos, len, flags);
-+	block_lock_hole_extend(inode, pos);
- retry:
- 	/*
- 	 * With delayed allocation, we don't log the i_disksize update
-@@ -2930,6 +2936,8 @@ retry:
- 	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
- 		goto retry;
- out:
-+	if (ret)
-+		block_unlock_hole_extend(inode);
- 	return ret;
- }
- 
-@@ -3468,7 +3476,7 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
- 			loff_t end = offset + ret;
- 			if (end > inode->i_size) {
- 				ei->i_disksize = end;
--				i_size_write(inode, end);
-+				block_extend_i_size(inode, offset, ret);
- 				/*
- 				 * We're going to return a positive `ret'
- 				 * here due to non-zero-length I/O, so there's
-@@ -3513,6 +3521,7 @@ static const struct address_space_operations ext4_ordered_aops = {
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_ordered_write_end,
-+	.extend_i_size		= block_extend_i_size,
- 	.bmap			= ext4_bmap,
- 	.invalidatepage		= ext4_invalidatepage,
- 	.releasepage		= ext4_releasepage,
-@@ -3528,6 +3537,7 @@ static const struct address_space_operations ext4_writeback_aops = {
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_writeback_write_end,
-+	.extend_i_size		= block_extend_i_size,
- 	.bmap			= ext4_bmap,
- 	.invalidatepage		= ext4_invalidatepage,
- 	.releasepage		= ext4_releasepage,
-@@ -3543,6 +3553,7 @@ static const struct address_space_operations ext4_journalled_aops = {
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext4_write_begin,
- 	.write_end		= ext4_journalled_write_end,
-+	.extend_i_size		= block_extend_i_size,
- 	.set_page_dirty		= ext4_journalled_set_page_dirty,
- 	.bmap			= ext4_bmap,
- 	.invalidatepage		= ext4_invalidatepage,
-@@ -3558,6 +3569,7 @@ static const struct address_space_operations ext4_da_aops = {
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext4_da_write_begin,
- 	.write_end		= ext4_da_write_end,
-+	.extend_i_size		= block_extend_i_size,
- 	.bmap			= ext4_bmap,
- 	.invalidatepage		= ext4_da_invalidatepage,
- 	.releasepage		= ext4_releasepage,
-@@ -5404,6 +5416,12 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
- 	struct address_space *mapping = inode->i_mapping;
- 
- 	/*
-+	 * Wait for extending of i_size, after this moment, next truncate /
-+	 * write can create holes under us but they writeprotect our page so
-+	 * we'll be called again to fill the hole.
-+	 */
-+	block_wait_on_hole_extend(inode, page_offset(page));
-+	/*
- 	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
- 	 * get i_mutex because we are already holding mmap_sem.
- 	 */
+> ext4: Make sure blocks are properly allocated under mmaped page even when blocksize < pagesize
+> 
+> From: Jan Kara <jack@suse.cz>
+> 
+> In a situation like:
+>   truncate(f, 1024);
+>   a = mmap(f, 0, 4096);
+>   a[0] = 'a';
+>   truncate(f, 4096);
+> 
+> we end up with a dirty page which does not have all blocks allocated /
+> reserved.  Fix the problem by using new VFS infrastructure.
+> 
+> Signed-off-by: Jan Kara <jack@suse.cz>
+> ---
+>  fs/ext4/extents.c |    2 +-
+>  fs/ext4/inode.c   |   22 ++++++++++++++++++++--
+>  2 files changed, 21 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index 9c35a7b..f2a2591 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -3069,7 +3069,7 @@ static void ext4_falloc_update_inode(struct inode *inode,
+>  	 */
+>  	if (!(mode & FALLOC_FL_KEEP_SIZE)) {
+>  		if (new_size > i_size_read(inode))
+> -			i_size_write(inode, new_size);
+> +			block_extend_i_size(inode, new_size, 0);
+>  		if (new_size > EXT4_I(inode)->i_disksize)
+>  			ext4_update_i_disksize(inode, new_size);
+>  	}
+> diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
+> index f4cf46e..6450b55 100644
+> --- a/fs/ext4/inode.c
+> +++ b/fs/ext4/inode.c
+> @@ -1491,7 +1491,7 @@ static int ext4_write_begin(struct file *file, struct address_space *mapping,
+>   	index = pos >> PAGE_CACHE_SHIFT;
+>  	from = pos & (PAGE_CACHE_SIZE - 1);
+>  	to = from + len;
+> -
+> +	block_lock_hole_extend(inode, pos);
+>  retry:
+>  	handle = ext4_journal_start(inode, needed_blocks);
+>  	if (IS_ERR(handle)) {
+> @@ -1550,6 +1550,8 @@ retry:
+>  	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+>  		goto retry;
+>  out:
+> +	if (ret)
+> +		block_unlock_hole_extend(inode);
+>  	return ret;
+>  }
+>  
+> @@ -1595,6 +1597,7 @@ static int ext4_generic_write_end(struct file *file,
+>  	}
+>  	unlock_page(page);
+>  	page_cache_release(page);
+> +	block_unlock_hole_extend(inode);
+>  
+>  	/*
+>  	 * Don't mark the inode dirty under page lock. First, it unnecessarily
+> @@ -1739,6 +1742,8 @@ static int ext4_journalled_write_end(struct file *file,
+>  
+>  	unlock_page(page);
+>  	page_cache_release(page);
+> +	block_unlock_hole_extend(inode);
+> +
+>  	if (pos + len > inode->i_size)
+>  		/* if we have allocated more blocks and copied
+>  		 * less. We will have blocks allocated outside
+> @@ -2888,6 +2893,7 @@ static int ext4_da_write_begin(struct file *file, struct address_space *mapping,
+>  	}
+>  	*fsdata = (void *)0;
+>  	trace_ext4_da_write_begin(inode, pos, len, flags);
+> +	block_lock_hole_extend(inode, pos);
+>  retry:
+>  	/*
+>  	 * With delayed allocation, we don't log the i_disksize update
+> @@ -2930,6 +2936,8 @@ retry:
+>  	if (ret == -ENOSPC && ext4_should_retry_alloc(inode->i_sb, &retries))
+>  		goto retry;
+>  out:
+> +	if (ret)
+> +		block_unlock_hole_extend(inode);
+>  	return ret;
+>  }
+>  
+> @@ -3468,7 +3476,7 @@ static ssize_t ext4_direct_IO(int rw, struct kiocb *iocb,
+>  			loff_t end = offset + ret;
+>  			if (end > inode->i_size) {
+>  				ei->i_disksize = end;
+> -				i_size_write(inode, end);
+> +				block_extend_i_size(inode, offset, ret);
+>  				/*
+>  				 * We're going to return a positive `ret'
+>  				 * here due to non-zero-length I/O, so there's
+> @@ -3513,6 +3521,7 @@ static const struct address_space_operations ext4_ordered_aops = {
+>  	.sync_page		= block_sync_page,
+>  	.write_begin		= ext4_write_begin,
+>  	.write_end		= ext4_ordered_write_end,
+> +	.extend_i_size		= block_extend_i_size,
+>  	.bmap			= ext4_bmap,
+>  	.invalidatepage		= ext4_invalidatepage,
+>  	.releasepage		= ext4_releasepage,
+> @@ -3528,6 +3537,7 @@ static const struct address_space_operations ext4_writeback_aops = {
+>  	.sync_page		= block_sync_page,
+>  	.write_begin		= ext4_write_begin,
+>  	.write_end		= ext4_writeback_write_end,
+> +	.extend_i_size		= block_extend_i_size,
+>  	.bmap			= ext4_bmap,
+>  	.invalidatepage		= ext4_invalidatepage,
+>  	.releasepage		= ext4_releasepage,
+> @@ -3543,6 +3553,7 @@ static const struct address_space_operations ext4_journalled_aops = {
+>  	.sync_page		= block_sync_page,
+>  	.write_begin		= ext4_write_begin,
+>  	.write_end		= ext4_journalled_write_end,
+> +	.extend_i_size		= block_extend_i_size,
+>  	.set_page_dirty		= ext4_journalled_set_page_dirty,
+>  	.bmap			= ext4_bmap,
+>  	.invalidatepage		= ext4_invalidatepage,
+> @@ -3558,6 +3569,7 @@ static const struct address_space_operations ext4_da_aops = {
+>  	.sync_page		= block_sync_page,
+>  	.write_begin		= ext4_da_write_begin,
+>  	.write_end		= ext4_da_write_end,
+> +	.extend_i_size		= block_extend_i_size,
+>  	.bmap			= ext4_bmap,
+>  	.invalidatepage		= ext4_da_invalidatepage,
+>  	.releasepage		= ext4_releasepage,
+> @@ -5404,6 +5416,12 @@ int ext4_page_mkwrite(struct vm_area_struct *vma, struct vm_fault *vmf)
+>  	struct address_space *mapping = inode->i_mapping;
+>  
+>  	/*
+> +	 * Wait for extending of i_size, after this moment, next truncate /
+> +	 * write can create holes under us but they writeprotect our page so
+> +	 * we'll be called again to fill the hole.
+> +	 */
+> +	block_wait_on_hole_extend(inode, page_offset(page));
+> +	/*
+>  	 * Get i_alloc_sem to stop truncates messing with the inode. We cannot
+>  	 * get i_mutex because we are already holding mmap_sem.
+>  	 */
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
