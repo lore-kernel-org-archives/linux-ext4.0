@@ -1,174 +1,103 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Update on the 64-bit e2fsprogs patches
-Date: Mon, 8 Jun 2009 00:55:39 -0400
-Message-ID: <20090608045539.GE23883@mit.edu>
-References: <E1MB7oF-0007Ot-TB@closure.thunk.org>
+From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Subject: Re: [PATCH][BUG] ext4: dx_map_entry cannot support over 64KB block
+ size
+Date: Mon, 8 Jun 2009 16:30:55 +0900
+Message-ID: <20090608163055.0eab9737.toshi.okajima@jp.fujitsu.com>
+References: <20090605165049.e8bd9c74.toshi.okajima@jp.fujitsu.com>
+	<20090605212000.GV9002@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: 7bit
+Cc: tytso@mit.edu, linux-ext4@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:55597 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750971AbZFHEzl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 8 Jun 2009 00:55:41 -0400
-Content-Disposition: inline
-In-Reply-To: <E1MB7oF-0007Ot-TB@closure.thunk.org>
+Received: from fgwmail7.fujitsu.co.jp ([192.51.44.37]:43869 "EHLO
+	fgwmail7.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752272AbZFHHqi (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 8 Jun 2009 03:46:38 -0400
+Received: from m1.gw.fujitsu.co.jp ([10.0.50.71])
+	by fgwmail7.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id n587kdo5007390
+	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
+	Mon, 8 Jun 2009 16:46:39 +0900
+Received: from smail (m1 [127.0.0.1])
+	by outgoing.m1.gw.fujitsu.co.jp (Postfix) with ESMTP id 1636C45DD77
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2009 16:46:39 +0900 (JST)
+Received: from s1.gw.fujitsu.co.jp (s1.gw.fujitsu.co.jp [10.0.50.91])
+	by m1.gw.fujitsu.co.jp (Postfix) with ESMTP id DCB1345DD6F
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2009 16:46:38 +0900 (JST)
+Received: from s1.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
+	by s1.gw.fujitsu.co.jp (Postfix) with ESMTP id D04951DB801C
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2009 16:46:38 +0900 (JST)
+Received: from m105.s.css.fujitsu.com (m105.s.css.fujitsu.com [10.249.87.105])
+	by s1.gw.fujitsu.co.jp (Postfix) with ESMTP id 89AF51DB8016
+	for <linux-ext4@vger.kernel.org>; Mon,  8 Jun 2009 16:46:38 +0900 (JST)
+In-Reply-To: <20090605212000.GV9002@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 01, 2009 at 09:44:15AM -0400, Theodore Ts'o wrote:
-> The patch series for the work that I've done can be found here:
+Hi,
+> On Jun 05, 2009  16:50 +0900, Toshiyuki Okajima wrote:
+> > > From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+> > > 
+> > > The dx_map_entry structure doesn't support over 64KB block size by current
+> > > usage of its member("offs"). Because "offs" treats an offset of copies of
+> > > the ext4_dir_entry_2 structure as is. This member size is 16 bits. But real
+> > > offset for over 64KB(256KB) block size needs 18 bits. However, real offset
+> > > keeps 4 byte boundary, so lower 2 bits is not used.
+> > > 
+> > > Therefore, we do the following to fix this limitation:
+> > > For "store": 
+> > > 	we divide the real offset by 4 and then store this result to "offs" 
+> > > 	member.
+> > > For "use":
+> > > 	we multiply "offs" member by 4 and then use this result 
+> > > 	as real offset.
 > 
->  	 git://github.com/tytso/e2fsprogs-64bit.git
+> This patch unfortunately doesn't address all of the issues related
+> to blocksize > 64kB.
 > 
-> ... and if Nick or Val or any other ext4 developer anyone would like to
-> have commit access to the e2fsprogs 64-bit patch queue, just let me know.
+> There are a number of other places where there are limits related
+> to > 64kB blocksize like ext4_dir_entry_2 itself having only a
+> "__u16 rec_len", so without changing the on-disk format it is not
+> possible to have > 64kB blocksize.
 > 
-> I've also made the 64-bit e2fsprogs patches available on the "pu"
-> (proposed updates) branch of e2fsprogs.  As before, the "pu" branch may
-> be rewound and rebased without warning, so it's primarily useful for
-> people to easily get an update to the latest 64-bit patches.  For
-> collaborative development, it's best to use the e2fsprogs-64bit patch
-> queue.
+> You would only notice this if you create a large enough directory.
+> It might be possible to force very large directory blocks to have
+> multiple directory entries (max size 65536 bytes using the helpers
+> ext4_rec_len_{to,from}_disk() to convert 0xffff -> 0x10000).
 
-So I thought I'd give people an update on what's been happening on the
-e2fsprogs 64-bit patch queue.  I've done a lot of work to make the
-patches easier to understand, including fixing bugs in the patches in
-relevant patch in the patch queue, instead of as follow on patches.
-So a number of Nick's patches have been folded into the patch which
-introduced the bug in the first place.  This makes it easier to clean
-up the patches, and it also makes it easier to find problems by code
-inspection.  For example, a number of missing blk64_t conversions were
-found by taking Nick's patches, applying them to patch #15,
-0015-Convert-to-inode-block-bitmap-table-loc-loc_set.patch, and then
-seeing if there were any similar omissions mades in that patch.
+This patch isn't one of the patches in order to support "blocksize > 64KB"
+ with ext4. It only fixes dx_map_entry handling when we use "blocksize > 64KB".
+You know, ext4_rec_len_{to,from}_disk() has already supported 
+"blocksize > 64KB". But dx_map_entry doesn't support "blocksize > 64KB" now.
+So, I have posted it to fix dx_map_entry handling on "blocksize > 64KB".
 
-So the git log on the e2fsprogs 64-bit patch queue shows a fair amount
-of church, including shrinking the e2fsprogs patch queue by 9 patches:
+I understand ext4_rec_len_{to,from}_disk() are useful for almost purpose of 
+ext4_dir_entry_2 handling. But "offs" which is the member of dx_map_entry is 
+exceptional. Because dx_map_entry must treat "0" value (offset = 0) but they 
+cannot treat "0" value.
+("0" is special value for them.)
 
-commit 350533b17a5be5171baaced07fb3570e562cd4f2
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Jun 6 11:52:27 2009 -0400
+>  unsigned int ext4_rec_len_from_disk(__le16 dlen, unsigned blocksize)
+>  {
+>          unsigned len = le16_to_cpu(dlen);
+>   
+>          if (len == EXT4_MAX_REC_LEN || len == 0)
+                                          ^^^^^^^^^
+>                   return blocksize;
+                    ^^^^^^^^^^^^^^^^^
+>           return (len & 65532) | ((len & 3) << 16);
+>   }
 
-    Collapse bug fixes from patch #58 and #62 into the changes made patch
+So, we cannot use them for "offs".
+Therefore I decided to use shift operations instead of them
+because it is easy implementation.
 
-commit 230792b81a5dbd91bea5b7377a4467fca4783dff
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Jun 6 12:29:33 2009 -0400
-
-    Collapse bug fix from patch #63 into commit #4.
-
-commit 2968c5767d4ac69e9a72fc75466fa7760adff65d
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Jun 6 13:43:14 2009 -0400
-
-    Fold patch #57 into patch add_new_blk64_t_handling_functions
-
-commit 25dc9ddc82d1101bce00b9045c59db7b7e0d5ee8
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Jun 6 15:31:02 2009 -0400
-
-    Consolidate new functions added to blknum.c into a single commit.
-
-commit 7e0bf59b9d07d75df0ce69fcaf128b1f733d3cc5
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sat Jun 6 23:51:35 2009 -0400
-
-    Move contents of patch #60 into patch #20 and to the
-    64_bit_mke2fs_cleanup patch.
-
-commit 16d36830fd911a0f699c76747522be0a962db925
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sun Jun 7 07:56:26 2009 -0400
-
-    Collapse bug fixes in patch #52 into patch #24.
-
-commit 3ce7d0501e71f1ef3ed027b2908fddbefe08de8f
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Sun Jun 7 21:17:56 2009 -0400
-
-    Fold patches #56, #59, and #63 into patches #5 and #15.
-
-commit 86c89423834fff00b0e176a36a47cfc8e4714651
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Mon Jun 8 00:02:46 2009 -0400
-
-    Add missing conversion of check_block_uninit in the patch:
-    use_new_ext2fs_super_and_bgd_loc2_call_in_libext2fs
-
-commit 64e4b87fdd947d0921b55360d91d58bf547c801b
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Mon Jun 8 00:27:57 2009 -0400
-
-    Fix ext2fs_open_inode_scan() to work correct on 64-bit platforms in
-    patch #15.
-
-commit 5292f786a9a0026833d8ed416abf34ef27d93db6
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Mon Jun 8 00:29:04 2009 -0400
-
-    Add .gitignore file.
-
-However, the actual changes between the previous pu branch and the
-latest one is *much* smaller.  (The patch does include some pretty
-significant patch fixes, including one that would cause e2fsck blow up
-if used on a > 32-bit filesystem where any of the inodes located in
-the part of the filesystem where the block number is > 2**32.)
-
-The bottom line is the patches still need a fair amount of auditing,
-cleanup, and testing, but progress is being made, slowly....
-
-	     	      	  	      	    	  - Ted
-
-
-diff --git a/lib/ext2fs/alloc.c b/lib/ext2fs/alloc.c
-index a7c8860..c0777a6 100644
---- a/lib/ext2fs/alloc.c
-+++ b/lib/ext2fs/alloc.c
-@@ -33,7 +33,7 @@ static void check_block_uninit(ext2_filsys fs, ext2fs_block_bitmap64 map,
- 			       dgrp_t group)
- {
- 	blk_t		i;
--	blk_t		blk, super_blk, old_desc_blk, new_desc_blk;
-+	blk64_t		blk, super_blk, old_desc_blk, new_desc_blk;
- 	int		old_desc_blocks;
+[store]
+> > > +			map_tail->offs = ((char *) de - base)>>2;
+[use]
+> > > +		struct ext4_dir_entry_2 *de = (struct ext4_dir_entry_2 *) 
+> > > +							(from + (map->offs<<2));
  
- 	if (!(EXT2_HAS_RO_COMPAT_FEATURE(fs->super,
-@@ -44,8 +44,8 @@ static void check_block_uninit(ext2_filsys fs, ext2fs_block_bitmap64 map,
- 	blk = (group * fs->super->s_blocks_per_group) +
- 		fs->super->s_first_data_block;
- 
--	ext2fs_super_and_bgd_loc(fs, group, &super_blk,
--				 &old_desc_blk, &new_desc_blk, 0);
-+	ext2fs_super_and_bgd_loc2(fs, group, &super_blk,
-+				  &old_desc_blk, &new_desc_blk, 0);
- 
- 	if (fs->super->s_feature_incompat &
- 	    EXT2_FEATURE_INCOMPAT_META_BG)
-diff --git a/lib/ext2fs/inode.c b/lib/ext2fs/inode.c
-index 68a8888..f99bea0 100644
---- a/lib/ext2fs/inode.c
-+++ b/lib/ext2fs/inode.c
-@@ -34,7 +34,7 @@ struct ext2_struct_inode_scan {
- 	errcode_t		magic;
- 	ext2_filsys		fs;
- 	ext2_ino_t		current_inode;
--	blk_t			current_block;
-+	blk64_t			current_block;
- 	dgrp_t			current_group;
- 	ext2_ino_t		inodes_left;
- 	blk_t			blocks_left;
-diff --git a/lib/ext2fs/progress.c b/lib/ext2fs/progress.c
-index 1299ec7..65d027b 100644
---- a/lib/ext2fs/progress.c
-+++ b/lib/ext2fs/progress.c
-@@ -13,7 +13,7 @@
- #include "ext2fs.h"
- #include "ext2fsP.h"
- 
--static int int_log10(unsigned long long int arg)
-+static int int_log10(__u64 arg)
- {
- 	int	l;
- 
-
+Thanks,
+Toshiyuki Okajima
