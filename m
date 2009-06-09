@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 72/87] ext4: return -EIO not -ESTALE on directory traversal through deleted inode
-Date: Tue, 09 Jun 2009 02:40:00 -0700
-Message-ID: <20090609094109.269138659@blue.kroah.org>
+Subject: [patch 70/87] ext4: dont inherit inappropriate inode flags from parent
+Date: Tue, 09 Jun 2009 02:39:58 -0700
+Message-ID: <20090609094108.798977298@blue.kroah.org>
 References: <20090609093848.204935043@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -17,15 +17,16 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
 	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	Bryan Donlan <bdonlan@gmail.com>,
+	Duane Griffin <duaneg@dghda.com>,
+	Andreas Dilger <adilger@sun.com>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:55475 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:55443 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760843AbZFIKVj (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 06:21:39 -0400
-Content-Disposition: inline; filename=ext4-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
+	id S1760840AbZFIKVc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 06:21:32 -0400
+Content-Disposition: inline; filename=ext4-don-t-inherit-inappropriate-inode-flags-from-parent.patch
 In-Reply-To: <20090609094451.GA26439@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -35,55 +36,57 @@ List-ID: <linux-ext4.vger.kernel.org>
 
 ------------------
 
-From: Bryan Donlan <bdonlan@gmail.com>
+From: Duane Griffin <duaneg@dghda.com>
 
-(cherry picked from commit e6f009b0b45220c004672d41a58865e94946104d)
+(cherry picked from commit 8fa43a81b97853fc69417bb6054182e78f95cbeb)
 
-ext4_iget() returns -ESTALE if invoked on a deleted inode, in order to
-report errors to NFS properly.  However, in ext4_lookup(), this
--ESTALE can be propagated to userspace if the filesystem is corrupted
-such that a directory entry references a deleted inode.  This leads to
-a misleading error message - "Stale NFS file handle" - and confusion
-on the part of the admin.
+At present INDEX and EXTENTS are the only flags that new ext4 inodes do
+NOT inherit from their parent.  In addition prevent the flags DIRTY,
+ECOMPR, IMAGIC, TOPDIR, HUGE_FILE and EXT_MIGRATE from being inherited.
+List inheritable flags explicitly to prevent future flags from
+accidentally being inherited.
 
-The bug can be easily reproduced by creating a new filesystem, making
-a link to an unused inode using debugfs, then mounting and attempting
-to ls -l said link.
+This fixes the TOPDIR flag inheritance bug reported at
+http://bugzilla.kernel.org/show_bug.cgi?id=9866.
 
-This patch thus changes ext4_lookup to return -EIO if it receives
--ESTALE from ext4_iget(), as ext4 does for other filesystem metadata
-corruption; and also invokes the appropriate ext*_error functions when
-this case is detected.
-
-Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
----
- fs/ext4/namei.c |   12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
 
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1052,8 +1052,16 @@ static struct dentry *ext4_lookup(struct
- 			return ERR_PTR(-EIO);
- 		}
- 		inode = ext4_iget(dir->i_sb, ino);
--		if (IS_ERR(inode))
--			return ERR_CAST(inode);
-+		if (unlikely(IS_ERR(inode))) {
-+			if (PTR_ERR(inode) == -ESTALE) {
-+				ext4_error(dir->i_sb, __func__,
-+						"deleted inode referenced: %u",
-+						ino);
-+				return ERR_PTR(-EIO);
-+			} else {
-+				return ERR_CAST(inode);
-+			}
-+		}
- 	}
- 	return d_splice_alias(inode, dentry);
- }
+---
+ fs/ext4/ext4.h   |    7 +++++++
+ fs/ext4/ialloc.c |    2 +-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
+
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -248,6 +248,13 @@ struct flex_groups {
+ #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
+ #define EXT4_FL_USER_MODIFIABLE		0x000B80FF /* User modifiable flags */
+ 
++/* Flags that should be inherited by new inodes from their parent. */
++#define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
++			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
++			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
++			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
++			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
++
+ /*
+  * Inode dynamic state flags
+  */
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -889,7 +889,7 @@ got:
+ 	 * newly created directory and file only if -o extent mount option is
+ 	 * specified
+ 	 */
+-	ei->i_flags = EXT4_I(dir)->i_flags & ~(EXT4_INDEX_FL|EXT4_EXTENTS_FL);
++	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
+ 	if (S_ISLNK(mode))
+ 		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+ 	/* dirsync only applies to directories */
 
 
