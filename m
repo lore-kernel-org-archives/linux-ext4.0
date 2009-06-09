@@ -1,84 +1,546 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 0/4] FS: userspace notification of errors
-Date: Tue, 9 Jun 2009 15:49:22 +0200
-Message-ID: <20090609134921.GB13755@atrey.karlin.mff.cuni.cz>
-References: <1244041518-32229-1-git-send-email-ext-denis.2.karpov@nokia.com> <20090603115611.6bbbaf55.akpm@linux-foundation.org> <ac3eb2510906040553j294f1015wfb7deb4b4fc63afc@mail.gmail.com> <4A28FC8F.5020802@nokia.com> <20090605115127.GF28764@smart.research.nokia.com> <ac3eb2510906050606u7527654dv789364549b36f3e7@mail.gmail.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: multiop test program
+Date: Tue, 09 Jun 2009 10:57:13 -0600
+Message-ID: <20090609165713.GU9002@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: "Bityutskiy Artem (Nokia-D/Helsinki)" <Artem.Bityutskiy@nokia.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	"axboe@kernel.dk" <axboe@kernel.dk>,
-	"hirofumi@mail.parknet.co.jp" <hirofumi@mail.parknet.co.jp>,
-	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-	"Hunter Adrian (Nokia-D/Helsinki)" <adrian.hunter@nokia.com>
-To: Kay Sievers <kay.sievers@vrfy.org>
+Content-Type: multipart/mixed; boundary="Boundary_(ID_qhWNkAPgfgrZd0gTgSGJDg)"
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:34269 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761472AbZFINtU (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jun 2009 09:49:20 -0400
-Content-Disposition: inline
-In-Reply-To: <ac3eb2510906050606u7527654dv789364549b36f3e7@mail.gmail.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:57318 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752945AbZFIQ5c (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jun 2009 12:57:32 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n59GvWQP012208
+	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 09:57:32 -0700 (PDT)
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KKZ00800CZWTU00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
+ 09 Jun 2009 09:57:32 -0700 (PDT)
+Received: from webber.adilger.int ([unknown] [68.147.209.238])
+ by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ with ESMTPSA id <0KKZ00ABVDRNNND0@fe-sfbay-09.sun.com> for
+ linux-ext4@vger.kernel.org; Tue, 09 Jun 2009 09:57:25 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> On Fri, Jun 5, 2009 at 13:51, Denis Karpov<ext-denis.2.karpov@nokia.com> wrote:
-> > This is doable, e.g. in the form of optional fields "tag[:value]"
-> > (field 7, Documentation/filesystems/proc.txti for mountinfo).
-> 
-> > But is using procfs generally a good idea ? Last several years all a lot of
-> > stuff moved out from procfs into sysfs. Not to forget what procfs is
-> > originally meant for: storing the proceses related information.
-> 
-> Yeah, but mounted volumes are namespace dependent, and namespaces are
-> process dependent. So events for your current namespace wouldn't be
-> too bad here. There might be reasons we don't want the mountinfo file,
-> but the "use sysfs for new stuff" does not count in this case. :)
-  As much as I don't like the using /proc/mountinfo for this, it also
-has the advantage that it nicely solves the problem with a filesystem
-being bind-mounted on several directories...  Otherwise you have to
-solve the problem which mountpoint of the filesystem should be used
-(especially because the real root of the filesystem need not be
-accessible from the namespace of the process).
 
-> > - /sys/fs seems to be a perfect fit for the purpose judging by ext4 example
-> > cons:
-> > - uevent interface is unneeded extra(?); can be made optional, per attribute
-> 
-> You can not pass the mount path with the uevent, like you example
-> shows, you just don't know that reliably, and there can be many mount
-> points.
-> 
-> How do you want to name the /sys/fs/ device? By "dev_t st_dev" or the
-> underlying block device name? How do you indentify the mountpoint in
-> your current namespace, of the device that raised the error? The event
-> might be for a filesystem you can not reach at all in your mount tree.
-> 
-> The /sys/fs/ approach sounds very much like an "export known
-> superblocks in /sys/fs/", something like this could be useful, but we
-> need to check carefully with other people what are the issues of such
-> an interface, and if there is something that should not be exported
-> that way.
-> 
-> How are device-less superblocks like btrfs handled in such an
-> interface, how is the device named, if it does not have a direct block
-> device underneath?
-  Generally, it is an unclear question how should kernel identify a
-filesystem where the problem happened. We could have a kobject for
-superblock but it's still unclear how to map this to a device /
-mountpoints because that's what userspace ultimately wants to tell the
-sysadmin and possibly make some automated decision.
-  What currently seems as the cleanest solution to me, is to add some
-"filesystem identifier" field to /proc/self/mountinfo (which could be
-UUID, superblock pointer or whatever) and pass this along with the error
-message to userspace. Passing could be done either via sysfs (but I
-agree it isn't the best fit because a filesystem need not be bound to a
-device) or just via generic netlink (which has the disadvantage that you
-cannot use the udev framework everyone knows)...
+--Boundary_(ID_qhWNkAPgfgrZd0gTgSGJDg)
+Content-type: text/plain; CHARSET=US-ASCII
+Content-transfer-encoding: 7BIT
+Content-disposition: inline
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+The attached "multiop" test program is a toolbox that we use when writing
+unit tests for Lustre.  It has a number of useful low-level operations
+e.g. lstat, open(O_DIRECTORY), mmap IO, etc and can optionally pause between
+operations waiting for a signal so that it is possible to coordinate the
+operations between multiple programs before some operation is done.
+
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
+
+--Boundary_(ID_qhWNkAPgfgrZd0gTgSGJDg)
+Content-type: text/plain; NAME=multiop.c; CHARSET=US-ASCII
+Content-transfer-encoding: 7BIT
+Content-disposition: attachment; filename=multiop.c
+
+/* -*- mode: c; c-basic-offset: 8; indent-tabs-mode: nil; -*-
+ * vim:expandtab:shiftwidth=8:tabstop=8:
+ *
+ * GPL HEADER START
+ *
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 only,
+ * as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful, but
+ * WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * General Public License version 2 for more details (a copy is included
+ * in the LICENSE file that accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License
+ * version 2 along with this program; If not, see
+ * http://www.sun.com/software/products/lustre/docs/GPLv2.pdf
+ *
+ * Please contact Sun Microsystems, Inc., 4150 Network Circle, Santa Clara,
+ * CA 95054 USA or visit www.sun.com if you need additional information or
+ * have any questions.
+ *
+ * GPL HEADER END
+ */
+/*
+ * Copyright  2008 Sun Microsystems, Inc. All rights reserved
+ * Use is subject to license terms.
+ */
+/*
+ * This file is part of Lustre, http://www.lustre.org/
+ * Lustre is a trademark of Sun Microsystems, Inc.
+ */
+
+#ifndef _GNU_SOURCE
+#define _GNU_SOURCE /* pull in O_DIRECTORY in bits/fcntl.h */
+#endif
+#include <stdio.h>
+#include <fcntl.h>
+#include <string.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/mman.h>
+#include <sys/vfs.h>
+#include <sys/time.h>
+#include <signal.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <semaphore.h>
+//#include <lustre/liblustreapi.h>
+
+char msg[] = "yabba dabba doo, I'm coming for you, I live in a shoe, I don't know what to do.\n'Bigger, bigger,and bigger yet!' cried the Creator.  'You are not yet substantial enough for my boundless intents!'  And ever greater and greater the object became, until all was lost 'neath its momentus bulk.\n";
+char *buf, *buf_align;
+int bufsize = 0;
+sem_t sem;
+#define ALIGN 65535
+#define MAX_SHIFT 4096
+
+char usage[] =
+"Usage: %s filename command-sequence\n"
+"    command-sequence items:\n"
+"        b[num] write optional length from random in-memory offset\n"
+"        c  close\n"
+"        C[num] create with optional stripes\n"
+"        d  mkdir\n"
+"        D  open(O_DIRECTORY)\n"
+"        f  statfs\n"
+"        L  link\n"
+"        l  symlink\n"
+"        m  mknod\n"
+"        M  rw mmap to EOF (must open and stat prior)\n"
+"        N  rename\n"
+"        o  open(O_RDONLY)\n"
+"        O  open(O_CREAT|O_RDWR)\n"
+"        r[num] read [optional length]\n"
+"        R  reference entire mmap-ed region\n"
+"        s  stat\n"
+"        S  fstat\n"
+"        t  fchmod\n"
+"        T[num] ftruncate [optional position, default 0]\n"
+"        u  unlink\n"
+"        U  munmap\n"
+"        w[num] write optional length\n"
+"        W  write entire mmap-ed region\n"
+"        y  fsync\n"
+"        Y  fdatasync\n"
+"        z[num] seek [optional position, default 0]\n"
+"        _  wait for signal\n";
+
+void usr1_handler(int unused)
+{
+        int saved_errno = errno;
+
+        /*
+         * signal(7): POSIX.1-2004 ...requires an implementation to guarantee
+         * that the following functions can be safely called inside a signal
+         * handler:
+         *            sem_post()
+         */
+        sem_post(&sem);
+
+        errno = saved_errno;
+}
+
+static const char *
+pop_arg(int argc, char *argv[])
+{
+        static int cur_arg = 3;
+
+        if (cur_arg >= argc)
+                return NULL;
+
+        return argv[cur_arg++];
+}
+
+struct flag_mapping {
+       const char *string;
+       const int  flag;
+} flag_table[] = {
+       {"O_RDONLY", O_RDONLY},
+       {"O_WRONLY", O_WRONLY},
+       {"O_RDWR", O_RDWR},
+       {"O_CREAT", O_CREAT},
+       {"O_EXCL", O_EXCL},
+       {"O_NOCTTY", O_NOCTTY},
+       {"O_TRUNC", O_TRUNC},
+       {"O_APPEND", O_APPEND},
+       {"O_NONBLOCK", O_NONBLOCK},
+       {"O_NDELAY", O_NDELAY},
+       {"O_SYNC", O_SYNC},
+#ifdef O_DIRECT
+       {"O_DIRECT", O_DIRECT},
+#endif
+       {"O_LARGEFILE", O_LARGEFILE},
+       {"O_DIRECTORY", O_DIRECTORY},
+       {"O_NOFOLLOW", O_NOFOLLOW},
+       {"", -1}
+};
+
+int get_flags(char *data, int *rflags)
+{
+        char *cloned_flags;
+        char *tmp;
+        int flag_set = 0;
+        int flags = 0;
+        int size = 0;
+
+        cloned_flags = strdup(data);
+        if (cloned_flags == NULL) {
+                fprintf(stderr, "Insufficient memory.\n");
+                exit(-1);
+        }
+
+        for (tmp = strtok(cloned_flags, ":"); tmp;
+             tmp = strtok(NULL, ":")) {
+                int i;
+
+                size = tmp - cloned_flags;
+                for (i = 0; flag_table[i].flag != -1; i++) {
+                        if (!strcmp(tmp, flag_table[i].string)){
+                                flags |= flag_table[i].flag;
+                                size += strlen(flag_table[i].string);
+                                flag_set = 1;
+                                break;
+                        }
+                }
+        }
+        free(cloned_flags);
+
+        if (!flag_set) {
+                *rflags = O_RDONLY;
+                return 0;
+        }
+
+        *rflags = flags;
+        return size;
+}
+
+#define POP_ARG() (pop_arg(argc, argv))
+#define min(a,b) ((a)>(b)?(b):(a))
+
+int main(int argc, char **argv)
+{
+        char *fname, *commands;
+        const char *newfile;
+        struct stat st;
+        struct statfs stfs;
+        size_t mmap_len = 0, i;
+        unsigned char *mmap_ptr = NULL, junk = 0;
+        int rc, len, fd = -1;
+        int flags;
+        int save_errno;
+        int verbose = 0;
+
+        if (argc < 3) {
+                fprintf(stderr, usage, argv[0]);
+                exit(1);
+        }
+
+        memset(&st, 0, sizeof(st));
+        sem_init(&sem, 0, 0);
+        /* use sigaction instead of signal to avoid SA_ONESHOT semantics */
+        sigaction(SIGUSR1, &(const struct sigaction){.sa_handler=&usr1_handler},
+                  NULL);
+        srandom(time(NULL));
+
+        fname = argv[1];
+
+        for (commands = argv[2]; *commands; commands++) {
+                switch (*commands) {
+                case '_':
+                        if (verbose) {
+                                pid_t pid = getpid();
+                                printf("PAUSING %u\n", pid);
+                                fflush(stdout);
+                        }
+                        while (sem_wait(&sem) == -1 && errno == EINTR);
+                        break;
+                case 'c':
+                        if (close(fd) == -1) {
+                                save_errno = errno;
+                                perror("close");
+                                exit(save_errno);
+                        }
+                        fd = -1;
+                        break;
+                case 'C':
+                        len = atoi(commands+1);
+                        fd = open(fname, O_CREAT | O_WRONLY, 0644);
+                        if (fd == -1) {
+                                save_errno = errno;
+                                perror("create stripe file");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'd':
+                        if (mkdir(fname, 0755) == -1) {
+                                save_errno = errno;
+                                perror("mkdir(0755)");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'D':
+                        fd = open(fname, O_DIRECTORY);
+                        if (fd == -1) {
+                                save_errno = errno;
+                                perror("open(O_DIRECTORY)");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'f':
+                        if (statfs(fname, &stfs) == -1) {
+                                save_errno = errno;
+                                perror("statfs()");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'l':
+                        newfile = POP_ARG();
+                        if (!newfile)
+                                newfile = fname;
+                        if (symlink(fname, newfile)) {
+                                save_errno = errno;
+                                perror("symlink()");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'L':
+                        newfile = POP_ARG();
+                        if (!newfile)
+                                newfile = fname;
+                        if (link(fname, newfile)) {
+                                save_errno = errno;
+                                perror("symlink()");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'm':
+                        if (mknod(fname, S_IFREG | 0644, 0) == -1) {
+                                save_errno = errno;
+                                perror("mknod(S_IFREG|0644, 0)");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'M':
+                        if (st.st_size == 0) {
+                                fprintf(stderr, "mmap without preceeding stat, "
+                                        "or on zero length file.\n");
+                                exit(-1);
+                        }
+                        mmap_len = st.st_size;
+                        mmap_ptr = mmap(NULL, mmap_len, PROT_WRITE | PROT_READ,
+                                        MAP_SHARED, fd, 0);
+                        if (mmap_ptr == MAP_FAILED) {
+                                save_errno = errno;
+                                perror("mmap");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'N':
+                        newfile = POP_ARG();
+                        if (!newfile)
+                                newfile = fname;
+                        if (rename (fname, newfile)) {
+                                save_errno = errno;
+                                perror("rename()");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'O':
+                        fd = open(fname, O_CREAT|O_RDWR, 0644);
+                        if (fd == -1) {
+                                save_errno = errno;
+                                perror("open(O_RDWR|O_CREAT)");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'o':
+                        len = get_flags(commands+1, &flags);
+                        commands += len;
+                        if (flags & O_CREAT)
+                                fd = open(fname, flags, 0666);
+                        else
+                                fd = open(fname, flags);
+                        if (fd == -1) {
+                                save_errno = errno;
+                                perror("open");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'r':
+                        len = atoi(commands+1);
+                        if (len <= 0)
+                                len = 1;
+                        if (bufsize < len) {
+                                buf = realloc(buf, len + ALIGN);
+                                if (buf == NULL) {
+                                        save_errno = errno;
+                                        perror("allocating buf for read\n");
+                                        exit(save_errno);
+                                }
+                                bufsize = len;
+                                buf_align = (char *)((long)(buf + ALIGN) &
+                                                     ~ALIGN);
+                        }
+                        while (len > 0) {
+                                rc = read(fd, buf_align, len);
+                                if (rc == -1) {
+                                        save_errno = errno;
+                                        perror("read");
+                                        exit(save_errno);
+                                }
+                                if (rc < len)
+                                        fprintf(stderr, "short read: %u/%u\n",
+                                                rc, len);
+                                len -= rc;
+                        }
+                        break;
+                case 'R':
+                        for (i = 0; i < mmap_len && mmap_ptr; i += 4096)
+                                junk += mmap_ptr[i];
+                        break;
+                case 's':
+                        if (stat(fname, &st) == -1) {
+                                save_errno = errno;
+                                perror("stat");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'S':
+                        if (fstat(fd, &st) == -1) {
+                                save_errno = errno;
+                                perror("fstat");
+                                exit(save_errno);
+                        }
+                        break;
+                case 't':
+                        if (fchmod(fd, 0) == -1) {
+                                save_errno = errno;
+                                perror("fchmod");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'T':
+                        len = atoi(commands+1);
+                        if (ftruncate(fd, len) == -1) {
+                                save_errno = errno;
+                                printf("ftruncate (%d,%d)\n", fd, len);
+                                perror("ftruncate");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'u':
+                        if (unlink(fname) == -1) {
+                                save_errno = errno;
+                                perror("unlink");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'U':
+                        if (munmap(mmap_ptr, mmap_len)) {
+                                save_errno = errno;
+                                perror("munmap");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'v':
+                        verbose = 1;
+                        break;
+                case 'b':
+                case 'w':
+                        len = atoi(commands+1);
+                        if (len <= 0)
+                                len = 1;
+                        if (bufsize < len) {
+                                int shift = (*commands == 'b') ?
+                                            (random() % MAX_SHIFT) : 0;
+                                buf = realloc(buf, len + ALIGN + shift);
+                                if (buf == NULL) {
+                                        save_errno = errno;
+                                        perror("allocating buf for write\n");
+                                        exit(save_errno);
+                                }
+                                bufsize = len;
+                                buf_align = (char *)((long)(buf + ALIGN) &
+                                                     ~ALIGN) + shift;
+                                strncpy(buf_align, msg, bufsize);
+                        }
+                        while (len > 0) {
+                                rc = write(fd, buf_align, len);
+                                if (rc == -1) {
+                                        save_errno = errno;
+                                        perror("write");
+                                        exit(save_errno);
+                                }
+                                if (rc < len)
+                                        fprintf(stderr, "short write: %u/%u\n",
+                                                rc, len);
+                                len -= rc;
+                        }
+                        break;
+                case 'W':
+                        for (i = 0; i < mmap_len && mmap_ptr; i += 4096)
+                                mmap_ptr[i] += junk++;
+                        break;
+                case 'y':
+                        if (fsync(fd) == -1) {
+                                save_errno = errno;
+                                perror("fsync");
+                                exit(save_errno);
+                        }
+                        break;
+                case 'Y':
+                        if (fdatasync(fd) == -1) {
+                                save_errno = errno;
+                                perror("fdatasync");
+                                exit(save_errno);
+                        }
+                case 'z':
+                        len = atoi(commands+1);
+                        if (lseek(fd, len, SEEK_SET) == -1) {
+                                save_errno = errno;
+                                perror("lseek");
+                                exit(save_errno);
+                        }
+                        break;
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                        break;
+                default:
+                        fprintf(stderr, "unknown command \"%c\"\n", *commands);
+                        fprintf(stderr, usage, argv[0]);
+                        exit(1);
+                }
+        }
+
+        if (buf)
+                free(buf);
+
+        return 0;
+}
+
+--Boundary_(ID_qhWNkAPgfgrZd0gTgSGJDg)--
