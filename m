@@ -1,546 +1,61 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: multiop test program
-Date: Tue, 09 Jun 2009 10:57:13 -0600
-Message-ID: <20090609165713.GU9002@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: multipart/mixed; boundary="Boundary_(ID_qhWNkAPgfgrZd0gTgSGJDg)"
-To: linux-ext4@vger.kernel.org
+From: akpm@linux-foundation.org
+Subject: [patch 3/3] jbd: fix race in buffer processing in commit code
+Date: Tue, 09 Jun 2009 16:26:26 -0700
+Message-ID: <200906092326.n59NQQOQ014571@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, jack@suse.cz,
+	linux-ext4@vger.kernel.org, stable@kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:57318 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752945AbZFIQ5c (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jun 2009 12:57:32 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n59GvWQP012208
-	for <linux-ext4@vger.kernel.org>; Tue, 9 Jun 2009 09:57:32 -0700 (PDT)
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KKZ00800CZWTU00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Tue,
- 09 Jun 2009 09:57:32 -0700 (PDT)
-Received: from webber.adilger.int ([unknown] [68.147.209.238])
- by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- with ESMTPSA id <0KKZ00ABVDRNNND0@fe-sfbay-09.sun.com> for
- linux-ext4@vger.kernel.org; Tue, 09 Jun 2009 09:57:25 -0700 (PDT)
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:41134 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750810AbZFIX1a (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jun 2009 19:27:30 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+From: Jan Kara <jack@suse.cz>
 
---Boundary_(ID_qhWNkAPgfgrZd0gTgSGJDg)
-Content-type: text/plain; CHARSET=US-ASCII
-Content-transfer-encoding: 7BIT
-Content-disposition: inline
+In commit code, we scan buffers attached to a transaction.  During this
+scan, we sometimes have to drop j_list_lock and then we recheck whether
+the journal buffer head didn't get freed by journal_try_to_free_buffers().
+ But checking for buffer_jbd(bh) isn't enough because a new journal head
+could get attached to our buffer head.  So add a check whether the journal
+head remained the same and whether it's still at the same transaction and
+list.
 
-The attached "multiop" test program is a toolbox that we use when writing
-unit tests for Lustre.  It has a number of useful low-level operations
-e.g. lstat, open(O_DIRECTORY), mmap IO, etc and can optionally pause between
-operations waiting for a signal so that it is possible to coordinate the
-operations between multiple programs before some operation is done.
+This is a nasty bug and can cause problems like memory corruption (use after
+free) or trigger various assertions in JBD code (observed).
 
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <stable@kernel.org>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+ fs/jbd/commit.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
 
-
---Boundary_(ID_qhWNkAPgfgrZd0gTgSGJDg)
-Content-type: text/plain; NAME=multiop.c; CHARSET=US-ASCII
-Content-transfer-encoding: 7BIT
-Content-disposition: attachment; filename=multiop.c
-
-/* -*- mode: c; c-basic-offset: 8; indent-tabs-mode: nil; -*-
- * vim:expandtab:shiftwidth=8:tabstop=8:
- *
- * GPL HEADER START
- *
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 only,
- * as published by the Free Software Foundation.
- *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License version 2 for more details (a copy is included
- * in the LICENSE file that accompanied this code).
- *
- * You should have received a copy of the GNU General Public License
- * version 2 along with this program; If not, see
- * http://www.sun.com/software/products/lustre/docs/GPLv2.pdf
- *
- * Please contact Sun Microsystems, Inc., 4150 Network Circle, Santa Clara,
- * CA 95054 USA or visit www.sun.com if you need additional information or
- * have any questions.
- *
- * GPL HEADER END
- */
-/*
- * Copyright  2008 Sun Microsystems, Inc. All rights reserved
- * Use is subject to license terms.
- */
-/*
- * This file is part of Lustre, http://www.lustre.org/
- * Lustre is a trademark of Sun Microsystems, Inc.
- */
-
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE /* pull in O_DIRECTORY in bits/fcntl.h */
-#endif
-#include <stdio.h>
-#include <fcntl.h>
-#include <string.h>
-#include <errno.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/mman.h>
-#include <sys/vfs.h>
-#include <sys/time.h>
-#include <signal.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <semaphore.h>
-//#include <lustre/liblustreapi.h>
-
-char msg[] = "yabba dabba doo, I'm coming for you, I live in a shoe, I don't know what to do.\n'Bigger, bigger,and bigger yet!' cried the Creator.  'You are not yet substantial enough for my boundless intents!'  And ever greater and greater the object became, until all was lost 'neath its momentus bulk.\n";
-char *buf, *buf_align;
-int bufsize = 0;
-sem_t sem;
-#define ALIGN 65535
-#define MAX_SHIFT 4096
-
-char usage[] =
-"Usage: %s filename command-sequence\n"
-"    command-sequence items:\n"
-"        b[num] write optional length from random in-memory offset\n"
-"        c  close\n"
-"        C[num] create with optional stripes\n"
-"        d  mkdir\n"
-"        D  open(O_DIRECTORY)\n"
-"        f  statfs\n"
-"        L  link\n"
-"        l  symlink\n"
-"        m  mknod\n"
-"        M  rw mmap to EOF (must open and stat prior)\n"
-"        N  rename\n"
-"        o  open(O_RDONLY)\n"
-"        O  open(O_CREAT|O_RDWR)\n"
-"        r[num] read [optional length]\n"
-"        R  reference entire mmap-ed region\n"
-"        s  stat\n"
-"        S  fstat\n"
-"        t  fchmod\n"
-"        T[num] ftruncate [optional position, default 0]\n"
-"        u  unlink\n"
-"        U  munmap\n"
-"        w[num] write optional length\n"
-"        W  write entire mmap-ed region\n"
-"        y  fsync\n"
-"        Y  fdatasync\n"
-"        z[num] seek [optional position, default 0]\n"
-"        _  wait for signal\n";
-
-void usr1_handler(int unused)
-{
-        int saved_errno = errno;
-
-        /*
-         * signal(7): POSIX.1-2004 ...requires an implementation to guarantee
-         * that the following functions can be safely called inside a signal
-         * handler:
-         *            sem_post()
-         */
-        sem_post(&sem);
-
-        errno = saved_errno;
-}
-
-static const char *
-pop_arg(int argc, char *argv[])
-{
-        static int cur_arg = 3;
-
-        if (cur_arg >= argc)
-                return NULL;
-
-        return argv[cur_arg++];
-}
-
-struct flag_mapping {
-       const char *string;
-       const int  flag;
-} flag_table[] = {
-       {"O_RDONLY", O_RDONLY},
-       {"O_WRONLY", O_WRONLY},
-       {"O_RDWR", O_RDWR},
-       {"O_CREAT", O_CREAT},
-       {"O_EXCL", O_EXCL},
-       {"O_NOCTTY", O_NOCTTY},
-       {"O_TRUNC", O_TRUNC},
-       {"O_APPEND", O_APPEND},
-       {"O_NONBLOCK", O_NONBLOCK},
-       {"O_NDELAY", O_NDELAY},
-       {"O_SYNC", O_SYNC},
-#ifdef O_DIRECT
-       {"O_DIRECT", O_DIRECT},
-#endif
-       {"O_LARGEFILE", O_LARGEFILE},
-       {"O_DIRECTORY", O_DIRECTORY},
-       {"O_NOFOLLOW", O_NOFOLLOW},
-       {"", -1}
-};
-
-int get_flags(char *data, int *rflags)
-{
-        char *cloned_flags;
-        char *tmp;
-        int flag_set = 0;
-        int flags = 0;
-        int size = 0;
-
-        cloned_flags = strdup(data);
-        if (cloned_flags == NULL) {
-                fprintf(stderr, "Insufficient memory.\n");
-                exit(-1);
-        }
-
-        for (tmp = strtok(cloned_flags, ":"); tmp;
-             tmp = strtok(NULL, ":")) {
-                int i;
-
-                size = tmp - cloned_flags;
-                for (i = 0; flag_table[i].flag != -1; i++) {
-                        if (!strcmp(tmp, flag_table[i].string)){
-                                flags |= flag_table[i].flag;
-                                size += strlen(flag_table[i].string);
-                                flag_set = 1;
-                                break;
-                        }
-                }
-        }
-        free(cloned_flags);
-
-        if (!flag_set) {
-                *rflags = O_RDONLY;
-                return 0;
-        }
-
-        *rflags = flags;
-        return size;
-}
-
-#define POP_ARG() (pop_arg(argc, argv))
-#define min(a,b) ((a)>(b)?(b):(a))
-
-int main(int argc, char **argv)
-{
-        char *fname, *commands;
-        const char *newfile;
-        struct stat st;
-        struct statfs stfs;
-        size_t mmap_len = 0, i;
-        unsigned char *mmap_ptr = NULL, junk = 0;
-        int rc, len, fd = -1;
-        int flags;
-        int save_errno;
-        int verbose = 0;
-
-        if (argc < 3) {
-                fprintf(stderr, usage, argv[0]);
-                exit(1);
-        }
-
-        memset(&st, 0, sizeof(st));
-        sem_init(&sem, 0, 0);
-        /* use sigaction instead of signal to avoid SA_ONESHOT semantics */
-        sigaction(SIGUSR1, &(const struct sigaction){.sa_handler=&usr1_handler},
-                  NULL);
-        srandom(time(NULL));
-
-        fname = argv[1];
-
-        for (commands = argv[2]; *commands; commands++) {
-                switch (*commands) {
-                case '_':
-                        if (verbose) {
-                                pid_t pid = getpid();
-                                printf("PAUSING %u\n", pid);
-                                fflush(stdout);
-                        }
-                        while (sem_wait(&sem) == -1 && errno == EINTR);
-                        break;
-                case 'c':
-                        if (close(fd) == -1) {
-                                save_errno = errno;
-                                perror("close");
-                                exit(save_errno);
-                        }
-                        fd = -1;
-                        break;
-                case 'C':
-                        len = atoi(commands+1);
-                        fd = open(fname, O_CREAT | O_WRONLY, 0644);
-                        if (fd == -1) {
-                                save_errno = errno;
-                                perror("create stripe file");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'd':
-                        if (mkdir(fname, 0755) == -1) {
-                                save_errno = errno;
-                                perror("mkdir(0755)");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'D':
-                        fd = open(fname, O_DIRECTORY);
-                        if (fd == -1) {
-                                save_errno = errno;
-                                perror("open(O_DIRECTORY)");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'f':
-                        if (statfs(fname, &stfs) == -1) {
-                                save_errno = errno;
-                                perror("statfs()");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'l':
-                        newfile = POP_ARG();
-                        if (!newfile)
-                                newfile = fname;
-                        if (symlink(fname, newfile)) {
-                                save_errno = errno;
-                                perror("symlink()");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'L':
-                        newfile = POP_ARG();
-                        if (!newfile)
-                                newfile = fname;
-                        if (link(fname, newfile)) {
-                                save_errno = errno;
-                                perror("symlink()");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'm':
-                        if (mknod(fname, S_IFREG | 0644, 0) == -1) {
-                                save_errno = errno;
-                                perror("mknod(S_IFREG|0644, 0)");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'M':
-                        if (st.st_size == 0) {
-                                fprintf(stderr, "mmap without preceeding stat, "
-                                        "or on zero length file.\n");
-                                exit(-1);
-                        }
-                        mmap_len = st.st_size;
-                        mmap_ptr = mmap(NULL, mmap_len, PROT_WRITE | PROT_READ,
-                                        MAP_SHARED, fd, 0);
-                        if (mmap_ptr == MAP_FAILED) {
-                                save_errno = errno;
-                                perror("mmap");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'N':
-                        newfile = POP_ARG();
-                        if (!newfile)
-                                newfile = fname;
-                        if (rename (fname, newfile)) {
-                                save_errno = errno;
-                                perror("rename()");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'O':
-                        fd = open(fname, O_CREAT|O_RDWR, 0644);
-                        if (fd == -1) {
-                                save_errno = errno;
-                                perror("open(O_RDWR|O_CREAT)");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'o':
-                        len = get_flags(commands+1, &flags);
-                        commands += len;
-                        if (flags & O_CREAT)
-                                fd = open(fname, flags, 0666);
-                        else
-                                fd = open(fname, flags);
-                        if (fd == -1) {
-                                save_errno = errno;
-                                perror("open");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'r':
-                        len = atoi(commands+1);
-                        if (len <= 0)
-                                len = 1;
-                        if (bufsize < len) {
-                                buf = realloc(buf, len + ALIGN);
-                                if (buf == NULL) {
-                                        save_errno = errno;
-                                        perror("allocating buf for read\n");
-                                        exit(save_errno);
-                                }
-                                bufsize = len;
-                                buf_align = (char *)((long)(buf + ALIGN) &
-                                                     ~ALIGN);
-                        }
-                        while (len > 0) {
-                                rc = read(fd, buf_align, len);
-                                if (rc == -1) {
-                                        save_errno = errno;
-                                        perror("read");
-                                        exit(save_errno);
-                                }
-                                if (rc < len)
-                                        fprintf(stderr, "short read: %u/%u\n",
-                                                rc, len);
-                                len -= rc;
-                        }
-                        break;
-                case 'R':
-                        for (i = 0; i < mmap_len && mmap_ptr; i += 4096)
-                                junk += mmap_ptr[i];
-                        break;
-                case 's':
-                        if (stat(fname, &st) == -1) {
-                                save_errno = errno;
-                                perror("stat");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'S':
-                        if (fstat(fd, &st) == -1) {
-                                save_errno = errno;
-                                perror("fstat");
-                                exit(save_errno);
-                        }
-                        break;
-                case 't':
-                        if (fchmod(fd, 0) == -1) {
-                                save_errno = errno;
-                                perror("fchmod");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'T':
-                        len = atoi(commands+1);
-                        if (ftruncate(fd, len) == -1) {
-                                save_errno = errno;
-                                printf("ftruncate (%d,%d)\n", fd, len);
-                                perror("ftruncate");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'u':
-                        if (unlink(fname) == -1) {
-                                save_errno = errno;
-                                perror("unlink");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'U':
-                        if (munmap(mmap_ptr, mmap_len)) {
-                                save_errno = errno;
-                                perror("munmap");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'v':
-                        verbose = 1;
-                        break;
-                case 'b':
-                case 'w':
-                        len = atoi(commands+1);
-                        if (len <= 0)
-                                len = 1;
-                        if (bufsize < len) {
-                                int shift = (*commands == 'b') ?
-                                            (random() % MAX_SHIFT) : 0;
-                                buf = realloc(buf, len + ALIGN + shift);
-                                if (buf == NULL) {
-                                        save_errno = errno;
-                                        perror("allocating buf for write\n");
-                                        exit(save_errno);
-                                }
-                                bufsize = len;
-                                buf_align = (char *)((long)(buf + ALIGN) &
-                                                     ~ALIGN) + shift;
-                                strncpy(buf_align, msg, bufsize);
-                        }
-                        while (len > 0) {
-                                rc = write(fd, buf_align, len);
-                                if (rc == -1) {
-                                        save_errno = errno;
-                                        perror("write");
-                                        exit(save_errno);
-                                }
-                                if (rc < len)
-                                        fprintf(stderr, "short write: %u/%u\n",
-                                                rc, len);
-                                len -= rc;
-                        }
-                        break;
-                case 'W':
-                        for (i = 0; i < mmap_len && mmap_ptr; i += 4096)
-                                mmap_ptr[i] += junk++;
-                        break;
-                case 'y':
-                        if (fsync(fd) == -1) {
-                                save_errno = errno;
-                                perror("fsync");
-                                exit(save_errno);
-                        }
-                        break;
-                case 'Y':
-                        if (fdatasync(fd) == -1) {
-                                save_errno = errno;
-                                perror("fdatasync");
-                                exit(save_errno);
-                        }
-                case 'z':
-                        len = atoi(commands+1);
-                        if (lseek(fd, len, SEEK_SET) == -1) {
-                                save_errno = errno;
-                                perror("lseek");
-                                exit(save_errno);
-                        }
-                        break;
-                case '0':
-                case '1':
-                case '2':
-                case '3':
-                case '4':
-                case '5':
-                case '6':
-                case '7':
-                case '8':
-                case '9':
-                        break;
-                default:
-                        fprintf(stderr, "unknown command \"%c\"\n", *commands);
-                        fprintf(stderr, usage, argv[0]);
-                        exit(1);
-                }
-        }
-
-        if (buf)
-                free(buf);
-
-        return 0;
-}
-
---Boundary_(ID_qhWNkAPgfgrZd0gTgSGJDg)--
+diff -puN fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code
++++ a/fs/jbd/commit.c
+@@ -241,7 +241,7 @@ write_out_data:
+ 			spin_lock(&journal->j_list_lock);
+ 		}
+ 		/* Someone already cleaned up the buffer? */
+-		if (!buffer_jbd(bh)
++		if (!buffer_jbd(bh) || bh2jh(bh) != jh
+ 			|| jh->b_transaction != commit_transaction
+ 			|| jh->b_jlist != BJ_SyncData) {
+ 			jbd_unlock_bh_state(bh);
+@@ -478,7 +478,9 @@ void journal_commit_transaction(journal_
+ 			spin_lock(&journal->j_list_lock);
+ 			continue;
+ 		}
+-		if (buffer_jbd(bh) && jh->b_jlist == BJ_Locked) {
++		if (buffer_jbd(bh) && bh2jh(bh) == jh &&
++		    jh->b_transaction == commit_transaction &&
++		    jh->b_jlist == BJ_Locked) {
+ 			__journal_unfile_buffer(jh);
+ 			jbd_unlock_bh_state(bh);
+ 			journal_remove_journal_head(bh);
+_
