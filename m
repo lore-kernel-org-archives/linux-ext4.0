@@ -1,190 +1,84 @@
 From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] jbd/jbd2 :clean up journal_try_to_free_buffers
-Date: Tue, 9 Jun 2009 15:36:04 +0200
-Message-ID: <20090609133602.GA13755@atrey.karlin.mff.cuni.cz>
-References: <6.0.0.20.2.20090604194409.071baf80@172.19.0.2>
+Subject: Re: [PATCH 0/4] FS: userspace notification of errors
+Date: Tue, 9 Jun 2009 15:49:22 +0200
+Message-ID: <20090609134921.GB13755@atrey.karlin.mff.cuni.cz>
+References: <1244041518-32229-1-git-send-email-ext-denis.2.karpov@nokia.com> <20090603115611.6bbbaf55.akpm@linux-foundation.org> <ac3eb2510906040553j294f1015wfb7deb4b4fc63afc@mail.gmail.com> <4A28FC8F.5020802@nokia.com> <20090605115127.GF28764@smart.research.nokia.com> <ac3eb2510906050606u7527654dv789364549b36f3e7@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew Morton <akpm@linux-foundation.org>,
-	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Cc: "Bityutskiy Artem (Nokia-D/Helsinki)" <Artem.Bityutskiy@nokia.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	"axboe@kernel.dk" <axboe@kernel.dk>,
+	"hirofumi@mail.parknet.co.jp" <hirofumi@mail.parknet.co.jp>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+	"linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+	"Hunter Adrian (Nokia-D/Helsinki)" <adrian.hunter@nokia.com>
+To: Kay Sievers <kay.sievers@vrfy.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:35951 "EHLO
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:34269 "EHLO
 	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750725AbZFINgD (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jun 2009 09:36:03 -0400
+	with ESMTP id S1761472AbZFINtU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jun 2009 09:49:20 -0400
 Content-Disposition: inline
-In-Reply-To: <6.0.0.20.2.20090604194409.071baf80@172.19.0.2>
+In-Reply-To: <ac3eb2510906050606u7527654dv789364549b36f3e7@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Hi,
+> On Fri, Jun 5, 2009 at 13:51, Denis Karpov<ext-denis.2.karpov@nokia.com> wrote:
+> > This is doable, e.g. in the form of optional fields "tag[:value]"
+> > (field 7, Documentation/filesystems/proc.txti for mountinfo).
+> 
+> > But is using procfs generally a good idea ? Last several years all a lot of
+> > stuff moved out from procfs into sysfs. Not to forget what procfs is
+> > originally meant for: storing the proceses related information.
+> 
+> Yeah, but mounted volumes are namespace dependent, and namespaces are
+> process dependent. So events for your current namespace wouldn't be
+> too bad here. There might be reasons we don't want the mountinfo file,
+> but the "use sysfs for new stuff" does not count in this case. :)
+  As much as I don't like the using /proc/mountinfo for this, it also
+has the advantage that it nicely solves the problem with a filesystem
+being bind-mounted on several directories...  Otherwise you have to
+solve the problem which mountpoint of the filesystem should be used
+(especially because the real root of the filesystem need not be
+accessible from the namespace of the process).
 
-> I delete the following patch 
-> "commit 3f31fddfa26b7594b44ff2b34f9a04ba409e0f91
-> Author: Mingming Cao <cmm@us.ibm.com>
-> Date:   Fri Jul 25 01:46:22 2008 -0700
+> > - /sys/fs seems to be a perfect fit for the purpose judging by ext4 example
+> > cons:
+> > - uevent interface is unneeded extra(?); can be made optional, per attribute
 > 
->     jbd: fix race between free buffer and commit transaction
-> " 
-> This patch is no longer needed because if race between freeing buffer
-> and committing transaction functionality occurs and dio gets error,
-> currently dio falls back to buffered IO by the following patch.
+> You can not pass the mount path with the uevent, like you example
+> shows, you just don't know that reliably, and there can be many mount
+> points.
 > 
-> 	commit 6ccfa806a9cfbbf1cd43d5b6aa47ef2c0eb518fd
-> 	Author: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-> 	Date:   Tue Sep 2 14:35:40 2008 -0700
+> How do you want to name the /sys/fs/ device? By "dev_t st_dev" or the
+> underlying block device name? How do you indentify the mountpoint in
+> your current namespace, of the device that raised the error? The event
+> might be for a filesystem you can not reach at all in your mount tree.
 > 
->    	VFS: fix dio write returning EIO when try_to_release_page fails 
+> The /sys/fs/ approach sounds very much like an "export known
+> superblocks in /sys/fs/", something like this could be useful, but we
+> need to check carefully with other people what are the issues of such
+> an interface, and if there is something that should not be exported
+> that way.
 > 
-> Thanks.
-> 
-> Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-  OK, makes sence. At least it has an advantage that we don't have to
-wait for a transaction commit in DIO path.
+> How are device-less superblocks like btrfs handled in such an
+> interface, how is the device named, if it does not have a direct block
+> device underneath?
+  Generally, it is an unclear question how should kernel identify a
+filesystem where the problem happened. We could have a kobject for
+superblock but it's still unclear how to map this to a device /
+mountpoints because that's what userspace ultimately wants to tell the
+sysadmin and possibly make some automated decision.
+  What currently seems as the cleanest solution to me, is to add some
+"filesystem identifier" field to /proc/self/mountinfo (which could be
+UUID, superblock pointer or whatever) and pass this along with the error
+message to userspace. Passing could be done either via sysfs (but I
+agree it isn't the best fit because a filesystem need not be bound to a
+device) or just via generic netlink (which has the disadvantage that you
+cannot use the udev framework everyone knows)...
 
-Acked-by: Jan Kara <jack@suse.cz>
-
-								Honza
-> 
-> diff -Nrup linux-2.6.30-rc8.org/fs/jbd/transaction.c linux-2.6.30-rc8.ext3_4/fs/jbd/transaction.c
-> --- linux-2.6.30-rc8.org/fs/jbd/transaction.c	2009-06-04 16:26:26.000000000 +0900
-> +++ linux-2.6.30-rc8.ext3_4/fs/jbd/transaction.c	2009-06-04 19:14:53.000000000 +0900
-> @@ -1686,35 +1686,6 @@ out:
->  	return;
->  }
->  
-> -/*
-> - * journal_try_to_free_buffers() could race with journal_commit_transaction()
-> - * The latter might still hold the a count on buffers when inspecting
-> - * them on t_syncdata_list or t_locked_list.
-> - *
-> - * journal_try_to_free_buffers() will call this function to
-> - * wait for the current transaction to finish syncing data buffers, before
-> - * tryinf to free that buffer.
-> - *
-> - * Called with journal->j_state_lock held.
-> - */
-> -static void journal_wait_for_transaction_sync_data(journal_t *journal)
-> -{
-> -	transaction_t *transaction = NULL;
-> -	tid_t tid;
-> -
-> -	spin_lock(&journal->j_state_lock);
-> -	transaction = journal->j_committing_transaction;
-> -
-> -	if (!transaction) {
-> -		spin_unlock(&journal->j_state_lock);
-> -		return;
-> -	}
-> -
-> -	tid = transaction->t_tid;
-> -	spin_unlock(&journal->j_state_lock);
-> -	log_wait_commit(journal, tid);
-> -}
-> -
->  /**
->   * int journal_try_to_free_buffers() - try to free page buffers.
->   * @journal: journal for operation
-> @@ -1786,25 +1757,6 @@ int journal_try_to_free_buffers(journal_
->  
->  	ret = try_to_free_buffers(page);
->  
-> -	/*
-> -	* There are a number of places where journal_try_to_free_buffers()
-> -	* could race with journal_commit_transaction(), the later still
-> -	* holds the reference to the buffers to free while processing them.
-> -	* try_to_free_buffers() failed to free those buffers. Some of the
-> -	* caller of releasepage() request page buffers to be dropped, otherwise
-> -	* treat the fail-to-free as errors (such as generic_file_direct_IO())
-> -	*
-> -	* So, if the caller of try_to_release_page() wants the synchronous
-> -	* behaviour(i.e make sure buffers are dropped upon return),
-> -	* let's wait for the current transaction to finish flush of
-> -	* dirty data buffers, then try to free those buffers again,
-> -	* with the journal locked.
-> -	*/
-> -	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
-> -		journal_wait_for_transaction_sync_data(journal);
-> -		ret = try_to_free_buffers(page);
-> -	}
-> -
->  busy:
->  	return ret;
->  }
-> diff -Nrup linux-2.6.30-rc8.org/fs/jbd2/transaction.c linux-2.6.30-rc8.ext3_4/fs/jbd2/transaction.c
-> --- linux-2.6.30-rc8.org/fs/jbd2/transaction.c	2009-06-04 16:26:26.000000000 +0900
-> +++ linux-2.6.30-rc8.ext3_4/fs/jbd2/transaction.c	2009-06-04 19:17:12.000000000 +0900
-> @@ -1547,36 +1547,6 @@ out:
->  	return;
->  }
->  
-> -/*
-> - * jbd2_journal_try_to_free_buffers() could race with
-> - * jbd2_journal_commit_transaction(). The later might still hold the
-> - * reference count to the buffers when inspecting them on
-> - * t_syncdata_list or t_locked_list.
-> - *
-> - * jbd2_journal_try_to_free_buffers() will call this function to
-> - * wait for the current transaction to finish syncing data buffers, before
-> - * try to free that buffer.
-> - *
-> - * Called with journal->j_state_lock hold.
-> - */
-> -static void jbd2_journal_wait_for_transaction_sync_data(journal_t *journal)
-> -{
-> -	transaction_t *transaction;
-> -	tid_t tid;
-> -
-> -	spin_lock(&journal->j_state_lock);
-> -	transaction = journal->j_committing_transaction;
-> -
-> -	if (!transaction) {
-> -		spin_unlock(&journal->j_state_lock);
-> -		return;
-> -	}
-> -
-> -	tid = transaction->t_tid;
-> -	spin_unlock(&journal->j_state_lock);
-> -	jbd2_log_wait_commit(journal, tid);
-> -}
-> -
->  /**
->   * int jbd2_journal_try_to_free_buffers() - try to free page buffers.
->   * @journal: journal for operation
-> @@ -1649,25 +1619,6 @@ int jbd2_journal_try_to_free_buffers(jou
->  
->  	ret = try_to_free_buffers(page);
->  
-> -	/*
-> -	* There are a number of places where jbd2_journal_try_to_free_buffers()
-> -	* could race with jbd2_journal_commit_transaction(), the later still
-> -	* holds the reference to the buffers to free while processing them.
-> -	* try_to_free_buffers() failed to free those buffers. Some of the
-> -	* caller of releasepage() request page buffers to be dropped, otherwise
-> -	* treat the fail-to-free as errors (such as generic_file_direct_IO())
-> -	*
-> -	* So, if the caller of try_to_release_page() wants the synchronous
-> -	* behaviour(i.e make sure buffers are dropped upon return),
-> -	* let's wait for the current transaction to finish flush of
-> -	* dirty data buffers, then try to free those buffers again,
-> -	* with the journal locked.
-> -	*/
-> -	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
-> -		jbd2_journal_wait_for_transaction_sync_data(journal);
-> -		ret = try_to_free_buffers(page);
-> -	}
-> -
->  busy:
->  	return ret;
->  }
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+									Honza
 -- 
 Jan Kara <jack@suse.cz>
 SuSE CR Labs
