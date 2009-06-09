@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 71/87] ext4: tighten restrictions on inode flags
-Date: Tue, 09 Jun 2009 02:39:59 -0700
-Message-ID: <20090609094109.038712318@blue.kroah.org>
+Subject: [patch 75/87] ext4: Automatically allocate delay allocated blocks on close
+Date: Tue, 09 Jun 2009 02:40:03 -0700
+Message-ID: <20090609094109.986748238@blue.kroah.org>
 References: <20090609093848.204935043@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -17,112 +17,75 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
 	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	Duane Griffin <duaneg@dghda.com>,
-	Andreas Dilger <adilger@sun.com>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:55455 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:55522 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759395AbZFIKVg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 06:21:36 -0400
-Content-Disposition: inline; filename=ext4-tighten-restrictions-on-inode-flags.patch
+	id S1760869AbZFIKVt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 06:21:49 -0400
+Content-Disposition: inline; filename=ext4-automatically-allocate-delay-allocated-blocks-on-close.patch
 In-Reply-To: <20090609094451.GA26439@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
-
 
 2.6.29-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: Duane Griffin <duaneg@dghda.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 2dc6b0d48ca0599837df21b14bb8393d0804af57)
+(cherry picked from commit 7d8f9f7d150dded7b68e61ca6403a1f166fb4edf)
 
-At the moment there are few restrictions on which flags may be set on
-which inodes.  Specifically DIRSYNC may only be set on directories and
-IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
-TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
-on non-regular file, non-directories.
+When closing a file that had been previously truncated, force any
+delay allocated blocks that to be allocated so that if the filesystem
+is mounted with data=ordered, the data blocks will be pushed out to
+disk along with the journal commit.  Many application programs expect
+this, so we do this to avoid zero length files if the system crashes
+unexpectedly.
 
-Introduces a flags masking function which masks flags based on mode and
-use it during inode creation and when flags are set via the ioctl to
-facilitate future consistency.
-
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Acked-by: Andreas Dilger <adilger@sun.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/ext4.h   |   17 +++++++++++++++++
- fs/ext4/ialloc.c |   14 +++++---------
- fs/ext4/ioctl.c  |    3 +--
- 3 files changed, 23 insertions(+), 11 deletions(-)
+ fs/ext4/ext4.h  |    1 +
+ fs/ext4/file.c  |    4 ++++
+ fs/ext4/inode.c |    3 +++
+ 3 files changed, 8 insertions(+)
 
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -255,6 +255,23 @@ struct flex_groups {
- 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
- 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
+@@ -279,6 +279,7 @@ static inline __u32 ext4_mask_flags(umod
+ #define EXT4_STATE_NEW			0x00000002 /* inode is newly created */
+ #define EXT4_STATE_XATTR		0x00000004 /* has in-inode xattrs */
+ #define EXT4_STATE_NO_EXPAND		0x00000008 /* No space for expansion */
++#define EXT4_STATE_DA_ALLOC_CLOSE	0x00000010 /* Alloc DA blks on close */
  
-+/* Flags that are appropriate for regular files (all but dir-specific ones). */
-+#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
-+
-+/* Flags that are appropriate for non-directories/regular files. */
-+#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
-+
-+/* Mask out flags that are inappropriate for the given type of inode. */
-+static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
-+{
-+	if (S_ISDIR(mode))
-+		return flags;
-+	else if (S_ISREG(mode))
-+		return flags & EXT4_REG_FLMASK;
-+	else
-+		return flags & EXT4_OTHER_FLMASK;
-+}
-+
- /*
-  * Inode dynamic state flags
+ /* Used to pass group descriptor data when online resize is done */
+ struct ext4_new_group_input {
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -33,6 +33,10 @@
   */
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -885,16 +885,12 @@ got:
- 	ei->i_disksize = 0;
+ static int ext4_release_file(struct inode *inode, struct file *filp)
+ {
++	if (EXT4_I(inode)->i_state & EXT4_STATE_DA_ALLOC_CLOSE) {
++		ext4_alloc_da_blocks(inode);
++		EXT4_I(inode)->i_state &= ~EXT4_STATE_DA_ALLOC_CLOSE;
++	}
+ 	/* if we are the last writer on the inode, drop the block reservation */
+ 	if ((filp->f_mode & FMODE_WRITE) &&
+ 			(atomic_read(&inode->i_writecount) == 1))
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -3880,6 +3880,9 @@ void ext4_truncate(struct inode *inode)
+ 	if (!ext4_can_truncate(inode))
+ 		return;
  
- 	/*
--	 * Don't inherit extent flag from directory. We set extent flag on
--	 * newly created directory and file only if -o extent mount option is
--	 * specified
-+	 * Don't inherit extent flag from directory, amongst others. We set
-+	 * extent flag on newly created directory and file only if -o extent
-+	 * mount option is specified
- 	 */
--	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
--	if (S_ISLNK(mode))
--		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
--	/* dirsync only applies to directories */
--	if (!S_ISDIR(mode))
--		ei->i_flags &= ~EXT4_DIRSYNC_FL;
-+	ei->i_flags =
-+		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
- 	ei->i_file_acl = 0;
- 	ei->i_dtime = 0;
- 	ei->i_block_group = group;
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -48,8 +48,7 @@ long ext4_ioctl(struct file *filp, unsig
- 		if (err)
- 			return err;
- 
--		if (!S_ISDIR(inode->i_mode))
--			flags &= ~EXT4_DIRSYNC_FL;
-+		flags = ext4_mask_flags(inode->i_mode, flags);
- 
- 		err = -EPERM;
- 		mutex_lock(&inode->i_mutex);
++	if (inode->i_size == 0)
++		ei->i_state |= EXT4_STATE_DA_ALLOC_CLOSE;
++
+ 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
+ 		ext4_ext_truncate(inode);
+ 		return;
 
 
