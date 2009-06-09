@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 76/87] ext4: Automatically allocate delay allocated blocks on rename
-Date: Tue, 09 Jun 2009 02:40:04 -0700
-Message-ID: <20090609094110.231154433@blue.kroah.org>
+Subject: [patch 71/87] ext4: tighten restrictions on inode flags
+Date: Tue, 09 Jun 2009 02:39:59 -0700
+Message-ID: <20090609094109.038712318@blue.kroah.org>
 References: <20090609093848.204935043@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -17,66 +17,112 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
 	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
+	Duane Griffin <duaneg@dghda.com>,
+	Andreas Dilger <adilger@sun.com>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:55538 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:55455 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760873AbZFIKVx (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 06:21:53 -0400
-Content-Disposition: inline; filename=ext4-automatically-allocate-delay-allocated-blocks-on-rename.patch
+	id S1759395AbZFIKVg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 06:21:36 -0400
+Content-Disposition: inline; filename=ext4-tighten-restrictions-on-inode-flags.patch
 In-Reply-To: <20090609094451.GA26439@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
 
 2.6.29-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: "Theodore Ts'o" <tytso@mit.edu>
+From: Duane Griffin <duaneg@dghda.com>
 
-(cherry picked from commit 8750c6d5fcbd3342b3d908d157f81d345c5325a7)
+(cherry picked from commit 2dc6b0d48ca0599837df21b14bb8393d0804af57)
 
-When renaming a file such that a link to another inode is overwritten,
-force any delay allocated blocks that to be allocated so that if the
-filesystem is mounted with data=ordered, the data blocks will be
-pushed out to disk along with the journal commit.  Many application
-programs expect this, so we do this to avoid zero length files if the
-system crashes unexpectedly.
+At the moment there are few restrictions on which flags may be set on
+which inodes.  Specifically DIRSYNC may only be set on directories and
+IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
+TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
+on non-regular file, non-directories.
 
+Introduces a flags masking function which masks flags based on mode and
+use it during inode creation and when flags are set via the ioctl to
+facilitate future consistency.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/namei.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/ext4/ext4.h   |   17 +++++++++++++++++
+ fs/ext4/ialloc.c |   14 +++++---------
+ fs/ext4/ioctl.c  |    3 +--
+ 3 files changed, 23 insertions(+), 11 deletions(-)
 
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2319,7 +2319,7 @@ static int ext4_rename(struct inode *old
- 	struct inode *old_inode, *new_inode;
- 	struct buffer_head *old_bh, *new_bh, *dir_bh;
- 	struct ext4_dir_entry_2 *old_de, *new_de;
--	int retval;
-+	int retval, force_da_alloc = 0;
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -255,6 +255,23 @@ struct flex_groups {
+ 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
+ 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
  
- 	old_bh = new_bh = dir_bh = NULL;
++/* Flags that are appropriate for regular files (all but dir-specific ones). */
++#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
++
++/* Flags that are appropriate for non-directories/regular files. */
++#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
++
++/* Mask out flags that are inappropriate for the given type of inode. */
++static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
++{
++	if (S_ISDIR(mode))
++		return flags;
++	else if (S_ISREG(mode))
++		return flags & EXT4_REG_FLMASK;
++	else
++		return flags & EXT4_OTHER_FLMASK;
++}
++
+ /*
+  * Inode dynamic state flags
+  */
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -885,16 +885,12 @@ got:
+ 	ei->i_disksize = 0;
  
-@@ -2457,6 +2457,7 @@ static int ext4_rename(struct inode *old
- 		ext4_mark_inode_dirty(handle, new_inode);
- 		if (!new_inode->i_nlink)
- 			ext4_orphan_add(handle, new_inode);
-+		force_da_alloc = 1;
- 	}
- 	retval = 0;
+ 	/*
+-	 * Don't inherit extent flag from directory. We set extent flag on
+-	 * newly created directory and file only if -o extent mount option is
+-	 * specified
++	 * Don't inherit extent flag from directory, amongst others. We set
++	 * extent flag on newly created directory and file only if -o extent
++	 * mount option is specified
+ 	 */
+-	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
+-	if (S_ISLNK(mode))
+-		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+-	/* dirsync only applies to directories */
+-	if (!S_ISDIR(mode))
+-		ei->i_flags &= ~EXT4_DIRSYNC_FL;
++	ei->i_flags =
++		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
+ 	ei->i_file_acl = 0;
+ 	ei->i_dtime = 0;
+ 	ei->i_block_group = group;
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -48,8 +48,7 @@ long ext4_ioctl(struct file *filp, unsig
+ 		if (err)
+ 			return err;
  
-@@ -2465,6 +2466,8 @@ end_rename:
- 	brelse(old_bh);
- 	brelse(new_bh);
- 	ext4_journal_stop(handle);
-+	if (retval == 0 && force_da_alloc)
-+		ext4_alloc_da_blocks(old_inode);
- 	return retval;
- }
+-		if (!S_ISDIR(inode->i_mode))
+-			flags &= ~EXT4_DIRSYNC_FL;
++		flags = ext4_mask_flags(inode->i_mode, flags);
  
+ 		err = -EPERM;
+ 		mutex_lock(&inode->i_mutex);
 
 
