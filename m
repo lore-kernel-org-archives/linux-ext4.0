@@ -1,87 +1,190 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 84/87] ext4: Fix sub-block zeroing for writes into preallocated extents
-Date: Tue, 09 Jun 2009 02:40:12 -0700
-Message-ID: <20090609094112.103140898@blue.kroah.org>
-References: <20090609093848.204935043@blue.kroah.org>
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
-	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
-	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
-	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Greg Kroah-Hartman <gregkh@suse.de>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: Re: [PATCH] jbd/jbd2 :clean up journal_try_to_free_buffers
+Date: Tue, 9 Jun 2009 15:36:04 +0200
+Message-ID: <20090609133602.GA13755@atrey.karlin.mff.cuni.cz>
+References: <6.0.0.20.2.20090604194409.071baf80@172.19.0.2>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>,
+	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:32894 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757622AbZFIKWX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 06:22:23 -0400
-Content-Disposition: inline; filename=ext4-fix-sub-block-zeroing-for-writes-into-preallocated-extents.patch
-In-Reply-To: <20090609094451.GA26439@kroah.com>
+Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:35951 "EHLO
+	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750725AbZFINgD (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jun 2009 09:36:03 -0400
+Content-Disposition: inline
+In-Reply-To: <6.0.0.20.2.20090604194409.071baf80@172.19.0.2>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+  Hi,
 
-2.6.29-stable review patch.  If anyone has any objections, please let us know.
+> I delete the following patch 
+> "commit 3f31fddfa26b7594b44ff2b34f9a04ba409e0f91
+> Author: Mingming Cao <cmm@us.ibm.com>
+> Date:   Fri Jul 25 01:46:22 2008 -0700
+> 
+>     jbd: fix race between free buffer and commit transaction
+> " 
+> This patch is no longer needed because if race between freeing buffer
+> and committing transaction functionality occurs and dio gets error,
+> currently dio falls back to buffered IO by the following patch.
+> 
+> 	commit 6ccfa806a9cfbbf1cd43d5b6aa47ef2c0eb518fd
+> 	Author: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+> 	Date:   Tue Sep 2 14:35:40 2008 -0700
+> 
+>    	VFS: fix dio write returning EIO when try_to_release_page fails 
+> 
+> Thanks.
+> 
+> Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+  OK, makes sence. At least it has an advantage that we don't have to
+wait for a transaction commit in DIO path.
 
-------------------
+Acked-by: Jan Kara <jack@suse.cz>
 
-From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-
-(cherry picked from commit 9c1ee184a30394e54165fa4c15923cabd952c106)
-
-We need to mark the buffer_head mapping preallocated space as new
-during write_begin. Otherwise we don't zero out the page cache content
-properly for a partial write. This will cause file corruption with
-preallocation.
-
-Now that we mark the buffer_head new we also need to have a valid
-buffer_head blocknr so that unmap_underlying_metadata() unmaps the
-correct block.
-
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
----
- fs/ext4/extents.c |    2 ++
- fs/ext4/inode.c   |    7 +++++++
- 2 files changed, 9 insertions(+)
-
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2776,6 +2776,8 @@ int ext4_ext_get_blocks(handle_t *handle
- 				if (allocated > max_blocks)
- 					allocated = max_blocks;
- 				set_buffer_unwritten(bh_result);
-+				bh_result->b_bdev = inode->i_sb->s_bdev;
-+				bh_result->b_blocknr = newblock;
- 				goto out2;
- 			}
- 
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -2246,6 +2246,13 @@ static int ext4_da_get_block_prep(struct
- 		set_buffer_delay(bh_result);
- 	} else if (ret > 0) {
- 		bh_result->b_size = (ret << inode->i_blkbits);
-+		/*
-+		 * With sub-block writes into unwritten extents
-+		 * we also need to mark the buffer as new so that
-+		 * the unwritten parts of the buffer gets correctly zeroed.
-+		 */
-+		if (buffer_unwritten(bh_result))
-+			set_buffer_new(bh_result);
- 		ret = 0;
- 	}
- 
-
-
+								Honza
+> 
+> diff -Nrup linux-2.6.30-rc8.org/fs/jbd/transaction.c linux-2.6.30-rc8.ext3_4/fs/jbd/transaction.c
+> --- linux-2.6.30-rc8.org/fs/jbd/transaction.c	2009-06-04 16:26:26.000000000 +0900
+> +++ linux-2.6.30-rc8.ext3_4/fs/jbd/transaction.c	2009-06-04 19:14:53.000000000 +0900
+> @@ -1686,35 +1686,6 @@ out:
+>  	return;
+>  }
+>  
+> -/*
+> - * journal_try_to_free_buffers() could race with journal_commit_transaction()
+> - * The latter might still hold the a count on buffers when inspecting
+> - * them on t_syncdata_list or t_locked_list.
+> - *
+> - * journal_try_to_free_buffers() will call this function to
+> - * wait for the current transaction to finish syncing data buffers, before
+> - * tryinf to free that buffer.
+> - *
+> - * Called with journal->j_state_lock held.
+> - */
+> -static void journal_wait_for_transaction_sync_data(journal_t *journal)
+> -{
+> -	transaction_t *transaction = NULL;
+> -	tid_t tid;
+> -
+> -	spin_lock(&journal->j_state_lock);
+> -	transaction = journal->j_committing_transaction;
+> -
+> -	if (!transaction) {
+> -		spin_unlock(&journal->j_state_lock);
+> -		return;
+> -	}
+> -
+> -	tid = transaction->t_tid;
+> -	spin_unlock(&journal->j_state_lock);
+> -	log_wait_commit(journal, tid);
+> -}
+> -
+>  /**
+>   * int journal_try_to_free_buffers() - try to free page buffers.
+>   * @journal: journal for operation
+> @@ -1786,25 +1757,6 @@ int journal_try_to_free_buffers(journal_
+>  
+>  	ret = try_to_free_buffers(page);
+>  
+> -	/*
+> -	* There are a number of places where journal_try_to_free_buffers()
+> -	* could race with journal_commit_transaction(), the later still
+> -	* holds the reference to the buffers to free while processing them.
+> -	* try_to_free_buffers() failed to free those buffers. Some of the
+> -	* caller of releasepage() request page buffers to be dropped, otherwise
+> -	* treat the fail-to-free as errors (such as generic_file_direct_IO())
+> -	*
+> -	* So, if the caller of try_to_release_page() wants the synchronous
+> -	* behaviour(i.e make sure buffers are dropped upon return),
+> -	* let's wait for the current transaction to finish flush of
+> -	* dirty data buffers, then try to free those buffers again,
+> -	* with the journal locked.
+> -	*/
+> -	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
+> -		journal_wait_for_transaction_sync_data(journal);
+> -		ret = try_to_free_buffers(page);
+> -	}
+> -
+>  busy:
+>  	return ret;
+>  }
+> diff -Nrup linux-2.6.30-rc8.org/fs/jbd2/transaction.c linux-2.6.30-rc8.ext3_4/fs/jbd2/transaction.c
+> --- linux-2.6.30-rc8.org/fs/jbd2/transaction.c	2009-06-04 16:26:26.000000000 +0900
+> +++ linux-2.6.30-rc8.ext3_4/fs/jbd2/transaction.c	2009-06-04 19:17:12.000000000 +0900
+> @@ -1547,36 +1547,6 @@ out:
+>  	return;
+>  }
+>  
+> -/*
+> - * jbd2_journal_try_to_free_buffers() could race with
+> - * jbd2_journal_commit_transaction(). The later might still hold the
+> - * reference count to the buffers when inspecting them on
+> - * t_syncdata_list or t_locked_list.
+> - *
+> - * jbd2_journal_try_to_free_buffers() will call this function to
+> - * wait for the current transaction to finish syncing data buffers, before
+> - * try to free that buffer.
+> - *
+> - * Called with journal->j_state_lock hold.
+> - */
+> -static void jbd2_journal_wait_for_transaction_sync_data(journal_t *journal)
+> -{
+> -	transaction_t *transaction;
+> -	tid_t tid;
+> -
+> -	spin_lock(&journal->j_state_lock);
+> -	transaction = journal->j_committing_transaction;
+> -
+> -	if (!transaction) {
+> -		spin_unlock(&journal->j_state_lock);
+> -		return;
+> -	}
+> -
+> -	tid = transaction->t_tid;
+> -	spin_unlock(&journal->j_state_lock);
+> -	jbd2_log_wait_commit(journal, tid);
+> -}
+> -
+>  /**
+>   * int jbd2_journal_try_to_free_buffers() - try to free page buffers.
+>   * @journal: journal for operation
+> @@ -1649,25 +1619,6 @@ int jbd2_journal_try_to_free_buffers(jou
+>  
+>  	ret = try_to_free_buffers(page);
+>  
+> -	/*
+> -	* There are a number of places where jbd2_journal_try_to_free_buffers()
+> -	* could race with jbd2_journal_commit_transaction(), the later still
+> -	* holds the reference to the buffers to free while processing them.
+> -	* try_to_free_buffers() failed to free those buffers. Some of the
+> -	* caller of releasepage() request page buffers to be dropped, otherwise
+> -	* treat the fail-to-free as errors (such as generic_file_direct_IO())
+> -	*
+> -	* So, if the caller of try_to_release_page() wants the synchronous
+> -	* behaviour(i.e make sure buffers are dropped upon return),
+> -	* let's wait for the current transaction to finish flush of
+> -	* dirty data buffers, then try to free those buffers again,
+> -	* with the journal locked.
+> -	*/
+> -	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
+> -		jbd2_journal_wait_for_transaction_sync_data(journal);
+> -		ret = try_to_free_buffers(page);
+> -	}
+> -
+>  busy:
+>  	return ret;
+>  }
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SuSE CR Labs
