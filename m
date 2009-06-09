@@ -1,93 +1,170 @@
-From: akpm@linux-foundation.org
-Subject: + jbd-fix-race-in-buffer-processing-in-commit-code.patch added to -mm tree
-Date: Mon, 08 Jun 2009 15:58:55 -0700
-Message-ID: <200906082258.n58MwtDI020940@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-Cc: jack@suse.cz, linux-ext4@vger.kernel.org, stable@kernel.org
-To: mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Subject: [PATCH] jbd/jbd2 :clean up journal_try_to_free_buffers
+Date: Tue, 09 Jun 2009 09:06:22 +0900
+Message-ID: <6.0.0.20.2.20090604194409.071baf80@172.19.0.2>
+Mime-Version: 1.0
+Content-Type: text/plain; charset="us-ascii"
+Content-Transfer-Encoding: 7bit
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Andrew Morton <akpm@linux-foundation.org>,
+	Theodore Tso <tytso@mit.edu>, Mingming Cao <cmm@us.ibm.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+Hi.
 
-The patch titled
-     jbd: fix race in buffer processing in commit code
-has been added to the -mm tree.  Its filename is
-     jbd-fix-race-in-buffer-processing-in-commit-code.patch
+I delete the following patch 
+"commit 3f31fddfa26b7594b44ff2b34f9a04ba409e0f91
+Author: Mingming Cao <cmm@us.ibm.com>
+Date:   Fri Jul 25 01:46:22 2008 -0700
 
-Before you just go and hit "reply", please:
-   a) Consider who else should be cc'ed
-   b) Prefer to cc a suitable mailing list as well
-   c) Ideally: find the original patch on the mailing list and do a
-      reply-to-all to that, adding suitable additional cc's
+    jbd: fix race between free buffer and commit transaction
+" 
+This patch is no longer needed because if race between freeing buffer
+and committing transaction functionality occurs and dio gets error,
+currently dio falls back to buffered IO by the following patch.
 
-*** Remember to use Documentation/SubmitChecklist when testing your code ***
+	commit 6ccfa806a9cfbbf1cd43d5b6aa47ef2c0eb518fd
+	Author: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+	Date:   Tue Sep 2 14:35:40 2008 -0700
 
-See http://userweb.kernel.org/~akpm/stuff/added-to-mm.txt to find
-out what to do about this
+   	VFS: fix dio write returning EIO when try_to_release_page fails 
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
+Thanks.
 
-------------------------------------------------------
-Subject: jbd: fix race in buffer processing in commit code
-From: Jan Kara <jack@suse.cz>
+Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
 
-In commit code, we scan buffers attached to a transaction.  During this
-scan, we sometimes have to drop j_list_lock and then we recheck whether
-the journal buffer head didn't get freed by journal_try_to_free_buffers().
- But checking for buffer_jbd(bh) isn't enough because a new journal head
-could get attached to our buffer head.  So add a check whether the journal
-head remained the same and whether it's still at the same transaction and
-list.
-
-This is a nasty bug and can cause problems like memory corruption (use after
-free) or trigger various assertions in JBD code (observed).
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: <stable@kernel.org>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/jbd/commit.c |    6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff -puN fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code fs/jbd/commit.c
---- a/fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code
-+++ a/fs/jbd/commit.c
-@@ -241,7 +241,7 @@ write_out_data:
- 			spin_lock(&journal->j_list_lock);
- 		}
- 		/* Someone already cleaned up the buffer? */
--		if (!buffer_jbd(bh)
-+		if (!buffer_jbd(bh) || bh2jh(bh) != jh
- 			|| jh->b_transaction != commit_transaction
- 			|| jh->b_jlist != BJ_SyncData) {
- 			jbd_unlock_bh_state(bh);
-@@ -478,7 +478,9 @@ void journal_commit_transaction(journal_
- 			spin_lock(&journal->j_list_lock);
- 			continue;
- 		}
--		if (buffer_jbd(bh) && jh->b_jlist == BJ_Locked) {
-+		if (buffer_jbd(bh) && bh2jh(bh) == jh &&
-+		    jh->b_transaction == commit_transaction &&
-+		    jh->b_jlist == BJ_Locked) {
- 			__journal_unfile_buffer(jh);
- 			jbd_unlock_bh_state(bh);
- 			journal_remove_journal_head(bh);
-_
-
-Patches currently in -mm which might be from jack@suse.cz are
-
-jbd-fix-race-in-buffer-processing-in-commit-code.patch
-linux-next.patch
-vfs-split-generic_forget_inode-so-that-hugetlbfs-does-not-have-to-copy-it.patch
-ext2-add-blk_issue_flush-to-syncing-paths.patch
-mm-remove-__invalidate_mapping_pages-variant.patch
-ext2-do-not-update-mtime-of-a-moved-directory.patch
-ext3-fix-chain-verification-in-ext3_get_blocks.patch
-isofs-let-mode-and-dmode-mount-options-override-rock-ridge-mode-setting.patch
-isofs-fix-setting-of-uid-and-gid-to-0.patch
-isofs-cleanup-mount-option-processing.patch
-reiser4-update-names-of-quota-methods.patch
+diff -Nrup linux-2.6.30-rc8.org/fs/jbd/transaction.c linux-2.6.30-rc8.ext3_4/fs/jbd/transaction.c
+--- linux-2.6.30-rc8.org/fs/jbd/transaction.c	2009-06-04 16:26:26.000000000 +0900
++++ linux-2.6.30-rc8.ext3_4/fs/jbd/transaction.c	2009-06-04 19:14:53.000000000 +0900
+@@ -1686,35 +1686,6 @@ out:
+ 	return;
+ }
+ 
+-/*
+- * journal_try_to_free_buffers() could race with journal_commit_transaction()
+- * The latter might still hold the a count on buffers when inspecting
+- * them on t_syncdata_list or t_locked_list.
+- *
+- * journal_try_to_free_buffers() will call this function to
+- * wait for the current transaction to finish syncing data buffers, before
+- * tryinf to free that buffer.
+- *
+- * Called with journal->j_state_lock held.
+- */
+-static void journal_wait_for_transaction_sync_data(journal_t *journal)
+-{
+-	transaction_t *transaction = NULL;
+-	tid_t tid;
+-
+-	spin_lock(&journal->j_state_lock);
+-	transaction = journal->j_committing_transaction;
+-
+-	if (!transaction) {
+-		spin_unlock(&journal->j_state_lock);
+-		return;
+-	}
+-
+-	tid = transaction->t_tid;
+-	spin_unlock(&journal->j_state_lock);
+-	log_wait_commit(journal, tid);
+-}
+-
+ /**
+  * int journal_try_to_free_buffers() - try to free page buffers.
+  * @journal: journal for operation
+@@ -1786,25 +1757,6 @@ int journal_try_to_free_buffers(journal_
+ 
+ 	ret = try_to_free_buffers(page);
+ 
+-	/*
+-	* There are a number of places where journal_try_to_free_buffers()
+-	* could race with journal_commit_transaction(), the later still
+-	* holds the reference to the buffers to free while processing them.
+-	* try_to_free_buffers() failed to free those buffers. Some of the
+-	* caller of releasepage() request page buffers to be dropped, otherwise
+-	* treat the fail-to-free as errors (such as generic_file_direct_IO())
+-	*
+-	* So, if the caller of try_to_release_page() wants the synchronous
+-	* behaviour(i.e make sure buffers are dropped upon return),
+-	* let's wait for the current transaction to finish flush of
+-	* dirty data buffers, then try to free those buffers again,
+-	* with the journal locked.
+-	*/
+-	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
+-		journal_wait_for_transaction_sync_data(journal);
+-		ret = try_to_free_buffers(page);
+-	}
+-
+ busy:
+ 	return ret;
+ }
+diff -Nrup linux-2.6.30-rc8.org/fs/jbd2/transaction.c linux-2.6.30-rc8.ext3_4/fs/jbd2/transaction.c
+--- linux-2.6.30-rc8.org/fs/jbd2/transaction.c	2009-06-04 16:26:26.000000000 +0900
++++ linux-2.6.30-rc8.ext3_4/fs/jbd2/transaction.c	2009-06-04 19:17:12.000000000 +0900
+@@ -1547,36 +1547,6 @@ out:
+ 	return;
+ }
+ 
+-/*
+- * jbd2_journal_try_to_free_buffers() could race with
+- * jbd2_journal_commit_transaction(). The later might still hold the
+- * reference count to the buffers when inspecting them on
+- * t_syncdata_list or t_locked_list.
+- *
+- * jbd2_journal_try_to_free_buffers() will call this function to
+- * wait for the current transaction to finish syncing data buffers, before
+- * try to free that buffer.
+- *
+- * Called with journal->j_state_lock hold.
+- */
+-static void jbd2_journal_wait_for_transaction_sync_data(journal_t *journal)
+-{
+-	transaction_t *transaction;
+-	tid_t tid;
+-
+-	spin_lock(&journal->j_state_lock);
+-	transaction = journal->j_committing_transaction;
+-
+-	if (!transaction) {
+-		spin_unlock(&journal->j_state_lock);
+-		return;
+-	}
+-
+-	tid = transaction->t_tid;
+-	spin_unlock(&journal->j_state_lock);
+-	jbd2_log_wait_commit(journal, tid);
+-}
+-
+ /**
+  * int jbd2_journal_try_to_free_buffers() - try to free page buffers.
+  * @journal: journal for operation
+@@ -1649,25 +1619,6 @@ int jbd2_journal_try_to_free_buffers(jou
+ 
+ 	ret = try_to_free_buffers(page);
+ 
+-	/*
+-	* There are a number of places where jbd2_journal_try_to_free_buffers()
+-	* could race with jbd2_journal_commit_transaction(), the later still
+-	* holds the reference to the buffers to free while processing them.
+-	* try_to_free_buffers() failed to free those buffers. Some of the
+-	* caller of releasepage() request page buffers to be dropped, otherwise
+-	* treat the fail-to-free as errors (such as generic_file_direct_IO())
+-	*
+-	* So, if the caller of try_to_release_page() wants the synchronous
+-	* behaviour(i.e make sure buffers are dropped upon return),
+-	* let's wait for the current transaction to finish flush of
+-	* dirty data buffers, then try to free those buffers again,
+-	* with the journal locked.
+-	*/
+-	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
+-		jbd2_journal_wait_for_transaction_sync_data(journal);
+-		ret = try_to_free_buffers(page);
+-	}
+-
+ busy:
+ 	return ret;
+ }
 
