@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 79/87] ext4: Check for an valid i_mode when reading the inode from disk
-Date: Tue, 09 Jun 2009 02:40:07 -0700
-Message-ID: <20090609094110.922941731@blue.kroah.org>
+Subject: [patch 80/87] jbd2: Update locking coments
+Date: Tue, 09 Jun 2009 02:40:08 -0700
+Message-ID: <20090609094111.149644013@blue.kroah.org>
 References: <20090609093848.204935043@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -17,57 +17,80 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
 	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
+	Jan Kara <jack@suse.cz>, Lin Tan <tammy000@gmail.com>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:55600 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:55612 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757846AbZFIKWE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 06:22:04 -0400
-Content-Disposition: inline; filename=ext4-check-for-an-valid-i_mode-when-reading-the-inode-from-disk.patch
+	id S1758217AbZFIKWI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 06:22:08 -0400
+Content-Disposition: inline; filename=jbd2-update-locking-coments.patch
 In-Reply-To: <20090609094451.GA26439@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
+
 
 2.6.29-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
-From: "Theodore Ts'o" <tytso@mit.edu>
+From: Jan Kara <jack@suse.cz>
 
-(cherry picked from commit 563bdd61fe4dbd6b58cf7eb06f8d8f14479ae1dc)
+(cherry picked from commit 86db97c87f744364d5889ca8a4134ca2048b8f83)
 
+Update information about locking in JBD2 revoke code. Inconsistency in
+comments found by Lin Tan <tammy000@gmail.com>
+
+CC: Lin Tan <tammy000@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/inode.c |   10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ fs/jbd2/revoke.c |   24 +++++++++++++++++++-----
+ 1 file changed, 19 insertions(+), 5 deletions(-)
 
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4367,7 +4367,8 @@ struct inode *ext4_iget(struct super_blo
- 			inode->i_op = &ext4_symlink_inode_operations;
- 			ext4_set_aops(inode);
- 		}
--	} else {
-+	} else if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode) ||
-+	      S_ISFIFO(inode->i_mode) || S_ISSOCK(inode->i_mode)) {
- 		inode->i_op = &ext4_special_inode_operations;
- 		if (raw_inode->i_block[0])
- 			init_special_inode(inode, inode->i_mode,
-@@ -4375,6 +4376,13 @@ struct inode *ext4_iget(struct super_blo
- 		else
- 			init_special_inode(inode, inode->i_mode,
- 			   new_decode_dev(le32_to_cpu(raw_inode->i_block[1])));
-+	} else {
-+		brelse(bh);
-+		ret = -EIO;
-+		ext4_error(inode->i_sb, __func__,
-+			   "bogus i_mode (%o) for inode=%lu",
-+			   inode->i_mode, inode->i_ino);
-+		goto bad_inode;
- 	}
- 	brelse(iloc.bh);
- 	ext4_set_inode_flags(inode);
-
-
+--- a/fs/jbd2/revoke.c
++++ b/fs/jbd2/revoke.c
+@@ -55,6 +55,25 @@
+  *			need do nothing.
+  * RevokeValid set, Revoked set:
+  *			buffer has been revoked.
++ *
++ * Locking rules:
++ * We keep two hash tables of revoke records. One hashtable belongs to the
++ * running transaction (is pointed to by journal->j_revoke), the other one
++ * belongs to the committing transaction. Accesses to the second hash table
++ * happen only from the kjournald and no other thread touches this table.  Also
++ * journal_switch_revoke_table() which switches which hashtable belongs to the
++ * running and which to the committing transaction is called only from
++ * kjournald. Therefore we need no locks when accessing the hashtable belonging
++ * to the committing transaction.
++ *
++ * All users operating on the hash table belonging to the running transaction
++ * have a handle to the transaction. Therefore they are safe from kjournald
++ * switching hash tables under them. For operations on the lists of entries in
++ * the hash table j_revoke_lock is used.
++ *
++ * Finally, also replay code uses the hash tables but at this moment noone else
++ * can touch them (filesystem isn't mounted yet) and hence no locking is
++ * needed.
+  */
+ 
+ #ifndef __KERNEL__
+@@ -401,8 +420,6 @@ int jbd2_journal_revoke(handle_t *handle
+  * the second time we would still have a pending revoke to cancel.  So,
+  * do not trust the Revoked bit on buffers unless RevokeValid is also
+  * set.
+- *
+- * The caller must have the journal locked.
+  */
+ int jbd2_journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ {
+@@ -480,10 +497,7 @@ void jbd2_journal_switch_revoke_table(jo
+ /*
+  * Write revoke records to the journal for all entries in the current
+  * revoke hash, deleting the entries as we go.
+- *
+- * Called with the journal lock held.
+  */
