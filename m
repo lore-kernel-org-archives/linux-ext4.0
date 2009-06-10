@@ -1,86 +1,67 @@
-From: akpm@linux-foundation.org
-Subject: [merged] jbd-fix-race-in-buffer-processing-in-commit-code.patch removed from -mm tree
-Date: Wed, 10 Jun 2009 10:44:05 -0700
-Message-ID: <200906101744.n5AHi56b030864@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: jack@suse.cz, linux-ext4@vger.kernel.org, stable@kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: [PATCH] ext4: Properly mark the extent uninitialized during
+	truncate
+Date: Thu, 11 Jun 2009 01:13:18 +0530
+Message-ID: <20090610194318.GA4686@skywalker>
+References: <1244638557-13492-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e23smtp04.au.ibm.com ([202.81.31.146]:49032 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754895AbZFJTna (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Jun 2009 15:43:30 -0400
+Received: from d23relay02.au.ibm.com (d23relay02.au.ibm.com [202.81.31.244])
+	by e23smtp04.au.ibm.com (8.13.1/8.13.1) with ESMTP id n5AJfAcM012289
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2009 05:41:10 +1000
+Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
+	by d23relay02.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n5AJhVsV729320
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2009 05:43:31 +1000
+Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
+	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n5AJhViF007114
+	for <linux-ext4@vger.kernel.org>; Thu, 11 Jun 2009 05:43:31 +1000
+Content-Disposition: inline
+In-Reply-To: <1244638557-13492-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Wed, Jun 10, 2009 at 06:25:57PM +0530, Aneesh Kumar K.V wrote:
+> We should make sure we don't mark the non uninit extent as
+> uninit during truncate
+> 
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/ext4/extents.c |    8 ++++++--
+>  1 files changed, 6 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/ext4/extents.c b/fs/ext4/extents.c
+> index f2a2591..764c394 100644
+> --- a/fs/ext4/extents.c
+> +++ b/fs/ext4/extents.c
+> @@ -2083,12 +2083,16 @@ ext4_ext_rm_leaf(handle_t *handle, struct inode *inode,
+>  	ex = EXT_LAST_EXTENT(eh);
+> 
+>  	ex_ee_block = le32_to_cpu(ex->ee_block);
+> -	if (ext4_ext_is_uninitialized(ex))
+> -		uninitialized = 1;
+>  	ex_ee_len = ext4_ext_get_actual_len(ex);
+> 
+>  	while (ex >= EXT_FIRST_EXTENT(eh) &&
+>  			ex_ee_block + ex_ee_len > start) {
+> +
+> +		if (ext4_ext_is_uninitialized(ex))
+> +			uninitialized = 1;
+> +		else
+> +			uninitialized = 0;
+> +
+>  		ext_debug("remove ext %lu:%u\n", ex_ee_block, ex_ee_len);
+>  		path[depth].p_ext = ex;
+> 
 
-The patch titled
-     jbd: fix race in buffer processing in commit code
-has been removed from the -mm tree.  Its filename was
-     jbd-fix-race-in-buffer-processing-in-commit-code.patch
+BTW this fix is really important. It fix a data corruption when we write
+to an fallocate space and later truncate the same file. So mostly a
+stable candidate.
 
-This patch was dropped because it was merged into mainline or a subsystem tree
-
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
-
-------------------------------------------------------
-Subject: jbd: fix race in buffer processing in commit code
-From: Jan Kara <jack@suse.cz>
-
-In commit code, we scan buffers attached to a transaction.  During this
-scan, we sometimes have to drop j_list_lock and then we recheck whether
-the journal buffer head didn't get freed by journal_try_to_free_buffers().
- But checking for buffer_jbd(bh) isn't enough because a new journal head
-could get attached to our buffer head.  So add a check whether the journal
-head remained the same and whether it's still at the same transaction and
-list.
-
-This is a nasty bug and can cause problems like memory corruption (use after
-free) or trigger various assertions in JBD code (observed).
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: <stable@kernel.org>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/jbd/commit.c |    6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
-diff -puN fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code fs/jbd/commit.c
---- a/fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code
-+++ a/fs/jbd/commit.c
-@@ -241,7 +241,7 @@ write_out_data:
- 			spin_lock(&journal->j_list_lock);
- 		}
- 		/* Someone already cleaned up the buffer? */
--		if (!buffer_jbd(bh)
-+		if (!buffer_jbd(bh) || bh2jh(bh) != jh
- 			|| jh->b_transaction != commit_transaction
- 			|| jh->b_jlist != BJ_SyncData) {
- 			jbd_unlock_bh_state(bh);
-@@ -478,7 +478,9 @@ void journal_commit_transaction(journal_
- 			spin_lock(&journal->j_list_lock);
- 			continue;
- 		}
--		if (buffer_jbd(bh) && jh->b_jlist == BJ_Locked) {
-+		if (buffer_jbd(bh) && bh2jh(bh) == jh &&
-+		    jh->b_transaction == commit_transaction &&
-+		    jh->b_jlist == BJ_Locked) {
- 			__journal_unfile_buffer(jh);
- 			jbd_unlock_bh_state(bh);
- 			journal_remove_journal_head(bh);
-_
-
-Patches currently in -mm which might be from jack@suse.cz are
-
-linux-next.patch
-jbd2-clean-up-jbd2_journal_try_to_free_buffers.patch
-vfs-split-generic_forget_inode-so-that-hugetlbfs-does-not-have-to-copy-it.patch
-mm-remove-__invalidate_mapping_pages-variant.patch
-writeback-skip-new-or-to-be-freed-inodes.patch
-ext2-do-not-update-mtime-of-a-moved-directory.patch
-ext3-fix-chain-verification-in-ext3_get_blocks.patch
-jbd-clean-up-journal_try_to_free_buffers.patch
-ext3-make-sure-inode-is-deleted-from-orphan-list-after-truncate.patch
-isofs-let-mode-and-dmode-mount-options-override-rock-ridge-mode-setting.patch
-isofs-fix-setting-of-uid-and-gid-to-0.patch
-isofs-cleanup-mount-option-processing.patch
-reiser4-update-names-of-quota-methods.patch
-
+-aneesh
