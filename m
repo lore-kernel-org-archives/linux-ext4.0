@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 44/60] ext4: return -EIO not -ESTALE on directory traversal through deleted inode
-Date: Tue, 09 Jun 2009 17:14:12 -0700
-Message-ID: <20090610002349.812972018@blue.kroah.org>
+Subject: [patch 39/60] ext4: Print the find_group_flex() warning only once
+Date: Tue, 09 Jun 2009 17:14:07 -0700
+Message-ID: <20090610002348.671477859@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -17,72 +17,53 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
 	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	Bryan Donlan <bdonlan@gmail.com>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57307 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:57218 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757601AbZFJDgN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:36:13 -0400
-Content-Disposition: inline; filename=ext4-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
+	id S1757506AbZFJDf4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:35:56 -0400
+Content-Disposition: inline; filename=ext4-print-the-find_group_flex-warning-only-once.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-
 -stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
-From: Bryan Donlan <bdonlan@gmail.com>
+From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit e6f009b0b45220c004672d41a58865e94946104d)
+(cherry picked from commit 2842c3b5449f31470b61db716f1926b594fb6156)
 
-ext4_iget() returns -ESTALE if invoked on a deleted inode, in order to
-report errors to NFS properly.  However, in ext4_lookup(), this
--ESTALE can be propagated to userspace if the filesystem is corrupted
-such that a directory entry references a deleted inode.  This leads to
-a misleading error message - "Stale NFS file handle" - and confusion
-on the part of the admin.
+This is a short-term warning, and even printk_ratelimit() can result
+in too much noise in system logs.  So only print it once as a warning.
 
-The bug can be easily reproduced by creating a new filesystem, making
-a link to an unused inode using debugfs, then mounting and attempting
-to ls -l said link.
-
-This patch thus changes ext4_lookup to return -EIO if it receives
--ESTALE from ext4_iget(), as ext4 does for other filesystem metadata
-corruption; and also invokes the appropriate ext*_error functions when
-this case is detected.
-
-Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/namei.c |   12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
+ fs/ext4/ialloc.c |    4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1055,8 +1055,16 @@ static struct dentry *ext4_lookup(struct
- 			return ERR_PTR(-EIO);
- 		}
- 		inode = ext4_iget(dir->i_sb, ino);
--		if (IS_ERR(inode))
--			return ERR_CAST(inode);
-+		if (unlikely(IS_ERR(inode))) {
-+			if (PTR_ERR(inode) == -ESTALE) {
-+				ext4_error(dir->i_sb, __func__,
-+						"deleted inode referenced: %u",
-+						ino);
-+				return ERR_PTR(-EIO);
-+			} else {
-+				return ERR_CAST(inode);
-+			}
-+		}
- 	}
- 	return d_splice_alias(inode, dentry);
- }
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -687,6 +687,7 @@ struct inode *ext4_new_inode(handle_t *h
+ 	struct inode *ret;
+ 	ext4_group_t i;
+ 	int free = 0;
++	static int once = 1;
+ 	ext4_group_t flex_group;
+ 
+ 	/* Cannot create files in a deleted directory */
+@@ -706,7 +707,8 @@ struct inode *ext4_new_inode(handle_t *h
+ 		ret2 = find_group_flex(sb, dir, &group);
+ 		if (ret2 == -1) {
+ 			ret2 = find_group_other(sb, dir, &group);
+-			if (ret2 == 0 && printk_ratelimit())
++			if (ret2 == 0 && once)
++				once = 0;
+ 				printk(KERN_NOTICE "ext4: find_group_flex "
+ 				       "failed, fallback succeeded dir %lu\n",
+ 				       dir->i_ino);
 
 
