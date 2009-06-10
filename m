@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 57/60] ext4: Fix sub-block zeroing for writes into preallocated extents
-Date: Tue, 09 Jun 2009 17:14:25 -0700
-Message-ID: <20090610002352.821983080@blue.kroah.org>
+Subject: [patch 58/60] ext4: Use a fake block number for delayed new buffer_head
+Date: Tue, 09 Jun 2009 17:14:26 -0700
+Message-ID: <20090610002353.053613995@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -21,11 +21,11 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57535 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:57568 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757927AbZFJDhH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:37:07 -0400
-Content-Disposition: inline; filename=ext4-fix-sub-block-zeroing-for-writes-into-preallocated-extents.patch
+	id S1757911AbZFJDhK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:37:10 -0400
+Content-Disposition: inline; filename=ext4-use-a-fake-block-number-for-delayed-new-buffer_head.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -36,51 +36,40 @@ List-ID: <linux-ext4.vger.kernel.org>
 ------------------
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-(cherry picked from commit 9c1ee184a30394e54165fa4c15923cabd952c106)
+(cherry picked from commit 33b9817e2ae097c7b8d256e3510ac6c54fc6d9d0)
 
-We need to mark the buffer_head mapping preallocated space as new
-during write_begin. Otherwise we don't zero out the page cache content
-properly for a partial write. This will cause file corruption with
-preallocation.
-
-Now that we mark the buffer_head new we also need to have a valid
-buffer_head blocknr so that unmap_underlying_metadata() unmaps the
-correct block.
+Use a very large unsigned number (~0xffff) as as the fake block number
+for the delayed new buffer. The VFS should never try to write out this
+number, but if it does, this will make it obvious.
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/extents.c |    2 ++
- fs/ext4/inode.c   |    7 +++++++
- 2 files changed, 9 insertions(+)
+ fs/ext4/inode.c |    6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -2670,6 +2670,8 @@ int ext4_ext_get_blocks(handle_t *handle
- 				if (allocated > max_blocks)
- 					allocated = max_blocks;
- 				set_buffer_unwritten(bh_result);
-+				bh_result->b_bdev = inode->i_sb->s_bdev;
-+				bh_result->b_blocknr = newblock;
- 				goto out2;
- 			}
- 
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2131,6 +2131,13 @@ static int ext4_da_get_block_prep(struct
+@@ -2105,6 +2105,10 @@ static int ext4_da_get_block_prep(struct
+ 				  struct buffer_head *bh_result, int create)
+ {
+ 	int ret = 0;
++	sector_t invalid_block = ~((sector_t) 0xffff);
++
++	if (invalid_block < ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es))
++		invalid_block = ~0;
+ 
+ 	BUG_ON(create == 0);
+ 	BUG_ON(bh_result->b_size != inode->i_sb->s_blocksize);
+@@ -2126,7 +2130,7 @@ static int ext4_da_get_block_prep(struct
+ 			/* not enough space to reserve */
+ 			return ret;
+ 
+-		map_bh(bh_result, inode->i_sb, 0);
++		map_bh(bh_result, inode->i_sb, invalid_block);
+ 		set_buffer_new(bh_result);
  		set_buffer_delay(bh_result);
  	} else if (ret > 0) {
- 		bh_result->b_size = (ret << inode->i_blkbits);
-+		/*
-+		 * With sub-block writes into unwritten extents
-+		 * we also need to mark the buffer as new so that
-+		 * the unwritten parts of the buffer gets correctly zeroed.
-+		 */
-+		if (buffer_unwritten(bh_result))
-+			set_buffer_new(bh_result);
- 		ret = 0;
- 	}
- 
 
 
