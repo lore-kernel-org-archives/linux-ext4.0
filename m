@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 47/60] ext4: Automatically allocate delay allocated blocks on close
-Date: Tue, 09 Jun 2009 17:14:15 -0700
-Message-ID: <20090610002350.551321942@blue.kroah.org>
+Subject: [patch 42/60] ext4: dont inherit inappropriate inode flags from parent
+Date: Tue, 09 Jun 2009 17:14:10 -0700
+Message-ID: <20090610002349.355660124@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -17,74 +17,74 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
 	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
+	Duane Griffin <duaneg@dghda.com>,
+	Andreas Dilger <adilger@sun.com>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57361 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:57273 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756661AbZFJDgZ (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:36:25 -0400
-Content-Disposition: inline; filename=ext4-automatically-allocate-delay-allocated-blocks-on-close.patch
+	id S1755648AbZFJDgG (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:36:06 -0400
+Content-Disposition: inline; filename=ext4-don-t-inherit-inappropriate-inode-flags-from-parent.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+
 -stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
-From: "Theodore Ts'o" <tytso@mit.edu>
+From: Duane Griffin <duaneg@dghda.com>
 
-(cherry picked from commit 7d8f9f7d150dded7b68e61ca6403a1f166fb4edf)
+(cherry picked from commit 8fa43a81b97853fc69417bb6054182e78f95cbeb)
 
-When closing a file that had been previously truncated, force any
-delay allocated blocks that to be allocated so that if the filesystem
-is mounted with data=ordered, the data blocks will be pushed out to
-disk along with the journal commit.  Many application programs expect
-this, so we do this to avoid zero length files if the system crashes
-unexpectedly.
+At present INDEX and EXTENTS are the only flags that new ext4 inodes do
+NOT inherit from their parent.  In addition prevent the flags DIRTY,
+ECOMPR, IMAGIC, TOPDIR, HUGE_FILE and EXT_MIGRATE from being inherited.
+List inheritable flags explicitly to prevent future flags from
+accidentally being inherited.
 
+This fixes the TOPDIR flag inheritance bug reported at
+http://bugzilla.kernel.org/show_bug.cgi?id=9866.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/ext4.h  |    1 +
- fs/ext4/file.c  |    4 ++++
- fs/ext4/inode.c |    3 +++
- 3 files changed, 8 insertions(+)
+ fs/ext4/ext4.h   |    7 +++++++
+ fs/ext4/ialloc.c |    2 +-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
 
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -279,6 +279,7 @@ static inline __u32 ext4_mask_flags(umod
- #define EXT4_STATE_NEW			0x00000002 /* inode is newly created */
- #define EXT4_STATE_XATTR		0x00000004 /* has in-inode xattrs */
- #define EXT4_STATE_NO_EXPAND		0x00000008 /* No space for expansion */
-+#define EXT4_STATE_DA_ALLOC_CLOSE	0x00000010 /* Alloc DA blks on close */
+@@ -248,6 +248,13 @@ struct flex_groups {
+ #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
+ #define EXT4_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
  
- /* Used to pass group descriptor data when online resize is done */
- struct ext4_new_group_input {
---- a/fs/ext4/file.c
-+++ b/fs/ext4/file.c
-@@ -33,6 +33,10 @@
-  */
- static int ext4_release_file (struct inode * inode, struct file * filp)
- {
-+	if (EXT4_I(inode)->i_state & EXT4_STATE_DA_ALLOC_CLOSE) {
-+		ext4_alloc_da_blocks(inode);
-+		EXT4_I(inode)->i_state &= ~EXT4_STATE_DA_ALLOC_CLOSE;
-+	}
- 	/* if we are the last writer on the inode, drop the block reservation */
- 	if ((filp->f_mode & FMODE_WRITE) &&
- 			(atomic_read(&inode->i_writecount) == 1))
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -3636,6 +3636,9 @@ void ext4_truncate(struct inode *inode)
- 	if (!ext4_can_truncate(inode))
- 		return;
- 
-+	if (inode->i_size == 0)
-+		ei->i_state |= EXT4_STATE_DA_ALLOC_CLOSE;
++/* Flags that should be inherited by new inodes from their parent. */
++#define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
++			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
++			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
++			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
++			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
 +
- 	if (EXT4_I(inode)->i_flags & EXT4_EXTENTS_FL) {
- 		ext4_ext_truncate(inode);
- 		return;
+ /*
+  * Inode dynamic state flags
+  */
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -869,7 +869,7 @@ got:
+ 	 * newly created directory and file only if -o extent mount option is
+ 	 * specified
+ 	 */
+-	ei->i_flags = EXT4_I(dir)->i_flags & ~(EXT4_INDEX_FL|EXT4_EXTENTS_FL);
++	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
+ 	if (S_ISLNK(mode))
+ 		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+ 	/* dirsync only applies to directories */
 
 
