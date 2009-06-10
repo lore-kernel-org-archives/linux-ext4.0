@@ -1,108 +1,142 @@
-From: akpm@linux-foundation.org
-Subject: [patch 1/1] jbd2: clean up jbd2_journal_try_to_free_buffers()
-Date: Wed, 10 Jun 2009 12:55:41 -0700
-Message-ID: <200906101955.n5AJtfKG008766@imap1.linux-foundation.org>
-Cc: linux-ext4@vger.kernel.org, akpm@linux-foundation.org,
-	hifumi.hisashi@oss.ntt.co.jp, cmm@us.ibm.com, jack@suse.cz
-To: tytso@mit.edu
+From: Andreas Dilger <adilger@sun.com>
+Subject: [PATCH] allow goal inode to be specified
+Date: Wed, 10 Jun 2009 14:27:02 -0600
+Message-ID: <20090610202702.GI9002@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org
+To: "Theodore Ts'o" <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:57880 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1761512AbZFJTzt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Jun 2009 15:55:49 -0400
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:47575 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754291AbZFJU11 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Jun 2009 16:27:27 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n5AKRN5k028295
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2009 13:27:25 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KL100400HZOPZ00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Wed,
+ 10 Jun 2009 13:27:23 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
+Allow a goal inode to be specified when allocating new inodes.
+If the goal is within the range of valid inodes use this in
+preference to one of the other target inode heuristics (Orlov or
+parent directory).
 
-I delete the following patch
-"commit 3f31fddfa26b7594b44ff2b34f9a04ba409e0f91
-Author: Mingming Cao <cmm@us.ibm.com>
-Date:   Fri Jul 25 01:46:22 2008 -0700
+The goal inode can be specified via /sys/fs/{dev}/inode_goal for
+testing inode allocation beyond 2^32 blocks on very large filesystems,
+and in the future will be used for large xattr inode allocation.
 
-    jbd: fix race between free buffer and commit transaction
+Signed-off-by: Andreas Dilger <adilger@sun.com>
 
-
-This patch is no longer needed because if race between freeing buffer and
-committing transaction functionality occurs and dio gets error, currently
-dio falls back to buffered IO by the following patch.
-
-	commit 6ccfa806a9cfbbf1cd43d5b6aa47ef2c0eb518fd
-	Author: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-	Date:   Tue Sep 2 14:35:40 2008 -0700
-
-   	VFS: fix dio write returning EIO when try_to_release_page fails
-
-Signed-off-by: Hisashi Hifumi <hifumi.hisashi@oss.ntt.co.jp>
-Cc: Theodore Tso <tytso@mit.edu>
-Cc: Mingming Cao <cmm@us.ibm.com>
-Acked-by: Jan Kara <jack@suse.cz>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/jbd2/transaction.c |   49 ----------------------------------------
- 1 file changed, 49 deletions(-)
-
-diff -puN fs/jbd2/transaction.c~jbd2-clean-up-jbd2_journal_try_to_free_buffers fs/jbd2/transaction.c
---- a/fs/jbd2/transaction.c~jbd2-clean-up-jbd2_journal_try_to_free_buffers
-+++ a/fs/jbd2/transaction.c
-@@ -1547,36 +1547,6 @@ out:
- 	return;
- }
+Index: linux-stage/fs/ext4/ialloc.c
+===================================================================
+--- linux-stage.orig/fs/ext4/ialloc.c
++++ linux-stage/fs/ext4/ialloc.c
+@@ -675,7 +675,8 @@ err_ret:
+  * For other inodes, search forward from the parent directory's block
+  * group to find a free inode.
+  */
+-struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
++struct inode *ext4_new_inode_goal(handle_t *handle, struct inode *dir,
++				  int mode, unsigned goal)
+ {
+ 	struct super_block *sb;
+ 	struct buffer_head *inode_bitmap_bh = NULL;
+@@ -706,6 +707,14 @@ struct inode *ext4_new_inode(handle_t *h
+ 	sbi = EXT4_SB(sb);
+ 	es = sbi->s_es;
  
--/*
-- * jbd2_journal_try_to_free_buffers() could race with
-- * jbd2_journal_commit_transaction(). The later might still hold the
-- * reference count to the buffers when inspecting them on
-- * t_syncdata_list or t_locked_list.
-- *
-- * jbd2_journal_try_to_free_buffers() will call this function to
-- * wait for the current transaction to finish syncing data buffers, before
-- * try to free that buffer.
-- *
-- * Called with journal->j_state_lock hold.
-- */
--static void jbd2_journal_wait_for_transaction_sync_data(journal_t *journal)
--{
--	transaction_t *transaction;
--	tid_t tid;
--
--	spin_lock(&journal->j_state_lock);
--	transaction = journal->j_committing_transaction;
--
--	if (!transaction) {
--		spin_unlock(&journal->j_state_lock);
--		return;
--	}
--
--	tid = transaction->t_tid;
--	spin_unlock(&journal->j_state_lock);
--	jbd2_log_wait_commit(journal, tid);
--}
--
- /**
-  * int jbd2_journal_try_to_free_buffers() - try to free page buffers.
-  * @journal: journal for operation
-@@ -1649,25 +1619,6 @@ int jbd2_journal_try_to_free_buffers(jou
++	if (goal && goal < le32_to_cpu(es->s_inodes_count)) {
++		group = (goal - 1) / EXT4_INODES_PER_GROUP(sb);
++		ino = (goal - 1) % EXT4_INODES_PER_GROUP(sb);
++
++		ret2 = 0;
++		goto got_group;
++	}
++
+ 	if (sbi->s_log_groups_per_flex && test_opt(sb, OLDALLOC)) {
+ 		ret2 = find_group_flex(sb, dir, &group);
+ 		if (ret2 == -1) {
+@@ -724,7 +733,7 @@ got_group:
+ 	if (ret2 == -1)
+ 		goto out;
  
- 	ret = try_to_free_buffers(page);
+-	for (i = 0; i < sbi->s_groups_count; i++) {
++	for (i = 0; i < sbi->s_groups_count; i++, ino = 0) {
+ 		err = -EIO;
  
--	/*
--	 * There are a number of places where jbd2_journal_try_to_free_buffers()
--	 * could race with jbd2_journal_commit_transaction(), the later still
--	 * holds the reference to the buffers to free while processing them.
--	 * try_to_free_buffers() failed to free those buffers. Some of the
--	 * caller of releasepage() request page buffers to be dropped, otherwise
--	 * treat the fail-to-free as errors (such as generic_file_direct_IO())
--	 *
--	 * So, if the caller of try_to_release_page() wants the synchronous
--	 * behaviour(i.e make sure buffers are dropped upon return),
--	 * let's wait for the current transaction to finish flush of
--	 * dirty data buffers, then try to free those buffers again,
--	 * with the journal locked.
--	 */
--	if (ret == 0 && (gfp_mask & __GFP_WAIT) && (gfp_mask & __GFP_FS)) {
--		jbd2_journal_wait_for_transaction_sync_data(journal);
--		ret = try_to_free_buffers(page);
--	}
+ 		gdp = ext4_get_group_desc(sb, group, &group_desc_bh);
+@@ -736,8 +745,6 @@ got_group:
+ 		if (!inode_bitmap_bh)
+ 			goto fail;
+ 
+-		ino = 0;
+-
+ repeat_in_this_group:
+ 		ino = ext4_find_next_zero_bit((unsigned long *)
+ 					      inode_bitmap_bh->b_data,
+Index: linux-stage/fs/ext4/ext4.h
+===================================================================
+--- linux-stage.orig/fs/ext4/ext4.h
++++ linux-stage/fs/ext4/ext4.h
+@@ -1032,7 +1032,14 @@ extern int ext4fs_dirhash(const char *na
+ 			  dx_hash_info *hinfo);
+ 
+ /* ialloc.c */
+-extern struct inode * ext4_new_inode(handle_t *, struct inode *, int);
++extern struct inode *ext4_new_inode_goal(handle_t *handle, struct inode *dir,
++				    int mode, unsigned goal);
++static inline struct inode *ext4_new_inode(handle_t *handle, struct inode *dir,
++					   int mode)
++{
++	return ext4_new_inode_goal(handle, dir, mode,
++				   EXT4_SB(dir->i_sb)->s_inode_goal);
++}
+ extern void ext4_free_inode(handle_t *, struct inode *);
+ extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
+ extern unsigned long ext4_count_free_inodes(struct super_block *);
+Index: linux-stage/fs/ext4/super.c
+===================================================================
+--- linux-stage.orig/fs/ext4/super.c
++++ linux-stage/fs/ext4/super.c
+@@ -2145,6 +2145,7 @@
+ EXT4_RO_ATTR(lifetime_write_kbytes);
+ EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
+ 		 inode_readahead_blks_store, s_inode_readahead_blks);
++EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
+ EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
+ EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
+ EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
+@@ -2157,6 +2158,7 @@
+ 	ATTR_LIST(session_write_kbytes),
+ 	ATTR_LIST(lifetime_write_kbytes),
+ 	ATTR_LIST(inode_readahead_blks),
++	ATTR_LIST(inode_goal),
+ 	ATTR_LIST(mb_stats),
+ 	ATTR_LIST(mb_max_to_scan),
+ 	ATTR_LIST(mb_min_to_scan),
+Index: linux-stage/fs/ext4/ext4_sb.h
+===================================================================
+--- linux-stage.orig/fs/ext4/ext4_sb.h
++++ linux-stage/fs/ext4/ext4_sb.h
+@@ -53,6 +53,7 @@ struct ext4_sb_info {
+ 	int s_inode_size;
+ 	int s_first_ino;
+ 	unsigned int s_inode_readahead_blks;
++	unsigned int s_inode_goal;
+ 	spinlock_t s_next_gen_lock;
+ 	u32 s_next_generation;
+ 	u32 s_hash_seed[4];
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
