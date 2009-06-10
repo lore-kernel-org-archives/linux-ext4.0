@@ -1,108 +1,115 @@
-From: Jeff Moyer <jmoyer@redhat.com>
-Subject: Re: Performance regressions in 2.6.30-rc7?
-Date: Wed, 10 Jun 2009 18:12:50 -0400
-Message-ID: <x4963f3rb4t.fsf@segfault.boston.devel.redhat.com>
-References: <200905282249.28592.diegocg@gmail.com>
-	<20090529210718.bef7a9c1.akpm@linux-foundation.org>
-	<200905301851.47708.diegocg@gmail.com>
-	<20090603195806.GA9571@atrey.karlin.mff.cuni.cz>
-	<1244100382.7131.12.camel@marge.simson.net>
-	<20090604112109.GC2859@duck.suse.cz>
-	<1244142795.5731.31.camel@marge.simson.net>
-	<20090609103208.GB9235@duck.suse.cz> <20090609184818.GD9556@think>
-	<20090610091211.GA13692@duck.suse.cz>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Mike Galbraith <efault@gmx.de>,
-	Diego Calleja <diegocg@gmail.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	LKML <linux-kernel@vger.kernel.org>, jens.axboe@oracle.com,
-	linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34186 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754222AbZFJWNH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 10 Jun 2009 18:13:07 -0400
-In-Reply-To: <20090610091211.GA13692@duck.suse.cz> (Jan Kara's message of
-	"Wed, 10 Jun 2009 11:12:11 +0200")
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] ext4 updates for 2.6.31
+Date: Wed, 10 Jun 2009 18:39:57 -0400
+Message-ID: <E1MEWSb-00072m-I1@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1759373AbZFJWkU@vger.kernel.org>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Jan Kara <jack@suse.cz> writes:
+Hi Linus,
 
-> On Tue 09-06-09 14:48:18, Chris Mason wrote:
->> On Tue, Jun 09, 2009 at 12:32:08PM +0200, Jan Kara wrote:
->> > On Thu 04-06-09 21:13:15, Mike Galbraith wrote:
->> > > On Thu, 2009-06-04 at 13:21 +0200, Jan Kara wrote:
->> > > 
->> > > > > Sequential Writes
->> > > > > 2.6.30-smp-ordered            6000  65536  32   50.16 508.9%    31.996    45595.78   0.64965  0.02402    10
->> > > > > 2.6.29.4-smp-ordered          6000  65536  32   52.70 543.2%    33.658    23794.92   0.71754  0.00836    10
->> > > > > 
->> > > > > 2.6.30-smp-writeback          6000  65536  32   47.82 525.4%    35.003    32588.84   0.56192  0.02298     9
->> > > > > 2.6.29.4-smp-writeback        6000  65536  32   52.52 467.6%    32.397    12972.78   0.53580  0.00522    11
->> > > > > 
->> > > > > 2.6.30-smp-ordered            6000  65536  16   56.08 254.9%    15.463    33000.68   0.39687  0.00521    22
->> > > > > 2.6.29.4-smp-ordered          6000  65536  16   62.40 308.4%    14.701    13455.02   0.13125  0.00208    20
->> > > > > 
->> > > > > 2.6.30-smp-writeback          6000  65536  16   51.90 281.4%    17.098    12869.85   0.36771  0.00104    18
->> > > > > 2.6.29.4-smp-writeback        6000  65536  16   60.53 272.6%    14.977     8637.08   0.21146  0.00000    22
->> > > > > 
->> > > > > 2.6.30-smp-ordered            6000  65536   8   51.09 113.4%     8.700    14856.55   0.06771  0.00417    45
->> > > > > 2.6.29.4-smp-ordered          6000  65536   8   56.13 130.6%     8.098     8400.45   0.03958  0.00000    43
->> > > > > 
->> > > > > 2.6.30-smp-writeback          6000  65536   8   50.19 131.7%     8.680    16821.04   0.11979  0.00208    38
->> > > > > 2.6.29.4-smp-writeback        6000  65536   8   54.90 130.7%     8.244     4925.48   0.10000  0.00000    42
->> > > >   It really seems write has some problems... There's consistently lower
->> > > > throughput and it also seems some writes take really long. I'll try to
->> > > > reproduce it here.
->> > > 
->> > > Looked "pretty solid" to me.  I haven't observed enough to ~trust.
->> >   OK, I did a few runs of tiobench here and I can confirm that I see about
->> > 6% performance regression in Sequential Write throughput between 2.6.29
->> > and 2.6.30-rc8. I'll try to find what's causing it.
->> 
->> My first guess would be the WRITE_SYNC style changes.  Is the regression
->> still there with noop?
->   Thanks for the hint. I was guessing that as well. And experiments show
-> it's definitely connected. To be more precise with the data:
-> The test machine is 2 CPU, 2 GB ram, simple lowend SATA disk. Tiobench run
-> with:
-> tiobench/tiobench.pl -b 65536 -t 16 -t 8 -d /local/scratch -s 4096
->   which means 4GB testfile, writes happen in 64k chunks, test done with 16
-> and 8 threads. /local/scratch is a separate partition always cleaned and
-> umounted + mounted before each test. The results are (always 3 runs):
->     2.6.29+CFQ:           Avg    StdDev
-> 8   38.01 40.26 39.69 ->  39.32  0.955092
-> 16  40.09 38.18 40.05 ->  39.44  0.891104
->
->     2.6.30-rc8+CFQ:
-> 8   36.67 36.81 38.20 ->  37.23  0.69062
-> 16  37.45 36.47 37.46 ->  37.13  0.464351
->
->     2.6.29+NOOP:
-> 8   38.67 38.66 37.55 ->  38.29  0.525632
-> 16  39.59 39.15 39.19 ->  39.31  0.198662
->
->     2.6.30-rc8+NOOP:
-> 8   38.31 38.47 38.16 ->  38.31  0.126579
-> 16  39.08 39.25 39.13 ->  39.15  0.0713364
+Please pull from:
 
-I ran the same test on a bigger system: 8GB ram (so I used a 16GB size
-for the test) and a 4 disk stripe hanging off of a CCISS controller.
-All the runs used ext3 in data=ordered mode and CFQ as the I/O scheduler.
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-     2.6.29.3-140.fc11       Avg       StdDev
- 8   158.72 152.72 148.24    153.227   5.25834
-16   176.06 174.91 176.27    175.747   0.73214
+to get the patches that have been queued for 2.6.31 (based off of
+2.6.28-rc8, although most have been in testing for quite longer than
+that -rc8).
 
-     2.6.30-rc7
- 8   147.89 144.57 144.99    145.817   1.8078
-16   121.37 119.56 111.85    117.593   5.05553
+                                                - Ted
 
-Jan, let me know if you want any help tracking this down.
+Alberto Bertogli (1):
+      jbd2: Fix minor typos in comments in fs/jbd2/journal.c
 
-Cheers,
-Jeff
+Andreas Dilger (1):
+      ext4: super.c whitespace cleanup
+
+Aneesh Kumar K.V (9):
+      ext4: Properly initialize the buffer_head state
+      vfs: Add BUG_ON for delayed and unwritten flags in submit_bh()
+      ext4: Mark the unwritten buffer_head as mapped during write_begin
+      ext4: hook fiemap operation for directories
+      vfs: Enable FS_IOC_FIEMAP and FIGETBSZ for all filetypes
+      ext4: Convert ext4_lock_group to use sb_bgl_lock
+      ext4: Avoid leaking blocks after a block allocation failure
+      ext4: truncate the file properly if we fail to copy data from userspace
+      ext4: Avoid corrupting the uninitialized bit in the extent during truncate
+
+Curt Wohlgemuth (1):
+      ext4: Make the length of the mb_history file tunable
+
+Eric Sandeen (2):
+      ext4: fix for fiemap last-block test
+      ext4: Change all super.c messages to print the device
+
+Jan Kara (1):
+      ext4: Get rid of EXTEND_DISKSIZE flag of ext4_get_blocks_handle()
+
+Manish Katiyar (3):
+      ext4: Fix memory leak in ext4_fill_super() in case of a failed mount
+      ext3: Fix memory leak in ext3_fill_super() in case of a failed mount
+      ext2: Fix memory leak in ext2_fill_super() in case of a failed mount
+
+Theodore Ts'o (29):
+      ext4: Fallback to vmalloc if kmalloc can't allocate s_flex_groups array
+      ext4: Use is_power_of_2() for clarity
+      ext4: Simplify ext4_commit_super()'s function signature
+      ext4: Fix and simplify s_dirt handling
+      ext4: Use separate super_operations structure for no_journal filesystems
+      ext4: Avoid races caused by on-line resizing and SMP memory reordering
+      ext4: Remove outdated comment about lock_super()
+      ext4: ext4_mark_recovery_complete() doesn't need to use lock_super
+      ext4: Replace lock/unlock_super() with an explicit lock for the orphan list
+      ext4: Replace lock/unlock_super() with an explicit lock for resizing
+      ext4: Don't avoid using BLOCK_UNINIT block groups in mballoc
+      ext4: Move the ext4_i.h header file into ext4.h
+      ext4: Move the ext4_sb.h header file into ext4.h
+      ext4: Move fs/ext4/namei.h into ext4.h
+      ext4: Move fs/ext4/group.h into ext4.h
+      ext4: fix the length returned by fiemap for an unallocated extent
+      ext4: Simplify function signature for ext4_da_get_block_write()
+      ext4: Rename ext4_get_blocks_handle() to be ext4_ind_get_blocks()
+      ext4: Rename ext4_get_blocks_wrap() to be ext4_get_blocks()
+      ext4: Define a new set of flags for ext4_get_blocks()
+      ext4: Add documentation to the ext4_*get_block* functions
+      ext4: Add BUG_ON debugging checks to noalloc_get_block_write()
+      ext4: Merge ext4_da_get_block_write() into mpage_da_map_blocks()
+      ext4: Clean up ext4_get_blocks() so it does not depend on bh_result->b_state
+      ext4: Add a comprehensive block validity check to ext4_get_blocks()
+      ext4: down i_data_sem only for read when walking tree for fiemap
+      ext4: remove unused function __ext4_write_dirty_metadata
+      ext4: Clean up calls to ext4_get_group_desc()
+      ext4: Don't treat a truncation of a zero-length file as replace-via-truncate
+
+Toshiyuki Okajima (1):
+      ext4: fix dx_map_entry to support 256k directory blocks
+
+Vincent Minet (1):
+      ext4: Fix spinlock assertions on UP systems
+
+ fs/buffer.c              |    2 +
+ fs/ext2/super.c          |    1 +
+ fs/ext3/super.c          |    1 +
+ fs/ext4/Makefile         |    4 +-
+ fs/ext4/balloc.c         |   28 +-
+ fs/ext4/block_validity.c |  244 ++++++++++++++
+ fs/ext4/dir.c            |    3 +-
+ fs/ext4/ext4.h           |  354 ++++++++++++++++++--
+ fs/ext4/ext4_i.h         |  140 --------
+ fs/ext4/ext4_sb.h        |  161 ---------
+ fs/ext4/extents.c        |   85 ++---
+ fs/ext4/group.h          |   29 --
+ fs/ext4/ialloc.c         |   73 ++---
+ fs/ext4/inode.c          |  593 ++++++++++++++++++++-------------
+ fs/ext4/mballoc.c        |  166 ++++------
+ fs/ext4/mballoc.h        |    1 -
+ fs/ext4/namei.c          |   27 +-
+ fs/ext4/namei.h          |    8 -
+ fs/ext4/resize.c         |   36 +-
+ fs/ext4/super.c          |  831 ++++++++++++++++++++++++----------------------
+ fs/ioctl.c               |   14 +-
+ fs/jbd2/journal.c        |    8 +-
+ fs/mpage.c               |    6 +-
+ 23 files changed, 1582 insertions(+), 1233 deletions(-)
