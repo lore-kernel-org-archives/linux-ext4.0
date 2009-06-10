@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 43/60] ext4: tighten restrictions on inode flags
-Date: Tue, 09 Jun 2009 17:14:11 -0700
-Message-ID: <20090610002349.582905358@blue.kroah.org>
+Subject: [patch 40/60] ext4: fix bogus BUG_ONs in in mballoc code
+Date: Tue, 09 Jun 2009 17:14:08 -0700
+Message-ID: <20090610002348.904322248@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -16,17 +16,15 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	Duane Griffin <duaneg@dghda.com>,
-	Andreas Dilger <adilger@sun.com>,
-	Greg Kroah-Hartman <gregkh@suse.de>
+	alan@lxorguk.ukuu.org.uk, Eric Sandeen <sandeen@redhat.com>,
+	linux-ext4@vger.kernel.org, Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57296 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:57240 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757607AbZFJDgK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:36:10 -0400
-Content-Disposition: inline; filename=ext4-tighten-restrictions-on-inode-flags.patch
+	id S1757452AbZFJDf7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:35:59 -0400
+Content-Disposition: inline; filename=ext4-fix-bogus-bug_ons-in-in-mballoc-code.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -35,93 +33,54 @@ List-ID: <linux-ext4.vger.kernel.org>
 -stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
-From: Duane Griffin <duaneg@dghda.com>
+From: Eric Sandeen <sandeen@redhat.com>
 
-(cherry picked from commit 2dc6b0d48ca0599837df21b14bb8393d0804af57)
+(cherry picked from commit 8d03c7a0c550e7ab24cadcef5e66656bfadec8b9)
 
-At the moment there are few restrictions on which flags may be set on
-which inodes.  Specifically DIRSYNC may only be set on directories and
-IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
-TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
-on non-regular file, non-directories.
+Thiemo Nagel reported that:
 
-Introduces a flags masking function which masks flags based on mode and
-use it during inode creation and when flags are set via the ioctl to
-facilitate future consistency.
+# dd if=/dev/zero of=image.ext4 bs=1M count=2
+# mkfs.ext4 -v -F -b 1024 -m 0 -g 512 -G 4 -I 128 -N 1 \
+  -O large_file,dir_index,flex_bg,extent,sparse_super image.ext4
+# mount -o loop image.ext4 mnt/
+# dd if=/dev/zero of=mnt/file
 
-Signed-off-by: Duane Griffin <duaneg@dghda.com>
-Acked-by: Andreas Dilger <adilger@sun.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+oopsed, with a BUG_ON in ext4_mb_normalize_request because
+size == EXT4_BLOCKS_PER_GROUP
+
+It appears to me (esp. after talking to Andreas) that the BUG_ON
+is bogus; a request of exactly EXT4_BLOCKS_PER_GROUP should
+be allowed, though larger sizes do indicate a problem.
+
+Fix that an another (apparently rare) codepath with a similar check.
+
+Reported-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/ext4.h   |   17 +++++++++++++++++
- fs/ext4/ialloc.c |   14 +++++---------
- fs/ext4/ioctl.c  |    3 +--
- 3 files changed, 23 insertions(+), 11 deletions(-)
+ fs/ext4/mballoc.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -255,6 +255,23 @@ struct flex_groups {
- 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
- 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -1450,7 +1450,7 @@ static void ext4_mb_measure_extent(struc
+ 	struct ext4_free_extent *gex = &ac->ac_g_ex;
  
-+/* Flags that are appropriate for regular files (all but dir-specific ones). */
-+#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
-+
-+/* Flags that are appropriate for non-directories/regular files. */
-+#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
-+
-+/* Mask out flags that are inappropriate for the given type of inode. */
-+static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
-+{
-+	if (S_ISDIR(mode))
-+		return flags;
-+	else if (S_ISREG(mode))
-+		return flags & EXT4_REG_FLMASK;
-+	else
-+		return flags & EXT4_OTHER_FLMASK;
-+}
-+
- /*
-  * Inode dynamic state flags
-  */
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -865,16 +865,12 @@ got:
- 	ei->i_disksize = 0;
+ 	BUG_ON(ex->fe_len <= 0);
+-	BUG_ON(ex->fe_len >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
++	BUG_ON(ex->fe_len > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+ 	BUG_ON(ex->fe_start >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
+ 	BUG_ON(ac->ac_status != AC_STATUS_CONTINUE);
  
- 	/*
--	 * Don't inherit extent flag from directory. We set extent flag on
--	 * newly created directory and file only if -o extent mount option is
--	 * specified
-+	 * Don't inherit extent flag from directory, amongst others. We set
-+	 * extent flag on newly created directory and file only if -o extent
-+	 * mount option is specified
- 	 */
--	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
--	if (S_ISLNK(mode))
--		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
--	/* dirsync only applies to directories */
--	if (!S_ISDIR(mode))
--		ei->i_flags &= ~EXT4_DIRSYNC_FL;
-+	ei->i_flags =
-+		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
- 	ei->i_file_acl = 0;
- 	ei->i_dtime = 0;
- 	ei->i_block_alloc_info = NULL;
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -49,8 +49,7 @@ long ext4_ioctl(struct file *filp, unsig
- 		if (err)
- 			return err;
+@@ -3400,7 +3400,7 @@ ext4_mb_normalize_request(struct ext4_al
+ 	}
+ 	BUG_ON(start + size <= ac->ac_o_ex.fe_logical &&
+ 			start > ac->ac_o_ex.fe_logical);
+-	BUG_ON(size <= 0 || size >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
++	BUG_ON(size <= 0 || size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
  
--		if (!S_ISDIR(inode->i_mode))
--			flags &= ~EXT4_DIRSYNC_FL;
-+		flags = ext4_mask_flags(inode->i_mode, flags);
+ 	/* now prepare goal request */
  
- 		err = -EPERM;
- 		mutex_lock(&inode->i_mutex);
 
 
