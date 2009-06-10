@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 41/60] ext4: fix bb_prealloc_list corruption due to wrong group locking
-Date: Tue, 09 Jun 2009 17:14:09 -0700
-Message-ID: <20090610002349.130372706@blue.kroah.org>
+Subject: [patch 43/60] ext4: tighten restrictions on inode flags
+Date: Tue, 09 Jun 2009 17:14:11 -0700
+Message-ID: <20090610002349.582905358@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -16,15 +16,17 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, Eric Sandeen <sandeen@redhat.com>,
-	linux-ext4@vger.kernel.org, Greg Kroah-Hartman <gregkh@suse.de>
+	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
+	Duane Griffin <duaneg@dghda.com>,
+	Andreas Dilger <adilger@sun.com>,
+	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57253 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:57296 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757428AbZFJDgC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:36:02 -0400
-Content-Disposition: inline; filename=ext4-fix-bb_prealloc_list-corruption-due-to-wrong-group-locking.patch
+	id S1757607AbZFJDgK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:36:10 -0400
+Content-Disposition: inline; filename=ext4-tighten-restrictions-on-inode-flags.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -33,72 +35,93 @@ List-ID: <linux-ext4.vger.kernel.org>
 -stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
-From: Eric Sandeen <sandeen@redhat.com>
+From: Duane Griffin <duaneg@dghda.com>
 
-(cherry-picked from commit d33a1976fbee1ee321d6f014333d8f03a39d526c)
+(cherry picked from commit 2dc6b0d48ca0599837df21b14bb8393d0804af57)
 
-This is for Red Hat bug 490026: EXT4 panic, list corruption in
-ext4_mb_new_inode_pa
+At the moment there are few restrictions on which flags may be set on
+which inodes.  Specifically DIRSYNC may only be set on directories and
+IMMUTABLE and APPEND may not be set on links.  Tighten that to disallow
+TOPDIR being set on non-directories and only NODUMP and NOATIME to be set
+on non-regular file, non-directories.
 
-ext4_lock_group(sb, group) is supposed to protect this list for
-each group, and a common code flow to remove an album is like
-this:
+Introduces a flags masking function which masks flags based on mode and
+use it during inode creation and when flags are set via the ioctl to
+facilitate future consistency.
 
-    ext4_get_group_no_and_offset(sb, pa->pa_pstart, &grp, NULL);
-    ext4_lock_group(sb, grp);
-    list_del(&pa->pa_group_list);
-    ext4_unlock_group(sb, grp);
-
-so it's critical that we get the right group number back for
-this prealloc context, to lock the right group (the one
-associated with this pa) and prevent concurrent list manipulation.
-
-however, ext4_mb_put_pa() passes in (pa->pa_pstart - 1) with a
-comment, "-1 is to protect from crossing allocation group".
-
-This makes sense for the group_pa, where pa_pstart is advanced
-by the length which has been used (in ext4_mb_release_context()),
-and when the entire length has been used, pa_pstart has been
-advanced to the first block of the next group.
-
-However, for inode_pa, pa_pstart is never advanced; it's just
-set once to the first block in the group and not moved after
-that.  So in this case, if we subtract one in ext4_mb_put_pa(),
-we are actually locking the *previous* group, and opening the
-race with the other threads which do not subtract off the extra
-block.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/mballoc.c |    9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+ fs/ext4/ext4.h   |   17 +++++++++++++++++
+ fs/ext4/ialloc.c |   14 +++++---------
+ fs/ext4/ioctl.c  |    3 +--
+ 3 files changed, 23 insertions(+), 11 deletions(-)
 
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -3698,6 +3698,7 @@ static void ext4_mb_put_pa(struct ext4_a
- 			struct super_block *sb, struct ext4_prealloc_space *pa)
- {
- 	unsigned long grp;
-+	ext4_fsblk_t grp_blk;
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -255,6 +255,23 @@ struct flex_groups {
+ 			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
+ 			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
  
- 	if (!atomic_dec_and_test(&pa->pa_count) || pa->pa_free != 0)
- 		return;
-@@ -3712,8 +3713,12 @@ static void ext4_mb_put_pa(struct ext4_a
- 	pa->pa_deleted = 1;
- 	spin_unlock(&pa->pa_lock);
- 
--	/* -1 is to protect from crossing allocation group */
--	ext4_get_group_no_and_offset(sb, pa->pa_pstart - 1, &grp, NULL);
-+	grp_blk = pa->pa_pstart;
-+	/* If linear, pa_pstart may be in the next group when pa is used up */
-+	if (pa->pa_linear)
-+		grp_blk--;
++/* Flags that are appropriate for regular files (all but dir-specific ones). */
++#define EXT4_REG_FLMASK (~(EXT4_DIRSYNC_FL | EXT4_TOPDIR_FL))
 +
-+	ext4_get_group_no_and_offset(sb, grp_blk, &grp, NULL);
++/* Flags that are appropriate for non-directories/regular files. */
++#define EXT4_OTHER_FLMASK (EXT4_NODUMP_FL | EXT4_NOATIME_FL)
++
++/* Mask out flags that are inappropriate for the given type of inode. */
++static inline __u32 ext4_mask_flags(umode_t mode, __u32 flags)
++{
++	if (S_ISDIR(mode))
++		return flags;
++	else if (S_ISREG(mode))
++		return flags & EXT4_REG_FLMASK;
++	else
++		return flags & EXT4_OTHER_FLMASK;
++}
++
+ /*
+  * Inode dynamic state flags
+  */
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -865,16 +865,12 @@ got:
+ 	ei->i_disksize = 0;
  
  	/*
- 	 * possible race:
+-	 * Don't inherit extent flag from directory. We set extent flag on
+-	 * newly created directory and file only if -o extent mount option is
+-	 * specified
++	 * Don't inherit extent flag from directory, amongst others. We set
++	 * extent flag on newly created directory and file only if -o extent
++	 * mount option is specified
+ 	 */
+-	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
+-	if (S_ISLNK(mode))
+-		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+-	/* dirsync only applies to directories */
+-	if (!S_ISDIR(mode))
+-		ei->i_flags &= ~EXT4_DIRSYNC_FL;
++	ei->i_flags =
++		ext4_mask_flags(mode, EXT4_I(dir)->i_flags & EXT4_FL_INHERITED);
+ 	ei->i_file_acl = 0;
+ 	ei->i_dtime = 0;
+ 	ei->i_block_alloc_info = NULL;
+--- a/fs/ext4/ioctl.c
++++ b/fs/ext4/ioctl.c
+@@ -49,8 +49,7 @@ long ext4_ioctl(struct file *filp, unsig
+ 		if (err)
+ 			return err;
+ 
+-		if (!S_ISDIR(inode->i_mode))
+-			flags &= ~EXT4_DIRSYNC_FL;
++		flags = ext4_mask_flags(inode->i_mode, flags);
+ 
+ 		err = -EPERM;
+ 		mutex_lock(&inode->i_mutex);
 
 
