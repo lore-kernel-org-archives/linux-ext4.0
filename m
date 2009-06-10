@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 46/60] ext4: add EXT4_IOC_ALLOC_DA_BLKS ioctl
-Date: Tue, 09 Jun 2009 17:14:14 -0700
-Message-ID: <20090610002350.304932379@blue.kroah.org>
+Subject: [patch 50/60] ext4: Check for an valid i_mode when reading the inode from disk
+Date: Tue, 09 Jun 2009 17:14:18 -0700
+Message-ID: <20090610002351.232891248@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -20,11 +20,11 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57348 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:57415 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757671AbZFJDgV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:36:21 -0400
-Content-Disposition: inline; filename=ext4-add-ext4_ioc_alloc_da_blks-ioctl.patch
+	id S1757678AbZFJDgf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:36:35 -0400
+Content-Disposition: inline; filename=ext4-check-for-an-valid-i_mode-when-reading-the-inode-from-disk.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -34,114 +34,39 @@ List-ID: <linux-ext4.vger.kernel.org>
 ------------------
 From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit ccd2506bd43113659aa904d5bea5d1300605e2a6)
-
-Add an ioctl which forces all of the delay allocated blocks to be
-allocated.  This also provides a function ext4_alloc_da_blocks() which
-will be used by the following commits to force files to be fully
-allocated to preserve application-expected ext3 behaviour.
+(cherry picked from commit 563bdd61fe4dbd6b58cf7eb06f8d8f14479ae1dc)
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/ext4.h  |    3 +++
- fs/ext4/inode.c |   42 ++++++++++++++++++++++++++++++++++++++++++
- fs/ext4/ioctl.c |   14 ++++++++++++++
- 3 files changed, 59 insertions(+)
+ fs/ext4/inode.c |   10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -326,7 +326,9 @@ struct ext4_new_group_data {
- #define EXT4_IOC_GROUP_EXTEND		_IOW('f', 7, unsigned long)
- #define EXT4_IOC_GROUP_ADD		_IOW('f', 8, struct ext4_new_group_input)
- #define EXT4_IOC_MIGRATE		_IO('f', 9)
-+ /* note ioctl 10 reserved for an early version of the FIEMAP ioctl */
-  /* note ioctl 11 reserved for filesystem-independent FIEMAP ioctl */
-+#define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
- 
- /*
-  * ioctl commands in 32 bit emulation
-@@ -1102,6 +1104,7 @@ extern int ext4_can_truncate(struct inod
- extern void ext4_truncate (struct inode *);
- extern void ext4_set_inode_flags(struct inode *);
- extern void ext4_get_inode_flags(struct ext4_inode_info *);
-+extern int ext4_alloc_da_blocks(struct inode *inode);
- extern void ext4_set_aops(struct inode *inode);
- extern int ext4_writepage_trans_blocks(struct inode *);
- extern int ext4_meta_trans_blocks(struct inode *, int nrblocks, int idxblocks);
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2585,6 +2585,48 @@ out:
- 	return;
- }
- 
-+/*
-+ * Force all delayed allocation blocks to be allocated for a given inode.
-+ */
-+int ext4_alloc_da_blocks(struct inode *inode)
-+{
-+	if (!EXT4_I(inode)->i_reserved_data_blocks &&
-+	    !EXT4_I(inode)->i_reserved_meta_blocks)
-+		return 0;
-+
-+	/*
-+	 * We do something simple for now.  The filemap_flush() will
-+	 * also start triggering a write of the data blocks, which is
-+	 * not strictly speaking necessary (and for users of
-+	 * laptop_mode, not even desirable).  However, to do otherwise
-+	 * would require replicating code paths in:
-+	 *
-+	 * ext4_da_writepages() ->
-+	 *    write_cache_pages() ---> (via passed in callback function)
-+	 *        __mpage_da_writepage() -->
-+	 *           mpage_add_bh_to_extent()
-+	 *           mpage_da_map_blocks()
-+	 *
-+	 * The problem is that write_cache_pages(), located in
-+	 * mm/page-writeback.c, marks pages clean in preparation for
-+	 * doing I/O, which is not desirable if we're not planning on
-+	 * doing I/O at all.
-+	 *
-+	 * We could call write_cache_pages(), and then redirty all of
-+	 * the pages by calling redirty_page_for_writeback() but that
-+	 * would be ugly in the extreme.  So instead we would need to
-+	 * replicate parts of the code in the above functions,
-+	 * simplifying them becuase we wouldn't actually intend to
-+	 * write out the pages, but rather only collect contiguous
-+	 * logical block extents, call the multi-block allocator, and
-+	 * then update the buffer heads with the block allocations.
-+	 *
-+	 * For now, though, we'll cheat by calling filemap_flush(),
-+	 * which will map the blocks, and start the I/O, but not
-+	 * actually wait for the I/O to complete.
-+	 */
-+	return filemap_flush(inode->i_mapping);
-+}
- 
- /*
-  * bmap() is special.  It gets used by applications such as lilo and by
---- a/fs/ext4/ioctl.c
-+++ b/fs/ext4/ioctl.c
-@@ -287,6 +287,20 @@ setversion_out:
- 		return err;
+@@ -4129,7 +4129,8 @@ struct inode *ext4_iget(struct super_blo
+ 			inode->i_op = &ext4_symlink_inode_operations;
+ 			ext4_set_aops(inode);
+ 		}
+-	} else {
++	} else if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode) ||
++	      S_ISFIFO(inode->i_mode) || S_ISSOCK(inode->i_mode)) {
+ 		inode->i_op = &ext4_special_inode_operations;
+ 		if (raw_inode->i_block[0])
+ 			init_special_inode(inode, inode->i_mode,
+@@ -4137,6 +4138,13 @@ struct inode *ext4_iget(struct super_blo
+ 		else
+ 			init_special_inode(inode, inode->i_mode,
+ 			   new_decode_dev(le32_to_cpu(raw_inode->i_block[1])));
++	} else {
++		brelse(bh);
++		ret = -EIO;
++		ext4_error(inode->i_sb, __func__,
++			   "bogus i_mode (%o) for inode=%lu",
++			   inode->i_mode, inode->i_ino);
++		goto bad_inode;
  	}
- 
-+	case EXT4_IOC_ALLOC_DA_BLKS:
-+	{
-+		int err;
-+		if (!is_owner_or_cap(inode))
-+			return -EACCES;
-+
-+		err = mnt_want_write(filp->f_path.mnt);
-+		if (err)
-+			return err;
-+		err = ext4_alloc_da_blocks(inode);
-+		mnt_drop_write(filp->f_path.mnt);
-+		return err;
-+	}
-+
- 	default:
- 		return -ENOTTY;
- 	}
+ 	brelse (iloc.bh);
+ 	ext4_set_inode_flags(inode);
 
 
