@@ -1,61 +1,94 @@
-From: akpm@linux-foundation.org
-Subject: [patch 3/3] jbd: fix race in buffer processing in commit code
-Date: Tue, 09 Jun 2009 16:26:26 -0700
-Message-ID: <200906092326.n59NQQOQ014571@imap1.linux-foundation.org>
-Cc: akpm@linux-foundation.org, jack@suse.cz,
-	linux-ext4@vger.kernel.org, stable@kernel.org
-To: torvalds@linux-foundation.org
+From: <gregkh@suse.de>
+Subject: patch ext4-don-t-inherit-inappropriate-inode-flags-from-parent.patch added to 2.6.27-stable tree
+Date: Tue, 09 Jun 2009 17:01:31 -0700
+Message-ID: <20090610000845.9A68848FB3@coco.kroah.org>
+References: <1243944576-20915-6-git-send-email-tytso@mit.edu>
+Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
+To: duaneg@dghda.com, adilger@sun.com, akpm@linux-foundation.org,
+	gregkh@suse.de, linux-ext4@vger.kernel.org, tytso@mit.edu
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp1.linux-foundation.org ([140.211.169.13]:41134 "EHLO
-	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750810AbZFIX1a (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 9 Jun 2009 19:27:30 -0400
+Received: from kroah.org ([198.145.64.141]:37664 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755678AbZFJAIn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 20:08:43 -0400
+In-Reply-To: <1243944576-20915-6-git-send-email-tytso@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jan Kara <jack@suse.cz>
 
-In commit code, we scan buffers attached to a transaction.  During this
-scan, we sometimes have to drop j_list_lock and then we recheck whether
-the journal buffer head didn't get freed by journal_try_to_free_buffers().
- But checking for buffer_jbd(bh) isn't enough because a new journal head
-could get attached to our buffer head.  So add a check whether the journal
-head remained the same and whether it's still at the same transaction and
-list.
+This is a note to let you know that we have just queued up the patch titled
 
-This is a nasty bug and can cause problems like memory corruption (use after
-free) or trigger various assertions in JBD code (observed).
+    Subject: ext4: don't inherit inappropriate inode flags from parent
 
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: <stable@kernel.org>
+to the 2.6.27-stable tree.  Its filename is
+
+    ext4-don-t-inherit-inappropriate-inode-flags-from-parent.patch
+
+A git repo of this tree can be found at 
+    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
+
+
+>From stable-bounces@linux.kernel.org Tue Jun  2 05:11:17 2009
+From: Duane Griffin <duaneg@dghda.com>
+Date: Tue,  2 Jun 2009 08:09:18 -0400
+Subject: ext4: don't inherit inappropriate inode flags from parent
+To: stable@kernel.org
+Cc: Andrew Morton <akpm@linux-foundation.org>, linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>, Duane Griffin <duaneg@dghda.com>
+Message-ID: <1243944576-20915-6-git-send-email-tytso@mit.edu>
+
+
+From: Duane Griffin <duaneg@dghda.com>
+
+(cherry picked from commit 8fa43a81b97853fc69417bb6054182e78f95cbeb)
+
+At present INDEX and EXTENTS are the only flags that new ext4 inodes do
+NOT inherit from their parent.  In addition prevent the flags DIRTY,
+ECOMPR, IMAGIC, TOPDIR, HUGE_FILE and EXT_MIGRATE from being inherited.
+List inheritable flags explicitly to prevent future flags from
+accidentally being inherited.
+
+This fixes the TOPDIR flag inheritance bug reported at
+http://bugzilla.kernel.org/show_bug.cgi?id=9866.
+
+Signed-off-by: Duane Griffin <duaneg@dghda.com>
+Acked-by: Andreas Dilger <adilger@sun.com>
 Cc: <linux-ext4@vger.kernel.org>
 Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
+ fs/ext4/ext4.h   |    7 +++++++
+ fs/ext4/ialloc.c |    2 +-
+ 2 files changed, 8 insertions(+), 1 deletion(-)
 
- fs/jbd/commit.c |    6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
+--- a/fs/ext4/ext4.h
++++ b/fs/ext4/ext4.h
+@@ -248,6 +248,13 @@ struct flex_groups {
+ #define EXT4_FL_USER_VISIBLE		0x000BDFFF /* User visible flags */
+ #define EXT4_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
+ 
++/* Flags that should be inherited by new inodes from their parent. */
++#define EXT4_FL_INHERITED (EXT4_SECRM_FL | EXT4_UNRM_FL | EXT4_COMPR_FL |\
++			   EXT4_SYNC_FL | EXT4_IMMUTABLE_FL | EXT4_APPEND_FL |\
++			   EXT4_NODUMP_FL | EXT4_NOATIME_FL |\
++			   EXT4_NOCOMPR_FL | EXT4_JOURNAL_DATA_FL |\
++			   EXT4_NOTAIL_FL | EXT4_DIRSYNC_FL)
++
+ /*
+  * Inode dynamic state flags
+  */
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -869,7 +869,7 @@ got:
+ 	 * newly created directory and file only if -o extent mount option is
+ 	 * specified
+ 	 */
+-	ei->i_flags = EXT4_I(dir)->i_flags & ~(EXT4_INDEX_FL|EXT4_EXTENTS_FL);
++	ei->i_flags = EXT4_I(dir)->i_flags & EXT4_FL_INHERITED;
+ 	if (S_ISLNK(mode))
+ 		ei->i_flags &= ~(EXT4_IMMUTABLE_FL|EXT4_APPEND_FL);
+ 	/* dirsync only applies to directories */
 
-diff -puN fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code fs/jbd/commit.c
---- a/fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code
-+++ a/fs/jbd/commit.c
-@@ -241,7 +241,7 @@ write_out_data:
- 			spin_lock(&journal->j_list_lock);
- 		}
- 		/* Someone already cleaned up the buffer? */
--		if (!buffer_jbd(bh)
-+		if (!buffer_jbd(bh) || bh2jh(bh) != jh
- 			|| jh->b_transaction != commit_transaction
- 			|| jh->b_jlist != BJ_SyncData) {
- 			jbd_unlock_bh_state(bh);
-@@ -478,7 +478,9 @@ void journal_commit_transaction(journal_
- 			spin_lock(&journal->j_list_lock);
- 			continue;
- 		}
--		if (buffer_jbd(bh) && jh->b_jlist == BJ_Locked) {
-+		if (buffer_jbd(bh) && bh2jh(bh) == jh &&
-+		    jh->b_transaction == commit_transaction &&
-+		    jh->b_jlist == BJ_Locked) {
- 			__journal_unfile_buffer(jh);
- 			jbd_unlock_bh_state(bh);
- 			journal_remove_journal_head(bh);
-_
+
+Patches currently in stable-queue which might be from duaneg@dghda.com are
+
