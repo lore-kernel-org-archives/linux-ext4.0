@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 50/60] ext4: Check for an valid i_mode when reading the inode from disk
-Date: Tue, 09 Jun 2009 17:14:18 -0700
-Message-ID: <20090610002351.232891248@blue.kroah.org>
+Subject: [patch 48/60] ext4: Automatically allocate delay allocated blocks on rename
+Date: Tue, 09 Jun 2009 17:14:16 -0700
+Message-ID: <20090610002350.775890911@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -20,11 +20,11 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57415 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:57377 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757678AbZFJDgf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:36:35 -0400
-Content-Disposition: inline; filename=ext4-check-for-an-valid-i_mode-when-reading-the-inode-from-disk.patch
+	id S1754050AbZFJDg2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:36:28 -0400
+Content-Disposition: inline; filename=ext4-automatically-allocate-delay-allocated-blocks-on-rename.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -34,39 +34,48 @@ List-ID: <linux-ext4.vger.kernel.org>
 ------------------
 From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 563bdd61fe4dbd6b58cf7eb06f8d8f14479ae1dc)
+(cherry picked from commit 8750c6d5fcbd3342b3d908d157f81d345c5325a7)
+
+When renaming a file such that a link to another inode is overwritten,
+force any delay allocated blocks that to be allocated so that if the
+filesystem is mounted with data=ordered, the data blocks will be
+pushed out to disk along with the journal commit.  Many application
+programs expect this, so we do this to avoid zero length files if the
+system crashes unexpectedly.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/inode.c |   10 +++++++++-
- 1 file changed, 9 insertions(+), 1 deletion(-)
+ fs/ext4/namei.c |    5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
---- a/fs/ext4/inode.c
-+++ b/fs/ext4/inode.c
-@@ -4129,7 +4129,8 @@ struct inode *ext4_iget(struct super_blo
- 			inode->i_op = &ext4_symlink_inode_operations;
- 			ext4_set_aops(inode);
- 		}
--	} else {
-+	} else if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode) ||
-+	      S_ISFIFO(inode->i_mode) || S_ISSOCK(inode->i_mode)) {
- 		inode->i_op = &ext4_special_inode_operations;
- 		if (raw_inode->i_block[0])
- 			init_special_inode(inode, inode->i_mode,
-@@ -4137,6 +4138,13 @@ struct inode *ext4_iget(struct super_blo
- 		else
- 			init_special_inode(inode, inode->i_mode,
- 			   new_decode_dev(le32_to_cpu(raw_inode->i_block[1])));
-+	} else {
-+		brelse(bh);
-+		ret = -EIO;
-+		ext4_error(inode->i_sb, __func__,
-+			   "bogus i_mode (%o) for inode=%lu",
-+			   inode->i_mode, inode->i_ino);
-+		goto bad_inode;
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -2314,7 +2314,7 @@ static int ext4_rename (struct inode * o
+ 	struct inode * old_inode, * new_inode;
+ 	struct buffer_head * old_bh, * new_bh, * dir_bh;
+ 	struct ext4_dir_entry_2 * old_de, * new_de;
+-	int retval;
++	int retval, force_da_alloc = 0;
+ 
+ 	old_bh = new_bh = dir_bh = NULL;
+ 
+@@ -2452,6 +2452,7 @@ static int ext4_rename (struct inode * o
+ 		ext4_mark_inode_dirty(handle, new_inode);
+ 		if (!new_inode->i_nlink)
+ 			ext4_orphan_add(handle, new_inode);
++		force_da_alloc = 1;
  	}
- 	brelse (iloc.bh);
- 	ext4_set_inode_flags(inode);
+ 	retval = 0;
+ 
+@@ -2460,6 +2461,8 @@ end_rename:
+ 	brelse (old_bh);
+ 	brelse (new_bh);
+ 	ext4_journal_stop(handle);
++	if (retval == 0 && force_da_alloc)
++		ext4_alloc_da_blocks(old_inode);
+ 	return retval;
+ }
+ 
 
 
