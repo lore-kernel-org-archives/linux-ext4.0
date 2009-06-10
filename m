@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 40/60] ext4: fix bogus BUG_ONs in in mballoc code
-Date: Tue, 09 Jun 2009 17:14:08 -0700
-Message-ID: <20090610002348.904322248@blue.kroah.org>
+Subject: [patch 44/60] ext4: return -EIO not -ESTALE on directory traversal through deleted inode
+Date: Tue, 09 Jun 2009 17:14:12 -0700
+Message-ID: <20090610002349.812972018@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -16,15 +16,16 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
 	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
 	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, Eric Sandeen <sandeen@redhat.com>,
-	linux-ext4@vger.kernel.org, Greg Kroah-Hartman <gregkh@suse.de>
+	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
+	Bryan Donlan <bdonlan@gmail.com>,
+	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57240 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:57307 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757452AbZFJDf7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:35:59 -0400
-Content-Disposition: inline; filename=ext4-fix-bogus-bug_ons-in-in-mballoc-code.patch
+	id S1757601AbZFJDgN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:36:13 -0400
+Content-Disposition: inline; filename=ext4-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -33,54 +34,55 @@ List-ID: <linux-ext4.vger.kernel.org>
 -stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
-From: Eric Sandeen <sandeen@redhat.com>
+From: Bryan Donlan <bdonlan@gmail.com>
 
-(cherry picked from commit 8d03c7a0c550e7ab24cadcef5e66656bfadec8b9)
+(cherry picked from commit e6f009b0b45220c004672d41a58865e94946104d)
 
-Thiemo Nagel reported that:
+ext4_iget() returns -ESTALE if invoked on a deleted inode, in order to
+report errors to NFS properly.  However, in ext4_lookup(), this
+-ESTALE can be propagated to userspace if the filesystem is corrupted
+such that a directory entry references a deleted inode.  This leads to
+a misleading error message - "Stale NFS file handle" - and confusion
+on the part of the admin.
 
-# dd if=/dev/zero of=image.ext4 bs=1M count=2
-# mkfs.ext4 -v -F -b 1024 -m 0 -g 512 -G 4 -I 128 -N 1 \
-  -O large_file,dir_index,flex_bg,extent,sparse_super image.ext4
-# mount -o loop image.ext4 mnt/
-# dd if=/dev/zero of=mnt/file
+The bug can be easily reproduced by creating a new filesystem, making
+a link to an unused inode using debugfs, then mounting and attempting
+to ls -l said link.
 
-oopsed, with a BUG_ON in ext4_mb_normalize_request because
-size == EXT4_BLOCKS_PER_GROUP
+This patch thus changes ext4_lookup to return -EIO if it receives
+-ESTALE from ext4_iget(), as ext4 does for other filesystem metadata
+corruption; and also invokes the appropriate ext*_error functions when
+this case is detected.
 
-It appears to me (esp. after talking to Andreas) that the BUG_ON
-is bogus; a request of exactly EXT4_BLOCKS_PER_GROUP should
-be allowed, though larger sizes do indicate a problem.
-
-Fix that an another (apparently rare) codepath with a similar check.
-
-Reported-by: Thiemo Nagel <thiemo.nagel@ph.tum.de>
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/mballoc.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/ext4/namei.c |   12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
 
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -1450,7 +1450,7 @@ static void ext4_mb_measure_extent(struc
- 	struct ext4_free_extent *gex = &ac->ac_g_ex;
- 
- 	BUG_ON(ex->fe_len <= 0);
--	BUG_ON(ex->fe_len >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
-+	BUG_ON(ex->fe_len > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
- 	BUG_ON(ex->fe_start >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
- 	BUG_ON(ac->ac_status != AC_STATUS_CONTINUE);
- 
-@@ -3400,7 +3400,7 @@ ext4_mb_normalize_request(struct ext4_al
+--- a/fs/ext4/namei.c
++++ b/fs/ext4/namei.c
+@@ -1055,8 +1055,16 @@ static struct dentry *ext4_lookup(struct
+ 			return ERR_PTR(-EIO);
+ 		}
+ 		inode = ext4_iget(dir->i_sb, ino);
+-		if (IS_ERR(inode))
+-			return ERR_CAST(inode);
++		if (unlikely(IS_ERR(inode))) {
++			if (PTR_ERR(inode) == -ESTALE) {
++				ext4_error(dir->i_sb, __func__,
++						"deleted inode referenced: %u",
++						ino);
++				return ERR_PTR(-EIO);
++			} else {
++				return ERR_CAST(inode);
++			}
++		}
  	}
- 	BUG_ON(start + size <= ac->ac_o_ex.fe_logical &&
- 			start > ac->ac_o_ex.fe_logical);
--	BUG_ON(size <= 0 || size >= EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
-+	BUG_ON(size <= 0 || size > EXT4_BLOCKS_PER_GROUP(ac->ac_sb));
- 
- 	/* now prepare goal request */
- 
+ 	return d_splice_alias(inode, dentry);
+ }
 
 
