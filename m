@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 58/60] ext4: Use a fake block number for delayed new buffer_head
-Date: Tue, 09 Jun 2009 17:14:26 -0700
-Message-ID: <20090610002353.053613995@blue.kroah.org>
+Subject: [patch 59/60] ext4: Clear the unwritten buffer_head flag after the extent is initialized
+Date: Tue, 09 Jun 2009 17:14:27 -0700
+Message-ID: <20090610002353.279015401@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -21,11 +21,11 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57568 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:32953 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757911AbZFJDhK (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:37:10 -0400
-Content-Disposition: inline; filename=ext4-use-a-fake-block-number-for-delayed-new-buffer_head.patch
+	id S1757951AbZFJDhN (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:37:13 -0400
+Content-Disposition: inline; filename=ext4-clear-the-unwritten-buffer_head-flag-after-the-extent-is-initialized.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -36,40 +36,56 @@ List-ID: <linux-ext4.vger.kernel.org>
 ------------------
 From: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-(cherry picked from commit 33b9817e2ae097c7b8d256e3510ac6c54fc6d9d0)
+(cherry picked from commit 2a8964d63d50dd2d65d71d342bc7fb6ef4117614)
 
-Use a very large unsigned number (~0xffff) as as the fake block number
-for the delayed new buffer. The VFS should never try to write out this
-number, but if it does, this will make it obvious.
+The BH_Unwritten flag indicates that the buffer is allocated on disk
+but has not been written; that is, the disk was part of a persistent
+preallocation area.  That flag should only be set when a get_blocks()
+function is looking up a inode's logical to physical block mapping.
+
+When ext4_get_blocks_wrap() is called with create=1, the uninitialized
+extent is converted into an initialized one, so the BH_Unwritten flag
+is no longer appropriate.  Hence, we need to make sure the
+BH_Unwritten is not left set, since the combination of BH_Mapped and
+BH_Unwritten is not allowed; among other things, it will result ext4's
+get_block() to be called over and over again during the write_begin
+phase of write(2).
 
 Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/inode.c |    6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/ext4/inode.c |   13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
 --- a/fs/ext4/inode.c
 +++ b/fs/ext4/inode.c
-@@ -2105,6 +2105,10 @@ static int ext4_da_get_block_prep(struct
- 				  struct buffer_head *bh_result, int create)
- {
- 	int ret = 0;
-+	sector_t invalid_block = ~((sector_t) 0xffff);
+@@ -1085,6 +1085,7 @@ int ext4_get_blocks_wrap(handle_t *handl
+ 	int retval;
+ 
+ 	clear_buffer_mapped(bh);
++	clear_buffer_unwritten(bh);
+ 
+ 	/*
+ 	 * Try to see if we can get  the block without requesting
+@@ -1115,6 +1116,18 @@ int ext4_get_blocks_wrap(handle_t *handl
+ 		return retval;
+ 
+ 	/*
++	 * When we call get_blocks without the create flag, the
++	 * BH_Unwritten flag could have gotten set if the blocks
++	 * requested were part of a uninitialized extent.  We need to
++	 * clear this flag now that we are committed to convert all or
++	 * part of the uninitialized extent to be an initialized
++	 * extent.  This is because we need to avoid the combination
++	 * of BH_Unwritten and BH_Mapped flags being simultaneously
++	 * set on the buffer_head.
++	 */
++	clear_buffer_unwritten(bh);
 +
-+	if (invalid_block < ext4_blocks_count(EXT4_SB(inode->i_sb)->s_es))
-+		invalid_block = ~0;
- 
- 	BUG_ON(create == 0);
- 	BUG_ON(bh_result->b_size != inode->i_sb->s_blocksize);
-@@ -2126,7 +2130,7 @@ static int ext4_da_get_block_prep(struct
- 			/* not enough space to reserve */
- 			return ret;
- 
--		map_bh(bh_result, inode->i_sb, 0);
-+		map_bh(bh_result, inode->i_sb, invalid_block);
- 		set_buffer_new(bh_result);
- 		set_buffer_delay(bh_result);
- 	} else if (ret > 0) {
++	/*
+ 	 * New blocks allocate and/or writing to uninitialized extent
+ 	 * will possibly result in updating i_data, so we take
+ 	 * the write lock of i_data_sem, and call get_blocks()
 
 
