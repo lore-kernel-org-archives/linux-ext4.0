@@ -1,102 +1,54 @@
-From: Greg KH <gregkh@suse.de>
-Subject: [patch 60/60] ext4: Fix race in ext4_inode_info.i_cached_extent
-Date: Tue, 09 Jun 2009 17:14:28 -0700
-Message-ID: <20090610002353.503772667@blue.kroah.org>
-References: <20090610001328.251476848@blue.kroah.org>
-Cc: Justin Forbes <jmforbes@linuxtx.org>,
-	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
-	Theodore Ts'o <tytso@mit.edu>,
-	Randy Dunlap <rdunlap@xenotime.net>,
-	Dave Jones <davej@redhat.com>,
-	Chuck Wolber <chuckw@quantumlinux.com>,
-	Chris Wedgwood <reviews@ml.cw.f00f.org>,
-	Michael Krufky <mkrufky@linuxtv.org>,
-	Chuck Ebbert <cebbert@redhat.com>,
-	Domenico Andreoli <cavokz@gmail.com>, Willy Tarreau <w@1wt.eu>,
-	Rodrigo Rubira Branco <rbranco@la.checkpoint.com>,
-	Jake Edge <jake@lwn.net>, Eugene Teo <eteo@redhat.com>,
-	torvalds@linux-foundation.org, akpm@linux-foundation.org,
-	alan@lxorguk.ukuu.org.uk, linux-ext4@vger.kernel.org,
-	Greg Kroah-Hartman <gregkh@suse.de>
-To: linux-kernel@vger.kernel.org, stable@kernel.org
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13230] unexplained fsck error with ext4 on software raid 10
+Date: Wed, 10 Jun 2009 06:47:43 GMT
+Message-ID: <200906100647.n5A6lhas028446@demeter.kernel.org>
+References: <bug-13230-13602@http.bugzilla.kernel.org/>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:32979 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757905AbZFJDhR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:37:17 -0400
-Content-Disposition: inline; filename=ext4-fix-race-in-ext4_inode_info.i_cached_extent.patch
-In-Reply-To: <20090610032135.GA19346@kroah.com>
+Received: from demeter.kernel.org ([140.211.167.39]:48401 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752319AbZFJGrl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Jun 2009 02:47:41 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n5A6lhwF028447
+	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2009 06:47:43 GMT
+In-Reply-To: <bug-13230-13602@http.bugzilla.kernel.org/>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
--stable review patch.  If anyone has any objections, please let us know.
+http://bugzilla.kernel.org/show_bug.cgi?id=3D13230
 
-------------------
-From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 2ec0ae3acec47f628179ee95fe2c4da01b5e9fc4)
+=46lorian Engelhardt <flo@dotbox.org> changed:
 
-If two CPU's simultaneously call ext4_ext_get_blocks() at the same
-time, there is nothing protecting the i_cached_extent structure from
-being used and updated at the same time.  This could potentially cause
-the wrong location on disk to be read or written to, including
-potentially causing the corruption of the block group descriptors
-and/or inode table.
+           What    |Removed                     |Added
+-----------------------------------------------------------------------=
+-----
+             Status|NEW                         |RESOLVED
+         Resolution|                            |PATCH_ALREADY_AVAILABL=
+E
 
-This bug has been in the ext4 code since almost the very beginning of
-ext4's development.  Fortunately once the data is stored in the page
-cache cache, ext4_get_blocks() doesn't need to be called, so trying to
-replicate this problem to the point where we could identify its root
-cause was *extremely* difficult.  Many thanks to Kevin Shanahan for
-working over several months to be able to reproduce this easily so we
-could finally nail down the cause of the corruption.
 
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-Reviewed-by: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
----
- fs/ext4/extents.c |   17 ++++++++++++-----
- 1 file changed, 12 insertions(+), 5 deletions(-)
 
---- a/fs/ext4/extents.c
-+++ b/fs/ext4/extents.c
-@@ -1633,11 +1633,13 @@ ext4_ext_put_in_cache(struct inode *inod
- {
- 	struct ext4_ext_cache *cex;
- 	BUG_ON(len == 0);
-+	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	cex = &EXT4_I(inode)->i_cached_extent;
- 	cex->ec_type = type;
- 	cex->ec_block = block;
- 	cex->ec_len = len;
- 	cex->ec_start = start;
-+	spin_unlock(&EXT4_I(inode)->i_block_reservation_lock);
- }
- 
- /*
-@@ -1694,12 +1696,17 @@ ext4_ext_in_cache(struct inode *inode, e
- 			struct ext4_extent *ex)
- {
- 	struct ext4_ext_cache *cex;
-+	int ret = EXT4_EXT_CACHE_NO;
- 
-+	/*
-+	 * We borrow i_block_reservation_lock to protect i_cached_extent
-+	 */
-+	spin_lock(&EXT4_I(inode)->i_block_reservation_lock);
- 	cex = &EXT4_I(inode)->i_cached_extent;
- 
- 	/* has cache valid data? */
- 	if (cex->ec_type == EXT4_EXT_CACHE_NO)
--		return EXT4_EXT_CACHE_NO;
-+		goto errout;
- 
- 	BUG_ON(cex->ec_type != EXT4_EXT_CACHE_GAP &&
- 			cex->ec_type != EXT4_EXT_CACHE_EXTENT);
-@@ -1710,11 +1717,11 @@ ext4_ext_in_cache(struct inode *inode, e
- 		ext_debug("%u cached by %u:%u:%llu\n",
- 				block,
- 				cex->ec_block, cex->ec_len, cex->ec_start);
--		return cex->ec_type;
-+		ret = cex->ec_type;
- 	}
+
+--- Comment #5 from Florian Engelhardt <flo@dotbox.org>  2009-06-10 06:=
+47:42 ---
+I applied that patch to the 2.6.29.4 kernel and recreated the filesyste=
+m. It=C2=B4s
+up and running since four days now. I was not able to reproduce this bu=
+g. Good
+work, thanks so far. Is this patch also in the 2.6.30 mainline? This wi=
+ll allow
+me to switch back to the official kernel of my distribution.
+
+--=20
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=3Demail
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
