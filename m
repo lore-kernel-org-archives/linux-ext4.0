@@ -1,7 +1,7 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 48/60] ext4: Automatically allocate delay allocated blocks on rename
-Date: Tue, 09 Jun 2009 17:14:16 -0700
-Message-ID: <20090610002350.775890911@blue.kroah.org>
+Subject: [patch 55/60] ext4: Fix softlockup caused by illegal i_file_acl value in on-disk inode
+Date: Tue, 09 Jun 2009 17:14:23 -0700
+Message-ID: <20090610002352.372207619@blue.kroah.org>
 References: <20090610001328.251476848@blue.kroah.org>
 Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Zwane Mwaikambo <zwane@arm.linux.org.uk>,
@@ -20,11 +20,11 @@ Cc: Justin Forbes <jmforbes@linuxtx.org>,
 	Greg Kroah-Hartman <gregkh@suse.de>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:57377 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:57508 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754050AbZFJDg2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 9 Jun 2009 23:36:28 -0400
-Content-Disposition: inline; filename=ext4-automatically-allocate-delay-allocated-blocks-on-rename.patch
+	id S1757992AbZFJDhA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 9 Jun 2009 23:37:00 -0400
+Content-Disposition: inline; filename=ext4-fix-softlockup-caused-by-illegal-i_file_acl-value-in-on-disk-inode.patch
 In-Reply-To: <20090610032135.GA19346@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
@@ -34,48 +34,44 @@ List-ID: <linux-ext4.vger.kernel.org>
 ------------------
 From: "Theodore Ts'o" <tytso@mit.edu>
 
-(cherry picked from commit 8750c6d5fcbd3342b3d908d157f81d345c5325a7)
+(cherry picked from commit 485c26ec70f823f2a9cf45982b724893e53a859e)
 
-When renaming a file such that a link to another inode is overwritten,
-force any delay allocated blocks that to be allocated so that if the
-filesystem is mounted with data=ordered, the data blocks will be
-pushed out to disk along with the journal commit.  Many application
-programs expect this, so we do this to avoid zero length files if the
-system crashes unexpectedly.
+If the block containing external extended attributes (which is stored
+in i_file_acl and i_file_acl_high) is larger than the on-disk
+filesystem, the process which tried to access the extended attributes
+will endlessly issue kernel printks complaining that
+"__find_get_block_slow() failed", locking up that CPU until the system
+is forcibly rebooted.
+
+So when we read in the inode, make sure the i_file_acl value is legal,
+and if not, flag the filesystem as being corrupted.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
 ---
- fs/ext4/namei.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/ext4/inode.c |   12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -2314,7 +2314,7 @@ static int ext4_rename (struct inode * o
- 	struct inode * old_inode, * new_inode;
- 	struct buffer_head * old_bh, * new_bh, * dir_bh;
- 	struct ext4_dir_entry_2 * old_de, * new_de;
--	int retval;
-+	int retval, force_da_alloc = 0;
- 
- 	old_bh = new_bh = dir_bh = NULL;
- 
-@@ -2452,6 +2452,7 @@ static int ext4_rename (struct inode * o
- 		ext4_mark_inode_dirty(handle, new_inode);
- 		if (!new_inode->i_nlink)
- 			ext4_orphan_add(handle, new_inode);
-+		force_da_alloc = 1;
+--- a/fs/ext4/inode.c
++++ b/fs/ext4/inode.c
+@@ -4115,6 +4115,18 @@ struct inode *ext4_iget(struct super_blo
+ 			(__u64)(le32_to_cpu(raw_inode->i_version_hi)) << 32;
  	}
- 	retval = 0;
  
-@@ -2460,6 +2461,8 @@ end_rename:
- 	brelse (old_bh);
- 	brelse (new_bh);
- 	ext4_journal_stop(handle);
-+	if (retval == 0 && force_da_alloc)
-+		ext4_alloc_da_blocks(old_inode);
- 	return retval;
- }
- 
++	if (ei->i_file_acl &&
++	    ((ei->i_file_acl <
++	      (le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block) +
++	       EXT4_SB(sb)->s_gdb_count)) ||
++	     (ei->i_file_acl >= ext4_blocks_count(EXT4_SB(sb)->s_es)))) {
++		ext4_error(sb, __func__,
++			   "bad extended attribute block %llu in inode #%lu",
++			   ei->i_file_acl, inode->i_ino);
++		ret = -EIO;
++		goto bad_inode;
++	}
++
+ 	if (S_ISREG(inode->i_mode)) {
+ 		inode->i_op = &ext4_file_inode_operations;
+ 		inode->i_fop = &ext4_file_operations;
 
 
