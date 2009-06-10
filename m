@@ -1,41 +1,86 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13230] unexplained fsck error with ext4 on software raid 10
-Date: Wed, 10 Jun 2009 13:53:12 GMT
-Message-ID: <200906101353.n5ADrCU5002233@demeter.kernel.org>
-References: <bug-13230-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
-To: linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:33380 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753832AbZFJNxM (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Jun 2009 09:53:12 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n5ADrC8U002234
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2009 13:53:12 GMT
-In-Reply-To: <bug-13230-13602@http.bugzilla.kernel.org/>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-http://bugzilla.kernel.org/show_bug.cgi?id=13230
+From: akpm@linux-foundation.org
+Subject: [merged] jbd-fix-race-in-buffer-processing-in-commit-code.patch removed from -mm tree
+Date: Wed, 10 Jun 2009 10:44:05 -0700
+Message-ID: <200906101744.n5AHi56b030864@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: jack@suse.cz, linux-ext4@vger.kernel.org, stable@kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
 
-Theodore Tso <tytso@mit.edu> changed:
+The patch titled
+     jbd: fix race in buffer processing in commit code
+has been removed from the -mm tree.  Its filename was
+     jbd-fix-race-in-buffer-processing-in-commit-code.patch
 
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-             Status|RESOLVED                    |CLOSED
+This patch was dropped because it was merged into mainline or a subsystem tree
 
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
+------------------------------------------------------
+Subject: jbd: fix race in buffer processing in commit code
+From: Jan Kara <jack@suse.cz>
 
+In commit code, we scan buffers attached to a transaction.  During this
+scan, we sometimes have to drop j_list_lock and then we recheck whether
+the journal buffer head didn't get freed by journal_try_to_free_buffers().
+ But checking for buffer_jbd(bh) isn't enough because a new journal head
+could get attached to our buffer head.  So add a check whether the journal
+head remained the same and whether it's still at the same transaction and
+list.
 
---- Comment #6 from Theodore Tso <tytso@mit.edu>  2009-06-10 13:53:11 ---
-Yes, this patch is in 2.6.30, and it's in the 2.6.27.y and 2.6.29.y patches
-which Greg sent out for review yesterday.  So 2.6.27.25 and 2.6.29.5 should
-have this patch when they get released next week.
+This is a nasty bug and can cause problems like memory corruption (use after
+free) or trigger various assertions in JBD code (observed).
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <stable@kernel.org>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/jbd/commit.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff -puN fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code fs/jbd/commit.c
+--- a/fs/jbd/commit.c~jbd-fix-race-in-buffer-processing-in-commit-code
++++ a/fs/jbd/commit.c
+@@ -241,7 +241,7 @@ write_out_data:
+ 			spin_lock(&journal->j_list_lock);
+ 		}
+ 		/* Someone already cleaned up the buffer? */
+-		if (!buffer_jbd(bh)
++		if (!buffer_jbd(bh) || bh2jh(bh) != jh
+ 			|| jh->b_transaction != commit_transaction
+ 			|| jh->b_jlist != BJ_SyncData) {
+ 			jbd_unlock_bh_state(bh);
+@@ -478,7 +478,9 @@ void journal_commit_transaction(journal_
+ 			spin_lock(&journal->j_list_lock);
+ 			continue;
+ 		}
+-		if (buffer_jbd(bh) && jh->b_jlist == BJ_Locked) {
++		if (buffer_jbd(bh) && bh2jh(bh) == jh &&
++		    jh->b_transaction == commit_transaction &&
++		    jh->b_jlist == BJ_Locked) {
+ 			__journal_unfile_buffer(jh);
+ 			jbd_unlock_bh_state(bh);
+ 			journal_remove_journal_head(bh);
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+linux-next.patch
+jbd2-clean-up-jbd2_journal_try_to_free_buffers.patch
+vfs-split-generic_forget_inode-so-that-hugetlbfs-does-not-have-to-copy-it.patch
+mm-remove-__invalidate_mapping_pages-variant.patch
+writeback-skip-new-or-to-be-freed-inodes.patch
+ext2-do-not-update-mtime-of-a-moved-directory.patch
+ext3-fix-chain-verification-in-ext3_get_blocks.patch
+jbd-clean-up-journal_try_to_free_buffers.patch
+ext3-make-sure-inode-is-deleted-from-orphan-list-after-truncate.patch
+isofs-let-mode-and-dmode-mount-options-override-rock-ridge-mode-setting.patch
+isofs-fix-setting-of-uid-and-gid-to-0.patch
+isofs-cleanup-mount-option-processing.patch
+reiser4-update-names-of-quota-methods.patch
+
