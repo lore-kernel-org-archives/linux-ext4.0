@@ -1,55 +1,33 @@
-From: Howard Cochran <hcochran@lexmark.com>
-Subject: Kernel thread to zero itables for lazy_itable_init?
-Date: Wed, 10 Jun 2009 18:41:22 -0400
-Message-ID: <4A303692.3010104@lpdev.prtdev.lexmark.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext4 preallocation corruption with truncate
+Date: Wed, 10 Jun 2009 20:17:29 -0400
+Message-ID: <20090611001729.GA7170@mit.edu>
+References: <1244676537.5256.27.camel@mingming-laptop>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
+	sandeen@redhat.com
+To: Mingming <cmm@us.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from exprod8og101.obsmtp.com ([64.18.3.82]:32779 "HELO
-	exprod8og101.obsmtp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753248AbZFJWqf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 10 Jun 2009 18:46:35 -0400
-Received: from lxkssmtp2e.lex.lexmark.com (smtp5b.notes.lexmark.com [157.184.50.112])
-	by smtp04a.notes.lexmark.com (Postfix) with ESMTP id 416A91300EC
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2009 18:41:32 -0400 (EDT)
-Received: from [157.184.141.112] (invent.lpdev.prtdev.lexmark.com [157.184.141.112])
-	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
-	(No client certificate requested)
-	by thoth.lpdev.prtdev.lexmark.com (Postfix) with ESMTPSA id 6569B4B781A
-	for <linux-ext4@vger.kernel.org>; Wed, 10 Jun 2009 18:41:21 -0400 (EDT)
+Received: from thunk.org ([69.25.196.29]:50327 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757018AbZFKARg (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 10 Jun 2009 20:17:36 -0400
+Content-Disposition: inline
+In-Reply-To: <1244676537.5256.27.camel@mingming-laptop>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Greetings.
+On Wed, Jun 10, 2009 at 04:28:57PM -0700, Mingming wrote:
+> We have seen data lost issue after a file being preallocated, write,
+> then truncated. 
+> 
+> Ted could we send this fix to stable asap? Thanks.
 
-What is the status of the code to start a background kernel thread to 
-zero the inode tables when filesystem that was created with mke2fs -E 
-lazy_itable_init is mounted?  All I have found is a patch set posted to 
-this mailing list back on November 21, 2008 and some discussion of the 
-implementation, but nothing after that.
+Aneesh had already sent this patch to linux-ext4, and I've already
+sent a pull request of all of the accumulated ext4 fixes to Linus.
+Once Linus pulls it into mainline, I'll assemble the set of fixes that
+that need to go to stable, and send it off to stable@kernel.org.
 
-Is this effort still alive?
-
-On a related note, from what I have read here, and from looking at the 
-ext4 kernel code, the filesystem itself never really requires the inode 
-tables to be zeroed out.  The only reason one might want to do that is 
-so that fsck does not detect false errors. 
-
-But, in data=ordered mode, would not marking the inode as allocated in 
-the bitmap be done in the same journal transaction as populating the 
-inode on disk (as well as creating a directory entry pointing to it)?  
-And, unless the journal is broken, then either all that succeeds or none 
-of it does.  So outside of a hardware failure, or data being overwritten 
-directly on the block device, it's not possible for an "actually in-use" 
-inode to be marked unallocated in the inode bitmap.
-
-So, I am wondering whether we really need the complexity of a kernel 
-thread to zero out the itable (or the long delay of doing it during 
-mke2fs).  Instead, would it not be better to modify fsck to ignore 
-garbage in unallocated inodes, at least for filesystems that have a journal.
-
-Thanks,
-Howard Cochran
-
+						- Ted
