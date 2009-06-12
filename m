@@ -1,49 +1,69 @@
-From: number9652 <number9652@yahoo.com>
-Subject: [PATCH] libext2fs: ensure validate_entry doesn't read beyond blocksize
-Date: Fri, 12 Jun 2009 09:04:32 -0700 (PDT)
-Message-ID: <687495.40108.qm@web43515.mail.sp1.yahoo.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Fallocate and DirectIO
+Date: Fri, 12 Jun 2009 13:33:01 -0400
+Message-ID: <20090612173301.GC6417@mit.edu>
+References: <20090612123112.GB25239@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from n77.bullet.mail.sp1.yahoo.com ([98.136.44.45]:38028 "HELO
-	n77.bullet.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1760913AbZFLQEa (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 12 Jun 2009 12:04:30 -0400
+Received: from THUNK.ORG ([69.25.196.29]:57846 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754990AbZFLRdH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 12 Jun 2009 13:33:07 -0400
+Content-Disposition: inline
+In-Reply-To: <20090612123112.GB25239@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Jun 12, 2009 at 06:01:12PM +0530, Aneesh Kumar K.V wrote:
+> Hi,
+> 
+> I noticed yesterday that a write to fallocate
+> space via directIO results in fallback to buffer_IO. ie the userspace
+> pages get copied to the page cache and then call a sync.
+> 
+> I guess this defeat the purpose of using directIO. May be we should
+> consider this a high priority bug.
 
-ext2fs_validate_entry would read beyond the end of the block to get dirent->rec_len for certain arguments (like if blocksize == final_offset).  This patch adds a check so that doesn't happen, and changes the types of the arguments to avoid a compiler warning.
+I agree that many of users of fallocate() feature (i.e. databases) are
+going to consider this to be a major misfeature.
 
-Signed-off-by: Nic Case <number9652@yahoo.com>
+There's going to be a major performance hit though --- O_DIRECT is
+supposed to be synchronous if all of the alignment requirements are
+met, which means that by the time the write(2) system call returns,
+the data is guaranteed to be on disk.  But if we need to manipulate
+the extent tree to indicate that the block is now in use (so the data
+is actually accessible), do we force a synchronous journal commit or
+not?  If we don't, then a crash right after an O_DIRECT right into an
+uninitialized region will cause the data to be "lost" (or at least,
+unavailable via the read/write system call).  If we do, then the first
+write into uninitialized block will cause a synchronous journal commit
+that will be Slow And Painful, and it might destroy most of the
+performance benefits that might tempt an enterprise database client to
+use fallocate() in the first place.
 
-diff --git a/e2fsprogs-1.41.5-orig/lib/ext2fs/dir_iterate.c b/e2fsprogs-1.41.5/lib/ext2fs/dir_iterate.c
-index 1f8cf8f..6be066c 100644
---- a/e2fsprogs-1.41.5-orig/lib/ext2fs/dir_iterate.c
-+++ b/e2fsprogs-1.41.5/lib/ext2fs/dir_iterate.c
-@@ -29,13 +29,15 @@
-  * undeleted entry.  Returns 1 if the deleted entry looks valid, zero
-  * if not valid.
-  */
--static int ext2fs_validate_entry(ext2_filsys fs, char *buf, int offset,
--				 int final_offset)
-+static int ext2fs_validate_entry(ext2_filsys fs, char *buf,
-+				 unsigned int offset,
-+				 unsigned int final_offset)
- {
- 	struct ext2_dir_entry *dirent;
- 	int	rec_len;
-+	int dirent_min_len = 12;
- 
--	while (offset < final_offset) {
-+	while (offset < final_offset &&	offset <= fs->blocksize - dirent_min_len) {
- 		dirent = (struct ext2_dir_entry *)(buf + offset);
- 		rec_len = (dirent->rec_len || fs->blocksize < 65536) ?
- 			dirent->rec_len : 65536;
+I wonder how XFS deals with this case?  It's a problem that is going
+to hit any journalled filesystem that wants to support fallocate() and
+direct I/O.
 
+One thing I can think of potentially doing is to check to see if the
+extent tree block has already been journalled, and if it is not
+currently involved the current transaction or the previous committing
+transaction, *and* if there is space in the extent tree to mark the
+current unitialized block as initialized (i.e., if the extent needs to
+be split, there is sufficient space so we don't have to allocate a new
+leaf block for the extent tree), we could update the leaf block in
+place and then synchronously write it out, and thus avoid needing to
+do a synchronous journal commit.
 
+In any case, adding this support is going to be non-trivial.  If
+someone has time to work on it in the next 2-3 weeks or so, I can push
+it to Linus as a bug fix --- but I'm concerned the fixing this may be
+tricky enough (and the patch invasive enough) that it might be
+challenging to get this fixed in time for 2.6.31.
 
-      
-
+						- Ted
