@@ -1,38 +1,39 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Fallocate and DirectIO
-Date: Fri, 12 Jun 2009 18:01:12 +0530
-Message-ID: <20090612123112.GB25239@skywalker>
+From: Greg Freemyer <greg.freemyer@gmail.com>
+Subject: Re: [RFC][PATCH 0/3]ext4: online defrag (ver 2.0)
+Date: Fri, 12 Jun 2009 09:31:18 -0400
+Message-ID: <87f94c370906120631i386acb94tb1039626c765ef60@mail.gmail.com>
+References: <4A164EC9.3070405@rs.jp.nec.com>
+	 <87f94c370906111603l4ed1c383tf0d725cb5ac95eaf@mail.gmail.com>
+	 <200906120947.58071.andreas.philipp@uni-graz.at>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Andreas Philipp <andreas.philipp@uni-graz.at>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp03.au.ibm.com ([202.81.31.145]:49403 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750783AbZFLMb1 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Jun 2009 08:31:27 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp03.au.ibm.com (8.13.1/8.13.1) with ESMTP id n5CCTQiJ012758
-	for <linux-ext4@vger.kernel.org>; Fri, 12 Jun 2009 22:29:26 +1000
-Received: from d23av04.au.ibm.com (d23av04.au.ibm.com [9.190.235.139])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n5CCVN4v565354
-	for <linux-ext4@vger.kernel.org>; Fri, 12 Jun 2009 22:31:28 +1000
-Received: from d23av04.au.ibm.com (loopback [127.0.0.1])
-	by d23av04.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n5CCVNV8013119
-	for <linux-ext4@vger.kernel.org>; Fri, 12 Jun 2009 22:31:23 +1000
-Content-Disposition: inline
+Received: from an-out-0708.google.com ([209.85.132.249]:48429 "EHLO
+	an-out-0708.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1763189AbZFLNbS (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 12 Jun 2009 09:31:18 -0400
+Received: by an-out-0708.google.com with SMTP id d40so4298483and.1
+        for <linux-ext4@vger.kernel.org>; Fri, 12 Jun 2009 06:31:19 -0700 (PDT)
+In-Reply-To: <200906120947.58071.andreas.philipp@uni-graz.at>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+On Fri, Jun 12, 2009 at 3:47 AM, Andreas
+Philipp<andreas.philipp@uni-graz.at> wrote:
+> Maybe my question is stupid, but I'll post it anyway. Where can I get the
+> patches for online defrag?
+>
+> Thanks,
+> Andreas
+>
+> --
+> Andreas Philipp
 
-I noticed yesterday that a write to fallocate
-space via directIO results in fallback to buffer_IO. ie the userspace
-pages get copied to the page cache and then call a sync.
+Akira Fujita posted them last month.
 
-I guess this defeat the purpose of using directIO. May be we should
-consider this a high priority bug.
+http://markmail.org/search/?q=Akira+Fujita+#query:Akira Fujita date%3A200905
 
--aneesh
+Greg
