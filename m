@@ -1,166 +1,137 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 2/2] ext4: teach the inode allocator to use a goal inode number
-Date: Sat, 13 Jun 2009 12:33:12 -0400
-Message-ID: <1244910792-29062-2-git-send-email-tytso@mit.edu>
+Subject: [PATCH 1/2] ext4: Use a hash of the topdir directory name for the Orlov parent group
+Date: Sat, 13 Jun 2009 12:33:11 -0400
+Message-ID: <1244910792-29062-1-git-send-email-tytso@mit.edu>
 References: <20090613154811.GL24336@mit.edu>
-Cc: Andreas Dilger <adilger@sun.com>, "Theodore Ts'o" <tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59910 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:59908 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755862AbZFMQdU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1755788AbZFMQdU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Sat, 13 Jun 2009 12:33:20 -0400
 In-Reply-To: <20090613154811.GL24336@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-From: Andreas Dilger <adilger@sun.com>
+Instead of using a random number to determine the goal parent grop for
+the Orlov top directories, use a hash of the directory name.  This
+allows for repeatable results when trying to benchmark filesystem
+layout algorithms.
 
-Enhance the inode allocator to take a goal inode number as a
-paremeter; if it is specified, it takes precedence over Orlov or
-parent directory inode allocation algorithms.
-
-The extents migration function uses the goal inode number so that the
-extent trees allocated the migration function use the correct flex_bg.
-In the future, the goal inode functionality will also be used to
-allocate an adjacent inode for the extended attributes.
-
-Also, for testing purposes the goal inode number can be specified via
-/sys/fs/{dev}/inode_goal.  This can be useful for testing inode
-allocation beyond 2^32 blocks on very large filesystems.
-
-Signed-off-by: Andreas Dilger <adilger@sun.com>
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- Documentation/ABI/testing/sysfs-fs-ext4 |   10 ++++++++++
- fs/ext4/ext4.h                          |    3 ++-
- fs/ext4/ialloc.c                        |   16 ++++++++++++----
- fs/ext4/migrate.c                       |    5 ++++-
- fs/ext4/namei.c                         |   10 ++++++----
- fs/ext4/super.c                         |    2 ++
- 6 files changed, 36 insertions(+), 10 deletions(-)
+ fs/ext4/ext4.h    |    3 ++-
+ fs/ext4/ialloc.c  |   19 ++++++++++++++-----
+ fs/ext4/migrate.c |    5 ++---
+ fs/ext4/namei.c   |    8 ++++----
+ 4 files changed, 22 insertions(+), 13 deletions(-)
 
-diff --git a/Documentation/ABI/testing/sysfs-fs-ext4 b/Documentation/ABI/testing/sysfs-fs-ext4
-index 4e79074..5fb7099 100644
---- a/Documentation/ABI/testing/sysfs-fs-ext4
-+++ b/Documentation/ABI/testing/sysfs-fs-ext4
-@@ -79,3 +79,13 @@ Description:
- 		This file is read-only and shows the number of
- 		kilobytes of data that have been written to this
- 		filesystem since it was mounted.
-+
-+What:		/sys/fs/ext4/<disk>/inode_goal
-+Date:		June 2008
-+Contact:	"Theodore Ts'o" <tytso@mit.edu>
-+Description:
-+		Tuning parameter which (if non-zero) controls the goal
-+		inode used by the inode allocator in p0reference to
-+		all other allocation hueristics.  This is intended for
-+		debugging use only, and should be 0 on production
-+		systems.
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index d035cf1..746cdcb 100644
+index 06ee5a5..d035cf1 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -863,6 +863,7 @@ struct ext4_sb_info {
- 	int s_inode_size;
- 	int s_first_ino;
- 	unsigned int s_inode_readahead_blks;
-+	unsigned int s_inode_goal;
- 	spinlock_t s_next_gen_lock;
- 	u32 s_next_generation;
- 	u32 s_hash_seed[4];
-@@ -1316,7 +1317,7 @@ extern int ext4fs_dirhash(const char *name, int len, struct
+@@ -1315,7 +1315,8 @@ extern int ext4fs_dirhash(const char *name, int len, struct
+ 			  dx_hash_info *hinfo);
  
  /* ialloc.c */
- extern struct inode *ext4_new_inode(handle_t *, struct inode *, int,
--				    const struct qstr *qstr);
-+				    const struct qstr *qstr, __u32 goal);
+-extern struct inode * ext4_new_inode(handle_t *, struct inode *, int);
++extern struct inode *ext4_new_inode(handle_t *, struct inode *, int,
++				    const struct qstr *qstr);
  extern void ext4_free_inode(handle_t *, struct inode *);
  extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
  extern unsigned long ext4_count_free_inodes(struct super_block *);
 diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 3f98ee7..2f64573 100644
+index 7d502f3..3f98ee7 100644
 --- a/fs/ext4/ialloc.c
 +++ b/fs/ext4/ialloc.c
-@@ -799,7 +799,7 @@ err_ret:
+@@ -470,7 +470,8 @@ void get_orlov_stats(struct super_block *sb, ext4_group_t g,
+  */
+ 
+ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+-			    ext4_group_t *group, int mode)
++			    ext4_group_t *group, int mode,
++			    const struct qstr *qstr)
+ {
+ 	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+@@ -485,6 +486,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 	struct ext4_group_desc *desc;
+ 	struct orlov_stats stats;
+ 	int flex_size = ext4_flex_bg_size(sbi);
++	struct dx_hash_info hinfo;
+ 
+ 	ngroups = real_ngroups;
+ 	if (flex_size > 1) {
+@@ -506,7 +508,13 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
+ 		int best_ndir = inodes_per_group;
+ 		int ret = -1;
+ 
+-		get_random_bytes(&grp, sizeof(grp));
++		if (qstr) {
++			hinfo.hash_version = DX_HASH_HALF_MD4;
++			hinfo.seed = sbi->s_hash_seed;
++			ext4fs_dirhash(qstr->name, qstr->len, &hinfo);
++			grp = hinfo.hash;
++		} else
++			get_random_bytes(&grp, sizeof(grp));
+ 		parent_group = (unsigned)grp % ngroups;
+ 		for (i = 0; i < ngroups; i++) {
+ 			g = (parent_group + i) % ngroups;
+@@ -649,7 +657,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
+ 		*group = parent_group + flex_size;
+ 		if (*group > ngroups)
+ 			*group = 0;
+-		return find_group_orlov(sb, parent, group, mode);
++		return find_group_orlov(sb, parent, group, mode, 0);
+ 	}
+ 
+ 	/*
+@@ -790,7 +798,8 @@ err_ret:
+  * For other inodes, search forward from the parent directory's block
   * group to find a free inode.
   */
- struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
--			     const struct qstr *qstr)
-+			     const struct qstr *qstr, __u32 goal)
+-struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
++struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
++			     const struct qstr *qstr)
  {
  	struct super_block *sb;
  	struct buffer_head *inode_bitmap_bh = NULL;
-@@ -830,6 +830,16 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
- 	ei = EXT4_I(inode);
- 	sbi = EXT4_SB(sb);
+@@ -839,7 +848,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
+ 		if (test_opt(sb, OLDALLOC))
+ 			ret2 = find_group_dir(sb, dir, &group);
+ 		else
+-			ret2 = find_group_orlov(sb, dir, &group, mode);
++			ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
+ 	} else
+ 		ret2 = find_group_other(sb, dir, &group, mode);
  
-+	if (!goal)
-+		goal = sbi->s_inode_goal;
-+
-+	if (goal && goal < le32_to_cpu(sbi->s_es->s_inodes_count)) {
-+		group = (goal - 1) / EXT4_INODES_PER_GROUP(sb);
-+		ino = (goal - 1) % EXT4_INODES_PER_GROUP(sb);
-+		ret2 = 0;
-+		goto got_group;
-+	}
-+
- 	if (sbi->s_log_groups_per_flex && test_opt(sb, OLDALLOC)) {
- 		ret2 = find_group_flex(sb, dir, &group);
- 		if (ret2 == -1) {
-@@ -858,7 +868,7 @@ got_group:
- 	if (ret2 == -1)
- 		goto out;
- 
--	for (i = 0; i < ngroups; i++) {
-+	for (i = 0; i < ngroups; i++, ino = 0) {
- 		err = -EIO;
- 
- 		gdp = ext4_get_group_desc(sb, group, &group_desc_bh);
-@@ -870,8 +880,6 @@ got_group:
- 		if (!inode_bitmap_bh)
- 			goto fail;
- 
--		ino = 0;
--
- repeat_in_this_group:
- 		ino = ext4_find_next_zero_bit((unsigned long *)
- 					      inode_bitmap_bh->b_data,
 diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index 80d075b..313a50b 100644
+index fe64d9f..80d075b 100644
 --- a/fs/ext4/migrate.c
 +++ b/fs/ext4/migrate.c
-@@ -458,6 +458,7 @@ int ext4_ext_migrate(struct inode *inode)
- 	struct inode *tmp_inode = NULL;
- 	struct list_blocks_struct lb;
- 	unsigned long max_entries;
-+	__u32 goal;
- 
- 	/*
- 	 * If the filesystem does not support extents, or the inode
-@@ -483,8 +484,10 @@ int ext4_ext_migrate(struct inode *inode)
+@@ -483,9 +483,8 @@ int ext4_ext_migrate(struct inode *inode)
  		retval = PTR_ERR(handle);
  		return retval;
  	}
-+	goal = (((inode->i_ino - 1) / EXT4_INODES_PER_GROUP(inode->i_sb)) *
-+		EXT4_INODES_PER_GROUP(inode->i_sb)) + 1;
- 	tmp_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
--				   S_IFREG, 0);
-+				   S_IFREG, 0, goal);
+-	tmp_inode = ext4_new_inode(handle,
+-				inode->i_sb->s_root->d_inode,
+-				S_IFREG);
++	tmp_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
++				   S_IFREG, 0);
  	if (IS_ERR(tmp_inode)) {
  		retval = -ENOMEM;
  		ext4_journal_stop(handle);
 diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 5f00d24..de04013 100644
+index 07eb664..5f00d24 100644
 --- a/fs/ext4/namei.c
 +++ b/fs/ext4/namei.c
 @@ -1782,7 +1782,7 @@ retry:
  	if (IS_DIRSYNC(dir))
  		ext4_handle_sync(handle);
  
--	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name);
-+	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0);
+-	inode = ext4_new_inode (handle, dir, mode);
++	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name);
  	err = PTR_ERR(inode);
  	if (!IS_ERR(inode)) {
  		inode->i_op = &ext4_file_inode_operations;
@@ -168,51 +139,29 @@ index 5f00d24..de04013 100644
  	if (IS_DIRSYNC(dir))
  		ext4_handle_sync(handle);
  
--	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name);
-+	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name, 0);
+-	inode = ext4_new_inode(handle, dir, mode);
++	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name);
  	err = PTR_ERR(inode);
  	if (!IS_ERR(inode)) {
  		init_special_inode(inode, inode->i_mode, rdev);
-@@ -1853,7 +1853,8 @@ retry:
+@@ -1853,7 +1853,7 @@ retry:
  	if (IS_DIRSYNC(dir))
  		ext4_handle_sync(handle);
  
--	inode = ext4_new_inode(handle, dir, S_IFDIR | mode, &dentry->d_name);
-+	inode = ext4_new_inode(handle, dir, S_IFDIR | mode,
-+			       &dentry->d_name, 0);
+-	inode = ext4_new_inode(handle, dir, S_IFDIR | mode);
++	inode = ext4_new_inode(handle, dir, S_IFDIR | mode, &dentry->d_name);
  	err = PTR_ERR(inode);
  	if (IS_ERR(inode))
  		goto out_stop;
-@@ -2264,7 +2265,8 @@ retry:
+@@ -2264,7 +2264,7 @@ retry:
  	if (IS_DIRSYNC(dir))
  		ext4_handle_sync(handle);
  
--	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO, &dentry->d_name);
-+	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO,
-+			       &dentry->d_name, 0);
+-	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO);
++	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO, &dentry->d_name);
  	err = PTR_ERR(inode);
  	if (IS_ERR(inode))
  		goto out_stop;
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 04486a5..23013d3 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -2206,6 +2206,7 @@ EXT4_RO_ATTR(session_write_kbytes);
- EXT4_RO_ATTR(lifetime_write_kbytes);
- EXT4_ATTR_OFFSET(inode_readahead_blks, 0644, sbi_ui_show,
- 		 inode_readahead_blks_store, s_inode_readahead_blks);
-+EXT4_RW_ATTR_SBI_UI(inode_goal, s_inode_goal);
- EXT4_RW_ATTR_SBI_UI(mb_stats, s_mb_stats);
- EXT4_RW_ATTR_SBI_UI(mb_max_to_scan, s_mb_max_to_scan);
- EXT4_RW_ATTR_SBI_UI(mb_min_to_scan, s_mb_min_to_scan);
-@@ -2218,6 +2219,7 @@ static struct attribute *ext4_attrs[] = {
- 	ATTR_LIST(session_write_kbytes),
- 	ATTR_LIST(lifetime_write_kbytes),
- 	ATTR_LIST(inode_readahead_blks),
-+	ATTR_LIST(inode_goal),
- 	ATTR_LIST(mb_stats),
- 	ATTR_LIST(mb_max_to_scan),
- 	ATTR_LIST(mb_min_to_scan),
 -- 
 1.6.3.2.1.gb9f7d.dirty
 
