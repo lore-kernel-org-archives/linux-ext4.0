@@ -1,43 +1,59 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [RFC][PATCH 0/3]ext4: online defrag (ver 2.0)
-Date: Sat, 13 Jun 2009 00:27:47 -0400
-Message-ID: <20090613042747.GI24336@mit.edu>
-References: <4A164EC9.3070405@rs.jp.nec.com> <87f94c370906111603l4ed1c383tf0d725cb5ac95eaf@mail.gmail.com>
+Subject: Re: [RFC][PATCH 1/3] Add EXT4_IOC_MOVE_EXT ioctl and related
+	functions
+Date: Sat, 13 Jun 2009 09:21:48 -0400
+Message-ID: <20090613132148.GK24336@mit.edu>
+References: <4A164EE8.1070903@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Akira Fujita <a-fujita@rs.jp.nec.com>, linux-ext4@vger.kernel.org,
-	linux-fsdevel@vger.kernel.org
-To: Greg Freemyer <greg.freemyer@gmail.com>
+Cc: linux-ext4@vger.kernel.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:51477 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:43609 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751249AbZFME1t (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 13 Jun 2009 00:27:49 -0400
+	id S1754765AbZFMNVw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 13 Jun 2009 09:21:52 -0400
 Content-Disposition: inline
-In-Reply-To: <87f94c370906111603l4ed1c383tf0d725cb5ac95eaf@mail.gmail.com>
+In-Reply-To: <4A164EE8.1070903@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 11, 2009 at 07:03:32PM -0400, Greg Freemyer wrote:
-> Ted / Akira,
+On Fri, May 22, 2009 at 04:06:16PM +0900, Akira Fujita wrote:
+> ext4: online defrag -- Add EXT4_IOC_MOVE_EXT ioctl and related functions.
 > 
-> What's the status of this.  I certainly like the ABI much better now
-> than on the previous try.
+> From: Akira Fujita <a-fujita@rs.jp.nec.com>
 > 
-> I don't know the ext4 code internally so I can't speak to the
-> implementation quality, but I know this has been floating around for a
-> long time and seems to just be getting better and better.
-> 
-> Any chance of it being merged soon?
+> The EXT4_IOC_MOVE_EXT exchanges the blocks between orig_fd and donor_fd,
+> and then write the file data of orig_fd to donor_fd.
+> ext4_mext_move_extent() is the main fucntion of ext4 online defrag,
+> and this patch includes all functions related to ext4 online defrag.
 
-Sorry, I've been pretty busy trying to fix some rather critical and
-nasty ext4 bugs, and then getting things ready for the merge window.
+Akira-san,
 
-I've dropped Akira's patch into unstable portion of the ext4 patch
-queue for testing.  I want to take a closer look at the ABI, but I
-agree it is much better.  If the ABI is good, I'm likely to try
-merging it this merge window, on the grounds that any implementation
-issues can be cleaned up later, since it is a relatively
-self-contained patch.
+Thank you for all of the hard work and preserverance with the online
+defrag work!  This patch is much, *much* better; I've done a quick
+review, and I've only noted two things, which I've updated in the
+version I've now moved into the stable portion of the patch queue.
+One is that nothing actually uses orig_fd in the move_extent
+structure; so to avoid confusion, and I've renamed it to "reserved",
+and used explicit __u32 fields for the reserved and donor_fd fields.
+Also, I've renamed ext4_mext_move_extent() to ext4_move_extents();
+since it is the one published interface, I wanted it to have an
+easier-to-understand name.
+
+As a side note, the static functions in fs/ext4/move_extent.c really
+don't need the ext4_mext prefix, since static functions don't have
+namespace issues that require a consistent naming scheme.  (Sometimes
+a shorter name can also be useful since it avoids needing to line wrap
+function calls with a long list of parameters.)
+
+I haven't done extensive testing on the patch to make sure that
+nothing bad happens if the file is actively been modified while the
+defrag progam is running, but the interfaces look good, which is what
+matters in terms of pushing it to the stable queue.
+
+Again, many thanks,
+
+Regards,
 
 						- Ted
