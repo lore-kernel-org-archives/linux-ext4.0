@@ -1,167 +1,76 @@
 From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH 1/2] ext4: Use a hash of the topdir directory name for the Orlov parent group
-Date: Sat, 13 Jun 2009 12:33:11 -0400
-Message-ID: <1244910792-29062-1-git-send-email-tytso@mit.edu>
-References: <20090613154811.GL24336@mit.edu>
+Subject: [PATCH] ext4: Fix 64-bit block type problem on 32-bit platforms
+Date: Sun, 14 Jun 2009 17:30:02 -0400
+Message-ID: <1245015002-16880-1-git-send-email-tytso@mit.edu>
 Cc: Theodore Ts'o <tytso@mit.edu>
 To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59908 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:59418 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755788AbZFMQdU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 13 Jun 2009 12:33:20 -0400
-In-Reply-To: <20090613154811.GL24336@mit.edu>
+	id S1755696AbZFNXLl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 14 Jun 2009 19:11:41 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Instead of using a random number to determine the goal parent grop for
-the Orlov top directories, use a hash of the directory name.  This
-allows for repeatable results when trying to benchmark filesystem
-layout algorithms.
+The function ext4_mb_free_blocks() was using an "unsigned long" to
+pass a block number; this will cause 64-bit block numbers to get
+truncated on x86 and other 32-bit platforms.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
 ---
- fs/ext4/ext4.h    |    3 ++-
- fs/ext4/ialloc.c  |   19 ++++++++++++++-----
- fs/ext4/migrate.c |    5 ++---
- fs/ext4/namei.c   |    8 ++++----
- 4 files changed, 22 insertions(+), 13 deletions(-)
+ fs/ext4/ext4.h    |    2 +-
+ fs/ext4/mballoc.c |    8 ++++----
+ 2 files changed, 5 insertions(+), 5 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 06ee5a5..d035cf1 100644
+index 746cdcb..17b9998 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -1315,7 +1315,8 @@ extern int ext4fs_dirhash(const char *name, int len, struct
- 			  dx_hash_info *hinfo);
- 
- /* ialloc.c */
--extern struct inode * ext4_new_inode(handle_t *, struct inode *, int);
-+extern struct inode *ext4_new_inode(handle_t *, struct inode *, int,
-+				    const struct qstr *qstr);
- extern void ext4_free_inode(handle_t *, struct inode *);
- extern struct inode * ext4_orphan_get(struct super_block *, unsigned long);
- extern unsigned long ext4_count_free_inodes(struct super_block *);
-diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
-index 7d502f3..3f98ee7 100644
---- a/fs/ext4/ialloc.c
-+++ b/fs/ext4/ialloc.c
-@@ -470,7 +470,8 @@ void get_orlov_stats(struct super_block *sb, ext4_group_t g,
+@@ -1341,7 +1341,7 @@ extern void ext4_discard_preallocations(struct inode *);
+ extern int __init init_ext4_mballoc(void);
+ extern void exit_ext4_mballoc(void);
+ extern void ext4_mb_free_blocks(handle_t *, struct inode *,
+-		unsigned long, unsigned long, int, unsigned long *);
++		ext4_fsblk_t, unsigned long, int, unsigned long *);
+ extern int ext4_mb_add_groupinfo(struct super_block *sb,
+ 		ext4_group_t i, struct ext4_group_desc *desc);
+ extern void ext4_mb_update_group_info(struct ext4_group_info *grp,
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 8d98070..519a0a6 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -4689,7 +4689,7 @@ ext4_mb_free_metadata(handle_t *handle, struct ext4_buddy *e4b,
+  * Main entry point into mballoc to free blocks
   */
- 
- static int find_group_orlov(struct super_block *sb, struct inode *parent,
--			    ext4_group_t *group, int mode)
-+			    ext4_group_t *group, int mode,
-+			    const struct qstr *qstr)
+ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+-			unsigned long block, unsigned long count,
++			ext4_fsblk_t block, unsigned long count,
+ 			int metadata, unsigned long *freed)
  {
- 	ext4_group_t parent_group = EXT4_I(parent)->i_block_group;
- 	struct ext4_sb_info *sbi = EXT4_SB(sb);
-@@ -485,6 +486,7 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 	struct ext4_group_desc *desc;
- 	struct orlov_stats stats;
- 	int flex_size = ext4_flex_bg_size(sbi);
-+	struct dx_hash_info hinfo;
- 
- 	ngroups = real_ngroups;
- 	if (flex_size > 1) {
-@@ -506,7 +508,13 @@ static int find_group_orlov(struct super_block *sb, struct inode *parent,
- 		int best_ndir = inodes_per_group;
- 		int ret = -1;
- 
--		get_random_bytes(&grp, sizeof(grp));
-+		if (qstr) {
-+			hinfo.hash_version = DX_HASH_HALF_MD4;
-+			hinfo.seed = sbi->s_hash_seed;
-+			ext4fs_dirhash(qstr->name, qstr->len, &hinfo);
-+			grp = hinfo.hash;
-+		} else
-+			get_random_bytes(&grp, sizeof(grp));
- 		parent_group = (unsigned)grp % ngroups;
- 		for (i = 0; i < ngroups; i++) {
- 			g = (parent_group + i) % ngroups;
-@@ -649,7 +657,7 @@ static int find_group_other(struct super_block *sb, struct inode *parent,
- 		*group = parent_group + flex_size;
- 		if (*group > ngroups)
- 			*group = 0;
--		return find_group_orlov(sb, parent, group, mode);
-+		return find_group_orlov(sb, parent, group, mode, 0);
+ 	struct buffer_head *bitmap_bh = NULL;
+@@ -4715,11 +4715,11 @@ void ext4_mb_free_blocks(handle_t *handle, struct inode *inode,
+ 	    block + count > ext4_blocks_count(es)) {
+ 		ext4_error(sb, __func__,
+ 			    "Freeing blocks not in datazone - "
+-			    "block = %lu, count = %lu", block, count);
++			    "block = %llu, count = %lu", block, count);
+ 		goto error_return;
  	}
  
- 	/*
-@@ -790,7 +798,8 @@ err_ret:
-  * For other inodes, search forward from the parent directory's block
-  * group to find a free inode.
-  */
--struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
-+struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode,
-+			     const struct qstr *qstr)
- {
- 	struct super_block *sb;
- 	struct buffer_head *inode_bitmap_bh = NULL;
-@@ -839,7 +848,7 @@ struct inode *ext4_new_inode(handle_t *handle, struct inode *dir, int mode)
- 		if (test_opt(sb, OLDALLOC))
- 			ret2 = find_group_dir(sb, dir, &group);
- 		else
--			ret2 = find_group_orlov(sb, dir, &group, mode);
-+			ret2 = find_group_orlov(sb, dir, &group, mode, qstr);
- 	} else
- 		ret2 = find_group_other(sb, dir, &group, mode);
+-	ext4_debug("freeing block %lu\n", block);
++	ext4_debug("freeing block %llu\n", block);
+ 	trace_ext4_free_blocks(inode, block, count, metadata);
  
-diff --git a/fs/ext4/migrate.c b/fs/ext4/migrate.c
-index fe64d9f..80d075b 100644
---- a/fs/ext4/migrate.c
-+++ b/fs/ext4/migrate.c
-@@ -483,9 +483,8 @@ int ext4_ext_migrate(struct inode *inode)
- 		retval = PTR_ERR(handle);
- 		return retval;
+ 	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
+@@ -4761,7 +4761,7 @@ do_more:
+ 
+ 		ext4_error(sb, __func__,
+ 			   "Freeing blocks in system zone - "
+-			   "Block = %lu, count = %lu", block, count);
++			   "Block = %llu, count = %lu", block, count);
+ 		/* err = 0. ext4_std_error should be a no op */
+ 		goto error_return;
  	}
--	tmp_inode = ext4_new_inode(handle,
--				inode->i_sb->s_root->d_inode,
--				S_IFREG);
-+	tmp_inode = ext4_new_inode(handle, inode->i_sb->s_root->d_inode,
-+				   S_IFREG, 0);
- 	if (IS_ERR(tmp_inode)) {
- 		retval = -ENOMEM;
- 		ext4_journal_stop(handle);
-diff --git a/fs/ext4/namei.c b/fs/ext4/namei.c
-index 07eb664..5f00d24 100644
---- a/fs/ext4/namei.c
-+++ b/fs/ext4/namei.c
-@@ -1782,7 +1782,7 @@ retry:
- 	if (IS_DIRSYNC(dir))
- 		ext4_handle_sync(handle);
- 
--	inode = ext4_new_inode (handle, dir, mode);
-+	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name);
- 	err = PTR_ERR(inode);
- 	if (!IS_ERR(inode)) {
- 		inode->i_op = &ext4_file_inode_operations;
-@@ -1816,7 +1816,7 @@ retry:
- 	if (IS_DIRSYNC(dir))
- 		ext4_handle_sync(handle);
- 
--	inode = ext4_new_inode(handle, dir, mode);
-+	inode = ext4_new_inode(handle, dir, mode, &dentry->d_name);
- 	err = PTR_ERR(inode);
- 	if (!IS_ERR(inode)) {
- 		init_special_inode(inode, inode->i_mode, rdev);
-@@ -1853,7 +1853,7 @@ retry:
- 	if (IS_DIRSYNC(dir))
- 		ext4_handle_sync(handle);
- 
--	inode = ext4_new_inode(handle, dir, S_IFDIR | mode);
-+	inode = ext4_new_inode(handle, dir, S_IFDIR | mode, &dentry->d_name);
- 	err = PTR_ERR(inode);
- 	if (IS_ERR(inode))
- 		goto out_stop;
-@@ -2264,7 +2264,7 @@ retry:
- 	if (IS_DIRSYNC(dir))
- 		ext4_handle_sync(handle);
- 
--	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO);
-+	inode = ext4_new_inode(handle, dir, S_IFLNK|S_IRWXUGO, &dentry->d_name);
- 	err = PTR_ERR(inode);
- 	if (IS_ERR(inode))
- 		goto out_stop;
 -- 
 1.6.3.2.1.gb9f7d.dirty
 
