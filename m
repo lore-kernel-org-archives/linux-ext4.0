@@ -1,79 +1,186 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: [RFC][PATCH 1/3] Add EXT4_IOC_MOVE_EXT ioctl and related	functions
-Date: Mon, 15 Jun 2009 17:03:39 +0900
-Message-ID: <4A36005B.6080101@rs.jp.nec.com>
-References: <4A164EE8.1070903@rs.jp.nec.com> <20090613132148.GK24336@mit.edu>
+From: Eric Sandeen <sandeen@sandeen.net>
+Subject: [PATCH 1/3] xfstests: basic fallocate boundary tests
+Date: Mon, 15 Jun 2009 22:06:20 -0500
+Message-ID: <4A370C2C.6030404@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
+Content-Type: text/plain; charset="us-ascii"
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:35067 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750964AbZFOIDz (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 15 Jun 2009 04:03:55 -0400
-In-Reply-To: <20090613132148.GK24336@mit.edu>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: xfs-oss <xfs@oss.sgi.com>
+Return-path: <xfs-bounces@oss.sgi.com>
+List-Unsubscribe: <http://oss.sgi.com/mailman/options/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=unsubscribe>
+List-Archive: <http://oss.sgi.com/pipermail/xfs>
+List-Post: <mailto:xfs@oss.sgi.com>
+List-Help: <mailto:xfs-request@oss.sgi.com?subject=help>
+List-Subscribe: <http://oss.sgi.com/mailman/listinfo/xfs>,
+	<mailto:xfs-request@oss.sgi.com?subject=subscribe>
+Sender: xfs-bounces@oss.sgi.com
+Errors-To: xfs-bounces@oss.sgi.com
+List-Id: linux-ext4.vger.kernel.org
 
-Hi Ted,
+This is just like test 072, but using fallocate instead
+of the xfs ioctl.  Just very basic fallocate tests.
 
-Thank you for your time to review my patch.
+Also adds a "prealloc" group (./check -g prealloc)
 
-Theodore Tso wrote:
-> On Fri, May 22, 2009 at 04:06:16PM +0900, Akira Fujita wrote:
->> ext4: online defrag -- Add EXT4_IOC_MOVE_EXT ioctl and related functions.
->>
->> From: Akira Fujita <a-fujita@rs.jp.nec.com>
->>
->> The EXT4_IOC_MOVE_EXT exchanges the blocks between orig_fd and donor_fd,
->> and then write the file data of orig_fd to donor_fd.
->> ext4_mext_move_extent() is the main fucntion of ext4 online defrag,
->> and this patch includes all functions related to ext4 online defrag.
-> 
-> Akira-san,
-> 
-> Thank you for all of the hard work and preserverance with the online
-> defrag work!  This patch is much, *much* better; I've done a quick
-> review, and I've only noted two things, which I've updated in the
-> version I've now moved into the stable portion of the patch queue.
-> One is that nothing actually uses orig_fd in the move_extent
-> structure; so to avoid confusion, and I've renamed it to "reserved",
-> and used explicit __u32 fields for the reserved and donor_fd fields.
-> Also, I've renamed ext4_mext_move_extent() to ext4_move_extents();
-> since it is the one published interface, I wanted it to have an
-> easier-to-understand name.
+Signed-off-by: Eric Sandeen <sandeen@sandeen.net>
+---
 
-Ok.  Certainly orig_fd of move_extent structure is not used
-since fd of original file is passed via ioctl directly.
-My recognition after the change is as follows:
+diff --git a/213 b/213
+new file mode 100755
+index 0000000..bf14245
+--- /dev/null
++++ b/213
+@@ -0,0 +1,88 @@
++#! /bin/sh
++# FS QA Test No. 213
++#
++# Check some unwritten extent boundary conditions, fallocate version.
++#
++# Based on xfs-specific test 072
++#
++#-----------------------------------------------------------------------
++# Copyright (c) 2000-2003 Silicon Graphics, Inc.  All Rights Reserved.
++# Copyright (c) 2009 Red Hat, Inc. All Rights Reserved.
++#
++# This program is free software; you can redistribute it and/or
++# modify it under the terms of the GNU General Public License as
++# published by the Free Software Foundation.
++#
++# This program is distributed in the hope that it would be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++#
++# You should have received a copy of the GNU General Public License
++# along with this program; if not, write the Free Software Foundation,
++# Inc.,  51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++#
++#-----------------------------------------------------------------------
++#
++# creator
++owner=sandeen@sandeen.net
++
++seq=`basename $0`
++echo "QA output created by $seq"
++
++_cleanup()
++{
++	cd /
++	rm -f $tmp.*
++}
++
++here=`pwd`
++tmp=$TEST_DIR/$$
++status=1	# failure is the default!
++trap "_cleanup; exit \$status" 0 1 2 3 15
++
++# get standard environment, filters and checks
++. ./common.rc
++. ./common.filter
++
++# real QA test starts here
++# generic, but xfs_io's fallocate must work
++_supported_fs generic
++# only Linux supports fallocate
++_supported_os Linux
++
++[ -n "$XFS_IO_PROG" ] || _notrun "xfs_io executable not found"
++
++rm -f $seq.full
++
++testio=`$XFS_IO_PROG -F -f -c "falloc 0 1m" $TEST_DIR/$tmp.io 2>&1`
++echo $testio | grep -q "not found" && \
++	_notrun "xfs_io fallocate support is missing"
++echo $testio | grep -q "Operation not supported" && \
++	_notrun "xfs_io fallocate command failed (old kernel? wrong fs?)"
++
++# check there's enough freespace on $TEST_DIR ... (1GiB + 1MiB)
++avail=`df -P $TEST_DIR | awk 'END {print $4}'`
++[ "$avail" -ge 1049600 ] || _notrun "Test device is too small ($avail KiB)"
++
++echo Silence is golden
++
++# reserve 1GiB, truncate at 100bytes
++$XFS_IO_PROG -F -f -c 'falloc 0 1g' -c 'truncate 100' $TEST_DIR/ouch
++rm -f $TEST_DIR/ouch
++
++# reserve 1GiB, truncate at 1GiB
++$XFS_IO_PROG -F -f -c 'falloc 0 1g' -c 'truncate 1g' $TEST_DIR/ouch
++rm -f $TEST_DIR/ouch
++
++# reserve 1GiB, truncate at 2GiB
++$XFS_IO_PROG -F -f -c 'falloc 0 1g' -c 'truncate 2g' $TEST_DIR/ouch
++rm -f $TEST_DIR/ouch
++
++# reserve 1GiB, 1GiB hole, reserve 1MiB, truncate at 3GiB
++$XFS_IO_PROG -F -f -c 'falloc 0 1g' -c 'falloc 2g 1m' -c 'truncate 3g' $TEST_DIR/ouch
++rm -f $TEST_DIR/ouch
++
++# success, all done
++status=0
++exit
+diff --git a/group b/group
+index 1268ddd..578fa05 100644
+--- a/group
++++ b/group
+@@ -101,6 +101,10 @@ nfs4acl		tes@sgi.com donaldd@sgi.com
+ # test access time
+ atime
+ 
++# Test preallocation calls
++prealloc
++
++#
+ # test-group association ... one line per test
+ #
+ 001 rw dir udf auto quick
+@@ -111,7 +115,7 @@ atime
+ 006 dir udf auto quick
+ 007 dir udf auto quick
+ 008 rw ioctl auto quick
+-009 rw ioctl auto quick
++009 rw ioctl auto prealloc quick
+ 010 other udf auto
+ 011 dir udf auto quick
+ 012 rw auto quick
+@@ -174,7 +178,7 @@ atime
+ 069 rw udf auto quick
+ 070 attr udf auto quick
+ 071 rw
+-072 rw auto quick
++072 rw auto prealloc quick
+ 073 copy auto
+ 074 rw udf auto
+ 075 rw udf auto quick
+@@ -206,7 +210,7 @@ atime
+ 101 udf
+ 102 udf
+ 103 metadata dir ioctl auto quick
+-104 growfs ioctl
++104 growfs ioctl prealloc
+ 105 acl auto quick
+ 106 quota
+ 107 quota
+@@ -266,8 +270,8 @@ atime
+ 161 dmapi auto
+ 162 dmapi auto
+ 163 dmapi auto
+-164 rw pattern auto quick
+-165 rw pattern auto quick
++164 rw pattern auto prealloc quick
++165 rw pattern auto prealloc quick
+ 166 rw metadata auto quick
+ 167 rw metadata auto
+ 168 dmapi auto
+@@ -317,3 +321,4 @@ atime
+ 210 auto aio quick
+ 211 auto aio quick
+ 212 auto aio quick
++213 rw auto prealloc quick
 
-struct move_extent {
-	__u32 reserved;		/* reserved field */
-	__u32 donor_fd;		/* donor file descriptor */
-	__u64 orig_start;	/* logical start offset in block for orig */
-	__u64 donor_start;	/* logical start offset in block for donor */
-	__u64 len;		/* block length to be moved */
-	__u64 moved_len;	/* moved block length */
-};
-
-int ext4_move_extent(struct file *o_filp, struct file *d_filp,
-				__u64 start_orig, __u64 start_donor,
-				__u64 len, __u64 *moved_len);
-
-Little changes are needed for command to run ext4 online defrag,
-so I will resend patch in a few days.
-
-
-> As a side note, the static functions in fs/ext4/move_extent.c really
-> don't need the ext4_mext prefix, since static functions don't have
-> namespace issues that require a consistent naming scheme.  (Sometimes
-> a shorter name can also be useful since it avoids needing to line wrap
-> function calls with a long list of parameters.)
-
-I will check all of the functions in move_extent.c
-whether the function name can be shorter or not.
-
-Regards,
-Akira Fujita
+_______________________________________________
+xfs mailing list
+xfs@oss.sgi.com
+http://oss.sgi.com/mailman/listinfo/xfs
