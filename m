@@ -1,248 +1,161 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 13549] New: Kernel oops while online resizing of an ext4
- filesystem
-Date: Tue, 16 Jun 2009 09:13:54 GMT
-Message-ID: <bug-13549-13602@http.bugzilla.kernel.org/>
+From: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
+Subject: [Bug] 2.6.30 kernel stack trace with 'fsfuzzer ext3' on s390
+Date: Tue, 16 Jun 2009 18:13:49 +0530
+Message-ID: <4A379385.6090903@linux.vnet.ibm.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
+Cc: rnsastry@linux.vnet.ibm.com, sachinp@linux.vnet.ibm.com,
+	linux-s390@vger.kernel.org
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:53403 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752042AbZFPJNw (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jun 2009 05:13:52 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n5G9DsbY019936
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 09:13:54 GMT
+Received: from e23smtp09.au.ibm.com ([202.81.31.142]:38575 "EHLO
+	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753462AbZFPMnc (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 16 Jun 2009 08:43:32 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=13549
+Hi,
 
-           Summary: Kernel oops while online resizing of an ext4
-                    filesystem
-           Product: File System
-           Version: 2.5
-    Kernel Version: 2.6.29-2-amd64
-          Platform: All
-        OS/Version: Linux
-              Tree: Mainline
-            Status: NEW
-          Severity: normal
-          Priority: P1
-         Component: ext4
-        AssignedTo: fs_ext4@kernel-bugs.osdl.org
-        ReportedBy: alex@nibbles.it
-        Regression: No
+Kernel version	- 2.6.30
+Architecture	- s390
 
+Stack trace:
+--------------------------------------------------------------------
+Jun 16 17:26:47 HOSTNAME rooth: ./run_test ext3 42
+Jun 16 17:26:47 HOSTNAME kernel: kjournald starting.  Commit interval 5 
+seconds
+Jun 16 17:26:47 HOSTNAME kernel: EXT3 FS on loop0, internal journal
+Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs: mounted filesystem with 
+writeback data mode.
+Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
+htree_dirblock_to_tree: bad entry in directory #2: inode out of bounds - 
+offset=12, inode=3538946, rec_len=12, name_len=2
+Jun 16 17:26:47 HOSTNAME kernel: __log_wait_for_space: needed 256 blocks 
+and only had 0 space available
+Jun 16 17:26:47 HOSTNAME kernel: __log_wait_for_space: no way to get 
+more journal space
+Jun 16 17:26:47 HOSTNAME kernel: ------------[ cut here ]------------
+Jun 16 17:26:47 HOSTNAME kernel: Badness at fs/jbd/checkpoint.c:164
+Jun 16 17:26:47 HOSTNAME kernel: Modules linked in: loop qeth_l3 autofs4 
+lockd sunrpc iptable_filter ip_tables ip6t_REJECT xt_tcpudp 
+ip6table_filter ip6_tables x_tables ipv6 qeth_l2 vmur qeth qdio ccwgroup 
+dm_round_robin dm_multipath scsi_dh sd_mod scsi_mod multipath 
+dm_snapshot dm_zero dm_mirror dm_region_hash dm_log dm_mod dasd_fba_mod 
+dasd_eckd_mod dasd_mod ext3 jbd
+Jun 16 17:26:47 HOSTNAME kernel: CPU: 1 Not tainted 2.6.30 #3
+Jun 16 17:26:47 HOSTNAME kernel: Process fstest (pid: 4139, task: 
+000000003fa72750, ksp: 000000003ee6f840)
+Jun 16 17:26:47 HOSTNAME kernel: Krnl PSW : 0704100180000000 
+000003e0000432ac (__log_wait_for_space+0x150/0x19c [jbd])
+Jun 16 17:26:47 HOSTNAME kernel:            R:0 T:1 IO:1 EX:1 Key:0 M:1 
+W:0 P:0 AS:0 CC:1 PM:0 EA:3
+Jun 16 17:26:47 HOSTNAME kernel: Krnl GPRS: 00000000000076a5 
+000000000142d000 000000000000003a 0400000000000001
+Jun 16 17:26:47 HOSTNAME kernel:            0000000000045dfa 
+00000000002cec80 000000003f06d700 0000000000000000
+Jun 16 17:26:47 HOSTNAME kernel:            000003e000000000 
+0000000000000100 0000000000000000 000000003e973400
+Jun 16 17:26:47 HOSTNAME kernel:            000003e00003d000 
+000003e0000465e0 000003e0000432a8 000000003ee6fbf8
+Jun 16 17:26:47 HOSTNAME kernel: Krnl Code: 000003e00004329c: 
+c020000026eb      larl    %r2,3e000048072
+Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432a2: 
+c0e5ffffced5      brasl   %r14,3e00003d04c
+Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432a8: a7f40001 
+         brc     15,3e0000432aa
+Jun 16 17:26:47 HOSTNAME kernel:           >000003e0000432ac: a7390000 
+         lghi    %r3,0
+Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432b0: b904002b 
+         lgr     %r2,%r11
+Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432b4: 
+c0e500000ddc      brasl   %r14,3e000044e6c
+Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432ba: 4120b024 
+         la      %r2,36(%r11)
+Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432be: 
+c0e5ffffcedb      brasl   %r14,3e00003d074
+Jun 16 17:26:47 HOSTNAME kernel: Call Trace:
+Jun 16 17:26:47 HOSTNAME kernel: ([<000003e0000432a8>] 
+__log_wait_for_space+0x14c/0x19c [jbd])
+Jun 16 17:26:47 HOSTNAME kernel:  [<000003e00003dd94>] 
+start_this_handle+0x384/0x3f8 [jbd]
+Jun 16 17:26:47 HOSTNAME kernel:  [<000003e000040222>] 
+journal_start+0xce/0x10c [jbd]
+Jun 16 17:26:47 HOSTNAME kernel:  [<000003e0000a75de>] 
+ext3_dirty_inode+0x42/0xac [ext3]
+Jun 16 17:26:47 HOSTNAME kernel:  [<00000000000f907c>] 
+__mark_inode_dirty+0x4c/0x1cc
+Jun 16 17:26:47 HOSTNAME kernel:  [<00000000000ee89e>] 
+touch_atime+0x162/0x174
+Jun 16 17:26:47 HOSTNAME kernel:  [<00000000000e71f8>] vfs_readdir+0xbc/0xe0
+Jun 16 17:26:47 HOSTNAME kernel:  [<00000000000e7280>] 
+SyS_getdents64+0x64/0xcc
+Jun 16 17:26:47 HOSTNAME kernel:  [<0000000000026092>] sysc_tracego+0xe/0x14
+Jun 16 17:26:47 HOSTNAME kernel:  [<000000498d96b890>] 0x498d96b890
+Jun 16 17:26:47 HOSTNAME kernel: Last Breaking-Event-Address:
+Jun 16 17:26:47 HOSTNAME kernel:  [<000003e0000432a8>] 
+__log_wait_for_space+0x14c/0x19c [jbd]
+Jun 16 17:26:47 HOSTNAME kernel: Aborting journal on device loop0.
+Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
+htree_dirblock_to_tree: bad entry in directory #2: inode out of bounds - 
+offset=12, inode=3538946, rec_len=12, name_len=2
+Jun 16 17:26:47 HOSTNAME kernel: ext3_abort called.
+Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
+ext3_journal_start_sb: Detected aborted journal
+Jun 16 17:26:47 HOSTNAME kernel: Remounting filesystem read-only
+Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
+ext3_xattr_block_get: inode 23: bad block 1192
+Jun 16 17:26:47 HOSTNAME kernel: SELinux: inode_doinit_with_dentry: 
+getxattr returned 5 for dev=loop0 ino=23
+Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
+htree_dirblock_to_tree: bad entry in directory #2: inode out of bounds - 
+offset=12, inode=3538946, rec_len=12, name_len=2
+Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
+ext3_xattr_block_get: inode 48: bad block 1192
+Jun 16 17:26:47 HOSTNAME kernel: SELinux: inode_doinit_with_dentry: 
+getxattr returned 5 for dev=loop0 ino=48
+Jun 16 17:26:47 HOSTNAME kernel: ext3_abort called.
+Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
+ext3_put_super: Couldn't clean up the journal
+--------------------------------------------------------------------
 
-I extended the device with lvm, then I tried to resize2f the filesystem and I
-got these errors:
+Steps to reproduce:
+fsfuzzer is an file system fuzzer.
 
-Jun 16 09:49:00 nb1a kernel: [677830.909054] PGD 5bf79067 PUD 59768067 PMD 0
-Jun 16 09:49:00 nb1a kernel: [677830.909144] CPU 1
-Jun 16 09:49:00 nb1a kernel: [677830.909163] Modules linked in: ext4 jbd2 crc16
-tun ip6table_filter ip6_tables iptable_raw xt_comment xt_recent xt_po
-licy ipt_ULOG ipt_TTL ipt_ttl ipt_REJECT ipt_REDIRECT ipt_NETMAP ipt_MASQUERADE
-ipt_LOG ipt_ECN ipt_ecn ipt_CLUSTERIP ipt_ah ipt_addrtype nf_nat_tftp
- nf_nat_snmp_basic nf_nat_sip nf_nat_pptp nf_nat_proto_gre nf_nat_irc
-nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp nf_conntrack_amanda nf_conntrack_tf
-tp nf_conntrack_sip nf_conntrack_proto_sctp nf_conntrack_pptp
-nf_conntrack_proto_gre nf_conntrack_netlink nf_conntrack_netbios_ns
-nf_conntrack_irc nf
-_conntrack_h323 nf_conntrack_ftp xt_tcpmss xt_pkttype xt_physdev xt_owner
-xt_NFQUEUE xt_NFLOG nfnetlink_log xt_multiport xt_MARK xt_mark xt_mac xt_li
-mit xt_length xt_iprange xt_helper xt_hashlimit xt_DSCP xt_dscp xt_dccp
-xt_conntrack xt_CONNMARK xt_connmark xt_CLASSIFY xt_tcpudp xt_state iptable_n
-at nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack iptable_mangle
-iptable_filter ip_tables x_tables nfnetlink drbd cn autofs4
-Jun 16 09:49:00 nb1a kernel: nfsd nfs lockd nfs_acl auth_rpcgss sunrpc ipv6
-quota_v2 quota_tree xfs exportfs loop firewire_sbp2 firewire_core crc_itu
-_t evdev snd_pcm snd_timer snd soundcore pcspkr snd_page_alloc psmouse
-serio_raw k8temp shpchp pci_hotplug i2c_nforce2 i2c_core button ext3 jbd mbcac
-he dm_mirror dm_region_hash dm_log dm_snapshot dm_mod ide_cd_mod cdrom
-ide_pci_generic sd_mod crc_t10dif amd74xx ide_core sata_nv floppy 3w_9xxx r816
-9 mii ata_generic forcedeth libata scsi_mod ehci_hcd ohci_hcd thermal processor
-fan thermal_sys
-Jun 16 09:49:00 nb1a kernel: [677830.909795] Pid: 4620, comm: resize2fs Not
-tainted 2.6.29-2-amd64 #1 H8DM8-2
-Jun 16 09:49:00 nb1a kernel: [677830.909822] RIP: 0010:[<ffffffffa069a97e>] 
-[<ffffffffa069a97e>] ext4_group_add+0x135c/0x143e [ext4]
-Jun 16 09:49:00 nb1a kernel: [677830.909875] RSP: 0000:ffff8800b6f29c48 
-EFLAGS: 00010202
-Jun 16 09:49:00 nb1a kernel: [677830.909900] RAX: 000000000000b8c8 RBX:
-ffff880157a38000 RCX: 000000000000b8c8
-Jun 16 09:49:00 nb1a kernel: [677830.909940] RDX: 0000000000007dfe RSI:
-ffff8800b6f29e48 RDI: ffff880157a380e8
-Jun 16 09:49:00 nb1a kernel: [677830.909981] RBP: 0000000000000000 R08:
-0000000000000000 R09: 0000000000000000
-Jun 16 09:49:00 nb1a kernel: [677830.910022] R10: 0000000000001719 R11:
-0000000000000002 R12: 0000000000000000
-Jun 16 09:49:00 nb1a kernel: [677830.910062] R13: ffff8802118e1800 R14:
-ffff8800263e93f0 R15: 0000000000000200
-Jun 16 09:49:00 nb1a kernel: [677830.910103] FS:  00007f2decdc6700(0000)
-GS:ffff88021ea99e40(0000) knlGS:0000000000000000
-Jun 16 09:49:00 nb1a kernel: [677830.910146] CS:  0010 DS: 0000 ES: 0000 CR0:
-000000008005003b
-Jun 16 09:49:00 nb1a kernel: [677830.910171] CR2: 000000000000b8cc CR3:
-0000000083b24000 CR4: 00000000000006e0
-Jun 16 09:49:00 nb1a kernel: [677830.910212] DR0: 0000000000000000 DR1:
-0000000000000000 DR2: 0000000000000000
-Jun 16 09:49:00 nb1a kernel: [677830.910253] DR3: 0000000000000000 DR6:
-00000000ffff0ff0 DR7: 0000000000000400
-Jun 16 09:49:00 nb1a kernel: [677830.910294] Process resize2fs (pid: 4620,
-threadinfo ffff8800b6f28000, task ffff8801fe4e8000)
-Jun 16 09:49:00 nb1a kernel: [677830.910355]  ffffffff80479d3c 0000000000000202
-000000000000d2c7 ffffffff802846db
-Jun 16 09:49:00 nb1a kernel: [677830.911053]  RSP <ffff8800b6f29c48>
-Jun 16 09:49:00 nb1a kernel: [677830.911364] ---[ end trace 46ff5ad2da854d81
-]---
-Jun 16 09:49:00 nb1a kernel: [677830.911423] ------------[ cut here
-]------------
+fsfuzzer can be downloaded from URL - 
+http://www.risesecurity.org/ramon/fsfuzzer-0.7.1.tar.gz
 
+Untar the above file and change to dir fsfuzzer-0.7.1
+# ./configure
+# make
+# ./fsfuzz ext3
+...
+++ Testing /root/fsfuzzer-0.7.1/fs/ext3.42.img...
++++ New Tests...
++statfs
++opendir
++fstatfs
+++++ Tests finished
++++ Checking dir...
++++ Making files...
 
+Message from syslogd@ at Tue Jun 16 17:26:47 2009 ...
+HOSTNAME kernel: ------------[ cut here ]------------+++ Checking stat...
++++ Writing to files...
+./run_test: line 114: /media/test/file: Read-only file system
++++ Reading from files...
++++ device files...
++++ Writing to dirs...
+./run_test: line 131: /media/test/dir1: Read-only file system
++++ Checking unlink...
+++ unmounting ./cfs/ext3.42.img
+++ Checking results
+++ Something found (/root/fsfuzzer-0.7.1/fs/ext3.42.img)...
 
-Jun 16 09:49:00 nb1a kernel: [677830.911479] WARNING: at
-/build/buildd/linux-2.6-2.6.29/debian/build/source_amd64_none/kernel/exit.c:983
-do_exit+0x41/0x7b1()
-Jun 16 09:49:00 nb1a kernel: [677830.911560] Hardware name: H8DM8-2
-Jun 16 09:49:00 nb1a kernel: [677830.911614] Modules linked in: ext4 jbd2 crc16
-tun ip6table_filter ip6_tables iptable_raw xt_comment xt_recent xt_policy
-ipt_ULOG ipt_TTL ipt_ttl ipt_REJECT ipt_REDIRECT ipt_NETMAP ipt_MASQUERADE
-ipt_LOG ipt_ECN ipt_ecn ipt_CLUSTERIP ipt_ah ipt_addrtype nf_nat_tftp
-nf_nat_snmp_basic nf_nat_sip nf_nat_pptp nf_nat_proto_gre nf_nat_irc
-nf_nat_h323 nf_nat_ftp nf_nat_amanda ts_kmp nf_conntrack_amanda
-nf_conntrack_tftp nf_conntrack_sip nf_conntrack_proto_sctp nf_conntrack_pptp
-nf_conntrack_proto_gre nf_conntrack_netlink nf_conntrack_netbios_ns
-nf_conntrack_irc nf_conntrack_h323 nf_conntrack_ftp xt_tcpmss xt_pkttype
-xt_physdev xt_owner xt_NFQUEUE xt_NFLOG nfnetlink_log xt_multiport xt_MARK
-xt_mark xt_mac xt_limit xt_length xt_iprange xt_helper xt_hashlimit xt_DSCP
-xt_dscp xt_dccp xt_conntrack xt_CONNMARK xt_connmark xt_CLASSIFY xt_tcpudp
-xt_state iptable_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_conntrack
-iptable_mangle iptable_filter ip_tables x_tables nfnetlink drbd cn autofs4
-Jun 16 09:49:00 nb1a kernel: nfsd nfs lockd nfs_acl auth_rpcgss sunrpc ipv6
-quota_v2 quota_tree xfs exportfs loop firewire_sbp2 firewire_core crc_itu_t
-evdev snd_pcm snd_timer snd soundcore pcspkr snd_page_alloc psmouse serio_raw
-k8temp shpchp pci_hotplug i2c_nforce2 i2c_core button ext3 jbd mbcache
-dm_mirror dm_region_hash dm_log dm_snapshot dm_mod ide_cd_mod cdrom
-ide_pci_generic sd_mod crc_t10dif amd74xx ide_core sata_nv floppy 3w_9xxx r8169
-mii ata_generic forcedeth libata scsi_mod ehci_hcd ohci_hcd thermal processor
-fan thermal_sys
-Jun 16 09:49:00 nb1a kernel: [677830.921994] Pid: 4620, comm: resize2fs
-Tainted: G      D    2.6.29-2-amd64 #1
-Jun 16 09:49:00 nb1a kernel: [677830.922067] Call Trace:
-Jun 16 09:49:00 nb1a kernel: [677830.922121]  [<ffffffff80243a29>]
-warn_slowpath+0xd8/0x112
-Jun 16 09:49:00 nb1a kernel: [677830.922181]  [<ffffffff80227dbc>]
-default_spin_lock_flags+0x5/0x9
-Jun 16 09:49:00 nb1a kernel: [677830.922240]  [<ffffffff80479d3c>]
-_spin_lock_irqsave+0x24/0x2c
-Jun 16 09:49:00 nb1a kernel: [677830.922299]  [<ffffffff80479d3c>]
-_spin_lock_irqsave+0x24/0x2c
-Jun 16 09:49:00 nb1a kernel: [677830.922358]  [<ffffffff8024412a>]
-release_console_sem+0x197/0x1cc
-Jun 16 09:49:00 nb1a kernel: [677830.922419]  [<ffffffff80477eac>]
-printk+0x4e/0x5a
-Jun 16 09:49:00 nb1a kernel: [677830.922476]  [<ffffffff80227dbc>]
-default_spin_lock_flags+0x5/0x9
-Jun 16 09:49:00 nb1a kernel: [677830.922536]  [<ffffffff80246bb4>]
-do_exit+0x41/0x7b1
-Jun 16 09:49:00 nb1a kernel: [677830.922594]  [<ffffffff802592cc>] up+0xe/0x36
-Jun 16 09:49:00 nb1a kernel: [677830.922650]  [<ffffffff80479d3c>]
-_spin_lock_irqsave+0x24/0x2c
-Jun 16 09:49:00 nb1a kernel: [677830.922709]  [<ffffffff8024412a>]
-release_console_sem+0x197/0x1cc
-Jun 16 09:49:00 nb1a kernel: [677830.922769]  [<ffffffff80214d99>]
-oops_end+0xb6/0xbb
-Jun 16 09:49:00 nb1a kernel: [677830.922827]  [<ffffffff8022e86a>]
-do_page_fault+0x8c4/0x966
-Jun 16 09:49:00 nb1a kernel: [677830.922887]  [<ffffffff80292096>]
-__rmqueue_smallest+0xa6/0x126
-Jun 16 09:49:00 nb1a kernel: [677830.922947]  [<ffffffff80292133>]
-__rmqueue+0x1d/0x1fd
-Jun 16 09:49:00 nb1a kernel: [677830.923005]  [<ffffffff80211b8e>]
-common_interrupt+0xe/0x13
-Jun 16 09:49:00 nb1a kernel: [677830.923066]  [<ffffffff80344070>]
-cfq_set_request+0x0/0x30e
-Jun 16 09:49:00 nb1a kernel: [677830.923124]  [<ffffffff8029238f>]
-rmqueue_bulk+0x7c/0x8c
-Jun 16 09:49:00 nb1a kernel: [677830.923184]  [<ffffffff8029e2a1>]
-zone_statistics+0x3c/0x5f
-Jun 16 09:49:00 nb1a kernel: [677830.923243]  [<ffffffff80292096>]
-__rmqueue_smallest+0xa6/0x126
-Jun 16 09:49:00 nb1a kernel: [677830.923303]  [<ffffffff8029e2a1>]
-zone_statistics+0x3c/0x5f
-Jun 16 09:49:00 nb1a kernel: [677830.923362]  [<ffffffff802943cc>]
-__alloc_pages_internal+0xd2/0x422
-Jun 16 09:49:00 nb1a kernel: [677830.923421]  [<ffffffff80479de2>]
-_spin_lock+0x5/0x7
-Jun 16 09:49:00 nb1a kernel: [677830.923483]  [<ffffffffa06761cd>]
-__jbd2_journal_temp_unlink_buffer+0x35/0xf5 [jbd2]
-Jun 16 09:49:00 nb1a kernel: [677830.923562]  [<ffffffffa067633b>]
-__jbd2_journal_file_buffer+0xae/0x144 [jbd2]
-Jun 16 09:49:00 nb1a kernel: [677830.923640]  [<ffffffffa06773a5>]
-do_get_write_access+0x3cf/0x414 [jbd2]
-Jun 16 09:49:00 nb1a kernel: [677830.923700]  [<ffffffff80479de2>]
-_spin_lock+0x5/0x7
-Jun 16 09:49:00 nb1a kernel: [677830.923758]  [<ffffffff8047a0c5>]
-page_fault+0x25/0x30
-Jun 16 09:49:00 nb1a kernel: [677830.923824]  [<ffffffffa069a97e>]
-ext4_group_add+0x135c/0x143e [ext4]
-Jun 16 09:49:00 nb1a kernel: [677830.923891]  [<ffffffffa069a946>]
-ext4_group_add+0x1324/0x143e [ext4]
-Jun 16 09:49:00 nb1a kernel: [677830.923951]  [<ffffffff80479d3c>]
-_spin_lock_irqsave+0x24/0x2c
-Jun 16 09:49:00 nb1a kernel: [677830.924011]  [<ffffffff802846db>]
-delayacct_end+0x7d/0x88
-Jun 16 09:49:00 nb1a kernel: [677830.924070]  [<ffffffff802db3d0>]
-sync_dirty_buffer+0x5f/0x98
-Jun 16 09:49:00 nb1a kernel: [677830.924128]  [<ffffffff80479de2>]
-_spin_lock+0x5/0x7
-Jun 16 09:49:00 nb1a kernel: [677830.924189]  [<ffffffffa067b5bb>]
-jbd2_journal_update_superblock+0x133/0x13f [jbd2]
-Jun 16 09:49:00 nb1a kernel: [677830.924279]  [<ffffffff80479de2>]
-_spin_lock+0x5/0x7
-Jun 16 09:49:00 nb1a kernel: [677830.924344]  [<ffffffffa06905df>]
-ext4_ioctl+0x4dd/0x5d8 [ext4]
-Jun 16 09:49:00 nb1a kernel: [677830.924403]  [<ffffffff8023f8a3>]
-finish_task_switch+0x2a/0xc7
-Jun 16 09:49:00 nb1a kernel: [677830.924463]  [<ffffffff802c869e>]
-vfs_ioctl+0x21/0x6c
-Jun 16 09:49:00 nb1a kernel: [677830.924521]  [<ffffffff802c8b22>]
-do_vfs_ioctl+0x439/0x472
-Jun 16 09:49:00 nb1a kernel: [677830.924580]  [<ffffffff802bdaaf>]
-vfs_write+0xcd/0x102
-Jun 16 09:49:00 nb1a kernel: [677830.924638]  [<ffffffff802c8bac>]
-sys_ioctl+0x51/0x70
-Jun 16 09:49:00 nb1a kernel: [677830.924696]  [<ffffffff802110aa>]
-system_call_fastpath+0x16/0x1b
-Jun 16 09:49:00 nb1a kernel: [677830.924756] ---[ end trace 46ff5ad2da854d82
-]---
-Jun 16 09:49:00 nb1a kernel: [677830.924189]  [<ffffffffa067b5bb>]
-jbd2_journal_update_superblock+0x133/0x13f [jbd2]
-Jun 16 09:49:00 nb1a kernel: [677830.924279]  [<ffffffff80479de2>]
-_spin_lock+0x5/0x7
-Jun 16 09:49:00 nb1a kernel: [677830.924344]  [<ffffffffa06905df>]
-ext4_ioctl+0x4dd/0x5d8 [ext4]
-Jun 16 09:49:00 nb1a kernel: [677830.924403]  [<ffffffff8023f8a3>]
-finish_task_switch+0x2a/0xc7
-Jun 16 09:49:00 nb1a kernel: [677830.924463]  [<ffffffff802c869e>]
-vfs_ioctl+0x21/0x6c
-Jun 16 09:49:00 nb1a kernel: [677830.924521]  [<ffffffff802c8b22>]
-do_vfs_ioctl+0x439/0x472
-Jun 16 09:49:00 nb1a kernel: [677830.924580]  [<ffffffff802bdaaf>]
-vfs_write+0xcd/0x102
-Jun 16 09:49:00 nb1a kernel: [677830.924638]  [<ffffffff802c8bac>]
-sys_ioctl+0x51/0x70
-Jun 16 09:49:00 nb1a kernel: [677830.924696]  [<ffffffff802110aa>]
-system_call_fastpath+0x16/0x1b
-Jun 16 09:49:00 nb1a kernel: [677830.924756] ---[ end trace 46ff5ad2da854d82
-]---
+*P.S. If you need any information please let me know. Please cc me as I 
+am not subscribed to the list.
 
-P.S.: Please add "debian" on the tree dropdown, exact debian package is:
-linux-image-2.6.29-2-amd64 version 2.6.29-5
+Thanks and Regards
+R.Nageswara Sastry
 
--- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
