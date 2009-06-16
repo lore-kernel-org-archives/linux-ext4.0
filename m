@@ -1,86 +1,45 @@
-From: Scott James Remnant <scott-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:
- libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Tue, 16 Jun 2009 14:36:14 +0100
-Message-ID: <1245159374.4225.7.camel@quest>
-References: <200905311113.23004.arvidjaar@mail.ru>
-	 <20090601124857.GF31943@mit.edu>  <20090603085140.GA4060@nb.net.home>
-	 <1244021945.4120.4.camel@quest>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Something wrong with extent-based journal creation
+Date: Tue, 16 Jun 2009 17:38:00 -0500
+Message-ID: <4A381EC8.4010202@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-UDgNFD+Lb+aOrw3Luz0f"
-Cc: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>, Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
-	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1244021945.4120.4.camel@quest>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:44221 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753500AbZFPWh7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Jun 2009 18:37:59 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n5GMc2tv023238
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 18:38:02 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n5GMc1gf028736
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 18:38:01 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n5GMc0bD007316
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 18:38:00 -0400
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+I've been tearing my hair out all day on this and not getting anywhere
+yet, so punting to the list ;)
 
---=-UDgNFD+Lb+aOrw3Luz0f
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I have a user running mke2fs -t ext4 in a virt guest, and a mount
+immediately after that fails.
 
-Hi Ted, any good?
+It fails because the journal inode has an invalide i_extra_isize.
 
-On Wed, 2009-06-03 at 10:39 +0100, Scott James Remnant wrote:
-> On Wed, 2009-06-03 at 10:51 +0200, Karel Zak wrote:
->=20
-> > On Mon, Jun 01, 2009 at 08:48:57AM -0400, Theodore Tso wrote:
-> > > It is supposed to be safe to replace the built-in libblkid in
-> > > e2fsprogs with the one in util-linux-ng.  There may be bugs, but if
-> > > there are report them, and we'll work to get them fixed.  I'll try to
-> > > keep the bug fixes in e2fsprogs and util-linux-ng roughly synchronize=
-d
-> > > for at least a while, since it takes a while for distributions to mak=
-e
-> > > the switch.  So a brusque, "drop libblkid, who cares if we screw over
-> > > distro's that haven't yet moved to util-linux-ng" is not in the cards=
-,
-> > > no.  In terms of formal plan, probably in a year or so.  I'm believer
-> > > in long compatibility windows.
-> >=20
-> >  Yes, this is our plan.
-> >=20
-> >  This reminds me...
-> >=20
-> >  The next step is to move libuuid from e2fsprogs to util-linux-ng.
-> >  Currently, this library is widely used by many packages (Fedora-11):
-> >=20
-> >    $ repoquery --qf=3D"%{NAME}" --whatrequires libuuid* | sort -u | wc =
--l
-> >    74
-> >=20
-> >  The util-linux-ng code is already prepared for this change and the
-> >  library has been merged into git tree.
-> >=20
-> >  It would be nice to add the --disable-uuid option to e2fsprogs. If I
-> >  good remember Scott has a patch for this change. Scott?
-> >=20
-> Right ;)
->=20
-> attached
->=20
-> Scott
---=20
-Scott James Remnant
-scott-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org
+I've narrowed it down to the commit (961306d3) which creates the journal
+with extent format; if that's commented out, it works fine.
 
---=-UDgNFD+Lb+aOrw3Luz0f
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
+I can't for the life of me see where the problem is coming from, though.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
+I thought we'd need a write_inode_new (emphasis on new here) for the
+journal inode, but switching to that doesn't help.
 
-iEYEABECAAYFAko3n80ACgkQSnQiFMl4yK538QCdFnDAJBUE+WV9BNaKKm1pVnUa
-JhIAnjgvev43P9rMsPJkxeQ2YBrIMtzc
-=4yjL
------END PGP SIGNATURE-----
+I can't reproduce this myself... any ideas or suggestions of where to
+look? :)
 
---=-UDgNFD+Lb+aOrw3Luz0f--
-
---
-To unsubscribe from this list: send the line "unsubscribe util-linux-ng" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-Eric
