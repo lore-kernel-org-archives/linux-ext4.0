@@ -1,44 +1,44 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: grub / ext4 compatibility problem?
-Date: Wed, 17 Jun 2009 10:20:26 -0500
-Message-ID: <4A3909BA.5030007@redhat.com>
-References: <200906171648.59573.bzolnier@gmail.com> <4A3901E1.5080104@redhat.com> <200906171707.58004.bzolnier@gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Something wrong with extent-based journal creation
+Date: Wed, 17 Jun 2009 11:31:26 -0400
+Message-ID: <20090617153126.GA25451@mit.edu>
+References: <4A381EC8.4010202@redhat.com> <20090617080432.GC13073@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
-To: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:53299 "EHLO mx2.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:52349 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752226AbZFQPU2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jun 2009 11:20:28 -0400
-In-Reply-To: <200906171707.58004.bzolnier@gmail.com>
+	id S1752830AbZFQPbo (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Jun 2009 11:31:44 -0400
+Content-Disposition: inline
+In-Reply-To: <20090617080432.GC13073@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Bartlomiej Zolnierkiewicz wrote:
-> On Wednesday 17 June 2009 16:46:57 Eric Sandeen wrote:
->> Bartlomiej Zolnierkiewicz wrote:
->>> Hi,
->>>
->>> I've run into a really peculiar problem today..
->> ...
->>
->>> This is on Fedora 11 system (I upgraded from Fedora 10 few days ago) with
->>> all updates and ext3 migrated (per HOWTO on ext4 wiki) to ext4 yesterday.
->>>
->>> Is this something worth people's attention or should I just try to run fsck
->>> manually?
->>
->> is /boot ext4?  F11's grub doesn't yet understand ext4, as mentioned in
->> the releasenotes.  I hope to remedy that soon but in the F11 devel
->> cycle, other bugs of the oopsing & corrupting kind were more pressing...
+On Wed, Jun 17, 2009 at 02:04:32AM -0600, Andreas Dilger wrote:
+> On Jun 16, 2009  17:38 -0500, Eric Sandeen wrote:
+> > I've narrowed it down to the commit (961306d3) which creates the journal
+> > with extent format; if that's commented out, it works fine.
 > 
-> I see it now, in my case there is no separate /boot partition.. :)
+> Hmm, this seems like it might be a troublesome feature...  Are we sure
+> that there is proper kernel/tool compatibility for an extent-mapped
+> journal?  At least none of the Lustre code has any support for this,
+> though they can handle the INCOMPAT_EXTENTS feature, and I don't think
+> this was present in older kernels either.
 > 
-> Thanks Eric & sorry for the noise.
+> I haven't looked at the code for this yet, so it may be that it will
+> "just work", but if this is a new feature I would urge caution w.r.t.
+> compatibility before this is merged upstream (in either e2fsprogs or
+> the kernel).
 
-No problem, sorry I didn't get grub going before F11 released :)
+Extent-based journals "just works", at least in the kernel; I didn't
+need to make any changes to the kernel before I added support to using
+an extent-mapped journal; if the kernel supports extents, it should
+expert extent-mapped journals without any difficults.  The patch to
+add this was merged in before e2fsprogs 1.41.1 was released, so mke2fs
+has been creating extent-based journals for a while.
 
--Eric
+    	 	  	       		      - Ted
