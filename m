@@ -1,87 +1,137 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] libext2fs: write only core inode in update_path()
-Date: Wed, 17 Jun 2009 18:00:35 -0500
-Message-ID: <4A397593.8030103@redhat.com>
-References: <4A381EC8.4010202@redhat.com> <4A383F97.1080002@redhat.com> <20090617153537.GB25451@mit.edu> <4A3910BA.5040105@redhat.com> <20090617225039.GE7867@mit.edu>
+From: akpm@linux-foundation.org
+Subject: [patch 027/133] ext2: Do not update mtime of a moved directory
+Date: Wed, 17 Jun 2009 16:26:20 -0700
+Message-ID: <200906172326.n5HNQKOY011080@imap1.linux-foundation.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: TEXT/PLAIN; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: akpm@linux-foundation.org, jack@suse.cz, hare@suse.de,
+	joern@logfs.org, linux-ext4@vger.kernel.org, ronny.pretzsch@dfs.de
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:35329 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754030AbZFQXAf (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jun 2009 19:00:35 -0400
-In-Reply-To: <20090617225039.GE7867@mit.edu>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35274 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1763247AbZFQX1D (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Jun 2009 19:27:03 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
-> This is what I ultimately checked in.  It converts all calls of
-> ext2fs_write_inode_full() to ext2fs_write_inode().
+=46rom: Jan Kara <jack@suse.cz>
 
-Hey thanks for finding those, it fixed the next resize bug I was looking
-at!  ;)
+One of our users is complaining that his backup tool is upset on ext2
+(while it's happy on ext3, xfs, ...) because of the mtime change.
 
-Now, put down the laptop and pay attention to that talk, Ted ;)
+The problem is:
 
--Eric
+mkdir foo
+mkdir bar
+mkdir foo/a
 
-> 							- Ted
-> 
-> commit 125a36780626cdb0fc4d62fd529486baa8bce54c
-> Author: Eric Sandeen <sandeen@redhat.com>
-> Date:   Wed Jun 17 18:49:01 2009 -0400
-> 
->     libext2fs: write only core inode in update_path()
->     
->     The ext2_extent_handle only has a struct ext2_inode allocated on
->     it, and the same amount copied into it in that same function,
->     but in update_path() we're possibly writing out more than that -
->     for example 256 bytes, from that address.  This causes uninitialized
->     memory to get  written to disk, overwriting the parts of the
->     inode past the osd2 member (the end of the smaller structure).
->     
->     Signed-off-by: Eric Sandeen <sandeen@redhat.com>
->     Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> 
-> diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-> index 2b88739..35b080e 100644
-> --- a/lib/ext2fs/extent.c
-> +++ b/lib/ext2fs/extent.c
-> @@ -546,8 +546,8 @@ static errcode_t update_path(ext2_extent_handle_t handle)
->  	struct ext3_extent_idx		*ix;
->  
->  	if (handle->level == 0) {
-> -		retval = ext2fs_write_inode_full(handle->fs, handle->ino,
-> -			   handle->inode, EXT2_INODE_SIZE(handle->fs->super));
-> +		retval = ext2fs_write_inode(handle->fs, handle->ino,
-> +					    handle->inode);
->  	} else {
->  		ix = handle->path[handle->level - 1].curr;
->  		blk = ext2fs_le32_to_cpu(ix->ei_leaf) +
-> @@ -1011,8 +1011,8 @@ static errcode_t extent_node_split(ext2_extent_handle_t handle)
->  
->  	/* new node hooked in, so update inode block count (do this here?) */
->  	handle->inode->i_blocks += handle->fs->blocksize / 512;
-> -	retval = ext2fs_write_inode_full(handle->fs, handle->ino,
-> -		handle->inode, EXT2_INODE_SIZE(handle->fs->super));
-> +	retval = ext2fs_write_inode(handle->fs, handle->ino,
-> +				    handle->inode);
->  	if (retval)
->  		goto done;
->  
-> @@ -1370,9 +1370,8 @@ errcode_t ext2fs_extent_delete(ext2_extent_handle_t handle, int flags)
->  
->  			retval = ext2fs_extent_delete(handle, flags);
->  			handle->inode->i_blocks -= handle->fs->blocksize / 512;
-> -			retval = ext2fs_write_inode_full(handle->fs,
-> -					handle->ino, handle->inode,
-> -					EXT2_INODE_SIZE(handle->fs->super));
-> +			retval = ext2fs_write_inode(handle->fs, handle->ino,
-> +						    handle->inode);
->  			ext2fs_block_alloc_stats(handle->fs, extent.e_pblk, -1);
->  		}
->  	} else {
+Now under ext2:
+mv foo/a foo/b
 
+changes mtime of 'foo/a' (foo/b after the move).  That does not really
+make sence and it does not happen under any other filesystem I've seen.
+
+More complicated is:
+mv foo/a bar/a
+
+This changes mtime of foo/a (bar/a after the move) and it makes some se=
+nce
+since we had to update parent directory pointer of foo/a. But again, no
+other filesystem does this. So after some thoughts I'd vote for consist=
+ency
+and change ext2 to behave the same as other filesystems.
+
+
+
+Do not update mtime of a moved directory.  Specs don't say anything
+about it (neither that it should, nor that it should not be updated)
+and other common filesystems (ext3, ext4, xfs, reiserfs, fat, ...)
+don't do it.  So let's become more consistent.
+
+Spotted by ronny.pretzsch@dfs.de, initial fix by J=F6rn Engel.
+
+Reported-by: <ronny.pretzsch@dfs.de>
+Cc: <hare@suse.de>
+Cc: J=F6rn Engel <joern@logfs.org>
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext2/dir.c   |    5 +++--
+ fs/ext2/ext2.h  |    2 +-
+ fs/ext2/namei.c |    5 +++--
+ 3 files changed, 7 insertions(+), 5 deletions(-)
+
+diff -puN fs/ext2/dir.c~ext2-do-not-update-mtime-of-a-moved-directory f=
+s/ext2/dir.c
+--- a/fs/ext2/dir.c~ext2-do-not-update-mtime-of-a-moved-directory
++++ a/fs/ext2/dir.c
+@@ -450,7 +450,7 @@ ino_t ext2_inode_by_name(struct inode *d
+=20
+ /* Releases the page */
+ void ext2_set_link(struct inode *dir, struct ext2_dir_entry_2 *de,
+-			struct page *page, struct inode *inode)
++		   struct page *page, struct inode *inode, int update_times)
+ {
+ 	loff_t pos =3D page_offset(page) +
+ 			(char *) de - (char *) page_address(page);
+@@ -465,7 +465,8 @@ void ext2_set_link(struct inode *dir, st
+ 	ext2_set_de_type(de, inode);
+ 	err =3D ext2_commit_chunk(page, pos, len);
+ 	ext2_put_page(page);
+-	dir->i_mtime =3D dir->i_ctime =3D CURRENT_TIME_SEC;
++	if (update_times)
++		dir->i_mtime =3D dir->i_ctime =3D CURRENT_TIME_SEC;
+ 	EXT2_I(dir)->i_flags &=3D ~EXT2_BTREE_FL;
+ 	mark_inode_dirty(dir);
+ }
+diff -puN fs/ext2/ext2.h~ext2-do-not-update-mtime-of-a-moved-directory =
+fs/ext2/ext2.h
+--- a/fs/ext2/ext2.h~ext2-do-not-update-mtime-of-a-moved-directory
++++ a/fs/ext2/ext2.h
+@@ -111,7 +111,7 @@ extern struct ext2_dir_entry_2 * ext2_fi
+ extern int ext2_delete_entry (struct ext2_dir_entry_2 *, struct page *=
+);
+ extern int ext2_empty_dir (struct inode *);
+ extern struct ext2_dir_entry_2 * ext2_dotdot (struct inode *, struct p=
+age **);
+-extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, s=
+truct page *, struct inode *);
++extern void ext2_set_link(struct inode *, struct ext2_dir_entry_2 *, s=
+truct page *, struct inode *, int);
+=20
+ /* ialloc.c */
+ extern struct inode * ext2_new_inode (struct inode *, int);
+diff -puN fs/ext2/namei.c~ext2-do-not-update-mtime-of-a-moved-directory=
+ fs/ext2/namei.c
+--- a/fs/ext2/namei.c~ext2-do-not-update-mtime-of-a-moved-directory
++++ a/fs/ext2/namei.c
+@@ -320,7 +320,7 @@ static int ext2_rename (struct inode * o
+ 		if (!new_de)
+ 			goto out_dir;
+ 		inode_inc_link_count(old_inode);
+-		ext2_set_link(new_dir, new_de, new_page, old_inode);
++		ext2_set_link(new_dir, new_de, new_page, old_inode, 1);
+ 		new_inode->i_ctime =3D CURRENT_TIME_SEC;
+ 		if (dir_de)
+ 			drop_nlink(new_inode);
+@@ -352,7 +352,8 @@ static int ext2_rename (struct inode * o
+ 	inode_dec_link_count(old_inode);
+=20
+ 	if (dir_de) {
+-		ext2_set_link(old_inode, dir_de, dir_page, new_dir);
++		if (old_dir !=3D new_dir)
++			ext2_set_link(old_inode, dir_de, dir_page, new_dir, 0);
+ 		inode_dec_link_count(old_dir);
+ 	}
+ 	return 0;
+_
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
