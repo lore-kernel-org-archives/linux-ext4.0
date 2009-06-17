@@ -1,45 +1,67 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Something wrong with extent-based journal creation
-Date: Tue, 16 Jun 2009 17:38:00 -0500
-Message-ID: <4A381EC8.4010202@redhat.com>
+Subject: [PATCH] libext2fs: write only core inode in update_path()
+Date: Tue, 16 Jun 2009 19:57:59 -0500
+Message-ID: <4A383F97.1080002@redhat.com>
+References: <4A381EC8.4010202@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:44221 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:49200 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753500AbZFPWh7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 16 Jun 2009 18:37:59 -0400
+	id S1751324AbZFQA56 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 16 Jun 2009 20:57:58 -0400
 Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n5GMc2tv023238
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 18:38:02 -0400
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n5H0w1JU029281
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 20:58:01 -0400
 Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n5GMc1gf028736
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 18:38:01 -0400
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n5H0w0E9025953
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 20:58:01 -0400
 Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n5GMc0bD007316
-	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 18:38:00 -0400
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n5H0vxVs027267
+	for <linux-ext4@vger.kernel.org>; Tue, 16 Jun 2009 20:58:00 -0400
+In-Reply-To: <4A381EC8.4010202@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've been tearing my hair out all day on this and not getting anywhere
-yet, so punting to the list ;)
+Eric Sandeen wrote:
 
-I have a user running mke2fs -t ext4 in a virt guest, and a mount
-immediately after that fails.
+> I've been tearing my hair out all day on this and not getting anywhere
+> yet, so punting to the list ;)
+>
+>
+>   
+Well, here's one problem.  I'm waiting for the reporter to confirm 
+whether it fixes the bug.  I think it likely does but will report
+back tomorrow.  Anyway patch follows, thanks valgrind!
 
-It fails because the journal inode has an invalide i_extra_isize.
 
-I've narrowed it down to the commit (961306d3) which creates the journal
-with extent format; if that's commented out, it works fine.
 
-I can't for the life of me see where the problem is coming from, though.
+libext2fs: write only core inode in update_path()
 
-I thought we'd need a write_inode_new (emphasis on new here) for the
-journal inode, but switching to that doesn't help.
+The ext2_extent_handle only has a struct ext2_inode allocated on
+it, and the same amount copied into it in that same function, 
+but in update_path() we're possibly writing out more than that - 
+for example 256 bytes, from that address.  This causes uninitialized 
+memory to get  written to disk, overwriting the parts of the 
+inode past the osd2 member (the end of the smaller structure).
 
-I can't reproduce this myself... any ideas or suggestions of where to
-look? :)
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+---
 
--Eric
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index b7eb617..0dfee62 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -547,7 +547,7 @@ static errcode_t update_path(ext2_extent_handle_t handle)
+ 
+ 	if (handle->level == 0) {
+ 		retval = ext2fs_write_inode_full(handle->fs, handle->ino,
+-			   handle->inode, EXT2_INODE_SIZE(handle->fs->super));
++			   handle->inode, sizeof(struct ext2_inode));
+ 	} else {
+ 		ix = handle->path[handle->level - 1].curr;
+ 		blk = ext2fs_le32_to_cpu(ix->ei_leaf) +
+
+
