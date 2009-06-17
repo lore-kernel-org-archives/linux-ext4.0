@@ -1,59 +1,68 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] libext2fs: write only core inode in update_path()
-Date: Wed, 17 Jun 2009 10:50:18 -0500
-Message-ID: <4A3910BA.5040105@redhat.com>
-References: <4A381EC8.4010202@redhat.com> <4A383F97.1080002@redhat.com> <20090617153537.GB25451@mit.edu>
+From: Bartlomiej Zolnierkiewicz <bzolnier@gmail.com>
+Subject: Re: grub / ext4 compatibility problem?
+Date: Wed, 17 Jun 2009 20:03:03 +0200
+Message-ID: <200906172003.03739.bzolnier@gmail.com>
+References: <200906171648.59573.bzolnier@gmail.com> <4A3909BA.5030007@redhat.com> <200906171740.02101.bzolnier@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
 Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:38121 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751324AbZFQPuV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 17 Jun 2009 11:50:21 -0400
-In-Reply-To: <20090617153537.GB25451@mit.edu>
+Received: from mail-fx0-f212.google.com ([209.85.220.212]:62755 "EHLO
+	mail-fx0-f212.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753212AbZFQR5x (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 17 Jun 2009 13:57:53 -0400
+Received: by fxm8 with SMTP id 8so515998fxm.37
+        for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2009 10:57:55 -0700 (PDT)
+In-Reply-To: <200906171740.02101.bzolnier@gmail.com>
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Tso wrote:
+On Wednesday 17 June 2009 17:40:01 Bartlomiej Zolnierkiewicz wrote:
+> On Wednesday 17 June 2009 17:20:26 Eric Sandeen wrote:
+> > Bartlomiej Zolnierkiewicz wrote:
+> > > On Wednesday 17 June 2009 16:46:57 Eric Sandeen wrote:
+> > >> Bartlomiej Zolnierkiewicz wrote:
+> > >>> Hi,
+> > >>>
+> > >>> I've run into a really peculiar problem today..
+> > >> ...
+> > >>
+> > >>> This is on Fedora 11 system (I upgraded from Fedora 10 few days ago) with
+> > >>> all updates and ext3 migrated (per HOWTO on ext4 wiki) to ext4 yesterday.
+> > >>>
+> > >>> Is this something worth people's attention or should I just try to run fsck
+> > >>> manually?
+> > >>
+> > >> is /boot ext4?  F11's grub doesn't yet understand ext4, as mentioned in
+> > >> the releasenotes.  I hope to remedy that soon but in the F11 devel
+> > >> cycle, other bugs of the oopsing & corrupting kind were more pressing...
+> > > 
+> > > I see it now, in my case there is no separate /boot partition.. :)
+> > > 
+> > > Thanks Eric & sorry for the noise.
+> > 
+> > No problem, sorry I didn't get grub going before F11 released :)
+> 
+> Hm, upon looking at the ext4 patch for the grub I think that including it
+> can't make the situation worse.  It is quite compact/clean patch and grub
+> cannot ever access such fs in write mode (AFAICS from the quick look)?
 
->
-> Probably it would be better/simpler to replace this with:
->
-> 		retval = ext2fs_write_inode(handle->fs, handle->ino,
-> 					    handle->inode);
->
-> 							- Ted
->   
-Sure, that makes more sense, revised below:
+I got a confirmation from Peng Tao (the patch author) that this is indeed
+a case here.
 
-libext2fs: write only core inode in update_path()
+The patch works fine for me so just in case if somebody runs into the same
+issue I'm posting the current F11/x86 grub package with ext4 support here:
 
-The ext2_extent_handle only has a struct ext2_inode allocated on
-it, and the same amount copied into it in that same function, 
-but in update_path() we're possibly writing out more than that - 
-for example 256 bytes, from that address.  This causes uninitialized 
-memory to get  written to disk, overwriting the parts of the 
-inode past the osd2 member (the end of the smaller structure).
+http://www.kernel.org/pub/linux/kernel/people/bart/f11/
 
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
+grub-0.97-50.fc11.ext4.i586.rpm
+grub-0.97-50.fc11.ext4.src.rpm
 
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index b7eb617..15ce302 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -546,8 +546,8 @@ static errcode_t update_path(ext2_extent_handle_t handle)
- 	struct ext3_extent_idx		*ix;
- 
- 	if (handle->level == 0) {
--		retval = ext2fs_write_inode_full(handle->fs, handle->ino,
--			   handle->inode, EXT2_INODE_SIZE(handle->fs->super));
-+		retval = ext2fs_write_inode(handle->fs, handle->ino,
-+				   handle->inode);
- 	} else {
- 		ix = handle->path[handle->level - 1].curr;
- 		blk = ext2fs_le32_to_cpu(ix->ei_leaf) +
+[ Please note that doing grub-install is needed after installing it. ]
 
+Thanks.
+Bart
