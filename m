@@ -1,90 +1,116 @@
-From: Kay Sievers <kay.sievers-tD+1rO4QERM@public.gmane.org>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was: libuuid
-	(Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Thu, 18 Jun 2009 02:27:36 +0200
-Message-ID: <ac3eb2510906171727t42f1430j8fac5a12e774742c@mail.gmail.com>
-References: <200905311113.23004.arvidjaar@mail.ru> <20090601124857.GF31943@mit.edu>
-	<20090603085140.GA4060@nb.net.home> <1244021945.4120.4.camel@quest>
-	<1245159374.4225.7.camel@quest>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: [PATCH] resize2fs: update sb journal backup if journal was moved
+Date: Wed, 17 Jun 2009 20:55:39 -0500
+Message-ID: <4A399E9B.4080207@redhat.com>
+References: <4A3946A3.2040401@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>,
-	Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
-	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Scott James Remnant <scott-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1245159374.4225.7.camel@quest>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:47622 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753273AbZFRBzi (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 17 Jun 2009 21:55:38 -0400
+Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
+	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n5I1tfPx009968
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2009 21:55:41 -0400
+Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
+	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n5I1teCR013427
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2009 21:55:40 -0400
+Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
+	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n5I1tdDq018714
+	for <linux-ext4@vger.kernel.org>; Wed, 17 Jun 2009 21:55:39 -0400
+In-Reply-To: <4A3946A3.2040401@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Hey Ted,
-it would be great, if you could add that, and put it into a release.
-The current packaging is a dependency hell, and it would be much
-easier if util-linux-ng can just provide all the needed stuff for
-libblkid, instead of the circular dependencies we have to work around
-now.
+This was reported in Fedora, since the livecd creator does
+a lot of resizing.
 
-Thanks,
-Kay
+If we've moved the journal blocks during resize (more likely now,
+due to the journal being in the middle) the backup blocks in the
+superblock don't get updated, and a subsequent e2fsck will find 
+issues:
 
-On Tue, Jun 16, 2009 at 15:36, Scott James Remnant<scott-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org>=
- wrote:
-> Hi Ted, any good?
->
-> On Wed, 2009-06-03 at 10:39 +0100, Scott James Remnant wrote:
->> On Wed, 2009-06-03 at 10:51 +0200, Karel Zak wrote:
->>
->> > On Mon, Jun 01, 2009 at 08:48:57AM -0400, Theodore Tso wrote:
->> > > It is supposed to be safe to replace the built-in libblkid in
->> > > e2fsprogs with the one in util-linux-ng. =C2=A0There may be bugs=
-, but if
->> > > there are report them, and we'll work to get them fixed. =C2=A0I=
-'ll try to
->> > > keep the bug fixes in e2fsprogs and util-linux-ng roughly synchr=
-onized
->> > > for at least a while, since it takes a while for distributions t=
-o make
->> > > the switch. =C2=A0So a brusque, "drop libblkid, who cares if we =
-screw over
->> > > distro's that haven't yet moved to util-linux-ng" is not in the =
-cards,
->> > > no. =C2=A0In terms of formal plan, probably in a year or so. =C2=
-=A0I'm believer
->> > > in long compatibility windows.
->> >
->> > =C2=A0Yes, this is our plan.
->> >
->> > =C2=A0This reminds me...
->> >
->> > =C2=A0The next step is to move libuuid from e2fsprogs to util-linu=
-x-ng.
->> > =C2=A0Currently, this library is widely used by many packages (Fed=
-ora-11):
->> >
->> > =C2=A0 =C2=A0$ repoquery --qf=3D"%{NAME}" --whatrequires libuuid* =
-| sort -u | wc -l
->> > =C2=A0 =C2=A074
->> >
->> > =C2=A0The util-linux-ng code is already prepared for this change a=
-nd the
->> > =C2=A0library has been merged into git tree.
->> >
->> > =C2=A0It would be nice to add the --disable-uuid option to e2fspro=
-gs. If I
->> > =C2=A0good remember Scott has a patch for this change. Scott?
->> >
->> Right ;)
->>
->> attached
->>
->> Scott
-> --
-> Scott James Remnant
-> scott-Z7WLFzj8eWMS+FvcfC7Uqw@public.gmane.org
->
---
-To unsubscribe from this list: send the line "unsubscribe util-linux-ng=
-" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+e2fsck 1.41.6 (30-May-2009)
+Backing up journal inode block information.
+
+Pass 1: Checking inodes, blocks, and sizes
+Pass 2: Checking directory structure
+Pass 3: Checking directory connectivity
+Pass 4: Checking reference counts
+Pass 5: Checking group summary information
+
+/mnt/test/img: ***** FILE SYSTEM WAS MODIFIED *****
+/mnt/test/img: 11/16000 files (0.0% non-contiguous), 17789/38400 blocks
+
+This can be shown in a simple test:
+
+# dd if=/dev/zero of=img bs=1 count=0 seek=3000M
+# mke2fs -t ext4 -F img
+# resize2fs img 150M
+# e2fsck -f img
+
+(thanks to the Fedora reporter Mads Kiilerich for the testcase!
+https://bugzilla.redhat.com/show_bug.cgi?id=506105#c2)
+
+So, update the backup journal in the superblock before resize2fs exits.
+
+Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+Resolves-RH-Bugzilla: 505339
+---
+
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index 0d5dc81..63c469f 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -49,6 +49,7 @@ static errcode_t inode_ref_fix(ext2_resize_t rfs);
+ static errcode_t move_itables(ext2_resize_t rfs);
+ static errcode_t fix_resize_inode(ext2_filsys fs);
+ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs);
++static errcode_t fix_sb_journal_backup(ext2_filsys fs);
+ 
+ /*
+  * Some helper CPP macros
+@@ -148,6 +149,10 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
+ 	if (retval)
+ 		goto errout;
+ 
++	retval = fix_sb_journal_backup(rfs->new_fs);
++	if (retval)
++		goto errout;
++
+ 	rfs->new_fs->flags &= ~EXT2_FLAG_MASTER_SB_ONLY;
+ 	retval = ext2fs_close(rfs->new_fs);
+ 	if (retval)
+@@ -1857,6 +1862,28 @@ static errcode_t ext2fs_calculate_summary_stats(ext2_filsys fs)
+ }
+ 
+ /*
++ *  Journal may have been relocated; update the backup journal blocks
++ *  in the superblock.
++ */
++static errcode_t fix_sb_journal_backup(ext2_filsys fs)
++{
++	errcode_t	  retval;
++	struct ext2_inode inode;
++
++	if (!(fs->super->s_feature_compat & EXT3_FEATURE_COMPAT_HAS_JOURNAL))
++		return 0;
++
++	retval = ext2fs_read_inode(fs, fs->super->s_journal_inum, &inode);
++	if (retval)
++		return retval;
++	memcpy(fs->super->s_jnl_blocks, inode.i_block, EXT2_N_BLOCKS*4);
++	fs->super->s_jnl_blocks[16] = inode.i_size;
++	fs->super->s_jnl_backup_type = EXT3_JNL_BACKUP_BLOCKS;
++	ext2fs_mark_super_dirty(fs);
++	return 0;
++}
++
++/*
+  * calcluate the minimum number of blocks the given fs can be resized to
+  */
+ blk_t calculate_minimum_resize_size(ext2_filsys fs)
+
