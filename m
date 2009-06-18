@@ -1,43 +1,34 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: O_DIRECT and delayed allocation question
-Date: Thu, 18 Jun 2009 12:53:17 -0700
-Message-ID: <6601abe90906181253u657e67a7u67025774cc53bc4f@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: Some 64-bit tests
+Date: Thu, 18 Jun 2009 17:11:12 -0400
+Message-ID: <20090618211112.GE7183@mit.edu>
+References: <18887.1244469441@gamaville.dokosmarshall.org> <20090608201037.GB23723@skywalker> <14597.1244517228@gamaville.dokosmarshall.org> <20090610181320.GA6953@mit.edu> <20090611055006.GA8073@skywalker>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Nick Dokos <nicholas.dokos@hp.com>,
+	Valerie Aurora <vaurora@redhat.com>, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:45497 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751507AbZFRTxT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2009 15:53:19 -0400
-Received: from spaceape13.eur.corp.google.com (spaceape13.eur.corp.google.com [172.28.16.147])
-	by smtp-out.google.com with ESMTP id n5IJrKw7001297
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2009 20:53:21 +0100
-Received: from pxi15 (pxi15.prod.google.com [10.243.27.15])
-	by spaceape13.eur.corp.google.com with ESMTP id n5IJrHRR027734
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2009 12:53:18 -0700
-Received: by pxi15 with SMTP id 15so1257150pxi.13
-        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2009 12:53:17 -0700 (PDT)
+Received: from THUNK.ORG ([69.25.196.29]:53224 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753443AbZFRVLU (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Jun 2009 17:11:20 -0400
+Content-Disposition: inline
+In-Reply-To: <20090611055006.GA8073@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-This might be a question with an obvious answer, but I'd like
-verification one way or the other.
+On Thu, Jun 11, 2009 at 11:20:06AM +0530, Aneesh Kumar K.V wrote:
+> 
+> I already have a RFC patch which Nick actually tested. It is giving 32MB
+> extents, which is expected because the max order in buddy cache is
+> blocksize_bits + 1. I have a Fixme in there regarding scaling the start
+> block which was hoping to fix soon.
 
-Does the use of O_DIRECT essentially disable delayed allocation for a
-given file?
+FYI, this patch seems to cause the system to lock up on umount when
+running xfstests #135.
 
-My simple tests show a larger degree of block fragmentation for files
-written using O_DIRECT than without, and on its face, this makes sense
-to me.  This fragmentation can be removed by using fallocate() on a
-file before extending it with writes.
+I'm removing it from the unstable patch queue for now; do you have an
+update for this patch?
 
-(Strictly speaking, I guess the use of O_DIRECT wouldn't "disable"
-delayed allocation, since the blocks are allocated at the "normal"
-time -- when going to disk.  But effectively there would be a lot less
-block grouping available to build large extents if each write goes to
-disk immediately, instead of going through the page cache.)
-
-Thanks,
-Curt
+						- Ted
