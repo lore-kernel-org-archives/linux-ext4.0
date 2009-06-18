@@ -1,108 +1,78 @@
-From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] ext3: Get rid of extenddisksize parameter of ext3_get_blocks_handle()
-Date: Thu, 18 Jun 2009 16:13:57 +0200
-Message-ID: <1245334437-17585-1-git-send-email-jack@suse.cz>
-Cc: linux-ext4@vger.kernel.org, Jan Kara <jack@suse.cz>
-To: tytso@mit.edu
+From: "Theodore Ts'o" <tytso@mit.edu>
+Subject: [GIT PULL] more ext4 updates
+Date: Thu, 18 Jun 2009 12:51:12 -0400
+Message-ID: <E1MHKpU-0007FN-RQ@closure.thunk.org>
+Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
+To: Linus Torvalds <torvalds@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:36221 "EHLO mx2.suse.de"
+Received: from THUNK.ORG ([69.25.196.29]:59492 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752616AbZFRON4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Jun 2009 10:13:56 -0400
+	id S1751887AbZFRQvV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 18 Jun 2009 12:51:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Get rid of extenddisksize parameter of ext3_get_blocks_handle(). This seems to
-be a relict from some old days and setting disksize in this function does not
-make much sence. Currently it was set only by ext3_getblk().  Since the
-parameter has some effect only if create == 1, it is easy to check that the
-three callers which end up calling ext3_getblk() with create == 1 (ext3_append,
-ext3_quota_write, ext3_mkdir) do the right thing and set disksize themselves.
 
-Signed-off-by: Jan Kara <jack@suse.cz>
----
- fs/ext3/dir.c           |    3 +--
- fs/ext3/inode.c         |   13 +++----------
- include/linux/ext3_fs.h |    2 +-
- 3 files changed, 5 insertions(+), 13 deletions(-)
+Hi Linus,
 
- Ted, you already have some ext3 patches queued so would you please merge this
-patch with Linus? Thanks.
+Please pull from:
 
-									Honza
+        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
 
-diff --git a/fs/ext3/dir.c b/fs/ext3/dir.c
-index 3d724a9..373fa90 100644
---- a/fs/ext3/dir.c
-+++ b/fs/ext3/dir.c
-@@ -130,8 +130,7 @@ static int ext3_readdir(struct file * filp,
- 		struct buffer_head *bh = NULL;
- 
- 		map_bh.b_state = 0;
--		err = ext3_get_blocks_handle(NULL, inode, blk, 1,
--						&map_bh, 0, 0);
-+		err = ext3_get_blocks_handle(NULL, inode, blk, 1, &map_bh, 0);
- 		if (err > 0) {
- 			pgoff_t index = map_bh.b_blocknr >>
- 					(PAGE_CACHE_SHIFT - inode->i_blkbits);
-diff --git a/fs/ext3/inode.c b/fs/ext3/inode.c
-index b0248c6..2d4b2ca 100644
---- a/fs/ext3/inode.c
-+++ b/fs/ext3/inode.c
-@@ -788,7 +788,7 @@ err_out:
- int ext3_get_blocks_handle(handle_t *handle, struct inode *inode,
- 		sector_t iblock, unsigned long maxblocks,
- 		struct buffer_head *bh_result,
--		int create, int extend_disksize)
-+		int create)
- {
- 	int err = -EIO;
- 	int offsets[4];
-@@ -911,13 +911,6 @@ int ext3_get_blocks_handle(handle_t *handle, struct inode *inode,
- 	if (!err)
- 		err = ext3_splice_branch(handle, inode, iblock,
- 					partial, indirect_blks, count);
--	/*
--	 * i_disksize growing is protected by truncate_mutex.  Don't forget to
--	 * protect it if you're about to implement concurrent
--	 * ext3_get_block() -bzzz
--	*/
--	if (!err && extend_disksize && inode->i_size > ei->i_disksize)
--		ei->i_disksize = inode->i_size;
- 	mutex_unlock(&ei->truncate_mutex);
- 	if (err)
- 		goto cleanup;
-@@ -972,7 +965,7 @@ static int ext3_get_block(struct inode *inode, sector_t iblock,
- 	}
- 
- 	ret = ext3_get_blocks_handle(handle, inode, iblock,
--					max_blocks, bh_result, create, 0);
-+					max_blocks, bh_result, create);
- 	if (ret > 0) {
- 		bh_result->b_size = (ret << inode->i_blkbits);
- 		ret = 0;
-@@ -1005,7 +998,7 @@ struct buffer_head *ext3_getblk(handle_t *handle, struct inode *inode,
- 	dummy.b_blocknr = -1000;
- 	buffer_trace_init(&dummy.b_history);
- 	err = ext3_get_blocks_handle(handle, inode, block, 1,
--					&dummy, create, 1);
-+					&dummy, create);
- 	/*
- 	 * ext3_get_blocks_handle() returns number of blocks
- 	 * mapped. 0 in case of a HOLE.
-diff --git a/include/linux/ext3_fs.h b/include/linux/ext3_fs.h
-index 634a5e5..7499b36 100644
---- a/include/linux/ext3_fs.h
-+++ b/include/linux/ext3_fs.h
-@@ -874,7 +874,7 @@ struct buffer_head * ext3_getblk (handle_t *, struct inode *, long, int, int *);
- struct buffer_head * ext3_bread (handle_t *, struct inode *, int, int, int *);
- int ext3_get_blocks_handle(handle_t *handle, struct inode *inode,
- 	sector_t iblock, unsigned long maxblocks, struct buffer_head *bh_result,
--	int create, int extend_disksize);
-+	int create);
- 
- extern struct inode *ext3_iget(struct super_block *, unsigned long);
- extern int  ext3_write_inode (struct inode *, int);
--- 
-1.6.0.2
+to get the following updates for ext4.
 
+                                                - Ted
+
+
+Akira Fujita (1):
+      ext4: online defrag -- Add EXT4_IOC_MOVE_EXT ioctl
+
+Andreas Dilger (1):
+      ext4: teach the inode allocator to use a goal inode number
+
+Hisashi Hifumi (1):
+      jbd2: clean up jbd2_journal_try_to_free_buffers()
+
+Linus Torvalds (1):
+      ext3: avoid unnecessary spinlock in critical POSIX ACL path
+
+Theodore Ts'o (11):
+      jbd2: convert instrumentation from markers to tracepoints
+      ext4: convert instrumentation from markers to tracepoints
+      ext4: avoid unnecessary spinlock in critical POSIX ACL path
+      ext4: change s_mount_opt to be an unsigned int
+      ext4: update the s_last_mounted field in the superblock
+      ext4: move the abort flag from s_mount_opts to s_mount_flags
+      ext4: document the "abort" mount option
+      ext4: Use a hash of the topdir directory name for the Orlov parent group
+      ext4: Fix 64-bit block type problem on 32-bit platforms
+      ext4: Fix up whitespace issues in fs/ext4/inode.c
+      ext4: Don't update ctime for non-extent-mapped inodes
+
+ Documentation/ABI/testing/sysfs-fs-ext4 |   10 +
+ Documentation/filesystems/ext4.txt      |    4 +
+ fs/ext3/acl.c                           |   13 +-
+ fs/ext4/Makefile                        |    2 +-
+ fs/ext4/acl.c                           |   15 +-
+ fs/ext4/ext4.h                          |   39 +-
+ fs/ext4/ext4_extents.h                  |    4 +
+ fs/ext4/extents.c                       |    4 +-
+ fs/ext4/file.c                          |   36 +-
+ fs/ext4/fsync.c                         |    8 +-
+ fs/ext4/ialloc.c                        |   48 +-
+ fs/ext4/inode.c                         |  281 +++----
+ fs/ext4/ioctl.c                         |   36 +
+ fs/ext4/mballoc.c                       |   85 +--
+ fs/ext4/mballoc.h                       |    1 -
+ fs/ext4/migrate.c                       |    8 +-
+ fs/ext4/move_extent.c                   | 1320 +++++++++++++++++++++++++++++++
+ fs/ext4/namei.c                         |   10 +-
+ fs/ext4/super.c                         |   20 +-
+ fs/jbd2/checkpoint.c                    |    5 +-
+ fs/jbd2/commit.c                        |   13 +-
+ fs/jbd2/journal.c                       |   69 ++
+ fs/jbd2/transaction.c                   |   49 --
+ include/linux/jbd2.h                    |    6 +
+ include/trace/events/ext4.h             |  719 +++++++++++++++++
+ include/trace/events/jbd2.h             |  168 ++++
+ 26 files changed, 2638 insertions(+), 335 deletions(-)
