@@ -1,147 +1,60 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] lsattr: return error values
-Date: Thu, 18 Jun 2009 17:35:04 -0500
-Message-ID: <4A3AC118.2020902@redhat.com>
-References: <4A3AB8AD.6000100@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: ext4 development <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:43472 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753304AbZFRWfE (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Jun 2009 18:35:04 -0400
-Received: from int-mx2.corp.redhat.com (int-mx2.corp.redhat.com [172.16.27.26])
-	by mx2.redhat.com (8.13.8/8.13.8) with ESMTP id n5IMZ6Sx006220
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2009 18:35:06 -0400
-Received: from ns3.rdu.redhat.com (ns3.rdu.redhat.com [10.11.255.199])
-	by int-mx2.corp.redhat.com (8.13.1/8.13.1) with ESMTP id n5IMZ57a009105
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2009 18:35:05 -0400
-Received: from liberator.sandeen.net (sebastian-int.corp.redhat.com [172.16.52.221])
-	by ns3.rdu.redhat.com (8.13.8/8.13.8) with ESMTP id n5IMZ4f2024386
-	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2009 18:35:05 -0400
-In-Reply-To: <4A3AB8AD.6000100@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: akpm@linux-foundation.org
+Subject: [merged] ext3-fix-chain-verification-in-ext3_get_blocks.patch removed from -mm tree
+Date: Thu, 18 Jun 2009 15:44:51 -0700
+Message-ID: <200906182244.n5IMiprI003945@imap1.linux-foundation.org>
+Reply-To: linux-kernel@vger.kernel.org
+To: jack@suse.cz, linux-ext4@vger.kernel.org,
+	mm-commits@vger.kernel.org
+Return-path: <mm-commits-owner@vger.kernel.org>
+Sender: mm-commits-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-Eric Sandeen wrote:
-> RH bug 489841 points out that lsattr doesn't return an error
-> if you point it at a file that doesn't exist.
-> 
-> This is slightly trickier because it can take more than one
-> file as an arg, but ls seems to report an error if any occurred,
-> so this does the same, it'll report the last error that was 
-> encountered.
 
-oops kernel on the brain, I shouldn't be exiting with the errno should
-I, sigh.
+The patch titled
+     ext3: fix chain verification in ext3_get_blocks()
+has been removed from the -mm tree.  Its filename was
+     ext3-fix-chain-verification-in-ext3_get_blocks.patch
 
-I'll resend :)
+This patch was dropped because it was merged into mainline or a subsystem tree
 
--Eric
+The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
-> ---
-> 
-> 
-> diff --git a/misc/lsattr.c b/misc/lsattr.c
-> index 254ebb4..39fe564 100644
-> --- a/misc/lsattr.c
-> +++ b/misc/lsattr.c
-> @@ -74,22 +74,25 @@ static void usage(void)
->  	exit(1);
->  }
->  
-> -static void list_attributes (const char * name)
-> +static int list_attributes (const char * name)
->  {
->  	unsigned long flags;
->  	unsigned long generation;
-> +	int retval = 0;
->  
->  	if (fgetflags (name, &flags) == -1) {
-> -		com_err (program_name, errno, _("While reading flags on %s"),
-> +		retval = errno;
-> +		com_err (program_name, retval, _("While reading flags on %s"),
->  			 name);
-> -		return;
-> +		return retval;
->  	}
->  	if (generation_opt) {
->  		if (fgetversion (name, &generation) == -1) {
-> -			com_err (program_name, errno,
-> +			retval = errno;
-> +			com_err (program_name, retval,
->  				 _("While reading version on %s"),
->  				 name);
-> -			return;
-> +			return retval;
->  		}
->  		printf ("%5lu ", generation);
->  	}
-> @@ -101,23 +104,27 @@ static void list_attributes (const char * name)
->  		print_flags(stdout, flags, pf_options);
->  		printf(" %s\n", name);
->  	}
-> +	return retval;
->  }
->  
->  static int lsattr_dir_proc (const char *, struct dirent *, void *);
->  
-> -static void lsattr_args (const char * name)
-> +static int lsattr_args (const char * name)
->  {
->  	STRUCT_STAT	st;
-> +	int		retval = 0;
->  
-> -	if (LSTAT (name, &st) == -1)
-> -		com_err (program_name, errno, _("while trying to stat %s"),
-> +	if (LSTAT (name, &st) == -1) {
-> +		retval= errno;
-> +		com_err (program_name, retval, _("while trying to stat %s"),
->  			 name);
-> -	else {
-> +	} else {
->  		if (S_ISDIR(st.st_mode) && !dirs_opt)
-> -			iterate_on_dir (name, lsattr_dir_proc, NULL);
-> +			retval = iterate_on_dir (name, lsattr_dir_proc, NULL);
->  		else
-> -			list_attributes (name);
-> +			retval = list_attributes (name);
->  	}
-> +	return retval;
->  }
->  
->  static int lsattr_dir_proc (const char * dir_name, struct dirent * de,
-> @@ -155,6 +162,7 @@ int main (int argc, char ** argv)
->  {
->  	int c;
->  	int i;
-> +	int err, retval = 0;
->  
->  #ifdef ENABLE_NLS
->  	setlocale(LC_MESSAGES, "");
-> @@ -193,9 +201,12 @@ int main (int argc, char ** argv)
->  		fprintf (stderr, "lsattr %s (%s)\n",
->  			 E2FSPROGS_VERSION, E2FSPROGS_DATE);
->  	if (optind > argc - 1)
-> -		lsattr_args (".");
-> +		retval = lsattr_args (".");
->  	else
-> -		for (i = optind; i < argc; i++)
-> -			lsattr_args (argv[i]);
-> -	exit(0);
-> +		for (i = optind; i < argc; i++) {
-> +			err = lsattr_args (argv[i]);
-> +			if (err)
-> +				retval = err;
-> +		}
-> +	exit(retval);
->  }
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+------------------------------------------------------
+Subject: ext3: fix chain verification in ext3_get_blocks()
+From: Jan Kara <jack@suse.cz>
+
+Chain verification in ext3_get_blocks() has been hosed since it called
+verify_chain(chain, NULL) which always returns success.  As a result
+readers could in theory race with truncate.  On the other hand the race
+probably cannot happen with the current locking scheme, since by the time
+ext3_truncate() is called all the pages are already removed and hence
+get_block() shouldn't be called on such pages...
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext3/inode.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff -puN fs/ext3/inode.c~ext3-fix-chain-verification-in-ext3_get_blocks fs/ext3/inode.c
+--- a/fs/ext3/inode.c~ext3-fix-chain-verification-in-ext3_get_blocks
++++ a/fs/ext3/inode.c
+@@ -820,7 +820,7 @@ int ext3_get_blocks_handle(handle_t *han
+ 		while (count < maxblocks && count <= blocks_to_boundary) {
+ 			ext3_fsblk_t blk;
+ 
+-			if (!verify_chain(chain, partial)) {
++			if (!verify_chain(chain, chain + depth - 1)) {
+ 				/*
+ 				 * Indirect block might be removed by
+ 				 * truncate while we were reading it.
+_
+
+Patches currently in -mm which might be from jack@suse.cz are
+
+origin.patch
+vfs-split-generic_forget_inode-so-that-hugetlbfs-does-not-have-to-copy-it.patch
+reiser4-update-names-of-quota-methods.patch
 
