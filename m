@@ -1,78 +1,43 @@
-From: "Theodore Ts'o" <tytso@mit.edu>
-Subject: [GIT PULL] more ext4 updates
-Date: Thu, 18 Jun 2009 12:51:12 -0400
-Message-ID: <E1MHKpU-0007FN-RQ@closure.thunk.org>
-Cc: linux-ext4@vger.kernel.org, linux-kernel@vger.kernel.org
-To: Linus Torvalds <torvalds@linux-foundation.org>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: O_DIRECT and delayed allocation question
+Date: Thu, 18 Jun 2009 12:53:17 -0700
+Message-ID: <6601abe90906181253u657e67a7u67025774cc53bc4f@mail.gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: ext4 development <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:59492 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751887AbZFRQvV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 18 Jun 2009 12:51:21 -0400
+Received: from smtp-out.google.com ([216.239.33.17]:45497 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751507AbZFRTxT (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 18 Jun 2009 15:53:19 -0400
+Received: from spaceape13.eur.corp.google.com (spaceape13.eur.corp.google.com [172.28.16.147])
+	by smtp-out.google.com with ESMTP id n5IJrKw7001297
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2009 20:53:21 +0100
+Received: from pxi15 (pxi15.prod.google.com [10.243.27.15])
+	by spaceape13.eur.corp.google.com with ESMTP id n5IJrHRR027734
+	for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2009 12:53:18 -0700
+Received: by pxi15 with SMTP id 15so1257150pxi.13
+        for <linux-ext4@vger.kernel.org>; Thu, 18 Jun 2009 12:53:17 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+This might be a question with an obvious answer, but I'd like
+verification one way or the other.
 
-Hi Linus,
+Does the use of O_DIRECT essentially disable delayed allocation for a
+given file?
 
-Please pull from:
+My simple tests show a larger degree of block fragmentation for files
+written using O_DIRECT than without, and on its face, this makes sense
+to me.  This fragmentation can be removed by using fallocate() on a
+file before extending it with writes.
 
-        git://git.kernel.org/pub/scm/linux/kernel/git/tytso/ext4.git for_linus
+(Strictly speaking, I guess the use of O_DIRECT wouldn't "disable"
+delayed allocation, since the blocks are allocated at the "normal"
+time -- when going to disk.  But effectively there would be a lot less
+block grouping available to build large extents if each write goes to
+disk immediately, instead of going through the page cache.)
 
-to get the following updates for ext4.
-
-                                                - Ted
-
-
-Akira Fujita (1):
-      ext4: online defrag -- Add EXT4_IOC_MOVE_EXT ioctl
-
-Andreas Dilger (1):
-      ext4: teach the inode allocator to use a goal inode number
-
-Hisashi Hifumi (1):
-      jbd2: clean up jbd2_journal_try_to_free_buffers()
-
-Linus Torvalds (1):
-      ext3: avoid unnecessary spinlock in critical POSIX ACL path
-
-Theodore Ts'o (11):
-      jbd2: convert instrumentation from markers to tracepoints
-      ext4: convert instrumentation from markers to tracepoints
-      ext4: avoid unnecessary spinlock in critical POSIX ACL path
-      ext4: change s_mount_opt to be an unsigned int
-      ext4: update the s_last_mounted field in the superblock
-      ext4: move the abort flag from s_mount_opts to s_mount_flags
-      ext4: document the "abort" mount option
-      ext4: Use a hash of the topdir directory name for the Orlov parent group
-      ext4: Fix 64-bit block type problem on 32-bit platforms
-      ext4: Fix up whitespace issues in fs/ext4/inode.c
-      ext4: Don't update ctime for non-extent-mapped inodes
-
- Documentation/ABI/testing/sysfs-fs-ext4 |   10 +
- Documentation/filesystems/ext4.txt      |    4 +
- fs/ext3/acl.c                           |   13 +-
- fs/ext4/Makefile                        |    2 +-
- fs/ext4/acl.c                           |   15 +-
- fs/ext4/ext4.h                          |   39 +-
- fs/ext4/ext4_extents.h                  |    4 +
- fs/ext4/extents.c                       |    4 +-
- fs/ext4/file.c                          |   36 +-
- fs/ext4/fsync.c                         |    8 +-
- fs/ext4/ialloc.c                        |   48 +-
- fs/ext4/inode.c                         |  281 +++----
- fs/ext4/ioctl.c                         |   36 +
- fs/ext4/mballoc.c                       |   85 +--
- fs/ext4/mballoc.h                       |    1 -
- fs/ext4/migrate.c                       |    8 +-
- fs/ext4/move_extent.c                   | 1320 +++++++++++++++++++++++++++++++
- fs/ext4/namei.c                         |   10 +-
- fs/ext4/super.c                         |   20 +-
- fs/jbd2/checkpoint.c                    |    5 +-
- fs/jbd2/commit.c                        |   13 +-
- fs/jbd2/journal.c                       |   69 ++
- fs/jbd2/transaction.c                   |   49 --
- include/linux/jbd2.h                    |    6 +
- include/trace/events/ext4.h             |  719 +++++++++++++++++
- include/trace/events/jbd2.h             |  168 ++++
- 26 files changed, 2638 insertions(+), 335 deletions(-)
+Thanks,
+Curt
