@@ -1,57 +1,62 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: O_DIRECT and delayed allocation question
-Date: Fri, 19 Jun 2009 17:25:01 +0530
-Message-ID: <20090619115500.GE17784@skywalker>
-References: <6601abe90906181253u657e67a7u67025774cc53bc4f@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [BUG] bugs in jbd2_dev_to_name() (was Re: [PATCH 00/11] [GIT
+	PULL] more updates for the tag format)
+Date: Fri, 19 Jun 2009 08:32:04 -0400
+Message-ID: <20090619123204.GC31377@mit.edu>
+References: <20090610092644.GA20889@elte.hu> <c62985530906100411o5a178352n53f7d247f6e9dba9@mail.gmail.com> <20090610130127.GA6647@mit.edu> <alpine.DEB.2.00.0906100911190.30552@gandalf.stny.rr.com> <20090610160303.GA10240@mit.edu> <20090611130318.GB14220@infradead.org> <20090611154751.GD9275@mit.edu> <20090611171434.GA6011@nowhere> <20090611192037.GA5116@mit.edu> <4A3B48DF.8080300@cn.fujitsu.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Curt Wohlgemuth <curtw@google.com>
+Cc: Frederic Weisbecker <fweisbec@gmail.com>,
+	Christoph Hellwig <hch@infradead.org>,
+	Steven Rostedt <rostedt@goodmis.org>,
+	Ingo Molnar <mingo@elte.hu>, linux-kernel@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	linux-ext4@vger.kernel.org
+To: Li Zefan <lizf@cn.fujitsu.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:49426 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759110AbZFSLzH (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 19 Jun 2009 07:55:07 -0400
-Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
-	by e23smtp07.au.ibm.com (8.13.1/8.13.1) with ESMTP id n5JLt8rl024287
-	for <linux-ext4@vger.kernel.org>; Sat, 20 Jun 2009 07:55:08 +1000
-Received: from d23av02.au.ibm.com (d23av02.au.ibm.com [9.190.235.138])
-	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n5JBt8J6479328
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2009 21:55:08 +1000
-Received: from d23av02.au.ibm.com (loopback [127.0.0.1])
-	by d23av02.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n5JBt8k8028932
-	for <linux-ext4@vger.kernel.org>; Fri, 19 Jun 2009 21:55:08 +1000
+Received: from thunk.org ([69.25.196.29]:41556 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753491AbZFSMcd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 19 Jun 2009 08:32:33 -0400
 Content-Disposition: inline
-In-Reply-To: <6601abe90906181253u657e67a7u67025774cc53bc4f@mail.gmail.com>
+In-Reply-To: <4A3B48DF.8080300@cn.fujitsu.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 18, 2009 at 12:53:17PM -0700, Curt Wohlgemuth wrote:
-> This might be a question with an obvious answer, but I'd like
-> verification one way or the other.
+On Fri, Jun 19, 2009 at 04:14:23PM +0800, Li Zefan wrote:
+> > 	rcu_read_lock();
+> > 	if (devcache[i] && devcache[i]->device == device) {
+> > 		ret = devcache[i]->devname;
+> > 		rcu_read_unlock();
+> > 		return ret;
 > 
-> Does the use of O_DIRECT essentially disable delayed allocation for a
-> given file?
-> 
-> My simple tests show a larger degree of block fragmentation for files
-> written using O_DIRECT than without, and on its face, this makes sense
-> to me.  This fragmentation can be removed by using fallocate() on a
-> file before extending it with writes.
-> 
-> (Strictly speaking, I guess the use of O_DIRECT wouldn't "disable"
-> delayed allocation, since the blocks are allocated at the "normal"
-> time -- when going to disk.  But effectively there would be a lot less
-> block grouping available to build large extents if each write goes to
-> disk immediately, instead of going through the page cache.)
-> 
+> It doesn't seem safe to dereference @ret outside rcu read section.
 
-exactly. So it is possible that we are getting smaller number of block
-request in O_DIRECT case. But you should still see better block
-allocation because of mballoc. mballoc normalize the input block request
-count based on the file size. w.r.t fallocate I have noticed one problem with O_DIRECT
-which is explained in the url below. So there may be performance impact on using
-O_DIRECT with fallocate.
+Note the comments at the beginning of the function:
 
-http://article.gmane.org/gmane.comp.file-systems.ext4/13762
+    The caller should use rcu_read_lock() in order to make sure the
+    device name stays valid until its done with it.  We use
+    rcu_read_lock() as well to make sure we're safe in case the caller
+    gets sloppy, and because rcu_read_lock() is cheap and can be safely
+    nested.
 
--aneesh
+I suppose I should change the wording to indicate that it adds a bit
+more safety (as in, the crash won't happen inside this function, but
+as far as the caller is concerned, all bets are off!)
+
+> > 	spin_lock(&devname_cache_lock);
+> > 	if (devcache[i]) {
+> > 		if (devcache[i]->device == device) {
+> > 			ret = devcache[i]->devname;
+> > 			spin_unlock(&devname_cache_lock);
+> > 			return ret;
+> > 		}
+> > 		call_rcu(&devcache[i]->rcu, free_devcache);
+> > 	}
+> > 	devcache[i] = kmalloc(sizeof(struct devname_cache), GFP_KERNEL);
+> 
+> kmalloc(GFP_KERNEL) called with spin_lock held..
+
+Good catch, thanks.  I'll get a patch in to fix this.
+
+							- Ted
