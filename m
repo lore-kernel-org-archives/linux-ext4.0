@@ -1,60 +1,36 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: Need to potentially watch stack usage for ext4 and AIO...
-Date: Fri, 19 Jun 2009 20:46:12 -0500
-Message-ID: <4A3C3F64.70007@redhat.com>
-References: <E1MHiN1-0002TX-Cu@closure.thunk.org>
+From: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 1/3] xfstests: basic fallocate boundary tests
+Date: Sat, 20 Jun 2009 13:58:24 -0400
+Message-ID: <20090620175824.GA3984@infradead.org>
+References: <4A370C2C.6030404@sandeen.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: xfs-oss <xfs@oss.sgi.com>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@sandeen.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33586 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751170AbZFTBqL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 19 Jun 2009 21:46:11 -0400
-In-Reply-To: <E1MHiN1-0002TX-Cu@closure.thunk.org>
+Received: from bombadil.infradead.org ([18.85.46.34]:54067 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753698AbZFTR6W (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Jun 2009 13:58:22 -0400
+Content-Disposition: inline
+In-Reply-To: <4A370C2C.6030404@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o wrote:
-> On a 32-bit system, while running aio-stress, I got the following kernel
-> message:
+On Mon, Jun 15, 2009 at 10:06:20PM -0500, Eric Sandeen wrote:
+> This is just like test 072, but using fallocate instead
+> of the xfs ioctl.  Just very basic fallocate tests.
 > 
-> aio-stress used greatest stack depth: 372 bytes left
-> 
-> That's a bit close for comfort; we may want to see if we have some
-> especially piggy on-stack allocations on the AIO code paths.
-> 
-> 	   	 	  	      	     - Ted
+> Also adds a "prealloc" group (./check -g prealloc)
 
-Ted, you might try the built-in stack depth tracing stuff:
+Looks good to me, and does the right thing on my 32 bit test VM (notrun)
 
-config STACK_TRACER
-        bool "Trace max stack"
-        depends on HAVE_FUNCTION_TRACER
-        select FUNCTION_TRACER
-        select STACKTRACE
-        select KALLSYMS
-        help
-          This special tracer records the maximum stack footprint of the
-          kernel and displays it in debugfs/tracing/stack_trace.
+> +echo $testio | grep -q "not found" && \
+> +	_notrun "xfs_io fallocate support is missing"
+> +echo $testio | grep -q "Operation not supported" && \
+> +	_notrun "xfs_io fallocate command failed (old kernel? wrong fs?)"
 
-          This tracer works by hooking into every function call that the
-          kernel executes, and keeping a maximum stack depth value and
-          stack-trace saved.  If this is configured with DYNAMIC_FTRACE
-          then it will not have any overhead while the stack tracer
-          is disabled.
+Maybe add a _require_fallocate as you need the same check in the next
+testcase?
 
-          To enable the stack tracer on bootup, pass in 'stacktrace'
-          on the kernel command line.
-
-          The stack tracer can also be enabled or disabled via the
-          sysctl kernel.stack_tracer_enabled
-
-          Say N if unsure.
-
-if you got within 372 bytes on 32-bit (with 8k stacks) then that's
-indeed pretty worrisome.
-
--Eric
