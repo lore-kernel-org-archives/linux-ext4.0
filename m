@@ -1,36 +1,35 @@
 From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 1/3] xfstests: basic fallocate boundary tests
-Date: Sat, 20 Jun 2009 13:58:24 -0400
-Message-ID: <20090620175824.GA3984@infradead.org>
-References: <4A370C2C.6030404@sandeen.net>
+Subject: Re: [PATCH 2/3] xfstests: move xfs_io filters to common.filter
+Date: Sat, 20 Jun 2009 13:59:16 -0400
+Message-ID: <20090620175916.GB3984@infradead.org>
+References: <4A370D00.7030309@sandeen.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: xfs-oss <xfs@oss.sgi.com>,
 	ext4 development <linux-ext4@vger.kernel.org>
 To: Eric Sandeen <sandeen@sandeen.net>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:54067 "EHLO
+Received: from bombadil.infradead.org ([18.85.46.34]:54105 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753698AbZFTR6W (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Jun 2009 13:58:22 -0400
+	with ESMTP id S1756115AbZFTR7O (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 20 Jun 2009 13:59:14 -0400
 Content-Disposition: inline
-In-Reply-To: <4A370C2C.6030404@sandeen.net>
+In-Reply-To: <4A370D00.7030309@sandeen.net>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 15, 2009 at 10:06:20PM -0500, Eric Sandeen wrote:
-> This is just like test 072, but using fallocate instead
-> of the xfs ioctl.  Just very basic fallocate tests.
+On Mon, Jun 15, 2009 at 10:09:52PM -0500, Eric Sandeen wrote:
+> Move duplicated xfs_io filters to common.filter
 > 
-> Also adds a "prealloc" group (./check -g prealloc)
+> Also fix up 132 output, which was misfiltered due
+> to a bug in the filtering.
+> 
+> Doing this because I need this same filter for the next
+> added test.
 
-Looks good to me, and does the right thing on my 32 bit test VM (notrun)
 
-> +echo $testio | grep -q "not found" && \
-> +	_notrun "xfs_io fallocate support is missing"
-> +echo $testio | grep -q "Operation not supported" && \
-> +	_notrun "xfs_io fallocate command failed (old kernel? wrong fs?)"
+Ah, nice - common filters for xfs_io output were long overdue.
 
-Maybe add a _require_fallocate as you need the same check in the next
-testcase?
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 
