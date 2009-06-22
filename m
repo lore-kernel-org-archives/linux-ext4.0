@@ -1,127 +1,116 @@
-From: dingdinghua <dingdinghua85@gmail.com>
-Subject: [PATCH]JBD2/JBD: race condition while writing updates to journal
-Date: Mon, 22 Jun 2009 16:05:06 +0800
-Message-ID: <4A3F3B32.9090606@gmail.com>
+From: bugzilla-daemon@bugzilla.kernel.org
+Subject: [Bug 13598] New: FIEMAP related circular locking dependency detected
+Date: Mon, 22 Jun 2009 09:01:56 GMT
+Message-ID: <bug-13598-13602@http.bugzilla.kernel.org/>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=GB2312
-Content-Transfer-Encoding: 7bit
-Cc: dingdinghua@nrchpc.ac.cn
+Content-Type: text/plain; charset="UTF-8"
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.235]:51257 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751660AbZFVIFQ (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Jun 2009 04:05:16 -0400
-Received: by rv-out-0506.google.com with SMTP id g37so7756rvb.1
-        for <linux-ext4@vger.kernel.org>; Mon, 22 Jun 2009 01:05:15 -0700 (PDT)
+Received: from demeter.kernel.org ([140.211.167.39]:54615 "EHLO
+	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754947AbZFVJBx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Jun 2009 05:01:53 -0400
+Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
+	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n5M91uKB023455
+	for <linux-ext4@vger.kernel.org>; Mon, 22 Jun 2009 09:01:56 GMT
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-resend this patch:
+http://bugzilla.kernel.org/show_bug.cgi?id=13598
 
-At committing phase, we call jbd2_journal_write_metadata_buffer to
-prepare log block's buffer_head, in this function, new_bh->b_data is set
-to b_frozen_data or bh_in->b_data. We call "jbd_unlock_bh_state(bh_in)"
-too early, since at this point , we haven't file bh_in to BJ_shadow
-list, and we may set new_bh->b_data to bh_in->b_data, at this time,
-another thread may call get write access of bh_in, modify bh_in->b_data
-and dirty it. So , if new_bh->b_data is set to bh_in->b_data, the
-committing transaction may flush the newly modified buffer content to
-disk, preserve work done in jbd2_journal_get_write_access is useless.
-jbd also has this problem.
+           Summary: FIEMAP related circular locking dependency detected
+           Product: File System
+           Version: 2.5
+          Platform: All
+        OS/Version: Linux
+              Tree: Mainline
+            Status: NEW
+          Severity: normal
+          Priority: P1
+         Component: ext4
+        AssignedTo: fs_ext4@kernel-bugs.osdl.org
+        ReportedBy: aneesh.kumar@linux.vnet.ibm.com
+        Regression: No
 
-here is the patch based on kernel version 2.6.30:
 
-Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
-Acked-by: Jan Kara <jack@suse.cz>
+Have a bugzilla entry for tracking the problem.
 
----
+reported here http://article.gmane.org/gmane.comp.file-systems.ext4/13076
 
-diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-index 737f724..ff5dcb5 100644
---- a/fs/jbd/journal.c
-+++ b/fs/jbd/journal.c
-@@ -287,6 +287,7 @@ int journal_write_metadata_buffer(transaction_t *transaction,
- 	struct page *new_page;
- 	unsigned int new_offset;
- 	struct buffer_head *bh_in = jh2bh(jh_in);
-+	journal_t *journal = transaction->t_journal;
- 
- 	/*
- 	 * The buffer really shouldn't be locked: only the current committing
-@@ -300,6 +301,11 @@ int journal_write_metadata_buffer(transaction_t *transaction,
- 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
- 
- 	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
-+	/* keep subsequent assertions sane */
-+	new_bh->b_state = 0;
-+	init_buffer(new_bh, NULL, NULL);
-+	atomic_set(&new_bh->b_count, 1);
-+	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
- 
- 	/*
- 	 * If a new transaction has already done a buffer copy-out, then
-@@ -361,14 +367,6 @@ repeat:
- 		kunmap_atomic(mapped_data, KM_USER0);
- 	}
- 
--	/* keep subsequent assertions sane */
--	new_bh->b_state = 0;
--	init_buffer(new_bh, NULL, NULL);
--	atomic_set(&new_bh->b_count, 1);
--	jbd_unlock_bh_state(bh_in);
--
--	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
--
- 	set_bh_page(new_bh, new_page, new_offset);
- 	new_jh->b_transaction = NULL;
- 	new_bh->b_size = jh2bh(jh_in)->b_size;
-@@ -385,7 +383,11 @@ repeat:
- 	 * copying is moved to the transaction's shadow queue.
- 	 */
- 	JBUFFER_TRACE(jh_in, "file as BJ_Shadow");
--	journal_file_buffer(jh_in, transaction, BJ_Shadow);
-+	spin_lock(&journal->j_list_lock);
-+	__journal_file_buffer(jh_in, transaction, BJ_Shadow);
-+	spin_unlock(&journal->j_list_lock);
-+	jbd_unlock_bh_state(bh_in);
-+
- 	JBUFFER_TRACE(new_jh, "file as BJ_IO");
- 	journal_file_buffer(new_jh, transaction, BJ_IO);
- 
-diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-index 18bfd5d..4a0b48f 100644
---- a/fs/jbd2/journal.c
-+++ b/fs/jbd2/journal.c
-@@ -297,6 +297,8 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 	unsigned int new_offset;
- 	struct buffer_head *bh_in = jh2bh(jh_in);
- 	struct jbd2_buffer_trigger_type *triggers;
-+	journal_t *journal = transaction->t_journal;
-+
- 
- 	/*
- 	 * The buffer really shouldn't be locked: only the current committing
-@@ -310,6 +312,11 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
- 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
- 
- 	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
-+	/* keep subsequent assertions sane */
-+	new_bh->b_state = 0;
-+	init_buffer(new_bh, NULL, NULL);
-+	atomic_set(&new_bh->b_count, 1);
-+	new_jh = jbd2_journal_add_journal_head(new_bh);	/* This sleeps */
- 
- 	/*
- 	 * If a new transaction has already done a buffer copy-out, then
-@@ -388,14 +395,6 @@ repeat:
- 		kunmap_atomic(mapped_data, KM_USER0);
- 	}
- 
--	/* keep subsequent assertions sane */
--	new_bh->b_state = 0;
--	init_buffer(new_bh, NULL, NULL);
--	atomic_set(&new_bh->b_count, 1);
--	jbd_unlock_bh_state(bh_in);
--
--	new_jh = jbd2_journal_add_journal_head(new_bh);	/* This sleeps */
+[ INFO: possible circular locking dependency detected ]
+2.6.30-rc4-autokern1 #1
+-------------------------------------------------------
+a.out/5595 is trying to acquire lock:
+ (&mm->mmap_sem){++++++}, at: [<c047f023>] might_fault+0x35/0x72
+
+but task is already holding lock:
+ (&ei->i_data_sem){++++..}, at: [<c04f2f71>] ext4_fiemap+0x139/0x191
+
+which lock already depends on the new lock.
+
+the existing dependency chain (in reverse order) is:
+
+-> #1 (&ei->i_data_sem){++++..}:
+       [<c044817e>] validate_chain+0x89b/0xba1
+       [<c0448b28>] __lock_acquire+0x6a4/0x73c
+       [<c0449d40>] lock_acquire+0xa8/0xc8
+       [<c06a6f91>] down_read+0x1e/0x5b
+       [<c04e1a83>] ext4_get_blocks_wrap+0x28/0x27e
+       [<c04e2782>] ext4_get_block+0x94/0xc9
+       [<c04b3171>] do_mpage_readpage+0x24b/0x5e0
+       [<c04b3620>] mpage_readpages+0x74/0xa8
+       [<c04e0edc>] ext4_readpages+0x14/0x16
+       [<c04732bd>] __do_page_cache_readahead+0x14f/0x1b8
+       [<c04736bf>] do_page_cache_readahead+0x42/0x53
+       [<c046e57b>] filemap_fault+0x194/0x3ad
+       [<c047bea2>] __do_fault+0x3b/0x35c
+       [<c047db7b>] handle_mm_fault+0x36d/0x7a9
+       [<c06aa208>] do_page_fault+0x28d/0x2f1
+       [<c06a8612>] error_code+0x72/0x78
+       [<ffffffff>] 0xffffffff
+
+-> #0 (&mm->mmap_sem){++++++}:
+       [<c0447eb2>] validate_chain+0x5cf/0xba1
+       [<c0448b28>] __lock_acquire+0x6a4/0x73c
+       [<c0449d40>] lock_acquire+0xa8/0xc8
+       [<c047f040>] might_fault+0x52/0x72
+       [<c0548f7d>] copy_to_user+0x28/0x3f
+       [<c049bd9b>] fiemap_fill_next_extent+0x9e/0xc9
+       [<c04f2aef>] ext4_ext_fiemap_cb+0x1a7/0x1c1
+       [<c04f1cdd>] ext4_ext_walk_space+0x194/0x207
+       [<c04f2fb4>] ext4_fiemap+0x17c/0x191
+       [<c049c157>] do_vfs_ioctl+0x32a/0x4a6
+       [<c049c313>] sys_ioctl+0x40/0x5a
+       [<c0402944>] sysenter_do_call+0x12/0x32
+       [<ffffffff>] 0xffffffff
+
+other info that might help us debug this:
+
+1 lock held by a.out/5595:
+ #0:  (&ei->i_data_sem){++++..}, at: [<c04f2f71>] ext4_fiemap+0x139/0x191
+
+stack backtrace:
+Pid: 5595, comm: a.out Not tainted 2.6.30-rc4-autokern1 #1
+Call Trace:
+ [<c04477e0>] print_circular_bug_tail+0xab/0xb6
+ [<c0447eb2>] validate_chain+0x5cf/0xba1
+ [<c0448b28>] __lock_acquire+0x6a4/0x73c
+ [<c0449d40>] lock_acquire+0xa8/0xc8
+ [<c047f023>] ? might_fault+0x35/0x72
+ [<c047f040>] might_fault+0x52/0x72
+ [<c047f023>] ? might_fault+0x35/0x72
+ [<c0548f7d>] copy_to_user+0x28/0x3f
+ [<c049bd9b>] fiemap_fill_next_extent+0x9e/0xc9
+ [<c04f2aef>] ext4_ext_fiemap_cb+0x1a7/0x1c1
+ [<c04f1cdd>] ext4_ext_walk_space+0x194/0x207
+ [<c04f2fb4>] ext4_fiemap+0x17c/0x191
+ [<c04f2948>] ? ext4_ext_fiemap_cb+0x0/0x1c1
+ [<c049c157>] do_vfs_ioctl+0x32a/0x4a6
+ [<c049c313>] sys_ioctl+0x40/0x5a
+ [<c0402944>] sysenter_do_call+0x12/0x32
+--
+
+-- 
+Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
+------- You are receiving this mail because: -------
+You are watching the assignee of the bug.
