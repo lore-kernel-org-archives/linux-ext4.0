@@ -1,49 +1,127 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH][BUG] ext4: dx_map_entry cannot support over 64KB block
-	size
-Date: Sun, 21 Jun 2009 22:47:57 -0400
-Message-ID: <20090622024757.GB26079@mit.edu>
-References: <20090605165049.e8bd9c74.toshi.okajima@jp.fujitsu.com> <20090605212000.GV9002@webber.adilger.int> <20090608163055.0eab9737.toshi.okajima@jp.fujitsu.com> <20090621035731.GA6719@mit.edu> <4A3EE269.3020704@jp.fujitsu.com>
+From: dingdinghua <dingdinghua85@gmail.com>
+Subject: [PATCH]JBD2/JBD: race condition while writing updates to journal
+Date: Mon, 22 Jun 2009 16:05:06 +0800
+Message-ID: <4A3F3B32.9090606@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Content-Type: text/plain; charset=GB2312
+Content-Transfer-Encoding: 7bit
+Cc: dingdinghua@nrchpc.ac.cn
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:38480 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751403AbZFVCsA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 21 Jun 2009 22:48:00 -0400
-Content-Disposition: inline
-In-Reply-To: <4A3EE269.3020704@jp.fujitsu.com>
+Received: from rv-out-0506.google.com ([209.85.198.235]:51257 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751660AbZFVIFQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Jun 2009 04:05:16 -0400
+Received: by rv-out-0506.google.com with SMTP id g37so7756rvb.1
+        for <linux-ext4@vger.kernel.org>; Mon, 22 Jun 2009 01:05:15 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 22, 2009 at 10:46:17AM +0900, Toshiyuki Okajima wrote:
-> I have been reviewing the logic around dir_index(fs/ext4/dir.c
-> fs/ext4/namei.c) for the sake of performance and quality
-> improvement. Then I found this bug.  Sorry, therefore it is not a
-> result of the real test.
+resend this patch:
 
-I've started doing some testing on the e2fsprogs side, and fixed some
-problems in for the upcoming e2fsprogs 1.41.7, but both the kernel and
-e2fsprogs currently don't officially support a blocksize larger than
-64k.  At least e2fsprogs in the git tree will mke2fs that passes
-e2fsck for a 128k block filesystem; this is *not* yet true for 256k
-block filesystems (but it requires some commits in the 64k block
-numbers patches which I don't want to merge into the maint branch).
+At committing phase, we call jbd2_journal_write_metadata_buffer to
+prepare log block's buffer_head, in this function, new_bh->b_data is set
+to b_frozen_data or bh_in->b_data. We call "jbd_unlock_bh_state(bh_in)"
+too early, since at this point , we haven't file bh_in to BJ_shadow
+list, and we may set new_bh->b_data to bh_in->b_data, at this time,
+another thread may call get write access of bh_in, modify bh_in->b_data
+and dirty it. So , if new_bh->b_data is set to bh_in->b_data, the
+committing transaction may flush the newly modified buffer content to
+disk, preserve work done in jbd2_journal_get_write_access is useless.
+jbd also has this problem.
 
-Are you aware of any patches that enable an IA64 system to support a
-page size greater than 64kB?  (And whether any customer would actually
-want to use them, given the downsides of very large page size?)  The
-issue is that Linux doesn't support filesystem block sizes > than the
-page size.  In any case, I don't mind adding patches that attempt to
-make it better to support large block sizes; I don't really want to
-claim that we support it until we can actually fully test for that
-feature, though.  Is it your intent to actually try to provide support
-for this at some point?  I'll help you if you are, but you'll have to
-do the testing, since I don't have access to an IA64 platform that
-might be able to support these sorts of large pages.
+here is the patch based on kernel version 2.6.30:
 
-Thanks,
+Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
+Acked-by: Jan Kara <jack@suse.cz>
 
-						- Ted
+---
+
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 737f724..ff5dcb5 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -287,6 +287,7 @@ int journal_write_metadata_buffer(transaction_t *transaction,
+ 	struct page *new_page;
+ 	unsigned int new_offset;
+ 	struct buffer_head *bh_in = jh2bh(jh_in);
++	journal_t *journal = transaction->t_journal;
+ 
+ 	/*
+ 	 * The buffer really shouldn't be locked: only the current committing
+@@ -300,6 +301,11 @@ int journal_write_metadata_buffer(transaction_t *transaction,
+ 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
+ 
+ 	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
++	/* keep subsequent assertions sane */
++	new_bh->b_state = 0;
++	init_buffer(new_bh, NULL, NULL);
++	atomic_set(&new_bh->b_count, 1);
++	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
+ 
+ 	/*
+ 	 * If a new transaction has already done a buffer copy-out, then
+@@ -361,14 +367,6 @@ repeat:
+ 		kunmap_atomic(mapped_data, KM_USER0);
+ 	}
+ 
+-	/* keep subsequent assertions sane */
+-	new_bh->b_state = 0;
+-	init_buffer(new_bh, NULL, NULL);
+-	atomic_set(&new_bh->b_count, 1);
+-	jbd_unlock_bh_state(bh_in);
+-
+-	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
+-
+ 	set_bh_page(new_bh, new_page, new_offset);
+ 	new_jh->b_transaction = NULL;
+ 	new_bh->b_size = jh2bh(jh_in)->b_size;
+@@ -385,7 +383,11 @@ repeat:
+ 	 * copying is moved to the transaction's shadow queue.
+ 	 */
+ 	JBUFFER_TRACE(jh_in, "file as BJ_Shadow");
+-	journal_file_buffer(jh_in, transaction, BJ_Shadow);
++	spin_lock(&journal->j_list_lock);
++	__journal_file_buffer(jh_in, transaction, BJ_Shadow);
++	spin_unlock(&journal->j_list_lock);
++	jbd_unlock_bh_state(bh_in);
++
+ 	JBUFFER_TRACE(new_jh, "file as BJ_IO");
+ 	journal_file_buffer(new_jh, transaction, BJ_IO);
+ 
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 18bfd5d..4a0b48f 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -297,6 +297,8 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	unsigned int new_offset;
+ 	struct buffer_head *bh_in = jh2bh(jh_in);
+ 	struct jbd2_buffer_trigger_type *triggers;
++	journal_t *journal = transaction->t_journal;
++
+ 
+ 	/*
+ 	 * The buffer really shouldn't be locked: only the current committing
+@@ -310,6 +312,11 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
+ 
+ 	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
++	/* keep subsequent assertions sane */
++	new_bh->b_state = 0;
++	init_buffer(new_bh, NULL, NULL);
++	atomic_set(&new_bh->b_count, 1);
++	new_jh = jbd2_journal_add_journal_head(new_bh);	/* This sleeps */
+ 
+ 	/*
+ 	 * If a new transaction has already done a buffer copy-out, then
+@@ -388,14 +395,6 @@ repeat:
+ 		kunmap_atomic(mapped_data, KM_USER0);
+ 	}
+ 
+-	/* keep subsequent assertions sane */
+-	new_bh->b_state = 0;
+-	init_buffer(new_bh, NULL, NULL);
+-	atomic_set(&new_bh->b_count, 1);
+-	jbd_unlock_bh_state(bh_in);
+-
+-	new_jh = jbd2_journal_add_journal_head(new_bh);	/* This sleeps */
