@@ -1,38 +1,39 @@
-From: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 3/3] xfstests: fallocate + read/write tests, ext4
-	regression tests
-Date: Sun, 21 Jun 2009 15:17:32 -0400
-Message-ID: <20090621191732.GB19596@infradead.org>
-References: <4A370DD2.6080204@sandeen.net> <20090620175953.GC3984@infradead.org> <58093.76.66.127.206.1245531627.squirrel@www.sandeen.net>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH]JBD2/JBD: race condition while writing updates to
+	journal
+Date: Sun, 21 Jun 2009 20:09:15 -0400
+Message-ID: <20090622000915.GA6464@mit.edu>
+References: <4A3E5E2B.4020106@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Christoph Hellwig <hch@infradead.org>,
-	ext4 development <linux-ext4@vger.kernel.org>,
-	xfs-oss <xfs@oss.sgi.com>
-To: Eric Sandeen <sandeen@sandeen.net>
+Cc: linux-ext4@vger.kernel.org
+To: dingdinghua <dingdinghua85@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from bombadil.infradead.org ([18.85.46.34]:55764 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751625AbZFUTR3 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 21 Jun 2009 15:17:29 -0400
+Received: from THUNK.ORG ([69.25.196.29]:44727 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754320AbZFVAJS (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 21 Jun 2009 20:09:18 -0400
 Content-Disposition: inline
-In-Reply-To: <58093.76.66.127.206.1245531627.squirrel@www.sandeen.net>
+In-Reply-To: <4A3E5E2B.4020106@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sat, Jun 20, 2009 at 04:00:27PM -0500, Eric Sandeen wrote:
-> Christoph Hellwig wrote:
-> > On Mon, Jun 15, 2009 at 10:13:22PM -0500, Eric Sandeen wrote:
-> >> New test to test basic mixed fallocate + read & write,
-> >> includes a couple regression tests for bugs that ext4
-> >> hit.  Uses xfs_io to generate fallocate calls, so requires
-> >> git xfsprogs and very recent glibc at this point.
-> >
-> > Looks good to me, and again does the correct notrun for my 32-bit
-> > VM.  Guess I need to do the raw syscall wireup i xfsprogs eventually..
+On Mon, Jun 22, 2009 at 12:22:03AM +0800, dingdinghua wrote:
 > 
-> I don't mind doing it either ... how many arches? :)
+> At committing phase, we call jbd2_journal_write_metadata_buffer to
+> prepare log block's buffer_head, in this function, new_bh->b_data is set
+> to b_frozen_data or bh_in->b_data. We call "jbd_unlock_bh_state(bh_in)"
+> too early, since at this point , we haven't file bh_in to BJ_shadow list,
+> and we may set new_bh->b_data to bh_in->b_data, at this time, another
+> thread may call get write access of bh_in, modify bh_in->b_data and
+> dirty it. So , if new_bh->b_data is set to bh_in->b_data, the committing
+> transaction may flush the newly modified buffer content to disk,
+> preserve work done in jbd2_journal_get_write_access is useless. jbd also
+> has this problem.
+> 
+> here is the patch based on kernel version 2.6.30:
 
-Most important is x86 I think.  arm might be the other really important
-candidate.
+This patch is completely whitespace damaged.  Could you resend it
+using a mail user agent that doesn't damage patches, please?    Thanks!!
 
+      	     	  	     	     	    - Ted
