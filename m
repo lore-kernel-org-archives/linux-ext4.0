@@ -1,46 +1,51 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH][BUG] ext4: dx_map_entry cannot support over 64KB block
-	size
-Date: Tue, 23 Jun 2009 11:28:11 -0400
-Message-ID: <20090623152811.GD26079@mit.edu>
-References: <20090605165049.e8bd9c74.toshi.okajima@jp.fujitsu.com> <20090605212000.GV9002@webber.adilger.int> <20090608163055.0eab9737.toshi.okajima@jp.fujitsu.com> <20090621035731.GA6719@mit.edu> <4A3EE269.3020704@jp.fujitsu.com> <20090622024757.GB26079@mit.edu> <4A404CC0.9050202@jp.fujitsu.com>
+From: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+Subject: [PATCH 05/10] nfs: Use rcu_barrier() on module unload.
+Date: Tue, 23 Jun 2009 17:04:19 +0200
+Message-ID: <20090623150419.22490.94087.stgit@localhost>
+References: <20090623150330.22490.87327.stgit@localhost>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:32794 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755094AbZFWP2l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 23 Jun 2009 11:28:41 -0400
-Content-Disposition: inline
-In-Reply-To: <4A404CC0.9050202@jp.fujitsu.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 7bit
+Cc: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>,
+	"Paul E. McKenney" <paulmck-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
+	netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	dougthompson-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org, bluesmoke-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, "Patrick McHardy" <kaber-dcUjhNyLwpNeoWH0uzbU5w@public.gmane.org>,
+	christine.caulfield-gM/Ye1E23mwN+BqQ9rBEUg@public.gmane.org, Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org,
+	linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org,
+	yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, shemminger-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-xsfywfwIY+M@public.gmane.org,
+	netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
+Return-path: <linux-wireless-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20090623150330.22490.87327.stgit@localhost>
+Sender: linux-wireless-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Tue, Jun 23, 2009 at 12:32:16PM +0900, Toshiyuki Okajima wrote:
-> No, I am not. But I have considered that POWERPC system has been
-> supported over 64KB page size after I examined all Kconfig's in kernel
-> source. Therefore I thought this bug should be fixed in kernel side.
+The exit path unregister and destroys a lot of stuff, but I have not
+verified that nfs_free_delegation() cannot start new call_rcu() callbacks.
 
-I hadn't ealized that PowerPC had support for 256k page sizes.  Looks
-like it only works on a specialized embedded (AMCC) processor, with a
-patched set of binutils, and all of the binaries have to be rebuilt to
-accomodate having the ELF sections aligned on something greater than
-64k boudaries (i.e. standard PPC distributions won't work).  So it's
-not likely that I'm going to be able to get access to something that
-will support such large pagesizes in the near future.
+Signed-off-by: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+---
 
-> I don't think this feature (over 64KB block size support) to be
-> necessary immediately. Because I have been investigating ext4 for my
-> customers in order that I may provide them greater quality and
-> performance but they don't want it now.
+ fs/nfs/inode.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
-That's my assessment on interest in >64k block size support as well; I
-will prioritize accordingly.  I just wanted to make sure there wasn't
-some customers interested in some unusual use case that I wasn't aware
-of.
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 64f8719..40bf2b7 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1518,6 +1518,7 @@ static void __exit exit_nfs_fs(void)
+ 	unregister_nfs_fs();
+ 	nfs_fs_proc_exit();
+ 	nfsiod_stop();
++	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+ }
+ 
+ /* Not quite true; I just maintain it */
 
-Regards,
-
-							- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe linux-wireless" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
