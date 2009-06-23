@@ -1,70 +1,72 @@
-From: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
-Subject: Re: [PATCH][BUG] ext4: dx_map_entry cannot support over 64KB block
- size
-Date: Tue, 23 Jun 2009 12:32:16 +0900
-Message-ID: <4A404CC0.9050202@jp.fujitsu.com>
-References: <20090605165049.e8bd9c74.toshi.okajima@jp.fujitsu.com> <20090605212000.GV9002@webber.adilger.int> <20090608163055.0eab9737.toshi.okajima@jp.fujitsu.com> <20090621035731.GA6719@mit.edu> <4A3EE269.3020704@jp.fujitsu.com> <20090622024757.GB26079@mit.edu>
-Reply-To: toshi.okajima@jp.fujitsu.com
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [RFC][PATCH 0/7]ext4: Block allocation restriction and inode preferred
+ range of blocks for ext4
+Date: Tue, 23 Jun 2009 17:25:06 +0900
+Message-ID: <4A409162.6000307@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: linux-fsdevel@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from fgwmail6.fujitsu.co.jp ([192.51.44.36]:48358 "EHLO
-	fgwmail6.fujitsu.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751372AbZFWDcS (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 22 Jun 2009 23:32:18 -0400
-Received: from m6.gw.fujitsu.co.jp ([10.0.50.76])
-	by fgwmail6.fujitsu.co.jp (Fujitsu Gateway) with ESMTP id n5N3WKvV002642
-	for <linux-ext4@vger.kernel.org> (envelope-from toshi.okajima@jp.fujitsu.com);
-	Tue, 23 Jun 2009 12:32:20 +0900
-Received: from smail (m6 [127.0.0.1])
-	by outgoing.m6.gw.fujitsu.co.jp (Postfix) with ESMTP id B293445DE53
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2009 12:32:19 +0900 (JST)
-Received: from s6.gw.fujitsu.co.jp (s6.gw.fujitsu.co.jp [10.0.50.96])
-	by m6.gw.fujitsu.co.jp (Postfix) with ESMTP id 7A87745DE51
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2009 12:32:19 +0900 (JST)
-Received: from s6.gw.fujitsu.co.jp (localhost.localdomain [127.0.0.1])
-	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 46447E08005
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2009 12:32:19 +0900 (JST)
-Received: from m105.s.css.fujitsu.com (m105.s.css.fujitsu.com [10.249.87.105])
-	by s6.gw.fujitsu.co.jp (Postfix) with ESMTP id 052041DB8038
-	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2009 12:32:19 +0900 (JST)
-In-Reply-To: <20090622024757.GB26079@mit.edu>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:38357 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753959AbZFWI0i (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jun 2009 04:26:38 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ted-san,
+Hi,
 
-Theodore Tso wrote:
- > Are you aware of any patches that enable an IA64 system to support a
- > page size greater than 64kB?  (And whether any customer would actually
- > want to use them, given the downsides of very large page size?)  The
-No, I am not. But I have considered that POWERPC system has been
-supported over 64KB page size after I examined all Kconfig's in kernel
-source. Therefore I thought this bug should be fixed in kernel side.
+These are trial patches to add block allocation restriction and
+inode preferred range of blocks for ext4
+(http://marc.info/?l=linux-ext4&m=123615213508332&w=2).
 
- > issue is that Linux doesn't support filesystem block sizes > than the
- > page size.  In any case, I don't mind adding patches that attempt to
- > make it better to support large block sizes; I don't really want to
- > claim that we support it until we can actually fully test for that
-I think so, too.
+This change will help ext4 online defrag to re-implement
+force defrag (-f) and relevant defrag (-r) features
+which defrag had implemented in the past version.
 
- > feature, though.  Is it your intent to actually try to provide support
- > for this at some point?  I'll help you if you are, but you'll have to
- > do the testing, since I don't have access to an IA64 platform that
- > might be able to support these sorts of large pages.
- >
- > Thanks,
- >
- > 						- Ted
-I don't think this feature (over 64KB block size support) to be necessary
-immediately. Because I have been investigating ext4 for my customers
-in order that I may provide them greater quality and performance but they don't
-  want it now.
-But when my customers want this feature, I will try to test it.
+Summary of this function:
+  a. Block allocation restriction (EXT4_IOC_ADD_GLOBAL_ALLOC_RULE)
+     This is the ioctl interface which allows a privileged program to specify
+     one or more range of blocks which the filesystem's block allocator
+     must not allocate from.
+     This allows the ext4 online defrag to solve free space fragmentation;
+     it has to do with force defragmentation mode.
+     This feature may be useful for online shrink; at first, we restrict the
+     allocation from the tail of a filesystem, then move data away from there,
+     and shorten the size of it.
+
+  b. Preferred blocks allocation (EXT4_IOC_ADD_INODE_ALLOC_RULE)
+     This is ioctl interface which associates an inode with preferred range of
+     blocks which the block allocator will try using first.
+     It gives the two following features to ext4 online defrag.
+      1. Defragment files and re-allocate them closely each other
+         (Relevant file defragmentation mode needs this one).
+      2. After solving free space fragmentation, re-allocate a file to the
+         contiguous free space (Force defragmentation mode needs this one).
+     It is also possible to allocate particular blocks to a file with
+     fallocate in advance.
+
+This patch set consists of following 7 patches (6/7 and 7/7 are for debugging).
+And can be applied to the ext4 patch queue (2.6.30-git14).
+
+[1/7] Add EXT4_IOC_ADD_GLOBAL_ALLOC_RULE restricts block allocation
+[2/7] Add EXT4_IOC_CLR_GLOBAL_ALLOC_RULE clears block allocation restriction
+[3/7] Add EXT4_IOC_ADD_INODE_ALLOC_RULE sets inode preferred range of blocks
+[4/7] Implement the block allocation with restricted blocks
+[5/7] Implement the block allocation with preferred allocation range
+[6/7] (For debugging) Add EXT4_IOC_PRINT_GLOBAL_ARULE prints
+      block allocation restriction
+[7/7] (For debugging) Add EXT4_IOC_PRINT_INODE_ARULE prints
+      preferred block allocation
+
+ToDos:
+1. Support indirect blocks (Current implementation is just for extent based file).
+2. Inspect for the lock order of block group and allocation rule.
+
+Any comments are very welcome.
 
 Best regards,
-Toshiyuki Okajima
+Akira Fujita
 
