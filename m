@@ -1,106 +1,167 @@
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: [RFC][PATCH 2/7]ext4: Add EXT4_IOC_CLR_GLOBAL_ALLOC_RULE clears block
- allocation restriction
-Date: Tue, 23 Jun 2009 17:25:21 +0900
-Message-ID: <4A409171.3090202@rs.jp.nec.com>
+Subject: [RFC][PATCH 3/7]ext4: Add EXT4_IOC_ADD_INODE_ALLOC_RULE sets inode
+ preferred range of blocks
+Date: Tue, 23 Jun 2009 17:25:27 +0900
+Message-ID: <4A409177.2030403@rs.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: linux-fsdevel@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:38452 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757268AbZFWI05 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jun 2009 04:26:57 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+Sender: linux-fsdevel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
-ext4: Add EXT4_IOC_CLR_GLOBAL_ALLOC_RULE clears block allocation restriction
+ext4: Add EXT4_IOC_ADD_INODE_ALLOC_RULE sets inode preferred range of blocks
 
 From: Akira Fujita <a-fujita@rs.jp.nec.com>
 
-Block allocation restriction is cleared with this ioctl or umount filesystem.
+This ioctl provides the interface which associates with an inode preferred
+range of blocks which the block allocator will try using first.
 
-  #define EXT4_IOC_CLR_GLOBAL_ALLOC_RULE _IOW('f', 17, struct ext4_alloc_rule);
+  #define EXT4_IOC_ADD_INODE_ALLOC_RULE  _IOW('f', 18, struct ext4_alloc_rule);
 
-  struct ext4_alloc_rule {
-        __u64 start;            /* start physical offset to clear rule */
-        __u64 len;              /* number of blocks to be clear */
-        __u32 alloc_flag;       /* not used, should be zero */
+  struct ext4_inode_alloc_rule {
+        struct ext4_alloc_rule alloc_rule;
+        pid_t alloc_pid;
   };
 
-For example, block allocation restriction (1) has been already set on FS,
-and call EXT4_IOC_CLR_GLOBAL_ALLOC_RULE (2),
-As a result, block allocation restriction is divided into two.
+  struct ext4_alloc_rule {
+        __u64 start;            /* first physical block this rule covers */
+        __u64 len;              /* number of blocks covered by this rule */
+        __u32 alloc_flag;       /* 0: mandatory 1: advisory  */
+  };
 
-(1) start:5000, len:1000, flag:0
-(2) start:5500, len:100
-(3) start:5000, len:500, flag:0
-(4) start:5600, len:400, flag:0
+alloc_pid of ext4_inode_alloc_rule structure is set process id of this ioctl.
+When current process id and ext4_inode->info->i_alloc_rule->alloc_pid is same,
+block allocator acts on inode preferred range of blocks.
 
-  <Before>
-  BG#0 |-------------------------------|
-       0       |***********|           32767
-            5000    (1)    5999
+alloc_flag of ext4_alloc_rule structure is set 0 (mandatory) or 1 (advisory),
+and it defines the behavior of block allocator if blocks allocator
+can not use blocks from inode preferred range of blocks.
 
-  <After>
-  BG#0 |-------------------------------|
-       0       |****|  |***|         32767
-            5000  5499 5600 5999
-                 (3)    (4)
+If "mandatory" is set, just return -ENOSPC when block allocator
+can not use blocks from preferred range of blocks.
+On the other hand in "advisory" case, block allocator retries to use blocks
+from the out of preferred range of blocks when it gets -ENOSPC.
 
+Release preferred range of blocks:
+(1) no process refers to the inode (inode reference counter is 0)
+(2) preferred range of blocks are used by block allocator
+
+And you can overwrite (extend / shrink) preferred range of blocks
+with re-calling this ioctl to the same inode.
 
 Signed-off-by: Akira Fujita <a-fujita@rs.jp.nec.com>
 Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 ---
- fs/ext4/ext4.h    |    3 +
- fs/ext4/ioctl.c   |   16 +++++
- fs/ext4/mballoc.c |  186 +++++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 205 insertions(+), 0 deletions(-)
+ fs/ext4/ext4.h    |   11 +++++++++++
+ fs/ext4/file.c    |    1 +
+ fs/ext4/ialloc.c  |    2 ++
+ fs/ext4/ioctl.c   |   26 ++++++++++++++++++++++++++
+ fs/ext4/mballoc.c |   33 +++++++++++++++++++++++++++++++++
+ fs/ext4/super.c   |    2 ++
+ 6 files changed, 75 insertions(+), 0 deletions(-)
 
 diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 1d2d550..d2cac27 100644
+index d2cac27..40f1577 100644
 --- a/fs/ext4/ext4.h
 +++ b/fs/ext4/ext4.h
-@@ -357,6 +357,7 @@ struct ext4_new_group_data {
- #define EXT4_IOC_ALLOC_DA_BLKS		_IO('f', 12)
+@@ -358,6 +358,7 @@ struct ext4_new_group_data {
  #define EXT4_IOC_MOVE_EXT		_IOWR('f', 15, struct move_extent)
  #define EXT4_IOC_ADD_GLOBAL_ALLOC_RULE	_IOW('f', 16, struct ext4_alloc_rule)
-+#define EXT4_IOC_CLR_GLOBAL_ALLOC_RULE	_IOW('f', 17, struct ext4_alloc_rule)
+ #define EXT4_IOC_CLR_GLOBAL_ALLOC_RULE	_IOW('f', 17, struct ext4_alloc_rule)
++#define EXT4_IOC_ADD_INODE_ALLOC_RULE	_IOW('f', 18, struct ext4_alloc_rule)
 
  /*
   * ioctl commands in 32 bit emulation
-@@ -1386,6 +1387,8 @@ extern int ext4_mb_get_buddy_cache_lock(struct super_block *, ext4_group_t);
- extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
- 						ext4_group_t, int);
+@@ -403,6 +404,11 @@ struct ext4_bg_alloc_rule {
+ 	int alloc_flag;			/* 0(mandatory) or 1(advisory) */
+ };
+
++struct ext4_inode_alloc_rule {
++	struct ext4_alloc_rule alloc_rule;
++	pid_t alloc_pid;
++};
++
+ /*
+  *  Mount options
+  */
+@@ -689,6 +695,8 @@ struct ext4_inode_info {
+ 	__u16 i_extra_isize;
+
+ 	spinlock_t i_block_reservation_lock;
++
++	struct ext4_inode_alloc_rule *i_alloc_rule;
+ };
+
+ /*
+@@ -1389,6 +1397,9 @@ extern void ext4_mb_put_buddy_cache_lock(struct super_block *,
  extern int ext4_mb_add_global_arule(struct inode *, struct ext4_alloc_rule *);
-+extern int ext4_mb_del_global_arule(struct inode *, struct ext4_alloc_rule *);
-+extern void ext4_mb_release_arule_list(struct ext4_sb_info *);
+ extern int ext4_mb_del_global_arule(struct inode *, struct ext4_alloc_rule *);
+ extern void ext4_mb_release_arule_list(struct ext4_sb_info *);
++extern int ext4_mb_add_inode_arule(struct inode *inode,
++					struct ext4_alloc_rule *arule);
++extern void ext4_mb_del_inode_arule(struct inode *inode);
 
  /* inode.c */
  int ext4_forget(handle_t *handle, int is_metadata, struct inode *inode,
+diff --git a/fs/ext4/file.c b/fs/ext4/file.c
+index 3f1873f..a407823 100644
+--- a/fs/ext4/file.c
++++ b/fs/ext4/file.c
+@@ -46,6 +46,7 @@ static int ext4_release_file(struct inode *inode, struct file *filp)
+ 	{
+ 		down_write(&EXT4_I(inode)->i_data_sem);
+ 		ext4_discard_preallocations(inode);
++		ext4_mb_del_inode_arule(inode);
+ 		up_write(&EXT4_I(inode)->i_data_sem);
+ 	}
+ 	if (is_dx(inode) && filp->private_data)
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 2f64573..7f330ca 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1033,6 +1033,8 @@ got:
+
+ 	ei->i_extra_isize = EXT4_SB(sb)->s_want_extra_isize;
+
++	ei->i_alloc_rule = NULL;
++
+ 	ret = inode;
+ 	if (vfs_dq_alloc_inode(inode)) {
+ 		err = -EDQUOT;
 diff --git a/fs/ext4/ioctl.c b/fs/ext4/ioctl.c
-index 8505e3a..955bb08 100644
+index 955bb08..b009132 100644
 --- a/fs/ext4/ioctl.c
 +++ b/fs/ext4/ioctl.c
-@@ -276,6 +276,22 @@ setversion_out:
+@@ -292,6 +292,32 @@ setversion_out:
  		return err;
  	}
 
-+	case EXT4_IOC_CLR_GLOBAL_ALLOC_RULE: {
++	case EXT4_IOC_ADD_INODE_ALLOC_RULE: {
 +		struct ext4_alloc_rule arule;
 +		int err;
++
++		/*
++		 * If we do not have the permission to access the inode,
++		 * just skip it.
++		 */
++		if (!is_owner_or_cap(inode))
++			return -EACCES;
++
++		if (!(filp->f_mode & FMODE_WRITE))
++			return -EBADF;
 +
 +		if (copy_from_user(&arule,
 +				(struct ext4_alloc_rule __user *)arg,
 +				sizeof(arule)))
 +			return -EFAULT;
 +
-+		if (!capable(CAP_SYS_ADMIN))
-+			return -EPERM;
++		down_write(&ei->i_data_sem);
++		err = ext4_mb_add_inode_arule(inode, &arule);
++		up_write(&ei->i_data_sem);
 +
-+		err = ext4_mb_del_global_arule(inode, &arule);
 +		return err;
 +	}
 +
@@ -108,210 +169,63 @@ index 8505e3a..955bb08 100644
  		struct ext4_new_group_data input;
  		struct super_block *sb = inode->i_sb;
 diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index 0719900..29a25d6 100644
+index 29a25d6..031b37f 100644
 --- a/fs/ext4/mballoc.c
 +++ b/fs/ext4/mballoc.c
-@@ -2928,6 +2928,7 @@ int ext4_mb_release(struct super_block *sb)
-
- 	free_percpu(sbi->s_locality_groups);
- 	ext4_mb_history_release(sb);
-+	ext4_mb_release_arule_list(sbi);
-
- 	return 0;
- }
-@@ -5036,6 +5037,28 @@ static void ext4_mb_release_tmp_list(struct list_head *list,
- 	return;
- }
-
-+void ext4_mb_release_arule_list(struct ext4_sb_info *sbi)
-+{
-+	struct ext4_bg_alloc_rule_list *bg_arule_list, *tmp_arule_list;
-+	struct ext4_bg_alloc_rule *bg_arule, *tmp_arule;
-+
-+	list_for_each_entry_safe(bg_arule_list, tmp_arule_list,
-+				&sbi->s_bg_arule_list, bg_arule_list){
-+		list_for_each_entry_safe(bg_arule, tmp_arule,
-+				&bg_arule_list->arule_list, arule_list) {
-+			list_del(&bg_arule->arule_list);
-+			kfree(bg_arule);
-+			bg_arule = NULL;
-+		}
-+
-+		list_del(&bg_arule_list->bg_arule_list);
-+		kfree(bg_arule_list);
-+		bg_arule_list = NULL;
-+	}
-+
-+	return;
-+}
-+
- static int ext4_mb_check_arule(struct inode *inode,
- 						struct ext4_alloc_rule *arule)
- {
-@@ -5296,3 +5319,166 @@ out:
+@@ -5482,3 +5482,36 @@ out:
  	write_unlock(&sbi->s_bg_arule_lock);
- 	return 0;
+ 	return ret;
  }
 +
-+static int ext4_mb_del_bg_arule(struct super_block *sb,
-+				struct ext4_bg_alloc_rule_list *bg_arule_list,
-+				struct ext4_bg_alloc_rule *del_arule)
++int ext4_mb_add_inode_arule(struct inode *inode,
++			struct ext4_alloc_rule *arule)
 +{
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_bg_alloc_rule *bg_arule, *tmp_arule, *add_arule = NULL;
-+	struct ext4_buddy e4b;
-+	void *bd_bitmap;
-+	ext4_grpblk_t freed_blocks = 0;
-+	ext4_group_t group_no = bg_arule_list->bg_num;
++	struct ext4_inode_info *ei = EXT4_I(inode);
 +	int err;
 +
-+	err = ext4_mb_load_buddy(sb, group_no, &e4b);
++	err = ext4_mb_check_arule(inode, arule);
 +	if (err)
 +		return err;
-+
-+	ext4_lock_group(sb, group_no);
-+	bd_bitmap = e4b.bd_bitmap;
-+
-+	list_for_each_entry_safe(bg_arule, tmp_arule,
-+				&bg_arule_list->arule_list, arule_list) {
-+		/*
-+		 * bg_arule     |-----|
-+		 * del_arule  |---------|
-+		 */
-+		if (del_arule->start <= bg_arule->start &&
-+				del_arule->end >= bg_arule->end) {
-+			freed_blocks = ext4_mb_count_unused_blocks(bd_bitmap,
-+						bg_arule->start, bg_arule->end);
-+			ext4_mb_calc_restricted(sbi, &bg_arule_list,
-+						bg_arule->alloc_flag,
-+						-freed_blocks);
-+			list_del(&bg_arule->arule_list);
-+			kfree(bg_arule);
-+			bg_arule = NULL;
-+		/*
-+		 * bg_arule     |-----|
-+		 * del_arule  |---|
-+		 */
-+		} else if (del_arule->start <= bg_arule->start &&
-+				del_arule->end >= bg_arule->start) {
-+			freed_blocks = ext4_mb_count_unused_blocks(bd_bitmap,
-+					bg_arule->start, del_arule->end);
-+			ext4_mb_calc_restricted(sbi, &bg_arule_list,
-+						bg_arule->alloc_flag,
-+						-freed_blocks);
-+			bg_arule->start = del_arule->end + 1;
-+		/*
-+		 * bg_arule     |-----|
-+		 * del_arule        |---|
-+		 */
-+		} else if (del_arule->start <= bg_arule->end &&
-+				del_arule->end >= bg_arule->end) {
-+			freed_blocks = ext4_mb_count_unused_blocks(bd_bitmap,
-+					del_arule->start, bg_arule->end);
-+			ext4_mb_calc_restricted(sbi, &bg_arule_list,
-+						bg_arule->alloc_flag,
-+						-freed_blocks);
-+			bg_arule->end = del_arule->start - 1;
-+		/*
-+		 * bg_arule     |-----|
-+		 * del_arule     |---|
-+		 */
-+		} else if (del_arule->start > bg_arule->start &&
-+				del_arule->end < bg_arule->end) {
-+			add_arule = kmalloc(sizeof(struct ext4_bg_alloc_rule),
-+								GFP_KERNEL);
-+			if (add_arule == NULL) {
-+				ext4_unlock_group(sb, group_no);
-+				ext4_mb_release_desc(&e4b);
-+				return -ENOMEM;
-+			}
-+			freed_blocks = ext4_mb_count_unused_blocks(bd_bitmap,
-+					del_arule->start, del_arule->end);
-+			ext4_mb_calc_restricted(sbi, &bg_arule_list,
-+						bg_arule->alloc_flag,
-+						-freed_blocks);
-+
-+			INIT_LIST_HEAD(&add_arule->arule_list);
-+			INIT_LIST_HEAD(&add_arule->tmp_list);
-+			add_arule->start = del_arule->end + 1;
-+			add_arule->end = bg_arule->end;
-+			add_arule->alloc_flag = bg_arule->alloc_flag;
-+			list_add(&add_arule->arule_list,
-+					&bg_arule->arule_list);
-+			/* fix existed alloc rule */
-+			bg_arule->end = del_arule->start - 1;
-+		} else if (del_arule->end < bg_arule->start)
-+			break;
++	if (!ei->i_alloc_rule) {
++		ei->i_alloc_rule = kmalloc(
++			sizeof(struct ext4_inode_alloc_rule), GFP_KERNEL);
++		if (!ei->i_alloc_rule)
++			return -ENOMEM;
++	} else if (ei->i_alloc_rule->alloc_pid != current->pid) {
++		ext4_debug("using allocation rule\n");
++		return -EINVAL;
 +	}
 +
-+	if (list_empty(&bg_arule_list->arule_list))
-+		list_del(&bg_arule_list->bg_arule_list);
-+
-+	ext4_unlock_group(sb, group_no);
-+	ext4_mb_release_desc(&e4b);
++	memcpy(&ei->i_alloc_rule->alloc_rule, arule, sizeof(*arule));
++	ei->i_alloc_rule->alloc_pid = current->pid;
 +
 +	return 0;
 +}
 +
-+int ext4_mb_del_global_arule(struct inode *inode,
-+					struct ext4_alloc_rule *arule)
++void ext4_mb_del_inode_arule(struct inode *inode)
 +{
-+	struct super_block *sb = inode->i_sb;
-+	struct ext4_sb_info *sbi = EXT4_SB(sb);
-+	struct ext4_bg_alloc_rule_list *bg_arule_list, *tmp_arule_list;
-+	struct ext4_bg_alloc_rule del_arule;
-+	ext4_fsblk_t start, end;
-+	ext4_group_t start_bgnum, end_bgnum;
-+	int ret, del_flag = 0;
-+	unsigned long bg_size = EXT4_BLOCKS_PER_GROUP(sb);
++	struct ext4_inode_info *ei = EXT4_I(inode);
 +
-+	ret = ext4_mb_check_arule(inode, arule);
-+	if (ret < 0)
-+		return ret;
-+
-+	start = arule->start;
-+	end = arule->start + arule->len - 1;
-+
-+	ext4_get_group_no_and_offset(sb, start, &start_bgnum, NULL);
-+	ext4_get_group_no_and_offset(sb, end, &end_bgnum, NULL);
-+
-+	write_lock(&sbi->s_bg_arule_lock);
-+	while (start <= end) {
-+		INIT_LIST_HEAD(&del_arule.arule_list);
-+		INIT_LIST_HEAD(&del_arule.tmp_list);
-+		ext4_get_group_no_and_offset(sb, start, NULL, &del_arule.start);
-+		del_arule.alloc_flag = arule->alloc_flag;
-+		/* if end is out of bg in start, fix it */
-+		if (end_bgnum > start_bgnum)
-+			del_arule.end = (ext4_grpblk_t)(bg_size - 1);
-+		else
-+			ext4_get_group_no_and_offset(sb, end, NULL,
-+							&del_arule.end);
-+
-+		list_for_each_entry_safe(bg_arule_list, tmp_arule_list,
-+					&sbi->s_bg_arule_list, bg_arule_list) {
-+			if (bg_arule_list->bg_num != start_bgnum)
-+				continue;
-+
-+			ret = ext4_mb_del_bg_arule(sb, bg_arule_list,
-+						   &del_arule);
-+			if (ret < 0)
-+				goto out;
-+
-+			del_flag = 1;
-+			break;
-+		}
-+
-+		start_bgnum++;
-+		start = ext4_group_first_block_no(sb, start_bgnum);
-+	}
-+
-+	if (!del_flag)
-+		ext4_debug("There is no alloc rule: start=%llu len=%llu\n",
-+						(ext4_fsblk_t)arule->start,
-+						(ext4_fsblk_t)arule->len);
-+
-+out:
-+	write_unlock(&sbi->s_bg_arule_lock);
-+	return ret;
++	kfree(ei->i_alloc_rule);
++	ei->i_alloc_rule = NULL;
 +}
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index e5fe18a..e3d6b2c 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -686,6 +686,7 @@ static struct inode *ext4_alloc_inode(struct super_block *sb)
+ 	ei->i_reserved_meta_blocks = 0;
+ 	ei->i_allocated_meta_blocks = 0;
+ 	ei->i_delalloc_reserved_flag = 0;
++	ei->i_alloc_rule = NULL;
+ 	spin_lock_init(&(ei->i_block_reservation_lock));
+
+ 	return &ei->vfs_inode;
+@@ -749,6 +750,7 @@ static void ext4_clear_inode(struct inode *inode)
+ 	}
+ #endif
+ 	ext4_discard_preallocations(inode);
++	ext4_mb_del_inode_arule(inode);
+ 	if (EXT4_JOURNAL(inode))
+ 		jbd2_journal_release_jbd_inode(EXT4_SB(inode->i_sb)->s_journal,
+ 				       &EXT4_I(inode)->jinode);
