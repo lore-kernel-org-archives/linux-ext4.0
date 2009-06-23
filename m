@@ -1,62 +1,42 @@
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-Subject: Re: [PATCH 04/10] sunrpc: Use rcu_barrier() on unload.
-Date: Tue, 23 Jun 2009 12:59:13 -0400
-Message-ID: <1245776353.9586.1.camel@heimdal.trondhjem.org>
-References: <20090623150330.22490.87327.stgit@localhost>
-	 <20090623150414.22490.14888.stgit@localhost>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: [RFC][PATCH 1/7]ext4: Add EXT4_IOC_ADD_GLOBAL_ALLOC_RULE	restricts
+ block allocation
+Date: Wed, 24 Jun 2009 01:19:50 +0200
+Message-ID: <20090623231950.GN31668@webber.adilger.int>
+References: <4A409168.3020404@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain
-Content-Transfer-Encoding: 7bit
-Cc: "David S. Miller" <davem@davemloft.net>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, Patrick McHardy <kaber@trash.net>,
-	christine.caulfield@googlemail.com, linux-wireless@vger.kernel.org,
-	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
-	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
-To: Jesper Dangaard Brouer <hawk@comx.dk>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <20090623150414.22490.14888.stgit@localhost>
-Sender: netfilter-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
+	linux-fsdevel@vger.kernel.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:45608 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758229AbZFWXUV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 23 Jun 2009 19:20:21 -0400
+Content-disposition: inline
+In-reply-to: <4A409168.3020404@rs.jp.nec.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, 2009-06-23 at 17:04 +0200, Jesper Dangaard Brouer wrote:
-> The sunrpc module uses rcu_call() thus it should use rcu_barrier() on
-> module unload.
-> 
-> Have not verified that the possibility for new call_rcu() callbacks
-> has been disabled.  As a hint for checking, the functions calling
-> call_rcu() (unx_destroy_cred and generic_destroy_cred) are
-> registered as crdestroy function pointer in struct rpc_credops.
-> 
-> Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
-> ---
-> 
->  net/sunrpc/sunrpc_syms.c |    1 +
->  1 files changed, 1 insertions(+), 0 deletions(-)
-> 
-> diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-> index 843629f..adaa819 100644
-> --- a/net/sunrpc/sunrpc_syms.c
-> +++ b/net/sunrpc/sunrpc_syms.c
-> @@ -66,6 +66,7 @@ cleanup_sunrpc(void)
->  #ifdef CONFIG_PROC_FS
->  	rpc_proc_exit();
->  #endif
-> +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
->  }
->  MODULE_LICENSE("GPL");
->  module_init(init_sunrpc);
-> 
+On Jun 23, 2009  17:25 +0900, Akira Fujita wrote:
+> alloc_flag of ext4_alloc_rule structure is set as "mandatory" or "advisory".
+> Restricted blocks with "mandatory" are never used by block allocator.
+> But in "advisory" case, block allocator is allowed to use restricted blocks
+> when there are no free blocks on FS.
 
-Acked-by: Trond Myklebust <Trond.Myklebust@netapp.com>
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Would it make more sense to implement the range protections via the
+existing preallocation ranges (PA)?  An inode can have multiple
+PAs attached to it to have it prefer allocations from that range.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+We could also attach PAs to the superblock to prevent other files from
+allocating out of those ranges.  This would work better with the existing
+allocation code instead of creating a second similar mechanism.
+
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
