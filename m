@@ -1,87 +1,46 @@
-From: Johannes Berg <johannes@sipsolutions.net>
-Subject: Re: [PATCH 03/10] mac80211: Use rcu_barrier() on unload.
-Date: Tue, 23 Jun 2009 17:15:55 +0200
-Message-ID: <1245770155.21314.38.camel@johannes.local>
-References: <20090623150330.22490.87327.stgit@localhost>
-	 <20090623150409.22490.99106.stgit@localhost>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH][BUG] ext4: dx_map_entry cannot support over 64KB block
+	size
+Date: Tue, 23 Jun 2009 11:28:11 -0400
+Message-ID: <20090623152811.GD26079@mit.edu>
+References: <20090605165049.e8bd9c74.toshi.okajima@jp.fujitsu.com> <20090605212000.GV9002@webber.adilger.int> <20090608163055.0eab9737.toshi.okajima@jp.fujitsu.com> <20090621035731.GA6719@mit.edu> <4A3EE269.3020704@jp.fujitsu.com> <20090622024757.GB26079@mit.edu> <4A404CC0.9050202@jp.fujitsu.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-4pWj/zfZZMHnV2anu3HO"
-Cc: "David S. Miller" <davem@davemloft.net>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, Patrick McHardy <kaber@trash.net>,
-	christine.caulfield@googlemail.com, Trond.Myklebust@netapp.com,
-	linux-wireless@vger.kernel.org, yoshfuji@linux-ipv6.org,
-	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
-To: Jesper Dangaard Brouer <hawk@comx.dk>
-Return-path: <netdev-owner@vger.kernel.org>
-In-Reply-To: <20090623150409.22490.99106.stgit@localhost>
-Sender: netdev-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Toshiyuki Okajima <toshi.okajima@jp.fujitsu.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:32794 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755094AbZFWP2l (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Jun 2009 11:28:41 -0400
+Content-Disposition: inline
+In-Reply-To: <4A404CC0.9050202@jp.fujitsu.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Tue, Jun 23, 2009 at 12:32:16PM +0900, Toshiyuki Okajima wrote:
+> No, I am not. But I have considered that POWERPC system has been
+> supported over 64KB page size after I examined all Kconfig's in kernel
+> source. Therefore I thought this bug should be fixed in kernel side.
 
---=-4pWj/zfZZMHnV2anu3HO
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+I hadn't ealized that PowerPC had support for 256k page sizes.  Looks
+like it only works on a specialized embedded (AMCC) processor, with a
+patched set of binutils, and all of the binaries have to be rebuilt to
+accomodate having the ELF sections aligned on something greater than
+64k boudaries (i.e. standard PPC distributions won't work).  So it's
+not likely that I'm going to be able to get access to something that
+will support such large pagesizes in the near future.
 
-On Tue, 2009-06-23 at 17:04 +0200, Jesper Dangaard Brouer wrote:
-> The mac80211 module uses rcu_call() thus it should use rcu_barrier()
-> on module unload.
->=20
-> I'm having a hardtime verifying that no more call_rcu() callbacks can
-> be schedules in the module unload path.  Could a maintainer please
-> look into this?
->=20
-> Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
-> ---
->=20
->  net/mac80211/main.c |    2 ++
->  1 files changed, 2 insertions(+), 0 deletions(-)
->=20
-> diff --git a/net/mac80211/main.c b/net/mac80211/main.c
-> index 092a017..e9f70ce 100644
-> --- a/net/mac80211/main.c
-> +++ b/net/mac80211/main.c
-> @@ -1100,6 +1100,8 @@ static void __exit ieee80211_exit(void)
->  		ieee80211s_stop();
-> =20
->  	ieee80211_debugfs_netdev_exit();
-> +
-> +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
->  }
+> I don't think this feature (over 64KB block size support) to be
+> necessary immediately. Because I have been investigating ext4 for my
+> customers in order that I may provide them greater quality and
+> performance but they don't want it now.
 
-I don't think this is correct at all -- note that call_rcu() is done in
-some of the mesh code, so I would think you need to do this in
-ieee80211_stop() since the call_rcu() code requires the interface to
-still be around. And when it's stopped everything should be idle.
+That's my assessment on interest in >64k block size support as well; I
+will prioritize accordingly.  I just wanted to make sure there wasn't
+some customers interested in some unusual use case that I wasn't aware
+of.
 
-I can fix it later, but I'm deep in some other stuff right now.
+Regards,
 
-johannes
-
---=-4pWj/zfZZMHnV2anu3HO
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-
-iQIcBAABAgAGBQJKQPGoAAoJEODzc/N7+QmazPkP/juLnaNnvhYosQYGZ2G0lzA2
-O1JQP2Hp4TpyxHI8dGDHq+gO1BCAbKQp7zA/PKH3u346AYgp3uvedhNAWqzvdRPS
-TGO/cY0ZmgUJbzk/v4rB9SinMsuYiL7DgSaK11Fv0KZBqcKxMLO8K39yOdn/TAfi
-xGEqIUkDFUJvxuXEINxt2OPInpzSHEDYQCf3EU4TkZ9hziahx0Gj8dNzzJcp+zSu
-3EGnm8H7+WkT7qWyS7ur7C9JFp/7ySsN2cW6DGs594vKSHM6kHOrtjIH2eOc3pQM
-uqr5YnTefT88ZvuqMSSmAi0BzmlH77atuegwUBXpAtKb1cdJG7R+h2URNWrC5APm
-YDv3w7UvmyDXcRotygdsug6gstMmAfoIgzfCPoJYFGJ7ZYmuyUejH7QMlzsuvc22
-7fvWQZPKqeAvOhMn7/kdTZEA2KMntRvcEf+QX8PoeEn0Zpw/zY42FBNXG7d+RQf6
-SqLzdV/DQGzPbtzXVXPYbq9vWCF98887mItGXhK5Q3ah/Qn330i3TRWLoXhGMbTM
-TScPV5FZDkBOL8ohzQVdJ/CDjwDQTYE3sqb0yJ9Qnmr+M0JwxPXFiKemRtywSntf
-fJVDsKgVSjW6/XWZRgGGHGXFWV1kTdumKAvKZDbW5TzTCv2VqUojw8tiNp3yplYR
-7jBVLeH6bZqk/962Kn/0
-=4r0R
------END PGP SIGNATURE-----
-
---=-4pWj/zfZZMHnV2anu3HO--
-
+							- Ted
