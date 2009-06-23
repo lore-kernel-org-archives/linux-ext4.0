@@ -1,52 +1,84 @@
-From: Jesper Dangaard Brouer <hawk@comx.dk>
-Subject: [PATCH 03/10] mac80211: Use rcu_barrier() on unload.
-Date: Tue, 23 Jun 2009 17:04:09 +0200
-Message-ID: <20090623150409.22490.99106.stgit@localhost>
-References: <20090623150330.22490.87327.stgit@localhost>
+From: Subrata Modak <subrata@linux.vnet.ibm.com>
+Subject: Re: [LTP] Lustre basic tests script
+Date: Tue, 23 Jun 2009 20:20:45 +0530
+Message-ID: <1245768646.4860.93.camel@subratamodak.linux.ibm.com>
+References: <20090522213639.GC13578@webber.adilger.int>
+	 <bb33bcf20905230403n2e959d8fg1f463539b7cdb445@mail.gmail.com>
+	 <20090621111911.GB11977@webber.adilger.int>
+Reply-To: subrata@linux.vnet.ibm.com
 Mime-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Jesper Dangaard Brouer <hawk@comx.dk>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, "Patrick McHardy" <kaber@trash.net>,
-	christine.caulfield@googlemail.com, Trond.Myklebust@netapp.com,
-	linux-wireless@vger.kernel.org, johannes@sipsolutions.net,
-	yoshfuji@linux-ipv6.org, shemminger@linux-foundation.org,
-	linux-nfs@vger.kernel.org, bfields@fieldses.org, neilb@suse.de,
-	linux-ext4@vger.kernel.org, tytso@mit.edu, adilger@sun.com,
-	netfilter-devel@vger.kernel.org
-To: "David S. Miller" <davem@davemloft.net>
-Return-path: <netfilter-devel-owner@vger.kernel.org>
-In-Reply-To: <20090623150330.22490.87327.stgit@localhost>
-Sender: netfilter-devel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Subrata Modak <tosubrata@gmail.com>,
+	LTP <ltp-list@lists.sourceforge.net>, linux-ext4@vger.kernel.org,
+	Eric Sandeen <esandeen@redhat.com>
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from e6.ny.us.ibm.com ([32.97.182.146]:35730 "EHLO e6.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755241AbZFWPNw (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 23 Jun 2009 11:13:52 -0400
+Received: from d01relay07.pok.ibm.com (d01relay07.pok.ibm.com [9.56.227.147])
+	by e6.ny.us.ibm.com (8.13.1/8.13.1) with ESMTP id n5NFGtaH015253
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2009 11:16:55 -0400
+Received: from d03av01.boulder.ibm.com (d03av01.boulder.ibm.com [9.17.195.167])
+	by d01relay07.pok.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n5NFDnjb1134742
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2009 11:13:49 -0400
+Received: from d03av01.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av01.boulder.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n5NFDme7007205
+	for <linux-ext4@vger.kernel.org>; Tue, 23 Jun 2009 09:13:48 -0600
+In-Reply-To: <20090621111911.GB11977@webber.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-The mac80211 module uses rcu_call() thus it should use rcu_barrier()
-on module unload.
+On Sun, 2009-06-21 at 13:19 +0200, Andreas Dilger wrote: 
+> On May 23, 2009  16:33 +0530, Subrata Modak wrote:
+> > On Sat, May 23, 2009 at 3:06 AM, Andreas Dilger <adilger@sun.com> wrote:
+> > 
+> > > Below are included some of the tests from the Lustre "sanity.sh" script,
+> > > which tests filesystem behaviour in a variety of ways.  Some of them are
+> > > very simple and might concievably be removed, but are not necessarily bad.
+> > > I've removed the tests that depend on Lustre-specific behaviour.
+> > >
+> > > It probably isn't useful to use this test script directly, since it
+> > > depends on a number of helper functions, but it is definitely useful
+> > > as a starting point for adding new tests to xfstests.
+> > >
+> > > Unfortunately, a bunch of tests had to be removed since they depend on
+> > > Lustre's fault-injection code, but they would be useful for testing
+> > > generic filesystem behaviour (e.g. ENOMEM or ENOSPC handling).  There
+> > > is also a helper program we use "multiop" which is a toolbox program
+> > > that I could supply separately, if you want.
+> > 
+> > 
+> > How about understanding these and find out if they can be made part of LTP
+> > as well  ? Any objection(s) ?
+> 
+> Sorry for the late response.  No objection to using these tests in LTP.
 
-I'm having a hardtime verifying that no more call_rcu() callbacks can
-be schedules in the module unload path.  Could a maintainer please
-look into this?
+Thanks Andreas. When ready we will send you the integration patch for
+your review.
 
-Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
----
+Regards--
+Subrata
 
- net/mac80211/main.c |    2 ++
- 1 files changed, 2 insertions(+), 0 deletions(-)
-
-diff --git a/net/mac80211/main.c b/net/mac80211/main.c
-index 092a017..e9f70ce 100644
---- a/net/mac80211/main.c
-+++ b/net/mac80211/main.c
-@@ -1100,6 +1100,8 @@ static void __exit ieee80211_exit(void)
- 		ieee80211s_stop();
- 
- 	ieee80211_debugfs_netdev_exit();
-+
-+	rcu_barrier(); /* Wait for completion of call_rcu()'s */
- }
- 
- 
+> I've separatel posted the "multiop" program to this list so that you
+> can better understand what the tests are doing.
+> 
+> Cheers, Andreas
+> --
+> Andreas Dilger
+> Sr. Staff Engineer, Lustre Group
+> Sun Microsystems of Canada, Inc.
+> 
+> 
+> ------------------------------------------------------------------------------
+> Are you an open source citizen? Join us for the Open Source Bridge conference!
+> Portland, OR, June 17-19. Two days of sessions, one day of unconference: $250.
+> Need another reason to go? 24-hour hacker lounge. Register today!
+> http://ad.doubleclick.net/clk;215844324;13503038;v?http://opensourcebridge.org
+> _______________________________________________
+> Ltp-list mailing list
+> Ltp-list@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/ltp-list
 
