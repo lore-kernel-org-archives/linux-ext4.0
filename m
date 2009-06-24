@@ -1,34 +1,41 @@
-From: David Miller <davem@davemloft.net>
-Subject: Re: [PATCH 00/10] We must use rcu_barrier() on module unload
-Date: Wed, 24 Jun 2009 00:02:11 -0700 (PDT)
-Message-ID: <20090624.000211.175032622.davem@davemloft.net>
-References: <20090623150330.22490.87327.stgit@localhost>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: Re: [RFC][PATCH 2/7]ext4: Add EXT4_IOC_CLR_GLOBAL_ALLOC_RULE	clears
+ block allocation restriction
+Date: Wed, 24 Jun 2009 17:20:15 +0900
+Message-ID: <4A41E1BF.3090805@rs.jp.nec.com>
+References: <4A409171.3090202@rs.jp.nec.com> <20090623232131.GO31668@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
+Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
-Cc: paulmck@linux.vnet.ibm.com, netdev@vger.kernel.org,
-	linux-kernel@vger.kernel.org, dougthompson@xmission.com,
-	bluesmoke-devel@lists.sourceforge.net, axboe@kernel.dk,
-	kaber@trash.net, christine.caulfield@googlemail.com,
-	Trond.Myklebust@netapp.com, linux-wireless@vger.kernel.org,
-	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
-	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
-To: hawk@comx.dk
-Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755407AbZFXHCT@vger.kernel.org>
-In-Reply-To: <20090623150330.22490.87327.stgit@localhost>
-Sender: linux-kernel-owner@vger.kernel.org
+Cc: "Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <20090623232131.GO31668@webber.adilger.int>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
-From: Jesper Dangaard Brouer <hawk@comx.dk>
-Date: Tue, 23 Jun 2009 17:03:53 +0200
+Hi Andreas,
 
-> This patch series is an attempt to cleanup the entire tree, for
-> potential oops'es during module unload, due to outstanding RCU
-> callbacks. (My last rcu_barrier patch series only addressed net/).
+Andreas Dilger wrote:
+> On Jun 23, 2009  17:25 +0900, Akira Fujita wrote:
+>> Block allocation restriction is cleared with this ioctl or umount filesystem.
+>>
+>>  #define EXT4_IOC_CLR_GLOBAL_ALLOC_RULE _IOW('f', 17, struct ext4_alloc_rule);
+>>
+>>   struct ext4_alloc_rule {
+>>         __u64 start;            /* start physical offset to clear rule */
+>>         __u64 len;              /* number of blocks to be clear */
+>>         __u32 alloc_flag;       /* not used, should be zero */
+>>   };
+> 
+> Why not call EXT4_IOC_ADD_GLOBAL_ALLOC_RULE with a "clear" flag?
 
-This series has net/ stuff too :-)
+Yes, having "clear" flag makes more sense
+than implementing ioctls separately.
 
-I'll let the networking cases sit for a while and get review before
-I apply them.
+I will add "clear" flag (EXT4_MB_CLEAR_ALLOC_RULE) to alloc_flag
+and remove EXT4_IOC_CLR_GLOBAL_ALLOC_RULE ioctl in the next version.
+
+Thanks,
+Akira Fujita
