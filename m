@@ -1,75 +1,118 @@
-From: "Paul E. McKenney" <paulmck-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Subject: Re: [PATCH 09/10] cfq-iosched: Uses its own open-coded rcu_barrier.
-Date: Wed, 24 Jun 2009 07:05:05 -0700
-Message-ID: <20090624140505.GA6779@linux.vnet.ibm.com>
-References: <20090623150330.22490.87327.stgit@localhost> <20090623150439.22490.14657.stgit@localhost> <20090624064236.GE31415@kernel.dk>
-Reply-To: paulmck-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>,
-	"David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>, netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, dougthompson-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org,
-	bluesmoke-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	Patrick McHardy <kaber-dcUjhNyLwpNeoWH0uzbU5w@public.gmane.org>,
-	christine.caulfield-gM/Ye1E23mwN+BqQ9rBEUg@public.gmane.org, Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org,
-	linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org,
-	yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, shemminger-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-xsfywfwIY+M@public.gmane.org,
-	netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jens Axboe <jens.axboe-QHcLZuEGTsvQT0dZR+AlfA@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <20090624064236.GE31415-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] jbd2: Fix a race between checkpointing code and journal_get_write_access()
+Date: Wed, 24 Jun 2009 18:02:40 +0200
+Message-ID: <1245859360-5261-2-git-send-email-jack@suse.cz>
+References: <1245859360-5261-1-git-send-email-jack@suse.cz>
+Cc: tytso@mit.edu, Jan Kara <jack@suse.cz>
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from cantor2.suse.de ([195.135.220.15]:43315 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1758172AbZFXQCl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 24 Jun 2009 12:02:41 -0400
+In-Reply-To: <1245859360-5261-1-git-send-email-jack@suse.cz>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 24, 2009 at 08:42:37AM +0200, Jens Axboe wrote:
-> On Tue, Jun 23 2009, Jesper Dangaard Brouer wrote:
-> > This module cfq-iosched, has discovered the value of waiting for
-> > call_rcu() completion, but its has its own open-coded implementation
-> > of rcu_barrier(), which I don't think is 'strong' enough.
-> > 
-> > This patch only leaves a comment for the maintainers to consider.
-> 
-> We need a stronger primitive and rcu_barrier(), since we also need to
-> wait for the rcu calls to even be scheduled. So I don't think the below
-> can be improved, it's already fine.
+The following race can happen:
 
-It is indeed important to first prevent new call_rcu() instances from
-being invoked, and only then invoke rcu_barrier().
+  CPU1                          CPU2
+                                checkpointing code checks the buffer, adds
+                                  it to an array for writeback
+do_get_write_access()
+  ...
+  lock_buffer()
+  unlock_buffer()
+                                  flush_batch() submits the buffer for IO
+  __jbd2_journal_file_buffer()
 
-							Thanx, Paul
+  So a buffer under writeout is returned from do_get_write_access(). Since
+the filesystem code relies on the fact that journaled buffers cannot be
+written out, it does not take the buffer lock and so it can modify buffer
+while it is under writeout. That can lead to a filesystem corruption
+if we crash at the right moment.
+  We fix the problem by clearing the buffer dirty bit under buffer_lock
+even if the buffer is on BJ_None list. Actually, we clear the dirty bit
+regardless the list the buffer is in and warn about the fact if
+the buffer is already journalled.
 
-> > Signed-off-by: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
-> > ---
-> > 
-> >  block/cfq-iosched.c |    6 ++++++
-> >  1 files changed, 6 insertions(+), 0 deletions(-)
-> > 
-> > diff --git a/block/cfq-iosched.c b/block/cfq-iosched.c
-> > index 833ec18..c15555b 100644
-> > --- a/block/cfq-iosched.c
-> > +++ b/block/cfq-iosched.c
-> > @@ -2657,6 +2657,12 @@ static void __exit cfq_exit(void)
-> >  	/*
-> >  	 * this also protects us from entering cfq_slab_kill() with
-> >  	 * pending RCU callbacks
-> > +	 *
-> > +	 * hawk-4UpuNZONu4c@public.gmane.org 2009-06-18: Maintainer please consider using
-> > +	 *  rcu_barrier() instead of this open-coded wait for
-> > +	 *  completion implementation.  I think it provides a better
-> > +	 *  guarantee that all CPUs are finished, although
-> > +	 *  elv_ioc_count_read() do consider all CPUs.
-> >  	 */
-> >  	if (elv_ioc_count_read(ioc_count))
-> >  		wait_for_completion(&all_gone);
-> > 
-> 
-> -- 
-> Jens Axboe
-> 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Thanks for spotting the problem goes to dingdinghua <dingdinghua85@gmail.com>.
+
+Reported-by: dingdinghua <dingdinghua85@gmail.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd2/transaction.c |   52 ++++++++++++++++++------------------------------
+ 1 files changed, 20 insertions(+), 32 deletions(-)
+
+diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
+index 494501e..86144aa 100644
+--- a/fs/jbd2/transaction.c
++++ b/fs/jbd2/transaction.c
+@@ -499,34 +499,15 @@ void jbd2_journal_unlock_updates (journal_t *journal)
+ 	wake_up(&journal->j_wait_transaction_locked);
+ }
+ 
+-/*
+- * Report any unexpected dirty buffers which turn up.  Normally those
+- * indicate an error, but they can occur if the user is running (say)
+- * tune2fs to modify the live filesystem, so we need the option of
+- * continuing as gracefully as possible.  #
+- *
+- * The caller should already hold the journal lock and
+- * j_list_lock spinlock: most callers will need those anyway
+- * in order to probe the buffer's journaling state safely.
+- */
+-static void jbd_unexpected_dirty_buffer(struct journal_head *jh)
++static void warn_dirty_buffer(struct buffer_head *bh)
+ {
+-	int jlist;
+-
+-	/* If this buffer is one which might reasonably be dirty
+-	 * --- ie. data, or not part of this journal --- then
+-	 * we're OK to leave it alone, but otherwise we need to
+-	 * move the dirty bit to the journal's own internal
+-	 * JBDDirty bit. */
+-	jlist = jh->b_jlist;
+-
+-	if (jlist == BJ_Metadata || jlist == BJ_Reserved ||
+-	    jlist == BJ_Shadow || jlist == BJ_Forget) {
+-		struct buffer_head *bh = jh2bh(jh);
++	char b[BDEVNAME_SIZE];
+ 
+-		if (test_clear_buffer_dirty(bh))
+-			set_buffer_jbddirty(bh);
+-	}
++	printk(KERN_WARNING
++	       "JBD: Spotted dirty metadata buffer (dev = %s, blocknr = %llu). "
++	       "There's a risk of filesystem corruption in case of system "
++	       "crash.\n",
++	       bdevname(bh->b_bdev, b), (unsigned long long)bh->b_blocknr);
+ }
+ 
+ /*
+@@ -593,14 +574,16 @@ repeat:
+ 			if (jh->b_next_transaction)
+ 				J_ASSERT_JH(jh, jh->b_next_transaction ==
+ 							transaction);
++			warn_dirty_buffer(bh);
+ 		}
+ 		/*
+ 		 * In any case we need to clean the dirty flag and we must
+ 		 * do it under the buffer lock to be sure we don't race
+ 		 * with running write-out.
+ 		 */
+-		JBUFFER_TRACE(jh, "Unexpected dirty buffer");
+-		jbd_unexpected_dirty_buffer(jh);
++		JBUFFER_TRACE(jh, "Journalling dirty buffer");
++		clear_buffer_dirty(bh);
++		set_buffer_jbddirty(bh);
+ 	}
+ 
+ 	unlock_buffer(bh);
+@@ -1896,12 +1879,17 @@ void __jbd2_journal_file_buffer(struct journal_head *jh,
+ 	if (jh->b_transaction && jh->b_jlist == jlist)
+ 		return;
+ 
+-	/* The following list of buffer states needs to be consistent
+-	 * with __jbd_unexpected_dirty_buffer()'s handling of dirty
+-	 * state. */
