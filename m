@@ -1,119 +1,112 @@
-From: Jesper Dangaard Brouer <jdb@comx.dk>
-Subject: [PATCH v2 10/10] nf_conntrack: Use rcu_barrier() and fix
-	kmem_cache_create flags
-Date: Wed, 24 Jun 2009 11:40:09 +0200
-Message-ID: <1245836409.6695.35.camel@localhost.localdomain>
+From: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+Subject: Re: [PATCH 03/10] mac80211: Use rcu_barrier() on unload.
+Date: Wed, 24 Jun 2009 12:06:05 +0200
+Message-ID: <1245837965.6695.45.camel@localhost.localdomain>
 References: <20090623150330.22490.87327.stgit@localhost>
-	 <20090623150444.22490.27931.stgit@localhost>  <4A410185.3090706@trash.net>
-	 <1245834139.6695.31.camel@localhost.localdomain>
-Reply-To: jdb@comx.dk
+	 <20090623150409.22490.99106.stgit@localhost>
+	 <1245770155.21314.38.camel@johannes.local>
 Mime-Version: 1.0
 Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: "David S. Miller" <davem@davemloft.net>,
-	"Paul E. McKenney" <paulmck@linux.vnet.ibm.com>,
-	netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-	dougthompson@xmission.com, bluesmoke-devel@lists.sourceforge.net,
-	axboe@kernel.dk, christine.caulfield@googlemail.com,
-	Trond.Myklebust@netapp.com, linux-wireless@vger.kernel.org,
-	johannes@sipsolutions.net, yoshfuji@linux-ipv6.org,
-	shemminger@linux-foundation.org, linux-nfs@vger.kernel.org,
-	bfields@fieldses.org, neilb@suse.de, linux-ext4@vger.kernel.org,
-	tytso@mit.edu, adilger@sun.com, netfilter-devel@vger.kernel.org
-To: Patrick McHardy <kaber@trash.net>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from lanfw001a.cxnet.dk ([87.72.215.196]:41448 "EHLO
-	lanfw001a.cxnet.dk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751515AbZFXJkI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 24 Jun 2009 05:40:08 -0400
-In-Reply-To: <1245834139.6695.31.camel@localhost.localdomain>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Cc: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>,
+	"Paul E. McKenney" <paulmck-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
+	netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	dougthompson-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org, bluesmoke-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, Patrick McHardy <kaber-dcUjhNyLwpNeoWH0uzbU5w@public.gmane.org>,
+	christine.caulfield-gM/Ye1E23mwN+BqQ9rBEUg@public.gmane.org, Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org,
+	linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org,
+	shemminger-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org, linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	tytso-3s7WtUTddSA@public.gmane.org, adilger-xsfywfwIY+M@public.gmane.org, netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Johannes Berg <johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <1245770155.21314.38.camel-YfaajirXv2244ywRPIzf9A@public.gmane.org>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
+
+On Tue, 2009-06-23 at 17:15 +0200, Johannes Berg wrote:
+> On Tue, 2009-06-23 at 17:04 +0200, Jesper Dangaard Brouer wrote:
+> > The mac80211 module uses rcu_call() thus it should use rcu_barrier()
+> > on module unload.
+> > 
+> > I'm having a hardtime verifying that no more call_rcu() callbacks can
+> > be schedules in the module unload path.  Could a maintainer please
+> > look into this?
+> > 
+> > Signed-off-by: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+> > ---
+> > 
+> >  net/mac80211/main.c |    2 ++
+> >  1 files changed, 2 insertions(+), 0 deletions(-)
+> > 
+> > diff --git a/net/mac80211/main.c b/net/mac80211/main.c
+> > index 092a017..e9f70ce 100644
+> > --- a/net/mac80211/main.c
+> > +++ b/net/mac80211/main.c
+> > @@ -1100,6 +1100,8 @@ static void __exit ieee80211_exit(void)
+> >  		ieee80211s_stop();
+> >  
+> >  	ieee80211_debugfs_netdev_exit();
+> > +
+> > +	rcu_barrier(); /* Wait for completion of call_rcu()'s */
+> >  }
+> 
+> I don't think this is correct at all -- note that call_rcu() is done in
+> some of the mesh code, so I would think you need to do this in
+> ieee80211_stop() since the call_rcu() code requires the interface to
+> still be around. And when it's stopped everything should be idle.
+
+Should it then not be in mesh.c ieee80211_stop_mesh().  We can replace
+the synchronize_rcu() in this function with a rcu_barrier().
+
+> I can fix it later, but I'm deep in some other stuff right now.
+
+Yes, I noticed you seem quite active :-)
+I can also do a repost... what about the patch below?
+
+-- 
+Med venlig hilsen / Best regards
+  Jesper Brouer
+  ComX Networks A/S
+  Linux Network developer
+  Cand. Scient Datalog / MSc.
+  Author of http://adsl-optimizer.dk
+  LinkedIn: http://www.linkedin.com/in/brouer
 
 
-Adjusting SLAB_DESTROY_BY_RCU flags.
+[PATCH v2 03/10] mac80211: Use rcu_barrier() on unload.
 
- kmem_cache_create("nf_conntrack", ...) does not need the
- SLAB_DESTROY_BY_RCU flag.  But the
- kmem_cache_create("nf_conntrack_expect", ...) should use the
- SLAB_DESTROY_BY_RCU flag, because it uses a call_rcu() callback to
- invoke kmem_cache_free().
+From: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
 
-RCU barriers, rcu_barrier(), is inserted two places.
+The mac80211 module uses rcu_call() thus it should use rcu_barrier()
+on module unload.
 
- In nf_conntrack_expect.c nf_conntrack_expect_fini() before the
- kmem_cache_destroy(), even though the use of the SLAB_DESTROY_BY_RCU
- flag, because slub does not (currently) handle rcu sync correctly.
+The rcu_barrier() is placed in mech.c ieee80211_stop_mesh() which is
+invoked from ieee80211_stop() in case vif.type == NL80211_IFTYPE_MESH_POINT.
 
- And in nf_conntrack_extend.c nf_ct_extend_unregister(), inorder to
- wait for completion of callbacks to __nf_ct_ext_free_rcu(), which is
- invoked by __nf_ct_ext_add().  It might be more efficient to call
- rcu_barrier() in nf_conntrack_core.c nf_conntrack_cleanup_net(), but
- thats make it more difficult to read the code (as the callback code
- in located in nf_conntrack_extend.c).
-
-Signed-off-by: Jesper Dangaard Brouer <hawk@comx.dk>
+Signed-off-by: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
 ---
 
- net/netfilter/nf_conntrack_core.c   |    2 +-
- net/netfilter/nf_conntrack_expect.c |   11 +++++++++--
- net/netfilter/nf_conntrack_extend.c |    2 +-
- 3 files changed, 11 insertions(+), 4 deletions(-)
+ net/mac80211/mesh.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
 
-diff --git a/net/netfilter/nf_conntrack_core.c b/net/netfilter/nf_conntrack_core.c
-index 5f72b94..438ce84 100644
---- a/net/netfilter/nf_conntrack_core.c
-+++ b/net/netfilter/nf_conntrack_core.c
-@@ -1242,7 +1242,7 @@ static int nf_conntrack_init_init_net(void)
- 
- 	nf_conntrack_cachep = kmem_cache_create("nf_conntrack",
- 						sizeof(struct nf_conn),
--						0, SLAB_DESTROY_BY_RCU, NULL);
-+						0, 0, NULL);
- 	if (!nf_conntrack_cachep) {
- 		printk(KERN_ERR "Unable to create nf_conn slab cache\n");
- 		ret = -ENOMEM;
-diff --git a/net/netfilter/nf_conntrack_expect.c b/net/netfilter/nf_conntrack_expect.c
-index afde8f9..56227c2 100644
---- a/net/netfilter/nf_conntrack_expect.c
-+++ b/net/netfilter/nf_conntrack_expect.c
-@@ -593,7 +593,7 @@ int nf_conntrack_expect_init(struct net *net)
- 	if (net_eq(net, &init_net)) {
- 		nf_ct_expect_cachep = kmem_cache_create("nf_conntrack_expect",
- 					sizeof(struct nf_conntrack_expect),
--					0, 0, NULL);
-+					0, SLAB_DESTROY_BY_RCU, NULL);
- 		if (!nf_ct_expect_cachep)
- 			goto err2;
- 	}
-@@ -617,8 +617,15 @@ err1:
- void nf_conntrack_expect_fini(struct net *net)
- {
- 	exp_proc_remove(net);
--	if (net_eq(net, &init_net))
-+	if (net_eq(net, &init_net)) {
-+		/* hawk@comx.dk 2009-06-24: The rcu_barrier() can be
-+		 * removed once the sl*b allocators has been fixed
-+		 * regarding handling the SLAB_DESTROY_BY_RCU flag
-+		 * correctly.
-+		 */
-+		rcu_barrier(); /* Wait for call_rcu() before destroy */
- 		kmem_cache_destroy(nf_ct_expect_cachep);
-+	}
- 	nf_ct_free_hashtable(net->ct.expect_hash, net->ct.expect_vmalloc,
- 			     nf_ct_expect_hsize);
- }
-diff --git a/net/netfilter/nf_conntrack_extend.c b/net/netfilter/nf_conntrack_extend.c
-index 4b2c769..fef95be 100644
---- a/net/netfilter/nf_conntrack_extend.c
-+++ b/net/netfilter/nf_conntrack_extend.c
-@@ -186,6 +186,6 @@ void nf_ct_extend_unregister(struct nf_ct_ext_type *type)
- 	rcu_assign_pointer(nf_ct_ext_types[type->id], NULL);
- 	update_alloc_size(type);
- 	mutex_unlock(&nf_ct_ext_type_mutex);
+diff --git a/net/mac80211/mesh.c b/net/mac80211/mesh.c
+index fc712e6..11cf45b 100644
+--- a/net/mac80211/mesh.c
++++ b/net/mac80211/mesh.c
+@@ -494,7 +494,7 @@ void ieee80211_stop_mesh(struct ieee80211_sub_if_data *sdata)
+ 	 * should it be using the interface and enqueuing
+ 	 * frames at this very time on another CPU.
+ 	 */
 -	synchronize_rcu();
-+	rcu_barrier(); /* Wait for completion of call_rcu()'s */
++	rcu_barrier(); /* Wait for RX path and call_rcu()'s */
+ 	skb_queue_purge(&sdata->u.mesh.skb_queue);
  }
- EXPORT_SYMBOL_GPL(nf_ct_extend_unregister);
+ 
 
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
