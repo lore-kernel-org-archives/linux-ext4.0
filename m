@@ -1,16 +1,14 @@
 From: Jan Kara <jack@suse.cz>
-Subject: [PATCH] jbd2: Fix a race between checkpointing code and journal_get_write_access()
-Date: Wed, 24 Jun 2009 18:02:40 +0200
-Message-ID: <1245859360-5261-2-git-send-email-jack@suse.cz>
-References: <1245859360-5261-1-git-send-email-jack@suse.cz>
+Subject: [PATCH] jbd: Fix a race between checkpointing code and journal_get_write_access()
+Date: Wed, 24 Jun 2009 18:02:39 +0200
+Message-ID: <1245859360-5261-1-git-send-email-jack@suse.cz>
 Cc: tytso@mit.edu, Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:43315 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:43316 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758172AbZFXQCl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	id S1758697AbZFXQCl (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
 	Wed, 24 Jun 2009 12:02:41 -0400
-In-Reply-To: <1245859360-5261-1-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
@@ -24,7 +22,7 @@ do_get_write_access()
   lock_buffer()
   unlock_buffer()
                                   flush_batch() submits the buffer for IO
-  __jbd2_journal_file_buffer()
+  __jbd_journal_file_buffer()
 
   So a buffer under writeout is returned from do_get_write_access(). Since
 the filesystem code relies on the fact that journaled buffers cannot be
@@ -41,14 +39,14 @@ Thanks for spotting the problem goes to dingdinghua <dingdinghua85@gmail.com>.
 Reported-by: dingdinghua <dingdinghua85@gmail.com>
 Signed-off-by: Jan Kara <jack@suse.cz>
 ---
- fs/jbd2/transaction.c |   52 ++++++++++++++++++------------------------------
+ fs/jbd/transaction.c |   52 +++++++++++++++++++------------------------------
  1 files changed, 20 insertions(+), 32 deletions(-)
 
-diff --git a/fs/jbd2/transaction.c b/fs/jbd2/transaction.c
-index 494501e..86144aa 100644
---- a/fs/jbd2/transaction.c
-+++ b/fs/jbd2/transaction.c
-@@ -499,34 +499,15 @@ void jbd2_journal_unlock_updates (journal_t *journal)
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 73242ba..e9e141d 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -489,34 +489,15 @@ void journal_unlock_updates (journal_t *journal)
  	wake_up(&journal->j_wait_transaction_locked);
  }
  
@@ -90,7 +88,7 @@ index 494501e..86144aa 100644
  }
  
  /*
-@@ -593,14 +574,16 @@ repeat:
+@@ -583,14 +564,16 @@ repeat:
  			if (jh->b_next_transaction)
  				J_ASSERT_JH(jh, jh->b_next_transaction ==
  							transaction);
@@ -109,7 +107,7 @@ index 494501e..86144aa 100644
  	}
  
  	unlock_buffer(bh);
-@@ -1896,12 +1879,17 @@ void __jbd2_journal_file_buffer(struct journal_head *jh,
+@@ -2041,12 +2024,17 @@ void __journal_file_buffer(struct journal_head *jh,
  	if (jh->b_transaction && jh->b_jlist == jlist)
  		return;
  
