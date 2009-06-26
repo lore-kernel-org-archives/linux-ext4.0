@@ -1,90 +1,38 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: [PATCH V2] naturally align struct ext4_allocation_request
-Date: Thu, 25 Jun 2009 20:09:40 -0500
-Message-ID: <4A441FD4.9020403@redhat.com>
-References: <4A4254C2.8000609@redhat.com> <170fa0d20906251750u697b32e3yb92eab53b51556a3@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: upcoming kerneloops.org item: get_page_from_freelist
+Date: Thu, 25 Jun 2009 21:11:55 -0400
+Message-ID: <20090626011155.GI6472@mit.edu>
+References: <20090624150714.c7264768.akpm@linux-foundation.org> <20090625132544.GB9995@mit.edu> <alpine.DEB.2.00.0906251135440.30090@chino.kir.corp.google.com> <20090625193806.GA6472@mit.edu> <20090625194423.GB6472@mit.edu> <alpine.DEB.2.00.0906251257040.3086@chino.kir.corp.google.com> <20090625203743.GD6472@mit.edu> <20090625212628.GO3385@webber.adilger.int> <20090625220504.GG6472@mit.edu> <4A43F60D.2040801@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Mike Snitzer <snitzer@gmail.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>,
+	David Rientjes <rientjes@google.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	penberg@cs.helsinki.fi, arjan@infradead.org,
+	linux-kernel@vger.kernel.org, cl@linux-foundation.org,
+	npiggin@suse.de, linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:33339 "EHLO mx2.redhat.com"
+Received: from thunk.org ([69.25.196.29]:44089 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752265AbZFZBJk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 25 Jun 2009 21:09:40 -0400
-In-Reply-To: <170fa0d20906251750u697b32e3yb92eab53b51556a3@mail.gmail.com>
+	id S1752306AbZFZBMe (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 25 Jun 2009 21:12:34 -0400
+Content-Disposition: inline
+In-Reply-To: <4A43F60D.2040801@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-As Ted noted, the ext4_allocation_request isn't well aligned.
+On Thu, Jun 25, 2009 at 05:11:25PM -0500, Eric Sandeen wrote:
+> 
+> ecryptfs used to do kmalloc(PAGE_CACHE_SIZE) & virt_to_page on that, and
+> with SLUB + slub debug, that gave back non-aligned memory, causing
+> eventual corruption ...
 
-Looking at it with pahole we're wasting space on 64-bit
-arches:
+Grumble.  Any chance we could add an kmem_cache option which requires
+the memory to be aligned?  Otherwise we could rewrite our own sub-page
+allocator in ext4 that only handled aligned filesystem block sizes
+(i.e., 1k, 2k, 4k, etc.) but that would be really silly and be extra
+code that really should be done once at core functionality.
 
-struct ext4_allocation_request {
-        struct inode *             inode;              /*     0     8 */
-        ext4_lblk_t                logical;            /*     8     4 */
-
-        /* XXX 4 bytes hole, try to pack */
-
-        ext4_fsblk_t               goal;               /*    16     8 */
-        ext4_lblk_t                lleft;              /*    24     4 */
-
-        /* XXX 4 bytes hole, try to pack */
-
-        ext4_fsblk_t               pleft;              /*    32     8 */
-        ext4_lblk_t                lright;             /*    40     4 */
-
-        /* XXX 4 bytes hole, try to pack */
-
-        ext4_fsblk_t               pright;             /*    48     8 */
-        unsigned int               len;                /*    56     4 */
-        unsigned int               flags;              /*    60     4 */
-        /* --- cacheline 1 boundary (64 bytes) --- */
-
-        /* size: 64, cachelines: 1, members: 9 */
-        /* sum members: 52, holes: 3, sum holes: 12 */
-};
-
-grouping 32-bit members together closes these holes and shrinks
-the structure by 12 bytes.
-
-Signed-off-by: Eric Sandeen <sandeen@redhat.com>
----
-
-V2: fix comments, thanks to Mike Snitzer
-
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index cc7d5ed..cefd94a 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -93,20 +93,20 @@ typedef unsigned int ext4_group_t;
- struct ext4_allocation_request {
- 	/* target inode for block we're allocating */
- 	struct inode *inode;
-+	/* how many blocks we want to allocate */
-+	unsigned int len;
- 	/* logical block in target inode */
- 	ext4_lblk_t logical;
--	/* phys. target (a hint) */
--	ext4_fsblk_t goal;
- 	/* the closest logical allocated block to the left */
- 	ext4_lblk_t lleft;
--	/* phys. block for ^^^ */
--	ext4_fsblk_t pleft;
- 	/* the closest logical allocated block to the right */
- 	ext4_lblk_t lright;
--	/* phys. block for ^^^ */
-+	/* phys. target (a hint) */
-+	ext4_fsblk_t goal;
-+	/* phys. block for the closest logical allocated block to the left */
-+	ext4_fsblk_t pleft;
-+	/* phys. block for the closest logical allocated block to the right */
- 	ext4_fsblk_t pright;
--	/* how many blocks we want to allocate */
--	unsigned int len;
- 	/* flags. see above EXT4_MB_HINT_* */
- 	unsigned int flags;
- };
-
+     	  	 	   	     	- Ted
