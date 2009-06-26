@@ -1,65 +1,39 @@
-From: Pekka J Enberg <penberg@cs.helsinki.fi>
-Subject: Re: upcoming kerneloops.org item: get_page_from_freelist
-Date: Fri, 26 Jun 2009 08:16:18 +0300 (EEST)
-Message-ID: <Pine.LNX.4.64.0906260815260.18724@melkki.cs.Helsinki.FI>
-References: <20090624150714.c7264768.akpm@linux-foundation.org>
- <20090625132544.GB9995@mit.edu> <alpine.DEB.2.00.0906251135440.30090@chino.kir.corp.google.com>
- <20090625193806.GA6472@mit.edu> <20090625194423.GB6472@mit.edu>
- <alpine.DEB.2.00.0906251257040.3086@chino.kir.corp.google.com>
- <20090625203743.GD6472@mit.edu> <20090625212628.GO3385@webber.adilger.int>
- <20090625220504.GG6472@mit.edu> <4A43F60D.2040801@redhat.com>
- <20090626011155.GI6472@mit.edu>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: Segmentation fault in e4defrag -c
+Date: Fri, 26 Jun 2009 17:32:48 +0900
+Message-ID: <4A4487B0.9080000@sx.jp.nec.com>
+References: <20090625105558.GA21773@uio.no>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@sun.com>,
-	David Rientjes <rientjes@google.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	arjan@infradead.org, linux-kernel@vger.kernel.org,
-	cl@linux-foundation.org, npiggin@suse.de,
-	linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Cc: a-fujita@rs.jp.nec.com, linux-ext4@vger.kernel.org
+To: "Steinar H. Gunderson" <sgunderson@bigfoot.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from courier.cs.helsinki.fi ([128.214.9.1]:55245 "EHLO
-	mail.cs.helsinki.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751034AbZFZFQR (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jun 2009 01:16:17 -0400
-In-Reply-To: <20090626011155.GI6472@mit.edu>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:60613 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751312AbZFZIf1 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jun 2009 04:35:27 -0400
+In-Reply-To: <20090625105558.GA21773@uio.no>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
+Hi Steinar,
 
-On Thu, Jun 25, 2009 at 05:11:25PM -0500, Eric Sandeen wrote:
-> > ecryptfs used to do kmalloc(PAGE_CACHE_SIZE) & virt_to_page on that, and
-> > with SLUB + slub debug, that gave back non-aligned memory, causing
-> > eventual corruption ...
+Thanks for testing defrag.
 
-On Thu, 25 Jun 2009, Theodore Tso wrote:
-> Grumble.  Any chance we could add an kmem_cache option which requires
-> the memory to be aligned?  Otherwise we could rewrite our own sub-page
-> allocator in ext4 that only handled aligned filesystem block sizes
-> (i.e., 1k, 2k, 4k, etc.) but that would be really silly and be extra
-> code that really should be done once at core functionality.
+e4defrag -c works fine in the case without defrag patch.
+I cannot reproduce this problem, so I think this problem occurred in unusual 
+cases (e.g. i_size is not zeroed but it has no extent)
 
-We alredy have SLAB_HW_ALIGN but I wonder if this is a plain old bug in 
-SLUB. Christoph, Nick, don't we need something like this in the allocator? 
-Eric, does this fix your case?
 
-			Pekka
+To solve this problem, could you send me the following information?
+1. mount option of /home/sesse
+2. filefrag -v "/home/sesse/Mika - Life In Cartoon Motion/11 - Ring Ring (Bonus 
+Track).mp3"
+3. stat "/home/sesse/Mika - Life In Cartoon Motion/11 - Ring Ring (Bonus Track).mp3"
 
-diff --git a/mm/slub.c b/mm/slub.c
-index 819f056..7cd1e69 100644
---- a/mm/slub.c
-+++ b/mm/slub.c
-@@ -2400,7 +2400,7 @@ static int calculate_sizes(struct kmem_cache *s, int forced_order)
- 	 * user specified and the dynamic determination of cache line size
- 	 * on bootup.
- 	 */
--	align = calculate_alignment(flags, align, s->objsize);
-+	align = calculate_alignment(flags, align, size);
- 
- 	/*
- 	 * SLUB stores one object immediately after another beginning from
+Does this problem occur at all times?
+
+Regards,
+
+Kazuya Mio
