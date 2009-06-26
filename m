@@ -1,70 +1,65 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: ext3: massive latencies for some write operations
-Date: Fri, 26 Jun 2009 06:54:03 +0200
-Message-ID: <20090626045403.GS3385@webber.adilger.int>
-References: <97c719fa0906251918i5b047943yde752774c686f301@mail.gmail.com>
+From: Pekka J Enberg <penberg@cs.helsinki.fi>
+Subject: Re: upcoming kerneloops.org item: get_page_from_freelist
+Date: Fri, 26 Jun 2009 08:16:18 +0300 (EEST)
+Message-ID: <Pine.LNX.4.64.0906260815260.18724@melkki.cs.Helsinki.FI>
+References: <20090624150714.c7264768.akpm@linux-foundation.org>
+ <20090625132544.GB9995@mit.edu> <alpine.DEB.2.00.0906251135440.30090@chino.kir.corp.google.com>
+ <20090625193806.GA6472@mit.edu> <20090625194423.GB6472@mit.edu>
+ <alpine.DEB.2.00.0906251257040.3086@chino.kir.corp.google.com>
+ <20090625203743.GD6472@mit.edu> <20090625212628.GO3385@webber.adilger.int>
+ <20090625220504.GG6472@mit.edu> <4A43F60D.2040801@redhat.com>
+ <20090626011155.GI6472@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org, calvin.walton@gmail.com
-To: Nick Bowler <nbowler@draconx.ca>
+Content-Type: text/plain; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+Cc: Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>,
+	David Rientjes <rientjes@google.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	arjan@infradead.org, linux-kernel@vger.kernel.org,
+	cl@linux-foundation.org, npiggin@suse.de,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:52590 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752179AbZFZEyI (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jun 2009 00:54:08 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n5Q4s7MI000583
-	for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2009 21:54:07 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KLT00L00XALMB00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Thu,
- 25 Jun 2009 21:54:07 -0700 (PDT)
-In-reply-to: <97c719fa0906251918i5b047943yde752774c686f301@mail.gmail.com>
+Received: from courier.cs.helsinki.fi ([128.214.9.1]:55245 "EHLO
+	mail.cs.helsinki.fi" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751034AbZFZFQR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 26 Jun 2009 01:16:17 -0400
+In-Reply-To: <20090626011155.GI6472@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jun 25, 2009  22:18 -0400, Nick Bowler wrote:
-> I wasn't entirely sure which list to post this on, this one seemed to
-> fit best.  Apologies if there was a better place.
-> 
-> Please CC any replies to me me as I am not subscribed to the list.
+Hi Ted,
 
-This is a relatively well-known problem with ext3.
+On Thu, Jun 25, 2009 at 05:11:25PM -0500, Eric Sandeen wrote:
+> > ecryptfs used to do kmalloc(PAGE_CACHE_SIZE) & virt_to_page on that, and
+> > with SLUB + slub debug, that gave back non-aligned memory, causing
+> > eventual corruption ...
 
-> Recently, I've been experiencing enormous (more than a minute)
-> latencies during some write operations to my /home filesystem.  During
-> such a time, many programs tend to completely stop responding,
-> although programs doing continuous reads (e.g. music or video players)
-> appear to be unaffected.
-> 
-> The filesystem is a 3TB ext3 filesystem on a software raid-5 array (4x
-> 1TB drives).  Dmesg is completely silent.
-> 
-> I'm on an amd64 running 2.6.30.  However, I had these issues on 2.6.26
-> and 2.6.29 as well.  Latencytop output follows.
-> 
->    LatencyTOP version 0.4       (C) 2008 Intel Corporation
-> 
-> Process amuled (19428)                     Total: 69182.1 msec
-> start_this_handle journal_start ext3_journal_start68746.9 msec       99.4 %
-> sync_page __lock_page find_lock_page filemap_fault 84.5 msec          0.3 %
-> sync_page sync_page_killable __lock_page_killable  20.9 msec          0.0 %
+On Thu, 25 Jun 2009, Theodore Tso wrote:
+> Grumble.  Any chance we could add an kmem_cache option which requires
+> the memory to be aligned?  Otherwise we could rewrite our own sub-page
+> allocator in ext4 that only handled aligned filesystem block sizes
+> (i.e., 1k, 2k, 4k, etc.) but that would be really silly and be extra
+> code that really should be done once at core functionality.
 
-You have some application that is doing a lot of "fsync" operations,
-but because there is likely also a lot of other IO going on the
-fsync operations are taking a long time to sync the journal.
+We alredy have SLAB_HW_ALIGN but I wonder if this is a plain old bug in 
+SLUB. Christoph, Nick, don't we need something like this in the allocator? 
+Eric, does this fix your case?
 
-If you use ext4 this problem should go away.  I would recommend the
-FC11 2.6.29 kernel, since it has all of the latest ext4 fixes in it.
+			Pekka
 
-If you wanted to throw some hardware at the problem, adding an SSD device
-for the journal should also solve the problem for ext3.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+diff --git a/mm/slub.c b/mm/slub.c
+index 819f056..7cd1e69 100644
+--- a/mm/slub.c
++++ b/mm/slub.c
+@@ -2400,7 +2400,7 @@ static int calculate_sizes(struct kmem_cache *s, int forced_order)
+ 	 * user specified and the dynamic determination of cache line size
+ 	 * on bootup.
+ 	 */
+-	align = calculate_alignment(flags, align, s->objsize);
++	align = calculate_alignment(flags, align, size);
+ 
+ 	/*
+ 	 * SLUB stores one object immediately after another beginning from
