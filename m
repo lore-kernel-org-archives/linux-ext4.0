@@ -1,46 +1,107 @@
-From: David Miller <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>
-Subject: Re: [PATCH 07/10] decnet: Use rcu_barrier() on module unload.
-Date: Thu, 25 Jun 2009 16:10:46 -0700 (PDT)
-Message-ID: <20090625.161046.19938291.davem@davemloft.net>
-References: <1245845367.24921.3.camel@localhost.localdomain>
-	<5A680E0A-EFEB-44EA-9F06-F338E6CBD6D1@googlemail.com>
-	<1245930729.24921.67.camel@localhost.localdomain>
+From: Mike Snitzer <snitzer@gmail.com>
+Subject: Re: [PATCH] naturally align struct ext4_allocation_request
+Date: Thu, 25 Jun 2009 20:50:16 -0400
+Message-ID: <170fa0d20906251750u697b32e3yb92eab53b51556a3@mail.gmail.com>
+References: <4A4254C2.8000609@redhat.com>
 Mime-Version: 1.0
-Content-Type: Text/Plain; charset=us-ascii
-Content-Transfer-Encoding: 7bit
-Cc: christine.caulfield-gM/Ye1E23mwN+BqQ9rBEUg@public.gmane.org, paulmck-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org,
-	netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	dougthompson-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org, axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, kaber-dcUjhNyLwpNeoWH0uzbU5w@public.gmane.org,
-	Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org, johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org,
-	yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, shemminger-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, tytso-3s7WtUTddSA@public.gmane.org, adilger-xsfywfwIY+M@public.gmane.org,
-	netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: jdb-4UpuNZONu4c@public.gmane.org
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <1245930729.24921.67.camel-bi+AKbBUZKY6gyzm1THtWbp2dZbC/Bob@public.gmane.org>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-ew0-f210.google.com ([209.85.219.210]:58761 "EHLO
+	mail-ew0-f210.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751364AbZFZAuO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 25 Jun 2009 20:50:14 -0400
+Received: by ewy6 with SMTP id 6so2873752ewy.37
+        for <linux-ext4@vger.kernel.org>; Thu, 25 Jun 2009 17:50:16 -0700 (PDT)
+In-Reply-To: <4A4254C2.8000609@redhat.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-From: Jesper Dangaard Brouer <jdb-4UpuNZONu4c@public.gmane.org>
-Date: Thu, 25 Jun 2009 13:52:09 +0200
+On Wed, Jun 24, 2009 at 12:30 PM, Eric Sandeen<sandeen@redhat.com> wrot=
+e:
+> As Ted noted, the ext4_allocation_request isn't well aligned.
+>
+> Looking at it with pahole we're wasting space on 64-bit
+> arches:
+>
+> struct ext4_allocation_request {
+> =A0 =A0 =A0 =A0struct inode * =A0 =A0 =A0 =A0 =A0 =A0 inode; =A0 =A0 =
+=A0 =A0 =A0 =A0 =A0/* =A0 =A0 0 =A0 =A0 8 */
+> =A0 =A0 =A0 =A0ext4_lblk_t =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0logical; =A0=
+ =A0 =A0 =A0 =A0 =A0/* =A0 =A0 8 =A0 =A0 4 */
+>
+> =A0 =A0 =A0 =A0/* XXX 4 bytes hole, try to pack */
+>
+> =A0 =A0 =A0 =A0ext4_fsblk_t =A0 =A0 =A0 =A0 =A0 =A0 =A0 goal; =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0 /* =A0 =A016 =A0 =A0 8 */
+> =A0 =A0 =A0 =A0ext4_lblk_t =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0lleft; =A0 =
+=A0 =A0 =A0 =A0 =A0 =A0/* =A0 =A024 =A0 =A0 4 */
+>
+> =A0 =A0 =A0 =A0/* XXX 4 bytes hole, try to pack */
+>
+> =A0 =A0 =A0 =A0ext4_fsblk_t =A0 =A0 =A0 =A0 =A0 =A0 =A0 pleft; =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0/* =A0 =A032 =A0 =A0 8 */
+> =A0 =A0 =A0 =A0ext4_lblk_t =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0lright; =A0=
+ =A0 =A0 =A0 =A0 =A0 /* =A0 =A040 =A0 =A0 4 */
+>
+> =A0 =A0 =A0 =A0/* XXX 4 bytes hole, try to pack */
+>
+> =A0 =A0 =A0 =A0ext4_fsblk_t =A0 =A0 =A0 =A0 =A0 =A0 =A0 pright; =A0 =A0=
+ =A0 =A0 =A0 =A0 /* =A0 =A048 =A0 =A0 8 */
+> =A0 =A0 =A0 =A0unsigned int =A0 =A0 =A0 =A0 =A0 =A0 =A0 len; =A0 =A0 =
+=A0 =A0 =A0 =A0 =A0 =A0/* =A0 =A056 =A0 =A0 4 */
+> =A0 =A0 =A0 =A0unsigned int =A0 =A0 =A0 =A0 =A0 =A0 =A0 flags; =A0 =A0=
+ =A0 =A0 =A0 =A0 =A0/* =A0 =A060 =A0 =A0 4 */
+> =A0 =A0 =A0 =A0/* --- cacheline 1 boundary (64 bytes) --- */
+>
+> =A0 =A0 =A0 =A0/* size: 64, cachelines: 1, members: 9 */
+> =A0 =A0 =A0 =A0/* sum members: 52, holes: 3, sum holes: 12 */
+> };
+>
+> grouping 32-bit members together closes these holes and shrinks
+> the structure by 12 bytes.
+>
+> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ---
+>
+>
+> diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
+> index cc7d5ed..9a438cf 100644
+> --- a/fs/ext4/ext4.h
+> +++ b/fs/ext4/ext4.h
+> @@ -93,20 +93,20 @@ typedef unsigned int ext4_group_t;
+> =A0struct ext4_allocation_request {
+> =A0 =A0 =A0 =A0/* target inode for block we're allocating */
+> =A0 =A0 =A0 =A0struct inode *inode;
+> + =A0 =A0 =A0 /* how many blocks we want to allocate */
+> + =A0 =A0 =A0 unsigned int len;
+> =A0 =A0 =A0 =A0/* logical block in target inode */
+> =A0 =A0 =A0 =A0ext4_lblk_t logical;
+> - =A0 =A0 =A0 /* phys. target (a hint) */
+> - =A0 =A0 =A0 ext4_fsblk_t goal;
+> =A0 =A0 =A0 =A0/* the closest logical allocated block to the left */
+> =A0 =A0 =A0 =A0ext4_lblk_t lleft;
+> - =A0 =A0 =A0 /* phys. block for ^^^ */
+> - =A0 =A0 =A0 ext4_fsblk_t pleft;
+> =A0 =A0 =A0 =A0/* the closest logical allocated block to the right */
+> =A0 =A0 =A0 =A0ext4_lblk_t lright;
+> + =A0 =A0 =A0 /* phys. target (a hint) */
+> + =A0 =A0 =A0 ext4_fsblk_t goal;
+> + =A0 =A0 =A0 /* phys. block for ^^^ */
+> + =A0 =A0 =A0 ext4_fsblk_t pleft;
+> =A0 =A0 =A0 =A0/* phys. block for ^^^ */
+> =A0 =A0 =A0 =A0ext4_fsblk_t pright;
 
-> On Wed, 2009-06-24 at 14:50 +0100, Chrissie Caulfield wrote:
->> I don't have any objection to the patch at all, 
-> 
-> Thus assuming an:
-> 
-> Acked-by: Chrissie Caulfield <christine.caulfield-gM/Ye1E23mwN+BqQ9rBEUg@public.gmane.org>
-> 
-> (wondering if patchworks picks this up...)
+Hey Eric,
 
-It usually does.
+Looks like the comments for pleft and pright should be updated to
+reference lleft and lright respectively (rather than ^^^).
 
-However, could you formally resubmit just the networking bits
-as that would make life a lot easier for me.
-
-Thanks a lot Jesper!
+Mike
 --
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
