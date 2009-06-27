@@ -1,78 +1,32 @@
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Subject: Re: [RFC][PATCH 1/7]ext4: Add EXT4_IOC_ADD_GLOBAL_ALLOC_RULE
-	restricts block allocation
-Date: Sat, 27 Jun 2009 22:24:00 +0530
-Message-ID: <20090627165400.GA9414@skywalker>
-References: <4A409168.3020404@rs.jp.nec.com> <20090623231950.GN31668@webber.adilger.int> <87f94c370906231702m6dde1402o9d2738f97f4b7df9@mail.gmail.com> <20090624001158.GQ31668@webber.adilger.int> <87f94c370906250547l338fd357s2e51291185bc3b2c@mail.gmail.com>
+From: Nick Bowler <nbowler@draconx.ca>
+Subject: Re: ext3: massive latencies for some write operations
+Date: Sat, 27 Jun 2009 17:07:57 -0400
+Message-ID: <97c719fa0906271407u3b53b252qf371561d37f62e6b@mail.gmail.com>
+References: <97c719fa0906251918i5b047943yde752774c686f301@mail.gmail.com>
+	 <20090626045403.GS3385@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@sun.com>,
-	Akira Fujita <a-fujita@rs.jp.nec.com>,
-	linux-ext4@vger.kernel.org, "Theodore Ts'o" <tytso@mit.edu>,
-	linux-fsdevel@vger.kernel.org,
-	Aneesh Kumar <aneesh.kumar@gmail.com>
-To: Greg Freemyer <greg.freemyer@gmail.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-Disposition: inline
-In-Reply-To: <87f94c370906250547l338fd357s2e51291185bc3b2c@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, calvin.walton@gmail.com
+To: Andreas Dilger <adilger@sun.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-qy0-f193.google.com ([209.85.221.193]:55270 "EHLO
+	mail-qy0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751050AbZF0VHy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Jun 2009 17:07:54 -0400
+Received: by qyk31 with SMTP id 31so3824485qyk.33
+        for <linux-ext4@vger.kernel.org>; Sat, 27 Jun 2009 14:07:57 -0700 (PDT)
+In-Reply-To: <20090626045403.GS3385@webber.adilger.int>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 25, 2009 at 08:47:59AM -0400, Greg Freemyer wrote:
-> Aneesh,
->=20
-> Can you provide the below requested info?
->=20
-> Thanks
-> Greg
->=20
-> On Tue, Jun 23, 2009 at 8:11 PM, Andreas Dilger<adilger@sun.com> wrot=
-e:
-> > On Jun 23, 2009 =A020:02 -0400, Greg Freemyer wrote:
-> >> On Tue, Jun 23, 2009 at 7:19 PM, Andreas Dilger<adilger@sun.com> w=
-rote:
-> >> > On Jun 23, 2009 =A017:25 +0900, Akira Fujita wrote:
-> >> >> alloc_flag of ext4_alloc_rule structure is set as "mandatory" o=
-r "advisory".
-> >> >> Restricted blocks with "mandatory" are never used by block allo=
-cator.
-> >> >> But in "advisory" case, block allocator is allowed to use restr=
-icted blocks
-> >> >> when there are no free blocks on FS.
-> >> >
-> >> > Would it make more sense to implement the range protections via =
-the
-> >> > existing preallocation ranges (PA)? =A0An inode can have multipl=
-e
-> >> > PAs attached to it to have it prefer allocations from that range=
-=2E
-> >> >
-> >> > We could also attach PAs to the superblock to prevent other file=
-s from
-> >> > allocating out of those ranges. =A0This would work better with t=
-he existing
-> >> > allocation code instead of creating a second similar mechanism.
-> >>
-> >> Where can I find documentation about how PA works? =A0Or is it jus=
-t in
-> >> the source? =A0If so, what are one or two calls that cause the PA =
-ranges
-> >> to be set, etc.
-> >
+On 6/26/09, Andreas Dilger <adilger@sun.com> wrote:
+> This is a relatively well-known problem with ext3.
 
-Mostly the source. Some of mballoc details are documented in the ols
-2008 paper. Regarding some of the functions
+<snip>
 
-ext4_mb_use_preallocated -> allocate from PA
-ext4_mb_new_preallocation -> Create new PA.
+> If you use ext4 this problem should go away.  I would recommend the
+> FC11 2.6.29 kernel, since it has all of the latest ext4 fixes in it.
 
-Source code also have some documentation that explains how mballoc use
-PA.
-
--aneesh
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Okay, I have switched to ext4 (although with 2.6.30).  Hopefully I
+won't have any major issues, thanks!
