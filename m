@@ -1,32 +1,56 @@
-From: Nick Bowler <nbowler@draconx.ca>
-Subject: Re: ext3: massive latencies for some write operations
-Date: Sat, 27 Jun 2009 17:07:57 -0400
-Message-ID: <97c719fa0906271407u3b53b252qf371561d37f62e6b@mail.gmail.com>
-References: <97c719fa0906251918i5b047943yde752774c686f301@mail.gmail.com>
-	 <20090626045403.GS3385@webber.adilger.int>
+From: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:
+	libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
+Date: Sun, 28 Jun 2009 09:34:30 -0400
+Message-ID: <20090628133430.GA3594@mit.edu>
+References: <200905311113.23004.arvidjaar@mail.ru> <20090601124857.GF31943@mit.edu> <20090603085140.GA4060@nb.net.home> <1244021945.4120.4.camel@quest>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, calvin.walton@gmail.com
-To: Andreas Dilger <adilger@sun.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-qy0-f193.google.com ([209.85.221.193]:55270 "EHLO
-	mail-qy0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751050AbZF0VHy (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 27 Jun 2009 17:07:54 -0400
-Received: by qyk31 with SMTP id 31so3824485qyk.33
-        for <linux-ext4@vger.kernel.org>; Sat, 27 Jun 2009 14:07:57 -0700 (PDT)
-In-Reply-To: <20090626045403.GS3385@webber.adilger.int>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+Content-Type: text/plain; charset=us-ascii
+Cc: Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
+	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>
+Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <1244021945.4120.4.camel@quest>
+Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On 6/26/09, Andreas Dilger <adilger@sun.com> wrote:
-> This is a relatively well-known problem with ext3.
+Sorry for the delay; I've been incredibly busy.  I'm guessing you
+never actually bothered to build and test the patch which you
+submitted?
 
-<snip>
+I tried building with --disable-libuuid, when it tried to compile
+e2fsck, it crashed and burned.  The reason why was because LIBUUID
+wasn't getting set properly:
 
-> If you use ext4 this problem should go away.  I would recommend the
-> FC11 2.6.29 kernel, since it has all of the latest ext4 fixes in it.
+% grep LIBUUID MCONFIG  | head -1
+LIBUUID =  
 
-Okay, I have switched to ext4 (although with 2.6.30).  Hopefully I
-won't have any major issues, thanks!
+And the reason for that is....
+
+On Wed, Jun 03, 2009 at 10:39:05AM +0100, Scott James Remnant wrote:
+> +AC_ARG_ENABLE([libuuid],
+> +[  --disable-libuuid	  do not build private uuid library],
+> +if test "$enableval" = "no"
+> +then
+> +	if test -z "$PKG_CONFIG"; then
+> +		AC_MSG_ERROR([pkg-config not installed; please install it.])
+> +	fi
+> +
+> +	AC_CHECK_LIB(uuid, uuid_generate,
+> +		[LIBBLKID=`$PKG_CONFIG --libs uuid`;
+                 ^^^^^^^^
+> +		 STATIC_LIBBLKID=`$PKG_CONFIG --static --libs uuid`],
+                 ^^^^^^^^^^^^^^^
+> +		[AC_MSG_ERROR([external uuid library not found])],
+> +		[$LIBUUID])
+> +	UUID_CMT=#
+> +	AC_MSG_RESULT([Disabling private uuid library])
+
+I'll have a corrected patch checked into e2fsprogs.
+
+							- Ted
+--
+To unsubscribe from this list: send the line "unsubscribe util-linux-ng" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
