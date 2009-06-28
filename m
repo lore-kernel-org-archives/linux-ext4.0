@@ -1,56 +1,39 @@
-From: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:
-	libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Sun, 28 Jun 2009 09:34:30 -0400
-Message-ID: <20090628133430.GA3594@mit.edu>
-References: <200905311113.23004.arvidjaar@mail.ru> <20090601124857.GF31943@mit.edu> <20090603085140.GA4060@nb.net.home> <1244021945.4120.4.camel@quest>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
-	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <1244021945.4120.4.camel@quest>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+From: Joe Perches <joe@perches.com>
+Subject: [PATCH 57/62] fs/ext4/mballoc.c: Remove unnecessary semicolons
+Date: Sun, 28 Jun 2009 09:27:02 -0700
+Message-ID: <d45c565b20589fe7884926b5174ef730de1c9442.1246173683.git.joe@perches.com>
+References: <cover.1246173664.git.joe@perches.com>
+Cc: trivial@kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@sun.com>,
+	"Theodore Ts'o" <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: linux-kernel@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from 136-022.dsl.LABridge.com ([206.117.136.22]:1186 "EHLO
+	mail.perches.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755322AbZF1Q2U (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 28 Jun 2009 12:28:20 -0400
+In-Reply-To: <cover.1246173664.git.joe@perches.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-Sorry for the delay; I've been incredibly busy.  I'm guessing you
-never actually bothered to build and test the patch which you
-submitted?
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ fs/ext4/mballoc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-I tried building with --disable-libuuid, when it tried to compile
-e2fsck, it crashed and burned.  The reason why was because LIBUUID
-wasn't getting set properly:
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 519a0a6..6b4e5ae 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2525,7 +2525,7 @@ int ext4_mb_add_groupinfo(struct super_block *sb, ext4_group_t group,
+ 
+ 	INIT_LIST_HEAD(&meta_group_info[i]->bb_prealloc_list);
+ 	init_rwsem(&meta_group_info[i]->alloc_sem);
+-	meta_group_info[i]->bb_free_root.rb_node = NULL;;
++	meta_group_info[i]->bb_free_root.rb_node = NULL;
+ 
+ #ifdef DOUBLE_CHECK
+ 	{
+-- 
+1.6.3.1.10.g659a0.dirty
 
-% grep LIBUUID MCONFIG  | head -1
-LIBUUID =  
-
-And the reason for that is....
-
-On Wed, Jun 03, 2009 at 10:39:05AM +0100, Scott James Remnant wrote:
-> +AC_ARG_ENABLE([libuuid],
-> +[  --disable-libuuid	  do not build private uuid library],
-> +if test "$enableval" = "no"
-> +then
-> +	if test -z "$PKG_CONFIG"; then
-> +		AC_MSG_ERROR([pkg-config not installed; please install it.])
-> +	fi
-> +
-> +	AC_CHECK_LIB(uuid, uuid_generate,
-> +		[LIBBLKID=`$PKG_CONFIG --libs uuid`;
-                 ^^^^^^^^
-> +		 STATIC_LIBBLKID=`$PKG_CONFIG --static --libs uuid`],
-                 ^^^^^^^^^^^^^^^
-> +		[AC_MSG_ERROR([external uuid library not found])],
-> +		[$LIBUUID])
-> +	UUID_CMT=#
-> +	AC_MSG_RESULT([Disabling private uuid library])
-
-I'll have a corrected patch checked into e2fsprogs.
-
-							- Ted
---
-To unsubscribe from this list: send the line "unsubscribe util-linux-ng" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
