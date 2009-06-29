@@ -1,29 +1,34 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] debugfs: don't try to fclose NULL
-Date: Mon, 29 Jun 2009 01:07:52 -0400
-Message-ID: <20090629050752.GC6802@mit.edu>
-References: <4A451A23.20307@redhat.com>
+Subject: Re: [PATCH] libext2fs: ensure validate_entry doesn't read beyond
+	blocksize
+Date: Mon, 29 Jun 2009 01:27:01 -0400
+Message-ID: <20090629052701.GD6802@mit.edu>
+References: <687495.40108.qm@web43515.mail.sp1.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: number9652 <number9652@yahoo.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:48586 "EHLO thunker.thunk.org"
+Received: from THUNK.ORG ([69.25.196.29]:36929 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751085AbZF2FIb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jun 2009 01:08:31 -0400
+	id S1750725AbZF2F1d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 29 Jun 2009 01:27:33 -0400
 Content-Disposition: inline
-In-Reply-To: <4A451A23.20307@redhat.com>
+In-Reply-To: <687495.40108.qm@web43515.mail.sp1.yahoo.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jun 26, 2009 at 01:57:39PM -0500, Eric Sandeen wrote:
-> do_logdump may jump to errout if fopen(out_file) fails, 
-> but in that case out_file is NULL, and fclose will segfault.
+On Fri, Jun 12, 2009 at 09:04:32AM -0700, number9652 wrote:
 > 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> ext2fs_validate_entry would read beyond the end of the block to get dirent->rec_len for certain arguments (like if blocksize == final_offset).  This patch adds a check so that doesn't happen, and changes the types of the arguments to avoid a compiler warning.
+> 
+> Signed-off-by: Nic Case <number9652@yahoo.com>
 
-Thanks, applied.
+Applied.  In the future, please line-wrap the body of the commit
+message at 72-75 characters.
 
+I also lined up the arguments to ext2fs_validate_entry on the
+continuation line, and used a CPP macro instead of an automatic
+variable for dirent_min_length.
 
 					- Ted
