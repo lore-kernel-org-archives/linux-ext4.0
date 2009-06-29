@@ -1,33 +1,44 @@
-From: Heiko Carstens <heiko.carstens@de.ibm.com>
-Subject: Re: [Fwd: [Bug] 2.6.30 kernel stack trace with 'fsfuzzer ext3' on
-	s390]
-Date: Mon, 29 Jun 2009 12:28:56 +0200
-Message-ID: <20090629102856.GB9321@osiris.boeblingen.de.ibm.com>
-References: <4A48858B.5080602@linux.vnet.ibm.com>
+From: =?UTF-8?Q?Krzysztof_Kosi=C5=84ski?= <tweenk.pl@gmail.com>
+Subject: Re: Massive corruption on RAID0
+Date: Mon, 29 Jun 2009 17:12:50 +0200
+Message-ID: <298610bb0906290812t249c7e52l80e57af36bd0e80c@mail.gmail.com>
+References: <298610bb0906281738u2e1ce91fnc753acc145d759bb@mail.gmail.com>
+	 <4A48355D.5040001@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sachinp@linux.vnet.ibm.com,
-	linux-s390@vger.kernel.org, akpm@linux-foundation.org
-To: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mtagate3.uk.ibm.com ([195.212.29.136]:33461 "EHLO
-	mtagate3.uk.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751621AbZF2K3F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jun 2009 06:29:05 -0400
-Content-Disposition: inline
-In-Reply-To: <4A48858B.5080602@linux.vnet.ibm.com>
+Received: from mail-fx0-f218.google.com ([209.85.220.218]:39336 "EHLO
+	mail-fx0-f218.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751479AbZF2PMt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jun 2009 11:12:49 -0400
+Received: by fxm18 with SMTP id 18so1029308fxm.37
+        for <linux-ext4@vger.kernel.org>; Mon, 29 Jun 2009 08:12:50 -0700 (PDT)
+In-Reply-To: <4A48355D.5040001@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 29, 2009 at 02:42:43PM +0530, Nageswara R Sastry wrote:
-> Hitting the same bug with 2.6.31-rc1 on s390 arch.
->
->
-> EXT3-fs error (device loop0): htree_dirblock_to_tree: bad entry in  
-> directory #2: rec_len % 4 != 0 - offset=44, inode=12, rec_len=139,  
-> name_len=10
-> __log_wait_for_space: needed 256 blocks and only had 0 space available
-> __log_wait_for_space: no way to get more journal space
+W dniu 29 czerwca 2009 05:30 u=C5=BCytkownik Eric Sandeen
+<sandeen@redhat.com> napisa=C5=82:
+> Is the super.bin above from before the fiddling you did (i.e. right
+> after the power loss?)
+Yes, it's before I started my recovery attempts, though mount and
+e2fsck -p were run on it during the boot process before I removed it
+from fstab.
 
-Does this _only_ happen on s390? I would expect that this is not
-architecture specific. Whatever fsfuzzer is doing.
+> The superblock is marked with errors, I wonder
+> if there were other errors reported on the filesystem prior to the po=
+wer
+> loss; you might check your logs ...
+I checked and it seems there were no errors until the power failure.
+By the way, is there some way to have RAID0-like functionality with
+write barriers?
+
+Regards, Krzysztof Kosi=C5=84ski
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
