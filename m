@@ -1,42 +1,56 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: upcoming kerneloops.org item: get_page_from_freelist
-Date: Mon, 29 Jun 2009 16:20:41 -0500
-Message-ID: <4A493029.40601@redhat.com>
-References: <20090624150714.c7264768.akpm@linux-foundation.org> <20090625132544.GB9995@mit.edu> <alpine.DEB.2.00.0906251135440.30090@chino.kir.corp.google.com> <20090625193806.GA6472@mit.edu> <20090625194423.GB6472@mit.edu> <alpine.DEB.2.00.0906251257040.3086@chino.kir.corp.google.com> <20090625203743.GD6472@mit.edu> <20090625212628.GO3385@webber.adilger.int> <20090625220504.GG6472@mit.edu> <4A43F60D.2040801@redhat.com> <20090626011155.GI6472@mit.edu> <Pine.LNX.4.64.0906260815260.18724@melkki.cs.Helsinki.FI> <4A44DE14.2080403@redhat.com> <alpine.DEB.1.10.0906291714520.21956@gentwo.org>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Segmentation fault in e4defrag -c
+Date: Mon, 29 Jun 2009 23:49:59 +0200
+Message-ID: <20090629214959.GT3570@webber.adilger.int>
+References: <20090625105558.GA21773@uio.no> <4A4487B0.9080000@sx.jp.nec.com>
+ <20090626093816.GA3175@uio.no> <4A485929.7010403@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Pekka J Enberg <penberg@cs.helsinki.fi>,
-	Theodore Tso <tytso@mit.edu>, Andreas Dilger <adilger@sun.com>,
-	David Rientjes <rientjes@google.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	arjan@infradead.org, linux-kernel@vger.kernel.org, npiggin@suse.de,
-	linux-ext4@vger.kernel.org
-To: Christoph Lameter <cl@linux-foundation.org>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: "Steinar H. Gunderson" <sgunderson@bigfoot.com>,
+	Kazuya Mio <k-mio@sx.jp.nec.com>, linux-ext4@vger.kernel.org
+To: Akira Fujita <a-fujita@rs.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:43016 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753374AbZF2VVH (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jun 2009 17:21:07 -0400
-In-Reply-To: <alpine.DEB.1.10.0906291714520.21956@gentwo.org>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:57166 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752911AbZF2VuR (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jun 2009 17:50:17 -0400
+Received: from fe-sfbay-10.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n5TLo5Rq028350
+	for <linux-ext4@vger.kernel.org>; Mon, 29 Jun 2009 14:50:18 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KM000000S6YZX00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
+ 29 Jun 2009 14:50:05 -0700 (PDT)
+In-reply-to: <4A485929.7010403@rs.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Christoph Lameter wrote:
-> On Fri, 26 Jun 2009, Eric Sandeen wrote:
+On Jun 29, 2009  15:03 +0900, Akira Fujita wrote:
+> >   Size: 4050385   	Blocks: 0          IO Block: 4096   regular file
+> > Device: fd12h/64786d	Inode: 688755      Links: 1
+> > Access: (0644/-rw-r--r--)  Uid: ( 1000/   sesse)   Gid: ( 1000/   sesse)
+> > Access: 2009-05-30 03:08:38.724454316 +0200
+> > Modify: 2008-09-01 20:38:26.135589449 +0200
+> > Change: 2008-09-01 20:38:26.135589449 +0200
 > 
->> I'll test it; it'd be great if it did, I'm um, a bit ashamed at how I
->> fixed it ;)
-> 
-> Isnt the problem that the slab allocator did not align something that
-> you did not request to be aligned?
+> File size is "4050385" but Blocks is "0"
+> probably means blocks are not allocated yet or file is *corrupted*.
+> Is your mp3 file available?
 
-Well, maybe that's all I needed.  At the risk of exposing myself to
-ridicule, here's the commit:
+Well, this is a sparse file for some reason (e.g. failed mp3 p2p download).
 
-7fcba054373d5dfc43d26e243a5c9b92069972ee
+> Anyway, with this patch, 0 blocks file is skipped,
+> therefore the segmentation fault you had will not happen.
 
-Was there a better way?
+Is it possible that the code has not been tested with sparse files?
+In that case, the check for size == 0 is only going to catch a single
+case of problem, and not handle general sparse files.
 
--Eric
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
