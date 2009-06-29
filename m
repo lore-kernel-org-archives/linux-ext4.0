@@ -1,85 +1,31 @@
-From: <gregkh@suse.de>
-Subject: patch jbd-fix-race-in-buffer-processing-in-commit-code.patch added to 2.6.27-stable tree
-Date: Mon, 29 Jun 2009 12:07:51 -0700
-Message-ID: <20090629190815.67CD648FF3@coco.kroah.org>
-Cc: <stable@kernel.org>, <stable-commits@vger.kernel.org>
-To: jack@suse.cz, akpm@linux-foundation.org, gregkh@suse.de,
-	linux-ext4@vger.kernel.org, torvalds@linux-foundation.org
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:54773 "EHLO coco.kroah.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753315AbZF2TIL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 29 Jun 2009 15:08:11 -0400
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Christoph Lameter <cl@linux-foundation.org>
+Subject: Re: upcoming kerneloops.org item: get_page_from_freelist
+Date: Mon, 29 Jun 2009 17:06:37 -0400 (EDT)
+Message-ID: <alpine.DEB.1.10.0906291703020.21956@gentwo.org>
+References: <alpine.DEB.2.00.0906251135440.30090@chino.kir.corp.google.com>  <20090625193806.GA6472@mit.edu> <20090625194423.GB6472@mit.edu>  <alpine.DEB.2.00.0906251257040.3086@chino.kir.corp.google.com>  <20090625203743.GD6472@mit.edu>
+ <20090625212628.GO3385@webber.adilger.int>  <20090625220504.GG6472@mit.edu> <4A43F60D.2040801@redhat.com>  <20090626011155.GI6472@mit.edu>  <Pine.LNX.4.64.0906260815260.18724@melkki.cs.Helsinki.FI>  <20090626085629.GC12201@wotan.suse.de>
+ <1246006681.27533.22.camel@penberg-laptop>
+Mime-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
+Cc: Nick Piggin <npiggin@suse.de>, Theodore Tso <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>,
+	David Rientjes <rientjes@google.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	arjan@infradead.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Pekka Enberg <penberg@cs.helsinki.fi>
+Return-path: <linux-kernel-owner+glk-linux-kernel-3=40m.gmane.org-S1755073AbZF2VHP@vger.kernel.org>
+In-Reply-To: <1246006681.27533.22.camel@penberg-laptop>
+Sender: linux-kernel-owner@vger.kernel.org
+List-Id: linux-ext4.vger.kernel.org
 
+On Fri, 26 Jun 2009, Pekka Enberg wrote:
 
-This is a note to let you know that we have just queued up the patch titled
+> Yes, but AFAICT, SLUB_DEBUG doesn't respect the given alignment without
+> my patch.
 
-    Subject: jbd: fix race in buffer processing in commit code
-
-to the 2.6.27-stable tree.  Its filename is
-
-    jbd-fix-race-in-buffer-processing-in-commit-code.patch
-
-A git repo of this tree can be found at 
-    http://www.kernel.org/git/?p=linux/kernel/git/stable/stable-queue.git;a=summary
-
-
->From a61d90d75d0f9e86432c45b496b4b0fbf0fd03dc Mon Sep 17 00:00:00 2001
-From: Jan Kara <jack@suse.cz>
-Date: Tue, 9 Jun 2009 16:26:26 -0700
-Subject: jbd: fix race in buffer processing in commit code
-
-From: Jan Kara <jack@suse.cz>
-
-commit a61d90d75d0f9e86432c45b496b4b0fbf0fd03dc upstream.
-
-In commit code, we scan buffers attached to a transaction.  During this
-scan, we sometimes have to drop j_list_lock and then we recheck whether
-the journal buffer head didn't get freed by journal_try_to_free_buffers().
- But checking for buffer_jbd(bh) isn't enough because a new journal head
-could get attached to our buffer head.  So add a check whether the journal
-head remained the same and whether it's still at the same transaction and
-list.
-
-This is a nasty bug and can cause problems like memory corruption (use after
-free) or trigger various assertions in JBD code (observed).
-
-Signed-off-by: Jan Kara <jack@suse.cz>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
-Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
-Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
-
----
- fs/jbd/commit.c |    6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
---- a/fs/jbd/commit.c
-+++ b/fs/jbd/commit.c
-@@ -238,7 +238,7 @@ write_out_data:
- 			spin_lock(&journal->j_list_lock);
- 		}
- 		/* Someone already cleaned up the buffer? */
--		if (!buffer_jbd(bh)
-+		if (!buffer_jbd(bh) || bh2jh(bh) != jh
- 			|| jh->b_transaction != commit_transaction
- 			|| jh->b_jlist != BJ_SyncData) {
- 			jbd_unlock_bh_state(bh);
-@@ -463,7 +463,9 @@ void journal_commit_transaction(journal_
- 			spin_lock(&journal->j_list_lock);
- 			continue;
- 		}
--		if (buffer_jbd(bh) && jh->b_jlist == BJ_Locked) {
-+		if (buffer_jbd(bh) && bh2jh(bh) == jh &&
-+		    jh->b_transaction == commit_transaction &&
-+		    jh->b_jlist == BJ_Locked) {
- 			__journal_unfile_buffer(jh);
- 			jbd_unlock_bh_state(bh);
- 			journal_remove_journal_head(bh);
-
-
-Patches currently in stable-queue which might be from jack@suse.cz are
-
-queue-2.6.27/jbd-fix-race-in-buffer-processing-in-commit-code.patch
+The size parameter to calculate_alignment has no relevance unless the size
+is smaller than half of the alignment. Then for some reason we do not
+properly align the stuff. I never liked that....
