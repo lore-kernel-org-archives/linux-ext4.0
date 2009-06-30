@@ -1,84 +1,65 @@
-From: Mike Snitzer <snitzer@gmail.com>
-Subject: Re: Massive corruption on RAID0
-Date: Tue, 30 Jun 2009 14:28:09 -0400
-Message-ID: <170fa0d20906301128x3eef7033m91126f3658eadc0c@mail.gmail.com>
-References: <298610bb0906281738u2e1ce91fnc753acc145d759bb@mail.gmail.com>
-	 <4A48355D.5040001@redhat.com>
-	 <298610bb0906290812t249c7e52l80e57af36bd0e80c@mail.gmail.com>
-	 <4A4A3065.4020202@redhat.com>
-	 <87f94c370906300942p7c5f576cgbb8c065625cf1716@mail.gmail.com>
-	 <4A4A415A.1070207@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-2
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Greg Freemyer <greg.freemyer@gmail.com>,
-	=?ISO-8859-2?Q?Krzysztof_Kosi=F1ski?= <tweenk.pl@gmail.com>,
-	linux-ext4@vger.kernel.org, dm-devel@redhat.com
-To: Eric Sandeen <sandeen@redhat.com>
+From: akpm@linux-foundation.org
+Subject: [patch 10/28] ext2: return -EIO not -ESTALE on directory traversal through deleted inode
+Date: Tue, 30 Jun 2009 11:41:24 -0700
+Message-ID: <200906301841.n5UIfPYi001504@imap1.linux-foundation.org>
+Cc: akpm@linux-foundation.org, bdonlan@gmail.com,
+	linux-ext4@vger.kernel.org
+To: torvalds@linux-foundation.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-ew0-f210.google.com ([209.85.219.210]:43785 "EHLO
-	mail-ew0-f210.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751922AbZF3S2I convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Jun 2009 14:28:08 -0400
-Received: by ewy6 with SMTP id 6so438850ewy.37
-        for <linux-ext4@vger.kernel.org>; Tue, 30 Jun 2009 11:28:10 -0700 (PDT)
-In-Reply-To: <4A4A415A.1070207@redhat.com>
+Received: from smtp1.linux-foundation.org ([140.211.169.13]:35937 "EHLO
+	smtp1.linux-foundation.org" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751917AbZF3Sle (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Jun 2009 14:41:34 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2009/6/30 Eric Sandeen <sandeen@redhat.com>:
-> Greg Freemyer wrote:
->> 2009/6/30 Eric Sandeen <sandeen@redhat.com>:
->>> Krzysztof Kosi=F1ski wrote:
->> <snip>
->>>>>> By the way, is there some way to have RAID0-like functionality w=
-ith
->>>> write barriers?
->>> Mirrors can pass barriers, IIRC, but not stripes (IIRC...) - I don'=
-t
->>> know if any work is being done to address this.
->>>
->> I'm pretty sure mdraid is not attempting to address it.
->>
->> The issue is that barriers with a single drive can simply be sent to
->> the drive for it to do the heavy lifting.
->>
->> With raid-0, it is much more difficult.
->>
->> ie. you send a barrier to 2 different drives. =A0One drive takes 30
->> milliseconds to flush the pre-barrier queue to disk and then continu=
-es
->> working on the post barrier data . =A0The other drive takes 500
->> milliseconds to do the same. =A0The end result is out of sync barrie=
-rs.
->> Not at all what the filesystem expects.
->>
->> The only reliable solution is to disable write caching on the drives=
-=2E
->> Of course you don't need barriers then.
->
-> Agreed this is the best solution at least for now. =A0But, the dm fol=
-ks
-> are apparently working on some sort of barrier solution for stripes, =
-I
-> think. =A0I don't know the details, perhaps I should.... :)
+From: Bryan Donlan <bdonlan@gmail.com>
 
-Yes, DM's stripe target has full barrier support in the latest
-2.6.31-rc1.  You can create a striped LV using:
-lvcreate --stripes STRIPES --stripsesize STRIPESIZE ...
+ext2_iget() returns -ESTALE if invoked on a deleted inode, in order to
+report errors to NFS properly.  However, in ext[234]_lookup(), this
+-ESTALE can be propagated to userspace if the filesystem is corrupted such
+that a directory entry references a deleted inode.  This leads to a
+misleading error message - "Stale NFS file handle" - and confusion on the
+part of the admin.
 
-It should be noted that 2.6.31-rc1 had a small bug that causes
-"misaligned" warnings to appear when activating DM devices.  These
-warnings can be ignored and obviously have nothing to do with barriers
-(they are related to DM's new support for the topology
-infrastructure).  That warnings bug has been fixed and will likely be
-pulled in for 2.6.31-rc2.
+The bug can be easily reproduced by creating a new filesystem, making a
+link to an unused inode using debugfs, then mounting and attempting to ls
+-l said link.
 
-Mike
+This patch thus changes ext2_lookup to return -EIO if it receives -ESTALE
+from ext2_iget(), as ext2 does for other filesystem metadata corruption;
+and also invokes the appropriate ext*_error functions when this case is
+detected.
 
-Mike
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+---
+
+ fs/ext2/namei.c |   12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff -puN fs/ext2/namei.c~ext2-return-eio-not-estale-on-directory-traversal-through-deleted-inode fs/ext2/namei.c
+--- a/fs/ext2/namei.c~ext2-return-eio-not-estale-on-directory-traversal-through-deleted-inode
++++ a/fs/ext2/namei.c
+@@ -66,8 +66,16 @@ static struct dentry *ext2_lookup(struct
+ 	inode = NULL;
+ 	if (ino) {
+ 		inode = ext2_iget(dir->i_sb, ino);
+-		if (IS_ERR(inode))
+-			return ERR_CAST(inode);
++		if (unlikely(IS_ERR(inode))) {
++			if (PTR_ERR(inode) == -ESTALE) {
++				ext2_error(dir->i_sb, __func__,
++						"deleted inode referenced: %lu",
++						ino);
++				return ERR_PTR(-EIO);
++			} else {
++				return ERR_CAST(inode);
++			}
++		}
+ 	}
+ 	return d_splice_alias(inode, dentry);
+ }
+_
