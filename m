@@ -1,62 +1,72 @@
-From: Akira Fujita <a-fujita@rs.jp.nec.com>
-Subject: Re: Segmentation fault in e4defrag -c
-Date: Wed, 01 Jul 2009 08:43:14 +0900
-Message-ID: <4A4AA312.8000007@rs.jp.nec.com>
-References: <20090625105558.GA21773@uio.no> <4A4487B0.9080000@sx.jp.nec.com> <20090626093816.GA3175@uio.no> <4A485929.7010403@rs.jp.nec.com> <20090629214959.GT3570@webber.adilger.int>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-Cc: "Steinar H. Gunderson" <sgunderson@bigfoot.com>,
-	Kazuya Mio <k-mio@sx.jp.nec.com>, linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+From: Greg KH <gregkh@suse.de>
+Subject: [patch 07/30] jbd: fix race in buffer processing in commit code
+Date: Tue, 30 Jun 2009 16:59:51 -0700
+Message-ID: <20090701000357.276381426@mini.kroah.org>
+References: <20090630235944.868879272@mini.kroah.org>
+Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
+	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
+	Jan Kara <jack@suse.cz>, <linux-ext4@vger.kernel.org>
+To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:56953 "EHLO
-	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753214AbZF3Xn6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Jun 2009 19:43:58 -0400
-In-Reply-To: <20090629214959.GT3570@webber.adilger.int>
+Received: from kroah.org ([198.145.64.141]:34316 "EHLO coco.kroah.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759341AbZGAAaA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Jun 2009 20:30:00 -0400
+Content-Disposition: inline; filename=jbd-fix-race-in-buffer-processing-in-commit-code.patch
+In-Reply-To: <20090701002817.GA6156@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
-Andreas Dilger wrote:
-> On Jun 29, 2009  15:03 +0900, Akira Fujita wrote:
->>>   Size: 4050385   	Blocks: 0          IO Block: 4096   regular file
->>> Device: fd12h/64786d	Inode: 688755      Links: 1
->>> Access: (0644/-rw-r--r--)  Uid: ( 1000/   sesse)   Gid: ( 1000/   sesse)
->>> Access: 2009-05-30 03:08:38.724454316 +0200
->>> Modify: 2008-09-01 20:38:26.135589449 +0200
->>> Change: 2008-09-01 20:38:26.135589449 +0200
->> File size is "4050385" but Blocks is "0"
->> probably means blocks are not allocated yet or file is *corrupted*.
->> Is your mp3 file available?
-> 
-> Well, this is a sparse file for some reason (e.g. failed mp3 p2p download).
-> 
+2.6.27-stable review patch.  If anyone has any objections, please let us know.
 
-Ah, may be so.
+------------------
 
->> Anyway, with this patch, 0 blocks file is skipped,
->> therefore the segmentation fault you had will not happen.
-> 
-> Is it possible that the code has not been tested with sparse files?
-> In that case, the check for size == 0 is only going to catch a single
-> case of problem, and not handle general sparse files.
-> 
+From: Jan Kara <jack@suse.cz>
 
-I have tested files that have sparse blocks
-(e.g. files that have sparse blocks in its beginning,
-middle and those combinations) and got fine results.
-Unfortunately, like this case, only 0 blocks file (all sparse blocks)
-has not been tested yet.
+commit a61d90d75d0f9e86432c45b496b4b0fbf0fd03dc upstream.
 
-But the kernel space (EXT4_IOC_MOVE_EXTENT) does not have this kind of issue.
-Because there is a check of whether the extents of orig_inode
-that ext4_ext_find_extent() gets is NULL.
-If extents is NULL or ext4_ext_find_extent() fails,
-ext4_move_extents() returns an error value (e.g. EINVAL) to the user space.
+In commit code, we scan buffers attached to a transaction.  During this
+scan, we sometimes have to drop j_list_lock and then we recheck whether
+the journal buffer head didn't get freed by journal_try_to_free_buffers().
+ But checking for buffer_jbd(bh) isn't enough because a new journal head
+could get attached to our buffer head.  So add a check whether the journal
+head remained the same and whether it's still at the same transaction and
+list.
 
-Regards,
-Akira Fujita
+This is a nasty bug and can cause problems like memory corruption (use after
+free) or trigger various assertions in JBD code (observed).
+
+Signed-off-by: Jan Kara <jack@suse.cz>
+Cc: <linux-ext4@vger.kernel.org>
+Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
+Signed-off-by: Linus Torvalds <torvalds@linux-foundation.org>
+Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
+
+---
+ fs/jbd/commit.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+--- a/fs/jbd/commit.c
++++ b/fs/jbd/commit.c
+@@ -238,7 +238,7 @@ write_out_data:
+ 			spin_lock(&journal->j_list_lock);
+ 		}
+ 		/* Someone already cleaned up the buffer? */
+-		if (!buffer_jbd(bh)
++		if (!buffer_jbd(bh) || bh2jh(bh) != jh
+ 			|| jh->b_transaction != commit_transaction
+ 			|| jh->b_jlist != BJ_SyncData) {
+ 			jbd_unlock_bh_state(bh);
+@@ -463,7 +463,9 @@ void journal_commit_transaction(journal_
+ 			spin_lock(&journal->j_list_lock);
+ 			continue;
+ 		}
+-		if (buffer_jbd(bh) && jh->b_jlist == BJ_Locked) {
++		if (buffer_jbd(bh) && bh2jh(bh) == jh &&
++		    jh->b_transaction == commit_transaction &&
++		    jh->b_jlist == BJ_Locked) {
+ 			__journal_unfile_buffer(jh);
+ 			jbd_unlock_bh_state(bh);
+ 			journal_remove_journal_head(bh);
 
 
