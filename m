@@ -1,49 +1,45 @@
-From: Nick Piggin <npiggin@suse.de>
-Subject: Re: upcoming kerneloops.org item: get_page_from_freelist
-Date: Tue, 30 Jun 2009 09:59:12 +0200
-Message-ID: <20090630075912.GB11980@wotan.suse.de>
-References: <alpine.DEB.2.00.0906251257040.3086@chino.kir.corp.google.com> <20090625203743.GD6472@mit.edu> <20090625212628.GO3385@webber.adilger.int> <20090625220504.GG6472@mit.edu> <4A43F60D.2040801@redhat.com> <20090626011155.GI6472@mit.edu> <Pine.LNX.4.64.0906260815260.18724@melkki.cs.Helsinki.FI> <20090626085629.GC12201@wotan.suse.de> <1246006681.27533.22.camel@penberg-laptop> <alpine.DEB.1.10.0906291703020.21956@gentwo.org>
+From: Kay Sievers <kay.sievers@vrfy.org>
+Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was: libuuid
+	(Re: blkid: util-linux-ng vs. e2fsprogs))
+Date: Tue, 30 Jun 2009 12:17:02 +0200
+Message-ID: <ac3eb2510906300317q3997f283p80248e44b0c5133d@mail.gmail.com>
+References: <200905311113.23004.arvidjaar@mail.ru> <20090601124857.GF31943@mit.edu>
+	<20090603085140.GA4060@nb.net.home> <1244021945.4120.4.camel@quest>
+	<20090628133430.GA3594@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Pekka Enberg <penberg@cs.helsinki.fi>,
-	Theodore Tso <tytso@mit.edu>,
-	Eric Sandeen <sandeen@redhat.com>,
-	Andreas Dilger <adilger@sun.com>,
-	David Rientjes <rientjes@google.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Linus Torvalds <torvalds@linux-foundation.org>,
-	arjan@infradead.org, linux-kernel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Christoph Lameter <cl@linux-foundation.org>
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: Scott James Remnant <scott@ubuntu.com>,
+	Karel Zak <kzak@redhat.com>,
+	Andrey Borzenkov <arvidjaar@mail.ru>,
+	util-linux-ng@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:50712 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750746AbZF3H7K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Jun 2009 03:59:10 -0400
-Content-Disposition: inline
-In-Reply-To: <alpine.DEB.1.10.0906291703020.21956@gentwo.org>
+Received: from mail-fx0-f218.google.com ([209.85.220.218]:61092 "EHLO
+	mail-fx0-f218.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750755AbZF3KRV (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Jun 2009 06:17:21 -0400
+In-Reply-To: <20090628133430.GA3594@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jun 29, 2009 at 05:06:37PM -0400, Christoph Lameter wrote:
-> On Fri, 26 Jun 2009, Pekka Enberg wrote:
-> 
-> > Yes, but AFAICT, SLUB_DEBUG doesn't respect the given alignment without
-> > my patch.
-> 
-> The size parameter to calculate_alignment has no relevance unless the size
-> is smaller than half of the alignment. Then for some reason we do not
-> properly align the stuff. I never liked that....
+On Sun, Jun 28, 2009 at 15:34, Theodore Tso<tytso@mit.edu> wrote:
 
-It is properly aligned, if it was not, then it would be a bug. It
-should always align to *at least* the requested alignment.
+> I'll have a corrected patch checked into e2fsprogs.
 
-SLAB_HWCACHE_ALIGN is defined to align the object such that it occupies
-the minimal number of cache lines. This is not subjective thing to
-like or dislike, but just fact because that is how it was implemented
-from the start and that is what callers expect.
+Very nice. Thanks!
 
-If you want to minimise false sharing, then normal way would be to
-request internode cacheline alignment, right? This is very widely
-used.
+It seems, that /usr/bin/uuidgen is installed, even when:
+  --disable-libblkid
+  --disable-libuuid
+  --disable-uuidd
+is given.
 
+
+And another thing is your custom "silent build" which can not be
+disabled. Our build system requires the command output for fancy
+analysis, so it would be good if it could be disabled, like it can for
+the kernel (V=1). Any ideas, or do I miss some switch?
+
+Thanks,
+Kay
