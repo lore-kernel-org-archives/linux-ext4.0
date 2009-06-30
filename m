@@ -1,75 +1,49 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: ext4_ext_calc_credits_for_single_extent() bug?
-Date: Tue, 30 Jun 2009 00:41:33 +0200
-Message-ID: <20090629224133.GF19362@webber.adilger.int>
+From: Nick Piggin <npiggin@suse.de>
+Subject: Re: upcoming kerneloops.org item: get_page_from_freelist
+Date: Tue, 30 Jun 2009 09:59:12 +0200
+Message-ID: <20090630075912.GB11980@wotan.suse.de>
+References: <alpine.DEB.2.00.0906251257040.3086@chino.kir.corp.google.com> <20090625203743.GD6472@mit.edu> <20090625212628.GO3385@webber.adilger.int> <20090625220504.GG6472@mit.edu> <4A43F60D.2040801@redhat.com> <20090626011155.GI6472@mit.edu> <Pine.LNX.4.64.0906260815260.18724@melkki.cs.Helsinki.FI> <20090626085629.GC12201@wotan.suse.de> <1246006681.27533.22.camel@penberg-laptop> <alpine.DEB.1.10.0906291703020.21956@gentwo.org>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Aneesh Kumar <aneesh.kumar@linux.vnet.ibm.com>,
-	Mingming Cao <cmm@us.ibm.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Pekka Enberg <penberg@cs.helsinki.fi>,
+	Theodore Tso <tytso@mit.edu>,
+	Eric Sandeen <sandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>,
+	David Rientjes <rientjes@google.com>,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Linus Torvalds <torvalds@linux-foundation.org>,
+	arjan@infradead.org, linux-kernel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Christoph Lameter <cl@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:63976 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750972AbZF2Wlx (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 29 Jun 2009 18:41:53 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n5TMfpMj014089
-	for <linux-ext4@vger.kernel.org>; Mon, 29 Jun 2009 15:41:52 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KM000M00UL1N100@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 29 Jun 2009 15:41:51 -0700 (PDT)
+Received: from cantor.suse.de ([195.135.220.2]:50712 "EHLO mx1.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750746AbZF3H7K (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Jun 2009 03:59:10 -0400
+Content-Disposition: inline
+In-Reply-To: <alpine.DEB.1.10.0906291703020.21956@gentwo.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I was looking at the function ext4_ext_calc_credits_for_insert(), because
-it appeared similar to a function we were using in Lustre and I wanted to
-remove redundant code from our patches.  On closer inspection, however,
-that function is doing something strange that wasn't in our original code.
+On Mon, Jun 29, 2009 at 05:06:37PM -0400, Christoph Lameter wrote:
+> On Fri, 26 Jun 2009, Pekka Enberg wrote:
+> 
+> > Yes, but AFAICT, SLUB_DEBUG doesn't respect the given alignment without
+> > my patch.
+> 
+> The size parameter to calculate_alignment has no relevance unless the size
+> is smaller than half of the alignment. Then for some reason we do not
+> properly align the stuff. I never liked that....
 
-int ext4_ext_calc_credits_for_single_extent(struct inode *inode, int nrblocks,
-                                                struct ext4_ext_path *path)
-{
-        if (path) {
-                int depth = ext_depth(inode);
-                int ret = 0;
+It is properly aligned, if it was not, then it would be a bug. It
+should always align to *at least* the requested alignment.
 
-                /* probably there is space in leaf? */
-                if (le16_to_cpu(path[depth].p_hdr->eh_entries)
-                                < le16_to_cpu(path[depth].p_hdr->eh_max)) {
+SLAB_HWCACHE_ALIGN is defined to align the object such that it occupies
+the minimal number of cache lines. This is not subjective thing to
+like or dislike, but just fact because that is how it was implemented
+from the start and that is what callers expect.
 
-                        /*
-                         *  There are some space in the leaf tree, no
-                         *  need to account for leaf block credit
-                         *
-                         *  bitmaps and block group descriptor blocks
-                         *  and other metadat blocks still need to be
-                         *  accounted.
-                         */
-                        /* 1 bitmap, 1 block group descriptor */
-                        ret = 2 + EXT4_META_TRANS_BLOCKS(inode->i_sb);
-                }
-        }
-
-        return ext4_chunk_trans_blocks(inode, nrblocks);
-}
-
-It computes "ret" but doesn't actually use it, and then
-ext4_chunk_trans_blocks() does nothing but call ext4_meta_trans_blocks(),
-which is doing the bulk of the calculation.
-
-It looks like this was committed by Mingming in "ext4: journal credits
-reservation fixes for extent file writepage"
-ee12b630687d510f6f4b6d4acdc4e267fd4adeda
-
-Ideally we would use the "path" information to generate an accurate block
-count for this extent.  Can we just return "ret" in this case?
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+If you want to minimise false sharing, then normal way would be to
+request internode cacheline alignment, right? This is very widely
+used.
 
