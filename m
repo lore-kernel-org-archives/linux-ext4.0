@@ -1,45 +1,48 @@
-From: Kay Sievers <kay.sievers@vrfy.org>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was: libuuid
-	(Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Tue, 30 Jun 2009 12:17:02 +0200
-Message-ID: <ac3eb2510906300317q3997f283p80248e44b0c5133d@mail.gmail.com>
-References: <200905311113.23004.arvidjaar@mail.ru> <20090601124857.GF31943@mit.edu>
-	<20090603085140.GA4060@nb.net.home> <1244021945.4120.4.camel@quest>
-	<20090628133430.GA3594@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: Massive corruption on RAID0
+Date: Tue, 30 Jun 2009 10:33:57 -0500
+Message-ID: <4A4A3065.4020202@redhat.com>
+References: <298610bb0906281738u2e1ce91fnc753acc145d759bb@mail.gmail.com>	 <4A48355D.5040001@redhat.com> <298610bb0906290812t249c7e52l80e57af36bd0e80c@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
-Cc: Scott James Remnant <scott@ubuntu.com>,
-	Karel Zak <kzak@redhat.com>,
-	Andrey Borzenkov <arvidjaar@mail.ru>,
-	util-linux-ng@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: linux-ext4@vger.kernel.org
+To: =?UTF-8?B?S3J6eXN6dG9mIEtvc2nFhHNraQ==?= <tweenk.pl@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-fx0-f218.google.com ([209.85.220.218]:61092 "EHLO
-	mail-fx0-f218.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750755AbZF3KRV (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Tue, 30 Jun 2009 06:17:21 -0400
-In-Reply-To: <20090628133430.GA3594@mit.edu>
+Received: from mx2.redhat.com ([66.187.237.31]:42652 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753229AbZF3Pd7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Jun 2009 11:33:59 -0400
+In-Reply-To: <298610bb0906290812t249c7e52l80e57af36bd0e80c@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 28, 2009 at 15:34, Theodore Tso<tytso@mit.edu> wrote:
+Krzysztof Kosi=C5=84ski wrote:
+> W dniu 29 czerwca 2009 05:30 u=C5=BCytkownik Eric Sandeen
+> <sandeen@redhat.com> napisa=C5=82:
+>> Is the super.bin above from before the fiddling you did (i.e. right
+>> after the power loss?)
+> Yes, it's before I started my recovery attempts, though mount and
+> e2fsck -p were run on it during the boot process before I removed it
+> from fstab.
+>=20
+>> The superblock is marked with errors, I wonder
+>> if there were other errors reported on the filesystem prior to the p=
+ower
+>> loss; you might check your logs ...
+> I checked and it seems there were no errors until the power failure.
+> By the way, is there some way to have RAID0-like functionality with
+> write barriers?
 
-> I'll have a corrected patch checked into e2fsprogs.
+Mirrors can pass barriers, IIRC, but not stripes (IIRC...) - I don't
+know if any work is being done to address this.
 
-Very nice. Thanks!
+I wonder if there's any chance that your raid was reassembled
+incorrectly....
 
-It seems, that /usr/bin/uuidgen is installed, even when:
-  --disable-libblkid
-  --disable-libuuid
-  --disable-uuidd
-is given.
-
-
-And another thing is your custom "silent build" which can not be
-disabled. Our build system requires the command output for fancy
-analysis, so it would be good if it could be disabled, like it can for
-the kernel (V=1). Any ideas, or do I miss some switch?
-
-Thanks,
-Kay
+-Eric
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
