@@ -1,68 +1,51 @@
 From: Kay Sievers <kay.sievers-tD+1rO4QERM@public.gmane.org>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was: libuuid
+Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:libuuid
 	(Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Wed, 1 Jul 2009 23:52:11 +0200
-Message-ID: <ac3eb2510907011452g3c2c2b3cs8d0ed398117879be@mail.gmail.com>
-References: <200905311113.23004.arvidjaar@mail.ru> <20090601124857.GF31943@mit.edu>
-	<20090603085140.GA4060@nb.net.home> <1244021945.4120.4.camel@quest>
-	<20090628133430.GA3594@mit.edu> <ac3eb2510906300317q3997f283p80248e44b0c5133d@mail.gmail.com>
-	<20090701214345.GG17054@mit.edu>
+Date: Wed, 1 Jul 2009 23:56:57 +0200
+Message-ID: <ac3eb2510907011456k6c3cd612he94c8c03450fb0df@mail.gmail.com>
+References: <20090628133430.GA3594@mit.edu> <605694f0db343657e47df0d3e82e0bc9@quantum.linuxfromscratch.org>
+	<20090701212844.GC17054@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>,
+Cc: Matthew Burgess <matthew-Ugr1wgFcK0zneqvOfBTmdWD2FQJk+8+b@public.gmane.org>,
+	Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>,
 	Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
 	Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
 	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 To: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
 Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20090701214345.GG17054-3s7WtUTddSA@public.gmane.org>
+In-Reply-To: <20090701212844.GC17054-3s7WtUTddSA@public.gmane.org>
 Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On Wed, Jul 1, 2009 at 23:43, Theodore Tso<tytso-3s7WtUTddSA@public.gmane.org> wrote:
-> On Tue, Jun 30, 2009 at 12:17:02PM +0200, Kay Sievers wrote:
->>
->> And another thing is your custom "silent build" which can not be
->> disabled. Our build system requires the command output for fancy
->> analysis, so it would be good if it could be disabled, like it can f=
-or
->> the kernel (V=3D1). Any ideas, or do I miss some switch?
+On Wed, Jul 1, 2009 at 23:28, Theodore Tso<tytso-3s7WtUTddSA@public.gmane.org> wrote:
+> On Wed, Jul 01, 2009 at 03:04:43PM -0600, Matthew Burgess wrote:
+>> I get the following output when trying to compile e2fsprogs-1.41.7
+>> against util-linux-ng-2.16-rc1's installed versions of libuuid &
+>> libblkid
 >
-> Is a configure-level switch all that you need? =C2=A0I hadn't done a
-> make-level switch because I was trying to avoid adding a requirement
-> of using GNU make in building e2fsprogs, since it gets used by *BSD
-> and Solaris systems as well. =C2=A0(And in fact some of the recent UU=
-ID bug
-> fixes come from FreeBSD bug reports, and I suspect FreeBSD will
-> continue to use UUID library from e2fsprogs rather than pulling in
-> util-linux-ng....)
+> Thanks for pointing that out. =C2=A0Apparently GNU make wasn't failin=
+g when
+> "-luuid" was in the dependency, which is why I didn't notice this
+> earlier. =C2=A0I'm not sure why it complains with "-L/tools/lib", but=
+ not
+> with "-luuid", but whatever. =C2=A0I've checked the following into th=
+e
+> e2fsprogs maint branch.
 
-Anything would work, that resolves the '@' to nothing and puts out the
-command, an environment var or a switch.
+I had a similar issue, caused by a wrong libdir in the util-linux's
+*.pc files. They have libdir=3D/lib instead libdir=3D/usr/lib, and in s=
+ome
+setups the devel-symlink isn't found, which is usually in /usr.
 
-In older udev releases, before we switched to automake, I had
-something like this, which behaves a bit like the Linux kernel build,
-and V=3D1 switches off the silent mode:
+Only the local build on one of my boxes failed, but editing the .pc
+files solved the problem.
 
-  V =3D
-  ifeq ($(strip $(V)),)
-    E =3D @echo
-    Q =3D @
-  else
-    E =3D @\#
-    Q =3D
-  endif
-  export E Q
+(The real location of the .so image does not matter, it's a detail
+hidden and handled by the ld loader, and the .pc files should always
+poit to the devel symlink to the .so.)
 
- ...
-
-  $(E) "  CC      " $@
-  $(Q) $(CC) -c $(CFLAGS) $< -o $@
-
-  ...
-
-Thanks,
 Kay
 --
 To unsubscribe from this list: send the line "unsubscribe util-linux-ng=
