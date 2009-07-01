@@ -1,77 +1,59 @@
-From: akpm@linux-foundation.org
-Subject: [merged] ext2-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch removed from -mm tree
-Date: Wed, 01 Jul 2009 10:26:58 -0700
-Message-ID: <200907011726.n61HQwLZ001711@imap1.linux-foundation.org>
-Reply-To: linux-kernel@vger.kernel.org
-To: bdonlan@gmail.com, linux-ext4@vger.kernel.org,
-	mm-commits@vger.kernel.org
-Return-path: <mm-commits-owner@vger.kernel.org>
-Sender: mm-commits-owner@vger.kernel.org
+From: Michael Rubin <mrubin@google.com>
+Subject: Re: Plans to evaluate the reliability and integrity of ext4 against
+	power failures.
+Date: Wed, 1 Jul 2009 10:39:49 -0700
+Message-ID: <532480950907011039m701bcfadwdd932e157badc1d5@mail.gmail.com>
+References: <d1c7fadd0906301627v44fa4a23x6b60726f8ce672c1@mail.gmail.com>
+	 <4A4AB49F.1070106@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Shaozhi Ye <yeshao@google.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Eric Sandeen <sandeen@redhat.com>
+Return-path: <linux-fsdevel-owner@vger.kernel.org>
+In-Reply-To: <4A4AB49F.1070106@redhat.com>
+Sender: linux-fsdevel-owner@vger.kernel.org
 List-Id: linux-ext4.vger.kernel.org
 
+On Tue, Jun 30, 2009 at 5:58 PM, Eric Sandeen<sandeen@redhat.com> wrote=
+:
+> Shaozhi Ye wrote:
+> I'll be very interested to see the results. =A0One thing you will nee=
+d to
+> look out for (people who know me knew I would say this ;) is volatile
+> write caches on the storage, and filesystem barrier implementation.
 
-The patch titled
-     ext2: return -EIO not -ESTALE on directory traversal through deleted inode
-has been removed from the -mm tree.  Its filename was
-     ext2-return-eio-not-estale-on-directory-traversal-through-deleted-inode.patch
+I am interested int he numbers too. As to the other dimensions, we
+plan on investigating this as much as we can given our environment.
 
-This patch was dropped because it was merged into mainline or a subsystem tree
+> To characterize the test, you'll want to be explicit about your stora=
+ge.
+> =A0Are they local disks? =A0A Raid controller? =A0If the disks are ex=
+ternal to
+> the server, is power lost to the disks? =A0Do they have write caching
+> enabled? =A0If so do write barriers from the filesystem pass through =
+to
+> the storage? =A0This will all be highly relevant to how a power loss =
+will
+> affect the filesystem.
 
-The current -mm tree may be found at http://userweb.kernel.org/~akpm/mmotm/
 
-------------------------------------------------------
-Subject: ext2: return -EIO not -ESTALE on directory traversal through deleted inode
-From: Bryan Donlan <bdonlan@gmail.com>
+Yup. We plan on detailing these qualities and comparing some of them
+in the write up when yeshao's work is done.
 
-ext2_iget() returns -ESTALE if invoked on a deleted inode, in order to
-report errors to NFS properly.  However, in ext[234]_lookup(), this
--ESTALE can be propagated to userspace if the filesystem is corrupted such
-that a directory entry references a deleted inode.  This leads to a
-misleading error message - "Stale NFS file handle" - and confusion on the
-part of the admin.
+> I'm also curious about whether the tool itself will be available unde=
+r
+> an open source license? =A0Other filesystems would benefit from this
+> testing as well.
 
-The bug can be easily reproduced by creating a new filesystem, making a
-link to an unused inode using debugfs, then mounting and attempting to ls
--l said link.
+The end goal is to have a test suite for power loss that we can share
+with the community. Realize we may send out numbers before sending out
+the tests.
 
-This patch thus changes ext2_lookup to return -EIO if it receives -ESTALE
-from ext2_iget(), as ext2 does for other filesystem metadata corruption;
-and also invokes the appropriate ext*_error functions when this case is
-detected.
-
-Signed-off-by: Bryan Donlan <bdonlan@gmail.com>
-Cc: <linux-ext4@vger.kernel.org>
-Signed-off-by: Andrew Morton <akpm@linux-foundation.org>
----
-
- fs/ext2/namei.c |   12 ++++++++++--
- 1 file changed, 10 insertions(+), 2 deletions(-)
-
-diff -puN fs/ext2/namei.c~ext2-return-eio-not-estale-on-directory-traversal-through-deleted-inode fs/ext2/namei.c
---- a/fs/ext2/namei.c~ext2-return-eio-not-estale-on-directory-traversal-through-deleted-inode
-+++ a/fs/ext2/namei.c
-@@ -66,8 +66,16 @@ static struct dentry *ext2_lookup(struct
- 	inode = NULL;
- 	if (ino) {
- 		inode = ext2_iget(dir->i_sb, ino);
--		if (IS_ERR(inode))
--			return ERR_CAST(inode);
-+		if (unlikely(IS_ERR(inode))) {
-+			if (PTR_ERR(inode) == -ESTALE) {
-+				ext2_error(dir->i_sb, __func__,
-+						"deleted inode referenced: %lu",
-+						ino);
-+				return ERR_PTR(-EIO);
-+			} else {
-+				return ERR_CAST(inode);
-+			}
-+		}
- 	}
- 	return d_splice_alias(inode, dentry);
- }
-_
-
-Patches currently in -mm which might be from bdonlan@gmail.com are
-
-origin.patch
-
+mrubin
+--
+To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
+" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
