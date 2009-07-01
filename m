@@ -1,23 +1,23 @@
 From: Greg KH <gregkh@suse.de>
-Subject: [patch 07/30] jbd: fix race in buffer processing in commit code
-Date: Tue, 30 Jun 2009 16:59:51 -0700
-Message-ID: <20090701000357.276381426@mini.kroah.org>
-References: <20090630235944.868879272@mini.kroah.org>
+Subject: [patch 04/35] jbd: fix race in buffer processing in commit code
+Date: Tue, 30 Jun 2009 17:14:00 -0700
+Message-ID: <20090701001548.636200762@mini.kroah.org>
+References: <20090701001356.007288418@mini.kroah.org>
 Cc: stable-review@kernel.org, torvalds@linux-foundation.org,
 	akpm@linux-foundation.org, alan@lxorguk.ukuu.org.uk,
 	Jan Kara <jack@suse.cz>, <linux-ext4@vger.kernel.org>
 To: linux-kernel@vger.kernel.org, stable@kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from kroah.org ([198.145.64.141]:34316 "EHLO coco.kroah.org"
+Received: from kroah.org ([198.145.64.141]:59733 "EHLO coco.kroah.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759341AbZGAAaA (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 30 Jun 2009 20:30:00 -0400
+	id S1760821AbZGAAci (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 30 Jun 2009 20:32:38 -0400
 Content-Disposition: inline; filename=jbd-fix-race-in-buffer-processing-in-commit-code.patch
-In-Reply-To: <20090701002817.GA6156@kroah.com>
+In-Reply-To: <20090701002825.GA6518@kroah.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-2.6.27-stable review patch.  If anyone has any objections, please let us know.
+2.6.29-stable review patch.  If anyone has any objections, please let us know.
 
 ------------------
 
@@ -57,7 +57,7 @@ Signed-off-by: Greg Kroah-Hartman <gregkh@suse.de>
  			|| jh->b_transaction != commit_transaction
  			|| jh->b_jlist != BJ_SyncData) {
  			jbd_unlock_bh_state(bh);
-@@ -463,7 +463,9 @@ void journal_commit_transaction(journal_
+@@ -466,7 +466,9 @@ void journal_commit_transaction(journal_
  			spin_lock(&journal->j_list_lock);
  			continue;
  		}
