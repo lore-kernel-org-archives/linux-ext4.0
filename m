@@ -1,54 +1,83 @@
-From: Kay Sievers <kay.sievers-tD+1rO4QERM@public.gmane.org>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:libuuid
-	(Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Wed, 1 Jul 2009 23:56:57 +0200
-Message-ID: <ac3eb2510907011456k6c3cd612he94c8c03450fb0df@mail.gmail.com>
-References: <20090628133430.GA3594@mit.edu> <605694f0db343657e47df0d3e82e0bc9@quantum.linuxfromscratch.org>
-	<20090701212844.GC17054@mit.edu>
+From: Mike Frysinger <vapier@gentoo.org>
+Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was: libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
+Date: Wed, 1 Jul 2009 18:35:06 -0400
+Message-ID: <200907011835.08501.vapier@gentoo.org>
+References: <200905311113.23004.arvidjaar@mail.ru> <20090701214345.GG17054@mit.edu> <ac3eb2510907011452g3c2c2b3cs8d0ed398117879be@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Matthew Burgess <matthew-Ugr1wgFcK0zneqvOfBTmdWD2FQJk+8+b@public.gmane.org>,
-	Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>,
-	Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
-	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20090701212844.GC17054-3s7WtUTddSA@public.gmane.org>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/signed;
+  boundary="nextPart4856915.3oMVuJeUV0";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
+Cc: Theodore Tso <tytso@mit.edu>,
+	Scott James Remnant <scott@ubuntu.com>,
+	Karel Zak <kzak@redhat.com>,
+	Andrey Borzenkov <arvidjaar@mail.ru>,
+	util-linux-ng@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Kay Sievers <kay.sievers@vrfy.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from smtp.gentoo.org ([140.211.166.183]:59045 "EHLO smtp.gentoo.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750946AbZGAWgh (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Jul 2009 18:36:37 -0400
+In-Reply-To: <ac3eb2510907011452g3c2c2b3cs8d0ed398117879be@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 1, 2009 at 23:28, Theodore Tso<tytso-3s7WtUTddSA@public.gmane.org> wrote:
-> On Wed, Jul 01, 2009 at 03:04:43PM -0600, Matthew Burgess wrote:
->> I get the following output when trying to compile e2fsprogs-1.41.7
->> against util-linux-ng-2.16-rc1's installed versions of libuuid &
->> libblkid
+--nextPart4856915.3oMVuJeUV0
+Content-Type: text/plain;
+  charset="utf-8"
+Content-Transfer-Encoding: quoted-printable
+Content-Disposition: inline
+
+On Wednesday 01 July 2009 17:52:11 Kay Sievers wrote:
+> On Wed, Jul 1, 2009 at 23:43, Theodore Tso<tytso@mit.edu> wrote:
+> > On Tue, Jun 30, 2009 at 12:17:02PM +0200, Kay Sievers wrote:
+> >> And another thing is your custom "silent build" which can not be
+> >> disabled. Our build system requires the command output for fancy
+> >> analysis, so it would be good if it could be disabled, like it can for
+> >> the kernel (V=3D1). Any ideas, or do I miss some switch?
+> >
+> > Is a configure-level switch all that you need?  I hadn't done a
+> > make-level switch because I was trying to avoid adding a requirement
+> > of using GNU make in building e2fsprogs, since it gets used by *BSD
+> > and Solaris systems as well.  (And in fact some of the recent UUID bug
+> > fixes come from FreeBSD bug reports, and I suspect FreeBSD will
+> > continue to use UUID library from e2fsprogs rather than pulling in
+> > util-linux-ng....)
 >
-> Thanks for pointing that out. =C2=A0Apparently GNU make wasn't failin=
-g when
-> "-luuid" was in the dependency, which is why I didn't notice this
-> earlier. =C2=A0I'm not sure why it complains with "-L/tools/lib", but=
- not
-> with "-luuid", but whatever. =C2=A0I've checked the following into th=
-e
-> e2fsprogs maint branch.
+> Anything would work, that resolves the '@' to nothing and puts out the
+> command, an environment var or a switch.
+>
+> In older udev releases, before we switched to automake, I had
+> something like this, which behaves a bit like the Linux kernel build,
+> and V=3D1 switches off the silent mode:
 
-I had a similar issue, caused by a wrong libdir in the util-linux's
-*.pc files. They have libdir=3D/lib instead libdir=3D/usr/lib, and in s=
-ome
-setups the devel-symlink isn't found, which is usually in /usr.
+why not just use automake-1.11's silent-rules option.  then you dont have t=
+o=20
+waste time reinventing the wheel.
+=2Dmike
 
-Only the local build on one of my boxes failed, but editing the .pc
-files solved the problem.
+--nextPart4856915.3oMVuJeUV0
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
 
-(The real location of the .so image does not matter, it's a detail
-hidden and handled by the ld loader, and the .pc files should always
-poit to the devel symlink to the .so.)
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.12 (GNU/Linux)
 
-Kay
---
-To unsubscribe from this list: send the line "unsubscribe util-linux-ng=
-" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+iQIcBAABAgAGBQJKS+ScAAoJEEFjO5/oN/WBWC0P/iaCFhaJO+O9IB/t3Tdxfi6p
+uepzO4tkFf6nTKNktqZ5gctE22Tb3E2bQUk+UUVPGil5Ta3cAxZi0p4RcoyKjnXH
+dm1BkHQSPX5mclktC9LnLqqZ/hMHsNrJZr1azHr+M2qZ6Bd3ZIY0rWPB0YyDm6ej
+KpG/ucymVW337zH+uy2LqMnM0ywPkYSeMOWYJUnscEYzUoGlgrn2ztk05UiMLsrA
+6VvBvBx5/BGPvAwG3iVBxhzKpH7sgkPvrQpynpyLIbu9Xbw4R73dziemZ1ojXejt
+mVyvAJsK58ichMFIpgxnHSxOO/kUY2giDV0UBoYMWAReiim1zY9iyvi/N+3OhFQp
+gYQ2C7MJLcSxeDdF8aVZgwUFxCT4JCaLMr0SPR5VfZFnIqcrJ7rU+uMRFePxPizZ
+oMKwOc8d+OVDy/2lEq5NV7IUcRM8mENaSettQ6hig5wwOL8Y/kAXn/FcgLyfOZ+a
+Gqz7tgrMieM1GFgFNMT3DN/mwVPhSRqeYknFJYCjpL/y6ZqAInApB6jqhVZ8n5kI
+HTf6X1bdOsWr3YXQcHzXFP0TDxFbcKbT7XN8XRe8DYPsO/qzfmQYxWqrzCmxrl+z
+RN7UM3Y3/SSgXNc/8tMBNbphodN0NiBhbh9l3Cl4RD7KGXAR27DS2o8RBCeAPQMY
+N8cQKpxIikv/zJbst+4E
+=45Kc
+-----END PGP SIGNATURE-----
+
+--nextPart4856915.3oMVuJeUV0--
