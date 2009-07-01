@@ -1,59 +1,58 @@
-From: Michael Rubin <mrubin@google.com>
+From: Chris Worley <worleys@gmail.com>
 Subject: Re: Plans to evaluate the reliability and integrity of ext4 against
 	power failures.
-Date: Wed, 1 Jul 2009 10:39:49 -0700
-Message-ID: <532480950907011039m701bcfadwdd932e157badc1d5@mail.gmail.com>
+Date: Wed, 1 Jul 2009 12:07:49 -0600
+Message-ID: <f3177b9e0907011107q17507be5icae2c1105faf4800@mail.gmail.com>
 References: <d1c7fadd0906301627v44fa4a23x6b60726f8ce672c1@mail.gmail.com>
-	 <4A4AB49F.1070106@redhat.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Shaozhi Ye <yeshao@google.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <4A4AB49F.1070106@redhat.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Transfer-Encoding: 7bit
+Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+	fs-team@google.com
+To: Shaozhi Ye <yeshao@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail-pz0-f188.google.com ([209.85.222.188]:63207 "EHLO
+	mail-pz0-f188.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754340AbZGASHr (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jul 2009 14:07:47 -0400
+In-Reply-To: <d1c7fadd0906301627v44fa4a23x6b60726f8ce672c1@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 30, 2009 at 5:58 PM, Eric Sandeen<sandeen@redhat.com> wrote=
-:
-> Shaozhi Ye wrote:
-> I'll be very interested to see the results. =A0One thing you will nee=
-d to
-> look out for (people who know me knew I would say this ;) is volatile
-> write caches on the storage, and filesystem barrier implementation.
+On Tue, Jun 30, 2009 at 5:27 PM, Shaozhi Ye<yeshao@google.com> wrote:
+> Hi there,
+>
+> We are planing to evaluate the reliability and integrity of ext4
+> against power failures and will post the results when its done.
+> Please find attached design document and let me know if you have any
+> suggestions for features to test or existing benchmark tools which
+> serve our purpose.
 
-I am interested int he numbers too. As to the other dimensions, we
-plan on investigating this as much as we can given our environment.
+This looks like a very valuable project.  I do lack understanding of
+how certain problems that very much need to be tested will be tested.
+>From your pdf:
 
-> To characterize the test, you'll want to be explicit about your stora=
-ge.
-> =A0Are they local disks? =A0A Raid controller? =A0If the disks are ex=
-ternal to
-> the server, is power lost to the disks? =A0Do they have write caching
-> enabled? =A0If so do write barriers from the filesystem pass through =
-to
-> the storage? =A0This will all be highly relevant to how a power loss =
-will
-> affect the filesystem.
+       "Data loss: The client thinks the server has A while the server
+does not."
 
+I've been wondering how you test to assure that data committed to the
+disk is really committed?
 
-Yup. We plan on detailing these qualities and comparing some of them
-in the write up when yeshao's work is done.
+Ext4 receives the callback saying the data is committed; you need to
+somehow log what it thinks has been committed and then cut power
+without any time passing from the moment the callback was invoked,
+then check the disk upon reboot to assure the data made it by
+comparing it with the log.
 
-> I'm also curious about whether the tool itself will be available unde=
-r
-> an open source license? =A0Other filesystems would benefit from this
-> testing as well.
+I just don't see a method to test this, but it is so critically important.
 
-The end goal is to have a test suite for power loss that we can share
-with the community. Realize we may send out numbers before sending out
-the tests.
-
-mrubin
---
-To unsubscribe from this list: send the line "unsubscribe linux-fsdevel=
-" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Chris
+>
+> Thank you!
+>
+> --
+> Shaozhi Ye
+> Software Engineer Intern from UC Davis
+> Cluster Management Team
+> http://who/yeshao
+>
