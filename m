@@ -1,67 +1,50 @@
-From: Kay Sievers <kay.sievers-tD+1rO4QERM@public.gmane.org>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was: libuuid
-	(Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Thu, 2 Jul 2009 14:49:24 +0200
-Message-ID: <ac3eb2510907020549g138c5dd2y3caa8eeba782c3ac@mail.gmail.com>
-References: <200905311113.23004.arvidjaar@mail.ru> <200907011835.08501.vapier@gentoo.org>
-	<20090702005858.GH17054@mit.edu> <200907012115.57826.vapier@gentoo.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:
+	libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
+Date: Thu, 2 Jul 2009 10:25:15 -0400
+Message-ID: <20090702142515.GA29429@mit.edu>
+References: <200905311113.23004.arvidjaar@mail.ru> <200907011835.08501.vapier@gentoo.org> <20090702005858.GH17054@mit.edu> <200907012115.57826.vapier@gentoo.org> <ac3eb2510907020549g138c5dd2y3caa8eeba782c3ac@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=iso-8859-1
 Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>,
-	Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>,
-	Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
-	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Mike Frysinger <vapier-aBrp7R+bbdUdnm+yROfE0A@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <200907012115.57826.vapier-aBrp7R+bbdUdnm+yROfE0A@public.gmane.org>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Cc: Mike Frysinger <vapier@gentoo.org>,
+	Scott James Remnant <scott@ubuntu.com>,
+	Karel Zak <kzak@redhat.com>,
+	Andrey Borzenkov <arvidjaar@mail.ru>,
+	util-linux-ng@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Kay Sievers <kay.sievers@vrfy.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:53178 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753238AbZGBOZ2 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 2 Jul 2009 10:25:28 -0400
+Content-Disposition: inline
+In-Reply-To: <ac3eb2510907020549g138c5dd2y3caa8eeba782c3ac@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 2, 2009 at 03:15, Mike Frysinger<vapier-aBrp7R+bbdUdnm+yROfE0A@public.gmane.org> wrote:
-> On Wednesday 01 July 2009 20:58:58 Theodore Tso wrote:
->> On Wed, Jul 01, 2009 at 06:35:06PM -0400, Mike Frysinger wrote:
->> > > In older udev releases, before we switched to automake, I had
->> > > something like this, which behaves a bit like the Linux kernel b=
-uild,
->> > > and V=3D1 switches off the silent mode:
->> >
->> > why not just use automake-1.11's silent-rules option. =C2=A0then y=
-ou dont have
->> > to waste time reinventing the wheel.
->>
->> Because I consider automake the spawn of Satan? =C2=A0:-)
+On Thu, Jul 02, 2009 at 02:49:24PM +0200, Kay Sievers wrote:
+> > Kay's rules look like they should be fairly straightforward to drop=
+ into
+> > e2fsprogs. =A0personally i'd use:
+> > E =3D @:
+> > when V=3D1, but this is probably just splitting hairs
+>=20
+> Ah nice, looks good to me, if that works.
 
-Yeah, it is. It's strange what these tools produce. But it sees it's
-slowly getting better over time not worse - so there is hope. Even the
-recent libtool looks ok now. And I don't really miss the check for
-=46ORTRAN, which seems to have disappeared here recently. :)
+Take a look at what I've checked into e2fsprogs' maint branch; it was
+largely based on what you suggested.
 
-> i'll have you know Satan's wheel is awfully shiny ...
+If someone can point me at an autoconf test that determines whether or
+not we're using gmake, I could even set up something which sucks in a
+Makefile fragment that enhances what we can do for developers who are
+using GNU make.  (i.e., if you're using GNU make, "make V=3D1" will
+DTRT, but if you're using a Solaris or BSD make, you'll have to settle
+for "configure --enable-verbose-makecmds")
 
-Heh, yeah. If you do not check-in the created stuff into git, and use:
-  git clean -d -X -f
-  autoreconf --install --symlink
-to bootstrap a repo, stuff looks pretty good, I think. You just need
-to be able to convince yourself not to look into the generated files.
-:)
-
-On the other hand the silent rules and "make distcheck" and all these
-things which come along with automake are just great to have.
-
-> Kay's rules look like they should be fairly straightforward to drop i=
-nto
-> e2fsprogs. =C2=A0personally i'd use:
-> E =3D @:
-> when V=3D1, but this is probably just splitting hairs
-
-Ah nice, looks good to me, if that works.
-
-Thanks,
-Kay
+						- Ted
 --
-To unsubscribe from this list: send the line "unsubscribe util-linux-ng=
-" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
 More majordomo info at  http://vger.kernel.org/majordomo-info.html
