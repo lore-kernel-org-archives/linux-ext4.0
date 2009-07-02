@@ -1,63 +1,93 @@
-From: Justin Maggard <jmaggard10@gmail.com>
-Subject: >16TB issues
-Date: Thu, 2 Jul 2009 15:23:42 -0700
-Message-ID: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com>
+From: Xiang Wang <xiangw@google.com>
+Subject: Re: RFC PATCH: ext4 no journal corruption with locale-gen
+Date: Thu, 2 Jul 2009 16:27:26 -0700
+Message-ID: <d5ca277e0907021627t77155cdbm4fa34bd87147d60@mail.gmail.com>
+References: <6601abe90906171148w1431258fvd0afa105cda9b77b@mail.gmail.com>
+	 <20090617234604.GF7867@mit.edu>
+	 <6601abe90906220942se70fb70w5481e178f1525dd8@mail.gmail.com>
+	 <20090622211327.GI13398@webber.adilger.int>
+	 <20090701183509.GB31235@skywalker>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-To: linux-ext4@vger.kernel.org
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Andreas Dilger <adilger@sun.com>,
+	Curt Wohlgemuth <curtw@google.com>,
+	Theodore Tso <tytso@mit.edu>,
+	ext4 development <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.183]:31931 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753618AbZGBWXj (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jul 2009 18:23:39 -0400
-Received: by wa-out-1112.google.com with SMTP id j5so401398wah.21
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Jul 2009 15:23:42 -0700 (PDT)
+Received: from smtp-out.google.com ([216.239.33.17]:52373 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751027AbZGBX12 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jul 2009 19:27:28 -0400
+Received: from wpaz5.hot.corp.google.com (wpaz5.hot.corp.google.com [172.24.198.69])
+	by smtp-out.google.com with ESMTP id n62NRTRn008784
+	for <linux-ext4@vger.kernel.org>; Fri, 3 Jul 2009 00:27:30 +0100
+Received: from ewy20 (ewy20.prod.google.com [10.241.103.20])
+	by wpaz5.hot.corp.google.com with ESMTP id n62NRQUd024411
+	for <linux-ext4@vger.kernel.org>; Thu, 2 Jul 2009 16:27:27 -0700
+Received: by ewy20 with SMTP id 20so2432760ewy.3
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Jul 2009 16:27:26 -0700 (PDT)
+In-Reply-To: <20090701183509.GB31235@skywalker>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I've been toying with ext4 and e2fsprogs pu branch (pulled from git
-yesterday) on very large volumes, and I've run into some issues.  What
-I've found so far with an 19TB MD RAID0 volume, running 2.6.29.4 (I'm
-planning on trying 2.6.30 soon):
+On Wed, Jul 1, 2009 at 11:35 AM, Aneesh Kumar
+K.V<aneesh.kumar@linux.vnet.ibm.com> wrote:
+> On Mon, Jun 22, 2009 at 11:13:27PM +0200, Andreas Dilger wrote:
+>> On Jun 22, 2009 =A009:42 -0700, Curt Wohlgemuth wrote:
+>> > I tested the locale-gen example with all combinations of
+>> >
+>> > =A0 =A0data=3Dwriteback
+>> > =A0 =A0data=3Dordered
+>> > =A0 =A0data=3Djournal
+>> > =A0 =A0<no journal at all>
+>>
+>> On an unrelated note - would it be useful to mount an ext4 filesyste=
+m
+>> with a journal using "data=3Dnone" (or similar) to run without a jou=
+rnal?
+>>
+>
+> I think this is better. I would suggest data=3Dnojournal. That way we=
+ can
+> check the mount options to figure out whether we are running with
+> journal or not. Also i guess this enables us to run without using a
+> journal even if =A0mke2fs created a journal for us
 
--  mkfs.ext4 *appears* to work fine, reporting no errors.  Examining
-the superblock info with dumpe2fs -h looks normal -- although I'm
-unfamiliar with "Lifetime writes" field, and I'm not sure why it's at
-73GB immediately after doing mkfs, before ever mount it.
+We think adding this "data=3Dnojournal" mount option is a very good ide=
+a.
+To be more specific, after adding this option, the semantics will be:
 
--  Immediately running e2fsck on the volume before ever mounting it
-will not complete, and results in the following:
-# e2fsck -n /dev/md2
-e2fsck 1.41.7 (29-June-2009)
-Error reading block 2435874816 (Attempt to read block from filesystem
-resulted in short read).  Ignore error? no
-/dev/md2: Attempt to read block from filesystem resulted in short read
-while reading block 2435874816
-/dev/md2: Attempt to read block from filesystem resulted in short read
-reading journal superblock
-e2fsck: Attempt to read block from filesystem resulted in short read
-while checking ext3 journal for /dev/md2
+If mke2fs does not create a journal, then we should use the
+"data=3Dnojournal" mount option only.
 
--  Trying to mount normally with no options does not work.  The kernel
-log contains these messages:
-EXT4-fs: barriers enabled
-JBD: no valid journal superblock found
-EXT4-fs: error loading journal.
+If mke2fs creates a journal for us, we are allowed to use one of the
+following 4 mount options:
+data=3Dnojournal
+data=3Dwriteback
+data=3Dordered
+data=3Djournal
 
--  Mounting with -o noload does appear to work, and reading and
-writing seems to work fine.
+We are now working on this patch and will submit it in a couple of week=
+s.
 
--  Setting default mount options with tune2fs works fine, as expected.
+Meanwhile if Ted could take the most recent patch from Curt to fix the =
+data
+corruption problem, that would be great!
 
--  Then, I went on to check out filesystem resizing.  I created an LVM
-15TB LV, and ran mkfs.ext4 on it.  Looking at the superblock info, it
-did not contain the 64bit flag, which I assume is expected behavior.
-I extended the LV to ~18TB and tried resize2fs, and got this error:
-resize2fs: Can't read an block bitmap while trying to resize /dev/data/data0
+Thanks,
+Xiang
 
-If there's anything else anyone would have me try, or any patches to
-test, just let me know.
-
-Thanks!
--Justin
+> -aneesh
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
+ in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
+>
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
