@@ -1,65 +1,67 @@
-From: Ric Wheeler <rwheeler@redhat.com>
-Subject: Re: Plans to evaluate the reliability and integrity of ext4 against
- power failures.
-Date: Thu, 02 Jul 2009 07:21:28 -0400
-Message-ID: <4A4C9838.7010006@redhat.com>
-References: <d1c7fadd0906301627v44fa4a23x6b60726f8ce672c1@mail.gmail.com> <f3177b9e0907011107q17507be5icae2c1105faf4800@mail.gmail.com> <532480950907011131o7e9fc8bdn64002f130cc9615d@mail.gmail.com> <4A4BAEA2.6000101@redhat.com> <20090702021219.GA18372@shareable.org>
+From: Kay Sievers <kay.sievers-tD+1rO4QERM@public.gmane.org>
+Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was: libuuid
+	(Re: blkid: util-linux-ng vs. e2fsprogs))
+Date: Thu, 2 Jul 2009 14:49:24 +0200
+Message-ID: <ac3eb2510907020549g138c5dd2y3caa8eeba782c3ac@mail.gmail.com>
+References: <200905311113.23004.arvidjaar@mail.ru> <200907011835.08501.vapier@gentoo.org>
+	<20090702005858.GH17054@mit.edu> <200907012115.57826.vapier@gentoo.org>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
-Cc: Michael Rubin <mrubin@google.com>,
-	Chris Worley <worleys@gmail.com>,
-	Shaozhi Ye <yeshao@google.com>, linux-fsdevel@vger.kernel.org,
-	linux-ext4@vger.kernel.org
-To: Jamie Lokier <jamie@shareable.org>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-In-Reply-To: <20090702021219.GA18372@shareable.org>
-Sender: linux-fsdevel-owner@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>,
+	Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>,
+	Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
+	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Mike Frysinger <vapier-aBrp7R+bbdUdnm+yROfE0A@public.gmane.org>
+Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <200907012115.57826.vapier-aBrp7R+bbdUdnm+yROfE0A@public.gmane.org>
+Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
 List-Id: linux-ext4.vger.kernel.org
 
-On 07/01/2009 10:12 PM, Jamie Lokier wrote:
-> Ric Wheeler wrote:
->> One way to test this with reasonable, commodity hardware would be
->> something like the following:
+On Thu, Jul 2, 2009 at 03:15, Mike Frysinger<vapier-aBrp7R+bbdUdnm+yROfE0A@public.gmane.org> wrote:
+> On Wednesday 01 July 2009 20:58:58 Theodore Tso wrote:
+>> On Wed, Jul 01, 2009 at 06:35:06PM -0400, Mike Frysinger wrote:
+>> > > In older udev releases, before we switched to automake, I had
+>> > > something like this, which behaves a bit like the Linux kernel b=
+uild,
+>> > > and V=3D1 switches off the silent mode:
+>> >
+>> > why not just use automake-1.11's silent-rules option. =C2=A0then y=
+ou dont have
+>> > to waste time reinventing the wheel.
 >>
->> (1) Get an automated power kill setup to control your server
->
-> etc.  Good plan.
->
-> Another way to test the entire software stack, but not the physical
-> disks, is to run the entire test using VMs, and simulate hard disk
-> write caching and simulated power failure in the VM.  KVM would be a
-> great candidate for that, as it runs VMs as ordinary processes and the
-> disk I/O emulation is quite easy to modify.
+>> Because I consider automake the spawn of Satan? =C2=A0:-)
 
-Certainly, that could be useful to test some level of the stack. Historically, 
-the biggest issues that I have run across have been focused on the volatile 
-write cache on the storage targets.  Not only can it lose data that has been 
-acked all the back to the host, it can also potentially reorder that data in 
-challenging ways that will make file system recovery difficult....
+Yeah, it is. It's strange what these tools produce. But it sees it's
+slowly getting better over time not worse - so there is hope. Even the
+recent libtool looks ok now. And I don't really miss the check for
+=46ORTRAN, which seems to have disappeared here recently. :)
 
->
-> As most issues probably are software issues (kernel, filesystems, apps
-> not calling fsync, or assuming barrierless O_DIRECT/O_DSYNC are
-> sufficient, network fileserver protocols, etc.), it's surely worth a look.
->
-> It could be much faster than the physical version too, in other words
-> more complete testing of the software stack given available resources.
->
-> With the ability to "fork" a running VM's state by snapshotting it and
-> continuing, it would even be possible to simulate power failure cache
-> loss scenarios at many points in the middle of a stress test, with the
-> stress test continuing to run - no full reboot needed at every point.
-> That way, maybe deliberate trace points could be placed in the
-> software stack at places where power failure cache loss seems likely
-> to cause a problem.
->
-> -- Jamie
+> i'll have you know Satan's wheel is awfully shiny ...
 
-I do agree that this testing would also be very useful, especially so since you 
-can do this almost in any environment.
+Heh, yeah. If you do not check-in the created stuff into git, and use:
+  git clean -d -X -f
+  autoreconf --install --symlink
+to bootstrap a repo, stuff looks pretty good, I think. You just need
+to be able to convince yourself not to look into the generated files.
+:)
 
-Regards,
+On the other hand the silent rules and "make distcheck" and all these
+things which come along with automake are just great to have.
 
-Ric
+> Kay's rules look like they should be fairly straightforward to drop i=
+nto
+> e2fsprogs. =C2=A0personally i'd use:
+> E =3D @:
+> when V=3D1, but this is probably just splitting hairs
 
+Ah nice, looks good to me, if that works.
+
+Thanks,
+Kay
+--
+To unsubscribe from this list: send the line "unsubscribe util-linux-ng=
+" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
