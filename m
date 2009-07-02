@@ -1,53 +1,35 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Plans to evaluate the reliability and integrity of ext4	against
- power failures.
-Date: Thu, 02 Jul 2009 01:37:55 +0200
-Message-ID: <20090701233721.GL3248@webber.adilger.int>
-References: <d1c7fadd0906301627v44fa4a23x6b60726f8ce672c1@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:
+	libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
+Date: Wed, 1 Jul 2009 20:58:58 -0400
+Message-ID: <20090702005858.GH17054@mit.edu>
+References: <200905311113.23004.arvidjaar@mail.ru> <20090701214345.GG17054@mit.edu> <ac3eb2510907011452g3c2c2b3cs8d0ed398117879be@mail.gmail.com> <200907011835.08501.vapier@gentoo.org>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
-	fs-team@google.com
-To: Shaozhi Ye <yeshao@google.com>
-Return-path: <linux-fsdevel-owner@vger.kernel.org>
-Content-disposition: inline
-In-reply-to: <d1c7fadd0906301627v44fa4a23x6b60726f8ce672c1@mail.gmail.com>
-Sender: linux-fsdevel-owner@vger.kernel.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=us-ascii
+Cc: Kay Sievers <kay.sievers@vrfy.org>,
+	Scott James Remnant <scott@ubuntu.com>,
+	Karel Zak <kzak@redhat.com>,
+	Andrey Borzenkov <arvidjaar@mail.ru>,
+	util-linux-ng@vger.kernel.org, linux-ext4@vger.kernel.org
+To: Mike Frysinger <vapier@gentoo.org>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:56201 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751990AbZGBA7O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 1 Jul 2009 20:59:14 -0400
+Content-Disposition: inline
+In-Reply-To: <200907011835.08501.vapier@gentoo.org>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Jun 30, 2009  16:27 -0700, Shaozhi Ye wrote:
-> We are planing to evaluate the reliability and integrity of ext4
-> against power failures and will post the results when its done.
-> Please find attached design document and let me know if you have any
-> suggestions for features to test or existing benchmark tools which
-> serve our purpose.
+On Wed, Jul 01, 2009 at 06:35:06PM -0400, Mike Frysinger wrote:
+> > In older udev releases, before we switched to automake, I had
+> > something like this, which behaves a bit like the Linux kernel build,
+> > and V=1 switches off the silent mode:
+> 
+> why not just use automake-1.11's silent-rules option.  then you dont have to 
+> waste time reinventing the wheel.
 
-What might be interesting is to enhance fsx to work on multiple nodes.
-It would need an additional "sync" operation that would flush the
-cache to disk, so that there is a limited amount of rollback after a
-server reset.
+Because I consider automake the spawn of Satan?  :-)
 
-The client would log locally the file operations that are being done
-on the server and after the server is restarted the client would verify
-that the data in the file is consistent at least up to the most recent
-sync.
-
-
-Another very interesting filesystem test is "racer.sh" (a cleaned up
-version is in the Lustre test set), which does random filesystem
-operations (create, write, rename, link, unlink, symlink, mkdir, rmdir).
-Currently the operations are completely random, but if there was a client
-logging the operations it should be possible to track the state on the
-client.  What would be necessary is for the server to export the current
-transaction id (tid) and then the client records this with every operation.
-At server recovery time the last committed tid is in the journal superblock
-and the client can then verify that its record of the filesystem state
-matches the actual state (after journal rollback).
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+							- Ted
