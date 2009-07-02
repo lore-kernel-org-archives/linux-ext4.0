@@ -1,38 +1,68 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH-e2fsprogs-resend] filefrag: fix fm_start in
-	filefrag_fiemap loop
-Date: Thu, 2 Jul 2009 00:24:59 -0400
-Message-ID: <20090702042459.GB22615@mit.edu>
-References: <1244078320-13888-1-git-send-email-bergwolf@gmail.com>
+From: Mike Frysinger <vapier-aBrp7R+bbdUdnm+yROfE0A@public.gmane.org>
+Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
+Date: Thu, 2 Jul 2009 00:35:07 -0400
+Message-ID: <200907020035.09553.vapier@gentoo.org>
+References: <20090628133430.GA3594@mit.edu> <200907012241.08962.vapier@gentoo.org> <20090702040353.GB2923@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, Andreas Dilger <adilger@sun.com>
-To: Peng Tao <bergwolf@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35341 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750713AbZGBEZB (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 2 Jul 2009 00:25:01 -0400
+Content-Type: multipart/signed;
+  boundary="nextPart2489855.yWjil7OInv";
+  protocol="application/pgp-signature";
+  micalg=pgp-sha1
+Content-Transfer-Encoding: 7bit
+Cc: Matthew Burgess <matthew-Ugr1wgFcK0zneqvOfBTmdWD2FQJk+8+b@public.gmane.org>,
+	Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>,
+	Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
+	Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
+	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
+Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+In-Reply-To: <20090702040353.GB2923-3s7WtUTddSA@public.gmane.org>
+Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
+
+--nextPart2489855.yWjil7OInv
+Content-Type: text/plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
 Content-Disposition: inline
-In-Reply-To: <1244078320-13888-1-git-send-email-bergwolf@gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jun 04, 2009 at 09:18:40AM +0800, Peng Tao wrote:
-> When used with -v and the targeted file has more than 144 extents(double of
-> the length of fm_extents array provided by buf), filefrag_fiemap loops and
-> calls fiemap ioctl() multiple times to calculate the actual number of extents
-> in a file. Each call to fiemap ioctl() uses  fm_start as the starting logical
-> offset. The patch fixes fm_start in each loop( except for the first one) and
-> makes the extent calculation correct for files with more that 144 extents.  
-> 
-> To produce the problem, first run filefrag -v on a highly fragmented file.
-> Then change the buf size in filefrag_fiemap to make it large enough to have
-> all the extent mapped in a single loop and run filefrag -v after recompiling.
-> The former will produce a much smaller extent count because of the false
-> fm_start used in the loop. And the two will produce different extent output
-> since the 145th extent.
+On Thursday 02 July 2009 00:03:53 Theodore Tso wrote:
+> So for generic bugs the SF tracker works fine.
+>
+> For patches, just send them to linux-ext4 mailing list; I am using
+> patchwork:
+>
+> 	http://patchwork.ozlabs.org/project/linux-ext4/list/
+>
+> ... to make sure patches don't get dropped.
 
-Thanks, applied.
+ok, that works for me
+-mike
 
-						- Ted
+--nextPart2489855.yWjil7OInv
+Content-Type: application/pgp-signature; name=signature.asc 
+Content-Description: This is a digitally signed message part.
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.12 (GNU/Linux)
+
+iQIcBAABAgAGBQJKTDj9AAoJEEFjO5/oN/WBlvUQALwcU+PKR6sPrkGnPi0pE6T5
+Iz0xTygSKSF60TSHLiALwlQ6t5fvHr1ayzF6UztN++lkZhphCHgOaxZPdzPJbLot
+hY1HZ27Lc2NVb5k7AfVUT6Cck5Oy8tQbhLum/fJR9aInaAiP3pYvKEqPoxpxopo+
+e8J6hnF8xkCMVO7pUn1zI87Rt7MXJ88yLVp5OnXVrsWVNNO/d9smqEt/z7ozfNoR
+45zYMCgjDhpWlGUxe7uAK2PLouz0TCVwoXnYpCc8VBd5OpTeFRTCzpNtuPZ7zEdl
+rjyF1O6AOfIOFqDlTrHV9BJineqfkdCRMAC7tDt7wP7/5GC5mHTRTBn8/hMgc6NM
+pSX6sFAY73Vb34Q5jNouwl5B4z6YsPyzavsNqLCivOyjqQlMvLYi1c4gND1k//VO
+t2J6WvdHtCj/AS/T+DHRBRQDYoJrzCwD0W19oO4z3vQkCHYnGmwXnHftQ8MKE4op
+/qVKQgGDTtbtqyLM6htZA0R08tbsV8G3qEsxGOgdqp6W4/vTetvM4qyO0lx6MTrz
+EgOwhWYI/mqECRwws1Shx8XVnBcnP2RpnRmTh5+A0+TVQBpkfQ+UsBGxwgVrECJP
+Pnr7+tPI3dKD0SKXoR2mqTivtIec3jG8zuxWfZoefS2y1c+sFgdii2X1UwMlhG9G
+WsXImd/1EUWeE6girX7T
+=dUED
+-----END PGP SIGNATURE-----
+
+--nextPart2489855.yWjil7OInv--
+--
+To unsubscribe from this list: send the line "unsubscribe util-linux-ng" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
