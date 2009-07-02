@@ -1,35 +1,29 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:
-	libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Wed, 1 Jul 2009 20:58:58 -0400
-Message-ID: <20090702005858.GH17054@mit.edu>
-References: <200905311113.23004.arvidjaar@mail.ru> <20090701214345.GG17054@mit.edu> <ac3eb2510907011452g3c2c2b3cs8d0ed398117879be@mail.gmail.com> <200907011835.08501.vapier@gentoo.org>
+From: Michael Rubin <mrubin@google.com>
+Subject: Re: Plans to evaluate the reliability and integrity of ext4 against
+	power failures.
+Date: Wed, 1 Jul 2009 18:04:45 -0700
+Message-ID: <532480950907011804j33d56f18wcbd16b5fc00ad4b8@mail.gmail.com>
+References: <d1c7fadd0906301627v44fa4a23x6b60726f8ce672c1@mail.gmail.com>
+	 <20090701205948.GA23536@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Kay Sievers <kay.sievers@vrfy.org>,
-	Scott James Remnant <scott@ubuntu.com>,
-	Karel Zak <kzak@redhat.com>,
-	Andrey Borzenkov <arvidjaar@mail.ru>,
-	util-linux-ng@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Mike Frysinger <vapier@gentoo.org>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: Shaozhi Ye <yeshao@google.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:56201 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751990AbZGBA7O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 Jul 2009 20:59:14 -0400
-Content-Disposition: inline
-In-Reply-To: <200907011835.08501.vapier@gentoo.org>
+Received: from smtp-out.google.com ([216.239.45.13]:14142 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752428AbZGBBEq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jul 2009 21:04:46 -0400
+In-Reply-To: <20090701205948.GA23536@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 01, 2009 at 06:35:06PM -0400, Mike Frysinger wrote:
-> > In older udev releases, before we switched to automake, I had
-> > something like this, which behaves a bit like the Linux kernel build,
-> > and V=1 switches off the silent mode:
-> 
-> why not just use automake-1.11's silent-rules option.  then you dont have to 
-> waste time reinventing the wheel.
+On Wed, Jul 1, 2009 at 1:59 PM, Theodore Tso<tytso@mit.edu> wrote:
+> I've got to ask --- what does "testing on elephants mean"?
 
-Because I consider automake the spawn of Satan?  :-)
+An elephant is a large, plant-eating land mammal with a prehensile trunk
+and long, curvy tusks. Testing elephants is hard.
 
-							- Ted
+mrubin
