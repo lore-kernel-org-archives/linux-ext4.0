@@ -1,38 +1,63 @@
-From: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was:
-	libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Thu, 2 Jul 2009 12:24:18 -0400
-Message-ID: <20090702162418.GA29134@mit.edu>
-References: <200905311113.23004.arvidjaar@mail.ru> <ac3eb2510907020549g138c5dd2y3caa8eeba782c3ac@mail.gmail.com> <20090702142515.GA29429@mit.edu> <200907021151.10268.vapier@gentoo.org>
+From: Justin Maggard <jmaggard10@gmail.com>
+Subject: >16TB issues
+Date: Thu, 2 Jul 2009 15:23:42 -0700
+Message-ID: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Kay Sievers <kay.sievers-tD+1rO4QERM@public.gmane.org>,
-	Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>,
-	Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>,
-	Andrey Borzenkov <arvidjaar-JGs/UdohzUI@public.gmane.org>,
-	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Mike Frysinger <vapier-aBrp7R+bbdUdnm+yROfE0A@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <200907021151.10268.vapier-aBrp7R+bbdUdnm+yROfE0A@public.gmane.org>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from wa-out-1112.google.com ([209.85.146.183]:31931 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753618AbZGBWXj (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jul 2009 18:23:39 -0400
+Received: by wa-out-1112.google.com with SMTP id j5so401398wah.21
+        for <linux-ext4@vger.kernel.org>; Thu, 02 Jul 2009 15:23:42 -0700 (PDT)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu, Jul 02, 2009 at 11:51:08AM -0400, Mike Frysinger wrote:
-> > If someone can point me at an autoconf test that determines whether or
-> > not we're using gmake, I could even set up something which sucks in a
-> > Makefile fragment that enhances what we can do for developers who are
-> > using GNU make.  (i.e., if you're using GNU make, "make V=1" will
-> > DTRT, but if you're using a Solaris or BSD make, you'll have to settle
-> > for "configure --enable-verbose-makecmds")
-> 
-> two methods:
->  - http://autoconf-archive.cryp.to/check_gnu_make.html
+I've been toying with ext4 and e2fsprogs pu branch (pulled from git
+yesterday) on very large volumes, and I've run into some issues.  What
+I've found so far with an 19TB MD RAID0 volume, running 2.6.29.4 (I'm
+planning on trying 2.6.30 soon):
 
-Very cool, that was just what I was looking for.  Thanks!!
+-  mkfs.ext4 *appears* to work fine, reporting no errors.  Examining
+the superblock info with dumpe2fs -h looks normal -- although I'm
+unfamiliar with "Lifetime writes" field, and I'm not sure why it's at
+73GB immediately after doing mkfs, before ever mount it.
 
-     	   	    	      	    	    - Ted
---
-To unsubscribe from this list: send the line "unsubscribe util-linux-ng" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-  Immediately running e2fsck on the volume before ever mounting it
+will not complete, and results in the following:
+# e2fsck -n /dev/md2
+e2fsck 1.41.7 (29-June-2009)
+Error reading block 2435874816 (Attempt to read block from filesystem
+resulted in short read).  Ignore error? no
+/dev/md2: Attempt to read block from filesystem resulted in short read
+while reading block 2435874816
+/dev/md2: Attempt to read block from filesystem resulted in short read
+reading journal superblock
+e2fsck: Attempt to read block from filesystem resulted in short read
+while checking ext3 journal for /dev/md2
+
+-  Trying to mount normally with no options does not work.  The kernel
+log contains these messages:
+EXT4-fs: barriers enabled
+JBD: no valid journal superblock found
+EXT4-fs: error loading journal.
+
+-  Mounting with -o noload does appear to work, and reading and
+writing seems to work fine.
+
+-  Setting default mount options with tune2fs works fine, as expected.
+
+-  Then, I went on to check out filesystem resizing.  I created an LVM
+15TB LV, and ran mkfs.ext4 on it.  Looking at the superblock info, it
+did not contain the 64bit flag, which I assume is expected behavior.
+I extended the LV to ~18TB and tried resize2fs, and got this error:
+resize2fs: Can't read an block bitmap while trying to resize /dev/data/data0
+
+If there's anything else anyone would have me try, or any patches to
+test, just let me know.
+
+Thanks!
+-Justin
