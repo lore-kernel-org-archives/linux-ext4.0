@@ -1,75 +1,52 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: Re: [PATCH] configure.in: add --disable-libuuid option (Was: libuuid (Re: blkid: util-linux-ng vs. e2fsprogs))
-Date: Wed, 1 Jul 2009 21:15:54 -0400
-Message-ID: <200907012115.57826.vapier@gentoo.org>
-References: <200905311113.23004.arvidjaar@mail.ru> <200907011835.08501.vapier@gentoo.org> <20090702005858.GH17054@mit.edu>
+From: Jamie Lokier <jamie@shareable.org>
+Subject: Re: Plans to evaluate the reliability and integrity of ext4 against power failures.
+Date: Thu, 2 Jul 2009 03:12:19 +0100
+Message-ID: <20090702021219.GA18372@shareable.org>
+References: <d1c7fadd0906301627v44fa4a23x6b60726f8ce672c1@mail.gmail.com> <f3177b9e0907011107q17507be5icae2c1105faf4800@mail.gmail.com> <532480950907011131o7e9fc8bdn64002f130cc9615d@mail.gmail.com> <4A4BAEA2.6000101@redhat.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart1818538.SYJ1OpMOhC";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
-Cc: Kay Sievers <kay.sievers@vrfy.org>,
-	Scott James Remnant <scott@ubuntu.com>,
-	Karel Zak <kzak@redhat.com>,
-	Andrey Borzenkov <arvidjaar@mail.ru>,
-	util-linux-ng@vger.kernel.org, linux-ext4@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=us-ascii
+Cc: Michael Rubin <mrubin@google.com>,
+	Chris Worley <worleys@gmail.com>,
+	Shaozhi Ye <yeshao@google.com>, linux-fsdevel@vger.kernel.org,
+	linux-ext4@vger.kernel.org
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:48930 "EHLO smtp.gentoo.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751882AbZGBBRV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 1 Jul 2009 21:17:21 -0400
-In-Reply-To: <20090702005858.GH17054@mit.edu>
+Received: from mail2.shareable.org ([80.68.89.115]:33295 "EHLO
+	mail2.shareable.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755889AbZGBCMU (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 1 Jul 2009 22:12:20 -0400
+Content-Disposition: inline
+In-Reply-To: <4A4BAEA2.6000101@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---nextPart1818538.SYJ1OpMOhC
-Content-Type: text/plain;
-  charset="iso-8859-1"
-Content-Transfer-Encoding: quoted-printable
-Content-Disposition: inline
+Ric Wheeler wrote:
+> One way to test this with reasonable, commodity hardware would be 
+> something like the following:
+> 
+> (1) Get an automated power kill setup to control your server
 
-On Wednesday 01 July 2009 20:58:58 Theodore Tso wrote:
-> On Wed, Jul 01, 2009 at 06:35:06PM -0400, Mike Frysinger wrote:
-> > > In older udev releases, before we switched to automake, I had
-> > > something like this, which behaves a bit like the Linux kernel build,
-> > > and V=3D1 switches off the silent mode:
-> >
-> > why not just use automake-1.11's silent-rules option.  then you dont ha=
-ve
-> > to waste time reinventing the wheel.
->
-> Because I consider automake the spawn of Satan?  :-)
+etc.  Good plan.
 
-i'll have you know Satan's wheel is awfully shiny ...
+Another way to test the entire software stack, but not the physical
+disks, is to run the entire test using VMs, and simulate hard disk
+write caching and simulated power failure in the VM.  KVM would be a
+great candidate for that, as it runs VMs as ordinary processes and the
+disk I/O emulation is quite easy to modify.
 
-Kay's rules look like they should be fairly straightforward to drop into=20
-e2fsprogs.  personally i'd use:
-E =3D @:
-when V=3D1, but this is probably just splitting hairs
-=2Dmike
+As most issues probably are software issues (kernel, filesystems, apps
+not calling fsync, or assuming barrierless O_DIRECT/O_DSYNC are
+sufficient, network fileserver protocols, etc.), it's surely worth a look.
 
---nextPart1818538.SYJ1OpMOhC
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
+It could be much faster than the physical version too, in other words
+more complete testing of the software stack given available resources.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.12 (GNU/Linux)
+With the ability to "fork" a running VM's state by snapshotting it and
+continuing, it would even be possible to simulate power failure cache
+loss scenarios at many points in the middle of a stress test, with the
+stress test continuing to run - no full reboot needed at every point.
+That way, maybe deliberate trace points could be placed in the
+software stack at places where power failure cache loss seems likely
+to cause a problem.
 
-iQIcBAABAgAGBQJKTApNAAoJEEFjO5/oN/WBaEYP/R1srz7rHDSwyzSnV1hcz7jY
-J3zDdeAbWFxqWXk1+PUU6G2H9eB9gt2qfkjHFPeo2Ho5yz+bIEUNmsLwfQBqg6/q
-jbcyoZ5OIjBbUNXlyWgC10BiaoIwXt+VKkrLH4cDpEt8MZ//Bb4LjXFw6ME3jWen
-7go+1z492amkDfqoTXUuIjJykNqv87HxVIMcyYdNQp59gck971Q/QKuc4Whfm07C
-AoRWPWMGMNaLHq/R99M2pu2hVFS2NqmvYLmJF9/BSATfQiDxoZiGNIxOruPwiLDi
-8bCF2IQYW8zFOL3O/r/jnmSH512X8l5o+9gwBv4JaYBhb2kTfar1k8Rsi+Hjo+sv
-qjTCNekI2nfEKb2bVNpiVQ/Pcw2a36+CMalTVabpAC9CEW1sRAow3oZqUQikcHa2
-gfUyyqKi1ZZbiSmoMh9+dOZFhD8vq+nEoP2+wctRkQB3gTo+E5KWBjKHnbkQFYVy
-J8eV1KzteEUAPiYT2GfkT9fT54KpoBMShcDPMHXFQ3gvxmhk9o2p4z4n6bk/cp19
-wryPpSElfbSZos2wimFCGy9zNFnK1MC2h+QAnAK5KpPJTjc2MYHERJNewJOIZp4p
-k0fc/V5zHE9uhSbOMZoj9tMQXGGYAUUgc7welY3D/TmdJAWYqRW0/B8vLyHgvo9R
-FJfW4FLIIoqYA0K5ys0h
-=BIn/
------END PGP SIGNATURE-----
-
---nextPart1818538.SYJ1OpMOhC--
+-- Jamie
