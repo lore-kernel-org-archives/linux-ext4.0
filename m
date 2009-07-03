@@ -1,93 +1,60 @@
-From: Xiang Wang <xiangw@google.com>
-Subject: Re: RFC PATCH: ext4 no journal corruption with locale-gen
-Date: Thu, 2 Jul 2009 16:27:26 -0700
-Message-ID: <d5ca277e0907021627t77155cdbm4fa34bd87147d60@mail.gmail.com>
-References: <6601abe90906171148w1431258fvd0afa105cda9b77b@mail.gmail.com>
-	 <20090617234604.GF7867@mit.edu>
-	 <6601abe90906220942se70fb70w5481e178f1525dd8@mail.gmail.com>
-	 <20090622211327.GI13398@webber.adilger.int>
-	 <20090701183509.GB31235@skywalker>
+From: Akira Fujita <a-fujita@rs.jp.nec.com>
+Subject: [PATCH]ext4: Fix compile warnings with MB_DEBUG
+Date: Fri, 03 Jul 2009 09:34:37 +0900
+Message-ID: <4A4D521D.9040406@rs.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: Andreas Dilger <adilger@sun.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	Theodore Tso <tytso@mit.edu>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:52373 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751027AbZGBX12 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jul 2009 19:27:28 -0400
-Received: from wpaz5.hot.corp.google.com (wpaz5.hot.corp.google.com [172.24.198.69])
-	by smtp-out.google.com with ESMTP id n62NRTRn008784
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Jul 2009 00:27:30 +0100
-Received: from ewy20 (ewy20.prod.google.com [10.241.103.20])
-	by wpaz5.hot.corp.google.com with ESMTP id n62NRQUd024411
-	for <linux-ext4@vger.kernel.org>; Thu, 2 Jul 2009 16:27:27 -0700
-Received: by ewy20 with SMTP id 20so2432760ewy.3
-        for <linux-ext4@vger.kernel.org>; Thu, 02 Jul 2009 16:27:26 -0700 (PDT)
-In-Reply-To: <20090701183509.GB31235@skywalker>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:35025 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751628AbZGCAew (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 2 Jul 2009 20:34:52 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 1, 2009 at 11:35 AM, Aneesh Kumar
-K.V<aneesh.kumar@linux.vnet.ibm.com> wrote:
-> On Mon, Jun 22, 2009 at 11:13:27PM +0200, Andreas Dilger wrote:
->> On Jun 22, 2009 =A009:42 -0700, Curt Wohlgemuth wrote:
->> > I tested the locale-gen example with all combinations of
->> >
->> > =A0 =A0data=3Dwriteback
->> > =A0 =A0data=3Dordered
->> > =A0 =A0data=3Djournal
->> > =A0 =A0<no journal at all>
->>
->> On an unrelated note - would it be useful to mount an ext4 filesyste=
-m
->> with a journal using "data=3Dnone" (or similar) to run without a jou=
-rnal?
->>
->
-> I think this is better. I would suggest data=3Dnojournal. That way we=
- can
-> check the mount options to figure out whether we are running with
-> journal or not. Also i guess this enables us to run without using a
-> journal even if =A0mke2fs created a journal for us
+When MB_DEBUG is enabled, we get some compile warnings
+because ext4_group_t is unsigned int.
+This patch fixes them.
 
-We think adding this "data=3Dnojournal" mount option is a very good ide=
-a.
-To be more specific, after adding this option, the semantics will be:
+  CC      fs/ext4/mballoc.o
+fs/ext4/mballoc.c: In function ‘ext4_mb_init_group’:
+fs/ext4/mballoc.c:1847: warning: format ‘%lu’ expects type ‘long unsigned int’, but argument 2 has type ‘ext4_group_t’
+fs/ext4/mballoc.c: In function ‘ext4_mb_show_ac’:
+fs/ext4/mballoc.c:4131: warning: format ‘%lu’ expects type ‘long unsigned int’, but argument 2 has type ‘ext4_group_t’
+fs/ext4/mballoc.c:4138: warning: format ‘%lu’ expects type ‘long unsigned int’, but argument 2 has type ‘ext4_group_t’
 
-If mke2fs does not create a journal, then we should use the
-"data=3Dnojournal" mount option only.
+Signed-off-by Akira Fujita <a-fujita@rs.jp.nec.com>
+---
+ mballoc.c |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
+diff -Nrup -X linux-2.6.31-rc1-a/Documentation/dontdiff linux-2.6.31-rc1-a/fs/ext4/mballoc.c linux-2.6.31-rc1-b/fs/ext4/mballoc.c
+--- linux-2.6.31-rc1-a/fs/ext4/mballoc.c        2009-06-25 08:25:37.000000000 +0900
++++ linux-2.6.31-rc1-b/fs/ext4/mballoc.c        2009-07-03 08:51:30.000000000 +0900
+@@ -1844,7 +1844,7 @@ static int ext4_mb_init_group(struct sup
+        struct inode *inode = sbi->s_buddy_cache;
+        struct page *page = NULL, *bitmap_page = NULL;
 
-If mke2fs creates a journal for us, we are allowed to use one of the
-following 4 mount options:
-data=3Dnojournal
-data=3Dwriteback
-data=3Dordered
-data=3Djournal
+-       mb_debug("init group %lu\n", group);
++       mb_debug("init group %u\n", group);
+        blocks_per_page = PAGE_CACHE_SIZE / sb->s_blocksize;
+        this_grp = ext4_get_group_info(sb, group);
+        /*
+@@ -4127,14 +4127,14 @@ static void ext4_mb_show_ac(struct ext4_
+                        ext4_get_group_no_and_offset(sb, pa->pa_pstart,
+                                                     NULL, &start);
+                        spin_unlock(&pa->pa_lock);
+-                       printk(KERN_ERR "PA:%lu:%d:%u \n", i,
++                       printk(KERN_ERR "PA:%u:%d:%u \n", i,
+                                                        start, pa->pa_len);
+                }
+                ext4_unlock_group(sb, i);
 
-We are now working on this patch and will submit it in a couple of week=
-s.
-
-Meanwhile if Ted could take the most recent patch from Curt to fix the =
-data
-corruption problem, that would be great!
-
-Thanks,
-Xiang
-
-> -aneesh
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+                if (grp->bb_free == 0)
+                        continue;
+-               printk(KERN_ERR "%lu: %d/%d \n",
++               printk(KERN_ERR "%u: %d/%d \n",
+                       i, grp->bb_free, grp->bb_fragments);
+        }
+        printk(KERN_ERR "\n");
