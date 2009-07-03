@@ -1,84 +1,171 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: >16TB issues
-Date: Fri, 03 Jul 2009 16:38:13 +0200
-Message-ID: <20090703143729.GJ20343@webber.adilger.int>
-References: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] e2fsck: Improve consistency check of uninit block
+	group and some cleanup
+Date: Fri, 3 Jul 2009 11:17:24 -0400
+Message-ID: <20090703151724.GE15038@mit.edu>
+References: <4A4C450C.6060808@sx.jp.nec.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
+Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Justin Maggard <jmaggard10@gmail.com>
+To: Kazuya Mio <k-mio@sx.jp.nec.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:52649 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750901AbZGCOia (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 3 Jul 2009 10:38:30 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n63EcHIv010677
-	for <linux-ext4@vger.kernel.org>; Fri, 3 Jul 2009 07:38:32 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KM700500N6E4Z00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Fri,
- 03 Jul 2009 07:38:17 -0700 (PDT)
-In-reply-to: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com>
+Received: from thunk.org ([69.25.196.29]:36317 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754830AbZGCPRd (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 3 Jul 2009 11:17:33 -0400
+Content-Disposition: inline
+In-Reply-To: <4A4C450C.6060808@sx.jp.nec.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 02, 2009  15:23 -0700, Justin Maggard wrote:
-> I've been toying with ext4 and e2fsprogs pu branch (pulled from git
-> yesterday) on very large volumes, and I've run into some issues.  What
-> I've found so far with an 19TB MD RAID0 volume, running 2.6.29.4 (I'm
-> planning on trying 2.6.30 soon):
-> 
-> -  mkfs.ext4 *appears* to work fine, reporting no errors.  Examining
-> the superblock info with dumpe2fs -h looks normal -- although I'm
-> unfamiliar with "Lifetime writes" field, and I'm not sure why it's at
-> 73GB immediately after doing mkfs, before ever mount it.
-> 
-> -  Immediately running e2fsck on the volume before ever mounting it
-> will not complete, and results in the following:
-> # e2fsck -n /dev/md2
-> e2fsck 1.41.7 (29-June-2009)
-> Error reading block 2435874816 (Attempt to read block from filesystem
-> resulted in short read).  Ignore error? no
-> /dev/md2: Attempt to read block from filesystem resulted in short read
-> while reading block 2435874816
-> /dev/md2: Attempt to read block from filesystem resulted in short read
-> reading journal superblock
-> e2fsck: Attempt to read block from filesystem resulted in short read
-> while checking ext3 journal for /dev/md2
+Hi Kazuya-san,
 
-It looks like there may be some problem with the underlying device?
-I posted a program here a few months ago called "ll_ver_dev" which
-can quickly (or slowly) verify that writes and reads to different
-offsets in a block device return consistent data.  The quick version
-will detect such problems as 32-bit overflows, but if you are having
-strange problems you might need to run the full version.
+Many thanks for sending this patch.   Couple of comments about it.
 
-You could also try running with a filesystem just under 16TB and
-verifying that works.
+1) Please send clean-up patches separately.  The "remove unnecessary
+continue statement" I could easily separate out, but it wasn't
+immediately obvious what "fix loop counter properly" was all about.
 
-> -  Mounting with -o noload does appear to work, and reading and
-> writing seems to work fine.
+2) Requiring the allocation of a zero buffer to be passed into
+ext2fs_test_bits() is *really* ugly.  I'll note that the only reason
+why it's faster to use memcmp() is because the C compiler has
+optimized it so that it can use custom assembly that can compare the
+memory block 32 bits at a time, after accounting for alignment
+restrictions.  In fact, comparing one block of memory against another
+block of known-zero memory should trash our D-cache, and in theory it
+should be faster to simply check the block of memory for non-zero
+bytes.
 
-That's because the journal is not being used, which is what seems to
-be having the problem.  I wonder if the journal is beyond 8TB or
-beyond 16TB for some reason and this is causing grief?
+In addition, in the future (see the 64-bit e2fsprogs patches in the
+'pu' branch), bitmaps will be hidden behind an abstraction, so testing
+against a known block isn't going to be easy or convenient; but having
+an ext2fs_test_zero_range() does make a lot of sense.  (For example,
+if we use a AVL tree with extent encodings for a compact in-memory
+bitmap representation to save memory usage for very large filesystems,
+implementing ext2fs_test_zero_range() might be trivially easy)
 
-> -  Setting default mount options with tune2fs works fine, as expected.
-> 
-> -  Then, I went on to check out filesystem resizing.  I created an LVM
-> 15TB LV, and ran mkfs.ext4 on it.  Looking at the superblock info, it
-> did not contain the 64bit flag, which I assume is expected behavior.
-> I extended the LV to ~18TB and tried resize2fs, and got this error:
-> resize2fs: Can't read an block bitmap while trying to resize /dev/data/data0
+So what I would suggest doing is to use the mem_is_zero() function
+defined in the attached test program.  This way at least we don't have
+to pass in a huge chunk of zero-ed memory.  If we really cared we
+could write optimized x86 and x86-64 assembly that further optimized
+mem_is_zero(), but this is probably good enough for now.  I did some
+testing, and it looks like that 256 bytes seems to minimize the loop
+overhead, and gives us a win in terms of minimizing the D-cache used
+for zero-buffer --- and 256 bytes is small enough that we can afford
+to simply use a statically allocated zero buffer, so we don't have to
+pass it into the library function.
 
-This is known not to work, AFAIR.
+Do you think you could make these changes and resend the patch?
+Thanks,
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+						- Ted
 
+#include <unistd.h>
+#include <stdio.h>
+
+#include <sys/time.h>
+#include <sys/resource.h>
+#include <string.h>
+
+struct resource_track {
+	struct timeval time_start;
+	struct timeval user_start;
+	struct timeval system_start;
+};
+
+void init_resource_track(struct resource_track *track)
+{
+	struct rusage r;
+
+	gettimeofday(&track->time_start, 0);
+	getrusage(RUSAGE_SELF, &r);
+	track->user_start = r.ru_utime;
+	track->system_start = r.ru_stime;
+}
+
+#ifdef __GNUC__
+#define _INLINE_ __inline__
+#else
+#define _INLINE_
+#endif
+
+static _INLINE_ float timeval_subtract(struct timeval *tv1,
+				       struct timeval *tv2)
+{
+	return ((tv1->tv_sec - tv2->tv_sec) +
+		((float) (tv1->tv_usec - tv2->tv_usec)) / 1000000);
+}
+
+void print_resource_track(const char *desc, struct resource_track *track)
+{
+	struct rusage r;
+	struct timeval time_end;
+
+	gettimeofday(&time_end, 0);
+
+	if (desc)
+		printf("%s: ", desc);
+
+	getrusage(RUSAGE_SELF, &r);
+
+	printf("time: %5.2f/%5.2f/%5.2f\n",
+	       timeval_subtract(&time_end, &track->time_start),
+	       timeval_subtract(&r.ru_utime, &track->user_start),
+	       timeval_subtract(&r.ru_stime, &track->system_start));
+}
+
+int mem_is_zero(const char *mem, size_t len)
+{
+	static const char zero_buf[256];
+
+	while (len >= sizeof(zero_buf)) {
+		if (memcmp(mem, zero_buf, sizeof(zero_buf)))
+			return 0;
+		len -= sizeof(zero_buf);
+		mem += sizeof(zero_buf);
+	}
+	/* Deal with leftover bytes. */
+	if (len)
+		return !memcmp(mem, zero_buf, len);
+	return 1;
+}
+
+int mem_is_zero2(char *p, unsigned len)
+{
+	while (len--)
+		if (*p++)
+			return 0;
+	return 1;
+} 
+
+#define LEN 4096
+
+char	a[LEN], b[LEN];
+
+main(int argc, char **argv)
+{
+	struct resource_track	r;
+	int			i, j;
+
+	memset(a, 0, LEN);
+	memset(b, 0, LEN);
+
+	init_resource_track(&r);
+	for (i=0; i < 102400; i++)
+		if (memcmp(a, b, LEN))
+			printf("a is non-zero\n");
+	print_resource_track("memcmp", &r);
+
+	init_resource_track(&r);
+	for (i=0; i < 102400; i++)
+		if (!mem_is_zero(a, LEN))
+			printf("a is non-zero\n");
+	print_resource_track("mem_is_zero", &r);
+
+	init_resource_track(&r);
+	for (i=0; i < 102400; i++)
+		if (!mem_is_zero2(a, LEN))
+			printf("a is non-zero\n");
+	print_resource_track("mem_is_zero2", &r);
+
+}
