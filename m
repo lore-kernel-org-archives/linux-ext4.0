@@ -1,44 +1,27 @@
-From: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
-Subject: Re: [PATCH 01/10] ext4: Use rcu_barrier() on module unload.
-Date: Sun, 5 Jul 2009 22:31:13 -0400
-Message-ID: <20090706023113.GE6706@mit.edu>
-References: <20090623150330.22490.87327.stgit@localhost> <20090623150358.22490.24818.stgit@localhost>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH 57/62] fs/ext4/mballoc.c: Remove unnecessary semicolons
+Date: Sun, 5 Jul 2009 22:34:31 -0400
+Message-ID: <20090706023431.GF6706@mit.edu>
+References: <cover.1246173664.git.joe@perches.com> <d45c565b20589fe7884926b5174ef730de1c9442.1246173683.git.joe@perches.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>,
-	"Paul E. McKenney" <paulmck-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
-	netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	dougthompson-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org, bluesmoke-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
-	axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, Patrick McHardy <kaber-dcUjhNyLwpNeoWH0uzbU5w@public.gmane.org>,
-	christine.caulfield-gM/Ye1E23mwN+BqQ9rBEUg@public.gmane.org, Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org,
-	linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org,
-	yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, shemminger-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
-	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, adilger-xsfywfwIY+M@public.gmane.org,
-	netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
-Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: linux-kernel@vger.kernel.org, trivial@kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>,
+	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Joe Perches <joe@perches.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from thunk.org ([69.25.196.29]:35476 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753987AbZGFCfL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Jul 2009 22:35:11 -0400
 Content-Disposition: inline
-In-Reply-To: <20090623150358.22490.24818.stgit@localhost>
-Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <d45c565b20589fe7884926b5174ef730de1c9442.1246173683.git.joe@perches.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 23, 2009 at 05:03:59PM +0200, Jesper Dangaard Brouer wrote:
-> The ext4 module uses rcu_call() thus it should use rcu_barrier()on
-> module unload.
-> 
-> The kmem cache ext4_pspace_cachep is sometimes free'ed using
-> call_rcu() callbacks.  Thus, we must wait for completion of call_rcu()
-> before doing kmem_cache_destroy().
-> 
-> I have difficult determining if no new call_rcu() callbacks can be envoked.
-> Would the maintainer please verify this?
+On Sun, Jun 28, 2009 at 09:27:02AM -0700, Joe Perches wrote:
+> Signed-off-by: Joe Perches <joe@perches.com>
 
-Yes, that's correct.  Thanks; I've included this in the ext4 patch
-queue.
+Thanks, added to the ext4 patch queue.
 
-						- Ted
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+					- Ted
