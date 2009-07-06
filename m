@@ -1,58 +1,67 @@
-From: Nick Dokos <nicholas.dokos@hp.com>
-Subject: e2fsprogs 1.41.7 (pu branch) basic sanity checks
-Date: Mon, 06 Jul 2009 15:42:57 -0400
-Message-ID: <8653.1246909377@alphaville.usa.hp.com>
-Reply-To: nicholas.dokos@hp.com
-Cc: nicholas.dokos@hp.com, linux-ext4@vger.kernel.org
-To: Theodore Ts'o <tytso@mit.edu>
+From: Josef Bacik <josef@redhat.com>
+Subject: [PATCH] fix softlockups in ext2/3 when trying to allocate blocks
+Date: Mon, 6 Jul 2009 15:47:39 -0400
+Message-ID: <20090706194739.GB19798@dhcp231-156.rdu.redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: emcnabb@redhat.com, linux-kernel@vger.kernel.org,
+	linux-fsdevel@vger.kernel.org
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from g1t0029.austin.hp.com ([15.216.28.36]:25724 "EHLO
-	g1t0029.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752393AbZGFTmW (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jul 2009 15:42:22 -0400
+Received: from mx2.redhat.com ([66.187.237.31]:47325 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753017AbZGFTnV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 6 Jul 2009 15:43:21 -0400
+Content-Disposition: inline
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I ran mkfs/e2fsck/mount/df on a 32-TB filesystem (built on LVM) with
-the bits from the pu branch: no problems so far (other than
-reporting problems - e.g. memory usage by e2fsck).
+This isn't a huge deal, but using a big beefy box with more CPUs than what is
+sane, you can get a nice flood of softlockup messages when running heavy
+multi-threaded io tests on ext2/3.  The processors compete for blocks from the
+allocator, so they will loop quite a bit trying to get their allocation.  This
+patch simply makes sure that we reschedule if need be.  This made the softlockup
+messages disappear whereas before they happened almost immediately.  Thanks,
 
-Here is the output:
+Tested-by: Evan McNabb <emcnabb@redhat.com>
+Signed-off-by: Josef Bacik <josef@redhat.com>
+---
+ fs/ext2/balloc.c |    1 +
+ fs/ext3/balloc.c |    2 ++
+ 2 files changed, 3 insertions(+), 0 deletions(-)
 
-$ sudo time mke2fs -q -t ext4 -O ^resize_inode -E stride=32,stripe-width=512 /dev/mapper/bigvg-bigvol
-63.48user 707.05system 12:55.70elapsed 99%CPU (0avgtext+0avgdata 0maxresident)k
-720inputs+1026586096outputs (3major+317165minor)pagefaults 0swaps
+diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
+index 7f8d2e5..17dd55f 100644
+--- a/fs/ext2/balloc.c
++++ b/fs/ext2/balloc.c
+@@ -1176,6 +1176,7 @@ ext2_try_to_allocate_with_rsv(struct super_block *sb, unsigned int group,
+ 			break;				/* succeed */
+ 		}
+ 		num = *count;
++		cond_resched();
+ 	}
+ 	return ret;
+ }
+diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
+index 27967f9..cffc8cd 100644
+--- a/fs/ext3/balloc.c
++++ b/fs/ext3/balloc.c
+@@ -735,6 +735,7 @@ bitmap_search_next_usable_block(ext3_grpblk_t start, struct buffer_head *bh,
+ 	struct journal_head *jh = bh2jh(bh);
+ 
+ 	while (start < maxblocks) {
++		cond_resched();
+ 		next = ext3_find_next_zero_bit(bh->b_data, maxblocks, start);
+ 		if (next >= maxblocks)
+ 			return -1;
+@@ -1391,6 +1392,7 @@ ext3_try_to_allocate_with_rsv(struct super_block *sb, handle_t *handle,
+ 			break;				/* succeed */
+ 		}
+ 		num = *count;
++		cond_resched();
+ 	}
+ out:
+ 	if (ret >= 0) {
+-- 
+1.6.2.2
 
-$ sudo time e2fsck -t -t -F -n -f /dev/mapper/bigvg-bigvol
-e2fsck 1.41.7 (29-June-2009)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 1: Memory used: 292k/18014398507629424k (84k/209k), time:  6.42/ 4.52/ 1.89
-Pass 1: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 2: Checking directory structure
-Pass 2: Memory used: 292k/18014398508200200k (84k/209k), time:  0.90/ 0.43/ 0.47
-Pass 2: I/O read: 1MB, write: 0MB, rate: 1.11MB/s
-Pass 3: Checking directory connectivity
-Peak memory: Memory used: 292k/18014398508450540k (84k/209k), time: 11.93/ 8.75/ 3.16
-Pass 3: Memory used: 292k/18014398508200200k (84k/209k), time:  0.28/ 0.12/ 0.16
-Pass 3: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 4: Checking reference counts
-Pass 4: Memory used: 292k/1520628k (84k/209k), time: 70.28/70.14/ 0.12
-Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
-Pass 5: Checking group summary information
-Pass 5: Memory used: 292k/1270288k (84k/209k), time: 1228.84/1222.10/ 1.02
-Pass 5: I/O read: 62MB, write: 0MB, rate: 0.05MB/s
-/dev/mapper/bigvg-bigvol: 11/2050768896 files (0.0% non-contiguous), 128808243/8203075584 blocks
-Memory used: 292k/1270288k (84k/209k), time: 1311.06/1300.99/ 4.32
-I/O read: 77MB, write: 0MB, rate: 0.06MB/s
-1300.99user 4.49system 21:51.24elapsed 99%CPU (0avgtext+0avgdata 0maxresident)k
-166848inputs+0outputs (4major+1668023minor)pagefaults 0swaps
-
-
-# mount /dev/mapper/bigvg-bigvol /ext4.1
-# cd /ext4.1
-# df .
-Filesystem           1K-blocks      Used Available Use% Mounted on
-/dev/mapper/bigvg-bigvol
-                     32297200456    131092 30656454248   1% /ext4.1
-
-Nick
