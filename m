@@ -1,51 +1,31 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: Fix a race between checkpointing code and
-	journal_get_write_access()
-Date: Sun, 5 Jul 2009 22:53:19 -0400
-Message-ID: <20090706025319.GG6706@mit.edu>
-References: <1245859360-5261-1-git-send-email-jack@suse.cz> <1245859360-5261-2-git-send-email-jack@suse.cz>
+Subject: Re: [PATCH] ext4: Add a missing return in
+	ext4_ext_calc_credits_for_single_extent
+Date: Sun, 5 Jul 2009 23:13:48 -0400
+Message-ID: <20090706031348.GA31532@mit.edu>
+References: <1246618556-1524-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:44429 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:37918 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753204AbZGFCxR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Jul 2009 22:53:17 -0400
+	id S1752110AbZGFDNt (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Jul 2009 23:13:49 -0400
 Content-Disposition: inline
-In-Reply-To: <1245859360-5261-2-git-send-email-jack@suse.cz>
+In-Reply-To: <1246618556-1524-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jun 24, 2009 at 06:02:40PM +0200, Jan Kara wrote:
-> The following race can happen:
+On Fri, Jul 03, 2009 at 04:25:56PM +0530, Aneesh Kumar K.V wrote:
+> When we have space in the extent tree leaf node we should be able to
+> insert the extent with much less journal credits. The code was doing
+> proper calculation but missed a return statement.
 > 
->   CPU1                          CPU2
->                                 checkpointing code checks the buffer, adds
->                                   it to an array for writeback
-> do_get_write_access()
->   ...
->   lock_buffer()
->   unlock_buffer()
->                                   flush_batch() submits the buffer for IO
->   __jbd2_journal_file_buffer()
-> 
->   So a buffer under writeout is returned from do_get_write_access(). Since
-> the filesystem code relies on the fact that journaled buffers cannot be
-> written out, it does not take the buffer lock and so it can modify buffer
-> while it is under writeout. That can lead to a filesystem corruption
-> if we crash at the right moment.
->   We fix the problem by clearing the buffer dirty bit under buffer_lock
-> even if the buffer is on BJ_None list. Actually, we clear the dirty bit
-> regardless the list the buffer is in and warn about the fact if
-> the buffer is already journalled.
-> 
-> Thanks for spotting the problem goes to dingdinghua <dingdinghua85@gmail.com>.
-> 
-> Reported-by: dingdinghua <dingdinghua85@gmail.com>
-> Signed-off-by: Jan Kara <jack@suse.cz>
+> Reported-by:Andreas Dilger <adilger@sun.com>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 
-Thanks, applied to the ext4 patch queue.
+Thanks, added to the ext4 patch queue.
 
 						- Ted
