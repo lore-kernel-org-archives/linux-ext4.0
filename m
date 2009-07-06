@@ -1,35 +1,44 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH V2] naturally align struct ext4_allocation_request
-Date: Sun, 5 Jul 2009 22:24:12 -0400
-Message-ID: <20090706022412.GD6706@mit.edu>
-References: <4A4254C2.8000609@redhat.com> <170fa0d20906251750u697b32e3yb92eab53b51556a3@mail.gmail.com> <4A441FD4.9020403@redhat.com>
+From: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
+Subject: Re: [PATCH 01/10] ext4: Use rcu_barrier() on module unload.
+Date: Sun, 5 Jul 2009 22:31:13 -0400
+Message-ID: <20090706023113.GE6706@mit.edu>
+References: <20090623150330.22490.87327.stgit@localhost> <20090623150358.22490.24818.stgit@localhost>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Mike Snitzer <snitzer@gmail.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Eric Sandeen <sandeen@redhat.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:36335 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753351AbZGFCYL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Jul 2009 22:24:11 -0400
+Cc: "David S. Miller" <davem-fT/PcQaiUtIeIZ0/mPfg9Q@public.gmane.org>,
+	"Paul E. McKenney" <paulmck-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
+	netdev-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
+	dougthompson-aS9lmoZGLiVWk0Htik3J/w@public.gmane.org, bluesmoke-devel-5NWGOfrQmneRv+LV9MX5uipxlwaOVQ5f@public.gmane.org,
+	axboe-tSWWG44O7X1aa/9Udqfwiw@public.gmane.org, Patrick McHardy <kaber-dcUjhNyLwpNeoWH0uzbU5w@public.gmane.org>,
+	christine.caulfield-gM/Ye1E23mwN+BqQ9rBEUg@public.gmane.org, Trond.Myklebust-HgOvQuBEEgTQT0dZR+AlfA@public.gmane.org,
+	linux-wireless-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, johannes-cdvu00un1VgdHxzADdlk8Q@public.gmane.org,
+	yoshfuji-VfPWfsRibaP+Ru+s062T9g@public.gmane.org, shemminger-de/tnXTf+JLsfHDXvbKv3WD2FQJk+8+b@public.gmane.org,
+	linux-nfs-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, bfields-uC3wQj2KruNg9hUCZPvPmw@public.gmane.org, neilb-l3A5Bk7waGM@public.gmane.org,
+	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, adilger-xsfywfwIY+M@public.gmane.org,
+	netfilter-devel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Jesper Dangaard Brouer <hawk-4UpuNZONu4c@public.gmane.org>
+Return-path: <linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
 Content-Disposition: inline
-In-Reply-To: <4A441FD4.9020403@redhat.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+In-Reply-To: <20090623150358.22490.24818.stgit@localhost>
+Sender: linux-nfs-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jun 25, 2009 at 08:09:40PM -0500, Eric Sandeen wrote:
-> As Ted noted, the ext4_allocation_request isn't well aligned.
+On Tue, Jun 23, 2009 at 05:03:59PM +0200, Jesper Dangaard Brouer wrote:
+> The ext4 module uses rcu_call() thus it should use rcu_barrier()on
+> module unload.
 > 
-> Looking at it with pahole we're wasting space on 64-bit
-> arches...
-> grouping 32-bit members together closes these holes and shrinks
-> the structure by 12 bytes.
+> The kmem cache ext4_pspace_cachep is sometimes free'ed using
+> call_rcu() callbacks.  Thus, we must wait for completion of call_rcu()
+> before doing kmem_cache_destroy().
 > 
-> Signed-off-by: Eric Sandeen <sandeen@redhat.com>
+> I have difficult determining if no new call_rcu() callbacks can be envoked.
+> Would the maintainer please verify this?
 
-
-Thanks, added to the ext4 patch queue.
+Yes, that's correct.  Thanks; I've included this in the ext4 patch
+queue.
 
 						- Ted
-
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
