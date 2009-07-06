@@ -1,27 +1,51 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 57/62] fs/ext4/mballoc.c: Remove unnecessary semicolons
-Date: Sun, 5 Jul 2009 22:34:31 -0400
-Message-ID: <20090706023431.GF6706@mit.edu>
-References: <cover.1246173664.git.joe@perches.com> <d45c565b20589fe7884926b5174ef730de1c9442.1246173683.git.joe@perches.com>
+Subject: Re: [PATCH] jbd2: Fix a race between checkpointing code and
+	journal_get_write_access()
+Date: Sun, 5 Jul 2009 22:53:19 -0400
+Message-ID: <20090706025319.GG6706@mit.edu>
+References: <1245859360-5261-1-git-send-email-jack@suse.cz> <1245859360-5261-2-git-send-email-jack@suse.cz>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-kernel@vger.kernel.org, trivial@kernel.org,
-	Andrew Morton <akpm@linux-foundation.org>,
-	Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Joe Perches <joe@perches.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:35476 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:44429 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753987AbZGFCfL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Jul 2009 22:35:11 -0400
+	id S1753204AbZGFCxR (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 5 Jul 2009 22:53:17 -0400
 Content-Disposition: inline
-In-Reply-To: <d45c565b20589fe7884926b5174ef730de1c9442.1246173683.git.joe@perches.com>
+In-Reply-To: <1245859360-5261-2-git-send-email-jack@suse.cz>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jun 28, 2009 at 09:27:02AM -0700, Joe Perches wrote:
-> Signed-off-by: Joe Perches <joe@perches.com>
+On Wed, Jun 24, 2009 at 06:02:40PM +0200, Jan Kara wrote:
+> The following race can happen:
+> 
+>   CPU1                          CPU2
+>                                 checkpointing code checks the buffer, adds
+>                                   it to an array for writeback
+> do_get_write_access()
+>   ...
+>   lock_buffer()
+>   unlock_buffer()
+>                                   flush_batch() submits the buffer for IO
+>   __jbd2_journal_file_buffer()
+> 
+>   So a buffer under writeout is returned from do_get_write_access(). Since
+> the filesystem code relies on the fact that journaled buffers cannot be
+> written out, it does not take the buffer lock and so it can modify buffer
+> while it is under writeout. That can lead to a filesystem corruption
+> if we crash at the right moment.
+>   We fix the problem by clearing the buffer dirty bit under buffer_lock
+> even if the buffer is on BJ_None list. Actually, we clear the dirty bit
+> regardless the list the buffer is in and warn about the fact if
+> the buffer is already journalled.
+> 
+> Thanks for spotting the problem goes to dingdinghua <dingdinghua85@gmail.com>.
+> 
+> Reported-by: dingdinghua <dingdinghua85@gmail.com>
+> Signed-off-by: Jan Kara <jack@suse.cz>
 
-Thanks, added to the ext4 patch queue.
+Thanks, applied to the ext4 patch queue.
 
-					- Ted
+						- Ted
