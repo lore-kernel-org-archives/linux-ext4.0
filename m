@@ -1,33 +1,40 @@
 From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: Re: [PATCH] e2fsck: Improve consistency check of uninit block	group
- and some cleanup
-Date: Mon, 06 Jul 2009 17:12:55 +0900
-Message-ID: <4A51B207.8050901@sx.jp.nec.com>
-References: <4A4C450C.6060808@sx.jp.nec.com> <20090703151724.GE15038@mit.edu>
+Subject: [PATCH 1/3] e2fsck: Remove unnecessary continue statement
+Date: Mon, 06 Jul 2009 17:14:13 +0900
+Message-ID: <4A51B255.1090309@sx.jp.nec.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-2022-JP
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:58056 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752718AbZGFIRl (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jul 2009 04:17:41 -0400
-In-Reply-To: <20090703151724.GE15038@mit.edu>
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:58674 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752861AbZGFISx (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jul 2009 04:18:53 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi Ted,
-Thanks for your helpful advice.
-
-> 1) Please send clean-up patches separately.  The "remove unnecessary
-> continue statement" I could easily separate out, but it wasn't
-> immediately obvious what "fix loop counter properly" was all about.
-I see.  I'll send clean-up patches now.
-
-> Do you think you could make these changes and resend the patch?
-OK, I'll try it.
+Remove the continue statement because it calls at the end of the loop.
 
 Regards,
 Kazuya Mio
+
+Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
+---
+ pass2.c |    2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/e2fsck/pass2.c b/e2fsck/pass2.c
+index bb3813c..889e39d 100644
+--- a/e2fsck/pass2.c
++++ b/e2fsck/pass2.c
+@@ -243,8 +243,6 @@ void e2fsck_pass2(e2fsck_t ctx)
+ 				fix_problem(ctx, code, &pctx);
+ 				bad_dir++;
+ 			}
+-			if (code == 0)
+-				continue;
+ 		}
+ 		if (bad_dir && fix_problem(ctx, PR_2_HTREE_CLEAR, &pctx)) {
+ 			clear_htree(ctx, dx_dir->ino);
