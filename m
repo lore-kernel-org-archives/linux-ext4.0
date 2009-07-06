@@ -1,27 +1,33 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] Fix goal inum check
-Date: Sun, 5 Jul 2009 23:47:05 -0400
-Message-ID: <20090706034705.GA11907@mit.edu>
-References: <20090623111521.GA27273@lore>
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: Re: [PATCH] e2fsck: Improve consistency check of uninit block	group
+ and some cleanup
+Date: Mon, 06 Jul 2009 17:12:55 +0900
+Message-ID: <4A51B207.8050901@sx.jp.nec.com>
+References: <4A4C450C.6060808@sx.jp.nec.com> <20090703151724.GE15038@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-To: linux-ext4@vger.kernel.org
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:45552 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752476AbZGFDrC (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 5 Jul 2009 23:47:02 -0400
-Content-Disposition: inline
-In-Reply-To: <20090623111521.GA27273@lore>
+Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:58056 "EHLO
+	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752718AbZGFIRl (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jul 2009 04:17:41 -0400
+In-Reply-To: <20090703151724.GE15038@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jun 23, 2009 at 01:15:21PM +0200, Johann Lombardi wrote:
-> The goal inode is specificed by inode number which belongs
-> to [1; s_inodes_count].
-> 
-> Signed-off-by: Johann Lombardi <johann@sun.com>
+Hi Ted,
+Thanks for your helpful advice.
 
-Thanks, added to the ext4 patch queue.
+> 1) Please send clean-up patches separately.  The "remove unnecessary
+> continue statement" I could easily separate out, but it wasn't
+> immediately obvious what "fix loop counter properly" was all about.
+I see.  I'll send clean-up patches now.
 
-					- Ted
+> Do you think you could make these changes and resend the patch?
+OK, I'll try it.
+
+Regards,
+Kazuya Mio
