@@ -1,120 +1,58 @@
-From: Xiang Wang <xiangw@google.com>
-Subject: Re: RFC PATCH: ext4 no journal corruption with locale-gen
-Date: Mon, 6 Jul 2009 09:21:25 -0700
-Message-ID: <d5ca277e0907060921s72c93834yd98a96cb57809b4b@mail.gmail.com>
-References: <6601abe90906171148w1431258fvd0afa105cda9b77b@mail.gmail.com>
-	 <20090617234604.GF7867@mit.edu>
-	 <6601abe90906220942se70fb70w5481e178f1525dd8@mail.gmail.com>
-	 <20090701183130.GA31235@skywalker> <20090706034144.GB31532@mit.edu>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>,
-	Curt Wohlgemuth <curtw@google.com>,
-	ext4 development <linux-ext4@vger.kernel.org>
-To: Theodore Tso <tytso@mit.edu>
+From: Nick Dokos <nicholas.dokos@hp.com>
+Subject: e2fsprogs 1.41.7 (pu branch) basic sanity checks
+Date: Mon, 06 Jul 2009 15:42:57 -0400
+Message-ID: <8653.1246909377@alphaville.usa.hp.com>
+Reply-To: nicholas.dokos@hp.com
+Cc: nicholas.dokos@hp.com, linux-ext4@vger.kernel.org
+To: Theodore Ts'o <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:11457 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751125AbZGFQV1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jul 2009 12:21:27 -0400
-Received: from spaceape7.eur.corp.google.com (spaceape7.eur.corp.google.com [172.28.16.141])
-	by smtp-out.google.com with ESMTP id n66GLS31008132
-	for <linux-ext4@vger.kernel.org>; Mon, 6 Jul 2009 17:21:28 +0100
-Received: from ewy20 (ewy20.prod.google.com [10.241.103.20])
-	by spaceape7.eur.corp.google.com with ESMTP id n66GLPIa018887
-	for <linux-ext4@vger.kernel.org>; Mon, 6 Jul 2009 09:21:26 -0700
-Received: by ewy20 with SMTP id 20so4696183ewy.3
-        for <linux-ext4@vger.kernel.org>; Mon, 06 Jul 2009 09:21:25 -0700 (PDT)
-In-Reply-To: <20090706034144.GB31532@mit.edu>
+Received: from g1t0029.austin.hp.com ([15.216.28.36]:25724 "EHLO
+	g1t0029.austin.hp.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752393AbZGFTmW (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Mon, 6 Jul 2009 15:42:22 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jul 5, 2009 at 8:41 PM, Theodore Tso<tytso@mit.edu> wrote:
-> On Thu, Jul 02, 2009 at 12:01:30AM +0530, Aneesh Kumar K.V wrote:
->>
->> I looked at the patch in detail and =A0I guess we should instead for=
-ce
->> a data=3Dwriteback mode if the filesystem is created without a journ=
-al.
->> I am not sure what whould be the meaning of data=3Dordered/data=3Djo=
-urnal
->> without a journal. So if we find that file system doesn't have a jou=
-rnal
->> then either we should update the default mount option in the filesys=
-tem
->> to be of data=3Dwriteback.
->
-> Here's a patch which takes your approach to solving the problem. =A0W=
-hat
-> do you think?
->
-> I haven't messed with dealing with the data=3D mount options in
-> fs/ext4/super.c. =A0That's important from a UI point of view, but we
-> needed to fix ext4_jbd2.h since it was unconditionally returning 0 if
-> there was no journal for all of the ext4_should_*_data() functions.
->
-> I believe this should DTRT with the -o nobh mount option, but I'd
-> appreciate another pair of eyes taking a look at this.
+I ran mkfs/e2fsck/mount/df on a 32-TB filesystem (built on LVM) with
+the bits from the pu branch: no problems so far (other than
+reporting problems - e.g. memory usage by e2fsck).
 
-This patch looks good to us.
+Here is the output:
 
-In the long run, we still think adding the data=3Dnojournal mount optio=
-n
-is useful and we are working on this patch.
+$ sudo time mke2fs -q -t ext4 -O ^resize_inode -E stride=32,stripe-width=512 /dev/mapper/bigvg-bigvol
+63.48user 707.05system 12:55.70elapsed 99%CPU (0avgtext+0avgdata 0maxresident)k
+720inputs+1026586096outputs (3major+317165minor)pagefaults 0swaps
 
-Thanks,
-Xiang
+$ sudo time e2fsck -t -t -F -n -f /dev/mapper/bigvg-bigvol
+e2fsck 1.41.7 (29-June-2009)
+Pass 1: Checking inodes, blocks, and sizes
+Pass 1: Memory used: 292k/18014398507629424k (84k/209k), time:  6.42/ 4.52/ 1.89
+Pass 1: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
+Pass 2: Checking directory structure
+Pass 2: Memory used: 292k/18014398508200200k (84k/209k), time:  0.90/ 0.43/ 0.47
+Pass 2: I/O read: 1MB, write: 0MB, rate: 1.11MB/s
+Pass 3: Checking directory connectivity
+Peak memory: Memory used: 292k/18014398508450540k (84k/209k), time: 11.93/ 8.75/ 3.16
+Pass 3: Memory used: 292k/18014398508200200k (84k/209k), time:  0.28/ 0.12/ 0.16
+Pass 3: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
+Pass 4: Checking reference counts
+Pass 4: Memory used: 292k/1520628k (84k/209k), time: 70.28/70.14/ 0.12
+Pass 4: I/O read: 0MB, write: 0MB, rate: 0.00MB/s
+Pass 5: Checking group summary information
+Pass 5: Memory used: 292k/1270288k (84k/209k), time: 1228.84/1222.10/ 1.02
+Pass 5: I/O read: 62MB, write: 0MB, rate: 0.05MB/s
+/dev/mapper/bigvg-bigvol: 11/2050768896 files (0.0% non-contiguous), 128808243/8203075584 blocks
+Memory used: 292k/1270288k (84k/209k), time: 1311.06/1300.99/ 4.32
+I/O read: 77MB, write: 0MB, rate: 0.06MB/s
+1300.99user 4.49system 21:51.24elapsed 99%CPU (0avgtext+0avgdata 0maxresident)k
+166848inputs+0outputs (4major+1668023minor)pagefaults 0swaps
 
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0=
- =A0 =A0 - Ted
->
-> commit 2a73eff8ba80095a871a6b402dfd24bc454e5bdc
-> Author: Theodore Ts'o <tytso@mit.edu>
-> Date: =A0 Sun Jul 5 23:37:13 2009 -0400
->
-> =A0 =A0ext4: fix no journal corruption with locale-gen
->
-> =A0 =A0If there is no journal, ext4_should_writeback_data() should re=
-turn
-> =A0 =A0TRUE. =A0This will fix ext4_set_aops() to set ext4_da_ops in t=
-he case of
-> =A0 =A0delayed allocation; otherwise ext4_journaled_aops gets used by
-> =A0 =A0default, which doesn't handle delayed allocation properly.
->
-> =A0 =A0The advantage of using ext4_should_writeback_data() approach i=
-s that
-> =A0 =A0it should handle nobh better as well.
->
-> =A0 =A0Thanks to Curt Wohlgemuth for investigating this problem, and =
-Aneesh
-> =A0 =A0Kumar for suggesting this approach.
->
-> =A0 =A0Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
->
-> diff --git a/fs/ext4/ext4_jbd2.h b/fs/ext4/ext4_jbd2.h
-> index be2f426..f800134 100644
-> --- a/fs/ext4/ext4_jbd2.h
-> +++ b/fs/ext4/ext4_jbd2.h
-> @@ -282,7 +282,7 @@ static inline int ext4_should_order_data(struct i=
-node *inode)
-> =A0static inline int ext4_should_writeback_data(struct inode *inode)
-> =A0{
-> =A0 =A0 =A0 =A0if (EXT4_JOURNAL(inode) =3D=3D NULL)
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 0;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 return 1;
-> =A0 =A0 =A0 =A0if (!S_ISREG(inode->i_mode))
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return 0;
-> =A0 =A0 =A0 =A0if (EXT4_I(inode)->i_flags & EXT4_JOURNAL_DATA_FL)
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4"=
- in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at =A0http://vger.kernel.org/majordomo-info.html
->
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+# mount /dev/mapper/bigvg-bigvol /ext4.1
+# cd /ext4.1
+# df .
+Filesystem           1K-blocks      Used Available Use% Mounted on
+/dev/mapper/bigvg-bigvol
+                     32297200456    131092 30656454248   1% /ext4.1
+
+Nick
