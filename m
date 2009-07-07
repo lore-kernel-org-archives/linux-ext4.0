@@ -1,93 +1,92 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH] ext4: Return error if we fail to allocate block in
-	noalloc_get_block_write
-Date: Tue, 7 Jul 2009 19:18:07 +0200
-Message-ID: <20090707171807.GD24457@duck.suse.cz>
-References: <1246441575-20311-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20090701095636.GB20540@skywalker>
+From: Evan King <f11n1@unb.ca>
+Subject: Strange disk failure...could ext4 be the culprit?
+Date: Tue, 7 Jul 2009 18:16:23 +0000 (UTC)
+Message-ID: <loom.20090707T173457-377@post.gmane.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com,
-	Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:42938 "EHLO mx1.suse.de"
+Received: from main.gmane.org ([80.91.229.2]:54862 "EHLO ciao.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754909AbZGGRSM (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 7 Jul 2009 13:18:12 -0400
-Content-Disposition: inline
-In-Reply-To: <20090701095636.GB20540@skywalker>
+	id S1754629AbZGGSUI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 7 Jul 2009 14:20:08 -0400
+Received: from root by ciao.gmane.org with local (Exim 4.43)
+	id 1MOFGt-0007E3-4s
+	for linux-ext4@vger.kernel.org; Tue, 07 Jul 2009 18:20:03 +0000
+Received: from h2cluster.chem.unb.ca ([131.202.54.146])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jul 2009 18:20:03 +0000
+Received: from f11n1 by h2cluster.chem.unb.ca with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-ext4@vger.kernel.org>; Tue, 07 Jul 2009 18:20:03 +0000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed 01-07-09 15:26:36, Aneesh Kumar K.V wrote:
-> On Wed, Jul 01, 2009 at 03:16:15PM +0530, Aneesh Kumar K.V wrote:
-> > block_write_full_page consider a zero return from get_block as success.
-> > noalloc_get_block_write returned zero even if we failed to find a mapping
-> > blocks. Returning non zero ensures we fallback to the error handling path
-> > of block_write_full_page which would properly redirty the page after
-> > the below patch is applied.
-> > 
-> > http://article.gmane.org/gmane.linux.file-systems/33145
-> > 
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> > ---
-> > 
-> > NOTE: I am not sure whether -EGAIN is the right error to be returned error.
-> > This patch should enable us to push the pending ext4 patches in the patch
-> > queue without depending on the full series from Jan. Will reply to this
-> > email with patch ordering.
-> > 
-> >  fs/ext4/inode.c |    5 ++++-
-> >  1 files changed, 4 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/fs/ext4/inode.c b/fs/ext4/inode.c
-> > index 25638bc..6c814af 100644
-> > --- a/fs/ext4/inode.c
-> > +++ b/fs/ext4/inode.c
-> > @@ -2514,7 +2514,10 @@ static int noalloc_get_block_write(struct inode *inode, sector_t iblock,
-> >  	if (ret > 0) {
-> >  		bh_result->b_size = (ret << inode->i_blkbits);
-> >  		ret = 0;
-> > -	}
-> > +	} else if (create && ret == 0)
-> > +		/* write request on unmapped buffer head. */
-> > +		ret = -EAGAIN;
-> > +
-> >  	return ret;
-> >  }
-> > 
-> 
-> The patch ordering I tested this with was
-> + stable-boundary
-> + stable-boundary-undo.patch
-> + jan-kara-dont-clear-dirty-bits-in-block_write_full_page
-> + dont-look-at-buffer_heads-outside-i_size
-> + fix-mmap-truncate-race-with-subpage-blocksize
-> + 01.patch  <=============================================== This is the  above patch
-> + fix-mmap-truncate-race-with-nondelalloc
-> + move-__ext4_journaled-writepage-function
-> + add-WARN_ON-with-unmapped-dirty-bh-in-writepage
-> + vfs-jan-kara-page_mkwrite-infrastructure
-> + allocate-blocks-correctly-with-subpage-blocksize
-> > jan-kara-unmap-underlying-metadata-of-new-buffers-only-when-mapped
-> 
-> Now with jan-kara-dont-clear-dirty-bits-in-block_write_full_page
-> block_write_full_page will redirty the page when get_block fails. That
-> would ensure that we don't drop the pages if we find unmapped
-> buffer_heads in the writepage callback. The patch 
-> fix-mmap-truncate-race-with-subpage-blocksize actually  pass pages with
-> unmapped buffer heads to block_write_full_page.
-> 
-> This also means we can push patches upto
-> move-__ext4_journaled-writepage-function to upstream in 2.6.31
-> 
-> I am yet to run the full patch set on ABAT. So the patches had limited
-> testing.
-  Yes, this looks as a good solution to me since Nick had some objections
-to later patches in my patchset so they probably won't get merged for
-2.6.31...
+Hello all,
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I'm administering a small computing cluster on new off-the-shelf hardware.  The
+configuration is a master-slaves setup with the master serving nfs for the data
+synchronization and performing the data re-assembly process (as well as doing
+some slave work as well).
+
+The workload produces a fairly steady I/O workload, but not particularly heavy.
+ While I originally pushed for specialized storage hardware or configurations,
+testing and benchmarking showed that the workload appeared quite manageable for
+a single disk.  I expected it might experience a short lifespan, but on the
+order of several months at least.  To spare the disk as much thrashing as
+possible, I opted for ext4.
+
+In the first week of active deployment (and while I was on vacation), the master
+experienced a very strange form of catastrophic failure.  A job had failed after
+only a couple hours, and serious errors blocked further work.  Several core GNU
+tools in /bin were corrupted, such as: mv, rm, uname, hostname, pwd.  A couple
+0-byte files existed in / with scrambled filenames, and plenty of Unicode
+characters splattered across the screen during reboot.  The reboot itself
+reached a login prompt, but wouldn't accept any input.  But this is where things
+get strange.
+
+I used a liveCD to perform disk checks, and there were no filesystem errors of
+*any* kind.  The entire filesystem was and is in pristine condition.  While I'm
+aware of discussion and issues surrounding some of the design decisions made for
+ext4 (such as delayed write allocation), it doesn't seem possible that those
+issues could be related to this kind of failure (data written without permission
+or any attempt to do so).  The corrupted binaries were in fact corrupted on
+disk, not just in memory (also unreadable by readelf), and larger than the
+originals.  The software I was using runs from a user-level account and has an
+apache-served web interface with apache dropping permissions to that same user.
+ Nothing but the kernel itself had permission to write to the files that were
+corrupted, however the computing software does execute (I think all of) the
+commands that were corrupted.
+
+I have saved copies of several of the corrupted files, but neglected to save any
+system logs before restoring a backup.  There are still some strange messages
+appearing during startup, but they fly by too quickly to see, and nothing seems
+amiss in the logs except that /var/log/messages seems extremely verbose with
+startup and has many references to initializing ext4 (but nothing sounds like an
+error).  I'm about to tell my users to start using it again and will be
+expecting and watching for a repeat performance.  The disk itself appears to be
+fine.
+
+_____
+
+So my questions are these:
+
+ - How likely is it that some arcane bug in ext4 is responsible for the failure?
+ - If ext4 is exonerated, are there any possible explanations aside from disk
+failure and newbie mistakes?
+ - What would be an appropriate way to stress-test the disk if I wanted to
+intentionally induce the error, and what output should I be watching?
+ - What can I do to track the occurrence of this bug, its source, and/or the
+conditions that may trigger it?  (Note that iostat shows nothing of interest, as
+the actual I/O load isn't particularly unusual.)
+ - Should I seriously consider using an SSD?  (NFS will not share memory-mapped
+directories, which thwarted the last of my 'better' plans, and the software's
+scratch directory can potentially grow to several gigs over the span of a few
+days/weeks.)
+
+
+Thanks in advance for any light you may be able to shed on the issue.
+ - Evan
+
