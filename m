@@ -1,80 +1,51 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: Re: [PATCH] fix softlockups in ext2/3 when trying to allocate blocks
-Date: Wed, 8 Jul 2009 16:26:13 -0400
-Message-ID: <20090708202612.GC16893@shell>
-References: <20090706194739.GB19798@dhcp231-156.rdu.redhat.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] jbd2: Fix a race between checkpointing code and
+	journal_get_write_access()
+Date: Wed, 8 Jul 2009 18:31:50 -0400
+Message-ID: <20090708223150.GB14005@mit.edu>
+References: <1245859360-5261-1-git-send-email-jack@suse.cz> <1245859360-5261-2-git-send-email-jack@suse.cz> <20090706025319.GG6706@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, emcnabb@redhat.com,
-	linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org
-To: Josef Bacik <josef@redhat.com>
+Cc: linux-ext4@vger.kernel.org
+To: Jan Kara <jack@suse.cz>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:60463 "EHLO mx1.redhat.com"
+Received: from THUNK.ORG ([69.25.196.29]:37626 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755599AbZGHU0O (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Jul 2009 16:26:14 -0400
+	id S1758770AbZGHWb4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 8 Jul 2009 18:31:56 -0400
 Content-Disposition: inline
-In-Reply-To: <20090706194739.GB19798@dhcp231-156.rdu.redhat.com>
+In-Reply-To: <20090706025319.GG6706@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Mon, Jul 06, 2009 at 03:47:39PM -0400, Josef Bacik wrote:
-> This isn't a huge deal, but using a big beefy box with more CPUs than what is
-> sane, you can get a nice flood of softlockup messages when running heavy
-> multi-threaded io tests on ext2/3.  The processors compete for blocks from the
-> allocator, so they will loop quite a bit trying to get their allocation.  This
-> patch simply makes sure that we reschedule if need be.  This made the softlockup
-> messages disappear whereas before they happened almost immediately.  Thanks,
-> 
-> Tested-by: Evan McNabb <emcnabb@redhat.com>
-> Signed-off-by: Josef Bacik <josef@redhat.com>
-> ---
->  fs/ext2/balloc.c |    1 +
->  fs/ext3/balloc.c |    2 ++
->  2 files changed, 3 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/ext2/balloc.c b/fs/ext2/balloc.c
-> index 7f8d2e5..17dd55f 100644
-> --- a/fs/ext2/balloc.c
-> +++ b/fs/ext2/balloc.c
-> @@ -1176,6 +1176,7 @@ ext2_try_to_allocate_with_rsv(struct super_block *sb, unsigned int group,
->  			break;				/* succeed */
->  		}
->  		num = *count;
-> +		cond_resched();
->  	}
->  	return ret;
->  }
-> diff --git a/fs/ext3/balloc.c b/fs/ext3/balloc.c
-> index 27967f9..cffc8cd 100644
-> --- a/fs/ext3/balloc.c
-> +++ b/fs/ext3/balloc.c
-> @@ -735,6 +735,7 @@ bitmap_search_next_usable_block(ext3_grpblk_t start, struct buffer_head *bh,
->  	struct journal_head *jh = bh2jh(bh);
->  
->  	while (start < maxblocks) {
-> +		cond_resched();
->  		next = ext3_find_next_zero_bit(bh->b_data, maxblocks, start);
->  		if (next >= maxblocks)
->  			return -1;
+On Sun, Jul 05, 2009 at 10:53:19PM -0400, Theodore Tso wrote:
+> On Wed, Jun 24, 2009 at 06:02:40PM +0200, Jan Kara wrote:
+> > The following race can happen:
+> > 
+> >   CPU1                          CPU2
+> >                                 checkpointing code checks the buffer, adds
+> >                                   it to an array for writeback
+> > do_get_write_access()
+> >   ...
+> >   lock_buffer()
+> >   unlock_buffer()
+> >                                   flush_batch() submits the buffer for IO
+> >   __jbd2_journal_file_buffer()
+> > 
+> >   So a buffer under writeout is returned from do_get_write_access(). Since
+> > the filesystem code relies on the fact that journaled buffers cannot be
+> > written out, it does not take the buffer lock and so it can modify buffer
+> > while it is under writeout. That can lead to a filesystem corruption
+> > if we crash at the right moment.
+> >   We fix the problem by clearing the buffer dirty bit under buffer_lock
+> > even if the buffer is on BJ_None list. Actually, we clear the dirty bit
+> > regardless the list the buffer is in and warn about the fact if
+> > the buffer is already journalled.
 
-I'm curious: Why schedule at the beginning of the while() loop rather
-than at the end?
+When running fsstress, we get the "Spotted dirty metadata buffer;
+there's a risk of filesystem corruption in csae of a system crash" at
+least half a dozen times or so.  That sounds like we have a problem.
+Were you expecting that this was a "this should never happen"
+situation, or is there a known bug that we need to fix here?
 
-> @@ -1391,6 +1392,7 @@ ext3_try_to_allocate_with_rsv(struct super_block *sb, handle_t *handle,
->  			break;				/* succeed */
->  		}
->  		num = *count;
-> +		cond_resched();
->  	}
->  out:
->  	if (ret >= 0) {
-> -- 
-> 1.6.2.2
-
-I like this patch in general, but I worry about introducing new
-performance problems in other cases.  Have you guys tested on single
-cpu systems?  Maybe with a file system close to ENOSPC or badly
-fragmented?
-
--VAL
+	      	       	       	   	- Ted
