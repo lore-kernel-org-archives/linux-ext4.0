@@ -1,369 +1,344 @@
-From: Kazuya Mio <k-mio@sx.jp.nec.com>
-Subject: [PATCH V2] e2fsck: Improve consistency check of uninit block group
-Date: Thu, 09 Jul 2009 13:56:06 +0900
-Message-ID: <4A557866.20604@sx.jp.nec.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-2022-JP
-Content-Transfer-Encoding: 7bit
-To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+From: dingdinghua <dingdinghua85@gmail.com>
+Subject: [PATCH] set h_transaction to NULL when restart handle
+Date: Thu,  9 Jul 2009 16:41:27 +0800
+Message-ID: <1247128887-25588-1-git-send-email-dingdinghua85@gmail.com>
+Cc: dingdinghua <dingdinghua85@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from TYO202.gate.nec.co.jp ([202.32.8.206]:61051 "EHLO
-	tyo202.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750769AbZGIE5F (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jul 2009 00:57:05 -0400
+Received: from rv-out-0506.google.com ([209.85.198.232]:62602 "EHLO
+	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750995AbZGIIle (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jul 2009 04:41:34 -0400
+Received: by rv-out-0506.google.com with SMTP id f6so1029rvb.1
+        for <linux-ext4@vger.kernel.org>; Thu, 09 Jul 2009 01:41:33 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Hi,
+We may restart journal handle when do truncate or resize work, but current 
+journal restart doesn't set handle->h_transaction to NULL when remove the 
+handle from old transaction. This may results bugs if restart handle failed,
+since this handle doesn't belongs to the old transaction any more, and the 
+transaction may have been committed, checkpointed and dropped while this 
+handle still refer to it.  
 
-I have addressed Ted's comments.
-(http://kerneltrap.org/mailarchive/linux-ext4/2009/7/3/6132903)
+So an active handle has a state that doesn't belongs to any transaction now,
+but current journal codes suppose that handle  must belongs to an transaction,
+I add h_journal to handle_s, which points to journal.
 
-e2fsck_pass5() checks whether inode/block is consistency each. However, if
-EXT2_BG_[INODE/BLOCK]_BITMAP is set to a ext4's block group, most of its bitmap
-is uninitialized (0). In that case, e2fsck pass 5 becomes faster if it checks
-consistency of uninitialized block group each 256 bytes.
-
-This patch cuts e2fsck pass 5 time by up to 80%. The following results show the
-e2fsck time.
-
-Comparison of e2fsck time on an ext4 500GB partition (20% blocks used)
--------------------------------------------------
-|     |     old e2fsck     |     new e2fsck     |
-|Pass |       time(s)      |       time(s)      |
-|     | real | user |system| real | user |system|
--------------------------------------------------
-|  1  |  5.70|  3.29|  0.50|  5.66|  3.21|  0.54|
-|  2  |  3.33|  0.80|  0.19|  3.40|  0.82|  0.23|
-|  3  |  0.01|  0.00|  0.00|  0.01|  0.00|  0.00|
-|  4  |  1.04|  1.04|  0.00|  1.05|  1.04|  0.00|
-|  5  | 19.60| 17.27|  0.06|  3.53|  1.21|  0.05|
--------------------------------------------------
-|Total| 29.94| 22.57|  0.80| 13.90|  6.47|  0.86|
--------------------------------------------------
-
-Machine environment:
-CPU:       Intel(R) Xeon(TM) CPU 3.00GHz
-Memory:    1GB
-Kernel:    linux-2.6.29-git2
-e2fsprogs: 1.41.6
-
-The following patch can be applied to e2fsprogs git tree (master branch).
-
-Regards,
-Kazuya Mio
-
-Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
+Signed-off-by: dingdinghua <dingdinghua85@gmail.com>
 ---
- e2fsck/pass5.c          |  135 +++++++++++++++++++++++++++++++++++++-----------
- lib/ext2fs/ext2fs.h     |    2
- lib/ext2fs/gen_bitmap.c |   94 +++++++++++++++++++++++++++++++++
- 3 files changed, 201 insertions(+), 30 deletions(-)
+ fs/ext3/ext3_jbd.c       |    8 +++++
+ fs/ext3/super.c          |    6 +++-
+ fs/jbd/revoke.c          |   12 ++++++--
+ fs/jbd/transaction.c     |   68 +++++++++++++++++++++++++++++++++-------------
+ include/linux/ext3_jbd.h |    9 +++---
+ include/linux/jbd.h      |    1 +
+ 6 files changed, 75 insertions(+), 29 deletions(-)
 
-diff --git a/e2fsck/pass5.c b/e2fsck/pass5.c
-index e660386..7c872d6 100644
---- a/e2fsck/pass5.c
-+++ b/e2fsck/pass5.c
-@@ -115,6 +115,11 @@ static void check_block_bitmaps(e2fsck_t ctx)
- 	errcode_t	retval;
- 	int		csum_flag;
- 	int		skip_group = 0;
-+	int	old_desc_blocks = 0;
-+	int	count = 0;
-+	int	cmp_block = 0;
-+	int	redo_flag = 0;
-+	blk_t	super_blk, old_desc_blk, new_desc_blk;
-
- 	clear_problem_context(&pctx);
- 	free_array = (int *) e2fsck_allocate_memory(ctx,
-@@ -166,39 +171,82 @@ redo_counts:
- 		actual = ext2fs_fast_test_block_bitmap(ctx->block_found_map, i);
-
- 		if (skip_group) {
--			blk_t	super_blk, old_desc_blk, new_desc_blk;
--			int	old_desc_blocks;
--
--			ext2fs_super_and_bgd_loc(fs, group, &super_blk,
-+			if ((i - fs->super->s_first_data_block) %
-+					fs->super->s_blocks_per_group == 0) {
-+				super_blk = 0;
-+				old_desc_blk = 0;
-+				new_desc_blk = 0;
-+				ext2fs_super_and_bgd_loc(fs, group, &super_blk,
- 					 &old_desc_blk, &new_desc_blk, 0);
-
--			if (fs->super->s_feature_incompat &
--			    EXT2_FEATURE_INCOMPAT_META_BG)
--				old_desc_blocks = fs->super->s_first_meta_bg;
--			else
--				old_desc_blocks = fs->desc_blocks +
-+				if (fs->super->s_feature_incompat &
-+						EXT2_FEATURE_INCOMPAT_META_BG)
-+					old_desc_blocks =
-+						fs->super->s_first_meta_bg;
-+				else
-+					old_desc_blocks = fs->desc_blocks +
- 					fs->super->s_reserved_gdt_blocks;
-+			}
-
- 			bitmap = 0;
--			if (i == super_blk)
--				bitmap = 1;
--			if (old_desc_blk && old_desc_blocks &&
--			    (i >= old_desc_blk) &&
--			    (i < old_desc_blk + old_desc_blocks))
--				bitmap = 1;
--			if (new_desc_blk &&
--			    (i == new_desc_blk))
--				bitmap = 1;
--			if (i == fs->group_desc[group].bg_block_bitmap)
-+			if ((i == super_blk) ||
-+				(old_desc_blk && old_desc_blocks &&
-+				(i >= old_desc_blk) &&
-+				(i < old_desc_blk + old_desc_blocks)) ||
-+				(new_desc_blk && (i == new_desc_blk)) ||
-+				(i == fs->group_desc[group].bg_block_bitmap) ||
-+				(i == fs->group_desc[group].bg_inode_bitmap) ||
-+				(i >= fs->group_desc[group].bg_inode_table &&
-+				(i < fs->group_desc[group].bg_inode_table +
-+					fs->inode_blocks_per_group))) {
- 				bitmap = 1;
--			else if (i == fs->group_desc[group].bg_inode_bitmap)
--				bitmap = 1;
--			else if (i >= fs->group_desc[group].bg_inode_table &&
--				 (i < fs->group_desc[group].bg_inode_table
--				  + fs->inode_blocks_per_group))
--				bitmap = 1;
--			actual = (actual != 0);
--		} else
-+				actual = (actual != 0);
-+				count++;
-+			} else if ((i - count - fs->super->s_first_data_block) %
-+					fs->super->s_blocks_per_group == 0) {
-+				/*
-+				 * Count the number of compare data blocks in
-+				 * every block group.The last block group's
-+				 * count is different, because that the last
-+				 * blockgroup is not saturation is possible.
-+				 */
-+				if (group == (int)fs->group_desc_count - 1)
-+					cmp_block = fs->super->s_blocks_count -
-+						i +
-+						fs->super->s_first_data_block;
-+				else
-+					cmp_block = fs->super->
-+						s_blocks_per_group - count;
-+
-+				/*
-+				 * When the compare data blocks in block bitmap
-+				 * are 0, count the free block,
-+				 * skip the current block group.
-+				 */
-+				if (ext2fs_test_zero_range(i, cmp_block,
-+					(ext2fs_generic_bitmap)
-+					ctx->block_found_map)) {
-+					/*
-+					 * -1 means to skip the current block
-+					 * group.
-+					 */
-+					blocks = fs->super->s_blocks_per_group
-+									- 1;
-+					group_free = cmp_block;
-+					free_blocks += cmp_block;
-+					/*
-+					 * The current block group's last block
-+					 * is set to i.
-+					 */
-+					i += cmp_block - 1;
-+					count = 0;
-+					bitmap = 1;
-+					goto do_counts;
-+				}
-+			}
-+		} else if (redo_flag)
-+			bitmap = actual;
-+		else
- 			bitmap = ext2fs_fast_test_block_bitmap(fs->block_map, i);
-
- 		if (actual == bitmap)
-@@ -291,6 +339,7 @@ redo_counts:
- 		/* Redo the counts */
- 		blocks = 0; free_blocks = 0; group_free = 0; group = 0;
- 		memset(free_array, 0, fs->group_desc_count * sizeof(int));
-+		redo_flag++;
- 		goto redo_counts;
- 	} else if (fixit == 0)
- 		ext2fs_unmark_valid(fs);
-@@ -342,6 +391,7 @@ static void check_inode_bitmaps(e2fsck_t ctx)
- 	int		problem, save_problem, fixit, had_problem;
- 	int		csum_flag;
- 	int		skip_group = 0;
-+	int		redo_flag = 0;
-
- 	clear_problem_context(&pctx);
- 	free_array = (int *) e2fsck_allocate_memory(ctx,
-@@ -389,10 +439,34 @@ redo_counts:
-
- 	/* Protect loop from wrap-around if inodes_count is maxed */
- 	for (i = 1; i <= fs->super->s_inodes_count && i > 0; i++) {
-+		bitmap = 0;
-+		if (skip_group &&
-+			i % fs->super->s_inodes_per_group == 1) {
-+			/*
-+			 * Current inode is the first inode
-+			 * in the current block group.
-+			 */
-+			if (ext2fs_test_zero_range(i,
-+				fs->super->s_inodes_per_group,
-+				(ext2fs_generic_bitmap)(ctx->inode_used_map))) {
-+				/*
-+				 * When the compared inodes in inodes bitmap
-+				 * are 0, count the free inode,
-+				 * skip the current block group.
-+				 */
-+				inodes = fs->super->s_inodes_per_group - 1;
-+				group_free = inodes;
-+				free_inodes += inodes;
-+				i += inodes;
-+				skip_group = 0;
-+				goto do_counts;
-+			}
-+		}
-+
- 		actual = ext2fs_fast_test_inode_bitmap(ctx->inode_used_map, i);
--		if (skip_group)
--			bitmap = 0;
--		else
-+		if (redo_flag)
-+			bitmap = actual;
-+		else if (!skip_group)
- 			bitmap = ext2fs_fast_test_inode_bitmap(fs->inode_map, i);
- 		if (actual == bitmap)
- 			goto do_counts;
-@@ -496,6 +570,7 @@ do_counts:
- 		dirs_count = 0; group = 0;
- 		memset(free_array, 0, fs->group_desc_count * sizeof(int));
- 		memset(dir_array, 0, fs->group_desc_count * sizeof(int));
-+		redo_flag++;
- 		goto redo_counts;
- 	} else if (fixit == 0)
- 		ext2fs_unmark_valid(fs);
-diff --git a/lib/ext2fs/ext2fs.h b/lib/ext2fs/ext2fs.h
-index 234fbdd..b011fb6 100644
---- a/lib/ext2fs/ext2fs.h
-+++ b/lib/ext2fs/ext2fs.h
-@@ -933,6 +933,8 @@ extern errcode_t
-ext2fs_set_generic_bitmap_range(ext2fs_generic_bitmap bmap,
- 						 errcode_t magic,
- 						 __u32 start, __u32 num,
- 						 void *in);
-+extern int ext2fs_test_zero_range(unsigned int start, unsigned int len,
-+						ext2fs_generic_bitmap bitmap);
-
- /* getsize.c */
- extern errcode_t ext2fs_get_device_size(const char *file, int blocksize,
-diff --git a/lib/ext2fs/gen_bitmap.c b/lib/ext2fs/gen_bitmap.c
-index a1b1d8f..d699713 100644
---- a/lib/ext2fs/gen_bitmap.c
-+++ b/lib/ext2fs/gen_bitmap.c
-@@ -165,6 +165,100 @@ int ext2fs_test_generic_bitmap(ext2fs_generic_bitmap bitmap,
- 	return ext2fs_test_bit(bitno - bitmap->start, bitmap->bitmap);
+diff --git a/fs/ext3/ext3_jbd.c b/fs/ext3/ext3_jbd.c
+index d401f14..17d43a5 100644
+--- a/fs/ext3/ext3_jbd.c
++++ b/fs/ext3/ext3_jbd.c
+@@ -57,3 +57,11 @@ int __ext3_journal_dirty_metadata(const char *where,
+ 		ext3_journal_abort_handle(where, __func__, bh, handle,err);
+ 	return err;
  }
-
-+/*
-+ * Compare @mem to zero buffer by 256 bytes.
-+ * Return 1 if @mem is zeroed memory, otherwise return 0.
-+ */
-+static int mem_is_zero(const char *mem, size_t len)
++
++int __ext3_journal_restart(const char *where, handle_t *handle, int nblocks)
 +{
-+	static const char zero_buf[256];
-+
-+	while (len >= sizeof(zero_buf)) {
-+		if (memcmp(mem, zero_buf, sizeof(zero_buf)))
-+			return 0;
-+		len -= sizeof(zero_buf);
-+		mem += sizeof(zero_buf);
-+	}
-+	/* Deal with leftover bytes. */
-+	if (len)
-+		return !memcmp(mem, zero_buf, len);
-+	return 1;
++	int err = journal_restart(handle, nblocks);
++	if (err)
++		ext3_journal_abort_handle(where, __func__, NULL, handle, err);
++	return err;
 +}
-+
-+/*
-+ * A specified district is checked in block bitmap or in inode bitmap.
-+ */
-+int ext2fs_test_zero_range(unsigned int start, unsigned int len,
-+				ext2fs_generic_bitmap bitmap)
-+{
-+	size_t start_byte, len_byte = len >> 3;
-+	int start_bit, len_bit = len % 8;
-+	int first_bit = 0;
-+	int last_bit  = 0;
-+	int mark_count = 0;
-+	int mark_bit = 0;
-+	int i;
-+	const char *ADDR = bitmap->bitmap;
-+
-+	start -= bitmap->start;
-+	start_byte = start >> 3;
-+	start_bit = start % 8;
-+
-+	if (start_bit != 0) {
-+		/*
-+		 * The compared start block number or start inode number
-+		 * is not the first bit in a byte.
-+		 */
-+		mark_count = 8 - start_bit;
-+		if (len < 8 - start_bit) {
-+			mark_count = (int)len;
-+			mark_bit = len + start_bit - 1;
-+		} else
-+			mark_bit = 7;
-+
-+		for (i = mark_count; i > 0; i--, mark_bit--)
-+			first_bit |= 1 << mark_bit;
-+
-+		/*
-+		 * Compare blocks or inodes in the first byte.
-+		 * If there is any marked bit, this function returns 0.
-+		 */
-+		if (first_bit & ADDR[start_byte])
-+			return 0;
-+		else if (len <= 8 - start_bit)
-+			return 1;
-+
-+		start_byte++;
-+		len_bit = (len - mark_count) % 8;
-+		len_byte = (len - mark_count) >> 3;
-+	}
-+
-+	/*
-+	 * The compared start block number or start inode number is
-+	 * the first bit in a byte.
-+	 */
-+	if (len_bit != 0) {
-+		/*
-+		 * The compared end block number or end inode number is
-+		 * not the last bit in a byte.
-+		 */
-+		for (mark_bit = len_bit - 1; mark_bit >= 0; mark_bit--)
-+			last_bit |= 1 << mark_bit;
-+
-+		/*
-+		 * Compare blocks or inodes in the last byte.
-+		 * If there is any marked bit, this function returns 0.
-+		 */
-+		if (last_bit & ADDR[start_byte + len_byte])
-+			return 0;
-+		else if (len_byte == 0)
-+			return 1;
-+	}
-+
-+	/* Check whether all bytes are 0 */
-+	return mem_is_zero(ADDR + start_byte, len_byte);
-+}
-+
- int ext2fs_mark_generic_bitmap(ext2fs_generic_bitmap bitmap,
- 					 __u32 bitno)
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 524b349..1f4c694 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -105,11 +105,13 @@ handle_t *ext3_journal_start_sb(struct super_block *sb, int nblocks)
+  */
+ int __ext3_journal_stop(const char *where, handle_t *handle)
  {
+-	struct super_block *sb;
++	struct super_block *sb = handle->h_journal->j_private;
+ 	int err;
+ 	int rc;
+ 
+-	sb = handle->h_transaction->t_journal->j_private;
++	if (unlikely(handle->h_transaction == NULL))
++		BUG_ON(!is_handle_aborted(handle));
++
+ 	err = handle->h_err;
+ 	rc = journal_stop(handle);
+ 
+diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
+index da6cd9b..712f6c4 100644
+--- a/fs/jbd/revoke.c
++++ b/fs/jbd/revoke.c
+@@ -336,7 +336,7 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
+ 		   struct buffer_head *bh_in)
+ {
+ 	struct buffer_head *bh = NULL;
+-	journal_t *journal;
++	journal_t *journal = handle->h_journal;
+ 	struct block_device *bdev;
+ 	int err;
+ 
+@@ -344,7 +344,11 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
+ 	if (bh_in)
+ 		BUFFER_TRACE(bh_in, "enter");
+ 
+-	journal = handle->h_transaction->t_journal;
++	if (unlikely(handle->h_transaction == NULL)) {
++		J_ASSERT(is_handle_aborted(handle));
++		return -EROFS;
++	}
++
+ 	if (!journal_set_features(journal, 0, 0, JFS_FEATURE_INCOMPAT_REVOKE)){
+ 		J_ASSERT (!"Cannot set revoke feature!");
+ 		return -EINVAL;
+@@ -426,13 +430,15 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
+ int journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
+ {
+ 	struct jbd_revoke_record_s *record;
+-	journal_t *journal = handle->h_transaction->t_journal;
++	journal_t *journal = handle->h_journal;
+ 	int need_cancel;
+ 	int did_revoke = 0;	/* akpm: debug */
+ 	struct buffer_head *bh = jh2bh(jh);
+ 
+ 	jbd_debug(4, "journal_head %p, cancelling revoke\n", jh);
+ 
++	J_ASSERT(handle->h_transaction != NULL);
++
+ 	/* Is the existing Revoke bit valid?  If so, we trust it, and
+ 	 * only perform the full cancel if the revoke bit is set.  If
+ 	 * not, we can't trust the revoke bit, and we need to do the
+diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
+index 73242ba..8e61801 100644
+--- a/fs/jbd/transaction.c
++++ b/fs/jbd/transaction.c
+@@ -220,6 +220,7 @@ repeat_locked:
+ 	 * use and add the handle to the running transaction. */
+ 
+ 	handle->h_transaction = transaction;
++	handle->h_journal = transaction->t_journal;
+ 	transaction->t_outstanding_credits += nblocks;
+ 	transaction->t_updates++;
+ 	transaction->t_handle_count++;
+@@ -274,7 +275,7 @@ handle_t *journal_start(journal_t *journal, int nblocks)
+ 		return ERR_PTR(-EROFS);
+ 
+ 	if (handle) {
+-		J_ASSERT(handle->h_transaction->t_journal == journal);
++		J_ASSERT(handle->h_journal == journal);
+ 		handle->h_ref++;
+ 		return handle;
+ 	}
+@@ -322,11 +323,15 @@ out:
+ int journal_extend(handle_t *handle, int nblocks)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal = handle->h_journal;
+ 	int result;
+ 	int wanted;
+ 
+ 	result = -EIO;
++
++	if (unlikely(transaction == NULL))
++		J_ASSERT(is_handle_aborted(handle));
++
+ 	if (is_handle_aborted(handle))
+ 		goto out;
+ 
+@@ -388,13 +393,16 @@ out:
+ int journal_restart(handle_t *handle, int nblocks)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal = handle->h_journal;
+ 	int ret;
+ 
++	if (unlikely(transaction == NULL))
++		J_ASSERT(is_handle_aborted(handle));
++
+ 	/* If we've had an abort of any type, don't even think about
+ 	 * actually doing the restart! */
+ 	if (is_handle_aborted(handle))
+-		return 0;
++		return -EROFS;
+ 
+ 	/*
+ 	 * First unlink the handle from its current transaction, and start the
+@@ -407,6 +415,7 @@ int journal_restart(handle_t *handle, int nblocks)
+ 	spin_lock(&transaction->t_handle_lock);
+ 	transaction->t_outstanding_credits -= handle->h_buffer_credits;
+ 	transaction->t_updates--;
++	handle->h_transaction = NULL;
+ 
+ 	if (!transaction->t_updates)
+ 		wake_up(&journal->j_wait_updates);
+@@ -534,18 +543,18 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
+ 			int force_copy)
+ {
+ 	struct buffer_head *bh;
+-	transaction_t *transaction;
+-	journal_t *journal;
++	transaction_t *transaction = handle->h_transaction;
++	journal_t *journal = handle->h_journal;
+ 	int error;
+ 	char *frozen_buffer = NULL;
+ 	int need_copy = 0;
+ 
++	if (unlikely(transaction == NULL))
++		J_ASSERT(is_handle_aborted(handle));
++
+ 	if (is_handle_aborted(handle))
+ 		return -EROFS;
+ 
+-	transaction = handle->h_transaction;
+-	journal = transaction->t_journal;
+-
+ 	jbd_debug(5, "buffer_head %p, force_copy %d\n", jh, force_copy);
+ 
+ 	JBUFFER_TRACE(jh, "entry");
+@@ -797,12 +806,15 @@ int journal_get_write_access(handle_t *handle, struct buffer_head *bh)
+ int journal_get_create_access(handle_t *handle, struct buffer_head *bh)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal = handle->h_journal;
+ 	struct journal_head *jh = journal_add_journal_head(bh);
+ 	int err;
+ 
+ 	jbd_debug(5, "journal_head %p\n", jh);
+ 	err = -EROFS;
++	if (unlikely(transaction == NULL))
++		J_ASSERT(is_handle_aborted(handle));
++
+ 	if (is_handle_aborted(handle))
+ 		goto out;
+ 	err = 0;
+@@ -951,11 +963,14 @@ out:
+  */
+ int journal_dirty_data(handle_t *handle, struct buffer_head *bh)
+ {
+-	journal_t *journal = handle->h_transaction->t_journal;
++	journal_t *journal = handle->h_journal;
+ 	int need_brelse = 0;
+ 	struct journal_head *jh;
+ 	int ret = 0;
+ 
++	if (unlikely(handle->h_transaction == NULL))
++		J_ASSERT(is_handle_aborted(handle));
++
+ 	if (is_handle_aborted(handle))
+ 		return ret;
+ 
+@@ -1143,11 +1158,15 @@ no_journal:
+ int journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal = handle->h_journal;
+ 	struct journal_head *jh = bh2jh(bh);
+ 
+ 	jbd_debug(5, "journal_head %p\n", jh);
+ 	JBUFFER_TRACE(jh, "entry");
++
++	if (unlikely(transaction == NULL))
++		J_ASSERT(is_handle_aborted(handle));
++
+ 	if (is_handle_aborted(handle))
+ 		goto out;
+ 
+@@ -1241,7 +1260,7 @@ journal_release_buffer(handle_t *handle, struct buffer_head *bh)
+ int journal_forget (handle_t *handle, struct buffer_head *bh)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
++	journal_t *journal = handle->h_journal;
+ 	struct journal_head *jh;
+ 	int drop_reserve = 0;
+ 	int err = 0;
+@@ -1249,6 +1268,11 @@ int journal_forget (handle_t *handle, struct buffer_head *bh)
+ 
+ 	BUFFER_TRACE(bh, "entry");
+ 
++	if (unlikely(transaction == NULL)) {
++		J_ASSERT(is_handle_aborted(handle));
++		return err;
++	}
++
+ 	jbd_lock_bh_state(bh);
+ 	spin_lock(&journal->j_list_lock);
+ 
+@@ -1370,18 +1394,14 @@ drop:
+ int journal_stop(handle_t *handle)
+ {
+ 	transaction_t *transaction = handle->h_transaction;
+-	journal_t *journal = transaction->t_journal;
+-	int err;
++	journal_t *journal = handle->h_journal;
++	int err = 0;
+ 	pid_t pid;
+ 
+ 	J_ASSERT(journal_current_handle() == handle);
+ 
+ 	if (is_handle_aborted(handle))
+ 		err = -EIO;
+-	else {
+-		J_ASSERT(transaction->t_updates > 0);
+-		err = 0;
+-	}
+ 
+ 	if (--handle->h_ref > 0) {
+ 		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
+@@ -1389,6 +1409,16 @@ int journal_stop(handle_t *handle)
+ 		return err;
+ 	}
+ 
++	if (unlikely(transaction == NULL)) {
++		/*isolated handle, can only exist when restart handle failed*/
++		J_ASSERT(is_handle_aborted(handle));
++		current->journal_info = NULL;
++		jbd_free_handle(handle);
++		return err;
++	}
++
++	J_ASSERT(transaction->t_updates > 0);
++
+ 	jbd_debug(4, "Handle %p going down\n", handle);
+ 
+ 	/*
+diff --git a/include/linux/ext3_jbd.h b/include/linux/ext3_jbd.h
+index cf82d51..2a3e9fd 100644
+--- a/include/linux/ext3_jbd.h
++++ b/include/linux/ext3_jbd.h
+@@ -136,6 +136,8 @@ int __ext3_journal_get_create_access(const char *where,
+ int __ext3_journal_dirty_metadata(const char *where,
+ 				handle_t *handle, struct buffer_head *bh);
+ 
++int __ext3_journal_restart(const char *where, handle_t *handle, int nblocks);
++
+ #define ext3_journal_get_undo_access(handle, bh) \
+ 	__ext3_journal_get_undo_access(__func__, (handle), (bh))
+ #define ext3_journal_get_write_access(handle, bh) \
+@@ -148,6 +150,8 @@ int __ext3_journal_dirty_metadata(const char *where,
+ 	__ext3_journal_dirty_metadata(__func__, (handle), (bh))
+ #define ext3_journal_forget(handle, bh) \
+ 	__ext3_journal_forget(__func__, (handle), (bh))
++#define ext3_journal_restart(handle, nblocks) \
++	__ext3_journal_restart(__func__, (handle), (nblocks))
+ 
+ int ext3_journal_dirty_data(handle_t *handle, struct buffer_head *bh);
+ 
+@@ -172,11 +176,6 @@ static inline int ext3_journal_extend(handle_t *handle, int nblocks)
+ 	return journal_extend(handle, nblocks);
+ }
+ 
+-static inline int ext3_journal_restart(handle_t *handle, int nblocks)
+-{
+-	return journal_restart(handle, nblocks);
+-}
