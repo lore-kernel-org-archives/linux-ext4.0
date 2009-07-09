@@ -1,344 +1,120 @@
 From: dingdinghua <dingdinghua85@gmail.com>
-Subject: [PATCH] set h_transaction to NULL when restart handle
-Date: Thu,  9 Jul 2009 16:41:27 +0800
-Message-ID: <1247128887-25588-1-git-send-email-dingdinghua85@gmail.com>
+Subject: [PATCH] fix race bwtween write_metadata_buffer and get_write_access
+Date: Thu,  9 Jul 2009 17:47:07 +0800
+Message-ID: <1247132827-29614-1-git-send-email-dingdinghua85@gmail.com>
 Cc: dingdinghua <dingdinghua85@gmail.com>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from rv-out-0506.google.com ([209.85.198.232]:62602 "EHLO
-	rv-out-0506.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750995AbZGIIle (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jul 2009 04:41:34 -0400
-Received: by rv-out-0506.google.com with SMTP id f6so1029rvb.1
-        for <linux-ext4@vger.kernel.org>; Thu, 09 Jul 2009 01:41:33 -0700 (PDT)
+Received: from wa-out-1112.google.com ([209.85.146.182]:8948 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756021AbZGIJrO (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jul 2009 05:47:14 -0400
+Received: by wa-out-1112.google.com with SMTP id j5so6076wah.21
+        for <linux-ext4@vger.kernel.org>; Thu, 09 Jul 2009 02:47:13 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-We may restart journal handle when do truncate or resize work, but current 
-journal restart doesn't set handle->h_transaction to NULL when remove the 
-handle from old transaction. This may results bugs if restart handle failed,
-since this handle doesn't belongs to the old transaction any more, and the 
-transaction may have been committed, checkpointed and dropped while this 
-handle still refer to it.  
-
-So an active handle has a state that doesn't belongs to any transaction now,
-but current journal codes suppose that handle  must belongs to an transaction,
-I add h_journal to handle_s, which points to journal.
+At committing phase, we call jbd2_journal_write_metadata_buffer to
+prepare log block's buffer_head, in this function, new_bh->b_data is set
+to b_frozen_data or bh_in->b_data. We call "jbd_unlock_bh_state(bh_in)"
+too early, since at this point , we haven't file bh_in to BJ_shadow
+list, and we may set new_bh->b_data to bh_in->b_data, at this time,
+another thread may call get write access of bh_in, modify bh_in->b_data
+and dirty it. So , if new_bh->b_data is set to bh_in->b_data, the
+committing transaction may flush the newly modified buffer content to
+disk, preserve work done in jbd2_journal_get_write_access is useless.
+jbd also has this problem.
 
 Signed-off-by: dingdinghua <dingdinghua85@gmail.com>
 ---
- fs/ext3/ext3_jbd.c       |    8 +++++
- fs/ext3/super.c          |    6 +++-
- fs/jbd/revoke.c          |   12 ++++++--
- fs/jbd/transaction.c     |   68 +++++++++++++++++++++++++++++++++-------------
- include/linux/ext3_jbd.h |    9 +++---
- include/linux/jbd.h      |    1 +
- 6 files changed, 75 insertions(+), 29 deletions(-)
+ fs/jbd/journal.c  |   20 +++++++++++---------
+ fs/jbd2/journal.c |   20 +++++++++++---------
+ 2 files changed, 22 insertions(+), 18 deletions(-)
 
-diff --git a/fs/ext3/ext3_jbd.c b/fs/ext3/ext3_jbd.c
-index d401f14..17d43a5 100644
---- a/fs/ext3/ext3_jbd.c
-+++ b/fs/ext3/ext3_jbd.c
-@@ -57,3 +57,11 @@ int __ext3_journal_dirty_metadata(const char *where,
- 		ext3_journal_abort_handle(where, __func__, bh, handle,err);
- 	return err;
- }
-+
-+int __ext3_journal_restart(const char *where, handle_t *handle, int nblocks)
-+{
-+	int err = journal_restart(handle, nblocks);
-+	if (err)
-+		ext3_journal_abort_handle(where, __func__, NULL, handle, err);
-+	return err;
-+}
-diff --git a/fs/ext3/super.c b/fs/ext3/super.c
-index 524b349..1f4c694 100644
---- a/fs/ext3/super.c
-+++ b/fs/ext3/super.c
-@@ -105,11 +105,13 @@ handle_t *ext3_journal_start_sb(struct super_block *sb, int nblocks)
-  */
- int __ext3_journal_stop(const char *where, handle_t *handle)
- {
--	struct super_block *sb;
-+	struct super_block *sb = handle->h_journal->j_private;
- 	int err;
- 	int rc;
- 
--	sb = handle->h_transaction->t_journal->j_private;
-+	if (unlikely(handle->h_transaction == NULL))
-+		BUG_ON(!is_handle_aborted(handle));
-+
- 	err = handle->h_err;
- 	rc = journal_stop(handle);
- 
-diff --git a/fs/jbd/revoke.c b/fs/jbd/revoke.c
-index da6cd9b..712f6c4 100644
---- a/fs/jbd/revoke.c
-+++ b/fs/jbd/revoke.c
-@@ -336,7 +336,7 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
- 		   struct buffer_head *bh_in)
- {
- 	struct buffer_head *bh = NULL;
--	journal_t *journal;
-+	journal_t *journal = handle->h_journal;
- 	struct block_device *bdev;
- 	int err;
- 
-@@ -344,7 +344,11 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
- 	if (bh_in)
- 		BUFFER_TRACE(bh_in, "enter");
- 
--	journal = handle->h_transaction->t_journal;
-+	if (unlikely(handle->h_transaction == NULL)) {
-+		J_ASSERT(is_handle_aborted(handle));
-+		return -EROFS;
-+	}
-+
- 	if (!journal_set_features(journal, 0, 0, JFS_FEATURE_INCOMPAT_REVOKE)){
- 		J_ASSERT (!"Cannot set revoke feature!");
- 		return -EINVAL;
-@@ -426,13 +430,15 @@ int journal_revoke(handle_t *handle, unsigned long blocknr,
- int journal_cancel_revoke(handle_t *handle, struct journal_head *jh)
- {
- 	struct jbd_revoke_record_s *record;
--	journal_t *journal = handle->h_transaction->t_journal;
-+	journal_t *journal = handle->h_journal;
- 	int need_cancel;
- 	int did_revoke = 0;	/* akpm: debug */
- 	struct buffer_head *bh = jh2bh(jh);
- 
- 	jbd_debug(4, "journal_head %p, cancelling revoke\n", jh);
- 
-+	J_ASSERT(handle->h_transaction != NULL);
-+
- 	/* Is the existing Revoke bit valid?  If so, we trust it, and
- 	 * only perform the full cancel if the revoke bit is set.  If
- 	 * not, we can't trust the revoke bit, and we need to do the
-diff --git a/fs/jbd/transaction.c b/fs/jbd/transaction.c
-index 73242ba..8e61801 100644
---- a/fs/jbd/transaction.c
-+++ b/fs/jbd/transaction.c
-@@ -220,6 +220,7 @@ repeat_locked:
- 	 * use and add the handle to the running transaction. */
- 
- 	handle->h_transaction = transaction;
-+	handle->h_journal = transaction->t_journal;
- 	transaction->t_outstanding_credits += nblocks;
- 	transaction->t_updates++;
- 	transaction->t_handle_count++;
-@@ -274,7 +275,7 @@ handle_t *journal_start(journal_t *journal, int nblocks)
- 		return ERR_PTR(-EROFS);
- 
- 	if (handle) {
--		J_ASSERT(handle->h_transaction->t_journal == journal);
-+		J_ASSERT(handle->h_journal == journal);
- 		handle->h_ref++;
- 		return handle;
- 	}
-@@ -322,11 +323,15 @@ out:
- int journal_extend(handle_t *handle, int nblocks)
- {
- 	transaction_t *transaction = handle->h_transaction;
--	journal_t *journal = transaction->t_journal;
-+	journal_t *journal = handle->h_journal;
- 	int result;
- 	int wanted;
- 
- 	result = -EIO;
-+
-+	if (unlikely(transaction == NULL))
-+		J_ASSERT(is_handle_aborted(handle));
-+
- 	if (is_handle_aborted(handle))
- 		goto out;
- 
-@@ -388,13 +393,16 @@ out:
- int journal_restart(handle_t *handle, int nblocks)
- {
- 	transaction_t *transaction = handle->h_transaction;
--	journal_t *journal = transaction->t_journal;
-+	journal_t *journal = handle->h_journal;
- 	int ret;
- 
-+	if (unlikely(transaction == NULL))
-+		J_ASSERT(is_handle_aborted(handle));
-+
- 	/* If we've had an abort of any type, don't even think about
- 	 * actually doing the restart! */
- 	if (is_handle_aborted(handle))
--		return 0;
-+		return -EROFS;
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 737f724..ff5dcb5 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -287,6 +287,7 @@ int journal_write_metadata_buffer(transaction_t *transaction,
+ 	struct page *new_page;
+ 	unsigned int new_offset;
+ 	struct buffer_head *bh_in = jh2bh(jh_in);
++	journal_t *journal = transaction->t_journal;
  
  	/*
- 	 * First unlink the handle from its current transaction, and start the
-@@ -407,6 +415,7 @@ int journal_restart(handle_t *handle, int nblocks)
- 	spin_lock(&transaction->t_handle_lock);
- 	transaction->t_outstanding_credits -= handle->h_buffer_credits;
- 	transaction->t_updates--;
-+	handle->h_transaction = NULL;
+ 	 * The buffer really shouldn't be locked: only the current committing
+@@ -300,6 +301,11 @@ int journal_write_metadata_buffer(transaction_t *transaction,
+ 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
  
- 	if (!transaction->t_updates)
- 		wake_up(&journal->j_wait_updates);
-@@ -534,18 +543,18 @@ do_get_write_access(handle_t *handle, struct journal_head *jh,
- 			int force_copy)
- {
- 	struct buffer_head *bh;
--	transaction_t *transaction;
--	journal_t *journal;
-+	transaction_t *transaction = handle->h_transaction;
-+	journal_t *journal = handle->h_journal;
- 	int error;
- 	char *frozen_buffer = NULL;
- 	int need_copy = 0;
+ 	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
++	/* keep subsequent assertions sane */
++	new_bh->b_state = 0;
++	init_buffer(new_bh, NULL, NULL);
++	atomic_set(&new_bh->b_count, 1);
++	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
  
-+	if (unlikely(transaction == NULL))
-+		J_ASSERT(is_handle_aborted(handle));
-+
- 	if (is_handle_aborted(handle))
- 		return -EROFS;
+ 	/*
+ 	 * If a new transaction has already done a buffer copy-out, then
+@@ -361,14 +367,6 @@ repeat:
+ 		kunmap_atomic(mapped_data, KM_USER0);
+ 	}
  
--	transaction = handle->h_transaction;
--	journal = transaction->t_journal;
+-	/* keep subsequent assertions sane */
+-	new_bh->b_state = 0;
+-	init_buffer(new_bh, NULL, NULL);
+-	atomic_set(&new_bh->b_count, 1);
+-	jbd_unlock_bh_state(bh_in);
 -
- 	jbd_debug(5, "buffer_head %p, force_copy %d\n", jh, force_copy);
- 
- 	JBUFFER_TRACE(jh, "entry");
-@@ -797,12 +806,15 @@ int journal_get_write_access(handle_t *handle, struct buffer_head *bh)
- int journal_get_create_access(handle_t *handle, struct buffer_head *bh)
- {
- 	transaction_t *transaction = handle->h_transaction;
--	journal_t *journal = transaction->t_journal;
-+	journal_t *journal = handle->h_journal;
- 	struct journal_head *jh = journal_add_journal_head(bh);
- 	int err;
- 
- 	jbd_debug(5, "journal_head %p\n", jh);
- 	err = -EROFS;
-+	if (unlikely(transaction == NULL))
-+		J_ASSERT(is_handle_aborted(handle));
+-	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
+-
+ 	set_bh_page(new_bh, new_page, new_offset);
+ 	new_jh->b_transaction = NULL;
+ 	new_bh->b_size = jh2bh(jh_in)->b_size;
+@@ -385,7 +383,11 @@ repeat:
+ 	 * copying is moved to the transaction's shadow queue.
+ 	 */
+ 	JBUFFER_TRACE(jh_in, "file as BJ_Shadow");
+-	journal_file_buffer(jh_in, transaction, BJ_Shadow);
++	spin_lock(&journal->j_list_lock);
++	__journal_file_buffer(jh_in, transaction, BJ_Shadow);
++	spin_unlock(&journal->j_list_lock);
++	jbd_unlock_bh_state(bh_in);
 +
- 	if (is_handle_aborted(handle))
- 		goto out;
- 	err = 0;
-@@ -951,11 +963,14 @@ out:
-  */
- int journal_dirty_data(handle_t *handle, struct buffer_head *bh)
- {
--	journal_t *journal = handle->h_transaction->t_journal;
-+	journal_t *journal = handle->h_journal;
- 	int need_brelse = 0;
- 	struct journal_head *jh;
- 	int ret = 0;
+ 	JBUFFER_TRACE(new_jh, "file as BJ_IO");
+ 	journal_file_buffer(new_jh, transaction, BJ_IO);
  
-+	if (unlikely(handle->h_transaction == NULL))
-+		J_ASSERT(is_handle_aborted(handle));
-+
- 	if (is_handle_aborted(handle))
- 		return ret;
- 
-@@ -1143,11 +1158,15 @@ no_journal:
- int journal_dirty_metadata(handle_t *handle, struct buffer_head *bh)
- {
- 	transaction_t *transaction = handle->h_transaction;
--	journal_t *journal = transaction->t_journal;
-+	journal_t *journal = handle->h_journal;
- 	struct journal_head *jh = bh2jh(bh);
- 
- 	jbd_debug(5, "journal_head %p\n", jh);
- 	JBUFFER_TRACE(jh, "entry");
-+
-+	if (unlikely(transaction == NULL))
-+		J_ASSERT(is_handle_aborted(handle));
-+
- 	if (is_handle_aborted(handle))
- 		goto out;
- 
-@@ -1241,7 +1260,7 @@ journal_release_buffer(handle_t *handle, struct buffer_head *bh)
- int journal_forget (handle_t *handle, struct buffer_head *bh)
- {
- 	transaction_t *transaction = handle->h_transaction;
--	journal_t *journal = transaction->t_journal;
-+	journal_t *journal = handle->h_journal;
- 	struct journal_head *jh;
- 	int drop_reserve = 0;
- 	int err = 0;
-@@ -1249,6 +1268,11 @@ int journal_forget (handle_t *handle, struct buffer_head *bh)
- 
- 	BUFFER_TRACE(bh, "entry");
- 
-+	if (unlikely(transaction == NULL)) {
-+		J_ASSERT(is_handle_aborted(handle));
-+		return err;
-+	}
-+
- 	jbd_lock_bh_state(bh);
- 	spin_lock(&journal->j_list_lock);
- 
-@@ -1370,18 +1394,14 @@ drop:
- int journal_stop(handle_t *handle)
- {
- 	transaction_t *transaction = handle->h_transaction;
--	journal_t *journal = transaction->t_journal;
--	int err;
-+	journal_t *journal = handle->h_journal;
-+	int err = 0;
- 	pid_t pid;
- 
- 	J_ASSERT(journal_current_handle() == handle);
- 
- 	if (is_handle_aborted(handle))
- 		err = -EIO;
--	else {
--		J_ASSERT(transaction->t_updates > 0);
--		err = 0;
--	}
- 
- 	if (--handle->h_ref > 0) {
- 		jbd_debug(4, "h_ref %d -> %d\n", handle->h_ref + 1,
-@@ -1389,6 +1409,16 @@ int journal_stop(handle_t *handle)
- 		return err;
- 	}
- 
-+	if (unlikely(transaction == NULL)) {
-+		/*isolated handle, can only exist when restart handle failed*/
-+		J_ASSERT(is_handle_aborted(handle));
-+		current->journal_info = NULL;
-+		jbd_free_handle(handle);
-+		return err;
-+	}
-+
-+	J_ASSERT(transaction->t_updates > 0);
-+
- 	jbd_debug(4, "Handle %p going down\n", handle);
+diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
+index 18bfd5d..a601417 100644
+--- a/fs/jbd2/journal.c
++++ b/fs/jbd2/journal.c
+@@ -297,6 +297,7 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	unsigned int new_offset;
+ 	struct buffer_head *bh_in = jh2bh(jh_in);
+ 	struct jbd2_buffer_trigger_type *triggers;
++	journal_t *journal = transaction->t_journal;
  
  	/*
-diff --git a/include/linux/ext3_jbd.h b/include/linux/ext3_jbd.h
-index cf82d51..2a3e9fd 100644
---- a/include/linux/ext3_jbd.h
-+++ b/include/linux/ext3_jbd.h
-@@ -136,6 +136,8 @@ int __ext3_journal_get_create_access(const char *where,
- int __ext3_journal_dirty_metadata(const char *where,
- 				handle_t *handle, struct buffer_head *bh);
+ 	 * The buffer really shouldn't be locked: only the current committing
+@@ -310,6 +311,11 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
+ 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
  
-+int __ext3_journal_restart(const char *where, handle_t *handle, int nblocks);
-+
- #define ext3_journal_get_undo_access(handle, bh) \
- 	__ext3_journal_get_undo_access(__func__, (handle), (bh))
- #define ext3_journal_get_write_access(handle, bh) \
-@@ -148,6 +150,8 @@ int __ext3_journal_dirty_metadata(const char *where,
- 	__ext3_journal_dirty_metadata(__func__, (handle), (bh))
- #define ext3_journal_forget(handle, bh) \
- 	__ext3_journal_forget(__func__, (handle), (bh))
-+#define ext3_journal_restart(handle, nblocks) \
-+	__ext3_journal_restart(__func__, (handle), (nblocks))
+ 	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
++	/* keep subsequent assertions sane */
++	new_bh->b_state = 0;
++	init_buffer(new_bh, NULL, NULL);
++	atomic_set(&new_bh->b_count, 1);
++	new_jh = jbd2_journal_add_journal_head(new_bh);	/* This sleeps */
  
- int ext3_journal_dirty_data(handle_t *handle, struct buffer_head *bh);
+ 	/*
+ 	 * If a new transaction has already done a buffer copy-out, then
+@@ -388,14 +394,6 @@ repeat:
+ 		kunmap_atomic(mapped_data, KM_USER0);
+ 	}
  
-@@ -172,11 +176,6 @@ static inline int ext3_journal_extend(handle_t *handle, int nblocks)
- 	return journal_extend(handle, nblocks);
- }
- 
--static inline int ext3_journal_restart(handle_t *handle, int nblocks)
--{
--	return journal_restart(handle, nblocks);
--}
+-	/* keep subsequent assertions sane */
+-	new_bh->b_state = 0;
+-	init_buffer(new_bh, NULL, NULL);
+-	atomic_set(&new_bh->b_count, 1);
+-	jbd_unlock_bh_state(bh_in);
+-
+-	new_jh = jbd2_journal_add_journal_head(new_bh);	/* This sleeps */
