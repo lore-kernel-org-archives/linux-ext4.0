@@ -1,51 +1,50 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: Fix a race between checkpointing code and
-	journal_get_write_access()
-Date: Wed, 8 Jul 2009 18:31:50 -0400
-Message-ID: <20090708223150.GB14005@mit.edu>
-References: <1245859360-5261-1-git-send-email-jack@suse.cz> <1245859360-5261-2-git-send-email-jack@suse.cz> <20090706025319.GG6706@mit.edu>
+From: Jason Gunthorpe <jgunthorpe@gmail.com>
+Subject: ext4, AIO and new files?
+Date: Wed, 8 Jul 2009 20:59:23 -0600
+Message-ID: <da2267130907081959y1d79e4f1na9d7828141a18f95@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from THUNK.ORG ([69.25.196.29]:37626 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758770AbZGHWb4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Wed, 8 Jul 2009 18:31:56 -0400
-Content-Disposition: inline
-In-Reply-To: <20090706025319.GG6706@mit.edu>
+Received: from mail-bw0-f225.google.com ([209.85.218.225]:52863 "EHLO
+	mail-bw0-f225.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755960AbZGIC7Z (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 8 Jul 2009 22:59:25 -0400
+Received: by bwz25 with SMTP id 25so3241131bwz.37
+        for <linux-ext4@vger.kernel.org>; Wed, 08 Jul 2009 19:59:23 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Sun, Jul 05, 2009 at 10:53:19PM -0400, Theodore Tso wrote:
-> On Wed, Jun 24, 2009 at 06:02:40PM +0200, Jan Kara wrote:
-> > The following race can happen:
-> > 
-> >   CPU1                          CPU2
-> >                                 checkpointing code checks the buffer, adds
-> >                                   it to an array for writeback
-> > do_get_write_access()
-> >   ...
-> >   lock_buffer()
-> >   unlock_buffer()
-> >                                   flush_batch() submits the buffer for IO
-> >   __jbd2_journal_file_buffer()
-> > 
-> >   So a buffer under writeout is returned from do_get_write_access(). Since
-> > the filesystem code relies on the fact that journaled buffers cannot be
-> > written out, it does not take the buffer lock and so it can modify buffer
-> > while it is under writeout. That can lead to a filesystem corruption
-> > if we crash at the right moment.
-> >   We fix the problem by clearing the buffer dirty bit under buffer_lock
-> > even if the buffer is on BJ_None list. Actually, we clear the dirty bit
-> > regardless the list the buffer is in and warn about the fact if
-> > the buffer is already journalled.
+Hi All.
 
-When running fsstress, we get the "Spotted dirty metadata buffer;
-there's a risk of filesystem corruption in csae of a system crash" at
-least half a dozen times or so.  That sounds like we have a problem.
-Were you expecting that this was a "this should never happen"
-situation, or is there a known bug that we need to fix here?
+I saw an many years old thread on this topic and recently ran into the
+same problem. I'm wondering if anything has changed since - or someone
+had some smart thoughts on this?
 
-	      	       	       	   	- Ted
+In short, if you do:
+
+fd = open("foo",O_DIRECT|O_TRUNC_O|CREAT,0666);
+fallocate(fd,0,xxx);
+io_submit(.. IO_CMD_PWRITE ..);
+
+io_submit blocks on ext4. (It also blocks on ext3, but fallocate fails
+there so that is not entirely surprising..)
+
+On xfs io_submit runs asynchronously with the same sequence. There is
+a change in the performance characteristic: -30% with a 32k iosize
+compared to re-writing already existing blocks - but it performs well
+with larger iosizes
+
+I am working on a network file copy application, so this is the common
+(well. only) workload.
+
+I haven't yet got access to the good storage to test on, but I'm
+concerned that io_submit blocking means that there is going to be
+limited, or no, concurrency at the SCSI level? I understand the
+problem is that ext4 needs to note the block is now actually used and
+no longer 'zero' but I guess I don't entirely follow why that wrecks
+AIO?
+
+Thanks,
+Jason
