@@ -1,114 +1,61 @@
-From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH] libext2fs: Make ext2fs_extent_set_bmap() more robust
- against ENOSPC
-Date: Fri, 10 Jul 2009 11:56:50 -0500
-Message-ID: <4A5772D2.2040808@redhat.com>
-References: <1247199830-21179-1-git-send-email-tytso@mit.edu>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: Question on huge_file
+Date: Fri, 10 Jul 2009 11:47:52 -0600
+Message-ID: <20090710174752.GE12939@webber.adilger.int>
+References: <6601abe90907100832q6ab886f2r7fc8e3be2a79e8e5@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
-To: "Theodore Ts'o" <tytso@mit.edu>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:57507 "EHLO mx2.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752386AbZGJQ4y (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Jul 2009 12:56:54 -0400
-In-Reply-To: <1247199830-21179-1-git-send-email-tytso@mit.edu>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:58334 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751818AbZGJRsH (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jul 2009 13:48:07 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n6AHm4Mw018157
+	for <linux-ext4@vger.kernel.org>; Fri, 10 Jul 2009 10:48:06 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KMK00F00UOR4700@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Fri,
+ 10 Jul 2009 10:48:04 -0700 (PDT)
+In-reply-to: <6601abe90907100832q6ab886f2r7fc8e3be2a79e8e5@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Theodore Ts'o wrote:
-> In the case where we ext2fs_extent_set_bmap() is replacing the block
-> mapping at the beginning of an already-existing extent, insert a new
-> extent if necessary before shrinking an existing extent, to avoid data
-> loss if the disk is full.
+On Jul 10, 2009  08:32 -0700, Curt Wohlgemuth wrote:
+> I apologize if this is a dumb question, but I'm having trouble
+> understanding the huge_file superblock flag.
 > 
-> This mostly addresses the problem described in Red Hat Bugzilla's
-> statistics are still wrong, but at least the files on the filesystem
-> are not corrupted.  If there is a failure during the
-> inode_scan_and_fix pass, the simplest thing to do may be to tell the
-> user to run e2fsck -fy.
-> 
-> Addresses-Red-Hat-Bug: #510379
-> 
-> Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-> ---
->  lib/ext2fs/extent.c |   44 ++++++++++++++++++++++++++++++++------------
->  1 files changed, 32 insertions(+), 12 deletions(-)
-> 
-> diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-> index 4a4fd2c..2f280ea 100644
-> --- a/lib/ext2fs/extent.c
-> +++ b/lib/ext2fs/extent.c
-> @@ -1270,24 +1270,44 @@ again:
->  #ifdef DEBUG
->  		printf("(re/un)mapping first block in extent\n");
->  #endif
-> +		if (physical) {
-> +			retval = ext2fs_extent_get(handle, 
-> +						   EXT2_EXTENT_PREV_LEAF,
-> +						   &extent);
-> +			if (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT)
-> +				extent_uninit = 1;
-> +			if (retval == EXT2_ET_EXTENT_NO_PREV) {
-> +				retval = ext2fs_extent_insert(handle,
-> +							      0, &newextent);
-> +			} else if (retval)
-> +				goto done;
+> I see how, if this flag is set, that the inode can have a size > 2**32
+> bytes, using the i_size_lo/i_size_high fields.
 
-A lot of this is cut & paste from "mapping unmapped logical block" - at
-some point we should probably factor out into helpers, but fine for now.
+Actually, it is RO_COMPAT_LARGE_FILE that indicates support for size larger
+than 2^32 _bytes_.  The RO_COMPAT_HUGE_FILE indicates support for blocks
+more than 2^32 512-byte _sectors_ (2TB).
 
-A little comment here about extent merging may be helpful just to guide
-the reader; it's a lot of conditionals to eyeball - not so difficult in
-the end, but not all that conducive to a quick skim either.
+> But since an ext4_extent only uses 32-bits for for its ee_block field
+> to represent the logical block, how can an extent describe any block
+> range of a file past the 4GiB boundary?
 
-Aside from those nitpicks (and the now-extraneous again: goto target)
-this look fine to me, thanks.
+There are two different mechanisms used with HUGE_FILE.  It allows
+storing a high word of data (2^48 sectors) and it ALSO changes the
+units to be in terms of filesystem blocksize instead of 512-byte sectors.
 
--Eric
+While both of these mechanisms are not strictly necessary with the
+current extent format, which only handles 2^32 filesystem blocks,
+there were some good reasons to make both changes:
+- having the inode i_blocks field be in 512-byte sectors was confusing
+  to many coders and wasted 3 bits (for 4kB blocks) of dynamic range.
+- if we ever implement a new extent format that handles more than 2^32
+  filesystem blocks, or use larger filesystem blocks we don't need to
+  rework this code again.
 
-> +			else if ((logical == extent.e_lblk + extent.e_len) &&
-> +				 (physical == extent.e_pblk + extent.e_len) &&
-> +				 (new_uninit == extent_uninit) &&
-> +				 ((int) extent.e_len < max_len-1)) {
-> +				extent.e_len++;
-> +				retval = ext2fs_extent_replace(handle, 0,
-> +							       &extent);
-> +			} else {
-> +				retval = ext2fs_extent_insert(handle,
-> +				      EXT2_EXTENT_INSERT_AFTER, &newextent);
-> +			}
-> +			if (retval)
-> +				goto done;
-> +		}
-> +		retval = ext2fs_extent_fix_parents(handle);
-> +		if (retval)
-> +			goto done;
-> +		retval = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT_LEAF,
-> +					   &extent);
-> +		if (retval)
-> +			goto done;
->  		extent.e_pblk++;
->  		extent.e_lblk++;
->  		extent.e_len--;
->  		retval = ext2fs_extent_replace(handle, 0, &extent);
->  		if (retval)
->  			goto done;
-> -		if (physical) {
-> -			/*
-> -			 * We've removed the old block, now rely on
-> -			 * the optimized hueristics for adding a new
-> -			 * mapping with appropriate merging if necessary.
-> -			 */
-> -			goto again;
-> -		} else {
-> -			retval = ext2fs_extent_fix_parents(handle);
-> -			if (retval)
-> -				goto done;
-> -		}
->  	} else {
->  		__u32	orig_length;
->  
+Cheers, Andreas
+--
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
 
