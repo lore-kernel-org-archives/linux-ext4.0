@@ -1,291 +1,318 @@
-From: npiggin@suse.de
-Subject: [patch 5/5] ext2: convert to use the new truncate convention.
-Date: Fri, 10 Jul 2009 17:30:33 +1000
-Message-ID: <20090710073231.195528273@suse.de>
-References: <20090710073028.782561541@suse.de>
-Cc: hch@infradead.org, viro@zeniv.linux.org.uk, jack@suse.cz,
-	linux-ext4@vger.kernel.org
-To: linux-fsdevel@vger.kernel.org
+From: Kazuya Mio <k-mio@sx.jp.nec.com>
+Subject: [PATCH] e4defrag: Fix compile warnings
+Date: Fri, 10 Jul 2009 16:45:16 +0900
+Message-ID: <4A56F18C.3060705@sx.jp.nec.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-2022-JP
+Content-Transfer-Encoding: 7bit
+To: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor.suse.de ([195.135.220.2]:47431 "EHLO mx1.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750992AbZGJHeX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 10 Jul 2009 03:34:23 -0400
-Content-Disposition: inline; filename=ext2-new-truncate.patch
+Received: from TYO201.gate.nec.co.jp ([202.32.8.193]:45239 "EHLO
+	tyo201.gate.nec.co.jp" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750722AbZGJHqM (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 10 Jul 2009 03:46:12 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-I have some questions, marked with XXX.
+When compile e2fsprogs git tree with gcc-wall option, we get some warnings about
+e4defrag. This patch fixes them.
 
-Cc: linux-ext4@vger.kernel.org
-Signed-off-by: Nick Piggin <npiggin@suse.de>
+Signed-off-by: Kazuya Mio <k-mio@sx.jp.nec.com>
 ---
- fs/ext2/ext2.h  |    1 
- fs/ext2/file.c  |    2 
- fs/ext2/inode.c |  138 +++++++++++++++++++++++++++++++++++++++++++++-----------
- 3 files changed, 113 insertions(+), 28 deletions(-)
+ e4defrag.c |   71 ++++++++++++++++++++++++++++++-------------------------------
+ 1 file changed, 36 insertions(+), 35 deletions(-)
 
-Index: linux-2.6/fs/ext2/inode.c
-===================================================================
---- linux-2.6.orig/fs/ext2/inode.c
-+++ linux-2.6/fs/ext2/inode.c
-@@ -53,6 +53,8 @@ static inline int ext2_inode_is_fast_sym
- 		inode->i_blocks - ea_blocks == 0);
- }
+diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+index 1c7c012..f747436 100644
+--- a/misc/e4defrag.c
++++ b/misc/e4defrag.c
+@@ -15,8 +15,6 @@
+ #define _LARGEFILE64_SOURCE
+ #endif
  
-+static void ext2_truncate_blocks(struct inode *inode, loff_t offset);
-+
- /*
-  * Called at the last iput() if i_nlink is zero.
+-#define _XOPEN_SOURCE	500
+-#define _GNU_SOURCE
+ #include <ctype.h>
+ #include <dirent.h>
+ #include <endian.h>
+@@ -357,7 +355,7 @@ __u32 ext2fs_swab32(__u32 val)
+  * @len:		area length.
+  * @advise:		process flag.
   */
-@@ -66,9 +68,10 @@ void ext2_delete_inode (struct inode * i
- 	mark_inode_dirty(inode);
- 	ext2_write_inode(inode, inode_needs_sync(inode));
- 
-+	/* XXX: where is truncate_inode_pages? */
- 	inode->i_size = 0;
- 	if (inode->i_blocks)
--		ext2_truncate (inode);
-+		ext2_truncate_blocks(inode, 0);
- 	ext2_free_inode (inode);
- 
- 	return;
-@@ -761,8 +764,33 @@ ext2_write_begin(struct file *file, stru
- 		loff_t pos, unsigned len, unsigned flags,
- 		struct page **pagep, void **fsdata)
+-int fadvise(int fd, loff_t offset, size_t len, int advise)
++static int fadvise(int fd, loff_t offset, size_t len, int advise)
  {
-+	int ret;
-+
- 	*pagep = NULL;
--	return __ext2_write_begin(file, mapping, pos, len, flags, pagep,fsdata);
-+	ret = __ext2_write_begin(file, mapping, pos, len, flags, pagep,fsdata);
-+	if (ret < 0) {
-+		struct inode *inode = mapping->host;
-+		loff_t isize = inode->i_size;
-+		if (pos + len > isize)
-+			ext2_truncate_blocks(inode, isize);
-+	}
-+	return ret;
-+}
-+
-+static int ext2_write_end(struct file *file, struct address_space *mapping,
-+			loff_t pos, unsigned len, unsigned copied,
-+			struct page *page, void *fsdata)
-+{
-+	int ret;
-+
-+	ret = generic_write_end(file, mapping, pos, len, copied, page, fsdata);
-+	if (ret < len) {
-+		struct inode *inode = mapping->host;
-+		loff_t isize = inode->i_size;
-+		if (pos + len > isize)
-+			ext2_truncate_blocks(inode, isize);
-+	}
-+	return ret;
+ 	return syscall(__NR_fadvise64, fd, offset, len, advise);
  }
- 
- static int
-@@ -770,13 +798,22 @@ ext2_nobh_write_begin(struct file *file,
- 		loff_t pos, unsigned len, unsigned flags,
- 		struct page **pagep, void **fsdata)
+@@ -383,7 +381,7 @@ int sync_file_range(int fd, loff_t offset, loff_t length, unsigned int flag)
+  * @offset:		file offset.
+  * @len:		file size.
+  */
+-int fallocate(int fd, int mode, loff_t offset, loff_t len)
++static int fallocate(int fd, int mode, loff_t offset, loff_t len)
  {
-+	int ret;
-+
- 	/*
- 	 * Dir-in-pagecache still uses ext2_write_begin. Would have to rework
- 	 * directory handling code to pass around offsets rather than struct
- 	 * pages in order to make this work easily.
- 	 */
--	return nobh_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
-+	ret = nobh_write_begin(file, mapping, pos, len, flags, pagep, fsdata,
- 							ext2_get_block);
-+	if (ret < 0) {
-+		struct inode *inode = mapping->host;
-+		loff_t isize = inode->i_size;
-+		if (pos + len > isize)
-+			ext2_truncate_blocks(inode, isize);
-+	}
-+	return ret;
+ 	return syscall(__NR_fallocate, fd, mode, offset, len);
  }
- 
- static int ext2_nobh_writepage(struct page *page,
-@@ -796,9 +833,15 @@ ext2_direct_IO(int rw, struct kiocb *ioc
+@@ -395,10 +393,11 @@ int fallocate(int fd, int mode, loff_t offset, loff_t len)
+  * @mount_point:	the mount point.
+  * @dir_path_len:	the length of directory.
+  */
+-int get_mount_point(const char *devname, char *mount_point, int dir_path_len)
++static int get_mount_point(const char *devname, char *mount_point,
++							int dir_path_len)
  {
- 	struct file *file = iocb->ki_filp;
- 	struct inode *inode = file->f_mapping->host;
-+	ssize_t ret;
+ 	/* Refer to /etc/mtab */
+-	char	*mtab = MOUNTED;
++	const char	*mtab = MOUNTED;
+ 	FILE	*fp = NULL;
+ 	struct mntent	*mnt = NULL;
  
--	return blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
-+	ret = blockdev_direct_IO(rw, iocb, inode, inode->i_sb->s_bdev, iov,
- 				offset, nr_segs, ext2_get_block, NULL);
-+	if (ret < 0 && (rw & WRITE)) {
-+		loff_t isize = inode->i_size;
-+		ext2_truncate_blocks(inode, isize);
-+	}
-+	return ret;
- }
- 
- static int
-@@ -813,7 +856,7 @@ const struct address_space_operations ex
- 	.writepage		= ext2_writepage,
- 	.sync_page		= block_sync_page,
- 	.write_begin		= ext2_write_begin,
--	.write_end		= generic_write_end,
-+	.write_end		= ext2_write_end,
- 	.bmap			= ext2_bmap,
- 	.direct_IO		= ext2_direct_IO,
- 	.writepages		= ext2_writepages,
-@@ -1020,7 +1063,7 @@ static void ext2_free_branches(struct in
- 		ext2_free_data(inode, p, q);
- }
- 
--void ext2_truncate(struct inode *inode)
-+static void __ext2_truncate_blocks(struct inode *inode, loff_t offset)
+@@ -431,14 +430,14 @@ int get_mount_point(const char *devname, char *mount_point, int dir_path_len)
+  *
+  * @file:		the file's name.
+  */
+-int is_ext4(const char *file)
++static int is_ext4(const char *file)
  {
- 	__le32 *i_data = EXT2_I(inode)->i_data;
- 	struct ext2_inode_info *ei = EXT2_I(inode);
-@@ -1032,27 +1075,8 @@ void ext2_truncate(struct inode *inode)
- 	int n;
- 	long iblock;
- 	unsigned blocksize;
--
--	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
--	    S_ISLNK(inode->i_mode)))
--		return;
--	if (ext2_inode_is_fast_symlink(inode))
--		return;
--	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
--		return;
--
- 	blocksize = inode->i_sb->s_blocksize;
--	iblock = (inode->i_size + blocksize-1)
--					>> EXT2_BLOCK_SIZE_BITS(inode->i_sb);
--
--	if (mapping_is_xip(inode->i_mapping))
--		xip_truncate_page(inode->i_mapping, inode->i_size);
--	else if (test_opt(inode->i_sb, NOBH))
--		nobh_truncate_page(inode->i_mapping,
--				inode->i_size, ext2_get_block);
--	else
--		block_truncate_page(inode->i_mapping,
--				inode->i_size, ext2_get_block);
-+	iblock = (offset + blocksize-1) >> EXT2_BLOCK_SIZE_BITS(inode->i_sb);
+ 	int 	maxlen = 0;
+ 	int	len, ret;
+ 	FILE	*fp = NULL;
+ 	char	*mnt_type = NULL;
+ 	/* Refer to /etc/mtab */
+-	char	*mtab = MOUNTED;
++	const char	*mtab = MOUNTED;
+ 	char	file_path[PATH_MAX + 1];
+ 	struct mntent	*mnt = NULL;
+ 	struct statfs64	fsbuf;
+@@ -507,7 +506,7 @@ int is_ext4(const char *file)
+  * @flag:		file type.
+  * @ftwbuf:		the pointer of a struct FTW.
+  */
+-int calc_entry_counts(const char *file EXT2FS_ATTR((unused)),
++static int calc_entry_counts(const char *file EXT2FS_ATTR((unused)),
+ 		const struct stat64 *buf, int flag EXT2FS_ATTR((unused)),
+ 		struct FTW *ftwbuf EXT2FS_ATTR((unused)))
+ {
+@@ -527,7 +526,7 @@ int calc_entry_counts(const char *file EXT2FS_ATTR((unused)),
+  * @vec:		page state array.
+  * @page_num:		page number.
+  */
+-int page_in_core(int fd, struct move_extent defrag_data,
++static int page_in_core(int fd, struct move_extent defrag_data,
+ 			unsigned char **vec, unsigned int *page_num)
+ {
+ 	long	pagesize = sysconf(_SC_PAGESIZE);
+@@ -573,7 +572,7 @@ int page_in_core(int fd, struct move_extent defrag_data,
+  * @vec:		page state array.
+  * @page_num:		page number.
+  */
+-int defrag_fadvise(int fd, struct move_extent defrag_data,
++static int defrag_fadvise(int fd, struct move_extent defrag_data,
+ 		   unsigned char *vec, unsigned int page_num)
+ {
+ 	int	flag = 1;
+@@ -620,7 +619,7 @@ int defrag_fadvise(int fd, struct move_extent defrag_data,
+  * @file:		file name.
+  * @buf:		the pointer of the struct stat64.
+  */
+-int check_free_size(int fd, const char *file, const struct stat64 *buf)
++static int check_free_size(int fd, const char *file, const struct stat64 *buf)
+ {
+ 	ext4_fsblk_t	blk_count;
+ 	ext4_fsblk_t	free_blk_count;
+@@ -655,7 +654,7 @@ int check_free_size(int fd, const char *file, const struct stat64 *buf)
+  *
+  * @fd:			defrag target file's descriptor.
+  */
+-int file_frag_count(int fd)
++static int file_frag_count(int fd)
+ {
+ 	int	ret;
+ 	struct fiemap	fiemap_buf;
+@@ -683,7 +682,7 @@ int file_frag_count(int fd)
+  * @file:		the file's name.
+  * @extents:		the file's extents.
+  */
+-int file_check(int fd, const struct stat64 *buf, const char *file,
++static int file_check(int fd, const struct stat64 *buf, const char *file,
+ 		int extents)
+ {
+ 	int	ret;
+@@ -747,7 +746,7 @@ int file_check(int fd, const struct stat64 *buf, const char *file,
+  * @ext_list_head:	the head of logical extent list.
+  * @ext:		the extent element which will be inserted.
+  */
+-int insert_extent_by_logical(struct fiemap_extent_list **ext_list_head,
++static int insert_extent_by_logical(struct fiemap_extent_list **ext_list_head,
+ 			struct fiemap_extent_list *ext)
+ {
+ 	struct fiemap_extent_list	*ext_list_tmp = *ext_list_head;
+@@ -805,7 +804,7 @@ out:
+  * @ext_list_head:	the head of physical extent list.
+  * @ext:		the extent element which will be inserted.
+  */
+-int insert_extent_by_physical(struct fiemap_extent_list **ext_list_head,
++static int insert_extent_by_physical(struct fiemap_extent_list **ext_list_head,
+ 			struct fiemap_extent_list *ext)
+ {
+ 	struct fiemap_extent_list	*ext_list_tmp = *ext_list_head;
+@@ -863,7 +862,7 @@ out:
+  * @ext_group_head:		the head of a exts_group list.
+  * @exts_group:			the exts_group element which will be inserted.
+  */
+-int insert_exts_group(struct fiemap_extent_group **ext_group_head,
++static int insert_exts_group(struct fiemap_extent_group **ext_group_head,
+ 				struct fiemap_extent_group *exts_group)
+ {
+ 	struct fiemap_extent_group	*ext_group_tmp = NULL;
+@@ -893,7 +892,7 @@ int insert_exts_group(struct fiemap_extent_group **ext_group_head,
+  * @ext_list_head:		the head of the extent list.
+  * @ext_group_head:		the head of the target exts_group list.
+  */
+-int join_extents(struct fiemap_extent_list *ext_list_head,
++static int join_extents(struct fiemap_extent_list *ext_list_head,
+ 		struct fiemap_extent_group **ext_group_head)
+ {
+ 	__u64	len = ext_list_head->data.len;
+@@ -948,7 +947,7 @@ int join_extents(struct fiemap_extent_list *ext_list_head,
+  * @fd:			defrag target file's descriptor.
+  * @ext_list_head:	the head of the extent list.
+  */
+-int get_file_extents(int fd, struct fiemap_extent_list **ext_list_head)
++static int get_file_extents(int fd, struct fiemap_extent_list **ext_list_head)
+ {
+ 	__u32	i;
+ 	int	ret;
+@@ -1028,7 +1027,7 @@ out:
+  *
+  * @logical_list_head:	the head of the logical extent list.
+  */
+-int get_logical_count(struct fiemap_extent_list *logical_list_head)
++static int get_logical_count(struct fiemap_extent_list *logical_list_head)
+ {
+ 	int ret = 0;
+ 	struct fiemap_extent_list *ext_list_tmp  = logical_list_head;
+@@ -1046,7 +1045,7 @@ int get_logical_count(struct fiemap_extent_list *logical_list_head)
+  *
+  * @physical_list_head:	the head of the physical extent list.
+  */
+-int get_physical_count(struct fiemap_extent_list *physical_list_head)
++static int get_physical_count(struct fiemap_extent_list *physical_list_head)
+ {
+ 	int ret = 0;
+ 	struct fiemap_extent_list *ext_list_tmp = physical_list_head;
+@@ -1070,8 +1069,9 @@ int get_physical_count(struct fiemap_extent_list *physical_list_head)
+  * @physical_list_head:	the head of physical extent list.
+  * @logical_list_head:	the head of logical extent list.
+  */
+-int change_physical_to_logical(struct fiemap_extent_list **physical_list_head,
+-				struct fiemap_extent_list **logical_list_head)
++static int change_physical_to_logical(
++			struct fiemap_extent_list **physical_list_head,
++			struct fiemap_extent_list **logical_list_head)
+ {
+ 	int ret;
+ 	struct fiemap_extent_list *ext_list_tmp = *physical_list_head;
+@@ -1110,7 +1110,7 @@ int change_physical_to_logical(struct fiemap_extent_list **physical_list_head,
+  *
+  * @ext_list_head:	the extent list head of which will be free.
+  */
+-void free_ext(struct fiemap_extent_list *ext_list_head)
++static void free_ext(struct fiemap_extent_list *ext_list_head)
+ {
+ 	struct fiemap_extent_list	*ext_list_tmp = NULL;
  
- 	n = ext2_block_to_path(inode, iblock, offsets, NULL);
- 	if (n == 0)
-@@ -1120,6 +1144,59 @@ do_indirects:
- 	ext2_discard_reservation(inode);
+@@ -1132,7 +1132,7 @@ void free_ext(struct fiemap_extent_list *ext_list_head)
+  *
+  * @*ext_group_head:	the exts_group list head which will be free.
+  */
+- void free_exts_group(struct fiemap_extent_group *ext_group_head)
++static void free_exts_group(struct fiemap_extent_group *ext_group_head)
+ {
+ 	struct fiemap_extent_group	*ext_group_tmp = NULL;
  
- 	mutex_unlock(&ei->truncate_mutex);
-+}
-+
-+static void ext2_truncate_blocks(struct inode *inode, loff_t offset)
-+{
-+	/*
-+	 * XXX: it seems like a bug here that we don't allow
-+	 * IS_APPEND inode to have blocks-past-i_size trimmed off.
-+	 * review and fix this.
-+	 */
-+	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-+	    S_ISLNK(inode->i_mode)))
-+		return -EINVAL;
-+	if (ext2_inode_is_fast_symlink(inode))
-+		return -EINVAL;
-+	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
-+		return -EPERM;
-+	__ext2_truncate_blocks(inode, offset);
-+}
-+
-+int ext2_setsize(struct inode *inode, loff_t newsize)
-+{
-+	loff_t oldsize;
-+	int error;
-+
-+	error = inode_newsize_ok(inode, newsize);
-+	if (error)
-+		return error;
-+
-+	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
-+	    S_ISLNK(inode->i_mode)))
-+		return -EINVAL;
-+	if (ext2_inode_is_fast_symlink(inode))
-+		return -EINVAL;
-+	if (IS_APPEND(inode) || IS_IMMUTABLE(inode))
-+		return -EPERM;
-+
-+	if (mapping_is_xip(inode->i_mapping))
-+		error = xip_truncate_page(inode->i_mapping, newsize);
-+	else if (test_opt(inode->i_sb, NOBH))
-+		error = nobh_truncate_page(inode->i_mapping,
-+				newsize, ext2_get_block);
-+	else
-+		error = block_truncate_page(inode->i_mapping,
-+				newsize, ext2_get_block);
-+	if (error)
-+		return error;
-+
-+	oldsize = inode->i_size;
-+	i_size_write(inode, newsize);
-+	truncate_pagecache(inode, oldsize, newsize);
-+
-+	__ext2_truncate_blocks(inode, newsize);
-+
- 	inode->i_mtime = inode->i_ctime = CURRENT_TIME_SEC;
- 	if (inode_needs_sync(inode)) {
- 		sync_mapping_buffers(inode->i_mapping);
-@@ -1127,6 +1204,8 @@ do_indirects:
- 	} else {
- 		mark_inode_dirty(inode);
- 	}
-+
-+	return 0;
- }
+@@ -1155,10 +1155,10 @@ void free_ext(struct fiemap_extent_list *ext_list_head)
+  * @file:		the file's name.
+  * @sb:		the pointer of the struct ext4_super_block.
+  */
+-int get_superblock_info(const char *file, struct ext4_super_block *sb)
++static int get_superblock_info(const char *file, struct ext4_super_block *sb)
+ {
+ 	/* Refer to /etc/mtab */
+-	char	*mtab = MOUNTED;
++	const char	*mtab = MOUNTED;
+ 	FILE	*fp = NULL;
  
- static struct ext2_inode *ext2_get_inode(struct super_block *sb, ino_t ino,
-@@ -1459,6 +1538,13 @@ int ext2_setattr(struct dentry *dentry,
- 		if (error)
- 			return error;
- 	}
-+	if (iattr->ia_valid & ATTR_SIZE) {
-+		error = ext2_setsize(inode, iattr->ia_size);
-+		if (error)
-+			return error;
-+		iattr->ia_valid &= ~ATTR_SIZE;
-+		/* strip ATTR_SIZE for inode_setattr */
-+	}
- 	error = inode_setattr(inode, iattr);
- 	if (!error && (iattr->ia_valid & ATTR_MODE))
- 		error = ext2_acl_chmod(inode);
-Index: linux-2.6/fs/ext2/ext2.h
-===================================================================
---- linux-2.6.orig/fs/ext2/ext2.h
-+++ linux-2.6/fs/ext2/ext2.h
-@@ -122,7 +122,6 @@ extern int ext2_write_inode (struct inod
- extern void ext2_delete_inode (struct inode *);
- extern int ext2_sync_inode (struct inode *);
- extern int ext2_get_block(struct inode *, sector_t, struct buffer_head *, int);
--extern void ext2_truncate (struct inode *);
- extern int ext2_setattr (struct dentry *, struct iattr *);
- extern void ext2_set_inode_flags(struct inode *inode);
- extern void ext2_get_inode_flags(struct ext2_inode_info *);
-Index: linux-2.6/fs/ext2/file.c
-===================================================================
---- linux-2.6.orig/fs/ext2/file.c
-+++ linux-2.6/fs/ext2/file.c
-@@ -77,13 +77,13 @@ const struct file_operations ext2_xip_fi
- #endif
+ 	int	fd = -1;
+@@ -1215,7 +1215,7 @@ out:
+  *
+  * @block_count:		the file's physical block count.
+  */
+-int get_best_count(ext4_fsblk_t block_count)
++static int get_best_count(ext4_fsblk_t block_count)
+ {
+ 	int ret;
+ 	unsigned int flex_bg_num;
+@@ -1241,13 +1241,13 @@ int get_best_count(ext4_fsblk_t block_count)
+  * @flag:		file type.
+  * @ftwbuf:		the pointer of a struct FTW.
+  */
+-int file_statistic(const char *file, const struct stat64 *buf,
++static int file_statistic(const char *file, const struct stat64 *buf,
+ 			int flag EXT2FS_ATTR((unused)),
+ 			struct FTW *ftwbuf EXT2FS_ATTR((unused)))
+ {
+ 	int	fd;
+ 	int	ret;
+-	int	now_ext_count, best_ext_count, physical_ext_count;
++	int	now_ext_count, best_ext_count = 0, physical_ext_count;
+ 	int	i, j;
+ 	float	ratio = 0.0;
+ 	ext4_fsblk_t	blk_count = 0;
+@@ -1468,7 +1468,7 @@ out:
+  * @start:		logical offset for defrag target file
+  * @file_size:		defrag target filesize
+  */
+-void print_progress(const char *file, loff_t start, loff_t file_size)
++static void print_progress(const char *file, loff_t start, loff_t file_size)
+ {
+ 	int percent = (start * 100) / file_size;
+ 	printf("\033[79;0H\033[K[%u/%u]%s:\t%3d%%",
+@@ -1487,7 +1487,7 @@ void print_progress(const char *file, loff_t start, loff_t file_size)
+  * @buf:			pointer of the struct stat64.
+  * @ext_list_head:	head of the extent list.
+  */
+-int call_defrag(int fd, int donor_fd, const char *file,
++static int call_defrag(int fd, int donor_fd, const char *file,
+ 	const struct stat64 *buf, struct fiemap_extent_list *ext_list_head)
+ {
+ 	loff_t	start = 0;
+@@ -1582,7 +1582,7 @@ int call_defrag(int fd, int donor_fd, const char *file,
+  * @flag:		file type.
+  * @ftwbuf:		the pointer of a struct FTW.
+  */
+-int file_defrag(const char *file, const struct stat64 *buf,
++static int file_defrag(const char *file, const struct stat64 *buf,
+ 			int flag EXT2FS_ATTR((unused)),
+ 			struct FTW *ftwbuf EXT2FS_ATTR((unused)))
+ {
+@@ -1591,7 +1591,7 @@ int file_defrag(const char *file, const struct stat64 *buf,
+ 	int	ret;
+ 	int	best;
+ 	int	file_frags_start, file_frags_end;
+-	int	orig_physical_cnt, donor_physical_cnt;
++	int	orig_physical_cnt, donor_physical_cnt = 0;
+ 	char	tmp_inode_name[PATH_MAX + 8];
+ 	struct fiemap_extent_list	*orig_list_physical = NULL;
+ 	struct fiemap_extent_list	*orig_list_logical = NULL;
+@@ -1710,7 +1710,8 @@ int file_defrag(const char *file, const struct stat64 *buf,
  
- const struct inode_operations ext2_file_inode_operations = {
--	.truncate	= ext2_truncate,
- #ifdef CONFIG_EXT2_FS_XATTR
- 	.setxattr	= generic_setxattr,
- 	.getxattr	= generic_getxattr,
- 	.listxattr	= ext2_listxattr,
- 	.removexattr	= generic_removexattr,
- #endif
-+	.new_truncate	= 1,
- 	.setattr	= ext2_setattr,
- 	.permission	= ext2_permission,
- 	.fiemap		= ext2_fiemap,
-
+ 	/* Create donor inode */
+ 	memset(tmp_inode_name, 0, PATH_MAX + 8);
+-	sprintf(tmp_inode_name, "%.*s.defrag",  strnlen(file, PATH_MAX), file);
++	sprintf(tmp_inode_name, "%.*s.defrag",
++				(int)strnlen(file, PATH_MAX), file);
+ 	donor_fd = open64(tmp_inode_name, O_WRONLY | O_CREAT | O_EXCL, S_IRUSR);
+ 	if (donor_fd < 0) {
+ 		if (mode_flag & DETAIL) {
 
