@@ -1,49 +1,96 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: Tool to view extent metadata
-Date: Thu, 09 Jul 2009 16:55:07 -0600
-Message-ID: <20090709225507.GH5073@webber.adilger.int>
-References: <23904f640907091517w10608fa4y9b3b8b3a631217c@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Manuel Benitez <rickyb@google.com>
+From: Theodore Ts'o <tytso@mit.edu>
+Subject: [PATCH] libext2fs: Make ext2fs_extent_set_bmap() more robust against ENOSPC
+Date: Fri, 10 Jul 2009 00:23:50 -0400
+Message-ID: <1247199830-21179-1-git-send-email-tytso@mit.edu>
+Cc: Theodore Ts'o <tytso@mit.edu>
+To: Ext4 Developers List <linux-ext4@vger.kernel.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-2.Sun.COM ([192.18.43.133]:45784 "EHLO
-	sca-es-mail-2.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750695AbZGIWzX (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 9 Jul 2009 18:55:23 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-2.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n69MtM4B005917
-	for <linux-ext4@vger.kernel.org>; Thu, 9 Jul 2009 15:55:22 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KMJ00E00DS11N00@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Thu,
- 09 Jul 2009 15:55:22 -0700 (PDT)
-In-reply-to: <23904f640907091517w10608fa4y9b3b8b3a631217c@mail.gmail.com>
+Received: from THUNK.ORG ([69.25.196.29]:38045 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750740AbZGJEX5 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 10 Jul 2009 00:23:57 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 09, 2009  15:17 -0700, Manuel Benitez wrote:
-> I'm currently evaluating the ext4 allocator and one thing I've come
-> across is the lack of a tool that displays the exact structure of the
-> extents making up a file. I've found plenty of tools that will tell me
-> how many contiguous segments a file contains, but nothing so far to
-> let me see the actual makeup of the extents that map the inode to the
-> blocks that comprise the file. Have I just missed something obvious,
-> or would this be something worth me spending some time doing?
-> 
-> If so, one option would be to either modify the stat command or add a
-> similar command in debugfs to show the extents from the roots through
-> the root down to the leafs. Anyone have preferences or opinions?
+In the case where we ext2fs_extent_set_bmap() is replacing the block
+mapping at the beginning of an already-existing extent, insert a new
+extent if necessary before shrinking an existing extent, to avoid data
+loss if the disk is full.
 
-The "filefrag" tool in recent e2fsprogs should provide such information,
-using the FIEMAP ioctl to extract extent information from the kernel.
+This mostly addresses the problem described in Red Hat Bugzilla's
+statistics are still wrong, but at least the files on the filesystem
+are not corrupted.  If there is a failure during the
+inode_scan_and_fix pass, the simplest thing to do may be to tell the
+user to run e2fsck -fy.
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+Addresses-Red-Hat-Bug: #510379
+
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+ lib/ext2fs/extent.c |   44 ++++++++++++++++++++++++++++++++------------
+ 1 files changed, 32 insertions(+), 12 deletions(-)
+
+diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
+index 4a4fd2c..2f280ea 100644
+--- a/lib/ext2fs/extent.c
++++ b/lib/ext2fs/extent.c
+@@ -1270,24 +1270,44 @@ again:
+ #ifdef DEBUG
+ 		printf("(re/un)mapping first block in extent\n");
+ #endif
++		if (physical) {
++			retval = ext2fs_extent_get(handle, 
++						   EXT2_EXTENT_PREV_LEAF,
++						   &extent);
++			if (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT)
++				extent_uninit = 1;
++			if (retval == EXT2_ET_EXTENT_NO_PREV) {
++				retval = ext2fs_extent_insert(handle,
++							      0, &newextent);
++			} else if (retval)
++				goto done;
++			else if ((logical == extent.e_lblk + extent.e_len) &&
++				 (physical == extent.e_pblk + extent.e_len) &&
++				 (new_uninit == extent_uninit) &&
++				 ((int) extent.e_len < max_len-1)) {
++				extent.e_len++;
++				retval = ext2fs_extent_replace(handle, 0,
++							       &extent);
++			} else {
++				retval = ext2fs_extent_insert(handle,
++				      EXT2_EXTENT_INSERT_AFTER, &newextent);
++			}
++			if (retval)
++				goto done;
++		}
++		retval = ext2fs_extent_fix_parents(handle);
++		if (retval)
++			goto done;
++		retval = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT_LEAF,
++					   &extent);
++		if (retval)
++			goto done;
+ 		extent.e_pblk++;
+ 		extent.e_lblk++;
+ 		extent.e_len--;
+ 		retval = ext2fs_extent_replace(handle, 0, &extent);
+ 		if (retval)
+ 			goto done;
+-		if (physical) {
+-			/*
+-			 * We've removed the old block, now rely on
+-			 * the optimized hueristics for adding a new
+-			 * mapping with appropriate merging if necessary.
+-			 */
+-			goto again;
+-		} else {
+-			retval = ext2fs_extent_fix_parents(handle);
+-			if (retval)
+-				goto done;
+-		}
+ 	} else {
+ 		__u32	orig_length;
+ 
+-- 
+1.6.3.2.1.gb9f7d.dirty
 
