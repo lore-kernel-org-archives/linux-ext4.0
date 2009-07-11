@@ -1,116 +1,103 @@
-From: Theodore Ts'o <tytso@mit.edu>
-Subject: [PATCH V2] libext2fs: Make ext2fs_extent_set_bmap() more robust against ENOSPC
-Date: Sat, 11 Jul 2009 10:54:17 -0400
-Message-ID: <1247324057-394-1-git-send-email-tytso@mit.edu>
-Cc: Theodore Ts'o <tytso@mit.edu>
-To: Ext4 Developers List <linux-ext4@vger.kernel.org>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: [PATCH] resize2fs: If resize2fs fails, tell the user to run
+	e2fsck
+Date: Sat, 11 Jul 2009 14:25:23 -0400
+Message-ID: <20090711182523.GA25844@mit.edu>
+References: <1247249267-25715-1-git-send-email-tytso@mit.edu> <20090710184255.GF12939@webber.adilger.int>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>
+To: Andreas Dilger <adilger@sun.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:41635 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:54848 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751090AbZGKOy0 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 11 Jul 2009 10:54:26 -0400
+	id S1751734AbZGKSZa (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 11 Jul 2009 14:25:30 -0400
+Content-Disposition: inline
+In-Reply-To: <20090710184255.GF12939@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-In the case where we ext2fs_extent_set_bmap() is replacing the block
-mapping at the beginning of an already-existing extent, insert a new
-extent if necessary before shrinking an existing extent, to avoid data
-loss if the disk is full.
+On Fri, Jul 10, 2009 at 12:42:55PM -0600, Andreas Dilger wrote:
+> On Jul 10, 2009  14:07 -0400, Theodore Ts'o wrote:
+> > If the resize operation fails in the middle of the operation, mark the
+> > filesystem as needing to be checked, and tell the user that they
+> > should run e2fsck -fy on the device.
+> 
+> Isn't it a bit late to mark the filesystem inconsistent AFTER the resize
+> failed?  If resize2fs dies for some reason it won't be marked.  It makes
+> more sense to mark the filesystem in error at the start (at first change
+> at least) and then clear it if there was no error.
 
-This mostly addresses the problem described in Red Hat Bugzilla's
-statistics are still wrong, but at least the files on the filesystem
-are not corrupted.  If there is a failure during the
-inode_scan_and_fix pass, the simplest thing to do may be to tell the
-user to run e2fsck -fy.
+Good point.
 
-Addresses-Red-Hat-Bug: #510379
+					- Ted
+
+>From 96cdb37e27ff101fb23cefe422b4f77fb55209be Mon Sep 17 00:00:00 2001
+From: Theodore Ts'o <tytso@mit.edu>
+Date: Fri, 10 Jul 2009 13:14:00 -0400
+Subject: [PATCH -V2] resize2fs: If resize2fs fails, tell the user to run e2fsck
+
+If the resize operation fails in the middle of the operation, mark the
+filesystem as needing to be checked, and tell the user that they
+should run e2fsck -fy on the device.
 
 Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
-
 ---
+ resize/main.c      |    9 +++++++--
+ resize/resize2fs.c |    5 +++++
+ 2 files changed, 12 insertions(+), 2 deletions(-)
 
-This fixes a corruption which Eric found using the livecd "loop-of-terror".
-
- lib/ext2fs/extent.c |   46 +++++++++++++++++++++++++++++++++-------------
- 1 files changed, 33 insertions(+), 13 deletions(-)
-
-diff --git a/lib/ext2fs/extent.c b/lib/ext2fs/extent.c
-index 4a4fd2c..c3b7c58 100644
---- a/lib/ext2fs/extent.c
-+++ b/lib/ext2fs/extent.c
-@@ -1173,7 +1173,6 @@ errcode_t ext2fs_extent_set_bmap(ext2_extent_handle_t handle,
- 	orig_height = info.max_depth - info.curr_level;
- 	orig_lblk = extent.e_lblk;
- 
--again:
- 	/* go to the logical spot we want to (re/un)map */
- 	retval = ext2fs_extent_goto(handle, logical);
+diff --git a/resize/main.c b/resize/main.c
+index 2dae161..c6cbb5e 100644
+--- a/resize/main.c
++++ b/resize/main.c
+@@ -445,7 +445,8 @@ int main (int argc, char ** argv)
+ 				device_name);
+ 			exit(1);
+ 		}
+-	printf("Resizing the filesystem on %s to %u (%dk) blocks.\n",
++		printf(_("Resizing the filesystem on "
++			 "%s to %u (%dk) blocks.\n"),
+ 		       device_name, new_size, fs->blocksize / 1024);
+ 		retval = resize_fs(fs, &new_size, flags,
+ 				   ((flags & RESIZE_PERCENT_COMPLETE) ?
+@@ -455,7 +456,11 @@ int main (int argc, char ** argv)
  	if (retval) {
-@@ -1270,24 +1269,44 @@ again:
- #ifdef DEBUG
- 		printf("(re/un)mapping first block in extent\n");
- #endif
-+		if (physical) {
-+			retval = ext2fs_extent_get(handle, 
-+						   EXT2_EXTENT_PREV_LEAF,
-+						   &extent);
-+			if (extent.e_flags & EXT2_EXTENT_FLAGS_UNINIT)
-+				extent_uninit = 1;
-+			if (retval == EXT2_ET_EXTENT_NO_PREV) {
-+				retval = ext2fs_extent_goto(handle, logical);
-+				if (retval)
-+					goto done;
-+				retval = ext2fs_extent_insert(handle,
-+							      0, &newextent);
-+			} else if (retval)
-+				goto done;
-+			else if ((logical == extent.e_lblk + extent.e_len) &&
-+				 (physical == extent.e_pblk + extent.e_len) &&
-+				 (new_uninit == extent_uninit) &&
-+				 ((int) extent.e_len < max_len-1)) {
-+				extent.e_len++;
-+				retval = ext2fs_extent_replace(handle, 0,
-+							       &extent);
-+			} else {
-+				retval = ext2fs_extent_insert(handle,
-+				      EXT2_EXTENT_INSERT_AFTER, &newextent);
-+			}
-+			if (retval)
-+				goto done;
-+		}
-+		retval = ext2fs_extent_get(handle, EXT2_EXTENT_NEXT_LEAF,
-+					   &extent);
-+		if (retval)
-+			goto done;
- 		extent.e_pblk++;
- 		extent.e_lblk++;
- 		extent.e_len--;
- 		retval = ext2fs_extent_replace(handle, 0, &extent);
- 		if (retval)
- 			goto done;
--		if (physical) {
--			/*
--			 * We've removed the old block, now rely on
--			 * the optimized hueristics for adding a new
--			 * mapping with appropriate merging if necessary.
--			 */
--			goto again;
--		} else {
--			retval = ext2fs_extent_fix_parents(handle);
--			if (retval)
--				goto done;
--		}
- 	} else {
- 		__u32	orig_length;
+ 		com_err(program_name, retval, _("while trying to resize %s"),
+ 			device_name);
+-		ext2fs_close (fs);
++		fprintf(stderr,
++			_("Please run 'e2fsck -fy %s' to fix the filesystem\n"
++			  "after the aborted resize operation.\n"),
++			device_name);
++		ext2fs_close(fs);
+ 		exit(1);
+ 	}
+ 	printf(_("The filesystem on %s is now %u blocks long.\n\n"),
+diff --git a/resize/resize2fs.c b/resize/resize2fs.c
+index d907c9c..c0b00b6 100644
+--- a/resize/resize2fs.c
++++ b/resize/resize2fs.c
+@@ -84,6 +84,10 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
+ 	if (retval)
+ 		return retval;
  
-@@ -1335,6 +1354,7 @@ errcode_t ext2fs_extent_delete(ext2_extent_handle_t handle, int flags)
- 	char 				*cp;
- 	struct ext3_extent_header	*eh;
- 	errcode_t			retval = 0;
-+	struct ext2fs_extent		extent;
++	fs->super->s_state |= EXT2_ERROR_FS;
++	ext2fs_mark_super_dirty(fs);
++	ext2fs_flush(fs);
++
+ 	/*
+ 	 * Create the data structure
+ 	 */
+@@ -153,6 +157,7 @@ errcode_t resize_fs(ext2_filsys fs, blk_t *new_size, int flags,
+ 	if (retval)
+ 		goto errout;
  
- 	EXT2_CHECK_MAGIC(handle, EXT2_ET_MAGIC_EXTENT_HANDLE);
- 
++	rfs->new_fs->super->s_state &= ~EXT2_ERROR_FS;
+ 	rfs->new_fs->flags &= ~EXT2_FLAG_MASTER_SB_ONLY;
+ 	retval = ext2fs_close(rfs->new_fs);
+ 	if (retval)
 -- 
 1.6.3.2.1.gb9f7d.dirty
 
