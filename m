@@ -1,31 +1,42 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] jbd2: Fix a race between checkpointing code and
-	journal_get_write_access()
-Date: Mon, 13 Jul 2009 09:19:01 -0400
-Message-ID: <20090713131901.GC12833@mit.edu>
-References: <1245859360-5261-1-git-send-email-jack@suse.cz> <1245859360-5261-2-git-send-email-jack@suse.cz> <20090706025319.GG6706@mit.edu> <20090708223150.GB14005@mit.edu> <20090710100713.GB17524@duck.suse.cz>
+Subject: Re: [PATCH] fix null handler of ioctls in no journal mode
+Date: Mon, 13 Jul 2009 09:29:53 -0400
+Message-ID: <20090713132953.GA1030@mit.edu>
+References: <1247223826-24378-1-git-send-email-bergwolf@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
 Cc: linux-ext4@vger.kernel.org
-To: Jan Kara <jack@suse.cz>
+To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57405 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:46185 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755873AbZGMNTF (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Jul 2009 09:19:05 -0400
+	id S1754942AbZGMN35 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Jul 2009 09:29:57 -0400
 Content-Disposition: inline
-In-Reply-To: <20090710100713.GB17524@duck.suse.cz>
+In-Reply-To: <1247223826-24378-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 10, 2009 at 12:07:13PM +0200, Jan Kara wrote:
->   Yes, it should be "this should never happen", unless you run something
-> like tune2fs while the filesystem is mounted. But looking at the code, I
-> have missed that buffer could be dirty also in
-> jbd2_journal_get_create_access() because jbd2_journal_forget() does not
-> clear the dirty bit in case the buffer is just being committed. Attached
-> patch should fix it. Thanks for report.
+On Fri, Jul 10, 2009 at 07:03:46PM +0800, Peng Tao wrote:
+> EXT4_IOC_GROUP_ADD and EXT4_IOC_GROUP_EXTEND ioctls should not flush journal
+> in no_journal mode.
 
-Thanks, added to the patch queue.
+Thanks, added to the ext4 patch queue, altough I did tighten up up
+your patch description slightly:
 
-						- Ted
+ext4: fix null handler of ioctls in no journal mode
+
+The EXT4_IOC_GROUP_ADD and EXT4_IOC_GROUP_EXTEND ioctls should not
+flush the journal in no_journal mode.  Otherwise, running resize2fs on
+a mounted no_journal partition triggers the following error messages:
+
+BUG: unable to handle kernel NULL pointer dereference at 00000014
+IP: [<c039d282>] _spin_lock+0x8/0x19
+*pde = 00000000 
+Oops: 0002 [#1] SMP
+
+Signed-off-by: Peng Tao <bergwolf@gmail.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+
+							- Ted
+	       
