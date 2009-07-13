@@ -1,97 +1,97 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: ext4_mb_initialize_context() forgets to
-	initialize some fields
-Date: Mon, 13 Jul 2009 09:46:53 -0400
-Message-ID: <20090713134653.GD12833@mit.edu>
-References: <20090710204754.18406.15771.stgit@mj.roinet.com> <4A57AB9A.4050208@redhat.com>
+Subject: Re: [PATCH] fix race bwtween write_metadata_buffer and
+	get_write_access
+Date: Mon, 13 Jul 2009 10:41:29 -0400
+Message-ID: <20090713144128.GA28970@mit.edu>
+References: <1247132827-29614-1-git-send-email-dingdinghua85@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Pavel Roskin <proski@gnu.org>, linux-ext4@vger.kernel.org
-To: Eric Sandeen <sandeen@redhat.com>
+Cc: linux-ext4@vger.kernel.org,
+	Andrew Morton <akpm@linux-foundation.org>
+To: dingdinghua <dingdinghua85@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:52439 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:42747 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751932AbZGMNq7 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 13 Jul 2009 09:46:59 -0400
+	id S1756051AbZGMOlc (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 13 Jul 2009 10:41:32 -0400
 Content-Disposition: inline
-In-Reply-To: <4A57AB9A.4050208@redhat.com>
+In-Reply-To: <1247132827-29614-1-git-send-email-dingdinghua85@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 10, 2009 at 03:59:06PM -0500, Eric Sandeen wrote:
-> 
-> At this point I think we are initializing almost all of the 22
-> allocation context members and 16 of those are 0/NULL; perhaps it'd be
-> simpler and/or more efficient to just start with a memset(0), but either
-> way.
+On Thu, Jul 09, 2009 at 05:47:07PM +0800, dingdinghua wrote:
+> At committing phase, we call jbd2_journal_write_metadata_buffer to
+> prepare log block's buffer_head, in this function, new_bh->b_data is set
+> to b_frozen_data or bh_in->b_data. We call "jbd_unlock_bh_state(bh_in)"
+> too early, since at this point , we haven't file bh_in to BJ_shadow
+> list, and we may set new_bh->b_data to bh_in->b_data, at this time,
+> another thread may call get write access of bh_in, modify bh_in->b_data
+> and dirty it. So , if new_bh->b_data is set to bh_in->b_data, the
+> committing transaction may flush the newly modified buffer content to
+> disk, preserve work done in jbd2_journal_get_write_access is useless.
+> jbd also has this problem.
 
-Agreed, it should be more efficient.  This is the patch which I just
-added to the ext4 patch queue.
+Hi Dingding,
 
-						- Ted
+I split your patch into two pieces; one for jbd2 (which is in the ext4
+patch queue), and one for jbd (which is attached here).  The jbd2
+patch (along with recently added patches to the ext4 patch queue) is
+undergoing testing as we speak.
 
-commit 848a5523c872ae84fbdbce6a3df933a4b7f63e0a
-Author: Theodore Ts'o <tytso@mit.edu>
-Date:   Mon Jul 13 09:45:52 2009 -0400
+Both patches look good to me, but for the ext3/jbd one, it should
+probably get a second opinion.  Andrew, can take a quick peek?
 
-    ext4: Fix ext4_mb_initialize_context() to initialize all fields
-    
-    Pavel Roskin pointed out that kmemcheck indicated that
-    ext4_mb_store_history() was accessing uninitialized values of
-    ac->ac_tail and ac->ac_buddy leading to garbage in the mballoc
-    history.  Fix this by initializing the entire structure to all zeros
-    first.
-    
-    Also, two fields were getting doubly initialized by the caller of
-    ext4_mb_initialize_context, so remove them for efficiency's sake.
-    
-    Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+							- Ted
 
-diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-index b8b0428..9d08b78 100644
---- a/fs/ext4/mballoc.c
-+++ b/fs/ext4/mballoc.c
-@@ -4227,14 +4227,9 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
- 	ext4_get_group_no_and_offset(sb, goal, &group, &block);
+jbd: fix race bwtween write_metadata_buffer and get_write_access
+
+From: dingdinghua <dingdinghua85@gmail.com>
+
+The function journal_write_metadata_buffer() calls
+jbd_unlock_bh_state(bh_in) too early; this could potentially allow
+another thread to call get_write_access on the buffer head, modify the
+data, and dirty it, and allowing the wrong data to be written into the
+journal.  Fortunately, if we lose this race, the only time this will
+actually cause filesystem corruption is if there is a system crash or
+other unclean shutdown of the system before the next commit can take
+place.
+
+Signed-off-by: dingdinghua <dingdinghua85@gmail.com>
+Acked-by: "Theodore Ts'o" <tytso@mit.edu>
+---
+
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 737f724..ff5dcb5 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -287,6 +287,7 @@ int journal_write_metadata_buffer(transaction_t *transaction,
+ 	struct page *new_page;
+ 	unsigned int new_offset;
+ 	struct buffer_head *bh_in = jh2bh(jh_in);
++	journal_t *journal = transaction->t_journal;
  
- 	/* set up allocation goals */
-+	memset(ac, 0, sizeof(struct ext4_allocation_context));
- 	ac->ac_b_ex.fe_logical = ar->logical;
--	ac->ac_b_ex.fe_group = 0;
--	ac->ac_b_ex.fe_start = 0;
--	ac->ac_b_ex.fe_len = 0;
- 	ac->ac_status = AC_STATUS_CONTINUE;
--	ac->ac_groups_scanned = 0;
--	ac->ac_ex_scanned = 0;
--	ac->ac_found = 0;
- 	ac->ac_sb = sb;
- 	ac->ac_inode = ar->inode;
- 	ac->ac_o_ex.fe_logical = ar->logical;
-@@ -4245,15 +4240,7 @@ ext4_mb_initialize_context(struct ext4_allocation_context *ac,
- 	ac->ac_g_ex.fe_group = group;
- 	ac->ac_g_ex.fe_start = block;
- 	ac->ac_g_ex.fe_len = len;
--	ac->ac_f_ex.fe_len = 0;
- 	ac->ac_flags = ar->flags;
--	ac->ac_2order = 0;
--	ac->ac_criteria = 0;
--	ac->ac_pa = NULL;
--	ac->ac_bitmap_page = NULL;
--	ac->ac_buddy_page = NULL;
--	ac->alloc_semp = NULL;
--	ac->ac_lg = NULL;
+ 	/*
+ 	 * The buffer really shouldn't be locked: only the current committing
+@@ -300,6 +301,11 @@ int journal_write_metadata_buffer(transaction_t *transaction,
+ 	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
  
- 	/* we have to define context: we'll we work with a file or
- 	 * locality group. this is a policy, actually */
-@@ -4521,10 +4508,7 @@ ext4_fsblk_t ext4_mb_new_blocks(handle_t *handle,
+ 	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
++	/* keep subsequent assertions sane */
++	new_bh->b_state = 0;
++	init_buffer(new_bh, NULL, NULL);
++	atomic_set(&new_bh->b_count, 1);
++	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
+ 
+ 	/*
+ 	 * If a new transaction has already done a buffer copy-out, then
+@@ -361,14 +367,6 @@ repeat:
+ 		kunmap_atomic(mapped_data, KM_USER0);
  	}
  
- 	ac = kmem_cache_alloc(ext4_ac_cachep, GFP_NOFS);
--	if (ac) {
--		ac->ac_sb = sb;
--		ac->ac_inode = ar->inode;
--	} else {
-+	if (!ac) {
- 		ar->len = 0;
- 		*errp = -ENOMEM;
- 		goto out1;
+-	/* keep subsequent assertions sane */
+-	new_bh->b_state = 0;
+-	init_buffer(new_bh, NULL, NULL);
+-	atomic_set(&new_bh->b_count, 1);
+-	jbd_unlock_bh_state(bh_in);
+-
+-	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
