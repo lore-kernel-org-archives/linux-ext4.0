@@ -1,55 +1,44 @@
-From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH 0/2] ext3 HACKs
-Date: Tue, 14 Jul 2009 11:51:18 -0400
-Message-ID: <20090714155118.GB10131@mit.edu>
-References: <20090714140253.25993.64525.sendpatchset@ahunter-tower>
+From: number9652 <number9652@yahoo.com>
+Subject: [PATCH] libext2fs: fix memory leak in block_iterate
+Date: Tue, 14 Jul 2009 09:45:27 -0700 (PDT)
+Message-ID: <900111.75858.qm@web43503.mail.sp1.yahoo.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: Andrew.Morton.akpm@linux-foundation.org,
-	Andreas.Dilger.adilger@sun.com, Stephen.Tweedie.sct@redhat.com,
-	Artem Bityutskiy <artem.bityutskiy@nokia.com>,
-	linux-ext4@vger.kernel.org
-To: Adrian Hunter <adrian.hunter@nokia.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:57359 "EHLO thunker.thunk.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752599AbZGNPvk (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Tue, 14 Jul 2009 11:51:40 -0400
-Content-Disposition: inline
-In-Reply-To: <20090714140253.25993.64525.sendpatchset@ahunter-tower>
+Received: from n54.bullet.mail.sp1.yahoo.com ([98.136.44.32]:38049 "HELO
+	n54.bullet.mail.sp1.yahoo.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753901AbZGNQp2 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>);
+	Tue, 14 Jul 2009 12:45:28 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Tue, Jul 14, 2009 at 05:02:53PM +0300, Adrian Hunter wrote:
-> Hi
-> 
-> We are using linux 2.6.28 and we have a situation where ext3
-> can take 30-60 seconds to mount.
-> 
-> The cause is the underlying device has extremely poor random
-> write speed (several orders of magnitude slower than sequential
-> write speed), and journal recovery can involve many small random
-> writes.
-> 
-> To alleviate this situation somewhat, I have two moderately ugly
-> hacks:
-> 	HACK 1: ext3: mount fast even when recovering
-> 	HACK 2: do I/O read requests while ext3 journal recovers
-> 
-> HACK 1 uses a I/O barrier in place of waiting for recovery I/O to be
-> flushed.
-> 
-> HACK 2 crudely throws I/O read requests to the front of the dispatch
-> queue until the I/O barrier from HACK 1 is reached.
 
-Have you actually benchmarked these patches, ideally with a fixed
-filesystem image so the two runs are done requiring exactly the same
-number of blocks to recover?  We implement ordered I/O in terms of
-doing a flush, so it would be surprising to see that a significant
-difference in times.  Also, it would be useful to do a blktrace before
-and after your patches, again with a fixed filesystem image so the
-experiment can be carefully controlled.
+One of the error paths in block_iterate could return before freeing the
+scratch memory.  Here we free that memory before returning.
 
-Regards,
+Signed-off-by: Nic Case <number9652@yahoo.com>
+---
+diff --git a/e2fsprogs-1.41.8-orig/lib/ext2fs/block.c b/e2fsprogs-1.41.8/lib/ext2fs/block.c
+index de5342d..bb20f6e 100644
+--- a/e2fsprogs-1.41.8-orig/lib/ext2fs/block.c
++++ b/e2fsprogs-1.41.8/lib/ext2fs/block.c
+@@ -488,8 +488,11 @@ errcode_t ext2fs_block_iterate2(ext2_filsys fs,
+ abort_exit:
+        if (ret & BLOCK_CHANGED) {
+                retval = ext2fs_write_inode(fs, ino, &inode);
+-               if (retval)
++               if (retval) {
++                       if (!block_buf)
++                               ext2fs_free_mem(&ctx.ind_buf);
+                        return retval;
++               }
+        }
+ errout:
+        if (!block_buf)
+---
 
-						- Ted
+
+      
+
