@@ -1,264 +1,91 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [Fwd: [Bug] 2.6.30 kernel stack trace with 'fsfuzzer ext3' on s390]
-Date: Wed, 15 Jul 2009 17:36:48 +0200
-Message-ID: <20090715153648.GD22826@atrey.karlin.mff.cuni.cz>
-References: <4A48858B.5080602@linux.vnet.ibm.com>
+From: Curt Wohlgemuth <curtw@google.com>
+Subject: Re: [PATCH] ext4: More buffer head reference leaks
+Date: Wed, 15 Jul 2009 08:53:12 -0700
+Message-ID: <6601abe90907150853m73654d6dlfbdb47eb26e7d498@mail.gmail.com>
+References: <6601abe90907141358w3b16cdb0rb429f8d67d65dc9a@mail.gmail.com>
+	 <20090715055227.GA17310@skywalker>
+	 <6601abe90907150800m4924e35fi13dd4eea6fe7f327@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, sachinp@linux.vnet.ibm.com,
-	linux-s390@vger.kernel.org, akpm@linux-foundation.org
-To: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:51784 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755528AbZGOPgt (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jul 2009 11:36:49 -0400
-Content-Disposition: inline
-In-Reply-To: <4A48858B.5080602@linux.vnet.ibm.com>
+Received: from smtp-out.google.com ([216.239.45.13]:45020 "EHLO
+	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754893AbZGOPxQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jul 2009 11:53:16 -0400
+Received: from spaceape24.eur.corp.google.com (spaceape24.eur.corp.google.com [172.28.16.76])
+	by smtp-out.google.com with ESMTP id n6FFrF4r004349
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Jul 2009 08:53:16 -0700
+Received: from wf-out-1314.google.com (wfc28.prod.google.com [10.142.3.28])
+	by spaceape24.eur.corp.google.com with ESMTP id n6FFrCwa003034
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Jul 2009 08:53:13 -0700
+Received: by wf-out-1314.google.com with SMTP id 28so1348315wfc.28
+        for <linux-ext4@vger.kernel.org>; Wed, 15 Jul 2009 08:53:12 -0700 (PDT)
+In-Reply-To: <6601abe90907150800m4924e35fi13dd4eea6fe7f327@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-> Hitting the same bug with 2.6.31-rc1 on s390 arch.
-> 
-> 
-> EXT3-fs error (device loop0): htree_dirblock_to_tree: bad entry in 
-> directory #2: rec_len % 4 != 0 - offset=44, inode=12, rec_len=139, 
-> name_len=10
-> __log_wait_for_space: needed 256 blocks and only had 0 space available
-> __log_wait_for_space: no way to get more journal space
-  My first guess would be that journal superblock was corrupted by
-fsfuzzer so that the journal had less than 32 blocks and the warning
-triggered. That being said, we might use more sanity checks when loading
-journal superblock because currently it just blindly consumes what's on
-disk. We can't do too much since we don't know anything about the
-filesystem structure but we can do at least something. I'll write a
-patch for that in a moment...
+I've cleaned up the patch to
+   - fix the comment in ext4_alloc_branch()
+   - change ext4_add_entry() to remove the gotos and label
 
-								Honza
 
-> ------------[ cut here ]------------
-> Badness at fs/jbd/checkpoint.c:164
-> Modules linked in: loop qeth_l3 autofs4 lockd sunrpc iptable_filter 
-> ip_tables ip6t_REJECT xt_tcpudp ip6table_filter ip6_tables x_tables ipv6 
-> qeth_l2 vmur qeth qdio ccwgroup dm_round_robin dm_multipath scsi_dh 
-> sd_mod scsi_mod multipath dm_snapshot dm_zero dm_mirror dm_region_hash 
-> dm_log dm_mod dasd_fba_mod dasd_eckd_mod dasd_mod ext3 jbd
-> CPU: 1 Not tainted 2.6.31-rc1 #2
-> Process fstest (pid: 3329, task: 0000000032054770, ksp: 0000000031e17870)
-> Krnl PSW : 0704100180000000 000003e00004324c 
-> (__log_wait_for_space+0x150/0x19c [jbd])
->            R:0 T:1 IO:1 EX:1 Key:0 M:1 W:0 P:0 AS:0 CC:1 PM:0 EA:3
-> Krnl GPRS: 0000000000002d48 0000000001433000 000000000000003d 
-> 0400000000000001
->            000000000004aa66 00000000002f3ea8 0000000032574700 
-> 0000000000000000
->            000003e000000000 0000000000000100 0000000000000000 
-> 000000003e66a400
->            000003e00003d000 000003e000046580 000003e000043248 
-> 0000000031e17c20
-> Krnl Code: 000003e00004323c: c020000026eb       larl    %r2,3e000048012
->            000003e000043242: c0e5ffffcf05       brasl   %r14,3e00003d04c
->            000003e000043248: a7f40001           brc     15,3e00004324a
->           >000003e00004324c: a7390000           lghi    %r3,0
->            000003e000043250: b904002b           lgr     %r2,%r11
->            000003e000043254: c0e500000ddc       brasl   %r14,3e000044e0c
->            000003e00004325a: 4120b024           la      %r2,36(%r11)
->            000003e00004325e: c0e5ffffcf0b       brasl   %r14,3e00003d074
-> Call Trace:
-> ([<000003e000043248>] __log_wait_for_space+0x14c/0x19c [jbd])
->  [<000003e00003dd94>] start_this_handle+0x384/0x3f8 [jbd]
->  [<000003e0000401c2>] journal_start+0xce/0x10c [jbd]
->  [<000003e0000a758a>] ext3_dirty_inode+0x42/0xac [ext3]
->  [<000000000010d4b4>] __mark_inode_dirty+0x4c/0x140
->  [<0000000000103016>] touch_atime+0x162/0x174
->  [<00000000000fb6dc>] vfs_readdir+0xbc/0xe0
->  [<00000000000fb764>] SyS_getdents64+0x64/0xcc
->  [<00000000000268ba>] sysc_tracego+0xe/0x14
->  [<000000498d96b890>] 0x498d96b890
-> Last Breaking-Event-Address:
->  [<000003e000043248>] __log_wait_for_space+0x14c/0x19c [jbd]
-> Aborting journal on device loop0.
-> attempt to access beyond end of device
-> loop0: rw=0, want=107522, limit=40960
-> ext3_abort called.
-> EXT3-fs error (device loop0): ext3_journal_start_sb: Detected aborted 
-> journal
-> Remounting filesystem read-only
-> EXT3-fs error (device loop0): ext3_readdir: bad entry in directory #11: 
-> rec_len % 4 != 0 - offset=0, inode=0, rec_len=1155, name_len=0
-> attempt to access beyond end of device
-> loop0: rw=0, want=107522, limit=40960
-> attempt to access beyond end of device
-> loop0: rw=0, want=107522, limit=40960
-> attempt to access beyond end of device
-> loop0: rw=0, want=107522, limit=40960
-> EXT3-fs error (device loop0): htree_dirblock_to_tree: bad entry in 
-> directory #2: rec_len % 4 != 0 - offset=44, inode=12, rec_len=139, 
-> name_len=10
-> EXT3-fs error (device loop0): htree_dirblock_to_tree: bad entry in 
-> directory #2: rec_len % 4 != 0 - offset=44, inode=12, rec_len=139, 
-> name_len=10
-> EXT3-fs error (device loop0): ext3_readdir: bad entry in directory #11: 
-> rec_len % 4 != 0 - offset=0, inode=0, rec_len=1155, name_len=0
-> ext3_abort called.
-> EXT3-fs error (device loop0): ext3_put_super: Couldn't clean up the journal
-> 
-> 
-> Thanks and Regards
-> R.Nageswara Sastry
+       Signed-off-by: Curt Wohlgemuth <curtw@google.com>
 
-> Date: Tue, 16 Jun 2009 18:13:49 +0530
-> From: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
-> To: linux-ext4@vger.kernel.org
-> CC: rnsastry@linux.vnet.ibm.com, sachinp@linux.vnet.ibm.com,
-> 	linux-s390@vger.kernel.org
-> Subject: [Bug] 2.6.30 kernel stack trace with 'fsfuzzer ext3' on s390
-> User-Agent: Thunderbird 2.0.0.19 (Windows/20081209)
-> 
-> Hi,
-> 
-> Kernel version	- 2.6.30
-> Architecture	- s390
-> 
-> Stack trace:
-> --------------------------------------------------------------------
-> Jun 16 17:26:47 HOSTNAME rooth: ./run_test ext3 42
-> Jun 16 17:26:47 HOSTNAME kernel: kjournald starting.  Commit interval 5 
-> seconds
-> Jun 16 17:26:47 HOSTNAME kernel: EXT3 FS on loop0, internal journal
-> Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs: mounted filesystem with 
-> writeback data mode.
-> Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
-> htree_dirblock_to_tree: bad entry in directory #2: inode out of bounds - 
-> offset=12, inode=3538946, rec_len=12, name_len=2
-> Jun 16 17:26:47 HOSTNAME kernel: __log_wait_for_space: needed 256 blocks 
-> and only had 0 space available
-> Jun 16 17:26:47 HOSTNAME kernel: __log_wait_for_space: no way to get 
-> more journal space
-> Jun 16 17:26:47 HOSTNAME kernel: ------------[ cut here ]------------
-> Jun 16 17:26:47 HOSTNAME kernel: Badness at fs/jbd/checkpoint.c:164
-> Jun 16 17:26:47 HOSTNAME kernel: Modules linked in: loop qeth_l3 autofs4 
-> lockd sunrpc iptable_filter ip_tables ip6t_REJECT xt_tcpudp 
-> ip6table_filter ip6_tables x_tables ipv6 qeth_l2 vmur qeth qdio ccwgroup 
-> dm_round_robin dm_multipath scsi_dh sd_mod scsi_mod multipath 
-> dm_snapshot dm_zero dm_mirror dm_region_hash dm_log dm_mod dasd_fba_mod 
-> dasd_eckd_mod dasd_mod ext3 jbd
-> Jun 16 17:26:47 HOSTNAME kernel: CPU: 1 Not tainted 2.6.30 #3
-> Jun 16 17:26:47 HOSTNAME kernel: Process fstest (pid: 4139, task: 
-> 000000003fa72750, ksp: 000000003ee6f840)
-> Jun 16 17:26:47 HOSTNAME kernel: Krnl PSW : 0704100180000000 
-> 000003e0000432ac (__log_wait_for_space+0x150/0x19c [jbd])
-> Jun 16 17:26:47 HOSTNAME kernel:            R:0 T:1 IO:1 EX:1 Key:0 M:1 
-> W:0 P:0 AS:0 CC:1 PM:0 EA:3
-> Jun 16 17:26:47 HOSTNAME kernel: Krnl GPRS: 00000000000076a5 
-> 000000000142d000 000000000000003a 0400000000000001
-> Jun 16 17:26:47 HOSTNAME kernel:            0000000000045dfa 
-> 00000000002cec80 000000003f06d700 0000000000000000
-> Jun 16 17:26:47 HOSTNAME kernel:            000003e000000000 
-> 0000000000000100 0000000000000000 000000003e973400
-> Jun 16 17:26:47 HOSTNAME kernel:            000003e00003d000 
-> 000003e0000465e0 000003e0000432a8 000000003ee6fbf8
-> Jun 16 17:26:47 HOSTNAME kernel: Krnl Code: 000003e00004329c: 
-> c020000026eb      larl    %r2,3e000048072
-> Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432a2: 
-> c0e5ffffced5      brasl   %r14,3e00003d04c
-> Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432a8: a7f40001 
->         brc     15,3e0000432aa
-> Jun 16 17:26:47 HOSTNAME kernel:           >000003e0000432ac: a7390000 
->         lghi    %r3,0
-> Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432b0: b904002b 
->         lgr     %r2,%r11
-> Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432b4: 
-> c0e500000ddc      brasl   %r14,3e000044e6c
-> Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432ba: 4120b024 
->         la      %r2,36(%r11)
-> Jun 16 17:26:47 HOSTNAME kernel:            000003e0000432be: 
-> c0e5ffffcedb      brasl   %r14,3e00003d074
-> Jun 16 17:26:47 HOSTNAME kernel: Call Trace:
-> Jun 16 17:26:47 HOSTNAME kernel: ([<000003e0000432a8>] 
-> __log_wait_for_space+0x14c/0x19c [jbd])
-> Jun 16 17:26:47 HOSTNAME kernel:  [<000003e00003dd94>] 
-> start_this_handle+0x384/0x3f8 [jbd]
-> Jun 16 17:26:47 HOSTNAME kernel:  [<000003e000040222>] 
-> journal_start+0xce/0x10c [jbd]
-> Jun 16 17:26:47 HOSTNAME kernel:  [<000003e0000a75de>] 
-> ext3_dirty_inode+0x42/0xac [ext3]
-> Jun 16 17:26:47 HOSTNAME kernel:  [<00000000000f907c>] 
-> __mark_inode_dirty+0x4c/0x1cc
-> Jun 16 17:26:47 HOSTNAME kernel:  [<00000000000ee89e>] 
-> touch_atime+0x162/0x174
-> Jun 16 17:26:47 HOSTNAME kernel:  [<00000000000e71f8>] vfs_readdir+0xbc/0xe0
-> Jun 16 17:26:47 HOSTNAME kernel:  [<00000000000e7280>] 
-> SyS_getdents64+0x64/0xcc
-> Jun 16 17:26:47 HOSTNAME kernel:  [<0000000000026092>] sysc_tracego+0xe/0x14
-> Jun 16 17:26:47 HOSTNAME kernel:  [<000000498d96b890>] 0x498d96b890
-> Jun 16 17:26:47 HOSTNAME kernel: Last Breaking-Event-Address:
-> Jun 16 17:26:47 HOSTNAME kernel:  [<000003e0000432a8>] 
-> __log_wait_for_space+0x14c/0x19c [jbd]
-> Jun 16 17:26:47 HOSTNAME kernel: Aborting journal on device loop0.
-> Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
-> htree_dirblock_to_tree: bad entry in directory #2: inode out of bounds - 
-> offset=12, inode=3538946, rec_len=12, name_len=2
-> Jun 16 17:26:47 HOSTNAME kernel: ext3_abort called.
-> Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
-> ext3_journal_start_sb: Detected aborted journal
-> Jun 16 17:26:47 HOSTNAME kernel: Remounting filesystem read-only
-> Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
-> ext3_xattr_block_get: inode 23: bad block 1192
-> Jun 16 17:26:47 HOSTNAME kernel: SELinux: inode_doinit_with_dentry: 
-> getxattr returned 5 for dev=loop0 ino=23
-> Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
-> htree_dirblock_to_tree: bad entry in directory #2: inode out of bounds - 
-> offset=12, inode=3538946, rec_len=12, name_len=2
-> Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
-> ext3_xattr_block_get: inode 48: bad block 1192
-> Jun 16 17:26:47 HOSTNAME kernel: SELinux: inode_doinit_with_dentry: 
-> getxattr returned 5 for dev=loop0 ino=48
-> Jun 16 17:26:47 HOSTNAME kernel: ext3_abort called.
-> Jun 16 17:26:47 HOSTNAME kernel: EXT3-fs error (device loop0): 
-> ext3_put_super: Couldn't clean up the journal
-> --------------------------------------------------------------------
-> 
-> Steps to reproduce:
-> fsfuzzer is an file system fuzzer.
-> 
-> fsfuzzer can be downloaded from URL - 
-> http://www.risesecurity.org/ramon/fsfuzzer-0.7.1.tar.gz
-> 
-> Untar the above file and change to dir fsfuzzer-0.7.1
-> # ./configure
-> # make
-> # ./fsfuzz ext3
-> ...
-> ++ Testing /root/fsfuzzer-0.7.1/fs/ext3.42.img...
-> +++ New Tests...
-> +statfs
-> +opendir
-> +fstatfs
-> ++++ Tests finished
-> +++ Checking dir...
-> +++ Making files...
-> 
-> Message from syslogd@ at Tue Jun 16 17:26:47 2009 ...
-> HOSTNAME kernel: ------------[ cut here ]------------+++ Checking stat...
-> +++ Writing to files...
-> ./run_test: line 114: /media/test/file: Read-only file system
-> +++ Reading from files...
-> +++ device files...
-> +++ Writing to dirs...
-> ./run_test: line 131: /media/test/dir1: Read-only file system
-> +++ Checking unlink...
-> ++ unmounting ./cfs/ext3.42.img
-> ++ Checking results
-> ++ Something found (/root/fsfuzzer-0.7.1/fs/ext3.42.img)...
-> 
-> *P.S. If you need any information please let me know. Please cc me as I 
-> am not subscribed to the list.
-> 
-> Thanks and Regards
-> R.Nageswara Sastry
-> 
+---
+diff -Naur orig/fs/ext4/inode.c new/fs/ext4/inode.c
+--- orig/fs/ext4/inode.c	2009-07-14 11:19:01.000000000 -0700
++++ new/fs/ext4/inode.c	2009-07-15 08:12:15.000000000 -0700
+@@ -758,8 +758,9 @@
+ 		BUFFER_TRACE(bh, "call get_create_access");
+ 		err = ext4_journal_get_create_access(handle, bh);
+ 		if (err) {
++			/* Don't brelse(bh) here; it's done in
++			 * ext4_journal_forget() below */
+ 			unlock_buffer(bh);
+-			brelse(bh);
+ 			goto failed;
+ 		}
 
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+diff -Naur orig/fs/ext4/namei.c new/fs/ext4/namei.c
+--- orig/fs/ext4/namei.c	2009-07-14 11:19:46.000000000 -0700
++++ new/fs/ext4/namei.c	2009-07-15 08:12:09.000000000 -0700
+@@ -1518,8 +1518,12 @@
+ 			return retval;
+
+ 		if (blocks == 1 && !dx_fallback &&
+-		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX))
+-			return make_indexed_dir(handle, dentry, inode, bh);
++		    EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_DIR_INDEX)) {
++			retval = make_indexed_dir(handle, dentry, inode, bh);
++			if (retval == -ENOSPC)
++				brelse(bh);
++			return retval;
++		}
+ 		brelse(bh);
+ 	}
+ 	bh = ext4_append(handle, dir, &block, &retval);
+@@ -1528,7 +1532,10 @@
+ 	de = (struct ext4_dir_entry_2 *) bh->b_data;
+ 	de->inode = 0;
+ 	de->rec_len = ext4_rec_len_to_disk(blocksize, blocksize);
+-	return add_dirent_to_buf(handle, dentry, inode, de, bh);
++	retval = add_dirent_to_buf(handle, dentry, inode, de, bh);
++	if (retval == -ENOSPC)
++		brelse(bh);
++	return retval;
+ }
+
+ /*
+@@ -1657,7 +1664,8 @@
+ 	if (!de)
+ 		goto cleanup;
+ 	err = add_dirent_to_buf(handle, dentry, inode, de, bh);
+-	bh = NULL;
++	if (err != -ENOSPC)
++		bh = NULL;
+ 	goto cleanup;
+
+ journal_error:
