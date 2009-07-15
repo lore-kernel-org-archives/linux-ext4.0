@@ -1,154 +1,82 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH]JBD2/JBD: race condition while writing updates to journal
-Date: Wed, 15 Jul 2009 16:47:29 +0200
-Message-ID: <20090715144729.GC22826@atrey.karlin.mff.cuni.cz>
-References: <4A3F3B32.9090606@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, dingdinghua@nrchpc.ac.cn,
-	dingdinghua <dingdinghua85@gmail.com>
-To: tytso@mit.edu
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Subject: [PATCH] ext4: Memory leak fix ext4_group_info allocation.
+Date: Wed, 15 Jul 2009 20:25:34 +0530
+Message-ID: <1247669734-6819-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org,
+	"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: cmm@us.ibm.com, tytso@mit.edu, sandeen@redhat.com
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from atrey.karlin.mff.cuni.cz ([195.113.26.193]:38556 "EHLO
-	atrey.karlin.mff.cuni.cz" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754885AbZGOOra (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jul 2009 10:47:30 -0400
-Content-Disposition: inline
-In-Reply-To: <4A3F3B32.9090606@gmail.com>
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:49692 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755174AbZGOOzo (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jul 2009 10:55:44 -0400
+Received: from d23relay01.au.ibm.com (d23relay01.au.ibm.com [202.81.31.243])
+	by e23smtp07.au.ibm.com (8.13.1/8.13.1) with ESMTP id n6G0tdGb001066
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2009 10:55:39 +1000
+Received: from d23av03.au.ibm.com (d23av03.au.ibm.com [9.190.234.97])
+	by d23relay01.au.ibm.com (8.13.8/8.13.8/NCO v9.2) with ESMTP id n6FEterv401748
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2009 00:55:40 +1000
+Received: from d23av03.au.ibm.com (loopback [127.0.0.1])
+	by d23av03.au.ibm.com (8.12.11.20060308/8.13.3) with ESMTP id n6FEtdBk012191
+	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2009 00:55:40 +1000
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-  Ted, I don't think this got merged...
+commit 5f21b0e642d7bf6fe4434c9ba12bc9cb96b17cf7  was done to
+reallocate groupinfo struct during resize properly. That goal
+was to allocate new groupinfo struct when we are adding new block
+groups during resize. Calling ext4_mb_add_group_info in the
+mballoc initialization code path resulted in we reallocating
+the group info struct . Fix this by not separately allocating
+group info in the mballoc init path and always depend on
+ext4_mb_add_group_info to allocate group info struct.
 
-								Honza
-> resend this patch:
-> 
-> At committing phase, we call jbd2_journal_write_metadata_buffer to
-> prepare log block's buffer_head, in this function, new_bh->b_data is set
-> to b_frozen_data or bh_in->b_data. We call "jbd_unlock_bh_state(bh_in)"
-> too early, since at this point , we haven't file bh_in to BJ_shadow
-> list, and we may set new_bh->b_data to bh_in->b_data, at this time,
-> another thread may call get write access of bh_in, modify bh_in->b_data
-> and dirty it. So , if new_bh->b_data is set to bh_in->b_data, the
-> committing transaction may flush the newly modified buffer content to
-> disk, preserve work done in jbd2_journal_get_write_access is useless.
-> jbd also has this problem.
-> 
-> here is the patch based on kernel version 2.6.30:
-> 
-> Signed-off-by: dingdinghua <dingdinghua@nrchpc.ac.cn>
-> Acked-by: Jan Kara <jack@suse.cz>
-> 
-> ---
-> 
-> diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
-> index 737f724..ff5dcb5 100644
-> --- a/fs/jbd/journal.c
-> +++ b/fs/jbd/journal.c
-> @@ -287,6 +287,7 @@ int journal_write_metadata_buffer(transaction_t *transaction,
->  	struct page *new_page;
->  	unsigned int new_offset;
->  	struct buffer_head *bh_in = jh2bh(jh_in);
-> +	journal_t *journal = transaction->t_journal;
->  
->  	/*
->  	 * The buffer really shouldn't be locked: only the current committing
-> @@ -300,6 +301,11 @@ int journal_write_metadata_buffer(transaction_t *transaction,
->  	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
->  
->  	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
-> +	/* keep subsequent assertions sane */
-> +	new_bh->b_state = 0;
-> +	init_buffer(new_bh, NULL, NULL);
-> +	atomic_set(&new_bh->b_count, 1);
-> +	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
->  
->  	/*
->  	 * If a new transaction has already done a buffer copy-out, then
-> @@ -361,14 +367,6 @@ repeat:
->  		kunmap_atomic(mapped_data, KM_USER0);
->  	}
->  
-> -	/* keep subsequent assertions sane */
-> -	new_bh->b_state = 0;
-> -	init_buffer(new_bh, NULL, NULL);
-> -	atomic_set(&new_bh->b_count, 1);
-> -	jbd_unlock_bh_state(bh_in);
-> -
-> -	new_jh = journal_add_journal_head(new_bh);	/* This sleeps */
-> -
->  	set_bh_page(new_bh, new_page, new_offset);
->  	new_jh->b_transaction = NULL;
->  	new_bh->b_size = jh2bh(jh_in)->b_size;
-> @@ -385,7 +383,11 @@ repeat:
->  	 * copying is moved to the transaction's shadow queue.
->  	 */
->  	JBUFFER_TRACE(jh_in, "file as BJ_Shadow");
-> -	journal_file_buffer(jh_in, transaction, BJ_Shadow);
-> +	spin_lock(&journal->j_list_lock);
-> +	__journal_file_buffer(jh_in, transaction, BJ_Shadow);
-> +	spin_unlock(&journal->j_list_lock);
-> +	jbd_unlock_bh_state(bh_in);
-> +
->  	JBUFFER_TRACE(new_jh, "file as BJ_IO");
->  	journal_file_buffer(new_jh, transaction, BJ_IO);
->  
-> diff --git a/fs/jbd2/journal.c b/fs/jbd2/journal.c
-> index 18bfd5d..4a0b48f 100644
-> --- a/fs/jbd2/journal.c
-> +++ b/fs/jbd2/journal.c
-> @@ -297,6 +297,8 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
->  	unsigned int new_offset;
->  	struct buffer_head *bh_in = jh2bh(jh_in);
->  	struct jbd2_buffer_trigger_type *triggers;
-> +	journal_t *journal = transaction->t_journal;
-> +
->  
->  	/*
->  	 * The buffer really shouldn't be locked: only the current committing
-> @@ -310,6 +312,11 @@ int jbd2_journal_write_metadata_buffer(transaction_t *transaction,
->  	J_ASSERT_BH(bh_in, buffer_jbddirty(bh_in));
->  
->  	new_bh = alloc_buffer_head(GFP_NOFS|__GFP_NOFAIL);
-> +	/* keep subsequent assertions sane */
-> +	new_bh->b_state = 0;
-> +	init_buffer(new_bh, NULL, NULL);
-> +	atomic_set(&new_bh->b_count, 1);
-> +	new_jh = jbd2_journal_add_journal_head(new_bh);	/* This sleeps */
->  
->  	/*
->  	 * If a new transaction has already done a buffer copy-out, then
-> @@ -388,14 +395,6 @@ repeat:
->  		kunmap_atomic(mapped_data, KM_USER0);
->  	}
->  
-> -	/* keep subsequent assertions sane */
-> -	new_bh->b_state = 0;
-> -	init_buffer(new_bh, NULL, NULL);
-> -	atomic_set(&new_bh->b_count, 1);
-> -	jbd_unlock_bh_state(bh_in);
-> -
-> -	new_jh = jbd2_journal_add_journal_head(new_bh);	/* This sleeps */
-> -
->  	set_bh_page(new_bh, new_page, new_offset);
->  	new_jh->b_transaction = NULL;
->  	new_bh->b_size = jh2bh(jh_in)->b_size;
-> @@ -412,7 +411,11 @@ repeat:
->  	 * copying is moved to the transaction's shadow queue.
->  	 */
->  	JBUFFER_TRACE(jh_in, "file as BJ_Shadow");
-> -	jbd2_journal_file_buffer(jh_in, transaction, BJ_Shadow);
-> +	spin_lock(&journal->j_list_lock);
-> +	__jbd2_journal_file_buffer(jh_in, transaction, BJ_Shadow);
-> +	spin_unlock(&journal->j_list_lock);
-> +	jbd_unlock_bh_state(bh_in);
-> +
->  	JBUFFER_TRACE(new_jh, "file as BJ_IO");
->  	jbd2_journal_file_buffer(new_jh, transaction, BJ_IO);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SuSE CR Labs
+The earlier code also had a bug that we allocated less number of
+group info struct for the last meta group. But on resize we
+expected that we had EXT4_DESC_PER_BLOCK group info struct for
+each meta group.
+
+Reported-by: Catalin Marinas <catalin.marinas@arm.com>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Tested-by: Catalin Marinas <catalin.marinas@arm.com>
+---
+ fs/ext4/mballoc.c |   19 -------------------
+ 1 files changed, 0 insertions(+), 19 deletions(-)
+
+diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
+index 519a0a6..2a9d327 100644
+--- a/fs/ext4/mballoc.c
++++ b/fs/ext4/mballoc.c
+@@ -2564,13 +2564,11 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ {
+ 	ext4_group_t ngroups = ext4_get_groups_count(sb);
+ 	ext4_group_t i;
+-	int metalen;
+ 	struct ext4_sb_info *sbi = EXT4_SB(sb);
+ 	struct ext4_super_block *es = sbi->s_es;
+ 	int num_meta_group_infos;
+ 	int num_meta_group_infos_max;
+ 	int array_size;
+-	struct ext4_group_info **meta_group_info;
+ 	struct ext4_group_desc *desc;
+ 
+ 	/* This is the number of blocks used by GDT */
+@@ -2615,22 +2613,6 @@ static int ext4_mb_init_backend(struct super_block *sb)
+ 		goto err_freesgi;
+ 	}
+ 	EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
+-
+-	metalen = sizeof(*meta_group_info) << EXT4_DESC_PER_BLOCK_BITS(sb);
+-	for (i = 0; i < num_meta_group_infos; i++) {
+-		if ((i + 1) == num_meta_group_infos)
+-			metalen = sizeof(*meta_group_info) *
+-				(ngroups -
+-					(i << EXT4_DESC_PER_BLOCK_BITS(sb)));
+-		meta_group_info = kmalloc(metalen, GFP_KERNEL);
+-		if (meta_group_info == NULL) {
+-			printk(KERN_ERR "EXT4-fs: can't allocate mem for a "
+-			       "buddy group\n");
+-			goto err_freemeta;
+-		}
+-		sbi->s_group_info[i] = meta_group_info;
+-	}
