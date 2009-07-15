@@ -1,38 +1,43 @@
-From: bugzilla-daemon@bugzilla.kernel.org
-Subject: [Bug 12689] kernel oops fs/jbd/checkpoint.c:164 __log_wait_for_space
-Date: Wed, 15 Jul 2009 19:02:35 GMT
-Message-ID: <200907151902.n6FJ2ZBa000673@demeter.kernel.org>
-References: <bug-12689-13602@http.bugzilla.kernel.org/>
-Mime-Version: 1.0
-Content-Type: text/plain; charset="UTF-8"
+From: Jan Kara <jack@suse.cz>
+Subject: [PATCH] jbd: Fail to load a journal if it is too short
+Date: Wed, 15 Jul 2009 21:05:16 +0200
+Message-ID: <1247684717-16662-1-git-send-email-jack@suse.cz>
+Cc: tytso@mit.edu, Jan Kara <jack@suse.cz>
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from demeter.kernel.org ([140.211.167.39]:46696 "EHLO
-	demeter.kernel.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932219AbZGOTCf (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jul 2009 15:02:35 -0400
-Received: from demeter.kernel.org (localhost.localdomain [127.0.0.1])
-	by demeter.kernel.org (8.14.2/8.14.2) with ESMTP id n6FJ2ZKf000674
-	for <linux-ext4@vger.kernel.org>; Wed, 15 Jul 2009 19:02:35 GMT
-In-Reply-To: <bug-12689-13602@http.bugzilla.kernel.org/>
+Received: from cantor2.suse.de ([195.135.220.15]:47784 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932172AbZGOTFV (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Wed, 15 Jul 2009 15:05:21 -0400
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-http://bugzilla.kernel.org/show_bug.cgi?id=12689
+Due to on disk corruption, it can happen that journal is too short. Fail
+to load it in such case so that we don't oops somewhere later.
 
+Reported-by: Nageswara R Sastry <rnsastry@linux.vnet.ibm.com>
+Signed-off-by: Jan Kara <jack@suse.cz>
+---
+ fs/jbd/journal.c |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
 
-Jan Kara <jack@suse.cz> changed:
-
-           What    |Removed                     |Added
-----------------------------------------------------------------------------
-                 CC|                            |jack@suse.cz
-         AssignedTo|fs_ext3@kernel-bugs.osdl.or |jack@suse.cz
-                   |g                           |
-
-
-
-
+diff --git a/fs/jbd/journal.c b/fs/jbd/journal.c
+index 737f724..94a64a1 100644
+--- a/fs/jbd/journal.c
++++ b/fs/jbd/journal.c
+@@ -848,6 +848,12 @@ static int journal_reset(journal_t *journal)
+ 
+ 	first = be32_to_cpu(sb->s_first);
+ 	last = be32_to_cpu(sb->s_maxlen);
++	if (first + JFS_MIN_JOURNAL_BLOCKS > last + 1) {
++		printk(KERN_ERR "JBD: Journal too short (blocks %lu-%lu).\n",
++		       first, last);
++		journal_fail_superblock(journal);
++		return -EINVAL;
++	}
+ 
+ 	journal->j_first = first;
+ 	journal->j_last = last;
 -- 
-Configure bugmail: http://bugzilla.kernel.org/userprefs.cgi?tab=email
-------- You are receiving this mail because: -------
-You are watching the assignee of the bug.
+1.6.0.2
+
