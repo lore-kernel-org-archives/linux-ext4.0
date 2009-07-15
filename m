@@ -1,26 +1,29 @@
 From: Adrian Hunter <adrian.hunter@nokia.com>
 Subject: Re: [PATCH 1/2] HACK: ext3: mount fast even when recovering
-Date: Wed, 15 Jul 2009 18:35:45 +0300
-Message-ID: <4A5DF751.5020105@nokia.com>
-References: <20090714140253.25993.64525.sendpatchset@ahunter-tower> <20090714140301.25993.97749.sendpatchset@ahunter-tower> <20090714212221.GD4829@webber.adilger.int>
+Date: Wed, 15 Jul 2009 18:35:34 +0300
+Message-ID: <4A5DF746.5010801@nokia.com>
+References: <20090714140548.26116.2919.sendpatchset@ahunter-tower>	<20090714140554.26116.54779.sendpatchset@ahunter-tower> <20090714143449.cae624c8.akpm@linux-foundation.org>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii; format=flowed
 Content-Transfer-Encoding: 7bit
-Cc: "akpm@linux-foundation.org" <akpm@linux-foundation.org>,
+Cc: "sct@redhat.com" <sct@redhat.com>,
+	"adilger@sun.com" <adilger@sun.com>,
 	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
 	"Bityutskiy Artem (Nokia-D/Helsinki)" <Artem.Bityutskiy@nokia.com>
-To: Andreas Dilger <adilger@sun.com>
+To: Andrew Morton <akpm@linux-foundation.org>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.nokia.com ([192.100.105.134]:64168 "EHLO
-	mgw-mx09.nokia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755483AbZGOPfT (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jul 2009 11:35:19 -0400
-In-Reply-To: <20090714212221.GD4829@webber.adilger.int>
+Received: from smtp.nokia.com ([192.100.122.230]:25687 "EHLO
+	mgw-mx03.nokia.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755489AbZGOPf0 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jul 2009 11:35:26 -0400
+In-Reply-To: <20090714143449.cae624c8.akpm@linux-foundation.org>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Andreas Dilger wrote:
-> On Jul 14, 2009  17:03 +0300, Adrian Hunter wrote:
+Andrew Morton wrote:
+> On Tue, 14 Jul 2009 17:05:54 +0300
+> Adrian Hunter <adrian.hunter@nokia.com> wrote:
+> 
 >> Speed up ext3 recovery mount time by not sync'ing the
 >> block device.  Instead place all dirty buffers into the
 >> I/O queue and add a write barrier.  This ensures that
@@ -28,31 +31,34 @@ Andreas Dilger wrote:
 >> recovery writes, but that we do not have to wait for the
 >> I/O.
 >>
->> +	/*
->> +	 * Set an option to indicate that we want to mount fast even
->> +	 * when recovering.  That is achieved by not sync'ing the
->> +	 * block device, but instead placing all dirty buffers into
->> +	 * the I/O queue and adding a write barrier.
->> +	 */
->> +	set_opt(sbi->s_mount_opt, FAST);
+>> Note that ext3 reads sectors the correct way: through the
+>> buffer cache, so there is no risk of reading old metadata.
 > 
-> Is there ever a time where one wouldn't want to do a fast mount?
-> Surely if this speeds things up and is safe, it makes sense to do
-> it always.  If it isn't safe to do always, then would you EVER want
-> to do it if you risk corrupting your filesystem?
+> hm.  The change seems reasonable to me.  afaict it leaves no timing
+> windows during which another crash could muck things up.
+> 
+> As long as those write barriers actually work.  Do they?  For all
+> conceivable devices and IO schedulers?
 
-This is the first hack.  It is safe, it is just not very useful.
+As far as I know I/O barriers work.  The I/O schedulers are forcibly
+drained so they do not affect the barrier.  I am not sure about all
+devices - I guess some device drivers might return errors if asked to
+provide a barrier and they can't.
 
-The file system mounts fast, but will wait on the very first
-operation.
+Our device is a MMC and does one I/O at a time, so hardware barriers
+are not needed and are ignored.
 
-So there are three reasons for it to be optional:
-	1. It is not generally useful
-	2. The risk it is flawed can be avoided
-	3. The slower first operation might upset some users
+> It would be useful if you could quantify the benefits please - some
+> before-and-after timing results with both your funky hardware as well
+> as regular old disks would suit.
 
-The second hack allows read operations to proceed, but
-may not be safe depending on what other file systems
-may be on other partitions of the same block device.
+I will send some examples.
 
+> I'd suggest that if we're going to do this, we should aim to do it
+> unconditionally - no mount option needed.  We could leave the option
+> there for a while, for testing purposes (ie: we think the code might be
+> buggy).  But the new feature should perhaps default to "on", and we
+> plan to remove the mount option after a while.
+> 
+> Because there's no reason to retain the mount option in the long term.
 
