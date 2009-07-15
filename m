@@ -1,168 +1,124 @@
-From: Alexey Fisher <bug-track-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org>
-Subject: Re: ext4 memory leak (was Re: [PATCH] x86: _edata should include
- all .data.* sections on X86_64)
-Date: Wed, 15 Jul 2009 10:54:17 +0200
-Message-ID: <4A5D9939.3000500@fisher-privat.net>
-References: <4A5C20E5.6010203@fisher-privat.net> <84144f020907140019g511723dctb541f6333d1a082b@mail.gmail.com> <4A5C41C8.7040904@fisher-privat.net> <1247564356.28240.30.camel@pc1117.cambridge.arm.com> <1247565175.28240.37.camel@pc1117.cambridge.arm.com> <4A5C5A59.5080304@fisher-privat.net> <1247567499.28240.48.camel@pc1117.cambridge.arm.com> <4A5C5FD0.3020204@fisher-privat.net> <1247574390.28240.67.camel@pc1117.cambridge.arm.com> <20090715080336.GA4823@skywalker>
+From: Eric Sesterhenn <eric.sesterhenn@lsexperts.de>
+Subject: [BUG] NULL pointer dereference with corrupted image
+Date: Wed, 15 Jul 2009 11:54:09 +0200
+Message-ID: <1247651649.4097.23.camel@queen>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain
 Content-Transfer-Encoding: 7bit
-Cc: Catalin Marinas <catalin.marinas-5wv7dgnIgG8@public.gmane.org>,
-	Pekka Enberg <penberg-bbCR+/B0CizivPeTLB3BmA@public.gmane.org>,
-	Kernel Testers List <kernel-testers-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>, Ingo Molnar <mingo-X9Un+BFzKDI@public.gmane.org>,
-	linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-Return-path: <kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20090715080336.GA4823@skywalker>
-Sender: kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+To: linux-ext4@vger.kernel.org
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mail.pawisda.de ([213.157.4.156]:47835 "EHLO
+	mailrelay.pawisda.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752426AbZGOK2d (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Wed, 15 Jul 2009 06:28:33 -0400
+Received: from [192.168.0.2] (193.195.116.85.dsl.manitu.net [85.116.195.193])
+	by mailrelay.pawisda.de (Postfix) with ESMTP id 03DF8B8B82
+	for <linux-ext4@vger.kernel.org>; Wed, 15 Jul 2009 11:54:10 +0200 (CEST)
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-This patch work for me.
+hi,
 
-Aneesh Kumar K.V schrieb:
-> On Tue, Jul 14, 2009 at 01:26:30PM +0100, Catalin Marinas wrote:
->> (I cc'ed linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org as well)
->>
->> On Tue, 2009-07-14 at 12:37 +0200, Alexey Fisher wrote:
->>> this is complete trace from debug/kmemleak .
->> [...]
->>> i will compile now latest linux-arm.org/linux-2.6.git
->>> unreferenced object 0xffff880132c48890 (size 1024):
->>>    comm "exe", pid 1612, jiffies 4294894130
->>>    backtrace:
->>>      [<ffffffff810fbaca>] create_object+0x13a/0x2c0
->>>      [<ffffffff810fbd75>] kmemleak_alloc+0x25/0x60
->>>      [<ffffffff810f596b>] __kmalloc+0x11b/0x210
->>>      [<ffffffff811ae061>] ext4_mb_init+0x1b1/0x5c0
->>>      [<ffffffff8119f1e9>] ext4_fill_super+0x1e29/0x2720
->>>      [<ffffffff8110111f>] get_sb_bdev+0x16f/0x1b0
->>>      [<ffffffff81195413>] ext4_get_sb+0x13/0x20
->>>      [<ffffffff81100bf6>] vfs_kern_mount+0x76/0x180
->>>      [<ffffffff81100d6d>] do_kern_mount+0x4d/0x120
->>>      [<ffffffff81118ee7>] do_mount+0x307/0x8b0
->>>      [<ffffffff8111951f>] sys_mount+0x8f/0xe0
->>>      [<ffffffff8100b66b>] system_call_fastpath+0x16/0x1b
->>>      [<ffffffffffffffff>] 0xffffffffffffffff
->> After some investigation, this looks to me like a real leak.
->>
->> I managed to reproduce something similar (though the size may differ, I
->> think depending on filesystem size - only tried with a 64MB loop
->> device):
->>
->> unreferenced object 0xde468300 (size 32):
->>   comm "mount", pid 1445, jiffies 4294950074
->>   backtrace:
->>     [<c006d473>] __save_stack_trace+0x17/0x1c
->>     [<c006d545>] create_object+0xcd/0x188
->>     [<c01efe43>] kmemleak_alloc+0x1b/0x3c
->>     [<c006c013>] __kmalloc+0xd7/0xe4
->>     [<c00c1029>] ext4_mb_init+0x14d/0x374
->>     [<c00b7d7d>] ext4_fill_super+0x1385/0x16b4
->>     [<c0070891>] get_sb_bdev+0xa9/0xe4
->>     [<c00b574b>] ext4_get_sb+0xf/0x14
->>     [<c006fd3f>] vfs_kern_mount+0x33/0x64
->>     [<c006fda5>] do_kern_mount+0x25/0x8c
->>     [<c007e11f>] do_mount+0x47f/0x4c4
->>     [<c007e1b5>] sys_mount+0x51/0x80
->>     [<c0027c01>] ret_fast_syscall+0x1/0x40
->>     [<ffffffff>] 0xffffffff
->>
->> The above block is the meta_group_info allocated in
->> ext4_mb_init_backend() and stored in sbi->s_group_info[i] (i = 0 in my
->> case). Adding printk's and and inspecting the memory at
->> sbi->s_group_info[] shows different value stored, not the pointer
->> reported as leak.
->>
->> About the new pointer at sbi->s_group_info[0], kmemleak has this
->> information (via the dump= option in my branch; it isn't a leak report):
->>
->> kmemleak: Object 0xdfebfa80 (size 128):
->> kmemleak:   comm "mount", pid 1445, jiffies 4294950075
->> kmemleak:   min_count = 1
->> kmemleak:   count = 1
->> kmemleak:   flags = 0x1
->> kmemleak:   backtrace:
->>      [<c006d473>] __save_stack_trace+0x17/0x1c
->>      [<c006d545>] create_object+0xcd/0x188
->>      [<c01efe43>] kmemleak_alloc+0x1b/0x3c
->>      [<c006c013>] __kmalloc+0xd7/0xe4
->>      [<c00c0df1>] ext4_mb_add_groupinfo+0x29/0x114
->>      [<c00c107f>] ext4_mb_init+0x1a3/0x374
->>      [<c00b7d7d>] ext4_fill_super+0x1385/0x16b4
->>      [<c0070891>] get_sb_bdev+0xa9/0xe4
->>      [<c00b574b>] ext4_get_sb+0xf/0x14
->>      [<c006fd3f>] vfs_kern_mount+0x33/0x64
->>      [<c006fda5>] do_kern_mount+0x25/0x8c
->>      [<c007e11f>] do_mount+0x47f/0x4c4
->>      [<c007e1b5>] sys_mount+0x51/0x80
->>      [<c0027c01>] ret_fast_syscall+0x1/0x40
->>      [<ffffffff>] 0xffffffff
->>
->> So, ext4_mb_add_groupinfo() is overriding the pointers stored in
->> sbi->s_group_info[] by the ext4_mb_init_backend() function without
->> freeing them first.
->>
->> Maybe the ext4 people could clarify what is happening here as I'm not
->> familiar with the code.
->>
-> 
-> Can you try this patch ?
-> 
-> commit 4cc505d4c16c86f8f590ce4b288c920572bf2be9
-> Author: Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-> Date:   Wed Jul 15 13:20:37 2009 +0530
-> 
->     ext4: Memory leak fix ext4_group_info allocation.
->     
->     commit 5f21b0e642d7bf6fe4434c9ba12bc9cb96b17cf7  was done to
->     reallocate groupinfo struct during resize properly. That goal
->     was to allocate new groupinfo struct when we are adding new block
->     groups during resize. Calling ext4_mb_add_group_info in the
->     mballoc initialization code path resulted in we reallocating
->     the group info struct . Fix this by not separately allocating
->     group info in the mballoc init path and always depend on
->     ext4_mb_add_group_info to allocate group info struct.
->     
->     The earlier code also had a bug that we allocated less number of
->     group info struct for the last meta group. But on resize we
->     expected that we had EXT4_DESC_PER_BLOCK group info struct for
->     each meta group.
->     
->     Signed-off-by: Aneesh Kumar K.V <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>
-> 
-> diff --git a/fs/ext4/mballoc.c b/fs/ext4/mballoc.c
-> index 519a0a6..96ed1d8 100644
-> --- a/fs/ext4/mballoc.c
-> +++ b/fs/ext4/mballoc.c
-> @@ -2615,22 +2615,6 @@ static int ext4_mb_init_backend(struct super_block *sb)
->  		goto err_freesgi;
->  	}
->  	EXT4_I(sbi->s_buddy_cache)->i_disksize = 0;
-> -
-> -	metalen = sizeof(*meta_group_info) << EXT4_DESC_PER_BLOCK_BITS(sb);
-> -	for (i = 0; i < num_meta_group_infos; i++) {
-> -		if ((i + 1) == num_meta_group_infos)
-> -			metalen = sizeof(*meta_group_info) *
-> -				(ngroups -
-> -					(i << EXT4_DESC_PER_BLOCK_BITS(sb)));
-> -		meta_group_info = kmalloc(metalen, GFP_KERNEL);
-> -		if (meta_group_info == NULL) {
-> -			printk(KERN_ERR "EXT4-fs: can't allocate mem for a "
-> -			       "buddy group\n");
-> -			goto err_freemeta;
-> -		}
-> -		sbi->s_group_info[i] = meta_group_info;
-> -	}
-> -
->  	for (i = 0; i < ngroups; i++) {
->  		desc = ext4_get_group_desc(sb, i, NULL);
->  		if (desc == NULL) {
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe kernel-testers" in
-> the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+mounting the image at http://www.cccmz.de/~snakebyte/ext4.56.img.bz2
+listing the directories and touching a files produces a null pointer
+dereference with -rc3 (verified with -rc2 and current -git). I tested
+this on different boxes with the same result
+
+root@whiterabbit:~/testing/fsfuzzer-0.6-lmh# mount -o loop
+cfs/ext4.56.img -t ext4dev /media/test/
+root@whiterabbit:~/testing/fsfuzzer-0.6-lmh# ls /media/test 
+lost+found
+root@whiterabbit:~/testing/fsfuzzer-0.6-lmh# touch /media/test/file
+Killed
+
+If the ls is 
+
+[29436.010601] EXT4-fs (/dev/loop0): Update your userspace programs to
+mount using ext4
+[29436.010803] EXT4-fs (/dev/loop0): ext4dev backwards compatibility
+will go away by 2.6.31
+[29436.028613] EXT4-fs (loop0): no journal
+[29436.028833] EXT4-fs (loop0): delayed allocation enabled
+[29436.056982] EXT4-fs: mballoc enabled
+[29436.061698] EXT4-fs (loop0): mounted filesystem without journal
+[29436.189556] EXT4-fs error (device loop0): ext4_claim_inode: reserved
+inode or inode > inodes count - block_group = 0, inode=10
+[29436.189835] EXT4-fs (loop0): Remounting filesystem read-only
+[29436.202154] BUG: unable to handle kernel NULL pointer dereference at
+(null)
+[29436.202335] IP: [<c025977d>] ext4_decode_error+0x6d/0x90
+[29436.202540] *pde = 00000000 
+[29436.202643] Oops: 0000 [#1] PREEMPT 
+[29436.202835] last sysfs file: /sys/block/hdc/size
+[29436.202920] Modules linked in:
+[29436.203057] 
+[29436.203057] Pid: 5197, comm: touch Not tainted
+(2.6.31-rc3-23244-g6847e15 #29) System Name
+[29436.203057] EIP: 0060:[<c025977d>] EFLAGS: 00010282 CPU: 0
+[29436.203057] EIP is at ext4_decode_error+0x6d/0x90
+[29436.203057] EAX: 00000000 EBX: c6555d58 ECX: c0a70886 EDX: ffffffe2
+[29436.203057] ESI: c08fd80e EDI: c282cce4 EBP: c6555d40 ESP: c6555d2c
+[29436.203057]  DS: 007b ES: 007b FS: 0000 GS: 00e0 SS: 0068
+[29436.203057] Process touch (pid: 5197, ti=c6555000 task=c44d41a0
+task.ti=c6555000)
+[29436.203057] Stack:
+[29436.203057]  00000001 00000000 c0154fa2 c44d41a0 c9826e10 c6555d74
+c025a948 00000001
+[29436.203057] <0> 0000045b c44d41a0 0000045b c282cd98 c0252430 c282cce4
+c6555d74 bede78d2
+[29436.203057] <0> c282cd98 ffffffe2 c6555d94 c0252563 c0caefe0 c08fdba0
+c0caefe0 c6555d94
+[29436.203057] Call Trace:
+[29436.203057]  [<c0154fa2>] ? mark_held_locks+0x52/0x70
+[29436.203057]  [<c025a948>] ? __ext4_std_error+0x28/0x90
+[29436.203057]  [<c0252430>] ? ext4_delete_inode+0x0/0x230
+[29436.203057]  [<c0252563>] ? ext4_delete_inode+0x133/0x230
+[29436.203057]  [<c0252430>] ? ext4_delete_inode+0x0/0x230
+[29436.203057]  [<c01d2976>] ? generic_delete_inode+0x96/0x140
+[29436.203057]  [<c01d2b57>] ? generic_drop_inode+0x137/0x1b0
+[29436.203057]  [<c01d2197>] ? iput+0x47/0x50
+[29436.203057]  [<c024a904>] ? ext4_new_inode+0xa64/0xe70
+[29436.203057]  [<c01cfc0b>] ? d_rehash+0x3b/0x50
+[29436.203057]  [<c0255881>] ? ext4_create+0xb1/0x120
+[29436.203057]  [<c01c9096>] ? vfs_create+0xb6/0x170
+[29436.203057]  [<c01cbf18>] ? do_filp_open+0x5d8/0x820
+[29436.203057]  [<c08e2377>] ? _spin_unlock+0x27/0x50
+[29436.203057]  [<c01be6bf>] ? do_sys_open+0x4f/0x100
+[29436.203057]  [<c0102d9a>] ? sysenter_exit+0xf/0x1a
+[29436.203057]  [<c01be7d9>] ? sys_open+0x29/0x40
+[29436.203057]  [<c0102d6b>] ? sysenter_do_call+0x12/0x32
+[29436.203057] Code: 6a 82 35 00 89 d9 85 c0 78 33 8d 74 26 00 83 c4 10
+89 c8 5b 5d c3 85 c0 74 16 8b 80 d0 02 00 00 b9 86 08 a7 c0 8b 80 30 01
+00 00 <f6> 00 02 74 de 83 c4 10 b9 a3 08 a7 c0 5b 89 c8 5d c3 31 c9 eb 
+[29436.203057] EIP: [<c025977d>] ext4_decode_error+0x6d/0x90 SS:ESP
+0068:c6555d2c
+[29436.203057] CR2: 0000000000000000
+[29436.284374] ---[ end trace a3b07131cd2de900 ]---
+
+
+0xc025977d is in ext4_decode_error (fs/ext4/super.c:347).
+342			break;
+343		case -ENOMEM:
+344			errstr = "Out of memory";
+345			break;
+346		case -EROFS:
+347			if (!sb || EXT4_SB(sb)->s_journal->j_flags & JBD2_ABORT)
+348				errstr = "Journal has aborted";
+349			else
+350				errstr = "Readonly filesystem";
+351			break;
+
+0xc0252563 is in ext4_delete_inode (fs/ext4/inode.c:225).
+220			/*
+221			 * If we're going to skip the normal cleanup, we still need to
+222			 * make sure that the in-core orphan linked list is properly
+223			 * cleaned up.
+224			 */
+225			ext4_orphan_del(NULL, inode);
+226			goto no_delete;
+227		}
+228	
+229		if (IS_SYNC(inode))
+
+Regards, Eric
+
