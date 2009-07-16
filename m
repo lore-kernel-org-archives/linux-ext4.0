@@ -1,93 +1,61 @@
-From: Justin Maggard <jmaggard10@gmail.com>
+From: Valerie Aurora <vaurora@redhat.com>
 Subject: Re: >16TB issues
-Date: Thu, 16 Jul 2009 11:04:41 -0700
-Message-ID: <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
-References: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com>
-	 <20090703143729.GJ20343@webber.adilger.int>
+Date: Thu, 16 Jul 2009 14:59:13 -0400
+Message-ID: <20090716185913.GO27582@shell>
+References: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com> <20090703143729.GJ20343@webber.adilger.int> <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: linux-ext4@vger.kernel.org
-To: Andreas Dilger <adilger@sun.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
+To: Justin Maggard <jmaggard10@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-pz0-f197.google.com ([209.85.222.197]:48141 "EHLO
-	mail-pz0-f197.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932944AbZGPSEn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Jul 2009 14:04:43 -0400
-Received: by pzk35 with SMTP id 35so195387pzk.33
-        for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2009 11:04:41 -0700 (PDT)
-In-Reply-To: <20090703143729.GJ20343@webber.adilger.int>
+Received: from mx1.redhat.com ([66.187.233.31]:52180 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933029AbZGPS7Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Jul 2009 14:59:16 -0400
+Content-Disposition: inline
+In-Reply-To: <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 3, 2009 at 7:38 AM, Andreas Dilger<adilger@sun.com> wrote:
->> - =A0Immediately running e2fsck on the volume before ever mounting i=
-t
->> will not complete, and results in the following:
->> # e2fsck -n /dev/md2
->> e2fsck 1.41.7 (29-June-2009)
->> Error reading block 2435874816 (Attempt to read block from filesyste=
-m
->> resulted in short read). =A0Ignore error? no
->> /dev/md2: Attempt to read block from filesystem resulted in short re=
-ad
->> while reading block 2435874816
->> /dev/md2: Attempt to read block from filesystem resulted in short re=
-ad
->> reading journal superblock
->> e2fsck: Attempt to read block from filesystem resulted in short read
->> while checking ext3 journal for /dev/md2
->
-> It looks like there may be some problem with the underlying device?
-> I posted a program here a few months ago called "ll_ver_dev" which
-> can quickly (or slowly) verify that writes and reads to different
-> offsets in a block device return consistent data. =A0The quick versio=
-n
-> will detect such problems as 32-bit overflows, but if you are having
-> strange problems you might need to run the full version.
->
-> You could also try running with a filesystem just under 16TB and
-> verifying that works.
->
+On Thu, Jul 16, 2009 at 11:04:41AM -0700, Justin Maggard wrote:
+> On Fri, Jul 3, 2009 at 7:38 AM, Andreas Dilger<adilger@sun.com> wrote:
+> >> - ?Immediately running e2fsck on the volume before ever mounting it
+> >> will not complete, and results in the following:
+> >> # e2fsck -n /dev/md2
+> >> e2fsck 1.41.7 (29-June-2009)
+> >> Error reading block 2435874816 (Attempt to read block from filesystem
+> >> resulted in short read). ?Ignore error? no
+> >> /dev/md2: Attempt to read block from filesystem resulted in short read
+> >> while reading block 2435874816
+> >> /dev/md2: Attempt to read block from filesystem resulted in short read
+> >> reading journal superblock
+> >> e2fsck: Attempt to read block from filesystem resulted in short read
+> >> while checking ext3 journal for /dev/md2
+> >
+> > It looks like there may be some problem with the underlying device?
+> > I posted a program here a few months ago called "ll_ver_dev" which
+> > can quickly (or slowly) verify that writes and reads to different
+> > offsets in a block device return consistent data. ?The quick version
+> > will detect such problems as 32-bit overflows, but if you are having
+> > strange problems you might need to run the full version.
+> >
+> > You could also try running with a filesystem just under 16TB and
+> > verifying that works.
+> >
+> 
+> Running with a filesystem just under 16TB works fine.  Forgive my
+> ignorance, but for the life of me I couldn't find an reference
+> anywhere about your "ll_ver_dev" program.  But doing dd if=/dev/zero
+> across the entire ~18TB didn't report any errors, so I believe the
+> underlying device is in good shape.
 
-Running with a filesystem just under 16TB works fine.  Forgive my
-ignorance, but for the life of me I couldn't find an reference
-anywhere about your "ll_ver_dev" program.  But doing dd if=3D/dev/zero
-across the entire ~18TB didn't report any errors, so I believe the
-underlying device is in good shape.
+Excellent point.  You can get the programs from here:
 
-Running e2fsck with an external journal did change the behavior
-though.  Basically it no longer chokes on the journal, but it does
-somewhere else:
+http://valhenson.livejournal.com/38933.html
 
-e2fsck 1.41.8 (11-July-2009)
-Pass 1: Checking inodes, blocks, and sizes
-Pass 2: Checking directory structure
-Pass 3: Checking directory connectivity
-Pass 4: Checking reference counts
-Pass 5: Checking group summary information
-Error reading block 576192512 (Attempt to read block from filesystem
-resulted in short read) while reading inode and block bitmaps.  Ignore
-error? no
+Please do run llverdev if you have the chance - at this point, we are
+stuck trying to figure out how to reproduce this bug.
 
-e2fsck: Can't read an block bitmap while retrying to read bitmaps for /=
-dev/md2
-e2fsck: aborted
+We really appreciate your testing!  This definitely needs to get fixed.
 
->> - =A0Mounting with -o noload does appear to work, and reading and
->> writing seems to work fine.
->
-> That's because the journal is not being used, which is what seems to
-> be having the problem. =A0I wonder if the journal is beyond 8TB or
-> beyond 16TB for some reason and this is causing grief?
->
-
-Perhaps, but I'm not sure.  Using an external journal device also
-worked the same as not loading the journal.
-
--Justin
---
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-VAL
