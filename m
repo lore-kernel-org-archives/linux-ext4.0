@@ -1,61 +1,81 @@
-From: Valerie Aurora <vaurora@redhat.com>
-Subject: Re: >16TB issues
-Date: Thu, 16 Jul 2009 14:59:13 -0400
-Message-ID: <20090716185913.GO27582@shell>
-References: <150c16850907021523p25ddae32v2eeea54418d2e6d5@mail.gmail.com> <20090703143729.GJ20343@webber.adilger.int> <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
-To: Justin Maggard <jmaggard10@gmail.com>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx1.redhat.com ([66.187.233.31]:52180 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933029AbZGPS7Q (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Jul 2009 14:59:16 -0400
-Content-Disposition: inline
-In-Reply-To: <150c16850907161104j5e059baep988c5f04a0552c8c@mail.gmail.com>
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
+From: Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>
+Subject: [PATCH] configure: Disable uuidd by default
+Date: Thu, 16 Jul 2009 19:52:21 +0100
+Message-ID: <E1MRWBp-0000yk-N0@zelda.netsplit.com>
+Cc: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>, util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
-On Thu, Jul 16, 2009 at 11:04:41AM -0700, Justin Maggard wrote:
-> On Fri, Jul 3, 2009 at 7:38 AM, Andreas Dilger<adilger@sun.com> wrote:
-> >> - ?Immediately running e2fsck on the volume before ever mounting it
-> >> will not complete, and results in the following:
-> >> # e2fsck -n /dev/md2
-> >> e2fsck 1.41.7 (29-June-2009)
-> >> Error reading block 2435874816 (Attempt to read block from filesystem
-> >> resulted in short read). ?Ignore error? no
-> >> /dev/md2: Attempt to read block from filesystem resulted in short read
-> >> while reading block 2435874816
-> >> /dev/md2: Attempt to read block from filesystem resulted in short read
-> >> reading journal superblock
-> >> e2fsck: Attempt to read block from filesystem resulted in short read
-> >> while checking ext3 journal for /dev/md2
-> >
-> > It looks like there may be some problem with the underlying device?
-> > I posted a program here a few months ago called "ll_ver_dev" which
-> > can quickly (or slowly) verify that writes and reads to different
-> > offsets in a block device return consistent data. ?The quick version
-> > will detect such problems as 32-bit overflows, but if you are having
-> > strange problems you might need to run the full version.
-> >
-> > You could also try running with a filesystem just under 16TB and
-> > verifying that works.
-> >
-> 
-> Running with a filesystem just under 16TB works fine.  Forgive my
-> ignorance, but for the life of me I couldn't find an reference
-> anywhere about your "ll_ver_dev" program.  But doing dd if=/dev/zero
-> across the entire ~18TB didn't report any errors, so I believe the
-> underlying device is in good shape.
+Since util-linux-ng now builds uuidd by default, e2fsprogs should
+not do so.
 
-Excellent point.  You can get the programs from here:
+Signed-off-by: Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>
+---
+ configure    |   12 ++++--------
+ configure.in |    7 +++----
+ 2 files changed, 7 insertions(+), 12 deletions(-)
 
-http://valhenson.livejournal.com/38933.html
+diff --git a/configure b/configure
+index f3fe992..16eaf6f 100755
+--- a/configure
++++ b/configure
+@@ -1506,7 +1506,7 @@ Optional Features:
+   --enable-fsck           build fsck wrapper program
+   --enable-e2initrd-helper build e2initrd-helper program
+   --disable-tls           disable use of thread local support
+-  --disable-uuidd         disable building the uuid daemon
++  --enable-uuidd         disable building the uuid daemon
+   --disable-nls           do not use Native Language Support
+   --disable-rpath         do not hardcode runtime library paths
+ 
+@@ -5091,13 +5091,9 @@ $as_echo "Building uuidd" >&6; }
+ fi
+ 
+ else
+-  cat >>confdefs.h <<\_ACEOF
+-#define USE_UUIDD 1
+-_ACEOF
+-
+-UUIDD_CMT=""
+-{ $as_echo "$as_me:$LINENO: result: Building uuidd by default" >&5
+-$as_echo "Building uuidd by default" >&6; }
++  { $as_echo "$as_me:$LINENO: result: Not building uuidd by default" >&5
++$as_echo "Not building uuidd by default" >&6; }
++UUIDD_CMT="#"
+ 
+ fi
+ 
+diff --git a/configure.in b/configure.in
+index 1a7c040..fe845c9 100644
+--- a/configure.in
++++ b/configure.in
+@@ -641,7 +641,7 @@ dnl
+ dnl
+ dnl
+ AC_ARG_ENABLE([uuidd],
+-[  --disable-uuidd         disable building the uuid daemon],
++[  --enable-uuidd         disable building the uuid daemon],
+ [if test "$enableval" = "no"
+ then
+ 	AC_MSG_RESULT([Not building uuidd])
+@@ -652,9 +652,8 @@ else
+ 	AC_MSG_RESULT([Building uuidd])
+ fi]
+ ,
+-AC_DEFINE(USE_UUIDD)
+-UUIDD_CMT=""
+-AC_MSG_RESULT([Building uuidd by default])
++AC_MSG_RESULT([Not building uuidd by default])
++UUIDD_CMT="#"
+ )
+ AC_SUBST(UUIDD_CMT)
+ dnl
+-- 
+1.6.0.5
 
-Please do run llverdev if you have the chance - at this point, we are
-stuck trying to figure out how to reproduce this bug.
-
-We really appreciate your testing!  This definitely needs to get fixed.
-
--VAL
+--
+To unsubscribe from this list: send the line "unsubscribe util-linux-ng" in
+the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
