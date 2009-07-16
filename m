@@ -1,94 +1,96 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: Performance regressions in 2.6.30-rc7?
-Date: Thu, 16 Jul 2009 18:34:44 +0200
-Message-ID: <20090716163444.GC25725@duck.suse.cz>
-References: <20090610091211.GA13692@duck.suse.cz> <x4963f3rb4t.fsf@segfault.boston.devel.redhat.com> <20090715104319.GC25458@duck.suse.cz> <x4963du3vyp.fsf@segfault.boston.devel.redhat.com> <20090715145849.GE25458@duck.suse.cz> <20090715175028.GE22826@atrey.karlin.mff.cuni.cz> <20090715185452.GG22826@atrey.karlin.mff.cuni.cz> <x49iqhspue9.fsf@segfault.boston.devel.redhat.com> <20090716144601.GB25725@duck.suse.cz> <x49ab34ptb2.fsf@segfault.boston.devel.redhat.com>
+From: Stephan Kulow <coolo@suse.de>
+Subject: Re: file allocation problem
+Date: Thu, 16 Jul 2009 19:43:21 +0200
+Message-ID: <200907161943.21575.coolo@suse.de>
+References: <200907161331.17623.coolo@suse.de> <20090716155832.GA6605@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Chris Mason <chris.mason@oracle.com>,
-	Mike Galbraith <efault@gmx.de>,
-	Diego Calleja <diegocg@gmail.com>,
-	Andrew Morton <akpm@linux-foundation.org>,
-	LKML <linux-kernel@vger.kernel.org>, jens.axboe@oracle.com,
-	linux-ext4@vger.kernel.org
-To: Jeff Moyer <jmoyer@redhat.com>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:52010 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932758AbZGPQeq (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Jul 2009 12:34:46 -0400
-Content-Disposition: inline
-In-Reply-To: <x49ab34ptb2.fsf@segfault.boston.devel.redhat.com>
+Received: from charybdis-ext.suse.de ([195.135.221.2]:37134 "EHLO
+	emea5-mh.id5.novell.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S932795AbZGPRnZ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Thu, 16 Jul 2009 13:43:25 -0400
+In-Reply-To: <20090716155832.GA6605@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 16-07-09 10:59:45, Jeff Moyer wrote:
-> Jan Kara <jack@suse.cz> writes:
-> >> OK, looking back at the blktrace data I collected, we see[1]:
-> >> 
-> >> Total (cciss_c0d1):         2.6.29                  2.6.30-rc7
-> >> -------------------------------------------------------------------
-> >> Writes Queued:         8,531K,   34,126MiB  |   8,526K,   34,104MiB 
-> >> Write Dispatches:    556,256,   34,126MiB   | 294,809,   34,105MiB  <===
-> >> Writes Requeued:           0                |       0               
-> >> Writes Completed:    556,256,   34,126MiB   | 294,809,   34,105MiB  
-> >> Write Merges:          7,975K,   31,901MiB  |   8,231K,   32,924MiB 
-> >> --------------------------------------------------------------------
-> >> IO unplugs:          1,253,337              | 7,346,184             <===
-> >> Timer unplugs:         1,462                |       3               
-> >> 
-> >> Hmmm...
-> 
-> >   Yeah, this looks promissing. Although what I don't get is, how come that
-> > number of writes dispatched is roughly twice as much for 2.6.29 but the
-> > number of unplugs is higher on 2.6.30. My naive assumption would be that
-> > higher unplug rate -> less merging -> more requests dispatched.
-> 
-> Yeah, that's confusing!  I don't have an answer for you yet!
-  Maybe this is connected with the WRITE_SYNC changes?
+On Thursday 16 July 2009 17:58:32 Theodore Tso wrote:
+> On Thu, Jul 16, 2009 at 01:31:17PM +0200, Stephan Kulow wrote:
+> > Hi,
+> >
+> > I played around with ext4 online defrag on 2.6.31-rc3 and noticed a
+> > problem. The core is this:
+>
+> Was your filesystem originally an ext3 filesystme which was converted
+> over to ext4?  What features are currently enabled (sending a copy of
+Yes, it was converted quite some time ago.
 
-> >> commit b029195dda0129b427c6e579a3bb3ae752da3a93
-> >> Author: Jens Axboe <jens.axboe@oracle.com>
-> >> Date:   Tue Apr 7 11:38:31 2009 +0200
-> >> 
-> >>     cfq-iosched: don't let idling interfere with plugging
-> >>     
-> >>     When CFQ is waiting for a new request from a process, currently it'll
-> >>     immediately restart queuing when it sees such a request. This doesn't
-> >>     work very well with streamed IO, since we then end up splitting IO
-> >>     that would otherwise have been merged nicely. For a simple dd test,
-> >>     this causes 10x as many requests to be issued as we should have.
-> >>     Normally this goes unnoticed due to the low overhead of requests
-> >>     at the device side, but some hardware is very sensitive to request
-> >>     sizes and there it can cause big slow downs.
-> >>     
-> >>     Signed-off-by: Jens Axboe <jens.axboe@oracle.com>
-> >> 
-> >> There were a couple of subsequent fixups to this commit:
-> >> 
-> >> commit d6ceb25e8d8bccf826848c2621a50d02c0a7f4ae
-> >> Author: Jens Axboe <jens.axboe@oracle.com>
-> >> Date:   Tue Apr 14 14:18:16 2009 +0200
-> >> 
-> >>     cfq-iosched: don't delay queue kick for a merged request
-> >> 
-> >> commit 2d870722965211de072bb36b446a4df99dae07e1
-> >> Author: Jens Axboe <jens.axboe@oracle.com>
-> >> Date:   Wed Apr 15 12:12:46 2009 +0200
-> >> 
-> >>     cfq-iosched: tweak kick logic a bit more
-> >> 
-> >> 
-> >> So I guess that's where we need to start looking.
-> >   OK, I can try to check whether backing out just these changes will help
-> > anything.
-> 
-> Well, that will help identify if they are, in fact, the cause.  I hope
-> it's not too hard to disentangle them from the current kernel!  Thanks
-> for all of your work on this!
-  It was no problem to revert them. But the throughput didn't increase :(.
+> the output of "dumpe2fs -h /dev/XXX" would be helpful.)
 
-									Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Filesystem volume name:   <none>
+Last mounted on:          /root
+Filesystem UUID:          ec4454af-a8db-42ad-9627-19c9c17a0220
+Filesystem magic number:  0xEF53
+Filesystem revision #:    1 (dynamic)
+Filesystem features:      has_journal ext_attr resize_inode dir_index filetype 
+needs_recovery extent sparse_super large_file
+Filesystem flags:         signed_directory_hash 
+Default mount options:    (none)
+Filesystem state:         clean
+Errors behavior:          Continue
+Filesystem OS type:       Linux
+Inode count:              853440
+Block count:              3409788
+Reserved block count:     170489
+Free blocks:              1156411
+Free inodes:              615319
+First block:              0
+Block size:               4096
+Fragment size:            4096
+Reserved GDT blocks:      832
+Blocks per group:         32768
+Fragments per group:      32768
+Inodes per group:         8128
+Inode blocks per group:   508
+Filesystem created:       Fri Dec 12 17:01:57 2008
+Last mount time:          Thu Jul 16 19:30:26 2009
+Last write time:          Thu Jul 16 19:30:26 2009
+Mount count:              718
+Maximum mount count:      -1
+Last checked:             Thu Jan 29 15:01:57 2009
+Check interval:           0 (<none>)
+Lifetime writes:          5211 MB
+Reserved blocks uid:      0 (user root)
+Reserved blocks gid:      0 (group root)
+First inode:              11
+Inode size:               256
+Required extra isize:     28
+Desired extra isize:      28
+Journal inode:            8
+First orphan inode:       650850
+Default directory hash:   half_md4
+Directory Hash Seed:      a262693d-9659-4212-8e5b-5901140edff8
+Journal backup:           inode blocks
+Journal size:             128M
+
+>
+> If it is the case that this was originally an ext3 filesystem,
+> e4defrag does have some definite limitations that will prevent it from
+> doing a great job in such a case.  I'm guessing that's what's going on
+> here.
+My problem is not so much with what e4defrag does, but the fact that
+a new file I create with cp(1) contains 34 extents.
+
+>
+> > Now that I call fragmented! Calling e4defrag again gives me
+> > 34->28 and now it moved _parts_
+>
+> I'm not sure what you mean by moving _parts_?
+It moved a couple of blocks from 6XXX to 10XXX and most extents stayed in the 
+area where they were (I guess close to the rest of /usr/bin?)
+
+Greetings, Stephan
