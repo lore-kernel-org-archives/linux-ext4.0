@@ -1,59 +1,82 @@
-From: Mike Frysinger <vapier@gentoo.org>
-Subject: Re: [PATCH] configure: Disable uuidd by default
-Date: Thu, 16 Jul 2009 15:18:05 -0400
-Message-ID: <200907161518.06698.vapier@gentoo.org>
-References: <E1MRWBp-0000yk-N0@zelda.netsplit.com>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: file allocation problem
+Date: Thu, 16 Jul 2009 21:12:19 -0400
+Message-ID: <20090717011219.GE8508@mit.edu>
+References: <200907161331.17623.coolo@suse.de> <20090716155832.GA6605@mit.edu> <200907161943.21575.coolo@suse.de>
 Mime-Version: 1.0
-Content-Type: multipart/signed;
-  boundary="nextPart1845810.S9ZeBu6asH";
-  protocol="application/pgp-signature";
-  micalg=pgp-sha1
-Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org, Theodore Tso <tytso@mit.edu>,
-	util-linux-ng@vger.kernel.org
-To: Scott James Remnant <scott@ubuntu.com>
+Content-Type: text/plain; charset=us-ascii
+Cc: linux-ext4@vger.kernel.org
+To: Stephan Kulow <coolo@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp.gentoo.org ([140.211.166.183]:40221 "EHLO smtp.gentoo.org"
+Received: from thunk.org ([69.25.196.29]:39809 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932478AbZGPTSI (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Thu, 16 Jul 2009 15:18:08 -0400
-In-Reply-To: <E1MRWBp-0000yk-N0@zelda.netsplit.com>
+	id S933390AbZGQBM1 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Thu, 16 Jul 2009 21:12:27 -0400
+Content-Disposition: inline
+In-Reply-To: <200907161943.21575.coolo@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
---nextPart1845810.S9ZeBu6asH
-Content-Type: text/plain;
-  charset="utf-8"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: inline
+On Thu, Jul 16, 2009 at 07:43:21PM +0200, Stephan Kulow wrote:
+> > If it is the case that this was originally an ext3 filesystem,
+> > e4defrag does have some definite limitations that will prevent it from
+> > doing a great job in such a case.  I'm guessing that's what's going on
+> > here.
+> My problem is not so much with what e4defrag does, but the fact that
+> a new file I create with cp(1) contains 34 extents.
 
-On Thursday 16 July 2009 14:52:21 Scott James Remnant wrote:
-> -[  --disable-uuidd         disable building the uuid daemon],
-> +[  --enable-uuidd         disable building the uuid daemon],
+Well, because your filesystem is still fragmented; you asked e4defrag
+to defragment a single file.  In fact, it wasn't able to do much --
+the file previously had 25 extents, and the new file had 25 extents.
+E4defrag is quite new, and still needs a lot of polishing; I'm not
+sure it should have tried to swap files when the newly allocated file
+has the same number of extents.  This might be a case of changing a
+">=" to ">" in code.
 
-help text should be inverted now as well
--mike
+The reason why "cp" still created a file with 34 extents is because
+the free space was still fragmented.  As I said, e4defrag is quite
+primitive; it doesn't know how to defrag free space; it simply tries
+to reduce the number of extents for each file, on a file-by-file
+basis.
 
---nextPart1845810.S9ZeBu6asH
-Content-Type: application/pgp-signature; name=signature.asc 
-Content-Description: This is a digitally signed message part.
+The other problem is that an ext3 filesystem that has been converted
+to ext4 does not have the flex_bg feature.  This is a feature that,
+when set at when the file system is formatted, creates a higher order
+flex_bg which combines several block groups into a bigger allocation
+group, a flex_bg.  This helps avoid fragmentation, especially for
+directories like /usr/bin which typically have more than 128 megs (a
+single block group) worth of files in it.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.12 (GNU/Linux)
+Using an ext3 filesystem format, the filesystem driver will first try
+to find space in the home block group of the directory, and if there
+is no space there, it will look in other block groups.  With a freshly
+formatted ext4 filesystem, the allocation group is the flex_bg, which
+is much larger, and which gives us a better opportunity for allocating
+contiguous blocks.
 
-iQIcBAABAgAGBQJKX3zuAAoJEEFjO5/oN/WBk2wP/3YhYePGf5ke+FgwQgAYsSdi
-2x62jeeubggg4AL5RMM8ZwF22XBD6Ogt4ASehIC2G/W+t5m0zW2g/TEId7KinjWj
-PtR3rhqdrwC8DDpe9Sm7NsrNseTGdHNiIiQzFD640PpqaLFKahsHEEiOl7y4tu1q
-bU/Tq6FEP6rO7MJ6OCcZFbNpEE5ZO0WBwHOy6ukKVuecsJC+ceVn7jtb9S5zCwAg
-dq3ucmbRqnyg6zmxiyrQKWrkbYJ1z2esPYovLsrf0zoTzjDjLqGGfP+rp2dZcMdS
-uAekaCrK2QvzX+yDbzQBG5A1LunVR/sFwQIxW9tivMoIdtZ1zu/4shpXZrL9QL/K
-s+V8zRAPVn3KpUmYAbVYw3r7dPjtqWRfBgHIBfAyTJGIu0Fgu89aSG+7Xk5JH/tg
-8h7n2OAMJY74+4OFptchK0RsWk7kNbay3aET7Rzt5t+pCiKHOpcvppLE/Y6Sq1tM
-xzZ9Jtd1/ILCRwF8ggThsLjcjfB0gh1BOTB0u0rFC2oGhU0fCXWDKFRTfqmkQ9dA
-x4NBfCcARfjVrdmRf+diUM4Tbxlzf2eo4bc6Khj/ByTuwC2vqqbrYevJh+Ojxi6j
-0IhBji6vzocqg/JZ/bFlzuZlGx7b/Ssi5FhGukaANJVHExtEHPVNAsJ8fsbEa4kW
-E63XpWoIXsf/BI66TgPm
-=S6zB
------END PGP SIGNATURE-----
+I suspect we could do better with our allocator in this case; maybe
+should use a flex_bg to give the block group allocator a bigger set of
+block groups to search.  The inode tables will still not be optimally
+laid out for flex_bg, but we might still be better off.  Or, if the
+block group is terribly fragmented, maybe we should have the allocator
+find some other bg, even if it isn't the ideal block group close to
+the directory.  According to the dumpe2fs output, the filesystem is
+only 66% or so full, so there's probably some possibly completely
+unused block groups we should be using instead.  One of the things
+that we have _not_ had time to do is optimize the block allocator for
+heavily fragimented filesystems, especially for fragmented filesystems
+that had been converted from ext3 filesystems.
 
---nextPart1845810.S9ZeBu6asH--
+In any case, I don't anything went _wrong_ per se, just that both
+e4defrag and our block allocator are insufficiently smart to help
+improve things for you given your current filesystem.  A backup,
+reformat, and restore will result in a filesystem that works far
+better.
+
+Out of curiosity, what sort of workload had the file system received?
+It looks like the filesystem hadn't been created that long ago, so
+it's bit surprising it was so fragmented.  Were you perhaps updating
+your system (by doing a yum update or apt-get update) very frequently,
+perhaps?
+
+						- Ted
