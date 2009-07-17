@@ -1,122 +1,73 @@
-From: Curt Wohlgemuth <curtw@google.com>
-Subject: Re: [PATCH] ext4: More buffer head reference leaks
-Date: Fri, 17 Jul 2009 12:55:49 -0700
-Message-ID: <6601abe90907171255i5eb2199er4f5ec883b42cc2f7@mail.gmail.com>
-References: <6601abe90907141358w3b16cdb0rb429f8d67d65dc9a@mail.gmail.com>
-	 <20090715055227.GA17310@skywalker>
-	 <6601abe90907150800m4924e35fi13dd4eea6fe7f327@mail.gmail.com>
-	 <6601abe90907150853m73654d6dlfbdb47eb26e7d498@mail.gmail.com>
+From: Andreas Dilger <adilger@sun.com>
+Subject: Re: file allocation problem
+Date: Fri, 17 Jul 2009 17:14:44 -0400
+Message-ID: <20090717211444.GF4231@webber.adilger.int>
+References: <200907161331.17623.coolo@suse.de>
+ <200907170717.12225.coolo@suse.de> <20090717142628.GL8508@mit.edu>
+ <200907172002.19286.coolo@suse.de>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: QUOTED-PRINTABLE
-Cc: ext4 development <linux-ext4@vger.kernel.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Content-Type: text/plain; CHARSET=US-ASCII
+Content-Transfer-Encoding: 7BIT
+Cc: Theodore Tso <tytso@mit.edu>, linux-ext4@vger.kernel.org
+To: Stephan Kulow <coolo@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from smtp-out.google.com ([216.239.33.17]:18686 "EHLO
-	smtp-out.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752665AbZGQTzz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2009 15:55:55 -0400
-Received: from wpaz1.hot.corp.google.com (wpaz1.hot.corp.google.com [172.24.198.65])
-	by smtp-out.google.com with ESMTP id n6HJtq5l029076
-	for <linux-ext4@vger.kernel.org>; Fri, 17 Jul 2009 20:55:53 +0100
-Received: from pzk35 (pzk35.prod.google.com [10.243.19.163])
-	by wpaz1.hot.corp.google.com with ESMTP id n6HJtoxI001286
-	for <linux-ext4@vger.kernel.org>; Fri, 17 Jul 2009 12:55:50 -0700
-Received: by pzk35 with SMTP id 35so777075pzk.33
-        for <linux-ext4@vger.kernel.org>; Fri, 17 Jul 2009 12:55:50 -0700 (PDT)
-In-Reply-To: <6601abe90907150853m73654d6dlfbdb47eb26e7d498@mail.gmail.com>
+Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:44210 "EHLO
+	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757352AbZGQVO4 (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2009 17:14:56 -0400
+Received: from fe-sfbay-09.sun.com ([192.18.43.129])
+	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n6HLEqlb012141
+	for <linux-ext4@vger.kernel.org>; Fri, 17 Jul 2009 14:14:52 -0700 (PDT)
+Content-disposition: inline
+Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
+ (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
+ id <0KMY00B002SXHU00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Fri,
+ 17 Jul 2009 14:14:52 -0700 (PDT)
+In-reply-to: <200907172002.19286.coolo@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Any comment on the patch below?  Ted?
+On Jul 17, 2009  20:02 +0200, Stephan Kulow wrote:
+> On Friday 17 July 2009 16:26:28 Theodore Tso wrote:
+> > And this isn't necessarily going to help; if 16 block groups around
+> > (2**4) for the flex_bg for the /usr/bin directory are all badly
+> > fragmented, then when you create new files in /usr/bin, it will still
+> > be fragmented.
+>
+> Yeah, but even the file in /tmp/nd got 3 extents. my file is 1142 blocks
+> and my mb_groups says 2**9 is the highest possible value. So I guess I will
+> indeed try to create the file system from scratch to test the allocator for 
+> real.
 
-Thanks,
-Curt
+The defrag code needs to become smarter, so that it finds small files 
+in the middle of freespace and migrates those to fit into a small gap.
+That will allow larger files to be defragged once there is large chunks
+of free space.
 
+> > allocator tries to keep files aligned on power of two boundaries,
+> > which tends to help this a lot (although this means that dumpe2fs -h
+> > will show a bunch of holes that makes the free space look more
+> > fragmented than it really is), but the ext3 allocator doesn't have any
+> > such smarts on it.
+> But there is nothing packing the blocks if the groups get full, so these
+> holes will always cause fragmentation once the file system gets full, right?
+ 
 
-On Wed, Jul 15, 2009 at 8:53 AM, Curt Wohlgemuth<curtw@google.com> wrot=
-e:
-> I've cleaned up the patch to
-> =A0 - fix the comment in ext4_alloc_branch()
-> =A0 - change ext4_add_entry() to remove the gotos and label
->
->
-> =A0 =A0 =A0 Signed-off-by: Curt Wohlgemuth <curtw@google.com>
->
-> ---
-> diff -Naur orig/fs/ext4/inode.c new/fs/ext4/inode.c
-> --- orig/fs/ext4/inode.c =A0 =A0 =A0 =A02009-07-14 11:19:01.000000000=
- -0700
-> +++ new/fs/ext4/inode.c 2009-07-15 08:12:15.000000000 -0700
-> @@ -758,8 +758,9 @@
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0BUFFER_TRACE(bh, "call get_create_acce=
-ss");
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0err =3D ext4_journal_get_create_access=
-(handle, bh);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (err) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 /* Don't brelse(bh) her=
-e; it's done in
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0* ext4_journal_forge=
-t() below */
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0unlock_buffer(bh);
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(bh);
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto failed;
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0}
->
-> diff -Naur orig/fs/ext4/namei.c new/fs/ext4/namei.c
-> --- orig/fs/ext4/namei.c =A0 =A0 =A0 =A02009-07-14 11:19:46.000000000=
- -0700
-> +++ new/fs/ext4/namei.c 2009-07-15 08:12:09.000000000 -0700
-> @@ -1518,8 +1518,12 @@
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0return retval;
->
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0if (blocks =3D=3D 1 && !dx_fallback &&
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_HAS_COMPAT_FEATURE(sb, EXT=
-4_FEATURE_COMPAT_DIR_INDEX))
-> - =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return make_indexed_dir=
-(handle, dentry, inode, bh);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 EXT4_HAS_COMPAT_FEATURE(sb, EXT=
-4_FEATURE_COMPAT_DIR_INDEX)) {
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 retval =3D make_indexed=
-_dir(handle, dentry, inode, bh);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 if (retval =3D=3D -ENOS=
-PC)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(=
-bh);
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0 return retval;
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 }
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0brelse(bh);
-> =A0 =A0 =A0 =A0}
-> =A0 =A0 =A0 =A0bh =3D ext4_append(handle, dir, &block, &retval);
-> @@ -1528,7 +1532,10 @@
-> =A0 =A0 =A0 =A0de =3D (struct ext4_dir_entry_2 *) bh->b_data;
-> =A0 =A0 =A0 =A0de->inode =3D 0;
-> =A0 =A0 =A0 =A0de->rec_len =3D ext4_rec_len_to_disk(blocksize, blocks=
-ize);
-> - =A0 =A0 =A0 return add_dirent_to_buf(handle, dentry, inode, de, bh)=
-;
-> + =A0 =A0 =A0 retval =3D add_dirent_to_buf(handle, dentry, inode, de,=
- bh);
-> + =A0 =A0 =A0 if (retval =3D=3D -ENOSPC)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 brelse(bh);
-> + =A0 =A0 =A0 return retval;
-> =A0}
->
-> =A0/*
-> @@ -1657,7 +1664,8 @@
-> =A0 =A0 =A0 =A0if (!de)
-> =A0 =A0 =A0 =A0 =A0 =A0 =A0 =A0goto cleanup;
-> =A0 =A0 =A0 =A0err =3D add_dirent_to_buf(handle, dentry, inode, de, b=
-h);
-> - =A0 =A0 =A0 bh =3D NULL;
-> + =A0 =A0 =A0 if (err !=3D -ENOSPC)
-> + =A0 =A0 =A0 =A0 =A0 =A0 =A0 bh =3D NULL;
-> =A0 =A0 =A0 =A0goto cleanup;
->
-> =A0journal_error:
->
+Well, this isn't quite correct.  The mballoc code only tries to allocate
+"large" files on power-of-two boundaries, where large is 64kB by default,
+but is tunable in /proc.  For smaller files it tries to pack them together
+into the same block, or into gaps that are exactly the size of the file.
+
+> So I guess online defragmentation first needs to pretend doing an online 
+> resize so it can use the gained free size. Now I have something to test.. :)
+
+Yes, that would give you some good free space at the end of the filesystem.
+Then find the largest files in the filesystem, migrate them there, then
+defrag the smaller files.
+
+Cheers, Andreas
 --
-To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Andreas Dilger
+Sr. Staff Engineer, Lustre Group
+Sun Microsystems of Canada, Inc.
+
