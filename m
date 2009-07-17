@@ -1,54 +1,76 @@
-From: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
+From: Scott James Remnant <scott@ubuntu.com>
 Subject: Re: [PATCH] configure: Disable libblkid by default
-Date: Fri, 17 Jul 2009 11:02:07 -0400
-Message-ID: <20090717150207.GA29705@mit.edu>
-References: <E1MRWBp-0000yN-9a@zelda.netsplit.com> <20090717143637.GM8508@mit.edu> <1247842479.4524.11.camel@quest>
+Date: Fri, 17 Jul 2009 16:14:54 +0100
+Message-ID: <1247843694.4524.13.camel@quest>
+References: <E1MRWBp-0000yN-9a@zelda.netsplit.com>
+	 <20090717143637.GM8508@mit.edu> <1247842479.4524.11.camel@quest>
+	 <20090717150207.GA29705@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org, util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-Content-Disposition: inline
-In-Reply-To: <1247842479.4524.11.camel@quest>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-MwYmzHNOljM2OAGKCehp"
+Cc: linux-ext4@vger.kernel.org, util-linux-ng@vger.kernel.org
+To: Theodore Tso <tytso@mit.edu>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from zelda.netsplit.com ([87.194.19.211]:53800 "EHLO
+	zelda.netsplit.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934689AbZGQPOy (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2009 11:14:54 -0400
+In-Reply-To: <20090717150207.GA29705@mit.edu>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
-On Fri, Jul 17, 2009 at 03:54:39PM +0100, Scott James Remnant wrote:
-> > I'm not going to be applying these patches for quite some time.  I'd
-> > much rather have packaging scripts that *know* they will be packaging
-> > alongside util-linux-ng use --disable-libblkid, etc. so we don't break
-> > things for folks who might need to build e2fsprogs for distributions
-> > that are still using util-linux --- which at the moment still have the
-> > vast majority of the installed base, and every so often people do
-> > actually care about running updated filesystem utilities on an older
-> > enterprise distribution.
->
-> But you didn't accept those patches I sent either.
 
-If I recall correctly the last set of patches unconditionally used
---disable-libblkid, and what I need is.....
+--=-MwYmzHNOljM2OAGKCehp
+Content-Type: text/plain
+Content-Transfer-Encoding: quoted-printable
 
-> > ... at the minimum I'll want to make sure that the debian/rules file
-> > packaged with e2fsprogs can build both for util-linux and
-> > util-linux-ng for similar reasons, especially since Lamont hasn't
-> > gotten back to us about potentially getting util-linux-ng packaged for
-> > Debian yet.
+On Fri, 2009-07-17 at 11:02 -0400, Theodore Tso wrote:
 
-So the patch ideal patch I'd like to see is one where you can toggle a
-flag and debian/rules will either build for util-linux or
-util-linux-ng.  If you've sent such a patch, my apologies for
-overlooking it, but as I recall the only patch I got made the
-unconditional changes to debian/rules.  When I commented on that you
-said that you understood that was just a proof-of-concept patch, and
-so I let things drop.
+> > > ... at the minimum I'll want to make sure that the debian/rules file
+> > > packaged with e2fsprogs can build both for util-linux and
+> > > util-linux-ng for similar reasons, especially since Lamont hasn't
+> > > gotten back to us about potentially getting util-linux-ng packaged fo=
+r
+> > > Debian yet.
+>=20
+> So the patch ideal patch I'd like to see is one where you can toggle a
+> flag and debian/rules will either build for util-linux or
+> util-linux-ng.  If you've sent such a patch, my apologies for
+> overlooking it
+>=20
+I did, it's the patches that are applied to the Ubuntu source package:
 
-> I've done the packaging for him, it's just waiting on him to get back
-> home to sponsor the uploads.
+http://kernel.ubuntu.com/git?p=3Dscott/e2fsprogs.git;a=3Dcommit;h=3Dd69bff0=
+1e2c034c7d620f7c0baf9b700761034a4
 
-Are the .deb packages somewhere where I can examine them?
+http://kernel.ubuntu.com/git?p=3Dscott/e2fsprogs.git;a=3Dcommit;h=3D1e86919=
+5141920331b00c0d594898b8b322e07a3
 
-    	     	      		      	- Ted
---
-To unsubscribe from this list: send the line "unsubscribe util-linux-ng" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+http://kernel.ubuntu.com/git?p=3Dscott/e2fsprogs.git;a=3Dcommit;h=3D2177ed0=
+c6a8f83afa7a9fbef0c04b699c3d52238
+
+> > I've done the packaging for him, it's just waiting on him to get back
+> > home to sponsor the uploads.
+>=20
+> Are the .deb packages somewhere where I can examine them?
+>=20
+Yes, they're in Ubuntu.
+
+Scott
+--=20
+Scott James Remnant
+scott@ubuntu.com
+
+--=-MwYmzHNOljM2OAGKCehp
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.4.9 (GNU/Linux)
+
+iEYEABECAAYFAkpglW4ACgkQSnQiFMl4yK6pLQCdG4UMr2xahVZqkkSm5foXK5gx
+g6QAnj+SPLE3P7B/ta961LNFPFGkNv1m
+=g429
+-----END PGP SIGNATURE-----
+
+--=-MwYmzHNOljM2OAGKCehp--
+
