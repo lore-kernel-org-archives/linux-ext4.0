@@ -1,57 +1,91 @@
 From: Theodore Tso <tytso@mit.edu>
-Subject: Re: [PATCH] ext4: Memory leak fix ext4_group_info allocation.
-Date: Fri, 17 Jul 2009 09:01:18 -0400
-Message-ID: <20090717130118.GI8508@mit.edu>
-References: <1247669734-6819-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Subject: Re: file allocation problem
+Date: Fri, 17 Jul 2009 10:26:28 -0400
+Message-ID: <20090717142628.GL8508@mit.edu>
+References: <200907161331.17623.coolo@suse.de> <200907161943.21575.coolo@suse.de> <20090717011219.GE8508@mit.edu> <200907170717.12225.coolo@suse.de>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: cmm@us.ibm.com, sandeen@redhat.com, linux-ext4@vger.kernel.org
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: linux-ext4@vger.kernel.org
+To: Stephan Kulow <coolo@suse.de>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from thunk.org ([69.25.196.29]:59466 "EHLO thunker.thunk.org"
+Received: from thunk.org ([69.25.196.29]:45719 "EHLO thunker.thunk.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S934542AbZGQNBb (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Fri, 17 Jul 2009 09:01:31 -0400
+	id S1751019AbZGQO0d (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Fri, 17 Jul 2009 10:26:33 -0400
 Content-Disposition: inline
-In-Reply-To: <1247669734-6819-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <200907170717.12225.coolo@suse.de>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Wed, Jul 15, 2009 at 08:25:34PM +0530, Aneesh Kumar K.V wrote:
-> commit 5f21b0e642d7bf6fe4434c9ba12bc9cb96b17cf7  was done to
-> reallocate groupinfo struct during resize properly. That goal
-> was to allocate new groupinfo struct when we are adding new block
-> groups during resize. Calling ext4_mb_add_group_info in the
-> mballoc initialization code path resulted in we reallocating
-> the group info struct . Fix this by not separately allocating
-> group info in the mballoc init path and always depend on
-> ext4_mb_add_group_info to allocate group info struct.
+On Fri, Jul 17, 2009 at 07:17:12AM +0200, Stephan Kulow wrote:
+> Well, is there a tool to check the overall state of the file system? I can't 
+> really believe it's 1010101010, but it's hard to say without a picture :)
+
+Well, you can check the fragmentation of the free space by using
+dumpe2fs and looking at the free blocks in each block group.
+
+> > The other problem is that an ext3 filesystem that has been converted
+> > to ext4 does not have the flex_bg feature.  This is a feature that,
+> > when set at when the file system is formatted, creates a higher order
+> > flex_bg which combines several block groups into a bigger allocation
+> > group, a flex_bg.  This helps avoid fragmentation, especially for
+> > directories like /usr/bin which typically have more than 128 megs (a
+> > single block group) worth of files in it.
 > 
-> The earlier code also had a bug that we allocated less number of
-> group info struct for the last meta group. But on resize we
-> expected that we had EXT4_DESC_PER_BLOCK group info struct for
-> each meta group.
+> Oh, I enabled flex_bg after you asked, rebooted to get a e2fsck -
+> and I still get 34 extents for my gimp-2.6.defrag. From what I
+> understand, this doesn't help in the after fact, but then again how
+> am I supposed to fix my file system if even new files are created
+> fragmented.
 
-Added to the ext4 patch queue, although I did rewrite the patch
-description:
+Well, it's actually not enough to enable flex_bg filesystem feature;
+you need to also set the flex_bg size, like this:
 
-ext4: Fix memory leak fix when mounting an ext4 filesystem
+debugfs -w /dev/XXX
+debugfs: ssv log_groups_per_flex 4
+debugfs: quit
 
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+(And no, this isn't something which we've done a lot of testing on.)
 
-The allocation of the ext4_group_info array was moved to a new
-function ext4_mb_add_group_info() in commit 5f21b0e6 so that online
-resize would use a common (and correct) codepath.  Unfortunately, the
-call to the new ext4_mb_add_group_info() function was added without
-removing the code which originally allocated the array.  This caused a
-memory leak each time an ext4 filesystem was mounted.
+And this isn't necessarily going to help; if 16 block groups around
+(2**4) for the flex_bg for the /usr/bin directory are all badly
+fragmented, then when you create new files in /usr/bin, it will still
+be fragmented.
 
-The fix is simple; remove the code that did the original allocation,
-since it is no longer needed.
+> > In any case, I don't anything went _wrong_ per se, just that both
+> > e4defrag and our block allocator are insufficiently smart to help
+> > improve things for you given your current filesystem.  A backup,
+> > reformat, and restore will result in a filesystem that works far
+> > better.
+>
+> I believe that, but my hope for online defrag was not having to rely on this 
+> 80ties defrag method :)
 
-Reported-by: Catalin Marinas <catalin.marinas@arm.com>
-Tested-by: Catalin Marinas <catalin.marinas@arm.com>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Yeah, sorry, online defrag is a very new feature.  It will hopefully
+get better, but it's matter of resources.  Ultimately, though, the
+problem is that the ext3 allocation algorithms are very different (and
+far more primitive) than the ext4 allocation algorithms.  So undoing
+the ext3 allocation algorithm decisions is going to be non-trivial,
+and even if we can eventually get e4defrag to the point where it can
+do this on the whole filesystem, I suspect backup/reformat/restore
+will almost always be faster.
 
-					- Ted
+> > Out of curiosity, what sort of workload had the file system received?
+> > It looks like the filesystem hadn't been created that long ago, so
+> > it's bit surprising it was so fragmented.  Were you perhaps updating
+> > your system (by doing a yum update or apt-get update) very frequently,
+> > perhaps?
+>
+> Yes, that's what I'm doing. I'm updating about every file in this
+> file system every second day by means of rpm packages (openSUSE
+> calls it factory, you will now it as rawhide).
+
+Unfortunately, constantly updating every single file on a daily basis
+is a very effective way of seriously aging a filesystem.  The ext4
+allocator tries to keep files aligned on power of two boundaries,
+which tends to help this a lot (although this means that dumpe2fs -h
+will show a bunch of holes that makes the free space look more
+fragmented than it really is), but the ext3 allocator doesn't have any
+such smarts on it.
+
+						- Ted
