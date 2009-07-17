@@ -1,36 +1,43 @@
-From: Andreas Dilger <adilger@sun.com>
+From: Stephan Kulow <coolo@suse.de>
 Subject: Re: file allocation problem
-Date: Fri, 17 Jul 2009 00:32:42 -0400
-Message-ID: <20090717043241.GA4207@webber.adilger.int>
-References: <200907161331.17623.coolo@suse.de> <20090716155832.GA6605@mit.edu>
- <200907161943.21575.coolo@suse.de> <20090717011219.GE8508@mit.edu>
+Date: Fri, 17 Jul 2009 07:17:12 +0200
+Message-ID: <200907170717.12225.coolo@suse.de>
+References: <200907161331.17623.coolo@suse.de> <200907161943.21575.coolo@suse.de> <20090717011219.GE8508@mit.edu>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: Stephan Kulow <coolo@suse.de>, linux-ext4@vger.kernel.org
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org
 To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:43448 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751877AbZGQEdh (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2009 00:33:37 -0400
-Received: from fe-sfbay-09.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n6H4XWBQ005487
-	for <linux-ext4@vger.kernel.org>; Thu, 16 Jul 2009 21:33:32 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-09.sun.com by fe-sfbay-09.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KMW00A00S8N1I00@fe-sfbay-09.sun.com> for linux-ext4@vger.kernel.org; Thu,
- 16 Jul 2009 21:33:32 -0700 (PDT)
-In-reply-to: <20090717011219.GE8508@mit.edu>
+Received: from charybdis-ext.suse.de ([195.135.221.2]:33139 "EHLO
+	emea5-mh.id5.novell.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1757791AbZGQFRQ (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Fri, 17 Jul 2009 01:17:16 -0400
+In-Reply-To: <20090717011219.GE8508@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 16, 2009  21:12 -0400, Theodore Ts'o wrote:
+On Friday 17 July 2009 03:12:19 you wrote:
 > On Thu, Jul 16, 2009 at 07:43:21PM +0200, Stephan Kulow wrote:
+> > > If it is the case that this was originally an ext3 filesystem,
+> > > e4defrag does have some definite limitations that will prevent it from
+> > > doing a great job in such a case.  I'm guessing that's what's going on
+> > > here.
+> >
 > > My problem is not so much with what e4defrag does, but the fact that
 > > a new file I create with cp(1) contains 34 extents.
-> 
+>
+Hi,
+>
+> The reason why "cp" still created a file with 34 extents is because
+> the free space was still fragmented.  As I said, e4defrag is quite
+> primitive; it doesn't know how to defrag free space; it simply tries
+> to reduce the number of extents for each file, on a file-by-file
+> basis.
+Well, is there a tool to check the overall state of the file system? I can't 
+really believe it's 1010101010, but it's hard to say without a picture :)
+>
 > The other problem is that an ext3 filesystem that has been converted
 > to ext4 does not have the flex_bg feature.  This is a feature that,
 > when set at when the file system is formatted, creates a higher order
@@ -39,32 +46,26 @@ On Jul 16, 2009  21:12 -0400, Theodore Ts'o wrote:
 > directories like /usr/bin which typically have more than 128 megs (a
 > single block group) worth of files in it.
 
-It seems quite odd to me that mballoc didn't find enough contiguous
-free space for this relatively small file.  It might be worthwhile
-to look at (though not necessarily post) the output from the file
-/sys/fs/ext4/{dev}/mb_groups (or "dumpe2fs" has equivalent data)
-and see if there are groups with a lot of contiguous free space.
-In the mb_groups file this would be numbers in the 2^{high} column. 
+Oh, I enabled flex_bg after you asked, rebooted to get a e2fsck - and I still 
+get 34 extents for my gimp-2.6.defrag. From what I understand, this doesn't 
+help in the after fact, but then again how am I supposed to fix my file system
+if even new files are created fragmented.
 
-I don't agree that flex_bg is necessary to have good block allocation,
-since we do get about 125MB per group.  Maybe mballoc is being
-constrained to look at too few block groups in this case?  Looking at
-/sys/fs/ext4/{dev}/mb_history under the "groups" column will tell how
-many groups were scanned to find that allocation, and the "original"
-and "result" will show group/grpblock/count@logblock for recent writes.
+> In any case, I don't anything went _wrong_ per se, just that both
+> e4defrag and our block allocator are insufficiently smart to help
+> improve things for you given your current filesystem.  A backup,
+> reformat, and restore will result in a filesystem that works far
+> better.
+I believe that, but my hope for online defrag was not having to rely on this 
+80ties defrag method :)
+>
+> Out of curiosity, what sort of workload had the file system received?
+> It looks like the filesystem hadn't been created that long ago, so
+> it's bit surprising it was so fragmented.  Were you perhaps updating
+> your system (by doing a yum update or apt-get update) very frequently,
+> perhaps?
+Yes, that's what I'm doing. I'm updating about every file in this file system 
+every second day by means of rpm packages (openSUSE calls it factory, you will
+now it as rawhide).
 
-$ dd if=/dev/zero of=/myth/tmp/foo bs=1M count=1
-
-pid   inode    original             goal                  result
-4423  110359   3448/14336/256@0     1646/18944/256@0      1646/19456/256@0
-
-You might also try to create a new temp directory elsewhere on the
-filesystem, copy the file over to the temp directory, and then see
-if it is less fragmented in the new directory.
-
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
-
+Greetings, Stephan
