@@ -1,37 +1,39 @@
-From: Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH]JBD2/JBD: race condition while writing updates to
-	journal
-Date: Sat, 18 Jul 2009 21:14:21 +0200
-Message-ID: <20090718191421.GB1210@duck.suse.cz>
-References: <4A3F3B32.9090606@gmail.com> <20090715144729.GC22826@atrey.karlin.mff.cuni.cz> <20090715181343.GF22826@atrey.karlin.mff.cuni.cz> <20090717013612.GF8508@mit.edu>
+From: Stephan Kulow <coolo@suse.de>
+Subject: Re: file allocation problem
+Date: Sat, 18 Jul 2009 23:16:39 +0200
+Message-ID: <200907182316.39516.coolo@suse.de>
+References: <200907161331.17623.coolo@suse.de> <200907172002.19286.coolo@suse.de> <20090717211444.GF4231@webber.adilger.int>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: linux-ext4@vger.kernel.org, dingdinghua@nrchpc.ac.cn,
-	dingdinghua <dingdinghua85@gmail.com>
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Content-Transfer-Encoding: 7bit
+To: Andreas Dilger <adilger@sun.com>, linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from cantor2.suse.de ([195.135.220.15]:53217 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753383AbZGRTOX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sat, 18 Jul 2009 15:14:23 -0400
-Content-Disposition: inline
-In-Reply-To: <20090717013612.GF8508@mit.edu>
+Received: from charybdis-ext.suse.de ([195.135.221.2]:39891 "EHLO
+	emea5-mh.id5.novell.com" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
+	with ESMTP id S1751914AbZGRVQn (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Jul 2009 17:16:43 -0400
+In-Reply-To: <20090717211444.GF4231@webber.adilger.int>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Thu 16-07-09 21:36:12, Theodore Tso wrote:
-> On Wed, Jul 15, 2009 at 08:13:43PM +0200, Jan Kara wrote:
-> > >   Ted, I don't think this got merged...
-> >   Ah, I see, jbd2 part got merged by you, I'm not sure about the jbd
-> > part since I didn't see Andrew reply. I guess I'll create a tree for
-> > ext3/jbd changes and merge this patch (and other ext3/jbd fixes I have
-> > here) through it.
-> 
-> I did get a note from Andrew saying he had grabbed the patch.  It
-> probably hasn't been published in his mmotm tree yet.
-  Thanks for info. Yes, I can see the patch in mmotm now.
+On Friday 17 July 2009 23:14:44 Andreas Dilger wrote:
+> > Yeah, but even the file in /tmp/nd got 3 extents. my file is 1142 blocks
+> > and my mb_groups says 2**9 is the highest possible value. So I guess I
+> > will indeed try to create the file system from scratch to test the
+> > allocator for real.
+>
+> The defrag code needs to become smarter, so that it finds small files
+> in the middle of freespace and migrates those to fit into a small gap.
+> That will allow larger files to be defragged once there is large chunks
+> of free space.
 
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+Is there a way that user space can hint the allocator to fill these gaps? I 
+don't see any obvious way. Relying on the allocator not to make matters worse
+might be enough, but it doesn't sound ideal. Unless something urgent comes up
+I might actually continue experiment next week :)
+
+My resize2fs defrag worked pretty well actually, but then again I did it on an 
+offline copy and it won't work for online that way.
+
+Greetings, Stephan
