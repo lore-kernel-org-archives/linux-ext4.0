@@ -1,46 +1,39 @@
-From: Manish Katiyar <mkatiyar@gmail.com>
-Subject: [PATCH] ext4: Fix typo in ext4/Kconfig
-Date: Sat, 18 Jul 2009 17:26:39 +0530
-Message-ID: <ea11fea30907180456g35b378bdt4bfe6862d29d5b30@mail.gmail.com>
+From: Ingo Molnar <mingo-X9Un+BFzKDI@public.gmane.org>
+Subject: Re: ext4 memory leak (was Re: [PATCH] x86: _edata should include
+	all .data.* sections on X86_64)
+Date: Sat, 18 Jul 2009 13:55:56 +0200
+Message-ID: <20090718115556.GA31007@elte.hu>
+References: <84144f020907140019g511723dctb541f6333d1a082b@mail.gmail.com> <4A5C41C8.7040904@fisher-privat.net> <1247564356.28240.30.camel@pc1117.cambridge.arm.com> <1247565175.28240.37.camel@pc1117.cambridge.arm.com> <4A5C5A59.5080304@fisher-privat.net> <1247567499.28240.48.camel@pc1117.cambridge.arm.com> <4A5C5FD0.3020204@fisher-privat.net> <1247574390.28240.67.camel@pc1117.cambridge.arm.com> <20090715080336.GA4823@skywalker> <4A5D9939.3000500@fisher-privat.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Content-Transfer-Encoding: 7bit
-Cc: mkatiyar@gmail.com
-To: "Theodore Ts'o" <tytso@mit.edu>, ext4 <linux-ext4@vger.kernel.org>
-Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mail-gx0-f213.google.com ([209.85.217.213]:61132 "EHLO
-	mail-gx0-f213.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750847AbZGRL47 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sat, 18 Jul 2009 07:56:59 -0400
-Received: by gxk9 with SMTP id 9so2498506gxk.13
-        for <linux-ext4@vger.kernel.org>; Sat, 18 Jul 2009 04:56:59 -0700 (PDT)
-Sender: linux-ext4-owner@vger.kernel.org
-List-ID: <linux-ext4.vger.kernel.org>
-
-Fix typo in ext4/Kconfig
-
-Signed-off-by: Manish Katiyar <mkatiyar@gmail.com>
----
- fs/ext4/Kconfig |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/fs/ext4/Kconfig b/fs/ext4/Kconfig
-index 418b6f3..1523046 100644
---- a/fs/ext4/Kconfig
-+++ b/fs/ext4/Kconfig
-@@ -37,7 +37,7 @@ config EXT4DEV_COMPAT
-
- 	  To enable backwards compatibility so that systems that are
- 	  still expecting to mount ext4 filesystems using ext4dev,
--	  chose Y here.   This feature will go away by 2.6.31, so
-+	  choose Y here.   This feature will go away by 2.6.31, so
- 	  please arrange to get your userspace programs fixed!
-
- config EXT4_FS_XATTR
--- 
-1.6.0.4
+Content-Type: text/plain; charset=us-ascii
+Cc: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
+	Catalin Marinas <catalin.marinas-5wv7dgnIgG8@public.gmane.org>,
+	Pekka Enberg <penberg-bbCR+/B0CizivPeTLB3BmA@public.gmane.org>,
+	Kernel Testers List <kernel-testers-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	"linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
+	Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+To: Alexey Fisher <bug-track-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org>
+Return-path: <kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Content-Disposition: inline
+In-Reply-To: <4A5D9939.3000500-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org>
+Sender: kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
+List-Id: linux-ext4.vger.kernel.org
 
 
--- 
-Thanks -
-Manish
+* Alexey Fisher <bug-track-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org> wrote:
+
+> This patch work for me.
+
+nice. Any leftovers that might be false positives and need 
+annotation?
+
+We learned this with lockdep: the moment a typical x86 distro bootup 
+is 'warnings free', utility of the debugging facility increases 
+dramatically: people can standardize on 'kmemleak should never 
+produce warnings' workflows and distros can also start feeding 
+kmemleak reports into kerneloops.org or so.
+
+So the general direction kmemleak is moving into is really 
+encouraging.
+
+	Ingo
