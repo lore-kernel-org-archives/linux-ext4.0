@@ -1,39 +1,71 @@
-From: Ingo Molnar <mingo-X9Un+BFzKDI@public.gmane.org>
-Subject: Re: ext4 memory leak (was Re: [PATCH] x86: _edata should include
-	all .data.* sections on X86_64)
-Date: Sat, 18 Jul 2009 13:55:56 +0200
-Message-ID: <20090718115556.GA31007@elte.hu>
-References: <84144f020907140019g511723dctb541f6333d1a082b@mail.gmail.com> <4A5C41C8.7040904@fisher-privat.net> <1247564356.28240.30.camel@pc1117.cambridge.arm.com> <1247565175.28240.37.camel@pc1117.cambridge.arm.com> <4A5C5A59.5080304@fisher-privat.net> <1247567499.28240.48.camel@pc1117.cambridge.arm.com> <4A5C5FD0.3020204@fisher-privat.net> <1247574390.28240.67.camel@pc1117.cambridge.arm.com> <20090715080336.GA4823@skywalker> <4A5D9939.3000500@fisher-privat.net>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: The flex_bg inode allocator
+Date: Sat, 18 Jul 2009 08:36:08 -0400
+Message-ID: <20090718123608.GD12744@mit.edu>
+References: <d5ca277e0907172038x3dce5f8dx11d6ec4f7b0f3c52@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "Aneesh Kumar K.V" <aneesh.kumar-23VcF4HTsmIX0ybBhKVfKdBPR1lH4CV8@public.gmane.org>,
-	Catalin Marinas <catalin.marinas-5wv7dgnIgG8@public.gmane.org>,
-	Pekka Enberg <penberg-bbCR+/B0CizivPeTLB3BmA@public.gmane.org>,
-	Kernel Testers List <kernel-testers-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	"linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org" <linux-kernel-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>,
-	Sam Ravnborg <sam-uyr5N9Q2VtJg9hUCZPvPmw@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Alexey Fisher <bug-track-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org>
-Return-path: <kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Xiang Wang <xiangw@google.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from THUNK.ORG ([69.25.196.29]:38421 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751558AbZGRMgX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sat, 18 Jul 2009 08:36:23 -0400
 Content-Disposition: inline
-In-Reply-To: <4A5D9939.3000500-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org>
-Sender: kernel-testers-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+In-Reply-To: <d5ca277e0907172038x3dce5f8dx11d6ec4f7b0f3c52@mail.gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+On Fri, Jul 17, 2009 at 08:38:18PM -0700, Xiang Wang wrote:
+> 
+> Recently I've found out that the flex_bg inode allocator(the
+> find_group_flex function called by ext4_new_inode) is actually not in
+> use unless we specify the "oldalloc" option on mount as well as
+> setting the flex_bg size to be > 1.
+> Currently, the default option on mount is "orlov".
+> 
 
-* Alexey Fisher <bug-track-M18mAb7Tlt0yCq4wW13eYl6hYfS7NtTn@public.gmane.org> wrote:
+Actually, the "flex_bg inode allocator" is actually the older
+allocator.  The newer allocator is still flex_bg based, but it uses
+the orlov algorithms as well.  It has resulted is significant fsck
+speedups as a result.  See:
 
-> This patch work for me.
+http://thunk.org/tytso/blog/2009/02/26/fast-ext4-fsck-times-revisited/
 
-nice. Any leftovers that might be false positives and need 
-annotation?
+> 1) What's the current status of the flex_bg inode allocator? Will it
+> be set as a default soon?
 
-We learned this with lockdep: the moment a typical x86 distro bootup 
-is 'warnings free', utility of the debugging facility increases 
-dramatically: people can standardize on 'kmemleak should never 
-produce warnings' workflows and distros can also start feeding 
-kmemleak reports into kerneloops.org or so.
+It will probably be removed soon, actually...
 
-So the general direction kmemleak is moving into is really 
-encouraging.
+> 2) If not, are there any particular reasons that it is held back? Is
+> it all because of the worse performance numbers shown in the two
+> metrics
+> ("read tree total" and "read compiled tree total") in Compilebench?
 
-	Ingo
+I kept in case there were performance regressions with the orlov
+allocator.  At least in theory for some workloads, the fact that we
+are more aggressively spreading inodes from different directories into
+different flex_bg's could potentially degrade performance; the reason
+why we needed to do this, though, was to make the filesystem more
+resistant to aging.
+
+> 3) Are there any ongoing efforts and/or future plans to improve it? Or
+> is there any work in similar directions?
+
+Nothing at the moment.  I could imagine in the future wanting to play
+with algorithms that are based on the filename (i.e., separating .o
+files from .c files in build directories, etc. --- there's Usenix
+paper that talks about other ideas long these lines), but in the
+short-term, improving the block allocator, especially in the face of
+heavy filesystem free space fragmentation, is probably the much higher
+priority.  Nothing is immediately planned though.
+
+If you're interested in trying to play with things along these lines,
+I'd suggest starting with some set of benchmarks that test changes in
+the inode and block allocators, both for pristine filesystems and
+filesystems that have undergone significant aging.
+
+Regards,
+
+						- Ted
