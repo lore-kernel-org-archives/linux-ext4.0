@@ -1,56 +1,65 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: [PATCH 1/5] e4defrag: return more specific error message on ioctl
- failure
-Date: Sun, 19 Jul 2009 16:36:31 -0500
-Message-ID: <4A6391DF.3090105@redhat.com>
-References: <1248025668-25901-1-git-send-email-bergwolf@gmail.com>
+Subject: Re: [PATCH 5/5] Makefile.in: allow make install e4defrag
+Date: Sun, 19 Jul 2009 16:37:44 -0500
+Message-ID: <4A639228.9090905@redhat.com>
+References: <1248025714-25954-1-git-send-email-bergwolf@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
 Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
 To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:37290 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:36521 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751466AbZGSVga (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 19 Jul 2009 17:36:30 -0400
-In-Reply-To: <1248025668-25901-1-git-send-email-bergwolf@gmail.com>
+	id S1751419AbZGSVhn (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 19 Jul 2009 17:37:43 -0400
+In-Reply-To: <1248025714-25954-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
 Peng Tao wrote:
-> Currently e4defrag relies on the EXT4_IOC_MOVE_EXT ioctl to perform online
-> defragmentation. However, this iotcl kernel patch is not available before
-> 2.6.30-rc1. e4defrag shall fail without obvious reasons on systems running
-> older kernels. The patch adds more detailed error message addressing this
-> issue and prompts users with the minimal kernel version that is needed to
-> run e4defrag.
+> Current Makefile does not install e4defrag nor e4defrag.8.
+> Change misc/Makefile.in to make the e4defrag available for use.
 > 
 > Signed-off-by: Peng Tao <bergwolf@gmail.com>
-> ---
->  misc/e4defrag.c |    6 +++++-
->  1 files changed, 5 insertions(+), 1 deletions(-)
-> 
-> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
-> index c25514a..f1c3008 100644
-> --- a/misc/e4defrag.c
-> +++ b/misc/e4defrag.c
-> @@ -1553,7 +1553,11 @@ static int call_defrag(int fd, int donor_fd, const char *file,
->  			if (mode_flag & DETAIL) {
->  				printf("\n");
->  				PRINT_ERR_MSG_WITH_ERRNO(
-> -						"Failed to defrag");
-> +					"Failed to defrag with "
-> +					"EXT4_IOC_MOVE_EXT ioctl");
-> +				if (errno == ENOTTY)
-> +					printf("\tAt least 2.6.31-rc1 of"
-> +						" vallina kernel is required\n");
 
-Typo here, s/b "vanilla"
+Since this is all still fairly developmental at this point (I think?)
+perhaps a special "make install-e4defrag" target might be best.
+
+Otherwise packages which "make install" will start shipping e4defrag,
+and I'm not sure we want to do that quite yet.
 
 -Eric
 
->  			} else {
->  				printf("\t[ NG ]\n");
->  			}
+> ---
+>  misc/Makefile.in |    7 ++++---
+>  1 files changed, 4 insertions(+), 3 deletions(-)
+> 
+> diff --git a/misc/Makefile.in b/misc/Makefile.in
+> index 5f5dab5..4cfeb69 100644
+> --- a/misc/Makefile.in
+> +++ b/misc/Makefile.in
+> @@ -28,10 +28,11 @@ SPROGS=		mke2fs badblocks tune2fs dumpe2fs $(BLKID_PROG) logsave \
+>  USPROGS=	mklost+found filefrag $(UUIDD_PROG)
+>  SMANPAGES=	tune2fs.8 mklost+found.8 mke2fs.8 dumpe2fs.8 badblocks.8 \
+>  			e2label.8 $(FINDFS_MAN) $(BLKID_MAN) $(E2IMAGE_MAN) \
+> -			logsave.8 filefrag.8 e2undo.8 $(UUIDD_MAN) @FSCK_MAN@
+> +			logsave.8 filefrag.8 e2undo.8 $(UUIDD_MAN) @FSCK_MAN@ \
+> +			e4defrag.8
+>  FMANPAGES=	mke2fs.conf.5
+>  
+> -UPROGS=		chattr lsattr @UUID_CMT@ uuidgen
+> +UPROGS=		chattr lsattr @UUID_CMT@ uuidgen e4defrag
+>  UMANPAGES=	chattr.1 lsattr.1 @UUID_CMT@ uuidgen.1
+>  
+>  LPROGS=		@E2INITRD_PROG@
+> @@ -99,7 +100,7 @@ COMPILE_ET=$(top_builddir)/lib/et/compile_et --build-tree
+>  @PROFILE_CMT@	$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled/$*.o -c $<
+>  
+>  all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UMANPAGES) \
+> -	$(FMANPAGES) $(LPROGS) e4defrag
+> +	$(FMANPAGES) $(LPROGS)
+>  
+>  @PROFILE_CMT@all:: tune2fs.profiled blkid.profiled e2image.profiled \
+>  	e2undo.profiled mke2fs.profiled dumpe2fs.profiled fsck.profiled \
 
