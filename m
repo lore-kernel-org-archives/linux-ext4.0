@@ -1,88 +1,58 @@
-From: Scott James Remnant <scott@ubuntu.com>
-Subject: Re: [PATCH] configure: Disable libblkid by default
-Date: Sun, 19 Jul 2009 15:59:21 +0100
-Message-ID: <1248015561.4524.26.camel@quest>
-References: <E1MRWBp-0000yN-9a@zelda.netsplit.com>
-	 <20090717143637.GM8508@mit.edu> <1247842479.4524.11.camel@quest>
-	 <20090717150207.GA29705@mit.edu> <1247843694.4524.13.camel@quest>
-	 <20090719115617.GF2416@mit.edu>
+From: Peng Tao <bergwolf@gmail.com>
+Subject: [PATCH] ext4: fix build warning when EXT4FS_DEBUG is on
+Date: Mon, 20 Jul 2009 01:20:57 +0800
+Message-ID: <1248024057-21418-1-git-send-email-bergwolf@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-PX2tB/wPC+Uo9Y+CZyov"
-Cc: linux-ext4@vger.kernel.org, util-linux-ng@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu, Peng Tao <bergwolf@gmail.com>
+To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from zelda.netsplit.com ([87.194.19.211]:60387 "EHLO
-	zelda.netsplit.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754472AbZGSO7K (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Jul 2009 10:59:10 -0400
-In-Reply-To: <20090719115617.GF2416@mit.edu>
+Received: from wa-out-1112.google.com ([209.85.146.177]:59615 "EHLO
+	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755022AbZGSRVq (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Jul 2009 13:21:46 -0400
+Received: by wa-out-1112.google.com with SMTP id j5so298222wah.21
+        for <linux-ext4@vger.kernel.org>; Sun, 19 Jul 2009 10:21:45 -0700 (PDT)
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+When compiling with EXT4FS_DEBUG on, gcc will complain with following w=
+arnings:
 
---=-PX2tB/wPC+Uo9Y+CZyov
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+linux-2.6/fs/ext4/ialloc.c: In function =E2=80=98ext4_count_free_inodes=
+=E2=80=99:
+linux-2.6/fs/ext4/ialloc.c:1192: warning: format =E2=80=98%lu=E2=80=99 =
+expects type
+=E2=80=98long unsigned int=E2=80=99, but argument 2 has type =E2=80=98e=
+xt4_group_t=E2=80=99
 
-On Sun, 2009-07-19 at 07:56 -0400, Theodore Tso wrote:
+So add a type cast to suppress it.=20
 
-> > > > I've done the packaging for him, it's just waiting on him to get ba=
-ck
-> > > > home to sponsor the uploads.
-> > >=20
-> > > Are the .deb packages somewhere where I can examine them?
-> > >=20
-> > Yes, they're in Ubuntu.
->=20
-> I just took a quick look at them, and it appears that they are missing
-> the libblkid1-dbg, libuuid1-dbg, and uuid-runtime-dbg packages.
->=20
-We auto-generate debug packages for all binaries in Ubuntu, extracted
-from the compiler, e.g.:
+Signed-off-by: Peng Tao <bergwolf@gmail.com>
+---
+ fs/ext4/ialloc.c |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
 
-http://ddebs.ubuntu.com/pool/main/u/util-linux/libblkid1-dbgsym_2.16-1ubunt=
-u1_i386.ddeb
-
-Since I'm not a Debian maintainer, I don't know how such things are done
-in Debian so left this for you and/or Lamont to fill in.
-
-> Also, apparently no once noticed until now, but there's a bug in the
-> util-linux-ng's uuid.sym file.  The uuid_pack and uuid_unpack symbols
-> are missing, because someone forgot to include them in the uuid.sym
-> file.  The debian symbol generation system which I see you carefully
-> moved over detected the problem, but you apparently didn't take a
-> close enough look at its output to detect the warning messages.
->=20
-I just copied the symbols file over and applied the update your output
-said.
-
-> BTW, **why** is util-linux-ng gratuitously introducing backwards
-> incompatibility such that packages built with util-linux-ng won't work
-> with the older shared libraries?   There's no reason to do this.
->=20
-> There is a hint in the (obsolete) comments in uuid.sym that suggests a
-> reason why, but it's not justified for libuuid:
->=20
-You'd have to ask Karel about that one.
-
-However I think now it's happened, we shouldn't back it out again.
-
-Scott
+diff --git a/fs/ext4/ialloc.c b/fs/ext4/ialloc.c
+index 2f64573..cd77f03 100644
+--- a/fs/ext4/ialloc.c
++++ b/fs/ext4/ialloc.c
+@@ -1189,7 +1189,7 @@ unsigned long ext4_count_free_inodes(struct super=
+_block *sb)
+=20
+ 		x =3D ext4_count_free(bitmap_bh, EXT4_INODES_PER_GROUP(sb) / 8);
+ 		printk(KERN_DEBUG "group %lu: stored =3D %d, counted =3D %lu\n",
+-			i, ext4_free_inodes_count(sb, gdp), x);
++			(unsigned long)i, ext4_free_inodes_count(sb, gdp), x);
+ 		bitmap_count +=3D x;
+ 	}
+ 	brelse(bitmap_bh);
 --=20
-Scott James Remnant
-scott@ubuntu.com
+1.6.2-rc2.GIT
 
---=-PX2tB/wPC+Uo9Y+CZyov
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkpjNMkACgkQSnQiFMl4yK7s8ACdFF52n1ywP+phDbjKzLxO3cZa
-qS0AnAzJj88S2RCcgrUDUtaCHTh46HlE
-=Przv
------END PGP SIGNATURE-----
-
---=-PX2tB/wPC+Uo9Y+CZyov--
-
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
