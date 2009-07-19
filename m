@@ -1,56 +1,92 @@
 From: Peng Tao <bergwolf@gmail.com>
-Subject: Re: [PATCH 1/5] e4defrag: return more specific error message on ioctl
-	failure
-Date: Mon, 20 Jul 2009 02:00:57 +0800
-Message-ID: <6149e97b0907191100y6c7172cdl99b690678b8b7ba8@mail.gmail.com>
-References: <1248025668-25901-1-git-send-email-bergwolf@gmail.com>
+Subject: Re: [PATCH 5/5] Makefile.in: allow make install e4defrag
+Date: Mon, 20 Jul 2009 02:02:14 +0800
+Message-ID: <6149e97b0907191102j4c555715gc15fbbb51458814d@mail.gmail.com>
+References: <1248025714-25954-1-git-send-email-bergwolf@gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: base64
+Content-Transfer-Encoding: QUOTED-PRINTABLE
+Cc: tytso@mit.edu
 To: linux-ext4@vger.kernel.org
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from wa-out-1112.google.com ([209.85.146.183]:60206 "EHLO
-	wa-out-1112.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754535AbZGSSA6 (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Jul 2009 14:00:58 -0400
-Received: by wa-out-1112.google.com with SMTP id j5so300079wah.21
-        for <linux-ext4@vger.kernel.org>; Sun, 19 Jul 2009 11:00:57 -0700 (PDT)
-In-Reply-To: <1248025668-25901-1-git-send-email-bergwolf@gmail.com>
+Received: from mail-px0-f193.google.com ([209.85.216.193]:63516 "EHLO
+	mail-px0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754597AbZGSSCP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-ext4@vger.kernel.org>); Sun, 19 Jul 2009 14:02:15 -0400
+Received: by pxi31 with SMTP id 31so57805pxi.33
+        for <linux-ext4@vger.kernel.org>; Sun, 19 Jul 2009 11:02:14 -0700 (PDT)
+In-Reply-To: <1248025714-25954-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-b29wcywgcGxlYXNlIGlnbm9yZSB0aGUgW3BhdGNoIDEvNV0gc2VyaWVzIG51bWJlci4gSXQgd2Fz
-IG1pc3MgdHlwZWQuCgpPbiBNb24sIEp1bCAyMCwgMjAwOSBhdCAxOjQ3IEFNLCBQZW5nIFRhbzxi
-ZXJnd29sZkBnbWFpbC5jb20+IHdyb3RlOgo+IEN1cnJlbnRseSBlNGRlZnJhZyByZWxpZXMgb24g
-dGhlIEVYVDRfSU9DX01PVkVfRVhUIGlvY3RsIHRvIHBlcmZvcm0gb25saW5lCj4gZGVmcmFnbWVu
-dGF0aW9uLiBIb3dldmVyLCB0aGlzIGlvdGNsIGtlcm5lbCBwYXRjaCBpcyBub3QgYXZhaWxhYmxl
-IGJlZm9yZQo+IDIuNi4zMC1yYzEuIGU0ZGVmcmFnIHNoYWxsIGZhaWwgd2l0aG91dCBvYnZpb3Vz
-IHJlYXNvbnMgb24gc3lzdGVtcyBydW5uaW5nCj4gb2xkZXIga2VybmVscy4gVGhlIHBhdGNoIGFk
-ZHMgbW9yZSBkZXRhaWxlZCBlcnJvciBtZXNzYWdlIGFkZHJlc3NpbmcgdGhpcwo+IGlzc3VlIGFu
-ZCBwcm9tcHRzIHVzZXJzIHdpdGggdGhlIG1pbmltYWwga2VybmVsIHZlcnNpb24gdGhhdCBpcyBu
-ZWVkZWQgdG8KPiBydW4gZTRkZWZyYWcuCj4KPiBTaWduZWQtb2ZmLWJ5OiBQZW5nIFRhbyA8YmVy
-Z3dvbGZAZ21haWwuY29tPgo+IC0tLQo+IMKgbWlzYy9lNGRlZnJhZy5jIHwgwqAgwqA2ICsrKysr
-LQo+IMKgMSBmaWxlcyBjaGFuZ2VkLCA1IGluc2VydGlvbnMoKyksIDEgZGVsZXRpb25zKC0pCj4K
-PiBkaWZmIC0tZ2l0IGEvbWlzYy9lNGRlZnJhZy5jIGIvbWlzYy9lNGRlZnJhZy5jCj4gaW5kZXgg
-YzI1NTE0YS4uZjFjMzAwOCAxMDA2NDQKPiAtLS0gYS9taXNjL2U0ZGVmcmFnLmMKPiArKysgYi9t
-aXNjL2U0ZGVmcmFnLmMKPiBAQCAtMTU1Myw3ICsxNTUzLDExIEBAIHN0YXRpYyBpbnQgY2FsbF9k
-ZWZyYWcoaW50IGZkLCBpbnQgZG9ub3JfZmQsIGNvbnN0IGNoYXIgKmZpbGUsCj4gwqAgwqAgwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBpZiAobW9kZV9mbGFnICYgREVUQUlMKSB7Cj4gwqAg
-wqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBwcmludGYoIlxuIik7
-Cj4gwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqBQUklOVF9F
-UlJfTVNHX1dJVEhfRVJSTk8oCj4gLSDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCAiRmFpbGVkIHRvIGRlZnJhZyIpOwo+
-ICsgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAgwqAg
-wqAgIkZhaWxlZCB0byBkZWZyYWcgd2l0aCAiCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCAiRVhUNF9JT0NfTU9WRV9FWFQgaW9jdGwi
-KTsKPiArIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIGlmIChl
-cnJubyA9PSBFTk9UVFkpCj4gKyDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCBwcmludGYoIlx0QXQgbGVhc3QgMi42LjMxLXJjMSBvZiIKPiAr
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKg
-IMKgIMKgIMKgIMKgICIgdmFsbGluYSBrZXJuZWwgaXMgcmVxdWlyZWRcbiIpOwo+IMKgIMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgfSBlbHNlIHsKPiDCoCDCoCDCoCDCoCDCoCDCoCDC
-oCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoCDCoHByaW50ZigiXHRbIE5HIF1cbiIpOwo+IMKgIMKg
-IMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgIMKgfQo+IC0tCj4gMS42LjIuR0lUCj4KPgoKCgot
-LSAKQ2hlZXJzLApQZW5nIFRhbwpTdGF0ZSBLZXkgTGFib3JhdG9yeSBvZiBOZXR3b3JraW5nIGFu
-ZCBTd2l0Y2hpbmcgVGVjaG5vbG9neQpCZWlqaW5nIFVuaXYuIG9mIFBvc3RzIGFuZCBUZWxlY29t
-cy4K
+Sorry, please ignore the patch series number. It was miss-typed.
+
+On Mon, Jul 20, 2009 at 1:48 AM, Peng Tao<bergwolf@gmail.com> wrote:
+> Current Makefile does not install e4defrag nor e4defrag.8.
+> Change misc/Makefile.in to make the e4defrag available for use.
+>
+> Signed-off-by: Peng Tao <bergwolf@gmail.com>
+> ---
+> =C2=A0misc/Makefile.in | =C2=A0 =C2=A07 ++++---
+> =C2=A01 files changed, 4 insertions(+), 3 deletions(-)
+>
+> diff --git a/misc/Makefile.in b/misc/Makefile.in
+> index 5f5dab5..4cfeb69 100644
+> --- a/misc/Makefile.in
+> +++ b/misc/Makefile.in
+> @@ -28,10 +28,11 @@ SPROGS=3D =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ mke2fs badblocks tune2fs dumpe2fs $(BLKID_PROG) logsave \
+> =C2=A0USPROGS=3D =C2=A0 =C2=A0 =C2=A0 mklost+found filefrag $(UUIDD_P=
+ROG)
+> =C2=A0SMANPAGES=3D =C2=A0 =C2=A0 tune2fs.8 mklost+found.8 mke2fs.8 du=
+mpe2fs.8 badblocks.8 \
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 =C2=A0e2label.8 $(FINDFS_MAN) $(BLKID_MAN) $(E2IMAGE_MAN) \
+> - =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 logsave.8 filefrag.8 e2undo.8 $(UUIDD_MAN) @FSCK_MAN@
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 logsave.8 filefrag.8 e2undo.8 $(UUIDD_MAN) @FSCK_MAN@ \
+> + =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+ =C2=A0 e4defrag.8
+> =C2=A0FMANPAGES=3D =C2=A0 =C2=A0 mke2fs.conf.5
+>
+> -UPROGS=3D =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0cha=
+ttr lsattr @UUID_CMT@ uuidgen
+> +UPROGS=3D =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0cha=
+ttr lsattr @UUID_CMT@ uuidgen e4defrag
+> =C2=A0UMANPAGES=3D =C2=A0 =C2=A0 chattr.1 lsattr.1 @UUID_CMT@ uuidgen=
+=2E1
+>
+> =C2=A0LPROGS=3D =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0 =C2=A0=
+@E2INITRD_PROG@
+> @@ -99,7 +100,7 @@ COMPILE_ET=3D$(top_builddir)/lib/et/compile_et --b=
+uild-tree
+> =C2=A0@PROFILE_CMT@ =C2=A0$(Q) $(CC) $(ALL_CFLAGS) -g -pg -o profiled=
+/$*.o -c $<
+>
+> =C2=A0all:: profiled $(SPROGS) $(UPROGS) $(USPROGS) $(SMANPAGES) $(UM=
+ANPAGES) \
+> - =C2=A0 =C2=A0 =C2=A0 $(FMANPAGES) $(LPROGS) e4defrag
+> + =C2=A0 =C2=A0 =C2=A0 $(FMANPAGES) $(LPROGS)
+>
+> =C2=A0@PROFILE_CMT@all:: tune2fs.profiled blkid.profiled e2image.prof=
+iled \
+> =C2=A0 =C2=A0 =C2=A0 =C2=A0e2undo.profiled mke2fs.profiled dumpe2fs.p=
+rofiled fsck.profiled \
+> --
+> 1.6.2.GIT
+>
+>
+
+
+
+--=20
+Cheers,
+Peng Tao
+State Key Laboratory of Networking and Switching Technology
+Beijing Univ. of Posts and Telecoms.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-ext4" i=
+n
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
