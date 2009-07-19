@@ -1,77 +1,56 @@
-From: Karel Zak <kzak@redhat.com>
-Subject: Re: [PATCH] configure: Disable libblkid by default
-Date: Sun, 19 Jul 2009 23:27:14 +0200
-Message-ID: <20090719212714.GA6886@nb.net.home>
-References: <E1MRWBp-0000yN-9a@zelda.netsplit.com> <20090717143637.GM8508@mit.edu> <1247842479.4524.11.camel@quest> <20090717150207.GA29705@mit.edu> <1247843694.4524.13.camel@quest> <20090719115617.GF2416@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 1/5] e4defrag: return more specific error message on ioctl
+ failure
+Date: Sun, 19 Jul 2009 16:36:31 -0500
+Message-ID: <4A6391DF.3090105@redhat.com>
+References: <1248025668-25901-1-git-send-email-bergwolf@gmail.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-Cc: Scott James Remnant <scott@ubuntu.com>, linux-ext4@vger.kernel.org,
-	util-linux-ng@vger.kernel.org
-To: Theodore Tso <tytso@mit.edu>
+Content-Type: text/plain; charset=ISO-8859-1
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Peng Tao <bergwolf@gmail.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:44770 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:37290 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751419AbZGSV1V (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Sun, 19 Jul 2009 17:27:21 -0400
-Content-Disposition: inline
-In-Reply-To: <20090719115617.GF2416@mit.edu>
+	id S1751466AbZGSVga (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Sun, 19 Jul 2009 17:36:30 -0400
+In-Reply-To: <1248025668-25901-1-git-send-email-bergwolf@gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
+Peng Tao wrote:
+> Currently e4defrag relies on the EXT4_IOC_MOVE_EXT ioctl to perform online
+> defragmentation. However, this iotcl kernel patch is not available before
+> 2.6.30-rc1. e4defrag shall fail without obvious reasons on systems running
+> older kernels. The patch adds more detailed error message addressing this
+> issue and prompts users with the minimal kernel version that is needed to
+> run e4defrag.
+> 
+> Signed-off-by: Peng Tao <bergwolf@gmail.com>
+> ---
+>  misc/e4defrag.c |    6 +++++-
+>  1 files changed, 5 insertions(+), 1 deletions(-)
+> 
+> diff --git a/misc/e4defrag.c b/misc/e4defrag.c
+> index c25514a..f1c3008 100644
+> --- a/misc/e4defrag.c
+> +++ b/misc/e4defrag.c
+> @@ -1553,7 +1553,11 @@ static int call_defrag(int fd, int donor_fd, const char *file,
+>  			if (mode_flag & DETAIL) {
+>  				printf("\n");
+>  				PRINT_ERR_MSG_WITH_ERRNO(
+> -						"Failed to defrag");
+> +					"Failed to defrag with "
+> +					"EXT4_IOC_MOVE_EXT ioctl");
+> +				if (errno == ENOTTY)
+> +					printf("\tAt least 2.6.31-rc1 of"
+> +						" vallina kernel is required\n");
 
- Hi Ted,
+Typo here, s/b "vanilla"
 
-On Sun, Jul 19, 2009 at 07:56:17AM -0400, Theodore Tso wrote:
-> Also, apparently no once noticed until now, but there's a bug in the
-> util-linux-ng's uuid.sym file.  The uuid_pack and uuid_unpack symbols
-> are missing, because someone forgot to include them in the uuid.sym
-> file.
+-Eric
 
- is it really bug? Why do you want to export symbols that are not part
- of the library API? 
- 
- I don't see uuid_pack and uuid_unpack in uuid.h. I guess nobody use
- these symbols ;-)
+>  			} else {
+>  				printf("\t[ NG ]\n");
+>  			}
 
-> BTW, **why** is util-linux-ng gratuitously introducing backwards
-> incompatibility such that packages built with util-linux-ng won't work
-> with the older shared libraries?   There's no reason to do this.
-
- Good point. I agree that (at first glance) there's no reason for this
- change. But...
-
-     "If possible, projects implementing generally usable DSOs
-     should use symbol versioning from day one."
-              -- How To Write Shared Libraries, Ulrich Drepper
-
- I agree with Ulrich, symbol versioning is really really good thing.
-
- Unfortunately, it's not possible to combine versioned symbols with
- anonymous (without version) symbols. It means after first change to
- the library ABI we will need to introduce UUID_1.0 for old symbols.
-
- The move from e2fsprogs to util-linux-ng is excellent opportunity 
- to introduce ABI versioning to libuuid. I don't think this change has
- negative impact to our distributions in practice.
-
- How often people need to mix old libuuid (from e2fsprogs) with
- applications compiled against new libuuid (from util-linux-ng)? I
- guess almost never...
-
-> Argh, util-linux-ng 2.16 has already been released; is it too late to
-> undo this change?
-
- I think yes, it's too late.
-
- A new version (2.16.1) without UUID_1.0 will require mass rebuild in
- all distributions/systems where are libuuid applications with ABI
- versioning. IMHO this is much more painful that impossibility to
- downgrade to the old libuuid (from e2fsprogs).
-
- Maybe we can add --disable-{libuuid,libblkid}-versioning for people
- who need to bypass the default behaviour.
-
-    Karel
-
--- 
- Karel Zak  <kzak@redhat.com>
