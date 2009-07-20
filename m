@@ -1,64 +1,80 @@
-From: Scott James Remnant <scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org>
-Subject: Re: [PATCH] configure: Disable libblkid by default
-Date: Mon, 20 Jul 2009 15:37:02 +0100
-Message-ID: <1248100622.4524.41.camel@quest>
-References: <E1MRWBp-0000yN-9a@zelda.netsplit.com>
-	 <20090717143637.GM8508@mit.edu> <1247842479.4524.11.camel@quest>
-	 <20090717150207.GA29705@mit.edu> <1247843694.4524.13.camel@quest>
-	 <20090719115617.GF2416@mit.edu> <20090719212714.GA6886@nb.net.home>
-	 <20090720142337.GH2416@mit.edu>
+From: Eric Sandeen <sandeen@redhat.com>
+Subject: Re: [PATCH 5/5] Makefile.in: allow make install e4defrag
+Date: Mon, 20 Jul 2009 09:52:50 -0500
+Message-ID: <4A6484C2.9090802@redhat.com>
+References: <1248025714-25954-1-git-send-email-bergwolf@gmail.com> <4A639228.9090905@redhat.com> <4A63F0B1.7090002@gmail.com>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature"; boundary="=-7nsyXBtgh5r0evu8u070"
-Cc: Karel Zak <kzak-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>, linux-ext4-u79uwXL29TY76Z2rM5mHXA@public.gmane.org,
-	util-linux-ng-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-To: Theodore Tso <tytso-3s7WtUTddSA@public.gmane.org>
-Return-path: <util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org>
-In-Reply-To: <20090720142337.GH2416-3s7WtUTddSA@public.gmane.org>
-Sender: util-linux-ng-owner-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-List-Id: linux-ext4.vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Cc: linux-ext4@vger.kernel.org, tytso@mit.edu
+To: Peng Tao <bergwolf@gmail.com>
+Return-path: <linux-ext4-owner@vger.kernel.org>
+Received: from mx2.redhat.com ([66.187.237.31]:41814 "EHLO mx2.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751439AbZGTOw4 (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Jul 2009 10:52:56 -0400
+In-Reply-To: <4A63F0B1.7090002@gmail.com>
+Sender: linux-ext4-owner@vger.kernel.org
+List-ID: <linux-ext4.vger.kernel.org>
 
+Peng Tao wrote:
 
---=-7nsyXBtgh5r0evu8u070
-Content-Type: text/plain
-Content-Transfer-Encoding: quoted-printable
+> From 248322ee72e371dcd1b302400d787f9f2eec15cd Mon Sep 17 00:00:00 2001
+> From: Peng Tao <bergwolf@gmail.com>
+> Date: Mon, 20 Jul 2009 12:01:55 +0800
+> Subject: [PATCH-e2fsprogs] Makefile.in: add install-e4defrag target
+> 
+> The e4defrag program is still developmental, but we can make it available
+> for use if someone wants to test it.
+> 
+> Signed-off-by: Peng Tao <bergwolf@gmail.com>
 
-On Mon, 2009-07-20 at 10:23 -0400, Theodore Tso wrote:
+I like this better, thanks!  I'll ask on the ext4 call today if others
+concur.
 
-> On Sun, Jul 19, 2009 at 11:27:14PM +0200, Karel Zak wrote:
-> >  Maybe we can add --disable-{libuuid,libblkid}-versioning for people
-> >  who need to bypass the default behaviour.
->=20
-> There are some commercial programs that might use libuuid --- minor
-> ones, like SAP R/3.  So they might want to create programs that work
-> on both RHEL 5 and RHEL 6.  The only way I can think of doing this is
-> to build the link libraries without the map file, and the shared
-> library with the map file.
->=20
-Actually, it's far easier than that - just build on RHEL 5
+-Eric
 
-You have to do that to be safe against symbol changes in other libraries
-(like libc) anyway.
+> ---
+>  Makefile.in      |    3 +++
+>  misc/Makefile.in |    6 +++++-
+>  2 files changed, 8 insertions(+), 1 deletions(-)
+> 
+> diff --git a/Makefile.in b/Makefile.in
+> index 45f2972..1c2b44e 100644
+> --- a/Makefile.in
+> +++ b/Makefile.in
+> @@ -57,6 +57,9 @@ clean-doc:
+>  distclean-doc:
+>  	-test -d doc && cd doc && $(MAKE) distclean
+>  
+> +install-e4defrag: subs all-libs-recursive
+> +	$(MAKE) -C misc install-e4defrag
+> +
+>  install: subs all-libs-recursive install-progs-recursive \
+>    install-shlibs-libs-recursive install-doc-libs
+>  	if test ! -d e2fsck && test ! -d debugfs && test ! -d misc && test ! -d ext2ed ; then $(MAKE) install-libs ; fi
+> diff --git a/misc/Makefile.in b/misc/Makefile.in
+> index 5f5dab5..029a201 100644
+> --- a/misc/Makefile.in
+> +++ b/misc/Makefile.in
+> @@ -399,6 +399,10 @@ installdirs:
+>  		$(DESTDIR)$(man1dir) $(DESTDIR)$(man5dir) \
+>  		$(DESTDIR)$(libdir) $(DESTDIR)/$(root_sysconfdir)
+>  
+> +install-e4defrag: e4defrag e4defrag.8 installdirs
+> +	$(INSTALL_PROGRAM) e4defrag $(DESTDIR)$(bindir)/e4defrag
+> +	$(INSTALL_DATA) e4defrag.8 $(DESTDIR)$(man8dir)/e4defrag.8
+> +
+>  install: all $(SMANPAGES) $(UMANPAGES) installdirs
+>  	$(Q) for i in $(SPROGS); do \
+>  		echo "	INSTALL $(root_sbindir)/$$i"; \
+> @@ -556,7 +560,7 @@ clean:
+>  		blkid.profiled tune2fs.profiled e2image.profiled \
+>  		e2undo.profiled mke2fs.profiled dumpe2fs.profiled \
+>  		logsave.profiled filefrag.profiled uuidgen.profiled \
+> -		uuidd.profiled e2image.profiled \
+> +		uuidd.profiled e2image.profiled e4defrag \
+>  		profiled/*.o \#* *.s *.o *.a *~ core gmon.out
+>  
+>  mostlyclean: clean
 
-Scott
---=20
-Scott James Remnant
-scott-GeWIH/nMZzLQT0dZR+AlfA@public.gmane.org
-
---=-7nsyXBtgh5r0evu8u070
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.9 (GNU/Linux)
-
-iEYEABECAAYFAkpkgQ4ACgkQSnQiFMl4yK4R7wCZAchtPau3N4QBeKYhMRwgG6VB
-97kAoJxYOH1FXya8VW6OZrIpCeX8pmF2
-=zVnv
------END PGP SIGNATURE-----
-
---=-7nsyXBtgh5r0evu8u070--
-
---
-To unsubscribe from this list: send the line "unsubscribe util-linux-ng" in
-the body of a message to majordomo-u79uwXL29TY76Z2rM5mHXA@public.gmane.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
