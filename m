@@ -1,53 +1,52 @@
 From: Eric Sandeen <sandeen@redhat.com>
-Subject: Re: filefrag abort
-Date: Mon, 20 Jul 2009 17:16:12 -0500
-Message-ID: <4A64ECAC.2000900@redhat.com>
-References: <4A64E650.6020603@cox.net>
+Subject: Re: Question on fallocate/ftruncate sequence
+Date: Mon, 20 Jul 2009 17:45:17 -0500
+Message-ID: <4A64F37D.7020803@redhat.com>
+References: <6601abe90907200936w61ebda92reae368a2b9efac66@mail.gmail.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=ISO-8859-1
 Content-Transfer-Encoding: 7bit
-Cc: linux-ext4@vger.kernel.org
-To: Ron Johnson <ron.l.johnson@cox.net>
+Cc: ext4 development <linux-ext4@vger.kernel.org>
+To: Curt Wohlgemuth <curtw@google.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from mx2.redhat.com ([66.187.237.31]:34887 "EHLO mx2.redhat.com"
+Received: from mx2.redhat.com ([66.187.237.31]:49239 "EHLO mx2.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753525AbZGTWQP (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
-	Mon, 20 Jul 2009 18:16:15 -0400
-In-Reply-To: <4A64E650.6020603@cox.net>
+	id S1753803AbZGTWpX (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Jul 2009 18:45:23 -0400
+In-Reply-To: <6601abe90907200936w61ebda92reae368a2b9efac66@mail.gmail.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ron Johnson wrote:
-> Hi,
+Curt Wohlgemuth wrote:
+> We've recently seen some interesting behavior with ftruncate()
+> following a fallocate() call on ext4, and would like to know if this
+> is intended or not.
 > 
-> (Is this OT?  http://sourceforge.net/forum/forum.php?forum_id=7052 
-> doesn't show much activity...)
+> The sequence used from user space:
 > 
-> Debian Sid, e2fsprogs 1.41.8-1
-> Home-rolled 64-bit 2.6.30 with 32-bit userland
+> fd = open()
+> fallocate(fd, FALLOC_FL_KEEP_SIZE, 8MB)
+> write(fd, buf, 64KB)
+> ftruncate(fd, 64KB)
+> close(fd)
 > 
-> Is this ioctl32() error caused by a "disconnect" between kernel and 
-> userland?
+> Since inode_setattr() only does something if the input size is not the
+> same as inode->i_size, the ftruncate() call above does nothing; no
+> blocks from the fallocate() are freed up.
 > 
-> Thanks
+> Yes, removing the KEEP_SIZE flag gets the behavior I'm expecting, but
+> KEEP_SIZE is quite convenient in recovering from errors.
 > 
-> $ df -T /
-> Filesystem    Type   1K-blocks      Used Available Use% Mounted on
-> /dev/sdb2     ext3    34606072   8585632  24262528  27% /
+> I would have thought that ftruncate() would alter i_disksize even if
+> this value is different from i_size.
 > 
-> # filefrag -v /bin/cp
-> Filesystem type is: ef53
-> Filesystem cylinder groups is approximately 265
-> File size of /bin/cp is 92476 (23 blocks, blocksize 4096)
->   ext logical physical expected length flags
-> Calling get_bmap for block 0
-> Aborted
+> Any comments?  I looked at other Linux file systems, and none that I
+> saw that support fallocate() have this issue.
 > 
-> [92747.137445] ioctl32(filefrag:17217): Unknown cmd fd(3) 
-> cmd(c020660b){t:'f';sz:32} arg(ffca4c38) on /bin/cp
+> Thanks,
+> Curt
 
-It's a bug, I sent a patch...
-
-http://marc.info/?l=linux-ext4&m=124768937928420&w=2
+Yep, I think you've found a bug, I will look into this soon unless
+someone beats me to it :)
 
 -Eric
