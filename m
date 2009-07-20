@@ -1,55 +1,72 @@
-From: Andreas Dilger <adilger@sun.com>
-Subject: Re: file allocation problem
-Date: Mon, 20 Jul 2009 15:18:31 -0600
-Message-ID: <20090720211831.GV4231@webber.adilger.int>
-References: <200907161331.17623.coolo@suse.de>
- <200907170717.12225.coolo@suse.de> <20090717142628.GL8508@mit.edu>
- <200907172002.19286.coolo@suse.de> <20090717211444.GF4231@webber.adilger.int>
- <4A63A1F1.9040703@cox.net>
+From: Theodore Tso <tytso@mit.edu>
+Subject: Re: ext3 default journal mode
+Date: Mon, 20 Jul 2009 17:29:04 -0400
+Message-ID: <20090720212904.GI2416@mit.edu>
+References: <4A63DB89.2060306@redhat.com>
 Mime-Version: 1.0
-Content-Type: text/plain; CHARSET=US-ASCII
-Content-Transfer-Encoding: 7BIT
-Cc: linux-ext4@vger.kernel.org
-To: Ron Johnson <ron.l.johnson@cox.net>
+Content-Type: text/plain; charset=us-ascii
+Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	Valerie Aurora <vaurora@redhat.com>,
+	"Stephen C. Tweedie" <sct@redhat.com>,
+	Eric Sandeen <esandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Josef Bacik <jbacik@redhat.com>, Mingming Cao <cmm@us.ibm.com>
+To: Ric Wheeler <rwheeler@redhat.com>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from sca-es-mail-1.Sun.COM ([192.18.43.132]:54250 "EHLO
-	sca-es-mail-1.sun.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753107AbZGTVTA (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jul 2009 17:19:00 -0400
-Received: from fe-sfbay-10.sun.com ([192.18.43.129])
-	by sca-es-mail-1.sun.com (8.13.7+Sun/8.12.9) with ESMTP id n6KLIvZT000506
-	for <linux-ext4@vger.kernel.org>; Mon, 20 Jul 2009 14:18:58 -0700 (PDT)
-Content-disposition: inline
-Received: from conversion-daemon.fe-sfbay-10.sun.com by fe-sfbay-10.sun.com
- (Sun Java(tm) System Messaging Server 7u2-7.02 64bit (built Apr 16 2009))
- id <0KN300A00MDLP500@fe-sfbay-10.sun.com> for linux-ext4@vger.kernel.org; Mon,
- 20 Jul 2009 14:18:57 -0700 (PDT)
-In-reply-to: <4A63A1F1.9040703@cox.net>
+Received: from thunk.org ([69.25.196.29]:60221 "EHLO thunker.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754162AbZGTV3T (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Jul 2009 17:29:19 -0400
+Content-Disposition: inline
+In-Reply-To: <4A63DB89.2060306@redhat.com>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-On Jul 19, 2009  17:45 -0500, Ron Johnson wrote:
-> On 2009-07-17 16:14, Andreas Dilger wrote:
->> Well, this isn't quite correct.  The mballoc code only tries to allocate
->> "large" files on power-of-two boundaries, where large is 64kB by default,
->> but is tunable in /proc.  For smaller files it tries to pack them together
->> into the same block, or into gaps that are exactly the size of the file.
->
-> How does ext4 act on growing files?  I.e., creating a tarball that,  
-> obviously, starts at 0 bytes and then grows to multi-GB?
+Here's a revised proposal for the KCONFIG text.  
 
-ext4 has "delayed allocation" (delalloc) so that no blocks are allocated
-during initial file writes, but rather only when RAM is running short or
-when the data has been sitting around for a while.
+Hopefully this is balanced about the two sides of the issue, without
+explicitly advocating for one choice versus another.
 
-Normally, if you are writing to a file with _most_ applications the IO
-rate is high enough that within the 5-30s memory flush interval the
-size of the file has grown large enough to give the allocator an idea
-whether the file will be small or large.
+What do people think?
 
-Cheers, Andreas
---
-Andreas Dilger
-Sr. Staff Engineer, Lustre Group
-Sun Microsystems of Canada, Inc.
+						- Ted
+
+P.S.  Note that date=writeback does not make the filesystem more
+"prone to corruption after crashes".
+
+
+config EXT3_DEFAULTS_TO_ORDERED
+	bool "Default to 'data=ordered' in ext3"
+	depends on EXT3_FS
+	help
+	  If a filesystem does not explicitly specify a data ordering
+	  mode, and the journal capability allowed it, ext3 used to
+	  historically default to 'data=ordered'.
+
+          Data=ordered mode is the mode used by most distributions, but can
+          introduce latency problems in some workloads, especially if there 
+	  is a combination of high bandwidth background writes and foreground
+	  processes calling fsync() and waiting for the result.   In worst
+	  case scenarios, the fsync() call can 500ms to multiple seconds 
+	  to return.
+
+	  The problem with using a default of data=writeback, however,
+	  is that is that after a system crash or a power failure,
+	  files that were written right before the system went down
+	  could contain previously written data or other garbage.
+	  With data=ordered mode, any blocks in the file will have
+	  been data written by the application, avoiding a possibility
+	  of a security breach, which is especially problematic on a
+	  multi-user system.  Note, however, that data=ordered does
+	  not guarantee that the file will be consistent at an
+	  application level; the application must use fsync() at
+	  appropriate commit points in order to guarantee
+	  application-level consistency.
+
+          If you have been historically happy with ext3's performance,
+  	  data=ordered mode will be a safe choice and you should
+  	  answer "y" here.  If you understand the reliability and data
+  	  privacy issues of data=writeback and are willing to make
+  	  that trade off, answer "n".
 
