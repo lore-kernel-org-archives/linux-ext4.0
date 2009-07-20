@@ -1,37 +1,64 @@
-From: Andi Kleen <andi@firstfloor.org>
+From: Valerie Aurora <vaurora@redhat.com>
 Subject: Re: ext3 default journal mode
-Date: Tue, 21 Jul 2009 00:58:48 +0200
-Message-ID: <87iqhn2c7r.fsf@basil.nowhere.org>
-References: <4A63DB89.2060306@redhat.com>
+Date: Mon, 20 Jul 2009 19:04:03 -0400
+Message-ID: <20090720230402.GB26687@shell>
+References: <4A63DB89.2060306@redhat.com> <20090720212904.GI2416@mit.edu>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Cc: "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
-	Theodore Tso <tytso@mit.edu>,
-	Valerie Aurora <vaurora@redhat.com>,
-	"Stephen C. Tweedie" <sct@redhat.com>
-To: Ric Wheeler <rwheeler@redhat.com>
+Cc: Ric Wheeler <rwheeler@redhat.com>,
+	"linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+	"Stephen C. Tweedie" <sct@redhat.com>,
+	Eric Sandeen <esandeen@redhat.com>,
+	Andreas Dilger <adilger@sun.com>,
+	Chris Mason <chris.mason@oracle.com>,
+	Josef Bacik <jbacik@redhat.com>, Mingming Cao <cmm@us.ibm.com>
+To: Theodore Tso <tytso@mit.edu>
 Return-path: <linux-ext4-owner@vger.kernel.org>
-Received: from one.firstfloor.org ([213.235.205.2]:46406 "EHLO
-	one.firstfloor.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753803AbZGTW6v (ORCPT
-	<rfc822;linux-ext4@vger.kernel.org>); Mon, 20 Jul 2009 18:58:51 -0400
-In-Reply-To: <4A63DB89.2060306@redhat.com> (Ric Wheeler's message of "Sun, 19 Jul 2009 22:50:49 -0400")
+Received: from mx1.redhat.com ([66.187.233.31]:40237 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752418AbZGTXGL (ORCPT <rfc822;linux-ext4@vger.kernel.org>);
+	Mon, 20 Jul 2009 19:06:11 -0400
+Content-Disposition: inline
+In-Reply-To: <20090720212904.GI2416@mit.edu>
 Sender: linux-ext4-owner@vger.kernel.org
 List-ID: <linux-ext4.vger.kernel.org>
 
-Ric Wheeler <rwheeler@redhat.com> writes:
->
-> As I mentioned in an earlier email, I think *every* distribution undid
-> this default back to ordered mode.
+On Mon, Jul 20, 2009 at 05:29:04PM -0400, Theodore Tso wrote:
+> Here's a revised proposal for the KCONFIG text.  
+> 
+> Hopefully this is balanced about the two sides of the issue, without
+> explicitly advocating for one choice versus another.
+> 
+> What do people think?
 
-I would agree too that the default should be changed again. 
+I think it's extremely accurate and detailed, but too long - people's
+brains turn off after about the 15th line or so.  Here's an attempt to
+distill your description down and refer out to another document (which
+one?) for people who want to learn more.
 
-Shortly after the default was changed to writeback
-I had a (unrelated crash) and afterwards had to fix up several
-files in the file system manually that contained junk. Never
-has happened before with ordered.
+(Sorry for the whitespace damage.)
 
--Andi
+-VAL
 
--- 
-ak@linux.intel.com -- Speaking for myself only.
+ config EXT3_DEFAULTS_TO_ORDERED
+ 	bool "Default to 'data=ordered' in ext3"
+ 	depends on EXT3_FS
+ 	help
+
+          If the mount options for an ext3 filesystem do not
+          include a journal mode, mount it in "data=ordered" mode.
+
+          The journal mode options for ext3 have different tradeoffs
+          between when data is guaranteed to be on disk and
+          performance.  Many applications assume "data=ordered"
+          semantics and may lose, destroy, or reveal other user's data
+          in other journal modes.  However, "data=ordered" mode can
+          also result in major performance problems, including long
+          delays before an fsync() call returns.  For details, see:
+
+	  XXX some document
+
+	  Use "data=ordered" mode unless you know it is causing a
+	  performance problem for your workload.
+
+          If you are unsure, say 'Y'.
